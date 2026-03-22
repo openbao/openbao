@@ -24,7 +24,7 @@ module('Acceptance | mfa-method', function (hooks) {
     this.store = this.owner.lookup('service:store');
     this.getMethods = () =>
       ['Totp', 'Duo', 'Okta', 'Pingid'].reduce((methods, type) => {
-        methods.addObjects(this.server.db[`mfa${type}Methods`].where({}));
+        methods = [...new Set([...methods, ...this.server.db[`mfa${type}Methods`].where({})])];
         return methods;
       }, []);
     await logout.visit();

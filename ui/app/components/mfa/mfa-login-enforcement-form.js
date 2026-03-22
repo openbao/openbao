@@ -142,12 +142,17 @@ export default class MfaLoginEnforcementForm extends Component {
     }
   }
   @action
-  addTarget() {
+  async addTarget() {
     const { label, key } = this.selectedTarget;
     const value = this.selectedTargetValue;
-    this.targets.addObject({ label, value, key });
+    if (!this.targets.includes({ label, value, key })) {
+      this.targets = [...this.targets, { label, value, key }];
+    }
     // add target to appropriate model property
-    this.args.model[key].addObject(value);
+    const collection = await this.args.model[key];
+    if (!collection.includes(value)) {
+      collection.push(value);
+    }
     this.selectedTargetValue = null;
     this.resetTargetState();
   }

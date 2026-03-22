@@ -68,8 +68,8 @@ export default class MfaLoginEnforcementModel extends Model {
       const selectedAuthMethods = authMethods.filter((model) => {
         return this.auth_method_accessors.includes(model.accessor);
       });
-      targets.addObjects(
-        selectedAuthMethods.map((method) => ({
+      targets.push(
+        ...selectedAuthMethods.map((method) => ({
           icon: this.iconForMount(method.type),
           link: 'vault.cluster.access.method',
           linkModels: [method.path.slice(0, -1)],
@@ -82,7 +82,7 @@ export default class MfaLoginEnforcementModel extends Model {
     this.auth_method_types.forEach((type) => {
       const icon = this.iconForMount(type);
       const mountCount = authMethods.filterBy('type', type).length;
-      targets.addObject({
+      targets.push({
         key: 'auth_method_types',
         icon,
         title: type,
@@ -92,7 +92,7 @@ export default class MfaLoginEnforcementModel extends Model {
 
     for (const key of ['identity_entities', 'identity_groups']) {
       (await this[key]).forEach((model) => {
-        targets.addObject({
+        targets.push({
           key,
           icon: 'user',
           link: 'vault.cluster.access.identity.show',

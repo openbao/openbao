@@ -101,8 +101,7 @@ export default Service.extend(DEFAULTS, {
     } else {
       if (this.featureMachineHistory) {
         if (!this.featureMachineHistory.includes(state)) {
-          const newHistory = this.featureMachineHistory.addObject(state);
-          this.set('featureMachineHistory', newHistory);
+          this.featureMachineHistory.push(state);
         } else {
           //we're repeating steps
           const stepIndex = this.featureMachineHistory.indexOf(state);

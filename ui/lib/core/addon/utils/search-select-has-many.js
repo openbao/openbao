@@ -32,7 +32,9 @@ export default function handleHasManySelection(selectedIds, modelCollection, sto
   selectedIds.forEach((id) => {
     if (!modelIds.includes(id)) {
       const model = store.peekRecord(modelRecord, id);
-      modelCollection.addObject(model);
+      if (!modelCollection.includes(model)) {
+        modelCollection.push(model);
+      }
     }
   });
 }

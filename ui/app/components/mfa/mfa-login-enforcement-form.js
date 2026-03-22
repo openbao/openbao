@@ -157,10 +157,14 @@ export default class MfaLoginEnforcementForm extends Component {
     this.resetTargetState();
   }
   @action
-  removeTarget(target) {
-    this.targets.removeObject(target);
+  async removeTarget(target) {
+    this.targets = this.targets.filter((t) => t !== target);
     // remove target from appropriate model property
-    this.args.model[target.key].removeObject(target.value);
+    const collection = await this.args.model[target.key];
+    const valIdx = collection.indexOf(target.value);
+    if (valIdx !== -1) {
+      collection.splice(valIdx, 1);
+    }
   }
   @action
   cancel() {

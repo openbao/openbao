@@ -3692,7 +3692,7 @@ func (b *SystemBackend) pathHashWrite(ctx context.Context, req *logical.Request,
 }
 
 func (b *SystemBackend) pathRandomWrite(_ context.Context, _ *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return random.HandleRandomAPI(d, b.Core.secureRandomReader)
+	return random.HandleRandomAPI(d)
 }
 
 func hasMountAccess(ctx context.Context, acl *ACL, path string) bool {
@@ -4479,7 +4479,7 @@ func (b *SystemBackend) handleLeaderStatus(ctx context.Context, req *logical.Req
 
 func (b *SystemBackend) rotateBarrierKey(ctx context.Context) error {
 	// Rotate to the new term
-	newTerm, err := b.Core.barrier.Rotate(ctx, b.Core.secureRandomReader)
+	newTerm, err := b.Core.barrier.Rotate(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create new encryption key: %w", err)
 	}

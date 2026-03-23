@@ -5,7 +5,6 @@ package command
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -480,7 +479,7 @@ SEALFAIL:
 		return nil
 	})
 
-	coreConfig := createCoreConfig(server, config, *backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink, rand.Reader)
+	coreConfig := createCoreConfig(server, config, *backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink)
 
 	var disableClustering bool
 	_ = diagnose.Test(ctx, "HA Storage", func(ctx context.Context) error {

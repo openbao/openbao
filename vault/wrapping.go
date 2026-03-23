@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,7 +38,7 @@ func (c *Core) ensureWrappingKey(ctx context.Context) error {
 	var keyParams certutil.ClusterKeyParams
 
 	if entry == nil {
-		key, err := ecdsa.GenerateKey(elliptic.P521(), c.secureRandomReader)
+		key, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 		if err != nil {
 			return fmt.Errorf("failed to generate wrapping key: %w", err)
 		}

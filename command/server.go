@@ -5,7 +5,6 @@ package command
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -1112,7 +1111,7 @@ func (c *ServerCommand) Run(args []string) int {
 		return 1
 	}
 
-	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink, rand.Reader)
+	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink)
 	if c.flagDevThreeNode {
 		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, c.flagDevListenAddr, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
 	}
@@ -2674,7 +2673,7 @@ func runUnseal(c *ServerCommand, core *vault.Core, ctx context.Context) {
 }
 
 func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.Backend, configSR sr.ServiceRegistration, barrierSeal, unwrapSeal vault.Seal,
-	metricsHelper *metricsutil.MetricsHelper, metricSink *metricsutil.ClusterMetricSink, secureRandomReader io.Reader,
+	metricsHelper *metricsutil.MetricsHelper, metricSink *metricsutil.ClusterMetricSink,
 ) vault.CoreConfig {
 	coreConfig := &vault.CoreConfig{
 		RawConfig:                      config,
@@ -2712,7 +2711,6 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		DisableKeyEncodingChecks:       config.DisablePrintableCheck,
 		MetricsHelper:                  metricsHelper,
 		MetricSink:                     metricSink,
-		SecureRandomReader:             secureRandomReader,
 		EnableResponseHeaderHostname:   config.EnableResponseHeaderHostname,
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
 		UnsafeCrossNamespaceIdentity:   config.UnsafeCrossNamespaceIdentity,

@@ -4,9 +4,7 @@
 package vault
 
 import (
-	"crypto/rand"
 	"fmt"
-	"io"
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
@@ -442,16 +440,6 @@ func testRotateBarrierRootKey(t *testing.T, c *Core, unsealShares [][]byte) {
 	storedRootKeyAfter, err := c.seal.GetStoredKeys(t.Context())
 	require.NoError(t, err)
 	require.NotEqual(t, storedRootKeyBefore, storedRootKeyAfter, "should rotate stored root key")
-
-	// simulate root key generation failure
-	c.secureRandomReader = io.LimitReader(c.secureRandomReader, 0)
-	require.Error(t, c.RotateBarrierRootKey(t.Context()))
-	storedRootKey, err := c.seal.GetStoredKeys(t.Context())
-	require.NoError(t, err)
-	require.Equal(t, storedRootKeyAfter, storedRootKey, "should not rotate stored root key")
-
-	// go back to original reader
-	c.secureRandomReader = rand.Reader
 
 	// seal
 	require.NoError(t, c.sealInternal())

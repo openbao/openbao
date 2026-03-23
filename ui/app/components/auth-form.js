@@ -176,7 +176,7 @@ export default Component.extend(DEFAULTS, {
   }),
 
   hasMethodsWithPath: computed('methodsToShow', function () {
-    return this.methodsToShow.isAny('path');
+    return this.methodsToShow.some((m) => m.path);
   }),
   methodsToShow: computed('methods', function () {
     const methods = this.methods || [];

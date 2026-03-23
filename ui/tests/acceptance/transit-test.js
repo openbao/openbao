@@ -275,6 +275,7 @@ const testConvergentEncryption = async function (assert, keyName) {
       testCase.assertBeforeDecrypt(keyName);
     }
     find('#ciphertext-control .CodeMirror').CodeMirror.setValue(copiedCiphertext);
+    await settled();
     await click('[data-test-button-decrypt]');
 
     if (testCase.assertAfterDecrypt) {

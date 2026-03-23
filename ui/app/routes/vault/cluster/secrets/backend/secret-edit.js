@@ -257,8 +257,8 @@ export default Route.extend({
       // we've failed the read request, but if it's a kv-type backend, we want to
       // do additional checks of the capabilities
       if (err.httpStatus === 403 && (modelType === 'secret-v2' || modelType === 'secret')) {
-        await capabilities;
-        secretModel = this.handleSecretModelError(capabilities, secret, modelType, err);
+        const resolvedCapabilities = await capabilities;
+        secretModel = this.handleSecretModelError(resolvedCapabilities, secret, modelType, err);
       } else {
         throw err;
       }

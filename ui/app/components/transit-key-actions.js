@@ -75,8 +75,8 @@ export default Component.extend(TRANSIT_PARAMS, {
       return;
     }
     // eslint-disable-next-line ember/no-get
-    set(this, 'selectedAction', this.key.supportedActions[0]);
     assert('`key` is required for `' + this.toString() + '`.', this.getModelInfo());
+    set(this, 'selectedAction', this.key.supportedActions[0]);
   },
 
   didReceiveAttrs() {

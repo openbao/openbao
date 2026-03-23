@@ -23,6 +23,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
   hooks.beforeEach(async function () {
     this.store = this.owner.lookup('service:store');
     await authPage.login();
+    await settled();
     // Setup PKI engine
     const mountPath = `pki-workflow-${uuidv4()}`;
     await enablePage.enable('pki', mountPath);
@@ -45,6 +46,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('create config', async function (assert) {
       let configs, urls, config;
       await authPage.login(this.pkiAdminToken);
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.emptyStateLink);
       configs = this.store.peekAll('pki/action');
@@ -81,6 +83,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
   module('role routes', function (hooks) {
     hooks.beforeEach(async function () {
       await authPage.login();
+      await settled();
       // Configure PKI
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.emptyStateLink);
@@ -95,6 +98,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('create role exit via cancel', async function (assert) {
       let roles;
       await authPage.login();
+      await settled();
       // Create PKI
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.rolesTab);
@@ -112,6 +116,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('create role exit via breadcrumb', async function (assert) {
       let roles;
       await authPage.login();
+      await settled();
       // Create PKI
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.rolesTab);
@@ -130,6 +135,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       let roles, role;
       const roleId = 'workflow-edit-role';
       await authPage.login();
+      await settled();
       // Create PKI
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.rolesTab);
@@ -173,6 +179,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('import issuer exit via cancel', async function (assert) {
       let issuers;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.issuersTab);
       issuers = this.store.peekAll('pki/issuer');
@@ -192,6 +199,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('import issuer exit via breadcrumb', async function (assert) {
       let issuers;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.issuersTab);
       issuers = this.store.peekAll('pki/issuer');
@@ -211,6 +219,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('generate root exit via cancel', async function (assert) {
       let actions;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.issuersTab);
       actions = this.store.peekAll('pki/action');
@@ -232,6 +241,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('generate root exit via breadcrumb', async function (assert) {
       let actions;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.issuersTab);
       actions = this.store.peekAll('pki/action');
@@ -253,6 +263,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('generate intermediate csr exit via cancel', async function (assert) {
       let actions;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.issuersTab);
       actions = this.store.peekAll('pki/action');
@@ -274,6 +285,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('generate intermediate csr exit via breadcrumb', async function (assert) {
       let actions;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.issuersTab);
       actions = this.store.peekAll('pki/action');
@@ -295,6 +307,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('edit issuer exit', async function (assert) {
       let issuers, issuer;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.emptyStateLink);
       await click(SELECTORS.configuration.optionByKey('generate-root'));
@@ -324,6 +337,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
   module('key routes', function (hooks) {
     hooks.beforeEach(async function () {
       await authPage.login();
+      await settled();
       // Configure PKI -- key creation not allowed unless configured
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.emptyStateLink);
@@ -337,6 +351,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('create key exit', async function (assert) {
       let keys, key;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.keysTab);
       keys = this.store.peekAll('pki/key');
@@ -370,6 +385,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('edit key exit', async function (assert) {
       let keys, key;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.keysTab);
       keys = this.store.peekAll('pki/key');

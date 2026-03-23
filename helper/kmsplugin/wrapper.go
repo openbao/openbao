@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hashicorp/go-hclog"
 	gkwplugin "github.com/openbao/go-kms-wrapping/plugin/v2"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2"
@@ -19,6 +20,9 @@ import (
 	"github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/static/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/transit/v2"
+	"github.com/openbao/openbao/command/server"
+	"github.com/openbao/openbao/helper/pluginutil/catalog"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
 var builtinWrappers = map[wrapping.WrapperType]builtinWrapper{
@@ -63,10 +67,23 @@ func toWrapper[T wrapping.Wrapper](f func() T) wrapperFactory {
 	return func() (wrapping.Wrapper, error) { return f(), nil }
 }
 
+type KMSCatalog struct {
+	*catalog.Catalog
+}
+
+func NewCatalog(logger hclog.Logger, config *server.Config) (*KMSCatalog, error) {
+	base, err := catalog.NewCatalog(logger, config, consts.PluginTypeKMS)
+	if err != nil {
+		return nil, err
+	}
+
+	return &KMSCatalog{base}, nil
+}
+
 // ConfigureWrapper creates a new wrapper instance and calls SetConfig with
 // the provided options. This may dispatch to either a builtin wrapper or an
 // external pluginized wrapper.
-func (c *Catalog) ConfigureWrapper(ctx context.Context, name string, opts ...wrapping.Option) (wrapping.Wrapper, *wrapping.WrapperConfig, error) {
+func (c *KMSCatalog) ConfigureWrapper(ctx context.Context, name string, opts ...wrapping.Option) (wrapping.Wrapper, *wrapping.WrapperConfig, error) {
 	w, builtin, err := c.getWrapper(name)
 	if err != nil {
 		return nil, nil, err
@@ -77,7 +94,7 @@ func (c *Catalog) ConfigureWrapper(ctx context.Context, name string, opts ...wra
 		// If we fail to configure the wrapper, ensure any underlying client is
 		// closed to avoid leaking it.
 		if w, ok := w.(*wrapper); ok {
-			w.client.close()
+			w.client.Close()
 		}
 		return nil, nil, err
 	}
@@ -98,12 +115,12 @@ func (c *Catalog) ConfigureWrapper(ctx context.Context, name string, opts ...wra
 // getWrapper returns a new wrapping.Wrapper that is either builtin or
 // pluginized, in which case a new plugin process may be spawned. The
 // additionally returned bool is true if the returned wrapper is built-in.
-func (c *Catalog) getWrapper(name string) (wrapping.Wrapper, bool, error) {
-	client, ok, err := c.getClient(name)
-	switch {
-	case err != nil:
+func (c *KMSCatalog) getWrapper(name string) (wrapping.Wrapper, bool, error) {
+	client, ok, err := c.GetClient(name)
+	if err != nil {
 		return nil, false, err
-	case !ok:
+	}
+	if !ok {
 		// Try builtin wrappers.
 		if builtin, ok := builtinWrappers[wrapping.WrapperType(name)]; ok {
 			w, err := builtin.factory()
@@ -123,7 +140,7 @@ func (c *Catalog) getWrapper(name string) (wrapping.Wrapper, bool, error) {
 	// Each call to Dispense creates a new wrapper instance on the remote.
 	raw, err := client.Dispense("wrapper")
 	if err != nil {
-		client.close()
+		client.Close()
 		return nil, false, err
 	}
 
@@ -138,7 +155,7 @@ func (c *Catalog) getWrapper(name string) (wrapping.Wrapper, bool, error) {
 type wrapper struct {
 	mu sync.RWMutex
 
-	client  *client
+	client  *catalog.Client
 	wrapper wrapperInitFinalizer
 
 	configOpts, initOpts []wrapping.Option
@@ -166,7 +183,7 @@ func (w *wrapper) retry(ctx context.Context, f func() error) error {
 
 // call is a helper to call f under a read lock and return the current client
 // pointer as a reload canary value.
-func (w *wrapper) call(f func() error) (*client, error) {
+func (w *wrapper) call(f func() error) (*catalog.Client, error) {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
@@ -179,7 +196,7 @@ func (w *wrapper) call(f func() error) (*client, error) {
 
 // reload attempts to reload the underlying external plugin and reinstantiate
 // the remote wrapper instance.
-func (w *wrapper) reload(ctx context.Context, canary *client) error {
+func (w *wrapper) reload(ctx context.Context, canary *catalog.Client) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -192,18 +209,18 @@ func (w *wrapper) reload(ctx context.Context, canary *client) error {
 		return nil
 	}
 
-	client, err := w.client.catalog.reloadClient(w.client)
+	client, err := w.client.Reload()
 	if err != nil {
 		return err
 	}
 
 	raw, err := client.Dispense("wrapper")
 	if err != nil {
+		client.Close()
 		return err
 	}
 
 	wrapper := raw.(wrapperInitFinalizer)
-
 	if w.configOpts != nil {
 		// Replay SetConfig if it was called on the original wrapper.
 		if _, err := wrapper.SetConfig(ctx, w.configOpts...); err != nil {
@@ -260,7 +277,7 @@ func (w *wrapper) Finalize(ctx context.Context, opts ...wrapping.Option) error {
 	defer w.mu.Unlock()
 
 	defer func() {
-		w.client.close()
+		w.client.Close()
 		// As a safety measure, set the client to nil to ensure the wrapper does
 		// not reload & replay itself if any of its APIs are called after this
 		// call to Finalize.

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -51,8 +50,8 @@ func testCoreNewTestCore(t *testing.T, seal Seal) (*Core, *CoreConfig) {
 	return c, conf
 }
 
-func testCoreInitCommon(t *testing.T, seal Seal, barrierConf, recoveryConf *SealConfig) {
-	c, conf := testCoreNewTestCore(t, seal)
+func testCoreInitCommon(t *testing.T, s Seal, barrierConf, recoveryConf *SealConfig) {
+	c, conf := testCoreNewTestCore(t, s)
 	ctx := namespace.RootContext(t.Context())
 	init, err := c.Initialized(ctx)
 	require.NoError(t, err)
@@ -76,7 +75,7 @@ func testCoreInitCommon(t *testing.T, seal Seal, barrierConf, recoveryConf *Seal
 	require.NoError(t, err)
 
 	require.Falsef(t,
-		c.seal.BarrierType() == wrapping.WrapperTypeShamir && len(res.SecretShares) != barrierConf.SecretShares,
+		c.seal.BarrierType() == seal.WrapperTypeShamir && len(res.SecretShares) != barrierConf.SecretShares,
 		"Bad: got\n%#v\nexpected conf matching\n%#v\n", *res, *barrierConf,
 	)
 

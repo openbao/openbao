@@ -46,7 +46,9 @@ const (
 	leaderPrefixCleanDelay = 200 * time.Millisecond
 )
 
-// Standby checks if the Vault is in standby mode
+// Standby checks if the Vault is in standby mode.
+// Usage of this function at core initialization/setup stage is not advised
+// as it always evaluates to true until after postUnseal() method.
 func (c *Core) Standby() bool {
 	return c.standby.Load()
 }

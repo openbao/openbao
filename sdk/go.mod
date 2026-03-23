@@ -42,8 +42,8 @@ require (
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-testing-interface v1.14.2-0.20210821155943-2d9075ca8770
 	github.com/moby/go-archive v0.1.0
-	github.com/moby/moby/api v1.53.0
-	github.com/moby/moby/client v0.2.2
+	github.com/moby/moby/api v1.54.0
+	github.com/moby/moby/client v0.3.0
 	github.com/openbao/go-kms-wrapping/v2 v2.7.0
 	github.com/openbao/openbao/api/v2 v2.5.0
 	github.com/ryanuber/go-glob v1.0.0

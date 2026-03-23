@@ -1,7 +1,7 @@
 // Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
-package kmsplugin
+package catalog
 
 import (
 	"os"
@@ -66,32 +66,32 @@ func TestGetClient(t *testing.T) {
 			// This one should be ignored as it is a secrets engine plugin.
 			{Type: consts.PluginTypeSecrets.String(), Name: "foo"},
 		},
-	})
+	}, consts.PluginTypeKMS)
 	require.NoError(t, err, "catalog should create successfully")
 	require.Len(t, catalog.plugins, 1, "should have registered one plugin")
 	require.Len(t, catalog.clients, 0, "should have no active plugin clients")
 
-	_, ok, err := catalog.getClient("foo")
+	_, ok, err := catalog.GetClient("foo")
 	require.NoError(t, err, "should not error when requesting unknown plugin")
 	require.False(t, ok, "should report that unknown plugin is not found")
 
-	client1, ok, err := catalog.getClient("static")
+	client1, ok, err := catalog.GetClient("static")
 	require.NoError(t, err, "should instantiate client for known plugin")
 	require.True(t, ok, "should report that known plugin exists")
 	require.NoError(t, client1.Ping(), "client should be reachable")
 	require.Len(t, catalog.clients, 1, "should have one active plugin client")
 
-	client2, ok, err := catalog.getClient("static")
+	client2, ok, err := catalog.GetClient("static")
 	require.NoError(t, err, "should instantiate client for known plugin")
 	require.True(t, ok, "should report that known plugin exists")
 	require.NoError(t, client2.Ping(), "client should be reachable")
 	require.Len(t, catalog.clients, 1, "should have one active plugin client")
 
-	client1.close()
+	client1.Close()
 	require.NoError(t, client2.Ping(), "client should still be reachable")
 	require.Len(t, catalog.clients, 1, "should still have one active plugin client")
 
-	client2.close()
+	client2.Close()
 	require.Error(t, client2.Ping(), "client should not be reachable anymore")
 	require.Len(t, catalog.clients, 0, "should have no more active plugin clients")
 }
@@ -102,14 +102,14 @@ func TestReloadClient(t *testing.T) {
 	catalog, err := NewCatalog(logger, &server.Config{
 		PluginDirectory: filepath.Dir(os.Args[0]),
 		Plugins:         []*server.PluginConfig{testPluginConfig(t)},
-	})
+	}, consts.PluginTypeKMS)
 	require.NoError(t, err, "catalog should create successfully")
 
-	client1, ok, err := catalog.getClient("static")
+	client1, ok, err := catalog.GetClient("static")
 	require.NoError(t, err, "should instantiate client for known plugin")
 	require.True(t, ok, "should report that known plugin exists")
 
-	client2, ok, err := catalog.getClient("static")
+	client2, ok, err := catalog.GetClient("static")
 	require.NoError(t, err, "should instantiate client for known plugin")
 	require.True(t, ok, "should report that known plugin exists")
 
@@ -163,10 +163,10 @@ func TestBadClientConfig(t *testing.T) {
 
 	for name, config := range tests {
 		t.Run(name, func(t *testing.T) {
-			catalog, err := NewCatalog(logger, config)
+			catalog, err := NewCatalog(logger, config, consts.PluginTypeKMS)
 			require.NoError(t, err, "catalog should create successfully")
 
-			client, ok, err := catalog.getClient("static")
+			client, ok, err := catalog.GetClient("static")
 			require.Error(t, err, "client should not instantiate")
 			require.True(t, ok, "should report that known plugin exists")
 			require.Nil(t, client, "should not return a client")

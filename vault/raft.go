@@ -104,7 +104,7 @@ func (c *Core) startRaftBackend(ctx context.Context) (retErr error) {
 			// this state the unseal will fail and a cluster recovery will need to
 			// be done.
 			creating = true
-			raftTLSKey, err := raft.GenerateTLSKey(c.secureRandomReader)
+			raftTLSKey, err := raft.GenerateTLSKey()
 			if err != nil {
 				return err
 			}
@@ -244,7 +244,7 @@ func (c *Core) raftTLSRotateDirect(ctx context.Context, logger hclog.Logger, sto
 
 	rotateKeyring := func() (time.Time, error) {
 		// Create a new key
-		raftTLSKey, err := raft.GenerateTLSKey(c.secureRandomReader)
+		raftTLSKey, err := raft.GenerateTLSKey()
 		if err != nil {
 			return time.Time{}, fmt.Errorf("failed to generate new raft TLS key: %w", err)
 		}
@@ -405,7 +405,7 @@ func (c *Core) raftTLSRotatePhased(ctx context.Context, logger hclog.Logger, raf
 		logger.Info("creating new raft TLS config")
 
 		// Create a new key
-		raftTLSKey, err := raft.GenerateTLSKey(c.secureRandomReader)
+		raftTLSKey, err := raft.GenerateTLSKey()
 		if err != nil {
 			return time.Time{}, fmt.Errorf("failed to generate new raft TLS key: %w", err)
 		}
@@ -578,7 +578,7 @@ func (c *Core) raftCreateTLSKeyring(ctx context.Context) (*raft.TLSKeyring, erro
 		return nil, errors.New("TLS keyring already present")
 	}
 
-	raftTLS, err := raft.GenerateTLSKey(c.secureRandomReader)
+	raftTLS, err := raft.GenerateTLSKey()
 	if err != nil {
 		return nil, err
 	}

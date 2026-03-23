@@ -4,10 +4,8 @@
 package vault
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 	"testing"
 
@@ -171,14 +169,6 @@ func TestSealManager_InitializeBarrier(t *testing.T) {
 	ns := &namespace.Namespace{UUID: "ns1", Path: "test/"}
 	err = c.sealManager.SetSeal(ctx, sealConfig, ns, true)
 	require.NoError(t, err)
-
-	// make secure random reader artificially fail
-	c.secureRandomReader = io.LimitReader(c.secureRandomReader, 0)
-	_, err = c.sealManager.InitializeBarrier(ctx, ns)
-	require.ErrorContains(t, err, "failed to generate namespace seal key")
-
-	// return to default reader
-	c.secureRandomReader = rand.Reader
 
 	keyShares, err := c.sealManager.InitializeBarrier(ctx, ns)
 	require.NoError(t, err)

@@ -456,7 +456,7 @@ func (c *Core) progressRotation(rotationConfig, existingConfig *SealConfig, key 
 // generateKey generates a new root/recovery key dividing it into desired number of key shares.
 func (c *Core) generateKey(rotationConfig *SealConfig, recovery bool) ([]byte, *RekeyResult, logical.HTTPCodedError) {
 	// Generate a new root/recovery key
-	newKey, err := c.barrier.GenerateKey(c.secureRandomReader)
+	newKey, err := c.barrier.GenerateKey()
 	if err != nil {
 		c.logger.Error("failed to generate key", "error", err)
 		return nil, nil, logical.CodedError(http.StatusInternalServerError, "key generation failed: %v", err)
@@ -560,7 +560,7 @@ func (c *Core) RotateBarrierRootKey(ctx context.Context) error {
 	c.rotationLock.Lock()
 	defer c.rotationLock.Unlock()
 
-	newRootKey, err := c.barrier.GenerateKey(c.secureRandomReader)
+	newRootKey, err := c.barrier.GenerateKey()
 	if err != nil {
 		return fmt.Errorf("failed to generate new root key: %v", err)
 	}

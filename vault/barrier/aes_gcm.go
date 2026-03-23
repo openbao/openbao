@@ -12,7 +12,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"strconv"
 	"strings"
@@ -170,7 +169,7 @@ func (b *AESGCMBarrier) Initialized(ctx context.Context) (bool, error) {
 
 // Initialize works only if the barrier has not been initialized
 // and makes use of the given root key.
-func (b *AESGCMBarrier) Initialize(ctx context.Context, key, sealKey []byte, reader io.Reader) error {
+func (b *AESGCMBarrier) Initialize(ctx context.Context, key, sealKey []byte) error {
 	// Verify the key size
 	min, max := b.KeyLength()
 	if len(key) < min || len(key) > max {
@@ -185,7 +184,7 @@ func (b *AESGCMBarrier) Initialize(ctx context.Context, key, sealKey []byte, rea
 	}
 
 	// Generate encryption key
-	encrypt, err := b.GenerateKey(reader)
+	encrypt, err := b.GenerateKey()
 	if err != nil {
 		return fmt.Errorf("failed to generate encryption key: %w", err)
 	}
@@ -322,10 +321,10 @@ func (b *AESGCMBarrier) persistKeyringInternal(ctx context.Context, keyring *Key
 }
 
 // GenerateKey is used to generate a new key
-func (b *AESGCMBarrier) GenerateKey(reader io.Reader) ([]byte, error) {
+func (b *AESGCMBarrier) GenerateKey() ([]byte, error) {
 	// Generate a 256bit key
 	buf := make([]byte, 2*aes.BlockSize)
-	_, err := reader.Read(buf)
+	_, err := rand.Read(buf)
 
 	return buf, err
 }
@@ -554,7 +553,7 @@ func (b *AESGCMBarrier) Seal() error {
 
 // Rotate is used to create a new encryption key. All future writes
 // should use the new key, while old values should still be decryptable.
-func (b *AESGCMBarrier) Rotate(ctx context.Context, randomSource io.Reader) (uint32, error) {
+func (b *AESGCMBarrier) Rotate(ctx context.Context) (uint32, error) {
 	b.l.Lock()
 	defer b.l.Unlock()
 	if b.sealed {
@@ -562,7 +561,7 @@ func (b *AESGCMBarrier) Rotate(ctx context.Context, randomSource io.Reader) (uin
 	}
 
 	// Generate a new key
-	encrypt, err := b.GenerateKey(randomSource)
+	encrypt, err := b.GenerateKey()
 	if err != nil {
 		return 0, fmt.Errorf("failed to generate encryption key: %w", err)
 	}

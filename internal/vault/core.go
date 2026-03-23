@@ -498,7 +498,7 @@ type Core struct {
 	pluginCatalog *PluginCatalog
 
 	// kmsPluginCatalog provides KMS plugin functionality.
-	kmsPluginCatalog *kmsplugin.Catalog
+	kmsPluginCatalog *kmsplugin.KMSCatalog
 
 	// externalKeys manages external key storage & caches.
 	externalKeys *ek.Registry
@@ -698,7 +698,7 @@ type CoreConfig struct {
 
 	// KMSPluginCatalog is used to create any root-level seals and is then
 	// passed on to Core to power External Keys and per-namespace Auto Seals.
-	KMSPluginCatalog *kmsplugin.Catalog
+	KMSPluginCatalog *kmsplugin.KMSCatalog
 
 	LogLevel string
 

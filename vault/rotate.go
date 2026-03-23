@@ -14,7 +14,6 @@ import (
 	"net/http"
 
 	uuid "github.com/hashicorp/go-uuid"
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
@@ -201,7 +200,7 @@ func (c *Core) initBarrierRotation(config *SealConfig, nonce string) logical.HTT
 		config.StoredShares = 1
 	}
 
-	if c.seal.BarrierType() != wrapping.WrapperTypeShamir {
+	if c.seal.BarrierType() != seal.WrapperTypeShamir {
 		config.SecretShares = 1
 		config.SecretThreshold = 1
 
@@ -351,7 +350,7 @@ func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, ke
 			c.logger.Error("recovery key verification failed", "error", err)
 			return nil, logical.CodedError(http.StatusBadRequest, "recovery key verification failed: %v", err)
 		}
-	case c.seal.BarrierType() == wrapping.WrapperTypeShamir:
+	case c.seal.BarrierType() == seal.WrapperTypeShamir:
 		if c.seal.StoredKeysSupported() == seal.StoredKeysSupportedShamirRoot {
 			shamirWrapper := seal.NewShamirWrapper()
 			if err := shamirWrapper.SetAesGcmKeyBytes(recoveredKey); err != nil {

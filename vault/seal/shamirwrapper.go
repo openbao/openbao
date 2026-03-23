@@ -10,8 +10,6 @@ import (
 	"github.com/openbao/go-kms-wrapping/v2/aead"
 )
 
-// TODO(satoqz): Remove ShamirWrapper from go-kms-wrapping & replace remaining
-// references to wrapping.WrapperTypeShamir with vaultseal.WrapperTypeShamir.
 const WrapperTypeShamir wrapping.WrapperType = "shamir"
 
 // ShamirWrapper is here for backwards compatibility for Vault; it reports a

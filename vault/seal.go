@@ -130,7 +130,7 @@ func (d *defaultSeal) Finalize(ctx context.Context) error {
 }
 
 func (d *defaultSeal) BarrierType() wrapping.WrapperType {
-	return wrapping.WrapperTypeShamir
+	return seal.WrapperTypeShamir
 }
 
 func (d *defaultSeal) StoredKeysSupported() seal.StoredKeysSupport {

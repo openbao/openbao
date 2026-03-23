@@ -455,7 +455,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	infoKeys = append(infoKeys, "log level")
 
 	if len(config.Seals) == 0 {
-		config.Seals = append(config.Seals, &configutil.KMS{Type: wrapping.WrapperTypeShamir.String()})
+		config.Seals = append(config.Seals, &configutil.KMS{Type: vaultseal.WrapperTypeShamir.String()})
 	}
 
 	if len(config.Seals) > 1 {
@@ -472,7 +472,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 
 	var seal vault.Seal
 	switch configSeal.Type {
-	case string(wrapping.WrapperTypeShamir):
+	case string(vaultseal.WrapperTypeShamir):
 		seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 	default:
 		wrapper, config, err := kms.ConfigureWrapper(
@@ -2430,12 +2430,12 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 	// Handle the case where no seal is provided
 	switch len(config.Seals) {
 	case 0:
-		config.Seals = append(config.Seals, &configutil.KMS{Type: wrapping.WrapperTypeShamir.String()})
+		config.Seals = append(config.Seals, &configutil.KMS{Type: vaultseal.WrapperTypeShamir.String()})
 	case 1:
 		// If there's only one seal and it's disabled assume they want to
 		// migrate to a shamir seal and simply didn't provide it
 		if config.Seals[0].Disabled {
-			config.Seals = append(config.Seals, &configutil.KMS{Type: wrapping.WrapperTypeShamir.String()})
+			config.Seals = append(config.Seals, &configutil.KMS{Type: vaultseal.WrapperTypeShamir.String()})
 		}
 	}
 	createdSeals := make([]vault.Seal, len(config.Seals))
@@ -2448,7 +2448,7 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 
 		var seal vault.Seal
 		switch configSeal.Type {
-		case string(wrapping.WrapperTypeShamir):
+		case string(vaultseal.WrapperTypeShamir):
 			seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 		default:
 			wrapper, config, err := kms.ConfigureWrapper(

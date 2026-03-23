@@ -18,8 +18,8 @@ var builtinMetadata = map[string]plugin.Metadata{
 }
 
 // GetMetadata returns a KMS plugin's metadata.
-func (c *Catalog) GetMetadata(ctx context.Context, name string) (plugin.Metadata, error) {
-	client, ok, err := c.getClient(name)
+func (c *KMSCatalog) GetMetadata(ctx context.Context, name string) (plugin.Metadata, error) {
+	client, ok, err := c.GetClient(name)
 	switch {
 	case err != nil:
 		return plugin.Metadata{}, err
@@ -35,7 +35,7 @@ func (c *Catalog) GetMetadata(ctx context.Context, name string) (plugin.Metadata
 
 	raw, err := client.Dispense("metadata")
 	if err != nil {
-		client.close()
+		client.Close()
 		return plugin.Metadata{}, err
 	}
 

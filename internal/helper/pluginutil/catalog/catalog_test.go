@@ -1,7 +1,7 @@
 // Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
-package kmsplugin
+package catalog
 
 import (
 	"os"
@@ -10,6 +10,8 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	gkwplugin "github.com/openbao/go-kms-wrapping/plugin/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/go-kms-wrapping/wrappers/static/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/command/server"
 	"github.com/openbao/openbao/v2/internal/helper/osutil"
@@ -25,30 +27,13 @@ func TestStaticPluginServer(t *testing.T) {
 	}
 
 	gkwplugin.Serve(&gkwplugin.ServeOpts{
-		WrapperFactoryFunc: builtinWrappers["static"],
-	})
-}
-
-// TestTransitPluginServer runs a plugin that serves the Transit KMS.
-func TestTransitPluginServer(t *testing.T) {
-	if _, ok := os.LookupEnv(TestPluginServerEnv); !ok {
-		t.Skip()
-	}
-
-	gkwplugin.Serve(&gkwplugin.ServeOpts{
-		KMSFactoryFunc: builtinKMSes["transit"],
-		Metadata:       builtinMetadata["transit"],
+		WrapperFactoryFunc: func() wrapping.Wrapper { return static.NewWrapper() },
 	})
 }
 
 var StaticPluginConfig = &server.PluginConfig{
 	Name: "static",
 	Args: []string{"-test.run=TestStaticPluginServer"},
-}
-
-var TransitPluginConfig = &server.PluginConfig{
-	Name: "transit",
-	Args: []string{"-test.run=TestTransitPluginServer"},
 }
 
 func init() {
@@ -59,15 +44,10 @@ func init() {
 		panic(err)
 	}
 
-	for _, config := range []*server.PluginConfig{
-		StaticPluginConfig,
-		TransitPluginConfig,
-	} {
-		config.Type = consts.PluginTypeKMS.String()
-		config.Command = command
-		config.SHA256Sum = sha256sum
-		config.Env = []string{TestPluginServerEnv + "=1"}
-	}
+	StaticPluginConfig.Type = consts.PluginTypeKMS.String()
+	StaticPluginConfig.Command = command
+	StaticPluginConfig.SHA256Sum = sha256sum
+	StaticPluginConfig.Env = []string{TestPluginServerEnv + "=1"}
 }
 
 // TestGetClient tests plugin client creation, refcounting and shutdown.
@@ -80,32 +60,32 @@ func TestGetClient(t *testing.T) {
 			// This one should be ignored as it is a secrets engine plugin.
 			{Type: consts.PluginTypeSecrets.String(), Name: "foo"},
 		},
-	})
+	}, consts.PluginTypeKMS)
 	require.NoError(t, err, "catalog should create successfully")
 	require.Len(t, catalog.plugins, 1, "should have registered one plugin")
 	require.Len(t, catalog.clients, 0, "should have no active plugin clients")
 
-	_, ok, err := catalog.getClient("foo")
+	_, ok, err := catalog.GetClient("foo")
 	require.NoError(t, err, "should not error when requesting unknown plugin")
 	require.False(t, ok, "should report that unknown plugin is not found")
 
-	client1, ok, err := catalog.getClient("static")
+	client1, ok, err := catalog.GetClient("static")
 	require.NoError(t, err, "should instantiate client for known plugin")
 	require.True(t, ok, "should report that known plugin exists")
 	require.NoError(t, client1.Ping(), "client should be reachable")
 	require.Len(t, catalog.clients, 1, "should have one active plugin client")
 
-	client2, ok, err := catalog.getClient("static")
+	client2, ok, err := catalog.GetClient("static")
 	require.NoError(t, err, "should instantiate client for known plugin")
 	require.True(t, ok, "should report that known plugin exists")
 	require.NoError(t, client2.Ping(), "client should be reachable")
 	require.Len(t, catalog.clients, 1, "should have one active plugin client")
 
-	client1.close()
+	client1.Close()
 	require.NoError(t, client2.Ping(), "client should still be reachable")
 	require.Len(t, catalog.clients, 1, "should still have one active plugin client")
 
-	client2.close()
+	client2.Close()
 	require.Error(t, client2.Ping(), "client should not be reachable anymore")
 	require.Len(t, catalog.clients, 0, "should have no more active plugin clients")
 }
@@ -116,14 +96,14 @@ func TestReloadClient(t *testing.T) {
 	catalog, err := NewCatalog(logger, &server.Config{
 		PluginDirectory: filepath.Dir(os.Args[0]),
 		Plugins:         []*server.PluginConfig{StaticPluginConfig},
-	})
+	}, consts.PluginTypeKMS)
 	require.NoError(t, err, "catalog should create successfully")
 
-	client1, ok, err := catalog.getClient("static")
+	client1, ok, err := catalog.GetClient("static")
 	require.NoError(t, err, "should instantiate client for known plugin")
 	require.True(t, ok, "should report that known plugin exists")
 
-	client2, ok, err := catalog.getClient("static")
+	client2, ok, err := catalog.GetClient("static")
 	require.NoError(t, err, "should instantiate client for known plugin")
 	require.True(t, ok, "should report that known plugin exists")
 
@@ -172,10 +152,10 @@ func TestBadClientConfig(t *testing.T) {
 
 	for name, config := range tests {
 		t.Run(name, func(t *testing.T) {
-			catalog, err := NewCatalog(logger, config)
+			catalog, err := NewCatalog(logger, config, consts.PluginTypeKMS)
 			require.NoError(t, err, "catalog should create successfully")
 
-			client, ok, err := catalog.getClient("static")
+			client, ok, err := catalog.GetClient("static")
 			require.Error(t, err, "client should not instantiate")
 			require.True(t, ok, "should report that known plugin exists")
 			require.Nil(t, client, "should not return a client")

@@ -154,26 +154,20 @@ up to 30 to 35% for all nodes during the benchmark.
 
 ![CPU usage of 2.5.1 during the benchmark run](/img/2026-03-25-improved-horizontal-scalability/benchmark-kv-2-5-1.svg)
 
-This results in better latencies (2.4.4 has a small advantage on the read
-latencies, but 2.5.1 is much better for write):
+This results in better latencies:
 
-<!--
-op      count   rate        throughput  mean         95th%        99th%         successRatio
-reads   134985  449.962167  449.940453  3.911434ms   14.155784ms  24.966551ms   100.00%
-writes  15015   50.052706   50.048404   44.556346ms  79.047098ms  110.033005ms  100.00%
+| operation | version | mean        | 95th%       |  99th%      | count    |
+|-----------|--------:|------------:|------------:|------------:|---------:|
+| reads     | 2.5.1   |     5.75 ms |    19.55 ms |    36.94 ms |  1349402 |
+|           | 2.4.4   |     7.92 ms |    28.69 ms |    51.64 ms |  1350523 |
+| writes    | 2.5.1   |    58.08 ms |   105.90 ms |   239.21 ms |   150598 |
+|           | 2.4.4   |    87.21 ms |   201.23 ms |   355.96 ms |   149477 |
 
-op      count   rate        throughput  mean         95th%        99th%         successRatio
-reads   135034  450.126267  450.120993  3.714888ms   12.54901ms   22.407885ms   100.00%
-writes  14966   49.899488   49.895550   68.364191ms  86.199986ms  1.428659151s  100.00%
--->
 
-| operation | version | mean     | 95th%     | 99th%      | count  |
-|-----------|--------:|---------:|----------:|-----------:|-------:|
-| reads     | 2.5.1   |  3.91 ms | 14.16 ms  |   24.97 ms | 134985 |
-|           | 2.4.4   |  3.71 ms | 12.55 ms  |   22.41 ms | 135034 |
-| writes    | 2.5.1   | 44.56 ms | 79.05 ms  |  110.03 ms | 15015  |
-|           | 2.4.4   | 68.36 ms | 86.20 ms  | 1428.66 ms | 14966  |
-
+:::info[Averaged Results]
+While the Graphs above show a single benchmark run, the tables are the combined
+numbers of several benchmark runs.
+:::
 
 ### PKI Engine Benchmark
 
@@ -244,21 +238,13 @@ On the 2.5.1 cluster the load is spread pretty well at roughly 40%.
 ![CPU usage of 2.5.1 during the benchmark run](/img/2026-03-25-improved-horizontal-scalability/benchmark-pki-2-5-1.svg)
 
 This time we also see better latencies, but additionally the 2.4.4 cluster
-failed to even fulfill the 5 requests per second target and two requests (0.43%)
+failed to even fulfill the 5 requests per second target and some requests (0.73%)
 even failed.
 
-<!--
-op         count  rate      throughput  mean          95th%         99th%         successRatio
-pki_issue  1500   5.003329  4.996498    278.749266ms  724.061639ms  1.080919148s  100.00%
-
-op         count  rate      throughput  mean          95th%          99th%          successRatio
-pki_issue  467    1.553848  1.497935    9.752393603s  22.089775925s  35.697547865s  99.57%
--->
-
-| version | count  | mean       | 95th%       |  99th%       | rate  | success |
-|--------:|-------:|-----------:|------------:|-------------:|------:|--------:|
-| 2.5.1   | 1500   |  278.75 ms |   724.06 ms |   1080.92 ms | 5.00  | 100.00% |
-| 2.4.4   | 467    | 9752.39 ms | 22089.78 ms |  35697.55 ms | 1.55  |  99.57% |
+| version | mean        | 95th%       |  99th%      | count    | rate   | success  |
+|--------:|------------:|------------:|------------:|---------:|-------:|---------:|
+| 2.5.1   |   566.77 ms |  1976.84 ms |  3575.30 ms |    15000 |   5.00 | 100.00 % |
+| 2.4.4   | 11668.62 ms | 27152.59 ms | 38203.77 ms |     3990 |   1.33 |  99.27 % |
 
 ### Missing Benchmarks
 

@@ -1154,6 +1154,72 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 	}
 }
 
+// TestOIDC_PeriodicFunc_NonRootNamespace tests that oidcPeriodicFunc rotates
+// OIDC named keys in non-root namespaces. This is a test for a regression that happened
+// for non root namespaces.
+func TestOIDC_PeriodicFunc_NonRootNamespace(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	rootCtx := namespace.RootContext(t.Context())
+
+	ns := testCreateNamespace(t, rootCtx, c.systemBackend, "ns", nil)
+	nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+
+	storage := c.router.MatchingStorageByAPIPath(nsCtx, "identity/oidc")
+
+	key := testNamedKey("test-key-ns")
+	if err := key.generateAndSetKey(nsCtx, hclog.NewNullLogger(), storage); err != nil {
+		t.Fatal("failed to set signing key")
+	}
+	if err := key.generateAndSetKey(nsCtx, hclog.NewNullLogger(), storage); err != nil {
+		t.Fatal("failed to set next signing key")
+	}
+
+	key.NextRotation = time.Now().Add(-time.Second) // past time
+
+	// Store namedKey
+	entry, _ := logical.StorageEntryJSON(namedKeyConfigPath+key.name, key)
+	if err := storage.Put(nsCtx, entry); err != nil {
+		t.Fatal("writing to in mem storage failed")
+	}
+
+	// run periodicFunc
+	c.identityStore.oidcPeriodicFunc(nsCtx)
+
+	// collect entries
+	namedKeyEntry, _ := storage.Get(nsCtx, namedKeyConfigPath+key.name)
+	publicKeysEntry, _ := storage.List(nsCtx, publicKeysConfigPath)
+
+	// verify the number of keys
+	var namedKey namedKey
+	if err := namedKeyEntry.DecodeJSON(&namedKey); err != nil {
+		t.Fatal("failed to decode named key entry")
+	}
+
+	expectedKeyCount := 3 // existing 2 + newly created on rotation
+	actualKeyRingLen := len(namedKey.KeyRing)
+
+	if actualKeyRingLen < expectedKeyCount {
+		t.Errorf(
+			"For key: %s expected namedKey's KeyRing to be at least of length %d but was: %d",
+			key.name,
+			expectedKeyCount,
+			actualKeyRingLen,
+		)
+	}
+
+	expectedPublicKeyCount := 3 // existing 2 + newly created on rotation
+	actualPubKeysLen := len(publicKeysEntry)
+
+	if actualPubKeysLen < expectedPublicKeyCount {
+		t.Errorf(
+			"For key: %s expected public keys to be at least of length %d but was: %d",
+			key.name,
+			expectedPublicKeyCount,
+			actualPubKeysLen,
+		)
+	}
+}
+
 // TestOIDC_Config tests CRUD operations for configuring the OIDC backend
 func TestOIDC_Config(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)

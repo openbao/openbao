@@ -1,10 +1,6 @@
 ```release-note:change
-core/seal: Removed `StoredShares` property from `SealConfig` and its references.
+api: Removed the `StoredShares` field from `InitRequest` and `RotateInitRequest` structs.
 ```
 ```release-note:change
-api: Removed `StoredShares` property from `InitRequest` and `RotateInitRequest`.
+sys/init, sys/rekey/init: The `stored_shares` parameter was removed and will now be ignored.
 ```
-```release-note:change
-http: Removed `StoredShares` property from `InitRequest` and `RekeyRequest`.
-```
-

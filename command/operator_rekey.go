@@ -643,7 +643,7 @@ func (c *OperatorRekeyCommand) backupDelete(client *api.Client) int {
 		return 2
 	}
 
-	c.UI.Output("Success! Delete backed up keys (if they existed)")
+	c.UI.Output("Success! Deleted backed up keys (if they existed)")
 	return 0
 }
 

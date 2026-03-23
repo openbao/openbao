@@ -591,7 +591,7 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationSuffix: "system",
 					},
 					Summary:     "Initialize a new OpenBao instance.",
-					Description: "The OpenBao instance must not have been previously initialized. The recovery option is only available when using auto unseal.",
+					Description: "The OpenBao instance must not have been previously initialized. The recovery options are only available when using Auto Unseal.",
 				},
 			},
 

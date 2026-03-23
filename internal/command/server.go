@@ -2501,7 +2501,7 @@ func CheckStorageMigration(b physical.Backend) (*StorageMigrationStatus, error) 
 
 // setSeal return barrierSeal, barrierWrapper, unwrapSeal, and all the created seals from the configs so we can close them in Run
 // The two errors are the sealConfigError and the regular error
-func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, infoKeys *[]string, info map[string]string) (vault.Seal, wrapping.Wrapper, vault.Seal, []vault.Seal, error, error) {
+func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.KMSCatalog, infoKeys *[]string, info map[string]string) (vault.Seal, wrapping.Wrapper, vault.Seal, []vault.Seal, error, error) {
 	var barrierSeal vault.Seal
 	var barrierWrapper wrapping.Wrapper
 	var unwrapSeal vault.Seal
@@ -2776,7 +2776,7 @@ func runUnseal(c *ServerCommand, core *vault.Core, sealShutdownCh chan<- struct{
 }
 
 func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.Backend, configSR sr.ServiceRegistration, barrierSeal, unwrapSeal vault.Seal,
-	kmsPluginCatalog *kmsplugin.Catalog, metricsHelper *metricsutil.MetricsHelper, metricSink *metricsutil.ClusterMetricSink,
+	kmsPluginCatalog *kmsplugin.KMSCatalog, metricsHelper *metricsutil.MetricsHelper, metricSink *metricsutil.ClusterMetricSink,
 ) vault.CoreConfig {
 	coreConfig := &vault.CoreConfig{
 		RawConfig:                      config,

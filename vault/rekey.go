@@ -12,7 +12,6 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/go-uuid"
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -167,7 +166,7 @@ func (c *Core) RekeyInit(config *SealConfig, recovery bool) logical.HTTPCodedErr
 // BarrierRekeyInit is used to initialize the rekey settings for the barrier key
 func (c *Core) BarrierRekeyInit(config *SealConfig) logical.HTTPCodedError {
 	switch c.seal.BarrierType() {
-	case wrapping.WrapperTypeShamir:
+	case seal.WrapperTypeShamir:
 		// As of Vault 1.3 all seals use StoredShares==1.
 		if config.StoredShares != 1 {
 			c.logger.Warn("shamir stored keys supported, forcing rekey shares/threshold to 1")
@@ -393,7 +392,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 			c.logger.Error("rekey recovery key verification failed", "error", err)
 			return nil, logical.CodedError(http.StatusBadRequest, "recovery key verification failed: %v", err)
 		}
-	case c.seal.BarrierType() == wrapping.WrapperTypeShamir:
+	case c.seal.BarrierType() == seal.WrapperTypeShamir:
 		if c.seal.StoredKeysSupported() == seal.StoredKeysSupportedShamirRoot {
 			shamirWrapper := seal.NewShamirWrapper()
 			if err = shamirWrapper.SetAesGcmKeyBytes(recoveredKey); err != nil {

@@ -23,6 +23,7 @@ import (
 	"github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 const (
@@ -269,7 +270,7 @@ func migrateFromTransitToShamir_Pre14(t *testing.T, logger hclog.Logger, storage
 	if err != nil {
 		t.Fatal(err)
 	}
-	verifyBarrierConfig(t, b, wrapping.WrapperTypeShamir.String(), keyShares, keyThreshold, 1)
+	verifyBarrierConfig(t, b, seal.WrapperTypeShamir.String(), keyShares, keyThreshold, 1)
 	if r != nil {
 		t.Fatalf("expected nil recovery config, got: %#v", r)
 	}
@@ -540,7 +541,7 @@ func verifySealConfigShamir(t *testing.T, core *vault.TestClusterCore) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	verifyBarrierConfig(t, b, wrapping.WrapperTypeShamir.String(), keyShares, keyThreshold, 1)
+	verifyBarrierConfig(t, b, seal.WrapperTypeShamir.String(), keyShares, keyThreshold, 1)
 	if r != nil {
 		t.Fatal("should not have recovery config for shamir")
 	}
@@ -552,7 +553,7 @@ func verifySealConfigTransit(t *testing.T, core *vault.TestClusterCore) {
 		t.Fatal(err)
 	}
 	verifyBarrierConfig(t, b, wrapping.WrapperTypeTransit.String(), 1, 1, 1)
-	verifyBarrierConfig(t, r, wrapping.WrapperTypeShamir.String(), keyShares, keyThreshold, 0)
+	verifyBarrierConfig(t, r, seal.WrapperTypeShamir.String(), keyShares, keyThreshold, 0)
 }
 
 // verifyBarrierConfig verifies that a barrier configuration is correct.

@@ -14,7 +14,6 @@ import (
 	"github.com/armon/go-radix"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/vault/barrier"
@@ -562,7 +561,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	var sealKey []byte
 	var sealKeyShares [][]byte
 
-	if sealConfig.StoredShares == 1 && seal.BarrierType() == wrapping.WrapperTypeShamir {
+	if sealConfig.StoredShares == 1 && seal.BarrierType() == vaultseal.WrapperTypeShamir {
 		sealKey, sealKeyShares, err = sm.core.generateShares(sealConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate namespace seal key: %w", err)

@@ -14,18 +14,15 @@ const SearchFilterPlugin = () => {
   return {
     fn: {
       opsFilter: (taggedOps, phrase) => {
-        // map over the options and filter out operations where the path doesn't match what's typed
-        return (
-          taggedOps
-            .map((tagObj) => {
-              const operations = tagObj.operations?.filter((operationObj) => {
-                return operationObj.path.includes(phrase);
-              });
-              return tagObj.set('operations', operations);
-            })
-            // then traverse again and remove the top level item if there are no operations left after filtering
-            .filter((tagObj) => !!tagObj.operations?.size)
-        );
+        // filter each tag's operations by path, then drop tags with no remaining operations.
+        return taggedOps
+          .map((tagVal) =>
+            tagVal.set(
+              'operations',
+              tagVal.get('operations').filter((op) => op.get('path').includes(phrase))
+            )
+          )
+          .filter((tagVal) => tagVal.get('operations').size > 0);
       },
     },
   };

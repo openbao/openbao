@@ -77,7 +77,6 @@ func pathUsers(b *backend) *framework.Path {
 			"password_hash": {
 				Type:        framework.TypeString,
 				Description: "Pre-hashed bcrypt password for this user. Mutually exclusive with password.",
-				Deprecated:  true,
 				DisplayAttrs: &framework.DisplayAttributes{
 					Sensitive: true,
 				},
@@ -261,11 +260,14 @@ func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d 
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
-	_, hasPassword := d.GetOk("password")
-	_, hasPasswordHash := d.GetOk("password_hash")
+	password, _ := d.GetOk("password")
+	passwordHash, _ := d.GetOk("password_hash")
 
-	if hasPassword || hasPasswordHash {
-		userErr, intErr := b.updateUserPassword(req, d, userEntry)
+	passwordStr, _ := password.(string)
+	passwordHashStr, _ := passwordHash.(string)
+
+	if passwordStr != "" || passwordHashStr != "" {
+		userErr, intErr := b.updateUserPassword(passwordStr, passwordHashStr, userEntry)
 		if intErr != nil {
 			return nil, intErr
 		}
@@ -305,8 +307,14 @@ func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d 
 }
 
 func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	password, _ := d.GetOk("password")
+	passwordHash, _ := d.GetOk("password_hash")
+
+	passwordStr, _ := password.(string)
+	passwordHashStr, _ := passwordHash.(string)
+
 	if req.Operation == logical.CreateOperation {
-		if err := validatePasswordInput(d); err != nil {
+		if err := validatePasswordInput(passwordStr, passwordHashStr); err != nil {
 			return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 		}
 	}

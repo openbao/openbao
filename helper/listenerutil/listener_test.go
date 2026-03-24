@@ -55,6 +55,34 @@ func TestUnixSocketListener(t *testing.T) {
 			t.Fatal("failed to set permissions on the socket file")
 		}
 	})
+	t.Run("mode_only", func(t *testing.T) {
+		socket, err := os.CreateTemp("", "socket")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(socket.Name())
+
+		l, err := UnixSocketListener(socket.Name(), &UnixSocketsConfig{
+			Mode: "644",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer l.Close()
+
+		fi, err := os.Stat(socket.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		mode, err := strconv.ParseUint("644", 8, 32)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if fi.Mode().Perm() != os.FileMode(mode) {
+			t.Fatalf("expected permissions %o, got %o", os.FileMode(mode), fi.Mode().Perm())
+		}
+	})
 	t.Run("names", func(t *testing.T) {
 		socket, err := os.CreateTemp("", "socket")
 		if err != nil {

@@ -78,6 +78,7 @@ export default class MfaForm extends Component {
   @task *validate() {
     try {
       this.error = null;
+      this.countdown = 0;
       const response = yield this.auth.totpValidate({
         clusterId: this.args.clusterId,
         ...this.args.authData,

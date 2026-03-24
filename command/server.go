@@ -546,9 +546,16 @@ func (c *ServerCommand) runRecoveryMode() int {
 		})
 	}
 
+	// Make sure we close all HTTP servers and listeners from this point on.
+	var servers []*http.Server
 	listenerCloseFunc := func() {
 		var errs error
-		for _, ln := range lns {
+		for _, srv := range servers {
+			errs = errors.Join(srv.Close())
+		}
+		// Closing an HTTP server will close the underlying listener, so avoid
+		// double-closing it.
+		for _, ln := range lns[len(servers):] {
 			errs = errors.Join(errs, ln.Close())
 		}
 		if errs != nil {
@@ -620,6 +627,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 				c.UI.Error(fmt.Sprintf("HTTP server (listening on %s) exited with error: %v", ln.Addr().String(), err))
 			}
 		}(ln.Listener)
+
+		servers = append(servers, server)
 	}
 
 	if newCoreError != nil {
@@ -1229,10 +1238,16 @@ func (c *ServerCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Make sure we close all listeners from this point on
+	// Make sure we close all HTTP servers and listeners from this point on.
+	var servers []*http.Server
 	listenerCloseFunc := func() {
 		var errs error
-		for _, ln := range lns {
+		for _, srv := range servers {
+			errs = errors.Join(srv.Close())
+		}
+		// Closing an HTTP server will close the underlying listener, so avoid
+		// double-closing it.
+		for _, ln := range lns[len(servers):] {
 			errs = errors.Join(errs, ln.Close())
 		}
 		if errs != nil {
@@ -1335,7 +1350,7 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	// Initialize the HTTP servers
-	err = startHttpServers(c, core, config, lns)
+	servers, err = startHttpServers(c, core, config, lns)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -2893,16 +2908,23 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 }
 
 // Initialize the HTTP servers
-func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config, lns []listenerutil.Listener) error {
+func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config, lns []listenerutil.Listener) ([]*http.Server, error) {
 	for _, ln := range lns {
 		if ln.Config == nil {
-			return errors.New("found nil listener config after parsing")
+			return nil, errors.New("found nil listener config after parsing")
 		}
-
 		if err := config2.IsValidListener(ln.Config); err != nil {
-			return err
+			return nil, err
 		}
+	}
 
+	// Server config tests can exit now.
+	if c.flagTestServerConfig {
+		return nil, nil
+	}
+
+	var servers []*http.Server
+	for _, ln := range lns {
 		handler := vaulthttp.Handler.Handler(&vault.HandlerProperties{
 			Core:                  core,
 			ListenerConfig:        ln.Config,
@@ -2938,18 +2960,16 @@ func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config,
 			server.IdleTimeout = ln.Config.HTTPIdleTimeout
 		}
 
-		// server config tests can exit now
-		if c.flagTestServerConfig {
-			continue
-		}
-
 		go func(ln net.Listener) {
 			if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				c.UI.Error(fmt.Sprintf("HTTP server (listening on %s) exited with error: %v", ln.Addr().String(), err))
 			}
 		}(ln.Listener)
+
+		servers = append(servers, server)
 	}
-	return nil
+
+	return servers, nil
 }
 
 // formatPropts returns a formatted info key/value such as:

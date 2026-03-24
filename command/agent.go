@@ -83,8 +83,6 @@ type AgentCommand struct {
 	// Telemetry object
 	metricsHelper *metricsutil.MetricsHelper
 
-	cleanupGuard sync.Once
-
 	startedCh  chan struct{} // for tests
 	reloadedCh chan struct{} // for tests
 
@@ -386,7 +384,6 @@ func (c *AgentCommand) Run(args []string) int {
 				"from the 'cert' auto-auth method specified in the 'vault' stanza. Consider " +
 				"specifying certificate information in the 'cert' auto-auth's config stanza."))
 		}
-
 	}
 
 	// Output the header that the agent has started
@@ -460,8 +457,6 @@ func (c *AgentCommand) Run(args []string) int {
 		}
 	}
 
-	var listeners []net.Listener
-
 	// If there are templates, add an in-process listener
 	if len(config.Templates) > 0 || len(config.EnvTemplates) > 0 {
 		config.Listeners = append(config.Listeners, &configutil.Listener{Type: listenerutil.BufConnType})
@@ -469,6 +464,27 @@ func (c *AgentCommand) Run(args []string) int {
 
 	// Ensure we've added all the reload funcs for TLS before anyone triggers a reload.
 	c.tlsReloadFuncsLock.Lock()
+
+	var (
+		listeners []net.Listener
+		servers   []*http.Server
+	)
+
+	// Ensure that listeners and HTTP servers are closed at all the exits.
+	defer func() {
+		var errs error
+		for _, srv := range servers {
+			errs = errors.Join(srv.Close())
+		}
+		// Closing an HTTP server will close the underlying listener, so avoid
+		// double-closing it.
+		for _, ln := range listeners[len(servers):] {
+			errs = errors.Join(errs, ln.Close())
+		}
+		if errs != nil {
+			c.UI.Error(fmt.Sprintf("Error closing listeners: %v", errs))
+		}
+	}()
 
 	for i, lnConfig := range config.Listeners {
 		var ln net.Listener
@@ -567,19 +583,11 @@ func (c *AgentCommand) Run(args []string) int {
 				c.UI.Error(fmt.Sprintf("HTTP server (listening on %s) exited with error: %v", ln.Addr().String(), err))
 			}
 		}(ln)
+
+		servers = append(servers, server)
 	}
 
 	c.tlsReloadFuncsLock.Unlock()
-
-	// Ensure that listeners are closed at all the exits
-	listenerCloseFunc := func() {
-		for _, ln := range listeners {
-			if err := ln.Close(); err != nil {
-				c.UI.Error(fmt.Sprintf("Could not close listener (listening on %s): %v", ln.Addr().String(), err))
-			}
-		}
-	}
-	defer c.cleanupGuard.Do(listenerCloseFunc)
 
 	// Inform any tests that the server is ready
 	if c.startedCh != nil {

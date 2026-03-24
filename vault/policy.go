@@ -128,6 +128,7 @@ type PathRules struct {
 	IsPrefix            bool
 	HasSegmentWildcards bool
 	Capabilities        []string
+	ControlGroup        *ControlGroup
 
 	ExpirationRaw string    `hcl:"expiration"`
 	Expiration    time.Time `hcl:"-"`
@@ -161,6 +162,26 @@ type ACLPermissions struct {
 	PaginationLimit        int
 	GrantingPoliciesMap    map[uint32][]logical.PolicyInfo
 	ResponseKeysFilterPath string
+	ControlGroup           *ControlGroup
+}
+
+type ControlGroup struct {
+	TTL     time.Duration `hcl:"-"`
+	TTLHCL  interface{}   `hcl:"ttl"`
+	Factors []ControlGroupFactor
+}
+
+type ControlGroupFactor struct {
+	Name                      string
+	ControlledCapabilitiesHCL []string `hcl:"controlled_capabilities"`
+	ControlledCapabilities    []string `hcl:"-"`
+	Identity                  ControlGroupIdentity
+}
+
+type ControlGroupIdentity struct {
+	GroupNamesHCL []string `hcl:"group_names"`
+	GroupNames    []string `hcl:"-"`
+	Approvals     int
 }
 
 func (p *ACLPermissions) Clone() (*ACLPermissions, error) {
@@ -221,6 +242,23 @@ func (p *ACLPermissions) Clone() (*ACLPermissions, error) {
 		ret.GrantingPoliciesMap = clonedGrantingPoliciesMap.(map[uint32][]logical.PolicyInfo)
 	}
 
+	if p.ControlGroup != nil {
+		cg, err := p.ControlGroup.Clone()
+		if err != nil {
+			return nil, err
+		}
+		ret.ControlGroup = cg
+	}
+
+	return ret, nil
+}
+
+func (cg *ControlGroup) Clone() (*ControlGroup, error) {
+	cgCopy, err := copystructure.Copy(cg)
+	if err != nil {
+		return nil, err
+	}
+	ret := cgCopy.(*ControlGroup)
 	return ret, nil
 }
 
@@ -347,6 +385,7 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 			"pagination_limit",
 			"expiration",
 			"list_scan_response_keys_filter_path",
+			"control_group",
 		}
 		if err := hclutil.CheckHCLKeys(item.Val, valid); err != nil {
 			return multierror.Prefix(err, fmt.Sprintf("path %q:", key))
@@ -356,6 +395,37 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 
 		// allocate memory so that DecodeObject can initialize the ACLPermissions struct
 		pc.Permissions = new(ACLPermissions)
+
+		// decode ControlGroup if needed
+		if err := hclutil.WhenHCLKeyPresent(item.Val, "control_group", func(val ast.Node) error {
+			cg := new(ControlGroup)
+			if err := hcl.DecodeObject(&cg, val); err != nil {
+				return multierror.Prefix(err, "path control_group:")
+			}
+			ttl, err := parseutil.ParseDurationSecond(cg.TTLHCL)
+			if err != nil {
+				return fmt.Errorf("path control_group: invalid ttl: %w", err)
+			}
+			cg.TTL = ttl
+			cg.TTLHCL = nil
+
+			for i := range cg.Factors {
+				factor := &cg.Factors[i]
+				if len(factor.ControlledCapabilitiesHCL) > 0 {
+					factor.ControlledCapabilities = factor.ControlledCapabilitiesHCL[:]
+					factor.ControlledCapabilitiesHCL = nil
+				}
+				if len(factor.Identity.GroupNamesHCL) > 0 {
+					factor.Identity.GroupNames = factor.Identity.GroupNamesHCL[:]
+					factor.Identity.GroupNamesHCL = nil
+				}
+			}
+
+			pc.ControlGroup = cg
+			return nil
+		}); err != nil {
+			return fmt.Errorf("error handling control_group: %w", err)
+		}
 
 		pc.Path = key
 

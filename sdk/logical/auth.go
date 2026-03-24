@@ -126,8 +126,31 @@ func (a *Auth) GoString() string {
 }
 
 type PolicyResults struct {
-	Allowed          bool         `json:"allowed"`
-	GrantingPolicies []PolicyInfo `json:"granting_policies"`
+	Allowed          bool          `json:"allowed"`
+	GrantingPolicies []PolicyInfo  `json:"granting_policies"`
+	ControlGroup     *ControlGroup `json:"control_group"`
+}
+
+type ControlGroupFactor struct {
+	Name                   string                      `json:"name"`
+	ControlledCapabilities []string                    `json:"controlled_capabilities"`
+	Identity               ControlGroupIdentity        `json:"identity"`
+	Authorizations         []ControlGroupAuthorization `json:"authorizations"`
+}
+
+type ControlGroupIdentity struct {
+	GroupNames []string `json:"group_names"`
+	Approvals  int      `json:"approvals"`
+}
+
+type ControlGroup struct {
+	TTL     time.Duration        `json:"ttl"`
+	Factors []ControlGroupFactor `json:"factors"`
+}
+
+type ControlGroupAuthorization struct {
+	Timestamp time.Time `json:"timestamp"`
+	Approver  string    `json:"approver"`
 }
 
 type PolicyInfo struct {

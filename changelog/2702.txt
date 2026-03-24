@@ -1,0 +1,3 @@
+```release-note:improvement
+auth/userpass: add password_hash field to allow providing a pre-hashed bcrypt password instead of plaintext.
+```

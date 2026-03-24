@@ -22,19 +22,14 @@ func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
 		opts.Logger = logging.NewVaultLogger(hclog.Debug)
 	}
 
-	switch opts.StoredKeys {
-	case seal.StoredKeysSupportedShamirRoot:
+	switch opts.Wrapper {
+	case seal.WrapperTypeShamir:
 		newSeal := NewDefaultSeal(seal.NewAccess(seal.NewShamirWrapper()))
-		// Need StoredShares set or this will look like a legacy shamir seal.
 		newSeal.SetCachedBarrierConfig(&SealConfig{
-			StoredShares:    1,
 			SecretThreshold: 1,
 			SecretShares:    1,
 		})
 		return newSeal
-	case seal.StoredKeysNotSupported:
-		t.Fatal("Legacy shamir's seal no longer supported")
-		return nil
 	default:
 		access, _ := seal.NewTestSeal(opts)
 		seal, err := NewAutoSeal(access)
@@ -49,7 +44,7 @@ func TestCoreUnsealedWithConfigs(t testing.T, barrierConf, recoveryConf *SealCon
 	t.Helper()
 	opts := &seal.TestSealOpts{}
 	if recoveryConf == nil {
-		opts.StoredKeys = seal.StoredKeysSupportedShamirRoot
+		opts.Wrapper = seal.WrapperTypeShamir
 	}
 	return TestCoreUnsealedWithConfigSealOpts(t, barrierConf, recoveryConf, opts)
 }

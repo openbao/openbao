@@ -83,7 +83,7 @@ func TestCore_GenerateRoot_Init(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	testCore_GenerateRoot_Init_Common(t, c)
 
-	bc := &SealConfig{SecretShares: 5, SecretThreshold: 3, StoredShares: 1}
+	bc := &SealConfig{SecretShares: 5, SecretThreshold: 3}
 	rc := &SealConfig{SecretShares: 5, SecretThreshold: 3}
 	c, _, _, _ = TestCoreUnsealedWithConfigs(t, bc, rc)
 	testCore_GenerateRoot_Init_Common(t, c)

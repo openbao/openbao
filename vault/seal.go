@@ -53,8 +53,6 @@ type Seal interface {
 	Init(context.Context) error
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
-	StoredKeysSupported() seal.StoredKeysSupport // SealAccess
-	SealWrapable() bool
 	SetStoredKeys(context.Context, [][]byte) error
 	GetStoredKeys(context.Context) ([][]byte, error)
 	BarrierType() wrapping.WrapperType                  // SealAccess
@@ -87,10 +85,6 @@ var _ Seal = (*defaultSeal)(nil)
 
 func NewDefaultSeal(lowLevel seal.Access) Seal {
 	return &defaultSeal{access: lowLevel}
-}
-
-func (d *defaultSeal) SealWrapable() bool {
-	return false
 }
 
 func (d *defaultSeal) checkCore() error {
@@ -131,10 +125,6 @@ func (d *defaultSeal) Finalize(ctx context.Context) error {
 
 func (d *defaultSeal) BarrierType() wrapping.WrapperType {
 	return seal.WrapperTypeShamir
-}
-
-func (d *defaultSeal) StoredKeysSupported() seal.StoredKeysSupport {
-	return seal.StoredKeysSupportedShamirRoot
 }
 
 func (d *defaultSeal) RecoveryKeySupported() bool {
@@ -308,9 +298,6 @@ type SealConfig struct {
 	// should be stored at coreUnsealKeysBackupPath after successful rotation.
 	Backup bool `json:"backup" mapstructure:"backup"`
 
-	// How many keys to store, for seals that support storage.  Always 0 or 1.
-	StoredShares uint `json:"stored_shares" mapstructure:"stored_shares"`
-
 	// Stores the progress of the rotation (key shares).
 	RotationProgress [][]byte `json:"-"`
 
@@ -345,9 +332,6 @@ func (s *SealConfig) baseValidate() error {
 	}
 	if s.SecretThreshold > s.SecretShares {
 		return errors.New("threshold cannot be larger than shares")
-	}
-	if s.StoredShares > 1 {
-		return errors.New("stored keys cannot be larger than 1")
 	}
 	if len(s.PGPKeys) > 0 {
 		if len(s.PGPKeys) != s.SecretShares {
@@ -391,7 +375,6 @@ func (s *SealConfig) Clone() *SealConfig {
 		SecretThreshold:      s.SecretThreshold,
 		Nonce:                s.Nonce,
 		Backup:               s.Backup,
-		StoredShares:         s.StoredShares,
 		VerificationRequired: s.VerificationRequired,
 		VerificationNonce:    s.VerificationNonce,
 	}

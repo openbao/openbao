@@ -12,10 +12,9 @@ import (
 )
 
 type TestSealOpts struct {
-	Logger     hclog.Logger
-	StoredKeys StoredKeysSupport
-	Secret     []byte
-	Name       wrapping.WrapperType
+	Logger  hclog.Logger
+	Secret  []byte
+	Wrapper wrapping.WrapperType
 }
 
 func NewTestSeal(opts *TestSealOpts) (Access, *ToggleableWrapper) {
@@ -24,8 +23,8 @@ func NewTestSeal(opts *TestSealOpts) (Access, *ToggleableWrapper) {
 	}
 
 	w := &ToggleableWrapper{Wrapper: wrapping.NewTestWrapper(opts.Secret)}
-	if opts.Name != "" {
-		w.wrapperType = &opts.Name
+	if opts.Wrapper != "" {
+		w.wrapperType = &opts.Wrapper
 	}
 	return NewAccess(w), w
 }

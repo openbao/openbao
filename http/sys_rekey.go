@@ -121,7 +121,6 @@ func handleSysRekeyInitPut(ctx context.Context, core *vault.Core, recovery bool,
 	err := core.RekeyInit(&vault.SealConfig{
 		SecretShares:         req.SecretShares,
 		SecretThreshold:      req.SecretThreshold,
-		StoredShares:         req.StoredShares,
 		PGPKeys:              req.PGPKeys,
 		Backup:               req.Backup,
 		VerificationRequired: req.RequireVerification,
@@ -344,7 +343,6 @@ func handleSysRekeyVerifyPut(_ context.Context, core *vault.Core, recovery bool,
 type RekeyRequest struct {
 	SecretShares        int      `json:"secret_shares"`
 	SecretThreshold     int      `json:"secret_threshold"`
-	StoredShares        uint     `json:"stored_shares"`
 	PGPKeys             []string `json:"pgp_keys"`
 	Backup              bool     `json:"backup"`
 	RequireVerification bool     `json:"require_verification"`

@@ -75,12 +75,9 @@ func TestUnixSocketListener(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		mode, err := strconv.ParseUint("644", 8, 32)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if fi.Mode().Perm() != os.FileMode(mode) {
-			t.Fatalf("expected permissions %o, got %o", os.FileMode(mode), fi.Mode().Perm())
+		expectedMode := os.FileMode(0o644)
+		if fi.Mode().Perm() != expectedMode {
+			t.Fatalf("expected permissions %o, got %o", expectedMode, fi.Mode().Perm())
 		}
 	})
 	t.Run("names", func(t *testing.T) {

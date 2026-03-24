@@ -1,6 +1,6 @@
 ---
 title: Improved Horizontal Scalability
-description: 'With the 2.5.0 release OpenBao enables standby nodes to serve read-request, a first step towards better Horizontal Scalability.'
+description: 'OpenBao v2.5.0 enables standby nodes to serve read requests, a first step towards better Horizontal Scalability.'
 slug: improved-horizontal-scalability
 authors: phil9909
 tags: [announcement, technical, performance]
@@ -9,7 +9,7 @@ image: https://raw.githubusercontent.com/openbao/artwork/refs/heads/main/color/o
 
 ## Summary
 
-In this blogpost, I will give you an overview of the new Horizontal Scalability
+In this blog post, I will give you an overview of the new Horizontal Scalability
 feature of OpenBao, its (current) limitations and planned future developments.
 In the second part, I will show some benchmarks to see in which cases the new
 feature helps (spoiler: it works best in read-heavy workloads, but doesn't
@@ -20,7 +20,7 @@ improve write-heavy workloads).
 ## Recap on Scalability Terminology
 
 Let's quickly recap what "horizontal" means in the context of scalability: To
-scale a service up (i.e. allow it to handle more load) there are two options:
+scale a service up (i.e., allow it to handle more load) there are two options:
 Give each instance more resources (CPU, memory, network speed, disk capacity,
 ...) or increase the number of instances. Increasing instance size is referred
 to as "vertical" and increasing the number of instances is referred to as
@@ -36,9 +36,9 @@ if you want to provide strong consistency guarantees.
 
 ## Recently released Horizontal Scalability Features
 
-With the OpenBao release 2.5.0, we introduced what we call "read scalability".
-To ensure High Availability, OpenBao supported "standby nodes" since we forked
-from Vault. One of these nodes would automatically take over active duty, if the
+With OpenBao v2.5.0, we introduced what we call "read scalability". To ensure
+High Availability, OpenBao has supported "standby nodes" since we forked from
+Vault. One of these nodes would automatically take over active duty, if the
 current leader nodes goes down (planned or unplanned). We extended this feature
 to allow the "standby nodes" to become "read-only nodes", meaning they can now
 serve read requests on their own, while write requests are still forwarded to
@@ -50,11 +50,11 @@ This has some limits:
   read-only requests, then read scalability won't help.
 
   :::info
-  Keep in mind that a read request on the API level might still require a write
-  to the storage, e.g. [reading a dynamic secret from the database
-  plugin][dynamic-secrets] will require a write to storage, because after its
-  TTL has expired, it needs to be deleted and for this OpenBao has to do
-  "bookkeeping".
+  Keep in mind that a read request on the API level (e.g., HTTP GET) might still
+  require a write to the storage, e.g. [reading a dynamic secret from the
+  database plugin][dynamic-secrets] will require a write to storage, because
+  after its TTL has expired, it needs to be deleted and for this OpenBao has to
+  do "bookkeeping".
   :::
 
 - Currently, only the Raft storage backend is supported. Support for PostgreSQL
@@ -85,9 +85,9 @@ integrity (a property we can exploit :tada:).
 This again has an obvious limitation: if you do not use namespaces or if most of
 your traffic is within a single namespace (e.g. you have a test and prod
 namespace and prod accounts for 99% of the load) this won't help. But let's take
-one step at a time and maybe it is even good enough, because you are either
-small enough to have no scalability problems or big enough to use namespaces
-anyway.
+one step at a time and maybe it is even good enough, because a use cases is
+either small enough to avoid scalability problems or big enough to require
+namespaces anyway.
 
 Now it is time to look at some benchmarks.
 
@@ -95,14 +95,14 @@ Now it is time to look at some benchmarks.
 
 ### Setup
 
-I have set-up two 3-node OpenBao clusters on Azure, one running OpenBao 2.4.4
+I have set up two 3-node OpenBao clusters on Azure, one running OpenBao 2.4.4
 and one running OpenBao 2.5.1. Each cluster has a dedicated load balancer, but
 the load balancer for 2.4.4 is configured to direct traffic only to the primary
 node and the load balancer for the 2.5.1 cluster will distribute the traffic
 among all nodes.
 
-I ran two benchmarks, one for the KV engine and one for the PKI engine. Both of
-them for 5 minutes per cluster using the [`benchmark-openbao`][] tool.
+I ran two benchmarks, one for the KV engine and one for the PKI engine. I ran
+both of them for 5 minutes per cluster using the [`benchmark-openbao`][] tool.
 
 ### KV Engine Benchmark
 
@@ -251,9 +251,9 @@ even failed.
 I decided against showing a write heavy benchmark, like PKI with `no_store =
 false` or KV with 100% write. Not because I want to hide the fact that our read
 scalability feature does not help here, but because it would be boring to look
-at. The results for both version would be similar, the only thing you could see
-is that for 2.5.1 the standby nodes use a little more CPU while the cluster is
-idle (as we have seen before).
+at. The results for both versions would be similar, the only change you could
+see is that for 2.5.1 the standby nodes use a little more CPU while the cluster
+is idle (as we have seen before).
 
 [disable_standby_reads]: /docs/next/configuration/
 [dynamic-secrets]: /docs/secrets/databases/#usage

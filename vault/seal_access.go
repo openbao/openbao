@@ -22,10 +22,6 @@ func NewSealAccess(seal Seal) *SealAccess {
 	return &SealAccess{seal: seal}
 }
 
-func (s *SealAccess) StoredKeysSupported() seal.StoredKeysSupport {
-	return s.seal.StoredKeysSupported()
-}
-
 func (s *SealAccess) BarrierType() wrapping.WrapperType {
 	return s.seal.BarrierType()
 }

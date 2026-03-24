@@ -314,7 +314,7 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 						"re-initializing with the -pgp-keys flag to protect the "+
 						"returned %s keys along with -backup to allow recovery "+
 						"of the encrypted keys in case of emergency. You can "+
-						"delete the stored keys later using the -delete flag.",
+						"delete the backed up keys later using the -delete flag.",
 						strings.ToLower(keyTypeRequired))))
 				c.UI.Output("")
 			}
@@ -329,7 +329,7 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 						"recover them. Consider rerunning this operation and "+
 						"re-initializing with -backup to allow recovery of the "+
 						"encrypted unseal keys in case of emergency. You can "+
-						"delete the stored keys later using the -delete flag.",
+						"delete the backed up keys later using the -delete flag.",
 						strings.ToLower(keyTypeRequired))))
 				c.UI.Output("")
 			}
@@ -367,7 +367,7 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 					"they are returned, you will not be able to recover them. Consider "+
 					"canceling this operation and re-running with -backup to allow "+
 					"recovery of the encrypted unseal keys in case of emergency. You "+
-					"can delete the stored keys later using the -delete flag.",
+					"can delete the backed up keys later using the -delete flag.",
 					strings.ToLower(keyTypeRequired))))
 			c.UI.Output("")
 		}
@@ -638,7 +638,7 @@ func (c *OperatorRotateKeysCommand) backupRetrieve(client *api.Client) int {
 	// Make the request
 	storedKeys, err := fn()
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error retrieving rotation stored keys: %s", err))
+		c.UI.Error(fmt.Sprintf("Error retrieving rotation backed up keys: %s", err))
 		return 2
 	}
 
@@ -665,11 +665,11 @@ func (c *OperatorRotateKeysCommand) backupDelete(client *api.Client) int {
 
 	// Make the request
 	if err := fn(); err != nil {
-		c.UI.Error(fmt.Sprintf("Error deleting rotation stored keys: %s", err))
+		c.UI.Error(fmt.Sprintf("Error deleting rotation backed up keys: %s", err))
 		return 2
 	}
 
-	c.UI.Output("Success! Deleted stored keys (if they existed)")
+	c.UI.Output("Success! Deleted backed up keys (if they existed)")
 	return 0
 }
 

@@ -30,14 +30,14 @@ type MountEntry struct {
 	Tainted               bool              `json:"tainted,omitempty"`                 // Set as a Write-Ahead flag for unmount/remount
 	NamespaceID           string            `json:"namespace_id"`
 
-	// Namespace contains the populated Namespace
-	Namespace *namespace.Namespace
+	// Namespace contains the populated Namespace.
+	Namespace *namespace.Namespace `json:"-"`
 
 	// SynthesizedConfigCache is used to cache configuration values. These
 	// particular values are cached since we want to get them at a point-in-time
 	// without separately managing their locks individually. See SyncCache() for
 	// the specific values that are being cached.
-	SynthesizedConfigCache sync.Map
+	SynthesizedConfigCache sync.Map `json:"-"`
 
 	// version info
 	Version        string `json:"plugin_version,omitempty"`         // The semantic version of the mounted plugin, e.g. v1.2.3.

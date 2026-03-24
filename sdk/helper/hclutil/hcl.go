@@ -25,10 +25,14 @@ func WhenHCLKeyPresent(node ast.Node, key string, fn func(ast.Node) error) error
 		return nil
 	}
 	filtered := list.Filter(key)
+	var result error
 	for _, item := range filtered.Items {
-		return fn(item.Val)
+		err := fn(item.Val)
+		if err != nil {
+			result = multierror.Append(result, err)
+		}
 	}
-	return nil
+	return result
 }
 
 // CheckHCLKeys checks whether the keys in the AST list contains any of the valid keys provided.

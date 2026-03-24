@@ -133,7 +133,7 @@ type PolicyResults struct {
 
 type ControlGroupFactor struct {
 	Name                   string                      `json:"name"`
-	ControlledCapabilities []string                    `json:"controlled_capabilities"`
+	ControlledCapabilities []Operation                 `json:"controlled_capabilities"`
 	Identity               ControlGroupIdentity        `json:"identity"`
 	Authorizations         []ControlGroupAuthorization `json:"authorizations"`
 }

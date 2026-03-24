@@ -91,7 +91,7 @@ path "test/control_group" {
 		Factors: []ControlGroupFactor{
 			{
 				Name:                   "admin-approval",
-				ControlledCapabilities: []string{"create"},
+				ControlledCapabilities: []logical.Operation{logical.CreateOperation},
 				Identity: ControlGroupIdentity{
 					GroupNames: []string{"admin"},
 					Approvals:  1,

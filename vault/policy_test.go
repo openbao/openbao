@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var rawPolicy = strings.TrimSpace(`
@@ -438,7 +439,7 @@ func validatePolicy(t *testing.T, p *Policy) {
 				Factors: []ControlGroupFactor{
 					{
 						Name:                   "admin-approval",
-						ControlledCapabilities: []string{"create"},
+						ControlledCapabilities: []logical.Operation{logical.CreateOperation},
 						Identity: ControlGroupIdentity{
 							GroupNames: []string{"admin"},
 							Approvals:  1,

@@ -173,8 +173,8 @@ type ControlGroup struct {
 
 type ControlGroupFactor struct {
 	Name                      string
-	ControlledCapabilitiesHCL []string `hcl:"controlled_capabilities"`
-	ControlledCapabilities    []string `hcl:"-"`
+	ControlledCapabilitiesHCL []string            `hcl:"controlled_capabilities"`
+	ControlledCapabilities    []logical.Operation `hcl:"-"`
 	Identity                  ControlGroupIdentity
 }
 
@@ -412,7 +412,11 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 			for i := range cg.Factors {
 				factor := &cg.Factors[i]
 				if len(factor.ControlledCapabilitiesHCL) > 0 {
-					factor.ControlledCapabilities = factor.ControlledCapabilitiesHCL[:]
+					capabilities := make([]logical.Operation, len(factor.ControlledCapabilitiesHCL))
+					for i, capabilityStr := range factor.ControlledCapabilitiesHCL {
+						capabilities[i] = logical.Operation(capabilityStr)
+					}
+					factor.ControlledCapabilities = capabilities
 					factor.ControlledCapabilitiesHCL = nil
 				}
 				if len(factor.Identity.GroupNamesHCL) > 0 {

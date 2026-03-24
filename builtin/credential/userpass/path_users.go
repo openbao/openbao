@@ -260,11 +260,8 @@ func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d 
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
-	password, _ := d.GetOk("password")
-	passwordHash, _ := d.GetOk("password_hash")
-
-	passwordStr, _ := password.(string)
-	passwordHashStr, _ := passwordHash.(string)
+	passwordStr := d.Get("password").(string)
+	passwordHashStr := d.Get("password_hash").(string)
 
 	if passwordStr != "" || passwordHashStr != "" {
 		userErr, intErr := b.updateUserPassword(passwordStr, passwordHashStr, userEntry)

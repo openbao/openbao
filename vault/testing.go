@@ -55,6 +55,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/routing"
@@ -256,7 +257,7 @@ func testCoreConfig(t testing.T, physicalBackend physical.Backend, logger log.Lo
 	for backendName, backendFactory := range noopBackends {
 		credentialBackends[backendName] = backendFactory
 	}
-	for backendName, backendFactory := range testCredentialBackends {
+	for backendName, backendFactory := range be.TestCredentialBackends {
 		credentialBackends[backendName] = backendFactory
 	}
 
@@ -266,7 +267,7 @@ func testCoreConfig(t testing.T, physicalBackend physical.Backend, logger log.Lo
 	}
 
 	logicalBackends["kv"] = LeasedPassthroughBackendFactory
-	for backendName, backendFactory := range testLogicalBackends {
+	for backendName, backendFactory := range be.TestLogicalBackends {
 		logicalBackends[backendName] = backendFactory
 	}
 
@@ -298,7 +299,6 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 	barrierConfig := &SealConfig{
 		SecretShares:    3,
 		SecretThreshold: 3,
-		StoredShares:    1,
 	}
 
 	recoveryConfig := &SealConfig{
@@ -429,7 +429,7 @@ func testCoreAddSecretMountContext(ctx context.Context, t testing.T, core *Core,
 }
 
 func testCoreAddSecretMount(t testing.T, core *Core, token string) {
-	rootCtx := namespace.RootContext(nil)
+	rootCtx := namespace.RootContext(context.TODO())
 	testCoreAddSecretMountContext(rootCtx, t, core, "secret/", token)
 }
 
@@ -482,7 +482,7 @@ func TestCoreUpgradeToKVv2(t testing.T, core *Core, token string) {
 		Operation:   logical.DeleteOperation,
 	}
 
-	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -495,7 +495,7 @@ func TestCoreUpgradeToKVv2(t testing.T, core *Core, token string) {
 		"type": "kv-v2",
 	}
 
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 }
@@ -650,28 +650,6 @@ func TestPluginClientConfig(c *Core, pluginType consts.PluginType, pluginName st
 	return pluginutil.PluginClientConfig{}
 }
 
-var (
-	testLogicalBackends    = map[string]logical.Factory{}
-	testCredentialBackends = map[string]logical.Factory{}
-)
-
-// This adds a credential backend for the test core. This needs to be
-// invoked before the test core is created.
-func AddTestCredentialBackend(name string, factory logical.Factory) error {
-	if name == "" {
-		return errors.New("missing backend name")
-	}
-	if factory == nil {
-		return errors.New("missing backend factory function")
-	}
-	testCredentialBackends[name] = factory
-	return nil
-}
-
-func ClearTestCredentialBackends() {
-	testCredentialBackends = map[string]logical.Factory{}
-}
-
 // This adds a logical backend for the test core. This needs to be
 // invoked before the test core is created.
 func AddTestLogicalBackend(name string, factory logical.Factory) error {
@@ -681,7 +659,7 @@ func AddTestLogicalBackend(name string, factory logical.Factory) error {
 	if factory == nil {
 		return errors.New("missing backend factory function")
 	}
-	testLogicalBackends[name] = factory
+	be.TestLogicalBackends[name] = factory
 	return nil
 }
 
@@ -1524,7 +1502,6 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		coreConfig.DisablePerformanceStandby = base.DisablePerformanceStandby
 		coreConfig.MetricsHelper = base.MetricsHelper
 		coreConfig.MetricSink = base.MetricSink
-		coreConfig.SecureRandomReader = base.SecureRandomReader
 		coreConfig.DisableSentinelTrace = base.DisableSentinelTrace
 		coreConfig.ClusterName = base.ClusterName
 		coreConfig.DisableAutopilot = base.DisableAutopilot

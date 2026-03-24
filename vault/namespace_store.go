@@ -121,13 +121,15 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 	return ns, nil
 }
 
-// NamespaceView scopes the passed storage down to the passed namespace.
-func NamespaceView(barr logical.Storage, ns *namespace.Namespace) barrier.View {
-	return barrier.NewView(barr, NamespaceBarrierPrefix(ns))
+// TODO(wslabosz): with proper introduction of barrier storage we need to
+// change NamespaceScopedView to NamespaceView usage.
+// NamespaceScopedView scopes the passed storage down to the passed namespace.
+func NamespaceScopedView(storage logical.Storage, ns *namespace.Namespace) barrier.View {
+	return barrier.NewView(storage, NamespaceStoragePathPrefix(ns))
 }
 
-// NamespaceBarrierPrefix returns the namespace's storage prefix.
-func NamespaceBarrierPrefix(ns *namespace.Namespace) string {
+// NamespaceStoragePathPrefix returns the namespace's storage prefix.
+func NamespaceStoragePathPrefix(ns *namespace.Namespace) string {
 	if ns == nil || ns.ID == namespace.RootNamespaceID {
 		return ""
 	}
@@ -288,7 +290,7 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			return false, err
 		}
 
-		childView := NamespaceView(barrier, &namespace).SubView(namespaceStoreSubPath)
+		childView := NamespaceScopedView(barrier, &namespace).SubView(namespaceStoreSubPath)
 		if err := ns.loadNamespacesRecursive(ctx, barrier, childView, callback); err != nil {
 			return false, err
 		}
@@ -521,7 +523,7 @@ func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage logical.St
 		return err
 	}
 
-	view := NamespaceView(storage, parent).SubView(namespaceStoreSubPath)
+	view := NamespaceScopedView(storage, parent).SubView(namespaceStoreSubPath)
 	item, err := logical.StorageEntryJSON(entry.UUID, &entry)
 	if err != nil {
 		return fmt.Errorf("error marshalling storage entry: %w", err)
@@ -983,7 +985,10 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 
 	if !namespaceToDelete.Tainted {
 		// taint the namespace
-		err = ns.taintNamespace(ctx, namespaceToDelete)
+		err := ns.taintNamespace(ctx, namespaceToDelete)
+		if err != nil {
+			return "", fmt.Errorf("error tainting namespace: %w", err)
+		}
 	}
 
 	parent, err := namespace.FromContext(ctx)
@@ -1297,7 +1302,7 @@ func (j *namespaceDeletionJob) Execute() error {
 	delete(j.store.namespacesByUUID, j.target.UUID)
 	delete(j.store.namespacesByAccessor, j.target.ID)
 
-	view := NamespaceView(j.store.storage, j.parent).SubView(namespaceStoreSubPath)
+	view := NamespaceScopedView(j.store.storage, j.parent).SubView(namespaceStoreSubPath)
 	if err := view.Delete(ctx, j.target.UUID); err != nil {
 		return fmt.Errorf("failed to delete namespace storage entry: %w", err)
 	}
@@ -1335,7 +1340,7 @@ func (j *namespaceCreationFailureJob) Execute() error {
 
 	// Clear the view corresponding with the namespace for
 	// completeness.
-	view := NamespaceView(j.store.core.barrier, j.target)
+	view := NamespaceScopedView(j.store.core.barrier, j.target)
 	if err := logical.ClearViewWithLogging(j.store.creationDeletionJobContext, view, j.store.logger); err != nil {
 		retErr = fmt.Errorf("failed to remove remaining namespace storage: %w", err)
 		cleanupSuccess = false
@@ -1364,7 +1369,7 @@ func (j *namespaceCreationFailureJob) Execute() error {
 		delete(j.store.namespacesByUUID, j.target.UUID)
 		delete(j.store.namespacesByAccessor, j.target.ID)
 
-		nsView := NamespaceView(j.store.storage, j.parent).SubView(namespaceStoreSubPath)
+		nsView := NamespaceScopedView(j.store.storage, j.parent).SubView(namespaceStoreSubPath)
 		if err := nsView.Delete(j.store.creationDeletionJobContext, j.target.UUID); err != nil {
 			err = fmt.Errorf("failed to remove created namespace storage entry on failure: %w", err)
 			retErr = multierror.Append(retErr, err)

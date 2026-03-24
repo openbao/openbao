@@ -390,7 +390,7 @@ func (ps *PolicyStore) GetNonEGPPolicyType(ctx context.Context, name string) (*P
 
 // getACLView returns the ACL view for the given namespace
 func (ps *PolicyStore) getACLView(ns *namespace.Namespace) barrier.View {
-	return NamespaceView(ps.core.barrier, ns).SubView(systemBarrierPrefix + policyACLSubPath)
+	return NamespaceScopedView(ps.core.barrier, ns).SubView(systemBarrierPrefix + policyACLSubPath)
 }
 
 // getBarrierView returns the appropriate barrier view for the given namespace and policy type.
@@ -686,7 +686,7 @@ func (ps *PolicyStore) ACL(ctx context.Context, entity *identity.Entity, policyN
 			if !fetchedGroups {
 				fetchedGroups = true
 				if entity != nil {
-					directGroups, inheritedGroups, err := ps.core.identityStore.groupsByEntityID(ctx, entity.ID)
+					directGroups, inheritedGroups, err := ps.core.identityStore.GroupsByEntityID(ctx, entity.ID)
 					if err != nil {
 						return nil, fmt.Errorf("failed to fetch group memberships: %w", err)
 					}

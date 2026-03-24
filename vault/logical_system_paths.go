@@ -564,10 +564,6 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 					Type:        framework.TypeInt,
 					Description: "Specifies the number of shares required to reconstruct the unseal key. This must be less than or equal secret_shares. If using OpenBao HSM with auto-unsealing, this value must be the same as `secret_shares`.",
 				},
-				"stored_shares": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the number of shares that should be encrypted by the HSM and stored for auto-unsealing. Currently must be the same as `secret_shares`.",
-				},
 				"recovery_shares": {
 					Type:        framework.TypeInt,
 					Description: "Specifies the number of shares to split the recovery key into.",
@@ -595,7 +591,7 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationSuffix: "system",
 					},
 					Summary:     "Initialize a new OpenBao instance.",
-					Description: "The OpenBao instance must not have been previously initialized. The recovery options, as well as the stored shares option, are only available when using OpenBao HSM.",
+					Description: "The OpenBao instance must not have been previously initialized. The recovery options are only available when using Auto Unseal.",
 				},
 			},
 
@@ -1218,7 +1214,7 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 									Type:     framework.TypeString,
 									Required: true,
 								},
-								"build_date": {
+								"commit_date": {
 									Type:     framework.TypeString,
 									Required: true,
 								},
@@ -1366,7 +1362,7 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 									Type:     framework.TypeString,
 									Required: true,
 								},
-								"build_date": {
+								"commit_date": {
 									Type:     framework.TypeString,
 									Required: true,
 								},

@@ -46,7 +46,9 @@ const (
 	leaderPrefixCleanDelay = 200 * time.Millisecond
 )
 
-// Standby checks if the Vault is in standby mode
+// Standby checks if the Vault is in standby mode.
+// Usage of this function at core initialization/setup stage is not advised
+// as it always evaluates to true until after postUnseal() method.
 func (c *Core) Standby() bool {
 	return c.standby.Load()
 }
@@ -264,7 +266,7 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 		return nil
 	}
 
-	ctx, cancel := context.WithCancel(namespace.RootContext(nil))
+	ctx, cancel := context.WithCancel(namespace.RootContext(context.Background()))
 	defer cancel()
 
 	go func() {
@@ -688,7 +690,7 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 		c.heldHALock = lock
 
 		// Create the active context
-		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(nil))
+		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(context.Background()))
 		c.activeContext = activeCtx
 		c.activeContextCancelFunc.Store(&activeCtxCancel)
 
@@ -1085,27 +1087,24 @@ func (c *Core) reloadShamirKey(ctx context.Context) error {
 	if cfg, _ := c.seal.BarrierConfig(ctx); cfg == nil {
 		return nil
 	}
-	var shamirKey []byte
-	switch c.seal.StoredKeysSupported() {
-	case seal.StoredKeysSupportedGeneric:
+
+	if c.seal.BarrierType() != seal.WrapperTypeShamir {
 		return nil
-	case seal.StoredKeysSupportedShamirRoot:
-		entry, err := c.barrier.Get(ctx, barrier.ShamirKekPath)
-		if err != nil {
-			return err
-		}
-		if entry == nil {
-			return nil
-		}
-		shamirKey = entry.Value
-	case seal.StoredKeysNotSupported:
-		return errors.New("legacy shamir seals are not supported by OpenBao")
 	}
+
+	entry, err := c.barrier.Get(ctx, barrier.ShamirKekPath)
+	if err != nil {
+		return err
+	}
+	if entry == nil {
+		return nil
+	}
+
 	shamirWrapper, err := c.seal.GetShamirWrapper()
 	if err != nil {
 		return err
 	}
-	return shamirWrapper.SetAesGcmKeyBytes(shamirKey)
+	return shamirWrapper.SetAesGcmKeyBytes(entry.Value)
 }
 
 func (c *Core) performKeyUpgrades(ctx context.Context) error {

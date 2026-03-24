@@ -4,15 +4,14 @@
 package vault
 
 import (
-	"crypto/rand"
 	"fmt"
-	"io"
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
@@ -23,10 +22,9 @@ func TestCoreRotateLifecycle(t *testing.T) {
 	bc := &SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
-		StoredShares:    1,
 	}
 	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, bc, nil)
-	require.Lenf(t, rootKeys, 1, "expected %d secret shares and %v stored shares for a total of 1 root key, got %d", bc.SecretShares, bc.StoredShares, len(rootKeys))
+	require.Lenf(t, rootKeys, 1, "expected %d secret shares for a total of 1 root key, got %d", bc.SecretShares, len(rootKeys))
 	testCoreRotateLifecycleCommon(t, c, false)
 }
 
@@ -252,7 +250,6 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 
 func TestCoreRotateInvalid(t *testing.T) {
 	bc := &SealConfig{
-		StoredShares:    0,
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
@@ -383,25 +380,24 @@ func TestCoreRotationStandby(t *testing.T) {
 // barrier that verification is not allowed since the keys aren't returned
 func TestRotationVerficationInvalid(t *testing.T) {
 	core, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
-		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
-		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedGeneric})
+		&SealConfig{SecretShares: 1, SecretThreshold: 1},
+		&SealConfig{SecretShares: 1, SecretThreshold: 1},
+		&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 
 	nonce, err := uuid.GenerateUUID()
 	require.NoError(t, err)
 
 	err = core.initBarrierRotation(&SealConfig{
 		VerificationRequired: true,
-		StoredShares:         1,
 	}, nonce)
 	require.ErrorContainsf(t, err, "requiring verification not supported", "unexpected error: %v", err)
 }
 
 func TestRotationGenerateRecoveryKey(t *testing.T) {
 	core, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
+		&SealConfig{SecretShares: 1, SecretThreshold: 1},
 		&SealConfig{SecretShares: 0, SecretThreshold: 0},
-		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedGeneric})
+		&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 
 	// Rotate (generate) the recovery key
 	rotConfig := &SealConfig{
@@ -418,13 +414,13 @@ func TestRotationGenerateRecoveryKey(t *testing.T) {
 func TestRotateBarrierRootKey(t *testing.T) {
 	t.Parallel()
 	c1, unsealShares, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{StoredShares: 1, SecretShares: 3, SecretThreshold: 2},
+		&SealConfig{SecretShares: 3, SecretThreshold: 2},
 		nil,
-		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedShamirRoot})
+		&seal.TestSealOpts{Wrapper: seal.WrapperTypeShamir})
 	c2, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
 		&SealConfig{},
-		&SealConfig{StoredShares: 1, SecretShares: 3, SecretThreshold: 2},
-		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedGeneric})
+		&SealConfig{SecretShares: 3, SecretThreshold: 2},
+		&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 
 	testRotateBarrierRootKey(t, c1, unsealShares)
 	testRotateBarrierRootKey(t, c2, unsealShares)
@@ -443,22 +439,12 @@ func testRotateBarrierRootKey(t *testing.T, c *Core, unsealShares [][]byte) {
 	require.NoError(t, err)
 	require.NotEqual(t, storedRootKeyBefore, storedRootKeyAfter, "should rotate stored root key")
 
-	// simulate root key generation failure
-	c.secureRandomReader = io.LimitReader(c.secureRandomReader, 0)
-	require.Error(t, c.RotateBarrierRootKey(t.Context()))
-	storedRootKey, err := c.seal.GetStoredKeys(t.Context())
-	require.NoError(t, err)
-	require.Equal(t, storedRootKeyAfter, storedRootKey, "should not rotate stored root key")
-
-	// go back to original reader
-	c.secureRandomReader = rand.Reader
-
 	// seal
 	require.NoError(t, c.sealInternal())
 	require.True(t, c.Sealed())
 
-	switch c.seal.StoredKeysSupported() {
-	case seal.StoredKeysSupportedShamirRoot:
+	switch c.seal.BarrierType() {
+	case seal.WrapperTypeShamir:
 		// verify you can unseal using the same
 		// unseal key as before rotation
 		for _, key := range unsealShares {
@@ -471,11 +457,9 @@ func testRotateBarrierRootKey(t *testing.T, c *Core, unsealShares [][]byte) {
 			}
 		}
 		require.False(t, c.Sealed())
-	case seal.StoredKeysSupportedGeneric:
+	default:
 		// unseal with stored keys
 		require.NoError(t, c.UnsealWithStoredKeys(t.Context()))
 		require.False(t, c.Sealed())
-	default:
-		t.FailNow()
 	}
 }

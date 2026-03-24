@@ -4,7 +4,6 @@ package crosstest
 
 import (
 	"context"
-	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -186,11 +185,11 @@ func allLogical(t *testing.T) (map[string]logical.Storage, func()) {
 
 func newAESBarrier(t *testing.T, parent physical.Backend) barrier.SecurityBarrier {
 	b := barrier.NewAESGCMBarrier(parent, "")
-	key, err := b.GenerateKey(crand.Reader)
+	key, err := b.GenerateKey()
 	require.NoError(t, err, "failed generating random key")
 
-	b.Initialize(context.Background(), key, nil, crand.Reader)
-	b.Unseal(context.Background(), key)
+	require.NoError(t, b.Initialize(context.Background(), key, nil))
+	require.NoError(t, b.Unseal(context.Background(), key))
 
 	return b
 }

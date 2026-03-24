@@ -85,6 +85,24 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 		return err
 	}
 
+	// Fail early if the plugin is a singleton plugin
+	if slices.Contains(singletonMounts, pluginName) {
+		return fmt.Errorf("%w: %q", ErrSingletonPluginNotReloadable, pluginName)
+	}
+
+	// Check if the plugin is in the plugin catalog and is of a reloadable type
+	types, err := c.pluginCatalog.TypesFromName(ctx, pluginName)
+	if err != nil {
+		return err
+	}
+	if len(types) == 0 {
+		return fmt.Errorf("%w: %q", ErrPluginNotFound, pluginName)
+	}
+	// Only plugin of types auth and secret can be reloaded
+	if !slices.Contains(types, consts.PluginTypeCredential) && !slices.Contains(types, consts.PluginTypeSecrets) {
+		return fmt.Errorf("plugin %q cannot be reloaded, only plugins of type auth and secret can be reloaded", pluginName)
+	}
+
 	// Filter mount entries that only matches the plugin name
 	for _, entry := range c.mounts.Entries {
 		// We dont reload mounts that are not in the same namespace
@@ -129,8 +147,7 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 	// We don't want to reload the singleton mounts. They often have specific
 	// inmemory elements and we don't want to touch them here.
 	if slices.Contains(singletonMounts, entry.Type) {
-		c.logger.Debug("skipping reload of singleton mount", "type", entry.Type)
-		return nil
+		return fmt.Errorf("%w: %q", ErrSingletonPluginNotReloadable, entry.Type)
 	}
 
 	path := entry.Path

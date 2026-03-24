@@ -273,11 +273,6 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 		return nil, nil, err
 	}
 
-	var extraCas []*x509.Certificate
-	for _, t := range trusted {
-		extraCas = append(extraCas, t.Certificates...)
-	}
-
 	// If trustedNonCAs is not empty it means that client had registered a non-CA cert
 	// with the backend.
 	var retErr error

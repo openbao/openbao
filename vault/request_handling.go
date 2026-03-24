@@ -40,6 +40,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/vault/tokens"
 )
@@ -176,7 +177,7 @@ func (c *Core) fetchEntityAndDerivedPolicies(ctx context.Context, tokenNS *names
 			policies[entity.NamespaceID] = append(policies[entity.NamespaceID], entity.Policies...)
 		}
 
-		groupPolicies, err := c.identityStore.groupPoliciesByEntityID(nsCtx, entity.ID)
+		groupPolicies, err := c.identityStore.GroupPoliciesByEntityID(nsCtx, entity.ID)
 		if err != nil {
 			c.logger.Error("failed to fetch group policies", "error", err)
 			return nil, nil, err
@@ -1716,7 +1717,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 
 			auth.EntityID = entity.ID
 			auth.EntityCreated = entityCreated
-			validAliases, err := c.identityStore.refreshExternalGroupMembershipsByEntityID(ctx, auth.EntityID, auth.GroupAliases, req.MountAccessor)
+			validAliases, err := c.identityStore.RefreshExternalGroupMembershipsByEntityID(ctx, auth.EntityID, auth.GroupAliases, req.MountAccessor)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -2074,7 +2075,7 @@ func (c *Core) isUserLocked(ctx context.Context, mountEntry *routing.MountEntry,
 			return nil, false, fmt.Errorf("could not retrieve namespace from context: %w", err)
 		}
 
-		view := NamespaceView(c.barrier, ns).SubView(coreLockedUsersPath).SubView(loginUserInfoKey.mountAccessor + "/")
+		view := NamespaceScopedView(c.barrier, ns).SubView(coreLockedUsersPath).SubView(loginUserInfoKey.mountAccessor + "/")
 		existingEntry, err := view.Get(ctx, loginUserInfoKey.aliasName)
 		if err != nil {
 			return nil, false, err
@@ -2204,7 +2205,7 @@ func (c *Core) buildMfaEnforcementResponse(eConfig *mfa.MFAEnforcementConfig) (*
 			return nil, fmt.Errorf("failed to get methodID %s from MFA config table, error: %v", methodID, err)
 		}
 		var duoUsePasscode bool
-		if mConfig.Type == mfaMethodTypeDuo {
+		if mConfig.Type == ident.MfaMethodTypeDuo {
 			duoConf, ok := mConfig.Config.(*mfa.Config_DuoConfig)
 			if !ok {
 				return nil, errors.New("invalid MFA configuration type")
@@ -2214,7 +2215,7 @@ func (c *Core) buildMfaEnforcementResponse(eConfig *mfa.MFAEnforcementConfig) (*
 		mfaMethod := &logical.MFAMethodID{
 			Type:         mConfig.Type,
 			ID:           methodID,
-			UsesPasscode: mConfig.Type == mfaMethodTypeTOTP || duoUsePasscode,
+			UsesPasscode: mConfig.Type == ident.MfaMethodTypeTOTP || duoUsePasscode,
 			Name:         mConfig.Name,
 		}
 		mfaAny.Any = append(mfaAny.Any, mfaMethod)
@@ -2352,7 +2353,7 @@ func (c *Core) LocalUpdateUserFailedLoginInfo(ctx context.Context, userKey Faile
 		}
 
 		// Write to the physical backend
-		view := NamespaceView(c.barrier, mountEntry.Namespace).SubView(coreLockedUsersPath).SubView(userKey.mountAccessor + "/")
+		view := NamespaceScopedView(c.barrier, mountEntry.Namespace).SubView(coreLockedUsersPath).SubView(userKey.mountAccessor + "/")
 		if err := view.Put(ctx, entry); err != nil {
 			c.logger.Error("failed to persist failed login user entry", "namespace", mountEntry.Namespace.Path, "error", err)
 			return err

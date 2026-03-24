@@ -104,7 +104,7 @@ func (c *Core) startRaftBackend(ctx context.Context) (retErr error) {
 			// this state the unseal will fail and a cluster recovery will need to
 			// be done.
 			creating = true
-			raftTLSKey, err := raft.GenerateTLSKey(c.secureRandomReader)
+			raftTLSKey, err := raft.GenerateTLSKey()
 			if err != nil {
 				return err
 			}
@@ -187,9 +187,8 @@ func (c *Core) setupRaftActiveNode(ctx context.Context) error {
 	if err != nil {
 		c.logger.Error("failed to load autopilot config from storage when setting up cluster; continuing since autopilot falls back to default config", "error", err)
 	}
-	disableAutopilot := c.disableAutopilot
 
-	raftBackend.SetupAutopilot(c.activeContext, autopilotConfig, c.raftFollowerStates, disableAutopilot)
+	raftBackend.SetupAutopilot(c.activeContext, autopilotConfig, c.raftFollowerStates, c.disableAutopilot)
 
 	// Reload the raft TLS keys to ensure we are using the latest version.
 	if err := c.checkRaftTLSKeyUpgrades(ctx); err != nil {
@@ -245,7 +244,7 @@ func (c *Core) raftTLSRotateDirect(ctx context.Context, logger hclog.Logger, sto
 
 	rotateKeyring := func() (time.Time, error) {
 		// Create a new key
-		raftTLSKey, err := raft.GenerateTLSKey(c.secureRandomReader)
+		raftTLSKey, err := raft.GenerateTLSKey()
 		if err != nil {
 			return time.Time{}, fmt.Errorf("failed to generate new raft TLS key: %w", err)
 		}
@@ -406,7 +405,7 @@ func (c *Core) raftTLSRotatePhased(ctx context.Context, logger hclog.Logger, raf
 		logger.Info("creating new raft TLS config")
 
 		// Create a new key
-		raftTLSKey, err := raft.GenerateTLSKey(c.secureRandomReader)
+		raftTLSKey, err := raft.GenerateTLSKey()
 		if err != nil {
 			return time.Time{}, fmt.Errorf("failed to generate new raft TLS key: %w", err)
 		}
@@ -579,7 +578,7 @@ func (c *Core) raftCreateTLSKeyring(ctx context.Context) (*raft.TLSKeyring, erro
 		return nil, errors.New("TLS keyring already present")
 	}
 
-	raftTLS, err := raft.GenerateTLSKey(c.secureRandomReader)
+	raftTLS, err := raft.GenerateTLSKey()
 	if err != nil {
 		return nil, err
 	}
@@ -673,7 +672,7 @@ func (c *Core) raftSnapshotRestoreCallback(grabLock bool, sealNode bool) func(co
 			// The snapshot contained a root key or keyring we couldn't
 			// recover
 			switch c.seal.BarrierType() {
-			case wrapping.WrapperTypeShamir:
+			case seal.WrapperTypeShamir:
 				// If we are a shamir seal we can't do anything. Just
 				// seal all nodes.
 
@@ -926,7 +925,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		// If we're using Shamir and using raft for both physical and HA, we
 		// need to block until the node is unsealed, unless retry is set to
 		// false.
-		if c.seal.BarrierType() == wrapping.WrapperTypeShamir && !c.isRaftHAOnly() {
+		if c.seal.BarrierType() == seal.WrapperTypeShamir && !c.isRaftHAOnly() {
 			c.raftInfo.Store(raftInfo)
 			if err := c.seal.SetBarrierConfig(ctx, raftInfo.leaderBarrierConfig); err != nil {
 				return err
@@ -949,7 +948,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 			return fmt.Errorf("failed to send answer to raft leader node: %w", err)
 		}
 
-		if c.seal.BarrierType() == wrapping.WrapperTypeShamir && !isRaftHAOnly {
+		if c.seal.BarrierType() == seal.WrapperTypeShamir && !isRaftHAOnly {
 			// Reset the state
 			c.raftInfo.Store(nil)
 

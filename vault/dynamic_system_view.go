@@ -349,7 +349,7 @@ func (d dynamicSystemView) GroupsForEntity(entityID string) ([]*logical.Group, e
 	}
 
 	ctx := namespace.ContextWithNamespace(context.Background(), d.mountEntry.Namespace)
-	groups, inheritedGroups, err := d.core.identityStore.groupsByEntityID(ctx, entityID)
+	groups, inheritedGroups, err := d.core.identityStore.GroupsByEntityID(ctx, entityID)
 	if err != nil {
 		return nil, err
 	}
@@ -420,7 +420,7 @@ func (d dynamicSystemView) retrievePasswordPolicy(ctx context.Context, policyNam
 		return nil, err
 	}
 
-	storage := NamespaceView(d.core.barrier, ns).SubView(passwordPolicySubPath)
+	storage := NamespaceScopedView(d.core.barrier, ns).SubView(passwordPolicySubPath)
 	entry, err := storage.Get(ctx, policyName)
 	if err != nil {
 		return nil, err

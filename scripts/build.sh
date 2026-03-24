@@ -28,7 +28,7 @@ BUILD_TAGS="${BUILD_TAGS:-"openbao"}"
 GIT_COMMIT="$(git rev-parse HEAD)"
 GIT_DIRTY="$(test -n "`git status --porcelain`" && echo "+CHANGES" || true)"
 
-BUILD_DATE="$(git show --no-show-signature -s --format=%cd --date=format:"%Y-%m-%dT%H:%M:%SZ" HEAD)"
+COMMIT_DATE="$(git show --no-show-signature -s --format=%cd --date=format:"%Y-%m-%dT%H:%M:%SZ" HEAD)"
 
 GOPATH=${GOPATH:-$(${GO_CMD} env GOPATH)}
 case $(uname) in
@@ -47,7 +47,7 @@ mkdir -p bin/
 echo "==> Building bao..."
 ${GO_CMD} build \
     -gcflags "${GCFLAGS}" \
-    -ldflags "${LD_FLAGS} -X github.com/openbao/openbao/version.GitCommit='${GIT_COMMIT}${GIT_DIRTY}' -X github.com/openbao/openbao/version.BuildDate=${BUILD_DATE}" \
+    -ldflags "${LD_FLAGS} -X github.com/openbao/openbao/version.GitCommit='${GIT_COMMIT}${GIT_DIRTY}' -X github.com/openbao/openbao/version.CommitDate=${COMMIT_DATE}" \
     -o "bin/bao" \
     -tags "${BUILD_TAGS}" \
     .
@@ -66,7 +66,7 @@ if [ "$1" == "plugin" ]; then
                 dirname="$(basename "$dir")"
                 ${GO_CMD} build \
                     -gcflags "${GCFLAGS}" \
-                    -ldflags "${LD_FLAGS} -X github.com/openbao/openbao/version.GitCommit='${GIT_COMMIT}${GIT_DIRTY}' -X github.com/openbao/openbao/version.BuildDate=${BUILD_DATE}" \
+                    -ldflags "${LD_FLAGS} -X github.com/openbao/openbao/version.GitCommit='${GIT_COMMIT}${GIT_DIRTY}' -X github.com/openbao/openbao/version.CommitDate=${COMMIT_DATE}" \
                     -o "bin/$etype-$plugin_name-$dirname" \
                     -tags "${BUILD_TAGS}" \
                     github.com/openbao/openbao/$dir

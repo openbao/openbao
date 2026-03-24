@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package identity
 
 import (
 	"context"
@@ -294,7 +294,7 @@ func (i *IdentityStore) handleGroupAliasUpdateCommon(ctx context.Context, req *l
 	}
 
 	newGroup.Alias = groupAlias
-	err = i.sanitizeAndUpsertGroup(ctx, newGroup, previousGroup, nil)
+	err = i.SanitizeAndUpsertGroup(ctx, newGroup, previousGroup, nil)
 	if err != nil {
 		return nil, err
 	}

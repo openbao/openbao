@@ -199,7 +199,7 @@ func testAccStepwiseDecrypt(
 		Operation: stepwise.UpdateOperation,
 		Path:      "decrypt/" + name,
 		Data:      decryptData,
-		Assert: func(resp *api.Secret, err error) error {
+		Assert: func(resp *api.Secret, _ error) error {
 			var d struct {
 				Plaintext string `mapstructure:"plaintext"`
 			}

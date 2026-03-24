@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/testhelpers"
@@ -57,7 +58,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 	case recovery:
 		opts.SealFunc = func() vault.Seal {
 			return vault.NewTestSeal(t, &seal.TestSealOpts{
-				StoredKeys: seal.StoredKeysSupportedGeneric,
+				Wrapper: wrapping.WrapperTypeTest,
 			})
 		}
 	}
@@ -320,7 +321,7 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 	if recovery {
 		opts.SealFunc = func() vault.Seal {
 			return vault.NewTestSeal(t, &seal.TestSealOpts{
-				StoredKeys: seal.StoredKeysSupportedGeneric,
+				Wrapper: wrapping.WrapperTypeTest,
 			})
 		}
 	}

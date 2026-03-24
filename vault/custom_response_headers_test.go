@@ -144,7 +144,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	req.Data["values"] = []string{"UI Custom Header"}
 	req.ResponseWriter = hw
 
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err == nil {
 		t.Fatal("request did not fail on setting a header that is present in custom response headers")
 	}
@@ -164,7 +164,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	req.Data["values"] = []string{"400"}
 	req.ResponseWriter = hw
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err == nil {
 		t.Fatal("request did not fail on setting a header that is present in custom response headers")
 	}
@@ -188,7 +188,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	req.Data["values"] = []string{"Ui header value"}
 	req.ResponseWriter = hw
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatal("request failed on setting a header that is not present in custom response headers.", "error:", err)
 	}

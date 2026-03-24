@@ -168,7 +168,7 @@ func (c *Core) tokenGaugeTtlCollector(ctx context.Context) ([]metricsutil.GaugeL
 }
 
 // emitMetricsActiveNode is used to start all the periodic metrics; all of them should
-// be shut down when stopCh is closed.  This code runs on the active node only.
+// be shut down when stopCh is closed. This code runs on the active node only.
 func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 	// The gauge collection processes are started and stopped here
 	// because there's more than one TokenManager created during startup,
@@ -232,7 +232,7 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 	// Disable collection if configured.
 	if c.MetricSink().GaugeInterval == time.Duration(0) {
 		c.logger.Info("usage gauge collection is disabled")
-	} else if standby := c.Standby(); !standby {
+	} else {
 		for _, init := range metricsInit {
 			if init.DisableEnvVar != "" {
 				if api.ReadBaoVariable(init.DisableEnvVar) != "" {
@@ -406,7 +406,7 @@ func (c *Core) entityGaugeCollector(ctx context.Context) ([]metricsutil.GaugeLab
 		return []metricsutil.GaugeLabelValues{}, errors.New("nil identity store")
 	}
 
-	byNamespace, err := identityStore.countEntitiesByNamespace(ctx)
+	byNamespace, err := identityStore.CountEntitiesByNamespace(ctx)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -437,7 +437,7 @@ func (c *Core) entityGaugeCollectorByMount(ctx context.Context) ([]metricsutil.G
 		return []metricsutil.GaugeLabelValues{}, errors.New("nil identity store")
 	}
 
-	byAccessor, err := identityStore.countEntitiesByMountAccessor(ctx)
+	byAccessor, err := identityStore.CountEntitiesByMountAccessor(ctx)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}

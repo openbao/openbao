@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -15,13 +16,14 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/storagepacker"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
 func TestIdentityStore_Groups_AddByNameEntityUpdate(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create an entity and get its ID
 	entityRegisterReq := &logical.Request{
@@ -80,7 +82,7 @@ func TestIdentityStore_Groups_AddByNameEntityUpdate(t *testing.T) {
 
 func TestIdentityStore_FixOverwrittenMemberGroupIDs(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create a group
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
@@ -140,7 +142,7 @@ func TestIdentityStore_FixOverwrittenMemberGroupIDs(t *testing.T) {
 
 func TestIdentityStore_GroupEntityMembershipUpgrade(t *testing.T) {
 	c, keys, rootToken := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create a group
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
@@ -155,7 +157,7 @@ func TestIdentityStore_GroupEntityMembershipUpgrade(t *testing.T) {
 	}
 
 	// Create a memdb transaction
-	txn := c.identityStore.db(ctx).Txn(true)
+	txn := c.identityStore.Txn(ctx, true)
 	defer txn.Abort()
 
 	// Fetch the above created group
@@ -205,7 +207,7 @@ func TestIdentityStore_UpsertGroupInTxn(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ctx := namespace.RootContext(t.Context())
 
-	txn := c.identityStore.db(ctx).Txn(true)
+	txn := c.identityStore.Txn(ctx, true)
 	defer txn.Abort()
 
 	group := &identity.Group{
@@ -227,7 +229,7 @@ func TestIdentityStore_PurgeCorruptedGroups(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ctx := namespace.RootContext(t.Context())
 
-	packer := c.identityStore.groupPacker(ctx)
+	packer := c.identityStore.GroupPacker(ctx)
 
 	// store a corrupt group (as https://github.com/openbao/openbao/issues/2319 would have)
 	// by directly calling the groupPacker, circumventing validation
@@ -255,7 +257,7 @@ func TestIdentityStore_PurgeCorruptedGroups(t *testing.T) {
 	require.NotNil(t, item)
 
 	// loadGroups should purge corrupt entries
-	require.NoError(t, c.identityStore.loadGroups(ctx, false /* readOnly */))
+	require.NoError(t, c.identityStore.LoadGroups(ctx, false /* readOnly */))
 
 	// enure it was removed
 	item, err = packer.GetItem(group.ID)
@@ -264,7 +266,7 @@ func TestIdentityStore_PurgeCorruptedGroups(t *testing.T) {
 }
 
 func TestIdentityStore_MemberGroupIDDelete(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create a child group
@@ -333,7 +335,7 @@ func TestIdentityStore_MemberGroupIDDelete(t *testing.T) {
 }
 
 func TestIdentityStore_CaseInsensitiveGroupName(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	testGroupName := "testGroupName"
@@ -404,7 +406,7 @@ func TestIdentityStore_CaseInsensitiveGroupName(t *testing.T) {
 }
 
 func TestIdentityStore_GroupByName(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity using the "name" endpoint
@@ -523,7 +525,7 @@ func TestIdentityStore_Groups_TypeMembershipAdditions(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 	groupReq := &logical.Request{
 		Path:      "group",
@@ -560,7 +562,7 @@ func TestIdentityStore_Groups_TypeImmutability(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 	groupReq := &logical.Request{
 		Path:      "group",
@@ -611,7 +613,7 @@ func TestIdentityStore_Groups_TypeImmutability(t *testing.T) {
 
 func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 	var err error
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create a dummy group
@@ -625,11 +627,11 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 		ParentGroupIDs:  []string{"testparentgroupid1", "testparentgroupid2"},
 		MemberEntityIDs: []string{"testentityid1", "testentityid2"},
 		Policies:        []string{"testpolicy1", "testpolicy2"},
-		BucketKey:       i.groupPacker(ctx).BucketKey("testgroupid"),
+		BucketKey:       i.GroupPacker(ctx).BucketKey("testgroupid"),
 	}
 
 	// Insert it into memdb
-	txn := i.db(ctx).Txn(true)
+	txn := i.Txn(ctx, true)
 	defer txn.Abort()
 	err = i.MemDBUpsertGroupInTxn(txn, group)
 	if err != nil {
@@ -648,12 +650,12 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 		ParentGroupIDs:  []string{"testparentgroupid2", "testparentgroupid3"},
 		MemberEntityIDs: []string{"testentityid2", "testentityid3"},
 		Policies:        []string{"testpolicy2", "testpolicy3"},
-		BucketKey:       i.groupPacker(ctx).BucketKey("testgroupid2"),
+		BucketKey:       i.GroupPacker(ctx).BucketKey("testgroupid2"),
 	}
 
 	// Insert it into memdb
 
-	txn = i.db(ctx).Txn(true)
+	txn = i.Txn(ctx, true)
 	defer txn.Abort()
 	err = i.MemDBUpsertGroupInTxn(txn, group)
 	if err != nil {
@@ -722,7 +724,7 @@ func TestIdentityStore_GroupsCreateUpdate(t *testing.T) {
 	var resp *logical.Response
 	var err error
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity and get its ID
@@ -846,7 +848,7 @@ func TestIdentityStore_GroupsCreateUpdateDuplicatePolicy(t *testing.T) {
 	var resp *logical.Response
 	var err error
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create a group with the above created 2 entities as its members
@@ -933,7 +935,7 @@ func TestIdentityStore_GroupsCreateUpdateDuplicatePolicy(t *testing.T) {
 func TestIdentityStore_GroupsCRUD_ByID(t *testing.T) {
 	var resp *logical.Response
 	var err error
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity and get its ID
@@ -1089,7 +1091,7 @@ func TestIdentityStore_GroupsCRUD_ByID(t *testing.T) {
 func TestIdentityStore_GroupMultiCase(t *testing.T) {
 	var resp *logical.Response
 	var err error
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 	groupRegisterReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -1151,7 +1153,7 @@ func TestIdentityStore_GroupMultiCase(t *testing.T) {
 		t.Fatalf("bad: resp: %#v, err: %v", resp, err)
 	}
 
-	policiesResult, err := is.groupPoliciesByEntityID(ctx, entityID1)
+	policiesResult, err := is.GroupPoliciesByEntityID(ctx, entityID1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1180,7 +1182,7 @@ Test groups hierarchy:
 func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	var resp *logical.Response
 	var err error
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 	groupRegisterReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -1294,7 +1296,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	memberGroupIDs, err = is.memberGroupIDsByID(ctx, engGroup.ID)
+	memberGroupIDs, err = is.MemberGroupIDsByID(ctx, engGroup.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1308,7 +1310,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	memberGroupIDs, err = is.memberGroupIDsByID(ctx, vaultGroup.ID)
+	memberGroupIDs, err = is.MemberGroupIDsByID(ctx, vaultGroup.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1322,7 +1324,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	memberGroupIDs, err = is.memberGroupIDsByID(ctx, opsGroup.ID)
+	memberGroupIDs, err = is.MemberGroupIDsByID(ctx, opsGroup.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1404,7 +1406,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: resp: %#v, err: %v", resp, err)
 	}
 
-	policiesResult, err := is.groupPoliciesByEntityID(ctx, entityID1)
+	policiesResult, err := is.GroupPoliciesByEntityID(ctx, entityID1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1419,7 +1421,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: policies; expected: %#v\nactual:%#v", expected, policies)
 	}
 
-	policiesResult, err = is.groupPoliciesByEntityID(ctx, entityID2)
+	policiesResult, err = is.GroupPoliciesByEntityID(ctx, entityID2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1434,7 +1436,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: policies; expected: %#v\nactual:%#v", expected, policies)
 	}
 
-	policiesResult, err = is.groupPoliciesByEntityID(ctx, entityID3)
+	policiesResult, err = is.GroupPoliciesByEntityID(ctx, entityID3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1447,7 +1449,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: policies; expected: 'engpolicy'\nactual:%#v", policies)
 	}
 
-	groups, inheritedGroups, err := is.groupsByEntityID(ctx, entityID1)
+	groups, inheritedGroups, err := is.GroupsByEntityID(ctx, entityID1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1458,7 +1460,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: length of inheritedGroups; expected: 2, actual: %d", len(inheritedGroups))
 	}
 
-	groups, inheritedGroups, err = is.groupsByEntityID(ctx, entityID2)
+	groups, inheritedGroups, err = is.GroupsByEntityID(ctx, entityID2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1469,7 +1471,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: length of inheritedGroups; expected: 1, actual: %d", len(inheritedGroups))
 	}
 
-	groups, inheritedGroups, err = is.groupsByEntityID(ctx, entityID3)
+	groups, inheritedGroups, err = is.GroupsByEntityID(ctx, entityID3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1483,7 +1485,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 
 func TestIdentityStore_GroupCycleDetection(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	group1Name := "group1"
 	group2Name := "group2"
@@ -1564,7 +1566,7 @@ func TestIdentityStore_GroupCycleDetection(t *testing.T) {
 	if err != nil || resp == nil {
 		t.Fatalf("unexpected group update error for group %q, err: %v, resp: %#v", group3Name, err, resp)
 	}
-	if !resp.IsError() || resp.Error().Error() != fmt.Sprintf("%s %q", errCycleDetectedPrefix, group2Id) {
+	if !resp.IsError() || resp.Error().Error() != fmt.Sprintf("%s %q", ident.ErrCycleDetectedPrefix, group2Id) {
 		t.Fatalf("expected update to group %q to fail due to cycle, resp: %#v", group3Id, resp)
 	}
 }

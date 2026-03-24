@@ -372,13 +372,13 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 				}
 
 				// Renew
-				resp, err := client.Auth().Token().RenewSelf(30)
+				_, err = client.Auth().Token().RenewSelf(30)
 				if err != nil {
 					t.Fatal(err)
 				}
 
 				// Login - expect SUCCESS
-				resp, err = client.Auth().Login(context.Background(), authMethod)
+				resp, err := client.Auth().Login(context.Background(), authMethod)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -394,7 +394,7 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 
 				// Lookup - expect FAILURE
 				require.EventuallyWithT(t, func(collect *assert.CollectT) {
-					resp, err = client.Auth().Token().Lookup(revokeToken)
+					_, err = client.Auth().Token().Lookup(revokeToken)
 					require.Error(collect, err)
 				}, 20*time.Second, 10*time.Millisecond)
 
@@ -728,7 +728,7 @@ func TestExternalPlugin_Database(t *testing.T) {
 				client.SetToken(cluster.RootToken)
 
 				// Lookup - expect FAILURE
-				resp, err = client.Sys().Lookup(revokeLease)
+				_, err = client.Sys().Lookup(revokeLease)
 				if err == nil {
 					t.Fatal("expected error, got nil")
 				}
@@ -749,6 +749,9 @@ func TestExternalPlugin_Database(t *testing.T) {
 // TestExternalPlugin_DatabaseReload tests that we can use an external database
 // secrets engine after reload
 func TestExternalPlugin_DatabaseReload(t *testing.T) {
+	// TODO: revisit this when database plugins reloading is supported
+	t.Skip("reloading database plugins is not yet supported")
+
 	cluster := getCluster(t, consts.PluginTypeDatabase, 1)
 	defer cluster.Cleanup()
 

@@ -349,7 +349,7 @@ func (b *SystemBackend) handlePluginCatalogTypedList(ctx context.Context, req *l
 func (b *SystemBackend) handlePluginCatalogUntypedList(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 	data := make(map[string]interface{})
 	var versionedPlugins []pluginutil.VersionedPlugin
-	for _, pluginType := range consts.PluginTypes {
+	for _, pluginType := range pluginTypes {
 		plugins, err := b.Core.pluginCatalog.List(ctx, pluginType)
 		if err != nil {
 			return nil, err
@@ -621,12 +621,12 @@ func (b *SystemBackend) handlePluginReloadUpdate(ctx context.Context, req *logic
 	if pluginName != "" {
 		err := b.Core.reloadMatchingPlugin(ctx, pluginName)
 		if err != nil {
-			return nil, err
+			return handleError(err)
 		}
 	} else if len(pluginMounts) > 0 {
 		err := b.Core.reloadMatchingPluginMounts(ctx, pluginMounts)
 		if err != nil {
-			return nil, err
+			return handleError(err)
 		}
 	}
 
@@ -3692,7 +3692,7 @@ func (b *SystemBackend) pathHashWrite(ctx context.Context, req *logical.Request,
 }
 
 func (b *SystemBackend) pathRandomWrite(_ context.Context, _ *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return random.HandleRandomAPI(d, b.Core.secureRandomReader)
+	return random.HandleRandomAPI(d)
 }
 
 func hasMountAccess(ctx context.Context, acl *ACL, path string) bool {
@@ -4311,6 +4311,8 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 	return resp, nil
 }
 
+// SealStatusResponse holds generic seal status information that
+// applies both to the core seal and namespace seals.
 type SealStatusResponse struct {
 	Type             string `json:"type"`
 	Initialized      bool   `json:"initialized"`
@@ -4319,17 +4321,24 @@ type SealStatusResponse struct {
 	N                int    `json:"n"`
 	Progress         int    `json:"progress"`
 	Nonce            string `json:"nonce"`
-	Version          string `json:"version"`
-	BuildDate        string `json:"build_date"`
-	Migration        bool   `json:"migration"`
-	ClusterName      string `json:"cluster_name,omitempty"`
-	ClusterID        string `json:"cluster_id,omitempty"`
 	RecoverySeal     bool   `json:"recovery_seal"`
 	RecoverySealType string `json:"recovery_seal_type,omitempty"`
-	StorageType      string `json:"storage_type,omitempty"`
 }
 
-func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResponse, error) {
+// CoreSealStatusResponse supersets SealStatusResponse and adds
+// server/cluster-level information.
+type CoreSealStatusResponse struct {
+	SealStatusResponse
+	Version     string   `json:"version"`
+	CommitDate  string   `json:"commit_date"`
+	Migration   bool     `json:"migration"`
+	ClusterName string   `json:"cluster_name,omitempty"`
+	ClusterID   string   `json:"cluster_id,omitempty"`
+	StorageType string   `json:"storage_type,omitempty"`
+	Warnings    []string `json:"warnings,omitempty"`
+}
+
+func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatusResponse, error) {
 	sealed := core.Sealed()
 
 	initialized, err := core.Initialized(ctx)
@@ -4349,19 +4358,21 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 		return nil, err
 	}
 
-	ssr := &SealStatusResponse{
-		Type:             core.SealAccess().BarrierType().String(),
-		Initialized:      initialized,
-		Sealed:           sealed,
-		RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
-		RecoverySealType: recoveryType,
-		StorageType:      core.StorageType(),
-		Version:          version.GetVersion().VersionNumber(),
-		BuildDate:        version.BuildDate,
+	cssr := &CoreSealStatusResponse{
+		SealStatusResponse: SealStatusResponse{
+			Type:             core.SealAccess().BarrierType().String(),
+			Initialized:      initialized,
+			Sealed:           sealed,
+			RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
+			RecoverySealType: recoveryType,
+		},
+		StorageType: core.StorageType(),
+		Version:     version.GetVersion().VersionNumber(),
+		CommitDate:  version.CommitDate,
 	}
 
 	if sealConfig == nil {
-		return ssr, nil
+		return cssr, nil
 	}
 
 	// Fetch the local cluster name and identifier
@@ -4371,19 +4382,19 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 			return nil, err
 		}
 
-		ssr.ClusterName = cluster.Name
-		ssr.ClusterID = cluster.ID
+		cssr.ClusterName = cluster.Name
+		cssr.ClusterID = cluster.ID
 	}
 
 	progress, nonce := core.SecretProgress(lock)
 
-	ssr.T = sealConfig.SecretThreshold
-	ssr.N = sealConfig.SecretShares
-	ssr.Progress = progress
-	ssr.Nonce = nonce
-	ssr.Migration = core.IsInSealMigrationMode(lock) && !core.IsSealMigrated(lock)
+	cssr.T = sealConfig.SecretThreshold
+	cssr.N = sealConfig.SecretShares
+	cssr.Progress = progress
+	cssr.Nonce = nonce
+	cssr.Migration = core.IsInSealMigrationMode(lock) && !core.IsSealMigrated(lock)
 
-	return ssr, nil
+	return cssr, nil
 }
 
 type LeaderResponse struct {
@@ -4468,7 +4479,7 @@ func (b *SystemBackend) handleLeaderStatus(ctx context.Context, req *logical.Req
 
 func (b *SystemBackend) rotateBarrierKey(ctx context.Context) error {
 	// Rotate to the new term
-	newTerm, err := b.Core.barrier.Rotate(ctx, b.Core.secureRandomReader)
+	newTerm, err := b.Core.barrier.Rotate(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create new encryption key: %w", err)
 	}
@@ -4536,7 +4547,7 @@ func (b *SystemBackend) handleVersionHistoryList(ctx context.Context, req *logic
 
 		entry := map[string]interface{}{
 			"timestamp_installed": v.TimestampInstalled.Format(time.RFC3339),
-			"build_date":          v.BuildDate,
+			"commit_date":         v.CommitDate,
 			"previous_version":    nil,
 		}
 

@@ -858,7 +858,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Login attempt after certificate expiry should fail
-	resp, err = b.HandleRequest(context.Background(), loginReq)
+	_, err = b.HandleRequest(context.Background(), loginReq)
 	if err == nil {
 		t.Fatal("expected error due to expired certificate")
 	}
@@ -2185,7 +2185,7 @@ func Test_Renew(t *testing.T) {
 		Schema: pathCerts(b).Fields,
 	}
 
-	resp, err := b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(context.Background(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2194,7 +2194,7 @@ func Test_Renew(t *testing.T) {
 		Raw:    map[string]interface{}{},
 		Schema: pathLogin(b).Fields,
 	}
-	resp, err = b.pathLogin(context.Background(), req, empty_login_fd)
+	resp, err := b.pathLogin(context.Background(), req, empty_login_fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2222,19 +2222,19 @@ func Test_Renew(t *testing.T) {
 
 	// Change the policies -- this should fail
 	fd.Raw["policies"] = "zip,zap"
-	resp, err = b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(context.Background(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	resp, err = b.pathLoginRenew(context.Background(), req, empty_login_fd)
+	_, err = b.pathLoginRenew(context.Background(), req, empty_login_fd)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
 	// Put the policies back, this should be okay
 	fd.Raw["policies"] = "bar,foo"
-	resp, err = b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(context.Background(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2253,7 +2253,7 @@ func Test_Renew(t *testing.T) {
 	// Add period value to cert entry
 	period := 350 * time.Second
 	fd.Raw["period"] = period.String()
-	resp, err = b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(context.Background(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2274,7 +2274,7 @@ func Test_Renew(t *testing.T) {
 	}
 
 	// Delete CA, make sure we can't renew
-	resp, err = b.pathCertDelete(context.Background(), req, fd)
+	_, err = b.pathCertDelete(context.Background(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}

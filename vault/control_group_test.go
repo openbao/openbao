@@ -238,7 +238,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 		TTL: time.Duration(1 * time.Second),
 		Factors: []logical.ControlGroupFactor{
 			{
-				Name: "test-secops",
+				Name:                   "test-secops",
 				ControlledCapabilities: []logical.Operation{logical.ReadOperation},
 				Identity: logical.ControlGroupIdentity{
 					GroupNames: []string{"secops"},
@@ -246,7 +246,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 				},
 			},
 			{
-				Name: "test-admin",
+				Name:                   "test-admin",
 				ControlledCapabilities: []logical.Operation{logical.ReadOperation},
 				Identity: logical.ControlGroupIdentity{
 					GroupNames: []string{"admin"},
@@ -254,7 +254,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 				},
 			},
 			{
-				Name: "test-both",
+				Name:                   "test-both",
 				ControlledCapabilities: []logical.Operation{logical.ReadOperation},
 				Identity: logical.ControlGroupIdentity{
 					GroupNames: []string{"admin", "secops"},
@@ -285,7 +285,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	require.Nil(t, err)
 	require.False(t, validates)
 
-	// but should validate for unprotected operation 
+	// but should validate for unprotected operation
 	validates, err = c.validateControlGroup(ctx, te.ID, logical.ListOperation)
 	require.Nil(t, err)
 	require.True(t, validates)

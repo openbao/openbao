@@ -103,7 +103,7 @@ func (c *Core) validateControlGroup(ctx context.Context, token string, requestCa
 		if slices.Contains(factor.ControlledCapabilities, requestCapability) {
 			applicableControlGroups = true
 		}
-		
+
 		// count authorizations which have not expired
 		approvalCount := 0
 		for _, auth := range factor.Authorizations {
@@ -121,7 +121,7 @@ func (c *Core) validateControlGroup(ctx context.Context, token string, requestCa
 	if !applicableControlGroups {
 		return true, nil
 	}
-	
+
 	return false, nil
 }
 

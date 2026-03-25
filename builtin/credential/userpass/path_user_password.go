@@ -128,13 +128,13 @@ func (b *backend) updateUserPassword(password, passwordHash string, userEntry *U
 			return nil, err
 		}
 		userEntry.PasswordHash = hash
-		return nil, nil
+	} else {
+		if _, err := bcrypt.Cost([]byte(passwordHash)); err != nil {
+			return errors.New("password_hash is not a valid bcrypt hash"), nil
+		}
+		userEntry.PasswordHash = []byte(passwordHash)
 	}
 
-	if _, err := bcrypt.Cost([]byte(passwordHash)); err != nil {
-		return errors.New("password_hash is not a valid bcrypt hash"), nil
-	}
-	userEntry.PasswordHash = []byte(passwordHash)
 	return nil, nil
 }
 

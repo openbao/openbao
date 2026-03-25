@@ -179,6 +179,10 @@ entities attempting to login. At least one of the bound values must be set.
 - `poll_interval` `(int: <optional>)` - Poll interval in seconds for device
   and direct callback modes, default value from Authorization Server for
   device flow, or '5'.
+- `oidc_disable_confirmation` `(bool: false)` - If set to `true`, disables the interactive confirmation page that Openbao
+  displays during direct callback mode before processing the authorization code. This confirmation step is a security measure
+  against token-hijacking attacks (see [RFC 8628 5.4](https://www.rfc-editor.org/rfc/rfc8628#section-5.4)) and is enabled by default.
+  **It's recommended to set `oidc_disable_confirmation` to `true` only if your OIDC provider always presents its own confirmation prompt to the user.**
 - `verbose_oidc_logging` `(bool: false)` - Log received OIDC tokens and claims when debug-level
   logging is active. Not recommended in production since sensitive information may be present
   in OIDC responses.

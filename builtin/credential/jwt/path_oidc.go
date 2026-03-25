@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,6 +35,17 @@ const (
 	errNotOIDCFlow       = "OIDC login is not configured for this mount"
 
 	noCode = "no_code"
+)
+
+// RFC 6749 §4.1.2.1 defined error codes for Authorization Code Grant error responses
+const (
+	oidcErrInvalidRequest          = "invalid_request"
+	oidcErrUnauthorizedClient      = "unauthorized_client"
+	oidcErrAccessDenied            = "access_denied"
+	oidcErrUnsupportedResponseType = "unsupported_response_type"
+	oidcErrInvalidScope            = "invalid_scope"
+	oidcErrServerError             = "server_error"
+	oidcErrTemporarilyUnavailable  = "temporarily_unavailable"
 )
 
 // oidcRequest represents a single OIDC authentication flow. It is created when
@@ -85,8 +97,17 @@ func pathOIDC(b *jwtAuthBackend) []*framework.Path {
 					Type:  framework.TypeString,
 					Query: true,
 				},
+				"error": {
+					Type:  framework.TypeString,
+					Query: true,
+				},
 				"error_description": {
-					Type: framework.TypeString,
+					Type:  framework.TypeString,
+					Query: true,
+				},
+				"error_uri": {
+					Type:  framework.TypeString,
+					Query: true,
 				},
 			},
 
@@ -266,9 +287,24 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		deleteRequest = false
 	}
 
-	errorDescription := d.Get("error_description").(string)
-	if errorDescription != "" {
-		return loginFailedResponse(useHttp, errorDescription), nil
+	// error parameter per OpenID Connect Core 1.0 spec
+	// If present, the login has failed
+	oidcError := strings.ToLower(strings.TrimSpace(d.Get("error").(string)))
+	if oidcError != "" {
+		// strconv.Quote - for log-safe string output.
+		b.Logger().Warn("OIDC callback received error from provider",
+			"error", strconv.Quote(oidcError),
+			"error_description", strconv.Quote(d.Get("error_description").(string)),
+			"error_uri", strconv.Quote(d.Get("error_uri").(string)),
+		)
+		switch oidcError {
+		case oidcErrInvalidRequest, oidcErrUnauthorizedClient, oidcErrAccessDenied,
+			oidcErrUnsupportedResponseType, oidcErrInvalidScope, oidcErrServerError,
+			oidcErrTemporarilyUnavailable:
+			return loginFailedResponse(useHttp, oidcError), nil
+		default:
+			return loginFailedResponse(useHttp, "An unknown error occurred during OIDC authentication. Check server logs for details"), nil
+		}
 	}
 
 	clientNonce := d.Get("client_nonce").(string)

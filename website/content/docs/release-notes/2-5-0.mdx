@@ -5,6 +5,27 @@ description: Release notes for OpenBao 2.5.x
 
 # OpenBao 2.5.x release notes
 
+## v2.5.2
+
+**Release date:** March 25, 2026
+
+### SECURITY
+
+* auth/jwt: Prevent XSS via `error_description` parameter in `callback_mode=direct` auth methods. CVE-2026-33758. [[GH-2709](https://github.com/openbao/openbao/pull/2709)]
+* auth/jwt: Prompt for confirmation during direct callback mode to authorize OpenBao token issuance. CVE-2026-33757. [[GH-2710](https://github.com/openbao/openbao/pull/2710)]
+
+### BUG FIXES
+
+* command: External token helpers now inherit environment variables from the parent process. [[GH-2570](https://github.com/openbao/openbao/pull/2570)]
+* core/metrics: Fix count of leases/tokens/kv-secrets/entities metric not being emitted. [[GH-2672](https://github.com/openbao/openbao/pull/2672)]
+* core/mounts, core/namespaces: Fix lock ordering in mount deletion racing against namespace updates, causing deadlocks. [[GH-2625](https://github.com/openbao/openbao/pull/2625)]
+* core/seal: Fix `/sys/rotate/root` call rotating both root key and unseal key when using a Shamir Seal, losing all key shares. [[GH-2619](https://github.com/openbao/openbao/pull/2619)]
+* core: Skip re-scheduling lease expiration jobs that need to write to storage when a node unseals in read-only mode. [[GH-2549](https://github.com/openbao/openbao/pull/2549)]
+* core: Fix potential deadlock in JobManager, which can cause mount deletion timeouts. [[GH-2630](https://github.com/openbao/openbao/pull/2630)]
+* http: Forward help requests to active node when unable to handle them on standby with read requests handling disabled. [[GH-2572](https://github.com/openbao/openbao/pull/2572)]
+* identity/oidc: Fix OIDC named key rotation silently skipping in non-root namespaces due to double namespace prefix in storage path lookup. [[GH-2669](https://github.com/openbao/openbao/pull/2669)]
+* raft: Propagate peer join/remove/promote/demote and autopilot read/update requests to active node. [[GH-2574](https://github.com/openbao/openbao/pull/2574)]
+
 ## v2.5.1
 
 **Release date:** Feburary 23, 2026

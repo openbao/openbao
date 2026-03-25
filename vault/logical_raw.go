@@ -64,11 +64,11 @@ func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAcc
 		}
 	}
 
-	// TODO(wslabosz): awaiting seal manager implementation
 	if specialPath {
-		return &secureStorageAccess{barrier: b.core.barrier}, nil
+		parent, _ := ns.ParentPath()
+		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(parent)}, nil
 	} else {
-		return &secureStorageAccess{barrier: b.core.barrier}, nil
+		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)}, nil
 	}
 }
 

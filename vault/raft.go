@@ -655,7 +655,7 @@ func (c *Core) raftSnapshotRestoreCallback(grabLock bool, sealNode bool) func(co
 			// it's in an unknown state
 			defer func() {
 				if retErr != nil {
-					if err := c.sealInternalWithOptions(false, false, true); err != nil {
+					if err := c.sealInternalWithOptions(false); err != nil {
 						c.logger.Error("failed to seal node", "error", err)
 					}
 				}
@@ -690,8 +690,8 @@ func (c *Core) raftSnapshotRestoreCallback(grabLock bool, sealNode bool) func(co
 					c.logger.Error("raft snapshot restore failed to get stored keys", "error", err)
 					return err
 				}
-				if err := c.barrier.Seal(); err != nil {
-					c.logger.Error("raft snapshot restore failed to seal barrier", "error", err)
+				if err := c.sealManager.sealAll(); err != nil {
+					c.logger.Error("raft snapshot restore failed to seal all barriers", "error", err)
 					return err
 				}
 				if err := c.barrier.Unseal(ctx, keys[0]); err != nil {

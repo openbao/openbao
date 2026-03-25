@@ -83,6 +83,20 @@ func (c *Core) SetupSealManager() {
 	c.sealManager.Reset()
 }
 
+// sealAll seals barriers of all namespaces and resets seal manager state.
+func (sm *SealManager) sealAll() error {
+	var errs error
+	sm.barrierByNamespace.Walk(func(path string, b interface{}) bool {
+		if b != nil {
+			errs = errors.Join(errs, b.(barrier.SecurityBarrier).Seal())
+		}
+		return false
+	})
+
+	sm.Reset()
+	return errs
+}
+
 // Reset clears all internal state, leaving only the root namespace's seal.
 func (sm *SealManager) Reset() {
 	sm.barrierByNamespace = radix.NewFromMap(map[string]interface{}{

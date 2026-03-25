@@ -398,12 +398,7 @@ func (c *Core) teardownLoginMFA() error {
 	c.mfaResponseAuthQueueLock.Unlock()
 
 	c.loginMFABackend.usedCodes = nil
-
-	if err := c.loginMFABackend.ResetLoginMFAMemDB(); err != nil {
-		return err
-	}
-
-	return nil
+	return c.loginMFABackend.ResetLoginMFAMemDB()
 }
 
 // LoginMFACreateToken creates a token after the login MFA is validated.

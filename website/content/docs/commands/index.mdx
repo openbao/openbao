@@ -14,6 +14,9 @@ interface (CLI) that wraps common functionality and formats output. The OpenBao
 CLI is a single static binary. It is a thin wrapper around the HTTP API. Every
 CLI command maps directly to the HTTP API internally.
 
+For all variables listed below, the `BAO_` prefix is preferred, but will fall
+back to `VAULT_` if present.
+
 ## CLI command structure
 
 Each command is represented as a command or subcommand, and there are a number
@@ -263,7 +266,8 @@ your session information as a cookie in the browser. Token helpers are
 customizable, and you can even build your own.
 
 The default token helper stores the token in `~/.vault-token`. You can delete
-this file at any time to "logout" of OpenBao.
+this file at any time to "logout" of OpenBao. You can override this location
+by setting the `BAO_TOKEN_PATH` environment variable.
 
 ## Environment variables
 
@@ -273,44 +277,48 @@ precedence over the environment variables. Each of the following environment
 variables must be set on the OpenBao process. All environment  variables
 available to the OpenBao process will be logged during startup.
 
-### `VAULT_TOKEN`
+### `BAO_TOKEN`
 
 OpenBao authentication token. Conceptually similar to a session token on a
-website, the `VAULT_TOKEN` environment variable holds the contents of the token.
+website, the `BAO_TOKEN` environment variable holds the contents of the token.
 For more information, please see the [token
 concepts](../concepts/tokens.mdx) page.
 
-### `VAULT_ADDR`
+### `BAO_TOKEN_PATH`
+
+Use this path instead of ~/.vault-token to store current session token.
+
+### `BAO_ADDR`
 
 Address of the OpenBao server expressed as a URL and port, for example:
 `https://127.0.0.1:8200/`.
 
-### `VAULT_CACERT`
+### `BAO_CACERT`
 
 Path to a PEM-encoded CA certificate _file_ on the local disk. This file is used
 to verify the OpenBao server's SSL certificate. This environment variable takes
-precedence over `VAULT_CAPATH`.
+precedence over `BAO_CAPATH`.
 
-### `VAULT_CAPATH`
+### `BAO_CAPATH`
 
 Path to a _directory_ of PEM-encoded CA certificate files on the local disk.
 These certificates are used to verify the OpenBao server's SSL certificate.
 
-### `VAULT_CLIENT_CERT`
+### `BAO_CLIENT_CERT`
 
 Path to a PEM-encoded client certificate on the local disk. This file is used
 for TLS communication with the OpenBao server.
 
-### `VAULT_CLIENT_KEY`
+### `BAO_CLIENT_KEY`
 
 Path to an unencrypted, PEM-encoded private key on disk which corresponds to the
 matching client certificate.
 
-### `VAULT_CLIENT_TIMEOUT`
+### `BAO_CLIENT_TIMEOUT`
 
 Timeout variable. The default value is 60s.
 
-### `VAULT_CLUSTER_ADDR`
+### `BAO_CLUSTER_ADDR`
 
 Address that should be used for other cluster members to connect to this node
 when in High Availability mode.
@@ -324,7 +332,7 @@ Provide OpenBao output (read/status/write) in the specified format. Valid format
 Set the OpenBao server's log level. The supported values are `trace`, `debug`,
 `info`, `warn`, and `err`. The default log level is `info`.
 
-### `VAULT_MAX_RETRIES`
+### `BAO_MAX_RETRIES`
 
 Maximum number of retries when certain error codes are encountered. The default
 is `2`, for three total attempts. Set this to `0` or less to disable retrying.
@@ -332,18 +340,18 @@ is `2`, for three total attempts. Set this to `0` or less to disable retrying.
 Error codes that are retried are 412 (client consistency requirement not
 satisfied) and all 5xx except for 501 (not implemented).
 
-### `VAULT_REDIRECT_ADDR`
+### `BAO_REDIRECT_ADDR`
 
 Address that should be used when clients are redirected to this node when in
 High Availability mode.
 
-### `VAULT_SKIP_VERIFY`
+### `BAO_SKIP_VERIFY`
 
 Do not verify OpenBao's presented certificate before communicating with it.
 Setting this variable is not recommended and voids OpenBao's [security
 model](../internals/security.mdx).
 
-### `VAULT_TLS_SERVER_NAME`
+### `BAO_TLS_SERVER_NAME`
 
 Name to use as the SNI host when connecting via TLS.
 
@@ -351,7 +359,7 @@ Name to use as the SNI host when connecting via TLS.
 
 If provided, OpenBao output will not include ANSI color escape sequence characters.
 
-### `VAULT_RATE_LIMIT`
+### `BAO_RATE_LIMIT`
 
 This environment variable will limit the rate at which the `bao` command
 sends requests to OpenBao.
@@ -367,27 +375,27 @@ each invocation of the `bao` CLI typically only makes a few requests,
 this environment variable is most useful when using the Go
 [OpenBao client API](/api-docs/libraries#go).
 
-### `VAULT_NAMESPACE`
+### `BAO_NAMESPACE`
 
 The namespace to use for the command. Setting this is not necessary
 but allows using relative paths.
 
-### `VAULT_SRV_LOOKUP`
+### `BAO_SRV_LOOKUP`
 
 Enables the client to lookup the host through DNS SRV look up as described in this
 [draft](https://tools.ietf.org/html/draft-andrews-http-srv-02).
 This is not designed for high-availability, just discovery.
 The draft specifies that the SRV record lookup is ignored if a port is given.
 
-### `VAULT_HTTP_PROXY`
+### `BAO_HTTP_PROXY`
 
 HTTP or HTTPS proxy location which should be used by all requests to access OpenBao.
  When present, this overrides the default proxy resolution behavior.
 Format should be `http://server:port` or `https://server:port`.
 
-(See `VAULT_PROXY_ADDR` below).
+(See `BAO_PROXY_ADDR` below).
 
-### `VAULT_PROXY_ADDR`
+### `BAO_PROXY_ADDR`
 
 HTTP or HTTPS proxy location which should be used by all requests to access OpenBao.
  When present, this overrides the default proxy resolution behavior.
@@ -395,7 +403,7 @@ Format should be `http://server:port` or `https://server:port`.
 
 :::warning
 
-Note: When using `VAULT_HTTP_PROXY` or `VAULT_PROXY_ADDR` any of the standard
+Note: When using `BAO_HTTP_PROXY` or `BAO_PROXY_ADDR` any of the standard
  proxy variables found in the environment will be ignored.
 Specifically `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY`.
 All requests will resolve the specified proxy; there is no way to exclude
@@ -405,12 +413,12 @@ All requests will resolve the specified proxy; there is no way to exclude
 
 :::warning
 
-Note: If both `VAULT_HTTP_PROXY` and `VAULT_PROXY_ADDR` environment
-variables are supplied, `VAULT_PROXY_ADDR` will be prioritized and preferred.
+Note: If both `BAO_HTTP_PROXY` and `BAO_PROXY_ADDR` environment
+variables are supplied, `BAO_PROXY_ADDR` will be prioritized and preferred.
 
 :::
 
-### `VAULT_DISABLE_REDIRECTS`
+### `BAO_DISABLE_REDIRECTS`
 
 Prevents the OpenBao client from following redirects. By default, the OpenBao client will automatically follow a single redirect.
 

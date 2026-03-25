@@ -187,6 +187,7 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	})
 	auth := logical.Auth{
 		DisplayName:  "user@example.com",
+		EntityID:     "user@example.com",
 		GroupAliases: groups,
 	}
 	err = c.addAuthorization(ctx, te.ID, &auth)
@@ -275,6 +276,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	})
 	auth := logical.Auth{
 		DisplayName:  "user@example.com",
+		EntityID:     "user@example.com",
 		GroupAliases: groups,
 	}
 	err = c.addAuthorization(ctx, te.ID, &auth)
@@ -291,7 +293,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	require.True(t, validates)
 
 	// Second auth by different user should authorize
-	auth.DisplayName = "different.user@example.com"
+	auth.EntityID = "different.user@example.com"
 	err = c.addAuthorization(ctx, te.ID, &auth)
 	require.Nil(t, err)
 	// now validates for Read

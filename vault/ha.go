@@ -519,10 +519,10 @@ func (c *Core) runStandbyOnce(doneCh chan<- struct{}, manualStepDownCh chan stru
 		c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceStandby))
 		if err := c.postUnseal(readStandbyCtx, readStandbyCancel, readonlyUnsealStrategy{}); err != nil {
 			c.logger.Error("read-only post-unseal setup failed", "error", err)
-			if err := c.barrier.Seal(); err != nil {
-				c.logger.Error("failed to re-seal barrier after post-unseal setup failed", "error", err)
+			if err := c.sealManager.sealAll(); err != nil {
+				c.logger.Error("failed to re-seal all barriers after post-unseal setup failed", "error", err)
 			}
-			c.logger.Warn("vault is sealed")
+			c.logger.Warn("OpenBao is sealed")
 		}
 
 		// Yield the state lock.
@@ -699,9 +699,10 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 
 		// Perform seal migration
 		if err := c.migrateSeal(c.activeContext); err != nil {
-			c.logger.Error("seal migration error", "error", err)
-			c.barrier.Seal()
-			c.logger.Warn("vault is sealed")
+			c.logger.Error("root seal migration error", "error", err)
+			// nothing we can do about it here
+			_ = c.sealManager.sealAll()
+			c.logger.Warn("OpenBao is sealed")
 			c.heldHALock = nil
 			lock.Unlock()
 			c.stateLock.Unlock()
@@ -847,17 +848,14 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 				}
 			}
 
-			// If we are not meant to keep the HA lock, clear it
-			if !c.keepHALockOnStepDown.Load() {
-				if err := c.clearLeader(uuid); err != nil {
-					c.logger.Error("clearing leader advertisement failed", "error", err)
-				}
-
-				if err := c.heldHALock.Unlock(); err != nil {
-					c.logger.Error("unlocking HA lock failed", "error", err)
-				}
-				c.heldHALock = nil
+			if err := c.clearLeader(uuid); err != nil {
+				c.logger.Error("clearing leader advertisement failed", "error", err)
 			}
+
+			if err := c.heldHALock.Unlock(); err != nil {
+				c.logger.Error("unlocking HA lock failed", "error", err)
+			}
+			c.heldHALock = nil
 
 			// Advertise ourselves as a standby.
 			if c.serviceRegistration != nil {

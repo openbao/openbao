@@ -276,13 +276,12 @@ type Core struct {
 	stateLock locking.RWMutex
 	sealed    atomic.Bool
 
-	standby              atomic.Bool
-	standbyDoneCh        chan struct{}
-	standbyStopCh        atomic.Value
-	standbyRestartCh     atomic.Value
-	manualStepDownCh     chan struct{}
-	keepHALockOnStepDown atomic.Bool
-	heldHALock           physical.Lock
+	standby          atomic.Bool
+	standbyDoneCh    chan struct{}
+	standbyStopCh    atomic.Value
+	standbyRestartCh atomic.Value
+	manualStepDownCh chan struct{}
+	heldHALock       physical.Lock
 
 	// shutdownDoneCh is used to notify when core.Shutdown() completes.
 	// core.Shutdown() is typically issued in a goroutine to allow Vault to
@@ -1856,27 +1855,30 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 
 	// Do post-unseal setup if HA is not enabled
 	if c.ha == nil {
-		// We still need to set up cluster info even if it's not part of a
-		// cluster right now. This also populates the cached cluster object.
-		if err := c.setupCluster(ctx); err != nil {
-			c.logger.Error("cluster setup failed", "error", err)
-			c.barrier.Seal()
-			c.logger.Warn("vault is sealed")
-			return err
+		runPostUnseal := func(context.Context) error {
+			// We still need to set up cluster info even if it's not part of a
+			// cluster right now. This also populates the cached cluster object.
+			if err := c.setupCluster(ctx); err != nil {
+				c.logger.Error("cluster setup failed", "error", err)
+				return err
+			}
+
+			if err := c.migrateSeal(ctx); err != nil {
+				c.logger.Error("seal migration error", "error", err)
+				return err
+			}
+
+			ctx, ctxCancel := context.WithCancel(namespace.RootContext(context.Background()))
+			if err := c.postUnseal(ctx, ctxCancel, standardUnsealStrategy{}); err != nil {
+				c.logger.Error("post-unseal setup failed", "error", err)
+				return err
+			}
+			return nil
 		}
 
-		if err := c.migrateSeal(ctx); err != nil {
-			c.logger.Error("seal migration error", "error", err)
-			c.barrier.Seal()
-			c.logger.Warn("vault is sealed")
-			return err
-		}
-
-		ctx, ctxCancel := context.WithCancel(namespace.RootContext(context.TODO()))
-		if err := c.postUnseal(ctx, ctxCancel, standardUnsealStrategy{}); err != nil {
-			c.logger.Error("post-unseal setup failed", "error", err)
-			c.barrier.Seal()
-			c.logger.Warn("vault is sealed")
+		if err := runPostUnseal(ctx); err != nil {
+			err = errors.Join(err, c.sealManager.sealAll())
+			c.logger.Warn("OpenBao is sealed")
 			return err
 		}
 

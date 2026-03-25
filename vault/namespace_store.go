@@ -924,6 +924,8 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool
 
 // sealNamespaceLocked assumes the read lock is hold, and seals provided namespace,
 // cleaning up namespace resources.
+//
+//nolint:unused // TODO(wslabosz): add usage and tests with namespace seal operation.
 func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSeal *namespace.Namespace) error {
 	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
 
@@ -1086,8 +1088,8 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent,
 		return fmt.Errorf("failed to clean identity store: %w", err)
 	}
 
-	// clear quotas
 	if updateStorage {
+		// clear quotas
 		if err := ns.core.quotaManager.HandleNamespaceDeletion(nsCtx, entry.Path); err != nil {
 			return fmt.Errorf("failed to update quotas after deleting namespace: %w", err)
 		}

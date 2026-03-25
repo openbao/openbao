@@ -497,7 +497,6 @@ func (c *Core) performBarrierRekey(ctx context.Context, newSealKey []byte) logic
 		return logical.CodedError(http.StatusInternalServerError, "failed to store keys: %v", err)
 	}
 
-	// Rotate (rekey) barrier root key
 	if err := c.barrier.RotateRootKey(ctx, newRootKey); err != nil {
 		c.logger.Error("failed to rekey barrier", "error", err)
 		return logical.CodedError(http.StatusInternalServerError, "failed to rekey barrier: %v", err)

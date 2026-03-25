@@ -1,6 +1,6 @@
 ```release-note:bug
-core/seal: Fix barrier root key rotation indicating unseal key rotation while also unnecessary overwriting `core/seal-config` entry when running Auto Seal.
+core/seal: Fix `/sys/rotate/root/update` returning a random, unused key share value when rotating the barrier root key using recovery keys.
 ```
 ```release-note:bug
-command: Fix `bao rotate-keys` command returning unseal keys rotation information when running Auto Seal.
+command: Fix `bao operator rotate-keys` and `bao operator rekey` warning about new key shares when rotating the barrier root key only.
 ```

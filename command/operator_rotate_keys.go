@@ -50,7 +50,7 @@ type OperatorRotateKeysCommand struct {
 }
 
 func (c *OperatorRotateKeysCommand) Synopsis() string {
-	return "Rotates barrier root key, unseal keys or recovery keys depending on the seal setup."
+	return "Rotates barrier root key, unseal keys or recovery keys depending on parameters and the type of seal used."
 }
 
 func (c *OperatorRotateKeysCommand) Help() string {
@@ -699,9 +699,9 @@ func printRotationStatus(ui cli.Ui, in interface{}) int {
 		out = append(out, fmt.Sprintf("Started | %t", status.Started))
 		if status.Started {
 			if status.Progress == status.Required {
-				out = append(out, fmt.Sprintf("Rekey Progress | %d/%d (verification in progress)", status.Progress, status.Required))
+				out = append(out, fmt.Sprintf("Progress | %d/%d (verification in progress)", status.Progress, status.Required))
 			} else {
-				out = append(out, fmt.Sprintf("Rekey Progress | %d/%d", status.Progress, status.Required))
+				out = append(out, fmt.Sprintf("Progress | %d/%d", status.Progress, status.Required))
 			}
 			if status.N > 0 {
 				out = append(out, fmt.Sprintf("New Shares | %d", status.N))

@@ -1,0 +1,3 @@
+```release-note:security
+auth/jwt: prevent XSS via `error_description` parameter in `callback_mode=direct` auth methods. CVE-2026-33758.
+```

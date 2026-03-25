@@ -29,7 +29,7 @@ func TestControlGroup_makeLogicalControlGroup(t *testing.T) {
 	require.IsType(t, logical.ControlGroup{}, *output)
 	require.Equal(t, time.Duration(14440), output.TTL)
 	require.Equal(t, "tester", output.Factors[0].Name)
-	require.Equal(t, []string{"create"}, output.Factors[0].ControlledCapabilities)
+	require.Equal(t, []logical.Operation{logical.CreateOperation}, output.Factors[0].ControlledCapabilities)
 	require.Equal(t, []string{"admin"}, output.Factors[0].Identity.GroupNames)
 
 	output = makeLogicalControlGroup(nil)

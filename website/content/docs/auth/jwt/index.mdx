@@ -69,6 +69,19 @@ Logins via the CLI may
 specify a different host and/or listening port if needed, and a URI with this host/port must match one
 of the configured redirected URIs. These same URIs must be added to the provider as well.
 
+**Direct callback mode - confirmation page**
+
+When using `callbackmode=direct`, OpenBao shows an intermediate confirmation page to the user after the OIDC
+provider redirects back, before the authorization code exchanged. The page shows the requester's IP address
+so the user can verify they initiated the login and are not being phished by a crafted authorization link
+see [RFC 8628 section 5.4](https://www.rfc-editor.org/rfc/rfc8628#section-5.4). This confirmation step is
+enabled by default.
+
+If your OIDC provider always presents its own confirmation prompt to the user, the OpenBao confirmation page
+can be disabled by setting `oidc_disable_confirmation = true` on the role. This option should only be used if
+the OIDC provider always presents its own confirmation prompt.
+
+
 **OpenBao UI**
 
 Logging in via the OpenBao UI requires a redirect URI of the form:

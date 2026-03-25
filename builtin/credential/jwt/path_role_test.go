@@ -798,6 +798,7 @@ func TestPath_Read(t *testing.T) {
 		"token_strictly_bind_ip":         false,
 		"token_policies_template_claims": false,
 		"max_age":                        int64(0),
+		"oidc_disable_confirmation":      false,
 	}
 
 	req := &logical.Request{

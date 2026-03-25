@@ -3,7 +3,11 @@
 
 package jwtauth
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+	"html"
+)
 
 const successHTML = `
 <!DOCTYPE html>
@@ -159,7 +163,7 @@ const successHTML = `
          <span class="icon">
           <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
     <path d="M13.307 1H11.5a.5.5 0 1 1 0-1h3a.499.499 0 0 1 .5.65V3.5a.5.5 0 1 1-1 0V1.72l-1.793 1.774a.5.5 0 0 1-.713-.701L13.307 1zM12 14V8a.5.5 0 1 1 1 0v6.5a.5.5 0 0 1-.5.5H.563a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5H8a.5.5 0 0 1 0 1H1v12h11zM4 6a.5.5 0 0 1 0-1h3a.5.5 0 0 1 0 1H4zm0 2.5a.5.5 0 0 1 0-1h5a.5.5 0 0 1 0 1H4zM4 11a.5.5 0 1 1 0-1h5a.5.5 0 1 1 0 1H4z"/>
-  </svg> 
+  </svg>
           </span>
           Check out the official OpenBao documentation
         </a>
@@ -170,7 +174,7 @@ const successHTML = `
 `
 
 func errorHTML(summary, detail string) string {
-	const html = `
+	const htmlTmpl = `
 <!DOCTYPE html>
 <html lang="en" >
 
@@ -234,7 +238,7 @@ hr {
 }
 .message.is-danger .message-title {
   color: #7f222c;
-  
+
 }
 .message .message-body {
   border: 0;
@@ -327,7 +331,7 @@ h1 + p {
       <div class="message is-danger">
        <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <path d="M19 3c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14zm-2 12.59L13.41 12 17 8.41 15.59 7 12 10.59 8.41 7 7 8.41 10.59 12 7 15.59 8.41 17 12 13.41 15.59 17 17 15.59z"></path>
-</svg> 
+</svg>
         <div class="message-content">
           <div class="message-title">
             %s
@@ -344,7 +348,7 @@ h1 + p {
        <span class="icon">
         <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
   <path d="M13.307 1H11.5a.5.5 0 1 1 0-1h3a.499.499 0 0 1 .5.65V3.5a.5.5 0 1 1-1 0V1.72l-1.793 1.774a.5.5 0 0 1-.713-.701L13.307 1zM12 14V8a.5.5 0 1 1 1 0v6.5a.5.5 0 0 1-.5.5H.563a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5H8a.5.5 0 0 1 0 1H1v12h11zM4 6a.5.5 0 0 1 0-1h3a.5.5 0 0 1 0 1H4zm0 2.5a.5.5 0 0 1 0-1h5a.5.5 0 0 1 0 1H4zM4 11a.5.5 0 1 1 0-1h5a.5.5 0 1 1 0 1H4z"/>
-</svg> 
+</svg>
         </span>
         Check out the official OpenBao documentation
       </a>
@@ -354,11 +358,11 @@ h1 + p {
 
 </html>
 `
-	return fmt.Sprintf(html, summary, detail)
+	return fmt.Sprintf(htmlTmpl, html.EscapeString(summary), html.EscapeString(detail))
 }
 
 func formpostHTML(path, code, state string) string {
-	const html = `
+	const htmlTmpl = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -509,17 +513,25 @@ func formpostHTML(path, code, state string) string {
          <span class="icon">
           <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
     <path d="M13.307 1H11.5a.5.5 0 1 1 0-1h3a.499.499 0 0 1 .5.65V3.5a.5.5 0 1 1-1 0V1.72l-1.793 1.774a.5.5 0 0 1-.713-.701L13.307 1zM12 14V8a.5.5 0 1 1 1 0v6.5a.5.5 0 0 1-.5.5H.563a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5H8a.5.5 0 0 1 0 1H1v12h11zM4 6a.5.5 0 0 1 0-1h3a.5.5 0 0 1 0 1H4zm0 2.5a.5.5 0 0 1 0-1h5a.5.5 0 0 1 0 1H4zM4 11a.5.5 0 1 1 0-1h5a.5.5 0 1 1 0 1H4z"/>
-  </svg> 
+  </svg>
           </span>
           Check out the official OpenBao documentation
         </a>
       </div>
     </div>
 	<script>
-		window.opener.postMessage({ source: 'oidc-callback', path: "%s", code: "%s", state: "%s"}, window.origin);
+		window.opener.postMessage({ source: 'oidc-callback', path: %s, code: %s, state: %s}, window.origin);
 	</script>
   </body>
 </html>
 `
-	return fmt.Sprintf(html, path, code, state)
+	return fmt.Sprintf(htmlTmpl, jsStr(path), jsStr(code), jsStr(state))
+}
+
+// jsStr returns JSON-encoded string literal, safe to embed directly in a <script> block
+// adds surrounding quotes
+func jsStr(s string) string {
+	// json.Marshal on a string returns no errors
+	b, _ := json.Marshal(s)
+	return string(b)
 }

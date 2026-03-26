@@ -15,7 +15,8 @@ jobs:
   gen-matrix:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.mk.outputs.matrix }}
+      build_matrix: ${{ steps.mk.outputs.build_matrix }}
+      test_matrix: ${{ steps.mk.outputs.test_matrix }}
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Generate platform matrix
@@ -26,24 +27,27 @@ jobs:
             SCOPE="mandatory"
           fi
           echo "Generating matrix for scope: $SCOPE"
-          echo "matrix=$(./.github/scripts/generate-platform-matrix.sh $SCOPE | jq -c .)" >> "$GITHUB_OUTPUT"
+          MATRIX="$(./.github/scripts/generate-platform-matrix.sh "$SCOPE")"
+          echo "build_matrix=$(echo "$MATRIX" | jq -c .)" >> "$GITHUB_OUTPUT"
+          echo "test_matrix=$(echo "$MATRIX" | jq -c 'map(select(.testable == true))')" >> "$GITHUB_OUTPUT"
 
   build:
     needs: gen-matrix
     uses: ./.github/workflows/cross-platform-build.yml
     with:
-      matrix: ${{ needs.gen-matrix.outputs.matrix }}
+      matrix: ${{ needs.gen-matrix.outputs.build_matrix }}
 
   tests:
     needs: gen-matrix
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.gen-matrix.outputs.matrix) }}
+        include: ${{ fromJSON(needs.gen-matrix.outputs.test_matrix) }}
     uses: ./.github/workflows/test-go.yml
     with:
-      runs-on: ${{ matrix.os }}
+      runs-on: ${{ matrix.runner }}
       go-arch: ${{ matrix.goarch }}
       total-runners: 4
       binary-tests: true
       name: weekly-${{ matrix.goos }}-${{ matrix.goarch }}
+    secrets: inherit

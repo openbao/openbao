@@ -9,11 +9,14 @@ on:
 
 jobs:
   build:
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(inputs.matrix) }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
@@ -23,6 +26,7 @@ jobs:
         with:
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
+          goarm: ${{ matrix.goarm }}
 
       - name: Build binary (native)
         if: ${{ matrix.buildx != true }}
@@ -47,12 +51,25 @@ jobs:
       - name: Build binary (buildx)
         if: ${{ matrix.buildx == true }}
         id: buildx
+        env:
+          MATRIX_GOARCH: ${{ matrix.goarch }}
+          MATRIX_GOARM: ${{ matrix.goarm }}
+          TARGET_GOOS: ${{ matrix.goos }}
+          TARGET_GOARCH: ${{ matrix.goarch }}
+          TARGET_GOARM: ${{ matrix.goarm }}
         run: |
+          platform="linux/${MATRIX_GOARCH}"
+          if [[ "$MATRIX_GOARCH" == "arm" && -n "$MATRIX_GOARM" ]]; then
+            platform="${platform}/v${MATRIX_GOARM}"
+          fi
+
           docker buildx build \
-            --platform=${{ matrix.goos }}/${{ matrix.goarch }} \
+            --platform="$platform" \
             --file .github/docker/Dockerfile.cross \
-            --build-arg GOOS=${{ matrix.goos }} \
-            --build-arg GOARCH=${{ matrix.goarch }} \
+            --build-arg GO_VERSION="$(cat .go-version)" \
+            --build-arg GOOS="${TARGET_GOOS}" \
+            --build-arg GOARCH="${TARGET_GOARCH}" \
+            --build-arg GOARM="${TARGET_GOARM}" \
             --output=type=local,dest=out \
             --progress=plain \
             .

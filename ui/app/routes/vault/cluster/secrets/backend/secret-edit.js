@@ -263,7 +263,7 @@ export default Route.extend({
         throw err;
       }
     }
-    await capabilities;
+    const resolvedCapabilities = await capabilities;
     if (modelType === 'secret-v2') {
       // after the the base model fetch, kv-v2 has a second associated
       // version model that contains the secret data
@@ -271,7 +271,7 @@ export default Route.extend({
     }
     return {
       secret: secretModel,
-      capabilities,
+      resolvedCapabilities,
     };
   },
 

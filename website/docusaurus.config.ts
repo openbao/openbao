@@ -1,10 +1,23 @@
-import { themes as prismThemes } from "prism-react-renderer";
+import { themes as prismThemes, PrismTheme } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 import { includeMarkdown } from "@hashicorp/remark-plugins";
 import * as path from "path";
 import * as fs from "fs";
 import pluginSidebarJson from "./src/docusaurus-plugin-sidebar-json";
+
+// Extend a Prism theme with additional token styles for shell-session support.
+// The shell-session grammar produces "shell-symbol" (the $ or # prompt) and
+// "output" tokens which are not covered by the default themes.
+function withShellSessionTokens(
+  theme: PrismTheme,
+  extraStyles: PrismTheme["styles"],
+): PrismTheme {
+  return {
+    ...theme,
+    styles: [...theme.styles, ...extraStyles],
+  };
+}
 
 function getDocVersions() {
   if (process.env.VERSIONED_DOCS == "true") {
@@ -269,9 +282,27 @@ const config: Config = {
       ].join(" "),
     },
     prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
-      additionalLanguages: ["hcl"],
+      theme: withShellSessionTokens(prismThemes.github, [
+        {
+          types: ["shell-symbol", "important"],
+          style: { color: "#36acaa" },
+        },
+        {
+          types: ["output"],
+          style: { color: "#6a737d" },
+        },
+      ]),
+      darkTheme: withShellSessionTokens(prismThemes.dracula, [
+        {
+          types: ["shell-symbol", "important"],
+          style: { color: "rgb(80, 250, 123)" },
+        },
+        {
+          types: ["output"],
+          style: { color: "rgb(98, 114, 164)" },
+        },
+      ]),
+      additionalLanguages: ["hcl", "shell-session"],
     },
     metadata: [
       {

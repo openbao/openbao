@@ -121,8 +121,6 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 	return ns, nil
 }
 
-// TODO(wslabosz): with proper introduction of barrier storage we need to
-// change NamespaceScopedView to NamespaceView usage.
 // NamespaceScopedView scopes the passed storage down to the passed namespace.
 func NamespaceScopedView(storage logical.Storage, ns *namespace.Namespace) barrier.View {
 	return barrier.NewView(storage, NamespaceStoragePathPrefix(ns))
@@ -244,8 +242,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	}
 
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
-		rootStoreView := barrier.NewView(s, namespaceStoreSubPath)
-		return ns.loadNamespacesRecursive(ctx, s, rootStoreView, loadingCallback)
+		return ns.loadNamespacesRecursive(ctx, s, s, loadingCallback)
 	}); err != nil {
 		return err
 	}
@@ -269,8 +266,8 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 	ctx context.Context, barrier, view logical.Storage,
 	callback func(*namespace.Namespace) error,
 ) error {
-	return logical.HandleListPage(ctx, view, "", 100, func(page int, index int, entry string) (bool, error) {
-		item, err := view.Get(ctx, entry)
+	return logical.HandleListPage(ctx, view, namespaceStoreSubPath, 100, func(page int, index int, entry string) (bool, error) {
+		item, err := view.Get(ctx, namespaceStoreSubPath+entry)
 		if err != nil {
 			return false, fmt.Errorf("failed to fetch namespace %v (page %v / index %v): %w", entry, page, index, err)
 		}
@@ -290,7 +287,22 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			return false, err
 		}
 
-		childView := NamespaceScopedView(barrier, &namespace).SubView(namespaceStoreSubPath)
+		childView := NamespaceScopedView(barrier, &namespace)
+
+		// Check if this namespace has a seal config, i.e., it is a sealable
+		// namespace. In that case, we can stop recursing this branch as the
+		// namespace isn't unsealed yet, as we would not be able to read any
+		// children.
+		if sealConfigEntry, err := childView.Get(ctx, barrierSealConfigPath); err != nil {
+			return false, fmt.Errorf("failed to read seal config entry for namespace %s: %w", namespace.ID, err)
+		} else if sealConfigEntry != nil {
+			var sealConfig SealConfig
+			if err := sealConfigEntry.DecodeJSON(&sealConfig); err != nil {
+				return false, fmt.Errorf("failed to decode seal config entry for namespace %s: %w", namespace.ID, err)
+			}
+			return true, ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, false)
+		}
+
 		if err := ns.loadNamespacesRecursive(ctx, barrier, childView, callback); err != nil {
 			return false, err
 		}
@@ -464,11 +476,12 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 
 	defer cleanupFailed()
 
+	parentView := ns.core.NamespaceView(parent)
 	if !exists {
 		// This initial write sets up the namespace as tainted, preventing
 		// a lot of subsystems from using it if it is reloaded from storage.
 		entry.Tainted = true
-		if err := ns.writeNamespace(ctx, ns.storage, entry); err != nil {
+		if err := ns.writeNamespace(ctx, parentView, entry); err != nil {
 			return fmt.Errorf("failed to persist initial tainted namespace: %w", err)
 		}
 
@@ -489,8 +502,8 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		unlocked = true
 
 		// Create sys/, token/ mounts and policies for the new namespace.
-		if err := ns.initializeNamespace(ctx, ns.storage, entry); err != nil {
-			return err
+		if err := ns.initializeNamespace(ctx, entry); err != nil {
+			return fmt.Errorf("failed to initialize namespace: %w", err)
 		}
 
 		// Reacquire the lock to undo tainting in storage. We need the lock
@@ -502,7 +515,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 
 	// Finally, write the non-tainted namespace or perform our only write if
 	// we are modifying an existing entry.
-	if err := ns.writeNamespace(ctx, ns.storage, entry); err != nil {
+	if err := ns.writeNamespace(ctx, parentView, entry); err != nil {
 		return fmt.Errorf("failed to persist namespace: %w", err)
 	}
 
@@ -517,20 +530,14 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	return ns.pushToMounts(ctx, entry)
 }
 
-func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage logical.Storage, entry *namespace.Namespace) error {
-	parent, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-
-	view := NamespaceScopedView(storage, parent).SubView(namespaceStoreSubPath)
+func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage barrier.View, entry *namespace.Namespace) error {
 	item, err := logical.StorageEntryJSON(entry.UUID, &entry)
 	if err != nil {
 		return fmt.Errorf("error marshalling storage entry: %w", err)
 	}
 
-	if err := view.Put(ctx, item); err != nil {
-		return err
+	if err := storage.SubView(namespaceStoreSubPath).Put(ctx, item); err != nil {
+		return fmt.Errorf("error writing namespace: %w", err)
 	}
 
 	return nil
@@ -558,7 +565,7 @@ func (ns *NamespaceStore) assignIdentifier(path string) (string, error) {
 }
 
 // initializeNamespace initializes default policies and  sys/ and token/ mounts for a new namespace
-func (ns *NamespaceStore) initializeNamespace(ctx context.Context, storage logical.Storage, entry *namespace.Namespace) error {
+func (ns *NamespaceStore) initializeNamespace(ctx context.Context, entry *namespace.Namespace) error {
 	// ctx may have a namespace of the parent of our newly created namespace,
 	// so create a new context with the newly created child namespace.
 	nsCtx := namespace.ContextWithNamespace(ctx, entry.Clone(false))
@@ -571,11 +578,7 @@ func (ns *NamespaceStore) initializeNamespace(ctx context.Context, storage logic
 		return err
 	}
 
-	if err := ns.createMounts(nsCtx, storage); err != nil {
-		return err
-	}
-
-	return nil
+	return ns.createMounts(nsCtx, ns.core.NamespaceView(entry))
 }
 
 // initializeNamespacePolicies loads the default policies for the namespace store.
@@ -958,8 +961,8 @@ func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSe
 	return errs
 }
 
-// taintNamespace is used to taint the namespace designated to be deleted
-func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *namespace.Namespace) error {
+// taintNamespace is used to taint the namespace designated to be deleted.
+func (ns *NamespaceStore) taintNamespace(ctx context.Context, parent, namespaceToTaint *namespace.Namespace) error {
 	// to be extra safe
 	if namespaceToTaint.ID == namespace.RootNamespaceID {
 		return errors.New("cannot taint root namespace")
@@ -968,13 +971,14 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *
 	ns.namespacesByUUID[namespaceToTaint.UUID].Tainted = true
 	ns.namespacesByAccessor[namespaceToTaint.ID].Tainted = true
 	namespaceToTaint.Tainted = true
+
 	err := ns.namespacesByPath.Insert(namespaceToTaint)
 	if err != nil {
 		return fmt.Errorf("failed to modify namespace tree: %w", err)
 	}
 
 	nsCopy := namespaceToTaint.Clone(true /* preserve unlock */)
-	if err := ns.writeNamespace(ctx, ns.storage, nsCopy); err != nil {
+	if err := ns.writeNamespace(ctx, ns.core.NamespaceView(parent), nsCopy); err != nil {
 		return fmt.Errorf("failed to persist namespace taint: %w", err)
 	}
 
@@ -1019,21 +1023,18 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 		return "", fmt.Errorf("cannot delete namespace (%q) containing child namespaces", namespaceToDelete.Path)
 	}
 
-	if !namespaceToDelete.Tainted {
-		// taint the namespace
-		err := ns.taintNamespace(ctx, namespaceToDelete)
-		if err != nil {
-			return "", fmt.Errorf("error tainting namespace: %w", err)
-		}
-	}
-
 	parent, err := namespace.FromContext(ctx)
 	if err != nil {
 		return "", fmt.Errorf("error loading parent namespace from context: %w", err)
 	}
 
-	ns.creationDeletionMap[namespaceToDelete.UUID] = true
+	if !namespaceToDelete.Tainted {
+		if err = ns.taintNamespace(ctx, parent, namespaceToDelete); err != nil {
+			return "", err
+		}
+	}
 
+	ns.creationDeletionMap[namespaceToDelete.UUID] = true
 	ns.deletionDispatcher.AddJob(ns.newNamespaceDeletionJob(parent, namespaceToDelete), parent.UUID)
 
 	return "in-progress", nil
@@ -1425,6 +1426,8 @@ func (j *namespaceCreationFailureJob) Execute() error {
 			err = fmt.Errorf("failed to remove created namespace storage entry on failure: %w", err)
 			retErr = multierror.Append(retErr, err)
 		}
+
+		j.store.core.sealManager.RemoveNamespace(j.target)
 	}
 
 	return retErr

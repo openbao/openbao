@@ -101,8 +101,7 @@ export default Service.extend(DEFAULTS, {
     } else {
       if (this.featureMachineHistory) {
         if (!this.featureMachineHistory.includes(state)) {
-          const newHistory = this.featureMachineHistory.addObject(state);
-          this.set('featureMachineHistory', newHistory);
+          this.featureMachineHistory.push(state);
         } else {
           //we're repeating steps
           const stepIndex = this.featureMachineHistory.indexOf(state);
@@ -293,7 +292,7 @@ export default Service.extend(DEFAULTS, {
       return;
     }
     this.startFeature();
-    const nextFeature = this.featureList.length > 1 ? capitalize(this.featureList.objectAt(1)) : 'Finish';
+    const nextFeature = this.featureList.length > 1 ? capitalize(this.featureList[1]) : 'Finish';
     this.set('nextFeature', nextFeature);
     let next;
     if (this.currentMachine === 'secrets' && this.featureState === 'display') {
@@ -311,9 +310,9 @@ export default Service.extend(DEFAULTS, {
   },
 
   startFeature() {
-    const FeatureMachineConfig = MACHINES[this.featureList.objectAt(0)];
+    const FeatureMachineConfig = MACHINES[this.featureList[0]];
     FeatureMachine = Machine(FeatureMachineConfig);
-    this.set('currentMachine', this.featureList.objectAt(0));
+    this.set('currentMachine', this.featureList[0]);
     if (this.storageHasKey(FEATURE_STATE)) {
       this.saveState('featureState', this.getExtState(FEATURE_STATE));
     } else {
@@ -324,7 +323,7 @@ export default Service.extend(DEFAULTS, {
 
   getCompletedFeatures() {
     if (this.storageHasKey(COMPLETED_FEATURES)) {
-      return this.getExtState(COMPLETED_FEATURES).toArray();
+      return [...this.getExtState(COMPLETED_FEATURES)];
     }
     return [];
   },
@@ -337,7 +336,7 @@ export default Service.extend(DEFAULTS, {
       completed.push(done);
       this.saveExtState(COMPLETED_FEATURES, completed);
     } else {
-      this.saveExtState(COMPLETED_FEATURES, this.getExtState(COMPLETED_FEATURES).toArray().addObject(done));
+      this.saveExtState(COMPLETED_FEATURES, [...new Set([...this.getExtState(COMPLETED_FEATURES), done])]);
     }
 
     this.saveExtState(FEATURE_LIST, features.length ? features : null);

@@ -4,13 +4,13 @@
  */
 
 import { computed } from '@ember/object';
-
+import { A } from '@ember/array';
 import Service from '@ember/service';
 import { task, waitForEvent } from 'ember-concurrency';
 
 export default Service.extend({
   events: computed(function () {
-    return [];
+    return A([]);
   }),
   connectionViolations: computed('events.@each.violatedDirective', function () {
     return this.events.filter((e) => e.violatedDirective.startsWith('connect-src'));
@@ -29,7 +29,7 @@ export default Service.extend({
 
     while (true) {
       const event = yield waitForEvent(window.document, 'securitypolicyviolation');
-      this.events.addObject(event);
+      this.events.pushObject(event);
     }
   }),
 });

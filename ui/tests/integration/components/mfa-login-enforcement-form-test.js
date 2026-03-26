@@ -130,9 +130,10 @@ module('Integration | Component | mfa-login-enforcement-form', function (hooks) 
     await click('[data-test-mlef-save]');
     assert.true(this.didSave, 'onSave callback triggered');
     assert.strictEqual(this.model.name, 'bar', 'Name property set on model');
-    assert.strictEqual(this.model.mfa_methods.firstObject.id, '123456', 'Mfa method added to model');
+    const methods = await this.model.mfa_methods;
+    assert.strictEqual(methods[0].id, '123456', 'Mfa method added to model');
     assert.strictEqual(
-      this.model.auth_method_accessors.firstObject,
+      this.model.auth_method_accessors[0],
       'auth_userpass_1234',
       'Target saved to correct model property'
     );
@@ -140,9 +141,11 @@ module('Integration | Component | mfa-login-enforcement-form', function (hooks) 
 
   test('it should populate fields with model data', async function (assert) {
     this.model.name = 'foo';
-    const [method] = (await this.store.query('mfa-method', {})).toArray();
-    this.model.mfa_methods.addObject(method);
-    this.model.auth_method_accessors.addObject('auth_userpass_1234');
+    const query = await this.store.query('mfa-method', {});
+    const [method] = [...query];
+    const methods = await this.model.mfa_methods;
+    methods.push(method);
+    this.model.auth_method_accessors.push('auth_userpass_1234');
 
     await render(hbs`
       <Mfa::MfaLoginEnforcementForm
@@ -195,12 +198,16 @@ module('Integration | Component | mfa-login-enforcement-form', function (hooks) 
         keys: ['1234'],
       },
     }));
-    this.model.auth_method_accessors.addObject('auth_userpass_1234');
-    this.model.auth_method_types.addObject('userpass');
-    const [entity] = (await this.store.query('identity/entity', {})).toArray();
-    this.model.identity_entities.addObject(entity);
-    const [group] = (await this.store.query('identity/group', {})).toArray();
-    this.model.identity_groups.addObject(group);
+    this.model.auth_method_accessors.push('auth_userpass_1234');
+    this.model.auth_method_types.push('userpass');
+    const queryEntity = await this.store.query('identity/entity', {});
+    const [entity] = [...queryEntity];
+    const entities = await this.model.identity_entities;
+    entities.push(entity);
+    const queryGroup = await this.store.query('identity/group', {});
+    const [group] = [...queryGroup];
+    const groups = await this.model.identity_groups;
+    groups.push(group);
 
     await render(hbs`
       <Mfa::MfaLoginEnforcementForm

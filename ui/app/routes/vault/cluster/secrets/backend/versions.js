@@ -16,7 +16,7 @@ export default Route.extend({
     const backendModel = this.modelFor('vault.cluster.secrets.backend');
     const { secret } = this.paramsFor(this.routeName);
     const parentKey = utils.parentKeyForKey(secret);
-    if (backendModel.get('isV2KV')) {
+    if (backendModel.isV2KV) {
       return;
     }
     if (parentKey) {

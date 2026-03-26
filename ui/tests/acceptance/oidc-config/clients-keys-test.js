@@ -151,7 +151,7 @@ module('Acceptance | oidc-config clients and keys', function (hooks) {
     assert
       .dom('.ember-power-select-option')
       .hasTextContaining('client-with-test-key', 'dropdown renders correct application');
-    await searchSelect.options.objectAt(0).click();
+    await searchSelect.options[0].click();
     await click(SELECTORS.keySaveButton);
     assert.strictEqual(
       flashMessage.latestMessage,

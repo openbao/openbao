@@ -282,7 +282,7 @@ module('Acceptance |  oidc-config providers and scopes', function (hooks) {
     await click('[data-test-oidc-radio="limited"]');
     await click('[data-test-component="search-select"]#allowedClientIds .ember-basic-dropdown-trigger');
     await fillIn('.ember-power-select-search input', 'test-app');
-    await searchSelect.options.objectAt(0).click();
+    await searchSelect.options[0].click();
     await click(SELECTORS.providerSaveButton);
     assert.strictEqual(
       flashMessage.latestMessage,

@@ -384,7 +384,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     assert.ok(secretLink, 'link to the 3/ branch displays properly');
 
     await listPage.secrets.filterBy('text', '3/')[0].click();
-    await listPage.secrets.objectAt(0).menuToggle();
+    await listPage.secrets[0].menuToggle();
     await settled();
     await listPage.delete();
     await listPage.confirmDelete();
@@ -392,7 +392,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     assert.strictEqual(currentRouteName(), 'vault.cluster.secrets.backend.list');
     assert.strictEqual(currentURL(), `/vault/secrets/${enginePath}/list/1/2/3/`, 'remains on the page');
 
-    await listPage.secrets.objectAt(0).menuToggle();
+    await listPage.secrets[0].menuToggle();
     await listPage.delete();
     await listPage.confirmDelete();
     await settled();
@@ -622,7 +622,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     assert.strictEqual(listPage.secrets.length, 3, 'renders three secrets');
     await listPage.filterInput('filter/foo1');
     assert.strictEqual(listPage.secrets.length, 1, 'renders only one secret');
-    await listPage.secrets.objectAt(0).click();
+    await listPage.secrets[0].click();
     await showPage.breadcrumbs.filterBy('text', 'filter')[0].click();
     assert.strictEqual(listPage.secrets.length, 3, 'renders three secrets');
     assert.strictEqual(listPage.filterInputValue, 'filter/', 'pageFilter has been reset');

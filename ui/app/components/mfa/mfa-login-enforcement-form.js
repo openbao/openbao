@@ -74,7 +74,8 @@ export default class MfaLoginEnforcementForm extends Component {
       const types = ['identity/group', 'identity/entity'];
       for (const type of types) {
         try {
-          options[type] = (await this.store.query(type, {})).toArray();
+          const query = await this.store.query(type, {});
+          options[type] = [...query];
         } catch {
           options[type] = [];
         }
@@ -89,12 +90,13 @@ export default class MfaLoginEnforcementForm extends Component {
     }
   }
   async fetchAuthMethods() {
-    const mounts = (await this.store.findAll('auth-method')).toArray();
-    this.authMethods = mounts.mapBy('type');
+    const query = await this.store.findAll('auth-method');
+    const mounts = [...query];
+    this.authMethods = mounts.map((x) => x.type);
   }
 
   get selectedTarget() {
-    return this.targetTypes.findBy('type', this.selectedTargetType);
+    return this.targetTypes.find((x) => x.type === this.selectedTargetType);
   }
   get errors() {
     return this.args.modelErrors || this.modelErrors;
@@ -140,20 +142,29 @@ export default class MfaLoginEnforcementForm extends Component {
     }
   }
   @action
-  addTarget() {
+  async addTarget() {
     const { label, key } = this.selectedTarget;
     const value = this.selectedTargetValue;
-    this.targets.addObject({ label, value, key });
+    if (!this.targets.includes({ label, value, key })) {
+      this.targets = [...this.targets, { label, value, key }];
+    }
     // add target to appropriate model property
-    this.args.model[key].addObject(value);
+    const collection = await this.args.model[key];
+    if (!collection.includes(value)) {
+      collection.push(value);
+    }
     this.selectedTargetValue = null;
     this.resetTargetState();
   }
   @action
-  removeTarget(target) {
-    this.targets.removeObject(target);
+  async removeTarget(target) {
+    this.targets = this.targets.filter((t) => t !== target);
     // remove target from appropriate model property
-    this.args.model[target.key].removeObject(target.value);
+    const collection = await this.args.model[target.key];
+    const valIdx = collection.indexOf(target.value);
+    if (valIdx !== -1) {
+      collection.splice(valIdx, 1);
+    }
   }
   @action
   cancel() {

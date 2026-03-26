@@ -43,14 +43,14 @@ export default ClusterBaseRoute.extend({
 
   getClusterId(params) {
     const { cluster_name } = params;
-    const cluster = this.modelFor('vault').findBy('name', cluster_name);
-    return cluster ? cluster.get('id') : null;
+    const cluster = this.modelFor('vault').find((x) => x.name === cluster_name);
+    return cluster ? cluster.id : null;
   },
 
   async beforeModel() {
     const params = this.paramsFor(this.routeName);
     let namespace = params.namespaceQueryParam;
-    const currentTokenName = this.auth.get('currentTokenName');
+    const currentTokenName = this.auth.currentTokenName;
     if (!namespace && currentTokenName && !Ember.testing) {
       // if no namespace queryParam and user authenticated,
       // use user's root namespace to redirect to properly param'd url

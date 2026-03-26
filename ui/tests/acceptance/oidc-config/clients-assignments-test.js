@@ -144,11 +144,11 @@ module('Acceptance | oidc-config clients and assignments', function (hooks) {
     await click('[data-test-oidc-radio="limited"]');
     await clickTrigger();
     await fillIn('.ember-power-select-search input', 'assignment-inline');
-    await searchSelect.options.objectAt(0).click();
+    await searchSelect.options[0].click();
     await click('[data-test-search-select="entities"] .ember-basic-dropdown-trigger');
-    await searchSelect.options.objectAt(0).click();
+    await searchSelect.options[0].click();
     await click('[data-test-search-select="groups"] .ember-basic-dropdown-trigger');
-    await searchSelect.options.objectAt(0).click();
+    await searchSelect.options[0].click();
     await click(SELECTORS.assignmentSaveButton);
     assert.strictEqual(
       flashMessage.latestMessage,

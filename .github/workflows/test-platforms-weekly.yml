@@ -28,8 +28,8 @@ jobs:
           fi
           echo "Generating matrix for scope: $SCOPE"
           MATRIX="$(./.github/scripts/generate-platform-matrix.sh "$SCOPE")"
-          echo "build_matrix=$(echo "$MATRIX" | jq -c .)" >> "$GITHUB_OUTPUT"
-          echo "test_matrix=$(echo "$MATRIX" | jq -c 'map(select(.testable == true))')" >> "$GITHUB_OUTPUT"
+          echo "build_matrix=$(echo "$MATRIX" | jq -c '.build')" >> "$GITHUB_OUTPUT"
+          echo "test_matrix=$(echo "$MATRIX" | jq -c '.test')" >> "$GITHUB_OUTPUT"
 
   prepare-ui-assets:
     runs-on: ubuntu-latest

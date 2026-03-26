@@ -1792,6 +1792,7 @@ func (c *ServerCommand) doSelfInit(core *vault.Core, config *server.Config, root
 		profiles.WithRequestSource(),
 		profiles.WithResponseSource(),
 		profiles.WithCELSource(),
+		profiles.WithTemplateSource(),
 
 		// Because we're initializing, we have a default (root) token to use.
 		profiles.WithDefaultToken(rootToken),

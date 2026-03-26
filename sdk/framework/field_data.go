@@ -28,6 +28,24 @@ type FieldData struct {
 	Schema map[string]*FieldSchema
 }
 
+// Clone is used by the profile system to duplicate FieldData: Schema is a
+// map globally initialized once per routable path, while Raw changes
+// per-request and is thus safe to mutuate in certain scenarios. We wish to
+// mutate Schema, to add custom per-profile (per-request) fields that we
+// parse from raw. Notably, we also do not mutate existing schema entries,
+// so this is essentially a shallow clone except of the schema map.
+func (d *FieldData) Clone() *FieldData {
+	clone := &FieldData{}
+	clone.Raw = d.Raw
+	clone.Schema = make(map[string]*FieldSchema, len(d.Schema))
+
+	for key, schema := range d.Schema {
+		clone.Schema[key] = schema
+	}
+
+	return clone
+}
+
 // Validate cycles through raw data and validates conversions in
 // the schema, so we don't get an error/panic later when
 // trying to get data out.  Data not in the schema is not
@@ -76,6 +94,16 @@ func (d *FieldData) ValidateStrict() error {
 		if _, _, err := d.GetOkErr(field); err != nil {
 			return fmt.Errorf("field %q: %w", field, err)
 		}
+	}
+
+	return d.ValidateRequiredFields()
+}
+
+// ValidateRequiredFields cycles through each field in the schema and ensures
+// any required fields are present in the input data.
+func (d *FieldData) ValidateRequiredFields() error {
+	if d.Schema == nil {
+		return nil
 	}
 
 	for field, schema := range d.Schema {

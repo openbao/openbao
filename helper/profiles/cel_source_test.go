@@ -40,7 +40,7 @@ func TestCelSourceBuilder_RequestNotAllowed(t *testing.T) {
 		"response": ResponseSourceBuilder,
 	}}
 
-	field := map[string]interface{}{"expression": "requests.test.first.value"}
+	field := map[string]interface{}{"expression": "requests.test.value"}
 	src := CELSourceBuilder(ctx, engine, field)
 	require.NotNil(t, src)
 
@@ -52,7 +52,7 @@ func TestCelSourceBuilder_ResponseNotAllowed(t *testing.T) {
 	ctx := t.Context()
 	engine := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{}}
 
-	field := map[string]interface{}{"expression": "response.test.first.value"}
+	field := map[string]interface{}{"expression": "response.test.value"}
 	src := CELSourceBuilder(ctx, engine, field)
 	require.NotNil(t, src)
 

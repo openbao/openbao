@@ -3,6 +3,8 @@
 
 package framework
 
+import "fmt"
+
 // FieldType is the enum of types that a field can be.
 type FieldType uint
 
@@ -102,5 +104,46 @@ func (t FieldType) String() string {
 		return "time"
 	default:
 		return "unknown type"
+	}
+}
+
+func ParseFieldType(value string) (FieldType, error) {
+	switch value {
+	case "string":
+		return TypeString, nil
+	case "int":
+		return TypeInt, nil
+	case "int64":
+		return TypeInt64, nil
+	case "bool":
+		return TypeBool, nil
+	case "map":
+		return TypeMap, nil
+	case "duration_second":
+		return TypeDurationSecond, nil
+	case "signed_uration_second":
+		return TypeSignedDurationSecond, nil
+	case "slice":
+		return TypeSlice, nil
+	case "string_slice":
+		return TypeStringSlice, nil
+	case "comma_string_slice":
+		return TypeCommaStringSlice, nil
+	case "lower_case_string":
+		return TypeLowerCaseString, nil
+	case "name_string":
+		return TypeNameString, nil
+	case "kv_pairs":
+		return TypeKVPairs, nil
+	case "comma_int_slice":
+		return TypeCommaIntSlice, nil
+	case "header":
+		return TypeHeader, nil
+	case "float":
+		return TypeFloat, nil
+	case "time":
+		return TypeTime, nil
+	default:
+		return TypeInvalid, fmt.Errorf("unknown field type: %q", value)
 	}
 }

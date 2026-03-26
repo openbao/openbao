@@ -60,7 +60,7 @@ export default Route.extend({
   actions: {
     error(error, transition) {
       /* eslint-disable-next-line ember/no-controller-access-in-routes */
-      const hasModel = this.controllerFor(this.routeName).get('hasModel');
+      const hasModel = this.controllerFor(this.routeName).hasModel;
       if (hasModel && error.httpStatus === 404) {
         this.set('has404', true);
         transition.abort();

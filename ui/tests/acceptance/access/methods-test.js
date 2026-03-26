@@ -47,7 +47,7 @@ module('Acceptance | auth-methods list view', function (hooks) {
     // filter by auth type
 
     await clickTrigger('#filter-by-auth-type');
-    await searchSelect.options.objectAt(1).click();
+    await searchSelect.options[1].click();
 
     const rows = document.querySelectorAll('[data-test-auth-backend-link]');
     const rowsUserpass = Array.from(rows).filter((row) => row.innerText.includes('userpass'));
@@ -56,14 +56,14 @@ module('Acceptance | auth-methods list view', function (hooks) {
 
     // filter by name
     await clickTrigger('#filter-by-auth-name');
-    const firstItemToSelect = searchSelect.options.objectAt(0).text;
-    await searchSelect.options.objectAt(0).click();
+    const firstItemToSelect = searchSelect.options[0].text;
+    await searchSelect.options[0].click();
     const singleRow = document.querySelectorAll('[data-test-auth-backend-link]');
 
     assert.strictEqual(singleRow.length, 1, 'returns only one row');
     assert.dom(singleRow[0]).includesText(firstItemToSelect, 'shows the filtered by auth name');
     // clear filter by engine name
-    await searchSelect.deleteButtons.objectAt(1).click();
+    await searchSelect.deleteButtons[1].click();
     const rowsAgain = document.querySelectorAll('[data-test-auth-backend-link]');
     assert.ok(rowsAgain.length > 1, 'filter has been removed');
 

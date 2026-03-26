@@ -14,7 +14,7 @@ export default Controller.extend({
   showTab: 'details',
   navAfterSave: task(function* ({ saveType, model }) {
     const isDelete = saveType === 'delete';
-    const type = model.get('identityType');
+    const type = model.identityType;
     const listRoutes = {
       'entity-alias': 'vault.cluster.access.identity.aliases.index',
       'group-alias': 'vault.cluster.access.identity.aliases.index',

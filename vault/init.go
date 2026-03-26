@@ -349,8 +349,8 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		// Defers are LIFO so we need to run this here too to ensure the stop
 		// happens before sealing. preSeal also stops, so we just make the
 		// stopping safe against multiple calls.
-		if err := c.barrier.Seal(); err != nil {
-			c.logger.Error("failed to seal barrier", "error", err)
+		if err := c.sealManager.sealAll(); err != nil {
+			c.logger.Error("failed to seal all barriers", "error", err)
 		}
 	}()
 

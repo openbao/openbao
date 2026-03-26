@@ -51,14 +51,14 @@ export default Route.extend({
   async model(params) {
     const role = params.secret;
     const backendModel = this.backendModel();
-    const backendPath = backendModel.get('id');
-    const backendType = backendModel.get('type');
+    const backendPath = backendModel.id;
+    const backendType = backendModel.type;
     const roleType = params.roleType;
     let dbCred;
     if (backendType === 'database') {
       dbCred = await this.getDatabaseCredential(backendPath, role, roleType);
     }
-    if (!SUPPORTED_DYNAMIC_BACKENDS.includes(backendModel.get('type'))) {
+    if (!SUPPORTED_DYNAMIC_BACKENDS.includes(backendModel.type)) {
       return this.transitionTo('vault.cluster.secrets.backend.list-root', backendPath);
     }
     return resolve({

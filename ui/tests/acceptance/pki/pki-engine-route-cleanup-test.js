@@ -23,6 +23,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
   hooks.beforeEach(async function () {
     this.store = this.owner.lookup('service:store');
     await authPage.login();
+    await settled();
     // Setup PKI engine
     const mountPath = `pki-workflow-${uuidv4()}`;
     await enablePage.enable('pki', mountPath);
@@ -45,11 +46,12 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('create config', async function (assert) {
       let configs, urls, config;
       await authPage.login(this.pkiAdminToken);
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.emptyStateLink);
       configs = this.store.peekAll('pki/action');
       urls = this.store.peekRecord('pki/config/urls', this.mountPath);
-      config = configs.objectAt(0);
+      config = configs[0];
       assert.strictEqual(configs.length, 1, 'One config model present');
       assert.false(urls.hasDirtyAttributes, 'URLs is loaded from endpoint');
       assert.true(config.hasDirtyAttributes, 'Config model is dirty');
@@ -64,7 +66,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await click(SELECTORS.emptyStateLink);
       configs = this.store.peekAll('pki/action');
       urls = this.store.peekRecord('pki/config/urls', this.mountPath);
-      config = configs.objectAt(0);
+      config = configs[0];
       assert.strictEqual(configs.length, 1, 'One config model present');
       assert.false(urls.hasDirtyAttributes, 'URLs is loaded from endpoint');
       assert.true(config.hasDirtyAttributes, 'Config model is dirty');
@@ -81,6 +83,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
   module('role routes', function (hooks) {
     hooks.beforeEach(async function () {
       await authPage.login();
+      await settled();
       // Configure PKI
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.emptyStateLink);
@@ -95,6 +98,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('create role exit via cancel', async function (assert) {
       let roles;
       await authPage.login();
+      await settled();
       // Create PKI
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.rolesTab);
@@ -102,7 +106,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       assert.strictEqual(roles.length, 0, 'No roles exist yet');
       await click(SELECTORS.createRoleLink);
       roles = this.store.peekAll('pki/role');
-      const role = roles.objectAt(0);
+      const role = roles[0];
       assert.strictEqual(roles.length, 1, 'New role exists');
       assert.true(role.isNew, 'Role is new model');
       await click(SELECTORS.roleForm.roleCancelButton);
@@ -112,6 +116,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('create role exit via breadcrumb', async function (assert) {
       let roles;
       await authPage.login();
+      await settled();
       // Create PKI
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.rolesTab);
@@ -119,7 +124,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       assert.strictEqual(roles.length, 0, 'No roles exist yet');
       await click(SELECTORS.createRoleLink);
       roles = this.store.peekAll('pki/role');
-      const role = roles.objectAt(0);
+      const role = roles[0];
       assert.strictEqual(roles.length, 1, 'New role exists');
       assert.true(role.isNew, 'Role is new model');
       await click(SELECTORS.overviewBreadcrumb);
@@ -130,6 +135,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       let roles, role;
       const roleId = 'workflow-edit-role';
       await authPage.login();
+      await settled();
       // Create PKI
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.rolesTab);
@@ -140,7 +146,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await click(SELECTORS.roleForm.roleCreateButton);
       assert.dom('[data-test-value-div="Role name"]').hasText(roleId, 'Shows correct role after create');
       roles = this.store.peekAll('pki/role');
-      role = roles.objectAt(0);
+      role = roles[0];
       assert.strictEqual(roles.length, 1, 'Role is created');
       assert.false(role.hasDirtyAttributes, 'Role no longer has dirty attributes');
 
@@ -173,6 +179,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('import issuer exit via cancel', async function (assert) {
       let issuers;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.issuersTab);
       issuers = this.store.peekAll('pki/issuer');
@@ -180,7 +187,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await click(SELECTORS.importIssuerLink);
       issuers = this.store.peekAll('pki/action');
       assert.strictEqual(issuers.length, 1, 'Action model created');
-      const issuer = issuers.objectAt(0);
+      const issuer = issuers[0];
       assert.true(issuer.hasDirtyAttributes, 'Action has dirty attrs');
       assert.true(issuer.isNew, 'Action is new');
       // Exit
@@ -192,6 +199,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('import issuer exit via breadcrumb', async function (assert) {
       let issuers;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.issuersTab);
       issuers = this.store.peekAll('pki/issuer');
@@ -199,7 +207,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await click(SELECTORS.importIssuerLink);
       issuers = this.store.peekAll('pki/action');
       assert.strictEqual(issuers.length, 1, 'Action model created');
-      const issuer = issuers.objectAt(0);
+      const issuer = issuers[0];
       assert.true(issuer.hasDirtyAttributes, 'Action model has dirty attrs');
       assert.true(issuer.isNew, 'Action model is new');
       // Exit
@@ -211,6 +219,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('generate root exit via cancel', async function (assert) {
       let actions;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.issuersTab);
       actions = this.store.peekAll('pki/action');
@@ -219,7 +228,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await click(SELECTORS.generateIssuerRoot);
       actions = this.store.peekAll('pki/action');
       assert.strictEqual(actions.length, 1, 'Action model for generate-root created');
-      const action = actions.objectAt(0);
+      const action = actions[0];
       assert.true(action.hasDirtyAttributes, 'Action has dirty attrs');
       assert.true(action.isNew, 'Action is new');
       assert.strictEqual(action.actionType, 'generate-root', 'Action type is correct');
@@ -232,6 +241,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('generate root exit via breadcrumb', async function (assert) {
       let actions;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.issuersTab);
       actions = this.store.peekAll('pki/action');
@@ -240,7 +250,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await click(SELECTORS.generateIssuerRoot);
       actions = this.store.peekAll('pki/action');
       assert.strictEqual(actions.length, 1, 'Action model for generate-root created');
-      const action = actions.objectAt(0);
+      const action = actions[0];
       assert.true(action.hasDirtyAttributes, 'Action has dirty attrs');
       assert.true(action.isNew, 'Action is new');
       assert.strictEqual(action.actionType, 'generate-root');
@@ -253,6 +263,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('generate intermediate csr exit via cancel', async function (assert) {
       let actions;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.issuersTab);
       actions = this.store.peekAll('pki/action');
@@ -261,7 +272,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await click(SELECTORS.generateIssuerIntermediate);
       actions = this.store.peekAll('pki/action');
       assert.strictEqual(actions.length, 1, 'Action model for generate-csr created');
-      const action = actions.objectAt(0);
+      const action = actions[0];
       assert.true(action.hasDirtyAttributes, 'Action has dirty attrs');
       assert.true(action.isNew, 'Action is new');
       assert.strictEqual(action.actionType, 'generate-csr');
@@ -274,6 +285,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('generate intermediate csr exit via breadcrumb', async function (assert) {
       let actions;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.issuersTab);
       actions = this.store.peekAll('pki/action');
@@ -282,7 +294,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await click(SELECTORS.generateIssuerIntermediate);
       actions = this.store.peekAll('pki/action');
       assert.strictEqual(actions.length, 1, 'Action model for generate-csr created');
-      const action = actions.objectAt(0);
+      const action = actions[0];
       assert.true(action.hasDirtyAttributes, 'Action has dirty attrs');
       assert.true(action.isNew, 'Action is new');
       assert.strictEqual(action.actionType, 'generate-csr');
@@ -295,6 +307,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('edit issuer exit', async function (assert) {
       let issuers, issuer;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.emptyStateLink);
       await click(SELECTORS.configuration.optionByKey('generate-root'));
@@ -305,7 +318,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await visit(`/vault/secrets/${this.mountPath}/pki/issuers`);
 
       issuers = this.store.peekAll('pki/issuer');
-      const issuerId = issuers.objectAt(0).id;
+      const issuerId = issuers[0].id;
       assert.strictEqual(issuers.length, 1, 'Issuer exists on model in list');
       await visit(`/vault/secrets/${this.mountPath}/pki/issuers/${issuerId}/details`);
       await click(SELECTORS.issuerDetails.configure);
@@ -324,6 +337,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
   module('key routes', function (hooks) {
     hooks.beforeEach(async function () {
       await authPage.login();
+      await settled();
       // Configure PKI -- key creation not allowed unless configured
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.emptyStateLink);
@@ -337,29 +351,30 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('create key exit', async function (assert) {
       let keys, key;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.keysTab);
       keys = this.store.peekAll('pki/key');
-      const configKeyId = keys.objectAt(0).id;
+      const configKeyId = keys[0].id;
       assert.strictEqual(keys.length, 1, 'One key exists from config');
       // Create key
       await click(SELECTORS.keyPages.generateKey);
       keys = this.store.peekAll('pki/key');
-      key = keys.objectAt(1);
+      key = keys[1];
       assert.strictEqual(keys.length, 2, 'New key exists');
       assert.true(key.isNew, 'Role is new model');
       // Exit
       await click(SELECTORS.keyForm.keyCancelButton);
       keys = this.store.peekAll('pki/key');
       assert.strictEqual(keys.length, 1, 'Second key is removed from store');
-      assert.strictEqual(keys.objectAt(0).id, configKeyId);
+      assert.strictEqual(keys[0].id, configKeyId);
       assert.strictEqual(currentURL(), `/vault/secrets/${this.mountPath}/pki/keys`, 'url is correct');
 
       // Create again
       await click(SELECTORS.keyPages.generateKey);
       assert.strictEqual(keys.length, 2, 'New key exists');
       keys = this.store.peekAll('pki/key');
-      key = keys.objectAt(1);
+      key = keys[1];
       assert.true(key.isNew, 'Key is new model');
       // Exit
       await click(SELECTORS.overviewBreadcrumb);
@@ -370,6 +385,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('edit key exit', async function (assert) {
       let keys, key;
       await authPage.login();
+      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.keysTab);
       keys = this.store.peekAll('pki/key');
@@ -380,7 +396,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await click(SELECTORS.keyPages.keyEditLink);
       await fillIn(SELECTORS.keyForm.keyNameInput, 'foobar');
       keys = this.store.peekAll('pki/key');
-      key = keys.objectAt(0);
+      key = keys[0];
       assert.true(key.hasDirtyAttributes, 'Key model is dirty');
       // Exit
       await click(SELECTORS.keyForm.keyCancelButton);
@@ -397,7 +413,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await click(SELECTORS.keyPages.keyEditLink);
       await fillIn(SELECTORS.keyForm.keyNameInput, 'foobar');
       keys = this.store.peekAll('pki/key');
-      key = keys.objectAt(0);
+      key = keys[0];
       assert.true(key.hasDirtyAttributes, 'Key model is dirty');
 
       // Exit via breadcrumb

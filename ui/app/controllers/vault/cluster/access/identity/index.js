@@ -25,7 +25,7 @@ export default Controller.extend({
 
   filterMatchesKey: computed('filter', 'model', 'model.[]', function () {
     const { filter, model: content } = this;
-    return !!(content.length && content.findBy('id', filter));
+    return !!(content.length && content.find((x) => x.id === filter));
   }),
 
   firstPartialMatch: computed('filter', 'model', 'model.[]', 'filterMatchesKey', function () {
@@ -62,7 +62,7 @@ export default Controller.extend({
     },
 
     delete(model) {
-      const type = model.get('identityType');
+      const type = model.identityType;
       const id = model.id;
       return model
         .destroyRecord()
@@ -78,8 +78,8 @@ export default Controller.extend({
     },
 
     toggleDisabled(model) {
-      const action = model.get('disabled') ? ['enabled', 'enabling'] : ['disabled', 'disabling'];
-      const type = model.get('identityType');
+      const action = model.disabled ? ['enabled', 'enabling'] : ['disabled', 'disabling'];
+      const type = model.identityType;
       const id = model.id;
       model.toggleProperty('disabled');
 

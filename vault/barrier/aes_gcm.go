@@ -543,7 +543,7 @@ func (b *AESGCMBarrier) Seal() error {
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	// Remove the primary key, and seal the vault
+	// Clear cache, remove primary key, and set sealed to true.
 	b.cache = make(map[uint32]cipher.AEAD)
 	b.keyring.Zeroize(true)
 	b.keyring = nil

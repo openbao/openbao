@@ -1,0 +1,3 @@
+```release-note:bug
+website: Enable shell-session syntax highlighting in code blocks
+```

@@ -7,6 +7,7 @@ FROM golang:${GO_VERSION} AS builder
 ARG GOOS
 ARG GOARCH
 ARG GOARM
+ARG BUILD_TAGS=openbao
 # Disable CGO for static binary unless explicitly enabled elsewhere
 ENV CGO_ENABLED=0
 
@@ -16,7 +17,7 @@ COPY . .
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
     GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM} \
-    go build -trimpath -o /out/bao .
+    go build -trimpath -tags "${BUILD_TAGS}" -o /out/bao .
 
 # Export binary only; rely on `--output=type=local` to fetch it
 FROM scratch AS export

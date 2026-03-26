@@ -6,6 +6,11 @@ on:
         description: "JSON string for the platform matrix (from generate-platform-matrix.sh)"
         required: true
         type: string
+      ui-artifact-name:
+        description: "Artifact name containing prepared http/web_ui assets"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   build:
@@ -20,6 +25,19 @@ jobs:
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
+      - name: Require UI artifact for UI-tagged builds
+        if: ${{ contains(matrix.build_tags, 'ui') && inputs.ui-artifact-name == '' }}
+        run: |
+          echo "ui-artifact-name is required when matrix.build_tags contains ui" >&2
+          exit 1
+
+      - name: Download UI assets
+        if: ${{ contains(matrix.build_tags, 'ui') && inputs.ui-artifact-name != '' }}
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ inputs.ui-artifact-name }}
+          path: .
+
       - name: Set up cross compile
         if: ${{ matrix.buildx != true }}
         uses: ./.github/actions/set-up-cross-compile
@@ -31,6 +49,8 @@ jobs:
       - name: Build binary (native)
         if: ${{ matrix.buildx != true }}
         id: native
+        env:
+          BUILD_TAGS: ${{ matrix.build_tags }}
         run: ./.github/scripts/cross-compile-binary.sh
 
       - name: Upload artifact (native)
@@ -57,6 +77,7 @@ jobs:
           TARGET_GOOS: ${{ matrix.goos }}
           TARGET_GOARCH: ${{ matrix.goarch }}
           TARGET_GOARM: ${{ matrix.goarm }}
+          BUILD_TAGS: ${{ matrix.build_tags }}
         run: |
           platform="linux/${MATRIX_GOARCH}"
           if [[ "$MATRIX_GOARCH" == "arm" && -n "$MATRIX_GOARM" ]]; then
@@ -70,6 +91,7 @@ jobs:
             --build-arg GOOS="${TARGET_GOOS}" \
             --build-arg GOARCH="${TARGET_GOARCH}" \
             --build-arg GOARM="${TARGET_GOARM}" \
+            --build-arg BUILD_TAGS="${BUILD_TAGS}" \
             --output=type=local,dest=out \
             --progress=plain \
             .

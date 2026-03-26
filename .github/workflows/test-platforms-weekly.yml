@@ -31,11 +31,35 @@ jobs:
           echo "build_matrix=$(echo "$MATRIX" | jq -c .)" >> "$GITHUB_OUTPUT"
           echo "test_matrix=$(echo "$MATRIX" | jq -c 'map(select(.testable == true))')" >> "$GITHUB_OUTPUT"
 
+  prepare-ui-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: "./ui/package.json"
+      - name: Install yarn
+        run: npm install -g yarn
+      - name: Install UI dependencies
+        working-directory: ./ui
+        run: |
+          yarn install --frozen-lockfile
+          npm rebuild node-sass
+      - name: Build UI assets
+        run: make static-dist
+      - name: Upload UI assets
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: platform-ui-assets
+          path: http/web_ui
+          retention-days: 1
+
   build:
-    needs: gen-matrix
+    needs: [gen-matrix, prepare-ui-assets]
     uses: ./.github/workflows/cross-platform-build.yml
     with:
       matrix: ${{ needs.gen-matrix.outputs.build_matrix }}
+      ui-artifact-name: platform-ui-assets
 
   tests:
     needs: gen-matrix
@@ -48,6 +72,6 @@ jobs:
       runs-on: ${{ matrix.runner }}
       go-arch: ${{ matrix.goarch }}
       total-runners: 4
-      binary-tests: true
+      binary-tests: ${{ matrix.binary_tests }}
       name: weekly-${{ matrix.goos }}-${{ matrix.goarch }}
     secrets: inherit

@@ -55,6 +55,19 @@ def mandatory_target:
 def testable_target:
   mandatory_target;
 
+def build_tags_for($build):
+  if (($build.tags // []) | length) > 0 then
+    ($build.tags | join(","))
+  else
+    "openbao"
+  end;
+
+def binary_tests_target:
+  testable_target and (
+    (.goos == "linux" and (.goarch == "amd64" or .goarch == "arm64")) or
+    (.goos == "windows" and .goarch == "amd64")
+  );
+
 def buildx_target:
   .goos == "linux" and (
     .goarch == "ppc64le" or
@@ -71,7 +84,8 @@ map(
       | (
           {
             goos: $goos,
-            goarch: $goarch
+            goarch: $goarch,
+            build_tags: build_tags_for($build)
           }
           + if $goarm != null then {goarm: ($goarm | tostring)} else {} end
         )
@@ -86,7 +100,8 @@ map(
       runner: runner_for,
       buildx: buildx_target,
       testable: testable_target,
-      mandatory: mandatory_target
+      mandatory: mandatory_target,
+      binary_tests: binary_tests_target
     }
   )
 | if $scope == "mandatory" then

@@ -156,13 +156,13 @@ func (c *Core) addAuthorization(ctx context.Context, token string, approver *log
 		for _, group := range approver.GroupAliases {
 			if slices.Contains(identityGroups, group.Name) {
 				// make sure token doesn't have same identity as approver
-				if tokenEntry.EntityID == approver.EntityID {
+				if tokenEntry.DisplayName == approver.DisplayName {
 					return fmt.Errorf("token owner cannot be approver")
 				}
 
 				// make sure approver hasn't already approved
 				for _, auth := range factor.Authorizations {
-					if auth.Approver == approver.EntityID {
+					if auth.Approver == approver.DisplayName {
 						return fmt.Errorf("approver has already authorized")
 					}
 				}
@@ -170,7 +170,7 @@ func (c *Core) addAuthorization(ctx context.Context, token string, approver *log
 				addingAuthorization = true
 				cg.Factors[i].Authorizations = append(factor.Authorizations, logical.ControlGroupAuthorization{
 					Timestamp: time.Now(),
-					Approver:  approver.EntityID,
+					Approver:  approver.DisplayName,
 				})
 			}
 		}

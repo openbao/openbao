@@ -8,7 +8,7 @@ import (
 )
 
 // EnvSourceBuilder allows reading environment variables from the system.
-func EnvSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
+func EnvSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
 	return &EnvSource{
 		field: field,
 	}
@@ -29,7 +29,7 @@ type EnvSource struct {
 
 var _ Source = &EnvSource{}
 
-func (s *EnvSource) Validate(_ context.Context) ([]string, []string, error) {
+func (s *EnvSource) Validate() ([]string, []string, error) {
 	rawName, present := s.field["env_var"]
 	if !present {
 		return nil, nil, errors.New("env source is missing required field 'env_var'")

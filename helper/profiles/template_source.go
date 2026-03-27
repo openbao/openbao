@@ -24,7 +24,7 @@ import (
 //   - input
 //
 // but additional context may be added manually.
-func TemplateSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
+func TemplateSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
 	return &TemplateSource{
 		engine: engine,
 		field:  field,
@@ -50,7 +50,7 @@ type TemplateSource struct {
 
 var _ Source = &TemplateSource{}
 
-func (s *TemplateSource) Validate(_ context.Context) ([]string, []string, error) {
+func (s *TemplateSource) Validate() ([]string, []string, error) {
 	rawTemplate, present := s.field["template"]
 	if !present {
 		return nil, nil, errors.New("template source is missing required field 'template'")

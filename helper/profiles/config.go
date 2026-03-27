@@ -33,6 +33,7 @@ type RequestConfig struct {
 	Data      interface{} `hcl:"data"`
 	Headers   interface{} `hcl:"headers"`
 
+	When         interface{} `hcl:"when"`
 	AllowFailure interface{} `hcl:"allow_failure"`
 }
 

@@ -407,6 +407,11 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 		return req, allowFailure, err
 	}
 
+	if err = p.evaluateField(ctx, history, requestBlock.Headers, &req.Headers); err != nil {
+		err = fmt.Errorf("failed to evaluate data: %w", err)
+		return req, allowFailure, err
+	}
+
 	if err = p.evaluateField(ctx, history, requestBlock.AllowFailure, &allowFailure); err != nil {
 		err = fmt.Errorf("failed to evaluate allow failure: %w", err)
 		return req, allowFailure, err

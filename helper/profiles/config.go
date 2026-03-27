@@ -31,6 +31,7 @@ type RequestConfig struct {
 	Path      interface{} `hcl:"path"`
 	Token     interface{} `hcl:"token"`
 	Data      interface{} `hcl:"data"`
+	Headers   interface{} `hcl:"headers"`
 
 	AllowFailure interface{} `hcl:"allow_failure"`
 }

@@ -246,7 +246,7 @@ initialize "provision" {
 
 - `template` `(string: <required>)` - the [`template`](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2/helper/template#StringTemplate)
   expression to evaluate; errs if not present.
-- `data` `([]map[string]interface{}: <optional>)`: additional context for the
+- `data` `(map[string]interface{}: <optional>)`: additional context for the
   templating engine.
 
 Additionally, the following reserved values are injected into the CEL context

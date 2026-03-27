@@ -129,7 +129,7 @@ export default Route.extend({
     }
   },
 
-  async fetchV2Models(capabilities, secretModel, params) {
+  async fetchV2Models(secretModel, params) {
     const backend = this.enginePathParam();
     const backendModel = this.modelFor('vault.cluster.secrets.backend', backend);
     const targetVersion = this.getTargetVersion(secretModel.currentVersion, params.version);
@@ -146,14 +146,11 @@ export default Route.extend({
     // manually set the related model
     secretModel.set('engine', backendModel);
 
-    secretModel.set(
-      'selectedVersion',
-      await this.fetchV2VersionModel(capabilities, secretModel, version, targetVersion)
-    );
+    secretModel.set('selectedVersion', await this.fetchV2VersionModel(secretModel, version, targetVersion));
     return secretModel;
   },
 
-  async fetchV2VersionModel(capabilities, secretModel, version, targetVersion) {
+  async fetchV2VersionModel(secretModel, version, targetVersion) {
     const secret = this.secretParam();
     const backend = this.enginePathParam();
 
@@ -267,7 +264,7 @@ export default Route.extend({
     if (modelType === 'secret-v2') {
       // after the the base model fetch, kv-v2 has a second associated
       // version model that contains the secret data
-      secretModel = await this.fetchV2Models(capabilities, secretModel, params);
+      secretModel = await this.fetchV2Models(secretModel, params);
     }
     return {
       secret: secretModel,

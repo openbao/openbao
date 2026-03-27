@@ -57,6 +57,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	sr "github.com/openbao/openbao/serviceregistration"
 	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/barrier"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
 	"github.com/posener/complete"
@@ -1749,16 +1750,15 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		// We refuse to rerun self-initialization.
 		// HOWEVER, we must verify that the previous initialization actually finished.
 		// If barrier exists but self-init marker is missing, we are in a broken state.
-		//
-		// IsSelfInitComplete would fail at reading as barrier is sealed, skip the consistency check; we are a
-		// standby coming up after another node ran initialization.
-
-		if core.Sealed() {
-			return nil
-		}
-
 		complete, err := core.IsSelfInitComplete(ctx)
 		if err != nil {
+			if errors.Is(err, barrier.ErrBarrierSealed) {
+				// Barrier not yet unsealed, we can skip the check.
+				// There are two cases in which the barrier is unsealed at this point:
+				// follower node in HA cluster, or primary node with unseal still in progress.
+				// In both cases skipping is correct: the node did not run self-init and the unseal flow will handle it.
+				return nil
+			}
 			return fmt.Errorf("failed to verify self-init consistency: %w", err)
 		}
 		if !complete {
@@ -1779,7 +1779,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		if errors.Is(err, vault.ErrParallelInit) || errors.Is(err, vault.ErrAlreadyInit) {
 			return nil
 		}
-		core.Logger().Error("failed to initialize: unexpected error occurred")
+		core.Logger().Error("failed to initialize: unexpected error occurred", "error", err)
 		return fmt.Errorf("self-initialization failed: %w", err)
 	}
 	// Write "started" marker to storage (self-init started).

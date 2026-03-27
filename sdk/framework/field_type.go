@@ -121,7 +121,7 @@ func ParseFieldType(value string) (FieldType, error) {
 		return TypeMap, nil
 	case "duration_second":
 		return TypeDurationSecond, nil
-	case "signed_uration_second":
+	case "signed_duration_second":
 		return TypeSignedDurationSecond, nil
 	case "slice":
 		return TypeSlice, nil

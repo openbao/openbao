@@ -139,6 +139,7 @@ initialize "ca-setup" {
   }
 }
 ```
+
 #### `request` source
 
 - `initialize_name` `(string: <required>)` - name of the initialize block to
@@ -201,3 +202,39 @@ initialize "example" {
     data = {}
   }
 }
+```
+
+#### `cel` source
+
+- `expression` `(string: <required>)` - the CEL expression to evaluate;
+  errs if not present.
+- `variables` `([]map["name": string, "expression": string]: <optional>)`: a
+  list of variables to evaluate and inject into the program's context; each
+  entry in the list is a map containing two keys:
+  - `name` `(string)`, the name of the variable,
+  - `expression` `(string)`, the CEL expression to evaluate for this
+    variable's value.
+
+Additionally, the following reserved values are injected into the CEL context
+when allowed as sources:
+
+ - `requests`, if the `request` source is allowed
+ - `responses`, if the `response` source is allowed
+
+For example, to sum the value of two responses:
+
+```hcl
+initialize "provision" {
+  request "sum" {
+    operation = "update"
+    path = "secret/data/my-secret"
+    data = {
+      "pem_bundle" = {
+        eval_type = "int"
+        eval_source = "cel"
+        expression = "requests.first.read.my_field + requests.second.read.my_other_field"
+      }
+    }
+  }
+}
+```

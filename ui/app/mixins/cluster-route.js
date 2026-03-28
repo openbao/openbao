@@ -61,7 +61,6 @@ export default Mixin.create({
   },
 
   hasKeyData() {
-    /* eslint-disable-next-line ember/no-controller-access-in-routes */
     return !!this.controllerFor(INIT).keyData;
   },
 

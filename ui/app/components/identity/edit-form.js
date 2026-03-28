@@ -7,6 +7,7 @@ import { inject as service } from '@ember/service';
 import Component from '@ember/component';
 import { computed } from '@ember/object';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 import { humanize } from 'vault/helpers/humanize';
 import { waitFor } from '@ember/test-waiters';
 
@@ -62,7 +63,7 @@ export default Component.extend({
       const message = this.getMessage(model);
 
       try {
-        yield model.save();
+        yield resolve(model.save());
       } catch {
         // err will display via model state
         return;

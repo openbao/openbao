@@ -7,6 +7,7 @@ import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 import trimRight from 'vault/utils/trim-right';
 import { tracked } from '@glimmer/tracking';
 
@@ -37,7 +38,7 @@ export default class PolicyFormComponent extends Component {
     event.preventDefault();
     try {
       const { name, policyType, isNew } = this.args.model;
-      yield this.args.model.save();
+      yield resolve(this.args.model.save());
       this.flashMessages.success(
         `${policyType.toUpperCase()} policy "${name}" was successfully ${isNew ? 'created' : 'updated'}.`
       );

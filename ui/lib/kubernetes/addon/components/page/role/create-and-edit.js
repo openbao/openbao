@@ -8,6 +8,7 @@ import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 import { waitFor } from '@ember/test-waiters';
 import { getRules } from '../../../utils/generated-role-rules';
 import errorMessage from 'vault/utils/error-message';
@@ -138,7 +139,7 @@ export default class CreateAndEditRolePageComponent extends Component {
       if (selectedTemplate) {
         this.args.model.generatedRoleRules = selectedTemplate.rules;
       }
-      yield this.args.model.save();
+      yield resolve(this.args.model.save());
       this.router.transitionTo(
         'vault.cluster.secrets.backend.kubernetes.roles.role.details',
         this.args.model.name

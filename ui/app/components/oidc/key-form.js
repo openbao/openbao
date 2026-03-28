@@ -8,6 +8,7 @@ import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 
 /**
  * @module OidcKeyForm
@@ -78,7 +79,7 @@ export default class OidcKeyForm extends Component {
         // value returned from API is a number, and string when from form action
         if (Number(rotationPeriod) === 0) this.args.model.rotationPeriod = '24h';
         if (Number(verificationTtl) === 0) this.args.model.verificationTtl = '24h';
-        yield this.args.model.save();
+        yield resolve(this.args.model.save());
         this.flashMessages.success(
           `Successfully ${isNew ? 'created' : 'updated'} the key
           ${name}.`

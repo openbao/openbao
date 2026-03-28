@@ -8,6 +8,7 @@ import { alias, or } from '@ember/object/computed';
 import Component from '@ember/component';
 import { computed } from '@ember/object';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 
 export default Component.extend({
   tagName: '',
@@ -87,7 +88,7 @@ export default Component.extend({
 
   authorize: task(function* () {
     try {
-      yield this.model.save();
+      yield resolve(this.model.save());
       yield this.refresh.perform();
     } catch (e) {
       this.set('errors', e);

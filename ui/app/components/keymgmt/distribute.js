@@ -9,6 +9,7 @@ import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { KEY_TYPES } from '../../models/keymgmt/key';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 import { waitFor } from '@ember/test-waiters';
 
 /**
@@ -253,7 +254,7 @@ export default class KeymgmtDistribute extends Component {
     }
     if (this.isNewKey) {
       try {
-        yield this.keyModel.save();
+        yield resolve(this.keyModel.save());
         this.flashMessages.success(`Successfully created key ${this.keyModel.name}`);
       } catch (e) {
         this.flashMessages.danger(`Error creating new key ${this.keyModel.name}: ${e.errors}`);

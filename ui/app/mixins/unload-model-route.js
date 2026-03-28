@@ -12,7 +12,7 @@ export default Mixin.create({
   modelPath: 'model',
   unloadModel() {
     const { modelPath } = this;
-    /* eslint-disable-next-line ember/no-controller-access-in-routes */
+
     const model = this.controller.get(modelPath);
     // error is thrown when you attempt to unload a record that is inFlight (isSaving)
     if (!model || !model.unloadRecord || model.isSaving) {

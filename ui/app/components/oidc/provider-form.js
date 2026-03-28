@@ -8,6 +8,7 @@ import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 import parseURL from 'core/utils/parse-url';
 /**
  * @module OidcProviderForm
@@ -81,9 +82,9 @@ export default class OidcProviderForm extends Component {
         if (this.radioCardGroupValue === 'allow_all') {
           this.args.model.allowedClientIds = ['*'];
         }
-        yield this.args.model.save();
+        yield resolve(this.args.model.save());
         this.flashMessages.success(
-          `Successfully ${isNew ? 'created' : 'updated'} the OIDC provider 
+          `Successfully ${isNew ? 'created' : 'updated'} the OIDC provider
           ${name}.`
         );
         this.args.onSave();

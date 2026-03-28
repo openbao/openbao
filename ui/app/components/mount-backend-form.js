@@ -8,6 +8,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 import { waitFor } from '@ember/test-waiters';
 import { supportedSecretBackends } from 'vault/helpers/supported-secret-backends';
 import { methods } from 'vault/helpers/mountable-auth-methods';
@@ -129,7 +130,7 @@ export default class MountBackendForm extends Component {
       changedAttrKeys.includes('maxVersions');
 
     try {
-      yield mountModel.save();
+      yield resolve(mountModel.save());
     } catch (err) {
       if (err.httpStatus === 403) {
         this.flashMessages.danger(

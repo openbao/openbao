@@ -8,6 +8,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 import handleHasManySelection from 'core/utils/search-select-has-many';
 
 /**
@@ -111,7 +112,7 @@ export default class MfaLoginEnforcementForm extends Component {
       this.modelErrors = state;
     } else {
       try {
-        yield this.args.model.save();
+        yield resolve(this.args.model.save());
         this.args.onSave();
       } catch (error) {
         const message = error.errors ? error.errors.join('. ') : error.message;

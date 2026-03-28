@@ -268,7 +268,7 @@ export default Route.extend({
     }
     return {
       secret: secretModel,
-      resolvedCapabilities,
+      capabilities: resolvedCapabilities,
     };
   },
 

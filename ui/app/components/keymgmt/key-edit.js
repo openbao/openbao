@@ -8,6 +8,7 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 import { waitFor } from '@ember/test-waiters';
 
 /**
@@ -58,7 +59,7 @@ export default class KeymgmtKeyEdit extends Component {
     evt.preventDefault();
     const { model } = this.args;
     try {
-      yield model.save();
+      yield resolve(model.save());
       this.router.transitionTo(SHOW_ROUTE, model.name);
     } catch (error) {
       let errorMessage = error;

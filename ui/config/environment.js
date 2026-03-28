@@ -14,6 +14,13 @@ module.exports = function (environment) {
     serviceWorkerScope: '/v1/sys/storage/raft/snapshot',
     locationType: 'history',
     EmberENV: {
+      LOG_DEPRECATIONS: true,
+
+      RAISE_ON_DEPRECATIONj: false,
+      LOG_STACKTRACE_ON_DEPRECATION: true,
+      _DEBUG_DEPRECATIONS: true, // Show all deprecations
+      _DEBUG_DEPRECATIONS_FOR: ['*'], // Show deprecations for all features
+
       FEATURES: {
         // Here you can enable experimental features on an ember canary build
         // e.g. 'with-controller': true

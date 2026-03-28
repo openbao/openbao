@@ -7,6 +7,7 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 import { inject as service } from '@ember/service';
 
 /**
@@ -48,7 +49,7 @@ export default class OidcScopeFormComponent extends Component {
       this.invalidFormAlert = invalidFormMessage;
       if (isValid) {
         const { isNew, name } = this.args.model;
-        yield this.args.model.save();
+        yield resolve(this.args.model.save());
         this.flashMessages.success(`Successfully ${isNew ? 'created' : 'updated'} the scope ${name}.`);
         this.args.onSave();
       }

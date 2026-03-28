@@ -8,6 +8,7 @@ import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 import { waitFor } from '@ember/test-waiters';
 import errorMessage from 'vault/utils/error-message';
 
@@ -79,7 +80,7 @@ export default class ConfigurePageComponent extends Component {
     }
 
     try {
-      yield this.args.model.save();
+      yield resolve(this.args.model.save());
       this.leave('configuration');
     } catch (error) {
       this.error = errorMessage(error, 'Error saving configuration. Please try again or contact support');

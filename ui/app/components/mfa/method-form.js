@@ -8,6 +8,7 @@ import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 
 /**
  * MfaMethodForm component
@@ -31,7 +32,7 @@ export default class MfaMethodForm extends Component {
   @task
   *save() {
     try {
-      yield this.args.model.save();
+      yield resolve(this.args.model.save());
       this.args.onSave();
     } catch (e) {
       this.flashMessages.danger(e.errors?.join('. ') || e.message);

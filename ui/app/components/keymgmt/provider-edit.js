@@ -8,6 +8,7 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 import { waitFor } from '@ember/test-waiters';
 
 /**
@@ -52,7 +53,7 @@ export default class KeymgmtProviderEdit extends Component {
   *saveTask() {
     const { model } = this.args;
     try {
-      yield model.save();
+      yield resolve(model.save());
       this.router.transitionTo('vault.cluster.secrets.backend.show', model.id, {
         queryParams: { itemType: 'provider' },
       });

@@ -9,6 +9,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { capitalize } from '@ember/string';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 
 export default class MfaMethodCreateController extends Controller {
   @service store;
@@ -88,7 +89,7 @@ export default class MfaMethodCreateController extends Controller {
     if (isValid) {
       try {
         // first save method
-        yield this.method.save();
+        yield resolve(this.method.save());
         if (this.enforcement) {
           const mfaMethods = yield this.enforcement.mfa_methods;
           if (!mfaMethods.includes(this.method)) {
@@ -96,7 +97,7 @@ export default class MfaMethodCreateController extends Controller {
           }
           try {
             // now save enforcement and catch error separately
-            yield this.enforcement.save();
+            yield resolve(this.enforcement.save());
           } catch (error) {
             this.handleError(
               error,

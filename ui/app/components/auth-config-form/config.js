@@ -7,6 +7,7 @@ import AdapterError from '@ember-data/adapter/error';
 import { inject as service } from '@ember/service';
 import Component from '@ember/component';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 import { waitFor } from '@ember/test-waiters';
 
 /**
@@ -31,7 +32,7 @@ const AuthConfigBase = Component.extend({
   saveModel: task(
     waitFor(function* () {
       try {
-        yield this.model.save();
+        yield resolve(this.model.save());
       } catch (err) {
         // AdapterErrors are handled by the error-message component
         // in the form

@@ -8,6 +8,7 @@ import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 /**
  * @module OidcClientForm
  * OidcClientForm components are used to create and update OIDC clients (a.k.a. applications)
@@ -81,7 +82,7 @@ export default class OidcClientForm extends Component {
         if (Number(idTokenTtl) === 0) this.args.model.idTokenTtl = '24h';
         if (Number(accessTokenTtl) === 0) this.args.model.accessTokenTtl = '24h';
         const { isNew, name } = this.args.model;
-        yield this.args.model.save();
+        yield resolve(this.args.model.save());
         this.flashMessages.success(`Successfully ${isNew ? 'created' : 'updated'} the application ${name}.`);
         this.args.onSave();
       }

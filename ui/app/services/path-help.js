@@ -303,7 +303,13 @@ export default Service.extend({
   registerNewModelWithProps(helpUrl, backend, newModel, modelName) {
     return this.getProps(helpUrl, backend).then((props) => {
       const modelType = modelName.split(':')[1];
-      const { attrs, newFields } = combineAttributes(this.store.modelFor(modelType).attributes, props);
+      let existingAttrs = null;
+      try {
+        existingAttrs = this.store.modelFor(modelType).attributes;
+      } catch {
+        existingAttrs = null;
+      }
+      const { attrs, newFields } = combineAttributes(existingAttrs, props);
       const owner = getOwner(this);
       newModel = newModel.extend(attrs, { newFields });
       // if our newModel doesn't have fieldGroups already

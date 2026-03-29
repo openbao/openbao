@@ -1,3 +1,0 @@
-```release-note:deprecation
-ui: remove deprecation for the model attribute challenge
-```

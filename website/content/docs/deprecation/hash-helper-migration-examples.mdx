@@ -1,0 +1,122 @@
+# {{hash}} Helper Migration Examples
+
+Real-world patterns you'll see in OpenBao UI and how to fix them.
+
+## Tab/Panel State
+
+**Before:**
+```handlebars
+{{#let (hash activeTab="overview") as |state|}}
+  <TabNav @state={{state}} />
+  <TabContent @state={{state}} />
+{{/let}}
+```
+
+**After:**
+```handlebars
+<TabNav @activeTab={{this.activeTab}} @onSelectTab={{this.selectTab}} />
+<TabContent @activeTab={{this.activeTab}} />
+```
+
+```javascript
+import Component from "@glimmer/component";
+import { tracked } from "@ember/object";
+
+export default class TabsComponent extends Component {
+  @tracked activeTab = "overview";
+
+  selectTab = (tab) => {
+    this.activeTab = tab;
+  }
+}
+```
+
+## Form Input State
+
+**Before:**
+```handlebars
+{{#let (hash name="" email="" role="viewer") as |form|}}
+  <UserForm @data={{form}} />
+{{/let}}
+```
+
+**After:**
+```javascript
+export default class UserFormComponent extends Component {
+  @tracked name = "";
+  @tracked email = "";
+  @tracked role = "viewer";
+  
+  updateField = (field, value) => {
+    this[field] = value;
+  }
+}
+```
+
+## Query/Filter State
+
+**Before:**
+```handlebars
+{{#let (hash filter="" tab="methods") as |q|}}
+  <FilterControl @query={{q}} />
+  <Results @query={{q}} />
+{{/let}}
+```
+
+**After:**
+```javascript
+@tracked filter = "";
+@tracked tab = "methods";
+
+// Pass individual properties to children
+// Let each component update through actions
+```
+
+## Array/List Management
+
+**Before:**
+```handlebars
+{{#let (hash items=(array)) as |container|}}
+  <ItemList @items={{container.items}} />
+{{/let}}
+```
+
+**After:**
+```javascript
+@tracked items = [];
+
+addItem = (item) => {
+  this.items = [...this.items, item];
+}
+```
+
+## Config Objects
+
+**Before:**
+```handlebars
+{{#let (hash apiUrl="http://..." timeout=5000 retry=3) as |config|}}
+  <APIClient @config={{config}} />
+{{/let}}
+```
+
+**After:**
+```javascript
+// Just pass individual properties
+<APIClient @apiUrl={{this.apiUrl}} @timeout={{this.timeout}} @retry={{this.retry}} />
+
+// Or keep as a single object and don't mutate it
+@tracked config = {
+  apiUrl: "http://...",
+  timeout: 5000,
+  retry: 3
+}
+```
+
+---
+
+## Quick Checklist
+
+- [ ] Replace hash objects with @tracked properties
+- [ ] Pass individual properties to child components
+- [ ] Use actions/callbacks for state updates from children
+- [ ] Avoid direct mutations of object properties

@@ -1,0 +1,157 @@
+---
+sidebar_label: Setting properties on {{hash}} objects
+description: |-
+  Deprecating the practice of directly setting properties on objects created by the Ember {{hash}} helper.
+---
+
+# Deprecating Setting Properties on `{{hash}}` Objects
+
+## What's changing
+
+We're phasing out the pattern of mutating objects created by the `{{hash}}` helper. Patterns like this are now deprecated:
+
+```handlebars
+{{#let (hash tab="overview") as |state|}}
+  {{set state "tab" "details"}} {{!-- Don't do this --}}
+{{/let}}
+```
+
+And this in JavaScript:
+
+```javascript
+// Don't mutate hash objects like this
+this.args.myHashObject.someProperty = "newValue";
+```
+
+In future releases, this won't work as expected—changes may not trigger UI updates or may be silently ignored.
+
+## Why
+
+The `{{hash}}` helper is convenient for passing data around templates, but mutating its objects breaks Ember's reactivity. This causes:
+
+- UI updates that don't happen when they should
+- Confusing bugs related to change detection
+- Harder-to-maintain code when state is scattered across multiple places
+- Out of sync with modern Ember practices
+
+## Timeline
+
+- **Announced**: OpenBao v2.X.X
+- **Stop working**: OpenBao v3.0.0 or later (TBD)
+
+## How to fix it
+
+### Keep it simple: use component properties
+
+Instead of passing hash objects around and mutating them, just pass the individual values you need:
+
+**Before:**
+```handlebars
+{{#let (hash tab="overview") as |state|}}
+  <DemoPanel @state={{state}} />
+{{/let}}
+```
+
+**After:**
+```handlebars
+<DemoPanel @tab="overview" />
+```
+
+If you need to manage state, do it in the component that owns the data:
+
+```javascript
+import Component from "@glimmer/component";
+import { tracked } from "@ember/object";
+
+export default class DemoPanelComponent extends Component {
+  @tracked tab = this.args.tab || "overview";
+  
+  changeTab(newTab) {
+    this.tab = newTab;  // This will properly update the UI
+  }
+}
+```
+
+### If you need shared state
+
+If multiple components need the same state, manage it in a parent component and pass individual properties down:
+
+**Before:**
+```handlebars
+{{#let (hash selectedTab="methods" filter="") as |query|}}
+  <Filter @query={{query}} />
+  <Results @query={{query}} />
+{{/let}}
+```
+
+**After (Parent):**
+```handlebars
+<Filter @filter={{this.filter}} @onFilterChange={{this.setFilter}} />
+<Results @tab={{this.selectedTab}} @filter={{this.filter}} />
+```
+
+```javascript
+import Component from "@glimmer/component";
+import { tracked } from "@ember/object";
+
+export default class ParentComponent extends Component {
+  @tracked selectedTab = "methods";
+  @tracked filter = "";
+  
+  setFilter = (value) => {
+    this.filter = value;
+  }
+}
+```
+
+### For data objects
+
+If you're passing a data object (like user info), just track it like normal state:
+
+**Before:**
+```javascript
+// In parent
+const user = { name: "", email: "" };
+// Then elsewhere: set(user, "name", "John")
+```
+
+**After:**
+```javascript
+import { tracked } from "@ember/object";
+
+export default class MyComponent extends Component {
+  @tracked user = { name: "", email: "" };
+  
+  updateUser(field, value) {
+    this.user[field] = value;
+  }
+}
+```
+
+## Finding these in your code
+
+Search your templates for `{{hash` patterns where you're mutating the object:
+
+```handlebars
+{{#let (hash something="value") as |obj|}}
+  {{set obj "something" "newValue"}}  {{!-- Look for patterns like this --}}
+{{/let}}
+```
+
+And check your components for assignments like:
+
+```javascript
+// Don't do this
+this.args.data.property = newValue;
+```
+
+## FAQ
+
+**Q: Do I have to change everything right now?**  
+A: No. This works fine today, but you should plan migration. We'll give plenty of notice before it stops working.
+
+**Q: Can I still use `{{hash}}`?**  
+A: Absolutely. You can pass hash objects to components—just don't mutate them afterward.
+
+**Q: What if I have complex state?**  
+A: Use `@tracked` properties in your component. That's the Ember-approved way to manage state.

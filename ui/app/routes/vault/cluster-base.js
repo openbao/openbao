@@ -23,6 +23,7 @@ export default Route.extend({
   auth: service(),
   store: service(),
   router: service(),
+  keyDataService: service('key-data'),
 
   transitionToTargetRoute(transition = {}) {
     const targetRoute = this.targetRouteName(transition);

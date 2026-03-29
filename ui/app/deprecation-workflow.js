@@ -11,6 +11,7 @@ export const deprecationWorkflowConfig = {
   workflow: [
     { handler: 'log', matchId: 'ember-data:deprecate-array-like' },
     { handler: 'log', matchId: 'ember-data:deprecate-model-reopenclass' },
+    { handler: 'log', matchId: 'ember-data:deprecate-promise-proxies' },
   ],
 };
 

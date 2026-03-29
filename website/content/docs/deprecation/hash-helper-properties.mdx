@@ -65,7 +65,7 @@ import { tracked } from "@ember/object";
 
 export default class DemoPanelComponent extends Component {
   @tracked tab = this.args.tab || "overview";
-  
+
   changeTab(newTab) {
     this.tab = newTab;  // This will properly update the UI
   }
@@ -97,7 +97,7 @@ import { tracked } from "@ember/object";
 export default class ParentComponent extends Component {
   @tracked selectedTab = "methods";
   @tracked filter = "";
-  
+
   setFilter = (value) => {
     this.filter = value;
   }
@@ -117,11 +117,12 @@ const user = { name: "", email: "" };
 
 **After:**
 ```javascript
+import Component from "@glimmer/component";
 import { tracked } from "@ember/object";
 
 export default class MyComponent extends Component {
   @tracked user = { name: "", email: "" };
-  
+
   updateUser(field, value) {
     this.user[field] = value;
   }
@@ -147,11 +148,11 @@ this.args.data.property = newValue;
 
 ## FAQ
 
-**Q: Do I have to change everything right now?**  
+**Q: Do I have to change everything right now?**
 A: No. This works fine today, but you should plan migration. We'll give plenty of notice before it stops working.
 
-**Q: Can I still use `{{hash}}`?**  
+**Q: Can I still use `{{hash}}`?**
 A: Absolutely. You can pass hash objects to components—just don't mutate them afterward.
 
-**Q: What if I have complex state?**  
+**Q: What if I have complex state?**
 A: Use `@tracked` properties in your component. That's the Ember-approved way to manage state.

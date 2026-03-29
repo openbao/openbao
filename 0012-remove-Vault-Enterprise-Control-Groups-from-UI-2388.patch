@@ -1,0 +1,1927 @@
+From 38a19e496af3c9f3f08b1cccfe0aa6a4929d587d Mon Sep 17 00:00:00 2001
+From: Jan Martens <44572196+JanMa@users.noreply.github.com>
+Date: Fri, 6 Feb 2026 21:24:07 +0100
+Subject: [PATCH 12/22] remove Vault Enterprise Control Groups from UI (#2388)
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/app/adapters/application.js                |  28 +-
+ ui/app/adapters/control-group-config.js       |  24 --
+ ui/app/adapters/control-group.js              |  29 --
+ ui/app/adapters/database/credential.js        |   4 -
+ ui/app/adapters/database/role.js              |   4 -
+ ui/app/adapters/keymgmt/key.js                |  20 +-
+ ui/app/adapters/secret-engine.js              |   2 -
+ ui/app/adapters/secret-v2-version.js          |   2 +-
+ ui/app/components/console/ui-panel.js         |   5 -
+ ui/app/components/control-group-success.js    |  40 ---
+ ui/app/components/control-group.js            |  96 -------
+ ui/app/components/generate-credentials.js     |   7 -
+ ui/app/components/secret-create-or-update.js  |   8 -
+ .../access/control-groups-configure.js        |  16 --
+ ui/app/lib/control-group-error.js             |  21 --
+ ui/app/models/control-group-config.js         |  25 --
+ ui/app/models/control-group.js                |  20 --
+ ui/app/router.js                              |   3 -
+ ui/app/routes/application.js                  |  10 -
+ ui/app/routes/vault/cluster/access.js         |   2 +-
+ .../cluster/access/control-group-accessor.js  |  30 ---
+ .../access/control-groups-configure.js        |  34 ---
+ .../vault/cluster/access/control-groups.js    |  17 --
+ ui/app/routes/vault/cluster/logout.js         |   2 -
+ .../cluster/secrets/backend/credentials.js    |   6 -
+ ui/app/serializers/control-group.js           |  33 ---
+ ui/app/services/control-group.js              | 131 ---------
+ ui/app/services/permissions.js                |   2 -
+ ui/app/services/version.js                    |   4 -
+ ui/app/styles/components/control-group.scss   |  53 ----
+ ui/app/styles/core.scss                       |   1 -
+ .../components/control-group-success.hbs      |  63 -----
+ ui/app/templates/components/control-group.hbs | 120 ---------
+ .../components/control-group-success-test.js  |  87 ------
+ .../components/control-group-test.js          | 187 -------------
+ .../pages/components/control-group-success.js |  15 --
+ ui/tests/pages/components/control-group.js    |  24 --
+ ui/tests/unit/services/control-group-test.js  | 255 ------------------
+ 38 files changed, 12 insertions(+), 1418 deletions(-)
+ delete mode 100644 ui/app/adapters/control-group-config.js
+ delete mode 100644 ui/app/adapters/control-group.js
+ delete mode 100644 ui/app/components/control-group-success.js
+ delete mode 100644 ui/app/components/control-group.js
+ delete mode 100644 ui/app/controllers/vault/cluster/access/control-groups-configure.js
+ delete mode 100644 ui/app/lib/control-group-error.js
+ delete mode 100644 ui/app/models/control-group-config.js
+ delete mode 100644 ui/app/models/control-group.js
+ delete mode 100644 ui/app/routes/vault/cluster/access/control-group-accessor.js
+ delete mode 100644 ui/app/routes/vault/cluster/access/control-groups-configure.js
+ delete mode 100644 ui/app/routes/vault/cluster/access/control-groups.js
+ delete mode 100644 ui/app/serializers/control-group.js
+ delete mode 100644 ui/app/services/control-group.js
+ delete mode 100644 ui/app/styles/components/control-group.scss
+ delete mode 100644 ui/app/templates/components/control-group-success.hbs
+ delete mode 100644 ui/app/templates/components/control-group.hbs
+ delete mode 100644 ui/tests/integration/components/control-group-success-test.js
+ delete mode 100644 ui/tests/integration/components/control-group-test.js
+ delete mode 100644 ui/tests/pages/components/control-group-success.js
+ delete mode 100644 ui/tests/pages/components/control-group.js
+ delete mode 100644 ui/tests/unit/services/control-group-test.js
+
+diff --git a/ui/app/adapters/application.js b/ui/app/adapters/application.js
+index 7f977fd..ad16794 100644
+--- a/ui/app/adapters/application.js
++++ b/ui/app/adapters/application.js
+@@ -18,7 +18,6 @@ const { POLLING_URLS, NAMESPACE_ROOT_URLS } = APP;
+ export default RESTAdapter.extend({
+   auth: service(),
+   namespaceService: service('namespace'),
+-  controlGroup: service(),
+ 
+   flashMessages: service(),
+ 
+@@ -64,31 +63,12 @@ export default RESTAdapter.extend({
+   },
+ 
+   ajax(intendedUrl, method, passedOptions = {}) {
+-    let url = intendedUrl;
+-    let type = method;
+-    let options = passedOptions;
+-    const controlGroup = this.controlGroup;
+-    const controlGroupToken = controlGroup.tokenForUrl(url);
+-    // if we have a Control Group token that matches the intendedUrl,
+-    // then we want to unwrap it and return the unwrapped response as
+-    // if it were the initial request
+-    // To do this, we rewrite the function args
+-    if (controlGroupToken) {
+-      url = '/v1/sys/wrapping/unwrap';
+-      type = 'POST';
+-      options = {
+-        clientToken: controlGroupToken.token,
+-        data: {
+-          token: controlGroupToken.token,
+-        },
+-      };
+-    }
++    const url = intendedUrl;
++    const type = method;
++    const options = passedOptions;
+     const opts = this._preRequest(url, options);
+ 
+     return this._super(url, type, opts).then((...args) => {
+-      if (controlGroupToken) {
+-        controlGroup.deleteControlGroupToken(controlGroupToken.accessor);
+-      }
+       const [resp] = args;
+       if (resp && resp.warnings) {
+         const flash = this.flashMessages;
+@@ -96,7 +76,7 @@ export default RESTAdapter.extend({
+           flash.info(message);
+         });
+       }
+-      return controlGroup.checkForControlGroup(args, resp, options.wrapTTL);
++      return RSVP.resolve(...args);
+     });
+   },
+ 
+diff --git a/ui/app/adapters/control-group-config.js b/ui/app/adapters/control-group-config.js
+deleted file mode 100644
+index 0ea88dc..0000000
+--- a/ui/app/adapters/control-group-config.js
++++ /dev/null
+@@ -1,24 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import ApplicationAdapter from './application';
+-
+-export default ApplicationAdapter.extend({
+-  pathForType() {
+-    return 'config/control-group';
+-  },
+-
+-  urlForDeleteRecord(id, modelName) {
+-    return this.buildURL(modelName);
+-  },
+-
+-  urlForFindRecord(id, modelName) {
+-    return this.buildURL(modelName);
+-  },
+-
+-  urlForUpdateRecord(id, modelName) {
+-    return this.buildURL(modelName);
+-  },
+-});
+diff --git a/ui/app/adapters/control-group.js b/ui/app/adapters/control-group.js
+deleted file mode 100644
+index 33d47dd..0000000
+--- a/ui/app/adapters/control-group.js
++++ /dev/null
+@@ -1,29 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import ApplicationAdapter from './application';
+-
+-export default ApplicationAdapter.extend({
+-  pathForType() {
+-    return 'control-group';
+-  },
+-
+-  findRecord(store, type, id) {
+-    const baseUrl = this.buildURL(type.modelName);
+-    return this.ajax(`${baseUrl}/request`, 'POST', {
+-      data: {
+-        accessor: id,
+-      },
+-    }).then((response) => {
+-      response.id = id;
+-      return response;
+-    });
+-  },
+-
+-  urlForUpdateRecord(id, modelName) {
+-    const base = this.buildURL(modelName);
+-    return `${base}/authorize`;
+-  },
+-});
+diff --git a/ui/app/adapters/database/credential.js b/ui/app/adapters/database/credential.js
+index 516e0d4..3f2c21c 100644
+--- a/ui/app/adapters/database/credential.js
++++ b/ui/app/adapters/database/credential.js
+@@ -5,7 +5,6 @@
+ 
+ import { allSettled } from 'rsvp';
+ import ApplicationAdapter from '../application';
+-import ControlGroupError from 'vault/lib/control-group-error';
+ 
+ export default ApplicationAdapter.extend({
+   namespace: 'v1',
+@@ -35,9 +34,6 @@ export default ApplicationAdapter.extend({
+       ([staticResp, dynamicResp]) => {
+         if (staticResp.state === 'rejected' && dynamicResp.state === 'rejected') {
+           let reason = staticResp.reason;
+-          if (dynamicResp.reason instanceof ControlGroupError) {
+-            throw dynamicResp.reason;
+-          }
+           if (reason?.httpStatus < dynamicResp.reason?.httpStatus) {
+             reason = dynamicResp.reason;
+           }
+diff --git a/ui/app/adapters/database/role.js b/ui/app/adapters/database/role.js
+index 36f8a38..21ecb8b 100644
+--- a/ui/app/adapters/database/role.js
++++ b/ui/app/adapters/database/role.js
+@@ -5,7 +5,6 @@
+ 
+ import { assign } from '@ember/polyfills';
+ import { assert } from '@ember/debug';
+-import ControlGroupError from 'vault/lib/control-group-error';
+ import ApplicationAdapter from '../application';
+ import { allSettled } from 'rsvp';
+ import { addToArray } from 'vault/helpers/add-to-array';
+@@ -78,9 +77,6 @@ export default ApplicationAdapter.extend({
+       ([staticResp, dynamicResp]) => {
+         if (staticResp.state === 'rejected' && dynamicResp.state === 'rejected') {
+           let reason = staticResp.reason;
+-          if (dynamicResp.reason instanceof ControlGroupError) {
+-            throw dynamicResp.reason;
+-          }
+           if (reason?.httpStatus < dynamicResp.reason?.httpStatus) {
+             reason = dynamicResp.reason;
+           }
+diff --git a/ui/app/adapters/keymgmt/key.js b/ui/app/adapters/keymgmt/key.js
+index 9c5585d..efd6b5b 100644
+--- a/ui/app/adapters/keymgmt/key.js
++++ b/ui/app/adapters/keymgmt/key.js
+@@ -5,7 +5,6 @@
+ 
+ import ApplicationAdapter from '../application';
+ import { encodePath } from 'vault/utils/path-encoding-helpers';
+-import ControlGroupError from '../../lib/control-group-error';
+ import { inject as service } from '@ember/service';
+ 
+ function pickKeys(obj, picklist) {
+@@ -118,19 +117,12 @@ export default class KeymgmtKeyAdapter extends ApplicationAdapter {
+ 
+   getDistribution(backend, kms, key) {
+     const url = `${this.buildURL()}/${backend}/kms/${kms}/key/${key}`;
+-    return this.ajax(url, 'GET')
+-      .then((res) => {
+-        return {
+-          ...res.data,
+-          purposeArray: res.data.purpose.split(','),
+-        };
+-      })
+-      .catch((e) => {
+-        if (e instanceof ControlGroupError) {
+-          throw e;
+-        }
+-        return null;
+-      });
++    return this.ajax(url, 'GET').then((res) => {
++      return {
++        ...res.data,
++        purposeArray: res.data.purpose.split(','),
++      };
++    });
+   }
+ 
+   async queryRecord(store, type, query) {
+diff --git a/ui/app/adapters/secret-engine.js b/ui/app/adapters/secret-engine.js
+index 06d4290..5c85469 100644
+--- a/ui/app/adapters/secret-engine.js
++++ b/ui/app/adapters/secret-engine.js
+@@ -45,8 +45,6 @@ export default ApplicationAdapter.extend({
+       if (!query.path || !mountModel) {
+         throw error;
+       }
+-      // control groups will throw a 403 permission denied error. If this happens return the mountModel
+-      // error is handled on routing
+     }
+     return mountModel;
+   },
+diff --git a/ui/app/adapters/secret-v2-version.js b/ui/app/adapters/secret-v2-version.js
+index 1f7b63d..6afada9 100644
+--- a/ui/app/adapters/secret-v2-version.js
++++ b/ui/app/adapters/secret-v2-version.js
+@@ -36,7 +36,7 @@ export default ApplicationAdapter.extend({
+ 
+   findRecord() {
+     return this._super(...arguments).catch((errorOrModel) => {
+-      // if the response is a real 404 or if the secret is gated by a control group this will be an error,
++      // if the response is a real 404 this will be an error,
+       // otherwise the response will be the body of a deleted / destroyed version
+       if (errorOrModel instanceof AdapterError) {
+         throw errorOrModel;
+diff --git a/ui/app/components/console/ui-panel.js b/ui/app/components/console/ui-panel.js
+index 1d03e3e..a7c288b 100644
+--- a/ui/app/components/console/ui-panel.js
++++ b/ui/app/components/console/ui-panel.js
+@@ -10,7 +10,6 @@ import { getOwner } from '@ember/application';
+ import { schedule } from '@ember/runloop';
+ import { camelize } from '@ember/string';
+ import { task } from 'ember-concurrency';
+-import ControlGroupError from 'vault/lib/control-group-error';
+ import {
+   parseCommand,
+   logFromResponse,
+@@ -24,7 +23,6 @@ import {
+ export default Component.extend({
+   console: service(),
+   router: service(),
+-  controlGroup: service(),
+   store: service(),
+   'data-test-component': 'console/ui-panel',
+   attributeBindings: ['data-test-component'],
+@@ -87,9 +85,6 @@ export default Component.extend({
+       const resp = yield service[camelize(method)].call(service, path, data, flags);
+       this.logAndOutput(command, logFromResponse(resp, path, method, flags));
+     } catch (error) {
+-      if (error instanceof ControlGroupError) {
+-        return this.logAndOutput(command, this.controlGroup.logFromError(error));
+-      }
+       this.logAndOutput(command, logFromError(error, path, method));
+     }
+   }),
+diff --git a/ui/app/components/control-group-success.js b/ui/app/components/control-group-success.js
+deleted file mode 100644
+index be586f2..0000000
+--- a/ui/app/components/control-group-success.js
++++ /dev/null
+@@ -1,40 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { inject as service } from '@ember/service';
+-import Component from '@ember/component';
+-import { task } from 'ember-concurrency';
+-
+-export default Component.extend({
+-  router: service(),
+-  controlGroup: service(),
+-  store: service(),
+-
+-  // public attrs
+-  model: null,
+-  controlGroupResponse: null,
+-
+-  //internal state
+-  error: null,
+-  unwrapData: null,
+-
+-  unwrap: task(function* (token) {
+-    const adapter = this.store.adapterFor('tools');
+-    this.set('error', null);
+-    try {
+-      const response = yield adapter.toolAction('unwrap', null, { clientToken: token });
+-      this.set('unwrapData', response.auth || response.data);
+-      this.controlGroup.deleteControlGroupToken(this.model.id);
+-    } catch (e) {
+-      this.set('error', `Token unwrap failed: ${e.errors[0]}`);
+-    }
+-  }).drop(),
+-
+-  markAndNavigate: task(function* () {
+-    this.controlGroup.markTokenForUnwrap(this.model.id);
+-    const { url } = this.controlGroupResponse.uiParams;
+-    yield this.router.transitionTo(url);
+-  }).drop(),
+-});
+diff --git a/ui/app/components/control-group.js b/ui/app/components/control-group.js
+deleted file mode 100644
+index 64de056..0000000
+--- a/ui/app/components/control-group.js
++++ /dev/null
+@@ -1,96 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { inject as service } from '@ember/service';
+-import { alias, or } from '@ember/object/computed';
+-import Component from '@ember/component';
+-import { computed } from '@ember/object';
+-import { task } from 'ember-concurrency';
+-
+-export default Component.extend({
+-  tagName: '',
+-  auth: service(),
+-  controlGroup: service(),
+-
+-  // public API
+-  model: null,
+-
+-  didReceiveAttrs() {
+-    this._super(...arguments);
+-    const accessor = this.model.id;
+-    const data = this.controlGroup.wrapInfoForAccessor(accessor);
+-    this.set('controlGroupResponse', data);
+-  },
+-
+-  currentUserEntityId: alias('auth.authData.entity_id'),
+-
+-  currentUserIsRequesting: computed('currentUserEntityId', 'model.requestEntity.id', function () {
+-    if (!this.model.requestEntity) return false;
+-    return this.currentUserEntityId === this.model.requestEntity.id;
+-  }),
+-
+-  currentUserHasAuthorized: computed('currentUserEntityId', 'model.authorizations.@each.id', function () {
+-    const authorizations = this.model.authorizations || [];
+-    return Boolean(authorizations.findBy('id', this.currentUserEntityId));
+-  }),
+-
+-  isSuccess: or('currentUserHasAuthorized', 'model.approved'),
+-  requestorName: computed('currentUserIsRequesting', 'model.requestEntity', function () {
+-    const entity = this.model.requestEntity;
+-
+-    if (this.currentUserIsRequesting) {
+-      return 'You';
+-    }
+-    if (entity && entity.name) {
+-      return entity.name;
+-    }
+-    return 'Someone';
+-  }),
+-
+-  bannerPrefix: computed('model.approved', 'currentUserHasAuthorized', function () {
+-    if (this.currentUserHasAuthorized) {
+-      return 'Thanks!';
+-    }
+-    if (this.model.approved) {
+-      return 'Success!';
+-    }
+-    return 'Locked';
+-  }),
+-
+-  bannerText: computed('model.approved', 'currentUserIsRequesting', 'currentUserHasAuthorized', function () {
+-    const isApproved = this.model.approved;
+-    const { currentUserHasAuthorized, currentUserIsRequesting } = this;
+-    if (currentUserHasAuthorized) {
+-      return 'You have given authorization';
+-    }
+-    if (currentUserIsRequesting && isApproved) {
+-      return 'You have been given authorization';
+-    }
+-    if (isApproved) {
+-      return 'This Control Group has been authorized';
+-    }
+-    if (currentUserIsRequesting) {
+-      return 'The path you requested is locked by a Control Group';
+-    }
+-    return 'Someone is requesting access to a path locked by a Control Group';
+-  }),
+-
+-  refresh: task(function* () {
+-    try {
+-      yield this.model.reload();
+-    } catch (e) {
+-      this.set('errors', e);
+-    }
+-  }).drop(),
+-
+-  authorize: task(function* () {
+-    try {
+-      yield this.model.save();
+-      yield this.refresh.perform();
+-    } catch (e) {
+-      this.set('errors', e);
+-    }
+-  }).drop(),
+-});
+diff --git a/ui/app/components/generate-credentials.js b/ui/app/components/generate-credentials.js
+index a44a806..e829012 100644
+--- a/ui/app/components/generate-credentials.js
++++ b/ui/app/components/generate-credentials.js
+@@ -31,7 +31,6 @@ const MODEL_TYPES = {
+ };
+ 
+ export default Component.extend({
+-  controlGroup: service(),
+   store: service(),
+   router: service(),
+   // set on the component
+@@ -102,12 +101,6 @@ export default Component.extend({
+           model.set('hasGenerated', true);
+         })
+         .catch((error) => {
+-          // Handle control group AdapterError
+-          if (error.message === 'Control Group encountered') {
+-            this.controlGroup.saveTokenFromError(error);
+-            const err = this.controlGroup.logFromError(error);
+-            error.errors = [err.content];
+-          }
+           throw error;
+         })
+         .finally(() => {
+diff --git a/ui/app/components/secret-create-or-update.js b/ui/app/components/secret-create-or-update.js
+index 8705f8e..411f4b6 100644
+--- a/ui/app/components/secret-create-or-update.js
++++ b/ui/app/components/secret-create-or-update.js
+@@ -31,7 +31,6 @@
+  */
+ 
+ import Component from '@glimmer/component';
+-import ControlGroupError from 'vault/lib/control-group-error';
+ import Ember from 'ember';
+ import keys from 'vault/lib/keycodes';
+ import { action, set } from '@ember/object';
+@@ -52,7 +51,6 @@ export default class SecretCreateOrUpdate extends Component {
+   @tracked validationErrorCount = 0;
+   @tracked validationMessages = null;
+ 
+-  @service controlGroup;
+   @service flashMessages;
+   @service router;
+   @service store;
+@@ -163,11 +161,6 @@ export default class SecretCreateOrUpdate extends Component {
+         }
+       })
+       .catch((error) => {
+-        if (error instanceof ControlGroupError) {
+-          const errorMessage = this.controlGroup.logFromError(error);
+-          this.error = errorMessage.content;
+-          this.controlGroup.saveTokenFromError(error);
+-        }
+         throw error;
+       });
+   }
+@@ -239,7 +232,6 @@ export default class SecretCreateOrUpdate extends Component {
+ 
+     const secretPath = type === 'create' ? this.args.modelForData.path : this.args.model.id;
+     this.persistKey(() => {
+-      // Show flash message in case there's a control group on read
+       this.flashMessages.success(
+         `Secret ${secretPath} ${type === 'create' ? 'created' : 'updated'} successfully.`
+       );
+diff --git a/ui/app/controllers/vault/cluster/access/control-groups-configure.js b/ui/app/controllers/vault/cluster/access/control-groups-configure.js
+deleted file mode 100644
+index bd31e05..0000000
+--- a/ui/app/controllers/vault/cluster/access/control-groups-configure.js
++++ /dev/null
+@@ -1,16 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import Controller from '@ember/controller';
+-
+-export default Controller.extend({
+-  actions: {
+-    onSave({ saveType }) {
+-      if (saveType === 'destroyRecord') {
+-        this.send('reload');
+-      }
+-    },
+-  },
+-});
+diff --git a/ui/app/lib/control-group-error.js b/ui/app/lib/control-group-error.js
+deleted file mode 100644
+index 9a27ced..0000000
+--- a/ui/app/lib/control-group-error.js
++++ /dev/null
+@@ -1,21 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import AdapterError from '@ember-data/adapter/error';
+-
+-export default class ControlGroupError extends AdapterError {
+-  constructor(wrapInfo) {
+-    const { accessor, creation_path, creation_time, token, ttl } = wrapInfo;
+-    super();
+-    this.message = 'Control Group encountered';
+-
+-    // add items from the wrapInfo object to the error
+-    this.token = token;
+-    this.accessor = accessor;
+-    this.creation_path = creation_path;
+-    this.creation_time = creation_time;
+-    this.ttl = ttl;
+-  }
+-}
+diff --git a/ui/app/models/control-group-config.js b/ui/app/models/control-group-config.js
+deleted file mode 100644
+index 3125726..0000000
+--- a/ui/app/models/control-group-config.js
++++ /dev/null
+@@ -1,25 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import Model, { attr } from '@ember-data/model';
+-import { alias } from '@ember/object/computed';
+-import { computed } from '@ember/object';
+-import lazyCapabilities, { apiPath } from 'vault/macros/lazy-capabilities';
+-
+-import { expandAttributeMeta } from 'vault/utils/field-to-attrs';
+-
+-export default Model.extend({
+-  fields: computed(function () {
+-    return expandAttributeMeta(this, ['maxTtl']);
+-  }),
+-
+-  configurePath: lazyCapabilities(apiPath`sys/config/control-group`),
+-  canDelete: alias('configurePath.canDelete'),
+-  maxTtl: attr({
+-    defaultValue: 0,
+-    editType: 'ttl',
+-    label: 'Maximum TTL',
+-  }),
+-});
+diff --git a/ui/app/models/control-group.js b/ui/app/models/control-group.js
+deleted file mode 100644
+index f6d4efb..0000000
+--- a/ui/app/models/control-group.js
++++ /dev/null
+@@ -1,20 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import Model, { hasMany, belongsTo, attr } from '@ember-data/model';
+-import { alias } from '@ember/object/computed';
+-import lazyCapabilities, { apiPath } from 'vault/macros/lazy-capabilities';
+-
+-export default Model.extend({
+-  approved: attr('boolean'),
+-  requestPath: attr('string'),
+-  requestEntity: belongsTo('identity/entity', { async: false }),
+-  authorizations: hasMany('identity/entity', { async: false }),
+-
+-  authorizePath: lazyCapabilities(apiPath`sys/control-group/authorize`),
+-  canAuthorize: alias('authorizePath.canUpdate'),
+-  configurePath: lazyCapabilities(apiPath`sys/config/control-group`),
+-  canConfigure: alias('configurePath.canUpdate'),
+-});
+diff --git a/ui/app/router.js b/ui/app/router.js
+index 25b4f68..bf3d593 100644
+--- a/ui/app/router.js
++++ b/ui/app/router.js
+@@ -100,9 +100,6 @@ Router.map(function () {
+             this.route('show', { path: '/:item_alias_id/:section' });
+           });
+         });
+-        // this.route('control-groups');
+-        // this.route('control-groups-configure', { path: '/control-groups/configure' });
+-        // this.route('control-group-accessor', { path: '/control-groups/:accessor' });
+         this.route('namespaces', function () {
+           this.route('index', { path: '/' });
+           this.route('create');
+diff --git a/ui/app/routes/application.js b/ui/app/routes/application.js
+index 5d2c810..4537454 100644
+--- a/ui/app/routes/application.js
++++ b/ui/app/routes/application.js
+@@ -5,10 +5,8 @@
+ 
+ import { inject as service } from '@ember/service';
+ import Route from '@ember/routing/route';
+-import ControlGroupError from 'vault/lib/control-group-error';
+ 
+ export default Route.extend({
+-  controlGroup: service(),
+   routing: service('router'),
+   namespaceService: service('namespace'),
+ 
+@@ -17,14 +15,6 @@ export default Route.extend({
+       window.scrollTo(0, 0);
+     },
+     error(error, transition) {
+-      const controlGroup = this.controlGroup;
+-      if (error instanceof ControlGroupError) {
+-        return controlGroup.handleError(error);
+-      }
+-      if (error.path === '/v1/sys/wrapping/unwrap') {
+-        controlGroup.unmarkTokenForUnwrap();
+-      }
+-
+       const router = this.routing;
+       //FIXME transition.intent likely needs to be replaced
+       let errorURL = transition.intent.url;
+diff --git a/ui/app/routes/vault/cluster/access.js b/ui/app/routes/vault/cluster/access.js
+index 5c1e44f..d884a2b 100644
+--- a/ui/app/routes/vault/cluster/access.js
++++ b/ui/app/routes/vault/cluster/access.js
+@@ -10,7 +10,7 @@ import ModelBoundaryRoute from 'vault/mixins/model-boundary-route';
+ 
+ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
+   modelTypes: computed(function () {
+-    return ['capabilities', 'control-group', 'identity/group', 'identity/group-alias', 'identity/alias'];
++    return ['capabilities', 'identity/group', 'identity/group-alias', 'identity/alias'];
+   }),
+   model() {
+     return {};
+diff --git a/ui/app/routes/vault/cluster/access/control-group-accessor.js b/ui/app/routes/vault/cluster/access/control-group-accessor.js
+deleted file mode 100644
+index 8ff9e6d..0000000
+--- a/ui/app/routes/vault/cluster/access/control-group-accessor.js
++++ /dev/null
+@@ -1,30 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { inject as service } from '@ember/service';
+-import Route from '@ember/routing/route';
+-import UnloadModel from 'vault/mixins/unload-model-route';
+-
+-export default Route.extend(UnloadModel, {
+-  store: service(),
+-  version: service(),
+-
+-  model(params) {
+-    return this.version.hasControlGroups ? this.store.findRecord('control-group', params.accessor) : null;
+-  },
+-
+-  actions: {
+-    willTransition() {
+-      return true;
+-    },
+-    // deactivate happens later than willTransition,
+-    // so since we're using the model to render links
+-    // we don't want the UI blinking
+-    deactivate() {
+-      this.unloadModel();
+-      return true;
+-    },
+-  },
+-});
+diff --git a/ui/app/routes/vault/cluster/access/control-groups-configure.js b/ui/app/routes/vault/cluster/access/control-groups-configure.js
+deleted file mode 100644
+index 437b81a..0000000
+--- a/ui/app/routes/vault/cluster/access/control-groups-configure.js
++++ /dev/null
+@@ -1,34 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { inject as service } from '@ember/service';
+-import Route from '@ember/routing/route';
+-import UnloadModel from 'vault/mixins/unload-model-route';
+-
+-export default Route.extend(UnloadModel, {
+-  store: service(),
+-  version: service(),
+-
+-  model() {
+-    const type = 'control-group-config';
+-    return this.version.hasControlGroups
+-      ? this.store.findRecord(type, 'config').catch((e) => {
+-          // if you haven't saved a config, the API 404s, so create one here to edit and return it
+-          if (e.httpStatus === 404) {
+-            return this.store.createRecord(type, {
+-              id: 'config',
+-            });
+-          }
+-          throw e;
+-        })
+-      : null;
+-  },
+-
+-  actions: {
+-    reload() {
+-      this.refresh();
+-    },
+-  },
+-});
+diff --git a/ui/app/routes/vault/cluster/access/control-groups.js b/ui/app/routes/vault/cluster/access/control-groups.js
+deleted file mode 100644
+index 84dc756..0000000
+--- a/ui/app/routes/vault/cluster/access/control-groups.js
++++ /dev/null
+@@ -1,17 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { inject as service } from '@ember/service';
+-import Route from '@ember/routing/route';
+-import UnloadModel from 'vault/mixins/unload-model-route';
+-
+-export default Route.extend(UnloadModel, {
+-  store: service(),
+-  version: service(),
+-
+-  model() {
+-    return this.version.hasControlGroups ? this.store.createRecord('control-group') : null;
+-  },
+-});
+diff --git a/ui/app/routes/vault/cluster/logout.js b/ui/app/routes/vault/cluster/logout.js
+index 18ff383..123303b 100644
+--- a/ui/app/routes/vault/cluster/logout.js
++++ b/ui/app/routes/vault/cluster/logout.js
+@@ -11,7 +11,6 @@ import ModelBoundaryRoute from 'vault/mixins/model-boundary-route';
+ 
+ export default Route.extend(ModelBoundaryRoute, {
+   auth: service(),
+-  controlGroup: service(),
+   flashMessages: service(),
+   console: service(),
+   permissions: service(),
+@@ -26,7 +25,6 @@ export default Route.extend(ModelBoundaryRoute, {
+     const authType = this.auth.getAuthType();
+     const ns = this.namespaceService.path;
+     this.auth.deleteCurrentToken();
+-    this.controlGroup.deleteTokens();
+     this.namespaceService.reset();
+     this.console.set('isOpen', false);
+     this.console.clearLog(true);
+diff --git a/ui/app/routes/vault/cluster/secrets/backend/credentials.js b/ui/app/routes/vault/cluster/secrets/backend/credentials.js
+index 560046d..343f26a 100644
+--- a/ui/app/routes/vault/cluster/secrets/backend/credentials.js
++++ b/ui/app/routes/vault/cluster/secrets/backend/credentials.js
+@@ -6,7 +6,6 @@
+ import { resolve } from 'rsvp';
+ import Route from '@ember/routing/route';
+ import { inject as service } from '@ember/service';
+-import ControlGroupError from 'vault/lib/control-group-error';
+ 
+ const SUPPORTED_DYNAMIC_BACKENDS = ['database', 'ssh', 'aws', 'pki'];
+ 
+@@ -30,11 +29,6 @@ export default Route.extend({
+ 
+   getDatabaseCredential(backend, secret, roleType = '') {
+     return this.store.queryRecord('database/credential', { backend, secret, roleType }).catch((error) => {
+-      if (error instanceof ControlGroupError) {
+-        throw error;
+-      }
+-      // Unless it's a control group error, we want to pass back error info
+-      // so we can render it on the GenerateCredentialsDatabase component
+       const status = error?.httpStatus;
+       let title;
+       let message = `We ran into a problem and could not continue: ${
+diff --git a/ui/app/serializers/control-group.js b/ui/app/serializers/control-group.js
+deleted file mode 100644
+index abe6033..0000000
+--- a/ui/app/serializers/control-group.js
++++ /dev/null
+@@ -1,33 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { EmbeddedRecordsMixin } from '@ember-data/serializer/rest';
+-import ApplicationSerializer from './application';
+-
+-export default ApplicationSerializer.extend(EmbeddedRecordsMixin, {
+-  attrs: {
+-    requestEntity: { embedded: 'always' },
+-    authorizations: { embedded: 'always' },
+-  },
+-
+-  normalizeResponse(store, primaryModelClass, payload) {
+-    const entity = payload?.data?.request_entity;
+-    if (Array.isArray(payload.data.authorizations)) {
+-      for (const authorization of payload.data.authorizations) {
+-        authorization.id = authorization.entity_id;
+-        authorization.name = authorization.entity_name;
+-      }
+-    }
+-
+-    if (entity && Object.keys(entity).length === 0) {
+-      payload.data.request_entity = null;
+-    }
+-    return this._super(...arguments);
+-  },
+-
+-  serialize(snapshot) {
+-    return { accessor: snapshot.id };
+-  },
+-});
+diff --git a/ui/app/services/control-group.js b/ui/app/services/control-group.js
+deleted file mode 100644
+index a4b05ff..0000000
+--- a/ui/app/services/control-group.js
++++ /dev/null
+@@ -1,131 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import Service, { inject as service } from '@ember/service';
+-import RSVP from 'rsvp';
+-import ControlGroupError from 'vault/lib/control-group-error';
+-import getStorage from 'vault/lib/token-storage';
+-import parseURL from 'core/utils/parse-url';
+-
+-const CONTROL_GROUP_PREFIX = 'vault:cg-';
+-const TOKEN_SEPARATOR = '☃';
+-
+-// list of endpoints that return wrapped responses
+-// without `wrap-ttl`
+-const WRAPPED_RESPONSE_PATHS = ['sys/wrapping/rewrap', 'sys/wrapping/wrap'];
+-
+-const storageKey = (accessor, path) => {
+-  return `${CONTROL_GROUP_PREFIX}${accessor}${TOKEN_SEPARATOR}${path}`;
+-};
+-
+-export { storageKey, CONTROL_GROUP_PREFIX, TOKEN_SEPARATOR };
+-export default Service.extend({
+-  version: service(),
+-  router: service(),
+-
+-  storage() {
+-    return getStorage();
+-  },
+-
+-  keyFromAccessor(accessor) {
+-    const keys = this.storage().keys() || [];
+-    const returnKey = keys
+-      .filter((k) => k.startsWith(CONTROL_GROUP_PREFIX))
+-      .find((key) => key.replace(CONTROL_GROUP_PREFIX, '').startsWith(accessor));
+-    return returnKey ? returnKey : null;
+-  },
+-
+-  storeControlGroupToken(info) {
+-    const key = storageKey(info.accessor, info.creation_path);
+-    this.storage().setItem(key, info);
+-  },
+-
+-  deleteControlGroupToken(accessor) {
+-    this.unmarkTokenForUnwrap();
+-    const key = this.keyFromAccessor(accessor);
+-    this.storage().removeItem(key);
+-  },
+-
+-  deleteTokens() {
+-    const keys = this.storage().keys() || [];
+-    keys.filter((k) => k.startsWith(CONTROL_GROUP_PREFIX)).forEach((key) => this.storage().removeItem(key));
+-  },
+-
+-  wrapInfoForAccessor(accessor) {
+-    const key = this.keyFromAccessor(accessor);
+-    return key ? this.storage().getItem(key) : null;
+-  },
+-
+-  tokenToUnwrap: null,
+-  markTokenForUnwrap(accessor) {
+-    this.set('tokenToUnwrap', this.wrapInfoForAccessor(accessor));
+-  },
+-
+-  unmarkTokenForUnwrap() {
+-    this.set('tokenToUnwrap', null);
+-  },
+-
+-  tokenForUrl(url) {
+-    let pathForUrl = parseURL(url).pathname;
+-    pathForUrl = pathForUrl.replace('/v1/', '');
+-    const tokenInfo = this.tokenToUnwrap;
+-    if (tokenInfo && tokenInfo.creation_path === pathForUrl) {
+-      const { token, accessor, creation_time } = tokenInfo;
+-      return { token, accessor, creationTime: creation_time };
+-    }
+-    return null;
+-  },
+-
+-  checkForControlGroup(callbackArgs, response, wasWrapTTLRequested) {
+-    const creationPath = response && response?.wrap_info?.creation_path;
+-    if (
+-      wasWrapTTLRequested ||
+-      !response ||
+-      (creationPath && WRAPPED_RESPONSE_PATHS.includes(creationPath)) ||
+-      !response.wrap_info
+-    ) {
+-      return RSVP.resolve(...callbackArgs);
+-    }
+-    const error = new ControlGroupError(response.wrap_info);
+-    return RSVP.reject(error);
+-  },
+-
+-  handleError(error) {
+-    const { accessor, token, creation_path, creation_time, ttl } = error;
+-    const data = { accessor, token, creation_path, creation_time, ttl };
+-    data.uiParams = { url: this.router.currentURL };
+-    this.storeControlGroupToken(data);
+-    return this.router.transitionTo('vault.cluster.access.control-group-accessor', accessor);
+-  },
+-
+-  // Handle error from non-read request (eg. POST or UPDATE) so it can be retried
+-  saveTokenFromError(error) {
+-    const { accessor, token, creation_path, creation_time, ttl } = error;
+-    const data = { accessor, token, creation_path, creation_time, ttl };
+-    this.storeControlGroupToken(data);
+-    // In the read flow the accessor is marked once the user clicks "Visit" from the control group page
+-    // On a POST/UPDATE flow we don't redirect, so we need to mark automatically so that on the next try
+-    // the request will attempt unwrap.
+-    this.markTokenForUnwrap(accessor);
+-  },
+-
+-  logFromError(error) {
+-    const { accessor, token, creation_path, creation_time, ttl } = error;
+-    const data = { accessor, token, creation_path, creation_time, ttl };
+-    this.storeControlGroupToken(data);
+-
+-    const href = this.router.urlFor('vault.cluster.access.control-group-accessor', accessor);
+-    const lines = [
+-      `A Control Group was encountered at ${error.creation_path}.`,
+-      `The Control Group Token is ${error.token}.`,
+-      `The Accessor is ${error.accessor}.`,
+-      `Visit <a href='${href}'>${href}</a> for more details.`,
+-    ];
+-    return {
+-      type: 'error-with-html',
+-      content: lines.join('\n'),
+-    };
+-  },
+-});
+diff --git a/ui/app/services/permissions.js b/ui/app/services/permissions.js
+index 3b22b42..cd93592 100644
+--- a/ui/app/services/permissions.js
++++ b/ui/app/services/permissions.js
+@@ -15,7 +15,6 @@ const API_PATHS = {
+     groups: 'identity/group/id',
+     leases: 'sys/leases/lookup',
+     namespaces: 'sys/namespaces',
+-    'control-groups': 'sys/control-group/',
+   },
+   policies: {
+     acl: 'sys/policies/acl',
+@@ -44,7 +43,6 @@ const API_PATHS_TO_ROUTE_PARAMS = {
+   'identity/group/id': { route: 'vault.cluster.access.identity', models: ['groups'] },
+   'sys/leases/lookup': { route: 'vault.cluster.access.leases', models: [] },
+   'sys/namespaces': { route: 'vault.cluster.access.namespaces', models: [] },
+-  'sys/control-group/': { route: 'vault.cluster.access.control-groups', models: [] },
+   'identity/mfa/method': { route: 'vault.cluster.access.mfa', models: [] },
+   'identity/oidc/client': { route: 'vault.cluster.access.oidc', models: [] },
+ };
+diff --git a/ui/app/services/version.js b/ui/app/services/version.js
+index a010ac2..feb45c5 100644
+--- a/ui/app/services/version.js
++++ b/ui/app/services/version.js
+@@ -11,10 +11,6 @@ export default class VersionService extends Service {
+   @service store;
+   @tracked version = null;
+ 
+-  get hasControlGroups() {
+-    return false;
+-  }
+-
+   @task
+   *getVersion() {
+     if (this.version) return;
+diff --git a/ui/app/styles/components/control-group.scss b/ui/app/styles/components/control-group.scss
+deleted file mode 100644
+index 16146c5..0000000
+--- a/ui/app/styles/components/control-group.scss
++++ /dev/null
+@@ -1,53 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-.control-group,
+-.control-group-success {
+-  @extend .box;
+-  box-shadow: $box-shadow-middle, 0 0 1px $grey-dark;
+-}
+-.control-group-success.is-editor {
+-  background: $grey-lightest;
+-}
+-
+-.control-group a {
+-  color: currentColor;
+-}
+-.control-group-header {
+-  box-shadow: 0 0 1px currentColor;
+-  padding: $size-9 $size-6;
+-  background: $grey-lightest;
+-  color: $grey-dark;
+-  position: relative;
+-  strong {
+-    color: currentColor;
+-  }
+-}
+-
+-.control-group-header.is-success {
+-  color: $green-dark;
+-  background: $green-lightest;
+-}
+-
+-.control-group .authorizations {
+-  margin-top: $size-9;
+-}
+-
+-.control-group .hover-copy-button-static {
+-  color: $orange;
+-}
+-
+-.control-group-token-text {
+-  color: $grey;
+-  position: relative;
+-  padding: $size-8 0;
+-
+-  .hover-copy-button-static {
+-    position: relative;
+-    top: auto;
+-    left: auto;
+-    display: inline-block;
+-  }
+-}
+diff --git a/ui/app/styles/core.scss b/ui/app/styles/core.scss
+index 0384a06..1be58e4 100644
+--- a/ui/app/styles/core.scss
++++ b/ui/app/styles/core.scss
+@@ -62,7 +62,6 @@
+ @import './components/codemirror';
+ @import './components/confirm';
+ @import './components/console-ui-panel';
+-@import './components/control-group';
+ @import './components/diff-version-selector';
+ @import './components/doc-link';
+ @import './components/empty-state-component';
+diff --git a/ui/app/templates/components/control-group-success.hbs b/ui/app/templates/components/control-group-success.hbs
+deleted file mode 100644
+index 65af487..0000000
+--- a/ui/app/templates/components/control-group-success.hbs
++++ /dev/null
+@@ -1,63 +0,0 @@
+-{{#if (and this.controlGroupResponse.token this.controlGroupResponse.uiParams.url)}}
+-  <div class="control-group-success" data-test-navigate-message>
+-    You have been granted access to
+-    <code>{{this.model.requestPath}}</code>. Be careful, you can only access this data once. If you need access again in the
+-    future you will need to get authorized again.
+-    <div class="box is-shadowless is-fullwidth is-marginless has-slim-padding">
+-      <button data-test-navigate-button type="button" class="button is-primary" {{action (perform this.markAndNavigate)}}>
+-        Visit
+-      </button>
+-    </div>
+-  </div>
+-{{else}}
+-  {{#if this.unwrapData}}
+-    <div class="control-group-success {{if this.unwrapData 'is-editor'}}">
+-      <div class="has-copy-button">
+-        <JsonEditor
+-          data-test-json-viewer
+-          @showToolbar={{false}}
+-          @value={{stringify this.unwrapData}}
+-          @readOnly={{true}}
+-          @viewportMargin="Infinity"
+-          @gutters={{false}}
+-          @theme="hashi-read-only auto-height"
+-        />
+-        <HoverCopyButton @copyValue={{stringify this.unwrapData}} />
+-      </div>
+-    </div>
+-    <div class="field is-grouped box is-fullwidth is-bottomless">
+-      <LinkTo @route="vault.cluster.access.control-groups" class="button">
+-        <Chevron @direction="left" />
+-        Back
+-      </LinkTo>
+-    </div>
+-  {{else}}
+-    <div class="control-group-success" data-test-unwrap-form>
+-      <form {{action (perform this.unwrap this.token) on="submit"}}>
+-        <MessageError @errorMessage={{this.error}} />
+-        <p>
+-          If you have the token, you can now can access
+-          <code>{{this.model.requestPath}}</code>
+-        </p>
+-        <label for="token" class="is-label">
+-          Token to access data
+-        </label>
+-        <div class="control">
+-          <Input
+-            data-test-token-input
+-            class="input"
+-            autocomplete="off"
+-            spellcheck="false"
+-            name="token"
+-            @value={{this.token}}
+-          />
+-        </div>
+-        <div class="field is-grouped box is-fullwidth is-bottomless">
+-          <button data-test-unwrap-button type="submit" class="button is-primary" disabled={{not this.token}}>
+-            Access
+-          </button>
+-        </div>
+-      </form>
+-    </div>
+-  {{/if}}
+-{{/if}}
+\ No newline at end of file
+diff --git a/ui/app/templates/components/control-group.hbs b/ui/app/templates/components/control-group.hbs
+deleted file mode 100644
+index d632a80..0000000
+--- a/ui/app/templates/components/control-group.hbs
++++ /dev/null
+@@ -1,120 +0,0 @@
+-<div class="box is-fullwidth is-bottomless is-sideless">
+-  <MessageError @model={{this.model}} />
+-  <div class="control-group-header {{if this.isSuccess 'is-success'}}">
+-    <p>
+-      <Icon @name={{if this.isSuccess "check-circle-fill" "lock-fill"}} />
+-      <strong data-test-banner-prefix>{{this.bannerPrefix}}</strong>
+-      <span data-test-banner-text>{{this.bannerText}}</span>
+-    </p>
+-  </div>
+-  {{#if
+-    (and
+-      this.model.approved
+-      (not this.currentUserHasAuthorized)
+-      (or (not this.model.requestEntity) this.currentUserIsRequesting)
+-    )
+-  }}
+-    <ControlGroupSuccess
+-      data-test-control-group-success
+-      @model={{this.model}}
+-      @controlGroupResponse={{this.controlGroupResponse}}
+-    />
+-  {{else}}
+-    <div class="control-group">
+-      <div data-test-requestor-text>
+-        {{#if this.model.requestEntity.canRead}}
+-          <LinkTo
+-            @route="vault.cluster.access.identity.show"
+-            @models={{array "entities" this.model.requestEntity.id "details"}}
+-          >
+-            {{this.requestorName}}
+-          </LinkTo>
+-        {{else}}
+-          {{this.requestorName}}
+-        {{/if}}
+-        {{#if this.currentUserIsRequesting}}are{{else}}is{{/if}}
+-        {{#if this.model.approved}}
+-          authorized to access
+-          <code>{{this.model.requestPath}}</code>
+-        {{else}}
+-          requesting access to
+-          <code>{{this.model.requestPath}}</code>
+-        {{/if}}
+-      </div>
+-
+-      {{#if (or (not this.model.requestEntity) this.currentUserIsRequesting)}}
+-        <div class="message is-list is-highlight has-copy-button" tabindex="-1" data-test-accessor-callout>
+-          <HoverCopyButton @alwaysShow={{true}} @copyValue={{this.model.id}} />
+-          <div class="message-body">
+-            <h4 class="title is-7 is-marginless">
+-              Accessor
+-            </h4>
+-            <code class="is-word-break" data-test-accessor-value>{{this.model.id}}</code>
+-          </div>
+-        </div>
+-      {{/if}}
+-
+-      <div class="authorizations" data-test-authorizations>
+-        {{#if (gt this.model.authorizations.length 0)}}
+-          <span class="has-text-success">
+-            <Icon @name="check-circle" />
+-          </span>
+-          Already approved by
+-          {{#each this.model.authorizations as |authorization index|}}
+-            {{~#if authorization.canRead~}}
+-              <LinkTo @route="vault.cluster.access.identity.show" @models={{array "entities" authorization.id "details"}}>
+-                {{authorization.name}}
+-              </LinkTo>
+-            {{~else~}}
+-              {{authorization.name}}
+-            {{~/if~}}{{#if (lt (inc index) this.model.authorizations.length)}},{{/if}}
+-          {{/each}}
+-        {{else}}
+-          <span class="has-text-grey">
+-            <Icon @name="check-circle" />
+-          </span>
+-          Awaiting authorization.
+-        {{/if}}
+-      </div>
+-    </div>
+-  {{/if}}
+-
+-  {{#if this.controlGroupResponse.token}}
+-    <p class="control-group-token-text" data-test-token>
+-      We’ve saved your request token, but you may want to copy it just in case:
+-      <span class="tag has-font-monospaced" data-test-token-value>{{this.controlGroupResponse.token}}</span>
+-      <HoverCopyButton @alwaysShow={{true}} @copyValue={{this.controlGroupResponse.token}} />
+-    </p>
+-  {{/if}}
+-  {{! template-lint-configure simple-unless "warn" }}
+-  {{#unless (and this.model.approved (or (not this.model.requestEntity) this.currentUserIsRequesting))}}
+-    <div class="field is-grouped box is-fullwidth is-bottomless">
+-      {{#if this.model.canAuthorize}}
+-        {{#if (or this.model.approved this.currentUserHasAuthorized)}}
+-          <LinkTo @route="vault.cluster.access.control-groups" class="button" data-test-back-link={{true}}>
+-            <Chevron @direction="left" />
+-            Back
+-          </LinkTo>
+-        {{else}}
+-          <button
+-            type="button"
+-            class="button is-primary {{if this.authorize.isRunning 'is-loading'}}"
+-            {{action (perform this.authorize)}}
+-            data-test-authorize-button
+-          >
+-            Authorize
+-          </button>
+-        {{/if}}
+-      {{else}}
+-        <button
+-          type="button"
+-          class="button is-primary {{if this.refresh.isRunning 'is-loading'}}"
+-          {{action (perform this.refresh)}}
+-          data-test-refresh-button
+-        >
+-          Refresh
+-        </button>
+-      {{/if}}
+-    </div>
+-  {{/unless}}
+-</div>
+\ No newline at end of file
+diff --git a/ui/tests/integration/components/control-group-success-test.js b/ui/tests/integration/components/control-group-success-test.js
+deleted file mode 100644
+index 857c912..0000000
+--- a/ui/tests/integration/components/control-group-success-test.js
++++ /dev/null
+@@ -1,87 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { later, run, _cancelTimers as cancelTimers } from '@ember/runloop';
+-import { resolve } from 'rsvp';
+-import Service from '@ember/service';
+-import { module, test } from 'qunit';
+-import { setupRenderingTest } from 'ember-qunit';
+-import { render, settled } from '@ember/test-helpers';
+-import hbs from 'htmlbars-inline-precompile';
+-import sinon from 'sinon';
+-import { create } from 'ember-cli-page-object';
+-import controlGroupSuccess from '../../pages/components/control-group-success';
+-
+-const component = create(controlGroupSuccess);
+-
+-const controlGroupService = Service.extend({
+-  deleteControlGroupToken: sinon.stub(),
+-  markTokenForUnwrap: sinon.stub(),
+-});
+-
+-const storeService = Service.extend({
+-  adapterFor() {
+-    return {
+-      toolAction() {
+-        return resolve({ data: { foo: 'bar' } });
+-      },
+-    };
+-  },
+-});
+-
+-module('Integration | Component | control group success', function (hooks) {
+-  setupRenderingTest(hooks);
+-
+-  hooks.beforeEach(function () {
+-    run(() => {
+-      this.owner.unregister('service:store');
+-      this.owner.register('service:control-group', controlGroupService);
+-      this.controlGroup = this.owner.lookup('service:control-group');
+-      this.owner.register('service:store', storeService);
+-      this.router = this.owner.lookup('service:router');
+-      this.router.reopen({
+-        transitionTo: sinon.stub().returns(resolve()),
+-      });
+-    });
+-  });
+-
+-  const MODEL = {
+-    approved: false,
+-    requestPath: 'foo/bar',
+-    id: 'accessor',
+-    requestEntity: { id: 'requestor', name: 'entity8509' },
+-    reload: sinon.stub(),
+-  };
+-  test('render with saved token', async function (assert) {
+-    assert.expect(3);
+-    const response = {
+-      uiParams: { url: '/foo' },
+-      token: 'token',
+-    };
+-    this.set('model', MODEL);
+-    this.set('response', response);
+-    await render(hbs`{{control-group-success model=this.model controlGroupResponse=this.response }}`);
+-    assert.ok(component.showsNavigateMessage, 'shows unwrap message');
+-    await component.navigate();
+-    later(() => cancelTimers(), 50);
+-    return settled().then(() => {
+-      assert.ok(this.controlGroup.markTokenForUnwrap.calledOnce, 'marks token for unwrap');
+-      assert.ok(this.router.transitionTo.calledOnce, 'calls router transition');
+-    });
+-  });
+-
+-  test('render without token', async function (assert) {
+-    assert.expect(2);
+-    this.set('model', MODEL);
+-    await render(hbs`{{control-group-success model=this.model}}`);
+-    assert.ok(component.showsUnwrapForm, 'shows unwrap form');
+-    await component.token('token');
+-    component.unwrap();
+-    later(() => cancelTimers(), 50);
+-    return settled().then(() => {
+-      assert.ok(component.showsJsonViewer, 'shows unwrapped data');
+-    });
+-  });
+-});
+diff --git a/ui/tests/integration/components/control-group-test.js b/ui/tests/integration/components/control-group-test.js
+deleted file mode 100644
+index 49a0b17..0000000
+--- a/ui/tests/integration/components/control-group-test.js
++++ /dev/null
+@@ -1,187 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import Service from '@ember/service';
+-import { module, test } from 'qunit';
+-import { setupRenderingTest } from 'ember-qunit';
+-import { render } from '@ember/test-helpers';
+-import hbs from 'htmlbars-inline-precompile';
+-import sinon from 'sinon';
+-import { create } from 'ember-cli-page-object';
+-import controlGroup from '../../pages/components/control-group';
+-
+-const component = create(controlGroup);
+-
+-const controlGroupService = Service.extend({
+-  init() {
+-    this._super(...arguments);
+-    this.set('wrapInfo', null);
+-  },
+-  wrapInfoForAccessor() {
+-    return this.wrapInfo;
+-  },
+-});
+-
+-const authService = Service.extend();
+-
+-module('Integration | Component | control group', function (hooks) {
+-  setupRenderingTest(hooks);
+-
+-  hooks.beforeEach(function () {
+-    this.owner.register('service:auth', authService);
+-    this.owner.register('service:control-group', controlGroupService);
+-    this.controlGroup = this.owner.lookup('service:controlGroup');
+-    this.auth = this.owner.lookup('service:auth');
+-  });
+-
+-  const setup = (modelData = {}, authData = {}) => {
+-    const modelDefaults = {
+-      approved: false,
+-      requestPath: 'foo/bar',
+-      id: 'accessor',
+-      requestEntity: { id: 'requestor', name: 'entity8509' },
+-      reload: sinon.stub(),
+-    };
+-    const authDataDefaults = { entity_id: 'requestor' };
+-
+-    return {
+-      model: {
+-        ...modelDefaults,
+-        ...modelData,
+-      },
+-      authData: {
+-        ...authDataDefaults,
+-        ...authData,
+-      },
+-    };
+-  };
+-
+-  test('requestor rendering', async function (assert) {
+-    const { model, authData } = setup();
+-    this.set('model', model);
+-    this.set('auth.authData', authData);
+-    await render(hbs`{{control-group model=this.model}}`);
+-    assert.ok(component.showsAccessorCallout, 'shows accessor callout');
+-    assert.strictEqual(component.bannerPrefix, 'Locked');
+-    assert.strictEqual(component.bannerText, 'The path you requested is locked by a Control Group');
+-    assert.strictEqual(component.requestorText, `You are requesting access to ${model.requestPath}`);
+-    assert.false(component.showsTokenText, 'does not show token message when there is no token');
+-    assert.ok(component.showsRefresh, 'shows refresh button');
+-    assert.ok(component.authorizationText, 'Awaiting authorization.');
+-  });
+-
+-  test('requestor rendering: with token', async function (assert) {
+-    const { model, authData } = setup();
+-    this.set('model', model);
+-    this.set('auth.authData', authData);
+-    this.set('controlGroup.wrapInfo', { token: 'token' });
+-    await render(hbs`{{control-group model=this.model}}`);
+-    assert.true(component.showsTokenText, 'shows token message');
+-    assert.strictEqual(component.token, 'token', 'shows token value');
+-  });
+-
+-  test('requestor rendering: some approvals', async function (assert) {
+-    const { model, authData } = setup({ authorizations: [{ name: 'manager 1' }, { name: 'manager 2' }] });
+-    this.set('model', model);
+-    this.set('auth.authData', authData);
+-    await render(hbs`{{control-group model=this.model}}`);
+-    assert.ok(component.authorizationText, 'Already approved by manager 1, manager 2');
+-  });
+-
+-  test('requestor rendering: approved with no token', async function (assert) {
+-    const { model, authData } = setup({ approved: true });
+-    this.set('model', model);
+-    this.set('auth.authData', authData);
+-    await render(hbs`{{control-group model=this.model}}`);
+-
+-    assert.strictEqual(component.bannerPrefix, 'Success!');
+-    assert.strictEqual(component.bannerText, 'You have been given authorization');
+-    assert.false(component.showsTokenText, 'does not show token message when there is no token');
+-    assert.notOk(component.showsRefresh, 'does not shows refresh button');
+-    assert.ok(component.showsSuccessComponent, 'renders control group success');
+-  });
+-
+-  test('requestor rendering: approved with token', async function (assert) {
+-    const { model, authData } = setup({ approved: true });
+-    this.set('model', model);
+-    this.set('auth.authData', authData);
+-    this.set('controlGroup.wrapInfo', { token: 'token' });
+-    await render(hbs`{{control-group model=this.model}}`);
+-    assert.true(component.showsTokenText, 'shows token');
+-    assert.notOk(component.showsRefresh, 'does not shows refresh button');
+-    assert.ok(component.showsSuccessComponent, 'renders control group success');
+-  });
+-
+-  test('authorizer rendering', async function (assert) {
+-    const { model, authData } = setup({ canAuthorize: true }, { entity_id: 'manager' });
+-
+-    this.set('model', model);
+-    this.set('auth.authData', authData);
+-    await render(hbs`{{control-group model=this.model}}`);
+-
+-    assert.strictEqual(component.bannerPrefix, 'Locked');
+-    assert.strictEqual(
+-      component.bannerText,
+-      'Someone is requesting access to a path locked by a Control Group'
+-    );
+-    assert.strictEqual(
+-      component.requestorText,
+-      `${model.requestEntity.name} is requesting access to ${model.requestPath}`
+-    );
+-    assert.false(component.showsTokenText, 'does not show token message when there is no token');
+-
+-    assert.ok(component.showsAuthorize, 'shows authorize button');
+-  });
+-
+-  test('authorizer rendering:authorized', async function (assert) {
+-    const { model, authData } = setup(
+-      { canAuthorize: true, authorizations: [{ id: 'manager', name: 'manager' }] },
+-      { entity_id: 'manager' }
+-    );
+-
+-    this.set('model', model);
+-    this.set('auth.authData', authData);
+-    await render(hbs`{{control-group model=this.model}}`);
+-
+-    assert.strictEqual(component.bannerPrefix, 'Thanks!');
+-    assert.strictEqual(component.bannerText, 'You have given authorization');
+-    assert.ok(component.showsBackLink, 'back link is visible');
+-  });
+-
+-  test('authorizer rendering: authorized and success', async function (assert) {
+-    const { model, authData } = setup(
+-      { approved: true, canAuthorize: true, authorizations: [{ id: 'manager', name: 'manager' }] },
+-      { entity_id: 'manager' }
+-    );
+-
+-    this.set('model', model);
+-    this.set('auth.authData', authData);
+-    await render(hbs`{{control-group model=this.model}}`);
+-
+-    assert.strictEqual(component.bannerPrefix, 'Thanks!');
+-    assert.strictEqual(component.bannerText, 'You have given authorization');
+-    assert.ok(component.showsBackLink, 'back link is visible');
+-    assert.strictEqual(
+-      component.requestorText,
+-      `${model.requestEntity.name} is authorized to access ${model.requestPath}`
+-    );
+-    assert.notOk(component.showsSuccessComponent, 'does not render control group success');
+-  });
+-
+-  test('third-party: success', async function (assert) {
+-    const { model, authData } = setup(
+-      { approved: true, canAuthorize: true, authorizations: [{ id: 'foo', name: 'foo' }] },
+-      { entity_id: 'manager' }
+-    );
+-
+-    this.set('model', model);
+-    this.set('auth.authData', authData);
+-    await render(hbs`{{control-group model=this.model}}`);
+-    assert.strictEqual(component.bannerPrefix, 'Success!');
+-    assert.strictEqual(component.bannerText, 'This Control Group has been authorized');
+-    assert.ok(component.showsBackLink, 'back link is visible');
+-    assert.notOk(component.showsSuccessComponent, 'does not render control group success');
+-  });
+-});
+diff --git a/ui/tests/pages/components/control-group-success.js b/ui/tests/pages/components/control-group-success.js
+deleted file mode 100644
+index ea39173..0000000
+--- a/ui/tests/pages/components/control-group-success.js
++++ /dev/null
+@@ -1,15 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { isPresent, fillable, clickable } from 'ember-cli-page-object';
+-
+-export default {
+-  showsJsonViewer: isPresent('[data-test-json-viewer]'),
+-  showsNavigateMessage: isPresent('[data-test-navigate-message]'),
+-  showsUnwrapForm: isPresent('[data-test-unwrap-form]'),
+-  navigate: clickable('[data-test-navigate-button]'),
+-  unwrap: clickable('[data-test-unwrap-button]'),
+-  token: fillable('[data-test-token-input]'),
+-};
+diff --git a/ui/tests/pages/components/control-group.js b/ui/tests/pages/components/control-group.js
+deleted file mode 100644
+index 6e304be..0000000
+--- a/ui/tests/pages/components/control-group.js
++++ /dev/null
+@@ -1,24 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { isPresent, clickable, text } from 'ember-cli-page-object';
+-
+-export default {
+-  showsAccessorCallout: isPresent('[data-test-accessor-callout]'),
+-  authorizationText: text('[data-test-authorizations]'),
+-  bannerPrefix: text('[data-test-banner-prefix]'),
+-  bannerText: text('[data-test-banner-text]'),
+-  requestorText: text('[data-test-requestor-text]'),
+-  showsTokenText: isPresent('[data-test-token]'),
+-  refresh: clickable('[data-test-refresh-button]'),
+-  authorize: clickable('[data-test-authorize-button]'),
+-  showsSuccessComponent: isPresent('[data-test-control-group-success]'),
+-
+-  accessor: text('[data-test-accessor-value]'),
+-  token: text('[data-test-token-value]'),
+-  showsRefresh: isPresent('[data-test-refresh-button]'),
+-  showsAuthorize: isPresent('[data-test-authorize-button]'),
+-  showsBackLink: isPresent('[data-test-back-link]'),
+-};
+diff --git a/ui/tests/unit/services/control-group-test.js b/ui/tests/unit/services/control-group-test.js
+deleted file mode 100644
+index 11d4616..0000000
+--- a/ui/tests/unit/services/control-group-test.js
++++ /dev/null
+@@ -1,255 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { set } from '@ember/object';
+-import Service from '@ember/service';
+-import { module, skip } from 'qunit';
+-import { setupTest } from 'ember-qunit';
+-import sinon from 'sinon';
+-
+-import { storageKey, CONTROL_GROUP_PREFIX, TOKEN_SEPARATOR } from 'vault/services/control-group';
+-
+-const versionStub = Service.extend();
+-
+-function storage() {
+-  return {
+-    items: {},
+-    getItem(key) {
+-      var item = this.items[key];
+-      return item && JSON.parse(item);
+-    },
+-
+-    setItem(key, val) {
+-      return (this.items[key] = JSON.stringify(val));
+-    },
+-
+-    removeItem(key) {
+-      delete this.items[key];
+-    },
+-
+-    keys() {
+-      return Object.keys(this.items);
+-    },
+-  };
+-}
+-
+-module('Unit | Service | control group', function (hooks) {
+-  setupTest(hooks);
+-
+-  hooks.beforeEach(function () {
+-    this.owner.register('service:version', versionStub);
+-    this.version = this.owner.lookup('service:version');
+-    this.router = this.owner.lookup('service:router');
+-    this.router.reopen({
+-      transitionTo: sinon.stub(),
+-      urlFor: sinon.stub().returns('/ui/vault/foo'),
+-      currentURL: '/vault/secrets/kv/show/foo',
+-    });
+-  });
+-
+-  hooks.afterEach(function () {});
+-
+-  const isOSS = (context) => set(context, 'version.isOSS', true);
+-  const isEnt = (context) => set(context, 'version.isOSS', false);
+-  const resolvesArgs = (assert, result, expectedArgs) => {
+-    return result.then((...args) => {
+-      return assert.deepEqual(args, expectedArgs, 'resolves with the passed args');
+-    });
+-  };
+-
+-  [
+-    [
+-      'it resolves isOSS:true, wrapTTL: true, response: has wrap_info',
+-      isOSS,
+-      [[{ one: 'two', three: 'four' }], { wrap_info: { token: 'foo', accessor: 'bar' } }, true],
+-      (assert, result) => resolvesArgs(assert, result, [{ one: 'two', three: 'four' }]),
+-    ],
+-    [
+-      'it resolves isOSS:true, wrapTTL: false, response: has no wrap_info',
+-      isOSS,
+-      [[{ one: 'two', three: 'four' }], { wrap_info: null }, false],
+-      (assert, result) => resolvesArgs(assert, result, [{ one: 'two', three: 'four' }]),
+-    ],
+-    [
+-      'it resolves isOSS: false and wrapTTL:true response: has wrap_info',
+-      isEnt,
+-      [[{ one: 'two', three: 'four' }], { wrap_info: { token: 'foo', accessor: 'bar' } }, true],
+-      (assert, result) => resolvesArgs(assert, result, [{ one: 'two', three: 'four' }]),
+-    ],
+-    [
+-      'it resolves isOSS: false and wrapTTL:false response: has no wrap_info',
+-      isEnt,
+-      [[{ one: 'two', three: 'four' }], { wrap_info: null }, false],
+-      (assert, result) => resolvesArgs(assert, result, [{ one: 'two', three: 'four' }]),
+-    ],
+-    [
+-      'it rejects isOSS: false, wrapTTL:false, response: has wrap_info',
+-      isEnt,
+-      [
+-        [{ one: 'two', three: 'four' }],
+-        { foo: 'bar', wrap_info: { token: 'secret', accessor: 'lookup' } },
+-        false,
+-      ],
+-      (assert, result) => {
+-        // ensure failure if we ever don't reject
+-        assert.expect(2);
+-
+-        return result.then(
+-          () => {},
+-          (err) => {
+-            assert.strictEqual(err.token, 'secret');
+-            assert.strictEqual(err.accessor, 'lookup');
+-          }
+-        );
+-      },
+-    ],
+-  ].forEach(function ([name, setup, args, expectation]) {
+-    skip(`checkForControlGroup: ${name}`, function (assert) {
+-      const assertCount = name === 'it rejects isOSS: false, wrapTTL:false, response: has wrap_info' ? 2 : 1;
+-      assert.expect(assertCount);
+-      if (setup) {
+-        setup(this);
+-      }
+-      const service = this.owner.lookup('service:control-group');
+-      const result = service.checkForControlGroup(...args);
+-      return expectation(assert, result);
+-    });
+-  });
+-
+-  skip(`handleError: transitions to accessor and stores control group token`, function (assert) {
+-    const error = {
+-      accessor: '12345',
+-      token: 'token',
+-      creation_path: 'kv/',
+-      creation_time: '2022-03-17T20:00:25.594Z',
+-      ttl: 400,
+-    };
+-    const expected = { ...error, uiParams: { url: '/vault/secrets/kv/show/foo' } };
+-    const service = this.owner.factoryFor('service:control-group').create({
+-      storeControlGroupToken: sinon.spy(),
+-    });
+-    service.handleError(error);
+-    assert.ok(service.storeControlGroupToken.calledWith(expected), 'calls storeControlGroupToken');
+-    assert.ok(
+-      this.router.transitionTo.calledWith('vault.cluster.access.control-group-accessor', '12345'),
+-      'calls router transitionTo'
+-    );
+-  });
+-
+-  skip(`logFromError: returns correct content string`, function (assert) {
+-    const error = {
+-      accessor: '12345',
+-      token: 'token',
+-      creation_path: 'kv/',
+-      creation_time: '2022-03-17T20:00:25.594Z',
+-      ttl: 400,
+-    };
+-    const service = this.owner.factoryFor('service:control-group').create({
+-      storeControlGroupToken: sinon.spy(),
+-    });
+-    const contentString = service.logFromError(error);
+-    assert.ok(
+-      this.router.urlFor.calledWith('vault.cluster.access.control-group-accessor', '12345'),
+-      'calls urlFor with accessor'
+-    );
+-    assert.ok(service.storeControlGroupToken.calledWith(error), 'calls storeControlGroupToken');
+-    assert.ok(contentString.content.includes('12345'), 'contains accessor');
+-    assert.ok(contentString.content.includes('kv/'), 'contains creation path');
+-    assert.ok(contentString.content.includes('token'), 'contains token');
+-  });
+-
+-  skip('storageKey', function (assert) {
+-    const accessor = '12345';
+-    const path = 'kv/foo/bar';
+-    const expectedKey = `${CONTROL_GROUP_PREFIX}${accessor}${TOKEN_SEPARATOR}${path}`;
+-    assert.strictEqual(storageKey(accessor, path), expectedKey, 'uses expected key');
+-  });
+-
+-  skip('keyFromAccessor', function (assert) {
+-    const store = storage();
+-    const accessor = '12345';
+-    const path = 'kv/foo/bar';
+-    const data = { foo: 'bar' };
+-    const expectedKey = `${CONTROL_GROUP_PREFIX}${accessor}${TOKEN_SEPARATOR}${path}`;
+-    const subject = this.owner.factoryFor('service:control-group').create({
+-      storage() {
+-        return store;
+-      },
+-    });
+-
+-    store.setItem(expectedKey, data);
+-    store.setItem(`${CONTROL_GROUP_PREFIX}2345${TOKEN_SEPARATOR}${path}`, 'ok');
+-
+-    assert.strictEqual(subject.keyFromAccessor(accessor), expectedKey, 'finds key given the accessor');
+-    assert.strictEqual(subject.keyFromAccessor('foo'), null, 'returns null if no key was found');
+-  });
+-
+-  skip('storeControlGroupToken', function (assert) {
+-    const store = storage();
+-    const subject = this.owner.factoryFor('service:control-group').create({
+-      storage() {
+-        return store;
+-      },
+-    });
+-    const info = {
+-      accessor: '12345',
+-      creation_path: 'foo/',
+-      creation_time: '2022-03-17T20:00:25.594Z',
+-      ttl: 300,
+-    };
+-    const key = `${CONTROL_GROUP_PREFIX}${info.accessor}${TOKEN_SEPARATOR}${info.creation_path}`;
+-
+-    subject.storeControlGroupToken(info);
+-    assert.deepEqual(store.items[key], JSON.stringify(info), 'stores the whole info object');
+-  });
+-
+-  skip('deleteControlGroupToken', function (assert) {
+-    const store = storage();
+-    const subject = this.owner.factoryFor('service:control-group').create({
+-      storage() {
+-        return store;
+-      },
+-    });
+-    const accessor = 'foo';
+-    const path = 'kv/one';
+-
+-    const expectedKey = `${CONTROL_GROUP_PREFIX}${accessor}${TOKEN_SEPARATOR}${path}`;
+-    store.setItem(expectedKey, { one: '2' });
+-    subject.deleteControlGroupToken(accessor);
+-    assert.strictEqual(Object.keys(store.items).length, 0, 'there are no keys stored in storage');
+-  });
+-
+-  skip('deleteTokens', function (assert) {
+-    const store = storage();
+-    const subject = this.owner.factoryFor('service:control-group').create({
+-      storage() {
+-        return store;
+-      },
+-    });
+-
+-    const keyOne = `${CONTROL_GROUP_PREFIX}foo`;
+-    const keyTwo = `${CONTROL_GROUP_PREFIX}bar`;
+-    store.setItem(keyOne, { one: '2' });
+-    store.setItem(keyTwo, { two: '2' });
+-    store.setItem('value', 'one');
+-    assert.strictEqual(Object.keys(store.items).length, 3, 'stores 3 values');
+-    subject.deleteTokens();
+-    assert.strictEqual(Object.keys(store.items).length, 1, 'removes tokens with control group prefix');
+-    assert.strictEqual(store.getItem('value'), 'one', 'keeps the non-prefixed value');
+-  });
+-
+-  skip('wrapInfoForAccessor', function (assert) {
+-    const store = storage();
+-    const subject = this.owner.factoryFor('service:control-group').create({
+-      storage() {
+-        return store;
+-      },
+-    });
+-
+-    const keyOne = `${CONTROL_GROUP_PREFIX}foo`;
+-    store.setItem(keyOne, { one: '2' });
+-    assert.deepEqual(subject.wrapInfoForAccessor('foo'), { one: '2' });
+-  });
+-});
+-- 
+2.43.0
+

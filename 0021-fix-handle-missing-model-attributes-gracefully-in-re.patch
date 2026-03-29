@@ -1,0 +1,35 @@
+From 80c944618b46457c0f13e2b60e7d8088550f2810 Mon Sep 17 00:00:00 2001
+From: Aditya <jaiswal.aditya.deelip@gmail.com>
+Date: Sun, 29 Mar 2026 00:32:46 +0530
+Subject: [PATCH 21/22] fix: handle missing model attributes gracefully in
+ registerNewModelWithProps
+
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/app/services/path-help.js | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/ui/app/services/path-help.js b/ui/app/services/path-help.js
+index 97b99a3..68d1c8c 100644
+--- a/ui/app/services/path-help.js
++++ b/ui/app/services/path-help.js
+@@ -303,7 +303,13 @@ export default Service.extend({
+   registerNewModelWithProps(helpUrl, backend, newModel, modelName) {
+     return this.getProps(helpUrl, backend).then((props) => {
+       const modelType = modelName.split(':')[1];
+-      const { attrs, newFields } = combineAttributes(this.store.modelFor(modelType).attributes, props);
++      let existingAttrs = null;
++      try {
++        existingAttrs = this.store.modelFor(modelType).attributes;
++      } catch {
++        existingAttrs = null;
++      }
++      const { attrs, newFields } = combineAttributes(existingAttrs, props);
+       const owner = getOwner(this);
+       newModel = newModel.extend(attrs, { newFields });
+       // if our newModel doesn't have fieldGroups already
+-- 
+2.43.0
+

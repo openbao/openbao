@@ -21,20 +21,24 @@ export default RoleEdit.extend({
         return;
       }
       var credential_type = this.model.credential_type;
+
       if (credential_type == 'iam_user') {
-        set(this, 'model.role_arns', []);
+        this.model.role_arns = [];
       }
+
       if (credential_type == 'assumed_role') {
-        set(this, 'model.policy_arns', []);
+        this.model.policy_arns = [];
       }
+
       if (credential_type == 'federation_token') {
-        set(this, 'model.role_arns', []);
-        set(this, 'model.policy_arns', []);
+        this.model.role_arns = [];
+        this.model.policy_arns = [];
       }
 
       var policy_document = this.model.policy_document;
+
       if (policy_document == '{}') {
-        set(this, 'model.policy_document', '');
+        this.model.policy_document = '';
       }
 
       this.persist('save', () => {
@@ -48,7 +52,7 @@ export default RoleEdit.extend({
       const hasErrors = codemirror.state.lint.marked.length > 0;
 
       if (!hasErrors) {
-        set(this.model, attr, val);
+        this.model[attr] = val;
       }
     },
   },

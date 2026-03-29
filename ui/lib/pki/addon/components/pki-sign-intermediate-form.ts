@@ -9,6 +9,7 @@ import { service } from '@ember/service';
 import { waitFor } from '@ember/test-waiters';
 import { tracked } from '@glimmer/tracking';
 import { task } from 'ember-concurrency';
+import { resolve } from 'rsvp';
 import errorMessage from 'vault/utils/error-message';
 import type PkiCertificateSignIntermediate from 'vault/models/pki/certificate/sign-intermediate';
 import type FlashMessageService from 'vault/services/flash-messages';
@@ -38,7 +39,7 @@ export default class PkiSignIntermediateFormComponent extends Component<Args> {
     this.inlineFormAlert = invalidFormMessage;
     if (!isValid) return;
     try {
-      yield this.args.model.save();
+      yield resolve(this.args.model.save());
       this.flashMessages.success('Successfully signed CSR.');
       window?.scrollTo(0, 0);
     } catch (e) {

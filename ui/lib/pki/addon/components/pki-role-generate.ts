@@ -8,6 +8,7 @@ import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
 import { service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
+import { resolve } from 'rsvp';
 import errorMessage from 'vault/utils/error-message';
 import type Router from '@ember/routing/router';
 import type Store from '@ember-data/store';
@@ -41,7 +42,7 @@ export default class PkiRoleGenerate extends Component<Args> {
     this.errorBanner = '';
     const { model, onSuccess } = this.args;
     try {
-      yield model.save();
+      yield resolve(model.save());
       onSuccess();
     } catch (err) {
       this.errorBanner = errorMessage(

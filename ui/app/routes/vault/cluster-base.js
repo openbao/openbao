@@ -62,7 +62,7 @@ export default Route.extend({
   },
 
   hasKeyData() {
-    return !!this.controllerFor(INIT).keyData;
+    return !!this.keyDataService.keyData;
   },
 
   targetRouteName(transition) {

@@ -9,6 +9,7 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
 import { waitFor } from '@ember/test-waiters';
+import { resolve } from 'rsvp';
 import errorMessage from 'vault/utils/error-message';
 import type RouterService from '@ember/routing/router-service';
 import type FlashMessageService from 'vault/services/flash-messages';
@@ -64,7 +65,7 @@ export default class PkiConfigurationEditComponent extends Component<Args> {
       // skip saving and continue to next iteration if user does not have permission
       if (!model.canSet) continue;
       try {
-        yield model.save();
+        yield resolve(model.save());
         this.flashMessages.success(`Successfully updated config/${modelName}`);
       } catch (error) {
         const errorObject: ErrorObject = {

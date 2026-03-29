@@ -36,7 +36,7 @@ func (c *PathHelpCommand) Help() string {
 	helpText := `
 Usage: bao path-help [options] PATH
 
-  Retrieves API help for paths. All endpoints in Vault provide built-in help
+  Retrieves API help for paths. All endpoints in OpenBao provide built-in help
   in markdown format. This includes system paths, secret engines, and auth
   methods.
 

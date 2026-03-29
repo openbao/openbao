@@ -31,7 +31,6 @@ const MODEL_TYPES = {
 };
 
 export default Component.extend({
-  controlGroup: service(),
   store: service(),
   router: service(),
   // set on the component
@@ -102,12 +101,6 @@ export default Component.extend({
           model.set('hasGenerated', true);
         })
         .catch((error) => {
-          // Handle control group AdapterError
-          if (error.message === 'Control Group encountered') {
-            this.controlGroup.saveTokenFromError(error);
-            const err = this.controlGroup.logFromError(error);
-            error.errors = [err.content];
-          }
           throw error;
         })
         .finally(() => {

@@ -40,7 +40,7 @@ Now in the sandbox stage of OpenSSF’s project lifecycle, OpenBao is focused on
 
 We’re thrilled to support the OpenBao community and look forward to seeing its impact grow across the open source security landscape.
 
-🔐 Get Involved: [Visit the OpenBao GitHub repository](https://github.com/openbao/openbao) and join the conversation on the [OpenSSF Slack](https://linuxfoundation.slack.com/archives/C02H1G4TH) and [Matrix](https://chat.lfx.linuxfoundation.org/#/room/#openbao-general:chat.lfx.linuxfoundation.org).
+🔐 Get Involved: [Visit the OpenBao GitHub repository](https://github.com/openbao/openbao) and join the conversation on the [OpenSSF Slack](https://linuxfoundation.slack.com/archives/C02H1G4TH) and [Zulip](https://linuxfoundation.zulipchat.com/#narrow/channel/529890-openssf-openbao-discussion).
 
 ---
 

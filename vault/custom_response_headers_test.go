@@ -10,12 +10,13 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 var defaultCustomHeaders = map[string]string{
@@ -80,7 +81,7 @@ func TestConfigCustomHeaders(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	listenerCustomHeaders := NewListenerCustomHeader(rawListenerConfig, logger, uiHeaders)
+	listenerCustomHeaders := *NewListenerCustomHeader(rawListenerConfig, logger, uiHeaders)
 	if listenerCustomHeaders == nil || len(listenerCustomHeaders) != 1 {
 		t.Fatal("failed to get custom header configuration")
 	}
@@ -102,8 +103,8 @@ func TestConfigCustomHeaders(t *testing.T) {
 func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	b := testSystemBackend(t)
 	paths := b.(*SystemBackend).configPaths()
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "")
+	_, barr, _ := barrier.MockBarrier(t, logger)
+	view := barrier.NewView(barr, "")
 	b.(*SystemBackend).Core.systemBarrierView = view
 
 	logger := logging.NewVaultLogger(log.Trace)
@@ -130,7 +131,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 		t.Fatal("custom header config should be configured")
 	}
 	b.(*SystemBackend).Core.customListenerHeader.Store(customListenerHeader)
-	clh := b.(*SystemBackend).Core.customListenerHeader
+	clh := b.(*SystemBackend).Core.customListenerHeader.Load()
 	if clh == nil {
 		t.Fatal("custom header config should be configured in core")
 	}
@@ -143,7 +144,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	req.Data["values"] = []string{"UI Custom Header"}
 	req.ResponseWriter = hw
 
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err == nil {
 		t.Fatal("request did not fail on setting a header that is present in custom response headers")
 	}
@@ -163,7 +164,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	req.Data["values"] = []string{"400"}
 	req.ResponseWriter = hw
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err == nil {
 		t.Fatal("request did not fail on setting a header that is present in custom response headers")
 	}
@@ -187,7 +188,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	req.Data["values"] = []string{"Ui header value"}
 	req.ResponseWriter = hw
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatal("request failed on setting a header that is not present in custom response headers.", "error:", err)
 	}

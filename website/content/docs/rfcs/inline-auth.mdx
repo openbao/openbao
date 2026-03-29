@@ -21,15 +21,15 @@ login requests.
 
 Authentication is one of the few non-scalable requests in OpenBao; while
 [theoretical work to allow per-namespace storage and active leader
-designation](https://openbao.org/blog/vision-for-namespaces/) would allow
-scaling, this still requires all login requests be processed by the active
-leader. Certain access patterns, such as listing or reading from K/V or
-issuing certificates without storing, are otherwise broadly horizontally
-scalable. Furthermore, sometimes this authentication is discarded; such as
-when fetching secrets from a CI/CD pipeline, each pipeline run will start
-with a fresh token as usually authentication is tied to some parent JWT and
-no authentication information or secrets are persisted across runs, usually
-due to lack of persistent, secure storage and reproducibility.
+designation](/blog/vision-for-namespaces/) would allow scaling, this still
+requires all login requests be processed by the active leader. Certain access
+patterns, such as listing or reading from K/V or issuing certificates without
+storing, are otherwise broadly horizontally scalable. Furthermore, sometimes
+this authentication is discarded; such as when fetching secrets from a CI/CD
+pipeline, each pipeline run will start with a fresh token as usually
+authentication is tied to some parent JWT and no authentication information or
+secrets are persisted across runs, usually due to lack of persistent, secure
+storage and reproducibility.
 
 Scaling login requests thus becomes important depending on the workload
 patterns.

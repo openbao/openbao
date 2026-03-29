@@ -34,7 +34,7 @@ func (c *Sys) generateRootStatusCommonWithContext(ctx context.Context, path stri
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var result GenerateRootStatusResponse
 	err = resp.DecodeJSON(&result)
@@ -75,7 +75,7 @@ func (c *Sys) generateRootInitCommonWithContext(ctx context.Context, path, otp, 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var result GenerateRootStatusResponse
 	err = resp.DecodeJSON(&result)
@@ -106,7 +106,7 @@ func (c *Sys) generateRootCancelCommonWithContext(ctx context.Context, path stri
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err == nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	return err
 }
@@ -145,7 +145,7 @@ func (c *Sys) generateRootUpdateCommonWithContext(ctx context.Context, path, sha
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var result GenerateRootStatusResponse
 	err = resp.DecodeJSON(&result)

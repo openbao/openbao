@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
@@ -108,7 +108,10 @@ func (j *JobManager) AddJob(job Job, queueID string) {
 		defer func() {
 			// newWork must be buffered to avoid deadlocks if work is added
 			// before the job manager is started
-			j.newWork <- struct{}{}
+			select {
+			case j.newWork <- struct{}{}:
+			default:
+			}
 		}()
 	}
 	defer j.l.Unlock()
@@ -121,8 +124,8 @@ func (j *JobManager) AddJob(job Job, queueID string) {
 	j.totalJobs++
 
 	if j.metricSink != nil {
-		j.metricSink.AddSampleWithLabels([]string{j.name, "job_manager", "queue_length"}, float32(j.queues[queueID].Len()), []metrics.Label{{Name: "queue_id", Value: queueID}})
-		j.metricSink.AddSample([]string{j.name, "job_manager", "total_jobs"}, float32(j.totalJobs))
+		j.metricSink.SetGaugeWithLabels([]string{j.name, "job_manager", "queue_length"}, float32(j.queues[queueID].Len()), []metrics.Label{{Name: "queue_id", Value: queueID}})
+		j.metricSink.SetGauge([]string{j.name, "job_manager", "total_jobs"}, float32(j.totalJobs))
 	}
 }
 
@@ -181,8 +184,8 @@ func (j *JobManager) getNextJob() (Job, string) {
 	j.totalJobs--
 
 	if j.metricSink != nil {
-		j.metricSink.AddSampleWithLabels([]string{j.name, "job_manager", "queue_length"}, float32(j.queues[queueID].Len()), []metrics.Label{{Name: "queue_id", Value: queueID}})
-		j.metricSink.AddSample([]string{j.name, "job_manager", "total_jobs"}, float32(j.totalJobs))
+		j.metricSink.SetGaugeWithLabels([]string{j.name, "job_manager", "queue_length"}, float32(j.queues[queueID].Len()), []metrics.Label{{Name: "queue_id", Value: queueID}})
+		j.metricSink.SetGauge([]string{j.name, "job_manager", "total_jobs"}, float32(j.totalJobs))
 	}
 
 	if j.queues[queueID].Len() == 0 {

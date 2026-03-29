@@ -70,10 +70,11 @@ module('Integration | Helper | date-format', function (hooks) {
       hbs`<span data-test-formatted>{{date-format this.timestampDate 'MMM d yyyy, h:mm:ss aaa' withTimeZone=this.withTimezone}}</span>`
     );
     const result = find('[data-test-formatted]');
-    assert.strictEqual(result.innerText.length, 23);
-    // Compare to with timezone, which should add timezone info
+    assert.ok(result.innerText.length >= 22, 'without timezone renders expected length');
+    // Compare to with timezone, which should add the TZ abbreviation (length varies by environment)
+    const withoutTzLength = result.innerText.length;
     this.set('withTimezone', true);
     await settled();
-    assert.strictEqual(result.innerText.length, 32);
+    assert.ok(result.innerText.length > withoutTzLength, 'with timezone renders longer string than without');
   });
 });

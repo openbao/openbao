@@ -86,7 +86,7 @@ func LeaseSwitchedPassthroughBackend(ctx context.Context, conf *logical.BackendC
 		BackendType: logical.TypeLogical,
 	}
 
-	b.Backend.Secrets = []*framework.Secret{
+	b.Secrets = []*framework.Secret{
 		{
 			Type: "kv",
 
@@ -98,7 +98,10 @@ func LeaseSwitchedPassthroughBackend(ctx context.Context, conf *logical.BackendC
 	if conf == nil {
 		return nil, errors.New("configuration passed into backend is nil")
 	}
-	b.Backend.Setup(ctx, conf)
+	err := b.Setup(ctx, conf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set up passthrough backend: %w", err)
+	}
 
 	return &b, nil
 }
@@ -111,11 +114,6 @@ type PassthroughBackend struct {
 	*framework.Backend
 	generateLeases bool
 	revoke         func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error)
-}
-
-func (b *PassthroughBackend) handleRevoke(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	// This is a no-op
-	return nil, nil
 }
 
 func (b *PassthroughBackend) handleExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {

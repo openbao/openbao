@@ -8,7 +8,12 @@ import "errors"
 var (
 	// ErrSealed is returned if an operation is performed on a sealed barrier.
 	// No operation is expected to succeed before unsealing
+	//nolint:staticcheck // Vault is a proper noun
 	ErrSealed = errors.New("Vault is sealed")
+
+	// ErrNamespaceSealed is returned if an operation is performed on a sealed namespace barrier.
+	// No operation is expected to succeed before unsealing
+	ErrNamespaceSealed = errors.New("namespace is sealed")
 
 	// ErrAPILocked is returned if an operation is performed when the API is
 	// locked for the request namespace.
@@ -16,6 +21,7 @@ var (
 
 	// ErrStandby is returned if an operation is performed on a standby Vault.
 	// No operation is expected to succeed until active.
+	//nolint:staticcheck // Vault is a proper noun
 	ErrStandby = errors.New("Vault is in standby mode")
 
 	// ErrPathContainsParentReferences is returned when a path contains parent

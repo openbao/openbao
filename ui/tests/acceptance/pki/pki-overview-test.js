@@ -8,7 +8,7 @@ import { setupApplicationTest } from 'ember-qunit';
 import authPage from 'vault/tests/pages/auth';
 import logout from 'vault/tests/pages/logout';
 import enablePage from 'vault/tests/pages/settings/mount-secret-backend';
-import { click, currentURL, currentRouteName, visit } from '@ember/test-helpers';
+import { click, currentURL, currentRouteName, visit, settled } from '@ember/test-helpers';
 import { SELECTORS } from 'vault/tests/helpers/pki/overview';
 import { tokenWithPolicy, runCommands } from 'vault/tests/helpers/pki/pki-run-commands';
 
@@ -42,14 +42,17 @@ module('Acceptance | pki overview', function (hooks) {
     this.pkiIssuersList = await tokenWithPolicy('pki-issuers-list', pki_issuers_list_policy);
     this.pkiAdminToken = await tokenWithPolicy('pki-admin', pki_admin_policy);
     await logout.visit();
+    await settled();
   });
 
   hooks.afterEach(async function () {
     await logout.visit();
+    await settled();
     await authPage.login();
     // Cleanup engine
     await runCommands([`delete sys/mounts/${this.mountPath}`]);
     await logout.visit();
+    await settled();
   });
 
   test('navigates to view issuers when link is clicked on issuer card', async function (assert) {

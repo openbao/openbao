@@ -333,7 +333,7 @@ func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Re
 			return nil, fmt.Errorf("failed to start read-only transaction: %w", err)
 		}
 
-		defer readOnlyTxn.Rollback(ctx) // Ensure rollback after the operation
+		defer readOnlyTxn.Rollback(ctx) //nolint:errcheck // Ensure rollback after the operation
 		req.Storage = readOnlyTxn
 	}
 
@@ -348,7 +348,7 @@ func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Re
 			return nil, err
 		}
 		if entry == nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to retrieve entry for %s", entries[i])), nil
+			return logical.ErrorResponse("failed to retrieve entry for %s", entries[i]), nil
 		}
 
 		entries[i] = denormalizeSerial(entries[i])
@@ -357,7 +357,7 @@ func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Re
 		// Parse the certificate details
 		certData, err := x509.ParseCertificate(entry.Value)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to parse certificate for %s: %s", entries[i], err)), nil
+			return logical.ErrorResponse("failed to parse certificate for %s: %s", entries[i], err), nil
 		}
 
 		// limit DNS names to 5
@@ -435,10 +435,11 @@ func (b *backend) pathFetchRead(ctx context.Context, req *logical.Request, data 
 
 		serial = "ca"
 		contentType = "application/pkix-cert"
-		if req.Path == "ca/pem" || req.Path == "cert/ca/raw/pem" {
+		switch req.Path {
+		case "ca/pem", "cert/ca/raw/pem":
 			pemType = "CERTIFICATE"
 			contentType = "application/pem-certificate-chain"
-		} else if req.Path == "cert/ca" {
+		case "cert/ca":
 			pemType = "CERTIFICATE"
 			contentType = ""
 		}
@@ -507,7 +508,8 @@ func (b *backend) pathFetchRead(ctx context.Context, req *logical.Request, data 
 			}
 		}
 
-		if serial == "ca_chain" {
+		switch serial {
+		case "ca_chain":
 			rawChain := caInfo.GetFullChain()
 			var chainStr string
 			for _, ca := range rawChain {
@@ -519,7 +521,7 @@ func (b *backend) pathFetchRead(ctx context.Context, req *logical.Request, data 
 			}
 			fullChain = []byte(strings.TrimSpace(chainStr))
 			certificate = fullChain
-		} else if serial == "ca" {
+		case "ca":
 			certificate = caInfo.Certificate.Raw
 
 			if len(pemType) != 0 {
@@ -580,7 +582,7 @@ func (b *backend) pathFetchRead(ctx context.Context, req *logical.Request, data 
 		var revInfo revocationInfo
 		err := revokedEntry.DecodeJSON(&revInfo)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("Error decoding revocation entry for serial %s: %s", serial, err)), nil
+			return logical.ErrorResponse("Error decoding revocation entry for serial %s: %s", serial, err), nil
 		}
 		revocationTime = revInfo.RevocationTime
 		revocationIssuerId = revInfo.CertificateIssuer.String()
@@ -612,9 +614,9 @@ reply:
 		}
 	case retErr != nil:
 		response = nil
-		return
+		return response, retErr
 	case response == nil:
-		return
+		return response, retErr
 	case response.IsError():
 		return response, nil
 	default:
@@ -632,7 +634,7 @@ reply:
 		}
 	}
 
-	return
+	return response, retErr
 }
 
 const pathFetchHelpSyn = `

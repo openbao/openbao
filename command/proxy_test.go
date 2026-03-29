@@ -395,6 +395,9 @@ api_proxy {
 
 	req = proxyClient.NewRequest("GET", "/v1/auth/token/lookup-self")
 	body = request(t, proxyClient, req, 200)
+	if _, ok := body["data"]; !ok {
+		t.Fatal("body should contain data key")
+	}
 
 	close(cmd.ShutdownCh)
 	wg.Wait()

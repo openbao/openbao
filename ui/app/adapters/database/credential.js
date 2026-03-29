@@ -5,7 +5,6 @@
 
 import { allSettled } from 'rsvp';
 import ApplicationAdapter from '../application';
-import ControlGroupError from 'vault/lib/control-group-error';
 
 export default ApplicationAdapter.extend({
   namespace: 'v1',
@@ -35,9 +34,6 @@ export default ApplicationAdapter.extend({
       ([staticResp, dynamicResp]) => {
         if (staticResp.state === 'rejected' && dynamicResp.state === 'rejected') {
           let reason = staticResp.reason;
-          if (dynamicResp.reason instanceof ControlGroupError) {
-            throw dynamicResp.reason;
-          }
           if (reason?.httpStatus < dynamicResp.reason?.httpStatus) {
             reason = dynamicResp.reason;
           }

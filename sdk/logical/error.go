@@ -3,7 +3,13 @@
 
 package logical
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+)
 
 var (
 	// ErrUnsupportedOperation is returned if the operation is not supported
@@ -65,7 +71,10 @@ type HTTPCodedError interface {
 	Code() int
 }
 
-func CodedError(status int, msg string) HTTPCodedError {
+func CodedError(status int, msg string, vargs ...interface{}) HTTPCodedError {
+	if len(vargs) > 0 {
+		msg = fmt.Sprintf(msg, vargs...)
+	}
 	return &codedError{
 		Status:  status,
 		Message: msg,
@@ -121,4 +130,18 @@ func (e *KeyNotFoundError) WrappedErrors() []error {
 
 func (e *KeyNotFoundError) Error() string {
 	return e.Err.Error()
+}
+
+// ShouldForward returns true if the error indicates the request should be forwarded
+// to the active node instead of handled locally.
+func ShouldForward(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errMsg := err.Error()
+	return strings.Contains(errMsg, ErrPerfStandbyPleaseForward.Error()) ||
+		strings.Contains(errMsg, ErrReadOnly.Error()) ||
+		strings.Contains(errMsg, "node is not the leader") ||
+		strings.Contains(errMsg, consts.ErrStandby.Error())
 }

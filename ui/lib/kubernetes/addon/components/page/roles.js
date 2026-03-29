@@ -30,7 +30,10 @@ export default class RolesPageComponent extends Component {
     try {
       const message = `Successfully deleted role ${model.name}`;
       await model.destroyRecord();
-      this.args.roles.removeObject(model);
+      const idx = this.args.roles.indexOf(model);
+      if (idx !== -1) {
+        this.args.roles.splice(idx, 1);
+      }
       this.flashMessages.success(message);
     } catch (error) {
       const message = errorMessage(error, 'Error deleting role. Please try again or contact support');

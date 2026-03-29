@@ -24,14 +24,14 @@ type VersionCommand struct {
 }
 
 func (c *VersionCommand) Synopsis() string {
-	return "Prints the Vault CLI version"
+	return "Prints the OpenBao CLI version"
 }
 
 func (c *VersionCommand) Help() string {
 	helpText := `
 Usage: bao version
 
-  Prints the version of this Vault CLI. This does not print the target Vault
+  Prints the version of this OpenBao CLI. This does not print the target OpenBao
   server version.
 
   Print the version:

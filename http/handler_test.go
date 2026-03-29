@@ -22,9 +22,10 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-cleanhttp"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
-	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
@@ -38,7 +39,7 @@ func TestHandler_parseMFAHandler(t *testing.T) {
 		Headers: make(map[string][]string),
 	}
 
-	headerName := textproto.CanonicalMIMEHeaderKey(MFAHeaderName)
+	headerName := textproto.CanonicalMIMEHeaderKey(consts.MFAHeaderName)
 
 	// Set TOTP passcode in the MFA header
 	req.Headers[headerName] = []string{
@@ -125,7 +126,7 @@ func TestHandler_cors(t *testing.T) {
 
 	// Enable CORS and allow from any origin for testing.
 	corsConfig := core.CORSConfig()
-	err := corsConfig.Enable(context.Background(), []string{addr}, nil)
+	err := corsConfig.Enable(context.Background(), []string{addr}, nil, false)
 	if err != nil {
 		t.Fatalf("Error enabling CORS: %s", err)
 	}
@@ -197,6 +198,31 @@ func TestHandler_cors(t *testing.T) {
 			t.Fatalf("bad:\nExpected: %#v\nActual: %#v\n", expected, actual)
 		}
 	}
+
+	// Test that the Access-Control-Allow-Credentials is set correctly when configured
+	err = corsConfig.Enable(context.Background(), []string{addr}, nil, true)
+	if err != nil {
+		t.Fatalf("Error enabling CORS: %s", err)
+	}
+
+	client = cleanhttp.DefaultClient()
+	resp, err = client.Do(req)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	expHeaders["Access-Control-Allow-Credentials"] = "true"
+
+	for expHeader, expected := range expHeaders {
+		actual := resp.Header.Get(expHeader)
+		if actual == "" {
+			t.Fatalf("bad:\nHeader: %#v was not on response.", expHeader)
+		}
+
+		if actual != expected {
+			t.Fatalf("bad:\nExpected: %#v\nActual: %#v\n", expected, actual)
+		}
+	}
 }
 
 func TestHandler_HostnameHeader(t *testing.T) {
@@ -248,7 +274,7 @@ func TestHandler_HostnameHeader(t *testing.T) {
 				t.Fatal("nil response")
 			}
 
-			hnHeader := resp.Header.Get("X-Vault-Hostname")
+			hnHeader := resp.Header.Get(consts.HostnameHeaderName)
 			if tc.headerPresent && hnHeader == "" {
 				t.Logf("header configured = %t", core.HostnameHeaderEnabled())
 				t.Fatal("missing 'X-Vault-Hostname' header entry in response")
@@ -257,7 +283,7 @@ func TestHandler_HostnameHeader(t *testing.T) {
 				t.Fatal("didn't expect 'X-Vault-Hostname' header but it was present anyway")
 			}
 
-			rniHeader := resp.Header.Get("X-Vault-Raft-Node-ID")
+			rniHeader := resp.Header.Get(consts.RaftNodeIDHeaderName)
 			if rniHeader != "" {
 				t.Fatalf("no raft node ID header was expected, since we're not running a raft cluster. instead, got %s", rniHeader)
 			}
@@ -275,7 +301,7 @@ func TestHandler_CacheControlNoStore(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 	req.Header.Set(consts.AuthHeaderName, token)
-	req.Header.Set(WrapTTLHeaderName, "60s")
+	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
@@ -351,7 +377,7 @@ func TestHandler_MissingToken(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	req.Header.Set(WrapTTLHeaderName, "60s")
+	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
@@ -580,7 +606,7 @@ func TestSysMounts_headerAuth_Wrapped(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 	req.Header.Set(consts.AuthHeaderName, token)
-	req.Header.Set(WrapTTLHeaderName, "60s")
+	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
@@ -705,7 +731,7 @@ func TestHandler_error(t *testing.T) {
 func TestHandler_requestAuth(t *testing.T) {
 	core, _, token := vault.TestCoreUnsealed(t)
 
-	rootCtx := namespace.RootContext(nil)
+	rootCtx := namespace.RootContext(context.TODO())
 	te, err := core.LookupToken(rootCtx, token)
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -916,7 +942,10 @@ func TestHandler_MaxRequestSize(t *testing.T) {
 		"bar": strings.Repeat("a", 1025),
 	})
 
-	require.ErrorContains(t, err, "error parsing JSON")
+	var respErr *api.ResponseError
+	require.ErrorAs(t, err, &respErr)
+	require.Equal(t, http.StatusRequestEntityTooLarge, respErr.StatusCode)
+	require.ErrorContains(t, err, "request body too large")
 }
 
 // TestHandler_MaxRequestSize_Memory sets the max request size to 1024 bytes,

@@ -9,12 +9,11 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
-	metrics "github.com/armon/go-metrics"
 	"github.com/hashicorp/errwrap"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/grpc/status"
 )
@@ -261,7 +260,6 @@ func (mw *databaseMetricsMiddleware) SetCredentials(ctx context.Context, stateme
 // DatabaseErrorSanitizerMiddleware wraps an implementation of Databases and
 // sanitizes returned error messages
 type DatabaseErrorSanitizerMiddleware struct {
-	l         sync.RWMutex
 	next      Database
 	secretsFn func() map[string]interface{}
 }

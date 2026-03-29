@@ -33,6 +33,10 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 					Type:        framework.TypeCommaStringSlice,
 					Description: "A comma-separated string or array of strings indicating headers that are allowed on cross-origin requests.",
 				},
+				"allow_credentials": {
+					Type:        framework.TypeBool,
+					Description: "If true, the browser will be allowed to send credentials (e.g. kerberos authentication) with cross-origin requests.",
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -57,6 +61,10 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 								},
 								"allowed_headers": {
 									Type:     framework.TypeCommaStringSlice,
+									Required: false,
+								},
+								"allow_credentials": {
+									Type:     framework.TypeBool,
 									Required: false,
 								},
 							},
@@ -556,10 +564,6 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 					Type:        framework.TypeInt,
 					Description: "Specifies the number of shares required to reconstruct the unseal key. This must be less than or equal secret_shares. If using OpenBao HSM with auto-unsealing, this value must be the same as `secret_shares`.",
 				},
-				"stored_shares": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the number of shares that should be encrypted by the HSM and stored for auto-unsealing. Currently must be the same as `secret_shares`.",
-				},
 				"recovery_shares": {
 					Type:        framework.TypeInt,
 					Description: "Specifies the number of shares to split the recovery key into.",
@@ -587,7 +591,7 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationSuffix: "system",
 					},
 					Summary:     "Initialize a new OpenBao instance.",
-					Description: "The OpenBao instance must not have been previously initialized. The recovery options, as well as the stored shares option, are only available when using OpenBao HSM.",
+					Description: "The OpenBao instance must not have been previously initialized. The recovery options are only available when using Auto Unseal.",
 				},
 			},
 
@@ -1210,7 +1214,7 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 									Type:     framework.TypeString,
 									Required: true,
 								},
-								"build_date": {
+								"commit_date": {
 									Type:     framework.TypeString,
 									Required: true,
 								},
@@ -1270,41 +1274,22 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 									Required: true,
 								},
 								"is_self": {
-									Type:     framework.TypeBool,
-									Required: true,
+									Type: framework.TypeBool,
 								},
 								"active_time": {
 									Type: framework.TypeTime,
-									// active_time has 'omitempty' tag, but its not a pointer so never "empty"
-									Required: true,
 								},
 								"leader_address": {
-									Type:     framework.TypeString,
-									Required: true,
+									Type: framework.TypeString,
 								},
 								"leader_cluster_address": {
-									Type:     framework.TypeString,
-									Required: true,
-								},
-								"performance_standby": {
-									Type:     framework.TypeBool,
-									Required: true,
-								},
-								"performance_standby_last_remote_wal": {
-									Type:     framework.TypeInt64,
-									Required: true,
-								},
-								"last_wal": {
-									Type:     framework.TypeInt64,
-									Required: false,
+									Type: framework.TypeString,
 								},
 								"raft_committed_index": {
-									Type:     framework.TypeInt64,
-									Required: false,
+									Type: framework.TypeInt64,
 								},
 								"raft_applied_index": {
-									Type:     framework.TypeInt64,
-									Required: false,
+									Type: framework.TypeInt64,
 								},
 							},
 						}},
@@ -1343,48 +1328,43 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 									Required: true,
 								},
 								"t": {
-									Type:     framework.TypeInt,
-									Required: true,
+									Type: framework.TypeInt,
 								},
 								"n": {
-									Type:     framework.TypeInt,
-									Required: true,
+									Type: framework.TypeInt,
 								},
 								"progress": {
-									Type:     framework.TypeInt,
-									Required: true,
+									Type: framework.TypeInt,
 								},
 								"nonce": {
-									Type:     framework.TypeString,
-									Required: true,
-								},
-								"version": {
-									Type:     framework.TypeString,
-									Required: true,
-								},
-								"build_date": {
-									Type:     framework.TypeString,
-									Required: true,
+									Type: framework.TypeString,
 								},
 								"migration": {
-									Type:     framework.TypeBool,
-									Required: true,
+									Type: framework.TypeBool,
 								},
 								"cluster_name": {
-									Type:     framework.TypeString,
-									Required: false,
+									Type: framework.TypeString,
 								},
 								"cluster_id": {
-									Type:     framework.TypeString,
-									Required: false,
+									Type: framework.TypeString,
 								},
 								"recovery_seal": {
 									Type:     framework.TypeBool,
 									Required: true,
 								},
+								"recovery_seal_type": {
+									Type: framework.TypeString,
+								},
 								"storage_type": {
+									Type: framework.TypeString,
+								},
+								"version": {
 									Type:     framework.TypeString,
-									Required: false,
+									Required: true,
+								},
+								"commit_date": {
+									Type:     framework.TypeString,
+									Required: true,
 								},
 							},
 						}},
@@ -1418,6 +1398,7 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 							},
 						}},
 					},
+					ForwardPerformanceStandby: true,
 				},
 			},
 
@@ -1757,6 +1738,10 @@ func (b *SystemBackend) pluginsCatalogCRUDPath() *framework.Path {
 				Type:        framework.TypeString,
 				Description: strings.TrimSpace(sysHelp["plugin-catalog_version"][0]),
 			},
+			"oci": {
+				Type:        framework.TypeBool,
+				Description: strings.TrimSpace(sysHelp["plugin-catalog_oci"][0]),
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -1829,6 +1814,16 @@ func (b *SystemBackend) pluginsCatalogCRUDPath() *framework.Path {
 							"deprecation_status": {
 								Type:     framework.TypeString,
 								Required: false,
+							},
+							"oci": {
+								Type:        framework.TypeBool,
+								Description: strings.TrimSpace(sysHelp["plugin-catalog_oci"][0]),
+								Required:    true,
+							},
+							"declarative": {
+								Type:        framework.TypeBool,
+								Description: strings.TrimSpace(sysHelp["plugin-catalog_declarative"][0]),
+								Required:    true,
 							},
 						},
 					}},
@@ -2131,35 +2126,6 @@ func (b *SystemBackend) internalPaths() []*framework.Path {
 			HelpSynopsis: "Generate an OpenAPI 3 document of all mounted paths.",
 		},
 		{
-			Pattern: "internal/ui/feature-flags",
-
-			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "internal-ui",
-				OperationVerb:   "list",
-				OperationSuffix: "enabled-feature-flags",
-			},
-
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ReadOperation: &framework.PathOperation{
-					// callback is absent because this is an unauthenticated method
-					Summary: "Lists enabled feature flags.",
-					Responses: map[int][]framework.Response{
-						http.StatusOK: {{
-							Description: "OK",
-							Fields: map[string]*framework.FieldSchema{
-								"feature_flags": {
-									Type:     framework.TypeCommaStringSlice,
-									Required: true,
-								},
-							},
-						}},
-					},
-				},
-			},
-			HelpSynopsis:    strings.TrimSpace(sysHelp["internal-ui-feature-flags"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["internal-ui-feature-flags"][1]),
-		},
-		{
 			Pattern: "internal/ui/mounts",
 
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -2293,7 +2259,7 @@ func (b *SystemBackend) internalPaths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: pathInternalUINamespacesRead(b),
+					Callback: b.pathInternalUINamespacesRead,
 					Summary:  "Backwards compatibility is not guaranteed for this API",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
@@ -2686,6 +2652,19 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 									Type:        framework.TypeInt,
 									Description: "Time to Live set for the lease, returns 0 if unset",
 									Required:    true,
+								},
+								"path": {
+									Type:        framework.TypeString,
+									Description: "Lease path (will start with the mount path)",
+									Required:    true,
+								},
+								"namespace_path": {
+									Type:        framework.TypeString,
+									Description: "Path of the namespace of the lease",
+								},
+								"revoke_error": {
+									Type:        framework.TypeString,
+									Description: "Details about errors during last time revocation was tried (if any)",
 								},
 							},
 						}},
@@ -3343,10 +3322,6 @@ func (b *SystemBackend) authPaths() []*framework.Path {
 									Required: false,
 								},
 								"allowed_response_headers": {
-									Type:     framework.TypeCommaStringSlice,
-									Required: false,
-								},
-								"allowed_managed_keys": {
 									Type:     framework.TypeCommaStringSlice,
 									Required: false,
 								},
@@ -4021,6 +3996,29 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 			HelpSynopsis:    strings.TrimSpace(sysHelp["policies"][0]),
 			HelpDescription: strings.TrimSpace(sysHelp["policies"][1]),
 		},
+
+		{
+			Pattern: "policies/detailed/acl/(?P<name>.+)",
+			Fields: map[string]*framework.FieldSchema{
+				"list": {
+					Type:        framework.TypeBool,
+					Description: "List ACL policies",
+					Query:       true,
+				},
+				"name": {
+					Type:        framework.TypeString,
+					Description: strings.TrimSpace(sysHelp["policy-name"][0]),
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handlePoliciesDetailedAclList(),
+					Summary:  "List ACL policies with detailed information.",
+				},
+			},
+			HelpSynopsis:    strings.TrimSpace(sysHelp["policies"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["policies"][1]),
+		},
 	}
 }
 
@@ -4241,10 +4239,6 @@ func (b *SystemBackend) mountPaths() []*framework.Path {
 					Type:        framework.TypeString,
 					Description: strings.TrimSpace(sysHelp["token_type"][0]),
 				},
-				"allowed_managed_keys": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: strings.TrimSpace(sysHelp["tune_allowed_managed_keys"][0]),
-				},
 				"plugin_version": {
 					Type:        framework.TypeString,
 					Description: strings.TrimSpace(sysHelp["plugin-catalog_version"][0]),
@@ -4288,11 +4282,6 @@ func (b *SystemBackend) mountPaths() []*framework.Path {
 								"token_type": {
 									Type:        framework.TypeString,
 									Description: strings.TrimSpace(sysHelp["token_type"][0]),
-									Required:    false,
-								},
-								"allowed_managed_keys": {
-									Type:        framework.TypeCommaStringSlice,
-									Description: strings.TrimSpace(sysHelp["tune_allowed_managed_keys"][0]),
 									Required:    false,
 								},
 								"allowed_response_headers": {

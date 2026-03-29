@@ -153,7 +153,7 @@ func (c *TokenCreateCommand) Flags() *FlagSets {
 		Target:  &c.flagRole,
 		Default: "",
 		Usage: "Name of the role to create the token against. Specifying -role " +
-			"may override other arguments. The locally authenticated Vault token " +
+			"may override other arguments. The locally authenticated OpenBao token " +
 			"must have permission for \"auth/token/create/<role>\".",
 	})
 

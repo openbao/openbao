@@ -4,16 +4,15 @@
 package server
 
 import (
-	"io"
 	"net"
 
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/internalshared/listenerutil"
+	"github.com/openbao/openbao/helper/configutil"
+	"github.com/openbao/openbao/helper/listenerutil"
 )
 
-func unixListenerFactory(l *configutil.Listener, _ hclog.Logger, _ io.Writer, ui cli.Ui) (net.Listener, map[string]string, listenerutil.ReloadableCertGetter, error) {
+func unixListenerFactory(l *configutil.Listener, _ hclog.Logger, ui cli.Ui) (net.Listener, map[string]string, listenerutil.ReloadableCertGetter, error) {
 	addr := l.Address
 	if addr == "" {
 		addr = "/run/vault.sock"

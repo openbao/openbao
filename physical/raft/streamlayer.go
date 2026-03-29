@@ -14,7 +14,6 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	fmt "fmt"
-	"io"
 	"math/big"
 	mathrand "math/rand"
 	"net"
@@ -90,8 +89,8 @@ func (k *TLSKeyring) GetActive() *TLSKey {
 	return nil
 }
 
-func GenerateTLSKey(reader io.Reader) (*TLSKey, error) {
-	key, err := ecdsa.GenerateKey(elliptic.P521(), reader)
+func GenerateTLSKey() (*TLSKey, error) {
+	key, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	if err != nil {
 		return nil, err
 	}
@@ -130,8 +129,8 @@ func GenerateTLSKey(reader io.Reader) (*TLSKey, error) {
 		CertBytes: certBytes,
 		KeyParams: &certutil.ClusterKeyParams{
 			Type: certutil.PrivateKeyTypeP521,
-			X:    key.PublicKey.X,
-			Y:    key.PublicKey.Y,
+			X:    key.X,
+			Y:    key.Y,
 			D:    key.D,
 		},
 		CreatedTime: time.Now(),
@@ -163,8 +162,6 @@ type raftLayer struct {
 	closeLock sync.Mutex
 
 	logger log.Logger
-
-	dialerFunc func(string, time.Duration) (net.Conn, error)
 
 	// TLS config
 	keyring         *TLSKeyring
@@ -356,6 +353,7 @@ func (l *raftLayer) Accept() (net.Conn, error) {
 	case conn := <-l.connCh:
 		return conn, nil
 	case <-l.closeCh:
+		//nolint:staticcheck // Raft is a proper noun
 		return nil, errors.New("Raft RPC layer closed")
 	}
 }
@@ -379,6 +377,8 @@ func (l *raftLayer) Addr() net.Addr {
 
 // Dial is used to create a new outgoing connection
 func (l *raftLayer) Dial(address raft.ServerAddress, timeout time.Duration) (net.Conn, error) {
-	dialFunc := l.clusterListener.GetDialerFunc(context.Background(), consts.RaftStorageALPN)
-	return dialFunc(string(address), timeout)
+	dialFunc := l.clusterListener.GetContextDialerFunc(context.Background(), consts.RaftStorageALPN)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return dialFunc(ctx, string(address))
 }

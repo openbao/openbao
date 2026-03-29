@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -13,10 +14,12 @@ import (
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	be "github.com/openbao/openbao/vault/backend"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 func TestIdentityStore_CaseInsensitiveGroupAliasName(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create a group
@@ -91,24 +94,24 @@ func TestIdentityStore_CaseInsensitiveGroupAliasName(t *testing.T) {
 }
 
 func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
-	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	err := be.AddTestCredentialBackend("userpass", credUserpass.Factory)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = AddTestCredentialBackend("ldap", credLdap.Factory)
+	err = be.AddTestCredentialBackend("ldap", credLdap.Factory)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer ClearTestCredentialBackends()
+	defer be.ClearTestCredentialBackends()
 
 	c, _, _ := TestCoreUnsealed(t)
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
-	userpassMe := &MountEntry{
-		Table:       credentialTableType,
+	userpassMe := &routing.MountEntry{
+		Table:       routing.CredentialTableType,
 		Path:        "userpass/",
 		Type:        "userpass",
 		Description: "userpass",
@@ -118,8 +121,8 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ldapMe := &MountEntry{
-		Table:       credentialTableType,
+	ldapMe := &routing.MountEntry{
+		Table:       routing.CredentialTableType,
 		Path:        "ldap/",
 		Type:        "ldap",
 		Description: "ldap",
@@ -213,7 +216,7 @@ func TestIdentityStore_GroupAliasDeletionOnGroupDeletion(t *testing.T) {
 	var resp *logical.Response
 	var err error
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	resp, err = i.HandleRequest(ctx, &logical.Request{
@@ -265,7 +268,7 @@ func TestIdentityStore_GroupAliasDeletionOnGroupDeletion(t *testing.T) {
 func TestIdentityStore_GroupAliases_CRUD(t *testing.T) {
 	var resp *logical.Response
 	var err error
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	groupReq := &logical.Request{
@@ -344,7 +347,7 @@ func TestIdentityStore_GroupAliases_CRUD(t *testing.T) {
 
 func TestIdentityStore_GroupAliases_MemDBIndexes(t *testing.T) {
 	var err error
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	group := &identity.Group{
@@ -364,10 +367,10 @@ func TestIdentityStore_GroupAliases_MemDBIndexes(t *testing.T) {
 		ParentGroupIDs:  []string{"testparentgroupid1", "testparentgroupid2"},
 		MemberEntityIDs: []string{"testentityid1", "testentityid2"},
 		Policies:        []string{"testpolicy1", "testpolicy2"},
-		BucketKey:       i.groupPacker(ctx).BucketKey("testgroupid"),
+		BucketKey:       i.GroupPacker(ctx).BucketKey("testgroupid"),
 	}
 
-	txn := i.db(ctx).Txn(true)
+	txn := i.Txn(ctx, true)
 	defer txn.Abort()
 	err = i.MemDBUpsertAliasInTxn(txn, group.Alias, true)
 	if err != nil {
@@ -408,7 +411,7 @@ func TestIdentityStore_GroupAliases_AliasOnInternalGroup(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	groupReq := &logical.Request{
@@ -440,11 +443,11 @@ func TestIdentityStore_GroupAliases_AliasOnInternalGroup(t *testing.T) {
 }
 
 func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, accessor1, c := testIdentityStoreWithAppRoleAuth(ctx, t)
 
-	ghme2 := &MountEntry{
-		Table:       credentialTableType,
+	ghme2 := &routing.MountEntry{
+		Table:       routing.CredentialTableType,
 		Path:        "approle2/",
 		Type:        "approle",
 		Description: "approle auth",

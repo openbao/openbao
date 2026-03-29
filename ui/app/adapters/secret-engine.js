@@ -45,8 +45,6 @@ export default ApplicationAdapter.extend({
       if (!query.path || !mountModel) {
         throw error;
       }
-      // control groups will throw a 403 permission denied error. If this happens return the mountModel
-      // error is handled on routing
     }
     return mountModel;
   },
@@ -134,7 +132,11 @@ export default ApplicationAdapter.extend({
 
   saveZeroAddressConfig(store, type, snapshot) {
     const path = encodePath(snapshot.id);
-    const roles = store.peekAll('role-ssh').filterBy('zeroAddress').mapBy('id').join(',');
+    const roles = store
+      .peekAll('role-ssh')
+      .filterBy('zeroAddress')
+      .map((x) => x.id)
+      .join(',');
     const url = `/v1/${path}/config/zeroaddress`;
     const data = { roles };
     if (roles === '') {

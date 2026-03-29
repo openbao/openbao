@@ -17,7 +17,7 @@ Navigate to the OperatorHub page of your OpenShift cluster and search for `Vault
 
 ## Helm chart
 
-The Vault Secrets Operator may also be installed in OpenShift using the Helm chart. (See [Installation](/docs/platform/k8s/vso/installation) for an overview of installation using the [Helm chart](/docs/platform/k8s/vso/helm).) The examples below show example [values.yaml files](https://helm.sh/docs/chart_template_guide/values_files/) for each configuration, which would be used with `helm install` as below:
+The Vault Secrets Operator may also be installed in OpenShift using the Helm chart. (See [Installation](installation.mdx) for an overview of installation using the [Helm chart](helm.mdx).) The examples below show example [values.yaml files](https://helm.sh/docs/chart_template_guide/values_files/) for each configuration, which would be used with `helm install` as below:
 
 ```shell-session
 helm install vault-secrets-operator hashicorp/vault-secrets-operator \
@@ -31,7 +31,7 @@ For OpenShift, increasing the memory [requests and limits](https://kubernetes.io
 
 ### Default images
 
-These values would use the [default operator image](/docs/platform/k8s/vso/helm#v-controller-manager-image) from HashiCorp's [Docker Hub repository][dockerhub].
+These values would use the [default operator image](helm.mdx#v-controller-manager-image) from HashiCorp's [Docker Hub repository][dockerhub].
 
 ```yaml
 controller:

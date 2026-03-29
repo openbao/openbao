@@ -34,7 +34,7 @@ There are a few key terms to know when discussing Raft:
 
 - **Leader** - At any given time, the peer set elects a single node to be the leader.
 The leader is responsible for ingesting new log entries, replicating to followers,
-and managing when an entry is committed. The leader node is also the active OpenBao node and followers are standby nodes. Refer to the [High Availability](/docs/internals/high-availability#design-overview) document for more information.
+and managing when an entry is committed. The leader node is also the active OpenBao node and followers are standby nodes. Refer to the [High Availability](high-availability.mdx#design-overview) document for more information.
 
 - **Log** - An ordered sequence of entries (replicated log) to keep track of any cluster changes. The leader is responsible for _log replication_. When new data is written, for example, a new event creates a log entry. The leader then sends the new log entry to its followers. Any inconsistency within the replicated log entries will indicate an issue.
 
@@ -99,7 +99,7 @@ either A or B and restart the remaining node in bootstrap mode.
 A Raft cluster of 3 nodes can tolerate a single node failure while a cluster of
 5 can tolerate 2 node failures. The recommended OpenBao production deployment is
 to run 5 OpenBao servers per cluster. See the [Minimum &
-Scaling](#minimums-scaling) and [Deployment Table](#deployment-table) to learn
+Scaling](#minimums--scaling) and [Deployment Table](#deployment-table) to learn
 more about the failure tolerance using Integrated Storage.
 
 #### Performance
@@ -111,7 +111,7 @@ Thus, performance is bound by disk I/O and network latency.
 ### Raft in OpenBao
 
 When getting started, a single OpenBao server is
-[initialized](/docs/commands/operator/init/#operator-init). At this point, the
+[initialized](../commands/operator/init.mdx#operator-init). At this point, the
 cluster is of size 1, which allows the node to self-elect as a leader. Once a
 leader is elected, other servers can be added to the peer set in a way that
 preserves consistency and safety.
@@ -135,7 +135,7 @@ will be encrypted by OpenBao's barrier.
 
 #### Autopilot
 
-An [Autopilot feature](/docs/concepts/integrated-storage/autopilot) 
+An [Autopilot feature](../concepts/integrated-storage/autopilot.mdx) 
 is available in HashiCorp Vault 1.7.x & later versions that includes configurable parameters 
 for when a node is treated as healthy before it's considered an eligible voter in the 
 quorum list. Other features which may be enabled include the ability to remove nodes 
@@ -155,7 +155,7 @@ A dead server cleanup capability is available. With this feature
 enabled, unhealthy nodes are automatically removed from the Raft cluster without 
 manual operator intervention. This is enabled via the [Autopilot API](/api-docs/system/storage/raftautopilot).
 If you wish to decommission a node manually, this can be done with the 
-`remove peer` [command](/docs/commands/operator/raft#remove-peer).
+`remove peer` [command](../commands/operator/raft.mdx#remove-peer).
 
 #### Without autopilot
 

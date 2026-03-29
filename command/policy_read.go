@@ -28,7 +28,7 @@ func (c *PolicyReadCommand) Help() string {
 	helpText := `
 Usage: bao policy read [options] [NAME]
 
-  Prints the contents and metadata of the Vault policy named NAME. If the policy
+  Prints the contents and metadata of the OpenBao policy named NAME. If the policy
   does not exist, an error is returned.
 
   Read the policy named "my-policy":

@@ -1,0 +1,44 @@
+---
+title: Integrators
+sidebar_position: 3
+---
+
+# Integrators
+
+import Randomize from './lib/Randomize.tsx';
+import Member from './lib/Member.tsx';
+
+<div className="container">
+<div className="row">
+<Randomize>
+  <Member title="Percona">
+    [Percona](https://percona.com/) provides OpenBao integration for managing encryption keys in Percona Server for MongoDB and PostgreSQL Transparent Data Encryption (pg_tde).
+  </Member>
+  <Member title="Securosys">
+    [Securosys](https://www.securosys.com/) Primus HSM provides hardware-backed sealing for OpenBao Vaults.
+  </Member>
+
+  <Member title="Crypto4A" logoName="c4a">
+      [Crypto4A's](https://crypto4a.com/) QxVault™ is a fully integrated Secrets Management Vault with a built-in HSM
+      for robust management of secrets, credentials, and API keys.
+  </Member>
+
+  <Member title="StackHPC">
+    [StackHPC](https://www.stackhpc.com/) integrates OpenBao with OpenStack deployments, to provide TLS encryption for internal communication and to act as a secret store for users of the cloud.
+  </Member>
+
+  <Member title="GatePlane" logoName="gateplane">
+      [GatePlane](https://gateplane.io/) provides full IAM integration for OpenBao, turning it into a Privileged Access Management (PAM) solution that supports approval-based conditional access through their [OpenBao plugins](https://github.com/gateplane-io/vault-plugins) (available under their always-free Community License).
+  </Member>
+
+  <Member title="Warden">
+      [Warden](https://github.com/stephnangue/warden) is an open-source identity-aware egress gateway that intercepts outbound cloud API calls and forwards them using short-lived credentials minted via OpenBao, so that credentials never reach client applications.
+  </Member>
+
+  <Member title="Sigstore" logoName="sigstore">
+      [Sigstore](https://www.sigstore.dev/) is an OpenSSF project that secures the software supply chain. It integrates with OpenBao by leveraging it as a KMS for signing artifacts.
+  </Member>
+
+</Randomize>
+</div>
+</div>

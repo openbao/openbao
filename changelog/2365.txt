@@ -1,0 +1,3 @@
+```release-note:improvement
+website: Add loading and error indicators to downloads page
+```

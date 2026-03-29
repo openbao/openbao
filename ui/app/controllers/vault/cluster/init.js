@@ -13,11 +13,11 @@ const DEFAULTS = {
   pgp_keys: null,
   use_pgp: false,
   loading: false,
+  keyData: null,
 };
 
 export default Controller.extend(
   {
-    initState: service('init-state'),
     keyDataService: service('key-data'),
   },
   DEFAULTS,
@@ -29,7 +29,7 @@ export default Controller.extend(
 
     initSuccess(resp) {
       this.set('loading', false);
-      this.initState.set('keyData', resp);
+      this.set('keyData', resp);
       this.keyDataService.set('keyData', resp);
       this.model.reload();
     },

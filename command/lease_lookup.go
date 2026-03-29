@@ -30,7 +30,7 @@ Usage: bao lease lookup ID
 
   Lookup the lease information of a secret.
 
-  Every secret in Vault has a lease associated with it. Users can look up
+  Every secret in OpenBao has a lease associated with it. Users can look up
   information on the lease by referencing the lease ID.
 
   Lookup lease of a secret:

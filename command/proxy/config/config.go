@@ -21,8 +21,9 @@ import (
 	ctconfig "github.com/openbao/openbao-template/config"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 )
 
 // Config is the configuration for Vault Proxy.
@@ -56,8 +57,8 @@ func (c *Config) Prune() {
 	}
 	c.FoundKeys = nil
 	c.UnusedKeys = nil
-	c.SharedConfig.FoundKeys = nil
-	c.SharedConfig.UnusedKeys = nil
+	c.FoundKeys = nil
+	c.UnusedKeys = nil
 	if c.Telemetry != nil {
 		c.Telemetry.FoundKeys = nil
 		c.Telemetry.UnusedKeys = nil
@@ -268,12 +269,14 @@ func LoadConfig(path string) (*Config, error) {
 }
 
 // LoadConfigDir loads the configuration at the given path if it's a directory
-func LoadConfigDir(dir string) (*Config, error) {
+func LoadConfigDir(dir string) (cfg *Config, err error) {
 	f, err := os.Open(dir)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		err = errors.Join(err, f.Close())
+	}()
 
 	fi, err := f.Stat()
 	if err != nil {
@@ -359,7 +362,7 @@ func LoadConfigFile(path string) (*Config, error) {
 	}
 
 	// Parse!
-	obj, err := hcl.Parse(string(d))
+	obj, err := hclutil.ParseConfig(d)
 	if err != nil {
 		return nil, err
 	}

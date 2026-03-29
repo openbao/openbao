@@ -1,0 +1,3 @@
+```release-note:bug
+auth/jwt: Fix token renewal of pre-v2.3.x JWT tokens and all OIDC tokens after CEL support was introduced.
+```

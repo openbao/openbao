@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -24,7 +25,6 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/cacheboltdb"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/cachememdb"
-	"github.com/openbao/openbao/helper/namespace"
 	nshelper "github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/useragent"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -32,8 +32,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	gocache "github.com/patrickmn/go-cache"
-	"go.uber.org/atomic"
+	"zgo.at/zcache/v2"
 )
 
 const (
@@ -89,7 +88,7 @@ type LeaseCache struct {
 	idLocks []*locksutil.LockEntry
 
 	// inflightCache keeps track of inflight requests
-	inflightCache *gocache.Cache
+	inflightCache *zcache.Cache[string, *inflightRequest]
 
 	// ps is the persistent storage for tokens and leases
 	ps *cacheboltdb.BoltStorage
@@ -122,7 +121,7 @@ type inflightRequest struct {
 func newInflightRequest() *inflightRequest {
 	return &inflightRequest{
 		ch:        make(chan struct{}),
-		remaining: atomic.NewUint64(0),
+		remaining: &atomic.Uint64{},
 	}
 }
 
@@ -156,7 +155,7 @@ func NewLeaseCache(conf *LeaseCacheConfig) (*LeaseCache, error) {
 		baseCtxInfo:   baseCtxInfo,
 		l:             &sync.RWMutex{},
 		idLocks:       locksutil.CreateLocks(),
-		inflightCache: gocache.New(gocache.NoExpiration, gocache.NoExpiration),
+		inflightCache: zcache.New[string, *inflightRequest](zcache.NoExpiration, zcache.NoExpiration),
 		ps:            conf.Storage,
 	}, nil
 }
@@ -210,7 +209,7 @@ func (c *LeaseCache) checkCacheForRequest(id string) (*SendResponse, error) {
 		c.logger.Error("failed to parse cached response date", "error", err)
 		return nil, err
 	}
-	sendResp.CacheMeta.Age = time.Now().Sub(respTime)
+	sendResp.CacheMeta.Age = time.Since(respTime)
 
 	return sendResp, nil
 }
@@ -246,12 +245,11 @@ func (c *LeaseCache) Send(ctx context.Context, req *SendRequest) (*SendResponse,
 	// they both miss the cache due to it being clean when peeking the cache
 	// entry.
 	idLock.Lock()
-	inflightRaw, found := c.inflightCache.Get(id)
+	inflight, found := c.inflightCache.Get(id)
 	if found {
 		idLock.Unlock()
-		inflight = inflightRaw.(*inflightRequest)
-		inflight.remaining.Inc()
-		defer inflight.remaining.Dec()
+		inflight.remaining.Add(1)
+		defer inflight.remaining.Add(^uint64(0)) // equivalent of decrementing by 1
 
 		// If found it means that there's an inflight request being processed.
 		// We wait until that's finished before proceeding further.
@@ -262,10 +260,10 @@ func (c *LeaseCache) Send(ctx context.Context, req *SendRequest) (*SendResponse,
 		}
 	} else {
 		inflight = newInflightRequest()
-		inflight.remaining.Inc()
-		defer inflight.remaining.Dec()
+		inflight.remaining.Add(1)
+		defer inflight.remaining.Add(^uint64(0)) // equivalent of decrementing by 1
 
-		c.inflightCache.Set(id, inflight, gocache.NoExpiration)
+		c.inflightCache.SetWithExpire(id, inflight, zcache.NoExpiration)
 		idLock.Unlock()
 
 		// Signal that the processing request is done
@@ -416,7 +414,7 @@ func (c *LeaseCache) Send(ctx context.Context, req *SendRequest) (*SendResponse,
 
 	// Reset the response body for upper layers to read
 	if resp.Response.Body != nil {
-		resp.Response.Body.Close()
+		resp.Response.Body.Close() //nolint:errcheck
 	}
 	resp.Response.Body = io.NopCloser(bytes.NewReader(resp.ResponseBody))
 
@@ -579,7 +577,7 @@ func computeIndexID(req *SendRequest) (string, error) {
 		return "", fmt.Errorf("failed to write token to hash input: %w", err)
 	}
 
-	return hex.EncodeToString(cryptoutil.Blake2b256Hash(string(b.Bytes()))), nil
+	return hex.EncodeToString(cryptoutil.Blake2b256Hash(b.String())), nil
 }
 
 // HandleCacheClear returns a handlerFunc that can perform cache clearing operations.
@@ -900,9 +898,9 @@ func (c *LeaseCache) handleRevocationRequest(ctx context.Context, req *SendReque
 			return false, err
 		}
 
-		_, tokenNSID := namespace.SplitIDFromString(req.Token)
+		_, tokenNSID := nshelper.SplitIDFromString(req.Token)
 		for _, index := range indexes {
-			_, leaseNSID := namespace.SplitIDFromString(index.Lease)
+			_, leaseNSID := nshelper.SplitIDFromString(index.Lease)
 			// Only evict leases that match the token's namespace
 			if tokenNSID == leaseNSID {
 				index.RenewCtxInfo.CancelFunc()
@@ -919,9 +917,9 @@ func (c *LeaseCache) handleRevocationRequest(ctx context.Context, req *SendReque
 			return false, err
 		}
 
-		_, tokenNSID := namespace.SplitIDFromString(req.Token)
+		_, tokenNSID := nshelper.SplitIDFromString(req.Token)
 		for _, index := range indexes {
-			_, leaseNSID := namespace.SplitIDFromString(index.Lease)
+			_, leaseNSID := nshelper.SplitIDFromString(index.Lease)
 			// Only evict leases that match the token's namespace
 			if tokenNSID == leaseNSID {
 				index.RenewCtxInfo.CancelFunc()
@@ -1053,7 +1051,7 @@ func (c *LeaseCache) restoreTokens(tokens [][]byte) error {
 			errors = multierror.Append(errors, err)
 			continue
 		}
-		newIndex.RenewCtxInfo = c.createCtxInfo(nil)
+		newIndex.RenewCtxInfo = c.createCtxInfo(context.TODO())
 		if err := c.db.Set(newIndex); err != nil {
 			errors = multierror.Append(errors, err)
 			continue
@@ -1236,7 +1234,7 @@ func (c *LeaseCache) RegisterAutoAuthToken(token string) error {
 	}
 
 	// Derive a context off of the lease cache's base context
-	ctxInfo := c.createCtxInfo(nil)
+	ctxInfo := c.createCtxInfo(context.TODO())
 
 	index.RenewCtxInfo = &cachememdb.ContextInfo{
 		Ctx:        ctxInfo.Ctx,

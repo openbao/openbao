@@ -343,8 +343,8 @@ func TestTransit_Export_KeysDoesNotExist_ReturnsNotFound(t *testing.T) {
 	}
 	rsp, err := b.HandleRequest(context.Background(), req)
 
-	if !(rsp == nil && err == nil) {
-		t.Fatal("Key does not exist but does not return not found")
+	if rsp != nil || err != nil {
+		t.Fatal("Key does not exist: should return no response and no error.")
 	}
 }
 
@@ -608,7 +608,7 @@ func TestTransit_Export_CertificateChain(t *testing.T) {
 }
 
 func testTransit_Export_CertificateChain(t *testing.T, apiClient *api.Client, keyType string) {
-	keyName := fmt.Sprintf("%s", keyType)
+	keyName := keyType
 	issuerName := fmt.Sprintf("%s-issuer", keyType)
 
 	// get key to be imported

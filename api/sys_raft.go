@@ -159,7 +159,7 @@ func (c *Sys) RaftJoinWithContext(ctx context.Context, opts *RaftJoinRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var result RaftJoinResponse
 	err = resp.DecodeJSON(&result)
@@ -181,7 +181,7 @@ func (c *Sys) RaftSnapshotWithContext(ctx context.Context, snapWriter io.Writer)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Make sure that the last file in the archive, SHA256SUMS.sealed, is present
 	// and non-empty.  This is to catch cases where the snapshot failed midstream,
@@ -260,7 +260,7 @@ func (c *Sys) RaftSnapshotRestoreWithContext(ctx context.Context, snapReader io.
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return nil
 }
@@ -282,7 +282,7 @@ func (c *Sys) RaftAutopilotStateWithContext(ctx context.Context) (*AutopilotStat
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 		if resp.StatusCode == 404 {
 			return nil, nil
 		}
@@ -326,7 +326,7 @@ func (c *Sys) RaftAutopilotConfigurationWithContext(ctx context.Context) (*Autop
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 		if resp.StatusCode == 404 {
 			return nil, nil
 		}
@@ -380,7 +380,7 @@ func (c *Sys) PutRaftAutopilotConfigurationWithContext(ctx context.Context, opts
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return nil
 }

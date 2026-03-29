@@ -128,29 +128,29 @@ func (e *errorInjector) ListPage(ctx context.Context, prefix string, after strin
 }
 
 func (e *transactionalErrorInjector) BeginReadOnlyTx(ctx context.Context) (Transaction, error) {
-	txn, err := e.errorInjector.backend.(TransactionalBackend).BeginReadOnlyTx(ctx)
+	txn, err := e.backend.(TransactionalBackend).BeginReadOnlyTx(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	ret := NewErrorInjector(txn, e.errorInjector.errorPercent, nil)
+	ret := NewErrorInjector(txn, e.errorPercent, nil)
 	return &errorInjectorTransaction{ret.(*errorInjector)}, nil
 }
 
 func (e *transactionalErrorInjector) BeginTx(ctx context.Context) (Transaction, error) {
-	txn, err := e.errorInjector.backend.(TransactionalBackend).BeginTx(ctx)
+	txn, err := e.backend.(TransactionalBackend).BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	ret := NewErrorInjector(txn, e.errorInjector.errorPercent, nil)
+	ret := NewErrorInjector(txn, e.errorPercent, nil)
 	return &errorInjectorTransaction{ret.(*errorInjector)}, nil
 }
 
 func (e *errorInjectorTransaction) Commit(ctx context.Context) error {
-	return e.errorInjector.backend.(Transaction).Commit(ctx)
+	return e.backend.(Transaction).Commit(ctx)
 }
 
 func (e *errorInjectorTransaction) Rollback(ctx context.Context) error {
-	return e.errorInjector.backend.(Transaction).Rollback(ctx)
+	return e.backend.(Transaction).Rollback(ctx)
 }

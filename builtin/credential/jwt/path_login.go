@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/cap/jwt"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/oauth2"
 )
@@ -131,10 +132,7 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 	// ensure that the signing algorithm is a member of the supported set.
 	signingAlgorithms := toAlg(config.JWTSupportedAlgs)
 	if len(signingAlgorithms) == 0 {
-		signingAlgorithms = []jwt.Alg{
-			jwt.RS256, jwt.RS384, jwt.RS512, jwt.ES256, jwt.ES384,
-			jwt.ES512, jwt.PS256, jwt.PS384, jwt.PS512, jwt.EdDSA,
-		}
+		signingAlgorithms = toAlg(consts.AllowedJWTSignatureAlgorithmsBao)
 	}
 
 	// Set expected claims values to assert on the JWT
@@ -180,7 +178,8 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 		Alias:        alias,
 		GroupAliases: groupAliases,
 		InternalData: map[string]interface{}{
-			"role": roleName,
+			"role":      roleName,
+			"role_type": "native",
 		},
 		Metadata: tokenMetadata,
 	}
@@ -199,6 +198,37 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 }
 
 func (b *jwtAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	roleName, _ := req.Auth.InternalData["role"].(string)
+	if roleName == "" {
+		return nil, errors.New("failed to fetch role_name during renewal")
+	}
+
+	roleType, _ := req.Auth.InternalData["role_type"].(string)
+
+	switch roleType {
+	case "cel":
+		return b.pathCelLoginRenew(ctx, req, data)
+	case "native":
+		return b.pathNativeLoginRenew(ctx, req, data)
+	case "":
+		// Check if this is a native role. This is a fallback for earlier versions which didn't write role type.
+		role, err := b.role(ctx, req.Storage, roleName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate role %s during renewal: %w", roleName, err)
+		}
+		if role == nil {
+			// Assume it is a CEL role.
+			return b.pathCelLoginRenew(ctx, req, data)
+		}
+
+		// Otherwise, the role exists so presume it is a native role.
+		return b.pathNativeLoginRenew(ctx, req, data)
+	default:
+		return nil, fmt.Errorf("unknown role type: %v", roleType)
+	}
+}
+
+func (b *jwtAuthBackend) pathNativeLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	roleName := req.Auth.InternalData["role"].(string)
 	if roleName == "" {
 		return nil, errors.New("failed to fetch role_name during renewal")
@@ -328,10 +358,10 @@ func (b *jwtAuthBackend) fetchGroups(ctx context.Context, pConfig CustomProvider
 	return groupsClaimRaw, nil
 }
 
-func toAlg(a []string) []jwt.Alg {
+func toAlg[T ~string](a []T) []jwt.Alg {
 	alg := make([]jwt.Alg, len(a))
 	for i, e := range a {
-		alg[i] = jwt.Alg(e)
+		alg[i] = jwt.Alg(string(e))
 	}
 	return alg
 }

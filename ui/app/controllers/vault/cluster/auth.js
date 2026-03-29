@@ -13,35 +13,14 @@ export default Controller.extend({
   vaultController: controller('vault'),
   clusterController: controller('vault.cluster'),
   namespaceService: service('namespace'),
-  featureFlagService: service('featureFlag'),
   auth: service(),
   router: service(),
   queryParams: [{ authMethod: 'with', oidcProvider: 'o' }],
   namespaceQueryParam: alias('clusterController.namespaceQueryParam'),
   wrappedToken: alias('vaultController.wrappedToken'),
   redirectTo: alias('vaultController.redirectTo'),
-  managedNamespaceRoot: alias('featureFlagService.managedNamespaceRoot'),
   authMethod: '',
   oidcProvider: '',
-
-  get managedNamespaceChild() {
-    const fullParam = this.namespaceQueryParam;
-    const split = fullParam.split('/');
-    if (split.length > 1) {
-      split.shift();
-      return `/${split.join('/')}`;
-    }
-    return '';
-  },
-
-  updateManagedNamespace: task(function* (value) {
-    // debounce
-    yield timeout(500);
-    // TODO: Move this to shared fn
-    const newNamespace = `${this.managedNamespaceRoot}${value}`;
-    this.namespaceService.setNamespace(newNamespace, true);
-    this.set('namespaceQueryParam', newNamespace);
-  }).restartable(),
 
   updateNamespace: task(function* (value) {
     // debounce

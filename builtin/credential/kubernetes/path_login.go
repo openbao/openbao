@@ -83,7 +83,7 @@ func (b *kubeAuthBackend) pathResolveRole(ctx context.Context, req *logical.Requ
 		return nil, err
 	}
 	if role == nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid role name %q", roleName)), nil
+		return logical.ErrorResponse("invalid role name %q", roleName), nil
 	}
 
 	return logical.ResolveRoleResponse(roleName)
@@ -109,7 +109,7 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 		return nil, err
 	}
 	if role == nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid role name %q", roleName)), nil
+		return logical.ErrorResponse("invalid role name %q", roleName), nil
 	}
 
 	// Check for a CIDR match.
@@ -243,7 +243,7 @@ func (b *kubeAuthBackend) aliasLookahead(ctx context.Context, req *logical.Reque
 		return nil, err
 	}
 	if role == nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid role name %q", roleName)), nil
+		return logical.ErrorResponse("invalid role name %q", roleName), nil
 	}
 
 	config, err := b.loadConfig(ctx, req.Storage)
@@ -335,7 +335,7 @@ func (b *kubeAuthBackend) parseAndValidateJWT(ctx context.Context, client *http.
 		return nil, err
 	}
 
-	claims, err := validator.ValidateAllowMissingIatNbfExp(nil, jwtStr, expected)
+	claims, err := validator.ValidateAllowMissingIatNbfExp(context.Background(), jwtStr, expected)
 	if err != nil {
 		return nil, logical.CodedError(http.StatusForbidden, err.Error())
 	}

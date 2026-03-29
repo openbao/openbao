@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
 	"go.uber.org/goleak"
 )
 
@@ -104,7 +104,10 @@ func TestRateLimitQuota_Allow(t *testing.T) {
 		addr := fmt.Sprintf("127.0.0.%d", i)
 		cr, ok := results[addr]
 		if !ok {
-			results[addr] = &clientResult{atomicNumAllow: atomic.NewInt32(0), atomicNumFail: atomic.NewInt32(0)}
+			results[addr] = &clientResult{
+				atomicNumAllow: &atomic.Int32{},
+				atomicNumFail:  &atomic.Int32{},
+			}
 			cr = results[addr]
 		}
 
@@ -180,7 +183,10 @@ func TestRateLimitQuota_Allow_WithBlock(t *testing.T) {
 		addr := fmt.Sprintf("127.0.0.%d", i)
 		cr, ok := results[addr]
 		if !ok {
-			results[addr] = &clientResult{atomicNumAllow: atomic.NewInt32(0), atomicNumFail: atomic.NewInt32(0)}
+			results[addr] = &clientResult{
+				atomicNumAllow: &atomic.Int32{},
+				atomicNumFail:  &atomic.Int32{},
+			}
 			cr = results[addr]
 		}
 

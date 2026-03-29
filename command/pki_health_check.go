@@ -77,13 +77,13 @@ Usage: bao pki health-check [options] MOUNT
 	  2 - Informational message from a health check.
 	  3 - Warning message from a health check.
 	  4 - Critical message from a health check.
-	  5 - A version mismatch between health check and Vault Server occurred,
+	  5 - A version mismatch between health check and OpenBao Server occurred,
 	      preventing one or more health checks from being run.
-      6 - A permission denied message was returned from Vault Server for
+      6 - A permission denied message was returned from OpenBao Server for
 	      one or more health checks.
 
 For more detailed information, refer to the online documentation about the
-vault pki health-check command.
+bao pki health-check command.
 
 ` + c.Flags().Help()
 
@@ -364,7 +364,7 @@ func (c *PKIHealthCheckCommand) outputResultsYAML(results map[string][]*healthch
 }
 
 func (c *PKIHealthCheckCommand) selectRetCode(results map[string][]*healthcheck.Result) int {
-	var highestResult healthcheck.ResultStatus = healthcheck.ResultNotApplicable
+	highestResult := healthcheck.ResultNotApplicable
 	for _, findings := range results {
 		for _, finding := range findings {
 			if finding.Status > highestResult {

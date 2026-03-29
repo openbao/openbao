@@ -4,7 +4,7 @@ description: "OpenBao's travels to FOSDEM '25"
 slug: bao-at-fosdem-25
 authors: cipherboy
 tags: [community, conferences, stickers]
-image: https://openbao.org/img/baobao-fosdem-25-airplane.jpg
+image: /img/baobao-fosdem-25-airplane.jpg
 ---
 
 Follow along with OpenBao's travels this week as we attend FOSDEM '25 and
@@ -22,7 +22,7 @@ If you can't attend in person, it will also be [live streamed](https://live.fosd
 
 ![BaoBao-Departs-via-Airplane](/img/baobao-fosdem-25-airplane.jpg)
 
-From snowy Minnesota, [BaoBao](https://openbao.org/blog/fosdem-25/) took its
+From snowy Minnesota, [BaoBao](/blog/fosdem-25/) took its
 first ride to London Heathrow to begin its voyage to FOSDEM '25. With a brief
 layover, it explored King's Cross and the Coal Drops Yard. Rich with history,
 this area has long been used as a rail hub for the UK and now is connected to

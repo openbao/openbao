@@ -36,8 +36,8 @@ func TestMetricFilterConfigs(t *testing.T) {
 				t.Fatalf("Error encountered when loading config %+v", err)
 			}
 
-			assert.Equal(t, tc.expectedFilterDefault, config.SharedConfig.Telemetry.FilterDefault)
-			assert.Equal(t, tc.expectedPrefixFilter, config.SharedConfig.Telemetry.PrefixFilter)
+			assert.Equal(t, tc.expectedFilterDefault, config.Telemetry.FilterDefault)
+			assert.Equal(t, tc.expectedPrefixFilter, config.Telemetry.PrefixFilter)
 		}
 	})
 }

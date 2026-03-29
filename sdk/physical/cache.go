@@ -8,8 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	metrics "github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
@@ -22,24 +22,21 @@ const (
 	// TransactionCacheFactor is a multiple of cache size to reduce
 	// transactions by, to avoid high memory usage.
 	TransactionCacheFactor = DefaultParallelTransactions
-
-	// refreshCacheCtxKey is a ctx value that denotes the cache should be
-	// refreshed during a Get call.
-	refreshCacheCtxKey = "refresh_cache"
 )
+
+type (
+	contextKeyRefreshCache struct{}
+)
+
+// contextRefreshCache is a ctx value that denotes the cache should be
+// refreshed during a Get call.
+var contextRefreshCache contextKeyRefreshCache = struct{}{}
 
 // These paths don't need to be cached by the LRU cache. This should
 // particularly help memory pressure when unsealing.
 var cacheExceptionsPaths = []string{
-	"wal/logs/",
-	"index/pages/",
-	"index-dr/pages/",
 	"sys/expire/",
-	"core/poison-pill",
 	"core/raft/tls",
-
-	// Add barrierSealConfigPath and recoverySealConfigPlaintextPath to the cache
-	// exceptions to avoid unseal errors. See VAULT-17227
 	"core/seal-config",
 	"core/recovery-config",
 }
@@ -47,13 +44,13 @@ var cacheExceptionsPaths = []string{
 // CacheRefreshContext returns a context with an added value denoting if the
 // cache should attempt a refresh.
 func CacheRefreshContext(ctx context.Context, r bool) context.Context {
-	return context.WithValue(ctx, refreshCacheCtxKey, r)
+	return context.WithValue(ctx, contextRefreshCache, r)
 }
 
 // cacheRefreshFromContext is a helper to look up if the provided context is
 // requesting a cache refresh.
 func cacheRefreshFromContext(ctx context.Context) bool {
-	r, ok := ctx.Value(refreshCacheCtxKey).(bool)
+	r, ok := ctx.Value(contextRefreshCache).(bool)
 	if !ok {
 		return false
 	}
@@ -80,7 +77,7 @@ type cache struct {
 	lru             *lru.TwoQueueCache[string, *Entry]
 	locks           []*locksutil.LockEntry
 	logger          log.Logger
-	enabled         *uint32
+	enabled         atomic.Bool
 	cacheExceptions *pathmanager.PathManager
 	metricSink      metrics.MetricSink
 }
@@ -131,13 +128,11 @@ func newCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricS
 
 	lruCache, _ := lru.New2Q[string, *Entry](size)
 	c := &cache{
-		backend: b,
-		size:    size,
-		lru:     lruCache,
-		locks:   locksutil.CreateLocks(),
-		logger:  logger,
-		// This fails safe.
-		enabled:         new(uint32),
+		backend:         b,
+		size:            size,
+		lru:             lruCache,
+		locks:           locksutil.CreateLocks(),
+		logger:          logger,
 		cacheExceptions: pm,
 		metricSink:      metricSink,
 	}
@@ -152,7 +147,7 @@ func newCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricS
 }
 
 func (c *cache) ShouldCache(key string) bool {
-	if atomic.LoadUint32(c.enabled) == 0 {
+	if !c.enabled.Load() {
 		return false
 	}
 
@@ -162,15 +157,7 @@ func (c *cache) ShouldCache(key string) bool {
 // SetEnabled is used to toggle whether the cache is on or off. It must be
 // called with true to actually activate the cache after creation.
 func (c *cache) SetEnabled(enabled bool) {
-	if enabled {
-		atomic.StoreUint32(c.enabled, 1)
-		return
-	}
-	atomic.StoreUint32(c.enabled, 0)
-}
-
-func (c *cache) GetEnabled() bool {
-	return atomic.LoadUint32(c.enabled) == 1
+	c.enabled.Store(enabled)
 }
 
 // Purge is used to clear the cache
@@ -284,7 +271,7 @@ func (c *cache) cloneWithStorage(b Backend) *cache {
 	// with an empty cache), but easiest to implement (as the transaction can
 	// modify its cache as it pleases).
 	cacheCopy := newCache(b, c.size/TransactionCacheFactor, c.logger, c.metricSink).(*cache)
-	cacheCopy.SetEnabled(c.GetEnabled())
+	cacheCopy.SetEnabled(c.enabled.Load())
 	return cacheCopy
 }
 
@@ -296,7 +283,7 @@ func (c *transactionalCache) BeginReadOnlyTx(ctx context.Context) (Transaction, 
 
 	// txn does not implement TransactionalBackend because we don't support
 	// nested transactions so this will always cast to *cache.
-	ctxn := c.cache.cloneWithStorage(txn)
+	ctxn := c.cloneWithStorage(txn)
 	return &cacheTransaction{
 		*ctxn,
 		c,
@@ -306,13 +293,13 @@ func (c *transactionalCache) BeginReadOnlyTx(ctx context.Context) (Transaction, 
 }
 
 func (c *transactionalCache) BeginTx(ctx context.Context) (Transaction, error) {
-	txn, err := c.cache.backend.(TransactionalBackend).BeginTx(ctx)
+	txn, err := c.backend.(TransactionalBackend).BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// See note above in BeginReadOnlyTx(...).
-	ctxn := c.cache.cloneWithStorage(txn)
+	ctxn := c.cloneWithStorage(txn)
 	return &cacheTransaction{
 		*ctxn,
 		c,
@@ -411,4 +398,14 @@ func (c *cacheTransaction) Rollback(ctx context.Context) error {
 	// the underlying storage at all.
 
 	return nil
+}
+
+// Invalidate removes the value for key from the cache.
+// This will not affect transactions that have already been started.
+func (c *cache) Invalidate(ctx context.Context, key string) {
+	lock := locksutil.LockForKey(c.locks, key)
+	lock.Lock()
+	defer lock.Unlock()
+
+	c.lru.Remove(key)
 }

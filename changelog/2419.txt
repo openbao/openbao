@@ -1,0 +1,3 @@
+```release-note:improvement
+ssh: Search for public and private key files if -public-key-path and -private-key-path flags aren't given, respectively.
+```

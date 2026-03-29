@@ -15,6 +15,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // Test_newClientCertificateGenerator tests the ClientCertificateGenerator struct based on the config
@@ -451,7 +452,8 @@ func Test_newRSAKeyGenerator(t *testing.T) {
 func Test_passwordGenerator_generate(t *testing.T) {
 	config := logical.TestBackendConfig()
 	b := Backend(config)
-	b.Setup(context.Background(), config)
+	err := b.Setup(context.Background(), config)
+	require.NoError(t, err)
 
 	type args struct {
 		config  map[string]interface{}
@@ -555,6 +557,8 @@ func Test_passwordGenerator_generate(t *testing.T) {
 
 			// Generate the password
 			pg, err := newPasswordGenerator(tt.args.config)
+			require.NoError(t, err)
+
 			got, err := pg.generate(context.Background(), b, wrapper)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -677,6 +681,8 @@ func Test_rsaKeyGenerator_generate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Generate the RSA key pair
 			kg, err := newRSAKeyGenerator(tt.args.config)
+			require.NoError(t, err)
+
 			public, private, err := kg.generate(rand.Reader)
 			assert.NoError(t, err)
 			assert.NotEmpty(t, public)

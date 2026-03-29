@@ -19,8 +19,9 @@ module('Acceptance | tools', function (hooks) {
     return authPage.login();
   });
 
-  hooks.afterEach(function () {
-    return logout.visit();
+  hooks.afterEach(async function () {
+    await logout.visit();
+    await settled();
   });
 
   const DATA_TO_WRAP = JSON.stringify({ tools: 'tests' });
@@ -155,6 +156,10 @@ module('Acceptance | tools', function (hooks) {
       this.post('/v1/sys/wrapping/unwrap', (response) => {
         return [response, { 'Content-Type': 'application/json' }, JSON.stringify(AUTH_RESPONSE)];
       });
+      this.get('/v1/**', this.passthrough);
+      this.post('/v1/**', this.passthrough);
+      this.put('/v1/**', this.passthrough);
+      this.delete('/v1/**', this.passthrough);
     });
     await visit('/vault/tools');
 

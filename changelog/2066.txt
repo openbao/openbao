@@ -1,0 +1,3 @@
+```release-note:change
+auth/jwt: Return error msg on OIDCDiscoveryURL including '.well-known/openid-configuration' component.
+```

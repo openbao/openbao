@@ -32,7 +32,7 @@ func (c *AuditListCommand) Help() string {
 	helpText := `
 Usage: bao audit list [options]
 
-  Lists the enabled audit devices in the Vault server. The output lists the
+  Lists the enabled audit devices in the OpenBao server. The output lists the
   enabled audit devices and the options for those devices.
 
   List all audit devices:

@@ -153,19 +153,19 @@ func (b *backend) initialize(ctx context.Context, _ *logical.InitializationReque
 }
 
 func (b *backend) initializeIssuersStorage(ctx context.Context) error {
+	// Early exit if not a primary cluster or performance secondary with a local mount.
+	if b.System().ReplicationState().HasState(consts.ReplicationDRSecondary|consts.ReplicationPerformanceStandby) ||
+		(!b.System().LocalMount() && b.System().ReplicationState().HasState(consts.ReplicationPerformanceSecondary)) {
+		b.Logger().Debug("Skipping SSH migration as we are not on primary or secondary with a local mount")
+		return nil
+	}
+
 	// Grab the lock prior to the updating of the storage lock preventing us flipping
 	// the storage flag midway through the request stream of other requests.
 	b.issuersLock.Lock()
 	defer b.issuersLock.Unlock()
 
 	return logical.WithTransaction(ctx, b.view, func(s logical.Storage) error {
-		// Early exit if not a primary cluster or performance secondary with a local mount.
-		if b.System().ReplicationState().HasState(consts.ReplicationDRSecondary|consts.ReplicationPerformanceStandby) ||
-			(!b.System().LocalMount() && b.System().ReplicationState().HasState(consts.ReplicationPerformanceSecondary)) {
-			b.Logger().Debug("Skipping SSH migration as we are not on primary or secondary with a local mount")
-			return nil
-		}
-
 		if err := migrateStorage(ctx, b, s); err != nil {
 			b.Logger().Error("Error during migration of SSH mount: " + err.Error())
 			return err

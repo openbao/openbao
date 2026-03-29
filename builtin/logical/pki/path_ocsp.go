@@ -255,7 +255,7 @@ func fetchDerEncodedRequest(request *logical.Request, data *framework.FieldData)
 		if rawBody == nil {
 			return nil, errors.New("no data in request body")
 		}
-		defer rawBody.Close()
+		defer rawBody.Close() //nolint:errcheck
 
 		requestBytes, err := io.ReadAll(io.LimitReader(rawBody, maximumRequestSize))
 		if err != nil {

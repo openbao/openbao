@@ -181,6 +181,7 @@ func TestPostgreSQL_PasswordAuthentication_SCRAMSHA256(t *testing.T) {
 		Expiration: time.Now().Add(1 * time.Minute),
 	}
 	newUserResponse, err := db.NewUser(ctx, newUserRequest)
+	require.NoError(t, err)
 
 	assertCredsExist(t, db.ConnectionURL, newUserResponse.Username, newUserRequest.Password)
 }

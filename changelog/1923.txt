@@ -1,0 +1,3 @@
+```release-note:improvement
+database/valkey: Adds the ability to configure the Valkey database connection using a single connection_url parameter.
+```

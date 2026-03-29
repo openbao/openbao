@@ -14,7 +14,7 @@ during authentication, and instead uses public key cryptography to verify the
 contents of JWTs. This means tokens that have been revoked by Kubernetes will
 still be considered valid by OpenBao until their expiry time. To mitigate this
 risk, use short TTLs for service account tokens or use
-[Kubernetes auth](/docs/auth/kubernetes) which _does_ use the `TokenReview` API.
+[Kubernetes auth](../../kubernetes.mdx) which _does_ use the `TokenReview` API.
 
 :::
 
@@ -64,13 +64,13 @@ Configuration steps:
 
   1. Alternatively, if OpenBao is _not_ running in Kubernetes:
 
-:::info
+     :::info
 
-**Note:** When OpenBao is outside the cluster, the `$ISSUER` endpoint below may
-     or may not be reachable. If not, you can configure JWT auth using
+     **Note:** When OpenBao is outside the cluster, the `$ISSUER` endpoint below
+     may or may not be reachable. If not, you can configure JWT auth using
      [`jwt_validation_pubkeys`](#using-jwt-validation-public-keys) instead.
 
-:::
+     :::
 
      ```bash
      bao auth enable jwt

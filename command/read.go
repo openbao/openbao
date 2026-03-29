@@ -34,7 +34,7 @@ func (c *ReadCommand) Help() string {
 	helpText := `
 Usage: bao read [options] PATH
 
-  Reads data from Vault at the given path. This can be used to read secrets,
+  Reads data from OpenBao at the given path. This can be used to read secrets,
   generate dynamic credentials, get configuration details, and more.
 
   Read a secret from the static secrets engine:
@@ -130,7 +130,7 @@ func (c *ReadCommand) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("No value found at %s", path))
 		return 2
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	contents, err := io.ReadAll(resp.Body)
 	if err != nil {

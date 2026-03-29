@@ -186,9 +186,9 @@ module('Integration | Service | auth', function (hooks) {
       service
         .authenticate({ clusterId: '1', backend: 'token', data: { token: 'test' } })
         .then(() => {
-          const clusterTokenName = service.get('currentTokenName');
-          const clusterToken = service.get('currentToken');
-          const authData = service.get('authData');
+          const clusterTokenName = service.currentTokenName;
+          const clusterToken = service.currentToken;
+          const authData = service.authData;
 
           const expectedTokenName = `${TOKEN_PREFIX}${ROOT_PREFIX}${TOKEN_SEPARATOR}1`;
           assert.strictEqual(clusterToken, 'test', 'token is saved properly');
@@ -232,9 +232,9 @@ module('Integration | Service | auth', function (hooks) {
       environment: () => 'development',
     });
     await service.authenticate({ clusterId: '1', backend: 'token', data: { token: 'test' } });
-    const clusterTokenName = service.get('currentTokenName');
-    const clusterToken = service.get('currentToken');
-    const authData = service.get('authData');
+    const clusterTokenName = service.currentTokenName;
+    const clusterToken = service.currentToken;
+    const authData = service.authData;
 
     const expectedTokenName = `${TOKEN_PREFIX}${ROOT_PREFIX}${TOKEN_SEPARATOR}1`;
     assert.strictEqual(clusterToken, 'test', 'token is saved properly');
@@ -265,9 +265,9 @@ module('Integration | Service | auth', function (hooks) {
           data: { username: USERPASS_RESPONSE.auth.metadata.username, password: 'passoword' },
         })
         .then(() => {
-          const clusterTokenName = service.get('currentTokenName');
-          const clusterToken = service.get('currentToken');
-          const authData = service.get('authData');
+          const clusterTokenName = service.currentTokenName;
+          const clusterToken = service.currentToken;
+          const authData = service.authData;
 
           assert.strictEqual(USERPASS_RESPONSE.auth.client_token, clusterToken, 'token is saved properly');
           assert.strictEqual(
@@ -302,9 +302,9 @@ module('Integration | Service | auth', function (hooks) {
     const service = this.owner.factoryFor('service:auth').create({ storage: () => this.store });
     run(() => {
       service.authenticate({ clusterId: '1', backend: 'token', data: { token: 'test' } }).then(() => {
-        const clusterTokenName = service.get('currentTokenName');
-        const clusterToken = service.get('currentToken');
-        const authData = service.get('authData');
+        const clusterTokenName = service.currentTokenName;
+        const clusterToken = service.currentToken;
+        const authData = service.authData;
 
         assert.strictEqual(clusterToken, 'test', 'token is saved properly');
         assert.strictEqual(
@@ -318,7 +318,7 @@ module('Integration | Service | auth', function (hooks) {
           tokenResp.data.display_name,
           'displayName is saved properly'
         );
-        assert.false(service.get('tokenExpired'), 'token is not expired');
+        assert.false(service.tokenExpired, 'token is not expired');
         done();
       });
     });

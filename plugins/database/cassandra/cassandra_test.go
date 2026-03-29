@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	backoff "github.com/cenkalti/backoff/v4"
+	backoff "github.com/cenkalti/backoff/v5"
 	"github.com/gocql/gocql"
 	"github.com/openbao/openbao/helper/testhelpers/cassandra"
 	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
@@ -158,13 +158,11 @@ func TestCreateUser(t *testing.T) {
 				VerifyConnection: true,
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
 			dbtesting.AssertInitialize(t, db, initReq)
 
 			require.True(t, db.Initialized, "Database is not initialized")
 
-			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			newUserResp, err := db.NewUser(ctx, test.newUserReq)
 			if test.expectErr && err == nil {
@@ -243,21 +241,25 @@ func TestDeleteUser(t *testing.T) {
 	dbtesting.AssertDeleteUser(t, db, deleteReq)
 
 	assertNoCreds(t, db.Hosts, db.Port, createResp.Username, password, nil, 5*time.Second)
+
+	dbtesting.AssertDeleteUser(t, db, deleteReq) // delete again https://openbao.org/docs/plugins/plugin-authors-guide/#revoke-operations-should-ignore-not-found-errors
 }
 
 func assertCreds(t testing.TB, address string, port int, username, password string, sslOpts *gocql.SslOptions, timeout time.Duration) {
 	t.Helper()
-	op := func() error {
-		return connect(t, address, port, username, password, sslOpts)
-	}
+
+	op := backoff.Operation[any](func() (any, error) {
+		return nil, connect(t, address, port, username, password, sslOpts)
+	})
+
 	bo := backoff.NewExponentialBackOff()
-	bo.MaxElapsedTime = timeout
-	bo.InitialInterval = 500 * time.Millisecond
 	bo.MaxInterval = bo.InitialInterval
 	bo.RandomizationFactor = 0.0
 
-	err := backoff.Retry(op, bo)
-	if err != nil {
+	if _, err := backoff.Retry(t.Context(), op,
+		backoff.WithBackOff(bo),
+		backoff.WithMaxElapsedTime(timeout),
+	); err != nil {
 		t.Fatalf("failed to connect after %s: %s", timeout, err)
 	}
 }
@@ -284,22 +286,20 @@ func connect(t testing.TB, address string, port int, username, password string, 
 func assertNoCreds(t testing.TB, address string, port int, username, password string, sslOpts *gocql.SslOptions, timeout time.Duration) {
 	t.Helper()
 
-	op := func() error {
+	op := func() (none struct{}, err error) {
 		// "Invert" the error so the backoff logic sees a failure to connect as a success
-		err := connect(t, address, port, username, password, sslOpts)
-		if err != nil {
-			return nil
-		}
-		return nil
+		_ = connect(t, address, port, username, password, sslOpts)
+		return none, nil
 	}
+
 	bo := backoff.NewExponentialBackOff()
-	bo.MaxElapsedTime = timeout
-	bo.InitialInterval = 500 * time.Millisecond
 	bo.MaxInterval = bo.InitialInterval
 	bo.RandomizationFactor = 0.0
 
-	err := backoff.Retry(op, bo)
-	if err != nil {
+	if _, err := backoff.Retry(t.Context(), op,
+		backoff.WithBackOff(bo),
+		backoff.WithMaxElapsedTime(timeout),
+	); err != nil {
 		t.Fatalf("successfully connected after %s when it shouldn't", timeout)
 	}
 }

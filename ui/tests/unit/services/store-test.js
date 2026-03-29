@@ -42,8 +42,8 @@ module('Unit | Service | store', function (hooks) {
 
     assert.deepEqual(store.getDataset('data', query).dataset, arr, 'it stores the array as .dataset');
     assert.deepEqual(store.getDataset('data', query).response, {}, 'it stores the response as .response');
-    assert.ok(store.get('lazyCaches').has('data'), 'it stores model map');
-    assert.ok(store.get('lazyCaches').get('data').has(keyForCache(query)), 'it stores data on the model map');
+    assert.ok(store.lazyCaches.has('data'), 'it stores model map');
+    assert.ok(store.lazyCaches.get('data').has(keyForCache(query)), 'it stores data on the model map');
   });
 
   test('store.clearDataset with a prefix', function (assert) {
@@ -52,11 +52,11 @@ module('Unit | Service | store', function (hooks) {
     const arr2 = ['one', 'two', 'three', 'four'];
     store.storeDataset('data', { id: 1 }, {}, arr);
     store.storeDataset('transit-key', { id: 2 }, {}, arr2);
-    assert.strictEqual(store.get('lazyCaches').size, 2, 'it stores both keys');
+    assert.strictEqual(store.lazyCaches.size, 2, 'it stores both keys');
 
     store.clearDataset('transit-key');
-    assert.strictEqual(store.get('lazyCaches').size, 1, 'deletes one key');
-    assert.notOk(store.get('lazyCaches').has(), 'cache is no longer stored');
+    assert.strictEqual(store.lazyCaches.size, 1, 'deletes one key');
+    assert.notOk(store.lazyCaches.has(), 'cache is no longer stored');
   });
 
   test('store.clearAllDatasets', function (assert) {
@@ -65,12 +65,12 @@ module('Unit | Service | store', function (hooks) {
     const arr2 = ['one', 'two', 'three', 'four'];
     store.storeDataset('data', { id: 1 }, {}, arr);
     store.storeDataset('transit-key', { id: 2 }, {}, arr2);
-    assert.strictEqual(store.get('lazyCaches').size, 2, 'it stores both keys');
+    assert.strictEqual(store.lazyCaches.size, 2, 'it stores both keys');
 
     store.clearAllDatasets();
-    assert.strictEqual(store.get('lazyCaches').size, 0, 'deletes all of the keys');
-    assert.notOk(store.get('lazyCaches').has('transit-key'), 'first cache key is no longer stored');
-    assert.notOk(store.get('lazyCaches').has('data'), 'second cache key is no longer stored');
+    assert.strictEqual(store.lazyCaches.size, 0, 'deletes all of the keys');
+    assert.notOk(store.lazyCaches.has('transit-key'), 'first cache key is no longer stored');
+    assert.notOk(store.lazyCaches.has('data'), 'second cache key is no longer stored');
   });
 
   test('store.getDataset', function (assert) {
@@ -121,10 +121,14 @@ module('Unit | Service | store', function (hooks) {
       });
     });
 
-    assert.strictEqual(result.get('length'), pageSize, 'returns the correct number of items');
-    assert.deepEqual(result.mapBy('id'), keys.slice(0, pageSize), 'returns the first page of items');
+    assert.strictEqual(result.length, pageSize, 'returns the correct number of items');
     assert.deepEqual(
-      result.get('meta'),
+      result.map((x) => x.id),
+      keys.slice(0, pageSize),
+      'returns the first page of items'
+    );
+    assert.deepEqual(
+      result.meta,
       {
         nextPage: 2,
         prevPage: 1,
@@ -152,7 +156,7 @@ module('Unit | Service | store', function (hooks) {
     const pageThreeEnd = 3 * pageSize;
     const pageThreeStart = pageThreeEnd - pageSize;
     assert.deepEqual(
-      result.mapBy('id'),
+      result.map((x) => x.id),
       keys.slice(pageThreeStart, pageThreeEnd),
       'returns the third page of items'
     );
@@ -171,7 +175,7 @@ module('Unit | Service | store', function (hooks) {
     });
 
     assert.deepEqual(
-      result.mapBy('id'),
+      result.map((x) => x.id),
       keys.slice(keys.length - 1),
       'returns the last page when the page value is beyond the of bounds'
     );
@@ -189,7 +193,7 @@ module('Unit | Service | store', function (hooks) {
         });
     });
     assert.deepEqual(
-      result.mapBy('id'),
+      result.map((x) => x.id),
       keys.slice(0, pageSize),
       'returns the first page when page value is under the bounds'
     );

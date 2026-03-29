@@ -41,47 +41,45 @@ export default function attachCapabilities(modelClass, capabilities) {
   //TODO: move this to the application serializer and do it JIT instead of on app boot
   debug(`adding new relationships: ${capabilityKeys.join(', ')} to ${modelClass.toString()}`);
   modelClass.reopen(newRelationships);
-  modelClass.reopenClass({
-    // relatedCapabilities is called in the application serializer's
-    // normalizeResponse hook to add the capabilities relationships to the
-    // JSON-API document used by Ember Data
-    relatedCapabilities(jsonAPIDoc) {
-      let { data, included } = jsonAPIDoc;
-      if (!data) {
-        data = jsonAPIDoc;
-      }
-      if (isArray(data)) {
-        const newData = data.map(this.relatedCapabilities);
-        return {
-          data: newData,
-          included,
-        };
-      }
-      const context = {
-        id: data.id,
-        ...data.attributes,
+  // relatedCapabilities is called in the application serializer's
+  // normalizeResponse hook to add the capabilities relationships to the
+  // JSON-API document used by Ember Data
+  modelClass.relatedCapabilities = function (jsonAPIDoc) {
+    let { data, included } = jsonAPIDoc;
+    if (!data) {
+      data = jsonAPIDoc;
+    }
+    if (isArray(data)) {
+      const newData = data.map(this.relatedCapabilities);
+      return {
+        data: newData,
+        included,
       };
-      for (const newCapability of capabilityKeys) {
-        const templateFn = capabilities[newCapability];
-        const type = typeOf(templateFn);
-        assert(`expected value of ${newCapability} to be a function but found ${type}.`, type === 'function');
-        data.relationships[newCapability] = {
-          data: {
-            type: 'capabilities',
-            id: templateFn(context),
-          },
-        };
-      }
+    }
+    const context = {
+      id: data.id,
+      ...data.attributes,
+    };
+    for (const newCapability of capabilityKeys) {
+      const templateFn = capabilities[newCapability];
+      const type = typeOf(templateFn);
+      assert(`expected value of ${newCapability} to be a function but found ${type}.`, type === 'function');
+      data.relationships[newCapability] = {
+        data: {
+          type: 'capabilities',
+          id: templateFn(context),
+        },
+      };
+    }
 
-      if (included) {
-        return {
-          data,
-          included,
-        };
-      } else {
-        return data;
-      }
-    },
-  });
+    if (included) {
+      return {
+        data,
+        included,
+      };
+    } else {
+      return data;
+    }
+  };
   return modelClass;
 }

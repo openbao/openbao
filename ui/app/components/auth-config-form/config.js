@@ -22,32 +22,29 @@ import { waitFor } from '@ember/test-waiters';
  *
  */
 
-const AuthConfigBase = Component.extend({
-  tagName: '',
-  model: null,
+export default class AuthConfigBase extends Component {
+  tagName = '';
+  model = null;
 
-  flashMessages: service(),
-  router: service(),
-  saveModel: task(
-    waitFor(function* () {
-      try {
-        yield this.model.save();
-      } catch (err) {
-        // AdapterErrors are handled by the error-message component
-        // in the form
-        if (err instanceof AdapterError === false) {
-          throw err;
-        }
-        return;
+  @service flashMessages;
+  @service router;
+
+  @task
+  @waitFor
+  *saveModel() {
+    try {
+      yield this.model.save();
+    } catch (err) {
+      // AdapterErrors are handled by the error-message component
+      // in the form
+      if (err instanceof AdapterError === false) {
+        throw err;
       }
-      this.router.transitionTo('vault.cluster.access.methods').followRedirects();
-      this.flashMessages.success('The configuration was saved successfully.');
-    })
-  ),
-});
+      return;
+    }
+    this.router.transitionTo('vault.cluster.access.methods').followRedirects();
+    this.flashMessages.success('The configuration was saved successfully.');
+  }
 
-AuthConfigBase.reopenClass({
-  positionalParams: ['model'],
-});
-
-export default AuthConfigBase;
+  static positionalParams = ['model'];
+}

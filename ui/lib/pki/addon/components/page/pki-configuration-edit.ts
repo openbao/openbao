@@ -65,7 +65,7 @@ export default class PkiConfigurationEditComponent extends Component<Args> {
       // skip saving and continue to next iteration if user does not have permission
       if (!model.canSet) continue;
       try {
-        yield resolve(model.save());
+        yield resolve(model.save() as Promise<unknown>);
         this.flashMessages.success(`Successfully updated config/${modelName}`);
       } catch (error) {
         const errorObject: ErrorObject = {

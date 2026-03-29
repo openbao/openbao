@@ -67,6 +67,7 @@ export default class DemoPanelComponent extends Component {
   @tracked tab = this.args.tab || "overview";
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
   
@@ -74,6 +75,9 @@ export default class DemoPanelComponent extends Component {
 =======
 
 >>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
+=======
+
+>>>>>>> 7960dd8c5afeb1bcd99d2cd9a27a8eea003a8bdc
   changeTab(newTab) {
     this.tab = newTab;  // This will properly update the UI
   }
@@ -107,6 +111,7 @@ export default class ParentComponent extends Component {
   @tracked filter = "";
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
   
@@ -114,6 +119,9 @@ export default class ParentComponent extends Component {
 =======
 
 >>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
+=======
+
+>>>>>>> 7960dd8c5afeb1bcd99d2cd9a27a8eea003a8bdc
   setFilter = (value) => {
     this.filter = value;
   }
@@ -135,16 +143,21 @@ const user = { name: "", email: "" };
 ```javascript
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import Component from "@glimmer/component";
 =======
 >>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
 =======
 import Component from "@glimmer/component";
 >>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
+=======
+import Component from "@glimmer/component";
+>>>>>>> 7960dd8c5afeb1bcd99d2cd9a27a8eea003a8bdc
 import { tracked } from "@ember/object";
 
 export default class MyComponent extends Component {
   @tracked user = { name: "", email: "" };
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 
@@ -154,6 +167,9 @@ export default class MyComponent extends Component {
 =======
 
 >>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
+=======
+
+>>>>>>> 7960dd8c5afeb1bcd99d2cd9a27a8eea003a8bdc
   updateUser(field, value) {
     this.user[field] = value;
   }
@@ -181,6 +197,9 @@ this.args.data.property = newValue;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 7960dd8c5afeb1bcd99d2cd9a27a8eea003a8bdc
 **Q: Do I have to change everything right now?**
 A: No. This works fine today, but you should plan migration. We'll give plenty of notice before it stops working.
 
@@ -188,6 +207,7 @@ A: No. This works fine today, but you should plan migration. We'll give plenty o
 A: Absolutely. You can pass hash objects to components—just don't mutate them afterward.
 
 **Q: What if I have complex state?**
+<<<<<<< HEAD
 =======
 **Q: Do I have to change everything right now?**  
 =======
@@ -204,4 +224,6 @@ A: Absolutely. You can pass hash objects to components—just don't mutate them 
 =======
 **Q: What if I have complex state?**
 >>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
+=======
+>>>>>>> 7960dd8c5afeb1bcd99d2cd9a27a8eea003a8bdc
 A: Use `@tracked` properties in your component. That's the Ember-approved way to manage state.

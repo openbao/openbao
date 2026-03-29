@@ -96,7 +96,6 @@ module('Acceptance | init', function (hooks) {
     this.server.get('/v1/sys/health', () => {
       return [200, { 'Content-Type': 'application/json' }, JSON.stringify(HEALTH_RESPONSE)];
     });
-    this.server.get('/v1/sys/internal/ui/feature-flags', this.server.passthrough);
   });
 
   hooks.afterEach(function () {
@@ -117,7 +116,11 @@ module('Acceptance | init', function (hooks) {
       'shows all of the recovery keys'
     );
     assert.strictEqual(initPage.buttonText, 'Continue to Authenticate', 'links to authenticate');
-    assertRequest(this.server.handledRequests.findBy('url', '/v1/sys/init'), assert, true);
+    assertRequest(
+      this.server.handledRequests.find((x) => x.url === '/v1/sys/init'),
+      assert,
+      true
+    );
   });
 
   test('shamir seal init', async function (assert) {
@@ -130,6 +133,10 @@ module('Acceptance | init', function (hooks) {
 
     assert.strictEqual(initPage.keys.length, SEAL_RESPONSE.keys.length, 'shows all of the recovery keys');
     assert.strictEqual(initPage.buttonText, 'Continue to Unseal', 'links to unseal');
-    assertRequest(this.server.handledRequests.findBy('url', '/v1/sys/init'), assert, false);
+    assertRequest(
+      this.server.handledRequests.find((x) => x.url === '/v1/sys/init'),
+      assert,
+      false
+    );
   });
 });

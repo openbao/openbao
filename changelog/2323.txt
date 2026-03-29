@@ -1,0 +1,3 @@
+```release-note:improvement
+api, sdk: Add additional constants for commonly used headers.
+```

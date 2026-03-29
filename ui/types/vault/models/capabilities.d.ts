@@ -3,18 +3,17 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import ComputedProperty from '@ember/object/computed';
 import Model from '@ember-data/model';
 
 interface CapabilitiesModel extends Model {
   path: string;
   capabilities: Array<string>;
-  canSudo: ComputedProperty<boolean | undefined>;
-  canRead: ComputedProperty<boolean | undefined>;
-  canCreate: ComputedProperty<boolean | undefined>;
-  canUpdate: ComputedProperty<boolean | undefined>;
-  canDelete: ComputedProperty<boolean | undefined>;
-  canList: ComputedProperty<boolean | undefined>;
+  canSudo: boolean | undefined;
+  canRead: boolean | undefined;
+  canCreate: boolean | undefined;
+  canUpdate: boolean | undefined;
+  canDelete: boolean | undefined;
+  canList: boolean | undefined;
   // these don't seem to be used anywhere
   // inferring type from key name
   allowedParameters: Array<string>;

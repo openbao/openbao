@@ -110,7 +110,7 @@ Unseal requires the recovery key fragments instead of the unseal key fragments
 that would be provided with Shamir. The process remains the same.
 
 For a list of examples and supported providers, please see the
-[seal documentation](/docs/configuration/seal).
+[seal documentation](../configuration/seal/index.mdx).
 
 :::info
 
@@ -220,7 +220,7 @@ These steps are common for seal migrations between any supported kinds and for
 any storage backend.
 
 1. Take a standby node down and update the [seal
-   configuration](/docs/configuration/seal).
+   configuration](../configuration/seal/index.mdx).
 
    - If the migration is from Shamir seal to Auto seal, add the desired new Auto
      seal block to the configuration.
@@ -243,7 +243,7 @@ any storage backend.
    specifically when Integrated Storage is in use for it helps to retain the
    quorum.
 
-1. [Step down](/docs/commands/operator/step-down) the
+1. [Step down](../commands/operator/step-down.mdx) the
    active node. One of the standby nodes will become the new active node.
    When using Integrated Storage, ensure that quorum is reached and a leader is
    elected.

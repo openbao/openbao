@@ -94,7 +94,7 @@ export default class SearchSelect extends Component {
 
   addSearchText(optionsToFormat) {
     // maps over array of objects or response from query
-    return optionsToFormat.toArray().map((option) => {
+    return [...optionsToFormat].map((option) => {
       const id = option[this.idKey] ? option[this.idKey] : option.id;
       option.searchText = `${option[this.nameKey]} ${id}`;
       return option;
@@ -164,7 +164,7 @@ export default class SearchSelect extends Component {
         const options = yield this.store.query(modelType, queryParams);
 
         // store both select + unselected options in tracked property used by wildcard filter
-        this.allOptions = [...this.allOptions, ...options.mapBy('id')];
+        this.allOptions = [...this.allOptions, ...options.map((x) => x.id)];
 
         // add to dropdown options
         this.dropdownOptions = [...this.dropdownOptions, ...this.addSearchText(options)];
@@ -190,7 +190,7 @@ export default class SearchSelect extends Component {
 
   @action
   handleChange() {
-    if (this.selectedOptions.length && typeof this.selectedOptions.firstObject === 'object') {
+    if (this.selectedOptions.length && typeof this.selectedOptions[0] === 'object') {
       this.args.onChange(
         Array.from(this.selectedOptions, (option) =>
           this.args.passObject ? this.customizeObject(option) : option.id
@@ -202,12 +202,12 @@ export default class SearchSelect extends Component {
   }
 
   shouldShowCreate(id, searchResults) {
-    if (searchResults && searchResults.length && searchResults.firstObject.groupName) {
-      return !searchResults.some((group) => group.options.findBy('id', id));
+    if (searchResults && searchResults.length && searchResults[0].groupName) {
+      return !searchResults.some((group) => group.options.find((x) => x.id === id));
     }
     const existingOption =
       this.dropdownOptions &&
-      (this.dropdownOptions.findBy('id', id) || this.dropdownOptions.findBy('name', id));
+      (this.dropdownOptions.find((x) => x.id === id) || this.dropdownOptions.find((x) => x.name === id));
     if (this.args.disallowNewItems && !existingOption) {
       return false;
     }
@@ -273,8 +273,8 @@ export default class SearchSelect extends Component {
     }
     if (this.args.search) {
       return resolve(this.args.search(term, select)).then((results) => {
-        if (results.toArray) {
-          results = results.toArray();
+        if (results && !Array.isArray(results)) {
+          results = Array.from(results);
         }
         this.addCreateOption(term, results);
         return results;

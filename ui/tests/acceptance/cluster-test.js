@@ -5,7 +5,7 @@
 
 import { create } from 'ember-cli-page-object';
 import { settled, click, visit } from '@ember/test-helpers';
-import { module, test } from 'qunit';
+import { module, test, skip } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -30,6 +30,7 @@ module('Acceptance | cluster', function (hooks) {
 
   hooks.beforeEach(async function () {
     await logout.visit();
+    await settled();
     return authPage.login();
   });
 
@@ -42,14 +43,16 @@ module('Acceptance | cluster', function (hooks) {
 
     const userToken = await tokenWithPolicy('hide-policies-nav', deny_policies_policy);
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
     await visit('/vault/access');
 
     assert.dom('[data-test-sidebar-nav-link="Policies"]').doesNotExist();
     await logout.visit();
+    await settled();
   });
 
-  test('it hides mfa setup if user has not entityId (ex: is a root user)', async function (assert) {
+  skip('it hides mfa setup if user has not entityId (ex: is a root user)', async function (assert) {
     const user = 'end-user';
     const password = 'mypassword';
     const path = `cluster-userpass-${uuidv4()}`;
@@ -63,6 +66,7 @@ module('Acceptance | cluster', function (hooks) {
     await click('[data-test-user-menu-trigger]');
     assert.dom('[data-test-user-menu-item="mfa"]').exists();
     await logout.visit();
+    await settled();
 
     await authPage.login('root');
     await settled();

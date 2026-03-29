@@ -12,15 +12,15 @@ import (
 	"math"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-viper/mapstructure/v2"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/raft"
 	autopilot "github.com/hashicorp/raft-autopilot"
 	"github.com/openbao/openbao/api/v2"
-	"go.uber.org/atomic"
 )
 
 type CleanupDeadServersValue int
@@ -33,6 +33,10 @@ const (
 	// NonVoterPath is the path to the non-voters in the storage.
 	NonVoterPath = "autopilot/non-voters"
 )
+
+// ErrRaftAutopilotNotInitialized is returned when an autopilot is not initialized
+// (configuration mismatch or standby node)
+var ErrRaftAutopilotNotInitialized = errors.New("raft storage autopilot is not initialized")
 
 func (c CleanupDeadServersValue) Value() bool {
 	switch c {
@@ -201,7 +205,7 @@ func (s *FollowerStates) Update(req *EchoRequestUpdate) bool {
 	state, present := s.followers[req.NodeID]
 	if !present {
 		state = &FollowerState{
-			IsDead: atomic.NewBool(false),
+			IsDead: &atomic.Bool{},
 		}
 		s.followers[req.NodeID] = state
 	}
@@ -329,7 +333,7 @@ func (b *RaftBackend) startFollowerHeartbeatTracker() {
 		b.followerStates.l.RLock()
 		myAppliedIndex := b.raft.AppliedIndex()
 		for peerID, state := range b.followerStates.followers {
-			timeSinceLastHeartbeat := time.Now().Sub(state.LastHeartbeat) / time.Millisecond
+			timeSinceLastHeartbeat := time.Since(state.LastHeartbeat) / time.Millisecond
 			followerGauge(peerID, "last_heartbeat_ms", float32(timeSinceLastHeartbeat))
 			followerGauge(peerID, "applied_index_delta", float32(myAppliedIndex-state.AppliedIndex))
 
@@ -437,7 +441,7 @@ func (d *ReadableDuration) Duration() time.Duration {
 }
 
 func (d *ReadableDuration) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`"%s"`, d.Duration().String())), nil
+	return fmt.Appendf(nil, `"%s"`, d.Duration().String()), nil
 }
 
 func (d *ReadableDuration) UnmarshalJSON(raw []byte) (err error) {

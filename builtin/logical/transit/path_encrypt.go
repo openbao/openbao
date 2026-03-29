@@ -21,40 +21,40 @@ import (
 // BatchRequestItem represents a request item for batch processing
 type BatchRequestItem struct {
 	// Context for key derivation. This is required for derived keys.
-	Context string `json:"context" structs:"context" mapstructure:"context"`
+	Context string `json:"context" mapstructure:"context"`
 
 	// DecodedContext is the base64 decoded version of Context
 	DecodedContext []byte
 
 	// Plaintext for encryption
-	Plaintext string `json:"plaintext" structs:"plaintext" mapstructure:"plaintext"`
+	Plaintext string `json:"plaintext" mapstructure:"plaintext"`
 
 	// Ciphertext for decryption
-	Ciphertext string `json:"ciphertext" structs:"ciphertext" mapstructure:"ciphertext"`
+	Ciphertext string `json:"ciphertext" mapstructure:"ciphertext"`
 
 	// The key version to be used for encryption
-	KeyVersion int `json:"key_version" structs:"key_version" mapstructure:"key_version"`
+	KeyVersion int `json:"key_version" mapstructure:"key_version"`
 
 	// Associated Data for AEAD ciphers
 	AssociatedData string `json:"associated_data" struct:"associated_data" mapstructure:"associated_data"`
 
 	// Reference is an arbitrary caller supplied string value that will be placed on the
 	// batch response to ease correlation between inputs and outputs
-	Reference string `json:"reference" structs:"reference" mapstructure:"reference"`
+	Reference string `json:"reference" mapstructure:"reference"`
 }
 
 // EncryptBatchResponseItem represents a response item for batch processing
 type EncryptBatchResponseItem struct {
 	// Ciphertext for the plaintext present in the corresponding batch
 	// request item
-	Ciphertext string `json:"ciphertext,omitempty" structs:"ciphertext" mapstructure:"ciphertext"`
+	Ciphertext string `json:"ciphertext,omitempty" mapstructure:"ciphertext"`
 
 	// KeyVersion defines the key version used to encrypt plaintext.
-	KeyVersion int `json:"key_version,omitempty" structs:"key_version" mapstructure:"key_version"`
+	KeyVersion int `json:"key_version,omitempty" mapstructure:"key_version"`
 
 	// Error, if set represents a failure encountered while encrypting a
 	// corresponding batch request item
-	Error string `json:"error,omitempty" structs:"error" mapstructure:"error"`
+	Error string `json:"error,omitempty" mapstructure:"error"`
 
 	// Reference is an arbitrary caller supplied string value that will be placed on the
 	// batch response to ease correlation between inputs and outputs
@@ -400,9 +400,9 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 		case "xchacha20-poly1305":
 			polReq.KeyType = keysutil.KeyType_XChaCha20_Poly1305
 		case "ecdsa-p256", "ecdsa-p384", "ecdsa-p521":
-			return logical.ErrorResponse(fmt.Sprintf("key type %v not supported for this operation", keyType)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("key type %v not supported for this operation", keyType), logical.ErrInvalidRequest
 		default:
-			return logical.ErrorResponse(fmt.Sprintf("unknown key type %v", keyType)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("unknown key type %v", keyType), logical.ErrInvalidRequest
 		}
 	} else {
 		polReq = keysutil.PolicyRequest{

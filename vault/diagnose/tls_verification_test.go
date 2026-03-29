@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/helper/configutil"
 )
 
 // TestTLSValidCert is the positive test case to show that specifying a valid cert and key
@@ -56,7 +56,7 @@ func TestTLSFakeCert(t *testing.T) {
 	if len(errs) != 1 {
 		t.Fatalf("more than one error returned: %+v", errs)
 	}
-	if !strings.Contains(errs[0].Error(), "Could not decode certificate") {
+	if !strings.Contains(errs[0].Error(), "No certificates found in certificate file.") {
 		t.Fatalf("Bad error message: %s", errs[0])
 	}
 }

@@ -4,7 +4,7 @@
  */
 
 import { module, test } from 'qunit';
-import { visit, click, fillIn, find } from '@ember/test-helpers';
+import { visit, click, fillIn, find, settled } from '@ember/test-helpers';
 import { setupApplicationTest } from 'vault/tests/helpers';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -40,6 +40,7 @@ module('Acceptance | pki/pki cross sign', function (hooks) {
     await runCommands([`delete sys/mounts/${this.intMountPath}`]);
     await runCommands([`delete sys/mounts/${this.parentMountPath}`]);
     await logout.visit();
+    await settled();
   });
 
   test('it cross-signs an issuer', async function (assert) {

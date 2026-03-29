@@ -21,6 +21,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault/cluster"
+	"github.com/openbao/openbao/vault/forwarding"
 )
 
 var clusterTestPausePeriod = 2 * time.Second
@@ -105,25 +106,25 @@ func TestCluster_ListenForRequests(t *testing.T) {
 	TestWaitActive(t, cores[0].Core)
 
 	clusterListener := cores[0].getClusterListener()
-	clusterListener.AddClient(consts.RequestForwardingALPN, &requestForwardingClusterClient{cores[0].Core})
+	clusterListener.AddClient(consts.RequestForwardingALPN, forwarding.NewRequestForwardingClusterClient(cores[0].Core))
 	addrs := cores[0].getClusterListener().Addrs()
 
 	// Use this to have a valid config after sealing since ClusterTLSConfig returns nil
-	checkListenersFunc := func(expectFail bool) {
-		dialer := clusterListener.GetDialerFunc(context.Background(), consts.RequestForwardingALPN)
+	checkListenersFunc := func(expectFail bool, name string) {
+		dialer := clusterListener.GetContextDialerFunc(context.Background(), consts.RequestForwardingALPN)
 		for i := range cores[0].Listeners {
 
 			clnAddr := addrs[i]
-			netConn, err := dialer(clnAddr.String(), 0)
+			netConn, err := dialer(context.Background(), clnAddr.String())
 			if err != nil {
 				if expectFail {
-					t.Logf("testing %s unsuccessful as expected", clnAddr)
+					t.Logf("[%s] testing %s unsuccessful as expected", name, clnAddr)
 					continue
 				}
-				t.Fatalf("error: %v\ncluster listener is %s", err, clnAddr)
+				t.Fatalf("[%s] error: %v\ncluster listener is %s", name, err, clnAddr)
 			}
 			if expectFail {
-				t.Fatalf("testing %s not unsuccessful as expected", clnAddr)
+				t.Fatalf("[%s] testing %s not unsuccessful as expected", name, clnAddr)
 			}
 			conn := netConn.(*tls.Conn)
 			err = conn.Handshake()
@@ -133,16 +134,16 @@ func TestCluster_ListenForRequests(t *testing.T) {
 			connState := conn.ConnectionState()
 			switch {
 			case connState.Version != tls.VersionTLS12 && connState.Version != tls.VersionTLS13:
-				t.Fatal("version mismatch")
+				t.Fatalf("[%s] version mismatch", name)
 			case connState.NegotiatedProtocol != consts.RequestForwardingALPN:
-				t.Fatal("bad protocol negotiation")
+				t.Fatalf("[%s] bad protocol negotiation", name)
 			}
-			t.Logf("testing %s successful", clnAddr)
+			t.Logf("[%s] testing %s successful", name, clnAddr)
 		}
 	}
 
 	time.Sleep(clusterTestPausePeriod)
-	checkListenersFunc(false)
+	checkListenersFunc(false, "initial")
 
 	err := cores[0].StepDown(context.Background(), &logical.Request{
 		Operation:   logical.UpdateOperation,
@@ -156,12 +157,12 @@ func TestCluster_ListenForRequests(t *testing.T) {
 	// StepDown doesn't wait during actual preSeal so give time for listeners
 	// to close
 	time.Sleep(clusterTestPausePeriod)
-	checkListenersFunc(true)
+	checkListenersFunc(true, "after step-down")
 
 	// After this period it should be active again
 	TestWaitActive(t, cores[0].Core)
-	cores[0].getClusterListener().AddClient(consts.RequestForwardingALPN, &requestForwardingClusterClient{cores[0].Core})
-	checkListenersFunc(false)
+	cores[0].getClusterListener().AddClient(consts.RequestForwardingALPN, forwarding.NewRequestForwardingClusterClient(cores[0].Core))
+	checkListenersFunc(false, "back on active")
 
 	err = cores[0].Core.Seal(cluster.RootToken)
 	if err != nil {
@@ -169,7 +170,7 @@ func TestCluster_ListenForRequests(t *testing.T) {
 	}
 	time.Sleep(clusterTestPausePeriod)
 	// After sealing it should be inactive again
-	checkListenersFunc(true)
+	checkListenersFunc(true, "after seal")
 }
 
 func TestCluster_ForwardRequests(t *testing.T) {
@@ -262,7 +263,7 @@ func testCluster_Forwarding(t *testing.T, cluster *TestCluster, oldLeaderCoreIdx
 	}
 	time.Sleep(clusterTestPausePeriod)
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if i != oldLeaderCoreIdx && i != newLeaderCoreIdx {
 			_ = cluster.Cores[i].StepDown(context.Background(), &logical.Request{
 				Operation:   logical.UpdateOperation,
@@ -278,9 +279,9 @@ func testCluster_Forwarding(t *testing.T, cluster *TestCluster, oldLeaderCoreIdx
 	deadline := time.Now().Add(5 * time.Second)
 	var ready int
 	for time.Now().Before(deadline) {
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			if i != newLeaderCoreIdx {
-				leaderParams := cluster.Cores[i].clusterLeaderParams.Load().(*ClusterLeaderParams)
+				leaderParams := cluster.Cores[i].clusterLeaderParams.Load()
 				if leaderParams != nil && leaderParams.LeaderClusterAddr == cluster.Cores[newLeaderCoreIdx].ClusterAddr() {
 					ready++
 				}
@@ -297,7 +298,7 @@ func testCluster_Forwarding(t *testing.T, cluster *TestCluster, oldLeaderCoreIdx
 		t.Fatal("standbys have not discovered the new active node in time")
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if i != newLeaderCoreIdx {
 			testCluster_ForwardRequests(t, cluster.Cores[i], rootToken, remoteCoreID)
 		}
@@ -307,10 +308,7 @@ func testCluster_Forwarding(t *testing.T, cluster *TestCluster, oldLeaderCoreIdx
 func testCluster_ForwardRequests(t *testing.T, c *TestClusterCore, rootToken, remoteCoreID string) {
 	t.Helper()
 
-	standby, err := c.Standby()
-	if err != nil {
-		t.Fatal(err)
-	}
+	standby := c.Standby()
 	if !standby {
 		t.Fatal("expected core to be standby")
 	}
@@ -337,7 +335,7 @@ func testCluster_ForwardRequests(t *testing.T, c *TestClusterCore, rootToken, re
 		t.Fatal(err)
 	}
 	req.Header.Add(consts.AuthHeaderName, rootToken)
-	req = req.WithContext(context.WithValue(req.Context(), "original_request_path", req.URL.Path))
+	req = req.WithContext(ContextWithOriginalRequestPath(req.Context(), req.URL.Path))
 
 	statusCode, header, respBytes, err := c.ForwardRequest(req)
 	if err != nil {

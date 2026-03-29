@@ -1,0 +1,3 @@
+```release-note:bug
+command: External token helpers now inherit environment variables from the parent process.
+```

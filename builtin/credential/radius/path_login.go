@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"layeh.com/radius"
-	. "layeh.com/radius/rfc2865"
+	"layeh.com/radius/rfc2865"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
@@ -204,10 +204,19 @@ func (b *backend) RadiusLogin(ctx context.Context, req *logical.Request, usernam
 	hostport := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
 
 	packet := radius.New(radius.CodeAccessRequest, []byte(cfg.Secret))
-	UserName_SetString(packet, username)
-	UserPassword_SetString(packet, password)
+	err = rfc2865.UserName_SetString(packet, username)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = rfc2865.UserPassword_SetString(packet, password)
+	if err != nil {
+		return nil, nil, err
+	}
 	if cfg.NasIdentifier != "" {
-		NASIdentifier_AddString(packet, cfg.NasIdentifier)
+		err = rfc2865.NASIdentifier_AddString(packet, cfg.NasIdentifier)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	packet.Add(5, radius.NewInteger(uint32(cfg.NasPort)))
 

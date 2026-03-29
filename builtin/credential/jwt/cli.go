@@ -253,9 +253,9 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 	case s := <-doneCh:
 		return s.secret, s.err
 	case <-sigintCh:
-		return nil, errors.New("Interrupted")
+		return nil, errors.New("interrupted")
 	case <-time.After(2 * time.Minute):
-		return nil, errors.New("Timed out waiting for response from provider")
+		return nil, errors.New("timed out waiting for response from provider")
 	}
 }
 
@@ -331,7 +331,7 @@ func fetchAuthURL(c *api.Client, role, mount, callbackPort string, callbackMetho
 	}
 
 	if authURL == "" {
-		return "", "", nil, fmt.Errorf("Unable to authorize role %q with redirect_uri %q. Check OpenBao logs for more information.", role, redirectURI)
+		return "", "", nil, fmt.Errorf("Unable to authorize role %q with redirect_uri %q. Check OpenBao logs for more information.", role, redirectURI) //nolint:staticcheck // user-facing error
 	}
 
 	return authURL, clientNonce, secret, nil

@@ -114,7 +114,7 @@ func pathRole(b *jwtAuthBackend) *framework.Path {
 			},
 			"expiration_leeway": {
 				Type: framework.TypeSignedDurationSecond,
-				Description: `Duration in seconds of leeway when validating expiration of a token to account for clock skew. 
+				Description: `Duration in seconds of leeway when validating expiration of a token to account for clock skew.
 Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
 				Default: claimDefaultLeeway,
 			},
@@ -126,7 +126,7 @@ Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
 			},
 			"clock_skew_leeway": {
 				Type: framework.TypeSignedDurationSecond,
-				Description: `Duration in seconds of leeway when validating all claims to account for clock skew. 
+				Description: `Duration in seconds of leeway when validating all claims to account for clock skew.
 Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
 				Default: jwt.DefaultLeeway,
 			},
@@ -161,7 +161,7 @@ Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
 			},
 			"user_claim_json_pointer": {
 				Type: framework.TypeBool,
-				Description: `If true, the user_claim value will use JSON pointer syntax 
+				Description: `If true, the user_claim value will use JSON pointer syntax
 for referencing claims.`,
 			},
 			"groups_claim": {
@@ -188,19 +188,25 @@ for referencing claims.`,
 			},
 			"verbose_oidc_logging": {
 				Type: framework.TypeBool,
-				Description: `Log received OIDC tokens and claims when debug-level logging is active. 
-Not recommended in production since sensitive information may be present 
+				Description: `Log received OIDC tokens and claims when debug-level logging is active.
+Not recommended in production since sensitive information may be present
 in OIDC responses.`,
 			},
 			"max_age": {
 				Type: framework.TypeDurationSecond,
-				Description: `Specifies the allowable elapsed time in seconds since the last time the 
+				Description: `Specifies the allowable elapsed time in seconds since the last time the
 user was actively authenticated.`,
 			},
 			"token_policies_template_claims": {
 				Type: framework.TypeBool,
-				Description: `When enabled, allows token_policies to be templated 
+				Description: `When enabled, allows token_policies to be templated
 based upon claims in the JWT or OIDC ID token. Empty policies are ignored.`,
+			},
+			"oidc_disable_confirmation": {
+				Type: framework.TypeBool,
+				Description: `If set to true, disables the interactive confirmation page shown
+during OIDC direct callback mode login. The confirmation step is enabled by default, as a security
+measure against token-hijacking attacks (see RFC 8628 5.4).`,
 			},
 		},
 		ExistenceCheck: b.pathRoleExistenceCheck,
@@ -266,6 +272,7 @@ type jwtRole struct {
 	MaxAge                      time.Duration          `json:"max_age"`
 	UserClaimJSONPointer        bool                   `json:"user_claim_json_pointer"`
 	TokenPoliciesTemplateClaims bool                   `json:"token_policies_template_claims"`
+	OIDCDisableConfirmation     bool                   `json:"oidc_disable_confirmation"`
 
 	// Deprecated by TokenParams
 	Policies   []string                      `json:"policies"`
@@ -416,6 +423,7 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 		"verbose_oidc_logging":           role.VerboseOIDCLogging,
 		"max_age":                        int64(role.MaxAge.Seconds()),
 		"token_policies_template_claims": role.TokenPoliciesTemplateClaims,
+		"oidc_disable_confirmation":      role.OIDCDisableConfirmation,
 	}
 
 	role.PopulateTokenData(d)
@@ -550,7 +558,7 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 	}
 
 	if role.TokenPeriod > b.System().MaxLeaseTTL() {
-		return logical.ErrorResponse(fmt.Sprintf("'period' of '%q' is greater than the backend's maximum lease TTL of '%q'", role.TokenPeriod.String(), b.System().MaxLeaseTTL().String())), nil
+		return logical.ErrorResponse("'period' of '%q' is greater than the backend's maximum lease TTL of '%q'", role.TokenPeriod.String(), b.System().MaxLeaseTTL().String()), nil
 	}
 
 	if tokenExpLeewayRaw, ok := data.GetOk("expiration_leeway"); ok {
@@ -680,6 +688,8 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 	default:
 		return logical.ErrorResponse("invalid 'callback_mode': %s", callbackMode), nil
 	}
+
+	role.OIDCDisableConfirmation = data.Get("oidc_disable_confirmation").(bool)
 
 	if role.RoleType == "oidc" && len(role.AllowedRedirectURIs) == 0 {
 		return logical.ErrorResponse(

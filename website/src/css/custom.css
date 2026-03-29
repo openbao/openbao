@@ -36,9 +36,12 @@
 }
 
 /*
- * Make our download page cards a darker color in dark mode so they look
- * visually different than the main part of the page.
+ * Make our download page cards visually distinct.
  */
+[data-theme="light"] div.all-downloads div.card {
+  border: 1px solid var(--ifm-color-emphasis-300);
+}
+
 [data-theme="dark"] div.download-card {
   background-color: var(--ifm-background-color);
 }
@@ -68,13 +71,104 @@ div.download-card a.button span {
     );
 }
 
-@media (max-width: 500px) {
+div.package-repo {
+  margin-bottom: var(--ifm-spacing-horizontal);
+}
+
+
+/* 
+ * Custom CSS for downloads page
+ */
+
+
+/* Bigger font size for the architecture*/
+.download-card__header-title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+/* Version is secondary */
+.download-card__version {
+  margin-bottom: 1rem;
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.9rem;
+}
+
+/* Flexbox for card contents*/
+.download-card__content-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.download-card__links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.download-card__button-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.download-card__button-icon svg {
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+.version-select {
+  background-color: var(--ifm-color-emphasis-100);
+  color: var(--ifm-font-color-base);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-button-border-radius);
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  max-width: 200px;
+}
+
+/*
+ * Make the downloads page responsive
+ */
+@media (max-width: 768px) {
+  .version-select {
+    max-width: 150px;
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .downloads-header {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 1rem;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .downloads-header h1 {
+    margin-bottom: 0 !important;
+  }
+
   div.all-downloads nav.pagination-nav {
     grid-template-columns: 1fr;
   }
 
   div.all-downloads nav.pagination-nav div.download-card {
-    max-width: 85%;
-    margin: 0 auto;
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+  }
+
+  .download-card__content-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .download-card__button-wrapper {
+    display: flex;
+    justify-content: flex-end;
   }
 }

@@ -59,6 +59,8 @@ type PluginRunner struct {
 	Sha256         []byte                      `json:"sha256" structs:"sha256"`
 	Builtin        bool                        `json:"builtin" structs:"builtin"`
 	BuiltinFactory func() (interface{}, error) `json:"-" structs:"-"`
+	Oci            bool                        `json:"oci" structs:"oci"`
+	Declarative    bool                        `json:"declarative" structs:"declarative"`
 }
 
 // Run takes a wrapper RunnerUtil instance along with the go-plugin parameters and
@@ -98,6 +100,8 @@ type VersionedPlugin struct {
 	SHA256            string `json:"sha256,omitempty"`
 	Builtin           bool   `json:"builtin"`
 	DeprecationStatus string `json:"deprecation_status,omitempty"`
+	Oci               bool   `json:"oci" structs:"oci"`
+	Declarative       bool   `json:"declarative" structs:"declarative"`
 
 	// Pre-parsed semver struct of the Version field
 	SemanticVersion *version.Version `json:"-"`

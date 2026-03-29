@@ -14,6 +14,8 @@ import (
 
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/api/auth/approle/v2"
 	"github.com/openbao/openbao/api/v2"
@@ -328,19 +330,25 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				// Configure
-				_, err := client.Logical().Write("auth/"+pluginPath+"/role/role1", map[string]interface{}{
-					"bind_secret_id": "true",
-					"period":         "300",
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				// Configure the new mount; this takes some time as the
+				// secondary has not yet invalidated the mount from the call
+				// above.
+				require.EventuallyWithT(t, func(collect *assert.CollectT) {
+					_, err := client.Logical().Write("auth/"+pluginPath+"/role/role1", map[string]interface{}{
+						"bind_secret_id": "true",
+						"period":         "300",
+					})
+					require.NoError(collect, err)
+				}, 20*time.Second, 10*time.Millisecond)
 
-				secret, err := client.Logical().Write("auth/"+pluginPath+"/role/role1/secret-id", nil)
-				if err != nil {
-					t.Fatal(err)
-				}
+				var (
+					secret *api.Secret
+					err    error
+				)
+				require.EventuallyWithT(t, func(collect *assert.CollectT) {
+					secret, err = client.Logical().Write("auth/"+pluginPath+"/role/role1/secret-id", nil)
+					require.NoError(collect, err)
+				}, 20*time.Second, 10*time.Millisecond)
 				secretID := secret.Data["secret_id"].(string)
 
 				secret, err = client.Logical().Read("auth/" + pluginPath + "/role/role1/role-id")
@@ -364,13 +372,13 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 				}
 
 				// Renew
-				resp, err := client.Auth().Token().RenewSelf(30)
+				_, err = client.Auth().Token().RenewSelf(30)
 				if err != nil {
 					t.Fatal(err)
 				}
 
 				// Login - expect SUCCESS
-				resp, err = client.Auth().Login(context.Background(), authMethod)
+				resp, err := client.Auth().Login(context.Background(), authMethod)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -385,10 +393,10 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 				client.SetToken(cluster.RootToken)
 
 				// Lookup - expect FAILURE
-				resp, err = client.Auth().Token().Lookup(revokeToken)
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
+				require.EventuallyWithT(t, func(collect *assert.CollectT) {
+					_, err = client.Auth().Token().Lookup(revokeToken)
+					require.Error(collect, err)
+				}, 20*time.Second, 10*time.Millisecond)
 
 				// Reset root token
 				client.SetToken(cluster.RootToken)
@@ -720,7 +728,7 @@ func TestExternalPlugin_Database(t *testing.T) {
 				client.SetToken(cluster.RootToken)
 
 				// Lookup - expect FAILURE
-				resp, err = client.Sys().Lookup(revokeLease)
+				_, err = client.Sys().Lookup(revokeLease)
 				if err == nil {
 					t.Fatal("expected error, got nil")
 				}
@@ -741,6 +749,9 @@ func TestExternalPlugin_Database(t *testing.T) {
 // TestExternalPlugin_DatabaseReload tests that we can use an external database
 // secrets engine after reload
 func TestExternalPlugin_DatabaseReload(t *testing.T) {
+	// TODO: revisit this when database plugins reloading is supported
+	t.Skip("reloading database plugins is not yet supported")
+
 	cluster := getCluster(t, consts.PluginTypeDatabase, 1)
 	defer cluster.Cleanup()
 
@@ -974,8 +985,8 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T
 		testExternalPluginMetadataAuditLog(t, auditRequest, consts.PluginTypeSecrets.String())
 
 		auditResponse := map[string]interface{}{}
-		if req, ok := auditRecord["response"]; ok {
-			auditRequest = req.(map[string]interface{})
+		if res, ok := auditRecord["response"]; ok {
+			auditResponse = res.(map[string]interface{})
 			if auditResponse["path"] != plugin.Name+"/data/creds" {
 				continue
 			}

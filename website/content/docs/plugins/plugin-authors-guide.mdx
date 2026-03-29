@@ -12,32 +12,33 @@ plugins for OpenBao.
 
 - [List pagination](#list-pagination)
 - [Listing Detailed Endpoints](#listing-detailed-endpoints)
+- [Revoke Operations Should Ignore "Not Found" Errors](#revoke-operations-should-ignore-not-found-errors)
 
 ## List pagination
 
 When implementing listing, it is recommended to use pagination so that items are 
 processed in increments rather than loading the entire set into memory at once. 
-Learn more in [rfcs/paginated-lists](https://openbao.org/docs/rfcs/paginated-lists/). 
+Learn more in [rfcs/paginated-lists](../rfcs/paginated-lists.mdx). 
 `HandleListPage(...)` is a helper introduced in [PR #781](https://github.com/openbao/openbao/pull/781) 
 to streamline list pagination across implementations. It supports both item-level 
 and batch-level callbacks for flexibility:
 
 - **`itemCallback(...)`**: Processes individual entries within a page.
-   - **Parameters**:
-     - `page` (int): The index of the current page.
-     - `index` (int): The index of the entry within the current page.
-     - `entry` (*logical.StorageEntry): The current storage entry being processed.
-   - **Returns**:
-     - `cont` (bool): Whether to continue processing further entries.
-     - `err` (error): An error, if encountered.
+  - **Parameters**:
+    - `page` (int): The index of the current page.
+    - `index` (int): The index of the entry within the current page.
+    - `entry` (*logical.StorageEntry): The current storage entry being processed.
+  - **Returns**:
+    - `cont` (bool): Whether to continue processing further entries.
+    - `err` (error): An error, if encountered.
 
 - **`batchCallback(...)`**: Executes after processing all entries in a page.
-   - **Parameters**:
-     - `page` (int): The index of the current page.
-     - `entries` ([]*logical.StorageEntry): All entries in the current batch.
-   - **Returns**:
-     - `cont` (bool): Whether to continue processing further pages.
-     - `err` (error): An error, if encountered.
+  - **Parameters**:
+    - `page` (int): The index of the current page.
+    - `entries` ([]*logical.StorageEntry): All entries in the current batch.
+  - **Returns**:
+    - `cont` (bool): Whether to continue processing further pages.
+    - `err` (error): An error, if encountered.
 
 The callbacks are executed sequentially, with `itemCallback` processing each entry individually,
 followed by `batchCallback` handling the entire batch.
@@ -52,10 +53,45 @@ While both approaches are valid, it is recommended to implement a dedicated `/de
 done in the `pki/certs/detailed` implementation ([PR #680](https://github.com/openbao/openbao/pull/680)).
 
 This has the following benefits:
-* Avoids adding performance overhead on the default list endpoint. For example, in `pki/issuers`, 
-the list API always returns both the list of `keys` and a `key_info` map containing metadata for each 
-issuer. The `-detailed` flag simply controls whether this metadata is displayed in the CLI output.
-* Restricts access to detailed listing by default unless an administrator has set up wildcards. For
-instance, when using `- detailed`, an admin who doesn't want users listing detailed information 
-(because it is too resource intensive) would need to explicitly update their ACL policies to include 
-`denied_parameters=detailed`.
+- Avoids adding performance overhead on the default list endpoint. For example,
+  in `pki/issuers`, the list API always returns both the list of `keys` and a
+  `key_info` map containing metadata for each issuer. The `-detailed` flag
+  simply controls whether this metadata is displayed in the CLI output.
+- Restricts access to detailed listing by default unless an administrator has
+  set up wildcards. For instance, when using `-detailed`, an admin who doesn't
+  want users listing detailed information (because it is too resource intensive)
+  would need to explicitly update their ACL policies to include
+  `denied_parameters=detailed`.
+
+## Revoke Operations Should Ignore "Not Found" Errors
+
+If your secrets engine plugin implements a revoke operation for dynamic
+credentials, it should consider a "credentials not found" error from the backing
+system a successful revocation.
+
+OpenBao may try to revoke already revoked credentials for several reasons:
+
+- OpenBao was restored from a backup / snapshot
+- OpenBao could not delete the lease from its storage after revoking the
+  credentials (e.g. because it lost connection to PostgreSQL, a power outage or
+  an OOM issue)
+- The credentials were deleted externally (e.g. by an admin or some automated
+  cleanup job)
+
+Now, if your plugin returns an error when trying to revoke the non-existing
+credentials, OpenBao will retry to revoke them forever (or until manual
+intervention).
+
+When implementing this logic, make sure you properly distinguish the
+"credentials not found" (or "token not found" or "user not found") error from
+other errors. For example, it might be problematic to simply match on the HTTP
+404 status code, because that can have other reasons (like a reverse proxy
+restarting). See the [Consul plugin revoke operation] for an example
+implementation.
+
+If you cannot safely detect the not found error, it is better to document this
+as a known limitation and document how to manually recover from a revoke retry
+loop (i.e. using the [`bao lease revoke`](../../commands/lease/revoke/) command
+with the `-force` flag).
+
+[Consul plugin revoke operation]: https://github.com/openbao/openbao-plugins/blob/c3eb5134e359ee112754cc0f488e2b91d71a6129/secrets/consul/secret_token.go#L101-L114

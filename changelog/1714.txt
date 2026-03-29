@@ -1,0 +1,3 @@
+```release-note:feature
+**sdk/framework**: add Response.SchemaName to allow custom response schema names in the generated OpenAPI spec.
+```

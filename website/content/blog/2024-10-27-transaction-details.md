@@ -9,14 +9,14 @@ image: https://raw.githubusercontent.com/openbao/artwork/refs/heads/main/color/o
 
 ## Overview
 
-OpenBao, like its upstream, favors the [`raft` internal storage engine](https://openbao.org/docs/configuration/storage/raft).
+OpenBao, like its upstream, favors the [`raft` internal storage engine](/docs/configuration/storage/raft).
 While more complex than relying on a database for replication, this storage
 engine allows us to have lower latency on read operations, because it uses
 a [local K/V implementation](https://github.com/etcd/bbolt) based on [B+-trees](https://en.wikipedia.org/wiki/B%2B_tree). For workloads
 with low writes but high reads (typical of most uses of K/V secrets), this
 trade off allows for the best performance.
 
-An earlier [blog post](https://openbao.org/blog/transactions) talked about the availability of
+An earlier [blog post](/blog/transactions) talked about the availability of
 transactions in the [`main` branch](https://github.com/openbao/openbao/tree/main), this post will focus on
 the technical details of implementing transactions.
 
@@ -33,11 +33,12 @@ unique election result in the case of disagreements.
 
 In OpenBao, the [`raft` storage backend][raft-backend] is the combination of
 an implementation of the [HashiCorp Raft library][hcp-raft] and the
-[bbolt](https://github.com/etcd/bbolt) K/V store. When Raft applies a WAL entry, the underlying
-[FSM][raft-fsm] applies the corresponding operations. Prior to transactions,
-these consisted of bare [Put and Delete ops][storage-write]. Further, read
-requests were [handled individually][storage-read], meaning there was no
-consistency between two separate requests.
+[bbolt](https://github.com/etcd/bbolt) K/V store. When Raft applies a [WAL][]
+entry, the underlying [FSM][raft-fsm] applies the corresponding operations.
+Prior to transactions, these consisted of bare [Put and Delete
+ops][storage-write]. Further, read requests were [handled
+individually][storage-read], meaning there was no consistency between two
+separate requests.
 
 ## Implementing transactions
 
@@ -155,7 +156,7 @@ performance discrepancies via [GitHub issue][file-issue].
 [raft-fsm]: https://github.com/openbao/openbao/blob/c9201295ed833b431249f4592f32b1946b69f263/physical/raft/fsm.go
 [storage-write]: https://github.com/openbao/openbao/blob/c9201295ed833b431249f4592f32b1946b69f263/physical/raft/raft.go#L1523-L1553
 [storage-read]: https://github.com/openbao/openbao/blob/c9201295ed833b431249f4592f32b1946b69f263/physical/raft/raft.go#L1493-L1521
-[transaction-rfc]: https://openbao.org/docs/rfcs/transactions/
+[transaction-rfc]: /docs/rfcs/transactions/
 [bbolt-txn]: https://pkg.go.dev/go.etcd.io/bbolt#Tx
 [bbolt-txn-limits]: https://pkg.go.dev/go.etcd.io/bbolt#pkg-overview
 [txn-commit]: https://github.com/openbao/openbao/blob/c9201295ed833b431249f4592f32b1946b69f263/physical/raft/transaction.go#L610-L722

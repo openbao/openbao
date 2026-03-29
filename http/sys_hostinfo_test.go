@@ -35,30 +35,47 @@ func TestSysHostInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var info hostutil.HostInfo
-	if err := json.Unmarshal(dataBytes, &info); err != nil {
+	var infoActive hostutil.HostInfo
+	if err := json.Unmarshal(dataBytes, &infoActive); err != nil {
 		t.Fatal(err)
 	}
 
-	if info.Timestamp.IsZero() {
+	if infoActive.Timestamp.IsZero() {
 		t.Fatal("expected non-zero Timestamp")
 	}
-	if info.CPU == nil {
+	if infoActive.CPU == nil {
 		t.Fatal("expected non-nil CPU value")
 	}
-	if info.Disk == nil {
+	if infoActive.Disk == nil {
 		t.Fatal("expected disk info")
 	}
-	if info.Host == nil {
+	if infoActive.Host == nil {
 		t.Fatal("expected host info")
 	}
-	if info.Memory == nil {
+	if infoActive.Memory == nil {
 		t.Fatal("expected memory info")
 	}
 
-	// Query against a standby, should error
+	// Query against a standby, should not error and request should be forwarded to active
 	secret, err = cores[1].Client.Logical().Read("sys/host-info")
-	if err == nil || secret != nil {
-		t.Fatalf("expected error on standby node, HostInfo: %v", secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secret == nil || secret.Data == nil {
+		t.Fatal("expected data in the response")
+	}
+
+	dataBytes, err = json.Marshal(secret.Data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var infoStandby hostutil.HostInfo
+	if err := json.Unmarshal(dataBytes, &infoStandby); err != nil {
+		t.Fatal(err)
+	}
+
+	if infoStandby.Host.Hostname != infoActive.Host.Hostname {
+		t.Fatal("request should be answered by active (standby forwarded)")
 	}
 }

@@ -533,7 +533,7 @@ func TestTransit_BatchEncryptionCase8(t *testing.T) {
 		Storage:   s,
 		Data:      encData,
 	}
-	resp, err = b.HandleRequest(context.Background(), encReq)
+	_, err = b.HandleRequest(context.Background(), encReq)
 	if err == nil {
 		t.Fatal("expected an error")
 	}

@@ -14,11 +14,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync/atomic"
 	"time"
 
-	"go.uber.org/atomic"
-
-	"github.com/cenkalti/backoff/v4"
+	"github.com/cenkalti/backoff/v5"
 	"github.com/hashicorp/go-hclog"
 	ctconfig "github.com/openbao/openbao-template/config"
 	"github.com/openbao/openbao-template/manager"
@@ -91,8 +90,8 @@ type Server struct {
 func NewServer(conf *ServerConfig) *Server {
 	ts := Server{
 		DoneCh:        make(chan struct{}),
-		stopped:       atomic.NewBool(false),
-		runnerStarted: atomic.NewBool(false),
+		stopped:       &atomic.Bool{},
+		runnerStarted: &atomic.Bool{},
 
 		maxBackoff: conf.MaxBackoff,
 		minBackoff: conf.MinBackoff,
@@ -139,16 +138,16 @@ func (ts *Server) Run(ctx context.Context, incoming chan string, templates []*ct
 		return fmt.Errorf("min backoff is larger than max backoff")
 	}
 
-	var errBackoff backoff.BackOff = backoff.NewExponentialBackOff(
-		backoff.WithInitialInterval(ts.minBackoff),
-		backoff.WithMaxInterval(ts.maxBackoff),
-		backoff.WithMultiplier(backoffMultiplier),
-		backoff.WithRandomizationFactor(backoffRandomizationFactor),
-	)
+	var errBackoff backoff.BackOff = &backoff.ExponentialBackOff{
+		InitialInterval:     ts.minBackoff,
+		MaxInterval:         ts.maxBackoff,
+		Multiplier:          backoffMultiplier,
+		RandomizationFactor: backoffRandomizationFactor,
+	}
 
 	// If ExitOnRetryFailure is set, disallow retry
 	if ts.config.AgentConfig.TemplateConfig != nil && ts.config.AgentConfig.TemplateConfig.ExitOnRetryFailure {
-		errBackoff = backoff.WithMaxRetries(errBackoff, 0)
+		errBackoff = &backoff.StopBackOff{}
 	}
 
 	// timer to time backoffs

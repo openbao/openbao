@@ -9,11 +9,12 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 func mockAuditedHeadersConfig(t *testing.T) *AuditedHeadersConfig {
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "foo/")
+	_, barr, _ := barrier.MockBarrier(t, logger)
+	view := barrier.NewView(barr, "foo/")
 	return &AuditedHeadersConfig{
 		Headers: make(map[string]*auditedHeaderSettings),
 		view:    view,

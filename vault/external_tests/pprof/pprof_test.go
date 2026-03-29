@@ -12,8 +12,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-cleanhttp"
+	"github.com/openbao/openbao/helper/configutil"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/vault"
 	"golang.org/x/net/http2"
@@ -63,7 +63,7 @@ func TestSysPprof_MaxRequestDuration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	httpRespBody, err := io.ReadAll(resp.Body)
 	if err != nil {

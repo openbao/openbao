@@ -12,12 +12,13 @@ import (
 	"sync"
 	"time"
 
-	metrics "github.com/armon/go-metrics"
-	"github.com/gammazero/workerpool"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/fairshare"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 const (
@@ -43,9 +44,9 @@ type RollbackManager struct {
 	// This gives the current mount table of both logical and credential backends,
 	// plus a RWMutex that is locked for reading. It is up to the caller to RUnlock
 	// it when done with the mount table.
-	backends func() []*MountEntry
+	backends func() []*routing.MountEntry
 
-	router *Router
+	router *routing.Router
 	period time.Duration
 
 	inflightAll  sync.WaitGroup
@@ -59,7 +60,7 @@ type RollbackManager struct {
 	stopTicker      chan struct{}
 	tickerIsStopped bool
 	quitContext     context.Context
-	runner          *workerpool.WorkerPool
+	jobManager      *fairshare.JobManager
 	core            *Core
 	// This channel is used for testing
 	rollbacksDoneCh chan struct{}
@@ -76,8 +77,32 @@ type rollbackState struct {
 	scheduled time.Time
 }
 
+// rollbackJob implements the fairshare.Job interface for rollback operations
+type rollbackJob struct {
+	ctx           context.Context
+	fullPath      string
+	rs            *rollbackState
+	grabStatelock bool
+	manager       *RollbackManager
+}
+
+func (r *rollbackJob) Execute() error {
+	if err := r.manager.attemptRollback(r.ctx, r.fullPath, r.rs, r.grabStatelock); err != nil {
+		return err
+	}
+	select {
+	case r.manager.rollbacksDoneCh <- struct{}{}:
+	default:
+	}
+	return nil
+}
+
+func (r *rollbackJob) OnFailure(err error) {
+	r.manager.logger.Error("rollback job failed", "path", r.fullPath, "error", err)
+}
+
 // NewRollbackManager is used to create a new rollback manager
-func NewRollbackManager(ctx context.Context, logger log.Logger, backendsFunc func() []*MountEntry, router *Router, core *Core) *RollbackManager {
+func NewRollbackManager(ctx context.Context, logger log.Logger, backendsFunc func() []*routing.MountEntry, router *routing.Router, core *Core) *RollbackManager {
 	r := &RollbackManager{
 		logger:      logger,
 		backends:    backendsFunc,
@@ -92,7 +117,8 @@ func NewRollbackManager(ctx context.Context, logger log.Logger, backendsFunc fun
 	}
 	numWorkers := r.numRollbackWorkers()
 	r.logger.Info(fmt.Sprintf("Starting the rollback manager with %d workers", numWorkers))
-	r.runner = workerpool.New(numWorkers)
+	r.jobManager = fairshare.NewJobManager("rollback", numWorkers, r.logger, r.core.metricSink)
+	r.jobManager.Start()
 	return r
 }
 
@@ -125,7 +151,7 @@ func (m *RollbackManager) Stop() {
 		close(m.shutdownCh)
 		<-m.doneCh
 	}
-	m.runner.StopWait()
+	m.jobManager.Stop()
 }
 
 // StopTicker stops the automatic Rollback manager's ticker, causing us
@@ -173,17 +199,17 @@ func (m *RollbackManager) triggerRollbacks() {
 
 	for _, e := range backends {
 		path := e.Path
-		if e.Table == credentialTableType {
-			path = credentialRoutePrefix + path
+		if e.Table == routing.CredentialTableType {
+			path = routing.CredentialRoutePrefix + path
 		}
 
 		// When the mount is filtered, the backend will be nil
-		ctx := namespace.ContextWithNamespace(m.quitContext, e.namespace)
+		ctx := namespace.ContextWithNamespace(m.quitContext, e.Namespace)
 		backend := m.router.MatchingBackend(ctx, path)
 		if backend == nil {
 			continue
 		}
-		fullPath := e.namespace.Path + path
+		fullPath := e.Namespace.Path + path
 
 		// Start a rollback if necessary
 		m.startOrLookupRollback(ctx, fullPath, true)
@@ -195,7 +221,7 @@ func (m *RollbackManager) triggerRollbacks() {
 func (m *RollbackManager) startOrLookupRollback(ctx context.Context, fullPath string, grabStatelock bool) *rollbackState {
 	m.inflightLock.Lock()
 	defer m.inflightLock.Unlock()
-	defer metrics.SetGauge([]string{"rollback", "queued"}, float32(m.runner.WaitingQueueSize()))
+	defer metrics.SetGauge([]string{"rollback", "queued"}, float32(m.jobManager.GetPendingJobCount()))
 	defer metrics.SetGauge([]string{"rollback", "inflight"}, float32(len(m.inflight)))
 	rsInflight, ok := m.inflight[fullPath]
 	if ok {
@@ -222,13 +248,14 @@ func (m *RollbackManager) startOrLookupRollback(ctx context.Context, fullPath st
 		// we already have the inflight lock, so we can't grab it here
 		m.finishRollback(rs, errors.New("rollback manager is stopped"), fullPath, false)
 	default:
-		m.runner.Submit(func() {
-			m.attemptRollback(ctx, fullPath, rs, grabStatelock)
-			select {
-			case m.rollbacksDoneCh <- struct{}{}:
-			default:
-			}
-		})
+		job := &rollbackJob{
+			ctx:           ctx,
+			fullPath:      fullPath,
+			rs:            rs,
+			grabStatelock: grabStatelock,
+			manager:       m,
+		}
+		m.jobManager.AddJob(job, fullPath)
 
 	}
 	return rs
@@ -319,7 +346,7 @@ func (m *RollbackManager) attemptRollback(ctx context.Context, fullPath string, 
 	if err != nil {
 		m.logger.Error("error rolling back", "path", fullPath, "error", err)
 	}
-	return
+	return err
 }
 
 // Rollback is used to trigger an immediate rollback of the path,
@@ -355,25 +382,21 @@ func (m *RollbackManager) Rollback(ctx context.Context, path string) error {
 
 // startRollback is used to start the rollback manager after unsealing
 func (c *Core) startRollback() error {
-	backendsFunc := func() []*MountEntry {
-		ret := []*MountEntry{}
+	backendsFunc := func() []*routing.MountEntry {
+		ret := []*routing.MountEntry{}
 		c.mountsLock.RLock()
 		defer c.mountsLock.RUnlock()
 		// During teardown/setup after a leader change or unseal there could be
 		// something racy here so make sure the table isn't nil
 		if c.mounts != nil {
-			for _, entry := range c.mounts.Entries {
-				ret = append(ret, entry)
-			}
+			ret = append(ret, c.mounts.Entries...)
 		}
 		c.authLock.RLock()
 		defer c.authLock.RUnlock()
 		// During teardown/setup after a leader change or unseal there could be
 		// something racy here so make sure the table isn't nil
 		if c.auth != nil {
-			for _, entry := range c.auth.Entries {
-				ret = append(ret, entry)
-			}
+			ret = append(ret, c.auth.Entries...)
 		}
 		return ret
 	}

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -159,10 +160,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	args, format, detailed, outputCurlString, outputPolicy = setupEnv(args)
 
 	// Don't use color if disabled
-	useColor := true
-	if api.ReadBaoVariable(EnvVaultCLINoColor) != "" || color.NoColor {
-		useColor = false
-	}
+	useColor := !color.NoColor && api.ReadBaoVariable(EnvVaultCLINoColor) == ""
 
 	if runOpts.Stdout == nil {
 		runOpts.Stdout = os.Stdout
@@ -244,7 +242,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	} else if outputPolicy {
 		return generatePolicy(exitCode, runOpts, uiErrWriter.(*bytes.Buffer))
 	} else if err != nil {
-		fmt.Fprintf(runOpts.Stderr, "Error executing CLI: %s\n", err.Error())
+		_, _ = fmt.Fprintf(runOpts.Stderr, "Error executing CLI: %s\n", err.Error())
 		return 1
 	}
 
@@ -263,26 +261,20 @@ var commonCommands = []string{
 	"unwrap",
 }
 
-func groupedHelpFunc(f cli.HelpFunc) cli.HelpFunc {
+func groupedHelpFunc(_ cli.HelpFunc) cli.HelpFunc {
 	return func(commands map[string]cli.CommandFactory) string {
 		var b bytes.Buffer
 		tw := tabwriter.NewWriter(&b, 0, 2, 6, ' ', 0)
 
-		fmt.Fprintf(tw, "Usage: bao <command> [args]\n\n")
-		fmt.Fprintf(tw, "Common commands:\n")
+		_, _ = fmt.Fprintf(tw, "Usage: bao <command> [args]\n\n")
+		_, _ = fmt.Fprintf(tw, "Common commands:\n")
 		for _, v := range commonCommands {
 			printCommand(tw, v, commands[v])
 		}
 
 		otherCommands := make([]string, 0, len(commands))
 		for k := range commands {
-			found := false
-			for _, v := range commonCommands {
-				if k == v {
-					found = true
-					break
-				}
-			}
+			found := slices.Contains(commonCommands, k)
 
 			if !found {
 				otherCommands = append(otherCommands, k)
@@ -290,13 +282,13 @@ func groupedHelpFunc(f cli.HelpFunc) cli.HelpFunc {
 		}
 		sort.Strings(otherCommands)
 
-		fmt.Fprintf(tw, "\n")
-		fmt.Fprintf(tw, "Other commands:\n")
+		_, _ = fmt.Fprintf(tw, "\n")
+		_, _ = fmt.Fprintf(tw, "Other commands:\n")
 		for _, v := range otherCommands {
 			printCommand(tw, v, commands[v])
 		}
 
-		tw.Flush()
+		_ = tw.Flush()
 
 		return strings.TrimSpace(b.String())
 	}
@@ -307,12 +299,12 @@ func printCommand(w io.Writer, name string, cmdFn cli.CommandFactory) {
 	if err != nil {
 		panic(fmt.Sprintf("failed to load %q command: %s", name, err))
 	}
-	fmt.Fprintf(w, "    %s\t%s\n", name, cmd.Synopsis())
+	_, _ = fmt.Fprintf(w, "    %s\t%s\n", name, cmd.Synopsis())
 }
 
 func generateCurlString(exitCode int, runOpts *RunOptions, preParsingErrBuf *bytes.Buffer) int {
 	if exitCode == 0 {
-		fmt.Fprint(runOpts.Stderr, "Could not generate cURL command")
+		_, _ = fmt.Fprint(runOpts.Stderr, "Could not generate cURL command")
 		return 1
 	}
 
@@ -321,24 +313,24 @@ func generateCurlString(exitCode int, runOpts *RunOptions, preParsingErrBuf *byt
 			// Usage, just pass it through
 			return exitCode
 		}
-		runOpts.Stderr.Write(preParsingErrBuf.Bytes())
-		runOpts.Stderr.Write([]byte("Unable to generate cURL string from command\n"))
+		_, _ = runOpts.Stderr.Write(preParsingErrBuf.Bytes())
+		_, _ = fmt.Fprint(runOpts.Stderr, "Unable to generate cURL string from command\n")
 		return exitCode
 	}
 
 	cs, err := api.LastOutputStringError.CurlString()
 	if err != nil {
-		runOpts.Stderr.Write([]byte(fmt.Sprintf("Error creating request string: %s\n", err)))
+		_, _ = fmt.Fprintf(runOpts.Stderr, "Error creating request string: %s\n", err)
 		return 1
 	}
 
-	runOpts.Stdout.Write([]byte(fmt.Sprintf("%s\n", cs)))
+	_, _ = fmt.Fprintf(runOpts.Stdout, "%s\n", cs)
 	return 0
 }
 
 func generatePolicy(exitCode int, runOpts *RunOptions, preParsingErrBuf *bytes.Buffer) int {
 	if exitCode == 0 {
-		fmt.Fprint(runOpts.Stderr, "Could not generate policy")
+		_, _ = fmt.Fprint(runOpts.Stderr, "Could not generate policy")
 		return 1
 	}
 
@@ -347,17 +339,17 @@ func generatePolicy(exitCode int, runOpts *RunOptions, preParsingErrBuf *bytes.B
 			// Usage, just pass it through
 			return exitCode
 		}
-		runOpts.Stderr.Write(preParsingErrBuf.Bytes())
-		runOpts.Stderr.Write([]byte("Unable to generate policy from command\n"))
+		_, _ = runOpts.Stderr.Write(preParsingErrBuf.Bytes())
+		_, _ = fmt.Fprint(runOpts.Stderr, "Unable to generate policy from command\n")
 		return exitCode
 	}
 
 	hcl, err := api.LastOutputPolicyError.HCLString()
 	if err != nil {
-		runOpts.Stderr.Write([]byte(fmt.Sprintf("Error assembling policy HCL: %s\n", err)))
+		_, _ = fmt.Fprintf(runOpts.Stderr, "Error assembling policy HCL: %s\n", err)
 		return 1
 	}
 
-	runOpts.Stdout.Write([]byte(fmt.Sprintf("%s\n", hcl)))
+	_, _ = fmt.Fprintf(runOpts.Stdout, "%s\n", hcl)
 	return 0
 }

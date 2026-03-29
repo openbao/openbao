@@ -1045,9 +1045,9 @@ func TestPKI_RolePolicyInformation_Flat(t *testing.T) {
 			OidList: expectedSimpleOidList,
 		},
 		{
-			Input:   "[{\"oid\":\"1.3.6.1.4.1.7.8\",\"notice\":\"I am a user Notice\"},{\"oid\":\"1.3.6.1.44947.1.2.4\",\"cps\":\"https://example.com\"}]",
-			ASN:     "MF8wLQYHKwYBBAEHCDAiMCAGCCsGAQUFBwICMBQMEkkgYW0gYSB1c2VyIE5vdGljZTAuBgkrBgGC3xMBAgQwITAfBggrBgEFBQcCARYTaHR0cHM6Ly9leGFtcGxlLmNvbQ==",
-			OidList: append(*new([]string), "1.3.6.1.4.1.7.8", "1.3.6.1.44947.1.2.4"),
+			Input:   "[{\"oid\":\"1.3.6.1.4.1.7.8\",\"notice\":\"I am a user Notice\"},{\"oid\":\"1.3.6.1.32473.1.2.4\",\"cps\":\"https://example.com\"}]",
+			ASN:     "MF8wLQYHKwYBBAEHCDAiMCAGCCsGAQUFBwICMBQMEkkgYW0gYSB1c2VyIE5vdGljZTAuBgkrBgGB/VkBAgQwITAfBggrBgEFBQcCARYTaHR0cHM6Ly9leGFtcGxlLmNvbQ==",
+			OidList: append(*new([]string), "1.3.6.1.4.1.7.8", "1.3.6.1.32473.1.2.4"),
 		},
 	}
 
@@ -1125,9 +1125,7 @@ func TestPKI_RolePolicyInformation_Flat(t *testing.T) {
 		if err != nil {
 			t.Fatalf("bad [%d], getting extension from %v err: %v resp: %#v", index, testCase.Input, err, issueResp)
 		}
-		certificateB64 := make([]byte, len(certificateAsn)*2)
-		base64.StdEncoding.Encode(certificateB64, certificateAsn)
-		certificateString := string(certificateB64[:])
+		certificateString := base64.StdEncoding.EncodeToString(certificateAsn)
 		assert.Contains(t, certificateString, testCase.ASN)
 	}
 }

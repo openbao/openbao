@@ -8,7 +8,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"sync/atomic"
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
@@ -24,11 +23,7 @@ func TestIngressToken(t *testing.T) {
 		symlinked = "symlinked"
 	)
 
-	rootDir, err := os.MkdirTemp("", "vault-agent-jwt-auth-test")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %s", err)
-	}
-	defer os.RemoveAll(rootDir)
+	rootDir := t.TempDir()
 
 	setupTestDir := func() string {
 		testDir, err := os.MkdirTemp(rootDir, "")
@@ -92,8 +87,7 @@ func TestIngressToken(t *testing.T) {
 			logger: hclog.New(&hclog.LoggerOptions{
 				Output: &logBuffer,
 			}),
-			latestToken: new(atomic.Value),
-			path:        path.Join(testDir, tc.path),
+			path: path.Join(testDir, tc.path),
 		}
 
 		jwtAuth.ingressToken()
@@ -128,13 +122,9 @@ func TestDeleteAfterReading(t *testing.T) {
 			false,
 		},
 	} {
-		rootDir, err := os.MkdirTemp("", "vault-agent-jwt-auth-test")
-		if err != nil {
-			t.Fatalf("failed to create temp dir: %s", err)
-		}
-		defer os.RemoveAll(rootDir)
+		rootDir := t.TempDir()
 		tokenPath := path.Join(rootDir, "token")
-		err = os.WriteFile(tokenPath, []byte("test"), 0o644)
+		err := os.WriteFile(tokenPath, []byte("test"), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -206,13 +196,9 @@ func TestDeleteAfterReadingSymlink(t *testing.T) {
 			true,
 		},
 	} {
-		rootDir, err := os.MkdirTemp("", "vault-agent-jwt-auth-test")
-		if err != nil {
-			t.Fatalf("failed to create temp dir: %s", err)
-		}
-		defer os.RemoveAll(rootDir)
+		rootDir := t.TempDir()
 		tokenPath := path.Join(rootDir, "token")
-		err = os.WriteFile(tokenPath, []byte("test"), 0o644)
+		err := os.WriteFile(tokenPath, []byte("test"), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}

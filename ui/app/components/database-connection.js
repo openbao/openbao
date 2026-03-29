@@ -57,11 +57,14 @@ export default class DatabaseConnectionEdit extends Component {
   }
 
   @action
+  @tracked newConnectionId = '';
+
   async handleCreateConnection(evt) {
     evt.preventDefault();
     const secret = this.args.model;
     const secretId = secret.name;
-    secret.set('id', secretId);
+    this.newConnectionId = secretId;
+    secret.id = this.newConnectionId;
     secret
       .save()
       .then(() => {

@@ -65,7 +65,13 @@ type KMSCatalog struct {
 }
 
 func NewCatalog(logger hclog.Logger, config *server.Config) (*KMSCatalog, error) {
-	base, err := catalog.NewCatalog(logger, config, consts.PluginTypeKMS)
+	base, err := catalog.NewCatalog(
+		logger,
+		config,
+		consts.PluginTypeKMS,
+		gkwplugin.HandshakeConfig,
+		gkwplugin.PluginSets,
+	)
 	if err != nil {
 		return nil, err
 	}

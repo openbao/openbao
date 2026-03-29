@@ -7,7 +7,6 @@ package raft
 import (
 	"context"
 	"crypto/tls"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -35,13 +34,9 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/tlsdebug"
-	"github.com/openbao/openbao/plugins/join/discover"
-	"github.com/openbao/openbao/plugins/join/static"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
-	"github.com/openbao/openbao/sdk/v2/joinplugin"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/cluster"
@@ -218,14 +213,6 @@ func (r *RaftBackend) HookInvalidate(hook physical.InvalidateFunc) {
 	r.fsm.hookInvalidate(hook)
 }
 
-type JoinPlugin struct {
-	Name    string   `json:"name"`
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
-	Env     []string `json:"env"`
-	Sha256  string   `json:"sha256"`
-}
-
 type AutoJoinPlugin struct {
 	Plugin string            `json:"plugin"`
 	Config map[string]string `json:"config"`
@@ -346,67 +333,6 @@ func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
 	}
 
 	return leaderInfos, nil
-}
-
-func (b *RaftBackend) JoinPlugins(ctx context.Context) (map[string]joinplugin.Join, error) {
-	joinPlugins := map[string]pluginutil.PluginRunner{
-		"discover": {
-			Name:    "discover",
-			Type:    consts.PluginTypeJoin,
-			Builtin: true,
-			BuiltinFactory: func() (interface{}, error) {
-				return discover.Factory()
-			},
-		},
-		"static": {
-			Name:    "static",
-			Type:    consts.PluginTypeJoin,
-			Builtin: true,
-			BuiltinFactory: func() (interface{}, error) {
-				return static.Factory()
-			},
-		},
-	}
-
-	config := b.conf["join_plugin"]
-	if config == "" {
-		config = "[]"
-	}
-
-	var pluginConfigs []*JoinPlugin
-	err := jsonutil.DecodeJSON([]byte(config), &pluginConfigs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode join_plugin config: %w", err)
-	}
-	for _, pluginConfig := range pluginConfigs {
-		if _, found := joinPlugins[pluginConfig.Name]; found {
-			return nil, fmt.Errorf("attempting to override built-in join plugin: %s", pluginConfig.Name)
-		}
-		sha256, err := hex.DecodeString(pluginConfig.Sha256)
-		if err != nil {
-			return nil, fmt.Errorf("invalid sha256 for join plugin %s: %s", pluginConfig.Name, pluginConfig.Sha256)
-		}
-		joinPlugins[pluginConfig.Name] = pluginutil.PluginRunner{
-			Name:    pluginConfig.Name,
-			Type:    consts.PluginTypeJoin,
-			Command: pluginConfig.Command,
-			Args:    pluginConfig.Args,
-			Env:     pluginConfig.Env,
-			Sha256:  sha256,
-		}
-	}
-
-	joins := make(map[string]joinplugin.Join, len(joinPlugins))
-	for k := range joinPlugins {
-		join, err := joinplugin.NewJoin(ctx, k, joinPlugins, b.logger)
-		if err != nil {
-			b.logger.Error("failed to start join plugin", "plugin", k, "error", err)
-			continue
-		}
-		joins[k] = join
-	}
-
-	return joins, nil
 }
 
 // parseTLSInfo is a helper for parses the TLS information, preferring file

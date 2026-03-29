@@ -345,7 +345,7 @@ export default Service.extend({
           },
         }),
       });
-      newModel.reopenClass({ merged: true });
+      newModel.merged = true;
       owner.unregister(modelName);
       owner.register(modelName, newModel);
     });

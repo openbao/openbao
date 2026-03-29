@@ -77,6 +77,9 @@ export default class DatabaseRoleEdit extends Component {
   }
 
   @action
+  @tracked newRoleId = '';
+  @tracked newRolePath = '';
+
   handleCreateEditRole(evt) {
     evt.preventDefault();
     this.loading = true;
@@ -85,9 +88,10 @@ export default class DatabaseRoleEdit extends Component {
     const roleSecret = this.args.model;
     const secretId = roleSecret.name;
     if (mode === 'create') {
-      roleSecret.set('id', secretId);
-      const path = roleSecret.type === 'static' ? 'static-roles' : 'roles';
-      roleSecret.set('path', path);
+      this.newRoleId = secretId;
+      this.newRolePath = roleSecret.type === 'static' ? 'static-roles' : 'roles';
+      roleSecret.id = this.newRoleId;
+      roleSecret.path = this.newRolePath;
     }
     roleSecret
       .save()

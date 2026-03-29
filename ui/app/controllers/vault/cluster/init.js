@@ -13,11 +13,12 @@ const DEFAULTS = {
   pgp_keys: null,
   use_pgp: false,
   loading: false,
+  keyData: null,
 };
 
-export default Controller.extend(DEFAULTS, {
-  reset() {
-    this.setProperties(DEFAULTS);
+export default Controller.extend(
+  {
+    keyDataService: service('key-data'),
   },
 
   initSuccess(resp) {

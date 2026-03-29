@@ -27,8 +27,8 @@ import { inject as service } from '@ember/service';
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
+import { task } from 'ember-concurrency';
 import KVObject from 'vault/lib/kv-object';
-import { maybeQueryRecord } from 'vault/macros/maybe-query-record';
 
 export default class SecretEdit extends Component {
   @service store;
@@ -36,6 +36,8 @@ export default class SecretEdit extends Component {
   @tracked secretData = null;
   @tracked isV2 = false;
   @tracked codemirrorString = null;
+  @tracked checkSecretCapabilities = null;
+  @tracked checkMetadataCapabilities = null;
 
   // fired on did-insert from render modifier
   @action
@@ -46,66 +48,53 @@ export default class SecretEdit extends Component {
     }
     this.secretData = KVObject.create({ content: [] }).fromJSON(model.secretData);
     this.codemirrorString = this.secretData.toJSONString();
+    this.loadCapabilities.perform();
   }
 
-  @maybeQueryRecord(
-    'capabilities',
-    (context) => {
-      if (!context.args.model || context.args.mode === 'create') {
-        return;
+  @task
+  *loadCapabilities() {
+    try {
+      // Load secret capabilities
+      if (this.args.model && this.args.mode !== 'create') {
+        const backend = this.isV2 ? this.args.model.engine.id : this.args.model.backend;
+        const id = this.args.model.id;
+        const path = this.isV2 ? `${backend}/data/${id}` : `${backend}/${id}`;
+        const secretCaps = yield this.store.queryRecord('capabilities', { id: path });
+        this.checkSecretCapabilities = secretCaps;
       }
-      const backend = context.isV2 ? context.args.model.engine.id : context.args.model.backend;
-      const id = context.args.model.id;
-      const path = context.isV2 ? `${backend}/data/${id}` : `${backend}/${id}`;
-      return {
-        id: path,
-      };
-    },
-    'isV2',
-    'model',
-    'model.id',
-    'mode'
-  )
-  checkSecretCapabilities;
+
+      // Load metadata capabilities
+      if (this.args.model && this.isV2) {
+        const backend = this.args.model.backend;
+        const id = this.args.model.id;
+        const path = `${backend}/metadata/${id}`;
+        const metaCaps = yield this.store.queryRecord('capabilities', { id: path });
+        this.checkMetadataCapabilities = metaCaps;
+      }
+    } catch (error) {
+      // Swallow capability check errors
+      console.error('Failed to load capabilities:', error);
+    }
+  }
 
   get canUpdateSecretData() {
-    return this.checkSecretCapabilities.get('canUpdate');
+    return this.checkSecretCapabilities?.canUpdate ?? false;
   }
 
   get canReadSecretData() {
-    return this.checkSecretCapabilities.get('canRead');
+    return this.checkSecretCapabilities?.canRead ?? false;
   }
 
-  @maybeQueryRecord(
-    'capabilities',
-    (context) => {
-      if (!context.args.model || !context.isV2) {
-        return;
-      }
-      const backend = context.args.model.backend;
-      const id = context.args.model.id;
-      const path = `${backend}/metadata/${id}`;
-      return {
-        id: path,
-      };
-    },
-    'isV2',
-    'model',
-    'model.id',
-    'mode'
-  )
-  checkMetadataCapabilities;
-
   get canDeleteSecretMetadata() {
-    return this.checkMetadataCapabilities.get('canDelete');
+    return this.checkMetadataCapabilities?.canDelete ?? false;
   }
 
   get canUpdateSecretMetadata() {
-    return this.checkMetadataCapabilities.get('canUpdate');
+    return this.checkMetadataCapabilities?.canUpdate ?? false;
   }
 
   get canReadSecretMetadata() {
-    return this.checkMetadataCapabilities.get('canRead');
+    return this.checkMetadataCapabilities?.canRead ?? false;
   }
 
   get requestInFlight() {

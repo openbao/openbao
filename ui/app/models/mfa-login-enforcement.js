@@ -4,9 +4,7 @@
  */
 
 import Model, { attr, hasMany } from '@ember-data/model';
-import ArrayProxy from '@ember/array/proxy';
-import PromiseProxyMixin from '@ember/object/promise-proxy-mixin';
-import { methods } from 'vault/helpers/mountable-auth-methods';
+import { cached } from '@ember/decorators';
 import { withModelValidations } from 'vault/decorators/model-validations';
 import { isPresent } from '@ember/utils';
 import { inject as service } from '@ember/service';
@@ -44,10 +42,9 @@ export default class MfaLoginEnforcementModel extends Model {
   @hasMany('identity/entity', { async: true, inverse: null }) identity_entities;
   @hasMany('identity/group', { async: true, inverse: null }) identity_groups;
 
+  @cached
   get targets() {
-    return ArrayProxy.extend(PromiseProxyMixin).create({
-      promise: this.prepareTargets(),
-    });
+    return this.prepareTargets();
   }
 
   async prepareTargets() {

@@ -9,7 +9,7 @@ import { inject as service } from '@ember/service';
 import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
-import { maybeQueryRecord } from 'vault/macros/maybe-query-record';
+import { task } from 'ember-concurrency';
 
 const getErrorMessage = (errors) => {
   const errorMessage =
@@ -22,102 +22,89 @@ export default class SecretDeleteMenu extends Component {
   @service flashMessages;
 
   @tracked showDeleteModal = false;
+  @tracked undeleteVersionPath = null;
+  @tracked destroyVersionPath = null;
+  @tracked v2UpdatePath = null;
+  @tracked secretDataPath = null;
+  @tracked secretSoftDataPath = null;
 
-  @maybeQueryRecord(
-    'capabilities',
-    (context) => {
-      if (!context.args || !context.args.modelForData || !context.args.modelForData.id) return;
-      const [backend, id] = JSON.parse(context.args.modelForData.id);
-      return {
-        id: `${backend}/undelete/${id}`,
-      };
-    },
-    'model.id'
-  )
-  undeleteVersionPath;
+  constructor() {
+    super(...arguments);
+    this.loadCapabilities.perform();
+  }
+
+  @task
+  *loadCapabilities() {
+    try {
+      // Load undelete capability
+      if (this.args.modelForData?.id) {
+        const [backend, id] = JSON.parse(this.args.modelForData.id);
+        const undelData = yield this.store.queryRecord('capabilities', {
+          id: `${backend}/undelete/${id}`,
+        });
+        this.undeleteVersionPath = undelData;
+      }
+
+      // Load destroy capability
+      if (this.args.modelForData?.id) {
+        const [backend, id] = JSON.parse(this.args.modelForData.id);
+        const destroyData = yield this.store.queryRecord('capabilities', {
+          id: `${backend}/destroy/${id}`,
+        });
+        this.destroyVersionPath = destroyData;
+      }
+
+      // Load v2 update capability
+      if (this.args.model?.engine && this.args.model?.id) {
+        const backend = this.args.model.engine.id;
+        const id = this.args.model.id;
+        const v2Data = yield this.store.queryRecord('capabilities', {
+          id: `${backend}/metadata/${id}`,
+        });
+        this.v2UpdatePath = v2Data;
+      }
+
+      // Load secret data capability
+      if (this.args.model?.id && this.args.mode !== 'create') {
+        const backend = this.args.isV2 ? this.args.model.engine.id : this.args.model.backend;
+        const id = this.args.model.id;
+        const path = this.args.isV2 ? `${backend}/data/${id}` : `${backend}/${id}`;
+        const secretData = yield this.store.queryRecord('capabilities', { id: path });
+        this.secretDataPath = secretData;
+      }
+
+      // Load secret soft data capability
+      if (this.args.model?.id && this.args.mode !== 'create') {
+        const backend = this.args.isV2 ? this.args.model.engine.id : this.args.model.backend;
+        const id = this.args.model.id;
+        const path = this.args.isV2 ? `${backend}/delete/${id}` : `${backend}/${id}`;
+        const secretSoftData = yield this.store.queryRecord('capabilities', { id: path });
+        this.secretSoftDataPath = secretSoftData;
+      }
+    } catch (error) {
+      // Swallow capability check errors
+      console.error('Failed to load capabilities:', error);
+    }
+  }
+
   get canUndeleteVersion() {
-    return this.undeleteVersionPath.get('canUpdate');
+    return this.undeleteVersionPath?.canUpdate ?? false;
   }
 
-  @maybeQueryRecord(
-    'capabilities',
-    (context) => {
-      if (!context.args || !context.args.modelForData || !context.args.modelForData.id) return;
-      const [backend, id] = JSON.parse(context.args.modelForData.id);
-      return {
-        id: `${backend}/destroy/${id}`,
-      };
-    },
-    'model.id'
-  )
-  destroyVersionPath;
   get canDestroyVersion() {
-    return this.destroyVersionPath.get('canUpdate');
+    return this.destroyVersionPath?.canUpdate ?? false;
   }
 
-  @maybeQueryRecord(
-    'capabilities',
-    (context) => {
-      if (!context.args.model || !context.args.model.engine || !context.args.model.id) return;
-      const backend = context.args.model.engine.id;
-      const id = context.args.model.id;
-      return {
-        id: `${backend}/metadata/${id}`,
-      };
-    },
-    'model',
-    'model.id',
-    'mode'
-  )
-  v2UpdatePath;
   get canDestroyAllVersions() {
-    return this.v2UpdatePath.get('canDelete');
+    return this.v2UpdatePath?.canDelete ?? false;
   }
 
-  @maybeQueryRecord(
-    'capabilities',
-    (context) => {
-      if (!context.args.model || context.args.mode === 'create') {
-        return;
-      }
-      const backend = context.args.isV2 ? context.args.model.engine.id : context.args.model.backend;
-      const id = context.args.model.id;
-      const path = context.args.isV2 ? `${backend}/data/${id}` : `${backend}/${id}`;
-      return {
-        id: path,
-      };
-    },
-    'isV2',
-    'model',
-    'model.id',
-    'mode'
-  )
-  secretDataPath;
   get canDeleteSecretData() {
-    return this.secretDataPath.get('canDelete');
+    return this.secretDataPath?.canDelete ?? false;
   }
 
-  @maybeQueryRecord(
-    'capabilities',
-    (context) => {
-      if (!context.args.model || context.args.mode === 'create') {
-        return;
-      }
-      const backend = context.args.isV2 ? context.args.model.engine.id : context.args.model.backend;
-      const id = context.args.model.id;
-      const path = context.args.isV2 ? `${backend}/delete/${id}` : `${backend}/${id}`;
-      return {
-        id: path,
-      };
-    },
-    'isV2',
-    'model',
-    'model.id',
-    'mode'
-  )
-  secretSoftDataPath;
   get canSoftDeleteSecretData() {
-    return this.secretSoftDataPath.get('canUpdate');
+    return this.secretSoftDataPath?.canUpdate ?? false;
   }
 
   get isLatestVersion() {

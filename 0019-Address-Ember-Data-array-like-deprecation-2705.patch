@@ -1,0 +1,4185 @@
+From 74cdcf45a759b2285f49845e58bf30c7ffb9ca52 Mon Sep 17 00:00:00 2001
+From: Jan Martens <44572196+JanMa@users.noreply.github.com>
+Date: Thu, 26 Mar 2026 12:27:20 +0100
+Subject: [PATCH 19/22] Address Ember-Data array like deprecation (#2705)
+
+* fix ember-deprecration-workflow
+
+it broke because of the recent emberJS upgrade
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* log ember-data deprecations during tests
+
+And make it cause a test failure that is forwarded to stdout.
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* findBy -> find
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* isEvery -> every
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* firstObject -> [0]
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* get(x) -> x
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* toArray(x) -> [...x]
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* mapBy -> map
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* objectAt -> []
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* addObject -> push
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* removeObject -> splice
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* fix time-zone test
+
+Returns different results locally when TZ is not set to UTC.
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* fix test timing issues
+
+Some attributes are now async and we need to properly wait for them to resolve.
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* update Swagger-UI SearchFilterPlugin for swagger-ui-dist v5
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+* fix mfa-form test failure
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+
+---------
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/app/adapters/pki/cert.js                   |  2 +-
+ ui/app/adapters/role-aws.js                   |  2 +-
+ ui/app/adapters/role-ssh.js                   |  2 +-
+ ui/app/adapters/secret-engine.js              |  6 +-
+ ui/app/adapters/transit-key.js                |  4 +-
+ ui/app/app.js                                 |  1 +
+ ui/app/components/auth-config-form/options.js |  2 +-
+ ui/app/components/auth-form.js                | 14 ++--
+ ui/app/components/console/ui-panel.js         |  2 +-
+ ui/app/components/identity/edit-form.js       |  2 +-
+ ui/app/components/identity/lookup-input.js    |  2 +-
+ ui/app/components/identity/popup-alias.js     |  2 +-
+ ui/app/components/identity/popup-members.js   |  9 ++-
+ ui/app/components/identity/popup-metadata.js  |  8 +-
+ ui/app/components/identity/popup-policy.js    | 10 ++-
+ ui/app/components/mfa/mfa-form.js             |  9 ++-
+ .../mfa/mfa-login-enforcement-form.js         | 31 +++++---
+ .../mfa/mfa-login-enforcement-header.js       |  5 +-
+ ui/app/components/mount-accessor-select.js    |  2 +-
+ ui/app/components/namespace-picker.js         |  4 +-
+ ui/app/components/oidc/provider-form.js       |  2 +-
+ ui/app/components/secret-create-or-update.js  |  6 +-
+ ui/app/components/transit-key-actions.js      |  6 +-
+ .../components/wizard/features-selection.js   |  2 +-
+ .../cluster/access/identity/aliases/index.js  |  2 +-
+ .../vault/cluster/access/identity/create.js   |  2 +-
+ .../vault/cluster/access/identity/index.js    |  8 +-
+ .../vault/cluster/access/leases/list.js       |  2 +-
+ .../vault/cluster/access/method/item/list.js  |  2 +-
+ .../vault/cluster/access/methods.js           |  8 +-
+ .../cluster/access/mfa/methods/create.js      |  5 +-
+ .../vault/cluster/policies/index.js           |  6 +-
+ .../vault/cluster/secrets/backend/list.js     |  2 +-
+ .../vault/cluster/secrets/backend/sign.js     |  2 +-
+ .../cluster/settings/mount-secret-backend.js  |  2 +-
+ .../vault/cluster/settings/seal.js            |  2 +-
+ ui/{config => app}/deprecation-workflow.js    | 12 +--
+ ui/app/lib/console-helpers.ts                 |  2 +-
+ ui/app/models/cluster.js                      | 10 +--
+ ui/app/models/mfa-login-enforcement.js        | 10 +--
+ ui/app/routes/application.js                  |  2 +-
+ ui/app/routes/vault.js                        |  4 +-
+ ui/app/routes/vault/cluster.js                |  6 +-
+ .../vault/cluster/access/identity/show.js     |  6 +-
+ .../vault/cluster/access/leases/index.js      |  5 +-
+ .../vault/cluster/access/leases/list.js       |  6 +-
+ ui/app/routes/vault/cluster/access/method.js  |  2 +-
+ .../vault/cluster/access/namespaces/index.js  |  2 +-
+ ui/app/routes/vault/cluster/oidc-provider.js  |  2 +-
+ ui/app/routes/vault/cluster/policies/index.js |  2 +-
+ .../routes/vault/cluster/secrets/backend.js   |  4 +-
+ .../vault/cluster/secrets/backend/actions.js  |  2 +-
+ .../cluster/secrets/backend/credentials.js    |  6 +-
+ .../vault/cluster/secrets/backend/list.js     |  8 +-
+ .../cluster/secrets/backend/secret-edit.js    | 18 ++---
+ .../vault/cluster/secrets/backend/sign.js     |  6 +-
+ .../vault/cluster/secrets/backend/versions.js |  2 +-
+ .../cluster/settings/auth/configure/index.js  |  2 +-
+ .../settings/auth/configure/section.js        |  2 +-
+ .../settings/configure-secret-backend.js      |  8 +-
+ ui/app/serializers/database/connection.js     |  5 +-
+ ui/app/serializers/database/role.js           |  5 +-
+ ui/app/serializers/secret-engine.js           |  2 +-
+ ui/app/services/auth.js                       |  4 +-
+ ui/app/services/console.js                    |  2 +-
+ ui/app/services/csp-event.js                  |  6 +-
+ ui/app/services/wizard.js                     | 13 ++--
+ ui/app/templates/components/mfa/mfa-form.hbs  |  8 +-
+ ui/app/utils/field-to-attrs.js                |  2 +-
+ ui/lib/core/addon/components/edit-form.js     |  2 +-
+ ui/lib/core/addon/components/icon.js          |  2 +-
+ .../addon/components/info-table-item-array.js |  2 +-
+ .../core/addon/components/kv-object-editor.js |  4 +-
+ .../addon/components/object-list-input.js     |  7 +-
+ .../components/search-select-with-modal.js    | 12 +--
+ ui/lib/core/addon/components/search-select.js | 16 ++--
+ ui/lib/core/addon/components/string-list.js   |  4 +-
+ ui/lib/core/addon/helpers/is-active-route.js  |  4 +-
+ .../core/addon/helpers/options-for-backend.js |  4 +-
+ .../addon/utils/search-select-has-many.js     | 14 ++--
+ .../components/page/role/create-and-edit.js   |  6 +-
+ .../kubernetes/addon/components/page/roles.js |  5 +-
+ .../addon/components/swagger-ui.js            | 21 +++--
+ .../pki/addon/components/pki-generate-csr.ts  |  2 +-
+ .../addon/components/pki-issuer-cross-sign.js | 22 ++++--
+ .../addon/components/pki-key-parameters.ts    |  2 +-
+ .../pki/addon/routes/configuration/index.js   |  2 +-
+ ui/mirage/handlers/kubernetes.js              |  2 +-
+ ui/mirage/handlers/mfa-config.js              |  4 +-
+ ui/tests/acceptance/access/methods-test.js    |  8 +-
+ ui/tests/acceptance/auth-test.js              |  9 ++-
+ ui/tests/acceptance/console-test.js           |  5 +-
+ ui/tests/acceptance/init-test.js              | 12 ++-
+ ui/tests/acceptance/mfa-method-test.js        |  4 +-
+ .../oidc-config/clients-assignments-test.js   |  6 +-
+ .../oidc-config/clients-keys-test.js          |  2 +-
+ .../oidc-config/providers-scopes-test.js      |  2 +-
+ .../pki/pki-engine-route-cleanup-test.js      | 52 ++++++++-----
+ .../secrets/backend/engines-test.js           |  8 +-
+ .../secrets/backend/kv/secret-test.js         |  6 +-
+ .../secrets/backend/ssh/role-test.js          |  2 +-
+ .../settings/mount-secret-backend-test.js     |  2 +-
+ ui/tests/acceptance/transit-test.js           |  3 +-
+ ui/tests/helpers/poll-cluster.js              |  2 +-
+ .../auth-config-form/options-test.js          |  2 +-
+ .../integration/components/auth-form-test.js  |  6 +-
+ .../integration/components/edit-form-test.js  |  2 +-
+ .../integration/components/form-field-test.js | 68 ++++++++--------
+ .../components/keymgmt/distribute-test.js     |  4 +-
+ .../components/kubernetes/page/roles-test.js  |  4 +-
+ .../components/kv-object-editor-test.js       |  8 +-
+ .../integration/components/mfa-form-test.js   |  3 +-
+ .../mfa-login-enforcement-form-test.js        | 29 ++++---
+ .../components/oidc/client-form-test.js       |  4 +-
+ .../components/pki/pki-generate-csr-test.js   |  2 +-
+ .../components/policy-form-test.js            |  6 +-
+ .../components/search-select-test.js          | 66 +++++++---------
+ .../search-select-with-modal-test.js          |  2 +-
+ .../components/transit-key-actions-test.js    |  4 +-
+ .../integration/helpers/date-format-test.js   |  7 +-
+ ui/tests/integration/services/auth-test.js    | 26 +++----
+ ui/tests/pages/components/console/ui-panel.js |  6 +-
+ ui/tests/pages/components/flash-message.js    |  2 +-
+ ui/tests/test-helper.js                       | 22 ++++++
+ .../components/identity/edit-form-test.js     |  2 +-
+ ui/tests/unit/lib/kv-object-test.js           |  4 +-
+ ui/tests/unit/models/capabilities-test.js     | 78 +++++++++----------
+ ui/tests/unit/models/secret-engine-test.js    | 28 +++----
+ .../unit/models/secret-v2-version-test.js     |  4 +-
+ ui/tests/unit/models/transit-key-test.js      | 14 ++--
+ ui/tests/unit/serializers/transit-key-test.js | 14 +---
+ ui/tests/unit/services/path-helper-test.js    |  2 +-
+ ui/tests/unit/services/permissions-test.js    |  4 +-
+ ui/tests/unit/services/store-test.js          | 34 ++++----
+ ui/types/vault/models/capabilities.d.ts       | 13 ++--
+ 135 files changed, 578 insertions(+), 506 deletions(-)
+ rename ui/{config => app}/deprecation-workflow.js (52%)
+
+diff --git a/ui/app/adapters/pki/cert.js b/ui/app/adapters/pki/cert.js
+index 7175f40..5cc5418 100644
+--- a/ui/app/adapters/pki/cert.js
++++ b/ui/app/adapters/pki/cert.js
+@@ -54,7 +54,7 @@ export default Adapter.extend({
+       return;
+     }
+     const id = snapshot.id;
+-    const backend = snapshot.record.get('backend');
++    const backend = snapshot.record.backend;
+     const data = {
+       serial_number: id,
+     };
+diff --git a/ui/app/adapters/role-aws.js b/ui/app/adapters/role-aws.js
+index a1d6a1e..cf1bc83 100644
+--- a/ui/app/adapters/role-aws.js
++++ b/ui/app/adapters/role-aws.js
+@@ -34,7 +34,7 @@ export default ApplicationAdapter.extend({
+ 
+   deleteRecord(store, type, snapshot) {
+     const { id } = snapshot;
+-    return this.ajax(this.urlForRole(snapshot.record.get('backend'), id), 'DELETE');
++    return this.ajax(this.urlForRole(snapshot.record.backend, id), 'DELETE');
+   },
+ 
+   pathForType() {
+diff --git a/ui/app/adapters/role-ssh.js b/ui/app/adapters/role-ssh.js
+index 6b8cf72..7a9a97c 100644
+--- a/ui/app/adapters/role-ssh.js
++++ b/ui/app/adapters/role-ssh.js
+@@ -35,7 +35,7 @@ export default ApplicationAdapter.extend({
+ 
+   deleteRecord(store, type, snapshot) {
+     const { id } = snapshot;
+-    return this.ajax(this.urlForRole(snapshot.record.get('backend'), id), 'DELETE');
++    return this.ajax(this.urlForRole(snapshot.record.backend, id), 'DELETE');
+   },
+ 
+   pathForType() {
+diff --git a/ui/app/adapters/secret-engine.js b/ui/app/adapters/secret-engine.js
+index 5c85469..904caa9 100644
+--- a/ui/app/adapters/secret-engine.js
++++ b/ui/app/adapters/secret-engine.js
+@@ -132,7 +132,11 @@ export default ApplicationAdapter.extend({
+ 
+   saveZeroAddressConfig(store, type, snapshot) {
+     const path = encodePath(snapshot.id);
+-    const roles = store.peekAll('role-ssh').filterBy('zeroAddress').mapBy('id').join(',');
++    const roles = store
++      .peekAll('role-ssh')
++      .filterBy('zeroAddress')
++      .map((x) => x.id)
++      .join(',');
+     const url = `/v1/${path}/config/zeroaddress`;
+     const data = { roles };
+     if (roles === '') {
+diff --git a/ui/app/adapters/transit-key.js b/ui/app/adapters/transit-key.js
+index 5ca4d92..a3f65b1 100644
+--- a/ui/app/adapters/transit-key.js
++++ b/ui/app/adapters/transit-key.js
+@@ -14,7 +14,7 @@ export default ApplicationAdapter.extend({
+     const serializer = store.serializerFor(type.modelName);
+     const data = serializer.serialize(snapshot, requestType);
+     const name = snapshot.attr('name');
+-    let url = this.urlForSecret(snapshot.record.get('backend'), name);
++    let url = this.urlForSecret(snapshot.record.backend, name);
+     if (requestType === 'update') {
+       url = url + '/config';
+     }
+@@ -36,7 +36,7 @@ export default ApplicationAdapter.extend({
+ 
+   deleteRecord(store, type, snapshot) {
+     const { id } = snapshot;
+-    return this.ajax(this.urlForSecret(snapshot.record.get('backend'), id), 'DELETE');
++    return this.ajax(this.urlForSecret(snapshot.record.backend, id), 'DELETE');
+   },
+ 
+   pathForType(type) {
+diff --git a/ui/app/app.js b/ui/app/app.js
+index c8af281..17f8c20 100644
+--- a/ui/app/app.js
++++ b/ui/app/app.js
+@@ -7,6 +7,7 @@ import Application from '@ember/application';
+ import Resolver from 'ember-resolver';
+ import loadInitializers from 'ember-load-initializers';
+ import config from 'vault/config/environment';
++import './deprecation-workflow';
+ 
+ export default class App extends Application {
+   modulePrefix = config.modulePrefix;
+diff --git a/ui/app/components/auth-config-form/options.js b/ui/app/components/auth-config-form/options.js
+index f663953..1b01b69 100644
+--- a/ui/app/components/auth-config-form/options.js
++++ b/ui/app/components/auth-config-form/options.js
+@@ -47,7 +47,7 @@ export default AuthConfigComponent.extend({
+         // because we're not calling model.save the model never updates with
+         // the error.  Forcing the error message by manually setting the errorMessage
+         try {
+-          this.model.set('errorMessage', err.errors.firstObject);
++          this.model.set('errorMessage', err.errors[0]);
+         } catch {
+           // do nothing
+         }
+diff --git a/ui/app/components/auth-form.js b/ui/app/components/auth-form.js
+index 1524da8..1659333 100644
+--- a/ui/app/components/auth-form.js
++++ b/ui/app/components/auth-form.js
+@@ -6,7 +6,7 @@
+ import Ember from 'ember';
+ import { next } from '@ember/runloop';
+ import { inject as service } from '@ember/service';
+-import { match, alias, or } from '@ember/object/computed';
++import { match, or } from '@ember/object/computed';
+ import { dasherize } from '@ember/string';
+ import Component from '@ember/component';
+ import { computed } from '@ember/object';
+@@ -118,7 +118,7 @@ export default Component.extend(DEFAULTS, {
+   },
+ 
+   firstMethod() {
+-    const firstMethod = this.methodsToShow.firstObject;
++    const firstMethod = this.methodsToShow[0];
+     if (!firstMethod) return;
+     // prefer backends with a path over those with a type
+     return firstMethod.path || firstMethod.type;
+@@ -136,9 +136,9 @@ export default Component.extend(DEFAULTS, {
+     }
+     // if type is provided we can ignore path since we are attempting to lookup a specific backend by type
+     if (keyIsPath && !type) {
+-      return methods.findBy('path', selected);
++      return methods.find((x) => x.path === selected);
+     }
+-    return BACKENDS.findBy('type', selected);
++    return BACKENDS.find((x) => x.type === selected);
+   },
+ 
+   selectedAuthIsPath: match('selectedAuth', /\/$/),
+@@ -163,7 +163,9 @@ export default Component.extend(DEFAULTS, {
+     return templateName;
+   }),
+ 
+-  hasCSPError: alias('csp.connectionViolations.firstObject'),
++  hasCSPError: computed('csp.connectionViolations.[]', function () {
++    return this.csp.connectionViolations[0];
++  }),
+ 
+   cspErrorText: `This is a standby OpenBao node but can't communicate with the active node via request forwarding. Sign in at the active node to use the OpenBao UI.`,
+ 
+@@ -174,7 +176,7 @@ export default Component.extend(DEFAULTS, {
+   }),
+ 
+   hasMethodsWithPath: computed('methodsToShow', function () {
+-    return this.methodsToShow.isAny('path');
++    return this.methodsToShow.some((m) => m.path);
+   }),
+   methodsToShow: computed('methods', function () {
+     const methods = this.methods || [];
+diff --git a/ui/app/components/console/ui-panel.js b/ui/app/components/console/ui-panel.js
+index a7c288b..c360b17 100644
+--- a/ui/app/components/console/ui-panel.js
++++ b/ui/app/components/console/ui-panel.js
+@@ -91,7 +91,7 @@ export default Component.extend({
+ 
+   refreshRoute: task(function* () {
+     const owner = getOwner(this);
+-    const currentRoute = owner.lookup(`router:main`).get('currentRouteName');
++    const currentRoute = owner.lookup(`router:main`).currentRouteName;
+ 
+     try {
+       this.store.clearAllDatasets();
+diff --git a/ui/app/components/identity/edit-form.js b/ui/app/components/identity/edit-form.js
+index 8ea4c0c..9ced608 100644
+--- a/ui/app/components/identity/edit-form.js
++++ b/ui/app/components/identity/edit-form.js
+@@ -76,7 +76,7 @@ export default Component.extend({
+     this._super(...arguments);
+     const model = this.model;
+     if (!model) return;
+-    if ((model.get('isDirty') && !model.isDestroyed) || !model.isDestroying) {
++    if ((model.isDirty && !model.isDestroyed) || !model.isDestroying) {
+       model.rollbackAttributes();
+     }
+   },
+diff --git a/ui/app/components/identity/lookup-input.js b/ui/app/components/identity/lookup-input.js
+index 4c2eb52..59e8f9f 100644
+--- a/ui/app/components/identity/lookup-input.js
++++ b/ui/app/components/identity/lookup-input.js
+@@ -27,7 +27,7 @@ export default Component.extend({
+     this._super(...arguments);
+     this.store.findAll('auth-method').then((methods) => {
+       this.set('authMethods', methods);
+-      this.set('aliasMountAccessor', methods.get('firstObject.accessor'));
++      this.set('aliasMountAccessor', methods[0].accessor);
+     });
+   },
+ 
+diff --git a/ui/app/components/identity/popup-alias.js b/ui/app/components/identity/popup-alias.js
+index b69bd5d..719ffa4 100644
+--- a/ui/app/components/identity/popup-alias.js
++++ b/ui/app/components/identity/popup-alias.js
+@@ -7,7 +7,7 @@ import Base from './_popup-base';
+ 
+ export default Base.extend({
+   messageArgs(model) {
+-    const type = model.get('identityType');
++    const type = model.identityType;
+     const id = model.id;
+     return [type, id];
+   },
+diff --git a/ui/app/components/identity/popup-members.js b/ui/app/components/identity/popup-members.js
+index 9703ef8..740c123 100644
+--- a/ui/app/components/identity/popup-members.js
++++ b/ui/app/components/identity/popup-members.js
+@@ -3,19 +3,20 @@
+  * SPDX-License-Identifier: MPL-2.0
+  */
+ 
+-import { alias } from '@ember/object/computed';
+ import { computed } from '@ember/object';
+ import Base from './_popup-base';
+ 
+ export default Base.extend({
+-  model: alias('params.firstObject'),
++  model: computed('params', function () {
++    return this.params[0];
++  }),
+ 
+   groupArray: computed('params', function () {
+-    return this.params.objectAt(1);
++    return this.params[1];
+   }),
+ 
+   memberId: computed('params', function () {
+-    return this.params.objectAt(2);
++    return this.params[2];
+   }),
+ 
+   messageArgs(/*model, groupArray, memberId*/) {
+diff --git a/ui/app/components/identity/popup-metadata.js b/ui/app/components/identity/popup-metadata.js
+index 899f556..a5f860d 100644
+--- a/ui/app/components/identity/popup-metadata.js
++++ b/ui/app/components/identity/popup-metadata.js
+@@ -5,12 +5,14 @@
+ 
+ import Base from './_popup-base';
+ import { computed } from '@ember/object';
+-import { alias } from '@ember/object/computed';
+ 
+ export default Base.extend({
+-  model: alias('params.firstObject'),
++  model: computed('params', function () {
++    return this.params[0];
++  }),
++
+   key: computed('params', function () {
+-    return this.params.objectAt(1);
++    return this.params[1];
+   }),
+ 
+   messageArgs(model, key) {
+diff --git a/ui/app/components/identity/popup-policy.js b/ui/app/components/identity/popup-policy.js
+index c5a38c1..94be7f9 100644
+--- a/ui/app/components/identity/popup-policy.js
++++ b/ui/app/components/identity/popup-policy.js
+@@ -3,14 +3,16 @@
+  * SPDX-License-Identifier: MPL-2.0
+  */
+ 
+-import { alias } from '@ember/object/computed';
+ import { computed } from '@ember/object';
+ import Base from './_popup-base';
+ 
+ export default Base.extend({
+-  model: alias('params.firstObject'),
++  model: computed('params', function () {
++    return this.params[0];
++  }),
++
+   policyName: computed('params', function () {
+-    return this.params.objectAt(1);
++    return this.params[1];
+   }),
+ 
+   messageArgs(model, policyName) {
+@@ -27,7 +29,7 @@ export default Base.extend({
+   },
+ 
+   transaction(model, policyName) {
+-    const policies = model.get('policies');
++    const policies = model.policies;
+     model.set('policies', policies.without(policyName));
+     return model.save();
+   },
+diff --git a/ui/app/components/mfa/mfa-form.js b/ui/app/components/mfa/mfa-form.js
+index 8f231ed..68ac59e 100644
+--- a/ui/app/components/mfa/mfa-form.js
++++ b/ui/app/components/mfa/mfa-form.js
+@@ -37,7 +37,7 @@ export default class MfaForm extends Component {
+     super(...arguments);
+     // trigger validation immediately when passcode is not required
+     const passcodeOrSelect = this.constraints.filter((constraint) => {
+-      return constraint.methods.length > 1 || constraint.methods.findBy('uses_passcode');
++      return constraint.methods.length > 1 || constraint.methods.find((x) => x.uses_passcode);
+     });
+     if (!passcodeOrSelect.length) {
+       this.validate.perform();
+@@ -78,6 +78,7 @@ export default class MfaForm extends Component {
+   @task *validate() {
+     try {
+       this.error = null;
++      this.countdown = 0;
+       const response = yield this.auth.totpValidate({
+         clusterId: this.args.clusterId,
+         ...this.args.authData,
+@@ -112,7 +113,11 @@ export default class MfaForm extends Component {
+ 
+   @action onSelect(constraint, id) {
+     set(constraint, 'selectedId', id);
+-    set(constraint, 'selectedMethod', constraint.methods.findBy('id', id));
++    set(
++      constraint,
++      'selectedMethod',
++      constraint.methods.find((x) => x.id === id)
++    );
+   }
+   @action submit(e) {
+     e.preventDefault();
+diff --git a/ui/app/components/mfa/mfa-login-enforcement-form.js b/ui/app/components/mfa/mfa-login-enforcement-form.js
+index a1a6271..cc76adc 100644
+--- a/ui/app/components/mfa/mfa-login-enforcement-form.js
++++ b/ui/app/components/mfa/mfa-login-enforcement-form.js
+@@ -74,7 +74,8 @@ export default class MfaLoginEnforcementForm extends Component {
+       const types = ['identity/group', 'identity/entity'];
+       for (const type of types) {
+         try {
+-          options[type] = (await this.store.query(type, {})).toArray();
++          const query = await this.store.query(type, {});
++          options[type] = [...query];
+         } catch {
+           options[type] = [];
+         }
+@@ -89,12 +90,13 @@ export default class MfaLoginEnforcementForm extends Component {
+     }
+   }
+   async fetchAuthMethods() {
+-    const mounts = (await this.store.findAll('auth-method')).toArray();
+-    this.authMethods = mounts.mapBy('type');
++    const query = await this.store.findAll('auth-method');
++    const mounts = [...query];
++    this.authMethods = mounts.map((x) => x.type);
+   }
+ 
+   get selectedTarget() {
+-    return this.targetTypes.findBy('type', this.selectedTargetType);
++    return this.targetTypes.find((x) => x.type === this.selectedTargetType);
+   }
+   get errors() {
+     return this.args.modelErrors || this.modelErrors;
+@@ -140,20 +142,29 @@ export default class MfaLoginEnforcementForm extends Component {
+     }
+   }
+   @action
+-  addTarget() {
++  async addTarget() {
+     const { label, key } = this.selectedTarget;
+     const value = this.selectedTargetValue;
+-    this.targets.addObject({ label, value, key });
++    if (!this.targets.includes({ label, value, key })) {
++      this.targets = [...this.targets, { label, value, key }];
++    }
+     // add target to appropriate model property
+-    this.args.model[key].addObject(value);
++    const collection = await this.args.model[key];
++    if (!collection.includes(value)) {
++      collection.push(value);
++    }
+     this.selectedTargetValue = null;
+     this.resetTargetState();
+   }
+   @action
+-  removeTarget(target) {
+-    this.targets.removeObject(target);
++  async removeTarget(target) {
++    this.targets = this.targets.filter((t) => t !== target);
+     // remove target from appropriate model property
+-    this.args.model[target.key].removeObject(target.value);
++    const collection = await this.args.model[target.key];
++    const valIdx = collection.indexOf(target.value);
++    if (valIdx !== -1) {
++      collection.splice(valIdx, 1);
++    }
+   }
+   @action
+   cancel() {
+diff --git a/ui/app/components/mfa/mfa-login-enforcement-header.js b/ui/app/components/mfa/mfa-login-enforcement-header.js
+index dfdfc9f..b19bcc1 100644
+--- a/ui/app/components/mfa/mfa-login-enforcement-header.js
++++ b/ui/app/components/mfa/mfa-login-enforcement-header.js
+@@ -41,7 +41,8 @@ export default class MfaLoginEnforcementHeaderComponent extends Component {
+   async fetchEnforcements() {
+     try {
+       // cache initial values for lookup in select handler
+-      this._enforcements = (await this.store.query('mfa-login-enforcement', {})).toArray();
++      const query = await this.store.query('mfa-login-enforcement', {});
++      this._enforcements = [...query];
+       this.enforcements = [...this._enforcements];
+     } catch {
+       this.enforcements = [];
+@@ -52,6 +53,6 @@ export default class MfaLoginEnforcementHeaderComponent extends Component {
+   onEnforcementSelect([name]) {
+     // search select returns array of strings, in this case enforcement name
+     // lookup model and pass to callback
+-    this.args.onEnforcementSelect(this._enforcements.findBy('name', name));
++    this.args.onEnforcementSelect(this._enforcements.find((x) => x.name === name));
+   }
+ }
+diff --git a/ui/app/components/mount-accessor-select.js b/ui/app/components/mount-accessor-select.js
+index c18f2c5..a7c6276 100644
+--- a/ui/app/components/mount-accessor-select.js
++++ b/ui/app/components/mount-accessor-select.js
+@@ -45,7 +45,7 @@ export default class MountAccessorSelect extends Component {
+   @task *authMethods() {
+     const methods = yield this.store.findAll('auth-method');
+     if (!this.args.value && !this.args.noDefault) {
+-      const getValue = methods.get('firstObject.accessor');
++      const getValue = methods[0].accessor;
+       this.args.onChange(getValue);
+     }
+     return methods;
+diff --git a/ui/app/components/namespace-picker.js b/ui/app/components/namespace-picker.js
+index 8ce603b..cf0eb59 100644
+--- a/ui/app/components/namespace-picker.js
++++ b/ui/app/components/namespace-picker.js
+@@ -61,9 +61,9 @@ export default Component.extend({
+       return;
+     }
+     const isAdding = leaves.length > lastLeaves.length;
+-    const changedLeaf = (isAdding ? leaves : lastLeaves).get('lastObject');
++    const changedLeaf = isAdding ? leaves : lastLeaves;
+     this.set('isAdding', isAdding);
+-    this.set('changedLeaf', changedLeaf);
++    this.set('changedLeaf', changedLeaf[changedLeaf.length - 1]);
+ 
+     // if we're adding we want to render immediately an animate it in
+     // if we're not adding, we need time to move the item out before
+diff --git a/ui/app/components/oidc/provider-form.js b/ui/app/components/oidc/provider-form.js
+index 6eacb3a..7fecfc3 100644
+--- a/ui/app/components/oidc/provider-form.js
++++ b/ui/app/components/oidc/provider-form.js
+@@ -39,7 +39,7 @@ export default class OidcProviderForm extends Component {
+   // function passed to search select
+   renderInfoTooltip(selection, dropdownOptions) {
+     // if a client has been deleted it will not exist in dropdownOptions (response from search select's query)
+-    const clientExists = !!dropdownOptions.findBy('clientId', selection);
++    const clientExists = !!dropdownOptions.find((x) => x.clientId === selection);
+     return !clientExists ? 'The application associated with this client_id no longer exists' : false;
+   }
+ 
+diff --git a/ui/app/components/secret-create-or-update.js b/ui/app/components/secret-create-or-update.js
+index 411f4b6..2a7313c 100644
+--- a/ui/app/components/secret-create-or-update.js
++++ b/ui/app/components/secret-create-or-update.js
+@@ -120,7 +120,7 @@ export default class SecretCreateOrUpdate extends Component {
+     const secret = this.args.model;
+     const secretData = this.args.modelForData;
+     const isV2 = this.args.isV2;
+-    let key = secretData.get('path') || secret.id;
++    let key = secretData.path || secret.id;
+ 
+     if (key.startsWith('/')) {
+       key = key.replace(/^\/+/g, '');
+@@ -201,7 +201,7 @@ export default class SecretCreateOrUpdate extends Component {
+   addRow() {
+     const data = this.args.secretData;
+     // fired off on init
+-    if (isNone(data.findBy('name', ''))) {
++    if (isNone(data.find((x) => x.name === ''))) {
+       data.pushObject({ name: '', value: '' });
+       this.handleChange();
+     }
+@@ -241,7 +241,7 @@ export default class SecretCreateOrUpdate extends Component {
+   @action
+   deleteRow(name) {
+     const data = this.args.secretData;
+-    const item = data.findBy('name', name);
++    const item = data.find((x) => x.name === name);
+     if (isBlank(item.name)) {
+       return;
+     }
+diff --git a/ui/app/components/transit-key-actions.js b/ui/app/components/transit-key-actions.js
+index f7695a8..8236776 100644
+--- a/ui/app/components/transit-key-actions.js
++++ b/ui/app/components/transit-key-actions.js
+@@ -8,7 +8,7 @@ import { copy } from 'ember-copy';
+ import { assert } from '@ember/debug';
+ import { inject as service } from '@ember/service';
+ import Component from '@ember/component';
+-import { set, get, computed } from '@ember/object';
++import { set, computed } from '@ember/object';
+ import { encodeString } from 'vault/utils/b64';
+ 
+ const TRANSIT_PARAMS = {
+@@ -75,8 +75,8 @@ export default Component.extend(TRANSIT_PARAMS, {
+       return;
+     }
+     // eslint-disable-next-line ember/no-get
+-    set(this, 'selectedAction', get(this, 'key.supportedActions.firstObject'));
+     assert('`key` is required for `' + this.toString() + '`.', this.getModelInfo());
++    set(this, 'selectedAction', this.key.supportedActions[0]);
+   },
+ 
+   didReceiveAttrs() {
+@@ -88,7 +88,7 @@ export default Component.extend(TRANSIT_PARAMS, {
+   },
+ 
+   setExportKeyDefaults() {
+-    const exportKeyType = this.key.exportKeyTypes.firstObject;
++    const exportKeyType = this.key.exportKeyTypes[0];
+     const exportKeyVersion = this.key.validKeyVersions.lastObject;
+     this.setProperties({
+       exportKeyType,
+diff --git a/ui/app/components/wizard/features-selection.js b/ui/app/components/wizard/features-selection.js
+index 25bc0e6..d75825b 100644
+--- a/ui/app/components/wizard/features-selection.js
++++ b/ui/app/components/wizard/features-selection.js
+@@ -114,7 +114,7 @@ export default Component.extend({
+   }),
+ 
+   selectedFeatures: computed('allFeatures.@each.selected', function () {
+-    return this.allFeatures.filterBy('selected').mapBy('key');
++    return this.allFeatures.filterBy('selected').map((x) => x.key);
+   }),
+ 
+   cannotStartWizard: not('selectedFeatures.length'),
+diff --git a/ui/app/controllers/vault/cluster/access/identity/aliases/index.js b/ui/app/controllers/vault/cluster/access/identity/aliases/index.js
+index 7b2468b..07b82fa 100644
+--- a/ui/app/controllers/vault/cluster/access/identity/aliases/index.js
++++ b/ui/app/controllers/vault/cluster/access/identity/aliases/index.js
+@@ -23,7 +23,7 @@ export default Controller.extend({
+ 
+   filterMatchesKey: computed('filter', 'model', 'model.[]', function () {
+     const { filter, model: content } = this;
+-    return !!(content.length && content.findBy('id', filter));
++    return !!(content.length && content.find((x) => x.id === filter));
+   }),
+ 
+   firstPartialMatch: computed('filter', 'model', 'model.[]', 'filterMatchesKey', function () {
+diff --git a/ui/app/controllers/vault/cluster/access/identity/create.js b/ui/app/controllers/vault/cluster/access/identity/create.js
+index 4320a9c..a6de90e 100644
+--- a/ui/app/controllers/vault/cluster/access/identity/create.js
++++ b/ui/app/controllers/vault/cluster/access/identity/create.js
+@@ -14,7 +14,7 @@ export default Controller.extend({
+   showTab: 'details',
+   navAfterSave: task(function* ({ saveType, model }) {
+     const isDelete = saveType === 'delete';
+-    const type = model.get('identityType');
++    const type = model.identityType;
+     const listRoutes = {
+       'entity-alias': 'vault.cluster.access.identity.aliases.index',
+       'group-alias': 'vault.cluster.access.identity.aliases.index',
+diff --git a/ui/app/controllers/vault/cluster/access/identity/index.js b/ui/app/controllers/vault/cluster/access/identity/index.js
+index 6df8505..80bb463 100644
+--- a/ui/app/controllers/vault/cluster/access/identity/index.js
++++ b/ui/app/controllers/vault/cluster/access/identity/index.js
+@@ -25,7 +25,7 @@ export default Controller.extend({
+ 
+   filterMatchesKey: computed('filter', 'model', 'model.[]', function () {
+     const { filter, model: content } = this;
+-    return !!(content.length && content.findBy('id', filter));
++    return !!(content.length && content.find((x) => x.id === filter));
+   }),
+ 
+   firstPartialMatch: computed('filter', 'model', 'model.[]', 'filterMatchesKey', function () {
+@@ -62,7 +62,7 @@ export default Controller.extend({
+     },
+ 
+     delete(model) {
+-      const type = model.get('identityType');
++      const type = model.identityType;
+       const id = model.id;
+       return model
+         .destroyRecord()
+@@ -78,8 +78,8 @@ export default Controller.extend({
+     },
+ 
+     toggleDisabled(model) {
+-      const action = model.get('disabled') ? ['enabled', 'enabling'] : ['disabled', 'disabling'];
+-      const type = model.get('identityType');
++      const action = model.disabled ? ['enabled', 'enabling'] : ['disabled', 'disabling'];
++      const type = model.identityType;
+       const id = model.id;
+       model.toggleProperty('disabled');
+ 
+diff --git a/ui/app/controllers/vault/cluster/access/leases/list.js b/ui/app/controllers/vault/cluster/access/leases/list.js
+index 53e66b2..2fd06a8 100644
+--- a/ui/app/controllers/vault/cluster/access/leases/list.js
++++ b/ui/app/controllers/vault/cluster/access/leases/list.js
+@@ -42,7 +42,7 @@ export default Controller.extend({
+ 
+   filterMatchesKey: computed('filter', 'model', 'model.[]', function () {
+     const { filter, model: content } = this;
+-    return !!(content.length && content.findBy('id', filter));
++    return !!(content.length && content.find((x) => x.id === filter));
+   }),
+ 
+   firstPartialMatch: computed('filter', 'model', 'model.[]', 'filterMatchesKey', function () {
+diff --git a/ui/app/controllers/vault/cluster/access/method/item/list.js b/ui/app/controllers/vault/cluster/access/method/item/list.js
+index 56277e3..949af98 100644
+--- a/ui/app/controllers/vault/cluster/access/method/item/list.js
++++ b/ui/app/controllers/vault/cluster/access/method/item/list.js
+@@ -23,7 +23,7 @@ export default Controller.extend({
+ 
+   filterMatchesKey: computed('filter', 'model', 'model.[]', function () {
+     const { filter, model: content } = this;
+-    return !!(content.length && content.findBy('id', filter));
++    return !!(content.length && content.find((x) => x.id === filter));
+   }),
+ 
+   firstPartialMatch: computed('filter', 'model', 'model.[]', 'filterMatchesKey', function () {
+diff --git a/ui/app/controllers/vault/cluster/access/methods.js b/ui/app/controllers/vault/cluster/access/methods.js
+index 9e0fa3a..35e5a94 100644
+--- a/ui/app/controllers/vault/cluster/access/methods.js
++++ b/ui/app/controllers/vault/cluster/access/methods.js
+@@ -29,17 +29,17 @@ export default class VaultClusterAccessMethodsController extends Controller {
+       // names are individualized across type so you can't have the same name for an aws auth method and userpass.
+       // this means it's fine to filter by first type and then name or just name.
+       if (this.selectedAuthName) {
+-        return this.model.filter((method) => this.selectedAuthName === method.id);
++        return [...this.model].filter((method) => this.selectedAuthName === method.id);
+       }
+       // otherwise filter by auth type
+-      return this.model.filter((method) => this.selectedAuthType === method.type);
++      return [...this.model].filter((method) => this.selectedAuthType === method.type);
+     }
+     // return an options list to filter by auth name, ex: 'my-userpass'
+     if (this.selectedAuthName) {
+-      return this.model.filter((method) => this.selectedAuthName === method.id);
++      return [...this.model].filter((method) => this.selectedAuthName === method.id);
+     }
+     // no filters, return full sorted list.
+-    return this.model;
++    return [...this.model];
+   }
+ 
+   get authMethodArrayByType() {
+diff --git a/ui/app/controllers/vault/cluster/access/mfa/methods/create.js b/ui/app/controllers/vault/cluster/access/mfa/methods/create.js
+index 9070d1a..c3f3bd6 100644
+--- a/ui/app/controllers/vault/cluster/access/mfa/methods/create.js
++++ b/ui/app/controllers/vault/cluster/access/mfa/methods/create.js
+@@ -90,7 +90,10 @@ export default class MfaMethodCreateController extends Controller {
+         // first save method
+         yield this.method.save();
+         if (this.enforcement) {
+-          this.enforcement.mfa_methods.addObject(this.method);
++          const mfaMethods = yield this.enforcement.mfa_methods;
++          if (!mfaMethods.includes(this.method)) {
++            mfaMethods.push(this.method);
++          }
+           try {
+             // now save enforcement and catch error separately
+             yield this.enforcement.save();
+diff --git a/ui/app/controllers/vault/cluster/policies/index.js b/ui/app/controllers/vault/cluster/policies/index.js
+index 0b0633e..0df6a11 100644
+--- a/ui/app/controllers/vault/cluster/policies/index.js
++++ b/ui/app/controllers/vault/cluster/policies/index.js
+@@ -27,7 +27,7 @@ export default Controller.extend({
+   filterMatchesKey: computed('filter', 'model', 'model.[]', function () {
+     var filter = this.filter;
+     var content = this.model;
+-    return !!(content && content.length && content.findBy('id', filter));
++    return !!(content && content.length && content.find((x) => x.id === filter));
+   }),
+ 
+   firstPartialMatch: computed('filter', 'model', 'model.[]', 'filterMatchesKey', function () {
+@@ -41,7 +41,7 @@ export default Controller.extend({
+     return filterMatchesKey
+       ? null
+       : content.find(function (key) {
+-          return re.test(key.get('id'));
++          return re.test(key.id);
+         });
+   }),
+ 
+@@ -53,7 +53,7 @@ export default Controller.extend({
+       this.set('filterFocused', bool);
+     },
+     deletePolicy(model) {
+-      const policyType = model.get('policyType');
++      const policyType = model.policyType;
+       const name = model.id;
+       const flash = this.flashMessages;
+       model
+diff --git a/ui/app/controllers/vault/cluster/secrets/backend/list.js b/ui/app/controllers/vault/cluster/secrets/backend/list.js
+index 8cc9639..2a598b3 100644
+--- a/ui/app/controllers/vault/cluster/secrets/backend/list.js
++++ b/ui/app/controllers/vault/cluster/secrets/backend/list.js
+@@ -50,7 +50,7 @@ export default Controller.extend({
+ 
+   filterMatchesKey: computed('filter', 'model', 'model.[]', function () {
+     const { filter, model: content } = this;
+-    return !!(content.length && content.findBy('id', filter));
++    return !!(content.length && content.find((x) => x.id === filter));
+   }),
+ 
+   firstPartialMatch: computed('filter', 'model', 'model.[]', 'filterMatchesKey', function () {
+diff --git a/ui/app/controllers/vault/cluster/secrets/backend/sign.js b/ui/app/controllers/vault/cluster/secrets/backend/sign.js
+index 1612c15..95ad69b 100644
+--- a/ui/app/controllers/vault/cluster/secrets/backend/sign.js
++++ b/ui/app/controllers/vault/cluster/secrets/backend/sign.js
+@@ -57,7 +57,7 @@ export default Controller.extend({
+ 
+     newModel() {
+       const model = this.model;
+-      const roleModel = model.get('role');
++      const roleModel = model.role;
+       model.unloadRecord();
+       const newModel = this.store.createRecord('ssh-sign', {
+         role: roleModel,
+diff --git a/ui/app/controllers/vault/cluster/settings/mount-secret-backend.js b/ui/app/controllers/vault/cluster/settings/mount-secret-backend.js
+index 72e2eb8..32b3560 100644
+--- a/ui/app/controllers/vault/cluster/settings/mount-secret-backend.js
++++ b/ui/app/controllers/vault/cluster/settings/mount-secret-backend.js
+@@ -18,7 +18,7 @@ export default class MountSecretBackendController extends Controller {
+   onMountSuccess(type, path) {
+     let transition;
+     if (SUPPORTED_BACKENDS.includes(type)) {
+-      const engineInfo = allEngines().findBy('type', type);
++      const engineInfo = allEngines().find((x) => x.type === type);
+       if (engineInfo?.engineRoute) {
+         transition = this.router.transitionTo(
+           `vault.cluster.secrets.backend.${engineInfo.engineRoute}`,
+diff --git a/ui/app/controllers/vault/cluster/settings/seal.js b/ui/app/controllers/vault/cluster/settings/seal.js
+index 419138f..35ce9b0 100644
+--- a/ui/app/controllers/vault/cluster/settings/seal.js
++++ b/ui/app/controllers/vault/cluster/settings/seal.js
+@@ -15,7 +15,7 @@ export default Controller.extend({
+         .adapterFor('cluster')
+         .seal()
+         .then(() => {
+-          this.model.cluster.get('leaderNode').set('sealed', true);
++          this.model.cluster.leaderNode.set('sealed', true);
+           this.auth.deleteCurrentToken();
+           return this.transitionToRoute('vault.cluster.unseal');
+         });
+diff --git a/ui/config/deprecation-workflow.js b/ui/app/deprecation-workflow.js
+similarity index 52%
+rename from ui/config/deprecation-workflow.js
+rename to ui/app/deprecation-workflow.js
+index 33cdc4f..8e1b815 100644
+--- a/ui/config/deprecation-workflow.js
++++ b/ui/app/deprecation-workflow.js
+@@ -3,12 +3,12 @@
+  * SPDX-License-Identifier: MPL-2.0
+  */
+ 
+-self.deprecationWorkflow = self.deprecationWorkflow || {};
+-//self.deprecationWorkflow.config = {
+-//throwOnUnhandled: true
+-//}
+-self.deprecationWorkflow.config = {
++import setupDeprecationWorkflow from 'ember-cli-deprecation-workflow';
++
++export const deprecationWorkflowConfig = {
+   // current output from deprecationWorkflow.flushDeprecations();
+   // deprecations that will not be removed until 5.0.0 are filtered by deprecation-filter initializer rather than silencing below
+-  workflow: [],
++  workflow: [{ handler: 'log', matchId: 'ember-data:deprecate-array-like' }],
+ };
++
++setupDeprecationWorkflow(deprecationWorkflowConfig);
+diff --git a/ui/app/lib/console-helpers.ts b/ui/app/lib/console-helpers.ts
+index 03fc859..8a041e7 100644
+--- a/ui/app/lib/console-helpers.ts
++++ b/ui/app/lib/console-helpers.ts
+@@ -241,7 +241,7 @@ export function shiftCommandIndex(keyCode: number, history: CommandLog[], index:
+   }
+ 
+   if (newInputValue !== '') {
+-    newInputValue = history.objectAt(index)?.content;
++    newInputValue = history[index]?.content;
+   }
+ 
+   return [index, newInputValue];
+diff --git a/ui/app/models/cluster.js b/ui/app/models/cluster.js
+index 24401b1..4f2dbf9 100644
+--- a/ui/app/models/cluster.js
++++ b/ui/app/models/cluster.js
+@@ -20,22 +20,22 @@ export default Model.extend({
+ 
+   needsInit: computed('nodes', 'nodes.@each.initialized', function () {
+     // needs init if no nodes are initialized
+-    return this.nodes.isEvery('initialized', false);
++    return this.nodes.every((x) => x.initialized === false);
+   }),
+ 
+   unsealed: computed('nodes', 'nodes.{[],@each.sealed}', function () {
+     // unsealed if there's at least one unsealed node
+-    return !!this.nodes.findBy('sealed', false);
++    return !!this.nodes.find((x) => x.sealed === false);
+   }),
+ 
+   sealed: not('unsealed'),
+ 
+   leaderNode: computed('nodes', 'nodes.[]', function () {
+     const nodes = this.nodes;
+-    if (nodes.get('length') === 1) {
+-      return nodes.get('firstObject');
++    if (nodes.length === 1) {
++      return nodes[0];
+     } else {
+-      return nodes.findBy('isLeader');
++      return nodes.find((x) => x.isLeader);
+     }
+   }),
+ 
+diff --git a/ui/app/models/mfa-login-enforcement.js b/ui/app/models/mfa-login-enforcement.js
+index bff7a67..957e99b 100644
+--- a/ui/app/models/mfa-login-enforcement.js
++++ b/ui/app/models/mfa-login-enforcement.js
+@@ -68,8 +68,8 @@ export default class MfaLoginEnforcementModel extends Model {
+       const selectedAuthMethods = authMethods.filter((model) => {
+         return this.auth_method_accessors.includes(model.accessor);
+       });
+-      targets.addObjects(
+-        selectedAuthMethods.map((method) => ({
++      targets.push(
++        ...selectedAuthMethods.map((method) => ({
+           icon: this.iconForMount(method.type),
+           link: 'vault.cluster.access.method',
+           linkModels: [method.path.slice(0, -1)],
+@@ -82,7 +82,7 @@ export default class MfaLoginEnforcementModel extends Model {
+     this.auth_method_types.forEach((type) => {
+       const icon = this.iconForMount(type);
+       const mountCount = authMethods.filterBy('type', type).length;
+-      targets.addObject({
++      targets.push({
+         key: 'auth_method_types',
+         icon,
+         title: type,
+@@ -92,7 +92,7 @@ export default class MfaLoginEnforcementModel extends Model {
+ 
+     for (const key of ['identity_entities', 'identity_groups']) {
+       (await this[key]).forEach((model) => {
+-        targets.addObject({
++        targets.push({
+           key,
+           icon: 'user',
+           link: 'vault.cluster.access.identity.show',
+@@ -108,7 +108,7 @@ export default class MfaLoginEnforcementModel extends Model {
+ 
+   iconForMount(type) {
+     const mountableMethods = methods();
+-    const mount = mountableMethods.findBy('type', type);
++    const mount = mountableMethods.find((x) => x.type === type);
+     return mount ? mount.glyph || mount.type : 'token';
+   }
+ }
+diff --git a/ui/app/routes/application.js b/ui/app/routes/application.js
+index 4537454..a037a44 100644
+--- a/ui/app/routes/application.js
++++ b/ui/app/routes/application.js
+@@ -47,7 +47,7 @@ export default Route.extend({
+       // Assuming we have a URL, push it into browser history and update the
+       // location bar for the user
+       if (errorURL) {
+-        router.get('location').setURL(errorURL);
++        router.location.setURL(errorURL);
+       }
+ 
+       return true;
+diff --git a/ui/app/routes/vault.js b/ui/app/routes/vault.js
+index 625a74b..436680d 100644
+--- a/ui/app/routes/vault.js
++++ b/ui/app/routes/vault.js
+@@ -39,8 +39,8 @@ export default Route.extend({
+   },
+ 
+   redirect(model, transition) {
+-    if (model.get('length') === 1 && transition.targetName === 'vault.index') {
+-      return this.transitionTo('vault.cluster', model.get('firstObject.name'));
++    if (model.length === 1 && transition.targetName === 'vault.index') {
++      return this.transitionTo('vault.cluster', model[0].name);
+     }
+   },
+ });
+diff --git a/ui/app/routes/vault/cluster.js b/ui/app/routes/vault/cluster.js
+index 45a4384..3538e10 100644
+--- a/ui/app/routes/vault/cluster.js
++++ b/ui/app/routes/vault/cluster.js
+@@ -43,14 +43,14 @@ export default ClusterBaseRoute.extend({
+ 
+   getClusterId(params) {
+     const { cluster_name } = params;
+-    const cluster = this.modelFor('vault').findBy('name', cluster_name);
+-    return cluster ? cluster.get('id') : null;
++    const cluster = this.modelFor('vault').find((x) => x.name === cluster_name);
++    return cluster ? cluster.id : null;
+   },
+ 
+   async beforeModel() {
+     const params = this.paramsFor(this.routeName);
+     let namespace = params.namespaceQueryParam;
+-    const currentTokenName = this.auth.get('currentTokenName');
++    const currentTokenName = this.auth.currentTokenName;
+     if (!namespace && currentTokenName && !Ember.testing) {
+       // if no namespace queryParam and user authenticated,
+       // use user's root namespace to redirect to properly param'd url
+diff --git a/ui/app/routes/vault/cluster/access/identity/show.js b/ui/app/routes/vault/cluster/access/identity/show.js
+index 5a4e36e..0c1c57e 100644
+--- a/ui/app/routes/vault/cluster/access/identity/show.js
++++ b/ui/app/routes/vault/cluster/access/identity/show.js
+@@ -29,7 +29,7 @@ export default Route.extend({
+     let model = this.store.peekRecord(modelType, params.item_id);
+ 
+     // if we don't have creationTime, we only have a partial model so reload
+-    if (model && !model.get('creationTime')) {
++    if (model && !model.creationTime) {
+       model = model.reload();
+     }
+ 
+@@ -50,14 +50,14 @@ export default Route.extend({
+     if (this.currentModel) {
+       next(() => {
+         /* eslint-disable-next-line ember/no-controller-access-in-routes */
+-        this.controller.get('model').reload();
++        this.controller.model.reload();
+       });
+     }
+   },
+ 
+   afterModel(resolvedModel) {
+     const { section, model } = resolvedModel;
+-    if (model.get('identityType') === 'group' && model.get('type') === 'internal' && section === 'aliases') {
++    if (model.identityType === 'group' && model.type === 'internal' && section === 'aliases') {
+       return this.transitionTo('vault.cluster.access.identity.show', model.id, 'details');
+     }
+   },
+diff --git a/ui/app/routes/vault/cluster/access/leases/index.js b/ui/app/routes/vault/cluster/access/leases/index.js
+index 01e74e2..30544a7 100644
+--- a/ui/app/routes/vault/cluster/access/leases/index.js
++++ b/ui/app/routes/vault/cluster/access/leases/index.js
+@@ -7,10 +7,7 @@ import Route from '@ember/routing/route';
+ 
+ export default Route.extend({
+   beforeModel(transition) {
+-    if (
+-      this.modelFor('vault.cluster.access.leases').get('canList') &&
+-      transition.targetName === this.routeName
+-    ) {
++    if (this.modelFor('vault.cluster.access.leases').canList && transition.targetName === this.routeName) {
+       return this.replaceWith('vault.cluster.access.leases.list-root');
+     } else {
+       return;
+diff --git a/ui/app/routes/vault/cluster/access/leases/list.js b/ui/app/routes/vault/cluster/access/leases/list.js
+index c6f951d..f3e44a2 100644
+--- a/ui/app/routes/vault/cluster/access/leases/list.js
++++ b/ui/app/routes/vault/cluster/access/leases/list.js
+@@ -24,7 +24,7 @@ export default Route.extend({
+ 
+   model(params) {
+     const prefix = params.prefix || '';
+-    if (this.modelFor('vault.cluster.access.leases').get('canList')) {
++    if (this.modelFor('vault.cluster.access.leases').canList) {
+       return hash({
+         leases: this.store
+           .lazyPaginatedQuery('lease', {
+@@ -73,7 +73,7 @@ export default Route.extend({
+       }
+       controller.setProperties({
+         filter: filter || '',
+-        page: model.leases.get('meta.currentPage'),
++        page: model.leases.meta.currentPage,
+       });
+     }
+   },
+@@ -91,7 +91,7 @@ export default Route.extend({
+ 
+       set(error, 'keyId', prefix);
+       /* eslint-disable-next-line ember/no-controller-access-in-routes */
+-      const hasModel = this.controllerFor(this.routeName).get('hasModel');
++      const hasModel = this.controllerFor(this.routeName).hasModel;
+       // only swallow the error if we have a previous model
+       if (hasModel && error.httpStatus === 404) {
+         this.set('has404', true);
+diff --git a/ui/app/routes/vault/cluster/access/method.js b/ui/app/routes/vault/cluster/access/method.js
+index ade257b..9fab864 100644
+--- a/ui/app/routes/vault/cluster/access/method.js
++++ b/ui/app/routes/vault/cluster/access/method.js
+@@ -15,7 +15,7 @@ export default Route.extend({
+   model(params) {
+     const { path } = params;
+     return this.store.findAll('auth-method').then((modelArray) => {
+-      const model = modelArray.findBy('id', path);
++      const model = modelArray.find((x) => x.id === path);
+       if (!model) {
+         const error = new AdapterError();
+         set(error, 'httpStatus', 404);
+diff --git a/ui/app/routes/vault/cluster/access/namespaces/index.js b/ui/app/routes/vault/cluster/access/namespaces/index.js
+index 9327720..8697369 100644
+--- a/ui/app/routes/vault/cluster/access/namespaces/index.js
++++ b/ui/app/routes/vault/cluster/access/namespaces/index.js
+@@ -60,7 +60,7 @@ export default Route.extend({
+   actions: {
+     error(error, transition) {
+       /* eslint-disable-next-line ember/no-controller-access-in-routes */
+-      const hasModel = this.controllerFor(this.routeName).get('hasModel');
++      const hasModel = this.controllerFor(this.routeName).hasModel;
+       if (hasModel && error.httpStatus === 404) {
+         this.set('has404', true);
+         transition.abort();
+diff --git a/ui/app/routes/vault/cluster/oidc-provider.js b/ui/app/routes/vault/cluster/oidc-provider.js
+index 712df4e..a708278 100644
+--- a/ui/app/routes/vault/cluster/oidc-provider.js
++++ b/ui/app/routes/vault/cluster/oidc-provider.js
+@@ -29,7 +29,7 @@ export default class VaultClusterOidcProviderRoute extends Route {
+   }
+ 
+   beforeModel(transition) {
+-    const currentToken = this.auth.get('currentTokenName');
++    const currentToken = this.auth.currentTokenName;
+     const qp = transition.to.queryParams;
+     // remove redirect_to if carried over from auth
+     qp.redirect_to = null;
+diff --git a/ui/app/routes/vault/cluster/policies/index.js b/ui/app/routes/vault/cluster/policies/index.js
+index 4469bd6..ff7aa5c 100644
+--- a/ui/app/routes/vault/cluster/policies/index.js
++++ b/ui/app/routes/vault/cluster/policies/index.js
+@@ -55,7 +55,7 @@ export default ClusterBaseRoute.extend({
+     controller.setProperties({
+       model,
+       filter: params.pageFilter || '',
+-      page: model.get('meta.currentPage') || 1,
++      page: model.meta.currentPage || 1,
+       policyType: this.policyType(),
+     });
+   },
+diff --git a/ui/app/routes/vault/cluster/secrets/backend.js b/ui/app/routes/vault/cluster/secrets/backend.js
+index 99a97b4..dea1d78 100644
+--- a/ui/app/routes/vault/cluster/secrets/backend.js
++++ b/ui/app/routes/vault/cluster/secrets/backend.js
+@@ -20,13 +20,13 @@ export default Route.extend({
+       })
+       .then((model) => {
+         if (model) {
+-          return model.get('firstObject');
++          return model[0];
+         }
+       });
+   },
+ 
+   afterModel(model, transition) {
+-    const path = model && model.get('path');
++    const path = model && model.path;
+     if (transition.targetName === this.routeName) {
+       return this.replaceWith('vault.cluster.secrets.backend.list-root', path);
+     }
+diff --git a/ui/app/routes/vault/cluster/secrets/backend/actions.js b/ui/app/routes/vault/cluster/secrets/backend/actions.js
+index cc9e12f..a07ddab 100644
+--- a/ui/app/routes/vault/cluster/secrets/backend/actions.js
++++ b/ui/app/routes/vault/cluster/secrets/backend/actions.js
+@@ -30,6 +30,6 @@ export default EditBase.extend({
+   setupController(controller, model) {
+     this._super(...arguments);
+     const { selectedAction } = this.paramsFor(this.routeName);
+-    controller.set('selectedAction', selectedAction || model.secret.get('supportedActions.firstObject'));
++    controller.set('selectedAction', selectedAction || model.secret.supportedActions[0]);
+   },
+ });
+diff --git a/ui/app/routes/vault/cluster/secrets/backend/credentials.js b/ui/app/routes/vault/cluster/secrets/backend/credentials.js
+index 343f26a..e1b48da 100644
+--- a/ui/app/routes/vault/cluster/secrets/backend/credentials.js
++++ b/ui/app/routes/vault/cluster/secrets/backend/credentials.js
+@@ -51,14 +51,14 @@ export default Route.extend({
+   async model(params) {
+     const role = params.secret;
+     const backendModel = this.backendModel();
+-    const backendPath = backendModel.get('id');
+-    const backendType = backendModel.get('type');
++    const backendPath = backendModel.id;
++    const backendType = backendModel.type;
+     const roleType = params.roleType;
+     let dbCred;
+     if (backendType === 'database') {
+       dbCred = await this.getDatabaseCredential(backendPath, role, roleType);
+     }
+-    if (!SUPPORTED_DYNAMIC_BACKENDS.includes(backendModel.get('type'))) {
++    if (!SUPPORTED_DYNAMIC_BACKENDS.includes(backendModel.type)) {
+       return this.transitionTo('vault.cluster.secrets.backend.list-root', backendPath);
+     }
+     return resolve({
+diff --git a/ui/app/routes/vault/cluster/secrets/backend/list.js b/ui/app/routes/vault/cluster/secrets/backend/list.js
+index 575b5b7..513a538 100644
+--- a/ui/app/routes/vault/cluster/secrets/backend/list.js
++++ b/ui/app/routes/vault/cluster/secrets/backend/list.js
+@@ -71,7 +71,7 @@ export default Route.extend({
+     const secretEngine = this.store.peekRecord('secret-engine', backend);
+     const type = secretEngine?.engineType;
+     assert('secretEngine.engineType is not defined', !!type);
+-    const engineRoute = allEngines().findBy('type', type)?.engineRoute;
++    const engineRoute = allEngines().find((x) => x.type === type)?.engineRoute;
+ 
+     if (!type || !SUPPORTED_BACKENDS.includes(type)) {
+       return this.router.transitionTo('vault.cluster.secrets');
+@@ -176,7 +176,7 @@ export default Route.extend({
+     const has404 = this.has404;
+     const noMetadataPermissions = this.noMetadataPermissions;
+     // only clear store cache if this is a new model
+-    if (secret !== controller.get('baseKey.id')) {
++    if (secret !== controller.baseKey?.id) {
+       this.store.clearAllDatasets();
+     }
+     controller.set('hasModel', true);
+@@ -187,7 +187,7 @@ export default Route.extend({
+       backend,
+       backendModel,
+       baseKey: { id: secret },
+-      backendType: backendModel.get('engineType'),
++      backendType: backendModel.engineType,
+     });
+     if (!has404) {
+       const pageFilter = secretParams.pageFilter;
+@@ -218,7 +218,7 @@ export default Route.extend({
+       const backend = this.enginePathParam();
+       const is404 = error.httpStatus === 404;
+       /* eslint-disable-next-line ember/no-controller-access-in-routes */
+-      const hasModel = this.controllerFor(this.routeName).get('hasModel');
++      const hasModel = this.controllerFor(this.routeName).hasModel;
+ 
+       // this will occur if we've deleted something,
+       // and navigate to its parent and the parent doesn't exist -
+diff --git a/ui/app/routes/vault/cluster/secrets/backend/secret-edit.js b/ui/app/routes/vault/cluster/secrets/backend/secret-edit.js
+index b27fac9..d114145 100644
+--- a/ui/app/routes/vault/cluster/secrets/backend/secret-edit.js
++++ b/ui/app/routes/vault/cluster/secrets/backend/secret-edit.js
+@@ -71,7 +71,7 @@ export default Route.extend({
+   },
+ 
+   backendType() {
+-    return this.modelFor('vault.cluster.secrets.backend').get('engineType');
++    return this.modelFor('vault.cluster.secrets.backend').engineType;
+   },
+ 
+   templateName: 'vault/cluster/secrets/backend/secretEditLayout',
+@@ -102,7 +102,7 @@ export default Route.extend({
+ 
+   modelType(backend, secret, options = {}) {
+     const backendModel = this.modelFor('vault.cluster.secrets.backend', backend);
+-    const type = backendModel.get('engineType');
++    const type = backendModel.engineType;
+     const types = {
+       database: secret && secret.startsWith('role/') ? 'database/role' : 'database/connection',
+       transit: 'transit-key',
+@@ -135,7 +135,7 @@ export default Route.extend({
+     const targetVersion = this.getTargetVersion(secretModel.currentVersion, params.version);
+ 
+     // if we have the metadata, a list of versions are part of the payload
+-    const version = secretModel.versions && secretModel.versions.findBy('version', targetVersion);
++    const version = secretModel.versions && secretModel.versions.find((x) => x.version === targetVersion);
+     // if it didn't fail the server read, and the version is not attached to the metadata,
+     // this should 404
+     if (!version && secretModel.failedServerRead !== true) {
+@@ -204,7 +204,7 @@ export default Route.extend({
+ 
+   handleSecretModelError(capabilities, secretId, modelType, error) {
+     // can't read the path and don't have update capability, so re-throw
+-    if (!capabilities.get('canUpdate') && modelType === 'secret') {
++    if (!capabilities.canUpdate && modelType === 'secret') {
+       throw error;
+     }
+     // don't have access to the metadata for v2 or the secret for v1,
+@@ -257,8 +257,8 @@ export default Route.extend({
+       // we've failed the read request, but if it's a kv-type backend, we want to
+       // do additional checks of the capabilities
+       if (err.httpStatus === 403 && (modelType === 'secret-v2' || modelType === 'secret')) {
+-        await capabilities;
+-        secretModel = this.handleSecretModelError(capabilities, secret, modelType, err);
++        const resolvedCapabilities = await capabilities;
++        secretModel = this.handleSecretModelError(resolvedCapabilities, secret, modelType, err);
+       } else {
+         throw err;
+       }
+@@ -281,7 +281,7 @@ export default Route.extend({
+     const backend = this.enginePathParam();
+     const preferAdvancedEdit =
+       /* eslint-disable-next-line ember/no-controller-access-in-routes */
+-      this.controllerFor('vault.cluster.secrets.backend').get('preferAdvancedEdit') || false;
++      this.controllerFor('vault.cluster.secrets.backend').preferAdvancedEdit || false;
+     const backendType = this.backendType();
+     model.secret.setProperties({ backend });
+     controller.setProperties({
+@@ -306,7 +306,7 @@ export default Route.extend({
+ 
+   unloadModel() {
+     /* eslint-disable-next-line ember/no-controller-access-in-routes */
+-    const model = this.controller.get('model');
++    const model = this.controller.model;
+     if (!model || !model.unloadRecord || model.isSaving) {
+       return;
+     }
+@@ -337,7 +337,7 @@ export default Route.extend({
+ 
+       let version, changed, changedKeys;
+       try {
+-        version = model.get('selectedVersion');
++        version = model.selectedVersion;
+         changed = model.changedAttributes();
+         changedKeys = Object.keys(changed);
+       } catch {
+diff --git a/ui/app/routes/vault/cluster/secrets/backend/sign.js b/ui/app/routes/vault/cluster/secrets/backend/sign.js
+index fe3b3cc..b38d98f 100644
+--- a/ui/app/routes/vault/cluster/secrets/backend/sign.js
++++ b/ui/app/routes/vault/cluster/secrets/backend/sign.js
+@@ -27,13 +27,13 @@ export default Route.extend({
+   model(params) {
+     const role = params.secret;
+     const backendModel = this.backendModel();
+-    const backend = backendModel.get('id');
++    const backend = backendModel.id;
+ 
+-    if (backendModel.get('type') !== 'ssh') {
++    if (backendModel.type !== 'ssh') {
+       return this.transitionTo('vault.cluster.secrets.backend.list-root', backend);
+     }
+     return this.store.queryRecord('capabilities', this.pathQuery(role, backend)).then((capabilities) => {
+-      if (!capabilities.get('canUpdate')) {
++      if (!capabilities.canUpdate) {
+         return this.transitionTo('vault.cluster.secrets.backend.list-root', backend);
+       }
+       return this.store.createRecord('ssh-sign', {
+diff --git a/ui/app/routes/vault/cluster/secrets/backend/versions.js b/ui/app/routes/vault/cluster/secrets/backend/versions.js
+index 1ef1039..8df189b 100644
+--- a/ui/app/routes/vault/cluster/secrets/backend/versions.js
++++ b/ui/app/routes/vault/cluster/secrets/backend/versions.js
+@@ -16,7 +16,7 @@ export default Route.extend({
+     const backendModel = this.modelFor('vault.cluster.secrets.backend');
+     const { secret } = this.paramsFor(this.routeName);
+     const parentKey = utils.parentKeyForKey(secret);
+-    if (backendModel.get('isV2KV')) {
++    if (backendModel.isV2KV) {
+       return;
+     }
+     if (parentKey) {
+diff --git a/ui/app/routes/vault/cluster/settings/auth/configure/index.js b/ui/app/routes/vault/cluster/settings/auth/configure/index.js
+index 5187879..b999e1b 100644
+--- a/ui/app/routes/vault/cluster/settings/auth/configure/index.js
++++ b/ui/app/routes/vault/cluster/settings/auth/configure/index.js
+@@ -9,7 +9,7 @@ import { tabsForAuthSection } from 'vault/helpers/tabs-for-auth-section';
+ export default Route.extend({
+   beforeModel() {
+     const model = this.modelFor('vault.cluster.settings.auth.configure');
+-    const section = tabsForAuthSection([model]).firstObject.routeParams.lastObject;
++    const section = tabsForAuthSection([model])[0].routeParams.lastObject;
+     return this.transitionTo('vault.cluster.settings.auth.configure.section', section);
+   },
+ });
+diff --git a/ui/app/routes/vault/cluster/settings/auth/configure/section.js b/ui/app/routes/vault/cluster/settings/auth/configure/section.js
+index bc3ff44..a15f14d 100644
+--- a/ui/app/routes/vault/cluster/settings/auth/configure/section.js
++++ b/ui/app/routes/vault/cluster/settings/auth/configure/section.js
+@@ -52,7 +52,7 @@ export default Route.extend({
+         section,
+       });
+     }
+-    const modelType = this.modelType(backend.get('type'), section);
++    const modelType = this.modelType(backend.type, section);
+     if (!modelType) {
+       const error = new AdapterError();
+       set(error, 'httpStatus', 404);
+diff --git a/ui/app/routes/vault/cluster/settings/configure-secret-backend.js b/ui/app/routes/vault/cluster/settings/configure-secret-backend.js
+index e7ceeb2..529807b 100644
+--- a/ui/app/routes/vault/cluster/settings/configure-secret-backend.js
++++ b/ui/app/routes/vault/cluster/settings/configure-secret-backend.js
+@@ -15,8 +15,8 @@ export default Route.extend({
+   model() {
+     const { backend } = this.paramsFor(this.routeName);
+     return this.store.query('secret-engine', { path: backend }).then((modelList) => {
+-      const model = modelList && modelList.get('firstObject');
+-      if (!model || !CONFIGURABLE_BACKEND_TYPES.includes(model.get('type'))) {
++      const model = modelList && modelList[0];
++      if (!model || !CONFIGURABLE_BACKEND_TYPES.includes(model.type)) {
+         const error = new AdapterError();
+         set(error, 'httpStatus', 404);
+         throw error;
+@@ -33,7 +33,7 @@ export default Route.extend({
+   },
+ 
+   afterModel(model) {
+-    const type = model.get('type');
++    const type = model.type;
+ 
+     if (type === 'aws') {
+       return this.store
+@@ -50,7 +50,7 @@ export default Route.extend({
+   },
+ 
+   setupController(controller, model) {
+-    if (model.get('publicKey')) {
++    if (model.publicKey) {
+       controller.set('configured', true);
+     }
+     return this._super(...arguments);
+diff --git a/ui/app/serializers/database/connection.js b/ui/app/serializers/database/connection.js
+index 2006015..40a96e3 100644
+--- a/ui/app/serializers/database/connection.js
++++ b/ui/app/serializers/database/connection.js
+@@ -11,10 +11,7 @@ export default RESTSerializer.extend({
+ 
+   serializeAttribute(snapshot, json, key, attributes) {
+     // Don't send values that are undefined
+-    if (
+-      undefined !== snapshot.attr(key) &&
+-      (snapshot.record.get('isNew') || snapshot.changedAttributes()[key])
+-    ) {
++    if (undefined !== snapshot.attr(key) && (snapshot.record.isNew || snapshot.changedAttributes()[key])) {
+       this._super(snapshot, json, key, attributes);
+     }
+   },
+diff --git a/ui/app/serializers/database/role.js b/ui/app/serializers/database/role.js
+index f5513c7..7437dfa 100644
+--- a/ui/app/serializers/database/role.js
++++ b/ui/app/serializers/database/role.js
+@@ -66,10 +66,7 @@ export default RESTSerializer.extend({
+ 
+   serializeAttribute(snapshot, json, key, attributes) {
+     // Don't send values that are undefined
+-    if (
+-      undefined !== snapshot.attr(key) &&
+-      (snapshot.record.get('isNew') || snapshot.changedAttributes()[key])
+-    ) {
++    if (undefined !== snapshot.attr(key) && (snapshot.record.isNew || snapshot.changedAttributes()[key])) {
+       this._super(snapshot, json, key, attributes);
+     }
+   },
+diff --git a/ui/app/serializers/secret-engine.js b/ui/app/serializers/secret-engine.js
+index f6e537d..f53201f 100644
+--- a/ui/app/serializers/secret-engine.js
++++ b/ui/app/serializers/secret-engine.js
+@@ -72,7 +72,7 @@ export default ApplicationSerializer.extend(EmbeddedRecordsMixin, {
+   },
+ 
+   serialize(snapshot) {
+-    const type = snapshot.record.get('engineType');
++    const type = snapshot.record.engineType;
+     const data = this._super(...arguments);
+     // move version back to options
+     data.options = data.version ? { version: data.version } : {};
+diff --git a/ui/app/services/auth.js b/ui/app/services/auth.js
+index 51682d5..ba68eae 100644
+--- a/ui/app/services/auth.js
++++ b/ui/app/services/auth.js
+@@ -119,7 +119,7 @@ export default Service.extend({
+     const stored = this.getTokenData(token);
+ 
+     return assign(stored, {
+-      backend: BACKENDS.findBy('type', backend),
++      backend: BACKENDS.find((x) => x.type === backend),
+     });
+   }),
+ 
+@@ -237,7 +237,7 @@ export default Service.extend({
+       backend = options.backend;
+     }
+ 
+-    const currentBackend = BACKENDS.findBy('type', backend);
++    const currentBackend = BACKENDS.find((x) => x.type === backend);
+     let displayName;
+     if (isArray(currentBackend.displayNamePath)) {
+       displayName = currentBackend.displayNamePath.map((name) => get(resp, name)).join('/');
+diff --git a/ui/app/services/console.js b/ui/app/services/console.js
+index 9b4d6bd..fb1bc35 100644
+--- a/ui/app/services/console.js
++++ b/ui/app/services/console.js
+@@ -58,7 +58,7 @@ export default Service.extend({
+     }
+     log.clear();
+     if (history) {
+-      log.addObjects(history);
++      log.push(...history);
+     }
+   },
+ 
+diff --git a/ui/app/services/csp-event.js b/ui/app/services/csp-event.js
+index da07e76..ed56fe1 100644
+--- a/ui/app/services/csp-event.js
++++ b/ui/app/services/csp-event.js
+@@ -4,13 +4,13 @@
+  */
+ 
+ import { computed } from '@ember/object';
+-
++import { A } from '@ember/array';
+ import Service from '@ember/service';
+ import { task, waitForEvent } from 'ember-concurrency';
+ 
+ export default Service.extend({
+   events: computed(function () {
+-    return [];
++    return A([]);
+   }),
+   connectionViolations: computed('events.@each.violatedDirective', function () {
+     return this.events.filter((e) => e.violatedDirective.startsWith('connect-src'));
+@@ -29,7 +29,7 @@ export default Service.extend({
+ 
+     while (true) {
+       const event = yield waitForEvent(window.document, 'securitypolicyviolation');
+-      this.events.addObject(event);
++      this.events.pushObject(event);
+     }
+   }),
+ });
+diff --git a/ui/app/services/wizard.js b/ui/app/services/wizard.js
+index c245f03..9aad9ea 100644
+--- a/ui/app/services/wizard.js
++++ b/ui/app/services/wizard.js
+@@ -101,8 +101,7 @@ export default Service.extend(DEFAULTS, {
+     } else {
+       if (this.featureMachineHistory) {
+         if (!this.featureMachineHistory.includes(state)) {
+-          const newHistory = this.featureMachineHistory.addObject(state);
+-          this.set('featureMachineHistory', newHistory);
++          this.featureMachineHistory.push(state);
+         } else {
+           //we're repeating steps
+           const stepIndex = this.featureMachineHistory.indexOf(state);
+@@ -293,7 +292,7 @@ export default Service.extend(DEFAULTS, {
+       return;
+     }
+     this.startFeature();
+-    const nextFeature = this.featureList.length > 1 ? capitalize(this.featureList.objectAt(1)) : 'Finish';
++    const nextFeature = this.featureList.length > 1 ? capitalize(this.featureList[1]) : 'Finish';
+     this.set('nextFeature', nextFeature);
+     let next;
+     if (this.currentMachine === 'secrets' && this.featureState === 'display') {
+@@ -311,9 +310,9 @@ export default Service.extend(DEFAULTS, {
+   },
+ 
+   startFeature() {
+-    const FeatureMachineConfig = MACHINES[this.featureList.objectAt(0)];
++    const FeatureMachineConfig = MACHINES[this.featureList[0]];
+     FeatureMachine = Machine(FeatureMachineConfig);
+-    this.set('currentMachine', this.featureList.objectAt(0));
++    this.set('currentMachine', this.featureList[0]);
+     if (this.storageHasKey(FEATURE_STATE)) {
+       this.saveState('featureState', this.getExtState(FEATURE_STATE));
+     } else {
+@@ -324,7 +323,7 @@ export default Service.extend(DEFAULTS, {
+ 
+   getCompletedFeatures() {
+     if (this.storageHasKey(COMPLETED_FEATURES)) {
+-      return this.getExtState(COMPLETED_FEATURES).toArray();
++      return [...this.getExtState(COMPLETED_FEATURES)];
+     }
+     return [];
+   },
+@@ -337,7 +336,7 @@ export default Service.extend(DEFAULTS, {
+       completed.push(done);
+       this.saveExtState(COMPLETED_FEATURES, completed);
+     } else {
+-      this.saveExtState(COMPLETED_FEATURES, this.getExtState(COMPLETED_FEATURES).toArray().addObject(done));
++      this.saveExtState(COMPLETED_FEATURES, [...new Set([...this.getExtState(COMPLETED_FEATURES), done])]);
+     }
+ 
+     this.saveExtState(FEATURE_LIST, features.length ? features : null);
+diff --git a/ui/app/templates/components/mfa/mfa-form.hbs b/ui/app/templates/components/mfa/mfa-form.hbs
+index f7b08c0..ccc47a7 100644
+--- a/ui/app/templates/components/mfa/mfa-form.hbs
++++ b/ui/app/templates/components/mfa/mfa-form.hbs
+@@ -38,7 +38,7 @@
+                 placeholder={{if (gt constraint.methods.length 1) "Enter passcode"}}
+                 spellcheck="false"
+                 autofocus="true"
+-                disabled={{or this.validate.isRunning this.newCodeDelay.isRunning}}
++                disabled={{or this.validate.isRunning this.countdown}}
+                 @value={{constraint.passcode}}
+                 data-test-mfa-passcode={{index}}
+               />
+@@ -51,7 +51,7 @@
+           {{/if}}
+         {{/each}}
+       </div>
+-      {{#if this.newCodeDelay.isRunning}}
++      {{#if this.countdown}}
+         <div>
+           <AlertInline @type="danger" @sizeSmall={{true}} @message={{this.codeDelayMessage}} />
+         </div>
+@@ -59,13 +59,13 @@
+       <button
+         id="validate"
+         type="submit"
+-        disabled={{or this.validate.isRunning this.newCodeDelay.isRunning}}
++        disabled={{or this.validate.isRunning this.countdown}}
+         class="button is-primary {{if this.validate.isRunning 'is-loading'}}"
+         data-test-mfa-validate
+       >
+         Verify
+       </button>
+-      {{#if this.newCodeDelay.isRunning}}
++      {{#if this.countdown}}
+         <Icon @name="delay" class="has-text-grey" />
+         <span class="has-text-grey is-v-centered" data-test-mfa-countdown>{{this.countdown}}</span>
+       {{/if}}
+diff --git a/ui/app/utils/field-to-attrs.js b/ui/app/utils/field-to-attrs.js
+index 0f87d27..3d7bdcd 100644
+--- a/ui/app/utils/field-to-attrs.js
++++ b/ui/app/utils/field-to-attrs.js
+@@ -56,7 +56,7 @@ export const expandAttributeMeta = function (modelClass, attributeNames) {
+       });
+     }
+     // lookup attr and return meta
+-    return modelAttrs[klass.modelName].findBy('name', attrKey);
++    return modelAttrs[klass.modelName].find((x) => x.name === attrKey);
+   };
+ 
+   return fields.map((field) => {
+diff --git a/ui/lib/core/addon/components/edit-form.js b/ui/lib/core/addon/components/edit-form.js
+index c409fde..e4e214b 100644
+--- a/ui/lib/core/addon/components/edit-form.js
++++ b/ui/lib/core/addon/components/edit-form.js
+@@ -69,7 +69,7 @@ export default Component.extend({
+     this._super(...arguments);
+     const { model } = this;
+     if (!model) return;
+-    if ((model.get('isDirty') && !model.isDestroyed) || !model.isDestroying) {
++    if ((model.isDirty && !model.isDestroyed) || !model.isDestroying) {
+       model.rollbackAttributes();
+     }
+   },
+diff --git a/ui/lib/core/addon/components/icon.js b/ui/lib/core/addon/components/icon.js
+index b9b3b6d..e9ff469 100644
+--- a/ui/lib/core/addon/components/icon.js
++++ b/ui/lib/core/addon/components/icon.js
+@@ -6,7 +6,7 @@
+ import Component from '@glimmer/component';
+ import { assert } from '@ember/debug';
+ import flightIconMap from '@hashicorp/flight-icons/catalog.json';
+-const flightIconNames = flightIconMap.assets.mapBy('iconName').uniq();
++const flightIconNames = flightIconMap.assets.map((x) => x.iconName).uniq();
+ 
+ /**
+  * @module Icon
+diff --git a/ui/lib/core/addon/components/info-table-item-array.js b/ui/lib/core/addon/components/info-table-item-array.js
+index 2b78184..aa4e65c 100644
+--- a/ui/lib/core/addon/components/info-table-item-array.js
++++ b/ui/lib/core/addon/components/info-table-item-array.js
+@@ -80,7 +80,7 @@ export default class InfoTableItemArray extends Component {
+         }
+       });
+ 
+-      this.allOptions = modelRecords ? modelRecords.mapBy('id') : null;
++      this.allOptions = modelRecords ? modelRecords.map((x) => x.id) : null;
+       if (this.args.renderItemName && modelRecords) {
+         modelRecords.forEach(({ id, name }) => {
+           // create key/value pair { item-id: item-name } for each record
+diff --git a/ui/lib/core/addon/components/kv-object-editor.js b/ui/lib/core/addon/components/kv-object-editor.js
+index f95b3dd..2fff6be 100644
+--- a/ui/lib/core/addon/components/kv-object-editor.js
++++ b/ui/lib/core/addon/components/kv-object-editor.js
+@@ -45,7 +45,7 @@ export default class KvObjectEditor extends Component {
+     };
+   }
+   get hasDuplicateKeys() {
+-    return this.kvData.uniqBy('name').length !== this.kvData.get('length');
++    return this.kvData.uniqBy('name').length !== this.kvData.length;
+   }
+ 
+   // fired on did-insert from render modifier
+@@ -56,7 +56,7 @@ export default class KvObjectEditor extends Component {
+   }
+   @action
+   addRow() {
+-    if (!isNone(this.kvData.findBy('name', ''))) {
++    if (!isNone(this.kvData.find((x) => x.name === ''))) {
+       return;
+     }
+     const newObj = { name: '', value: '' };
+diff --git a/ui/lib/core/addon/components/object-list-input.js b/ui/lib/core/addon/components/object-list-input.js
+index 96fe498..75bd32a 100644
+--- a/ui/lib/core/addon/components/object-list-input.js
++++ b/ui/lib/core/addon/components/object-list-input.js
+@@ -65,7 +65,7 @@ export default class ObjectListInput extends Component {
+ 
+   @action
+   handleInput(idx, { target }) {
+-    const inputObj = this.inputList.objectAt(idx);
++    const inputObj = this.inputList[idx];
+     inputObj[target.name] = target.value;
+     this.handleChange();
+   }
+@@ -79,8 +79,7 @@ export default class ObjectListInput extends Component {
+ 
+   @action
+   removeRow(idx) {
+-    const row = this.inputList.objectAt(idx);
+-    this.inputList.removeObject(row);
++    this.inputList = this.inputList.filter((_, i) => i !== idx);
+     this.handleChange();
+   }
+ 
+@@ -88,7 +87,7 @@ export default class ObjectListInput extends Component {
+   handleChange() {
+     // disable/enable "add" button based on last row
+     const lastObject = this.inputList[this.inputList.length - 1];
+-    this.disableAdd = Object.values(lastObject).any((input) => input === '') ? true : false;
++    this.disableAdd = Object.values(lastObject).some((input) => input === '') ? true : false;
+ 
+     // don't send an empty last object to parent
+     if (Object.values(lastObject).every((input) => input === '')) {
+diff --git a/ui/lib/core/addon/components/search-select-with-modal.js b/ui/lib/core/addon/components/search-select-with-modal.js
+index f51ddcc..3e30509 100644
+--- a/ui/lib/core/addon/components/search-select-with-modal.js
++++ b/ui/lib/core/addon/components/search-select-with-modal.js
+@@ -69,7 +69,7 @@ export default class SearchSelectWithModal extends Component {
+ 
+   addSearchText(optionsToFormat) {
+     // maps over array models from query
+-    return optionsToFormat.toArray().map((option) => {
++    return [...optionsToFormat].map((option) => {
+       option.searchText = `${option.name} ${option.id}`;
+       return option;
+     });
+@@ -79,7 +79,7 @@ export default class SearchSelectWithModal extends Component {
+     // inputValues are initially an array of strings from @inputValue
+     // map over so selectedOptions are objects
+     return inputValues.map((option) => {
+-      const matchingOption = this.dropdownOptions.findBy('id', option);
++      const matchingOption = this.dropdownOptions.find((x) => x.id === option);
+       // remove any matches from dropdown list
+       this.dropdownOptions.removeObject(matchingOption);
+       return {
+@@ -131,7 +131,7 @@ export default class SearchSelectWithModal extends Component {
+ 
+   @action
+   handleChange() {
+-    if (this.selectedOptions.length && typeof this.selectedOptions.firstObject === 'object') {
++    if (this.selectedOptions.length && typeof this.selectedOptions[0] === 'object') {
+       this.args.onChange(Array.from(this.selectedOptions, (option) => option.id));
+     } else {
+       this.args.onChange(this.selectedOptions);
+@@ -139,12 +139,12 @@ export default class SearchSelectWithModal extends Component {
+   }
+ 
+   shouldShowCreate(id, searchResults) {
+-    if (searchResults && searchResults.length && searchResults.firstObject.groupName) {
+-      return !searchResults.some((group) => group.options.findBy('id', id));
++    if (searchResults && searchResults.length && searchResults[0].groupName) {
++      return !searchResults.some((group) => group.options.find((x) => x.id === id));
+     }
+     const existingOption =
+       this.dropdownOptions &&
+-      (this.dropdownOptions.findBy('id', id) || this.dropdownOptions.findBy('name', id));
++      (this.dropdownOptions.find((x) => x.id === id) || this.dropdownOptions.find((x) => x.name === id));
+     return !existingOption;
+   }
+ 
+diff --git a/ui/lib/core/addon/components/search-select.js b/ui/lib/core/addon/components/search-select.js
+index 9e5e1e3..fb4812f 100644
+--- a/ui/lib/core/addon/components/search-select.js
++++ b/ui/lib/core/addon/components/search-select.js
+@@ -94,7 +94,7 @@ export default class SearchSelect extends Component {
+ 
+   addSearchText(optionsToFormat) {
+     // maps over array of objects or response from query
+-    return optionsToFormat.toArray().map((option) => {
++    return [...optionsToFormat].map((option) => {
+       const id = option[this.idKey] ? option[this.idKey] : option.id;
+       option.searchText = `${option[this.nameKey]} ${id}`;
+       return option;
+@@ -164,7 +164,7 @@ export default class SearchSelect extends Component {
+         const options = yield this.store.query(modelType, queryParams);
+ 
+         // store both select + unselected options in tracked property used by wildcard filter
+-        this.allOptions = [...this.allOptions, ...options.mapBy('id')];
++        this.allOptions = [...this.allOptions, ...options.map((x) => x.id)];
+ 
+         // add to dropdown options
+         this.dropdownOptions = [...this.dropdownOptions, ...this.addSearchText(options)];
+@@ -190,7 +190,7 @@ export default class SearchSelect extends Component {
+ 
+   @action
+   handleChange() {
+-    if (this.selectedOptions.length && typeof this.selectedOptions.firstObject === 'object') {
++    if (this.selectedOptions.length && typeof this.selectedOptions[0] === 'object') {
+       this.args.onChange(
+         Array.from(this.selectedOptions, (option) =>
+           this.args.passObject ? this.customizeObject(option) : option.id
+@@ -202,12 +202,12 @@ export default class SearchSelect extends Component {
+   }
+ 
+   shouldShowCreate(id, searchResults) {
+-    if (searchResults && searchResults.length && searchResults.firstObject.groupName) {
+-      return !searchResults.some((group) => group.options.findBy('id', id));
++    if (searchResults && searchResults.length && searchResults[0].groupName) {
++      return !searchResults.some((group) => group.options.find((x) => x.id === id));
+     }
+     const existingOption =
+       this.dropdownOptions &&
+-      (this.dropdownOptions.findBy('id', id) || this.dropdownOptions.findBy('name', id));
++      (this.dropdownOptions.find((x) => x.id === id) || this.dropdownOptions.find((x) => x.name === id));
+     if (this.args.disallowNewItems && !existingOption) {
+       return false;
+     }
+@@ -273,8 +273,8 @@ export default class SearchSelect extends Component {
+     }
+     if (this.args.search) {
+       return resolve(this.args.search(term, select)).then((results) => {
+-        if (results.toArray) {
+-          results = results.toArray();
++        if (results && !Array.isArray(results)) {
++          results = Array.from(results);
+         }
+         this.addCreateOption(term, results);
+         return results;
+diff --git a/ui/lib/core/addon/components/string-list.js b/ui/lib/core/addon/components/string-list.js
+index 8924f65..28c6030 100644
+--- a/ui/lib/core/addon/components/string-list.js
++++ b/ui/lib/core/addon/components/string-list.js
+@@ -70,7 +70,7 @@ export default class StringList extends Component {
+   }
+ 
+   toVal() {
+-    const inputs = this.inputList.filter((x) => x.value).mapBy('value');
++    const inputs = this.inputList.filter((x) => x.value).map((x) => x.value);
+     if (this.args.type === 'string') {
+       return inputs.join(',');
+     }
+@@ -102,7 +102,7 @@ export default class StringList extends Component {
+   @action
+   addInput() {
+     const inputList = this.inputList;
+-    if (inputList.get('lastObject.value') !== '') {
++    if (inputList.objectAt(inputList.length - 1)?.value !== '') {
+       inputList.pushObject({ value: '' });
+     }
+   }
+diff --git a/ui/lib/core/addon/helpers/is-active-route.js b/ui/lib/core/addon/helpers/is-active-route.js
+index b101b42..14820a7 100644
+--- a/ui/lib/core/addon/helpers/is-active-route.js
++++ b/ui/lib/core/addon/helpers/is-active-route.js
+@@ -21,8 +21,8 @@ export default Helper.extend({
+ 
+   compute([routeName, model], { isExact }) {
+     const router = this.router;
+-    const currentRoute = router.get('currentRouteName');
+-    let currentURL = router.get('currentURL');
++    const currentRoute = router.currentRouteName;
++    let currentURL = router.currentURL;
+     // if we have any query params we want to discard them
+     currentURL = currentURL?.split('?')[0];
+     const comparator = isExact ? exact : startsWith;
+diff --git a/ui/lib/core/addon/helpers/options-for-backend.js b/ui/lib/core/addon/helpers/options-for-backend.js
+index e12a667..fe915f2 100644
+--- a/ui/lib/core/addon/helpers/options-for-backend.js
++++ b/ui/lib/core/addon/helpers/options-for-backend.js
+@@ -191,7 +191,9 @@ export function optionsForBackend(backend, tab, isEngine) {
+   let backendOptions;
+   if (selected && selected.tabs) {
+     const tabData =
+-      selected.tabs.findBy('name', tab) || selected.tabs.findBy('modelPrefix', tab) || selected.tabs[0];
++      selected.tabs.find((x) => x.name === tab) ||
++      selected.tabs.find((x) => x.modelPrefix === tab) ||
++      selected.tabs[0];
+     backendOptions = { ...selected, ...tabData };
+   } else if (selected) {
+     backendOptions = selected;
+diff --git a/ui/lib/core/addon/utils/search-select-has-many.js b/ui/lib/core/addon/utils/search-select-has-many.js
+index 44357e8..034e6df 100644
+--- a/ui/lib/core/addon/utils/search-select-has-many.js
++++ b/ui/lib/core/addon/utils/search-select-has-many.js
+@@ -22,17 +22,21 @@
+ 
+ export default function handleHasManySelection(selectedIds, modelCollection, store, modelRecord) {
+   // first check for existing models that have been removed from selection
+-  modelCollection.forEach((model) => {
+-    if (!selectedIds.includes(model.id)) {
+-      modelCollection.removeObject(model);
++  const toRemove = modelCollection.filter((model) => !selectedIds.includes(model.id));
++  toRemove.forEach((model) => {
++    const idx = modelCollection.indexOf(model);
++    if (idx !== -1) {
++      modelCollection.splice(idx, 1);
+     }
+   });
+   // now check for selected items that don't exist and add them to the model
+-  const modelIds = modelCollection.mapBy('id');
++  const modelIds = modelCollection.map((x) => x.id);
+   selectedIds.forEach((id) => {
+     if (!modelIds.includes(id)) {
+       const model = store.peekRecord(modelRecord, id);
+-      modelCollection.addObject(model);
++      if (!modelCollection.includes(model)) {
++        modelCollection.push(model);
++      }
+     }
+   });
+ }
+diff --git a/ui/lib/kubernetes/addon/components/page/role/create-and-edit.js b/ui/lib/kubernetes/addon/components/page/role/create-and-edit.js
+index 2337716..4aa5e4e 100644
+--- a/ui/lib/kubernetes/addon/components/page/role/create-and-edit.js
++++ b/ui/lib/kubernetes/addon/components/page/role/create-and-edit.js
+@@ -99,11 +99,11 @@ export default class CreateAndEditRolePageComponent extends Component {
+     this.selectedTemplateId = '1';
+ 
+     if (generatedRoleRules) {
+-      const template = rulesTemplates.findBy('rules', generatedRoleRules);
++      const template = rulesTemplates.find((x) => x.rules === generatedRoleRules);
+       if (template) {
+         this.selectedTemplateId = template.id;
+       } else {
+-        rulesTemplates.findBy('id', '1').rules = generatedRoleRules;
++        rulesTemplates.find((x) => x.id === '1').rules = generatedRoleRules;
+       }
+     }
+     this.roleRulesTemplates = rulesTemplates;
+@@ -134,7 +134,7 @@ export default class CreateAndEditRolePageComponent extends Component {
+   *save() {
+     try {
+       // set generatedRoleRoles to value of selected template
+-      const selectedTemplate = this.roleRulesTemplates?.findBy('id', this.selectedTemplateId);
++      const selectedTemplate = this.roleRulesTemplates?.find((x) => x.id === this.selectedTemplateId);
+       if (selectedTemplate) {
+         this.args.model.generatedRoleRules = selectedTemplate.rules;
+       }
+diff --git a/ui/lib/kubernetes/addon/components/page/roles.js b/ui/lib/kubernetes/addon/components/page/roles.js
+index b0e9ad6..c1abf69 100644
+--- a/ui/lib/kubernetes/addon/components/page/roles.js
++++ b/ui/lib/kubernetes/addon/components/page/roles.js
+@@ -30,7 +30,10 @@ export default class RolesPageComponent extends Component {
+     try {
+       const message = `Successfully deleted role ${model.name}`;
+       await model.destroyRecord();
+-      this.args.roles.removeObject(model);
++      const idx = this.args.roles.indexOf(model);
++      if (idx !== -1) {
++        this.args.roles.splice(idx, 1);
++      }
+       this.flashMessages.success(message);
+     } catch (error) {
+       const message = errorMessage(error, 'Error deleting role. Please try again or contact support');
+diff --git a/ui/lib/open-api-explorer/addon/components/swagger-ui.js b/ui/lib/open-api-explorer/addon/components/swagger-ui.js
+index caeecc6..e46a6d5 100644
+--- a/ui/lib/open-api-explorer/addon/components/swagger-ui.js
++++ b/ui/lib/open-api-explorer/addon/components/swagger-ui.js
+@@ -14,18 +14,15 @@ const SearchFilterPlugin = () => {
+   return {
+     fn: {
+       opsFilter: (taggedOps, phrase) => {
+-        // map over the options and filter out operations where the path doesn't match what's typed
+-        return (
+-          taggedOps
+-            .map((tagObj) => {
+-              const operations = tagObj.get('operations').filter((operationObj) => {
+-                return operationObj.get('path').includes(phrase);
+-              });
+-              return tagObj.set('operations', operations);
+-            })
+-            // then traverse again and remove the top level item if there are no operations left after filtering
+-            .filter((tagObj) => !!tagObj.get('operations').size)
+-        );
++        // filter each tag's operations by path, then drop tags with no remaining operations.
++        return taggedOps
++          .map((tagVal) =>
++            tagVal.set(
++              'operations',
++              tagVal.get('operations').filter((op) => op.get('path').includes(phrase))
++            )
++          )
++          .filter((tagVal) => tagVal.get('operations').size > 0);
+       },
+     },
+   };
+diff --git a/ui/lib/pki/addon/components/pki-generate-csr.ts b/ui/lib/pki/addon/components/pki-generate-csr.ts
+index bcead09..0fc5a0e 100644
+--- a/ui/lib/pki/addon/components/pki-generate-csr.ts
++++ b/ui/lib/pki/addon/components/pki-generate-csr.ts
+@@ -74,7 +74,7 @@ export default class PkiGenerateCsrComponent extends Component<Args> {
+   async getCapability(): Promise<boolean> {
+     try {
+       const issuerCapabilities = await this.args.model.generateIssuerCsrPath;
+-      return issuerCapabilities.get('canCreate') === true;
++      return issuerCapabilities.canCreate === true;
+     } catch {
+       return false;
+     }
+diff --git a/ui/lib/pki/addon/components/pki-issuer-cross-sign.js b/ui/lib/pki/addon/components/pki-issuer-cross-sign.js
+index 7d0609b..324f745 100644
+--- a/ui/lib/pki/addon/components/pki-issuer-cross-sign.js
++++ b/ui/lib/pki/addon/components/pki-issuer-cross-sign.js
+@@ -92,9 +92,12 @@ export default class PkiIssuerCrossSign extends Component {
+ 
+       // for cross-signing error handling we want to record the list of issuers before the process starts
+       this.intermediateIssuers[intermediateMount] = issuers;
+-      this.validationErrors.addObject({
++      const obj = {
+         newCrossSignedIssuer: this.nameValidation(newCrossSignedIssuer, issuers),
+-      });
++      };
++      if (!this.validationErrors.includes(obj)) {
++        this.validationErrors.push(obj);
++      }
+     }
+     if (this.validationErrors.any((row) => !row.newCrossSignedIssuer.isValid)) return;
+ 
+@@ -109,13 +112,16 @@ export default class PkiIssuerCrossSign extends Component {
+           intermediateIssuer,
+           newCrossSignedIssuer
+         );
+-        this.signedIssuers.addObject({ ...data, hasError: false });
++        this.signedIssuers = [...this.signedIssuers, { ...data, hasError: false }];
+       } catch (error) {
+-        this.signedIssuers.addObject({
+-          ...this.formData[row],
+-          hasError: errorMessage(error),
+-          hasUnsupportedParams: error.cause ? error.cause.map((e) => e.message).join(', ') : null,
+-        });
++        this.signedIssuers = [
++          ...this.signedIssuers,
++          {
++            ...this.formData[row],
++            hasError: errorMessage(error),
++            hasUnsupportedParams: error.cause ? error.cause.map((e) => e.message).join(', ') : null,
++          },
++        ];
+       }
+     }
+   }
+diff --git a/ui/lib/pki/addon/components/pki-key-parameters.ts b/ui/lib/pki/addon/components/pki-key-parameters.ts
+index 3313dc7..e1ea070 100644
+--- a/ui/lib/pki/addon/components/pki-key-parameters.ts
++++ b/ui/lib/pki/addon/components/pki-key-parameters.ts
+@@ -56,7 +56,7 @@ export default class PkiKeyParameters extends Component<Args> {
+ 
+     if (name === 'keyType' && Object.keys(KEY_BITS_OPTIONS)?.includes(selection)) {
+       const bitOptions = KEY_BITS_OPTIONS[selection as keyof TypeOptions];
+-      this.args.model.keyBits = bitOptions?.firstObject;
++      this.args.model.keyBits = bitOptions?.[0];
+     }
+   }
+ 
+diff --git a/ui/lib/pki/addon/routes/configuration/index.js b/ui/lib/pki/addon/routes/configuration/index.js
+index e81a520..ece5c0d 100644
+--- a/ui/lib/pki/addon/routes/configuration/index.js
++++ b/ui/lib/pki/addon/routes/configuration/index.js
+@@ -15,7 +15,7 @@ export default class ConfigurationIndexRoute extends Route {
+   async fetchMountConfig(backend) {
+     const mountConfig = await this.store.query('secret-engine', { path: backend });
+     if (mountConfig) {
+-      return mountConfig.get('firstObject');
++      return mountConfig[0];
+     }
+   }
+ 
+diff --git a/ui/mirage/handlers/kubernetes.js b/ui/mirage/handlers/kubernetes.js
+index a646519..0d83fc8 100644
+--- a/ui/mirage/handlers/kubernetes.js
++++ b/ui/mirage/handlers/kubernetes.js
+@@ -56,7 +56,7 @@ export default function (server) {
+   server.get('/:path/roles', (schema) => {
+     return {
+       data: {
+-        keys: schema.db.kubernetesRoles.where({}).mapBy('name'),
++        keys: schema.db.kubernetesRoles.where({}).map((x) => x.name),
+       },
+     };
+   });
+diff --git a/ui/mirage/handlers/mfa-config.js b/ui/mirage/handlers/mfa-config.js
+index 6771692..ff07506 100644
+--- a/ui/mirage/handlers/mfa-config.js
++++ b/ui/mirage/handlers/mfa-config.js
+@@ -38,7 +38,7 @@ export default function (server) {
+     let records = [];
+     if (isMethod) {
+       methods.forEach((method) => {
+-        records.addObjects(schema.db[dbKeyFromType(method)].where({}));
++        records = [...new Set([...records, ...schema.db[dbKeyFromType(method)].where({})])];
+       });
+     } else {
+       records = schema.db.mfaLoginEnforcements.where({});
+@@ -50,7 +50,7 @@ export default function (server) {
+           records.push(server.create(`mfa-${type}-method`));
+         });
+       } else {
+-        records = server.createList('mfa-login-enforcement', 4).toArray();
++        records = [...server.createList('mfa-login-enforcement', 4)];
+       }
+     }
+     const dataKey = isMethod ? 'id' : 'name';
+diff --git a/ui/tests/acceptance/access/methods-test.js b/ui/tests/acceptance/access/methods-test.js
+index 829059b..a5465a4 100644
+--- a/ui/tests/acceptance/access/methods-test.js
++++ b/ui/tests/acceptance/access/methods-test.js
+@@ -47,7 +47,7 @@ module('Acceptance | auth-methods list view', function (hooks) {
+     // filter by auth type
+ 
+     await clickTrigger('#filter-by-auth-type');
+-    await searchSelect.options.objectAt(1).click();
++    await searchSelect.options[1].click();
+ 
+     const rows = document.querySelectorAll('[data-test-auth-backend-link]');
+     const rowsUserpass = Array.from(rows).filter((row) => row.innerText.includes('userpass'));
+@@ -56,14 +56,14 @@ module('Acceptance | auth-methods list view', function (hooks) {
+ 
+     // filter by name
+     await clickTrigger('#filter-by-auth-name');
+-    const firstItemToSelect = searchSelect.options.objectAt(0).text;
+-    await searchSelect.options.objectAt(0).click();
++    const firstItemToSelect = searchSelect.options[0].text;
++    await searchSelect.options[0].click();
+     const singleRow = document.querySelectorAll('[data-test-auth-backend-link]');
+ 
+     assert.strictEqual(singleRow.length, 1, 'returns only one row');
+     assert.dom(singleRow[0]).includesText(firstItemToSelect, 'shows the filtered by auth name');
+     // clear filter by engine name
+-    await searchSelect.deleteButtons.objectAt(1).click();
++    await searchSelect.deleteButtons[1].click();
+     const rowsAgain = document.querySelectorAll('[data-test-auth-backend-link]');
+     assert.ok(rowsAgain.length > 1, 'filter has been removed');
+ 
+diff --git a/ui/tests/acceptance/auth-test.js b/ui/tests/acceptance/auth-test.js
+index e013129..15fa319 100644
+--- a/ui/tests/acceptance/auth-test.js
++++ b/ui/tests/acceptance/auth-test.js
+@@ -8,6 +8,7 @@ import { module, test } from 'qunit';
+ import { setupApplicationTest } from 'ember-qunit';
+ import sinon from 'sinon';
+ import { click, currentURL, visit, waitUntil, find, settled } from '@ember/test-helpers';
++import { _cancelTimers as cancelTimers } from '@ember/runloop';
+ import { supportedAuthBackends } from 'vault/helpers/supported-auth-backends';
+ import authForm from '../pages/components/auth-form';
+ import jwtForm from '../pages/components/auth-jwt';
+@@ -32,6 +33,7 @@ module('Acceptance | auth', function (hooks) {
+   });
+ 
+   hooks.afterEach(async function () {
++    cancelTimers();
+     this.clock.restore();
+     this.server.shutdown();
+     await logout.visit();
+@@ -43,7 +45,7 @@ module('Acceptance | auth', function (hooks) {
+     assert.expect(backends.length + 1);
+     await visit('/vault/auth');
+     assert.strictEqual(currentURL(), '/vault/auth?with=token');
+-    for (const backend of backends.reverse()) {
++    for (const backend of [...backends].reverse()) {
+       await component.selectMethod(backend.type);
+       assert.strictEqual(
+         currentURL(),
+@@ -56,7 +58,8 @@ module('Acceptance | auth', function (hooks) {
+   test('it clears token when changing selected auth method', async function (assert) {
+     await visit('/vault/auth');
+     assert.strictEqual(currentURL(), '/vault/auth?with=token');
+-    await component.token('token').selectMethod('github');
++    await component.token('token');
++    await component.selectMethod('userpass');
+     await component.selectMethod('token');
+     assert.strictEqual(component.tokenValue, '', 'it clears the token value when toggling methods');
+   });
+@@ -65,7 +68,7 @@ module('Acceptance | auth', function (hooks) {
+     assert.expect(6);
+     const backends = supportedAuthBackends();
+     await visit('/vault/auth');
+-    for (const backend of backends.reverse()) {
++    for (const backend of [...backends].reverse()) {
+       await component.selectMethod(backend.type);
+       if (backend.type === 'github') {
+         await component.token('token');
+diff --git a/ui/tests/acceptance/console-test.js b/ui/tests/acceptance/console-test.js
+index 196c086..2ed2d01 100644
+--- a/ui/tests/acceptance/console-test.js
++++ b/ui/tests/acceptance/console-test.js
+@@ -16,8 +16,9 @@ const consoleComponent = create(consoleClass);
+ module('Acceptance | console', function (hooks) {
+   setupApplicationTest(hooks);
+ 
+-  hooks.beforeEach(function () {
+-    return authPage.login();
++  hooks.beforeEach(async function () {
++    await authPage.login();
++    await settled();
+   });
+ 
+   skip("refresh reloads the current route's data", async function (assert) {
+diff --git a/ui/tests/acceptance/init-test.js b/ui/tests/acceptance/init-test.js
+index b3b49c2..a124113 100644
+--- a/ui/tests/acceptance/init-test.js
++++ b/ui/tests/acceptance/init-test.js
+@@ -116,7 +116,11 @@ module('Acceptance | init', function (hooks) {
+       'shows all of the recovery keys'
+     );
+     assert.strictEqual(initPage.buttonText, 'Continue to Authenticate', 'links to authenticate');
+-    assertRequest(this.server.handledRequests.findBy('url', '/v1/sys/init'), assert, true);
++    assertRequest(
++      this.server.handledRequests.find((x) => x.url === '/v1/sys/init'),
++      assert,
++      true
++    );
+   });
+ 
+   test('shamir seal init', async function (assert) {
+@@ -129,6 +133,10 @@ module('Acceptance | init', function (hooks) {
+ 
+     assert.strictEqual(initPage.keys.length, SEAL_RESPONSE.keys.length, 'shows all of the recovery keys');
+     assert.strictEqual(initPage.buttonText, 'Continue to Unseal', 'links to unseal');
+-    assertRequest(this.server.handledRequests.findBy('url', '/v1/sys/init'), assert, false);
++    assertRequest(
++      this.server.handledRequests.find((x) => x.url === '/v1/sys/init'),
++      assert,
++      false
++    );
+   });
+ });
+diff --git a/ui/tests/acceptance/mfa-method-test.js b/ui/tests/acceptance/mfa-method-test.js
+index 4b9825b..5d30376 100644
+--- a/ui/tests/acceptance/mfa-method-test.js
++++ b/ui/tests/acceptance/mfa-method-test.js
+@@ -24,7 +24,7 @@ module('Acceptance | mfa-method', function (hooks) {
+     this.store = this.owner.lookup('service:store');
+     this.getMethods = () =>
+       ['Totp', 'Duo', 'Okta', 'Pingid'].reduce((methods, type) => {
+-        methods.addObjects(this.server.db[`mfa${type}Methods`].where({}));
++        methods = [...new Set([...methods, ...this.server.db[`mfa${type}Methods`].where({})])];
+         return methods;
+       }, []);
+     await logout.visit();
+@@ -98,7 +98,7 @@ module('Acceptance | mfa-method', function (hooks) {
+     // ensure methods are tied to an enforcement
+     this.server.get('/identity/mfa/login-enforcement', () => {
+       const record = this.server.create('mfa-login-enforcement', {
+-        mfa_method_ids: this.getMethods().mapBy('id'),
++        mfa_method_ids: this.getMethods().map((x) => x.id),
+       });
+       return {
+         data: {
+diff --git a/ui/tests/acceptance/oidc-config/clients-assignments-test.js b/ui/tests/acceptance/oidc-config/clients-assignments-test.js
+index 0ffd85b..8813002 100644
+--- a/ui/tests/acceptance/oidc-config/clients-assignments-test.js
++++ b/ui/tests/acceptance/oidc-config/clients-assignments-test.js
+@@ -144,11 +144,11 @@ module('Acceptance | oidc-config clients and assignments', function (hooks) {
+     await click('[data-test-oidc-radio="limited"]');
+     await clickTrigger();
+     await fillIn('.ember-power-select-search input', 'assignment-inline');
+-    await searchSelect.options.objectAt(0).click();
++    await searchSelect.options[0].click();
+     await click('[data-test-search-select="entities"] .ember-basic-dropdown-trigger');
+-    await searchSelect.options.objectAt(0).click();
++    await searchSelect.options[0].click();
+     await click('[data-test-search-select="groups"] .ember-basic-dropdown-trigger');
+-    await searchSelect.options.objectAt(0).click();
++    await searchSelect.options[0].click();
+     await click(SELECTORS.assignmentSaveButton);
+     assert.strictEqual(
+       flashMessage.latestMessage,
+diff --git a/ui/tests/acceptance/oidc-config/clients-keys-test.js b/ui/tests/acceptance/oidc-config/clients-keys-test.js
+index 9dd8223..aa5585f 100644
+--- a/ui/tests/acceptance/oidc-config/clients-keys-test.js
++++ b/ui/tests/acceptance/oidc-config/clients-keys-test.js
+@@ -151,7 +151,7 @@ module('Acceptance | oidc-config clients and keys', function (hooks) {
+     assert
+       .dom('.ember-power-select-option')
+       .hasTextContaining('client-with-test-key', 'dropdown renders correct application');
+-    await searchSelect.options.objectAt(0).click();
++    await searchSelect.options[0].click();
+     await click(SELECTORS.keySaveButton);
+     assert.strictEqual(
+       flashMessage.latestMessage,
+diff --git a/ui/tests/acceptance/oidc-config/providers-scopes-test.js b/ui/tests/acceptance/oidc-config/providers-scopes-test.js
+index e2c5a84..f8821fd 100644
+--- a/ui/tests/acceptance/oidc-config/providers-scopes-test.js
++++ b/ui/tests/acceptance/oidc-config/providers-scopes-test.js
+@@ -282,7 +282,7 @@ module('Acceptance |  oidc-config providers and scopes', function (hooks) {
+     await click('[data-test-oidc-radio="limited"]');
+     await click('[data-test-component="search-select"]#allowedClientIds .ember-basic-dropdown-trigger');
+     await fillIn('.ember-power-select-search input', 'test-app');
+-    await searchSelect.options.objectAt(0).click();
++    await searchSelect.options[0].click();
+     await click(SELECTORS.providerSaveButton);
+     assert.strictEqual(
+       flashMessage.latestMessage,
+diff --git a/ui/tests/acceptance/pki/pki-engine-route-cleanup-test.js b/ui/tests/acceptance/pki/pki-engine-route-cleanup-test.js
+index 06a84f1..272ce06 100644
+--- a/ui/tests/acceptance/pki/pki-engine-route-cleanup-test.js
++++ b/ui/tests/acceptance/pki/pki-engine-route-cleanup-test.js
+@@ -23,6 +23,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+   hooks.beforeEach(async function () {
+     this.store = this.owner.lookup('service:store');
+     await authPage.login();
++    await settled();
+     // Setup PKI engine
+     const mountPath = `pki-workflow-${uuidv4()}`;
+     await enablePage.enable('pki', mountPath);
+@@ -45,11 +46,12 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+     test('create config', async function (assert) {
+       let configs, urls, config;
+       await authPage.login(this.pkiAdminToken);
++      await settled();
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.emptyStateLink);
+       configs = this.store.peekAll('pki/action');
+       urls = this.store.peekRecord('pki/config/urls', this.mountPath);
+-      config = configs.objectAt(0);
++      config = configs[0];
+       assert.strictEqual(configs.length, 1, 'One config model present');
+       assert.false(urls.hasDirtyAttributes, 'URLs is loaded from endpoint');
+       assert.true(config.hasDirtyAttributes, 'Config model is dirty');
+@@ -64,7 +66,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       await click(SELECTORS.emptyStateLink);
+       configs = this.store.peekAll('pki/action');
+       urls = this.store.peekRecord('pki/config/urls', this.mountPath);
+-      config = configs.objectAt(0);
++      config = configs[0];
+       assert.strictEqual(configs.length, 1, 'One config model present');
+       assert.false(urls.hasDirtyAttributes, 'URLs is loaded from endpoint');
+       assert.true(config.hasDirtyAttributes, 'Config model is dirty');
+@@ -81,6 +83,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+   module('role routes', function (hooks) {
+     hooks.beforeEach(async function () {
+       await authPage.login();
++      await settled();
+       // Configure PKI
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.emptyStateLink);
+@@ -95,6 +98,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+     test('create role exit via cancel', async function (assert) {
+       let roles;
+       await authPage.login();
++      await settled();
+       // Create PKI
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.rolesTab);
+@@ -102,7 +106,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       assert.strictEqual(roles.length, 0, 'No roles exist yet');
+       await click(SELECTORS.createRoleLink);
+       roles = this.store.peekAll('pki/role');
+-      const role = roles.objectAt(0);
++      const role = roles[0];
+       assert.strictEqual(roles.length, 1, 'New role exists');
+       assert.true(role.isNew, 'Role is new model');
+       await click(SELECTORS.roleForm.roleCancelButton);
+@@ -112,6 +116,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+     test('create role exit via breadcrumb', async function (assert) {
+       let roles;
+       await authPage.login();
++      await settled();
+       // Create PKI
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.rolesTab);
+@@ -119,7 +124,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       assert.strictEqual(roles.length, 0, 'No roles exist yet');
+       await click(SELECTORS.createRoleLink);
+       roles = this.store.peekAll('pki/role');
+-      const role = roles.objectAt(0);
++      const role = roles[0];
+       assert.strictEqual(roles.length, 1, 'New role exists');
+       assert.true(role.isNew, 'Role is new model');
+       await click(SELECTORS.overviewBreadcrumb);
+@@ -130,6 +135,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       let roles, role;
+       const roleId = 'workflow-edit-role';
+       await authPage.login();
++      await settled();
+       // Create PKI
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.rolesTab);
+@@ -140,7 +146,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       await click(SELECTORS.roleForm.roleCreateButton);
+       assert.dom('[data-test-value-div="Role name"]').hasText(roleId, 'Shows correct role after create');
+       roles = this.store.peekAll('pki/role');
+-      role = roles.objectAt(0);
++      role = roles[0];
+       assert.strictEqual(roles.length, 1, 'Role is created');
+       assert.false(role.hasDirtyAttributes, 'Role no longer has dirty attributes');
+ 
+@@ -173,6 +179,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+     test('import issuer exit via cancel', async function (assert) {
+       let issuers;
+       await authPage.login();
++      await settled();
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.issuersTab);
+       issuers = this.store.peekAll('pki/issuer');
+@@ -180,7 +187,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       await click(SELECTORS.importIssuerLink);
+       issuers = this.store.peekAll('pki/action');
+       assert.strictEqual(issuers.length, 1, 'Action model created');
+-      const issuer = issuers.objectAt(0);
++      const issuer = issuers[0];
+       assert.true(issuer.hasDirtyAttributes, 'Action has dirty attrs');
+       assert.true(issuer.isNew, 'Action is new');
+       // Exit
+@@ -192,6 +199,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+     test('import issuer exit via breadcrumb', async function (assert) {
+       let issuers;
+       await authPage.login();
++      await settled();
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.issuersTab);
+       issuers = this.store.peekAll('pki/issuer');
+@@ -199,7 +207,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       await click(SELECTORS.importIssuerLink);
+       issuers = this.store.peekAll('pki/action');
+       assert.strictEqual(issuers.length, 1, 'Action model created');
+-      const issuer = issuers.objectAt(0);
++      const issuer = issuers[0];
+       assert.true(issuer.hasDirtyAttributes, 'Action model has dirty attrs');
+       assert.true(issuer.isNew, 'Action model is new');
+       // Exit
+@@ -211,6 +219,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+     test('generate root exit via cancel', async function (assert) {
+       let actions;
+       await authPage.login();
++      await settled();
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.issuersTab);
+       actions = this.store.peekAll('pki/action');
+@@ -219,7 +228,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       await click(SELECTORS.generateIssuerRoot);
+       actions = this.store.peekAll('pki/action');
+       assert.strictEqual(actions.length, 1, 'Action model for generate-root created');
+-      const action = actions.objectAt(0);
++      const action = actions[0];
+       assert.true(action.hasDirtyAttributes, 'Action has dirty attrs');
+       assert.true(action.isNew, 'Action is new');
+       assert.strictEqual(action.actionType, 'generate-root', 'Action type is correct');
+@@ -232,6 +241,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+     test('generate root exit via breadcrumb', async function (assert) {
+       let actions;
+       await authPage.login();
++      await settled();
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.issuersTab);
+       actions = this.store.peekAll('pki/action');
+@@ -240,7 +250,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       await click(SELECTORS.generateIssuerRoot);
+       actions = this.store.peekAll('pki/action');
+       assert.strictEqual(actions.length, 1, 'Action model for generate-root created');
+-      const action = actions.objectAt(0);
++      const action = actions[0];
+       assert.true(action.hasDirtyAttributes, 'Action has dirty attrs');
+       assert.true(action.isNew, 'Action is new');
+       assert.strictEqual(action.actionType, 'generate-root');
+@@ -253,6 +263,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+     test('generate intermediate csr exit via cancel', async function (assert) {
+       let actions;
+       await authPage.login();
++      await settled();
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.issuersTab);
+       actions = this.store.peekAll('pki/action');
+@@ -261,7 +272,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       await click(SELECTORS.generateIssuerIntermediate);
+       actions = this.store.peekAll('pki/action');
+       assert.strictEqual(actions.length, 1, 'Action model for generate-csr created');
+-      const action = actions.objectAt(0);
++      const action = actions[0];
+       assert.true(action.hasDirtyAttributes, 'Action has dirty attrs');
+       assert.true(action.isNew, 'Action is new');
+       assert.strictEqual(action.actionType, 'generate-csr');
+@@ -274,6 +285,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+     test('generate intermediate csr exit via breadcrumb', async function (assert) {
+       let actions;
+       await authPage.login();
++      await settled();
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.issuersTab);
+       actions = this.store.peekAll('pki/action');
+@@ -282,7 +294,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       await click(SELECTORS.generateIssuerIntermediate);
+       actions = this.store.peekAll('pki/action');
+       assert.strictEqual(actions.length, 1, 'Action model for generate-csr created');
+-      const action = actions.objectAt(0);
++      const action = actions[0];
+       assert.true(action.hasDirtyAttributes, 'Action has dirty attrs');
+       assert.true(action.isNew, 'Action is new');
+       assert.strictEqual(action.actionType, 'generate-csr');
+@@ -295,6 +307,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+     test('edit issuer exit', async function (assert) {
+       let issuers, issuer;
+       await authPage.login();
++      await settled();
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.emptyStateLink);
+       await click(SELECTORS.configuration.optionByKey('generate-root'));
+@@ -305,7 +318,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       await visit(`/vault/secrets/${this.mountPath}/pki/issuers`);
+ 
+       issuers = this.store.peekAll('pki/issuer');
+-      const issuerId = issuers.objectAt(0).id;
++      const issuerId = issuers[0].id;
+       assert.strictEqual(issuers.length, 1, 'Issuer exists on model in list');
+       await visit(`/vault/secrets/${this.mountPath}/pki/issuers/${issuerId}/details`);
+       await click(SELECTORS.issuerDetails.configure);
+@@ -324,6 +337,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+   module('key routes', function (hooks) {
+     hooks.beforeEach(async function () {
+       await authPage.login();
++      await settled();
+       // Configure PKI -- key creation not allowed unless configured
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.emptyStateLink);
+@@ -337,29 +351,30 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+     test('create key exit', async function (assert) {
+       let keys, key;
+       await authPage.login();
++      await settled();
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.keysTab);
+       keys = this.store.peekAll('pki/key');
+-      const configKeyId = keys.objectAt(0).id;
++      const configKeyId = keys[0].id;
+       assert.strictEqual(keys.length, 1, 'One key exists from config');
+       // Create key
+       await click(SELECTORS.keyPages.generateKey);
+       keys = this.store.peekAll('pki/key');
+-      key = keys.objectAt(1);
++      key = keys[1];
+       assert.strictEqual(keys.length, 2, 'New key exists');
+       assert.true(key.isNew, 'Role is new model');
+       // Exit
+       await click(SELECTORS.keyForm.keyCancelButton);
+       keys = this.store.peekAll('pki/key');
+       assert.strictEqual(keys.length, 1, 'Second key is removed from store');
+-      assert.strictEqual(keys.objectAt(0).id, configKeyId);
++      assert.strictEqual(keys[0].id, configKeyId);
+       assert.strictEqual(currentURL(), `/vault/secrets/${this.mountPath}/pki/keys`, 'url is correct');
+ 
+       // Create again
+       await click(SELECTORS.keyPages.generateKey);
+       assert.strictEqual(keys.length, 2, 'New key exists');
+       keys = this.store.peekAll('pki/key');
+-      key = keys.objectAt(1);
++      key = keys[1];
+       assert.true(key.isNew, 'Key is new model');
+       // Exit
+       await click(SELECTORS.overviewBreadcrumb);
+@@ -370,6 +385,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+     test('edit key exit', async function (assert) {
+       let keys, key;
+       await authPage.login();
++      await settled();
+       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+       await click(SELECTORS.keysTab);
+       keys = this.store.peekAll('pki/key');
+@@ -380,7 +396,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       await click(SELECTORS.keyPages.keyEditLink);
+       await fillIn(SELECTORS.keyForm.keyNameInput, 'foobar');
+       keys = this.store.peekAll('pki/key');
+-      key = keys.objectAt(0);
++      key = keys[0];
+       assert.true(key.hasDirtyAttributes, 'Key model is dirty');
+       // Exit
+       await click(SELECTORS.keyForm.keyCancelButton);
+@@ -397,7 +413,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
+       await click(SELECTORS.keyPages.keyEditLink);
+       await fillIn(SELECTORS.keyForm.keyNameInput, 'foobar');
+       keys = this.store.peekAll('pki/key');
+-      key = keys.objectAt(0);
++      key = keys[0];
+       assert.true(key.hasDirtyAttributes, 'Key model is dirty');
+ 
+       // Exit via breadcrumb
+diff --git a/ui/tests/acceptance/secrets/backend/engines-test.js b/ui/tests/acceptance/secrets/backend/engines-test.js
+index 734d48d..6880683 100644
+--- a/ui/tests/acceptance/secrets/backend/engines-test.js
++++ b/ui/tests/acceptance/secrets/backend/engines-test.js
+@@ -65,7 +65,7 @@ module('Acceptance | secret-engine list view', function (hooks) {
+     await settled();
+     // filter by type
+     await clickTrigger('#filter-by-engine-type');
+-    await searchSelect.options.objectAt(1).click();
++    await searchSelect.options[1].click();
+ 
+     const rows = document.querySelectorAll('[data-test-auth-backend-link]');
+     const rowsAws = Array.from(rows).filter((row) => row.innerText.includes('database'));
+@@ -73,13 +73,13 @@ module('Acceptance | secret-engine list view', function (hooks) {
+     assert.strictEqual(rows.length, rowsAws.length, 'all rows returned are database');
+     // filter by name
+     await clickTrigger('#filter-by-engine-name');
+-    const firstItemToSelect = searchSelect.options.objectAt(0).text;
+-    await searchSelect.options.objectAt(0).click();
++    const firstItemToSelect = searchSelect.options[0].text;
++    await searchSelect.options[0].click();
+     const singleRow = document.querySelectorAll('[data-test-auth-backend-link]');
+     assert.strictEqual(singleRow.length, 1, 'returns only one row');
+     assert.dom(singleRow[0]).includesText(firstItemToSelect, 'shows the filtered by name engine');
+     // clear filter by engine name
+-    await searchSelect.deleteButtons.objectAt(1).click();
++    await searchSelect.deleteButtons[1].click();
+     const rowsAgain = document.querySelectorAll('[data-test-auth-backend-link]');
+     assert.ok(rowsAgain.length > 1, 'filter has been removed');
+ 
+diff --git a/ui/tests/acceptance/secrets/backend/kv/secret-test.js b/ui/tests/acceptance/secrets/backend/kv/secret-test.js
+index be9f0b6..e6db613 100644
+--- a/ui/tests/acceptance/secrets/backend/kv/secret-test.js
++++ b/ui/tests/acceptance/secrets/backend/kv/secret-test.js
+@@ -384,7 +384,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
+     assert.ok(secretLink, 'link to the 3/ branch displays properly');
+ 
+     await listPage.secrets.filterBy('text', '3/')[0].click();
+-    await listPage.secrets.objectAt(0).menuToggle();
++    await listPage.secrets[0].menuToggle();
+     await settled();
+     await listPage.delete();
+     await listPage.confirmDelete();
+@@ -392,7 +392,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
+     assert.strictEqual(currentRouteName(), 'vault.cluster.secrets.backend.list');
+     assert.strictEqual(currentURL(), `/vault/secrets/${enginePath}/list/1/2/3/`, 'remains on the page');
+ 
+-    await listPage.secrets.objectAt(0).menuToggle();
++    await listPage.secrets[0].menuToggle();
+     await listPage.delete();
+     await listPage.confirmDelete();
+     await settled();
+@@ -622,7 +622,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
+     assert.strictEqual(listPage.secrets.length, 3, 'renders three secrets');
+     await listPage.filterInput('filter/foo1');
+     assert.strictEqual(listPage.secrets.length, 1, 'renders only one secret');
+-    await listPage.secrets.objectAt(0).click();
++    await listPage.secrets[0].click();
+     await showPage.breadcrumbs.filterBy('text', 'filter')[0].click();
+     assert.strictEqual(listPage.secrets.length, 3, 'renders three secrets');
+     assert.strictEqual(listPage.filterInputValue, 'filter/', 'pageFilter has been reset');
+diff --git a/ui/tests/acceptance/secrets/backend/ssh/role-test.js b/ui/tests/acceptance/secrets/backend/ssh/role-test.js
+index b2dbfaf..f129bb0 100644
+--- a/ui/tests/acceptance/secrets/backend/ssh/role-test.js
++++ b/ui/tests/acceptance/secrets/backend/ssh/role-test.js
+@@ -57,7 +57,7 @@ module('Acceptance | secrets/ssh', function (hooks) {
+     await listPage.visitRoot({ backend: path });
+     await settled();
+     assert.strictEqual(listPage.secrets.length, 1, 'shows role in the list');
+-    const secret = listPage.secrets.objectAt(0);
++    const secret = listPage.secrets[0];
+     await secret.menuToggle();
+     assert.ok(listPage.menuItems.length > 0, 'shows links in the menu');
+   });
+diff --git a/ui/tests/acceptance/settings/mount-secret-backend-test.js b/ui/tests/acceptance/settings/mount-secret-backend-test.js
+index 9a52ac6..37fdc02 100644
+--- a/ui/tests/acceptance/settings/mount-secret-backend-test.js
++++ b/ui/tests/acceptance/settings/mount-secret-backend-test.js
+@@ -190,7 +190,7 @@ module('Acceptance | settings/mount-secret-backend', function (hooks) {
+     await mountSecrets.visit();
+     await mountSecrets.selectType('kubernetes');
+     await mountSecrets.next().path('kubernetes').submit();
+-    const { engineRoute } = allEngines().findBy('type', 'kubernetes');
++    const { engineRoute } = allEngines().find((x) => x.type === 'kubernetes');
+     assert.strictEqual(
+       currentRouteName(),
+       `vault.cluster.secrets.backend.${engineRoute}`,
+diff --git a/ui/tests/acceptance/transit-test.js b/ui/tests/acceptance/transit-test.js
+index 98202f5..673539c 100644
+--- a/ui/tests/acceptance/transit-test.js
++++ b/ui/tests/acceptance/transit-test.js
+@@ -275,6 +275,7 @@ const testConvergentEncryption = async function (assert, keyName) {
+       testCase.assertBeforeDecrypt(keyName);
+     }
+     find('#ciphertext-control .CodeMirror').CodeMirror.setValue(copiedCiphertext);
++    await settled();
+     await click('[data-test-button-decrypt]');
+ 
+     if (testCase.assertAfterDecrypt) {
+@@ -303,7 +304,7 @@ module('Acceptance | transit', function (hooks) {
+ 
+   test(`transit backend: list menu`, async function (assert) {
+     await generateTransitKey(keyTypes[0], this.uid);
+-    await secretListPage.secrets.objectAt(0).menuToggle();
++    await secretListPage.secrets[0].menuToggle();
+     await settled();
+     assert.strictEqual(secretListPage.menuItems.length, 2, 'shows 2 items in the menu');
+   });
+diff --git a/ui/tests/helpers/poll-cluster.js b/ui/tests/helpers/poll-cluster.js
+index a4bb708..060a37d 100644
+--- a/ui/tests/helpers/poll-cluster.js
++++ b/ui/tests/helpers/poll-cluster.js
+@@ -7,6 +7,6 @@ import { settled } from '@ember/test-helpers';
+ 
+ export async function pollCluster(owner) {
+   const store = owner.lookup('service:store');
+-  await store.peekAll('cluster').firstObject.reload();
++  await store.peekAll('cluster')[0].reload();
+   await settled();
+ }
+diff --git a/ui/tests/integration/components/auth-config-form/options-test.js b/ui/tests/integration/components/auth-config-form/options-test.js
+index 24ddaf6..2f03f9c 100644
+--- a/ui/tests/integration/components/auth-config-form/options-test.js
++++ b/ui/tests/integration/components/auth-config-form/options-test.js
+@@ -50,7 +50,7 @@ module('Integration | Component | auth-config-form options', function (hooks) {
+     sinon.spy(model.config, 'serialize');
+     this.set('model', model);
+     await render(hbs`{{auth-config-form/options model=this.model}}`);
+-    component.save();
++    await component.save();
+     return settled().then(() => {
+       assert.ok(model.config.serialize.calledOnce);
+     });
+diff --git a/ui/tests/integration/components/auth-form-test.js b/ui/tests/integration/components/auth-form-test.js
+index 17c0498..7d86bcd 100644
+--- a/ui/tests/integration/components/auth-form-test.js
++++ b/ui/tests/integration/components/auth-form-test.js
+@@ -51,7 +51,7 @@ module('Integration | Component | auth form', function (hooks) {
+     this.set('selectedAuth', 'token');
+     await render(hbs`{{auth-form cluster=this.cluster selectedAuth=this.selectedAuth}}`);
+     assert.false(component.errorMessagePresent, false);
+-    this.owner.lookup('service:csp-event').events.addObject({ violatedDirective: 'connect-src' });
++    this.owner.lookup('service:csp-event').events.pushObject({ violatedDirective: 'connect-src' });
+     await settled();
+     assert.strictEqual(component.errorText, CSP_ERR_TEXT);
+   });
+@@ -135,8 +135,8 @@ module('Integration | Component | auth form', function (hooks) {
+     await render(hbs`{{auth-form cluster=this.cluster }}`);
+ 
+     assert.strictEqual(component.tabs.length, 2, 'renders a tab for userpass and Other');
+-    assert.strictEqual(component.tabs.objectAt(0).name, 'foo', 'uses the path in the label');
+-    assert.strictEqual(component.tabs.objectAt(1).name, 'Other', 'second tab is the Other tab');
++    assert.strictEqual(component.tabs[0].name, 'foo', 'uses the path in the label');
++    assert.strictEqual(component.tabs[1].name, 'Other', 'second tab is the Other tab');
+     server.shutdown();
+   });
+ 
+diff --git a/ui/tests/integration/components/edit-form-test.js b/ui/tests/integration/components/edit-form-test.js
+index 6e54781..f782483 100644
+--- a/ui/tests/integration/components/edit-form-test.js
++++ b/ui/tests/integration/components/edit-form-test.js
+@@ -66,7 +66,7 @@ module('Integration | Component | edit form', function (hooks) {
+ 
+     await render(hbs`{{edit-form model=this.model onSave=this.onSave}}`);
+ 
+-    component.submit();
++    await component.submit();
+     later(() => cancelTimers(), 50);
+     return settled().then(() => {
+       assert.ok(saveSpy.calledOnce, 'calls passed onSave');
+diff --git a/ui/tests/integration/components/form-field-test.js b/ui/tests/integration/components/form-field-test.js
+index 6209bcc..803b270 100644
+--- a/ui/tests/integration/components/form-field-test.js
++++ b/ui/tests/integration/components/form-field-test.js
+@@ -41,52 +41,52 @@ module('Integration | Component | form field', function (hooks) {
+     this.attr = { name: 'foo' };
+     this.model = model;
+     await render(hbs`<FormField @attr={{this.attr}} @model={{this.model}} />`);
+-    assert.strictEqual(component.fields.objectAt(0).labelText[0], 'Foo', 'renders a label');
++    assert.strictEqual(component.fields[0].labelText[0], 'Foo', 'renders a label');
+     assert.notOk(component.hasInput, 'renders only the label');
+   });
+ 
+   test('it renders: string', async function (assert) {
+     const [model, spy] = await setup.call(this, createAttr('foo', 'string', { defaultValue: 'default' }));
+-    assert.strictEqual(component.fields.objectAt(0).labelText[0], 'Foo', 'renders a label');
+-    assert.strictEqual(component.fields.objectAt(0).inputValue, 'default', 'renders default value');
++    assert.strictEqual(component.fields[0].labelText[0], 'Foo', 'renders a label');
++    assert.strictEqual(component.fields[0].inputValue, 'default', 'renders default value');
+     assert.ok(component.hasInput, 'renders input for string');
+-    await component.fields.objectAt(0).input('bar').change();
++    await component.fields[0].input('bar').change();
+ 
+-    assert.strictEqual(model.get('foo'), 'bar');
++    assert.strictEqual(model.foo, 'bar');
+     assert.ok(spy.calledWith('foo', 'bar'), 'onChange called with correct args');
+   });
+ 
+   test('it renders: boolean', async function (assert) {
+     const [model, spy] = await setup.call(this, createAttr('foo', 'boolean', { defaultValue: false }));
+-    assert.strictEqual(component.fields.objectAt(0).labelText[0], 'Foo', 'renders a label');
+-    assert.notOk(component.fields.objectAt(0).inputChecked, 'renders default value');
++    assert.strictEqual(component.fields[0].labelText[0], 'Foo', 'renders a label');
++    assert.notOk(component.fields[0].inputChecked, 'renders default value');
+     assert.ok(component.hasCheckbox, 'renders a checkbox for boolean');
+-    await component.fields.objectAt(0).clickLabel();
++    await component.fields[0].clickLabel();
+ 
+-    assert.true(model.get('foo'));
++    assert.true(model.foo);
+     assert.ok(spy.calledWith('foo', true), 'onChange called with correct args');
+   });
+ 
+   test('it renders: number', async function (assert) {
+     const [model, spy] = await setup.call(this, createAttr('foo', 'number', { defaultValue: 5 }));
+-    assert.strictEqual(component.fields.objectAt(0).labelText[0], 'Foo', 'renders a label');
+-    assert.strictEqual(component.fields.objectAt(0).inputValue, '5', 'renders default value');
++    assert.strictEqual(component.fields[0].labelText[0], 'Foo', 'renders a label');
++    assert.strictEqual(component.fields[0].inputValue, '5', 'renders default value');
+     assert.ok(component.hasInput, 'renders input for number');
+-    await component.fields.objectAt(0).input(8).change();
++    await component.fields[0].input(8).change();
+ 
+-    assert.strictEqual(model.get('foo'), '8');
++    assert.strictEqual(model.foo, '8');
+     assert.ok(spy.calledWith('foo', '8'), 'onChange called with correct args');
+   });
+ 
+   test('it renders: object', async function (assert) {
+     await setup.call(this, createAttr('foo', 'object'));
+-    assert.strictEqual(component.fields.objectAt(0).labelText[0], 'Foo', 'renders a label');
++    assert.strictEqual(component.fields[0].labelText[0], 'Foo', 'renders a label');
+     assert.ok(component.hasJSONEditor, 'renders the json editor');
+   });
+ 
+   test('it renders: string as json with clear button', async function (assert) {
+     await setup.call(this, createAttr('foo', 'string', { editType: 'json', allowReset: true }));
+-    assert.strictEqual(component.fields.objectAt(0).labelText[0], 'Foo', 'renders a label');
++    assert.strictEqual(component.fields[0].labelText[0], 'Foo', 'renders a label');
+     assert.ok(component.hasJSONEditor, 'renders the json editor');
+     assert.ok(component.hasJSONClearButton, 'renders button that will clear the JSON value');
+   });
+@@ -96,12 +96,12 @@ module('Integration | Component | form field', function (hooks) {
+       this,
+       createAttr('foo', 'string', { defaultValue: 'goodbye', editType: 'textarea' })
+     );
+-    assert.strictEqual(component.fields.objectAt(0).labelText[0], 'Foo', 'renders a label');
++    assert.strictEqual(component.fields[0].labelText[0], 'Foo', 'renders a label');
+     assert.ok(component.hasTextarea, 'renders a textarea');
+-    assert.strictEqual(component.fields.objectAt(0).textareaValue, 'goodbye', 'renders default value');
+-    await component.fields.objectAt(0).textarea('hello');
++    assert.strictEqual(component.fields[0].textareaValue, 'goodbye', 'renders default value');
++    await component.fields[0].textarea('hello');
+ 
+-    assert.strictEqual(model.get('foo'), 'hello');
++    assert.strictEqual(model.foo, 'hello');
+     assert.ok(spy.calledWith('foo', 'hello'), 'onChange called with correct args');
+   });
+ 
+@@ -118,11 +118,11 @@ module('Integration | Component | form field', function (hooks) {
+   test('it renders: editType ttl', async function (assert) {
+     const [model, spy] = await setup.call(this, createAttr('foo', null, { editType: 'ttl' }));
+     assert.ok(component.hasTTLPicker, 'renders the ttl-picker component');
+-    await component.fields.objectAt(0).toggleTtl();
+-    await component.fields.objectAt(0).select('h').change();
+-    await component.fields.objectAt(0).ttlTime('3');
++    await component.fields[0].toggleTtl();
++    await component.fields[0].select('h').change();
++    await component.fields[0].ttlTime('3');
+     const expectedSeconds = `${3 * 3600}s`;
+-    assert.strictEqual(model.get('foo'), expectedSeconds);
++    assert.strictEqual(model.foo, expectedSeconds);
+     assert.ok(spy.calledWith('foo', expectedSeconds), 'onChange called with correct args');
+   });
+ 
+@@ -131,10 +131,10 @@ module('Integration | Component | form field', function (hooks) {
+       this,
+       createAttr('foo', null, { editType: 'ttl', hideToggle: true })
+     );
+-    await component.fields.objectAt(0).select('h').change();
+-    await component.fields.objectAt(0).ttlTime('3');
++    await component.fields[0].select('h').change();
++    await component.fields[0].ttlTime('3');
+     const expectedSeconds = `${3 * 3600}s`;
+-    assert.strictEqual(model.get('foo'), expectedSeconds);
++    assert.strictEqual(model.foo, expectedSeconds);
+     assert.ok(spy.calledWith('foo', expectedSeconds), 'onChange called with correct args');
+   });
+ 
+@@ -146,7 +146,7 @@ module('Integration | Component | form field', function (hooks) {
+     assert.ok(component.hasRadio, 'renders radio buttons');
+     const selectedValue = 'SHA256';
+     await component.selectRadioInput(selectedValue);
+-    assert.strictEqual(model.get('foo'), selectedValue);
++    assert.strictEqual(model.foo, selectedValue);
+     assert.ok(spy.calledWith('foo', selectedValue), 'onChange called with correct args');
+   });
+ 
+@@ -154,26 +154,22 @@ module('Integration | Component | form field', function (hooks) {
+     const [model, spy] = await setup.call(this, createAttr('foo', 'string', { editType: 'stringArray' }));
+     assert.ok(component.hasStringList, 'renders the string-list component');
+ 
+-    await component.fields.objectAt(0).textarea('array').change();
+-    assert.deepEqual(model.get('foo'), ['array'], 'sets the value on the model');
++    await component.fields[0].textarea('array').change();
++    assert.deepEqual(model.foo, ['array'], 'sets the value on the model');
+     assert.deepEqual(spy.args[0], ['foo', ['array']], 'onChange called with correct args');
+   });
+ 
+   test('it renders: sensitive', async function (assert) {
+     const [model, spy] = await setup.call(this, createAttr('password', 'string', { sensitive: true }));
+     assert.ok(component.hasMaskedInput, 'renders the masked-input component');
+-    await component.fields.objectAt(0).textarea('secret');
+-    assert.strictEqual(model.get('password'), 'secret');
++    await component.fields[0].textarea('secret');
++    assert.strictEqual(model.password, 'secret');
+     assert.ok(spy.calledWith('password', 'secret'), 'onChange called with correct args');
+   });
+ 
+   test('it uses a passed label', async function (assert) {
+     await setup.call(this, createAttr('foo', 'string', { label: 'Not Foo' }));
+-    assert.strictEqual(
+-      component.fields.objectAt(0).labelText[0],
+-      'Not Foo',
+-      'renders the label from options'
+-    );
++    assert.strictEqual(component.fields[0].labelText[0], 'Not Foo', 'renders the label from options');
+   });
+ 
+   test('it renders a help tooltip', async function (assert) {
+diff --git a/ui/tests/integration/components/keymgmt/distribute-test.js b/ui/tests/integration/components/keymgmt/distribute-test.js
+index 5e193c3..99ea8ed 100644
+--- a/ui/tests/integration/components/keymgmt/distribute-test.js
++++ b/ui/tests/integration/components/keymgmt/distribute-test.js
+@@ -115,7 +115,7 @@ module('Integration | Component | keymgmt/distribute', function (hooks) {
+     await settled();
+     assert.dom(SELECTORS.operationsSection).doesNotHaveAttribute('disabled');
+     // Remove selection
+-    await ssComponent.deleteButtons.objectAt(0).click();
++    await ssComponent.deleteButtons[0].click();
+     // Select Azure
+     await clickTrigger();
+     await typeInSearch('azure');
+@@ -150,7 +150,7 @@ module('Integration | Component | keymgmt/distribute', function (hooks) {
+     assert.dom(SELECTORS.inlineError).exists({ count: 1 }, 'only shows single error');
+     assert.dom(SELECTORS.errorKey).exists('Shows error on key selector when key/provider mismatch');
+     // Remove selection
+-    await ssComponent.deleteButtons.objectAt(0).click();
++    await ssComponent.deleteButtons[0].click();
+     // Select new key
+     await clickTrigger();
+     await typeInSearch('new-key');
+diff --git a/ui/tests/integration/components/kubernetes/page/roles-test.js b/ui/tests/integration/components/kubernetes/page/roles-test.js
+index 642acd0..71a9fb4 100644
+--- a/ui/tests/integration/components/kubernetes/page/roles-test.js
++++ b/ui/tests/integration/components/kubernetes/page/roles-test.js
+@@ -96,9 +96,7 @@ module('Integration | Component | kubernetes | Page::Roles', function (hooks) {
+     }));
+     await this.renderComponent();
+     assert.dom('[data-test-list-item-content] svg').hasClass('flight-icon-user', 'List item icon renders');
+-    assert
+-      .dom('[data-test-list-item-content]')
+-      .hasText(this.roles.firstObject.name, 'List item name renders');
++    assert.dom('[data-test-list-item-content]').hasText(this.roles[0].name, 'List item name renders');
+     await click('[data-test-popup-menu-trigger]');
+     assert.dom('[data-test-details]').hasText('Details', 'Details link renders in menu');
+     assert.dom('[data-test-edit]').hasText('Edit', 'Edit link renders in menu');
+diff --git a/ui/tests/integration/components/kv-object-editor-test.js b/ui/tests/integration/components/kv-object-editor-test.js
+index 3220acd..06de868 100644
+--- a/ui/tests/integration/components/kv-object-editor-test.js
++++ b/ui/tests/integration/components/kv-object-editor-test.js
+@@ -30,7 +30,7 @@ module('Integration | Component | kv-object-editor', function (hooks) {
+ 
+   test('it calls onChange when the val changes', async function (assert) {
+     await render(hbs`{{kv-object-editor onChange=this.spy}}`);
+-    await component.rows.objectAt(0).kvKey('foo').kvVal('bar');
++    await component.rows[0].kvKey('foo').kvVal('bar');
+     assert.strictEqual(this.spy.callCount, 2, 'calls onChange each time change is triggered');
+     assert.deepEqual(
+       this.spy.lastCall.args[0],
+@@ -54,11 +54,11 @@ module('Integration | Component | kv-object-editor', function (hooks) {
+ 
+   test('it deletes a row', async function (assert) {
+     await render(hbs`{{kv-object-editor onChange=this.spy}}`);
+-    await component.rows.objectAt(0).kvKey('foo').kvVal('bar');
++    await component.rows[0].kvKey('foo').kvVal('bar');
+     await component.addRow();
+     assert.strictEqual(component.rows.length, 2);
+     assert.strictEqual(this.spy.callCount, 2, 'calls onChange for editing');
+-    await component.rows.objectAt(0).deleteRow();
++    await component.rows[0].deleteRow();
+ 
+     assert.strictEqual(component.rows.length, 1, 'only the blank row left');
+     assert.strictEqual(this.spy.callCount, 3, 'calls onChange deleting row');
+@@ -69,7 +69,7 @@ module('Integration | Component | kv-object-editor', function (hooks) {
+     const metadata = { foo: 'bar', baz: 'bop' };
+     this.set('value', metadata);
+     await render(hbs`{{kv-object-editor value=this.value onChange=this.spy}}`);
+-    await component.rows.objectAt(0).kvKey('foo');
++    await component.rows[0].kvKey('foo');
+ 
+     assert.ok(component.showsDuplicateError, 'duplicate keys are allowed but an error message is shown');
+   });
+diff --git a/ui/tests/integration/components/mfa-form-test.js b/ui/tests/integration/components/mfa-form-test.js
+index 24ef8ab..a37c86b 100644
+--- a/ui/tests/integration/components/mfa-form-test.js
++++ b/ui/tests/integration/components/mfa-form-test.js
+@@ -8,7 +8,7 @@ import { setupRenderingTest } from 'ember-qunit';
+ import { render } from '@ember/test-helpers';
+ import { hbs } from 'ember-cli-htmlbars';
+ import { setupMirage } from 'ember-cli-mirage/test-support';
+-import { fillIn, click, waitUntil } from '@ember/test-helpers';
++import { fillIn, click, waitUntil, find } from '@ember/test-helpers';
+ import { _cancelTimers as cancelTimers, later } from '@ember/runloop';
+ import { TOTP_VALIDATION_ERROR } from 'vault/components/mfa/mfa-form';
+ 
+@@ -198,6 +198,7 @@ module('Integration | Component | mfa-form', function (hooks) {
+       await fillIn('[data-test-mfa-passcode]', code);
+       later(() => cancelTimers(), 50);
+       await click('[data-test-mfa-validate]');
++      await waitUntil(() => find('[data-test-mfa-countdown]'));
+       const expectedTime = code === 'used' ? '45' : '15';
+       assert
+         .dom('[data-test-mfa-countdown]')
+diff --git a/ui/tests/integration/components/mfa-login-enforcement-form-test.js b/ui/tests/integration/components/mfa-login-enforcement-form-test.js
+index 1836b03..f985f96 100644
+--- a/ui/tests/integration/components/mfa-login-enforcement-form-test.js
++++ b/ui/tests/integration/components/mfa-login-enforcement-form-test.js
+@@ -130,9 +130,10 @@ module('Integration | Component | mfa-login-enforcement-form', function (hooks)
+     await click('[data-test-mlef-save]');
+     assert.true(this.didSave, 'onSave callback triggered');
+     assert.strictEqual(this.model.name, 'bar', 'Name property set on model');
+-    assert.strictEqual(this.model.mfa_methods.firstObject.id, '123456', 'Mfa method added to model');
++    const methods = await this.model.mfa_methods;
++    assert.strictEqual(methods[0].id, '123456', 'Mfa method added to model');
+     assert.strictEqual(
+-      this.model.auth_method_accessors.firstObject,
++      this.model.auth_method_accessors[0],
+       'auth_userpass_1234',
+       'Target saved to correct model property'
+     );
+@@ -140,9 +141,11 @@ module('Integration | Component | mfa-login-enforcement-form', function (hooks)
+ 
+   test('it should populate fields with model data', async function (assert) {
+     this.model.name = 'foo';
+-    const [method] = (await this.store.query('mfa-method', {})).toArray();
+-    this.model.mfa_methods.addObject(method);
+-    this.model.auth_method_accessors.addObject('auth_userpass_1234');
++    const query = await this.store.query('mfa-method', {});
++    const [method] = [...query];
++    const methods = await this.model.mfa_methods;
++    methods.push(method);
++    this.model.auth_method_accessors.push('auth_userpass_1234');
+ 
+     await render(hbs`
+       <Mfa::MfaLoginEnforcementForm
+@@ -195,12 +198,16 @@ module('Integration | Component | mfa-login-enforcement-form', function (hooks)
+         keys: ['1234'],
+       },
+     }));
+-    this.model.auth_method_accessors.addObject('auth_userpass_1234');
+-    this.model.auth_method_types.addObject('userpass');
+-    const [entity] = (await this.store.query('identity/entity', {})).toArray();
+-    this.model.identity_entities.addObject(entity);
+-    const [group] = (await this.store.query('identity/group', {})).toArray();
+-    this.model.identity_groups.addObject(group);
++    this.model.auth_method_accessors.push('auth_userpass_1234');
++    this.model.auth_method_types.push('userpass');
++    const queryEntity = await this.store.query('identity/entity', {});
++    const [entity] = [...queryEntity];
++    const entities = await this.model.identity_entities;
++    entities.push(entity);
++    const queryGroup = await this.store.query('identity/group', {});
++    const [group] = [...queryGroup];
++    const groups = await this.model.identity_groups;
++    groups.push(group);
+ 
+     await render(hbs`
+       <Mfa::MfaLoginEnforcementForm
+diff --git a/ui/tests/integration/components/oidc/client-form-test.js b/ui/tests/integration/components/oidc/client-form-test.js
+index 8723cd8..7450e0b 100644
+--- a/ui/tests/integration/components/oidc/client-form-test.js
++++ b/ui/tests/integration/components/oidc/client-form-test.js
+@@ -108,7 +108,7 @@ module('Integration | Component | oidc/client-form', function (hooks) {
+     // fill out form with valid inputs
+     await clickTrigger();
+     await fillIn('.ember-power-select-search input', 'default');
+-    await searchSelect.options.objectAt(0).click();
++    await searchSelect.options[0].click();
+ 
+     await click('[data-test-oidc-radio="limited"]');
+     assert
+@@ -213,7 +213,7 @@ module('Integration | Component | oidc/client-form', function (hooks) {
+     await click('[data-test-oidc-radio="limited"]');
+     await clickTrigger();
+     await fillIn('.ember-power-select-search input', 'test-new');
+-    await searchSelect.options.objectAt(0).click();
++    await searchSelect.options[0].click();
+     assert.dom('[data-test-modal-div]').hasClass('is-active', 'modal with form opens');
+     assert.dom('[data-test-modal-title]').hasText('Create new assignment', 'Create assignment modal renders');
+     await click(SELECTORS.assignmentCancelButton);
+diff --git a/ui/tests/integration/components/pki/pki-generate-csr-test.js b/ui/tests/integration/components/pki/pki-generate-csr-test.js
+index 23556e2..9ba6118 100644
+--- a/ui/tests/integration/components/pki/pki-generate-csr-test.js
++++ b/ui/tests/integration/components/pki/pki-generate-csr-test.js
+@@ -65,7 +65,7 @@ module('Integration | Component | pki-generate-csr', function (hooks) {
+     await fillIn('[data-test-input="commonName"]', 'foo');
+     await click('[data-test-save]');
+ 
+-    const savedRecord = this.store.peekAll('pki/action').firstObject;
++    const savedRecord = this.store.peekAll('pki/action')[0];
+     assert.false(savedRecord.isNew, 'record is saved');
+   });
+ 
+diff --git a/ui/tests/integration/components/policy-form-test.js b/ui/tests/integration/components/policy-form-test.js
+index 23cff5e..17cd515 100644
+--- a/ui/tests/integration/components/policy-form-test.js
++++ b/ui/tests/integration/components/policy-form-test.js
+@@ -5,7 +5,7 @@
+ 
+ import { module, test } from 'qunit';
+ import { setupRenderingTest } from 'ember-qunit';
+-import { click, fillIn, render, triggerEvent } from '@ember/test-helpers';
++import { click, fillIn, find, render, triggerEvent } from '@ember/test-helpers';
+ import hbs from 'htmlbars-inline-precompile';
+ import sinon from 'sinon';
+ import Pretender from 'pretender';
+@@ -121,7 +121,9 @@ module('Integration | Component | policy-form', function (hooks) {
+     await click(SELECTORS.uploadFileToggle);
+     assert.dom(SELECTORS.policyUpload).exists({ count: 1 }, 'Policy upload is shown after toggle');
+     assert.dom(SELECTORS.policyEditor).doesNotExist('Policy editor is not shown');
+-    await triggerEvent(SELECTORS.policyUpload, 'change', { files: [this.file] });
++    const input = find(SELECTORS.policyUpload);
++    Object.defineProperty(input, 'files', { value: [this.file], configurable: true });
++    await triggerEvent(SELECTORS.policyUpload, 'change');
+     assert.dom(SELECTORS.nameInput).hasValue('test-policy', 'it fills in policy name');
+     await click(SELECTORS.saveButton);
+     assert.propEqual(this.onSave.lastCall.args[0].policy, policy, 'policy content saves in correct format');
+diff --git a/ui/tests/integration/components/search-select-test.js b/ui/tests/integration/components/search-select-test.js
+index afd3df7..653ddbd 100644
+--- a/ui/tests/integration/components/search-select-test.js
++++ b/ui/tests/integration/components/search-select-test.js
+@@ -80,8 +80,8 @@ module('Integration | Component | search select', function (hooks) {
+   hooks.beforeEach(function () {
+     const mockFunctionFromParent = (selection, dropdownOptions) => {
+       const modelExists =
+-        !!dropdownOptions.findBy('id', selection) ||
+-        !!dropdownOptions.findBy('uuid', selection) ||
++        !!dropdownOptions.find((x) => x.id === selection) ||
++        !!dropdownOptions.find((x) => x.uuid === selection) ||
+         isWildcardString([selection]);
+       return !modelExists ? 'The model associated with this id no longer exists' : false;
+     };
+@@ -126,7 +126,7 @@ module('Integration | Component | search select', function (hooks) {
+     await settled();
+     assert.strictEqual(component.options.length, 3, 'shows all options');
+     assert.strictEqual(
+-      component.options.objectAt(0).text,
++      component.options[0].text,
+       component.selectedOptionText,
+       'first object in list is focused'
+     );
+@@ -152,7 +152,7 @@ module('Integration | Component | search select', function (hooks) {
+     await settled();
+     assert.strictEqual(component.options.length, 2, 'shows all options');
+     assert.strictEqual(
+-      component.options.objectAt(0).text,
++      component.options[0].text,
+       component.selectedOptionText,
+       'first object in list is focused'
+     );
+@@ -173,7 +173,7 @@ module('Integration | Component | search select', function (hooks) {
+     await clickTrigger();
+     await settled();
+     assert.strictEqual(component.options.length, 3, 'shows all options');
+-    assert.strictEqual(component.options.objectAt(0).text, 'seven 7', 'first option renders');
++    assert.strictEqual(component.options[0].text, 'seven 7', 'first option renders');
+     await typeInSearch('n');
+     assert.strictEqual(
+       component.options.length,
+@@ -184,7 +184,7 @@ module('Integration | Component | search select', function (hooks) {
+     assert.strictEqual(component.options.length, 2, 'list shows two options, including the add option');
+     await typeInSearch('nine');
+     assert.strictEqual(component.options.length, 1, 'list shows one option');
+-    assert.strictEqual(component.options.objectAt(0).text, 'nine 9', 'renders only matching option');
++    assert.strictEqual(component.options[0].text, 'nine 9', 'renders only matching option');
+   });
+ 
+   test('it counts options when wildcard is used and displays the count', async function (assert) {
+@@ -208,7 +208,7 @@ module('Integration | Component | search select', function (hooks) {
+     await settled();
+     assert.dom('[data-test-count="2"]').exists('correctly counts with wildcard filter and shows the count');
+     assert.strictEqual(
+-      component.selectedOptions.objectAt(0).text,
++      component.selectedOptions[0].text,
+       '*bar* includes 2 roles',
+       'renders correct selected text'
+     );
+@@ -276,7 +276,7 @@ module('Integration | Component | search select', function (hooks) {
+       />
+     `);
+     assert.strictEqual(component.selectedOptions.length, 1, 'there is 1 selected option');
+-    assert.strictEqual(component.selectedOptions.objectAt(0).text, 'eight 8', 'selected option renders');
++    assert.strictEqual(component.selectedOptions[0].text, 'eight 8', 'selected option renders');
+     await clickTrigger();
+     await settled();
+     assert.strictEqual(component.options.length, 2, 'shows two options');
+@@ -297,7 +297,7 @@ module('Integration | Component | search select', function (hooks) {
+     `);
+ 
+     assert.strictEqual(component.selectedOptions.length, 1, 'there is 1 selected option');
+-    await component.deleteButtons.objectAt(0).click();
++    await component.deleteButtons[0].click();
+     await settled();
+     assert.strictEqual(component.selectedOptions.length, 0, 'there are no selected options');
+     assert.ok(this.onChange.calledOnce);
+@@ -306,7 +306,7 @@ module('Integration | Component | search select', function (hooks) {
+     await settled();
+     assert.strictEqual(component.options.length, 3, 'shows all options');
+     assert.strictEqual(
+-      component.options.objectAt(2).text,
++      component.options[2].text,
+       'eight 8',
+       'previously selected option returns to dropdown and renders properly'
+     );
+@@ -338,7 +338,7 @@ module('Integration | Component | search select', function (hooks) {
+     assert.strictEqual(component.selectedOptions.length, 1, 'there is 1 selected option');
+     assert.ok(this.onChange.calledOnce);
+     assert.ok(this.onChange.calledWith(['ni']));
+-    await component.deleteButtons.objectAt(0).click();
++    await component.deleteButtons[0].click();
+     await settled();
+     assert.strictEqual(component.selectedOptions.length, 0, 'there are no selected options');
+     assert.ok(this.onChange.calledWith([]));
+@@ -395,11 +395,7 @@ module('Integration | Component | search select', function (hooks) {
+     await clickTrigger();
+     await settled();
+     assert.strictEqual(component.options.length, 1, 'prompts for search to add new options');
+-    assert.strictEqual(
+-      component.options.objectAt(0).text,
+-      'Type to search',
+-      'text of option shows Type to search'
+-    );
++    assert.strictEqual(component.options[0].text, 'Type to search', 'text of option shows Type to search');
+   });
+ 
+   test('it shows add suggestion if there are no models', async function (assert) {
+@@ -419,13 +415,13 @@ module('Integration | Component | search select', function (hooks) {
+     await settled();
+     assert.strictEqual(component.options.length, 1);
+     assert.strictEqual(
+-      component.options.objectAt(0).text,
++      component.options[0].text,
+       'Type to search',
+       'no options in dropdown, just Type to search prompt'
+     );
+     await typeInSearch('new-model');
+     assert.strictEqual(
+-      component.options.objectAt(0).text,
++      component.options[0].text,
+       'Click to add new item: new-model',
+       'shows the create suggestion'
+     );
+@@ -445,17 +441,13 @@ module('Integration | Component | search select', function (hooks) {
+         @fallbackComponent="string-list"
+       />
+     `);
+-    assert.strictEqual(component.selectedOptions.objectAt(0).text, 'test-1', 'renders first selected option');
+-    assert.strictEqual(
+-      component.selectedOptions.objectAt(1).text,
+-      'test-2',
+-      'renders second selected option'
+-    );
++    assert.strictEqual(component.selectedOptions[0].text, 'test-1', 'renders first selected option');
++    assert.strictEqual(component.selectedOptions[1].text, 'test-2', 'renders second selected option');
+     await clickTrigger();
+-    assert.strictEqual(component.options.objectAt(0).text, '1', 'renders options from successful query');
++    assert.strictEqual(component.options[0].text, '1', 'renders options from successful query');
+     await typeInSearch('new-item');
+     await component.selectOption();
+-    assert.strictEqual(component.selectedOptions.objectAt(2).text, 'new-item', 'renders newly added item');
++    assert.strictEqual(component.selectedOptions[2].text, 'new-item', 'renders newly added item');
+     assert.ok(
+       this.onChange.calledWith(['test-1', 'test-2', 'new-item']),
+       'onChange called with all three items'
+@@ -476,7 +468,7 @@ module('Integration | Component | search select', function (hooks) {
+     `);
+     await clickTrigger();
+     assert.strictEqual(component.options.length, 3, 'shows three options');
+-    assert.strictEqual(component.options.objectAt(0).text, 'seven 7', 'renders correct dropdown text');
++    assert.strictEqual(component.options[0].text, 'seven 7', 'renders correct dropdown text');
+     assert.strictEqual(component.smallOptionIds.length, 3, 'shows 3 smaller id text and the name');
+   });
+ 
+@@ -499,12 +491,12 @@ module('Integration | Component | search select', function (hooks) {
+     await clickTrigger();
+     assert.strictEqual(component.options.length, 3, 'shows three options');
+     assert.strictEqual(
+-      component.options.objectAt(0).text,
++      component.options[0].text,
+       'my-first-issuer issuer-a-id',
+       'first option renders custom ID and name'
+     );
+     assert.strictEqual(
+-      component.options.objectAt(1).text,
++      component.options[1].text,
+       'issuer-b-id',
+       `second option renders only id at custom key`
+     );
+@@ -520,7 +512,7 @@ module('Integration | Component | search select', function (hooks) {
+     await settled();
+     assert.strictEqual(component.options.length, 1, 'shows suggestion');
+     assert.strictEqual(
+-      component.options.objectAt(0).text,
++      component.options[0].text,
+       'Click to add new item: new-issuer',
+       'Prompts to add new item'
+     );
+@@ -541,7 +533,7 @@ module('Integration | Component | search select', function (hooks) {
+     `);
+     await clickTrigger();
+     assert.strictEqual(component.options.length, 3, 'shows all options');
+-    assert.strictEqual(component.options.objectAt(0).text, '1', 'renders just id');
++    assert.strictEqual(component.options[0].text, '1', 'renders just id');
+     assert.strictEqual(component.smallOptionIds.length, 0, 'only shows the regular sized id');
+   });
+ 
+@@ -576,8 +568,8 @@ module('Integration | Component | search select', function (hooks) {
+     `);
+     await clickTrigger();
+     assert.strictEqual(component.options.length, 6, 'shows options from both models');
+-    assert.strictEqual(component.options.objectAt(0).text, 'seven 7', 'first dropdown item renders');
+-    assert.strictEqual(component.options.objectAt(5).text, '3 3', 'last dropdown item renders');
++    assert.strictEqual(component.options[0].text, 'seven 7', 'first dropdown item renders');
++    assert.strictEqual(component.options[5].text, '3 3', 'last dropdown item renders');
+   });
+ 
+   test('it returns array with objects instead of strings if passObject=true', async function (assert) {
+@@ -793,9 +785,9 @@ module('Integration | Component | search select', function (hooks) {
+     `);
+     await clickTrigger();
+     await settled();
+-    assert.strictEqual(component.options.objectAt(0).text, '1', 'first option renders just id as name');
++    assert.strictEqual(component.options[0].text, '1', 'first option renders just id as name');
+     assert.strictEqual(
+-      component.options.objectAt(3).text,
++      component.options[3].text,
+       'model-a a123',
+       `4 option renders both name and ${objectKeys[0]}`
+     );
+@@ -843,9 +835,9 @@ module('Integration | Component | search select', function (hooks) {
+ 
+     await clickTrigger();
+     await settled();
+-    assert.strictEqual(component.options.objectAt(0).text, '1', 'first option is just id as name');
++    assert.strictEqual(component.options[0].text, '1', 'first option is just id as name');
+     assert.strictEqual(
+-      component.options.objectAt(3).text,
++      component.options[3].text,
+       'model-a a123',
+       `4th option has both name and ${objectKeys[0]}`
+     );
+diff --git a/ui/tests/integration/components/search-select-with-modal-test.js b/ui/tests/integration/components/search-select-with-modal-test.js
+index 7e34a44..3beb87b 100644
+--- a/ui/tests/integration/components/search-select-with-modal-test.js
++++ b/ui/tests/integration/components/search-select-with-modal-test.js
+@@ -105,7 +105,7 @@ module('Integration | Component | search select with modal', function (hooks) {
+     />
+   `);
+     assert.strictEqual(component.selectedOptions.length, 1, 'there is one selected option');
+-    assert.strictEqual(component.selectedOptions.objectAt(0).text, 'acl-test', 'renders inputted policies');
++    assert.strictEqual(component.selectedOptions[0].text, 'acl-test', 'renders inputted policies');
+ 
+     await clickTrigger();
+     assert.strictEqual(component.options.length, 3, 'does not render all options returned from query');
+diff --git a/ui/tests/integration/components/transit-key-actions-test.js b/ui/tests/integration/components/transit-key-actions-test.js
+index 855d195..05560bb 100644
+--- a/ui/tests/integration/components/transit-key-actions-test.js
++++ b/ui/tests/integration/components/transit-key-actions-test.js
+@@ -24,12 +24,12 @@ const storeStub = Service.extend({
+       keyAction(action, { backend, id, payload }, options) {
+         self.set('callArgs', { action, backend, id, payload });
+         self.set('callArgsOptions', options);
+-        const rootResp = assign({}, self.get('rootKeyActionReturnVal'));
++        const rootResp = assign({}, self.rootKeyActionReturnVal);
+         const resp =
+           Object.keys(rootResp).length > 0
+             ? rootResp
+             : {
+-                data: assign({}, self.get('keyActionReturnVal')),
++                data: assign({}, self.keyActionReturnVal),
+               };
+         return resolve(resp);
+       },
+diff --git a/ui/tests/integration/helpers/date-format-test.js b/ui/tests/integration/helpers/date-format-test.js
+index 4cb68c4..65e596d 100644
+--- a/ui/tests/integration/helpers/date-format-test.js
++++ b/ui/tests/integration/helpers/date-format-test.js
+@@ -70,10 +70,11 @@ module('Integration | Helper | date-format', function (hooks) {
+       hbs`<span data-test-formatted>{{date-format this.timestampDate 'MMM d yyyy, h:mm:ss aaa' withTimeZone=this.withTimezone}}</span>`
+     );
+     const result = find('[data-test-formatted]');
+-    assert.strictEqual(result.innerText.length, 22);
+-    // Compare to with timezone, which should add 4 characters
++    assert.ok(result.innerText.length >= 22, 'without timezone renders expected length');
++    // Compare to with timezone, which should add the TZ abbreviation (length varies by environment)
++    const withoutTzLength = result.innerText.length;
+     this.set('withTimezone', true);
+     await settled();
+-    assert.strictEqual(result.innerText.length, 26);
++    assert.ok(result.innerText.length > withoutTzLength, 'with timezone renders longer string than without');
+   });
+ });
+diff --git a/ui/tests/integration/services/auth-test.js b/ui/tests/integration/services/auth-test.js
+index 130b7cc..401bdc7 100644
+--- a/ui/tests/integration/services/auth-test.js
++++ b/ui/tests/integration/services/auth-test.js
+@@ -186,9 +186,9 @@ module('Integration | Service | auth', function (hooks) {
+       service
+         .authenticate({ clusterId: '1', backend: 'token', data: { token: 'test' } })
+         .then(() => {
+-          const clusterTokenName = service.get('currentTokenName');
+-          const clusterToken = service.get('currentToken');
+-          const authData = service.get('authData');
++          const clusterTokenName = service.currentTokenName;
++          const clusterToken = service.currentToken;
++          const authData = service.authData;
+ 
+           const expectedTokenName = `${TOKEN_PREFIX}${ROOT_PREFIX}${TOKEN_SEPARATOR}1`;
+           assert.strictEqual(clusterToken, 'test', 'token is saved properly');
+@@ -232,9 +232,9 @@ module('Integration | Service | auth', function (hooks) {
+       environment: () => 'development',
+     });
+     await service.authenticate({ clusterId: '1', backend: 'token', data: { token: 'test' } });
+-    const clusterTokenName = service.get('currentTokenName');
+-    const clusterToken = service.get('currentToken');
+-    const authData = service.get('authData');
++    const clusterTokenName = service.currentTokenName;
++    const clusterToken = service.currentToken;
++    const authData = service.authData;
+ 
+     const expectedTokenName = `${TOKEN_PREFIX}${ROOT_PREFIX}${TOKEN_SEPARATOR}1`;
+     assert.strictEqual(clusterToken, 'test', 'token is saved properly');
+@@ -265,9 +265,9 @@ module('Integration | Service | auth', function (hooks) {
+           data: { username: USERPASS_RESPONSE.auth.metadata.username, password: 'passoword' },
+         })
+         .then(() => {
+-          const clusterTokenName = service.get('currentTokenName');
+-          const clusterToken = service.get('currentToken');
+-          const authData = service.get('authData');
++          const clusterTokenName = service.currentTokenName;
++          const clusterToken = service.currentToken;
++          const authData = service.authData;
+ 
+           assert.strictEqual(USERPASS_RESPONSE.auth.client_token, clusterToken, 'token is saved properly');
+           assert.strictEqual(
+@@ -302,9 +302,9 @@ module('Integration | Service | auth', function (hooks) {
+     const service = this.owner.factoryFor('service:auth').create({ storage: () => this.store });
+     run(() => {
+       service.authenticate({ clusterId: '1', backend: 'token', data: { token: 'test' } }).then(() => {
+-        const clusterTokenName = service.get('currentTokenName');
+-        const clusterToken = service.get('currentToken');
+-        const authData = service.get('authData');
++        const clusterTokenName = service.currentTokenName;
++        const clusterToken = service.currentToken;
++        const authData = service.authData;
+ 
+         assert.strictEqual(clusterToken, 'test', 'token is saved properly');
+         assert.strictEqual(
+@@ -318,7 +318,7 @@ module('Integration | Service | auth', function (hooks) {
+           tokenResp.data.display_name,
+           'displayName is saved properly'
+         );
+-        assert.false(service.get('tokenExpired'), 'token is not expired');
++        assert.false(service.tokenExpired, 'token is not expired');
+         done();
+       });
+     });
+diff --git a/ui/tests/pages/components/console/ui-panel.js b/ui/tests/pages/components/console/ui-panel.js
+index 00d2cf0..03446b5 100644
+--- a/ui/tests/pages/components/console/ui-panel.js
++++ b/ui/tests/pages/components/console/ui-panel.js
+@@ -19,7 +19,7 @@ export default {
+   }),
+   lastLogOutput: getter(function () {
+     const count = this.logOutputItems.length;
+-    const outputItemText = this.logOutputItems.objectAt(count - 1).text;
++    const outputItemText = this.logOutputItems[count - 1].text;
+     return outputItemText;
+   }),
+   logTextItems: collection('[data-test-component="console/log-text"]', {
+@@ -27,14 +27,14 @@ export default {
+   }),
+   lastTextOutput: getter(function () {
+     const count = this.logTextItems.length;
+-    return this.logTextItems.objectAt(count - 1).text;
++    return this.logTextItems[count - 1].text;
+   }),
+   logJSONItems: collection('[data-test-component="console/log-json"]', {
+     text: text(),
+   }),
+   lastJSONOutput: getter(function () {
+     const count = this.logJSONItems.length;
+-    return this.logJSONItems.objectAt(count - 1).text;
++    return this.logJSONItems[count - 1].text;
+   }),
+   up: triggerable('keyup', '[data-test-component="console/command-input"] input', {
+     eventProperties: { keyCode: keys.UP },
+diff --git a/ui/tests/pages/components/flash-message.js b/ui/tests/pages/components/flash-message.js
+index dbf3dd0..12e064c 100644
+--- a/ui/tests/pages/components/flash-message.js
++++ b/ui/tests/pages/components/flash-message.js
+@@ -13,7 +13,7 @@ export default {
+   }),
+   latestItem: getter(function () {
+     const count = this.messages.length;
+-    return this.messages.objectAt(count - 1);
++    return this.messages[count - 1];
+   }),
+   messages: collection('[data-test-flash-message-body]', {
+     click: clickable(),
+diff --git a/ui/tests/test-helper.js b/ui/tests/test-helper.js
+index 2674225..8029d02 100644
+--- a/ui/tests/test-helper.js
++++ b/ui/tests/test-helper.js
+@@ -9,10 +9,32 @@ import * as QUnit from 'qunit';
+ import { setApplication } from '@ember/test-helpers';
+ import { setup } from 'qunit-dom';
+ import { start } from 'ember-qunit';
++import { registerDeprecationHandler } from '@ember/debug';
++import { detectWorkflow } from 'ember-cli-deprecation-workflow';
++import { deprecationWorkflowConfig } from 'vault/deprecation-workflow';
+ import './helpers/flash-message';
+ import preloadAssets from 'ember-asset-loader/test-support/preload-assets';
+ import manifest from 'vault/config/asset-manifest';
+ 
++// Forward deprecations that are explicitly marked as `handler: 'log'` in
++// app/deprecation-workflow.js to QUnit as test failures, so they appear in
++// stdout rather than only in the browser console.
++registerDeprecationHandler((message, options, next) => {
++  const workflow = detectWorkflow(deprecationWorkflowConfig, message, options);
++  if (workflow?.handler === 'log') {
++    const currentTest = QUnit.config.current;
++    if (currentTest) {
++      currentTest.assert.pushResult({
++        result: false,
++        actual: options?.id ?? message,
++        expected: 'no deprecation',
++        message: `Unexpected deprecation: ${message}`,
++      });
++    }
++  }
++  next(message, options);
++});
++
+ preloadAssets(manifest).then(() => {
+   setApplication(Application.create(config.APP));
+   // TODO CBS: Check what this is, upgrade added it
+diff --git a/ui/tests/unit/components/identity/edit-form-test.js b/ui/tests/unit/components/identity/edit-form-test.js
+index 8fdd6e4..e7ab8f6 100644
+--- a/ui/tests/unit/components/identity/edit-form-test.js
++++ b/ui/tests/unit/components/identity/edit-form-test.js
+@@ -68,7 +68,7 @@ module('Unit | Component | identity/edit-form', function (hooks) {
+ 
+       component.set('mode', testCase.mode);
+       component.set('model', model);
+-      assert.strictEqual(component.get('cancelLink'), testCase.expected, 'cancel link is correct');
++      assert.strictEqual(component.cancelLink, testCase.expected, 'cancel link is correct');
+     });
+   });
+ });
+diff --git a/ui/tests/unit/lib/kv-object-test.js b/ui/tests/unit/lib/kv-object-test.js
+index c67ef24..fabe65a 100644
+--- a/ui/tests/unit/lib/kv-object-test.js
++++ b/ui/tests/unit/lib/kv-object-test.js
+@@ -37,7 +37,7 @@ module('Unit | Lib | kv object', function () {
+   fromJSONTests.forEach(function ([name, input, content]) {
+     test(`fromJSON: ${name}`, function (assert) {
+       const data = KVObject.create({ content: [] }).fromJSON(input);
+-      assert.deepEqual(data.get('content'), content, 'has expected content');
++      assert.deepEqual(data.content, content, 'has expected content');
+     });
+   });
+ 
+@@ -56,7 +56,7 @@ module('Unit | Lib | kv object', function () {
+     test(`fromJSONString: ${name}`, function (assert) {
+       const inputString = JSON.stringify(input, null, 2);
+       const data = KVObject.create({ content: [] }).fromJSONString(inputString);
+-      assert.deepEqual(data.get('content'), content, 'has expected content');
++      assert.deepEqual(data.content, content, 'has expected content');
+     });
+   });
+ 
+diff --git a/ui/tests/unit/models/capabilities-test.js b/ui/tests/unit/models/capabilities-test.js
+index 136ed97..8c8ccf1 100644
+--- a/ui/tests/unit/models/capabilities-test.js
++++ b/ui/tests/unit/models/capabilities-test.js
+@@ -25,10 +25,10 @@ module('Unit | Model | capabilities', function (hooks) {
+       })
+     );
+ 
+-    assert.ok(model.get('canRead'));
+-    assert.ok(model.get('canList'));
+-    assert.notOk(model.get('canUpdate'));
+-    assert.notOk(model.get('canDelete'));
++    assert.ok(model.canRead);
++    assert.ok(model.canList);
++    assert.notOk(model.canUpdate);
++    assert.notOk(model.canDelete);
+   });
+ 
+   test('it allows everything if root is present', function (assert) {
+@@ -38,11 +38,11 @@ module('Unit | Model | capabilities', function (hooks) {
+         capabilities: ['root', 'deny', 'read'],
+       })
+     );
+-    assert.ok(model.get('canRead'));
+-    assert.ok(model.get('canCreate'));
+-    assert.ok(model.get('canUpdate'));
+-    assert.ok(model.get('canDelete'));
+-    assert.ok(model.get('canList'));
++    assert.ok(model.canRead);
++    assert.ok(model.canCreate);
++    assert.ok(model.canUpdate);
++    assert.ok(model.canDelete);
++    assert.ok(model.canList);
+   });
+ 
+   test('it denies everything if deny is present', function (assert) {
+@@ -52,11 +52,11 @@ module('Unit | Model | capabilities', function (hooks) {
+         capabilities: ['sudo', 'deny', 'read'],
+       })
+     );
+-    assert.notOk(model.get('canRead'));
+-    assert.notOk(model.get('canCreate'));
+-    assert.notOk(model.get('canUpdate'));
+-    assert.notOk(model.get('canDelete'));
+-    assert.notOk(model.get('canList'));
++    assert.notOk(model.canRead);
++    assert.notOk(model.canCreate);
++    assert.notOk(model.canUpdate);
++    assert.notOk(model.canDelete);
++    assert.notOk(model.canList);
+   });
+ 
+   test('it requires sudo on sudo paths', function (assert) {
+@@ -66,11 +66,11 @@ module('Unit | Model | capabilities', function (hooks) {
+         capabilities: ['sudo', 'read'],
+       })
+     );
+-    assert.ok(model.get('canRead'));
+-    assert.notOk(model.get('canCreate'), 'sudo requires the capability to be set as well');
+-    assert.notOk(model.get('canUpdate'));
+-    assert.notOk(model.get('canDelete'));
+-    assert.notOk(model.get('canList'));
++    assert.ok(model.canRead);
++    assert.notOk(model.canCreate, 'sudo requires the capability to be set as well');
++    assert.notOk(model.canUpdate);
++    assert.notOk(model.canDelete);
++    assert.notOk(model.canList);
+   });
+ 
+   test('it requires sudo on sudo paths prefixes', function (assert) {
+@@ -80,11 +80,11 @@ module('Unit | Model | capabilities', function (hooks) {
+         capabilities: ['sudo', 'read'],
+       })
+     );
+-    assert.ok(model.get('canRead'));
+-    assert.notOk(model.get('canCreate'), 'sudo requires the capability to be set as well');
+-    assert.notOk(model.get('canUpdate'));
+-    assert.notOk(model.get('canDelete'));
+-    assert.notOk(model.get('canList'));
++    assert.ok(model.canRead);
++    assert.notOk(model.canCreate, 'sudo requires the capability to be set as well');
++    assert.notOk(model.canUpdate);
++    assert.notOk(model.canDelete);
++    assert.notOk(model.canList);
+   });
+ 
+   test('it does not require sudo on sys/leases/revoke if update capability is present and path is not fully a sudo prefix', function (assert) {
+@@ -94,11 +94,11 @@ module('Unit | Model | capabilities', function (hooks) {
+         capabilities: ['update', 'read'],
+       })
+     );
+-    assert.ok(model.get('canRead'));
+-    assert.notOk(model.get('canCreate'), 'sudo requires the capability to be set as well');
+-    assert.ok(model.get('canUpdate'), 'should not require sudo if it has update');
+-    assert.notOk(model.get('canDelete'));
+-    assert.notOk(model.get('canList'));
++    assert.ok(model.canRead);
++    assert.notOk(model.canCreate, 'sudo requires the capability to be set as well');
++    assert.ok(model.canUpdate, 'should not require sudo if it has update');
++    assert.notOk(model.canDelete);
++    assert.notOk(model.canList);
+   });
+ 
+   test('it requires sudo on prefix path even if capability is present', function (assert) {
+@@ -108,11 +108,11 @@ module('Unit | Model | capabilities', function (hooks) {
+         capabilities: ['update', 'read'],
+       })
+     );
+-    assert.notOk(model.get('canRead'));
+-    assert.notOk(model.get('canCreate'));
+-    assert.notOk(model.get('canUpdate'), 'should still require sudo');
+-    assert.notOk(model.get('canDelete'));
+-    assert.notOk(model.get('canList'));
++    assert.notOk(model.canRead);
++    assert.notOk(model.canCreate);
++    assert.notOk(model.canUpdate, 'should still require sudo');
++    assert.notOk(model.canDelete);
++    assert.notOk(model.canList);
+   });
+ 
+   test('it does not require sudo on prefix path if both update and sudo capabilities are present', function (assert) {
+@@ -122,10 +122,10 @@ module('Unit | Model | capabilities', function (hooks) {
+         capabilities: ['sudo', 'update', 'read'],
+       })
+     );
+-    assert.ok(model.get('canRead'));
+-    assert.notOk(model.get('canCreate'));
+-    assert.ok(model.get('canUpdate'), 'should not require sudo');
+-    assert.notOk(model.get('canDelete'));
+-    assert.notOk(model.get('canList'));
++    assert.ok(model.canRead);
++    assert.notOk(model.canCreate);
++    assert.ok(model.canUpdate, 'should not require sudo');
++    assert.notOk(model.canDelete);
++    assert.notOk(model.canList);
+   });
+ });
+diff --git a/ui/tests/unit/models/secret-engine-test.js b/ui/tests/unit/models/secret-engine-test.js
+index b9b78d5..5d611af 100644
+--- a/ui/tests/unit/models/secret-engine-test.js
++++ b/ui/tests/unit/models/secret-engine-test.js
+@@ -17,7 +17,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+     test('is secret by default', function (assert) {
+       assert.expect(1);
+       const model = this.store.createRecord('secret-engine');
+-      assert.strictEqual(model.get('modelTypeForKV'), 'secret');
++      assert.strictEqual(model.modelTypeForKV, 'secret');
+     });
+ 
+     test('is secret-v2 for kv v2', function (assert) {
+@@ -26,7 +26,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+         version: 2,
+         type: 'kv',
+       });
+-      assert.strictEqual(model.get('modelTypeForKV'), 'secret-v2');
++      assert.strictEqual(model.modelTypeForKV, 'secret-v2');
+     });
+ 
+     test('is secret-v2 for generic v2', function (assert) {
+@@ -36,7 +36,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+         type: 'kv',
+       });
+ 
+-      assert.strictEqual(model.get('modelTypeForKV'), 'secret-v2');
++      assert.strictEqual(model.modelTypeForKV, 'secret-v2');
+     });
+ 
+     test('is secret when v2 if not kv or generic', function (assert) {
+@@ -46,7 +46,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+         type: 'ssh',
+       });
+ 
+-      assert.strictEqual(model.get('modelTypeForKV'), 'secret');
++      assert.strictEqual(model.modelTypeForKV, 'secret');
+     });
+   });
+ 
+@@ -57,7 +57,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+         type: '',
+       });
+ 
+-      assert.deepEqual(model.get('formFields'), [
++      assert.deepEqual(model.formFields, [
+         'type',
+         'path',
+         'description',
+@@ -77,7 +77,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+         type: 'kv',
+       });
+ 
+-      assert.deepEqual(model.get('formFields'), [
++      assert.deepEqual(model.formFields, [
+         'type',
+         'path',
+         'description',
+@@ -99,7 +99,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+         version: '2',
+       });
+ 
+-      assert.deepEqual(model.get('formFields'), [
++      assert.deepEqual(model.formFields, [
+         'type',
+         'path',
+         'description',
+@@ -123,7 +123,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+         type: 'keymgmt',
+       });
+ 
+-      assert.deepEqual(model.get('formFields'), [
++      assert.deepEqual(model.formFields, [
+         'type',
+         'path',
+         'description',
+@@ -143,7 +143,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+         type: 'aws',
+       });
+ 
+-      assert.deepEqual(model.get('formFieldGroups'), [
++      assert.deepEqual(model.formFieldGroups, [
+         { default: ['path'] },
+         {
+           'Method Options': [
+@@ -165,7 +165,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+         type: 'kv',
+       });
+ 
+-      assert.deepEqual(model.get('formFieldGroups'), [
++      assert.deepEqual(model.formFieldGroups, [
+         { default: ['path', 'maxVersions', 'casRequired', 'deleteVersionAfter'] },
+         {
+           'Method Options': [
+@@ -189,7 +189,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+         type: 'generic',
+       });
+ 
+-      assert.deepEqual(model.get('formFieldGroups'), [
++      assert.deepEqual(model.formFieldGroups, [
+         { default: ['path'] },
+         {
+           'Method Options': [
+@@ -213,7 +213,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+         type: 'database',
+       });
+ 
+-      assert.deepEqual(model.get('formFieldGroups'), [
++      assert.deepEqual(model.formFieldGroups, [
+         { default: ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl'] },
+         {
+           'Method Options': [
+@@ -234,7 +234,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+         type: 'pki',
+       });
+ 
+-      assert.deepEqual(model.get('formFieldGroups'), [
++      assert.deepEqual(model.formFieldGroups, [
+         { default: ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl'] },
+         {
+           'Method Options': [
+@@ -255,7 +255,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+         type: 'keymgmt',
+       });
+ 
+-      assert.deepEqual(model.get('formFieldGroups'), [
++      assert.deepEqual(model.formFieldGroups, [
+         { default: ['path'] },
+         {
+           'Method Options': [
+diff --git a/ui/tests/unit/models/secret-v2-version-test.js b/ui/tests/unit/models/secret-v2-version-test.js
+index e181648..fd418ec 100644
+--- a/ui/tests/unit/models/secret-v2-version-test.js
++++ b/ui/tests/unit/models/secret-v2-version-test.js
+@@ -19,7 +19,7 @@ module('Unit | Model | secret-v2-version', function (hooks) {
+           deletionTime: '2000-10-14T00:00:00.000000Z',
+         })
+       );
+-      assert.true(model.get('deleted'));
++      assert.true(model.deleted);
+     });
+   });
+ 
+@@ -32,7 +32,7 @@ module('Unit | Model | secret-v2-version', function (hooks) {
+           deletionTime: '2999-10-14T00:00:00.000000Z',
+         })
+       );
+-      assert.false(model.get('deleted'));
++      assert.false(model.deleted);
+     });
+   });
+ });
+diff --git a/ui/tests/unit/models/transit-key-test.js b/ui/tests/unit/models/transit-key-test.js
+index e1f9fef..e5b395a 100644
+--- a/ui/tests/unit/models/transit-key-test.js
++++ b/ui/tests/unit/models/transit-key-test.js
+@@ -24,7 +24,7 @@ module('Unit | Model | transit key', function (hooks) {
+       })
+     );
+ 
+-    const supportedActions = model.get('supportedActions').map((k) => k.name);
++    const supportedActions = model.supportedActions.map((k) => k.name);
+     assert.deepEqual(['encrypt', 'decrypt', 'datakey', 'rewrap', 'hmac', 'verify'], supportedActions);
+   });
+ 
+@@ -38,14 +38,10 @@ module('Unit | Model | transit key', function (hooks) {
+         latestVersion: 5,
+       })
+     );
+-    assert.deepEqual([5, 4, 3, 2, 1], model.get('encryptionKeyVersions'), 'lists all available versions');
++    assert.deepEqual([5, 4, 3, 2, 1], model.encryptionKeyVersions, 'lists all available versions');
+     run(() => {
+       model.set('minDecryptionVersion', 3);
+-      assert.deepEqual(
+-        [5, 4, 3],
+-        model.get('encryptionKeyVersions'),
+-        'adjusts to a change in minDecryptionVersion'
+-      );
++      assert.deepEqual([5, 4, 3], model.encryptionKeyVersions, 'adjusts to a change in minDecryptionVersion');
+       done();
+     });
+   });
+@@ -63,13 +59,13 @@ module('Unit | Model | transit key', function (hooks) {
+ 
+     assert.deepEqual(
+       [5, 4, 3, 2, 1],
+-      model.get('keysForEncryption'),
++      model.keysForEncryption,
+       'lists all available versions when no min is set'
+     );
+ 
+     run(() => {
+       model.set('minEncryptionVersion', 4);
+-      assert.deepEqual([5, 4], model.get('keysForEncryption'), 'calculates using minEncryptionVersion');
++      assert.deepEqual([5, 4], model.keysForEncryption, 'calculates using minEncryptionVersion');
+       done();
+     });
+   });
+diff --git a/ui/tests/unit/serializers/transit-key-test.js b/ui/tests/unit/serializers/transit-key-test.js
+index df12161..cc46565 100644
+--- a/ui/tests/unit/serializers/transit-key-test.js
++++ b/ui/tests/unit/serializers/transit-key-test.js
+@@ -73,23 +73,15 @@ module('Unit | Serializer | transit-key', function (hooks) {
+     const aesExpected = AES.data.keys[1] * 1000;
+     const chachaExpected = CHACHA.data.keys[1] * 1000;
+     const aesData = serializer.normalizeSecrets({ ...AES });
+-    assert.strictEqual(aesData.firstObject.keys[1], aesExpected, 'converts seconds to millis for aes keys');
++    assert.strictEqual(aesData[0].keys[1], aesExpected, 'converts seconds to millis for aes keys');
+ 
+     const chachaData = serializer.normalizeSecrets({ ...CHACHA });
+-    assert.strictEqual(
+-      chachaData.firstObject.keys[1],
+-      chachaExpected,
+-      'converts seconds to millis for chacha keys'
+-    );
++    assert.strictEqual(chachaData[0].keys[1], chachaExpected, 'converts seconds to millis for chacha keys');
+   });
+ 
+   test('it includes backend from the payload on the normalized data', function (assert) {
+     const serializer = this.owner.lookup('serializer:transit-key');
+     const data = serializer.normalizeSecrets({ ...AES });
+-    assert.strictEqual(
+-      data.firstObject.backend,
+-      'its-a-transit',
+-      'pulls backend from the payload onto the data'
+-    );
++    assert.strictEqual(data[0].backend, 'its-a-transit', 'pulls backend from the payload onto the data');
+   });
+ });
+diff --git a/ui/tests/unit/services/path-helper-test.js b/ui/tests/unit/services/path-helper-test.js
+index cda54dc..0c38bcd 100644
+--- a/ui/tests/unit/services/path-helper-test.js
++++ b/ui/tests/unit/services/path-helper-test.js
+@@ -73,6 +73,6 @@ module('Unit | Service | path-help', function (hooks) {
+     const model = this.store.createRecord(modelType);
+     model.set('mutableId', 'test');
+     await model.save();
+-    assert.strictEqual(model.get('id'), 'test', 'model id is set to mutableId value on save success');
++    assert.strictEqual(model.id, 'test', 'model id is set to mutableId value on save success');
+   });
+ });
+diff --git a/ui/tests/unit/services/permissions-test.js b/ui/tests/unit/services/permissions-test.js
+index 133a6ae..c764b8a 100644
+--- a/ui/tests/unit/services/permissions-test.js
++++ b/ui/tests/unit/services/permissions-test.js
+@@ -49,8 +49,8 @@ module('Unit | Service | permissions', function (hooks) {
+ 
+   test('sets paths properly', async function (assert) {
+     await this.service.getPaths.perform();
+-    assert.deepEqual(this.service.get('exactPaths'), PERMISSIONS_RESPONSE.data.exact_paths);
+-    assert.deepEqual(this.service.get('globPaths'), PERMISSIONS_RESPONSE.data.glob_paths);
++    assert.deepEqual(this.service.exactPaths, PERMISSIONS_RESPONSE.data.exact_paths);
++    assert.deepEqual(this.service.globPaths, PERMISSIONS_RESPONSE.data.glob_paths);
+   });
+ 
+   test('returns true if a policy includes access to an exact path', function (assert) {
+diff --git a/ui/tests/unit/services/store-test.js b/ui/tests/unit/services/store-test.js
+index a5d1e4f..70fd883 100644
+--- a/ui/tests/unit/services/store-test.js
++++ b/ui/tests/unit/services/store-test.js
+@@ -42,8 +42,8 @@ module('Unit | Service | store', function (hooks) {
+ 
+     assert.deepEqual(store.getDataset('data', query).dataset, arr, 'it stores the array as .dataset');
+     assert.deepEqual(store.getDataset('data', query).response, {}, 'it stores the response as .response');
+-    assert.ok(store.get('lazyCaches').has('data'), 'it stores model map');
+-    assert.ok(store.get('lazyCaches').get('data').has(keyForCache(query)), 'it stores data on the model map');
++    assert.ok(store.lazyCaches.has('data'), 'it stores model map');
++    assert.ok(store.lazyCaches.get('data').has(keyForCache(query)), 'it stores data on the model map');
+   });
+ 
+   test('store.clearDataset with a prefix', function (assert) {
+@@ -52,11 +52,11 @@ module('Unit | Service | store', function (hooks) {
+     const arr2 = ['one', 'two', 'three', 'four'];
+     store.storeDataset('data', { id: 1 }, {}, arr);
+     store.storeDataset('transit-key', { id: 2 }, {}, arr2);
+-    assert.strictEqual(store.get('lazyCaches').size, 2, 'it stores both keys');
++    assert.strictEqual(store.lazyCaches.size, 2, 'it stores both keys');
+ 
+     store.clearDataset('transit-key');
+-    assert.strictEqual(store.get('lazyCaches').size, 1, 'deletes one key');
+-    assert.notOk(store.get('lazyCaches').has(), 'cache is no longer stored');
++    assert.strictEqual(store.lazyCaches.size, 1, 'deletes one key');
++    assert.notOk(store.lazyCaches.has(), 'cache is no longer stored');
+   });
+ 
+   test('store.clearAllDatasets', function (assert) {
+@@ -65,12 +65,12 @@ module('Unit | Service | store', function (hooks) {
+     const arr2 = ['one', 'two', 'three', 'four'];
+     store.storeDataset('data', { id: 1 }, {}, arr);
+     store.storeDataset('transit-key', { id: 2 }, {}, arr2);
+-    assert.strictEqual(store.get('lazyCaches').size, 2, 'it stores both keys');
++    assert.strictEqual(store.lazyCaches.size, 2, 'it stores both keys');
+ 
+     store.clearAllDatasets();
+-    assert.strictEqual(store.get('lazyCaches').size, 0, 'deletes all of the keys');
+-    assert.notOk(store.get('lazyCaches').has('transit-key'), 'first cache key is no longer stored');
+-    assert.notOk(store.get('lazyCaches').has('data'), 'second cache key is no longer stored');
++    assert.strictEqual(store.lazyCaches.size, 0, 'deletes all of the keys');
++    assert.notOk(store.lazyCaches.has('transit-key'), 'first cache key is no longer stored');
++    assert.notOk(store.lazyCaches.has('data'), 'second cache key is no longer stored');
+   });
+ 
+   test('store.getDataset', function (assert) {
+@@ -121,10 +121,14 @@ module('Unit | Service | store', function (hooks) {
+       });
+     });
+ 
+-    assert.strictEqual(result.get('length'), pageSize, 'returns the correct number of items');
+-    assert.deepEqual(result.mapBy('id'), keys.slice(0, pageSize), 'returns the first page of items');
++    assert.strictEqual(result.length, pageSize, 'returns the correct number of items');
+     assert.deepEqual(
+-      result.get('meta'),
++      result.map((x) => x.id),
++      keys.slice(0, pageSize),
++      'returns the first page of items'
++    );
++    assert.deepEqual(
++      result.meta,
+       {
+         nextPage: 2,
+         prevPage: 1,
+@@ -152,7 +156,7 @@ module('Unit | Service | store', function (hooks) {
+     const pageThreeEnd = 3 * pageSize;
+     const pageThreeStart = pageThreeEnd - pageSize;
+     assert.deepEqual(
+-      result.mapBy('id'),
++      result.map((x) => x.id),
+       keys.slice(pageThreeStart, pageThreeEnd),
+       'returns the third page of items'
+     );
+@@ -171,7 +175,7 @@ module('Unit | Service | store', function (hooks) {
+     });
+ 
+     assert.deepEqual(
+-      result.mapBy('id'),
++      result.map((x) => x.id),
+       keys.slice(keys.length - 1),
+       'returns the last page when the page value is beyond the of bounds'
+     );
+@@ -189,7 +193,7 @@ module('Unit | Service | store', function (hooks) {
+         });
+     });
+     assert.deepEqual(
+-      result.mapBy('id'),
++      result.map((x) => x.id),
+       keys.slice(0, pageSize),
+       'returns the first page when page value is under the bounds'
+     );
+diff --git a/ui/types/vault/models/capabilities.d.ts b/ui/types/vault/models/capabilities.d.ts
+index b0e5b99..5bfcd94 100644
+--- a/ui/types/vault/models/capabilities.d.ts
++++ b/ui/types/vault/models/capabilities.d.ts
+@@ -3,18 +3,17 @@
+  * SPDX-License-Identifier: MPL-2.0
+  */
+ 
+-import ComputedProperty from '@ember/object/computed';
+ import Model from '@ember-data/model';
+ 
+ interface CapabilitiesModel extends Model {
+   path: string;
+   capabilities: Array<string>;
+-  canSudo: ComputedProperty<boolean | undefined>;
+-  canRead: ComputedProperty<boolean | undefined>;
+-  canCreate: ComputedProperty<boolean | undefined>;
+-  canUpdate: ComputedProperty<boolean | undefined>;
+-  canDelete: ComputedProperty<boolean | undefined>;
+-  canList: ComputedProperty<boolean | undefined>;
++  canSudo: boolean | undefined;
++  canRead: boolean | undefined;
++  canCreate: boolean | undefined;
++  canUpdate: boolean | undefined;
++  canDelete: boolean | undefined;
++  canList: boolean | undefined;
+   // these don't seem to be used anywhere
+   // inferring type from key name
+   allowedParameters: Array<string>;
+-- 
+2.43.0
+

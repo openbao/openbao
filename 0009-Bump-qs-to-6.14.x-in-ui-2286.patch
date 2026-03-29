@@ -1,0 +1,53 @@
+From 87e5dae1357b4f33bec10fd9d1be631d9af3e903 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Jonas=20K=C3=B6hnen?= <jonas.koehnen@sap.com>
+Date: Tue, 6 Jan 2026 10:57:43 +0100
+Subject: [PATCH 09/22] Bump qs to 6.14.x in /ui (#2286)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Jonas Köhnen <jonas.koehnen@sap.com>
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/package.json |  2 +-
+ ui/yarn.lock    | 10 +++++-----
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/ui/package.json b/ui/package.json
+index 22ae956..6bfdf74 100644
+--- a/ui/package.json
++++ b/ui/package.json
+@@ -209,7 +209,7 @@
+     "minimatch": "^3.0.2",
+     "node-notifier": "^8.0.1",
+     "prismjs": "^1.21.0",
+-    "qs": "^6.3.0",
++    "qs": "^6.14.1",
+     "serialize-javascript": "^3.1.0",
+     "underscore": "^1.12.1",
+     "trim": "^0.0.3",
+diff --git a/ui/yarn.lock b/ui/yarn.lock
+index 78e4194..396bb38 100644
+--- a/ui/yarn.lock
++++ b/ui/yarn.lock
+@@ -24157,12 +24157,12 @@ __metadata:
+   languageName: node
+   linkType: hard
+ 
+-"qs@npm:^6.3.0":
+-  version: 6.10.1
+-  resolution: "qs@npm:6.10.1"
++"qs@npm:^6.14.1":
++  version: 6.14.1
++  resolution: "qs@npm:6.14.1"
+   dependencies:
+-    side-channel: ^1.0.4
+-  checksum: 00e390dbf98eff4d8ff121b61ab2fe32106852290de99ecd0e40fc76651c4101f43fc6cc8313cb69423563876fc532951b11dda55d2917def05f292258263480
++    side-channel: ^1.1.0
++  checksum: 7fffab0344fd75bfb6b8c94b8ba17f3d3e823d25b615900f68b473c3a078e497de8eaa08f709eaaa170eedfcee50638a7159b98abef7d8c89c2ede79291522f2
+   languageName: node
+   linkType: hard
+ 
+-- 
+2.43.0
+

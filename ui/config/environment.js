@@ -16,7 +16,7 @@ module.exports = function (environment) {
     EmberENV: {
       LOG_DEPRECATIONS: true,
 
-      RAISE_ON_DEPRECATIONj: false,
+      RAISE_ON_DEPRECATION: false,
       LOG_STACKTRACE_ON_DEPRECATION: true,
       _DEBUG_DEPRECATIONS: true, // Show all deprecations
       _DEBUG_DEPRECATIONS_FOR: ['*'], // Show deprecations for all features

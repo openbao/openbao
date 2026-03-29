@@ -1,0 +1,3 @@
+```release-note:improvement
+ui: Resolve Ember Data model save promise deprecation warnings by wrapping model.save() calls with resolve() in Ember Concurrency tasks
+```

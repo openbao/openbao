@@ -23,6 +23,7 @@ export default Route.extend({
   auth: service(),
   store: service(),
   router: service(),
+  keyDataService: service('key-data'),
 
   transitionToTargetRoute(transition = {}) {
     const targetRoute = this.targetRouteName(transition);
@@ -61,7 +62,7 @@ export default Route.extend({
   },
 
   hasKeyData() {
-    return !!this.controllerFor(INIT).keyData;
+    return !!this.keyDataService.keyData;
   },
 
   targetRouteName(transition) {

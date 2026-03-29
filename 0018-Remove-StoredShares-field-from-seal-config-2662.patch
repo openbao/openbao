@@ -1,0 +1,26 @@
+From 689e8a8b194ef2c66b4ed2d293eca093af64bbe7 Mon Sep 17 00:00:00 2001
+From: Wojciech Slabosz <wojciech.slabosz@sap.com>
+Date: Tue, 24 Mar 2026 14:23:46 +0100
+Subject: [PATCH 18/22] Remove StoredShares field from seal config (#2662)
+
+Signed-off-by: Wojciech Slabosz <wojciech.slabosz@sap.com>
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/app/controllers/vault/cluster/init.js | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/ui/app/controllers/vault/cluster/init.js b/ui/app/controllers/vault/cluster/init.js
+index d70c646..7f7126a 100644
+--- a/ui/app/controllers/vault/cluster/init.js
++++ b/ui/app/controllers/vault/cluster/init.js
+@@ -46,7 +46,6 @@ export default Controller.extend(DEFAULTS, {
+         const shares = parseInt(data.secret_shares, 10);
+         data.secret_shares = shares;
+         if (isCloudSeal) {
+-          data.stored_shares = 1;
+           data.recovery_shares = shares;
+           delete data.secret_shares; // API will throw an error if secret_shares is passed for seal types other than shamir (transit, AWSKMS etc.)
+         }
+-- 
+2.43.0
+

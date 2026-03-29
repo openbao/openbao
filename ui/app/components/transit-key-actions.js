@@ -8,7 +8,7 @@ import { copy } from 'ember-copy';
 import { assert } from '@ember/debug';
 import { inject as service } from '@ember/service';
 import Component from '@ember/component';
-import { set, computed } from '@ember/object';
+import { computed } from '@ember/object';
 import { encodeString } from 'vault/utils/b64';
 
 const TRANSIT_PARAMS = {
@@ -76,7 +76,7 @@ export default Component.extend(TRANSIT_PARAMS, {
     }
     // eslint-disable-next-line ember/no-get
     assert('`key` is required for `' + this.toString() + '`.', this.getModelInfo());
-    set(this, 'selectedAction', this.key.supportedActions[0]);
+    this.selectedAction = this.key.supportedActions[0];
   },
 
   didReceiveAttrs() {
@@ -90,10 +90,8 @@ export default Component.extend(TRANSIT_PARAMS, {
   setExportKeyDefaults() {
     const exportKeyType = this.key.exportKeyTypes[0];
     const exportKeyVersion = this.key.validKeyVersions.lastObject;
-    this.setProperties({
-      exportKeyType,
-      exportKeyVersion,
-    });
+    this.exportKeyType = exportKeyType;
+    this.exportKeyVersion = exportKeyVersion;
   },
 
   keyIsRSA: computed('key.type', function () {
@@ -120,7 +118,7 @@ export default Component.extend(TRANSIT_PARAMS, {
     const oldAction = this.oldSelectedAction;
 
     this.resetParams(oldAction, currentAction);
-    set(this, 'oldSelectedAction', currentAction);
+    this.oldSelectedAction = currentAction;
   },
 
   resetParams(oldAction, action) {
@@ -142,18 +140,20 @@ export default Component.extend(TRANSIT_PARAMS, {
     }
     //resets params still left in the object to defaults
     this.clearErrors();
-    this.setProperties(params);
+    Object.keys(params).forEach((k) => {
+      this[k] = params[k];
+    });
     if (action === 'export') {
       this.setExportKeyDefaults();
     }
   },
 
   handleError(e) {
-    this.set('errors', e.errors);
+    this.errors = e.errors;
   },
 
   clearErrors() {
-    this.set('errors', null);
+    this.errors = null;
   },
 
   triggerSuccessMessage(action) {
@@ -176,7 +176,9 @@ export default Component.extend(TRANSIT_PARAMS, {
     }
     if (!this.isDestroyed && !this.isDestroying) {
       this.toggleProperty('isModalActive');
-      this.setProperties(props);
+      Object.keys(props).forEach((k) => {
+        this[k] = props[k];
+      });
     }
     if (action === 'rotate') {
       this.onRefresh();
@@ -200,7 +202,7 @@ export default Component.extend(TRANSIT_PARAMS, {
 
   actions: {
     onActionChange(action) {
-      set(this, 'selectedAction', action);
+      this.selectedAction = action;
       this.checkAction();
     },
 
@@ -210,7 +212,9 @@ export default Component.extend(TRANSIT_PARAMS, {
 
     clearParams(params) {
       const arr = Array.isArray(params) ? params : [params];
-      arr.forEach((param) => this.set(param, null));
+      arr.forEach((param) => {
+        this[param] = null;
+      });
     },
 
     toggleModal(successMessage) {
@@ -237,10 +241,8 @@ export default Component.extend(TRANSIT_PARAMS, {
         }
       }
       const payload = formData ? this.compactData(formData) : null;
-      this.setProperties({
-        errors: null,
-        result: null,
-      });
+      this.errors = null;
+      this.result = null;
       this.store
         .adapterFor('transit-key')
         .keyAction(action, { backend, id, payload }, options)

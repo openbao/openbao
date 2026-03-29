@@ -18,7 +18,7 @@ export default Component.extend({
   isUploading: alias('restore.isRunning'),
   abortController: null,
   restore: task(function* () {
-    this.set('errors', null);
+    this.errors = null;
     const adapter = getOwner(this).lookup('adapter:application');
     try {
       let url = '/v1/sys/storage/raft/snapshot';
@@ -27,7 +27,7 @@ export default Component.extend({
       }
       const file = new Blob([this.file], { type: 'application/gzip' });
       const controller = new AbortController();
-      this.set('abortController', controller);
+      this.abortController = controller;
       yield adapter.rawRequest(url, 'POST', { body: file, signal: controller.signal });
       this.flashMessages.success('The snapshot was successfully uploaded!');
     } catch (e) {
@@ -39,7 +39,7 @@ export default Component.extend({
         resp = yield e.json();
       }
       const err = resp ? resp.errors : [e];
-      this.set('errors', err);
+      this.errors = err;
     }
   }),
   actions: {

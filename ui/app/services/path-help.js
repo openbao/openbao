@@ -9,7 +9,7 @@
   has less (or no) information about.
 */
 import Model from '@ember-data/model';
-import Service, { inject as service } from '@ember/service';
+import Service from '@ember/service';
 import { encodePath } from 'vault/utils/path-encoding-helpers';
 import { getOwner } from '@ember/application';
 import { assign } from '@ember/polyfills';
@@ -29,7 +29,6 @@ export function sanitizePath(path) {
 }
 
 export default Service.extend({
-  store: service(),
   attrs: null,
   dynamicApiPath: '',
   ajax(url, options = {}) {
@@ -302,14 +301,7 @@ export default Service.extend({
 
   registerNewModelWithProps(helpUrl, backend, newModel, modelName) {
     return this.getProps(helpUrl, backend).then((props) => {
-      const modelType = modelName.split(':')[1];
-      let existingAttrs = null;
-      try {
-        existingAttrs = this.store.modelFor(modelType).attributes;
-      } catch {
-        existingAttrs = null;
-      }
-      const { attrs, newFields } = combineAttributes(existingAttrs, props);
+      const { attrs, newFields } = combineAttributes(newModel.attributes, props);
       const owner = getOwner(this);
       newModel = newModel.extend(attrs, { newFields });
       // if our newModel doesn't have fieldGroups already
@@ -359,12 +351,11 @@ export default Service.extend({
     });
   },
   getFieldGroups(newModel) {
-    const modelType = newModel.modelName;
     const groups = {
       default: [],
     };
     const fieldGroups = [];
-    this.store.modelFor(modelType).attributes.forEach((attr) => {
+    newModel.attributes.forEach((attr) => {
       // if the attr comes in with a fieldGroup from OpenAPI,
       // add it to that group
       if (attr.options.fieldGroup) {

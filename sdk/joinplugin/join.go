@@ -43,6 +43,10 @@ var HandshakeConfig = plugin.HandshakeConfig{
 	MagicCookieValue: "f4204b06-eb34-4f02-8564-a8ba687343a3",
 }
 
+var PluginSets = map[int]plugin.PluginSet{
+	1: {"join": &JoinPlugin{}},
+}
+
 func (g *gRPCServer) Candidates(ctx context.Context, args *pb.CandidateArgs) (*pb.Candidates, error) {
 	v, err := g.Impl.Candidates(ctx, args.Config)
 	if err != nil {

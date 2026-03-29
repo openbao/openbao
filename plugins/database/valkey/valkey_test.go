@@ -132,7 +132,9 @@ func TestDriver(t *testing.T) {
 
 	t.Run("Init", func(t *testing.T) { testValkeyDBInitialize_NoTLS(t, host, port) })
 	t.Run("Init", func(t *testing.T) { testValkeyDBInitialize_TLS(t, host, port) })
+	t.Run("Init", func(t *testing.T) { testValkeyDBInitialize_ConnectionURL(t, host, port) })
 	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser(t, host, port) })
+	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_WithCreationStatements(t, host, port) })
 	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_DefaultRule(t, host, port) })
 	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_plusRole(t, host, port) })
 	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_groupOnly(t, host, port) })
@@ -213,6 +215,23 @@ func testValkeyDBInitialize_TLS(t *testing.T, host string, port int) {
 	}
 }
 
+func testValkeyDBInitialize_ConnectionURL(t *testing.T, host string, port int) {
+	if valkeyTls {
+		t.Skip("skipping plain text Init() test in TLS mode")
+	}
+
+	t.Log("Testing Connection URL Init()")
+
+	connectionURL := fmt.Sprintf("valkey://%s:%s@%s:%d", adminUsername, adminPassword, host, port)
+	connectionDetails := map[string]interface{}{
+		"connection_url": connectionURL,
+	}
+	err := setupValkeyDBInitialize(t, connectionDetails)
+	if err != nil {
+		t.Fatalf("Testing Init() with connection_url failed: error: %s", err)
+	}
+}
+
 func testValkeyDBCreateUser(t *testing.T, address string, port int) {
 	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
@@ -273,10 +292,96 @@ func testValkeyDBCreateUser(t *testing.T, address string, port int) {
 		t.Fatalf("err: %s", err)
 	}
 
-	db.Close()
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close db: %v", err)
+	}
 
 	if err := checkCredsExist(t, userResp.Username, password, address, port); err != nil {
 		t.Fatalf("Could not connect with new credentials: %s", err)
+	}
+
+	err = revokeUser(t, userResp.Username, address, port)
+	if err != nil {
+		t.Fatalf("Could not revoke user %q: %v", userResp.Username, err)
+	}
+
+	err = revokeUser(t, userResp.Username, address, port) // revoke again https://openbao.org/docs/plugins/plugin-authors-guide/#revoke-operations-should-ignore-not-found-errors
+	if err != nil {
+		t.Fatalf("Could not revoke non-existing user %q: %v", userResp.Username, err)
+	}
+}
+
+func testValkeyDBCreateUser_WithCreationStatements(t *testing.T, address string, port int) {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
+		t.SkipNow()
+	}
+	t.Log("Testing CreateUser() with creation statements")
+
+	connectionDetails := map[string]interface{}{
+		"host":     address,
+		"port":     port,
+		"username": adminUsername,
+		"password": adminPassword,
+	}
+
+	if valkeyTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
+		connectionDetails["tls"] = true
+		connectionDetails["ca_cert"] = CACert
+		connectionDetails["insecure_tls"] = true
+	}
+
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+
+	_, err := db.Initialize(context.Background(), initReq)
+	if err != nil {
+		t.Fatalf("Failed to initialize database: %s", err)
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+
+	password := "y8fva_sdVA3rasf"
+	createReq := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
+			DisplayName: "test",
+			RoleName:    "test",
+		},
+		Statements: dbplugin.Statements{
+			Commands: []string{"+@read", "~*"},
+		},
+		Password:   password,
+		Expiration: time.Now().Add(time.Minute),
+	}
+
+	userResp, err := db.NewUser(context.Background(), createReq)
+
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Fatalf("failed to close DB connection during cleanup: %v", err)
+		}
+	}()
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if err := checkRuleAllowed(t, userResp.Username, password, address, port, "get", []string{"somekey"}); err != nil {
+		t.Fatalf("get command should be allowed with +@read rule, but failed: %s", err)
+	}
+
+	if err := checkRuleAllowed(t, userResp.Username, password, address, port, "set", []string{"somekey", "value"}); err == nil {
+		t.Fatal("set command should be denied, but it was allowed")
 	}
 
 	err = revokeUser(t, userResp.Username, address, port)
@@ -635,7 +740,7 @@ func testValkeyDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{fmt.Sprintf(testValkeyGroup)},
+			Commands: []string{testValkeyGroup},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Minute),

@@ -18,7 +18,6 @@ const { POLLING_URLS, NAMESPACE_ROOT_URLS } = APP;
 export default RESTAdapter.extend({
   auth: service(),
   namespaceService: service('namespace'),
-  controlGroup: service(),
 
   flashMessages: service(),
 
@@ -64,31 +63,12 @@ export default RESTAdapter.extend({
   },
 
   ajax(intendedUrl, method, passedOptions = {}) {
-    let url = intendedUrl;
-    let type = method;
-    let options = passedOptions;
-    const controlGroup = this.controlGroup;
-    const controlGroupToken = controlGroup.tokenForUrl(url);
-    // if we have a Control Group token that matches the intendedUrl,
-    // then we want to unwrap it and return the unwrapped response as
-    // if it were the initial request
-    // To do this, we rewrite the function args
-    if (controlGroupToken) {
-      url = '/v1/sys/wrapping/unwrap';
-      type = 'POST';
-      options = {
-        clientToken: controlGroupToken.token,
-        data: {
-          token: controlGroupToken.token,
-        },
-      };
-    }
+    const url = intendedUrl;
+    const type = method;
+    const options = passedOptions;
     const opts = this._preRequest(url, options);
 
     return this._super(url, type, opts).then((...args) => {
-      if (controlGroupToken) {
-        controlGroup.deleteControlGroupToken(controlGroupToken.accessor);
-      }
       const [resp] = args;
       if (resp && resp.warnings) {
         const flash = this.flashMessages;
@@ -96,7 +76,7 @@ export default RESTAdapter.extend({
           flash.info(message);
         });
       }
-      return controlGroup.checkForControlGroup(args, resp, options.wrapTTL);
+      return RSVP.resolve(...args);
     });
   },
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
+	"github.com/openbao/openbao/vault/routing"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -39,11 +40,11 @@ func (c *Core) reloadMatchingPluginMounts(ctx context.Context, mounts []string) 
 		//   - sys/auth/foo
 		//   - auth/foo/
 		//   - auth/foo
-		if strings.HasPrefix(mount, credentialRoutePrefix) {
+		if strings.HasPrefix(mount, routing.CredentialRoutePrefix) {
 			isAuth = true
-		} else if strings.HasPrefix(mount, mountPathSystem+credentialRoutePrefix) {
+		} else if strings.HasPrefix(mount, routing.MountPathSystem+routing.CredentialRoutePrefix) {
 			isAuth = true
-			mount = strings.TrimPrefix(mount, mountPathSystem)
+			mount = strings.TrimPrefix(mount, routing.MountPathSystem)
 		}
 		if !strings.HasSuffix(mount, "/") {
 			mount += "/"
@@ -56,7 +57,7 @@ func (c *Core) reloadMatchingPluginMounts(ctx context.Context, mounts []string) 
 		}
 
 		// We dont reload mounts that are not in the same namespace
-		if ns.ID != entry.Namespace().ID {
+		if ns.ID != entry.Namespace.ID {
 			continue
 		}
 
@@ -84,10 +85,28 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 		return err
 	}
 
+	// Fail early if the plugin is a singleton plugin
+	if slices.Contains(singletonMounts, pluginName) {
+		return fmt.Errorf("%w: %q", ErrSingletonPluginNotReloadable, pluginName)
+	}
+
+	// Check if the plugin is in the plugin catalog and is of a reloadable type
+	types, err := c.pluginCatalog.TypesFromName(ctx, pluginName)
+	if err != nil {
+		return err
+	}
+	if len(types) == 0 {
+		return fmt.Errorf("%w: %q", ErrPluginNotFound, pluginName)
+	}
+	// Only plugin of types auth and secret can be reloaded
+	if !slices.Contains(types, consts.PluginTypeCredential) && !slices.Contains(types, consts.PluginTypeSecrets) {
+		return fmt.Errorf("plugin %q cannot be reloaded, only plugins of type auth and secret can be reloaded", pluginName)
+	}
+
 	// Filter mount entries that only matches the plugin name
 	for _, entry := range c.mounts.Entries {
 		// We dont reload mounts that are not in the same namespace
-		if ns.ID != entry.Namespace().ID {
+		if ns.ID != entry.Namespace.ID {
 			continue
 		}
 		if entry.Type == pluginName || (entry.Type == "plugin" && entry.Config.PluginName == pluginName) {
@@ -102,7 +121,7 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 	// Filter auth mount entries that ony matches the plugin name
 	for _, entry := range c.auth.Entries {
 		// We dont reload mounts that are not in the same namespace
-		if ns.ID != entry.Namespace().ID {
+		if ns.ID != entry.Namespace.ID {
 			continue
 		}
 
@@ -120,7 +139,7 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 
 // reloadBackendCommon is a generic method to reload a backend provided a
 // MountEntry.
-func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAuth bool) error {
+func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntry, isAuth bool) error {
 	// Make sure our cache is up-to-date. Since some singleton mounts can be
 	// tuned, we do this before the below check.
 	entry.SyncCache()
@@ -128,39 +147,36 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 	// We don't want to reload the singleton mounts. They often have specific
 	// inmemory elements and we don't want to touch them here.
 	if slices.Contains(singletonMounts, entry.Type) {
-		c.logger.Debug("skipping reload of singleton mount", "type", entry.Type)
-		return nil
+		return fmt.Errorf("%w: %q", ErrSingletonPluginNotReloadable, entry.Type)
 	}
 
 	path := entry.Path
 
 	if isAuth {
-		path = credentialRoutePrefix + path
+		path = routing.CredentialRoutePrefix + path
 	}
 
 	// Fast-path out if the backend doesn't exist
-	raw, ok := c.router.root.Get(entry.Namespace().Path + path)
+	re, ok := c.router.Get(entry.Namespace.Path + path)
 	if !ok {
 		return nil
 	}
 
-	re := raw.(*routeEntry)
-
 	// Grab the lock, this allows requests to drain before we cleanup the
 	// client.
-	re.l.Lock()
-	defer re.l.Unlock()
+	re.Lock()
+	defer re.Unlock()
 
 	// Only call Cleanup if backend is initialized
-	if re.backend != nil {
+	if re.Backend != nil {
 		// Pass a context value so that the plugin client will call the
 		// appropriate cleanup method for reloading
 		reloadCtx := context.WithValue(ctx, plugin.ContextKeyPluginReload, "reload")
 		// Call backend's Cleanup routine
-		re.backend.Cleanup(reloadCtx)
+		re.Backend.Cleanup(reloadCtx)
 	}
 
-	view := re.storageView
+	view := re.StorageView
 	sysView := c.mountEntrySysView(entry)
 
 	var backend logical.Backend
@@ -193,7 +209,7 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 	}
 
 	// update the mount table since we changed the runningSha
-	if oldSha != entry.RunningSha256 && MountTableUpdateStorage {
+	if oldSha != entry.RunningSha256 {
 		if isAuth {
 			err = c.persistAuth(ctx, nil, c.auth, &entry.Local, entry.UUID)
 			if err != nil {
@@ -208,7 +224,7 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 	}
 
 	// Set the backend back
-	re.backend = backend
+	re.Backend = backend
 
 	// Initialize the backend after reload. This is a no-op for backends < v5 which
 	// rely on lazy loading for initialization. v5 backends do not rely on lazy loading
@@ -222,12 +238,12 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 	// Set paths as well
 	paths := backend.SpecialPaths()
 	if paths != nil {
-		re.rootPaths.Store(pathsToRadix(paths.Root))
-		loginPathsEntry, err := parseUnauthenticatedPaths(paths.Unauthenticated)
+		re.SetRootPaths(routing.PathsToRadix(paths.Root))
+		loginPathsEntry, err := routing.ParseUnauthenticatedPaths(paths.Unauthenticated)
 		if err != nil {
 			return err
 		}
-		re.loginPaths.Store(loginPathsEntry)
+		re.SetLoginPaths(loginPathsEntry)
 	}
 
 	return nil

@@ -354,7 +354,7 @@ func TestExecServer_Run(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error making request to the test app: %s", err)
 			}
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			decoder := json.NewDecoder(resp.Body)
 			var response struct {

@@ -58,17 +58,18 @@ mount system.
 
 ### Parameters
 
-- `path` `(string: <required>)` – Specifies the raw path in the storage backend.
-  This is specified as part of the URL.
+- `path` `(string: <required>)` – Specifies the raw path in the storage
+  backend. This is specified as part of the URL.
 
 - `value` `(string: <required>)` – Specifies the value of the key.
 
-- `compression_type` `(string: "")` - Create/update using the compressed form of `value`. Supported `compression_type`
-  values are `gzip`, `lzw`, `lz4`, `snappy`, or `""`. `""` means no compression is used. If omitted and key already exists,
-  update uses the same compression (or no compression) as the existing value.
+- `compression_type` `(string: "")` - Create/update using the compressed form
+  of `value`. Supported `compression_type` values are `gzip`, `snappy`, or `""`.
+  `""` means no compression is used. If omitted and key already exists, update
+  uses the same compression (or no compression) as the existing value.
 
-- `encoding` `(string: "")` - Specifies the encoding of `value`. Defaults to no encoding.
-  Use "base64" if `value` is encoded in base64.
+- `encoding` `(string: "")` - Specifies the encoding of `value`. Defaults to no
+  encoding. Use "base64" if `value` is encoded in base64.
 
 ### Sample payload
 

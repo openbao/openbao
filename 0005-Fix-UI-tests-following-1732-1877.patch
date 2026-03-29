@@ -1,0 +1,36 @@
+From d96621c18ed9f42ea02ca42e3e475b88ed4dd92a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Jonas=20K=C3=B6hnen?= <jonas.koehnen@sap.com>
+Date: Wed, 1 Oct 2025 15:52:09 +0200
+Subject: [PATCH 05/22] Fix UI tests following #1732 (#1877)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Jonas Köhnen <jonas.koehnen@sap.com>
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/app/models/oidc/provider.js | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/ui/app/models/oidc/provider.js b/ui/app/models/oidc/provider.js
+index 3d50e87..c3c01b4 100644
+--- a/ui/app/models/oidc/provider.js
++++ b/ui/app/models/oidc/provider.js
+@@ -46,7 +46,13 @@ export default class OidcProviderModel extends Model {
+   _attributeMeta = null; // cache initial result of expandAttributeMeta in getter and return
+   get formFields() {
+     if (!this._attributeMeta) {
+-      this._attributeMeta = expandAttributeMeta(this, ['name', 'issuer', 'scopesSupported','authorizationCode','clientCredentials']);
++      this._attributeMeta = expandAttributeMeta(this, [
++        'name',
++        'issuer',
++        'scopesSupported',
++        'authorizationCode',
++        'clientCredentials',
++      ]);
+     }
+     return this._attributeMeta;
+   }
+-- 
+2.43.0
+

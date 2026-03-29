@@ -358,7 +358,7 @@ func (b *backend) pathDeleteKeyHandler(ctx context.Context, req *logical.Request
 		return nil, err
 	}
 	if keyInUse {
-		return logical.ErrorResponse(fmt.Sprintf("Failed to Delete Key.  Key in Use by Issuer: %s", issuerId)), nil
+		return logical.ErrorResponse("Failed to Delete Key.  Key in Use by Issuer: %s", issuerId), nil
 	}
 
 	wasDefault, err := sc.deleteKey(keyId)

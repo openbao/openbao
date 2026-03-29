@@ -100,7 +100,7 @@ func TestTokenStore_TokenInvalidEntityID(t *testing.T) {
 
 	client.SetToken(clientToken)
 
-	secret, err = client.Logical().Write("auth/token/lookup-self", nil)
+	_, err = client.Logical().Write("auth/token/lookup-self", nil)
 	if err == nil {
 		t.Fatal("expected error due to token being invalid when its entity is invalid")
 	}
@@ -231,7 +231,7 @@ func TestTokenStore_IdentityPolicies(t *testing.T) {
 	}
 
 	// Create identity group and add entity as its member
-	secret, err = client.Logical().Write("identity/group", map[string]interface{}{
+	_, err = client.Logical().Write("identity/group", map[string]interface{}{
 		"policies": []string{
 			"group_policy_1",
 			"group_policy_2",
@@ -301,7 +301,7 @@ func TestTokenStore_IdentityPolicies(t *testing.T) {
 	}
 
 	// Renew token to refresh external group memberships
-	secret, err = client.Auth().Token().Renew(ldapClientToken, 10)
+	_, err = client.Auth().Token().Renew(ldapClientToken, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -366,7 +366,7 @@ func TestTokenStore_IdentityPolicies(t *testing.T) {
 		}
 	}
 
-	secret, err = client.Auth().Token().Renew(token4829, 10)
+	_, err = client.Auth().Token().Renew(token4829, 10)
 	if err != nil {
 		t.Fatal(err)
 	}

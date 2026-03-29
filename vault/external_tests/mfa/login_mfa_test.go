@@ -183,7 +183,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 
 			// read the id on another MFA type endpoint should fail
 			invalidPath := fmt.Sprintf("identity/mfa/method/%s/%s", tc.invalidType, methodId)
-			resp, err = client.Logical().Read(invalidPath)
+			_, err = client.Logical().Read(invalidPath)
 			if err == nil {
 				t.Fatal(err)
 			}
@@ -212,7 +212,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 
 			// try to read it again - should 404
 			resp, err = client.Logical().Read(myNewPath)
-			if !(resp == nil && err == nil) {
+			if resp != nil || err != nil {
 				t.Fatal("expected a 404 but didn't get one")
 			}
 		})
@@ -316,7 +316,7 @@ func TestLoginMFAMethodName(t *testing.T) {
 
 			// create a new MFA config name
 			tc.configData["method_name"] = "newName"
-			resp, err = client.Logical().Write(myPath, tc.configData)
+			_, err = client.Logical().Write(myPath, tc.configData)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -324,7 +324,7 @@ func TestLoginMFAMethodName(t *testing.T) {
 			myNewPath := fmt.Sprintf("%s/%s", myPath, methodId)
 
 			// Updating an existing MFA config with another config's name
-			resp, err = client.Logical().Write(myNewPath, tc.configData)
+			_, err = client.Logical().Write(myNewPath, tc.configData)
 			if err == nil {
 				t.Fatalf("expected a failure for configuring an MFA method with an existing MFA method name, %v", err)
 			}
@@ -596,7 +596,7 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 	resp, err = client.Logical().Read(myPath)
 
 	// when both the response and the error are nil on a read request, that gets translated into a 404
-	if !(resp == nil && err == nil) {
+	if resp != nil || err != nil {
 		t.Fatal("expected the read to 404 but it didn't")
 	}
 }

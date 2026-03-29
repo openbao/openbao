@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-issue-forms.json
+name: New entity for Website Ecosystem section
+description: >-
+  Propose a new entity (company, non-profit, government agency, etc.) for
+  the "Ecosystem" section of the OpenBao website.
+title: "[Docs/Ecosystem]: Add "
+labels:
+  - docs/ecosystem
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Name of the proposed enity
+      description: Use the name you want to see on the website e.g. "ACME" vs "ACME INC"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: logo
+    attributes:
+      label: Logo
+      options:
+        - label: >-
+            The proposed entity has made their logo available in
+            https://github.com/openbao/openbao-ecosystem-logos
+          required: true
+
+  - type: dropdown
+    id: categories
+    attributes:
+      label: The proposed entity should be included in the following categories
+      description: See https://openbao.org/ecosystem/
+      multiple: true
+      options:
+        - Supporters
+        - Integrators
+        - Adopters
+        - Vendors
+    validations:
+      required: true
+
+  - type: textarea
+    id: body
+    attributes:
+      label: Body
+      description: >-
+        Briefly summarize the reason why the entity should be included. This
+        will be displayed on the website.
+      placeholder: >-
+        Supporter: ACME INC employs multiple full time devloper working
+        exclusivly on OpenBao
+
+        Integrators: ACME INC added support for OpenBao in their product
+        "Dynamite"
+    validations:
+      required: true

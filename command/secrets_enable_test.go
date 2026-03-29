@@ -18,7 +18,7 @@ import (
 // logicalBackendAdjustmentFactor is set to plus 1 for the database backend
 // which is a plugin but not found in go.mod files, and minus 1 for the ldap
 // and openldap secret backends which have the same underlying plugin.
-var logicalBackendAdjustmentFactor = 1 - 1
+var logicalBackendAdjustmentFactor = 1 - 1 //nolint:staticcheck // explanation above
 
 func testSecretsEnableCommand(tb testing.TB) (*cli.MockUi, *SecretsEnableCommand) {
 	tb.Helper()
@@ -118,7 +118,6 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 			"-passthrough-request-headers", "authorization,authentication",
 			"-passthrough-request-headers", "www-authentication",
 			"-allowed-response-headers", "authorization",
-			"-allowed-managed-keys", "key1,key2",
 			"-force-no-cache",
 			"pki",
 		})
@@ -167,9 +166,6 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 		}
 		if diff := deep.Equal([]string{"foo,bar"}, mountInfo.Config.AuditNonHMACResponseKeys); len(diff) > 0 {
 			t.Errorf("Failed to find expected values in AuditNonHMACResponseKeys. Difference is: %v", diff)
-		}
-		if diff := deep.Equal([]string{"key1,key2"}, mountInfo.Config.AllowedManagedKeys); len(diff) > 0 {
-			t.Errorf("Failed to find expected values in AllowedManagedKeys. Difference is: %v", diff)
 		}
 	})
 

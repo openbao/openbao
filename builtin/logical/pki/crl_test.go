@@ -815,7 +815,7 @@ func TestIssuerRevocation(t *testing.T) {
 	require.NoError(t, err)
 
 	// Issue a leaf cert and ensure it fails (because the issuer is revoked).
-	resp, err = CBWrite(b, s, "issuer/root2/issue/local-testing", map[string]interface{}{
+	_, err = CBWrite(b, s, "issuer/root2/issue/local-testing", map[string]interface{}{
 		"common_name": "testing",
 	})
 	require.Error(t, err)
@@ -1002,7 +1002,7 @@ func TestAutoRebuild(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	defaultCrlPath := "/v1/pki/crl"
+	defaultCrlPath := "pki/crl"
 	crl := getParsedCrlAtPath(t, client, defaultCrlPath)
 	lastCRLNumber := getCRLNumber(t, crl)
 	lastCRLExpiry := crl.NextUpdate
@@ -1020,7 +1020,7 @@ func TestAutoRebuild(t *testing.T) {
 
 	// Wait for the CRL to update based on the configuration change we just did
 	// so that it doesn't grab the revocation we are going to do afterwards.
-	crl = waitForUpdatedCrl(t, client, defaultCrlPath, lastCRLNumber, lastCRLExpiry.Sub(time.Now()))
+	crl = waitForUpdatedCrl(t, client, defaultCrlPath, lastCRLNumber, time.Until(lastCRLExpiry))
 	lastCRLNumber = getCRLNumber(t, crl)
 	lastCRLExpiry = crl.NextUpdate
 
@@ -1095,11 +1095,7 @@ func TestAutoRebuild(t *testing.T) {
 
 	haveUpdatedDeltaCRL := false
 	interruptChan := time.After(4*newPeriod + delta)
-	for {
-		if haveUpdatedDeltaCRL {
-			break
-		}
-
+	for !haveUpdatedDeltaCRL {
 		select {
 		case <-interruptChan:
 			t.Fatalf("expected to regenerate delta CRL within a couple of periodicFunc invocations (plus %v grace period)", delta)
@@ -1147,7 +1143,7 @@ func TestAutoRebuild(t *testing.T) {
 			haveUpdatedDeltaCRL = true
 
 			// Ensure it has what we want.
-			deltaCrl := getParsedCrlAtPath(t, client, "/v1/pki/crl/delta")
+			deltaCrl := getParsedCrlAtPath(t, client, "pki/crl/delta")
 			if !requireSerialNumberInCRL(nil, deltaCrl, newLeafSerial) {
 				// Check if it is on the main CRL because its already regenerated.
 				mainCRL := getParsedCrlAtPath(t, client, defaultCrlPath)
@@ -1572,7 +1568,7 @@ func TestRevokeExpiredCert(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Revoke the expired certificate.
-	resp, err = CBWrite(b, s, "revoke", map[string]interface{}{
+	_, err = CBWrite(b, s, "revoke", map[string]interface{}{
 		"serial_number": newLeafSerial,
 	})
 	require.NoError(t, err)

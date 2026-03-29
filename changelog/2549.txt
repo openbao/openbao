@@ -1,0 +1,3 @@
+```release-note:bug
+core: Skip re-scheduling lease expiration jobs that need to write to storage when a node unseals in read-only mode.
+```

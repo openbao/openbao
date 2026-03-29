@@ -2,7 +2,7 @@
 description: Learn about OpenBao plugin development.
 ---
 
-# Plugin development
+# Plugin Development
 
 :::warning
 
@@ -98,17 +98,15 @@ Let's take a closer look at a snippet from the above main package.
 
 The call to `plugin.ServeMultiplex` ensures that the plugin will use
 OpenBao's [plugin
-multiplexing](/docs/plugins/plugin-architecture#plugin-multiplexing) feature.
+multiplexing](plugin-architecture.mdx#plugin-multiplexing) feature.
 However, this plugin will not be multiplexed if it is run by a version of OpenBao
 that does not support multiplexing. OpenBao will simply fall back to a plugin
 version that it can run. Additionally, we set the `TLSProviderFunc` to ensure
 that our plugin is backwards compatible with versions of OpenBao that do not
 support automatic mutual TLS for secure [plugin
-communication](/docs/plugins/plugin-architecture#plugin-communication). If you
+communication](plugin-architecture.mdx#plugin-communication). If you
 are certain your plugin does not need backwards compatibility, this field can
 be omitted.
-
-[api_addr]: /docs/configuration#api_addr
 
 ## Leveraging plugin versioning
 
@@ -128,7 +126,7 @@ interface directly.
 To build a plugin from source, first navigate to the location holding the
 desired plugin version. Next, run `go build` to obtain a new binary for the
 plugin. Finally,
-[register](/docs/plugins/plugin-architecture#plugin-registration) the
+[register](plugin-architecture.mdx#plugin-registration) the
 plugin and enable it.
 
 ## Plugin development - resources
@@ -136,4 +134,3 @@ plugin and enable it.
 Other HashiCorp plugin development resources:
 
 * [vault-auth-plugin-example](https://github.com/hashicorp/vault-auth-plugin-example)
-

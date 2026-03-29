@@ -80,8 +80,7 @@ func (k *kerberosMethod) Authenticate(context.Context, *api.Client) (string, htt
 	if err != nil {
 		return "", nil, nil, err
 	}
-	var header http.Header
-	header = make(map[string][]string)
+	var header http.Header = make(map[string][]string)
 	header.Set(spnego.HTTPHeaderAuthRequest, authHeaderVal)
 	return k.mountPath + "/login", header, make(map[string]interface{}), nil
 }

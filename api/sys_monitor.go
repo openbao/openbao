@@ -39,7 +39,7 @@ func (c *Sys) Monitor(ctx context.Context, logLevel string, logFormat string) (c
 		droppedCount := 0
 
 		defer close(logCh)
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		for {
 			if ctx.Err() != nil {

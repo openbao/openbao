@@ -37,7 +37,7 @@ func testCases() (tc []*Item) {
 			Priority: ft.Unix(),
 		})
 	}
-	return
+	return tc
 }
 
 func TestPriorityQueue_New(t *testing.T) {

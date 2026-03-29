@@ -14,8 +14,8 @@ The option stores OpenBao's data on the server's filesystem and
 uses a consensus protocol to replicate data to each server in the cluster. More
 information on the internals of Integrated Storage can be found in the
 [Integrated Storage internals
-documentation](/docs/internals/integrated-storage/). Additionally, the
-[Configuration](/docs/configuration/storage/raft/) docs can help in configuring
+documentation](../../internals/integrated-storage.mdx). Additionally, the
+[Configuration](../../configuration/storage/raft.mdx) docs can help in configuring
 OpenBao to use Integrated Storage.
 
 The sections below go into various details on how to operate OpenBao with
@@ -28,7 +28,7 @@ OpenBao's cluster port. The cluster port defaults to `8201`. The TLS information
 is exchanged at join time and is rotated on a cadence.
 
 A requirement for Integrated Storage is that the
-[`cluster_addr`](/docs/concepts/ha#per-node-cluster-address) configuration option
+[`cluster_addr`](../ha.mdx#per-node-cluster-address) configuration option
 is set. This allows OpenBao to assign an address to the node ID at join time.
 
 ## Cluster membership
@@ -38,7 +38,7 @@ running Integrated Storage.
 
 Integrated Storage is bootstrapped during the initialization process
 and results in a cluster of size 1. Depending on the [desired deployment
-size](/docs/internals/integrated-storage/#deployment-table), nodes can be joined
+size](../../internals/integrated-storage.mdx#deployment-table), nodes can be joined
 to the active OpenBao node.
 
 ### Joining nodes
@@ -54,7 +54,7 @@ been joined it cannot be re-joined to a different cluster.
 
 You can either join the node automatically via the config file or manually through the
 API (both methods described below). When joining a node, the API address of the leader node must be used. We
-recommend setting the [`api_addr`](/docs/concepts/ha#direct-access) configuration
+recommend setting the [`api_addr`](../ha.mdx#direct-access) configuration
 option on all nodes to make joining simpler.
 
 #### `retry_join` configuration
@@ -66,7 +66,7 @@ leaders becomes active this node will successfully join. When using Shamir seal,
 the joined nodes will still need to be unsealed manually. When using Auto Unseal
 the node will be able to join and unseal automatically.
 
-An example [`retry_join`](/docs/configuration/storage/raft#retry_join-stanza)
+An example [`retry_join`](../../configuration/storage/raft.mdx#retry_join-stanza)
 config can be seen below:
 
 ```hcl
@@ -83,18 +83,18 @@ storage "raft" {
 }
 ```
 
-Note, in each [`retry_join`](/docs/configuration/storage/raft#retry_join-stanza)
+Note, in each [`retry_join`](../../configuration/storage/raft.mdx#retry_join-stanza)
 stanza, you may provide a single
-[`leader_api_addr`](/docs/configuration/storage/raft#leader_api_addr) or
-[`auto_join`](/docs/configuration/storage/raft#auto_join) value. When a cloud
-[`auto_join`](/docs/configuration/storage/raft#auto_join) configuration value is
+[`leader_api_addr`](../../configuration/storage/raft.mdx#leader_api_addr) or
+[`auto_join`](../../configuration/storage/raft.mdx#auto_join) value. When a cloud
+[`auto_join`](../../configuration/storage/raft.mdx#auto_join) configuration value is
 provided, OpenBao will use [go-discover](https://github.com/hashicorp/go-discover)
 to automatically attempt to discover and resolve potential Raft leader
 addresses.
 
 See the go-discover
 [README](https://github.com/hashicorp/go-discover/blob/master/README.md) for
-details on the format of the [`auto_join`](/docs/configuration/storage/raft#auto_join) value.
+details on the format of the [`auto_join`](../../configuration/storage/raft.mdx#auto_join) value.
 
 ```hcl
 storage "raft" {
@@ -108,8 +108,8 @@ storage "raft" {
 ```
 
 By default, OpenBao will attempt to reach discovered peers using HTTPS and port 8200. Operators may override these through the
-[`auto_join_scheme`](/docs/configuration/storage/raft#auto_join_scheme) and
-[`auto_join_port`](/docs/configuration/storage/raft#auto_join_port) fields
+[`auto_join_scheme`](../../configuration/storage/raft.mdx#auto_join_scheme) and
+[`auto_join_port`](../../configuration/storage/raft.mdx#auto_join_port) fields
 respectively.
 
 ```hcl
@@ -128,7 +128,7 @@ storage "raft" {
 #### Join from the CLI
 
 Alternatively you can use the [`join` CLI
-command](/docs/commands/operator/raft/#join) or the API to join a node. The
+command](../../commands/operator/raft.mdx#join) or the API to join a node. The
 active node's API address will need to be specified:
 
 ```shell-session
@@ -155,7 +155,7 @@ the size of the cluster, or for many other reasons. Removing the peer will
 ensure the cluster stays at the desired size, and that quorum is maintained.
 
 To remove the peer you can issue a
-[`remove-peer`](/docs/commands/operator/raft#remove-peer) command and provide the
+[`remove-peer`](../../commands/operator/raft.mdx#remove-peer) command and provide the
 node ID you wish to remove:
 
 ```shell-session
@@ -166,7 +166,7 @@ Peer removed successfully!
 ### Listing peers
 
 To see the current peer set for the cluster you can issue a
-[`list-peers`](/docs/commands/operator/raft#list-peers) command. All the voting
+[`list-peers`](../../commands/operator/raft.mdx#list-peers) command. All the voting
 nodes that are listed here contribute to the quorum and a majority must be alive
 for Integrated Storage to continue to operate.
 
@@ -194,8 +194,8 @@ these IPs in their IP SANs.
 Before we explore solutions to this problem, let's recapitulate how OpenBao nodes
 speak to one another.
 
-OpenBao exposes two TCP ports: [the API port](/docs/configuration#api_addr) and
-[the cluster port](/docs/configuration#cluster_addr).
+OpenBao exposes two TCP ports: [the API port](../../configuration/index.mdx#api_addr) and
+[the cluster port](../../configuration/index.mdx#cluster_addr).
 
 The API port is where clients send their OpenBao HTTP requests.
 
@@ -233,15 +233,15 @@ All subsequent inter-node communication will use the cluster port.
 
 ### Assisted raft join techniques
 
-The simplest option is to do it by hand: issue [`raft join`](/docs/commands/operator/raft#join) commands specifying the explicit names
+The simplest option is to do it by hand: issue [`raft join`](../../commands/operator/raft.mdx#join) commands specifying the explicit names
 or IPs of the nodes to join to. In this section we look at other TLS-compatible
 options that lend themselves more to automation.
 
 #### Autojoin with TLS servername
 
 The simplest option might be to specify a
-[`leader_tls_servername`](/docs/configuration/storage/raft#leader_tls_servername)
-in the [`retry_join`](/docs/configuration/storage/raft#retry_join-stanza)
+[`leader_tls_servername`](../../configuration/storage/raft.mdx#leader_tls_servername)
+in the [`retry_join`](../../configuration/storage/raft.mdx#retry_join-stanza)
 stanza which matches a [DNS
 SAN](https://en.wikipedia.org/wiki/Subject_Alternative_Name) in the certificate.
 
@@ -264,7 +264,7 @@ using non-voting nodes and dynamically scaling clusters.
 Most OpenBao instances are going to have a load balancer (LB) between clients and
 the OpenBao nodes. In that case, the LB knows how to route traffic to working
 OpenBao nodes, and there's no need for auto-join: we can just use
-[`retry_join`](/docs/configuration/storage/raft#retry_join-stanza) with the LB
+[`retry_join`](../../configuration/storage/raft.mdx#retry_join-stanza) with the LB
 address as the target.
 
 One potential issue here: some users want a public facing LB for clients to
@@ -285,13 +285,13 @@ and have it reconnect to the cluster with the same host address. This will retur
 the cluster to a fully healthy state.
 
 If this is impractical, you need to remove the failed server. Usually, you can
-issue a [`remove-peer`](/docs/commands/operator/raft#remove-peer) command to
+issue a [`remove-peer`](../../commands/operator/raft.mdx#remove-peer) command to
 remove the failed server if it's still a member of the cluster.
 
-If the [`remove-peer`](/docs/commands/operator/raft#remove-peer) command isn't
+If the [`remove-peer`](../../commands/operator/raft.mdx#remove-peer) command isn't
 possible or you'd rather manually re-write the cluster membership a
-[`raft/peers.json`](#manual-recovery-using-peers-json) file can be written to
-the configured data directory.
+[`raft/peers.json`](#manual-recovery-using-peersjson) file can be written to the
+configured data directory.
 
 ### Quorum lost
 
@@ -310,19 +310,19 @@ outstanding Raft log entries, so it's also possible to commit data that was
 uncommitted before the failure.
 
 See the section below on manual recovery using
-[`peers.json`](#manual-recovery-using-peers-json) for details of the recovery
+[`peers.json`](#manual-recovery-using-peersjson) for details of the recovery
 procedure. You include only the remaining servers in the
-[`peers.json`](#manual-recovery-using-peers-json) recovery file. The
-cluster should be able to elect a leader once the remaining servers are all
-restarted with an identical
-[`peers.json`](#manual-recovery-using-peers-json) configuration.
+[`peers.json`](#manual-recovery-using-peersjson) recovery file. The cluster
+should be able to elect a leader once the remaining servers are all restarted
+with an identical [`peers.json`](#manual-recovery-using-peersjson)
+configuration.
 
 Any servers you introduce later can be fresh with totally clean data
 directories and joined using OpenBao's join command.
 
 In extreme cases, it should be possible to recover with just a single remaining
 server by starting that single server with itself as the only peer in the
-[`peers.json`](#manual-recovery-using-peers-json) recovery file.
+[`peers.json`](#manual-recovery-using-peersjson) recovery file.
 
 ### Manual recovery using peers.json
 
@@ -334,7 +334,7 @@ automated processes that will put the peers file in place on a periodic basis.
 To begin, stop all remaining servers.
 
 The next step is to go to the [configured data
-path](/docs/configuration/storage/raft/#path) of each OpenBao server. Inside that
+path](../../configuration/storage/raft.mdx#path) of each OpenBao server. Inside that
 directory, there will be a `raft/` sub-directory. We need to create a
 `raft/peers.json` file. The file should be formatted as a JSON array containing
 the node ID, `address:port`, and suffrage information of each OpenBao server you
@@ -377,4 +377,4 @@ active.
 ### Other recovery methods
 
 For other, non-quorum related recovery [OpenBao's
-recovery](/docs/concepts/recovery-mode/) mode can be used.
+recovery](../recovery-mode.mdx) mode can be used.

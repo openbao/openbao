@@ -22,7 +22,6 @@ module('Integration | Component | secret edit', function (hooks) {
 
   hooks.beforeEach(function () {
     capabilities = null;
-    this.codeMirror = this.owner.lookup('service:code-mirror');
     run(() => {
       this.owner.unregister('service:store');
       this.owner.register('service:store', storeService);

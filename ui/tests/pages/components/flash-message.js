@@ -13,7 +13,7 @@ export default {
   }),
   latestItem: getter(function () {
     const count = this.messages.length;
-    return this.messages.objectAt(count - 1);
+    return this.messages[count - 1];
   }),
   messages: collection('[data-test-flash-message-body]', {
     click: clickable(),

@@ -1,0 +1,221 @@
+From aa6ae6a7ac1961b21c2ac5a924002acd7584e0e3 Mon Sep 17 00:00:00 2001
+From: Wojciech Slabosz <wojciech.slabosz@sap.com>
+Date: Tue, 27 Jan 2026 12:58:33 +0100
+Subject: [PATCH 10/22] Remove "managed-keys" feature references (#2225)
+
+* removed managed keys feature references
+
+Signed-off-by: Wojciech Slabosz <wojciech.slabosz@sap.com>
+
+* revert changes in /sdk and /api packages
+
+Signed-off-by: Wojciech Slabosz <wojciech.slabosz@sap.com>
+
+---------
+
+Signed-off-by: Wojciech Slabosz <wojciech.slabosz@sap.com>
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/app/models/mount-config.js                   |  5 -----
+ ui/app/models/secret-engine.js                  | 17 ++++-------------
+ .../page/pki-configuration-details.hbs          |  1 -
+ .../components/pki-generate-toggle-groups.hbs   |  1 -
+ .../pki/page/pki-configuration-details-test.js  |  1 -
+ ui/tests/unit/models/secret-engine-test.js      | 11 +----------
+ 6 files changed, 5 insertions(+), 31 deletions(-)
+
+diff --git a/ui/app/models/mount-config.js b/ui/app/models/mount-config.js
+index 8f938b2..bb3567c 100644
+--- a/ui/app/models/mount-config.js
++++ b/ui/app/models/mount-config.js
+@@ -62,9 +62,4 @@ export default class MountConfigModel extends Model {
+     noDefault: true,
+   })
+   tokenType;
+-
+-  @attr({
+-    editType: 'stringArray',
+-  })
+-  allowedManagedKeys;
+ }
+diff --git a/ui/app/models/secret-engine.js b/ui/app/models/secret-engine.js
+index 02d7ef7..4b8516d 100644
+--- a/ui/app/models/secret-engine.js
++++ b/ui/app/models/secret-engine.js
+@@ -159,7 +159,6 @@ export default class SecretEngineModel extends Model {
+       fields.push('config.defaultLeaseTtl', 'config.maxLeaseTtl');
+     }
+     fields.push(
+-      'config.allowedManagedKeys',
+       'config.auditNonHmacRequestKeys',
+       'config.auditNonHmacResponseKeys',
+       'config.passthroughRequestHeaders',
+@@ -194,7 +193,6 @@ export default class SecretEngineModel extends Model {
+           ...CORE_OPTIONS,
+           'config.defaultLeaseTtl',
+           'config.maxLeaseTtl',
+-          'config.allowedManagedKeys',
+           ...STANDARD_CONFIG,
+         ];
+         break;
+@@ -204,32 +202,25 @@ export default class SecretEngineModel extends Model {
+           ...CORE_OPTIONS,
+           'config.defaultLeaseTtl',
+           'config.maxLeaseTtl',
+-          'config.allowedManagedKeys',
+           ...STANDARD_CONFIG,
+         ];
+         break;
+       case 'database':
+         // Highlight TTLs in default
+         defaultFields = ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl'];
+-        optionFields = [...CORE_OPTIONS, 'config.allowedManagedKeys', ...STANDARD_CONFIG];
++        optionFields = [...CORE_OPTIONS, ...STANDARD_CONFIG];
+         break;
+       case 'pki':
+-        defaultFields = ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl', 'config.allowedManagedKeys'];
++        defaultFields = ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl'];
+         optionFields = [...CORE_OPTIONS, ...STANDARD_CONFIG];
+         break;
+       case 'keymgmt':
+         // no ttl options for keymgmt
+-        optionFields = [...CORE_OPTIONS, 'config.allowedManagedKeys', ...STANDARD_CONFIG];
++        optionFields = [...CORE_OPTIONS, ...STANDARD_CONFIG];
+         break;
+       default:
+         defaultFields = ['path'];
+-        optionFields = [
+-          ...CORE_OPTIONS,
+-          'config.defaultLeaseTtl',
+-          'config.maxLeaseTtl',
+-          'config.allowedManagedKeys',
+-          ...STANDARD_CONFIG,
+-        ];
++        optionFields = [...CORE_OPTIONS, 'config.defaultLeaseTtl', 'config.maxLeaseTtl', ...STANDARD_CONFIG];
+         break;
+     }
+ 
+diff --git a/ui/lib/pki/addon/components/page/pki-configuration-details.hbs b/ui/lib/pki/addon/components/page/pki-configuration-details.hbs
+index 5238402..4d5636a 100644
+--- a/ui/lib/pki/addon/components/page/pki-configuration-details.hbs
++++ b/ui/lib/pki/addon/components/page/pki-configuration-details.hbs
+@@ -115,7 +115,6 @@
+ <InfoTableRow @label="Seal wrap" @value={{@mountConfig.sealWrap}} />
+ <InfoTableRow @label="Default lease TTL" @value={{@mountConfig.config.defaultLeaseTtl}} />
+ <InfoTableRow @label="Max lease TTL" @value={{@mountConfig.config.maxLeaseTtl}} />
+-<InfoTableRow @label="Allowed managed keys" @value={{or @mountConfig.config.allowedManagedKeys "None"}} />
+ <div class="has-top-margin-l"></div>
+ 
+ {{#if this.showDeleteAllIssuers}}
+diff --git a/ui/lib/pki/addon/components/pki-generate-toggle-groups.hbs b/ui/lib/pki/addon/components/pki-generate-toggle-groups.hbs
+index 616f877..453204e 100644
+--- a/ui/lib/pki/addon/components/pki-generate-toggle-groups.hbs
++++ b/ui/lib/pki/addon/components/pki-generate-toggle-groups.hbs
+@@ -17,7 +17,6 @@
+           {{else if (eq @model.type "kms")}}
+             This certificate type is kms, meaning managed keys will be used. Below, you will name the key and tell OpenBao
+             where to find it in your KMS or HSM.
+-            {{! TODO Add a link to a page for 'managed-keys' }}
+           {{else if (eq @model.type "exported")}}
+             This certificate type is exported. This means the private key will be returned in the response. Below, you will
+             name the key and define its type and key bits.
+diff --git a/ui/tests/integration/components/pki/page/pki-configuration-details-test.js b/ui/tests/integration/components/pki/page/pki-configuration-details-test.js
+index a289f8b..227fd66 100644
+--- a/ui/tests/integration/components/pki/page/pki-configuration-details-test.js
++++ b/ui/tests/integration/components/pki/page/pki-configuration-details-test.js
+@@ -56,7 +56,6 @@ module('Integration | Component | Page::PkiConfigurationDetails', function (hook
+       config: this.store.createRecord('mount-config', {
+         defaultLease: '12h',
+         maxLeaseTtl: '400h',
+-        allowedManagedKeys: true,
+       }),
+     };
+   });
+diff --git a/ui/tests/unit/models/secret-engine-test.js b/ui/tests/unit/models/secret-engine-test.js
+index 89b717f..b9b78d5 100644
+--- a/ui/tests/unit/models/secret-engine-test.js
++++ b/ui/tests/unit/models/secret-engine-test.js
+@@ -64,7 +64,6 @@ module('Unit | Model | secret-engine', function (hooks) {
+         'accessor',
+         'config.defaultLeaseTtl',
+         'config.maxLeaseTtl',
+-        'config.allowedManagedKeys',
+         'config.auditNonHmacRequestKeys',
+         'config.auditNonHmacResponseKeys',
+         'config.passthroughRequestHeaders',
+@@ -85,7 +84,6 @@ module('Unit | Model | secret-engine', function (hooks) {
+         'accessor',
+         'config.defaultLeaseTtl',
+         'config.maxLeaseTtl',
+-        'config.allowedManagedKeys',
+         'config.auditNonHmacRequestKeys',
+         'config.auditNonHmacResponseKeys',
+         'config.passthroughRequestHeaders',
+@@ -108,7 +106,6 @@ module('Unit | Model | secret-engine', function (hooks) {
+         'accessor',
+         'config.defaultLeaseTtl',
+         'config.maxLeaseTtl',
+-        'config.allowedManagedKeys',
+         'config.auditNonHmacRequestKeys',
+         'config.auditNonHmacResponseKeys',
+         'config.passthroughRequestHeaders',
+@@ -131,7 +128,6 @@ module('Unit | Model | secret-engine', function (hooks) {
+         'path',
+         'description',
+         'accessor',
+-        'config.allowedManagedKeys',
+         'config.auditNonHmacRequestKeys',
+         'config.auditNonHmacResponseKeys',
+         'config.passthroughRequestHeaders',
+@@ -155,7 +151,6 @@ module('Unit | Model | secret-engine', function (hooks) {
+             'config.listingVisibility',
+             'config.defaultLeaseTtl',
+             'config.maxLeaseTtl',
+-            'config.allowedManagedKeys',
+             'config.auditNonHmacRequestKeys',
+             'config.auditNonHmacResponseKeys',
+             'config.passthroughRequestHeaders',
+@@ -179,7 +174,6 @@ module('Unit | Model | secret-engine', function (hooks) {
+             'config.listingVisibility',
+             'config.defaultLeaseTtl',
+             'config.maxLeaseTtl',
+-            'config.allowedManagedKeys',
+             'config.auditNonHmacRequestKeys',
+             'config.auditNonHmacResponseKeys',
+             'config.passthroughRequestHeaders',
+@@ -204,7 +198,6 @@ module('Unit | Model | secret-engine', function (hooks) {
+             'config.listingVisibility',
+             'config.defaultLeaseTtl',
+             'config.maxLeaseTtl',
+-            'config.allowedManagedKeys',
+             'config.auditNonHmacRequestKeys',
+             'config.auditNonHmacResponseKeys',
+             'config.passthroughRequestHeaders',
+@@ -226,7 +219,6 @@ module('Unit | Model | secret-engine', function (hooks) {
+           'Method Options': [
+             'description',
+             'config.listingVisibility',
+-            'config.allowedManagedKeys',
+             'config.auditNonHmacRequestKeys',
+             'config.auditNonHmacResponseKeys',
+             'config.passthroughRequestHeaders',
+@@ -243,7 +235,7 @@ module('Unit | Model | secret-engine', function (hooks) {
+       });
+ 
+       assert.deepEqual(model.get('formFieldGroups'), [
+-        { default: ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl', 'config.allowedManagedKeys'] },
++        { default: ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl'] },
+         {
+           'Method Options': [
+             'description',
+@@ -269,7 +261,6 @@ module('Unit | Model | secret-engine', function (hooks) {
+           'Method Options': [
+             'description',
+             'config.listingVisibility',
+-            'config.allowedManagedKeys',
+             'config.auditNonHmacRequestKeys',
+             'config.auditNonHmacResponseKeys',
+             'config.passthroughRequestHeaders',
+-- 
+2.43.0
+

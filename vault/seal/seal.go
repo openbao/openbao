@@ -7,32 +7,9 @@ import (
 	"context"
 	"time"
 
-	metrics "github.com/armon/go-metrics"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 )
-
-type StoredKeysSupport int
-
-const (
-	// The 0 value of StoredKeysSupport is an invalid option
-	StoredKeysInvalid StoredKeysSupport = iota
-	StoredKeysNotSupported
-	StoredKeysSupportedGeneric
-	StoredKeysSupportedShamirRoot
-)
-
-func (s StoredKeysSupport) String() string {
-	switch s {
-	case StoredKeysNotSupported:
-		return "Old-style Shamir"
-	case StoredKeysSupportedGeneric:
-		return "AutoUnseal"
-	case StoredKeysSupportedShamirRoot:
-		return "New-style Shamir"
-	default:
-		return "Invalid StoredKeys type"
-	}
-}
 
 // Access is the embedded implementation of autoSeal that contains logic
 // specific to encrypting and decrypting data, or in this case keys.

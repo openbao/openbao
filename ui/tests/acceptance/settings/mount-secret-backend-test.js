@@ -160,6 +160,7 @@ module('Acceptance | settings/mount-secret-backend', function (hooks) {
     await settled();
     const userToken = consoleComponent.lastLogOutput;
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
     // create the engine
     await mountSecrets.visit();
@@ -189,7 +190,7 @@ module('Acceptance | settings/mount-secret-backend', function (hooks) {
     await mountSecrets.visit();
     await mountSecrets.selectType('kubernetes');
     await mountSecrets.next().path('kubernetes').submit();
-    const { engineRoute } = allEngines().findBy('type', 'kubernetes');
+    const { engineRoute } = allEngines().find((x) => x.type === 'kubernetes');
     assert.strictEqual(
       currentRouteName(),
       `vault.cluster.secrets.backend.${engineRoute}`,

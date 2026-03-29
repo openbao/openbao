@@ -3,19 +3,20 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { alias } from '@ember/object/computed';
 import { computed } from '@ember/object';
 import Base from './_popup-base';
 
 export default Base.extend({
-  model: alias('params.firstObject'),
+  model: computed('params', function () {
+    return this.params[0];
+  }),
 
   groupArray: computed('params', function () {
-    return this.params.objectAt(1);
+    return this.params[1];
   }),
 
   memberId: computed('params', function () {
-    return this.params.objectAt(2);
+    return this.params[2];
   }),
 
   messageArgs(/*model, groupArray, memberId*/) {

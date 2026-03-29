@@ -20,34 +20,35 @@ const (
 )
 
 // See RFC 8555 Section 6.7. Errors.
-var ErrAccountDoesNotExist = errors.New("The request specified an account that does not exist")
+var ErrAccountDoesNotExist = errors.New("the request specified an account that does not exist")
 
 var ErrAcmeDisabled = errors.New("ACME feature is disabled")
 
 var (
-	ErrAlreadyRevoked          = errors.New("The request specified a certificate to be revoked that has already been revoked")
-	ErrBadCSR                  = errors.New("The CSR is unacceptable")
-	ErrBadNonce                = errors.New("The client sent an unacceptable anti-replay nonce")
-	ErrBadPublicKey            = errors.New("The JWS was signed by a public key the server does not support")
-	ErrBadRevocationReason     = errors.New("The revocation reason provided is not allowed by the server")
-	ErrBadSignatureAlgorithm   = errors.New("The JWS was signed with an algorithm the server does not support")
+	ErrAlreadyRevoked        = errors.New("the request specified a certificate to be revoked that has already been revoked")
+	ErrBadCSR                = errors.New("the CSR is unacceptable")
+	ErrBadNonce              = errors.New("the client sent an unacceptable anti-replay nonce")
+	ErrBadPublicKey          = errors.New("the JWS was signed by a public key the server does not support")
+	ErrBadRevocationReason   = errors.New("the revocation reason provided is not allowed by the server")
+	ErrBadSignatureAlgorithm = errors.New("the JWS was signed with an algorithm the server does not support")
+	//nolint:staticcheck //CAA is a proper noun
 	ErrCAA                     = errors.New("Certification Authority Authorization (CAA) records forbid the CA from issuing a certificate")
-	ErrCompound                = errors.New("Specific error conditions are indicated in the 'subproblems' array")
-	ErrConnection              = errors.New("The server could not connect to validation target")
-	ErrDNS                     = errors.New("There was a problem with a DNS query during identifier validation")
-	ErrExternalAccountRequired = errors.New("The request must include a value for the 'externalAccountBinding' field")
-	ErrIncorrectResponse       = errors.New("Response received didn't match the challenge's requirements")
-	ErrInvalidContact          = errors.New("A contact URL for an account was invalid")
-	ErrMalformed               = errors.New("The request message was malformed")
-	ErrOrderNotReady           = errors.New("The request attempted to finalize an order that is not ready to be finalized")
-	ErrRateLimited             = errors.New("The request exceeds a rate limit")
-	ErrRejectedIdentifier      = errors.New("The server will not issue certificates for the identifier")
-	ErrServerInternal          = errors.New("The server experienced an internal error")
-	ErrTLS                     = errors.New("The server received a TLS error during validation")
-	ErrUnauthorized            = errors.New("The client lacks sufficient authorization")
-	ErrUnsupportedContact      = errors.New("A contact URL for an account used an unsupported protocol scheme")
-	ErrUnsupportedIdentifier   = errors.New("An identifier is of an unsupported type")
-	ErrUserActionRequired      = errors.New("Visit the 'instance' URL and take actions specified there")
+	ErrCompound                = errors.New("specific error conditions are indicated in the 'subproblems' array")
+	ErrConnection              = errors.New("the server could not connect to validation target")
+	ErrDNS                     = errors.New("there was a problem with a DNS query during identifier validation")
+	ErrExternalAccountRequired = errors.New("the request must include a value for the 'externalAccountBinding' field")
+	ErrIncorrectResponse       = errors.New("response received didn't match the challenge's requirements")
+	ErrInvalidContact          = errors.New("a contact URL for an account was invalid")
+	ErrMalformed               = errors.New("the request message was malformed")
+	ErrOrderNotReady           = errors.New("the request attempted to finalize an order that is not ready to be finalized")
+	ErrRateLimited             = errors.New("the request exceeds a rate limit")
+	ErrRejectedIdentifier      = errors.New("the server will not issue certificates for the identifier")
+	ErrServerInternal          = errors.New("the server experienced an internal error")
+	ErrTLS                     = errors.New("the server received a TLS error during validation")
+	ErrUnauthorized            = errors.New("the client lacks sufficient authorization")
+	ErrUnsupportedContact      = errors.New("a contact URL for an account used an unsupported protocol scheme")
+	ErrUnsupportedIdentifier   = errors.New("an identifier is of an unsupported type")
+	ErrUserActionRequired      = errors.New("visit the 'instance' URL and take actions specified there")
 )
 
 // Mapping of err->name; see table in RFC 8555 Section 6.7. Errors.
@@ -142,7 +143,7 @@ func (e *ErrorResponse) Marshal() (*logical.Response, error) {
 	return &resp, nil
 }
 
-func FindType(given error) (err error, id string, code int, found bool) {
+func FindType(given error) (id string, code int, found bool, err error) {
 	matchedError := false
 	for err, id = range errIdMappings {
 		if errors.Is(given, err) {
@@ -160,7 +161,7 @@ func FindType(given error) (err error, id string, code int, found bool) {
 
 	code = errCodeMappings[err]
 
-	return
+	return id, code, found, err
 }
 
 func TranslateError(given error) (*logical.Response, error) {
@@ -187,7 +188,7 @@ func TranslateErrorToErrorResponse(given error) ErrorResponse {
 		given = unwrapped.Errors[0]
 	}
 
-	_, id, code, found := FindType(given)
+	id, code, found, _ := FindType(given)
 	if !found && len(remaining) > 0 {
 		// Translate multierrors into a generic error code.
 		id = errIdMappings[ErrCompound]
@@ -200,7 +201,7 @@ func TranslateErrorToErrorResponse(given error) ErrorResponse {
 	body.StatusCode = code
 
 	for _, subgiven := range remaining {
-		_, subid, _, _ := FindType(subgiven)
+		subid, _, _, _ := FindType(subgiven)
 
 		var sub ErrorResponse
 		sub.Type = ErrorPrefix + subid

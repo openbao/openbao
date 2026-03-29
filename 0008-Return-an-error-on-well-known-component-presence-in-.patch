@@ -1,0 +1,46 @@
+From 8458724ab0c4d8e155e5a6f5d6373707d0a1cd89 Mon Sep 17 00:00:00 2001
+From: Wojciech Slabosz <wojciech.slabosz@sap.com>
+Date: Fri, 7 Nov 2025 22:56:26 +0100
+Subject: [PATCH 08/22] Return an error on well-known component presence in
+ OIDCDiscoveryURL value (#2066)
+
+* refactor: well-known component now trimmed when passed with oidc discovery url
+
+Signed-off-by: Wojciech Slabosz <wojciech.slabosz@sap.com>
+
+* changelog added
+
+Signed-off-by: Wojciech Slabosz <wojciech.slabosz@sap.com>
+
+* code review suggestions added
+
+Signed-off-by: Wojciech Slabosz <wojciech.slabosz@sap.com>
+
+* refactor: trimming the url changed to responding with error
+
+Signed-off-by: Wojciech Slabosz <wojciech.slabosz@sap.com>
+
+---------
+
+Signed-off-by: Wojciech Slabosz <wojciech.slabosz@sap.com>
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/app/models/auth-config/jwt.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ui/app/models/auth-config/jwt.js b/ui/app/models/auth-config/jwt.js
+index e1e0db5..69cc101 100644
+--- a/ui/app/models/auth-config/jwt.js
++++ b/ui/app/models/auth-config/jwt.js
+@@ -14,7 +14,7 @@ export default AuthConfig.extend({
+   oidcDiscoveryUrl: attr('string', {
+     label: 'OIDC discovery URL',
+     helpText:
+-      'The OIDC discovery URL, without any .well-known component (base path). Cannot be used with jwt_validation_pubkeys',
++      'The base URL of the OIDC Discovery URL without ".well-known/openid-configuration" component. Cannot be used with jwt_validation_pubkeys',
+   }),
+ 
+   oidcClientId: attr('string', {
+-- 
+2.43.0
+

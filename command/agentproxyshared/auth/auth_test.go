@@ -102,7 +102,7 @@ consumption:
 		case <-ah.OutputCh:
 		case <-ah.TemplateTokenCh:
 		// Nothing
-		case <-time.After(stopTime.Sub(time.Now())):
+		case <-time.After(time.Until(stopTime)):
 			if !closed {
 				cancelFunc()
 				closed = true

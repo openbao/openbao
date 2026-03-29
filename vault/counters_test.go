@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -13,20 +14,10 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-// noinspection SpellCheckingInspection
-func testParseTime(t *testing.T, format, timeval string) time.Time {
-	t.Helper()
-	tm, err := time.Parse(format, timeval)
-	if err != nil {
-		t.Fatalf("Error parsing time %q: %v", timeval, err)
-	}
-	return tm
-}
-
 func testCountActiveTokens(t *testing.T, c *Core, root string) int {
 	t.Helper()
 
-	rootCtx := namespace.RootContext(nil)
+	rootCtx := namespace.RootContext(context.TODO())
 	req := &logical.Request{
 		ClientToken: root,
 		Operation:   logical.ReadOperation,
@@ -50,7 +41,7 @@ func testCountActiveTokens(t *testing.T, c *Core, root string) int {
 
 func TestTokenStore_CountActiveTokens(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
-	rootCtx := namespace.RootContext(nil)
+	rootCtx := namespace.RootContext(context.TODO())
 
 	// Count the root token
 	count := testCountActiveTokens(t, c, root)
@@ -119,7 +110,7 @@ func TestTokenStore_CountActiveTokens(t *testing.T) {
 func testCountActiveEntities(t *testing.T, c *Core, root string, expectedEntities int) {
 	t.Helper()
 
-	rootCtx := namespace.RootContext(nil)
+	rootCtx := namespace.RootContext(context.TODO())
 	resp, err := c.HandleRequest(rootCtx, &logical.Request{
 		ClientToken: root,
 		Operation:   logical.ReadOperation,
@@ -142,7 +133,7 @@ func testCountActiveEntities(t *testing.T, c *Core, root string, expectedEntitie
 
 func TestIdentityStore_CountActiveEntities(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
-	rootCtx := namespace.RootContext(nil)
+	rootCtx := namespace.RootContext(context.TODO())
 
 	// Count the root token
 	testCountActiveEntities(t, c, root, 0)

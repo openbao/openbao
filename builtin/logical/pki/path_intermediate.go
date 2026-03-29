@@ -137,7 +137,7 @@ func (b *backend) pathGenerateIntermediate(ctx context.Context, req *logical.Req
 		apiData: data,
 	}
 
-	parsedBundle, warnings, err := generateIntermediateCSR(sc, input, b.Backend.GetRandomReader())
+	parsedBundle, warnings, err := generateIntermediateCSR(sc, input, b.GetRandomReader())
 	if err != nil {
 		switch err.(type) {
 		case errutil.UserError:

@@ -16,9 +16,9 @@ import (
 )
 
 type sshOTP struct {
-	Username string `json:"username" structs:"username" mapstructure:"username"`
-	IP       string `json:"ip" structs:"ip" mapstructure:"ip"`
-	RoleName string `json:"role_name" structs:"role_name" mapstructure:"role_name"`
+	Username string `json:"username" mapstructure:"username"`
+	IP       string `json:"ip" mapstructure:"ip"`
+	RoleName string `json:"role_name" mapstructure:"role_name"`
 }
 
 func pathCredsCreate(b *backend) *framework.Path {
@@ -79,7 +79,7 @@ func (b *backend) pathCredsCreateWrite(ctx context.Context, req *logical.Request
 		return nil, fmt.Errorf("error retrieving role: %w", err)
 	}
 	if role == nil {
-		return logical.ErrorResponse(fmt.Sprintf("Role %q not found", roleName)), nil
+		return logical.ErrorResponse("Role %q not found", roleName), nil
 	}
 
 	// username is an optional parameter.
@@ -110,7 +110,7 @@ func (b *backend) pathCredsCreateWrite(ctx context.Context, req *logical.Request
 	// Validate the IP address
 	ipAddr := net.ParseIP(ipRaw)
 	if ipAddr == nil {
-		return logical.ErrorResponse(fmt.Sprintf("Invalid IP %q", ipRaw)), nil
+		return logical.ErrorResponse("Invalid IP %q", ipRaw), nil
 	}
 
 	// Check if the IP belongs to the registered list of CIDR blocks under the role
@@ -127,11 +127,12 @@ func (b *backend) pathCredsCreateWrite(ctx context.Context, req *logical.Request
 
 	err = validateIP(ip, roleName, role.CIDRList, role.ExcludeCIDRList, zeroAddressRoles)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("Error validating IP: %v", err)), nil
+		return logical.ErrorResponse("Error validating IP: %v", err), nil
 	}
 
 	var result *logical.Response
-	if role.KeyType == KeyTypeOTP {
+	switch role.KeyType {
+	case KeyTypeOTP:
 		// Generate an OTP
 		otp, err := b.GenerateOTPCredential(ctx, req, &sshOTP{
 			Username: username,
@@ -155,9 +156,9 @@ func (b *backend) pathCredsCreateWrite(ctx context.Context, req *logical.Request
 		}, map[string]interface{}{
 			"otp": otp,
 		})
-	} else if role.KeyType == KeyTypeDynamic {
+	case KeyTypeDynamic:
 		return nil, errors.New("dynamic key types have been removed")
-	} else {
+	default:
 		return nil, errors.New("key type unknown")
 	}
 

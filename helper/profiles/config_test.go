@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 )
 
 func parseBlockList(hclStr, blockName string) (*ast.ObjectList, error) {
-	file, err := hcl.Parse(hclStr)
+	file, err := hclutil.ParseConfig([]byte(hclStr))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse HCL: %w", err)
 	}
@@ -134,13 +134,13 @@ request "op1" {
   data      = { key = "value" }
 }
 `
-	file, err := hcl.Parse(hclStr)
+	file, err := hclutil.ParseConfig([]byte(hclStr))
 	if err != nil {
 		t.Fatalf("failed to parse HCL: %v", err)
 	}
 	rootList := file.Node.(*ast.ObjectList)
 	items := rootList.Filter("request")
-	reqs, err := ParseRequestConfig(nil, items)
+	reqs, err := ParseRequestConfig(items)
 	if err != nil {
 		t.Fatalf("ParseRequestConfig error: %v", err)
 	}
@@ -165,12 +165,12 @@ request {
   operation = "read"
 }
 `
-	file, err := hcl.Parse(hclStr)
+	file, err := hclutil.ParseConfig([]byte(hclStr))
 	if err != nil {
 		t.Fatalf("failed to parse HCL: %v", err)
 	}
 	items := file.Node.(*ast.ObjectList).Filter("request")
-	_, err = ParseRequestConfig(nil, items)
+	_, err = ParseRequestConfig(items)
 	if err == nil || !strings.Contains(err.Error(), "type must be specified") {
 		t.Fatalf("expected missing-type error, got %v", err)
 	}

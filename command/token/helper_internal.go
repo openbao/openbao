@@ -5,14 +5,14 @@ package token
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
-	homedir "github.com/mitchellh/go-homedir"
-	"github.com/natefinch/atomic"
+	"github.com/openbao/openbao/helper/homedir"
 )
 
 var _ TokenHelper = (*InternalTokenHelper)(nil)
@@ -27,7 +27,7 @@ type InternalTokenHelper struct {
 func NewInternalTokenHelper() (*InternalTokenHelper, error) {
 	homeDir, err := homedir.Dir()
 	if err != nil {
-		panic(fmt.Sprintf("error getting user's home directory: %v", err))
+		return nil, fmt.Errorf("error getting user's home directory: %w", err)
 	}
 	return &InternalTokenHelper{homeDir: homeDir}, err
 }
@@ -43,7 +43,7 @@ func (i *InternalTokenHelper) Path() string {
 }
 
 // Get gets the value of the stored token, if any
-func (i *InternalTokenHelper) Get() (string, error) {
+func (i *InternalTokenHelper) Get() (value string, err error) {
 	i.populateTokenPath()
 	f, err := os.Open(i.tokenPath)
 	if os.IsNotExist(err) {
@@ -52,7 +52,9 @@ func (i *InternalTokenHelper) Get() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() {
+		err = errors.Join(err, f.Close())
+	}()
 
 	buf := bytes.NewBuffer(nil)
 	if _, err := io.Copy(buf, f); err != nil {
@@ -72,25 +74,22 @@ func (i *InternalTokenHelper) Store(input string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	defer os.Remove(tmpFile)
+	defer os.Remove(tmpFile) //nolint:errcheck // tmp file will have been moved if successful
 
 	_, err = io.WriteString(f, input)
 	if err != nil {
-		return err
+		return errors.Join(err, f.Close())
 	}
 	err = f.Close()
 	if err != nil {
 		return err
 	}
 
-	// We don't care so much about atomic writes here.  We're using this package
-	// because we don't have a portable way of verifying that the target file
-	// is owned by the correct user.  The simplest way of ensuring that is
-	// to simply re-write it, and the simplest way to ensure that we don't
-	// damage an existing working file due to error is the write-rename pattern.
-	// os.Rename on Windows will return an error if the target already exists.
-	return atomic.ReplaceFile(tmpFile, i.tokenPath)
+	// We don't have a portable way of verifying that the target file is owned
+	// by the correct user. The simplest way of ensuring that is to simply
+	// re-write it, and the simplest way to ensure that we don't damage an
+	// existing working file due to error is the write-rename pattern.
+	return os.Rename(tmpFile, i.tokenPath)
 }
 
 // Erase erases the value of the token

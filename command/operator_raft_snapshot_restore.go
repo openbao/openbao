@@ -91,7 +91,11 @@ func (c *OperatorRaftSnapshotRestoreCommand) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("Error opening policy file: %s", err))
 		return 2
 	}
-	defer snapReader.Close()
+	defer func() {
+		if err := snapReader.Close(); err != nil {
+			c.UI.Error(fmt.Sprintf("Error properly closing policy file: %s", err))
+		}
+	}()
 
 	client, err := c.Client()
 	if err != nil {

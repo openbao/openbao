@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -64,11 +63,7 @@ func TestVersionedKV_Upgrade(t *testing.T) {
 	}
 
 	// wait for upgrade to finish
-	for {
-		if atomic.LoadUint32(b.(*versionedKVBackend).upgrading) == 0 {
-			break
-		}
-
+	for b.(*versionedKVBackend).upgrading.Load() {
 		time.Sleep(time.Second)
 	}
 

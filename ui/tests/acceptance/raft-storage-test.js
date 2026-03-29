@@ -6,7 +6,7 @@
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
 import { setupMirage } from 'ember-cli-mirage/test-support';
-import { click, visit } from '@ember/test-helpers';
+import { click, visit, settled } from '@ember/test-helpers';
 import authPage from 'vault/tests/pages/auth';
 import logout from 'vault/tests/pages/logout';
 
@@ -19,11 +19,11 @@ module('Acceptance | raft storage', function (hooks) {
     this.server.get('/sys/internal/ui/resultant-acl', () =>
       this.server.create('configuration', { data: { root: true } })
     );
-    this.server.get('/sys/license/features', () => ({}));
     await authPage.login();
   });
-  hooks.afterEach(function () {
-    return logout.visit();
+  hooks.afterEach(async function () {
+    await logout.visit();
+    await settled();
   });
 
   test('it should render correct number of raft peers', async function (assert) {

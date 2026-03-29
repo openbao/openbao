@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"path"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -59,7 +60,7 @@ type versionedKVBackend struct {
 
 	// upgrading is an atomic value denoting if the backend is in the process of
 	// upgrading its data.
-	upgrading *uint32
+	upgrading atomic.Bool
 
 	// globalConfig is a cached value for fast lookup
 	globalConfig     *Configuration
@@ -98,7 +99,6 @@ func VersionedKVFactory(ctx context.Context, conf *logical.BackendConfig) (logic
 	upgradeCtx, upgradeCancelFunc := context.WithCancel(ctx)
 
 	b := &versionedKVBackend{
-		upgrading:         new(uint32),
 		globalConfigLock:  new(sync.RWMutex),
 		upgradeCancelFunc: upgradeCancelFunc,
 	}
@@ -439,7 +439,7 @@ func ptypesTimestampToString(t *timestamppb.Timestamp) string {
 		return ""
 	}
 
-	return t.AsTime().Format(time.RFC3339)
+	return t.AsTime().Format(time.RFC3339Nano)
 }
 
 var backendHelp string = `

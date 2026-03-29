@@ -37,7 +37,7 @@ module('Unit | Lib | kv object', function () {
   fromJSONTests.forEach(function ([name, input, content]) {
     test(`fromJSON: ${name}`, function (assert) {
       const data = KVObject.create({ content: [] }).fromJSON(input);
-      assert.deepEqual(data.get('content'), content, 'has expected content');
+      assert.deepEqual(data.content, content, 'has expected content');
     });
   });
 
@@ -56,7 +56,7 @@ module('Unit | Lib | kv object', function () {
     test(`fromJSONString: ${name}`, function (assert) {
       const inputString = JSON.stringify(input, null, 2);
       const data = KVObject.create({ content: [] }).fromJSONString(inputString);
-      assert.deepEqual(data.get('content'), content, 'has expected content');
+      assert.deepEqual(data.content, content, 'has expected content');
     });
   });
 

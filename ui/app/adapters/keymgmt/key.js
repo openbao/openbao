@@ -5,7 +5,6 @@
 
 import ApplicationAdapter from '../application';
 import { encodePath } from 'vault/utils/path-encoding-helpers';
-import ControlGroupError from '../../lib/control-group-error';
 import { inject as service } from '@ember/service';
 
 function pickKeys(obj, picklist) {
@@ -118,19 +117,12 @@ export default class KeymgmtKeyAdapter extends ApplicationAdapter {
 
   getDistribution(backend, kms, key) {
     const url = `${this.buildURL()}/${backend}/kms/${kms}/key/${key}`;
-    return this.ajax(url, 'GET')
-      .then((res) => {
-        return {
-          ...res.data,
-          purposeArray: res.data.purpose.split(','),
-        };
-      })
-      .catch((e) => {
-        if (e instanceof ControlGroupError) {
-          throw e;
-        }
-        return null;
-      });
+    return this.ajax(url, 'GET').then((res) => {
+      return {
+        ...res.data,
+        purposeArray: res.data.purpose.split(','),
+      };
+    });
   }
 
   async queryRecord(store, type, query) {

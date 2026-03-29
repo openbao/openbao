@@ -1,7 +1,7 @@
 cipherboy:
   name: Alex Scheel
   url: https://cipherboy.com
-  image_url: https://cipherboy.com/img/alex-2023-small-square.jpg
+  image_url: https://cipherboy.com/img/alex-2026-small-square.jpg
   socials:
     github: https://github.com/cipherboy
     linkedin: https://www.linkedin.com/pub/alexander-scheel/105/514/807
@@ -9,7 +9,7 @@ cipherboy:
 
 FattiesPatties:
   name: Fatima Patel
-  url: https://fatties-portfolio.vercel.app 
+  url: https://fatties-portfolio.vercel.app
   socials:
     github: https://github.com/fatima2003
     linkedin: https://www.linkedin.com/in/fatima-p-201b50198/
@@ -28,10 +28,10 @@ ChristophVoigt:
     github: https://github.com/voigt
     linkedin: https://www.linkedin.com/in/chris-cloud-native/
     mastodon: https://hachyderm.io/@cv
-  
+
 AndriiFedorchuk:
   name: Andrii Fedorchuk
-  image_url: https://media.licdn.com/dms/image/v2/D4E03AQGDtn3wrc_tCA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1719169821303?e=1758758400&v=beta&t=I9Dh6Ox-LW0kp0BfzWoM0GCcafHltvJkUvP3zWSHYZ4
+  image_url: https://andrii.fedorchuk.me/public/images/IMG_2360_2.JPG
   socials:
     github: https://github.com/driif
     linkedin: https://www.linkedin.com/in/andrii-fedorchuk-b966911b9/
@@ -44,3 +44,10 @@ OpenSSF:
     github: https://github.com/ossf
     linkedin: https://www.linkedin.com/company/openssf/
     mastodon: https://social.lfx.dev/@openssf
+
+phil9909:
+  name: Philipp Stehle
+  image_url: https://avatars.githubusercontent.com/phil9909
+  socials:
+    github: https://github.com/phil9909
+    linkedin: https://www.linkedin.com/in/phil9909/

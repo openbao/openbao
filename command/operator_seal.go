@@ -21,24 +21,24 @@ type OperatorSealCommand struct {
 }
 
 func (c *OperatorSealCommand) Synopsis() string {
-	return "Seals the Vault server"
+	return "Seals the OpenBao server"
 }
 
 func (c *OperatorSealCommand) Help() string {
 	helpText := `
 Usage: bao operator seal [options]
 
-  Seals the Vault server. Sealing tells the Vault server to stop responding
-  to any operations until it is unsealed. When sealed, the Vault server
+  Seals the OpenBao server. Sealing tells the OpenBao server to stop responding
+  to any operations until it is unsealed. When sealed, the OpenBao server
   discards its in-memory root key to unlock the data, so it is physically
   blocked from responding to operations unsealed.
 
-  If an unseal is in progress, sealing the Vault will reset the unsealing
+  If an unseal is in progress, sealing OpenBao will reset the unsealing
   process. Users will have to re-enter their portions of the root key again.
 
-  This command does nothing if the Vault server is already sealed.
+  This command does nothing if the OpenBao server is already sealed.
 
-  Seal the Vault server:
+  Seal the OpenBao server:
 
       $ bao operator seal
 

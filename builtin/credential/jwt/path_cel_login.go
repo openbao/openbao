@@ -8,11 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"time"
 
-	"github.com/google/cel-go/common/types/ref"
 	"github.com/hashicorp/cap/jwt"
-	"github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 )
@@ -69,6 +69,7 @@ func (b *jwtAuthBackend) pathResolveCelRole(ctx context.Context, req *logical.Re
 	if config == nil {
 		return logical.ErrorResponse("could not load configuration"), nil
 	}
+
 	celRole, resp, err := b.getCelRoleFromLoginRequest(config, ctx, req, d)
 	if resp != nil || err != nil {
 		return resp, err
@@ -136,10 +137,7 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 	// ensure that the signing algorithm is a member of the supported set.
 	signingAlgorithms := toAlg(config.JWTSupportedAlgs)
 	if len(signingAlgorithms) == 0 {
-		signingAlgorithms = []jwt.Alg{
-			jwt.RS256, jwt.RS384, jwt.RS512, jwt.ES256, jwt.ES384,
-			jwt.ES512, jwt.PS256, jwt.PS384, jwt.PS512, jwt.EdDSA,
-		}
+		signingAlgorithms = toAlg(consts.AllowedJWTSignatureAlgorithmsBao)
 	}
 
 	// Set expected claims values to assert on the JWT
@@ -169,6 +167,13 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 		return logical.ErrorResponse("error converting proto auth: %s", err.Error()), nil
 	}
 
+	// Set required fields.
+	if len(auth.InternalData) == 0 {
+		auth.InternalData = make(map[string]interface{}, 2)
+	}
+	auth.InternalData["role"] = celRoleEntry.Name
+	auth.InternalData["role_type"] = "cel"
+
 	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
@@ -180,37 +185,46 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 
 // runCelProgram executes the CelProgram for the celRoleEntry and returns a pb.Auth or error
 func (b *jwtAuthBackend) runCelProgram(ctx context.Context, operation logical.Operation, celRoleEntry *celRoleEntry, allClaims map[string]any) (*pb.Auth, error) {
-	result, err := b.celEvalProgram(celRoleEntry.CelProgram, operation, allClaims)
-	if err != nil {
-		return nil, fmt.Errorf("Cel role auth program failed: %w", err)
+	cfg := b.celEvalConfig()
+
+	// Initialize the evaluation context for CEL expressions with the claim
+	// data.
+	evaluationData := map[string]interface{}{
+		"claims":    allClaims,
+		"now":       time.Now(),
+		"operation": string(operation),
 	}
 
-	refVal := result.(ref.Val)
+	result, err := celRoleEntry.Program.Evaluate(ctx, cfg, evaluationData)
+	if err != nil {
+		return nil, fmt.Errorf("CEL auth program failed: %w", err)
+	}
 
 	// process result from CEL program
-	switch v := refVal.Value().(type) {
+	switch v := result.Value().(type) {
 	// if boolean false return auth failed
 	case bool:
 		if !v {
-			return nil, fmt.Errorf("Cel role '%s' blocked authorization with boolean false return", celRoleEntry.Name)
+			return nil, fmt.Errorf("CEL role '%s' blocked authorization with boolean false return", celRoleEntry.Name)
 		}
 	// if string, return this as auth failed message
 	case string:
-		return nil, fmt.Errorf("Cel role '%s' blocked authorization with message: %s", celRoleEntry.Name, v)
+		return nil, fmt.Errorf("CEL role '%s' blocked authorization with message: %s", celRoleEntry.Name, v)
 
 	}
 
 	// handle protobuf Auth return type
-	if msg, err := refVal.ConvertToNative(reflect.TypeOf(&pb.Auth{})); err == nil {
+	if msg, err := result.ConvertToNative(reflect.TypeOf(&pb.Auth{})); err == nil {
 		pbAuth, ok := msg.(*pb.Auth)
 		if ok {
 			return pbAuth, nil
 		}
 	}
 
-	return nil, fmt.Errorf("Cel program '%s' returned unexpected type: %T", celRoleEntry.Name, result)
+	return nil, fmt.Errorf("CEL program '%s' returned unexpected type: %T", celRoleEntry.Name, result)
 }
 
+//nolint:unused
 func (b *jwtAuthBackend) pathCelLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	roleName := req.Auth.InternalData["role"].(string)
 	if roleName == "" {
@@ -223,7 +237,7 @@ func (b *jwtAuthBackend) pathCelLoginRenew(ctx context.Context, req *logical.Req
 		return nil, fmt.Errorf("failed to validate cel role %s during renewal: %v", roleName, err)
 	}
 	if role == nil {
-		return nil, fmt.Errorf("cel role %s does not exist during renewal", roleName)
+		return nil, fmt.Errorf("CEL role %s does not exist during renewal", roleName)
 	}
 
 	resp := &logical.Response{Auth: req.Auth}
@@ -239,13 +253,3 @@ const (
 Authenticates JWTs against a CEL role.
 `
 )
-
-func marshalCIDRs(cidrs []string) []*sockaddr.SockAddrMarshaler {
-	sockaddrs := []*sockaddr.SockAddrMarshaler{}
-	for _, cidr := range cidrs {
-		sockaddr := sockaddr.SockAddrMarshaler{}
-		sockaddr.UnmarshalJSON([]byte(cidr))
-		sockaddrs = append(sockaddrs, &sockaddr)
-	}
-	return sockaddrs
-}

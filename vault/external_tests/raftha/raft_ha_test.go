@@ -4,7 +4,6 @@
 package raftha
 
 import (
-	"sync/atomic"
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
@@ -55,7 +54,7 @@ func testRaftHANewCluster(t *testing.T, bundler teststorage.PhysicalBackendBundl
 	addressProvider := &testhelpers.TestRaftServerAddressProvider{Cluster: cluster}
 
 	leaderCore := cluster.Cores[0]
-	atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+	vault.TestingUpdateClusterAddr.Store(true)
 
 	// Seal the leader so we can install an address provider
 	{
@@ -129,9 +128,10 @@ func TestRaft_HA_ExistingCluster(t *testing.T) {
 		DisablePerformanceStandby: true,
 	}
 	opts := vault.TestClusterOptions{
-		HandlerFunc:        vaulthttp.Handler,
-		NumCores:           vault.DefaultNumCores,
-		KeepStandbysSealed: true,
+		HandlerFunc:         vaulthttp.Handler,
+		NumCores:            vault.DefaultNumCores,
+		KeepStandbysSealed:  true,
+		DisableStandbyReads: true,
 	}
 	logger := logging.NewVaultLogger(hclog.Debug).Named(t.Name())
 
@@ -184,7 +184,7 @@ func TestRaft_HA_ExistingCluster(t *testing.T) {
 		cluster.RootToken = clusterRootToken
 
 		addressProvider := &testhelpers.TestRaftServerAddressProvider{Cluster: cluster}
-		atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+		vault.TestingUpdateClusterAddr.Store(true)
 
 		// Seal the leader so we can install an address provider
 		leaderCore := cluster.Cores[0]

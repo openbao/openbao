@@ -4,14 +4,15 @@
 package cluster
 
 import (
+	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	"sync"
-	"time"
+	"sync/atomic"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"go.uber.org/atomic"
 )
 
 // TCPLayer implements the NetworkLayer interface and uses TCP as the underlying
@@ -30,7 +31,7 @@ func NewTCPLayer(addrs []*net.TCPAddr, logger log.Logger) *TCPLayer {
 	return &TCPLayer{
 		addrs:   addrs,
 		logger:  logger,
-		stopped: atomic.NewBool(false),
+		stopped: &atomic.Bool{},
 	}
 }
 
@@ -85,12 +86,19 @@ func (l *TCPLayer) Listeners() []NetworkListener {
 	return listeners
 }
 
-// Dial implements the NetworkLayer interface.
-func (l *TCPLayer) Dial(address string, timeout time.Duration, tlsConfig *tls.Config) (*tls.Conn, error) {
-	dialer := &net.Dialer{
-		Timeout: timeout,
+// DialContext implements the NetworkLayer interface.
+func (l *TCPLayer) DialContext(ctx context.Context, address string, tlsConfig *tls.Config) (*tls.Conn, error) {
+	var dialer net.Dialer
+	conn, err := dialer.DialContext(ctx, "tcp", address)
+	if err != nil {
+		return nil, err
 	}
-	return tls.DialWithDialer(dialer, "tcp", address, tlsConfig)
+	tlsConn := tls.Client(conn, tlsConfig)
+	if err := tlsConn.HandshakeContext(ctx); err != nil {
+		err = errors.Join(err, conn.Close())
+		return nil, err
+	}
+	return tlsConn, nil
 }
 
 // Close implements the NetworkLayer interface.

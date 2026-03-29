@@ -45,7 +45,7 @@ export default class KvObjectEditor extends Component {
     };
   }
   get hasDuplicateKeys() {
-    return this.kvData.uniqBy('name').length !== this.kvData.get('length');
+    return this.kvData.uniqBy('name').length !== this.kvData.length;
   }
 
   // fired on did-insert from render modifier
@@ -56,7 +56,7 @@ export default class KvObjectEditor extends Component {
   }
   @action
   addRow() {
-    if (!isNone(this.kvData.findBy('name', ''))) {
+    if (!isNone(this.kvData.find((x) => x.name === ''))) {
       return;
     }
     const newObj = { name: '', value: '' };

@@ -30,7 +30,7 @@ Usage: bao secrets disable [options] PATH
 
   Disables a secrets engine at the given PATH. The argument corresponds to
   the enabled PATH of the engine, not the TYPE! All secrets created by this
-  engine are revoked and its Vault data is removed.
+  engine are revoked and its data is removed.
 
   Disable the secrets engine enabled at aws/:
 

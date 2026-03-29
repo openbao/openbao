@@ -1,0 +1,3 @@
+```release-note:bug
+secrets/kv: KV entries timestamps are now correctly formatted in `RFC3339Nano`, as previously done so.
+```

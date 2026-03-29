@@ -16,13 +16,8 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 
-	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
-
-const envVarRunAccTests = "BAO_ACC"
-
-var runAcceptanceTests = api.ReadBaoVariable(envVarRunAccTests) == "1"
 
 func GetTestJWT(t *testing.T) (string, *ecdsa.PrivateKey) {
 	t.Helper()

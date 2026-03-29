@@ -11,16 +11,17 @@ import (
 	"sync"
 	"time"
 
-	metrics "github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 type backendEntry struct {
 	backend audit.Backend
-	view    BarrierView
+	view    barrier.View
 	local   bool
 }
 
@@ -42,7 +43,7 @@ func NewAuditBroker(log log.Logger) *AuditBroker {
 }
 
 // Register is used to add new audit backend to the broker
-func (a *AuditBroker) Register(name string, b audit.Backend, v BarrierView, local bool) {
+func (a *AuditBroker) Register(name string, b audit.Backend, v barrier.View, local bool) {
 	a.Lock()
 	defer a.Unlock()
 	a.backends[name] = backendEntry{
@@ -65,6 +66,13 @@ func (a *AuditBroker) IsRegistered(name string) bool {
 	defer a.RUnlock()
 	_, ok := a.backends[name]
 	return ok
+}
+
+// Count returns the number of registered backends
+func (a *AuditBroker) Count() int {
+	a.RLock()
+	defer a.RUnlock()
+	return len(a.backends)
 }
 
 // IsLocal is used to check if a given audit backend is registered

@@ -15,7 +15,7 @@ export default class SecretV2VersionModel extends SecretModel {
   @attr('string') createdTime;
   @attr('boolean') destroyed;
   @attr('number') currentVersion;
-  @belongsTo('secret-v2') secret;
+  @belongsTo('secret-v2', { async: false, inverse: 'selectedVersion' }) secret;
 
   pathAttr = 'path';
 

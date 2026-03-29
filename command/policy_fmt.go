@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/hcl/hcl/printer"
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/openbao/openbao/helper/homedir"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/vault"
 	"github.com/posener/complete"

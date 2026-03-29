@@ -1,0 +1,3 @@
+```release-note:bug
+command: Fix panic when the home directory cannot be trivially deduced via environment variables.
+```

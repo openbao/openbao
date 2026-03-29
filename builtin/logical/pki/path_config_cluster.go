@@ -7,8 +7,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 
-	"github.com/asaskevich/govalidator"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -158,14 +158,16 @@ func (b *backend) pathWriteCluster(ctx context.Context, req *logical.Request, da
 
 		// This field is required by ACME, if ever we allow un-setting in the
 		// future, this code will need to verify that ACME is not enabled.
-		if !govalidator.IsURL(cfg.Path) {
+		u, err := url.Parse(cfg.Path)
+		if err != nil || u.Scheme == "" || u.Host == "" {
 			return nil, fmt.Errorf("invalid, non-URL path given to cluster: %v", cfg.Path)
 		}
 	}
 
 	if value, ok := data.GetOk("aia_path"); ok {
 		cfg.AIAPath = value.(string)
-		if !govalidator.IsURL(cfg.AIAPath) {
+		u, err := url.Parse(cfg.AIAPath)
+		if err != nil || u.Scheme == "" || u.Host == "" {
 			return nil, fmt.Errorf("invalid, non-URL aia_path given to cluster: %v", cfg.AIAPath)
 		}
 	}

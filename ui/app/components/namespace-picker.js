@@ -61,9 +61,9 @@ export default Component.extend({
       return;
     }
     const isAdding = leaves.length > lastLeaves.length;
-    const changedLeaf = (isAdding ? leaves : lastLeaves).get('lastObject');
+    const changedLeaf = isAdding ? leaves : lastLeaves;
     this.set('isAdding', isAdding);
-    this.set('changedLeaf', changedLeaf);
+    this.set('changedLeaf', changedLeaf[changedLeaf.length - 1]);
 
     // if we're adding we want to render immediately an animate it in
     // if we're not adding, we need time to move the item out before

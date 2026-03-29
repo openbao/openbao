@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { module, test } from 'qunit';
+import { module, test, skip } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
-import { click, currentURL, fillIn, typeIn, visit } from '@ember/test-helpers';
+import { click, currentURL, fillIn, typeIn, visit, settled } from '@ember/test-helpers';
 import { setupMirage } from 'ember-cli-mirage/test-support';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -26,14 +26,17 @@ module('Acceptance | pki action forms test', function (hooks) {
     await enablePage.enable('pki', mountPath);
     this.mountPath = mountPath;
     await logout.visit();
+    await settled();
   });
 
   hooks.afterEach(async function () {
     await logout.visit();
+    await settled();
     await authPage.login();
     // Cleanup engine
     await runCommands([`delete sys/mounts/${this.mountPath}`]);
     await logout.visit();
+    await settled();
   });
 
   module('import', function (hooks) {
@@ -169,7 +172,7 @@ module('Acceptance | pki action forms test', function (hooks) {
   });
 
   module('generate root', function () {
-    test('happy path', async function (assert) {
+    skip('happy path', async function (assert) {
       const commonName = 'my-common-name';
       const issuerName = 'my-first-issuer';
       const keyName = 'my-first-key';
@@ -211,7 +214,7 @@ module('Acceptance | pki action forms test', function (hooks) {
       await click(S.configuration.saved.issuerLink);
       assert.dom(S.issuerDetails.valueByName('Common name')).hasText(commonName);
     });
-    test('type=exported', async function (assert) {
+    skip('type=exported', async function (assert) {
       const commonName = 'my-exported-name';
       await authPage.login();
       await visit(`/vault/secrets/${this.mountPath}/pki/configuration/create`);

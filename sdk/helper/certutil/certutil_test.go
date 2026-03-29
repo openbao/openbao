@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fatih/structs"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 )
 
 // Tests converting back and forth between a CertBundle and a ParsedCertBundle.
@@ -96,7 +96,7 @@ func BenchmarkCertBundleParsing(b *testing.B) {
 				continue
 			}
 
-			cbut, err = pcbut.ToCertBundle()
+			_, err = pcbut.ToCertBundle()
 			if err != nil {
 				b.Fatalf("Error converting to cert bundle: %s", err)
 			}
@@ -135,7 +135,7 @@ func TestCertBundleParsing(t *testing.T) {
 			t.Fatalf("%s", err.Error())
 		}
 
-		dataMap := structs.New(cbut).Map()
+		dataMap := structtomap.Map(cbut)
 		pcbut, err = ParsePKIMap(dataMap)
 		if err != nil {
 			t.Logf("Error occurred with bundle %d in test array (index %d).\n", i+1, i)

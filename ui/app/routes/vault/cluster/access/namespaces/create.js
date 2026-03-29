@@ -5,17 +5,19 @@
 
 import { inject as service } from '@ember/service';
 import Route from '@ember/routing/route';
-import UnloadModel from 'vault/mixins/unload-model-route';
 
-export default class CreateRoute extends Route.extend(UnloadModel) {
+export default class CreateRoute extends Route.extend({
+  store: service('store'),
+  resetController(controller, isExiting) {
+    this._super(...arguments);
+
+    if (isExiting) {
+      controller.cleanupModel?.();
+    }
+  },
+}) {
   @service store;
   @service version;
-
-  beforeModel() {
-    return this.version.fetchFeatures().then(() => {
-      return super.beforeModel(...arguments);
-    });
-  }
 
   model() {
     return this.store.createRecord('namespace');

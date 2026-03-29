@@ -154,19 +154,36 @@ func (m *MySQL) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest) 
 		return dbplugin.DeleteUserResponse{}, err
 	}
 
-	revocationStmts := req.Statements.Commands
-	// Use a default SQL statement for revocation if one cannot be fetched from the role
-	if len(revocationStmts) == 0 {
-		revocationStmts = []string{defaultMysqlRevocationStmts}
-	}
-
 	// Start a transaction
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return dbplugin.DeleteUserResponse{}, err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:errcheck
 
+	if len(req.Statements.Commands) == 0 {
+		return dbplugin.DeleteUserResponse{}, m.defaultDeleteUser(ctx, tx, req.Username)
+	}
+
+	return dbplugin.DeleteUserResponse{}, m.customDeleteUser(ctx, tx, req.Username, req.Statements.Commands)
+}
+
+func (m *MySQL) defaultDeleteUser(ctx context.Context, tx *sql.Tx, username string) error {
+	// Check if the role exists
+	var exists bool
+	err := tx.QueryRowContext(ctx, "SELECT exists (SELECT user FROM mysql.user WHERE user=?);", username).Scan(&exists)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+
+	if !exists {
+		return nil
+	}
+
+	return m.customDeleteUser(ctx, tx, username, []string{defaultMysqlRevocationStmts})
+}
+
+func (m *MySQL) customDeleteUser(ctx context.Context, tx *sql.Tx, username string, revocationStmts []string) error {
 	for _, stmt := range revocationStmts {
 		for _, query := range strutil.ParseArbitraryStringSlice(stmt, ";") {
 			query = strings.TrimSpace(query)
@@ -177,18 +194,17 @@ func (m *MySQL) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest) 
 			// This is not a prepared statement because not all commands are supported
 			// 1295: This command is not supported in the prepared statement protocol yet
 			// Reference https://mariadb.com/kb/en/mariadb/prepare-statement/
-			query = strings.ReplaceAll(query, "{{name}}", req.Username)
-			query = strings.ReplaceAll(query, "{{username}}", req.Username)
-			_, err = tx.ExecContext(ctx, query)
+			query = strings.ReplaceAll(query, "{{name}}", username)
+			query = strings.ReplaceAll(query, "{{username}}", username)
+			_, err := tx.ExecContext(ctx, query)
 			if err != nil {
-				return dbplugin.DeleteUserResponse{}, err
+				return err
 			}
 		}
 	}
 
 	// Commit the transaction
-	err = tx.Commit()
-	return dbplugin.DeleteUserResponse{}, err
+	return tx.Commit()
 }
 
 func (m *MySQL) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRequest) (dbplugin.UpdateUserResponse, error) {
@@ -247,9 +263,7 @@ func (m *MySQL) executePreparedStatementsWithMap(ctx context.Context, statements
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
+	defer tx.Rollback() //nolint:errcheck
 
 	// Execute each query
 	for _, stmt := range statements {

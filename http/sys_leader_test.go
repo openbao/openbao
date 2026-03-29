@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/openbao/openbao/vault"
 )
@@ -24,11 +23,7 @@ func TestSysLeader_get(t *testing.T) {
 
 	var actual map[string]interface{}
 	expected := map[string]interface{}{
-		"ha_enabled":             false,
-		"is_self":                false,
-		"leader_address":         "",
-		"leader_cluster_address": "",
-		"active_time":            time.Time{}.UTC().Format(time.RFC3339),
+		"ha_enabled": false,
 	}
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)

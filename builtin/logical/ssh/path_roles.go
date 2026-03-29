@@ -448,7 +448,7 @@ func (b *backend) pathRoleWrite(ctx context.Context, req *logical.Request, d *fr
 			return nil, fmt.Errorf("failed to validate exclude_cidr_list entry: %w", err)
 		}
 		if !valid {
-			return logical.ErrorResponse(fmt.Sprintf("failed to validate exclude_cidr_list entry: %v", err)), nil
+			return logical.ErrorResponse("failed to validate exclude_cidr_list entry: %v", err), nil
 		}
 	}
 
@@ -464,7 +464,8 @@ func (b *backend) pathRoleWrite(ctx context.Context, req *logical.Request, d *fr
 	keyType = strings.ToLower(keyType)
 
 	var roleEntry sshRole
-	if keyType == KeyTypeOTP {
+	switch keyType {
+	case KeyTypeOTP:
 		defaultUser := d.Get("default_user").(string)
 		if defaultUser == "" {
 			return logical.ErrorResponse("missing default user"), nil
@@ -480,9 +481,9 @@ func (b *backend) pathRoleWrite(ctx context.Context, req *logical.Request, d *fr
 			AllowedUsers:    allowedUsers,
 			Version:         roleEntryVersion,
 		}
-	} else if keyType == KeyTypeDynamic {
+	case KeyTypeDynamic:
 		return logical.ErrorResponse("dynamic key type roles are no longer supported"), nil
-	} else if keyType == KeyTypeCA {
+	case KeyTypeCA:
 		algorithmSigner := DefaultAlgorithmSigner
 		algorithmSignerRaw, ok := d.GetOk("algorithm_signer")
 		if ok {
@@ -504,7 +505,7 @@ func (b *backend) pathRoleWrite(ctx context.Context, req *logical.Request, d *fr
 			return errorResponse, nil
 		}
 		roleEntry = *role
-	} else {
+	default:
 		return logical.ErrorResponse("invalid key type"), nil
 	}
 
@@ -554,7 +555,7 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 	defaultExtensions := convertMapToStringValue(data.Get("default_extensions").(map[string]interface{}))
 	allowedUserKeyLengths, err := convertMapToIntSlice(data.Get("allowed_user_key_lengths").(map[string]interface{}))
 	if err != nil {
-		return nil, logical.ErrorResponse(fmt.Sprintf("error processing allowed_user_key_lengths: %s", err.Error()))
+		return nil, logical.ErrorResponse("error processing allowed_user_key_lengths: %s", err.Error())
 	}
 
 	if ttl != 0 && maxTTL != 0 && ttl > maxTTL {
@@ -665,7 +666,7 @@ func (b *backend) checkUpgrade(ctx context.Context, s logical.Storage, n string,
 		}
 
 	SKIPVERSION2:
-		err = nil
+		err = nil //nolint:ineffassign // we explicitly ignore the error
 	}
 
 	if result.Version < 3 {

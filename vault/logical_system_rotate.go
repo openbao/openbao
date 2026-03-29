@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 func (b *SystemBackend) rotatePaths() []*framework.Path {
@@ -48,39 +49,31 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 
 	rotateStatusSchema := map[string]*framework.FieldSchema{
 		"nonce": {
-			Type:     framework.TypeString,
-			Required: true,
+			Type: framework.TypeString,
 		},
 		"complete": {
 			Type: framework.TypeBool,
 		},
 		"started": {
-			Type:     framework.TypeBool,
-			Required: true,
+			Type: framework.TypeBool,
 		},
 		"t": {
-			Type:     framework.TypeInt,
-			Required: true,
+			Type: framework.TypeInt,
 		},
 		"n": {
-			Type:     framework.TypeInt,
-			Required: true,
+			Type: framework.TypeInt,
 		},
 		"progress": {
-			Type:     framework.TypeInt,
-			Required: true,
+			Type: framework.TypeInt,
 		},
 		"required": {
-			Type:     framework.TypeInt,
-			Required: true,
+			Type: framework.TypeInt,
 		},
 		"verification_required": {
-			Type:     framework.TypeBool,
-			Required: true,
+			Type: framework.TypeBool,
 		},
 		"verification_nonce": {
-			Type:     framework.TypeString,
-			Required: true,
+			Type: framework.TypeString,
 		},
 		"keys": {
 			Type: framework.TypeCommaStringSlice,
@@ -481,12 +474,12 @@ func (b *SystemBackend) handleKeyRotationConfigUpdate() framework.OperationFunc 
 		}
 
 		// Reject out of range settings
-		if rotateConf.Interval < minimumRotationInterval && rotateConf.Interval != 0 {
-			return logical.ErrorResponse("interval must be greater or equal to %s", minimumRotationInterval.String()), logical.ErrInvalidRequest
+		if rotateConf.Interval < barrier.MinimumRotationInterval && rotateConf.Interval != 0 {
+			return logical.ErrorResponse("interval must be greater or equal to %s", barrier.MinimumRotationInterval.String()), logical.ErrInvalidRequest
 		}
 
-		if rotateConf.MaxOperations < absoluteOperationMinimum || rotateConf.MaxOperations > absoluteOperationMaximum {
-			return logical.ErrorResponse("max_operations must be in the range [%d,%d]", absoluteOperationMinimum, absoluteOperationMaximum), logical.ErrInvalidRequest
+		if rotateConf.MaxOperations < barrier.AbsoluteOperationMinimum || rotateConf.MaxOperations > barrier.AbsoluteOperationMaximum {
+			return logical.ErrorResponse("max_operations must be in the range [%d,%d]", barrier.AbsoluteOperationMinimum, barrier.AbsoluteOperationMaximum), logical.ErrInvalidRequest
 		}
 
 		// Store the rotation config
@@ -502,34 +495,20 @@ func (b *SystemBackend) handleKeyRotationConfigUpdate() framework.OperationFunc 
 // a root key rotation without requiring existing key shares to be provided.
 func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 	return func(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-		// Get the seal configuration
-		existingConfig, err := b.Core.SealAccess().BarrierConfig(ctx)
+		initialized, err := b.Core.Initialized(ctx)
 		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to fetch existing config: %w", err).Error())
+			return handleError(err)
 		}
 
-		// Ensure the barrier is initialized
-		if existingConfig == nil {
+		if !initialized {
 			return handleError(ErrNotInit)
 		}
 
-		// Set the rotation config
-		b.Core.rootRotationConfig = existingConfig.Clone()
-
-		// Generate a new key
-		newKey, err := b.Core.barrier.GenerateKey(b.Core.secureRandomReader)
-		if err != nil {
-			b.Core.logger.Error("failed to generate root key", "error", err)
-			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("root key generation failed: %w", err).Error())
+		if err := b.Core.RotateBarrierRootKey(ctx); err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to rotate barrier root key: %v", err)
 		}
 
-		// Perform the rotation
-		if err := b.Core.performBarrierRekey(ctx, newKey); err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform barrier rekey: %w", err).Error())
-		}
-
-		// Remove the rotation config
-		b.Core.rootRotationConfig = nil
+		b.Core.logger.Info("barrier root key rotated")
 		return nil, nil
 	}
 }
@@ -544,7 +523,7 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 		}
 
 		if barrierConfig == nil {
-			return handleError(errors.New("server is not yet initialized"))
+			return handleError(ErrNotInit)
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
@@ -556,10 +535,10 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"started":        false,
-				"t":              0,
-				"n":              0,
-				"seal_threshold": sealThreshold,
+				"started":  false,
+				"t":        0,
+				"n":        0,
+				"required": sealThreshold,
 			},
 		}
 
@@ -653,6 +632,8 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 			return &logical.Response{
 				Data: map[string]interface{}{
 					"complete":              true,
+					"t":                     secretThreshold,
+					"n":                     secretShares,
 					"backup":                result.Backup,
 					"pgp_fingerprints":      result.PGPFingerprints,
 					"verification_required": result.VerificationRequired,
@@ -757,7 +738,7 @@ func (b *SystemBackend) handleRotateVerifyGet() framework.OperationFunc {
 			return handleError(err)
 		}
 		if barrierConfig == nil {
-			return handleError(errors.New("server is not yet initialized"))
+			return handleError(ErrNotInit)
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")

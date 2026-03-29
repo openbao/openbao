@@ -13,19 +13,18 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/go-uuid"
-	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/stretchr/testify/require"
 )
 
 func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
-	i, _, _ := testIdentityStoreWithAppRoleAuth(namespace.RootContext(nil), t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(namespace.RootContext(context.TODO()), t)
 
 	// Create an entity
-	resp, err := i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err := i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -38,7 +37,7 @@ func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
 	entityID := resp.Data["id"].(string)
 
 	// Create a group
-	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -51,7 +50,7 @@ func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
 	}
 
 	// Ensure that the group has entity ID as its member
-	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "group/name/testgroup",
 		Operation: logical.ReadOperation,
 	})
@@ -65,7 +64,7 @@ func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
 	}
 
 	// Delete the entity
-	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity/name/testentity",
 		Operation: logical.DeleteOperation,
 	})
@@ -74,7 +73,7 @@ func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
 	}
 
 	// Ensure that the group does not have entity ID as it's member anymore
-	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "group/name/testgroup",
 		Operation: logical.ReadOperation,
 	})
@@ -89,7 +88,7 @@ func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
 }
 
 func TestIdentityStore_CaseInsensitiveEntityName(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	testEntityName := "testEntityName"
@@ -160,7 +159,7 @@ func TestIdentityStore_CaseInsensitiveEntityName(t *testing.T) {
 }
 
 func TestIdentityStore_EntityByName(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity using the "name" endpoint
@@ -279,7 +278,7 @@ func TestIdentityStore_EntityReadGroupIDs(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityReq := &logical.Request{
@@ -360,7 +359,7 @@ func TestIdentityStore_EntityCreateUpdate(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityData := map[string]interface{}{
@@ -414,7 +413,7 @@ func TestIdentityStore_EntityCreateUpdate(t *testing.T) {
 }
 
 func TestIdentityStore_BatchDelete(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	ids := make([]string, 10000)
@@ -506,10 +505,10 @@ func TestIdentityStore_CloneImmutability(t *testing.T) {
 
 func TestIdentityStore_MemDBImmutability(t *testing.T) {
 	var err error
-	ctx := namespace.RootContext(nil)
-	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
+	ctx := namespace.RootContext(context.TODO())
+	is, approleAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
 
-	validateMountResp := is.router.ValidateMountByAccessor(approleAccessor)
+	validateMountResp := core.router.ValidateMountByAccessor(approleAccessor)
 	if validateMountResp == nil {
 		t.Fatal("failed to validate approle auth mount")
 	}
@@ -537,9 +536,9 @@ func TestIdentityStore_MemDBImmutability(t *testing.T) {
 		},
 	}
 
-	entity.BucketKey = is.entityPacker(ctx).BucketKey(entity.ID)
+	entity.BucketKey = is.EntityPacker(ctx).BucketKey(entity.ID)
 
-	txn := is.db(ctx).Txn(true)
+	txn := is.Txn(ctx, true)
 	defer txn.Abort()
 
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
@@ -571,7 +570,7 @@ func TestIdentityStore_ContextCancel(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx, cancelFunc := context.WithCancel(namespace.RootContext(nil))
+	ctx, cancelFunc := context.WithCancel(namespace.RootContext(context.TODO()))
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityReq := &logical.Request{
@@ -579,13 +578,11 @@ func TestIdentityStore_ContextCancel(t *testing.T) {
 		Path:      "entity",
 	}
 
-	expected := []string{}
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		resp, err = is.HandleRequest(ctx, entityReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v", err, resp)
 		}
-		expected = append(expected, resp.Data["id"].(string))
 	}
 
 	listReq := &logical.Request{
@@ -607,7 +604,7 @@ func TestIdentityStore_ListEntities(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityReq := &logical.Request{
@@ -644,151 +641,13 @@ func TestIdentityStore_ListEntities(t *testing.T) {
 	}
 }
 
-func TestIdentityStore_LoadingEntities(t *testing.T) {
-	var resp *logical.Response
-	// Add approle credential factory to core config
-	err := AddTestCredentialBackend("approle", credAppRole.Factory)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
-
-	defer ClearTestCredentialBackends()
-
-	c := TestCore(t)
-	unsealKeys, token := TestCoreInit(t, c)
-	for _, key := range unsealKeys {
-		if _, err := TestCoreUnseal(c, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
-	}
-
-	if c.Sealed() {
-		t.Fatal("should not be sealed")
-	}
-
-	meGH := &MountEntry{
-		Table:       credentialTableType,
-		Path:        "approle/",
-		Type:        "approle",
-		Description: "approle auth",
-		namespace:   namespace.RootNamespace,
-	}
-
-	// Mount UUID for approle auth
-	meGHUUID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatal(err)
-	}
-	meGH.UUID = meGHUUID
-
-	// Mount accessor for approle auth
-	approleAccessor, err := c.generateMountAccessor("approle")
-	if err != nil {
-		panic(fmt.Sprintf("could not generate approle accessor: %v", err))
-	}
-	meGH.Accessor = approleAccessor
-
-	// Storage view for approle auth
-	ghView := NewBarrierView(c.barrier, credentialBarrierPrefix+meGH.UUID+"/")
-
-	// Sysview for approle auth
-	ghSysview := c.mountEntrySysView(meGH)
-
-	// Create new approle auth credential backend
-	ghAuth, _, err := c.newCredentialBackend(context.Background(), meGH, ghSysview, ghView)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Mount approle auth
-	err = c.router.Mount(ghAuth, "auth/approle", meGH, ghView)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Identity store will be mounted by now, just fetch it from router
-	identitystore := c.router.MatchingBackend(namespace.RootContext(nil), "identity/")
-	if identitystore == nil {
-		t.Fatal("failed to fetch identity store from router")
-	}
-
-	is := identitystore.(*IdentityStore)
-
-	registerData := map[string]interface{}{
-		"name":     "testentityname",
-		"metadata": []string{"someusefulkey=someusefulvalue"},
-		"policies": []string{"testpolicy1", "testpolicy2"},
-	}
-
-	registerReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "entity",
-		Data:      registerData,
-	}
-
-	ctx := namespace.RootContext(nil)
-
-	// Register the entity
-	resp, err = is.HandleRequest(ctx, registerReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%v resp:%#v", err, resp)
-	}
-
-	entityID := resp.Data["id"].(string)
-
-	readReq := &logical.Request{
-		Path:      "entity/id/" + entityID,
-		Operation: logical.ReadOperation,
-	}
-
-	// Ensure that entity is created
-	resp, err = is.HandleRequest(ctx, readReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%v resp:%#v", err, resp)
-	}
-
-	if resp.Data["id"] != entityID {
-		t.Fatal("failed to read the created entity")
-	}
-
-	// Perform a seal/unseal cycle
-	err = c.Seal(token)
-	if err != nil {
-		t.Fatalf("failed to seal core: %v", err)
-	}
-
-	if !c.Sealed() {
-		t.Fatal("should be sealed")
-	}
-
-	for _, key := range unsealKeys {
-		if _, err := TestCoreUnseal(c, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
-	}
-
-	if c.Sealed() {
-		t.Fatal("should not be sealed")
-	}
-
-	// Check if the entity is restored
-	resp, err = is.HandleRequest(ctx, readReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%v resp:%#v", err, resp)
-	}
-
-	if resp.Data["id"] != entityID {
-		t.Fatal("failed to read the created entity after a seal/unseal cycle")
-	}
-}
-
 func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 	var err error
 
-	ctx := namespace.RootContext(nil)
-	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
+	ctx := namespace.RootContext(context.TODO())
+	is, approleAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
 
-	validateMountResp := is.router.ValidateMountByAccessor(approleAccessor)
+	validateMountResp := core.router.ValidateMountByAccessor(approleAccessor)
 	if validateMountResp == nil {
 		t.Fatal("failed to validate approle auth mount")
 	}
@@ -829,9 +688,9 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 		},
 	}
 
-	entity.BucketKey = is.entityPacker(ctx).BucketKey(entity.ID)
+	entity.BucketKey = is.EntityPacker(ctx).BucketKey(entity.ID)
 
-	txn := is.db(ctx).Txn(true)
+	txn := is.Txn(ctx, true)
 	defer txn.Abort()
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
 	if err != nil {
@@ -859,7 +718,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 		t.Fatalf("entity mismatched entities; expected: %#v\n actual: %#v\n", entity, entityFetched)
 	}
 
-	txn = is.db(ctx).Txn(false)
+	txn = is.Txn(ctx, false)
 	entitiesFetched, err := is.MemDBEntitiesByBucketKeyInTxn(txn, entity.BucketKey)
 	if err != nil {
 		t.Fatal(err)
@@ -897,7 +756,7 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	registerData := map[string]interface{}{
@@ -1010,17 +869,17 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 
 func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 	ctx := namespace.RootContext(context.Background())
-	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
-	testIdentityStoreMergeEntitiesById(t, ctx, is, approleAccessor, upAccessor, core)
+	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
+	testIdentityStoreMergeEntitiesById(t, ctx, is, approleAccessor, upAccessor)
 }
 
 func TestIdentityStore_MergeEntitiesByID_UnsafeShared(t *testing.T) {
 	ctx := namespace.RootContext(context.Background())
-	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
-	testIdentityStoreMergeEntitiesById(t, ctx, is, approleAccessor, upAccessor, core)
+	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
+	testIdentityStoreMergeEntitiesById(t, ctx, is, approleAccessor, upAccessor)
 }
 
-func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *IdentityStore, approleAccessor string, upAccessor string, core *Core) {
+func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *ident.IdentityStore, approleAccessor string, upAccessor string) {
 	var err error
 	var resp *logical.Response
 	registerData := map[string]interface{}{
@@ -1225,7 +1084,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Register the entity
@@ -1343,10 +1202,10 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 }
 
 func TestIdentityStore_EntityUpdateRefusesRoot(t *testing.T) {
-	i, _, _ := testIdentityStoreWithAppRoleAuth(namespace.RootContext(nil), t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(namespace.RootContext(context.TODO()), t)
 
 	// Create an entity
-	resp, err := i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err := i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -1359,7 +1218,7 @@ func TestIdentityStore_EntityUpdateRefusesRoot(t *testing.T) {
 	}
 
 	// Read the entity first.
-	readEntityResp, err := i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	readEntityResp, err := i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity/name/testentity",
 		Operation: logical.ReadOperation,
 	})
@@ -1368,7 +1227,7 @@ func TestIdentityStore_EntityUpdateRefusesRoot(t *testing.T) {
 	}
 
 	// Update the entity to set the root policy; this should fail.
-	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity/name/testentity",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -1380,7 +1239,7 @@ func TestIdentityStore_EntityUpdateRefusesRoot(t *testing.T) {
 	}
 
 	// Ensure that the entity was not modified.
-	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity/name/testentity",
 		Operation: logical.ReadOperation,
 	})

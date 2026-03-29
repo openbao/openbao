@@ -34,7 +34,6 @@ type SecretsTuneCommand struct {
 	flagOptions                   map[string]string
 	flagVersion                   int
 	flagPluginVersion             string
-	flagAllowedManagedKeys        []string
 }
 
 func (c *SecretsTuneCommand) Synopsis() string {
@@ -84,7 +83,7 @@ func (c *SecretsTuneCommand) Flags() *FlagSets {
 		EnvVar:     "",
 		Completion: complete.PredictAnything,
 		Usage: "The default lease TTL for this secrets engine. If unspecified, " +
-			"this defaults to the Vault server's globally configured default lease " +
+			"this defaults to the OpenBao server's globally configured default lease " +
 			"TTL, or a previously configured value for the secrets engine.",
 	})
 
@@ -109,7 +108,7 @@ func (c *SecretsTuneCommand) Flags() *FlagSets {
 		EnvVar:     "",
 		Completion: complete.PredictAnything,
 		Usage: "The maximum lease TTL for this secrets engine. If unspecified, " +
-			"this defaults to the Vault server's globally configured maximum lease " +
+			"this defaults to the OpenBao server's globally configured maximum lease " +
 			"TTL, or a previously configured value for the secrets engine.",
 	})
 
@@ -140,14 +139,6 @@ func (c *SecretsTuneCommand) Flags() *FlagSets {
 		Target:  &c.flagVersion,
 		Default: 0,
 		Usage:   "Select the version of the engine to run. Not supported by all engines.",
-	})
-
-	f.StringSliceVar(&StringSliceVar{
-		Name:   flagNameAllowedManagedKeys,
-		Target: &c.flagAllowedManagedKeys,
-		Usage: "Managed key name(s) that the mount in question is allowed to access. " +
-			"Note that multiple keys may be specified by providing this option multiple times, " +
-			"each time with 1 key.",
 	})
 
 	f.StringVar(&StringVar{
@@ -233,10 +224,6 @@ func (c *SecretsTuneCommand) Run(args []string) int {
 
 		if fl.Name == flagNameAllowedResponseHeaders {
 			mountConfigInput.AllowedResponseHeaders = c.flagAllowedResponseHeaders
-		}
-
-		if fl.Name == flagNameAllowedManagedKeys {
-			mountConfigInput.AllowedManagedKeys = c.flagAllowedManagedKeys
 		}
 
 		if fl.Name == flagNamePluginVersion {

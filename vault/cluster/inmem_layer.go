@@ -4,16 +4,17 @@
 package cluster
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"go.uber.org/atomic"
 )
 
 // InmemLayer is an in-memory implementation of NetworkLayer. This is
@@ -43,7 +44,7 @@ func NewInmemLayer(addr string, logger log.Logger) *InmemLayer {
 	return &InmemLayer{
 		addr:        addr,
 		logger:      logger,
-		stopped:     atomic.NewBool(false),
+		stopped:     &atomic.Bool{},
 		stopCh:      make(chan struct{}),
 		peers:       make(map[string]*InmemLayer),
 		servConns:   make(map[string][]net.Conn),
@@ -109,15 +110,15 @@ func (l *InmemLayer) Listeners() []NetworkListener {
 		addr:         l.addr,
 		pendingConns: make(chan net.Conn),
 
-		stopped: atomic.NewBool(false),
+		stopped: &atomic.Bool{},
 		stopCh:  make(chan struct{}),
 	}
 
 	return []NetworkListener{l.listener}
 }
 
-// Dial implements NetworkLayer.
-func (l *InmemLayer) Dial(addr string, timeout time.Duration, tlsConfig *tls.Config) (*tls.Conn, error) {
+// DialContext implements NetworkLayer.
+func (l *InmemLayer) DialContext(ctx context.Context, addr string, tlsConfig *tls.Config) (*tls.Conn, error) {
 	l.l.Lock()
 	connectionCh := l.connectionCh
 
@@ -143,10 +144,6 @@ func (l *InmemLayer) Dial(addr string, timeout time.Duration, tlsConfig *tls.Con
 	l.l.Unlock()
 	if !ok {
 		return nil, errors.New("inmemlayer: no address found")
-	}
-
-	if timeout < 0 {
-		return nil, fmt.Errorf("inmemlayer: timeout given is less than 0: %d", timeout)
 	}
 
 	alpn := ""

@@ -290,7 +290,7 @@ func (b *backend) pathImportIssuers(ctx context.Context, req *logical.Request, d
 			return nil, err
 		}
 
-		defer txn.Rollback(ctx)
+		defer txn.Rollback(ctx) //nolint:errcheck
 		req.Storage = txn
 	}
 
@@ -390,7 +390,7 @@ func (b *backend) pathImportIssuers(ctx context.Context, req *logical.Request, d
 		// Handle import of private key.
 		key, existing, err := importKeyFromBytes(sc, keyPem, "")
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("Error parsing key %v: %v", keyIndex, err)), nil
+			return logical.ErrorResponse("Error parsing key %v: %v", keyIndex, err), nil
 		}
 
 		if !existing {
@@ -403,7 +403,7 @@ func (b *backend) pathImportIssuers(ctx context.Context, req *logical.Request, d
 	for certIndex, certPem := range issuers {
 		cert, existing, err := sc.importIssuer(certPem, "")
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("Error parsing issuer %v: %v\n%v", certIndex, err, certPem)), nil
+			return logical.ErrorResponse("Error parsing issuer %v: %v\n%v", certIndex, err, certPem), nil
 		}
 
 		issuerKeyMap[cert.ID.String()] = cert.KeyID.String()
@@ -511,11 +511,11 @@ func (b *backend) pathImportIssuers(ctx context.Context, req *logical.Request, d
 			// string "PSS". If so, it indicates we might've wanted to modify
 			// this issuer, so convert the error to a warning.
 			if strings.Contains(err.Error(), "PSS") || strings.Contains(err.Error(), "pss") {
-				err = fmt.Errorf("Rebuilding the CRL failed with a message relating to the PSS signature algorithm. This likely means the revocation_signature_algorithm needs to be set on the newly imported issuer(s) because a managed key supports only the PSS algorithm; by default PKCS#1v1.5 was used to build the CRLs. CRLs will not be generated until this has been addressed, however the import was successful. The original error is reproduced below:\n\n\t%w", err)
+				err = fmt.Errorf("rebuilding the CRL failed with a message relating to the PSS signature algorithm. This likely means the revocation_signature_algorithm needs to be set on the newly imported issuer(s) because a managed key supports only the PSS algorithm; by default PKCS#1v1.5 was used to build the CRLs. CRLs will not be generated until this has been addressed, however the import was successful. The original error is reproduced below:\n\n\t%w", err)
 			} else {
 				// Note to the caller that while this is an error, we did
 				// successfully import the issuers.
-				err = fmt.Errorf("Rebuilding the CRL failed. While this is indicative of a problem with the imported issuers (perhaps because of their revocation_signature_algorithm), they did import successfully and are now usable. It is strongly suggested to fix the CRL building errors before continuing. The original error is reproduced below:\n\n\t%w", err)
+				err = fmt.Errorf("rebuilding the CRL failed. While this is indicative of a problem with the imported issuers (perhaps because of their revocation_signature_algorithm), they did import successfully and are now usable. It is strongly suggested to fix the CRL building errors before continuing. The original error is reproduced below:\n\n\t%w", err)
 			}
 
 			// Transition this to a warning rather than an error, as the
@@ -774,7 +774,7 @@ func (b *backend) pathRevokeIssuer(ctx context.Context, req *logical.Request, da
 	if crlErr != nil {
 		switch crlErr.(type) {
 		case errutil.UserError:
-			return logical.ErrorResponse(fmt.Sprintf("Error during CRL building: %s", crlErr)), nil
+			return logical.ErrorResponse("Error during CRL building: %s", crlErr), nil
 		default:
 			return nil, fmt.Errorf("error encountered during CRL building: %w", crlErr)
 		}

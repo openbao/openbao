@@ -40,7 +40,7 @@ MFA in OpenBao includes the following login types:
 :::warning
 
 **NOTE:** OpenBao's built-in Login MFA feature does not protect against brute forcing of
-TOTP passcodes by default. We recommend that per-client [rate limits](/docs/concepts/resource-quotas)
+TOTP passcodes by default. We recommend that per-client [rate limits](../../concepts/resource-quotas.mdx)
 are applied to the relevant login and/or mfa paths (e.g. `/sys/mfa/validate`). External MFA
 methods (`Duo`, `Ping` and `Okta`) may already provide configurable rate limiting. Rate limiting of
 Login MFA paths are enforced by default.

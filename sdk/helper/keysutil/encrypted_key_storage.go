@@ -341,34 +341,34 @@ func (t *transactionalEncryptedKeyStorage) BeginReadOnlyTx(ctx context.Context) 
 
 	return &eksTransaction{
 		encryptedKeyStorage{
-			policy: t.encryptedKeyStorage.policy,
+			policy: t.policy,
 			s:      tx,
-			lru:    t.encryptedKeyStorage.lru,
-			prefix: t.encryptedKeyStorage.prefix,
+			lru:    t.lru,
+			prefix: t.prefix,
 		},
 	}, nil
 }
 
 func (t *transactionalEncryptedKeyStorage) BeginTx(ctx context.Context) (logical.Transaction, error) {
-	tx, err := t.encryptedKeyStorage.s.(logical.TransactionalStorage).BeginTx(ctx)
+	tx, err := t.s.(logical.TransactionalStorage).BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	return &eksTransaction{
 		encryptedKeyStorage{
-			policy: t.encryptedKeyStorage.policy,
+			policy: t.policy,
 			s:      tx,
-			lru:    t.encryptedKeyStorage.lru,
-			prefix: t.encryptedKeyStorage.prefix,
+			lru:    t.lru,
+			prefix: t.prefix,
 		},
 	}, nil
 }
 
 func (e *eksTransaction) Commit(ctx context.Context) error {
-	return e.encryptedKeyStorage.s.(logical.Transaction).Commit(ctx)
+	return e.s.(logical.Transaction).Commit(ctx)
 }
 
 func (e *eksTransaction) Rollback(ctx context.Context) error {
-	return e.encryptedKeyStorage.s.(logical.Transaction).Rollback(ctx)
+	return e.s.(logical.Transaction).Rollback(ctx)
 }

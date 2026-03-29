@@ -105,9 +105,11 @@ func LeaseSwitchedPassthroughBackend(ctx context.Context, conf *logical.BackendC
 	}
 
 	if conf == nil {
-		return nil, errors.New("Configuation passed into backend is nil")
+		return nil, errors.New("configuation passed into backend is nil")
 	}
-	backend.Setup(ctx, conf)
+	if err := backend.Setup(ctx, conf); err != nil {
+		return nil, err
+	}
 	b.Backend = backend
 
 	return b, nil
@@ -229,7 +231,7 @@ func (b *PassthroughBackend) handleWrite() framework.OperationFunc {
 			Value: buf,
 		}
 		if err := req.Storage.Put(ctx, entry); err != nil {
-			return nil, fmt.Errorf("failed to write: %v", err)
+			return nil, fmt.Errorf("failed to write: %w", err)
 		}
 
 		return nil, nil

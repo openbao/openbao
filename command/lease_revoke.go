@@ -50,7 +50,7 @@ Usage: bao lease revoke [options] ID
 
       $ bao lease revoke -prefix aws/creds/deploy
 
-  Force delete leases from Vault even if secret engine revocation fails:
+  Force delete leases from OpenBao even if secret engine revocation fails:
 
       $ bao lease revoke -force -prefix consul/creds
 
@@ -71,7 +71,7 @@ func (c *LeaseRevokeCommand) Flags() *FlagSets {
 		Aliases: []string{"f"},
 		Target:  &c.flagForce,
 		Default: false,
-		Usage: "Delete the lease from Vault even if the secret engine revocation " +
+		Usage: "Delete the lease from OpenBao even if the secret engine revocation " +
 			"fails. This is meant for recovery situations where the secret " +
 			"in the target secret engine was manually removed. If this flag is " +
 			"specified, -prefix is also required.",
@@ -143,7 +143,7 @@ func (c *LeaseRevokeCommand) Run(args []string) int {
 	}
 
 	if c.flagForce {
-		c.UI.Warn(wrapAtLength("Warning! Force-removing leases can cause Vault " +
+		c.UI.Warn(wrapAtLength("Warning! Force-removing leases can cause OpenBao " +
 			"to become out of sync with secret engines!"))
 	}
 

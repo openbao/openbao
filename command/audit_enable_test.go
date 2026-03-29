@@ -4,11 +4,15 @@
 package command
 
 import (
+	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hashicorp/cli"
+
+	httpAudit "github.com/openbao/openbao/builtin/audit/http"
 )
 
 func testAuditEnableCommand(tb testing.TB) (*cli.MockUi, *AuditEnableCommand) {
@@ -168,6 +172,16 @@ func TestAuditEnableCommand_Run(t *testing.T) {
 		client, closer := testVaultServerAllBackends(t)
 		defer closer()
 
+		var lock sync.Mutex
+		var badRequests int
+		logs := []map[string]interface{}{}
+		logRoute := "/audit"
+
+		testServer := httptest.NewServer(httpAudit.GetTestAuditHandler(t, &lock, &logs, logRoute, nil, &badRequests))
+		defer testServer.Close()
+
+		httpUrl := testServer.URL + logRoute
+
 		files, err := os.ReadDir("../builtin/audit")
 		if err != nil {
 			t.Fatal(err)
@@ -194,6 +208,7 @@ func TestAuditEnableCommand_Run(t *testing.T) {
 				args = append(args, "address=127.0.0.1:8888",
 					"skip_test=true")
 			case "syslog":
+				// known to be flaky with 'Unix syslog delivery error'
 				if _, exists := os.LookupEnv("WSLENV"); exists {
 					t.Log("skipping syslog test on WSL")
 					continue
@@ -203,6 +218,8 @@ func TestAuditEnableCommand_Run(t *testing.T) {
 					t.Log("skipping syslog test on CircleCI")
 					continue
 				}
+			case "http":
+				args = append(args, "uri="+httpUrl)
 			}
 			code := cmd.Run(args)
 			if exp := 0; code != exp {

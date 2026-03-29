@@ -1,0 +1,6 @@
+```release-note:bug
+command: fix `operator rotate-keys` not returning recovery keys when server is initialized with 0 `recovery_shares`.
+```
+```release-note:bug
+command: fix `operator init` not allowing for 0 as `recovery_shares` value.
+```

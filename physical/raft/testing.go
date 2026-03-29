@@ -6,24 +6,20 @@ package raft
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
 )
 
-func GetRaft(t testing.TB, bootstrap bool, noStoreState bool) (*RaftBackend, string) {
-	raftDir, err := os.MkdirTemp("", "vault-raft-")
-	if err != nil {
-		t.Fatal(err)
-	}
+func GetRaft(t testing.TB, bootstrap bool, noStoreState bool) *RaftBackend {
+	raftDir := t.TempDir()
 	t.Logf("raft dir: %s", raftDir)
 
 	return getRaftWithDir(t, bootstrap, noStoreState, raftDir)
 }
 
-func getRaftWithDir(t testing.TB, bootstrap bool, noStoreState bool, raftDir string) (*RaftBackend, string) {
+func getRaftWithDir(t testing.TB, bootstrap bool, noStoreState bool, raftDir string) *RaftBackend {
 	id, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -67,15 +63,12 @@ func getRaftWithDir(t testing.TB, bootstrap bool, noStoreState bool, raftDir str
 			t.Fatal(err)
 		}
 
-		for {
-			if backend.raft.AppliedIndex() >= 2 {
-				break
-			}
+		for backend.raft.AppliedIndex() < 2 {
 		}
 
 	}
 
 	backend.DisableAutopilot()
 
-	return backend, raftDir
+	return backend
 }

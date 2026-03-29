@@ -78,7 +78,6 @@ func TestInit_clientTLS(t *testing.T) {
 
 	// Set up temp directory so we can mount it to the docker container
 	confDir := makeTempDir(t)
-	defer os.RemoveAll(confDir)
 
 	// Create certificates for MySQL authentication
 	caCert := certhelpers.NewCert(t,
@@ -170,13 +169,9 @@ ssl-key=/etc/mysql/server-key.pem`
 	}
 }
 
-func makeTempDir(t *testing.T) (confDir string) {
-	confDir, err := os.MkdirTemp(".", "mysql-test-data")
-	if err != nil {
-		t.Fatalf("Unable to make temp directory: %s", err)
-	}
+func makeTempDir(t *testing.T) string {
 	// Convert the directory to an absolute path because docker needs it when mounting
-	confDir, err = filepath.Abs(filepath.Clean(confDir))
+	confDir, err := filepath.Abs(filepath.Clean(t.TempDir()))
 	if err != nil {
 		t.Fatalf("Unable to determine where temp directory is on absolute path: %s", err)
 	}

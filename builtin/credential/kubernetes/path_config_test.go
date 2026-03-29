@@ -165,7 +165,7 @@ func TestConfig(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, _ = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -186,7 +186,7 @@ func TestConfig(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, _ = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -228,6 +228,8 @@ func TestConfig(t *testing.T) {
 	if !reflect.DeepEqual(expected, conf) {
 		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
 	}
+
+	jwtGoodDataToken := jwtGoodDataToken()
 
 	// Test success TokenReviewer
 	data = map[string]interface{}{
@@ -411,6 +413,8 @@ func TestConfig(t *testing.T) {
 }
 
 func TestConfig_LocalCaJWT(t *testing.T) {
+	jwtGoodDataToken := jwtGoodDataToken()
+
 	testCases := map[string]struct {
 		config              map[string]interface{}
 		setupInClusterFiles bool

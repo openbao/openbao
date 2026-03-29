@@ -39,12 +39,12 @@ var (
 	raftAutopilotConfigurationStoragePath = "core/raft/autopilot/configuration"
 
 	// TestingUpdateClusterAddr is used in tests to override the cluster address
-	TestingUpdateClusterAddr uint32
+	TestingUpdateClusterAddr atomic.Bool
 )
 
 // GetRaftNodeID returns the raft node ID if there is one, or an empty string if there's not
 func (c *Core) GetRaftNodeID() string {
-	rb := c.getRaftBackend()
+	rb := c.GetRaftBackend()
 
 	if rb == nil {
 		return ""
@@ -71,7 +71,7 @@ func (c *Core) GetRaftIndexesLocked() (committed uint64, applied uint64) {
 // startRaftBackend will call SetupCluster in the raft backend which starts raft
 // up and enables the cluster handler.
 func (c *Core) startRaftBackend(ctx context.Context) (retErr error) {
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 	if raftBackend == nil {
 		return nil
 	}
@@ -104,7 +104,7 @@ func (c *Core) startRaftBackend(ctx context.Context) (retErr error) {
 			// this state the unseal will fail and a cluster recovery will need to
 			// be done.
 			creating = true
-			raftTLSKey, err := raft.GenerateTLSKey(c.secureRandomReader)
+			raftTLSKey, err := raft.GenerateTLSKey()
 			if err != nil {
 				return err
 			}
@@ -175,7 +175,7 @@ func (c *Core) startRaftBackend(ctx context.Context) (retErr error) {
 }
 
 func (c *Core) setupRaftActiveNode(ctx context.Context) error {
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 	if raftBackend == nil {
 		return nil
 	}
@@ -187,9 +187,8 @@ func (c *Core) setupRaftActiveNode(ctx context.Context) error {
 	if err != nil {
 		c.logger.Error("failed to load autopilot config from storage when setting up cluster; continuing since autopilot falls back to default config", "error", err)
 	}
-	disableAutopilot := c.disableAutopilot
 
-	raftBackend.SetupAutopilot(c.activeContext, autopilotConfig, c.raftFollowerStates, disableAutopilot)
+	raftBackend.SetupAutopilot(c.activeContext, autopilotConfig, c.raftFollowerStates, c.disableAutopilot)
 
 	// Reload the raft TLS keys to ensure we are using the latest version.
 	if err := c.checkRaftTLSKeyUpgrades(ctx); err != nil {
@@ -200,7 +199,7 @@ func (c *Core) setupRaftActiveNode(ctx context.Context) error {
 }
 
 func (c *Core) stopRaftActiveNode() {
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 	if raftBackend == nil {
 		return
 	}
@@ -215,7 +214,7 @@ func (c *Core) stopRaftActiveNode() {
 }
 
 func (c *Core) startPeriodicRaftTLSRotate(ctx context.Context) error {
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 
 	// No-op if raft is not being used
 	if raftBackend == nil {
@@ -245,7 +244,7 @@ func (c *Core) raftTLSRotateDirect(ctx context.Context, logger hclog.Logger, sto
 
 	rotateKeyring := func() (time.Time, error) {
 		// Create a new key
-		raftTLSKey, err := raft.GenerateTLSKey(c.secureRandomReader)
+		raftTLSKey, err := raft.GenerateTLSKey()
 		if err != nil {
 			return time.Time{}, fmt.Errorf("failed to generate new raft TLS key: %w", err)
 		}
@@ -406,7 +405,7 @@ func (c *Core) raftTLSRotatePhased(ctx context.Context, logger hclog.Logger, raf
 		logger.Info("creating new raft TLS config")
 
 		// Create a new key
-		raftTLSKey, err := raft.GenerateTLSKey(c.secureRandomReader)
+		raftTLSKey, err := raft.GenerateTLSKey()
 		if err != nil {
 			return time.Time{}, fmt.Errorf("failed to generate new raft TLS key: %w", err)
 		}
@@ -565,7 +564,7 @@ func (c *Core) raftReadTLSKeyring(ctx context.Context) (*raft.TLSKeyring, error)
 // use. If a keyring entry is already present in storage, it will return an
 // error.
 func (c *Core) raftCreateTLSKeyring(ctx context.Context) (*raft.TLSKeyring, error) {
-	if raftBackend := c.getRaftBackend(); raftBackend == nil {
+	if raftBackend := c.GetRaftBackend(); raftBackend == nil {
 		return nil, errors.New("raft backend not in use")
 	}
 
@@ -579,7 +578,7 @@ func (c *Core) raftCreateTLSKeyring(ctx context.Context) (*raft.TLSKeyring, erro
 		return nil, errors.New("TLS keyring already present")
 	}
 
-	raftTLS, err := raft.GenerateTLSKey(c.secureRandomReader)
+	raftTLS, err := raft.GenerateTLSKey()
 	if err != nil {
 		return nil, err
 	}
@@ -608,7 +607,7 @@ func (c *Core) stopPeriodicRaftTLSRotate() {
 }
 
 func (c *Core) checkRaftTLSKeyUpgrades(ctx context.Context) error {
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 	if raftBackend == nil {
 		return nil
 	}
@@ -656,7 +655,7 @@ func (c *Core) raftSnapshotRestoreCallback(grabLock bool, sealNode bool) func(co
 			// it's in an unknown state
 			defer func() {
 				if retErr != nil {
-					if err := c.sealInternalWithOptions(false, false, true); err != nil {
+					if err := c.sealInternalWithOptions(false); err != nil {
 						c.logger.Error("failed to seal node", "error", err)
 					}
 				}
@@ -673,7 +672,7 @@ func (c *Core) raftSnapshotRestoreCallback(grabLock bool, sealNode bool) func(co
 			// The snapshot contained a root key or keyring we couldn't
 			// recover
 			switch c.seal.BarrierType() {
-			case wrapping.WrapperTypeShamir:
+			case seal.WrapperTypeShamir:
 				// If we are a shamir seal we can't do anything. Just
 				// seal all nodes.
 
@@ -691,8 +690,8 @@ func (c *Core) raftSnapshotRestoreCallback(grabLock bool, sealNode bool) func(co
 					c.logger.Error("raft snapshot restore failed to get stored keys", "error", err)
 					return err
 				}
-				if err := c.barrier.Seal(); err != nil {
-					c.logger.Error("raft snapshot restore failed to seal barrier", "error", err)
+				if err := c.sealManager.sealAll(); err != nil {
+					c.logger.Error("raft snapshot restore failed to seal all barriers", "error", err)
 					return err
 				}
 				if err := c.barrier.Unseal(ctx, keys[0]); err != nil {
@@ -714,7 +713,7 @@ func (c *Core) raftSnapshotRestoreCallback(grabLock bool, sealNode bool) func(co
 }
 
 func (c *Core) InitiateRetryJoin(ctx context.Context) error {
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 	if raftBackend == nil {
 		return nil
 	}
@@ -802,7 +801,7 @@ func (c *Core) getRaftChallenge(leaderInfo *raft.LeaderJoinInfo) (*raftInformati
 
 	// Attempt to join the leader by requesting for the bootstrap challenge
 	secret, err := apiClient.Logical().Write("sys/storage/raft/bootstrap/challenge", map[string]interface{}{
-		"server_id": c.getRaftBackend().NodeID(),
+		"server_id": c.GetRaftBackend().NodeID(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error during raft bootstrap init call: %w", err)
@@ -843,7 +842,7 @@ func (c *Core) getRaftChallenge(leaderInfo *raft.LeaderJoinInfo) (*raftInformati
 }
 
 func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJoinInfo, nonVoter bool) (bool, error) {
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 	if raftBackend == nil {
 		return false, errors.New("raft backend not in use")
 	}
@@ -926,7 +925,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		// If we're using Shamir and using raft for both physical and HA, we
 		// need to block until the node is unsealed, unless retry is set to
 		// false.
-		if c.seal.BarrierType() == wrapping.WrapperTypeShamir && !c.isRaftHAOnly() {
+		if c.seal.BarrierType() == seal.WrapperTypeShamir && !c.isRaftHAOnly() {
 			c.raftInfo.Store(raftInfo)
 			if err := c.seal.SetBarrierConfig(ctx, raftInfo.leaderBarrierConfig); err != nil {
 				return err
@@ -939,7 +938,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 			// Wait until unseal keys are supplied
 			raftInfo.joinInProgress = true
 			c.raftInfo.Store(raftInfo)
-			if atomic.LoadUint32(c.postUnsealStarted) != 1 {
+			if !c.postUnsealStarted.Load() {
 				return errors.New("waiting for unseal keys to be supplied")
 			}
 		}
@@ -949,9 +948,9 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 			return fmt.Errorf("failed to send answer to raft leader node: %w", err)
 		}
 
-		if c.seal.BarrierType() == wrapping.WrapperTypeShamir && !isRaftHAOnly {
+		if c.seal.BarrierType() == seal.WrapperTypeShamir && !isRaftHAOnly {
 			// Reset the state
-			c.raftInfo.Store((*raftInformation)(nil))
+			c.raftInfo.Store(nil)
 
 			// In case of Shamir unsealing, inform the unseal process that raft join is completed
 			close(c.raftJoinDoneCh)
@@ -1109,12 +1108,12 @@ func (c *Core) raftLeaderInfo(leaderInfo *raft.LeaderJoinInfo, disco *discover.D
 
 // NewDelegateForCore creates a raft.Delegate for the specified core using its backend.
 func NewDelegateForCore(c *Core) *raft.Delegate {
-	return raft.NewDelegate(c.getRaftBackend())
+	return raft.NewDelegate(c.GetRaftBackend())
 }
 
-// getRaftBackend returns the RaftBackend from the HA or physical backend,
+// GetRaftBackend returns the RaftBackend from the HA or physical backend,
 // in that order of preference, or nil if not of type RaftBackend.
-func (c *Core) getRaftBackend() *raft.RaftBackend {
+func (c *Core) GetRaftBackend() *raft.RaftBackend {
 	var raftBackend *raft.RaftBackend
 
 	if raftHA, ok := c.ha.(*raft.RaftBackend); ok {
@@ -1141,7 +1140,7 @@ func (c *Core) joinRaftSendAnswer(ctx context.Context, sealAccess seal.Access, r
 		return errors.New("raft challenge is nil")
 	}
 
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 	if raftBackend == nil {
 		return errors.New("raft backend is not in use")
 	}
@@ -1160,7 +1159,7 @@ func (c *Core) joinRaftSendAnswer(ctx context.Context, sealAccess seal.Access, r
 		return fmt.Errorf("error parsing cluster address: %w", err)
 	}
 	clusterAddr := parsedClusterAddr.Host
-	if atomic.LoadUint32(&TestingUpdateClusterAddr) == 1 && strings.HasSuffix(clusterAddr, ":0") {
+	if TestingUpdateClusterAddr.Load() && strings.HasSuffix(clusterAddr, ":0") {
 		// We are testing and have an address provider, so just create a random
 		// addr, it will be overwritten later.
 		var err error
@@ -1182,7 +1181,7 @@ func (c *Core) joinRaftSendAnswer(ctx context.Context, sealAccess seal.Access, r
 
 	answerRespJson, err := raftInfo.leaderClient.RawRequestWithContext(ctx, answerReq)
 	if answerRespJson != nil {
-		defer answerRespJson.Body.Close()
+		defer answerRespJson.Body.Close() //nolint:errcheck
 	}
 	if err != nil {
 		return err
@@ -1242,7 +1241,7 @@ func (c *Core) RaftBootstrap(ctx context.Context, onInit bool) error {
 		defer c.logger.Debug("finished bootstrapping raft backend")
 	}
 
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 	if raftBackend == nil {
 		return errors.New("raft backend not in use")
 	}
@@ -1285,7 +1284,7 @@ func (c *Core) RaftBootstrap(ctx context.Context, onInit bool) error {
 }
 
 func (c *Core) isRaftUnseal() bool {
-	return c.raftInfo.Load().(*raftInformation) != nil
+	return c.raftInfo.Load() != nil
 }
 
 type answerRespData struct {

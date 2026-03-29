@@ -1,0 +1,6 @@
+```release-note:bug
+auth/mfa: Correctly persist tokens created through two-step MFA login enforcement.
+```
+```release-note:bug
+auth/mfa: Allow single-flow MFA to work with inline authentication.
+```

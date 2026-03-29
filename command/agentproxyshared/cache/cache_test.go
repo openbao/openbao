@@ -11,7 +11,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"sync"
 	"testing"
 	"time"
 
@@ -27,6 +26,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
+	"golang.org/x/sync/errgroup"
 )
 
 func tokenRevocationValidation(t *testing.T, sampleSpace map[string]string, expected map[string]string, leaseCache *LeaseCache) {
@@ -75,7 +75,7 @@ func TestCache_AutoAuthTokenStripping(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create a muxer and add paths relevant for the lease cache layer
 	mux := http.NewServeMux()
@@ -164,7 +164,7 @@ func TestCache_AutoAuthClientTokenProxyStripping(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create a muxer and add paths relevant for the lease cache layer
 	mux := http.NewServeMux()
@@ -209,7 +209,7 @@ func TestCache_ConcurrentRequests(t *testing.T) {
 		},
 	}
 
-	cleanup, _, testClient, _ := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, _ := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	err := testClient.Sys().Mount("kv", &api.MountInput{
@@ -219,29 +219,30 @@ func TestCache_ConcurrentRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wg := &sync.WaitGroup{}
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
+	eg := errgroup.Group{}
+	for i := range 100 {
+		eg.Go(func() error {
 			key := fmt.Sprintf("kv/foo/%d_%d", i, rand.Int())
-			_, err := testClient.Logical().Write(key, map[string]interface{}{
+			_, err := testClient.Logical().Write(key, map[string]any{
 				"key": key,
 			})
 			if err != nil {
-				t.Fatal(err)
+				return err
 			}
 			secret, err := testClient.Logical().Read(key)
 			if err != nil {
-				t.Fatal(err)
+				return err
 			}
 			if secret == nil || secret.Data["key"].(string) != key {
-				t.Fatalf("failed to read value for key: %q", key)
+				return fmt.Errorf("failed to read value for key: %q", key)
 			}
-		}(i)
-
+			return nil
+		})
 	}
-	wg.Wait()
+
+	if err := eg.Wait(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestCache_TokenRevocations_RevokeOrphan(t *testing.T) {
@@ -255,7 +256,7 @@ func TestCache_TokenRevocations_RevokeOrphan(t *testing.T) {
 
 	sampleSpace := make(map[string]string)
 
-	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	token1 := testClient.Token()
@@ -355,7 +356,7 @@ func TestCache_TokenRevocations_LeafLevelToken(t *testing.T) {
 
 	sampleSpace := make(map[string]string)
 
-	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	token1 := testClient.Token()
@@ -454,7 +455,7 @@ func TestCache_TokenRevocations_IntermediateLevelToken(t *testing.T) {
 
 	sampleSpace := make(map[string]string)
 
-	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	token1 := testClient.Token()
@@ -551,7 +552,7 @@ func TestCache_TokenRevocations_TopLevelToken(t *testing.T) {
 
 	sampleSpace := make(map[string]string)
 
-	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	token1 := testClient.Token()
@@ -645,7 +646,7 @@ func TestCache_TokenRevocations_Shutdown(t *testing.T) {
 
 	sampleSpace := make(map[string]string)
 
-	ctx, rootCancelFunc := context.WithCancel(namespace.RootContext(nil))
+	ctx, rootCancelFunc := context.WithCancel(namespace.RootContext(context.TODO()))
 	cleanup, _, testClient, leaseCache := setupClusterAndAgent(ctx, t, coreConfig)
 	defer cleanup()
 
@@ -734,7 +735,7 @@ func TestCache_TokenRevocations_BaseContextCancellation(t *testing.T) {
 
 	sampleSpace := make(map[string]string)
 
-	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	token1 := testClient.Token()
@@ -822,7 +823,7 @@ func TestCache_NonCacheable(t *testing.T) {
 		},
 	}
 
-	cleanup, _, testClient, _ := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, _ := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	// Query mounts first
@@ -854,13 +855,10 @@ func TestCache_NonCacheable(t *testing.T) {
 	}
 
 	// Query a non-existing mount, expect an error from api.Response
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	r := testClient.NewRequest("GET", "/v1/kv-invalid")
-
-	apiResp, err := testClient.RawRequestWithContext(ctx, r)
+	ctx := t.Context()
+	apiResp, err := testClient.Logical().ReadRawWithContext(ctx, "kv-invalid")
 	if apiResp != nil {
-		defer apiResp.Body.Close()
+		defer apiResp.Body.Close() //nolint:errcheck
 	}
 	if apiResp.Error() == nil || (apiResp != nil && apiResp.StatusCode != 404) {
 		t.Fatalf("expected an error response and a 404 from requesting an invalid path, got: %#v", apiResp)
@@ -871,7 +869,7 @@ func TestCache_NonCacheable(t *testing.T) {
 }
 
 func TestCache_Caching_AuthResponse(t *testing.T) {
-	cleanup, _, testClient, _ := setupClusterAndAgent(namespace.RootContext(nil), t, nil)
+	cleanup, _, testClient, _ := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, nil)
 	defer cleanup()
 
 	resp, err := testClient.Logical().Write("auth/token/create", nil)
@@ -929,7 +927,7 @@ func TestCache_Caching_LeaseResponse(t *testing.T) {
 		},
 	}
 
-	cleanup, client, testClient, _ := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, client, testClient, _ := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	err := client.Sys().Mount("kv", &api.MountInput{
@@ -1030,7 +1028,7 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 		},
 	}
 
-	cleanup, client, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, client, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	err := client.Sys().Mount("kv", &api.MountInput{
@@ -1095,11 +1093,10 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 		t.Fatal(err)
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
+	ctx := t.Context()
 	apiResp, err := testClient.RawRequestWithContext(ctx, r)
 	if apiResp != nil {
-		defer apiResp.Body.Close()
+		defer apiResp.Body.Close() //nolint:errcheck
 	}
 	if apiResp != nil && apiResp.StatusCode == 404 {
 		_, parseErr := api.ParseSecret(apiResp.Body)
@@ -1130,7 +1127,7 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 func TestCache_AuthTokenCreateOrphan(t *testing.T) {
 	t.Run("create", func(t *testing.T) {
 		t.Run("managed", func(t *testing.T) {
-			cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, nil)
+			cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, nil)
 			defer cleanup()
 
 			reqOpts := &api.TokenCreateRequest{
@@ -1153,7 +1150,7 @@ func TestCache_AuthTokenCreateOrphan(t *testing.T) {
 		})
 
 		t.Run("non-managed", func(t *testing.T) {
-			cleanup, clusterClient, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, nil)
+			cleanup, clusterClient, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, nil)
 			defer cleanup()
 
 			reqOpts := &api.TokenCreateRequest{
@@ -1182,7 +1179,7 @@ func TestCache_AuthTokenCreateOrphan(t *testing.T) {
 
 	t.Run("create-orphan", func(t *testing.T) {
 		t.Run("managed", func(t *testing.T) {
-			cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, nil)
+			cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, nil)
 			defer cleanup()
 
 			reqOpts := &api.TokenCreateRequest{
@@ -1204,7 +1201,7 @@ func TestCache_AuthTokenCreateOrphan(t *testing.T) {
 		})
 
 		t.Run("non-managed", func(t *testing.T) {
-			cleanup, clusterClient, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, nil)
+			cleanup, clusterClient, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, nil)
 			defer cleanup()
 
 			reqOpts := &api.TokenCreateRequest{

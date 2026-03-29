@@ -358,6 +358,7 @@ func TestSysTuneAuth_nonHMACKeys(t *testing.T) {
 	resp = testHttpPost(t, token, addr+"/v1/sys/auth/token/tune", map[string]interface{}{
 		"audit_non_hmac_response_keys": "",
 	})
+	testResponseStatus(t, resp, 204)
 
 	// Check results
 	resp = testHttpGet(t, token, addr+"/v1/sys/auth/token/tune")

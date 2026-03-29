@@ -9,7 +9,6 @@ import { inject as service } from '@ember/service';
 import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
-import { alias } from '@ember/object/computed';
 import { maybeQueryRecord } from 'vault/macros/maybe-query-record';
 
 const getErrorMessage = (errors) => {
@@ -36,7 +35,9 @@ export default class SecretDeleteMenu extends Component {
     'model.id'
   )
   undeleteVersionPath;
-  @alias('undeleteVersionPath.canUpdate') canUndeleteVersion;
+  get canUndeleteVersion() {
+    return this.undeleteVersionPath.get('canUpdate');
+  }
 
   @maybeQueryRecord(
     'capabilities',
@@ -50,7 +51,9 @@ export default class SecretDeleteMenu extends Component {
     'model.id'
   )
   destroyVersionPath;
-  @alias('destroyVersionPath.canUpdate') canDestroyVersion;
+  get canDestroyVersion() {
+    return this.destroyVersionPath.get('canUpdate');
+  }
 
   @maybeQueryRecord(
     'capabilities',
@@ -67,7 +70,9 @@ export default class SecretDeleteMenu extends Component {
     'mode'
   )
   v2UpdatePath;
-  @alias('v2UpdatePath.canDelete') canDestroyAllVersions;
+  get canDestroyAllVersions() {
+    return this.v2UpdatePath.get('canDelete');
+  }
 
   @maybeQueryRecord(
     'capabilities',
@@ -88,7 +93,9 @@ export default class SecretDeleteMenu extends Component {
     'mode'
   )
   secretDataPath;
-  @alias('secretDataPath.canDelete') canDeleteSecretData;
+  get canDeleteSecretData() {
+    return this.secretDataPath.get('canDelete');
+  }
 
   @maybeQueryRecord(
     'capabilities',
@@ -109,7 +116,9 @@ export default class SecretDeleteMenu extends Component {
     'mode'
   )
   secretSoftDataPath;
-  @alias('secretSoftDataPath.canUpdate') canSoftDeleteSecretData;
+  get canSoftDeleteSecretData() {
+    return this.secretSoftDataPath.get('canUpdate');
+  }
 
   get isLatestVersion() {
     // must have metadata access.

@@ -316,7 +316,7 @@ func (b *kubeAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical
 	}
 
 	if role.TokenPeriod > b.System().MaxLeaseTTL() {
-		return logical.ErrorResponse(fmt.Sprintf("token period of '%q' is greater than the backend's maximum lease TTL of '%q'", role.TokenPeriod.String(), b.System().MaxLeaseTTL().String())), nil
+		return logical.ErrorResponse("token period of '%q' is greater than the backend's maximum lease TTL of '%q'", role.TokenPeriod.String(), b.System().MaxLeaseTTL().String()), nil
 	}
 
 	// Check that the TTL value provided is less than the MaxTTL.
@@ -415,28 +415,28 @@ type roleStorageEntry struct {
 
 	// ServiceAccountNames is the array of service accounts able to
 	// access this role.
-	ServiceAccountNames []string `json:"bound_service_account_names" mapstructure:"bound_service_account_names" structs:"bound_service_account_names"`
+	ServiceAccountNames []string `json:"bound_service_account_names" mapstructure:"bound_service_account_names"`
 
 	// ServiceAccountNamespaces is the array of namespaces able to access this
 	// role.
-	ServiceAccountNamespaces []string `json:"bound_service_account_namespaces" mapstructure:"bound_service_account_namespaces" structs:"bound_service_account_namespaces"`
+	ServiceAccountNamespaces []string `json:"bound_service_account_namespaces" mapstructure:"bound_service_account_namespaces"`
 
 	// ServiceAccountNamespaceSelector is the label selector string of the
 	// namespaces able to access this role.
-	ServiceAccountNamespaceSelector string `json:"bound_service_account_namespace_selector" mapstructure:"bound_service_account_namespace_selector" structs:"bound_service_account_namespace_selector"`
+	ServiceAccountNamespaceSelector string `json:"bound_service_account_namespace_selector" mapstructure:"bound_service_account_namespace_selector"`
 
 	// Audience is an optional jwt claim to verify
-	Audience string `json:"audience" mapstructure:"audience" structs:"audience"`
+	Audience string `json:"audience" mapstructure:"audience"`
 
 	// AliasNameSource used when deriving the Alias' name.
-	AliasNameSource string `json:"alias_name_source" mapstructure:"alias_name_source" structs:"alias_name_source"`
+	AliasNameSource string `json:"alias_name_source" mapstructure:"alias_name_source"`
 
 	// Deprecated by TokenParams
-	Policies   []string      `json:"policies" structs:"policies" mapstructure:"policies"`
-	NumUses    int           `json:"num_uses" mapstructure:"num_uses" structs:"num_uses"`
-	TTL        time.Duration `json:"ttl" structs:"ttl" mapstructure:"ttl"`
-	MaxTTL     time.Duration `json:"max_ttl" structs:"max_ttl" mapstructure:"max_ttl"`
-	Period     time.Duration `json:"period" mapstructure:"period" structs:"period"`
+	Policies   []string      `json:"policies" mapstructure:"policies"`
+	NumUses    int           `json:"num_uses" mapstructure:"num_uses"`
+	TTL        time.Duration `json:"ttl" mapstructure:"ttl"`
+	MaxTTL     time.Duration `json:"max_ttl" mapstructure:"max_ttl"`
+	Period     time.Duration `json:"period" mapstructure:"period"`
 	BoundCIDRs []*sockaddr.SockAddrMarshaler
 }
 

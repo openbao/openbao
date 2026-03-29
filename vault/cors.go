@@ -15,51 +15,47 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-const (
-	CORSDisabled uint32 = iota
-	CORSEnabled
-)
-
 var StdAllowedHeaders = []string{
 	"Content-Type",
-	"X-Requested-With",
-	"X-Vault-AWS-IAM-Server-ID",
-	"X-Vault-MFA",
-	"X-Vault-No-Request-Forwarding",
-	"X-Vault-Wrap-Format",
-	"X-Vault-Wrap-TTL",
-	"X-Vault-Policy-Override",
 	"Authorization",
 	consts.AuthHeaderName,
+	consts.MFAHeaderName,
+	consts.NoRequestForwardingHeaderName,
+	consts.WrapFormatHeaderName,
+	consts.WrapTTLHeaderName,
+	"X-Requested-With",
+	"X-Vault-AWS-IAM-Server-ID",
+	"X-Vault-Policy-Override",
 }
 
 // CORSConfig stores the state of the CORS configuration.
 type CORSConfig struct {
-	sync.RWMutex   `json:"-"`
-	core           *Core
-	Enabled        *uint32  `json:"enabled"`
-	AllowedOrigins []string `json:"allowed_origins,omitempty"`
-	AllowedHeaders []string `json:"allowed_headers,omitempty"`
+	sync.RWMutex     `json:"-"`
+	core             *Core
+	Enabled          *uint32  `json:"enabled"`
+	AllowedOrigins   []string `json:"allowed_origins,omitempty"`
+	AllowedHeaders   []string `json:"allowed_headers,omitempty"`
+	AllowCredentials bool     `json:"allow_credentials,omitempty"`
 }
 
 func (c *Core) saveCORSConfig(ctx context.Context) error {
-	view := c.systemBarrierView.SubView("config/")
-
 	enabled := atomic.LoadUint32(c.corsConfig.Enabled)
 	localConfig := &CORSConfig{
 		Enabled: &enabled,
 	}
+
 	c.corsConfig.RLock()
 	localConfig.AllowedOrigins = c.corsConfig.AllowedOrigins
 	localConfig.AllowedHeaders = c.corsConfig.AllowedHeaders
+	localConfig.AllowCredentials = c.corsConfig.AllowCredentials
 	c.corsConfig.RUnlock()
 
-	entry, err := logical.StorageEntryJSON("cors", localConfig)
+	entry, err := logical.StorageEntryJSON("config/cors", localConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create CORS config entry: %w", err)
 	}
 
-	if err := view.Put(ctx, entry); err != nil {
+	if err := c.systemBarrierView.Put(ctx, entry); err != nil {
 		return fmt.Errorf("failed to save CORS config: %w", err)
 	}
 
@@ -68,10 +64,8 @@ func (c *Core) saveCORSConfig(ctx context.Context) error {
 
 // This should only be called with the core state lock held for writing
 func (c *Core) loadCORSConfig(ctx context.Context) error {
-	view := c.systemBarrierView.SubView("config/")
-
 	// Load the config in
-	out, err := view.Get(ctx, "cors")
+	out, err := c.systemBarrierView.Get(ctx, "config/cors")
 	if err != nil {
 		return fmt.Errorf("failed to read CORS config: %w", err)
 	}
@@ -79,26 +73,24 @@ func (c *Core) loadCORSConfig(ctx context.Context) error {
 		return nil
 	}
 
-	newConfig := new(CORSConfig)
-	err = out.DecodeJSON(newConfig)
-	if err != nil {
+	config := new(CORSConfig)
+	if err = out.DecodeJSON(config); err != nil {
 		return err
 	}
 
-	if newConfig.Enabled == nil {
-		newConfig.Enabled = new(uint32)
+	if config.Enabled == nil {
+		config.Enabled = new(uint32)
 	}
 
-	newConfig.core = c
-
-	c.corsConfig = newConfig
+	config.core = c
+	c.corsConfig = config
 
 	return nil
 }
 
 // Enable takes either a '*' or a comma-separated list of URLs that can make
 // cross-origin requests to Vault.
-func (c *CORSConfig) Enable(ctx context.Context, urls []string, headers []string) error {
+func (c *CORSConfig) Enable(ctx context.Context, urls []string, headers []string, allow_credentials bool) error {
 	if len(urls) == 0 {
 		return errors.New("at least one origin or the wildcard must be provided")
 	}
@@ -113,6 +105,9 @@ func (c *CORSConfig) Enable(ctx context.Context, urls []string, headers []string
 	// Start with the standard headers to Vault accepts.
 	c.AllowedHeaders = append([]string{}, StdAllowedHeaders...)
 
+	// Whether to return the "Access-Control-Allow-Credentials: true" header
+	c.AllowCredentials = allow_credentials
+
 	// Allow the user to add additional headers to the list of
 	// headers allowed on cross-origin requests.
 	if len(headers) > 0 {
@@ -120,23 +115,26 @@ func (c *CORSConfig) Enable(ctx context.Context, urls []string, headers []string
 	}
 	c.Unlock()
 
-	atomic.StoreUint32(c.Enabled, CORSEnabled)
+	// as true
+	atomic.StoreUint32(c.Enabled, 1)
 
 	return c.core.saveCORSConfig(ctx)
 }
 
-// IsEnabled returns the value of CORSConfig.isEnabled
+// IsEnabled returns the value of CORSConfig.Enabled as bool.
 func (c *CORSConfig) IsEnabled() bool {
-	return atomic.LoadUint32(c.Enabled) == CORSEnabled
+	return atomic.LoadUint32(c.Enabled) == 1
 }
 
 // Disable sets CORS to disabled and clears the allowed origins & headers.
 func (c *CORSConfig) Disable(ctx context.Context) error {
-	atomic.StoreUint32(c.Enabled, CORSDisabled)
+	// as false
+	atomic.StoreUint32(c.Enabled, 0)
 	c.Lock()
 
 	c.AllowedOrigins = nil
 	c.AllowedHeaders = nil
+	c.AllowCredentials = false
 
 	c.Unlock()
 

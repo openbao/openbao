@@ -103,7 +103,7 @@ func (c *LoginCommand) Flags() *FlagSets {
 		Target:     &c.flagPath,
 		Default:    "",
 		Completion: c.PredictVaultAuths(),
-		Usage: "Remote path in Vault where the auth method is enabled. " +
+		Usage: "Remote path in OpenBao where the auth method is enabled. " +
 			"This defaults to the TYPE of method (e.g. userpass -> userpass/).",
 	})
 

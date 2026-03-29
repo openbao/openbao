@@ -1,18 +1,15 @@
 ---
 description: |-
-  The `/sys/leader` endpoint is used to check the high availability status and
-  current leader of OpenBao.
+  The `/sys/leader` endpoint is used to check the HA status and
+  details of the current leader node of OpenBao.
 ---
 
 # `/sys/leader`
 
-The `/sys/leader` endpoint is used to check the High Availability status and
-current leader of OpenBao.
+The `/sys/leader` endpoint is used to check the high availability
+status and details of the current leader node of OpenBao.
 
 ## Read leader status
-
-This endpoint returns the High Availability status and current leader instance
-of OpenBao.
 
 | Method | Path          |
 | :----- | :------------ |
@@ -25,7 +22,9 @@ $ curl \
     http://127.0.0.1:8200/v1/sys/leader
 ```
 
-### Sample response
+### Sample responses
+
+With HA enabled:
 
 ```json
 {
@@ -33,7 +32,27 @@ $ curl \
   "is_self": false,
   "leader_address": "https://127.0.0.1:8200/",
   "leader_cluster_address": "https://127.0.0.1:8201/",
-  "performance_standby": false,
-  "performance_standby_last_remote_wal": 0
+  "active_time": "2009-11-10 23:00:00 +0000 UTC",
+}
+```
+
+With HA enabled and running raft:
+```json
+{
+  "ha_enabled": true,
+  "is_self": false,
+  "leader_address": "https://127.0.0.1:8200/",
+  "leader_cluster_address": "https://127.0.0.1:8201/",
+  "active_time": "2009-11-10 23:00:00 +0000 UTC",
+  "raft_committed_index": 0,
+  "raft_applied_index": 0,
+}
+```
+
+With HA disabled:
+
+```json
+{
+  "ha_enabled": false
 }
 ```

@@ -22,9 +22,7 @@ func TestSinkServer(t *testing.T) {
 	log := logging.NewVaultLogger(hclog.Trace)
 
 	fs1, path1 := testFileSink(t, log)
-	defer os.RemoveAll(path1)
 	fs2, path2 := testFileSink(t, log)
-	defer os.RemoveAll(path2)
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
@@ -49,11 +47,9 @@ func TestSinkServer(t *testing.T) {
 	})
 	defer timer.Stop()
 
-	select {
-	case err := <-errCh:
-		if err != nil {
-			t.Fatal(err)
-		}
+	err := <-errCh
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	for _, path := range []string{path1, path2} {
@@ -69,18 +65,18 @@ func TestSinkServer(t *testing.T) {
 }
 
 type badSink struct {
-	tryCount uint32
+	tryCount atomic.Uint32
 	logger   hclog.Logger
 }
 
 func (b *badSink) WriteToken(token string) error {
 	switch token {
 	case "bad":
-		atomic.AddUint32(&b.tryCount, 1)
+		b.tryCount.Add(1)
 		b.logger.Info("got bad")
 		return errors.New("bad")
 	case "good":
-		atomic.StoreUint32(&b.tryCount, 0)
+		b.tryCount.Store(0)
 		b.logger.Info("got good")
 		return nil
 	default:
@@ -112,29 +108,27 @@ func TestSinkServerRetry(t *testing.T) {
 
 	// During this time we should see it retry multiple times
 	time.Sleep(10 * time.Second)
-	if atomic.LoadUint32(&b1.tryCount) < 2 {
+	if b1.tryCount.Load() < 2 {
 		t.Fatal("bad try count")
 	}
-	if atomic.LoadUint32(&b2.tryCount) < 2 {
+	if b2.tryCount.Load() < 2 {
 		t.Fatal("bad try count")
 	}
 
 	in <- "good"
 
 	time.Sleep(2 * time.Second)
-	if atomic.LoadUint32(&b1.tryCount) != 0 {
+	if b1.tryCount.Load() != 0 {
 		t.Fatal("bad try count")
 	}
-	if atomic.LoadUint32(&b2.tryCount) != 0 {
+	if b2.tryCount.Load() != 0 {
 		t.Fatal("bad try count")
 	}
 
 	// Tell it to shut down and give it time to do so
 	cancelFunc()
-	select {
-	case err := <-errCh:
-		if err != nil {
-			t.Fatal(err)
-		}
+	err := <-errCh
+	if err != nil {
+		t.Fatal(err)
 	}
 }

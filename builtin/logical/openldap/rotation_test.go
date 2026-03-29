@@ -18,7 +18,7 @@ import (
 
 func TestAutoRotate(t *testing.T) {
 	t.Run("auto rotate role", func(t *testing.T) {
-		b, storage := getBackend(false)
+		b, storage := getBackend(t, false)
 		defer b.Cleanup(context.Background())
 
 		data := map[string]interface{}{
@@ -125,7 +125,7 @@ func TestAutoRotate(t *testing.T) {
 // password to be generated using the updated policy.
 func TestPasswordPolicyModificationInvalidatesWAL(t *testing.T) {
 	ctx := context.Background()
-	b, storage := getBackend(false)
+	b, storage := getBackend(t, false)
 	defer b.Cleanup(ctx)
 
 	configureOpenLDAPMountWithPasswordPolicy(t, b, storage, testPasswordPolicy1)
@@ -177,7 +177,7 @@ func TestPasswordPolicyModificationInvalidatesWAL(t *testing.T) {
 
 func TestRollsPasswordForwardsUsingWAL(t *testing.T) {
 	ctx := context.Background()
-	b, storage := getBackend(false)
+	b, storage := getBackend(t, false)
 	defer b.Cleanup(ctx)
 	configureOpenLDAPMount(t, b, storage)
 	createRole(t, b, storage, "hashicorp")
@@ -278,7 +278,9 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 			}
 
 			b := Backend(&fakeLdapClient{throwErrs: false})
-			b.Setup(context.Background(), config)
+			if err := b.Setup(context.Background(), config); err != nil {
+				t.Fatal(err)
+			}
 
 			b.credRotationQueue = queue.New()
 			initCtx := context.Background()
@@ -354,7 +356,7 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 
 func TestDeletesOlderWALsOnLoad(t *testing.T) {
 	ctx := context.Background()
-	b, storage := getBackend(false)
+	b, storage := getBackend(t, false)
 	defer b.Cleanup(ctx)
 	configureOpenLDAPMount(t, b, storage)
 	createRole(t, b, storage, "hashicorp")
@@ -432,7 +434,7 @@ func requireWALs(t *testing.T, storage logical.Storage, expectedCount int) []str
 // missing fields.
 func Test_backend_findStaticWAL_DecodeWALMissingField(t *testing.T) {
 	ctx := context.Background()
-	b, storage := getBackend(false)
+	b, storage := getBackend(t, false)
 	defer b.Cleanup(ctx)
 
 	// Intentionally missing the PasswordPolicy field

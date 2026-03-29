@@ -27,7 +27,7 @@ jobs:
       go-tags: ""
       checkout-ref: ${{ steps.checkout-ref-output.outputs.checkout-ref }}
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Ensure Go modules are cached
         uses: ./.github/actions/set-up-go
         with:
@@ -67,25 +67,6 @@ jobs:
       checkout-ref: ${{ needs.setup.outputs.checkout-ref }}
     secrets: inherit
 
-  test-go-testonly:
-    name: Run Go tests tagged with testonly
-    needs:
-      - setup
-      - verify-changes
-    # Don't run this job for docs/ui only PRs
-    if: |
-      needs.verify-changes.outputs.is_docs_change == 'false' &&
-      needs.verify-changes.outputs.is_ui_change == 'false'
-    uses: ./.github/workflows/test-go.yml
-    with:
-      testonly: true
-      total-runners: 2 # test runners cannot be less than 2
-      go-arch: amd64
-      go-tags: "${{ needs.setup.outputs.go-tags }},deadlock,testonly"
-      runs-on: ubuntu-latest
-      name: "testonly"
-    secrets: inherit
-
   test-go-race:
     name: Run Go tests with data race detection
     needs:
@@ -99,10 +80,6 @@ jobs:
     uses: ./.github/workflows/test-go.yml
     with:
       total-runners: 16
-      env-vars: |
-        {
-          "VAULT_CI_GO_TEST_RACE": 1
-        }
       extra-flags: "-race"
       go-arch: amd64
       go-tags: ${{ needs.setup.outputs.go-tags }}
@@ -128,23 +105,23 @@ jobs:
       - setup
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/set-up-go
       # Setup node.js without caching to allow running npm install -g yarn (next step)
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: "./ui/package.json"
       - id: install-yarn
         run: |
           npm install -g yarn
       # Setup node.js with caching using the yarn.lock file
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: "./ui/package.json"
           cache: yarn
           cache-dependency-path: ui/yarn.lock
       - id: install-browser
-        uses: browser-actions/setup-chrome@4c4260df9622eff1b597d1653b7a388b6b0f8341 # v2.0.0
+        uses: browser-actions/setup-chrome@4f8e94349a351df0f048634f25fec36c3c91eded # v2.1.1
       - id: ui-dependencies
         name: ui-dependencies
         working-directory: ./ui
@@ -166,8 +143,8 @@ jobs:
           # Run Ember tests
           cd ui
           mkdir -p test-results/qunit
-          yarn test:oss
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+          yarn test
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: test-results-ui
           path: ui/test-results

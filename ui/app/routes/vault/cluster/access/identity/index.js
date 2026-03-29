@@ -4,11 +4,27 @@
  */
 
 import Route from '@ember/routing/route';
-import ListRoute from 'core/mixins/list-route';
 import { inject as service } from '@ember/service';
 
-export default Route.extend(ListRoute, {
+export default Route.extend({
   store: service(),
+
+  queryParams: {
+    page: {
+      refreshModel: true,
+    },
+    pageFilter: {
+      refreshModel: true,
+    },
+  },
+
+  resetController(controller, isExiting) {
+    this._super(...arguments);
+    if (isExiting) {
+      controller.set('pageFilter', null);
+      controller.set('filter', null);
+    }
+  },
 
   model(params) {
     const itemType = this.modelFor('vault.cluster.access.identity');
@@ -29,9 +45,15 @@ export default Route.extend(ListRoute, {
       });
   },
 
-  setupController(controller) {
+  setupController(controller, resolvedModel) {
     this._super(...arguments);
     controller.set('identityType', this.modelFor('vault.cluster.access.identity'));
+
+    const { pageFilter } = this.paramsFor(this.routeName);
+    controller.setProperties({
+      filter: pageFilter || '',
+      page: resolvedModel?.meta?.currentPage || 1,
+    });
   },
 
   actions: {

@@ -100,7 +100,7 @@ func (h *TooManyCerts) Evaluate(e *Executor) (results []*Result, err error) {
 		}
 
 		results = append(results, &ret)
-		return
+		return results, err
 	}
 
 	ret := Result{
@@ -120,5 +120,5 @@ func (h *TooManyCerts) Evaluate(e *Executor) (results []*Result, err error) {
 
 	results = append(results, &ret)
 
-	return
+	return results, err
 }

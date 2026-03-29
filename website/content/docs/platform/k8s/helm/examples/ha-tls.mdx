@@ -6,7 +6,7 @@ description: |-
 # HA Cluster with Raft and TLS
 
 The overview for [Integrated Storage and
-TLS](/docs/concepts/integrated-storage#integrated-storage-and-tls) covers
+TLS](../../../../concepts/integrated-storage/index.mdx#integrated-storage-and-tls) covers
 the various options for mitigating TLS verification warnings and bootstrapping
 your Raft cluster.
 
@@ -23,17 +23,17 @@ matches the name(s) listed in the TLS certificate.
 ## Before you start
 
 1. Follow the steps from the example [HA OpenBao Cluster with Integrated
-Storage](/docs/platform/k8s/helm/examples/ha-with-raft) to build the cluster.
+Storage](ha-with-raft.mdx) to build the cluster.
 
 2. Follow the examples and instructions in [Standalone Server with
-TLS](/docs/platform/k8s/helm/examples/standalone-tls) to create a TLS
+TLS](standalone-tls.mdx) to create a TLS
 certificate.
 
 ## Solution 1: Use auto-join and set the TLS server in your Raft configuration
 
 The join warning disappears if you use auto-join and set the expected TLS
 server name (`${CN}`) with
-[`leader_tls_servername`](/docs/configuration/storage/raft#leader_tls_servername)
+[`leader_tls_servername`](../../../../configuration/storage/raft.mdx#leader_tls_servername)
 in the Raft stanza for your OpenBao configuration.
 
 For example:

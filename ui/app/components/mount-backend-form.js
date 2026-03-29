@@ -39,7 +39,9 @@ export default class MountBackendForm extends Component {
     super.willDestroy(...arguments);
     if (this.args.mountModel) {
       const method = this.args.mountModel.isNew ? 'unloadRecord' : 'rollbackAttributes';
-      this.args.mountModel[method]();
+      if (!this.args.mountModel.isDestroyed && !this.args.mountModel.isDestroying) {
+        this.args.mountModel[method]();
+      }
     }
   }
 

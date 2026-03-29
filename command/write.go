@@ -27,7 +27,7 @@ type MFAMethodInfo struct {
 	usePasscode bool
 }
 
-// WriteCommand is a Command that puts data into the Vault.
+// WriteCommand is a Command that puts data into the OpenBao.
 type WriteCommand struct {
 	*BaseCommand
 
@@ -44,12 +44,12 @@ func (c *WriteCommand) Help() string {
 	helpText := `
 Usage: bao write [options] PATH [DATA K=V...]
 
-  Writes data to Vault at the given path. The data can be credentials, secrets,
+  Writes data to OpenBao at the given path. The data can be credentials, secrets,
   configuration, or arbitrary data. The specific behavior of this command is
   determined at the thing mounted at the path.
 
   Data is specified as "key=value" pairs. If the value begins with an "@", then
-  it is loaded from a file. If the value is "-", Vault will read the value from
+  it is loaded from a file. If the value is "-", OpenBao will read the value from
   stdin.
 
   Persist data in the generic secrets engine:
@@ -66,7 +66,7 @@ Usage: bao write [options] PATH [DATA K=V...]
 
   Configure access to Consul by providing an access token:
 
-      $ echo $MY_TOKEN | vault write consul/config/access token=-
+      $ echo $MY_TOKEN | bao write consul/config/access token=-
 
   For a full list of examples and paths, please see the documentation that
   corresponds to the secret engines in use.

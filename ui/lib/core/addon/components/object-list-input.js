@@ -65,7 +65,7 @@ export default class ObjectListInput extends Component {
 
   @action
   handleInput(idx, { target }) {
-    const inputObj = this.inputList.objectAt(idx);
+    const inputObj = this.inputList[idx];
     inputObj[target.name] = target.value;
     this.handleChange();
   }
@@ -79,8 +79,7 @@ export default class ObjectListInput extends Component {
 
   @action
   removeRow(idx) {
-    const row = this.inputList.objectAt(idx);
-    this.inputList.removeObject(row);
+    this.inputList = this.inputList.filter((_, i) => i !== idx);
     this.handleChange();
   }
 
@@ -88,7 +87,7 @@ export default class ObjectListInput extends Component {
   handleChange() {
     // disable/enable "add" button based on last row
     const lastObject = this.inputList[this.inputList.length - 1];
-    this.disableAdd = Object.values(lastObject).any((input) => input === '') ? true : false;
+    this.disableAdd = Object.values(lastObject).some((input) => input === '') ? true : false;
 
     // don't send an empty last object to parent
     if (Object.values(lastObject).every((input) => input === '')) {

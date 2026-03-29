@@ -11,17 +11,7 @@ import { pluralize } from 'ember-inflector';
 
 import ApplicationAdapter from './application';
 
-const ENDPOINTS = [
-  'health',
-  'seal-status',
-  'tokens',
-  'token',
-  'seal',
-  'unseal',
-  'init',
-  'capabilities-self',
-  'license',
-];
+const ENDPOINTS = ['health', 'seal-status', 'tokens', 'token', 'seal', 'unseal', 'init', 'capabilities-self'];
 
 export default ApplicationAdapter.extend({
   namespaceService: service('namespace'),
@@ -60,12 +50,6 @@ export default ApplicationAdapter.extend({
         drsecondarycode: 200,
         performancestandbycode: 200,
       },
-      unauthenticated: true,
-    });
-  },
-
-  features() {
-    return this.ajax(`${this.urlFor('license')}/features`, 'GET', {
       unauthenticated: true,
     });
   },

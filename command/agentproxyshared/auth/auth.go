@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -180,6 +180,7 @@ func (ah *AuthHandler) Run(ctx context.Context, am AuthMethod) error {
 		}
 		headers.Set("User-Agent", ah.userAgent)
 		ah.client.SetHeaders(headers)
+		ah.client.SetCloneHeaders(true)
 	}
 
 	var watcher *api.LifetimeWatcher
@@ -200,9 +201,9 @@ func (ah *AuthHandler) Run(ctx context.Context, am AuthMethod) error {
 		var header http.Header
 		var isTokenFileMethod bool
 
-		switch am.(type) {
+		switch am := am.(type) {
 		case AuthMethodWithClient:
-			clientToUse, err = am.(AuthMethodWithClient).AuthClient(ah.client)
+			clientToUse, err = am.AuthClient(ah.client)
 			if err != nil {
 				ah.logger.Error("error creating client for authentication call", "error", err, "backoff", backoff)
 				metrics.IncrCounter([]string{ah.metricsSignifier, "auth", "failure"}, 1)
@@ -221,7 +222,7 @@ func (ah *AuthHandler) Run(ctx context.Context, am AuthMethod) error {
 		// the only source of retry/backoff.
 		clientToUse.SetMaxRetries(0)
 
-		var secret *api.Secret = new(api.Secret)
+		secret := new(api.Secret)
 		if first && ah.token != "" {
 			ah.logger.Debug("using preloaded token")
 
@@ -261,21 +262,21 @@ func (ah *AuthHandler) Run(ctx context.Context, am AuthMethod) error {
 			}
 		}
 
-		if ah.wrapTTL > 0 {
-			wrapClient, err := clientToUse.Clone()
-			if err != nil {
-				ah.logger.Error("error creating client for wrapped call", "error", err, "backoff", backoffCfg)
-				metrics.IncrCounter([]string{ah.metricsSignifier, "auth", "failure"}, 1)
+		// Clone client as we don't want to persist the authentication headers set below
+		clientToUse, err = clientToUse.Clone()
+		if err != nil {
+			ah.logger.Error("error creating client for authentication call", "error", err, "backoff", backoffCfg)
+			metrics.IncrCounter([]string{ah.metricsSignifier, "auth", "failure"}, 1)
 
-				if backoff(ctx, backoffCfg) {
-					continue
-				}
-				return err
+			if backoff(ctx, backoffCfg) {
+				continue
 			}
-			wrapClient.SetWrappingLookupFunc(func(string, string) string {
+			return err
+		}
+		if ah.wrapTTL > 0 {
+			clientToUse.SetWrappingLookupFunc(func(string, string) string {
 				return ah.wrapTTL.String()
 			})
-			clientToUse = wrapClient
 		}
 		for key, values := range header {
 			for _, value := range values {
@@ -289,7 +290,8 @@ func (ah *AuthHandler) Run(ctx context.Context, am AuthMethod) error {
 			isTokenFileMethod = path == "auth/token/lookup-self"
 			if isTokenFileMethod {
 				token, _ := data["token"].(string)
-				lookupSelfClient, err := clientToUse.Clone()
+				var lookupSelfClient *api.Client
+				lookupSelfClient, err = clientToUse.Clone()
 				if err != nil {
 					ah.logger.Error("failed to clone client to perform token lookup")
 					return err

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { visit } from '@ember/test-helpers';
+import { visit, settled } from '@ember/test-helpers';
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
 import authPage from 'vault/tests/pages/auth';
@@ -21,9 +21,10 @@ module('Acceptance | not-found', function (hooks) {
     return authPage.login();
   });
 
-  hooks.afterEach(function () {
+  hooks.afterEach(async function () {
     Ember.Test.adapter.exception = adapterException;
-    return logout.visit();
+    await logout.visit();
+    await settled();
   });
 
   test('top-level not-found', async function (assert) {

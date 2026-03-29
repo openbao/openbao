@@ -43,11 +43,20 @@ it may be resumed from an arbitrary key prefix:
 $ bao operator migrate -config migrate.hcl -start "data/logical/fd"
 ```
 
+Alternatively, you can specify the configuration path using the `BAO_MIGRATE_CONFIG_PATH` environment variable. If the `-config` flag is provided, the environment variable is ignored.
+
+**Example using environment variable:**
+
+```shell-session
+$ export BAO_MIGRATE_CONFIG_PATH=/etc/openbao/migrate.hcl
+$ bao operator migrate -start "data/logical/fd"
+```
+
 ## Configuration
 
 The `operator migrate` command uses a dedicated configuration file to specify the source
 and destination storage backends. The format of the storage stanzas is identical
-to that used to [configure OpenBao](/docs/configuration/storage),
+to that used to [configure OpenBao](../../configuration/storage/index.mdx),
 with the only difference being that two stanzas are required: `storage_source` and `storage_destination`.
 
 ```hcl
@@ -65,9 +74,9 @@ storage_destination "file" {
 The below configuration will migrate away from Filesystem storage to integrated
 raft storage. The raft data will be stored on the local filesystem in the
 defined `path`. `node_id` can optionally be set to identify this node.
-[cluster_addr](/docs/configuration#cluster_addr) must be set to the
+[cluster_addr](../../configuration/index.mdx#cluster_addr) must be set to the
 cluster hostname of this node. For more configuration options see the [raft
-storage configuration documentation](/docs/configuration/storage/raft).
+storage configuration documentation](../../configuration/storage/raft.mdx).
 
 If the original configuration uses "raft" for `ha_storage` a different
 `path` needs to be declared for the path in `storage_destination` and the new
@@ -103,7 +112,7 @@ $ bao operator migrate -config migrate.hcl
 After migration has completed, the data is stored on the local file system. To
 use the new storage backend with OpenBao, update OpenBao's configuration file as
 described in the [raft storage configuration
-documentation](/docs/configuration/storage/raft). Then start and unseal the
+documentation](../../configuration/storage/raft.mdx). Then start and unseal the
 OpenBao server.
 
 ### Join additional nodes

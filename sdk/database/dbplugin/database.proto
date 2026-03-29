@@ -42,15 +42,10 @@ message RotateRootCredentialsRequest {
 }
 
 message Statements {
-	// DEPRECATED, will be removed in 0.12
-	string creation_statements = 1 [deprecated=true];
-	// DEPRECATED, will be removed in 0.12
-	string revocation_statements = 2 [deprecated=true];
-	// DEPRECATED, will be removed in 0.12
-	string rollback_statements	= 3 [deprecated=true];
-	// DEPRECATED, will be removed in 0.12
-	string renew_statements = 4 [deprecated=true];
-
+    reserved 1;
+    reserved 2;
+    reserved 3;
+    reserved 4;
 	repeated string creation = 5;
 	repeated string revocation = 6;
 	repeated string rollback	= 7;

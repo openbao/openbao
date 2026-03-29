@@ -12,10 +12,9 @@ import (
 )
 
 type TestSealOpts struct {
-	Logger     hclog.Logger
-	StoredKeys StoredKeysSupport
-	Secret     []byte
-	Name       wrapping.WrapperType
+	Logger  hclog.Logger
+	Secret  []byte
+	Wrapper wrapping.WrapperType
 }
 
 func NewTestSeal(opts *TestSealOpts) (Access, *ToggleableWrapper) {
@@ -24,8 +23,8 @@ func NewTestSeal(opts *TestSealOpts) (Access, *ToggleableWrapper) {
 	}
 
 	w := &ToggleableWrapper{Wrapper: wrapping.NewTestWrapper(opts.Secret)}
-	if opts.Name != "" {
-		w.wrapperType = &opts.Name
+	if opts.Wrapper != "" {
+		w.wrapperType = &opts.Wrapper
 	}
 	return NewAccess(w), w
 }
@@ -55,7 +54,7 @@ func (t *ToggleableWrapper) Encrypt(ctx context.Context, bytes []byte, opts ...w
 	return t.Wrapper.Encrypt(ctx, bytes, opts...)
 }
 
-func (t ToggleableWrapper) Decrypt(ctx context.Context, info *wrapping.BlobInfo, opts ...wrapping.Option) ([]byte, error) {
+func (t *ToggleableWrapper) Decrypt(ctx context.Context, info *wrapping.BlobInfo, opts ...wrapping.Option) ([]byte, error) {
 	t.l.RLock()
 	defer t.l.RUnlock()
 	if t.error != nil {

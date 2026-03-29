@@ -10,11 +10,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fatih/structs"
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/posener/complete"
 )
 
@@ -53,7 +53,7 @@ func (c *OperatorRekeyCommand) Help() string {
 Usage: bao operator rekey [options] [KEY]
 
   WARNING: this method is being deprecated, please use:
-    $ bao operator rotate-keys 
+    $ bao operator rotate-keys
   instead.
 
   Generates a new set of unseal keys. This can optionally change the total
@@ -67,7 +67,7 @@ Usage: bao operator rekey [options] [KEY]
   a TTY is available, the command will prompt for text.
 
   If the flag -target=recovery is supplied, then this operation will require a
-  quorum of recovery keys in order to generate a new set of recovery keys. 
+  quorum of recovery keys in order to generate a new set of recovery keys.
 
   Initialize a rekey:
 
@@ -282,9 +282,11 @@ func (c *OperatorRekeyCommand) init(client *api.Client) int {
 	keyTypeRequired := keyTypeUnseal
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyInit
 	case "recovery", "hsm":
 		keyTypeRequired = keyTypeRecovery
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyRecoveryKeyInit
 	default:
 		c.UI.Error(fmt.Sprintf("Unknown target: %s", c.flagTarget))
@@ -312,7 +314,7 @@ func (c *OperatorRekeyCommand) init(client *api.Client) int {
 					"recovery. Consider canceling this operation and re-initializing "+
 					"with the -pgp-keys flag to protect the returned %s keys along "+
 					"with -backup to allow recovery of the encrypted keys in case of "+
-					"emergency. You can delete the stored keys later using the -delete "+
+					"emergency. You can delete the backed up keys later using the -delete "+
 					"flag.", strings.ToLower(keyTypeRequired))))
 			c.UI.Output("")
 		}
@@ -326,7 +328,7 @@ func (c *OperatorRekeyCommand) init(client *api.Client) int {
 					"returned, you will not be able to recover them. Consider canceling "+
 					"this operation and re-running with -backup to allow recovery of the "+
 					"encrypted unseal keys in case of emergency. You can delete the "+
-					"stored keys later using the -delete flag.", strings.ToLower(keyTypeRequired))))
+					"backed up keys later using the -delete flag.", strings.ToLower(keyTypeRequired))))
 			c.UI.Output("")
 		}
 	}
@@ -341,13 +343,17 @@ func (c *OperatorRekeyCommand) cancel(client *api.Client) int {
 	var fn func() error
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyCancel
 		if c.flagVerify {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			fn = client.Sys().RekeyVerificationCancel
 		}
 	case "recovery", "hsm":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyRecoveryKeyCancel
 		if c.flagVerify {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			fn = client.Sys().RekeyRecoveryKeyVerificationCancel
 		}
 
@@ -375,32 +381,40 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
 		statusFn = func() (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyStatus()
 		}
 		updateFn = func(s1 string, s2 string) (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyUpdate(s1, s2)
 		}
 		if c.flagVerify {
 			statusFn = func() (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyVerificationStatus()
 			}
 			updateFn = func(s1 string, s2 string) (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyVerificationUpdate(s1, s2)
 			}
 		}
 	case "recovery", "hsm":
 		keyTypeRequired = keyTypeRecovery
 		statusFn = func() (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyRecoveryKeyStatus()
 		}
 		updateFn = func(s1 string, s2 string) (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyRecoveryKeyUpdate(s1, s2)
 		}
 		if c.flagVerify {
 			statusFn = func() (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyRecoveryKeyVerificationStatus()
 			}
 			updateFn = func(s1 string, s2 string) (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyRecoveryKeyVerificationUpdate(s1, s2)
 			}
 		}
@@ -469,10 +483,10 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 		}
 
 		w := getWriterFromUI(c.UI)
-		fmt.Fprintf(w, "Rekey operation nonce: %s\n", nonce)
-		fmt.Fprintf(w, "%s Key (will be hidden): ", keyTypeRequired)
+		_, _ = fmt.Fprintf(w, "Rekey operation nonce: %s\n", nonce)
+		_, _ = fmt.Fprintf(w, "%s Key (will be hidden): ", keyTypeRequired)
 		key, err = password.Read(os.Stdin)
-		fmt.Fprintf(w, "\n")
+		_, _ = fmt.Fprintf(w, "\n")
 		if err != nil {
 			if err == password.ErrInterrupted {
 				c.UI.Error("user canceled")
@@ -542,19 +556,23 @@ func (c *OperatorRekeyCommand) status(client *api.Client) int {
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
 		fn = func() (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyStatus()
 		}
 		if c.flagVerify {
 			fn = func() (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyVerificationStatus()
 			}
 		}
 	case "recovery", "hsm":
 		fn = func() (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyRecoveryKeyStatus()
 		}
 		if c.flagVerify {
 			fn = func() (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyRecoveryKeyVerificationStatus()
 			}
 		}
@@ -579,8 +597,10 @@ func (c *OperatorRekeyCommand) backupRetrieve(client *api.Client) int {
 	var fn func() (*api.RotateRetrieveResponse, error)
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyRetrieveBackup
 	case "recovery", "hsm":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyRetrieveRecoveryBackup
 	default:
 		c.UI.Error(fmt.Sprintf("Unknown target: %s", c.flagTarget))
@@ -590,12 +610,12 @@ func (c *OperatorRekeyCommand) backupRetrieve(client *api.Client) int {
 	// Make the request
 	storedKeys, err := fn()
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error retrieving rekey stored keys: %s", err))
+		c.UI.Error(fmt.Sprintf("Error retrieving rekey backed up keys: %s", err))
 		return 2
 	}
 
 	secret := &api.Secret{
-		Data: structs.New(storedKeys).Map(),
+		Data: structtomap.Map(storedKeys),
 	}
 
 	return OutputSecret(c.UI, secret)
@@ -607,8 +627,10 @@ func (c *OperatorRekeyCommand) backupDelete(client *api.Client) int {
 	var fn func() error
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyDeleteBackup
 	case "recovery", "hsm":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyDeleteRecoveryBackup
 	default:
 		c.UI.Error(fmt.Sprintf("Unknown target: %s", c.flagTarget))
@@ -617,11 +639,11 @@ func (c *OperatorRekeyCommand) backupDelete(client *api.Client) int {
 
 	// Make the request
 	if err := fn(); err != nil {
-		c.UI.Error(fmt.Sprintf("Error deleting rekey stored keys: %s", err))
+		c.UI.Error(fmt.Sprintf("Error deleting rekey backed up keys: %s", err))
 		return 2
 	}
 
-	c.UI.Output("Success! Delete stored keys (if they existed)")
+	c.UI.Output("Success! Deleted backed up keys (if they existed)")
 	return 0
 }
 

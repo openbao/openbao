@@ -25,7 +25,9 @@ export default class PkiKeyDetails extends Component<Args> {
       this.flashMessages.success('Key deleted successfully.');
       this.router.transitionTo('vault.cluster.secrets.backend.pki.keys.index');
     } catch (error) {
-      this.args.key.rollbackAttributes();
+      if (!this.args.key.isDestroyed && !this.args.key.isDestroying) {
+        this.args.key.rollbackAttributes();
+      }
       this.flashMessages.danger(errorMessage(error));
     }
   }

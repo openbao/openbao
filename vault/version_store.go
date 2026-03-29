@@ -21,7 +21,13 @@ const (
 	vaultVersionPath string = "core/versions/"
 )
 
-// storeVersionEntry will store the version, timestamp, and build date to storage
+type VaultVersion struct {
+	TimestampInstalled time.Time
+	Version            string
+	CommitDate         string `json:"BuildDate"` // Pinned to BuildDate to remain backwards-compatible
+}
+
+// storeVersionEntry will store the version, timestamp, and commit date to storage
 // only if no entry for that version already exists in storage. Version
 // timestamps were initially stored in local time. UTC should be used. Existing
 // entries can be overwritten via the force flag. A bool will be returned
@@ -187,7 +193,7 @@ func IsJWT(token string) bool {
 }
 
 func IsSSCToken(token string) bool {
-	return len(token) > MaxNsIdLength+TokenLength+TokenPrefixLength &&
+	return len(token) > NSTokenLength+TokenPrefixLength &&
 		strings.HasPrefix(token, consts.ServiceTokenPrefix)
 }
 

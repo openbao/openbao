@@ -6,21 +6,7 @@
 import { computed } from '@ember/object';
 import Controller from '@ember/controller';
 
-const DEFAULTS = {
-  keyData: null,
-  secret_shares: null,
-  secret_threshold: null,
-  pgp_keys: null,
-  use_pgp: false,
-  loading: false,
-  keyData: null,
-};
-
-export default Controller.extend(
-  {
-    keyDataService: service('key-data'),
-  },
-
+export default Controller.extend({
   initSuccess(resp) {
     this.set('loading', false);
     this.set('keyData', resp);

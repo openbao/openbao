@@ -14,7 +14,7 @@ import TabItem from '@theme/TabItem';
 **Note**: This engine can use external X.509 certificates as part of TLS or signature validation.
    Verifying signatures against X.509 certificates that use SHA-1 is deprecated and is no longer
    usable without a workaround. See the
-   [deprecation FAQ](/docs/deprecation/faq#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
+   [deprecation FAQ](../deprecation/faq.mdx#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
    for more information.
 
 :::
@@ -33,7 +33,7 @@ Kubernetes auth.
 **Note:** If you are upgrading to Kubernetes v1.21+, ensure the config option
 `disable_iss_validation` is set to true. Assuming the default mount path, you
 can check with `bao read -field disable_iss_validation auth/kubernetes/config`.
-See [Kubernetes 1.21](#kubernetes-1-21) below for more details.
+See [Kubernetes 1.21](#kubernetes-121) below for more details.
 
 :::
 
@@ -89,43 +89,43 @@ management tool.
 
 1. Enable the Kubernetes auth method:
 
-  ```bash
-  bao auth enable kubernetes
-  ```
+   ```bash
+   bao auth enable kubernetes
+   ```
 
 1. Use the `/config` endpoint to configure OpenBao to talk to Kubernetes. Use
-  `kubectl cluster-info` to validate the Kubernetes host address and TCP port.
-  For the list of available configuration options, please see the
-  [API documentation](/api-docs/auth/kubernetes).
+   `kubectl cluster-info` to validate the Kubernetes host address and TCP port.
+   For the list of available configuration options, please see the [API
+   documentation](/api-docs/auth/kubernetes).
 
-  ```bash
-  bao write auth/kubernetes/config \
-      token_reviewer_jwt="<your reviewer service account JWT>" \
-      kubernetes_host=https://192.168.99.100:<your TCP port or blank for 443> \
-      kubernetes_ca_cert=@ca.crt
-  ```
+   ```bash
+   bao write auth/kubernetes/config \
+       token_reviewer_jwt="<your reviewer service account JWT>" \
+       kubernetes_host=https://192.168.99.100:<your TCP port or blank for 443> \
+       kubernetes_ca_cert=@ca.crt
+   ```
 
-:::danger
+   :::danger
 
- **Note:** The pattern OpenBao uses to authenticate Pods depends on sharing
-  the JWT token over the network. Given the [security model of
-  OpenBao](/docs/internals/security), this is allowable because OpenBao is
-  part of the trusted compute base. In general, Kubernetes applications should
-  **not** share this JWT with other applications, as it allows API calls to be
-  made on behalf of the Pod and can result in unintended access being granted
-  to 3rd parties.
+   **Note:** The pattern OpenBao uses to authenticate Pods depends on sharing
+   the JWT token over the network. Given the [security model of
+   OpenBao](../internals/security.mdx), this is allowable because OpenBao is part
+   of the trusted compute base. In general, Kubernetes applications should
+   **not** share this JWT with other applications, as it allows API calls to be
+   made on behalf of the Pod and can result in unintended access being granted
+   to 3rd parties.
 
-:::
+   :::
 
 1. Create a named role:
 
-  ```text
-  bao write auth/kubernetes/role/demo \
-      bound_service_account_names=myapp \
-      bound_service_account_namespaces=default \
-      policies=default \
-      ttl=1h
-  ```
+   ```bash
+   bao write auth/kubernetes/role/demo \
+       bound_service_account_names=myapp \
+       bound_service_account_namespaces=default \
+       policies=default \
+       ttl=1h
+   ```
 
   This role authorizes the "myapp" service account in the default
   namespace and it gives it the default policy.
@@ -183,7 +183,7 @@ injected service account tokens to a year to help smooth the transition to
 short-lived tokens. If you would like to disable this, set
 [--service-account-extend-token-expiration=false][k8s-extended-tokens] for
 `kube-apiserver` or specify your own `serviceAccountToken` volume mount. See
-[here](/docs/auth/jwt/oidc-providers/kubernetes#specifying-ttl-and-audience) for an example.
+[here](jwt/oidc-providers/kubernetes.mdx#specifying-ttl-and-audience) for an example.
 
 :::
 
@@ -253,7 +253,7 @@ JWT tokens Kubernetes generates can also be verified using Kubernetes as an OIDC
 provider. The JWT auth method documentation has [instructions][k8s-jwt-auth] for
 setting up JWT auth with Kubernetes as the OIDC provider.
 
-[k8s-jwt-auth]: /docs/auth/jwt/oidc-providers/kubernetes
+[k8s-jwt-auth]: jwt/oidc-providers/kubernetes.mdx
 
 This solution allows you to use short-lived tokens for all clients and removes
 the need for a reviewer JWT. However, the client tokens cannot be revoked before

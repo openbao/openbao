@@ -3,7 +3,7 @@
 
 package config
 
-import "github.com/openbao/openbao/internalshared/configutil"
+import "github.com/openbao/openbao/helper/configutil"
 
 func IsValidListener(listener *configutil.Listener) error {
 	return nil

@@ -44,7 +44,7 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 				"-init",
 				"-otp", "not-a-valid-otp",
 			},
-			"OTP string is wrong length",
+			"OTP string has incorrect length",
 			2,
 		},
 		{
@@ -82,8 +82,6 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 		t.Parallel()
 
 		for _, tc := range cases {
-			tc := tc
-
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 

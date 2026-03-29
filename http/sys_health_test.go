@@ -31,7 +31,6 @@ func TestSysHealth_get(t *testing.T) {
 		"initialized":                  false,
 		"sealed":                       true,
 		"standby":                      true,
-		"performance_standby":          false,
 	}
 	testResponseStatus(t, resp, 501)
 	testResponseBody(t, resp, &actual)
@@ -64,7 +63,6 @@ func TestSysHealth_get(t *testing.T) {
 		"initialized":                  true,
 		"sealed":                       true,
 		"standby":                      true,
-		"performance_standby":          false,
 	}
 	testResponseStatus(t, resp, 503)
 	testResponseBody(t, resp, &actual)
@@ -101,7 +99,6 @@ func TestSysHealth_get(t *testing.T) {
 		"initialized":                  true,
 		"sealed":                       false,
 		"standby":                      false,
-		"performance_standby":          false,
 	}
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
@@ -143,7 +140,6 @@ func TestSysHealth_customcodes(t *testing.T) {
 		"initialized":                  false,
 		"sealed":                       true,
 		"standby":                      true,
-		"performance_standby":          false,
 	}
 	testResponseStatus(t, resp, 581)
 	testResponseBody(t, resp, &actual)
@@ -177,7 +173,6 @@ func TestSysHealth_customcodes(t *testing.T) {
 		"initialized":                  true,
 		"sealed":                       true,
 		"standby":                      true,
-		"performance_standby":          false,
 	}
 	testResponseStatus(t, resp, 523)
 	testResponseBody(t, resp, &actual)
@@ -215,7 +210,6 @@ func TestSysHealth_customcodes(t *testing.T) {
 		"initialized":                  true,
 		"sealed":                       false,
 		"standby":                      false,
-		"performance_standby":          false,
 	}
 	testResponseStatus(t, resp, 202)
 	testResponseBody(t, resp, &actual)

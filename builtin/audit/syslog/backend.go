@@ -42,7 +42,9 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 		format = "json"
 	}
 	switch format {
-	case "json", "jsonx":
+	case "json":
+	case "jsonx":
+		return nil, errors.New(`jsonx formatting has been removed, consider switching to json by omitting "format" or setting it to "json"`)
 	default:
 		return nil, fmt.Errorf("unknown format type %q", format)
 	}
@@ -93,17 +95,9 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 		},
 	}
 
-	switch format {
-	case "json":
-		b.formatter.AuditFormatWriter = &audit.JSONFormatWriter{
-			Prefix:   conf.Config["prefix"],
-			SaltFunc: b.Salt,
-		}
-	case "jsonx":
-		b.formatter.AuditFormatWriter = &audit.JSONxFormatWriter{
-			Prefix:   conf.Config["prefix"],
-			SaltFunc: b.Salt,
-		}
+	b.formatter.AuditFormatWriter = &audit.JSONFormatWriter{
+		Prefix:   conf.Config["prefix"],
+		SaltFunc: b.Salt,
 	}
 
 	return b, nil

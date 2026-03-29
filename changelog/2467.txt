@@ -1,0 +1,3 @@
+```release-note:bug
+core/mounts: Don't attempt to upgrade legacy mount tables when in read-only standby mode.
+```

@@ -108,7 +108,7 @@ module('Integration | Component | oidc/client-form', function (hooks) {
     // fill out form with valid inputs
     await clickTrigger();
     await fillIn('.ember-power-select-search input', 'default');
-    await searchSelect.options.objectAt(0).click();
+    await searchSelect.options[0].click();
 
     await click('[data-test-oidc-radio="limited"]');
     assert
@@ -213,7 +213,7 @@ module('Integration | Component | oidc/client-form', function (hooks) {
     await click('[data-test-oidc-radio="limited"]');
     await clickTrigger();
     await fillIn('.ember-power-select-search input', 'test-new');
-    await searchSelect.options.objectAt(0).click();
+    await searchSelect.options[0].click();
     assert.dom('[data-test-modal-div]').hasClass('is-active', 'modal with form opens');
     assert.dom('[data-test-modal-title]').hasText('Create new assignment', 'Create assignment modal renders');
     await click(SELECTORS.assignmentCancelButton);

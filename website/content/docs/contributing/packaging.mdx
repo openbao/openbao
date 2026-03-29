@@ -73,7 +73,7 @@ definitions](https://pkg.go.dev/cmd/link) as appropriate:
 | :-------- | :---- |
 | `github.com/openbao/openbao/version.fullVersion` | Version number of OpenBao; typically this matches the upstream version. Must be semver (`<major>.<minor>.<patch>`). Required. |
 | `github.com/openbao/openbao/version.GitCommit` | Git commit for reference; string. Required. |
-| `github.com/openbao/openbao/version.BuildDate` | Build timestamp string in the format `%Y-%m-%dT%H:%M:%SZ` (UTC). Usually this is the date of the commit. Required. |
+| `github.com/openbao/openbao/version.CommitDate` | Date of the commit in the format `%Y-%m-%dT%H:%M:%SZ` (UTC). Not the date of the build to preserve reproducibility. Required. |
 | `github.com/openbao/openbao/version.VersionMetadata` | Custom version information; string. Optional. |
 
 ### Known tags
@@ -91,10 +91,10 @@ The following flags **SHOULD NOT** be used in a release version:
 
 | Tag | Effect |
 | :-- | :----- |
-| `memprofiler` | Includes a memory profiler in the release binary for debugging purposes only. |
-| `testonly`    | Includes insecure custom hooks only for testing purposes.                     |
 | `deadlock`    | Includes deadlock detection during testing.                                   |
+| `memprofiler` | Includes a memory profiler in the release binary for debugging purposes only. |
 | `race`        | Enabled for race testing.                                                     |
+| `tlsdebug`    | Enables TLS session key dumping, e.g. for debugging with Wireshark.           |
 
 :::
 
@@ -115,7 +115,7 @@ For instance, our upstream release invokes Go as follows:
 
 ```
 CGO_ENABLED=0 go build \
- -ldflags "-X github.com/openbao/openbao/version.fullVersion=v2.1.0 -X github.com/openbao/openbao/version.GitCommit=93609bf0c73a18dd81ac8c7d21b95cbde1e4887c -X github.com/openbao/openbao/version.BuildDate=2024-11-29T15:34:50Z"
+ -ldflags "-X github.com/openbao/openbao/version.fullVersion=v2.1.0 -X github.com/openbao/openbao/version.GitCommit=93609bf0c73a18dd81ac8c7d21b95cbde1e4887c -X github.com/openbao/openbao/version.CommitDate=2024-11-29T15:34:50Z"
  .
 ```
 

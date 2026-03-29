@@ -50,7 +50,7 @@ func (d *OutputStringError) CurlString() (string, error) {
 }
 
 func (d *OutputStringError) buildCurlString() (string, error) {
-	body, err := d.Request.BodyBytes()
+	body, err := d.BodyBytes()
 	if err != nil {
 		return "", err
 	}
@@ -60,8 +60,8 @@ func (d *OutputStringError) buildCurlString() (string, error) {
 	if d.TLSSkipVerify {
 		finalCurlString += "--insecure "
 	}
-	if d.Request.Method != http.MethodGet {
-		finalCurlString = fmt.Sprintf("%s-X %s ", finalCurlString, d.Request.Method)
+	if d.Method != http.MethodGet {
+		finalCurlString = fmt.Sprintf("%s-X %s ", finalCurlString, d.Method)
 	}
 	if d.ClientCACert != "" {
 		clientCACert := strings.ReplaceAll(d.ClientCACert, "'", "'\"'\"'")
@@ -79,7 +79,7 @@ func (d *OutputStringError) buildCurlString() (string, error) {
 		clientKey := strings.ReplaceAll(d.ClientKey, "'", "'\"'\"'")
 		finalCurlString = fmt.Sprintf("%s--key '%s' ", finalCurlString, clientKey)
 	}
-	for k, v := range d.Request.Header {
+	for k, v := range d.Header {
 		for _, h := range v {
 			if strings.ToLower(k) == "x-vault-token" {
 				h = `$(bao print token)`
@@ -95,5 +95,5 @@ func (d *OutputStringError) buildCurlString() (string, error) {
 		finalCurlString = fmt.Sprintf("%s-d '%s' ", finalCurlString, escapedBody)
 	}
 
-	return fmt.Sprintf("%s%s", finalCurlString, strconv.Quote(d.Request.URL.String())), nil
+	return fmt.Sprintf("%s%s", finalCurlString, strconv.Quote(d.URL.String())), nil
 }

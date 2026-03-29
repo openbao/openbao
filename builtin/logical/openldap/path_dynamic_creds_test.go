@@ -340,7 +340,8 @@ func TestDynamicCredsRead_success(t *testing.T) {
 			defer storage.AssertExpectations(t)
 
 			b := Backend(client)
-			b.Setup(context.Background(), backendConfig)
+			err := b.Setup(context.Background(), backendConfig)
+			require.NoError(t, err)
 
 			req := &logical.Request{
 				Storage:     storage,

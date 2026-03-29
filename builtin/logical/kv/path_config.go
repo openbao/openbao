@@ -96,7 +96,7 @@ func (b *versionedKVBackend) pathConfigWrite() framework.OperationFunc {
 				return nil, err
 			}
 
-			defer txn.Rollback(ctx)
+			defer txn.Rollback(ctx) //nolint:errcheck
 			req.Storage = txn
 		}
 

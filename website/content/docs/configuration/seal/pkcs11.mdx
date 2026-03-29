@@ -1,13 +1,14 @@
 ---
 sidebar_label: PKCS#11 Unseal
 description: |-
-  The PKCS11 seal configures OpenBao to use an HSM with PKCS11 as the
-  autounseal mechanism.
+  The PKCS#11 seal configures OpenBao to use an HSM with PKCS#11 as the
+  auto-unseal mechanism.
 ---
+
 # `pkcs11` seal
 
-The PKCS11 seal configures OpenBao to use an HSM with PKCS11 as the autounseal
-mechanism. OpenBao's HSM PKCS11 support is activated by one of the following:
+The PKCS#11 seal configures OpenBao to use an HSM with PKCS#11 as the auto-unseal
+mechanism. OpenBao's PKCS#11 support is activated by one of the following:
 
 - The presence of a `seal "pkcs11"` block in OpenBao's configuration file
 - The presence of the environment variable `BAO_HSM_LIB` set to the library's
@@ -26,7 +27,7 @@ key material.
 :::warning
 
 Because PKCS#11 auto-unseal was not present in Vault v1.14 OSS, it is not
-expected that it is [seal-compatible](/docs/policies/migration/); manual
+expected that it is [seal-compatible](../../policies/migration.mdx); manual
 migration of data between nodes may be required.
 
 :::
@@ -41,7 +42,7 @@ The following software packages are required for OpenBao:
 
 ## `pkcs11` example
 
-This example shows configuring HSM PKCS11 seal through the OpenBao configuration
+This example shows configuring a PKCS#11 seal through the OpenBao configuration
 file by providing all the required values:
 
 ```hcl
@@ -71,28 +72,28 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
 - `lib` `(string: <required>)`: The path to the PKCS#11 library shared object
   file. May also be specified by the `BAO_HSM_LIB` environment variable.
 
-:::info
+  :::info
 
-Depending on your HSM, the value of the `lib` parameter may be
-either a binary or a dynamic library, and its use may require other libraries
-depending on which system the OpenBao binary is currently running on (e.g.: a
-Linux system may require other libraries to interpret Windows .dll files).
+  Depending on your HSM, the value of the `lib` parameter may be either a binary
+  or a dynamic library, and its use may require other libraries depending on
+  which system the OpenBao binary is currently running on (e.g.: a Linux system
+  may require other libraries to interpret Windows .dll files).
 
-:::
+  :::
 
 - `slot` `(string: <slot or token label required>)`: The slot number to use,
   specified as a string (e.g. `"2305843009213693953"`). May also be specified by
   the `BAO_HSM_SLOT` environment variable.
 
-:::info
+  :::info
 
-Slots are typically listed as hex-decimal values in the OS setup
-utility but this configuration uses their decimal equivalent. For example, using the
-HSM command-line `pkcs11-tool`, a slot listed as `0x2000000000000001`in hex is equal
-to `2305843009213693953` in decimal; these values may be listed shorter or
-differently as determined by the HSM in use.
+  Slots are typically listed as hex-decimal values in the OS setup utility but
+  this configuration uses their decimal equivalent. For example, using the HSM
+  command-line `pkcs11-tool`, a slot listed as `0x2000000000000001`in hex is
+  equal to `2305843009213693953` in decimal; these values may be listed shorter
+  or differently as determined by the HSM in use.
 
-:::
+  :::
 
 - `token_label` `(string: <slot or token label required>)`: The slot token label to
   use. May also be specified by the `BAO_HSM_TOKEN_LABEL` environment variable.
@@ -116,6 +117,14 @@ differently as determined by the HSM in use.
   - Names: `AES_GCM`, `CKM_AES_GCM`, Hexadecimal: `0x1087`
   - Names: `RSA_PKCS_OAEP`, `CKM_RSA_PKCS_OAEP`, Hexadecimal: `0x0009`
 
+  :::warning
+
+  Unlike Vault Enterprise, OpenBao only supports AEAD-enabled algorithms and
+  will not support Encrypt-Then-MAC constructs (like `CKM_AES_CBC_PAD` with
+  explicit HMACing).
+
+  :::
+
 - `disable_software_encryption` `(bool: false)`: For RSA-based mechanisms,
   OpenBao performs the encryption operation locally in memory by exporting the
   public key from the HSM. Set this option to `true` to force calling out to the
@@ -123,17 +132,9 @@ differently as determined by the HSM in use.
   OpenBao v2.4.0. All prior versions always call out to the HSM for encryption
   and never perform encryption in software.
 
-:::warning
-
-Unlike Vault Enterprise, OpenBao only supports AEAD-enabled algorithms and
-will not support Encrypt-Then-MAC constructs (like `CKM_AES_CBC_PAD` with
-explicit HMACing).
-
-:::
-
 - `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
-Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
+Refer to the [Seal Migration](../../concepts/seal.mdx#seal-migration) documentation for more information about the seal migration process.
 
 ### Mechanism specific flags
 
@@ -169,6 +170,8 @@ or deleted and are used to decrypt older data.
 
 ## Tested HSM Vendors and Models
 
-| Vendor       | Model      | Unsealing | Installation Guide                                         |
-| ------------ | ---------- | --------- | ---------------------------------------------------------- |
-| Securosys SA | Primus HSM | Yes       | [Installation Guide](/docs/guides/unseal/pkcs11/securosys) |
+| Vendor       | Model               | Unsealing   | Installation Guide                                         |
+| ------------ | --------------------| ------------| -----------------------------------------------------------|
+| Securosys SA | Primus HSM          | Yes         | [Installation Guide](../../guides/unseal/pkcs11/securosys.mdx) |
+| Utimaco      | u.trust GP HSM      | Yes         | [Installation Guide](../../guides/unseal/pkcs11/utimaco.mdx)   |
+| Utimaco      | CryptoServer CP5    | Yes         | [Installation Guide](../../guides/unseal/pkcs11/utimaco.mdx)   |

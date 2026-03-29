@@ -15,24 +15,23 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 // CubbyholeBackendFactory constructs a new cubbyhole backend
 func CubbyholeBackendFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
+	if conf == nil {
+		return nil, errors.New("configuration passed into backend is nil")
+	}
+
 	b := &CubbyholeBackend{}
 	b.Backend = &framework.Backend{
 		Help:           strings.TrimSpace(cubbyholeHelp),
 		RunningVersion: versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
+		Paths:          b.paths(),
 	}
 
-	b.Backend.Paths = append(b.Backend.Paths, b.paths()...)
-
-	if conf == nil {
-		return nil, errors.New("configuration passed into backend is nil")
-	}
-	b.Backend.Setup(ctx, conf)
-
-	return b, nil
+	return b, b.Setup(ctx, conf)
 }
 
 // CubbyholeBackend is used for storing secrets directly into the physical
@@ -107,7 +106,7 @@ func (b *CubbyholeBackend) paths() []*framework.Path {
 	}
 }
 
-func (b *CubbyholeBackend) revoke(ctx context.Context, view BarrierView, saltedToken string) error {
+func (b *CubbyholeBackend) revoke(ctx context.Context, view barrier.View, saltedToken string) error {
 	if saltedToken == "" {
 		return errors.New("client token empty during revocation")
 	}

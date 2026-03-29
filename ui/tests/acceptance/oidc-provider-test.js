@@ -135,6 +135,7 @@ module('Acceptance | oidc provider', function (hooks) {
     this.uid = uuidv4();
     this.store = await this.owner.lookup('service:store');
     await logout.visit();
+    await settled();
     return authPage.login();
   });
 
@@ -206,6 +207,7 @@ module('Acceptance | oidc provider', function (hooks) {
     const { providerName, callback, clientId, authMethodPath } = await setupOidc(this.uid);
     const url = getAuthzUrl(providerName, callback, clientId, { prompt: 'consent' });
     await logout.visit();
+    await settled();
     await authFormComponent.selectMethod(authMethodPath);
     await authFormComponent.username(OIDC_USER);
     await authFormComponent.password(USER_PASSWORD);

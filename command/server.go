@@ -5,9 +5,7 @@ package command
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -23,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
@@ -30,26 +29,27 @@ import (
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mitchellh/go-testing-interface"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	config2 "github.com/openbao/openbao/command/config"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/builtinplugins"
+	"github.com/openbao/openbao/helper/configutil"
+	"github.com/openbao/openbao/helper/kmsplugin"
+	"github.com/openbao/openbao/helper/listenerutil"
 	loghelper "github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/osutil"
+	"github.com/openbao/openbao/helper/pluginutil/oci"
 	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"
 	"github.com/openbao/openbao/helper/useragent"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
@@ -61,7 +61,6 @@ import (
 	"github.com/openbao/openbao/version"
 	"github.com/posener/complete"
 	"github.com/sasha-s/go-deadlock"
-	"go.uber.org/atomic"
 	"golang.org/x/net/http/httpproxy"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -101,7 +100,6 @@ type ServerCommand struct {
 	WaitGroup *sync.WaitGroup
 
 	logWriter io.Writer
-	logGate   *gatedwriter.Writer
 	logger    hclog.InterceptLogger
 
 	cleanupGuard sync.Once
@@ -175,6 +173,7 @@ func (c *ServerCommand) Flags() *FlagSets {
 
 	f.StringSliceVar(&StringSliceVar{
 		Name:   "config",
+		EnvVar: "BAO_CONFIG_PATH",
 		Target: &c.flagConfigs,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
@@ -364,42 +363,8 @@ func (c *ServerCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *ServerCommand) flushLog() {
-	c.logger.(hclog.OutputResettable).ResetOutputWithFlush(&hclog.LoggerOptions{
-		Output: c.logWriter,
-	}, c.logGate)
-}
-
-func (c *ServerCommand) parseConfig() (*server.Config, []configutil.ConfigError, error) {
-	var configErrors []configutil.ConfigError
-	// Load the configuration
-	var config *server.Config
-	for _, path := range c.flagConfigs {
-		current, err := server.LoadConfig(path, c.flagConfigs)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error loading configuration from %s: %w", path, err)
-		}
-
-		// While current may be nil, we'll never get a nil configuration as a
-		// result of ignoring a configuration file present in a directory.
-		if current != nil {
-			configErrors = append(configErrors, current.Validate(path)...)
-
-			if config == nil {
-				config = current
-			} else {
-				config = config.Merge(current)
-			}
-		} else {
-			c.UI.Warn(fmt.Sprintf("WARNING: ignoring duplicate configuration found in directory: %v", path))
-		}
-	}
-
-	return config, configErrors, nil
-}
-
 func (c *ServerCommand) runRecoveryMode() int {
-	config, configErrors, err := c.parseConfig()
+	config, configErrors, err := c.ParseServerConfig(c.flagConfigs)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -430,12 +395,9 @@ func (c *ServerCommand) runRecoveryMode() int {
 		c.logger.Warn(cErr.String())
 	}
 
-	// Ensure logging is flushed if initialization fails
-	defer c.flushLog()
-
 	// create GRPC logger
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
-	grpclog.SetLogger(&grpclogFaker{
+	grpclog.SetLoggerV2(&grpclogFaker{
 		logger: namedGRPCLogFaker,
 		log:    api.ReadBaoVariable("BAO_GRPC_LOGGING") != "",
 	})
@@ -450,6 +412,17 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	logProxyEnvironmentVariables(c.logger)
+
+	if err := c.downloadOCIPlugins(context.Background(), config); err != nil {
+		c.UI.Error(fmt.Sprintf("Error downloading plugins: %s", err))
+		return 1
+	}
+
+	kms, err := kmsplugin.NewCatalog(c.logger, config)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error creating KMS plugin catalog: %s", err))
+		return 1
+	}
 
 	// Initialize the storage backend
 	factory, exists := c.PhysicalBackends[config.Storage.Type]
@@ -480,12 +453,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 	info["log level"] = config.LogLevel
 	infoKeys = append(infoKeys, "log level")
 
-	var barrierSeal vault.Seal
-	var sealConfigError error
-	var wrapper wrapping.Wrapper
-
 	if len(config.Seals) == 0 {
-		config.Seals = append(config.Seals, &configutil.KMS{Type: wrapping.WrapperTypeShamir.String()})
+		config.Seals = append(config.Seals, &configutil.KMS{Type: vaultseal.WrapperTypeShamir.String()})
 	}
 
 	if len(config.Seals) > 1 {
@@ -494,37 +463,33 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	configSeal := config.Seals[0]
-	sealType := wrapping.WrapperTypeShamir.String()
+	sealType := configSeal.Type
 	if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
 		sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 		configSeal.Type = sealType
-	} else {
-		sealType = configSeal.Type
 	}
-
-	infoKeys = append(infoKeys, "Seal Type")
-	info["Seal Type"] = sealType
 
 	var seal vault.Seal
-	defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
-	sealLogger := c.logger.ResetNamed(fmt.Sprintf("seal.%s", sealType))
-	wrapper, sealConfigError = configutil.ConfigureWrapper(configSeal, &infoKeys, &info, sealLogger)
-	if sealConfigError != nil {
-		if !errwrap.ContainsType(sealConfigError, new(logical.KeyNotFoundError)) {
-			c.UI.Error(fmt.Sprintf(
-				"Error parsing Seal configuration: %s", sealConfigError))
+	switch configSeal.Type {
+	case string(vaultseal.WrapperTypeShamir):
+		seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+	default:
+		wrapper, config, err := kms.ConfigureWrapper(
+			context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config))
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error configuring seal %q: %s", configSeal.Type, err))
 			return 1
 		}
-	}
-	if wrapper == nil {
-		seal = defaultSeal
-	} else {
+
 		seal, err = vault.NewAutoSeal(vaultseal.NewAccess(wrapper))
 		if err != nil {
-			c.UI.Error(fmt.Sprintf("error creating auto seal: %v", err))
+			c.UI.Error(fmt.Sprintf("Error creating auto seal: %s", err))
+			return 1
 		}
+
+		info["auto seal"] = formatProps(configSeal.Type, config.Metadata)
+		infoKeys = append(infoKeys, "auto seal")
 	}
-	barrierSeal = seal
 
 	// Ensure that the seal finalizer is called, even if using verify-only
 	defer func() {
@@ -537,7 +502,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	coreConfig := &vault.CoreConfig{
 		Physical:     backend,
 		StorageType:  config.Storage.Type,
-		Seal:         barrierSeal,
+		Seal:         seal,
 		LogLevel:     config.LogLevel,
 		Logger:       c.logger,
 		RecoveryMode: c.flagRecovery,
@@ -569,7 +534,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	// Initialize the listeners
 	lns := make([]listenerutil.Listener, 0, len(config.Listeners))
 	for _, lnConfig := range config.Listeners {
-		ln, _, _, err := server.NewListener(lnConfig, c.logger, c.logGate, c.UI)
+		ln, _, _, err := server.NewListener(lnConfig, c.logger, c.UI)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error initializing listener of type %s: %s", lnConfig.Type, err))
 			return 1
@@ -581,9 +546,20 @@ func (c *ServerCommand) runRecoveryMode() int {
 		})
 	}
 
+	// Make sure we close all HTTP servers and listeners from this point on.
+	var servers []*http.Server
 	listenerCloseFunc := func() {
-		for _, ln := range lns {
-			ln.Listener.Close()
+		var errs error
+		for _, srv := range servers {
+			errs = errors.Join(srv.Close())
+		}
+		// Closing an HTTP server will close the underlying listener, so avoid
+		// double-closing it.
+		for _, ln := range lns[len(servers):] {
+			errs = errors.Join(errs, ln.Close())
+		}
+		if errs != nil {
+			c.UI.Error(fmt.Sprintf("Error closing listeners: %v", errs))
 		}
 	}
 
@@ -608,7 +584,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	padding := 24
 
 	sort.Strings(infoKeys)
-	c.UI.Output("==> OpenBao server configuration:\n")
+	c.UI.Output("\n==> OpenBao server configuration:\n")
 
 	titleCaser := cases.Title(language.English, cases.NoLower)
 
@@ -635,7 +611,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 			AllListeners:          lns,
 			DisablePrintableCheck: config.DisablePrintableCheck,
 			RecoveryMode:          c.flagRecovery,
-			RecoveryToken:         atomic.NewString(""),
+			RecoveryToken:         &atomic.Value{},
 		})
 
 		server := &http.Server{
@@ -646,19 +622,13 @@ func (c *ServerCommand) runRecoveryMode() int {
 			ErrorLog:          c.logger.StandardLogger(nil),
 		}
 
-		go server.Serve(ln.Listener)
-	}
+		go func(ln net.Listener) {
+			if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				c.UI.Error(fmt.Sprintf("HTTP server (listening on %s) exited with error: %v", ln.Addr().String(), err))
+			}
+		}(ln.Listener)
 
-	if sealConfigError != nil {
-		init, err := core.InitializedLocally(context.Background())
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error checking if core is initialized: %v", err))
-			return 1
-		}
-		if init {
-			c.UI.Error("Vault is initialized but no Seal key could be loaded")
-			return 1
-		}
+		servers = append(servers, server)
 	}
 
 	if newCoreError != nil {
@@ -669,10 +639,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> OpenBao server started! Log data will stream in below:\n")
+		c.UI.Output("==> OpenBao server started!")
 	}
-
-	c.flushLog()
 
 	for {
 		select {
@@ -731,13 +699,13 @@ func (q quiescenceSink) Accept(name string, level hclog.Level, msg string, args 
 func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, error) {
 	// Ensure that a backend is provided
 	if config.Storage == nil {
-		return nil, errors.New("A storage backend must be specified")
+		return nil, errors.New("a storage backend must be specified")
 	}
 
 	// Initialize the backend
 	factory, exists := c.PhysicalBackends[config.Storage.Type]
 	if !exists {
-		return nil, fmt.Errorf("Unknown storage type %s", config.Storage.Type)
+		return nil, fmt.Errorf("unknown storage type %s", config.Storage.Type)
 	}
 
 	// Do any custom configuration needed per backend
@@ -747,7 +715,7 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 			config.ClusterAddr = envCA
 		}
 		if len(config.ClusterAddr) == 0 {
-			return nil, errors.New("Cluster address must be set when using raft storage")
+			return nil, errors.New("cluster address must be set when using raft storage")
 		}
 	}
 
@@ -755,7 +723,7 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 	c.allLoggers = append(c.allLoggers, namedStorageLogger)
 	backend, err := factory(config.Storage.Config, namedStorageLogger)
 	if err != nil {
-		return nil, fmt.Errorf("Error initializing storage of type %s: %w", config.Storage.Type, err)
+		return nil, fmt.Errorf("error initializing storage of type %s: %w", config.Storage.Type, err)
 	}
 
 	return backend, nil
@@ -764,7 +732,7 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 func beginServiceRegistration(c *ServerCommand, config *server.Config) (sr.ServiceRegistration, error) {
 	sdFactory, ok := c.ServiceRegistrations[config.ServiceRegistration.Type]
 	if !ok {
-		return nil, fmt.Errorf("Unknown service_registration type %s", config.ServiceRegistration.Type)
+		return nil, fmt.Errorf("unknown service_registration type %s", config.ServiceRegistration.Type)
 	}
 
 	namedSDLogger := c.logger.Named("service_registration." + config.ServiceRegistration.Type)
@@ -801,7 +769,7 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 
 	var errMsg error
 	for i, lnConfig := range config.Listeners {
-		ln, props, cg, err := server.NewListener(lnConfig, c.logger, c.logGate, c.UI)
+		ln, props, cg, err := server.NewListener(lnConfig, c.logger, c.UI)
 		if err != nil {
 			errMsg = fmt.Errorf("Error initializing listener of type %s: %s", lnConfig.Type, err)
 			return 1, nil, nil, errMsg
@@ -825,7 +793,7 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 			} else {
 				tcpAddr, ok := ln.Addr().(*net.TCPAddr)
 				if !ok {
-					errMsg = errors.New("Failed to parse tcp listener")
+					errMsg = errors.New("failed to parse tcp listener")
 					return 1, nil, nil, errMsg
 				}
 				clusterAddr := &net.TCPAddr{
@@ -853,17 +821,20 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 			Config:   lnConfig,
 		})
 
+		if lnConfig.MaxRequestJsonMemory == 0 {
+			lnConfig.MaxRequestJsonMemory = vault.DefaultMaxJsonMemory
+		}
+		props["max_request_json_memory"] = fmt.Sprintf("%d", lnConfig.MaxRequestJsonMemory)
+
+		if lnConfig.MaxRequestJsonStrings == 0 {
+			lnConfig.MaxRequestJsonStrings = vault.DefaultMaxJsonStrings
+		}
+		props["max_request_json_strings"] = fmt.Sprintf("%d", lnConfig.MaxRequestJsonStrings)
+
 		// Store the listener props for output later
 		key := fmt.Sprintf("listener %d", i+1)
-		propsList := make([]string, 0, len(props))
-		for k, v := range props {
-			propsList = append(propsList, fmt.Sprintf(
-				"%s: %q", k, v))
-		}
-		sort.Strings(propsList)
 		*infoKeys = append(*infoKeys, key)
-		(*info)[key] = fmt.Sprintf(
-			"%s (%s)", lnConfig.Type, strings.Join(propsList, ", "))
+		(*info)[key] = formatProps(lnConfig.Type, props)
 
 	}
 	if !disableClustering {
@@ -942,9 +913,7 @@ func (c *ServerCommand) Run(args []string) int {
 	// Don't exit just because we saw a potential deadlock.
 	deadlock.Opts.OnPotentialDeadlock = func() {}
 
-	c.logGate = gatedwriter.NewWriter(os.Stderr)
-	c.logWriter = c.logGate
-
+	c.logWriter = os.Stderr
 	if c.logFlags.flagCombineLogs {
 		c.logWriter = os.Stdout
 	}
@@ -995,7 +964,7 @@ func (c *ServerCommand) Run(args []string) int {
 		config.Listeners[0].Telemetry.UnauthenticatedMetricsAccess = true
 	}
 
-	parsedConfig, configErrors, err := c.parseConfig()
+	parsedConfig, configErrors, err := c.ParseServerConfig(c.flagConfigs)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -1031,23 +1000,15 @@ func (c *ServerCommand) Run(args []string) int {
 	c.logger = l
 	c.allLoggers = append(c.allLoggers, l)
 
-	// flush logs right away if the server is started with the disable-gated-logs flag
-	if c.logFlags.flagDisableGatedLogs {
-		c.flushLog()
-	}
-
 	// reporting Errors found in the config
 	for _, cErr := range configErrors {
 		c.logger.Warn(cErr.String())
 	}
 
-	// Ensure logging is flushed if initialization fails
-	defer c.flushLog()
-
 	// create GRPC logger
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
 	c.allLoggers = append(c.allLoggers, namedGRPCLogFaker)
-	grpclog.SetLogger(&grpclogFaker{
+	grpclog.SetLoggerV2(&grpclogFaker{
 		logger: namedGRPCLogFaker,
 		log:    api.ReadBaoVariable("BAO_GRPC_LOGGING") != "",
 	})
@@ -1061,6 +1022,17 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	logProxyEnvironmentVariables(c.logger)
+
+	if err := c.downloadOCIPlugins(context.Background(), config); err != nil {
+		c.UI.Error(fmt.Sprintf("Error downloading plugins: %s", err))
+		return 1
+	}
+
+	kms, err := kmsplugin.NewCatalog(c.logger, config)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error creating KMS plugin catalog: %s", err))
+		return 1
+	}
 
 	inmemMetrics, metricSink, prometheusEnabled, err := configutil.SetupTelemetry(&configutil.SetupTelemetryOpts{
 		Config:      config.Telemetry,
@@ -1120,7 +1092,7 @@ func (c *ServerCommand) Run(args []string) int {
 	info[key] = strings.Join(envVarKeys, ", ")
 	infoKeys = append(infoKeys, key)
 
-	barrierSeal, barrierWrapper, unwrapSeal, seals, sealConfigError, err := setSeal(c, config, &infoKeys, info)
+	barrierSeal, _, unwrapSeal, seals, sealConfigError, err := setSeal(c, config, kms, &infoKeys, info)
 	// Check error here
 	if err != nil {
 		c.UI.Error(err.Error())
@@ -1148,14 +1120,7 @@ func (c *ServerCommand) Run(args []string) int {
 		return 1
 	}
 
-	// prepare a secure random reader for core
-	secureRandomReader, err := configutil.CreateSecureRandomReaderFunc(config.SharedConfig, barrierWrapper)
-	if err != nil {
-		c.UI.Error(err.Error())
-		return 1
-	}
-
-	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink, secureRandomReader)
+	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink)
 	if c.flagDevThreeNode {
 		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, c.flagDevListenAddr, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
 	}
@@ -1273,10 +1238,20 @@ func (c *ServerCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Make sure we close all listeners from this point on
+	// Make sure we close all HTTP servers and listeners from this point on.
+	var servers []*http.Server
 	listenerCloseFunc := func() {
-		for _, ln := range lns {
-			ln.Listener.Close()
+		var errs error
+		for _, srv := range servers {
+			errs = errors.Join(srv.Close())
+		}
+		// Closing an HTTP server will close the underlying listener, so avoid
+		// double-closing it.
+		for _, ln := range lns[len(servers):] {
+			errs = errors.Join(errs, ln.Close())
+		}
+		if errs != nil {
+			c.UI.Error(fmt.Sprintf("Error closing listeners: %v", errs))
 		}
 	}
 
@@ -1302,11 +1277,8 @@ func (c *ServerCommand) Run(args []string) int {
 	infoKeys = append(infoKeys, "go version")
 	info["go version"] = runtime.Version()
 
-	infoKeys = append(infoKeys, "administrative namespace")
-	info["administrative namespace"] = config.AdministrativeNamespacePath
-
 	sort.Strings(infoKeys)
-	c.UI.Output("==> OpenBao server configuration:\n")
+	c.UI.Output("\n==> OpenBao server configuration:\n")
 
 	titleCaser := cases.Title(language.English, cases.NoLower)
 
@@ -1378,7 +1350,7 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	// Initialize the HTTP servers
-	err = startHttpServers(c, core, config, lns)
+	servers, err = startHttpServers(c, core, config, lns)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -1400,19 +1372,11 @@ func (c *ServerCommand) Run(args []string) int {
 		}
 	}
 
-	// Output the header that the server has started
-	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> OpenBao server started! Log data will stream in below:\n")
-	}
-
 	// Inform any tests that the server is ready
 	select {
 	case c.startedCh <- struct{}{}:
 	default:
 	}
-
-	// Release the log gate.
-	c.flushLog()
 
 	// Write out the PID to the file now that server has successfully started
 	if err := c.storePidFile(config.PidFile); err != nil {
@@ -1422,6 +1386,11 @@ func (c *ServerCommand) Run(args []string) int {
 
 	// Notify systemd that the server is ready (if applicable)
 	c.notifySystemd(systemd.SdNotifyReady)
+
+	// Output the header that the server has started
+	if !c.logFlags.flagCombineLogs {
+		c.UI.Output("==> OpenBao server started!")
+	}
 
 	if c.flagDev {
 		protocol := "http://"
@@ -1530,6 +1499,13 @@ func (c *ServerCommand) Run(args []string) int {
 			// c.Reload as it needs the reloadFuncsLock.
 			core.ReloadAuditLogs()
 
+			if err := c.downloadOCIPlugins(context.Background(), config); err != nil {
+				c.logger.Error("failed to re-download plugins", "error", err.Error())
+			} else {
+				// Update plugins as necessary.
+				core.ReloadPlugins()
+			}
+
 			// Reload log level for loggers
 			if config.LogLevel != "" {
 				level, err := loghelper.ParseLogLevel(config.LogLevel)
@@ -1550,7 +1526,7 @@ func (c *ServerCommand) Run(args []string) int {
 
 		case <-c.SigUSR2Ch:
 			logWriter := c.logger.StandardWriter(&hclog.StandardLoggerOptions{})
-			pprof.Lookup("goroutine").WriteTo(logWriter, 2)
+			_ = pprof.Lookup("goroutine").WriteTo(logWriter, 2)
 
 			if api.ReadBaoVariable("BAO_STACKTRACE_WRITE_TO_FILE") != "" {
 				c.logger.Info("Writing stacktrace to file")
@@ -1578,13 +1554,15 @@ func (c *ServerCommand) Run(args []string) int {
 				}
 
 				if err := pprof.Lookup("goroutine").WriteTo(f, 2); err != nil {
-					f.Close()
+					err = errors.Join(err, f.Close())
 					c.logger.Error("Could not write stacktrace to file", "error", err)
 					continue
 				}
 
 				c.logger.Info(fmt.Sprintf("Wrote stacktrace to: %s", f.Name()))
-				f.Close()
+				if err := f.Close(); err != nil {
+					c.logger.Error("Could not close stacktrace file", "error", err)
+				}
 			}
 
 			// We can only get pprof outputs via the API but sometimes OpenBao can get
@@ -1617,11 +1595,14 @@ func (c *ServerCommand) Run(args []string) int {
 
 					err = pprof.Lookup(dump).WriteTo(pFile, 0)
 					if err != nil {
+						err = errors.Join(err, pFile.Close())
 						c.logger.Error("error generating pprof data", "name", dump, "error", err)
-						pFile.Close()
 						break
 					}
-					pFile.Close()
+
+					if err := pFile.Close(); err != nil {
+						c.logger.Error("error closing pprof file", "name", dump, "error", err)
+					}
 				}
 
 				c.logger.Info(fmt.Sprintf("Wrote pprof files to: %s", dir))
@@ -1735,7 +1716,8 @@ func (c *ServerCommand) waitForLeader(core *vault.Core) (bool, error) {
 // OpenBao core. This will exit early if there is no configuration for this
 // or if the core is already initialized.
 func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) error {
-	if len(config.Initialization) == 0 {
+	// Skip initialize for dev server as it is handled in initDevCore
+	if len(config.Initialization) == 0 || c.flagDev {
 		return nil
 	}
 
@@ -1798,16 +1780,18 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 // freshly initialized core to perform the component requests of the
 // self-initialization process.
 func (c *ServerCommand) doSelfInit(core *vault.Core, config *server.Config, rootToken string) error {
-	c.UI.Warn("Beginning post-unseal configuration")
+	c.logger.Info("beginning post-unseal configuration")
 	p, err := profiles.NewEngine(
 		// Set up the profile system with relevant parameter sources:
 		// - Environment variables
 		// - Files
 		// - Other requests & responses
+		// - CEL support, to have more control over formatting
 		profiles.WithEnvSource(),
 		profiles.WithFileSource(),
 		profiles.WithRequestSource(),
 		profiles.WithResponseSource(),
+		profiles.WithCELSource(),
 
 		// Because we're initializing, we have a default (root) token to use.
 		profiles.WithDefaultToken(rootToken),
@@ -1856,8 +1840,6 @@ func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig
 		}
 	}
 
-	barrierConfig.StoredShares = 1
-
 	// Initialize it with a basic single key
 	init, err := core.Initialize(ctx, &vault.InitParams{
 		BarrierConfig:  barrierConfig,
@@ -1867,8 +1849,8 @@ func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig
 		return nil, err
 	}
 
-	// Handle unseal with stored keys
-	if core.SealAccess().StoredKeysSupported() == vaultseal.StoredKeysSupportedGeneric {
+	// Handle unseal with stored keys.
+	if core.SealAccess().BarrierType() != vaultseal.WrapperTypeShamir {
 		err := core.UnsealWithStoredKeys(ctx)
 		if err != nil {
 			return nil, err
@@ -2033,7 +2015,7 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	padding := 24
 
 	sort.Strings(infoKeys)
-	c.UI.Output("==> OpenBao server configuration:\n")
+	c.UI.Output("\n==> OpenBao server configuration:\n")
 
 	titleCaser := cases.Title(language.English, cases.NoLower)
 
@@ -2164,16 +2146,13 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	}
 
 	// Output the header that the server has started
-	c.UI.Output("==> OpenBao server started! Log data will stream in below:\n")
+	c.UI.Output("==> OpenBao server started!")
 
 	// Inform any tests that the server is ready
 	select {
 	case c.startedCh <- struct{}{}:
 	default:
 	}
-
-	// Release the log gate.
-	c.flushLog()
 
 	// Wait for shutdown
 	shutdownTriggered := false
@@ -2212,23 +2191,9 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 
 // addPlugin adds any plugins to the catalog
 func (c *ServerCommand) addPlugin(path, token string, core *vault.Core) error {
-	// Get the sha256 of the file at the given path.
-	pluginSum := func(p string) (string, error) {
-		hasher := sha256.New()
-		f, err := os.Open(p)
-		if err != nil {
-			return "", err
-		}
-		defer f.Close()
-		if _, err := io.Copy(hasher, f); err != nil {
-			return "", err
-		}
-		return hex.EncodeToString(hasher.Sum(nil)), nil
-	}
-
 	// Mount any test plugins. We do this explicitly before we inform tests of
 	// a completely booted server intentionally.
-	sha256sum, err := pluginSum(path)
+	sha256sum, err := osutil.FileSha256Sum(path)
 	if err != nil {
 		return err
 	}
@@ -2360,7 +2325,7 @@ func (c *ServerCommand) Reload(lock *sync.RWMutex, reloadFuncs *map[string][]rel
 }
 
 // storePidFile is used to write out our PID to a file if necessary
-func (c *ServerCommand) storePidFile(pidPath string) error {
+func (c *ServerCommand) storePidFile(pidPath string) (err error) {
 	// Quit fast if no pidfile
 	if pidPath == "" {
 		return nil
@@ -2371,11 +2336,13 @@ func (c *ServerCommand) storePidFile(pidPath string) error {
 	if err != nil {
 		return fmt.Errorf("could not open pid file: %w", err)
 	}
-	defer pidFile.Close()
+	defer func() {
+		err = errors.Join(err, pidFile.Close())
+	}()
 
 	// Write out the PID
 	pid := os.Getpid()
-	_, err = pidFile.WriteString(fmt.Sprintf("%d", pid))
+	_, err = fmt.Fprintf(pidFile, "%d", pid)
 	if err != nil {
 		return fmt.Errorf("could not write to pid file: %w", err)
 	}
@@ -2388,6 +2355,18 @@ func (c *ServerCommand) removePidFile(pidPath string) error {
 		return nil
 	}
 	return os.Remove(pidPath)
+}
+
+func (c *ServerCommand) downloadOCIPlugins(ctx context.Context, config *server.Config) error {
+	if !config.PluginAutoDownload || len(config.Plugins) == 0 || config.PluginDirectory == "" {
+		return nil
+	}
+
+	logger := c.logger.Named("plugins")
+	logger.Info("starting OCI plugin downloading")
+	defer logger.Info("OCI plugin downloading completed")
+
+	return oci.NewPluginDownloader(config.PluginDirectory, config, logger).ReconcilePlugins(ctx)
 }
 
 // storageMigrationActive checks and warns against in-progress storage migrations.
@@ -2410,9 +2389,6 @@ func (c *ServerCommand) storageMigrationActive(backend physical.Backend) bool {
 		if first {
 			first = false
 			c.UI.Warn("\nWARNING! Unable to read storage migration status.")
-
-			// unexpected state, so stop buffering log messages
-			c.flushLog()
 		}
 		c.logger.Warn("storage migration check error", "error", err.Error())
 
@@ -2450,13 +2426,11 @@ func CheckStorageMigration(b physical.Backend) (*StorageMigrationStatus, error) 
 
 // setSeal return barrierSeal, barrierWrapper, unwrapSeal, and all the created seals from the configs so we can close them in Run
 // The two errors are the sealConfigError and the regular error
-func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info map[string]string) (vault.Seal, wrapping.Wrapper, vault.Seal, []vault.Seal, error, error) {
+func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, infoKeys *[]string, info map[string]string) (vault.Seal, wrapping.Wrapper, vault.Seal, []vault.Seal, error, error) {
 	var barrierSeal vault.Seal
+	var barrierWrapper wrapping.Wrapper
 	var unwrapSeal vault.Seal
 
-	var sealConfigError error
-	var wrapper wrapping.Wrapper
-	var barrierWrapper wrapping.Wrapper
 	if c.flagDevAutoSeal {
 		var err error
 		access, _ := vaultseal.NewTestSeal(nil)
@@ -2470,61 +2444,58 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info m
 	// Handle the case where no seal is provided
 	switch len(config.Seals) {
 	case 0:
-		config.Seals = append(config.Seals, &configutil.KMS{Type: wrapping.WrapperTypeShamir.String()})
+		config.Seals = append(config.Seals, &configutil.KMS{Type: vaultseal.WrapperTypeShamir.String()})
 	case 1:
 		// If there's only one seal and it's disabled assume they want to
 		// migrate to a shamir seal and simply didn't provide it
 		if config.Seals[0].Disabled {
-			config.Seals = append(config.Seals, &configutil.KMS{Type: wrapping.WrapperTypeShamir.String()})
+			config.Seals = append(config.Seals, &configutil.KMS{Type: vaultseal.WrapperTypeShamir.String()})
 		}
 	}
-	var createdSeals []vault.Seal = make([]vault.Seal, len(config.Seals))
+	createdSeals := make([]vault.Seal, len(config.Seals))
 	for _, configSeal := range config.Seals {
-		sealType := wrapping.WrapperTypeShamir.String()
+		sealType := configSeal.Type
 		if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
 			sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 			configSeal.Type = sealType
-		} else {
-			sealType = configSeal.Type
 		}
 
 		var seal vault.Seal
-		sealLogger := c.logger.ResetNamed(fmt.Sprintf("seal.%s", sealType))
-		c.allLoggers = append(c.allLoggers, sealLogger)
-		defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
-		var sealInfoKeys []string
-		sealInfoMap := map[string]string{}
-		wrapper, sealConfigError = configutil.ConfigureWrapper(configSeal, &sealInfoKeys, &sealInfoMap, sealLogger)
-		if sealConfigError != nil {
-			if !errwrap.ContainsType(sealConfigError, new(logical.KeyNotFoundError)) {
-				return barrierSeal, barrierWrapper, unwrapSeal, createdSeals, sealConfigError, fmt.Errorf(
-					"Error parsing Seal configuration: %s", sealConfigError)
+		switch configSeal.Type {
+		case string(vaultseal.WrapperTypeShamir):
+			seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+		default:
+			wrapper, config, err := kms.ConfigureWrapper(
+				context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config))
+			if err != nil {
+				//nolint:staticcheck // User-facing error.
+				return nil, nil, nil, nil, nil, fmt.Errorf("Error configuring seal %q: %w", configSeal.Type, err)
 			}
-		}
-		if wrapper == nil {
-			seal = defaultSeal
-		} else {
-			var err error
+
 			seal, err = vault.NewAutoSeal(vaultseal.NewAccess(wrapper))
 			if err != nil {
-				return nil, nil, nil, nil, nil, err
+				//nolint:staticcheck // User-facing error.
+				return nil, nil, nil, nil, nil, fmt.Errorf("Error creating auto seal: %w", err)
 			}
+
+			infoKey := "auto seal"
+			if configSeal.Disabled {
+				infoKey = "old auto seal"
+			}
+
+			info[infoKey] = formatProps(configSeal.Type, config.Metadata)
+			*infoKeys = append(*infoKeys, infoKey)
 		}
-		infoPrefix := ""
+
 		if configSeal.Disabled {
 			unwrapSeal = seal
-			infoPrefix = "Old "
 		} else {
 			barrierSeal = seal
-			barrierWrapper = wrapper
 		}
-		for _, k := range sealInfoKeys {
-			*infoKeys = append(*infoKeys, infoPrefix+k)
-			info[infoPrefix+k] = sealInfoMap[k]
-		}
+
 		createdSeals = append(createdSeals, seal)
 	}
-	return barrierSeal, barrierWrapper, unwrapSeal, createdSeals, sealConfigError, nil
+	return barrierSeal, barrierWrapper, unwrapSeal, createdSeals, nil, nil
 }
 
 func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.CoreConfig, backend physical.Backend) (bool, error) {
@@ -2532,6 +2503,7 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 	var ok bool
 	if config.HAStorage != nil {
 		if config.Storage.Type == storageTypeRaft && config.HAStorage.Type == storageTypeRaft {
+			//nolint:staticcheck // Raft is a proper noun
 			return false, errors.New("Raft cannot be set both as 'storage' and 'ha_storage'. Setting 'storage' to 'raft' will automatically set it up for HA operations as well")
 		}
 
@@ -2541,7 +2513,7 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 
 		factory, exists := c.PhysicalBackends[config.HAStorage.Type]
 		if !exists {
-			return false, fmt.Errorf("Unknown HA storage type %s", config.HAStorage.Type)
+			return false, fmt.Errorf("unknown HA storage type %s", config.HAStorage.Type)
 		}
 
 		namedHALogger := c.logger.Named("ha." + config.HAStorage.Type)
@@ -2552,18 +2524,18 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 		}
 
 		if coreConfig.HAPhysical, ok = habackend.(physical.HABackend); !ok {
-			return false, errors.New("Specified HA storage does not support HA")
+			return false, errors.New("specified HA storage does not support HA")
 		}
 
 		if !coreConfig.HAPhysical.HAEnabled() {
-			return false, errors.New("Specified HA storage has HA support disabled; please consult documentation")
+			return false, errors.New("specified HA storage has HA support disabled; please consult documentation")
 		}
 
 		coreConfig.RedirectAddr = config.HAStorage.RedirectAddr
 		disableClustering := config.HAStorage.DisableClustering
 
 		if config.HAStorage.Type == storageTypeRaft && disableClustering {
-			return disableClustering, errors.New("Disable clustering cannot be set to true when Raft is the HA storage type")
+			return disableClustering, errors.New("disable clustering cannot be set to true when Raft is the HA storage type")
 		}
 
 		if !disableClustering {
@@ -2575,7 +2547,7 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 			disableClustering := config.Storage.DisableClustering
 
 			if (config.Storage.Type == storageTypeRaft) && disableClustering {
-				return disableClustering, errors.New("Disable clustering cannot be set to true when Raft is the storage type")
+				return disableClustering, errors.New("disable clustering cannot be set to true when Raft is the storage type")
 			}
 
 			if !disableClustering {
@@ -2615,7 +2587,7 @@ func determineRedirectAddr(c *ServerCommand, coreConfig *vault.CoreConfig, confi
 		if err != nil {
 			retErr = fmt.Errorf("Error detecting api address: %s", err)
 		} else if redirect == "" {
-			retErr = errors.New("Failed to detect api address")
+			retErr = errors.New("failed to detect api address")
 		} else {
 			coreConfig.RedirectAddr = redirect
 		}
@@ -2672,7 +2644,7 @@ func findClusterAddress(c *ServerCommand, coreConfig *vault.CoreConfig, config *
 CLUSTER_SYNTHESIS_COMPLETE:
 
 	if coreConfig.RedirectAddr == coreConfig.ClusterAddr && len(coreConfig.RedirectAddr) != 0 {
-		return fmt.Errorf("Address %q used for both API and cluster addresses", coreConfig.RedirectAddr)
+		return fmt.Errorf("address %q used for both API and cluster addresses", coreConfig.RedirectAddr)
 	}
 
 	if coreConfig.ClusterAddr != "" {
@@ -2716,7 +2688,7 @@ func runUnseal(c *ServerCommand, core *vault.Core, ctx context.Context) {
 }
 
 func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.Backend, configSR sr.ServiceRegistration, barrierSeal, unwrapSeal vault.Seal,
-	metricsHelper *metricsutil.MetricsHelper, metricSink *metricsutil.ClusterMetricSink, secureRandomReader io.Reader,
+	metricsHelper *metricsutil.MetricsHelper, metricSink *metricsutil.ClusterMetricSink,
 ) vault.CoreConfig {
 	coreConfig := &vault.CoreConfig{
 		RawConfig:                      config,
@@ -2754,10 +2726,8 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		DisableKeyEncodingChecks:       config.DisablePrintableCheck,
 		MetricsHelper:                  metricsHelper,
 		MetricSink:                     metricSink,
-		SecureRandomReader:             secureRandomReader,
 		EnableResponseHeaderHostname:   config.EnableResponseHeaderHostname,
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
-		AdministrativeNamespacePath:    config.AdministrativeNamespacePath,
 		UnsafeCrossNamespaceIdentity:   config.UnsafeCrossNamespaceIdentity,
 	}
 
@@ -2811,13 +2781,13 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 
 			f, err := os.Open(c.flagDevPluginDir)
 			if err != nil {
-				return fmt.Errorf("Error reading plugin dir: %s", err)
+				return fmt.Errorf("Error reading plugin dir: %w", err)
 			}
 
 			list, err := f.Readdirnames(0)
-			f.Close()
+			err = errors.Join(err, f.Close())
 			if err != nil {
-				return fmt.Errorf("Error listing plugins: %s", err)
+				return fmt.Errorf("Error listing plugins: %w", err)
 			}
 
 			for _, name := range list {
@@ -2835,6 +2805,12 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 			sort.Strings(plugins)
 		}
 
+		// Self-init to setup configured initialize blocks
+		err = c.doSelfInit(core, config, init.RootToken)
+		if err != nil {
+			return fmt.Errorf("Error during self-initialization: %w", err)
+		}
+
 		var qw *quiescenceSink
 		var qwo sync.Once
 		qw = &quiescenceSink{
@@ -2843,6 +2819,7 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 					c.logger.DeregisterSink(qw)
 
 					// Print the big dev mode warning!
+					c.UI.Warn("")
 					c.UI.Warn(wrapAtLength(
 						"WARNING! dev mode is enabled! In this mode, OpenBao runs entirely " +
 							"in-memory and starts unsealed with a single unseal key. The root " +
@@ -2879,7 +2856,6 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 						c.UI.Warn("")
 					}
 
-					// Unseal key is not returned if stored shares is supported
 					if len(init.SecretShares) > 0 {
 						c.UI.Warn("")
 						c.UI.Warn(wrapAtLength(
@@ -2931,16 +2907,23 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 }
 
 // Initialize the HTTP servers
-func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config, lns []listenerutil.Listener) error {
+func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config, lns []listenerutil.Listener) ([]*http.Server, error) {
 	for _, ln := range lns {
 		if ln.Config == nil {
-			return errors.New("Found nil listener config after parsing")
+			return nil, errors.New("found nil listener config after parsing")
 		}
-
 		if err := config2.IsValidListener(ln.Config); err != nil {
-			return err
+			return nil, err
 		}
+	}
 
+	// Server config tests can exit now.
+	if c.flagTestServerConfig {
+		return nil, nil
+	}
+
+	var servers []*http.Server
+	for _, ln := range lns {
 		handler := vaulthttp.Handler.Handler(&vault.HandlerProperties{
 			Core:                  core,
 			ListenerConfig:        ln.Config,
@@ -2976,14 +2959,41 @@ func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config,
 			server.IdleTimeout = ln.Config.HTTPIdleTimeout
 		}
 
-		// server config tests can exit now
-		if c.flagTestServerConfig {
+		go func(ln net.Listener) {
+			if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				c.UI.Error(fmt.Sprintf("HTTP server (listening on %s) exited with error: %v", ln.Addr().String(), err))
+			}
+		}(ln.Listener)
+
+		servers = append(servers, server)
+	}
+
+	return servers, nil
+}
+
+// formatPropts returns a formatted info key/value such as:
+// Listener 1: tcp (addr: "127.0.0.1:8200", cluster address: "127.0.0.1:8201", ...)
+func formatProps(title string, m map[string]string) string {
+	if len(m) == 0 {
+		return title
+	}
+
+	props := make([]string, 0, len(m))
+	for k, v := range m {
+		if k == "" || v == "" {
 			continue
 		}
-
-		go server.Serve(ln.Listener)
+		// Poor man's pretty-printer.
+		switch v {
+		case "true", "false":
+		default:
+			v = fmt.Sprintf("%q", v)
+		}
+		props = append(props, fmt.Sprintf("%s: %s", k, v))
 	}
-	return nil
+
+	sort.Strings(props)
+	return fmt.Sprintf("%s (%s)", title, strings.Join(props, ", "))
 }
 
 func SetStorageMigration(b physical.Backend, active bool) error {
@@ -3013,35 +3023,106 @@ type grpclogFaker struct {
 	log    bool
 }
 
+func (g *grpclogFaker) Info(args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
+	g.logger.Info(fmt.Sprint(args...))
+}
+
+func (g *grpclogFaker) Infof(format string, args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
+	g.logger.Info(fmt.Sprintf(format, args...))
+}
+
+func (g *grpclogFaker) Infoln(args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
+	g.logger.Info(fmt.Sprintln(args...))
+}
+
+func (g *grpclogFaker) Warning(args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
+	g.logger.Warn(fmt.Sprint(args...))
+}
+
+func (g *grpclogFaker) Warningf(format string, args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
+	g.logger.Warn(fmt.Sprintf(format, args...))
+}
+
+func (g *grpclogFaker) Warningln(args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
+	g.logger.Warn(fmt.Sprintln(args...))
+}
+
+func (g *grpclogFaker) Error(args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
+	g.logger.Error(fmt.Sprint(args...))
+}
+
+func (g *grpclogFaker) Errorf(format string, args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
+	g.logger.Error(fmt.Sprintf(format, args...))
+}
+
+func (g *grpclogFaker) Errorln(args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
+	g.logger.Error(fmt.Sprintln(args...))
+}
+
 func (g *grpclogFaker) Fatal(args ...interface{}) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
 	g.logger.Error(fmt.Sprint(args...))
 	os.Exit(1)
 }
 
 func (g *grpclogFaker) Fatalf(format string, args ...interface{}) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
 	g.logger.Error(fmt.Sprintf(format, args...))
 	os.Exit(1)
 }
 
 func (g *grpclogFaker) Fatalln(args ...interface{}) {
-	g.logger.Error(fmt.Sprintln(args...))
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
+	g.logger.Error(fmt.Sprintln(args...) + "\n")
 	os.Exit(1)
 }
 
-func (g *grpclogFaker) Print(args ...interface{}) {
-	if g.log && g.logger.IsDebug() {
-		g.logger.Debug(fmt.Sprint(args...))
-	}
-}
-
-func (g *grpclogFaker) Printf(format string, args ...interface{}) {
-	if g.log && g.logger.IsDebug() {
-		g.logger.Debug(fmt.Sprintf(format, args...))
-	}
-}
-
-func (g *grpclogFaker) Println(args ...interface{}) {
-	if g.log && g.logger.IsDebug() {
-		g.logger.Debug(fmt.Sprintln(args...))
-	}
+func (g *grpclogFaker) V(l int) bool {
+	currentLevel := int(g.logger.GetLevel())
+	return l >= currentLevel
 }

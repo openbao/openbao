@@ -46,7 +46,6 @@ export default Controller.extend(DEFAULTS, {
         const shares = parseInt(data.secret_shares, 10);
         data.secret_shares = shares;
         if (isCloudSeal) {
-          data.stored_shares = 1;
           data.recovery_shares = shares;
           delete data.secret_shares; // API will throw an error if secret_shares is passed for seal types other than shamir (transit, AWSKMS etc.)
         }

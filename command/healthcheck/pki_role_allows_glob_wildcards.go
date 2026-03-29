@@ -182,5 +182,5 @@ func (h *RoleAllowsGlobWildcards) Evaluate(e *Executor) (results []*Result, err 
 		results = append(results, &ret)
 	}
 
-	return
+	return results, err
 }

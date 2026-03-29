@@ -386,6 +386,21 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		t.Fatal(diff)
 	}
 
+	// verify that specifying the '.well-known' component gets rejected with appriopriate err message
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"oidc_discovery_url": "https://team-vault.auth0.com/.well-known/openid-configuration",
+			"oidc_client_id":     "abc",
+			"oidc_client_secret": "def",
+		},
+	}
+	res, _ := b.HandleRequest(context.Background(), req)
+	require.True(t, res.IsError())
+	require.Equal(t, res.Data["error"], "'oidc_discovery_url' contains '.well-known' component")
+
 	// Verify OIDC config sanity:
 	//   - if providing client id/secret, discovery URL needs to be set
 	//   - both oidc client and secret should be provided if either one is
@@ -815,7 +830,7 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			config, err, caPEM := getCertificate(test.nameInCertificate)
+			config, caPEM, err := getCertificate(test.nameInCertificate)
 			require.NoError(t, err)
 			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				io.WriteString(w, "Hello")
@@ -826,7 +841,6 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 
 			defer server.Close()
 
-			ctx, _ := context.WithCancel(context.Background())
 			uri := server.URL
 
 			b := new(jwtAuthBackend)
@@ -835,10 +849,13 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 
 			rootCAString := ""
 			if test.addRootCA {
-				rootCAString = string(caPEM.Bytes())
+				rootCAString = caPEM.String()
 			}
 
-			caCtx, err := b.createCAContext(ctx, rootCAString, test.allowedServerNames)
+			caCtx, err := b.createCAContext(t.Context(), rootCAString, test.allowedServerNames)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			client, ok := caCtx.Value(oauth2.HTTPClient).(*http.Client)
 			if !ok {
 				t.Fatalf("unexpected error; can't retrieve client")
@@ -859,7 +876,7 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 	}
 }
 
-func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPEM *bytes.Buffer) {
+func getCertificate(hostname string) (serverTLSConf *tls.Config, caPEM *bytes.Buffer, err error) {
 	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(2019),
 		Subject: pkix.Name{
@@ -881,12 +898,12 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 
 	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		return
+		return serverTLSConf, caPEM, err
 	}
 
 	caBytes, err := x509.CreateCertificate(rand.Reader, ca, ca, &caPrivKey.PublicKey, caPrivKey)
 	if err != nil {
-		return
+		return serverTLSConf, caPEM, err
 	}
 
 	caPEM = new(bytes.Buffer)
@@ -895,7 +912,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		Bytes: caBytes,
 	})
 	if err != nil {
-		return
+		return serverTLSConf, caPEM, err
 	}
 
 	caPrivKeyPEM := new(bytes.Buffer)
@@ -904,7 +921,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		Bytes: x509.MarshalPKCS1PrivateKey(caPrivKey),
 	})
 	if err != nil {
-		return
+		return serverTLSConf, caPEM, err
 	}
 
 	cert := &x509.Certificate{
@@ -927,12 +944,12 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 
 	certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		return
+		return serverTLSConf, caPEM, err
 	}
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, cert, ca, &certPrivKey.PublicKey, caPrivKey)
 	if err != nil {
-		return
+		return serverTLSConf, caPEM, err
 	}
 
 	certPEM := new(bytes.Buffer)
@@ -941,7 +958,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		Bytes: certBytes,
 	})
 	if err != nil {
-		return
+		return serverTLSConf, caPEM, err
 	}
 
 	certPrivKeyPEM := new(bytes.Buffer)
@@ -950,12 +967,12 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		Bytes: x509.MarshalPKCS1PrivateKey(certPrivKey),
 	})
 	if err != nil {
-		return
+		return serverTLSConf, caPEM, err
 	}
 
 	serverCert, err := tls.X509KeyPair(certPEM.Bytes(), certPrivKeyPEM.Bytes())
 	if err != nil {
-		return
+		return serverTLSConf, caPEM, err
 	}
 
 	serverTLSConf = &tls.Config{
@@ -963,7 +980,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		ServerName:   hostname,
 	}
 
-	return
+	return serverTLSConf, caPEM, err
 }
 
 const (

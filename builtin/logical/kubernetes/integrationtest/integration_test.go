@@ -185,13 +185,15 @@ func TestRole(t *testing.T) {
 	}, result.Data)
 
 	// update
-	_, err = client.Logical().Write(path+"/roles/testrole", map[string]interface{}{
+	result, err = client.Logical().Write(path+"/roles/testrole", map[string]interface{}{
 		"allowed_kubernetes_namespaces": []string{"app1", "app2"},
 		"extra_annotations":             sampleExtraAnnotations,
 		"extra_labels":                  sampleExtraLabels,
 		"token_default_ttl":             "30m",
 		"token_default_audiences":       []string{"bar"},
 	})
+	assert.NoError(t, err)
+	assert.Nil(t, result)
 
 	result, err = client.Logical().Read(path + "/roles/testrole")
 	assert.NoError(t, err)
@@ -216,6 +218,7 @@ func TestRole(t *testing.T) {
 		"allowed_kubernetes_namespaces":         []string{},
 		"allowed_kubernetes_namespace_selector": sampleSelector,
 	})
+	assert.NoError(t, err)
 
 	result, err = client.Logical().Read(path + "/roles/testrole")
 	assert.NoError(t, err)
@@ -245,15 +248,6 @@ func TestRole(t *testing.T) {
 	result, err = client.Logical().Read(path + "/roles/testrole")
 	assert.NoError(t, err)
 	assert.Nil(t, result)
-}
-
-func isEnterprise(client *api.Client) bool {
-	req := client.NewRequest("GET", "/v1/sys/license/status")
-	resp, err := client.RawRequest(req)
-	if err != nil {
-		return false
-	}
-	return resp.StatusCode == 200
 }
 
 func createNamespace(client *api.Client, namespace string) error {
@@ -303,7 +297,7 @@ func mountHelper(t *testing.T, client *api.Client) (string, func()) {
 	}
 }
 
-// namespaceHelper creates a Vault Enterprise namespace and returns a client with the namespace changed to it.
+// namespaceHelper creates a namespace and returns a client with the namespace changed to it.
 func namespaceHelper(t *testing.T, client *api.Client) (*api.Client, func()) {
 	t.Helper()
 
@@ -311,21 +305,19 @@ func namespaceHelper(t *testing.T, client *api.Client) (*api.Client, func()) {
 	namespace := ""
 	newClient := client
 
-	if isEnterprise(client) {
-		namespace := randomWithPrefix("somenamespace")
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = createNamespace(client, namespace)
-		if err != nil {
-			t.Fatal(err)
-		}
-		newClient, err := client.Clone()
-		if err != nil {
-			t.Fatal(err)
-		}
-		newClient.SetNamespace(namespace)
+	namespace = randomWithPrefix("somenamespace")
+	if err != nil {
+		t.Fatal(err)
 	}
+	err = createNamespace(client, namespace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newClient, err = client.Clone()
+	if err != nil {
+		t.Fatal(err)
+	}
+	newClient.SetNamespace(namespace)
 
 	return newClient, func() {
 		if namespace != "" {

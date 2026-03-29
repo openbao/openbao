@@ -90,7 +90,10 @@ export default class MfaMethodCreateController extends Controller {
         // first save method
         yield this.method.save();
         if (this.enforcement) {
-          this.enforcement.mfa_methods.addObject(this.method);
+          const mfaMethods = yield this.enforcement.mfa_methods;
+          if (!mfaMethods.includes(this.method)) {
+            mfaMethods.push(this.method);
+          }
           try {
             // now save enforcement and catch error separately
             yield this.enforcement.save();

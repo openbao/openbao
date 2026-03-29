@@ -172,13 +172,13 @@ func TestStoragePacker_SerializeDeserializeComplexItem(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var itemDecoded identity.Entity
-	err = itemFetched.Message.UnmarshalTo(&itemDecoded)
+	itemDecoded := &identity.Entity{}
+	err = itemFetched.Message.UnmarshalTo(itemDecoded)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !proto.Equal(&itemDecoded, entity) {
+	if !proto.Equal(itemDecoded, entity) {
 		t.Fatalf("bad: expected: %#v\nactual: %#v\n", entity, itemDecoded)
 	}
 }

@@ -33,9 +33,7 @@ func getTestKeyManager(t *testing.T) keymanager.KeyManager {
 func TestBolt_SetGet(t *testing.T) {
 	ctx := context.Background()
 
-	path, err := os.MkdirTemp("", "bolt-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	b, err := NewBoltStorage(&BoltStorageConfig{
 		Path:    path,
@@ -59,9 +57,7 @@ func TestBolt_SetGet(t *testing.T) {
 func TestBoltDelete(t *testing.T) {
 	ctx := context.Background()
 
-	path, err := os.MkdirTemp("", "bolt-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	b, err := NewBoltStorage(&BoltStorageConfig{
 		Path:    path,
@@ -91,9 +87,7 @@ func TestBoltDelete(t *testing.T) {
 func TestBoltClear(t *testing.T) {
 	ctx := context.Background()
 
-	path, err := os.MkdirTemp("", "bolt-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	b, err := NewBoltStorage(&BoltStorageConfig{
 		Path:    path,
@@ -139,9 +133,7 @@ func TestBoltClear(t *testing.T) {
 func TestBoltSetAutoAuthToken(t *testing.T) {
 	ctx := context.Background()
 
-	path, err := os.MkdirTemp("", "bolt-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	b, err := NewBoltStorage(&BoltStorageConfig{
 		Path:    path,
@@ -209,8 +201,7 @@ func TestDBFileExists(t *testing.T) {
 			var tmpPath string
 			var err error
 			if tc.mkDir {
-				tmpPath, err = os.MkdirTemp("", "test-db-path")
-				require.NoError(t, err)
+				tmpPath = t.TempDir()
 			}
 			if tc.createFile {
 				err = os.WriteFile(path.Join(tmpPath, DatabaseFileName), []byte("test-db-path"), 0o600)
@@ -243,9 +234,7 @@ func Test_SetGetRetrievalToken(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			path, err := os.MkdirTemp("", "bolt-test")
-			require.NoError(t, err)
-			defer os.RemoveAll(path)
+			path := t.TempDir()
 
 			b, err := NewBoltStorage(&BoltStorageConfig{
 				Path:    path,
@@ -269,9 +258,7 @@ func Test_SetGetRetrievalToken(t *testing.T) {
 func TestBolt_MigrateFromV1ToV2Schema(t *testing.T) {
 	ctx := context.Background()
 
-	path, err := os.MkdirTemp("", "bolt-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	dbPath := filepath.Join(path, DatabaseFileName)
 	db, err := bolt.Open(dbPath, 0o600, &bolt.Options{Timeout: 1 * time.Second})
@@ -315,12 +302,15 @@ func TestBolt_MigrateFromV1ToV2Schema(t *testing.T) {
 	leases, err := b.GetByType(ctx, authLeaseType)
 	require.NoError(t, err)
 	assert.Len(t, leases, 2)
+
 	leases, err = b.GetByType(ctx, secretLeaseType)
 	require.NoError(t, err)
 	assert.Len(t, leases, 1)
+
 	leases, err = b.GetByType(ctx, LeaseType)
 	require.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "not found"))
+	assert.Len(t, leases, 0)
 
 	// Now migrate to the v2 schema.
 	err = db.Update(migrateFromV1ToV2Schema)
@@ -330,9 +320,13 @@ func TestBolt_MigrateFromV1ToV2Schema(t *testing.T) {
 	leases, err = b.GetByType(ctx, authLeaseType)
 	require.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "not found"))
+	assert.Len(t, leases, 0)
+
 	leases, err = b.GetByType(ctx, secretLeaseType)
 	require.Error(t, err)
+	assert.Len(t, leases, 0)
 	assert.True(t, strings.Contains(err.Error(), "not found"))
+
 	leases, err = b.GetByType(ctx, LeaseType)
 	require.NoError(t, err)
 	assert.Len(t, leases, 3)
@@ -341,9 +335,7 @@ func TestBolt_MigrateFromV1ToV2Schema(t *testing.T) {
 func TestBolt_MigrateFromInvalidToV2Schema(t *testing.T) {
 	ctx := context.Background()
 
-	path, err := os.MkdirTemp("", "bolt-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	dbPath := filepath.Join(path, DatabaseFileName)
 	db, err := bolt.Open(dbPath, 0o600, &bolt.Options{Timeout: 1 * time.Second})

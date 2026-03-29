@@ -11,13 +11,13 @@ Information contained within this document details the contrast between the Agen
 
 ## OpenBao sidecar agent injector
 
-The [OpenBao Sidecar Agent Injector](/docs/platform/k8s/injector) leverages the [sidecar pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/sidecar) to alter pod specifications to include a OpenBao Agent container that renders OpenBao secrets to a shared memory volume. By rendering secrets to a shared volume, containers within the pod can consume OpenBao secrets without being OpenBao-aware. The injector is a Kubernetes mutating webhook controller. The controller intercepts pod events and applies mutations to the pod if annotations exist within the request. This functionality is provided by the [vault-k8s](https://github.com/hashicorp/vault-k8s) project and can be automatically installed and configured using the OpenBao Helm chart.
+The [OpenBao Sidecar Agent Injector](injector/index.mdx) leverages the [sidecar pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/sidecar) to alter pod specifications to include a OpenBao Agent container that renders OpenBao secrets to a shared memory volume. By rendering secrets to a shared volume, containers within the pod can consume OpenBao secrets without being OpenBao-aware. The injector is a Kubernetes mutating webhook controller. The controller intercepts pod events and applies mutations to the pod if annotations exist within the request. This functionality is provided by the [vault-k8s](https://github.com/hashicorp/vault-k8s) project and can be automatically installed and configured using the OpenBao Helm chart.
 
 ![OpenBao Sidecar Injection Workflow](/img/openbao-sidecar-inject-workflow.png)
 
 ## OpenBao CSI provider
 
-The [OpenBao CSI provider](/docs/platform/k8s/csi) allows pods to consume OpenBao secrets by using ephemeral [CSI Secrets Store](https://github.com/kubernetes-sigs/secrets-store-csi-driver) volumes. At a high level, the CSI Secrets Store driver enables users to create `SecretProviderClass` objects. These objects define which secret provider to use and what secrets to retrieve. When pods requesting CSI volumes are made, the CSI Secrets Store driver sends the request to the OpenBao CSI provider if the provider is `vault`. The OpenBao CSI provider then uses the specified `SecretProviderClass` and the pod’s service account to retrieve the secrets from OpenBao and mount them into the pod’s CSI volume. Note that the secret is retrieved from OpenBao and populated to the CSI secrets store volume during the `ContainerCreation` phase. Therefore, pods are blocked from starting until the secrets are read from OpenBao and written to the volume.
+The [OpenBao CSI provider](csi/index.mdx) allows pods to consume OpenBao secrets by using ephemeral [CSI Secrets Store](https://github.com/kubernetes-sigs/secrets-store-csi-driver) volumes. At a high level, the CSI Secrets Store driver enables users to create `SecretProviderClass` objects. These objects define which secret provider to use and what secrets to retrieve. When pods requesting CSI volumes are made, the CSI Secrets Store driver sends the request to the OpenBao CSI provider if the provider is `vault`. The OpenBao CSI provider then uses the specified `SecretProviderClass` and the pod’s service account to retrieve the secrets from OpenBao and mount them into the pod’s CSI volume. Note that the secret is retrieved from OpenBao and populated to the CSI secrets store volume during the `ContainerCreation` phase. Therefore, pods are blocked from starting until the secrets are read from OpenBao and written to the volume.
 
 ![OpenBao Sidecar Injection Workflow](/img/openbao-csi-workflow.png)
 
@@ -55,7 +55,7 @@ Both Agent Injection and OpenBao CSI solutions have the following similarities:
 
 - They simplify retrieving different types of secrets stored in OpenBao and expose them to the target pod running on Kubernetes without knowing the not-so-trivial OpenBao processes. It’s important to note that there is no need to change the application logic or code to use these solutions, therefore, making it easier to migrate brownfield applications into Kubernetes. Developers working on greenfield applications can leverage the OpenBao SDKs to integrate with OpenBao directly.
 
-- They support all types of OpenBao [secrets engines](/docs/secrets). This support allows you to leverage an extensive set of secret types, ranging from static key-value secrets to dynamically generated database credentials and TLS certs with customized TTL.
+- They support all types of OpenBao [secrets engines](../../secrets/index.mdx). This support allows you to leverage an extensive set of secret types, ranging from static key-value secrets to dynamically generated database credentials and TLS certs with customized TTL.
 
 - They leverage the application’s Kubernetes pod service account token as [Secret Zero](https://www.hashicorp.com/resources/secret-zero-mitigating-the-risk-of-secret-introduction-with-vault) to authenticate with OpenBao via the Kubernetes auth method. With this method, there is no need to manage yet another separate identity to identify the application pods when authenticating to OpenBao.
 
@@ -84,15 +84,15 @@ Now that you understand the similarities, there are differences between these tw
 
 - In contrast, the OpenBao CSI Driver is deployed as a daemonset on every node in the Kubernetes cluster and uses the Secret Provider Class specified and the pod’s service account to retrieve the secrets from OpenBao and mount them into the pod’s CSI volume.
 
-- The Sidecar Agent Injector supports [all](/docs/platform/k8s/injector/annotations#vault-hashicorp-com-auth-path) OpenBao [auto-auth](/docs/agent-and-proxy/autoauth/methods) methods. The Sidecar CSI driver supports only OpenBao’s [Kubernetes auth method](/docs/platform/k8s/csi/configurations#vaultkubernetesmountpath).
+- The Sidecar Agent Injector supports [all](injector/annotations.mdx#vault-hashicorp-com-auth-path) OpenBao [auto-auth](../../agent-and-proxy/autoauth/methods/index.mdx) methods. The Sidecar CSI driver supports only OpenBao’s [Kubernetes auth method](csi/configurations.mdx#vaultkubernetesmountpath).
 
 - The Sidecar container launched with every application pod uses [OpenBao Agent](https://www.hashicorp.com/blog/why-use-the-vault-agent-for-secrets-management), which provides a powerful set of capabilities such as auto-auth, templating, and caching. The CSI driver does not use the OpenBao Agent and therefore lacks these functionalities.
 
-- The OpenBao CSI driver supports rendering OpenBao secrets into Kubernetes secrets and environment variables. Sidecar Injector Service does not support rendering secrets into Kubernetes secrets; however, there are ways to [agent templating](/docs/platform/k8s/injector/examples#environment-variable-example) to render secrets into environment variables.
+- The OpenBao CSI driver supports rendering OpenBao secrets into Kubernetes secrets and environment variables. Sidecar Injector Service does not support rendering secrets into Kubernetes secrets; however, there are ways to [agent templating](injector/examples.mdx#environment-variable-example) to render secrets into environment variables.
 
 - The CSI driver uses `hostPath` to mount ephemeral volumes into the pods, which some container platforms (e.g., OpenShift) disable by default. On the other hand, Sidecar Agent Service uses in-memory _tmpfs_ volumes.
 
-- Sidecar Injector Service [automatically](/docs/agent-and-proxy/agent/template#renewals-and-updating-secrets) renews, rotates, and fetches secrets/tokens while the CSI Driver does not support that.
+- Sidecar Injector Service [automatically](../../agent-and-proxy/agent/template.mdx#renewals-and-updating-secrets) renews, rotates, and fetches secrets/tokens while the CSI Driver does not support that.
 
 ## Comparison chart
 
@@ -100,7 +100,7 @@ The below chart provides a high-level comparison between the two solutions.
 
 :::warning
 
-**Note:** Shared Memory Volume Environment Variable can be achieved through [Agent templating](/docs/platform/k8s/injector/examples#environment-variable-example).
+**Note:** Shared Memory Volume Environment Variable can be achieved through [Agent templating](injector/examples.mdx#environment-variable-example).
 
 :::
 
@@ -122,6 +122,6 @@ Designing secrets management in Kubernetes is an intricate task. There are multi
 
 ## Additional resources
 
-- [OpenBao Sidecar Injector Configurations and Examples](/docs/platform/k8s/injector/annotations)
+- [OpenBao Sidecar Injector Configurations and Examples](injector/annotations.mdx)
 
-- [OpenBao CSI Driver Configurations and Examples](/docs/platform/k8s/csi/configurations)
+- [OpenBao CSI Driver Configurations and Examples](csi/configurations.mdx)

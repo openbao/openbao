@@ -1,0 +1,3 @@
+```release-note:change
+core/identity: Remove pre-v2.5.0 corrupt namespace identity groups during unseal; corrupt groups need to be recreated by an admin. Check for `deleting corrupt group` in server startup logs.
+```

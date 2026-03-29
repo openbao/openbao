@@ -16,7 +16,7 @@ builds:
     tags:
       - ui
     ldflags:
-      - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.BuildDate={{ .Date }}
+      - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.CommitDate={{ .Date }}
     env:
       - CGO_ENABLED=0
     goos:
@@ -117,12 +117,10 @@ signs:
   - id: cosign
     artifacts: all
     cmd: cosign
-    certificate: "${artifact}.pem"
+    signature: "${artifact}.sigstore.json"
     args:
       - "sign-blob"
-      - "--oidc-issuer=https://token.actions.githubusercontent.com"
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
+      - "--bundle=${signature}" # needed on cosign 3.0.0+
       - "${artifact}"
       - "--yes" # needed on cosign 2.0.0+
   - id: gpg
@@ -139,7 +137,7 @@ signs:
 
 release:
   github:
-    owner: openbao
+    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
     name: openbao{{ .Env.NIGHTLY_RELEASE }}
 
   prerelease: auto

@@ -56,7 +56,7 @@ export default class PkiKeyParameters extends Component<Args> {
 
     if (name === 'keyType' && Object.keys(KEY_BITS_OPTIONS)?.includes(selection)) {
       const bitOptions = KEY_BITS_OPTIONS[selection as keyof TypeOptions];
-      this.args.model.keyBits = bitOptions?.firstObject;
+      this.args.model.keyBits = bitOptions?.[0];
     }
   }
 

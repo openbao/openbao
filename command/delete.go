@@ -33,7 +33,7 @@ func (c *DeleteCommand) Help() string {
 	helpText := `
 Usage: bao delete [options] PATH
 
-  Deletes secrets and configuration from Vault at the given path. The behavior
+  Deletes secrets and configuration from OpenBao at the given path. The behavior
   of "delete" is delegated to the backend corresponding to the given path.
 
   Remove data in the status secret backend:

@@ -402,8 +402,8 @@ func TestInfluxdb_RevokeDeletedUser(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_, err := db.DeleteUser(ctx, delReq)
-	if err == nil {
-		t.Fatal("Expected err, got nil")
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

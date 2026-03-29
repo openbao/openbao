@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -19,12 +18,8 @@ import (
 )
 
 const (
-	shared                   = false
-	exclusive                = true
 	currentConvergentVersion = 3
 )
-
-var errNeedExclusiveLock = errors.New("an exclusive lock is needed for this operation")
 
 // PolicyRequest holds values used when requesting a policy. Most values are
 // only used during an upsert.
@@ -269,7 +264,7 @@ func (lm *LockManager) BackupPolicy(ctx context.Context, storage logical.Storage
 		}
 	}
 
-	if atomic.LoadUint32(&p.deleted) == 1 {
+	if p.deleted.Load() {
 		return "", fmt.Errorf("key %q not found", name)
 	}
 
@@ -295,7 +290,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 	}
 	if ok {
 		p = pRaw.(*Policy)
-		if atomic.LoadUint32(&p.deleted) == 1 {
+		if p.deleted.Load() {
 			return nil, false, nil
 		}
 		return p, false, nil
@@ -330,11 +325,11 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 	}
 	if ok {
 		p = pRaw.(*Policy)
-		if atomic.LoadUint32(&p.deleted) == 1 {
+		if p.deleted.Load() {
 			return nil, false, nil
 		}
 		retP = p
-		return
+		return retP, retUpserted, retErr
 	}
 
 	// Load it from storage
@@ -427,7 +422,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 		// We don't need to worry about upgrading since it will be a new policy
 		retP = p
 		retUpserted = true
-		return
+		return retP, retUpserted, retErr
 	}
 
 	if p.NeedsUpgrade() {
@@ -444,7 +439,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 	}
 
 	retP = p
-	return
+	return retP, retUpserted, retErr
 }
 
 func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key []byte, rand io.Reader) error {
@@ -459,7 +454,7 @@ func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key 
 	}
 	if ok {
 		p = pRaw.(*Policy)
-		if atomic.LoadUint32(&p.deleted) == 1 {
+		if p.deleted.Load() {
 			return nil
 		}
 	}
@@ -539,7 +534,7 @@ func (lm *LockManager) DeletePolicy(ctx context.Context, storage logical.Storage
 		return errors.New("deletion is not allowed for this key")
 	}
 
-	atomic.StoreUint32(&p.deleted, 1)
+	p.deleted.Store(true)
 
 	if lm.useCache {
 		lm.cache.Delete(name)

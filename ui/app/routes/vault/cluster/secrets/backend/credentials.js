@@ -6,7 +6,6 @@
 import { resolve } from 'rsvp';
 import Route from '@ember/routing/route';
 import { inject as service } from '@ember/service';
-import ControlGroupError from 'vault/lib/control-group-error';
 
 const SUPPORTED_DYNAMIC_BACKENDS = ['database', 'ssh', 'aws', 'pki'];
 
@@ -30,11 +29,6 @@ export default Route.extend({
 
   getDatabaseCredential(backend, secret, roleType = '') {
     return this.store.queryRecord('database/credential', { backend, secret, roleType }).catch((error) => {
-      if (error instanceof ControlGroupError) {
-        throw error;
-      }
-      // Unless it's a control group error, we want to pass back error info
-      // so we can render it on the GenerateCredentialsDatabase component
       const status = error?.httpStatus;
       let title;
       let message = `We ran into a problem and could not continue: ${
@@ -57,14 +51,14 @@ export default Route.extend({
   async model(params) {
     const role = params.secret;
     const backendModel = this.backendModel();
-    const backendPath = backendModel.get('id');
-    const backendType = backendModel.get('type');
+    const backendPath = backendModel.id;
+    const backendType = backendModel.type;
     const roleType = params.roleType;
     let dbCred;
     if (backendType === 'database') {
       dbCred = await this.getDatabaseCredential(backendPath, role, roleType);
     }
-    if (!SUPPORTED_DYNAMIC_BACKENDS.includes(backendModel.get('type'))) {
+    if (!SUPPORTED_DYNAMIC_BACKENDS.includes(backendModel.type)) {
       return this.transitionTo('vault.cluster.secrets.backend.list-root', backendPath);
     }
     return resolve({

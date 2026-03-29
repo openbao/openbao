@@ -1,0 +1,3 @@
+```release-note:improvement
+command: Support `BAO_CONFIG_PATH` in `plugin init`, just like `server` &c do.
+```

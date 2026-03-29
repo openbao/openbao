@@ -6,15 +6,45 @@ package vault
 import (
 	"context"
 
+	"github.com/hashicorp/go-hclog"
 	testing "github.com/mitchellh/go-testing-interface"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/vault/seal"
 )
+
+func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
+	t.Helper()
+	if opts == nil {
+		opts = &seal.TestSealOpts{}
+	}
+	if opts.Logger == nil {
+		opts.Logger = logging.NewVaultLogger(hclog.Debug)
+	}
+
+	switch opts.Wrapper {
+	case seal.WrapperTypeShamir:
+		newSeal := NewDefaultSeal(seal.NewAccess(seal.NewShamirWrapper()))
+		newSeal.SetCachedBarrierConfig(&SealConfig{
+			SecretThreshold: 1,
+			SecretShares:    1,
+		})
+		return newSeal
+	default:
+		access, _ := seal.NewTestSeal(opts)
+		seal, err := NewAutoSeal(access)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return seal
+	}
+}
 
 func TestCoreUnsealedWithConfigs(t testing.T, barrierConf, recoveryConf *SealConfig) (*Core, [][]byte, [][]byte, string) {
 	t.Helper()
 	opts := &seal.TestSealOpts{}
 	if recoveryConf == nil {
-		opts.StoredKeys = seal.StoredKeysSupportedShamirRoot
+		opts.Wrapper = seal.WrapperTypeShamir
 	}
 	return TestCoreUnsealedWithConfigSealOpts(t, barrierConf, recoveryConf, opts)
 }
@@ -23,17 +53,18 @@ func TestCoreUnsealedWithConfigSealOpts(t testing.T, barrierConf, recoveryConf *
 	t.Helper()
 	seal := NewTestSeal(t, sealOpts)
 	core := TestCoreWithSeal(t, seal, false)
-	result, err := core.Initialize(context.Background(), &InitParams{
+	ctx := namespace.RootContext(context.Background())
+	result, err := core.Initialize(ctx, &InitParams{
 		BarrierConfig:  barrierConf,
 		RecoveryConfig: recoveryConf,
 	})
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	err = core.UnsealWithStoredKeys(context.Background())
-	if err != nil && IsFatalError(err) {
+	if err = core.UnsealWithStoredKeys(ctx); err != nil && IsFatalError(err) {
 		t.Fatalf("err: %s", err)
 	}
+
 	if core.Sealed() {
 		for _, key := range result.SecretShares {
 			if _, err := core.Unseal(TestKeyCopy(key)); err != nil {

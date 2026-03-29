@@ -37,9 +37,11 @@ const (
 
 var MainSection = trace.WithAttributes(attribute.Key("diagnose").String("main-section"))
 
+type contextKeyDiagnoseSession struct{}
+
 var (
-	diagnoseSession = struct{}{}
-	noopTracer      = noop.NewTracerProvider().Tracer("vault-diagnose")
+	contextDiagnoseSession contextKeyDiagnoseSession = struct{}{}
+	noopTracer                                       = noop.NewTracerProvider().Tracer("vault-diagnose")
 )
 
 type testFunction func(context.Context) error
@@ -79,12 +81,12 @@ func (s *Session) IsSkipped(spanName string) bool {
 
 // Context returns a new context with a defined diagnose session
 func Context(ctx context.Context, sess *Session) context.Context {
-	return context.WithValue(ctx, diagnoseSession, sess)
+	return context.WithValue(ctx, contextDiagnoseSession, sess)
 }
 
 // CurrentSession retrieves the active diagnose session from the context, or nil if none.
 func CurrentSession(ctx context.Context) *Session {
-	sessionCtxVal := ctx.Value(diagnoseSession)
+	sessionCtxVal := ctx.Value(contextDiagnoseSession)
 	if sessionCtxVal != nil {
 		return sessionCtxVal.(*Session)
 	}
@@ -235,6 +237,7 @@ func WithTimeout(d time.Duration, f testFunction) testFunction {
 		go func() { rch <- f(ctx) }()
 		select {
 		case <-t.C:
+			//nolint:staticcheck // user-facing error
 			return fmt.Errorf("Timeout after %s.", d.String())
 		case err := <-rch:
 			return err

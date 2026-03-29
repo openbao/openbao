@@ -22,9 +22,10 @@ import (
 	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/joinplugin"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/v2/joinplugin"
+	joinsdk "github.com/openbao/openbao/sdk/v2/joinplugin"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/seal"
 	"golang.org/x/net/http2"
@@ -960,7 +961,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 	// challenge.  If we're unable to get a challenge from any leader, or if
 	// we fail to answer the challenge successfully, or if ctx times out,
 	// an error is returned.
-	join := func(joinPlugins map[string]joinplugin.Join) error {
+	join := func(leaderInfos []*raft.LeaderJoinInfo, joinPlugins map[string]joinsdk.Join) error {
 		init, err := c.InitializedLocally(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to check if core is initialized: %w", err)
@@ -983,7 +984,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		challengeCh := make(chan *raftInformation)
 		var expandedJoinInfos []*raft.LeaderJoinInfo
 		for _, leaderInfo := range leaderInfos {
-			joinInfos, err := c.raftLeaderInfo(ctx, leaderInfo, joinPlugins)
+			joinInfos, err := c.raftLeaderInfo(ctx, joinPlugins, leaderInfo)
 			if err != nil {
 				c.logger.Error("error in retry_join stanza, will not use it for raft join", "error", err,
 					"leader_api_addr", leaderInfo.LeaderAPIAddr, "auto_join", leaderInfo.AutoJoin != "")
@@ -1027,28 +1028,44 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		return err
 	}
 
-	joinPlugins, err := raftBackend.JoinPlugins(ctx)
+	catalog, err := joinplugin.NewCatalog(c.logger, c.rawConfig.Load())
 	if err != nil {
-		return false, fmt.Errorf("failed to create join plugins: %w", err)
+		return false, fmt.Errorf("failed to create join plugin catalog: %w", err)
+	}
+
+	joinPlugins := make(map[string]joinsdk.Join, 0)
+	for _, info := range leaderInfos {
+		if info.AutoJoinPlugin == nil {
+			continue
+		}
+		name := info.AutoJoinPlugin.Plugin
+		if _, ok := joinPlugins[name]; ok {
+			continue
+		}
+		plugin, _, err := catalog.NewJoin(name)
+		if err != nil {
+			return false, fmt.Errorf("failed to create join plugin: %w", err)
+		}
+		joinPlugins[name] = plugin
 	}
 
 	if retryFailures {
 		go func() {
 			defer func() {
-				for name, join := range joinPlugins {
-					if err := join.Cleanup(ctx); err != nil {
+				for name, plugin := range joinPlugins {
+					err := plugin.Cleanup(ctx)
+					if err != nil {
 						c.logger.Error("error cleaning up join plugin %s: %w", name, err)
 					}
 				}
 			}()
-
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				default:
 				}
-				err := join(joinPlugins)
+				err := join(leaderInfos, joinPlugins)
 				if err == nil {
 					return
 				}
@@ -1061,14 +1078,14 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		return false, nil
 	} else {
 		defer func() {
-			for name, join := range joinPlugins {
-				if err := join.Cleanup(ctx); err != nil {
+			for name, plugin := range joinPlugins {
+				err := plugin.Cleanup(ctx)
+				if err != nil {
 					c.logger.Error("error cleaning up join plugin %s: %w", name, err)
 				}
 			}
 		}()
-
-		if err := join(joinPlugins); err != nil {
+		if err := join(leaderInfos, joinPlugins); err != nil {
 			c.logger.Error("failed to join raft cluster", "error", err)
 			return false, fmt.Errorf("failed to join raft cluster: %w", err)
 		}
@@ -1078,7 +1095,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 }
 
 // raftLeaderInfo uses go-discover to expand leaderInfo to include any auto-join results
-func (c *Core) raftLeaderInfo(ctx context.Context, leaderInfo *raft.LeaderJoinInfo, plugins map[string]joinplugin.Join) ([]*raft.LeaderJoinInfo, error) {
+func (c *Core) raftLeaderInfo(ctx context.Context, joinPlugins map[string]joinsdk.Join, leaderInfo *raft.LeaderJoinInfo) ([]*raft.LeaderJoinInfo, error) {
 	if err := leaderInfo.ValidateJoinMethods(); err != nil {
 		return nil, err
 	}
@@ -1088,11 +1105,7 @@ func (c *Core) raftLeaderInfo(ctx context.Context, leaderInfo *raft.LeaderJoinIn
 	case leaderInfo.LeaderAPIAddr != "":
 		ret = append(ret, leaderInfo)
 	case leaderInfo.AutoJoinPlugin != nil:
-		join, found := plugins[leaderInfo.AutoJoinPlugin.Plugin]
-		if !found {
-			return nil, fmt.Errorf("no join plugin named %s found", leaderInfo.AutoJoinPlugin.Plugin)
-		}
-
+		join := joinPlugins[leaderInfo.AutoJoinPlugin.Plugin]
 		addrs, err := join.Candidates(ctx, leaderInfo.AutoJoinPlugin.Config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to run join plugin: %w", err)

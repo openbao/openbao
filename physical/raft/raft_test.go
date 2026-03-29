@@ -5,7 +5,6 @@ package raft
 
 import (
 	"bytes"
-	"context"
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/base64"
@@ -27,9 +26,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/raft"
-	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
-	"github.com/openbao/openbao/helper/testhelpers/pluginhelpers"
-	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -322,45 +318,6 @@ func TestRaft_JoinConfig(t *testing.T) {
 	}
 	if diff := deep.Equal(conf, expected); diff != nil {
 		t.Errorf("config not as expected: %+v", diff)
-	}
-}
-
-func TestRaft_JoinPlugins(t *testing.T) {
-	pluginDir, cleanup := corehelpers.MakeTestPluginDir(t)
-	t.Cleanup(func() { cleanup(t) })
-	plugin := pluginhelpers.CompilePlugin(t, consts.PluginTypeJoin, "", pluginDir)
-
-	joinPluginConf, err := json.Marshal([]JoinPlugin{{
-		Name:    "foo",
-		Command: filepath.Join(pluginDir, plugin.FileName),
-		Args:    []string{},
-		Env:     []string{},
-		Sha256:  plugin.Sha256,
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	b := RaftBackend{
-		logger: hclog.NewNullLogger(),
-		conf:   map[string]string{"join_plugin": string(joinPluginConf)},
-	}
-
-	plugins, err := b.JoinPlugins(context.TODO())
-	if err != nil {
-		t.Fatalf("error loading join plugins: %s", err.Error())
-	}
-	defer func() {
-		for k, plugin := range plugins {
-			err := plugin.Cleanup(context.TODO())
-			if err != nil {
-				t.Errorf("failed to cleanup plugin %s: %s", k, err.Error())
-			}
-		}
-	}()
-
-	if len(plugins) != 3 {
-		t.Errorf("Expected 3 plugins, found %d", len(plugins))
 	}
 }
 

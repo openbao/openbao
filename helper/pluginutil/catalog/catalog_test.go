@@ -59,14 +59,18 @@ func testPluginConfig(t *testing.T) *server.PluginConfig {
 // TestGetClient tests plugin client creation, refcounting and shutdown.
 func TestGetClient(t *testing.T) {
 	logger := hclog.Default()
-	catalog, err := NewCatalog(logger, &server.Config{
-		PluginDirectory: filepath.Dir(os.Args[0]),
-		Plugins: []*server.PluginConfig{
-			testPluginConfig(t),
-			// This one should be ignored as it is a secrets engine plugin.
-			{Type: consts.PluginTypeSecrets.String(), Name: "foo"},
+	catalog, err := NewCatalog(
+		logger,
+		&server.Config{
+			PluginDirectory: filepath.Dir(os.Args[0]),
+			Plugins: []*server.PluginConfig{
+				testPluginConfig(t),
+				// This one should be ignored as it is a secrets engine plugin.
+				{Type: consts.PluginTypeSecrets.String(), Name: "foo"},
+			},
 		},
-	}, consts.PluginTypeKMS)
+		consts.PluginTypeKMS, gkwplugin.HandshakeConfig, gkwplugin.PluginSets,
+	)
 	require.NoError(t, err, "catalog should create successfully")
 	require.Len(t, catalog.plugins, 1, "should have registered one plugin")
 	require.Len(t, catalog.clients, 0, "should have no active plugin clients")
@@ -99,10 +103,13 @@ func TestGetClient(t *testing.T) {
 // TestReloadClient tests client reloading.
 func TestReloadClient(t *testing.T) {
 	logger := hclog.Default()
-	catalog, err := NewCatalog(logger, &server.Config{
-		PluginDirectory: filepath.Dir(os.Args[0]),
-		Plugins:         []*server.PluginConfig{testPluginConfig(t)},
-	}, consts.PluginTypeKMS)
+	catalog, err := NewCatalog(
+		logger, &server.Config{
+			PluginDirectory: filepath.Dir(os.Args[0]),
+			Plugins:         []*server.PluginConfig{testPluginConfig(t)},
+		},
+		consts.PluginTypeKMS, gkwplugin.HandshakeConfig, gkwplugin.PluginSets,
+	)
 	require.NoError(t, err, "catalog should create successfully")
 
 	client1, ok, err := catalog.GetClient("static")
@@ -163,7 +170,7 @@ func TestBadClientConfig(t *testing.T) {
 
 	for name, config := range tests {
 		t.Run(name, func(t *testing.T) {
-			catalog, err := NewCatalog(logger, config, consts.PluginTypeKMS)
+			catalog, err := NewCatalog(logger, config, consts.PluginTypeKMS, gkwplugin.HandshakeConfig, gkwplugin.PluginSets)
 			require.NoError(t, err, "catalog should create successfully")
 
 			client, ok, err := catalog.GetClient("static")

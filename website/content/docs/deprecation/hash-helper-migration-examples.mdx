@@ -41,6 +41,7 @@ export default class TabsComponent extends Component {
 ```
 
 **After:**
+<<<<<<< HEAD
 ```handlebars
 <UserForm @name={{this.name}} @email={{this.email}} @role={{this.role}} @onChange={{this.updateField}} />
 ```
@@ -49,11 +50,18 @@ export default class TabsComponent extends Component {
 import Component from "@glimmer/component";
 import { tracked } from "@ember/object";
 
+=======
+```javascript
+>>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
 export default class UserFormComponent extends Component {
   @tracked name = "";
   @tracked email = "";
   @tracked role = "viewer";
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
   updateField = (field, value) => {
     this[field] = value;
   }
@@ -70,6 +78,7 @@ export default class UserFormComponent extends Component {
 {{/let}}
 ```
 
+<<<<<<< HEAD
 **After (Parent):**
 ```handlebars
 <FilterControl @filter={{this.filter}} @onFilter={{this.setFilter}} />
@@ -88,6 +97,15 @@ export default class SearchComponent extends Component {
     this.filter = value;
   }
 }
+=======
+**After:**
+```javascript
+@tracked filter = "";
+@tracked tab = "methods";
+
+// Pass individual properties to children
+// Let each component update through actions
+>>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
 ```
 
 ## Array/List Management
@@ -100,6 +118,7 @@ export default class SearchComponent extends Component {
 ```
 
 **After:**
+<<<<<<< HEAD
 ```handlebars
 <ItemList @items={{this.items}} @onAdd={{this.addItem}} />
 ```
@@ -114,6 +133,13 @@ export default class ListContainer extends Component {
   addItem = (item) => {
     this.items = [...this.items, item];
   }
+=======
+```javascript
+@tracked items = [];
+
+addItem = (item) => {
+  this.items = [...this.items, item];
+>>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
 }
 ```
 
@@ -126,6 +152,7 @@ export default class ListContainer extends Component {
 {{/let}}
 ```
 
+<<<<<<< HEAD
 **After (option 1 - individual properties):**
 ```handlebars
 <APIClient @apiUrl={{this.config.apiUrl}} @timeout={{this.config.timeout}} @retry={{this.config.retry}} />
@@ -146,6 +173,18 @@ export default class APISetupComponent extends Component {
     timeout: 5000,
     retry: 3
   }
+=======
+**After:**
+```javascript
+// Just pass individual properties
+<APIClient @apiUrl={{this.apiUrl}} @timeout={{this.timeout}} @retry={{this.retry}} />
+
+// Or keep as a single object and don't mutate it
+@tracked config = {
+  apiUrl: "http://...",
+  timeout: 5000,
+  retry: 3
+>>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
 }
 ```
 

@@ -66,10 +66,14 @@ import { tracked } from "@ember/object";
 export default class DemoPanelComponent extends Component {
   @tracked tab = this.args.tab || "overview";
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
   
 >>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
+=======
+
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
   changeTab(newTab) {
     this.tab = newTab;  // This will properly update the UI
   }
@@ -102,10 +106,14 @@ export default class ParentComponent extends Component {
   @tracked selectedTab = "methods";
   @tracked filter = "";
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
   
 >>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
+=======
+
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
   setFilter = (value) => {
     this.filter = value;
   }
@@ -126,18 +134,26 @@ const user = { name: "", email: "" };
 **After:**
 ```javascript
 <<<<<<< HEAD
+<<<<<<< HEAD
 import Component from "@glimmer/component";
 =======
 >>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
+=======
+import Component from "@glimmer/component";
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
 import { tracked } from "@ember/object";
 
 export default class MyComponent extends Component {
   @tracked user = { name: "", email: "" };
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
   
 >>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
+=======
+
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
   updateUser(field, value) {
     this.user[field] = value;
   }
@@ -164,6 +180,7 @@ this.args.data.property = newValue;
 ## FAQ
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 **Q: Do I have to change everything right now?**
 A: No. This works fine today, but you should plan migration. We'll give plenty of notice before it stops working.
 
@@ -173,11 +190,18 @@ A: Absolutely. You can pass hash objects to components—just don't mutate them 
 **Q: What if I have complex state?**
 =======
 **Q: Do I have to change everything right now?**  
+=======
+**Q: Do I have to change everything right now?**
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
 A: No. This works fine today, but you should plan migration. We'll give plenty of notice before it stops working.
 
-**Q: Can I still use `{{hash}}`?**  
+**Q: Can I still use `{{hash}}`?**
 A: Absolutely. You can pass hash objects to components—just don't mutate them afterward.
 
+<<<<<<< HEAD
 **Q: What if I have complex state?**  
 >>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
+=======
+**Q: What if I have complex state?**
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
 A: Use `@tracked` properties in your component. That's the Ember-approved way to manage state.

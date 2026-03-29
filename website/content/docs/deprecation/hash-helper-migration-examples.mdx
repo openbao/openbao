@@ -42,6 +42,9 @@ export default class TabsComponent extends Component {
 
 **After:**
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
 ```handlebars
 <UserForm @name={{this.name}} @email={{this.email}} @role={{this.role}} @onChange={{this.updateField}} />
 ```
@@ -50,18 +53,25 @@ export default class TabsComponent extends Component {
 import Component from "@glimmer/component";
 import { tracked } from "@ember/object";
 
+<<<<<<< HEAD
 =======
 ```javascript
 >>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
+=======
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
 export default class UserFormComponent extends Component {
   @tracked name = "";
   @tracked email = "";
   @tracked role = "viewer";
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
   
 >>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
+=======
+
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
   updateField = (field, value) => {
     this[field] = value;
   }
@@ -79,11 +89,15 @@ export default class UserFormComponent extends Component {
 ```
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
 **After (Parent):**
 ```handlebars
 <FilterControl @filter={{this.filter}} @onFilter={{this.setFilter}} />
 <Results @tab={{this.tab}} @filter={{this.filter}} />
 ```
+<<<<<<< HEAD
 
 ```javascript
 import Component from "@glimmer/component";
@@ -106,6 +120,21 @@ export default class SearchComponent extends Component {
 // Pass individual properties to children
 // Let each component update through actions
 >>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
+=======
+
+```javascript
+import Component from "@glimmer/component";
+import { tracked } from "@ember/object";
+
+export default class SearchComponent extends Component {
+  @tracked filter = "";
+  @tracked tab = "methods";
+
+  setFilter = (value) => {
+    this.filter = value;
+  }
+}
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
 ```
 
 ## Array/List Management
@@ -118,6 +147,7 @@ export default class SearchComponent extends Component {
 ```
 
 **After:**
+<<<<<<< HEAD
 <<<<<<< HEAD
 ```handlebars
 <ItemList @items={{this.items}} @onAdd={{this.addItem}} />
@@ -140,6 +170,22 @@ export default class ListContainer extends Component {
 addItem = (item) => {
   this.items = [...this.items, item];
 >>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
+=======
+```handlebars
+<ItemList @items={{this.items}} @onAdd={{this.addItem}} />
+```
+
+```javascript
+import Component from "@glimmer/component";
+import { tracked } from "@ember/object";
+
+export default class ListContainer extends Component {
+  @tracked items = [];
+
+  addItem = (item) => {
+    this.items = [...this.items, item];
+  }
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
 }
 ```
 
@@ -153,10 +199,14 @@ addItem = (item) => {
 ```
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
 **After (option 1 - individual properties):**
 ```handlebars
 <APIClient @apiUrl={{this.config.apiUrl}} @timeout={{this.config.timeout}} @retry={{this.config.retry}} />
 ```
+<<<<<<< HEAD
 
 **After (option 2 - tracking the whole object):**
 ```handlebars
@@ -185,6 +235,24 @@ export default class APISetupComponent extends Component {
   timeout: 5000,
   retry: 3
 >>>>>>> 2d1213f04 (docs: Add deprecation guide for setting properties on {{hash}} objects)
+=======
+
+**After (option 2 - tracking the whole object):**
+```handlebars
+<APIClient @config={{this.config}} />
+```
+
+```javascript
+import Component from "@glimmer/component";
+import { tracked } from "@ember/object";
+
+export default class APISetupComponent extends Component {
+  @tracked config = {
+    apiUrl: "http://...",
+    timeout: 5000,
+    retry: 3
+  }
+>>>>>>> 7b2c34337 (docs: Fix code examples to be complete and working)
 }
 ```
 

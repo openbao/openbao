@@ -382,6 +382,9 @@ func createComplicatedIssuerSetUp(t *testing.T, client *api.Client) {
 		t.Fatalf("failed to generate CSR: %v", err)
 	}
 	int3KeyId, ok := int3CsrResp.Data["key_id"]
+	if !ok {
+		t.Fatalf("no key_id produced when generating intermediate, resp: %v", int3CsrResp)
+	}
 	int3CsrRaw, ok := int3CsrResp.Data["csr"]
 	if !ok {
 		t.Fatalf("no csr produced when generating intermediate, resp: %v", int3CsrResp)

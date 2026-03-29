@@ -54,7 +54,7 @@ Usage: bao kv put [options] KEY [DATA]
 
   Or it can be read from stdin using the "-" symbol:
 
-      $ echo "abcd1234" | vault kv put -mount=secret foo bar=-
+      $ echo "abcd1234" | bao kv put -mount=secret foo bar=-
 
   To perform a Check-And-Set operation, specify the -cas flag with the
   appropriate version number corresponding to the key you want to perform

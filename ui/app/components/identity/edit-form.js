@@ -77,7 +77,7 @@ export default Component.extend({
     this._super(...arguments);
     const model = this.model;
     if (!model) return;
-    if ((model.get('isDirty') && !model.isDestroyed) || !model.isDestroying) {
+    if ((model.isDirty && !model.isDestroyed) || !model.isDestroying) {
       model.rollbackAttributes();
     }
   },

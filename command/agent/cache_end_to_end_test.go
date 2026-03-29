@@ -13,7 +13,6 @@ import (
 	"time"
 
 	hclog "github.com/hashicorp/go-hclog"
-	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/api/v2"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/command/agentproxyshared/auth"
@@ -42,10 +41,10 @@ path "/auth/token/create" {
 
 func TestCache_UsingAutoAuthToken(t *testing.T) {
 	var err error
-	logger := logging.NewVaultLogger(log.Trace)
+	logger := logging.NewVaultLogger(hclog.Trace)
 	coreConfig := &vault.CoreConfig{
 		DisableCache: true,
-		Logger:       log.NewNullLogger(),
+		Logger:       hclog.NewNullLogger(),
 		LogicalBackends: map[string]logical.Factory{
 			"kv": vault.LeasedPassthroughBackendFactory,
 		},

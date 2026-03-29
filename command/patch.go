@@ -37,12 +37,12 @@ func (c *PatchCommand) Help() string {
 	helpText := `
 Usage: bao patch [options] PATH [DATA K=V...]
 
-  Patches data in Vault at the given path. The data can be credentials, secrets,
+  Patches data in OpenBao at the given path. The data can be credentials, secrets,
   configuration, or arbitrary data. The specific behavior of this command is
   determined at the thing mounted at the path.
 
   Data is specified as "key=value" pairs. If the value begins with an "@", then
-  it is loaded from a file. If the value is "-", Vault will read the value from
+  it is loaded from a file. If the value is "-", OpenBao will read the value from
   stdin.
 
   Unlike write, patch will only modify specified fields.
@@ -58,7 +58,7 @@ Usage: bao patch [options] PATH [DATA K=V...]
 
   Or it can be read from stdin using the "-" symbol:
 
-      $ echo "example.com" | vault patch pki/roles/example allowed_domains=-
+      $ echo "example.com" | bao patch pki/roles/example allowed_domains=-
 
   For a full list of examples and paths, please see the documentation that
   corresponds to the secret engines in use.

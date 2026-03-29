@@ -8,6 +8,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -23,7 +24,6 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/oklog/run"
 	"github.com/openbao/openbao/api/v2"
@@ -247,10 +247,8 @@ func (c *DebugCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Initialize the logger for debug output
-	gatedWriter := gatedwriter.NewWriter(os.Stderr)
 	if c.logger == nil {
-		c.logger = logging.NewVaultLoggerWithWriter(gatedWriter, hclog.Trace)
+		c.logger = logging.NewVaultLoggerWithWriter(os.Stderr, hclog.Trace)
 	}
 
 	dstOutputFile, err := c.preflight(args)
@@ -269,29 +267,24 @@ func (c *DebugCommand) Run(args []string) int {
 	c.UI.Info(fmt.Sprintf("      Metrics Interval: %s", c.flagMetricsInterval))
 	c.UI.Info(fmt.Sprintf("               Targets: %s", strings.Join(c.flagTargets, ", ")))
 	c.UI.Info(fmt.Sprintf("                Output: %s", dstOutputFile))
-	c.UI.Output("")
-
-	// Release the log gate.
-	c.logger.(hclog.OutputResettable).ResetOutputWithFlush(&hclog.LoggerOptions{
-		Output: os.Stderr,
-	}, gatedWriter)
 
 	// Capture static information
+	c.UI.Output("")
 	c.UI.Info("==> Capturing static information...")
 	if err := c.captureStaticTargets(); err != nil {
 		c.UI.Error(fmt.Sprintf("Error capturing static information: %s", err))
 		return 2
 	}
 
-	c.UI.Output("")
-
 	// Capture polling information
+	c.UI.Output("")
 	c.UI.Info("==> Capturing dynamic information...")
 	if err := c.capturePollingTargets(); err != nil {
 		c.UI.Error(fmt.Sprintf("Error capturing dynamic information: %s", err))
 		return 2
 	}
 
+	c.UI.Output("")
 	c.UI.Output("Finished capturing information, bundling files...")
 
 	// Generate index file
@@ -670,14 +663,13 @@ func (c *DebugCommand) collectHostInfo(ctx context.Context) {
 		c.logger.Info("capturing host information", "count", idxCount)
 		idxCount++
 
-		r := c.cachedClient.NewRequest("GET", "/v1/sys/host-info")
-		resp, err := c.cachedClient.RawRequestWithContext(ctx, r)
+		resp, err := c.cachedClient.Logical().ReadRawWithContext(ctx, "sys/host-info")
 		if err != nil {
 			c.captureError("host", err)
 			return
 		}
 		if resp != nil {
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			secret, err := api.ParseSecret(resp.Body)
 			if err != nil {
@@ -709,14 +701,13 @@ func (c *DebugCommand) collectMetrics(ctx context.Context) {
 		idxCount++
 
 		// Perform metrics request
-		r := c.cachedClient.NewRequest("GET", "/v1/sys/metrics")
-		resp, err := c.cachedClient.RawRequestWithContext(ctx, r)
+		resp, err := c.cachedClient.Logical().ReadRawWithContext(ctx, "sys/metrics")
 		if err != nil {
 			c.captureError("metrics", err)
 			continue
 		}
 		if resp != nil {
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			metricsEntry := make(map[string]interface{})
 			err := json.NewDecoder(resp.Body).Decode(&metricsEntry)
@@ -851,14 +842,13 @@ func (c *DebugCommand) collectReplicationStatus(ctx context.Context) {
 		c.logger.Info("capturing replication status", "count", idxCount)
 		idxCount++
 
-		r := c.cachedClient.NewRequest("GET", "/v1/sys/replication/status")
-		resp, err := c.cachedClient.RawRequestWithContext(ctx, r)
+		resp, err := c.cachedClient.Logical().ReadRawWithContext(ctx, "sys/replication/status")
 		if err != nil {
 			c.captureError("replication-status", err)
 			return
 		}
 		if resp != nil {
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			secret, err := api.ParseSecret(resp.Body)
 			if err != nil {
@@ -924,8 +914,7 @@ func (c *DebugCommand) collectInFlightRequestStatus(ctx context.Context) {
 		c.logger.Info("capturing in-flight request status", "count", idxCount)
 		idxCount++
 
-		req := c.cachedClient.NewRequest("GET", "/v1/sys/in-flight-req")
-		resp, err := c.cachedClient.RawRequestWithContext(ctx, req)
+		resp, err := c.cachedClient.Logical().ReadRawWithContext(ctx, "sys/in-flight-req")
 		if err != nil {
 			c.captureError("requests", err)
 			return
@@ -933,7 +922,7 @@ func (c *DebugCommand) collectInFlightRequestStatus(ctx context.Context) {
 
 		var data map[string]interface{}
 		if resp != nil {
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 			err = jsonutil.DecodeJSONFromReader(resp.Body, &data)
 			if err != nil {
 				c.captureError("requests", err)
@@ -975,26 +964,32 @@ func (c *DebugCommand) compress(dst string) error {
 
 	// Do this in a sub-function so we validate close works prior to
 	// removing the output, while letting us keep using defer.
-	if err := func() error {
+	if err := func() (err error) {
 		output, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 		if err != nil {
 			return fmt.Errorf("failed to open output archive for writing: %w", err)
 		}
-		defer output.Close()
+		defer func() {
+			err = errors.Join(err, output.Close())
+		}()
 
 		gzipped := gzip.NewWriter(output)
-		defer gzipped.Close()
+		defer func() {
+			err = errors.Join(err, gzipped.Close())
+		}()
 
 		archive := tar.NewWriter(gzipped)
-		defer archive.Close()
+		defer func() {
+			err = errors.Join(err, archive.Close())
+		}()
 
 		parent := filepath.Dir(c.flagOutput)
 		child := filepath.Base(c.flagOutput)
 
 		ofs := os.DirFS(parent)
-		if err := fs.WalkDir(ofs, child, func(path string, d fs.DirEntry, err error) error {
+		if err := fs.WalkDir(ofs, child, func(path string, d fs.DirEntry, _ error) error {
 			var fileType byte = tar.TypeReg
-			var tarPath string = path
+			tarPath := path
 			if d.IsDir() {
 				fileType = tar.TypeDir
 				if !strings.HasSuffix(path, "/") {
@@ -1054,15 +1049,11 @@ func (c *DebugCommand) compress(dst string) error {
 }
 
 func pprofTarget(ctx context.Context, client *api.Client, target string, params url.Values) ([]byte, error) {
-	req := client.NewRequest("GET", "/v1/sys/pprof/"+target)
-	if params != nil {
-		req.Params = params
-	}
-	resp, err := client.RawRequestWithContext(ctx, req)
+	resp, err := client.Logical().ReadRawWithDataWithContext(ctx, "sys/pprof/"+target, params)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -1076,13 +1067,12 @@ func pprofProfile(ctx context.Context, client *api.Client, duration time.Duratio
 	seconds := int(duration.Seconds())
 	secStr := strconv.Itoa(seconds)
 
-	req := client.NewRequest("GET", "/v1/sys/pprof/profile")
-	req.Params.Add("seconds", secStr)
-	resp, err := client.RawRequestWithContext(ctx, req)
+	params := url.Values{"seconds": []string{secStr}}
+	resp, err := client.Logical().ReadRawWithDataWithContext(ctx, "sys/pprof/profile", params)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -1096,13 +1086,12 @@ func pprofTrace(ctx context.Context, client *api.Client, duration time.Duration)
 	seconds := int(duration.Seconds())
 	secStr := strconv.Itoa(seconds)
 
-	req := client.NewRequest("GET", "/v1/sys/pprof/trace")
-	req.Params.Add("seconds", secStr)
-	resp, err := client.RawRequestWithContext(ctx, req)
+	params := url.Values{"seconds": []string{secStr}}
+	resp, err := client.Logical().ReadRawWithDataWithContext(ctx, "sys/pprof/trace", params)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -1129,7 +1118,11 @@ func (c *DebugCommand) writeLogs(ctx context.Context) {
 		c.captureError("log", err)
 		return
 	}
-	defer out.Close()
+	defer func() {
+		if err := out.Close(); err != nil {
+			c.captureError("log", err)
+		}
+	}()
 
 	// Create Monitor specific client based on the cached client
 	mClient, err := c.cachedClient.Clone()

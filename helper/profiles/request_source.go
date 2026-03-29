@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+const requestSourceName = "request"
+
 // RequestSourceBuilder allows reading inputs from past requests.
 func RequestSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
 	return &RequestSource{
@@ -17,8 +19,13 @@ var _ SourceBuilder = RequestSourceBuilder
 
 func WithRequestSource() func(*ProfileEngine) {
 	return func(p *ProfileEngine) {
-		p.sourceBuilders["request"] = RequestSourceBuilder
+		p.sourceBuilders[requestSourceName] = RequestSourceBuilder
 	}
+}
+
+func HasRequestSource(engine *ProfileEngine) bool {
+	_, ok := engine.sourceBuilders[requestSourceName]
+	return ok
 }
 
 type RequestSource struct {

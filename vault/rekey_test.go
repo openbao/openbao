@@ -12,6 +12,7 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
@@ -22,11 +23,10 @@ func TestCore_Rekey_Lifecycle(t *testing.T) {
 	bc := &SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
-		StoredShares:    1,
 	}
 	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, bc, nil)
 	if len(rootKeys) != 1 {
-		t.Fatalf("expected %d secret shares and %v stored shares for a total of 1 root key, got %d", bc.SecretShares, bc.StoredShares, len(rootKeys))
+		t.Fatalf("expected %d secret shares for a total of 1 root key, got %d", bc.SecretShares, len(rootKeys))
 	}
 	testCore_Rekey_Lifecycle_Common(t, c, false)
 }
@@ -328,12 +328,9 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 
 func TestCore_Rekey_Invalid(t *testing.T) {
 	bc := &SealConfig{
-		SecretShares:    5,
-		SecretThreshold: 3,
+		SecretShares:    1,
+		SecretThreshold: 1,
 	}
-	bc.StoredShares = 0
-	bc.SecretShares = 1
-	bc.SecretThreshold = 1
 	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, bc, nil)
 	testCore_Rekey_Invalid_Common(t, c, rootKeys, false)
 }
@@ -503,13 +500,12 @@ func TestCore_Rekey_Standby(t *testing.T) {
 // the keys aren't returned
 func TestSysRekey_Verification_Invalid(t *testing.T) {
 	core, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
-		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
-		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedGeneric})
+		&SealConfig{SecretShares: 1, SecretThreshold: 1},
+		&SealConfig{SecretShares: 1, SecretThreshold: 1},
+		&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 
 	err := core.BarrierRekeyInit(&SealConfig{
 		VerificationRequired: true,
-		StoredShares:         1,
 	})
 
 	if err == nil {

@@ -8,14 +8,13 @@ import (
 	"strconv"
 
 	"github.com/openbao/openbao/api/v2"
-	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/posener/complete"
 )
 
 // logFlags are the 'log' related flags that can be shared across commands.
 type logFlags struct {
 	flagCombineLogs       bool
-	flagDisableGatedLogs  bool
 	flagLogLevel          string
 	flagLogFormat         string
 	flagLogFile           string
@@ -38,13 +37,6 @@ func (f *FlagSet) addLogFlags(l *logFlags) {
 	f.BoolVar(&BoolVar{
 		Name:    flagNameCombineLogs,
 		Target:  &l.flagCombineLogs,
-		Default: false,
-		Hidden:  true,
-	})
-
-	f.BoolVar(&BoolVar{
-		Name:    flagDisableGatedLogs,
-		Target:  &l.flagDisableGatedLogs,
 		Default: false,
 		Hidden:  true,
 	})

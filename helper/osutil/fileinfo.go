@@ -4,8 +4,11 @@
 package osutil
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 )
@@ -81,4 +84,24 @@ func OwnerPermissionsMatchFile(file *os.File, uid int, permissions int) error {
 	}
 
 	return nil
+}
+
+// FileSha256Sum calculates the Sha256 hash of a file
+func FileSha256Sum(path string) (result string, err error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		err = errors.Join(err, file.Close())
+	}()
+
+	hasher := sha256.New()
+	_, err = io.Copy(hasher, file)
+	if err != nil {
+		return "", err
+	}
+
+	result = hex.EncodeToString(hasher.Sum(nil))
+	return result, err
 }

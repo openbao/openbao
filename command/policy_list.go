@@ -28,7 +28,7 @@ func (c *PolicyListCommand) Help() string {
 	helpText := `
 Usage: bao policy list [options]
 
-  Lists the names of the policies that are installed on the Vault server.
+  Lists the names of the policies that are installed on the OpenBao server.
 
 ` + c.Flags().Help()
 

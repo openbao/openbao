@@ -1,0 +1,3 @@
+```release-note:bug
+core/expiration: Fix total lease count not being decremented when revoking irrevocable leases
+```

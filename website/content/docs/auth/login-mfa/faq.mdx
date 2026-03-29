@@ -17,18 +17,22 @@ This FAQ section contains frequently asked questions about the Login MFA feature
 
 | MFA workflow                                   | What does it do?                                                                                                                                                                                                                                                                                    | Who manages the MFA?              | 
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| [Login MFA](/docs/auth/login-mfa)              | MFA in OpenBao provides MFA on login. CLI, API, and UI-based login are supported.                                                                                                                                                                                                                 | MFA is managed by OpenBao | 
+| [Login MFA](index.mdx)              | MFA in OpenBao provides MFA on login. CLI, API, and UI-based login are supported.                                                                                                                                                                                                                 | MFA is managed by OpenBao | 
 
 ### Q: what is Single-Phase MFA vs. Two-Phase MFA?
 
 - **Single-Phase MFA:** This is a single request mechanism where the required MFA information, such as MFA method ID, is provided via the X-Vault-MFA header in a single MFA request that is used to authenticate into OpenBao.
 
-:::warning
+  :::warning
 
-**Note**: If the configured MFA methods need a passcode, it needs to be provided in the request, such as in the case of TOTP or Duo.
-If the configured MFA methods, such as PingID, Okta, or Duo, do not require a passcode and have out of band mechanisms for verifying the extra factor, OpenBao will send an inquiry to the other service's APIs to determine whether the MFA request has yet been verified.
+  **Note**: If the configured MFA methods need a passcode, it needs to be
+  provided in the request, such as in the case of TOTP or Duo. If the configured
+  MFA methods, such as PingID, Okta, or Duo, do not require a passcode and have
+  out of band mechanisms for verifying the extra factor, OpenBao will send an
+  inquiry to the other service's APIs to determine whether the MFA request has
+  yet been verified.
 
-:::
+  :::
 
 - **Two-Phase MFA:** This is a two-request MFA method that is more conventionally used.
   - The MFA passcode required for the configured MFA method is not provided in a header of the login request that is MFA-restricted. Instead, the user first authenticates to the auth method, and on successful authentication to the auth method, an MFA requirement is returned to the user. The MFA requirement contains the MFA RequestID and constraints applicable to the MFA as configured by the operator.
@@ -38,13 +42,13 @@ If the configured MFA methods, such as PingID, Okta, or Duo, do not require a pa
 
 | MFA workflow                                   | Configuration methods                                                                     | Details                                                                                                                                                                                                                                                                                     |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Login MFA](/docs/auth/login-mfa)              | CLI/API | Configured using the `identity/mfa/method` endpoints, then passing those method IDs to the `identity/mfa/login-enforcement` endpoint. MFA methods supported: TOTP, Okta, Duo, PingID.                                                                                                       |
+| [Login MFA](index.mdx)              | CLI/API | Configured using the `identity/mfa/method` endpoints, then passing those method IDs to the `identity/mfa/login-enforcement` endpoint. MFA methods supported: TOTP, Okta, Duo, PingID.                                                                                                       |
 
 ### Q: which MFA mechanism is used with the different MFA workflows in OpenBao?
 
 | MFA workflow                                   | UI        | CLI/API                                                                                                                                   | Single-Phase                | Two-Phase                   |
 | ---------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | --------------------------- |
-| [Login MFA](/docs/auth/login-mfa)              | Supported | Supported. You can select single-phase MFA by supplying the X-Vault-MFA header. In the absence of this header, the Two- Phase MFA is used | N/A                         | Supported                   |
+| [Login MFA](index.mdx)              | Supported | Supported. You can select single-phase MFA by supplying the X-Vault-MFA header. In the absence of this header, the Two- Phase MFA is used | N/A                         | Supported                   |
 
 ### Q: i use the OpenBao agent. does MFA pose any challenges for me?
 

@@ -7,14 +7,15 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
@@ -37,7 +38,7 @@ func (c *Core) ensureWrappingKey(ctx context.Context) error {
 	var keyParams certutil.ClusterKeyParams
 
 	if entry == nil {
-		key, err := ecdsa.GenerateKey(elliptic.P521(), c.secureRandomReader)
+		key, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 		if err != nil {
 			return fmt.Errorf("failed to generate wrapping key: %w", err)
 		}
@@ -345,10 +346,6 @@ func (c *Core) validateWrappingToken(ctx context.Context, req *logical.Request) 
 
 	if c.Sealed() {
 		return false, consts.ErrSealed
-	}
-
-	if c.standby {
-		return false, consts.ErrStandby
 	}
 
 	defer func() {

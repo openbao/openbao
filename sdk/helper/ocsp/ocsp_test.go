@@ -61,7 +61,7 @@ func TestOCSP(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to GET contents. err: %v", err)
 			}
-			defer res.Body.Close()
+			defer res.Body.Close() //nolint:errcheck
 			_, err = io.ReadAll(res.Body)
 			if err != nil {
 				t.Fatalf("failed to read content body for %v", tgt)
@@ -289,6 +289,56 @@ func createCaLeafCerts(t *testing.T) (*ecdsa.PrivateKey, *x509.Certificate, *x50
 	return rootCaKey, rootCa, leafCert
 }
 
+func TestUnitNoCachedOCSPResponse(t *testing.T) {
+	rootCaKey, rootCa, leafCert := createCaLeafCerts(t)
+
+	reqCount := 0
+	noCacheOcspResponse := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		now := time.Now()
+		ocspRes := ocsp.Response{
+			SerialNumber: big.NewInt(2),
+			ThisUpdate:   now.Add(-1 * time.Hour),
+			Status:       ocsp.Good,
+		}
+		response, err := ocsp.CreateResponse(rootCa, rootCa, ocspRes, rootCaKey)
+		if err != nil {
+			_, _ = w.Write(ocsp.InternalErrorErrorResponse)
+			t.Fatalf("failed generating OCSP response: %v", err)
+		}
+		_, _ = w.Write(response)
+
+		reqCount += 1
+	})
+	ts := httptest.NewServer(noCacheOcspResponse)
+	defer ts.Close()
+
+	logFactory := func() hclog.Logger {
+		return hclog.NewNullLogger()
+	}
+	client := New(logFactory, 100)
+
+	ctx := context.Background()
+
+	config := &VerifyConfig{
+		OcspEnabled:         true,
+		OcspServersOverride: []string{ts.URL},
+		OcspFailureMode:     FailOpenFalse,
+		QueryAllServers:     false,
+	}
+
+	status, err := client.GetRevocationStatus(ctx, leafCert, rootCa, config)
+	require.NoError(t, err)
+	require.NotNil(t, status)
+	require.Equal(t, status.code, ocspStatusGood)
+	require.Equal(t, reqCount, 1)
+
+	status, err = client.GetRevocationStatus(ctx, leafCert, rootCa, config)
+	require.NoError(t, err)
+	require.NotNil(t, status)
+	require.Equal(t, status.code, ocspStatusGood)
+	require.Equal(t, reqCount, 2)
+}
+
 func TestUnitValidateOCSP(t *testing.T) {
 	ocspRes := &ocsp.Response{}
 	ost, err := validateOCSP(ocspRes)
@@ -297,6 +347,7 @@ func TestUnitValidateOCSP(t *testing.T) {
 	}
 
 	currentTime := time.Now()
+	ocspRes.ProducedAt = currentTime
 	ocspRes.ThisUpdate = currentTime.Add(-2 * time.Hour)
 	ocspRes.NextUpdate = currentTime.Add(2 * time.Hour)
 	ocspRes.Status = ocsp.Revoked
@@ -502,11 +553,11 @@ func TestCanEarlyExitForOCSP(t *testing.T) {
 			expectedLen = tt.resultLen
 		}
 		r := c.canEarlyExitForOCSP(tt.results, expectedLen, &VerifyConfig{OcspFailureMode: FailOpenTrue})
-		if !(tt.retFailOpen == nil && r == nil) && !(tt.retFailOpen != nil && r != nil && tt.retFailOpen.code == r.code) {
+		if (tt.retFailOpen != nil || r != nil) && (tt.retFailOpen == nil || r == nil || tt.retFailOpen.code != r.code) {
 			t.Fatalf("%d: failed to match return. expected: %v, got: %v", idx, tt.retFailOpen, r)
 		}
 		r = c.canEarlyExitForOCSP(tt.results, expectedLen, &VerifyConfig{OcspFailureMode: FailOpenFalse})
-		if !(tt.retFailClosed == nil && r == nil) && !(tt.retFailClosed != nil && r != nil && tt.retFailClosed.code == r.code) {
+		if (tt.retFailClosed != nil || r != nil) && (tt.retFailClosed == nil || r == nil || tt.retFailClosed.code != r.code) {
 			t.Fatalf("%d: failed to match return. expected: %v, got: %v", idx, tt.retFailClosed, r)
 		}
 	}
@@ -592,27 +643,3 @@ func (b *fakeResponseBody) Close() error {
 func fakeRequestFunc(_, _ string, _ interface{}) (*retryablehttp.Request, error) {
 	return nil, nil
 }
-
-const vaultCert = `-----BEGIN CERTIFICATE-----
-MIIDuTCCAqGgAwIBAgIUA6VeVD1IB5rXcCZRAqPO4zr/GAMwDQYJKoZIhvcNAQEL
-BQAwcjELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAlZBMREwDwYDVQQHDAhTb21lQ2l0
-eTESMBAGA1UECgwJTXlDb21wYW55MRMwEQYDVQQLDApNeURpdmlzaW9uMRowGAYD
-VQQDDBF3d3cuY29uaHVnZWNvLmNvbTAeFw0yMjA5MDcxOTA1MzdaFw0yNDA5MDYx
-OTA1MzdaMHIxCzAJBgNVBAYTAlVTMQswCQYDVQQIDAJWQTERMA8GA1UEBwwIU29t
-ZUNpdHkxEjAQBgNVBAoMCU15Q29tcGFueTETMBEGA1UECwwKTXlEaXZpc2lvbjEa
-MBgGA1UEAwwRd3d3LmNvbmh1Z2Vjby5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IB
-DwAwggEKAoIBAQDL9qzEXi4PIafSAqfcwcmjujFvbG1QZbI8swxnD+w8i4ufAQU5
-LDmvMrGo3ZbhJ0mCihYmFxpjhRdP2raJQ9TysHlPXHtDRpr9ckWTKBz2oIfqVtJ2
-qzteQkWCkDAO7kPqzgCFsMeoMZeONRkeGib0lEzQAbW/Rqnphg8zVVkyQ71DZ7Pc
-d5WkC2E28kKcSramhWfVFpxG3hSIrLOX2esEXteLRzKxFPf+gi413JZFKYIWrebP
-u5t0++MLNpuX322geoki4BWMjQsd47XILmxZ4aj33ScZvdrZESCnwP76hKIxg9mO
-lMxrqSWKVV5jHZrElSEj9LYJgDO1Y6eItn7hAgMBAAGjRzBFMAsGA1UdDwQEAwIE
-MDATBgNVHSUEDDAKBggrBgEFBQcDATAhBgNVHREEGjAYggtleGFtcGxlLmNvbYIJ
-bG9jYWxob3N0MA0GCSqGSIb3DQEBCwUAA4IBAQA5dPdf5SdtMwe2uSspO/EuWqbM
-497vMQBW1Ey8KRKasJjhvOVYMbe7De5YsnW4bn8u5pl0zQGF4hEtpmifAtVvziH/
-K+ritQj9VVNbLLCbFcg+b0kfjt4yrDZ64vWvIeCgPjG1Kme8gdUUWgu9dOud5gdx
-qg/tIFv4TRS/eIIymMlfd9owOD3Ig6S5fy4NaAJFAwXf8+3Rzuc+e7JSAPgAufjh
-tOTWinxvoiOLuYwo9CyGgq4qKBFsrY0aE0gdA7oTQkpbEbo2EbqiWUl/PTCl1Y4Z
-nSZ0n+4q9QC9RLrWwYTwh838d5RVLUst2mBKSA+vn7YkqmBJbdBC6nkd7n7H
------END CERTIFICATE-----
-`

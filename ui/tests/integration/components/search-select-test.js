@@ -80,8 +80,8 @@ module('Integration | Component | search select', function (hooks) {
   hooks.beforeEach(function () {
     const mockFunctionFromParent = (selection, dropdownOptions) => {
       const modelExists =
-        !!dropdownOptions.findBy('id', selection) ||
-        !!dropdownOptions.findBy('uuid', selection) ||
+        !!dropdownOptions.find((x) => x.id === selection) ||
+        !!dropdownOptions.find((x) => x.uuid === selection) ||
         isWildcardString([selection]);
       return !modelExists ? 'The model associated with this id no longer exists' : false;
     };
@@ -126,7 +126,7 @@ module('Integration | Component | search select', function (hooks) {
     await settled();
     assert.strictEqual(component.options.length, 3, 'shows all options');
     assert.strictEqual(
-      component.options.objectAt(0).text,
+      component.options[0].text,
       component.selectedOptionText,
       'first object in list is focused'
     );
@@ -152,7 +152,7 @@ module('Integration | Component | search select', function (hooks) {
     await settled();
     assert.strictEqual(component.options.length, 2, 'shows all options');
     assert.strictEqual(
-      component.options.objectAt(0).text,
+      component.options[0].text,
       component.selectedOptionText,
       'first object in list is focused'
     );
@@ -173,7 +173,7 @@ module('Integration | Component | search select', function (hooks) {
     await clickTrigger();
     await settled();
     assert.strictEqual(component.options.length, 3, 'shows all options');
-    assert.strictEqual(component.options.objectAt(0).text, 'seven 7', 'first option renders');
+    assert.strictEqual(component.options[0].text, 'seven 7', 'first option renders');
     await typeInSearch('n');
     assert.strictEqual(
       component.options.length,
@@ -184,7 +184,7 @@ module('Integration | Component | search select', function (hooks) {
     assert.strictEqual(component.options.length, 2, 'list shows two options, including the add option');
     await typeInSearch('nine');
     assert.strictEqual(component.options.length, 1, 'list shows one option');
-    assert.strictEqual(component.options.objectAt(0).text, 'nine 9', 'renders only matching option');
+    assert.strictEqual(component.options[0].text, 'nine 9', 'renders only matching option');
   });
 
   test('it counts options when wildcard is used and displays the count', async function (assert) {
@@ -208,7 +208,7 @@ module('Integration | Component | search select', function (hooks) {
     await settled();
     assert.dom('[data-test-count="2"]').exists('correctly counts with wildcard filter and shows the count');
     assert.strictEqual(
-      component.selectedOptions.objectAt(0).text,
+      component.selectedOptions[0].text,
       '*bar* includes 2 roles',
       'renders correct selected text'
     );
@@ -276,7 +276,7 @@ module('Integration | Component | search select', function (hooks) {
       />
     `);
     assert.strictEqual(component.selectedOptions.length, 1, 'there is 1 selected option');
-    assert.strictEqual(component.selectedOptions.objectAt(0).text, 'eight 8', 'selected option renders');
+    assert.strictEqual(component.selectedOptions[0].text, 'eight 8', 'selected option renders');
     await clickTrigger();
     await settled();
     assert.strictEqual(component.options.length, 2, 'shows two options');
@@ -297,7 +297,7 @@ module('Integration | Component | search select', function (hooks) {
     `);
 
     assert.strictEqual(component.selectedOptions.length, 1, 'there is 1 selected option');
-    await component.deleteButtons.objectAt(0).click();
+    await component.deleteButtons[0].click();
     await settled();
     assert.strictEqual(component.selectedOptions.length, 0, 'there are no selected options');
     assert.ok(this.onChange.calledOnce);
@@ -306,7 +306,7 @@ module('Integration | Component | search select', function (hooks) {
     await settled();
     assert.strictEqual(component.options.length, 3, 'shows all options');
     assert.strictEqual(
-      component.options.objectAt(2).text,
+      component.options[2].text,
       'eight 8',
       'previously selected option returns to dropdown and renders properly'
     );
@@ -338,7 +338,7 @@ module('Integration | Component | search select', function (hooks) {
     assert.strictEqual(component.selectedOptions.length, 1, 'there is 1 selected option');
     assert.ok(this.onChange.calledOnce);
     assert.ok(this.onChange.calledWith(['ni']));
-    await component.deleteButtons.objectAt(0).click();
+    await component.deleteButtons[0].click();
     await settled();
     assert.strictEqual(component.selectedOptions.length, 0, 'there are no selected options');
     assert.ok(this.onChange.calledWith([]));
@@ -395,11 +395,7 @@ module('Integration | Component | search select', function (hooks) {
     await clickTrigger();
     await settled();
     assert.strictEqual(component.options.length, 1, 'prompts for search to add new options');
-    assert.strictEqual(
-      component.options.objectAt(0).text,
-      'Type to search',
-      'text of option shows Type to search'
-    );
+    assert.strictEqual(component.options[0].text, 'Type to search', 'text of option shows Type to search');
   });
 
   test('it shows add suggestion if there are no models', async function (assert) {
@@ -419,13 +415,13 @@ module('Integration | Component | search select', function (hooks) {
     await settled();
     assert.strictEqual(component.options.length, 1);
     assert.strictEqual(
-      component.options.objectAt(0).text,
+      component.options[0].text,
       'Type to search',
       'no options in dropdown, just Type to search prompt'
     );
     await typeInSearch('new-model');
     assert.strictEqual(
-      component.options.objectAt(0).text,
+      component.options[0].text,
       'Click to add new item: new-model',
       'shows the create suggestion'
     );
@@ -445,17 +441,13 @@ module('Integration | Component | search select', function (hooks) {
         @fallbackComponent="string-list"
       />
     `);
-    assert.strictEqual(component.selectedOptions.objectAt(0).text, 'test-1', 'renders first selected option');
-    assert.strictEqual(
-      component.selectedOptions.objectAt(1).text,
-      'test-2',
-      'renders second selected option'
-    );
+    assert.strictEqual(component.selectedOptions[0].text, 'test-1', 'renders first selected option');
+    assert.strictEqual(component.selectedOptions[1].text, 'test-2', 'renders second selected option');
     await clickTrigger();
-    assert.strictEqual(component.options.objectAt(0).text, '1', 'renders options from successful query');
+    assert.strictEqual(component.options[0].text, '1', 'renders options from successful query');
     await typeInSearch('new-item');
     await component.selectOption();
-    assert.strictEqual(component.selectedOptions.objectAt(2).text, 'new-item', 'renders newly added item');
+    assert.strictEqual(component.selectedOptions[2].text, 'new-item', 'renders newly added item');
     assert.ok(
       this.onChange.calledWith(['test-1', 'test-2', 'new-item']),
       'onChange called with all three items'
@@ -476,7 +468,7 @@ module('Integration | Component | search select', function (hooks) {
     `);
     await clickTrigger();
     assert.strictEqual(component.options.length, 3, 'shows three options');
-    assert.strictEqual(component.options.objectAt(0).text, 'seven 7', 'renders correct dropdown text');
+    assert.strictEqual(component.options[0].text, 'seven 7', 'renders correct dropdown text');
     assert.strictEqual(component.smallOptionIds.length, 3, 'shows 3 smaller id text and the name');
   });
 
@@ -499,12 +491,12 @@ module('Integration | Component | search select', function (hooks) {
     await clickTrigger();
     assert.strictEqual(component.options.length, 3, 'shows three options');
     assert.strictEqual(
-      component.options.objectAt(0).text,
+      component.options[0].text,
       'my-first-issuer issuer-a-id',
       'first option renders custom ID and name'
     );
     assert.strictEqual(
-      component.options.objectAt(1).text,
+      component.options[1].text,
       'issuer-b-id',
       `second option renders only id at custom key`
     );
@@ -520,7 +512,7 @@ module('Integration | Component | search select', function (hooks) {
     await settled();
     assert.strictEqual(component.options.length, 1, 'shows suggestion');
     assert.strictEqual(
-      component.options.objectAt(0).text,
+      component.options[0].text,
       'Click to add new item: new-issuer',
       'Prompts to add new item'
     );
@@ -541,7 +533,7 @@ module('Integration | Component | search select', function (hooks) {
     `);
     await clickTrigger();
     assert.strictEqual(component.options.length, 3, 'shows all options');
-    assert.strictEqual(component.options.objectAt(0).text, '1', 'renders just id');
+    assert.strictEqual(component.options[0].text, '1', 'renders just id');
     assert.strictEqual(component.smallOptionIds.length, 0, 'only shows the regular sized id');
   });
 
@@ -576,8 +568,8 @@ module('Integration | Component | search select', function (hooks) {
     `);
     await clickTrigger();
     assert.strictEqual(component.options.length, 6, 'shows options from both models');
-    assert.strictEqual(component.options.objectAt(0).text, 'seven 7', 'first dropdown item renders');
-    assert.strictEqual(component.options.objectAt(5).text, '3 3', 'last dropdown item renders');
+    assert.strictEqual(component.options[0].text, 'seven 7', 'first dropdown item renders');
+    assert.strictEqual(component.options[5].text, '3 3', 'last dropdown item renders');
   });
 
   test('it returns array with objects instead of strings if passObject=true', async function (assert) {
@@ -793,9 +785,9 @@ module('Integration | Component | search select', function (hooks) {
     `);
     await clickTrigger();
     await settled();
-    assert.strictEqual(component.options.objectAt(0).text, '1', 'first option renders just id as name');
+    assert.strictEqual(component.options[0].text, '1', 'first option renders just id as name');
     assert.strictEqual(
-      component.options.objectAt(3).text,
+      component.options[3].text,
       'model-a a123',
       `4 option renders both name and ${objectKeys[0]}`
     );
@@ -843,9 +835,9 @@ module('Integration | Component | search select', function (hooks) {
 
     await clickTrigger();
     await settled();
-    assert.strictEqual(component.options.objectAt(0).text, '1', 'first option is just id as name');
+    assert.strictEqual(component.options[0].text, '1', 'first option is just id as name');
     assert.strictEqual(
-      component.options.objectAt(3).text,
+      component.options[3].text,
       'model-a a123',
       `4th option has both name and ${objectKeys[0]}`
     );

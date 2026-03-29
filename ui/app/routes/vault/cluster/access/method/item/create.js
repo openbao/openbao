@@ -4,12 +4,10 @@
  */
 
 import Route from '@ember/routing/route';
-import UnloadModelRoute from 'vault/mixins/unload-model-route';
-import UnsavedModelRoute from 'vault/mixins/unsaved-model-route';
 import { singularize } from 'ember-inflector';
 import { inject as service } from '@ember/service';
 
-export default Route.extend(UnloadModelRoute, UnsavedModelRoute, {
+export default Route.extend({
   store: service(),
 
   model() {
@@ -32,5 +30,35 @@ export default Route.extend(UnloadModelRoute, UnsavedModelRoute, {
     controller.set('itemType', singularize(itemType));
     controller.set('mode', 'create');
     controller.set('method', method);
+  },
+
+  resetController(controller, isExiting) {
+    this._super(...arguments);
+
+    if (isExiting) {
+      controller.cleanupModel?.();
+    }
+  },
+
+  actions: {
+    willTransition(transition) {
+      const model = this.currentModel;
+      if (!model) {
+        return true;
+      }
+      if (model.hasDirtyAttributes) {
+        if (
+          window.confirm(
+            'You have unsaved changes. Navigating away will discard these changes. Are you sure you want to discard your changes?'
+          )
+        ) {
+          return true;
+        } else {
+          transition.abort();
+          return false;
+        }
+      }
+      return true;
+    },
   },
 });

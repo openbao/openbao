@@ -7,8 +7,10 @@ import { next } from '@ember/runloop';
 import { inject as service } from '@ember/service';
 import { computed } from '@ember/object';
 import Controller, { inject as controller } from '@ember/controller';
+import removeRecord from 'vault/utils/remove-record';
 
 export default Controller.extend({
+  store: service(),
   clusterController: controller('vault.cluster'),
 
   backendCrumb: computed('clusterController.model.name', function () {
@@ -21,6 +23,25 @@ export default Controller.extend({
   }),
 
   flashMessages: service(),
+
+  cleanupModel() {
+    const model = this.model;
+
+    if (!model) {
+      return;
+    }
+
+    if (model.isSaving || model.isDestroyed || model.isDestroying) {
+      return;
+    }
+
+    // controllers are singletons — always unset
+    this.model = null;
+
+    if (typeof model.unloadRecord === 'function') {
+      removeRecord(this.store, model);
+    }
+  },
 
   actions: {
     revokeLease(model) {

@@ -148,7 +148,7 @@ func TestReadCommand_Run(t *testing.T) {
 		}
 		combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
 		expected := []string{
-			"cluster_id", "cluster_name", "initialized", "performance_standby", "replication_dr_mode", "replication_performance_mode", "sealed",
+			"cluster_id", "cluster_name", "initialized", "replication_dr_mode", "replication_performance_mode", "sealed",
 			"server_time_utc", "standby", "version",
 		}
 		for _, expectedField := range expected {

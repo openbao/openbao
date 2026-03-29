@@ -137,7 +137,7 @@ func PrintRaw(ui cli.Ui, str string) int {
 		// The cli.Ui prints a CR, which is not wanted since the user probably wants
 		// just the raw value.
 		w := getWriterFromUI(ui)
-		fmt.Fprint(w, str)
+		_, _ = fmt.Fprint(w, str)
 	}
 	return 0
 }

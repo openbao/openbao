@@ -62,12 +62,6 @@ func TestParseStorage(t *testing.T) {
 	testParseStorageTemplate(t)
 }
 
-// TestConfigWithAdministrativeNamespace tests that .hcl and .json configurations are correctly parsed when the administrative_namespace_path is present.
-func TestConfigWithAdministrativeNamespace(t *testing.T) {
-	testConfigWithAdministrativeNamespaceHcl(t)
-	testConfigWithAdministrativeNamespaceJson(t)
-}
-
 func TestUnknownFieldValidation(t *testing.T) {
 	testUnknownFieldValidation(t)
 }
@@ -160,4 +154,12 @@ func TestLoadConfigFile_IgnoreDuplicates(t *testing.T) {
 			require.NotNil(t, config, "expected tc %v to yield non-nil config", tc.name)
 		}
 	}
+}
+
+func TestLoadConfigFile_topLevel(t *testing.T) {
+	testLoadConfigFile_topLevel(t)
+}
+
+func TestLoadConfigFile_json2(t *testing.T) {
+	testLoadConfigFile_json2(t)
 }

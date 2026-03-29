@@ -99,15 +99,13 @@ func (d databaseVersionWrapper) NewUser(ctx context.Context, req v5.NewUserReque
 	}
 
 	// v4 Database
-	stmts := v4.Statements{
+	username, password, err := d.v4.CreateUser(ctx, v4.Statements{
 		Creation: req.Statements.Commands,
 		Rollback: req.RollbackStatements.Commands,
-	}
-	usernameConfig := v4.UsernameConfig{
+	}, v4.UsernameConfig{
 		DisplayName: req.UsernameConfig.DisplayName,
 		RoleName:    req.UsernameConfig.RoleName,
-	}
-	username, password, err := d.v4.CreateUser(ctx, stmts, usernameConfig, req.Expiration)
+	}, req.Expiration)
 	if err != nil {
 		return resp, "", err
 	}
@@ -149,10 +147,9 @@ func (d databaseVersionWrapper) UpdateUser(ctx context.Context, req v5.UpdateUse
 
 	// Change expiration date
 	if req.Expiration != nil {
-		stmts := v4.Statements{
+		err := d.v4.RenewUser(ctx, v4.Statements{
 			Renewal: req.Expiration.Statements.Commands,
-		}
-		err := d.v4.RenewUser(ctx, stmts, req.Username, req.Expiration.NewExpiration)
+		}, req.Username, req.Expiration.NewExpiration)
 		return nil, err
 	}
 	return nil, nil
@@ -179,14 +176,12 @@ func (d databaseVersionWrapper) changePasswordLegacy(ctx context.Context, userna
 }
 
 func (d databaseVersionWrapper) changeUserPasswordLegacy(ctx context.Context, username string, passwordChange *v5.ChangePassword) (err error) {
-	stmts := v4.Statements{
+	_, _, err = d.v4.SetCredentials(ctx, v4.Statements{
 		Rotation: passwordChange.Statements.Commands,
-	}
-	staticConfig := v4.StaticUserConfig{
+	}, v4.StaticUserConfig{
 		Username: username,
 		Password: passwordChange.NewPassword,
-	}
-	_, _, err = d.v4.SetCredentials(ctx, stmts, staticConfig)
+	})
 	return err
 }
 
@@ -206,10 +201,9 @@ func (d databaseVersionWrapper) DeleteUser(ctx context.Context, req v5.DeleteUse
 	}
 
 	// v4 Database
-	stmts := v4.Statements{
+	err := d.v4.RevokeUser(ctx, v4.Statements{
 		Revocation: req.Statements.Commands,
-	}
-	err := d.v4.RevokeUser(ctx, stmts, req.Username)
+	}, req.Username)
 	return v5.DeleteUserResponse{}, err
 }
 

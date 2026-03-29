@@ -7,7 +7,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/fatih/structs"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -85,14 +84,17 @@ func (b *backend) pathLeaseRead(ctx context.Context, req *logical.Request, data 
 	lease.MaxTTL = lease.MaxTTL / time.Second
 
 	return &logical.Response{
-		Data: structs.New(lease).Map(),
+		Data: map[string]any{
+			"ttl":     lease.TTL,
+			"max_ttl": lease.MaxTTL,
+		},
 	}, nil
 }
 
 // Lease configuration information for the secrets issued by this backend
 type configLease struct {
-	TTL    time.Duration `json:"ttl" structs:"ttl" mapstructure:"ttl"`
-	MaxTTL time.Duration `json:"max_ttl" structs:"max_ttl" mapstructure:"max_ttl"`
+	TTL    time.Duration `json:"ttl" mapstructure:"ttl"`
+	MaxTTL time.Duration `json:"max_ttl" mapstructure:"max_ttl"`
 }
 
 var pathConfigLeaseHelpSyn = "Configure the lease parameters for generated credentials"

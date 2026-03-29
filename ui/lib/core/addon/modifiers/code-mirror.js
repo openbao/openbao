@@ -18,54 +18,58 @@ import 'codemirror/mode/ruby/ruby';
 import 'codemirror/mode/javascript/javascript';
 
 export default class CodeMirrorModifier extends Modifier {
-  didInstall() {
-    this._setup();
-  }
+  named = null;
 
-  didUpdateArguments() {
-    this._editor.setOption('readOnly', this.args.named.readOnly);
-    if (!this.args.named.content) {
+  modify(element, positional, named) {
+    this.named = named;
+    if (this._editor == null) {
+      this._setup(element, named);
       return;
     }
-    if (this._editor.getValue() !== this.args.named.content) {
-      this._editor.setValue(this.args.named.content);
+
+    this._editor.setOption('readOnly', named.readOnly);
+    if (!named.content) {
+      return;
+    }
+    if (this._editor.getValue() !== named.content) {
+      this._editor.setValue(named.content);
     }
   }
 
   @action
   _onChange(editor) {
     // avoid sending change event after initial setup when editor value is set to content
-    if (this.args.named.content !== editor.getValue()) {
-      this.args.named.onUpdate(editor.getValue(), this._editor);
+    if (this.named.content !== editor.getValue()) {
+      this.named.onUpdate(editor.getValue(), this._editor);
     }
   }
 
   @action
   _onFocus(editor) {
-    this.args.named.onFocus(editor.getValue());
+    this.named.onFocus(editor.getValue());
   }
 
-  _setup() {
-    if (!this.element) {
+  _setup(element, named) {
+    if (!element) {
       throw new Error('CodeMirror modifier has no element');
     }
-    const editor = codemirror(this.element, {
+    const editor = codemirror(element, {
       // IMPORTANT: `gutters` must come before `lint` since the presence of
       // `gutters` is cached internally when `lint` is toggled
-      gutters: this.args.named.gutters || ['CodeMirror-lint-markers'],
+      gutters: named.gutters || ['CodeMirror-lint-markers'],
       matchBrackets: true,
       lint: { lintOnChange: true },
       showCursorWhenSelecting: true,
       styleActiveLine: true,
       tabSize: 2,
       // all values we can pass into the JsonEditor
-      extraKeys: this.args.named.extraKeys || '',
-      lineNumbers: this.args.named.lineNumbers,
-      mode: this.args.named.mode || 'application/json',
-      readOnly: this.args.named.readOnly || false,
-      theme: this.args.named.theme || 'hashi',
-      value: this.args.named.content || '',
-      viewportMargin: this.args.named.viewportMargin || '',
+      extraKeys: named.extraKeys || '',
+      lineNumbers: named.lineNumbers,
+      mode: named.mode || 'application/json',
+      readOnly: named.readOnly || false,
+      theme: named.theme || 'hashi',
+      value: named.content || '',
+      viewportMargin: named.viewportMargin || '',
     });
 
     editor.on('change', bind(this, this._onChange));

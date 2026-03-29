@@ -1,0 +1,70 @@
+From 23c88bdf908f8068c7dfb17932200ef5d1d5c0e3 Mon Sep 17 00:00:00 2001
+From: "dependabot[bot]" <49699333+dependabot[bot]@users.noreply.github.com>
+Date: Wed, 10 Sep 2025 23:26:29 +0200
+Subject: [PATCH 01/22] Bump @types/shell-quote from 1.7.1 to 1.7.5 in /ui
+ (#1274)
+
+Bumps [@types/shell-quote](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/HEAD/types/shell-quote) from 1.7.1 to 1.7.5.
+- [Release notes](https://github.com/DefinitelyTyped/DefinitelyTyped/releases)
+- [Commits](https://github.com/DefinitelyTyped/DefinitelyTyped/commits/HEAD/types/shell-quote)
+
+---
+updated-dependencies:
+- dependency-name: "@types/shell-quote"
+  dependency-version: 1.7.5
+  dependency-type: direct:development
+  update-type: version-update:semver-patch
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/package.json |  2 +-
+ ui/yarn.lock    | 10 +++++-----
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/ui/package.json b/ui/package.json
+index 9e28845..03bba26 100644
+--- a/ui/package.json
++++ b/ui/package.json
+@@ -93,7 +93,7 @@
+     "@types/ember__utils": "^4.0.2",
+     "@types/qunit": "^2.19.12",
+     "@types/rsvp": "^4.0.9",
+-    "@types/shell-quote": "^1.7.1",
++    "@types/shell-quote": "^1.7.5",
+     "asn1js": "^2.2.0",
+     "autosize": "^6.0.1",
+     "babel-plugin-inline-json-import": "^0.3.2",
+diff --git a/ui/yarn.lock b/ui/yarn.lock
+index 53c5165..7c15a9b 100644
+--- a/ui/yarn.lock
++++ b/ui/yarn.lock
+@@ -7390,10 +7390,10 @@ __metadata:
+   languageName: node
+   linkType: hard
+ 
+-"@types/shell-quote@npm:^1.7.1":
+-  version: 1.7.1
+-  resolution: "@types/shell-quote@npm:1.7.1"
+-  checksum: 51e58326b8c6dcb72846b94cebe3dc4c84f3514469a8e52bd29c52c601e784b427b851d7477acbeef47bfcccf25d2a5768684d27e7fc95fdd003393c1bbb7bc3
++"@types/shell-quote@npm:^1.7.5":
++  version: 1.7.5
++  resolution: "@types/shell-quote@npm:1.7.5"
++  checksum: 32b4d697c7d23dbadf40713692c47f1595f083a3b3deea76cb18e30a05d197aa9205d2b87f6d92edb60cda120b51e35d32bda96ed9b0a7e32921eed2deb4559e
+   languageName: node
+   linkType: hard
+ 
+@@ -28089,7 +28089,7 @@ __metadata:
+     "@types/ember__utils": ^4.0.2
+     "@types/qunit": ^2.19.12
+     "@types/rsvp": ^4.0.9
+-    "@types/shell-quote": ^1.7.1
++    "@types/shell-quote": ^1.7.5
+     asn1js: ^2.2.0
+     autosize: ^6.0.1
+     babel-plugin-inline-json-import: ^0.3.2
+-- 
+2.43.0
+

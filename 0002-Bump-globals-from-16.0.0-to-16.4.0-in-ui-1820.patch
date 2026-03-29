@@ -1,0 +1,69 @@
+From 27c2fdc68202e8b9469a06fad48097d810049828 Mon Sep 17 00:00:00 2001
+From: "dependabot[bot]" <49699333+dependabot[bot]@users.noreply.github.com>
+Date: Mon, 15 Sep 2025 21:06:42 +0200
+Subject: [PATCH 02/22] Bump globals from 16.0.0 to 16.4.0 in /ui (#1820)
+
+Bumps [globals](https://github.com/sindresorhus/globals) from 16.0.0 to 16.4.0.
+- [Release notes](https://github.com/sindresorhus/globals/releases)
+- [Commits](https://github.com/sindresorhus/globals/compare/v16.0.0...v16.4.0)
+
+---
+updated-dependencies:
+- dependency-name: globals
+  dependency-version: 16.4.0
+  dependency-type: direct:development
+  update-type: version-update:semver-minor
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/package.json |  2 +-
+ ui/yarn.lock    | 10 +++++-----
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/ui/package.json b/ui/package.json
+index 03bba26..d40f308 100644
+--- a/ui/package.json
++++ b/ui/package.json
+@@ -173,7 +173,7 @@
+     "eslint-plugin-qunit": "^8.1.2",
+     "filesize": "^4.2.1",
+     "flat": "^6.0.1",
+-    "globals": "^16.0.0",
++    "globals": "^16.4.0",
+     "jsondiffpatch": "^0.4.1",
+     "jsonlint": "^1.6.3",
+     "lint-staged": "^15.4.1",
+diff --git a/ui/yarn.lock b/ui/yarn.lock
+index 7c15a9b..b9787db 100644
+--- a/ui/yarn.lock
++++ b/ui/yarn.lock
+@@ -18458,10 +18458,10 @@ __metadata:
+   languageName: node
+   linkType: hard
+ 
+-"globals@npm:^16.0.0":
+-  version: 16.0.0
+-  resolution: "globals@npm:16.0.0"
+-  checksum: 41df1cb6f86c36dfdf8fb6c270247105c85cc3aec8d8238c5e691b0d2aad9eed8ff390d1035f4b5a27ee24bf75b095c7b84717e9d2050d2122e61f37d9c6131a
++"globals@npm:^16.4.0":
++  version: 16.4.0
++  resolution: "globals@npm:16.4.0"
++  checksum: 934180f5c6cbb26f8b2832caa255050fface970eee45bde8757fabba384807c85640a12716aa5bcc47d781807839fee470c8c1f6159c6b8dc877668c56103880
+   languageName: node
+   linkType: hard
+ 
+@@ -28169,7 +28169,7 @@ __metadata:
+     eslint-plugin-qunit: ^8.1.2
+     filesize: ^4.2.1
+     flat: ^6.0.1
+-    globals: ^16.0.0
++    globals: ^16.4.0
+     handlebars: 4.7.8
+     highlight.js: ^11.11.1
+     jsondiffpatch: ^0.4.1
+-- 
+2.43.0
+

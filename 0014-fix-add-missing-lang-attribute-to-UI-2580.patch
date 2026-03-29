@@ -1,0 +1,31 @@
+From 8165ed4d60abece589ec046bed1371436850fc4a Mon Sep 17 00:00:00 2001
+From: Lukas Grossar <lukas.grossar@adfinis.com>
+Date: Wed, 4 Mar 2026 20:49:23 +0100
+Subject: [PATCH 14/22] fix: add missing lang attribute to UI (#2580)
+
+Signed-off-by: Lukas Grossar <lukas.grossar@adfinis.com>
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/app/index.html | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/ui/app/index.html b/ui/app/index.html
+index 00d1376..9ab6926 100644
+--- a/ui/app/index.html
++++ b/ui/app/index.html
+@@ -1,10 +1,10 @@
+-<!DOCTYPE html lang="en">
++<!DOCTYPE html>
+ <!--
+  Copyright (c) HashiCorp, Inc.
+  SPDX-License-Identifier: MPL-2.0
+ -->
+ 
+-<html>
++<html lang="en">
+   <head>
+     <meta charset="utf-8">
+     <meta http-equiv="cache-control" content="no-store" />
+-- 
+2.43.0
+

@@ -1,0 +1,45 @@
+From d35ebb55ec6ac7e4c4c87c5db38fa417991a2f61 Mon Sep 17 00:00:00 2001
+From: Jan Martens <44572196+JanMa@users.noreply.github.com>
+Date: Fri, 31 Oct 2025 13:49:41 +0100
+Subject: [PATCH 06/22] display Bao logo on UI error page (#2042)
+
+Also adjust CSS so the logo is displayed nicer on the login and error page
+
+Signed-off-by: Jan Martens <jan@martens.eu.org>
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/app/styles/components/icon.scss | 3 ++-
+ ui/app/templates/vault/error.hbs   | 2 +-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/ui/app/styles/components/icon.scss b/ui/app/styles/components/icon.scss
+index c3544da..337932d 100644
+--- a/ui/app/styles/components/icon.scss
++++ b/ui/app/styles/components/icon.scss
+@@ -84,8 +84,9 @@
+ 
+ .brand-icon-large,
+ .brand-icon-large span {
+-  width: 62px;
++  width: 124px;
+   height: 62px;
++  margin: 0;
+ }
+ 
+ .error-icon {
+diff --git a/ui/app/templates/vault/error.hbs b/ui/app/templates/vault/error.hbs
+index fcb357c..db2d571 100644
+--- a/ui/app/templates/vault/error.hbs
++++ b/ui/app/templates/vault/error.hbs
+@@ -2,7 +2,7 @@
+   <div class="empty-state-content">
+     <div class="is-flex-v-centered has-bottom-margin-xxl">
+       <div class="brand-icon-large">
+-        <Icon @name="vault" @size="24" @stretched={{true}} />
++        <Icon @name="openbao" @size="24" @stretched={{true}} />
+       </div>
+     </div>
+     <div class="is-flex-center">
+-- 
+2.43.0
+

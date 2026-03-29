@@ -1,0 +1,1276 @@
+From 27faacdcad6e4a8a518f146fc076f9f053ee5fbb Mon Sep 17 00:00:00 2001
+From: Wojciech Slabosz <wojciech.slabosz@sap.com>
+Date: Tue, 4 Nov 2025 18:28:15 +0100
+Subject: [PATCH 07/22] Remove Enterprise license and feature_flag references 
+ (#2045)
+
+* removal: removed enterprise license mention and feature flag usage
+
+Signed-off-by: Wojciech Slabosz <wojciech.slabosz@sap.com>
+
+* changelog added
+
+Signed-off-by: Wojciech Slabosz <wojciech.slabosz@sap.com>
+
+* removal: additional enterprise license refs removed
+
+Signed-off-by: Wojciech Slabosz <wojciech.slabosz@sap.com>
+
+---------
+
+Signed-off-by: Wojciech Slabosz <wojciech.slabosz@sap.com>
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/Makefile                                   |  2 +-
+ ui/README.md                                  |  4 +-
+ ui/app/adapters/cluster.js                    | 18 +---
+ ui/app/adapters/license.js                    | 12 ---
+ ui/app/components/auth-jwt.js                 |  3 +-
+ ui/app/components/sidebar/nav/cluster.hbs     |  2 +-
+ ui/app/controllers/vault/cluster/auth.js      | 21 -----
+ ui/app/helpers/all-features.js                | 24 ------
+ ui/app/router.js                              |  7 +-
+ ui/app/routes/application.js                  | 12 ---
+ ui/app/routes/vault/cluster.js                | 12 ---
+ .../cluster/access/control-group-accessor.js  |  6 --
+ .../access/control-groups-configure.js        |  6 --
+ .../vault/cluster/access/control-groups.js    |  6 --
+ .../vault/cluster/access/namespaces/create.js |  6 --
+ .../vault/cluster/access/namespaces/index.js  |  7 --
+ ui/app/routes/vault/cluster/auth.js           |  5 --
+ ui/app/routes/vault/cluster/license.js        | 23 ------
+ ui/app/routes/vault/cluster/policies.js       |  6 --
+ ui/app/routes/vault/cluster/policy.js         |  5 --
+ ui/app/services/control-group.js              |  4 -
+ ui/app/services/feature-flag.js               | 24 ------
+ ui/app/services/permissions.js                |  1 -
+ ui/app/services/version.js                    | 36 +-------
+ ui/app/templates/vault/cluster/auth.hbs       | 82 ++++++-------------
+ .../open-api-explorer/config/environment.js   |  2 +-
+ .../page/pki-configuration-details.ts         |  4 -
+ .../components/page/pki-configuration-edit.ts |  4 -
+ .../addon/components/page/pki-tidy-status.ts  |  4 -
+ ui/mirage/factories/feature.js                | 12 ---
+ ui/mirage/handlers/base.js                    | 34 --------
+ ui/mirage/handlers/clients.js                 | 15 +---
+ ui/mirage/models/feature.js                   | 10 ---
+ ui/mirage/scenarios/default.js                |  2 -
+ ui/package.json                               |  2 -
+ ui/tests/acceptance/init-test.js              |  1 -
+ ui/tests/acceptance/raft-storage-test.js      |  1 -
+ ui/tests/helpers/components/sidebar-nav.js    | 10 +--
+ .../components/sidebar/nav/access-test.js     |  6 +-
+ .../components/sidebar/nav/cluster-test.js    |  6 +-
+ .../components/sidebar/nav/policies-test.js   |  4 +-
+ .../components/sidebar/nav/tools-test.js      |  4 +-
+ ui/tests/unit/services/control-group-test.js  | 20 ++---
+ ui/tests/unit/services/feature-flag-test.js   | 29 -------
+ ui/tests/unit/services/version-test.js        | 18 ----
+ 45 files changed, 59 insertions(+), 463 deletions(-)
+ delete mode 100644 ui/app/adapters/license.js
+ delete mode 100644 ui/app/helpers/all-features.js
+ delete mode 100644 ui/app/routes/vault/cluster/license.js
+ delete mode 100644 ui/app/services/feature-flag.js
+ delete mode 100644 ui/mirage/factories/feature.js
+ delete mode 100644 ui/mirage/models/feature.js
+ delete mode 100644 ui/tests/unit/services/feature-flag-test.js
+ delete mode 100644 ui/tests/unit/services/version-test.js
+
+diff --git a/ui/Makefile b/ui/Makefile
+index 366e89a..65ce2ad 100644
+--- a/ui/Makefile
++++ b/ui/Makefile
+@@ -8,7 +8,7 @@ backend:
+ 
+ .PHONY: test
+ test:
+-	yarn run test:oss
++	yarn run test
+ 
+ .PHONY: check
+ check: test
+diff --git a/ui/README.md b/ui/README.md
+index 0e78a3f..7b6e61d 100644
+--- a/ui/README.md
++++ b/ui/README.md
+@@ -98,8 +98,8 @@ Running tests will spin up a Vault dev server on port 9200 via a
+ pretest script that testem (the test runner) executes. All of the
+ acceptance tests then run, proxing requests back to that server.
+ 
+-- `yarn run test:oss`
+-- `yarn run test:oss -s` to keep the test server running after the initial run.
++- `yarn run test`
++- `yarn run test -s` to keep the test server running after the initial run.
+ - `yarn run test -f="policies"` to filter the tests that are run. `-f` gets passed into
+   [QUnit's `filter` config](https://api.qunitjs.com/config/QUnit.config#qunitconfigfilter-string--default-undefined)
+ 
+diff --git a/ui/app/adapters/cluster.js b/ui/app/adapters/cluster.js
+index 36d2705..7180e7b 100644
+--- a/ui/app/adapters/cluster.js
++++ b/ui/app/adapters/cluster.js
+@@ -11,17 +11,7 @@ import { pluralize } from 'ember-inflector';
+ 
+ import ApplicationAdapter from './application';
+ 
+-const ENDPOINTS = [
+-  'health',
+-  'seal-status',
+-  'tokens',
+-  'token',
+-  'seal',
+-  'unseal',
+-  'init',
+-  'capabilities-self',
+-  'license',
+-];
++const ENDPOINTS = ['health', 'seal-status', 'tokens', 'token', 'seal', 'unseal', 'init', 'capabilities-self'];
+ 
+ export default ApplicationAdapter.extend({
+   namespaceService: service('namespace'),
+@@ -64,12 +54,6 @@ export default ApplicationAdapter.extend({
+     });
+   },
+ 
+-  features() {
+-    return this.ajax(`${this.urlFor('license')}/features`, 'GET', {
+-      unauthenticated: true,
+-    });
+-  },
+-
+   sealStatus() {
+     return this.ajax(this.urlFor('seal-status'), 'GET', { unauthenticated: true });
+   },
+diff --git a/ui/app/adapters/license.js b/ui/app/adapters/license.js
+deleted file mode 100644
+index 12db6b0..0000000
+--- a/ui/app/adapters/license.js
++++ /dev/null
+@@ -1,12 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import ClusterAdapter from './cluster';
+-
+-export default ClusterAdapter.extend({
+-  pathForType() {
+-    return 'license/status';
+-  },
+-});
+diff --git a/ui/app/components/auth-jwt.js b/ui/app/components/auth-jwt.js
+index ec4c7b2..d71392c 100644
+--- a/ui/app/components/auth-jwt.js
++++ b/ui/app/components/auth-jwt.js
+@@ -21,7 +21,6 @@ export { ERROR_WINDOW_CLOSED, ERROR_MISSING_PARAMS, ERROR_JWT_LOGIN };
+ 
+ export default Component.extend({
+   store: service(),
+-  featureFlagService: service('featureFlag'),
+ 
+   selectedAuthPath: null,
+   selectedAuthType: null,
+@@ -142,7 +141,7 @@ export default Component.extend({
+     // The namespace can be either be passed as a query parameter, or be embedded
+     // in the state param in the format `<state_id>,ns=<namespace>`. So if
+     // `namespace` is empty, check for namespace in state as well.
+-    if (namespace === '' || this.featureFlagService.managedNamespaceRoot) {
++    if (namespace === '') {
+       const i = state.indexOf(',ns=');
+       if (i >= 0) {
+         // ",ns=" is 4 characters
+diff --git a/ui/app/components/sidebar/nav/cluster.hbs b/ui/app/components/sidebar/nav/cluster.hbs
+index 7a94db9..ba416df 100644
+--- a/ui/app/components/sidebar/nav/cluster.hbs
++++ b/ui/app/components/sidebar/nav/cluster.hbs
+@@ -36,7 +36,7 @@
+     />
+   {{/if}}
+ 
+-  {{#if (and this.namespace.inRootNamespace (has-permission "status" routeParams=(array "raft" "license" "seal")))}}
++  {{#if (and this.namespace.inRootNamespace (has-permission "status" routeParams=(array "raft" "seal")))}}
+     <Nav.Title data-test-sidebar-nav-heading="Monitoring">Monitoring</Nav.Title>
+   {{/if}}
+   {{#if (and this.cluster.usingRaft this.namespace.inRootNamespace (has-permission "status" routeParams="raft"))}}
+diff --git a/ui/app/controllers/vault/cluster/auth.js b/ui/app/controllers/vault/cluster/auth.js
+index 9095f49..406dd92 100644
+--- a/ui/app/controllers/vault/cluster/auth.js
++++ b/ui/app/controllers/vault/cluster/auth.js
+@@ -13,36 +13,15 @@ export default Controller.extend({
+   vaultController: controller('vault'),
+   clusterController: controller('vault.cluster'),
+   namespaceService: service('namespace'),
+-  featureFlagService: service('featureFlag'),
+   auth: service(),
+   router: service(),
+   queryParams: [{ authMethod: 'with', oidcProvider: 'o' }],
+   namespaceQueryParam: alias('clusterController.namespaceQueryParam'),
+   wrappedToken: alias('vaultController.wrappedToken'),
+   redirectTo: alias('vaultController.redirectTo'),
+-  managedNamespaceRoot: alias('featureFlagService.managedNamespaceRoot'),
+   authMethod: '',
+   oidcProvider: '',
+ 
+-  get managedNamespaceChild() {
+-    const fullParam = this.namespaceQueryParam;
+-    const split = fullParam.split('/');
+-    if (split.length > 1) {
+-      split.shift();
+-      return `/${split.join('/')}`;
+-    }
+-    return '';
+-  },
+-
+-  updateManagedNamespace: task(function* (value) {
+-    // debounce
+-    yield timeout(500);
+-    // TODO: Move this to shared fn
+-    const newNamespace = `${this.managedNamespaceRoot}${value}`;
+-    this.namespaceService.setNamespace(newNamespace, true);
+-    this.set('namespaceQueryParam', newNamespace);
+-  }).restartable(),
+-
+   updateNamespace: task(function* (value) {
+     // debounce
+     yield timeout(500);
+diff --git a/ui/app/helpers/all-features.js b/ui/app/helpers/all-features.js
+deleted file mode 100644
+index 2d8dee8..0000000
+--- a/ui/app/helpers/all-features.js
++++ /dev/null
+@@ -1,24 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { helper as buildHelper } from '@ember/component/helper';
+-
+-const ALL_FEATURES = [
+-  'HSM',
+-  'MFA',
+-  'Seal Wrapping',
+-  'Control Groups',
+-  'Performance Standby',
+-  'Namespaces',
+-  'KMIP',
+-  'Entropy Augmentation',
+-  'Transform Secrets Engine',
+-];
+-
+-export function allFeatures() {
+-  return ALL_FEATURES;
+-}
+-
+-export default buildHelper(allFeatures);
+diff --git a/ui/app/router.js b/ui/app/router.js
+index 77a9bf6..25b4f68 100644
+--- a/ui/app/router.js
++++ b/ui/app/router.js
+@@ -22,7 +22,6 @@ Router.map(function () {
+       this.route('init');
+       this.route('logout');
+       this.mount('open-api-explorer', { path: '/api-explorer' });
+-      this.route('license');
+       this.route('mfa-setup');
+       this.route('storage', { path: '/storage/raft' });
+       this.route('storage-restore', { path: '/storage/raft/restore' });
+@@ -101,9 +100,9 @@ Router.map(function () {
+             this.route('show', { path: '/:item_alias_id/:section' });
+           });
+         });
+-        this.route('control-groups');
+-        this.route('control-groups-configure', { path: '/control-groups/configure' });
+-        this.route('control-group-accessor', { path: '/control-groups/:accessor' });
++        // this.route('control-groups');
++        // this.route('control-groups-configure', { path: '/control-groups/configure' });
++        // this.route('control-group-accessor', { path: '/control-groups/:accessor' });
+         this.route('namespaces', function () {
+           this.route('index', { path: '/' });
+           this.route('create');
+diff --git a/ui/app/routes/application.js b/ui/app/routes/application.js
+index 28cf09b..5d2c810 100644
+--- a/ui/app/routes/application.js
++++ b/ui/app/routes/application.js
+@@ -11,7 +11,6 @@ export default Route.extend({
+   controlGroup: service(),
+   routing: service('router'),
+   namespaceService: service('namespace'),
+-  featureFlagService: service('featureFlag'),
+ 
+   actions: {
+     willTransition() {
+@@ -64,15 +63,4 @@ export default Route.extend({
+       return true;
+     },
+   },
+-
+-  async beforeModel() {
+-    const result = await fetch('/v1/sys/internal/ui/feature-flags', {
+-      method: 'GET',
+-    });
+-    if (result.status === 200) {
+-      const body = await result.json();
+-      const flags = body.feature_flags || [];
+-      this.featureFlagService.setFeatureFlags(flags);
+-    }
+-  },
+ });
+diff --git a/ui/app/routes/vault/cluster.js b/ui/app/routes/vault/cluster.js
+index 6a2dd6f..10a2e27 100644
+--- a/ui/app/routes/vault/cluster.js
++++ b/ui/app/routes/vault/cluster.js
+@@ -32,7 +32,6 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
+   permissions: service(),
+   store: service(),
+   auth: service(),
+-  featureFlagService: service('featureFlag'),
+   currentCluster: service(),
+   modelTypes: computed(function () {
+     return ['node', 'secret', 'secret-engine'];
+@@ -54,11 +53,6 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
+     const params = this.paramsFor(this.routeName);
+     let namespace = params.namespaceQueryParam;
+     const currentTokenName = this.auth.get('currentTokenName');
+-    const managedRoot = this.featureFlagService.managedNamespaceRoot;
+-    if (managedRoot && this.version.isOSS) {
+-      // eslint-disable-next-line no-console
+-      console.error('Cannot use Cloud Admin Namespace flag with OpenBao');
+-    }
+     if (!namespace && currentTokenName && !Ember.testing) {
+       // if no namespace queryParam and user authenticated,
+       // use user's root namespace to redirect to properly param'd url
+@@ -68,11 +62,6 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
+       if (namespace) {
+         this.transitionTo({ queryParams: { namespace } });
+       }
+-    } else if (managedRoot !== null) {
+-      const managed = getManagedNamespace(namespace, managedRoot);
+-      if (managed !== namespace) {
+-        this.transitionTo({ queryParams: { namespace: managed } });
+-      }
+     }
+     this.namespaceService.setNamespace(namespace);
+     const id = this.getClusterId(params);
+@@ -81,7 +70,6 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
+       if (this.auth.currentToken) {
+         await this.permissions.getPaths.perform();
+       }
+-      return this.version.fetchFeatures();
+     } else {
+       return reject({ httpStatus: 404, message: 'not found', path: params.cluster_name });
+     }
+diff --git a/ui/app/routes/vault/cluster/access/control-group-accessor.js b/ui/app/routes/vault/cluster/access/control-group-accessor.js
+index a4c28ed..8ff9e6d 100644
+--- a/ui/app/routes/vault/cluster/access/control-group-accessor.js
++++ b/ui/app/routes/vault/cluster/access/control-group-accessor.js
+@@ -11,12 +11,6 @@ export default Route.extend(UnloadModel, {
+   store: service(),
+   version: service(),
+ 
+-  beforeModel() {
+-    return this.version.fetchFeatures().then(() => {
+-      return this._super(...arguments);
+-    });
+-  },
+-
+   model(params) {
+     return this.version.hasControlGroups ? this.store.findRecord('control-group', params.accessor) : null;
+   },
+diff --git a/ui/app/routes/vault/cluster/access/control-groups-configure.js b/ui/app/routes/vault/cluster/access/control-groups-configure.js
+index 177f223..437b81a 100644
+--- a/ui/app/routes/vault/cluster/access/control-groups-configure.js
++++ b/ui/app/routes/vault/cluster/access/control-groups-configure.js
+@@ -11,12 +11,6 @@ export default Route.extend(UnloadModel, {
+   store: service(),
+   version: service(),
+ 
+-  beforeModel() {
+-    return this.version.fetchFeatures().then(() => {
+-      return this._super(...arguments);
+-    });
+-  },
+-
+   model() {
+     const type = 'control-group-config';
+     return this.version.hasControlGroups
+diff --git a/ui/app/routes/vault/cluster/access/control-groups.js b/ui/app/routes/vault/cluster/access/control-groups.js
+index c2f4380..84dc756 100644
+--- a/ui/app/routes/vault/cluster/access/control-groups.js
++++ b/ui/app/routes/vault/cluster/access/control-groups.js
+@@ -11,12 +11,6 @@ export default Route.extend(UnloadModel, {
+   store: service(),
+   version: service(),
+ 
+-  beforeModel() {
+-    return this.version.fetchFeatures().then(() => {
+-      return this._super(...arguments);
+-    });
+-  },
+-
+   model() {
+     return this.version.hasControlGroups ? this.store.createRecord('control-group') : null;
+   },
+diff --git a/ui/app/routes/vault/cluster/access/namespaces/create.js b/ui/app/routes/vault/cluster/access/namespaces/create.js
+index ac91a28..9d956d2 100644
+--- a/ui/app/routes/vault/cluster/access/namespaces/create.js
++++ b/ui/app/routes/vault/cluster/access/namespaces/create.js
+@@ -11,12 +11,6 @@ export default class CreateRoute extends Route.extend(UnloadModel) {
+   @service store;
+   @service version;
+ 
+-  beforeModel() {
+-    return this.version.fetchFeatures().then(() => {
+-      return super.beforeModel(...arguments);
+-    });
+-  }
+-
+   model() {
+     return this.store.createRecord('namespace');
+   }
+diff --git a/ui/app/routes/vault/cluster/access/namespaces/index.js b/ui/app/routes/vault/cluster/access/namespaces/index.js
+index 4e0955d..abcf5ec 100644
+--- a/ui/app/routes/vault/cluster/access/namespaces/index.js
++++ b/ui/app/routes/vault/cluster/access/namespaces/index.js
+@@ -18,13 +18,6 @@ export default Route.extend(UnloadModel, {
+ 
+   version: service(),
+ 
+-  beforeModel() {
+-    this.store.unloadAll('namespace');
+-    return this.version.fetchFeatures().then(() => {
+-      return this._super(...arguments);
+-    });
+-  },
+-
+   model(params) {
+     return this.store
+       .lazyPaginatedQuery('namespace', {
+diff --git a/ui/app/routes/vault/cluster/auth.js b/ui/app/routes/vault/cluster/auth.js
+index fa9866e..9bb054d 100644
+--- a/ui/app/routes/vault/cluster/auth.js
++++ b/ui/app/routes/vault/cluster/auth.js
+@@ -15,11 +15,6 @@ export default ClusterRouteBase.extend({
+   },
+   flashMessages: service(),
+   version: service(),
+-  beforeModel() {
+-    return this._super().then(() => {
+-      return this.version.fetchFeatures();
+-    });
+-  },
+   model() {
+     return this._super(...arguments);
+   },
+diff --git a/ui/app/routes/vault/cluster/license.js b/ui/app/routes/vault/cluster/license.js
+deleted file mode 100644
+index a295df6..0000000
+--- a/ui/app/routes/vault/cluster/license.js
++++ /dev/null
+@@ -1,23 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import Route from '@ember/routing/route';
+-import ClusterRoute from 'vault/mixins/cluster-route';
+-import { inject as service } from '@ember/service';
+-
+-export default Route.extend(ClusterRoute, {
+-  store: service(),
+-  version: service(),
+-
+-  beforeModel() {
+-    if (this.version.isOSS) {
+-      this.transitionTo('vault.cluster');
+-    }
+-  },
+-
+-  model() {
+-    return this.store.queryRecord('license', {});
+-  },
+-});
+diff --git a/ui/app/routes/vault/cluster/policies.js b/ui/app/routes/vault/cluster/policies.js
+index aead6a4..71dc683 100644
+--- a/ui/app/routes/vault/cluster/policies.js
++++ b/ui/app/routes/vault/cluster/policies.js
+@@ -12,12 +12,6 @@ const ALLOWED_TYPES = ['acl', 'egp', 'rgp'];
+ export default Route.extend(ClusterRoute, {
+   version: service(),
+ 
+-  beforeModel() {
+-    return this.version.fetchFeatures().then(() => {
+-      return this._super(...arguments);
+-    });
+-  },
+-
+   model(params) {
+     const policyType = params.type;
+     if (!ALLOWED_TYPES.includes(policyType)) {
+diff --git a/ui/app/routes/vault/cluster/policy.js b/ui/app/routes/vault/cluster/policy.js
+index b81c5cf..dd8de14 100644
+--- a/ui/app/routes/vault/cluster/policy.js
++++ b/ui/app/routes/vault/cluster/policy.js
+@@ -11,11 +11,6 @@ const ALLOWED_TYPES = ['acl', 'egp', 'rgp'];
+ 
+ export default Route.extend(ClusterRoute, {
+   version: service(),
+-  beforeModel() {
+-    return this.version.fetchFeatures().then(() => {
+-      return this._super(...arguments);
+-    });
+-  },
+   model(params) {
+     const policyType = params.type;
+     if (!ALLOWED_TYPES.includes(policyType)) {
+diff --git a/ui/app/services/control-group.js b/ui/app/services/control-group.js
+index 413e34a..a4b05ff 100644
+--- a/ui/app/services/control-group.js
++++ b/ui/app/services/control-group.js
+@@ -68,9 +68,6 @@ export default Service.extend({
+   },
+ 
+   tokenForUrl(url) {
+-    if (this.version.isOSS) {
+-      return null;
+-    }
+     let pathForUrl = parseURL(url).pathname;
+     pathForUrl = pathForUrl.replace('/v1/', '');
+     const tokenInfo = this.tokenToUnwrap;
+@@ -84,7 +81,6 @@ export default Service.extend({
+   checkForControlGroup(callbackArgs, response, wasWrapTTLRequested) {
+     const creationPath = response && response?.wrap_info?.creation_path;
+     if (
+-      this.version.isOSS ||
+       wasWrapTTLRequested ||
+       !response ||
+       (creationPath && WRAPPED_RESPONSE_PATHS.includes(creationPath)) ||
+diff --git a/ui/app/services/feature-flag.js b/ui/app/services/feature-flag.js
+deleted file mode 100644
+index dd00d5d..0000000
+--- a/ui/app/services/feature-flag.js
++++ /dev/null
+@@ -1,24 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import Service from '@ember/service';
+-
+-const FLAGS = {
+-  vaultCloudNamespace: 'VAULT_CLOUD_ADMIN_NAMESPACE',
+-};
+-
+-export default Service.extend({
+-  featureFlags: null,
+-  setFeatureFlags(flags) {
+-    this.set('featureFlags', flags);
+-  },
+-
+-  get managedNamespaceRoot() {
+-    if (this.featureFlags && this.featureFlags.includes(FLAGS.vaultCloudNamespace)) {
+-      return 'admin';
+-    }
+-    return null;
+-  },
+-});
+diff --git a/ui/app/services/permissions.js b/ui/app/services/permissions.js
+index 7d9a035..3b22b42 100644
+--- a/ui/app/services/permissions.js
++++ b/ui/app/services/permissions.js
+@@ -29,7 +29,6 @@ const API_PATHS = {
+     hash: 'sys/tools/hash',
+   },
+   status: {
+-    license: 'sys/license',
+     seal: 'sys/seal',
+     raft: 'sys/storage/raft/configuration',
+   },
+diff --git a/ui/app/services/version.js b/ui/app/services/version.js
+index ba97575..a010ac2 100644
+--- a/ui/app/services/version.js
++++ b/ui/app/services/version.js
+@@ -4,29 +4,15 @@
+  */
+ 
+ import Service, { inject as service } from '@ember/service';
+-import { keepLatestTask, task } from 'ember-concurrency';
++import { task } from 'ember-concurrency';
+ import { tracked } from '@glimmer/tracking';
+ 
+ export default class VersionService extends Service {
+   @service store;
+-  @tracked features = [];
+   @tracked version = null;
+ 
+-  get hasNamespaces() {
+-    return this.features.includes('Namespaces');
+-  }
+-
+   get hasControlGroups() {
+-    return this.features.includes('Control Groups');
+-  }
+-
+-  get isEnterprise() {
+-    if (!this.version) return false;
+-    return this.version.includes('+');
+-  }
+-
+-  get isOSS() {
+-    return !this.isEnterprise;
++    return false;
+   }
+ 
+   @task
+@@ -37,25 +23,7 @@ export default class VersionService extends Service {
+     return;
+   }
+ 
+-  @keepLatestTask
+-  *getFeatures() {
+-    if (this.features?.length || this.isOSS) {
+-      return;
+-    }
+-    try {
+-      const response = yield this.store.adapterFor('cluster').features();
+-      this.features = response.features;
+-      return;
+-    } catch {
+-      // if we fail here, we're likely in DR Secondary mode and don't need to worry about it
+-    }
+-  }
+-
+   fetchVersion() {
+     return this.getVersion.perform();
+   }
+-
+-  fetchFeatures() {
+-    return this.getFeatures.perform();
+-  }
+ }
+diff --git a/ui/app/templates/vault/cluster/auth.hbs b/ui/app/templates/vault/cluster/auth.hbs
+index 1c1a4e6..348b595 100644
+--- a/ui/app/templates/vault/cluster/auth.hbs
++++ b/ui/app/templates/vault/cluster/auth.hbs
+@@ -44,68 +44,34 @@
+     {{/if}}
+   </Page.header>
+   {{#unless this.mfaAuthData}}
+-    {{#if this.managedNamespaceRoot}}
+-      <Page.sub-header>
+-        <Toolbar>
+-          <div class="toolbar-namespace-picker" data-test-managed-namespace-toolbar>
+-            <div class="field is-horizontal">
+-              <div class="field-label">
+-                <label class="is-label" for="namespace">Namespace</label>
+-              </div>
+-              <div class="field-label">
+-                <span class="has-text-grey" data-test-managed-namespace-root>/{{this.managedNamespaceRoot}}</span>
+-              </div>
+-              <div class="field-body">
+-                <div class="field">
+-                  <div class="control">
+-                    <input
+-                      value={{this.managedNamespaceChild}}
+-                      placeholder="/ (Default)"
+-                      oninput={{perform this.updateManagedNamespace value="target.value"}}
+-                      autocomplete="off"
+-                      spellcheck="false"
+-                      name="namespace"
+-                      id="namespace"
+-                      class="input"
+-                      type="text"
+-                    />
+-                  </div>
+-                </div>
+-              </div>
+-            </div>
++    <Page.sub-header>
++      <Toolbar class="toolbar-namespace-picker">
++        <div class="field is-horizontal" data-test-namespace-toolbar>
++          <div class="field-label is-normal">
++            <label class="is-label" for="namespace">Namespace</label>
+           </div>
+-        </Toolbar>
+-      </Page.sub-header>
+-    {{else}}
+-      <Page.sub-header>
+-        <Toolbar class="toolbar-namespace-picker">
+-          <div class="field is-horizontal" data-test-namespace-toolbar>
+-            <div class="field-label is-normal">
+-              <label class="is-label" for="namespace">Namespace</label>
+-            </div>
+-            <div class="field-body">
+-              <div class="field">
+-                <div class="control">
+-                  <input
+-                    data-test-auth-form-ns-input
+-                    value={{this.namespaceQueryParam}}
+-                    placeholder="/ (Root)"
+-                    oninput={{perform this.updateNamespace value="target.value"}}
+-                    autocomplete="off"
+-                    spellcheck="false"
+-                    name="namespace"
+-                    id="namespace"
+-                    class="input"
+-                    type="text"
+-                    disabled={{this.oidcProvider}}
+-                  />
+-                </div>
++          <div class="field-body">
++            <div class="field">
++              <div class="control">
++                <input
++                  data-test-auth-form-ns-input
++                  value={{this.namespaceQueryParam}}
++                  placeholder="/ (Root)"
++                  oninput={{perform this.updateNamespace value="target.value"}}
++                  autocomplete="off"
++                  spellcheck="false"
++                  name="namespace"
++                  id="namespace"
++                  class="input"
++                  type="text"
++                  disabled={{this.oidcProvider}}
++                />
+               </div>
+             </div>
+           </div>
+-        </Toolbar>
+-      </Page.sub-header>
+-    {{/if}}
++        </div>
++      </Toolbar>
++    </Page.sub-header>
+   {{/unless}}
+   <Page.content>
+     {{#if this.mfaAuthData}}
+diff --git a/ui/lib/open-api-explorer/config/environment.js b/ui/lib/open-api-explorer/config/environment.js
+index 5b109d0..c508d04 100644
+--- a/ui/lib/open-api-explorer/config/environment.js
++++ b/ui/lib/open-api-explorer/config/environment.js
+@@ -11,7 +11,7 @@ module.exports = function (environment) {
+     modulePrefix: 'open-api-explorer',
+     environment,
+     APP: {
+-      NAMESPACE_ROOT_URLS: ['sys/health', 'sys/seal-status', 'sys/license/features'],
++      NAMESPACE_ROOT_URLS: ['sys/health', 'sys/seal-status'],
+     },
+   };
+ 
+diff --git a/ui/lib/pki/addon/components/page/pki-configuration-details.ts b/ui/lib/pki/addon/components/page/pki-configuration-details.ts
+index 5f88e98..f2cf728 100644
+--- a/ui/lib/pki/addon/components/page/pki-configuration-details.ts
++++ b/ui/lib/pki/addon/components/page/pki-configuration-details.ts
+@@ -24,10 +24,6 @@ export default class PkiConfigurationDetails extends Component<Args> {
+   @service declare readonly version: VersionService;
+   @tracked showDeleteAllIssuers = false;
+ 
+-  get isEnterprise() {
+-    return this.version.isEnterprise;
+-  }
+-
+   @action
+   async deleteAllIssuers() {
+     try {
+diff --git a/ui/lib/pki/addon/components/page/pki-configuration-edit.ts b/ui/lib/pki/addon/components/page/pki-configuration-edit.ts
+index b3e8993..949af61 100644
+--- a/ui/lib/pki/addon/components/page/pki-configuration-edit.ts
++++ b/ui/lib/pki/addon/components/page/pki-configuration-edit.ts
+@@ -50,10 +50,6 @@ export default class PkiConfigurationEditComponent extends Component<Args> {
+   @tracked invalidFormAlert = '';
+   @tracked errors: Array<ErrorObject> = [];
+ 
+-  get isEnterprise() {
+-    return this.version.isEnterprise;
+-  }
+-
+   @task
+   @waitFor
+   *save(event: Event) {
+diff --git a/ui/lib/pki/addon/components/page/pki-tidy-status.ts b/ui/lib/pki/addon/components/page/pki-tidy-status.ts
+index fd6def4..b695c25 100644
+--- a/ui/lib/pki/addon/components/page/pki-tidy-status.ts
++++ b/ui/lib/pki/addon/components/page/pki-tidy-status.ts
+@@ -70,10 +70,6 @@ export default class PkiTidyStatusComponent extends Component<Args> {
+     'issuer_safety_buffer',
+   ];
+ 
+-  get isEnterprise() {
+-    return this.version.isEnterprise;
+-  }
+-
+   get tidyState() {
+     return this.args.tidyStatus?.state;
+   }
+diff --git a/ui/mirage/factories/feature.js b/ui/mirage/factories/feature.js
+deleted file mode 100644
+index 69935f6..0000000
+--- a/ui/mirage/factories/feature.js
++++ /dev/null
+@@ -1,12 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { Factory } from 'ember-cli-mirage';
+-
+-export default Factory.extend({
+-  feature_flags() {
+-    return []; // VAULT_CLOUD_ADMIN_NAMESPACE
+-  },
+-});
+diff --git a/ui/mirage/handlers/base.js b/ui/mirage/handlers/base.js
+index 9a0f2ef..3f98aee 100644
+--- a/ui/mirage/handlers/base.js
++++ b/ui/mirage/handlers/base.js
+@@ -3,19 +3,7 @@
+  * SPDX-License-Identifier: MPL-2.0
+  */
+ 
+-// base handlers used in mirage config when a specific handler is not specified
+-const EXPIRY_DATE = '2021-05-12T23:20:50.52Z';
+-
+ export default function (server) {
+-  server.get('/sys/internal/ui/feature-flags', (db) => {
+-    const featuresResponse = db.features.first();
+-    return {
+-      data: {
+-        feature_flags: featuresResponse ? featuresResponse.feature_flags : null,
+-      },
+-    };
+-  });
+-
+   server.get('/sys/health', function () {
+     return {
+       initialized: true,
+@@ -34,28 +22,6 @@ export default function (server) {
+     };
+   });
+ 
+-  server.get('/sys/license/status', function () {
+-    return {
+-      data: {
+-        autoloading_used: false,
+-        persisted_autoload: {
+-          expiration_time: EXPIRY_DATE,
+-          features: ['Namespaces', 'Lease Count Quotas', 'Automated Snapshots'],
+-          license_id: '0eca7ef8-ebc0-f875-315e-3cc94a7870cf',
+-          performance_standby_count: 0,
+-          start_time: '2020-04-28T00:00:00Z',
+-        },
+-        autoloaded: {
+-          expiration_time: EXPIRY_DATE,
+-          features: ['Namespaces', 'Lease Count Quotas', 'Automated Snapshots'],
+-          license_id: '0eca7ef8-ebc0-f875-315e-3cc94a7870cf',
+-          performance_standby_count: 0,
+-          start_time: '2020-04-28T00:00:00Z',
+-        },
+-      },
+-    };
+-  });
+-
+   server.get('sys/namespaces', function () {
+     return {
+       data: {
+diff --git a/ui/mirage/handlers/clients.js b/ui/mirage/handlers/clients.js
+index e54fe2a..fda3a56 100644
+--- a/ui/mirage/handlers/clients.js
++++ b/ui/mirage/handlers/clients.js
+@@ -6,7 +6,6 @@
+ import {
+   isBefore,
+   startOfMonth,
+-  endOfMonth,
+   addMonths,
+   subMonths,
+   differenceInCalendarMonths,
+@@ -60,6 +59,7 @@ function generateNamespaceBlock(idx = 0, isLowerCounts = false, ns) {
+     namespace_id: ns?.namespace_id || (idx === 0 ? 'root' : Math.random().toString(36).slice(2, 7) + idx),
+     namespace_path: ns?.namespace_path || (idx === 0 ? '' : `ns/${idx}`),
+     counts: {},
++    mounts: [],
+   };
+   const mounts = [];
+   Array.from(Array(10)).forEach((mount, index) => {
+@@ -130,19 +130,6 @@ function generateActivityResponse(namespaces, startDate, endDate) {
+ }
+ 
+ export default function (server) {
+-  server.get('sys/license/status', function () {
+-    return {
+-      request_id: 'my-license-request-id',
+-      data: {
+-        autoloaded: {
+-          license_id: 'my-license-id',
+-          start_time: formatRFC3339(LICENSE_START),
+-          expiration_time: formatRFC3339(endOfMonth(addMonths(CURRENT_DATE, 6))),
+-        },
+-      },
+-    };
+-  });
+-
+   server.get('sys/internal/counters/config', function () {
+     return {
+       request_id: 'some-config-id',
+diff --git a/ui/mirage/models/feature.js b/ui/mirage/models/feature.js
+deleted file mode 100644
+index cc93d19..0000000
+--- a/ui/mirage/models/feature.js
++++ /dev/null
+@@ -1,10 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { Model } from 'ember-cli-mirage';
+-
+-export default Model.extend({
+-  feature_flags: null,
+-});
+diff --git a/ui/mirage/scenarios/default.js b/ui/mirage/scenarios/default.js
+index cafa0e8..1a841e7 100644
+--- a/ui/mirage/scenarios/default.js
++++ b/ui/mirage/scenarios/default.js
+@@ -9,8 +9,6 @@ import kubernetesScenario from './kubernetes';
+ 
+ export default function (server) {
+   server.create('clients/config');
+-  server.create('feature', { feature_flags: ['SOME_FLAG', 'VAULT_CLOUD_ADMIN_NAMESPACE'] });
+-
+   if (handler === 'kubernetes') {
+     kubernetesScenario(server);
+   }
+diff --git a/ui/package.json b/ui/package.json
+index 64b6e95..22ae956 100644
+--- a/ui/package.json
++++ b/ui/package.json
+@@ -27,9 +27,7 @@
+     "start:mirage": "start () { MIRAGE_DEV_HANDLER=$1 yarn run start; }; start",
+     "test": "npm-run-all lint:js:quiet lint:hbs:quiet && node scripts/start-openbao.js",
+     "test:enos": "npm-run-all lint:js:quiet lint:hbs:quiet && node scripts/enos-test-ember.js",
+-    "test:oss": "yarn run test -f='!enterprise'",
+     "test:quick": "node scripts/start-openbao.js",
+-    "test:quick-oss": "yarn test:quick -f='!enterprise'",
+     "types:declare": "declare () { yarn tsc $1 --declaration --allowJs --emitDeclarationOnly --experimentalDecorators --outDir $2; }; declare",
+     "openbao": "BAO_REDIRECT_ADDR=http://127.0.0.1:8200 bao server -log-level=error -dev -dev-root-token-id=root -dev-ha",
+     "openbao:cluster": "BAO_REDIRECT_ADDR=http://127.0.0.1:8202 bao server -log-level=error -dev -dev-root-token-id=root -dev-listen-address=127.0.0.1:8202 -dev-ha"
+diff --git a/ui/tests/acceptance/init-test.js b/ui/tests/acceptance/init-test.js
+index 003ecce..b3b49c2 100644
+--- a/ui/tests/acceptance/init-test.js
++++ b/ui/tests/acceptance/init-test.js
+@@ -96,7 +96,6 @@ module('Acceptance | init', function (hooks) {
+     this.server.get('/v1/sys/health', () => {
+       return [200, { 'Content-Type': 'application/json' }, JSON.stringify(HEALTH_RESPONSE)];
+     });
+-    this.server.get('/v1/sys/internal/ui/feature-flags', this.server.passthrough);
+   });
+ 
+   hooks.afterEach(function () {
+diff --git a/ui/tests/acceptance/raft-storage-test.js b/ui/tests/acceptance/raft-storage-test.js
+index 1209d76..d7bec13 100644
+--- a/ui/tests/acceptance/raft-storage-test.js
++++ b/ui/tests/acceptance/raft-storage-test.js
+@@ -19,7 +19,6 @@ module('Acceptance | raft storage', function (hooks) {
+     this.server.get('/sys/internal/ui/resultant-acl', () =>
+       this.server.create('configuration', { data: { root: true } })
+     );
+-    this.server.get('/sys/license/features', () => ({}));
+     await authPage.login();
+   });
+   hooks.afterEach(function () {
+diff --git a/ui/tests/helpers/components/sidebar-nav.js b/ui/tests/helpers/components/sidebar-nav.js
+index 1e44548..0b78ef9 100644
+--- a/ui/tests/helpers/components/sidebar-nav.js
++++ b/ui/tests/helpers/components/sidebar-nav.js
+@@ -1,17 +1,11 @@
+-import { allFeatures } from 'vault/helpers/all-features';
+ import sinon from 'sinon';
+ 
+-export const stubFeaturesAndPermissions = (owner, isEnterprise = false, setCluster = false) => {
++export const stubPermissions = (owner, setCluster = false) => {
+   const permissions = owner.lookup('service:permissions');
+   const hasNavPermission = sinon.stub(permissions, 'hasNavPermission');
+   hasNavPermission.returns(true);
+   sinon.stub(permissions, 'navPathParams');
+ 
+-  const version = owner.lookup('service:version');
+-  const features = sinon.stub(version, 'features');
+-  features.value(allFeatures());
+-  sinon.stub(version, 'isEnterprise').value(isEnterprise);
+-
+   const auth = owner.lookup('service:auth');
+   sinon.stub(auth, 'authData').value({});
+ 
+@@ -22,5 +16,5 @@ export const stubFeaturesAndPermissions = (owner, isEnterprise = false, setClust
+     });
+   }
+ 
+-  return { hasNavPermission, features };
++  return { hasNavPermission };
+ };
+diff --git a/ui/tests/integration/components/sidebar/nav/access-test.js b/ui/tests/integration/components/sidebar/nav/access-test.js
+index bff28d4..a4f37aa 100644
+--- a/ui/tests/integration/components/sidebar/nav/access-test.js
++++ b/ui/tests/integration/components/sidebar/nav/access-test.js
+@@ -2,7 +2,7 @@ import { module, test } from 'qunit';
+ import { setupRenderingTest } from 'ember-qunit';
+ import { render } from '@ember/test-helpers';
+ import hbs from 'htmlbars-inline-precompile';
+-import { stubFeaturesAndPermissions } from 'vault/tests/helpers/components/sidebar-nav';
++import { stubPermissions } from 'vault/tests/helpers/components/sidebar-nav';
+ 
+ const renderComponent = () => {
+   return render(hbs`
+@@ -18,7 +18,7 @@ module('Integration | Component | sidebar-nav-access', function (hooks) {
+   test('it should render nav headings', async function (assert) {
+     const headings = ['Authentication', 'Organization', 'Administration'];
+ 
+-    stubFeaturesAndPermissions(this.owner);
++    stubPermissions(this.owner);
+     await renderComponent();
+ 
+     assert
+@@ -52,7 +52,7 @@ module('Integration | Component | sidebar-nav-access', function (hooks) {
+       'Entities',
+       'Leases',
+     ];
+-    stubFeaturesAndPermissions(this.owner);
++    stubPermissions(this.owner);
+     await renderComponent();
+ 
+     assert
+diff --git a/ui/tests/integration/components/sidebar/nav/cluster-test.js b/ui/tests/integration/components/sidebar/nav/cluster-test.js
+index 5688ad8..d9581c7 100644
+--- a/ui/tests/integration/components/sidebar/nav/cluster-test.js
++++ b/ui/tests/integration/components/sidebar/nav/cluster-test.js
+@@ -2,7 +2,7 @@ import { module, test } from 'qunit';
+ import { setupRenderingTest } from 'ember-qunit';
+ import { render } from '@ember/test-helpers';
+ import hbs from 'htmlbars-inline-precompile';
+-import { stubFeaturesAndPermissions } from 'vault/tests/helpers/components/sidebar-nav';
++import { stubPermissions } from 'vault/tests/helpers/components/sidebar-nav';
+ 
+ const renderComponent = () => {
+   return render(hbs`
+@@ -17,7 +17,7 @@ module('Integration | Component | sidebar-nav-cluster', function (hooks) {
+ 
+   test('it should render nav headings', async function (assert) {
+     const headings = ['OpenBao', 'Monitoring'];
+-    stubFeaturesAndPermissions(this.owner, true, true);
++    stubPermissions(this.owner, true);
+     await renderComponent();
+ 
+     assert
+@@ -42,7 +42,7 @@ module('Integration | Component | sidebar-nav-cluster', function (hooks) {
+ 
+   test('it should render nav links', async function (assert) {
+     const links = ['Secrets engines', 'Access', 'Policies', 'Tools', 'Raft Storage', 'Seal OpenBao'];
+-    stubFeaturesAndPermissions(this.owner, true, true);
++    stubPermissions(this.owner, true);
+     await renderComponent();
+ 
+     assert
+diff --git a/ui/tests/integration/components/sidebar/nav/policies-test.js b/ui/tests/integration/components/sidebar/nav/policies-test.js
+index c3fe324..a663615 100644
+--- a/ui/tests/integration/components/sidebar/nav/policies-test.js
++++ b/ui/tests/integration/components/sidebar/nav/policies-test.js
+@@ -2,7 +2,7 @@ import { module, test } from 'qunit';
+ import { setupRenderingTest } from 'ember-qunit';
+ import { render } from '@ember/test-helpers';
+ import hbs from 'htmlbars-inline-precompile';
+-import { stubFeaturesAndPermissions } from 'vault/tests/helpers/components/sidebar-nav';
++import { stubPermissions } from 'vault/tests/helpers/components/sidebar-nav';
+ 
+ const renderComponent = () => {
+   return render(hbs`
+@@ -24,7 +24,7 @@ module('Integration | Component | sidebar-nav-policies', function (hooks) {
+ 
+   test('it should render nav headings and links', async function (assert) {
+     const links = ['Back to main navigation', 'ACL Policies'];
+-    stubFeaturesAndPermissions(this.owner);
++    stubPermissions(this.owner);
+     await renderComponent();
+ 
+     assert.dom('[data-test-sidebar-nav-heading]').exists({ count: 1 }, 'Correct number of headings render');
+diff --git a/ui/tests/integration/components/sidebar/nav/tools-test.js b/ui/tests/integration/components/sidebar/nav/tools-test.js
+index 46db83e..b02cabd 100644
+--- a/ui/tests/integration/components/sidebar/nav/tools-test.js
++++ b/ui/tests/integration/components/sidebar/nav/tools-test.js
+@@ -2,7 +2,7 @@ import { module, test } from 'qunit';
+ import { setupRenderingTest } from 'ember-qunit';
+ import { render } from '@ember/test-helpers';
+ import hbs from 'htmlbars-inline-precompile';
+-import { stubFeaturesAndPermissions } from 'vault/tests/helpers/components/sidebar-nav';
++import { stubPermissions } from 'vault/tests/helpers/components/sidebar-nav';
+ import { toolsActions } from 'vault/helpers/tools-actions';
+ import { capitalize } from '@ember/string';
+ 
+@@ -27,7 +27,7 @@ module('Integration | Component | sidebar-nav-tools', function (hooks) {
+ 
+   test('it should render nav headings and links', async function (assert) {
+     const links = ['Back to main navigation', ...toolsActions()];
+-    stubFeaturesAndPermissions(this.owner);
++    stubPermissions(this.owner);
+     await renderComponent();
+ 
+     assert.dom('[data-test-sidebar-nav-heading]').exists({ count: 1 }, 'Correct number of headings render');
+diff --git a/ui/tests/unit/services/control-group-test.js b/ui/tests/unit/services/control-group-test.js
+index dcb37cf..11d4616 100644
+--- a/ui/tests/unit/services/control-group-test.js
++++ b/ui/tests/unit/services/control-group-test.js
+@@ -5,7 +5,7 @@
+ 
+ import { set } from '@ember/object';
+ import Service from '@ember/service';
+-import { module, test } from 'qunit';
++import { module, skip } from 'qunit';
+ import { setupTest } from 'ember-qunit';
+ import sinon from 'sinon';
+ 
+@@ -106,7 +106,7 @@ module('Unit | Service | control group', function (hooks) {
+       },
+     ],
+   ].forEach(function ([name, setup, args, expectation]) {
+-    test(`checkForControlGroup: ${name}`, function (assert) {
++    skip(`checkForControlGroup: ${name}`, function (assert) {
+       const assertCount = name === 'it rejects isOSS: false, wrapTTL:false, response: has wrap_info' ? 2 : 1;
+       assert.expect(assertCount);
+       if (setup) {
+@@ -118,7 +118,7 @@ module('Unit | Service | control group', function (hooks) {
+     });
+   });
+ 
+-  test(`handleError: transitions to accessor and stores control group token`, function (assert) {
++  skip(`handleError: transitions to accessor and stores control group token`, function (assert) {
+     const error = {
+       accessor: '12345',
+       token: 'token',
+@@ -138,7 +138,7 @@ module('Unit | Service | control group', function (hooks) {
+     );
+   });
+ 
+-  test(`logFromError: returns correct content string`, function (assert) {
++  skip(`logFromError: returns correct content string`, function (assert) {
+     const error = {
+       accessor: '12345',
+       token: 'token',
+@@ -160,14 +160,14 @@ module('Unit | Service | control group', function (hooks) {
+     assert.ok(contentString.content.includes('token'), 'contains token');
+   });
+ 
+-  test('storageKey', function (assert) {
++  skip('storageKey', function (assert) {
+     const accessor = '12345';
+     const path = 'kv/foo/bar';
+     const expectedKey = `${CONTROL_GROUP_PREFIX}${accessor}${TOKEN_SEPARATOR}${path}`;
+     assert.strictEqual(storageKey(accessor, path), expectedKey, 'uses expected key');
+   });
+ 
+-  test('keyFromAccessor', function (assert) {
++  skip('keyFromAccessor', function (assert) {
+     const store = storage();
+     const accessor = '12345';
+     const path = 'kv/foo/bar';
+@@ -186,7 +186,7 @@ module('Unit | Service | control group', function (hooks) {
+     assert.strictEqual(subject.keyFromAccessor('foo'), null, 'returns null if no key was found');
+   });
+ 
+-  test('storeControlGroupToken', function (assert) {
++  skip('storeControlGroupToken', function (assert) {
+     const store = storage();
+     const subject = this.owner.factoryFor('service:control-group').create({
+       storage() {
+@@ -205,7 +205,7 @@ module('Unit | Service | control group', function (hooks) {
+     assert.deepEqual(store.items[key], JSON.stringify(info), 'stores the whole info object');
+   });
+ 
+-  test('deleteControlGroupToken', function (assert) {
++  skip('deleteControlGroupToken', function (assert) {
+     const store = storage();
+     const subject = this.owner.factoryFor('service:control-group').create({
+       storage() {
+@@ -221,7 +221,7 @@ module('Unit | Service | control group', function (hooks) {
+     assert.strictEqual(Object.keys(store.items).length, 0, 'there are no keys stored in storage');
+   });
+ 
+-  test('deleteTokens', function (assert) {
++  skip('deleteTokens', function (assert) {
+     const store = storage();
+     const subject = this.owner.factoryFor('service:control-group').create({
+       storage() {
+@@ -240,7 +240,7 @@ module('Unit | Service | control group', function (hooks) {
+     assert.strictEqual(store.getItem('value'), 'one', 'keeps the non-prefixed value');
+   });
+ 
+-  test('wrapInfoForAccessor', function (assert) {
++  skip('wrapInfoForAccessor', function (assert) {
+     const store = storage();
+     const subject = this.owner.factoryFor('service:control-group').create({
+       storage() {
+diff --git a/ui/tests/unit/services/feature-flag-test.js b/ui/tests/unit/services/feature-flag-test.js
+deleted file mode 100644
+index cb27a1f..0000000
+--- a/ui/tests/unit/services/feature-flag-test.js
++++ /dev/null
+@@ -1,29 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { module, test } from 'qunit';
+-import { setupTest } from 'ember-qunit';
+-
+-module('Unit | Service | feature-flag', function (hooks) {
+-  setupTest(hooks);
+-
+-  test('it exists', function (assert) {
+-    const service = this.owner.lookup('service:feature-flag');
+-    assert.ok(service);
+-  });
+-
+-  test('it returns the namespace root when flag is present', function (assert) {
+-    const service = this.owner.lookup('service:feature-flag');
+-    assert.strictEqual(service.managedNamespaceRoot, null, 'Managed namespace root is null by default');
+-    service.setFeatureFlags(['VAULT_CLOUD_ADMIN_NAMESPACE']);
+-    assert.strictEqual(service.managedNamespaceRoot, 'admin', 'Managed namespace is admin when flag present');
+-    service.setFeatureFlags(['SOMETHING_ELSE']);
+-    assert.strictEqual(
+-      service.managedNamespaceRoot,
+-      null,
+-      'Flags were overwritten and root namespace is null again'
+-    );
+-  });
+-});
+diff --git a/ui/tests/unit/services/version-test.js b/ui/tests/unit/services/version-test.js
+deleted file mode 100644
+index 12a4aee..0000000
+--- a/ui/tests/unit/services/version-test.js
++++ /dev/null
+@@ -1,18 +0,0 @@
+-/**
+- * Copyright (c) HashiCorp, Inc.
+- * SPDX-License-Identifier: MPL-2.0
+- */
+-
+-import { module, test } from 'qunit';
+-import { setupTest } from 'ember-qunit';
+-
+-module('Unit | Service | version', function (hooks) {
+-  setupTest(hooks);
+-
+-  test('setting version computes isOSS properly', function (assert) {
+-    const service = this.owner.lookup('service:version');
+-    service.version = '0.9.5';
+-    assert.true(service.isOSS);
+-    assert.false(service.isEnterprise);
+-  });
+-});
+-- 
+2.43.0
+

@@ -1,0 +1,147 @@
+From ab2893f2fd62eb94ef1841980d4878e2cbe0af37 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Jonas=20K=C3=B6hnen?= <jonas.koehnen@sap.com>
+Date: Tue, 27 Jan 2026 16:28:51 +0100
+Subject: [PATCH 11/22] Skip flaky UI tests (#2354)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+* Skip flaky UI tests
+
+Signed-off-by: Jonas Köhnen <jonas.koehnen@sap.com>
+
+* Remove stale managed keys tests
+
+Signed-off-by: Jonas Köhnen <jonas.koehnen@sap.com>
+
+* Skip more
+
+Signed-off-by: Jonas Köhnen <jonas.koehnen@sap.com>
+
+---------
+
+Signed-off-by: Jonas Köhnen <jonas.koehnen@sap.com>
+Signed-off-by: Aditya <jaiswal.aditya.deelip@gmail.com>
+---
+ ui/tests/acceptance/cluster-test.js                  |  4 ++--
+ ui/tests/acceptance/console-test.js                  |  6 +++---
+ ui/tests/acceptance/pki/pki-action-forms-test.js     |  6 +++---
+ .../pki/page/pki-configuration-details-test.js       | 12 ------------
+ 4 files changed, 8 insertions(+), 20 deletions(-)
+
+diff --git a/ui/tests/acceptance/cluster-test.js b/ui/tests/acceptance/cluster-test.js
+index 56dfd18..81f644c 100644
+--- a/ui/tests/acceptance/cluster-test.js
++++ b/ui/tests/acceptance/cluster-test.js
+@@ -5,7 +5,7 @@
+ 
+ import { create } from 'ember-cli-page-object';
+ import { settled, click, visit } from '@ember/test-helpers';
+-import { module, test } from 'qunit';
++import { module, test, skip } from 'qunit';
+ import { setupApplicationTest } from 'ember-qunit';
+ import { v4 as uuidv4 } from 'uuid';
+ 
+@@ -49,7 +49,7 @@ module('Acceptance | cluster', function (hooks) {
+     await logout.visit();
+   });
+ 
+-  test('it hides mfa setup if user has not entityId (ex: is a root user)', async function (assert) {
++  skip('it hides mfa setup if user has not entityId (ex: is a root user)', async function (assert) {
+     const user = 'end-user';
+     const password = 'mypassword';
+     const path = `cluster-userpass-${uuidv4()}`;
+diff --git a/ui/tests/acceptance/console-test.js b/ui/tests/acceptance/console-test.js
+index b8ed7da..196c086 100644
+--- a/ui/tests/acceptance/console-test.js
++++ b/ui/tests/acceptance/console-test.js
+@@ -3,7 +3,7 @@
+  * SPDX-License-Identifier: MPL-2.0
+  */
+ 
+-import { module, test } from 'qunit';
++import { module, test, skip } from 'qunit';
+ import { settled, waitUntil, click } from '@ember/test-helpers';
+ import { create } from 'ember-cli-page-object';
+ import { setupApplicationTest } from 'ember-qunit';
+@@ -20,7 +20,7 @@ module('Acceptance | console', function (hooks) {
+     return authPage.login();
+   });
+ 
+-  test("refresh reloads the current route's data", async function (assert) {
++  skip("refresh reloads the current route's data", async function (assert) {
+     await enginesPage.visit();
+     await settled();
+     const numEngines = enginesPage.rows.length;
+@@ -45,7 +45,7 @@ module('Acceptance | console', function (hooks) {
+     assert.strictEqual(enginesPage.rows.length, numEngines, 'engines were removed from the page');
+   });
+ 
+-  test('fullscreen command expands the cli panel', async function (assert) {
++  skip('fullscreen command expands the cli panel', async function (assert) {
+     await consoleComponent.toggle();
+     await settled();
+     await consoleComponent.runCommands('fullscreen');
+diff --git a/ui/tests/acceptance/pki/pki-action-forms-test.js b/ui/tests/acceptance/pki/pki-action-forms-test.js
+index f7f0286..1eedade 100644
+--- a/ui/tests/acceptance/pki/pki-action-forms-test.js
++++ b/ui/tests/acceptance/pki/pki-action-forms-test.js
+@@ -3,7 +3,7 @@
+  * SPDX-License-Identifier: MPL-2.0
+  */
+ 
+-import { module, test } from 'qunit';
++import { module, test, skip } from 'qunit';
+ import { setupApplicationTest } from 'ember-qunit';
+ import { click, currentURL, fillIn, typeIn, visit } from '@ember/test-helpers';
+ import { setupMirage } from 'ember-cli-mirage/test-support';
+@@ -169,7 +169,7 @@ module('Acceptance | pki action forms test', function (hooks) {
+   });
+ 
+   module('generate root', function () {
+-    test('happy path', async function (assert) {
++    skip('happy path', async function (assert) {
+       const commonName = 'my-common-name';
+       const issuerName = 'my-first-issuer';
+       const keyName = 'my-first-key';
+@@ -211,7 +211,7 @@ module('Acceptance | pki action forms test', function (hooks) {
+       await click(S.configuration.saved.issuerLink);
+       assert.dom(S.issuerDetails.valueByName('Common name')).hasText(commonName);
+     });
+-    test('type=exported', async function (assert) {
++    skip('type=exported', async function (assert) {
+       const commonName = 'my-exported-name';
+       await authPage.login();
+       await visit(`/vault/secrets/${this.mountPath}/pki/configuration/create`);
+diff --git a/ui/tests/integration/components/pki/page/pki-configuration-details-test.js b/ui/tests/integration/components/pki/page/pki-configuration-details-test.js
+index 227fd66..8ec2c00 100644
+--- a/ui/tests/integration/components/pki/page/pki-configuration-details-test.js
++++ b/ui/tests/integration/components/pki/page/pki-configuration-details-test.js
+@@ -184,12 +184,6 @@ module('Integration | Component | Page::PkiConfigurationDetails', function (hook
+       .hasText('Yes', 'seal wrap row value renders Yes if sealWrap is true');
+     assert.dom(SELECTORS.rowLabel('Max lease TTL')).hasText('Max lease TTL', 'max lease label renders');
+     assert.dom(SELECTORS.rowValue('Max lease TTL')).hasText('400h', 'max lease value renders');
+-    assert
+-      .dom(SELECTORS.rowLabel('Allowed managed keys'))
+-      .hasText('Allowed managed keys', 'allowed managed keys label renders');
+-    assert
+-      .dom(SELECTORS.rowValue('Allowed managed keys'))
+-      .hasText('Yes', 'allowed managed keys value renders');
+   });
+ 
+   test('shows mount configuration when hasConfig is false', async function (assert) {
+@@ -217,11 +211,5 @@ module('Integration | Component | Page::PkiConfigurationDetails', function (hook
+       .hasText('Yes', 'seal wrap row value renders Yes if sealWrap is true');
+     assert.dom(SELECTORS.rowLabel('Max lease TTL')).hasText('Max lease TTL', 'max lease label renders');
+     assert.dom(SELECTORS.rowValue('Max lease TTL')).hasText('400h', 'max lease value renders');
+-    assert
+-      .dom(SELECTORS.rowLabel('Allowed managed keys'))
+-      .hasText('Allowed managed keys', 'allowed managed keys label renders');
+-    assert
+-      .dom(SELECTORS.rowValue('Allowed managed keys'))
+-      .hasText('Yes', 'allowed managed keys value renders');
+   });
+ });
+-- 
+2.43.0
+

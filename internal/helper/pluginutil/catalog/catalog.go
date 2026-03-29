@@ -16,7 +16,6 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	gkwplugin "github.com/openbao/go-kms-wrapping/plugin/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/command/server"
@@ -36,6 +35,8 @@ type Catalog struct {
 	plugins    map[string]*server.PluginConfig
 	clients    map[clientKey]*Client
 	pluginType consts.PluginType
+	handshake  plugin.HandshakeConfig
+	pluginsets map[int]plugin.PluginSet
 
 	// Derived from server configuration.
 	pluginDirectory       string
@@ -90,6 +91,8 @@ func NewCatalog(
 	logger hclog.Logger,
 	config *server.Config,
 	pluginType consts.PluginType,
+	handshake plugin.HandshakeConfig,
+	pluginsets map[int]plugin.PluginSet,
 ) (*Catalog, error) {
 	pluginDirectory := config.PluginDirectory
 	if pluginDirectory != "" {
@@ -114,31 +117,28 @@ func NewCatalog(
 		plugins:               plugins,
 		clients:               make(map[clientKey]*Client, len(plugins)),
 		pluginType:            pluginType,
+		handshake:             handshake,
+		pluginsets:            pluginsets,
 		pluginDirectory:       pluginDirectory,
 		pluginFileUid:         config.PluginFileUid,
 		pluginFilePermissions: config.PluginFilePermissions,
 	}, nil
 }
 
-func (c *Catalog) lock() {
+func (c *Catalog) GetClient(name string) (*Client, bool, error) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.getClientLocked(name)
 }
 
-func (c *Catalog) unlock() {
-	c.mu.Unlock()
+func (c *Catalog) CloseAll() {
 }
 
 func (c *Catalog) removeClientLocked(client *Client) {
 	if stored, ok := c.clients[client.key]; ok && stored == client {
 		delete(c.clients, client.key)
 	}
-}
-
-func (c *Catalog) GetClient(name string) (*Client, bool, error) {
-	c.lock()
-	defer c.unlock()
-
-	return c.getClientLocked(name)
 }
 
 func (c *Catalog) getClientLocked(name string) (*Client, bool, error) {
@@ -185,8 +185,8 @@ func (c *Catalog) getClientLocked(name string) (*Client, bool, error) {
 
 	process := plugin.NewClient(&plugin.ClientConfig{
 		Cmd:              cmd,
-		VersionedPlugins: gkwplugin.PluginSets,
-		HandshakeConfig:  gkwplugin.HandshakeConfig,
+		VersionedPlugins: c.pluginsets,
+		HandshakeConfig:  c.handshake,
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		AutoMTLS:         true,
 		SecureConfig:     secureConfig,
@@ -214,8 +214,8 @@ func (c *Catalog) getClientLocked(name string) (*Client, bool, error) {
 }
 
 func (c *Catalog) reloadClient(prev *Client) (*Client, error) {
-	c.lock()
-	defer c.unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	client, ok, err := c.getClientLocked(prev.key.name)
 	switch {
@@ -298,8 +298,8 @@ func (c *Catalog) ReloadConfig(config *server.Config) error {
 		clients[newClientKey(plugin)] = struct{}{}
 	}
 
-	c.lock()
-	defer c.unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	c.plugins = plugins
 
@@ -333,8 +333,8 @@ type Client struct {
 // close decrements the client's reference count and kills it if the reference
 // count reaches zero.
 func (c *Client) Close() {
-	c.catalog.lock()
-	defer c.catalog.unlock()
+	c.catalog.mu.Lock()
+	defer c.catalog.mu.Unlock()
 
 	if c.refs == 0 {
 		panic("kmsplugin: tried to close client more than once")

@@ -2,6 +2,7 @@
  * Copyright (c) HashiCorp, Inc.
  * SPDX-License-Identifier: MPL-2.0
  */
+@use "sass:color";
 
 .button {
   align-items: center;
@@ -38,9 +39,9 @@
   &:active,
   &.is-active,
   &:focus {
-    border-color: darken($grey-light, 10%);
+    border-color: color.adjust($grey-light, $lightness: -10%, $space: hsl);
     box-shadow: $button-box-shadow-standard;
-    color: darken($grey-dark, 10%);
+    color: color.adjust($grey-dark, $lightness: -10%, $space: hsl);
   }
 
   &:focus:not(:active) {
@@ -64,25 +65,25 @@
 
   &.is-danger {
     background-color: $red-500;
-    border-color: darken($red-500, 2%);
+    border-color: color.adjust($red-500, $lightness: -2%, $space: hsl);
     color: $white;
     text-shadow: 0 1px 1px rgba($black, 0.25);
 
     &:hover:not([disabled]) {
-      background-color: darken($red-500, 5%);
-      border-color: darken($red-500, 5%);
+      background-color: color.adjust($red-500, $lightness: -5%, $space: hsl);
+      border-color: color.adjust($red-500, $lightness: -5%, $space: hsl);
       box-shadow: $box-shadow-middle;
     }
 
     &:active,
     &.is-active {
-      background-color: darken($red-500, 10%);
-      border-color: darken($red-500, 10%);
+      background-color: color.adjust($red-500, $lightness: -10%, $space: hsl);
+      border-color: color.adjust($red-500, $lightness: -10%, $space: hsl);
       box-shadow: $box-shadow-middle;
     }
 
     &:focus {
-      border-color: darken($red-500, 10%);
+      border-color: color.adjust($red-500, $lightness: -10%, $space: hsl);
       box-shadow: $button-box-shadow-standard;
     }
   }
@@ -146,7 +147,7 @@
 
   &.is-primary {
     background-color: $blue;
-    border-color: darken($blue, 2%);
+    border-color: color.adjust($blue, $lightness: -2%, $space: hsl);
     color: $white;
     font-weight: $font-weight-bold;
     text-shadow: 0 1px 1px rgba($black, 0.25);
@@ -158,20 +159,20 @@
     }
 
     &:hover:not([disabled]) {
-      background-color: darken($blue, 5%);
-      border-color: darken($blue, 5%);
+      background-color: color.adjust($blue, $lightness: -5%, $space: hsl);
+      border-color: color.adjust($blue, $lightness: -5%, $space: hsl);
       box-shadow: $box-shadow-middle;
     }
 
     &:active,
     &.is-active {
-      background-color: darken($blue, 10%);
-      border-color: darken($blue, 10%);
+      background-color: color.adjust($blue, $lightness: -10%, $space: hsl);
+      border-color: color.adjust($blue, $lightness: -10%, $space: hsl);
       box-shadow: $box-shadow-middle;
     }
 
     &:focus {
-      border-color: darken($blue, 10%);
+      border-color: color.adjust($blue, $lightness: -10%, $space: hsl);
       box-shadow: $button-box-shadow-standard;
     }
 
@@ -183,9 +184,9 @@
       &:active,
       &.is-active {
         background-color: transparent;
-        border-bottom: 2px solid darken($blue, 10%);
+        border-bottom: 2px solid color.adjust($blue, $lightness: -10%, $space: hsl);
         border-radius: unset;
-        color: darken($blue, 10%);
+        color: color.adjust($blue, $lightness: -10%, $space: hsl);
       }
     }
     // is-primary.is-outlined the only is-outlined buttons are primary.
@@ -197,15 +198,15 @@
       &:hover,
       &:focus {
         background-color: transparent;
-        border-color: darken($blue, 10%);
+        border-color: color.adjust($blue, $lightness: -10%, $space: hsl);
         color: $blue;
       }
 
       &:active,
       &.is-active {
         background-color: transparent;
-        border-color: darken($blue, 10%);
-        color: darken($blue, 10%);
+        border-color: color.adjust($blue, $lightness: -10%, $space: hsl);
+        color: color.adjust($blue, $lightness: -10%, $space: hsl);
       }
     }
 

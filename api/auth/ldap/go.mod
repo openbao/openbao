@@ -22,7 +22,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
-	golang.org/x/time v0.14.0 // indirect
+	golang.org/x/time v0.15.0 // indirect
 )
 
 retract v2.0.0

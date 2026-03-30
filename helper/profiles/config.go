@@ -36,7 +36,7 @@ type RequestConfig struct {
 }
 
 // InputConfig is an untyped configuration object that contains one or more
-// fields in a logical.Fieldschema format. This is used with the
+// fields in a framework.FieldSchema format. This is used with the
 // InputSource type to validate the request. Fields are fully static; the
 // usual field evaluation/expansion is not taken into account here.
 type InputConfig struct {

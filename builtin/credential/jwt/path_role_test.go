@@ -4,7 +4,6 @@
 package jwtauth
 
 import (
-	"context"
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -32,7 +31,7 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		},
 		StorageView: &logical.InmemStorage{},
 	}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatalf("unable to create backend: %v", err)
 	}
@@ -102,11 +101,11 @@ func TestPath_Create(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
-		actual, err := b.(*jwtAuthBackend).role(context.Background(), storage, "plugin-test")
+		actual, err := b.(*jwtAuthBackend).role(t.Context(), storage, "plugin-test")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -129,7 +128,7 @@ func TestPath_Create(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -156,7 +155,7 @@ func TestPath_Create(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -184,7 +183,7 @@ func TestPath_Create(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -210,7 +209,7 @@ func TestPath_Create(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -236,7 +235,7 @@ func TestPath_Create(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -264,7 +263,7 @@ func TestPath_Create(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -295,7 +294,7 @@ func TestPath_Create(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -303,7 +302,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatalf("did not expect error:%s", resp.Error().Error())
 		}
 
-		actual, err := b.(*jwtAuthBackend).role(context.Background(), storage, "test8")
+		actual, err := b.(*jwtAuthBackend).role(t.Context(), storage, "test8")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -344,7 +343,7 @@ func TestPath_Create(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -352,7 +351,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatalf("did not expect error:%s", resp.Error().Error())
 		}
 
-		actual, err := b.(*jwtAuthBackend).role(context.Background(), storage, "test9")
+		actual, err := b.(*jwtAuthBackend).role(t.Context(), storage, "test9")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -390,7 +389,7 @@ func TestPath_Create(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -398,7 +397,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatalf("did not expect error:%s", resp.Error().Error())
 		}
 
-		actual, err := b.(*jwtAuthBackend).role(context.Background(), storage, "test9")
+		actual, err := b.(*jwtAuthBackend).role(t.Context(), storage, "test9")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -437,7 +436,7 @@ func TestPath_Create(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -472,7 +471,7 @@ func TestPath_Create(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -506,7 +505,7 @@ func TestPath_Create(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -590,11 +589,11 @@ func TestPath_OIDCCreate(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
-			actual, err := b.(*jwtAuthBackend).role(context.Background(), storage, "plugin-test")
+			actual, err := b.(*jwtAuthBackend).role(t.Context(), storage, "plugin-test")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -639,7 +638,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -685,7 +684,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -718,7 +717,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -726,7 +725,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			t.Fatalf("unexpected error: %s", resp.Error().Error())
 		}
 
-		actual, err := b.(*jwtAuthBackend).role(context.Background(), storage, "test3")
+		actual, err := b.(*jwtAuthBackend).role(t.Context(), storage, "test3")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -808,7 +807,7 @@ func TestPath_Read(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -820,7 +819,7 @@ func TestPath_Read(t *testing.T) {
 			Storage:   storage,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -843,7 +842,7 @@ func TestPath_Read(t *testing.T) {
 
 	// Remove the 'role_type' parameter in stored role to simulate a legacy role
 	rolePath := rolePrefix + "plugin-test"
-	raw, err := storage.Get(context.Background(), rolePath)
+	raw, err := storage.Get(t.Context(), rolePath)
 
 	var role map[string]interface{}
 	if err := raw.DecodeJSON(&role); err != nil {
@@ -855,7 +854,7 @@ func TestPath_Read(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = req.Storage.Put(context.Background(), entry); err != nil {
+	if err = req.Storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}
 
@@ -864,7 +863,7 @@ func TestPath_Read(t *testing.T) {
 	readTest()
 
 	// Remove the 'bound_claims_type' parameter in stored role to simulate a legacy role
-	raw, err = storage.Get(context.Background(), rolePath)
+	raw, err = storage.Get(t.Context(), rolePath)
 
 	if err := raw.DecodeJSON(&role); err != nil {
 		t.Fatal(err)
@@ -875,7 +874,7 @@ func TestPath_Read(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = req.Storage.Put(context.Background(), entry); err != nil {
+	if err = req.Storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}
 
@@ -910,7 +909,7 @@ func TestPath_Delete(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -921,7 +920,7 @@ func TestPath_Delete(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -936,7 +935,7 @@ func TestPath_Delete(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}

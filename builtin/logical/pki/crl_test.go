@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -50,7 +49,7 @@ func TestBackend_CRLConfigUpdate(t *testing.T) {
 	oldConfig := legacyConfig{Expiry: "24h", Disable: false}
 	entry, err := logical.StorageEntryJSON("config/crl", oldConfig)
 	require.NoError(t, err, "generate storage entry objection with legacy config")
-	err = s.Put(ctx, entry)
+	err = s.Put(t.Context(), entry)
 	require.NoError(t, err, "failed writing legacy config")
 
 	// Now lets read it.
@@ -378,7 +377,7 @@ func crlEnableDisableTestForBackend(t *testing.T, b *backend, s logical.Storage,
 
 func TestBackend_Secondary_CRL_Rebuilding(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := CreateBackendWithStorage(t)
 	sc := b.makeStorageContext(ctx, s)
 
@@ -403,7 +402,7 @@ func TestBackend_Secondary_CRL_Rebuilding(t *testing.T) {
 
 func TestCrlRebuilder(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := CreateBackendWithStorage(t)
 	sc := b.makeStorageContext(ctx, s)
 
@@ -1222,7 +1221,7 @@ func TestTidyIssuerAssociation(t *testing.T) {
 
 	// This leaf's revInfo entry should have an issuer associated
 	// with it.
-	entry, err := s.Get(ctx, revokedPath+normalizeSerial(leafSerial))
+	entry, err := s.Get(t.Context(), revokedPath+normalizeSerial(leafSerial))
 	require.NoError(t, err)
 	require.NotNil(t, entry)
 	require.NotNil(t, entry.Value)
@@ -1260,7 +1259,7 @@ func TestTidyIssuerAssociation(t *testing.T) {
 	}
 
 	// Ensure we don't have an association on this leaf any more.
-	entry, err = s.Get(ctx, revokedPath+normalizeSerial(leafSerial))
+	entry, err = s.Get(t.Context(), revokedPath+normalizeSerial(leafSerial))
 	require.NoError(t, err)
 	require.NotNil(t, entry)
 	require.NotNil(t, entry.Value)
@@ -1308,7 +1307,7 @@ func TestTidyIssuerAssociation(t *testing.T) {
 	}
 
 	// Finally, double-check we associated things correctly.
-	entry, err = s.Get(ctx, revokedPath+normalizeSerial(leafSerial))
+	entry, err = s.Get(t.Context(), revokedPath+normalizeSerial(leafSerial))
 	require.NoError(t, err)
 	require.NotNil(t, entry)
 	require.NotNil(t, entry.Value)
@@ -1324,7 +1323,7 @@ func requestCrlFromBackend(t *testing.T, s logical.Storage, b *backend) *logical
 		Path:      "crl/pem",
 		Storage:   s,
 	}
-	resp, err := b.HandleRequest(context.Background(), crlReq)
+	resp, err := b.HandleRequest(t.Context(), crlReq)
 	require.NoError(t, err, "crl req failed with an error")
 	require.NotNil(t, resp, "crl response was nil with no error")
 	require.False(t, resp.IsError(), "crl error response: %v", resp)
@@ -1437,7 +1436,7 @@ hbiiPARizZA/Tsna/9ox1qDT
 func TestCRLIssuerRemoval(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := CreateBackendWithStorage(t)
 
 	// Create a single root, configure delta CRLs, and rotate CRLs to prep a

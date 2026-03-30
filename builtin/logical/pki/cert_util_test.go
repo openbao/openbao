@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"context"
 	"crypto/x509"
 	"fmt"
 	"reflect"
@@ -21,7 +20,7 @@ import (
 func TestPki_FetchCertBySerial(t *testing.T) {
 	t.Parallel()
 	b, storage := CreateBackendWithStorage(t)
-	sc := b.makeStorageContext(ctx, storage)
+	sc := b.makeStorageContext(t.Context(), storage)
 
 	cases := map[string]struct {
 		Req    *logical.Request
@@ -47,7 +46,7 @@ func TestPki_FetchCertBySerial(t *testing.T) {
 	// Test for colon-based paths in storage
 	for name, tc := range cases {
 		storageKey := fmt.Sprintf("%s%s", tc.Prefix, tc.Serial)
-		err := storage.Put(context.Background(), &logical.StorageEntry{
+		err := storage.Put(t.Context(), &logical.StorageEntry{
 			Key:   storageKey,
 			Value: []byte("some data"),
 		})
@@ -67,7 +66,7 @@ func TestPki_FetchCertBySerial(t *testing.T) {
 
 		// Ensure that cert serials are converted/updated after fetch
 		expectedKey := tc.Prefix + normalizeSerial(tc.Serial)
-		se, err := storage.Get(context.Background(), expectedKey)
+		se, err := storage.Get(t.Context(), expectedKey)
 		if err != nil {
 			t.Fatalf("error on %s for colon-based storage path:%s", name, err)
 		}
@@ -82,7 +81,7 @@ func TestPki_FetchCertBySerial(t *testing.T) {
 	// Test for hyphen-base paths in storage
 	for name, tc := range cases {
 		storageKey := tc.Prefix + normalizeSerial(tc.Serial)
-		err := storage.Put(context.Background(), &logical.StorageEntry{
+		err := storage.Put(t.Context(), &logical.StorageEntry{
 			Key:   storageKey,
 			Value: []byte("some data"),
 		})

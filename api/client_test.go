@@ -245,7 +245,7 @@ func TestClientDisableRedirects(t *testing.T) {
 			}
 
 			req := client.NewRequest("GET", "/")
-			resp, err := client.rawRequestWithContext(context.Background(), req)
+			resp, err := client.rawRequestWithContext(t.Context(), req)
 			if err != nil {
 				t.Fatalf("%s: error %v", name, err)
 			}
@@ -349,7 +349,7 @@ func TestDefaulRetryPolicy(t *testing.T) {
 
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
-			retry, err := DefaultRetryPolicy(context.Background(), test.resp, test.err)
+			retry, err := DefaultRetryPolicy(t.Context(), test.resp, test.err)
 			if retry != test.expect {
 				t.Fatalf("expected to retry request: '%t', but actual result was: '%t'", test.expect, retry)
 			}
@@ -787,7 +787,7 @@ func TestClientWithNamespace(t *testing.T) {
 	ogNS := "test"
 	client.SetNamespace(ogNS)
 	_, err = client.rawRequestWithContext(
-		context.Background(),
+		t.Context(),
 		client.NewRequest(http.MethodGet, "/"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -799,7 +799,7 @@ func TestClientWithNamespace(t *testing.T) {
 	// make a call with a temporary namespace
 	newNS := "new-namespace"
 	_, err = client.WithNamespace(newNS).rawRequestWithContext(
-		context.Background(),
+		t.Context(),
 		client.NewRequest(http.MethodGet, "/"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -809,7 +809,7 @@ func TestClientWithNamespace(t *testing.T) {
 	}
 	// ensure client has not been modified
 	_, err = client.rawRequestWithContext(
-		context.Background(),
+		t.Context(),
 		client.NewRequest(http.MethodGet, "/"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -820,7 +820,7 @@ func TestClientWithNamespace(t *testing.T) {
 
 	// make call with empty ns
 	_, err = client.WithNamespace("").rawRequestWithContext(
-		context.Background(),
+		t.Context(),
 		client.NewRequest(http.MethodGet, "/"))
 	if err != nil {
 		t.Fatalf("err: %s", err)

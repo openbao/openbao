@@ -1,7 +1,6 @@
 package kv
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -121,7 +120,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			wantNoResponse(t, resp, err)
 
 			req = &logical.Request{
@@ -129,7 +128,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 				Path:      "config",
 				Storage:   storage,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			wantResponse(t, resp, err)
 			want, got := tt.mount.String(), resp.Data["delete_version_after"]
 			if want != got {
@@ -146,7 +145,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			wantNoResponse(t, resp, err)
 
 			req = &logical.Request{
@@ -154,7 +153,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 				Path:      "metadata/foo",
 				Storage:   storage,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			wantResponse(t, resp, err)
 			want, got = tt.meta.String(), resp.Data["delete_version_after"]
 			if want != got {
@@ -172,7 +171,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			wantResponse(t, resp, err)
 			if !tt.wantDeletionTime {
 				if dtv := resp.Data["deletion_time"].(string); dtv != "" {
@@ -191,7 +190,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 				Path:      "data/foo",
 				Storage:   storage,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			wantResponse(t, resp, err)
 			meta := resp.Data["metadata"].(map[string]interface{})
 			if !tt.wantDeletionTime {
@@ -215,7 +214,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			wantNoResponse(t, resp, err)
 
 			data = map[string]interface{}{
@@ -228,7 +227,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 				Data:      data,
 			}
 			undeleteTime := time.Now() // the deletion timer is reset after an undelete
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			wantNoResponse(t, resp, err)
 
 			req = &logical.Request{
@@ -237,7 +236,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if err != nil || resp == nil || resp.IsError() {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}

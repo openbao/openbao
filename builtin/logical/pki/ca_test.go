@@ -320,7 +320,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				Operation: logical.ReadOperation,
 				Storage:   rootB.storage,
 			}
-			resp, err := rootB.HandleRequest(context.Background(), req)
+			resp, err := rootB.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -347,7 +347,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				Operation: logical.ReadOperation,
 				Storage:   rootB.storage,
 			}
-			resp, err := rootB.HandleRequest(context.Background(), req)
+			resp, err := rootB.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -549,7 +549,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				Operation: logical.ReadOperation,
 				Storage:   rootB.storage,
 			}
-			resp, err := rootB.HandleRequest(context.Background(), req)
+			resp, err := rootB.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatal(err)
 			}

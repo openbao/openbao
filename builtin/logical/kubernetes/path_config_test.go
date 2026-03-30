@@ -4,7 +4,6 @@
 package kubesecrets
 
 import (
-	"context"
 	"os"
 	"testing"
 
@@ -154,12 +153,12 @@ func Test_configWithDynamicValues(t *testing.T) {
 				Storage:   storage,
 				Data:      tc.config,
 			}
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 
-			conf, err := b.configWithDynamicValues(context.Background(), storage)
+			conf, err := b.configWithDynamicValues(t.Context(), storage)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -172,7 +171,7 @@ func Test_configWithDynamicValues(t *testing.T) {
 				Storage:   storage,
 				Data:      nil,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}

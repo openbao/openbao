@@ -4,7 +4,6 @@
 package rabbitmq
 
 import (
-	"context"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -20,7 +19,7 @@ func TestBackend_RoleCreate_DefaultUsernameTemplate(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	b := Backend()
-	if err = b.Setup(context.Background(), config); err != nil {
+	if err = b.Setup(t.Context(), config); err != nil {
 		t.Fatal(err)
 	}
 
@@ -36,7 +35,7 @@ func TestBackend_RoleCreate_DefaultUsernameTemplate(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      configData,
 	}
-	resp, err = b.HandleRequest(context.Background(), configReq)
+	resp, err = b.HandleRequest(t.Context(), configReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr:%s", resp, err)
 	}
@@ -54,7 +53,7 @@ func TestBackend_RoleCreate_DefaultUsernameTemplate(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      roleData,
 	}
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr:%s", resp, err)
 	}
@@ -68,7 +67,7 @@ func TestBackend_RoleCreate_DefaultUsernameTemplate(t *testing.T) {
 		Storage:     config.StorageView,
 		DisplayName: "token",
 	}
-	resp, err = b.HandleRequest(context.Background(), credsReq)
+	resp, err = b.HandleRequest(t.Context(), credsReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr:%s", resp, err)
 	}
@@ -96,7 +95,7 @@ func TestBackend_RoleCreate_CustomUsernameTemplate(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	b := Backend()
-	if err = b.Setup(context.Background(), config); err != nil {
+	if err = b.Setup(t.Context(), config); err != nil {
 		t.Fatal(err)
 	}
 
@@ -112,7 +111,7 @@ func TestBackend_RoleCreate_CustomUsernameTemplate(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      configData,
 	}
-	resp, err = b.HandleRequest(context.Background(), configReq)
+	resp, err = b.HandleRequest(t.Context(), configReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr:%s", resp, err)
 	}
@@ -130,7 +129,7 @@ func TestBackend_RoleCreate_CustomUsernameTemplate(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      roleData,
 	}
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr:%s", resp, err)
 	}
@@ -144,7 +143,7 @@ func TestBackend_RoleCreate_CustomUsernameTemplate(t *testing.T) {
 		Storage:     config.StorageView,
 		DisplayName: "token",
 	}
-	resp, err = b.HandleRequest(context.Background(), credsReq)
+	resp, err = b.HandleRequest(t.Context(), credsReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr:%s", resp, err)
 	}

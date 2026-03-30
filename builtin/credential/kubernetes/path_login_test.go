@@ -268,7 +268,7 @@ func setupBackend(t *testing.T, config *testBackendConfig) (logical.Backend, log
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -292,7 +292,7 @@ func setupBackend(t *testing.T, config *testBackendConfig) (logical.Backend, log
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -321,7 +321,7 @@ func TestLogin(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -343,7 +343,7 @@ func TestLogin(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -366,7 +366,7 @@ func TestLogin(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -392,7 +392,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -416,7 +416,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err == nil {
 		t.Fatal("Expected error")
 	} else if !errors.Is(err, logical.ErrPermissionDenied) {
@@ -439,7 +439,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -464,7 +464,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -489,7 +489,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -513,7 +513,7 @@ func TestLogin_ContextError(t *testing.T) {
 		},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	_, err := b.HandleRequest(ctx, req)
@@ -540,7 +540,7 @@ func TestLogin_ECDSA_PEM(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -561,7 +561,7 @@ func TestLogin_ECDSA_PEM(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -586,7 +586,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 		},
 	}
 
-	_, err := b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(t.Context(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -611,7 +611,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -637,7 +637,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, _ := b.HandleRequest(context.Background(), req)
+	resp, _ := b.HandleRequest(t.Context(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -656,7 +656,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, _ = b.HandleRequest(context.Background(), req)
+	resp, _ = b.HandleRequest(t.Context(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -676,7 +676,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, _ = b.HandleRequest(context.Background(), req)
+	resp, _ = b.HandleRequest(t.Context(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -699,7 +699,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		},
 	}
 
-	_, err := b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(t.Context(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -722,7 +722,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		},
 	}
 
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err == nil {
 		t.Fatal("Expected error")
 	} else if !errors.Is(err, logical.ErrPermissionDenied) {
@@ -745,7 +745,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -770,7 +770,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -795,7 +795,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -840,7 +840,7 @@ func TestLoginSvcAcctNamespaceSelector(t *testing.T) {
 				},
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if tc.errExpected {
 				var actual error
 				if err != nil {
@@ -947,7 +947,7 @@ func TestAliasLookAhead(t *testing.T) {
 				},
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if tc.wantErr != nil {
 				var actual error
 				if err != nil {
@@ -997,7 +997,7 @@ func TestLoginIssValidation(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1018,7 +1018,7 @@ func TestLoginIssValidation(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1039,7 +1039,7 @@ func TestLoginIssValidation(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1060,7 +1060,7 @@ func TestLoginIssValidation(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1081,7 +1081,7 @@ func TestLoginIssValidation(t *testing.T) {
 		},
 	}
 
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -1105,7 +1105,7 @@ func TestLoginIssValidation(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1126,7 +1126,7 @@ func TestLoginIssValidation(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1154,7 +1154,7 @@ func TestLoginProjectedToken(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1216,7 +1216,7 @@ func TestLoginProjectedToken(t *testing.T) {
 
 			b.(*kubeAuthBackend).reviewFactory = tc.tokenReview
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil && tc.e == nil {
 				t.Fatalf("unexpected err: (%s) resp:%#v\n", err, resp)
 			}
@@ -1263,7 +1263,7 @@ func TestAliasLookAheadProjectedToken(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1598,7 +1598,7 @@ func TestResolveRole(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := storage.Put(context.Background(), entry); err != nil {
+	if err := storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1615,7 +1615,7 @@ func TestResolveRole(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), loginReq)
+	resp, err := b.HandleRequest(t.Context(), loginReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -1642,7 +1642,7 @@ func TestResolveRole_RoleDoesNotExist(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), loginReq)
+	resp, err := b.HandleRequest(t.Context(), loginReq)
 	if resp == nil && !resp.IsError() {
 		t.Fatalf("Response was not an error: err:%v resp:%#v", err, resp)
 	}

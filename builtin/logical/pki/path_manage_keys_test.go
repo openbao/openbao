@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"context"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
@@ -52,7 +51,7 @@ func TestPKI_PathManageKeys_GenerateInternalKeys(t *testing.T) {
 				}
 				keyName = genUuid() + "-" + tt.keyType + "-key-name"
 				data["key_name"] = keyName
-				resp, err := b.HandleRequest(context.Background(), &logical.Request{
+				resp, err := b.HandleRequest(t.Context(), &logical.Request{
 					Operation:  logical.UpdateOperation,
 					Path:       "keys/generate/internal",
 					Storage:    s,
@@ -90,7 +89,7 @@ func TestPKI_PathManageKeys_GenerateExportedKeys(t *testing.T) {
 	// We tested a lot of the logic above within the internal test, so just make sure we honor the exported contract
 	b, s := CreateBackendWithStorage(t)
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "keys/generate/exported",
 		Storage:   s,
@@ -133,7 +132,7 @@ func TestPKI_PathManageKeys_ImportKeyBundle(t *testing.T) {
 	pem2, err := bundle2.ToPrivateKeyPemString()
 	require.NoError(t, err, "failed converting rsa key to pem")
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "keys/import",
 		Storage:   s,
@@ -154,7 +153,7 @@ func TestPKI_PathManageKeys_ImportKeyBundle(t *testing.T) {
 	require.Equal(t, certutil.ECPrivateKey, resp.Data["key_type"])
 	keyId1 := resp.Data["key_id"].(keyID)
 
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "keys/import",
 		Storage:   s,
@@ -175,7 +174,7 @@ func TestPKI_PathManageKeys_ImportKeyBundle(t *testing.T) {
 	require.NotEqual(t, keyId1, keyId2)
 
 	// Attempt to reimport the same key with a different name.
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "keys/import",
 		Storage:   s,
@@ -200,7 +199,7 @@ func TestPKI_PathManageKeys_ImportKeyBundle(t *testing.T) {
 	require.NoError(t, err, "failed generating an ec key bundle")
 	pem3, err := bundle3.ToPrivateKeyPemString()
 	require.NoError(t, err, "failed converting rsa key to pem")
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "keys/import",
 		Storage:   s,
@@ -215,7 +214,7 @@ func TestPKI_PathManageKeys_ImportKeyBundle(t *testing.T) {
 	require.True(t, resp.IsError(), "should have received an error response importing a key with a re-used name")
 
 	// Delete the key to make sure re-importing gets another ID
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.DeleteOperation,
 		Path:       "key/" + keyId2.String(),
 		Storage:    s,
@@ -225,7 +224,7 @@ func TestPKI_PathManageKeys_ImportKeyBundle(t *testing.T) {
 	require.Nil(t, resp, "Got non-nil response deleting the key: %#v", resp)
 
 	// Deleting a non-existent key should be okay...
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.DeleteOperation,
 		Path:       "key/" + keyId2.String(),
 		Storage:    s,
@@ -235,7 +234,7 @@ func TestPKI_PathManageKeys_ImportKeyBundle(t *testing.T) {
 	require.Nil(t, resp, "Got non-nil response deleting the key: %#v", resp)
 
 	// Let's reimport key 2 post-deletion to make sure we re-generate a new key id
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "keys/import",
 		Storage:   s,
@@ -260,7 +259,7 @@ func TestPKI_PathManageKeys_DeleteDefaultKeyWarns(t *testing.T) {
 	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.UpdateOperation,
 		Path:       "keys/generate/internal",
 		Storage:    s,
@@ -272,7 +271,7 @@ func TestPKI_PathManageKeys_DeleteDefaultKeyWarns(t *testing.T) {
 	require.False(t, resp.IsError(), "resp contained errors generating key: %#v", resp.Error())
 	keyId := resp.Data["key_id"].(keyID)
 
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.DeleteOperation,
 		Path:       "key/" + keyId.String(),
 		Storage:    s,
@@ -288,7 +287,7 @@ func TestPKI_PathManageKeys_DeleteUsedKeyFails(t *testing.T) {
 	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.UpdateOperation,
 		Path:       "issuers/generate/root/internal",
 		Storage:    s,
@@ -300,7 +299,7 @@ func TestPKI_PathManageKeys_DeleteUsedKeyFails(t *testing.T) {
 	require.False(t, resp.IsError(), "resp contained errors generating issuer: %#v", resp.Error())
 	keyId := resp.Data["key_id"].(keyID)
 
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.DeleteOperation,
 		Path:       "key/" + keyId.String(),
 		Storage:    s,
@@ -315,7 +314,7 @@ func TestPKI_PathManageKeys_UpdateKeyDetails(t *testing.T) {
 	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.UpdateOperation,
 		Path:       "keys/generate/internal",
 		Storage:    s,
@@ -327,7 +326,7 @@ func TestPKI_PathManageKeys_UpdateKeyDetails(t *testing.T) {
 	require.False(t, resp.IsError(), "resp contained errors generating key: %#v", resp.Error())
 	keyId := resp.Data["key_id"].(keyID)
 
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.UpdateOperation,
 		Path:       "key/" + keyId.String(),
 		Storage:    s,
@@ -340,7 +339,7 @@ func TestPKI_PathManageKeys_UpdateKeyDetails(t *testing.T) {
 	require.NotNil(t, resp, "Got nil response updating key with new name")
 	require.False(t, resp.IsError(), "unexpected error updating key with new name: %#v", resp.Error())
 
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.ReadOperation,
 		Path:       "key/" + keyId.String(),
 		Storage:    s,
@@ -356,7 +355,7 @@ func TestPKI_PathManageKeys_UpdateKeyDetails(t *testing.T) {
 	require.Equal(t, "new-name", keyName, "failed to update key_name expected: new-name was: %s", keyName)
 
 	// Make sure we do not allow updates to invalid name values
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.UpdateOperation,
 		Path:       "key/" + keyId.String(),
 		Storage:    s,
@@ -372,7 +371,7 @@ func TestPKI_PathManageKeys_ImportKeyBundleBadData(t *testing.T) {
 	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "keys/import",
 		Storage:   s,
@@ -388,7 +387,7 @@ func TestPKI_PathManageKeys_ImportKeyBundleBadData(t *testing.T) {
 
 	// Make sure we also bomb on a proper certificate
 	bundle := genCertBundle(t, b, s)
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "keys/import",
 		Storage:   s,
@@ -417,7 +416,7 @@ func TestPKI_PathManageKeys_ImportKeyRejectsMultipleKeys(t *testing.T) {
 
 	importPem := pem1 + "\n" + pem2
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "keys/import",
 		Storage:   s,
@@ -431,7 +430,7 @@ func TestPKI_PathManageKeys_ImportKeyRejectsMultipleKeys(t *testing.T) {
 	require.NotNil(t, resp, "Got nil response importing a bad pem bundle")
 	require.True(t, resp.IsError(), "should have received an error response importing a pem bundle with more than 1 key")
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sc := b.makeStorageContext(ctx, s)
 	keys, _ := sc.listKeys()
 	for _, keyId := range keys {

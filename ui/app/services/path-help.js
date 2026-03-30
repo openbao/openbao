@@ -335,15 +335,13 @@ export default Service.extend({
       }
       // attempting to set the id prop on a model will trigger an error
       // this computed will be used in place of the the id fieldValue -- see openapi-to-attrs
-      newModel.reopen({
-        mutableId: computed('id', '_id', {
-          get() {
-            return this._id || this.id;
-          },
-          set(key, value) {
-            return (this._id = value);
-          },
-        }),
+      Object.defineProperty(newModel.prototype, 'mutableId', {
+        get() {
+          return this._id || this.id;
+        },
+        set(value) {
+          this._id = value;
+        },
       });
       newModel.merged = true;
       owner.unregister(modelName);

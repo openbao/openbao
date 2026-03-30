@@ -654,7 +654,7 @@ func testGrpcServer(t *testing.T, db Database) (context.Context, gRPCServer) {
 // gRPCServer instance for a non-multiplexed plugin
 func testGrpcServerSingleImpl(t *testing.T, db Database) (context.Context, gRPCServer) {
 	t.Helper()
-	return context.Background(), gRPCServer{
+	return t.Context(), gRPCServer{
 		singleImpl: db,
 	}
 }
@@ -664,7 +664,7 @@ func testGrpcServerSingleImpl(t *testing.T, db Database) (context.Context, gRPCS
 func idCtx(t *testing.T, ids ...string) context.Context {
 	t.Helper()
 	// Context doesn't need to timeout since this is just passed through
-	ctx := context.Background()
+	ctx := t.Context()
 	md := metadata.MD{}
 	for _, id := range ids {
 		md.Append(pluginutil.MultiplexingCtxKey, id)

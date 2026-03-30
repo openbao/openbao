@@ -4,7 +4,6 @@
 package raft
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -122,7 +121,7 @@ func TestFSM_Batching(t *testing.T) {
 		assert.EqualValues(collect, totalKeys, hookCallCount.Load())
 	}, time.Second, time.Millisecond)
 
-	keys, err := fsm.List(context.Background(), "")
+	keys, err := fsm.List(t.Context(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +148,7 @@ func TestFSM_List(t *testing.T) {
 	fsm, dir := getFSM(t)
 	defer func() { _ = os.RemoveAll(dir) }()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	count := 100
 	keys := rand.Perm(count)
 	var sorted []string

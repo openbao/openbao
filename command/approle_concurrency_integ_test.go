@@ -4,7 +4,6 @@
 package command
 
 import (
-	"context"
 	"sync"
 	"testing"
 
@@ -78,7 +77,7 @@ func TestAppRole_Integ_ConcurrentLogins(t *testing.T) {
 				t.Error(err)
 				return
 			}
-			secret, err := client.Auth().Login(context.TODO(), appRoleAuth)
+			secret, err := client.Auth().Login(t.Context(), appRoleAuth)
 			if err != nil {
 				t.Error(err)
 				return

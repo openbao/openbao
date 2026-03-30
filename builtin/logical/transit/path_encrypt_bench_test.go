@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -63,7 +62,7 @@ func BTransit_BatchEncryption(b *testing.B, bsize int) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		resp, err = backend.HandleRequest(context.Background(), batchEncryptionReq)
+		resp, err = backend.HandleRequest(b.Context(), batchEncryptionReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			b.Fatalf("err:%v resp:%#v", err, resp)
 		}

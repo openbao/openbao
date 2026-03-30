@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -22,7 +21,7 @@ func TestTransit_WrappingKey(t *testing.T) {
 	b, s := createBackendWithStorage(t)
 
 	// Ensure the key does not exist before requesting it.
-	keyEntry, err := s.Get(context.Background(), storagePath)
+	keyEntry, err := s.Get(t.Context(), storagePath)
 	if err != nil {
 		t.Fatalf("error retrieving wrapping key from storage: %s", err)
 	}
@@ -36,7 +35,7 @@ func TestTransit_WrappingKey(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "wrapping_key",
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected request error: %s", err)
 	}
@@ -62,7 +61,7 @@ func TestTransit_WrappingKey(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "wrapping_key",
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected request error: %s", err)
 	}

@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -28,7 +27,7 @@ func TestTransit_MissingPlaintext(t *testing.T) {
 		Path:      "keys/existing_key",
 		Storage:   s,
 	}
-	resp, err = b.HandleRequest(context.Background(), policyReq)
+	resp, err = b.HandleRequest(t.Context(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -39,7 +38,7 @@ func TestTransit_MissingPlaintext(t *testing.T) {
 		Storage:   s,
 		Data:      map[string]interface{}{},
 	}
-	resp, err = b.HandleRequest(context.Background(), encReq)
+	resp, err = b.HandleRequest(t.Context(), encReq)
 	if resp == nil || !resp.IsError() {
 		t.Fatalf("expected error due to missing plaintext in request, err:%v resp:%#v", err, resp)
 	}
@@ -57,7 +56,7 @@ func TestTransit_MissingPlaintextInBatchInput(t *testing.T) {
 		Path:      "keys/existing_key",
 		Storage:   s,
 	}
-	resp, err = b.HandleRequest(context.Background(), policyReq)
+	resp, err = b.HandleRequest(t.Context(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -75,7 +74,7 @@ func TestTransit_MissingPlaintextInBatchInput(t *testing.T) {
 		Storage:   s,
 		Data:      batchData,
 	}
-	resp, err = b.HandleRequest(context.Background(), batchReq)
+	resp, err = b.HandleRequest(t.Context(), batchReq)
 	if err == nil {
 		t.Fatalf("expected error due to missing plaintext in request, err:%v resp:%#v", err, resp)
 	}
@@ -95,7 +94,7 @@ func TestTransit_BatchEncryptionCase1(t *testing.T) {
 		Path:      "keys/existing_key",
 		Storage:   s,
 	}
-	resp, err = b.HandleRequest(context.Background(), policyReq)
+	resp, err = b.HandleRequest(t.Context(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -112,7 +111,7 @@ func TestTransit_BatchEncryptionCase1(t *testing.T) {
 		Storage:   s,
 		Data:      encData,
 	}
-	resp, err = b.HandleRequest(context.Background(), encReq)
+	resp, err = b.HandleRequest(t.Context(), encReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -133,7 +132,7 @@ func TestTransit_BatchEncryptionCase1(t *testing.T) {
 		Storage:   s,
 		Data:      decData,
 	}
-	resp, err = b.HandleRequest(context.Background(), decReq)
+	resp, err = b.HandleRequest(t.Context(), decReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -163,7 +162,7 @@ func TestTransit_BatchEncryptionCase2(t *testing.T) {
 		Storage:   s,
 		Data:      encData,
 	}
-	resp, err = b.HandleRequest(context.Background(), encReq)
+	resp, err = b.HandleRequest(t.Context(), encReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -184,7 +183,7 @@ func TestTransit_BatchEncryptionCase2(t *testing.T) {
 		Storage:   s,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), policyReq)
+	resp, err = b.HandleRequest(t.Context(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -195,7 +194,7 @@ func TestTransit_BatchEncryptionCase2(t *testing.T) {
 		Storage:   s,
 		Data:      decData,
 	}
-	resp, err = b.HandleRequest(context.Background(), decReq)
+	resp, err = b.HandleRequest(t.Context(), decReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -222,7 +221,7 @@ func TestTransit_BatchEncryptionCase3(t *testing.T) {
 		Storage:   s,
 		Data:      batchData,
 	}
-	_, err = b.HandleRequest(context.Background(), batchReq)
+	_, err = b.HandleRequest(t.Context(), batchReq)
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -240,7 +239,7 @@ func TestTransit_BatchEncryptionCase4(t *testing.T) {
 		Path:      "keys/existing_key",
 		Storage:   s,
 	}
-	resp, err = b.HandleRequest(context.Background(), policyReq)
+	resp, err = b.HandleRequest(t.Context(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -259,7 +258,7 @@ func TestTransit_BatchEncryptionCase4(t *testing.T) {
 		Storage:   s,
 		Data:      batchData,
 	}
-	resp, err = b.HandleRequest(context.Background(), batchReq)
+	resp, err = b.HandleRequest(t.Context(), batchReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -282,7 +281,7 @@ func TestTransit_BatchEncryptionCase4(t *testing.T) {
 		decReq.Data = map[string]interface{}{
 			"ciphertext": item.Ciphertext,
 		}
-		resp, err = b.HandleRequest(context.Background(), decReq)
+		resp, err = b.HandleRequest(t.Context(), decReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v", err, resp)
 		}
@@ -315,7 +314,7 @@ func TestTransit_BatchEncryptionCase5(t *testing.T) {
 		Data:      policyData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), policyReq)
+	resp, err = b.HandleRequest(t.Context(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -335,7 +334,7 @@ func TestTransit_BatchEncryptionCase5(t *testing.T) {
 		Storage:   s,
 		Data:      batchData,
 	}
-	resp, err = b.HandleRequest(context.Background(), batchReq)
+	resp, err = b.HandleRequest(t.Context(), batchReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -359,7 +358,7 @@ func TestTransit_BatchEncryptionCase5(t *testing.T) {
 			"ciphertext": item.Ciphertext,
 			"context":    "dmlzaGFsCg==",
 		}
-		resp, err = b.HandleRequest(context.Background(), decReq)
+		resp, err = b.HandleRequest(t.Context(), decReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v", err, resp)
 		}
@@ -391,7 +390,7 @@ func TestTransit_BatchEncryptionCase6(t *testing.T) {
 		Storage:   s,
 		Data:      batchData,
 	}
-	resp, err = b.HandleRequest(context.Background(), batchReq)
+	resp, err = b.HandleRequest(t.Context(), batchReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -419,7 +418,7 @@ func TestTransit_BatchEncryptionCase6(t *testing.T) {
 		decReq.Data = map[string]interface{}{
 			"ciphertext": item.Ciphertext,
 		}
-		resp, err = b.HandleRequest(context.Background(), decReq)
+		resp, err = b.HandleRequest(t.Context(), decReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v", err, resp)
 		}
@@ -451,7 +450,7 @@ func TestTransit_BatchEncryptionCase7(t *testing.T) {
 		Storage:   s,
 		Data:      batchData,
 	}
-	resp, err = b.HandleRequest(context.Background(), batchReq)
+	resp, err = b.HandleRequest(t.Context(), batchReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -475,7 +474,7 @@ func TestTransit_BatchEncryptionCase7(t *testing.T) {
 			"ciphertext": item.Ciphertext,
 			"context":    "dmlzaGFsCg==",
 		}
-		resp, err = b.HandleRequest(context.Background(), decReq)
+		resp, err = b.HandleRequest(t.Context(), decReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v", err, resp)
 		}
@@ -499,7 +498,7 @@ func TestTransit_BatchEncryptionCase8(t *testing.T) {
 		Path:      "keys/existing_key",
 		Storage:   s,
 	}
-	resp, err = b.HandleRequest(context.Background(), policyReq)
+	resp, err = b.HandleRequest(t.Context(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -516,7 +515,7 @@ func TestTransit_BatchEncryptionCase8(t *testing.T) {
 		Storage:   s,
 		Data:      batchData,
 	}
-	resp, err = b.HandleRequest(context.Background(), batchReq)
+	resp, err = b.HandleRequest(t.Context(), batchReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -533,7 +532,7 @@ func TestTransit_BatchEncryptionCase8(t *testing.T) {
 		Storage:   s,
 		Data:      encData,
 	}
-	_, err = b.HandleRequest(context.Background(), encReq)
+	_, err = b.HandleRequest(t.Context(), encReq)
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -562,7 +561,7 @@ func TestTransit_BatchEncryptionCase9(t *testing.T) {
 		Storage:   s,
 		Data:      batchData,
 	}
-	resp, err = b.HandleRequest(context.Background(), batchReq)
+	resp, err = b.HandleRequest(t.Context(), batchReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -594,7 +593,7 @@ func TestTransit_BatchEncryptionCase10(t *testing.T) {
 		Storage:   s,
 		Data:      batchData,
 	}
-	_, err = b.HandleRequest(context.Background(), batchReq)
+	_, err = b.HandleRequest(t.Context(), batchReq)
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -620,7 +619,7 @@ func TestTransit_BatchEncryptionCase11(t *testing.T) {
 		Storage:   s,
 		Data:      batchData,
 	}
-	_, err = b.HandleRequest(context.Background(), batchReq)
+	_, err = b.HandleRequest(t.Context(), batchReq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -645,7 +644,7 @@ func TestTransit_BatchEncryptionCase12(t *testing.T) {
 		Storage:   s,
 		Data:      batchData,
 	}
-	_, err = b.HandleRequest(context.Background(), batchReq)
+	_, err = b.HandleRequest(t.Context(), batchReq)
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -851,7 +850,7 @@ func TestTransit_EncryptWithRSAPublicKey(t *testing.T) {
 			"type":       keyType,
 		},
 	}
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("failed to import public key: %s", err)
 	}
@@ -864,7 +863,7 @@ func TestTransit_EncryptWithRSAPublicKey(t *testing.T) {
 			"plaintext": "bXkgc2VjcmV0IGRhdGE=",
 		},
 	}
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}

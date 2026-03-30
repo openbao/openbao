@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"reflect"
@@ -36,7 +35,7 @@ func TestTransit_BatchDecryption(t *testing.T) {
 		Storage:   s,
 		Data:      batchEncryptionData,
 	}
-	resp, err = b.HandleRequest(context.Background(), batchEncryptionReq)
+	resp, err = b.HandleRequest(t.Context(), batchEncryptionReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -56,7 +55,7 @@ func TestTransit_BatchDecryption(t *testing.T) {
 		Storage:   s,
 		Data:      batchDecryptionData,
 	}
-	resp, err = b.HandleRequest(context.Background(), batchDecryptionReq)
+	resp, err = b.HandleRequest(t.Context(), batchDecryptionReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -87,7 +86,7 @@ func TestTransit_BatchDecryption_DerivedKey(t *testing.T) {
 			"derived": true,
 		},
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -110,7 +109,7 @@ func TestTransit_BatchDecryption_DerivedKey(t *testing.T) {
 			},
 		},
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -241,7 +240,7 @@ func TestTransit_BatchDecryption_DerivedKey(t *testing.T) {
 			for k, v := range tt.params {
 				req.Data[k] = v
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 
 			didErr := err != nil || (resp != nil && resp.IsError())
 			if didErr {

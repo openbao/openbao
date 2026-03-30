@@ -1,7 +1,6 @@
 package ssh
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -12,7 +11,7 @@ import (
 func TestMigrateStorage_EmptyStorage(t *testing.T) {
 	t.Parallel()
 	startTime := time.Now()
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := CreateBackendWithStorage(t)
 	sc := b.makeStorageContext(ctx, s)
 
@@ -41,7 +40,7 @@ func TestMigrateStorage_EmptyStorage(t *testing.T) {
 func TestMigrateStorage_CAConfigured(t *testing.T) {
 	t.Parallel()
 	startTime := time.Now()
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := CreateBackendWithStorage(t)
 	sc := b.makeStorageContext(ctx, s)
 
@@ -150,7 +149,7 @@ func TestMigrateStorage_CAConfigured(t *testing.T) {
 
 func TestMigrateStorage_EmptyMountDowngradeUpgrade(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := CreateBackendWithStorage(t)
 	sc := b.makeStorageContext(ctx, s)
 

@@ -90,7 +90,7 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 	defer os.Remove(secret)
 	t.Logf("input secret_id_file_path: %s", secret)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 
 	conf := map[string]interface{}{
 		"role_id_file_path":   role,

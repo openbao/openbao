@@ -24,27 +24,27 @@ import (
 // When allowed as sources, the CEL context already includes:
 //   - requests
 //   - responses
+//   - input
 func CELSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
 	var options []cel.EnvOption
-	var allowRequests bool
-	var allowResponses bool
-	if _, ok := engine.sourceBuilders["request"]; ok {
+
+	if HasRequestSource(engine) {
 		options = append(options, cel.Variable("requests", types.NewMapType(types.StringType, types.DynType)))
-		allowRequests = true
 	}
 
-	if _, ok := engine.sourceBuilders["response"]; ok {
+	if HasResponseSource(engine) {
 		options = append(options, cel.Variable("responses", types.NewMapType(types.StringType, types.DynType)))
-		allowResponses = true
+	}
+
+	if HasInputSource(engine) {
+		options = append(options, cel.Variable("input", types.NewMapType(types.StringType, types.DynType)))
 	}
 
 	return &CELSource{
 		engine: engine,
 		field:  field,
 
-		options:        options,
-		allowRequests:  allowRequests,
-		allowResponses: allowResponses,
+		options: options,
 	}
 }
 
@@ -60,9 +60,7 @@ type CELSource struct {
 	engine *ProfileEngine
 	field  map[string]interface{}
 
-	options        []cel.EnvOption
-	allowRequests  bool
-	allowResponses bool
+	options []cel.EnvOption
 
 	program celHelper.Program
 }
@@ -166,6 +164,10 @@ func (s *CELSource) Evaluate(ctx context.Context, eh *EvaluationHistory) (interf
 		if s.engine.outerBlockName == "" {
 			data["responses"] = eh.Responses[""]
 		}
+	}
+
+	if HasInputSource(s.engine) {
+		data["input"] = s.engine.data.Raw
 	}
 
 	result, err := s.program.Evaluate(ctx, s.getConfig(), data)

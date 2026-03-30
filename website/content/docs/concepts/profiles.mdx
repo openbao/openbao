@@ -1,11 +1,11 @@
 ---
 sidebar_label: Profile System
-description: >- 
-    This is a reference for OpenBao’s profile system and declarative self-initialization. It describes the four supported source types and the initialize_name mechanism.
+description: >-
+    This is a reference for OpenBao’s profile system and declarative self-initialization. It describes the supported source types and the initialize_name mechanism.
 ---
 
-The Profiles processes declarative API requests with dynamic data source evaluation. 
-The system implements the request/response pattern, supporting chained operations and accepting request handlers and parsed profile configurations. 
+The Profiles engine processes declarative API requests with dynamic data source evaluation.
+The system implements the request/response pattern, supporting chained operations and accepting request handlers and parsed profile configurations.
 These are then transformed into templates for one or more API requests.
 
 :::info
@@ -18,17 +18,17 @@ unauthenticated rotation and audit device creation) still apply.
 
 ## Profiles end to end workflow
 
-1. Profile Selection 
+1. Profile Selection
 
 A caller invokes and passes any required parameters.
 
-2. Input Validation 
+2. Input Validation
 Before any OpenBao operation is attempted, the engine:
 - Ensures every declared parameter is present and of the correct type, e.g., string, int, bool.
 - Confirms that each referenced source (environment variable, file path, earlier request, earlier response) is available.
 - Rejects a run immediately if required inputs are missing, preventing half-configured states
 
-3. Source Evaluation 
+3. Source Evaluation
 
 Profiles support four dynamic input sources (env, file, request, response)
 
@@ -41,9 +41,9 @@ If request fails, the engine stops immediately and returns an error to the calle
 
 ## Request/Response history
 
-In profiles every API call template and automatically tracked it so that its inputs and outputs can be reused later in the same run. 
-The mechanism—implemented and integrated request just before it is issued and the corresponding response immediately after it completes, then stores both as JSON in an in-memory map keyed by the outer block and request name. 
-Any subsequent field may reference those stored JSON objects through the request or response source types, using a selector to pull out a specific value. 
+In profiles every API call template and automatically tracked it so that its inputs and outputs can be reused later in the same run.
+The mechanism—implemented and integrated request just before it is issued and the corresponding response immediately after it completes, then stores both as JSON in an in-memory map keyed by the outer block and request name.
+Any subsequent field may reference those stored JSON objects through the request or response source types, using a selector to pull out a specific value.
 This design makes it possible to chain operations without writing additional code or shell scripts, while also preventing accidental overwrites by rejecting duplicate keys and guaranteeing that every reference resolves to a deterministically stored value.
 
 ## `value` Type
@@ -142,8 +142,9 @@ initialize "ca-setup" {
 
 #### `request` source
 
-- `initialize_name` `(string: <required>)` - name of the initialize block to
-  reference.
+- `<outer-block>_name` `(string: <required>)` - name of the outer block block to
+  reference. `<outer-block>` is the type of the outer block; for self-init, this
+  is `initialize_name`; for profiles, this is `context_name`.
 - `request_name` `(string: <required>)` - name of the request block inside the
   initialize block to reference. Must have already been executed.
 - `field_selector` `(string or []string: <required>)` - field within the request
@@ -175,8 +176,9 @@ initialize "namespace-identity" {
 
 #### `response` source
 
-- `initialize_name` `(string: <required>)` - name of the initialize block to
-  reference.
+- `<outer-block>_name` `(string: <required>)` - name of the outer block block to
+  reference. `<outer-block>` is the type of the outer block; for self-init, this
+  is `initialize_name`; for profiles, this is `context_name`.
 - `request_name` `(string: <required>)` - name of the request block inside the
   initialize block, to reference the corresponding response of. Must have
   already been executed.
@@ -220,6 +222,7 @@ when allowed as sources:
 
  - `requests`, if the `request` source is allowed
  - `responses`, if the `response` source is allowed
+ - `input`, if the `input` source is allowed
 
 For example, to sum the value of two responses:
 
@@ -233,6 +236,68 @@ initialize "provision" {
         eval_type = "int"
         eval_source = "cel"
         expression = "requests.first.read.my_field + requests.second.read.my_other_field"
+      }
+    }
+  }
+}
+```
+
+#### `template` source
+
+- `template` `(string: <required>)` - the [`template`](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2/helper/template#StringTemplate)
+  expression to evaluate; errs if not present.
+- `data` `(map[string]interface{}: <optional>)`: additional context for the
+  templating engine.
+
+Additionally, the following reserved values are injected into the CEL context
+when allowed as sources:
+
+ - `requests`, if the `request` source is allowed
+ - `responses`, if the `response` source is allowed
+ - `input`, if the `input` source is allowed
+
+For example, inject the hash of a password:
+
+```hcl
+initialize "provision" {
+  request "password" {
+    operation = "update"
+    path = "secret/data/my-secret"
+    data = {
+      "pem_bundle" = {
+        eval_type = "string"
+        eval_source = "template"
+        template = "{{ .responses.database.read-password.password | sha256 }}"
+      }
+    }
+  }
+}
+```
+
+#### `input` source
+
+:::info
+
+The `input` source is only available for profiles; not for declarative
+self-initialization.
+
+:::
+
+- `field_name` `(string: <required>)` - the field of the input request
+  parameter to read.
+
+For example, if the parameter `password` was specified in a profile:
+
+```hcl
+context "provision" {
+  request "password" {
+    operation = "update"
+    path = "secret/data/my-secret"
+    data = {
+      "pem_bundle" = {
+        eval_type = "string"
+        eval_source = "input"
+        template = "{{ .input.password }}"
       }
     }
   }

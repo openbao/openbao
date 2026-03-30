@@ -107,6 +107,11 @@ func (t FieldType) String() string {
 	}
 }
 
+// ParseFieldType converts known string values (as used in configuration
+// files) to FieldType constants. When new values are added, assignment of
+// a string constant ensures they can be used within the profile system.
+//
+// When the string constant is not known, an error will be returned.
 func ParseFieldType(value string) (FieldType, error) {
 	switch value {
 	case "string":

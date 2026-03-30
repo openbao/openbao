@@ -28,13 +28,13 @@ type FieldData struct {
 	Schema map[string]*FieldSchema
 }
 
-// Clone is used by the profile system to duplicate FieldData; Schema field is a
-// map globally initialized once per routable path, while Raw changes
-// per-request and is thus safe to mutate in certain scenarios. We wish to
-// mutate Schema, to add custom per-profile (per-request) fields that we
-// parse from raw. Notably, we also do not mutate existing schema entries,
+// CloneSchema is used by the profile system to duplicate FieldData; Schema
+// field is a map globally initialized once per routable path, while Raw
+// changes per-request and is thus safe to mutate in certain scenarios. We
+// wish to mutate Schema, to add custom per-profile (per-request) fields that
+// we parse from raw. Notably, we also do not mutate existing schema entries,
 // so this is essentially a shallow clone except of the schema map.
-func (d *FieldData) Clone() *FieldData {
+func (d *FieldData) CloneSchema() *FieldData {
 	clone := &FieldData{}
 	clone.Raw = d.Raw
 	clone.Schema = make(map[string]*FieldSchema, len(d.Schema))

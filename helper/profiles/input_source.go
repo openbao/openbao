@@ -29,7 +29,7 @@ func WithInputSource(config *InputConfig, request *logical.Request, data *framew
 
 		p.input = config
 		p.request = request
-		p.data = data.Clone()
+		p.data = data.CloneSchema()
 
 		p.sourceBuilders[inputSourceName] = func(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
 			return &InputSource{

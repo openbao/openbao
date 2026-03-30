@@ -13,6 +13,7 @@ export const deprecationWorkflowConfig = {
     { handler: 'log', matchId: 'ember-data:deprecate-model-reopenclass' },
     { handler: 'log', matchId: 'ember-data:deprecate-promise-proxies' },
     { handler: 'log', matchId: 'ember-data:deprecate-has-record-for-id' },
+    { handler: 'log', matchId: 'ember-data:deprecate-promise-many-array-behaviors' },
   ],
 };
 

@@ -103,7 +103,7 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	}
 
 	// Now sacrifice the leader's lock and ensure it doesn't write.
-	db, err := psql.Client(context.Background())
+	db, err := psql.Client(t.Context())
 	require.NoError(t, err)
 	_, err = db.Exec("DELETE FROM openbao_ha_locks")
 	require.NoError(t, err)
@@ -122,7 +122,7 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	time.Sleep(6 * time.Second)
 
 	// If we wait long enough, another node should pick up active leadership.
-	index, err := testcluster.WaitForActiveNode(context.Background(), cluster)
+	index, err := testcluster.WaitForActiveNode(t.Context(), cluster)
 	require.NoError(t, err)
 	t.Logf("detected node %v was active", index)
 	client = cluster.Nodes()[index].APIClient()

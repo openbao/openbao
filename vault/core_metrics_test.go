@@ -43,7 +43,7 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 		{"prefix/secret4/", "kv", "2", 5},
 		{"generic/", "generic", "1", 3},
 	}
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 
 	// skip 0, secret/ is already mounted
 	for _, tm := range testMounts[1:] {
@@ -169,7 +169,7 @@ func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 		Type:    "kv",
 		Options: map[string]string{"version": "1"},
 	}
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 	err := core.mount(ctx, me)
 	if err != nil {
 		t.Fatalf("mount error: %v", err)
@@ -213,7 +213,7 @@ func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 
 func TestCoreMetrics_KvSecretGaugeError(t *testing.T) {
 	core, _, _, sink := TestCoreUnsealedWithMetrics(t)
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 
 	badKvMount := &kvMount{
 		Namespace:  namespace.RootNamespace,
@@ -267,14 +267,14 @@ func metricLabelsMatch(t *testing.T, actual []metrics.Label, expected map[string
 }
 
 func TestCoreMetrics_EntityGauges(t *testing.T) {
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
 
 	testCoreMetricsEntityGauges(t, ctx, is, approleAccessor, upAccessor, core)
 }
 
 func TestCoreMetrics_EntityGaugesUnsafeSharedIdentity(t *testing.T) {
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
 
 	testCoreMetricsEntityGauges(t, ctx, is, approleAccessor, upAccessor, core)

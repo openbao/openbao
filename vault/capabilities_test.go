@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -19,7 +18,7 @@ func TestCapabilities_DerivedPolicies(t *testing.T) {
 	var resp *logical.Response
 	var err error
 
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 	i, _, c := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	policy1 := `
@@ -109,7 +108,7 @@ path "secret/sample" {
 		t.Fatalf("bad: resp: %#v\nerr: %#v\n", resp, err)
 	}
 
-	actual, err = c.Capabilities(namespace.RootContext(context.TODO()), "capabilitiestoken", "secret/sample")
+	actual, err = c.Capabilities(namespace.RootContext(t.Context()), "capabilitiestoken", "secret/sample")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -124,7 +123,7 @@ path "secret/sample" {
 func TestCapabilities_TemplatedPolicies(t *testing.T) {
 	var resp *logical.Response
 	var err error
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 
 	i, _, c := testIdentityStoreWithAppRoleAuth(ctx, t)
 	// Create an entity and assign policy1 to it
@@ -197,7 +196,7 @@ func TestCapabilities_TemplatedPolicies(t *testing.T) {
 
 func TestCapabilities(t *testing.T) {
 	c, _, token := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 
 	actual, err := c.Capabilities(ctx, token, "path")
 	if err != nil {

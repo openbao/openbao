@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -17,7 +16,7 @@ import (
 func testCountActiveTokens(t *testing.T, c *Core, root string) int {
 	t.Helper()
 
-	rootCtx := namespace.RootContext(context.TODO())
+	rootCtx := namespace.RootContext(t.Context())
 	req := &logical.Request{
 		ClientToken: root,
 		Operation:   logical.ReadOperation,
@@ -41,7 +40,7 @@ func testCountActiveTokens(t *testing.T, c *Core, root string) int {
 
 func TestTokenStore_CountActiveTokens(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
-	rootCtx := namespace.RootContext(context.TODO())
+	rootCtx := namespace.RootContext(t.Context())
 
 	// Count the root token
 	count := testCountActiveTokens(t, c, root)
@@ -110,7 +109,7 @@ func TestTokenStore_CountActiveTokens(t *testing.T) {
 func testCountActiveEntities(t *testing.T, c *Core, root string, expectedEntities int) {
 	t.Helper()
 
-	rootCtx := namespace.RootContext(context.TODO())
+	rootCtx := namespace.RootContext(t.Context())
 	resp, err := c.HandleRequest(rootCtx, &logical.Request{
 		ClientToken: root,
 		Operation:   logical.ReadOperation,
@@ -133,7 +132,7 @@ func testCountActiveEntities(t *testing.T, c *Core, root string, expectedEntitie
 
 func TestIdentityStore_CountActiveEntities(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
-	rootCtx := namespace.RootContext(context.TODO())
+	rootCtx := namespace.RootContext(t.Context())
 
 	// Count the root token
 	testCountActiveEntities(t, c, root, 0)

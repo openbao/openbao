@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -19,7 +18,7 @@ import (
 )
 
 func TestIdentityStore_CaseInsensitiveGroupAliasName(t *testing.T) {
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create a group
@@ -108,7 +107,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 
 	c, _, _ := TestCoreUnsealed(t)
 
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 
 	userpassMe := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
@@ -216,7 +215,7 @@ func TestIdentityStore_GroupAliasDeletionOnGroupDeletion(t *testing.T) {
 	var resp *logical.Response
 	var err error
 
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	resp, err = i.HandleRequest(ctx, &logical.Request{
@@ -268,7 +267,7 @@ func TestIdentityStore_GroupAliasDeletionOnGroupDeletion(t *testing.T) {
 func TestIdentityStore_GroupAliases_CRUD(t *testing.T) {
 	var resp *logical.Response
 	var err error
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	groupReq := &logical.Request{
@@ -347,7 +346,7 @@ func TestIdentityStore_GroupAliases_CRUD(t *testing.T) {
 
 func TestIdentityStore_GroupAliases_MemDBIndexes(t *testing.T) {
 	var err error
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	group := &identity.Group{
@@ -411,7 +410,7 @@ func TestIdentityStore_GroupAliases_AliasOnInternalGroup(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	groupReq := &logical.Request{
@@ -443,7 +442,7 @@ func TestIdentityStore_GroupAliases_AliasOnInternalGroup(t *testing.T) {
 }
 
 func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 	i, accessor1, c := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	ghme2 := &routing.MountEntry{

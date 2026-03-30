@@ -4,7 +4,6 @@
 package diagnose
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -53,13 +52,13 @@ func TestStorageTimeout(t *testing.T) {
 		uuid := "foo"
 		backendCallType := tc.mb.(mockStorageBackend).callType
 		if callTypeToOp(backendCallType) == readOp {
-			dur, outErr = EndToEndLatencyCheckRead(context.Background(), uuid, tc.mb)
+			dur, outErr = EndToEndLatencyCheckRead(t.Context(), uuid, tc.mb)
 		}
 		if callTypeToOp(backendCallType) == writeOp {
-			dur, outErr = EndToEndLatencyCheckWrite(context.Background(), uuid, tc.mb)
+			dur, outErr = EndToEndLatencyCheckWrite(t.Context(), uuid, tc.mb)
 		}
 		if callTypeToOp(backendCallType) == deleteOp {
-			dur, outErr = EndToEndLatencyCheckDelete(context.Background(), uuid, tc.mb)
+			dur, outErr = EndToEndLatencyCheckDelete(t.Context(), uuid, tc.mb)
 		}
 
 		if tc.errSubString == "" && outErr == nil {

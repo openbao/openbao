@@ -4,7 +4,6 @@
 package rafttests
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -336,15 +335,15 @@ func TestRaft_AutoPilot_Peersets_Equivalent(t *testing.T) {
 	var core0Peers, core1Peers, core2Peers []raft.Peer
 	for time.Now().Before(deadline) {
 		// Make sure all nodes have an equivalent configuration
-		core0Peers, err = cluster.Cores[0].UnderlyingRawStorage.(*raft.RaftBackend).Peers(context.Background())
+		core0Peers, err = cluster.Cores[0].UnderlyingRawStorage.(*raft.RaftBackend).Peers(t.Context())
 		if err != nil {
 			t.Fatal(err)
 		}
-		core1Peers, err = cluster.Cores[1].UnderlyingRawStorage.(*raft.RaftBackend).Peers(context.Background())
+		core1Peers, err = cluster.Cores[1].UnderlyingRawStorage.(*raft.RaftBackend).Peers(t.Context())
 		if err != nil {
 			t.Fatal(err)
 		}
-		core2Peers, err = cluster.Cores[2].UnderlyingRawStorage.(*raft.RaftBackend).Peers(context.Background())
+		core2Peers, err = cluster.Cores[2].UnderlyingRawStorage.(*raft.RaftBackend).Peers(t.Context())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -709,7 +708,7 @@ func joinAsVoterAndUnseal(t *testing.T, core *vault.TestClusterCore, cluster *va
 // and whether to wait (up to a timeout) for the core to be unsealed before returning.
 func joinAndUnseal(t *testing.T, core *vault.TestClusterCore, cluster *vault.TestCluster, nonVoter bool, waitForUnseal bool) {
 	leader, leaderAddr := clusterLeader(t, cluster)
-	_, err := core.JoinRaftCluster(namespace.RootContext(context.Background()), []*raft.LeaderJoinInfo{
+	_, err := core.JoinRaftCluster(namespace.RootContext(t.Context()), []*raft.LeaderJoinInfo{
 		{
 			LeaderAPIAddr: leaderAddr,
 			TLSConfig:     leader.TLSConfig(),

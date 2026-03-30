@@ -5,7 +5,6 @@ package rafttests
 
 import (
 	"bytes"
-	"context"
 	"crypto/md5"
 	"errors"
 	"fmt"
@@ -180,7 +179,7 @@ func TestRaft_RetryAutoJoin(t *testing.T) {
 		core := cluster.Cores[1]
 		core.UnderlyingRawStorage.(*raft.RaftBackend).SetServerAddressProvider(addressProvider)
 
-		_, err := core.JoinRaftCluster(namespace.RootContext(context.Background()), leaderInfos, false)
+		_, err := core.JoinRaftCluster(namespace.RootContext(t.Context()), leaderInfos, false)
 		require.NoError(t, err)
 	}
 
@@ -228,7 +227,7 @@ func TestRaft_Retry_Join(t *testing.T) {
 			t.Helper()
 			defer wg.Done()
 			core.UnderlyingRawStorage.(*raft.RaftBackend).SetServerAddressProvider(addressProvider)
-			_, err := core.JoinRaftCluster(namespace.RootContext(context.Background()), leaderInfos, false)
+			_, err := core.JoinRaftCluster(namespace.RootContext(t.Context()), leaderInfos, false)
 			if err != nil {
 				t.Error(err)
 			}

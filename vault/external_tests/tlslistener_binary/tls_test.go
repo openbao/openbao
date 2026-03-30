@@ -73,7 +73,7 @@ func TestTLSListener_SelfHostedNonStandard(t *testing.T) {
 	cluster := docker.NewTestDockerCluster(t, opts)
 	defer cluster.Cleanup()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 
 	node, err := testcluster.WaitForActiveNode(ctx, cluster)
@@ -138,7 +138,7 @@ func TestTLSListener_SelfHostedPrivileged(t *testing.T) {
 	cluster := docker.NewTestDockerCluster(t, opts)
 	defer cluster.Cleanup()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 
 	node, err := testcluster.WaitForActiveNode(ctx, cluster)
@@ -203,7 +203,7 @@ func TestTLSListener_ALPN(t *testing.T) {
 	cluster := docker.NewTestDockerCluster(t, opts)
 	defer cluster.Cleanup()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 
 	node, err := testcluster.WaitForActiveNode(ctx, cluster)

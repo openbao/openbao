@@ -19,7 +19,7 @@ func TestNamespaceStore(t *testing.T) {
 	c, keys, root := TestCoreUnsealed(t)
 	s := c.namespaceStore
 
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 
 	// Initial store should be empty.
 	ns, err := s.ListAllNamespaces(ctx, false, true)
@@ -155,7 +155,7 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 
 	c, _, _ := TestCoreUnsealed(t)
 	s := c.namespaceStore
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 
 	// create namespace
 	testNamespace := &namespace.Namespace{Path: "test"}
@@ -236,7 +236,7 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 
 	c, keys, _ := TestCoreUnsealed(t)
 	s := c.namespaceStore
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 
 	testNamespace := &namespace.Namespace{Path: "test"}
 	err := s.SetNamespace(ctx, testNamespace)
@@ -328,7 +328,7 @@ func TestNamespaceStore_UnlockNamespace(t *testing.T) {
 
 	c, _, _ := TestCoreUnsealed(t)
 	s := c.namespaceStore
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 
 	testNamespace := &namespace.Namespace{Path: "test"}
 	err := s.SetNamespace(ctx, testNamespace)
@@ -402,7 +402,7 @@ func TestNamespaceHierarchy(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	s := c.namespaceStore
 
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 
 	// Initial store should be empty.
 	ns, err := s.ListAllNamespaces(ctx, false, true)
@@ -580,7 +580,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
 	s := c.namespaceStore
 
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(b.Context())
 
 	n := 1_000
 
@@ -658,7 +658,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 func BenchmarkClearNamespaceResources(b *testing.B) {
 	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
 	s := c.namespaceStore
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(b.Context())
 
 	n := 1_000
 
@@ -683,7 +683,7 @@ func BenchmarkClearNamespaceResources(b *testing.B) {
 func BenchmarkNamespace_Set(b *testing.B) {
 	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
 	s := c.namespaceStore
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(b.Context())
 
 	item := &namespace.Namespace{}
 
@@ -718,7 +718,7 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 	ns3Entry := &namespace.Namespace{Path: "ns1/ns2/ns3/"}
 
 	// Create namespaces
-	rootCtx := namespace.RootContext(context.TODO())
+	rootCtx := namespace.RootContext(t.Context())
 
 	// Set child into root
 	require.NoError(t, nsStore.SetNamespace(rootCtx, ns1Entry))
@@ -833,7 +833,7 @@ func TestNamespaceStorage(t *testing.T) {
 	}
 	TestCoreCreateNamespaces(t, c, namespaces...)
 
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 
 	nsKeys, err := s.storage.List(ctx, namespaceStoreSubPath)
 	require.NoError(t, err)

@@ -53,7 +53,7 @@ func mockRollback(t *testing.T) (*RollbackManager, *be.Noop) {
 		return mounts.Entries
 	}
 
-	rb := NewRollbackManager(context.Background(), logger, mountsFunc, router, core)
+	rb := NewRollbackManager(t.Context(), logger, mountsFunc, router, core)
 	rb.period = 10 * time.Millisecond
 	return rb, backend
 }
@@ -124,11 +124,11 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 			newTable.Entries = append(newTable.Entries, mountEntry)
 			core.mounts = newTable
 			err = core.router.Mount(b, "logical", mountEntry, view)
-			require.NoError(t, core.persistMounts(context.Background(), nil, newTable, &mountEntry.Local, mountEntry.UUID))
+			require.NoError(t, core.persistMounts(t.Context(), nil, newTable, &mountEntry.Local, mountEntry.UUID))
 		}()
 	}
 
-	timeout, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	timeout, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
 	got := make(map[string]bool)
 	hasMore := true
@@ -207,11 +207,11 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 			newTable.Entries = append(newTable.Entries, mountEntry)
 			core.mounts = newTable
 			err = core.router.Mount(b, "logical", mountEntry, view)
-			require.NoError(t, core.persistMounts(context.Background(), nil, newTable, &mountEntry.Local, mountEntry.UUID))
+			require.NoError(t, core.persistMounts(t.Context(), nil, newTable, &mountEntry.Local, mountEntry.UUID))
 		}()
 	}
 
-	timeout, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	timeout, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
 	got := make(map[string]bool)
 	hasMore := true
@@ -339,7 +339,7 @@ func TestRollbackManager_Join(t *testing.T) {
 	errCh := make(chan error, 3)
 	go func() {
 		defer wg.Done()
-		err := m.Rollback(namespace.RootContext(context.TODO()), "foo")
+		err := m.Rollback(namespace.RootContext(t.Context()), "foo")
 		if err != nil {
 			errCh <- err
 		}
@@ -347,7 +347,7 @@ func TestRollbackManager_Join(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		err := m.Rollback(namespace.RootContext(context.TODO()), "foo")
+		err := m.Rollback(namespace.RootContext(t.Context()), "foo")
 		if err != nil {
 			errCh <- err
 		}
@@ -355,7 +355,7 @@ func TestRollbackManager_Join(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		err := m.Rollback(namespace.RootContext(context.TODO()), "foo")
+		err := m.Rollback(namespace.RootContext(t.Context()), "foo")
 		if err != nil {
 			errCh <- err
 		}

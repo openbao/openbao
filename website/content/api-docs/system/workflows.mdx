@@ -1,0 +1,181 @@
+---
+description: >-
+  The `/sys/workflows/` endpoints are used to manage workflows in OpenBao.
+---
+
+# `/sys/workflows/`
+
+The `/sys/workflows` endpoints are used to manage and execute workflows in
+OpenBao. These allow operators to define simplified entrypoints over multiple
+OpenBao APIs, allowing for a basic (workflow-defined) form of cross-plugin
+communication.
+
+For more generic information about the contents of workflows, refer to the
+[concept documentation for the profile engine](/docs/concepts/profiles).
+
+## Manage workflows
+
+Managing workflows is a privileged operation. While nominally a workflow cannot
+do anything more than the token it is executed as can do (or any token
+embedded in it or any authentication information provided as input), workflows
+can result in high server load depending on the endpoints called. When
+expensive steps (like, signing or encryption of large documents) is desired,
+these should be broken out separately from the rest of the workflow execution.
+
+### List workflows
+
+This endpoint lists all configured workflows. This endpoint optionally
+takes a prefix to list workflows under.
+
+| Method | Path                            |
+| :----- | :------------------------------ |
+| `LIST` | `/sys/workflows/manage`         |
+| `LIST` | `/sys/workflows/manage/:prefix` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X LIST --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/workflows/manage
+```
+
+#### Sample response
+
+```json
+{
+  "keys": ["create-namespace", "reset-admin"]
+}
+```
+
+### Read workflow
+
+This endpoint retrieves information about the named workflow.
+
+| Method | Path                          |
+| :----- | :---------------------------- |
+| `GET`  | `/sys/workflows/manage/:path` |
+
+#### Parameters
+
+- `path` `(string: <required>)` -- Specifies the path of the workflow to
+  retrieve. This is specified as part of the request URL.
+
+#### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/workflows/manage/create-namespace
+```
+
+#### Sample response
+
+```json
+{
+    "allow_unauthenticated": false,
+    "cas_required": false,
+    "description": "create namespace",
+    "path": "ns1",
+    "workflow": " ... workflow data elided ...",
+    "version": 0
+}
+```
+
+### Create/Update workflow
+
+This endpoint adds a new or updates an existing workflow.
+
+| Method | Path                          |
+| :----- | :---------------------------- |
+| `POST` | `/sys/workflows/manage/:path` |
+
+#### Parameters
+
+- `path` `(string: <required>)` -- Specifies the path of the workflow to create.
+  This is specified as part of the request URL.
+
+- `workflow` `(string: <required>)` - Specifies the workflow document. Like all
+  HCL documents, this can be alternatively JSON encoded.
+
+- `allow_unauthenticated` `(bool: false)` - Specifies if this workflow is
+  allowed to be executed by unauthenticated users. Requires setting the
+  `allow_unauthenticated_workflows` configuration option.
+
+- `cas_required` `(bool: false)` - Whether check-and-set semantics are
+  required to update this workflow.
+
+- `description` `(string: "")` - Textual description of this workflow for
+  operators.
+
+- `cas` `(int: nil)` - Last version number for modifications. Set to `-1`
+  for creation of a new workflow.
+
+#### Sample payload
+
+```json
+{
+  "workflow": "inputs {...",
+  "description": "This workflow handles common namespace provisioning steps."
+}
+```
+
+#### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request POST \
+    --data @payload.json \
+    http://127.0.0.1:8200/v1/sys/workflows/manage/create-namespace
+```
+
+### Delete workflow
+
+This endpoint deletes the workflow with the given path.
+
+| Method   | Path                          |
+| :------- | :---------------------------- |
+| `DELETE` | `/sys/workflows/manage/:path` |
+
+#### Parameters
+
+- `path` `(string: <required>)` -- Specifies the path of the workflow to delete.
+  This is specified as part of the request URL.
+
+#### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request DELETE \
+    http://127.0.0.1:8200/v1/sys/workflows/manage/create-namespace
+```
+
+## Execute workflows
+
+Workflows can be executed by calling the relevant API endpoint. Outside of the
+name of the workflow, all remaining input fields are controlled by the workflow
+author.
+
+| Method | Path                                    | Requires Authentication | Full Request Information |
+| :----- | :-------------------------------------- | :---------------------- | :----------------------- |
+| `POST` | `/sys/workflows/execute/:path`          | yes                     | no                       |
+| `POST` | `/sys/workflows/unauthed-execute/:path` | no                      | no                       |
+| `POST` | `/sys/workflows/trace/:path`            | yes                     | yes                      |
+
+#### Parameters
+
+- `path` `(string: <required>)` -- Specifies the path of the workflow to create.
+  This is specified as part of the request URL.
+
+Other workflows parameters are defined by the author.
+
+#### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request POST \
+    http://127.0.0.1:8200/v1/sys/workflows/execute/create-namespace
+```

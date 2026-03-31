@@ -11,6 +11,7 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -113,6 +114,65 @@ func TestBackend_KeyName(t *testing.T) {
 		require.NotEmpty(t, resp.Data["expire_time"].(int64))
 		require.NotEmpty(t, resp.Data["period"].(string))
 	}
+}
+
+func TestBackend_Timesteps(t *testing.T) {
+	config := logical.TestBackendConfig()
+	config.StorageView = &logical.InmemStorage{}
+	ctx := namespace.RootContext(t.Context())
+	b, err := Factory(ctx, config)
+	require.NoError(t, err)
+
+	resp, err := b.HandleRequest(ctx, &logical.Request{
+		Path:      "keys/test",
+		Operation: logical.UpdateOperation,
+		Storage:   config.StorageView,
+		Data: map[string]interface{}{
+			"generate":     true,
+			"account_name": "bao",
+			"issuer":       "openbao",
+		},
+	})
+	require.NoError(t, err)
+
+	generateCode := func(ctx context.Context) (int64, int64) {
+		resp, err = b.HandleRequest(ctx, &logical.Request{
+			Path:      "code/test",
+			Operation: logical.ReadOperation,
+			Storage:   config.StorageView,
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.Data["code"].(string), 6)
+		require.Equal(t, "30s", resp.Data["period"].(string))
+		return resp.Data["generated"].(int64), resp.Data["expire_time"].(int64)
+	}
+
+	synctest.Test(t, func(t *testing.T) {
+		generated, expire_time := generateCode(t.Context())
+		t.Logf("generated: %v | expire_time: %v", generated, expire_time)
+		halfStepTime := 15 * time.Second
+
+		// fake clock in a bubble (synctest) starts at UTC 2000-01-01
+		start := time.Now()
+		require.Equal(t, start.Unix(), generated)
+		require.Equal(t, start.Add(30*time.Second).Unix(), expire_time)
+		require.WithinDuration(t, time.Unix(generated, 0), time.Unix(expire_time, 0), 2*halfStepTime)
+
+		time.Sleep(halfStepTime)
+
+		generated, expire_time = generateCode(t.Context())
+		t.Logf("generated: %v | expire_time: %v", generated, expire_time)
+		require.Equal(t, start.Add(halfStepTime).Unix(), generated)
+		require.Equal(t, start.Add(30*time.Second).Unix(), expire_time)
+
+		time.Sleep(halfStepTime)
+
+		generated, expire_time = generateCode(t.Context())
+		t.Logf("generated: %v | expire_time: %v", generated, expire_time)
+		require.Equal(t, start.Add(2*halfStepTime).Unix(), generated)
+		// next step
+		require.Equal(t, start.Add(4*halfStepTime).Unix(), expire_time)
+	})
 }
 
 func TestBackend_readCredentialsDefaultValues(t *testing.T) {
@@ -1227,9 +1287,7 @@ func testAccStepValidateCode(t *testing.T, name, code string, valid, expectError
 		},
 		ErrorOk: expectError,
 		Check: func(resp *logical.Response) error {
-			if resp == nil {
-				return fmt.Errorf("bad: %#v", resp)
-			}
+			require.NotNil(t, resp)
 
 			var d struct {
 				Valid bool `mapstructure:"valid"`
@@ -1238,18 +1296,7 @@ func testAccStepValidateCode(t *testing.T, name, code string, valid, expectError
 			if err := mapstructure.Decode(resp.Data, &d); err != nil {
 				return err
 			}
-
-			switch valid {
-			case true:
-				if d.Valid != true {
-					return fmt.Errorf("code was not valid: %s", code)
-				}
-
-			default:
-				if d.Valid != false {
-					return fmt.Errorf("code was incorrectly validated: %s", code)
-				}
-			}
+			require.Equal(t, valid, d.Valid)
 			return nil
 		},
 	}

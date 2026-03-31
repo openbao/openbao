@@ -74,13 +74,10 @@ func (b *backend) pathUserPasswordUpdate(ctx context.Context, req *logical.Reque
 		return nil, errors.New("username does not exist")
 	}
 
-	password, _ := d.GetOk("password")
-	passwordHash, _ := d.GetOk("password_hash")
+	password := d.Get("password").(string)
+	passwordHash := d.Get("password_hash").(string)
 
-	passwordStr, _ := password.(string)
-	passwordHashStr, _ := passwordHash.(string)
-
-	userErr, intErr := b.updateUserPassword(passwordStr, passwordHashStr, userEntry)
+	userErr, intErr := b.updateUserPassword(password, passwordHash, userEntry)
 	if intErr != nil {
 		return nil, intErr
 	}

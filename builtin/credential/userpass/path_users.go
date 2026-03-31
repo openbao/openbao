@@ -239,7 +239,16 @@ func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *fra
 	}, nil
 }
 
-func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	password := d.Get("password").(string)
+	passwordHash := d.Get("password_hash").(string)
+
+	if req.Operation == logical.CreateOperation {
+		if err := validatePasswordInput(password, passwordHash); err != nil {
+			return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+		}
+	}
+
 	txRollback, err := logical.StartTxStorage(ctx, req)
 	if err != nil {
 		return nil, err
@@ -260,11 +269,8 @@ func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d 
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
-	passwordStr := d.Get("password").(string)
-	passwordHashStr := d.Get("password_hash").(string)
-
-	if passwordStr != "" || passwordHashStr != "" {
-		userErr, intErr := b.updateUserPassword(passwordStr, passwordHashStr, userEntry)
+	if password != "" || passwordHash != "" {
+		userErr, intErr := b.updateUserPassword(password, passwordHash, userEntry)
 		if intErr != nil {
 			return nil, intErr
 		}
@@ -301,22 +307,6 @@ func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d 
 	}
 
 	return nil, nil
-}
-
-func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	password, _ := d.GetOk("password")
-	passwordHash, _ := d.GetOk("password_hash")
-
-	passwordStr, _ := password.(string)
-	passwordHashStr, _ := passwordHash.(string)
-
-	if req.Operation == logical.CreateOperation {
-		if err := validatePasswordInput(passwordStr, passwordHashStr); err != nil {
-			return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-		}
-	}
-
-	return b.userCreateUpdate(ctx, req, d)
 }
 
 type UserEntry struct {

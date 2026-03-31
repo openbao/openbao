@@ -15,6 +15,7 @@ export const deprecationWorkflowConfig = {
     { handler: 'log', matchId: 'ember-data:deprecate-promise-proxies' },
     { handler: 'log', matchId: 'ember-data:deprecate-has-record-for-id' },
     { handler: 'log', matchId: 'ember-data:deprecate-promise-many-array-behaviors' },
+    { handler: 'log', matchId: 'ember-data:no-a-with-array-like' },
     { handler: 'log', matchId: 'setting-on-hash' },
   ],
 };

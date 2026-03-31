@@ -414,7 +414,11 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 				if len(factor.ControlledCapabilitiesHCL) > 0 {
 					capabilities := make([]logical.Operation, len(factor.ControlledCapabilitiesHCL))
 					for i, capabilityStr := range factor.ControlledCapabilitiesHCL {
-						capabilities[i] = logical.Operation(capabilityStr)
+						op := logical.Operation(capabilityStr)
+						if err := logical.ValidateOperation(op); err != nil {
+							return multierror.Prefix(err, "path control_group")
+						}
+						capabilities[i] = op
 					}
 					factor.ControlledCapabilities = capabilities
 					factor.ControlledCapabilitiesHCL = nil

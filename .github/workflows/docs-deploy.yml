@@ -33,11 +33,11 @@ jobs:
           # always build docs from main branch, even when triggered from a release branch.
           # The release branch docs will be included by the build step
           ref: main
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
         with:
-          node-version-file: "./website/package.json"
-          cache: npm
-          cache-dependency-path: website/package-lock.json
+          package_json_file: website/package.json
+          cache: true
+          cache_dependency_path: website/pnpm-lock.yaml
       - id: build-docs
         name: build-docs
         working-directory: ./website

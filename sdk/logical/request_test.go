@@ -8,28 +8,28 @@ import (
 
 func TestValidateOperation(t *testing.T) {
 	testCases := []struct {
-		title string
-		input []Operation
+		title   string
+		input   []Operation
 		wantErr bool
 	}{
 		{
-			title: "Single matching operation",
-			input: []Operation{ ReadOperation },
+			title:   "Single matching operation",
+			input:   []Operation{ReadOperation},
 			wantErr: false,
 		},
 		{
-			title: "Multiple matching operations",
-			input: []Operation{ ReadOperation, PatchOperation },
+			title:   "Multiple matching operations",
+			input:   []Operation{ReadOperation, PatchOperation},
 			wantErr: false,
 		},
 		{
-			title: "Single non-matching operation",
-			input: []Operation{ Operation("not-match") },
+			title:   "Single non-matching operation",
+			input:   []Operation{Operation("not-match")},
 			wantErr: true,
 		},
 		{
-			title: "Multiple non-matching operations",
-			input: []Operation{ ReadOperation, Operation("not-match")},
+			title:   "Multiple non-matching operations",
+			input:   []Operation{ReadOperation, Operation("not-match")},
 			wantErr: true,
 		},
 	}

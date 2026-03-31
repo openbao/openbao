@@ -30,9 +30,10 @@ type (
 )
 
 type wrappedJob struct {
-	job     Job
-	init    initFn
-	cleanup cleanupFn
+	job      Job
+	init     initFn
+	cleanup  cleanupFn
+	initDone chan struct{}
 }
 
 // worker represents a single worker in a pool
@@ -59,6 +60,9 @@ func (w *worker) start() {
 			case wJob := <-w.jobCh:
 				if wJob.init != nil {
 					wJob.init()
+				}
+				if wJob.initDone != nil {
+					close(wJob.initDone)
 				}
 
 				err := wJob.job.Execute()
@@ -99,15 +103,19 @@ func newDispatcher(name string, numWorkers int, l log.Logger) *dispatcher {
 // and cleanup functions (useful for tracking job progress)
 func (d *dispatcher) dispatch(job Job, init initFn, cleanup cleanupFn) {
 	wJob := wrappedJob{
-		init:    init,
-		job:     job,
-		cleanup: cleanup,
+		init:     init,
+		job:      job,
+		cleanup:  cleanup,
+		initDone: make(chan struct{}),
 	}
 
 	select {
 	case d.jobCh <- wJob:
+		// Wait for worker to confirm init was called before returning
+		<-wJob.initDone
 	case <-d.quit:
-		d.logger.Info("shutting down during dispatch")
+		// Job was not dispatched - init was never called, so cleanup should not be called either
+		return
 	}
 }
 

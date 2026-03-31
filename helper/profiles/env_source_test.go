@@ -1,16 +1,14 @@
 package profiles
 
 import (
-	"context"
 	"os"
 	"testing"
 )
 
 func TestEnvSourceBuilder_Success(t *testing.T) {
-	ctx := context.Background()
 	engine := &ProfileEngine{sourceBuilders: make(map[string]SourceBuilder)}
 	field := map[string]interface{}{"env_var": "TEST_VAR"}
-	src := EnvSourceBuilder(ctx, engine, field)
+	src := EnvSourceBuilder(engine, field)
 	if src == nil {
 		t.Errorf("Expected non-nil source")
 	}
@@ -37,7 +35,7 @@ func TestEnvSource_Validate_SuccessRequired(t *testing.T) {
 		"require_present": true,
 	}}
 
-	deps, provides, err := src.Validate(context.Background())
+	deps, provides, err := src.Validate()
 	if err != nil {
 		t.Fatalf("Validate, error: %v", err)
 	}
@@ -56,7 +54,7 @@ func TestEnvSource_Validate_OptionalMissing(t *testing.T) {
 	src := &EnvSource{field: map[string]interface{}{
 		"env_var": "MISSING_VAR",
 	}}
-	deps, provides, err := src.Validate(context.Background())
+	deps, provides, err := src.Validate()
 	if err != nil {
 		t.Fatalf("Validate, error: %v", err)
 	}
@@ -72,7 +70,7 @@ func TestEnvSource_Validate_ErrorMissingEnvVarField(t *testing.T) {
 	src := &EnvSource{field: map[string]interface{}{
 		"require_present": true,
 	}}
-	_, _, err := src.Validate(context.Background())
+	_, _, err := src.Validate()
 	if err == nil ||
 		err.Error() != "env source is missing required field 'env_var'" {
 		t.Fatalf("Expected missing-field error, got %v", err)
@@ -96,7 +94,7 @@ func TestEnvSource_Validate_ErrorWrongTypes(t *testing.T) {
 
 	for _, c := range cases {
 		src := &EnvSource{field: c.field}
-		_, _, err := src.Validate(context.Background())
+		_, _, err := src.Validate()
 		if err == nil {
 			t.Fatalf("field=%v: expected error %q, got nil", c.field, c.want)
 		}
@@ -109,7 +107,7 @@ func TestEnvSource_Validate_ErrorWrongTypes(t *testing.T) {
 func TestEnvSource_EvaluateAndClose(t *testing.T) {
 	src := &EnvSource{value: "v"}
 
-	out, err := src.Evaluate(context.Background(), nil)
+	out, err := src.Evaluate(t.Context(), nil)
 	if err != nil {
 		t.Fatalf("Evaluate, error: %v", err)
 	}
@@ -117,7 +115,7 @@ func TestEnvSource_EvaluateAndClose(t *testing.T) {
 		t.Errorf("Expected Evaluate->%q, got %q", "v", out)
 	}
 
-	if err := src.Close(context.Background()); err != nil {
+	if err := src.Close(t.Context()); err != nil {
 		t.Errorf("Close, error: %v", err)
 	}
 }

@@ -1,7 +1,6 @@
 package profiles
 
 import (
-	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -11,10 +10,9 @@ import (
 )
 
 func TestFileSourceBuilder_Success(t *testing.T) {
-	ctx := context.Background()
 	engine := &ProfileEngine{sourceBuilders: make(map[string]SourceBuilder)}
 	field := map[string]interface{}{"path": "dummy"}
-	src := FileSourceBuilder(ctx, engine, field)
+	src := FileSourceBuilder(engine, field)
 
 	fs, ok := src.(*FileSource)
 	if !ok {
@@ -46,7 +44,7 @@ func TestFileSource_Validate_Success(t *testing.T) {
 	}
 
 	src := &FileSource{field: map[string]interface{}{"path": fname}}
-	deps, provides, err := src.Validate(context.Background())
+	deps, provides, err := src.Validate()
 	if err != nil {
 		t.Fatalf("Validate, error: %v", err)
 	}
@@ -56,14 +54,14 @@ func TestFileSource_Validate_Success(t *testing.T) {
 	if src.file == nil {
 		t.Fatal("expected src.file to be set after Validate")
 	}
-	if err := src.Close(context.Background()); err != nil {
+	if err := src.Close(t.Context()); err != nil {
 		t.Errorf("Close, error: %v", err)
 	}
 }
 
 func TestFileSource_Validate_MissingPath(t *testing.T) {
 	src := &FileSource{field: map[string]interface{}{}}
-	_, _, err := src.Validate(context.Background())
+	_, _, err := src.Validate()
 	if err == nil || err.Error() != "file source is missing required field 'path'" {
 		t.Fatalf("expected missing-path error, got %v", err)
 	}
@@ -71,7 +69,7 @@ func TestFileSource_Validate_MissingPath(t *testing.T) {
 
 func TestFileSource_Validate_WrongType(t *testing.T) {
 	src := &FileSource{field: map[string]interface{}{"path": 123}}
-	_, _, err := src.Validate(context.Background())
+	_, _, err := src.Validate()
 	wantPrefix := "field 'path' is of wrong type"
 	if err == nil || err.Error()[:len(wantPrefix)] != wantPrefix {
 		t.Fatalf("expected type-error prefix %q, got %v", wantPrefix, err)
@@ -80,7 +78,7 @@ func TestFileSource_Validate_WrongType(t *testing.T) {
 
 func TestFileSource_Validate_OpenError(t *testing.T) {
 	src := &FileSource{field: map[string]interface{}{"path": "/nonexistent/file"}}
-	_, _, err := src.Validate(context.Background())
+	_, _, err := src.Validate()
 	if err == nil {
 		t.Fatal("expected error opening non-existent file, got nil")
 	}
@@ -98,11 +96,11 @@ func TestFileSource_Evaluate_Read(t *testing.T) {
 	}
 
 	src := &FileSource{field: map[string]interface{}{"path": fname}}
-	if _, _, err := src.Validate(context.Background()); err != nil {
+	if _, _, err := src.Validate(); err != nil {
 		t.Fatalf("Validate returned %v", err)
 	}
 
-	out, err := src.Evaluate(context.Background(), nil)
+	out, err := src.Evaluate(t.Context(), nil)
 	if err != nil {
 		t.Fatalf("Evaluate returned error: %v", err)
 	}
@@ -117,7 +115,7 @@ func TestFileSource_Evaluate_Read(t *testing.T) {
 		t.Error("expected src.file to be nil after Evaluate (closed)")
 	}
 
-	out2, err := src.Evaluate(context.Background(), nil)
+	out2, err := src.Evaluate(t.Context(), nil)
 	if err != nil {
 		t.Fatalf("second Evaluate error: %v", err)
 	}
@@ -128,7 +126,7 @@ func TestFileSource_Evaluate_Read(t *testing.T) {
 
 func TestFileSource_Close_NilFile(t *testing.T) {
 	src := &FileSource{}
-	if err := src.Close(context.Background()); err != nil {
+	if err := src.Close(t.Context()); err != nil {
 		t.Errorf("Close(nil) returned error: %v", err)
 	}
 }
@@ -142,7 +140,7 @@ func TestFileSource_Close_OpenFile(t *testing.T) {
 	}
 
 	src := &FileSource{file: f}
-	if err := src.Close(context.Background()); err != nil {
+	if err := src.Close(t.Context()); err != nil {
 		t.Errorf("Close returned error: %v", err)
 	}
 	if src.file != nil {
@@ -163,7 +161,7 @@ func TestFileSource_Evaluate_ReadError(t *testing.T) {
 		file: tmp,
 	}
 
-	_, err = src.Evaluate(context.Background(), nil)
+	_, err = src.Evaluate(t.Context(), nil)
 
 	if err == nil {
 		t.Fatal("expected error reading from closed file, got nil")

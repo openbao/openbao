@@ -14,11 +14,11 @@ func TestTemplateSourceBuilder_EvaluateAndClose(t *testing.T) {
 	}}
 
 	field := map[string]interface{}{"template": "{{ .requests.test.value }}"}
-	src := TemplateSourceBuilder(ctx, engine, field)
+	src := TemplateSourceBuilder(engine, field)
 	require.NotNil(t, src)
 	require.IsType(t, &TemplateSource{}, src)
 
-	_, _, err := src.Validate(ctx)
+	_, _, err := src.Validate()
 	require.NoError(t, err, "failed to validate")
 
 	history := &EvaluationHistory{}
@@ -41,10 +41,10 @@ func TestTemplateSourceBuilder_RequestNotAllowed(t *testing.T) {
 	}}
 
 	field := map[string]interface{}{"template": "{{ .requests.test.value }}"}
-	src := TemplateSourceBuilder(ctx, engine, field)
+	src := TemplateSourceBuilder(engine, field)
 	require.NotNil(t, src)
 
-	_, _, err := src.Validate(ctx)
+	_, _, err := src.Validate()
 	require.NoError(t, err, "failure to validate")
 
 	_, err = src.Evaluate(ctx, &EvaluationHistory{})
@@ -56,10 +56,10 @@ func TestTemplateSourceBuilder_ResponseNotAllowed(t *testing.T) {
 	engine := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{}}
 
 	field := map[string]interface{}{"template": "{{ .response.test.value }}"}
-	src := TemplateSourceBuilder(ctx, engine, field)
+	src := TemplateSourceBuilder(engine, field)
 	require.NotNil(t, src)
 
-	_, _, err := src.Validate(ctx)
+	_, _, err := src.Validate()
 	require.NoError(t, err, "failure to validate")
 
 	_, err = src.Evaluate(ctx, &EvaluationHistory{})
@@ -71,11 +71,14 @@ func TestTemplateSourceBuilder_Constant(t *testing.T) {
 	engine := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{}}
 
 	field := map[string]interface{}{"template": "123"}
-	src := TemplateSourceBuilder(ctx, engine, field)
+	src := TemplateSourceBuilder(engine, field)
 	require.NotNil(t, src)
 
-	_, _, err := src.Validate(ctx)
+	_, _, err := src.Validate()
 	require.NoError(t, err, "failure to validate")
+
+	_, err = src.Evaluate(ctx, &EvaluationHistory{})
+	require.NoError(t, err, "failure to execute")
 }
 
 func TestTemplateSourceBuilder_EvaluateAdditionalData(t *testing.T) {
@@ -91,11 +94,11 @@ func TestTemplateSourceBuilder_EvaluateAdditionalData(t *testing.T) {
 			"alex": "test",
 		},
 	}
-	src := TemplateSourceBuilder(ctx, engine, field)
+	src := TemplateSourceBuilder(engine, field)
 	require.NotNil(t, src)
 	require.IsType(t, &TemplateSource{}, src)
 
-	_, _, err := src.Validate(ctx)
+	_, _, err := src.Validate()
 	require.NoError(t, err, "failed to validate")
 
 	result, err := src.Evaluate(ctx, &EvaluationHistory{})

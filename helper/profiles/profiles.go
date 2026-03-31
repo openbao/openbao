@@ -21,6 +21,8 @@ import (
  * - Files
  * - Previous requests and responses
  * - CEL expressions
+ * - text/template
+ * - API request parameters
  *
  * The parameter type is converted via the `eval_type` flag.
  *
@@ -28,7 +30,7 @@ import (
  * scenarios where durability (retries, &c) are considered.
  *
  * The profile system allow the construction of a single, optional outer named
- * block (e.g., `initialization`, `profile`, &c) which has one or more
+ * block (e.g., `initialization`, `context`, &c) which has one or more
  * `request` blocks inside, executed in the given order.
  *
  * This is expected to work on regular API requests and responses and will not
@@ -121,7 +123,7 @@ func WithOutput(config *OutputConfig) func(*ProfileEngine) {
 
 // SourceBuilder creates a new concrete source mapped to a particular
 // instance of a field.
-type SourceBuilder func(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source
+type SourceBuilder func(engine *ProfileEngine, field map[string]interface{}) Source
 
 // RequestHandler takes logical requests and executes them.
 type RequestHandlerFunc func(ctx context.Context, req *logical.Request) (*logical.Response, error)
@@ -129,7 +131,7 @@ type RequestHandlerFunc func(ctx context.Context, req *logical.Request) (*logica
 // Source represents a dynamic value source. A source object is initialized
 // once for each matching object and is alive throughout the history of the request.
 type Source interface {
-	Validate(ctx context.Context) (requestDeps, responseDeps []string, err error)
+	Validate() (requestDeps, responseDeps []string, err error)
 	Evaluate(ctx context.Context, history *EvaluationHistory) (value interface{}, err error)
 	Close(ctx context.Context) error
 }
@@ -405,6 +407,11 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 		return req, allowFailure, err
 	}
 
+	if err = p.evaluateField(ctx, history, requestBlock.Headers, &req.Headers); err != nil {
+		err = fmt.Errorf("failed to evaluate data: %w", err)
+		return req, allowFailure, err
+	}
+
 	if err = p.evaluateField(ctx, history, requestBlock.AllowFailure, &allowFailure); err != nil {
 		err = fmt.Errorf("failed to evaluate allow failure: %w", err)
 		return req, allowFailure, err
@@ -528,11 +535,11 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 		return nil, fmt.Errorf("unknown value for 'eval_source': %v", source)
 	}
 
-	sourceEval := sourceBuilder(ctx, p, obj)
+	sourceEval := sourceBuilder(p, obj)
 
 	defer sourceEval.Close(ctx)
 
-	accessedRequests, accessedResponses, err := sourceEval.Validate(ctx)
+	accessedRequests, accessedResponses, err := sourceEval.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate source '%v': %w", source, err)
 	}

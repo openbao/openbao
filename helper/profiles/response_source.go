@@ -8,7 +8,7 @@ import (
 const responseSourceName = "response"
 
 // ResponseSourceBuilder allows reading inputs from past responses.
-func ResponseSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
+func ResponseSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
 	return &ResponseSource{
 		outer: engine.outerBlockName,
 		field: field,
@@ -39,7 +39,7 @@ type ResponseSource struct {
 
 var _ Source = &ResponseSource{}
 
-func (s *ResponseSource) Validate(_ context.Context) ([]string, []string, error) {
+func (s *ResponseSource) Validate() ([]string, []string, error) {
 	var responseName string
 
 	if s.outer != "" {

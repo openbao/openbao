@@ -1,12 +1,18 @@
 ---
 sidebar_label: Profile System
 description: >-
-    This is a reference for OpenBao’s profile system and declarative self-initialization. It describes the supported source types and the initialize_name mechanism.
+    This is a reference for OpenBao's profile system and declarative self-initialization. It describes the structure of profiles and the supported source types.
 ---
 
-The Profiles engine processes declarative API requests with dynamic data source evaluation.
-The system implements the request/response pattern, supporting chained operations and accepting request handlers and parsed profile configurations.
-These are then transformed into templates for one or more API requests.
+The Profiles engine processes declarative API requests with dynamic data
+source evaluation. The system implements a request/response pattern,
+supporting chained operations, allowing multiple API calls from a single
+entry point. This can be parsed from HCL or JSON as desired.
+
+Data sources are dependent on the profile call site: self-initialization has
+one set of allowed sources whereas API profiles have a different combination.
+Data sources can be nested; for instance, a template source can be used to
+combine an environment variable and the contents of a file.
 
 :::info
 
@@ -18,35 +24,115 @@ unauthenticated rotation and audit device creation) still apply.
 
 ## Profiles end to end workflow
 
-1. Profile Selection
+1. **Profile Creation**
 
-A caller invokes and passes any required parameters.
+A privileged operator designs the profile; this involves creating a
+configuration which describes what API endpoints to call. If this profile is
+executed from the API profile system, it also involves defining input and
+output parameters.
 
-2. Input Validation
-Before any OpenBao operation is attempted, the engine:
-- Ensures every declared parameter is present and of the correct type, e.g., string, int, bool.
-- Confirms that each referenced source (environment variable, file path, earlier request, earlier response) is available.
-- Rejects a run immediately if required inputs are missing, preventing half-configured states
+This configuration either ends up in one or more files (if using declarative
+self-initialization) or in a profile under the `sys/profiles/manage/`
+endpoint.
 
-3. Source Evaluation
+2. **Input Validation**
 
-Profiles support four dynamic input sources (env, file, request, response)
+During execution, before any OpenBao operation is attempted, the engine:
 
-4. Sequential Execution
+- Ensures every declared parameter is present and of the correct type,
+  e.g., string, int, bool.
+- Confirms that each referenced source (environment variable, file path,
+  earlier request, earlier response) is available.
+- Rejects a run immediately if required inputs are missing, preventing
+  half-configured states.
 
-Requests are executed exactly in the order they are listed. Within a single profile run there is no parallelism, guaranteeing that any request or response references always point to data that already exists.
-If request fails, the engine stops immediately and returns an error to the caller, nothing after that point is attempted
+Certain engines, like template or CEL cannot fully validate the execution
+environment and thus may err at runtime.
 
-5. Capturing History
+3. **Synchronous Execution**
 
-## Request/Response history
+Requests are executed exactly in the order they are listed. Within a single
+profile run, there is no parallelism, guaranteeing that any request or
+response references always point to data that already exists. Additionally,
+requests are fully synchronous and are not executed in the background.
 
-In profiles every API call template and automatically tracked it so that its inputs and outputs can be reused later in the same run.
-The mechanism—implemented and integrated request just before it is issued and the corresponding response immediately after it completes, then stores both as JSON in an in-memory map keyed by the outer block and request name.
-Any subsequent field may reference those stored JSON objects through the request or response source types, using a selector to pull out a specific value.
-This design makes it possible to chain operations without writing additional code or shell scripts, while also preventing accidental overwrites by rejecting duplicate keys and guaranteeing that every reference resolves to a deterministically stored value.
+If request fails unexpectedly, the engine stops immediately and returns an
+error to the caller; nothing after that point is attempted.
 
-## `value` Type
+History of all requests and responses are recorded, though, are not exposed
+to the caller by default.
+
+4. **Output Generation**
+
+Depending on context, the profile system may output information back to the
+caller. In the case of self-initialization, this information is logged at the
+Trace level; this will contain privileged information and should not be
+exposed to arbitrary users.
+
+## Request format
+
+The core of a profile is the request, which contains the following fields:
+
+ - `name` `(string: <required>)` - the human-readable name of this request.
+   This is specified via a key to the HCL request block.
+ - `operation` `(string: <required>)` - the operation type to invoke. This
+   aligns with [ACL operations](../policies/#capabilities).
+ - `path` `(string: <required>)` - which API endpoint to invoke.
+ - `token` `(string: <optional>)` - the OpenBao token to use to authenticate
+   with; in some cases (like self-initialization or authenticated execution
+   of API profiles), this is inferred from the context automatically. However,
+   in the case of unauthenticated execution of API profiles, this would need
+   to be manually handled as none exists in the execution environment.
+   Unauthenticated APIs (such as login requests) can continue to be called
+   without this parameter or with this parameter explicitly set to the empty
+   string.
+ - `data` `(map[string]any: <optional>)` - any parameters for this request.
+ - `headers` `(map[string][]string: <optional>)` - any headers for this
+   request.
+ - `allow_failure` `(bool: false)` - whether to allow profile execution to
+   continue despite failure of this request.
+
+Other than `name` which must be static, all of the remaining fields can use
+dynamic data sources as described below.
+
+In HCL this translates to:
+
+```hcl
+request "create-admin-policy" {
+  operation = "create"
+  path = "/sys/policies/acl/admin"
+  token = "my-root-token"
+  data = {
+    policy = "my-acl-policy"
+  }
+}
+```
+
+## Logical groupings
+
+Multiple requests can be grouped into a logical organization structure in
+certain profile execution environments:
+
+- `initialize` -- in declarative self-initialization
+- `context` -- in API profiles
+
+When doing so, the name of this outer grouping block is used for the `request`
+and `response` dynamic data source and must be specified.
+
+## Output
+
+When using API profiles, output returned to the caller must be specified in
+an `output` block. This takes the following values:
+
+ - `data` - `(map[string]any: <optional>)` - any output information to be
+   returned to the caller.
+ - `headers` - `(map[string][]string: <optional>)` - any response headers to
+   be included.
+
+Note that both of these fields can use dynamic data sources to reference
+earlier responses.
+
+## Value types and dynamic data sources
 
 Values may be of the following types:
 
@@ -90,6 +176,13 @@ be source evaluations.
 
 #### `env` source
 
+:::info
+
+The `env` source is only available for declarative self-initialization; it
+is not available for API profiles
+
+:::
+
 - `env_var` `(string: <required>)` - the name of an environment variable to
   return the value of.
 - `require_present` `(bool: false)` - when asserted, require that the named
@@ -99,24 +192,29 @@ For example, to reference an initial admin password from an environment
 variable:
 
 ```hcl
-initialize "identity" {
-  request "userpass-add-admin" {
-    operation = "update"
-    path = "auth/userpass/users/admin"
-    data = {
-      "password" = {
-        eval_type = "string"
-        eval_source = "env"
-        env_var = "INITIAL_ADMIN_PASSWORD"
-        require_present = true
-      }
-      "token_policies" = ["superuser"]
+request "userpass-add-admin" {
+  operation = "update"
+  path = "auth/userpass/users/admin"
+  data = {
+    "password" = {
+      eval_type = "string"
+      eval_source = "env"
+      env_var = "INITIAL_ADMIN_PASSWORD"
+      require_present = true
     }
+    "token_policies" = ["superuser"]
   }
 }
 ```
 
 #### `file` source
+
+:::info
+
+The `file` source is only available for declarative self-initialization; it
+is not available for API profiles
+
+:::
 
 - `path` `(string: <required>)` - the path to the file to read. This file is
   only ever read once and is closed after use; thus a single piece of data
@@ -125,16 +223,14 @@ initialize "identity" {
 For example, to load a X.509 root CA into a PKI engine:
 
 ```hcl
-initialize "ca-setup" {
-  request "provision-root-ca" {
-    operation = "update"
-    path = "pki/issuers/import/cert"
-    data = {
-      "pem_bundle" = {
-        eval_type = "string"
-        eval_source = "file"
-        path = "/data/root-ca.pem"
-      }
+request "provision-root-ca" {
+  operation = "update"
+  path = "pki/issuers/import/cert"
+  data = {
+    "pem_bundle" = {
+      eval_type = "string"
+      eval_source = "file"
+      path = "/data/root-ca.pem"
     }
   }
 }
@@ -227,16 +323,14 @@ when allowed as sources:
 For example, to sum the value of two responses:
 
 ```hcl
-initialize "provision" {
-  request "sum" {
-    operation = "update"
-    path = "secret/data/my-secret"
-    data = {
-      "pem_bundle" = {
-        eval_type = "int"
-        eval_source = "cel"
-        expression = "requests.first.read.my_field + requests.second.read.my_other_field"
-      }
+request "sum" {
+  operation = "update"
+  path = "secret/data/my-secret"
+  data = {
+    "secret_number" = {
+      eval_type = "int"
+      eval_source = "cel"
+      expression = "requests.first.read.my_field + requests.second.read.my_other_field"
     }
   }
 }
@@ -259,16 +353,14 @@ when allowed as sources:
 For example, inject the hash of a password:
 
 ```hcl
-initialize "provision" {
-  request "password" {
-    operation = "update"
-    path = "secret/data/my-secret"
-    data = {
-      "pem_bundle" = {
-        eval_type = "string"
-        eval_source = "template"
-        template = "{{ .responses.database.read-password.password | sha256 }}"
-      }
+request "password" {
+  operation = "update"
+  path = "secret/data/my-secret"
+  data = {
+    pem_bundle = {
+      eval_type = "string"
+      eval_source = "template"
+      template = "{{ .responses.database.read-password.password | sha256 }}"
     }
   }
 }
@@ -278,8 +370,8 @@ initialize "provision" {
 
 :::info
 
-The `input` source is only available for profiles; not for declarative
-self-initialization.
+The `input` source is only available for API profiles; it is not available
+for declarative self-initialization.
 
 :::
 

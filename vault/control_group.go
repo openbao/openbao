@@ -96,12 +96,14 @@ func (c *Core) validateControlGroup(ctx context.Context, token string, requestCa
 		return true, nil
 	}
 
-	applicableControlGroups := false
+	applicableControlGroups := 0
+	passingControlGroups := 0
 	for _, factor := range cg.Factors {
 
-		// does factor apply?
-		if slices.Contains(factor.ControlledCapabilities, requestCapability) {
-			applicableControlGroups = true
+		// does factor apply? yes when ControlledCapabilities is nil or request operation matches
+		if factor.ControlledCapabilities == nil ||
+			slices.Contains(factor.ControlledCapabilities, requestCapability) {
+			applicableControlGroups++
 		} else {
 			continue
 		}
@@ -117,10 +119,10 @@ func (c *Core) validateControlGroup(ctx context.Context, token string, requestCa
 		// any factor having approvalCount >= required approvals
 		// will validate the token
 		if approvalCount >= factor.Identity.Approvals {
-			return true, nil
+			passingControlGroups++
 		}
 	}
-	if !applicableControlGroups {
+	if applicableControlGroups == passingControlGroups {
 		return true, nil
 	}
 

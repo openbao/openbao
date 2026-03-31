@@ -247,7 +247,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 			},
 			{
 				Name:                   "test-admin",
-				ControlledCapabilities: []logical.Operation{logical.ReadOperation},
+				ControlledCapabilities: []logical.Operation{logical.PatchOperation},
 				Identity: logical.ControlGroupIdentity{
 					GroupNames: []string{"admin"},
 					Approvals:  2,

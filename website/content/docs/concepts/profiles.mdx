@@ -11,8 +11,8 @@ entry point. This can be parsed from HCL or JSON as desired.
 
 Data sources are dependent on the profile call site: self-initialization has
 one set of allowed sources whereas API profiles have a different combination.
-Data sources can be nested; for instance, a `text/template` source can be used
-to combine an environment variable and the contents of a file.
+Data sources can be nested; for instance, a template source can be used to
+combine an environment variable and the contents of a file.
 
 :::info
 
@@ -46,8 +46,8 @@ During execution, before any OpenBao operation is attempted, the engine:
 - Rejects a run immediately if required inputs are missing, preventing
   half-configured states.
 
-Certain engines, like `text/template` or CEL cannot fully validate the
-execution environment and thus may err at runtime.
+Certain engines, like template or CEL cannot fully validate the execution
+environment and thus may err at runtime.
 
 3. **Synchronous Execution**
 

@@ -35,7 +35,6 @@ jobs:
           ref: main
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
         with:
-          version: latest
           package_json_file: website/package.json
           cache: true
           cache_dependency_path: website/pnpm-lock.yaml

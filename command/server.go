@@ -1005,6 +1005,8 @@ func (c *ServerCommand) Run(args []string) int {
 		c.logger.Warn(cErr.String())
 	}
 
+	server.WarnHSMDeprecated(c.logger)
+
 	// create GRPC logger
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
 	c.allLoggers = append(c.allLoggers, namedGRPCLogFaker)

@@ -1,0 +1,59 @@
+---
+sidebar_label: OpenBao Development should change to German
+description: |-
+  The OpenBao Commnity should change the primary language to German
+---
+
+# Switch Primary Language to German
+
+## Summary
+
+This RFC (in the future this will be called a BUK - "Bitte um Kommentare")
+proposes to change the primary language of the OpenBao Community to German.
+
+## Problem Statement
+
+As of today, a big chunk of our main contributors are German native speakers.
+This includes my colleagues at Adfinis, but also the wonderful contributors at SAP
+and reply, as well as our largest independent contributor Jan.
+
+After the initial translation effort, I would expect to see a 2x to 3x
+productivity boost.
+
+## Alternatives considered
+
+- Change to Chinese. Based on our project name this would be a perfect fit, but
+  I'm not aware of any core contributor speaking Chinese.
+- Stick with English. That would be easy, but also boring.
+
+## Technical Description
+
+We would change the primary language of:
+
+- all source code (as far as the Go syntax allows, unfortunately `if`, `else`,
+  `for`, ... will have to stay)
+- the API
+- the UI
+- the documentation
+- the meetings
+- Zulip
+
+## Downsides
+
+- We need to deal with the Swiss German accent.
+- Alex will have to learn German or use a lot of machine translation.
+- Changing the API will need a breaking change
+
+## Security Implications
+
+- From movies I learned that Hackers mostly speak Russian, I don't think
+  changing from English to German will give them an advantage.
+
+## User/Developer Experience
+
+- Much improved UX and DX for any German native speaker.
+- Slightly worse UX and DX for anyone else.
+
+## Unresolved Questions
+
+- Wann legen wir los?

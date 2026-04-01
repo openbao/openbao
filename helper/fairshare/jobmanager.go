@@ -162,15 +162,14 @@ func (j *JobManager) GetWorkQueueLengths() map[string]int {
 
 func (j *JobManager) getNextJob() (Job, string) {
 	j.l.Lock()
+	defer j.l.Unlock()
 
 	if len(j.queues) == 0 {
-		j.l.Unlock()
 		return nil, ""
 	}
 
 	queueID, canAssignWorker := j.getNextQueue()
 	if !canAssignWorker {
-		j.l.Unlock()
 		return nil, ""
 	}
 
@@ -191,7 +190,6 @@ func (j *JobManager) getNextJob() (Job, string) {
 		j.removeLastQueueAccessed()
 	}
 
-	j.l.Unlock()
 	return jobRaw.(Job), queueID
 }
 

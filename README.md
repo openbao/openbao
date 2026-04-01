@@ -106,7 +106,7 @@ $ go run . server -dev # Or `bao server -dev` if you've built the binary already
 
 Since OpenBao is a large codebase that takes a short while to compile from a
 cold cache, it is useful to attach the `-v` flag to build commands to get a
-better sense of compilation process.
+better sense of compilation progress.
 
 To test a package:
 

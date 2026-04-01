@@ -206,6 +206,8 @@ type RaftBackend struct {
 
 	effectiveSDKVersion string
 	failGetInTxn        atomic.Bool
+
+	transactionLeakCounter atomic.Int64
 }
 
 // HookInvalidate implements physical.CacheInvalidationBackend.

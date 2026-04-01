@@ -194,6 +194,7 @@ func TestRaft_TransactionLeak(t *testing.T) {
 	}
 
 	assert.True(t, found, "expected log message not found")
+	assert.Equal(t, int64(1), b.transactionLeakCounter.Load())
 
 	// assert clean-up
 	assert.Equal(t, uint64(math.MaxUint64), b.fsm.fastTxnTracker.lowestActiveIndex())

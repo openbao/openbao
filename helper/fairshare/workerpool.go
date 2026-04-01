@@ -211,6 +211,7 @@ func (d *dispatcher) initializeWorker() {
 // dispatch attempts to send a job to the worker pool.
 // Returns true if job was accepted, false if rejected (queue full or shutting down).
 // init is called before Execute, cleanup after (regardless of success/failure).
+func (d *dispatcher) dispatch(job Job, init initFn, cleanup cleanupFn) bool {
 	if d.stopping.Load() {
 		return false
 	}

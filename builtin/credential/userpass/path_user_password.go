@@ -7,6 +7,7 @@ package userpass
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -119,6 +120,19 @@ func (b *backend) updateUserPassword(password, passwordHash string, userEntry *U
 		return err, nil
 	}
 
+	const (
+		// minCost is the minimum bcrypt cost enforced when passing a pre-hashed
+		// password to avoid accidentally setting a weakly hashed password. 5 is
+		// picked as the lower bound as this is the default in `htpasswd -B`.
+		minCost = 5
+
+		// maxCost is the maximum bcrypt cost accepted when passing a pre-hashed
+		// password to avoid DoS. Notably, bcrypt.DefaultCost is 10, we pick 12
+		// to allow for some leeway. If this is insufficient, open an issue and
+		// suggest a configuration path.
+		maxCost = 12
+	)
+
 	if password != "" {
 		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
@@ -126,8 +140,14 @@ func (b *backend) updateUserPassword(password, passwordHash string, userEntry *U
 		}
 		userEntry.PasswordHash = hash
 	} else {
-		if _, err := bcrypt.Cost([]byte(passwordHash)); err != nil {
+		cost, err := bcrypt.Cost([]byte(passwordHash))
+		switch {
+		case err != nil:
 			return errors.New("password_hash is not a valid bcrypt hash"), nil
+		case cost < minCost:
+			return fmt.Errorf("bcrypt cost of %d is too low, want %d at minimum", cost, minCost), nil
+		case cost > maxCost:
+			return fmt.Errorf("bcrypt cost of %d exceeds maximum cost of %d", cost, maxCost), nil
 		}
 		userEntry.PasswordHash = []byte(passwordHash)
 	}

@@ -21,9 +21,6 @@ Steering Committee.
    to create a modern, secure, and extensible interface.
  - [Control Groups](control-groups.mdx), for allow/deny access
    to a path by a second-party control group
- - [Standby nodes handle read requests](standby-nodes-handle-read-requests.mdx),
-   to allow standby nodes in a high-availability setup to handle read
-   requests directly, improving horizontal scalability.
  - [Switch to OpenTelemetry](opentelemetry.mdx), to replace the current
    metrics based on `go-metrics` with OpenTelemetry based metrics.
  - [Components for efficient search over encrypted data](efficient-search-components.mdx), adds the
@@ -92,6 +89,12 @@ Steering Committee.
  - [Auto Unseal Plugins](auto-unseal-plugins.mdx), enabling distribution of Auto
    Unseal providers as external plugin binaries to reduce dependency creep and
    ease integration of new KMS providers.
+ - [Standby nodes handle read requests](standby-nodes-handle-read-requests.mdx),
+   to allow standby nodes in a high-availability setup to handle read
+   requests directly, improving horizontal scalability.
+ - [Implementation of Invalidation for Raft](invalidation.mdx), for
+   read-enabled standby nodes. This was part of the horizontal scalability
+   implementation.
 
 ## Strategic
 

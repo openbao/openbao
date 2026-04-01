@@ -1,4 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 package userpass
@@ -68,6 +69,14 @@ func pathUsers(b *backend) *framework.Path {
 			"password": {
 				Type:        framework.TypeString,
 				Description: "Password for this user.",
+				DisplayAttrs: &framework.DisplayAttributes{
+					Sensitive: true,
+				},
+			},
+
+			"password_hash": {
+				Type:        framework.TypeString,
+				Description: "Pre-hashed bcrypt password for this user. Mutually exclusive with password.",
 				DisplayAttrs: &framework.DisplayAttributes{
 					Sensitive: true,
 				},
@@ -230,7 +239,16 @@ func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *fra
 	}, nil
 }
 
-func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	password := d.Get("password").(string)
+	passwordHash := d.Get("password_hash").(string)
+
+	if req.Operation == logical.CreateOperation {
+		if err := validatePasswordInput(password, passwordHash); err != nil {
+			return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+		}
+	}
+
 	txRollback, err := logical.StartTxStorage(ctx, req)
 	if err != nil {
 		return nil, err
@@ -251,8 +269,8 @@ func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d 
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
-	if _, ok := d.GetOk("password"); ok {
-		userErr, intErr := b.updateUserPassword(req, d, userEntry)
+	if password != "" || passwordHash != "" {
+		userErr, intErr := b.updateUserPassword(password, passwordHash, userEntry)
 		if intErr != nil {
 			return nil, intErr
 		}
@@ -279,6 +297,7 @@ func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d 
 			return logical.ErrorResponse(err.Error()), nil
 		}
 	}
+
 	if err := b.setUser(ctx, req.Storage, username, userEntry); err != nil {
 		return nil, err
 	}
@@ -288,14 +307,6 @@ func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d 
 	}
 
 	return nil, nil
-}
-
-func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	password := d.Get("password").(string)
-	if req.Operation == logical.CreateOperation && password == "" {
-		return logical.ErrorResponse("missing password"), logical.ErrInvalidRequest
-	}
-	return b.userCreateUpdate(ctx, req, d)
 }
 
 type UserEntry struct {

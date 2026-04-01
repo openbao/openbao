@@ -106,6 +106,12 @@ quickly merge or address your contributions.
 
 ### Reporting an Issue
 
+> [!CAUTION]
+>
+> Please do not use generative AI to create issues against OpenBao; take the
+> time to comment in your own words. Issues which are very clearly AI
+> generated may be closed and/or locked with no response from the community.
+
 * Make sure you test against the latest released version. It is possible we
   already fixed the bug you're experiencing. Even better is if you can test
   against the `development` branch, as the bugs are regularly fixed but new versions
@@ -124,6 +130,10 @@ quickly merge or address your contributions.
 
 * Respond as promptly as possible to any questions made by the OpenBao
   team to your issue.
+
+* Use of generative AI as an assistant in debugging or understanding issues
+  remains okay, but please do not post AI generated text, _especially_ without
+  clearly identifying it as such.
 
 ### Issue Lifecycle
 
@@ -150,6 +160,17 @@ quickly merge or address your contributions.
    feel that the issue is still relevant, we encourage reopening them.
 
 ## Pull requests
+
+> [!CAUTION]
+>
+> Pull requests which ignore [our template](/.github/pull_request_template.md)
+> especially from first-time contributors risk being rejected with no
+> explanation. All pull requests from new and existing contributors should
+> have the Acknowledgements section filled out.
+>
+> In particular, see the note above (in DCO sign-off) about not using
+> generative AI for code generation. This also includes the PR and/or issue
+> description.
 
 When submitting a PR you should reference an existing issue. If no issue already
 exists, please create one. This can be skipped for trivial PRs like fixing typos

@@ -160,6 +160,8 @@ func (j *JobManager) GetWorkQueueLengths() map[string]int {
 	return out
 }
 
+// getNextJob pops the next job to be processed and prunes empty queues
+// it also returns the ID of the queue the job is associated with
 func (j *JobManager) getNextJob() (Job, string) {
 	j.l.Lock()
 	defer j.l.Unlock()

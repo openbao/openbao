@@ -4,7 +4,6 @@
 package userpass
 
 import (
-	"context"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -74,7 +73,7 @@ func TestValidatePasswordInput(t *testing.T) {
 }
 
 func TestUpdateUserPassword_PlaintextPassword(t *testing.T) {
-	b, err := Factory(context.Background(), logical.TestBackendConfig())
+	b, err := Factory(t.Context(), logical.TestBackendConfig())
 	require.NoError(t, err)
 	backendImpl := b.(*backend)
 
@@ -89,7 +88,7 @@ func TestUpdateUserPassword_PlaintextPassword(t *testing.T) {
 }
 
 func TestUpdateUserPassword_ValidBcryptHash(t *testing.T) {
-	b, err := Factory(context.Background(), logical.TestBackendConfig())
+	b, err := Factory(t.Context(), logical.TestBackendConfig())
 	require.NoError(t, err)
 	backendImpl := b.(*backend)
 
@@ -107,7 +106,7 @@ func TestUpdateUserPassword_ValidBcryptHash(t *testing.T) {
 }
 
 func TestUpdateUserPassword_InvalidBcryptHash(t *testing.T) {
-	b, err := Factory(context.Background(), logical.TestBackendConfig())
+	b, err := Factory(t.Context(), logical.TestBackendConfig())
 	require.NoError(t, err)
 	backendImpl := b.(*backend)
 
@@ -120,7 +119,7 @@ func TestUpdateUserPassword_InvalidBcryptHash(t *testing.T) {
 }
 
 func TestUpdateUserPassword_BothFields(t *testing.T) {
-	b, err := Factory(context.Background(), logical.TestBackendConfig())
+	b, err := Factory(t.Context(), logical.TestBackendConfig())
 	require.NoError(t, err)
 	backendImpl := b.(*backend)
 
@@ -136,7 +135,7 @@ func TestUpdateUserPassword_BothFields(t *testing.T) {
 }
 
 func TestUpdateUserPassword_NeitherField(t *testing.T) {
-	b, err := Factory(context.Background(), logical.TestBackendConfig())
+	b, err := Factory(t.Context(), logical.TestBackendConfig())
 	require.NoError(t, err)
 	backendImpl := b.(*backend)
 

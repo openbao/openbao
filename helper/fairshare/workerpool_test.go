@@ -37,7 +37,7 @@ func TestFairshare_newDispatcher(t *testing.T) {
 
 	l := newTestLogger("workerpool-test")
 	for tcNum, tc := range testCases {
-		d := newDispatcher(tc.name, tc.numWorkers, l)
+		d := newDispatcher(tc.name, tc.numWorkers, 0, l)
 
 		if tc.name != "" && d.name != tc.name {
 			t.Errorf("tc %d: expected name %s, got %s", tcNum, tc.name, d.name)
@@ -170,7 +170,7 @@ func TestFairshare_initializeWorker(t *testing.T) {
 }
 
 func TestFairshare_startWorker(t *testing.T) {
-	d := newDispatcher("", 1, newTestLogger("workerpool-test"))
+	d := newDispatcher("", 1, 0, newTestLogger("workerpool-test"))
 
 	d.workers[0].start()
 	defer d.stop()
@@ -212,7 +212,7 @@ func TestFairshare_start(t *testing.T) {
 	onFail := func(_ error) {}
 
 	wg.Add(numJobs)
-	d := newDispatcher("", 3, newTestLogger("workerpool-test"))
+	d := newDispatcher("", 3, 0, newTestLogger("workerpool-test"))
 
 	d.start()
 	defer d.stop()
@@ -238,7 +238,7 @@ func TestFairshare_start(t *testing.T) {
 }
 
 func TestFairshare_stop(t *testing.T) {
-	d := newDispatcher("", 5, newTestLogger("workerpool-test"))
+	d := newDispatcher("", 5, 0, newTestLogger("workerpool-test"))
 
 	d.start()
 
@@ -259,7 +259,7 @@ func TestFairshare_stop(t *testing.T) {
 }
 
 func TestFairshare_stopMultiple(t *testing.T) {
-	d := newDispatcher("", 5, newTestLogger("workerpool-test"))
+	d := newDispatcher("", 5, 0, newTestLogger("workerpool-test"))
 
 	d.start()
 
@@ -304,7 +304,7 @@ func TestFairshare_stopMultiple(t *testing.T) {
 }
 
 func TestFairshare_dispatch(t *testing.T) {
-	d := newDispatcher("", 1, newTestLogger("workerpool-test"))
+	d := newDispatcher("", 1, 0, newTestLogger("workerpool-test"))
 
 	var wg sync.WaitGroup
 	accumulatedIDs := make([]string, 0)
@@ -363,7 +363,7 @@ func TestFairshare_jobFailure(t *testing.T) {
 	}
 
 	wg.Add(numJobs)
-	d := newDispatcher("", 3, newTestLogger("workerpool-test"))
+	d := newDispatcher("", 3, 0, newTestLogger("workerpool-test"))
 
 	d.start()
 	defer d.stop()
@@ -389,7 +389,7 @@ func TestFairshare_jobFailure(t *testing.T) {
 }
 
 func TestFairshare_nilLoggerDispatcher(t *testing.T) {
-	d := newDispatcher("test-job-mgr", 1, nil)
+	d := newDispatcher("test-job-mgr", 1, 0, nil)
 	if d.logger == nil {
 		t.Error("logger not set up properly")
 	}

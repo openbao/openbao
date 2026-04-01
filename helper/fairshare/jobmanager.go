@@ -62,7 +62,7 @@ func NewJobManager(name string, numWorkers int, l log.Logger, metricSink *metric
 		name = fmt.Sprintf("jobmanager-%s", guid)
 	}
 
-	wp := newDispatcher(fmt.Sprintf("%s-dispatcher", name), numWorkers, l)
+	wp := newDispatcher(fmt.Sprintf("%s-dispatcher", name), numWorkers, 0, l)
 
 	j := JobManager{
 		name:              name,
@@ -108,10 +108,7 @@ func (j *JobManager) AddJob(job Job, queueID string) {
 		defer func() {
 			// newWork must be buffered to avoid deadlocks if work is added
 			// before the job manager is started
-			select {
-			case j.newWork <- struct{}{}:
-			default:
-			}
+			j.newWork <- struct{}{}
 		}()
 	}
 	defer j.l.Unlock()
@@ -163,18 +160,17 @@ func (j *JobManager) GetWorkQueueLengths() map[string]int {
 	return out
 }
 
-// getNextJob pops the next job to be processed and prunes empty queues
-// it also returns the ID of the queue the job is associated with
 func (j *JobManager) getNextJob() (Job, string) {
 	j.l.Lock()
-	defer j.l.Unlock()
 
 	if len(j.queues) == 0 {
+		j.l.Unlock()
 		return nil, ""
 	}
 
 	queueID, canAssignWorker := j.getNextQueue()
 	if !canAssignWorker {
+		j.l.Unlock()
 		return nil, ""
 	}
 
@@ -195,6 +191,7 @@ func (j *JobManager) getNextJob() (Job, string) {
 		j.removeLastQueueAccessed()
 	}
 
+	j.l.Unlock()
 	return jobRaw.(Job), queueID
 }
 
@@ -290,13 +287,19 @@ func (j *JobManager) assignWork() {
 
 				job, queueID := j.getNextJob()
 				if job != nil {
-					j.workerPool.dispatch(job,
+					dispatched := j.workerPool.dispatch(job,
 						func() {
 							j.incrementWorkerCount(queueID)
 						},
 						func() {
 							j.decrementWorkerCount(queueID)
 						})
+					if !dispatched {
+						j.l.Lock()
+						j.queues[queueID].PushBack(job)
+						j.totalJobs++
+						j.l.Unlock()
+					}
 				} else {
 					break
 				}

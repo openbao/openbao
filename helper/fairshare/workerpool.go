@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	log "github.com/hashicorp/go-hclog"
 	uuid "github.com/hashicorp/go-uuid"
@@ -15,12 +17,7 @@ import (
 
 // Job is an interface for jobs used with this job manager
 type Job interface {
-	// Execute performs the work.
-	// It should be synchronous if a cleanupFn is provided.
 	Execute() error
-
-	// OnFailure handles the error resulting from a failed Execute().
-	// It should be synchronous if a cleanupFn is provided.
 	OnFailure(err error)
 }
 
@@ -29,10 +26,25 @@ type (
 	cleanupFn func()
 )
 
+// wrappedJob tracks a job with its init/cleanup callbacks
 type wrappedJob struct {
 	job     Job
 	init    initFn
 	cleanup cleanupFn
+}
+
+// syncOnce cleanup ensures cleanup is called exactly once
+type syncOnceCleanup struct {
+	once    sync.Once
+	cleanup cleanupFn
+}
+
+func (s *syncOnceCleanup) Do() {
+	s.once.Do(func() {
+		if s.cleanup != nil {
+			s.cleanup()
+		}
+	})
 }
 
 // worker represents a single worker in a pool
@@ -41,22 +53,24 @@ type worker struct {
 	jobCh  <-chan wrappedJob
 	quit   chan struct{}
 	logger log.Logger
-
-	// waitgroup for testing stop functionality
-	wg *sync.WaitGroup
+	wg     *sync.WaitGroup
 }
 
-// start starts the worker listening and working until the quit channel is closed
 func (w *worker) start() {
 	w.wg.Add(1)
-
 	go func() {
 		for {
 			select {
 			case <-w.quit:
 				w.wg.Done()
 				return
-			case wJob := <-w.jobCh:
+			case wJob, ok := <-w.jobCh:
+				if !ok {
+					w.wg.Done()
+					return
+				}
+				cleanupWrapper := &syncOnceCleanup{cleanup: wJob.cleanup}
+
 				if wJob.init != nil {
 					wJob.init()
 				}
@@ -66,15 +80,13 @@ func (w *worker) start() {
 					wJob.job.OnFailure(err)
 				}
 
-				if wJob.cleanup != nil {
-					wJob.cleanup()
-				}
+				cleanupWrapper.Do()
 			}
 		}
 	}()
 }
 
-// dispatcher represents a worker pool
+// dispatcher represents a worker pool with bounded queue and backpressure
 type dispatcher struct {
 	name       string
 	numWorkers int
@@ -85,55 +97,58 @@ type dispatcher struct {
 	quit       chan struct{}
 	logger     log.Logger
 	wg         *sync.WaitGroup
+
+	// Queue metrics for monitoring
+	queueDepth    atomic.Int64
+	maxQueueDepth atomic.Int64
+	dispatches    atomic.Int64
+	completed     atomic.Int64
+	timeout       atomic.Int64
+
+	// Shutdown state
+	stopping atomic.Bool
 }
 
-// newDispatcher generates a new worker dispatcher and populates it with workers
-func newDispatcher(name string, numWorkers int, l log.Logger) *dispatcher {
+// QueueStats provides metrics about the dispatcher queue
+type QueueStats struct {
+	QueueDepth    int64
+	MaxQueueDepth int64
+	Dispatches    int64
+	Completed     int64
+	Timeouts      int64
+	Workers       int
+}
+
+// Stats returns current queue statistics
+func (d *dispatcher) Stats() QueueStats {
+	return QueueStats{
+		QueueDepth:    d.queueDepth.Load(),
+		MaxQueueDepth: d.maxQueueDepth.Load(),
+		Dispatches:    d.dispatches.Load(),
+		Completed:     d.completed.Load(),
+		Timeouts:      d.timeout.Load(),
+		Workers:       d.numWorkers,
+	}
+}
+
+// newDispatcher creates a dispatcher with bounded queue
+// queueSize: max jobs waiting when system is under load (backpressure)
+// queueSize=0: unlimited (legacy behavior, uses unbuffered channel)
+func newDispatcher(name string, numWorkers int, queueSize int, l log.Logger) *dispatcher {
 	d := createDispatcher(name, numWorkers, l)
 
+	if queueSize > 0 {
+		d.jobCh = make(chan wrappedJob, queueSize)
+	} else {
+		d.jobCh = make(chan wrappedJob)
+	}
+
 	d.init()
+
 	return d
 }
 
-// dispatch dispatches a job to the worker pool, with optional initialization
-// and cleanup functions (useful for tracking job progress)
-func (d *dispatcher) dispatch(job Job, init initFn, cleanup cleanupFn) {
-	wJob := wrappedJob{
-		init:    init,
-		job:     job,
-		cleanup: cleanup,
-	}
-
-	select {
-	case d.jobCh <- wJob:
-	case <-d.quit:
-		d.logger.Info("shutting down during dispatch")
-	}
-}
-
-// start starts all the workers listening on the job channel
-// this will only start the workers for this dispatch once
-func (d *dispatcher) start() {
-	d.onceStart.Do(func() {
-		d.logger.Trace("starting dispatcher")
-		for _, w := range d.workers {
-			worker := w
-			worker.start()
-		}
-	})
-}
-
-// stop stops the worker pool, waiting for all workers to exit.
-func (d *dispatcher) stop() {
-	d.onceStop.Do(func() {
-		d.logger.Trace("terminating dispatcher")
-		close(d.quit)
-		d.wg.Wait()
-	})
-}
-
-// createDispatcher generates a new Dispatcher object, but does not initialize the
-// worker pool
+// createDispatcher creates a dispatcher without starting workers
 func createDispatcher(name string, numWorkers int, l log.Logger) *dispatcher {
 	if l == nil {
 		l = logging.NewVaultLoggerWithWriter(io.Discard, log.NoLevel)
@@ -149,7 +164,6 @@ func createDispatcher(name string, numWorkers int, l log.Logger) *dispatcher {
 			l.Warn("uuid generator failed, using 'no-uuid'", "err", err)
 			guid = "no-uuid"
 		}
-
 		name = fmt.Sprintf("dispatcher-%s", guid)
 	}
 
@@ -172,11 +186,9 @@ func (d *dispatcher) init() {
 	for len(d.workers) < d.numWorkers {
 		d.initializeWorker()
 	}
-
 	d.logger.Trace("initialized dispatcher", "num_workers", d.numWorkers)
 }
 
-// initializeWorker initializes and adds a new worker, with an optional name
 func (d *dispatcher) initializeWorker() {
 	w := worker{
 		name:   fmt.Sprint("worker-", len(d.workers)),
@@ -185,6 +197,130 @@ func (d *dispatcher) initializeWorker() {
 		logger: d.logger,
 		wg:     d.wg,
 	}
-
 	d.workers = append(d.workers, w)
+}
+
+func (d *dispatcher) dispatch(job Job, init initFn, cleanup cleanupFn) bool {
+	if d.stopping.Load() {
+		return false
+	}
+
+	wJob := wrappedJob{
+		init:    init,
+		job:     job,
+		cleanup: cleanup,
+	}
+
+	d.dispatches.Add(1)
+	d.queueDepth.Add(1)
+
+	isUnbuffered := cap(d.jobCh) == 0
+	if isUnbuffered {
+		select {
+		case d.jobCh <- wJob:
+			d.queueDepth.Add(-1)
+			return true
+		case <-d.quit:
+			d.queueDepth.Add(-1)
+			return false
+		}
+	}
+
+	select {
+	case d.jobCh <- wJob:
+		// Job accepted by worker
+		currentDepth := d.queueDepth.Add(-1)
+		// Track max queue depth
+		for {
+			max := d.maxQueueDepth.Load()
+			if currentDepth <= max {
+				break
+			}
+			if d.maxQueueDepth.CompareAndSwap(max, currentDepth) {
+				break
+			}
+		}
+		return true
+	case <-d.quit:
+		d.queueDepth.Add(-1)
+		return false
+	default:
+		// Queue full - backpressure
+		d.queueDepth.Add(-1)
+		d.logger.Trace("dispatcher queue full, rejecting job",
+			"queue_depth", d.queueDepth.Load(),
+			"max_workers", d.numWorkers)
+		return false
+	}
+}
+
+// TryDispatch attempts to dispatch without blocking, for non-critical jobs
+func (d *dispatcher) TryDispatch(job Job, init initFn, cleanup cleanupFn) bool {
+	return d.dispatch(job, init, cleanup)
+}
+
+// dispatchWithTimeout attempts dispatch with timeout for waiting in queue
+// timeout=0 means wait indefinitely (legacy behavior)
+func (d *dispatcher) dispatchWithTimeout(job Job, init initFn, cleanup cleanupFn, timeout time.Duration) bool {
+	if d.stopping.Load() {
+		return false
+	}
+
+	wJob := wrappedJob{
+		init:    init,
+		job:     job,
+		cleanup: cleanup,
+	}
+
+	d.dispatches.Add(1)
+	d.queueDepth.Add(1)
+
+	var timeoutCh <-chan time.Time
+	if timeout > 0 {
+		timeoutCh = time.After(timeout)
+	}
+
+	select {
+	case d.jobCh <- wJob:
+		d.queueDepth.Add(-1)
+		return true
+	case <-d.quit:
+		d.queueDepth.Add(-1)
+		return false
+	case <-timeoutCh:
+		d.queueDepth.Add(-1)
+		d.timeout.Add(1)
+		d.logger.Trace("dispatch timeout - job rejected")
+		return false
+	}
+}
+
+func (d *dispatcher) start() {
+	d.onceStart.Do(func() {
+		d.logger.Trace("starting dispatcher", "num_workers", d.numWorkers)
+		for _, w := range d.workers {
+			worker := w
+			worker.start()
+		}
+	})
+}
+
+// stop gracefully stops the dispatcher, waiting for in-flight jobs
+func (d *dispatcher) stop() {
+	d.onceStop.Do(func() {
+		d.logger.Trace("terminating dispatcher")
+
+		// Phase 1: Stop accepting new jobs
+		d.stopping.Store(true)
+
+		// Close job channel to signal no more jobs will be accepted
+		// Workers will exit after receiving any remaining job
+		close(d.jobCh)
+
+		// Phase 2: Wait for workers to finish processing their current job
+		d.wg.Wait()
+
+		// Phase 3: Close quit (workers are already gone)
+		close(d.quit)
+	})
 }

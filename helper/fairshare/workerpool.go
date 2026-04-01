@@ -17,7 +17,12 @@ import (
 
 // Job is an interface for jobs used with this job manager
 type Job interface {
+	// Execute performs the work.
+	// It should be synchronous if a cleanupFn is provided.
 	Execute() error
+
+	// OnFailure handles the error resulting from a failed Execute().
+	// It should be synchronous if a cleanupFn is provided.
 	OnFailure(err error)
 }
 

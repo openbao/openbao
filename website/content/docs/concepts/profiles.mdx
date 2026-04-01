@@ -91,6 +91,7 @@ The core of a profile is the request, which contains the following fields:
    request.
  - `allow_failure` `(bool: false)` - whether to allow profile execution to
    continue despite failure of this request.
+ - `when` `(bool: true)` - when false, skips execution of the request.
 
 Other than `name` which must be static, all of the remaining fields can use
 dynamic data sources as described below.

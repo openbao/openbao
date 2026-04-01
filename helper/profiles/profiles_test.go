@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 type minimalSource struct {
@@ -59,6 +60,10 @@ func testBuilderNotEmpty(evalResult interface{}, evalErr error) SourceBuilder {
 
 var testHandler = RequestHandlerFunc(func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
 	return &logical.Response{}, nil
+})
+
+var errHandler = RequestHandlerFunc(func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
+	return nil, errors.New("this should not be called")
 })
 
 func WithProfileAndHandler(profile []*OuterConfig, handler RequestHandlerFunc, outerName string) func(*ProfileEngine) {
@@ -361,6 +366,36 @@ func Test_Evaluate_Success(t *testing.T) {
 	}
 }
 
+func Test_Evaluate_When(t *testing.T) {
+	ctx := t.Context()
+
+	engine, err := NewEngine(
+		WithProfile([]*OuterConfig{
+			{
+				Type: "test",
+				Requests: []*RequestConfig{
+					{
+						Type:      "test-request-skipped",
+						Operation: "read",
+						Path:      "sys/health",
+						When:      "false",
+					},
+				},
+			},
+		}),
+		WithRequestHandler(errHandler),
+		WithOuterBlockName("test"),
+	)
+	if err != nil {
+		t.Fatalf("NewEngine error: %v", err)
+	}
+
+	err = engine.Evaluate(ctx)
+	if err != nil {
+		t.Fatalf("Evaluate error: %v", err)
+	}
+}
+
 func TestBuildRequest_BasicRequestCreation(t *testing.T) {
 	engine := &ProfileEngine{
 		sourceBuilders: map[string]SourceBuilder{},
@@ -382,7 +417,7 @@ func TestBuildRequest_BasicRequestCreation(t *testing.T) {
 		},
 	}
 
-	req, allowFailure, err := engine.buildRequest(t.Context(), hist, 0, outerConfig, 0, requestConfig)
+	req, execute, allowFailure, err := engine.buildRequest(t.Context(), hist, 0, outerConfig, 0, requestConfig)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -406,6 +441,8 @@ func TestBuildRequest_BasicRequestCreation(t *testing.T) {
 	if allowFailure {
 		t.Error("expected allowFailure to be false by default")
 	}
+
+	require.True(t, execute, "expected request to be executed")
 }
 
 func TestEvaluateField_NilDestination(t *testing.T) {

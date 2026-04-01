@@ -4,7 +4,6 @@
 package cert
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -24,7 +23,7 @@ func TestCRLFetch(t *testing.T) {
 	tc := setupTestCerts(t)
 	storage := &logical.InmemStorage{}
 
-	lb, err := Factory(context.Background(), &logical.BackendConfig{
+	lb, err := Factory(t.Context(), &logical.BackendConfig{
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: 300 * time.Second,
 			MaxLeaseTTLVal:     1800 * time.Second,
@@ -36,20 +35,17 @@ func TestCRLFetch(t *testing.T) {
 	b := lb.(*backend)
 	closeChan := make(chan bool)
 	go func() {
-		t := time.NewTicker(50 * time.Millisecond)
+		ticker := time.NewTicker(50 * time.Millisecond)
 		for {
 			select {
-			case <-t.C:
-				b.PeriodicFunc(context.Background(), &logical.Request{Storage: storage})
+			case <-ticker.C:
+				require.NoError(t, b.PeriodicFunc(t.Context(), &logical.Request{Storage: storage}))
 			case <-closeChan:
 			}
 		}
 	}()
 	defer close(closeChan)
 
-	if err != nil {
-		t.Fatalf("error: %s", err)
-	}
 	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
 	require.NoError(t, err)
 
@@ -97,7 +93,7 @@ func TestCRLFetch(t *testing.T) {
 		Schema: pathCerts(b).Fields,
 	}
 
-	_, err = b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(t.Context(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +102,7 @@ func TestCRLFetch(t *testing.T) {
 		Raw:    map[string]interface{}{},
 		Schema: pathLogin(b).Fields,
 	}
-	resp, err := b.pathLogin(context.Background(), req, empty_login_fd)
+	resp, err := b.pathLogin(t.Context(), req, empty_login_fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +118,7 @@ func TestCRLFetch(t *testing.T) {
 		},
 		Schema: pathCRLs(b).Fields,
 	}
-	resp, err = b.pathCRLWrite(context.Background(), req, fd)
+	resp, err = b.pathCRLWrite(t.Context(), req, fd)
 	if err == nil {
 		t.Fatal(err)
 	}
@@ -138,7 +134,7 @@ func TestCRLFetch(t *testing.T) {
 		},
 		Schema: pathCRLs(b).Fields,
 	}
-	resp, err = b.pathCRLWrite(context.Background(), req, fd)
+	resp, err = b.pathCRLWrite(t.Context(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}

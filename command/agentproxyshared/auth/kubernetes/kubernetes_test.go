@@ -5,7 +5,6 @@ package kubernetes
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"io"
 	"testing"
@@ -64,7 +63,7 @@ func TestKubernetesAuth_basic(t *testing.T) {
 				k.jwtData = tc.data
 			}
 
-			_, _, data, err := k.Authenticate(context.Background(), nil)
+			_, _, data, err := k.Authenticate(t.Context(), nil)
 			if err != nil && tc.e == nil {
 				t.Fatal(err)
 			}

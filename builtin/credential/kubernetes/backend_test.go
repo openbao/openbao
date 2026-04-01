@@ -182,7 +182,7 @@ func Test_kubeAuthBackend_updateTLSConfig(t *testing.T) {
 				tlsConfig:  tt.tlsConfig,
 			}
 
-			if err := b.Setup(context.Background(),
+			if err := b.Setup(t.Context(),
 				&logical.BackendConfig{
 					Logger: hclog.NewNullLogger(),
 				}); err != nil {
@@ -247,7 +247,7 @@ func Test_kubeAuthBackend_initialize(t *testing.T) {
 	}{
 		{
 			name:       "fail-client-not-set",
-			ctx:        context.Background(),
+			ctx:        t.Context(),
 			httpClient: nil,
 			tlsConfig:  getDefaultTLSConfig(),
 			req: &logical.InitializationRequest{
@@ -262,7 +262,7 @@ func Test_kubeAuthBackend_initialize(t *testing.T) {
 		},
 		{
 			name:       "no-config",
-			ctx:        context.Background(),
+			ctx:        t.Context(),
 			httpClient: getDefaultHTTPClient(),
 			tlsConfig:  getDefaultTLSConfig(),
 			req: &logical.InitializationRequest{
@@ -273,7 +273,7 @@ func Test_kubeAuthBackend_initialize(t *testing.T) {
 		},
 		{
 			name:       "initialized-from-config",
-			ctx:        context.Background(),
+			ctx:        t.Context(),
 			httpClient: getDefaultHTTPClient(),
 			tlsConfig:  getDefaultTLSConfig(),
 			req: &logical.InitializationRequest{
@@ -299,7 +299,7 @@ func Test_kubeAuthBackend_initialize(t *testing.T) {
 				tlsConfig:  tt.tlsConfig,
 			}
 
-			if err := b.Setup(context.Background(),
+			if err := b.Setup(t.Context(),
 				&logical.BackendConfig{
 					Logger:      hclog.NewNullLogger(),
 					StorageView: tt.req.Storage,
@@ -380,7 +380,7 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 		{
 			name:       "initialized-from-config",
 			tlsConfig:  getDefaultTLSConfig(),
-			ctx:        context.Background(),
+			ctx:        t.Context(),
 			storage:    &logical.InmemStorage{},
 			horizon:    time.Millisecond * 500,
 			minHorizon: time.Millisecond * 499,
@@ -411,7 +411,7 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 		},
 		{
 			name:      "fail-min-horizon",
-			ctx:       context.Background(),
+			ctx:       t.Context(),
 			storage:   &logical.InmemStorage{},
 			horizon:   time.Millisecond * 500,
 			wantErr:   true,
@@ -434,7 +434,7 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 				tlsConfig:  tt.tlsConfig,
 			}
 
-			if err := b.Setup(context.Background(),
+			if err := b.Setup(t.Context(),
 				&logical.BackendConfig{
 					Logger:      hclog.NewNullLogger(),
 					StorageView: tt.storage,

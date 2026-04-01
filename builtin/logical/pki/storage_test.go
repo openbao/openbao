@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -14,12 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var ctx = context.Background()
-
 func Test_ConfigsRoundTrip(t *testing.T) {
 	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
-	sc := b.makeStorageContext(ctx, s)
+	sc := b.makeStorageContext(t.Context(), s)
 
 	// Create an empty key, issuer for testing.
 	key := keyEntry{ID: genKeyId()}
@@ -63,7 +60,7 @@ func Test_ConfigsRoundTrip(t *testing.T) {
 func Test_IssuerRoundTrip(t *testing.T) {
 	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
-	sc := b.makeStorageContext(ctx, s)
+	sc := b.makeStorageContext(t.Context(), s)
 	issuer1, key1 := genIssuerAndKey(t, b, s)
 	issuer2, key2 := genIssuerAndKey(t, b, s)
 
@@ -109,7 +106,7 @@ func Test_IssuerRoundTrip(t *testing.T) {
 func Test_KeysIssuerImport(t *testing.T) {
 	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
-	sc := b.makeStorageContext(ctx, s)
+	sc := b.makeStorageContext(t.Context(), s)
 
 	issuer1, key1 := genIssuerAndKey(t, b, s)
 	issuer2, key2 := genIssuerAndKey(t, b, s)
@@ -178,7 +175,7 @@ func Test_KeysIssuerImport(t *testing.T) {
 func Test_IssuerUpgrade(t *testing.T) {
 	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
-	sc := b.makeStorageContext(ctx, s)
+	sc := b.makeStorageContext(t.Context(), s)
 
 	// Make sure that we add OCSP signing to v0 issuers if CRLSigning is enabled
 	issuer, _ := genIssuerAndKey(t, b, s)
@@ -249,7 +246,7 @@ func genCertBundle(t *testing.T, b *backend, s logical.Storage) *certutil.CertBu
 			"ttl":      3600,
 		},
 	}
-	sc := b.makeStorageContext(ctx, s)
+	sc := b.makeStorageContext(t.Context(), s)
 	_, _, role, respErr := getGenerationParams(sc, apiData)
 	require.Nil(t, respErr)
 
@@ -274,6 +271,6 @@ func writeLegacyBundle(t *testing.T, b *backend, s logical.Storage, bundle *cert
 	entry, err := logical.StorageEntryJSON(legacyCertBundlePath, bundle)
 	require.NoError(t, err)
 
-	err = s.Put(context.Background(), entry)
+	err = s.Put(t.Context(), entry)
 	require.NoError(t, err)
 }

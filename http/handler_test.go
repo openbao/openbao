@@ -5,7 +5,6 @@ package http
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -126,7 +125,7 @@ func TestHandler_cors(t *testing.T) {
 
 	// Enable CORS and allow from any origin for testing.
 	corsConfig := core.CORSConfig()
-	err := corsConfig.Enable(context.Background(), []string{addr}, nil, false)
+	err := corsConfig.Enable(t.Context(), []string{addr}, nil, false)
 	if err != nil {
 		t.Fatalf("Error enabling CORS: %s", err)
 	}
@@ -200,7 +199,7 @@ func TestHandler_cors(t *testing.T) {
 	}
 
 	// Test that the Access-Control-Allow-Credentials is set correctly when configured
-	err = corsConfig.Enable(context.Background(), []string{addr}, nil, true)
+	err = corsConfig.Enable(t.Context(), []string{addr}, nil, true)
 	if err != nil {
 		t.Fatalf("Error enabling CORS: %s", err)
 	}
@@ -731,7 +730,7 @@ func TestHandler_error(t *testing.T) {
 func TestHandler_requestAuth(t *testing.T) {
 	core, _, token := vault.TestCoreUnsealed(t)
 
-	rootCtx := namespace.RootContext(context.TODO())
+	rootCtx := namespace.RootContext(t.Context())
 	te, err := core.LookupToken(rootCtx, token)
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -938,7 +937,7 @@ func TestHandler_MaxRequestSize(t *testing.T) {
 	defer cluster.Cleanup()
 
 	client := cluster.Cores[0].Client
-	_, err := client.KVv2("secret").Put(context.Background(), "foo", map[string]interface{}{
+	_, err := client.KVv2("secret").Put(t.Context(), "foo", map[string]interface{}{
 		"bar": strings.Repeat("a", 1025),
 	})
 

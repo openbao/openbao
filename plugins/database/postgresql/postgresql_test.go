@@ -104,7 +104,7 @@ func TestPostgreSQL_PasswordAuthentication(t *testing.T) {
 	assert.NoError(t, err)
 	db := new()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("invalid-password-authentication", func(t *testing.T) {
 		connectionDetails := map[string]interface{}{
@@ -165,7 +165,7 @@ func TestPostgreSQL_PasswordAuthentication_SCRAMSHA256(t *testing.T) {
 		t.Fatal("Database should be initialized")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	newUserRequest := dbplugin.NewUserRequest{
 		Statements: dbplugin.Statements{
 			Commands: []string{
@@ -381,7 +381,7 @@ func TestPostgreSQL_NewUser(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			// Give a timeout just in case the test decides to be problematic
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
 
 			resp, err := db.NewUser(ctx, test.req)
@@ -465,7 +465,7 @@ func TestUpdateUser_Password(t *testing.T) {
 				},
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 			_, err := db.UpdateUser(ctx, updateReq)
 			if test.expectErr && err == nil {
@@ -489,7 +489,7 @@ func TestUpdateUser_Password(t *testing.T) {
 			},
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 		defer cancel()
 		_, err := db.UpdateUser(ctx, updateReq)
 		if err == nil {
@@ -583,7 +583,7 @@ func TestUpdateUser_Expiration(t *testing.T) {
 				},
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 			_, err := db.UpdateUser(ctx, updateReq)
 			if test.expectErr && err == nil {
@@ -604,7 +604,7 @@ func TestUpdateUser_Expiration(t *testing.T) {
 
 func getExpiration(t testing.TB, db *PostgreSQL, username string) time.Time {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	query := fmt.Sprintf("select valuntil from pg_catalog.pg_user where usename = '%s'", username)
@@ -728,7 +728,7 @@ func TestDeleteUser(t *testing.T) {
 				},
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 
 			_, err := db.DeleteUser(ctx, deleteReq)
@@ -781,7 +781,7 @@ func assertCredsDoNotExist(t testing.TB, connURL, username, password string) {
 func waitUntilCredsDoNotExist(timeout time.Duration) credsAssertion {
 	return func(t testing.TB, connURL, username, password string) {
 		t.Helper()
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(t.Context(), timeout)
 		defer cancel()
 
 		ticker := time.NewTicker(10 * time.Millisecond)
@@ -1069,7 +1069,7 @@ func TestNewUser_CustomUsername(t *testing.T) {
 
 			db := new()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
 
 			_, err := db.Initialize(ctx, initReq)
@@ -1090,7 +1090,7 @@ func TestNewUser_CustomUsername(t *testing.T) {
 				Password:   "myReally-S3curePassword",
 				Expiration: time.Now().Add(1 * time.Hour),
 			}
-			ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel = context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
 
 			newUserResp, err := db.NewUser(ctx, newUserReq)
@@ -1121,7 +1121,7 @@ func TestPostgreSQL_Repmgr(t *testing.T) {
 	db0, runner0, url0, container0 := testPostgreSQL_Repmgr_Container(t, "psql-repl-node-0")
 	_, _, url1, _ := testPostgreSQL_Repmgr_Container(t, "psql-repl-node-1")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 300*time.Second)
 	defer cancel()
 
 	time.Sleep(10 * time.Second)

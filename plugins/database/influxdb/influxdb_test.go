@@ -75,7 +75,7 @@ func prepareInfluxdbTestContainer(t *testing.T) (func(), *Config) {
 	if err != nil {
 		t.Fatalf("Could not start docker InfluxDB: %s", err)
 	}
-	svc, err := runner.StartService(context.Background(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
+	svc, err := runner.StartService(t.Context(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
 		c.ServiceURL = *docker.NewServiceURL(url.URL{
 			Scheme: "http",
 			Host:   fmt.Sprintf("%s:%d", host, port),
@@ -186,7 +186,7 @@ func TestInfluxdb_Initialize(t *testing.T) {
 			db := new()
 			defer dbtesting.AssertClose(t, db)
 
-			resp, err := db.Initialize(context.Background(), test.req)
+			resp, err := db.Initialize(t.Context(), test.req)
 			if test.expectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -399,7 +399,7 @@ func TestInfluxdb_RevokeDeletedUser(t *testing.T) {
 	delReq := dbplugin.DeleteUserRequest{
 		Username: "someuser",
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	_, err := db.DeleteUser(ctx, delReq)
 	if err != nil {

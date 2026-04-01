@@ -4,7 +4,6 @@
 package userpass
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"reflect"
@@ -36,7 +35,7 @@ func TestBackend_CRUD(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = storage
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	b, err := Factory(ctx, config)
 	if err != nil {
@@ -137,7 +136,7 @@ func TestBackend_CRUD(t *testing.T) {
 }
 
 func TestBackend_basic(t *testing.T) {
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	b, err := Factory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: testSysTTL,
@@ -160,7 +159,7 @@ func TestBackend_basic(t *testing.T) {
 }
 
 func TestBackend_userCrud(t *testing.T) {
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	b, err := Factory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: testSysTTL,
@@ -183,7 +182,7 @@ func TestBackend_userCrud(t *testing.T) {
 }
 
 func TestBackend_userCreateOperation(t *testing.T) {
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	b, err := Factory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: testSysTTL,
@@ -206,7 +205,7 @@ func TestBackend_userCreateOperation(t *testing.T) {
 }
 
 func TestBackend_passwordUpdate(t *testing.T) {
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	b, err := Factory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: testSysTTL,
@@ -232,7 +231,7 @@ func TestBackend_passwordUpdate(t *testing.T) {
 }
 
 func TestBackend_policiesUpdate(t *testing.T) {
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	b, err := Factory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: testSysTTL,
@@ -393,7 +392,7 @@ func TestBackend_UserUpgrade(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = s
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	b := Backend()
 	if b == nil {

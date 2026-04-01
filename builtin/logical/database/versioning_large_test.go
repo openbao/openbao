@@ -31,7 +31,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 	if !ok {
 		t.Fatal("could not convert to database backend")
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	type testCase struct {
 		dbName                string
@@ -99,7 +99,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 				Storage:   config.StorageView,
 				Data:      test.configData,
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 
 			resp, err := b.HandleRequest(ctx, req)
@@ -120,7 +120,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 				Path:      fmt.Sprintf("rotate-root/%s", test.dbName),
 				Storage:   config.StorageView,
 			}
-			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel = context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 
 			resp, err = b.HandleRequest(ctx, req)
@@ -143,7 +143,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 					"max_ttl":     "1m",
 				},
 			}
-			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel = context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 
 			resp, err = b.HandleRequest(ctx, req)
@@ -163,7 +163,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 				Path:      fmt.Sprintf("creds/%s", dynamicRoleName),
 				Storage:   config.StorageView,
 			}
-			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel = context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 
 			resp, err = b.HandleRequest(ctx, req)
@@ -189,7 +189,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 					"rotation_period": "5",
 				},
 			}
-			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel = context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 
 			resp, err = b.HandleRequest(ctx, req)
@@ -209,7 +209,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 				Path:      fmt.Sprintf("static-creds/%s", staticRoleName),
 				Storage:   config.StorageView,
 			}
-			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel = context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 
 			resp, err = b.HandleRequest(ctx, req)
@@ -231,7 +231,7 @@ func TestPlugin_VersionSelection(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +239,7 @@ func TestPlugin_VersionSelection(t *testing.T) {
 	if !ok {
 		t.Fatal("could not convert to database backend")
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	test := func(t *testing.T, selectVersion, expectedVersion string) func(t *testing.T) {
 		return func(t *testing.T) {
@@ -258,7 +258,7 @@ func TestPlugin_VersionSelection(t *testing.T) {
 					"password":          "mysecurepassword",
 				},
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 
 			resp, err := b.HandleRequest(ctx, req)
@@ -267,7 +267,7 @@ func TestPlugin_VersionSelection(t *testing.T) {
 			assertNoRespData(t, resp)
 
 			defer func() {
-				_, err := b.HandleRequest(context.Background(), &logical.Request{
+				_, err := b.HandleRequest(t.Context(), &logical.Request{
 					Operation: logical.DeleteOperation,
 					Path:      "config/db",
 					Storage:   config.StorageView,
@@ -282,7 +282,7 @@ func TestPlugin_VersionSelection(t *testing.T) {
 				Path:      "config/db",
 				Storage:   config.StorageView,
 			}
-			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel = context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 
 			resp, err = b.HandleRequest(ctx, req)
@@ -340,7 +340,7 @@ func TestPlugin_VersionMustBeExplicitlyUpgraded(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +348,7 @@ func TestPlugin_VersionMustBeExplicitlyUpgraded(t *testing.T) {
 	if !ok {
 		t.Fatal("could not convert to database backend")
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	configData := func(extraData ...string) map[string]interface{} {
 		data := map[string]interface{}{
@@ -369,7 +369,7 @@ func TestPlugin_VersionMustBeExplicitlyUpgraded(t *testing.T) {
 	}
 
 	readVersion := func() string {
-		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
 			Operation: logical.ReadOperation,
 			Path:      "config/db",
 			Storage:   config.StorageView,
@@ -379,7 +379,7 @@ func TestPlugin_VersionMustBeExplicitlyUpgraded(t *testing.T) {
 		return resp.Data["plugin_version"].(string)
 	}
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      "config/db",
 		Storage:   config.StorageView,
@@ -397,7 +397,7 @@ func TestPlugin_VersionMustBeExplicitlyUpgraded(t *testing.T) {
 
 	// Register versioned plugin, and check that a new write to existing config doesn't upgrade the plugin implicitly.
 	vault.TestAddTestPlugin(t, cluster.Cores[0].Core, "mysql-database-plugin", consts.PluginTypeDatabase, "v1.0.0", "TestBackend_PluginMain_MockV5", []string{}, "")
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/db",
 		Storage:   config.StorageView,
@@ -413,7 +413,7 @@ func TestPlugin_VersionMustBeExplicitlyUpgraded(t *testing.T) {
 	}
 
 	// Now explicitly upgrade.
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/db",
 		Storage:   config.StorageView,
@@ -431,7 +431,7 @@ func TestPlugin_VersionMustBeExplicitlyUpgraded(t *testing.T) {
 }
 
 func cleanup(t *testing.T, b *databaseBackend, reqs []*logical.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	// Go in stack order so it works similar to defer

@@ -4,7 +4,6 @@
 package command
 
 import (
-	"context"
 	"regexp"
 	"strings"
 	"testing"
@@ -597,7 +596,7 @@ func TestLoginMFATwoPhaseNonInteractiveMethodName(t *testing.T) {
 		time.Sleep(time.Duration(waitPeriod) * time.Second)
 		totpPasscode1 := "passcode=" + testhelpers.GetTOTPCodeFromEngine(t, client, engineName)
 
-		secret, err := cmd.client.Logical().WriteWithContext(context.Background(), "sys/mfa/validate", map[string]interface{}{
+		secret, err := cmd.client.Logical().WriteWithContext(t.Context(), "sys/mfa/validate", map[string]interface{}{
 			"mfa_request_id": mfaReqID,
 			"mfa_payload": map[string][]string{
 				methodIdentifier: {totpPasscode1},

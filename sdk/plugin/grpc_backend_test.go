@@ -4,7 +4,6 @@
 package plugin
 
 import (
-	"context"
 	"os"
 	"testing"
 	"time"
@@ -25,7 +24,7 @@ func TestGRPCBackendPlugin_HandleRequest(t *testing.T) {
 	b, cleanup := testGRPCBackend(t)
 	defer cleanup()
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      "kv/foo",
 		Data: map[string]interface{}{
@@ -81,7 +80,7 @@ func TestGRPCBackendPlugin_HandleExistenceCheck(t *testing.T) {
 	b, cleanup := testGRPCBackend(t)
 	defer cleanup()
 
-	checkFound, exists, err := b.HandleExistenceCheck(context.Background(), &logical.Request{
+	checkFound, exists, err := b.HandleExistenceCheck(t.Context(), &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      "kv/foo",
 		Data:      map[string]interface{}{"value": "bar"},
@@ -101,14 +100,14 @@ func TestGRPCBackendPlugin_Cleanup(t *testing.T) {
 	b, cleanup := testGRPCBackend(t)
 	defer cleanup()
 
-	b.Cleanup(context.Background())
+	b.Cleanup(t.Context())
 }
 
 func TestGRPCBackendPlugin_InvalidateKey(t *testing.T) {
 	b, cleanup := testGRPCBackend(t)
 	defer cleanup()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resp, err := b.HandleRequest(ctx, &logical.Request{
 		Operation: logical.ReadOperation,
@@ -144,7 +143,7 @@ func TestGRPCBackendPlugin_Initialize(t *testing.T) {
 	b, cleanup := testGRPCBackend(t)
 	defer cleanup()
 
-	err := b.Initialize(context.Background(), &logical.InitializationRequest{})
+	err := b.Initialize(t.Context(), &logical.InitializationRequest{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +188,7 @@ func testGRPCBackend(t *testing.T) (logical.Backend, func()) {
 	}
 	b := raw.(logical.Backend)
 
-	err = b.Setup(context.Background(), &logical.BackendConfig{
+	err = b.Setup(t.Context(), &logical.BackendConfig{
 		Logger: logging.NewVaultLogger(log.Debug),
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: 300 * time.Second,

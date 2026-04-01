@@ -4,7 +4,6 @@
 package jwtauth
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/json"
@@ -93,7 +92,7 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -145,7 +144,7 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -259,7 +258,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -314,7 +313,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -369,7 +368,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -440,7 +439,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 				},
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -534,7 +533,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -577,7 +576,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -623,7 +622,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -669,7 +668,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -715,7 +714,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -753,7 +752,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -804,7 +803,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != logical.ErrPermissionDenied {
 			t.Fatal(err)
 		}
@@ -832,7 +831,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -887,7 +886,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -912,7 +911,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		jwtData, _ = getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 		data["jwt"] = jwtData
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err == nil {
 			t.Fatalf("expected non-nil err; got resp=%#v", resp)
 		}
@@ -947,7 +946,7 @@ func testLogin_ExpiryClaims(t *testing.T, jwks bool) {
 		b, storage := setupBackend(t, cfg)
 		req := setupLogin(t, tt.IssuedAt, tt.Expiration, tt.NotBefore, b, storage)
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1034,7 +1033,7 @@ func testLogin_NotBeforeClaims(t *testing.T, jwks bool) {
 		b, storage := setupBackend(t, cfg)
 		req := setupLogin(t, tt.IssuedAt, tt.Expiration, tt.NotBefore, b, storage)
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1131,7 +1130,7 @@ func TestLogin_JWTSupportedAlgs(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			require.NoError(t, err)
 			require.False(t, resp.IsError())
 
@@ -1147,7 +1146,7 @@ func TestLogin_JWTSupportedAlgs(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			require.NoError(t, err)
 			require.False(t, resp.IsError())
 
@@ -1176,7 +1175,7 @@ func TestLogin_JWTSupportedAlgs(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if tt.wantErr {
 				require.True(t, resp.IsError())
 				return
@@ -1257,7 +1256,7 @@ func TestLogin_OIDC(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1301,7 +1300,7 @@ func TestLogin_NestedGroups(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1326,7 +1325,7 @@ func TestLogin_NestedGroups(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1373,7 +1372,7 @@ func TestLogin_NestedGroups(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1428,7 +1427,7 @@ func TestLogin_OIDC_StringGroupClaim(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1497,7 +1496,7 @@ func TestLogin_JWKS_Concurrent(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		g.Go(func() error {
 			for i := 0; i < 100; i++ {
-				resp, err := b.HandleRequest(context.Background(), req)
+				resp, err := b.HandleRequest(t.Context(), req)
 				if err != nil {
 					return err
 				}
@@ -1541,7 +1540,7 @@ func TestResolveRole(t *testing.T) {
 		Data:      dummyRoleData,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1559,7 +1558,7 @@ func TestResolveRole(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), loginReq)
+	resp, err = b.HandleRequest(t.Context(), loginReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -1597,7 +1596,7 @@ func TestResolveRole_OIDC(t *testing.T) {
 		Data:      dummyRoleData,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1615,7 +1614,7 @@ func TestResolveRole_OIDC(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), loginReq)
+	resp, err = b.HandleRequest(t.Context(), loginReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -1647,7 +1646,7 @@ func TestResolveRole_RoleDoesNotExist(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), loginReq)
+	resp, err := b.HandleRequest(t.Context(), loginReq)
 	if resp == nil && !resp.IsError() {
 		t.Fatalf("Response was not an error: err:%v resp:%#v", err, resp)
 	}

@@ -6,7 +6,6 @@
 package command
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -489,7 +488,7 @@ func TestOperatorDiagnoseCommand_Run(t *testing.T) {
 				cmd.client = client
 
 				cmd.Run(tc.args)
-				result := cmd.diagnose.Finalize(context.Background())
+				result := cmd.diagnose.Finalize(t.Context())
 
 				if err := compareResults(tc.expected, result.Children); err != nil {
 					t.Fatalf("Did not find expected test results: %v", err)

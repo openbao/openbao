@@ -4,7 +4,6 @@
 package inmem
 
 import (
-	"context"
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
@@ -44,12 +43,12 @@ func TestCache_ModifyEntry(t *testing.T) {
 		Key:   "my-key",
 		Value: []byte("my-initial-value"),
 	}
-	err = cache.Put(context.Background(), entry)
+	err = cache.Put(t.Context(), entry)
 	require.NoError(t, err)
 
 	entry.Value = []byte("my-modified-value")
 
-	entryFromCache, err := cache.Get(context.Background(), entry.Key)
+	entryFromCache, err := cache.Get(t.Context(), entry.Key)
 	require.NoError(t, err)
 
 	require.NotEqual(t, string(entryFromCache.Value), string(entry.Value), "post-put modification to entry shouldn't affect cache")
@@ -70,19 +69,19 @@ func TestCache_Purge(t *testing.T) {
 		Key:   "foo",
 		Value: []byte("bar"),
 	}
-	err = cache.Put(context.Background(), ent)
+	err = cache.Put(t.Context(), ent)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Delete from under
-	inm.Delete(context.Background(), "foo")
+	inm.Delete(t.Context(), "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Read should work
-	out, err := cache.Get(context.Background(), "foo")
+	out, err := cache.Get(t.Context(), "foo")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -91,10 +90,10 @@ func TestCache_Purge(t *testing.T) {
 	}
 
 	// Clear the cache
-	cache.Purge(context.Background())
+	cache.Purge(t.Context())
 
 	// Read should fail
-	out, err = cache.Get(context.Background(), "foo")
+	out, err = cache.Get(t.Context(), "foo")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -115,49 +114,49 @@ func TestCache_Invalidate(t *testing.T) {
 	cache.SetEnabled(true)
 
 	// Store some value
-	require.NoError(cache.Put(context.Background(), &physical.Entry{
+	require.NoError(cache.Put(t.Context(), &physical.Entry{
 		Key:   "foo",
 		Value: []byte("bar"),
 	}))
 
 	// Start a transaction
-	tx, err := cache.(physical.TransactionalBackend).BeginTx(context.Background())
+	tx, err := cache.(physical.TransactionalBackend).BeginTx(t.Context())
 	require.NoError(err)
 
 	// Modify in underlying backend
-	require.NoError(inm.Put(context.Background(), &physical.Entry{
+	require.NoError(inm.Put(t.Context(), &physical.Entry{
 		Key:   "foo",
 		Value: []byte("bazz"),
 	}))
 
 	// Read should return old value
-	out, err := cache.Get(context.Background(), "foo")
+	out, err := cache.Get(t.Context(), "foo")
 	require.NoError(err)
 	require.NotNil(out, "should have key")
 	require.EqualValues("bar", out.Value)
 
 	// Read from transaction should return old value
-	out, err = tx.Get(context.Background(), "foo")
+	out, err = tx.Get(t.Context(), "foo")
 	require.NoError(err)
 	require.NotNil(out, "transaction should have key")
 	require.EqualValues("bar", out.Value)
 
 	// Clear the cache
-	cache.Invalidate(context.Background(), "foo")
+	cache.Invalidate(t.Context(), "foo")
 
 	// Read should return new value
-	out, err = cache.Get(context.Background(), "foo")
+	out, err = cache.Get(t.Context(), "foo")
 	require.NoError(err)
 	require.NotNil(out, "should have key")
 	require.EqualValues("bazz", out.Value)
 
 	// Read from transaction should still return old value
-	out, err = tx.Get(context.Background(), "foo")
+	out, err = tx.Get(t.Context(), "foo")
 	require.NoError(err)
 	require.NotNil(out, "transaction should have key")
 	require.EqualValues("bar", out.Value)
 
-	require.NoError(tx.Rollback(context.Background()))
+	require.NoError(tx.Rollback(t.Context()))
 }
 
 func TestCache_Disable(t *testing.T) {
@@ -174,13 +173,13 @@ func TestCache_Disable(t *testing.T) {
 			Key:   "foo",
 			Value: []byte("bar"),
 		}
-		err = inm.Put(context.Background(), ent)
+		err = inm.Put(t.Context(), ent)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 
 		// Read should work
-		out, err := cache.Get(context.Background(), "foo")
+		out, err := cache.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -188,13 +187,13 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatal("should have key")
 		}
 
-		err = inm.Delete(context.Background(), ent.Key)
+		err = inm.Delete(t.Context(), ent.Key)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Should not work
-		out, err = cache.Get(context.Background(), "foo")
+		out, err = cache.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -203,20 +202,20 @@ func TestCache_Disable(t *testing.T) {
 		}
 
 		// Put through the cache and try again
-		err = cache.Put(context.Background(), ent)
+		err = cache.Put(t.Context(), ent)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 
 		// Read should work in both
-		out, err = inm.Get(context.Background(), "foo")
+		out, err = inm.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
 			t.Fatal("should have key")
 		}
-		out, err = cache.Get(context.Background(), "foo")
+		out, err = cache.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -224,13 +223,13 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatal("should have key")
 		}
 
-		err = inm.Delete(context.Background(), ent.Key)
+		err = inm.Delete(t.Context(), ent.Key)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Should not work
-		out, err = cache.Get(context.Background(), "foo")
+		out, err = cache.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -244,13 +243,13 @@ func TestCache_Disable(t *testing.T) {
 			Key:   "foo",
 			Value: []byte("bar"),
 		}
-		err = inm.Put(context.Background(), ent)
+		err = inm.Put(t.Context(), ent)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 
 		// Read should work
-		out, err := cache.Get(context.Background(), "foo")
+		out, err := cache.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -258,13 +257,13 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatal("should have key")
 		}
 
-		err = inm.Delete(context.Background(), ent.Key)
+		err = inm.Delete(t.Context(), ent.Key)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Should work
-		out, err = cache.Get(context.Background(), "foo")
+		out, err = cache.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -273,20 +272,20 @@ func TestCache_Disable(t *testing.T) {
 		}
 
 		// Put through the cache and try again
-		err = cache.Put(context.Background(), ent)
+		err = cache.Put(t.Context(), ent)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 
 		// Read should work for both
-		out, err = inm.Get(context.Background(), "foo")
+		out, err = inm.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
 			t.Fatal("should have key")
 		}
-		out, err = cache.Get(context.Background(), "foo")
+		out, err = cache.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -294,13 +293,13 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatal("should have key")
 		}
 
-		err = inm.Delete(context.Background(), ent.Key)
+		err = inm.Delete(t.Context(), ent.Key)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Should work
-		out, err = cache.Get(context.Background(), "foo")
+		out, err = cache.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -309,20 +308,20 @@ func TestCache_Disable(t *testing.T) {
 		}
 
 		// Put through the cache
-		err = cache.Put(context.Background(), ent)
+		err = cache.Put(t.Context(), ent)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 
 		// Read should work for both
-		out, err = inm.Get(context.Background(), "foo")
+		out, err = inm.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
 			t.Fatal("should have key")
 		}
-		out, err = cache.Get(context.Background(), "foo")
+		out, err = cache.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -331,20 +330,20 @@ func TestCache_Disable(t *testing.T) {
 		}
 
 		// Delete via cache
-		err = cache.Delete(context.Background(), ent.Key)
+		err = cache.Delete(t.Context(), ent.Key)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Read should not work for either
-		out, err = inm.Get(context.Background(), "foo")
+		out, err = inm.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 		if out != nil {
 			t.Fatal("should not have key")
 		}
-		out, err = cache.Get(context.Background(), "foo")
+		out, err = cache.Get(t.Context(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -374,7 +373,7 @@ func TestCache_Refresh(t *testing.T) {
 		Key:   "foo",
 		Value: []byte("bar"),
 	}
-	err = cache.Put(context.Background(), ent)
+	err = cache.Put(t.Context(), ent)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -384,12 +383,12 @@ func TestCache_Refresh(t *testing.T) {
 		Value: []byte("baz"),
 	}
 	// Update below cache
-	err = inm.Put(context.Background(), ent2)
+	err = inm.Put(t.Context(), ent2)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	r, err := cache.Get(context.Background(), "foo")
+	r, err := cache.Get(t.Context(), "foo")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -399,7 +398,7 @@ func TestCache_Refresh(t *testing.T) {
 	}
 
 	// Refresh the cache
-	r, err = cache.Get(physical.CacheRefreshContext(context.Background(), true), "foo")
+	r, err = cache.Get(physical.CacheRefreshContext(t.Context(), true), "foo")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -409,7 +408,7 @@ func TestCache_Refresh(t *testing.T) {
 	}
 
 	// Make sure new value is in cache
-	r, err = cache.Get(context.Background(), "foo")
+	r, err = cache.Get(t.Context(), "foo")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

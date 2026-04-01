@@ -5,7 +5,6 @@ package command
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -300,13 +299,13 @@ func createComplicatedIssuerSetUp(t *testing.T, client *api.Client) {
 			if value != int1KeyId {
 				t.Fatalf("Expected exactly one key_match to %v, got multiple: %v", int1KeyId, importIssuerIdMap)
 			}
-			if resp, err := client.Logical().JSONMergePatch(context.Background(), "pki-int/issuer/"+key, map[string]interface{}{
+			if resp, err := client.Logical().JSONMergePatch(t.Context(), "pki-int/issuer/"+key, map[string]interface{}{
 				"issuer_name": "intX1",
 			}); err != nil || resp == nil {
 				t.Fatalf("error naming issuer %v", err)
 			}
 		} else {
-			if resp, err := client.Logical().JSONMergePatch(context.Background(), "pki-int/issuer/"+key, map[string]interface{}{
+			if resp, err := client.Logical().JSONMergePatch(t.Context(), "pki-int/issuer/"+key, map[string]interface{}{
 				"issuer_name": "rootX1",
 			}); err != nil || resp == nil {
 				t.Fatalf("error naming issuer parent %v", err)
@@ -358,7 +357,7 @@ func createComplicatedIssuerSetUp(t *testing.T, client *api.Client) {
 			if value != int2KeyId {
 				t.Fatalf("unexpected key_match with ca_chain, expected only %v, got %v", int2KeyId, importIssuer2IdMap)
 			}
-			if resp, err := client.Logical().JSONMergePatch(context.Background(), "pki-int/issuer/"+key, map[string]interface{}{
+			if resp, err := client.Logical().JSONMergePatch(t.Context(), "pki-int/issuer/"+key, map[string]interface{}{
 				"issuer_name": "intX2",
 			}); err != nil || resp == nil {
 				t.Fatalf("error naming issuer %v", err)
@@ -414,7 +413,7 @@ func createComplicatedIssuerSetUp(t *testing.T, client *api.Client) {
 	}
 	for key, value := range importIssuer3IdMap1.(map[string]interface{}) {
 		if value != nil && len(value.(string)) > 0 && value == int3KeyId {
-			if resp, err := client.Logical().JSONMergePatch(context.Background(), "pki-int/issuer/"+key, map[string]interface{}{
+			if resp, err := client.Logical().JSONMergePatch(t.Context(), "pki-int/issuer/"+key, map[string]interface{}{
 				"issuer_name": "intX3",
 			}); err != nil || resp == nil {
 				t.Fatalf("error naming issuer %v", err)
@@ -447,7 +446,7 @@ func createComplicatedIssuerSetUp(t *testing.T, client *api.Client) {
 	}
 	for key, value := range importIssuer3IdMap2.(map[string]interface{}) {
 		if value != nil && len(value.(string)) > 0 && value == int3KeyId {
-			if resp, err := client.Logical().JSONMergePatch(context.Background(), "pki-int/issuer/"+key, map[string]interface{}{
+			if resp, err := client.Logical().JSONMergePatch(t.Context(), "pki-int/issuer/"+key, map[string]interface{}{
 				"issuer_name": "intX3also",
 			}); err != nil || resp == nil {
 				t.Fatalf("error naming issuer %v", err)

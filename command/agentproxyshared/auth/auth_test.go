@@ -74,7 +74,7 @@ func TestAuthHandler(t *testing.T) {
 	vault.TestWaitActive(t, cluster.Cores[0].Core)
 	client := cluster.Cores[0].Client
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(t.Context())
 	defer cancelFunc()
 
 	ah := NewAuthHandler(&AuthHandlerConfig{

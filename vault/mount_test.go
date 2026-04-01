@@ -308,7 +308,7 @@ func TestCore_Mount_Local(t *testing.T) {
 		t.Fatalf("expected two entries, got %d", len(c.mounts.Entries))
 	}
 
-	localEntries, err := c.barrier.List(context.Background(), coreLocalMountConfigPath+"/")
+	localEntries, err := c.barrier.List(t.Context(), coreLocalMountConfigPath+"/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -316,7 +316,7 @@ func TestCore_Mount_Local(t *testing.T) {
 		t.Fatalf("expected one entry in local mount table, got %#v", localEntries)
 	}
 	for _, localEntry := range localEntries {
-		rawLocal, err := c.barrier.Get(context.Background(), coreLocalMountConfigPath+"/"+localEntry)
+		rawLocal, err := c.barrier.Get(t.Context(), coreLocalMountConfigPath+"/"+localEntry)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -335,7 +335,7 @@ func TestCore_Mount_Local(t *testing.T) {
 	}
 
 	c.mounts.Entries[1].Local = true
-	if err := c.persistMounts(context.Background(), nil, c.mounts, nil, ""); err != nil {
+	if err := c.persistMounts(t.Context(), nil, c.mounts, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -343,7 +343,7 @@ func TestCore_Mount_Local(t *testing.T) {
 	// table, the table initially when core unseals contains cubbyhole as per
 	// above, but then we overwrite it with our own table with one local entry,
 	// so we should now only expect the noop2 entry
-	localEntries, err = c.barrier.List(context.Background(), coreLocalMountConfigPath+"/")
+	localEntries, err = c.barrier.List(t.Context(), coreLocalMountConfigPath+"/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +351,7 @@ func TestCore_Mount_Local(t *testing.T) {
 		t.Fatalf("expected one entry in local mount table, got %#v", localEntries)
 	}
 	for _, localEntry := range localEntries {
-		rawLocal, err := c.barrier.Get(context.Background(), coreLocalMountConfigPath+"/"+localEntry)
+		rawLocal, err := c.barrier.Get(t.Context(), coreLocalMountConfigPath+"/"+localEntry)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -369,7 +369,7 @@ func TestCore_Mount_Local(t *testing.T) {
 	}
 
 	oldMounts := c.mounts
-	if err := c.loadMounts(context.Background(), false); err != nil {
+	if err := c.loadMounts(t.Context(), false); err != nil {
 		t.Fatal(err)
 	}
 	compEntries := c.mounts.Entries[:0]
@@ -531,7 +531,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 		Key:   "plstodelete",
 		Value: []byte("test"),
 	}
-	if err := view.Put(context.Background(), se); err != nil {
+	if err := view.Put(t.Context(), se); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -591,7 +591,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 	}
 
 	// View should be empty
-	out, err := logical.CollectKeys(context.Background(), view)
+	out, err := logical.CollectKeys(t.Context(), view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -669,7 +669,7 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 		Key:   "plstokeep",
 		Value: []byte("test"),
 	}
-	if err := view.Put(context.Background(), se); err != nil {
+	if err := view.Put(t.Context(), se); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -720,7 +720,7 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 	}
 
 	// View should not be empty
-	out, err := logical.CollectKeys(context.Background(), view)
+	out, err := logical.CollectKeys(t.Context(), view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -874,7 +874,7 @@ func TestCore_Remount_Namespaces(t *testing.T) {
 
 func TestDefaultMountTable(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	table := c.defaultMountTable(context.Background())
+	table := c.defaultMountTable(t.Context())
 	verifyDefaultTable(t, table, 3)
 }
 
@@ -972,14 +972,14 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	// Remove any transactional storage entries: we want to replace the mount
 	// table with a pre-transactional variant to force upgrades to be run.
 	if _, ok := c.barrier.(logical.TransactionalStorage); ok && testType != "audits" {
-		postTxnEntries, err := c.barrier.List(context.Background(), path+"/")
+		postTxnEntries, err := c.barrier.List(t.Context(), path+"/")
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		for _, txnEntry := range postTxnEntries {
 			t.Logf("removing entry: %v", path+"/"+txnEntry)
-			if err := c.barrier.Delete(context.Background(), path+"/"+txnEntry); err != nil {
+			if err := c.barrier.Delete(t.Context(), path+"/"+txnEntry); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -990,7 +990,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		Key:   path,
 		Value: raw,
 	}
-	if err := c.barrier.Put(context.Background(), entry); err != nil {
+	if err := c.barrier.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}
 
@@ -999,15 +999,15 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	// It should load successfully and be upgraded and persisted
 	switch testType {
 	case "mounts":
-		err = c.loadMounts(context.Background(), false)
+		err = c.loadMounts(t.Context(), false)
 		persistFunc = c.persistMounts
 		mt = c.mounts
 	case "credentials":
-		err = c.loadCredentials(context.Background(), false)
+		err = c.loadCredentials(t.Context(), false)
 		persistFunc = c.persistAuth
 		mt = c.auth
 	case "audits":
-		err = c.loadAudits(context.Background(), false)
+		err = c.loadAudits(t.Context(), false)
 		persistFunc = func(ctx context.Context, barrier logical.Storage, mt *routing.MountTable, b *bool, mount string) error {
 			if b == nil {
 				b = new(bool)
@@ -1025,14 +1025,14 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	var actual []byte
 	if _, ok := c.barrier.(logical.TransactionalStorage); ok && testType != "audits" {
 		// Assume we got the outer, implicit type correct.
-		postTxnEntries, err := c.barrier.List(context.Background(), path+"/")
+		postTxnEntries, err := c.barrier.List(t.Context(), path+"/")
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		mapEntries := make(map[string]string)
 		for _, txnEntry := range postTxnEntries {
-			entry, err = c.barrier.Get(context.Background(), path+"/"+txnEntry)
+			entry, err = c.barrier.Get(t.Context(), path+"/"+txnEntry)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1060,7 +1060,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		actual = []byte(`{"type":"` + mt.Type + `","entries":[` + entries + `]}`)
 
 		// Read the old mount table entry and ensure it was deleted.
-		entry, err = c.barrier.Get(context.Background(), path)
+		entry, err = c.barrier.Get(t.Context(), path)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1068,7 +1068,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 			t.Fatalf("expected empty entry at non-transactional mount table path: %v\n\tentry: %#v", path, string(entry.Value))
 		}
 	} else {
-		entry, err = c.barrier.Get(context.Background(), path)
+		entry, err = c.barrier.Get(t.Context(), path)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1105,19 +1105,19 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	// Now try saving invalid versions
 	origTableType := mt.Type
 	mt.Type = "foo"
-	if err := persistFunc(context.Background(), nil, mt, nil, ""); err == nil {
+	if err := persistFunc(t.Context(), nil, mt, nil, ""); err == nil {
 		t.Fatal("expected error")
 	}
 
 	if len(mt.Entries) > 0 {
 		mt.Type = origTableType
 		mt.Entries[0].Table = "bar"
-		if err := persistFunc(context.Background(), nil, mt, nil, ""); err == nil {
+		if err := persistFunc(t.Context(), nil, mt, nil, ""); err == nil {
 			t.Fatal("expected error")
 		}
 
 		mt.Entries[0].Table = mt.Type
-		if err := persistFunc(context.Background(), nil, mt, nil, ""); err != nil {
+		if err := persistFunc(t.Context(), nil, mt, nil, ""); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -1488,7 +1488,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, nsBar)
 
-	barCtx := namespace.ContextWithNamespace(context.Background(), nsBar)
+	barCtx := namespace.ContextWithNamespace(t.Context(), nsBar)
 
 	// Doing the above inside bar should behave the same.
 	me = &routing.MountEntry{

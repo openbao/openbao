@@ -4,7 +4,6 @@
 package agentproxyshared
 
 import (
-	"context"
 	"os"
 	"testing"
 
@@ -23,7 +22,7 @@ func testNewLeaseCache(t *testing.T, responses []*cache.SendResponse) *cache.Lea
 	}
 	lc, err := cache.NewLeaseCache(&cache.LeaseCacheConfig{
 		Client:      client,
-		BaseContext: context.Background(),
+		BaseContext: t.Context(),
 		Proxier:     cache.NewMockProxier(responses),
 		Logger:      logging.NewVaultLogger(hclog.Trace).Named("cache.leasecache"),
 	})
@@ -73,7 +72,7 @@ func Test_AddPersistentStorageToLeaseCache(t *testing.T) {
 		t.Fatal("persistent storage was available before ours was added")
 	}
 
-	deferFunc, token, err := AddPersistentStorageToLeaseCache(context.Background(), leaseCache, persistConfig, logging.NewVaultLogger(hclog.Info))
+	deferFunc, token, err := AddPersistentStorageToLeaseCache(t.Context(), leaseCache, persistConfig, logging.NewVaultLogger(hclog.Info))
 	if err != nil {
 		t.Fatal(err)
 	}

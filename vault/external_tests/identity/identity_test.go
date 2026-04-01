@@ -4,7 +4,6 @@
 package identity
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"testing"
@@ -344,7 +343,7 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 	assertMember(t, client, entityID, "engineer", devopsGroupID, true)
 
 	identityStore := cores[0].IdentityStore()
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 
 	group, err := identityStore.MemDBGroupByID(ctx, shipCrewGroupID, true)
 	if err != nil {

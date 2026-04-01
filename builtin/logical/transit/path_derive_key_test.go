@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"strconv"
 	"testing"
 
@@ -49,7 +48,7 @@ func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType s
 		},
 		Storage: s,
 	}
-	resp, err = b.HandleRequest(context.Background(), policyReq)
+	resp, err = b.HandleRequest(t.Context(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -64,7 +63,7 @@ func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType s
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), exportReq)
+	resp, err = b.HandleRequest(t.Context(), exportReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -95,7 +94,7 @@ func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType s
 		},
 		Storage: s,
 	}
-	resp, err = b.HandleRequest(context.Background(), policyReq)
+	resp, err = b.HandleRequest(t.Context(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -110,7 +109,7 @@ func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType s
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), exportReq)
+	resp, err = b.HandleRequest(t.Context(), exportReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -148,7 +147,7 @@ func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType s
 		policyReq.Data["derived_key_type"] = derivedKeyType
 	}
 
-	resp, err = b.HandleRequest(context.Background(), policyReq)
+	resp, err = b.HandleRequest(t.Context(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -166,7 +165,7 @@ func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType s
 		Storage:   s,
 		Data:      encData,
 	}
-	resp, err = b.HandleRequest(context.Background(), encReq)
+	resp, err = b.HandleRequest(t.Context(), encReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -194,7 +193,7 @@ func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType s
 		policyReq.Data["derived_key_type"] = derivedKeyType
 	}
 
-	resp, err = b.HandleRequest(context.Background(), policyReq)
+	resp, err = b.HandleRequest(t.Context(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -209,7 +208,7 @@ func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType s
 		Storage:   s,
 		Data:      decData,
 	}
-	resp, err = b.HandleRequest(context.Background(), decReq)
+	resp, err = b.HandleRequest(t.Context(), decReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}

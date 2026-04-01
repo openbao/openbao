@@ -4,7 +4,6 @@
 package file
 
 import (
-	"context"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -35,7 +34,7 @@ func TestAuditFile_fileModeNew(t *testing.T) {
 		"mode": modeStr,
 	}
 
-	_, err = Factory(context.Background(), &audit.BackendConfig{
+	_, err = Factory(t.Context(), &audit.BackendConfig{
 		SaltConfig: &salt.Config{},
 		SaltView:   &logical.InmemStorage{},
 		Config:     config,
@@ -74,7 +73,7 @@ func TestAuditFile_fileModeExisting(t *testing.T) {
 		"path": f.Name(),
 	}
 
-	_, err = Factory(context.Background(), &audit.BackendConfig{
+	_, err = Factory(t.Context(), &audit.BackendConfig{
 		Config:     config,
 		SaltConfig: &salt.Config{},
 		SaltView:   &logical.InmemStorage{},
@@ -114,7 +113,7 @@ func TestAuditFile_fileMode0000(t *testing.T) {
 		"mode": "0000",
 	}
 
-	_, err = Factory(context.Background(), &audit.BackendConfig{
+	_, err = Factory(t.Context(), &audit.BackendConfig{
 		Config:     config,
 		SaltConfig: &salt.Config{},
 		SaltView:   &logical.InmemStorage{},
@@ -147,7 +146,7 @@ func TestAuditFile_fileModeExecutable(t *testing.T) {
 
 	for _, tt := range tcases {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := Factory(context.Background(), &audit.BackendConfig{
+			_, err := Factory(t.Context(), &audit.BackendConfig{
 				SaltConfig: &salt.Config{},
 				SaltView:   &logical.InmemStorage{},
 				Config: map[string]string{
@@ -185,7 +184,7 @@ func TestAuditFile_fileModeIrregular(t *testing.T) {
 
 	for _, tt := range tcases {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := Factory(context.Background(), &audit.BackendConfig{
+			_, err := Factory(t.Context(), &audit.BackendConfig{
 				SaltConfig: &salt.Config{},
 				SaltView:   &logical.InmemStorage{},
 				Config: map[string]string{
@@ -204,7 +203,7 @@ func BenchmarkAuditFile_request(b *testing.B) {
 	config := map[string]string{
 		"path": "/dev/null",
 	}
-	sink, err := Factory(context.Background(), &audit.BackendConfig{
+	sink, err := Factory(b.Context(), &audit.BackendConfig{
 		Config:     config,
 		SaltConfig: &salt.Config{},
 		SaltView:   &logical.InmemStorage{},
@@ -238,11 +237,10 @@ func BenchmarkAuditFile_request(b *testing.B) {
 		},
 	}
 
-	ctx := namespace.RootContext(context.TODO())
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			if err := sink.LogRequest(ctx, in); err != nil {
+			if err := sink.LogRequest(namespace.RootContext(b.Context()), in); err != nil {
 				panic(err)
 			}
 		}

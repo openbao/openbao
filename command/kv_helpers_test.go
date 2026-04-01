@@ -108,7 +108,7 @@ func TestWalkSecretsTree(t *testing.T) {
 	}
 	time.Sleep(time.Second)
 
-	ctx, cancelContextFunc := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancelContextFunc := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancelContextFunc()
 
 	// populate secrets

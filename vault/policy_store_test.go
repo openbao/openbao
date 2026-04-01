@@ -37,7 +37,7 @@ func TestPolicyStore_Root(t *testing.T) {
 
 func testPolicyRoot(t *testing.T, ps *PolicyStore, ns *namespace.Namespace, expectFound bool) {
 	// Get should return a special policy
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	p, err := ps.GetPolicy(ctx, "root", PolicyTypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -63,14 +63,14 @@ func testPolicyRoot(t *testing.T, ps *PolicyStore, ns *namespace.Namespace, expe
 	}
 
 	// Set should fail
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.SetPolicy(ctx, p, nil)
 	if err.Error() != `cannot update "root" policy` {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Delete should fail
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.DeletePolicy(ctx, "root", PolicyTypeACL)
 	if err.Error() != `cannot delete "root" policy` {
 		t.Fatalf("err: %v", err)
@@ -110,7 +110,7 @@ func testPolicyStoreCRUD(t *testing.T, core *Core, shares [][]byte, token string
 
 func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) {
 	// Get should return nothing
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	p, err := ps.GetPolicy(ctx, "Dev", PolicyTypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -120,14 +120,14 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Nam
 	}
 
 	// Delete should be no-op
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.DeletePolicy(ctx, "deV", PolicyTypeACL)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// List should be blank
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	out, err := ps.ListPolicies(ctx, PolicyTypeACL, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -137,7 +137,7 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Nam
 	}
 
 	// Set should work
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	policy, _ := ParseACLPolicy(ns, aclPolicy)
 	err = ps.SetPolicy(ctx, policy, nil)
 	if err != nil {
@@ -145,7 +145,7 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Nam
 	}
 
 	// Get should work
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	p, err = ps.GetPolicy(ctx, "dEv", PolicyTypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -155,7 +155,7 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Nam
 	}
 
 	// List should contain two elements
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	out, err = ps.ListPolicies(ctx, PolicyTypeACL, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -170,14 +170,14 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Nam
 	}
 
 	// Delete should be clear the entry
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.DeletePolicy(ctx, "Dev", PolicyTypeACL)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// List should contain one element
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	out, err = ps.ListPolicies(ctx, PolicyTypeACL, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -187,7 +187,7 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Nam
 	}
 
 	// Get should fail
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	p, err = ps.GetPolicy(ctx, "deV", PolicyTypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -207,7 +207,7 @@ func TestPolicyStore_Predefined(t *testing.T) {
 // Test predefined policy handling
 func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) {
 	// List should be two elements
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	out, err := ps.ListPolicies(ctx, PolicyTypeACL, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -218,7 +218,7 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 	}
 
 	// Response-wrapping policy checks
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	pCubby, err := ps.GetPolicy(ctx, "response-wrapping", PolicyTypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -229,19 +229,19 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 	if pCubby.Raw != responseWrappingPolicy {
 		t.Fatalf("bad: expected\n%s\ngot\n%s\n", responseWrappingPolicy, pCubby.Raw)
 	}
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.SetPolicy(ctx, pCubby, nil)
 	if err == nil {
 		t.Fatalf("expected err setting %s", pCubby.Name)
 	}
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.DeletePolicy(ctx, pCubby.Name, PolicyTypeACL)
 	if err == nil {
 		t.Fatalf("expected err deleting %s", pCubby.Name)
 	}
 
 	// Root policy checks, behavior depending on namespace
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	pRoot, err := ps.GetPolicy(ctx, "root", PolicyTypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -258,12 +258,12 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 			Name: "root",
 		}
 	}
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.SetPolicy(ctx, pRoot, nil)
 	if err == nil {
 		t.Fatalf("expected err setting %s", pRoot.Name)
 	}
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.DeletePolicy(ctx, pRoot.Name, PolicyTypeACL)
 	if err == nil {
 		t.Fatalf("expected err deleting %s", pRoot.Name)
@@ -278,20 +278,20 @@ func TestPolicyStore_ACL(t *testing.T) {
 }
 
 func testPolicyStoreACL(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) {
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	policy, _ := ParseACLPolicy(ns, aclPolicy)
 	err := ps.SetPolicy(ctx, policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	policy, _ = ParseACLPolicy(ns, aclPolicy2)
 	err = ps.SetPolicy(ctx, policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	acl, err := ps.ACL(ctx, nil, map[string][]string{ns.ID: {"dev", "ops"}})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -300,7 +300,7 @@ func testPolicyStoreACL(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) 
 }
 
 func TestDefaultPolicy(t *testing.T) {
-	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+	ctx := namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace)
 
 	policy, err := ParseACLPolicy(namespace.RootNamespace, defaultPolicy)
 	if err != nil {
@@ -380,7 +380,7 @@ func TestPolicyStore_GetNonEGPPolicyType(t *testing.T) {
 			t.Parallel()
 
 			_, _, _, ps := mockPolicyWithCore(t, false)
-			ctx := namespace.RootContext(context.Background())
+			ctx := namespace.RootContext(t.Context())
 			got, err := ps.GetNonEGPPolicyType(ctx, tc.paramPolicyName)
 			if tc.isErrorExpected {
 				require.Error(t, err)
@@ -401,7 +401,7 @@ func TestPolicyStore_GetNonEGPPolicyType(t *testing.T) {
 // correctly loads policies into the current namespace.
 func TestPolicyStore_LoadACLPolicyNamespaces(t *testing.T) {
 	core, _, token := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	ps := core.policyStore
 
 	// Create a namespace
@@ -461,7 +461,7 @@ path "secret/*" {
 // respective namespace's storage prefix and not in the root namespace.
 func TestPolicyStore_NamespaceStorage(t *testing.T) {
 	core, _, token := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	ps := core.policyStore
 
 	// Create a namespace
@@ -530,7 +530,7 @@ func TestPolicyStore_NamespaceStorage(t *testing.T) {
 // TestPolicyStore_NamespaceAPI tests namespace policy operations through the API
 func TestPolicyStore_NamespaceAPI(t *testing.T) {
 	core, _, token := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 
 	// Create a namespace
 	nsPath := "test-ns-api"
@@ -630,7 +630,7 @@ func TestPolicyStore_NamespaceAPI(t *testing.T) {
 // and cross-namespace access control.
 func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 	core, _, token := TestCoreUnsealed(t)
-	rootCtx := namespace.RootContext(context.Background())
+	rootCtx := namespace.RootContext(t.Context())
 	ps := core.policyStore
 
 	// Create parent namespace
@@ -756,7 +756,7 @@ func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 
 func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	core, _, token := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	ps := core.policyStore
 
 	// Create a parent namespace
@@ -905,7 +905,7 @@ func TestPolicyStore_Expiration(t *testing.T) {
 	t.Parallel()
 	_, _, _, ps := mockPolicyWithCore(t, false)
 
-	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+	ctx := namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace)
 
 	p, err := ParseACLPolicy(namespace.RootNamespace, `path "*" { capabilities = ["read"] }`)
 	require.NoError(t, err)
@@ -934,7 +934,7 @@ func TestPolicyStore_CAS(t *testing.T) {
 	t.Parallel()
 	_, _, _, ps := mockPolicyWithCore(t, false)
 
-	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+	ctx := namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace)
 
 	p, err := ParseACLPolicy(namespace.RootNamespace, `path "*" { capabilities = ["read"] }`)
 	require.NoError(t, err)

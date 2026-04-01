@@ -4,7 +4,6 @@
 package hostutil
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 )
 
 func TestCollectHostInfo(t *testing.T) {
-	info, err := CollectHostInfo(context.Background())
+	info, err := CollectHostInfo(t.Context())
 	if err != nil && !errwrap.ContainsType(err, new(HostInfoError)) {
 		t.Fatal(err)
 	}

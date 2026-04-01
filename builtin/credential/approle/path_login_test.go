@@ -4,7 +4,6 @@
 package approle
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -78,7 +77,7 @@ func TestAppRole_BoundCIDRLogin(t *testing.T) {
 			"token_bound_cidrs": []string{"11.0.0.0/24"},
 		},
 	}
-	_, err = b.HandleRequest(context.Background(), roleSecretIDReq)
+	_, err = b.HandleRequest(t.Context(), roleSecretIDReq)
 	if err == nil {
 		t.Fatal("expected error due to mismatching subnet relationship")
 	}
@@ -147,7 +146,7 @@ func TestAppRole_RoleLogin(t *testing.T) {
 			RemoteAddr: "127.0.0.1",
 		},
 	}
-	loginResp, err := b.HandleRequest(context.Background(), loginReq)
+	loginResp, err := b.HandleRequest(t.Context(), loginReq)
 	if err != nil || (loginResp != nil && loginResp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, loginResp)
 	}
@@ -175,7 +174,7 @@ func TestAppRole_RoleLogin(t *testing.T) {
 	// Test renewal
 	renewReq := generateRenewRequest(storage, loginResp.Auth)
 
-	resp, err = b.HandleRequest(context.Background(), renewReq)
+	resp, err = b.HandleRequest(t.Context(), renewReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -223,7 +222,7 @@ func TestAppRole_RoleLogin(t *testing.T) {
 	loginData["role_id"] = roleID
 	loginData["secret_id"] = secretID
 
-	loginResp, err = b.HandleRequest(context.Background(), loginReq)
+	loginResp, err = b.HandleRequest(t.Context(), loginReq)
 	if err != nil || (loginResp != nil && loginResp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, loginResp)
 	}
@@ -234,7 +233,7 @@ func TestAppRole_RoleLogin(t *testing.T) {
 
 	renewReq = generateRenewRequest(storage, loginResp.Auth)
 
-	resp, err = b.HandleRequest(context.Background(), renewReq)
+	resp, err = b.HandleRequest(t.Context(), renewReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -256,7 +255,7 @@ func TestAppRole_RoleLogin(t *testing.T) {
 		},
 	}
 
-	loginResp, err = b.HandleRequest(context.Background(), loginReq)
+	loginResp, err = b.HandleRequest(t.Context(), loginReq)
 
 	expectedErr := "failed to create HMAC of secret_id"
 	if loginResp != nil || err == nil || !strings.Contains(err.Error(), expectedErr) {
@@ -344,7 +343,7 @@ func TestAppRole_RoleDoesNotExist(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), loginReq)
+	resp, err = b.HandleRequest(t.Context(), loginReq)
 	if resp == nil && !resp.IsError() {
 		t.Fatalf("Response was not an error: err:%v resp:%#v", err, resp)
 	}

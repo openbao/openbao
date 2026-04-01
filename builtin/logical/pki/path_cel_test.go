@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"context"
 	"slices"
 	"testing"
 
@@ -64,14 +63,14 @@ func TestCRUDCelRoles(t *testing.T) {
 	}
 
 	// Validate CEL role creation
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
 	// Read the created CEL role
 	roleReq.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -118,7 +117,7 @@ func TestCRUDCelRoles(t *testing.T) {
 		Data:      patchData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), patchReq)
+	resp, err = b.HandleRequest(t.Context(), patchReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("Failed to patch role: err: %v resp: %#v", err, resp)
 	}
@@ -129,7 +128,7 @@ func TestCRUDCelRoles(t *testing.T) {
 		Path:      "cel/roles/testrole",
 		Storage:   storage,
 	}
-	resp, err = b.HandleRequest(context.Background(), readReq)
+	resp, err = b.HandleRequest(t.Context(), readReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("Failed to read role after patch: err: %v resp: %#v", err, resp)
 	}
@@ -186,20 +185,20 @@ func TestCRUDCelRoles(t *testing.T) {
 		Data:      roleData2,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), roleReq2)
+	resp, err = b.HandleRequest(t.Context(), roleReq2)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
 	// Validate the second CEL role creation by reading it
 	roleReq2.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), roleReq2)
+	resp, err = b.HandleRequest(t.Context(), roleReq2)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
 	// list CEL roles
-	listResp, err := b.HandleRequest(context.Background(), &logical.Request{
+	listResp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.ListOperation,
 		Path:      "cel/roles",
 		Storage:   storage,
@@ -223,13 +222,13 @@ func TestCRUDCelRoles(t *testing.T) {
 		Storage:   storage,
 	}
 
-	_, err = b.HandleRequest(context.Background(), roleReqDel)
+	_, err = b.HandleRequest(t.Context(), roleReqDel)
 	if err != nil {
 		t.Fatalf("bad: err: %v", err)
 	}
 
 	// Verify deletion by listing remaining CEL roles
-	listResp, err = b.HandleRequest(context.Background(), &logical.Request{
+	listResp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.ListOperation,
 		Path:      "cel/roles",
 		Storage:   storage,

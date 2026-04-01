@@ -5,7 +5,6 @@ package raft
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"testing"
 
@@ -199,7 +198,7 @@ func TestRaft_Chunking_AppliedIndex(t *testing.T) {
 	}
 
 	// Write a value to fastforward the index
-	err = raft.Put(context.Background(), &physical.Entry{
+	err = raft.Put(t.Context(), &physical.Entry{
 		Key:   "key",
 		Value: []byte("test"),
 	})
@@ -210,7 +209,7 @@ func TestRaft_Chunking_AppliedIndex(t *testing.T) {
 	currentIndex := raft.AppliedIndex()
 	// Write some data
 	for i := 0; i < 10; i++ {
-		err := raft.Put(context.Background(), &physical.Entry{
+		err := raft.Put(t.Context(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: val,
 		})
@@ -227,7 +226,7 @@ func TestRaft_Chunking_AppliedIndex(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		entry, err := raft.Get(context.Background(), fmt.Sprintf("key-%d", i))
+		entry, err := raft.Get(t.Context(), fmt.Sprintf("key-%d", i))
 		if err != nil {
 			t.Fatal(err)
 		}

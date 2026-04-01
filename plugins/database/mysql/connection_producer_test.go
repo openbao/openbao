@@ -134,7 +134,7 @@ ssl-key=/etc/mysql/server-key.pem`
 		"tls_ca":              caCert.Pem,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	_, err := mysql.Init(ctx, conf, true)
@@ -271,7 +271,7 @@ func connect(t *testing.T, dsn string) (db *sql.DB) {
 }
 
 func setUpX509User(t *testing.T, db *sql.DB, cert certhelpers.Certificate) (username string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	username = cert.Template.Subject.CommonName

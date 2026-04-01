@@ -21,7 +21,7 @@ type environment struct {
 }
 
 func TestAcceptance(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	storage := &logical.InmemStorage{}
 	b, err := backend(ctx, storage)
 	if err != nil {

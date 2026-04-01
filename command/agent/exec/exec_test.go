@@ -245,7 +245,7 @@ func TestExecServer_Run(t *testing.T) {
 			fakeVault := fakeVaultServer(t)
 			defer fakeVault.Close()
 
-			ctx, cancelContextFunc := context.WithTimeout(context.Background(), testCase.expectedTestDuration)
+			ctx, cancelContextFunc := context.WithTimeout(t.Context(), testCase.expectedTestDuration)
 			defer cancelContextFunc()
 
 			testAppCommand := []string{

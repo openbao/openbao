@@ -4,7 +4,6 @@
 package command
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -690,7 +689,7 @@ func TestKVListCommand(t *testing.T) {
 				}
 				time.Sleep(time.Second)
 
-				ctx := context.Background()
+				ctx := t.Context()
 				for i := 0; i < 3; i++ {
 					path := fmt.Sprintf("my-prefix/secret-%d", i)
 					_, err := client.KVv2("kv/").Put(ctx, path, map[string]interface{}{
@@ -979,7 +978,7 @@ func TestKVPatchCommand_StdinFull(t *testing.T) {
 			t.Fatalf("expected code to be 0 but was %d for patch cmd with args %#v\n", code, args)
 		}
 
-		secret, err := client.Logical().ReadWithContext(context.Background(), "kv/data/patch/foo")
+		secret, err := client.Logical().ReadWithContext(t.Context(), "kv/data/patch/foo")
 		if err != nil {
 			t.Fatalf("read failed, err: %#v\n", err)
 		}
@@ -1052,7 +1051,7 @@ func TestKVPatchCommand_StdinValue(t *testing.T) {
 			}
 		}
 
-		secret, err := client.Logical().ReadWithContext(context.Background(), "kv/data/patch/foo")
+		secret, err := client.Logical().ReadWithContext(t.Context(), "kv/data/patch/foo")
 		if err != nil {
 			t.Fatalf("read failed, err: %#v\n", err)
 		}
@@ -1252,7 +1251,7 @@ func TestKVPatchCommand_CAS(t *testing.T) {
 				}
 			}
 
-			secret, err := kvClient.Logical().ReadWithContext(context.Background(), "kv/data/"+tc.key)
+			secret, err := kvClient.Logical().ReadWithContext(t.Context(), "kv/data/"+tc.key)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1325,7 +1324,7 @@ func TestKVPatchCommand_Methods(t *testing.T) {
 				t.Fatalf("expected code to be %d but was %d", tc.code, code)
 			}
 
-			secret, err := kvClient.Logical().ReadWithContext(context.Background(), "kv/data/foo")
+			secret, err := kvClient.Logical().ReadWithContext(t.Context(), "kv/data/foo")
 			if err != nil {
 				t.Fatal(err)
 			}

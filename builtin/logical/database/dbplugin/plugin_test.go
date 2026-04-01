@@ -141,7 +141,7 @@ func TestPlugin_Init(t *testing.T) {
 	cluster, sys := getCluster(t)
 	defer cluster.Cleanup()
 
-	dbRaw, err := dbplugin.PluginFactoryVersion(namespace.RootContext(context.TODO()), "test-plugin", "", sys, log.NewNullLogger())
+	dbRaw, err := dbplugin.PluginFactoryVersion(namespace.RootContext(t.Context()), "test-plugin", "", sys, log.NewNullLogger())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -150,7 +150,7 @@ func TestPlugin_Init(t *testing.T) {
 		"test": 1,
 	}
 
-	_, err = dbRaw.Init(context.Background(), connectionDetails, true)
+	_, err = dbRaw.Init(t.Context(), connectionDetails, true)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -165,7 +165,7 @@ func TestPlugin_CreateUser(t *testing.T) {
 	cluster, sys := getCluster(t)
 	defer cluster.Cleanup()
 
-	db, err := dbplugin.PluginFactoryVersion(namespace.RootContext(context.TODO()), "test-plugin", "", sys, log.NewNullLogger())
+	db, err := dbplugin.PluginFactoryVersion(namespace.RootContext(t.Context()), "test-plugin", "", sys, log.NewNullLogger())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -175,12 +175,12 @@ func TestPlugin_CreateUser(t *testing.T) {
 		"test": 1,
 	}
 
-	_, err = db.Init(context.Background(), connectionDetails, true)
+	_, err = db.Init(t.Context(), connectionDetails, true)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
-	us, pw, err := db.CreateUser(context.Background(), dbplugin.Statements{}, dbplugin.UsernameConfig{
+	us, pw, err := db.CreateUser(t.Context(), dbplugin.Statements{}, dbplugin.UsernameConfig{
 		DisplayName: "test",
 		RoleName:    "test",
 	}, time.Now().Add(time.Minute))
@@ -193,7 +193,7 @@ func TestPlugin_CreateUser(t *testing.T) {
 
 	// try and save the same user again to verify it saved the first time, this
 	// should return an error
-	_, _, err = db.CreateUser(context.Background(), dbplugin.Statements{}, dbplugin.UsernameConfig{
+	_, _, err = db.CreateUser(t.Context(), dbplugin.Statements{}, dbplugin.UsernameConfig{
 		DisplayName: "test",
 		RoleName:    "test",
 	}, time.Now().Add(time.Minute))
@@ -206,7 +206,7 @@ func TestPlugin_RenewUser(t *testing.T) {
 	cluster, sys := getCluster(t)
 	defer cluster.Cleanup()
 
-	db, err := dbplugin.PluginFactoryVersion(namespace.RootContext(context.TODO()), "test-plugin", "", sys, log.NewNullLogger())
+	db, err := dbplugin.PluginFactoryVersion(namespace.RootContext(t.Context()), "test-plugin", "", sys, log.NewNullLogger())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -215,12 +215,12 @@ func TestPlugin_RenewUser(t *testing.T) {
 	connectionDetails := map[string]interface{}{
 		"test": 1,
 	}
-	_, err = db.Init(context.Background(), connectionDetails, true)
+	_, err = db.Init(t.Context(), connectionDetails, true)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
-	us, _, err := db.CreateUser(context.Background(), dbplugin.Statements{}, dbplugin.UsernameConfig{
+	us, _, err := db.CreateUser(t.Context(), dbplugin.Statements{}, dbplugin.UsernameConfig{
 		DisplayName: "test",
 		RoleName:    "test",
 	}, time.Now().Add(time.Minute))
@@ -228,7 +228,7 @@ func TestPlugin_RenewUser(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	err = db.RenewUser(context.Background(), dbplugin.Statements{}, us, time.Now().Add(time.Minute))
+	err = db.RenewUser(t.Context(), dbplugin.Statements{}, us, time.Now().Add(time.Minute))
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -238,7 +238,7 @@ func TestPlugin_RevokeUser(t *testing.T) {
 	cluster, sys := getCluster(t)
 	defer cluster.Cleanup()
 
-	db, err := dbplugin.PluginFactoryVersion(namespace.RootContext(context.TODO()), "test-plugin", "", sys, log.NewNullLogger())
+	db, err := dbplugin.PluginFactoryVersion(namespace.RootContext(t.Context()), "test-plugin", "", sys, log.NewNullLogger())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -247,12 +247,12 @@ func TestPlugin_RevokeUser(t *testing.T) {
 	connectionDetails := map[string]interface{}{
 		"test": 1,
 	}
-	_, err = db.Init(context.Background(), connectionDetails, true)
+	_, err = db.Init(t.Context(), connectionDetails, true)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
-	us, _, err := db.CreateUser(context.Background(), dbplugin.Statements{}, dbplugin.UsernameConfig{
+	us, _, err := db.CreateUser(t.Context(), dbplugin.Statements{}, dbplugin.UsernameConfig{
 		DisplayName: "test",
 		RoleName:    "test",
 	}, time.Now().Add(time.Minute))
@@ -261,13 +261,13 @@ func TestPlugin_RevokeUser(t *testing.T) {
 	}
 
 	// Test default revoke statements
-	err = db.RevokeUser(context.Background(), dbplugin.Statements{}, us)
+	err = db.RevokeUser(t.Context(), dbplugin.Statements{}, us)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
 	// Try adding the same username back so we can verify it was removed
-	_, _, err = db.CreateUser(context.Background(), dbplugin.Statements{}, dbplugin.UsernameConfig{
+	_, _, err = db.CreateUser(t.Context(), dbplugin.Statements{}, dbplugin.UsernameConfig{
 		DisplayName: "test",
 		RoleName:    "test",
 	}, time.Now().Add(time.Minute))

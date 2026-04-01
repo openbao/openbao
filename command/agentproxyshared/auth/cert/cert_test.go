@@ -4,7 +4,6 @@
 package cert
 
 import (
-	"context"
 	"os"
 	"path"
 	"reflect"
@@ -34,7 +33,7 @@ func TestCertAuthMethod_Authenticate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	loginPath, _, authMap, err := method.Authenticate(context.Background(), client)
+	loginPath, _, authMap, err := method.Authenticate(t.Context(), client)
 	if err != nil {
 		t.Fatal(err)
 	}

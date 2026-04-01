@@ -10,8 +10,9 @@ import (
 	"github.com/go-test/deep"
 )
 
-func testContextInfo() *ContextInfo {
-	ctx, cancelFunc := context.WithCancel(context.Background())
+func testContextInfo(t *testing.T) *ContextInfo {
+	t.Helper()
+	ctx, cancelFunc := context.WithCancel(t.Context())
 
 	return &ContextInfo{
 		Ctx:        ctx,
@@ -240,7 +241,7 @@ func TestCacheMemDB_Set(t *testing.T) {
 				Token:         "test_token",
 				TokenAccessor: "test_accessor",
 				Lease:         "test_lease",
-				RenewCtxInfo:  testContextInfo(),
+				RenewCtxInfo:  testContextInfo(t),
 			},
 			false,
 		},
@@ -273,7 +274,7 @@ func TestCacheMemDB_Evict(t *testing.T) {
 		Token:         "test_token",
 		TokenAccessor: "test_token_accessor",
 		Lease:         "test_lease",
-		RenewCtxInfo:  testContextInfo(),
+		RenewCtxInfo:  testContextInfo(t),
 	}
 
 	testCases := []struct {

@@ -4,7 +4,6 @@
 package routing
 
 import (
-	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -326,7 +325,7 @@ func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
 	// When operating inside namespace "team1", mounting a backend at path
 	// equal to the namespace name ("team1/") should not be treated as a
 	// namespace conflict.
-	ctxTeam := namespace.ContextWithNamespace(context.Background(), nsTeam)
+	ctxTeam := namespace.ContextWithNamespace(t.Context(), nsTeam)
 	if conflict := r.MountConflict(ctxTeam, "team1/"); conflict != "" {
 		t.Fatalf("unexpected conflict for namespace-equal mount: %q", conflict)
 	}

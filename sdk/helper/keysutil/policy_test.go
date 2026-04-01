@@ -77,7 +77,7 @@ func Test_KeyUpgrade(t *testing.T) {
 }
 
 func testKeyUpgradeCommon(t *testing.T, lm *LockManager) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	storage := &logical.InmemStorage{}
 	p, upserted, err := lm.GetPolicy(ctx, PolicyRequest{
@@ -124,7 +124,7 @@ func Test_ArchivingUpgrade(t *testing.T) {
 }
 
 func testArchivingUpgradeCommon(t *testing.T, lm *LockManager) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// First, we generate a policy and rotate it a number of times. Each time
 	// we'll ensure that we have the expected number of keys in the archive and
@@ -365,7 +365,7 @@ func checkKeys(t *testing.T,
 }
 
 func Test_StorageErrorSafety(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lm, _ := NewLockManager(true, 0)
 
 	storage := &logical.InmemStorage{}
@@ -411,7 +411,7 @@ func Test_StorageErrorSafety(t *testing.T) {
 }
 
 func Test_BadUpgrade(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lm, _ := NewLockManager(true, 0)
 	storage := &logical.InmemStorage{}
 	p, _, err := lm.GetPolicy(ctx, PolicyRequest{
@@ -475,7 +475,7 @@ func Test_BadUpgrade(t *testing.T) {
 }
 
 func Test_BadArchive(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lm, _ := NewLockManager(true, 0)
 	storage := &logical.InmemStorage{}
 	p, _, err := lm.GetPolicy(ctx, PolicyRequest{
@@ -551,7 +551,7 @@ func Test_BadArchive(t *testing.T) {
 }
 
 func Test_Import(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	storage := &logical.InmemStorage{}
 	testKeys, err := generateTestKeys()
 	if err != nil {
@@ -678,7 +678,7 @@ func generateTestKeys() (map[KeyType][]byte, error) {
 }
 
 func BenchmarkSymmetric(b *testing.B) {
-	ctx := context.Background()
+	ctx := b.Context()
 	lm, _ := NewLockManager(true, 0)
 	storage := &logical.InmemStorage{}
 	p, _, _ := lm.GetPolicy(ctx, PolicyRequest{
@@ -745,7 +745,7 @@ func Test_RSA_PSS(t *testing.T) {
 	t.Log("Testing RSA PSS")
 
 	var userError errutil.UserError
-	ctx := context.Background()
+	ctx := t.Context()
 	storage := &logical.InmemStorage{}
 	// https://crypto.stackexchange.com/a/1222
 	input := []byte("the ancients say the longer the salt, the more provable the security")
@@ -893,7 +893,7 @@ func Test_RSA_PSS(t *testing.T) {
 func Test_RSA_PKCS1(t *testing.T) {
 	t.Log("Testing RSA PKCS#1v1.5")
 
-	ctx := context.Background()
+	ctx := t.Context()
 	storage := &logical.InmemStorage{}
 	// https://crypto.stackexchange.com/a/1222
 	input := []byte("Sphinx of black quartz, judge my vow")

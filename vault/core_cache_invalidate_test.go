@@ -44,7 +44,7 @@ func testCore_Invalidate_TestCore(t *testing.T, config *CoreConfig) (*Core, stri
 	c.invalidations.Track()
 
 	c.stateLock.RLock()
-	c.invalidations.Start(context.Background())
+	c.invalidations.Start(t.Context())
 	c.stateLock.RUnlock()
 
 	return c, root

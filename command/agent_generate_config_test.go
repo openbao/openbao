@@ -14,7 +14,7 @@ import (
 
 // TestConstructTemplates tests the construcTemplates helper function
 func TestConstructTemplates(t *testing.T) {
-	ctx, cancelContextFunc := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancelContextFunc := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancelContextFunc()
 
 	client, closer := testVaultServerWithSecrets(ctx, t)
@@ -150,7 +150,7 @@ func TestConstructTemplates(t *testing.T) {
 
 // TestGenerateConfiguration tests the generateConfiguration helper function
 func TestGenerateConfiguration(t *testing.T) {
-	ctx, cancelContextFunc := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancelContextFunc := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancelContextFunc()
 
 	client, closer := testVaultServerWithSecrets(ctx, t)

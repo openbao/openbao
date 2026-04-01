@@ -17,7 +17,7 @@ func TestPathMap(t *testing.T) {
 	storage := new(logical.InmemStorage)
 	var b logical.Backend = &Backend{Paths: p.Paths()}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Write via HTTP
 	_, err := b.HandleRequest(ctx, &logical.Request{
@@ -126,7 +126,7 @@ func TestPathMap_getInvalid(t *testing.T) {
 	p := &PathMap{Name: "foo"}
 	storage := new(logical.InmemStorage)
 
-	v, err := p.Get(context.Background(), storage, "nope")
+	v, err := p.Get(t.Context(), storage, "nope")
 	if err != nil {
 		t.Fatalf("bad: %#v", err)
 	}
@@ -147,14 +147,14 @@ func TestPathMap_routes(t *testing.T) {
 func TestPathMap_Salted(t *testing.T) {
 	storage := new(logical.InmemStorage)
 
-	salt, err := saltpkg.NewSalt(context.Background(), storage, &saltpkg.Config{
+	salt, err := saltpkg.NewSalt(t.Context(), storage, &saltpkg.Config{
 		HashFunc: saltpkg.SHA1Hash,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	testSalting(t, context.Background(), storage, salt, &PathMap{Name: "foo", Salt: salt})
+	testSalting(t, t.Context(), storage, salt, &PathMap{Name: "foo", Salt: salt})
 }
 
 func testSalting(t *testing.T, ctx context.Context, storage logical.Storage, salt *saltpkg.Salt, p *PathMap) {
@@ -327,7 +327,7 @@ func testSalting(t *testing.T, ctx context.Context, storage logical.Storage, sal
 func TestPathMap_SaltFunc(t *testing.T) {
 	storage := new(logical.InmemStorage)
 
-	salt, err := saltpkg.NewSalt(context.Background(), storage, &saltpkg.Config{
+	salt, err := saltpkg.NewSalt(t.Context(), storage, &saltpkg.Config{
 		HashFunc: saltpkg.SHA1Hash,
 	})
 	if err != nil {
@@ -338,5 +338,5 @@ func TestPathMap_SaltFunc(t *testing.T) {
 		return salt, nil
 	}
 
-	testSalting(t, context.Background(), storage, salt, &PathMap{Name: "foo", SaltFunc: saltFunc})
+	testSalting(t, t.Context(), storage, salt, &PathMap{Name: "foo", SaltFunc: saltFunc})
 }

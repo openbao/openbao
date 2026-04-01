@@ -1,7 +1,6 @@
 package vault
 
 import (
-	"context"
 	"testing"
 
 	"github.com/openbao/openbao/helper/benchhelpers"
@@ -13,7 +12,7 @@ func BenchmarkTokenStore_HandleCreateCommon(b *testing.B) {
 	c, _, root := TestCoreUnsealed(benchhelpers.TBtoT(b))
 	ts := c.tokenStore
 
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(b.Context())
 
 	b.ResetTimer()
 	b.ReportAllocs()

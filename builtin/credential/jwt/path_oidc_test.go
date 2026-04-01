@@ -5,7 +5,6 @@ package jwtauth
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
@@ -52,7 +51,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}
@@ -71,7 +70,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}
@@ -92,7 +91,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
@@ -137,7 +136,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -160,7 +159,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}
@@ -179,7 +178,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -205,7 +204,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v", err, resp)
 		}
@@ -302,7 +301,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
@@ -321,7 +320,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 				Data:      rolePayload,
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
@@ -337,7 +336,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 				Data:      authURLPayload,
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
@@ -386,7 +385,7 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 			"oidc_client_secret": "def",
 		},
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -441,7 +440,7 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 					"max_age":               tt.maxAge,
 				},
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if tt.expectErr {
 				require.Nil(t, err)
 				require.True(t, resp.IsError())
@@ -460,7 +459,7 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 					"redirect_uri": "https://example.com",
 				},
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			require.NoError(t, err)
 			require.False(t, resp.IsError())
 
@@ -552,7 +551,7 @@ func TestOIDC_UserClaim_JSON_Pointer(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			require.NoError(t, err)
 			require.False(t, resp.IsError())
 
@@ -567,7 +566,7 @@ func TestOIDC_UserClaim_JSON_Pointer(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			require.NoError(t, err)
 			require.False(t, resp.IsError())
 
@@ -593,7 +592,7 @@ func TestOIDC_UserClaim_JSON_Pointer(t *testing.T) {
 			}
 
 			// Assert that we get the expected alias name
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if tt.wantErr {
 				require.True(t, resp.IsError())
 				return
@@ -641,7 +640,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -657,7 +656,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -672,7 +671,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -702,7 +701,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 			"state":    state,
 		},
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -715,7 +714,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 			"state": state,
 		},
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 }
@@ -758,7 +757,7 @@ func TestOIDC_Callback(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
@@ -795,7 +794,7 @@ func TestOIDC_Callback(t *testing.T) {
 					},
 				}
 
-				resp, err = b.HandleRequest(context.Background(), req)
+				resp, err = b.HandleRequest(t.Context(), req)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -816,7 +815,7 @@ func TestOIDC_Callback(t *testing.T) {
 						RemoteAddr: "127.0.0.42",
 					},
 				}
-				resp, err = b.HandleRequest(context.Background(), req)
+				resp, err = b.HandleRequest(t.Context(), req)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -832,7 +831,7 @@ func TestOIDC_Callback(t *testing.T) {
 						"client_nonce": clientNonce,
 					},
 				}
-				resp, err = b.HandleRequest(context.Background(), req)
+				resp, err = b.HandleRequest(t.Context(), req)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -923,7 +922,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"oidc_disable_confirmation": true,
 			},
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err: %v resp:%#v\n", err, resp)
 		}
@@ -942,7 +941,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"client_nonce": clientNonce,
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -969,7 +968,7 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -985,7 +984,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"client_nonce": clientNonce,
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1047,7 +1046,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1076,7 +1075,7 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1101,7 +1100,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1132,7 +1131,7 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1151,7 +1150,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Storage:   storage,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1173,7 +1172,7 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1198,7 +1197,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1214,7 +1213,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"state": state,
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1240,7 +1239,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1264,7 +1263,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"code":  "wrong_code",
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1290,7 +1289,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1316,7 +1315,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"code":  "abc",
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1341,7 +1340,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1362,7 +1361,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"code":  "abc",
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1390,7 +1389,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1411,7 +1410,7 @@ func TestOIDC_Callback(t *testing.T) {
 				RemoteAddr: "127.0.0.99",
 			},
 		}
-		_, err = b.HandleRequest(context.Background(), req)
+		_, err = b.HandleRequest(t.Context(), req)
 		if err != logical.ErrPermissionDenied {
 			t.Fatal(err)
 		}
@@ -1436,7 +1435,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1460,7 +1459,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"code":  "abc",
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1521,7 +1520,7 @@ func TestOIDC_Callback(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
@@ -1553,7 +1552,7 @@ func TestOIDC_Callback(t *testing.T) {
 				},
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1835,7 +1834,7 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool, callbackMode string) (lo
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}
@@ -1876,7 +1875,7 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool, callbackMode string) (lo
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}

@@ -4,7 +4,6 @@
 package postgresql
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -441,7 +440,7 @@ func TestPostgreSQLBackend_NoCreateTables(t *testing.T) {
 
 	// Put should fail with an error.
 	entry := &physical.Entry{Key: "foo", Value: []byte("data")}
-	err = b.Put(context.Background(), entry)
+	err = b.Put(t.Context(), entry)
 	if err == nil {
 		t.Fatal("expected put to fail due to missing tables")
 	}
@@ -555,7 +554,7 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			entry := &physical.Entry{Key: fmt.Sprintf("foo-%v", i), Value: []byte("data")}
-			err := b.Put(context.Background(), entry)
+			err := b.Put(t.Context(), entry)
 			if err != nil {
 				errors[i] = err
 			}
@@ -579,7 +578,7 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 
 			entry := &physical.Entry{Key: fmt.Sprintf("foo-%v", i), Value: []byte("data")}
 
-			tx, err := b.BeginTx(context.Background())
+			tx, err := b.BeginTx(t.Context())
 			if err != nil {
 				errors[i] = err
 				return
@@ -597,7 +596,7 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 				errors[i] = fmt.Errorf("value for job %v exceeded max_parallel: %v", i, value)
 			}
 
-			err = tx.Put(context.Background(), entry)
+			err = tx.Put(t.Context(), entry)
 			if err != nil {
 				errors[i] = err
 				return
@@ -617,7 +616,7 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 
 			count.Add(-1)
 
-			err = tx.Commit(context.Background())
+			err = tx.Commit(t.Context())
 			if err != nil {
 				errors[i] = err
 				return

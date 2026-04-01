@@ -5,7 +5,6 @@ package vault
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -29,12 +28,12 @@ var clusterTestPausePeriod = 2 * time.Second
 func TestClusterFetching(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 
-	err := c.setupCluster(context.Background())
+	err := c.setupCluster(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cluster, err := c.Cluster(context.Background())
+	cluster, err := c.Cluster(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +80,7 @@ func TestClusterHAFetching(t *testing.T) {
 	// Wait for core to become active
 	TestWaitActive(t, c)
 
-	cluster, err := c.Cluster(context.Background())
+	cluster, err := c.Cluster(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,11 +110,11 @@ func TestCluster_ListenForRequests(t *testing.T) {
 
 	// Use this to have a valid config after sealing since ClusterTLSConfig returns nil
 	checkListenersFunc := func(expectFail bool, name string) {
-		dialer := clusterListener.GetContextDialerFunc(context.Background(), consts.RequestForwardingALPN)
+		dialer := clusterListener.GetContextDialerFunc(t.Context(), consts.RequestForwardingALPN)
 		for i := range cores[0].Listeners {
 
 			clnAddr := addrs[i]
-			netConn, err := dialer(context.Background(), clnAddr.String())
+			netConn, err := dialer(t.Context(), clnAddr.String())
 			if err != nil {
 				if expectFail {
 					t.Logf("[%s] testing %s unsuccessful as expected", name, clnAddr)
@@ -145,7 +144,7 @@ func TestCluster_ListenForRequests(t *testing.T) {
 	time.Sleep(clusterTestPausePeriod)
 	checkListenersFunc(false, "initial")
 
-	err := cores[0].StepDown(context.Background(), &logical.Request{
+	err := cores[0].StepDown(t.Context(), &logical.Request{
 		Operation:   logical.UpdateOperation,
 		Path:        "sys/step-down",
 		ClientToken: cluster.RootToken,
@@ -253,7 +252,7 @@ func testCluster_ForwardRequestsCommon(t *testing.T, clusterOpts *TestClusterOpt
 
 func testCluster_Forwarding(t *testing.T, cluster *TestCluster, oldLeaderCoreIdx, newLeaderCoreIdx int, rootToken, remoteCoreID string) {
 	t.Logf("new leaderidx will be %d, stepping down other cores to make it so", newLeaderCoreIdx)
-	err := cluster.Cores[oldLeaderCoreIdx].StepDown(context.Background(), &logical.Request{
+	err := cluster.Cores[oldLeaderCoreIdx].StepDown(t.Context(), &logical.Request{
 		Operation:   logical.UpdateOperation,
 		Path:        "sys/step-down",
 		ClientToken: rootToken,
@@ -265,7 +264,7 @@ func testCluster_Forwarding(t *testing.T, cluster *TestCluster, oldLeaderCoreIdx
 
 	for i := range 3 {
 		if i != oldLeaderCoreIdx && i != newLeaderCoreIdx {
-			_ = cluster.Cores[i].StepDown(context.Background(), &logical.Request{
+			_ = cluster.Cores[i].StepDown(t.Context(), &logical.Request{
 				Operation:   logical.UpdateOperation,
 				Path:        "sys/step-down",
 				ClientToken: rootToken,

@@ -4,7 +4,6 @@
 package cert
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
@@ -586,7 +585,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -605,7 +604,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 		Data:      certData,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), certReq)
+	resp, err := b.HandleRequest(t.Context(), certReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -626,7 +625,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 	}
 
 	// Login when the certificate is still valid. Login should succeed.
-	resp, err = b.HandleRequest(context.Background(), loginReq)
+	resp, err = b.HandleRequest(t.Context(), loginReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -635,7 +634,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Login attempt after certificate expiry should fail
-	_, err = b.HandleRequest(context.Background(), loginReq)
+	_, err = b.HandleRequest(t.Context(), loginReq)
 	if err == nil {
 		t.Fatal("expected error due to expired certificate")
 	}
@@ -648,7 +647,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -667,7 +666,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 		Data:      certData,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), certReq)
+	resp, err := b.HandleRequest(t.Context(), certReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -687,7 +686,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 		},
 	}
 	// Login should succeed.
-	resp, err = b.HandleRequest(context.Background(), loginReq)
+	resp, err = b.HandleRequest(t.Context(), loginReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -708,7 +707,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 		Path:      "crls/issuedcrl",
 		Data:      crlData,
 	}
-	resp, err = b.HandleRequest(context.Background(), crlReq)
+	resp, err = b.HandleRequest(t.Context(), crlReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -720,7 +719,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 		Path:      "crls",
 		Data:      map[string]interface{}{},
 	}
-	resp, err = b.HandleRequest(context.Background(), listReq)
+	resp, err = b.HandleRequest(t.Context(), listReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -729,7 +728,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 	}
 
 	// Attempt login with the same connection state but with the CRL registered
-	resp, err = b.HandleRequest(context.Background(), loginReq)
+	resp, err = b.HandleRequest(t.Context(), loginReq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -745,7 +744,7 @@ func TestBackend_CRLs(t *testing.T) {
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -765,7 +764,7 @@ func TestBackend_CRLs(t *testing.T) {
 		Data:      certData,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), certReq)
+	resp, err := b.HandleRequest(t.Context(), certReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -784,7 +783,7 @@ func TestBackend_CRLs(t *testing.T) {
 			ConnState: &connState,
 		},
 	}
-	resp, err = b.HandleRequest(context.Background(), loginReq)
+	resp, err = b.HandleRequest(t.Context(), loginReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -798,7 +797,7 @@ func TestBackend_CRLs(t *testing.T) {
 	loginReq.Connection.ConnState = &connState
 
 	// Attempt login with the updated connection
-	resp, err = b.HandleRequest(context.Background(), loginReq)
+	resp, err = b.HandleRequest(t.Context(), loginReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -820,13 +819,13 @@ func TestBackend_CRLs(t *testing.T) {
 		Path:      "crls/issuedcrl",
 		Data:      crlData,
 	}
-	resp, err = b.HandleRequest(context.Background(), crlReq)
+	resp, err = b.HandleRequest(t.Context(), crlReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
 	// Attempt login with the revoked certificate.
-	resp, err = b.HandleRequest(context.Background(), loginReq)
+	resp, err = b.HandleRequest(t.Context(), loginReq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -836,7 +835,7 @@ func TestBackend_CRLs(t *testing.T) {
 
 	// Register a different client CA certificate.
 	certData["certificate"] = tc.client2CA.CertPEM()
-	resp, err = b.HandleRequest(context.Background(), certReq)
+	resp, err = b.HandleRequest(t.Context(), certReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -849,7 +848,7 @@ func TestBackend_CRLs(t *testing.T) {
 	loginReq.Connection.ConnState = &connState
 
 	// Attempt login with the updated connection
-	resp, err = b.HandleRequest(context.Background(), loginReq)
+	resp, err = b.HandleRequest(t.Context(), loginReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -861,13 +860,13 @@ func TestBackend_CRLs(t *testing.T) {
 	}
 	rootCRLPEM, _ := rootCRL.PEM()
 	crlData["crl"] = rootCRLPEM
-	resp, err = b.HandleRequest(context.Background(), crlReq)
+	resp, err = b.HandleRequest(t.Context(), crlReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
 	// Attempt login with the same connection state but with the CRL registered
-	resp, err = b.HandleRequest(context.Background(), loginReq)
+	resp, err = b.HandleRequest(t.Context(), loginReq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1275,7 +1274,7 @@ func TestBackend_validCIDR(t *testing.T) {
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1304,7 +1303,7 @@ func TestBackend_validCIDR(t *testing.T) {
 		Connection: &logical.Connection{ConnState: &connState},
 	}
 
-	_, err = b.HandleRequest(context.Background(), addCertReq)
+	_, err = b.HandleRequest(t.Context(), addCertReq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1316,7 +1315,7 @@ func TestBackend_validCIDR(t *testing.T) {
 		Connection: &logical.Connection{ConnState: &connState},
 	}
 
-	readResult, err := b.HandleRequest(context.Background(), readCertReq)
+	readResult, err := b.HandleRequest(t.Context(), readCertReq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1341,7 +1340,7 @@ func TestBackend_validCIDR(t *testing.T) {
 	// override the remote address with an IPV4 that is authorized
 	loginReq.Connection.RemoteAddr = "127.0.0.1/32"
 
-	_, err = b.HandleRequest(context.Background(), loginReq)
+	_, err = b.HandleRequest(t.Context(), loginReq)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -1353,7 +1352,7 @@ func TestBackend_invalidCIDR(t *testing.T) {
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1381,7 +1380,7 @@ func TestBackend_invalidCIDR(t *testing.T) {
 		Connection: &logical.Connection{ConnState: &connState},
 	}
 
-	_, err = b.HandleRequest(context.Background(), addCertReq)
+	_, err = b.HandleRequest(t.Context(), addCertReq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1400,7 +1399,7 @@ func TestBackend_invalidCIDR(t *testing.T) {
 	// override the remote address with an IPV4 that isn't authorized
 	loginReq.Connection.RemoteAddr = "127.0.0.1/8"
 
-	_, err = b.HandleRequest(context.Background(), loginReq)
+	_, err = b.HandleRequest(t.Context(), loginReq)
 	if err == nil {
 		t.Fatal("expected \"ERROR: permission denied\"")
 	}
@@ -1866,7 +1865,7 @@ func Test_Renew(t *testing.T) {
 	tc := setupTestCerts(t)
 	storage := &logical.InmemStorage{}
 
-	lb, err := Factory(context.Background(), &logical.BackendConfig{
+	lb, err := Factory(t.Context(), &logical.BackendConfig{
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: 300 * time.Second,
 			MaxLeaseTTLVal:     1800 * time.Second,
@@ -1900,7 +1899,7 @@ func Test_Renew(t *testing.T) {
 		Schema: pathCerts(b).Fields,
 	}
 
-	_, err = b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(t.Context(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1909,7 +1908,7 @@ func Test_Renew(t *testing.T) {
 		Raw:    map[string]interface{}{},
 		Schema: pathLogin(b).Fields,
 	}
-	resp, err := b.pathLogin(context.Background(), req, empty_login_fd)
+	resp, err := b.pathLogin(t.Context(), req, empty_login_fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1924,7 +1923,7 @@ func Test_Renew(t *testing.T) {
 	req.Auth.Period = resp.Auth.Period
 
 	// Normal renewal
-	resp, err = b.pathLoginRenew(context.Background(), req, empty_login_fd)
+	resp, err = b.pathLoginRenew(t.Context(), req, empty_login_fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1937,24 +1936,24 @@ func Test_Renew(t *testing.T) {
 
 	// Change the policies -- this should fail
 	fd.Raw["policies"] = "zip,zap"
-	_, err = b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(t.Context(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = b.pathLoginRenew(context.Background(), req, empty_login_fd)
+	_, err = b.pathLoginRenew(t.Context(), req, empty_login_fd)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
 	// Put the policies back, this should be okay
 	fd.Raw["policies"] = "bar,foo"
-	_, err = b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(t.Context(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	resp, err = b.pathLoginRenew(context.Background(), req, empty_login_fd)
+	resp, err = b.pathLoginRenew(t.Context(), req, empty_login_fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1968,12 +1967,12 @@ func Test_Renew(t *testing.T) {
 	// Add period value to cert entry
 	period := 350 * time.Second
 	fd.Raw["period"] = period.String()
-	_, err = b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(t.Context(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	resp, err = b.pathLoginRenew(context.Background(), req, empty_login_fd)
+	resp, err = b.pathLoginRenew(t.Context(), req, empty_login_fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1989,12 +1988,12 @@ func Test_Renew(t *testing.T) {
 	}
 
 	// Delete CA, make sure we can't renew
-	_, err = b.pathCertDelete(context.Background(), req, fd)
+	_, err = b.pathCertDelete(t.Context(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	resp, err = b.pathLoginRenew(context.Background(), req, empty_login_fd)
+	resp, err = b.pathLoginRenew(t.Context(), req, empty_login_fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2012,7 +2011,7 @@ func TestBackend_CertUpgrade(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = s
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	b := Backend()
 	if b == nil {

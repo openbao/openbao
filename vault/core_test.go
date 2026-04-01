@@ -384,7 +384,7 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 		SecretShares:    5,
 		SecretThreshold: 3,
 	}
-	res, err := c.Initialize(namespace.RootContext(context.TODO()), &InitParams{
+	res, err := c.Initialize(namespace.RootContext(t.Context()), &InitParams{
 		BarrierConfig:  sealConf,
 		RecoveryConfig: nil,
 	})
@@ -462,7 +462,7 @@ func TestCore_UseSSCTokenToggleOn(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 	resp, err := c.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -517,7 +517,7 @@ func TestCore_UseNonSSCTokenToggleOff(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 	resp, err := c.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -563,7 +563,7 @@ func TestCore_Unseal_Single(t *testing.T) {
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
-	res, err := c.Initialize(namespace.RootContext(context.TODO()), &InitParams{
+	res, err := c.Initialize(namespace.RootContext(t.Context()), &InitParams{
 		BarrierConfig:  sealConf,
 		RecoveryConfig: nil,
 	})
@@ -603,7 +603,7 @@ func TestCore_Route_Sealed(t *testing.T) {
 		SecretThreshold: 1,
 	}
 
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 
 	// Should not route anything
 	req := &logical.Request{
@@ -660,7 +660,7 @@ func TestCore_SealUnseal(t *testing.T) {
 // looking at the storage before and after saving the configs
 func TestCore_LoadLoginMFAConfigs(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	ns1 := &namespace.Namespace{Path: "ns1/"}
 	TestCoreCreateNamespaces(t, c, ns1)
 
@@ -708,7 +708,7 @@ func TestCore_LoadLoginMFAConfigs(t *testing.T) {
 func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 	core, keys, root := TestCoreUnsealed(t)
 
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	testNamespace := &namespace.Namespace{Path: "test"}
 	TestCoreCreateNamespaces(t, core, testNamespace)
 
@@ -767,7 +767,7 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 	core, keys, root := TestCoreUnsealed(t)
 
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	testNamespace := &namespace.Namespace{Path: "test"}
 	TestCoreCreateNamespaces(t, core, testNamespace)
 
@@ -898,7 +898,7 @@ func TestCore_OneTenPlus_BatchTokens(t *testing.T) {
 	}
 
 	for _, entry := range versionEntries {
-		_, err := c.storeVersionEntry(context.Background(), &entry, false)
+		_, err := c.storeVersionEntry(t.Context(), &entry, false)
 		if err != nil {
 			t.Fatalf("failed to write version entry %#v, err: %s", entry, err.Error())
 		}
@@ -925,7 +925,7 @@ func TestCore_OneTenPlus_BatchTokens(t *testing.T) {
 		NamespaceID: namespace.RootNamespaceID,
 		Type:        logical.TokenTypeBatch,
 	}
-	err = c.tokenStore.create(namespace.RootContext(context.TODO()), te, true)
+	err = c.tokenStore.create(namespace.RootContext(t.Context()), te, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -939,7 +939,7 @@ func TestCore_OneTenPlus_BatchTokens(t *testing.T) {
 // GH-3497
 func TestCore_Seal_SingleUse(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
-	err := c.tokenStore.create(namespace.RootContext(context.TODO()), &logical.TokenEntry{
+	err := c.tokenStore.create(namespace.RootContext(t.Context()), &logical.TokenEntry{
 		ID:          "foo",
 		NumUses:     1,
 		Policies:    []string{"root"},
@@ -965,7 +965,7 @@ func TestCore_Seal_SingleUse(t *testing.T) {
 	if err := c.Seal("foo"); err == nil {
 		t.Fatal("expected error from revoked token")
 	}
-	te, err := c.tokenStore.Lookup(namespace.RootContext(context.TODO()), "foo")
+	te, err := c.tokenStore.Lookup(namespace.RootContext(t.Context()), "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -987,7 +987,7 @@ func TestCore_HandleRequest_Lease(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 	resp, err := c.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1033,7 +1033,7 @@ func TestCore_HandleRequest_Lease_MaxLength(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 	resp, err := c.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1079,7 +1079,7 @@ func TestCore_HandleRequest_Lease_DefaultLength(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 	resp, err := c.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1124,7 +1124,7 @@ func TestCore_HandleRequest_MissingToken(t *testing.T) {
 			"lease": "1h",
 		},
 	}
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err == nil || !errwrap.Contains(err, logical.ErrPermissionDenied.Error()) {
 		t.Fatalf("err: %v", err)
 	}
@@ -1145,7 +1145,7 @@ func TestCore_HandleRequest_InvalidToken(t *testing.T) {
 		},
 		ClientToken: "foobarbaz",
 	}
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err == nil || !errwrap.Contains(err, logical.ErrPermissionDenied.Error()) {
 		t.Fatalf("err: %v", err)
 	}
@@ -1163,7 +1163,7 @@ func TestCore_HandleRequest_NoSlash(t *testing.T) {
 		Path:        "secret",
 		ClientToken: root,
 	}
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v, resp: %v", err, resp)
 	}
@@ -1182,7 +1182,7 @@ func TestCore_HandleRequest_RootPath(t *testing.T) {
 		Path:        "sys/policy", // root protected!
 		ClientToken: "child",
 	}
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err == nil || !errwrap.Contains(err, logical.ErrPermissionDenied.Error()) {
 		t.Fatalf("err: %v, resp: %v", err, resp)
 	}
@@ -1201,7 +1201,7 @@ func TestCore_HandleRequest_RootPath_WithSudo(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1216,7 +1216,7 @@ func TestCore_HandleRequest_RootPath_WithSudo(t *testing.T) {
 		Path:        "sys/policy", // root protected!
 		ClientToken: "child",
 	}
-	resp, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1239,7 +1239,7 @@ func TestCore_HandleRequest_PermissionDenied(t *testing.T) {
 		},
 		ClientToken: "child",
 	}
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err == nil || !errwrap.Contains(err, logical.ErrPermissionDenied.Error()) {
 		t.Fatalf("err: %v, resp: %v", err, resp)
 	}
@@ -1259,7 +1259,7 @@ func TestCore_HandleRequest_PermissionAllowed(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1277,7 +1277,7 @@ func TestCore_HandleRequest_PermissionAllowed(t *testing.T) {
 		},
 		ClientToken: "child",
 	}
-	resp, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1300,7 +1300,7 @@ func TestCore_HandleRequest_NoClientToken(t *testing.T) {
 	req.Data["type"] = "noop"
 	req.Data["description"] = "foo"
 	req.ClientToken = root
-	_, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1310,7 +1310,7 @@ func TestCore_HandleRequest_NoClientToken(t *testing.T) {
 		Path: "foo/login",
 	}
 	req.ClientToken = root
-	if _, err := c.HandleRequest(namespace.RootContext(context.TODO()), req); err != nil {
+	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -1335,7 +1335,7 @@ func TestCore_HandleRequest_ConnOnLogin(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/auth/foo")
 	req.Data["type"] = "noop"
 	req.ClientToken = root
-	_, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1345,7 +1345,7 @@ func TestCore_HandleRequest_ConnOnLogin(t *testing.T) {
 		Path:       "auth/foo/login",
 		Connection: &logical.Connection{},
 	}
-	if _, err := c.HandleRequest(namespace.RootContext(context.TODO()), req); err != nil {
+	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	if noop.Requests[0].Connection == nil {
@@ -1377,7 +1377,7 @@ func TestCore_HandleLogin_Token(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/auth/foo")
 	req.Data["type"] = "noop"
 	req.ClientToken = root
-	_, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1386,7 +1386,7 @@ func TestCore_HandleLogin_Token(t *testing.T) {
 	lreq := &logical.Request{
 		Path: "auth/foo/login",
 	}
-	lresp, err := c.HandleRequest(namespace.RootContext(context.TODO()), lreq)
+	lresp, err := c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1399,7 +1399,7 @@ func TestCore_HandleLogin_Token(t *testing.T) {
 
 	// Check the policy and metadata
 	innerToken, _ := c.DecodeSSCToken(clientToken)
-	te, err := c.tokenStore.Lookup(namespace.RootContext(context.TODO()), innerToken)
+	te, err := c.tokenStore.Lookup(namespace.RootContext(t.Context()), innerToken)
 	if err != nil || te == nil {
 		t.Fatalf("tok: %s, err: %v", clientToken, err)
 	}
@@ -1449,7 +1449,7 @@ func TestCore_HandleRequest_AuditTrail(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/audit/noop")
 	req.Data["type"] = "noop"
 	req.ClientToken = root
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1465,7 +1465,7 @@ func TestCore_HandleRequest_AuditTrail(t *testing.T) {
 		ClientToken: root,
 	}
 	req.ClientToken = root
-	if _, err := c.HandleRequest(namespace.RootContext(context.TODO()), req); err != nil {
+	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -1515,7 +1515,7 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/mounts/secret/tune")
 	req.Data["audit_non_hmac_request_keys"] = "foo"
 	req.ClientToken = root
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1526,7 +1526,7 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/mounts/secret/tune")
 	req.Data["audit_non_hmac_response_keys"] = "baz"
 	req.ClientToken = root
-	resp, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1538,7 +1538,7 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/audit/noop")
 	req.Data["type"] = "noop"
 	req.ClientToken = root
-	resp, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1553,7 +1553,7 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 		ClientToken: root,
 	}
 	req.ClientToken = root
-	if _, err := c.HandleRequest(namespace.RootContext(context.TODO()), req); err != nil {
+	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -1595,11 +1595,11 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 		ClientToken: root,
 	}
 	req.ClientToken = root
-	err = c.PopulateTokenEntry(namespace.RootContext(context.TODO()), req)
+	err = c.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	if _, err := c.HandleRequest(namespace.RootContext(context.TODO()), req); err != nil {
+	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	if len(noop.RespNonHMACKeys) != 1 || !strutil.EquivalentSlices(noop.RespNonHMACKeys[0], []string{"baz"}) {
@@ -1647,7 +1647,7 @@ func TestCore_HandleLogin_AuditTrail(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/auth/foo")
 	req.Data["type"] = "noop"
 	req.ClientToken = root
-	_, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1656,7 +1656,7 @@ func TestCore_HandleLogin_AuditTrail(t *testing.T) {
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/audit/noop")
 	req.Data["type"] = "noop"
 	req.ClientToken = root
-	_, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1665,7 +1665,7 @@ func TestCore_HandleLogin_AuditTrail(t *testing.T) {
 	lreq := &logical.Request{
 		Path: "auth/foo/login",
 	}
-	lresp, err := c.HandleRequest(namespace.RootContext(context.TODO()), lreq)
+	lresp, err := c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1710,7 +1710,7 @@ func TestCore_HandleRequest_CreateToken_Lease(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "auth/token/create")
 	req.ClientToken = root
 	req.Data["policies"] = []string{"foo"}
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1725,7 +1725,7 @@ func TestCore_HandleRequest_CreateToken_Lease(t *testing.T) {
 	}
 
 	// Check the policy and metadata
-	te, err := c.tokenStore.Lookup(namespace.RootContext(context.TODO()), clientToken)
+	te, err := c.tokenStore.Lookup(namespace.RootContext(t.Context()), clientToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1765,7 +1765,7 @@ func TestCore_HandleRequest_CreateToken_NoDefaultPolicy(t *testing.T) {
 	req.ClientToken = root
 	req.Data["policies"] = []string{"foo"}
 	req.Data["no_default_policy"] = true
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1777,7 +1777,7 @@ func TestCore_HandleRequest_CreateToken_NoDefaultPolicy(t *testing.T) {
 	}
 
 	// Check the policy and metadata
-	te, err := c.tokenStore.Lookup(namespace.RootContext(context.TODO()), clientToken)
+	te, err := c.tokenStore.Lookup(namespace.RootContext(t.Context()), clientToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1810,7 +1810,7 @@ func TestCore_LimitedUseToken(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "auth/token/create")
 	req.ClientToken = root
 	req.Data["num_uses"] = "1"
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1824,13 +1824,13 @@ func TestCore_LimitedUseToken(t *testing.T) {
 		},
 		ClientToken: resp.Auth.ClientToken,
 	}
-	_, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Second operation should fail
-	_, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err == nil || !errwrap.Contains(err, logical.ErrPermissionDenied.Error()) {
 		t.Fatalf("err: %v", err)
 	}
@@ -2113,7 +2113,7 @@ func TestCore_StepDown(t *testing.T) {
 	}
 
 	// Step down core
-	err = core.StepDown(namespace.RootContext(context.TODO()), req)
+	err = core.StepDown(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal("error stepping down core 1")
 	}
@@ -2152,7 +2152,7 @@ func TestCore_StepDown(t *testing.T) {
 	}
 
 	// Step down core2
-	err = core2.StepDown(namespace.RootContext(context.TODO()), req)
+	err = core2.StepDown(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal("error stepping down core 1")
 	}
@@ -2243,14 +2243,14 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = core.barrier.Put(namespace.RootContext(context.TODO()), &logical.StorageEntry{
+		err = core.barrier.Put(namespace.RootContext(t.Context()), &logical.StorageEntry{
 			Key:   coreLeaderPrefix + keyUUID,
 			Value: []byte(valueUUID),
 		})
 		require.NoError(t, err)
 	}
 
-	entries, err := core.barrier.List(namespace.RootContext(context.TODO()), coreLeaderPrefix)
+	entries, err := core.barrier.List(namespace.RootContext(t.Context()), coreLeaderPrefix)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2340,7 +2340,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 	// Give time for the entries to clear out; it is conservative at 1/second
 	time.Sleep(10 * leaderPrefixCleanDelay)
 
-	entries, err = core2.barrier.List(namespace.RootContext(context.TODO()), coreLeaderPrefix)
+	entries, err = core2.barrier.List(namespace.RootContext(t.Context()), coreLeaderPrefix)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2414,7 +2414,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		},
 		ClientToken: root,
 	}
-	_, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2471,7 +2471,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 	// Forwarding happens at the listener level current, not at the
 	// HandleRequest level; this means that we should get a forwarding
 	// error from sending the request to the standby at this place.
-	_, err = core2.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = core2.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err == nil || !logical.ShouldForward(err) {
 		t.Fatalf("err: %v", err)
 	}
@@ -2509,7 +2509,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		Path:        "secret/foo",
 		ClientToken: root,
 	}
-	resp, err := core2.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := core2.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2573,7 +2573,7 @@ func TestCore_HandleRequest_Login_InternalData(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/auth/foo")
 	req.Data["type"] = "noop"
 	req.ClientToken = root
-	_, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2582,7 +2582,7 @@ func TestCore_HandleRequest_Login_InternalData(t *testing.T) {
 	lreq := &logical.Request{
 		Path: "auth/foo/login",
 	}
-	lresp, err := c.HandleRequest(namespace.RootContext(context.TODO()), lreq)
+	lresp, err := c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2617,7 +2617,7 @@ func TestCore_HandleRequest_InternalData(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/mounts/foo")
 	req.Data["type"] = "noop"
 	req.ClientToken = root
-	_, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2629,7 +2629,7 @@ func TestCore_HandleRequest_InternalData(t *testing.T) {
 		ClientToken: root,
 	}
 	lreq.SetTokenEntry(&logical.TokenEntry{ID: root, NamespaceID: "root", Policies: []string{"root"}})
-	lresp, err := c.HandleRequest(namespace.RootContext(context.TODO()), lreq)
+	lresp, err := c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2662,7 +2662,7 @@ func TestCore_HandleLogin_ReturnSecret(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/auth/foo")
 	req.Data["type"] = "noop"
 	req.ClientToken = root
-	_, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2671,7 +2671,7 @@ func TestCore_HandleLogin_ReturnSecret(t *testing.T) {
 	lreq := &logical.Request{
 		Path: "auth/foo/login",
 	}
-	_, err = c.HandleRequest(namespace.RootContext(context.TODO()), lreq)
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err != ErrInternalError {
 		t.Fatalf("err: %v", err)
 	}
@@ -2691,7 +2691,7 @@ func TestCore_RenewSameLease(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2702,11 +2702,11 @@ func TestCore_RenewSameLease(t *testing.T) {
 	// Read the key
 	req.Operation = logical.ReadOperation
 	req.Data = nil
-	err = c.PopulateTokenEntry(namespace.RootContext(context.TODO()), req)
+	err = c.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	resp, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2718,7 +2718,7 @@ func TestCore_RenewSameLease(t *testing.T) {
 	// Renew the lease
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/renew/"+resp.Secret.LeaseID)
 	req.ClientToken = root
-	resp, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2731,7 +2731,7 @@ func TestCore_RenewSameLease(t *testing.T) {
 	// Renew the lease (alternate path)
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/leases/renew/"+resp.Secret.LeaseID)
 	req.ClientToken = root
-	resp, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2755,7 +2755,7 @@ func TestCore_RenewToken_SingleRegister(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2767,7 +2767,7 @@ func TestCore_RenewToken_SingleRegister(t *testing.T) {
 	req.Data = map[string]interface{}{
 		"token": newClient,
 	}
-	_, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2775,7 +2775,7 @@ func TestCore_RenewToken_SingleRegister(t *testing.T) {
 	// Revoke using the renew prefix
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/revoke-prefix/auth/token/renew/")
 	req.ClientToken = root
-	_, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2786,7 +2786,7 @@ func TestCore_RenewToken_SingleRegister(t *testing.T) {
 		"token": newClient,
 	}
 	req.ClientToken = newClient
-	resp, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2824,7 +2824,7 @@ path "secret/*" {
 
 	ps := c.policyStore
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, secretWritingPolicy)
-	if err := ps.SetPolicy(namespace.RootContext(context.TODO()), policy, nil); err != nil {
+	if err := ps.SetPolicy(namespace.RootContext(t.Context()), policy, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2832,7 +2832,7 @@ path "secret/*" {
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/auth/foo")
 	req.Data["type"] = "noop"
 	req.ClientToken = root
-	_, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2841,7 +2841,7 @@ path "secret/*" {
 	lreq := &logical.Request{
 		Path: "auth/foo/login",
 	}
-	lresp, err := c.HandleRequest(namespace.RootContext(context.TODO()), lreq)
+	lresp, err := c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err == nil || lresp == nil || !lresp.IsError() {
 		t.Fatal("expected error trying to auth and receive root policy")
 	}
@@ -2851,7 +2851,7 @@ path "secret/*" {
 	lreq = &logical.Request{
 		Path: "auth/foo/login",
 	}
-	lresp, err = c.HandleRequest(namespace.RootContext(context.TODO()), lreq)
+	lresp, err = c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2866,7 +2866,7 @@ path "secret/*" {
 		},
 		ClientToken: lresp.Auth.ClientToken,
 	}
-	resp, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2877,11 +2877,11 @@ path "secret/*" {
 	// Read the key
 	req.Operation = logical.ReadOperation
 	req.Data = nil
-	err = c.PopulateTokenEntry(namespace.RootContext(context.TODO()), req)
+	err = c.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	resp, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2895,7 +2895,7 @@ path "secret/*" {
 		"lease_id": resp.Secret.LeaseID,
 	}
 	req.ClientToken = lresp.Auth.ClientToken
-	_, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2903,7 +2903,7 @@ path "secret/*" {
 	// Disable the credential backend
 	req = logical.TestRequest(t, logical.DeleteOperation, "sys/auth/foo")
 	req.ClientToken = root
-	resp, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v %#v", err, resp)
 	}
@@ -2923,7 +2923,7 @@ func TestCore_HandleRequest_MountPointType(t *testing.T) {
 	req.Data["type"] = "noop"
 	req.Data["description"] = "foo"
 	req.ClientToken = root
-	_, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2935,7 +2935,7 @@ func TestCore_HandleRequest_MountPointType(t *testing.T) {
 		Connection: &logical.Connection{},
 	}
 	req.ClientToken = root
-	if _, err := c.HandleRequest(namespace.RootContext(context.TODO()), req); err != nil {
+	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -3007,7 +3007,7 @@ func TestCore_Standby_Rotate(t *testing.T) {
 		Path:        "sys/rotate",
 		ClientToken: root,
 	}
-	_, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -3027,7 +3027,7 @@ func TestCore_Standby_Rotate(t *testing.T) {
 		Path:        "sys/key-status",
 		ClientToken: root,
 	}
-	resp, err := core2.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := core2.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -3054,7 +3054,7 @@ func TestCore_HandleRequest_Headers(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/mounts/foo")
 	req.Data["type"] = "noop"
 	req.ClientToken = root
-	_, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -3063,7 +3063,7 @@ func TestCore_HandleRequest_Headers(t *testing.T) {
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/mounts/foo/tune")
 	req.Data["passthrough_request_headers"] = []string{"Should-Passthrough", "should-passthrough-case-insensitive"}
 	req.ClientToken = root
-	_, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -3080,7 +3080,7 @@ func TestCore_HandleRequest_Headers(t *testing.T) {
 			consts.AuthHeaderName:                 {"nope"},
 		},
 	}
-	_, err = c.HandleRequest(namespace.RootContext(context.TODO()), lreq)
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -3132,7 +3132,7 @@ func TestCore_HandleRequest_Headers_denyList(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/mounts/foo")
 	req.Data["type"] = "noop"
 	req.ClientToken = root
-	_, err := c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -3141,7 +3141,7 @@ func TestCore_HandleRequest_Headers_denyList(t *testing.T) {
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/mounts/foo/tune")
 	req.Data["passthrough_request_headers"] = []string{"Authorization", consts.AuthHeaderName}
 	req.ClientToken = root
-	_, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -3155,7 +3155,7 @@ func TestCore_HandleRequest_Headers_denyList(t *testing.T) {
 			consts.AuthHeaderName: {"foo"},
 		},
 	}
-	_, err = c.HandleRequest(namespace.RootContext(context.TODO()), lreq)
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -3178,7 +3178,7 @@ func TestCore_HandleRequest_TokenCreate_RegisterAuthFailure(t *testing.T) {
 		"policies": []string{"root"},
 	}
 	req.ClientToken = root
-	resp, err := core.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3190,7 +3190,7 @@ func TestCore_HandleRequest_TokenCreate_RegisterAuthFailure(t *testing.T) {
 	// Use new token to create yet a new token, this should succeed
 	req = logical.TestRequest(t, logical.CreateOperation, "auth/token/create")
 	req.ClientToken = tokenWithRootPolicy
-	_, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3201,7 +3201,7 @@ func TestCore_HandleRequest_TokenCreate_RegisterAuthFailure(t *testing.T) {
 	core.expiration.testRegisterAuthFailure.Store(true)
 	req = logical.TestRequest(t, logical.CreateOperation, "auth/token/create")
 	req.ClientToken = tokenWithRootPolicy
-	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err == nil {
 		t.Fatalf("expected error, got a response: %#v", resp)
 	}
@@ -3214,7 +3214,7 @@ func TestCore_HandleRequest_TokenCreate_RegisterAuthFailure(t *testing.T) {
 		"token": tokenWithRootPolicy,
 	}
 	req.ClientToken = root
-	_, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3223,7 +3223,7 @@ func TestCore_HandleRequest_TokenCreate_RegisterAuthFailure(t *testing.T) {
 	// valid, should succeed.
 	req = logical.TestRequest(t, logical.CreateOperation, "auth/token/create")
 	req.ClientToken = tokenWithRootPolicy
-	_, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal(err)
 	}

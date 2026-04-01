@@ -4,7 +4,6 @@
 package framework
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -16,7 +15,7 @@ func TestPolicyMap(t *testing.T) {
 	p.Name = "foo"
 	s := new(logical.InmemStorage)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	p.Put(ctx, s, "foo", map[string]interface{}{"value": "bar"})
 	p.Put(ctx, s, "bar", map[string]interface{}{"value": "foo,baz "})

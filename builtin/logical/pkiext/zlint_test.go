@@ -4,7 +4,6 @@
 package pkiext
 
 import (
-	"context"
 	"encoding/json"
 	"sync"
 	"testing"
@@ -49,7 +48,7 @@ RUN go install github.com/zmap/zlint/v3/cmd/zlint@latest
 		t.Fatalf("Could not provision docker service runner: %s", err)
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	output, err := zRunner.BuildImage(ctx, containerfile, bCtx,
 		docker.BuildRemove(true), docker.BuildForceRemove(true),
 		docker.BuildPullParent(true),
@@ -66,7 +65,7 @@ func RunZLintContainer(t *testing.T, certificate string) []byte {
 		buildZLintContainer(t)
 	})
 
-	ctx := context.Background()
+	ctx := t.Context()
 	// We don't actually care about the address, we just want to start the
 	// container so we can run commands in it. We'd ideally like to skip this
 	// step and only build a new image, but the zlint output would be
@@ -100,7 +99,7 @@ func RunZLintContainer(t *testing.T, certificate string) []byte {
 	}
 
 	// Clean up after ourselves.
-	if err := zRunner.Stop(context.Background(), result.Container.ID); err != nil {
+	if err := zRunner.Stop(t.Context(), result.Container.ID); err != nil {
 		t.Fatalf("failed to stop container: %v", err)
 	}
 

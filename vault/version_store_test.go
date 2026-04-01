@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -20,7 +19,7 @@ func TestVersionStore_StoreMultipleVaultVersions(t *testing.T) {
 		Version:            version.Version,
 		TimestampInstalled: upgradeTimePlusEpsilon.Add(30 * time.Hour),
 	}
-	wasStored, err := c.storeVersionEntry(context.Background(), vaultVersion, false)
+	wasStored, err := c.storeVersionEntry(t.Context(), vaultVersion, false)
 	if err != nil || wasStored {
 		t.Fatalf("vault version was re-stored: %v, err is: %s", wasStored, err.Error())
 	}
@@ -46,7 +45,7 @@ func TestVersionStore_GetOldestVersion(t *testing.T) {
 	}
 
 	for _, entry := range versionEntries {
-		_, err := c.storeVersionEntry(context.Background(), &entry, false)
+		_, err := c.storeVersionEntry(t.Context(), &entry, false)
 		if err != nil {
 			t.Fatalf("failed to write version entry %#v, err: %s", entry, err.Error())
 		}
@@ -85,7 +84,7 @@ func TestVersionStore_GetNewestVersion(t *testing.T) {
 	}
 
 	for _, entry := range versionEntries {
-		_, err := c.storeVersionEntry(context.Background(), &entry, false)
+		_, err := c.storeVersionEntry(t.Context(), &entry, false)
 		if err != nil {
 			t.Fatalf("failed to write version entry %#v, err: %s", entry, err.Error())
 		}
@@ -126,7 +125,7 @@ func TestVersionStore_SelfHealUTC(t *testing.T) {
 	}
 
 	for _, entry := range versionEntries {
-		_, err := c.storeVersionEntry(context.Background(), &entry, false)
+		_, err := c.storeVersionEntry(t.Context(), &entry, false)
 		if err != nil {
 			t.Fatalf("failed to write version entry %#v, err: %s", entry, err.Error())
 		}

@@ -102,7 +102,7 @@ func pathKeys(b *backend) *framework.Path {
 			"period": {
 				Type:        framework.TypeDurationSecond,
 				Default:     30,
-				Description: `The length of time used to generate a counter for the TOTP token calculation.`,
+				Description: `The duration used to generate a counter for the TOTP token calculation.`,
 			},
 
 			"algorithm": {
@@ -469,5 +469,4 @@ Manage the keys that can be created with this backend.
 
 const pathKeyHelpDesc = `
 This path lets you manage the keys that can be created with this backend.
-
 `

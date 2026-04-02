@@ -97,7 +97,7 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 	// create 10 backends
 	// when a rollback happens, each backend will try to write to an unbuffered
 	// channel, then wait to be released
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		b := &be.Noop{}
 		b.RequestHandler = func(ctx context.Context, request *logical.Request) (*logical.Response, error) {
 			if request.Operation == logical.RollbackOperation {
@@ -180,7 +180,7 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 	// create 10 backends
 	// when a rollback happens, each backend will try to write to an unbuffered
 	// channel, then wait to be released
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		b := &be.Noop{}
 		b.RequestHandler = func(ctx context.Context, request *logical.Request) (*logical.Response, error) {
 			if request.Operation == logical.RollbackOperation {

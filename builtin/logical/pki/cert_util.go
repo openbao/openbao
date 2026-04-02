@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -310,22 +311,16 @@ func validateCommonName(b *backend, data *inputBundle, name string) string {
 	// Otherwise, ensure hostname is allowed.
 	if strings.Contains(name, "@") {
 		var allowsEmails bool
-		for _, validation := range data.role.CNValidations {
-			if validation == "email" {
-				allowsEmails = true
-				break
-			}
+		if slices.Contains(data.role.CNValidations, "email") {
+			allowsEmails = true
 		}
 		if !allowsEmails {
 			return name
 		}
 	} else {
 		var allowsHostnames bool
-		for _, validation := range data.role.CNValidations {
-			if validation == "hostname" {
-				allowsHostnames = true
-				break
-			}
+		if slices.Contains(data.role.CNValidations, "hostname") {
+			allowsHostnames = true
 		}
 		if !allowsHostnames {
 			return name

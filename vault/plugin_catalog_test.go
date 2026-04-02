@@ -582,7 +582,7 @@ func TestPluginCatalog_MakeExternalPluginsKey_Comparable(t *testing.T) {
 	hasher := sha256.New()
 	hasher.Write([]byte("Some random input"))
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		plugins = append(plugins, pluginutil.PluginRunner{
 			Name:    "Name",
 			Type:    consts.PluginTypeDatabase,

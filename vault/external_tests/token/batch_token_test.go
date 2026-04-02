@@ -180,7 +180,7 @@ path "kv/*" {
 	leaseID := resp.LeaseID
 
 	lastDuration := resp.LeaseDuration
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		time.Sleep(time.Second)
 		resp, err = client.Sys().Renew(leaseID, 0)
 		if err != nil {

@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -156,9 +157,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, data *fra
 
 	// Add metadata from allowed_metadata_extensions when present,
 	// with sanitized oids (dash-separated instead of dot-separated) as keys.
-	for k, v := range b.certificateExtensionsMetadata(clientCerts[0], matched) {
-		metadata[k] = v
-	}
+	maps.Copy(metadata, b.certificateExtensionsMetadata(clientCerts[0], matched))
 
 	auth := &logical.Auth{
 		InternalData: map[string]interface{}{

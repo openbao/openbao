@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
 	"path"
 	"slices"
 	"strings"
@@ -1209,9 +1210,7 @@ func (c *Core) newCredentialBackend(ctx context.Context, entry *routing.MountEnt
 	}
 	// Set up conf to pass in plugin_name
 	conf := make(map[string]string)
-	for k, v := range entry.Options {
-		conf[k] = v
-	}
+	maps.Copy(conf, entry.Options)
 
 	switch entry.Type {
 	case "plugin":

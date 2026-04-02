@@ -209,7 +209,6 @@ func TestPredictVaultPaths(t *testing.T) {
 
 	t.Run("group", func(t *testing.T) {
 		for _, tc := range cases {
-			tc := tc
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -263,7 +262,6 @@ func TestPredict_Audits(t *testing.T) {
 
 	t.Run("group", func(t *testing.T) {
 		for _, tc := range cases {
-			tc := tc
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -307,7 +305,6 @@ func TestPredict_Mounts(t *testing.T) {
 
 	t.Run("group", func(t *testing.T) {
 		for _, tc := range cases {
-			tc := tc
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -377,7 +374,6 @@ func TestPredict_Plugins(t *testing.T) {
 
 	t.Run("group", func(t *testing.T) {
 		for _, tc := range cases {
-			tc := tc
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -446,7 +442,6 @@ func TestPredict_Policies(t *testing.T) {
 
 	t.Run("group", func(t *testing.T) {
 		for _, tc := range cases {
-			tc := tc
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -519,7 +514,6 @@ func TestPredict_Paths(t *testing.T) {
 
 	t.Run("group", func(t *testing.T) {
 		for _, tc := range cases {
-			tc := tc
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -594,7 +588,6 @@ func TestPredict_PathsKVv2(t *testing.T) {
 
 	t.Run("group", func(t *testing.T) {
 		for _, tc := range cases {
-			tc := tc
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -655,7 +648,6 @@ func TestPredict_ListPaths(t *testing.T) {
 
 	t.Run("group", func(t *testing.T) {
 		for _, tc := range cases {
-			tc := tc
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -707,7 +699,6 @@ func TestPredict_HasPathArg(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

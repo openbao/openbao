@@ -6,6 +6,7 @@ package influxdb
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"reflect"
@@ -214,9 +215,7 @@ func makeConfig(rootConfig map[string]interface{}, keyValues ...interface{}) map
 
 	// Make a copy of the map so there isn't a chance of test bleedover between maps
 	config := make(map[string]interface{}, len(rootConfig)+(len(keyValues)/2))
-	for k, v := range rootConfig {
-		config[k] = v
-	}
+	maps.Copy(config, rootConfig)
 	for i := 0; i < len(keyValues); i += 2 {
 		k := keyValues[i].(string) // Will panic if the key field isn't a string and that's fine in a test
 		v := keyValues[i+1]

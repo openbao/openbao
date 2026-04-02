@@ -389,7 +389,7 @@ func TestVersionedKV_Data_Put_CleanupOldVersions(t *testing.T) {
 	b, storage := getBackend(t)
 
 	// Write 10 versions
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		data := map[string]interface{}{
 			"data": map[string]interface{}{
 				"bar": "baz",
@@ -477,7 +477,7 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions(t *testing.T) {
 	b, storage := getBackend(t)
 
 	// Write 10 versions
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		data := map[string]interface{}{
 			"data": map[string]interface{}{
 				"bar": "baz",
@@ -571,7 +571,7 @@ func TestVersionedKV_Reload_Policy(t *testing.T) {
 	}
 
 	// Write 10 versions
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 
 		req := &logical.Request{
 			Operation: logical.CreateOperation,
@@ -599,7 +599,7 @@ func TestVersionedKV_Reload_Policy(t *testing.T) {
 	}
 
 	// Read values back out
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		req := &logical.Request{
 			Operation: logical.ReadOperation,
 			Path:      fmt.Sprintf("data/%d", i),

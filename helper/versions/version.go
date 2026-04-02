@@ -6,6 +6,7 @@ package versions
 import (
 	"fmt"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"sync"
 
@@ -71,11 +72,5 @@ func IsBuiltinVersion(v string) bool {
 	}
 
 	metadataIdentifiers := strings.Split(semanticVersion.Metadata(), ".")
-	for _, identifier := range metadataIdentifiers {
-		if identifier == BuiltinMetadata {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(metadataIdentifiers, BuiltinMetadata)
 }

@@ -999,7 +999,6 @@ func TestFieldDataGet(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		name, tc := name, tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			data := &FieldData{
@@ -1117,7 +1116,6 @@ func TestFieldDataGet_Error(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		name, tc := name, tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			data := &FieldData{
@@ -1256,7 +1254,6 @@ func TestValidateStrict(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		name, tc := name, tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

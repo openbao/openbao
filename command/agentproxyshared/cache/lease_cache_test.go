@@ -549,7 +549,7 @@ func TestLeaseCache_Concurrent_NonCacheable(t *testing.T) {
 	go func() {
 		var wg sync.WaitGroup
 		// 100 concurrent requests
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			wg.Add(1)
 
 			go func() {
@@ -601,7 +601,7 @@ func TestLeaseCache_Concurrent_Cacheable(t *testing.T) {
 	go func() {
 		var wg sync.WaitGroup
 		// Start 100 concurrent requests
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			wg.Add(1)
 
 			go func() {

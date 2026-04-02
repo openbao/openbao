@@ -86,7 +86,6 @@ func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 		{"-1h", "0h", 0},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("ds1=%v,ds2=%v", tt.ds1, tt.ds2), func(t *testing.T) {
 			t.Parallel()
 

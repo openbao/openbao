@@ -272,7 +272,7 @@ func BenchmarkEncrytedKeyStorage_List(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		err = es.Wrap(s).Put(ctx, &logical.StorageEntry{
 			Key:   fmt.Sprintf("test/%d", i),
 			Value: []byte("test"),

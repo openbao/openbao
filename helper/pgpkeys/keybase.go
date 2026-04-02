@@ -36,8 +36,8 @@ func FetchKeybasePubkeys(input []string) (map[string]string, error) {
 
 	usernames := make([]string, 0, len(input))
 	for _, v := range input {
-		if strings.HasPrefix(v, kbPrefix) {
-			usernames = append(usernames, strings.TrimPrefix(v, kbPrefix))
+		if after, ok := strings.CutPrefix(v, kbPrefix); ok {
+			usernames = append(usernames, after)
 		}
 	}
 

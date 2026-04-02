@@ -189,7 +189,7 @@ func TestStoragePacker_DeleteMultiple(t *testing.T) {
 	ctx := t.Context()
 
 	// Persist a storage entry
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		item := &Item{
 			ID: fmt.Sprintf("item%d", i),
 		}
@@ -224,7 +224,7 @@ func TestStoragePacker_DeleteMultiple(t *testing.T) {
 	}
 
 	// Check that the deletion was successful
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		fetchedItem, err := storagePacker.GetItem(fmt.Sprintf("item%d", i))
 		if err != nil {
 			t.Fatal(err)
@@ -249,7 +249,7 @@ func TestStoragePacker_DeleteMultiple_ALL(t *testing.T) {
 
 	// Persist a storage entry
 	itemsToDelete := make([]string, 0, 10000)
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		item := &Item{
 			ID: fmt.Sprintf("item%d", i),
 		}

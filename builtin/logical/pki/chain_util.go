@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
@@ -67,13 +68,7 @@ func (sc *storageContext) rebuildIssuersChains(referenceCert *issuerEntry /* opt
 	// Our provided reference cert might not be in the list of issuers. In
 	// that case, add it manually.
 	if referenceCert != nil {
-		missing := true
-		for _, issuer := range issuers {
-			if issuer == referenceCert.ID {
-				missing = false
-				break
-			}
-		}
+		missing := !slices.Contains(issuers, referenceCert.ID)
 
 		if missing {
 			issuers = append(issuers, referenceCert.ID)
@@ -658,13 +653,7 @@ func processAnyCliqueOrCycle(
 			// the nodes of whatever grouping
 			foundNode := false
 			for _, clique := range cliques {
-				inClique := false
-				for _, cliqueNode := range clique {
-					if cliqueNode == node {
-						inClique = true
-						break
-					}
-				}
+				inClique := slices.Contains(clique, node)
 
 				if inClique {
 					foundNode = true
@@ -962,13 +951,7 @@ func containsIssuer(collection []issuerID, target issuerID) bool {
 		return false
 	}
 
-	for _, needle := range collection {
-		if needle == target {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(collection, target)
 }
 
 func appendCycleIfNotExisting(knownCycles [][]issuerID, candidate []issuerID) [][]issuerID {
@@ -1147,13 +1130,7 @@ func findAllCyclesWithNode(
 				continue
 			}
 
-			skipNode := false
-			for _, excluded := range exclude {
-				if excluded == child {
-					skipNode = true
-					break
-				}
-			}
+			skipNode := slices.Contains(exclude, child)
 
 			if skipNode {
 				continue
@@ -1187,13 +1164,7 @@ func findAllCyclesWithNode(
 					// We only care about source->source cycles. If this
 					// cycles, but isn't a source->source cycle, don't add
 					// this path.
-					foundSelf := false
-					for _, node := range path {
-						if child == node {
-							foundSelf = true
-							break
-						}
-					}
+					foundSelf := slices.Contains(path, child)
 					if foundSelf {
 						// Skip this path.
 						continue

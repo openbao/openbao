@@ -6,6 +6,7 @@ package integrationtest
 import (
 	"context"
 	"fmt"
+	maps0 "maps"
 	"math/rand"
 	"os"
 	"strings"
@@ -405,9 +406,7 @@ func testK8sTokenAudiences(t *testing.T, expectedAudiences []interface{}, token 
 func combineMaps(maps ...map[string]string) map[string]string {
 	newMap := make(map[string]string)
 	for _, m := range maps {
-		for k, v := range m {
-			newMap[k] = v
-		}
+		maps0.Copy(newMap, m)
 	}
 	return newMap
 }

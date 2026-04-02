@@ -622,7 +622,7 @@ func TestVersionedKv_Metadata_Put_Too_Many_CustomMetadata_Keys(t *testing.T) {
 
 	customMetadata := map[string]string{}
 
-	for i := 0; i < maxCustomMetadataKeys+1; i++ {
+	for i := range maxCustomMetadataKeys + 1 {
 		k := fmt.Sprint(i)
 		customMetadata[k] = k
 	}

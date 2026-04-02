@@ -555,7 +555,7 @@ func TestTokenStore_RevocationOnStartup(t *testing.T) {
 	var err error
 	var tokens []string
 	// Create tokens
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		secret, err = client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		})

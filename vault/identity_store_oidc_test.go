@@ -1085,7 +1085,6 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 	}
 
 	for _, testSet := range testSets {
-		testSet := testSet
 		t.Run(testSet.namedKey.Name, func(t *testing.T) {
 			t.Parallel()
 

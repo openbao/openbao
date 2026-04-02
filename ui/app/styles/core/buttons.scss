@@ -2,7 +2,7 @@
  * Copyright (c) HashiCorp, Inc.
  * SPDX-License-Identifier: MPL-2.0
  */
-@use "sass:color";
+@use 'sass:color';
 
 .button {
   align-items: center;
@@ -22,7 +22,11 @@
   position: relative;
   text-align: center;
   text-decoration: none;
-  transition: background-color $speed, border-color $speed, box-shadow $speed, color $speed;
+  transition:
+    background-color $speed,
+    border-color $speed,
+    box-shadow $speed,
+    color $speed;
   user-select: none;
   vertical-align: middle;
   white-space: nowrap;

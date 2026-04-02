@@ -4,7 +4,6 @@
 package jwtauth
 
 import (
-	"context"
 	"net/url"
 	"os"
 	"path"
@@ -31,7 +30,7 @@ func TestKubernetesProviderWithOIDCDiscovery(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -78,7 +77,7 @@ func TestKubernetesProviderWithJWKSURL(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -127,7 +126,7 @@ func TestKubernetesProviderWithInvalidConfig(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.True(t, resp.IsError())
 
@@ -145,7 +144,7 @@ func TestKubernetesProviderWithInvalidConfig(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.True(t, resp.IsError())
 }
@@ -169,7 +168,7 @@ func TestKubernetesProviderWithInvalidTokenFile(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.True(t, resp.IsError())
 }
@@ -193,7 +192,7 @@ func TestKubernetesProviderWithInvalidCACertFile(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.True(t, resp.IsError())
 }
@@ -248,7 +247,7 @@ func createRole(t *testing.T, b logical.Backend, s logical.Storage) {
 		Storage:   s,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 }
@@ -265,7 +264,7 @@ func login(t *testing.T, b logical.Backend, s logical.Storage, jwt string) {
 			"jwt":  jwt,
 		},
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 }

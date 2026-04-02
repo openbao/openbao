@@ -4308,7 +4308,7 @@ func (ts *TokenStore) resolveTokenPolicies(ctx context.Context, req *logical.Req
 	// We are creating a token from a parent namespace. We should only use the input
 	// policies.
 	case ns.ID != parent.NamespaceID:
-		addDefault = !noDefaultPolicy
+		addDefault = true
 
 	// No policies specified, inherit parent
 	case len(policies) == 0:
@@ -4328,22 +4328,22 @@ func (ts *TokenStore) resolveTokenPolicies(ctx context.Context, req *logical.Req
 			return logical.ErrorResponse("child policies must be subset of parent"), nil, logical.ErrInvalidRequest
 		}
 
-		// If the parent has default, and they haven't requested not to get it,
-		// add it. Note that if they have explicitly put "default" in
-		// data.Policies it will still be added because NoDefaultPolicy
-		// controls *automatic* adding.
-		if !noDefaultPolicy && slices.Contains(parent.Policies, "default") {
+		// If the parent has default, add it automatically unless the client
+		// explicitly opted out via no_default_policy. Note that if they have
+		// explicitly put "default" in data.Policies it will still be stripped
+		// below because NoDefaultPolicy controls *automatic* adding.
+		if slices.Contains(parent.Policies, "default") {
 			addDefault = true
 		}
 
-	// Add default by default in this case unless requested not to
+	// Add default unless explicitly requested not to
 	case isSudo:
-		addDefault = !noDefaultPolicy
+		addDefault = true
 	}
 
-	finalPolicies := policyutil.SanitizePolicies(policies, addDefault)
-
-	// Yes, this is a little inefficient to do it like this, but meh
+	// Apply no_default_policy as a single gate: suppress automatic addition and
+	// strip any "default" that arrived via inheritance or explicit input.
+	finalPolicies := policyutil.SanitizePolicies(policies, addDefault && !noDefaultPolicy)
 	if noDefaultPolicy {
 		finalPolicies = strutil.StrListDelete(finalPolicies, "default")
 	}

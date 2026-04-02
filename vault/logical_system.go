@@ -1856,11 +1856,15 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 	}
 
-	var err error
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return handleError(err)
+	}
+
 	if isAuth {
-		err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+		err = b.Core.persistAuth(ctx, b.Core.NamespaceView(ns), b.Core.auth, &mountEntry.Local, mountEntry.UUID)
 	} else {
-		err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+		err = b.Core.persistMounts(ctx, b.Core.NamespaceView(ns), b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
 	}
 
 	if err != nil {

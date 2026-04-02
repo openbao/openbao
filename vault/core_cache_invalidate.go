@@ -480,12 +480,11 @@ func (ij *invalidationJob) auditInvalidation(ctx context.Context) error {
 }
 
 func (ij *invalidationJob) legacyMountInvalidation(ctx context.Context) error {
-	if ij.nsUUID != namespace.RootNamespaceUUID {
-		ij.im.dispacherLogger.Warn("skipping invalidating legacy mount table in non-root namespace", "ns", ij.nsUUID, "key", ij.nsKey)
-		return nil
+	if err := ij.im.core.reloadLegacyMounts(ctx, ij.nsKey); err != nil {
+		return fmt.Errorf("unable to invalidate legacy mount for key %q in namespace %q: %w", ij.nsKey, ij.nsUUID, err)
 	}
 
-	return ij.im.core.reloadLegacyMounts(ctx, ij.nsKey)
+	return nil
 }
 
 func (ij *invalidationJob) transactionalMountInvalidation(ctx context.Context) error {

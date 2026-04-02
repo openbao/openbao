@@ -40,7 +40,8 @@ You will need the following things properly installed on your computer.
 * [Ember CLI](https://cli.emberjs.com/release/)
 * [Google Chrome](https://google.com/chrome/)
 
-In order to enforce the same version of `pnpm` across installs, enable Corepack and set the `packageManager` field in `package.json`. To update to a different version of `pnpm`, run `corepack prepare pnpm@VERSION --activate` and update the `packageManager` field. For more information, see the [pnpm documentation on version pinning](https://pnpm.io/next/faq#how-to-enforce-pnpm-version-in-a-project).
+Note: pnpm could be installed via npm as
+`npm i -g pnpm@10.33.0` for the specific version
 
 ## Running a Vault Server
 

@@ -335,7 +335,7 @@ func TestCore_Mount_Local(t *testing.T) {
 	}
 
 	c.mounts.Entries[1].Local = true
-	if err := c.persistMounts(t.Context(), nil, c.mounts, nil, ""); err != nil {
+	if err := c.persistMounts(t.Context(), c.barrier, c.mounts, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1105,19 +1105,19 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	// Now try saving invalid versions
 	origTableType := mt.Type
 	mt.Type = "foo"
-	if err := persistFunc(t.Context(), nil, mt, nil, ""); err == nil {
+	if err := persistFunc(t.Context(), c.barrier, mt, nil, ""); err == nil {
 		t.Fatal("expected error")
 	}
 
 	if len(mt.Entries) > 0 {
 		mt.Type = origTableType
 		mt.Entries[0].Table = "bar"
-		if err := persistFunc(t.Context(), nil, mt, nil, ""); err == nil {
+		if err := persistFunc(t.Context(), c.barrier, mt, nil, ""); err == nil {
 			t.Fatal("expected error")
 		}
 
 		mt.Entries[0].Table = mt.Type
-		if err := persistFunc(t.Context(), nil, mt, nil, ""); err != nil {
+		if err := persistFunc(t.Context(), c.barrier, mt, nil, ""); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -1278,7 +1278,9 @@ func TestCore_MountEntryView(t *testing.T) {
 		{
 			name: "entry without type nor table type leading to error",
 			mountEntry: &routing.MountEntry{
-				UUID: testMountEntryUUID,
+				UUID:        testMountEntryUUID,
+				NamespaceID: namespace.RootNamespaceID,
+				Namespace:   namespace.RootNamespace,
 			},
 
 			wantError: true,
@@ -1286,8 +1288,10 @@ func TestCore_MountEntryView(t *testing.T) {
 		{
 			name: "entry of 'system' mount type",
 			mountEntry: &routing.MountEntry{
-				UUID: testMountEntryUUID,
-				Type: routing.MountTypeSystem,
+				UUID:        testMountEntryUUID,
+				Type:        routing.MountTypeSystem,
+				NamespaceID: namespace.RootNamespaceID,
+				Namespace:   namespace.RootNamespace,
 			},
 
 			wantViewPrefix: systemBarrierPrefix,
@@ -1295,8 +1299,10 @@ func TestCore_MountEntryView(t *testing.T) {
 		{
 			name: "entry of 'token' mount type",
 			mountEntry: &routing.MountEntry{
-				UUID: testMountEntryUUID,
-				Type: routing.MountTypeToken,
+				UUID:        testMountEntryUUID,
+				Type:        routing.MountTypeToken,
+				NamespaceID: namespace.RootNamespaceID,
+				Namespace:   namespace.RootNamespace,
 			},
 
 			wantViewPrefix: systemBarrierPrefix + tokenSubPath,
@@ -1304,9 +1310,11 @@ func TestCore_MountEntryView(t *testing.T) {
 		{
 			name: "entry of 'credential' table type",
 			mountEntry: &routing.MountEntry{
-				UUID:  testMountEntryUUID,
-				Type:  "approle",
-				Table: routing.CredentialTableType,
+				UUID:        testMountEntryUUID,
+				Type:        "approle",
+				Table:       routing.CredentialTableType,
+				NamespaceID: namespace.RootNamespaceID,
+				Namespace:   namespace.RootNamespace,
 			},
 
 			wantViewPrefix: barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
@@ -1314,8 +1322,10 @@ func TestCore_MountEntryView(t *testing.T) {
 		{
 			name: "entry of 'audit' table type",
 			mountEntry: &routing.MountEntry{
-				UUID:  testMountEntryUUID,
-				Table: auditTableType,
+				UUID:        testMountEntryUUID,
+				Table:       auditTableType,
+				NamespaceID: namespace.RootNamespaceID,
+				Namespace:   namespace.RootNamespace,
 			},
 
 			wantViewPrefix: auditBarrierPrefix + testMountEntryUUID + "/",
@@ -1323,9 +1333,11 @@ func TestCore_MountEntryView(t *testing.T) {
 		{
 			name: "entry of 'mount' table type and 'identity' type",
 			mountEntry: &routing.MountEntry{
-				UUID:  testMountEntryUUID,
-				Table: routing.MountTableType,
-				Type:  routing.MountTypeIdentity,
+				UUID:        testMountEntryUUID,
+				Table:       routing.MountTableType,
+				Type:        routing.MountTypeIdentity,
+				NamespaceID: namespace.RootNamespaceID,
+				Namespace:   namespace.RootNamespace,
 			},
 
 			wantViewPrefix: backendBarrierPrefix + testMountEntryUUID + "/",
@@ -1380,16 +1392,6 @@ func TestCore_MountEntryView(t *testing.T) {
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
-			name: "entry of 'mount' table, and 'kv' type without namespace present",
-			mountEntry: &routing.MountEntry{
-				UUID:  testMountEntryUUID,
-				Table: routing.MountTableType,
-				Type:  routing.MountTypeKV,
-			},
-
-			wantViewPrefix: backendBarrierPrefix + testMountEntryUUID + "/",
-		},
-		{
 			name: "entry of 'auth' table, and 'userpass' type with namespace present",
 			mountEntry: &routing.MountEntry{
 				UUID:        testMountEntryUUID,
@@ -1412,16 +1414,6 @@ func TestCore_MountEntryView(t *testing.T) {
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
-		},
-		{
-			name: "entry of 'auth' table, and 'userpass' type without namespace present",
-			mountEntry: &routing.MountEntry{
-				UUID:  testMountEntryUUID,
-				Table: routing.CredentialTableType,
-				Type:  "userpass",
-			},
-
-			wantViewPrefix: barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 	}
 

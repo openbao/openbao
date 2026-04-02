@@ -369,7 +369,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	}
 
 	c.auth.Entries[1].Local = true
-	if err := c.persistAuth(t.Context(), nil, c.auth, nil, ""); err != nil {
+	if err := c.persistAuth(t.Context(), c.barrier, c.auth, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -837,11 +837,12 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 func TestCore_RemountCredential_Namespaces(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
 	rootCtx := namespace.RootContext(t.Context())
-	ns1 := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
+	ns1 := &namespace.Namespace{Path: "ns1/"}
+	ns2 := &namespace.Namespace{Path: "ns1/ns2/"}
+	ns3 := &namespace.Namespace{Path: "ns1/ns3/"}
+	TestCoreCreateNamespaces(t, c, ns1, ns2, ns3)
 	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
-	ns2 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns2", nil)
 	ns2Ctx := namespace.ContextWithNamespace(rootCtx, ns2)
-	ns3 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns3", nil)
 	ns3Ctx := namespace.ContextWithNamespace(rootCtx, ns3)
 
 	me := &routing.MountEntry{

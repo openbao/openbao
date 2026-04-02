@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import authPage from 'vault/tests/pages/auth';
 import logout from 'vault/tests/pages/logout';
 import enablePage from 'vault/tests/pages/settings/mount-secret-backend';
-import { click, currentURL, fillIn, settled, visit } from '@ember/test-helpers';
+import { click, currentURL, fillIn, settled, visit, waitFor } from '@ember/test-helpers';
 import { runCommands } from 'vault/tests/helpers/pki/pki-run-commands';
 import { SELECTORS } from 'vault/tests/helpers/pki/workflow';
 
@@ -263,13 +263,24 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     test('generate intermediate csr exit via cancel', async function (assert) {
       let actions;
       await authPage.login();
-      await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
       await click(SELECTORS.issuersTab);
       actions = this.store.peekAll('pki/action');
       assert.strictEqual(actions.length, 0, 'No actions exist yet');
-      // Wait for any automatic requests to complete
+      // Wait for generate dropdown to be present and visible
+      await waitFor(SELECTORS.generateIssuerDropdown, {
+        timeout: 10000,
+        visible: true,
+      });
+
       await click(SELECTORS.generateIssuerDropdown);
+
+      // Wait for intermediate option to be present and visible
+      await waitFor(SELECTORS.generateIssuerIntermediate, {
+        timeout: 5000,
+        visible: true,
+      });
+
       await click(SELECTORS.generateIssuerIntermediate);
       actions = this.store.peekAll('pki/action');
       assert.strictEqual(actions.length, 1, 'Action model for generate-csr created');
@@ -277,7 +288,13 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       assert.true(action.hasDirtyAttributes, 'Action has dirty attrs');
       assert.true(action.isNew, 'Action is new');
       assert.strictEqual(action.actionType, 'generate-csr');
-      // Exit
+
+      // Wait for cancel button and click
+      await waitFor('[data-test-cancel]', {
+        timeout: 5000,
+        visible: true,
+      });
+
       await click('[data-test-cancel]');
       assert.strictEqual(currentURL(), `/vault/secrets/${this.mountPath}/pki/issuers`);
       actions = this.store.peekAll('pki/action');

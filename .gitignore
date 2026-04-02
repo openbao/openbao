@@ -105,6 +105,7 @@ ui/libpeerconnection.log
 ui/npm-debug.log
 ui/test-reports/*
 ui/testem.log
+ui/pnpm-debug.log
 
 # used for JS acceptance tests
 ui/tests/helpers/vault-keys.js
@@ -117,6 +118,7 @@ node_modules
 website/.bundle
 website/build/
 website/npm-debug.log
+website/pnpm-debug.log
 website/vendor
 website/.bundle
 website/.cache

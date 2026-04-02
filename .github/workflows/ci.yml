@@ -107,27 +107,31 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/set-up-go
-      # Setup node.js without caching to allow running npm install -g yarn (next step)
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: "./ui/package.json"
-      - id: install-yarn
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          package_json_file: "./ui/package.json"
+          run_install: false
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
         run: |
-          npm install -g yarn
-      # Setup node.js with caching using the yarn.lock file
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+          echo "STORE_PATH=$(pnpm store path --dir ./ui)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
-          node-version-file: "./ui/package.json"
-          cache: yarn
-          cache-dependency-path: ui/yarn.lock
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('ui/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - id: install-browser
         uses: browser-actions/setup-chrome@4f8e94349a351df0f048634f25fec36c3c91eded # v2.1.1
       - id: ui-dependencies
         name: ui-dependencies
         working-directory: ./ui
         run: |
-          yarn install --frozen-lockfile
-          npm rebuild node-sass
+          pnpm install --frozen-lockfile
       - id: build-go-dev
         name: build-go-dev
         run: |
@@ -143,7 +147,7 @@ jobs:
           # Run Ember tests
           cd ui
           mkdir -p test-results/qunit
-          yarn test
+          pnpm test
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: test-results-ui

@@ -35,6 +35,7 @@ export default tseslint.config(
       '/bower_components/',
       '/node_modules/',
       '/.yarn/',
+      '/.pnpm/',
       '',
       // misc
       '/coverage/',

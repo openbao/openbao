@@ -170,5 +170,5 @@ anytime you push code to the `gh-pages` branch. To perform a manual deployment
 run the following command:
 
 ```console
-$ GIT_USER=<Your GitHub username> yarn deploy
+$ GIT_USER=<Your GitHub username> pnpm deploy
 ```

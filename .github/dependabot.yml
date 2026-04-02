@@ -34,7 +34,7 @@ updates:
       semver-patch-days: 7
       semver-minor-days: 14
       semver-major-days: 30
-    groups: 
+    groups:
       golang-x:
         patterns:
           - "golang.org/x/*"
@@ -57,7 +57,7 @@ updates:
       - pr/no-changelog
       - go
 
-  - package-ecosystem: "npm"
+  - package-ecosystem: "npm" #since pnpm is not supported here
     directory: "/website"
     schedule:
       interval: "weekly"

@@ -23,11 +23,7 @@
 <Toolbar>
   {{#if @filterRoles}}
     <ToolbarFilters>
-      <NavigateInput
-        @filter={{@rolesFilterValue}}
-        @placeholder="Filter roles"
-        @urls={{this.urls}}
-      />
+      <NavigateInput @filter={{@rolesFilterValue}} @placeholder="Filter roles" @urls={{this.urls}} />
     </ToolbarFilters>
   {{/if}}
   <ToolbarActions>

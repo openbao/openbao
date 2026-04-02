@@ -299,7 +299,7 @@ const PackageRepo = ({ type }) => {
 const DockerList = ({ version, registry }) => {
   const dockerVersion = version.slice(1);
 
-  // For example: v2.6.0, v2.5.0-beta20251125.
+  // For example: 2.6.0, 2.5.0-beta20251125.
   // Consider replacing with a more complete semver parser once required.
   const [major, minor, _patch] = dockerVersion
     .match(/^(\d+)\.(\d+)\.(\d+)/).slice(1).map(v => parseInt(v));

@@ -19,5 +19,5 @@ lint: bootstrap
 
 .PHONY: bootstrap
 bootstrap:
-	command -v npm || ( npm install -g pnpm )
+	npm install -g pnpm@$(PNPM_VERSION)
 	pnpm install -r

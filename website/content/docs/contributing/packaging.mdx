@@ -35,7 +35,7 @@ It may not be complete; feel free to extend it via GitHub pull request.
 
 ## Suggested dependencies
 
- - NodeJS, npm, and Yarn for building the UI.
+ - NodeJS, npm, and pnpm for building the UI.
  - Go toolchain for building.
 
 For version information, refer to our release process. The Go toolchain
@@ -49,14 +49,14 @@ To build a release version of the UI:
 # UI must be built from the UI directory.
 cd ui/
 
-# Install dependencies via yarn.
-yarn
+# Install dependencies via pnpm.
+pnpm i -r
 
 # Rebuild the node-sass dependency.
 npm rebuild node-sass
 
-# Perform the release build via yarn.
-yarn run build
+# Perform the release build via pnpm.
+pnpm run build
 ```
 
 This creates a directory, `/http/web_ui`, which contains the output of the

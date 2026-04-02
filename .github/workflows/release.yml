@@ -93,16 +93,24 @@ jobs:
         with:
           node-version-file: "./ui/package.json"
 
-      - name: Yarn setup
-        id: install-yarn
+      - name: pnpm setup
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          package_json_file: "./ui/package.json"
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
         run: |
-          npm install -g yarn
+          echo "STORE_PATH=$(pnpm store path --dir ./ui)" >> $GITHUB_OUTPUT
 
       - name: UI Cache Setup
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: |
             http/web_ui/
+            ${{ steps.pnpm-cache.outputs.STORE_PATH }}
           key: ${{ github.ref }}-ui
 
       # Before executing binary builds, build the UI.
@@ -110,8 +118,7 @@ jobs:
         id: ui-dependencies
         working-directory: ./ui
         run: |
-          yarn install --frozen-lockfile
-          npm rebuild node-sass
+          pnpm install --frozen-lockfile
 
       - name: Build UI
         id: ui-build
@@ -163,7 +170,7 @@ jobs:
         run: |
           version="$(git describe --tags --exclude "api/*" --exclude "sdk/*" --abbrev=0 | sed 's/^v//')"
           echo "version=$version" | tee -a "$GITHUB_OUTPUT"
-          tar --exclude .git --exclude '*.gz' --exclude '*/ui/.yarn/cache' --exclude node_modules -cJf ../openbao-dist-$version.tar.xz --xform="s,^\.,openbao-dist-$version," .
+          tar --exclude .git --exclude '*.gz' --exclude '*/ui/node_modules' --exclude '*/ui/.pnpm-store' -cJf ../openbao-dist-$version.tar.xz --xform="s,^\.,openbao-dist-$version," .
           mv ../*.xz .
 
       - name: Upload distribution source tarball artifact
@@ -237,12 +244,27 @@ jobs:
         if: inputs.dogorelease
         run: go version
 
+      - name: pnpm setup
+        if: inputs.dogorelease
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          package_json_file: "./ui/package.json"
+          run_install: false
+
+      - name: Get pnpm store directory
+        if: inputs.dogorelease
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --dir ./ui)" >> $GITHUB_OUTPUT
+
       - name: UI Cache Setup
         if: inputs.dogorelease
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: |
             http/web_ui/
+            ${{ steps.pnpm-cache.outputs.STORE_PATH }}
           key: ${{ github.ref }}-ui
 
       # Supports syft/sbom generation
@@ -341,7 +363,7 @@ jobs:
           path: 'dist/*.deb'
           retention-days: 1
           if-no-files-found: ignore
-      
+
       - name: Upload rpm packages artifact
         if: inputs.dorpmrelease
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -419,7 +441,7 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSWORD }}
-      
+
       - name: Install reprepro from debian experimental
         run: |
           sudo apt update && sudo apt install -y debian-archive-keyring
@@ -472,7 +494,7 @@ jobs:
         with:
           pattern: rpm-packages-*
           merge-multiple: true
-      
+
       - name: Install createrepo_c from debian trixie
         run: |
           sudo apt update && sudo apt install -y debian-archive-keyring
@@ -489,7 +511,7 @@ jobs:
             mv $pkg build/rpm/$ARCH/
             createrepo_c --update --recycle-pkglist --skip-stat --includepkg $(basename $pkg) build/rpm/$ARCH
           done < pkglist.txt
-      
+
       - name: Upload RPM repository
         run: |
           aws s3 sync build/rpm s3://${BUCKET}/rpm

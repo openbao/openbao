@@ -1,0 +1,26 @@
+{{#*inline}}{{name}}{{/inline}}
+{{>#docs}}
+{{#autolink}}{{longname}}{{/autolink}}
+{{/>docs}}
+
+{{#class}}
+# {{name}}
+
+{{>docs}}
+
+## Usage
+
+{{#raw}}
+<{{name}}></{{name}}>
+{{/raw}}
+
+## Props
+
+| Name | Type | Description |
+|------|------|-------------|
+{{#members}}
+{{#if kind "eq" "member"}}
+| {{name}} | {{type.names}} | {{description}}
+{{/if}}
+{{/members}}
+{{/class}}

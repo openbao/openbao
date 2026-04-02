@@ -57,7 +57,7 @@ updates:
       - pr/no-changelog
       - go
 
-  - package-ecosystem: "npm" #since pnpm is not supported here
+  - package-ecosystem: "npm"
     directory: "/website"
     schedule:
       interval: "weekly"

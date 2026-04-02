@@ -1,3 +1,6 @@
 ```release-note:feature
-packaging/container: Add new "openbao-distroless" container image variant based on [distroless/static](https://github.com/GoogleContainerTools/distroless). The only executable contained in these images is OpenBao itself.
+Add a **Distroless container image**:
+  - Based on Google's [distroless/static](https://github.com/GoogleContainerTools/distroless).
+  - Available as `openbao/openbao-distroless` on docker.io, ghcr.io and quay.io.
+  - The only executable in the image is OpenBao itself, limiting attack surface & dependencies.
 ```

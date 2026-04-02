@@ -37,7 +37,9 @@ const (
 	EnvVaultCACertBytes      = "BAO_CACERT_BYTES"
 	EnvVaultCAPath           = "BAO_CAPATH"
 	EnvVaultClientCert       = "BAO_CLIENT_CERT"
+	EnvVaultClientCertBytes  = "BAO_CLIENT_CERT_BYTES"
 	EnvVaultClientKey        = "BAO_CLIENT_KEY"
+	EnvVaultClientKeyBytes   = "BAO_CLIENT_KEY_BYTES"
 	EnvVaultClientTimeout    = "BAO_CLIENT_TIMEOUT"
 	EnvVaultSRVLookup        = "BAO_SRV_LOOKUP"
 	EnvVaultSkipVerify       = "BAO_SKIP_VERIFY"
@@ -257,26 +259,35 @@ type Config struct {
 }
 
 // TLSConfig contains the parameters needed to configure TLS on the HTTP client
-// used to communicate with Vault.
+// used to communicate with OpenBao.
 type TLSConfig struct {
+	// Order or precedence of loading certs is as follows:
+	// - CACert (filepath) -> CACertBytes (inmem) -> CAPath (directory)
+	// - ClientCert (filepath) -> ClientCertBytes (inmem)
+	// - ClientKey (filepath) -> ClientKeyBytes (inmem)
+
 	// CACert is the path to a PEM-encoded CA cert file to use to verify the
-	// Vault server SSL certificate. It takes precedence over CACertBytes
-	// and CAPath.
+	// OpenBao server SSL certificate.
 	CACert string
 
-	// CACertBytes is a PEM-encoded certificate or bundle. It takes precedence
-	// over CAPath.
-	CACertBytes []byte
-
-	// CAPath is the path to a directory of PEM-encoded CA cert files to verify
-	// the Vault server SSL certificate.
-	CAPath string
-
-	// ClientCert is the path to the certificate for Vault communication
+	// ClientCert is the path to the certificate for OpenBao communication.
 	ClientCert string
 
-	// ClientKey is the path to the private key for Vault communication
+	// ClientKey is the path to the private key for OpenBao communication.
 	ClientKey string
+
+	// CACertBytes is in-memory stored PEM-encoded certificate or bundle.
+	CACertBytes []byte
+
+	// ClientCertBytes is in-memory stored PEM-encoded certificate or bundle.
+	ClientCertBytes []byte
+
+	// ClientKeyBytes is in-memory stored PEM-encoded key.
+	ClientKeyBytes []byte
+
+	// CAPath is the path to a directory of PEM-encoded CA cert files to verify
+	// the OpenBao server SSL certificate.
+	CAPath string
 
 	// TLSServerName, if set, is used to set the SNI host when connecting via
 	// TLS.
@@ -335,7 +346,7 @@ func DefaultConfig() *Config {
 }
 
 // configureTLS is a lock free version of ConfigureTLS that can be used in
-// ReadEnvironment where the lock is already hold
+// ReadEnvironment where the lock is already hold.
 func (c *Config) configureTLS(t *TLSConfig) error {
 	if c.HttpClient == nil {
 		c.HttpClient = DefaultConfig().HttpClient
@@ -343,11 +354,11 @@ func (c *Config) configureTLS(t *TLSConfig) error {
 	clientTLSConfig := c.HttpClient.Transport.(*http.Transport).TLSClientConfig
 
 	var clientCert tls.Certificate
+	var err error
 	foundClientCert := false
 
 	switch {
 	case t.ClientCert != "" && t.ClientKey != "":
-		var err error
 		clientCert, err = tls.LoadX509KeyPair(t.ClientCert, t.ClientKey)
 		if err != nil {
 			return err
@@ -355,19 +366,32 @@ func (c *Config) configureTLS(t *TLSConfig) error {
 		foundClientCert = true
 		c.curlClientCert = t.ClientCert
 		c.curlClientKey = t.ClientKey
+	case len(t.ClientCertBytes) != 0 && len(t.ClientKeyBytes) != 0:
+		clientCert, err = tls.X509KeyPair(t.ClientCertBytes, t.ClientKeyBytes)
+		if err != nil {
+			return err
+		}
+		foundClientCert = true
+		c.curlClientCert = "passed-in-memory"
+		c.curlClientKey = "passed-in-memory"
 	case t.ClientCert != "" || t.ClientKey != "":
 		return errors.New("both client cert and client key must be provided")
+	case len(t.ClientCertBytes) != 0 || len(t.ClientKeyBytes) != 0:
+		return errors.New("both client cert and client key pem bundles must be provided")
 	}
 
 	if t.CACert != "" || len(t.CACertBytes) != 0 || t.CAPath != "" {
 		c.curlCACert = t.CACert
+		if t.CACert == "" {
+			c.curlCACert = "passed-in-memory"
+		}
 		c.curlCAPath = t.CAPath
 		rootConfig := &certConfig{
 			CAFile:        t.CACert,
 			CACertificate: t.CACertBytes,
 			CAPath:        t.CAPath,
 		}
-		if err := configureTLS(clientTLSConfig, rootConfig); err != nil {
+		if err = configureTLS(clientTLSConfig, rootConfig); err != nil {
 			return err
 		}
 	}
@@ -408,8 +432,8 @@ func (c *Config) ConfigureTLS(t *TLSConfig) error {
 	return c.configureTLS(t)
 }
 
-// ReadEnvironment reads configuration information from the environment. If
-// there is an error, no configuration value is updated.
+// ReadEnvironment reads configuration information from the environment.
+// If there is an error, no configuration value is updated.
 func (c *Config) ReadEnvironment() error {
 	var envAddress string
 	var envAgentAddress string
@@ -417,7 +441,9 @@ func (c *Config) ReadEnvironment() error {
 	var envCACertBytes []byte
 	var envCAPath string
 	var envClientCert string
+	var envClientCertBytes []byte
 	var envClientKey string
+	var envClientKeyBytes []byte
 	var envClientTimeout time.Duration
 	var envInsecure bool
 	var envTLSServerName string
@@ -454,8 +480,14 @@ func (c *Config) ReadEnvironment() error {
 	if v := ReadBaoVariable(EnvVaultClientCert); v != "" {
 		envClientCert = v
 	}
+	if v := ReadBaoVariable(EnvVaultClientCertBytes); v != "" {
+		envClientCertBytes = []byte(v)
+	}
 	if v := ReadBaoVariable(EnvVaultClientKey); v != "" {
 		envClientKey = v
+	}
+	if v := ReadBaoVariable(EnvVaultClientKeyBytes); v != "" {
+		envClientKeyBytes = []byte(v)
 	}
 	if v := ReadBaoVariable(EnvRateLimit); v != "" {
 		rateLimit, burstLimit, err := parseRateLimit(v)
@@ -511,13 +543,15 @@ func (c *Config) ReadEnvironment() error {
 
 	// Configure the HTTP clients TLS configuration.
 	t := &TLSConfig{
-		CACert:        envCACert,
-		CACertBytes:   envCACertBytes,
-		CAPath:        envCAPath,
-		ClientCert:    envClientCert,
-		ClientKey:     envClientKey,
-		TLSServerName: envTLSServerName,
-		Insecure:      envInsecure,
+		CACert:          envCACert,
+		CACertBytes:     envCACertBytes,
+		CAPath:          envCAPath,
+		ClientCert:      envClientCert,
+		ClientCertBytes: envClientCertBytes,
+		ClientKey:       envClientKey,
+		ClientKeyBytes:  envClientKeyBytes,
+		TLSServerName:   envTLSServerName,
+		Insecure:        envInsecure,
 	}
 
 	c.modifyLock.Lock()

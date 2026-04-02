@@ -268,7 +268,8 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await click(SELECTORS.issuersTab);
       actions = this.store.peekAll('pki/action');
       assert.strictEqual(actions.length, 0, 'No actions exist yet');
-      await await click(SELECTORS.generateIssuerDropdown);
+      // Wait for any automatic requests to complete
+      await click(SELECTORS.generateIssuerDropdown);
       await click(SELECTORS.generateIssuerIntermediate);
       actions = this.store.peekAll('pki/action');
       assert.strictEqual(actions.length, 1, 'Action model for generate-csr created');
@@ -290,6 +291,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await click(SELECTORS.issuersTab);
       actions = this.store.peekAll('pki/action');
       assert.strictEqual(actions.length, 0, 'No actions exist yet');
+      // yes, this is a bit questionable, but wait again for every request to complete
       await click(SELECTORS.generateIssuerDropdown);
       await click(SELECTORS.generateIssuerIntermediate);
       actions = this.store.peekAll('pki/action');

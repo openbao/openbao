@@ -5678,9 +5678,6 @@ This path responds to the following HTTP methods.
 	PUT /<path>
 		Create or update a workflow.
 
-	PATCH /<path>
-		Update a workflow.
-
 	DELETE /<path>
 		Delete a workflow.
 		`,

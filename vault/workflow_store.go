@@ -83,7 +83,7 @@ type WorkflowStore struct {
 }
 
 func NewWorkflowStore(c *Core) *WorkflowStore {
-	logger := c.baseLogger.Named("profile")
+	logger := c.baseLogger.Named("workflow")
 	return &WorkflowStore{
 		core:   c,
 		logger: logger,
@@ -208,8 +208,7 @@ func (ws *WorkflowStore) List(ctx context.Context, prefix string, recursive bool
 	}
 
 	prefix = ws.sanitizePath(prefix)
-	view := ws.getView(ns)
-	view = view.SubView(prefix)
+	view := ws.getView(ns).SubView(prefix)
 
 	ws.lock.RLock()
 	defer ws.lock.RUnlock()

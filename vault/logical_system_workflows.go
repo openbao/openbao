@@ -274,19 +274,19 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 	return paths
 }
 
-func createWorkflowListResponse(pe *WorkflowEntry) map[string]any {
+func createWorkflowListResponse(we *WorkflowEntry) map[string]any {
 	return map[string]any{
-		"path":                  pe.Path,
-		"version":               pe.Version,
-		"cas_required":          pe.CASRequired,
-		"allow_unauthenticated": pe.AllowUnauthenticated,
-		"description":           pe.Description,
+		"path":                  we.Path,
+		"version":               we.Version,
+		"cas_required":          we.CASRequired,
+		"allow_unauthenticated": we.AllowUnauthenticated,
+		"description":           we.Description,
 	}
 }
 
-func createWorkflowDataResponse(pe *WorkflowEntry) map[string]any {
-	base := createWorkflowListResponse(pe)
-	base["workflow"] = pe.Workflow
+func createWorkflowDataResponse(we *WorkflowEntry) map[string]any {
+	base := createWorkflowListResponse(we)
+	base["workflow"] = we.Workflow
 	return base
 }
 
@@ -307,8 +307,8 @@ func (b *SystemBackend) handleWorkflowsList(scan bool) framework.OperationFunc {
 			return nil, err
 		}
 
-		var keys []string
-		keyInfo := make(map[string]interface{})
+		keys := make([]string, 0, len(workflows))
+		keyInfo := make(map[string]any, len(workflows))
 		for _, entry := range workflows {
 			keys = append(keys, entry.Path)
 			keyInfo[entry.Path] = createWorkflowDataResponse(entry)
@@ -333,7 +333,7 @@ func (b *SystemBackend) handleWorkflowsRead() framework.OperationFunc {
 	}
 }
 
-// handleWorkflowSet handles the "/sys/workflows/manage/<path>" endpoint to
+// handleWorkflowsUpdate handles the "/sys/workflows/manage/<path>" endpoint to
 // update a workflow.
 func (b *SystemBackend) handleWorkflowsUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -379,7 +379,7 @@ func (b *SystemBackend) handleWorkflowsDelete() framework.OperationFunc {
 }
 
 // handleWorkflowsExecute handles the "/sys/workflow/execute/<path>" and
-// "sys/workflow/unauthed-execute/<path>" endpoint to execute workflows.
+// "/sys/workflow/unauthed-execute/<path>" endpoints to execute workflows.
 func (b *SystemBackend) handleWorkflowsExecute(unauthed bool, trace bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)

@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup Go with cache
-        uses: actions/setup-go@v5
+        uses: ./.github/actions/setup-go
         with:
           go-version-file: go.mod
           cache: true

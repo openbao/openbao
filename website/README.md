@@ -11,7 +11,6 @@ Website](https://openbao.org).  It is built using
 - [Versioned Documentation](#versioned-documentation)
 - [Editing Markdown Content](#editing-markdown-content)
 - [Editing Navigation Sidebars](#editing-navigation-sidebars)
-- [Deployment](#deployment)
 
 ## Contributions Welcome!
 

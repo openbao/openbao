@@ -594,9 +594,7 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	ctx, cancel := context.WithCancel(c.activeContext)
 	defer cancel()
 
-	stop := context.AfterFunc(httpCtx, func() {
-		cancel()
-	})
+	stop := context.AfterFunc(httpCtx, cancel)
 	defer stop()
 
 	// A namespace was manually passed to HandleRequest, as can be the case with:

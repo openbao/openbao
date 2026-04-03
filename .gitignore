@@ -114,7 +114,7 @@ ui/vault-ui-integration-server.pid
 
 # for building static assets
 node_modules
-
+.pnpm-store/**
 # Website
 website/.bundle
 website/build/

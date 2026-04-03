@@ -55,7 +55,9 @@
   }
 
   @include until($mobile) {
-    box-shadow: $box-shadow, 0 0 20px rgba($black, 0.24);
+    box-shadow:
+      $box-shadow,
+      0 0 20px rgba($black, 0.24);
     bottom: 0;
     left: 0;
     right: 0;
@@ -107,7 +109,9 @@
   top: calc(#{4rem} + #{$size-8});
 
   @include until($mobile) {
-    box-shadow: $box-shadow, 0 0 20px rgba($black, 0.24);
+    box-shadow:
+      $box-shadow,
+      0 0 20px rgba($black, 0.24);
     bottom: 0;
     left: 0;
     right: 0;

@@ -251,7 +251,13 @@
       "xmlhttprequest-ssl": "^1.6.2",
       "cheerio": "1.0.0-rc.12",
       "get-intrinsic": "1.2.7"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "@scarf/scarf",
+      "core-js",
+      "ember-modal-dialog"
+    ]
   },
   "engines": {
     "node": "20"

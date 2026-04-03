@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -246,10 +247,12 @@ func (ws *WorkflowStore) Execute(ctx context.Context, path string, unauthed bool
 		return nil, fmt.Errorf("unable to find namespace in context: %w", err)
 	}
 
-	ws.lock.RLock()
-	defer ws.lock.RUnlock()
+	workflow, err := func() (*WorkflowEntry, error) {
+		ws.lock.RLock()
+		defer ws.lock.RUnlock()
 
-	workflow, err := ws.getLocked(ctx, path)
+		return ws.getLocked(ctx, path)
+	}()
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute workflow: %w", err)
 	}
@@ -260,7 +263,7 @@ func (ws *WorkflowStore) Execute(ctx context.Context, path string, unauthed bool
 	}
 
 	if workflow == nil {
-		return nil, nil
+		return nil, logical.CodedError(http.StatusNotFound, "workflow does not exist")
 	}
 
 	input, contents, output, err := workflow.Parse(ctx)
@@ -333,7 +336,9 @@ func (ws *WorkflowStore) Execute(ctx context.Context, path string, unauthed bool
 		return nil, fmt.Errorf("failed to evaluate namespace: %w", err)
 	}
 
-	return nil, nil
+	// Return 200 OK with no associated data rather than 204 to keep the
+	// success conditions consistent.
+	return &logical.Response{}, nil
 }
 
 func (ws *WorkflowStore) sanitizePath(path string) string {

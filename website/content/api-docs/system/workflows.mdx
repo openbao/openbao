@@ -108,8 +108,9 @@ This endpoint adds a new or updates an existing workflow.
 - `description` `(string: "")` - Textual description of this workflow for
   operators.
 
-- `cas` `(int: nil)` - Last version number for modifications. Set to `-1`
-  for creation of a new workflow.
+- `cas` `(int: <optional>)` - Last version number for modifications. Set to
+  `-1` for creation of a new workflow. `cas` is required if `cas_required=true`
+  is set.
 
 #### Sample payload
 

@@ -328,6 +328,9 @@ func (b *SystemBackend) handleWorkflowsRead() framework.OperationFunc {
 		if err != nil {
 			return handleError(err)
 		}
+		if pe == nil {
+			return nil, nil
+		}
 
 		return &logical.Response{Data: createWorkflowDataResponse(pe)}, nil
 	}

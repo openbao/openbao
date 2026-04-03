@@ -587,14 +587,17 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		return nil, errors.New("active context canceled after getting state lock")
 	}
 
+	// Bind request cancellation to two contexts: the active context primarily,
+	// so we have a clean context with few values in it, and the http request
+	// context so that if the remote peer closes the connection, we can
+	// properly stop this request.
 	ctx, cancel := context.WithCancel(c.activeContext)
-	go func(ctx context.Context, httpCtx context.Context) {
-		select {
-		case <-ctx.Done():
-		case <-httpCtx.Done():
-			cancel()
-		}
-	}(ctx, httpCtx)
+	defer cancel()
+
+	stop := context.AfterFunc(httpCtx, func() {
+		cancel()
+	})
+	defer stop()
 
 	// A namespace was manually passed to HandleRequest, as can be the case with:
 	// 1. Synthesized logical requests not originating from an HTTP request
@@ -661,7 +664,6 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	}
 	resp, err = c.handleCancelableRequest(ctx, req)
 	req.SetTokenEntry(nil)
-	cancel()
 	return resp, err
 }
 

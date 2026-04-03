@@ -386,10 +386,6 @@ func (b *SystemBackend) handleWorkflowsDelete() framework.OperationFunc {
 func (b *SystemBackend) handleWorkflowsExecute(unauthed bool, trace bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
-		if unauthed {
-			trace = false
-		}
-
-		return b.Core.workflowStore.Execute(ctx, path, unauthed, trace, req, data)
+		return b.Core.workflowStore.Execute(ctx, req.ID, path, unauthed, trace, req, data)
 	}
 }

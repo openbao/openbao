@@ -23,6 +23,8 @@ import (
 const (
 	workflowSubPath   = "workflows/"
 	workflowOuterName = "flow"
+
+	maxWorkflowRecursion = 5
 )
 
 type WorkflowEntry struct {
@@ -269,10 +271,15 @@ func (ws *WorkflowStore) List(ctx context.Context, prefix string, recursive bool
 	return results, nil
 }
 
-func (ws *WorkflowStore) Execute(ctx context.Context, path string, unauthed bool, trace bool, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (ws *WorkflowStore) Execute(ctx context.Context, reqId string, path string, unauthed bool, trace bool, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to find namespace in context: %w", err)
+	}
+
+	// Reject trace requests when unauthenticated.
+	if unauthed && trace {
+		return nil, logical.ErrPermissionDenied
 	}
 
 	workflow, err := func() (*WorkflowEntry, error) {
@@ -292,9 +299,33 @@ func (ws *WorkflowStore) Execute(ctx context.Context, path string, unauthed bool
 		return nil, logical.CodedError(http.StatusNotFound, "workflow does not exist")
 	}
 
+	// Reject recursive calls starting from an unauthenticated workflow. That
+	// is, don't allow a call like:
+	//
+	// unauthed -> unauthed
+	// unauthed -> authed
+	//
+	// However, recursive calls like authed -> unauthed are allowed (though,
+	// cannot subsequently call another profile!) or the recursive authed
+	// chain of authed -> authed [ -> authed ].
+	if strings.Contains(reqId, ".unauthed.workflow.") {
+		return nil, logical.ErrPermissionDenied
+	}
+
+	// Similarly, set a maximum limit on authenticated recursion based on
+	// number of workflows in the request identifier.
+	if strings.Count(reqId, ".workflow.") == maxWorkflowRecursion {
+		return nil, logical.CodedError(http.StatusBadRequest, "too much workflow recursion")
+	}
+
 	input, contents, output, err := workflow.Parse(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse workflow: %w", err)
+	}
+
+	authedStr := "authed"
+	if unauthed {
+		authedStr = "unauthed"
 	}
 
 	engine, err := profiles.NewEngine(
@@ -313,6 +344,11 @@ func (ws *WorkflowStore) Execute(ctx context.Context, path string, unauthed bool
 
 		// Default token to use.
 		profiles.WithDefaultToken(req.ClientToken),
+
+		// Allow auditing our generated requests by tying this to the input
+		// API request. When handling recursive requests, this could get
+		// long.
+		profiles.WithRequestIdentifierPrefix(fmt.Sprintf("%v.%v.workflow.%v", reqId, authedStr, path)),
 
 		// Execute our request handler here; here is where we validate that
 		// this policy can only access requests under its own namespace and
@@ -359,7 +395,7 @@ func (ws *WorkflowStore) Execute(ctx context.Context, path string, unauthed bool
 	}
 
 	if err := engine.Evaluate(noNsCtx); err != nil {
-		return nil, fmt.Errorf("failed to evaluate namespace: %w", err)
+		return nil, fmt.Errorf("failed to evaluate workflow: %w", err)
 	}
 
 	// Return 200 OK with no associated data rather than 204 to keep the

@@ -57,6 +57,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	sr "github.com/openbao/openbao/serviceregistration"
 	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/barrier"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
 	"github.com/posener/complete"
@@ -1726,42 +1727,52 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	if !core.SealAccess().RecoveryKeySupported() {
 		return errors.New("self-initialization requires auto-unseal as there is no way to persist the Shamir's keys")
 	}
-
 	ctx := namespace.RootContext(context.Background())
-
 	// Fast path skipping self-initialization if already initialized.
 	inited, err := core.Initialized(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to check core initialization status: %w", err)
 	}
 	if inited {
-		// We refuse to rerun self-initialization as it is a highly privileged
-		// way of sidestepping authentication. At first startup there is no
-		// other authentication information but on subsequent startups
-		// presumably the admin has created an alternative mechanism we should
-		// defer to.
+		// We refuse to rerun self-initialization.
+		// HOWEVER, we must verify that the previous initialization actually finished.
+		// If barrier exists but self-init marker is missing, we are in a broken state.
+		complete, err := core.IsSelfInitComplete(ctx)
+		if err != nil {
+			if errors.Is(err, barrier.ErrBarrierSealed) {
+				// Barrier not yet unsealed, we can skip the check.
+				// There are two cases in which the barrier is unsealed at this point:
+				// follower node in HA cluster, or primary node with unseal still in progress.
+				// In both cases skipping is correct: the node did not run self-init and the unseal flow will handle it.
+				return nil
+			}
+			return fmt.Errorf("failed to verify self-init consistency: %w", err)
+		}
+		if !complete {
+			return fmt.Errorf("FATAL: Storage inconsistency detected. OpenBao is initialized (barrier exists) but Self-Initialization failed or was interrupted. Manual storage wipe required")
+		}
 		return nil
 	}
-
 	// Initialize the cluster without recovery keys; a root token can be
 	// used to create recovery keys in the future.
 	var recoveryConfig *vault.SealConfig
 	barrierConfig := &vault.SealConfig{}
 	recoveryConfig = &vault.SealConfig{}
-
 	init, err := core.Initialize(ctx, &vault.InitParams{
 		BarrierConfig:  barrierConfig,
 		RecoveryConfig: recoveryConfig,
 	})
 	if err != nil {
-		core.Logger().Error("failed to initialize", "error", err)
 		if errors.Is(err, vault.ErrParallelInit) || errors.Is(err, vault.ErrAlreadyInit) {
 			return nil
 		}
-
+		core.Logger().Error("failed to initialize: unexpected error occurred", "error", err)
 		return fmt.Errorf("self-initialization failed: %w", err)
 	}
-
+	// Write "started" marker to storage (self-init started).
+	if err := core.MarkSelfInitStarted(ctx); err != nil {
+		return fmt.Errorf("failed to mark self-init started: %w", err)
+	}
 	// Wait for leadership; if we don't get the leadership status, it means
 	// that someone has brought up more than one node at a time and we've
 	// lost the race. This is bad and they should reset storage and ensure
@@ -1773,9 +1784,15 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	if !isLeader {
 		return fmt.Errorf("initializing node did not win leadership election: ensure only one active, voting node during initialization")
 	}
-
 	// Now perform the component requests of self-initialization.
-	return c.doSelfInit(core, config, init.RootToken)
+	if err := c.doSelfInit(core, config, init.RootToken); err != nil {
+		return err // Fail fast on config error
+	}
+	// Write "completed" marker to storage (self-init complete).
+	if err := core.MarkSelfInitComplete(ctx); err != nil {
+		return fmt.Errorf("failed to persist self-init success marker: %w", err)
+	}
+	return nil
 }
 
 // doSelfInit is the internal helper that uses the profile system with this

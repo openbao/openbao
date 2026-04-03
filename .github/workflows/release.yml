@@ -244,28 +244,11 @@ jobs:
         if: inputs.dogorelease
         run: go version
 
-      - name: pnpm setup
-        if: inputs.dogorelease
-        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
         with:
-          package_json_file: "./ui/package.json"
-          run_install: false
-
-      - name: Get pnpm store directory
-        if: inputs.dogorelease
-        id: pnpm-cache
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --dir ./ui)" >> $GITHUB_OUTPUT
-
-      - name: UI Cache Setup
-        if: inputs.dogorelease
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
-        with:
-          path: |
-            http/web_ui/
-            ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ github.ref }}-ui
+          package_json_file: ui/package.json
+          cache: true
+          cache_dependency_path: ui/pnpm-lock.yaml
 
       # Supports syft/sbom generation
       - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0

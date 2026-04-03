@@ -91,59 +91,23 @@ jobs:
     secrets: inherit
 
   test-ui:
-    name: Test UI
-    # The test-ui job is only run on:
-    # - pushes to main and branches starting with "release/"
-    # - PRs where the branch starts with "ui/", "backport/ui/", "merge", or when base branch starts with "release/"
-    # - PRs with the "ui" label on GitHub
-    if: |
-      github.ref_name == 'main' ||
-      startsWith(github.ref_name, 'release/') ||
-      startsWith(github.head_ref, 'ui/') ||
-      startsWith(github.head_ref, 'backport/ui/') ||
-      startsWith(github.head_ref, 'merge') ||
-      contains(github.event.pull_request.labels.*.name, 'ui')
-    needs: [setup]
+    name: test-ui
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-          cache-dependency-path: go.sum
-      - uses: pnpm/action-setup@v4
-        with:
-          package_json_file: "./ui/package.json"
-          run_install: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: "./ui/package.json"
-          cache: "pnpm"
-          cache-dependency-path: ui/pnpm-lock.yaml
-      - name: Install UI dependencies
-        working-directory: ./ui
-        run: pnpm install --frozen-lockfile
-      - name: build-go-dev
-        run: |
-          rm -rf ./pkg
-          mkdir ./pkg
-          make ci-bootstrap dev
-
-      - name: test-ui
+      - id: test-ui
+        name: test-ui
         run: |
           export PATH="${PWD}/bin:${PATH}"
+          # Run Ember tests
           cd ui
           mkdir -p test-results/qunit
           pnpm test
-
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-results-ui
           path: ui/test-results
         if: success() || failure()
-
-      - uses: test-summary/action@v2
+      - uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86 # v2.2
         with:
           paths: "ui/test-results/qunit/results.xml"
           show: "fail"

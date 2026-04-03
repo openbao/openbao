@@ -63,7 +63,6 @@ type worker struct {
 	wg *sync.WaitGroup
 }
 
-// start starts the worker listening and working until the quit channel is closed
 func (w *worker) start() {
 	w.wg.Add(1)
 	go func() {
@@ -80,13 +79,28 @@ func (w *worker) start() {
 				cleanupWrapper := &syncOnceCleanup{cleanup: wJob.cleanup}
 
 				if wJob.init != nil {
-					wJob.init()
+					func() {
+						defer func() {
+							if r := recover(); r != nil {
+								w.logger.Error("worker panic in init", "panic", r)
+							}
+						}()
+						wJob.init()
+					}()
 				}
 
-				err := wJob.job.Execute()
-				if err != nil {
-					wJob.job.OnFailure(err)
-				}
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							w.logger.Error("worker panic in Execute", "panic", r)
+							wJob.job.OnFailure(fmt.Errorf("panic: %v", r))
+						}
+					}()
+					err := wJob.job.Execute()
+					if err != nil {
+						wJob.job.OnFailure(err)
+					}
+				}()
 
 				cleanupWrapper.Do()
 			}

@@ -772,7 +772,7 @@ func TestWALsDeletedOnRoleCreationFailed(t *testing.T) {
 	defer b.Cleanup(ctx)
 	configureOpenLDAPMount(t, b, storage)
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		resp, err := b.HandleRequest(ctx, &logical.Request{
 			Operation: logical.CreateOperation,
 			Path:      staticRolePath + "hashicorp",

@@ -13,7 +13,7 @@ import (
 // Since `$ make test` is run with the -race flag, this will detect a race and fail if parsing
 // fields at once is racy.
 func TestIfEntryCreationIsRacy(t *testing.T) {
-	for i := 0; i < 10000; i++ {
+	for range 10000 {
 		go func() {
 			ldapEntry := &ldap.Entry{
 				Attributes: []*ldap.EntryAttribute{

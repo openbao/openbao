@@ -49,7 +49,6 @@ func TestGrabLockOrStop(t *testing.T) {
 
 	// Start a bunch of worker goroutines.
 	for g := range workers {
-		g := g
 		go func() {
 			defer workerWg.Done()
 			for time.Since(start) < testDuration {

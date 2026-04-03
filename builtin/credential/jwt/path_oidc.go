@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -484,9 +485,7 @@ func (b *jwtAuthBackend) processToken(ctx context.Context, req *logical.Request,
 	}
 
 	tokenMetadata := make(map[string]string)
-	for k, v := range alias.Metadata {
-		tokenMetadata[k] = v
-	}
+	maps.Copy(tokenMetadata, alias.Metadata)
 	for k, v := range oauth2Metadata {
 		tokenMetadata["oauth2_"+k] = v
 	}

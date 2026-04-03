@@ -5,6 +5,7 @@ package radius
 
 import (
 	"context"
+	"slices"
 	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -227,10 +228,8 @@ func (b *backend) pathConfigCreateUpdate(ctx context.Context, req *logical.Reque
 		unregisteredUserPoliciesStr := unregisteredUserPoliciesRaw.(string)
 		if strings.TrimSpace(unregisteredUserPoliciesStr) != "" {
 			policies = strings.Split(unregisteredUserPoliciesStr, ",")
-			for _, policy := range policies {
-				if policy == "root" {
-					return logical.ErrorResponse("root policy cannot be granted by an auth method"), nil
-				}
+			if slices.Contains(policies, "root") {
+				return logical.ErrorResponse("root policy cannot be granted by an auth method"), nil
 			}
 		}
 		cfg.UnregisteredUserPolicies = policies

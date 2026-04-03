@@ -216,8 +216,6 @@ func TestPki_PermitFQDNs(t *testing.T) {
 	}
 
 	for name, testCase := range cases {
-		name := name
-		testCase := testCase
 		t.Run(name, func(t *testing.T) {
 			cb, _, err := generateCreationBundle(&b, testCase.input, nil, nil)
 			if err != nil {

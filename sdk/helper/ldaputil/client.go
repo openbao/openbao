@@ -504,7 +504,7 @@ func (c *Client) performLdapTokenGroupsSearch(cfg *ConfigEntry, conn Connection,
 	groupAttrValues := userEntry.GetRawAttributeValues("tokenGroups")
 	groupEntries := make([]*ldap.Entry, 0, len(groupAttrValues))
 
-	for i := 0; i < maxWorkers; i++ {
+	for range maxWorkers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -639,7 +639,7 @@ func EscapeLDAPValue(input string) string {
 	}
 
 	inputLen := len(input)
-	for i := 0; i < inputLen; i++ {
+	for i := range inputLen {
 		char := input[i]
 		switch {
 		case i == 0 && char == ' ' || char == '#':

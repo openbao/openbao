@@ -6,6 +6,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -176,9 +177,7 @@ func fieldsForType(roleType string) map[string]*framework.FieldSchema {
 		typeFields = dynamicFields()
 	}
 
-	for k, v := range typeFields {
-		fields[k] = v
-	}
+	maps.Copy(fields, typeFields)
 
 	return fields
 }

@@ -24,10 +24,7 @@ func (c *SharedConfig) Merge(c2 *SharedConfig) *SharedConfig {
 		result.Telemetry = c2.Telemetry
 	}
 
-	result.DefaultMaxRequestDuration = c.DefaultMaxRequestDuration
-	if c2.DefaultMaxRequestDuration > result.DefaultMaxRequestDuration {
-		result.DefaultMaxRequestDuration = c2.DefaultMaxRequestDuration
-	}
+	result.DefaultMaxRequestDuration = max(c2.DefaultMaxRequestDuration, c.DefaultMaxRequestDuration)
 
 	result.LogLevel = c.LogLevel
 	if c2.LogLevel != "" {

@@ -173,7 +173,7 @@ func (i *IdentityStore) LoadEntities(ctx context.Context, readOnly bool) error {
 	wg := &sync.WaitGroup{}
 
 	// Create 64 workers to distribute work to
-	for j := 0; j < consts.ExpirationRestoreWorkerCount; j++ {
+	for range consts.ExpirationRestoreWorkerCount {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -227,7 +227,7 @@ func (i *IdentityStore) LoadEntities(ctx context.Context, readOnly bool) error {
 
 	// Restore each key by pulling from the result chan
 LOOP:
-	for j := 0; j < len(existing); j++ {
+	for range existing {
 		select {
 		case err = <-errs:
 			// Close all go routines

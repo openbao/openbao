@@ -5,6 +5,7 @@ package transit
 
 import (
 	"encoding/json"
+	"maps"
 	"net/http"
 	"reflect"
 	"testing"
@@ -237,9 +238,7 @@ func TestTransit_BatchDecryption_DerivedKey(t *testing.T) {
 					"batch_input": tt.in,
 				},
 			}
-			for k, v := range tt.params {
-				req.Data[k] = v
-			}
+			maps.Copy(req.Data, tt.params)
 			resp, err = b.HandleRequest(t.Context(), req)
 
 			didErr := err != nil || (resp != nil && resp.IsError())

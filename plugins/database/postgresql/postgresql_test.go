@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 	"testing"
@@ -28,9 +29,7 @@ func getPostgreSQL(t *testing.T, options map[string]interface{}) (*PostgreSQL, f
 	connectionDetails := map[string]interface{}{
 		"connection_url": connURL,
 	}
-	for k, v := range options {
-		connectionDetails[k] = v
-	}
+	maps.Copy(connectionDetails, options)
 
 	req := dbplugin.InitializeRequest{
 		Config:           connectionDetails,
@@ -995,7 +994,7 @@ func TestUsernameGeneration(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			for i := 0; i < 1000; i++ {
+			for range 1000 {
 				username, err := up.Generate(test.data)
 				require.NoError(t, err)
 				require.Regexp(t, test.expectedRegex, username)

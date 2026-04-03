@@ -59,7 +59,7 @@ func TestTransit_Trim(t *testing.T) {
 	}
 
 	// Ensure that there are 5 key versions, by rotating the key 4 times
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		req.Path = "keys/aes/rotate"
 		req.Data = nil
 		doReq(t, req)
@@ -156,7 +156,7 @@ func TestTransit_Trim(t *testing.T) {
 	doErrReq(t, req)
 
 	// Rotate 5 more times
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		doReq(t, &logical.Request{
 			Path:      "keys/aes/rotate",
 			Storage:   storage,

@@ -569,7 +569,7 @@ func specialPathMatch(path string, specialPaths []string) bool {
 		if len(pathParts) < len(specialPathParts) {
 			return false
 		}
-		for i := 0; i < len(specialPathParts); i++ {
+		for i := range specialPathParts {
 			var (
 				part    = pathParts[i]
 				pattern = specialPathParts[i]

@@ -6,6 +6,7 @@ package dbplugin
 import (
 	"context"
 	"errors"
+	"maps"
 	"reflect"
 	"testing"
 	"time"
@@ -183,9 +184,7 @@ func TestCoerceFloatsToInt(t *testing.T) {
 
 func copyMap(m map[string]interface{}) map[string]interface{} {
 	newMap := map[string]interface{}{}
-	for k, v := range m {
-		newMap[k] = v
-	}
+	maps.Copy(newMap, m)
 	return newMap
 }
 

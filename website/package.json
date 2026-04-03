@@ -39,6 +39,8 @@
     "@docusaurus/module-type-aliases": "^3.6.3",
     "@docusaurus/tsconfig": "^3.9.2",
     "@docusaurus/types": "^3.8.0",
+    "@types/react": "^19.2.14",
+    "@types/webpack-env": "^1.18.8",
     "markdownlint": "^0.40.0",
     "markdownlint-cli2": "^0.21.0",
     "typescript": "^5.9.3"
@@ -57,5 +59,15 @@
   },
   "engines": {
     "node": ">=18.0"
+  },
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts"
+    }
   }
 }

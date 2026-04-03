@@ -1,0 +1,3 @@
+```release-note:feature
+unseal/azure: support explicitly setting azure authentication methods and add support for authenticating using azure managed identities
+```

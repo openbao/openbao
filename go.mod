@@ -103,7 +103,7 @@ require (
 	github.com/openbao/go-kms-wrapping/v2 v2.7.0
 	github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.3.0
-	github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.3.0
 	github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.1.0
 	github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.2.0

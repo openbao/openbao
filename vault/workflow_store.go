@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/hcl"
@@ -16,6 +15,7 @@ import (
 	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
 )
@@ -78,21 +78,48 @@ func (we *WorkflowEntry) Parse(ctx context.Context) (*profiles.InputConfig, []*p
 }
 
 type WorkflowStore struct {
-	core   *Core
-	lock   sync.RWMutex
-	logger log.Logger
+	core        *Core
+	modifyLocks []*locksutil.LockEntry
+	logger      log.Logger
 }
 
 func NewWorkflowStore(c *Core) *WorkflowStore {
 	logger := c.baseLogger.Named("workflow")
 	return &WorkflowStore{
-		core:   c,
-		logger: logger,
+		core:        c,
+		modifyLocks: locksutil.CreateLocks(),
+		logger:      logger,
 	}
 }
 
 func (c *Core) setupWorkflowStore(ctx context.Context) {
 	c.workflowStore = NewWorkflowStore(c)
+}
+
+func (ws *WorkflowStore) lockWithUnlock(ctx context.Context) func() {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil || ns == nil {
+		ns = namespace.RootNamespace
+	}
+
+	lock := locksutil.LockForKey(ws.modifyLocks, ns.UUID)
+
+	ws.logger.Trace("acquiring lock for", "namespace", ns.UUID)
+	lock.Lock()
+	return lock.Unlock
+}
+
+func (ws *WorkflowStore) rLockWithUnlock(ctx context.Context) func() {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil || ns == nil {
+		ns = namespace.RootNamespace
+	}
+
+	lock := locksutil.LockForKey(ws.modifyLocks, ns.UUID)
+
+	ws.logger.Trace("acquiring lock for", "namespace", ns.UUID)
+	lock.RLock()
+	return lock.RUnlock
 }
 
 // getView returns the storage view for the given namespace
@@ -101,9 +128,13 @@ func (ws *WorkflowStore) getView(ns *namespace.Namespace) barrier.View {
 }
 
 func (ws *WorkflowStore) Get(ctx context.Context, path string) (*WorkflowEntry, error) {
-	ws.lock.RLock()
-	defer ws.lock.RUnlock()
+	// Check namespace existence before calling RLock().
+	_, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 
+	defer ws.rLockWithUnlock(ctx)()
 	return ws.getLocked(ctx, path)
 }
 
@@ -144,8 +175,7 @@ func (ws *WorkflowStore) Set(ctx context.Context, workflow *WorkflowEntry, casVe
 	path := ws.sanitizePath(workflow.Path)
 	view := ws.getView(ns)
 
-	ws.lock.Lock()
-	defer ws.lock.Unlock()
+	defer ws.lockWithUnlock(ctx)()
 
 	existing, err := ws.getLocked(ctx, workflow.Path)
 	if err != nil {
@@ -196,8 +226,7 @@ func (ws *WorkflowStore) Delete(ctx context.Context, path string) error {
 	path = ws.sanitizePath(path)
 	view := ws.getView(ns)
 
-	ws.lock.Lock()
-	defer ws.lock.Unlock()
+	defer ws.lockWithUnlock(ctx)()
 
 	return view.Delete(ctx, path)
 }
@@ -211,8 +240,7 @@ func (ws *WorkflowStore) List(ctx context.Context, prefix string, recursive bool
 	prefix = ws.sanitizePath(prefix)
 	view := ws.getView(ns).SubView(prefix)
 
-	ws.lock.RLock()
-	defer ws.lock.RUnlock()
+	defer ws.rLockWithUnlock(ctx)()
 
 	var keys []string
 	if !recursive {
@@ -248,9 +276,7 @@ func (ws *WorkflowStore) Execute(ctx context.Context, path string, unauthed bool
 	}
 
 	workflow, err := func() (*WorkflowEntry, error) {
-		ws.lock.RLock()
-		defer ws.lock.RUnlock()
-
+		defer ws.rLockWithUnlock(ctx)()
 		return ws.getLocked(ctx, path)
 	}()
 	if err != nil {

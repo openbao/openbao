@@ -140,6 +140,12 @@ type Config struct {
 
 	// Whether read requests are disabled on standby nodes.
 	DisableStandbyReads bool `hcl:"disable_standby_reads"`
+
+	// Whether to allow unauthenticated workflows. While not inherently unsafe,
+	// as requests created by workflows still require authentication and a
+	// workflow author would have to embed a token, these still should be used
+	// with care.
+	AllowUnauthenticatedWorkflows bool `hcl:"allow_unauthenticated_workflows"`
 }
 
 func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {

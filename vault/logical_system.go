@@ -154,6 +154,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Paths = append(b.Paths, b.quotasPaths()...)
 	b.Paths = append(b.Paths, b.loginMFAPaths()...)
 	b.Paths = append(b.Paths, b.introspectionPaths()...)
+	b.Paths = append(b.Paths, b.workflowPaths()...)
 
 	if core.rawEnabled {
 		b.Paths = append(b.Paths, b.rawPaths()...)
@@ -5656,6 +5657,42 @@ This path responds to the following HTTP methods.
 
 	PUT /<path>
 		Unlock the API for a namespace.
+		`,
+	},
+	"list-workflows": {
+		"List workflows.",
+		`
+This path responds to the following HTTP methods.
+
+	LIST /
+		List workflows.
+
+	SCAN /
+		Scan (recursively list) workflows.
+		`,
+	},
+	"workflows": {
+		"Create, read, update and delete workflows.",
+		`
+This path responds to the following HTTP methods.
+
+	GET /<path>
+		Retrieve a workflow.
+
+	PUT /<path>
+		Create or update a workflow.
+
+	DELETE /<path>
+		Delete a workflow.
+		`,
+	},
+	"exec-workflows": {
+		"Execute a workflow.",
+		`
+This path responds to the following HTTP methods.
+
+	PUT /<path>
+		Execute a workflow.
 		`,
 	},
 }

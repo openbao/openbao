@@ -14,7 +14,7 @@ This pages tracks the implementation status of [Open Source Project Security Bas
 | ------------------------------- | ------ |
 | [OSPS-AC-01.01](#osps-ac-01-01) | ✅     |
 | [OSPS-AC-02.01](#osps-ac-02-01) | ✅     |
-| [OSPS-AC-03.01](#osps-ac-03-01) |        |
+| [OSPS-AC-03.01](#osps-ac-03-01) | ✅     |
 | [OSPS-AC-03.02](#osps-ac-03-02) |        |
 | [OSPS-BR-01.01](#osps-br-01-01) |        |
 | [OSPS-BR-03.01](#osps-br-03-01) |        |
@@ -50,7 +50,14 @@ Once approved, the project [files a JIRA ticket with LF staff](https://jira.linu
 Organization owners are managed through their GitHub Enterprise identities, and the responsible Linux Foundation bodies govern them.
 
 ## OSPS-AC-03.01 {#osps-ac-03-01}
-When a direct commit is attempted on the project's primary branch, an enforcement mechanism MUST prevent the change from being applied.
+
+> **Requirement:** *When a direct [commit](https://baseline.openssf.org/versions/2025-02-25#commit) is attempted on the project's [primary branch](https://baseline.openssf.org/versions/2025-02-25#primary-branch), an enforcement mechanism MUST prevent the [change](https://baseline.openssf.org/versions/2025-02-25#change) from being applied.*
+
+The `main` branch is protected across all repositories to prevent unintended or unreviewed commits. These [protection settings](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches) include:
+
+* ...
+* ...
+* ...
 
 ## OSPS-AC-03.02 {#osps-ac-03-02}
 When an attempt is made to delete the project's primary branch, the version control system MUST treat this as a sensitive activity and require explicit confirmation of intent.

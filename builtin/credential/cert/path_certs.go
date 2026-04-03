@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/go-sockaddr"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
+	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -196,6 +197,13 @@ separated by a dash (-) instead of a dot (.) to allow usage in ACL templates.`,
 certificate.`,
 			},
 
+			"group_aliases_cel_program": {
+				Type: framework.TypeString,
+				Description: `CEL program for extracting group aliases from certificates at login.
+The authenticating certificate is mapped to the variable 'client_cert' and a direct serialization of an x509.Certificate struct.
+To e.g. map all OrganizationName values in the subject, use 'client_cert.Subject.Organization'`,
+			},
+
 			"policies": {
 				Type:        framework.TypeCommaStringSlice,
 				Description: tokenutil.DeprecationText("token_policies"),
@@ -321,6 +329,7 @@ func (b *backend) pathCertRead(ctx context.Context, req *logical.Request, d *fra
 	data := map[string]interface{}{
 		"certificate":                  cert.Certificate,
 		"display_name":                 cert.DisplayName,
+		"group_aliases_cel_program":    cert.GroupAliasCelProgram,
 		"allowed_names":                cert.AllowedNames,
 		"allowed_common_names":         cert.AllowedCommonNames,
 		"allowed_dns_sans":             cert.AllowedDNSSANs,
@@ -393,6 +402,9 @@ func (b *backend) pathCertWrite(ctx context.Context, req *logical.Request, d *fr
 	}
 	if displayNameRaw, ok := d.GetOk("display_name"); ok {
 		cert.DisplayName = displayNameRaw.(string)
+	}
+	if groupAliasesCelProgramRaw, ok := d.GetOk("group_aliases_cel_program"); ok {
+		cert.GroupAliasCelProgram = groupAliasesCelProgramRaw.(string)
 	}
 	if allowedNamesRaw, ok := d.GetOk("allowed_names"); ok {
 		cert.AllowedNames = allowedNamesRaw.([]string)
@@ -481,6 +493,16 @@ func (b *backend) pathCertWrite(ctx context.Context, req *logical.Request, d *fr
 		cert.DisplayName = name
 	}
 
+	if cert.GroupAliasCelProgram != "" {
+		celProgram := celhelper.Program{
+			Expression: cert.GroupAliasCelProgram,
+		}
+		evalConfig := b.getGroupAliasesEvalConfig()
+		if err := celProgram.Validate(&evalConfig); err != nil {
+			return logical.ErrorResponse("failed to validate group aliases program: %w", err), nil
+		}
+	}
+
 	parsed := parsePEM([]byte(cert.Certificate))
 	if len(parsed) == 0 {
 		return logical.ErrorResponse("failed to parse certificate"), nil
@@ -522,6 +544,7 @@ type CertEntry struct {
 	Name                       string
 	Certificate                string
 	DisplayName                string
+	GroupAliasCelProgram       string
 	Policies                   []string
 	TTL                        time.Duration
 	MaxTTL                     time.Duration

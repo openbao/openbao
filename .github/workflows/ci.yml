@@ -112,15 +112,15 @@ jobs:
           go-version-file: go.mod
           cache: true
           cache-dependency-path: go.sum
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: "./ui/package.json"
-          cache: 'pnpm'
-          cache-dependency-path: ui/pnpm-lock.yaml
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: "./ui/package.json"
           run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "./ui/package.json"
+          cache: "pnpm"
+          cache-dependency-path: ui/pnpm-lock.yaml
       - name: Install UI dependencies
         working-directory: ./ui
         run: pnpm install --frozen-lockfile

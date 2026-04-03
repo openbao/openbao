@@ -2,6 +2,8 @@
   // This file is not used in compilation. It is here just for a nice editor experience.
   "extends": "@docusaurus/tsconfig",
   "compilerOptions": {
-    "baseUrl": "."
+    "baseUrl": ".",
+    "types": ["webpack-env"],
+    "typeRoots": ["./node_modules/@types", "./types"]
   }
 }

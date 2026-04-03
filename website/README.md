@@ -162,13 +162,3 @@ The structure of the sidebars are controlled by the `sidebar.ts` and
 **docs** sidebar. Please consult the [Docusaurus
 documentation](https://docusaurus.io/docs/sidebar/items) on how to edit the
 sidebars.
-
-## Deployment
-
-This website is hosted on GitHub Pages and configured to automatically deploy
-anytime you push code to the `gh-pages` branch. To perform a manual deployment
-run the following command:
-
-```console
-$ GIT_USER=<Your GitHub username> pnpm deploy
-```

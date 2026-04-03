@@ -95,6 +95,7 @@ ui/root
 # dependencies
 ui/node_modules
 ui/bower_components
+.pnpm-store/**
 
 # misc
 ui/.DS_Store

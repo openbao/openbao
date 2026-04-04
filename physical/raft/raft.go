@@ -213,6 +213,11 @@ func (r *RaftBackend) HookInvalidate(hook physical.InvalidateFunc) {
 	r.fsm.hookInvalidate(hook)
 }
 
+type AutoJoinPlugin struct {
+	Plugin string            `json:"plugin"`
+	Config map[string]string `json:"config"`
+}
+
 // LeaderJoinInfo contains information required by a node to join itself as a
 // follower to an existing raft cluster
 type LeaderJoinInfo struct {
@@ -228,6 +233,12 @@ type LeaderJoinInfo struct {
 	// AutoJoinPort defines the optional port used for addressed discovered via
 	// auto-join.
 	AutoJoinPort uint `json:"auto_join_port"`
+
+	// AutoJoinScript defines an executable and arguments that outputs peer API
+	// addresses (e.g. `https://vault.example.com:8200`) to standard output. If
+	// supplied, Vault will attempt to automatically discover peers in addition
+	// to what can be provided via 'leader_api_addr'.
+	AutoJoinPlugin *AutoJoinPlugin `json:"auto_join_plugin"`
 
 	// LeaderAPIAddr is the address of the leader node to connect to
 	LeaderAPIAddr string `json:"leader_api_addr"`
@@ -268,6 +279,19 @@ type LeaderJoinInfo struct {
 	TLSConfig *tls.Config `json:"-"`
 }
 
+func (info *LeaderJoinInfo) ValidateJoinMethods() error {
+	// TODO: At config loading, convert all join methods (legacy discover and
+	// static addresses) to plugins. Then, this can be removed.
+	haveJoinMethod := false
+	for _, joinMethodEnabled := range []bool{len(info.AutoJoin) != 0, len(info.LeaderAPIAddr) != 0, info.AutoJoinPlugin != nil} {
+		if haveJoinMethod && joinMethodEnabled {
+			return errors.New("only one of leader_api_addr, auto_join, and auto_join_script may be enabled")
+		}
+		haveJoinMethod = haveJoinMethod || joinMethodEnabled
+	}
+	return nil
+}
+
 // JoinConfig returns a list of information about possible leader nodes that
 // this node can join as a follower
 func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
@@ -287,8 +311,14 @@ func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
 	}
 
 	for i, info := range leaderInfos {
-		if len(info.AutoJoin) != 0 && len(info.LeaderAPIAddr) != 0 {
-			return nil, errors.New("cannot provide both a leader_api_addr and auto_join")
+		if err := info.ValidateJoinMethods(); err != nil {
+			return nil, err
+		}
+
+		if info.AutoJoin != "" {
+			b.logger.Warn("legacy auto-join config found, please use discover plugin instead")
+			info.AutoJoinPlugin = &AutoJoinPlugin{Plugin: "discover", Config: map[string]string{"discover": info.AutoJoin}}
+			info.AutoJoin = ""
 		}
 
 		if info.AutoJoinScheme != "" && (info.AutoJoinScheme != "http" && info.AutoJoinScheme != "https") {

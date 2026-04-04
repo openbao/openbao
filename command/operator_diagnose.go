@@ -275,7 +275,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 		return nil
 	})
 
-	var kms *kmsplugin.Catalog
+	var kms *kmsplugin.KMSCatalog
 	_ = diagnose.Test(ctx, "Check KMS Plugin Catalog", func(context.Context) (err error) {
 		kms, err = kmsplugin.NewCatalog(server.logger, config)
 		return err

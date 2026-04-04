@@ -10,9 +10,11 @@ export const deprecationWorkflowConfig = {
   // deprecations that will not be removed until 5.0.0 are filtered by deprecation-filter initializer rather than silencing below
   workflow: [
     { handler: 'log', matchId: 'ember-data:deprecate-array-like' },
+    { handler: 'log', matchId: 'ember-data:no-a-with-array-like' },
     { handler: 'log', matchId: 'ember-data:deprecate-model-reopenclass' },
     { handler: 'log', matchId: 'ember-data:deprecate-promise-proxies' },
     { handler: 'log', matchId: 'ember-data:deprecate-has-record-for-id' },
+    { handler: 'log', matchId: 'ember-data:deprecate-promise-many-array-behaviors' },
   ],
 };
 

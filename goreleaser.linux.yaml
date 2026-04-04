@@ -424,6 +424,192 @@ dockers:
       - ./LICENSE
       - ./.release/docker/ubi-docker-entrypoint.sh
       - ./CHANGELOG.md
+  - id: distroless-amd64
+    use: buildx
+    goos: linux
+    goarch: amd64
+    skip_push: false
+    ids:
+      - builds-linux
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--platform=linux/amd64"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
+      - "--target=distroless"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
+    extra_files:
+      - ./LICENSE
+      - ./CHANGELOG.md
+  - id: distroless-arm
+    use: buildx
+    goos: linux
+    goarch: arm
+    goarm: "6"
+    skip_push: false
+    ids:
+      - builds-linux
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--platform=linux/arm"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
+      - "--target=distroless"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm"
+    extra_files:
+      - ./LICENSE
+      - ./CHANGELOG.md
+  - id: distroless-arm64
+    use: buildx
+    goos: linux
+    goarch: arm64
+    goarm: "8"
+    skip_push: false
+    ids:
+      - builds-linux
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--platform=linux/arm64"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
+      - "--target=distroless"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64"
+    extra_files:
+      - ./LICENSE
+      - ./CHANGELOG.md
+  - id: distroless-ppc64le
+    use: buildx
+    goos: linux
+    goarch: ppc64le
+    skip_push: false
+    ids:
+      - builds-linux
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--platform=linux/ppc64le"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
+      - "--target=distroless"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le"
+    extra_files:
+      - ./LICENSE
+      - ./CHANGELOG.md
+  - id: distroless-riscv64
+    use: buildx
+    goos: linux
+    goarch: riscv64
+    skip_push: false
+    ids:
+      - builds-linux
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--platform=linux/riscv64"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
+      - "--target=distroless"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64"
+    extra_files:
+      - ./LICENSE
+      - ./CHANGELOG.md
+  - id: distroless-s390x
+    use: buildx
+    goos: linux
+    goarch: s390x
+    skip_push: false
+    ids:
+      - builds-linux
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--platform=linux/s390x"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
+      - "--target=distroless"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x"
+    extra_files:
+      - ./LICENSE
+      - ./CHANGELOG.md
 
 docker_manifests:
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
@@ -490,6 +676,42 @@ docker_manifests:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
+    skip_push: false
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
+    skip_push: auto
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
+    skip_push: auto
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:latest
+    skip_push: auto
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
     skip_push: false
     image_templates:
@@ -554,6 +776,42 @@ docker_manifests:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
+    skip_push: false
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
+    skip_push: auto
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
+    skip_push: auto
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:latest
+    skip_push: auto
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
     skip_push: false
     image_templates:
@@ -618,6 +876,42 @@ docker_manifests:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
+    skip_push: false
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
+    skip_push: auto
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
+    skip_push: auto
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:latest
+    skip_push: auto
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-distroless{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
 
 archives:
   - format: tar.gz

@@ -36,12 +36,12 @@ You will need the following things properly installed on your computer.
 
 * [Git](https://git-scm.com/)
 * [Node.js](https://nodejs.org/)
-* [Yarn](https://yarnpkg.com/)
+* [pnpm](https://pnpm.io/)
 * [Ember CLI](https://cli.emberjs.com/release/)
 * [Google Chrome](https://google.com/chrome/)
 
-In order to enforce the same version of `yarn` across installs, the `yarn` binary is included in the repo
-in the `.yarn/releases` folder. To update to a different version of `yarn`, use the `yarn policies set-version VERSION` command. For more information on this, see the [documentation](https://yarnpkg.com/en/docs/cli/policies).
+Note: pnpm could be installed via npm as
+`npm i -g pnpm@10.33.0` for the specific version
 
 ## Running a Vault Server
 
@@ -49,11 +49,11 @@ Before running Vault UI locally, a Vault server must be running. First, ensure
 Vault dev is built according the the instructions in `../README.md`. To start a
 single local Vault server:
 
-- `yarn vault`
+- `pnpm vault`
 
 To start a local Vault cluster:
 
-- `yarn vault:cluster`
+- `pnpm vault:cluster`
 
 These commands may also be [aliased on your local device](https://github.com/hashicorp/vault-tools/blob/master/users/noelle/vault_aliases).
 
@@ -61,12 +61,12 @@ These commands may also be [aliased on your local device](https://github.com/has
 
 To get all of the JavaScript dependencies installed, run this in the `ui` directory:
 
-- `yarn`
+- `pnpm i -r`
 
 If you want to run Vault UI and proxy back to a Vault server running
 on the default port, 8200, run the following in the `ui` directory:
 
-- `yarn start`
+- `pnpm start`
 
 This will start an Ember CLI server that proxies requests to port 8200,
 and enable live rebuilding of the application as you change the UI application code.
@@ -77,9 +77,9 @@ long-form version of the npm script:
 
 `ember server --proxy=http://localhost:PORT`
 
-To run yarn with mirage, do:
+To run pnpm with mirage, do:
 
-- `yarn start:mirage handlername`
+- `pnpm start:mirage handlername`
 
 Where `handlername` is one of the options exported in `mirage/handlers/index`
 
@@ -98,15 +98,15 @@ Running tests will spin up a Vault dev server on port 9200 via a
 pretest script that testem (the test runner) executes. All of the
 acceptance tests then run, proxing requests back to that server.
 
-- `yarn run test`
-- `yarn run test -s` to keep the test server running after the initial run.
-- `yarn run test -f="policies"` to filter the tests that are run. `-f` gets passed into
+- `pnpm run test`
+- `pnpm run test -s` to keep the test server running after the initial run.
+- `pnpm run test -f="policies"` to filter the tests that are run. `-f` gets passed into
   [QUnit's `filter` config](https://api.qunitjs.com/config/QUnit.config#qunitconfigfilter-string--default-undefined)
 
 ### Linting
 
-- `yarn lint`
-- `yarn lint:fix`
+- `pnpm lint`
+- `pnpm lint:fix`
 
 ### Building Vault UI into a Vault Binary
 

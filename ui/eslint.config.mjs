@@ -34,7 +34,8 @@ export default tseslint.config(
       // dependencies
       '/bower_components/',
       '/node_modules/',
-      '/.yarn/',
+      '/.pnpm/',
+      '/.pnpm-store/',
       '',
       // misc
       '/coverage/',

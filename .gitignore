@@ -95,6 +95,7 @@ ui/root
 # dependencies
 ui/node_modules
 ui/bower_components
+.pnpm-store/**
 
 # misc
 ui/.DS_Store
@@ -105,6 +106,7 @@ ui/libpeerconnection.log
 ui/npm-debug.log
 ui/test-reports/*
 ui/testem.log
+ui/pnpm-debug.log
 
 # used for JS acceptance tests
 ui/tests/helpers/vault-keys.js
@@ -112,11 +114,12 @@ ui/vault-ui-integration-server.pid
 
 # for building static assets
 node_modules
-
+.pnpm-store/**
 # Website
 website/.bundle
 website/build/
 website/npm-debug.log
+website/pnpm-debug.log
 website/vendor
 website/.bundle
 website/.cache

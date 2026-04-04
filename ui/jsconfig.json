@@ -5,7 +5,8 @@
   },
   "exclude": [
     "node_modules",
-    ".yarn",
+    ".pnpm-store",
+    ".pnpm",
     "public"
   ]
 }

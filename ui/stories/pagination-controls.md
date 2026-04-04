@@ -1,4 +1,4 @@
-<!--THIS FILE IS AUTO GENERATED. This file is generated from JSDoc comments in app/components/pagination-controls.js. To make changes, first edit that file and run "yarn gen-story-md pagination-controls" to re-generate the content.-->
+<!--THIS FILE IS AUTO GENERATED. This file is generated from JSDoc comments in app/components/pagination-controls.js. To make changes, first edit that file and run "pnpm gen-story-md pagination-controls" to re-generate the content.-->
 
 ## PaginationControls
 PaginationControls components are used to paginate through item lists

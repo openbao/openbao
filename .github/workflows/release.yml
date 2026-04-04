@@ -92,26 +92,18 @@ jobs:
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: "./ui/package.json"
-
-      - name: Yarn setup
-        id: install-yarn
-        run: |
-          npm install -g yarn
-
-      - name: UI Cache Setup
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
         with:
-          path: |
-            http/web_ui/
-          key: ${{ github.ref }}-ui
-
+          package_json_file: website/package.json
+          cache: true
+          cache_dependency_path: website/pnpm-lock.yaml
       # Before executing binary builds, build the UI.
       - name: Install UI dependencies
         id: ui-dependencies
         working-directory: ./ui
         run: |
-          yarn install --frozen-lockfile
-          npm rebuild node-sass
+          pnpm install --frozen-lockfile
 
       - name: Build UI
         id: ui-build
@@ -163,7 +155,7 @@ jobs:
         run: |
           version="$(git describe --tags --exclude "api/*" --exclude "sdk/*" --abbrev=0 | sed 's/^v//')"
           echo "version=$version" | tee -a "$GITHUB_OUTPUT"
-          tar --exclude .git --exclude '*.gz' --exclude '*/ui/.yarn/cache' --exclude node_modules -cJf ../openbao-dist-$version.tar.xz --xform="s,^\.,openbao-dist-$version," .
+          tar --exclude .git --exclude '*.gz' --exclude '*/ui/node_modules' --exclude '*/ui/.pnpm-store' -cJf ../openbao-dist-$version.tar.xz --xform="s,^\.,openbao-dist-$version," .
           mv ../*.xz .
 
       - name: Upload distribution source tarball artifact
@@ -237,13 +229,11 @@ jobs:
         if: inputs.dogorelease
         run: go version
 
-      - name: UI Cache Setup
-        if: inputs.dogorelease
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
         with:
-          path: |
-            http/web_ui/
-          key: ${{ github.ref }}-ui
+          package_json_file: ui/package.json
+          cache: true
+          cache_dependency_path: ui/pnpm-lock.yaml
 
       # Supports syft/sbom generation
       - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
@@ -341,7 +331,7 @@ jobs:
           path: 'dist/*.deb'
           retention-days: 1
           if-no-files-found: ignore
-      
+
       - name: Upload rpm packages artifact
         if: inputs.dorpmrelease
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -419,7 +409,7 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSWORD }}
-      
+
       - name: Install reprepro from debian experimental
         run: |
           sudo apt update && sudo apt install -y debian-archive-keyring
@@ -472,7 +462,7 @@ jobs:
         with:
           pattern: rpm-packages-*
           merge-multiple: true
-      
+
       - name: Install createrepo_c from debian trixie
         run: |
           sudo apt update && sudo apt install -y debian-archive-keyring
@@ -489,7 +479,7 @@ jobs:
             mv $pkg build/rpm/$ARCH/
             createrepo_c --update --recycle-pkglist --skip-stat --includepkg $(basename $pkg) build/rpm/$ARCH
           done < pkglist.txt
-      
+
       - name: Upload RPM repository
         run: |
           aws s3 sync build/rpm s3://${BUCKET}/rpm

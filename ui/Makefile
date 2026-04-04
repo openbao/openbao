@@ -1,23 +1,23 @@
 .PHONY: frontend
 frontend:
-	yarn start
+	pnpm start
 
 .PHONY: backend
 backend:
-	yarn openbao
+	pnpm openbao
 
 .PHONY: test
 test:
-	yarn run test
+	pnpm run test
 
 .PHONY: check
 check: test
 
 .PHONY: lint
 lint: bootstrap
-	npm run lint:fix
+	pnpm run lint:fix
 
 .PHONY: bootstrap
 bootstrap:
-	command -v yarn || ( npm install -g yarn )
-	yarn
+	npm install -g pnpm@$(PNPM_VERSION)
+	pnpm install -r

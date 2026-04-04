@@ -119,6 +119,16 @@ type Listener struct {
 	XForwardedForRejectNotAuthorized    bool                          `hcl:"-"`
 	XForwardedForRejectNotAuthorizedRaw interface{}                   `hcl:"x_forwarded_for_reject_not_authorized,alias:XForwardedForRejectNotAuthorized"`
 
+	// This is different from upstream by using array of strings to allow easier ordering of processing.
+	// Internally all certs are passed as headers that are base64 encoded DER.
+	// Available decoders: PEM, URL, RFC9440
+	XForwardedForClientCertHeader              string      `hcl:"x_forwarded_for_client_cert_header,alias:XForwardedForClientCertHeader"`
+	XForwardedForClientCertDecoders            []string    `hcl:"x_forwarded_for_client_cert_decoders,alias:XForwardedForClientCertificateProcessing"`
+	XForwardedForClientCertKeepNotForwarded    bool        `hcl:"-"`
+	XForwardedForClientCertKeepNotForwardedRaw interface{} `hcl:"x_forwarded_for_client_cert_keep_not_forwarded,alias:XForwardedForClientCertKeepNotForwarded"`
+	XForwardedForClientCertKeepUnauthorized    bool        `hcl:"-"`
+	XForwardedForClientCertKeepUnauthorizedRaw interface{} `hcl:"x_forwarded_for_client_cert_keep_unauthorized,alias:XForwardedForClientCertKeepUnauthorized"`
+
 	SocketMode  string `hcl:"socket_mode"`
 	SocketUser  string `hcl:"socket_user"`
 	SocketGroup string `hcl:"socket_group"`
@@ -407,6 +417,22 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 				}
 
 				l.XForwardedForRejectNotPresentRaw = nil
+			}
+
+			if l.XForwardedForClientCertKeepNotForwardedRaw != nil {
+				if l.XForwardedForClientCertKeepNotForwarded, err = parseutil.ParseBool(l.XForwardedForClientCertKeepNotForwardedRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("invalid value for x_forwarded_for_client_cert_keep_not_forwarded: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.XForwardedForClientCertKeepNotForwardedRaw = nil
+			}
+
+			if l.XForwardedForClientCertKeepUnauthorizedRaw != nil {
+				if l.XForwardedForClientCertKeepUnauthorized, err = parseutil.ParseBool(l.XForwardedForClientCertKeepUnauthorizedRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("invalid value for x_forwarded_for_client_cert_keep_unauthorized: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.XForwardedForClientCertKeepUnauthorizedRaw = nil
 			}
 		}
 

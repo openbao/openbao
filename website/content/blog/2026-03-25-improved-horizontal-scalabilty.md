@@ -255,7 +255,7 @@ at. The results for both versions would be similar, the only change you could
 see is that for 2.5.1 the standby nodes use a little more CPU while the cluster
 is idle (as we have seen before).
 
-[disable_standby_reads]: /docs/next/configuration/
+[disable_standby_reads]: /docs/configuration/storage/raft
 [dynamic-secrets]: /docs/secrets/databases/#usage
 [Key types matter]: /docs/secrets/pki/considerations/#key-types-matter
 [no_store]: /api-docs/secret/pki/#create-update-role

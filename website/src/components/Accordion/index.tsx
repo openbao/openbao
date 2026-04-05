@@ -1,14 +1,17 @@
 import styles from "./styles.module.css";
 
-type AccordionItem = {
+export type AccordionItem = {
   title: string;
   description: string;
 };
-type AccordionProps = {
+
+export type AccordionProps = {
   item: AccordionItem;
   isExpanded: boolean;
   onClick: () => void;
 };
+
+
 export default function Accordion({
   item,
   isExpanded,

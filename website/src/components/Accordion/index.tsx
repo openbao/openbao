@@ -1,5 +1,16 @@
-import { AccordionProps } from "@site/src/types/components/Accordion";
 import styles from "./styles.module.css";
+
+export type AccordionItem = {
+  title: string;
+  description: string;
+};
+
+export type AccordionProps = {
+  item: AccordionItem;
+  isExpanded: boolean;
+  onClick: () => void;
+};
+
 
 export default function Accordion({
   item,

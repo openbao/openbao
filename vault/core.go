@@ -624,6 +624,11 @@ type Core struct {
 	// Core invalidation tracker handles dispatching invalidations and
 	// refreshing the Core-adjacent caches afterwards.
 	invalidations *invalidationManager
+
+	// Whether unauthenticated workflows are allowed by this OpenBao
+	// instance.
+	allowUnauthedWorkflows bool
+	workflowStore          *WorkflowStore
 }
 
 // c.stateLock needs to be held in read mode before calling this function.
@@ -775,6 +780,8 @@ type CoreConfig struct {
 	//
 	// See also: https://github.com/openbao/openbao/issues/1110
 	UnsafeCrossNamespaceIdentity bool
+
+	AllowUnauthenticatedWorkflows bool
 }
 
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
@@ -929,6 +936,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		impreciseLeaseRoleTracking:     conf.ImpreciseLeaseRoleTracking,
 		detectDeadlocks:                detectDeadlocks,
 		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
+		allowUnauthedWorkflows:         conf.AllowUnauthenticatedWorkflows,
 	}
 
 	c.standby.Store(true)
@@ -2373,6 +2381,8 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupAuditedHeadersConfig(ctx); err != nil {
 		return err
 	}
+
+	c.setupWorkflowStore(ctx)
 
 	return nil
 }

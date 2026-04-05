@@ -305,6 +305,23 @@ func (p *ProfileEngine) EvaluateResponse(ctx context.Context) (*logical.Response
 	return p.evaluateOutput(ctx, history)
 }
 
+func (p *ProfileEngine) Debug(ctx context.Context) map[string]interface{} {
+	history, err := p.evaluateHistory(ctx)
+
+	debugInfo := map[string]interface{}{
+		"history": history,
+		"error":   err,
+	}
+
+	if err == nil && p.output != nil {
+		resp, err := p.evaluateOutput(ctx, history)
+		debugInfo["error"] = err
+		debugInfo["response"] = resp
+	}
+
+	return debugInfo
+}
+
 // evaluateHistory evaluates all requests which occur in the profile, building
 // up an evaluation history of these flows.
 func (p *ProfileEngine) evaluateHistory(ctx context.Context) (*EvaluationHistory, error) {
@@ -322,10 +339,10 @@ func (p *ProfileEngine) evaluateHistory(ctx context.Context) (*EvaluationHistory
 			return nil
 		}(); err != nil {
 			if p.outerBlockName != "" {
-				return nil, fmt.Errorf("%v.[%v (%d)]: %w", p.outerBlockName, outerBlock.Type, outerIndex, err)
+				return &history, fmt.Errorf("%v.[%v (%d)]: %w", p.outerBlockName, outerBlock.Type, outerIndex, err)
 			}
 
-			return nil, err
+			return &history, err
 		}
 	}
 

@@ -4,6 +4,6 @@
   "compilerOptions": {
     "baseUrl": ".",
     "types": ["webpack-env"],
-    "typeRoots": ["./node_modules/@types", "./types"]
+    "typeRoots": ["./node_modules/@types"]
   }
 }

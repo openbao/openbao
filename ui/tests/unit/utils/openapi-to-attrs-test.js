@@ -3,12 +3,15 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { attr } from '@ember-data/model';
+import Model from '@ember-data/model';
+import { setupTest } from 'ember-qunit';
 import { expandOpenApiProps, combineAttributes, combineFieldGroups } from 'vault/utils/openapi-to-attrs';
 import { module, test } from 'qunit';
 import { camelize } from '@ember/string';
 
-module('Unit | Util | OpenAPI Data Utilities', function () {
+module('Unit | Util | OpenAPI Data Utilities', function (hooks) {
+  setupTest(hooks);
+
   const OPENAPI_RESPONSE_PROPS = {
     ttl: {
       type: 'string',
@@ -91,57 +94,46 @@ module('Unit | Util | OpenAPI Data Utilities', function () {
     },
   };
 
-  const EXISTING_MODEL_ATTRS = [
-    {
-      key: 'name',
-      value: {
-        isAttribute: true,
-        name: 'name',
-        options: {
-          editType: 'string',
-          label: 'Role name',
-        },
+  const EXISTING_MODEL_ATTRS = {
+    name: {
+      isAttribute: true,
+      name: 'name',
+      type: 'string',
+      options: {
+        editType: 'string',
+        label: 'Role name',
       },
     },
-    {
-      key: 'awesomePeople',
-      value: {
-        isAttribute: true,
-        name: 'awesomePeople',
-        options: {
-          label: 'People Who Are Awesome',
-        },
+    awesomePeople: {
+      isAttribute: true,
+      name: 'awesomePeople',
+      options: {
+        label: 'People Who Are Awesome',
       },
     },
-  ];
+  };
 
   const COMBINED_ATTRS = {
-    name: attr('string', {
-      editType: 'string',
+    name: {
+      isAttribute: true,
       type: 'string',
-      label: 'Role name',
-    }),
-    ttl: attr('string', {
-      editType: 'ttl',
-      label: 'TTL',
-      helpText: 'this is a TTL!',
-    }),
-    awesomePeople: attr({
-      label: 'People Who Are Awesome',
-      editType: 'stringArray',
-      defaultValue: 'Grace Hopper,Lady Ada',
-    }),
-    favoriteIceCream: attr('string', {
-      type: 'string',
-      editType: 'string',
-      possibleValues: ['vanilla', 'chocolate', 'strawberry'],
-    }),
-    superSecret: attr('string', {
-      type: 'string',
-      editType: 'string',
-      sensitive: true,
-      description: 'A really secret thing',
-    }),
+      name: 'name',
+      options: {
+        editType: 'string',
+        label: 'Role name',
+      },
+    },
+    awesomePeople: {
+      isAttribute: true,
+      name: 'awesomePeople',
+      type: undefined,
+      options: {
+        label: 'People Who Are Awesome',
+        editType: 'stringArray',
+        fieldGroup: 'default',
+        defaultValue: 'Grace Hopper,Lady Ada',
+      },
+    },
   };
 
   const NEW_FIELDS = ['one', 'two', 'three'];
@@ -205,10 +197,18 @@ module('Unit | Util | OpenAPI Data Utilities', function () {
   });
 
   test('it combines OpenAPI props with existing model attrs', function (assert) {
-    assert.expect(3);
+    assert.expect(2);
     const combined = combineAttributes(EXISTING_MODEL_ATTRS, EXPANDED_PROPS);
+    // To test the attributes, we need to create an object with them,
+    // then make sure the schema matches what we expect.
+    const newModel = Model.extend(combined.attrs);
+    this.owner.register('model:test', newModel);
+    const store = this.owner.lookup('service:store');
+
+    const combinedAttrs = store.getSchemaDefinitionService().attributesDefinitionFor({ type: 'test' });
+
     for (const propName in EXISTING_MODEL_ATTRS) {
-      assert.deepEqual(COMBINED_ATTRS[propName], combined[propName]);
+      assert.deepEqual(COMBINED_ATTRS[propName], combinedAttrs[propName]);
     }
   });
 

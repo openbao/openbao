@@ -401,7 +401,7 @@ const OS = ({ name }) => {
   );
 };
 
-const DownloadComponent = () => {
+const DownloadComponent = ({gpgKeyName} : {gpgKeyName: string}) => {
   const { options, selectedItem, loading, error } = useOptions();
   let version: string;
   if (selectedItem === "" && options) {
@@ -448,7 +448,7 @@ const DownloadComponent = () => {
           <p className="text--left">
             <br />
             GPG Signatures are performed with our{" "}
-            <Link href="/assets/openbao-gpg-pub-20240618.asc">GPG key</Link>. SBOMs
+            <Link href={`pathname:///assets/${gpgKeyName}`}>GPG key</Link>. SBOMs
             are available on our{" "}
             <Link
               href={
@@ -508,7 +508,7 @@ export default function Download(): JSX.Element {
   return (
     <Layout title="Downloads" description="Download OpenBao">
       <OptionsProvider>
-        <DownloadComponent />
+        <DownloadComponent gpgKeyName={"openbao-gpg-pub-20240618.asc"}/>
       </OptionsProvider>
     </Layout>
   );

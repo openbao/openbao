@@ -698,7 +698,7 @@ func exerciseBackends(t *testing.T, backends map[string]logical.Storage) {
 
 	// Finally, test pagination exhaustively.
 	var created []string
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		name := fmt.Sprintf("key-%d", i)
 		allDoSamePut(t, backends, name, testString, false)
 		created = append(created, name)
@@ -928,7 +928,7 @@ func getRandomOps(t *testing.T, count int, transactional bool, txLimit int) []*i
 		opContents[len(opContents)-1] += "0123456789"
 	}
 
-	for i := 0; i < count; i++ {
+	for range count {
 		opI := rand.Intn(len(opTypes))
 		op := opTypes[opI]
 

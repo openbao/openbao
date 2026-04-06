@@ -95,10 +95,10 @@ func TestFSM_Batching(t *testing.T) {
 	}
 
 	totalKeys := 0
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		batchSize := rand.Intn(64)
 		batch := make([]*raft.Log, batchSize)
-		for j := 0; j < batchSize; j++ {
+		for j := range batchSize {
 			var keys int
 			index++
 			keys, batch[j] = getLog(index)

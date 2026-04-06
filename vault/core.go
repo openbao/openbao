@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net"
 	"net/http"
@@ -1183,9 +1184,7 @@ func (c *Core) configureLogRequestsLevel(level string) {
 func (c *Core) configureAuditBackends(backends map[string]audit.Factory) {
 	auditBackends := make(map[string]audit.Factory, len(backends))
 
-	for k, f := range backends {
-		auditBackends[k] = f
-	}
+	maps.Copy(auditBackends, backends)
 
 	c.auditBackends = auditBackends
 }
@@ -1195,9 +1194,7 @@ func (c *Core) configureAuditBackends(backends map[string]audit.Factory) {
 func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory, logger log.Logger) {
 	credentialBackends := make(map[string]logical.Factory, len(backends))
 
-	for k, f := range backends {
-		credentialBackends[k] = f
-	}
+	maps.Copy(credentialBackends, backends)
 
 	credentialBackends[routing.MountTypeToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		tsLogger := logger.Named("token")
@@ -1219,9 +1216,7 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, logger log.Logger) {
 	logicalBackends := make(map[string]logical.Factory, len(backends))
 
-	for k, f := range backends {
-		logicalBackends[k] = f
-	}
+	maps.Copy(logicalBackends, backends)
 
 	// KV
 	_, ok := logicalBackends[routing.MountTypeKV]

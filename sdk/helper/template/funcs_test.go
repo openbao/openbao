@@ -13,7 +13,7 @@ import (
 
 func TestUnixTimestamp(t *testing.T) {
 	now := time.Now().Unix()
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		str := unixTime()
 		actual, err := strconv.Atoi(str)
 		require.NoError(t, err)
@@ -24,7 +24,7 @@ func TestUnixTimestamp(t *testing.T) {
 
 func TestNowNano(t *testing.T) {
 	now := time.Now().UnixNano() / int64(time.Millisecond)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		str := unixTimeMillis()
 		actual, err := strconv.ParseUint(str, 10, 64)
 		require.NoError(t, err)
@@ -415,7 +415,7 @@ func TestReplace(t *testing.T) {
 
 func TestUUID(t *testing.T) {
 	re := "^[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}$"
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		id, err := uuid()
 		require.NoError(t, err)
 		require.Regexp(t, re, id)

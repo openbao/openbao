@@ -5,6 +5,7 @@ package pki
 
 import (
 	"errors"
+	"maps"
 	"time"
 )
 
@@ -129,9 +130,7 @@ func (ac *ACMEChallenge) NetworkMarshal(acmeCtx *acmeContext, authId string) map
 		resp["error"] = ac.Error
 	}
 
-	for field, value := range ac.ChallengeFields {
-		resp[field] = value
-	}
+	maps.Copy(resp, ac.ChallengeFields)
 
 	return resp
 }

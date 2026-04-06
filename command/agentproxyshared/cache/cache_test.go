@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"math/rand"
 	"net"
 	"net/http"
@@ -320,9 +321,7 @@ func TestCache_TokenRevocations_RevokeOrphan(t *testing.T) {
 	sampleSpace[lease3] = "lease"
 
 	expected := make(map[string]string)
-	for k, v := range sampleSpace {
-		expected[k] = v
-	}
+	maps.Copy(expected, sampleSpace)
 	tokenRevocationValidation(t, sampleSpace, expected, leaseCache)
 
 	// Revoke-orphan the intermediate token. This should result in its own
@@ -420,9 +419,7 @@ func TestCache_TokenRevocations_LeafLevelToken(t *testing.T) {
 	sampleSpace[lease3] = "lease"
 
 	expected := make(map[string]string)
-	for k, v := range sampleSpace {
-		expected[k] = v
-	}
+	maps.Copy(expected, sampleSpace)
 	tokenRevocationValidation(t, sampleSpace, expected, leaseCache)
 
 	// Revoke the lef token. This should evict all the leases belonging to this
@@ -519,9 +516,7 @@ func TestCache_TokenRevocations_IntermediateLevelToken(t *testing.T) {
 	sampleSpace[lease3] = "lease"
 
 	expected := make(map[string]string)
-	for k, v := range sampleSpace {
-		expected[k] = v
-	}
+	maps.Copy(expected, sampleSpace)
 	tokenRevocationValidation(t, sampleSpace, expected, leaseCache)
 
 	// Revoke the second level token. This should evict all the leases
@@ -616,9 +611,7 @@ func TestCache_TokenRevocations_TopLevelToken(t *testing.T) {
 	sampleSpace[lease3] = "lease"
 
 	expected := make(map[string]string)
-	for k, v := range sampleSpace {
-		expected[k] = v
-	}
+	maps.Copy(expected, sampleSpace)
 	tokenRevocationValidation(t, sampleSpace, expected, leaseCache)
 
 	// Revoke the top level token. This should evict all the leases belonging
@@ -711,9 +704,7 @@ func TestCache_TokenRevocations_Shutdown(t *testing.T) {
 	sampleSpace[lease3] = "lease"
 
 	expected := make(map[string]string)
-	for k, v := range sampleSpace {
-		expected[k] = v
-	}
+	maps.Copy(expected, sampleSpace)
 	tokenRevocationValidation(t, sampleSpace, expected, leaseCache)
 
 	rootCancelFunc()
@@ -799,9 +790,7 @@ func TestCache_TokenRevocations_BaseContextCancellation(t *testing.T) {
 	sampleSpace[lease3] = "lease"
 
 	expected := make(map[string]string)
-	for k, v := range sampleSpace {
-		expected[k] = v
-	}
+	maps.Copy(expected, sampleSpace)
 	tokenRevocationValidation(t, sampleSpace, expected, leaseCache)
 
 	// Cancel the base context of the lease cache. This should trigger

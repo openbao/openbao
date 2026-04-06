@@ -103,7 +103,7 @@ func callTypeToOp(ctype string) string {
 func (m mockStorageBackend) GetConfigurationOffline() (*raft.RaftConfigurationResponse, error) {
 	twoServerList := []*raft.RaftServer{}
 	threeServerList := []*raft.RaftServer{}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		twoServerList = append(twoServerList, &raft.RaftServer{Voter: true})
 		threeServerList = append(threeServerList, &raft.RaftServer{Voter: true})
 	}

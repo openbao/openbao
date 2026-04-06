@@ -42,7 +42,7 @@ func BTransit_BatchDecryption(b *testing.B, bsize int) {
 	backend, s := createBackendWithStorage(b)
 
 	batchEncryptionInput := make([]interface{}, 0, bsize)
-	for i := 0; i < bsize; i++ {
+	for range bsize {
 		batchEncryptionInput = append(
 			batchEncryptionInput,
 			map[string]interface{}{"plaintext": "dGhlIHF1aWNrIGJyb3duIGZveA=="},

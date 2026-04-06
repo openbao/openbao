@@ -837,7 +837,7 @@ func TestACL_CreationRace(t *testing.T) {
 	errs := make(chan error)
 	stopTime := time.Now().Add(20 * time.Second)
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()

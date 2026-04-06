@@ -6,6 +6,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/rpc"
 	"strings"
 	"sync"
@@ -129,9 +130,7 @@ func (b *databaseBackend) collectPluginInstanceGaugeValues(context.Context) ([]m
 		b.connLock.RLock()
 		defer b.connLock.RUnlock()
 		mapCopy := map[string]*dbPluginInstance{}
-		for k, v := range b.connections {
-			mapCopy[k] = v
-		}
+		maps.Copy(mapCopy, b.connections)
 		return mapCopy
 	}()
 	counts := map[string]int{}

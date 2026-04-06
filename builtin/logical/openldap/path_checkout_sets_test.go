@@ -75,7 +75,7 @@ func TestCheckOutRaces(t *testing.T) {
 	numParallel := 100
 	start := make(chan bool, 1)
 	end := make(chan bool, numParallel)
-	for i := 0; i < numParallel; i++ {
+	for range numParallel {
 		go func() {
 			<-start
 			b.HandleRequest(ctx, &logical.Request{
@@ -182,7 +182,7 @@ func TestCheckOutRaces(t *testing.T) {
 
 	// Wait for them all to finish.
 	timer := time.NewTimer(15 * time.Second)
-	for i := 0; i < numParallel; i++ {
+	for range numParallel {
 		select {
 		case <-timer.C:
 			t.Fatal("test took more than 15 seconds, may be deadlocked")

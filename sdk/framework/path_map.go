@@ -6,6 +6,7 @@ package framework
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 
@@ -201,9 +202,7 @@ func (p *PathMap) Paths() []*Path {
 
 	// Build the schema by simply adding the "key"
 	schema := make(map[string]*FieldSchema)
-	for k, v := range p.Schema {
-		schema[k] = v
-	}
+	maps.Copy(schema, p.Schema)
 	schema["key"] = &FieldSchema{
 		Type:        TypeString,
 		Description: fmt.Sprintf("Key for the %s mapping", p.Name),

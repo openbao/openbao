@@ -49,7 +49,7 @@ func TestTokenStore_CountActiveTokens(t *testing.T) {
 	}
 
 	tokens := make([]string, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 
 		// Create some service tokens
 		req := &logical.Request{
@@ -75,7 +75,7 @@ func TestTokenStore_CountActiveTokens(t *testing.T) {
 	}
 
 	// Revoke the service tokens
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 
 		req := &logical.Request{
 			ClientToken: root,
@@ -96,7 +96,7 @@ func TestTokenStore_CountActiveTokens(t *testing.T) {
 	// token deletion works by setting the TTL of the token to 0 and waiting
 	// for it to get cleaned up by the expiration manager, occasionally we will
 	// have to wait briefly for all the tokens to actually get deleted.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		count = testCountActiveTokens(t, c, root)
 		if count == 1 {
 			return
@@ -144,7 +144,7 @@ func TestIdentityStore_CountActiveEntities(t *testing.T) {
 		Path:        "entity",
 	}
 	ids := make([]string, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		resp, err := c.identityStore.HandleRequest(rootCtx, req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("bad: resp: %#v\n err: %v", resp, err)
@@ -155,7 +155,7 @@ func TestIdentityStore_CountActiveEntities(t *testing.T) {
 	}
 
 	req.Operation = logical.DeleteOperation
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		req.Path = "entity/id/" + ids[i]
 		resp, err := c.identityStore.HandleRequest(rootCtx, req)
 		if err != nil || (resp != nil && resp.IsError()) {

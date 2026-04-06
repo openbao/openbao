@@ -400,7 +400,7 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 		t.Fatalf("bad progress: %d", prog)
 	}
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		unseal, err := TestCoreUnseal(c, res.SecretShares[i])
 		if err != nil {
 			t.Fatalf("err: %v", err)
@@ -2234,7 +2234,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Put several random entries
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		keyUUID, err := uuid.GenerateUUID()
 		if err != nil {
 			t.Fatal(err)

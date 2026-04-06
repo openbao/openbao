@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -342,7 +343,7 @@ func TestExpiration_TotalLeaseCount_WithRoles(t *testing.T) {
 	}
 	TestCoreCreateNamespaces(t, c, ns)
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		le := &leaseEntry{
 			LeaseID:    "lease" + fmt.Sprintf("%d", i),
 			Path:       "foo/bar/" + fmt.Sprintf("%d", i),
@@ -564,7 +565,7 @@ func TestExpiration_Tidy(t *testing.T) {
 		t.Fatalf("bad: lease count; expected:0 actual:%d", count)
 	}
 
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		req := &logical.Request{
 			Operation:   logical.ReadOperation,
 			Path:        "invalid/lease/" + fmt.Sprintf("%d", i+1),
@@ -613,7 +614,7 @@ func TestExpiration_Tidy(t *testing.T) {
 
 	var err1, err2 error
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case err1 = <-errCh1:
 		case err2 = <-errCh2:
@@ -717,7 +718,7 @@ func benchmarkExpirationBackend(b *testing.B, physicalBackend physical.Backend, 
 	}
 
 	// Register fake leases
-	for i := 0; i < numLeases; i++ {
+	for range numLeases {
 		pathUUID, err := uuid.GenerateUUID()
 		if err != nil {
 			b.Fatal(err)
@@ -2853,10 +2854,8 @@ func findMatchingPath(path string, tokenEntries []*logical.TokenEntry) bool {
 
 func findMatchingPolicy(policy string, tokenEntries []*logical.TokenEntry) bool {
 	for _, te := range tokenEntries {
-		for _, p := range te.Policies {
-			if policy == p {
-				return true
-			}
+		if slices.Contains(te.Policies, policy) {
+			return true
 		}
 	}
 	return false
@@ -3377,7 +3376,7 @@ func TestExpiration_getIrrevocableLeaseCounts(t *testing.T) {
 	exp := c.expiration
 
 	expectedPerMount := 10
-	for i := 0; i < expectedPerMount; i++ {
+	for range expectedPerMount {
 		for _, backend := range backends {
 			if _, err := c.AddIrrevocableLease(namespace.RootContext(t.Context()), backend.path); err != nil {
 				t.Fatal(err)
@@ -3453,7 +3452,7 @@ func TestExpiration_listIrrevocableLeases(t *testing.T) {
 
 	expectedLeases := make([]*basicLeaseTestInfo, 0)
 	expectedPerMount := 10
-	for i := 0; i < expectedPerMount; i++ {
+	for range expectedPerMount {
 		for _, backend := range backends {
 			le, err := c.AddIrrevocableLease(namespace.RootContext(t.Context()), backend.path)
 			if err != nil {
@@ -3519,7 +3518,7 @@ func TestExpiration_listIrrevocableLeases_includeAll(t *testing.T) {
 	exp := c.expiration
 
 	expectedNumLeases := MaxIrrevocableLeasesToReturn + 10
-	for i := 0; i < expectedNumLeases; i++ {
+	for range expectedNumLeases {
 		if _, err := c.AddIrrevocableLease(namespace.RootContext(t.Context()), "foo/"); err != nil {
 			t.Fatal(err)
 		}

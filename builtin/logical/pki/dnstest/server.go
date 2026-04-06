@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -294,10 +295,8 @@ func (ts *TestServer) AddDomain(domain string) {
 	ts.lock.Lock()
 	defer ts.lock.Unlock()
 
-	for _, existing := range ts.domains {
-		if existing == domain {
-			return
-		}
+	if slices.Contains(ts.domains, domain) {
+		return
 	}
 
 	ts.domains = append(ts.domains, domain)
@@ -324,11 +323,9 @@ func (ts *TestServer) AddRecord(domain string, record string, value string) {
 	}
 
 	if values, present := ts.records[domain][record]; present {
-		for _, candidate := range values {
-			if candidate == value {
-				// Already present; skip adding.
-				return
-			}
+		if slices.Contains(values, value) {
+			// Already present; skip adding.
+			return
 		}
 	}
 

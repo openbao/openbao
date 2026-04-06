@@ -1493,9 +1493,9 @@ func TestLogin_JWKS_Concurrent(t *testing.T) {
 
 	var g errgroup.Group
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		g.Go(func() error {
-			for i := 0; i < 100; i++ {
+			for range 100 {
 				resp, err := b.HandleRequest(t.Context(), req)
 				if err != nil {
 					return err

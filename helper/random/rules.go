@@ -5,6 +5,7 @@ package random
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/go-viper/mapstructure/v2"
 )
@@ -85,10 +86,5 @@ func (c CharsetRule) Pass(value []rune) bool {
 }
 
 func charIn(search rune, charset []rune) bool {
-	for _, r := range charset {
-		if search == r {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(charset, search)
 }

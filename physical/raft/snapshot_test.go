@@ -55,7 +55,7 @@ func TestRaft_Snapshot_Loading(t *testing.T) {
 	raft := GetRaft(t, true, false)
 
 	// Write some data
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		err := raft.Put(t.Context(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
@@ -156,7 +156,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 	}
 
 	// Write some data
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		err := raft.Put(t.Context(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
@@ -195,7 +195,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 	}
 
 	// Write some more data
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		err := raft.Put(t.Context(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
@@ -228,7 +228,7 @@ func TestRaft_Snapshot_Peers(t *testing.T) {
 	raft3 := GetRaft(t, false, false)
 
 	// Write some data
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		err := raft1.Put(t.Context(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
@@ -308,7 +308,7 @@ func TestRaft_Snapshot_Restart(t *testing.T) {
 	raft2 := GetRaft(t, false, false)
 
 	// Write some data
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		err := raft1.Put(t.Context(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),

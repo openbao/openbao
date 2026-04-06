@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-hclog"
@@ -579,16 +580,12 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 		return nil, fmt.Errorf("failed to validate source '%v': %w", source, err)
 	}
 
-	for _, req := range accessedRequests {
-		if req == "" {
-			return nil, fmt.Errorf("invalid empty request name found")
-		}
+	if slices.Contains(accessedRequests, "") {
+		return nil, fmt.Errorf("invalid empty request name found")
 	}
 
-	for _, resp := range accessedResponses {
-		if resp == "" {
-			return nil, fmt.Errorf("invalid empty response name found")
-		}
+	if slices.Contains(accessedResponses, "") {
+		return nil, fmt.Errorf("invalid empty response name found")
 	}
 
 	val, err := sourceEval.Evaluate(ctx, history)

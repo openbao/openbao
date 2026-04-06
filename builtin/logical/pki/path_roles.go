@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -995,13 +996,7 @@ func (b *backend) getRole(ctx context.Context, s logical.Storage, n string) (*ro
 		modified = true
 	}
 	if result.AllowedBaseDomain != "" {
-		found := false
-		for _, v := range result.AllowedDomains {
-			if v == result.AllowedBaseDomain {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(result.AllowedDomains, result.AllowedBaseDomain)
 		if !found {
 			result.AllowedDomains = append(result.AllowedDomains, result.AllowedBaseDomain)
 		}

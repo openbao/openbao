@@ -369,7 +369,7 @@ func TestDeletesOlderWALsOnLoad(t *testing.T) {
 		NewPassword:       "some-new-password",
 		LastVaultRotation: time.Now(),
 	}
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		_, err := framework.PutWAL(ctx, storage, staticWALKey, wal)
 		if err != nil {
 			t.Fatal(err)

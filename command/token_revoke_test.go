@@ -84,8 +84,6 @@ func TestTokenRevokeCommand_Run(t *testing.T) {
 		t.Parallel()
 
 		for _, tc := range validations {
-			tc := tc
-
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 

@@ -611,7 +611,7 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 	}
 	testName := b.Name()
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 		err = raft.Put(b.Context(), pe)
 		if err != nil {

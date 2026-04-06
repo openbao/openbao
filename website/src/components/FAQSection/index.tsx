@@ -1,7 +1,8 @@
 "use client";
-import React from "react";
+import React, { JSX } from "react";
 import Accordion from "../Accordion";
 import Heading from "@theme/Heading";
+import Link from "@docusaurus/Link";
 
 type AccordionItem = {
   title: string;
@@ -26,13 +27,13 @@ const accordionData: AccordionItem[] = [
     description: (
       <>
         The fork is now GA! Check out our{" "}
-        <a href="https://github.com/openbao/openbao/releases">
+        <Link href="https://github.com/openbao/openbao/releases">
           GitHub releases
-        </a>
+        </Link>
         {" "}or our{" "}
-        <a href="/downloads">
+        <Link href="/downloads">
           downloads page
-        </a>.
+        </Link>.
       </>
     ),
   },
@@ -41,12 +42,12 @@ const accordionData: AccordionItem[] = [
     description: (
       <>
         OpenBao was forked prior to upstream's last commit
-        (<a href="https://github.com/hashicorp/vault/commit/8993802145833ab01d49c6070d787a9eccb81546"><code>8993802</code></a>)
+        (<Link href="https://github.com/hashicorp/vault/commit/8993802145833ab01d49c6070d787a9eccb81546"><code>8993802</code></Link>)
         prior to the BUSL. This corresponds to a few commits after 1.14.8,
         but prior to 1.14.9 being cut.
 
         From here forward, we'll be adhering to our{" "}
-        <a href="/docs/policies/migration/#proposal">compatibility policy</a>{" "}
+        <Link href="/docs/policies/migration/#proposal">compatibility policy</Link>{" "}
         to provide API-compatibility with upstream when possible.
       </>
     ),
@@ -56,9 +57,9 @@ const accordionData: AccordionItem[] = [
     description: (
       <>
         Check out our{" "}
-        <a href="https://github.com/openbao/openbao/blob/main/CONTRIBUTING.md">
+        <Link href="https://github.com/openbao/openbao/blob/main/CONTRIBUTING.md">
           contributing guide
-        </a>
+        </Link>
         {" "} for more information!
       </>
     ),

@@ -4,7 +4,6 @@
  */
 
 import { attr } from '@ember-data/model';
-import { assign } from '@ember/polyfills';
 import { camelize, capitalize } from '@ember/string';
 
 export const expandOpenApiProps = function (props) {
@@ -88,13 +87,14 @@ export const combineAttributes = function (oldAttrs, newProps) {
   const newAttrs = {};
   const newFields = [];
   if (oldAttrs) {
-    oldAttrs.forEach(function (value, name) {
+    for (const name of Object.keys(oldAttrs)) {
+      const value = oldAttrs[name];
       if (newProps[name]) {
-        newAttrs[name] = attr(newProps[name].type, assign({}, newProps[name], value.options));
+        newAttrs[name] = attr(newProps[name].type, Object.assign({}, newProps[name], value.options));
       } else {
         newAttrs[name] = attr(value.type, value.options);
       }
-    });
+    }
   }
   for (const prop in newProps) {
     if (newAttrs[prop]) {

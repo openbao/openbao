@@ -10,7 +10,7 @@ import Model, { attr } from '@ember-data/model';
 import { withExpandedAttributes } from 'vault/decorators/model-expanded-attributes';
 
 // create class using decorator
-const createClass = () => {
+const createClass = (owner) => {
   @withExpandedAttributes()
   class Foo extends Model {
     @attr('string', {
@@ -33,7 +33,12 @@ const createClass = () => {
       return [{ default: ['baz'] }, { 'Other options': ['foo', 'bar'] }];
     }
   }
-  return new Foo();
+  owner.register('model:foo', Foo);
+  return owner.lookup('service:store').createRecord('foo', {
+    foo: '',
+    bar: false,
+    baz: 0,
+  });
 };
 
 module('Unit | Decorators | model-expanded-attributes', function (hooks) {
@@ -71,7 +76,7 @@ module('Unit | Decorators | model-expanded-attributes', function (hooks) {
 
   test('it adds allByKey value to model', function (assert) {
     assert.expect(1);
-    const model = createClass();
+    const model = createClass(this.owner);
     assert.deepEqual(
       { foo: this.fooField, bar: this.barField, baz: this.bazField },
       model.allByKey,
@@ -80,7 +85,7 @@ module('Unit | Decorators | model-expanded-attributes', function (hooks) {
   });
 
   test('_expandGroups helper works correctly', function (assert) {
-    const model = createClass();
+    const model = createClass(this.owner);
     const result = model._expandGroups(model.fieldGroups);
     assert.deepEqual(result, [
       { default: [this.bazField] },
@@ -90,7 +95,7 @@ module('Unit | Decorators | model-expanded-attributes', function (hooks) {
 
   test('_expandGroups throws assertion when incorrect inputs', function (assert) {
     assert.expect(1);
-    const model = createClass();
+    const model = createClass(this.owner);
     try {
       model._expandGroups({ foo: ['bar'] });
     } catch (e) {

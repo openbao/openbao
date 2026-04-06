@@ -30,7 +30,7 @@ const (
 const (
 	// OIDC error prefixes. These are searched for specifically by the UI, so any
 	// changes to them must be aligned with a UI change.
-	errLoginFailed       = "Vault login failed."
+	errLoginFailed       = "OpenBao login failed."
 	errNoResponse        = "No response from provider."
 	errTokenVerification = "Token verification failed."
 	errNotOIDCFlow       = "OIDC login is not configured for this mount"

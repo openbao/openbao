@@ -265,7 +265,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	}
 
 	// Set control group via token
-	err := c.setControlGroup(ctx, te.ID, &cg)
+	err := c.setControlGroupInTokenEntry(ctx, te, &cg)
 	require.Nil(t, err)
 
 	// addAuthorzation
@@ -281,12 +281,12 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	require.Nil(t, err)
 
 	// Should not yet validate for Read
-	validates, err := c.validateControlGroup(ctx, te.ID, logical.ReadOperation)
+	validates, err := c.validateControlGroup(ctx, te, logical.ReadOperation)
 	require.Nil(t, err)
 	require.False(t, validates)
 
 	// but should validate for unprotected operation
-	validates, err = c.validateControlGroup(ctx, te.ID, logical.ListOperation)
+	validates, err = c.validateControlGroup(ctx, te, logical.ListOperation)
 	require.Nil(t, err)
 	require.True(t, validates)
 
@@ -294,14 +294,19 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	auth.DisplayName = "different.user@example.com"
 	err = c.addAuthorization(ctx, te.ID, &auth)
 	require.Nil(t, err)
+	
 	// now validates for Read
-	validates, err = c.validateControlGroup(ctx, te.ID, logical.ReadOperation)
+	te, err = c.tokenStore.lookupInternal(ctx, te.ID, false, false)
+	require.Nil(t, err)
+	validates, err = c.validateControlGroup(ctx, te, logical.ReadOperation)
 	require.Nil(t, err)
 	require.True(t, validates)
 
 	// After TTL, authorizations should expire
 	time.Sleep(1 * time.Second)
-	validates, err = c.validateControlGroup(ctx, te.ID, logical.ReadOperation)
+	te, err = c.tokenStore.lookupInternal(ctx, te.ID, false, false)
+	require.Nil(t, err)
+	validates, err = c.validateControlGroup(ctx, te, logical.ReadOperation)
 	require.Nil(t, err)
 	require.False(t, validates)
 }

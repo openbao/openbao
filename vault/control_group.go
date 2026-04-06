@@ -2,14 +2,56 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
 
+	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
+
+const (
+	controlGroupRequestHelp   = `This endpoint will provide info about a token associated with the given accessor. Response will not contain the token ID. Only applicable when control-group policy resulted in wrapped response.`
+	controlGroupAuthorizeHelp = `This endpoint will authorize a token associated with the given accessor. Response will not contain the token ID. Only applicable when control-group policy resulted in wrapped response.`
+)
+
+// controlGroupRequestResponseSchema defines the response schema for control group lookup.
+// This schema is used both for OpenAPI generation and ensures handler consistency
+var controlGroupRequestResponseSchema = map[string]*framework.FieldSchema{
+	"approved": {
+		Type:        framework.TypeBool,
+		Description: "Status of the wrapping token",
+		Required:    true,
+	},
+	"request_path": {
+		Type:        framework.TypeString,
+		Description: "The original request path",
+		Required:    true,
+	},
+	"request_entity": {
+		Type:        framework.TypeMap,
+		Description: "The original requesting entity",
+		Required:    true,
+	},
+	"authorizations": {
+		Type:        framework.TypeSlice,
+		Description: "The authorizations posted to this token",
+		Required:    true,
+	},
+}
+
+// controlGroupAuthorizeResponseSchema defines the response schema for control group authorization.
+// This schema is used both for OpenAPI generation and ensures handler consistency
+var controlGroupAuthorizeResponseSchema = map[string]*framework.FieldSchema{
+	"approved": {
+		Type:        framework.TypeBool,
+		Description: "Status of the wrapping token",
+		Required:    true,
+	},
+}
 
 // makeLogicalControlGroup copies a vault.ControlGroup to a logical.ControlGroup
 func makeLogicalControlGroup(authResultsControlGroup *ControlGroup) *logical.ControlGroup {
@@ -34,6 +76,25 @@ func makeLogicalControlGroup(authResultsControlGroup *ControlGroup) *logical.Con
 	return cg
 }
 
+// getRequestFromTokenEntry fetchest original request from tokenEntry
+func (c *Core) getRequestFromTokenEntry(ctx context.Context, tokenEntry *logical.TokenEntry) (*logical.Request, error) {
+	reqBytes, ok := tokenEntry.InternalMeta["request"]
+	if !ok {
+		// if there's no control group, nothing to return but it's not an error
+		// nolint:nilnil
+		return nil, nil
+	}
+
+
+        var req logical.Request
+	if err := jsonutil.DecodeJSON([]byte(reqBytes), &req); err != nil {
+		return nil, err
+	}
+
+	return &req, nil
+}
+
+
 // getControlGroup fetches control group from a token entry (where present) given a token
 func (c *Core) getControlGroup(ctx context.Context, token string) (*logical.ControlGroup, error) {
 	tokenEntry, err := c.tokenStore.Lookup(ctx, token)
@@ -45,7 +106,7 @@ func (c *Core) getControlGroup(ctx context.Context, token string) (*logical.Cont
 
 // getControlGroupFromTokenEntry fetches control group from a token entry where present
 func (c *Core) getControlGroupFromTokenEntry(ctx context.Context, tokenEntry *logical.TokenEntry) (*logical.ControlGroup, error) {
-	controlGroup, ok := tokenEntry.Meta["control_group"]
+	controlGroup, ok := tokenEntry.InternalMeta["control_group"]
 	if !ok {
 		// if there's no control group, nothing to return but it's not an error
 		// nolint:nilnil
@@ -66,10 +127,10 @@ func (c *Core) setControlGroupInTokenEntry(ctx context.Context, tokenEntry *logi
 	if err != nil {
 		return err
 	}
-	if tokenEntry.Meta == nil {
-		tokenEntry.Meta = map[string]string{}
+	if tokenEntry.InternalMeta == nil {
+		tokenEntry.InternalMeta = map[string]string{}
 	}
-	tokenEntry.Meta["control_group"] = string(cgJson)
+	tokenEntry.InternalMeta["control_group"] = string(cgJson)
 	return c.tokenStore.store(ctx, tokenEntry)
 }
 
@@ -86,8 +147,8 @@ func (c *Core) setControlGroup(ctx context.Context, token string, cg *logical.Co
 }
 
 // validateControlGroup checks for a passing control group factor; passes if there is no control group config
-func (c *Core) validateControlGroup(ctx context.Context, token string, requestCapability logical.Operation) (bool, error) {
-	cg, err := c.getControlGroup(ctx, token)
+func (c *Core) validateControlGroup(ctx context.Context, tokenEntry *logical.TokenEntry, requestCapability logical.Operation) (bool, error) {
+	cg, err := c.getControlGroupFromTokenEntry(ctx, tokenEntry)
 	if err != nil {
 		return false, err
 	}
@@ -186,4 +247,117 @@ func (c *Core) addAuthorization(ctx context.Context, token string, approver *log
 	}
 
 	return nil
+}
+
+// handleControlGroupLookup handles the sys/control-group/request path for querying information about
+// a particular token. This can be used to see which policies are applicable.
+func (c *Core) handleControlGroupLookup(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	accessor := data.Get("accessor").(string)
+	if accessor == "" {
+		return nil, &logical.StatusBadRequest{Err: "missing accessor"}
+	}
+
+	aEntry, err := c.tokenStore.lookupByAccessor(ctx, accessor, false, false)
+	if err != nil {
+		return nil, err
+	}
+	if aEntry == nil {
+		return nil, &logical.StatusBadRequest{Err: "invalid accessor"}
+	}
+
+	out, err := c.tokenStore.lookupInternal(ctx, aEntry.TokenID, false, true)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+	}
+
+	if out == nil {
+		return logical.ErrorResponse("bad token"), logical.ErrPermissionDenied
+	}
+
+	approved, err := c.validateControlGroup(ctx, out, req.Operation)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+	}
+
+	originalRequest, err := c.getRequestFromTokenEntry(ctx, out)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+	}
+
+	cg, err := c.getControlGroupFromTokenEntry(ctx, out)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+	}
+
+	// Generate a response.
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"approved":       approved,
+			"request_path":   originalRequest.Path,
+			"request_entity": originalRequest.Auth,
+			"authorizations": cg.Factors[0].Authorizations,
+		},
+	}
+
+	return resp, nil
+}
+
+// handleControlGroupAuthorize handles the sys/control-group/authorize path for authorizing
+// a wrapped response token governed by a control-group policy.
+func (c *Core) handleControlGroupAuthorize(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	accessor := data.Get("accessor").(string)
+	if accessor == "" {
+		return nil, &logical.StatusBadRequest{Err: "missing accessor"}
+	}
+
+	aEntry, err := c.tokenStore.lookupByAccessor(ctx, accessor, false, false)
+	if err != nil {
+		return nil, err
+	}
+	if aEntry == nil {
+		return nil, &logical.StatusBadRequest{Err: "invalid accessor"}
+	}
+
+	if req.Auth == nil {
+		return nil, &logical.StatusBadRequest{Err: "missing auth"}
+	}
+
+	// Adds authorization record to the token entry if applicable
+	err = c.addAuthorization(ctx, aEntry.TokenID, req.Auth)
+	if err != nil {
+		return nil, err
+	}
+
+	// Prepare the field data required for a lookup call
+	d := &framework.FieldData{
+		Raw: map[string]interface{}{
+			"token": aEntry.TokenID,
+		},
+		Schema: map[string]*framework.FieldSchema{
+			"token": {
+				Type:        framework.TypeString,
+				Description: "Token to lookup",
+			},
+		},
+	}
+
+	lookupResponse, err := c.handleControlGroupLookup(ctx, req, d)
+	if err != nil {
+		return nil, err
+	}
+	if lookupResponse == nil {
+		return nil, errors.New("failed to lookup the token")
+	}
+	if lookupResponse.IsError() {
+		return lookupResponse, nil
+	}
+
+	// Only return the "approved" information
+	resp := logical.Response{
+		Data: map[string]interface{}{
+			"approved": lookupResponse.Data["approved"],
+		},
+	}
+
+	return &resp, nil
 }

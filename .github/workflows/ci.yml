@@ -31,7 +31,9 @@ jobs:
       - name: Ensure Go modules are cached
         uses: ./.github/actions/set-up-go
         with:
-          no-restore: true
+          no-restore: true # don't download them on a cache hit
+      # control checking out head instead of default ref by a GH label
+      # if checkout-head label is added to a PR, checkout HEAD otherwise checkout ref
       - if: ${{ !contains(github.event.pull_request.labels.*.name, 'checkout-head') }}
         run: echo "CHECKOUT_REF=${GITHUB_REF}" >> "$GITHUB_ENV"
       - if: ${{ contains(github.event.pull_request.labels.*.name, 'checkout-head') }}
@@ -48,11 +50,15 @@ jobs:
     needs:
       - setup
       - verify-changes
+    # Don't run this job for docs/ui only PRs
     if: |
       needs.verify-changes.outputs.is_docs_change == 'false' &&
       needs.verify-changes.outputs.is_ui_change == 'false'
     uses: ./.github/workflows/test-go.yml
     with:
+      # The regular Go tests use an extra runner to execute the
+      # binary-dependent tests. We isolate them there so that the
+      # other tests aren't slowed down waiting for a binary build.
       binary-tests: true
       total-runners: 16
       go-arch: amd64
@@ -66,6 +72,7 @@ jobs:
     needs:
       - setup
       - verify-changes
+    # Don't run this job for docs/ui only PRs
     if: |
       github.event.pull_request.draft == false &&
       needs.verify-changes.outputs.is_docs_change == 'false' &&
@@ -83,6 +90,10 @@ jobs:
 
   test-ui:
     name: Test UI
+    # The test-ui job is only run on:
+    # - pushes to main and branches starting with "release/"
+    # - PRs where the branch starts with "ui/", "backport/ui/", "merge", or when base branch starts with "release/"
+    # - PRs with the "ui" label on GitHub
     if: |
       github.ref_name == 'main' ||
       startsWith(github.ref_name, 'release/') ||
@@ -98,37 +109,25 @@ jobs:
       - uses: ./.github/actions/set-up-go
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version-file: "./ui/package.json"
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+          node-version-file: ui/package.json
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
         with:
-          version: 10.33.0
-      # Setup node.js with caching using the pnpm store
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version-file: "./ui/package.json"
-          cache: pnpm
-          cache-dependency-path: ui/pnpm-lock.yaml
+          package_json_file: ui/package.json
+          cache: true
+          cache_dependency_path: ui/pnpm-lock.yaml
       - id: install-browser
         uses: browser-actions/setup-chrome@4f8e94349a351df0f048634f25fec36c3c91eded # v2.1.1
       - id: ui-dependencies
         name: ui-dependencies
         working-directory: ./ui
-        run: |
-          pnpm install --frozen-lockfile
+        run: pnpm install
       - id: build-go-dev
         name: build-go-dev
-        run: |
-          rm -rf ./pkg
-          mkdir ./pkg
-
-          make ci-bootstrap dev
+        run: make ci-bootstrap dev
       - id: test-ui
         name: test-ui
         run: |
           export PATH="${PWD}/bin:${PATH}"
-
-          # Run Ember tests
           cd ui
           mkdir -p test-results/qunit
           pnpm test
@@ -137,7 +136,7 @@ jobs:
           name: test-results-ui
           path: ui/test-results
         if: success() || failure()
-      - uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86
+      - uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86 # v2.4
         with:
           paths: "ui/test-results/qunit/results.xml"
           show: "fail"

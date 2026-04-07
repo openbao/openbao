@@ -69,9 +69,7 @@ func (sc *storageContext) rebuildIssuersChains(referenceCert *issuerEntry /* opt
 	// Our provided reference cert might not be in the list of issuers. In
 	// that case, add it manually.
 	if referenceCert != nil {
-		missing := !slices.Contains(issuers, referenceCert.ID)
-
-		if missing {
+		if !slices.Contains(issuers, referenceCert.ID) {
 			issuers = append(issuers, referenceCert.ID)
 		}
 	}
@@ -654,9 +652,7 @@ func processAnyCliqueOrCycle(
 			// the nodes of whatever grouping
 			foundNode := false
 			for _, clique := range cliques {
-				inClique := slices.Contains(clique, node)
-
-				if inClique {
+				if slices.Contains(clique, node) {
 					foundNode = true
 
 					// Compute this node's CAChain. Note order doesn't matter
@@ -947,14 +943,6 @@ func isOnReissuedClique(
 	return clique, nil
 }
 
-func containsIssuer(collection []issuerID, target issuerID) bool {
-	if len(collection) == 0 {
-		return false
-	}
-
-	return slices.Contains(collection, target)
-}
-
 func appendCycleIfNotExisting(knownCycles [][]issuerID, candidate []issuerID) [][]issuerID {
 	// There's two ways to do cycle detection: canonicalize the cycles,
 	// rewriting them to have the least (or max) element first or just
@@ -1035,7 +1023,7 @@ func findCyclesNearClique(
 	// We know the node has at least one child, since the clique is non-empty.
 	for _, child := range issuerIdChildrenMap[cliqueNode] {
 		// Skip children that are part of the clique.
-		if containsIssuer(excludeNodes, child) {
+		if slices.Contains(excludeNodes, child) {
 			continue
 		}
 
@@ -1131,9 +1119,7 @@ func findAllCyclesWithNode(
 				continue
 			}
 
-			skipNode := slices.Contains(exclude, child)
-
-			if skipNode {
+			if slices.Contains(exclude, child) {
 				continue
 			}
 
@@ -1165,8 +1151,7 @@ func findAllCyclesWithNode(
 					// We only care about source->source cycles. If this
 					// cycles, but isn't a source->source cycle, don't add
 					// this path.
-					foundSelf := slices.Contains(path, child)
-					if foundSelf {
+					if slices.Contains(path, child) {
 						// Skip this path.
 						continue
 					}

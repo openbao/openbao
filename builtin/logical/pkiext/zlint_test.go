@@ -136,9 +136,7 @@ func RunZLintRootTest(t *testing.T, keyType string, keyBits int, usePSS bool, ig
 		}
 
 		if result == "error" {
-			skip := slices.Contains(ignored, key)
-
-			if !skip {
+			if !slices.Contains(ignored, key) {
 				t.Fatalf("got unexpected error from test %v: %v", key, value)
 			}
 		}

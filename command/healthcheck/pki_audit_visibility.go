@@ -156,9 +156,7 @@ func (h *AuditVisibility) Evaluate(e *Executor) (results []*Result, err error) {
 		}
 
 		for _, param := range visibleList {
-			found := slices.Contains(actual, param)
-
-			if !found {
+			if !slices.Contains(actual, param) {
 				ret := Result{
 					Status:   ResultInformational,
 					Endpoint: "/sys/mounts/{{mount}}/tune",
@@ -179,9 +177,7 @@ func (h *AuditVisibility) Evaluate(e *Executor) (results []*Result, err error) {
 			return nil, fmt.Errorf("error parsing %v from server: %v", source, err)
 		}
 		for _, param := range hiddenList {
-			found := slices.Contains(actual, param)
-
-			if found {
+			if slices.Contains(actual, param) {
 				ret := Result{
 					Status:   ResultWarning,
 					Endpoint: "/sys/mounts/{{mount}}/tune",

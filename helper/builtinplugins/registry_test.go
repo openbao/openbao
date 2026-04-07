@@ -9,14 +9,12 @@ import (
 	"os"
 	"reflect"
 	"regexp"
-	slices0 "slices"
+	"slices"
 	"testing"
 
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	dbMysql "github.com/openbao/openbao/plugins/database/mysql"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
-
-	"golang.org/x/exp/slices"
 )
 
 // Test_RegistryGet exercises the (registry).Get functionality by comparing
@@ -296,7 +294,7 @@ func Test_RegistryMatchesGenOpenapi(t *testing.T) {
 	ensureInScript := func(t *testing.T, scriptBackends []string, name string) {
 		t.Helper()
 
-		if slices0.Contains([]string{
+		if slices.Contains([]string{
 			"oidc",
 			"openldap",
 		}, name) {

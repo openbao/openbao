@@ -589,7 +589,7 @@ func (c *Client) VerifyPeerCertificate(ctx context.Context, verifiedChains [][]*
 }
 
 func (c *Client) canEarlyExitForOCSP(results []*ocspStatus, chainSize int, conf *VerifyConfig) *ocspStatus {
-	msg := ""
+	var msg strings.Builder
 	if conf.OcspFailureMode == FailOpenFalse {
 		// Fail closed. any error is returned to stop connection
 		for _, r := range results {
@@ -611,13 +611,13 @@ func (c *Client) canEarlyExitForOCSP(results []*ocspStatus, chainSize int, conf 
 				return r
 			}
 			if r != nil && r.code != ocspStatusGood && r.err != nil {
-				msg += "" + r.err.Error()
+				msg.WriteString("" + r.err.Error())
 			}
 		}
 	}
-	if len(msg) > 0 {
+	if len(msg.String()) > 0 {
 		c.Logger().Warn(
-			"OCSP is set to fail-open, and could not retrieve OCSP based revocation checking but proceeding.", "detail", msg)
+			"OCSP is set to fail-open, and could not retrieve OCSP based revocation checking but proceeding.", "detail", msg.String())
 	}
 	return nil
 }

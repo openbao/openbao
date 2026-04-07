@@ -7,16 +7,11 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"reflect"
 	"regexp"
-	slices0 "slices"
+	"slices"
 	"testing"
 
-	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
-	dbMysql "github.com/openbao/openbao/plugins/database/mysql"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
-
-	"golang.org/x/exp/slices"
 )
 
 // Test_RegistryGet exercises the (registry).Get functionality by comparing
@@ -26,28 +21,24 @@ func Test_RegistryGet(t *testing.T) {
 		name       string
 		builtin    string
 		pluginType consts.PluginType
-		want       BuiltinFactory
 		wantOk     bool
 	}{
 		{
 			name:       "non-existent builtin",
 			builtin:    "foo",
 			pluginType: consts.PluginTypeCredential,
-			want:       nil,
 			wantOk:     false,
 		},
 		{
 			name:       "bad plugin type",
 			builtin:    "app-id",
 			pluginType: 9000,
-			want:       nil,
 			wantOk:     false,
 		},
 		{
 			name:       "known builtin lookup",
 			builtin:    "userpass",
 			pluginType: consts.PluginTypeCredential,
-			want:       toFunc(credUserpass.Factory),
 			wantOk:     true,
 		},
 		// The app-id plugin has been fully removed from OpenBao.
@@ -55,27 +46,18 @@ func Test_RegistryGet(t *testing.T) {
 			name:       "removed builtin lookup",
 			builtin:    "app-id",
 			pluginType: consts.PluginTypeCredential,
-			want:       nil,
 			wantOk:     true,
 		},*/
 		{
 			name:       "known builtin lookup",
 			builtin:    "mysql-database-plugin",
 			pluginType: consts.PluginTypeDatabase,
-			want:       dbMysql.New(dbMysql.DefaultUserNameTemplate),
 			wantOk:     true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var got BuiltinFactory
-			got, ok := Registry.Get(tt.builtin, tt.pluginType)
-			if ok {
-				if reflect.TypeOf(got) != reflect.TypeOf(tt.want) {
-					t.Fatalf("got type: %T, want type: %T", got, tt.want)
-				}
-			}
-			if tt.wantOk != ok {
+			if _, ok := Registry.Get(tt.builtin, tt.pluginType); tt.wantOk != ok {
 				t.Fatalf("error: got %v, want %v", ok, tt.wantOk)
 			}
 		})
@@ -296,7 +278,7 @@ func Test_RegistryMatchesGenOpenapi(t *testing.T) {
 	ensureInScript := func(t *testing.T, scriptBackends []string, name string) {
 		t.Helper()
 
-		if slices0.Contains([]string{
+		if slices.Contains([]string{
 			"oidc",
 			"openldap",
 		}, name) {

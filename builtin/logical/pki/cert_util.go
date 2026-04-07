@@ -310,19 +310,11 @@ func validateCommonName(b *backend, data *inputBundle, name string) string {
 	// If there's an at in the data, ensure email type validation is allowed.
 	// Otherwise, ensure hostname is allowed.
 	if strings.Contains(name, "@") {
-		var allowsEmails bool
-		if slices.Contains(data.role.CNValidations, "email") {
-			allowsEmails = true
-		}
-		if !allowsEmails {
+		if !slices.Contains(data.role.CNValidations, "email") {
 			return name
 		}
 	} else {
-		var allowsHostnames bool
-		if slices.Contains(data.role.CNValidations, "hostname") {
-			allowsHostnames = true
-		}
-		if !allowsHostnames {
+		if !slices.Contains(data.role.CNValidations, "hostname") {
 			return name
 		}
 	}

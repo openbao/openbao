@@ -281,8 +281,8 @@ func validateUsername(username, allowedUsers string) error {
 		return nil
 	}
 
-	userList := strings.Split(allowedUsers, ",")
-	for _, user := range userList {
+	userList := strings.SplitSeq(allowedUsers, ",")
+	for user := range userList {
 		if strings.TrimSpace(user) == username {
 			return nil
 		}

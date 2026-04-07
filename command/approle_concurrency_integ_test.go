@@ -69,9 +69,7 @@ func TestAppRole_Integ_ConcurrentLogins(t *testing.T) {
 	wg := &sync.WaitGroup{}
 
 	for range 100 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			appRoleAuth, err := auth.NewAppRoleAuth(roleID, &auth.SecretID{FromString: secretID})
 			if err != nil {
 				t.Error(err)
@@ -86,8 +84,7 @@ func TestAppRole_Integ_ConcurrentLogins(t *testing.T) {
 				t.Error("expected a successful login")
 				return
 			}
-		}()
-
+		})
 	}
 	wg.Wait()
 }

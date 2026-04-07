@@ -140,8 +140,7 @@ func (b *backend) acmeParsedWrapper(op acmeParsedOperation) framework.OperationF
 				resp.Headers["Link"] = genAcmeLinkHeader(acmeCtx)
 			} else {
 				directory := genAcmeLinkHeader(acmeCtx)[0]
-				addDirectory := !slices.Contains(resp.Headers["Link"], directory)
-				if addDirectory {
+				if !slices.Contains(resp.Headers["Link"], directory) {
 					resp.Headers["Link"] = append(resp.Headers["Link"], directory)
 				}
 			}

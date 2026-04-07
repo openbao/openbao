@@ -74,7 +74,7 @@ func (c CharsetRule) Pass(value []rune) bool {
 		// charIn is sometimes faster than a map lookup because the data is so small
 		// This is being kept rather than converted to a map to keep the code cleaner,
 		// otherwise there would need to be additional parsing logic.
-		if charIn(r, c.Charset) {
+		if slices.Contains(c.Charset, r) {
 			count++
 			if count >= c.MinChars {
 				return true
@@ -83,8 +83,4 @@ func (c CharsetRule) Pass(value []rune) bool {
 	}
 
 	return false
-}
-
-func charIn(search rune, charset []rune) bool {
-	return slices.Contains(charset, search)
 }

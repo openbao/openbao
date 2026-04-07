@@ -533,8 +533,8 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 		// to the multiple-header case.
 		var acc []string
 		for _, header := range headers {
-			vals := strings.Split(header, ",")
-			for _, v := range vals {
+			vals := strings.SplitSeq(header, ",")
+			for v := range vals {
 				acc = append(acc, strings.TrimSpace(v))
 			}
 		}

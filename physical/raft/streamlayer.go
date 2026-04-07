@@ -332,16 +332,14 @@ func (l *raftLayer) Handoff(ctx context.Context, wg *sync.WaitGroup, quit chan s
 		return errors.New("raft is shutdown")
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		select {
 		case l.connCh <- conn:
 		case <-l.closeCh:
 		case <-ctx.Done():
 		case <-quit:
 		}
-	}()
+	})
 
 	return nil
 }

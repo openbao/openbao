@@ -33,9 +33,9 @@ type Client struct {
 func (c *Client) DialLDAP(cfg *ConfigEntry) (Connection, error) {
 	var retErr *multierror.Error
 	var conn Connection
-	urls := strings.Split(cfg.Url, ",")
+	urls := strings.SplitSeq(cfg.Url, ",")
 
-	for _, uut := range urls {
+	for uut := range urls {
 		u, err := url.Parse(uut)
 		if err != nil {
 			retErr = multierror.Append(retErr, fmt.Errorf("error parsing url %q: %w", uut, err))
@@ -468,12 +468,13 @@ func sidBytesToString(b []byte) (string, error) {
 		return "", fmt.Errorf("SID %#v convert failed reading SubAuthority: %w", b, err)
 	}
 
-	result := fmt.Sprintf("S-%d-%d", revision, identifierAuthority)
+	var result strings.Builder
+	result.WriteString(fmt.Sprintf("S-%d-%d", revision, identifierAuthority))
 	for _, subAuthorityPart := range subAuthority {
-		result += fmt.Sprintf("-%d", subAuthorityPart)
+		result.WriteString(fmt.Sprintf("-%d", subAuthorityPart))
 	}
 
-	return result, nil
+	return result.String(), nil
 }
 
 func (c *Client) performLdapTokenGroupsSearch(cfg *ConfigEntry, conn Connection, userDN string) ([]*ldap.Entry, error) {
@@ -505,10 +506,7 @@ func (c *Client) performLdapTokenGroupsSearch(cfg *ConfigEntry, conn Connection,
 	groupEntries := make([]*ldap.Entry, 0, len(groupAttrValues))
 
 	for range maxWorkers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			for sid := range taskChan {
 				groupResult, err := conn.Search(&ldap.SearchRequest{
 					BaseDN:       fmt.Sprintf("<SID=%s>", sid),
@@ -534,7 +532,7 @@ func (c *Client) performLdapTokenGroupsSearch(cfg *ConfigEntry, conn Connection,
 				groupEntries = append(groupEntries, groupResult.Entries[0])
 				lock.Unlock()
 			}
-		}()
+		})
 	}
 
 	for _, sidBytes := range groupAttrValues {

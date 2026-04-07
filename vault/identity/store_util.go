@@ -174,10 +174,7 @@ func (i *IdentityStore) LoadEntities(ctx context.Context, readOnly bool) error {
 
 	// Create 64 workers to distribute work to
 	for range consts.ExpirationRestoreWorkerCount {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			for {
 				select {
 				case key, ok := <-broker:
@@ -200,13 +197,11 @@ func (i *IdentityStore) LoadEntities(ctx context.Context, readOnly bool) error {
 					return
 				}
 			}
-		}()
+		})
 	}
 
 	// Distribute the collected keys to the workers in a go routine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for j, key := range existing {
 			if j%500 == 0 {
 				i.logger.Debug("entities loading", "progress", j)
@@ -223,7 +218,7 @@ func (i *IdentityStore) LoadEntities(ctx context.Context, readOnly bool) error {
 
 		// Close the broker, causing worker routines to exit
 		close(broker)
-	}()
+	})
 
 	// Restore each key by pulling from the result chan
 LOOP:

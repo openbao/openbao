@@ -54,10 +54,7 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	var logs []string
 	var wg sync.WaitGroup
 	for range 10 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			var localLogs []string
 
 			// 5 iterations is roughly 2.5 seconds with the 5ms sleep.
@@ -99,7 +96,7 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 				seenLogs[log] = struct{}{}
 			}
 			logLock.Unlock()
-		}()
+		})
 	}
 
 	// Now sacrifice the leader's lock and ensure it doesn't write.

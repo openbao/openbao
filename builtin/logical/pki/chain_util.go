@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 )
@@ -425,15 +426,15 @@ func (sc *storageContext) rebuildIssuersChains(referenceCert *issuerEntry /* opt
 	// Assumption: no nodes left unprocessed. They should've either been
 	// reached through the parent->child addition or they should've been
 	// self-loops.
-	var msg string
+	var msg strings.Builder
 	for _, issuer := range issuers {
 		if visited, ok := processedIssuers[issuer]; !ok || !visited {
 			pretty := prettyIssuer(issuerIdEntryMap, issuer)
-			msg += fmt.Sprintf("[failed to build chain correctly: unprocessed issuer %v: ok: %v; visited: %v]\n", pretty, ok, visited)
+			msg.WriteString(fmt.Sprintf("[failed to build chain correctly: unprocessed issuer %v: ok: %v; visited: %v]\n", pretty, ok, visited))
 		}
 	}
-	if len(msg) > 0 {
-		return errors.New(msg)
+	if len(msg.String()) > 0 {
+		return errors.New(msg.String())
 	}
 
 	// Finally, write all issuers to disk.

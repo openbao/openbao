@@ -10,6 +10,7 @@ import (
 	"math"
 	"net/http"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -136,11 +137,11 @@ func makeLongEmptyList(size int) interface{} {
 }
 
 func makeLongString(size int) interface{} {
-	var x string
+	var x strings.Builder
 	for i := range size {
-		x += fmt.Sprintf("%d", i%10)
+		x.WriteString(fmt.Sprintf("%d", i%10))
 	}
-	return x
+	return x.String()
 }
 
 func makeLargeMap(size int) interface{} {

@@ -1041,7 +1041,7 @@ func hyphenatedToTitleCase(in string) string {
 
 	title := cases.Title(language.English, cases.NoLower)
 
-	for _, word := range strings.Split(in, "-") {
+	for word := range strings.SplitSeq(in, "-") {
 		b.WriteString(title.String(word))
 	}
 

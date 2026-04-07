@@ -34,10 +34,10 @@ type ChallengeValidation struct {
 	Thumbprint string `json:"thumbprint"`
 
 	Initiated       time.Time `json:"initiated"`
-	FirstValidation time.Time `json:"first_validation,omitempty"`
+	FirstValidation time.Time `json:"first_validation"`
 	RetryCount      int       `json:"retry_count,omitempty"`
-	LastRetry       time.Time `json:"last_retry,omitempty"`
-	RetryAfter      time.Time `json:"retry_after,omitempty"`
+	LastRetry       time.Time `json:"last_retry"`
+	RetryAfter      time.Time `json:"retry_after"`
 }
 
 type ChallengeQueueEntry struct {

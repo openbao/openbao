@@ -829,7 +829,7 @@ func parsePingIDConfig(mConfig *mfa.Config, d *framework.FieldData) error {
 	}
 
 	config := &mfa.PingIDConfig{}
-	for _, line := range strings.Split(string(fileBytes), "\n") {
+	for line := range strings.SplitSeq(string(fileBytes), "\n") {
 		if strings.HasPrefix(line, "#") {
 			continue
 		}

@@ -226,8 +226,8 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		modLines := strings.Split(string(modFile), "\n")
-		for _, p := range modLines {
+		modLines := strings.SplitSeq(string(modFile), "\n")
+		for p := range modLines {
 			splitLine := strings.Split(strings.TrimSpace(p), " ")
 			if len(splitLine) == 0 {
 				continue

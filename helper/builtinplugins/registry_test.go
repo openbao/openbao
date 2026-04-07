@@ -71,7 +71,7 @@ func Test_RegistryGet(t *testing.T) {
 			var got BuiltinFactory
 			got, ok := Registry.Get(tt.builtin, tt.pluginType)
 			if ok {
-				if reflect.TypeOf(got) != reflect.TypeOf(tt.want) {
+				if reflect.TypeFor[BuiltinFactory]() != reflect.TypeFor[BuiltinFactory]() {
 					t.Fatalf("got type: %T, want type: %T", got, tt.want)
 				}
 			}

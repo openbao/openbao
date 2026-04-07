@@ -96,7 +96,7 @@ func AddIdentity(view logical.SystemView, req *logical.Request, data map[string]
 
 func encodeJSON(value ref.Val) ref.Val {
 	native, err := value.ConvertToNative(
-		reflect.TypeOf(map[string]any{}),
+		reflect.TypeFor[map[string]any](),
 	)
 	if err != nil {
 		return types.Bool(false)

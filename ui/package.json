@@ -1,15 +1,17 @@
 {
-  "name": "vault",
+  "name": "openbao",
+  "private": true,
   "version": "0.0.0",
   "description": "The official UI for OpenBao",
-  "repository": "",
-  "author": "",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": "22"
+  },
   "directories": {
-    "doc": "doc",
     "test": "tests"
   },
   "scripts": {
-    "build": "ember build --environment=production && cp metadata.json ../http/web_ui/metadata.json",
+    "build": "ember build --environment=production",
     "build:dev": "ember build",
     "lint:fix": "npm-run-all --print-name --aggregate-output --continue-on-error --parallel \"lint:*:fix\"",
     "lint:hbs": "ember-template-lint '**/*.hbs'",
@@ -48,7 +50,7 @@
       "git add"
     ]
   },
-    "devDependencies": {
+  "devDependencies": {
     "@babel/eslint-parser": "7.27.0",
     "@babel/plugin-proposal-decorators": "^7.25.9",
     "@ember/legacy-built-in-components": "^0.4.1",
@@ -251,21 +253,11 @@
       "xmlhttprequest-ssl": "^1.6.2",
       "cheerio": "1.0.0-rc.12",
       "get-intrinsic": "1.2.7"
-    },
-    "onlyBuiltDependencies": [
-      "@parcel/watcher",
-      "@scarf/scarf",
-      "core-js",
-      "ember-modal-dialog"
-    ]
-  },
-  "engines": {
-    "node": "20"
+    }
   },
   "ember": {
     "edition": "octane"
   },
-  "private": true,
   "ember-addon": {
     "paths": [
       "lib/core",
@@ -288,7 +280,6 @@
     "node-notifier": "^8.0.1",
     "uuid": "^11.1.0"
   },
-  "packageManager": "pnpm@10.33.0",
   "scarfSettings": {
     "enabled": false
   }

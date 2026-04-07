@@ -298,11 +298,20 @@ const PackageRepo = ({ type }) => {
 };
 const DockerList = ({ version, registry }) => {
   const dockerVersion = version.slice(1);
+
+  // For example: 2.6.0, 2.5.0-beta20251125.
+  // Consider replacing with a more complete semver parser once required.
+  const [major, minor, _patch] = dockerVersion
+    .match(/^(\d+)\.(\d+)\.(\d+)/).slice(1).map(v => parseInt(v));
+
   const dockerDistros = {
     "Alpine Image Distribution": "openbao/openbao",
     "Alpine Image Distribution with HSM Support": "openbao/openbao-hsm",
     "Red Hat Universal Base Image (UBI) Distribution": "openbao/openbao-ubi",
     "Red Hat Universal Base Image (UBI) Distribution with HSM support": "openbao/openbao-hsm-ubi",
+    ...(major >= 2 && minor >= 6 ? {
+      "Distroless Distribution": "openbao/openbao-distroless",
+    } : {}),
   }
   return (
       <>

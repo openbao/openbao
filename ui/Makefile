@@ -8,15 +8,16 @@ backend:
 
 .PHONY: test
 test:
-	pnpm test
+	pnpm run test
 
 .PHONY: check
 check: test
 
 .PHONY: lint
 lint: bootstrap
-	pnpm lint:fix
+	pnpm run lint:fix
 
 .PHONY: bootstrap
 bootstrap:
-	pnpm install
+	npm install -g pnpm@$(PNPM_VERSION)
+	pnpm install -r

@@ -34,6 +34,7 @@ export default tseslint.config(
       // dependencies
       '/bower_components/',
       '/node_modules/',
+      '/.pnpm/',
       '/.pnpm-store/',
       '',
       // misc
@@ -41,6 +42,15 @@ export default tseslint.config(
       '!.*',
       '.*/',
       '.eslintcache',
+      '',
+      // ember-try
+      '/.node_modules.ember-try/',
+      '/bower.json.ember-try',
+      '/npm-shrinkwrap.json.ember-try',
+      '/package.json.ember-try',
+      '/package-lock.json.ember-try',
+      '/yarn.lock.ember-try',
+      '/tests/helpers/vault-keys.js',
       '',
       // typescript declaration files
       '*.d.ts',

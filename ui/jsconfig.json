@@ -6,6 +6,7 @@
   "exclude": [
     "node_modules",
     ".pnpm-store",
+    ".pnpm",
     "public"
   ]
 }

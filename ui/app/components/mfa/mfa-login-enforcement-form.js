@@ -101,6 +101,9 @@ export default class MfaLoginEnforcementForm extends Component {
   get errors() {
     return this.args.modelErrors || this.modelErrors;
   }
+  get mfaMethodIds() {
+    return this.args.model.hasMany('mfa_methods').ids();
+  }
 
   @task
   *save() {

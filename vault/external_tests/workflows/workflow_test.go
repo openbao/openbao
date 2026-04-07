@@ -6,6 +6,7 @@ package workflows
 import (
 	"testing"
 
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/credential/userpass"
 	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	vaulthttp "github.com/openbao/openbao/http"
@@ -15,7 +16,6 @@ import (
 )
 
 func TestWorkflow(t *testing.T) {
-	var err error
 	coreConfig := &vault.CoreConfig{
 		DisableCache: true,
 		CredentialBackends: map[string]logical.Factory{
@@ -40,6 +40,24 @@ func TestWorkflow(t *testing.T) {
 
 	client := cores[0].Client
 
+	t.Run("acceptance", func(t *testing.T) {
+		_, err := client.Logical().Write("sys/namespaces/acceptance", map[string]any{})
+		require.NoError(t, err)
+
+		client := client.WithNamespace("acceptance")
+		testWorkflowAcceptance(t, client)
+	})
+
+	t.Run("recursion", func(t *testing.T) {
+		_, err := client.Logical().Write("sys/namespaces/recursion", map[string]any{})
+		require.NoError(t, err)
+
+		client := client.WithNamespace("recursion")
+		testWorkflowRecursion(t, client)
+	})
+}
+
+func testWorkflowAcceptance(t *testing.T, client *api.Client) {
 	// No workflows to start.
 	resp, err := client.Logical().List("sys/workflows/manage")
 	require.NoError(t, err)
@@ -74,7 +92,7 @@ func TestWorkflow(t *testing.T) {
 	require.Contains(t, resp.Data["keys"], "test/")
 
 	// The token should work.
-	testClient := client.WithNamespace("test/")
+	testClient := client.WithNamespace("acceptance/test/")
 	testClient.SetToken(workflowResp.Data["token"].(string))
 	resp, err = testClient.Logical().Write("secret/data/test", map[string]interface{}{
 		"data": map[string]interface{}{
@@ -97,6 +115,16 @@ func TestWorkflow(t *testing.T) {
 	resp, err = client.Logical().List("sys/workflows/manage")
 	require.NoError(t, err)
 	require.Nil(t, resp)
+}
+
+func testWorkflowRecursion(t *testing.T, client *api.Client) {
+	_, err := client.Logical().Write("sys/workflows/manage/endless-recursion", map[string]any{
+		"workflow": endlessRecursionWorkflow,
+	})
+	require.NoError(t, err)
+
+	_, err = client.Logical().Write("sys/workflows/execute/endless-recursion", nil)
+	require.Contains(t, err.Error(), "too much workflow recursion")
 }
 
 const createNamespaceWorkflow = `
@@ -214,10 +242,19 @@ output {
     token = {
       eval_type = "string"
       eval_source = "response"
-	  flow_name = "authentication"
+      flow_name = "authentication"
       response_name = "login"
       field_selector = ["auth", "client_token"]
     }
+  }
+}
+`
+
+const endlessRecursionWorkflow = `
+flow "loop" {
+  request "recursion" {
+    path = "sys/workflows/execute/endless-recursion"
+    operation = "update"
   }
 }
 `

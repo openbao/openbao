@@ -48,6 +48,8 @@ type ProfileEngine struct {
 	request *logical.Request
 	data    *framework.FieldData
 
+	reqIdPrefix string
+
 	output *OutputConfig
 	logger hclog.Logger
 }
@@ -119,6 +121,14 @@ func WithLogger(logger hclog.Logger) func(*ProfileEngine) {
 func WithOutput(config *OutputConfig) func(*ProfileEngine) {
 	return func(p *ProfileEngine) {
 		p.output = config
+	}
+}
+
+// Sets the request id prefix for this engine, allowing better auditing by
+// tying the request to an inbound request.
+func WithRequestIdentifierPrefix(prefix string) func(*ProfileEngine) {
+	return func(p *ProfileEngine) {
+		p.reqIdPrefix = prefix
 	}
 }
 
@@ -399,6 +409,9 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 	reqName := fmt.Sprintf("request[%d].%v", requestIndex, requestBlock.Type)
 	if p.outerBlockName != "" {
 		reqName = fmt.Sprintf("%v[%d].%v.%v", p.outerBlockName, outerIndex, outerBlock.Type, reqName)
+	}
+	if p.reqIdPrefix != "" {
+		reqName = fmt.Sprintf("%v.%v", p.reqIdPrefix, reqName)
 	}
 
 	req = &logical.Request{

@@ -11,7 +11,7 @@ import handlers from './handlers';
 export default function () {
   this.namespace = 'v1';
 
-  // start ember in development running mirage -> yarn start:mirage handlerName
+  // start ember in development running mirage -> pnpm start:mirage handlerName
   // if handler is not provided, general config will be used
   // this is useful for feature development when a specific and limited config is required
   const { handler } = ENV['ember-cli-mirage'];

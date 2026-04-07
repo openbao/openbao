@@ -153,15 +153,15 @@ static-assets-dir:
 
 install-ui-dependencies:
 	@echo "--> Installing JavaScript assets"
-	@cd ui && yarn
+	@cd ui && pnpm install
 
 test-ember: install-ui-dependencies
 	@echo "--> Running ember tests"
-	@cd ui && yarn run test
+	@cd ui && pnpm test
 
 test-ember-enos: install-ui-dependencies
 	@echo "--> Running ember tests with a real backend"
-	@cd ui && yarn run test:enos
+	@cd ui && pnpm test:enos
 
 check-openbao-in-path:
 	@OPENBAO_BIN=$$(command -v bao) || { echo "bao command not found"; exit 1; }; \
@@ -169,15 +169,13 @@ check-openbao-in-path:
 		printf "Using OpenBao at %s:\n\$$ openbao version\n%s\n" "$$OPENBAO_BIN" "$$(bao version)"
 
 ember-dist: install-ui-dependencies
-	@cd ui && npm rebuild node-sass
 	@echo "--> Building Ember application"
-	@cd ui && yarn run build
+	@cd ui && pnpm build
 	@rm -rf ui/if-you-need-to-delete-this-open-an-issue-async-disk-cache
 
 ember-dist-dev: install-ui-dependencies
-	@cd ui && npm rebuild node-sass
 	@echo "--> Building Ember application"
-	@cd ui && yarn run build:dev
+	@cd ui && pnpm build:dev
 
 static-dist: ember-dist
 static-dist-dev: ember-dist-dev

@@ -35,8 +35,8 @@ It may not be complete; feel free to extend it via GitHub pull request.
 
 ## Suggested dependencies
 
- - NodeJS, npm, and pnpm for building the UI.
- - Go toolchain for building.
+ - NodeJS, and PNPM for building the UI.
+ - Go toolchain for building the server.
 
 For version information, refer to our release process. The Go toolchain
 version used by this project is documented in the `/.go-version` file.
@@ -50,13 +50,10 @@ To build a release version of the UI:
 cd ui/
 
 # Install dependencies via pnpm.
-pnpm i -r
-
-# Rebuild the node-sass dependency.
-npm rebuild node-sass
+pnpm install --frozen-lockfile
 
 # Perform the release build via pnpm.
-pnpm run build
+pnpm build
 ```
 
 This creates a directory, `/http/web_ui`, which contains the output of the

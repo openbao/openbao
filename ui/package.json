@@ -48,7 +48,7 @@
       "git add"
     ]
   },
-    "devDependencies": {
+  "devDependencies": {
     "@babel/eslint-parser": "7.27.0",
     "@babel/plugin-proposal-decorators": "^7.25.9",
     "@ember/legacy-built-in-components": "^0.4.1",
@@ -251,13 +251,7 @@
       "xmlhttprequest-ssl": "^1.6.2",
       "cheerio": "1.0.0-rc.12",
       "get-intrinsic": "1.2.7"
-    },
-    "onlyBuiltDependencies": [
-      "@parcel/watcher",
-      "@scarf/scarf",
-      "core-js",
-      "ember-modal-dialog"
-    ]
+    }
   },
   "engines": {
     "node": "20"

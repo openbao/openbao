@@ -4,7 +4,6 @@
 package plugin_test
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,8 +41,6 @@ var credentialVersionMap = map[string]string{
 	"v5_multiplexed": "TestBackend_PluginMain_Multiplexed_Credentials",
 }
 
-var testCtx = context.TODO()
-
 func TestSystemBackend_Plugin_secret(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {
@@ -71,7 +68,7 @@ func TestSystemBackend_Plugin_secret(t *testing.T) {
 			// Make a request to lazy load the plugin
 			req := logical.TestRequest(t, logical.ReadOperation, "mock-0/internal")
 			req.ClientToken = core.Client.Token()
-			resp, err := core.HandleRequest(namespace.RootContext(testCtx), req)
+			resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil {
 				t.Fatalf("err: %v", err)
 			}
@@ -129,7 +126,7 @@ func TestSystemBackend_Plugin_auth(t *testing.T) {
 			// Make a request to lazy load the plugin
 			req := logical.TestRequest(t, logical.ReadOperation, "auth/mock-0/internal")
 			req.ClientToken = core.Client.Token()
-			resp, err := core.HandleRequest(namespace.RootContext(testCtx), req)
+			resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil {
 				t.Fatalf("err: %v", err)
 			}
@@ -187,7 +184,7 @@ func TestSystemBackend_Plugin_MissingBinary(t *testing.T) {
 			// Make a request to lazy load the plugin
 			req := logical.TestRequest(t, logical.ReadOperation, "mock-0/internal")
 			req.ClientToken = core.Client.Token()
-			resp, err := core.HandleRequest(namespace.RootContext(testCtx), req)
+			resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil {
 				t.Fatalf("err: %v", err)
 			}
@@ -213,7 +210,7 @@ func TestSystemBackend_Plugin_MissingBinary(t *testing.T) {
 			// Make a request against on tune after it is removed
 			req = logical.TestRequest(t, logical.ReadOperation, "sys/mounts/mock-0/tune")
 			req.ClientToken = core.Client.Token()
-			_, err = core.HandleRequest(namespace.RootContext(testCtx), req)
+			_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err == nil {
 				t.Fatal("expected error")
 			}
@@ -251,7 +248,7 @@ func TestSystemBackend_Plugin_MismatchType(t *testing.T) {
 			// and expect an error
 			req := logical.TestRequest(t, logical.ReadOperation, "mock-0/internal")
 			req.ClientToken = core.Client.Token()
-			_, err := core.HandleRequest(namespace.RootContext(testCtx), req)
+			_, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil {
 				t.Fatalf("adding a same-named plugin of a different type should be no problem: %s", err)
 			}
@@ -310,7 +307,7 @@ func testPlugin_CatalogRemoved(t *testing.T, btype logical.BackendType, testMoun
 			// Remove the plugin from the catalog
 			req := logical.TestRequest(t, logical.DeleteOperation, "sys/plugins/catalog/database/mock-plugin")
 			req.ClientToken = core.Client.Token()
-			resp, err := core.HandleRequest(namespace.RootContext(testCtx), req)
+			resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%v resp:%#v", err, resp)
 			}
@@ -390,7 +387,7 @@ func TestSystemBackend_Plugin_autoReload(t *testing.T) {
 			req := logical.TestRequest(t, logical.UpdateOperation, "mock-0/internal")
 			req.ClientToken = core.Client.Token()
 			req.Data["value"] = "baz"
-			resp, err := core.HandleRequest(namespace.RootContext(testCtx), req)
+			resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil {
 				t.Fatalf("err: %v", err)
 			}
@@ -401,7 +398,7 @@ func TestSystemBackend_Plugin_autoReload(t *testing.T) {
 			// Call errors/rpc endpoint to trigger reload
 			req = logical.TestRequest(t, logical.ReadOperation, "mock-0/errors/rpc")
 			req.ClientToken = core.Client.Token()
-			_, err = core.HandleRequest(namespace.RootContext(testCtx), req)
+			_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err == nil {
 				t.Fatal("expected error from error/rpc request")
 			}
@@ -409,7 +406,7 @@ func TestSystemBackend_Plugin_autoReload(t *testing.T) {
 			// Check internal value to make sure it's reset
 			req = logical.TestRequest(t, logical.ReadOperation, "mock-0/internal")
 			req.ClientToken = core.Client.Token()
-			resp, err = core.HandleRequest(namespace.RootContext(testCtx), req)
+			resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil {
 				t.Fatalf("err: %v", err)
 			}
@@ -539,7 +536,7 @@ func testSystemBackend_PluginReload(t *testing.T, reqData map[string]interface{}
 			if backendType == logical.TypeCredential {
 				pathPrefix = "auth/" + pathPrefix
 			}
-			for i := 0; i < 2; i++ {
+			for i := range 2 {
 				// Update internal value in the backend
 				resp, err := client.Logical().Write(fmt.Sprintf("%s%d/internal", pathPrefix, i), map[string]interface{}{
 					"value": "baz",
@@ -564,7 +561,7 @@ func testSystemBackend_PluginReload(t *testing.T, reqData map[string]interface{}
 				t.Fatal("no reload_id in response")
 			}
 
-			for i := 0; i < 2; i++ {
+			for i := range 2 {
 				// Ensure internal backed value is reset
 				resp, err := client.Logical().Read(fmt.Sprintf("%s%d/internal", pathPrefix, i))
 				if err != nil {
@@ -620,7 +617,7 @@ func testSystemBackendMock(t *testing.T, numCores, numMounts int, backendType lo
 	case logical.TypeLogical:
 		plugin := logicalVersionMap[pluginVersion]
 		vault.TestAddTestPlugin(t, core.Core, "mock-plugin", consts.PluginTypeSecrets, "", plugin, env, tempDir)
-		for i := 0; i < numMounts; i++ {
+		for i := range numMounts {
 			// Alternate input styles for plugin_name on every other mount
 			options := map[string]interface{}{
 				"type": "mock-plugin",
@@ -636,7 +633,7 @@ func testSystemBackendMock(t *testing.T, numCores, numMounts int, backendType lo
 	case logical.TypeCredential:
 		plugin := credentialVersionMap[pluginVersion]
 		vault.TestAddTestPlugin(t, core.Core, "mock-plugin", consts.PluginTypeCredential, "", plugin, env, tempDir)
-		for i := 0; i < numMounts; i++ {
+		for i := range numMounts {
 			// Alternate input styles for plugin_name on every other mount
 			options := map[string]interface{}{
 				"type": "mock-plugin",

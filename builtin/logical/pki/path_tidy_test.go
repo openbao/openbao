@@ -332,7 +332,7 @@ func TestTidyCancellation(t *testing.T) {
 		"key_type":          "ec",
 	})
 	require.NoError(t, err)
-	for i := 0; i < numLeaves; i++ {
+	for range numLeaves {
 		_, err = CBWrite(b, s, "issue/local-testing", map[string]interface{}{
 			"common_name": "testing",
 			"ttl":         "1s",
@@ -828,7 +828,7 @@ func TestTidyAcmeWithBackdate(t *testing.T) {
 
 	cluster, client, _ := setupAcmeBackend(t)
 	defer cluster.Cleanup()
-	testCtx := context.Background()
+	testCtx := t.Context()
 
 	// Grab the mount UUID for sys/raw invocations.
 	pkiMount := findStorageMountUuid(t, client, "pki")
@@ -883,7 +883,7 @@ func TestTidyAcmeWithBackdate(t *testing.T) {
 	waitForTidyToFinish(t, client, "pki")
 
 	// Check that the Account is Still There, Still Valid.
-	account, err := acmeClient.GetReg(context.Background(), "" /* legacy unused param*/)
+	account, err := acmeClient.GetReg(t.Context(), "" /* legacy unused param*/)
 	require.NoError(t, err, "received account looking up acme account")
 	require.Equal(t, acme.StatusValid, account.Status)
 
@@ -918,11 +918,11 @@ func TestTidyAcmeWithBackdate(t *testing.T) {
 		"no ACME account should have been revoked: %v", tidyResp)
 
 	// Make sure our order is indeed deleted.
-	_, err = acmeClient.GetOrder(context.Background(), order.URI)
+	_, err = acmeClient.GetOrder(t.Context(), order.URI)
 	require.ErrorContains(t, err, "order does not exist")
 
 	// Check that the Account is Still There, Still Valid.
-	account, err = acmeClient.GetReg(context.Background(), "" /* legacy unused param*/)
+	account, err = acmeClient.GetReg(t.Context(), "" /* legacy unused param*/)
 	require.NoError(t, err, "received account looking up acme account")
 	require.Equal(t, acme.StatusValid, account.Status)
 
@@ -945,7 +945,7 @@ func TestTidyAcmeWithBackdate(t *testing.T) {
 		"no ACME account should have been revoked: %v", tidyResp)
 
 	// Lookup our account to make sure we get the appropriate revoked status
-	account, err = acmeClient.GetReg(context.Background(), "" /* legacy unused param*/)
+	account, err = acmeClient.GetReg(t.Context(), "" /* legacy unused param*/)
 	require.NoError(t, err, "received account looking up acme account")
 	require.Equal(t, acme.StatusRevoked, account.Status)
 
@@ -985,7 +985,7 @@ func TestTidyAcmeWithSafetyBuffer(t *testing.T) {
 	// This would still be way easier if I could do both sides
 	cluster, client, _ := setupAcmeBackend(t)
 	defer cluster.Cleanup()
-	testCtx := context.Background()
+	testCtx := t.Context()
 
 	// Grab the mount UUID for sys/raw invocations.
 	pkiMount := findStorageMountUuid(t, client, "pki")
@@ -1085,14 +1085,14 @@ func backDateAcmeAccountSys(t *testing.T, testContext context.Context, client *a
 	encodeJSON, err := jsonutil.EncodeJSON(account)
 	require.NoErrorf(t, err, "json encoding failed")
 
-	_, err = client.Logical().WriteWithContext(context.Background(), accountPath, map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), accountPath, map[string]interface{}{
 		"value":    base64.StdEncoding.EncodeToString(encodeJSON),
 		"encoding": "base64",
 	})
 	require.NoErrorf(t, err, "error saving backdated account entry at %v", accountPath)
 
 	ordersPath := path.Join("sys/raw/logical", mount, acmeAccountPrefix, thumbprint.Kid, "/orders/")
-	ordersRaw, err := client.Logical().ListWithContext(context.Background(), ordersPath)
+	ordersRaw, err := client.Logical().ListWithContext(t.Context(), ordersPath)
 	require.NoError(t, err, "failed listing orders")
 
 	if ordersRaw == nil {
@@ -1127,7 +1127,7 @@ func backDateAcmeOrderSys(t *testing.T, testContext context.Context, client *api
 	encodeJSON, err := jsonutil.EncodeJSON(order)
 	require.NoError(t, err)
 
-	_, err = client.Logical().WriteWithContext(context.Background(), rawOrderPath, map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), rawOrderPath, map[string]interface{}{
 		"value":    base64.StdEncoding.EncodeToString(encodeJSON),
 		"encoding": "base64",
 	})
@@ -1156,7 +1156,7 @@ func backDateAcmeAuthorizationSys(t *testing.T, testContext context.Context, cli
 	encodeJSON, err := jsonutil.EncodeJSON(auth)
 	require.NoError(t, err)
 
-	_, err = client.Logical().WriteWithContext(context.Background(), rawAuthPath, map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), rawAuthPath, map[string]interface{}{
 		"value":    base64.StdEncoding.EncodeToString(encodeJSON),
 		"encoding": "base64",
 	})
@@ -1326,7 +1326,7 @@ NZA=`
 	shortLivedSerial := resp.Data["serial_number"].(string)
 
 	// Write invalid certificate to storage
-	err = s.Put(ctx, &logical.StorageEntry{
+	err = s.Put(t.Context(), &logical.StorageEntry{
 		Key:   "certs/1",
 		Value: invalidCertDER,
 	})
@@ -1349,7 +1349,7 @@ NZA=`
 	}
 
 	// Call doTidyCertStore directly
-	_, err = b.doTidyCertStore(context.Background(), &logical.Request{Storage: s}, b.Logger(), tidyConfig)
+	_, err = b.doTidyCertStore(t.Context(), &logical.Request{Storage: s}, b.Logger(), tidyConfig)
 	require.NoError(t, err, "tidy operation should complete without errors")
 
 	resp, err = CBList(b, s, "certs")
@@ -1384,7 +1384,7 @@ NZA=`
 	require.NoError(t, err, "failed to decode base64 certificate content")
 
 	// Write invalid certificate to storage
-	err = s.Put(ctx, &logical.StorageEntry{
+	err = s.Put(t.Context(), &logical.StorageEntry{
 		Key:   "certs/1",
 		Value: invalidCertDER,
 	})
@@ -1398,7 +1398,7 @@ NZA=`
 	}
 	revEntry, err := logical.StorageEntryJSON(revokedPath+"1", info)
 	require.NoError(t, err)
-	err = s.Put(ctx, revEntry)
+	err = s.Put(t.Context(), revEntry)
 	require.NoError(t, err, "failed to write revocation entry")
 
 	// check root, invalid and valid certs are in store
@@ -1420,7 +1420,7 @@ NZA=`
 	}
 
 	// Call tidy directly
-	_, err = b.doTidyCertStore(context.Background(), &logical.Request{Storage: s}, b.Logger(), tidyConfig)
+	_, err = b.doTidyCertStore(t.Context(), &logical.Request{Storage: s}, b.Logger(), tidyConfig)
 	require.NoError(t, err, "tidy operation should complete without errors")
 
 	// There should still be a single entry here
@@ -1428,7 +1428,7 @@ NZA=`
 	require.NoError(t, err)
 	require.Len(t, resp.Data["keys"].([]string), 1, "expected a single pending revocation entry")
 
-	_, err = b.doTidyRevocationStore(context.Background(), &logical.Request{Storage: s}, b.Logger(), tidyConfig, 0)
+	_, err = b.doTidyRevocationStore(t.Context(), &logical.Request{Storage: s}, b.Logger(), tidyConfig, 0)
 	require.NoError(t, err, "tidy revoked operation should complete without errors")
 
 	// Verify we have nothing in either list.
@@ -1745,7 +1745,7 @@ func TestTidyPagination(t *testing.T) {
 	// Issue 27 leaf certificates to populate the cert store.
 	// This number is chosen to ensure that the tidy operation can process multiple pages,
 	// even when the page size limit is set below the total number of certificates.
-	for i := 0; i < 26; i++ {
+	for range 26 {
 		_, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
 			"common_name": "example.com",
 			"ttl":         "1s",
@@ -1762,7 +1762,7 @@ func TestTidyPagination(t *testing.T) {
 
 	// Issue another 4 leaf certificates then revoke them. This is done to ensure that
 	// the tidy operation can process certificates less than its the page size.
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
 			"common_name": "revoked.com",
 			"ttl":         "1s",

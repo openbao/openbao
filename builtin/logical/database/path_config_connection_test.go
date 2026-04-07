@@ -4,7 +4,6 @@
 package database
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -22,11 +21,11 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	const mdb = "mysql-database-plugin"
 	mdbBuiltin := versions.GetBuiltinVersion(consts.PluginTypeDatabase, mdb)
@@ -45,7 +44,7 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 				"verify_connection": false,
 			},
 		}
-		resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -60,7 +59,7 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 			Storage:   config.StorageView,
 		}
 
-		resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -74,7 +73,7 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 
 	// Directly store config to get the builtin plugin version into storage,
 	// simulating a write that happened before upgrading to 1.12.2+
-	err = storeConfig(context.Background(), config.StorageView, "plugin-test", &DatabaseConfig{
+	err = storeConfig(t.Context(), config.StorageView, "plugin-test", &DatabaseConfig{
 		PluginName:    mdb,
 		PluginVersion: mdbBuiltin,
 	})
@@ -91,7 +90,7 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 	// Check the underlying data, which should still have the version in storage.
 	getPluginVersionFromStorage := func() string {
 		t.Helper()
-		entry, err := config.StorageView.Get(context.Background(), "config/plugin-test")
+		entry, err := config.StorageView.Get(t.Context(), "config/plugin-test")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -134,11 +133,11 @@ func TestWriteConfig_HelpfulErrorMessageWhenBuiltinOverridden(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	const pg = "postgresql-database-plugin"
 	pgBuiltin := versions.GetBuiltinVersion(consts.PluginTypeDatabase, pg)
@@ -156,7 +155,7 @@ func TestWriteConfig_HelpfulErrorMessageWhenBuiltinOverridden(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal(err)
 	}

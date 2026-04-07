@@ -4,9 +4,9 @@
 package database
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"strings"
 	"testing"
 	"time"
@@ -24,7 +24,7 @@ func TestBackend_Roles_CredentialTypes(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.System = logical.TestSystemView()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestBackend_Roles_CredentialTypes(t *testing.T) {
 			}
 
 			// Create the role
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if tt.wantErr {
 				assert.True(t, resp.IsError(), "expected error")
 				return
@@ -188,7 +188,7 @@ func TestBackend_Roles_CredentialTypes(t *testing.T) {
 
 			// Read the role
 			req.Operation = logical.ReadOperation
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			assert.False(t, resp.IsError())
 			assert.Nil(t, err)
 			for k, v := range tt.expectedResp {
@@ -197,7 +197,7 @@ func TestBackend_Roles_CredentialTypes(t *testing.T) {
 
 			// Delete the role
 			req.Operation = logical.DeleteOperation
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			assert.False(t, resp.IsError())
 			assert.Nil(t, err)
 		})
@@ -212,7 +212,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 	if !ok {
 		t.Fatal("could not convert to db backend")
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "")
 	defer cleanup()
@@ -242,7 +242,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -291,9 +291,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 				"rotation_statements": testRoleStaticUpdate,
 			}
 
-			for k, v := range tc.account {
-				data[k] = v
-			}
+			maps.Copy(data, tc.account)
 
 			path := "static-roles/" + tc.path
 
@@ -304,7 +302,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+			resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				if tc.err == nil {
 					t.Fatalf("err:%s resp:%#v\n", err, resp)
@@ -334,7 +332,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 				Storage:   config.StorageView,
 				Data:      data,
 			}
-			resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+			resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
@@ -380,7 +378,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 				Path:      "static-roles/plugin-role-test",
 				Storage:   config.StorageView,
 			}
-			resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+			resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
@@ -396,7 +394,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -404,7 +402,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 	if !ok {
 		t.Fatal("could not convert to db backend")
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "")
 	defer cleanup()
@@ -427,7 +425,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -447,7 +445,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -460,7 +458,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -473,7 +471,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Path:      "static-creds/plugin-role-test-updates",
 		Storage:   config.StorageView,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -498,7 +496,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Data:      updateData,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -511,7 +509,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -527,7 +525,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Path:      "static-creds/plugin-role-test-updates",
 		Storage:   config.StorageView,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -553,7 +551,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Data:      updateData,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -571,7 +569,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Data:      updateData,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || !resp.IsError() {
 		t.Fatal("expected error on updating name")
 	}
@@ -589,7 +587,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -597,7 +595,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 	if !ok {
 		t.Fatal("could not convert to db backend")
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "")
 	defer cleanup()
@@ -620,7 +618,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -643,7 +641,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -665,7 +663,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -689,7 +687,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -711,7 +709,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -721,7 +719,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 }
 
 func TestWALsStillTrackedAfterUpdate(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, storage, mockDB := getBackend(t)
 	defer b.Cleanup(ctx)
 	configureDBMount(t, storage)
@@ -764,12 +762,12 @@ func TestWALsStillTrackedAfterUpdate(t *testing.T) {
 }
 
 func TestWALsDeletedOnRoleCreationFailed(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, storage, mockDB := getBackend(t)
 	defer b.Cleanup(ctx)
 	configureDBMount(t, storage)
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		mockDB.On("UpdateUser", mock.Anything, mock.Anything).
 			Return(v5.UpdateUserResponse{}, errors.New("forced error")).
 			Once()
@@ -795,7 +793,7 @@ func TestWALsDeletedOnRoleCreationFailed(t *testing.T) {
 }
 
 func TestWALsDeletedOnRoleDeletion(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, storage, mockDB := getBackend(t)
 	defer b.Cleanup(ctx)
 	configureDBMount(t, storage)
@@ -833,7 +831,7 @@ func createRole(t *testing.T, b *databaseBackend, storage logical.Storage, mockD
 	mockDB.On("UpdateUser", mock.Anything, mock.Anything).
 		Return(v5.UpdateUserResponse{}, nil).
 		Once()
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      "static-roles/" + roleName,
 		Storage:   storage,

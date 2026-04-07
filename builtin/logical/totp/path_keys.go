@@ -102,7 +102,7 @@ func pathKeys(b *backend) *framework.Path {
 			"period": {
 				Type:        framework.TypeDurationSecond,
 				Default:     30,
-				Description: `The length of time used to generate a counter for the TOTP token calculation.`,
+				Description: `The duration used to generate a counter for the TOTP token calculation.`,
 			},
 
 			"algorithm": {
@@ -261,23 +261,23 @@ func (b *backend) pathKeyCreate(ctx context.Context, req *logical.Request, data 
 		// Set up query object
 		urlQuery := urlObject.Query()
 		path := strings.TrimPrefix(urlObject.Path, "/")
-		index := strings.Index(path, ":")
+		before, after, ok := strings.Cut(path, ":")
 
 		// Read issuer
 		urlIssuer := urlQuery.Get("issuer")
 		if urlIssuer != "" {
 			issuer = urlIssuer
 		} else {
-			if index != -1 {
-				issuer = path[:index]
+			if ok {
+				issuer = before
 			}
 		}
 
 		// Read account name
-		if index == -1 {
+		if !ok {
 			accountName = path
 		} else {
-			accountName = path[index+1:]
+			accountName = after
 		}
 
 		// Read key string
@@ -469,5 +469,4 @@ Manage the keys that can be created with this backend.
 
 const pathKeyHelpDesc = `
 This path lets you manage the keys that can be created with this backend.
-
 `

@@ -52,7 +52,7 @@ func TestBackend_lazyLoad(t *testing.T) {
 func testLazyLoad(t *testing.T, methodWrapper func() error) *PluginBackend {
 	sysView := newTestSystemView()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	config := &logical.BackendConfig{
 		Logger: logging.NewVaultLogger(hclog.Trace),
 		System: sysView,

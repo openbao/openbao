@@ -29,7 +29,7 @@ func TestValidate(t *testing.T) {
 			func() map[string]string {
 				cm := make(map[string]string)
 
-				for i := 0; i < maxKeyLength+1; i++ {
+				for i := range maxKeyLength + 1 {
 					s := strconv.Itoa(i)
 					cm[s] = s
 				}
@@ -69,8 +69,6 @@ func TestValidate(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

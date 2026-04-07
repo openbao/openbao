@@ -19,59 +19,6 @@ import (
 	dockertest "github.com/ory/dockertest/v3"
 )
 
-func Test_addTLStoDSN(t *testing.T) {
-	type testCase struct {
-		rootUrl        string
-		tlsConfigName  string
-		expectedResult string
-	}
-
-	tests := map[string]testCase{
-		"no tls, no query string": {
-			rootUrl:        "user:password@tcp(localhost:3306)/test",
-			tlsConfigName:  "",
-			expectedResult: "user:password@tcp(localhost:3306)/test",
-		},
-		"tls, no query string": {
-			rootUrl:        "user:password@tcp(localhost:3306)/test",
-			tlsConfigName:  "tlsTest101",
-			expectedResult: "user:password@tcp(localhost:3306)/test?tls=tlsTest101",
-		},
-		"tls, query string": {
-			rootUrl:        "user:password@tcp(localhost:3306)/test?foo=bar",
-			tlsConfigName:  "tlsTest101",
-			expectedResult: "user:password@tcp(localhost:3306)/test?tls=tlsTest101&foo=bar",
-		},
-		"tls, query string, ? in password": {
-			rootUrl:        "user:pa?ssword?@tcp(localhost:3306)/test?foo=bar",
-			tlsConfigName:  "tlsTest101",
-			expectedResult: "user:pa?ssword?@tcp(localhost:3306)/test?tls=tlsTest101&foo=bar",
-		},
-		"tls, valid tls parameter in query string": {
-			rootUrl:        "user:password@tcp(localhost:3306)/test?tls=true",
-			tlsConfigName:  "",
-			expectedResult: "user:password@tcp(localhost:3306)/test?tls=true",
-		},
-	}
-
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			tCase := mySQLConnectionProducer{
-				ConnectionURL: test.rootUrl,
-				tlsConfigName: test.tlsConfigName,
-			}
-
-			actual, err := tCase.addTLStoDSN()
-			if err != nil {
-				t.Fatalf("error occurred in test: %s", err)
-			}
-			if actual != test.expectedResult {
-				t.Fatalf("generated: %s, expected: %s", actual, test.expectedResult)
-			}
-		})
-	}
-}
-
 func TestInit_clientTLS(t *testing.T) {
 	t.Skip("Skipping this test because CircleCI can't mount the files we need without further investigation: " +
 		"https://support.circleci.com/hc/en-us/articles/360007324514-How-can-I-mount-volumes-to-docker-containers-")
@@ -134,7 +81,7 @@ ssl-key=/etc/mysql/server-key.pem`
 		"tls_ca":              caCert.Pem,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	_, err := mysql.Init(ctx, conf, true)
@@ -271,7 +218,7 @@ func connect(t *testing.T, dsn string) (db *sql.DB) {
 }
 
 func setUpX509User(t *testing.T, db *sql.DB, cert certhelpers.Certificate) (username string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	username = cert.Template.Subject.CommonName
@@ -309,5 +256,91 @@ func writeFile(t *testing.T, filename string, data []byte, perms os.FileMode) {
 	err := os.WriteFile(filename, data, perms)
 	if err != nil {
 		t.Fatalf("Unable to write to file [%s]: %s", filename, err)
+	}
+}
+
+func Test_parseMultiHostDSN(t *testing.T) {
+	type testCase struct {
+		connectionURL         string
+		expectedHosts         []string
+		expectedConnectionURL string
+	}
+
+	tests := map[string]testCase{
+		"single host": {
+			connectionURL:         "user:password@tcp(localhost:3306)/test",
+			expectedHosts:         []string{"localhost:3306"},
+			expectedConnectionURL: "user:password@tcp(localhost:3306)/test",
+		},
+		"multiple hosts": {
+			connectionURL:         "user:password@tcp(host1:3306,host2:3307)/test",
+			expectedHosts:         []string{"host1:3306", "host2:3307"},
+			expectedConnectionURL: "user:password@tcp(host1:3306)/test",
+		},
+		"multiple hosts without ports": {
+			connectionURL:         "user:password@tcp(host1,host2)/test",
+			expectedHosts:         []string{"host1:3306", "host2:3306"},
+			expectedConnectionURL: "user:password@tcp(host1:3306)/test",
+		},
+		"unix socket": {
+			connectionURL:         "user:password@unix(/var/run/mysqld/mysqld.sock)/test",
+			expectedHosts:         nil,
+			expectedConnectionURL: "user:password@unix(/var/run/mysqld/mysqld.sock)/test",
+		},
+		"multiple hosts with tls param": {
+			connectionURL:         "user:password@tcp(host1:3306,host2:3307)/test?tls=skip-verify",
+			expectedHosts:         []string{"host1:3306", "host2:3307"},
+			expectedConnectionURL: "user:password@tcp(host1:3306)/test?tls=skip-verify",
+		},
+		"ipv6 single host": {
+			connectionURL:         "user:password@tcp([::1]:3306)/test",
+			expectedHosts:         []string{"[::1]:3306"},
+			expectedConnectionURL: "user:password@tcp([::1]:3306)/test",
+		},
+		"ipv6 without port": {
+			connectionURL:         "user:password@tcp([::1])/test",
+			expectedHosts:         []string{"[::1]:3306"},
+			expectedConnectionURL: "user:password@tcp([::1])/test",
+		},
+		"ipv6 multiple hosts": {
+			connectionURL:         "user:password@tcp([::1]:3306,[::2]:3307)/test",
+			expectedHosts:         []string{"[::1]:3306", "[::2]:3307"},
+			expectedConnectionURL: "user:password@tcp([::1]:3306)/test",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			producer := &mySQLConnectionProducer{
+				ConnectionURL: test.connectionURL,
+			}
+
+			err := producer.parseMultiHostDSN()
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+
+			if !reflect.DeepEqual(producer.hosts, test.expectedHosts) {
+				t.Fatalf("hosts: got %v, expected %v", producer.hosts, test.expectedHosts)
+			}
+
+			if producer.ConnectionURL != test.expectedConnectionURL {
+				t.Fatalf("connectionURL: got %s, expected %s", producer.ConnectionURL, test.expectedConnectionURL)
+			}
+		})
+	}
+}
+
+func Test_dialWithFailover(t *testing.T) {
+	producer := &mySQLConnectionProducer{
+		hosts: []string{"invalid-host-1:3306", "invalid-host-2:3306"},
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+
+	_, err := producer.dialWithFailover(ctx, "tcp", "ignored")
+	if err == nil {
+		t.Fatal("expected error when connecting to invalid hosts")
 	}
 }

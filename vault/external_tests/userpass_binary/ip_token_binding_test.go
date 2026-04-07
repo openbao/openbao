@@ -50,7 +50,7 @@ func Test_StrictIPBinding(t *testing.T) {
 	cluster := docker.NewTestDockerCluster(t, opts)
 	defer cluster.Cleanup()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 	nodeIndex, err := testcluster.WaitForActiveNode(ctx, cluster)
 	require.NoError(t, err)

@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"testing"
 
 	"github.com/openbao/openbao/helper/namespace"
@@ -17,7 +16,7 @@ func TestTransit_Trim(t *testing.T) {
 
 	doReq := func(t *testing.T, req *logical.Request) *logical.Response {
 		t.Helper()
-		resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("got err:\n%#v\nresp:\n%#v\n", err, resp)
 		}
@@ -25,7 +24,7 @@ func TestTransit_Trim(t *testing.T) {
 	}
 	doErrReq := func(t *testing.T, req *logical.Request) {
 		t.Helper()
-		resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 		if err == nil && (resp == nil || !resp.IsError()) {
 			t.Fatalf("expected error; resp:\n%#v\n", resp)
 		}
@@ -40,7 +39,7 @@ func TestTransit_Trim(t *testing.T) {
 	doReq(t, req)
 
 	// Get the policy and check that the archive has correct number of keys
-	p, _, err := b.GetPolicy(namespace.RootContext(context.TODO()), keysutil.PolicyRequest{
+	p, _, err := b.GetPolicy(namespace.RootContext(t.Context()), keysutil.PolicyRequest{
 		Storage: storage,
 		Name:    "aes",
 	}, b.GetRandomReader())
@@ -49,7 +48,7 @@ func TestTransit_Trim(t *testing.T) {
 	}
 
 	// Archive: 0, 1
-	archive, err := p.LoadArchive(namespace.RootContext(context.TODO()), storage)
+	archive, err := p.LoadArchive(namespace.RootContext(t.Context()), storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,14 +59,14 @@ func TestTransit_Trim(t *testing.T) {
 	}
 
 	// Ensure that there are 5 key versions, by rotating the key 4 times
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		req.Path = "keys/aes/rotate"
 		req.Data = nil
 		doReq(t, req)
 	}
 
 	// Archive: 0, 1, 2, 3, 4, 5
-	archive, err = p.LoadArchive(namespace.RootContext(context.TODO()), storage)
+	archive, err = p.LoadArchive(namespace.RootContext(t.Context()), storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +134,7 @@ func TestTransit_Trim(t *testing.T) {
 	doReq(t, req)
 
 	// Archive: 3, 4, 5
-	archive, err = p.LoadArchive(namespace.RootContext(context.TODO()), storage)
+	archive, err = p.LoadArchive(namespace.RootContext(t.Context()), storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +156,7 @@ func TestTransit_Trim(t *testing.T) {
 	doErrReq(t, req)
 
 	// Rotate 5 more times
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		doReq(t, &logical.Request{
 			Path:      "keys/aes/rotate",
 			Storage:   storage,
@@ -166,7 +165,7 @@ func TestTransit_Trim(t *testing.T) {
 	}
 
 	// Archive: 3, 4, 5, 6, 7, 8, 9, 10
-	archive, err = p.LoadArchive(namespace.RootContext(context.TODO()), storage)
+	archive, err = p.LoadArchive(namespace.RootContext(t.Context()), storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +193,7 @@ func TestTransit_Trim(t *testing.T) {
 	doReq(t, req)
 
 	// Archive: 7, 8, 9, 10
-	archive, err = p.LoadArchive(namespace.RootContext(context.TODO()), storage)
+	archive, err = p.LoadArchive(namespace.RootContext(t.Context()), storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +263,7 @@ func TestTransit_Trim(t *testing.T) {
 
 	// Ensure that archive has remained unchanged
 	// Archive: 7, 8, 9, 10
-	archive, err = p.LoadArchive(namespace.RootContext(context.TODO()), storage)
+	archive, err = p.LoadArchive(namespace.RootContext(t.Context()), storage)
 	if err != nil {
 		t.Fatal(err)
 	}

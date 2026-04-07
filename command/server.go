@@ -1005,6 +1005,8 @@ func (c *ServerCommand) Run(args []string) int {
 		c.logger.Warn(cErr.String())
 	}
 
+	server.WarnHSMDeprecated(c.logger)
+
 	// create GRPC logger
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
 	c.allLoggers = append(c.allLoggers, namedGRPCLogFaker)
@@ -2730,6 +2732,7 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		EnableResponseHeaderHostname:   config.EnableResponseHeaderHostname,
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
 		UnsafeCrossNamespaceIdentity:   config.UnsafeCrossNamespaceIdentity,
+		AllowUnauthenticatedWorkflows:  config.AllowUnauthenticatedWorkflows,
 	}
 
 	if config.DisableSSCTokens != nil {

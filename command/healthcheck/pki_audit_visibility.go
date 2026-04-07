@@ -5,6 +5,7 @@ package healthcheck
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
@@ -155,13 +156,7 @@ func (h *AuditVisibility) Evaluate(e *Executor) (results []*Result, err error) {
 		}
 
 		for _, param := range visibleList {
-			found := false
-			for _, tuned := range actual {
-				if param == tuned {
-					found = true
-					break
-				}
-			}
+			found := slices.Contains(actual, param)
 
 			if !found {
 				ret := Result{
@@ -184,13 +179,7 @@ func (h *AuditVisibility) Evaluate(e *Executor) (results []*Result, err error) {
 			return nil, fmt.Errorf("error parsing %v from server: %v", source, err)
 		}
 		for _, param := range hiddenList {
-			found := false
-			for _, tuned := range actual {
-				if param == tuned {
-					found = true
-					break
-				}
-			}
+			found := slices.Contains(actual, param)
 
 			if found {
 				ret := Result{

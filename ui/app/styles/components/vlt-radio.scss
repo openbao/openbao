@@ -37,7 +37,9 @@
   }
   input[type='radio']:focus + label {
     content: '';
-    box-shadow: 0 0 10px 1px rgba($blue, 0.4), inset 0 0 0 0.15rem $white;
+    box-shadow:
+      0 0 10px 1px rgba($blue, 0.4),
+      inset 0 0 0 0.15rem $white;
     position: relative;
     left: 0;
   }

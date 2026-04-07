@@ -25,7 +25,7 @@ import (
 //   - requests
 //   - responses
 //   - input
-func CELSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
+func CELSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
 	var options []cel.EnvOption
 
 	if HasRequestSource(engine) {
@@ -75,7 +75,7 @@ func (s *CELSource) getConfig() *celHelper.EvalConfig {
 	}
 }
 
-func (s *CELSource) Validate(_ context.Context) ([]string, []string, error) {
+func (s *CELSource) Validate() ([]string, []string, error) {
 	rawExpr, present := s.field["expression"]
 	if !present {
 		return nil, nil, errors.New("cel source is missing required field 'expression'")

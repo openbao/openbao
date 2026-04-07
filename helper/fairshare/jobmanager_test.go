@@ -91,7 +91,7 @@ func TestJobManager_Start(t *testing.T) {
 	}
 	onFail := func(_ error) {}
 
-	for i := 0; i < numJobs; i++ {
+	for i := range numJobs {
 		// distribute jobs between 3 queues in the job manager
 		job := newTestJob(t, fmt.Sprintf("test-job-%d", i), ex, onFail)
 		j.AddJob(&job, fmt.Sprintf("queue-%d", i%3))
@@ -142,7 +142,7 @@ func TestJobManager_StartAndPause(t *testing.T) {
 	// now that the work queue is empty, let's add more jobs and make sure
 	// we pick up where we left off
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		numAdditionalJobs := 5
 		wg.Add(numAdditionalJobs)
 
@@ -288,7 +288,7 @@ func TestJobManager_GetPendingJobCount(t *testing.T) {
 	numJobs := 15
 	j := NewJobManager("test-job-mgr", 3, newTestLogger("jobmanager-test"), nil)
 
-	for i := 0; i < numJobs; i++ {
+	for i := range numJobs {
 		job := newDefaultTestJob(t, fmt.Sprintf("job-%d", i))
 		j.AddJob(&job, fmt.Sprintf("queue-%d", i%4))
 	}
@@ -303,7 +303,7 @@ func TestJobManager_GetWorkQueueLengths(t *testing.T) {
 	j := NewJobManager("test-job-mgr", 3, newTestLogger("jobmanager-test"), nil)
 
 	expected := make(map[string]int)
-	for i := 0; i < 25; i++ {
+	for i := range 25 {
 		queueID := fmt.Sprintf("queue-%d", i%4)
 		job := newDefaultTestJob(t, fmt.Sprintf("job-%d", i))
 
@@ -505,17 +505,17 @@ func TestFairshare_StressTest(t *testing.T) {
 	j.Start()
 	defer j.Stop()
 
-	for i := 0; i < 3000; i++ {
+	for i := range 3000 {
 		wg.Add(1)
 		job := newTestJob(t, fmt.Sprintf("a-job-%d", i), ex, onFail)
 		j.AddJob(&job, "a")
 	}
-	for i := 0; i < 4000; i++ {
+	for i := range 4000 {
 		wg.Add(1)
 		job := newTestJob(t, fmt.Sprintf("b-job-%d", i), ex, onFail)
 		j.AddJob(&job, "b")
 	}
-	for i := 0; i < 3000; i++ {
+	for i := range 3000 {
 		wg.Add(1)
 		job := newTestJob(t, fmt.Sprintf("c-job-%d", i), ex, onFail)
 		j.AddJob(&job, "c")
@@ -546,7 +546,7 @@ func TestFairshare_nilLoggerJobManager(t *testing.T) {
 func TestFairshare_getNextQueue(t *testing.T) {
 	j := NewJobManager("test-job-mgr", 18, nil, nil)
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		job := newDefaultTestJob(t, fmt.Sprintf("job-%d", i))
 		j.AddJob(&job, "a")
 		j.AddJob(&job, "b")
@@ -701,7 +701,7 @@ func TestFairshare_queueWorkersSaturated(t *testing.T) {
 	j.AddJob(&job, "b")
 
 	// no more than 9 workers can be assigned to a single queue in this example
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		j.incrementWorkerCount("a")
 		j.incrementWorkerCount("b")
 

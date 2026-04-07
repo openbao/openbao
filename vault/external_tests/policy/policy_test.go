@@ -4,7 +4,6 @@
 package policy
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -373,22 +372,22 @@ func TestPolicy_PaginationLimit(t *testing.T) {
 	require.NoError(t, err, "failed to mount kv")
 
 	for i := 1; i <= 100; i++ {
-		_, err = client.KVv2("kv").Put(context.Background(), fmt.Sprintf("a/key-%v", i), map[string]interface{}{
+		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("a/key-%v", i), map[string]interface{}{
 			"value": i,
 		})
 		require.NoError(t, err, "failed writing k/v key")
 
-		_, err = client.KVv2("kv").Put(context.Background(), fmt.Sprintf("b/key-%v", i), map[string]interface{}{
+		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("b/key-%v", i), map[string]interface{}{
 			"value": i,
 		})
 		require.NoError(t, err, "failed writing k/v key")
 
-		_, err = client.KVv2("kv").Put(context.Background(), fmt.Sprintf("c/key-%v", i), map[string]interface{}{
+		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("c/key-%v", i), map[string]interface{}{
 			"value": i,
 		})
 		require.NoError(t, err, "failed writing k/v key")
 
-		_, err = client.KVv2("kv").Put(context.Background(), fmt.Sprintf("d/key-%v", i), map[string]interface{}{
+		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("d/key-%v", i), map[string]interface{}{
 			"value": i,
 		})
 		require.NoError(t, err, "failed writing k/v key")

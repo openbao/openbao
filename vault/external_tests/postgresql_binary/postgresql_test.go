@@ -53,7 +53,7 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	var logLock sync.Mutex
 	var logs []string
 	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -61,7 +61,7 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 			var localLogs []string
 
 			// 5 iterations is roughly 2.5 seconds with the 5ms sleep.
-			for j := 0; j < 500; j++ {
+			for range 500 {
 				// This should now fail since the fenced write will fail.
 				resp, err := client.Logical().Write("sys/policies/acl/custom", map[string]interface{}{
 					"policy": `path "*" {
@@ -103,7 +103,7 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	}
 
 	// Now sacrifice the leader's lock and ensure it doesn't write.
-	db, err := psql.Client(context.Background())
+	db, err := psql.Client(t.Context())
 	require.NoError(t, err)
 	_, err = db.Exec("DELETE FROM openbao_ha_locks")
 	require.NoError(t, err)
@@ -122,7 +122,7 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	time.Sleep(6 * time.Second)
 
 	// If we wait long enough, another node should pick up active leadership.
-	index, err := testcluster.WaitForActiveNode(context.Background(), cluster)
+	index, err := testcluster.WaitForActiveNode(t.Context(), cluster)
 	require.NoError(t, err)
 	t.Logf("detected node %v was active", index)
 	client = cluster.Nodes()[index].APIClient()

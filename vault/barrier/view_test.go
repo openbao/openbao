@@ -4,7 +4,6 @@
 package barrier
 
 import (
-	"context"
 	"reflect"
 	"sort"
 	"testing"
@@ -22,17 +21,17 @@ func TestBarrierView_BadKeysKeys(t *testing.T) {
 	_, barrier, _ := MockBarrier(t, logger)
 	view := NewView(barrier, "foo/")
 
-	_, err := view.List(context.Background(), "../")
+	_, err := view.List(t.Context(), "../")
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
-	_, err = view.Get(context.Background(), "../")
+	_, err = view.Get(t.Context(), "../")
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
-	err = view.Delete(context.Background(), "../foo")
+	err = view.Delete(t.Context(), "../foo")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -41,7 +40,7 @@ func TestBarrierView_BadKeysKeys(t *testing.T) {
 		Key:   "../foo",
 		Value: []byte("test"),
 	}
-	err = view.Put(context.Background(), le)
+	err = view.Put(t.Context(), le)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -53,12 +52,12 @@ func TestBarrierView(t *testing.T) {
 
 	// Write a key outside of foo/
 	entry := &logical.StorageEntry{Key: "test", Value: []byte("test")}
-	if err := barrier.Put(context.Background(), entry); err != nil {
+	if err := barrier.Put(t.Context(), entry); err != nil {
 		t.Fatalf("bad: %v", err)
 	}
 
 	// List should have no visibility
-	keys, err := view.List(context.Background(), "")
+	keys, err := view.List(t.Context(), "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -67,7 +66,7 @@ func TestBarrierView(t *testing.T) {
 	}
 
 	// Get should have no visibility
-	out, err := view.Get(context.Background(), "test")
+	out, err := view.Get(t.Context(), "test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -76,12 +75,12 @@ func TestBarrierView(t *testing.T) {
 	}
 
 	// Try to put the same entry via the view
-	if err := view.Put(context.Background(), entry); err != nil {
+	if err := view.Put(t.Context(), entry); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Check it is nested
-	entry, err = barrier.Get(context.Background(), "foo/test")
+	entry, err = barrier.Get(t.Context(), "foo/test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -90,12 +89,12 @@ func TestBarrierView(t *testing.T) {
 	}
 
 	// Delete nested
-	if err := view.Delete(context.Background(), "test"); err != nil {
+	if err := view.Delete(t.Context(), "test"); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Check the nested key
-	entry, err = barrier.Get(context.Background(), "foo/test")
+	entry, err = barrier.Get(t.Context(), "foo/test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -104,7 +103,7 @@ func TestBarrierView(t *testing.T) {
 	}
 
 	// Check the non-nested key
-	entry, err = barrier.Get(context.Background(), "test")
+	entry, err = barrier.Get(t.Context(), "test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -119,7 +118,7 @@ func TestBarrierView_SubView(t *testing.T) {
 	view := root.SubView("bar/")
 
 	// List should have no visibility
-	keys, err := view.List(context.Background(), "")
+	keys, err := view.List(t.Context(), "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -128,7 +127,7 @@ func TestBarrierView_SubView(t *testing.T) {
 	}
 
 	// Get should have no visibility
-	out, err := view.Get(context.Background(), "test")
+	out, err := view.Get(t.Context(), "test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -138,12 +137,12 @@ func TestBarrierView_SubView(t *testing.T) {
 
 	// Try to put the same entry via the view
 	entry := &logical.StorageEntry{Key: "test", Value: []byte("test")}
-	if err := view.Put(context.Background(), entry); err != nil {
+	if err := view.Put(t.Context(), entry); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Check it is nested
-	bout, err := barrier.Get(context.Background(), "foo/bar/test")
+	bout, err := barrier.Get(t.Context(), "foo/bar/test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -152,7 +151,7 @@ func TestBarrierView_SubView(t *testing.T) {
 	}
 
 	// Check for visibility in root
-	out, err = root.Get(context.Background(), "bar/test")
+	out, err = root.Get(t.Context(), "bar/test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -161,12 +160,12 @@ func TestBarrierView_SubView(t *testing.T) {
 	}
 
 	// Delete nested
-	if err := view.Delete(context.Background(), "test"); err != nil {
+	if err := view.Delete(t.Context(), "test"); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Check the nested key
-	bout, err = barrier.Get(context.Background(), "foo/bar/test")
+	bout, err = barrier.Get(t.Context(), "foo/bar/test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -191,7 +190,7 @@ func TestBarrierView_Scan(t *testing.T) {
 
 	for _, e := range ent {
 		expect = append(expect, e.Key)
-		if err := view.Put(context.Background(), e); err != nil {
+		if err := view.Put(t.Context(), e); err != nil {
 			t.Fatalf("err: %v", err)
 		}
 	}
@@ -202,7 +201,7 @@ func TestBarrierView_Scan(t *testing.T) {
 	}
 
 	// Collect the keys
-	if err := logical.ScanView(context.Background(), view, cb); err != nil {
+	if err := logical.ScanView(t.Context(), view, cb); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -229,13 +228,13 @@ func TestBarrierView_CollectKeys(t *testing.T) {
 
 	for _, e := range ent {
 		expect = append(expect, e.Key)
-		if err := view.Put(context.Background(), e); err != nil {
+		if err := view.Put(t.Context(), e); err != nil {
 			t.Fatalf("err: %v", err)
 		}
 	}
 
 	// Collect the keys
-	out, err := logical.CollectKeys(context.Background(), view)
+	out, err := logical.CollectKeys(t.Context(), view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -261,18 +260,18 @@ func TestBarrierView_ClearView(t *testing.T) {
 	}
 
 	for _, e := range ent {
-		if err := view.Put(context.Background(), e); err != nil {
+		if err := view.Put(t.Context(), e); err != nil {
 			t.Fatalf("err: %v", err)
 		}
 	}
 
 	// Clear the keys
-	if err := logical.ClearView(context.Background(), view); err != nil {
+	if err := logical.ClearView(t.Context(), view); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Collect the keys
-	out, err := logical.CollectKeys(context.Background(), view)
+	out, err := logical.CollectKeys(t.Context(), view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -287,7 +286,7 @@ func TestBarrierView_Readonly(t *testing.T) {
 
 	// Add a key before enabling read-only
 	entry := &logical.StorageEntry{Key: "test", Value: []byte("test")}
-	if err := view.Put(context.Background(), entry); err != nil {
+	if err := view.Put(t.Context(), entry); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -295,17 +294,17 @@ func TestBarrierView_Readonly(t *testing.T) {
 	view.SetReadOnlyErr(logical.ErrReadOnly)
 
 	// Put should fail in readonly mode
-	if err := view.Put(context.Background(), entry); err != logical.ErrReadOnly {
+	if err := view.Put(t.Context(), entry); err != logical.ErrReadOnly {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Delete nested
-	if err := view.Delete(context.Background(), "test"); err != logical.ErrReadOnly {
+	if err := view.Delete(t.Context(), "test"); err != logical.ErrReadOnly {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Check the non-nested key
-	e, err := view.Get(context.Background(), "test")
+	e, err := view.Get(t.Context(), "test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

@@ -564,6 +564,7 @@ const sidebars: SidebarsConfig = {
                 },
                 "rfcs/config-plugins",
                 "rfcs/postgresql",
+                "rfcs/invalidation",
             ],
         },
         "glossary",

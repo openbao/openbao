@@ -161,11 +161,11 @@ var (
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.CommandFactory {
 	loginHandlers := map[string]LoginHandler{
-		"cert":     &credCert.CLIHandler{},
-		"kerberos": &credKerb.CLIHandler{},
+		"cert":       &credCert.CLIHandler{},
+		"kerberos":   &credKerb.CLIHandler{},
 		"kubernetes": &credKube.CLIHandler{},
-		"ldap":     &credLdap.CLIHandler{},
-		"oidc":     &credOIDC.CLIHandler{},
+		"ldap":       &credLdap.CLIHandler{},
+		"oidc":       &credOIDC.CLIHandler{},
 		"radius": &credUserpass.CLIHandler{
 			DefaultMount: "radius",
 		},

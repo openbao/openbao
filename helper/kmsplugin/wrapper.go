@@ -21,23 +21,30 @@ import (
 	"github.com/openbao/go-kms-wrapping/wrappers/transit/v2"
 )
 
-var builtinWrappers = map[wrapping.WrapperType]wrapperFactory{
+var builtinWrappers = map[wrapping.WrapperType]builtinWrapper{
 	// Standards-based or generic:
-	wrapping.WrapperTypeKmip:    toWrapper(kmip.NewWrapper),
-	wrapping.WrapperTypeStatic:  toWrapper(static.NewWrapper),
-	wrapping.WrapperTypeTransit: toWrapper(transit.NewWrapper),
+	wrapping.WrapperTypeKmip:    {toWrapper(kmip.NewWrapper), false},
+	wrapping.WrapperTypeStatic:  {toWrapper(static.NewWrapper), false},
+	wrapping.WrapperTypeTransit: {toWrapper(transit.NewWrapper), false},
 
 	// Cloud providers:
-	wrapping.WrapperTypeAliCloudKms:   toWrapper(alicloudkms.NewWrapper),
-	wrapping.WrapperTypeAwsKms:        toWrapper(awskms.NewWrapper),
-	wrapping.WrapperTypeAzureKeyVault: toWrapper(azurekeyvault.NewWrapper),
-	wrapping.WrapperTypeGcpCkms:       toWrapper(gcpckms.NewWrapper),
-	wrapping.WrapperTypeOciKms:        toWrapper(ocikms.NewWrapper),
+	wrapping.WrapperTypeAliCloudKms:   {toWrapper(alicloudkms.NewWrapper), true},
+	wrapping.WrapperTypeAwsKms:        {toWrapper(awskms.NewWrapper), true},
+	wrapping.WrapperTypeAzureKeyVault: {toWrapper(azurekeyvault.NewWrapper), true},
+	wrapping.WrapperTypeGcpCkms:       {toWrapper(gcpckms.NewWrapper), true},
+	wrapping.WrapperTypeOciKms:        {toWrapper(ocikms.NewWrapper), true},
 
-	wrapping.WrapperTypePkcs11: func() (wrapping.Wrapper, error) {
+	wrapping.WrapperTypePkcs11: {func() (wrapping.Wrapper, error) {
 		// The real wrapper is conditionally enabled pkcs11.go.
 		return nil, errors.New("this build of OpenBao has PKCS#11 disabled")
-	},
+	}, false},
+}
+
+// builtinWrapper only exists to track deprecation status. This construct can be
+// replaced with just wrapperFactory beyond OpenBao v2.6.
+type builtinWrapper struct {
+	factory    wrapperFactory
+	deprecated bool
 }
 
 type wrapperFactory func() (wrapping.Wrapper, error)
@@ -98,8 +105,16 @@ func (c *Catalog) getWrapper(name string) (wrapping.Wrapper, bool, error) {
 		return nil, false, err
 	case !ok:
 		// Try builtin wrappers.
-		if factory, ok := builtinWrappers[wrapping.WrapperType(name)]; ok {
-			w, err := factory()
+		if builtin, ok := builtinWrappers[wrapping.WrapperType(name)]; ok {
+			w, err := builtin.factory()
+			if builtin.deprecated {
+				c.logger.Warn("Support for this Auto Unseal mechanism has been "+
+					"moved into an external plugin and will be removed from the "+
+					"main OpenBao distribution in the next minor release. "+
+					"To ensure future-proof use of this mechanism, migrate your "+
+					"deployment to the fully compatible, drop-in plugin version. "+
+					"For more information, see https://openbao.org/docs/release-notes/2-6-0/#v260", "seal", name)
+			}
 			return w, true, err
 		}
 		return nil, false, fmt.Errorf("unknown wrapper: %s", name)

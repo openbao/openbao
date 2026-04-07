@@ -4,10 +4,10 @@
 package database
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"log"
+	"maps"
 	"os"
 	"strings"
 	"testing"
@@ -40,7 +40,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 	if !ok {
 		t.Fatal("could not convert to db backend")
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "")
 	defer cleanup()
@@ -73,7 +73,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -93,7 +93,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -107,7 +107,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -129,7 +129,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -146,7 +146,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -163,7 +163,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -188,7 +188,7 @@ func TestBackend_StaticRole_Rotate_NonStaticError(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +196,7 @@ func TestBackend_StaticRole_Rotate_NonStaticError(t *testing.T) {
 	if !ok {
 		t.Fatal("could not convert to db backend")
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "")
 	defer cleanup()
@@ -219,7 +219,7 @@ func TestBackend_StaticRole_Rotate_NonStaticError(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -239,7 +239,7 @@ func TestBackend_StaticRole_Rotate_NonStaticError(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -252,7 +252,7 @@ func TestBackend_StaticRole_Rotate_NonStaticError(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -274,7 +274,7 @@ func TestBackend_StaticRole_Rotate_NonStaticError(t *testing.T) {
 		Data:      data,
 	}
 	// expect resp to be an error
-	resp, _ = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, _ = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if !resp.IsError() {
 		t.Fatal("expected error rotating non-static role")
 	}
@@ -292,7 +292,7 @@ func TestBackend_StaticRole_Revoke_user(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,7 +300,7 @@ func TestBackend_StaticRole_Revoke_user(t *testing.T) {
 	if !ok {
 		t.Fatal("could not convert to db backend")
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "")
 	defer cleanup()
@@ -323,7 +323,7 @@ func TestBackend_StaticRole_Revoke_user(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -367,7 +367,7 @@ func TestBackend_StaticRole_Revoke_user(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+			resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
@@ -381,7 +381,7 @@ func TestBackend_StaticRole_Revoke_user(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+			resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
@@ -403,7 +403,7 @@ func TestBackend_StaticRole_Revoke_user(t *testing.T) {
 				Storage:   config.StorageView,
 			}
 
-			resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+			resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
@@ -425,7 +425,7 @@ func createTestPGUser(t *testing.T, connURL string, username, password, query st
 	defer db.Close()
 
 	// Start a transaction
-	ctx := context.Background()
+	ctx := t.Context()
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -466,7 +466,7 @@ func TestBackend_Static_QueueWAL_discard_role_not_found(t *testing.T) {
 	cluster, sys := getCluster(t)
 	defer cluster.Cleanup()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
@@ -661,7 +661,7 @@ func assertWALCount(t *testing.T, s logical.Storage, expected int, key string) {
 	t.Helper()
 
 	var count int
-	ctx := context.Background()
+	ctx := t.Context()
 	keys, err := framework.ListWAL(ctx, s)
 	if err != nil {
 		t.Fatal("error listing WALs")
@@ -725,11 +725,11 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 	config.Config[queueTickIntervalKey] = "1"
 
 	// Rotation ticker starts running in Factory call
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	// allow initQueue to finish
 	bd := b.(*databaseBackend)
@@ -742,9 +742,7 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 		"verify_connection": false,
 		"allowed_roles":     []string{"*"},
 	}
-	for k, v := range opts {
-		data[k] = v
-	}
+	maps.Copy(data, opts)
 
 	req := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -752,7 +750,7 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -780,7 +778,7 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -799,7 +797,7 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -861,7 +859,7 @@ func TestBackend_StaticRole_LockRegression(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -869,7 +867,7 @@ func TestBackend_StaticRole_LockRegression(t *testing.T) {
 	if !ok {
 		t.Fatal("could not convert to db backend")
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "")
 	defer cleanup()
@@ -889,7 +887,7 @@ func TestBackend_StaticRole_LockRegression(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -909,11 +907,11 @@ func TestBackend_StaticRole_LockRegression(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
-	for i := 0; i < 25; i++ {
+	for range 25 {
 		req = &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "static-roles/plugin-role-test",
@@ -921,7 +919,7 @@ func TestBackend_StaticRole_LockRegression(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -940,7 +938,7 @@ func TestBackend_StaticRole_Rotate_Invalid_Role(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -948,7 +946,7 @@ func TestBackend_StaticRole_Rotate_Invalid_Role(t *testing.T) {
 	if !ok {
 		t.Fatal("could not convert to db backend")
 	}
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "")
 	defer cleanup()
@@ -973,7 +971,7 @@ func TestBackend_StaticRole_Rotate_Invalid_Role(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -993,7 +991,7 @@ func TestBackend_StaticRole_Rotate_Invalid_Role(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1014,7 +1012,7 @@ func TestBackend_StaticRole_Rotate_Invalid_Role(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1026,7 +1024,7 @@ func TestBackend_StaticRole_Rotate_Invalid_Role(t *testing.T) {
 }
 
 func TestRollsPasswordForwardsUsingWAL(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, storage, mockDB := getBackend(t)
 	defer b.Cleanup(ctx)
 	configureDBMount(t, storage)
@@ -1106,7 +1104,7 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			config := logical.TestBackendConfig()
 			storage := &logical.InmemStorage{}
 			config.StorageView = storage
@@ -1185,7 +1183,7 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 }
 
 func TestDeletesOlderWALsOnLoad(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, storage, mockDB := getBackend(t)
 	defer b.Cleanup(ctx)
 	configureDBMount(t, storage)
@@ -1198,7 +1196,7 @@ func TestDeletesOlderWALsOnLoad(t *testing.T) {
 		NewPassword:       "some-new-password",
 		LastVaultRotation: time.Now(),
 	}
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		_, err := framework.PutWAL(ctx, storage, staticWALKey, wal)
 		if err != nil {
 			t.Fatal(err)
@@ -1227,7 +1225,7 @@ func generateWALFromFailedRotation(t *testing.T, b *databaseBackend, storage log
 	mockDB.On("UpdateUser", mock.Anything, mock.Anything).
 		Return(v5.UpdateUserResponse{}, errors.New("forced error")).
 		Once()
-	_, err := b.HandleRequest(context.Background(), &logical.Request{
+	_, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "rotate-role/" + roleName,
 		Storage:   storage,
@@ -1242,7 +1240,7 @@ func rotateRole(t *testing.T, b *databaseBackend, storage logical.Storage, mockD
 	mockDB.On("UpdateUser", mock.Anything, mock.Anything).
 		Return(v5.UpdateUserResponse{}, nil).
 		Once()
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "rotate-role/" + roleName,
 		Storage:   storage,
@@ -1255,7 +1253,7 @@ func rotateRole(t *testing.T, b *databaseBackend, storage logical.Storage, mockD
 // returns a slice of the WAL IDs in storage
 func requireWALs(t *testing.T, storage logical.Storage, expectedCount int) []string {
 	t.Helper()
-	wals, err := storage.List(context.Background(), "wal/")
+	wals, err := storage.List(t.Context(), "wal/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1273,11 +1271,11 @@ func getBackend(t *testing.T) (*databaseBackend, logical.Storage, *mockNewDataba
 	// Create and init the backend ourselves instead of using a Factory because
 	// the factory function kicks off threads that cause racy tests.
 	b := Backend(config)
-	if err := b.Setup(context.Background(), config); err != nil {
+	if err := b.Setup(t.Context(), config); err != nil {
 		t.Fatal(err)
 	}
 	b.credRotationQueue = queue.New()
-	b.populateQueue(context.Background(), config.StorageView)
+	b.populateQueue(t.Context(), config.StorageView)
 
 	mockDB := setupMockDB(b)
 
@@ -1314,7 +1312,7 @@ func configureDBMount(t *testing.T, storage logical.Storage) {
 		t.Fatal(err)
 	}
 
-	err = storage.Put(context.Background(), entry)
+	err = storage.Put(t.Context(), entry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1332,7 +1330,7 @@ func capturePasswords(t *testing.T, b logical.Backend, config *logical.BackendCo
 			Path:      "static-creds/" + roleName,
 			Storage:   config.StorageView,
 		}
-		resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}

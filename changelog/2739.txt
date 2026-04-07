@@ -1,0 +1,3 @@
+```release-note:improvement
+self-init: Allow conditional execution of requests with `when` keyword.
+```

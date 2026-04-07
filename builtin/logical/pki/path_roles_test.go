@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"context"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/base64"
@@ -38,14 +37,14 @@ func TestPki_RoleGenerateLease(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
 	roleReq.Operation = logical.ReadOperation
 
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -64,7 +63,7 @@ func TestPki_RoleGenerateLease(t *testing.T) {
 
 	// To test upgrade of generate_lease, we read the storage entry,
 	// modify it to remove generate_lease, and rewrite it.
-	entry, err := storage.Get(context.Background(), "role/testrole")
+	entry, err := storage.Get(t.Context(), "role/testrole")
 	if err != nil || entry == nil {
 		t.Fatal(err)
 	}
@@ -80,12 +79,12 @@ func TestPki_RoleGenerateLease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := storage.Put(context.Background(), entry); err != nil {
+	if err := storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}
 
 	// Reading should upgrade generate_lease
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -105,13 +104,13 @@ func TestPki_RoleGenerateLease(t *testing.T) {
 	roleReq.Path = "roles/testrole2"
 	roleReq.Data["generate_lease"] = true
 
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
 	roleReq.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -144,14 +143,14 @@ func TestPki_RoleKeyUsage(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route(roleReq.Path), logical.UpdateOperation), resp, true)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
 	roleReq.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route(roleReq.Path), logical.ReadOperation), resp, true)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
@@ -165,7 +164,7 @@ func TestPki_RoleKeyUsage(t *testing.T) {
 	// To test the upgrade of KeyUsageOld into KeyUsage, we read
 	// the storage entry, modify it to set KUO and unset KU, and
 	// rewrite it.
-	entry, err := storage.Get(context.Background(), "role/testrole")
+	entry, err := storage.Get(t.Context(), "role/testrole")
 	if err != nil || entry == nil {
 		t.Fatal(err)
 	}
@@ -182,12 +181,12 @@ func TestPki_RoleKeyUsage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := storage.Put(context.Background(), entry); err != nil {
+	if err := storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}
 
 	// Reading should upgrade key_usage
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -198,7 +197,7 @@ func TestPki_RoleKeyUsage(t *testing.T) {
 	}
 
 	// Read back from storage to ensure upgrade
-	entry, err = storage.Get(context.Background(), "role/testrole")
+	entry, err = storage.Get(t.Context(), "role/testrole")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -238,13 +237,13 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
 	roleReq.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -260,7 +259,7 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 
 	// To test upgrade of O/OU, we read the storage entry, modify it to set
 	// the old O/OU value over the new one, and rewrite it.
-	entry, err := storage.Get(context.Background(), "role/testrole")
+	entry, err := storage.Get(t.Context(), "role/testrole")
 	if err != nil || entry == nil {
 		t.Fatal(err)
 	}
@@ -278,12 +277,12 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := storage.Put(context.Background(), entry); err != nil {
+	if err := storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}
 
 	// Reading should upgrade key_usage
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -298,7 +297,7 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 	}
 
 	// Read back from storage to ensure upgrade
-	entry, err = storage.Get(context.Background(), "role/testrole")
+	entry, err = storage.Get(t.Context(), "role/testrole")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -342,13 +341,13 @@ func TestPki_RoleAllowedDomains(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
 	roleReq.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -360,7 +359,7 @@ func TestPki_RoleAllowedDomains(t *testing.T) {
 
 	// To test upgrade of allowed_domains, we read the storage entry,
 	// set the old one, and rewrite it.
-	entry, err := storage.Get(context.Background(), "role/testrole")
+	entry, err := storage.Get(t.Context(), "role/testrole")
 	if err != nil || entry == nil {
 		t.Fatal(err)
 	}
@@ -376,12 +375,12 @@ func TestPki_RoleAllowedDomains(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := storage.Put(context.Background(), entry); err != nil {
+	if err := storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}
 
 	// Reading should upgrade key_usage
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -392,7 +391,7 @@ func TestPki_RoleAllowedDomains(t *testing.T) {
 	}
 
 	// Read back from storage to ensure upgrade
-	entry, err = storage.Get(context.Background(), "role/testrole")
+	entry, err = storage.Get(t.Context(), "role/testrole")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -430,13 +429,13 @@ func TestPki_RoleAllowedURISANs(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
 	roleReq.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -471,13 +470,13 @@ func TestPki_RolePkixFields(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
 	roleReq.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -557,14 +556,14 @@ func TestPki_RoleNoStore(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
 	roleReq.Operation = logical.ReadOperation
 
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -595,13 +594,13 @@ func TestPki_RoleNoStore(t *testing.T) {
 	roleReq.Data["allow_subdomains"] = true
 	roleReq.Data["ttl"] = "5h"
 
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
 	roleReq.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -623,7 +622,7 @@ func TestPki_RoleNoStore(t *testing.T) {
 		Storage:   storage,
 		Data:      caData,
 	}
-	resp, err = b.HandleRequest(context.Background(), caReq)
+	resp, err = b.HandleRequest(t.Context(), caReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -641,13 +640,13 @@ func TestPki_RoleNoStore(t *testing.T) {
 		Data:      issueData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), issueReq)
+	resp, err = b.HandleRequest(t.Context(), issueReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
 	// list certs
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.ListOperation,
 		Path:      "certs",
 		Storage:   storage,
@@ -679,7 +678,7 @@ func TestPki_CertsLease(t *testing.T) {
 		Data:      caData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), caReq)
+	resp, err = b.HandleRequest(t.Context(), caReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -697,7 +696,7 @@ func TestPki_CertsLease(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -714,7 +713,7 @@ func TestPki_CertsLease(t *testing.T) {
 		Data:      issueData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), issueReq)
+	resp, err = b.HandleRequest(t.Context(), issueReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -727,12 +726,12 @@ func TestPki_CertsLease(t *testing.T) {
 	// should have a `Secret` object populated.
 	roleData["generate_lease"] = true
 
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
-	resp, err = b.HandleRequest(context.Background(), issueReq)
+	resp, err = b.HandleRequest(t.Context(), issueReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
@@ -974,14 +973,14 @@ func TestPki_RolePatch(t *testing.T) {
 			Data:      roleData,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), roleReq)
+		resp, err = b.HandleRequest(t.Context(), roleReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("bad [%d/%v] create: err: %v resp: %#v", index, testCase.Field, err, resp)
 		}
 
 		// Read the role after creation
 		roleReq.Operation = logical.ReadOperation
-		roleDataResp, err = b.HandleRequest(context.Background(), roleReq)
+		roleDataResp, err = b.HandleRequest(t.Context(), roleReq)
 		if err != nil || (roleDataResp != nil && roleDataResp.IsError()) {
 			t.Fatalf("bad [%d/%v] read: err: %v resp: %#v", index, testCase.Field, err, resp)
 		}
@@ -991,14 +990,14 @@ func TestPki_RolePatch(t *testing.T) {
 		// Patch the role
 		roleReq.Operation = logical.PatchOperation
 		roleReq.Data[testCase.Field] = testCase.Patched
-		resp, err = b.HandleRequest(context.Background(), roleReq)
+		resp, err = b.HandleRequest(t.Context(), roleReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("bad [%d/%v] patch: err: %v resp: %#v", index, testCase.Field, err, resp)
 		}
 
 		// Re-read and verify the role
 		roleReq.Operation = logical.ReadOperation
-		afterRoleDataResp, err = b.HandleRequest(context.Background(), roleReq)
+		afterRoleDataResp, err = b.HandleRequest(t.Context(), roleReq)
 		if err != nil || (afterRoleDataResp != nil && afterRoleDataResp.IsError()) {
 			t.Fatalf("bad [%d/%v] read: err: %v resp: %#v", index, testCase.Field, err, resp)
 		}
@@ -1064,7 +1063,7 @@ func TestPKI_RolePolicyInformation_Flat(t *testing.T) {
 		Storage:   storage,
 		Data:      caData,
 	}
-	caResp, err := b.HandleRequest(context.Background(), caReq)
+	caResp, err := b.HandleRequest(t.Context(), caReq)
 	if err != nil || (caResp != nil && caResp.IsError()) {
 		t.Fatalf("bad: err: %v resp: %#v", err, caResp)
 	}
@@ -1085,7 +1084,7 @@ func TestPKI_RolePolicyInformation_Flat(t *testing.T) {
 			Data:      roleData,
 		}
 
-		roleResp, err = b.HandleRequest(context.Background(), roleReq)
+		roleResp, err = b.HandleRequest(t.Context(), roleReq)
 		if err != nil || (roleResp != nil && roleResp.IsError()) {
 			t.Fatalf("bad [%d], setting policy identifier %v err: %v resp: %#v", index, testCase.Input, err, roleResp)
 		}
@@ -1102,7 +1101,7 @@ func TestPKI_RolePolicyInformation_Flat(t *testing.T) {
 			Data:      issueData,
 		}
 
-		issueResp, err = b.HandleRequest(context.Background(), issueReq)
+		issueResp, err = b.HandleRequest(t.Context(), issueReq)
 		if err != nil || (issueResp != nil && issueResp.IsError()) {
 			t.Fatalf("bad [%d], setting policy identifier %v err: %v resp: %#v", index, testCase.Input, err, issueResp)
 		}

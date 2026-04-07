@@ -5,7 +5,6 @@ package http
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -49,26 +48,26 @@ func TestSafeJSONReader(t *testing.T) {
 
 	for index, test := range tests {
 		// First compute actual values.
-		ctx := addMaximumJsonMemoryToContext(context.Background(), math.MaxInt64)
+		ctx := addMaximumJsonMemoryToContext(t.Context(), math.MaxInt64)
 		ctx = addMaximumJsonStringsToContext(ctx, math.MaxInt64)
 		actualMemory, actualStrings, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 		require.NoError(t, err)
 
 		// Setting these actual values should allow parsing to succeed and
 		// be consistent.
-		ctx = addMaximumJsonMemoryToContext(context.Background(), actualMemory)
+		ctx = addMaximumJsonMemoryToContext(t.Context(), actualMemory)
 		newMemory, newStrings, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 		require.NoError(t, err)
 		require.Equal(t, actualMemory, newMemory)
 		require.Equal(t, actualStrings, newStrings)
 
-		ctx = addMaximumJsonStringsToContext(context.Background(), actualStrings)
+		ctx = addMaximumJsonStringsToContext(t.Context(), actualStrings)
 		newMemory, newStrings, err = EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 		require.NoError(t, err)
 		require.Equal(t, actualMemory, newMemory)
 		require.Equal(t, actualStrings, newStrings)
 
-		ctx = addMaximumJsonMemoryToContext(context.Background(), actualMemory)
+		ctx = addMaximumJsonMemoryToContext(t.Context(), actualMemory)
 		ctx = addMaximumJsonStringsToContext(ctx, actualStrings)
 		newMemory, newStrings, err = EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 		require.NoError(t, err)
@@ -89,7 +88,7 @@ func TestSafeJSONReader(t *testing.T) {
 		// Decreasing memory by one, if allowed, should cause a failure. This
 		// shows the bound is tight.
 		if actualMemory > 0 {
-			ctx = addMaximumJsonMemoryToContext(context.Background(), actualMemory-1)
+			ctx = addMaximumJsonMemoryToContext(t.Context(), actualMemory-1)
 			_, _, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 			require.Error(t, err, "test case %d: %q", index, test)
 			require.ErrorContains(t, err, ErrJSONExceededMemory.Error())
@@ -105,7 +104,7 @@ func TestSafeJSONReader(t *testing.T) {
 		// Decreasing strings by one, if allowed, should cause a failure. This
 		// shows the bound is tight.
 		if actualStrings > 0 {
-			ctx = addMaximumJsonStringsToContext(context.Background(), actualStrings-1)
+			ctx = addMaximumJsonStringsToContext(t.Context(), actualStrings-1)
 			_, _, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 			require.Error(t, err, "test case %d: %q", index, test)
 			require.ErrorContains(t, err, ErrJSONExceededStrings.Error())
@@ -120,7 +119,7 @@ func TestSafeJSONReader(t *testing.T) {
 
 		// Decreasing both bounds should fail.
 		if actualStrings > 0 && actualMemory > 0 {
-			ctx = addMaximumJsonMemoryToContext(context.Background(), actualMemory-1)
+			ctx = addMaximumJsonMemoryToContext(t.Context(), actualMemory-1)
 			ctx = addMaximumJsonStringsToContext(ctx, actualStrings-1)
 			_, _, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 			require.Error(t, err, "test case %d: %q", index, test)
@@ -169,7 +168,7 @@ func makeRandomMap(size int) interface{} {
 
 func fakeSizeOf(t *testing.T, input []byte) int64 {
 	min := fakeSizeOfInternal(t, input)
-	for i := 0; i < 15; i++ {
+	for range 15 {
 		time.Sleep(5 * time.Millisecond)
 
 		v := fakeSizeOfInternal(t, input)
@@ -186,7 +185,7 @@ func fakeSizeOfInternal(t *testing.T, input []byte) int64 {
 	var obj interface{}
 
 	// Run GC multiple times to fully clear any sync.Pools.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		runtime.GC()
 	}
 
@@ -199,7 +198,7 @@ func fakeSizeOfInternal(t *testing.T, input []byte) int64 {
 	require.NoError(t, err)
 
 	// Run GC multiple times to fully clear any sync.Pools.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		runtime.GC()
 	}
 
@@ -237,7 +236,7 @@ func TestSafeJSONReaderValidateSizes(t *testing.T) {
 
 		buf := bytes.NewBuffer(output)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		ctx = addMaximumJsonMemoryToContext(ctx, math.MaxInt64)
 		ctx = addMaximumJsonStringsToContext(ctx, math.MaxInt64)
 

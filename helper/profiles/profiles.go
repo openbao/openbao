@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-hclog"
@@ -21,6 +22,8 @@ import (
  * - Files
  * - Previous requests and responses
  * - CEL expressions
+ * - text/template
+ * - API request parameters
  *
  * The parameter type is converted via the `eval_type` flag.
  *
@@ -28,7 +31,7 @@ import (
  * scenarios where durability (retries, &c) are considered.
  *
  * The profile system allow the construction of a single, optional outer named
- * block (e.g., `initialization`, `profile`, &c) which has one or more
+ * block (e.g., `initialization`, `context`, &c) which has one or more
  * `request` blocks inside, executed in the given order.
  *
  * This is expected to work on regular API requests and responses and will not
@@ -121,7 +124,7 @@ func WithOutput(config *OutputConfig) func(*ProfileEngine) {
 
 // SourceBuilder creates a new concrete source mapped to a particular
 // instance of a field.
-type SourceBuilder func(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source
+type SourceBuilder func(engine *ProfileEngine, field map[string]interface{}) Source
 
 // RequestHandler takes logical requests and executes them.
 type RequestHandlerFunc func(ctx context.Context, req *logical.Request) (*logical.Response, error)
@@ -129,7 +132,7 @@ type RequestHandlerFunc func(ctx context.Context, req *logical.Request) (*logica
 // Source represents a dynamic value source. A source object is initialized
 // once for each matching object and is alive throughout the history of the request.
 type Source interface {
-	Validate(ctx context.Context) (requestDeps, responseDeps []string, err error)
+	Validate() (requestDeps, responseDeps []string, err error)
 	Evaluate(ctx context.Context, history *EvaluationHistory) (value interface{}, err error)
 	Close(ctx context.Context) error
 }
@@ -303,6 +306,23 @@ func (p *ProfileEngine) EvaluateResponse(ctx context.Context) (*logical.Response
 	return p.evaluateOutput(ctx, history)
 }
 
+func (p *ProfileEngine) Debug(ctx context.Context) map[string]interface{} {
+	history, err := p.evaluateHistory(ctx)
+
+	debugInfo := map[string]interface{}{
+		"history": history,
+		"error":   err,
+	}
+
+	if err == nil && p.output != nil {
+		resp, err := p.evaluateOutput(ctx, history)
+		debugInfo["error"] = err
+		debugInfo["response"] = resp
+	}
+
+	return debugInfo
+}
+
 // evaluateHistory evaluates all requests which occur in the profile, building
 // up an evaluation history of these flows.
 func (p *ProfileEngine) evaluateHistory(ctx context.Context) (*EvaluationHistory, error) {
@@ -320,10 +340,10 @@ func (p *ProfileEngine) evaluateHistory(ctx context.Context) (*EvaluationHistory
 			return nil
 		}(); err != nil {
 			if p.outerBlockName != "" {
-				return nil, fmt.Errorf("%v.[%v (%d)]: %w", p.outerBlockName, outerBlock.Type, outerIndex, err)
+				return &history, fmt.Errorf("%v.[%v (%d)]: %w", p.outerBlockName, outerBlock.Type, outerIndex, err)
 			}
 
-			return nil, err
+			return &history, err
 		}
 	}
 
@@ -333,14 +353,25 @@ func (p *ProfileEngine) evaluateHistory(ctx context.Context) (*EvaluationHistory
 // evaluateRequest evaluates a single request within the broader profile.
 func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *EvaluationHistory, outerIndex int, outerBlock *OuterConfig, requestIndex int, requestBlock *RequestConfig) error {
 	// 1. Build logical request.
-	req, allowFailure, err := p.buildRequest(ctx, history, outerIndex, outerBlock, requestIndex, requestBlock)
+	req, execute, allowFailure, err := p.buildRequest(ctx, history, outerIndex, outerBlock, requestIndex, requestBlock)
 	if err != nil {
 		return fmt.Errorf("in building request: %w", err)
 	}
 
+	// 2. Stash the request.
+	if err := history.AddRequest(outerBlock.Type, requestBlock.Type, req); err != nil {
+		return fmt.Errorf("failed to save request: %w", err)
+	}
+
+	// 3. Decide whether to execute.
+	if !execute {
+		p.logger.Trace("Skipping profile request with when=false", "input", requestBlock, "request-id", req.ID)
+		return nil
+	}
+
 	p.logger.Trace("Performing profile request", "input", requestBlock, "request-id", req.ID)
 
-	// 2. Call the request handler.
+	// 4. Call the request handler.
 	resp, err := p.requestHandler(ctx, req)
 	isFailure := err != nil || resp.IsError()
 	if err == nil && resp.IsError() {
@@ -352,11 +383,7 @@ func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *Evaluation
 		}
 	}
 
-	// 3. Stash request & response for future use.
-	if err := history.AddRequest(outerBlock.Type, requestBlock.Type, req); err != nil {
-		return fmt.Errorf("failed to save request: %w", err)
-	}
-
+	// 5. Stash response for future use.
 	if !isFailure {
 		if err := history.AddResponse(outerBlock.Type, requestBlock.Type, resp); err != nil {
 			return fmt.Errorf("failed to save response: %w", err)
@@ -368,7 +395,7 @@ func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *Evaluation
 
 // buildRequest transforms an input configuration's request into a proper
 // output
-func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHistory, outerIndex int, outerBlock *OuterConfig, requestIndex int, requestBlock *RequestConfig) (req *logical.Request, allowFailure bool, err error) {
+func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHistory, outerIndex int, outerBlock *OuterConfig, requestIndex int, requestBlock *RequestConfig) (req *logical.Request, execute bool, allowFailure bool, err error) {
 	reqName := fmt.Sprintf("request[%d].%v", requestIndex, requestBlock.Type)
 	if p.outerBlockName != "" {
 		reqName = fmt.Sprintf("%v[%d].%v.%v", p.outerBlockName, outerIndex, outerBlock.Type, reqName)
@@ -378,14 +405,17 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 		ID: reqName,
 	}
 
+	// Execute requests by default.
+	execute = true
+
 	if err = p.evaluateField(ctx, history, requestBlock.Operation, &req.Operation); err != nil {
 		err = fmt.Errorf("failed to evaluate operation: %w", err)
-		return req, allowFailure, err
+		return req, execute, allowFailure, err
 	}
 
 	if err = p.evaluateField(ctx, history, requestBlock.Path, &req.Path); err != nil {
 		err = fmt.Errorf("failed to evaluate path: %w", err)
-		return req, allowFailure, err
+		return req, execute, allowFailure, err
 	}
 
 	// For the token, if our request block did not specify a token, we use the
@@ -396,21 +426,34 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 	} else {
 		if err = p.evaluateField(ctx, history, requestBlock.Token, &req.ClientToken); err != nil {
 			err = fmt.Errorf("failed to evaluate token: %w", err)
-			return req, allowFailure, err
+			return req, execute, allowFailure, err
 		}
 	}
 
 	if err = p.evaluateField(ctx, history, requestBlock.Data, &req.Data); err != nil {
 		err = fmt.Errorf("failed to evaluate data: %w", err)
-		return req, allowFailure, err
+		return req, execute, allowFailure, err
+	}
+
+	if err = p.evaluateField(ctx, history, requestBlock.Headers, &req.Headers); err != nil {
+		err = fmt.Errorf("failed to evaluate data: %w", err)
+		return req, execute, allowFailure, err
 	}
 
 	if err = p.evaluateField(ctx, history, requestBlock.AllowFailure, &allowFailure); err != nil {
 		err = fmt.Errorf("failed to evaluate allow failure: %w", err)
-		return req, allowFailure, err
+		return req, execute, allowFailure, err
 	}
 
-	return req, allowFailure, err
+	// Only override the value of execute if specified.
+	if requestBlock.When != nil {
+		if err = p.evaluateField(ctx, history, requestBlock.When, &execute); err != nil {
+			err = fmt.Errorf("failed to evaluate when: %w", err)
+			return req, execute, allowFailure, err
+		}
+	}
+
+	return req, execute, allowFailure, err
 }
 
 // evaluateField takes a single configuration field and evaluates it to the
@@ -528,25 +571,21 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 		return nil, fmt.Errorf("unknown value for 'eval_source': %v", source)
 	}
 
-	sourceEval := sourceBuilder(ctx, p, obj)
+	sourceEval := sourceBuilder(p, obj)
 
 	defer sourceEval.Close(ctx)
 
-	accessedRequests, accessedResponses, err := sourceEval.Validate(ctx)
+	accessedRequests, accessedResponses, err := sourceEval.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate source '%v': %w", source, err)
 	}
 
-	for _, req := range accessedRequests {
-		if req == "" {
-			return nil, fmt.Errorf("invalid empty request name found")
-		}
+	if slices.Contains(accessedRequests, "") {
+		return nil, fmt.Errorf("invalid empty request name found")
 	}
 
-	for _, resp := range accessedResponses {
-		if resp == "" {
-			return nil, fmt.Errorf("invalid empty response name found")
-		}
+	if slices.Contains(accessedResponses, "") {
+		return nil, fmt.Errorf("invalid empty response name found")
 	}
 
 	val, err := sourceEval.Evaluate(ctx, history)

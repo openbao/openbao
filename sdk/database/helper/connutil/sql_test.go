@@ -4,7 +4,6 @@
 package connutil
 
 import (
-	"context"
 	"net/url"
 	"strings"
 	"testing"
@@ -27,7 +26,7 @@ func TestSQLPasswordChars(t *testing.T) {
 		t.Logf("username %q password %q", tc.Username, tc.Password)
 
 		sql := &SQLConnectionProducer{}
-		ctx := context.Background()
+		ctx := t.Context()
 		conf := map[string]interface{}{
 			"connection_url":   "postgres://{{username}}:{{password}}@localhost:5432/mydb",
 			"username":         tc.Username,
@@ -76,7 +75,7 @@ func TestSQLDisableEscaping(t *testing.T) {
 		t.Logf("username %q password %q disable_escaling %t", tc.Username, tc.Password, tc.DisableEscaping)
 
 		sql := &SQLConnectionProducer{}
-		ctx := context.Background()
+		ctx := t.Context()
 		conf := map[string]interface{}{
 			"connection_url":   "server=localhost;port=1433;user id={{username}};password={{password}};database=mydb;",
 			"username":         tc.Username,
@@ -119,7 +118,7 @@ func TestSQLDisallowTemplates(t *testing.T) {
 			t.Logf("username %q password %q disable_escaping %t", tc.Username, tc.Password, disableEscaping)
 
 			sql := &SQLConnectionProducer{}
-			ctx := context.Background()
+			ctx := t.Context()
 			conf := map[string]interface{}{
 				"connection_url":   "server=localhost;port=1433;user id={{username}};password={{password}};database=mydb;",
 				"username":         tc.Username,

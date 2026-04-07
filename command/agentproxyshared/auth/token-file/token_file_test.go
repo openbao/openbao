@@ -4,7 +4,6 @@
 package token_file
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -60,7 +59,7 @@ func TestNewTokenFileAuthenticate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	path, headers, data, err := am.Authenticate(context.TODO(), nil)
+	path, headers, data, err := am.Authenticate(t.Context(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

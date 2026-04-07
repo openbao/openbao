@@ -14,11 +14,11 @@ func TestCelSourceBuilder_EvaluateAndClose(t *testing.T) {
 	}}
 
 	field := map[string]interface{}{"expression": "requests.test.value"}
-	src := CELSourceBuilder(ctx, engine, field)
+	src := CELSourceBuilder(engine, field)
 	require.NotNil(t, src)
 	require.IsType(t, &CELSource{}, src)
 
-	_, _, err := src.Validate(ctx)
+	_, _, err := src.Validate()
 	require.NoError(t, err, "failed to validate")
 
 	history := &EvaluationHistory{}
@@ -35,39 +35,36 @@ func TestCelSourceBuilder_EvaluateAndClose(t *testing.T) {
 }
 
 func TestCelSourceBuilder_RequestNotAllowed(t *testing.T) {
-	ctx := t.Context()
 	engine := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{
 		"response": ResponseSourceBuilder,
 	}}
 
 	field := map[string]interface{}{"expression": "requests.test.value"}
-	src := CELSourceBuilder(ctx, engine, field)
+	src := CELSourceBuilder(engine, field)
 	require.NotNil(t, src)
 
-	_, _, err := src.Validate(ctx)
+	_, _, err := src.Validate()
 	require.Error(t, err, "expected failure to validate")
 }
 
 func TestCelSourceBuilder_ResponseNotAllowed(t *testing.T) {
-	ctx := t.Context()
 	engine := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{}}
 
 	field := map[string]interface{}{"expression": "response.test.value"}
-	src := CELSourceBuilder(ctx, engine, field)
+	src := CELSourceBuilder(engine, field)
 	require.NotNil(t, src)
 
-	_, _, err := src.Validate(ctx)
+	_, _, err := src.Validate()
 	require.Error(t, err, "expected failure to validate")
 }
 
 func TestCelSourceBuilder_Constant(t *testing.T) {
-	ctx := t.Context()
 	engine := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{}}
 
 	field := map[string]interface{}{"expression": "123"}
-	src := CELSourceBuilder(ctx, engine, field)
+	src := CELSourceBuilder(engine, field)
 	require.NotNil(t, src)
 
-	_, _, err := src.Validate(ctx)
+	_, _, err := src.Validate()
 	require.NoError(t, err, "failure to validate")
 }

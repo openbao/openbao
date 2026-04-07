@@ -87,11 +87,11 @@ func TestBackend_config_connection(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	require.Truef(t, ok, "could not convert to database backend")
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	// Test creation
 	{
@@ -111,14 +111,14 @@ func TestBackend_config_connection(t *testing.T) {
 			Data:      configData,
 		}
 
-		exists, err := b.connectionExistenceCheck()(context.Background(), configReq, &framework.FieldData{
+		exists, err := b.connectionExistenceCheck()(t.Context(), configReq, &framework.FieldData{
 			Raw:    configData,
 			Schema: pathConfigurePluginConnection(b).Fields,
 		})
 		require.NoError(t, err)
 		require.Falsef(t, exists, "expected not exists")
 
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), configReq)
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), configReq)
 		require.NoErrorf(t, err, "err:%v resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
@@ -134,7 +134,7 @@ func TestBackend_config_connection(t *testing.T) {
 			"plugin_version":                     "",
 		}
 		configReq.Operation = logical.ReadOperation
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), configReq)
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), configReq)
 		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -157,14 +157,14 @@ func TestBackend_config_connection(t *testing.T) {
 			Data:      configData,
 		}
 
-		exists, err := b.connectionExistenceCheck()(context.Background(), configReq, &framework.FieldData{
+		exists, err := b.connectionExistenceCheck()(t.Context(), configReq, &framework.FieldData{
 			Raw:    configData,
 			Schema: pathConfigurePluginConnection(b).Fields,
 		})
 		require.NoError(t, err)
 		require.Truef(t, exists, "expected exists")
 
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), configReq)
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), configReq)
 		require.NoErrorf(t, err, "err:%v resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
@@ -180,7 +180,7 @@ func TestBackend_config_connection(t *testing.T) {
 			"plugin_version":                     "",
 		}
 		configReq.Operation = logical.ReadOperation
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), configReq)
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), configReq)
 		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -203,7 +203,7 @@ func TestBackend_config_connection(t *testing.T) {
 			Data:      configData,
 		}
 
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), configReq)
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), configReq)
 		require.NoErrorf(t, err, "err:%v resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
@@ -219,7 +219,7 @@ func TestBackend_config_connection(t *testing.T) {
 			"plugin_version":                     "",
 		}
 		configReq.Operation = logical.ReadOperation
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), configReq)
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), configReq)
 		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -232,7 +232,7 @@ func TestBackend_config_connection(t *testing.T) {
 		Storage:   config.StorageView,
 		Path:      "config/",
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
 	keys := resp.Data["keys"].([]string)
 	key := keys[0]
@@ -247,16 +247,16 @@ func TestBackend_BadConnectionString(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	require.NoError(t, err)
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, _ := postgreshelper.PrepareTestContainer(t, "13.4-buster")
 	defer cleanup()
 
 	respCheck := func(req *logical.Request) {
 		t.Helper()
-		resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		require.True(t, resp.IsError(), "expected error, resp:%#v", resp)
@@ -289,9 +289,9 @@ func TestBackend_basic(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	require.NoError(t, err)
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "13.4-buster")
 	defer cleanup()
@@ -308,7 +308,7 @@ func TestBackend_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -324,7 +324,7 @@ func TestBackend_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 	// Get creds
@@ -335,7 +335,7 @@ func TestBackend_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	credsResp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
 	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 	// Update the role with no max ttl
@@ -351,7 +351,7 @@ func TestBackend_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 	// Get creds
@@ -362,7 +362,7 @@ func TestBackend_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	credsResp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
 	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 	// Test for #3812
@@ -380,7 +380,7 @@ func TestBackend_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -393,7 +393,7 @@ func TestBackend_basic(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		credsResp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
 		require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 		// Test for #3812
@@ -401,7 +401,7 @@ func TestBackend_basic(t *testing.T) {
 		require.Truef(t, testCredsExist(t, credsResp, connURL), "Creds should exist")
 
 		// Revoke creds
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), &logical.Request{
 			Operation: logical.RevokeOperation,
 			Storage:   config.StorageView,
 			Secret: &logical.Secret{
@@ -427,7 +427,7 @@ func TestBackend_basic(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		credsResp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
 		require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 		require.Truef(t, testCredsExist(t, credsResp, connURL), "Creds should exist")
@@ -438,12 +438,12 @@ func TestBackend_basic(t *testing.T) {
 			Path:      "roles/plugin-role-test",
 			Storage:   config.StorageView,
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 		// Revoke creds
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), &logical.Request{
 			Operation: logical.RevokeOperation,
 			Storage:   config.StorageView,
 			Secret: &logical.Secret{
@@ -471,9 +471,9 @@ func TestBackend_connectionCrud(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	require.NoError(t, err)
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "13.4-buster")
 	defer cleanup()
@@ -490,7 +490,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -508,7 +508,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -527,13 +527,13 @@ func TestBackend_connectionCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 	require.NotEqualf(t, len(resp.Warnings), 0, "expected warning about password in url %s, resp:%#v\n", connURL, resp)
 
 	req.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 	returnedConnectionDetails := resp.Data["connection_details"].(map[string]interface{})
@@ -546,7 +546,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 	req.Operation = logical.UpdateOperation
 	connURL = strings.ReplaceAll(connURL, "postgres:secret", "{{username}}:{{password}}")
 	data["connection_url"] = connURL
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -563,7 +563,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 		"plugin_version":                     "",
 	}
 	req.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -578,7 +578,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -590,7 +590,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	credsResp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
 	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 
@@ -608,13 +608,13 @@ func TestBackend_connectionCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Read connection
 	req.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -630,11 +630,11 @@ func TestBackend_roleCrud(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	require.Truef(t, ok, "could not convert to db backend")
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "13.4-buster")
 	defer cleanup()
@@ -650,7 +650,7 @@ func TestBackend_roleCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -669,7 +669,7 @@ func TestBackend_roleCrud(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -681,7 +681,7 @@ func TestBackend_roleCrud(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -717,7 +717,7 @@ func TestBackend_roleCrud(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 		require.NoErrorf(t, err, "err:%v resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
@@ -729,7 +729,7 @@ func TestBackend_roleCrud(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -768,7 +768,7 @@ func TestBackend_roleCrud(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		require.NoErrorf(t, err, "err:%v resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
@@ -780,7 +780,7 @@ func TestBackend_roleCrud(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -811,7 +811,7 @@ func TestBackend_roleCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -823,7 +823,7 @@ func TestBackend_roleCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -839,9 +839,9 @@ func TestBackend_allowedRoles(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	require.NoError(t, err)
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "13.4-buster")
 	defer cleanup()
@@ -857,7 +857,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -874,7 +874,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -890,7 +890,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -902,7 +902,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.Errorf(t, err, "expected error because role is denied")
 
 	// update connection with glob allowed roles connection
@@ -917,7 +917,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -929,7 +929,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	credsResp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
 	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 
@@ -947,7 +947,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -959,7 +959,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	credsResp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
 	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 
@@ -977,7 +977,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -989,7 +989,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.Errorf(t, err, "expected error because role is denied")
 
 	// Get creds from allowed role, should work.
@@ -1000,7 +1000,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	credsResp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
 	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 
@@ -1015,9 +1015,9 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	require.NoError(t, err)
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "13.4-buster")
 	defer cleanup()
@@ -1038,7 +1038,7 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
@@ -1054,7 +1054,7 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 	// Get creds
@@ -1065,7 +1065,7 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	credsResp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
 	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 
@@ -1076,11 +1076,11 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
-	dbConfig, err := b.(*databaseBackend).DatabaseConfig(context.Background(), config.StorageView, "plugin-test")
+	dbConfig, err := b.(*databaseBackend).DatabaseConfig(t.Context(), config.StorageView, "plugin-test")
 	require.NoErrorf(t, err, "err: %#v", err)
 	require.NotEqualf(t, dbConfig.ConnectionDetails["password"].(string), "secret", "root credentials not rotated")
 
@@ -1092,7 +1092,7 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	credsResp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
 	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 }
@@ -1105,9 +1105,9 @@ func TestBackend_ConnectionURL_redacted(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	require.NoError(t, err)
-	defer b.Cleanup(context.Background())
+	defer b.Cleanup(t.Context())
 
 	tests := []struct {
 		name     string
@@ -1125,7 +1125,7 @@ func TestBackend_ConnectionURL_redacted(t *testing.T) {
 
 	respCheck := func(req *logical.Request) *logical.Response {
 		t.Helper()
-		resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 		require.NoError(t, err)
 		require.NotNil(t, resp, "expected a response, resp: %#v", resp)
 		require.Nil(t, resp.Error(), "unexpected error in response, err: %#v", resp.Error())
@@ -1236,7 +1236,7 @@ func TestBackend_AsyncClose(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	require.NoError(t, err)
 
 	// Configure a connection
@@ -1251,14 +1251,14 @@ func TestBackend_AsyncClose(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
 	timeout := time.NewTimer(750 * time.Millisecond)
 	done := make(chan bool)
 	go func() {
-		b.Cleanup(context.Background())
+		b.Cleanup(t.Context())
 		// check that clean can be called twice safely
-		b.Cleanup(context.Background())
+		b.Cleanup(t.Context())
 		done <- true
 	}()
 	select {
@@ -1271,7 +1271,7 @@ func TestBackend_AsyncClose(t *testing.T) {
 func TestNewDatabaseWrapper_IgnoresBuiltinVersion(t *testing.T) {
 	cluster, sys := getCluster(t)
 	t.Cleanup(cluster.Cleanup)
-	_, err := newDatabaseWrapper(context.Background(), "mysql-database-plugin", "v1.0.0+builtin", sys, hclog.Default())
+	_, err := newDatabaseWrapper(t.Context(), "mysql-database-plugin", "v1.0.0+builtin", sys, hclog.Default())
 	require.NoError(t, err)
 }
 

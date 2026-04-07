@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"sync"
@@ -24,7 +23,7 @@ func TestACL_NewACL(t *testing.T) {
 }
 
 func testNewACL(t *testing.T, ns *namespace.Namespace) {
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	policy := []*Policy{{Name: "root"}}
 	_, err := NewACL(ctx, policy)
 	switch ns.ID {
@@ -67,7 +66,7 @@ path "secret/split/definition" {
 		t.Fatal(err)
 	}
 
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	acl, err := NewACL(ctx, []*Policy{policy})
 	if err != nil {
 		t.Fatal(err)
@@ -106,7 +105,7 @@ func TestACL_Capabilities(t *testing.T) {
 	t.Run("root-ns", func(t *testing.T) {
 		t.Parallel()
 		policy := []*Policy{{Name: "root"}}
-		ctx := namespace.RootContext(context.Background())
+		ctx := namespace.RootContext(t.Context())
 		acl, err := NewACL(ctx, policy)
 		if err != nil {
 			t.Fatalf("err: %v", err)
@@ -123,7 +122,7 @@ func TestACL_Capabilities(t *testing.T) {
 
 func testACLCapabilities(t *testing.T, ns *namespace.Namespace) {
 	// Create the root policy ACL
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	policy, err := ParseACLPolicy(ns, aclPolicy)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -202,7 +201,7 @@ func testACLSingle(t *testing.T, ns *namespace.Namespace) {
 		t.Fatalf("err: %v", err)
 	}
 
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	acl, err := NewACL(ctx, []*Policy{policy})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -210,7 +209,7 @@ func testACLSingle(t *testing.T, ns *namespace.Namespace) {
 
 	// Type of operation is not important here as we only care about checking
 	// sudo/root
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	request := new(logical.Request)
 	request.Operation = logical.ReadOperation
 	request.Path = "sys/mount/foo"
@@ -281,7 +280,7 @@ func testACLSingle(t *testing.T, ns *namespace.Namespace) {
 	}
 
 	for _, tc := range tcases {
-		ctx := namespace.ContextWithNamespace(context.Background(), ns)
+		ctx := namespace.ContextWithNamespace(t.Context(), ns)
 		request := new(logical.Request)
 		request.Operation = tc.op
 		request.Path = tc.path
@@ -308,7 +307,7 @@ func TestACL_Layered(t *testing.T) {
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
-		acl, err := NewACL(namespace.RootContext(context.Background()), []*Policy{policy1, policy2})
+		acl, err := NewACL(namespace.RootContext(t.Context()), []*Policy{policy1, policy2})
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -319,7 +318,7 @@ func TestACL_Layered(t *testing.T) {
 func testLayeredACL(t *testing.T, acl *ACL, ns *namespace.Namespace) {
 	// Type of operation is not important here as we only care about checking
 	// sudo/root
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	request := new(logical.Request)
 	request.Operation = logical.ReadOperation
 	request.Path = "sys/mount/foo"
@@ -371,7 +370,7 @@ func testLayeredACL(t *testing.T, acl *ACL, ns *namespace.Namespace) {
 	}
 
 	for _, tc := range tcases {
-		ctx := namespace.ContextWithNamespace(context.Background(), ns)
+		ctx := namespace.ContextWithNamespace(t.Context(), ns)
 		request := new(logical.Request)
 		request.Operation = tc.op
 		request.Path = tc.path
@@ -405,7 +404,7 @@ func testACLPolicyMerge(t *testing.T, ns *namespace.Namespace) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	acl, err := NewACL(ctx, []*Policy{policy})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -474,7 +473,7 @@ func testACLAllowOperation(t *testing.T, ns *namespace.Namespace) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	acl, err := NewACL(ctx, []*Policy{policy})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -537,7 +536,7 @@ func testACLAllowOperation(t *testing.T, ns *namespace.Namespace) {
 		}
 		for _, op := range toperations {
 			request.Operation = op
-			ctx := namespace.ContextWithNamespace(context.Background(), ns)
+			ctx := namespace.ContextWithNamespace(t.Context(), ns)
 			authResults := acl.AllowOperation(ctx, request, false)
 			if authResults.Allowed != tc.allowed {
 				t.Fatalf("bad: case %#v: %v", tc, authResults.Allowed)
@@ -559,7 +558,7 @@ func testACLValuePermissions(t *testing.T, ns *namespace.Namespace) {
 		t.Fatalf("err: %v", err)
 	}
 
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	acl, err := NewACL(ctx, []*Policy{policy})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -622,7 +621,7 @@ func testACLValuePermissions(t *testing.T, ns *namespace.Namespace) {
 			Path: tc.path,
 			Data: make(map[string]interface{}),
 		}
-		ctx := namespace.ContextWithNamespace(context.Background(), ns)
+		ctx := namespace.ContextWithNamespace(t.Context(), ns)
 
 		for i, parameter := range tc.parameters {
 			request.Data[parameter] = tc.values[i]
@@ -639,7 +638,7 @@ func testACLValuePermissions(t *testing.T, ns *namespace.Namespace) {
 
 func TestACL_SegmentWildcardPriority(t *testing.T) {
 	ns := namespace.RootNamespace
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	type poltest struct {
 		policy string
 		path   string
@@ -741,7 +740,7 @@ path "foo/bar/+/ba*" { capabilities = ["update"] }
 
 func TestACL_SegmentWildcardPriority_BareMount(t *testing.T) {
 	ns := namespace.RootNamespace
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	type poltest struct {
 		policy    string
 		mountpath string
@@ -838,7 +837,7 @@ func TestACL_CreationRace(t *testing.T) {
 	errs := make(chan error)
 	stopTime := time.Now().Add(20 * time.Second)
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -846,7 +845,7 @@ func TestACL_CreationRace(t *testing.T) {
 				if time.Now().After(stopTime) {
 					return
 				}
-				_, err := NewACL(namespace.RootContext(context.Background()), []*Policy{policy})
+				_, err := NewACL(namespace.RootContext(t.Context()), []*Policy{policy})
 				if err != nil {
 					errs <- fmt.Errorf("goroutine %d: %w", i, err)
 				}
@@ -874,7 +873,7 @@ func TestACLGrantingPolicies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 
 	type tcase struct {
 		path     string

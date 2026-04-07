@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -76,7 +75,7 @@ func TestConfigCustomHeaders(t *testing.T) {
 		},
 	}
 
-	uiHeaders, err := uiConfig.Headers(context.Background())
+	uiHeaders, err := uiConfig.Headers(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +121,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 			},
 		},
 	}
-	uiHeaders, err := b.(*SystemBackend).Core.uiConfig.Headers(context.Background())
+	uiHeaders, err := b.(*SystemBackend).Core.uiConfig.Headers(t.Context())
 	if err != nil {
 		t.Fatal("failed to get headers from ui config")
 	}
@@ -144,7 +143,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	req.Data["values"] = []string{"UI Custom Header"}
 	req.ResponseWriter = hw
 
-	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err == nil {
 		t.Fatal("request did not fail on setting a header that is present in custom response headers")
 	}
@@ -164,7 +163,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	req.Data["values"] = []string{"400"}
 	req.ResponseWriter = hw
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err == nil {
 		t.Fatal("request did not fail on setting a header that is present in custom response headers")
 	}
@@ -175,7 +174,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 		true,
 	)
 
-	h, err := b.(*SystemBackend).Core.uiConfig.Headers(context.Background())
+	h, err := b.(*SystemBackend).Core.uiConfig.Headers(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +187,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	req.Data["values"] = []string{"Ui header value"}
 	req.ResponseWriter = hw
 
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal("request failed on setting a header that is not present in custom response headers.", "error:", err)
 	}
@@ -199,7 +198,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 		true,
 	)
 
-	h, err = b.(*SystemBackend).Core.uiConfig.Headers(context.Background())
+	h, err = b.(*SystemBackend).Core.uiConfig.Headers(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

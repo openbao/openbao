@@ -19,7 +19,7 @@ import (
 func TestAutoRotate(t *testing.T) {
 	t.Run("auto rotate role", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn":      "tester",
@@ -35,7 +35,7 @@ func TestAutoRotate(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -47,7 +47,7 @@ func TestAutoRotate(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -65,7 +65,7 @@ func TestAutoRotate(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -77,7 +77,7 @@ func TestAutoRotate(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -97,7 +97,7 @@ func TestAutoRotate(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -124,7 +124,7 @@ func TestAutoRotate(t *testing.T) {
 // a password policy change should cause the WAL to be discarded and a new
 // password to be generated using the updated policy.
 func TestPasswordPolicyModificationInvalidatesWAL(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, storage := getBackend(t, false)
 	defer b.Cleanup(ctx)
 
@@ -176,7 +176,7 @@ func TestPasswordPolicyModificationInvalidatesWAL(t *testing.T) {
 }
 
 func TestRollsPasswordForwardsUsingWAL(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, storage := getBackend(t, false)
 	defer b.Cleanup(ctx)
 	configureOpenLDAPMount(t, b, storage)
@@ -266,7 +266,7 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			config := &logical.BackendConfig{
 				Logger: logging.NewVaultLogger(log.Debug),
 
@@ -278,12 +278,12 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 			}
 
 			b := Backend(&fakeLdapClient{throwErrs: false})
-			if err := b.Setup(context.Background(), config); err != nil {
+			if err := b.Setup(t.Context(), config); err != nil {
 				t.Fatal(err)
 			}
 
 			b.credRotationQueue = queue.New()
-			initCtx := context.Background()
+			initCtx := t.Context()
 			ictx, cancel := context.WithCancel(initCtx)
 			b.cancelQueue = cancel
 
@@ -355,7 +355,7 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 }
 
 func TestDeletesOlderWALsOnLoad(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, storage := getBackend(t, false)
 	defer b.Cleanup(ctx)
 	configureOpenLDAPMount(t, b, storage)
@@ -369,7 +369,7 @@ func TestDeletesOlderWALsOnLoad(t *testing.T) {
 		NewPassword:       "some-new-password",
 		LastVaultRotation: time.Now(),
 	}
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		_, err := framework.PutWAL(ctx, storage, staticWALKey, wal)
 		if err != nil {
 			t.Fatal(err)
@@ -403,7 +403,7 @@ func generateWALFromFailedRotation(t *testing.T, b *backend, storage logical.Sto
 		ldapClient.throwErrs = originalValue
 	}()
 
-	_, err := b.HandleRequest(context.Background(), &logical.Request{
+	_, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "rotate-role/" + roleName,
 		Storage:   storage,
@@ -416,7 +416,7 @@ func generateWALFromFailedRotation(t *testing.T, b *backend, storage logical.Sto
 // returns a slice of the WAL IDs in storage
 func requireWALs(t *testing.T, storage logical.Storage, expectedCount int) []string {
 	t.Helper()
-	wals, err := storage.List(context.Background(), "wal/")
+	wals, err := storage.List(t.Context(), "wal/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +433,7 @@ func requireWALs(t *testing.T, storage logical.Storage, expectedCount int) []str
 // data in the WAL. The decoding should not panic and set zero values for any
 // missing fields.
 func Test_backend_findStaticWAL_DecodeWALMissingField(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, storage := getBackend(t, false)
 	defer b.Cleanup(ctx)
 

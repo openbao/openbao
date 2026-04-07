@@ -4,7 +4,6 @@
 package kv
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
@@ -326,7 +325,7 @@ func TestKV_Subkeys_CurrentVersion(t *testing.T) {
 	}
 
 	secretRaw, err = kvRequestWithRetry(t, func() (interface{}, error) {
-		return c.Logical().JSONMergePatch(context.Background(), "kv/data/foo", kvData)
+		return c.Logical().JSONMergePatch(t.Context(), "kv/data/foo", kvData)
 	})
 	if err != nil {
 		t.Fatalf("patch failed, err :%v, resp: %#v", err, secretRaw)

@@ -132,10 +132,10 @@ func buildTestRole(t *testing.T, config map[string]interface{}) *roleEntry {
 		config["name"] = genUuid()
 	}
 
-	_, err := b.pathRoleCreate(ctx, &logical.Request{Storage: s}, &framework.FieldData{Raw: config, Schema: fields})
+	_, err := b.pathRoleCreate(t.Context(), &logical.Request{Storage: s}, &framework.FieldData{Raw: config, Schema: fields})
 	require.NoError(t, err, "failed generating role with config %v", config)
 
-	role, err := b.getRole(ctx, s, config["name"].(string))
+	role, err := b.getRole(t.Context(), s, config["name"].(string))
 	require.NoError(t, err, "failed loading stored role")
 
 	return role

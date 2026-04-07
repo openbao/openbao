@@ -4,7 +4,6 @@
 package storagepacker
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -23,8 +22,6 @@ func BenchmarkStoragePacker(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	ctx := context.Background()
-
 	for i := 0; i < b.N; i++ {
 		itemID, err := uuid.GenerateUUID()
 		if err != nil {
@@ -35,7 +32,7 @@ func BenchmarkStoragePacker(b *testing.B) {
 			ID: itemID,
 		}
 
-		err = storagePacker.PutItem(ctx, item)
+		err = storagePacker.PutItem(b.Context(), item)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -53,7 +50,7 @@ func BenchmarkStoragePacker(b *testing.B) {
 			b.Fatalf("bad: item ID; expected: %q\n actual: %q", item.ID, fetchedItem.ID)
 		}
 
-		err = storagePacker.DeleteItem(ctx, item.ID)
+		err = storagePacker.DeleteItem(b.Context(), item.ID)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -74,7 +71,7 @@ func TestStoragePacker(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Persist a storage entry
 	item1 := &Item{
@@ -122,7 +119,7 @@ func TestStoragePacker_SerializeDeserializeComplexItem(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	timeNow := timestamppb.Now()
 
@@ -189,10 +186,10 @@ func TestStoragePacker_DeleteMultiple(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Persist a storage entry
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		item := &Item{
 			ID: fmt.Sprintf("item%d", i),
 		}
@@ -227,7 +224,7 @@ func TestStoragePacker_DeleteMultiple(t *testing.T) {
 	}
 
 	// Check that the deletion was successful
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		fetchedItem, err := storagePacker.GetItem(fmt.Sprintf("item%d", i))
 		if err != nil {
 			t.Fatal(err)
@@ -248,11 +245,11 @@ func TestStoragePacker_DeleteMultiple_ALL(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Persist a storage entry
 	itemsToDelete := make([]string, 0, 10000)
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		item := &Item{
 			ID: fmt.Sprintf("item%d", i),
 		}

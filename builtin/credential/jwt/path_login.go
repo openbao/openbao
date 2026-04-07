@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 
 	"github.com/hashicorp/cap/jwt"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -169,9 +170,7 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 	}
 
 	tokenMetadata := make(map[string]string)
-	for k, v := range alias.Metadata {
-		tokenMetadata[k] = v
-	}
+	maps.Copy(tokenMetadata, alias.Metadata)
 
 	auth := &logical.Auth{
 		DisplayName:  alias.Name,

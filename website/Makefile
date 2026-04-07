@@ -1,4 +1,4 @@
-NPM := $(shell which npm)
+NPM := $(shell which pnpm)
 DOCKER?=docker
 
 # For Podman, invoke via `make docker-start DOCKER=podman DOCKER_MOUNT_ARGS=,chown=true,relabel=shared`

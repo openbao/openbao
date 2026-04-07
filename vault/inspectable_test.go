@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -19,7 +18,7 @@ func TestInspectRouter(t *testing.T) {
 	}
 	c, _, root := TestCoreUnsealedWithConfig(t, coreConfig)
 
-	rootCtx := namespace.RootContext(context.TODO())
+	rootCtx := namespace.RootContext(t.Context())
 	subTrees := map[string][]string{
 		"routeEntry": {"root", "storage"},
 		"mountEntry": {"uuid", "accessor"},
@@ -61,7 +60,7 @@ func TestInvalidInspectRouterPath(t *testing.T) {
 		EnableIntrospection: true,
 	}
 	core, _, rootToken := TestCoreUnsealedWithConfig(t, coreConfig)
-	rootCtx := namespace.RootContext(context.TODO())
+	rootCtx := namespace.RootContext(t.Context())
 	_, err := core.HandleRequest(rootCtx, &logical.Request{
 		ClientToken: rootToken,
 		Operation:   logical.ReadOperation,
@@ -75,7 +74,7 @@ func TestInvalidInspectRouterPath(t *testing.T) {
 func TestInspectAPIDisabled(t *testing.T) {
 	// Verify that the Inspect API is turned off by default
 	core, _, rootToken := testCoreSystemBackend(t)
-	rootCtx := namespace.RootContext(context.TODO())
+	rootCtx := namespace.RootContext(t.Context())
 	resp, err := core.HandleRequest(rootCtx, &logical.Request{
 		ClientToken: rootToken,
 		Operation:   logical.ReadOperation,
@@ -93,7 +92,7 @@ func TestInspectAPISudoProtect(t *testing.T) {
 	// Verify that the Inspect API path is sudo protected
 	core, _, rootToken := testCoreSystemBackend(t)
 	testMakeServiceTokenViaBackend(t, core.tokenStore, rootToken, "tokenid", "", []string{"secret"})
-	rootCtx := namespace.RootContext(context.TODO())
+	rootCtx := namespace.RootContext(t.Context())
 	_, err := core.HandleRequest(rootCtx, &logical.Request{
 		ClientToken: "tokenid",
 		Operation:   logical.ReadOperation,
@@ -107,7 +106,7 @@ func TestInspectAPISudoProtect(t *testing.T) {
 func TestInspectAPIReload(t *testing.T) {
 	// Verify that the Inspect API is turned off by default
 	core, _, rootToken := testCoreSystemBackend(t)
-	rootCtx := namespace.RootContext(context.TODO())
+	rootCtx := namespace.RootContext(t.Context())
 	resp, err := core.HandleRequest(rootCtx, &logical.Request{
 		ClientToken: rootToken,
 		Operation:   logical.ReadOperation,

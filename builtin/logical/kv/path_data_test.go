@@ -1,7 +1,6 @@
 package kv
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -24,7 +23,7 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		BackendUUID: "test",
 	}
 
-	b, err := VersionedKVFactory(context.Background(), config)
+	b, err := VersionedKVFactory(t.Context(), config)
 	if err != nil {
 		t.Fatalf("unable to create backend: %v", err)
 	}
@@ -44,7 +43,7 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 				Storage:   config.StorageView,
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("unable to read config: %s", err.Error())
 				return nil, nil
@@ -103,7 +102,7 @@ func TestVersionedKV_Data_Put(t *testing.T) {
 		Data:      metadata,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("metadata CreateOperation request failed, err: %s, resp %#v", err, resp)
 	}
@@ -121,7 +120,7 @@ func TestVersionedKV_Data_Put(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data CreateOperation request failed, err: %s, resp %#v", err, resp)
 	}
@@ -154,7 +153,7 @@ func TestVersionedKV_Data_Put(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data CreateOperation request failed, err: %s, resp %#v", err, resp)
 	}
@@ -191,7 +190,7 @@ func TestVersionedKV_Data_Put_ZeroCas(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("CreateOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -203,7 +202,7 @@ func TestVersionedKV_Data_Put_ZeroCas(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err == nil || (resp != nil && !resp.IsError()) {
 		t.Fatalf("CreateOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -224,7 +223,7 @@ func TestVersionedKV_Data_Get(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data ReadOperation request failed, err: %s, resp %#v", err, resp)
 	}
@@ -249,7 +248,7 @@ func TestVersionedKV_Data_Get(t *testing.T) {
 		Data:      metadata,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("metadata CreateOperation request failed, err: %s, resp %#v", err, resp)
 	}
@@ -267,7 +266,7 @@ func TestVersionedKV_Data_Get(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data CreateOperation request failed, err: %s, resp %#v", err, resp)
 	}
@@ -282,7 +281,7 @@ func TestVersionedKV_Data_Get(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -335,7 +334,7 @@ func TestVersionedKV_Data_Delete(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -350,7 +349,7 @@ func TestVersionedKV_Data_Delete(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -361,7 +360,7 @@ func TestVersionedKV_Data_Delete(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -390,7 +389,7 @@ func TestVersionedKV_Data_Put_CleanupOldVersions(t *testing.T) {
 	b, storage := getBackend(t)
 
 	// Write 10 versions
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		data := map[string]interface{}{
 			"data": map[string]interface{}{
 				"bar": "baz",
@@ -404,7 +403,7 @@ func TestVersionedKV_Data_Put_CleanupOldVersions(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("data CreateOperation request failed - err:%s resp:%#v\n", err, resp)
 		}
@@ -427,7 +426,7 @@ func TestVersionedKV_Data_Put_CleanupOldVersions(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("metadata CreateOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -446,7 +445,7 @@ func TestVersionedKV_Data_Put_CleanupOldVersions(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data CreateOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -458,12 +457,12 @@ func TestVersionedKV_Data_Put_CleanupOldVersions(t *testing.T) {
 
 	// Make sure versions 1-9 were cleaned up.
 	for i := 1; i <= 9; i++ {
-		versionKey, err := b.(*versionedKVBackend).getVersionKey(context.Background(), "foo", uint64(i), storage)
+		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i), storage)
 		if err != nil {
 			t.Fatalf("error getting version key for version %d, err: %#v\n", i, err)
 		}
 
-		v, err := storage.Get(context.Background(), versionKey)
+		v, err := storage.Get(t.Context(), versionKey)
 		if err != nil {
 			t.Fatalf("error getting entry for key %s, err: %#v\n", versionKey, err)
 		}
@@ -478,7 +477,7 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions(t *testing.T) {
 	b, storage := getBackend(t)
 
 	// Write 10 versions
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		data := map[string]interface{}{
 			"data": map[string]interface{}{
 				"bar": "baz",
@@ -492,7 +491,7 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("data CreateOperation request failed - err:%s resp:%#v\n", err, resp)
 		}
@@ -515,7 +514,7 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("metadata CreateOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -534,7 +533,7 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data PatchOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -546,12 +545,12 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions(t *testing.T) {
 
 	// Make sure versions 1-9 were cleaned up.
 	for i := 1; i <= 9; i++ {
-		versionKey, err := b.(*versionedKVBackend).getVersionKey(context.Background(), "foo", uint64(i), storage)
+		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i), storage)
 		if err != nil {
 			t.Fatalf("error getting version key for version %d, err: %#v\n", i, err)
 		}
 
-		v, err := storage.Get(context.Background(), versionKey)
+		v, err := storage.Get(t.Context(), versionKey)
 		if err != nil {
 			t.Fatalf("error getting entry for key %s, err: %#v\n", versionKey, err)
 		}
@@ -572,7 +571,7 @@ func TestVersionedKV_Reload_Policy(t *testing.T) {
 	}
 
 	// Write 10 versions
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 
 		req := &logical.Request{
 			Operation: logical.CreateOperation,
@@ -581,7 +580,7 @@ func TestVersionedKV_Reload_Policy(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -594,20 +593,20 @@ func TestVersionedKV_Reload_Policy(t *testing.T) {
 		BackendUUID: "test",
 	}
 
-	b, err := VersionedKVFactory(context.Background(), config)
+	b, err := VersionedKVFactory(t.Context(), config)
 	if err != nil {
 		t.Fatalf("unable to create backend: %v", err)
 	}
 
 	// Read values back out
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		req := &logical.Request{
 			Operation: logical.ReadOperation,
 			Path:      fmt.Sprintf("data/%d", i),
 			Storage:   storage,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -635,7 +634,7 @@ func TestVersionedKV_Patch_NotFound(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("PatchOperation failed - err:%s resp:%#v", err, resp)
 	}
@@ -657,7 +656,7 @@ func TestVersionedKV_Patch_NotFound(t *testing.T) {
 		Data:      metadata,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp != nil {
 		t.Fatalf("metadata CreateOperation request failed - err:%s resp:%#v", err, resp)
 	}
@@ -669,7 +668,7 @@ func TestVersionedKV_Patch_NotFound(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("PatchOperation failed - err:%s resp:%#v", err, resp)
 	}
@@ -693,7 +692,7 @@ func TestVersionedKV_Patch_CASValidation(t *testing.T) {
 		Data:      config,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("CreateOperation request for config failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -714,7 +713,7 @@ func TestVersionedKV_Patch_CASValidation(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("CreateOperation request for data failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -736,7 +735,7 @@ func TestVersionedKV_Patch_CASValidation(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	// Resp should be error since cas value was not provided but is required
 	if err == nil || (resp != nil && !resp.IsError()) {
@@ -765,7 +764,7 @@ func TestVersionedKV_Patch_CASValidation(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	// Resp should be error since cas value does not match current version
 	if err == nil || (resp != nil && !resp.IsError()) {
@@ -794,7 +793,7 @@ func TestVersionedKV_Patch_NoData(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("CreateOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -805,7 +804,7 @@ func TestVersionedKV_Patch_NoData(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	expectedError := logical.ErrInvalidRequest
 	if err == nil || err != expectedError {
@@ -842,7 +841,7 @@ func TestVersionedKV_Patch_Success(t *testing.T) {
 		Data:      metadata,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("metadata CreateOperation request failed, err: %s, resp %#v", err, resp)
 	}
@@ -863,7 +862,7 @@ func TestVersionedKV_Patch_Success(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data CreateOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -896,7 +895,7 @@ func TestVersionedKV_Patch_Success(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data PatchOperation request failed - err:%s resp:%#v\n", err, resp)
@@ -916,7 +915,7 @@ func TestVersionedKV_Patch_Success(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data ReadOperation request failed - err:%s resp:%#v\n", err, resp)
@@ -952,7 +951,7 @@ func TestVersionedKV_Patch_CurrentVersionDeleted(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("CreateOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -964,7 +963,7 @@ func TestVersionedKV_Patch_CurrentVersionDeleted(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("DeleteOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -975,7 +974,7 @@ func TestVersionedKV_Patch_CurrentVersionDeleted(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("ReadOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -1018,7 +1017,7 @@ func TestVersionedKV_Patch_CurrentVersionDeleted(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("PatchOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -1067,7 +1066,7 @@ func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("CreateOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -1083,7 +1082,7 @@ func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 		Data:      versionsToDestroy,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("DeleteOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -1094,7 +1093,7 @@ func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("ReadOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
@@ -1137,7 +1136,7 @@ func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("PatchOperation request failed - err:%s resp:%#v\n", err, resp)
 	}

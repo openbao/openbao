@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"regexp"
 	"strings"
@@ -39,9 +40,7 @@ func (d *FieldData) CloneSchema() *FieldData {
 	clone.Raw = d.Raw
 	clone.Schema = make(map[string]*FieldSchema, len(d.Schema))
 
-	for key, schema := range d.Schema {
-		clone.Schema[key] = schema
-	}
+	maps.Copy(clone.Schema, d.Schema)
 
 	return clone
 }

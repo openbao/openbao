@@ -164,7 +164,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 
 	doStartVerify := func() {
 		// Start the process
-		for i := 0; i < 2; i++ {
+		for i := range 2 {
 			status, err := verificationUpdateFunc(newKeys[i], verificationNonce)
 			if err != nil {
 				t.Fatal(err)

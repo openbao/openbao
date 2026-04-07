@@ -6,6 +6,7 @@ package dbplugin
 import (
 	"context"
 	"errors"
+	"maps"
 	"reflect"
 	"testing"
 	"time"
@@ -183,9 +184,7 @@ func TestCoerceFloatsToInt(t *testing.T) {
 
 func copyMap(m map[string]interface{}) map[string]interface{} {
 	newMap := map[string]interface{}{}
-	for k, v := range m {
-		newMap[k] = v
-	}
+	maps.Copy(newMap, m)
 	return newMap
 }
 
@@ -654,7 +653,7 @@ func testGrpcServer(t *testing.T, db Database) (context.Context, gRPCServer) {
 // gRPCServer instance for a non-multiplexed plugin
 func testGrpcServerSingleImpl(t *testing.T, db Database) (context.Context, gRPCServer) {
 	t.Helper()
-	return context.Background(), gRPCServer{
+	return t.Context(), gRPCServer{
 		singleImpl: db,
 	}
 }
@@ -664,7 +663,7 @@ func testGrpcServerSingleImpl(t *testing.T, db Database) (context.Context, gRPCS
 func idCtx(t *testing.T, ids ...string) context.Context {
 	t.Helper()
 	// Context doesn't need to timeout since this is just passed through
-	ctx := context.Background()
+	ctx := t.Context()
 	md := metadata.MD{}
 	for _, id := range ids {
 		md.Append(pluginutil.MultiplexingCtxKey, id)

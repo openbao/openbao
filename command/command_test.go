@@ -354,7 +354,7 @@ func testVaultServerBad(tb testing.TB) (*api.Client, func()) {
 	}
 
 	return client, func() {
-		ctx, done := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, done := context.WithTimeout(tb.Context(), 5*time.Second)
 		defer done()
 
 		server.Shutdown(ctx)

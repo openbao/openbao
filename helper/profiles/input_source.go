@@ -31,7 +31,7 @@ func WithInputSource(config *InputConfig, request *logical.Request, data *framew
 		p.request = request
 		p.data = data.CloneSchema()
 
-		p.sourceBuilders[inputSourceName] = func(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
+		p.sourceBuilders[inputSourceName] = func(engine *ProfileEngine, field map[string]interface{}) Source {
 			return &InputSource{
 				config:  config,
 				request: request,
@@ -59,7 +59,7 @@ type InputSource struct {
 
 var _ Source = &InputSource{}
 
-func (s *InputSource) Validate(_ context.Context) ([]string, []string, error) {
+func (s *InputSource) Validate() ([]string, []string, error) {
 	rawFieldName, present := s.field["field_name"]
 	if !present {
 		return nil, nil, fmt.Errorf("input source is missing required field %q", "field_name")

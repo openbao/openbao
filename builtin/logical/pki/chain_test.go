@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"context"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
@@ -1539,8 +1538,7 @@ func BenchmarkChainBuilding(benchies *testing.B) {
 			}
 
 			// Run the benchmark.
-			ctx := context.Background()
-			sc := b.makeStorageContext(ctx, s)
+			sc := b.makeStorageContext(benchies.Context(), s)
 			for bench.Loop() {
 				_ = sc.rebuildIssuersChains(nil)
 			}

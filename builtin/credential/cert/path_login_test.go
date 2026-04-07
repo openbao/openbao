@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 		srv.Serve(listener) //nolint:errcheck // ignore error
 	}()
 	defer srv.Shutdown(context.Background()) //nolint:errcheck // ignore error
-	m.Run()
+	_ = m.Run()
 }
 
 func TestCert_RoleResolve(t *testing.T) {

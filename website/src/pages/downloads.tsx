@@ -310,7 +310,7 @@ const DockerList = ({ version, registry }) => {
           <div key={label}>
             <p>{label}</p>
             <CodeBlock language="shell">
-              {`docker pull ${registry}/${image}:${version}`}
+              {`docker pull ${registry}/${image}:${dockerVersion}`}
             </CodeBlock>
           </div>
         ))}

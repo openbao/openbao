@@ -88,7 +88,7 @@ func TestAcmeConfig(t *testing.T) {
 		"max_ttl":          "720h",
 	}
 
-	testCtx := context.Background()
+	testCtx := t.Context()
 
 	for _, tc := range cases {
 		deadline := time.Now().Add(1 * time.Minute)

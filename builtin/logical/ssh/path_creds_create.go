@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 
 	uuid "github.com/hashicorp/go-uuid"
@@ -239,10 +240,8 @@ func (b *backend) GenerateOTPCredential(ctx context.Context, req *logical.Reques
 // excluded CIDR blocks.
 func validateIP(ip, roleName, cidrList, excludeCidrList string, zeroAddressRoles []string) error {
 	// Search IP in the zero-address list
-	for _, role := range zeroAddressRoles {
-		if roleName == role {
-			return nil
-		}
+	if slices.Contains(zeroAddressRoles, roleName) {
+		return nil
 	}
 
 	// Search IP in allowed CIDR blocks

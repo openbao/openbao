@@ -4,7 +4,6 @@
 package raft
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -96,10 +95,10 @@ func TestFSM_Batching(t *testing.T) {
 	}
 
 	totalKeys := 0
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		batchSize := rand.Intn(64)
 		batch := make([]*raft.Log, batchSize)
-		for j := 0; j < batchSize; j++ {
+		for j := range batchSize {
 			var keys int
 			index++
 			keys, batch[j] = getLog(index)
@@ -122,7 +121,7 @@ func TestFSM_Batching(t *testing.T) {
 		assert.EqualValues(collect, totalKeys, hookCallCount.Load())
 	}, time.Second, time.Millisecond)
 
-	keys, err := fsm.List(context.Background(), "")
+	keys, err := fsm.List(t.Context(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +148,7 @@ func TestFSM_List(t *testing.T) {
 	fsm, dir := getFSM(t)
 	defer func() { _ = os.RemoveAll(dir) }()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	count := 100
 	keys := rand.Perm(count)
 	var sorted []string

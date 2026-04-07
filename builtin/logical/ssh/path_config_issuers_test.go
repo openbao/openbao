@@ -1,7 +1,6 @@
 package ssh
 
 import (
-	"context"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -13,7 +12,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 	b, s := CreateBackendWithStorage(t)
 
 	// reading the default issuer when no default has been configured should return a 400 error
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "config/issuers",
 		Storage:   s,
@@ -22,7 +21,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 	require.True(t, resp != nil && resp.IsError(), "expected error response when no default issuer is configured")
 
 	// create a default issuer
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/ca",
 		Storage:   s,
@@ -37,7 +36,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 	defaultIssuerId := resp.Data["issuer_id"]
 
 	// read issuer's config and check if the default issuer is set
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "config/issuers",
 		Storage:   s,
@@ -50,7 +49,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 
 	// create a new issuer
 	issuerName := "test-issuer"
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "issuers/import/" + issuerName,
 		Storage:   s,
@@ -62,7 +61,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 	testIssuerId := resp.Data["issuer_id"]
 
 	// set 'test-issuer' as the default issuer
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/issuers",
 		Data: map[string]interface{}{
@@ -74,7 +73,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 	require.False(t, resp != nil && resp.IsError(), "unexpected error response setting test-issuer as default")
 
 	// read the 'default' issuer and check if it's the same as 'test-issuer'
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "config/issuers",
 		Storage:   s,
@@ -85,7 +84,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 	require.Equal(t, testIssuerId, resp.Data["default"], "default issuer ID mismatch after update")
 
 	// try to set the default issuer to the same issuer should expect a warning
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/issuers",
 		Data: map[string]interface{}{
@@ -99,7 +98,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 	require.Equal(t, "The default issuer is already set to the specified issuer.", resp.Warnings[0], "warning message mismatch")
 
 	// try to set the keyword `default` as the default issuer should expect an error
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/issuers",
 		Data: map[string]interface{}{
@@ -111,7 +110,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 	require.True(t, resp != nil && resp.IsError(), "expected error response when setting 'default' as the default issuer")
 
 	// try to set an empty string as the default issuer should expect an error
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/issuers",
 		Data: map[string]interface{}{

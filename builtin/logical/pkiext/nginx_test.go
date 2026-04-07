@@ -124,7 +124,7 @@ server {
 		t.Fatalf("Could not provision docker service runner: %s", err)
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	output, err := runner.BuildImage(ctx, containerfile, bCtx,
 		docker.BuildRemove(true), docker.BuildForceRemove(true),
 		docker.BuildPullParent(true),
@@ -204,7 +204,7 @@ RUN apt update && DEBIAN_FRONTEND="noninteractive" apt install -y curl wget wget
 		t.Fatalf("Could not provision docker service runner: %s", err)
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	output, err := cwRunner.BuildImage(ctx, containerfile, bCtx,
 		docker.BuildRemove(true), docker.BuildForceRemove(true),
 		docker.BuildPullParent(true),
@@ -229,7 +229,7 @@ func CheckWithClients(t *testing.T, network string, address string, url string, 
 
 	// Start our service with a random name to not conflict with other
 	// threads.
-	ctx := context.Background()
+	ctx := t.Context()
 	result, err := cwRunner.Start(ctx, true, false)
 	if err != nil {
 		t.Fatalf("Could not start golang container for wget/curl checks: %s", err)
@@ -292,7 +292,7 @@ func CheckDeltaCRL(t *testing.T, network string, address string, url string, roo
 
 	// Start our service with a random name to not conflict with other
 	// threads.
-	ctx := context.Background()
+	ctx := t.Context()
 	result, err := cwRunner.Start(ctx, true, false)
 	if err != nil {
 		t.Fatalf("Could not start golang container for wget2 delta CRL checks: %s", err)

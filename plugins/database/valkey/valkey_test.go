@@ -85,7 +85,7 @@ func prepareValkeyTestContainer(t *testing.T) (func(), string, int) {
 	if err = pool.Retry(func() error {
 		t.Log("Waiting for the database to start...")
 		poolConfig := radix.PoolConfig{}
-		_, err := poolConfig.New(context.Background(), "tcp", address)
+		_, err := poolConfig.New(t.Context(), "tcp", address)
 		if err != nil {
 			return err
 		}
@@ -114,17 +114,17 @@ func TestDriver(t *testing.T) {
 	cleanup, host, port := prepareValkeyTestContainer(t)
 	defer cleanup()
 
-	err = createUser(host, port, valkeyTls, caCert, defaultUsername, defaultPassword, "Administrator", "password",
+	err = createUser(t.Context(), host, port, valkeyTls, caCert, defaultUsername, defaultPassword, "Administrator", "password",
 		aclCat)
 	if err != nil {
 		t.Fatalf("Failed to create Administrator user using 'default' user: %s", err)
 	}
-	err = createUser(host, port, valkeyTls, caCert, adminUsername, adminPassword, "rotate-root", "rotate-rootpassword",
+	err = createUser(t.Context(), host, port, valkeyTls, caCert, adminUsername, adminPassword, "rotate-root", "rotate-rootpassword",
 		aclCat)
 	if err != nil {
 		t.Fatalf("Failed to create rotate-root test user: %s", err)
 	}
-	err = createUser(host, port, valkeyTls, caCert, adminUsername, adminPassword, "vault-edu", "password",
+	err = createUser(t.Context(), host, port, valkeyTls, caCert, adminUsername, adminPassword, "vault-edu", "password",
 		aclCat)
 	if err != nil {
 		t.Fatalf("Failed to create vault-edu test user: %s", err)
@@ -152,7 +152,7 @@ func setupValkeyDBInitialize(t *testing.T, connectionDetails map[string]interfac
 	}
 
 	db := new()
-	_, err = db.Initialize(context.Background(), initReq)
+	_, err = db.Initialize(t.Context(), initReq)
 	if err != nil {
 		return err
 	}
@@ -264,7 +264,7 @@ func testValkeyDBCreateUser(t *testing.T, address string, port int) {
 	}
 
 	db := new()
-	_, err := db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(t.Context(), initReq)
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %s", err)
 	}
@@ -287,7 +287,7 @@ func testValkeyDBCreateUser(t *testing.T, address string, port int) {
 		Expiration: time.Now().Add(time.Minute),
 	}
 
-	userResp, err := db.NewUser(context.Background(), createReq)
+	userResp, err := db.NewUser(t.Context(), createReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -343,7 +343,7 @@ func testValkeyDBCreateUser_WithCreationStatements(t *testing.T, address string,
 
 	db := new()
 
-	_, err := db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(t.Context(), initReq)
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %s", err)
 	}
@@ -365,7 +365,7 @@ func testValkeyDBCreateUser_WithCreationStatements(t *testing.T, address string,
 		Expiration: time.Now().Add(time.Minute),
 	}
 
-	userResp, err := db.NewUser(context.Background(), createReq)
+	userResp, err := db.NewUser(t.Context(), createReq)
 
 	defer func() {
 		if err := db.Close(); err != nil {
@@ -422,7 +422,7 @@ func checkCredsExist(t *testing.T, username, password, address string, port int)
 	}
 
 	db := new()
-	_, err := db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(t.Context(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -466,7 +466,7 @@ func checkRuleAllowed(t *testing.T, username, password, address string, port int
 	}
 
 	db := new()
-	_, err := db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(t.Context(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -475,7 +475,7 @@ func checkRuleAllowed(t *testing.T, username, password, address string, port int
 		t.Fatal("Database should be initialized")
 	}
 	var response string
-	err = db.client.Do(context.Background(), radix.Cmd(&response, cmd, rules...))
+	err = db.client.Do(t.Context(), radix.Cmd(&response, cmd, rules...))
 
 	return err
 }
@@ -512,7 +512,7 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 	}
 
 	db := new()
-	_, err := db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(t.Context(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -523,7 +523,7 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 
 	delUserReq := dbplugin.DeleteUserRequest{Username: username}
 
-	_, err = db.DeleteUser(context.Background(), delUserReq)
+	_, err = db.DeleteUser(t.Context(), delUserReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -562,7 +562,7 @@ func testValkeyDBCreateUser_DefaultRule(t *testing.T, address string, port int) 
 	}
 
 	db := new()
-	_, err := db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(t.Context(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -586,7 +586,7 @@ func testValkeyDBCreateUser_DefaultRule(t *testing.T, address string, port int) 
 		Expiration: time.Now().Add(time.Minute),
 	}
 
-	userResp, err := db.NewUser(context.Background(), createReq)
+	userResp, err := db.NewUser(t.Context(), createReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -645,7 +645,7 @@ func testValkeyDBCreateUser_plusRole(t *testing.T, address string, port int) {
 	}
 
 	db := new()
-	_, err := db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(t.Context(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -668,7 +668,7 @@ func testValkeyDBCreateUser_plusRole(t *testing.T, address string, port int) {
 		Expiration: time.Now().Add(time.Minute),
 	}
 
-	userResp, err := db.NewUser(context.Background(), createReq)
+	userResp, err := db.NewUser(t.Context(), createReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -723,7 +723,7 @@ func testValkeyDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 	}
 
 	db := new()
-	_, err := db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(t.Context(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -746,7 +746,7 @@ func testValkeyDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 		Expiration: time.Now().Add(time.Minute),
 	}
 
-	userResp, err := db.NewUser(context.Background(), createReq)
+	userResp, err := db.NewUser(t.Context(), createReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -800,7 +800,7 @@ func testValkeyDBCreateUser_roleAndGroup(t *testing.T, address string, port int)
 	}
 
 	db := new()
-	_, err := db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(t.Context(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -823,7 +823,7 @@ func testValkeyDBCreateUser_roleAndGroup(t *testing.T, address string, port int)
 		Expiration: time.Now().Add(time.Minute),
 	}
 
-	userResp, err := db.NewUser(context.Background(), createReq)
+	userResp, err := db.NewUser(t.Context(), createReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -872,7 +872,7 @@ func testValkeyDBRotateRootCredentials(t *testing.T, address string, port int) {
 	}
 
 	db := new()
-	_, err := db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(t.Context(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -890,7 +890,7 @@ func testValkeyDBRotateRootCredentials(t *testing.T, address string, port int) {
 		},
 	}
 
-	_, err = db.UpdateUser(context.Background(), updateReq)
+	_, err = db.UpdateUser(t.Context(), updateReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -931,7 +931,7 @@ func doValkeyDBSetCredentials(t *testing.T, username, password, address string, 
 	}
 
 	db := new()
-	_, err := db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(t.Context(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -948,7 +948,7 @@ func doValkeyDBSetCredentials(t *testing.T, username, password, address string, 
 		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 5000*time.Millisecond)
 	defer cancel()
 	_, err = db.UpdateUser(ctx, updateReq)
 	if err == nil {
@@ -962,7 +962,7 @@ func doValkeyDBSetCredentials(t *testing.T, username, password, address string, 
 		},
 	}
 
-	_, err = db.UpdateUser(context.Background(), updateReq)
+	_, err = db.UpdateUser(t.Context(), updateReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -998,17 +998,17 @@ func testConnectionProducerSecretValues(t *testing.T) {
 
 func testComputeTimeout(t *testing.T) {
 	t.Log("Testing computeTimeout")
-	if computeTimeout(context.Background()) != defaultTimeout {
+	if computeTimeout(t.Context()) != defaultTimeout {
 		t.Fatalf("Background timeout not set to %s milliseconds.", defaultTimeout)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	ctx, cancel := context.WithTimeout(t.Context(), defaultTimeout)
 	defer cancel()
 	if computeTimeout(ctx) == defaultTimeout {
 		t.Fatal("WithTimeout failed")
 	}
 }
 
-func createUser(hostname string, port int, valkeyTls bool, CACert []byte, adminuser, adminpassword, username, password, aclRule string) (err error) {
+func createUser(ctx context.Context, hostname string, port int, valkeyTls bool, CACert []byte, adminuser, adminpassword, username, password, aclRule string) (err error) {
 	var poolConfig radix.PoolConfig
 
 	if valkeyTls {
@@ -1040,13 +1040,13 @@ func createUser(hostname string, port int, valkeyTls bool, CACert []byte, adminu
 	}
 
 	addr := fmt.Sprintf("%s:%d", hostname, port)
-	client, err := poolConfig.New(context.Background(), "tcp", addr)
+	client, err := poolConfig.New(ctx, "tcp", addr)
 	if err != nil {
 		return err
 	}
 
 	var response string
-	err = client.Do(context.Background(), radix.Cmd(&response, "ACL", "SETUSER", username, "on", ">"+password, aclRule))
+	err = client.Do(ctx, radix.Cmd(&response, "ACL", "SETUSER", username, "on", ">"+password, aclRule))
 
 	fmt.Printf("Response in createUser: %s\n", response)
 

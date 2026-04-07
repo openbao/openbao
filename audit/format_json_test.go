@@ -20,7 +20,7 @@ import (
 )
 
 func TestFormatJSON_formatRequest(t *testing.T) {
-	salter, err := salt.NewSalt(context.Background(), nil, nil)
+	salter, err := salt.NewSalt(t.Context(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestFormatJSON_formatRequest(t *testing.T) {
 			Request:  tc.Req,
 			OuterErr: tc.Err,
 		}
-		if err := formatter.FormatRequest(namespace.RootContext(context.TODO()), &buf, config, in); err != nil {
+		if err := formatter.FormatRequest(namespace.RootContext(t.Context()), &buf, config, in); err != nil {
 			t.Fatalf("bad: %s\nerr: %s", name, err)
 		}
 

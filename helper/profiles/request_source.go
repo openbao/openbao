@@ -8,7 +8,7 @@ import (
 const requestSourceName = "request"
 
 // RequestSourceBuilder allows reading inputs from past requests.
-func RequestSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
+func RequestSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
 	return &RequestSource{
 		outer: engine.outerBlockName,
 		field: field,
@@ -39,7 +39,7 @@ type RequestSource struct {
 
 var _ Source = &RequestSource{}
 
-func (s *RequestSource) Validate(_ context.Context) ([]string, []string, error) {
+func (s *RequestSource) Validate() ([]string, []string, error) {
 	var requestName string
 
 	if s.outer != "" {

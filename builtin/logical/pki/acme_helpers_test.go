@@ -34,7 +34,7 @@ func doACMEForCSRWithDNS(t *testing.T, dns *dnstest.TestServer, acmeClient *acme
 	require.NoError(t, err, "failed to generate account key")
 	acmeClient.Key = accountKey
 
-	testCtx, cancelFunc := context.WithTimeout(context.Background(), 2*time.Minute)
+	testCtx, cancelFunc := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancelFunc()
 
 	// Register the client.

@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -92,7 +91,7 @@ func TestCore_EnableExternalPlugin(t *testing.T) {
 
 			mountPlugin(t, c.systemBackend, plugins[0].Name, tc.pluginType, "v1.0.0", "")
 
-			match := c.router.MatchingMount(namespace.RootContext(context.TODO()), tc.routerPath)
+			match := c.router.MatchingMount(namespace.RootContext(t.Context()), tc.routerPath)
 			if match != tc.expectedMatch {
 				t.Fatalf("missing mount, match: %q", match)
 			}
@@ -166,7 +165,7 @@ func TestCore_EnableExternalPlugin_MultipleVersions(t *testing.T) {
 
 			mountPlugin(t, c.systemBackend, plugins[0].Name, tc.pluginType, tc.mountVersion, "")
 
-			match := c.router.MatchingMount(namespace.RootContext(context.TODO()), tc.routerPath)
+			match := c.router.MatchingMount(namespace.RootContext(t.Context()), tc.routerPath)
 			if match != tc.expectedMatch {
 				t.Fatalf("missing mount, match: %q", match)
 			}
@@ -285,7 +284,7 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 	deregisterPlugin(t, c.systemBackend, pluginName, consts.PluginTypeCredential.String(), "", plugin.Sha256, plugin.FileName)
 
 	// Make sure this isn't the first mount for the current major version.
-	if c.isMajorVersionFirstMount(context.Background()) {
+	if c.isMajorVersionFirstMount(t.Context()) {
 		t.Fatal("expected major version to register as mounted")
 	}
 
@@ -305,7 +304,7 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 	// Now remove version history and try again
 	vaultVersionPath := "core/versions/"
 	key := vaultVersionPath + version.Version
-	if err := c.barrier.Delete(context.Background(), key); err != nil {
+	if err := c.barrier.Delete(t.Context(), key); err != nil {
 		t.Fatal(err)
 	}
 
@@ -316,7 +315,7 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 
 	// Make sure this appears to be the first mount for the current major
 	// version.
-	if !c.isMajorVersionFirstMount(context.Background()) {
+	if !c.isMajorVersionFirstMount(t.Context()) {
 		t.Fatal("expected major version first mount")
 	}
 
@@ -396,7 +395,7 @@ func TestCore_EnableExternalPlugin_ShadowBuiltin(t *testing.T) {
 		req.Data = map[string]interface{}{
 			"type": authName,
 		}
-		resp, err := c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
+		resp, err := c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 		if err != nil {
 			return err
 		}
@@ -472,7 +471,7 @@ func TestCore_EnableExternalKv_MultipleVersions(t *testing.T) {
 
 	registerPlugin(t, c.systemBackend, pluginName, consts.PluginTypeSecrets.String(), "v1.2.3", plugin.Sha256, plugin.FileName)
 	req := logical.TestRequest(t, logical.ReadOperation, "plugins/catalog")
-	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -496,7 +495,7 @@ func TestCore_EnableExternalKv_MultipleVersions(t *testing.T) {
 	req.Data["config"] = map[string]interface{}{
 		"plugin_version": "v1.2.3",
 	}
-	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -525,7 +524,7 @@ func TestCore_EnableExternalNoop_MultipleVersions(t *testing.T) {
 
 	registerPlugin(t, c.systemBackend, pluginName, consts.PluginTypeCredential.String(), "v1.2.3", plugin.Sha256, plugin.FileName)
 	req := logical.TestRequest(t, logical.ReadOperation, "plugins/catalog")
-	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -549,7 +548,7 @@ func TestCore_EnableExternalNoop_MultipleVersions(t *testing.T) {
 	req.Data["config"] = map[string]interface{}{
 		"plugin_version": "v1.2.3",
 	}
-	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -586,7 +585,7 @@ func TestCore_EnableExternalPlugin_NoVersionsOkay(t *testing.T) {
 
 			mountPlugin(t, c.systemBackend, plugins[0].Name, tc.pluginType, "", "")
 
-			match := c.router.MatchingMount(namespace.RootContext(context.TODO()), tc.routerPath)
+			match := c.router.MatchingMount(namespace.RootContext(t.Context()), tc.routerPath)
 			if match != tc.expectedMatch {
 				t.Fatalf("missing mount, match: %q", match)
 			}
@@ -627,7 +626,7 @@ func TestCore_EnableExternalCredentialPlugin_NoVersionOnRegister(t *testing.T) {
 					"plugin_version": "v1.0.0",
 				},
 			}
-			resp, _ := c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
+			resp, _ := c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 			if resp == nil || !resp.IsError() || !strings.Contains(resp.Error().Error(), ErrPluginNotFound.Error()) {
 				t.Fatalf("Expected to get plugin not found but got: %v", resp.Error())
 			}
@@ -657,7 +656,7 @@ func TestCore_EnableExternalCredentialPlugin_InvalidName(t *testing.T) {
 				},
 				Schema: c.systemBackend.pluginsCatalogCRUDPath().Fields,
 			}
-			_, err := c.systemBackend.handlePluginCatalogUpdate(context.Background(), nil, d)
+			_, err := c.systemBackend.handlePluginCatalogUpdate(t.Context(), nil, d)
 			if err == nil || !strings.Contains(err.Error(), "no such file or directory") {
 				t.Fatalf("should have gotten a no such file or directory error inserting the plugin: %v", err)
 			}
@@ -700,9 +699,9 @@ func TestExternalPlugin_getBackendTypeVersion(t *testing.T) {
 			var version logical.PluginVersion
 			var err error
 			if tc.pluginType == consts.PluginTypeDatabase {
-				version, err = c.pluginCatalog.getDatabaseRunningVersion(context.Background(), entry)
+				version, err = c.pluginCatalog.getDatabaseRunningVersion(t.Context(), entry)
 			} else {
-				version, err = c.pluginCatalog.getBackendRunningVersion(context.Background(), entry)
+				version, err = c.pluginCatalog.getBackendRunningVersion(t.Context(), entry)
 			}
 			if err != nil {
 				t.Fatal(err)
@@ -759,7 +758,7 @@ func TestExternalPlugin_CheckFilePermissions(t *testing.T) {
 				"sha256":  plugins[0].Sha256,
 				"version": tc.pluginVersion,
 			}
-			resp, err := c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
+			resp, err := c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -777,7 +776,7 @@ func TestExternalPlugin_CheckFilePermissions(t *testing.T) {
 					"plugin_version": tc.pluginVersion,
 				}
 			}
-			resp, err = c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
+			resp, err = c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -905,7 +904,7 @@ func registerPlugin(t *testing.T, sys *SystemBackend, pluginName, pluginType, ve
 		"sha256":  sha,
 		"version": version,
 	}
-	resp, err := sys.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := sys.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -928,7 +927,7 @@ func mountPluginWithResponse(t *testing.T, sys *SystemBackend, pluginName string
 			"plugin_version": version,
 		}
 	}
-	return sys.HandleRequest(namespace.RootContext(context.TODO()), req)
+	return sys.HandleRequest(namespace.RootContext(t.Context()), req)
 }
 
 func mountPlugin(t *testing.T, sys *SystemBackend, pluginName string, pluginType consts.PluginType, version, path string) {
@@ -956,7 +955,7 @@ func unmountPlugin(t *testing.T, sys *SystemBackend, pluginName string, pluginTy
 			"plugin_version": version,
 		}
 	}
-	resp, err := sys.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := sys.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -970,7 +969,7 @@ func deregisterPlugin(t *testing.T, sys *SystemBackend, pluginName, pluginType, 
 		"sha256":  sha,
 		"version": version,
 	}
-	resp, err := sys.HandleRequest(namespace.RootContext(context.TODO()), req)
+	resp, err := sys.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}

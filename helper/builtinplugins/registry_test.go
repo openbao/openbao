@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	slices0 "slices"
 	"testing"
 
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
@@ -295,13 +296,11 @@ func Test_RegistryMatchesGenOpenapi(t *testing.T) {
 	ensureInScript := func(t *testing.T, scriptBackends []string, name string) {
 		t.Helper()
 
-		for _, excluded := range []string{
-			"oidc",     // alias for "jwt"
-			"openldap", // alias for "ldap"
-		} {
-			if name == excluded {
-				return
-			}
+		if slices0.Contains([]string{
+			"oidc",
+			"openldap",
+		}, name) {
+			return
 		}
 
 		if !slices.Contains(scriptBackends, name) {

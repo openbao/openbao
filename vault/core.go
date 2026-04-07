@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net"
 	"net/http"
@@ -624,6 +625,11 @@ type Core struct {
 	// Core invalidation tracker handles dispatching invalidations and
 	// refreshing the Core-adjacent caches afterwards.
 	invalidations *invalidationManager
+
+	// Whether unauthenticated workflows are allowed by this OpenBao
+	// instance.
+	allowUnauthedWorkflows bool
+	workflowStore          *WorkflowStore
 }
 
 // c.stateLock needs to be held in read mode before calling this function.
@@ -775,6 +781,8 @@ type CoreConfig struct {
 	//
 	// See also: https://github.com/openbao/openbao/issues/1110
 	UnsafeCrossNamespaceIdentity bool
+
+	AllowUnauthenticatedWorkflows bool
 }
 
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
@@ -929,6 +937,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		impreciseLeaseRoleTracking:     conf.ImpreciseLeaseRoleTracking,
 		detectDeadlocks:                detectDeadlocks,
 		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
+		allowUnauthedWorkflows:         conf.AllowUnauthenticatedWorkflows,
 	}
 
 	c.standby.Store(true)
@@ -1175,9 +1184,7 @@ func (c *Core) configureLogRequestsLevel(level string) {
 func (c *Core) configureAuditBackends(backends map[string]audit.Factory) {
 	auditBackends := make(map[string]audit.Factory, len(backends))
 
-	for k, f := range backends {
-		auditBackends[k] = f
-	}
+	maps.Copy(auditBackends, backends)
 
 	c.auditBackends = auditBackends
 }
@@ -1187,9 +1194,7 @@ func (c *Core) configureAuditBackends(backends map[string]audit.Factory) {
 func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory, logger log.Logger) {
 	credentialBackends := make(map[string]logical.Factory, len(backends))
 
-	for k, f := range backends {
-		credentialBackends[k] = f
-	}
+	maps.Copy(credentialBackends, backends)
 
 	credentialBackends[routing.MountTypeToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		tsLogger := logger.Named("token")
@@ -1211,9 +1216,7 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, logger log.Logger) {
 	logicalBackends := make(map[string]logical.Factory, len(backends))
 
-	for k, f := range backends {
-		logicalBackends[k] = f
-	}
+	maps.Copy(logicalBackends, backends)
 
 	// KV
 	_, ok := logicalBackends[routing.MountTypeKV]
@@ -2373,6 +2376,8 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupAuditedHeadersConfig(ctx); err != nil {
 		return err
 	}
+
+	c.setupWorkflowStore(ctx)
 
 	return nil
 }

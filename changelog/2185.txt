@@ -1,0 +1,3 @@
+```release-note:improvement
+raft: detect, log, and rollback transactions that have never been committed or rolled-back. If you see the message "transaction was leaked" in your logs, please open an issue.
+```

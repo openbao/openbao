@@ -34,8 +34,6 @@ func TestNewRateLimitQuota(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.rlq.initialize(logging.NewVaultLogger(log.Trace), metricsutil.BlackholeSink())
 			require.Equal(t, tc.expectErr, err != nil, err)
@@ -99,7 +97,7 @@ func TestRateLimitQuota_Allow(t *testing.T) {
 
 	start := time.Now()
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		wg.Add(1)
 
 		addr := fmt.Sprintf("127.0.0.%d", i)
@@ -180,7 +178,7 @@ func TestRateLimitQuota_Allow_WithBlock(t *testing.T) {
 
 	results := make(map[string]*clientResult)
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		wg.Add(1)
 
 		addr := fmt.Sprintf("127.0.0.%d", i)

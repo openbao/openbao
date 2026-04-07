@@ -112,8 +112,8 @@ func ParseHexFormatted(in, sep string) []byte {
 	var ret bytes.Buffer
 	var err error
 	var inBits uint64
-	inBytes := strings.Split(in, sep)
-	for _, inByte := range inBytes {
+	inBytes := strings.SplitSeq(in, sep)
+	for inByte := range inBytes {
 		if inBits, err = strconv.ParseUint(inByte, 16, 8); err != nil {
 			return nil
 		}

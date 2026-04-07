@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/sha3"
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
@@ -48,7 +49,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/version"
-	"golang.org/x/crypto/sha3"
 )
 
 const maxBytes = 128 * 1024

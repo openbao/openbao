@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -1676,9 +1677,7 @@ func testAccStepCertWithExtraParams(t *testing.T, name string, cert []byte, poli
 		"allowed_metadata_extensions":  testData.metadata_ext,
 		"lease":                        1000,
 	}
-	for k, v := range extraParams {
-		data[k] = v
-	}
+	maps.Copy(data, extraParams)
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "certs/" + name,

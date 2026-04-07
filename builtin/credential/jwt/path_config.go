@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -279,9 +280,7 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 	// Omit sensitive keys from provider-specific config
 	providerConfig := make(map[string]interface{})
 	if provider != nil {
-		for k, v := range config.ProviderConfig {
-			providerConfig[k] = v
-		}
+		maps.Copy(providerConfig, config.ProviderConfig)
 
 		for _, k := range provider.SensitiveKeys() {
 			delete(providerConfig, k)

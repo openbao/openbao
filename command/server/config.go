@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -514,15 +515,9 @@ func (c *Config) Merge(c2 *Config) *Config {
 	}
 
 	// merge these integers via a MAX operation
-	result.MaxLeaseTTL = c.MaxLeaseTTL
-	if c2.MaxLeaseTTL > result.MaxLeaseTTL {
-		result.MaxLeaseTTL = c2.MaxLeaseTTL
-	}
+	result.MaxLeaseTTL = max(c2.MaxLeaseTTL, c.MaxLeaseTTL)
 
-	result.DefaultLeaseTTL = c.DefaultLeaseTTL
-	if c2.DefaultLeaseTTL > result.DefaultLeaseTTL {
-		result.DefaultLeaseTTL = c2.DefaultLeaseTTL
-	}
+	result.DefaultLeaseTTL = max(c2.DefaultLeaseTTL, c.DefaultLeaseTTL)
 
 	result.ClusterCipherSuites = c.ClusterCipherSuites
 	if c2.ClusterCipherSuites != "" {
@@ -1380,9 +1375,7 @@ func (c *Config) Sanitized() map[string]interface{} {
 		"unsafe_allow_api_audit_creation": c.UnsafeAllowAPIAuditCreation,
 		"allow_audit_log_prefixing":       c.AllowAuditLogPrefixing,
 	}
-	for k, v := range sharedResult {
-		result[k] = v
-	}
+	maps.Copy(result, sharedResult)
 
 	// Sanitize storage stanza
 	if c.Storage != nil {

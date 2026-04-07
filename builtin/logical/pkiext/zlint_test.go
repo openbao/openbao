@@ -5,6 +5,7 @@ package pkiext
 
 import (
 	"encoding/json"
+	"slices"
 	"sync"
 	"testing"
 
@@ -135,15 +136,7 @@ func RunZLintRootTest(t *testing.T, keyType string, keyBits int, usePSS bool, ig
 		}
 
 		if result == "error" {
-			skip := false
-			for _, allowedFailures := range ignored {
-				if allowedFailures == key {
-					skip = true
-					break
-				}
-			}
-
-			if !skip {
+			if !slices.Contains(ignored, key) {
 				t.Fatalf("got unexpected error from test %v: %v", key, value)
 			}
 		}

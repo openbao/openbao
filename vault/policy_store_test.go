@@ -374,8 +374,6 @@ func TestPolicyStore_GetNonEGPPolicyType(t *testing.T) {
 	}
 
 	for name, tc := range tests {
-		name := name
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

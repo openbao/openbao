@@ -214,7 +214,7 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, operation logical.Op
 	}
 
 	// handle protobuf Auth return type
-	if msg, err := result.ConvertToNative(reflect.TypeOf(&pb.Auth{})); err == nil {
+	if msg, err := result.ConvertToNative(reflect.TypeFor[*pb.Auth]()); err == nil {
 		pbAuth, ok := msg.(*pb.Auth)
 		if ok {
 			return pbAuth, nil

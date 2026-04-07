@@ -6,6 +6,7 @@ package database
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"strings"
 	"testing"
 	"time"
@@ -290,9 +291,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 				"rotation_statements": testRoleStaticUpdate,
 			}
 
-			for k, v := range tc.account {
-				data[k] = v
-			}
+			maps.Copy(data, tc.account)
 
 			path := "static-roles/" + tc.path
 
@@ -768,7 +767,7 @@ func TestWALsDeletedOnRoleCreationFailed(t *testing.T) {
 	defer b.Cleanup(ctx)
 	configureDBMount(t, storage)
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		mockDB.On("UpdateUser", mock.Anything, mock.Anything).
 			Return(v5.UpdateUserResponse{}, errors.New("forced error")).
 			Once()

@@ -809,7 +809,6 @@ func TestOpenAPI_constructOperationID(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			actual := constructOperationID(
@@ -851,7 +850,6 @@ func TestOpenAPI_hyphenatedToTitleCase(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			actual := hyphenatedToTitleCase(test.in)

@@ -175,7 +175,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	}
 
 	var unsealed bool
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		unsealed, err = c.Unseal(unsealKey[i])
 		if err != nil {
 			t.Fatal(err)
@@ -927,7 +927,7 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	}
 
 	var unsealed bool
-	for i := 0; i < len(unsealKey); i++ {
+	for i := range unsealKey {
 		unsealed, err = c.Unseal(unsealKey[i])
 		if err != nil {
 			t.Fatal(err)
@@ -1507,7 +1507,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		entityIDs := make(chan string, 20)
 
 		// Create 10 entities concurrently in each namespace
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			// Root namespace
 			wg.Add(1)
 			go func(index int) {

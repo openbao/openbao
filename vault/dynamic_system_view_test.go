@@ -220,7 +220,7 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_successful(t *testing.T) {
 	runeset := map[rune]bool{}
 	runesFound := []rune{}
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		actual, err := dsv.GeneratePasswordFromPolicy(ctx, testPolicyName)
 		if err != nil {
 			t.Fatalf("no error expected, but got: %s", err)

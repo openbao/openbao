@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"maps"
 	"os"
 	"testing"
 	"time"
@@ -146,9 +147,7 @@ func TestSelfSignedCA(t *testing.T) {
 			}
 
 			// Apply the generated & common fields to the config to be sent to the DB
-			for k, v := range test.config {
-				config[k] = v
-			}
+			maps.Copy(config, test.config)
 
 			db := new()
 			initReq := dbplugin.InitializeRequest{

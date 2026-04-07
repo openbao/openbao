@@ -25,7 +25,6 @@ func TestDeletionTimeCalc(t *testing.T) {
 		{ds, ds, ct.Add(ds), true},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("mount=%v,meta=%v", tt.mount, tt.meta), func(t *testing.T) {
 			t.Parallel()
 			got, gotOk := deletionTime(ct, tt.mount, tt.meta)
@@ -105,7 +104,6 @@ func TestDeleteVersionAfter(t *testing.T) {
 		{nd, ds, 0, false},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("mount=%v,meta=%v", tt.mount, tt.meta), func(t *testing.T) {
 			t.Parallel()
 

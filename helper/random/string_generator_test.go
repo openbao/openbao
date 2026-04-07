@@ -81,7 +81,7 @@ func TestStringGenerator_Generate_successful(t *testing.T) {
 			runeset := map[rune]bool{}
 			runesFound := []rune{}
 
-			for i := 0; i < 100; i++ {
+			for range 100 {
 				actual, err := test.generator.Generate(ctx, nil)
 				if err != nil {
 					t.Fatalf("no error expected, but got: %s", err)
@@ -286,7 +286,7 @@ func TestRandomRunes_successful(t *testing.T) {
 			runeset := map[rune]bool{}
 			runesFound := []rune{}
 
-			for i := 0; i < 10000; i++ {
+			for range 10000 {
 				actual, err := randomRunes(rand.Reader, test.charset, test.length)
 				if err != nil {
 					t.Fatalf("no error expected, but got: %s", err)

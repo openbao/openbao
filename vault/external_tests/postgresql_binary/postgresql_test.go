@@ -53,15 +53,12 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	var logLock sync.Mutex
 	var logs []string
 	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+	for range 10 {
+		wg.Go(func() {
 			var localLogs []string
 
 			// 5 iterations is roughly 2.5 seconds with the 5ms sleep.
-			for j := 0; j < 500; j++ {
+			for range 500 {
 				// This should now fail since the fenced write will fail.
 				resp, err := client.Logical().Write("sys/policies/acl/custom", map[string]interface{}{
 					"policy": `path "*" {
@@ -99,7 +96,7 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 				seenLogs[log] = struct{}{}
 			}
 			logLock.Unlock()
-		}()
+		})
 	}
 
 	// Now sacrifice the leader's lock and ensure it doesn't write.

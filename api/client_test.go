@@ -6,18 +6,22 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -364,37 +368,41 @@ func TestClientEnvSettings(t *testing.T) {
 	cwd, _ := os.Getwd()
 
 	caCertBytes, err := os.ReadFile(cwd + "/test-fixtures/keys/cert.pem")
-	if err != nil {
-		t.Fatalf("error reading %q cert file: %v", cwd+"/test-fixtures/keys/cert.pem", err)
-	}
+	require.NoError(t, err)
 
 	oldCACert := os.Getenv(EnvVaultCACert)
 	oldCACertBytes := os.Getenv(EnvVaultCACertBytes)
 	oldCAPath := os.Getenv(EnvVaultCAPath)
 	oldClientCert := os.Getenv(EnvVaultClientCert)
+	oldClientCertBytes := os.Getenv(EnvVaultClientCertBytes)
 	oldClientKey := os.Getenv(EnvVaultClientKey)
+	oldClientKeyBytes := os.Getenv(EnvVaultClientKeyBytes)
 	oldSkipVerify := os.Getenv(EnvVaultSkipVerify)
 	oldMaxRetries := os.Getenv(EnvVaultMaxRetries)
 	oldDisableRedirects := os.Getenv(EnvVaultDisableRedirects)
 
-	os.Setenv(EnvVaultCACert, cwd+"/test-fixtures/keys/cert.pem")
-	os.Setenv(EnvVaultCACertBytes, string(caCertBytes))
-	os.Setenv(EnvVaultCAPath, cwd+"/test-fixtures/keys")
-	os.Setenv(EnvVaultClientCert, cwd+"/test-fixtures/keys/cert.pem")
-	os.Setenv(EnvVaultClientKey, cwd+"/test-fixtures/keys/key.pem")
-	os.Setenv(EnvVaultSkipVerify, "true")
-	os.Setenv(EnvVaultMaxRetries, "5")
-	os.Setenv(EnvVaultDisableRedirects, "true")
+	require.NoError(t, os.Setenv(EnvVaultCACert, cwd+"/test-fixtures/keys/cert.pem"))
+	require.NoError(t, os.Setenv(EnvVaultCACertBytes, string(caCertBytes)))
+	require.NoError(t, os.Setenv(EnvVaultCAPath, cwd+"/test-fixtures/keys"))
+	require.NoError(t, os.Setenv(EnvVaultClientCert, cwd+"/test-fixtures/keys/cert.pem"))
+	require.NoError(t, os.Setenv(EnvVaultClientCertBytes, string(oldClientCertBytes)))
+	require.NoError(t, os.Setenv(EnvVaultClientKey, cwd+"/test-fixtures/keys/key.pem"))
+	require.NoError(t, os.Setenv(EnvVaultClientKeyBytes, string(oldClientKeyBytes)))
+	require.NoError(t, os.Setenv(EnvVaultSkipVerify, "true"))
+	require.NoError(t, os.Setenv(EnvVaultMaxRetries, "5"))
+	require.NoError(t, os.Setenv(EnvVaultDisableRedirects, "true"))
 
 	defer func() {
-		os.Setenv(EnvVaultCACert, oldCACert)
-		os.Setenv(EnvVaultCACertBytes, oldCACertBytes)
-		os.Setenv(EnvVaultCAPath, oldCAPath)
-		os.Setenv(EnvVaultClientCert, oldClientCert)
-		os.Setenv(EnvVaultClientKey, oldClientKey)
-		os.Setenv(EnvVaultSkipVerify, oldSkipVerify)
-		os.Setenv(EnvVaultMaxRetries, oldMaxRetries)
-		os.Setenv(EnvVaultDisableRedirects, oldDisableRedirects)
+		require.NoError(t, os.Setenv(EnvVaultCACert, oldCACert))
+		require.NoError(t, os.Setenv(EnvVaultCACertBytes, oldCACertBytes))
+		require.NoError(t, os.Setenv(EnvVaultCAPath, oldCAPath))
+		require.NoError(t, os.Setenv(EnvVaultClientCert, oldClientCert))
+		require.NoError(t, os.Setenv(EnvVaultClientCertBytes, oldClientCertBytes))
+		require.NoError(t, os.Setenv(EnvVaultClientKey, oldClientKey))
+		require.NoError(t, os.Setenv(EnvVaultClientKeyBytes, oldClientKeyBytes))
+		require.NoError(t, os.Setenv(EnvVaultSkipVerify, oldSkipVerify))
+		require.NoError(t, os.Setenv(EnvVaultMaxRetries, oldMaxRetries))
+		require.NoError(t, os.Setenv(EnvVaultDisableRedirects, oldDisableRedirects))
 	}()
 
 	config := DefaultConfig()
@@ -430,6 +438,197 @@ func TestClientDeprecatedEnvSettings(t *testing.T) {
 	tlsConfig := config.HttpClient.Transport.(*http.Transport).TLSClientConfig
 	if tlsConfig.InsecureSkipVerify != true {
 		t.Fatalf("bad: %v", tlsConfig.InsecureSkipVerify)
+	}
+}
+
+func TestConfigureTLS(t *testing.T) {
+	cwd, _ := os.Getwd()
+	caCertPath := cwd + "/test-fixtures/keys/cert.pem"
+	caPathDir := filepath.Dir(caCertPath)
+	clientCertPath := cwd + "/test-fixtures/keys/cert.pem"
+	badClientCertPath := cwd + "/test-fixtures/keys/bad-cert.pem"
+	clientKeyPath := cwd + "/test-fixtures/keys/key.pem"
+	badClientKeyPath := cwd + "/test-fixtures/keys/bad-key.pem"
+
+	caCertBytes, err := os.ReadFile(caCertPath)
+	require.NoError(t, err)
+
+	clientCertBytes, err := os.ReadFile(clientCertPath)
+	require.NoError(t, err)
+
+	badClientCertBytes, err := os.ReadFile(badClientCertPath)
+	require.NoError(t, err)
+
+	clientKeyBytes, err := os.ReadFile(clientKeyPath)
+	require.NoError(t, err)
+
+	badClientKeyBytes, err := os.ReadFile(badClientKeyPath)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		tlsConfig *TLSConfig
+		assert    func(t *testing.T, c *Config)
+
+		wantErr bool
+	}{
+		{
+			name:      "valid cert and key file paths",
+			tlsConfig: &TLSConfig{ClientCert: clientCertPath, ClientKey: clientKeyPath},
+			assert: func(t *testing.T, c *Config) {
+				tr := c.HttpClient.Transport.(*http.Transport)
+				require.NotNil(t, tr.TLSClientConfig.GetClientCertificate)
+
+				cert, err := tr.TLSClientConfig.GetClientCertificate(&tls.CertificateRequestInfo{})
+				require.NoError(t, err)
+				assert.NotEmpty(t, cert.Certificate)
+
+				assert.Equal(t, clientCertPath, c.curlClientCert)
+				assert.Equal(t, clientKeyPath, c.curlClientKey)
+			},
+		},
+		{
+			name:      "invalid cert file path",
+			tlsConfig: &TLSConfig{ClientCert: "/nonexistent/cert.pem", ClientKey: clientKeyPath},
+			wantErr:   true,
+		},
+		{
+			name:      "invalid key file path",
+			tlsConfig: &TLSConfig{ClientCert: clientCertPath, ClientKey: "/nonexistent/key.pem"},
+			wantErr:   true,
+		},
+		{
+			name:      "corrupt cert and key files",
+			tlsConfig: &TLSConfig{ClientCert: badClientCertPath, ClientKey: badClientKeyPath},
+			wantErr:   true,
+		},
+		{
+			name:      "invalid PEM cert bytes",
+			tlsConfig: &TLSConfig{ClientCertBytes: badClientCertBytes, ClientKeyBytes: clientKeyBytes},
+			wantErr:   true,
+		},
+		{
+			name:      "invalid PEM key bytes",
+			tlsConfig: &TLSConfig{ClientCertBytes: clientCertBytes, ClientKeyBytes: badClientKeyBytes},
+			wantErr:   true,
+		},
+		{
+			name:      "invalid PEM cert and key bytes",
+			tlsConfig: &TLSConfig{ClientCertBytes: badClientCertBytes, ClientKeyBytes: badClientKeyBytes},
+			wantErr:   true,
+		},
+		{
+			name:      "valid PEM bundle bytes",
+			tlsConfig: &TLSConfig{ClientCertBytes: clientCertBytes, ClientKeyBytes: clientKeyBytes},
+			assert: func(t *testing.T, c *Config) {
+				tr := c.HttpClient.Transport.(*http.Transport)
+				require.NotNil(t, tr.TLSClientConfig.GetClientCertificate)
+
+				cert, err := tr.TLSClientConfig.GetClientCertificate(&tls.CertificateRequestInfo{})
+				require.NoError(t, err)
+				assert.NotEmpty(t, cert.Certificate)
+
+				assert.Equal(t, "passed-in-memory", c.curlClientCert)
+				assert.Equal(t, "passed-in-memory", c.curlClientKey)
+			},
+		},
+		{
+			// actually fine
+			name:      "empty config",
+			tlsConfig: &TLSConfig{},
+		},
+		{
+			name:      "only ClientCert without ClientKey",
+			tlsConfig: &TLSConfig{ClientCert: clientCertPath},
+			wantErr:   true,
+		},
+		{
+			name:      "only ClientKey without ClientCert",
+			tlsConfig: &TLSConfig{ClientKey: clientKeyPath},
+			wantErr:   true,
+		},
+		{
+			name:      "CACert from file path",
+			tlsConfig: &TLSConfig{CACert: caCertPath, ClientCert: clientCertPath, ClientKey: clientKeyPath},
+			assert: func(t *testing.T, c *Config) {
+				tr := c.HttpClient.Transport.(*http.Transport)
+				require.NotNil(t, tr.TLSClientConfig.RootCAs, "RootCAs should be set")
+				assert.Equal(t, caCertPath, c.curlCACert)
+			},
+		},
+		{
+			name:      "CACert invalid file path",
+			tlsConfig: &TLSConfig{CACert: "/nonexistent/ca.pem"},
+			wantErr:   true,
+		},
+		{
+			name:      "CACertBytes set",
+			tlsConfig: &TLSConfig{CACertBytes: caCertBytes, ClientCert: clientCertPath, ClientKey: clientKeyPath},
+			assert: func(t *testing.T, c *Config) {
+				tr := c.HttpClient.Transport.(*http.Transport)
+				require.NotNil(t, tr.TLSClientConfig.RootCAs, "RootCAs should be set from bytes")
+				assert.Equal(t, "passed-in-memory", c.curlCACert)
+			},
+		},
+		{
+			name:      "CAPath directory",
+			tlsConfig: &TLSConfig{CAPath: caPathDir, ClientCert: clientCertPath, ClientKey: clientKeyPath},
+			assert: func(t *testing.T, c *Config) {
+				tr := c.HttpClient.Transport.(*http.Transport)
+				require.NotNil(t, tr.TLSClientConfig.RootCAs, "RootCAs should be set from CAPath")
+			},
+		},
+		{
+			name:      "CAPath invalid directory",
+			tlsConfig: &TLSConfig{CAPath: "/nonexistent/cadir/"},
+			wantErr:   true,
+		},
+		{
+			name:      "GetClientCertificate callback correctness - file paths",
+			tlsConfig: &TLSConfig{ClientCert: clientCertPath, ClientKey: clientKeyPath},
+			assert: func(t *testing.T, c *Config) {
+				expected, err := tls.LoadX509KeyPair(clientCertPath, clientKeyPath)
+				require.NoError(t, err)
+
+				tr := c.HttpClient.Transport.(*http.Transport)
+				got, err := tr.TLSClientConfig.GetClientCertificate(&tls.CertificateRequestInfo{})
+				require.NoError(t, err)
+				require.Len(t, got.Certificate, len(expected.Certificate))
+				assert.Equal(t, expected.Certificate[0], got.Certificate[0],
+					"DER bytes of the leaf certificate should match")
+			},
+		},
+		{
+			name:      "GetClientCertificate callback correctness - PEM bundle bytes",
+			tlsConfig: &TLSConfig{ClientCertBytes: clientCertBytes, ClientKeyBytes: clientKeyBytes},
+			assert: func(t *testing.T, c *Config) {
+				expected, err := tls.X509KeyPair(caCertBytes, clientKeyBytes)
+				require.NoError(t, err)
+
+				tr := c.HttpClient.Transport.(*http.Transport)
+				got, err := tr.TLSClientConfig.GetClientCertificate(&tls.CertificateRequestInfo{})
+				require.NoError(t, err)
+				require.Len(t, got.Certificate, len(expected.Certificate))
+				assert.Equal(t, expected.Certificate[0], got.Certificate[0],
+					"DER bytes of the leaf certificate should match")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c := DefaultConfig()
+			err := c.configureTLS(tc.tlsConfig)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			if tc.assert != nil {
+				tc.assert(t, c)
+			}
+		})
 	}
 }
 

@@ -67,11 +67,11 @@ func toWrapper[T wrapping.Wrapper](f func() T) wrapperFactory {
 	return func() (wrapping.Wrapper, error) { return f(), nil }
 }
 
-type KMSCatalog struct {
+type Catalog struct {
 	*catalog.Catalog
 }
 
-func NewCatalog(logger hclog.Logger, config *server.Config) (*KMSCatalog, error) {
+func NewCatalog(logger hclog.Logger, config *server.Config) (*Catalog, error) {
 	base, err := catalog.NewCatalog(
 		logger,
 		config,
@@ -83,13 +83,13 @@ func NewCatalog(logger hclog.Logger, config *server.Config) (*KMSCatalog, error)
 		return nil, err
 	}
 
-	return &KMSCatalog{base}, nil
+	return &Catalog{base}, nil
 }
 
 // ConfigureWrapper creates a new wrapper instance and calls SetConfig with
 // the provided options. This may dispatch to either a builtin wrapper or an
 // external pluginized wrapper.
-func (c *KMSCatalog) ConfigureWrapper(ctx context.Context, name string, opts ...wrapping.Option) (wrapping.Wrapper, *wrapping.WrapperConfig, error) {
+func (c *Catalog) ConfigureWrapper(ctx context.Context, name string, opts ...wrapping.Option) (wrapping.Wrapper, *wrapping.WrapperConfig, error) {
 	w, builtin, err := c.getWrapper(name)
 	if err != nil {
 		return nil, nil, err
@@ -121,7 +121,7 @@ func (c *KMSCatalog) ConfigureWrapper(ctx context.Context, name string, opts ...
 // getWrapper returns a new wrapping.Wrapper that is either builtin or
 // pluginized, in which case a new plugin process may be spawned. The
 // additionally returned bool is true if the returned wrapper is built-in.
-func (c *KMSCatalog) getWrapper(name string) (wrapping.Wrapper, bool, error) {
+func (c *Catalog) getWrapper(name string) (wrapping.Wrapper, bool, error) {
 	client, ok, err := c.GetClient(name)
 	if err != nil {
 		return nil, false, err

@@ -13,7 +13,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/joinplugin"
 )
 
-type JoinCatalog struct {
+type Catalog struct {
 	*catalog.Catalog
 }
 
@@ -22,7 +22,7 @@ var builtins = map[string]joinplugin.Factory{
 	"discover": discover.Factory,
 }
 
-func NewCatalog(logger hclog.Logger, config *server.Config) (*JoinCatalog, error) {
+func NewCatalog(logger hclog.Logger, config *server.Config) (*Catalog, error) {
 	base, err := catalog.NewCatalog(
 		logger,
 		config,
@@ -34,10 +34,10 @@ func NewCatalog(logger hclog.Logger, config *server.Config) (*JoinCatalog, error
 		return nil, err
 	}
 
-	return &JoinCatalog{base}, nil
+	return &Catalog{base}, nil
 }
 
-func (c *JoinCatalog) NewJoin(name string) (joinplugin.Join, bool, error) {
+func (c *Catalog) NewJoin(name string) (joinplugin.Join, bool, error) {
 	client, ok, err := c.GetClient(name)
 	if err != nil {
 		return nil, false, err

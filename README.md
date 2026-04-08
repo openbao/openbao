@@ -86,8 +86,8 @@ Documentation is available on the [OpenBao website](https://openbao.org/docs/).
 If you wish to work on OpenBao itself or any of its built-in systems,
 you'll first need [Go](https://www.golang.org) installed on your
 machine. The Go toolchain version used in CI and releases is pinned at
-[.go-version](./.go-version), but using the latest toolchain available for local
-development is typically fine.
+[`.go-version`](./.go-version), but using the latest toolchain available for
+local development is typically fine.
 
 OpenBao uses [Go Modules](https://github.com/golang/go/wiki/Modules), so it is
 recommended that you clone the repository ***outside*** of the GOPATH.
@@ -95,13 +95,14 @@ recommended that you clone the repository ***outside*** of the GOPATH.
 To build a `bao` binary:
 
 ```sh
-$ go build . -o bao
+$ mkdir -p bin
+$ go build -o bin/bao .
 ```
 
 To run the OpenBao server in development mode:
 
 ```sh
-$ go run . server -dev # Or `bao server -dev` if you've built the binary already.
+$ go run . server -dev # Or `./bin/bao server -dev` if you've built the binary already.
 ```
 
 Since OpenBao is a large codebase that takes a short while to compile from a
@@ -110,8 +111,8 @@ better sense of compilation progress.
 
 To test a package:
 
-```
-go test ./some/package
+```sh
+$ go test ./some/package
 ```
 
 Some additional notes on development:
@@ -132,7 +133,7 @@ This repository publishes two libraries that may be imported by other projects:
 
 Note that this repository also contains OpenBao (the application), and as
 with most Go projects, OpenBao uses Go modules to manage its dependencies.
-The mechanism to do that is the [go.mod](./go.mod) file. As it happens, the
+The mechanism to do that is the [`go.mod`](./go.mod) file. As it happens, the
 presence of that file also makes it theoretically possible to import OpenBao
 as a dependency into other projects. Some other projects have made a practice
 of doing so in order to take advantage of testing tooling that was developed

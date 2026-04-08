@@ -25,7 +25,6 @@ type JoinPlugin struct {
 	Impl Join
 }
 
-// TODO: Should this take a config/context, like logical.Factory?
 type Factory func() (Join, error)
 
 type gRPCClient struct {

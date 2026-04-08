@@ -22,7 +22,7 @@ var builtinKMSes = map[string]func() kms.KMS{
 
 // OpenKMS creates a new KMS instance and calls Open with the provided options.
 // This may dispatch to either a builtin KMS or an external pluginized one.
-func (c *KMSCatalog) OpenKMS(ctx context.Context, name string, opts *kms.OpenOptions) (s kms.KMS, err error) {
+func (c *Catalog) OpenKMS(ctx context.Context, name string, opts *kms.OpenOptions) (s kms.KMS, err error) {
 	client, ok, err := c.GetClient(name)
 	switch {
 	case err != nil:

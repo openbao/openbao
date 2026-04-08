@@ -55,7 +55,7 @@ type lockKey struct {
 // keys, caching KMS instances between requests.
 type Registry struct {
 	logger  log.Logger
-	plugins *kmsplugin.KMSCatalog
+	plugins *kmsplugin.Catalog
 
 	// Namespace ID -> Config name -> Client.
 	cache     map[string]map[string]kms.KMS
@@ -67,7 +67,7 @@ type Registry struct {
 }
 
 // NewRegistry returns a new Registry.
-func NewRegistry(plugins *kmsplugin.KMSCatalog, logger log.Logger) *Registry {
+func NewRegistry(plugins *kmsplugin.Catalog, logger log.Logger) *Registry {
 	return &Registry{
 		logger:  logger,
 		plugins: plugins,

@@ -99,15 +99,6 @@ func (c *Catalog) GetClient(name string) (*Client, bool, error) {
 	return c.getClientLocked(name)
 }
 
-func (c *Catalog) CloseAll() {
-}
-
-func (c *Catalog) removeClientLocked(client *Client) {
-	if stored, ok := c.clients[client.name]; ok && stored == client {
-		delete(c.clients, client.name)
-	}
-}
-
 func (c *Catalog) getClientLocked(name string) (*Client, bool, error) {
 	// Try to reuse an existing client.
 	if cl, ok := c.clients[name]; ok {
@@ -270,7 +261,9 @@ func (c *Client) Close() {
 	c.process.Kill()
 
 	// Remove from lookup if this is still the most recent client.
-	c.catalog.removeClientLocked(c)
+	if stored, ok := c.catalog.clients[c.name]; ok && stored == c {
+		delete(c.catalog.clients, c.name)
+	}
 }
 
 func (c *Client) Reload() (*Client, error) {

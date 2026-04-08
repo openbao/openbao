@@ -29,7 +29,7 @@ import (
 // created. Additionally, we get to simplify many things as KMS plugins are
 // declarative only.
 type Catalog struct {
-	logger hclog.Logger
+	Logger hclog.Logger
 
 	mu         sync.Mutex
 	plugins    map[string]*server.PluginConfig
@@ -113,7 +113,7 @@ func NewCatalog(
 	}
 
 	return &Catalog{
-		logger:                logger.Named(pluginType.String()),
+		Logger:                logger.Named(pluginType.String()),
 		plugins:               plugins,
 		clients:               make(map[clientKey]*Client, len(plugins)),
 		pluginType:            pluginType,
@@ -193,7 +193,7 @@ func (c *Catalog) getClientLocked(name string) (*Client, bool, error) {
 		// go-plugin will create a sub-logger with the plugin executable's name,
 		// so avoid duplicating that here and pass the catalog's logger without
 		// modification.
-		Logger: c.logger,
+		Logger: c.Logger,
 	})
 
 	proto, err := process.Client()
@@ -308,7 +308,7 @@ func (c *Catalog) ReloadConfig(config *server.Config) error {
 			continue // Unchanged.
 		}
 
-		c.logger.Info("config updated, killing old plugin client", "name", key.name)
+		c.Logger.Info("config updated, killing old plugin client", "name", key.name)
 
 		// This causes future calls to existing plugin-derived objects to
 		// refresh their client and roll over to the updated config (if a plugin

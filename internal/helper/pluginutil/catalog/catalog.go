@@ -337,7 +337,7 @@ func (c *Client) Close() {
 	defer c.catalog.mu.Unlock()
 
 	if c.refs == 0 {
-		panic("kmsplugin: tried to close client more than once")
+		panic("pluginutil/catalog: tried to close client more than once")
 	}
 
 	c.refs--

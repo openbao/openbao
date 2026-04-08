@@ -1211,6 +1211,8 @@ func (c *PluginCatalog) setInternal(ctx context.Context, name string, pluginType
 		runningVersion, versionErr = c.getDatabaseRunningVersion(ctx, entryTmp)
 	case consts.PluginTypeKMS:
 		return nil, fmt.Errorf("KMS plugins cannot be registered via the plugin catalog")
+	case consts.PluginTypeJoin:
+		return nil, fmt.Errorf("join plugins cannot be registered via the plugin catalog")
 	default:
 		return nil, fmt.Errorf("unknown plugin type: %v", pluginType)
 	}

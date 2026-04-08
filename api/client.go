@@ -260,14 +260,14 @@ type Config struct {
 
 // TLSConfig contains the parameters needed to configure TLS on the HTTP client
 // used to communicate with OpenBao.
+//
+// The order of precedence for loading certificates & keys is equal to struct
+// field order, i.e., file paths, if set, take precedence over certificates &
+// keys passed in-memory. The exception is CAPath, which has lower precedence
+// than CACertBytes.
 type TLSConfig struct {
-	// Order or precedence of loading certs is as follows:
-	// - CACert (filepath) -> CACertBytes (inmem) -> CAPath (directory)
-	// - ClientCert (filepath) -> ClientCertBytes (inmem)
-	// - ClientKey (filepath) -> ClientKeyBytes (inmem)
-
 	// CACert is the path to a PEM-encoded CA cert file to use to verify the
-	// OpenBao server SSL certificate.
+	// OpenBao server's certificate.
 	CACert string
 
 	// ClientCert is the path to the certificate for OpenBao communication.
@@ -276,24 +276,26 @@ type TLSConfig struct {
 	// ClientKey is the path to the private key for OpenBao communication.
 	ClientKey string
 
-	// CACertBytes is in-memory stored PEM-encoded certificate or bundle.
+	// CACertBytes is an in-memory PEM-encoded certificate or bundle to use to
+	// verify the OpenBao server's certificate.
 	CACertBytes []byte
 
-	// ClientCertBytes is in-memory stored PEM-encoded certificate or bundle.
+	// ClientCertBytes is an in-memory PEM-encoded certificate or bundle for
+	// OpenBao communication.
 	ClientCertBytes []byte
 
-	// ClientKeyBytes is in-memory stored PEM-encoded key.
+	// ClientKeyBytes is an in-memory PEM-encoded key for OpenBao communication.
 	ClientKeyBytes []byte
 
 	// CAPath is the path to a directory of PEM-encoded CA cert files to verify
-	// the OpenBao server SSL certificate.
+	// the OpenBao server's certificate.
 	CAPath string
 
 	// TLSServerName, if set, is used to set the SNI host when connecting via
 	// TLS.
 	TLSServerName string
 
-	// Insecure enables or disables SSL verification
+	// Insecure enables or disables TLS certificate verification.
 	Insecure bool
 }
 
@@ -346,7 +348,7 @@ func DefaultConfig() *Config {
 }
 
 // configureTLS is a lock free version of ConfigureTLS that can be used in
-// ReadEnvironment where the lock is already hold.
+// ReadEnvironment where the lock is already held.
 func (c *Config) configureTLS(t *TLSConfig) error {
 	if c.HttpClient == nil {
 		c.HttpClient = DefaultConfig().HttpClient
@@ -374,10 +376,8 @@ func (c *Config) configureTLS(t *TLSConfig) error {
 		foundClientCert = true
 		c.curlClientCert = "passed-in-memory"
 		c.curlClientKey = "passed-in-memory"
-	case t.ClientCert != "" || t.ClientKey != "":
+	case t.ClientCert != "" || t.ClientKey != "", len(t.ClientCertBytes) != 0 || len(t.ClientKeyBytes) != 0:
 		return errors.New("both client cert and client key must be provided")
-	case len(t.ClientCertBytes) != 0 || len(t.ClientKeyBytes) != 0:
-		return errors.New("both client cert and client key pem bundles must be provided")
 	}
 
 	if t.CACert != "" || len(t.CACertBytes) != 0 || t.CAPath != "" {
@@ -391,7 +391,7 @@ func (c *Config) configureTLS(t *TLSConfig) error {
 			CACertificate: t.CACertBytes,
 			CAPath:        t.CAPath,
 		}
-		if err = configureTLS(clientTLSConfig, rootConfig); err != nil {
+		if err := configureTLS(clientTLSConfig, rootConfig); err != nil {
 			return err
 		}
 	}

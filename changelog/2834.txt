@@ -1,0 +1,3 @@
+```release-note:improvement
+api: Allow disabling automatic configuration from environment variables in the API client via a `DisableEnvironment` field on `Config` and a `NewConfig` constructor to create clean client configurations.
+```

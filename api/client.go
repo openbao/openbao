@@ -246,7 +246,7 @@ type Config struct {
 	// CloneToken from parent.
 	CloneToken bool
 
-	// DisableRedirects when set to true, will prevent the client from
+	// DisableRedirects, when set to true, will prevent the client from
 	// automatically following a (single) redirect response to its initial
 	// request. This behavior may be desirable if using Vault CLI on the server
 	// side.
@@ -255,7 +255,12 @@ type Config struct {
 	// commands such as 'vault operator raft snapshot' as this redirects to the
 	// primary node.
 	DisableRedirects bool
-	clientTLSConfig  *tls.Config
+
+	// DisableEnvironment, when set to true, will skip automatic configuration
+	// based on well-known environment variables when the client is constructed.
+	DisableEnvironment bool
+
+	clientTLSConfig *tls.Config
 }
 
 // TLSConfig contains the parameters needed to configure TLS on the HTTP client
@@ -299,22 +304,25 @@ type TLSConfig struct {
 	Insecure bool
 }
 
-// DefaultConfig returns a default configuration for the client. It is
-// safe to modify the return value of this function.
+// NewConfig returns a basic client configuration. It is safe to modify the
+// return value of this function.
 //
-// The default Address is https://127.0.0.1:8200, but this can be overridden by
-// setting the `BAO_ADDR` environment variable.
+// The returned config has no address set and must be adjusted before use, but
+// has the recommended HTTP client settings applied. To construct a config that
+// automatically populates its fields based on well-known environment variables,
+// see [DefaultConfig].
 //
-// If an error is encountered, the Error field on the returned *Config will be populated with the specific error.
-func DefaultConfig() *Config {
+// If an error is encountered, the Error field on the returned *[Config] will be
+// populated with the specific error.
+func NewConfig() *Config {
 	config := &Config{
-		Address:      "https://127.0.0.1:8200",
-		HttpClient:   cleanhttp.DefaultPooledClient(),
-		Timeout:      time.Second * 60,
-		MinRetryWait: time.Millisecond * 1000,
-		MaxRetryWait: time.Millisecond * 1500,
-		MaxRetries:   2,
-		Backoff:      retryablehttp.RateLimitLinearJitterBackoff,
+		HttpClient:         cleanhttp.DefaultPooledClient(),
+		Timeout:            time.Second * 60,
+		MinRetryWait:       time.Millisecond * 1000,
+		MaxRetryWait:       time.Millisecond * 1500,
+		MaxRetries:         2,
+		Backoff:            retryablehttp.RateLimitLinearJitterBackoff,
+		DisableEnvironment: true,
 	}
 
 	transport := config.HttpClient.Transport.(*http.Transport)
@@ -323,11 +331,6 @@ func DefaultConfig() *Config {
 		MinVersion: tls.VersionTLS12,
 	}
 	if err := http2.ConfigureTransport(transport); err != nil {
-		config.Error = err
-		return config
-	}
-
-	if err := config.ReadEnvironment(); err != nil {
 		config.Error = err
 		return config
 	}
@@ -347,11 +350,35 @@ func DefaultConfig() *Config {
 	return config
 }
 
+// DefaultConfig returns a default client configuration. It is safe to modify
+// the return value of this function.
+//
+// The default Address is https://127.0.0.1:8200, but this can be
+// overridden by setting the `BAO_ADDR` environment variable. Several other
+// fields are automatically populated from environment variables using
+// [Config.ReadEnvironment]. For a clean constructor that does not read
+// environment variables, see [NewConfig].
+//
+// If an error is encountered, the Error field on the returned *[Config] will be
+// populated with the specific error.
+func DefaultConfig() *Config {
+	config := NewConfig()
+	config.Address = "https://127.0.0.1:8200"
+	config.DisableEnvironment = false
+
+	if err := config.ReadEnvironment(); err != nil {
+		config.Error = err
+		return config
+	}
+
+	return config
+}
+
 // configureTLS is a lock free version of ConfigureTLS that can be used in
 // ReadEnvironment where the lock is already held.
 func (c *Config) configureTLS(t *TLSConfig) error {
 	if c.HttpClient == nil {
-		c.HttpClient = DefaultConfig().HttpClient
+		c.HttpClient = NewConfig().HttpClient
 	}
 	clientTLSConfig := c.HttpClient.Transport.(*http.Transport).TLSClientConfig
 
@@ -432,9 +459,14 @@ func (c *Config) ConfigureTLS(t *TLSConfig) error {
 	return c.configureTLS(t)
 }
 
-// ReadEnvironment reads configuration information from the environment.
-// If there is an error, no configuration value is updated.
+// ReadEnvironment reads configuration information from the environment. If
+// there is an error, no configuration value is updated. This is a no-op if
+// DisableEnvironment is set.
 func (c *Config) ReadEnvironment() error {
+	if c.DisableEnvironment {
+		return nil
+	}
+
 	var envAddress string
 	var envAgentAddress string
 	var envCACert string
@@ -665,14 +697,23 @@ type Client struct {
 
 // NewClient returns a new client for the given configuration.
 //
-// If the configuration is nil, Vault will use configuration from
-// DefaultConfig(), which is the recommended starting configuration.
+// If the configuration is nil, OpenBao will use configuration from
+// [DefaultConfig], which is the recommended starting configuration.
 //
-// If the environment variable `BAO_TOKEN` is present, the token will be
-// automatically added to the client. Otherwise, you must manually call
-// `SetToken()`.
+// If the environment variables `BAO_TOKEN` and/or `BAO_NAMESPACE` are present
+// and DisableEnvironment is not set, token and namespace will be automatically
+// added to the client. Otherwise, you must manually call [Client.SetToken] and
+// [Client.SetNamespace].
 func NewClient(c *Config) (*Client, error) {
-	def := DefaultConfig()
+	var def *Config
+	if c != nil && c.DisableEnvironment {
+		// If we have a partial config that tells us not to read environment
+		// variables, call NewConfig rather than DefaultConfig.
+		def = NewConfig()
+	} else {
+		def = DefaultConfig()
+	}
+
 	if def == nil {
 		return nil, errors.New("could not create/read default configuration")
 	}
@@ -721,12 +762,13 @@ func NewClient(c *Config) (*Client, error) {
 	// Add the VaultRequest SSRF protection header
 	client.headers[RequestHeaderName] = []string{"true"}
 
-	if token := ReadBaoVariable(EnvVaultToken); token != "" {
-		client.token = token
-	}
-
-	if namespace := ReadBaoVariable(EnvVaultNamespace); namespace != "" {
-		client.setNamespace(namespace)
+	if !c.DisableEnvironment {
+		if token := ReadBaoVariable(EnvVaultToken); token != "" {
+			client.token = token
+		}
+		if namespace := ReadBaoVariable(EnvVaultNamespace); namespace != "" {
+			client.setNamespace(namespace)
+		}
 	}
 
 	return client, nil
@@ -736,7 +778,7 @@ func (c *Client) CloneConfig() *Config {
 	c.modifyLock.RLock()
 	defer c.modifyLock.RUnlock()
 
-	newConfig := DefaultConfig()
+	newConfig := NewConfig()
 	newConfig.Address = c.config.Address
 	newConfig.AgentAddress = c.config.AgentAddress
 	newConfig.MinRetryWait = c.config.MinRetryWait

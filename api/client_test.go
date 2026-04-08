@@ -30,6 +30,26 @@ func init() {
 	os.Setenv("BAO_TOKEN", "")
 }
 
+func TestNewConfig_envvar(t *testing.T) {
+	t.Setenv("BAO_ADDR", "https://vault.mycompany.com")
+
+	config := NewConfig()
+	if config.Address != "" {
+		t.Fatalf("bad: %s", config.Address)
+	}
+
+	t.Setenv("BAO_TOKEN", "testing")
+
+	client, err := NewClient(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if token := client.Token(); token != "" {
+		t.Fatalf("bad: %s", token)
+	}
+}
+
 func TestDefaultConfig_envvar(t *testing.T) {
 	t.Setenv("BAO_ADDR", "https://vault.mycompany.com")
 

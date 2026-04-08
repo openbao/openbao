@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/builtin/credential/ldap"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	ldaphelper "github.com/openbao/openbao/helper/testhelpers/ldap"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -509,4 +510,52 @@ func testPagination(t *testing.T, client *api.Client, path string, raw bool, lim
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data)
 	require.LessOrEqual(t, len(resp.Data["keys"].([]interface{})), 10)
+}
+
+func TestPolicyStore_DisabledCacheInvalidation(t *testing.T) {
+	t.Parallel()
+
+	coreConfig := &vault.CoreConfig{
+		DisableCache: true,
+	}
+
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		NumCores:    2,
+	})
+
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	cores := cluster.Cores
+
+	vault.TestWaitActive(t, cores[0].Core)
+
+	client := cores[0].Client
+
+	_, err := client.Logical().Write("sys/namespaces/my-test", nil)
+	require.NoError(t, err)
+
+	testPolicy := `
+path "secret/*" {
+	capabilities = ["read"]
+}
+`
+
+	err = client.Sys().PutPolicy("admin-reader", testPolicy)
+	require.NoError(t, err)
+
+	corehelpers.RetryUntil(t, 10*time.Second, func() error {
+		standby := cores[1].Client
+		policy, err := standby.Sys().GetPolicy("admin-reader")
+		if err != nil {
+			return err
+		}
+
+		if policy != testPolicy {
+			return fmt.Errorf("expected policy:\n%v\n\ngot policy: %v\n", testPolicy, policy)
+		}
+
+		return nil
+	})
 }

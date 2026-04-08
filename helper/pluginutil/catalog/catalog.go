@@ -28,7 +28,7 @@ import (
 // created. Additionally, we get to simplify many things as KMS plugins are
 // declarative only.
 type Catalog struct {
-	logger hclog.Logger
+	Logger hclog.Logger
 
 	mu         sync.Mutex
 	plugins    map[string]*server.PluginConfig
@@ -80,7 +80,7 @@ func NewCatalog(
 	}
 
 	return &Catalog{
-		logger:                logger.Named(pluginType.String()),
+		Logger:                logger.Named(pluginType.String()),
 		plugins:               plugins,
 		clients:               make(map[string]*Client, len(plugins)),
 		pluginType:            pluginType,
@@ -146,7 +146,7 @@ func (c *Catalog) getClientLocked(name string) (*Client, bool, error) {
 		HandshakeConfig:  c.handshake,
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		AutoMTLS:         true,
-		Logger:           c.logger.Named(name),
+		Logger:           c.Logger.Named(name),
 		SecureConfig: &plugin.SecureConfig{
 			Checksum: checksum,
 			Hash:     sha256.New(),

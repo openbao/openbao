@@ -39,7 +39,7 @@ type gRPCServer struct {
 }
 
 var HandshakeConfig = plugin.HandshakeConfig{
-	MagicCookieKey:   "BAO_JOIN_PLUGIN",
+	MagicCookieKey:   "OPENBAO_JOIN_PLUGIN",
 	MagicCookieValue: "f4204b06-eb34-4f02-8564-a8ba687343a3",
 }
 

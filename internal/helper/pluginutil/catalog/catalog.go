@@ -132,15 +132,6 @@ func (c *Catalog) GetClient(name string) (*Client, bool, error) {
 	return c.getClientLocked(name)
 }
 
-func (c *Catalog) CloseAll() {
-}
-
-func (c *Catalog) removeClientLocked(client *Client) {
-	if stored, ok := c.clients[client.key]; ok && stored == client {
-		delete(c.clients, client.key)
-	}
-}
-
 func (c *Catalog) getClientLocked(name string) (*Client, bool, error) {
 	// Check for plugin configuration.
 	config, ok := c.plugins[name]
@@ -350,7 +341,9 @@ func (c *Client) Close() {
 	c.process.Kill()
 
 	// Remove from lookup if this is still the most recent client.
-	c.catalog.removeClientLocked(c)
+	if stored, ok := c.catalog.clients[c.key]; ok && stored == c {
+		delete(c.catalog.clients, c.key)
+	}
 }
 
 func (c *Client) Reload() (*Client, error) {

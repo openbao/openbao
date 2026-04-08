@@ -68,7 +68,7 @@ func NewCatalog(
 	// naming conflicts.
 	plugins := make(map[string]*server.PluginConfig)
 	for _, plugin := range config.Plugins {
-		// Ignore plugins that aren't type KMS.
+		// Ignore plugins that don't concern this catalog.
 		if typ, _ := consts.ParsePluginType(plugin.Type); typ != pluginType {
 			continue
 		}
@@ -257,7 +257,7 @@ func (c *Client) Close() {
 	defer c.catalog.mu.Unlock()
 
 	if c.refs == 0 {
-		panic("kmsplugin: tried to close client more than once")
+		panic("pluginutil/catalog: tried to close client more than once")
 	}
 
 	c.refs--

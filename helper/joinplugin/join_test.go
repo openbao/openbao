@@ -1,7 +1,6 @@
 package joinplugin
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
@@ -38,7 +37,7 @@ func TestJoinPlugin(t *testing.T) {
 	require.NoError(t, err, "should create foo plugin")
 	require.False(t, builtin, "foo plugin should not be builtin")
 
-	candidates, err := join.Candidates(context.TODO(), conf)
+	candidates, err := join.Candidates(t.Context(), conf)
 	require.NoError(t, err, "should get candidates")
 	require.Equal(t, 2, len(candidates), "should return two candidates")
 
@@ -46,7 +45,7 @@ func TestJoinPlugin(t *testing.T) {
 	require.NoError(t, err, "should create foo plugin")
 	require.True(t, builtin, "foo plugin should not be builtin")
 
-	candidates, err = join.Candidates(context.TODO(), conf)
+	candidates, err = join.Candidates(t.Context(), conf)
 	require.NoError(t, err, "should get candidates")
 	require.Equal(t, 2, len(candidates), "should return two candidates")
 }

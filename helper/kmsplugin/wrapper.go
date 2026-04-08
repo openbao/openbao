@@ -131,7 +131,7 @@ func (c *KMSCatalog) getWrapper(name string) (wrapping.Wrapper, bool, error) {
 		if builtin, ok := builtinWrappers[wrapping.WrapperType(name)]; ok {
 			w, err := builtin.factory()
 			if builtin.deprecated {
-				c.logger.Warn("Support for this Auto Unseal mechanism has been "+
+				c.Logger.Warn("Support for this Auto Unseal mechanism has been "+
 					"moved into an external plugin and will be removed from the "+
 					"main OpenBao distribution in the next minor release. "+
 					"To ensure future-proof use of this mechanism, migrate your "+

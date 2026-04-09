@@ -6,7 +6,7 @@ package kmip
 import (
 	"context"
 
-	"github.com/ovh/kmip-go"
+	kmiplib "github.com/ovh/kmip-go"
 )
 
 // Adapter is an interface that OpenBao engine must implement to expose key management via KMIP.
@@ -16,22 +16,22 @@ type Adapter interface {
 	AuthenticateCert(ctx context.Context, subjectDN string) (allowedOps []string, allowedKeys []string, err error)
 
 	// CreateKey creates new key. KMIP algorithm and bit length come directly from the request, adapter converts to specific type.
-	CreateKey(ctx context.Context, name string, alg kmip.CryptographicAlgorithm, bitlen int) (string, error)
+	CreateKey(ctx context.Context, name string, alg kmiplib.CryptographicAlgorithm, bitlen int) (string, error)
 
 	// ImportKey imports raw key material:
 	//   - symmetric: raw bytes
 	//   - asymmetric: PKCS8 DER
-	ImportKey(ctx context.Context, name string, alg kmip.CryptographicAlgorithm, bitlen int, keyMaterial []byte) (string, error)
+	ImportKey(ctx context.Context, name string, alg kmiplib.CryptographicAlgorithm, bitlen int, keyMaterial []byte) (string, error)
 
 	// GetKey retrieves key material for a given unique id.
-	GetKey(ctx context.Context, id string) (kmip.Object, error)
+	GetKey(ctx context.Context, id string) (kmiplib.Object, error)
 
 	// GetAttributes returns KMIP attributes for a key. Returns all attributes if names is empty.
-	GetAttributes(ctx context.Context, id string, names []kmip.AttributeName) ([]kmip.Attribute, error)
+	GetAttributes(ctx context.Context, id string, names []kmiplib.AttributeName) ([]kmiplib.Attribute, error)
 
 	// LocateKeys returns a []IDs of keys matching attrs.
 	// Returns only non-revoked keys, empty []attr means return all active keys.
-	LocateKeys(ctx context.Context, attrs []kmip.Attribute) ([]string, error)
+	LocateKeys(ctx context.Context, attrs []kmiplib.Attribute) ([]string, error)
 
 	// ActivateKey activates a key.
 	ActivateKey(ctx context.Context, id string) error

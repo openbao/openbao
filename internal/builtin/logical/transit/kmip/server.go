@@ -17,9 +17,10 @@ type Server struct {
 	listener   net.Listener
 	b          logical.Backend
 	listenAddr string
+	adapter    Adapter
 }
 
-func NewServer(b logical.Backend, cfg ServerConfig) (*Server, error) {
+func NewServer(a Adapter, b logical.Backend, cfg ServerConfig) (*Server, error) {
 	cert, err := tls.LoadX509KeyPair(cfg.CertPem, cfg.KeyPem)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load server cert/key: %w", err)
@@ -37,6 +38,7 @@ func NewServer(b logical.Backend, cfg ServerConfig) (*Server, error) {
 
 	executor := kmipserver.NewBatchExecutor()
 
+	executor.Use(authMiddleware(a))
 	registerHandlers(executor, b)
 	srv := kmipserver.NewServer(listener, executor)
 
@@ -45,6 +47,7 @@ func NewServer(b logical.Backend, cfg ServerConfig) (*Server, error) {
 		listener:   listener,
 		b:          b,
 		listenAddr: cfg.ListenAddr,
+		adapter:    a,
 	}, nil
 }
 

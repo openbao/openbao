@@ -1022,6 +1022,12 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 
 	if wrapping {
 
+		// Obtain identity info for wrapping token metadata
+		_, _, authEntity, _, err := c.fetchACLTokenEntryAndEntity(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+
 		extraData := map[string]string{}
 		// For controlgroup, store the original request and control group details with the cubbyhole data
 		if auth.PolicyResults != nil && auth.PolicyResults.ControlGroup != nil {
@@ -1030,6 +1036,11 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 				return resp, err
 			}
 			extraData["request"] = string(reqJson)
+			entityJson, err := jsonutil.EncodeJSON(authEntity)
+			if err != nil {
+				return resp, err
+			}
+			extraData["request_entity"] = string(entityJson)
 			cgJson, err := jsonutil.EncodeJSON(auth.PolicyResults.ControlGroup)
 			if err != nil {
 				return resp, err

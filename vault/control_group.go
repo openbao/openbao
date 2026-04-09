@@ -26,6 +26,11 @@ var controlGroupRequestResponseSchema = map[string]*framework.FieldSchema{
 		Description: "Status of the wrapping token",
 		Required:    true,
 	},
+	"request_operation": {
+		Type:        framework.TypeString,
+		Description: "The original request operation",
+		Required:    true,
+	},
 	"request_path": {
 		Type:        framework.TypeString,
 		Description: "The original request path",
@@ -115,6 +120,23 @@ func (c *Core) getControlGroupFromTokenEntry(ctx context.Context, tokenEntry *lo
 	}
 
 	return &cg, nil
+}
+
+// getEnitityFromTokenEntry fetches entity from a token entry where present
+func (c *Core) getEntityFromTokenEntry(ctx context.Context, tokenEntry *logical.TokenEntry) (*logical.Entity, error) {
+	entityJson, ok := tokenEntry.InternalMeta["request_entity"]
+	if !ok {
+		// if there's no control group, nothing to return but it's not an error
+		// nolint:nilnil
+		return nil, nil
+	}
+
+	entity := logical.Entity{}
+	if err := jsonutil.DecodeJSON([]byte(entityJson), &entity); err != nil {
+		return nil, err
+	}
+
+	return &entity, nil
 }
 
 // setControlGroupInTokenEntry replaces the control group meta data on a given token entry
@@ -245,9 +267,9 @@ func (c *Core) addAuthorization(ctx context.Context, token string, approver *log
 	return nil
 }
 
-// handleControlGroupLookup handles the sys/control-group/request path for querying information about
+// handleControlGroupRequest handles the sys/control-group/request path for querying information about
 // a particular token. This can be used to see which policies are applicable.
-func (c *Core) handleControlGroupLookup(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (c *Core) handleControlGroupRequest(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	accessor := data.Get("accessor").(string)
 	if accessor == "" {
 		return nil, &logical.StatusBadRequest{Err: "missing accessor"}
@@ -270,7 +292,7 @@ func (c *Core) handleControlGroupLookup(ctx context.Context, req *logical.Reques
 		return logical.ErrorResponse("bad token"), logical.ErrPermissionDenied
 	}
 
-	approved, err := c.validateControlGroup(ctx, out, req.Operation)
+	approved, err := c.validateControlGroup(ctx, out, logical.ReadOperation)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
@@ -285,13 +307,19 @@ func (c *Core) handleControlGroupLookup(ctx context.Context, req *logical.Reques
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
+	originalEntity, err := c.getEntityFromTokenEntry(ctx, out)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+	}
+
 	// Generate a response.
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"approved":       approved,
-			"request_path":   originalRequest.Path,
-			"request_entity": originalRequest.Auth,
-			"authorizations": cg.Factors[0].Authorizations,
+			"approved":          approved,
+			"request_operation": originalRequest.Operation,
+			"request_path":      originalRequest.Path,
+			"request_entity":    originalEntity,
+			"authorizations":    cg.Factors[0].Authorizations,
 		},
 	}
 
@@ -333,10 +361,9 @@ func (c *Core) handleControlGroupAuthorize(ctx context.Context, req *logical.Req
 		})
 	}
 	authorizerAuth := logical.Auth{
-		DisplayName: authorizerToken.DisplayName,
+		DisplayName:  authorizerToken.DisplayName,
 		GroupAliases: authorizerGroupAliases,
 	}
-
 
 	// Add authorization record to the token entry if applicable
 	err = c.addAuthorization(ctx, aEntry.TokenID, &authorizerAuth)
@@ -357,7 +384,7 @@ func (c *Core) handleControlGroupAuthorize(ctx context.Context, req *logical.Req
 		},
 	}
 
-	lookupResponse, err := c.handleControlGroupLookup(ctx, req, d)
+	lookupResponse, err := c.handleControlGroupRequest(ctx, req, d)
 	if err != nil {
 		return nil, err
 	}

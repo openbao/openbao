@@ -8,7 +8,7 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/ovh/kmip-go"
+	kmiplib "github.com/ovh/kmip-go"
 	"github.com/ovh/kmip-go/kmipserver"
 	"github.com/ovh/kmip-go/ttlv"
 )
@@ -24,10 +24,10 @@ type permissions struct {
 
 // authMeddleware authenticates every KMIP request by callind a.AuthenticateCert and enrich context with permissions.
 func authMiddleware(a Adapter) kmipserver.Middleware {
-	return func(next kmipserver.Next, ctx context.Context, msg *kmip.RequestMessage) (*kmip.ResponseMessage, error) {
+	return func(next kmipserver.Next, ctx context.Context, msg *kmiplib.RequestMessage) (*kmiplib.ResponseMessage, error) {
 		certs := kmipserver.PeerCertificates(ctx)
 		if len(certs) == 0 {
-			return nil, kmipserver.Errorf(kmip.ResultReasonPermissionDenied, "client certificate not provided")
+			return nil, kmipserver.Errorf(kmiplib.ResultReasonPermissionDenied, "client certificate not provided")
 		}
 
 		subjectDN := certs[0].Subject.String()
@@ -35,9 +35,9 @@ func authMiddleware(a Adapter) kmipserver.Middleware {
 		allowedOps, allowedKeys, err := a.AuthenticateCert(ctx, subjectDN)
 		if err != nil {
 			if errors.Is(err, ErrNoRole) {
-				return nil, kmipserver.Errorf(kmip.ResultReasonPermissionDenied, "no matching role for certificate subject %q", subjectDN)
+				return nil, kmipserver.Errorf(kmiplib.ResultReasonPermissionDenied, "no matching role for certificate subject %q", subjectDN)
 			}
-			return nil, kmipserver.Errorf(kmip.ResultReasonGeneralFailure, "failed to lookup role: %s", err)
+			return nil, kmipserver.Errorf(kmiplib.ResultReasonGeneralFailure, "failed to lookup role: %s", err)
 		}
 
 		ctx = context.WithValue(ctx, ctxKmipPermissions{}, &permissions{
@@ -50,7 +50,7 @@ func authMiddleware(a Adapter) kmipserver.Middleware {
 }
 
 // authOp checks allowed operations and keys for the authenticated client.
-func authOp(ctx context.Context, op kmip.Operation, keyName string) error {
+func authOp(ctx context.Context, op kmiplib.Operation, keyName string) error {
 	p, _ := ctx.Value(ctxKmipPermissions{}).(*permissions)
 	if p == nil {
 		return kmipserver.ErrPermissionDenied
@@ -59,13 +59,13 @@ func authOp(ctx context.Context, op kmip.Operation, keyName string) error {
 	if len(p.allowedOps) > 0 {
 		opStr := ttlv.EnumStr(op)
 		if !slices.Contains(p.allowedOps, opStr) {
-			return kmipserver.Errorf(kmip.ResultReasonPermissionDenied, "operation %s is not allowed", opStr)
+			return kmipserver.Errorf(kmiplib.ResultReasonPermissionDenied, "operation %s is not allowed", opStr)
 		}
 	}
 
 	if keyName != "" && len(p.allowedKeys) > 0 {
 		if !slices.Contains(p.allowedKeys, keyName) {
-			return kmipserver.Errorf(kmip.ResultReasonPermissionDenied, "key %q is not allowed", keyName)
+			return kmipserver.Errorf(kmiplib.ResultReasonPermissionDenied, "key %q is not allowed", keyName)
 		}
 	}
 

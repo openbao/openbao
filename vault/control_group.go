@@ -80,20 +80,16 @@ func makeLogicalControlGroup(authResultsControlGroup *ControlGroup) *logical.Con
 func (c *Core) getRequestFromTokenEntry(ctx context.Context, tokenEntry *logical.TokenEntry) (*logical.Request, error) {
 	reqBytes, ok := tokenEntry.InternalMeta["request"]
 	if !ok {
-		// if there's no control group, nothing to return but it's not an error
-		// nolint:nilnil
-		return nil, nil
+		return nil, errors.New("token meta does not contain request")
 	}
 
-
-        var req logical.Request
+	var req logical.Request
 	if err := jsonutil.DecodeJSON([]byte(reqBytes), &req); err != nil {
 		return nil, err
 	}
 
 	return &req, nil
 }
-
 
 // getControlGroup fetches control group from a token entry (where present) given a token
 func (c *Core) getControlGroup(ctx context.Context, token string) (*logical.ControlGroup, error) {
@@ -318,12 +314,32 @@ func (c *Core) handleControlGroupAuthorize(ctx context.Context, req *logical.Req
 		return nil, &logical.StatusBadRequest{Err: "invalid accessor"}
 	}
 
-	if req.Auth == nil {
+	// Obtain identity info for the authorizer
+	_, authorizerToken, _, _, err := c.fetchACLTokenEntryAndEntity(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if authorizerToken == nil {
 		return nil, &logical.StatusBadRequest{Err: "missing auth"}
 	}
+	authorizerGroups, err := c.identityStore.MemDBGroupsByMemberEntityID(ctx, authorizerToken.EntityID, false, false)
+	if err != nil {
+		return nil, err
+	}
+	authorizerGroupAliases := []*logical.Alias{}
+	for _, group := range authorizerGroups {
+		authorizerGroupAliases = append(authorizerGroupAliases, &logical.Alias{
+			Name: group.Name,
+		})
+	}
+	authorizerAuth := logical.Auth{
+		DisplayName: authorizerToken.DisplayName,
+		GroupAliases: authorizerGroupAliases,
+	}
 
-	// Adds authorization record to the token entry if applicable
-	err = c.addAuthorization(ctx, aEntry.TokenID, req.Auth)
+
+	// Add authorization record to the token entry if applicable
+	err = c.addAuthorization(ctx, aEntry.TokenID, &authorizerAuth)
 	if err != nil {
 		return nil, err
 	}
@@ -331,12 +347,12 @@ func (c *Core) handleControlGroupAuthorize(ctx context.Context, req *logical.Req
 	// Prepare the field data required for a lookup call
 	d := &framework.FieldData{
 		Raw: map[string]interface{}{
-			"token": aEntry.TokenID,
+			"accessor": accessor,
 		},
 		Schema: map[string]*framework.FieldSchema{
-			"token": {
+			"accessor": {
 				Type:        framework.TypeString,
-				Description: "Token to lookup",
+				Description: "Accessor to lookup control group state",
 			},
 		},
 	}

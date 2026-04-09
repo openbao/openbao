@@ -144,7 +144,7 @@ DONELISTHANDLING:
 		NumUses:        1,
 		ExplicitMaxTTL: resp.WrapInfo.TTL,
 		NamespaceID:    ns.ID,
-		Meta:           extraData,
+		InternalMeta:   extraData,
 	}
 
 	if err := c.CreateToken(ctx, &te, true); err != nil {

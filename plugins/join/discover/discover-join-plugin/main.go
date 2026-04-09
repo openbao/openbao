@@ -13,6 +13,7 @@ func main() {
 
 	if err := joinplugin.Serve(joinplugin.ServeOpts{
 		Factory: discover.Factory,
+		Logger:  logger,
 	}); err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)

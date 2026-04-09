@@ -115,6 +115,7 @@ require (
 	github.com/openbao/openbao/api/v2 v2.5.0
 	github.com/openbao/openbao/sdk/v2 v2.5.0
 	github.com/ory/dockertest/v4 v4.0.0
+	github.com/ovh/kmip-go v0.7.2
 	github.com/pires/go-proxyproto v0.12.0
 	github.com/posener/complete v1.2.3
 	github.com/pquerna/otp v1.5.0
@@ -314,7 +315,6 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/oracle/oci-go-sdk/v60 v60.0.0 // indirect
-	github.com/ovh/kmip-go v0.3.3 // indirect
 	github.com/packethost/packngo v0.1.1-0.20180711074735-b9cb5096f54c // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/petermattis/goid v0.0.0-20250813065127-a731cc31b4fe // indirect

@@ -15,7 +15,7 @@ func Serve(opts ServeOpts) error {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: HandshakeConfig,
 		VersionedPlugins: map[int]plugin.PluginSet{
-			1: {"join": &JoinPlugin{Impl: impl}},
+			1: {"join": &joinPlugin{impl: impl}},
 		},
 		GRPCServer: plugin.DefaultGRPCServer,
 	})

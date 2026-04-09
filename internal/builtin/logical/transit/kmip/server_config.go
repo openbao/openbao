@@ -1,3 +1,6 @@
+// Copyright (c) The OpenBao Contributors
+// SPDX-License-Identifier: MPL-2.0
+
 package kmip
 
 const ConfigStoragePath = "kmip/config"

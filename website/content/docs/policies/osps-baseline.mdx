@@ -15,7 +15,7 @@ This pages tracks the implementation status of [Open Source Project Security Bas
 | [OSPS-AC-01.01](#osps-ac-01-01) | ✅     |
 | [OSPS-AC-02.01](#osps-ac-02-01) | ✅     |
 | [OSPS-AC-03.01](#osps-ac-03-01) |        |
-| [OSPS-AC-03.02](#osps-ac-03-02) |        |
+| [OSPS-AC-03.02](#osps-ac-03-02) | ✅     |
 | [OSPS-BR-01.01](#osps-br-01-01) |        |
 | [OSPS-BR-03.01](#osps-br-03-01) |        |
 | [OSPS-DO-01.01](#osps-do-01-01) | ✅     |
@@ -53,7 +53,14 @@ Organization owners are managed through their GitHub Enterprise identities, and 
 When a direct commit is attempted on the project's primary branch, an enforcement mechanism MUST prevent the change from being applied.
 
 ## OSPS-AC-03.02 {#osps-ac-03-02}
-When an attempt is made to delete the project's primary branch, the version control system MUST treat this as a sensitive activity and require explicit confirmation of intent.
+
+> **Requirement:** *When an attempt is made to delete the project's [primary branch](https://baseline.openssf.org/versions/2025-02-25#primary-branch), the [version control system](https://baseline.openssf.org/versions/2025-02-25#version-control-system) MUST treat this as a sensitive activity and require explicit confirmation of intent.*
+
+The `main` branch is protected across all repositories to prevent unintended deletions. These [protection settings](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches) include:
+
+* ...
+* ...
+* ...
 
 ## OSPS-BR-01.01 {#osps-br-01-01}
 When a CI/CD pipeline accepts an input parameter, that parameter MUST be sanitized and validated prior to use in the pipeline.

@@ -19,10 +19,10 @@ type Join interface {
 	Cleanup(context.Context) error
 }
 
-type JoinPlugin struct {
+type joinPlugin struct {
 	plugin.NetRPCUnsupportedPlugin
 
-	Impl Join
+	impl Join
 }
 
 type Factory func() (Join, error)
@@ -34,7 +34,7 @@ type gRPCClient struct {
 type gRPCServer struct {
 	pb.UnimplementedJoinServer
 
-	Impl Join
+	impl Join
 }
 
 var HandshakeConfig = plugin.HandshakeConfig{
@@ -43,11 +43,11 @@ var HandshakeConfig = plugin.HandshakeConfig{
 }
 
 var PluginSets = map[int]plugin.PluginSet{
-	1: {"join": &JoinPlugin{}},
+	1: {"join": &joinPlugin{}},
 }
 
 func (g *gRPCServer) Candidates(ctx context.Context, args *pb.CandidateArgs) (*pb.Candidates, error) {
-	v, err := g.Impl.Candidates(ctx, args.Config)
+	v, err := g.impl.Candidates(ctx, args.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (g *gRPCServer) Candidates(ctx context.Context, args *pb.CandidateArgs) (*p
 }
 
 func (g *gRPCServer) Cleanup(ctx context.Context, args *pb.Empty) (*pb.Empty, error) {
-	err := g.Impl.Cleanup(ctx)
+	err := g.impl.Cleanup(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -84,16 +84,16 @@ func (g *gRPCClient) Cleanup(ctx context.Context) error {
 	return err
 }
 
-func (j *JoinPlugin) GRPCClient(ctx context.Context, b *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
+func (j *joinPlugin) GRPCClient(ctx context.Context, b *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
 	return &gRPCClient{JoinClient: pb.NewJoinClient(c)}, nil
 }
 
-func (j *JoinPlugin) GRPCServer(b *plugin.GRPCBroker, s *grpc.Server) error {
-	pb.RegisterJoinServer(s, &gRPCServer{Impl: j.Impl})
+func (j *joinPlugin) GRPCServer(b *plugin.GRPCBroker, s *grpc.Server) error {
+	pb.RegisterJoinServer(s, &gRPCServer{impl: j.impl})
 	return nil
 }
 
 var (
-	_ plugin.Plugin     = &JoinPlugin{}
-	_ plugin.GRPCPlugin = &JoinPlugin{}
+	_ plugin.Plugin     = &joinPlugin{}
+	_ plugin.GRPCPlugin = &joinPlugin{}
 )

@@ -345,8 +345,9 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		}
 
 		sealRaw, ok := data.GetOk("seal")
-		sealConfig := &SealConfig{}
+		var sealConfig *SealConfig
 		if ok {
+			sealConfig = &SealConfig{}
 			if err := mapstructure.Decode(sealRaw, &sealConfig); err != nil {
 				return logical.ErrorResponse("invalid seal config data"), logical.ErrInvalidRequest
 			}
@@ -354,9 +355,6 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			if err := sealConfig.Validate(); err != nil {
 				return logical.ErrorResponse("invalid seal config: %v", err), err
 			}
-		} else {
-			// fallback to nil
-			sealConfig = nil
 		}
 
 		entry, keyShares, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, sealConfig,

@@ -1462,6 +1462,7 @@ func (j *namespaceCreationFailureJob) Execute() error {
 			retErr = multierror.Append(retErr, err)
 		}
 
+		// TODO(wslabosz): think if sealmanager namespace removal should happen earlier.
 		j.store.core.sealManager.RemoveNamespace(j.target)
 	}
 

@@ -4,93 +4,76 @@
 package shamir
 
 import (
-	"bytes"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSplit_invalid(t *testing.T) {
 	secret := []byte("test")
 
-	if _, err := Split(secret, 0, 0); err == nil {
-		t.Fatal("expect error")
-	}
+	_, err := Split(secret, 0, 0)
+	require.Error(t, err)
 
-	if _, err := Split(secret, 2, 3); err == nil {
-		t.Fatal("expect error")
-	}
+	_, err = Split(secret, 2, 3)
+	require.Error(t, err)
 
-	if _, err := Split(secret, 1000, 3); err == nil {
-		t.Fatal("expect error")
-	}
+	_, err = Split(secret, 1000, 3)
+	require.Error(t, err)
 
-	if _, err := Split(secret, 10, 1); err == nil {
-		t.Fatal("expect error")
-	}
+	_, err = Split(secret, 10, 1)
+	require.Error(t, err)
 
-	if _, err := Split(nil, 3, 2); err == nil {
-		t.Fatal("expect error")
-	}
+	_, err = Split(nil, 3, 2)
+	require.Error(t, err)
 }
 
 func TestSplit(t *testing.T) {
 	secret := []byte("test")
 
 	out, err := Split(secret, 5, 3)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	if len(out) != 5 {
-		t.Fatalf("bad: %v", out)
-	}
+	require.NoError(t, err)
+	require.Len(t, out, 5)
 
 	for _, share := range out {
-		if len(share) != len(secret)+1 {
-			t.Fatalf("bad: %v", out)
-		}
+		require.Len(t, share, len(secret)+1)
 	}
 }
 
 func TestCombine_invalid(t *testing.T) {
 	// Not enough parts
-	if _, err := Combine(nil); err == nil {
-		t.Fatal("should err")
-	}
+	_, err := Combine(nil)
+	require.Error(t, err)
 
 	// Mis-match in length
 	parts := [][]byte{
 		[]byte("foo"),
 		[]byte("ba"),
 	}
-	if _, err := Combine(parts); err == nil {
-		t.Fatal("should err")
-	}
+	_, err = Combine(parts)
+	require.Error(t, err)
 
 	// Too short
 	parts = [][]byte{
 		[]byte("f"),
 		[]byte("b"),
 	}
-	if _, err := Combine(parts); err == nil {
-		t.Fatal("should err")
-	}
+	_, err = Combine(parts)
+	require.Error(t, err)
 
 	parts = [][]byte{
 		[]byte("foo"),
 		[]byte("foo"),
 	}
-	if _, err := Combine(parts); err == nil {
-		t.Fatal("should err")
-	}
+	_, err = Combine(parts)
+	require.Error(t, err)
 }
 
 func TestCombine(t *testing.T) {
 	secret := []byte("test")
 
 	out, err := Split(secret, 5, 3)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// There is 5*4*3 possible choices,
 	// we will just brute force try them all
@@ -106,106 +89,55 @@ func TestCombine(t *testing.T) {
 
 				parts := [][]byte{out[i], out[j], out[k]}
 				recomb, err := Combine(parts)
-				if err != nil {
-					t.Fatalf("err: %v", err)
-				}
-
-				if !bytes.Equal(recomb, secret) {
-					t.Errorf("parts: (i:%d, j:%d, k:%d) %v", i, j, k, parts)
-					t.Fatalf("bad: %v %v", recomb, secret)
-				}
+				require.NoError(t, err)
+				require.Equal(t, secret, recomb, "parts: (i:%d, j:%d, k:%d)", i, j, k)
 			}
 		}
 	}
 }
 
 func TestField_Add(t *testing.T) {
-	if out := add(16, 16); out != 0 {
-		t.Fatalf("Bad: %v 16", out)
-	}
-
-	if out := add(3, 4); out != 7 {
-		t.Fatalf("Bad: %v 7", out)
-	}
+	require.Equal(t, uint8(0), add(16, 16))
+	require.Equal(t, uint8(7), add(3, 4))
 }
 
 func TestField_Mult(t *testing.T) {
-	if out := mult(3, 7); out != 9 {
-		t.Fatalf("Bad: %v 9", out)
-	}
-
-	if out := mult(3, 0); out != 0 {
-		t.Fatalf("Bad: %v 0", out)
-	}
-
-	if out := mult(0, 3); out != 0 {
-		t.Fatalf("Bad: %v 0", out)
-	}
+	require.Equal(t, uint8(9), mult(3, 7))
+	require.Equal(t, uint8(0), mult(3, 0))
+	require.Equal(t, uint8(0), mult(0, 3))
 }
 
 func TestField_Divide(t *testing.T) {
-	if out := div(0, 7); out != 0 {
-		t.Fatalf("Bad: %v 0", out)
-	}
-
-	if out := div(3, 3); out != 1 {
-		t.Fatalf("Bad: %v 1", out)
-	}
-
-	if out := div(6, 3); out != 2 {
-		t.Fatalf("Bad: %v 2", out)
-	}
+	require.Equal(t, uint8(0), div(0, 7))
+	require.Equal(t, uint8(1), div(3, 3))
+	require.Equal(t, uint8(2), div(6, 3))
 }
 
 func TestPolynomial_Random(t *testing.T) {
 	p, err := makePolynomial(42, 2)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	if p.coefficients[0] != 42 {
-		t.Fatalf("bad: %v", p.coefficients)
-	}
+	require.NoError(t, err)
+	require.Equal(t, uint8(42), p.coefficients[0])
 }
 
 func TestPolynomial_Eval(t *testing.T) {
 	p, err := makePolynomial(42, 1)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
-	func() {
-		defer func() {
-			r := recover()
-			if r == nil {
-				t.Fatal("expected panic trying to call p.evaluate(0)")
-			}
-		}()
-
-		if out := p.evaluate(0); out != 42 {
-			t.Fatalf("bad: %v", out)
-		}
-	}()
+	require.Panics(t, func() { p.evaluate(0) }, "expected panic trying to call p.evaluate(0)")
 
 	out := p.evaluate(1)
 	exp := add(42, mult(1, p.coefficients[1]))
-	if out != exp {
-		t.Fatalf("bad: %v %v %v", out, exp, p.coefficients)
-	}
+	require.Equal(t, exp, out)
 }
 
 func TestInterpolate_Rand(t *testing.T) {
 	for i := range 256 {
 		p, err := makePolynomial(uint8(i), 2)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		x_vals := []uint8{1, 2, 3}
 		y_vals := []uint8{p.evaluate(1), p.evaluate(2), p.evaluate(3)}
 		out := interpolatePolynomial(x_vals, y_vals, 0)
-		if out != uint8(i) {
-			t.Fatalf("Bad: %v %d", out, i)
-		}
+		require.Equal(t, uint8(i), out)
 	}
 }

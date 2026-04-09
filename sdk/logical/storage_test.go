@@ -5,12 +5,11 @@ package logical
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,13 +33,8 @@ func TestScanView(t *testing.T) {
 	err := ScanView(t.Context(), s, func(path string) {
 		keys = append(keys, path)
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if diff := deep.Equal(keys, keyList); diff != nil {
-		t.Fatal(diff)
-	}
+	require.NoError(t, err)
+	require.Equal(t, keyList, keys)
 }
 
 func TestScanView_CancelContext(t *testing.T) {
@@ -53,12 +47,8 @@ func TestScanView_CancelContext(t *testing.T) {
 		i++
 	})
 
-	if err == nil {
-		t.Error("Want context cancel err, got none")
-	}
-	if i != 1 {
-		t.Errorf("Want i==1, got %d", i)
-	}
+	assert.Error(t, err, "Want context cancel err, got none")
+	assert.Equal(t, 1, i, "Want i==1")
 }
 
 func TestScanViewPaginated(t *testing.T) {
@@ -68,13 +58,8 @@ func TestScanViewPaginated(t *testing.T) {
 	err := ScanViewWithLogger(t.Context(), s, nil, func(path string) {
 		keys = append(keys, path)
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if diff := deep.Equal(keys, keyList); diff != nil {
-		t.Fatal(diff)
-	}
+	require.NoError(t, err)
+	require.Equal(t, keyList, keys)
 
 	// Validate that recursing into a folder which only has references to
 	// itself and/or files which bear the same name works.
@@ -86,17 +71,13 @@ func TestScanViewPaginated(t *testing.T) {
 			keys = append(keys, path)
 			return true, nil
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		trimmedExpected := make([]string, 0)
 		for _, path := range keyList[len(keyList)-3:] {
-			trimmedExpected = append(trimmedExpected, strings.TrimPrefix(path, "bar/"))
+			trimmedExpected = append(trimmedExpected, path[len("bar/"):])
 		}
-		if diff := deep.Equal(keys, trimmedExpected); diff != nil {
-			t.Fatalf("page size: %v\ndiff: %v\n\tkeys: %v\n\texpected: %v", pageSize, diff, keys, trimmedExpected)
-		}
+		require.Equal(t, trimmedExpected, keys, "page size: %v", pageSize)
 	}
 }
 
@@ -104,32 +85,22 @@ func TestCollectKeys(t *testing.T) {
 	s := prepKeyStorage(t)
 
 	keys, err := CollectKeys(t.Context(), s)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if diff := deep.Equal(keys, keyList); diff != nil {
-		t.Fatal(diff)
-	}
+	require.NoError(t, err)
+	require.Equal(t, keyList, keys)
 }
 
 func TestCollectKeysPrefix(t *testing.T) {
 	s := prepKeyStorage(t)
 
 	keys, err := CollectKeysWithPrefix(t.Context(), s, "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	exp := []string{
 		"foo",
 		"foo42",
 		"foo/a/b/c",
 	}
-
-	if diff := deep.Equal(keys, exp); diff != nil {
-		t.Fatal(diff)
-	}
+	require.Equal(t, exp, keys)
 }
 
 func TestClearView(t *testing.T) {
@@ -219,13 +190,12 @@ func prepKeyStorage(t *testing.T) Storage {
 	s := &InmemStorage{}
 
 	for _, key := range keyList {
-		if err := s.Put(t.Context(), &StorageEntry{
+		err := s.Put(t.Context(), &StorageEntry{
 			Key:      key,
 			Value:    nil,
 			SealWrap: false,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 	}
 
 	return s

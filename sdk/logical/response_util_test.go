@@ -5,8 +5,9 @@ package logical
 
 import (
 	"errors"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestResponseUtil_RespondErrorCommon_basic(t *testing.T) {
@@ -87,19 +88,14 @@ func TestResponseUtil_RespondErrorCommon_basic(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.title, func(t *testing.T) {
-			var status int
-			var err, respErr error
+			var respErr error
 			if tc.respErr != nil {
 				respErr = tc.respErr
 			}
-			status, err = RespondErrorCommon(tc.req, tc.resp, respErr)
-			if status != tc.expectedStatus {
-				t.Fatalf("Expected (%d) status code, got (%d)", tc.expectedStatus, status)
-			}
+			status, err := RespondErrorCommon(tc.req, tc.resp, respErr)
+			require.Equal(t, tc.expectedStatus, status)
 			if tc.expectedErr != nil {
-				if !strings.Contains(tc.expectedErr.Error(), err.Error()) {
-					t.Fatalf("Expected error to contain:\n%s\n\ngot:\n%s\n", tc.expectedErr, err)
-				}
+				require.Contains(t, tc.expectedErr.Error(), err.Error())
 			}
 		})
 	}

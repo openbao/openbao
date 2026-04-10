@@ -926,7 +926,7 @@ func TestTokenStore_HandleRequest_ApproveAccessor(t *testing.T) {
 	}
 
 	// Set control group meta info on token
-	err = c.setControlGroup(ctx, "tokenid", &cg)
+	err = c.setControlGroupInTokenEntry(ctx, out, &cg)
 	require.Nil(t, err)
 
 	// addAuthorzation

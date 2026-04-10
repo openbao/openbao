@@ -75,7 +75,7 @@ func TestControlGroup_getControlGroup(t *testing.T) {
 	require.NotEmpty(t, te.ID)
 
 	// Fetch control group via token
-	fetchedCG, err := c.getControlGroup(ctx, te.ID)
+	fetchedCG, err := c.getControlGroupFromTokenEntry(ctx, &te)
 	require.Nil(t, err)
 	require.Equal(t, &originalCG, fetchedCG)
 }
@@ -116,7 +116,7 @@ func TestControlGroup_setControlGroup(t *testing.T) {
 	}
 
 	// Set control group via token
-	err := c.setControlGroup(ctx, te.ID, &cg)
+	err := c.setControlGroupInTokenEntry(ctx, te, &cg)
 	require.Nil(t, err)
 
 	// Token entry should now have control group
@@ -124,7 +124,7 @@ func TestControlGroup_setControlGroup(t *testing.T) {
 	require.Nil(t, err)
 
 	require.NotEmpty(t, te)
-	require.NotEmpty(t, te.Meta["control_group"])
+	require.NotEmpty(t, te.InternalMeta["control_group"])
 }
 
 func TestControlGroup_addAuthorization(t *testing.T) {
@@ -177,7 +177,7 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	}
 
 	// Set control group via token
-	err := c.setControlGroup(ctx, te.ID, &cg)
+	err := c.setControlGroupInTokenEntry(ctx, te, &cg)
 	require.Nil(t, err)
 
 	// addAuthorzation
@@ -193,7 +193,9 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	require.Nil(t, err)
 
 	// Token entry should now have the authorization
-	cgFetched, err := c.getControlGroup(ctx, te.ID)
+	te, err = c.tokenStore.lookupInternal(ctx, te.ID, false, false)
+	require.Nil(t, err)
+	cgFetched, err := c.getControlGroupFromTokenEntry(ctx, te)
 	require.Nil(t, err)
 
 	// expect all matching factors to receive an authorization

@@ -152,18 +152,6 @@ func (c *Core) setControlGroupInTokenEntry(ctx context.Context, tokenEntry *logi
 	return c.tokenStore.store(ctx, tokenEntry)
 }
 
-// setControlGroup sets/replaces control group metadata on a token entry
-func (c *Core) setControlGroup(ctx context.Context, token string, cg *logical.ControlGroup) error {
-	tokenEntry, err := c.tokenStore.Lookup(ctx, token)
-	if err != nil {
-		return err
-	}
-	if tokenEntry == nil {
-		return nil
-	}
-	return c.setControlGroupInTokenEntry(ctx, tokenEntry, cg)
-}
-
 // validateControlGroup checks for a passing control group factor; passes if there is no control group config
 func (c *Core) validateControlGroup(ctx context.Context, tokenEntry *logical.TokenEntry, requestCapability logical.Operation) (bool, error) {
 	cg, err := c.getControlGroupFromTokenEntry(ctx, tokenEntry)

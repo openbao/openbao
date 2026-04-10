@@ -10,7 +10,7 @@ type ServeOpts struct {
 	Logger  hclog.Logger
 }
 
-func Serve(opts ServeOpts) error {
+func Serve(opts *ServeOpts) {
 	logger := opts.Logger
 	if logger == nil {
 		logger = hclog.New(&hclog.LoggerOptions{
@@ -19,19 +19,16 @@ func Serve(opts ServeOpts) error {
 		})
 	}
 
-	impl, err := opts.Factory(JoinConfig{Logger: logger})
-	if err != nil {
-		// Don't log returned error, caller will handle it,
-		return err
+	factory := func() (Join, error) {
+		return opts.Factory(&JoinConfig{Logger: logger})
 	}
 
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: HandshakeConfig,
 		VersionedPlugins: map[int]plugin.PluginSet{
-			1: {"join": &joinPlugin{impl: impl}},
+			1: {"join": &joinPlugin{factory: factory}},
 		},
 		GRPCServer: plugin.DefaultGRPCServer,
 		Logger:     logger,
 	})
-	return nil
 }

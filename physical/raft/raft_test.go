@@ -288,10 +288,13 @@ func TestRaft_JoinConfig(t *testing.T) {
 		logger: hclog.NewNullLogger(),
 		conf: map[string]string{
 			"retry_join": `[
-				{"auto_join": "aws foo=baz"},
+				{"auto_join": "provider=aws foo=baz"},
 				{"auto_join_plugin": {
 					"plugin": "discover",
-					"config": {"discover": "aws foo=bar"}
+					"config": {
+					  "provider": "aws",
+					  "args": {"foo": "bar"}
+		            }
 				}}
 			]`,
 		},
@@ -304,21 +307,19 @@ func TestRaft_JoinConfig(t *testing.T) {
 		{
 			AutoJoinPlugin: &AutoJoinPlugin{
 				Plugin: "discover",
-				Config: map[string]string{"discover": "aws foo=baz"},
+				Config: map[string]any{"provider": "aws", "args": map[string]string{"foo": "baz"}},
 			},
 			Retry: true,
 		},
 		{
 			AutoJoinPlugin: &AutoJoinPlugin{
 				Plugin: "discover",
-				Config: map[string]string{"discover": "aws foo=bar"},
+				Config: map[string]any{"provider": "aws", "args": map[string]any{"foo": "bar"}},
 			},
 			Retry: true,
 		},
 	}
-	if diff := deep.Equal(conf, expected); diff != nil {
-		t.Errorf("config not as expected: %+v", diff)
-	}
+	require.EqualValues(t, expected, conf)
 }
 
 func TestRaft_Backend_LargeKey(t *testing.T) {

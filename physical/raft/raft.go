@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/go-discover"
 	log "github.com/hashicorp/go-hclog"
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-raftchunking"
@@ -216,8 +217,8 @@ func (r *RaftBackend) HookInvalidate(hook physical.InvalidateFunc) {
 }
 
 type AutoJoinPlugin struct {
-	Plugin string            `json:"plugin"`
-	Config map[string]string `json:"config"`
+	Plugin string         `json:"plugin"`
+	Config map[string]any `json:"config"`
 }
 
 // LeaderJoinInfo contains information required by a node to join itself as a
@@ -319,7 +320,16 @@ func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
 
 		if info.AutoJoin != "" {
 			b.logger.Warn("legacy auto-join config found, please use discover plugin instead")
-			info.AutoJoinPlugin = &AutoJoinPlugin{Plugin: "discover", Config: map[string]string{"discover": info.AutoJoin}}
+			config, err := discover.Parse(info.AutoJoin)
+			if err != nil {
+				return nil, err
+			}
+			provider := config["provider"]
+			delete(config, "provider")
+			info.AutoJoinPlugin = &AutoJoinPlugin{
+				Plugin: "discover",
+				Config: map[string]any{"provider": provider, "args": map[string]string(config)},
+			}
 			info.AutoJoin = ""
 		}
 

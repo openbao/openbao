@@ -222,7 +222,9 @@ func TestRaft_RetryAutoJoin_Plugin(t *testing.T) {
 		{
 			AutoJoinPlugin: &raft.AutoJoinPlugin{
 				Plugin: "static",
-				Config: map[string]string{"addresses": leaderCore.Client.Address()},
+				Config: map[string]any{
+					"addresses": []string{leaderCore.Client.Address()},
+				},
 			},
 			TLSConfig: leaderCore.TLSConfig(),
 			Retry:     true,

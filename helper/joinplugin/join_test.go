@@ -28,7 +28,7 @@ func TestJoinPlugin(t *testing.T) {
 		}},
 	}
 
-	conf := map[string]string{"addresses": "https://127.0.0.1:8200,https://127.0.0.2:8201"}
+	conf := map[string]any{"addresses": []any{"https://127.0.0.1:8200", "https://127.0.0.2:8201"}}
 
 	catalog, err := NewCatalog(hclog.NewNullLogger(), serverConf)
 	require.NoError(t, err, "should create join plugin catalog")

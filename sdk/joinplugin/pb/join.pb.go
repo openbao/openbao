@@ -9,6 +9,7 @@ package pb
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -59,7 +60,7 @@ func (*Empty) Descriptor() ([]byte, []int) {
 
 type CandidateArgs struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Config        map[string]string      `protobuf:"bytes,1,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Config        *structpb.Struct       `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -94,7 +95,7 @@ func (*CandidateArgs) Descriptor() ([]byte, []int) {
 	return file_sdk_joinplugin_pb_join_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *CandidateArgs) GetConfig() map[string]string {
+func (x *CandidateArgs) GetConfig() *structpb.Struct {
 	if x != nil {
 		return x.Config
 	}
@@ -209,13 +210,10 @@ var File_sdk_joinplugin_pb_join_proto protoreflect.FileDescriptor
 
 const file_sdk_joinplugin_pb_join_proto_rawDesc = "" +
 	"\n" +
-	"\x1csdk/joinplugin/pb/join.proto\x12\x04join\"\a\n" +
-	"\x05Empty\"\x83\x01\n" +
-	"\rCandidateArgs\x127\n" +
-	"\x06config\x18\x01 \x03(\v2\x1f.join.CandidateArgs.ConfigEntryR\x06config\x1a9\n" +
-	"\vConfigEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"K\n" +
+	"\x1csdk/joinplugin/pb/join.proto\x12\x04join\x1a\x1cgoogle/protobuf/struct.proto\"\a\n" +
+	"\x05Empty\"@\n" +
+	"\rCandidateArgs\x12/\n" +
+	"\x06config\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x06config\"K\n" +
 	"\tCandidate\x12\x12\n" +
 	"\x04host\x18\x01 \x01(\tR\x04host\x12\x16\n" +
 	"\x06scheme\x18\x02 \x01(\tR\x06scheme\x12\x12\n" +
@@ -242,16 +240,16 @@ func file_sdk_joinplugin_pb_join_proto_rawDescGZIP() []byte {
 	return file_sdk_joinplugin_pb_join_proto_rawDescData
 }
 
-var file_sdk_joinplugin_pb_join_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_sdk_joinplugin_pb_join_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_sdk_joinplugin_pb_join_proto_goTypes = []any{
-	(*Empty)(nil),         // 0: join.Empty
-	(*CandidateArgs)(nil), // 1: join.CandidateArgs
-	(*Candidate)(nil),     // 2: join.Candidate
-	(*Candidates)(nil),    // 3: join.Candidates
-	nil,                   // 4: join.CandidateArgs.ConfigEntry
+	(*Empty)(nil),           // 0: join.Empty
+	(*CandidateArgs)(nil),   // 1: join.CandidateArgs
+	(*Candidate)(nil),       // 2: join.Candidate
+	(*Candidates)(nil),      // 3: join.Candidates
+	(*structpb.Struct)(nil), // 4: google.protobuf.Struct
 }
 var file_sdk_joinplugin_pb_join_proto_depIdxs = []int32{
-	4, // 0: join.CandidateArgs.config:type_name -> join.CandidateArgs.ConfigEntry
+	4, // 0: join.CandidateArgs.config:type_name -> google.protobuf.Struct
 	2, // 1: join.Candidates.candidates:type_name -> join.Candidate
 	1, // 2: join.Join.candidates:input_type -> join.CandidateArgs
 	0, // 3: join.Join.cleanup:input_type -> join.Empty
@@ -275,7 +273,7 @@ func file_sdk_joinplugin_pb_join_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sdk_joinplugin_pb_join_proto_rawDesc), len(file_sdk_joinplugin_pb_join_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

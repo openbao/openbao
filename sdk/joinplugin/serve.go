@@ -1,8 +1,6 @@
 package joinplugin
 
 import (
-	"os"
-
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 )
@@ -17,12 +15,11 @@ func Serve(opts ServeOpts) error {
 	if logger == nil {
 		logger = hclog.New(&hclog.LoggerOptions{
 			Level:      hclog.Info,
-			Output:     os.Stderr,
 			JSONFormat: true,
 		})
 	}
 
-	impl, err := opts.Factory()
+	impl, err := opts.Factory(JoinConfig{Logger: logger})
 	if err != nil {
 		// Don't log returned error, caller will handle it,
 		return err

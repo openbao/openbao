@@ -9,7 +9,10 @@ import (
 )
 
 func main() {
-	logger := hclog.Default()
+	logger := hclog.New(&hclog.LoggerOptions{
+		Level:      hclog.Info,
+		JSONFormat: true,
+	})
 
 	if err := joinplugin.Serve(joinplugin.ServeOpts{
 		Factory: discover.Factory,

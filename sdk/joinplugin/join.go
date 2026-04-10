@@ -22,15 +22,14 @@ type Join interface {
 
 type joinPlugin struct {
 	plugin.NetRPCUnsupportedPlugin
-
-	impl Join
+	factory func() (Join, error)
 }
 
 type JoinConfig struct {
 	Logger hclog.Logger
 }
 
-type Factory func(cfg JoinConfig) (Join, error)
+type Factory func(*JoinConfig) (Join, error)
 
 type gRPCClient struct {
 	pb.JoinClient
@@ -94,7 +93,11 @@ func (j *joinPlugin) GRPCClient(ctx context.Context, b *plugin.GRPCBroker, c *gr
 }
 
 func (j *joinPlugin) GRPCServer(b *plugin.GRPCBroker, s *grpc.Server) error {
-	pb.RegisterJoinServer(s, &gRPCServer{impl: j.impl})
+	impl, err := j.factory()
+	if err != nil {
+		return err
+	}
+	pb.RegisterJoinServer(s, &gRPCServer{impl: impl})
 	return nil
 }
 

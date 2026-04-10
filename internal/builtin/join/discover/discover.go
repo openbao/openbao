@@ -14,7 +14,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/joinplugin"
 )
 
-func Factory(cfg joinplugin.JoinConfig) (joinplugin.Join, error) {
+func Factory(cfg *joinplugin.JoinConfig) (joinplugin.Join, error) {
 	providers := make(map[string]discover.Provider)
 	maps.Copy(providers, discover.Providers)
 	providers["k8s"] = &k8s.Provider{}

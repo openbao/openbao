@@ -19,6 +19,8 @@ import (
 type fileSink struct {
 	path   string
 	mode   os.FileMode
+	uid    int
+	gid    int
 	logger hclog.Logger
 }
 
@@ -33,6 +35,8 @@ func NewFileSink(conf *sink.SinkConfig) (sink.Sink, error) {
 	f := &fileSink{
 		logger: conf.Logger,
 		mode:   0o640,
+		uid:    -1,
+		gid:    -1,
 	}
 
 	pathRaw, ok := conf.Config["path"]
@@ -59,6 +63,28 @@ func NewFileSink(conf *sink.SinkConfig) (sink.Sink, error) {
 
 		f.logger.Debug("overriding default file sink", "mode", mode)
 		f.mode = os.FileMode(mode)
+	}
+
+	if uidRaw, ok := conf.Config["uid"]; ok {
+		f.logger.Debug("verifying override for default file sink uid")
+		uid, typeOK := uidRaw.(int)
+		if !typeOK {
+			return nil, errors.New("could not parse 'uid' as integer")
+		}
+
+		f.logger.Debug("overriding default file sink", "uid", uid)
+		f.uid = uid
+	}
+
+	if gidRaw, ok := conf.Config["gid"]; ok {
+		f.logger.Debug("verifying override for default file sink gid")
+		gid, typeOK := gidRaw.(int)
+		if !typeOK {
+			return nil, errors.New("could not parse 'gid' as integer")
+		}
+
+		f.logger.Debug("overriding default file sink", "gid", gid)
+		f.gid = gid
 	}
 
 	if err := f.WriteToken(""); err != nil {
@@ -119,6 +145,11 @@ func (f *fileSink) WriteToken(token string) error {
 			return fmt.Errorf("error removing temp file %s during write check: %w", tmpFile.Name(), err)
 		}
 		return nil
+	}
+
+	// adjust file ownership if the sink has a none-default uid or gid configuration
+	if err := os.Chown(tmpFile.Name(), f.uid, f.gid); err != nil {
+		return fmt.Errorf("error changing file ownership of %s to uid %d and gid %d: %w", tmpFile.Name(), f.uid, f.gid, err)
 	}
 
 	err = os.Rename(tmpFile.Name(), f.path)

@@ -705,6 +705,13 @@ message Connection {
 	// ConnectionState is the marshalled tls.ConnectionState from the original
 	// request
 	ConnectionState connection_state = 2;
+
+    // ProxiedCertificate is a certificate verified by a proxy header.
+    repeated bytes proxied_certificates_raw = 4;
+
+    // PeerCertificate is a certificate verified by this server through a TLS
+    // connection.
+    repeated bytes peer_certificates_raw = 5;
 }
 
 message ConnectionState {

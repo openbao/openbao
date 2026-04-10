@@ -3457,8 +3457,13 @@ type Connection struct {
 	// ConnectionState is the marshalled tls.ConnectionState from the original
 	// request
 	ConnectionState *ConnectionState `protobuf:"bytes,2,opt,name=connection_state,json=connectionState,proto3" json:"connection_state,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// ProxiedCertificate is a certificate verified by a proxy header.
+	ProxiedCertificatesRaw [][]byte `protobuf:"bytes,4,rep,name=proxied_certificates_raw,json=proxiedCertificatesRaw,proto3" json:"proxied_certificates_raw,omitempty"`
+	// PeerCertificate is a certificate verified by this server through a TLS
+	// connection.
+	PeerCertificatesRaw [][]byte `protobuf:"bytes,5,rep,name=peer_certificates_raw,json=peerCertificatesRaw,proto3" json:"peer_certificates_raw,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Connection) Reset() {
@@ -3508,6 +3513,20 @@ func (x *Connection) GetRemotePort() int32 {
 func (x *Connection) GetConnectionState() *ConnectionState {
 	if x != nil {
 		return x.ConnectionState
+	}
+	return nil
+}
+
+func (x *Connection) GetProxiedCertificatesRaw() [][]byte {
+	if x != nil {
+		return x.ProxiedCertificatesRaw
+	}
+	return nil
+}
+
+func (x *Connection) GetPeerCertificatesRaw() [][]byte {
+	if x != nil {
+		return x.PeerCertificatesRaw
 	}
 	return nil
 }
@@ -4000,14 +4019,16 @@ const file_sdk_plugin_pb_backend_proto_rawDesc = "" +
 	"\fcluster_name\x18\x01 \x01(\tR\vclusterName\x12\x1d\n" +
 	"\n" +
 	"cluster_id\x18\x02 \x01(\tR\tclusterID\x12\x10\n" +
-	"\x03err\x18\x03 \x01(\tR\x03err\"\x8e\x01\n" +
+	"\x03err\x18\x03 \x01(\tR\x03err\"\xfc\x01\n" +
 	"\n" +
 	"Connection\x12\x1f\n" +
 	"\vremote_addr\x18\x01 \x01(\tR\n" +
 	"remoteAddr\x12\x1f\n" +
 	"\vremote_port\x18\x03 \x01(\x05R\n" +
 	"remotePort\x12>\n" +
-	"\x10connection_state\x18\x02 \x01(\v2\x13.pb.ConnectionStateR\x0fconnectionState\"\xbf\x04\n" +
+	"\x10connection_state\x18\x02 \x01(\v2\x13.pb.ConnectionStateR\x0fconnectionState\x128\n" +
+	"\x18proxied_certificates_raw\x18\x04 \x03(\fR\x16proxiedCertificatesRaw\x122\n" +
+	"\x15peer_certificates_raw\x18\x05 \x03(\fR\x13peerCertificatesRaw\"\xbf\x04\n" +
 	"\x0fConnectionState\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x12-\n" +
 	"\x12handshake_complete\x18\x02 \x01(\bR\x11handshakeComplete\x12\x1d\n" +

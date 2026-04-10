@@ -14,9 +14,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/joinplugin"
 )
 
-func Factory() (joinplugin.Join, error) {
-	logger := hclog.Default()
-
+func Factory(cfg joinplugin.JoinConfig) (joinplugin.Join, error) {
 	providers := make(map[string]discover.Provider)
 	maps.Copy(providers, discover.Providers)
 	providers["k8s"] = &k8s.Provider{}
@@ -26,7 +24,7 @@ func Factory() (joinplugin.Join, error) {
 		return nil, err
 	}
 
-	return &Discover{logger: logger, disco: disco}, nil
+	return &Discover{logger: cfg.Logger, disco: disco}, nil
 }
 
 type Discover struct {

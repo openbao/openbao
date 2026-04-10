@@ -12,7 +12,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/joinplugin"
 )
 
-func Factory(cfg joinplugin.JoinConfig) (joinplugin.Join, error) {
+func Factory(cfg *joinplugin.JoinConfig) (joinplugin.Join, error) {
 	providers := make(map[string]discover.Provider)
 	for k, v := range discover.Providers {
 		providers[k] = v

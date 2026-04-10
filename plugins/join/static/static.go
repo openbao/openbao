@@ -11,7 +11,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/joinplugin"
 )
 
-func Factory(cfg joinplugin.JoinConfig) (joinplugin.Join, error) {
+func Factory(cfg *joinplugin.JoinConfig) (joinplugin.Join, error) {
 	return &Static{logger: cfg.Logger}, nil
 }
 

@@ -44,7 +44,9 @@ func (c *Catalog) NewJoin(name string) (joinplugin.Join, bool, error) {
 	}
 	if !ok {
 		if factory, ok := builtins[name]; ok {
-			plugin, err := factory(joinplugin.JoinConfig{Logger: c.Logger})
+			plugin, err := factory(&joinplugin.JoinConfig{
+				Logger: c.Logger,
+			})
 			return plugin, true, err
 		}
 		return nil, false, fmt.Errorf("unknown join: %s", name)

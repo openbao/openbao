@@ -247,6 +247,11 @@ func (ps *PolicyStore) rLockWithUnlock(ctx context.Context) func() {
 }
 
 func (ps *PolicyStore) invalidateNamespace(ctx context.Context, uuid string) {
+	// Skip invalidation if no cache exists.
+	if ps.tokenPoliciesLRU == nil {
+		return
+	}
+
 	defer ps.lockWithUnlock(ctx)()
 
 	for _, key := range ps.tokenPoliciesLRU.Keys() {

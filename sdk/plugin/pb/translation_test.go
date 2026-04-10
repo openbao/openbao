@@ -61,7 +61,7 @@ func TestTranslation_StorageEntry(t *testing.T) {
 }
 
 func TestTranslation_Request(t *testing.T) {
-	certs, err := peerCertificates()
+	certs, certsBytes, err := peerCertificates()
 	if err != nil {
 		t.Logf("No test certificates were generated: %v", err)
 	}
@@ -91,6 +91,8 @@ func TestTranslation_Request(t *testing.T) {
 					PeerCertificates:           certs,
 					NegotiatedProtocolIsMutual: true,
 				},
+				ProxiedCertificatesRaw: certsBytes,
+				PeerCertificatesRaw:    certsBytes,
 			},
 		},
 		{
@@ -301,16 +303,16 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc
 6MF9+Yw1Yy0t
 -----END CERTIFICATE-----`
 
-func peerCertificates() ([]*x509.Certificate, error) {
+func peerCertificates() ([]*x509.Certificate, [][]byte, error) {
 	blk, _ := pem.Decode([]byte(exampleCert))
 	if blk == nil {
-		return nil, errors.New("cannot decode example certificate")
+		return nil, nil, errors.New("cannot decode example certificate")
 	}
 
 	cert, err := x509.ParseCertificate(blk.Bytes)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return []*x509.Certificate{cert}, nil
+	return []*x509.Certificate{cert}, [][]byte{cert.Raw}, nil
 }

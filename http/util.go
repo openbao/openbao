@@ -266,7 +266,7 @@ func (m *multiReaderCloser) Close() error {
 // The cert is base64 encoded with colons at the beginning and end.
 func rfc9440DecodeHeader(headerValue string) (string, error) {
 	// validate that it starts and ends with :
-	if headerValue[0] == ':' && headerValue[len(headerValue)-1] == ':' {
+	if len(headerValue) > 2 && headerValue[0] == ':' && headerValue[len(headerValue)-1] == ':' {
 		// return the value between the :
 		headerValue = headerValue[1 : len(headerValue)-1]
 	} else {

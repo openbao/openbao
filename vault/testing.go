@@ -317,6 +317,10 @@ func TestCoreSeal(core *Core) error {
 	return core.sealInternal()
 }
 
+func TestNamespaceUnseal(core *Core, ns *namespace.Namespace, key []byte) (bool, error) {
+	return core.namespaceStore.unsealNamespace(namespace.ContextWithNamespace(context.Background(), ns), ns, TestKeyCopy(key))
+}
+
 func TestCoreCreateNamespaces(t testing.T, core *Core, namespaces ...*namespace.Namespace) {
 	t.Helper()
 	ctx := namespace.RootContext(context.Background())
@@ -328,6 +332,49 @@ func TestCoreCreateNamespaces(t testing.T, core *Core, namespaces ...*namespace.
 		err = core.namespaceStore.SetNamespace(parentCtx, ns)
 		require.NoError(t, err)
 	}
+}
+
+// TestCoreCreateSealedNamespaces creates sealed namespaces with 3 key shares and
+// returns the key shares for each namespace in a map with namespace path as key.
+func TestCoreCreateSealedNamespaces(t testing.T, core *Core, namespaces ...*namespace.Namespace) map[string][][]byte {
+	t.Helper()
+	sealConfig := &SealConfig{
+		Type:            "shamir",
+		SecretShares:    3,
+		SecretThreshold: 3,
+	}
+	ctx := namespace.RootContext(context.Background())
+	keysPerNamespace := make(map[string][][]byte)
+	for _, ns := range namespaces {
+		parentPath, _ := ns.ParentPath()
+		parent, err := core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
+		require.NoError(t, err)
+
+		nsSealKeyShares, err := core.namespaceStore.SetNamespaceWithSeal(namespace.ContextWithNamespace(ctx, parent), ns, sealConfig)
+		require.NoError(t, err)
+		keysPerNamespace[ns.Path] = nsSealKeyShares
+	}
+	return keysPerNamespace
+}
+
+// TestCoreCreateUnsealedNamespaces creates sealed namespaces with 3 key shares.
+// unseals the namespaces and returns back the key shares for each namespace
+// in a map with namespace path as key.
+func TestCoreCreateUnsealedNamespaces(t testing.T, core *Core, namespaces ...*namespace.Namespace) map[string][][]byte {
+	t.Helper()
+	keyShares := TestCoreCreateSealedNamespaces(t, core, namespaces...)
+	for _, ns := range namespaces {
+		for _, key := range keyShares[ns.Path] {
+			unsealed, err := TestNamespaceUnseal(core, ns, key)
+			require.NoError(t, err)
+			if unsealed {
+				break
+			}
+		}
+
+		require.False(t, core.NamespaceSealed(ns))
+	}
+	return keyShares
 }
 
 // TestCoreUnsealed returns a pure in-memory core that is already

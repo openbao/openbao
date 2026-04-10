@@ -552,6 +552,19 @@ func (c *Core) loadCredentials(ctx context.Context, standby bool) error {
 	return nil
 }
 
+// loadCredentialsForNamespace is invoked as part of postNamespaceUnseal
+// to load the auth mounts of a namespace.
+func (c *Core) loadCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+	c.authLock.Lock()
+	defer c.authLock.Unlock()
+
+	// Check if we're on a non-transactional storage
+	if _, ok := c.barrier.(logical.TransactionalStorage); !ok {
+		return c.loadLegacyCredentialsForNamespace(ctx, ns)
+	}
+	return c.loadTransactionalCredentialsForNamespace(ctx, ns)
+}
+
 // loadTransactionalCredentials reads the transactional split auth (credential)
 // table, populates the storage if there are no existing entries.
 func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical.Storage, standby bool) error {
@@ -1070,6 +1083,32 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// setupCredentialsForNamespace is invoked after we've loaded auth mounts
+// of a namespace to initialize the credential backends and update the router.
+func (c *Core) setupCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace) ([]func(), error) {
+	c.authLock.Lock()
+	defer c.authLock.Unlock()
+
+	postUnsealFuncs := make([]func(), 0)
+	for _, entry := range c.auth.SortEntriesByPath().Entries {
+		// Only process entries with matching namespace ID
+		if entry.NamespaceID != ns.ID {
+			continue
+		}
+
+		postUnsealFunc, err := c.setupCredential(ctx, entry)
+		if err != nil {
+			return postUnsealFuncs, err
+		}
+
+		if postUnsealFunc != nil {
+			postUnsealFuncs = append(postUnsealFuncs, postUnsealFunc)
+		}
+	}
+
+	return postUnsealFuncs, nil
 }
 
 // setupCredential initializes the credential backend

@@ -737,137 +737,122 @@ func TestCore_Remount_Protected(t *testing.T) {
 	}
 }
 
-type RemountStruct struct {
-	Title        string
-	SrcParentCtx context.Context
-	DstParentCtx context.Context
-	SrcNS        namespace.MountPathDetails
-	DstNs        namespace.MountPathDetails
-	TestSecret   *logical.Request
-}
+func TestCore_RemountMount_Namespaces(t *testing.T) {
+	c, keys, _ := TestCoreUnsealed(t)
+	ns := &namespace.Namespace{Path: "ns/"}
+	unsealable1 := &namespace.Namespace{Path: "ns/unsealable1/"}
+	unsealable2 := &namespace.Namespace{Path: "ns/unsealable2/"}
+	sealable1 := &namespace.Namespace{Path: "ns/sealable1/"}
+	sealable2 := &namespace.Namespace{Path: "ns/sealable2/"}
+	TestCoreCreateNamespaces(t, c, ns, unsealable1, unsealable2)
+	unsealKeys := TestCoreCreateUnsealedNamespaces(t, c, sealable1, sealable2)
+	unsealKeys["root"] = keys
 
-func TestCore_Remount_Namespaces(t *testing.T) {
-	c, keys, token := TestCoreUnsealed(t)
-	rootCtx := namespace.RootContext(t.Context())
-	ns1 := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
-	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
-	ns2 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns2", nil)
-	// ns2Ctx := namespace.ContextWithNamespace(rootCtx, ns2)
-	ns3 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns3", nil)
-	// ns3Ctx := namespace.ContextWithNamespace(rootCtx, ns3)
+	me := &routing.MountEntry{
+		Table: routing.MountTableType,
+		Path:  "foo",
+		Type:  "kv",
+	}
 
-	table := []RemountStruct{
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
+	err := c.mount(namespace.ContextWithNamespace(ctx, unsealable1), me)
+	require.NoError(t, err)
+
+	table := []struct {
+		name string
+		src  namespace.MountPathDetails
+		dst  namespace.MountPathDetails
+	}{
 		{
-			Title:        "Remount Namespace ns1/ns2 to Namespace ns1/ns3",
-			SrcParentCtx: ns1Ctx,
-			SrcNS: namespace.MountPathDetails{
-				Namespace: ns2,
-				MountPath: "secret/",
+			name: "remount unsealable -> unsealable",
+			src: namespace.MountPathDetails{
+				Namespace: unsealable1,
+				MountPath: "foo/",
 			},
-			DstParentCtx: ns1Ctx,
-			DstNs: namespace.MountPathDetails{
-				Namespace: ns3,
-				MountPath: "secret1/",
+			dst: namespace.MountPathDetails{
+				Namespace: unsealable2,
+				MountPath: "bar/",
 			},
 		},
 		{
-			Title:        "Remount Namespace ns1 to Root",
-			SrcParentCtx: rootCtx,
-			SrcNS: namespace.MountPathDetails{
-				Namespace: ns1,
-				MountPath: "secret/",
+			name: "remount unsealable -> sealable",
+			src: namespace.MountPathDetails{
+				Namespace: unsealable2,
+				MountPath: "bar/",
 			},
-			DstParentCtx: rootCtx,
-			DstNs: namespace.MountPathDetails{
-				Namespace: namespace.RootNamespace,
-				MountPath: "secret2/",
+			dst: namespace.MountPathDetails{
+				Namespace: sealable1,
+				MountPath: "foo/",
 			},
 		},
 		{
-			Title:        "Remount Root to Root",
-			SrcParentCtx: rootCtx,
-			SrcNS: namespace.MountPathDetails{
-				Namespace: namespace.RootNamespace,
-				MountPath: "secret/",
+			name: "remount sealable -> sealable",
+			src: namespace.MountPathDetails{
+				Namespace: sealable1,
+				MountPath: "foo/",
 			},
-			DstParentCtx: rootCtx,
-			DstNs: namespace.MountPathDetails{
-				Namespace: namespace.RootNamespace,
-				MountPath: "secretFoo/",
+			dst: namespace.MountPathDetails{
+				Namespace: sealable2,
+				MountPath: "bar/",
 			},
 		},
 		{
-			Title:        "Remount Root to Namespace ns1/ns2",
-			SrcParentCtx: rootCtx,
-			SrcNS: namespace.MountPathDetails{
-				Namespace: namespace.RootNamespace,
-				MountPath: "secretFoo/", // Note that this is depending on previous test case
+			name: "remount sealable -> unsealable",
+			src: namespace.MountPathDetails{
+				Namespace: sealable2,
+				MountPath: "bar/",
 			},
-			DstParentCtx: ns1Ctx,
-			DstNs: namespace.MountPathDetails{
-				Namespace: ns2,
-				MountPath: "secret3/",
+			dst: namespace.MountPathDetails{
+				Namespace: unsealable1,
+				MountPath: "foo/",
 			},
 		},
 	}
 
-	for _, test := range table {
-		t.Run(test.Title, func(t *testing.T) {
-			src := test.SrcNS
-			dst := test.DstNs
-
-			srcNSCtx := namespace.ContextWithNamespace(test.SrcParentCtx, src.Namespace)
-			dstNSCtx := namespace.ContextWithNamespace(test.DstParentCtx, dst.Namespace)
-
-			srcMountPath := src.MountPath
-			dstMountPath := dst.MountPath
-
-			// Create a secret in the source namespace
-			// Already present in root
-			if src.Namespace != namespace.RootNamespace {
-				testCoreAddSecretMountContext(srcNSCtx, t, c, srcMountPath, token)
-			}
-
-			match := c.router.MatchingMount(srcNSCtx, srcMountPath+"bar")
-			if match != src.Namespace.Path+srcMountPath {
-				t.Fatalf("missing mount, match %q", match)
-			}
-
-			err := c.remountSecretsEngine(test.SrcParentCtx, src, dst, true)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
-
-			match = c.router.MatchingMount(srcNSCtx, srcMountPath+"bar")
-			if match != "" {
-				t.Fatalf("secret still at old location, match %q", match)
-			}
-
-			match = c.router.MatchingMount(dstNSCtx, dstMountPath+"bar")
-			if match != dst.Namespace.Path+dstMountPath {
-				t.Fatalf("secret not at new location, match %q", match)
-			}
-
-			c.sealInternal()
-			for i, key := range keys {
-				unseal, err := TestCoreUnseal(c, key)
-				if err != nil {
-					t.Fatalf("err: %v", err)
+	for _, tt := range table {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, ns := range []*namespace.Namespace{tt.src.Namespace, tt.dst.Namespace} {
+				for i, key := range unsealKeys[ns.Path] {
+					unsealed, err := TestNamespaceUnseal(c, ns, key)
+					require.NoError(t, err)
+					require.False(t, i+1 == len(keys) && !unsealed, "should be unsealed")
 				}
-				if i+1 == len(keys) && !unseal {
-					t.Fatal("should be unsealed")
+			}
+			srcCtx := namespace.ContextWithNamespace(ctx, tt.src.Namespace)
+			dstCtx := namespace.ContextWithNamespace(ctx, tt.dst.Namespace)
+
+			match := c.router.MatchingMount(srcCtx, tt.src.MountPath+"foobar")
+			require.Equalf(t, tt.src.Namespace.Path+tt.src.MountPath, match, "missing mount, match: %q", match)
+
+			err := c.remountSecretsEngine(ctx, tt.src, tt.dst, true)
+			require.NoError(t, err)
+
+			match = c.router.MatchingMount(srcCtx, tt.src.MountPath+"foobar")
+			require.Equalf(t, "", match, "mount still at old location, match: %q", match)
+
+			match = c.router.MatchingMount(dstCtx, tt.dst.MountPath+"baz")
+			require.Equalf(t, tt.dst.Namespace.Path+tt.dst.MountPath, match, "mount not at new location, match: %q", match)
+
+			_ = c.sealInternal()
+			for i, key := range unsealKeys["root"] {
+				unsealed, err := TestCoreUnseal(c, key)
+				require.NoError(t, err)
+				require.False(t, i+1 == len(keys) && !unsealed, "should be unsealed")
+			}
+
+			for _, ns := range []*namespace.Namespace{tt.src.Namespace, tt.dst.Namespace} {
+				for i, key := range unsealKeys[ns.Path] {
+					unsealed, err := TestNamespaceUnseal(c, ns, key)
+					require.NoError(t, err)
+					require.False(t, i+1 == len(keys) && !unsealed, "should be unsealed")
 				}
 			}
 
-			match = c.router.MatchingMount(srcNSCtx, srcMountPath+"bar")
-			if match != "" {
-				t.Fatalf("secret still at old location after unseal, match %q", match)
-			}
+			match = c.router.MatchingMount(srcCtx, tt.src.MountPath+"foobar")
+			require.Equalf(t, "", match, "mount still at old location after unseal, match: %q", match)
 
-			match = c.router.MatchingMount(dstNSCtx, dstMountPath+"bar")
-			if match != dst.Namespace.Path+dstMountPath {
-				t.Fatalf("secret not at new location after unseal, match %q", match)
-			}
+			match = c.router.MatchingMount(dstCtx, tt.dst.MountPath+"baz")
+			require.Equalf(t, tt.dst.Namespace.Path+tt.dst.MountPath, match, "mount not at new location after unseal, match: %q", match)
 		})
 	}
 }

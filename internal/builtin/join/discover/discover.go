@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-discover"
 	"github.com/hashicorp/go-discover/provider/k8s"
 	"github.com/hashicorp/go-hclog"
@@ -32,38 +33,48 @@ type Discover struct {
 	disco  *discover.Discover
 }
 
-func (d *Discover) Candidates(ctx context.Context, config map[string]string) ([]joinplugin.Addr, error) {
-	args, found := config["discover"]
-	if !found {
-		return nil, fmt.Errorf("`discover` string must be provided")
+type discoverConfig struct {
+	Provider string
+	Args     map[string]string
+	Port     uint16
+	Scheme   string
+}
+
+func (d *Discover) Candidates(ctx context.Context, config map[string]any) ([]joinplugin.Addr, error) {
+	var cfg discoverConfig
+	if err := mapstructure.WeakDecode(config, &cfg); err != nil {
+		return nil, err
 	}
 
-	portStr := config["port"]
-	if portStr == "" {
-		portStr = "8200"
+	if cfg.Provider == "" {
+		return nil, fmt.Errorf("`provider` name must be provided")
 	}
-	configPort, err := strconv.ParseUint(portStr, 10, 16)
-	if err != nil {
-		return nil, fmt.Errorf("invalid `port`: %s", portStr)
+	if cfg.Port == 0 {
+		cfg.Port = 8200
 	}
-	scheme := config["scheme"]
-	if scheme == "" {
-		scheme = "https"
+	if cfg.Scheme == "" {
+		cfg.Scheme = "https"
 	}
 
-	discoveries, err := d.disco.Addrs(args, d.logger.StandardLogger(nil))
+	discover := make([]string, 0, len(cfg.Args)+1)
+	discover = append(discover, cfg.Provider)
+	for k, v := range cfg.Args {
+		discover = append(discover, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	discoveries, err := d.disco.Addrs(strings.Join(discover, " "), d.logger.StandardLogger(nil))
 	if err != nil {
 		return nil, err
 	}
 
 	addrs := make([]joinplugin.Addr, 0, len(discoveries))
 	for _, discovery := range discoveries {
-		host, port, err := ensureHostPort(discovery, uint16(configPort))
+		host, port, err := ensureHostPort(discovery, uint16(cfg.Port))
 		if err != nil {
 			d.logger.Error("invalid discovered address", "address", discovery, "error", err)
 			continue
 		}
-		addrs = append(addrs, joinplugin.Addr{Scheme: scheme, Host: host, Port: port})
+		addrs = append(addrs, joinplugin.Addr{Scheme: cfg.Scheme, Host: host, Port: port})
 	}
 
 	return addrs, nil

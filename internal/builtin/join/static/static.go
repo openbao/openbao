@@ -2,11 +2,10 @@ package static
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"strconv"
-	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/joinplugin"
 )
@@ -19,15 +18,18 @@ type Static struct {
 	logger hclog.Logger
 }
 
-func (d *Static) Candidates(ctx context.Context, config map[string]string) ([]joinplugin.Addr, error) {
-	addrsConfig, found := config["addresses"]
-	if !found {
-		return nil, fmt.Errorf("`addresses` string must be provided")
+type staticConfig struct {
+	Addresses []string
+}
+
+func (d *Static) Candidates(ctx context.Context, config map[string]any) ([]joinplugin.Addr, error) {
+	var cfg staticConfig
+	if err := mapstructure.WeakDecode(config, &cfg); err != nil {
+		return nil, err
 	}
 
-	urls := strings.Split(addrsConfig, ",")
-	candidates := make([]joinplugin.Addr, 0, len(urls))
-	for _, rawUrl := range urls {
+	candidates := make([]joinplugin.Addr, 0, len(cfg.Addresses))
+	for _, rawUrl := range cfg.Addresses {
 		url, err := url.Parse(rawUrl)
 		if err != nil {
 			d.logger.Warn("failed to parse URL", rawUrl, err)

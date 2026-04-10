@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/go-plugin"
 	"github.com/openbao/openbao/sdk/v2/joinplugin/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type Addr struct {
@@ -16,7 +17,7 @@ type Addr struct {
 }
 
 type Join interface {
-	Candidates(context.Context, map[string]string) ([]Addr, error)
+	Candidates(context.Context, map[string]any) ([]Addr, error)
 	Cleanup(context.Context) error
 }
 
@@ -51,7 +52,7 @@ var PluginSets = map[int]plugin.PluginSet{
 }
 
 func (g *gRPCServer) Candidates(ctx context.Context, args *pb.CandidateArgs) (*pb.Candidates, error) {
-	v, err := g.impl.Candidates(ctx, args.Config)
+	v, err := g.impl.Candidates(ctx, args.Config.AsMap())
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +72,12 @@ func (g *gRPCServer) Cleanup(ctx context.Context, args *pb.Empty) (*pb.Empty, er
 	return &pb.Empty{}, err
 }
 
-func (g *gRPCClient) Candidates(ctx context.Context, config map[string]string) ([]Addr, error) {
-	reply, err := g.JoinClient.Candidates(ctx, &pb.CandidateArgs{Config: config})
+func (g *gRPCClient) Candidates(ctx context.Context, config map[string]any) ([]Addr, error) {
+	structConfig, err := structpb.NewStruct(config)
+	if err != nil {
+		return nil, err
+	}
+	reply, err := g.JoinClient.Candidates(ctx, &pb.CandidateArgs{Config: structConfig})
 	if err != nil {
 		return nil, err
 	}

@@ -3,10 +3,12 @@ package join;
 
 option go_package = "github.com/openbao/openbao/sdk/v2/plugin/join/pb";
 
+import "google/protobuf/struct.proto";
+
 message Empty {}
 
 message CandidateArgs {
-    map<string, string> config = 1;
+    google.protobuf.Struct config = 1;
 }
 
 message Candidate {

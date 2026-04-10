@@ -3,6 +3,7 @@ package joinplugin
 import (
 	"context"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 	"github.com/openbao/openbao/sdk/v2/joinplugin/pb"
 	"google.golang.org/grpc"
@@ -25,7 +26,11 @@ type joinPlugin struct {
 	impl Join
 }
 
-type Factory func() (Join, error)
+type JoinConfig struct {
+	Logger hclog.Logger
+}
+
+type Factory func(cfg JoinConfig) (Join, error)
 
 type gRPCClient struct {
 	pb.JoinClient

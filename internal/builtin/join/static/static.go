@@ -11,10 +11,8 @@ import (
 	"github.com/openbao/openbao/sdk/v2/joinplugin"
 )
 
-func Factory() (joinplugin.Join, error) {
-	logger := hclog.Default()
-
-	return &Static{logger: logger}, nil
+func Factory(cfg joinplugin.JoinConfig) (joinplugin.Join, error) {
+	return &Static{logger: cfg.Logger}, nil
 }
 
 type Static struct {

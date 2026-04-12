@@ -835,6 +835,11 @@ func TestOIDC_Path_OIDC_Token_Client_Credentials_Flow(t *testing.T) {
 				// other reserved claims must be present in all cases
 				require.NotEmpty(t, claims[c])
 			}
+
+			// Assert that sub and aud claims contain the client name (not client_id)
+			// This is specific to Client Credentials Flow where the client itself is the subject
+			require.Equal(t, "test-client", claims["sub"], "sub claim should be client name")
+			require.Equal(t, "test-client", claims["aud"], "aud claim should be client name")
 		})
 	}
 }
@@ -3969,7 +3974,7 @@ func TestOIDC_Path_OpenIDProviderConfig(t *testing.T) {
 		AuthorizationEndpoint: "/ui/vault/identity/oidc/provider/test-provider/authorize",
 		TokenEndpoint:         basePath + "/token",
 		UserinfoEndpoint:      basePath + "/userinfo",
-		GrantTypes:            []string{"authorization_code"},
+		GrantTypes:            []string{"authorization_code", "client_credentials"},
 		AuthMethods:           []string{"none", "client_secret_basic", "client_secret_post"},
 		RequestParameter:      false,
 		RequestURIParameter:   false,
@@ -4025,7 +4030,7 @@ func TestOIDC_Path_OpenIDProviderConfig(t *testing.T) {
 		AuthorizationEndpoint: testIssuer + "/ui/vault/identity/oidc/provider/test-provider/authorize",
 		TokenEndpoint:         basePath + "/token",
 		UserinfoEndpoint:      basePath + "/userinfo",
-		GrantTypes:            []string{"authorization_code"},
+		GrantTypes:            []string{"authorization_code", "client_credentials"},
 		AuthMethods:           []string{"none", "client_secret_basic", "client_secret_post"},
 		RequestParameter:      false,
 		RequestURIParameter:   false,

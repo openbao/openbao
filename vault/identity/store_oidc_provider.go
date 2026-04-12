@@ -1638,7 +1638,7 @@ func (i *IdentityStore) pathOIDCProviderDiscovery(ctx context.Context, req *logi
 		RequestURIParameter:   false,
 		ResponseTypes:         []string{"code"},
 		Subjects:              []string{"public"},
-		GrantTypes:            []string{"authorization_code"},
+		GrantTypes:            []string{"authorization_code", "client_credentials"},
 		AuthMethods: []string{
 			// PKCE is required for auth method "none"
 			"none",
@@ -2089,11 +2089,13 @@ func (i *IdentityStore) clientCredentialsFlow(ctx context.Context, req *logical.
 		return tokenResponse(nil, ErrTokenServerError, err.Error())
 	}
 
+	// For Client Credentials Flow, use client.Name for sub and aud claims
+	// to provide a meaningful, human-readable identifier instead of the UUID client_id
 	accessToken := accessToken{
 		Namespace: ns.ID,
 		Issuer:    provider.effectiveIssuer,
-		Subject:   client.ClientID,
-		Audience:  client.ClientID,
+		Subject:   client.Name,
+		Audience:  client.Name,
 		Expiry:    accessTokenExpiry.Unix(),
 		IssuedAt:  accessTokenIssuedAt.Unix(),
 		JTI:       jti,

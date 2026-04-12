@@ -1,0 +1,6 @@
+```release-note:improvement
+clientCredentialsFlow: changed Subject and Audience from client.ClientID to client.Name for
+```
+```release-note:improvement
+OIDC Provider: Discovery Endpoint - Added "client_credentials" to grant_types_supported in the OIDC discovery response
+```

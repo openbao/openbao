@@ -1392,7 +1392,7 @@ func signCertificate(data *CreationBundle, randReader io.Reader) (*ParsedCertBun
 	}
 
 	if data.Params.UseCSRValues {
-		certTemplate.Subject = data.CSR.Subject
+		certTemplate.RawSubject = data.CSR.RawSubject
 		certTemplate.Subject.ExtraNames = certTemplate.Subject.Names
 
 		certTemplate.DNSNames = data.CSR.DNSNames

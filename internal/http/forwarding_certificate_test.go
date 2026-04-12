@@ -581,4 +581,129 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 			t.Fatalf("mismatched client certificate response: got %q; expected %q", resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp"), clientCertBase64)
 		}
 	})
+
+	t.Run("valid_envoy_xfcc_cert", func(t *testing.T) {
+		t.Parallel()
+		testHandler := getCertTestHandler(getDefaultListenerConfigForClientCerts([]string{"Envoy", "PEM"}))
+		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+			HandlerFunc: HandlerFunc(testHandler),
+		})
+		cluster.Start()
+		defer cluster.Cleanup()
+		client := cluster.Cores[0].Client
+		req := client.NewRequest("GET", "/")
+		req.Headers = make(http.Header)
+		req.Headers.Add("X-Forwarded-For-Client-Cert", "Hash=abc123;Cert=\""+url.QueryEscape(clientCertPemText)+"\"")
+		resp, err := client.RawRequest(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("bad status: %d", resp.StatusCode)
+		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != clientCertBase64 {
+			t.Fatal("mismatched client certificate response")
+		}
+	})
+
+	t.Run("valid_envoy_xfcc_chain", func(t *testing.T) {
+		t.Parallel()
+		testHandler := getCertTestHandler(getDefaultListenerConfigForClientCerts([]string{"Envoy", "PEM"}))
+		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+			HandlerFunc: HandlerFunc(testHandler),
+		})
+		cluster.Start()
+		defer cluster.Cleanup()
+		client := cluster.Cores[0].Client
+		req := client.NewRequest("GET", "/")
+		req.Headers = make(http.Header)
+		pemBundle := clientCertPemText + "\n" + clientCertPemText // Simulate a chain by repeating the same cert.
+		req.Headers.Add("X-Forwarded-For-Client-Cert", "Hash=abc123;Chain=\""+url.QueryEscape(pemBundle)+"\";URI=http://example.com/client")
+		resp, err := client.RawRequest(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("bad status: %d", resp.StatusCode)
+		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != clientCertBase64 {
+			t.Fatal("mismatched client certificate response")
+		}
+	})
+
+	t.Run("invalid_envoy_xfcc_element", func(t *testing.T) {
+		t.Parallel()
+		testHandler := getCertTestHandler(getDefaultListenerConfigForClientCerts([]string{"Envoy", "PEM"}))
+		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+			HandlerFunc: HandlerFunc(testHandler),
+		})
+		cluster.Start()
+		defer cluster.Cleanup()
+		client := cluster.Cores[0].Client
+		req := client.NewRequest("GET", "/")
+		req.Headers = make(http.Header)
+		req.Headers.Add("X-Forwarded-For-Client-Cert", "InvalidElement")
+		resp, err := client.RawRequest(req)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				t.Fatal("failed to close response body")
+			}
+		}(resp.Body)
+		buf := bytes.NewBuffer(nil)
+		_, err = buf.ReadFrom(resp.Body)
+		if err != nil {
+			t.Fatal("failed to read response body")
+		}
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("bad status: %d", resp.StatusCode)
+		}
+		if !strings.Contains(buf.String(), "neither Cert nor Chain key found in XFCC header") {
+			t.Fatalf("bad body: %s", buf.String())
+		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != "" {
+			t.Fatal("client certificate header should not have been set")
+		}
+	})
+
+	t.Run("invalid_envoy_xfcc_escaping", func(t *testing.T) {
+		t.Parallel()
+		testHandler := getCertTestHandler(getDefaultListenerConfigForClientCerts([]string{"Envoy", "PEM"}))
+		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+			HandlerFunc: HandlerFunc(testHandler),
+		})
+		cluster.Start()
+		defer cluster.Cleanup()
+		client := cluster.Cores[0].Client
+		req := client.NewRequest("GET", "/")
+		req.Headers = make(http.Header)
+		req.Headers.Add("X-Forwarded-For-Client-Cert", "Hash=abc123;Cert=\"%invalid\"")
+		resp, err := client.RawRequest(req)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				t.Fatal("failed to close response body")
+			}
+		}(resp.Body)
+		buf := bytes.NewBuffer(nil)
+		_, err = buf.ReadFrom(resp.Body)
+		if err != nil {
+			t.Fatal("failed to read response body")
+		}
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("bad status: %d", resp.StatusCode)
+		}
+		if !strings.Contains(buf.String(), "url decoding value in XFCC header") {
+			t.Fatalf("bad body: %s", buf.String())
+		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != "" {
+			t.Fatal("client certificate header should not have been set")
+		}
+	})
 }

@@ -293,3 +293,33 @@ func pemDecodeHeader(headerValue string) (string, error) {
 	// This is later validated in handleCertHeader in http/logical.go as part of buildLogicalRequestNoAuth
 	return base64.StdEncoding.EncodeToString(block.Bytes), nil
 }
+
+// https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert
+func envoyDecodeHeader(headerValue string) (string, error) {
+	// The Envoy XFCC header value is a comma (",") separated string. Each substring is an XFCC element, which holds
+	// information added by a single proxy. Each XFCC element is a semicolon (";") separated list of key-value pairs.
+	// Each key-value pair is separated by an equal sign ("=").
+	//
+	// Example:
+	// x-forwarded-client-cert: key1="url encoded value 1";key2="url encoded value 2";...
+
+	// Extract only the first (leftmost) XFCC element, which is added by the outermost proxy that terminates the client's TLS connection.
+	first, _, _ := strings.Cut(headerValue, ",")
+	if first == "" {
+		return "", errors.New("empty XFCC header")
+	}
+
+	for part := range strings.SplitSeq(first, ";") {
+		key, value, _ := strings.Cut(part, "=")
+
+		if key == "Cert" || key == "Chain" {
+			decoded, err := url.QueryUnescape(value)
+			if err != nil {
+				return "", fmt.Errorf("error url decoding value in XFCC header: %w", err)
+			}
+			return strings.Trim(decoded, `"`), nil
+		}
+	}
+
+	return "", errors.New("neither Cert nor Chain key found in XFCC header")
+}

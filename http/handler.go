@@ -670,6 +670,8 @@ func wrapClientCertificateHandler(h http.Handler, props *vault.HandlerProperties
 				headerValue, err = urlDecodeHeader(headerValue)
 			case "PEM":
 				headerValue, err = pemDecodeHeader(headerValue)
+			case "Envoy":
+				headerValue, err = envoyDecodeHeader(headerValue)
 			default:
 				respondError(w, http.StatusInternalServerError, errors.New("bad server configuration for forwarded certificate parsing; unknown parser"))
 				return

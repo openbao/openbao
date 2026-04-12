@@ -568,7 +568,7 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 		// in sync with the http handler implementation.
 		for _, decoder := range l.XForwardedForClientCertDecoders {
 			switch decoder {
-			case "RFC9440", "URL", "PEM":
+			case "RFC9440", "URL", "PEM", "Envoy":
 			default:
 				return multierror.Prefix(fmt.Errorf("invalid value for x_forwarded_for_client_cert_decoders: %v", decoder), fmt.Sprintf("listeners.%d", i))
 			}

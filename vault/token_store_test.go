@@ -1757,7 +1757,7 @@ func TestTokenStore_RevokeSelf(t *testing.T) {
 	var out *logical.TokenEntry
 	for _, id := range lookup {
 		var found bool
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			out, err = ts.Lookup(ctx, id)
 			if err != nil {
 				t.Fatalf("err: %v", err)
@@ -6026,7 +6026,7 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 
 	leases := []string{}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		leaseID, err := exp.Register(ctx, req, resp, "")
 		if err != nil {
 			t.Fatal(err)

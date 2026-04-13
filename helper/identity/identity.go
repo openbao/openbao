@@ -6,6 +6,7 @@ package identity
 import (
 	"errors"
 	"fmt"
+	"maps"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"google.golang.org/protobuf/proto"
@@ -84,9 +85,7 @@ func ToSDKAlias(a *Alias) *logical.Alias {
 		return nil
 	}
 	metadata := make(map[string]string, len(a.Metadata))
-	for k, v := range a.Metadata {
-		metadata[k] = v
-	}
+	maps.Copy(metadata, a.Metadata)
 
 	return &logical.Alias{
 		Name:           a.Name,
@@ -112,9 +111,7 @@ func ToSDKEntity(e *Entity) *logical.Entity {
 	}
 
 	metadata := make(map[string]string, len(e.Metadata))
-	for k, v := range e.Metadata {
-		metadata[k] = v
-	}
+	maps.Copy(metadata, e.Metadata)
 
 	return &logical.Entity{
 		ID:          e.ID,
@@ -133,9 +130,7 @@ func ToSDKGroup(g *Group) *logical.Group {
 	}
 
 	metadata := make(map[string]string, len(g.Metadata))
-	for k, v := range g.Metadata {
-		metadata[k] = v
-	}
+	maps.Copy(metadata, g.Metadata)
 
 	return &logical.Group{
 		ID:          g.ID,

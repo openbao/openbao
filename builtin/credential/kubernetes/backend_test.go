@@ -473,7 +473,7 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 			b.tlsMu.RUnlock()
 
 			if configCount > 0 {
-				for idx := 0; idx < configCount; idx++ {
+				for idx := range configCount {
 					t.Run(fmt.Sprintf("config-%d", idx), func(t *testing.T) {
 						config := tt.configs[idx]
 						if config.config != nil {

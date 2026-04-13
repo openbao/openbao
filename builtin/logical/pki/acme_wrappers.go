@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -139,14 +140,7 @@ func (b *backend) acmeParsedWrapper(op acmeParsedOperation) framework.OperationF
 				resp.Headers["Link"] = genAcmeLinkHeader(acmeCtx)
 			} else {
 				directory := genAcmeLinkHeader(acmeCtx)[0]
-				addDirectory := true
-				for _, item := range resp.Headers["Link"] {
-					if item == directory {
-						addDirectory = false
-						break
-					}
-				}
-				if addDirectory {
+				if !slices.Contains(resp.Headers["Link"], directory) {
 					resp.Headers["Link"] = append(resp.Headers["Link"], directory)
 				}
 			}
@@ -354,11 +348,8 @@ func getAcmeRoleAndIssuer(sc *storageContext, data *framework.FieldData, config 
 		if !allowAnyRole {
 
 			var foundRole bool
-			for _, name := range config.AllowedRoles {
-				if name == role.Name {
-					foundRole = true
-					break
-				}
+			if slices.Contains(config.AllowedRoles, role.Name) {
+				foundRole = true
 			}
 
 			if !foundRole {

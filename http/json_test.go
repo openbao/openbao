@@ -10,6 +10,7 @@ import (
 	"math"
 	"net/http"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -136,11 +137,11 @@ func makeLongEmptyList(size int) interface{} {
 }
 
 func makeLongString(size int) interface{} {
-	var x string
+	var x strings.Builder
 	for i := range size {
-		x += fmt.Sprintf("%d", i%10)
+		x.WriteString(fmt.Sprintf("%d", i%10))
 	}
-	return x
+	return x.String()
 }
 
 func makeLargeMap(size int) interface{} {
@@ -168,7 +169,7 @@ func makeRandomMap(size int) interface{} {
 
 func fakeSizeOf(t *testing.T, input []byte) int64 {
 	min := fakeSizeOfInternal(t, input)
-	for i := 0; i < 15; i++ {
+	for range 15 {
 		time.Sleep(5 * time.Millisecond)
 
 		v := fakeSizeOfInternal(t, input)
@@ -185,7 +186,7 @@ func fakeSizeOfInternal(t *testing.T, input []byte) int64 {
 	var obj interface{}
 
 	// Run GC multiple times to fully clear any sync.Pools.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		runtime.GC()
 	}
 
@@ -198,7 +199,7 @@ func fakeSizeOfInternal(t *testing.T, input []byte) int64 {
 	require.NoError(t, err)
 
 	// Run GC multiple times to fully clear any sync.Pools.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		runtime.GC()
 	}
 

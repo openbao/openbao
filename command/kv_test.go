@@ -178,8 +178,6 @@ func TestKVPutCommand(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -522,8 +520,6 @@ func TestKVGetCommand(t *testing.T) {
 		t.Parallel()
 
 		for _, tc := range cases {
-			tc := tc
-
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -672,8 +668,6 @@ func TestKVListCommand(t *testing.T) {
 		t.Parallel()
 
 		for _, testCase := range testCases {
-			testCase := testCase
-
 			t.Run(testCase.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -690,7 +684,7 @@ func TestKVListCommand(t *testing.T) {
 				time.Sleep(time.Second)
 
 				ctx := t.Context()
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					path := fmt.Sprintf("my-prefix/secret-%d", i)
 					_, err := client.KVv2("kv/").Put(ctx, path, map[string]interface{}{
 						"foo": "bar",
@@ -793,8 +787,6 @@ func TestKVMetadataGetCommand(t *testing.T) {
 		t.Parallel()
 
 		for _, tc := range cases {
-			tc := tc
-
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -899,7 +891,6 @@ func TestKVPatchCommand_ArgValidation(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1202,8 +1193,6 @@ func TestKVPatchCommand_CAS(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1285,8 +1274,6 @@ func TestKVPatchCommand_Methods(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1439,8 +1426,6 @@ func TestKVPatchCommand_RWMethodPolicyVariations(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			client, closer := testVaultServer(t)
@@ -1507,7 +1492,6 @@ func TestPadEqualSigns(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

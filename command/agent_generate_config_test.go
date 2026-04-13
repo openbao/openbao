@@ -126,8 +126,6 @@ func TestConstructTemplates(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		name, tc := name, tc
-
 		t.Run(name, func(t *testing.T) {
 			templates, err := constructTemplates(ctx, client, tc.paths)
 
@@ -248,8 +246,6 @@ exec \{
 	}
 
 	for name, tc := range cases {
-		name, tc := name, tc
-
 		t.Run(name, func(t *testing.T) {
 			var config bytes.Buffer
 

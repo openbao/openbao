@@ -14,7 +14,7 @@ import (
 func TestVersionedKV_Upgrade(t *testing.T) {
 	b, storage := testPassthroughBackendWithStorage(t.Context())
 
-	for i := 0; i < 1024*1024; i++ {
+	for i := range 1024 * 1024 {
 		data := map[string]interface{}{
 			"bar": i,
 		}
@@ -66,7 +66,7 @@ func TestVersionedKV_Upgrade(t *testing.T) {
 		time.Sleep(time.Second)
 	}
 
-	for i := 0; i < 1024*1024; i++ {
+	for i := range 1024 * 1024 {
 		data := map[string]interface{}{
 			"bar": float64(i),
 		}

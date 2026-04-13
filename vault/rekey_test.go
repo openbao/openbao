@@ -273,7 +273,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 
 	// Provide the parts root
 	oldResult := result
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		result, err = c.RekeyUpdate(t.Context(), TestKeyCopy(oldResult.SecretShares[i]), rkconf.Nonce, recovery)
 		if err != nil {
 			t.Fatalf("err: %v", err)

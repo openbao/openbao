@@ -2336,7 +2336,7 @@ func TestBackend_CleanupDynamicHostKeys(t *testing.T) {
 	require.Contains(t, resp.Data["message"], "0 of 0")
 
 	// Write a bunch of bogus entries.
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		data := map[string]interface{}{
 			"host": "localhost",
 			"key":  "nothing-to-see-here",

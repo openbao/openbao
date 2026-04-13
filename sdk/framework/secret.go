@@ -5,6 +5,7 @@ package framework
 
 import (
 	"context"
+	"maps"
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -48,9 +49,7 @@ func (s *Secret) Response(
 	data, internal map[string]interface{},
 ) *logical.Response {
 	internalData := make(map[string]interface{})
-	for k, v := range internal {
-		internalData[k] = v
-	}
+	maps.Copy(internalData, internal)
 	internalData["secret_type"] = s.Type
 
 	return &logical.Response{

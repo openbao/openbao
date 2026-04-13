@@ -173,11 +173,11 @@ func pkiIssue(c *BaseCommand, parentMountIssuer string, intermediateMount string
 	failureState.certSerialNumber = serialNumber
 
 	caChain := rootResp.Data["ca_chain"].([]interface{})
-	caChainPemBundle := ""
+	var caChainPemBundle strings.Builder
 	for _, cert := range caChain {
-		caChainPemBundle += cert.(string) + "\n"
+		caChainPemBundle.WriteString(cert.(string) + "\n")
 	}
-	failureState.caChain = caChainPemBundle
+	failureState.caChain = caChainPemBundle.String()
 
 	// Next Import Certificate
 	certificate := rootResp.Data["certificate"].(string)
@@ -214,7 +214,7 @@ func pkiIssue(c *BaseCommand, parentMountIssuer string, intermediateMount string
 	// Finally Import CA_Chain (just in case there's more information)
 	if len(caChain) > 2 { // We've already imported parent cert and newly issued cert above
 		importData := map[string]interface{}{
-			"pem_bundle": caChainPemBundle,
+			"pem_bundle": caChainPemBundle.String(),
 		}
 		_, err := client.Logical().Write(intermediateMount+"/issuers/import/cert", importData)
 		if err != nil {

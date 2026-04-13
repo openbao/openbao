@@ -13,9 +13,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/posener/complete"
@@ -131,9 +133,7 @@ func (c *PKIReIssueCACommand) Run(args []string) int {
 func updateTemplateWithData(template map[string]interface{}, changes map[string]interface{}) map[string]interface{} {
 	data := map[string]interface{}{}
 
-	for key, value := range template {
-		data[key] = value
-	}
+	maps.Copy(data, template)
 
 	// ttl and not_after set the same thing.  Delete template ttl if using not_after:
 	if _, ok := changes["not_after"]; ok {
@@ -145,9 +145,7 @@ func updateTemplateWithData(template map[string]interface{}, changes map[string]
 		delete(data, "key_bits")
 	}
 
-	for key, value := range changes {
-		data[key] = value
-	}
+	maps.Copy(data, changes)
 
 	return data
 }
@@ -227,20 +225,12 @@ func determineExcludeCnFromSans(certificate x509.Certificate) bool {
 	}
 
 	emails := certificate.EmailAddresses
-	for _, email := range emails {
-		if email == cn {
-			return false
-		}
+	if slices.Contains(emails, cn) {
+		return false
 	}
 
 	dnses := certificate.DNSNames
-	for _, dns := range dnses {
-		if dns == cn {
-			return false
-		}
-	}
-
-	return true
+	return !slices.Contains(dnses, cn)
 }
 
 func findBitLength(publicKey any) int {

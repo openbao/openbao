@@ -1,0 +1,3 @@
+```release-note:bug
+core: Fix namespace invalidation on standby when disable_cache=true is set.
+```

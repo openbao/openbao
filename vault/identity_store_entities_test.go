@@ -417,7 +417,7 @@ func TestIdentityStore_BatchDelete(t *testing.T) {
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	ids := make([]string, 10000)
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		entityData := map[string]interface{}{
 			"name": fmt.Sprintf("entity-%d", i),
 		}
@@ -613,7 +613,7 @@ func TestIdentityStore_ListEntities(t *testing.T) {
 	}
 
 	expected := []string{}
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		resp, err = is.HandleRequest(ctx, entityReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v", err, resp)

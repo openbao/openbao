@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"strings"
@@ -1298,9 +1299,7 @@ type answerResp struct {
 
 func newDiscover() (*discover.Discover, error) {
 	providers := make(map[string]discover.Provider)
-	for k, v := range discover.Providers {
-		providers[k] = v
-	}
+	maps.Copy(providers, discover.Providers)
 
 	providers["k8s"] = &discoverk8s.Provider{}
 

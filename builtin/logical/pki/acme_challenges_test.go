@@ -182,7 +182,7 @@ func TestAcmeValidateHTTP01Challenge(t *testing.T) {
 		w.Write([]byte("my-token.my-thumbprint"))
 	}
 	tooLarge := func(w http.ResponseWriter, r *http.Request) {
-		for i := 0; i < 512; i++ {
+		for range 512 {
 			w.Write([]byte("my-token.my-thumbprint\n"))
 		}
 	}

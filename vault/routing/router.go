@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"strings"
 	"sync"
@@ -132,9 +133,7 @@ func (entry *RouteEntry) Deserialize() map[string]interface{} {
 		"tainted":        entry.tainted,
 		"storage_prefix": entry.StoragePrefix,
 	}
-	for k, v := range entry.MountEntry.Deserialize() {
-		ret[k] = v
-	}
+	maps.Copy(ret, entry.MountEntry.Deserialize())
 	return ret
 }
 

@@ -5244,7 +5244,7 @@ func TestHandlePoliciesPasswordGenerate(t *testing.T) {
 		}
 
 		// Run the test a bunch of times to help ensure we don't have flaky behavior
-		for i := 0; i < 1000; i++ {
+		for range 1000 {
 			req := &logical.Request{
 				Storage: storage,
 			}
@@ -5677,8 +5677,6 @@ func TestSystemBackend_Loggers(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
-
 		t.Run(fmt.Sprintf("all-loggers-%s", tc.level), func(t *testing.T) {
 			t.Parallel()
 
@@ -5922,8 +5920,6 @@ func TestSystemBackend_LoggersByName(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
-
 		t.Run(fmt.Sprintf("loggers-by-name-%s", tc.logger), func(t *testing.T) {
 			t.Parallel()
 

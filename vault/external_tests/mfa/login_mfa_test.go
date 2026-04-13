@@ -461,7 +461,7 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 	// first create a few configs
 	configIDs := make([]string, 0)
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		resp, err := client.Logical().Write("identity/mfa/method/totp", map[string]interface{}{
 			"issuer":    fmt.Sprintf("fooCorp%d", i),
 			"period":    10,
@@ -639,7 +639,7 @@ func TestLoginMFA_LoginEnforcement_RequiredParameters(t *testing.T) {
 	// first create a few configs
 	configIDs := make([]string, 0)
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		resp, err := client.Logical().Write("identity/mfa/method/totp", map[string]interface{}{
 			"issuer":    fmt.Sprintf("fooCorp%d", i),
 			"period":    10,

@@ -28,9 +28,7 @@ func TestInmemCluster_Connect(t *testing.T) {
 	var accepted int
 	stopCh := make(chan struct{})
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case <-stopCh:
@@ -48,7 +46,7 @@ func TestInmemCluster_Connect(t *testing.T) {
 			accepted++
 
 		}
-	}()
+	})
 
 	// Make sure two nodes can connect in
 	conn, err := cluster.layers[1].DialContext(t.Context(), server.addr, nil)
@@ -94,9 +92,7 @@ func TestInmemCluster_Disconnect(t *testing.T) {
 	var accepted int
 	stopCh := make(chan struct{})
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case <-stopCh:
@@ -114,7 +110,7 @@ func TestInmemCluster_Disconnect(t *testing.T) {
 			accepted++
 
 		}
-	}()
+	})
 
 	// Make sure node1 cannot connect in
 	conn, err := cluster.layers[1].DialContext(t.Context(), server.addr, nil)
@@ -201,9 +197,7 @@ func TestInmemCluster_ConnectCluster(t *testing.T) {
 	stopCh := make(chan struct{})
 	var wg sync.WaitGroup
 	acceptConns := func(listener NetworkListener) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for {
 				select {
 				case <-stopCh:
@@ -221,7 +215,7 @@ func TestInmemCluster_ConnectCluster(t *testing.T) {
 				accepted.Add(1)
 
 			}
-		}()
+		})
 	}
 
 	// Start a listener on each node.

@@ -92,9 +92,9 @@ func (p *polynomial) evaluate(x uint8) uint8 {
 func interpolatePolynomial(x_samples, y_samples []uint8, x uint8) uint8 {
 	limit := len(x_samples)
 	var result, basis uint8
-	for i := 0; i < limit; i++ {
+	for i := range limit {
 		basis = 1
-		for j := 0; j < limit; j++ {
+		for j := range limit {
 			if i == j {
 				continue
 			}
@@ -235,7 +235,7 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 		// Generate a `parts` number of (x,y) pairs
 		// We cheat by encoding the x value once as the final index,
 		// so that it only needs to be stored once.
-		for i := 0; i < parts; i++ {
+		for i := range parts {
 			x := xCoordinates[i]
 			y := p.evaluate(x)
 			out[i][idx] = y

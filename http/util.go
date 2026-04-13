@@ -300,21 +300,43 @@ func envoyDecodeHeader(headerValue string) (string, error) {
 	// information added by a single proxy. Each XFCC element is a semicolon (";") separated list of key-value pairs.
 	// Each key-value pair is separated by an equal sign ("=").
 	//
-	// Example:
-	// x-forwarded-client-cert: key1="url encoded value 1";key2="url encoded value 2";...
-
 	// Extract only the first (leftmost) XFCC element, which is added by the outermost proxy that terminates the client's TLS connection.
-	first, _, _ := strings.Cut(headerValue, ",")
+	//
+	// Example:
+	// x-forwarded-client-cert: Hash=<hash>;Cert="<PEM>";Subject="CN=client,O=example",<other elements from other proxies>
 
-	for part := range strings.SplitSeq(first, ";") {
-		key, value, found := strings.Cut(part, "=")
-		if !found {
+	headerValue += "," // Ensures that also single-element header is terminated by ','.
+	inQuotes := false  // State variable to track if we are currently within quotes.
+	pairStart := 0     // Index of the currently processed key-value pair.
+
+LOOP:
+	for i := 0; i < len(headerValue); i++ {
+		c := headerValue[i]
+
+		if inQuotes {
+			switch c {
+			case '\\':
+				i++ // Skip escaped character.
+			case '"':
+				inQuotes = false
+			}
 			continue
 		}
 
-		if strings.EqualFold(key, "Cert") || strings.EqualFold(key, "Chain") {
-			value = strings.Trim(value, `"`)
-			return url.QueryUnescape(value)
+		switch c {
+		case '"':
+			inQuotes = true
+		case ';', ',':
+			// Now we have the end of a key-value pair: process it.
+			key, value, found := strings.Cut(headerValue[pairStart:i], "=")
+			if found && (strings.EqualFold(key, "Cert") || strings.EqualFold(key, "Chain")) {
+				value = strings.Trim(value, `"`)
+				return url.QueryUnescape(value)
+			}
+			if c == ',' {
+				break LOOP // Stop parsing after the first XFCC element.
+			}
+			pairStart = i + 1 // Move to the next key-value pair.
 		}
 	}
 

@@ -582,44 +582,37 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		}
 	})
 
-	t.Run("valid_envoy_xfcc_cert", func(t *testing.T) {
-		t.Parallel()
-		testHandler := getCertTestHandler(getDefaultListenerConfigForClientCerts([]string{"Envoy", "PEM"}))
-		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
-			HandlerFunc: HandlerFunc(testHandler),
-		})
-		cluster.Start()
-		defer cluster.Cleanup()
-		client := cluster.Cores[0].Client
-		req := client.NewRequest("GET", "/")
-		req.Headers = make(http.Header)
-		req.Headers.Add("X-Forwarded-For-Client-Cert", "Hash=abc123;Cert=\""+url.QueryEscape(clientCertPemText)+"\"")
-		resp, err := client.RawRequest(req)
-		require.NoError(t, err)
-		defer resp.Body.Close() //nolint:errcheck
-		require.Equal(t, http.StatusOK, resp.StatusCode, "bad status %d", resp.StatusCode)
-		require.Equal(t, clientCertBase64, resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp"), "mismatched client certificate response")
-	})
+	validXfccValues := []struct {
+		testName    string
+		headerValue string
+	}{
+		{"valid_envoy_xfcc_cert", "Hash=abc123;Cert=\"" + url.QueryEscape(clientCertPemText) + "\""},
+		{"valid_envoy_xfcc_chain", "Hash=abc123;Chain=\"" + url.QueryEscape(clientCertPemText+"\n"+clientCertPemText) + "\";URI=http://example.com/client"},
+		{"valid_envoy_xfcc_multiple_elements", "Hash=abc123;Cert=\"" + url.QueryEscape(clientCertPemText) + "\",Hash=def456;Cert=\"" + url.QueryEscape(clientCertPemText) + "\""},
+		{"valid_envoy_xfcc_subject_with_quoted_delimiters", "Subject=\"CN=client,O=example\";Cert=\"" + url.QueryEscape(clientCertPemText) + "\""},
+		{"valid_envoy_xfcc_subject_with_escaped_quote", "Subject=\"CN=John \\\"Jack\\\" Doe\";Cert=\"" + url.QueryEscape(clientCertPemText) + "\""},
+	}
 
-	t.Run("valid_envoy_xfcc_chain", func(t *testing.T) {
-		t.Parallel()
-		testHandler := getCertTestHandler(getDefaultListenerConfigForClientCerts([]string{"Envoy", "PEM"}))
-		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
-			HandlerFunc: HandlerFunc(testHandler),
+	for _, testItem := range validXfccValues {
+		t.Run(testItem.testName, func(t *testing.T) {
+			t.Parallel()
+			testHandler := getCertTestHandler(getDefaultListenerConfigForClientCerts([]string{"Envoy", "PEM"}))
+			cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+				HandlerFunc: HandlerFunc(testHandler),
+			})
+			cluster.Start()
+			defer cluster.Cleanup()
+			client := cluster.Cores[0].Client
+			req := client.NewRequest("GET", "/")
+			req.Headers = make(http.Header)
+			req.Headers.Add("X-Forwarded-For-Client-Cert", testItem.headerValue)
+			resp, err := client.RawRequest(req)
+			require.NoError(t, err)
+			defer resp.Body.Close() //nolint:errcheck
+			require.Equal(t, http.StatusOK, resp.StatusCode, "bad status %d", resp.StatusCode)
+			require.Equal(t, clientCertBase64, resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp"), "mismatched client certificate response")
 		})
-		cluster.Start()
-		defer cluster.Cleanup()
-		client := cluster.Cores[0].Client
-		req := client.NewRequest("GET", "/")
-		req.Headers = make(http.Header)
-		pemBundle := clientCertPemText + "\n" + clientCertPemText // Simulate a chain by repeating the same cert.
-		req.Headers.Add("X-Forwarded-For-Client-Cert", "Hash=abc123;Chain=\""+url.QueryEscape(pemBundle)+"\";URI=http://example.com/client")
-		resp, err := client.RawRequest(req)
-		require.NoError(t, err)
-		defer resp.Body.Close() //nolint:errcheck
-		require.Equal(t, http.StatusOK, resp.StatusCode, "bad status %d", resp.StatusCode)
-		require.Equal(t, clientCertBase64, resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp"), "mismatched client certificate response")
-	})
+	}
 
 	invalidXfccValues := []struct {
 		testName    string
@@ -628,6 +621,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 	}{
 		{"invalid_envoy_xfcc_element", "InvalidElement", "neither Cert nor Chain key found in XFCC header"},
 		{"invalid_envoy_xfcc_escaping", "Hash=abc123;Cert=\"%invalid\"", "invalid URL escape"},
+		{"invalid_envoy_xfcc_unbalanced_quotes", "Hash=abc123;Cert=\"unbalanced", "neither Cert nor Chain key found in XFCC header"},
 	}
 
 	for _, testItem := range invalidXfccValues {

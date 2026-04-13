@@ -147,11 +147,7 @@ func TestFileSinkMode(t *testing.T) {
 }
 
 func testFileSinkChown(t *testing.T, log hclog.Logger) (*sink.SinkConfig, string) {
-	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("%s.", fileServerTestDir))
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "token")
 
 	config := &sink.SinkConfig{
@@ -176,8 +172,6 @@ func TestFileSinkChown(t *testing.T) {
 	log := logging.NewVaultLogger(hclog.Trace)
 
 	fs, tmpDir := testFileSinkChown(t, log)
-	defer os.RemoveAll(tmpDir)
-
 	path := filepath.Join(tmpDir, "token")
 
 	uuidStr, _ := uuid.GenerateUUID()

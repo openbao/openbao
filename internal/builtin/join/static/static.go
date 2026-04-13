@@ -32,7 +32,7 @@ func (d *Static) Candidates(ctx context.Context, config map[string]any) ([]joinp
 	for _, rawUrl := range cfg.Addresses {
 		url, err := url.Parse(rawUrl)
 		if err != nil {
-			d.logger.Warn("failed to parse URL", rawUrl, err)
+			return nil, err
 		}
 		host := url.Hostname()
 		portStr := url.Port()
@@ -41,7 +41,7 @@ func (d *Static) Candidates(ctx context.Context, config map[string]any) ([]joinp
 		}
 		port, err := strconv.ParseUint(portStr, 10, 16)
 		if err != nil {
-			d.logger.Warn("failed to parse port", portStr)
+			return nil, err
 		}
 		candidates = append(candidates, joinplugin.Addr{Scheme: url.Scheme, Host: host, Port: uint16(port)})
 	}

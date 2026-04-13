@@ -70,7 +70,7 @@ path "test/control_group" {
 		t.Fatal(err)
 	}
 
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	acl, err := NewACL(ctx, []*Policy{policy})
 	if err != nil {
 		t.Fatal(err)

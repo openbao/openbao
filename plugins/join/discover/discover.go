@@ -33,10 +33,10 @@ type Discover struct {
 }
 
 type discoverConfig struct {
-	Provider string
-	Args     map[string]string
-	Port     uint16
-	Scheme   string
+	Provider string            `mapstructure:"provider"`
+	Args     map[string]string `mapstructure:"args"`
+	Port     uint16            `mapstructure:"port"`
+	Scheme   string            `mapstructure:"scheme"`
 }
 
 func (d *Discover) Candidates(ctx context.Context, config map[string]any) ([]joinplugin.Addr, error) {

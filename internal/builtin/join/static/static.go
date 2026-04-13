@@ -19,7 +19,7 @@ type Static struct {
 }
 
 type staticConfig struct {
-	Addresses []string
+	Addresses []string `mapstructure:"addresses"`
 }
 
 func (d *Static) Candidates(ctx context.Context, config map[string]any) ([]joinplugin.Addr, error) {

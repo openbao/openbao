@@ -183,7 +183,7 @@ func TestFileSinkChown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	fi, err := file.Stat()
 	if err != nil {

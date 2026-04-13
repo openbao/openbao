@@ -287,9 +287,9 @@ func TestRaft_JoinConfig(t *testing.T) {
 				{"auto_join_plugin": {
 					"plugin": "discover",
 					"config": {
-					  "provider": "aws",
-					  "args": {"foo": "bar"}
-		            }
+						"provider": "aws",
+						"args": {"foo": "bar"}
+					}
 				}}
 			]`,
 		},

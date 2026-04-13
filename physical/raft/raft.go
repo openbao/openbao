@@ -224,9 +224,9 @@ type AutoJoinPlugin struct {
 // LeaderJoinInfo contains information required by a node to join itself as a
 // follower to an existing raft cluster
 type LeaderJoinInfo struct {
-	// AutoJoin defines any cloud auto-join metadata. If supplied, Vault will
-	// attempt to automatically discover peers in addition to what can be provided
-	// via 'leader_api_addr'.
+	// AutoJoin defines any cloud auto-join metadata. If supplied, OpenBao will
+	// attempt to automatically discover peers in addition to what can be
+	// provided via 'leader_api_addr'.
 	AutoJoin string `json:"auto_join"`
 
 	// AutoJoinScheme defines the optional URI protocol scheme for addresses
@@ -237,10 +237,9 @@ type LeaderJoinInfo struct {
 	// auto-join.
 	AutoJoinPort uint `json:"auto_join_port"`
 
-	// AutoJoinScript defines an executable and arguments that outputs peer API
-	// addresses (e.g. `https://vault.example.com:8200`) to standard output. If
-	// supplied, Vault will attempt to automatically discover peers in addition
-	// to what can be provided via 'leader_api_addr'.
+	// AutoJoinPlugin specifies the name and configuration of an existing join
+	// plugin. If supplied, OpenBao will attempt to automatically discover peers
+	// in addition to what can be provided via 'leader_api_addr'.
 	AutoJoinPlugin *AutoJoinPlugin `json:"auto_join_plugin"`
 
 	// LeaderAPIAddr is the address of the leader node to connect to

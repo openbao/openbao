@@ -23,11 +23,10 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/pluginutil/oci"
 )
 
-// Catalog manages dispatches to builtin and external KMS plugins and manages
-// their processes & connections. This is disjoint from the "main" plugin
-// catalog in core as KMS plugins may need to be instantiated before core is
-// created. Additionally, we get to simplify many things as KMS plugins are
-// declarative only.
+// Catalog manages long-lived plugin server processes and clients of a
+// particular plugin type. It is disjoint from the plugin catalog in core
+// and services plugins that must be available before core starts up and are
+// configurable via the server configuration only.
 type Catalog struct {
 	Logger hclog.Logger
 
@@ -86,7 +85,7 @@ func buildConfigLookup(plugins []*server.PluginConfig, pluginType consts.PluginT
 	return index, nil
 }
 
-// NewCatalog returns a new KMS plugin catalog.
+// NewCatalog returns a new plugin catalog.
 func NewCatalog(
 	logger hclog.Logger,
 	config *server.Config,

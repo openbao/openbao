@@ -40,6 +40,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/vault/tokens"
@@ -1031,11 +1032,15 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		extraData := map[string]string{}
 		// For controlgroup, store the original request and control group details with the cubbyhole data
 		if auth.PolicyResults != nil && auth.PolicyResults.ControlGroup != nil {
-			reqJson, err := jsonutil.EncodeJSON(req)
+			reqPb, err := pb.LogicalRequestToProtoRequest(req)
 			if err != nil {
 				return resp, err
 			}
-			extraData["request"] = string(reqJson)
+			reqPbBytes, err := proto.Marshal(reqPb)
+			if err != nil {
+				return resp, err
+			}
+			extraData["request"] = string(reqPbBytes)
 			entityJson, err := jsonutil.EncodeJSON(authEntity)
 			if err != nil {
 				return resp, err

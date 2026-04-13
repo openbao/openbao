@@ -11,6 +11,8 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/plugin/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -88,12 +90,17 @@ func (c *Core) getRequestFromTokenEntry(ctx context.Context, tokenEntry *logical
 		return nil, errors.New("token meta does not contain request")
 	}
 
-	var req logical.Request
-	if err := jsonutil.DecodeJSON([]byte(reqBytes), &req); err != nil {
+	var reqPb *pb.Request
+	var req *logical.Request
+	if err := proto.Unmarshal([]byte(reqBytes), reqPb); err != nil {
 		return nil, err
 	}
 
-	return &req, nil
+	req, err := pb.ProtoRequestToLogicalRequest(reqPb)
+	if err != nil {
+		return nil, err
+	}
+	return req, nil
 }
 
 // getControlGroup fetches control group from a token entry (where present) given a token

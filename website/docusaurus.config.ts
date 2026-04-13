@@ -50,10 +50,10 @@ const config: Config = {
   staticDirectories: ["public"],
 
   future: {
+    faster: true,
     v4: {
-      removeLegacyPostBuildHeadAttribute: true, // needed by experimental_faster
+      removeLegacyPostBuildHeadAttribute: true, // needed by faster.
     },
-    experimental_faster: true,
   },
 
   markdown: {

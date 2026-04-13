@@ -119,8 +119,7 @@ func (c *Core) generateMountAccessor(entryType string) (string, error) {
 	return accessor, nil
 }
 
-func (c *Core) decodeMountTable(ctx context.Context, entry *logical.StorageEntry) ([]*routing.MountEntry, error) {
-	// Decode into mount table
+func (c *Core) decodeMountEntries(ctx context.Context, entry *logical.StorageEntry) ([]*routing.MountEntry, error) {
 	mountTable := new(routing.MountTable)
 	if err := jsonutil.DecodeJSON(entry.Value, mountTable); err != nil {
 		return nil, err
@@ -295,9 +294,6 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *routing.MountEn
 	backend, entry.RunningSha256, err = c.newLogicalBackend(ctx, entry, sysView, view)
 	if err != nil {
 		return err
-	}
-	if backend == nil {
-		return fmt.Errorf("nil backend of type %q returned from creation function", entry.Type)
 	}
 
 	// Discard the backend if any remaining steps below fail.
@@ -912,13 +908,6 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 		return fmt.Errorf("failed to list namespaces: %w", err)
 	}
 
-	if c.mounts == nil {
-		// Create the mount table if it doesn't exist.
-		c.mounts = &routing.MountTable{
-			Type: routing.MountTableType,
-		}
-	}
-
 	for _, ns := range allNamespaces {
 		if err = c.loadTransactionalMountsForNamespace(ctx, ns); err != nil {
 			return err
@@ -1078,7 +1067,7 @@ func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.N
 	}
 
 	if entry != nil {
-		mEntries, err := c.decodeMountTable(ctx, entry)
+		mEntries, err := c.decodeMountEntries(ctx, entry)
 		if err != nil {
 			c.logger.Error("failed to decompress and/or decode the legacy mount table", "error", err)
 			return err
@@ -1087,7 +1076,7 @@ func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.N
 	}
 
 	if localEntry != nil {
-		mEntries, err := c.decodeMountTable(ctx, localEntry)
+		mEntries, err := c.decodeMountEntries(ctx, localEntry)
 		if err != nil {
 			c.logger.Error("failed to decompress and/or decode the legacy local mount table", "error", err)
 			return err
@@ -1494,41 +1483,37 @@ func (c *Core) setupMount(ctx context.Context, entry *routing.MountEntry) (func(
 	backend, entry.RunningSha256, err = c.newLogicalBackend(ctx, entry, sysView, view)
 	if err != nil {
 		c.logger.Error("failed to create mount entry", "path", entry.Path, "error", err)
-		if c.isMountable(ctx, entry, consts.PluginTypeSecrets) {
-			c.logger.Warn("skipping plugin-based mount entry", "path", entry.Path)
-			goto ROUTER_MOUNT
-		}
-		return nil, errLoadMountsFailed
-	}
-	if backend == nil {
-		return nil, fmt.Errorf("nil backend returned from %q factory", entry.Type)
-	}
-
-	// update the entry running version with the configured
-	// version, which was verified during registration.
-	entry.RunningVersion = entry.Version
-	if entry.RunningVersion == "" && entry.RunningSha256 == "" {
-		// don't set the running version to a builtin if it is running as an external plugin
-		entry.RunningVersion = versions.GetBuiltinVersion(consts.PluginTypeSecrets, entry.Type)
-	}
-
-	// Do not start up deprecated builtin plugins. If this is a major
-	// upgrade, stop unsealing and shutdown. If we've already mounted this
-	// plugin, proceed with unsealing and skip backend initialization.
-	if versions.IsBuiltinVersion(entry.RunningVersion) {
-		_, err := c.handleDeprecatedMountEntry(ctx, entry, consts.PluginTypeSecrets)
-		if c.isMajorVersionFirstMount(ctx) && err != nil {
-			go c.ShutdownCoreError(fmt.Errorf("could not mount %q: %w", entry.Type, err))
+		if !c.isMountable(ctx, entry, consts.PluginTypeSecrets) {
 			return nil, errLoadMountsFailed
-		} else if err != nil {
-			c.logger.Error("skipping deprecated mount entry", "name", entry.Type, "path", entry.Path, "error", err)
-			backend.Cleanup(ctx)
-			backend = nil
-			goto ROUTER_MOUNT
+		}
+
+		c.logger.Warn("skipping plugin-based mount entry", "path", entry.Path)
+	} else {
+		// update the entry running version with the configured
+		// version, which was verified during registration.
+		entry.RunningVersion = entry.Version
+		if entry.RunningVersion == "" && entry.RunningSha256 == "" {
+			// don't set the running version to a builtin if it is running as an external plugin
+			entry.RunningVersion = versions.GetBuiltinVersion(consts.PluginTypeSecrets, entry.Type)
+		}
+
+		// Do not start up deprecated builtin plugins. If this is a major
+		// upgrade, stop unsealing and shutdown. If we've already mounted this
+		// plugin, proceed with unsealing and skip backend initialization.
+		if versions.IsBuiltinVersion(entry.RunningVersion) {
+			_, err := c.handleDeprecatedMountEntry(ctx, entry, consts.PluginTypeSecrets)
+			if c.isMajorVersionFirstMount(ctx) && err != nil {
+				go c.ShutdownCoreError(fmt.Errorf("could not mount %q: %w", entry.Type, err))
+				return nil, errLoadMountsFailed
+			} else if err != nil {
+				c.logger.Error("skipping deprecated mount entry", "name", entry.Type, "path", entry.Path, "error", err)
+				backend.Cleanup(ctx)
+				backend = nil
+			}
 		}
 	}
 
-	{
+	if backend != nil {
 		// Check for the correct backend type
 		if backend.Type() != logical.TypeLogical {
 			if err := knownMountType(entry.Type); err != nil {
@@ -1539,9 +1524,7 @@ func (c *Core) setupMount(ctx context.Context, entry *routing.MountEntry) (func(
 		c.setCoreBackend(entry, backend, view)
 	}
 
-ROUTER_MOUNT:
-	err = c.router.Mount(backend, entry.Path, entry, view)
-	if err != nil {
+	if err = c.router.Mount(backend, entry.Path, entry, view); err != nil {
 		c.logger.Error("failed to mount entry", "path", entry.Path, "error", err)
 		return nil, errLoadMountsFailed
 	}
@@ -1994,7 +1977,7 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 		}
 
 		if raw != nil {
-			entries, err := c.decodeMountTable(ctx, raw)
+			entries, err := c.decodeMountEntries(ctx, raw)
 			if err != nil {
 				return fmt.Errorf("failed to decompress and/or decode the legacy mount table: %w", err)
 			}

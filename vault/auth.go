@@ -156,9 +156,6 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *rout
 	if err != nil {
 		return err
 	}
-	if backend == nil {
-		return fmt.Errorf("nil backend returned from %q factory", entry.Type)
-	}
 
 	// Discard the backend if any remaining steps below fail.
 	var success bool
@@ -563,13 +560,6 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 		return fmt.Errorf("failed to list namespaces: %w", err)
 	}
 
-	if c.auth == nil {
-		// Create the auth table if it doesn't exist.
-		c.auth = &routing.MountTable{
-			Type: routing.CredentialTableType,
-		}
-	}
-
 	for _, ns := range allNamespaces {
 		if err = c.loadTransactionalCredentialsForNamespace(ctx, ns); err != nil {
 			return err
@@ -735,7 +725,7 @@ func (c *Core) loadLegacyCredentialsForNamespace(ctx context.Context, ns *namesp
 	}
 
 	if entry != nil {
-		mEntries, err := c.decodeMountTable(ctx, entry)
+		mEntries, err := c.decodeMountEntries(ctx, entry)
 		if err != nil {
 			c.logger.Error("failed to decompress and/or decode the legacy auth table", "error", err)
 			return err
@@ -744,7 +734,7 @@ func (c *Core) loadLegacyCredentialsForNamespace(ctx context.Context, ns *namesp
 	}
 
 	if localEntry != nil {
-		mEntries, err := c.decodeMountTable(ctx, localEntry)
+		mEntries, err := c.decodeMountEntries(ctx, localEntry)
 		if err != nil {
 			c.logger.Error("failed to decompress and/or decode the local legacy auth table", "error", err)
 			return err
@@ -1106,41 +1096,37 @@ func (c *Core) setupCredential(ctx context.Context, entry *routing.MountEntry) (
 	backend, entry.RunningSha256, err = c.newCredentialBackend(ctx, entry, sysView, view)
 	if err != nil {
 		c.logger.Error("failed to create credential entry", "path", entry.Path, "error", err)
-		if c.isMountable(ctx, entry, consts.PluginTypeCredential) {
-			c.logger.Warn("skipping plugin-based auth entry", "path", entry.Path)
-			goto ROUTER_MOUNT
-		}
-		return nil, errLoadAuthFailed
-	}
-	if backend == nil {
-		return nil, fmt.Errorf("nil backend returned from %q factory", entry.Type)
-	}
-
-	// update the entry running version with the configured
-	// version, which was verified during registration.
-	entry.RunningVersion = entry.Version
-	if entry.RunningVersion == "" && entry.RunningSha256 == "" {
-		// don't set the running version to a builtin if it is running as an external plugin
-		entry.RunningVersion = versions.GetBuiltinVersion(consts.PluginTypeCredential, entry.Type)
-	}
-
-	// Do not start up deprecated builtin plugins. If this is a major
-	// upgrade, stop unsealing and shutdown. If we've already mounted this
-	// plugin, skip backend initialization and mount the data for posterity.
-	if versions.IsBuiltinVersion(entry.RunningVersion) {
-		_, err := c.handleDeprecatedMountEntry(ctx, entry, consts.PluginTypeCredential)
-		if c.isMajorVersionFirstMount(ctx) && err != nil {
-			go c.ShutdownCoreError(fmt.Errorf("could not mount %q: %w", entry.Type, err))
+		if !c.isMountable(ctx, entry, consts.PluginTypeCredential) {
 			return nil, errLoadAuthFailed
-		} else if err != nil {
-			c.logger.Error("skipping deprecated auth entry", "name", entry.Type, "path", entry.Path, "error", err)
-			backend.Cleanup(ctx)
-			backend = nil
-			goto ROUTER_MOUNT
+		}
+
+		c.logger.Warn("skipping plugin-based auth entry", "path", entry.Path)
+	} else {
+		// update the entry running version with the configured
+		// version, which was verified during registration.
+		entry.RunningVersion = entry.Version
+		if entry.RunningVersion == "" && entry.RunningSha256 == "" {
+			// don't set the running version to a builtin if it is running as an external plugin
+			entry.RunningVersion = versions.GetBuiltinVersion(consts.PluginTypeCredential, entry.Type)
+		}
+
+		// Do not start up deprecated builtin plugins. If this is a major
+		// upgrade, stop unsealing and shutdown. If we've already mounted this
+		// plugin, skip backend initialization and mount the data for posterity.
+		if versions.IsBuiltinVersion(entry.RunningVersion) {
+			_, err := c.handleDeprecatedMountEntry(ctx, entry, consts.PluginTypeCredential)
+			if c.isMajorVersionFirstMount(ctx) && err != nil {
+				go c.ShutdownCoreError(fmt.Errorf("could not mount %q: %w", entry.Type, err))
+				return nil, errLoadAuthFailed
+			} else if err != nil {
+				c.logger.Error("skipping deprecated auth entry", "name", entry.Type, "path", entry.Path, "error", err)
+				backend.Cleanup(ctx)
+				backend = nil
+			}
 		}
 	}
 
-	{
+	if backend != nil {
 		// Check for the correct backend type
 		backendType := backend.Type()
 		if backendType != logical.TypeCredential {
@@ -1148,7 +1134,6 @@ func (c *Core) setupCredential(ctx context.Context, entry *routing.MountEntry) (
 		}
 	}
 
-ROUTER_MOUNT:
 	path := routing.CredentialRoutePrefix + entry.Path
 	if err = c.router.Mount(backend, path, entry, view); err != nil {
 		c.logger.Error("failed to mount auth entry", "path", entry.Path, "namespace", entry.Namespace, "error", err)
@@ -1289,6 +1274,9 @@ func (c *Core) newCredentialBackend(ctx context.Context, entry *routing.MountEnt
 	b, err := f(ctx, config)
 	if err != nil {
 		return nil, "", err
+	}
+	if b == nil {
+		return nil, "", fmt.Errorf("nil backend of type %q returned from factory", t)
 	}
 
 	return b, runningSha, nil

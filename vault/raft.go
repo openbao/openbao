@@ -1055,7 +1055,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 				for name, plugin := range joinPlugins {
 					err := plugin.Cleanup(ctx)
 					if err != nil {
-						c.logger.Error("error cleaning up join plugin %s: %w", name, err)
+						c.logger.Error("error cleaning up join plugin", "name", name, "error", err.Error())
 					}
 				}
 			}()
@@ -1081,7 +1081,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 			for name, plugin := range joinPlugins {
 				err := plugin.Cleanup(ctx)
 				if err != nil {
-					c.logger.Error("error cleaning up join plugin %s: %w", name, err)
+					c.logger.Error("error cleaning up join plugin", "name", name, "error", err.Error())
 				}
 			}
 		}()

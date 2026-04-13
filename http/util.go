@@ -305,19 +305,16 @@ func envoyDecodeHeader(headerValue string) (string, error) {
 
 	// Extract only the first (leftmost) XFCC element, which is added by the outermost proxy that terminates the client's TLS connection.
 	first, _, _ := strings.Cut(headerValue, ",")
-	if first == "" {
-		return "", errors.New("empty XFCC header")
-	}
 
 	for part := range strings.SplitSeq(first, ";") {
-		key, value, _ := strings.Cut(part, "=")
+		key, value, found := strings.Cut(part, "=")
+		if !found {
+			continue
+		}
 
-		if key == "Cert" || key == "Chain" {
-			decoded, err := url.QueryUnescape(value)
-			if err != nil {
-				return "", fmt.Errorf("error url decoding value in XFCC header: %w", err)
-			}
-			return strings.Trim(decoded, `"`), nil
+		if strings.EqualFold(key, "Cert") || strings.EqualFold(key, "Chain") {
+			value = strings.Trim(value, `"`)
+			return url.QueryUnescape(value)
 		}
 	}
 

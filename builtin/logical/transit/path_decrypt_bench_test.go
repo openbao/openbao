@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -43,7 +42,7 @@ func BTransit_BatchDecryption(b *testing.B, bsize int) {
 	backend, s := createBackendWithStorage(b)
 
 	batchEncryptionInput := make([]interface{}, 0, bsize)
-	for i := 0; i < bsize; i++ {
+	for range bsize {
 		batchEncryptionInput = append(
 			batchEncryptionInput,
 			map[string]interface{}{"plaintext": "dGhlIHF1aWNrIGJyb3duIGZveA=="},
@@ -60,7 +59,7 @@ func BTransit_BatchDecryption(b *testing.B, bsize int) {
 		Storage:   s,
 		Data:      batchEncryptionData,
 	}
-	resp, err = backend.HandleRequest(context.Background(), batchEncryptionReq)
+	resp, err = backend.HandleRequest(b.Context(), batchEncryptionReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		b.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -83,7 +82,7 @@ func BTransit_BatchDecryption(b *testing.B, bsize int) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		resp, err = backend.HandleRequest(context.Background(), batchDecryptionReq)
+		resp, err = backend.HandleRequest(b.Context(), batchDecryptionReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			b.Fatalf("err:%v resp:%#v", err, resp)
 		}

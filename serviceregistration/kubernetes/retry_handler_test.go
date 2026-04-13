@@ -231,7 +231,7 @@ func TestRetryHandlerRacesAndDeadlocks(t *testing.T) {
 	start := make(chan struct{})
 	done := make(chan bool)
 	numRoutines := 100
-	for i := 0; i < numRoutines; i++ {
+	for range numRoutines {
 		go func() {
 			<-start
 			r.Notify(testPatch)

@@ -767,9 +767,7 @@ func (c *DebugCommand) collectPprof(ctx context.Context) {
 
 		// As a convenience, we'll also fetch the goroutine target using debug=2, which yields a text
 		// version of the stack traces that don't require using `go tool pprof` to view.
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			data, err := pprofTarget(ctx, c.cachedClient, "goroutine", url.Values{"debug": []string{"2"}})
 			if err != nil {
 				c.captureError("pprof.goroutines-text", err)
@@ -780,7 +778,7 @@ func (c *DebugCommand) collectPprof(ctx context.Context) {
 			if err != nil {
 				c.captureError("pprof.goroutines-text", err)
 			}
-		}()
+		})
 
 		// If the our remaining duration is less than the interval value
 		// skip profile and trace.
@@ -791,9 +789,7 @@ func (c *DebugCommand) collectPprof(ctx context.Context) {
 		}
 
 		// Capture profile
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			data, err := pprofProfile(ctx, c.cachedClient, c.flagInterval)
 			if err != nil {
 				c.captureError("pprof.profile", err)
@@ -804,12 +800,10 @@ func (c *DebugCommand) collectPprof(ctx context.Context) {
 			if err != nil {
 				c.captureError("pprof.profile", err)
 			}
-		}()
+		})
 
 		// Capture trace
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			data, err := pprofTrace(ctx, c.cachedClient, c.flagInterval)
 			if err != nil {
 				c.captureError("pprof.trace", err)
@@ -820,7 +814,7 @@ func (c *DebugCommand) collectPprof(ctx context.Context) {
 			if err != nil {
 				c.captureError("pprof.trace", err)
 			}
-		}()
+		})
 
 		wg.Wait()
 	}

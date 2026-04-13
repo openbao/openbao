@@ -175,7 +175,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	}
 
 	var unsealed bool
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		unsealed, err = c.Unseal(unsealKey[i])
 		if err != nil {
 			t.Fatal(err)
@@ -897,7 +897,7 @@ func TestIdentityStore_UpdateAliasMetadataPerAccessor(t *testing.T) {
 // initializing identity store.
 func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	c, unsealKey, root := TestCoreUnsealed(t)
-	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+	ctx := namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace)
 
 	// add caseSensitivityKey to storage
 	entry, err := logical.StorageEntryJSON(ident.CaseSensitivityKey, &ident.CaseSensitivity{
@@ -927,7 +927,7 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	}
 
 	var unsealed bool
-	for i := 0; i < len(unsealKey); i++ {
+	for i := range unsealKey {
 		unsealed, err = c.Unseal(unsealKey[i])
 		if err != nil {
 			t.Fatal(err)
@@ -957,12 +957,12 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 	// Setup core and namespaces
 	c, _, _ := TestCoreUnsealed(t)
 	is := c.identityStore
-	rootCtx := namespace.RootContext(context.Background())
+	rootCtx := namespace.RootContext(t.Context())
 	ns1, ns2 := setupNamespaces(t, c, rootCtx)
 
 	// Create namespace contexts
-	ns1Ctx := namespace.ContextWithNamespace(context.Background(), ns1)
-	ns2Ctx := namespace.ContextWithNamespace(context.Background(), ns2)
+	ns1Ctx := namespace.ContextWithNamespace(t.Context(), ns1)
+	ns2Ctx := namespace.ContextWithNamespace(t.Context(), ns2)
 
 	// Enable userpass auth in root namespace
 	rootMount := &routing.MountEntry{
@@ -1228,7 +1228,7 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 		childNs := &namespace.Namespace{ID: "childns", Path: "testns1/childns/"}
 		require.NoError(t, c.namespaceStore.SetNamespace(rootCtx, childNs))
 
-		childCtx := namespace.ContextWithNamespace(context.Background(), childNs)
+		childCtx := namespace.ContextWithNamespace(t.Context(), childNs)
 
 		// Enable userpass auth in child namespace
 		childMount := &routing.MountEntry{
@@ -1288,12 +1288,12 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 	// Setup core and namespaces
 	c, _, _ := TestCoreUnsealed(t)
 	is := c.identityStore
-	rootCtx := namespace.RootContext(context.Background())
+	rootCtx := namespace.RootContext(t.Context())
 	ns1, ns2 := setupNamespaces(t, c, rootCtx)
 
 	// Define namespace contexts
-	ns1Ctx := namespace.ContextWithNamespace(context.Background(), ns1)
-	ns2Ctx := namespace.ContextWithNamespace(context.Background(), ns2)
+	ns1Ctx := namespace.ContextWithNamespace(t.Context(), ns1)
+	ns2Ctx := namespace.ContextWithNamespace(t.Context(), ns2)
 
 	// Enable auth methods in different namespaces
 	rootMount := &routing.MountEntry{
@@ -1507,7 +1507,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		entityIDs := make(chan string, 20)
 
 		// Create 10 entities concurrently in each namespace
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			// Root namespace
 			wg.Add(1)
 			go func(index int) {
@@ -1586,12 +1586,12 @@ func setupNamespaces(t *testing.T, c *Core, ctx context.Context) (*namespace.Nam
 func setupIdentityTestEnv(t *testing.T, c *Core) (rootCtx context.Context, ns1 *namespace.Namespace, ns1Ctx context.Context, ns2 *namespace.Namespace, ns2Ctx context.Context, rootAccessor string, ns1Accessor string, ns2Accessor string, commonUser string, rootAlias *logical.Alias, ns1Alias *logical.Alias, ns2Alias *logical.Alias, rootEntity *identity.Entity, ns1Entity *identity.Entity, ns2Entity *identity.Entity, groupName string, rootGroup *identity.Group, ns1Group *identity.Group, ns2Group *identity.Group) {
 	var err error
 	is := c.identityStore
-	rootCtx = namespace.RootContext(context.Background())
+	rootCtx = namespace.RootContext(t.Context())
 	ns1, ns2 = setupNamespaces(t, c, rootCtx)
 
 	// Create namespace contexts
-	ns1Ctx = namespace.ContextWithNamespace(context.Background(), ns1)
-	ns2Ctx = namespace.ContextWithNamespace(context.Background(), ns2)
+	ns1Ctx = namespace.ContextWithNamespace(t.Context(), ns1)
+	ns2Ctx = namespace.ContextWithNamespace(t.Context(), ns2)
 
 	// Enable auth methods in all namespaces
 	rootMount := &routing.MountEntry{

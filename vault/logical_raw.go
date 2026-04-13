@@ -55,8 +55,9 @@ func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAcc
 	// for the root namespace.
 	specialPath := rest == barrierSealConfigPath || rest == recoverySealConfigPath
 
-	// Fast-path root, we do not need a lookup into the seal manager.
-	if ns.ID == namespace.RootNamespaceID {
+	// Fast-path root or deleted namespaces; we do not need a lookup into the
+	// seal manager.
+	if ns == nil || ns.ID == namespace.RootNamespaceID {
 		if specialPath {
 			return &directStorageAccess{physical: b.core.physical}, nil
 		} else {
@@ -64,11 +65,11 @@ func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAcc
 		}
 	}
 
-	// TODO(wslabosz): awaiting seal manager implementation
 	if specialPath {
-		return &secureStorageAccess{barrier: b.core.barrier}, nil
+		parent, _ := ns.ParentPath()
+		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(parent)}, nil
 	} else {
-		return &secureStorageAccess{barrier: b.core.barrier}, nil
+		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)}, nil
 	}
 }
 

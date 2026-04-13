@@ -8,7 +8,7 @@ import { setupRenderingTest } from 'ember-qunit';
 import { render } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import { setupMirage } from 'ember-cli-mirage/test-support';
-import { fillIn, click, waitUntil } from '@ember/test-helpers';
+import { fillIn, click, waitUntil, find } from '@ember/test-helpers';
 import { _cancelTimers as cancelTimers, later } from '@ember/runloop';
 import { TOTP_VALIDATION_ERROR } from 'vault/components/mfa/mfa-form';
 
@@ -198,6 +198,7 @@ module('Integration | Component | mfa-form', function (hooks) {
       await fillIn('[data-test-mfa-passcode]', code);
       later(() => cancelTimers(), 50);
       await click('[data-test-mfa-validate]');
+      await waitUntil(() => find('[data-test-mfa-countdown]'));
       const expectedTime = code === 'used' ? '45' : '15';
       assert
         .dom('[data-test-mfa-countdown]')

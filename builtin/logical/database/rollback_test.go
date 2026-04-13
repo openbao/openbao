@@ -34,7 +34,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 	if !ok {
 		t.Fatal("could not convert to db backend")
 	}
-	defer lb.Cleanup(context.Background())
+	defer lb.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "")
 	defer cleanup()
@@ -57,7 +57,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 		"username":       databaseUser,
 		"password":       defaultPassword,
 	}
-	resp, err := lb.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
+	resp, err := lb.HandleRequest(namespace.RootContext(t.Context()), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/plugin-test",
 		Storage:   config.StorageView,
@@ -73,7 +73,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 		"creation_statements": testRole,
 		"max_ttl":             "10m",
 	}
-	resp, err = lb.HandleRequest(context.Background(), &logical.Request{
+	resp, err = lb.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "roles/plugin-role-test",
 		Storage:   config.StorageView,
@@ -90,20 +90,20 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      make(map[string]interface{}),
 	}
-	credResp, err := lb.HandleRequest(context.Background(), credReq)
+	credResp, err := lb.HandleRequest(t.Context(), credReq)
 	if err != nil || (credResp != nil && credResp.IsError()) {
 		t.Fatalf("err:%s resp:%v\n", err, credResp)
 	}
 
 	// Get a connection to the database plugin
-	dbi, err := dbBackend.GetConnection(context.Background(),
+	dbi, err := dbBackend.GetConnection(t.Context(),
 		config.StorageView, "plugin-test")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Alter the database password so it no longer matches what is in storage
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 	defer cancel()
 	updateReq := v5.UpdateUserRequest{
 		Username: databaseUser,
@@ -123,7 +123,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 	}
 
 	// Reading credentials should no longer work
-	_, err = lb.HandleRequest(namespace.RootContext(context.TODO()), credReq)
+	_, err = lb.HandleRequest(namespace.RootContext(t.Context()), credReq)
 	if err == nil {
 		t.Fatal("expected authentication to fail when reading credentials")
 	}
@@ -135,7 +135,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 		OldPassword:    defaultPassword,
 		NewPassword:    "newSecret",
 	}
-	_, err = framework.PutWAL(context.Background(), config.StorageView, rotateRootWALKey, walEntry)
+	_, err = framework.PutWAL(t.Context(), config.StorageView, rotateRootWALKey, walEntry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 
 	// Trigger an immediate RollbackOperation so that the WAL rollback
 	// function can use the WAL entry to roll back the database password
-	_, err = lb.HandleRequest(context.Background(), &logical.Request{
+	_, err = lb.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.RollbackOperation,
 		Path:      "",
 		Storage:   config.StorageView,
@@ -158,7 +158,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 
 	// Reading credentials should work again after the database
 	// password has been rolled back.
-	credResp, err = lb.HandleRequest(namespace.RootContext(context.TODO()), credReq)
+	credResp, err = lb.HandleRequest(namespace.RootContext(t.Context()), credReq)
 	if err != nil || (credResp != nil && credResp.IsError()) {
 		t.Fatalf("err:%s resp:%v\n", err, credResp)
 	}
@@ -177,11 +177,11 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_1(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer lb.Cleanup(context.Background())
+	defer lb.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "")
 	defer cleanup()
@@ -196,7 +196,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_1(t *testing.T) {
 		"username":       databaseUser,
 		"password":       defaultPassword,
 	}
-	resp, err := lb.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
+	resp, err := lb.HandleRequest(namespace.RootContext(t.Context()), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/plugin-test",
 		Storage:   config.StorageView,
@@ -212,7 +212,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_1(t *testing.T) {
 		"creation_statements": testRole,
 		"max_ttl":             "10m",
 	}
-	resp, err = lb.HandleRequest(context.Background(), &logical.Request{
+	resp, err = lb.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "roles/plugin-role-test",
 		Storage:   config.StorageView,
@@ -229,7 +229,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_1(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      make(map[string]interface{}),
 	}
-	credResp, err := lb.HandleRequest(context.Background(), credReq)
+	credResp, err := lb.HandleRequest(t.Context(), credReq)
 	if err != nil || (credResp != nil && credResp.IsError()) {
 		t.Fatalf("err:%s resp:%v\n", err, credResp)
 	}
@@ -241,14 +241,14 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_1(t *testing.T) {
 		OldPassword:    defaultPassword,
 		NewPassword:    "newSecret",
 	}
-	_, err = framework.PutWAL(context.Background(), config.StorageView, rotateRootWALKey, walEntry)
+	_, err = framework.PutWAL(t.Context(), config.StorageView, rotateRootWALKey, walEntry)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assertWALCount(t, config.StorageView, 1, rotateRootWALKey)
 
 	// Trigger an immediate RollbackOperation
-	_, err = lb.HandleRequest(context.Background(), &logical.Request{
+	_, err = lb.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.RollbackOperation,
 		Path:      "",
 		Storage:   config.StorageView,
@@ -262,7 +262,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_1(t *testing.T) {
 	assertWALCount(t, config.StorageView, 0, rotateRootWALKey)
 
 	// Reading credentials should work
-	credResp, err = lb.HandleRequest(namespace.RootContext(context.TODO()), credReq)
+	credResp, err = lb.HandleRequest(namespace.RootContext(t.Context()), credReq)
 	if err != nil || (credResp != nil && credResp.IsError()) {
 		t.Fatalf("err:%s resp:%v\n", err, credResp)
 	}
@@ -281,7 +281,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +289,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 	if !ok {
 		t.Fatal("could not convert to db backend")
 	}
-	defer lb.Cleanup(context.Background())
+	defer lb.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "")
 	defer cleanup()
@@ -304,7 +304,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 		"username":       databaseUser,
 		"password":       defaultPassword,
 	}
-	resp, err := lb.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
+	resp, err := lb.HandleRequest(namespace.RootContext(t.Context()), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/plugin-test",
 		Storage:   config.StorageView,
@@ -320,7 +320,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 		"creation_statements": testRole,
 		"max_ttl":             "10m",
 	}
-	resp, err = lb.HandleRequest(context.Background(), &logical.Request{
+	resp, err = lb.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "roles/plugin-role-test",
 		Storage:   config.StorageView,
@@ -337,19 +337,19 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      make(map[string]interface{}),
 	}
-	credResp, err := lb.HandleRequest(context.Background(), credReq)
+	credResp, err := lb.HandleRequest(t.Context(), credReq)
 	if err != nil || (credResp != nil && credResp.IsError()) {
 		t.Fatalf("err:%s resp:%v\n", err, credResp)
 	}
 
 	// Get a connection to the database plugin
-	dbi, err := dbBackend.GetConnection(context.Background(), config.StorageView, "plugin-test")
+	dbi, err := dbBackend.GetConnection(t.Context(), config.StorageView, "plugin-test")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Alter the database password
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 	defer cancel()
 	updateReq := v5.UpdateUserRequest{
 		Username: databaseUser,
@@ -363,7 +363,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 	}
 
 	// Update storage with the new password
-	dbConfig, err := dbBackend.DatabaseConfig(context.Background(), config.StorageView,
+	dbConfig, err := dbBackend.DatabaseConfig(t.Context(), config.StorageView,
 		"plugin-test")
 	if err != nil {
 		t.Fatal(err)
@@ -373,7 +373,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = config.StorageView.Put(context.Background(), entry)
+	err = config.StorageView.Put(t.Context(), entry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +385,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 	}
 
 	// Reading credentials should work
-	credResp, err = lb.HandleRequest(namespace.RootContext(context.TODO()), credReq)
+	credResp, err = lb.HandleRequest(namespace.RootContext(t.Context()), credReq)
 	if err != nil || (credResp != nil && credResp.IsError()) {
 		t.Fatalf("err:%s resp:%v\n", err, credResp)
 	}
@@ -397,14 +397,14 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 		OldPassword:    defaultPassword,
 		NewPassword:    "newSecret",
 	}
-	_, err = framework.PutWAL(context.Background(), config.StorageView, rotateRootWALKey, walEntry)
+	_, err = framework.PutWAL(t.Context(), config.StorageView, rotateRootWALKey, walEntry)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assertWALCount(t, config.StorageView, 1, rotateRootWALKey)
 
 	// Trigger an immediate RollbackOperation
-	_, err = lb.HandleRequest(context.Background(), &logical.Request{
+	_, err = lb.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.RollbackOperation,
 		Path:      "",
 		Storage:   config.StorageView,
@@ -418,7 +418,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 	assertWALCount(t, config.StorageView, 0, rotateRootWALKey)
 
 	// Reading credentials should work
-	credResp, err = lb.HandleRequest(namespace.RootContext(context.TODO()), credReq)
+	credResp, err = lb.HandleRequest(namespace.RootContext(t.Context()), credReq)
 	if err != nil || (credResp != nil && credResp.IsError()) {
 		t.Fatalf("err:%s resp:%v\n", err, credResp)
 	}

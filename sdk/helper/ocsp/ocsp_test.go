@@ -4,7 +4,6 @@ package ocsp
 
 import (
 	"bytes"
-	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -233,7 +232,7 @@ func TestUnitExpiredOCSPResponse(t *testing.T) {
 	}
 	client := New(logFactory, 100)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	config := &VerifyConfig{
 		OcspEnabled:         true,
@@ -317,7 +316,7 @@ func TestUnitNoCachedOCSPResponse(t *testing.T) {
 	}
 	client := New(logFactory, 100)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	config := &VerifyConfig{
 		OcspEnabled:         true,
@@ -435,7 +434,7 @@ func TestOCSPRetry(t *testing.T) {
 		t:       t,
 	}
 	res, b, st, err := c.retryOCSP(
-		context.TODO(),
+		t.Context(),
 		client, fakeRequestFunc,
 		dummyOCSPHost,
 		make(map[string]string), []byte{0}, certs[len(certs)-1])
@@ -450,7 +449,7 @@ func TestOCSPRetry(t *testing.T) {
 		t:       t,
 	}
 	res, b, st, err = c.retryOCSP(
-		context.TODO(),
+		t.Context(),
 		client, fakeRequestFunc,
 		dummyOCSPHost,
 		make(map[string]string), []byte{0}, certs[len(certs)-1])

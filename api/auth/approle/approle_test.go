@@ -4,7 +4,6 @@
 package approle
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -100,7 +99,7 @@ func TestLogin(t *testing.T) {
 		t.Fatalf("error initializing AppRoleAuth with secret ID file: %v", err)
 	}
 
-	loginRespFromFile, err := client.Auth().Login(context.TODO(), authFromFile)
+	loginRespFromFile, err := client.Auth().Login(t.Context(), authFromFile)
 	if err != nil {
 		t.Fatalf("error logging in with secret ID from file: %v", err)
 	}
@@ -113,7 +112,7 @@ func TestLogin(t *testing.T) {
 		t.Fatalf("error initializing AppRoleAuth with secret ID env var: %v", err)
 	}
 
-	loginRespFromEnv, err := client.Auth().Login(context.TODO(), authFromEnv)
+	loginRespFromEnv, err := client.Auth().Login(t.Context(), authFromEnv)
 	if err != nil {
 		t.Fatalf("error logging in with secret ID from env var: %v", err)
 	}
@@ -126,7 +125,7 @@ func TestLogin(t *testing.T) {
 		t.Fatalf("error initializing AppRoleAuth with secret ID string: %v", err)
 	}
 
-	loginRespFromStr, err := client.Auth().Login(context.TODO(), authFromStr)
+	loginRespFromStr, err := client.Auth().Login(t.Context(), authFromStr)
 	if err != nil {
 		t.Fatalf("error logging in with string: %v", err)
 	}

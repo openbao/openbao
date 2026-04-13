@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math/big"
 	mathrand "math/rand"
 	"net"
@@ -209,16 +210,10 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 		conf.RedirectAddr = opts.RedirectAddr
 	}
 
-	for k, v := range opts.LogicalBackends {
-		conf.LogicalBackends[k] = v
-	}
-	for k, v := range opts.CredentialBackends {
-		conf.CredentialBackends[k] = v
-	}
+	maps.Copy(conf.LogicalBackends, opts.LogicalBackends)
+	maps.Copy(conf.CredentialBackends, opts.CredentialBackends)
 
-	for k, v := range opts.AuditBackends {
-		conf.AuditBackends[k] = v
-	}
+	maps.Copy(conf.AuditBackends, opts.AuditBackends)
 	if opts.RollbackPeriod != time.Duration(0) {
 		conf.RollbackPeriod = opts.RollbackPeriod
 	}
@@ -254,22 +249,14 @@ func testCoreConfig(t testing.T, physicalBackend physical.Backend, logger log.Lo
 	}
 
 	credentialBackends := make(map[string]logical.Factory)
-	for backendName, backendFactory := range noopBackends {
-		credentialBackends[backendName] = backendFactory
-	}
-	for backendName, backendFactory := range be.TestCredentialBackends {
-		credentialBackends[backendName] = backendFactory
-	}
+	maps.Copy(credentialBackends, noopBackends)
+	maps.Copy(credentialBackends, be.TestCredentialBackends)
 
 	logicalBackends := make(map[string]logical.Factory)
-	for backendName, backendFactory := range noopBackends {
-		logicalBackends[backendName] = backendFactory
-	}
+	maps.Copy(logicalBackends, noopBackends)
 
 	logicalBackends["kv"] = LeasedPassthroughBackendFactory
-	for backendName, backendFactory := range be.TestLogicalBackends {
-		logicalBackends[backendName] = backendFactory
-	}
+	maps.Copy(logicalBackends, be.TestLogicalBackends)
 
 	conf := &CoreConfig{
 		Physical:           physicalBackend,
@@ -1530,19 +1517,13 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		}
 
 		if base.LogicalBackends != nil {
-			for k, v := range base.LogicalBackends {
-				coreConfig.LogicalBackends[k] = v
-			}
+			maps.Copy(coreConfig.LogicalBackends, base.LogicalBackends)
 		}
 		if base.CredentialBackends != nil {
-			for k, v := range base.CredentialBackends {
-				coreConfig.CredentialBackends[k] = v
-			}
+			maps.Copy(coreConfig.CredentialBackends, base.CredentialBackends)
 		}
 		if base.AuditBackends != nil {
-			for k, v := range base.AuditBackends {
-				coreConfig.AuditBackends[k] = v
-			}
+			maps.Copy(coreConfig.AuditBackends, base.AuditBackends)
 		}
 		if base.Logger != nil {
 			coreConfig.Logger = base.Logger

@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -20,6 +22,8 @@ import (
  * - Files
  * - Previous requests and responses
  * - CEL expressions
+ * - text/template
+ * - API request parameters
  *
  * The parameter type is converted via the `eval_type` flag.
  *
@@ -27,7 +31,7 @@ import (
  * scenarios where durability (retries, &c) are considered.
  *
  * The profile system allow the construction of a single, optional outer named
- * block (e.g., `initialization`, `profile`, &c) which has one or more
+ * block (e.g., `initialization`, `context`, &c) which has one or more
  * `request` blocks inside, executed in the given order.
  *
  * This is expected to work on regular API requests and responses and will not
@@ -39,7 +43,15 @@ type ProfileEngine struct {
 	profile        []*OuterConfig
 	outerBlockName string
 	requestHandler RequestHandlerFunc
-	logger         hclog.Logger
+
+	input   *InputConfig
+	request *logical.Request
+	data    *framework.FieldData
+
+	reqIdPrefix string
+
+	output *OutputConfig
+	logger hclog.Logger
 }
 
 // NewEngine creates a new profile evaluation engine for a given
@@ -97,17 +109,32 @@ func WithRequestHandler(helper RequestHandlerFunc) func(*ProfileEngine) {
 	}
 }
 
-// Sets the name of the outer profile configuration block. Without this,
-// only a single outer block is allowed, which may be empty.
+// Sets the logger to use for this engine.
 func WithLogger(logger hclog.Logger) func(*ProfileEngine) {
 	return func(p *ProfileEngine) {
 		p.logger = logger
 	}
 }
 
+// Sets the output configuration for this engine, allowing generating
+// logical.Response objects.
+func WithOutput(config *OutputConfig) func(*ProfileEngine) {
+	return func(p *ProfileEngine) {
+		p.output = config
+	}
+}
+
+// Sets the request id prefix for this engine, allowing better auditing by
+// tying the request to an inbound request.
+func WithRequestIdentifierPrefix(prefix string) func(*ProfileEngine) {
+	return func(p *ProfileEngine) {
+		p.reqIdPrefix = prefix
+	}
+}
+
 // SourceBuilder creates a new concrete source mapped to a particular
 // instance of a field.
-type SourceBuilder func(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source
+type SourceBuilder func(engine *ProfileEngine, field map[string]interface{}) Source
 
 // RequestHandler takes logical requests and executes them.
 type RequestHandlerFunc func(ctx context.Context, req *logical.Request) (*logical.Response, error)
@@ -115,7 +142,7 @@ type RequestHandlerFunc func(ctx context.Context, req *logical.Request) (*logica
 // Source represents a dynamic value source. A source object is initialized
 // once for each matching object and is alive throughout the history of the request.
 type Source interface {
-	Validate(ctx context.Context) (requestDeps, responseDeps []string, err error)
+	Validate() (requestDeps, responseDeps []string, err error)
 	Evaluate(ctx context.Context, history *EvaluationHistory) (value interface{}, err error)
 	Close(ctx context.Context) error
 }
@@ -145,9 +172,12 @@ func (p *ProfileEngine) validate() error {
 	}
 
 	for _, outer := range p.profile {
-		if err := validateNameConvention("outer block", outer.Type); err != nil {
-			return err
+		if len(p.profile) > 1 {
+			if err := validateNameConvention("outer block", outer.Type); err != nil {
+				return err
+			}
 		}
+
 		for _, req := range outer.Requests {
 			if err := validateNameConvention(fmt.Sprintf("request in block '%s'", outer.Type), req.Type); err != nil {
 				return err
@@ -157,11 +187,37 @@ func (p *ProfileEngine) validate() error {
 
 	// 5. Ensure we've set a request handler.
 	if p.requestHandler == nil {
-		return fmt.Errorf("profile engine is missing a request handler; set p.requestHandler before Evaluate")
+		return errors.New("profile engine is missing a request handler; use WithRequestHandler(...) during engine construction")
 	}
-	// XXX (ascheel) - additional validations:
-	// 4. Validate and store all sources up-front, letting us simply call
-	//    evaluate later.
+
+	// 6. Ensure all input source parameters are set.
+	if p.input != nil || p.request != nil || p.data != nil {
+		if p.input == nil {
+			return errors.New("profile engine option WithInputSource(...) called without an input configuration")
+		}
+		if p.request == nil {
+			return errors.New("profile engine option WithInputSource(...) called without a source request")
+		}
+		if p.data == nil {
+			return errors.New("profile engine option WithInputSource(...) called without parsed request data")
+		}
+
+		for index, field := range p.input.Fields {
+			if _, present := p.data.Schema[field.Name]; present {
+				return fmt.Errorf("input.fields.%d [named %q] already present in request schema", index, field.Name)
+			}
+
+			p.data.Schema[field.Name] = field.ToSchema()
+		}
+
+		if err := p.data.Validate(); err != nil {
+			return fmt.Errorf("failed input schema validation: %w", err)
+		}
+
+		if err := p.data.ValidateRequiredFields(); err != nil {
+			return fmt.Errorf("failed input validation: %w", err)
+		}
+	}
 
 	return nil
 }
@@ -240,6 +296,49 @@ func validateNameConvention(kind, name string) error {
 //  2. Evaluates all requests within each outer block, sending it to the
 //     handler.
 func (p *ProfileEngine) Evaluate(ctx context.Context) error {
+	if p.output != nil {
+		return fmt.Errorf("cannot call ProfileEngine.Evaluate(...) when output is specified")
+	}
+
+	_, err := p.evaluateHistory(ctx)
+	return err
+}
+
+// EvaluateResponse performs evaluation of the profile described in this
+// engine, yielding a final combined output response.
+func (p *ProfileEngine) EvaluateResponse(ctx context.Context) (*logical.Response, error) {
+	if p.output == nil {
+		return nil, fmt.Errorf("cannot call ProfileEngine.EvaluateResponse(...) when output is not specified")
+	}
+
+	history, err := p.evaluateHistory(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return p.evaluateOutput(ctx, history)
+}
+
+func (p *ProfileEngine) Debug(ctx context.Context) map[string]interface{} {
+	history, err := p.evaluateHistory(ctx)
+
+	debugInfo := map[string]interface{}{
+		"history": history,
+		"error":   err,
+	}
+
+	if err == nil && p.output != nil {
+		resp, err := p.evaluateOutput(ctx, history)
+		debugInfo["error"] = err
+		debugInfo["response"] = resp
+	}
+
+	return debugInfo
+}
+
+// evaluateHistory evaluates all requests which occur in the profile, building
+// up an evaluation history of these flows.
+func (p *ProfileEngine) evaluateHistory(ctx context.Context) (*EvaluationHistory, error) {
 	var history EvaluationHistory
 	for outerIndex, outerBlock := range p.profile {
 		if err := func() error {
@@ -254,27 +353,38 @@ func (p *ProfileEngine) Evaluate(ctx context.Context) error {
 			return nil
 		}(); err != nil {
 			if p.outerBlockName != "" {
-				return fmt.Errorf("%v.[%v (%d)]: %w", p.outerBlockName, outerBlock.Type, outerIndex, err)
+				return &history, fmt.Errorf("%v.[%v (%d)]: %w", p.outerBlockName, outerBlock.Type, outerIndex, err)
 			}
 
-			return err
+			return &history, err
 		}
 	}
 
-	return nil
+	return &history, nil
 }
 
 // evaluateRequest evaluates a single request within the broader profile.
 func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *EvaluationHistory, outerIndex int, outerBlock *OuterConfig, requestIndex int, requestBlock *RequestConfig) error {
 	// 1. Build logical request.
-	req, allowFailure, err := p.buildRequest(ctx, history, outerIndex, outerBlock, requestIndex, requestBlock)
+	req, execute, allowFailure, err := p.buildRequest(ctx, history, outerIndex, outerBlock, requestIndex, requestBlock)
 	if err != nil {
 		return fmt.Errorf("in building request: %w", err)
 	}
 
+	// 2. Stash the request.
+	if err := history.AddRequest(outerBlock.Type, requestBlock.Type, req); err != nil {
+		return fmt.Errorf("failed to save request: %w", err)
+	}
+
+	// 3. Decide whether to execute.
+	if !execute {
+		p.logger.Trace("Skipping profile request with when=false", "input", requestBlock, "request-id", req.ID)
+		return nil
+	}
+
 	p.logger.Trace("Performing profile request", "input", requestBlock, "request-id", req.ID)
 
-	// 2. Call the request handler.
+	// 4. Call the request handler.
 	resp, err := p.requestHandler(ctx, req)
 	isFailure := err != nil || resp.IsError()
 	if err == nil && resp.IsError() {
@@ -286,11 +396,7 @@ func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *Evaluation
 		}
 	}
 
-	// 3. Stash request & response for future use.
-	if err := history.AddRequest(outerBlock.Type, requestBlock.Type, req); err != nil {
-		return fmt.Errorf("failed to save request: %w", err)
-	}
-
+	// 5. Stash response for future use.
 	if !isFailure {
 		if err := history.AddResponse(outerBlock.Type, requestBlock.Type, resp); err != nil {
 			return fmt.Errorf("failed to save response: %w", err)
@@ -302,24 +408,30 @@ func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *Evaluation
 
 // buildRequest transforms an input configuration's request into a proper
 // output
-func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHistory, outerIndex int, outerBlock *OuterConfig, requestIndex int, requestBlock *RequestConfig) (req *logical.Request, allowFailure bool, err error) {
+func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHistory, outerIndex int, outerBlock *OuterConfig, requestIndex int, requestBlock *RequestConfig) (req *logical.Request, execute bool, allowFailure bool, err error) {
 	reqName := fmt.Sprintf("request[%d].%v", requestIndex, requestBlock.Type)
 	if p.outerBlockName != "" {
 		reqName = fmt.Sprintf("%v[%d].%v.%v", p.outerBlockName, outerIndex, outerBlock.Type, reqName)
+	}
+	if p.reqIdPrefix != "" {
+		reqName = fmt.Sprintf("%v.%v", p.reqIdPrefix, reqName)
 	}
 
 	req = &logical.Request{
 		ID: reqName,
 	}
 
+	// Execute requests by default.
+	execute = true
+
 	if err = p.evaluateField(ctx, history, requestBlock.Operation, &req.Operation); err != nil {
 		err = fmt.Errorf("failed to evaluate operation: %w", err)
-		return req, allowFailure, err
+		return req, execute, allowFailure, err
 	}
 
 	if err = p.evaluateField(ctx, history, requestBlock.Path, &req.Path); err != nil {
 		err = fmt.Errorf("failed to evaluate path: %w", err)
-		return req, allowFailure, err
+		return req, execute, allowFailure, err
 	}
 
 	// For the token, if our request block did not specify a token, we use the
@@ -330,21 +442,34 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 	} else {
 		if err = p.evaluateField(ctx, history, requestBlock.Token, &req.ClientToken); err != nil {
 			err = fmt.Errorf("failed to evaluate token: %w", err)
-			return req, allowFailure, err
+			return req, execute, allowFailure, err
 		}
 	}
 
 	if err = p.evaluateField(ctx, history, requestBlock.Data, &req.Data); err != nil {
 		err = fmt.Errorf("failed to evaluate data: %w", err)
-		return req, allowFailure, err
+		return req, execute, allowFailure, err
+	}
+
+	if err = p.evaluateField(ctx, history, requestBlock.Headers, &req.Headers); err != nil {
+		err = fmt.Errorf("failed to evaluate data: %w", err)
+		return req, execute, allowFailure, err
 	}
 
 	if err = p.evaluateField(ctx, history, requestBlock.AllowFailure, &allowFailure); err != nil {
 		err = fmt.Errorf("failed to evaluate allow failure: %w", err)
-		return req, allowFailure, err
+		return req, execute, allowFailure, err
 	}
 
-	return req, allowFailure, err
+	// Only override the value of execute if specified.
+	if requestBlock.When != nil {
+		if err = p.evaluateField(ctx, history, requestBlock.When, &execute); err != nil {
+			err = fmt.Errorf("failed to evaluate when: %w", err)
+			return req, execute, allowFailure, err
+		}
+	}
+
+	return req, execute, allowFailure, err
 }
 
 // evaluateField takes a single configuration field and evaluates it to the
@@ -362,30 +487,36 @@ func (p *ProfileEngine) evaluateField(ctx context.Context, history *EvaluationHi
 			return err
 		}
 	case []map[string]interface{}:
-		resultMap := map[string]interface{}{}
-		for index, item := range obj {
-			evalValue, err := p.maybeEvaluateTypedField(ctx, history, item)
-			if err != nil {
-				return fmt.Errorf("in list item [%d]: %w", index, err)
-			}
-
-			switch v := evalValue.(type) {
-			case map[string]interface{}:
-				for fieldKey, fieldValue := range v {
-					resultMap[fieldKey] = fieldValue
-				}
-			default:
-				if len(obj) > 1 {
-					return fmt.Errorf("got direct typed value (%T) when more than one outer item exist in list-map", v)
+		// HCL only ever yields a []map[string]interface{} when doing partial
+		// (IMHO, failed) conversion of objects. Collapse all items in the map
+		// down to a single item and re-evaluate.
+		collapsed := map[string]interface{}{}
+		for index, subobj := range obj {
+			for key, value := range subobj {
+				if existingValue, present := collapsed[key]; present && existingValue != value {
+					return fmt.Errorf("bug in profile system: at index %d in collapsing object, duplicate key %v (%q != %q)", index, key, existingValue, value)
 				}
 
-				value = v
+				collapsed[key] = value
 			}
 		}
 
-		if value == nil {
-			value = resultMap
+		value, err = p.maybeEvaluateTypedField(ctx, history, collapsed)
+		if err != nil {
+			return err
 		}
+	case []interface{}:
+		var results []interface{}
+		for index, orig := range obj {
+			var dest interface{}
+			if err := p.evaluateField(ctx, history, orig, &dest); err != nil {
+				return fmt.Errorf("list.%d: %w", index, err)
+			}
+
+			results = append(results, dest)
+		}
+
+		value = results
 	default:
 		value = obj
 	}
@@ -399,58 +530,42 @@ func (p *ProfileEngine) evaluateField(ctx context.Context, history *EvaluationHi
 
 // maybeEvaluateTypedField checks if the field is one of our source fields,
 // else returns the original value. Handles various nested structures.
+//
+// We implement a depth-first evaluation technique: this ensures that
+// source evaluation is always predetermined as new keys cannot be
+// net-created.
+//
+// Notably, evaluation must be constants and pre-determined; we do not
+// support conditional evaluation types.
 func (p *ProfileEngine) maybeEvaluateTypedField(ctx context.Context, history *EvaluationHistory, obj map[string]interface{}) (interface{}, error) {
 	sourceRaw, sourcePresent := obj["eval_source"]
 	objTypeRaw, objPresent := obj["eval_type"]
 
-	if !sourcePresent && !objPresent {
-		// Walk object and see if any of its keys are typed objects.
-		for key, value := range obj {
-			if subObj, ok := value.(map[string]interface{}); ok {
-				ret, err := p.maybeEvaluateTypedField(ctx, history, subObj)
-				if err != nil {
-					return nil, fmt.Errorf("in map item [%v]: %w", key, err)
-				}
+	// If we have one or the other, but not both, this is a fatal fault.
+	if (sourcePresent || objPresent) && (!sourcePresent || !objPresent) {
+		return nil, fmt.Errorf("malformed object; missing either 'eval_type' or 'eval_source': obj=%#v", obj)
+	}
 
-				obj[key] = ret
-			} else if listObj, ok := value.([]map[string]interface{}); ok {
-				var value interface{}
-				resultMap := map[string]interface{}{}
-				for index, item := range listObj {
-					evalValue, err := p.maybeEvaluateTypedField(ctx, history, item)
-					if err != nil {
-						return nil, fmt.Errorf("in list item [%d]: %w", index, err)
-					}
+	// Even if no resolution needs to happen at this level, a lower level
+	// might need to occur; recurse until we have primitive types.
+	resolved := map[string]interface{}{}
+	for key, value := range obj {
+		var result interface{}
 
-					switch v := evalValue.(type) {
-					case map[string]interface{}:
-						for fieldKey, fieldValue := range v {
-							resultMap[fieldKey] = fieldValue
-						}
-					default:
-						if len(listObj) > 1 {
-							return nil, fmt.Errorf("got direct typed value (%T) when more than one outer item exist in list-map", v)
-						}
-
-						value = v
-					}
-				}
-
-				if value == nil {
-					value = resultMap
-				}
-
-				obj[key] = value
-			}
+		// Parse the final value of this field.
+		if err := p.evaluateField(ctx, history, value, &result); err != nil {
+			return nil, fmt.Errorf("while evaluating map.%v: %w", key, err)
 		}
 
-		return obj, nil
+		resolved[key] = result
 	}
 
-	if !sourcePresent || !objPresent {
-		return nil, errors.New("malformed object; missing either 'eval_type' or 'eval_source'")
+	// No evaluation needs to occur; return.
+	if !sourcePresent && !objPresent {
+		return resolved, nil
 	}
 
+	// Finally, dispatch the right source method.
 	source, ok := sourceRaw.(string)
 	if !ok {
 		return nil, fmt.Errorf("malformed object; 'eval_source' was of wrong type; expected 'string' got '%T'", sourceRaw)
@@ -461,7 +576,7 @@ func (p *ProfileEngine) maybeEvaluateTypedField(ctx context.Context, history *Ev
 		return nil, fmt.Errorf("malformed object; 'eval_type' was of wrong type; expected 'string' got '%T'", sourceRaw)
 	}
 
-	return p.evaluateTypedField(ctx, history, obj, source, objType)
+	return p.evaluateTypedField(ctx, history, resolved, source, objType)
 }
 
 // evaluateTypedField actually performs the source builder-backed evaluation
@@ -472,25 +587,21 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 		return nil, fmt.Errorf("unknown value for 'eval_source': %v", source)
 	}
 
-	sourceEval := sourceBuilder(ctx, p, obj)
+	sourceEval := sourceBuilder(p, obj)
 
 	defer sourceEval.Close(ctx)
 
-	accessedRequests, accessedResponses, err := sourceEval.Validate(ctx)
+	accessedRequests, accessedResponses, err := sourceEval.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate source '%v': %w", source, err)
 	}
 
-	for _, req := range accessedRequests {
-		if req == "" {
-			return nil, fmt.Errorf("invalid empty request name found")
-		}
+	if slices.Contains(accessedRequests, "") {
+		return nil, fmt.Errorf("invalid empty request name found")
 	}
 
-	for _, resp := range accessedResponses {
-		if resp == "" {
-			return nil, fmt.Errorf("invalid empty response name found")
-		}
+	if slices.Contains(accessedResponses, "") {
+		return nil, fmt.Errorf("invalid empty response name found")
 	}
 
 	val, err := sourceEval.Evaluate(ctx, history)
@@ -560,4 +671,30 @@ func (p *ProfileEngine) convertToType(val interface{}, objType string) (interfac
 	default:
 		return nil, fmt.Errorf("unsupported type conversion: %s", objType)
 	}
+}
+
+func (p *ProfileEngine) evaluateOutput(ctx context.Context, history *EvaluationHistory) (*logical.Response, error) {
+	resp := &logical.Response{
+		Headers: map[string][]string{},
+	}
+
+	if err := p.evaluateField(ctx, history, p.output.Data, &resp.Data); err != nil {
+		return nil, fmt.Errorf("failed to evaluate output data: %w", err)
+	}
+
+	for headerName, exprs := range p.output.Headers {
+		var values []string
+		for index, expr := range exprs {
+			var value string
+			if err := p.evaluateField(ctx, history, expr, &value); err != nil {
+				return nil, fmt.Errorf("failed to evaluate response header [%v/%d]: %w", headerName, index, err)
+			}
+
+			values = append(values, value)
+		}
+
+		resp.Headers[headerName] = values
+	}
+
+	return resp, nil
 }

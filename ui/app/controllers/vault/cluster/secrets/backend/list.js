@@ -50,7 +50,7 @@ export default Controller.extend({
 
   filterMatchesKey: computed('filter', 'model', 'model.[]', function () {
     const { filter, model: content } = this;
-    return !!(content.length && content.findBy('id', filter));
+    return !!(content.length && content.find((x) => x.id === filter));
   }),
 
   firstPartialMatch: computed('filter', 'model', 'model.[]', 'filterMatchesKey', function () {

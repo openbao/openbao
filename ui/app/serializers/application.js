@@ -7,6 +7,7 @@ import JSONSerializer from '@ember-data/serializer/json';
 import { isNone, isBlank } from '@ember/utils';
 import { assign } from '@ember/polyfills';
 import { decamelize } from '@ember/string';
+import { addCapabilityRelationships } from 'vault/lib/capabilities';
 
 export default JSONSerializer.extend({
   keyForAttribute: function (attr) {
@@ -54,7 +55,10 @@ export default JSONSerializer.extend({
     }
     let jsonAPIRepresentation = this._super(store, primaryModelClass, responseJSON, id, requestType);
     if (primaryModelClass.relatedCapabilities) {
-      jsonAPIRepresentation = primaryModelClass.relatedCapabilities(jsonAPIRepresentation);
+      jsonAPIRepresentation = addCapabilityRelationships(
+        primaryModelClass.relatedCapabilities,
+        jsonAPIRepresentation
+      );
     }
     return jsonAPIRepresentation;
   },

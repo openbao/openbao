@@ -11,6 +11,7 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -19,6 +20,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	otplib "github.com/pquerna/otp"
 	totplib "github.com/pquerna/otp/totp"
+	"github.com/stretchr/testify/require"
 )
 
 func createKey() (string, error) {
@@ -27,26 +29,21 @@ func createKey() (string, error) {
 		AccountName: "Test",
 	})
 
-	key := keyUrl.Secret()
-
-	return strings.ToLower(key), err
+	return strings.ToLower(keyUrl.Secret()), err
 }
 
 func generateCode(key string, period uint, digits otplib.Digits, algorithm otplib.Algorithm) (string, error) {
-	// Generate password using totp library
-	totpToken, err := totplib.GenerateCodeCustom(key, time.Now(), totplib.ValidateOpts{
+	return totplib.GenerateCodeCustom(key, time.Now(), totplib.ValidateOpts{
 		Period:    period,
 		Digits:    digits,
 		Algorithm: algorithm,
 	})
-
-	return totpToken, err
 }
 
 func TestBackend_KeyName(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,9 +79,9 @@ func TestBackend_KeyName(t *testing.T) {
 			false,
 		},
 	}
-	var resp *logical.Response
+
 	for _, tc := range tests {
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
+		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), &logical.Request{
 			Path:      "keys/" + tc.KeyName,
 			Operation: logical.UpdateOperation,
 			Storage:   config.StorageView,
@@ -102,7 +99,7 @@ func TestBackend_KeyName(t *testing.T) {
 		} else if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("bad: test name: %q\nresp: %#v\nerr: %v", tc.Name, resp, err)
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), &logical.Request{
 			Path:      "code/" + tc.KeyName,
 			Operation: logical.ReadOperation,
 			Storage:   config.StorageView,
@@ -110,16 +107,77 @@ func TestBackend_KeyName(t *testing.T) {
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("bad: test name: %q\nresp: %#v\nerr: %v", tc.Name, resp, err)
 		}
-		if resp.Data["code"].(string) == "" {
-			t.Fatalf("failed to generate code for test %q", tc.Name)
-		}
+
+		require.NotEmpty(t, resp.Data["code"].(string))
+		require.NotEmpty(t, resp.Data["generated"].(int64))
+		require.NotEmpty(t, resp.Data["expire_time"].(int64))
+		require.NotEmpty(t, resp.Data["period"].(string))
 	}
+}
+
+func TestBackend_Timesteps(t *testing.T) {
+	config := logical.TestBackendConfig()
+	config.StorageView = &logical.InmemStorage{}
+	ctx := namespace.RootContext(t.Context())
+	b, err := Factory(ctx, config)
+	require.NoError(t, err)
+
+	resp, err := b.HandleRequest(ctx, &logical.Request{
+		Path:      "keys/test",
+		Operation: logical.UpdateOperation,
+		Storage:   config.StorageView,
+		Data: map[string]interface{}{
+			"generate":     true,
+			"account_name": "bao",
+			"issuer":       "openbao",
+		},
+	})
+	require.NoError(t, err)
+
+	generateCode := func(ctx context.Context) (int64, int64) {
+		resp, err = b.HandleRequest(ctx, &logical.Request{
+			Path:      "code/test",
+			Operation: logical.ReadOperation,
+			Storage:   config.StorageView,
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.Data["code"].(string), 6)
+		require.Equal(t, "30s", resp.Data["period"].(string))
+		return resp.Data["generated"].(int64), resp.Data["expire_time"].(int64)
+	}
+
+	synctest.Test(t, func(t *testing.T) {
+		generated, expire_time := generateCode(t.Context())
+		t.Logf("generated: %v | expire_time: %v", generated, expire_time)
+		halfStepTime := 15 * time.Second
+
+		// fake clock in a bubble (synctest) starts at UTC 2000-01-01
+		start := time.Now()
+		require.Equal(t, start.Unix(), generated)
+		require.Equal(t, start.Add(30*time.Second).Unix(), expire_time)
+		require.WithinDuration(t, time.Unix(generated, 0), time.Unix(expire_time, 0), 2*halfStepTime)
+
+		time.Sleep(halfStepTime)
+
+		generated, expire_time = generateCode(t.Context())
+		t.Logf("generated: %v | expire_time: %v", generated, expire_time)
+		require.Equal(t, start.Add(halfStepTime).Unix(), generated)
+		require.Equal(t, start.Add(30*time.Second).Unix(), expire_time)
+
+		time.Sleep(halfStepTime)
+
+		generated, expire_time = generateCode(t.Context())
+		t.Logf("generated: %v | expire_time: %v", generated, expire_time)
+		require.Equal(t, start.Add(2*halfStepTime).Unix(), generated)
+		// next step
+		require.Equal(t, start.Add(4*halfStepTime).Unix(), expire_time)
+	})
 }
 
 func TestBackend_readCredentialsDefaultValues(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +212,7 @@ func TestBackend_readCredentialsDefaultValues(t *testing.T) {
 func TestBackend_readCredentialsEightDigitsThirtySecondPeriod(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +250,7 @@ func TestBackend_readCredentialsEightDigitsThirtySecondPeriod(t *testing.T) {
 func TestBackend_readCredentialsSixDigitsNinetySecondPeriod(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +288,7 @@ func TestBackend_readCredentialsSixDigitsNinetySecondPeriod(t *testing.T) {
 func TestBackend_readCredentialsSHA256(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,7 +326,7 @@ func TestBackend_readCredentialsSHA256(t *testing.T) {
 func TestBackend_readCredentialsSHA512(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,7 +364,7 @@ func TestBackend_readCredentialsSHA512(t *testing.T) {
 func TestBackend_keyCrudDefaultValues(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,7 +419,7 @@ func TestBackend_keyCrudDefaultValues(t *testing.T) {
 func TestBackend_createKeyMissingKeyValue(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,7 +442,7 @@ func TestBackend_createKeyMissingKeyValue(t *testing.T) {
 func TestBackend_createKeyInvalidKeyValue(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +466,7 @@ func TestBackend_createKeyInvalidKeyValue(t *testing.T) {
 func TestBackend_createKeyInvalidAlgorithm(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -436,7 +494,7 @@ func TestBackend_createKeyInvalidAlgorithm(t *testing.T) {
 func TestBackend_createKeyInvalidPeriod(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -464,7 +522,7 @@ func TestBackend_createKeyInvalidPeriod(t *testing.T) {
 func TestBackend_createKeyInvalidDigits(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -492,7 +550,7 @@ func TestBackend_createKeyInvalidDigits(t *testing.T) {
 func TestBackend_generatedKeyDefaultValues(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -526,7 +584,7 @@ func TestBackend_generatedKeyDefaultValues(t *testing.T) {
 func TestBackend_generatedKeyDefaultValuesNoQR(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -551,7 +609,7 @@ func TestBackend_generatedKeyDefaultValuesNoQR(t *testing.T) {
 func TestBackend_generatedKeyNonDefaultKeySize(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -585,7 +643,7 @@ func TestBackend_generatedKeyNonDefaultKeySize(t *testing.T) {
 func TestBackend_urlPassedNonGeneratedKeyInvalidPeriod(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -609,7 +667,7 @@ func TestBackend_urlPassedNonGeneratedKeyInvalidPeriod(t *testing.T) {
 func TestBackend_urlPassedNonGeneratedKeyInvalidDigits(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -633,7 +691,7 @@ func TestBackend_urlPassedNonGeneratedKeyInvalidDigits(t *testing.T) {
 func TestBackend_urlPassedNonGeneratedKeyIssuerInFirstPosition(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -667,7 +725,7 @@ func TestBackend_urlPassedNonGeneratedKeyIssuerInFirstPosition(t *testing.T) {
 func TestBackend_urlPassedNonGeneratedKeyIssuerInQueryString(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -701,7 +759,7 @@ func TestBackend_urlPassedNonGeneratedKeyIssuerInQueryString(t *testing.T) {
 func TestBackend_urlPassedNonGeneratedKeyMissingIssuer(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -735,7 +793,7 @@ func TestBackend_urlPassedNonGeneratedKeyMissingIssuer(t *testing.T) {
 func TestBackend_urlPassedNonGeneratedKeyMissingAccountName(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -769,7 +827,7 @@ func TestBackend_urlPassedNonGeneratedKeyMissingAccountName(t *testing.T) {
 func TestBackend_urlPassedNonGeneratedKeyMissingAccountNameandIssuer(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -803,7 +861,7 @@ func TestBackend_urlPassedNonGeneratedKeyMissingAccountNameandIssuer(t *testing.
 func TestBackend_urlPassedNonGeneratedKeyMissingAccountNameandIssuerandPadding(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -837,7 +895,7 @@ func TestBackend_urlPassedNonGeneratedKeyMissingAccountNameandIssuerandPadding(t
 func TestBackend_generatedKeyInvalidSkew(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -861,7 +919,7 @@ func TestBackend_generatedKeyInvalidSkew(t *testing.T) {
 func TestBackend_generatedKeyInvalidQRSize(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -885,7 +943,7 @@ func TestBackend_generatedKeyInvalidQRSize(t *testing.T) {
 func TestBackend_generatedKeyInvalidKeySize(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -909,7 +967,7 @@ func TestBackend_generatedKeyInvalidKeySize(t *testing.T) {
 func TestBackend_generatedKeyMissingAccountName(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -931,7 +989,7 @@ func TestBackend_generatedKeyMissingAccountName(t *testing.T) {
 func TestBackend_generatedKeyMissingIssuer(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -953,7 +1011,7 @@ func TestBackend_generatedKeyMissingIssuer(t *testing.T) {
 func TestBackend_invalidURLValue(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -975,7 +1033,7 @@ func TestBackend_invalidURLValue(t *testing.T) {
 func TestBackend_urlAndGenerateTrue(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -997,7 +1055,7 @@ func TestBackend_urlAndGenerateTrue(t *testing.T) {
 func TestBackend_keyAndGenerateTrue(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1019,7 +1077,7 @@ func TestBackend_keyAndGenerateTrue(t *testing.T) {
 func TestBackend_generatedKeyExportedFalse(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1133,7 +1191,10 @@ func testAccStepReadCreds(t *testing.T, b logical.Backend, s logical.Storage, na
 		Path:      path.Join("code", name),
 		Check: func(resp *logical.Response) error {
 			var d struct {
-				Code string `mapstructure:"code"`
+				Code       string `mapstructure:"code"`
+				Generated  int64  `mapstructure:"generated"`
+				ExpireTime int64  `mapstructure:"expire_time"`
+				Period     string `mapstructure:"period"`
 			}
 
 			if err := mapstructure.Decode(resp.Data, &d); err != nil {
@@ -1216,7 +1277,7 @@ func testAccStepReadKey(t *testing.T, name string, expected map[string]interface
 	}
 }
 
-func testAccStepValidateCode(t *testing.T, name string, code string, valid, expectError bool) logicaltest.TestStep {
+func testAccStepValidateCode(t *testing.T, name, code string, valid, expectError bool) logicaltest.TestStep {
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "code/" + name,
@@ -1225,9 +1286,7 @@ func testAccStepValidateCode(t *testing.T, name string, code string, valid, expe
 		},
 		ErrorOk: expectError,
 		Check: func(resp *logical.Response) error {
-			if resp == nil {
-				return fmt.Errorf("bad: %#v", resp)
-			}
+			require.NotNil(t, resp)
 
 			var d struct {
 				Valid bool `mapstructure:"valid"`
@@ -1236,18 +1295,7 @@ func testAccStepValidateCode(t *testing.T, name string, code string, valid, expe
 			if err := mapstructure.Decode(resp.Data, &d); err != nil {
 				return err
 			}
-
-			switch valid {
-			case true:
-				if d.Valid != true {
-					return fmt.Errorf("code was not valid: %s", code)
-				}
-
-			default:
-				if d.Valid != false {
-					return fmt.Errorf("code was incorrectly validated: %s", code)
-				}
-			}
+			require.Equal(t, valid, d.Valid)
 			return nil
 		},
 	}

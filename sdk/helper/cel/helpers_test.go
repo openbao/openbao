@@ -40,7 +40,6 @@ func TestCELHelpers(t *testing.T) {
 		}
 
 		for _, tc := range tests {
-			tc := tc
 			t.Run(tc.expr, func(t *testing.T) {
 				t.Parallel()
 				prog := buildTestProgram(t, env, tc.expr)
@@ -101,7 +100,6 @@ func TestCELHelpers(t *testing.T) {
 		}
 
 		for _, tc := range tests {
-			tc := tc
 			t.Run(tc.expr, func(t *testing.T) {
 				t.Parallel()
 				prog := buildTestProgram(t, env, tc.expr)

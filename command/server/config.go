@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -140,6 +141,12 @@ type Config struct {
 
 	// Whether read requests are disabled on standby nodes.
 	DisableStandbyReads bool `hcl:"disable_standby_reads"`
+
+	// Whether to allow unauthenticated workflows. While not inherently unsafe,
+	// as requests created by workflows still require authentication and a
+	// workflow author would have to embed a token, these still should be used
+	// with care.
+	AllowUnauthenticatedWorkflows bool `hcl:"allow_unauthenticated_workflows"`
 }
 
 func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {
@@ -508,15 +515,9 @@ func (c *Config) Merge(c2 *Config) *Config {
 	}
 
 	// merge these integers via a MAX operation
-	result.MaxLeaseTTL = c.MaxLeaseTTL
-	if c2.MaxLeaseTTL > result.MaxLeaseTTL {
-		result.MaxLeaseTTL = c2.MaxLeaseTTL
-	}
+	result.MaxLeaseTTL = max(c2.MaxLeaseTTL, c.MaxLeaseTTL)
 
-	result.DefaultLeaseTTL = c.DefaultLeaseTTL
-	if c2.DefaultLeaseTTL > result.DefaultLeaseTTL {
-		result.DefaultLeaseTTL = c2.DefaultLeaseTTL
-	}
+	result.DefaultLeaseTTL = max(c2.DefaultLeaseTTL, c.DefaultLeaseTTL)
 
 	result.ClusterCipherSuites = c.ClusterCipherSuites
 	if c2.ClusterCipherSuites != "" {
@@ -1374,9 +1375,7 @@ func (c *Config) Sanitized() map[string]interface{} {
 		"unsafe_allow_api_audit_creation": c.UnsafeAllowAPIAuditCreation,
 		"allow_audit_log_prefixing":       c.AllowAuditLogPrefixing,
 	}
-	for k, v := range sharedResult {
-		result[k] = v
-	}
+	maps.Copy(result, sharedResult)
 
 	// Sanitize storage stanza
 	if c.Storage != nil {

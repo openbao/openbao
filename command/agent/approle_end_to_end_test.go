@@ -181,7 +181,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 	os.Remove(out)
 	t.Logf("output: %s", out)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 
 	secretFromAgent := secret
 	if secretIDLess {
@@ -563,7 +563,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 	os.Remove(out)
 	t.Logf("output: %s", out)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 
 	secretFromAgent := secret
 	if secretIDLess {

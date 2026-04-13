@@ -10,6 +10,7 @@ import (
 
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/vault/seal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +20,7 @@ func TestNamespaceStore(t *testing.T) {
 	c, keys, root := TestCoreUnsealed(t)
 	s := c.namespaceStore
 
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 
 	// Initial store should be empty.
 	ns, err := s.ListAllNamespaces(ctx, false, true)
@@ -155,7 +156,7 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 
 	c, _, _ := TestCoreUnsealed(t)
 	s := c.namespaceStore
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 
 	// create namespace
 	testNamespace := &namespace.Namespace{Path: "test"}
@@ -236,7 +237,7 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 
 	c, keys, _ := TestCoreUnsealed(t)
 	s := c.namespaceStore
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 
 	testNamespace := &namespace.Namespace{Path: "test"}
 	err := s.SetNamespace(ctx, testNamespace)
@@ -295,12 +296,10 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 
 	// verify that modifying a locked namespace does not affect lock
 	// status.
-	ret, err = c.namespaceStore.ModifyNamespaceByPath(ctx, testNamespace.Path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+	ret, _, err = c.namespaceStore.ModifyNamespaceByPath(ctx, testNamespace.Path, nil, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 		ns.CustomMetadata["testing"] = "pass"
-
 		// Ensure we do not see the unlock key during modification either.
 		require.Empty(t, ret.UnlockKey)
-
 		return ns, nil
 	})
 	require.NoError(t, err)
@@ -328,7 +327,7 @@ func TestNamespaceStore_UnlockNamespace(t *testing.T) {
 
 	c, _, _ := TestCoreUnsealed(t)
 	s := c.namespaceStore
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 
 	testNamespace := &namespace.Namespace{Path: "test"}
 	err := s.SetNamespace(ctx, testNamespace)
@@ -402,7 +401,7 @@ func TestNamespaceHierarchy(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	s := c.namespaceStore
 
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 
 	// Initial store should be empty.
 	ns, err := s.ListAllNamespaces(ctx, false, true)
@@ -580,7 +579,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
 	s := c.namespaceStore
 
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(b.Context())
 
 	n := 1_000
 
@@ -620,7 +619,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 	b.Run("ModifyNamespaceByPath", func(b *testing.B) {
 		for b.Loop() {
 			path := randomNamespace(s).Path
-			s.ModifyNamespaceByPath(ctx, path, testModifyNamespace)
+			_, _, _ = s.ModifyNamespaceByPath(ctx, path, nil, testModifyNamespace)
 		}
 	})
 
@@ -658,7 +657,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 func BenchmarkClearNamespaceResources(b *testing.B) {
 	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
 	s := c.namespaceStore
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(b.Context())
 
 	n := 1_000
 
@@ -675,7 +674,7 @@ func BenchmarkClearNamespaceResources(b *testing.B) {
 
 	for b.Loop() {
 		ns := randomNamespace(s)
-		err := s.clearNamespaceResources(ctx, namespace.RootNamespace, ns)
+		err := s.clearNamespaceResources(ctx, namespace.RootNamespace, ns, true)
 		require.NoError(b, err)
 	}
 }
@@ -683,15 +682,16 @@ func BenchmarkClearNamespaceResources(b *testing.B) {
 func BenchmarkNamespace_Set(b *testing.B) {
 	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
 	s := c.namespaceStore
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(b.Context())
 
+	defaultSealConfig := &SealConfig{Type: seal.WrapperTypeShamir.String(), SecretShares: 5, SecretThreshold: 3}
 	item := &namespace.Namespace{}
 
 	b.Run("SetNamespace", func(b *testing.B) {
 		var i int
 		for b.Loop() {
 			item.Path = "ns" + strconv.Itoa(i)
-			s.SetNamespace(ctx, item)
+			_ = s.SetNamespace(ctx, item)
 			i += 1
 		}
 	})
@@ -701,7 +701,17 @@ func BenchmarkNamespace_Set(b *testing.B) {
 		for b.Loop() {
 			item.Path = "ns" + strconv.Itoa(i)
 			s.lock.Lock()
-			s.setNamespaceLocked(ctx, item)
+			_, _ = s.setNamespaceLocked(ctx, item, nil)
+			i += 1
+		}
+	})
+
+	b.Run("SetNamespaceLockedWithSealConfig", func(b *testing.B) {
+		var i int
+		for b.Loop() {
+			item.Path = "ns" + strconv.Itoa(i)
+			s.lock.Lock()
+			_, _ = s.setNamespaceLocked(ctx, item, defaultSealConfig)
 			i += 1
 		}
 	})
@@ -718,7 +728,7 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 	ns3Entry := &namespace.Namespace{Path: "ns1/ns2/ns3/"}
 
 	// Create namespaces
-	rootCtx := namespace.RootContext(context.TODO())
+	rootCtx := namespace.RootContext(t.Context())
 
 	// Set child into root
 	require.NoError(t, nsStore.SetNamespace(rootCtx, ns1Entry))
@@ -833,7 +843,7 @@ func TestNamespaceStorage(t *testing.T) {
 	}
 	TestCoreCreateNamespaces(t, c, namespaces...)
 
-	ctx := namespace.RootContext(context.TODO())
+	ctx := namespace.RootContext(t.Context())
 
 	nsKeys, err := s.storage.List(ctx, namespaceStoreSubPath)
 	require.NoError(t, err)

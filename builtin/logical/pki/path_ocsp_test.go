@@ -128,7 +128,7 @@ func TestOcsp_MalformedRequests(t *testing.T) {
 			case "get":
 				resp, err = sendOcspGetRequest(b, s, badReq)
 			case "post":
-				resp, err = sendOcspPostRequest(b, s, badReq)
+				resp, err = sendOcspPostRequest(t.Context(), b, s, badReq)
 			default:
 				t.Fatal("bad request type")
 			}
@@ -151,7 +151,7 @@ func TestOcsp_InvalidIssuerIdInRevocationEntry(t *testing.T) {
 	t.Parallel()
 
 	b, s, testEnv := setupOcspEnv(t, "ec")
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Revoke the entry
 	serial := serialFromCert(testEnv.leafCertIssuer1)
@@ -194,7 +194,7 @@ func TestOcsp_UnknownIssuerIdWithDefaultHavingOcspUsageRemoved(t *testing.T) {
 	t.Parallel()
 
 	b, s, testEnv := setupOcspEnv(t, "ec")
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Revoke the entry
 	serial := serialFromCert(testEnv.leafCertIssuer1)
@@ -293,7 +293,7 @@ func TestOcsp_RevokedCertHasIssuerWithoutAKey(t *testing.T) {
 	keyId := resp.Data["key_id"].(keyID)
 
 	// This is a bit naughty but allow me to delete the key...
-	sc := b.makeStorageContext(context.Background(), s)
+	sc := b.makeStorageContext(t.Context(), s)
 	issuer, err := sc.fetchIssuerById(testEnv.issuerId1)
 	require.NoError(t, err, "failed to get issuer from storage")
 	issuer.KeyID = ""
@@ -653,7 +653,7 @@ func setupOcspEnvWithCaKeyConfig(t *testing.T, keyType string, caKeyBits int, ca
 	})
 	requireSuccessNonNilResponse(t, resp, err, "config/crl failed")
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		resp, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
 			"key_type":       keyType,
 			"key_bits":       caKeyBits,
@@ -715,7 +715,7 @@ func SendOcspRequest(t *testing.T, b *backend, s logical.Storage, getOrPost stri
 	case "get":
 		return sendOcspGetRequest(b, s, ocspRequest)
 	case "post":
-		return sendOcspPostRequest(b, s, ocspRequest)
+		return sendOcspPostRequest(t.Context(), b, s, ocspRequest)
 	default:
 		t.Fatalf("unsupported value for SendOcspRequest getOrPost arg: %s", getOrPost)
 	}
@@ -727,9 +727,9 @@ func sendOcspGetRequest(b *backend, s logical.Storage, ocspRequest []byte) (*log
 	return CBRead(b, s, "ocsp/"+urlEncoded)
 }
 
-func sendOcspPostRequest(b *backend, s logical.Storage, ocspRequest []byte) (*logical.Response, error) {
+func sendOcspPostRequest(ctx context.Context, b *backend, s logical.Storage, ocspRequest []byte) (*logical.Response, error) {
 	reader := io.NopCloser(bytes.NewReader(ocspRequest))
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(ctx, &logical.Request{
 		Operation:  logical.UpdateOperation,
 		Path:       "ocsp",
 		Storage:    s,

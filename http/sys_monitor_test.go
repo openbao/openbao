@@ -81,7 +81,7 @@ func TestSysMonitorStreamingLogs(t *testing.T) {
 		t.Run(lf, func(t *testing.T) {
 			debugCount := 0
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 
 			logCh, err := client.Sys().Monitor(ctx, "DEBUG", lf)

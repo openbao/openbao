@@ -149,7 +149,7 @@ func TestFairshare_initializeWorker(t *testing.T) {
 
 	d := createDispatcher("", numWorkers, newTestLogger("workerpool-test"))
 
-	for workerNum := 0; workerNum < numWorkers; workerNum++ {
+	for workerNum := range numWorkers {
 		d.initializeWorker()
 
 		w := d.workers[workerNum]
@@ -224,7 +224,7 @@ func TestFairshare_start(t *testing.T) {
 		doneCh <- struct{}{}
 	}()
 
-	for i := 0; i < numJobs; i++ {
+	for i := range numJobs {
 		job := newTestJob(t, fmt.Sprintf("job-%d", i), ex, onFail)
 		d.dispatch(&job, nil, nil)
 	}
@@ -375,7 +375,7 @@ func TestFairshare_jobFailure(t *testing.T) {
 		doneCh <- struct{}{}
 	}()
 
-	for i := 0; i < numJobs; i++ {
+	for i := range numJobs {
 		job := newTestJob(t, fmt.Sprintf("job-%d", i), ex, onFail)
 		d.dispatch(&job, nil, nil)
 	}

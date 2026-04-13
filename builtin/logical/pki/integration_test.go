@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
@@ -28,7 +27,7 @@ import (
 func TestIntegration_RotateRootUsesNext(t *testing.T) {
 	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "root/rotate/internal",
 		Storage:   s,
@@ -48,7 +47,7 @@ func TestIntegration_RotateRootUsesNext(t *testing.T) {
 	require.Equal(t, "next", issuerName1, "expected an issuer name of next on initial rotate root command")
 
 	// Call it again, we should get a new issuer id, but since next issuer_name is used we should get a blank value.
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "root/rotate/internal",
 		Storage:   s,
@@ -69,7 +68,7 @@ func TestIntegration_RotateRootUsesNext(t *testing.T) {
 	require.Empty(t, issuerName2, "expected a blank issuer name on the second rotate root command")
 
 	// Call it again, making sure we can use our own name if desired.
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "root/rotate/internal",
 		Storage:   s,
@@ -100,7 +99,7 @@ func TestIntegration_ReplaceRootNormal(t *testing.T) {
 	genTestRootCa(t, b, s)
 	issuerId2, _ := genTestRootCa(t, b, s)
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "root/replace",
 		Storage:   s,
@@ -116,7 +115,7 @@ func TestIntegration_ReplaceRootNormal(t *testing.T) {
 	replacedIssuer := resp.Data["default"]
 	require.Equal(t, issuerId2, replacedIssuer, "expected return value to match issuer we set")
 
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.ReadOperation,
 		Path:       "config/issuers",
 		Storage:    s,
@@ -139,7 +138,7 @@ func TestIntegration_ReplaceRootDefaultsToNext(t *testing.T) {
 	issuerId2, _ := genTestRootCaWithIssuerName(t, b, s, "next")
 
 	// Do not specify the default value to replace.
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.UpdateOperation,
 		Path:       "root/replace",
 		Storage:    s,
@@ -153,7 +152,7 @@ func TestIntegration_ReplaceRootDefaultsToNext(t *testing.T) {
 	replacedIssuer := resp.Data["default"]
 	require.Equal(t, issuerId2, replacedIssuer, "expected return value to match the 'next' issuer we set")
 
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.ReadOperation,
 		Path:       "config/issuers",
 		Storage:    s,
@@ -175,7 +174,7 @@ func TestIntegration_ReplaceRootBadIssuer(t *testing.T) {
 	genTestRootCa(t, b, s)
 	genTestRootCa(t, b, s)
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "root/replace",
 		Storage:   s,
@@ -189,7 +188,7 @@ func TestIntegration_ReplaceRootBadIssuer(t *testing.T) {
 	require.True(t, resp.IsError(), "did not get an error from replacing root: %#v", resp)
 
 	// Make sure we trap replacing with default.
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "root/replace",
 		Storage:   s,
@@ -203,7 +202,7 @@ func TestIntegration_ReplaceRootBadIssuer(t *testing.T) {
 	require.True(t, resp.IsError(), "did not get an error from replacing root: %#v", resp)
 
 	// Make sure we trap replacing with blank string.
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "root/replace",
 		Storage:   s,
@@ -223,7 +222,7 @@ func TestIntegration_SetSignedWithBackwardsPemBundles(t *testing.T) {
 	intBackend, intStorage := CreateBackendWithStorage(t)
 
 	// generate root
-	resp, err := rootBackend.HandleRequest(context.Background(), &logical.Request{
+	resp, err := rootBackend.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "issuers/generate/root/internal",
 		Storage:   rootStorage,
@@ -240,7 +239,7 @@ func TestIntegration_SetSignedWithBackwardsPemBundles(t *testing.T) {
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, rootBackend.Route("issuers/generate/root/internal"), logical.UpdateOperation), resp, true)
 
 	// generate intermediate
-	resp, err = intBackend.HandleRequest(context.Background(), &logical.Request{
+	resp, err = intBackend.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "issuers/generate/intermediate/internal",
 		Storage:   intStorage,
@@ -255,7 +254,7 @@ func TestIntegration_SetSignedWithBackwardsPemBundles(t *testing.T) {
 	intCsr := resp.Data["csr"].(string)
 
 	// sign csr
-	resp, err = rootBackend.HandleRequest(context.Background(), &logical.Request{
+	resp, err = rootBackend.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "root/sign-intermediate",
 		Storage:   rootStorage,
@@ -272,7 +271,7 @@ func TestIntegration_SetSignedWithBackwardsPemBundles(t *testing.T) {
 	intCert := resp.Data["certificate"].(string)
 
 	// Send in the chain backwards now and make sure we link intCert as default.
-	resp, err = intBackend.HandleRequest(context.Background(), &logical.Request{
+	resp, err = intBackend.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "intermediate/set-signed",
 		Storage:   intStorage,
@@ -286,7 +285,7 @@ func TestIntegration_SetSignedWithBackwardsPemBundles(t *testing.T) {
 	require.False(t, resp.IsError(), "got an error from generating root ca: %#v", resp)
 
 	// setup role
-	resp, err = intBackend.HandleRequest(context.Background(), &logical.Request{
+	resp, err = intBackend.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "roles/example",
 		Storage:   intStorage,
@@ -303,7 +302,7 @@ func TestIntegration_SetSignedWithBackwardsPemBundles(t *testing.T) {
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, intBackend.Route("roles/example"), logical.UpdateOperation), resp, true)
 
 	// Issue cert
-	resp, err = intBackend.HandleRequest(context.Background(), &logical.Request{
+	resp, err = intBackend.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "issue/example",
 		Storage:   intStorage,
@@ -631,7 +630,7 @@ func TestIntegrationOCSPClientWithPKI(t *testing.T) {
 			return testLogger
 		}, 10)
 
-		err = ocspClient.VerifyLeafCertificate(context.Background(), cert, issuer, conf)
+		err = ocspClient.VerifyLeafCertificate(t.Context(), cert, issuer, conf)
 		require.NoError(t, err)
 
 		_, err = client.Logical().Write("pki/revoke", map[string]interface{}{
@@ -639,7 +638,7 @@ func TestIntegrationOCSPClientWithPKI(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = ocspClient.VerifyLeafCertificate(context.Background(), cert, issuer, conf)
+		err = ocspClient.VerifyLeafCertificate(t.Context(), cert, issuer, conf)
 		require.Error(t, err)
 	}
 }
@@ -655,7 +654,7 @@ func genTestRootCaWithIssuerName(t *testing.T, b *backend, s logical.Storage, is
 	if len(issuerName) > 0 {
 		data["issuer_name"] = issuerName
 	}
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.UpdateOperation,
 		Path:       "issuers/generate/root/internal",
 		Storage:    s,

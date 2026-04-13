@@ -248,6 +248,11 @@ func (ps *PolicyStore) rLockWithUnlock(ctx context.Context) func() {
 }
 
 func (ps *PolicyStore) invalidateNamespace(ctx context.Context, uuid string) {
+	// Skip invalidation if no cache exists.
+	if ps.tokenPoliciesLRU == nil {
+		return
+	}
+
 	defer ps.lockWithUnlock(ctx)()
 
 	for _, key := range ps.tokenPoliciesLRU.Keys() {
@@ -390,7 +395,7 @@ func (ps *PolicyStore) GetNonEGPPolicyType(ctx context.Context, name string) (*P
 
 // getACLView returns the ACL view for the given namespace
 func (ps *PolicyStore) getACLView(ns *namespace.Namespace) barrier.View {
-	return NamespaceScopedView(ps.core.barrier, ns).SubView(systemBarrierPrefix + policyACLSubPath)
+	return ps.core.NamespaceView(ns).SubView(systemBarrierPrefix + policyACLSubPath)
 }
 
 // getBarrierView returns the appropriate barrier view for the given namespace and policy type.

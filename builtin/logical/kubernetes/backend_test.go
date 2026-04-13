@@ -4,7 +4,6 @@
 package kubesecrets
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -29,7 +28,7 @@ func getTestBackend(t *testing.T) (*backend, logical.Storage) {
 		MaxLeaseTTLVal:     maxLeaseTTLVal,
 	}
 
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}

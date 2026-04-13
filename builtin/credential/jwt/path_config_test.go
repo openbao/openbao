@@ -5,7 +5,6 @@ package jwtauth
 
 import (
 	"bytes"
-	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -59,7 +58,7 @@ func TestConfig_JWT_Read(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -71,7 +70,7 @@ func TestConfig_JWT_Read(t *testing.T) {
 		Data:      nil,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -99,7 +98,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +118,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +140,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -162,7 +161,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 		NamespaceInState:           true,
 	}
 
-	conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
+	conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +207,7 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -220,7 +219,7 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		Data:      nil,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -260,7 +259,7 @@ func TestConfig_JWKS_Update_Invalid(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +279,7 @@ func TestConfig_JWKS_Update_Invalid(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +318,7 @@ func TestConfig_ResponseMode(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if test.errExpected {
 			if err == nil && (resp == nil || !resp.IsError()) {
 				t.Fatalf("expected error, got none for %q", test.mode)
@@ -350,7 +349,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +359,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 
 	delete(data, "oidc_discovery_ca_pem")
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -377,7 +376,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		NamespaceInState:           true,
 	}
 
-	conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
+	conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +396,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 			"oidc_client_secret": "def",
 		},
 	}
-	res, _ := b.HandleRequest(context.Background(), req)
+	res, _ := b.HandleRequest(t.Context(), req)
 	require.True(t, res.IsError())
 	require.Equal(t, res.Data["error"], "'oidc_discovery_url' contains '.well-known' component")
 
@@ -439,7 +438,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 			Storage:   storage,
 			Data:      test.data,
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatalf("test '%s', %v", test.id, err)
 		}
@@ -467,7 +466,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -485,7 +484,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 			NamespaceInState: true,
 		}
 
-		conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
+		conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -503,7 +502,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		assert.NoError(t, err)
 		assert.True(t, resp.IsError())
 		assert.EqualError(t, resp.Error(), "invalid provider_config: provider \"unknown\" not found in custom providers")
@@ -517,7 +516,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		assert.NoError(t, err)
 		assert.True(t, resp.IsError())
 		assert.EqualError(t, resp.Error(), "invalid provider_config: 'provider' field not found in provider_config")
@@ -528,7 +527,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 			"oidc_discovery_url": "https://team-vault.auth0.com/",
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -543,7 +542,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 			NamespaceInState:           true,
 		}
 
-		conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
+		conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -615,12 +614,12 @@ func TestConfig_OIDC_Create_Namespace(t *testing.T) {
 				Storage:   storage,
 				Data:      test.create,
 			}
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 
-			conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
+			conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
 			assert.NoError(t, err)
 			assert.Equal(t, &test.expected, conf)
 		})
@@ -723,18 +722,18 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 				Storage:   storage,
 				Data:      test.existing,
 			}
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 
 			req.Data = test.update
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 
-			conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
+			conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
 			assert.NoError(t, err)
 			assert.Equal(t, &test.expected, conf)
 		})
@@ -759,7 +758,7 @@ func TestConfig_OIDC_Ignore(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error; expected warning: %v", err)
 	}
@@ -775,7 +774,7 @@ func TestConfig_OIDC_Ignore(t *testing.T) {
 	req.Operation = logical.ReadOperation
 	req.Data = nil
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error; expected warning: %v", err)
 	}

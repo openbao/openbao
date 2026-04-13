@@ -71,7 +71,7 @@ export default Route.extend({
   },
 
   backendType() {
-    return this.modelFor('vault.cluster.secrets.backend').get('engineType');
+    return this.modelFor('vault.cluster.secrets.backend').engineType;
   },
 
   templateName: 'vault/cluster/secrets/backend/secretEditLayout',
@@ -102,7 +102,7 @@ export default Route.extend({
 
   modelType(backend, secret, options = {}) {
     const backendModel = this.modelFor('vault.cluster.secrets.backend', backend);
-    const type = backendModel.get('engineType');
+    const type = backendModel.engineType;
     const types = {
       database: secret && secret.startsWith('role/') ? 'database/role' : 'database/connection',
       transit: 'transit-key',
@@ -129,13 +129,13 @@ export default Route.extend({
     }
   },
 
-  async fetchV2Models(capabilities, secretModel, params) {
+  async fetchV2Models(secretModel, params) {
     const backend = this.enginePathParam();
     const backendModel = this.modelFor('vault.cluster.secrets.backend', backend);
     const targetVersion = this.getTargetVersion(secretModel.currentVersion, params.version);
 
     // if we have the metadata, a list of versions are part of the payload
-    const version = secretModel.versions && secretModel.versions.findBy('version', targetVersion);
+    const version = secretModel.versions && secretModel.versions.find((x) => x.version === targetVersion);
     // if it didn't fail the server read, and the version is not attached to the metadata,
     // this should 404
     if (!version && secretModel.failedServerRead !== true) {
@@ -146,14 +146,11 @@ export default Route.extend({
     // manually set the related model
     secretModel.set('engine', backendModel);
 
-    secretModel.set(
-      'selectedVersion',
-      await this.fetchV2VersionModel(capabilities, secretModel, version, targetVersion)
-    );
+    secretModel.set('selectedVersion', await this.fetchV2VersionModel(secretModel, version, targetVersion));
     return secretModel;
   },
 
-  async fetchV2VersionModel(capabilities, secretModel, version, targetVersion) {
+  async fetchV2VersionModel(secretModel, version, targetVersion) {
     const secret = this.secretParam();
     const backend = this.enginePathParam();
 
@@ -204,7 +201,7 @@ export default Route.extend({
 
   handleSecretModelError(capabilities, secretId, modelType, error) {
     // can't read the path and don't have update capability, so re-throw
-    if (!capabilities.get('canUpdate') && modelType === 'secret') {
+    if (!capabilities.canUpdate && modelType === 'secret') {
       throw error;
     }
     // don't have access to the metadata for v2 or the secret for v1,
@@ -257,21 +254,21 @@ export default Route.extend({
       // we've failed the read request, but if it's a kv-type backend, we want to
       // do additional checks of the capabilities
       if (err.httpStatus === 403 && (modelType === 'secret-v2' || modelType === 'secret')) {
-        await capabilities;
-        secretModel = this.handleSecretModelError(capabilities, secret, modelType, err);
+        const resolvedCapabilities = await capabilities;
+        secretModel = this.handleSecretModelError(resolvedCapabilities, secret, modelType, err);
       } else {
         throw err;
       }
     }
-    await capabilities;
+    const resolvedCapabilities = await capabilities;
     if (modelType === 'secret-v2') {
       // after the the base model fetch, kv-v2 has a second associated
       // version model that contains the secret data
-      secretModel = await this.fetchV2Models(capabilities, secretModel, params);
+      secretModel = await this.fetchV2Models(secretModel, params);
     }
     return {
       secret: secretModel,
-      capabilities,
+      capabilities: resolvedCapabilities,
     };
   },
 
@@ -281,7 +278,7 @@ export default Route.extend({
     const backend = this.enginePathParam();
     const preferAdvancedEdit =
       /* eslint-disable-next-line ember/no-controller-access-in-routes */
-      this.controllerFor('vault.cluster.secrets.backend').get('preferAdvancedEdit') || false;
+      this.controllerFor('vault.cluster.secrets.backend').preferAdvancedEdit || false;
     const backendType = this.backendType();
     model.secret.setProperties({ backend });
     controller.setProperties({
@@ -306,7 +303,7 @@ export default Route.extend({
 
   unloadModel() {
     /* eslint-disable-next-line ember/no-controller-access-in-routes */
-    const model = this.controller.get('model');
+    const model = this.controller.model;
     if (!model || !model.unloadRecord || model.isSaving) {
       return;
     }
@@ -337,7 +334,7 @@ export default Route.extend({
 
       let version, changed, changedKeys;
       try {
-        version = model.get('selectedVersion');
+        version = model.selectedVersion;
         changed = model.changedAttributes();
         changedKeys = Object.keys(changed);
       } catch {

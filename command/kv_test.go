@@ -4,7 +4,6 @@
 package command
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -179,8 +178,6 @@ func TestKVPutCommand(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -523,8 +520,6 @@ func TestKVGetCommand(t *testing.T) {
 		t.Parallel()
 
 		for _, tc := range cases {
-			tc := tc
-
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -673,8 +668,6 @@ func TestKVListCommand(t *testing.T) {
 		t.Parallel()
 
 		for _, testCase := range testCases {
-			testCase := testCase
-
 			t.Run(testCase.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -690,8 +683,8 @@ func TestKVListCommand(t *testing.T) {
 				}
 				time.Sleep(time.Second)
 
-				ctx := context.Background()
-				for i := 0; i < 3; i++ {
+				ctx := t.Context()
+				for i := range 3 {
 					path := fmt.Sprintf("my-prefix/secret-%d", i)
 					_, err := client.KVv2("kv/").Put(ctx, path, map[string]interface{}{
 						"foo": "bar",
@@ -794,8 +787,6 @@ func TestKVMetadataGetCommand(t *testing.T) {
 		t.Parallel()
 
 		for _, tc := range cases {
-			tc := tc
-
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -900,7 +891,6 @@ func TestKVPatchCommand_ArgValidation(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -979,7 +969,7 @@ func TestKVPatchCommand_StdinFull(t *testing.T) {
 			t.Fatalf("expected code to be 0 but was %d for patch cmd with args %#v\n", code, args)
 		}
 
-		secret, err := client.Logical().ReadWithContext(context.Background(), "kv/data/patch/foo")
+		secret, err := client.Logical().ReadWithContext(t.Context(), "kv/data/patch/foo")
 		if err != nil {
 			t.Fatalf("read failed, err: %#v\n", err)
 		}
@@ -1052,7 +1042,7 @@ func TestKVPatchCommand_StdinValue(t *testing.T) {
 			}
 		}
 
-		secret, err := client.Logical().ReadWithContext(context.Background(), "kv/data/patch/foo")
+		secret, err := client.Logical().ReadWithContext(t.Context(), "kv/data/patch/foo")
 		if err != nil {
 			t.Fatalf("read failed, err: %#v\n", err)
 		}
@@ -1203,8 +1193,6 @@ func TestKVPatchCommand_CAS(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1252,7 +1240,7 @@ func TestKVPatchCommand_CAS(t *testing.T) {
 				}
 			}
 
-			secret, err := kvClient.Logical().ReadWithContext(context.Background(), "kv/data/"+tc.key)
+			secret, err := kvClient.Logical().ReadWithContext(t.Context(), "kv/data/"+tc.key)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1286,8 +1274,6 @@ func TestKVPatchCommand_Methods(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1325,7 +1311,7 @@ func TestKVPatchCommand_Methods(t *testing.T) {
 				t.Fatalf("expected code to be %d but was %d", tc.code, code)
 			}
 
-			secret, err := kvClient.Logical().ReadWithContext(context.Background(), "kv/data/foo")
+			secret, err := kvClient.Logical().ReadWithContext(t.Context(), "kv/data/foo")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1440,8 +1426,6 @@ func TestKVPatchCommand_RWMethodPolicyVariations(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			client, closer := testVaultServer(t)
@@ -1508,7 +1492,6 @@ func TestPadEqualSigns(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

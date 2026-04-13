@@ -24,7 +24,7 @@ func TestSinkServer(t *testing.T) {
 	fs1, path1 := testFileSink(t, log)
 	fs2, path2 := testFileSink(t, log)
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(t.Context())
 
 	ss := sink.NewSinkServer(&sink.SinkServerConfig{
 		Logger: log.Named("sink.server"),
@@ -90,7 +90,7 @@ func TestSinkServerRetry(t *testing.T) {
 	b1 := &badSink{logger: log.Named("b1")}
 	b2 := &badSink{logger: log.Named("b2")}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(t.Context())
 
 	ss := sink.NewSinkServer(&sink.SinkServerConfig{
 		Logger: log.Named("sink.server"),

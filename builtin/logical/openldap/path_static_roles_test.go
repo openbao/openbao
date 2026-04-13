@@ -4,7 +4,6 @@
 package openldap
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -14,8 +13,8 @@ import (
 
 func Test_backend_pathStaticRoleLifecycle(t *testing.T) {
 	b, storage := getBackend(t, false)
-	defer b.Cleanup(context.Background())
-	ctx := context.Background()
+	defer b.Cleanup(t.Context())
+	ctx := t.Context()
 
 	req := &logical.Request{
 		Operation: logical.CreateOperation,
@@ -235,7 +234,7 @@ func Test_backend_pathStaticRoleLifecycle(t *testing.T) {
 func TestRoles(t *testing.T) {
 	t.Run("happy path with role using DN search", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn":      "tester",
@@ -251,7 +250,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -269,7 +268,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -281,7 +280,7 @@ func TestRoles(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -304,7 +303,7 @@ func TestRoles(t *testing.T) {
 	})
 	t.Run("happy path with role using username search", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn":      "tester",
@@ -321,7 +320,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -339,7 +338,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -351,7 +350,7 @@ func TestRoles(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -375,7 +374,7 @@ func TestRoles(t *testing.T) {
 
 	t.Run("happy path with skip_rotate set", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn":      "tester",
@@ -391,7 +390,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -410,7 +409,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -422,7 +421,7 @@ func TestRoles(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -446,7 +445,7 @@ func TestRoles(t *testing.T) {
 
 	t.Run("missing username", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn":      "tester",
@@ -462,7 +461,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -479,7 +478,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error %v", err)
 		}
@@ -490,7 +489,7 @@ func TestRoles(t *testing.T) {
 
 	t.Run("missing rotation_period", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn":      "tester",
@@ -506,7 +505,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -523,7 +522,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error %v", err)
 		}
@@ -534,7 +533,7 @@ func TestRoles(t *testing.T) {
 
 	t.Run("rotation_period lower than 5s", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn":      "tester",
@@ -550,7 +549,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -568,7 +567,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		require.NoError(t, err)
 		if resp == nil || !resp.IsError() {
 			t.Fatal("expected error")
@@ -577,7 +576,7 @@ func TestRoles(t *testing.T) {
 
 	t.Run("user doesn't exist (ldap error)", func(t *testing.T) {
 		b, storage := getBackend(t, true)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn":      "tester",
@@ -593,7 +592,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -611,7 +610,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		_, err = b.HandleRequest(context.Background(), req)
+		_, err = b.HandleRequest(t.Context(), req)
 		if err == nil {
 			t.Fatal("expected error, got none")
 		}
@@ -619,7 +618,7 @@ func TestRoles(t *testing.T) {
 
 	t.Run("role doesn't exist", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		req := &logical.Request{
 			Operation: logical.ReadOperation,
@@ -628,7 +627,7 @@ func TestRoles(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatalf("error reading role: %s", err)
 		}
@@ -641,7 +640,7 @@ func TestRoles(t *testing.T) {
 func TestListRoles(t *testing.T) {
 	t.Run("list roles", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn":      "tester",
@@ -657,7 +656,7 @@ func TestListRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -675,7 +674,7 @@ func TestListRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -693,7 +692,7 @@ func TestListRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -705,7 +704,7 @@ func TestListRoles(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -717,7 +716,7 @@ func TestListRoles(t *testing.T) {
 }
 
 func TestWALsStillTrackedAfterUpdate(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, storage := getBackend(t, false)
 	defer b.Cleanup(ctx)
 	configureOpenLDAPMount(t, b, storage)
@@ -749,7 +748,7 @@ func TestWALsStillTrackedAfterUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = b.HandleRequest(context.Background(), &logical.Request{
+	_, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "rotate-role/hashicorp",
 		Storage:   storage,
@@ -768,12 +767,12 @@ func TestWALsStillTrackedAfterUpdate(t *testing.T) {
 }
 
 func TestWALsDeletedOnRoleCreationFailed(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, storage := getBackend(t, true)
 	defer b.Cleanup(ctx)
 	configureOpenLDAPMount(t, b, storage)
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		resp, err := b.HandleRequest(ctx, &logical.Request{
 			Operation: logical.CreateOperation,
 			Path:      staticRolePath + "hashicorp",
@@ -796,7 +795,7 @@ func TestWALsDeletedOnRoleCreationFailed(t *testing.T) {
 }
 
 func TestWALsDeletedOnRoleDeletion(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, storage := getBackend(t, false)
 	defer b.Cleanup(ctx)
 	configureOpenLDAPMount(t, b, storage)
@@ -849,7 +848,7 @@ func configureOpenLDAPMountWithPasswordPolicy(t *testing.T, b *backend, storage 
 		data["password_policy"] = policy
 	}
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      configPath,
 		Storage:   storage,
@@ -861,7 +860,7 @@ func configureOpenLDAPMountWithPasswordPolicy(t *testing.T, b *backend, storage 
 }
 
 func createRole(t *testing.T, b *backend, storage logical.Storage, roleName string) {
-	_, err := b.HandleRequest(context.Background(), &logical.Request{
+	_, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      "static-role/" + roleName,
 		Storage:   storage,

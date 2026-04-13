@@ -1,0 +1,11 @@
+packages:
+  - 'packages/*'
+  - 'apps/*'
+  - 'lib/*'
+
+allowBuilds:
+  '@parcel/watcher': true
+  '@scarf/scarf': true
+  core-js: true
+  ember-modal-dialog: true
+  fsevents: true

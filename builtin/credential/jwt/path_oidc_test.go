@@ -5,7 +5,6 @@ package jwtauth
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
@@ -18,6 +17,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -51,7 +51,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}
@@ -70,7 +70,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}
@@ -91,7 +91,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
@@ -136,7 +136,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -159,7 +159,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}
@@ -178,7 +178,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -204,7 +204,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v", err, resp)
 		}
@@ -301,7 +301,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
@@ -320,7 +320,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 				Data:      rolePayload,
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
@@ -336,7 +336,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 				Data:      authURLPayload,
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
@@ -385,7 +385,7 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 			"oidc_client_secret": "def",
 		},
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -440,7 +440,7 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 					"max_age":               tt.maxAge,
 				},
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if tt.expectErr {
 				require.Nil(t, err)
 				require.True(t, resp.IsError())
@@ -459,7 +459,7 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 					"redirect_uri": "https://example.com",
 				},
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			require.NoError(t, err)
 			require.False(t, resp.IsError())
 
@@ -551,7 +551,7 @@ func TestOIDC_UserClaim_JSON_Pointer(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			require.NoError(t, err)
 			require.False(t, resp.IsError())
 
@@ -566,7 +566,7 @@ func TestOIDC_UserClaim_JSON_Pointer(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			require.NoError(t, err)
 			require.False(t, resp.IsError())
 
@@ -592,7 +592,7 @@ func TestOIDC_UserClaim_JSON_Pointer(t *testing.T) {
 			}
 
 			// Assert that we get the expected alias name
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if tt.wantErr {
 				require.True(t, resp.IsError())
 				return
@@ -640,7 +640,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -656,7 +656,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -671,7 +671,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 		Storage:   storage,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -701,7 +701,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 			"state":    state,
 		},
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -714,13 +714,13 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 			"state": state,
 		},
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 }
 
 func TestOIDC_Callback(t *testing.T) {
-	t.Run("successful login", func(t *testing.T) {
+	t.Run("successful login - with confirmation", func(t *testing.T) {
 		// run test with and without bound_cidrs configured
 		//   and with and without direct callback mode
 		for i := 1; i <= 4; i++ {
@@ -757,7 +757,7 @@ func TestOIDC_Callback(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
@@ -794,7 +794,28 @@ func TestOIDC_Callback(t *testing.T) {
 					},
 				}
 
-				resp, err = b.HandleRequest(context.Background(), req)
+				resp, err = b.HandleRequest(t.Context(), req)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			if callbackMode == "direct" {
+				req = &logical.Request{
+					Operation: logical.ReadOperation,
+					Path:      "oidc/callback",
+					Storage:   storage,
+					Data: map[string]interface{}{
+						"state":        state,
+						"code":         "abc",
+						"client_nonce": clientNonce,
+						"confirmation": "true",
+					},
+					Connection: &logical.Connection{
+						RemoteAddr: "127.0.0.42",
+					},
+				}
+				resp, err = b.HandleRequest(t.Context(), req)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -810,7 +831,7 @@ func TestOIDC_Callback(t *testing.T) {
 						"client_nonce": clientNonce,
 					},
 				}
-				resp, err = b.HandleRequest(context.Background(), req)
+				resp, err = b.HandleRequest(t.Context(), req)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -870,6 +891,145 @@ func TestOIDC_Callback(t *testing.T) {
 		}
 	})
 
+	t.Run("successful login - no confirmation", func(t *testing.T) {
+		b, storage, s := getBackendAndServer(t, false, "direct")
+		defer s.server.Close()
+
+		// disable the confirmation page on the role
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "role/test",
+			Storage:   storage,
+			Data: map[string]interface{}{
+				"user_claim":            "email",
+				"allowed_redirect_uris": []string{"https://example.com"},
+				"claim_mappings": map[string]string{
+					"COLOR":        "color",
+					"/nested/Size": "size",
+				},
+				"groups_claim":   "/nested/Groups",
+				"token_ttl":      "3m",
+				"token_num_uses": 10,
+				"max_ttl":        "5m",
+				"bound_claims": map[string]interface{}{
+					"password":            "foo",
+					"sk":                  "42",
+					"/nested/secret_code": "bar",
+					"temperature":         "76",
+				},
+				"oauth2_metadata":           []string{"id_token"},
+				"callback_mode":             "direct",
+				"oidc_disable_confirmation": true,
+			},
+		}
+		resp, err := b.HandleRequest(t.Context(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err: %v resp:%#v\n", err, resp)
+		}
+
+		clientNonce := "456"
+		s.code = "abc"
+
+		// get auth url
+		req = &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "oidc/auth_url",
+			Storage:   storage,
+			Data: map[string]interface{}{
+				"role":         "test",
+				"redirect_uri": "https://example.com",
+				"client_nonce": clientNonce,
+			},
+		}
+		resp, err = b.HandleRequest(t.Context(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%v resp:%#v\n", err, resp)
+		}
+
+		authURL := resp.Data["auth_url"].(string)
+		state := getQueryParam(t, authURL, "state")
+		nonce := getQueryParam(t, authURL, "nonce")
+
+		s.customClaims = sampleClaims(nonce)
+		s.codeChallenge = getQueryParam(t, authURL, "code_challenge")
+
+		// single callback - no confirmation needed
+		req = &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "oidc/callback",
+			Storage:   storage,
+			Data: map[string]interface{}{
+				"state":        state,
+				"code":         "abc",
+				"client_nonce": clientNonce,
+			},
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.42",
+			},
+		}
+
+		resp, err = b.HandleRequest(t.Context(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		// poll for the result
+
+		req = &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "oidc/poll",
+			Storage:   storage,
+			Data: map[string]interface{}{
+				"state":        state,
+				"client_nonce": clientNonce,
+			},
+		}
+		resp, err = b.HandleRequest(t.Context(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		expected := &logical.Auth{
+			LeaseOptions: logical.LeaseOptions{
+				Renewable: true,
+				TTL:       3 * time.Minute,
+				MaxTTL:    5 * time.Minute,
+			},
+			InternalData: map[string]interface{}{
+				"role":      "test",
+				"role_type": "native",
+			},
+			DisplayName: "bob@example.com",
+			Alias: &logical.Alias{
+				Name: "bob@example.com",
+				Metadata: map[string]string{
+					"role":  "test",
+					"color": "green",
+					"size":  "medium",
+				},
+			},
+			GroupAliases: []*logical.Alias{
+				{Name: "a"},
+				{Name: "b"},
+			},
+			Metadata: map[string]string{
+				"role":  "test",
+				"color": "green",
+				"size":  "medium",
+			},
+			NumUses: 10,
+		}
+
+		auth := resp.Auth
+		if auth != nil {
+			expected.Metadata["oauth2_id_token"] = auth.Metadata["oauth2_id_token"]
+		}
+
+		if !reflect.DeepEqual(auth, expected) {
+			t.Fatalf("expected: %v, resp: %v", expected, resp)
+		}
+	})
+
 	t.Run("failed login - bad nonce", func(t *testing.T) {
 		b, storage, s := getBackendAndServer(t, false, "")
 		defer s.server.Close()
@@ -886,7 +1046,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -915,7 +1075,7 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -940,7 +1100,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -971,7 +1131,7 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -990,7 +1150,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Storage:   storage,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1012,7 +1172,7 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1037,7 +1197,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1053,7 +1213,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"state": state,
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1079,7 +1239,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1103,7 +1263,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"code":  "wrong_code",
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1129,7 +1289,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1155,7 +1315,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"code":  "abc",
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1180,7 +1340,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1201,7 +1361,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"code":  "abc",
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1229,7 +1389,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1250,7 +1410,7 @@ func TestOIDC_Callback(t *testing.T) {
 				RemoteAddr: "127.0.0.99",
 			},
 		}
-		_, err = b.HandleRequest(context.Background(), req)
+		_, err = b.HandleRequest(t.Context(), req)
 		if err != logical.ErrPermissionDenied {
 			t.Fatal(err)
 		}
@@ -1275,7 +1435,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -1299,7 +1459,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"code":  "abc",
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1360,7 +1520,7 @@ func TestOIDC_Callback(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
@@ -1392,7 +1552,7 @@ func TestOIDC_Callback(t *testing.T) {
 				},
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1414,6 +1574,8 @@ type oidcProvider struct {
 	code          string
 	codeChallenge string
 	customClaims  map[string]interface{}
+	requests      []*http.Request
+	requestsMutex sync.Mutex
 }
 
 func newOIDCProvider(t *testing.T) *oidcProvider {
@@ -1426,6 +1588,10 @@ func newOIDCProvider(t *testing.T) *oidcProvider {
 
 func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
+	o.requestsMutex.Lock()
+	o.requests = append(o.requests, r)
+	o.requestsMutex.Unlock()
 
 	switch r.URL.Path {
 	case "/.well-known/openid-configuration":
@@ -1541,6 +1707,27 @@ func (o *oidcProvider) getTLSCert() (string, error) {
 	return pemBuf.String(), nil
 }
 
+// getRequests returns and clears the list of requests received by the mock provider.
+func (o *oidcProvider) getRequests() []*http.Request {
+	o.requestsMutex.Lock()
+	defer o.requestsMutex.Unlock()
+	r := o.requests
+	o.requests = []*http.Request{}
+	return r
+}
+
+func (o *oidcProvider) issuerToken(subject string) string {
+	stdClaims := jwt.Claims{
+		Subject:   subject,
+		Issuer:    o.server.URL,
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+		Expiry:    jwt.NewNumericDate(time.Now().Add(5 * time.Second)),
+		Audience:  jwt.Audience{o.clientID},
+	}
+	jwtData, _ := getTestJWT(o.t, ecdsaPrivKey, stdClaims, o.customClaims)
+	return jwtData
+}
+
 func getQueryParam(t *testing.T, inputURL, param string) string {
 	t.Helper()
 
@@ -1647,7 +1834,7 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool, callbackMode string) (lo
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}
@@ -1688,7 +1875,7 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool, callbackMode string) (lo
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}

@@ -30,7 +30,7 @@ module('Integration | Component | kv-object-editor', function (hooks) {
 
   test('it calls onChange when the val changes', async function (assert) {
     await render(hbs`{{kv-object-editor onChange=this.spy}}`);
-    await component.rows.objectAt(0).kvKey('foo').kvVal('bar');
+    await component.rows[0].kvKey('foo').kvVal('bar');
     assert.strictEqual(this.spy.callCount, 2, 'calls onChange each time change is triggered');
     assert.deepEqual(
       this.spy.lastCall.args[0],
@@ -54,11 +54,11 @@ module('Integration | Component | kv-object-editor', function (hooks) {
 
   test('it deletes a row', async function (assert) {
     await render(hbs`{{kv-object-editor onChange=this.spy}}`);
-    await component.rows.objectAt(0).kvKey('foo').kvVal('bar');
+    await component.rows[0].kvKey('foo').kvVal('bar');
     await component.addRow();
     assert.strictEqual(component.rows.length, 2);
     assert.strictEqual(this.spy.callCount, 2, 'calls onChange for editing');
-    await component.rows.objectAt(0).deleteRow();
+    await component.rows[0].deleteRow();
 
     assert.strictEqual(component.rows.length, 1, 'only the blank row left');
     assert.strictEqual(this.spy.callCount, 3, 'calls onChange deleting row');
@@ -69,7 +69,7 @@ module('Integration | Component | kv-object-editor', function (hooks) {
     const metadata = { foo: 'bar', baz: 'bop' };
     this.set('value', metadata);
     await render(hbs`{{kv-object-editor value=this.value onChange=this.spy}}`);
-    await component.rows.objectAt(0).kvKey('foo');
+    await component.rows[0].kvKey('foo');
 
     assert.ok(component.showsDuplicateError, 'duplicate keys are allowed but an error message is shown');
   });

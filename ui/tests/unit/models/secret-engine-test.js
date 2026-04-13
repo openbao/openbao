@@ -17,7 +17,7 @@ module('Unit | Model | secret-engine', function (hooks) {
     test('is secret by default', function (assert) {
       assert.expect(1);
       const model = this.store.createRecord('secret-engine');
-      assert.strictEqual(model.get('modelTypeForKV'), 'secret');
+      assert.strictEqual(model.modelTypeForKV, 'secret');
     });
 
     test('is secret-v2 for kv v2', function (assert) {
@@ -26,7 +26,7 @@ module('Unit | Model | secret-engine', function (hooks) {
         version: 2,
         type: 'kv',
       });
-      assert.strictEqual(model.get('modelTypeForKV'), 'secret-v2');
+      assert.strictEqual(model.modelTypeForKV, 'secret-v2');
     });
 
     test('is secret-v2 for generic v2', function (assert) {
@@ -36,7 +36,7 @@ module('Unit | Model | secret-engine', function (hooks) {
         type: 'kv',
       });
 
-      assert.strictEqual(model.get('modelTypeForKV'), 'secret-v2');
+      assert.strictEqual(model.modelTypeForKV, 'secret-v2');
     });
 
     test('is secret when v2 if not kv or generic', function (assert) {
@@ -46,7 +46,7 @@ module('Unit | Model | secret-engine', function (hooks) {
         type: 'ssh',
       });
 
-      assert.strictEqual(model.get('modelTypeForKV'), 'secret');
+      assert.strictEqual(model.modelTypeForKV, 'secret');
     });
   });
 
@@ -57,7 +57,7 @@ module('Unit | Model | secret-engine', function (hooks) {
         type: '',
       });
 
-      assert.deepEqual(model.get('formFields'), [
+      assert.deepEqual(model.formFields, [
         'type',
         'path',
         'description',
@@ -77,7 +77,7 @@ module('Unit | Model | secret-engine', function (hooks) {
         type: 'kv',
       });
 
-      assert.deepEqual(model.get('formFields'), [
+      assert.deepEqual(model.formFields, [
         'type',
         'path',
         'description',
@@ -99,7 +99,7 @@ module('Unit | Model | secret-engine', function (hooks) {
         version: '2',
       });
 
-      assert.deepEqual(model.get('formFields'), [
+      assert.deepEqual(model.formFields, [
         'type',
         'path',
         'description',
@@ -123,7 +123,7 @@ module('Unit | Model | secret-engine', function (hooks) {
         type: 'keymgmt',
       });
 
-      assert.deepEqual(model.get('formFields'), [
+      assert.deepEqual(model.formFields, [
         'type',
         'path',
         'description',
@@ -143,7 +143,7 @@ module('Unit | Model | secret-engine', function (hooks) {
         type: 'aws',
       });
 
-      assert.deepEqual(model.get('formFieldGroups'), [
+      assert.deepEqual(model.formFieldGroups, [
         { default: ['path'] },
         {
           'Method Options': [
@@ -165,7 +165,7 @@ module('Unit | Model | secret-engine', function (hooks) {
         type: 'kv',
       });
 
-      assert.deepEqual(model.get('formFieldGroups'), [
+      assert.deepEqual(model.formFieldGroups, [
         { default: ['path', 'maxVersions', 'casRequired', 'deleteVersionAfter'] },
         {
           'Method Options': [
@@ -189,7 +189,7 @@ module('Unit | Model | secret-engine', function (hooks) {
         type: 'generic',
       });
 
-      assert.deepEqual(model.get('formFieldGroups'), [
+      assert.deepEqual(model.formFieldGroups, [
         { default: ['path'] },
         {
           'Method Options': [
@@ -213,7 +213,7 @@ module('Unit | Model | secret-engine', function (hooks) {
         type: 'database',
       });
 
-      assert.deepEqual(model.get('formFieldGroups'), [
+      assert.deepEqual(model.formFieldGroups, [
         { default: ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl'] },
         {
           'Method Options': [
@@ -234,7 +234,7 @@ module('Unit | Model | secret-engine', function (hooks) {
         type: 'pki',
       });
 
-      assert.deepEqual(model.get('formFieldGroups'), [
+      assert.deepEqual(model.formFieldGroups, [
         { default: ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl'] },
         {
           'Method Options': [
@@ -255,7 +255,7 @@ module('Unit | Model | secret-engine', function (hooks) {
         type: 'keymgmt',
       });
 
-      assert.deepEqual(model.get('formFieldGroups'), [
+      assert.deepEqual(model.formFieldGroups, [
         { default: ['path'] },
         {
           'Method Options': [

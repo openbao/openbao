@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net"
 	"net/http"
@@ -276,13 +277,12 @@ type Core struct {
 	stateLock locking.RWMutex
 	sealed    atomic.Bool
 
-	standby              atomic.Bool
-	standbyDoneCh        chan struct{}
-	standbyStopCh        atomic.Value
-	standbyRestartCh     atomic.Value
-	manualStepDownCh     chan struct{}
-	keepHALockOnStepDown atomic.Bool
-	heldHALock           physical.Lock
+	standby          atomic.Bool
+	standbyDoneCh    chan struct{}
+	standbyStopCh    atomic.Value
+	standbyRestartCh atomic.Value
+	manualStepDownCh chan struct{}
+	heldHALock       physical.Lock
 
 	// shutdownDoneCh is used to notify when core.Shutdown() completes.
 	// core.Shutdown() is typically issued in a goroutine to allow Vault to
@@ -625,6 +625,11 @@ type Core struct {
 	// Core invalidation tracker handles dispatching invalidations and
 	// refreshing the Core-adjacent caches afterwards.
 	invalidations *invalidationManager
+
+	// Whether unauthenticated workflows are allowed by this OpenBao
+	// instance.
+	allowUnauthedWorkflows bool
+	workflowStore          *WorkflowStore
 }
 
 // c.stateLock needs to be held in read mode before calling this function.
@@ -776,6 +781,8 @@ type CoreConfig struct {
 	//
 	// See also: https://github.com/openbao/openbao/issues/1110
 	UnsafeCrossNamespaceIdentity bool
+
+	AllowUnauthenticatedWorkflows bool
 }
 
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
@@ -930,6 +937,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		impreciseLeaseRoleTracking:     conf.ImpreciseLeaseRoleTracking,
 		detectDeadlocks:                detectDeadlocks,
 		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
+		allowUnauthedWorkflows:         conf.AllowUnauthenticatedWorkflows,
 	}
 
 	c.standby.Store(true)
@@ -1043,8 +1051,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 
 	// Construct a new AES-GCM barrier
 	c.barrier = barrier.NewAESGCMBarrier(c.physical, "")
-	// TODO(wslabosz): setup seal manager
-	// c.SetupSealManager()
+	c.SetupSealManager()
 
 	// We create the funcs here, then populate the given config with it so that
 	// the caller can share state
@@ -1177,9 +1184,7 @@ func (c *Core) configureLogRequestsLevel(level string) {
 func (c *Core) configureAuditBackends(backends map[string]audit.Factory) {
 	auditBackends := make(map[string]audit.Factory, len(backends))
 
-	for k, f := range backends {
-		auditBackends[k] = f
-	}
+	maps.Copy(auditBackends, backends)
 
 	c.auditBackends = auditBackends
 }
@@ -1189,9 +1194,7 @@ func (c *Core) configureAuditBackends(backends map[string]audit.Factory) {
 func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory, logger log.Logger) {
 	credentialBackends := make(map[string]logical.Factory, len(backends))
 
-	for k, f := range backends {
-		credentialBackends[k] = f
-	}
+	maps.Copy(credentialBackends, backends)
 
 	credentialBackends[routing.MountTypeToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		tsLogger := logger.Named("token")
@@ -1213,9 +1216,7 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, logger log.Logger) {
 	logicalBackends := make(map[string]logical.Factory, len(backends))
 
-	for k, f := range backends {
-		logicalBackends[k] = f
-	}
+	maps.Copy(logicalBackends, backends)
 
 	// KV
 	_, ok := logicalBackends[routing.MountTypeKV]
@@ -1383,8 +1384,7 @@ func (c *Core) Sealed() bool {
 // NamespaceSealed checks if there's a namespace
 // (in direct ancestry line) that is currently sealed.
 func (c *Core) NamespaceSealed(ns *namespace.Namespace) bool {
-	// TODO(wslabosz): implement with seal manager
-	return false
+	return c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path).Sealed()
 }
 
 // SecretProgress returns the number of keys provided so far. Lock
@@ -1858,27 +1858,30 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 
 	// Do post-unseal setup if HA is not enabled
 	if c.ha == nil {
-		// We still need to set up cluster info even if it's not part of a
-		// cluster right now. This also populates the cached cluster object.
-		if err := c.setupCluster(ctx); err != nil {
-			c.logger.Error("cluster setup failed", "error", err)
-			c.barrier.Seal()
-			c.logger.Warn("vault is sealed")
-			return err
+		runPostUnseal := func(context.Context) error {
+			// We still need to set up cluster info even if it's not part of a
+			// cluster right now. This also populates the cached cluster object.
+			if err := c.setupCluster(ctx); err != nil {
+				c.logger.Error("cluster setup failed", "error", err)
+				return err
+			}
+
+			if err := c.migrateSeal(ctx); err != nil {
+				c.logger.Error("seal migration error", "error", err)
+				return err
+			}
+
+			ctx, ctxCancel := context.WithCancel(namespace.RootContext(context.Background()))
+			if err := c.postUnseal(ctx, ctxCancel, standardUnsealStrategy{}); err != nil {
+				c.logger.Error("post-unseal setup failed", "error", err)
+				return err
+			}
+			return nil
 		}
 
-		if err := c.migrateSeal(ctx); err != nil {
-			c.logger.Error("seal migration error", "error", err)
-			c.barrier.Seal()
-			c.logger.Warn("vault is sealed")
-			return err
-		}
-
-		ctx, ctxCancel := context.WithCancel(namespace.RootContext(context.TODO()))
-		if err := c.postUnseal(ctx, ctxCancel, standardUnsealStrategy{}); err != nil {
-			c.logger.Error("post-unseal setup failed", "error", err)
-			c.barrier.Seal()
-			c.logger.Warn("vault is sealed")
+		if err := runPostUnseal(ctx); err != nil {
+			err = errors.Join(err, c.sealManager.sealAll())
+			c.logger.Warn("OpenBao is sealed")
 			return err
 		}
 
@@ -2109,10 +2112,10 @@ func (c *Core) UIHeaders() (http.Header, error) {
 // sealInternal is an internal method used to seal the vault.  It does not do
 // any authorization checking.
 func (c *Core) sealInternal() error {
-	return c.sealInternalWithOptions(true, false, true)
+	return c.sealInternalWithOptions(true)
 }
 
-func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup bool) error {
+func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 	// Mark sealed, and if already marked return
 	if swapped := c.sealed.CompareAndSwap(false, true); !swapped {
 		return nil
@@ -2172,9 +2175,6 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 		// If we are keeping the lock we already have the state write lock
 		// held. Otherwise grab it here so that when stopCh is triggered we are
 		// locked.
-		if keepHALock {
-			c.keepHALockOnStepDown.Store(true)
-		}
 		if grabStateLock {
 			cancelCtxAndLock()
 			defer c.stateLock.Unlock()
@@ -2190,7 +2190,6 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 
 		// Wait for runStandby to stop
 		<-c.standbyDoneCh
-		c.keepHALockOnStepDown.Store(false)
 		c.logger.Debug("runStandby done")
 	}
 
@@ -2201,21 +2200,19 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 	}
 
 	// Perform additional cleanup upon sealing.
-	if performCleanup {
-		if raftBackend := c.GetRaftBackend(); raftBackend != nil {
-			if err := raftBackend.TeardownCluster(c.getClusterListener()); err != nil {
-				c.logger.Error("error stopping storage cluster", "error", err)
-				return err
-			}
+	if raftBackend := c.GetRaftBackend(); raftBackend != nil {
+		if err := raftBackend.TeardownCluster(c.getClusterListener()); err != nil {
+			c.logger.Error("error stopping storage cluster", "error", err)
+			return err
 		}
-
-		// Stop the cluster listener
-		c.stopClusterListener()
 	}
 
-	c.logger.Debug("sealing barrier")
-	if err := c.barrier.Seal(); err != nil {
-		c.logger.Error("error sealing barrier", "error", err)
+	// Stop the cluster listener
+	c.stopClusterListener()
+
+	c.logger.Debug("sealing all barriers")
+	if err := c.sealManager.sealAll(); err != nil {
+		c.logger.Error("error sealing barriers", "error", err)
 		return err
 	}
 
@@ -2379,6 +2376,8 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupAuditedHeadersConfig(ctx); err != nil {
 		return err
 	}
+
+	c.setupWorkflowStore(ctx)
 
 	return nil
 }

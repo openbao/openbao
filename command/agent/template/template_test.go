@@ -357,7 +357,7 @@ func TestServerRun(t *testing.T) {
 				templatesToRender = append(templatesToRender, templateTest.template)
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 			defer cancel()
 			sc := ServerConfig{
 				Logger: logging.NewVaultLogger(hclog.Trace),
@@ -480,7 +480,7 @@ func TestNewServerLogLevels(t *testing.T) {
 			templateTest.Destination = pointerutil.StringPtr(dstFile)
 			templatesToRender := []*ctconfig.TemplateConfig{templateTest}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 			defer cancel()
 
 			errCh := make(chan error)

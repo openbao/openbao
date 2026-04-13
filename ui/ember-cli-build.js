@@ -46,6 +46,15 @@ const appConfig = {
     sourceMap: false,
     onlyIncluded: true,
     precision: 4,
+    quietDeps: true,
+    silenceDeprecations: [
+      // Removing imports is a pretty significant change, silence it for now, but
+      // at some point we should switch to using @use
+      'import',
+      // ember and @hashicorp/design-system-components still use global builtins,
+      // and I can't figure out how to silence those for just the dependencies
+      'global-builtin',
+    ],
     includePaths: [
       './node_modules/@hashicorp/design-system-components/app/styles',
       './node_modules/@hashicorp/design-system-tokens/dist/products/css',

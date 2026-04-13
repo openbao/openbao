@@ -30,6 +30,7 @@ import (
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
 	credOIDC "github.com/openbao/openbao/builtin/credential/jwt"
 	credKerb "github.com/openbao/openbao/builtin/credential/kerberos"
+	credKube "github.com/openbao/openbao/builtin/credential/kubernetes"
 	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
 	credToken "github.com/openbao/openbao/builtin/credential/token"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
@@ -160,10 +161,11 @@ var (
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.CommandFactory {
 	loginHandlers := map[string]LoginHandler{
-		"cert":     &credCert.CLIHandler{},
-		"kerberos": &credKerb.CLIHandler{},
-		"ldap":     &credLdap.CLIHandler{},
-		"oidc":     &credOIDC.CLIHandler{},
+		"cert":       &credCert.CLIHandler{},
+		"kerberos":   &credKerb.CLIHandler{},
+		"kubernetes": &credKube.CLIHandler{},
+		"ldap":       &credLdap.CLIHandler{},
+		"oidc":       &credOIDC.CLIHandler{},
 		"radius": &credUserpass.CLIHandler{
 			DefaultMount: "radius",
 		},

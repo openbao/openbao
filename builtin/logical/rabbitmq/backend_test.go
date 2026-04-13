@@ -52,7 +52,7 @@ func prepareRabbitMQTestContainer(t *testing.T) (func(), string) {
 		t.Fatalf("could not start docker rabbitmq: %s", err)
 	}
 
-	svc, err := runner.StartService(context.Background(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
+	svc, err := runner.StartService(t.Context(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
 		connURL := fmt.Sprintf("http://%s:%d", host, port)
 		rmqc, err := rabbithole.NewClient(connURL, "guest", "guest")
 		if err != nil {
@@ -75,7 +75,7 @@ func prepareRabbitMQTestContainer(t *testing.T) (func(), string) {
 func TestBackend_basic(t *testing.T) {
 	t.Parallel()
 
-	b, _ := Factory(context.Background(), logical.TestBackendConfig())
+	b, _ := Factory(t.Context(), logical.TestBackendConfig())
 
 	cleanup, uri := prepareRabbitMQTestContainer(t)
 	defer cleanup()
@@ -94,7 +94,7 @@ func TestBackend_basic(t *testing.T) {
 func TestBackend_returnsErrs(t *testing.T) {
 	t.Parallel()
 
-	b, _ := Factory(context.Background(), logical.TestBackendConfig())
+	b, _ := Factory(t.Context(), logical.TestBackendConfig())
 
 	cleanup, uri := prepareRabbitMQTestContainer(t)
 	defer cleanup()
@@ -125,7 +125,7 @@ func TestBackend_returnsErrs(t *testing.T) {
 func TestBackend_roleCrud(t *testing.T) {
 	t.Parallel()
 
-	b, _ := Factory(context.Background(), logical.TestBackendConfig())
+	b, _ := Factory(t.Context(), logical.TestBackendConfig())
 
 	cleanup, uri := prepareRabbitMQTestContainer(t)
 	defer cleanup()
@@ -156,7 +156,7 @@ func TestBackend_roleWithPasswordPolicy(t *testing.T) {
 		return base62.Random(30)
 	}
 	backendConfig.System.(*logical.StaticSystemView).SetPasswordPolicy("testpolicy", passGen)
-	b, _ := Factory(context.Background(), backendConfig)
+	b, _ := Factory(t.Context(), backendConfig)
 
 	cleanup, uri := prepareRabbitMQTestContainer(t)
 	defer cleanup()
@@ -245,7 +245,7 @@ func testAccStepReadCreds(t *testing.T, b logical.Backend, uri, name string) log
 				t.Fatalf("unable to list queues with generated credentials: %s", err)
 			}
 
-			resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			resp, err = b.HandleRequest(t.Context(), &logical.Request{
 				Operation: logical.RevokeOperation,
 				Secret: &logical.Secret{
 					InternalData: map[string]interface{}{

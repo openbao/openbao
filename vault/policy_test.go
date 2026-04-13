@@ -474,8 +474,8 @@ nope = "yes"
 	}
 }
 
+//nolint:misspell // The wrong spelling is intended here
 func TestPolicy_ParseBadPath(t *testing.T) {
-	// The wrong spelling is intended here
 	_, err := ParseACLPolicy(namespace.RootNamespace, strings.TrimSpace(`
 path "/" {
 	capabilities = ["read"]

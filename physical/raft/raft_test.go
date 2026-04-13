@@ -5,16 +5,19 @@ package raft
 
 import (
 	"bytes"
-	"context"
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -125,6 +128,79 @@ func TestRaft_TransactionalBackend(t *testing.T) {
 	testRaft_assertFastTxnTrackerCleanup(t, b)
 }
 
+func TestRaft_TransactionLeak(t *testing.T) {
+	t.Parallel()
+	b := GetRaft(t, true, true)
+
+	// create a logger, which we can inspect
+	writer := &bytes.Buffer{}
+	var writerLock sync.Mutex
+	logger := hclog.New(&hclog.LoggerOptions{
+		Output:      writer,
+		Mutex:       &writerLock,
+		JSONFormat:  true,
+		DisableTime: true,
+	})
+	b.logger = logger
+	decoder := json.NewDecoder(writer)
+
+	// start transaction
+	tx, err := b.BeginTx(t.Context())
+	require.NoError(t, err)
+
+	_, err = tx.List(t.Context(), "list/me")
+	require.NoError(t, err)
+
+	_, err = tx.Get(t.Context(), "read/me")
+	require.NoError(t, err)
+
+	err = tx.Put(t.Context(), &physical.Entry{
+		Key:   "write/me",
+		Value: []byte("value"),
+	})
+	require.NoError(t, err)
+
+	err = tx.Delete(t.Context(), "delete/me")
+	require.NoError(t, err)
+
+	// leak transaction
+	tx = nil
+
+	// wait for log
+	found := false
+	for range 100 {
+		runtime.GC()
+
+		writerLock.Lock()
+		for writer.Len() > 0 {
+			logEntry := map[string]any{}
+			err := decoder.Decode(&logEntry)
+			require.True(t, err == nil || errors.Is(err, io.EOF))
+
+			if logEntry["@level"] == "error" && logEntry["@message"] == "transaction was leaked" {
+				found = true
+				assert.ElementsMatch(t, []any{"list/me"}, logEntry["listed_keys"])
+				assert.ElementsMatch(t, []any{"read/me", "write/me", "delete/me"}, logEntry["read_keys"])
+				assert.ElementsMatch(t, []any{"write/me", "delete/me"}, logEntry["updated_keys"])
+			}
+		}
+		writerLock.Unlock()
+
+		if found {
+			break
+		}
+
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	assert.True(t, found, "expected log message not found")
+	assert.Equal(t, int64(1), b.transactionLeakCounter.Load())
+
+	// assert clean-up
+	assert.Equal(t, uint64(math.MaxUint64), b.fsm.fastTxnTracker.lowestActiveIndex())
+	assert.Equal(t, 0, b.txnPermitPool.CurrentPermits())
+}
+
 func TestRaft_ParseAutopilotUpgradeVersion(t *testing.T) {
 	t.Parallel()
 	raftDir := t.TempDir()
@@ -217,7 +293,7 @@ func TestRaft_Backend_LargeKey(t *testing.T) {
 	}
 	entry := &physical.Entry{Key: key, Value: []byte(key)}
 
-	err = b.Put(context.Background(), entry)
+	err = b.Put(t.Context(), entry)
 	if err == nil {
 		t.Fatal("expected error for put entry")
 	}
@@ -226,7 +302,7 @@ func TestRaft_Backend_LargeKey(t *testing.T) {
 		t.Fatalf("expected %q, got %v", physical.ErrKeyTooLarge, err)
 	}
 
-	out, err := b.Get(context.Background(), entry.Key)
+	out, err := b.Get(t.Context(), entry.Key)
 	if err != nil {
 		t.Fatalf("unexpected error after failed put: %v", err)
 	}
@@ -243,7 +319,7 @@ func TestRaft_Backend_LargeValue(t *testing.T) {
 	rand.Read(value)
 	entry := &physical.Entry{Key: "foo", Value: value}
 
-	err := b.Put(context.Background(), entry)
+	err := b.Put(t.Context(), entry)
 	if err == nil {
 		t.Fatal("expected error for put entry")
 	}
@@ -252,7 +328,7 @@ func TestRaft_Backend_LargeValue(t *testing.T) {
 		t.Fatalf("expected %q, got %v", physical.ErrValueTooLarge, err)
 	}
 
-	out, err := b.Get(context.Background(), entry.Key)
+	out, err := b.Get(t.Context(), entry.Key)
 	if err != nil {
 		t.Fatalf("unexpected error after failed put: %v", err)
 	}
@@ -449,11 +525,11 @@ func TestRaft_Recovery(t *testing.T) {
 	}
 
 	// Bring up the nodes again
-	raft1.SetupCluster(context.Background(), SetupOpts{})
-	raft2.SetupCluster(context.Background(), SetupOpts{})
-	raft4.SetupCluster(context.Background(), SetupOpts{})
+	require.NoError(t, raft1.SetupCluster(t.Context(), SetupOpts{}))
+	require.NoError(t, raft2.SetupCluster(t.Context(), SetupOpts{}))
+	require.NoError(t, raft4.SetupCluster(t.Context(), SetupOpts{}))
 
-	peers, err := raft1.Peers(context.Background())
+	peers, err := raft1.Peers(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -542,12 +618,14 @@ func TestRaft_Backend_PutTxnMargin(t *testing.T) {
 			value := strings.Repeat("b", valueSize)
 
 			entry := &physical.Entry{Key: key, Value: []byte(value)}
-			putErr := b.Put(context.Background(), entry)
+			putErr := b.Put(t.Context(), entry)
 
-			txn, err := b.BeginTx(context.Background())
+			txn, err := b.BeginTx(t.Context())
 			require.NoError(t, err)
 
-			txnErr := txn.Put(context.Background(), entry)
+			txnErr := txn.Put(t.Context(), entry)
+
+			require.NoError(t, txn.Rollback(t.Context()))
 
 			if (putErr == nil) != (txnErr == nil) {
 				t.Fatalf("[key=%v / value=%v (delta=%v)] expected both b.Put(...)=%v and txn.Put(...)=%v to fail at the same time", keySize, valueSize, valueSizeDelta, putErr, txnErr)
@@ -580,7 +658,6 @@ func BenchmarkDB_Puts(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		ctx := context.Background()
 		pe := &physical.Entry{
 			Value: data,
 		}
@@ -589,7 +666,7 @@ func BenchmarkDB_Puts(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
-			err := s.Put(ctx, pe)
+			err := s.Put(b.Context(), pe)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -608,15 +685,14 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	ctx := context.Background()
 	pe := &physical.Entry{
 		Value: data,
 	}
 	testName := b.Name()
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
-		err = raft.Put(ctx, pe)
+		err = raft.Put(b.Context(), pe)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -626,7 +702,7 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
-			s.writeTo(ctx, discardCloser{Writer: io.Discard}, discardCloser{Writer: io.Discard})
+			s.writeTo(b.Context(), discardCloser{Writer: io.Discard}, discardCloser{Writer: io.Discard})
 		}
 	}
 

@@ -39,11 +39,11 @@ func testCreateNamespace(t *testing.T, ctx context.Context, b logical.Backend, n
 func TestNamespaceBackend_Set(t *testing.T) {
 	t.Parallel()
 	b := testSystemBackend(t)
-	rootCtx := namespace.RootContext(context.Background())
+	rootCtx := namespace.RootContext(t.Context())
 
 	t.Run("create namespace", func(t *testing.T) {
-		customMetadata := map[string]string{"abc": "def"}
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo")
+		customMetadata := map[string]string{"abc": "def"}
 		req.Data["custom_metadata"] = customMetadata
 		res, err := b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
@@ -53,8 +53,29 @@ func TestNamespaceBackend_Set(t *testing.T) {
 		require.Equal(t, res.Data["path"].(string), "foo/")
 		require.Equal(t, res.Data["tainted"].(bool), false)
 		require.Equal(t, res.Data["locked"].(bool), false)
-		require.Equal(t, res.Data["custom_metadata"], customMetadata,
-			"read custom_metadata does not match original custom_metadata")
+		require.Equal(t, res.Data["custom_metadata"], customMetadata)
+	})
+
+	t.Run("create sealable namespace", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/sealable-foo")
+		customMetadata := map[string]string{"abc": "def"}
+		sealConfig := map[string]any{
+			"type":             "shamir",
+			"secret_shares":    3,
+			"secret_threshold": 2,
+		}
+		req.Data["custom_metadata"] = customMetadata
+		req.Data["seal"] = sealConfig
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+
+		require.NotEmpty(t, res.Data["uuid"].(string), "namespace has no UUID")
+		require.NotEmpty(t, res.Data["id"].(string), "namespace has no ID")
+		require.Equal(t, res.Data["path"].(string), "sealable-foo/")
+		require.Equal(t, res.Data["tainted"].(bool), false)
+		require.Equal(t, res.Data["locked"].(bool), false)
+		require.Equal(t, res.Data["custom_metadata"], customMetadata)
+		require.Len(t, res.Data["key_shares"], 3)
 	})
 
 	t.Run("create namespace name validation", func(t *testing.T) {
@@ -104,7 +125,7 @@ func TestNamespaceBackend_Set(t *testing.T) {
 		}
 
 		for _, tc := range tcases {
-			ctx := namespace.RootContext(context.Background())
+			ctx := namespace.RootContext(t.Context())
 			if tc.namespace != nil {
 				ctx = namespace.ContextWithNamespace(ctx, tc.namespace)
 			}
@@ -142,12 +163,31 @@ func TestNamespaceBackend_Set(t *testing.T) {
 		require.Equal(t, res.Data["custom_metadata"], newMetadata,
 			"read custom_metadata does not match original custom_metadata")
 	})
+
+	t.Run("create namespace with bad seal config should fail", func(t *testing.T) {
+		sealConfig := map[string]any{
+			"type":             "shamir",
+			"secret_shares":    0,
+			"secret_threshold": 0,
+		}
+
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bad_seal_ns")
+		req.Data["seal"] = sealConfig
+		_, err := b.HandleRequest(rootCtx, req)
+		require.Error(t, err)
+
+		// namespace should not exist
+		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/bad_seal_ns")
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res)
+	})
 }
 
 func TestNamespaceBackend_Read(t *testing.T) {
 	t.Parallel()
 	b := testSystemBackend(t)
-	rootCtx := namespace.RootContext(context.Background())
+	rootCtx := namespace.RootContext(t.Context())
 
 	t.Run("reads existing namespace as expected", func(t *testing.T) {
 		customMetadata := map[string]string{"abc": "def"}
@@ -196,7 +236,7 @@ func TestNamespaceBackend_Read(t *testing.T) {
 func TestNamespaceBackend_Patch(t *testing.T) {
 	t.Parallel()
 	b := testSystemBackend(t)
-	rootCtx := namespace.RootContext(context.Background())
+	rootCtx := namespace.RootContext(t.Context())
 
 	t.Run("add metadata keys", func(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
@@ -301,7 +341,7 @@ func TestNamespaceBackend_Patch(t *testing.T) {
 func TestNamespaceBackend_Delete(t *testing.T) {
 	t.Parallel()
 	b := testSystemBackend(t)
-	rootCtx := namespace.RootContext(context.Background())
+	rootCtx := namespace.RootContext(t.Context())
 
 	t.Run("delete namespace", func(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
@@ -374,7 +414,7 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 
 func TestNamespaceBackend_List(t *testing.T) {
 	b := testSystemBackend(t)
-	rootCtx := namespace.RootContext(context.Background())
+	rootCtx := namespace.RootContext(t.Context())
 
 	t.Run("list is empty if root is only namespace", func(t *testing.T) {
 		req := logical.TestRequest(t, logical.ListOperation, "namespaces")
@@ -489,7 +529,7 @@ func TestNamespaceBackend_List(t *testing.T) {
 
 func TestNamespaceBackend_Scan(t *testing.T) {
 	b := testSystemBackend(t)
-	rootCtx := namespace.RootContext(context.Background())
+	rootCtx := namespace.RootContext(t.Context())
 
 	t.Run("scan is empty if root is only namespace", func(t *testing.T) {
 		req := logical.TestRequest(t, logical.ScanOperation, "namespaces")
@@ -606,7 +646,7 @@ func TestNamespaceBackend_Scan(t *testing.T) {
 // TestNamespaceBackend_Lock tests the Lock namespace operation on logical request level
 func TestNamespaceBackend_Lock(t *testing.T) {
 	b := testSystemBackend(t)
-	rootCtx := namespace.RootContext(context.Background())
+	rootCtx := namespace.RootContext(t.Context())
 
 	t.Run("cannot lock nonexistent, root or already locked namespaces", func(t *testing.T) {
 		testNamespace := testCreateNamespace(t, rootCtx, b, "test", nil)
@@ -701,7 +741,7 @@ func TestNamespaceBackend_Lock(t *testing.T) {
 func TestNamespaceBackend_Unlock(t *testing.T) {
 	core, _, rootToken := TestCoreUnsealed(t)
 	b := core.systemBackend
-	rootCtx := namespace.RootContext(context.Background())
+	rootCtx := namespace.RootContext(t.Context())
 
 	t.Run("cannot unlock namespace with missing request details", func(t *testing.T) {
 		testNS := testCreateNamespace(t, rootCtx, b, "test", nil)

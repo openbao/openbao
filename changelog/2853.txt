@@ -1,0 +1,9 @@
+```release-note:bug
+secret/database: fix bug that caused dynamic secret requests to fail with an "Internal Server Error" on standby nodes
+```
+```release-note:bug
+secret/rabbitmq: fix bug that caused dynamic secret requests to fail with an "Internal Server Error" on standby nodes
+```
+```release-note:bug
+secret/openldap: fix bug that caused dynamic secret requests to fail with an "Internal Server Error" on standby nodes
+```

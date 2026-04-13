@@ -182,7 +182,7 @@ func TestAcmeValidateHTTP01Challenge(t *testing.T) {
 		w.Write([]byte("my-token.my-thumbprint"))
 	}
 	tooLarge := func(w http.ResponseWriter, r *http.Request) {
-		for i := 0; i < 512; i++ {
+		for range 512 {
 			w.Write([]byte("my-token.my-thumbprint\n"))
 		}
 	}
@@ -283,7 +283,7 @@ func TestAcmeValidateTLSALPN01Challenge(t *testing.T) {
 		log.Info("[alpn-server] got connection...")
 		conn := tls.Server(connRaw.(*tls.Conn), tlsCfg)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+		ctx, cancel := context.WithTimeout(t.Context(), 1*time.Minute)
 		defer func() {
 			log.Info("[alpn-server] canceling listener connection...")
 			cancel()

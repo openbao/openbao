@@ -17,8 +17,8 @@ func (v *Flag) String() string {
 }
 
 func (v *Flag) Set(raw string) error {
-	idx := strings.Index(raw, "=")
-	if idx == -1 {
+	before, after, ok := strings.Cut(raw, "=")
+	if !ok {
 		return fmt.Errorf("no '=' value in arg: %q", raw)
 	}
 
@@ -26,7 +26,7 @@ func (v *Flag) Set(raw string) error {
 		*v = make(map[string]string)
 	}
 
-	key, value := raw[0:idx], raw[idx+1:]
+	key, value := before, after
 	(*v)[key] = value
 	return nil
 }

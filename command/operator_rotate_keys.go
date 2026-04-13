@@ -50,7 +50,7 @@ type OperatorRotateKeysCommand struct {
 }
 
 func (c *OperatorRotateKeysCommand) Synopsis() string {
-	return "Generates new unseal keys"
+	return "Rotates barrier root key, unseal keys or recovery keys depending on parameters and the type of seal used."
 }
 
 func (c *OperatorRotateKeysCommand) Help() string {
@@ -291,7 +291,7 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 	}
 
 	// Make the request
-	resp, err := fn(&api.RotateInitRequest{
+	status, err := fn(&api.RotateInitRequest{
 		SecretShares:        c.flagKeyShares,
 		SecretThreshold:     c.flagKeyThreshold,
 		PGPKeys:             c.flagPGPKeys,
@@ -303,11 +303,13 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 		return 2
 	}
 
-	if resp.Complete {
-		// if the rotation is complete, meaning we've immediately
-		// returned the unseal (recovery) keys, print them out
-		if len(c.flagPGPKeys) == 0 {
-			if Format(c.UI) == "table" {
+	if status.Complete {
+		if Format(c.UI) != "table" {
+			return OutputData(c.UI, status)
+		} else {
+			// if the rotation is complete, meaning we've immediately
+			// returned the unseal (recovery) keys, print them out
+			if len(c.flagPGPKeys) == 0 {
 				c.UI.Warn(wrapAtLength(
 					fmt.Sprintf("WARNING! If you lose the keys, there "+
 						"is no recovery. Consider rerunning this operation and "+
@@ -318,9 +320,7 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 						strings.ToLower(keyTypeRequired))))
 				c.UI.Output("")
 			}
-		}
-		if len(c.flagPGPKeys) > 0 && !c.flagBackup {
-			if Format(c.UI) == "table" {
+			if len(c.flagPGPKeys) > 0 && !c.flagBackup {
 				c.UI.Warn(wrapAtLength(
 					fmt.Sprintf("WARNING! You've used PGP keys for "+
 						"encryption of the resulting %s keys, but you did not "+
@@ -333,20 +333,32 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 						strings.ToLower(keyTypeRequired))))
 				c.UI.Output("")
 			}
-		}
 
-		return c.printUnsealKeys(client, resp, &api.RotateUpdateResponse{
-			Complete:        resp.Complete,
-			Keys:            resp.Keys,
-			KeysB64:         resp.KeysB64,
-			Backup:          resp.Backup,
-			PGPFingerprints: resp.PGPFingerprints,
-		})
+			c.UI.Output("")
+			updateStatus := &api.RotateUpdateResponse{
+				Complete:        status.Complete,
+				Keys:            status.Keys,
+				KeysB64:         status.KeysB64,
+				Backup:          status.Backup,
+				PGPFingerprints: status.PGPFingerprints,
+			}
+			printUnsealKeys(c.UI, updateStatus)
+			return c.printWarnings(client, status, updateStatus)
+		}
 	}
 
-	// Print warnings about recovery, etc.
-	if len(c.flagPGPKeys) == 0 {
-		if Format(c.UI) == "table" {
+	if Format(c.UI) == "table" {
+		// special case when we rotate root key while running auto seal
+		// meaning we do not rotate unseal/recovery shares.
+		if status.T == 0 && status.N == 0 {
+			c.UI.Output("")
+			c.UI.Info("Rotating barrier root key using recovery shares.")
+			c.UI.Output("")
+			return printRotationStatus(c.UI, status)
+		}
+
+		// Print warnings about recovery, etc.
+		if len(c.flagPGPKeys) == 0 {
 			c.UI.Warn(wrapAtLength(
 				fmt.Sprintf("WARNING! If you lose the keys after they are "+
 					"returned, there is no recovery. Consider canceling this "+
@@ -357,9 +369,7 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 					strings.ToLower(keyTypeRequired))))
 			c.UI.Output("")
 		}
-	}
-	if len(c.flagPGPKeys) > 0 && !c.flagBackup {
-		if Format(c.UI) == "table" {
+		if len(c.flagPGPKeys) > 0 && !c.flagBackup {
 			c.UI.Warn(wrapAtLength(
 				fmt.Sprintf("WARNING! You are using PGP keys for encryption "+
 					"of resulting %s keys, but you did not enable the option to backup "+
@@ -373,7 +383,7 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 		}
 	}
 
-	return c.printStatus(resp)
+	return printRotationStatus(c.UI, status)
 }
 
 // cancel is used to abort the rotation process.
@@ -575,8 +585,12 @@ func (c *OperatorRotateKeysCommand) provide(client *api.Client, key string) int 
 	}
 
 	if mightContainUnsealKeys {
-		return c.printUnsealKeys(client, status.(*api.RotateStatusResponse),
-			resp.(*api.RotateUpdateResponse))
+		if Format(c.UI) != "table" {
+			return OutputData(c.UI, resp)
+		}
+		c.UI.Output("")
+		printUnsealKeys(c.UI, resp.(*api.RotateUpdateResponse))
+		return c.printWarnings(client, status.(*api.RotateStatusResponse), resp.(*api.RotateUpdateResponse))
 	}
 
 	c.UI.Output(wrapAtLength("Rotation verification successful. The rotation is complete and the new keys are now active."))
@@ -618,7 +632,7 @@ func (c *OperatorRotateKeysCommand) status(client *api.Client) int {
 		return 2
 	}
 
-	return c.printStatus(status)
+	return printRotationStatus(c.UI, status)
 }
 
 // backupRetrieve retrieves the stored backup keys.
@@ -673,8 +687,8 @@ func (c *OperatorRotateKeysCommand) backupDelete(client *api.Client) int {
 	return 0
 }
 
-// printStatus dumps the status to output
-func (c *OperatorRotateKeysCommand) printStatus(in interface{}) int {
+// printRotationStatus dumps the rotation status to output.
+func printRotationStatus(ui cli.Ui, in interface{}) int {
 	out := []string{}
 	out = append(out, "Key | Value")
 
@@ -685,12 +699,16 @@ func (c *OperatorRotateKeysCommand) printStatus(in interface{}) int {
 		out = append(out, fmt.Sprintf("Started | %t", status.Started))
 		if status.Started {
 			if status.Progress == status.Required {
-				out = append(out, fmt.Sprintf("Rotation Progress | %d/%d (verification in progress)", status.Progress, status.Required))
+				out = append(out, fmt.Sprintf("Progress | %d/%d (verification in progress)", status.Progress, status.Required))
 			} else {
-				out = append(out, fmt.Sprintf("Rotation Progress | %d/%d", status.Progress, status.Required))
+				out = append(out, fmt.Sprintf("Progress | %d/%d", status.Progress, status.Required))
 			}
-			out = append(out, fmt.Sprintf("New Shares | %d", status.N))
-			out = append(out, fmt.Sprintf("New Threshold | %d", status.T))
+			if status.N > 0 {
+				out = append(out, fmt.Sprintf("New Shares | %d", status.N))
+			}
+			if status.T > 0 {
+				out = append(out, fmt.Sprintf("New Threshold | %d", status.T))
+			}
 			out = append(out, fmt.Sprintf("Verification Required | %t", status.VerificationRequired))
 			if status.VerificationNonce != "" {
 				out = append(out, fmt.Sprintf("Verification Nonce | %s", status.VerificationNonce))
@@ -708,48 +726,48 @@ func (c *OperatorRotateKeysCommand) printStatus(in interface{}) int {
 		out = append(out, fmt.Sprintf("Verification Nonce | %s", status.Nonce))
 		out = append(out, fmt.Sprintf("Verification Progress | %d/%d", status.Progress, status.T))
 	default:
-		c.UI.Error("Unknown status type")
+		ui.Error("Unknown status type")
 		return 1
 	}
 
-	switch Format(c.UI) {
+	switch Format(ui) {
 	case "table":
-		c.UI.Output(tableOutput(out, nil))
+		ui.Output(tableOutput(out, nil))
 		return 0
 	default:
-		return OutputData(c.UI, in)
+		return OutputData(ui, in)
 	}
 }
 
-func (c *OperatorRotateKeysCommand) printUnsealKeys(client *api.Client, status *api.RotateStatusResponse, resp *api.RotateUpdateResponse) int {
-	switch Format(c.UI) {
-	case "table":
-	default:
-		return OutputData(c.UI, resp)
-	}
-
-	// Space between the key prompt, if any, and the output
-	c.UI.Output("")
-
-	// Provide the keys
+func printUnsealKeys(ui cli.Ui, resp *api.RotateUpdateResponse) {
 	var haveB64 bool
 	if resp.KeysB64 != nil && len(resp.KeysB64) == len(resp.Keys) {
 		haveB64 = true
 	}
+
 	for i, key := range resp.Keys {
 		if len(resp.PGPFingerprints) > 0 {
 			if haveB64 {
-				c.UI.Output(fmt.Sprintf("Key %d fingerprint: %s; value: %s", i+1, resp.PGPFingerprints[i], resp.KeysB64[i]))
+				ui.Output(fmt.Sprintf("Key %d fingerprint: %s; value: %s", i+1, resp.PGPFingerprints[i], resp.KeysB64[i]))
 			} else {
-				c.UI.Output(fmt.Sprintf("Key %d fingerprint: %s; value: %s", i+1, resp.PGPFingerprints[i], key))
+				ui.Output(fmt.Sprintf("Key %d fingerprint: %s; value: %s", i+1, resp.PGPFingerprints[i], key))
 			}
 		} else {
 			if haveB64 {
-				c.UI.Output(fmt.Sprintf("Key %d: %s", i+1, resp.KeysB64[i]))
+				ui.Output(fmt.Sprintf("Key %d: %s", i+1, resp.KeysB64[i]))
 			} else {
-				c.UI.Output(fmt.Sprintf("Key %d: %s", i+1, key))
+				ui.Output(fmt.Sprintf("Key %d: %s", i+1, key))
 			}
 		}
+	}
+}
+
+func (c *OperatorRotateKeysCommand) printWarnings(client *api.Client, status *api.RotateStatusResponse, resp *api.RotateUpdateResponse) int {
+	// barrier root key rotation while running auto seal case.
+	if len(resp.Keys) == 0 {
+		c.UI.Output("")
+		c.UI.Output("Barrier root key rotated using recovery keys.")
+		return 0
 	}
 
 	if resp.Nonce != "" {
@@ -757,9 +775,10 @@ func (c *OperatorRotateKeysCommand) printUnsealKeys(client *api.Client, status *
 		c.UI.Output(fmt.Sprintf("Operation nonce: %s", resp.Nonce))
 	}
 
+	target := strings.ToLower(strings.TrimSpace(c.flagTarget))
 	if len(resp.PGPFingerprints) > 0 && resp.Backup {
 		c.UI.Output("")
-		switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
+		switch target {
 		case "barrier":
 			c.UI.Output(wrapAtLength(fmt.Sprintf(
 				"The encrypted unseal keys are backed up to \"core/unseal-keys-backup\" " +
@@ -777,52 +796,31 @@ func (c *OperatorRotateKeysCommand) printUnsealKeys(client *api.Client, status *
 		}
 	}
 
-	switch status.VerificationRequired {
-	case false:
-		c.UI.Output("")
-		switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
-		case "barrier":
-			c.UI.Output(wrapAtLength(fmt.Sprintf(
-				"OpenBao unseal keys rotated to %d key shares and a key threshold of %d. Please "+
-					"securely distribute the key shares printed above. When OpenBao is "+
-					"re-sealed, restarted, or stopped, you must supply at least %d of "+
-					"these keys to unseal it before it can start servicing requests.",
-				status.N,
-				status.T,
-				status.T)))
-		case "recovery", "hsm":
-			c.UI.Output(wrapAtLength(fmt.Sprintf(
-				"OpenBao recovery keys rotated to %d key shares and a key threshold of %d. Please "+
-					"securely distribute the key shares printed above.",
-				status.N,
-				status.T)))
-		}
-
-	default:
+	if status.VerificationRequired {
 		c.UI.Output("")
 		var warningText string
-		switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
+		switch target {
 		case "barrier":
 			c.UI.Output(wrapAtLength(fmt.Sprintf(
-				"OpenBao has created a new unseal key, split into %d key shares and a key threshold "+
-					"of %d. These will not be active until after verification is complete. "+
-					"Please securely distribute the key shares printed above. When OpenBao "+
-					"is re-sealed, restarted, or stopped, you must supply at least %d of "+
-					"these keys to unseal it before it can start servicing requests.",
+				"OpenBao has created a new unseal key, split into %d key shares and a "+
+					"key threshold of %d. These will not be active until after verification is "+
+					"complete. Please securely distribute the key shares printed above. When "+
+					" OpenBao is re-sealed, restarted, or stopped, you must supply at least %d "+
+					"of these keys to unseal it before it can start servicing requests.",
 				status.N,
 				status.T,
 				status.T)))
 			warningText = "unseal"
 		case "recovery", "hsm":
 			c.UI.Output(wrapAtLength(fmt.Sprintf(
-				"OpenBao has created a new recovery key, split into %d key shares and a key threshold "+
-					"of %d. These will not be active until after verification is complete. "+
-					"Please securely distribute the key shares printed above.",
+				"OpenBao has created a new recovery key, split into %d key shares and a "+
+					"key threshold of %d. These will not be active until after verification is "+
+					"complete. Please securely distribute the key shares printed above.",
 				status.N,
 				status.T)))
 			warningText = "authenticate with"
-
 		}
+
 		c.UI.Output("")
 		c.UI.Warn(wrapAtLength(fmt.Sprintf(
 			"Again, these key shares are _not_ valid until verification is performed. "+
@@ -838,6 +836,25 @@ func (c *OperatorRotateKeysCommand) printUnsealKeys(client *api.Client, status *
 
 		c.flagVerify = true
 		return c.status(client)
+	} else {
+		c.UI.Output("")
+		switch target {
+		case "barrier":
+			c.UI.Output(wrapAtLength(fmt.Sprintf(
+				"OpenBao unseal keys rotated to %d key shares and a key threshold of %d. "+
+					"Please securely distribute the key shares printed above. When OpenBao is "+
+					"re-sealed, restarted, or stopped, you must supply at least %d of "+
+					"these keys to unseal it before it can start servicing requests.",
+				status.N,
+				status.T,
+				status.T)))
+		case "recovery", "hsm":
+			c.UI.Output(wrapAtLength(fmt.Sprintf(
+				"OpenBao recovery keys rotated to %d key shares and a key threshold of %d. "+
+					"Please securely distribute the key shares printed above.",
+				status.N,
+				status.T)))
+		}
 	}
 
 	return 0

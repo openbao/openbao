@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path"
 	"strings"
@@ -337,9 +338,7 @@ func (c *KVPatchCommand) readThenWrite(client *api.Client, path string, newData 
 	}
 
 	// Copy new data over
-	for k, v := range newData {
-		data[k] = v
-	}
+	maps.Copy(data, newData)
 
 	secret, err = client.Logical().Write(path, map[string]interface{}{
 		"data": data,

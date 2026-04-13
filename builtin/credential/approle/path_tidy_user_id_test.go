@@ -4,7 +4,6 @@
 package approle
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -28,7 +27,7 @@ func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {
 	}
 	_ = b.requestNoErr(t, roleSecretIDReq)
 
-	accessorHashes, err := storage.List(context.Background(), "accessor/")
+	accessorHashes, err := storage.List(t.Context(), "accessor/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +45,7 @@ func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := storage.Put(context.Background(), entry1); err != nil {
+	if err := storage.Put(t.Context(), entry1); err != nil {
 		t.Fatal(err)
 	}
 
@@ -59,11 +58,11 @@ func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := storage.Put(context.Background(), entry2); err != nil {
+	if err := storage.Put(t.Context(), entry2); err != nil {
 		t.Fatal(err)
 	}
 
-	accessorHashes, err = storage.List(context.Background(), "accessor/")
+	accessorHashes, err = storage.List(t.Context(), "accessor/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +70,7 @@ func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {
 		t.Fatalf("bad: len(accessorHashes); expect 3, got %d", len(accessorHashes))
 	}
 
-	secret, err := b.tidySecretID(context.Background(), &logical.Request{
+	secret, err := b.tidySecretID(t.Context(), &logical.Request{
 		Storage: storage,
 	})
 	if err != nil {
@@ -87,7 +86,7 @@ func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {
 	// It runs async so we give it a bit of time to run
 	time.Sleep(10 * time.Second)
 
-	accessorHashes, err = storage.List(context.Background(), "accessor/")
+	accessorHashes, err = storage.List(t.Context(), "accessor/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +115,7 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 	start := time.Now()
 	for time.Since(start) < 10*time.Second {
 		if time.Since(start) > 100*time.Millisecond && !b.tidySecretIDCASGuard.Load() {
-			secret, err := b.tidySecretID(context.Background(), &logical.Request{
+			secret, err := b.tidySecretID(t.Context(), &logical.Request{
 				Storage: storage,
 			})
 			if err != nil {
@@ -129,16 +128,14 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 				true,
 			)
 		}
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			roleSecretIDReq := &logical.Request{
 				Operation: logical.UpdateOperation,
 				Path:      "role/role1/secret-id",
 				Storage:   storage,
 			}
 			_ = b.requestNoErr(t, roleSecretIDReq)
-		}()
+		})
 
 		entry, err := logical.StorageEntryJSON(
 			fmt.Sprintf("accessor/invalid%d", count),
@@ -150,7 +147,7 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := storage.Put(context.Background(), entry); err != nil {
+		if err := storage.Put(t.Context(), entry); err != nil {
 			t.Fatal(err)
 		}
 
@@ -170,7 +167,7 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 	logger.Info("running tidy again")
 
 	// Run tidy again
-	secret, err := b.tidySecretID(context.Background(), &logical.Request{
+	secret, err := b.tidySecretID(t.Context(), &logical.Request{
 		Storage: storage,
 	})
 	if err != nil || len(secret.Warnings) > 0 {
@@ -193,7 +190,7 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	accessorHashes, err := storage.List(context.Background(), "accessor/")
+	accessorHashes, err := storage.List(t.Context(), "accessor/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,11 +198,11 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 		t.Fatalf("bad: len(accessorHashes); expect %d, got %d", count, len(accessorHashes))
 	}
 
-	roleHMACs, err := storage.List(context.Background(), secretIDPrefix)
+	roleHMACs, err := storage.List(t.Context(), secretIDPrefix)
 	if err != nil {
 		t.Fatal(err)
 	}
-	secretIDs, err := storage.List(context.Background(), fmt.Sprintf("%s%s", secretIDPrefix, roleHMACs[0]))
+	secretIDs, err := storage.List(t.Context(), fmt.Sprintf("%s%s", secretIDPrefix, roleHMACs[0]))
 	if err != nil {
 		t.Fatal(err)
 	}

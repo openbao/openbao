@@ -71,21 +71,17 @@ func TestStorage(t testing.T, s Storage) {
 }
 
 func TestSystemView() *StaticSystemView {
-	defaultLeaseTTLVal := time.Hour * 24
-	maxLeaseTTLVal := time.Hour * 24 * 2
 	return &StaticSystemView{
-		DefaultLeaseTTLVal: defaultLeaseTTLVal,
-		MaxLeaseTTLVal:     maxLeaseTTLVal,
+		DefaultLeaseTTLVal: time.Hour * 24,
+		MaxLeaseTTLVal:     time.Hour * 24 * 2,
 		VersionString:      "testVersionString",
 	}
 }
 
 func TestBackendConfig() *BackendConfig {
-	bc := &BackendConfig{
+	return &BackendConfig{
 		Logger: logging.NewVaultLogger(log.Trace),
 		System: TestSystemView(),
 		Config: make(map[string]string),
 	}
-
-	return bc
 }

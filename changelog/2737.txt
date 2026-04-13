@@ -1,0 +1,3 @@
+```release-note:improvement
+self-init: Allow setting headers on requests.
+```

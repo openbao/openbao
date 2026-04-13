@@ -2,6 +2,7 @@
  * Copyright (c) HashiCorp, Inc.
  * SPDX-License-Identifier: MPL-2.0
  */
+@use 'sass:color';
 
 .chart-wrapper {
   border: $light-border;
@@ -70,8 +71,8 @@
       &:hover,
       &:focus {
         background-color: transparent;
-        background-color: darken($ui-gray-050, 5%);
-        border-color: darken($ui-gray-300, 5%);
+        background-color: color.adjust($ui-gray-050, $lightness: -5%, $space: hsl);
+        border-color: color.adjust($ui-gray-300, $lightness: -5%, $space: hsl);
       }
     }
   }

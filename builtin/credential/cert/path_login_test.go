@@ -6,20 +6,14 @@ package cert
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"fmt"
-	"math/big"
-	mathrand "math/rand"
 	"net"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/tsaarni/certyaml"
 
 	"golang.org/x/crypto/ocsp"
 
@@ -55,39 +49,29 @@ func TestMain(m *testing.M) {
 		srv.Serve(listener) //nolint:errcheck // ignore error
 	}()
 	defer srv.Shutdown(context.Background()) //nolint:errcheck // ignore error
-	m.Run()
+	_ = m.Run()
 }
 
 func TestCert_RoleResolve(t *testing.T) {
-	certTemplate := &x509.Certificate{
-		Subject: pkix.Name{
-			CommonName: "example.com",
-		},
-		DNSNames:    []string{"example.com"},
-		IPAddresses: []net.IP{net.ParseIP("127.0.0.1")},
-		ExtKeyUsage: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageServerAuth,
-			x509.ExtKeyUsageClientAuth,
-		},
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement,
-		SerialNumber: big.NewInt(mathrand.Int63()),
-		NotBefore:    time.Now().Add(-30 * time.Second),
-		NotAfter:     time.Now().Add(262980 * time.Hour),
+	ca := &certyaml.Certificate{
+		Subject: "cn=ca",
 	}
 
-	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
+	cert := &certyaml.Certificate{
+		Subject:         "cn=example.com",
+		SubjectAltNames: []string{"DNS:example.com", "IP:127.0.0.1"},
+		Issuer:          ca,
+	}
+
+	connState, err := testConnState(cert, ca)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
-	}
-	ca, err := os.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
-	if err != nil {
-		t.Fatalf("err: %v", err)
 	}
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepCert(t, "web", ca, "foo", allowed{dns: "example.com"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{dns: "example.com"}, false),
 			testAccStepLoginWithName(t, connState, "web"),
 			testAccStepResolveRoleWithName(t, connState, "web"),
 		},
@@ -113,35 +97,25 @@ func testAccStepResolveRoleWithName(t *testing.T, connState tls.ConnectionState,
 }
 
 func TestCert_RoleResolveWithoutProvidingCertName(t *testing.T) {
-	certTemplate := &x509.Certificate{
-		Subject: pkix.Name{
-			CommonName: "example.com",
-		},
-		DNSNames:    []string{"example.com"},
-		IPAddresses: []net.IP{net.ParseIP("127.0.0.1")},
-		ExtKeyUsage: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageServerAuth,
-			x509.ExtKeyUsageClientAuth,
-		},
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement,
-		SerialNumber: big.NewInt(mathrand.Int63()),
-		NotBefore:    time.Now().Add(-30 * time.Second),
-		NotAfter:     time.Now().Add(262980 * time.Hour),
+	ca := &certyaml.Certificate{
+		Subject: "cn=ca",
 	}
 
-	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
+	cert := &certyaml.Certificate{
+		Subject:         "cn=example.com",
+		SubjectAltNames: []string{"DNS:example.com", "IP:127.0.0.1"},
+		Issuer:          ca,
+	}
+
+	connState, err := testConnState(cert, ca)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
-	}
-	ca, err := os.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
-	if err != nil {
-		t.Fatalf("err: %v", err)
 	}
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepCert(t, "web", ca, "foo", allowed{dns: "example.com"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{dns: "example.com"}, false),
 			testAccStepLoginWithName(t, connState, "web"),
 			testAccStepResolveRoleWithEmptyDataMap(t, connState, "web"),
 		},
@@ -221,35 +195,25 @@ func testAccStepResolveRoleOCSPFail(t *testing.T, connState tls.ConnectionState,
 }
 
 func TestCert_RoleResolve_RoleDoesNotExist(t *testing.T) {
-	certTemplate := &x509.Certificate{
-		Subject: pkix.Name{
-			CommonName: "example.com",
-		},
-		DNSNames:    []string{"example.com"},
-		IPAddresses: []net.IP{net.ParseIP("127.0.0.1")},
-		ExtKeyUsage: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageServerAuth,
-			x509.ExtKeyUsageClientAuth,
-		},
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement,
-		SerialNumber: big.NewInt(mathrand.Int63()),
-		NotBefore:    time.Now().Add(-30 * time.Second),
-		NotAfter:     time.Now().Add(262980 * time.Hour),
+	ca := &certyaml.Certificate{
+		Subject: "cn=ca",
 	}
 
-	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
+	cert := &certyaml.Certificate{
+		Subject:         "cn=example.com",
+		SubjectAltNames: []string{"DNS:example.com", "IP:127.0.0.1"},
+		Issuer:          ca,
+	}
+
+	connState, err := testConnState(cert, ca)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
-	}
-	ca, err := os.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
-	if err != nil {
-		t.Fatalf("err: %v", err)
 	}
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepCert(t, "web", ca, "foo", allowed{dns: "example.com"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{dns: "example.com"}, false),
 			testAccStepLoginWithName(t, connState, "web"),
 			testAccStepResolveRoleExpectRoleResolutionToFail(t, connState, "notweb"),
 		},
@@ -270,54 +234,51 @@ func TestCert_RoleResolveOCSP(t *testing.T) {
 		{"failTrueRevokedCert", true, ocsp.Revoked, true},
 		{"failTrueUnknownCert", true, ocsp.Unknown, false},
 	}
-	certTemplate := &x509.Certificate{
-		Subject: pkix.Name{
-			CommonName: "example.com",
-		},
-		DNSNames:    []string{"example.com"},
-		IPAddresses: []net.IP{net.ParseIP("127.0.0.1")},
-		ExtKeyUsage: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageServerAuth,
-			x509.ExtKeyUsageClientAuth,
-		},
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement,
-		SerialNumber: big.NewInt(mathrand.Int63()),
-		NotBefore:    time.Now().Add(-30 * time.Second),
-		NotAfter:     time.Now().Add(262980 * time.Hour),
-		OCSPServer:   []string{fmt.Sprintf("http://localhost:%d", ocspPort)},
+
+	ca := &certyaml.Certificate{
+		Subject: "cn=ca",
 	}
-	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
+
+	cert := &certyaml.Certificate{
+		Subject:         "cn=example.com",
+		SubjectAltNames: []string{"DNS:example.com", "IP:127.0.0.1"},
+		Issuer:          ca,
+		OCSP:            []string{fmt.Sprintf("http://localhost:%d", ocspPort)},
+	}
+
+	connState, err := testConnState(cert, ca)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
-	ca, err := os.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
+
+	issuerCert, err := ca.X509Certificate()
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	issuerKey, err := ca.PrivateKey()
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	issuer := parsePEM(ca)
-	pkf, err := os.ReadFile(filepath.Join(tempDir, "ca_key.pem"))
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	pk, err := certutil.ParsePEMBundle(string(pkf))
+	// Get the generated cert to access its serial number.
+	x509Cert, err := cert.X509Certificate()
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			resp, err := ocsp.CreateResponse(issuer[0], issuer[0], ocsp.Response{
+			resp, err := ocsp.CreateResponse(&issuerCert, &issuerCert, ocsp.Response{
 				Status:       c.certStatus,
-				SerialNumber: certTemplate.SerialNumber,
+				SerialNumber: x509Cert.SerialNumber,
 				ProducedAt:   time.Now(),
 				ThisUpdate:   time.Now(),
 				NextUpdate:   time.Now().Add(time.Hour),
-			}, pk.PrivateKey)
+			}, issuerKey)
 			if err != nil {
 				t.Fatal(err)
 			}
-			source[certTemplate.SerialNumber.String()] = resp
+			source[x509Cert.SerialNumber.String()] = resp
 
 			b := testFactory(t)
 			b.(*backend).ocspClient.ClearCache()
@@ -333,7 +294,7 @@ func TestCert_RoleResolveOCSP(t *testing.T) {
 			logicaltest.Test(t, logicaltest.TestCase{
 				CredentialBackend: b,
 				Steps: []logicaltest.TestStep{
-					testAccStepCertWithExtraParams(t, "web", ca, "foo", allowed{dns: "example.com"}, false,
+					testAccStepCertWithExtraParams(t, "web", ca.CertPEM(), "foo", allowed{dns: "example.com"}, false,
 						map[string]interface{}{"ocsp_enabled": true, "ocsp_fail_open": c.failOpen}),
 					testAccStepReadCertPolicy(t, "web", false, map[string]interface{}{"ocsp_enabled": true, "ocsp_fail_open": c.failOpen}),
 					loginStep,

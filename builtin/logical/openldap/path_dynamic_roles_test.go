@@ -253,8 +253,8 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 				Storage:   storage,
 			}
 
-			// ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-			ctx := context.Background()
+			// ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+			ctx := t.Context()
 			// defer cancel()
 
 			_, err := b.pathDynamicRoleCreateUpdate(ctx, req, test.createData)
@@ -820,7 +820,7 @@ changetype: delete`,
 			}
 
 			// Shared context, but with timeout to ensure the test ends
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 			defer cancel()
 
 			// Save original version
@@ -923,7 +923,7 @@ func TestDynamicRoleRead(t *testing.T) {
 			data := dynamicRoleFieldData(map[string]interface{}{
 				"name": roleName,
 			})
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 			defer cancel()
 
 			resp, err := b.pathDynamicRoleRead(ctx, req, data)
@@ -992,7 +992,7 @@ func TestDynamicRoleList(t *testing.T) {
 				Storage: storage,
 			}
 			data := dynamicRoleFieldData(map[string]interface{}{})
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 			defer cancel()
 
 			resp, err := b.pathDynamicRoleList(ctx, req, data)
@@ -1074,7 +1074,7 @@ userPassword: {{.Password}}`,
 			data := dynamicRoleFieldData(map[string]interface{}{
 				"name": roleName,
 			})
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 			defer cancel()
 
 			exists, err := b.pathDynamicRoleExistenceCheck(ctx, req, data)

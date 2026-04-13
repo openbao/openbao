@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/sha3"
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
@@ -48,7 +49,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/version"
-	"golang.org/x/crypto/sha3"
 )
 
 const maxBytes = 128 * 1024
@@ -154,6 +154,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Paths = append(b.Paths, b.quotasPaths()...)
 	b.Paths = append(b.Paths, b.loginMFAPaths()...)
 	b.Paths = append(b.Paths, b.introspectionPaths()...)
+	b.Paths = append(b.Paths, b.workflowPaths()...)
 
 	if core.rawEnabled {
 		b.Paths = append(b.Paths, b.rawPaths()...)
@@ -1856,11 +1857,15 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 	}
 
-	var err error
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return handleError(err)
+	}
+
 	if isAuth {
-		err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+		err = b.Core.persistAuth(ctx, b.Core.NamespaceView(ns), b.Core.auth, &mountEntry.Local, mountEntry.UUID)
 	} else {
-		err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+		err = b.Core.persistMounts(ctx, b.Core.NamespaceView(ns), b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
 	}
 
 	if err != nil {
@@ -5606,52 +5611,40 @@ This path responds to the following HTTP methods.
 		`,
 	},
 
-	"list-namespaces": {
-		"List namespaces.",
+	"list-workflows": {
+		"List workflows.",
 		`
 This path responds to the following HTTP methods.
 
 	LIST /
-		List namespaces.
+		List workflows.
 
 	SCAN /
-		Scan (recursively list) namespaces.
+		Scan (recursively list) workflows.
 		`,
 	},
-	"namespaces": {
-		"Create, read, update and delete namespaces.",
+	"workflows": {
+		"Create, read, update and delete workflows.",
 		`
 This path responds to the following HTTP methods.
 
 	GET /<path>
-		Retrieve a namespace.
+		Retrieve a workflow.
 
 	PUT /<path>
-		Create or update a namespace.
-
-	PATCH /<path>
-		Update a namespace's custom metadata.
+		Create or update a workflow.
 
 	DELETE /<path>
-		Delete a namespace.
+		Delete a workflow.
 		`,
 	},
-	"namespaces-lock": {
-		"Lock a namespace.",
+	"exec-workflows": {
+		"Execute a workflow.",
 		`
 This path responds to the following HTTP methods.
 
 	PUT /<path>
-		Lock the API for a namespace.
-		`,
-	},
-	"namespaces-unlock": {
-		"Unlock a namespace.",
-		`
-This path responds to the following HTTP methods.
-
-	PUT /<path>
-		Unlock the API for a namespace.
+		Execute a workflow.
 		`,
 	},
 }

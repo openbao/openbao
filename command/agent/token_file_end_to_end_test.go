@@ -60,7 +60,7 @@ func TestTokenFileEndToEnd(t *testing.T) {
 		Client: client,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 
 	am, err := token_file.NewTokenFileAuthMethod(&auth.AuthConfig{
 		Logger: logger.Named("auth.method"),

@@ -297,7 +297,7 @@ func (t *TokenParams) PopulateTokenAuth(auth *logical.Auth, req *logical.Request
 	auth.NumUses = t.TokenNumUses
 
 	if t.TokenStrictlyBindIP {
-		// http.WrapForwardedForHandler sets the correct portion of the
+		// http.wrapForwardedForHandler sets the correct portion of the
 		// X-Forwarded-For header (if any) to req.RemoteAddr which ends up
 		// on req.Connection.RemoteAddr after translation. This means we
 		// don't need to let plugins know how to handle X-Forwarded and can

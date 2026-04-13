@@ -7,7 +7,6 @@ package vault
 import (
 	"archive/tar"
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
@@ -263,18 +262,18 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	pluginType, _ := consts.ParsePluginType(config.Plugins[0].Type)
 	pluginSha, _ := hex.DecodeString(config.Plugins[0].SHA256Sum)
 
-	err = core.pluginCatalog.Set(context.Background(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version, config.Plugins[0].FullName(), []string{}, []string{}, pluginSha, false)
+	err = core.pluginCatalog.Set(t.Context(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version, config.Plugins[0].FullName(), []string{}, []string{}, pluginSha, false)
 	if err == nil {
 		t.Errorf("expected failed to register OCI plugin without setting oci=true: %v", err)
 	}
 
-	err = core.pluginCatalog.Set(context.Background(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version, config.Plugins[0].FullName(), []string{}, []string{}, pluginSha, true)
+	err = core.pluginCatalog.Set(t.Context(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version, config.Plugins[0].FullName(), []string{}, []string{}, pluginSha, true)
 	if err != nil {
 		t.Errorf("failed to register plugin: %v", err)
 	}
 
 	// Try to unregister it.
-	err = core.pluginCatalog.Delete(context.Background(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version)
+	err = core.pluginCatalog.Delete(t.Context(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version)
 	if err != nil {
 		t.Errorf("failed to deregister plugin: %v", err)
 	}

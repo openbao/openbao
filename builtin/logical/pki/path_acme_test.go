@@ -56,7 +56,7 @@ func TestAcmeBasicWorkflow(t *testing.T) {
 		{"issuer", "issuer/int-ca/acme/"},
 		{"issuer_role", "issuer/int-ca/roles/test-role/acme/"},
 	}
-	testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 
 	for _, tc := range cases {
@@ -318,11 +318,11 @@ func TestAcmeBasicWorkflow(t *testing.T) {
 			}
 
 			// Can we revoke it using the account key revocation
-			err = acmeClient.RevokeCert(ctx, nil, certs[0], acme.CRLReasonUnspecified)
+			err = acmeClient.RevokeCert(testCtx, nil, certs[0], acme.CRLReasonUnspecified)
 			require.NoError(t, err, "failed to revoke certificate through account key")
 
 			// Make sure it was actually revoked
-			certResp, err := client.Logical().ReadWithContext(ctx, "pki/cert/"+serialFromCert(acmeCert))
+			certResp, err := client.Logical().ReadWithContext(testCtx, "pki/cert/"+serialFromCert(acmeCert))
 			require.NoError(t, err, "failed to read certificate status")
 			require.NotNil(t, certResp, "certificate status response was nil")
 			revocationTime := certResp.Data["revocation_time"].(json.Number)
@@ -332,10 +332,10 @@ func TestAcmeBasicWorkflow(t *testing.T) {
 				"revocation time was not greater than 0, revocation did not work value was: %v", revocationTimeInt)
 
 			// Make sure we can revoke an authorization as a client
-			err = acmeClient.RevokeAuthorization(ctx, authorizations[0].URI)
+			err = acmeClient.RevokeAuthorization(testCtx, authorizations[0].URI)
 			require.NoError(t, err, "failed revoking authorization status")
 
-			revokedAuth, err := acmeClient.GetAuthorization(ctx, authorizations[0].URI)
+			revokedAuth, err := acmeClient.GetAuthorization(testCtx, authorizations[0].URI)
 			require.NoError(t, err, "failed fetching authorization")
 			require.Equal(t, acme.StatusDeactivated, revokedAuth.Status)
 
@@ -360,11 +360,11 @@ func TestAcmeBasicWorkflowWithEab(t *testing.T) {
 	t.Parallel()
 	cluster, client, _ := setupAcmeBackend(t)
 	defer cluster.Cleanup()
-	testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 
 	// Enable EAB
-	_, err := client.Logical().WriteWithContext(context.Background(), "pki/config/acme", map[string]interface{}{
+	_, err := client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]interface{}{
 		"enabled":    true,
 		"eab_policy": "always-required",
 	})
@@ -448,7 +448,7 @@ func TestAcmeBasicWorkflowWithEab(t *testing.T) {
 			require.NoError(t, err, "failed registering new account with eab")
 
 			// Make sure our EAB is no longer available
-			resp, err = client.Logical().ListWithContext(context.Background(), "pki/eab")
+			resp, err = client.Logical().ListWithContext(t.Context(), "pki/eab")
 			require.NoError(t, err, "failed to list eab tokens")
 			require.Nil(t, resp, "list response for eab tokens should have been nil due to empty list")
 
@@ -502,7 +502,7 @@ func TestAcmeNonce(t *testing.T) {
 				case "header":
 					req = client.NewRequest(http.MethodHead, "/v1/"+tc.directoryUrl)
 				}
-				res, err := client.RawRequestWithContext(ctx, req)
+				res, err := client.RawRequestWithContext(t.Context(), req)
 				require.NoError(t, err, "failed sending raw request")
 				_ = res.Body.Close()
 
@@ -542,13 +542,13 @@ func TestAcmeClusterPathNotConfigured(t *testing.T) {
 	// Go sneaky, sneaky and update the acme configuration through sys/raw to bypass config/cluster path checks
 	pkiMount := findStorageMountUuid(t, client, "pki")
 	rawPath := path.Join("/sys/raw/logical/", pkiMount, storageAcmeConfig)
-	_, err := client.Logical().WriteWithContext(context.Background(), rawPath, map[string]interface{}{
+	_, err := client.Logical().WriteWithContext(t.Context(), rawPath, map[string]interface{}{
 		"value": "{\"enabled\": true, \"eab_policy_name\": \"not-required\"}",
 	})
 	require.NoError(t, err, "failed updating acme config through sys/raw")
 
 	// Force reload the plugin so we read the new config we slipped in.
-	_, err = client.Sys().ReloadPluginWithContext(context.Background(), &api.ReloadPluginInput{Mounts: []string{"pki"}})
+	_, err = client.Sys().ReloadPluginWithContext(t.Context(), &api.ReloadPluginInput{Mounts: []string{"pki"}})
 	require.NoError(t, err, "failed reloading plugin")
 
 	// Do not fill in the path option within the local cluster configuration
@@ -561,7 +561,7 @@ func TestAcmeClusterPathNotConfigured(t *testing.T) {
 		{"issuer", "pki/issuer/default/acme/directory"},
 		{"issuer_role", "pki/issuer/default/roles/test-role/acme/directory"},
 	}
-	testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 
 	for _, tc := range cases {
@@ -597,7 +597,7 @@ func TestAcmeAccountsCrossingDirectoryPath(t *testing.T) {
 	accountKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err, "failed creating rsa key")
 
-	testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 	acmeClient := getAcmeClientForCluster(t, cluster, baseAcmeURL, accountKey)
 
@@ -623,7 +623,7 @@ func TestAcmeEabCrossingDirectoryPath(t *testing.T) {
 	defer cluster.Cleanup()
 
 	// Enable EAB
-	_, err := client.Logical().WriteWithContext(context.Background(), "pki/config/acme", map[string]interface{}{
+	_, err := client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]interface{}{
 		"enabled":    true,
 		"eab_policy": "always-required",
 	})
@@ -633,7 +633,7 @@ func TestAcmeEabCrossingDirectoryPath(t *testing.T) {
 	accountKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err, "failed creating rsa key")
 
-	testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 	acmeClient := getAcmeClientForCluster(t, cluster, baseAcmeURL, accountKey)
 
@@ -669,7 +669,7 @@ func TestAcmeDisabledWithEnvVar(t *testing.T) {
 	for _, method := range []string{http.MethodHead, http.MethodGet} {
 		t.Run(method, func(t *testing.T) {
 			req := client.NewRequest(method, "/v1/pki/acme/new-nonce")
-			_, err := client.RawRequestWithContext(ctx, req)
+			_, err := client.RawRequestWithContext(t.Context(), req)
 			require.Error(t, err, "should have received an error as ACME should have been disabled")
 
 			if apiError, ok := err.(*api.ResponseError); ok {
@@ -685,19 +685,19 @@ func TestAcmeConfigChecksPublicAcmeEnv(t *testing.T) {
 	cluster, client := setupTestPkiCluster(t)
 	defer cluster.Cleanup()
 
-	_, err := client.Logical().WriteWithContext(context.Background(), "pki/config/cluster", map[string]interface{}{
+	_, err := client.Logical().WriteWithContext(t.Context(), "pki/config/cluster", map[string]interface{}{
 		"path": "https://dadgarcorp.com/v1/pki",
 	})
 	require.NoError(t, err)
 
-	_, err = client.Logical().WriteWithContext(context.Background(), "pki/config/acme", map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]interface{}{
 		"enabled":    true,
 		"eab_policy": string(eabPolicyAlwaysRequired),
 	})
 	require.NoError(t, err)
 
 	for _, policyName := range []EabPolicyName{eabPolicyNewAccountRequired, eabPolicyNotRequired} {
-		_, err = client.Logical().WriteWithContext(context.Background(), "pki/config/acme", map[string]interface{}{
+		_, err = client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]interface{}{
 			"enabled":    true,
 			"eab_policy": string(policyName),
 		})
@@ -705,7 +705,7 @@ func TestAcmeConfigChecksPublicAcmeEnv(t *testing.T) {
 	}
 
 	// Make sure we can disable ACME and the eab policy is not checked
-	_, err = client.Logical().WriteWithContext(context.Background(), "pki/config/acme", map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]interface{}{
 		"enabled":    false,
 		"eab_policy": string(eabPolicyNotRequired),
 	})
@@ -721,11 +721,11 @@ func TestAcmeTruncatesToIssuerExpiry(t *testing.T) {
 	cluster, client, _ := setupAcmeBackend(t)
 	defer cluster.Cleanup()
 
-	testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 
 	mount := "pki"
-	resp, err := client.Logical().WriteWithContext(context.Background(), mount+"/issuers/generate/intermediate/internal",
+	resp, err := client.Logical().WriteWithContext(t.Context(), mount+"/issuers/generate/intermediate/internal",
 		map[string]interface{}{
 			"key_name":    "short-key",
 			"key_type":    "ec",
@@ -811,7 +811,7 @@ func TestAcmeRoleExtKeyUsage(t *testing.T) {
 	cluster, client, _ := setupAcmeBackend(t)
 	defer cluster.Cleanup()
 
-	testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 
 	roleName := "test-role"
@@ -876,7 +876,7 @@ func TestAcmeRoleExtKeyUsage(t *testing.T) {
 
 	// Now turn the ACME configuration allow_role_ext_key_usage and retest to make sure we get a certificate
 	// with them all
-	_, err = client.Logical().WriteWithContext(context.Background(), "pki/config/acme", map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]interface{}{
 		"enabled":                  true,
 		"eab_policy":               "not-required",
 		"allow_role_ext_key_usage": true,
@@ -916,7 +916,7 @@ func TestIssuerRoleDirectoryAssociations(t *testing.T) {
 	defer cluster.Cleanup()
 
 	// Setup DNS for validations.
-	testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 
 	dns := dnstest.SetupResolver(t, "dadgarcorp.com")
@@ -1052,7 +1052,7 @@ func TestACMESubjectFieldsAndExtensionsIgnored(t *testing.T) {
 	defer cluster.Cleanup()
 
 	// Setup DNS for validations.
-	testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 
 	dns := dnstest.SetupResolver(t, "dadgarcorp.com")
@@ -1100,7 +1100,7 @@ func TestAcmeWithCsrIncludingBasicConstraintExtension(t *testing.T) {
 	cluster, client, _ := setupAcmeBackend(t)
 	defer cluster.Cleanup()
 
-	testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 
 	baseAcmeURL := "/v1/pki/acme/"
@@ -1168,7 +1168,7 @@ func TestAcmeWithCsrIncludingBasicConstraintExtension(t *testing.T) {
 }
 
 func markAuthorizationSuccess(t *testing.T, client *api.Client, acmeClient *acme.Client, acct *acme.Account, order *acme.Order) {
-	testCtx := context.Background()
+	testCtx := t.Context()
 
 	pkiMount := findStorageMountUuid(t, client, "pki")
 
@@ -1240,7 +1240,7 @@ func markAuthorizationSuccess(t *testing.T, client *api.Client, acmeClient *acme
 }
 
 func deleteCvEntries(t *testing.T, client *api.Client, pkiMount string) bool {
-	testCtx := context.Background()
+	testCtx := t.Context()
 
 	baseClient := client.WithNamespace("")
 
@@ -1287,32 +1287,32 @@ func setupAcmeBackendOnClusterAtPath(t *testing.T, cluster *vault.TestCluster, c
 		require.NoError(t, err, "failed to mount new PKI instance at "+mount)
 	}
 
-	err := client.Sys().TuneMountWithContext(ctx, mount, api.MountConfigInput{
+	err := client.Sys().TuneMountWithContext(t.Context(), mount, api.MountConfigInput{
 		DefaultLeaseTTL: "3000h",
 		MaxLeaseTTL:     "600000h",
 	})
 	require.NoError(t, err, "failed updating mount lease times "+mount)
 
-	_, err = client.Logical().WriteWithContext(context.Background(), mount+"/config/cluster", map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), mount+"/config/cluster", map[string]interface{}{
 		"path":     pathConfig,
 		"aia_path": "http://localhost:8200/cdn/" + mount,
 	})
 	require.NoError(t, err)
 
-	_, err = client.Logical().WriteWithContext(context.Background(), mount+"/config/acme", map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), mount+"/config/acme", map[string]interface{}{
 		"enabled":    true,
 		"eab_policy": "not-required",
 	})
 	require.NoError(t, err)
 
 	// Allow certain headers to pass through for ACME support
-	_, err = client.WithNamespace(namespace).Logical().WriteWithContext(context.Background(), "sys/mounts/"+mountName+"/tune", map[string]interface{}{
+	_, err = client.WithNamespace(namespace).Logical().WriteWithContext(t.Context(), "sys/mounts/"+mountName+"/tune", map[string]interface{}{
 		"allowed_response_headers": []string{"Last-Modified", "Replay-Nonce", "Link", "Location"},
 		"max_lease_ttl":            "920000h",
 	})
 	require.NoError(t, err, "failed tuning mount response headers")
 
-	resp, err := client.Logical().WriteWithContext(context.Background(), mount+"/issuers/generate/root/internal",
+	resp, err := client.Logical().WriteWithContext(t.Context(), mount+"/issuers/generate/root/internal",
 		map[string]interface{}{
 			"issuer_name": "root-ca",
 			"key_name":    "root-key",
@@ -1324,7 +1324,7 @@ func setupAcmeBackendOnClusterAtPath(t *testing.T, cluster *vault.TestCluster, c
 	require.NoError(t, err, "failed creating root CA")
 	require.NotNil(t, resp)
 
-	resp, err = client.Logical().WriteWithContext(context.Background(), mount+"/issuers/generate/intermediate/internal",
+	resp, err = client.Logical().WriteWithContext(t.Context(), mount+"/issuers/generate/intermediate/internal",
 		map[string]interface{}{
 			"key_name":    "int-key",
 			"key_type":    "ec",
@@ -1387,7 +1387,7 @@ func testAcmeCertSignedByCa(t *testing.T, client *api.Client, derCerts [][]byte,
 	acmeCert, err := x509.ParseCertificate(derCerts[0])
 	require.NoError(t, err, "failed parsing acme cert bytes")
 
-	resp, err := client.Logical().ReadWithContext(context.Background(), "pki/issuer/"+issuerRef)
+	resp, err := client.Logical().ReadWithContext(t.Context(), "pki/issuer/"+issuerRef)
 	require.NoError(t, err, "failed reading issuer with name %s", issuerRef)
 	issuerCert := parseCert(t, resp.Data["certificate"].(string))
 	issuerChainRaw := resp.Data["ca_chain"].([]interface{})
@@ -1413,7 +1413,7 @@ func TestAcmeValidationError(t *testing.T) {
 	cluster, _, _ := setupAcmeBackend(t)
 	defer cluster.Cleanup()
 
-	testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 
 	baseAcmeURL := "/v1/pki/acme/"
@@ -1521,7 +1521,7 @@ func TestAcmeRevocationAcrossAccounts(t *testing.T) {
 
 	cluster, vaultClient, _ := setupAcmeBackend(t)
 	defer cluster.Cleanup()
-	testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 
 	baseAcmeURL := "/v1/pki/acme/"
@@ -1535,7 +1535,7 @@ func TestAcmeRevocationAcrossAccounts(t *testing.T) {
 	require.NoError(t, err, "failed parsing acme cert bytes")
 
 	// Make sure our cert is not revoked
-	certResp, err := vaultClient.Logical().ReadWithContext(ctx, "pki/cert/"+serialFromCert(acmeCert))
+	certResp, err := vaultClient.Logical().ReadWithContext(testCtx, "pki/cert/"+serialFromCert(acmeCert))
 	require.NoError(t, err, "failed to read certificate status")
 	require.NotNil(t, certResp, "certificate status response was nil")
 	revocationTime := certResp.Data["revocation_time"].(json.Number)
@@ -1552,11 +1552,11 @@ func TestAcmeRevocationAcrossAccounts(t *testing.T) {
 	_, err = acmeClient2.Register(testCtx, &acme.Account{}, func(tosURL string) bool { return true })
 	require.NoError(t, err, "failed registering second account")
 
-	err = acmeClient2.RevokeCert(ctx, nil, certs[0], acme.CRLReasonUnspecified)
+	err = acmeClient2.RevokeCert(testCtx, nil, certs[0], acme.CRLReasonUnspecified)
 	require.Error(t, err, "should have failed revoking the certificate with a different account")
 
 	// Make sure our cert is not revoked
-	certResp, err = vaultClient.Logical().ReadWithContext(ctx, "pki/cert/"+serialFromCert(acmeCert))
+	certResp, err = vaultClient.Logical().ReadWithContext(testCtx, "pki/cert/"+serialFromCert(acmeCert))
 	require.NoError(t, err, "failed to read certificate status")
 	require.NotNil(t, certResp, "certificate status response was nil")
 	revocationTime = certResp.Data["revocation_time"].(json.Number)
@@ -1566,11 +1566,11 @@ func TestAcmeRevocationAcrossAccounts(t *testing.T) {
 		"revocation time was not 0, cert was already revoked: %v", revocationTimeInt)
 
 	// But we can revoke if we sign the request with the certificate's key and a different account
-	err = acmeClient2.RevokeCert(ctx, leafKey, certs[0], acme.CRLReasonUnspecified)
+	err = acmeClient2.RevokeCert(testCtx, leafKey, certs[0], acme.CRLReasonUnspecified)
 	require.NoError(t, err, "should have been allowed to revoke certificate with csr key across accounts")
 
 	// Make sure our cert is now revoked
-	certResp, err = vaultClient.Logical().ReadWithContext(ctx, "pki/cert/"+serialFromCert(acmeCert))
+	certResp, err = vaultClient.Logical().ReadWithContext(testCtx, "pki/cert/"+serialFromCert(acmeCert))
 	require.NoError(t, err, "failed to read certificate status")
 	require.NotNil(t, certResp, "certificate status response was nil")
 	revocationTime = certResp.Data["revocation_time"].(json.Number)
@@ -1583,14 +1583,14 @@ func TestAcmeRevocationAcrossAccounts(t *testing.T) {
 	leafKey2, certs2 := doACMEWorkflow(t, vaultClient, acmeClient1)
 
 	acmeClient3 := getAcmeClientForCluster(t, cluster, baseAcmeURL, nil)
-	err = acmeClient3.RevokeCert(ctx, leafKey2, certs2[0], acme.CRLReasonUnspecified)
+	err = acmeClient3.RevokeCert(testCtx, leafKey2, certs2[0], acme.CRLReasonUnspecified)
 	require.NoError(t, err, "should be allowed to revoke a cert with no ACME account but with cert key")
 
 	// Make sure our cert is now revoked
 	acmeCert2, err := x509.ParseCertificate(certs2[0])
 	require.NoError(t, err, "failed parsing acme cert 2 bytes")
 
-	certResp, err = vaultClient.Logical().ReadWithContext(ctx, "pki/cert/"+serialFromCert(acmeCert2))
+	certResp, err = vaultClient.Logical().ReadWithContext(testCtx, "pki/cert/"+serialFromCert(acmeCert2))
 	require.NoError(t, err, "failed to read certificate status")
 	require.NotNil(t, certResp, "certificate status response was nil")
 	revocationTime = certResp.Data["revocation_time"].(json.Number)
@@ -1601,7 +1601,7 @@ func TestAcmeRevocationAcrossAccounts(t *testing.T) {
 }
 
 func doACMEWorkflow(t *testing.T, vaultClient *api.Client, acmeClient *acme.Client) (*ecdsa.PrivateKey, [][]byte) {
-	testCtx := context.Background()
+	testCtx := t.Context()
 
 	// Create new account
 	acct, err := acmeClient.Register(testCtx, &acme.Account{}, func(tosURL string) bool { return true })
@@ -1683,7 +1683,7 @@ func getAcmeClientForCluster(t *testing.T, cluster *vault.TestCluster, baseUrl s
 }
 
 func getEABKey(t *testing.T, client *api.Client, baseUrl string) (string, []byte) {
-	resp, err := client.Logical().WriteWithContext(ctx, path.Join("pki/", baseUrl, "/new-eab"), map[string]interface{}{})
+	resp, err := client.Logical().WriteWithContext(t.Context(), path.Join("pki/", baseUrl, "/new-eab"), map[string]interface{}{})
 	require.NoError(t, err, "failed getting eab key")
 	require.NotNil(t, resp, "eab key returned nil response")
 	require.NotEmpty(t, resp.Data["id"], "eab key response missing id field")
@@ -1746,7 +1746,7 @@ func TestACMEClientRequestLimits(t *testing.T) {
 		},
 	}
 
-	testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 
 	acmeConfig := map[string]interface{}{

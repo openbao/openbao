@@ -76,7 +76,7 @@ func TestBackendHandleRequestFieldWarnings(t *testing.T) {
 			},
 		},
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	resp, err := backend.HandleRequest(ctx, &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "foo/bar/baz",
@@ -153,7 +153,7 @@ func TestBackendHandleRequest(t *testing.T) {
 		if strings.Contains(path, "handler") {
 			key = "amount"
 		}
-		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
 			Operation: logical.ReadOperation,
 			Path:      path,
 			Data:      map[string]interface{}{key: "42"},
@@ -253,7 +253,7 @@ func TestBackendHandleRequest_Forwarding(t *testing.T) {
 				b.system = nil
 			}
 
-			_, err := b.HandleRequest(context.Background(), &logical.Request{
+			_, err := b.HandleRequest(t.Context(), &logical.Request{
 				Operation: logical.ReadOperation,
 				Path:      "foo",
 			})
@@ -291,7 +291,7 @@ func TestBackendHandleRequest_badwrite(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "foo/bar",
 		Data:      map[string]interface{}{"value": "3false3"},
@@ -328,7 +328,7 @@ func TestBackendHandleRequest_404(t *testing.T) {
 		},
 	}
 
-	_, err := b.HandleRequest(context.Background(), &logical.Request{
+	_, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "foo/baz",
 		Data:      map[string]interface{}{"value": "84"},
@@ -352,7 +352,7 @@ func TestBackendHandleRequest_help(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.HelpOperation,
 		Path:      "foo/bar",
 		Data:      map[string]interface{}{"value": "42"},
@@ -370,7 +370,7 @@ func TestBackendHandleRequest_helpRoot(t *testing.T) {
 		Help: "42",
 	}
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.HelpOperation,
 		Path:      "",
 	})
@@ -385,7 +385,7 @@ func TestBackendHandleRequest_helpRoot(t *testing.T) {
 func TestBackendHandleRequest_renewAuth(t *testing.T) {
 	b := &Backend{}
 
-	resp, err := b.HandleRequest(context.Background(), logical.RenewAuthRequest("/foo", &logical.Auth{}, nil))
+	resp, err := b.HandleRequest(t.Context(), logical.RenewAuthRequest("/foo", &logical.Auth{}, nil))
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -405,7 +405,7 @@ func TestBackendHandleRequest_renewAuthCallback(t *testing.T) {
 		AuthRenew: callback,
 	}
 
-	_, err := b.HandleRequest(context.Background(), logical.RenewAuthRequest("/foo", &logical.Auth{}, nil))
+	_, err := b.HandleRequest(t.Context(), logical.RenewAuthRequest("/foo", &logical.Auth{}, nil))
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -429,7 +429,7 @@ func TestBackendHandleRequest_renew(t *testing.T) {
 		Secrets: []*Secret{secret},
 	}
 
-	_, err := b.HandleRequest(context.Background(), logical.RenewRequest("/foo", secret.Response(nil, nil).Secret, nil))
+	_, err := b.HandleRequest(t.Context(), logical.RenewRequest("/foo", secret.Response(nil, nil).Secret, nil))
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -453,7 +453,7 @@ func TestBackendHandleRequest_revoke(t *testing.T) {
 		Secrets: []*Secret{secret},
 	}
 
-	_, err := b.HandleRequest(context.Background(), logical.RevokeRequest("/foo", secret.Response(nil, nil).Secret, nil))
+	_, err := b.HandleRequest(t.Context(), logical.RevokeRequest("/foo", secret.Response(nil, nil).Secret, nil))
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -477,13 +477,13 @@ func TestBackendHandleRequest_rollback(t *testing.T) {
 	}
 
 	storage := new(logical.InmemStorage)
-	if _, err := PutWAL(context.Background(), storage, "kind", "foo"); err != nil {
+	if _, err := PutWAL(t.Context(), storage, "kind", "foo"); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
 	time.Sleep(10 * time.Millisecond)
 
-	_, err := b.HandleRequest(context.Background(), &logical.Request{
+	_, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.RollbackOperation,
 		Path:      "",
 		Storage:   storage,
@@ -511,11 +511,11 @@ func TestBackendHandleRequest_rollbackMinAge(t *testing.T) {
 	}
 
 	storage := new(logical.InmemStorage)
-	if _, err := PutWAL(context.Background(), storage, "kind", "foo"); err != nil {
+	if _, err := PutWAL(t.Context(), storage, "kind", "foo"); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
-	_, err := b.HandleRequest(context.Background(), &logical.Request{
+	_, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.RollbackOperation,
 		Path:      "",
 		Storage:   storage,
@@ -551,7 +551,7 @@ func TestBackendHandleRequest_unsupportedOperation(t *testing.T) {
 		},
 	}
 
-	_, err := b.HandleRequest(context.Background(), &logical.Request{
+	_, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "foo/bar",
 		Data:      map[string]interface{}{"value": "84"},
@@ -584,7 +584,7 @@ func TestBackendHandleRequest_urlPriority(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "foo/42",
 		Data:      map[string]interface{}{"value": "84"},
@@ -807,7 +807,7 @@ func TestInitializeBackend(t *testing.T) {
 		return nil
 	}}
 
-	err := backend.Initialize(context.TODO(), &logical.InitializationRequest{Storage: nil})
+	err := backend.Initialize(t.Context(), &logical.InitializationRequest{Storage: nil})
 	if err != nil {
 		t.Fatal(err)
 	}

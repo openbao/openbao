@@ -10,6 +10,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/helper/salt"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/stretchr/testify/require"
 )
 
 func mockAuditedHeadersConfig(t *testing.T) *AuditedHeadersConfig {
@@ -29,7 +30,7 @@ func TestAuditedHeadersConfig_CRUD(t *testing.T) {
 }
 
 func testAuditedHeadersConfig_Add(t *testing.T, conf *AuditedHeadersConfig) {
-	err := conf.add(context.Background(), "X-Test-Header", false)
+	err := conf.add(t.Context(), "X-Test-Header", false)
 	if err != nil {
 		t.Fatalf("Error when adding header to config: %s", err)
 	}
@@ -43,7 +44,7 @@ func testAuditedHeadersConfig_Add(t *testing.T, conf *AuditedHeadersConfig) {
 		t.Fatal("Expected HMAC to be set to false, got true")
 	}
 
-	out, err := conf.view.Get(context.Background(), auditedHeadersEntry)
+	out, err := conf.view.Get(t.Context(), auditedHeadersEntry)
 	if err != nil {
 		t.Fatalf("Could not retrieve headers entry from config: %s", err)
 	}
@@ -67,7 +68,7 @@ func testAuditedHeadersConfig_Add(t *testing.T, conf *AuditedHeadersConfig) {
 		t.Fatalf("Expected config didn't match actual. Expected: %#v, Got: %#v", expected, headers)
 	}
 
-	err = conf.add(context.Background(), "X-Vault-Header", true)
+	err = conf.add(t.Context(), "X-Vault-Header", true)
 	if err != nil {
 		t.Fatalf("Error when adding header to config: %s", err)
 	}
@@ -81,7 +82,7 @@ func testAuditedHeadersConfig_Add(t *testing.T, conf *AuditedHeadersConfig) {
 		t.Fatal("Expected HMAC to be set to true, got false")
 	}
 
-	out, err = conf.view.Get(context.Background(), auditedHeadersEntry)
+	out, err = conf.view.Get(t.Context(), auditedHeadersEntry)
 	if err != nil {
 		t.Fatalf("Could not retrieve headers entry from config: %s", err)
 	}
@@ -105,7 +106,7 @@ func testAuditedHeadersConfig_Add(t *testing.T, conf *AuditedHeadersConfig) {
 }
 
 func testAuditedHeadersConfig_Remove(t *testing.T, conf *AuditedHeadersConfig) {
-	err := conf.remove(context.Background(), "X-Test-Header")
+	err := conf.remove(t.Context(), "X-Test-Header")
 	if err != nil {
 		t.Fatalf("Error when adding header to config: %s", err)
 	}
@@ -115,7 +116,7 @@ func testAuditedHeadersConfig_Remove(t *testing.T, conf *AuditedHeadersConfig) {
 		t.Fatal("Expected header to not be found in config")
 	}
 
-	out, err := conf.view.Get(context.Background(), auditedHeadersEntry)
+	out, err := conf.view.Get(t.Context(), auditedHeadersEntry)
 	if err != nil {
 		t.Fatalf("Could not retrieve headers entry from config: %s", err)
 	}
@@ -139,7 +140,7 @@ func testAuditedHeadersConfig_Remove(t *testing.T, conf *AuditedHeadersConfig) {
 		t.Fatalf("Expected config didn't match actual. Expected: %#v, Got: %#v", expected, headers)
 	}
 
-	err = conf.remove(context.Background(), "x-VaulT-Header")
+	err = conf.remove(t.Context(), "x-VaulT-Header")
 	if err != nil {
 		t.Fatalf("Error when adding header to config: %s", err)
 	}
@@ -149,7 +150,7 @@ func testAuditedHeadersConfig_Remove(t *testing.T, conf *AuditedHeadersConfig) {
 		t.Fatal("Expected header to not be found in config")
 	}
 
-	out, err = conf.view.Get(context.Background(), auditedHeadersEntry)
+	out, err = conf.view.Get(t.Context(), auditedHeadersEntry)
 	if err != nil {
 		t.Fatalf("Could not retrieve headers entry from config: %s", err)
 	}
@@ -173,8 +174,8 @@ func testAuditedHeadersConfig_Remove(t *testing.T, conf *AuditedHeadersConfig) {
 func TestAuditedHeadersConfig_ApplyConfig(t *testing.T) {
 	conf := mockAuditedHeadersConfig(t)
 
-	conf.add(context.Background(), "X-TesT-Header", false)
-	conf.add(context.Background(), "X-Vault-HeAdEr", true)
+	require.NoError(t, conf.add(t.Context(), "X-TesT-Header", false))
+	require.NoError(t, conf.add(t.Context(), "X-Vault-HeAdEr", true))
 
 	reqHeaders := map[string][]string{
 		"X-Test-Header":  {"foo"},
@@ -184,7 +185,7 @@ func TestAuditedHeadersConfig_ApplyConfig(t *testing.T) {
 
 	hashFunc := func(ctx context.Context, s string) (string, error) { return "hashed", nil }
 
-	result, err := conf.ApplyConfig(context.Background(), reqHeaders, hashFunc)
+	result, err := conf.ApplyConfig(t.Context(), reqHeaders, hashFunc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +228,7 @@ func BenchmarkAuditedHeaderConfig_ApplyConfig(b *testing.B) {
 		"Content-Type":   {"json"},
 	}
 
-	salter, err := salt.NewSalt(context.Background(), nil, nil)
+	salter, err := salt.NewSalt(b.Context(), nil, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -237,6 +238,7 @@ func BenchmarkAuditedHeaderConfig_ApplyConfig(b *testing.B) {
 	// Reset the timer since we did a lot above
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		conf.ApplyConfig(context.Background(), reqHeaders, hashFunc)
+		_, err = conf.ApplyConfig(b.Context(), reqHeaders, hashFunc)
+		require.NoError(b, err)
 	}
 }

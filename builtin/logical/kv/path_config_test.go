@@ -1,7 +1,6 @@
 package kv
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -27,7 +26,7 @@ func TestVersionedKV_Config(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -38,7 +37,7 @@ func TestVersionedKV_Config(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -87,7 +86,6 @@ func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 		{"-1h", "0h", 0},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("ds1=%v,ds2=%v", tt.ds1, tt.ds2), func(t *testing.T) {
 			t.Parallel()
 
@@ -99,7 +97,7 @@ func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 				Path:      "config",
 				Storage:   storage,
 			}
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			wantResponse(t, resp, err)
 			got := resp.Data["delete_version_after"]
 			if got == nil {
@@ -117,7 +115,7 @@ func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			wantNoResponse(t, resp, err)
 
 			req = &logical.Request{
@@ -125,7 +123,7 @@ func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 				Path:      "config",
 				Storage:   storage,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			wantResponse(t, resp, err)
 
 			d1 := getDuration(t, tt.ds1)
@@ -145,7 +143,7 @@ func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 				Storage:   storage,
 				Data:      data,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			wantNoResponse(t, resp, err)
 
 			req = &logical.Request{
@@ -153,7 +151,7 @@ func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 				Path:      "config",
 				Storage:   storage,
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			wantResponse(t, resp, err)
 			want, got = tt.want.String(), resp.Data["delete_version_after"]
 			if want != got {

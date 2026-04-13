@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"os"
@@ -36,14 +35,14 @@ func TestPluginCatalog_CRUD(t *testing.T) {
 	const pluginName = "mysql-database-plugin"
 
 	// Get builtin plugin
-	p, err := core.pluginCatalog.Get(context.Background(), pluginName, consts.PluginTypeDatabase, "")
+	p, err := core.pluginCatalog.Get(t.Context(), pluginName, consts.PluginTypeDatabase, "")
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
 	// Get it again, explicitly specifying builtin version
 	builtinVersion := versions.GetBuiltinVersion(consts.PluginTypeDatabase, pluginName)
-	p2, err := core.pluginCatalog.Get(context.Background(), pluginName, consts.PluginTypeDatabase, builtinVersion)
+	p2, err := core.pluginCatalog.Get(t.Context(), pluginName, consts.PluginTypeDatabase, builtinVersion)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -77,20 +76,20 @@ func TestPluginCatalog_CRUD(t *testing.T) {
 	defer file.Close()
 
 	command := filepath.Base(file.Name())
-	err = core.pluginCatalog.Set(context.Background(), pluginName, consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{"FOO=BAR"}, []byte{'1'}, false)
+	err = core.pluginCatalog.Set(t.Context(), pluginName, consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{"FOO=BAR"}, []byte{'1'}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Get the plugin
-	p, err = core.pluginCatalog.Get(context.Background(), pluginName, consts.PluginTypeDatabase, "")
+	p, err = core.pluginCatalog.Get(t.Context(), pluginName, consts.PluginTypeDatabase, "")
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
 	// Get it again, explicitly specifying builtin version.
 	// This time it should fail because it was overwritten.
-	p2, err = core.pluginCatalog.Get(context.Background(), pluginName, consts.PluginTypeDatabase, builtinVersion)
+	p2, err = core.pluginCatalog.Get(t.Context(), pluginName, consts.PluginTypeDatabase, builtinVersion)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -114,13 +113,13 @@ func TestPluginCatalog_CRUD(t *testing.T) {
 	}
 
 	// Delete the plugin
-	err = core.pluginCatalog.Delete(context.Background(), pluginName, consts.PluginTypeDatabase, "")
+	err = core.pluginCatalog.Delete(t.Context(), pluginName, consts.PluginTypeDatabase, "")
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
 
 	// Get builtin plugin
-	p, err = core.pluginCatalog.Get(context.Background(), pluginName, consts.PluginTypeDatabase, "")
+	p, err = core.pluginCatalog.Get(t.Context(), pluginName, consts.PluginTypeDatabase, "")
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -161,13 +160,13 @@ func TestPluginCatalog_VersionedCRUD(t *testing.T) {
 	const name = "mysql-database-plugin"
 	const version = "1.0.0"
 	command := filepath.Base(file.Name())
-	err = core.pluginCatalog.Set(context.Background(), name, consts.PluginTypeDatabase, version, command, []string{"--test"}, []string{"FOO=BAR"}, []byte{'1'}, false)
+	err = core.pluginCatalog.Set(t.Context(), name, consts.PluginTypeDatabase, version, command, []string{"--test"}, []string{"FOO=BAR"}, []byte{'1'}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Get the plugin
-	plugin, err := core.pluginCatalog.Get(context.Background(), name, consts.PluginTypeDatabase, version)
+	plugin, err := core.pluginCatalog.Get(t.Context(), name, consts.PluginTypeDatabase, version)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -189,7 +188,7 @@ func TestPluginCatalog_VersionedCRUD(t *testing.T) {
 
 	// Also get the builtin version to check we can still access that.
 	builtinVersion := versions.GetBuiltinVersion(consts.PluginTypeDatabase, name)
-	plugin, err = core.pluginCatalog.Get(context.Background(), name, consts.PluginTypeDatabase, builtinVersion)
+	plugin, err = core.pluginCatalog.Get(t.Context(), name, consts.PluginTypeDatabase, builtinVersion)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -218,13 +217,13 @@ func TestPluginCatalog_VersionedCRUD(t *testing.T) {
 	}
 
 	// Delete the plugin
-	err = core.pluginCatalog.Delete(context.Background(), name, consts.PluginTypeDatabase, version)
+	err = core.pluginCatalog.Delete(t.Context(), name, consts.PluginTypeDatabase, version)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
 
 	// Get plugin - should fail
-	plugin, err = core.pluginCatalog.Get(context.Background(), name, consts.PluginTypeDatabase, version)
+	plugin, err = core.pluginCatalog.Get(t.Context(), name, consts.PluginTypeDatabase, version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +245,7 @@ func TestPluginCatalog_List(t *testing.T) {
 	sort.Strings(builtinKeys)
 
 	// List only builtin plugins
-	plugins, err := core.pluginCatalog.List(context.Background(), consts.PluginTypeDatabase)
+	plugins, err := core.pluginCatalog.List(t.Context(), consts.PluginTypeDatabase)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -268,19 +267,19 @@ func TestPluginCatalog_List(t *testing.T) {
 	defer file.Close()
 
 	command := filepath.Base(file.Name())
-	err = core.pluginCatalog.Set(context.Background(), "mysql-database-plugin", consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{}, []byte{'1'}, false)
+	err = core.pluginCatalog.Set(t.Context(), "mysql-database-plugin", consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{}, []byte{'1'}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Set another plugin
-	err = core.pluginCatalog.Set(context.Background(), "aaaaaaa", consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{}, []byte{'1'}, false)
+	err = core.pluginCatalog.Set(t.Context(), "aaaaaaa", consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{}, []byte{'1'}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// List the plugins
-	plugins, err = core.pluginCatalog.List(context.Background(), consts.PluginTypeDatabase)
+	plugins, err = core.pluginCatalog.List(t.Context(), consts.PluginTypeDatabase)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -315,7 +314,7 @@ func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 	sort.Strings(builtinKeys)
 
 	// List only builtin plugins
-	plugins, err := core.pluginCatalog.ListVersionedPlugins(context.Background(), consts.PluginTypeDatabase)
+	plugins, err := core.pluginCatalog.ListVersionedPlugins(t.Context(), consts.PluginTypeDatabase)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -340,7 +339,7 @@ func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 
 	command := filepath.Base(file.Name())
 	err = core.pluginCatalog.Set(
-		context.Background(),
+		t.Context(),
 		"mysql-database-plugin",
 		consts.PluginTypeDatabase,
 		"",
@@ -356,7 +355,7 @@ func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 
 	// Set another plugin, with version information
 	err = core.pluginCatalog.Set(
-		context.Background(),
+		t.Context(),
 		"aaaaaaa",
 		consts.PluginTypeDatabase,
 		"1.1.0",
@@ -371,7 +370,7 @@ func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 	}
 
 	// List the plugins
-	plugins, err = core.pluginCatalog.ListVersionedPlugins(context.Background(), consts.PluginTypeDatabase)
+	plugins, err = core.pluginCatalog.ListVersionedPlugins(t.Context(), consts.PluginTypeDatabase)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -432,7 +431,7 @@ func TestPluginCatalog_ListHandlesPluginNamesWithSlashes(t *testing.T) {
 	}
 	defer file.Close()
 	command := filepath.Base(file.Name())
-	ctx := context.Background()
+	ctx := t.Context()
 
 	pluginsToRegister := []pluginutil.PluginRunner{
 		{
@@ -507,7 +506,7 @@ func TestPluginCatalog_NewPluginClient(t *testing.T) {
 
 	getKey := func(pluginName string, pluginType consts.PluginType) externalPluginsKey {
 		t.Helper()
-		ctx := context.Background()
+		ctx := t.Context()
 		plugin, err := core.pluginCatalog.Get(ctx, pluginName, pluginType, "")
 		if err != nil {
 			t.Fatal(err)
@@ -583,7 +582,7 @@ func TestPluginCatalog_MakeExternalPluginsKey_Comparable(t *testing.T) {
 	hasher := sha256.New()
 	hasher.Write([]byte("Some random input"))
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		plugins = append(plugins, pluginutil.PluginRunner{
 			Name:    "Name",
 			Type:    consts.PluginTypeDatabase,

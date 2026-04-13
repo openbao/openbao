@@ -6,18 +6,22 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -26,17 +30,35 @@ func init() {
 	os.Setenv("BAO_TOKEN", "")
 }
 
+func TestNewConfig_envvar(t *testing.T) {
+	t.Setenv("BAO_ADDR", "https://vault.mycompany.com")
+
+	config := NewConfig()
+	if config.Address != "" {
+		t.Fatalf("bad: %s", config.Address)
+	}
+
+	t.Setenv("BAO_TOKEN", "testing")
+
+	client, err := NewClient(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if token := client.Token(); token != "" {
+		t.Fatalf("bad: %s", token)
+	}
+}
+
 func TestDefaultConfig_envvar(t *testing.T) {
-	os.Setenv("BAO_ADDR", "https://vault.mycompany.com")
-	defer os.Setenv("BAO_ADDR", "")
+	t.Setenv("BAO_ADDR", "https://vault.mycompany.com")
 
 	config := DefaultConfig()
 	if config.Address != "https://vault.mycompany.com" {
 		t.Fatalf("bad: %s", config.Address)
 	}
 
-	os.Setenv("BAO_TOKEN", "testing")
-	defer os.Setenv("BAO_TOKEN", "")
+	t.Setenv("BAO_TOKEN", "testing")
 
 	client, err := NewClient(config)
 	if err != nil {
@@ -68,8 +90,7 @@ func TestClientNilConfig(t *testing.T) {
 }
 
 func TestClientDefaultHttpClient_unixSocket(t *testing.T) {
-	os.Setenv("BAO_AGENT_ADDR", "unix:///var/run/vault.sock")
-	defer os.Setenv("BAO_AGENT_ADDR", "")
+	t.Setenv("BAO_AGENT_ADDR", "unix:///var/run/vault.sock")
 
 	client, err := NewClient(nil)
 	if err != nil {
@@ -245,7 +266,7 @@ func TestClientDisableRedirects(t *testing.T) {
 			}
 
 			req := client.NewRequest("GET", "/")
-			resp, err := client.rawRequestWithContext(context.Background(), req)
+			resp, err := client.rawRequestWithContext(t.Context(), req)
 			if err != nil {
 				t.Fatalf("%s: error %v", name, err)
 			}
@@ -349,7 +370,7 @@ func TestDefaulRetryPolicy(t *testing.T) {
 
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
-			retry, err := DefaultRetryPolicy(context.Background(), test.resp, test.err)
+			retry, err := DefaultRetryPolicy(t.Context(), test.resp, test.err)
 			if retry != test.expect {
 				t.Fatalf("expected to retry request: '%t', but actual result was: '%t'", test.expect, retry)
 			}
@@ -364,38 +385,16 @@ func TestClientEnvSettings(t *testing.T) {
 	cwd, _ := os.Getwd()
 
 	caCertBytes, err := os.ReadFile(cwd + "/test-fixtures/keys/cert.pem")
-	if err != nil {
-		t.Fatalf("error reading %q cert file: %v", cwd+"/test-fixtures/keys/cert.pem", err)
-	}
+	require.NoError(t, err)
 
-	oldCACert := os.Getenv(EnvVaultCACert)
-	oldCACertBytes := os.Getenv(EnvVaultCACertBytes)
-	oldCAPath := os.Getenv(EnvVaultCAPath)
-	oldClientCert := os.Getenv(EnvVaultClientCert)
-	oldClientKey := os.Getenv(EnvVaultClientKey)
-	oldSkipVerify := os.Getenv(EnvVaultSkipVerify)
-	oldMaxRetries := os.Getenv(EnvVaultMaxRetries)
-	oldDisableRedirects := os.Getenv(EnvVaultDisableRedirects)
-
-	os.Setenv(EnvVaultCACert, cwd+"/test-fixtures/keys/cert.pem")
-	os.Setenv(EnvVaultCACertBytes, string(caCertBytes))
-	os.Setenv(EnvVaultCAPath, cwd+"/test-fixtures/keys")
-	os.Setenv(EnvVaultClientCert, cwd+"/test-fixtures/keys/cert.pem")
-	os.Setenv(EnvVaultClientKey, cwd+"/test-fixtures/keys/key.pem")
-	os.Setenv(EnvVaultSkipVerify, "true")
-	os.Setenv(EnvVaultMaxRetries, "5")
-	os.Setenv(EnvVaultDisableRedirects, "true")
-
-	defer func() {
-		os.Setenv(EnvVaultCACert, oldCACert)
-		os.Setenv(EnvVaultCACertBytes, oldCACertBytes)
-		os.Setenv(EnvVaultCAPath, oldCAPath)
-		os.Setenv(EnvVaultClientCert, oldClientCert)
-		os.Setenv(EnvVaultClientKey, oldClientKey)
-		os.Setenv(EnvVaultSkipVerify, oldSkipVerify)
-		os.Setenv(EnvVaultMaxRetries, oldMaxRetries)
-		os.Setenv(EnvVaultDisableRedirects, oldDisableRedirects)
-	}()
+	t.Setenv(EnvVaultCACert, cwd+"/test-fixtures/keys/cert.pem")
+	t.Setenv(EnvVaultCACertBytes, string(caCertBytes))
+	t.Setenv(EnvVaultCAPath, cwd+"/test-fixtures/keys")
+	t.Setenv(EnvVaultClientCert, cwd+"/test-fixtures/keys/cert.pem")
+	t.Setenv(EnvVaultClientKey, cwd+"/test-fixtures/keys/key.pem")
+	t.Setenv(EnvVaultSkipVerify, "true")
+	t.Setenv(EnvVaultMaxRetries, "5")
+	t.Setenv(EnvVaultDisableRedirects, "true")
 
 	config := DefaultConfig()
 	if err := config.ReadEnvironment(); err != nil {
@@ -418,9 +417,7 @@ func TestClientEnvSettings(t *testing.T) {
 }
 
 func TestClientDeprecatedEnvSettings(t *testing.T) {
-	oldInsecure := os.Getenv(EnvVaultInsecure)
-	os.Setenv(EnvVaultInsecure, "true")
-	defer os.Setenv(EnvVaultInsecure, oldInsecure)
+	t.Setenv(EnvVaultInsecure, "true")
 
 	config := DefaultConfig()
 	if err := config.ReadEnvironment(); err != nil {
@@ -433,6 +430,197 @@ func TestClientDeprecatedEnvSettings(t *testing.T) {
 	}
 }
 
+func TestConfigureTLS(t *testing.T) {
+	cwd, _ := os.Getwd()
+	caCertPath := cwd + "/test-fixtures/keys/cert.pem"
+	caPathDir := filepath.Dir(caCertPath)
+	clientCertPath := cwd + "/test-fixtures/keys/cert.pem"
+	badClientCertPath := cwd + "/test-fixtures/keys/bad-cert.pem"
+	clientKeyPath := cwd + "/test-fixtures/keys/key.pem"
+	badClientKeyPath := cwd + "/test-fixtures/keys/bad-key.pem"
+
+	caCertBytes, err := os.ReadFile(caCertPath)
+	require.NoError(t, err)
+
+	clientCertBytes, err := os.ReadFile(clientCertPath)
+	require.NoError(t, err)
+
+	badClientCertBytes, err := os.ReadFile(badClientCertPath)
+	require.NoError(t, err)
+
+	clientKeyBytes, err := os.ReadFile(clientKeyPath)
+	require.NoError(t, err)
+
+	badClientKeyBytes, err := os.ReadFile(badClientKeyPath)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		tlsConfig *TLSConfig
+		assert    func(t *testing.T, c *Config)
+
+		wantErr bool
+	}{
+		{
+			name:      "valid cert and key file paths",
+			tlsConfig: &TLSConfig{ClientCert: clientCertPath, ClientKey: clientKeyPath},
+			assert: func(t *testing.T, c *Config) {
+				tr := c.HttpClient.Transport.(*http.Transport)
+				require.NotNil(t, tr.TLSClientConfig.GetClientCertificate)
+
+				cert, err := tr.TLSClientConfig.GetClientCertificate(&tls.CertificateRequestInfo{})
+				require.NoError(t, err)
+				assert.NotEmpty(t, cert.Certificate)
+
+				assert.Equal(t, clientCertPath, c.curlClientCert)
+				assert.Equal(t, clientKeyPath, c.curlClientKey)
+			},
+		},
+		{
+			name:      "invalid cert file path",
+			tlsConfig: &TLSConfig{ClientCert: "/nonexistent/cert.pem", ClientKey: clientKeyPath},
+			wantErr:   true,
+		},
+		{
+			name:      "invalid key file path",
+			tlsConfig: &TLSConfig{ClientCert: clientCertPath, ClientKey: "/nonexistent/key.pem"},
+			wantErr:   true,
+		},
+		{
+			name:      "corrupt cert and key files",
+			tlsConfig: &TLSConfig{ClientCert: badClientCertPath, ClientKey: badClientKeyPath},
+			wantErr:   true,
+		},
+		{
+			name:      "invalid PEM cert bytes",
+			tlsConfig: &TLSConfig{ClientCertBytes: badClientCertBytes, ClientKeyBytes: clientKeyBytes},
+			wantErr:   true,
+		},
+		{
+			name:      "invalid PEM key bytes",
+			tlsConfig: &TLSConfig{ClientCertBytes: clientCertBytes, ClientKeyBytes: badClientKeyBytes},
+			wantErr:   true,
+		},
+		{
+			name:      "invalid PEM cert and key bytes",
+			tlsConfig: &TLSConfig{ClientCertBytes: badClientCertBytes, ClientKeyBytes: badClientKeyBytes},
+			wantErr:   true,
+		},
+		{
+			name:      "valid PEM bundle bytes",
+			tlsConfig: &TLSConfig{ClientCertBytes: clientCertBytes, ClientKeyBytes: clientKeyBytes},
+			assert: func(t *testing.T, c *Config) {
+				tr := c.HttpClient.Transport.(*http.Transport)
+				require.NotNil(t, tr.TLSClientConfig.GetClientCertificate)
+
+				cert, err := tr.TLSClientConfig.GetClientCertificate(&tls.CertificateRequestInfo{})
+				require.NoError(t, err)
+				assert.NotEmpty(t, cert.Certificate)
+
+				assert.Equal(t, "passed-in-memory", c.curlClientCert)
+				assert.Equal(t, "passed-in-memory", c.curlClientKey)
+			},
+		},
+		{
+			// actually fine
+			name:      "empty config",
+			tlsConfig: &TLSConfig{},
+		},
+		{
+			name:      "only ClientCert without ClientKey",
+			tlsConfig: &TLSConfig{ClientCert: clientCertPath},
+			wantErr:   true,
+		},
+		{
+			name:      "only ClientKey without ClientCert",
+			tlsConfig: &TLSConfig{ClientKey: clientKeyPath},
+			wantErr:   true,
+		},
+		{
+			name:      "CACert from file path",
+			tlsConfig: &TLSConfig{CACert: caCertPath, ClientCert: clientCertPath, ClientKey: clientKeyPath},
+			assert: func(t *testing.T, c *Config) {
+				tr := c.HttpClient.Transport.(*http.Transport)
+				require.NotNil(t, tr.TLSClientConfig.RootCAs, "RootCAs should be set")
+				assert.Equal(t, caCertPath, c.curlCACert)
+			},
+		},
+		{
+			name:      "CACert invalid file path",
+			tlsConfig: &TLSConfig{CACert: "/nonexistent/ca.pem"},
+			wantErr:   true,
+		},
+		{
+			name:      "CACertBytes set",
+			tlsConfig: &TLSConfig{CACertBytes: caCertBytes, ClientCert: clientCertPath, ClientKey: clientKeyPath},
+			assert: func(t *testing.T, c *Config) {
+				tr := c.HttpClient.Transport.(*http.Transport)
+				require.NotNil(t, tr.TLSClientConfig.RootCAs, "RootCAs should be set from bytes")
+				assert.Equal(t, "passed-in-memory", c.curlCACert)
+			},
+		},
+		{
+			name:      "CAPath directory",
+			tlsConfig: &TLSConfig{CAPath: caPathDir, ClientCert: clientCertPath, ClientKey: clientKeyPath},
+			assert: func(t *testing.T, c *Config) {
+				tr := c.HttpClient.Transport.(*http.Transport)
+				require.NotNil(t, tr.TLSClientConfig.RootCAs, "RootCAs should be set from CAPath")
+			},
+		},
+		{
+			name:      "CAPath invalid directory",
+			tlsConfig: &TLSConfig{CAPath: "/nonexistent/cadir/"},
+			wantErr:   true,
+		},
+		{
+			name:      "GetClientCertificate callback correctness - file paths",
+			tlsConfig: &TLSConfig{ClientCert: clientCertPath, ClientKey: clientKeyPath},
+			assert: func(t *testing.T, c *Config) {
+				expected, err := tls.LoadX509KeyPair(clientCertPath, clientKeyPath)
+				require.NoError(t, err)
+
+				tr := c.HttpClient.Transport.(*http.Transport)
+				got, err := tr.TLSClientConfig.GetClientCertificate(&tls.CertificateRequestInfo{})
+				require.NoError(t, err)
+				require.Len(t, got.Certificate, len(expected.Certificate))
+				assert.Equal(t, expected.Certificate[0], got.Certificate[0],
+					"DER bytes of the leaf certificate should match")
+			},
+		},
+		{
+			name:      "GetClientCertificate callback correctness - PEM bundle bytes",
+			tlsConfig: &TLSConfig{ClientCertBytes: clientCertBytes, ClientKeyBytes: clientKeyBytes},
+			assert: func(t *testing.T, c *Config) {
+				expected, err := tls.X509KeyPair(caCertBytes, clientKeyBytes)
+				require.NoError(t, err)
+
+				tr := c.HttpClient.Transport.(*http.Transport)
+				got, err := tr.TLSClientConfig.GetClientCertificate(&tls.CertificateRequestInfo{})
+				require.NoError(t, err)
+				require.Len(t, got.Certificate, len(expected.Certificate))
+				assert.Equal(t, expected.Certificate[0], got.Certificate[0],
+					"DER bytes of the leaf certificate should match")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c := DefaultConfig()
+			err := c.configureTLS(tc.tlsConfig)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			if tc.assert != nil {
+				tc.assert(t, c)
+			}
+		})
+	}
+}
+
 func TestClientEnvNamespace(t *testing.T) {
 	var seenNamespace string
 	handler := func(w http.ResponseWriter, req *http.Request) {
@@ -441,9 +629,7 @@ func TestClientEnvNamespace(t *testing.T) {
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
 	defer ln.Close()
 
-	oldVaultNamespace := os.Getenv(EnvVaultNamespace)
-	defer os.Setenv(EnvVaultNamespace, oldVaultNamespace)
-	os.Setenv(EnvVaultNamespace, "test")
+	t.Setenv(EnvVaultNamespace, "test")
 
 	client, err := NewClient(config)
 	if err != nil {
@@ -503,9 +689,7 @@ func TestParsingErrorCase(t *testing.T) {
 }
 
 func TestClientTimeoutSetting(t *testing.T) {
-	oldClientTimeout := os.Getenv(EnvVaultClientTimeout)
-	os.Setenv(EnvVaultClientTimeout, "10")
-	defer os.Setenv(EnvVaultClientTimeout, oldClientTimeout)
+	t.Setenv(EnvVaultClientTimeout, "10")
 	config := DefaultConfig()
 	config.ReadEnvironment()
 	_, err := NewClient(config)
@@ -787,7 +971,7 @@ func TestClientWithNamespace(t *testing.T) {
 	ogNS := "test"
 	client.SetNamespace(ogNS)
 	_, err = client.rawRequestWithContext(
-		context.Background(),
+		t.Context(),
 		client.NewRequest(http.MethodGet, "/"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -799,7 +983,7 @@ func TestClientWithNamespace(t *testing.T) {
 	// make a call with a temporary namespace
 	newNS := "new-namespace"
 	_, err = client.WithNamespace(newNS).rawRequestWithContext(
-		context.Background(),
+		t.Context(),
 		client.NewRequest(http.MethodGet, "/"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -809,7 +993,7 @@ func TestClientWithNamespace(t *testing.T) {
 	}
 	// ensure client has not been modified
 	_, err = client.rawRequestWithContext(
-		context.Background(),
+		t.Context(),
 		client.NewRequest(http.MethodGet, "/"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -820,7 +1004,7 @@ func TestClientWithNamespace(t *testing.T) {
 
 	// make call with empty ns
 	_, err = client.WithNamespace("").rawRequestWithContext(
-		context.Background(),
+		t.Context(),
 		client.NewRequest(http.MethodGet, "/"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -882,21 +1066,15 @@ func TestVaultProxy(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			if tc.vaultHttpProxy != "" {
-				oldVaultHttpProxy := os.Getenv(EnvHTTPProxy)
-				os.Setenv(EnvHTTPProxy, tc.vaultHttpProxy)
-				defer os.Setenv(EnvHTTPProxy, oldVaultHttpProxy)
+				t.Setenv(EnvHTTPProxy, tc.vaultHttpProxy)
 			}
 
 			if tc.vaultProxyAddr != "" {
-				oldVaultProxyAddr := os.Getenv(EnvVaultProxyAddr)
-				os.Setenv(EnvVaultProxyAddr, tc.vaultProxyAddr)
-				defer os.Setenv(EnvVaultProxyAddr, oldVaultProxyAddr)
+				t.Setenv(EnvVaultProxyAddr, tc.vaultProxyAddr)
 			}
 
 			if tc.noProxy != "" {
-				oldNoProxy := os.Getenv(NoProxy)
-				os.Setenv(NoProxy, tc.noProxy)
-				defer os.Setenv(NoProxy, oldNoProxy)
+				t.Setenv(NoProxy, tc.noProxy)
 			}
 
 			c := DefaultConfig()

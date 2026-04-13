@@ -1,0 +1,6 @@
+```release-note:bug
+core/seal: Fix `/sys/rotate/root/update` returning a random, unused key share value when rotating the barrier root key using recovery keys.
+```
+```release-note:bug
+command: Fix `bao operator rotate-keys` and `bao operator rekey` warning about new key shares when rotating the barrier root key only.
+```

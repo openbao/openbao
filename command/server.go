@@ -1005,6 +1005,8 @@ func (c *ServerCommand) Run(args []string) int {
 		c.logger.Warn(cErr.String())
 	}
 
+	server.WarnHSMDeprecated(c.logger)
+
 	// create GRPC logger
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
 	c.allLoggers = append(c.allLoggers, namedGRPCLogFaker)
@@ -1786,10 +1788,13 @@ func (c *ServerCommand) doSelfInit(core *vault.Core, config *server.Config, root
 		// - Environment variables
 		// - Files
 		// - Other requests & responses
+		// - CEL support, to have more control over formatting
 		profiles.WithEnvSource(),
 		profiles.WithFileSource(),
 		profiles.WithRequestSource(),
 		profiles.WithResponseSource(),
+		profiles.WithCELSource(),
+		profiles.WithTemplateSource(),
 
 		// Because we're initializing, we have a default (root) token to use.
 		profiles.WithDefaultToken(rootToken),
@@ -2727,6 +2732,7 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		EnableResponseHeaderHostname:   config.EnableResponseHeaderHostname,
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
 		UnsafeCrossNamespaceIdentity:   config.UnsafeCrossNamespaceIdentity,
+		AllowUnauthenticatedWorkflows:  config.AllowUnauthenticatedWorkflows,
 	}
 
 	if config.DisableSSCTokens != nil {
@@ -2930,8 +2936,8 @@ func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config,
 			RecoveryMode:          c.flagRecovery,
 		})
 
-		if len(ln.Config.XForwardedForAuthorizedAddrs) > 0 {
-			handler = vaulthttp.WrapForwardedForHandler(handler, ln.Config)
+		if ln.Config != nil {
+			handler = vaulthttp.WrapHttpServerHandler(handler, ln.Config)
 		}
 
 		// server defaults

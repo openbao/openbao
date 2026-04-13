@@ -4,7 +4,6 @@
 package jwtauth
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -173,7 +172,7 @@ func Test_runCelProgram(t *testing.T) {
 			if !ok {
 				t.Fatalf("Expected jwtAuthBackend, got %T", logicalBackend)
 			}
-			role, err := b.runCelProgram(context.Background(), logical.UpdateOperation, &tc.celRole, tc.claims)
+			role, err := b.runCelProgram(t.Context(), logical.UpdateOperation, &tc.celRole, tc.claims)
 			if tc.validateResult != nil {
 				tc.validateResult(t, err, role)
 			}
@@ -273,7 +272,7 @@ func TestCelRoleAuth(t *testing.T) {
 				Data:      tt.celRole,
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
@@ -304,7 +303,7 @@ func TestCelRoleAuth(t *testing.T) {
 				},
 			}
 
-			resp, err = b.HandleRequest(context.Background(), loginReq)
+			resp, err = b.HandleRequest(t.Context(), loginReq)
 			if tt.wantErr {
 				if !resp.IsError() {
 					t.Fatalf("expected error: %v / %v via JWT: %v", resp, resp.Auth, jwtData)

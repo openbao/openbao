@@ -74,7 +74,7 @@ func TestAuthHandler(t *testing.T) {
 	vault.TestWaitActive(t, cluster.Cores[0].Core)
 	client := cluster.Cores[0].Client
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(t.Context())
 	defer cancelFunc()
 
 	ah := NewAuthHandler(&AuthHandlerConfig{
@@ -121,7 +121,7 @@ func TestAgentBackoff(t *testing.T) {
 	}
 
 	// Test that backoff values are in expected range (75-100% of 2*previous)
-	for i := 0; i < 9; i++ {
+	for range 9 {
 		old := backoff.current
 		backoff.next()
 
@@ -134,7 +134,7 @@ func TestAgentBackoff(t *testing.T) {
 	}
 
 	// Test that backoff is capped
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		backoff.next()
 		if backoff.current > max {
 			t.Fatalf("backoff exceeded max of 100s: %v", backoff)
@@ -171,7 +171,7 @@ func TestAgentMinBackoffCustom(t *testing.T) {
 		}
 
 		// Test that backoff values are in expected range (75-100% of 2*previous)
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			old := backoff.current
 			backoff.next()
 
@@ -184,7 +184,7 @@ func TestAgentMinBackoffCustom(t *testing.T) {
 		}
 
 		// Test that backoff is capped
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			backoff.next()
 			if backoff.current > max {
 				t.Fatalf("backoff exceeded max of 100s: %v", backoff)

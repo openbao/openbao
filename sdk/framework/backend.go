@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"regexp"
 	"sort"
@@ -169,9 +170,7 @@ func (b *Backend) HandleExistenceCheck(ctx context.Context, req *logical.Request
 	// Build up the data for the route, with the URL taking priority
 	// for the fields over the PUT data.
 	raw := make(map[string]interface{}, len(path.Fields))
-	for k, v := range req.Data {
-		raw[k] = v
-	}
+	maps.Copy(raw, req.Data)
 	for k, v := range captures {
 		raw[k] = v
 	}

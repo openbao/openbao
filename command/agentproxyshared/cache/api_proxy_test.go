@@ -33,7 +33,7 @@ path "*" {
 `
 
 func TestAPIProxy(t *testing.T) {
-	cleanup, client, _, _ := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, nil)
+	cleanup, client, _, _ := setupClusterAndAgent(namespace.RootContext(t.Context()), t, nil)
 	defer cleanup()
 
 	proxier, err := NewAPIProxy(&APIProxyConfig{
@@ -52,7 +52,7 @@ func TestAPIProxy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	resp, err := proxier.Send(namespace.RootContext(context.TODO()), &SendRequest{
+	resp, err := proxier.Send(namespace.RootContext(t.Context()), &SendRequest{
 		Request: req,
 	})
 	if err != nil {
@@ -71,7 +71,7 @@ func TestAPIProxy(t *testing.T) {
 }
 
 func TestAPIProxyNoCache(t *testing.T) {
-	cleanup, client, _, _ := setupClusterAndAgentNoCache(namespace.RootContext(context.TODO()), t, nil)
+	cleanup, client, _, _ := setupClusterAndAgentNoCache(namespace.RootContext(t.Context()), t, nil)
 	defer cleanup()
 
 	proxier, err := NewAPIProxy(&APIProxyConfig{
@@ -90,7 +90,7 @@ func TestAPIProxyNoCache(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	resp, err := proxier.Send(namespace.RootContext(context.TODO()), &SendRequest{
+	resp, err := proxier.Send(namespace.RootContext(t.Context()), &SendRequest{
 		Request: req,
 	})
 	if err != nil {
@@ -111,7 +111,7 @@ func TestAPIProxyNoCache(t *testing.T) {
 func TestAPIProxy_queryParams(t *testing.T) {
 	// Set up an agent that points to a standby node for this particular test
 	// since it needs to proxy a /sys/health?standbyok=true request to a standby
-	cleanup, client, _, _ := setupClusterAndAgentOnStandby(namespace.RootContext(context.TODO()), t, nil)
+	cleanup, client, _, _ := setupClusterAndAgentOnStandby(namespace.RootContext(t.Context()), t, nil)
 	defer cleanup()
 
 	proxier, err := NewAPIProxy(&APIProxyConfig{
@@ -135,7 +135,7 @@ func TestAPIProxy_queryParams(t *testing.T) {
 	q.Add("standbyok", "true")
 	req.URL.RawQuery = q.Encode()
 
-	resp, err := proxier.Send(namespace.RootContext(context.TODO()), &SendRequest{
+	resp, err := proxier.Send(namespace.RootContext(t.Context()), &SendRequest{
 		Request: req,
 	})
 	if err != nil {
@@ -185,7 +185,7 @@ func setupClusterAndAgentCommon(ctx context.Context, t *testing.T, coreConfig *v
 	t.Helper()
 
 	if ctx == nil {
-		ctx = context.Background()
+		ctx = t.Context()
 	}
 
 	// Handle sane defaults

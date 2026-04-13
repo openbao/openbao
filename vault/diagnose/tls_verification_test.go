@@ -4,7 +4,6 @@
 package diagnose
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -26,7 +25,7 @@ func TestTLSValidCert(t *testing.T) {
 			TLSDisableClientCerts: true,
 		},
 	}
-	warnings, errs := ListenerChecks(context.Background(), listeners)
+	warnings, errs := ListenerChecks(t.Context(), listeners)
 	if errs != nil {
 		// The test failed -- we can just return one of the errors
 		t.Fatal(errs[0].Error())
@@ -49,7 +48,7 @@ func TestTLSFakeCert(t *testing.T) {
 			TLSDisableClientCerts: true,
 		},
 	}
-	_, errs := ListenerChecks(context.Background(), listeners)
+	_, errs := ListenerChecks(t.Context(), listeners)
 	if errs == nil {
 		t.Fatal("TLS Config check on fake certificate should fail")
 	}
@@ -77,7 +76,7 @@ func TestTLSTrailingData(t *testing.T) {
 			TLSDisableClientCerts: true,
 		},
 	}
-	_, errs := ListenerChecks(context.Background(), listeners)
+	_, errs := ListenerChecks(t.Context(), listeners)
 	if errs == nil || len(errs) != 1 {
 		t.Fatal("TLS Config check on fake certificate should fail")
 	}
@@ -100,7 +99,7 @@ func TestTLSExpiredCert(t *testing.T) {
 			TLSDisableClientCerts: true,
 		},
 	}
-	warnings, errs := ListenerChecks(context.Background(), listeners)
+	warnings, errs := ListenerChecks(t.Context(), listeners)
 	if errs == nil || len(errs) != 1 {
 		t.Fatal("TLS Config check on fake certificate should fail")
 	}
@@ -129,7 +128,7 @@ func TestTLSMismatchedCryptographicInfo(t *testing.T) {
 			TLSDisableClientCerts: true,
 		},
 	}
-	_, errs := ListenerChecks(context.Background(), listeners)
+	_, errs := ListenerChecks(t.Context(), listeners)
 	if errs == nil || len(errs) != 1 {
 		t.Fatal("TLS Config check on fake certificate should fail")
 	}
@@ -149,7 +148,7 @@ func TestTLSMismatchedCryptographicInfo(t *testing.T) {
 			TLSDisableClientCerts: true,
 		},
 	}
-	_, errs = ListenerChecks(context.Background(), listeners)
+	_, errs = ListenerChecks(t.Context(), listeners)
 	if errs == nil || len(errs) != 1 {
 		t.Fatal("TLS Config check on fake certificate should fail")
 	}
@@ -172,7 +171,7 @@ func TestTLSMultiKeys(t *testing.T) {
 			TLSDisableClientCerts: true,
 		},
 	}
-	_, errs := ListenerChecks(context.Background(), listeners)
+	_, errs := ListenerChecks(t.Context(), listeners)
 	if errs == nil || len(errs) != 1 {
 		t.Fatal("TLS Config check on fake certificate should fail")
 	}
@@ -194,7 +193,7 @@ func TestTLSCertAsKey(t *testing.T) {
 			TLSDisableClientCerts: true,
 		},
 	}
-	_, errs := ListenerChecks(context.Background(), listeners)
+	_, errs := ListenerChecks(t.Context(), listeners)
 	if errs == nil || len(errs) != 1 {
 		t.Fatal("TLS Config check on fake certificate should fail")
 	}
@@ -218,7 +217,7 @@ func TestTLSInvalidRoot(t *testing.T) {
 			TLSDisableClientCerts: true,
 		},
 	}
-	_, errs := ListenerChecks(context.Background(), listeners)
+	_, errs := ListenerChecks(t.Context(), listeners)
 	if errs == nil || len(errs) != 1 {
 		t.Fatal("TLS Config check on fake certificate should fail")
 	}
@@ -242,7 +241,7 @@ func TestTLSNoRoot(t *testing.T) {
 			TLSDisableClientCerts: true,
 		},
 	}
-	_, errs := ListenerChecks(context.Background(), listeners)
+	_, errs := ListenerChecks(t.Context(), listeners)
 
 	if errs != nil {
 		t.Fatal("server certificate without root certificate is insecure, but still valid")
@@ -264,7 +263,7 @@ func TestTLSInvalidMinVersion(t *testing.T) {
 			TLSDisableClientCerts: true,
 		},
 	}
-	_, errs := ListenerChecks(context.Background(), listeners)
+	_, errs := ListenerChecks(t.Context(), listeners)
 	if errs == nil || len(errs) != 1 {
 		t.Fatal("TLS Config check on invalid 'tls_min_version' should fail")
 	}
@@ -288,7 +287,7 @@ func TestTLSInvalidMaxVersion(t *testing.T) {
 			TLSDisableClientCerts: true,
 		},
 	}
-	_, errs := ListenerChecks(context.Background(), listeners)
+	_, errs := ListenerChecks(t.Context(), listeners)
 	if errs == nil || len(errs) != 1 {
 		t.Fatal("TLS Config check on invalid 'tls_max_version' should fail")
 	}
@@ -403,7 +402,7 @@ func TestTLSClientCAFileCheck(t *testing.T) {
 			TLSDisableClientCerts:         false,
 		},
 	}
-	warnings, errs := ListenerChecks(context.Background(), listeners)
+	warnings, errs := ListenerChecks(t.Context(), listeners)
 	if errs != nil {
 		t.Fatal("TLS config check failed while a good ClientCAFile was used")
 	}
@@ -427,7 +426,7 @@ func TestTLSLeafCertInClientCAFile(t *testing.T) {
 			TLSDisableClientCerts:         false,
 		},
 	}
-	warnings, errs := ListenerChecks(context.Background(), listeners)
+	warnings, errs := ListenerChecks(t.Context(), listeners)
 	if errs == nil || len(errs) != 1 {
 		t.Fatalf("TLS Config check on bad ClientCAFile certificate should fail once: %v", errs)
 	}
@@ -472,7 +471,7 @@ func TestTLSNoRootInClientCAFile(t *testing.T) {
 			TLSDisableClientCerts:         false,
 		},
 	}
-	_, errs := ListenerChecks(context.Background(), listeners)
+	_, errs := ListenerChecks(t.Context(), listeners)
 	if errs == nil {
 		t.Fatal("TLS Config check on bad ClientCAFile certificate should fail")
 	}
@@ -496,7 +495,7 @@ func TestTLSIntermediateCertInClientCAFile(t *testing.T) {
 			TLSDisableClientCerts:         false,
 		},
 	}
-	warnings, _ := ListenerChecks(context.Background(), listeners)
+	warnings, _ := ListenerChecks(t.Context(), listeners)
 	if warnings == nil || len(warnings) != 1 {
 		t.Fatal("TLS Config check on bad ClientCAFile certificate should fail")
 	}
@@ -520,7 +519,7 @@ func TestTLSMultipleRootInClietCACert(t *testing.T) {
 			TLSDisableClientCerts:         false,
 		},
 	}
-	warnings, errs := ListenerChecks(context.Background(), listeners)
+	warnings, errs := ListenerChecks(t.Context(), listeners)
 	if errs != nil {
 		t.Fatal("TLS Config check on valid certificate should not fail")
 	}
@@ -547,7 +546,7 @@ func TestTLSSelfSignedCert(t *testing.T) {
 			TLSDisableClientCerts:         false,
 		},
 	}
-	_, errs := ListenerChecks(context.Background(), listeners)
+	_, errs := ListenerChecks(t.Context(), listeners)
 	if errs == nil {
 		t.Fatal("Self-signed certificate is insecure")
 	}

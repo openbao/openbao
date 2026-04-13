@@ -4,7 +4,6 @@
 package http
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -32,7 +31,7 @@ func TestAuditHttp_Integration(t *testing.T) {
 
 	url := testServer.URL + logRoute
 
-	backend, err := Factory(context.Background(), &audit.BackendConfig{
+	backend, err := Factory(t.Context(), &audit.BackendConfig{
 		SaltConfig: &salt.Config{},
 		SaltView:   &logical.InmemStorage{},
 		Config: map[string]string{
@@ -69,7 +68,7 @@ func TestAuditHttp_Integration(t *testing.T) {
 		},
 	}
 
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	err = backend.LogRequest(ctx, in)
 	require.NoError(t, err)
 

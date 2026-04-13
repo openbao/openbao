@@ -4,7 +4,6 @@
 package jwtauth
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -99,7 +98,7 @@ func TestGSuiteProvider_FetchGroups(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b, _ := getBackend(t)
-			ctx := context.Background()
+			ctx := t.Context()
 
 			// Configure the provider
 			gProvider := new(GSuiteProvider)
@@ -170,7 +169,7 @@ func TestGSuiteProvider_FetchUserInfo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b, _ := getBackend(t)
-			ctx := context.Background()
+			ctx := t.Context()
 
 			// Configure the provider
 			gProvider := new(GSuiteProvider)
@@ -190,7 +189,7 @@ func TestGSuiteProvider_FetchUserInfo(t *testing.T) {
 
 			// Assert that expected user info is added to the JWT claims
 			customSchemas := tt.args.config.ProviderConfig["user_custom_schemas"].(string)
-			for _, schema := range strings.Split(customSchemas, ",") {
+			for schema := range strings.SplitSeq(customSchemas, ",") {
 				assert.Equal(t, tt.expected[schema], allClaims[schema])
 			}
 		})
@@ -380,7 +379,7 @@ func TestGSuiteProvider_search(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 
 			// Initialize the provider
 			gProvider := new(GSuiteProvider)
@@ -485,7 +484,7 @@ func TestGSuiteProvider_Initialize(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			g := &GSuiteProvider{}
-			err := g.Initialize(context.Background(), tt.args.config)
+			err := g.Initialize(t.Context(), tt.args.config)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
@@ -499,7 +498,7 @@ func TestGSuiteProvider_Initialize(t *testing.T) {
 // provider-specific group and user info fetching has occurred.
 func TestGSuiteProvider_validateBoundClaims(t *testing.T) {
 	b, _ := getBackend(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Mock the G Suite groups and users APIs
 	gServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -576,7 +575,7 @@ func TestGSuiteProvider_validateBoundClaims(t *testing.T) {
 
 func TestGSuiteProvider_domain(t *testing.T) {
 	b, _ := getBackend(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	expectedDomain := "example.com"
 	gServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

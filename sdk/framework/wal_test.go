@@ -4,7 +4,6 @@
 package framework
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -14,7 +13,7 @@ import (
 func TestWAL(t *testing.T) {
 	s := new(logical.InmemStorage)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// WAL should be empty to start
 	keys, err := ListWAL(ctx, s)

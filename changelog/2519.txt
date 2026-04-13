@@ -1,0 +1,3 @@
+```release-note:improvement
+seal/azurekeyvault: Support explicitly setting Azure authentication methods and add support for authenticating using azure managed identities.
+```

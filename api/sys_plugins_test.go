@@ -4,7 +4,6 @@
 package api
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -23,7 +22,7 @@ func TestRegisterPlugin(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = client.Sys().RegisterPluginWithContext(context.Background(), &RegisterPluginInput{
+	err = client.Sys().RegisterPluginWithContext(t.Context(), &RegisterPluginInput{
 		Version: "v1.0.0",
 	})
 	if err != nil {
@@ -74,7 +73,7 @@ func TestListPlugins(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			resp, err := client.Sys().ListPluginsWithContext(context.Background(), &tc.input)
+			resp, err := client.Sys().ListPluginsWithContext(t.Context(), &tc.input)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -180,7 +179,7 @@ func TestGetPlugin(t *testing.T) {
 				input.Version = tc.version
 			}
 
-			info, err := client.Sys().GetPluginWithContext(context.Background(), &input)
+			info, err := client.Sys().GetPluginWithContext(t.Context(), &input)
 			if err != nil {
 				t.Fatal(err)
 			}

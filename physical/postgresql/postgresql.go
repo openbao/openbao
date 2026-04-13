@@ -194,9 +194,12 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		return nil, errors.New("PostgreSQL version must be at least 9.5")
 	}
 
-	unquotedHaTable, ok := conf["haTable"]
+	unquotedHaTable, ok := conf["ha_table"]
 	if !ok {
-		unquotedHaTable = "openbao_ha_locks"
+		unquotedHaTable, ok = conf["haTable"]
+		if !ok {
+			unquotedHaTable = "openbao_ha_locks"
+		}
 	}
 	quotedHaTable := dbutil.QuoteIdentifier(unquotedHaTable)
 

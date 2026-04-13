@@ -172,9 +172,12 @@ func (p *ProfileEngine) validate() error {
 	}
 
 	for _, outer := range p.profile {
-		if err := validateNameConvention("outer block", outer.Type); err != nil {
-			return err
+		if len(p.profile) > 1 {
+			if err := validateNameConvention("outer block", outer.Type); err != nil {
+				return err
+			}
 		}
+
 		for _, req := range outer.Requests {
 			if err := validateNameConvention(fmt.Sprintf("request in block '%s'", outer.Type), req.Type); err != nil {
 				return err

@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/hcl/ast"
+	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
+	"github.com/stretchr/testify/require"
 )
 
 func parseBlockList(hclStr, blockName string) (*ast.ObjectList, error) {
@@ -174,4 +176,57 @@ request {
 	if err == nil || !strings.Contains(err.Error(), "type must be specified") {
 		t.Fatalf("expected missing-type error, got %v", err)
 	}
+}
+
+func TestParseInput_FieldNames(t *testing.T) {
+	hclStr := `
+input {
+  field "namespace" {
+    type = "string"
+    description = "name of the namespace to create"
+    required = true
+  }
+
+  field "string" {
+    name = "username"
+    description = "username to provision into auth mount"
+    required = true
+  }
+
+  field "int" "password" {
+    description = "password to authenticate with"
+    required = false
+  }
+}
+`
+	list, err := parseBlockList(hclStr, "input")
+	require.NoError(t, err)
+	require.NotNil(t, list)
+
+	input, err := ParseInputConfig(list)
+	require.NoError(t, err)
+	require.NotNil(t, input)
+	require.Equal(t, 3, len(input.Fields))
+
+	namespace := input.Fields[0]
+	username := input.Fields[1]
+	password := input.Fields[2]
+
+	require.Equal(t, namespace.Type, framework.TypeString)
+	require.Equal(t, namespace.TypeRaw, "string")
+	require.Equal(t, namespace.Name, "namespace")
+	require.NotEmpty(t, namespace.Description)
+	require.True(t, namespace.Required)
+
+	require.Equal(t, username.Type, framework.TypeString)
+	require.Equal(t, username.TypeRaw, "string")
+	require.Equal(t, username.Name, "username")
+	require.NotEmpty(t, username.Description)
+	require.True(t, username.Required)
+
+	require.Equal(t, password.Type, framework.TypeInt)
+	require.Equal(t, password.TypeRaw, "int")
+	require.Equal(t, password.Name, "password")
+	require.NotEmpty(t, password.Description)
+	require.False(t, password.Required)
 }

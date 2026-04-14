@@ -54,15 +54,15 @@ type FieldSchemaConfig struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
 	RawConfig  map[string]interface{}
 
-	Type          framework.FieldType
-	TypeRaw       string        `hcl:"type"`
-	Name          string        `hcl:"name"`
-	Default       interface{}   `hcl:"default"`
-	Description   string        `hcl:"description"`
-	Required      bool          `hcl:"required"`
-	Deprecated    bool          `hcl:"deprecated"`
-	Query         bool          `hcl:"query"`
-	AllowedValues []interface{} `hcl:"allowed_values"`
+	Type          framework.FieldType `hcl:"-"`
+	TypeRaw       string              `hcl:"type"`
+	Name          string              `hcl:"name"`
+	Default       interface{}         `hcl:"default"`
+	Description   string              `hcl:"description"`
+	Required      bool                `hcl:"required"`
+	Deprecated    bool                `hcl:"deprecated"`
+	Query         bool                `hcl:"query"`
+	AllowedValues []interface{}       `hcl:"allowed_values"`
 }
 
 // OutputConfig is an untyped configuration object that controls the output
@@ -85,12 +85,12 @@ func ParseOuterConfig(outerBlockType string, list *ast.ObjectList) ([]*OuterConf
 	for index, item := range list.Items {
 		var i OuterConfig
 		if err := hcl.DecodeObject(&i, item.Val); err != nil {
-			return result, fmt.Errorf("%v.%d: %w", outerBlockType, index, err)
+			return result, fmt.Errorf("%v.%d: decoding into object failed with error: %w", outerBlockType, index, err)
 		}
 
 		var m map[string]interface{}
 		if err := hcl.DecodeObject(&m, item.Val); err != nil {
-			return result, fmt.Errorf("%v.%d: %w", outerBlockType, index, err)
+			return result, fmt.Errorf("%v.%d: decoding into map failed with error: %w", outerBlockType, index, err)
 		}
 		i.RawConfig = m
 
@@ -151,12 +151,12 @@ func ParseRequestConfig(list *ast.ObjectList) ([]*RequestConfig, error) {
 	for i, item := range list.Items {
 		var r RequestConfig
 		if err := hcl.DecodeObject(&r, item.Val); err != nil {
-			return result, fmt.Errorf("request.%d: %w", i, err)
+			return result, fmt.Errorf("request.%d: decoding into object failed with error: %w", i, err)
 		}
 
 		var m map[string]interface{}
 		if err := hcl.DecodeObject(&m, item.Val); err != nil {
-			return result, fmt.Errorf("request.%d: %w", i, err)
+			return result, fmt.Errorf("request.%d: decoding into map failed with error: %w", i, err)
 		}
 		r.RawConfig = m
 
@@ -189,12 +189,12 @@ func ParseInputConfig(list *ast.ObjectList) (*InputConfig, error) {
 
 	var i InputConfig
 	if err := hcl.DecodeObject(&i, item.Val); err != nil {
-		return nil, fmt.Errorf("input: %w", err)
+		return nil, fmt.Errorf("input: decoding into object failed with error: %w", err)
 	}
 
 	var m map[string]interface{}
 	if err := hcl.DecodeObject(&m, item.Val); err != nil {
-		return nil, fmt.Errorf("input: %w", err)
+		return nil, fmt.Errorf("input: decoding into map failed with error: %w", err)
 	}
 	i.RawConfig = m
 
@@ -240,24 +240,26 @@ func ParseFieldSchemaConfig(list *ast.ObjectList) ([]*FieldSchemaConfig, error) 
 	for i, item := range list.Items {
 		var r FieldSchemaConfig
 		if err := hcl.DecodeObject(&r, item.Val); err != nil {
-			return result, fmt.Errorf("field.%d: %w", i, err)
+			return result, fmt.Errorf("field.%d: decoding into object failed with error: %w", i, err)
 		}
 
 		var m map[string]interface{}
 		if err := hcl.DecodeObject(&m, item.Val); err != nil {
-			return result, fmt.Errorf("field.%d: %w", i, err)
+			return result, fmt.Errorf("field.%d: decoding into map failed with error: %w", i, err)
 		}
 		r.RawConfig = m
 
 		switch {
 		case r.TypeRaw != "" && r.Name != "":
-		case r.TypeRaw != "" && len(item.Keys) == 1:
+		case r.TypeRaw != "" && r.Name == "" && len(item.Keys) == 1:
 			r.Name = item.Keys[0].Token.Value().(string)
-		case len(item.Keys) == 2:
+		case r.TypeRaw == "" && r.Name != "" && len(item.Keys) == 1:
+			r.TypeRaw = item.Keys[0].Token.Value().(string)
+		case r.TypeRaw == "" && r.Name == "" && len(item.Keys) == 2:
 			r.TypeRaw = item.Keys[0].Token.Value().(string)
 			r.Name = item.Keys[1].Token.Value().(string)
 		default:
-			return result, fmt.Errorf("field.%d: field type and name must be specified", i)
+			return result, fmt.Errorf("field.%d: field type and name must be specified either as keys or block parameters", i)
 		}
 
 		var err error

@@ -52,6 +52,10 @@ const (
 
 	// coreLockedUsersPath is a base path to store locked users
 	coreLockedUsersPath = "core/login/lockedUsers/"
+
+	// forwardedFromDeferral indicates that a request originated from deferred execution
+	// in the unwrap workflow
+	forwardedFromDeferral = "unwrap-deferred"
 )
 
 var (
@@ -1075,24 +1079,44 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 	// When unwrapping we want to log the actual response that will be written
 	// out. We still want to return the raw value to avoid automatic updating
 	// to any of it.
-	if req.Path == "sys/wrapping/unwrap" &&
-		resp != nil &&
-		resp.Data != nil &&
-		resp.Data[logical.HTTPRawBody] != nil {
+	if req.Path == "sys/wrapping/unwrap" {
+		if resp != nil &&
+			resp.Data != nil &&
+			resp.Data[logical.HTTPRawBody] != nil {
 
-		// Decode the JSON
-		if resp.Data[logical.HTTPRawBodyAlreadyJSONDecoded] != nil {
-			delete(resp.Data, logical.HTTPRawBodyAlreadyJSONDecoded)
-		} else {
-			httpResp := &logical.HTTPResponse{}
-			err := jsonutil.DecodeJSON(resp.Data[logical.HTTPRawBody].([]byte), httpResp)
-			if err != nil {
-				c.logger.Error("failed to unmarshal wrapped HTTP response for audit logging", "error", err)
-				return nil, ErrInternalError
+			// Decode the JSON
+			if resp.Data[logical.HTTPRawBodyAlreadyJSONDecoded] != nil {
+				delete(resp.Data, logical.HTTPRawBodyAlreadyJSONDecoded)
+			} else {
+				httpResp := &logical.HTTPResponse{}
+				err := jsonutil.DecodeJSON(resp.Data[logical.HTTPRawBody].([]byte), httpResp)
+				if err != nil {
+					c.logger.Error("failed to unmarshal wrapped HTTP response for audit logging", "error", err)
+					return nil, ErrInternalError
+				}
+
+				auditResp = logical.HTTPResponseToLogicalResponse(httpResp)
 			}
-
-			auditResp = logical.HTTPResponseToLogicalResponse(httpResp)
+		} else {
+			// Handle execution of deferred request when approved
+			te := req.TokenEntry()
+			deferredReq, err := c.getRequestFromTokenEntry(ctx, te)
+			if err != nil {
+				return nil, err
+			}
+			if deferredReq != nil {
+				approved, err := c.validateControlGroup(ctx, te, deferredReq.Operation)
+				if err != nil {
+					return nil, err
+				}
+				if approved {
+					// reenter this function with deferred request and ForwardedFrom marker
+					deferredReq.ForwardedFrom = forwardedFromDeferral
+					return c.handleCancelableRequest(ctx, deferredReq)
+				}
+			}
 		}
+
 	}
 
 	var nonHMACReqDataKeys []string
@@ -1136,6 +1160,17 @@ func (c *Core) doRouting(ctx context.Context, req *logical.Request) (*logical.Re
 
 func (c *Core) isLoginRequest(ctx context.Context, req *logical.Request) bool {
 	return c.router.LoginPath(ctx, req.Path)
+}
+
+// needsApproval will assess if a ControlGroup policy is applicable, so that request is deferred until unwrap
+func (c *Core) needsApproval(ctx context.Context, req *logical.Request, auth *logical.Auth) bool {
+	resp := false
+	if auth.PolicyResults != nil &&
+		auth.PolicyResults.ControlGroup != nil &&
+		req.ForwardedFrom != forwardedFromDeferral {
+		resp = true
+	}
+	return resp
 }
 
 func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp *logical.Response, retAuth *logical.Auth, retErr error) {
@@ -1272,7 +1307,11 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	}
 
 	// Route the request
-	resp, routeErr := c.doRouting(ctx, req)
+	var routeErr error
+	var resp *logical.Response
+	if c.needsApproval(ctx, req, auth) {
+		resp, routeErr = c.doRouting(ctx, req)
+	}
 	if resp != nil {
 
 		// If wrapping is used, use the shortest between the request and response
@@ -1308,7 +1347,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 		}
 
 		// Set wrapTTL from ControlGroup.TTL if present
-		if auth.PolicyResults != nil && auth.PolicyResults.ControlGroup != nil {
+		if c.needsApproval(ctx, req, auth) {
 			cgTTL := auth.PolicyResults.ControlGroup.TTL
 			if cgTTL > 0 {
 				wrapTTL = cgTTL

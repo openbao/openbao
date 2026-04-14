@@ -4,7 +4,15 @@ description: |-
   The static key seal configures OpenBao to use static keys provided alongside
   the configuration file as the Auto Anseal mechanism.
 ---
+
 # `static` seal
+
+:::info
+
+This mechanism is built into OpenBao and does not require an external KMS
+provider plugin.
+
+:::
 
 The static key seal configures OpenBao to use static keys provided alongside
 the configuration file as the Auto Unseal mechanism. These can either be provided

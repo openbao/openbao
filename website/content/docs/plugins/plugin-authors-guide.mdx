@@ -13,6 +13,8 @@ plugins for OpenBao.
 - [List pagination](#list-pagination)
 - [Listing Detailed Endpoints](#listing-detailed-endpoints)
 - [Revoke Operations Should Ignore "Not Found" Errors](#revoke-operations-should-ignore-not-found-errors)
+- [Docker-based Tests](#docker-based-tests)
+- [Dangers of Custom Auto Unseal Mechanisms](#dangers-of-custom-auto-unseal-mechanisms)
 
 ## List pagination
 
@@ -94,8 +96,6 @@ as a known limitation and document how to manually recover from a revoke retry
 loop (i.e. using the [`bao lease revoke`](../../commands/lease/revoke/) command
 with the `-force` flag).
 
-[Consul plugin revoke operation]: https://github.com/openbao/openbao-plugins/blob/c3eb5134e359ee112754cc0f488e2b91d71a6129/secrets/consul/secret_token.go#L101-L114
-
 ## Docker-based Tests
 
 OpenBao's SDK offers test helpers to automatically spin up an OpenBao cluster
@@ -131,3 +131,22 @@ test helper will pick this up and copy the binary into the container at startup.
 
 Additionally, you can optionally set `COMMIT_SHA`, which will be appended to the
 image name we build as a debugging convenience.
+
+## Dangers of Custom Auto Unseal Mechanisms
+
+KMS provider plugins enable development of custom Auto Unseal mechanisms
+for OpenBao by providing an implementation of [go-kms-wrapping's `Wrapper`
+interface](https://pkg.go.dev/github.com/openbao/go-kms-wrapping/v2#Wrapper) via
+[`WrapperFactoryFunc`](https://pkg.go.dev/github.com/openbao/go-kms-wrapping/plugin/v2#ServeOpts).
+
+Both implementation and installation of such plugins must be treated with
+extreme caution. OpenBao's (Auto-)Seals represent the root of trust for any
+instance of OpenBao, hence bugs or abuse pose risks:
+
+- A faulty or malicious implementation may result in data loss if key material
+  is lost or ciphertext is otherwise irrecoverable.
+- A faulty or malicious implementation may result in compromise of OpenBao's
+  root key if insecure cryptography is used (e.g., via weak algorithms, weak key
+  material or unprotected key material).
+
+[Consul plugin revoke operation]: https://github.com/openbao/openbao-plugins/blob/c3eb5134e359ee112754cc0f488e2b91d71a6129/secrets/consul/secret_token.go#L101-L114

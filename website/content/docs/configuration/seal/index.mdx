@@ -1,17 +1,23 @@
 ---
 sidebar_label: Overview
 description: >-
-  The seal stanza configures the seal type to use for additional data
-  protection.
+  The seal stanza configures an Auto Unseal mechanism to replace the default
+  Shamir seal.
 ---
 
 # `seal` stanza
 
-The `seal` stanza configures the seal type to use for additional data
-protection, such as using HSM or Cloud KMS solutions to encrypt and decrypt the
-root key. This stanza is optional, and in the case of the root key, OpenBao
-will use the Shamir algorithm to cryptographically split the root key if this
-is not configured.
+The `seal` stanza configures an Auto Unseal mechanism to use to replace the
+default Shamir seal, such as using HSM or Cloud KMS solutions to encrypt and
+decrypt the root key. This stanza is optional, and if omitted, OpenBao will use
+the Shamir algorithm to cryptographically split the root key, requiring nodes to
+be unsealed manually.
+
+:::info
+
+Read more about seals in OpenBao on the [concept page](../../concepts/seal.mdx).
+
+:::
 
 ## Configuration
 
@@ -34,3 +40,50 @@ seal "pkcs11" {
 
 For configuration options which also read an environment variable, the
 environment variable will take precedence over values in the configuration file.
+
+## Plugins
+
+Starting with OpenBao v2.6.0, Auto Unseal mechanisms not built into
+OpenBao may be installed as external KMS plugins via the [plugin
+system](../../plugins/index.mdx).
+
+:::warning
+
+In OpenBao v2.7.0, many mechanisms that were previously
+built-in will not be included in the standalone binary anymore
+and remain available only as plugins. See the [deprecation
+notice](../../deprecation/index.mdx#vendor-specific-built-in-auto-unseal-mechanisms)
+for details.
+
+:::
+
+To get started, register a plugin of type `kms` via [declarative plugin
+configuration](../plugins.mdx) along with the `seal` stanza:
+
+```hcl
+plugin "kms" [NAME] {
+  # ...
+}
+
+seal [NAME] {
+  # ...
+}
+```
+
+For example, to use the `pkcs11` seal, you must install the `pkcs11` KMS plugin:
+
+```hcl
+plugin "kms" "pkcs11" {
+  command = "openbao-plugin-kms-pkcs11"
+  sha256sum = "..."
+}
+
+seal "pkcs11" {
+  # ...
+}
+```
+
+When using a plugin, the name to use in the `seal` stanza must match the name
+used in the `plugin` stanza, which is an arbitrary name. If a KMS provider is
+both built into OpenBao and installed as a plugin, the plugin will shadow the
+builtin and take priority.

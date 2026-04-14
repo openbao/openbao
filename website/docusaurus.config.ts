@@ -224,10 +224,6 @@ const config: Config = {
               href: "https://linuxfoundation.zulipchat.com/",
             },
             {
-              label: "LF Edge Wiki",
-              href: "https://lf-edge.atlassian.net/wiki/spaces/OP/overview",
-            },
-            {
               label: "Charter",
               href: "https://github.com/openbao/openbao/blob/main/CHARTER.md",
             },

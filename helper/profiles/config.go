@@ -45,7 +45,7 @@ type InputConfig struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
 	RawConfig  map[string]interface{}
 
-	Fields []*FieldSchemaConfig `hcl:"fields"`
+	Fields []*FieldSchemaConfig `hcl:"-"`
 }
 
 // FieldSchemaConfig is the HCL equivalent of sdk/v2/framework.FieldSchema;
@@ -195,10 +195,10 @@ func ParseInputConfig(list *ast.ObjectList) (*InputConfig, error) {
 
 	itemList := objT.List
 
-	if o := itemList.Filter("fields"); len(o.Items) > 0 {
+	if o := itemList.Filter("field"); len(o.Items) > 0 {
 		fields, err := ParseFieldSchemaConfig(o)
 		if err != nil {
-			return nil, fmt.Errorf("input: error parsing 'fields': %w", err)
+			return nil, fmt.Errorf("input: error parsing 'field': %w", err)
 		}
 
 		i.Fields = fields
@@ -214,12 +214,12 @@ func ParseFieldSchemaConfig(list *ast.ObjectList) ([]*FieldSchemaConfig, error) 
 	for i, item := range list.Items {
 		var r FieldSchemaConfig
 		if err := hcl.DecodeObject(&r, item.Val); err != nil {
-			return result, fmt.Errorf("fields.%d: %w", i, err)
+			return result, fmt.Errorf("field.%d: %w", i, err)
 		}
 
 		var m map[string]interface{}
 		if err := hcl.DecodeObject(&m, item.Val); err != nil {
-			return result, fmt.Errorf("fields.%d: %w", i, err)
+			return result, fmt.Errorf("field.%d: %w", i, err)
 		}
 		r.RawConfig = m
 
@@ -231,13 +231,13 @@ func ParseFieldSchemaConfig(list *ast.ObjectList) ([]*FieldSchemaConfig, error) 
 			r.TypeRaw = item.Keys[0].Token.Value().(string)
 			r.Name = item.Keys[1].Token.Value().(string)
 		default:
-			return result, fmt.Errorf("fields.%d: field type and name must be specified", i)
+			return result, fmt.Errorf("field.%d: field type and name must be specified", i)
 		}
 
 		var err error
 		r.Type, err = framework.ParseFieldType(r.TypeRaw)
 		if err != nil {
-			return result, fmt.Errorf("fields.%d: %w", i, err)
+			return result, fmt.Errorf("field.%d: %w", i, err)
 		}
 
 		result = append(result, &r)

@@ -129,17 +129,17 @@ func testWorkflowRecursion(t *testing.T, client *api.Client) {
 
 const createNamespaceWorkflow = `
 input {
-  fields "string" "namespace" {
+  field "string" "namespace" {
     description = "name of the namespace to create"
     required = true
   }
 
-  fields "string" "username" {
+  field "string" "username" {
     description = "username to provision into auth mount"
     required = true
   }
 
-  fields "string" "password" {
+  field "string" "password" {
     description = "password to authenticate with"
     required = true
   }

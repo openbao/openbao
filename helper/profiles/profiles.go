@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-hclog"
@@ -433,6 +434,9 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 		err = fmt.Errorf("failed to evaluate path: %w", err)
 		return req, execute, allowFailure, err
 	}
+
+	// Ensure path doesn't have leading /.
+	req.Path, _ = strings.CutPrefix(req.Path, "/")
 
 	// For the token, if our request block did not specify a token, we use the
 	// default token, which may be empty. However, if one was specified, use

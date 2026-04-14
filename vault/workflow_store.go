@@ -12,6 +12,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -75,6 +76,24 @@ func (we *WorkflowEntry) Parse(ctx context.Context) (*profiles.InputConfig, []*p
 
 	if len(profile) == 0 {
 		return nil, nil, nil, fmt.Errorf("workflow must have at least one %q block", workflowOuterName)
+	}
+
+	var unused []configutil.ConfigError
+	if input != nil {
+		unused = append(unused, input.ValidateUnused("workflow")...)
+	}
+	for _, o := range profile {
+		unused = append(unused, o.ValidateUnused("workflow")...)
+	}
+	if output != nil {
+		unused = append(unused, output.ValidateUnused("workflow")...)
+	}
+	if len(unused) > 0 {
+		var asError []error
+		for _, unusedErr := range unused {
+			asError = append(asError, unusedErr)
+		}
+		return nil, nil, nil, errors.Join(asError...)
 	}
 
 	return input, profile, output, nil

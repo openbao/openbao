@@ -362,6 +362,10 @@ func (b *SystemBackend) handleWorkflowsUpdate() framework.OperationFunc {
 			AllowUnauthenticated: allowUnauthenticated,
 		}
 
+		if _, _, _, err := pe.Parse(ctx); err != nil {
+			return handleError(err)
+		}
+
 		err := b.Core.workflowStore.Set(ctx, pe, cas)
 		if err != nil {
 			return handleError(err)

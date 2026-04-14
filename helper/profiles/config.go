@@ -116,6 +116,8 @@ func ParseOuterConfig(outerBlockType string, list *ast.ObjectList) ([]*OuterConf
 			}
 
 			i.Requests = requests
+
+			delete(i.UnusedKeys, "request")
 		}
 
 		result = append(result, &i)
@@ -132,6 +134,15 @@ func CreateOuterConfig(requests []*RequestConfig) []*OuterConfig {
 			Requests: requests,
 		},
 	}
+}
+
+func (o *OuterConfig) ValidateUnused(path string) []configutil.ConfigError {
+	var errs []configutil.ConfigError
+	errs = append(errs, configutil.ValidateUnusedFields(o.UnusedKeys, path)...)
+	for _, request := range o.Requests {
+		errs = append(errs, request.ValidateUnused(path)...)
+	}
+	return errs
 }
 
 // ParseRequestConfig handles parsing of individual requests from an HCL AST.
@@ -161,6 +172,10 @@ func ParseRequestConfig(list *ast.ObjectList) ([]*RequestConfig, error) {
 	}
 
 	return result, nil
+}
+
+func (r *RequestConfig) ValidateUnused(path string) []configutil.ConfigError {
+	return configutil.ValidateUnusedFields(r.UnusedKeys, path)
 }
 
 // ParseInputConfig is a helper for profile systems which support declaring
@@ -202,9 +217,20 @@ func ParseInputConfig(list *ast.ObjectList) (*InputConfig, error) {
 		}
 
 		i.Fields = fields
+
+		delete(i.UnusedKeys, "field")
 	}
 
 	return &i, nil
+}
+
+func (i *InputConfig) ValidateUnused(path string) []configutil.ConfigError {
+	var errs []configutil.ConfigError
+	errs = append(errs, configutil.ValidateUnusedFields(i.UnusedKeys, path)...)
+	for _, field := range i.Fields {
+		errs = append(errs, field.ValidateUnused(path)...)
+	}
+	return errs
 }
 
 // ParseFieldSchemaConfig handles parsing of individual field schemas from an
@@ -246,6 +272,22 @@ func ParseFieldSchemaConfig(list *ast.ObjectList) ([]*FieldSchemaConfig, error) 
 	return result, nil
 }
 
+func (s *FieldSchemaConfig) ToSchema() *framework.FieldSchema {
+	return &framework.FieldSchema{
+		Type:          s.Type,
+		Default:       s.Default,
+		Description:   s.Description,
+		Required:      s.Required,
+		Deprecated:    s.Deprecated,
+		Query:         s.Query,
+		AllowedValues: s.AllowedValues,
+	}
+}
+
+func (s *FieldSchemaConfig) ValidateUnused(path string) []configutil.ConfigError {
+	return configutil.ValidateUnusedFields(s.UnusedKeys, path)
+}
+
 // ParseOutputConfig is a helper for profile systems which support declaring
 // response output blocks so that the caller has information about the
 // output.
@@ -275,14 +317,6 @@ func ParseOutputConfig(list *ast.ObjectList) (*OutputConfig, error) {
 	return &i, nil
 }
 
-func (s FieldSchemaConfig) ToSchema() *framework.FieldSchema {
-	return &framework.FieldSchema{
-		Type:          s.Type,
-		Default:       s.Default,
-		Description:   s.Description,
-		Required:      s.Required,
-		Deprecated:    s.Deprecated,
-		Query:         s.Query,
-		AllowedValues: s.AllowedValues,
-	}
+func (o *OutputConfig) ValidateUnused(path string) []configutil.ConfigError {
+	return configutil.ValidateUnusedFields(o.UnusedKeys, path)
 }

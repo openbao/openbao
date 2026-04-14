@@ -4182,6 +4182,68 @@ func (b *SystemBackend) wrappingPaths() []*framework.Path {
 			HelpSynopsis:    strings.TrimSpace(sysHelp["rewrap"][0]),
 			HelpDescription: strings.TrimSpace(sysHelp["rewrap"][1]),
 		},
+
+		{
+			Pattern: "control-group/authorize$",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationVerb: "authorize",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"accessor": {
+					Type:        framework.TypeString,
+					Description: "Accessor of the token to authorize (request body)",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.Core.handleControlGroupAuthorize,
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields:      controlGroupAuthorizeResponseSchema,
+							SchemaName:  "ControlGroupAuthorizeResponse",
+						}},
+					},
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(controlGroupAuthorizeHelp),
+			HelpDescription: strings.TrimSpace(controlGroupAuthorizeHelp),
+		},
+
+		{
+			Pattern: "control-group/request$",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationVerb: "read",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"accessor": {
+					Type:        framework.TypeString,
+					Description: "Accessor of the token describe",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.Core.handleControlGroupRequest,
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields:      controlGroupRequestResponseSchema,
+							SchemaName:  "ControlGroupRequestResponse",
+						}},
+					},
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(controlGroupRequestHelp),
+			HelpDescription: strings.TrimSpace(controlGroupRequestHelp),
+		},
 	}
 }
 

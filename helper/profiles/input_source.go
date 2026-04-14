@@ -67,7 +67,7 @@ func (s *InputSource) Validate() ([]string, []string, error) {
 
 	fieldName, ok := rawFieldName.(string)
 	if !ok {
-		return nil, nil, fmt.Errorf("field 'field_name' is of wrong type: expected 'string' go '%T'", rawFieldName)
+		return nil, nil, fmt.Errorf("field 'field_name' is of wrong type: expected 'string' got '%T'", rawFieldName)
 	}
 
 	if _, present := s.data.Schema[fieldName]; !present {

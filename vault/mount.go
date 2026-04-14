@@ -1962,7 +1962,7 @@ func (c *Core) reloadNamespaceMounts(childCtx context.Context, uuid string, dele
 		}
 	}
 
-	c.logger.Debug("invalidating namespace mount", "ns", uuid, "keys", keys)
+	c.logger.Debug("invalidating namespace mounts", "ns", uuid, "keys", keys)
 	for _, key := range keys {
 		err := c.reloadMount(childCtx, key)
 		if err != nil {
@@ -2090,9 +2090,8 @@ func (c *Core) reloadMount(ctx context.Context, key string) error {
 	if err != nil {
 		return err
 	}
-	barrier := NamespaceScopedView(c.barrier, ns)
 
-	desiredMountEntry, err := c.fetchAndDecodeMountTableEntry(ctx, barrier, prefix, uuid)
+	desiredMountEntry, err := c.fetchAndDecodeMountTableEntry(ctx, c.NamespaceView(ns), prefix, uuid)
 	if err != nil {
 		if err.Error() != "unexpected empty storage entry for mount" {
 			return err

@@ -11,6 +11,7 @@ import (
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/vault/seal"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -886,4 +887,80 @@ func TestNamespaceStorage(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, ns)
 	}
+}
+
+func TestNamespaceDeletionSealingInteraction(t *testing.T) {
+	c, keys, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+	ctx := namespace.RootContext(t.Context())
+
+	namespaces := []*namespace.Namespace{
+		{Path: "ns1/"},
+		{Path: "ns2/"},
+		{Path: "ns3/"},
+	}
+	nsKeys := TestCoreCreateUnsealedNamespaces(t, c, namespaces...)
+
+	t.Run("cannot seal tainted namespace", func(t *testing.T) {
+		_, err := s.DeleteNamespace(ctx, "ns1")
+		require.NoError(t, err)
+
+		require.Error(t, s.SealNamespace(ctx, "ns1"))
+		ns, err := s.GetNamespaceByPath(ctx, "ns1")
+		require.NoError(t, err)
+		require.NotNil(t, ns)
+		require.True(t, ns.Tainted)
+		require.False(t, c.NamespaceSealed(ns))
+
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			status, err := s.DeleteNamespace(ctx, "ns1")
+			require.NoError(collect, err)
+			require.Empty(collect, status)
+		}, time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("seal core while deleting namespace", func(t *testing.T) {
+		_, err := s.DeleteNamespace(ctx, "ns2")
+		require.NoError(t, err)
+
+		require.NoError(t, TestCoreSeal(c))
+		for _, key := range keys {
+			unsealed, err := TestCoreUnseal(c, key)
+			require.NoError(t, err)
+			if unsealed {
+				break
+			}
+		}
+		require.False(t, c.Sealed())
+
+		s = c.namespaceStore
+		ns, err := s.GetNamespaceByPath(ctx, "ns2")
+		require.NoError(t, err)
+		require.True(t, ns.Tainted)
+
+		_, err = s.DeleteNamespace(ctx, "ns2")
+		require.Error(t, err)
+
+		for _, key := range nsKeys["ns2/"] {
+			unsealed, err := TestNamespaceUnseal(c, ns, key)
+			require.NoError(t, err)
+			if unsealed {
+				break
+			}
+		}
+		require.False(t, c.NamespaceSealed(ns))
+
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			status, err := s.DeleteNamespace(ctx, "ns2")
+			require.NoError(collect, err)
+			require.Empty(collect, status)
+		}, time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("cannot delete currently sealed namespace", func(t *testing.T) {
+		require.NoError(t, s.SealNamespace(ctx, "ns3"))
+
+		_, err := s.DeleteNamespace(ctx, "ns3")
+		require.Error(t, err)
+	})
 }

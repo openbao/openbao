@@ -1,0 +1,178 @@
+// Copyright (c) 2024 OpenBao a Series of LF Projects, LLC
+// SPDX-License-Identifier: MPL-2.0
+
+package bptree
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+// TestTreePersistenceAndLoading tests various tree initialization scenarios
+func TestTreePersistenceAndLoading(t *testing.T) {
+	ctx, storage, _ := initTest(t, nil)
+
+	t.Run("AutomaticTreeCreation", func(t *testing.T) {
+		// InitializeTree should automatically create a new tree when none exists
+		tree, err := InitializeTree(ctx, storage, WithTreeID("auto_tree"))
+		require.NoError(t, err, "Should create new tree automatically")
+		require.NotNil(t, tree)
+
+		// Verify tree is functional
+		err = tree.Insert(ctx, storage, "key1", "value1")
+		require.NoError(t, err, "Should be able to insert into new tree")
+
+		values, found, err := tree.Search(ctx, storage, "key1")
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, []string{"value1"}, values)
+	})
+
+	t.Run("AutomaticTreeLoading", func(t *testing.T) {
+		// Create a tree and add some data
+		tree1, err := InitializeTree(ctx, storage, WithTreeID("persistent_tree"))
+		require.NoError(t, err)
+
+		// Add data to the tree
+		testData := map[string]string{
+			"key1": "value1",
+			"key2": "value2",
+			"key3": "value3",
+		}
+
+		for key, value := range testData {
+			err = tree1.Insert(ctx, storage, key, value)
+			require.NoError(t, err, "Failed to insert %s", key)
+		}
+
+		// Verify data is accessible
+		for key, expectedValue := range testData {
+			values, found, err := tree1.Search(ctx, storage, key)
+			require.NoError(t, err, "Error getting key %s", key)
+			require.True(t, found, "Should find key %s", key)
+			require.Equal(t, []string{expectedValue}, values, "Value mismatch for key %s", key)
+		}
+
+		// Now "restart" by loading the existing tree
+		tree2, err := InitializeTree(ctx, storage, WithTreeID("persistent_tree"))
+		require.NoError(t, err, "Should load existing tree automatically")
+		require.NotNil(t, tree2)
+
+		// Verify all data is still accessible
+		for key, expectedValue := range testData {
+			values, found, err := tree2.Search(ctx, storage, key)
+			require.NoError(t, err, "Error getting key %s", key)
+			require.True(t, found, "Should find key %s after reload", key)
+			require.Equal(t, []string{expectedValue}, values, "Value mismatch for key %s", key)
+		}
+
+		// Verify tree is still functional for new operations
+		err = tree2.Insert(ctx, storage, "key4", "value4")
+		require.NoError(t, err, "Should be able to insert into loaded tree")
+
+		values, found, err := tree2.Search(ctx, storage, "key4")
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, []string{"value4"}, values)
+
+		// Check key4 is available on the original tree as well
+		values, found, err = tree1.Search(ctx, storage, "key4")
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, []string{"value4"}, values, "Key4 should be available on both trees after insert")
+	})
+
+	t.Run("ExplicitTreeLoading", func(t *testing.T) {
+		// First create a tree to load
+		treeID := "explicit_load"
+		tree1, err := InitializeTree(ctx, storage, WithTreeID(treeID))
+		require.NoError(t, err)
+
+		insertKey := "persistent"
+		insertValue := "data"
+		err = tree1.Insert(ctx, storage, insertKey, insertValue)
+		require.NoError(t, err)
+
+		// Now explicitly load it
+		tree2, err := InitializeTree(ctx, storage, WithTreeID(treeID))
+		require.NoError(t, err, "Should load existing tree explicitly")
+		require.NotNil(t, tree2)
+
+		// Verify data is accessible
+		values, found, err := tree2.Search(ctx, storage, insertKey)
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, []string{insertValue}, values)
+	})
+
+	t.Run("MultipleTreesPersistenceIsolation", func(t *testing.T) {
+		// Create multiple trees and verify they maintain isolation after "restart"
+		// Create and populate first tree
+		tree1, err := InitializeTree(ctx, storage, WithTreeID("tree_alpha"))
+		require.NoError(t, err)
+		err = tree1.Insert(ctx, storage, "shared_key", "alpha_value")
+		require.NoError(t, err)
+		err = tree1.Insert(ctx, storage, "alpha_only", "alpha_data")
+		require.NoError(t, err)
+
+		// Create and populate second tree
+		tree2, err := InitializeTree(ctx, storage, WithTreeID("tree_beta"))
+		require.NoError(t, err)
+		err = tree2.Insert(ctx, storage, "shared_key", "beta_value")
+		require.NoError(t, err)
+		err = tree2.Insert(ctx, storage, "beta_only", "beta_data")
+		require.NoError(t, err)
+
+		// "Restart" both trees by loading them
+		reloadedTree1, err := InitializeTree(ctx, storage, WithTreeID("tree_alpha"))
+		require.NoError(t, err)
+		reloadedTree2, err := InitializeTree(ctx, storage, WithTreeID("tree_beta"))
+		require.NoError(t, err)
+
+		// Verify isolation is maintained
+		values, found, err := reloadedTree1.Search(ctx, storage, "shared_key")
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, []string{"alpha_value"}, values, "Tree 1 should have its own value")
+
+		values, found, err = reloadedTree2.Search(ctx, storage, "shared_key")
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, []string{"beta_value"}, values, "Tree 2 should have its own value")
+
+		// Verify tree-specific keys
+		_, found, err = reloadedTree1.Search(ctx, storage, "alpha_only")
+		require.NoError(t, err)
+		require.True(t, found, "Tree 1 should have its specific key")
+
+		_, found, err = reloadedTree1.Search(ctx, storage, "beta_only")
+		require.NoError(t, err)
+		require.False(t, found, "Tree 1 should not have tree 2's key")
+
+		_, found, err = reloadedTree2.Search(ctx, storage, "beta_only")
+		require.NoError(t, err)
+		require.True(t, found, "Tree 2 should have its specific key")
+
+		_, found, err = reloadedTree2.Search(ctx, storage, "alpha_only")
+		require.NoError(t, err)
+		require.False(t, found, "Tree 2 should not have tree 1's key")
+	})
+
+	t.Run("TreeConfigValidation", func(t *testing.T) {
+		// Test various config validation scenarios
+
+		// Nil config should use defaults with InitializeBPlusTree
+		tree, err := InitializeTree(ctx, storage)
+		require.NoError(t, err, "Should accept nil config and use defaults")
+		require.NotNil(t, tree)
+
+		// Invalid order should fail
+		_, err = InitializeTree(ctx, storage, WithTreeID("invalid"), WithOrder(1))
+		require.Error(t, err, "Should fail with invalid order")
+
+		// LoadExistingTree (NewBPlusTree) with empty tree ID should fail
+		_, err = InitializeTree(ctx, storage, WithTreeID(""))
+		require.Error(t, err, "NewBPlusTree should require tree ID")
+	})
+}

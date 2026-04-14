@@ -166,6 +166,9 @@ func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {
 	for _, p := range c.Plugins {
 		results = append(results, p.Validate(sourceFilePath)...)
 	}
+	for _, o := range c.Initialization {
+		results = append(results, o.ValidateUnused(sourceFilePath)...)
+	}
 
 	// Validate plugin_download_behavior
 	if c.PluginDownloadBehavior != "" {

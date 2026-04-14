@@ -3,19 +3,19 @@ sidebar_label: Overview
 description: Learn about OpenBao's plugin system.
 ---
 
-
 # Plugin system
 
-OpenBao supports 3 types of plugins; auth methods, secret engines, and database
-plugins. This concept allows both built-in and external plugins to be treated
-like building blocks. Any plugin can exist at multiple different mount paths.
-Different versions of a plugin may be at each location, with each version differing
-from OpenBao's version.
+OpenBao supports 4 types of plugins; auth methods, secret engines, database
+providers, and Key Management Service (KMS) providers. This concept allows both
+built-in and external plugins to be treated like building blocks. Auth method
+and secrets engine plugin can exist at multiple different mount paths. Different
+versions of a plugin may be at each location, with each version differing from
+OpenBao's version.
 
-A plugin is uniquely identified by its type (one of `secret`, `auth`, or
-`database`), name (e.g. `kv`), and version (e.g `v1.0.0`). An empty version
-implies either the built-in plugin or the single unversioned plugin that can
-be registered.
+A plugin is uniquely identified by its type (one of `secret`, `auth`,
+`database`, or `kms`), name (e.g. `kv`), and version (e.g `v1.0.0`). An empty
+version implies either the built-in plugin or the single unversioned plugin that
+can be registered.
 
 See [Plugin Upgrade Procedure](../upgrading/plugins.mdx#plugin-upgrade-procedure)
 for details on how to upgrade a built-in plugin in-place.
@@ -33,20 +33,31 @@ External plugins are not shipped with OpenBao and require additional operator
 steps to be installed, configured, and registered with OpenBao before they can be
 used.
 
-To run an external plugin, a binary of the plugin is required. Plugin
-binaries can be obtained from the [openbao-plugins](https://github.com/openbao/openbao-plugins) repository
-or they can be [built from source](plugin-development.mdx#building-a-plugin-from-source). 
-OpenBao also supports downloading and managing plugins distributed as OCI (Open
-Container Initiative) images from container registries.  See the [OCI
-Plugin](../configuration/plugins.mdx) configuration reference for complete
-documentation.
+OpenBao's external plugins are completely separate, standalone applications
+that OpenBao executes and communicates with over gRPC. To run an external
+plugin, a binary of the plugin is required. Plugin binaries can be obtained
+from the [openbao-plugins](https://github.com/openbao/openbao-plugins)
+repository or they can be [built from
+source](plugin-development.mdx#building-a-plugin-from-source).
 
-OpenBao's external plugins are completely separate, standalone applications that
-OpenBao executes and communicates with over RPC. Each time an OpenBao secret engine,
-auth method, or database plugin is mounted, a new process is spawned. However,
-plugins can be made to implement [plugin multiplexing](plugin-architecture.mdx#plugin-multiplexing)
-to improve performance. Plugin multiplexing allows plugin processes to be
-reused across all mounts of a given type.
+External plugins can be registered with OpenBao in up to two ways, depending on
+the plugin type:
+
+1. [Declarative plugins](../configuration/plugins.mdx) can be used to register
+   all types of available plugins statically via OpenBao's server configuration
+   file. This is the preferred, modern approach to plugin registration.
+   Additionally, declarative plugins can automatically download plugin binaries
+   from an OCI registry if configured to do so. Plugin types supported by the
+   plugin catalog API registered via declarative plugins are reconciled against
+   the plugin catalog and will show up in API responses as well (see more on the
+   API-driven plugin catalog below).
+
+2. The [API-driven plugin catalog](./plugin-management.mdx) can be used to
+   manage plugins already present on the file system via the API given OpenBao
+   is unsealed. Naturally, these endpoints to not support plugins of type
+   `kms`, which provide Auto-Unseal functionality immediately required at server
+   startup. To manage plugins of this type, use declarative plugins as described
+   above.
 
 ## Plugin versioning
 

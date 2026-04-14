@@ -56,20 +56,21 @@ or it specifies a plugin to automatically register that was manually downloaded.
 
 ```hcl
 plugin "type" "name" {
-  command     = "plugin"
+  command     = "plugin-binary-name"
   version     = "v0.0.0"
-  binary_name = "plugin-binary-name"
   sha256sum   = "sha256-checksum"
   env         = ["MY_ENV=value"]
   args        = ["-some-argument"]
 }
-
 ```
 
 Multiple `plugin` blocks may exist and OCI plugins are downloaded in the order they
 are specified in the configuration file(s). Blocks may share the same `type` and
 `name` but must have different a `version`. This allows for seamless upgrades of
 plugin versions.
+
+(`type` must be one of the pre-defined plugin types available in OpenBao, see
+[plugin system](../plugins/index.mdx) for more information.)
 
 ### Parameters
 

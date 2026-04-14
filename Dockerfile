@@ -9,8 +9,7 @@ COPY LICENSE /licenses/mozilla.txt
 # Create a non-root user to run the software.
 RUN addgroup openbao && adduser -S -G openbao openbao
 
-ARG EXTRA_PACKAGES
-RUN apk add --no-cache ca-certificates libcap su-exec dumb-init tzdata ${EXTRA_PACKAGES}
+RUN apk add --no-cache ca-certificates libcap su-exec dumb-init tzdata gcompat
 
 # The OpenBao binary is built externally in CI and copied into the container
 # build.

@@ -7,6 +7,22 @@ description: |-
 
 # `pkcs11` seal
 
+:::info
+
+This seal is available as an external KMS provider plugin in the
+[openbao-plugins](https://github.com/openbao/openbao-plugins) plugin
+collection. For more information on Auto Unseal plugins, see the [overview
+section](./index.mdx#plugins).
+
+:::
+
+:::warning
+
+This seal remains built-in in OpenBao v2.6.x, but will remain available only as
+an external plugin starting v2.7.0.
+
+:::
+
 The PKCS#11 seal configures OpenBao to use an HSM with PKCS#11 as the auto-unseal
 mechanism. OpenBao's PKCS#11 support is activated by one of the following:
 
@@ -36,9 +52,12 @@ migration of data between nodes may be required.
 
 The following software packages are required for OpenBao:
 
-- PKCS#11 compatible HSM integration library.
-- The cgo-enabled OpenBao binary for your architecture, complete with relevant
-  dynamic libraries such as `glibc`.
+- PKCS#11 compatible HSM integration library including any additional system
+  libraries it requires.
+- A version of libc (likely `glibc` or `musl` with `gcompat`, OpenBao as
+  released upstream is linked against Glibc but works on Musl with `gcompat`).
+- When *not* using the PKCS#11 KMS plugin, a HSM-enabled build of OpenBao with
+  PKCS#11 support compiled in via cgo.
 
 ## `pkcs11` example
 

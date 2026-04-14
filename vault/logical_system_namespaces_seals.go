@@ -52,6 +52,31 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 
 	return []*framework.Path{
 		{
+			Pattern: "namespaces/(?P<path>.+)/seal",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+			Fields: map[string]*framework.FieldSchema{
+				"path": namespacePathSchema,
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Summary:  "Seal a namespace.",
+					Callback: b.handleNamespacesSeal(),
+					Responses: map[int][]framework.Response{
+						http.StatusNoContent: {{
+							Description: http.StatusText(http.StatusNoContent),
+						}},
+					},
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][1]),
+		},
+
+		{
 			Pattern: "namespaces/(?P<path>.+)/unseal",
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
@@ -84,6 +109,23 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][0]),
 			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][1]),
 		},
+	}
+}
+
+// handleNamespacesSeal handles the "/sys/namespaces/<path>/seal" endpoint to seal the namespace.
+func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+
+		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
+			return nil, errors.New("path must not contain /")
+		}
+
+		if err := b.Core.namespaceStore.SealNamespace(ctx, path); err != nil {
+			return handleError(err)
+		}
+
+		return nil, nil
 	}
 }
 

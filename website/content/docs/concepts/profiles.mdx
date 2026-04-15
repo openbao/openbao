@@ -56,7 +56,7 @@ profile run, there is no parallelism, guaranteeing that any request or
 response references always point to data that already exists. Additionally,
 requests are fully synchronous and are not executed in the background.
 
-If request fails unexpectedly, the engine stops immediately and returns an
+If a request fails unexpectedly, the engine stops immediately and returns an
 error to the caller; nothing after that point is attempted.
 
 History of all requests and responses are recorded, though, are not exposed
@@ -331,7 +331,7 @@ request "provision-root-ca" {
 #### `request` source
 
 - `<outer-block>_name` `(string: <initialize_name|flow_name>)` - name of the
-  outer block block to reference. `<outer-block>` is the type of the outer
+  outer block to reference. `<outer-block>` is the type of the outer
   block; for self-init, this is `initialize_name`; for profiles, this is
   `flow_name`.
 - `request_name` `(string: <required>)` - name of the request block inside the
@@ -495,6 +495,74 @@ flow "provision" {
         eval_source = "input"
         field_name = "password"
       }
+    }
+  }
+}
+```
+
+## Example Workflow
+
+The following example Workflow allows generating a password using a pre-existing 
+password policy and saving it directly into a KVv2 engine. 
+Additionally it returns the password to the caller as an output.
+
+```hcl
+input {
+  field "policy" {
+    type = "string"
+    required = true
+  }
+
+  field "mount" {
+    type = "string"
+    required = true
+  }
+
+  field "secret" {
+    type = "string"
+    required = true
+  }
+}
+
+flow "generate-password" {
+  request "generate" {
+    operation = "read"
+    path = {
+      eval_source = "template"
+      eval_type   = "string"
+      template    = "sys/policies/password/{{ .input.policy }}/generate"
+    }
+  }
+
+  request "store" {
+    operation = "update"
+    path = {
+      eval_source = "template"
+      eval_type   = "string"
+      template    = "{{ .input.mount }}/data/{{ .input.secret }}"
+    }
+    data = {
+      data = {
+        "password" = {
+          eval_source    = "response"
+          eval_type      = "string"
+          flow_name      = "generate-password"
+          response_name  = "generate"
+          field_selector = ["data", "password"]
+        }
+      }
+    }
+  }
+}
+
+output {
+  data = {
+    password = {
+      eval_source    = "response"
+      eval_type      = "string"
+      flow_name      = "generate-password"
+      response_name  = "generate"
+      field_selector = ["data", "password"]
     }
   }
 }

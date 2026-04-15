@@ -293,3 +293,52 @@ func pemDecodeHeader(headerValue string) (string, error) {
 	// This is later validated in handleCertHeader in http/logical.go as part of buildLogicalRequestNoAuth
 	return base64.StdEncoding.EncodeToString(block.Bytes), nil
 }
+
+// https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert
+func envoyDecodeHeader(headerValue string) (string, error) {
+	// The Envoy XFCC header value is a comma (",") separated string. Each substring is an XFCC element, which holds
+	// information added by a single proxy. Each XFCC element is a semicolon (";") separated list of key-value pairs.
+	// Each key-value pair is separated by an equal sign ("=").
+	//
+	// Extract only the first (leftmost) XFCC element, which is added by the outermost proxy that terminates the client's TLS connection.
+	//
+	// Example:
+	// x-forwarded-client-cert: Hash=<hash>;Cert="<PEM>";Subject="CN=client,O=example",<other elements from other proxies>
+
+	headerValue += "," // Ensures that also single-element header is terminated by ','.
+	inQuotes := false  // State variable to track if we are currently within quotes.
+	pairStart := 0     // Index of the currently processed key-value pair.
+
+LOOP:
+	for i := 0; i < len(headerValue); i++ {
+		c := headerValue[i]
+
+		if inQuotes {
+			switch c {
+			case '\\':
+				i++ // Skip escaped character.
+			case '"':
+				inQuotes = false
+			}
+			continue
+		}
+
+		switch c {
+		case '"':
+			inQuotes = true
+		case ';', ',':
+			// Now we have the end of a key-value pair: process it.
+			key, value, found := strings.Cut(headerValue[pairStart:i], "=")
+			if found && (strings.EqualFold(key, "Cert") || strings.EqualFold(key, "Chain")) {
+				value = strings.Trim(value, `"`)
+				return url.QueryUnescape(value)
+			}
+			if c == ',' {
+				break LOOP // Stop parsing after the first XFCC element.
+			}
+			pairStart = i + 1 // Move to the next key-value pair.
+		}
+	}
+
+	return "", errors.New("neither Cert nor Chain key found in XFCC header")
+}

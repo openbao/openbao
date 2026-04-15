@@ -30,7 +30,7 @@
     "@mdx-js/react": "^3.1.1",
     "clsx": "^2.1.1",
     "lodash": "^4.18.1",
-    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#f5e06e9c317afe9d6fe114e9500ed4d120ed4fd6",
+    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#2a9b49a1fcd2de89e7e35a1628d5dfd0289d4dd4",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"

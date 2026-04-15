@@ -3147,7 +3147,7 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 
 	var response string
 	switch te.Policies[0] {
-	case responseWrappingPolicyName:
+	case policy.ResponseWrappingPolicyName:
 		response, err = b.responseWrappingUnwrap(unwrapCtx, te, thirdParty)
 	}
 	if err != nil {

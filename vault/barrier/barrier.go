@@ -75,6 +75,10 @@ const (
 	// used by standbys to handle rotations. It also comes into play when
 	// restoring raft snapshots.
 	ShamirKekPath = "core/shamir-kek"
+
+	// SystemBarrierPrefix is the prefix used for the
+	// system logical backend.
+	SystemBarrierPrefix = "sys/"
 )
 
 const (

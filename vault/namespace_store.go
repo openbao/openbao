@@ -615,7 +615,7 @@ func (ns *NamespaceStore) initializeNamespace(ctx context.Context, entry *namesp
 
 // initializeNamespacePolicies loads the default policies for the namespace store.
 func (ns *NamespaceStore) initializeNamespacePolicies(ctx context.Context) error {
-	if err := ns.core.policyStore.loadDefaultPolicies(ctx); err != nil {
+	if err := ns.core.policyStore.LoadDefaultPolicies(ctx); err != nil {
 		return fmt.Errorf("error creating default policies: %w", err)
 	}
 	return nil
@@ -1146,12 +1146,12 @@ func (ns *NamespaceStore) clearNamespacePolicies(ctx context.Context, namespace 
 
 	for _, pol := range policiesToClear {
 		if physicalDeletion {
-			if err := ns.core.policyStore.deletePolicyForce(ctx, pol, policy.PolicyTypeACL); err != nil {
+			if err := ns.core.policyStore.DeletePolicyForce(ctx, pol, policy.PolicyTypeACL); err != nil {
 				ns.logger.Error(fmt.Sprintf("failed to delete policy %q", pol), "namespace", namespace.Path, "error", err.Error())
 				return err
 			}
 		} else {
-			if err := ns.core.policyStore.invalidate(ctx, pol, policy.PolicyTypeACL); err != nil {
+			if err := ns.core.policyStore.Invalidate(ctx, pol, policy.PolicyTypeACL); err != nil {
 				ns.logger.Error(fmt.Sprintf("failed to invalidate policy %q", pol), "namespace", namespace.Path, "error", err.Error())
 				return err
 			}

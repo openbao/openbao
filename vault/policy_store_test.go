@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mockPolicyWithCore(t *testing.T, disableCache bool) (*Core, [][]byte, string, *PolicyStore) {
+func mockPolicyWithCore(t *testing.T, disableCache bool) (*Core, [][]byte, string, *policy.PolicyStore) {
 	conf := &CoreConfig{
 		DisableCache: disableCache,
 	}
@@ -37,7 +37,7 @@ func TestPolicyStore_Root(t *testing.T) {
 	})
 }
 
-func testPolicyRoot(t *testing.T, ps *PolicyStore, ns *namespace.Namespace, expectFound bool) {
+func testPolicyRoot(t *testing.T, ps *policy.PolicyStore, ns *namespace.Namespace, expectFound bool) {
 	// Get should return a special policy
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	p, err := ps.GetPolicy(ctx, "root", policy.PolicyTypeToken)
@@ -93,7 +93,7 @@ func TestPolicyStore_CRUD(t *testing.T) {
 	})
 }
 
-func testPolicyStoreCRUD(t *testing.T, core *Core, shares [][]byte, token string, ps *PolicyStore, ns *namespace.Namespace) {
+func testPolicyStoreCRUD(t *testing.T, core *Core, shares [][]byte, token string, ps *policy.PolicyStore, ns *namespace.Namespace) {
 	testPolicyStoreCRUDOneShot(t, ps, ns)
 
 	// Seal, unseal, and try again.
@@ -110,7 +110,7 @@ func testPolicyStoreCRUD(t *testing.T, core *Core, shares [][]byte, token string
 	testPolicyStoreCRUDOneShot(t, ps, ns)
 }
 
-func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) {
+func testPolicyStoreCRUDOneShot(t *testing.T, ps *policy.PolicyStore, ns *namespace.Namespace) {
 	// Get should return nothing
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	p, err := ps.GetPolicy(ctx, "Dev", policy.PolicyTypeToken)
@@ -207,7 +207,7 @@ func TestPolicyStore_Predefined(t *testing.T) {
 }
 
 // Test predefined policy handling
-func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) {
+func testPolicyStorePredefined(t *testing.T, ps *policy.PolicyStore, ns *namespace.Namespace) {
 	// List should be two elements
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	out, err := ps.ListPolicies(ctx, policy.PolicyTypeACL, true)
@@ -228,8 +228,8 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 	if pCubby == nil {
 		t.Fatal("nil cubby policy")
 	}
-	if pCubby.Raw != responseWrappingPolicy {
-		t.Fatalf("bad: expected\n%s\ngot\n%s\n", responseWrappingPolicy, pCubby.Raw)
+	if pCubby.Raw != policy.ResponseWrappingPolicy {
+		t.Fatalf("bad: expected\n%s\ngot\n%s\n", policy.ResponseWrappingPolicy, pCubby.Raw)
 	}
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.SetPolicy(ctx, pCubby, nil)
@@ -279,7 +279,7 @@ func TestPolicyStore_ACL(t *testing.T) {
 	})
 }
 
-func testPolicyStoreACL(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) {
+func testPolicyStoreACL(t *testing.T, ps *policy.PolicyStore, ns *namespace.Namespace) {
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	pol, _ := policy.ParseACLPolicy(ns, poltesting.ACLPolicy)
 	err := ps.SetPolicy(ctx, pol, nil)
@@ -304,7 +304,7 @@ func testPolicyStoreACL(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) 
 func TestDefaultPolicy(t *testing.T) {
 	ctx := namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace)
 
-	pol, err := policy.ParseACLPolicy(namespace.RootNamespace, defaultPolicy)
+	pol, err := policy.ParseACLPolicy(namespace.RootNamespace, policy.DefaultPolicy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -429,7 +429,7 @@ path "secret/*" {
 `
 
 	// Load the policy through loadACLPolicyNamespaces from the namespace context
-	err = ps.loadACLPolicy(nsCtx, "test-load-policy", testPolicy)
+	err = ps.LoadACLPolicy(nsCtx, "test-load-policy", testPolicy)
 	require.NoError(t, err)
 
 	// Verify the policy exists in the namespace
@@ -497,14 +497,14 @@ func TestPolicyStore_NamespaceStorage(t *testing.T) {
 	assert.Nil(t, rootP, "unexpected policy found in root namespace")
 
 	// Check storage locations
-	nsBarrierView := ps.getACLView(ns)
+	nsBarrierView := ps.GetACLView(ns)
 	require.NotNil(t, nsBarrierView, "expected namespace storage")
 
 	out, err := nsBarrierView.Get(nsCtx, "test-policy")
 	require.NoError(t, err)
 	require.NotNil(t, out, "expected policy in namespace storage")
 
-	rootBarrierView := ps.getACLView(namespace.RootNamespace)
+	rootBarrierView := ps.GetACLView(namespace.RootNamespace)
 	require.NotNil(t, rootBarrierView, "expected root namespace storage")
 
 	rootOut, err := rootBarrierView.Get(ctx, "test-policy")
@@ -828,9 +828,9 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	assert.Contains(t, childP.Raw, `capabilities = ["read", "list", "create"]`)
 
 	// Verify storage locations by directly accessing the barrier views
-	rootView := ps.getACLView(namespace.RootNamespace)
-	parentView := ps.getACLView(parentNS)
-	childView := ps.getACLView(childNS)
+	rootView := ps.GetACLView(namespace.RootNamespace)
+	parentView := ps.GetACLView(parentNS)
+	childView := ps.GetACLView(childNS)
 
 	rootEntry, err := rootView.Get(ctx, "test-nested-policy")
 	require.NoError(t, err)

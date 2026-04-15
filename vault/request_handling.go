@@ -69,7 +69,6 @@ var (
 	DefaultMaxJsonStrings = int64(1000)
 
 	ErrNoApplicablePolicies = errors.New("no applicable policies")
-	ErrPolicyNotExist       = errors.New("policy does not exist")
 
 	// restrictedSysAPIs is the set of `sys/` APIs available only in the root namespace.
 	restrictedSysAPIs = pathmanager.New()
@@ -246,7 +245,7 @@ func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespac
 	for _, policyName := range nsPolicies {
 		policyNSCtx := namespace.ContextWithNamespace(ctx, policyNS)
 		t, err := c.policyStore.GetNonEGPPolicyType(policyNSCtx, policyName)
-		if err != nil && errors.Is(err, ErrPolicyNotExist) {
+		if err != nil && errors.Is(err, policy.ErrPolicyNotExist) {
 			// When we attempt to get a non-EGP policy type, and receive an
 			// explicit error that it doesn't exist (in the type map) we log the
 			// ns/policy and continue without error.
@@ -362,7 +361,7 @@ func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Req
 	var tokenCtx context.Context
 	if len(policyNames) == 1 &&
 		len(policyNames[te.NamespaceID]) == 1 &&
-		policyNames[te.NamespaceID][0] == responseWrappingPolicyName &&
+		policyNames[te.NamespaceID][0] == policy.ResponseWrappingPolicyName &&
 		(strings.HasSuffix(req.Path, "sys/wrapping/unwrap") ||
 			strings.HasSuffix(req.Path, "sys/wrapping/lookup") ||
 			strings.HasSuffix(req.Path, "sys/wrapping/rewrap")) {
@@ -1473,7 +1472,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	if resp != nil &&
 		req.Path == "cubbyhole/response" &&
 		len(te.Policies) == 1 &&
-		te.Policies[0] == responseWrappingPolicyName {
+		te.Policies[0] == policy.ResponseWrappingPolicyName {
 		resp.AddWarning("Reading from 'cubbyhole/response' is deprecated. Please use sys/wrapping/unwrap to unwrap responses, as it provides additional security checks and other benefits.")
 	}
 
@@ -1919,12 +1918,12 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 	// Prevent internal policies from being assigned to tokens. We check
 	// this on auth.Policies including derived ones from Identity before
 	// actually making the token.
-	for _, policy := range allPolicies {
-		if policy == "root" {
+	for _, pol := range allPolicies {
+		if pol == "root" {
 			return false, logical.ErrorResponse("auth methods cannot create root tokens"), logical.ErrInvalidRequest
 		}
-		if slices.Contains(nonAssignablePolicies, policy) {
-			return false, logical.ErrorResponse("cannot assign policy %q", policy), logical.ErrInvalidRequest
+		if slices.Contains(policy.NonAssignablePolicies, pol) {
+			return false, logical.ErrorResponse("cannot assign policy %q", pol), logical.ErrInvalidRequest
 		}
 	}
 

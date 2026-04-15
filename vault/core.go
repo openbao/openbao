@@ -362,7 +362,7 @@ type Core struct {
 	rollback *RollbackManager
 
 	// policy store is used to manage named ACL policies
-	policyStore *PolicyStore
+	policyStore *policy.PolicyStore
 
 	// token store is used to manage authentication tokens
 	tokenStore *TokenStore
@@ -1108,7 +1108,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	c.configureAuditBackends(conf.AuditBackends)
 
 	// UI
-	uiStoragePrefix := systemBarrierPrefix + "ui"
+	uiStoragePrefix := barrier.SystemBarrierPrefix + "ui"
 	c.uiConfig = NewUIConfig(conf.EnableUI, physical.NewView(c.physical, uiStoragePrefix), barrier.NewView(c.barrier, uiStoragePrefix))
 
 	// Listeners
@@ -4171,4 +4171,32 @@ func (c *Core) performPolicyChecks(ctx context.Context, acl *policy.ACL, te *log
 	ret.Allowed = true
 
 	return ret
+}
+
+// setupPolicyStore is used to initialize the policy store
+// when the vault is being unsealed.
+func (c *Core) setupPolicyStore(ctx context.Context) error {
+	// Create the policy store
+	var err error
+	sysView := &dynamicSystemView{core: c}
+	psLogger := c.baseLogger.Named("policy")
+	c.AddLogger(psLogger)
+	c.policyStore, err = policy.NewPolicyStore(ctx, c, c.systemBarrierView, sysView, psLogger)
+	if err != nil {
+		return err
+	}
+
+	// Ensure that the default policy exists, and if not, create it
+	if err := c.policyStore.LoadDefaultPolicies(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// teardownPolicyStore is used to reverse setupPolicyStore
+// when the vault is being sealed.
+func (c *Core) teardownPolicyStore() error {
+	c.policyStore = nil
+	return nil
 }

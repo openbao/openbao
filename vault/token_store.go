@@ -880,7 +880,7 @@ func (ts *TokenStore) teardown() {
 }
 
 func (ts *TokenStore) baseView(ns *namespace.Namespace) barrier.View {
-	return ts.core.NamespaceView(ns).SubView(systemBarrierPrefix + tokenSubPath)
+	return ts.core.NamespaceView(ns).SubView(barrier.SystemBarrierPrefix + tokenSubPath)
 }
 
 func (ts *TokenStore) idView(ns *namespace.Namespace) barrier.View {
@@ -4349,9 +4349,9 @@ func (ts *TokenStore) resolveTokenPolicies(ctx context.Context, req *logical.Req
 	}
 
 	// Prevent internal policies from being assigned to tokens
-	for _, policy := range finalPolicies {
-		if slices.Contains(nonAssignablePolicies, policy) {
-			return logical.ErrorResponse(fmt.Sprintf("cannot assign policy %q", policy)), nil, nil
+	for _, pol := range finalPolicies {
+		if slices.Contains(policy.NonAssignablePolicies, pol) {
+			return logical.ErrorResponse(fmt.Sprintf("cannot assign policy %q", pol)), nil, nil
 		}
 	}
 

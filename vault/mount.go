@@ -42,10 +42,6 @@ const (
 	// backendBarrierPrefix is the prefix to the UUID used in the
 	// barrier view for the backends.
 	backendBarrierPrefix = "logical/"
-
-	// systemBarrierPrefix is the prefix used for the
-	// system logical backend.
-	systemBarrierPrefix = "sys/"
 )
 
 // DeprecationStatus errors
@@ -2221,9 +2217,9 @@ func (c *Core) mountEntryView(me *routing.MountEntry) (barrier.View, error) {
 
 	switch me.Type {
 	case routing.MountTypeSystem, routing.MountTypeNSSystem:
-		return c.NamespaceView(me.Namespace).SubView(systemBarrierPrefix), nil
+		return c.NamespaceView(me.Namespace).SubView(barrier.SystemBarrierPrefix), nil
 	case routing.MountTypeToken:
-		return c.NamespaceView(me.Namespace).SubView(systemBarrierPrefix + tokenSubPath), nil
+		return c.NamespaceView(me.Namespace).SubView(barrier.SystemBarrierPrefix + tokenSubPath), nil
 	}
 
 	switch me.Table {

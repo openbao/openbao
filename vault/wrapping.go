@@ -22,6 +22,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/policy"
 )
 
 const (
@@ -460,7 +461,7 @@ func IsWrappingToken(te *logical.TokenEntry) bool {
 		return false
 	}
 
-	if te.Policies[0] != responseWrappingPolicyName {
+	if te.Policies[0] != policy.ResponseWrappingPolicyName {
 		return false
 	}
 

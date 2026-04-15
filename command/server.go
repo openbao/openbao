@@ -1782,10 +1782,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		core.Logger().Error("failed to initialize: unexpected error occurred", "error", err)
 		return fmt.Errorf("self-initialization failed: %w", err)
 	}
-	// Write "started" marker to storage (self-init started).
-	if err := core.MarkSelfInitStarted(ctx); err != nil {
-		return fmt.Errorf("failed to mark self-init started: %w", err)
-	}
+
 	// Wait for leadership; if we don't get the leadership status, it means
 	// that someone has brought up more than one node at a time and we've
 	// lost the race. This is bad and they should reset storage and ensure
@@ -1796,6 +1793,10 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	}
 	if !isLeader {
 		return fmt.Errorf("initializing node did not win leadership election: ensure only one active, voting node during initialization")
+	}
+	// Write "started" marker to storage (self-init started).
+	if err := core.MarkSelfInitStarted(ctx); err != nil {
+		return fmt.Errorf("failed to mark self-init started: %w", err)
 	}
 	// Now perform the component requests of self-initialization.
 	if err := c.doSelfInit(core, config, init.RootToken); err != nil {

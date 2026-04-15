@@ -159,6 +159,11 @@ Workflows can be executed by calling the relevant API endpoint. Outside of the
 name of the workflow, all remaining input fields are controlled by the workflow
 author.
 
+:::warning
+Workflow traces contain the OpenBao token and additional secrets used within the workflow.  
+Secure this endpoint by using an ACL policy.
+:::
+
 | Method | Path                                    | Requires Authentication | Full Request Information |
 | :----- | :-------------------------------------- | :---------------------- | :----------------------- |
 | `POST` | `/sys/workflows/execute/:path`          | yes                     | no                       |

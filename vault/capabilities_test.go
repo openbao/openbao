@@ -13,7 +13,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/policy"
-	policy_testing "github.com/openbao/openbao/vault/policy/testing"
+	"github.com/openbao/openbao/vault/policy/policytest"
 )
 
 func TestCapabilities_DerivedPolicies(t *testing.T) {
@@ -210,7 +210,7 @@ func TestCapabilities(t *testing.T) {
 	}
 
 	// Create a policy
-	policy, _ := policy.ParseACLPolicy(namespace.RootNamespace, policy_testing.ACLPolicy)
+	policy, _ := policy.ParseACLPolicy(namespace.RootNamespace, policytest.ACLPolicy)
 	err = c.policyStore.SetPolicy(ctx, policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)

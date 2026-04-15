@@ -12,7 +12,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/policy"
-	poltesting "github.com/openbao/openbao/vault/policy/testing"
+	"github.com/openbao/openbao/vault/policy/policytest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -140,7 +140,7 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *policy.Store, ns *namespace.Na
 
 	// Set should work
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
-	pol, _ := policy.ParseACLPolicy(ns, poltesting.ACLPolicy)
+	pol, _ := policy.ParseACLPolicy(ns, policytest.ACLPolicy)
 	err = ps.SetPolicy(ctx, pol, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -281,13 +281,13 @@ func TestPolicyStore_ACL(t *testing.T) {
 
 func testPolicyStoreACL(t *testing.T, ps *policy.Store, ns *namespace.Namespace) {
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
-	pol, _ := policy.ParseACLPolicy(ns, poltesting.ACLPolicy)
+	pol, _ := policy.ParseACLPolicy(ns, policytest.ACLPolicy)
 	err := ps.SetPolicy(ctx, pol, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
-	pol, _ = policy.ParseACLPolicy(ns, poltesting.ACLPolicy2)
+	pol, _ = policy.ParseACLPolicy(ns, policytest.ACLPolicy2)
 	err = ps.SetPolicy(ctx, pol, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -298,7 +298,7 @@ func testPolicyStoreACL(t *testing.T, ps *policy.Store, ns *namespace.Namespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	poltesting.TestLayeredACL(t, acl, ns)
+	policytest.TestLayeredACL(t, acl, ns)
 }
 
 func TestDefaultPolicy(t *testing.T) {
@@ -482,7 +482,7 @@ func TestPolicyStore_NamespaceStorage(t *testing.T) {
 
 	// Create policy in namespace
 	nsCtx := namespace.ContextWithNamespace(ctx, ns)
-	pol, _ := policy.ParseACLPolicy(ns, poltesting.ACLPolicy)
+	pol, _ := policy.ParseACLPolicy(ns, policytest.ACLPolicy)
 	pol.Name = "test-policy"
 	require.NoError(t, ps.SetPolicy(nsCtx, pol, nil))
 

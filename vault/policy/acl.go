@@ -38,7 +38,7 @@ type ACL struct {
 	root *namespace.Namespace
 }
 
-type PolicyCheckOpts struct {
+type CheckOpts struct {
 	RootPrivsRequired bool
 	Unauth            bool
 }
@@ -93,7 +93,7 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 		}
 
 		switch policy.Type {
-		case PolicyTypeACL:
+		case TypeACL:
 		default:
 			return nil, errors.New("unable to parse policy (wrong type)")
 		}

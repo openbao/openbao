@@ -62,18 +62,18 @@ const (
 // policy type. However, if we do so, we should build the cache lazily,
 // which both improves memory consumption with large number of policies and
 // better supports namespace sealing.
-type PolicyType uint32
+type Type uint32
 
 const (
-	PolicyTypeACL PolicyType = iota
+	TypeACL Type = iota
 
 	// Triggers a lookup in the map to figure out if ACL or RGP
-	PolicyTypeToken PolicyType = iota + 2
+	TypeToken Type = iota + 2
 )
 
-func (p PolicyType) String() string {
+func (p Type) String() string {
 	switch p {
-	case PolicyTypeACL:
+	case TypeACL:
 		return "acl"
 	}
 
@@ -99,7 +99,7 @@ type Policy struct {
 	CASRequired bool
 	Paths       []*PathRules `hcl:"-"`
 	Raw         string
-	Type        PolicyType
+	Type        Type
 	Templated   bool
 	Expiration  time.Time
 	Modified    time.Time
@@ -284,7 +284,7 @@ func ParseACLPolicyWithTemplating(ns *namespace.Namespace, rules string, perform
 	// Create the initial policy and store the raw text of the rules
 	p := Policy{
 		Raw:       rules,
-		Type:      PolicyTypeACL,
+		Type:      TypeACL,
 		Namespace: ns,
 	}
 	if err := hcl.DecodeObject(&p, list); err != nil {

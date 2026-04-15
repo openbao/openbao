@@ -361,7 +361,7 @@ func (ij *invalidationJob) Execute() error {
 	case strings.HasPrefix(key, namespaceStoreSubPath):
 		ij.fatal = true
 		return ij.namespaceInvalidation(ctx)
-	case strings.HasPrefix(key, barrier.SystemBarrierPrefix+policy.PolicyACLSubPath):
+	case strings.HasPrefix(key, barrier.SystemBarrierPrefix+policy.ACLSubPath):
 		// Policy invalidation is not fatal as it contains a LRU cache: we
 		// know removal is strict and it is only potentially preloading an
 		// entry which may err.
@@ -462,8 +462,8 @@ func (ij *invalidationJob) namespaceInvalidation(ctx context.Context) error {
 }
 
 func (ij *invalidationJob) policyInvalidation(ctx context.Context) error {
-	policyPath := strings.TrimPrefix(ij.nsKey, barrier.SystemBarrierPrefix+policy.PolicyACLSubPath)
-	return ij.im.core.policyStore.Invalidate(ctx, policyPath, policy.PolicyTypeACL)
+	policyPath := strings.TrimPrefix(ij.nsKey, barrier.SystemBarrierPrefix+policy.ACLSubPath)
+	return ij.im.core.policyStore.Invalidate(ctx, policyPath, policy.TypeACL)
 }
 
 func (ij *invalidationJob) quotaInvalidation(ctx context.Context) error {

@@ -3185,7 +3185,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	}
 
 	for _, p := range te.Policies {
-		policy, err := ts.core.policyStore.GetPolicy(ctx, p, policy.PolicyTypeToken)
+		policy, err := ts.core.policyStore.GetPolicy(ctx, p, policy.TypeToken)
 		if err != nil {
 			return logical.ErrorResponse("could not look up policy %s", p), nil
 		}

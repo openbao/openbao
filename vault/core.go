@@ -362,7 +362,7 @@ type Core struct {
 	rollback *RollbackManager
 
 	// policy store is used to manage named ACL policies
-	policyStore *policy.PolicyStore
+	policyStore *policy.Store
 
 	// token store is used to manage authentication tokens
 	tokenStore *TokenStore
@@ -2064,7 +2064,7 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 	}
 
 	// Verify that this operation is allowed
-	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.PolicyCheckOpts{
+	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.CheckOpts{
 		RootPrivsRequired: true,
 	})
 	if !authResults.Allowed {
@@ -4143,7 +4143,7 @@ func (c *Core) UnsafeCrossNamespaceIdentity() bool {
 	return c.unsafeCrossNamespaceIdentity
 }
 
-func (c *Core) performPolicyChecks(ctx context.Context, acl *policy.ACL, te *logical.TokenEntry, req *logical.Request, inEntity *identity.Entity, opts *policy.PolicyCheckOpts) *policy.AuthResults {
+func (c *Core) performPolicyChecks(ctx context.Context, acl *policy.ACL, te *logical.TokenEntry, req *logical.Request, inEntity *identity.Entity, opts *policy.CheckOpts) *policy.AuthResults {
 	ret := new(policy.AuthResults)
 
 	// First, perform normal ACL checks if requested. The only time no ACL
@@ -4181,7 +4181,7 @@ func (c *Core) setupPolicyStore(ctx context.Context) error {
 	sysView := &dynamicSystemView{core: c}
 	psLogger := c.baseLogger.Named("policy")
 	c.AddLogger(psLogger)
-	c.policyStore, err = policy.NewPolicyStore(ctx, c, c.systemBarrierView, sysView, psLogger)
+	c.policyStore, err = policy.NewStore(ctx, c, c.systemBarrierView, sysView, psLogger)
 	if err != nil {
 		return err
 	}

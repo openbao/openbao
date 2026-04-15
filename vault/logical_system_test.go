@@ -3401,7 +3401,7 @@ func TestSystemBackend_rawDelete(t *testing.T) {
 	// set the policy!
 	p := &policy.Policy{
 		Name:      "test",
-		Type:      policy.PolicyTypeACL,
+		Type:      policy.TypeACL,
 		Namespace: namespace.RootNamespace,
 	}
 	err := c.policyStore.SetPolicy(namespace.RootContext(t.Context()), p, nil)
@@ -3428,7 +3428,7 @@ func TestSystemBackend_rawDelete(t *testing.T) {
 
 	// Policy should be gone
 	c.policyStore.PurgeCache()
-	out, err := c.policyStore.GetPolicy(namespace.RootContext(t.Context()), "test", policy.PolicyTypeToken)
+	out, err := c.policyStore.GetPolicy(namespace.RootContext(t.Context()), "test", policy.TypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

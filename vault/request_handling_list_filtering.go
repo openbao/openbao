@@ -111,7 +111,7 @@ func (c *Core) filterListResponse(ctx context.Context, req *logical.Request, una
 			continue
 		}
 
-		authResults := c.performPolicyChecks(ctx, acl, te, checkReq, entity, &policy.PolicyCheckOpts{
+		authResults := c.performPolicyChecks(ctx, acl, te, checkReq, entity, &policy.CheckOpts{
 			Unauth:            unauth,
 			RootPrivsRequired: rootPath,
 		})

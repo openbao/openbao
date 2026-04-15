@@ -28,7 +28,7 @@ var ErrPolicyNotExist = errors.New("policy does not exist")
 const (
 	// policySubPath is the sub-path used for the policy store view. This is
 	// nested under the system view.
-	PolicyACLSubPath = "policy/"
+	ACLSubPath = "policy/"
 
 	// policyCacheSize is the number of policies that are kept cached
 	policyCacheSize = 1024
@@ -151,9 +151,9 @@ var (
 	}
 )
 
-// PolicyStore is used to provide durable storage of policy, and to
+// Store is used to provide durable storage of policy, and to
 // manage ACLs associated with them.
-type PolicyStore struct {
+type Store struct {
 	core core
 
 	tokenPoliciesLRU *lru.TwoQueueCache[string, *Policy]
@@ -167,14 +167,14 @@ type PolicyStore struct {
 	logger log.Logger
 }
 
-// PolicyEntry is used to store a policy by name
-type PolicyEntry struct {
+// Entry is used to store a policy by name
+type Entry struct {
 	Version     int
 	DataVersion int
 	CASRequired bool
 	Raw         string
 	Templated   bool
-	Type        PolicyType
+	Type        Type
 	Expiration  time.Time
 	Modified    time.Time
 }
@@ -185,10 +185,10 @@ type core interface {
 	NamespaceView(*namespace.Namespace) barrier.View
 }
 
-// NewPolicyStore creates a new PolicyStore that is backed
+// NewStore creates a new PolicyStore that is backed
 // using a given view. It used used to durable store and manage named policy.
-func NewPolicyStore(ctx context.Context, core core, baseView barrier.View, system logical.SystemView, logger log.Logger) (*PolicyStore, error) {
-	ps := &PolicyStore{
+func NewStore(ctx context.Context, core core, baseView barrier.View, system logical.SystemView, logger log.Logger) (*Store, error) {
+	ps := &Store{
 		modifyLocks: locksutil.CreateLocks(),
 		logger:      logger,
 		core:        core,
@@ -202,7 +202,7 @@ func NewPolicyStore(ctx context.Context, core core, baseView barrier.View, syste
 	return ps, nil
 }
 
-func (ps *PolicyStore) lockWithUnlock(ctx context.Context) func() {
+func (ps *Store) lockWithUnlock(ctx context.Context) func() {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil || ns == nil {
 		ns = namespace.RootNamespace
@@ -215,7 +215,7 @@ func (ps *PolicyStore) lockWithUnlock(ctx context.Context) func() {
 	return lock.Unlock
 }
 
-func (ps *PolicyStore) rLockWithUnlock(ctx context.Context) func() {
+func (ps *Store) rLockWithUnlock(ctx context.Context) func() {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil || ns == nil {
 		ns = namespace.RootNamespace
@@ -228,7 +228,7 @@ func (ps *PolicyStore) rLockWithUnlock(ctx context.Context) func() {
 	return lock.RUnlock
 }
 
-func (ps *PolicyStore) InvalidateNamespace(ctx context.Context, uuid string) {
+func (ps *Store) InvalidateNamespace(ctx context.Context, uuid string) {
 	// Skip invalidation if no cache exists.
 	if ps.tokenPoliciesLRU == nil {
 		return
@@ -243,7 +243,7 @@ func (ps *PolicyStore) InvalidateNamespace(ctx context.Context, uuid string) {
 	}
 }
 
-func (ps *PolicyStore) Invalidate(ctx context.Context, name string, policyType PolicyType) error {
+func (ps *Store) Invalidate(ctx context.Context, name string, policyType Type) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
@@ -258,7 +258,7 @@ func (ps *PolicyStore) Invalidate(ctx context.Context, name string, policyType P
 	// We don't lock before removing from the LRU here because the worst that
 	// can happen is we load again if something since added it
 	switch policyType {
-	case PolicyTypeACL:
+	case TypeACL:
 		if ps.tokenPoliciesLRU != nil {
 			ps.tokenPoliciesLRU.Remove(index)
 		}
@@ -271,7 +271,7 @@ func (ps *PolicyStore) Invalidate(ctx context.Context, name string, policyType P
 }
 
 // SetPolicy is used to create or update the given policy
-func (ps *PolicyStore) SetPolicy(ctx context.Context, p *Policy, casVersion *int) error {
+func (ps *Store) SetPolicy(ctx context.Context, p *Policy, casVersion *int) error {
 	defer metrics.MeasureSince([]string{"policy", "set_policy"}, time.Now())
 	if p == nil {
 		return errors.New("nil policy passed in for storage")
@@ -288,7 +288,7 @@ func (ps *PolicyStore) SetPolicy(ctx context.Context, p *Policy, casVersion *int
 	return ps.setPolicyInternal(ctx, p, casVersion)
 }
 
-func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy, casVersion *int) error {
+func (ps *Store) setPolicyInternal(ctx context.Context, p *Policy, casVersion *int) error {
 	defer ps.lockWithUnlock(ctx)()
 
 	// Get the appropriate view based on policy type and namespace
@@ -301,7 +301,7 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy, casVers
 		return fmt.Errorf("unable to get existing policy for check-and-set: %w", err)
 	}
 
-	var existing PolicyEntry
+	var existing Entry
 	if existingEntry != nil {
 		if err := existingEntry.DecodeJSON(&existing); err != nil {
 			return fmt.Errorf("failed to decode existing policy: %w", err)
@@ -324,7 +324,7 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy, casVers
 
 	// Create the entry
 	p.DataVersion = existing.DataVersion + 1
-	entry, err := logical.StorageEntryJSON(p.Name, &PolicyEntry{
+	entry, err := logical.StorageEntryJSON(p.Name, &Entry{
 		Version:     2,
 		DataVersion: p.DataVersion,
 		CASRequired: p.CASRequired,
@@ -342,7 +342,7 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy, casVers
 	index := ps.cacheKey(p.Namespace, p.Name)
 
 	switch p.Type {
-	case PolicyTypeACL:
+	case TypeACL:
 		if err := view.Put(ctx, entry); err != nil {
 			return fmt.Errorf("failed to persist policy: %w", err)
 		}
@@ -360,9 +360,9 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy, casVers
 // GetNonEGPPolicyType returns a policy's type.
 // It will return an error if the policy doesn't exist in the store or isn't
 // an ACL.
-func (ps *PolicyStore) GetNonEGPPolicyType(ctx context.Context, name string) (*PolicyType, error) {
+func (ps *Store) GetNonEGPPolicyType(ctx context.Context, name string) (*Type, error) {
 	// We only support ACL policies at the moment.
-	policy, err := ps.GetPolicy(ctx, name, PolicyTypeACL)
+	policy, err := ps.GetPolicy(ctx, name, TypeACL)
 	if err != nil {
 		return nil, err
 	}
@@ -375,22 +375,22 @@ func (ps *PolicyStore) GetNonEGPPolicyType(ctx context.Context, name string) (*P
 }
 
 // GetACLView returns the ACL view for the given namespace
-func (ps *PolicyStore) GetACLView(ns *namespace.Namespace) barrier.View {
-	return ps.core.NamespaceView(ns).SubView(barrier.SystemBarrierPrefix + PolicyACLSubPath)
+func (ps *Store) GetACLView(ns *namespace.Namespace) barrier.View {
+	return ps.core.NamespaceView(ns).SubView(barrier.SystemBarrierPrefix + ACLSubPath)
 }
 
 // getBarrierView returns the appropriate barrier view for the given namespace and policy type.
 // Currently, this only supports ACL policies, so it delegates to getACLView.
-func (ps *PolicyStore) getBarrierView(ns *namespace.Namespace, _ PolicyType) barrier.View {
+func (ps *Store) getBarrierView(ns *namespace.Namespace, _ Type) barrier.View {
 	return ps.GetACLView(ns)
 }
 
 // GetPolicy is used to fetch the named policy
-func (ps *PolicyStore) GetPolicy(ctx context.Context, name string, policyType PolicyType) (*Policy, error) {
+func (ps *Store) GetPolicy(ctx context.Context, name string, policyType Type) (*Policy, error) {
 	return ps.switchedGetPolicy(ctx, name, policyType, true)
 }
 
-func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, policyType PolicyType, grabLock bool) (*Policy, error) {
+func (ps *Store) switchedGetPolicy(ctx context.Context, name string, policyType Type, grabLock bool) (*Policy, error) {
 	defer metrics.MeasureSince([]string{"policy", "get_policy"}, time.Now())
 
 	ns, err := namespace.FromContext(ctx)
@@ -406,10 +406,10 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	var view barrier.View
 
 	switch policyType {
-	case PolicyTypeACL, PolicyTypeToken:
+	case TypeACL, TypeToken:
 		cache = ps.tokenPoliciesLRU
 		view = ps.GetACLView(ns)
-		policyType = PolicyTypeACL
+		policyType = TypeACL
 	}
 
 	if cache != nil {
@@ -431,11 +431,11 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	}
 
 	// Special case the root policy
-	if policyType == PolicyTypeACL && name == "root" {
+	if policyType == TypeACL && name == "root" {
 		p := &Policy{
 			Name:      "root",
 			Namespace: ns,
-			Type:      PolicyTypeACL,
+			Type:      TypeACL,
 		}
 		if cache != nil {
 			cache.Add(index, p)
@@ -486,7 +486,7 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 		return nil, nil
 	}
 
-	policyEntry := new(PolicyEntry)
+	policyEntry := new(Entry)
 	pol := new(Policy)
 	err = out.DecodeJSON(policyEntry)
 	if err != nil {
@@ -514,7 +514,7 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	pol.Modified = policyEntry.Modified
 	pol.Namespace = ns
 	switch policyEntry.Type {
-	case PolicyTypeACL:
+	case TypeACL:
 		// Parse normally
 		p, err := ParseACLPolicy(ns, policyEntry.Raw)
 		if err != nil {
@@ -537,14 +537,14 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 }
 
 // ListPolicies is used to list the available policies
-func (ps *PolicyStore) ListPolicies(ctx context.Context, policyType PolicyType, omitNonAssignable bool) ([]string, error) {
+func (ps *Store) ListPolicies(ctx context.Context, policyType Type, omitNonAssignable bool) ([]string, error) {
 	return ps.ListPoliciesWithPrefix(ctx, policyType, "", omitNonAssignable)
 }
 
 // ListPoliciesWithPrefix is used to list policies with the given prefix in the specified namespace
 // omitNonAssignable dictates whether result list
 // should also contain the nonAssignable policies
-func (ps *PolicyStore) ListPoliciesWithPrefix(ctx context.Context, policyType PolicyType, prefix string, omitNonAssignable bool) ([]string, error) {
+func (ps *Store) ListPoliciesWithPrefix(ctx context.Context, policyType Type, prefix string, omitNonAssignable bool) ([]string, error) {
 	defer metrics.MeasureSince([]string{"policy", "list_policies"}, time.Now())
 
 	ns, err := namespace.FromContext(ctx)
@@ -562,7 +562,7 @@ func (ps *PolicyStore) ListPoliciesWithPrefix(ctx context.Context, policyType Po
 	// key names.
 	var keys []string
 	switch policyType {
-	case PolicyTypeACL:
+	case TypeACL:
 		keys, err = logical.CollectKeysWithPrefix(ctx, view, prefix)
 	default:
 		return nil, fmt.Errorf("unknown policy type %q", policyType)
@@ -578,7 +578,7 @@ func (ps *PolicyStore) ListPoliciesWithPrefix(ctx context.Context, policyType Po
 }
 
 // DeletePolicy is used to delete the named policy
-func (ps *PolicyStore) DeletePolicy(ctx context.Context, name string, policyType PolicyType) error {
+func (ps *Store) DeletePolicy(ctx context.Context, name string, policyType Type) error {
 	return ps.switchedDeletePolicy(ctx, name, policyType, true, false)
 }
 
@@ -586,11 +586,11 @@ func (ps *PolicyStore) DeletePolicy(ctx context.Context, name string, policyType
 // default or a singleton. It's used for invalidations or namespace deletion
 // where we internally need to actually remove a policy that the user normally
 // isn't allowed to remove.
-func (ps *PolicyStore) DeletePolicyForce(ctx context.Context, name string, policyType PolicyType) error {
+func (ps *Store) DeletePolicyForce(ctx context.Context, name string, policyType Type) error {
 	return ps.switchedDeletePolicy(ctx, name, policyType, true, true)
 }
 
-func (ps *PolicyStore) switchedDeletePolicy(ctx context.Context, name string, policyType PolicyType, physicalDeletion, force bool) error {
+func (ps *Store) switchedDeletePolicy(ctx context.Context, name string, policyType Type, physicalDeletion, force bool) error {
 	defer metrics.MeasureSince([]string{"policy", "delete_policy"}, time.Now())
 
 	ns, err := namespace.FromContext(ctx)
@@ -610,7 +610,7 @@ func (ps *PolicyStore) switchedDeletePolicy(ctx context.Context, name string, po
 	view := ps.getBarrierView(ns, policyType)
 
 	switch policyType {
-	case PolicyTypeACL:
+	case TypeACL:
 		if !force {
 			if slices.Contains(immutablePolicies, name) {
 				return fmt.Errorf("cannot delete %q policy", name)
@@ -638,7 +638,7 @@ func (ps *PolicyStore) switchedDeletePolicy(ctx context.Context, name string, po
 
 // ACL is used to return an ACL which is built using the
 // named policies and pre-fetched policies if given.
-func (ps *PolicyStore) ACL(ctx context.Context, entity *identity.Entity, policyNames map[string][]string, additionalPolicies ...*Policy) (*ACL, error) {
+func (ps *Store) ACL(ctx context.Context, entity *identity.Entity, policyNames map[string][]string, additionalPolicies ...*Policy) (*ACL, error) {
 	var allPolicies []*Policy
 
 	// Fetch the named policies
@@ -652,7 +652,7 @@ func (ps *PolicyStore) ACL(ctx context.Context, entity *identity.Entity, policyN
 		}
 		policyCtx := namespace.ContextWithNamespace(ctx, policyNS)
 		for _, nsPolicyName := range nsPolicyNames {
-			p, err := ps.GetPolicy(policyCtx, nsPolicyName, PolicyTypeToken)
+			p, err := ps.GetPolicy(policyCtx, nsPolicyName, TypeToken)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get policy: %w", err)
 			}
@@ -668,7 +668,7 @@ func (ps *PolicyStore) ACL(ctx context.Context, entity *identity.Entity, policyN
 	var fetchedGroups bool
 	var groups []*identity.Group
 	for i, pol := range allPolicies {
-		if pol.Type == PolicyTypeACL && pol.Templated {
+		if pol.Type == TypeACL && pol.Templated {
 			if !fetchedGroups {
 				fetchedGroups = true
 				if entity != nil {
@@ -699,14 +699,14 @@ func (ps *PolicyStore) ACL(ctx context.Context, entity *identity.Entity, policyN
 
 // LoadACLPolicy is used to load default ACL policies in a specific
 // namespace.
-func (ps *PolicyStore) LoadACLPolicy(ctx context.Context, policyName, policyText string) error {
+func (ps *Store) LoadACLPolicy(ctx context.Context, policyName, policyText string) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
 	}
 
 	// Check if the pol already exists
-	pol, err := ps.GetPolicy(ctx, policyName, PolicyTypeACL)
+	pol, err := ps.GetPolicy(ctx, policyName, TypeACL)
 	if err != nil {
 		return fmt.Errorf("error fetching %s policy from store: %w", policyName, err)
 	}
@@ -727,20 +727,20 @@ func (ps *PolicyStore) LoadACLPolicy(ctx context.Context, policyName, policyText
 
 	cas := &pol.DataVersion
 	pol.Name = policyName
-	pol.Type = PolicyTypeACL
+	pol.Type = TypeACL
 	return ps.setPolicyInternal(ctx, pol, cas)
 }
 
-func (ps *PolicyStore) sanitizeName(name string) string {
+func (ps *Store) sanitizeName(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
 }
 
-func (ps *PolicyStore) cacheKey(ns *namespace.Namespace, name string) string {
+func (ps *Store) cacheKey(ns *namespace.Namespace, name string) string {
 	return path.Join(ns.UUID, name)
 }
 
 // LoadDefaultPolicies loads default policies for the namespace in the provided context
-func (ps *PolicyStore) LoadDefaultPolicies(ctx context.Context) error {
+func (ps *Store) LoadDefaultPolicies(ctx context.Context) error {
 	// Load the default policy into the namespace
 	if err := ps.LoadACLPolicy(ctx, defaultPolicyName, DefaultPolicy); err != nil {
 		return fmt.Errorf("failed to load default policy: %w", err)
@@ -754,6 +754,6 @@ func (ps *PolicyStore) LoadDefaultPolicies(ctx context.Context) error {
 	return nil
 }
 
-func (ps *PolicyStore) PurgeCache() {
+func (ps *Store) PurgeCache() {
 	ps.tokenPoliciesLRU.Purge()
 }

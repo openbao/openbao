@@ -2442,7 +2442,7 @@ func (b *SystemBackend) handleDisableAuth(ctx context.Context, req *logical.Requ
 }
 
 // handlePoliciesList handles /sys/policy/ and /sys/policies/<type> endpoints to provide the enabled policies
-func (b *SystemBackend) handlePoliciesList(policyType policy.PolicyType) framework.OperationFunc {
+func (b *SystemBackend) handlePoliciesList(policyType policy.Type) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		prefix := ""
 		if _, present := data.Schema["name"]; present {
@@ -2459,7 +2459,7 @@ func (b *SystemBackend) handlePoliciesList(policyType policy.PolicyType) framewo
 		}
 
 		switch policyType {
-		case policy.PolicyTypeACL:
+		case policy.TypeACL:
 			if ns.ID == namespace.RootNamespaceID && prefix == "" {
 				policies = append(policies, "root")
 			}
@@ -2477,7 +2477,7 @@ func (b *SystemBackend) handlePoliciesList(policyType policy.PolicyType) framewo
 }
 
 // handlePoliciesRead handles the "/sys/policy/<name>" and "/sys/policies/<type>/<name>" endpoints to read a policy
-func (b *SystemBackend) handlePoliciesRead(policyType policy.PolicyType) framework.OperationFunc {
+func (b *SystemBackend) handlePoliciesRead(policyType policy.Type) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		name := data.Get("name").(string)
 
@@ -2493,7 +2493,7 @@ func (b *SystemBackend) handlePoliciesRead(policyType policy.PolicyType) framewo
 		respData := readPolicyResponse(pol)
 
 		// If the request is from sys/policy/ we handle backwards compatibility
-		if policyType == policy.PolicyTypeACL && strings.HasPrefix(req.Path, "policy") {
+		if policyType == policy.TypeACL && strings.HasPrefix(req.Path, "policy") {
 			respData["rules"] = respData["policy"]
 			delete(respData, "policy")
 		}
@@ -2524,7 +2524,7 @@ func readPolicyResponse(policy *policy.Policy) map[string]interface{} {
 }
 
 // handlePoliciesSet handles the "/sys/policy/<name>" and "/sys/policies/<type>/<name>" endpoints to set a policy
-func (b *SystemBackend) handlePoliciesSet(policyType policy.PolicyType) framework.OperationFunc {
+func (b *SystemBackend) handlePoliciesSet(policyType policy.Type) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		var resp *logical.Response
 
@@ -2548,7 +2548,7 @@ func (b *SystemBackend) handlePoliciesSet(policyType policy.PolicyType) framewor
 		}
 
 		pol.Raw = data.Get("policy").(string)
-		if pol.Raw == "" && policyType == policy.PolicyTypeACL && strings.HasPrefix(req.Path, "policy") {
+		if pol.Raw == "" && policyType == policy.TypeACL && strings.HasPrefix(req.Path, "policy") {
 			pol.Raw = data.Get("rules").(string)
 			if resp == nil {
 				resp = &logical.Response{}
@@ -2578,7 +2578,7 @@ func (b *SystemBackend) handlePoliciesSet(policyType policy.PolicyType) framewor
 		}
 
 		switch policyType {
-		case policy.PolicyTypeACL:
+		case policy.TypeACL:
 			p, err := policy.ParseACLPolicy(ns, pol.Raw)
 			if err != nil {
 				return handleError(err)
@@ -2609,7 +2609,7 @@ func (b *SystemBackend) handlePoliciesSet(policyType policy.PolicyType) framewor
 	}
 }
 
-func (b *SystemBackend) handlePoliciesDelete(policyType policy.PolicyType) framework.OperationFunc {
+func (b *SystemBackend) handlePoliciesDelete(policyType policy.Type) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		name := data.Get("name").(string)
 
@@ -2834,7 +2834,7 @@ func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc 
 		}
 
 		// Get policies list
-		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, policy.PolicyTypeACL, prefix, true)
+		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, policy.TypeACL, prefix, true)
 		if err != nil {
 			return nil, err
 		}
@@ -2851,7 +2851,7 @@ func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc 
 		// Get detailed information for each policy
 		policyInfos := make(map[string]interface{})
 		for _, policyName := range policies {
-			policy, err := b.Core.policyStore.GetPolicy(ctx, policyName, policy.PolicyTypeACL)
+			policy, err := b.Core.policyStore.GetPolicy(ctx, policyName, policy.TypeACL)
 			if err != nil {
 				continue
 			}

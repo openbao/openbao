@@ -1138,7 +1138,7 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent,
 }
 
 func (ns *NamespaceStore) clearNamespacePolicies(ctx context.Context, namespace *namespace.Namespace, physicalDeletion bool) error {
-	policiesToClear, err := ns.core.policyStore.ListPolicies(ctx, policy.PolicyTypeACL, false)
+	policiesToClear, err := ns.core.policyStore.ListPolicies(ctx, policy.TypeACL, false)
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace policies", "namespace", namespace.Path, "error", err.Error())
 		return err
@@ -1146,12 +1146,12 @@ func (ns *NamespaceStore) clearNamespacePolicies(ctx context.Context, namespace 
 
 	for _, pol := range policiesToClear {
 		if physicalDeletion {
-			if err := ns.core.policyStore.DeletePolicyForce(ctx, pol, policy.PolicyTypeACL); err != nil {
+			if err := ns.core.policyStore.DeletePolicyForce(ctx, pol, policy.TypeACL); err != nil {
 				ns.logger.Error(fmt.Sprintf("failed to delete policy %q", pol), "namespace", namespace.Path, "error", err.Error())
 				return err
 			}
 		} else {
-			if err := ns.core.policyStore.Invalidate(ctx, pol, policy.PolicyTypeACL); err != nil {
+			if err := ns.core.policyStore.Invalidate(ctx, pol, policy.TypeACL); err != nil {
 				ns.logger.Error(fmt.Sprintf("failed to invalidate policy %q", pol), "namespace", namespace.Path, "error", err.Error())
 				return err
 			}

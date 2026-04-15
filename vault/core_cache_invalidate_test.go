@@ -305,7 +305,7 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 			testCore_Invalidate_handleRequest(t, ctx, c, req)
 
 			// 2. Manipulate Storage
-			pol, err := c.policyStore.GetPolicy(ctx, "test-policy", policy.PolicyTypeACL)
+			pol, err := c.policyStore.GetPolicy(ctx, "test-policy", policy.TypeACL)
 			require.NoError(t, err)
 
 			clone := pol.ShallowClone()
@@ -327,7 +327,7 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 			c.invalidateSynchronous(storagePath)
 
 			// 4. Check cache was properly invalidated
-			updatedPolicy, err := c.policyStore.GetPolicy(ctx, "test-policy", policy.PolicyTypeACL)
+			updatedPolicy, err := c.policyStore.GetPolicy(ctx, "test-policy", policy.TypeACL)
 			require.NoError(t, err)
 
 			require.Equal(t, clone.Expiration, updatedPolicy.Expiration)

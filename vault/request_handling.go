@@ -257,7 +257,7 @@ func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespac
 		}
 
 		switch *t {
-		case policy.PolicyTypeACL:
+		case policy.TypeACL:
 			if policyApplicationMode != groupPolicyApplicationModeWithinNamespaceHierarchy {
 				// Group policy application mode isn't set to enforce
 				// the namespace hierarchy, so apply all the ACLs,
@@ -534,7 +534,7 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 
 	// Check the standard non-root ACLs. Return the token entry if it's not
 	// allowed so we can decrement the use count.
-	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.PolicyCheckOpts{
+	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.CheckOpts{
 		Unauth:            unauth,
 		RootPrivsRequired: rootPath,
 	})

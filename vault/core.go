@@ -2438,28 +2438,42 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 			c.logger.Warn("post-unseal upgrade seal keys failed", "error", err)
 		}
 
-		// Start a periodic but infrequent heartbeat to detect auto-seal backend outages at runtime rather than being
-		// surprised by this at the next need to unseal.
+		// Start a periodic but infrequent heartbeat to detect auto-seal backend
+		// outages at runtime rather than being surprised by this at the next
+		// need to unseal.
 		seal.StartHealthCheck()
 	}
 
-	// This is intentionally the last block in this function. We want to allow
-	// writes just before allowing client requests, to ensure everything has
-	// been set up properly before any writes can have happened.
-	//
-	// Use a small temporary worker pool to run postUnsealFuncs in parallel
+	// This is intentionally (almost) the last block in this function. We want
+	// to allow writes just before allowing client requests, to ensure
+	// everything has been set up properly before any writes happen.
+	c.runPostUnsealFuncs(c.postUnsealFuncs)
+
+	if api.ReadBaoVariable(EnvVaultDisableLocalAuthMountEntities) != "" {
+		c.logger.Warn("disabling entities for local auth mounts through env var", "env", EnvVaultDisableLocalAuthMountEntities)
+	}
+
+	c.loginMFABackend.usedCodes = zcache.New[string, struct{}](0, 30*time.Second)
+	c.loginMFABackend.rateLimits = zcache.New[string, uint32](0, 30*time.Second)
+
+	c.logger.Info("post-unseal setup complete")
+	return nil
+}
+
+// runPostUnsealFuncs uses a small temporary worker pool to run postUnsealFuncs in parallel.
+func (c *Core) runPostUnsealFuncs(postUnsealFuncs []func()) {
 	postUnsealFuncConcurrency := runtime.NumCPU() * 2
 	if v := api.ReadBaoVariable("BAO_POSTUNSEAL_FUNC_CONCURRENCY"); v != "" {
 		pv, err := strconv.Atoi(v)
 		if err != nil || pv < 1 {
-			c.logger.Warn("invalid value for VAULT_POSTUNSEAL_FUNC_CURRENCY, must be a positive integer", "error", err, "value", pv)
+			c.logger.Warn("invalid value for BAO_POSTUNSEAL_FUNC_CURRENCY, must be a positive integer", "error", err, "value", pv)
 		} else {
 			postUnsealFuncConcurrency = pv
 		}
 	}
 	if postUnsealFuncConcurrency <= 1 {
 		// Out of paranoia, keep the old logic for parallism=1
-		for _, v := range c.postUnsealFuncs {
+		for _, v := range postUnsealFuncs {
 			v()
 		}
 	} else {
@@ -2473,23 +2487,13 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 				}
 			}()
 		}
-		for _, v := range c.postUnsealFuncs {
+		for _, v := range postUnsealFuncs {
 			wg.Add(1)
 			jobs <- v
 		}
 		wg.Wait()
 		close(jobs)
 	}
-
-	if api.ReadBaoVariable(EnvVaultDisableLocalAuthMountEntities) != "" {
-		c.logger.Warn("disabling entities for local auth mounts through env var", "env", EnvVaultDisableLocalAuthMountEntities)
-	}
-
-	c.loginMFABackend.usedCodes = zcache.New[string, struct{}](0, 30*time.Second)
-	c.loginMFABackend.rateLimits = zcache.New[string, uint32](0, 30*time.Second)
-
-	c.logger.Info("post-unseal setup complete")
-	return nil
 }
 
 // preSeal is invoked before the barrier is sealed, allowing

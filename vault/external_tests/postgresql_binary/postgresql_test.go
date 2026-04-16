@@ -200,3 +200,73 @@ func TestPostgreSQL_ParallelInit(t *testing.T) {
 	t.Logf("State: total=%d active=%d sealed=%d", len(nodes), active, sealed)
 	require.Equal(t, len(nodes), active, "all nodes active")
 }
+
+func TestPostgreSQL_Upgrade(t *testing.T) {
+	t.Parallel()
+
+	binary := api.ReadBaoVariable("BAO_BINARY")
+	if binary == "" {
+		t.Skip("missing $BAO_BINARY")
+	}
+
+	psql := docker.NewPostgreSQLStorage(t, "")
+	defer func() { require.NoError(t, psql.Cleanup()) }()
+
+	// We do not set binary here as we want to use the last published image.
+	opts := &docker.DockerClusterOptions{
+		ImageRepo: "quay.io/openbao/openbao",
+		ImageTag:  "latest",
+		Storage:   psql,
+		ClusterOptions: testcluster.ClusterOptions{
+			ClusterName: "psql-upgrade",
+			NumCores:    3,
+		},
+	}
+
+	cluster := docker.NewTestDockerCluster(t, opts)
+	defer cluster.Cleanup()
+
+	nodes := cluster.Nodes()
+	client := nodes[0].APIClient()
+
+	t.Logf("token: %v vs %v", client.Token(), cluster.GetRootToken())
+
+	// Create some data to test persistence.
+	err := client.Sys().Mount("kv", &api.MountInput{
+		Type: "kv",
+		Options: map[string]string{
+			"version": "2",
+		},
+	})
+	require.NoError(t, err, "failed to mount kv")
+
+	_, err = client.KVv2("kv").Put(t.Context(), "a/key", map[string]interface{}{
+		"value": "known-value",
+	})
+	require.NoError(t, err, "failed writing k/v key")
+
+	// Now upgrade the nodes one at a time.
+	opts.VaultBinary = binary
+	for index, node := range cluster.ClusterNodes {
+		func() {
+			ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
+			defer cancel()
+
+			err = node.Upgrade(ctx, opts)
+			require.NoError(t, err, "failed upgrading node %v", index)
+		}()
+	}
+
+	// Find active leader.
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
+	defer cancel()
+	activeIdx, err := testcluster.WaitForActiveNode(ctx, cluster)
+	require.NoError(t, err)
+
+	client = nodes[activeIdx].APIClient()
+
+	// Ensure we can read the secret.
+	value, err := client.KVv2("kv").Get(t.Context(), "a/key")
+	require.NoError(t, err, "failed reading k/v key")
+	require.Equal(t, value.Data["value"], "known-value")
+}

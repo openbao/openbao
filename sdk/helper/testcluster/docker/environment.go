@@ -623,6 +623,21 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		"disable_hostname": true,
 	}
 
+	// Set up audit devices.
+	if opts.VaultNodeConfig != nil && opts.VaultNodeConfig.AuditLogStdout {
+		vaultCfg["audit"] = map[string]any{
+			"file": map[string]any{
+				"stdout": map[string]any{
+					"description": "stdout audit log device added for testing",
+					"options": map[string]any{
+						"path":    "stdout",
+						"log_raw": "true",
+					},
+				},
+			},
+		}
+	}
+
 	// Setup storage. Default is raft.
 	storageType := "raft"
 	storageOpts := map[string]interface{}{

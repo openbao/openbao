@@ -477,8 +477,14 @@ func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combin
 	switch seal.BarrierType() {
 	case vaultseal.WrapperTypeShamir:
 		if useTestSeal {
+			ns, err := namespace.FromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+
 			testseal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 			testseal.SetCore(sm.core)
+			testseal.SetMetaPrefix(NamespaceStoragePathPrefix(ns))
 			cfg, err := seal.BarrierConfig(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("failed to setup test barrier config: %w", err)
@@ -531,7 +537,7 @@ func (sm *SealManager) AuthenticateRootKey(ctx context.Context, ns *namespace.Na
 		return ErrNotSealable
 	}
 
-	rootKey, err := sm.unsealKeyToRootKey(ctx, seal, combinedKey, false, false)
+	rootKey, err := sm.unsealKeyToRootKey(ctx, seal, combinedKey, true, false)
 	if err != nil {
 		return fmt.Errorf("unable to authenticate: %w", err)
 	}

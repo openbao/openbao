@@ -295,11 +295,10 @@ type Core struct {
 	// conditions.
 	shutdownDoneCh *atomic.Value
 
-	// generateRootProgress holds the shares until we reach enough
-	// to verify the root key
-	generateRootConfig   *GenerateRootConfig
-	generateRootProgress [][]byte
-	generateRootLock     sync.Mutex
+	// namespaceRootGens holds the shares for each namespace
+	// until we reach enough to verify the root key.
+	namespaceRootGens    map[string]*rootTokenGeneration
+	namespaceRootGenLock sync.RWMutex
 
 	// These variables holds the config and shares we have until we reach
 	// enough to verify the appropriate root key. Note that the same lock is
@@ -945,6 +944,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
 		allowUnauthedWorkflows:         conf.AllowUnauthenticatedWorkflows,
 		unsafeRelativePaths:            conf.UnsafeRelativePaths,
+		namespaceRootGens:              make(map[string]*rootTokenGeneration),
 	}
 
 	c.standby.Store(true)

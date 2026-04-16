@@ -572,7 +572,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		n.DataVolumeName = vol.Volume.Name
 		n.cleanupVolume = func() {
 			_, _ = n.DockerAPI.VolumeRemove(ctx, vol.Volume.Name, docker.VolumeRemoveOptions{
-				Force: false,
+				Force: true,
 			})
 		}
 	}
@@ -822,6 +822,40 @@ func (n *DockerClusterNode) Pause(ctx context.Context) error {
 	return err
 }
 
+func (n *DockerClusterNode) Upgrade(ctx context.Context, opts *DockerClusterOptions) error {
+	n.Stop()
+
+	tag, err := n.Cluster.setupImage(ctx, opts)
+	if err != nil {
+		return fmt.Errorf("error setting up image: %w", err)
+	}
+
+	n.ImageTag = tag
+	n.WorkDir = filepath.Join(n.Cluster.tmpDir, n.NodeID+"-upgrade")
+	n.Logger = n.Cluster.Logger.Named(n.NodeID + "-upgrade")
+
+	if err := os.MkdirAll(n.WorkDir, 0o755); err != nil {
+		return err
+	}
+
+	if err := n.Start(ctx, opts); err != nil {
+		return fmt.Errorf("failed to start node: %w", err)
+	}
+
+	nodeIndex := -1
+	for idx, node := range n.Cluster.ClusterNodes {
+		if node == n {
+			nodeIndex = idx
+			break
+		}
+	}
+	if nodeIndex == -1 {
+		return fmt.Errorf("unable to find node in cluster: %v -> %v", n, n.Cluster.ClusterNodes)
+	}
+
+	return testcluster.UnsealNode(ctx, n.Cluster, nodeIndex)
+}
+
 func (n *DockerClusterNode) AddNetworkDelay(ctx context.Context, delay time.Duration, targetIP string) error {
 	ip := net.ParseIP(targetIP)
 	if ip == nil {
@@ -949,6 +983,7 @@ type DockerClusterOptions struct {
 	NetworkName string
 	ImageRepo   string
 	ImageTag    string
+	TagSuffix   string
 	CA          *testcluster.CA
 	VaultBinary string
 	Args        []string
@@ -1150,9 +1185,15 @@ func (dc *DockerCluster) setupImage(ctx context.Context, opts *DockerClusterOpti
 		return sourceTag, nil
 	}
 
-	suffix := "testing"
+	suffix := opts.ClusterName
+	if opts.ClusterName == "" {
+		suffix = "testing"
+	}
 	if sha := os.Getenv("COMMIT_SHA"); sha != "" {
-		suffix = sha
+		suffix += "-" + sha
+	}
+	if opts.TagSuffix != "" {
+		suffix += "-" + opts.TagSuffix
 	}
 	tag := sourceTag + "-" + suffix
 	if _, ok := dc.builtTags[tag]; ok {

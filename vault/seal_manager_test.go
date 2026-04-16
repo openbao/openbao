@@ -267,11 +267,11 @@ func TestSealManager_UnsealBarrier(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, b.Sealed())
 
-	unsealed, err := c.sealManager.unsealFragment(ctx, ns, b, keyShares[0])
+	unsealed, err := c.sealManager.UnsealNamespace(ctx, ns, keyShares[0])
 	require.NoError(t, err)
 	require.False(t, unsealed)
 
-	unsealed, err = c.sealManager.unsealFragment(ctx, ns, b, keyShares[1])
+	unsealed, err = c.sealManager.UnsealNamespace(ctx, ns, keyShares[1])
 	require.NoError(t, err)
 	require.True(t, unsealed)
 	require.False(t, b.Sealed())

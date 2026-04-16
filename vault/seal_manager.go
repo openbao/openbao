@@ -313,12 +313,24 @@ func (sm *SealManager) SealStatus(ctx context.Context, ns *namespace.Namespace) 
 	}, nil
 }
 
+// UnsealNamespace unseals the barrier of the given namespace
+// using provided key shares.
+func (sm *SealManager) UnsealNamespace(ctx context.Context, ns *namespace.Namespace, key []byte) (bool, error) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	barrier := sm.namespaceBarrier(ns.Path)
+	if barrier == nil {
+		return false, ErrNotSealable
+	}
+
+	return sm.unsealFragment(ctx, ns, barrier, key)
+}
+
 // unsealFragment verifies and records one part of the unseal shares,
 // and attempts to unseal the namespace.
 func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespace, b barrier.SecurityBarrier, key []byte) (bool, error) {
 	sm.logger.Debug("namespace unseal key supplied")
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
 
 	// Check if already unsealed
 	if !b.Sealed() {

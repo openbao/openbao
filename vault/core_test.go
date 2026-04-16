@@ -396,8 +396,8 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 		t.Fatal("should be sealed")
 	}
 
-	if prog, _ := c.SecretProgress(true); prog != 0 {
-		t.Fatalf("bad progress: %d", prog)
+	if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != 0 {
+		t.Fatalf("bad progress: %d", len(info.Parts))
 	}
 
 	for i := range 5 {
@@ -415,15 +415,15 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 			if !unseal {
 				t.Fatal("should be unsealed")
 			}
-			if prog, _ := c.SecretProgress(true); prog != 0 {
-				t.Fatalf("bad progress: %d", prog)
+			if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != 0 {
+				t.Fatalf("bad progress: %d", len(info.Parts))
 			}
 		} else {
 			if unseal {
 				t.Fatal("should not be unsealed")
 			}
-			if prog, _ := c.SecretProgress(true); prog != i+1 {
-				t.Fatalf("bad progress: %d", prog)
+			if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != i+1 {
+				t.Fatalf("bad progress: %d", len(info.Parts))
 			}
 		}
 	}
@@ -575,8 +575,8 @@ func TestCore_Unseal_Single(t *testing.T) {
 		t.Fatal("should be sealed")
 	}
 
-	if prog, _ := c.SecretProgress(true); prog != 0 {
-		t.Fatalf("bad progress: %d", prog)
+	if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != 0 {
+		t.Fatalf("bad progress: %d", len(info.Parts))
 	}
 
 	unseal, err := TestCoreUnseal(c, res.SecretShares[0])
@@ -587,8 +587,8 @@ func TestCore_Unseal_Single(t *testing.T) {
 	if !unseal {
 		t.Fatal("should be unsealed")
 	}
-	if prog, _ := c.SecretProgress(true); prog != 0 {
-		t.Fatalf("bad progress: %d", prog)
+	if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != 0 {
+		t.Fatalf("bad progress: %d", len(info.Parts))
 	}
 
 	if c.Sealed() {

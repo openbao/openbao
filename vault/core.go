@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -289,9 +288,6 @@ type Core struct {
 	// release the stateLock. This channel is marked atomic to prevent race
 	// conditions.
 	shutdownDoneCh *atomic.Value
-
-	// unlockInfo has the keys provided to Unseal until the threshold number of parts is available, as well as the operation nonce
-	unlockInfo *unlockInformation
 
 	// generateRootProgress holds the shares until we reach enough
 	// to verify the root key
@@ -1387,28 +1383,10 @@ func (c *Core) NamespaceSealed(ns *namespace.Namespace) bool {
 	return c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path).Sealed()
 }
 
-// SecretProgress returns the number of keys provided so far. Lock
-// should only be false if the caller is already holding the read
-// statelock (such as calls originating from switchedLockHandleRequest).
-func (c *Core) SecretProgress(lock bool) (int, string) {
-	if lock {
-		c.stateLock.RLock()
-		defer c.stateLock.RUnlock()
-	}
-	switch c.unlockInfo {
-	case nil:
-		return 0, ""
-	default:
-		return len(c.unlockInfo.Parts), c.unlockInfo.Nonce
-	}
-}
-
 // ResetUnsealProcess removes the current unlock parts from memory, to reset
 // the unsealing process
 func (c *Core) ResetUnsealProcess() {
-	c.stateLock.Lock()
-	defer c.stateLock.Unlock()
-	c.unlockInfo = nil
+	c.sealManager.ResetUnsealProcess(namespace.RootNamespaceUUID)
 }
 
 func (c *Core) UnsealMigrate(key []byte) (bool, error) {
@@ -1428,29 +1406,28 @@ func (c *Core) Unseal(key []byte) (bool, error) {
 // target threshold.
 //
 // The provided key should be a recovery key fragment if the seal
-// is an autoseal, or a regular seal key fragment for shamir.  In
+// is an autoseal, or a regular seal key fragment for shamir. In
 // migration scenarios "seal" in the preceding sentence refers to
 // the migration seal in c.migrationInfo.seal.
 //
 // We use getUnsealKey to work out if we have enough fragments,
-// and if we don't have enough we return early.  Otherwise we get
+// and if we don't have enough we return early. Otherwise we get
 // back the combined key.
 //
 // For shamir the combined key is used to decrypt the root key
-// read from storage.  For autoseal the combined key isn't used
+// read from storage. For autoseal the combined key isn't used
 // except to verify that the stored recovery key matches.
 //
 // In migration scenarios a side-effect of unsealing is that
 // the members of c.migrationInfo are populated (excluding
-// .seal, which must already be populated before unseal is called.)
+// .seal, which must already be populated before unseal is called).
 func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	defer metrics.MeasureSince([]string{"core", "unseal"}, time.Now())
 
 	c.stateLock.Lock()
 	defer c.stateLock.Unlock()
 
-	ctx := context.Background()
-
+	ctx := namespace.RootContext(context.Background())
 	if migrate && c.migrationInfo == nil {
 		return errors.New("can't perform a seal migration, no migration seal found")
 	}
@@ -1479,16 +1456,6 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 		return ErrNotInit
 	}
 
-	// Verify the key length
-	min, max := c.barrier.KeyLength()
-	max += shamir.ShareOverhead
-	if len(key) < min {
-		return &ErrInvalidKey{fmt.Sprintf("key is shorter than minimum %d bytes", min)}
-	}
-	if len(key) > max {
-		return &ErrInvalidKey{fmt.Sprintf("key is longer than maximum %d bytes", max)}
-	}
-
 	// Check if already unsealed
 	if !c.Sealed() {
 		return nil
@@ -1500,17 +1467,11 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 		sealToUse = c.migrationInfo.seal
 	}
 
-	newKey, err := c.recordUnsealPart(key)
-	if !newKey || err != nil {
-		return err
-	}
-
-	// getUnsealKey returns either a recovery key (in the case of an autoseal)
-	// or an unseal key (new-style shamir).
-	combinedKey, err := c.getUnsealKey(ctx, sealToUse)
+	combinedKey, err := c.sealManager.unsealFragment(ctx, namespace.RootNamespace, sealToUse, c.barrier, key)
 	if err != nil || combinedKey == nil {
 		return err
 	}
+
 	if migrate {
 		c.migrationInfo.unsealKey = combinedKey
 	}
@@ -1518,10 +1479,12 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	if c.isRaftUnseal() {
 		return c.unsealWithRaft(combinedKey)
 	}
-	rootKey, err := c.unsealKeyToRootKeyPreUnseal(ctx, sealToUse, combinedKey)
+
+	rootKey, err := c.sealManager.unsealKeyToRootKey(ctx, sealToUse, combinedKey, false, true)
 	if err != nil {
 		return err
 	}
+
 	return c.unsealInternal(ctx, rootKey)
 }
 
@@ -1579,7 +1542,7 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 			}
 			if keyringFound && len(rootKey) == 0 {
 				var err error
-				rootKey, err = c.unsealKeyToRootKeyPreUnseal(ctx, c.seal, combinedKey)
+				rootKey, err = c.sealManager.unsealKeyToRootKey(ctx, c.seal, combinedKey, false, true)
 				if err != nil {
 					c.logger.Error("failed to read root key", "error", err)
 					return
@@ -1597,92 +1560,6 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 	}()
 
 	return nil
-}
-
-// recordUnsealPart takes in a key fragment, and returns true if it's a new fragment.
-func (c *Core) recordUnsealPart(key []byte) (bool, error) {
-	// Check if we already have this piece
-	if c.unlockInfo != nil {
-		for _, existing := range c.unlockInfo.Parts {
-			if subtle.ConstantTimeCompare(existing, key) == 1 {
-				return false, nil
-			}
-		}
-	} else {
-		uuid, err := uuid.GenerateUUID()
-		if err != nil {
-			return false, err
-		}
-		c.unlockInfo = &unlockInformation{
-			Nonce: uuid,
-		}
-	}
-
-	// Store this key
-	c.unlockInfo.Parts = append(c.unlockInfo.Parts, key)
-	return true, nil
-}
-
-// getUnsealKey uses key fragments recorded by recordUnsealPart and
-// returns the combined key if the key share threshold is met.
-// If the key fragments are part of a recovery key, also verify that
-// it matches the stored recovery key on disk.
-func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
-	var config *SealConfig
-	var err error
-
-	raftInfo := c.raftInfo.Load()
-
-	switch {
-	case seal.RecoveryKeySupported():
-		config, err = seal.RecoveryConfig(ctx)
-	case raftInfo != nil:
-		// Ignore follower's seal config and refer to leader's barrier
-		// configuration.
-		config = raftInfo.leaderBarrierConfig
-	default:
-		config, err = seal.BarrierConfig(ctx)
-	}
-	if err != nil {
-		return nil, err
-	}
-	if config == nil {
-		return nil, errors.New("failed to obtain seal/recovery configuration")
-	}
-
-	// Check if we don't have enough keys to unlock, proceed through the rest of
-	// the call only if we have met the threshold
-	if len(c.unlockInfo.Parts) < config.SecretThreshold {
-		if c.logger.IsDebug() {
-			c.logger.Debug("cannot unseal, not enough keys", "keys", len(c.unlockInfo.Parts), "threshold", config.SecretThreshold, "nonce", c.unlockInfo.Nonce)
-		}
-		return nil, nil
-	}
-
-	defer func() {
-		c.unlockInfo = nil
-	}()
-
-	// Recover the split key. recoveredKey is the shamir combined
-	// key, or the single provided key if the threshold is 1.
-	var unsealKey []byte
-	if config.SecretThreshold == 1 {
-		unsealKey = make([]byte, len(c.unlockInfo.Parts[0]))
-		copy(unsealKey, c.unlockInfo.Parts[0])
-	} else {
-		unsealKey, err = shamir.Combine(c.unlockInfo.Parts)
-		if err != nil {
-			return nil, &ErrInvalidKey{fmt.Sprintf("failed to compute combined key: %v", err)}
-		}
-	}
-
-	if seal.RecoveryKeySupported() {
-		if err := seal.VerifyRecoveryKey(ctx, unsealKey); err != nil {
-			return nil, &ErrInvalidKey{fmt.Sprintf("failed to verify recovery key: %v", err)}
-		}
-	}
-
-	return unsealKey, nil
 }
 
 // sealMigrated must be called with the stateLock held. It returns true if
@@ -2802,77 +2679,6 @@ func (c *Core) adjustSealConfigDuringMigration(existBarrierSealConfig, existReco
 
 		newRecoveryConfig := existBarrierSealConfig.Clone()
 		c.seal.SetCachedRecoveryConfig(newRecoveryConfig)
-	}
-}
-
-func (c *Core) unsealKeyToRootKeyPostUnseal(ctx context.Context, combinedKey []byte) ([]byte, error) {
-	return c.unsealKeyToRootKey(ctx, c.seal, combinedKey, true, false)
-}
-
-func (c *Core) unsealKeyToRootKeyPreUnseal(ctx context.Context, seal Seal, combinedKey []byte) ([]byte, error) {
-	return c.unsealKeyToRootKey(ctx, seal, combinedKey, false, true)
-}
-
-// unsealKeyToRootKey takes a key provided by the user, either a recovery key
-// if using an autoseal or an unseal key with Shamir. It returns a nil error
-// if the key is valid and an error otherwise. It also returns the root key
-// that can be used to unseal the barrier.
-// If useTestSeal is true, seal will not be modified; this is used when not
-// invoked as part of an unseal process; In shamir case the combinedKey
-// will be set in the seal, which means subsequent attempts to use the seal
-// to read the root key will succeed, assuming combinedKey is valid.
-// If allowMissing is true, a failure to find the root key in storage results
-// in a nil error and a nil root key being returned.
-func (c *Core) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []byte, useTestSeal bool, allowMissing bool) ([]byte, error) {
-	switch seal.BarrierType() {
-	case vaultseal.WrapperTypeShamir:
-		if useTestSeal {
-			testseal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
-			testseal.SetCore(c)
-			cfg, err := seal.BarrierConfig(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to setup test barrier config: %w", err)
-			}
-			testseal.SetCachedBarrierConfig(cfg)
-			seal = testseal
-		}
-
-		shamirWrapper, err := seal.GetShamirWrapper()
-		if err != nil {
-			return nil, err
-		}
-		err = shamirWrapper.SetAesGcmKeyBytes(combinedKey)
-		if err != nil {
-			return nil, &ErrInvalidKey{fmt.Sprintf("failed to setup unseal key: %v", err)}
-		}
-		storedKeys, err := seal.GetStoredKeys(ctx)
-		if storedKeys == nil && err == nil && allowMissing {
-			return nil, nil
-		}
-		if err == nil && len(storedKeys) != 1 {
-			err = fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
-		}
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
-		}
-		return storedKeys[0], nil
-	default:
-		if err := seal.VerifyRecoveryKey(ctx, combinedKey); err != nil {
-			return nil, fmt.Errorf("recovery key verification failed: %w", err)
-		}
-
-		storedKeys, err := seal.GetStoredKeys(ctx)
-		if storedKeys == nil && err == nil && allowMissing {
-			return nil, nil
-		}
-
-		if err == nil && len(storedKeys) != 1 {
-			err = fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
-		}
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
-		}
-		return storedKeys[0], nil
 	}
 }
 

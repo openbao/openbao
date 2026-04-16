@@ -235,7 +235,7 @@ func (sm *SealManager) ResetUnsealProcess(nsUUID string) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	delete(sm.unlockInformationByNamespace, nsUUID)
+	sm.unlockInformationByNamespace[nsUUID] = nil
 }
 
 // NamespaceUnlockInformation returns the unlock information
@@ -319,37 +319,16 @@ func (sm *SealManager) UnsealNamespace(ctx context.Context, ns *namespace.Namesp
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
+	sm.logger.Debug("namespace unseal key supplied")
+
 	barrier := sm.namespaceBarrier(ns.Path)
 	if barrier == nil {
 		return false, ErrNotSealable
 	}
 
-	return sm.unsealFragment(ctx, ns, barrier, key)
-}
-
-// unsealFragment verifies and records one part of the unseal shares,
-// and attempts to unseal the namespace.
-func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespace, b barrier.SecurityBarrier, key []byte) (bool, error) {
-	sm.logger.Debug("namespace unseal key supplied")
-
 	// Check if already unsealed
-	if !b.Sealed() {
+	if !barrier.Sealed() {
 		return true, nil
-	}
-
-	// Verify the key length
-	min, max := b.KeyLength()
-	max += shamir.ShareOverhead
-	if len(key) < min {
-		return false, &ErrInvalidKey{fmt.Sprintf("key is shorter than minimum %d bytes", min)}
-	}
-	if len(key) > max {
-		return false, &ErrInvalidKey{fmt.Sprintf("key is longer than maximum %d bytes", max)}
-	}
-
-	newKey, err := sm.recordUnsealPart(ns, key)
-	if !newKey || err != nil {
-		return false, err
 	}
 
 	seal := sm.sealByNamespace[ns.UUID]
@@ -357,9 +336,7 @@ func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespa
 		return false, ErrNotSealable
 	}
 
-	// getUnsealKey returns either a recovery key (in the case of an autoseal)
-	// or an unseal key (new-style shamir).
-	combinedKey, err := sm.getUnsealKey(ctx, seal, ns)
+	combinedKey, err := sm.unsealFragment(ctx, ns, seal, barrier, key)
 	if err != nil || combinedKey == nil {
 		return false, err
 	}
@@ -370,7 +347,7 @@ func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespa
 	}
 
 	// Attempt to unseal
-	if err := b.Unseal(ctx, rootKey); err != nil {
+	if err := barrier.Unseal(ctx, rootKey); err != nil {
 		return false, err
 	}
 
@@ -379,10 +356,33 @@ func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespa
 	return true, nil
 }
 
+// unsealFragment verifies and records one part of the unseal shares,
+// and attempts to unseal the namespace.
+func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespace, seal Seal, b barrier.SecurityBarrier, key []byte) ([]byte, error) {
+	// Verify the key length
+	min, max := b.KeyLength()
+	max += shamir.ShareOverhead
+	if len(key) < min {
+		return nil, &ErrInvalidKey{fmt.Sprintf("key is shorter than minimum %d bytes", min)}
+	}
+	if len(key) > max {
+		return nil, &ErrInvalidKey{fmt.Sprintf("key is longer than maximum %d bytes", max)}
+	}
+
+	newKey, err := sm.recordUnsealPart(ns, key)
+	if !newKey || err != nil {
+		return nil, err
+	}
+
+	// getUnsealKey returns either a recovery key
+	// (in the case of an autoseal) or an unseal key (shamir).
+	return sm.getUnsealKey(ctx, seal, ns)
+}
+
 // recordUnsealPart takes in a key fragment, and returns true if it's a new fragment.
 func (sm *SealManager) recordUnsealPart(ns *namespace.Namespace, key []byte) (bool, error) {
-	info, exists := sm.unlockInformationByNamespace[ns.UUID]
-	if exists {
+	info := sm.unlockInformationByNamespace[ns.UUID]
+	if info != nil && info.Nonce != "" {
 		found := false
 		for _, existing := range info.Parts {
 			found = found || subtle.ConstantTimeCompare(existing, key) == 1
@@ -447,7 +447,7 @@ func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespac
 	}
 
 	defer func() {
-		delete(sm.unlockInformationByNamespace, ns.UUID)
+		sm.unlockInformationByNamespace[ns.UUID] = nil
 	}()
 
 	// Recover the split key. recoveredKey is the shamir combined

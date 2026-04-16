@@ -20,6 +20,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/routing"
 )
 
@@ -420,11 +421,6 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 	srcPath := mountEntry.Path
 	mountEntry.Path = strings.TrimPrefix(dst.MountPath, routing.CredentialRoutePrefix)
 
-	dstBarrierView, err := c.mountEntryView(mountEntry)
-	if err != nil {
-		return err
-	}
-
 	// Update the mount table
 	if err := c.persistAuth(ctx, c.NamespaceView(mountEntry.Namespace), c.auth, &mountEntry.Local, mountEntry.UUID); err != nil {
 		mountEntry.Namespace = src.Namespace
@@ -441,6 +437,12 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 			c.authLock.Unlock()
 			return err
 		}
+	}
+
+	dstBarrierView, err := c.mountEntryView(mountEntry)
+	if err != nil {
+		c.authLock.Unlock()
+		return err
 	}
 
 	// Remount the backend
@@ -553,86 +555,53 @@ func (c *Core) loadCredentials(ctx context.Context, standby bool) error {
 	return nil
 }
 
-// This function reads the transactional split auth (credential) table.
+// loadCredentialsForNamespace is invoked as part of postNamespaceUnseal
+// to load the auth mounts of a namespace.
+func (c *Core) loadCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+	c.authLock.Lock()
+	defer c.authLock.Unlock()
+
+	// Check if we're on a non-transactional storage
+	if _, ok := c.barrier.(logical.TransactionalStorage); !ok {
+		return c.loadLegacyCredentialsForNamespace(ctx, ns)
+	}
+	return c.loadTransactionalCredentialsForNamespace(ctx, ns)
+}
+
+// loadTransactionalCredentials reads the transactional split auth (credential)
+// table, populates the storage if there are no existing entries.
 func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical.Storage, standby bool) error {
 	allNamespaces, err := c.ListNamespaces(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list namespaces: %w", err)
 	}
 
-	var needPersist bool
-	globalEntries := make(map[string][]string, len(allNamespaces))
-	localEntries := make(map[string][]string, len(allNamespaces))
-	for index, ns := range allNamespaces {
-		if ns.Tainted {
-			c.logger.Info("skipping loading auth mounts for tainted namespace", "ns", ns.ID)
-			continue
-		}
-
-		view := NamespaceScopedView(barrier, ns)
-		nsGlobal, nsLocal, err := listTransactionalCredentialsForNamespace(ctx, view)
-		if err != nil {
-			c.logger.Error("failed to list transactional auth mounts for namespace", "error", err, "ns_index", index, "namespace", ns.ID)
-			return err
-		}
-
-		if len(nsGlobal) > 0 {
-			globalEntries[ns.ID] = nsGlobal
-		}
-
-		if len(nsLocal) > 0 {
-			localEntries[ns.ID] = nsLocal
+	if c.auth == nil {
+		// Create the auth table if it doesn't exist.
+		c.auth = &routing.MountTable{
+			Type: routing.CredentialTableType,
 		}
 	}
 
-	if len(globalEntries) == 0 {
-		// TODO(ascheel) Assertion: globalEntries is empty iff there is only
-		// one namespace (the root namespace).
+	for _, ns := range allNamespaces {
+		if err = c.loadTransactionalCredentialsForNamespace(ctx, ns); err != nil {
+			return err
+		}
+	}
+
+	var needPersist bool
+	// This happens only on the first initialization run of the Core.
+	// If there's only root namespace, and there are no auth entries in storage.
+	if len(allNamespaces) == 1 && len(c.auth.Entries) == 0 {
 		c.logger.Info("no auth mounts in transactional auth mount table; adding default auth mount table")
 		c.auth, err = c.defaultAuthTable(ctx)
 		if err != nil {
 			panic(err.Error())
 		}
 		needPersist = true
-	} else {
-		c.auth = &routing.MountTable{
-			Type: routing.CredentialTableType,
-		}
-
-		for nsIndex, ns := range allNamespaces {
-			view := NamespaceScopedView(barrier, ns)
-			for index, uuid := range globalEntries[ns.ID] {
-				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreAuthConfigPath, uuid)
-				if err != nil {
-					return fmt.Errorf("error loading auth mount table entry (%v (%v)/%v/%v): %w", ns.ID, nsIndex, index, uuid, err)
-				}
-
-				if entry != nil {
-					c.auth.Entries = append(c.auth.Entries, entry)
-				}
-			}
-		}
-
 	}
 
-	if len(localEntries) > 0 {
-		for nsIndex, ns := range allNamespaces {
-			view := NamespaceScopedView(barrier, ns)
-			for index, uuid := range localEntries[ns.ID] {
-				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalAuthConfigPath, uuid)
-				if err != nil {
-					return fmt.Errorf("error loading local auth mount table entry (%v (%v)/%v/%v): %w", ns.ID, nsIndex, index, uuid, err)
-				}
-
-				if entry != nil {
-					c.auth.Entries = append(c.auth.Entries, entry)
-				}
-			}
-		}
-	}
-
-	err = c.runCredentialUpdates(ctx, barrier, needPersist, standby)
-	if err != nil {
+	if err = c.runCredentialUpdates(ctx, barrier, needPersist, standby); err != nil {
 		c.logger.Error("failed to run legacy auth mount table upgrades", "error", err)
 		return err
 	}
@@ -640,20 +609,50 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 	return nil
 }
 
-func getLegacyCredentialsForNamespace(ctx context.Context, barrier logical.Storage) (*logical.StorageEntry, *logical.StorageEntry, error) {
-	globalEntry, err := barrier.Get(ctx, coreAuthConfigPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read legacy auth mounts: %w", err)
+// loadTransactionalCredentialsForNamespace loads the auth mounts of a single namespace.
+func (c *Core) loadTransactionalCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+	if c.NamespaceSealed(ns) {
+		return barrier.ErrNamespaceSealed
 	}
 
-	localEntry, err := barrier.Get(ctx, coreLocalAuthConfigPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read legacy local auth mounts: %w", err)
+	if ns.Tainted {
+		c.logger.Info("skipping loading auth mounts for tainted namespace", "ns", ns.ID)
+		return nil
 	}
 
-	return globalEntry, localEntry, nil
+	view := c.NamespaceView(ns)
+	globalEntries, localEntries, err := listTransactionalCredentialsForNamespace(ctx, view)
+	if err != nil {
+		return fmt.Errorf("failed to list auth mounts for namespace: %w", err)
+	}
+
+	for index, uuid := range globalEntries {
+		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreAuthConfigPath, uuid)
+		if err != nil {
+			return fmt.Errorf("error loading auth mount table entry ([%v] %v/%v): %w", ns.ID, index, uuid, err)
+		}
+
+		if entry != nil {
+			c.auth.Entries = append(c.auth.Entries, entry)
+		}
+	}
+
+	for index, uuid := range localEntries {
+		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalAuthConfigPath, uuid)
+		if err != nil {
+			return fmt.Errorf("error loading local auth mount table entry ([%v] %v/%v): %w", ns.ID, index, uuid, err)
+		}
+
+		if entry != nil {
+			c.auth.Entries = append(c.auth.Entries, entry)
+		}
+	}
+
+	return nil
 }
 
+// listTransactionalCredentialsForNamespace retrieves list of
+// auth mount entries (global & local) using provided barrier.
 func listTransactionalCredentialsForNamespace(ctx context.Context, barrier logical.Storage) ([]string, []string, error) {
 	globalEntries, err := barrier.List(ctx, coreAuthConfigPath+"/")
 	if err != nil {
@@ -668,9 +667,9 @@ func listTransactionalCredentialsForNamespace(ctx context.Context, barrier logic
 	return globalEntries, localEntries, nil
 }
 
-// This function reads the legacy, single-entry combined auth mount table,
-// returning true if it was used. This will let us know (if we're inside
-// a transaction) if we need to do an upgrade.
+// loadLegacyCredentials reads the legacy, single-entry combined auth
+// mount table, returning true if it was used. This will let us know
+// (if we're inside a transaction) if we need to do an upgrade.
 func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storage, standby bool) (bool, error) {
 	// Load the existing mount table per namespace
 	allNamespaces, err := c.ListNamespaces(ctx)
@@ -678,42 +677,21 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 		return false, fmt.Errorf("failed to list namespaces: %w", err)
 	}
 
-	globalEntries := make(map[string]*logical.StorageEntry, len(allNamespaces))
-	localEntries := make(map[string]*logical.StorageEntry, len(allNamespaces))
-	for index, ns := range allNamespaces {
-		if ns.Tainted {
-			c.logger.Info("skipping loading auth mounts for tainted namespace", "ns", ns.ID)
-			continue
-		}
-
-		view := NamespaceScopedView(barrier, ns)
-		entry, localEntry, err := getLegacyCredentialsForNamespace(ctx, view)
-		if err != nil {
-			c.logger.Error("failed to get legacy auth mounts for namespace", "error", err, "ns_index", index, "namespace", ns.ID)
-			return false, err
-		}
-
-		if entry != nil {
-			globalEntries[ns.ID] = entry
-		}
-
-		if localEntry != nil {
-			localEntries[ns.ID] = localEntry
+	if c.auth == nil {
+		// Create the auth mount table if it doesn't exist.
+		c.auth = &routing.MountTable{
+			Type: routing.CredentialTableType,
 		}
 	}
 
-	if len(globalEntries) > 0 {
-		authTable, size, err := c.decodeMountTable(ctx, globalEntries)
-		if err != nil {
-			c.logger.Error("failed to decompress and/or decode the auth table", "error", err)
+	for _, ns := range allNamespaces {
+		if err = c.loadLegacyCredentialsForNamespace(ctx, ns); err != nil {
 			return false, err
 		}
-		c.auth = authTable
-		c.tableMetrics(routing.CredentialTableType, false, len(c.auth.Entries), size)
 	}
 
 	var needPersist bool
-	if c.auth == nil {
+	if len(c.auth.Entries) == 0 {
 		// In the event we are inside a transaction, we do not yet know if
 		// we have a transactional mount table; exit early and load the new format.
 		if _, ok := barrier.(logical.Transaction); ok {
@@ -728,20 +706,8 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 	} else {
 		if _, ok := barrier.(logical.Transaction); ok {
 			// We know we have legacy mount table entries, so force a migration.
-			c.logger.Info("migrating legacy mount table to transactional layout")
+			c.logger.Info("migrating legacy auth table to transactional layout")
 			needPersist = true
-		}
-	}
-
-	if len(localEntries) > 0 {
-		localAuthTable, size, err := c.decodeMountTable(ctx, localEntries)
-		if err != nil {
-			c.logger.Error("failed to decompress and/or decode the legacy local auth mount table", "error", err)
-			return false, err
-		}
-		if localAuthTable != nil && len(localAuthTable.Entries) > 0 {
-			c.auth.Entries = append(c.auth.Entries, localAuthTable.Entries...)
-			c.tableMetrics(routing.CredentialTableType, true, len(localAuthTable.Entries), size)
 		}
 	}
 
@@ -760,6 +726,62 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 	// We loaded a legacy auth mount table and successfully migrated it, if
 	// necessary.
 	return true, nil
+}
+
+// loadLegacyCredentialsForNamespace reads the legacy, single-entry combined
+// auth mount table of a provided namespace and loads it to memory.
+func (c *Core) loadLegacyCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+	if c.NamespaceSealed(ns) {
+		return barrier.ErrNamespaceSealed
+	}
+
+	if ns.Tainted {
+		c.logger.Info("skipping loading auth mounts for tainted namespace", "ns", ns.ID)
+		return nil
+	}
+
+	view := c.NamespaceView(ns)
+	entry, localEntry, err := getLegacyCredentialsForNamespace(ctx, view)
+	if err != nil {
+		c.logger.Error("failed to get legacy auth mounts for namespace", "error", err, "namespace", ns.ID)
+		return err
+	}
+
+	if entry != nil {
+		mEntries, err := c.decodeMountTable(ctx, entry)
+		if err != nil {
+			c.logger.Error("failed to decompress and/or decode the legacy auth table", "error", err)
+			return err
+		}
+		c.auth.Entries = append(c.auth.Entries, mEntries...)
+	}
+
+	if localEntry != nil {
+		mEntries, err := c.decodeMountTable(ctx, localEntry)
+		if err != nil {
+			c.logger.Error("failed to decompress and/or decode the local legacy auth table", "error", err)
+			return err
+		}
+		c.auth.Entries = append(c.auth.Entries, mEntries...)
+	}
+
+	return nil
+}
+
+// getLegacyCredentialsForNamespace retrieves the single-entry combined
+// mount table entry (global & local) using provided barrier.
+func getLegacyCredentialsForNamespace(ctx context.Context, barrier logical.Storage) (*logical.StorageEntry, *logical.StorageEntry, error) {
+	globalEntry, err := barrier.Get(ctx, coreAuthConfigPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read legacy auth mounts: %w", err)
+	}
+
+	localEntry, err := barrier.Get(ctx, coreLocalAuthConfigPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read legacy local auth mounts: %w", err)
+	}
+
+	return globalEntry, localEntry, nil
 }
 
 // Note that this is only designed to work with singletons, as it checks by
@@ -892,35 +914,39 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 
 	// Handle writing the legacy auth mount table by default.
 	writeTable := func(mt *routing.MountTable, path string) (int, error) {
-		ns, err := namespace.FromContext(ctx)
+		allNamespaces, err := c.ListNamespaces(ctx)
 		if err != nil {
-			return -1, err
+			return -1, fmt.Errorf("failed to list namespaces: %w", err)
 		}
 
-		mountCopy := mt.ShallowClone()
-		mountCopy.Entries = slices.DeleteFunc(mountCopy.Entries, func(e *routing.MountEntry) bool {
-			return e.NamespaceID != ns.ID
-		})
+		var size int
+		for _, ns := range allNamespaces {
+			mountCopy := mt.ShallowClone()
+			mountCopy.Entries = slices.DeleteFunc(mountCopy.Entries, func(e *routing.MountEntry) bool {
+				return e.NamespaceID != ns.ID
+			})
 
-		// Encode the auth mount table into JSON and compress it (Gzip).
-		compressedBytes, err := jsonutil.EncodeJSONAndCompress(mountCopy, nil)
-		if err != nil {
-			c.logger.Error("failed to encode or compress auth mount table", "error", err)
-			return -1, err
+			// Encode the auth mount table into JSON and compress it (Gzip).
+			compressedBytes, err := jsonutil.EncodeJSONAndCompress(mountCopy, nil)
+			if err != nil {
+				c.logger.Error("failed to encode or compress auth mount table", "error", err)
+				return -1, err
+			}
+
+			// Create an entry
+			entry := &logical.StorageEntry{
+				Key:   path,
+				Value: compressedBytes,
+			}
+
+			if err := c.NamespaceView(ns).Put(ctx, entry); err != nil {
+				c.logger.Error("failed to persist auth mount table", "error", err)
+				return -1, err
+			}
+			size += len(compressedBytes)
 		}
 
-		// Create an entry
-		entry := &logical.StorageEntry{
-			Key:   path,
-			Value: compressedBytes,
-		}
-
-		// Write using passed barrier.
-		if err := barrier.Put(ctx, entry); err != nil {
-			c.logger.Error("failed to persist auth mount table", "error", err)
-			return -1, err
-		}
-		return len(compressedBytes), nil
+		return size, nil
 	}
 
 	if _, ok := barrier.(logical.Transaction); ok {
@@ -1049,135 +1075,172 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 	return nil
 }
 
-// setupCredentials is invoked after we've loaded the auth table to
-// initialize the credential backends and setup the router
+// setupCredentials is invoked after we've loaded the auth mount table
+// to initialize the credential backends and setup the router.
 func (c *Core) setupCredentials(ctx context.Context) error {
 	c.authLock.Lock()
 	defer c.authLock.Unlock()
 
 	for _, entry := range c.auth.SortEntriesByPathDepth().Entries {
-		view, err := c.mountEntryView(entry)
+		postUnsealFunc, err := c.setupCredential(ctx, entry)
 		if err != nil {
 			return err
 		}
 
-		origViewReadOnlyErr := view.GetReadOnlyErr()
-
-		// Mark the view as read-only until the mounting is complete and
-		// ensure that it is reset after. This ensures that there will be no
-		// writes during the construction of the backend.
-		view.SetReadOnlyErr(logical.ErrSetupReadOnly)
-		if slices.Contains(singletonMounts, entry.Type) {
-			defer view.SetReadOnlyErr(origViewReadOnlyErr)
+		if postUnsealFunc != nil {
+			c.postUnsealFuncs = append(c.postUnsealFuncs, postUnsealFunc)
 		}
-
-		// Initialize the backend
-		sysView := c.mountEntrySysView(entry)
-
-		var backend logical.Backend
-		backend, entry.RunningSha256, err = c.newCredentialBackend(ctx, entry, sysView, view)
-		if err != nil {
-			c.logger.Error("failed to create credential entry", "path", entry.Path, "error", err)
-
-			if c.isMountable(ctx, entry, consts.PluginTypeCredential) {
-				c.logger.Warn("skipping plugin-based auth entry", "path", entry.Path)
-				goto ROUTER_MOUNT
-			}
-			return errLoadAuthFailed
-		}
-		if backend == nil {
-			return fmt.Errorf("nil backend returned from %q factory", entry.Type)
-		}
-
-		// update the entry running version with the configured version, which was verified during registration.
-		entry.RunningVersion = entry.Version
-		if entry.RunningVersion == "" {
-			// don't set the running version to a builtin if it is running as an external plugin
-			if entry.RunningSha256 == "" {
-				entry.RunningVersion = versions.GetBuiltinVersion(consts.PluginTypeCredential, entry.Type)
-			}
-		}
-
-		// Do not start up deprecated builtin plugins. If this is a major
-		// upgrade, stop unsealing and shutdown. If we've already mounted this
-		// plugin, skip backend initialization and mount the data for posterity.
-		if versions.IsBuiltinVersion(entry.RunningVersion) {
-			_, err := c.handleDeprecatedMountEntry(ctx, entry, consts.PluginTypeCredential)
-			if c.isMajorVersionFirstMount(ctx) && err != nil {
-				go c.ShutdownCoreError(fmt.Errorf("could not mount %q: %w", entry.Type, err))
-				return errLoadAuthFailed
-			} else if err != nil {
-				c.logger.Error("skipping deprecated auth entry", "name", entry.Type, "path", entry.Path, "error", err)
-				backend.Cleanup(ctx)
-				backend = nil
-				goto ROUTER_MOUNT
-			}
-		}
-
-		{
-			// Check for the correct backend type
-			backendType := backend.Type()
-			if backendType != logical.TypeCredential {
-				return fmt.Errorf("cannot mount %q of type %q as an auth backend", entry.Type, backendType)
-			}
-		}
-
-	ROUTER_MOUNT:
-		// Mount the backend
-		path := routing.CredentialRoutePrefix + entry.Path
-		err = c.router.Mount(backend, path, entry, view)
-		if err != nil {
-			c.logger.Error("failed to mount auth entry", "path", entry.Path, "namespace", entry.Namespace, "error", err)
-			return errLoadAuthFailed
-		}
-
-		if c.logger.IsInfo() {
-			c.logger.Info("successfully mounted", "type", entry.Type, "version", entry.RunningVersion, "path", entry.Path, "namespace", entry.Namespace)
-		}
-
-		// Ensure the path is tainted if set in the mount table
-		if entry.Tainted {
-			// Calculate any namespace prefixes here, because when Taint() is called, there won't be
-			// a namespace to pull from the context. This is similar to what we do above in c.router.Mount().
-			path = entry.Namespace.Path + path
-			c.logger.Debug("tainting a mount due to it being marked as tainted in mount table", "entry.path", entry.Path, "entry.namespace.path", entry.Namespace.Path, "full_path", path)
-			c.router.Taint(ctx, path)
-		}
-
-		// Check if this is the token store
-		if entry.Type == routing.MountTypeToken {
-			c.tokenStore = backend.(*TokenStore)
-
-			// At some point when this isn't beta we may persist this but for
-			// now always set it on mount
-			entry.Config.TokenType = logical.TokenTypeDefaultService
-
-			// this is loaded *after* the normal mounts, including cubbyhole
-			c.router.SetTokenStoreSaltFunc(c.tokenStore.Salt)
-			c.tokenStore.cubbyholeBackend = c.router.MatchingBackend(ctx, routing.MountPathCubbyhole).(*CubbyholeBackend)
-		}
-
-		// Initialize
-		// Bind locally
-		localEntry := entry
-		c.postUnsealFuncs = append(c.postUnsealFuncs, func() {
-			postUnsealLogger := c.logger.With("type", localEntry.Type, "version", localEntry.RunningVersion, "path", localEntry.Path)
-			if backend == nil {
-				postUnsealLogger.Error("skipping initialization for nil auth backend")
-				return
-			}
-			if !slices.Contains(singletonMounts, localEntry.Type) {
-				view.SetReadOnlyErr(origViewReadOnlyErr)
-			}
-
-			err := backend.Initialize(ctx, &logical.InitializationRequest{Storage: view})
-			if err != nil {
-				postUnsealLogger.Error("failed to initialize auth backend", "error", err)
-			}
-		})
 	}
 
 	return nil
+}
+
+// setupCredentialsForNamespace is invoked after we've loaded auth mounts
+// of a namespace to initialize the credential backends and update the router.
+func (c *Core) setupCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace) ([]func(), error) {
+	c.authLock.Lock()
+	defer c.authLock.Unlock()
+
+	postUnsealFuncs := make([]func(), 0)
+	for _, entry := range c.auth.SortEntriesByPath().Entries {
+		// Only process entries with matching namespace ID
+		if entry.NamespaceID != ns.ID {
+			continue
+		}
+
+		postUnsealFunc, err := c.setupCredential(ctx, entry)
+		if err != nil {
+			return postUnsealFuncs, err
+		}
+
+		if postUnsealFunc != nil {
+			postUnsealFuncs = append(postUnsealFuncs, postUnsealFunc)
+		}
+	}
+
+	return postUnsealFuncs, nil
+}
+
+// setupCredential initializes the credential backend
+// and updates the router for specific mount entry.
+func (c *Core) setupCredential(ctx context.Context, entry *routing.MountEntry) (func(), error) {
+	view, err := c.mountEntryView(entry)
+	if err != nil {
+		return nil, err
+	}
+
+	origViewReadOnlyErr := view.GetReadOnlyErr()
+
+	// Mark the view as read-only until the mounting is complete and
+	// ensure that it is reset after. This ensures that there will be no
+	// writes during the construction of the backend.
+	view.SetReadOnlyErr(logical.ErrSetupReadOnly)
+	if slices.Contains(singletonMounts, entry.Type) {
+		defer view.SetReadOnlyErr(origViewReadOnlyErr)
+	}
+
+	// Initialize the backend
+	var backend logical.Backend
+	sysView := c.mountEntrySysView(entry)
+	backend, entry.RunningSha256, err = c.newCredentialBackend(ctx, entry, sysView, view)
+	if err != nil {
+		c.logger.Error("failed to create credential entry", "path", entry.Path, "error", err)
+		if c.isMountable(ctx, entry, consts.PluginTypeCredential) {
+			c.logger.Warn("skipping plugin-based auth entry", "path", entry.Path)
+			goto ROUTER_MOUNT
+		}
+		return nil, errLoadAuthFailed
+	}
+	if backend == nil {
+		return nil, fmt.Errorf("nil backend returned from %q factory", entry.Type)
+	}
+
+	// update the entry running version with the configured
+	// version, which was verified during registration.
+	entry.RunningVersion = entry.Version
+	if entry.RunningVersion == "" && entry.RunningSha256 == "" {
+		// don't set the running version to a builtin if it is running as an external plugin
+		entry.RunningVersion = versions.GetBuiltinVersion(consts.PluginTypeCredential, entry.Type)
+	}
+
+	// Do not start up deprecated builtin plugins. If this is a major
+	// upgrade, stop unsealing and shutdown. If we've already mounted this
+	// plugin, skip backend initialization and mount the data for posterity.
+	if versions.IsBuiltinVersion(entry.RunningVersion) {
+		_, err := c.handleDeprecatedMountEntry(ctx, entry, consts.PluginTypeCredential)
+		if c.isMajorVersionFirstMount(ctx) && err != nil {
+			go c.ShutdownCoreError(fmt.Errorf("could not mount %q: %w", entry.Type, err))
+			return nil, errLoadAuthFailed
+		} else if err != nil {
+			c.logger.Error("skipping deprecated auth entry", "name", entry.Type, "path", entry.Path, "error", err)
+			backend.Cleanup(ctx)
+			backend = nil
+			goto ROUTER_MOUNT
+		}
+	}
+
+	{
+		// Check for the correct backend type
+		backendType := backend.Type()
+		if backendType != logical.TypeCredential {
+			return nil, fmt.Errorf("cannot mount %q of type %q as an auth backend", entry.Type, backendType)
+		}
+	}
+
+ROUTER_MOUNT:
+	path := routing.CredentialRoutePrefix + entry.Path
+	if err = c.router.Mount(backend, path, entry, view); err != nil {
+		c.logger.Error("failed to mount auth entry", "path", entry.Path, "namespace", entry.Namespace, "error", err)
+		return nil, errLoadAuthFailed
+	}
+
+	// Check if this is the token store
+	if entry.Type == routing.MountTypeToken {
+		c.tokenStore = backend.(*TokenStore)
+
+		// At some point when this isn't beta we may persist this but for
+		// now always set it on mount
+		entry.Config.TokenType = logical.TokenTypeDefaultService
+
+		// this is loaded *after* the normal mounts, including cubbyhole
+		c.router.SetTokenStoreSaltFunc(c.tokenStore.Salt)
+		c.tokenStore.cubbyholeBackend = c.router.MatchingBackend(ctx, routing.MountPathCubbyhole).(*CubbyholeBackend)
+	}
+
+	// Bind locally as mount entry might be mutated in-between.
+	localEntry := entry
+	postUnsealFunc := func() {
+		postUnsealLogger := c.logger.With("type", localEntry.Type, "version", localEntry.RunningVersion, "path", localEntry.Path)
+		if backend == nil {
+			postUnsealLogger.Error("skipping initialization for nil auth backend")
+			return
+		}
+		if !slices.Contains(singletonMounts, localEntry.Type) {
+			view.SetReadOnlyErr(origViewReadOnlyErr)
+		}
+
+		err := backend.Initialize(ctx, &logical.InitializationRequest{Storage: view})
+		if err != nil {
+			postUnsealLogger.Error("failed to initialize auth backend", "error", err)
+		}
+	}
+
+	if c.logger.IsInfo() {
+		c.logger.Info("successfully mounted", "type", entry.Type, "version", entry.RunningVersion, "path", entry.Path, "namespace", entry.Namespace)
+	}
+
+	// Ensure the path is tainted if set in the auth table.
+	if entry.Tainted {
+		// Calculate any namespace prefixes here, because when Taint() is called, there won't be
+		// a namespace to pull from the context. This is similar to what we do above in c.router.Mount().
+		path = entry.Namespace.Path + path
+		c.logger.Debug("tainting a mount due to it being marked as tainted in auth table", "entry.path", entry.Path, "entry.namespace.path", entry.Namespace.Path, "full_path", path)
+		if err := c.router.Taint(ctx, path); err != nil {
+			return nil, err
+		}
+	}
+
+	return postUnsealFunc, nil
 }
 
 // teardownCredentials is used before we seal the vault to reset the credential

@@ -957,13 +957,40 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool
 	return ns.namespacesByPath.List(parent.Path, includeParent, recursive, ns.creationDeletionMap)
 }
 
-// sealNamespaceLocked assumes the read lock is hold, and seals provided namespace,
+// SealNamespace acquires a read lock, and seals provided namespace,
 // cleaning up namespace resources.
-//
-//nolint:unused // TODO(wslabosz): add usage and tests with namespace seal operation.
-func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSeal *namespace.Namespace) error {
+func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error {
 	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
 
+	unlock, err := ns.lockWithInvalidation(ctx, false)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
+	namespaceToSeal, err := ns.getNamespaceByPathLocked(ctx, path, false)
+	if err != nil {
+		return err
+	}
+
+	if namespaceToSeal == nil {
+		return errors.New("namespace doesn't exist")
+	}
+
+	if namespaceToSeal.ID == namespace.RootNamespaceID {
+		return errors.New("unable to seal root namespace")
+	}
+
+	if namespaceToSeal.Tainted {
+		return errors.New("unable to seal tainted namespace")
+	}
+
+	return ns.sealNamespaceLocked(ctx, namespaceToSeal)
+}
+
+// sealNamespaceLocked assumes the read lock is hold, and seals provided namespace,
+// cleaning up namespace resources.
+func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSeal *namespace.Namespace) error {
 	var errs error
 	ns.namespacesByPath.PostOrderTraversal(namespaceToSeal.Path, func(entry *namespace.Namespace) {
 		if entry.ID == namespace.RootNamespaceID || ns.core.NamespaceSealed(entry) {
@@ -991,6 +1018,75 @@ func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSe
 	})
 
 	return errs
+}
+
+// UnsealNamespace attempts unsealing namespace with a given path, using provided unseal key.
+func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key []byte) error {
+	defer metrics.MeasureSince([]string{"namespace", "unseal_namespace"}, time.Now())
+
+	namespaceToUnseal, err := ns.GetNamespaceByPath(ctx, path)
+	if err != nil {
+		return err
+	}
+
+	if namespaceToUnseal == nil {
+		return fmt.Errorf("namespace %q not found", path)
+	}
+
+	if namespaceToUnseal.ID == namespace.RootNamespaceID {
+		return errors.New("cannot unseal root namespace with this operation")
+	}
+
+	_, err = ns.unsealNamespace(ctx, namespaceToUnseal, key)
+	return err
+}
+
+func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal *namespace.Namespace, key []byte) (bool, error) {
+	// Namespace wasn't sealed before the call.
+	if !ns.core.NamespaceSealed(namespaceToUnseal) {
+		return true, nil
+	}
+
+	unsealed, err := ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key)
+	if err != nil {
+		return false, err
+	}
+
+	// We do not have enough shards yet, namespace is still sealed, return early.
+	if !unsealed {
+		return unsealed, nil
+	}
+
+	return unsealed, ns.postNamespaceUnseal(ctx, namespaceToUnseal)
+}
+
+// postNamespaceUnseal loads namespace credential and secret mounts,
+// initializes the backends and updates the router.
+func (ns *NamespaceStore) postNamespaceUnseal(ctx context.Context, unsealedNamespace *namespace.Namespace) error {
+	if err := ns.core.loadMountsForNamespace(ctx, unsealedNamespace); err != nil {
+		return err
+	}
+
+	var postUnsealFuncs []func()
+	if postUnsealMountFuncs, err := ns.core.setupMountsForNamespace(ctx, unsealedNamespace); err != nil {
+		return err
+	} else {
+		postUnsealFuncs = append(postUnsealFuncs, postUnsealMountFuncs...)
+	}
+
+	if err := ns.core.loadCredentialsForNamespace(ctx, unsealedNamespace); err != nil {
+		return err
+	}
+
+	if postUnsealCredFuncs, err := ns.core.setupCredentialsForNamespace(ctx, unsealedNamespace); err != nil {
+		return err
+	} else {
+		postUnsealFuncs = append(postUnsealFuncs, postUnsealCredFuncs...)
+	}
+
+	// now we run the collected post unseal functions to finalize unsealing
+	ns.core.runPostUnsealFuncs(postUnsealFuncs)
+	return nil
 }
 
 // taintNamespace is used to taint the namespace designated to be deleted.
@@ -1034,6 +1130,10 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 	}
 	if namespaceToDelete == nil {
 		return "", nil
+	}
+
+	if ns.core.NamespaceSealed(namespaceToDelete) {
+		return "", errors.New("cannot delete sealed namespace")
 	}
 
 	isNamespaceDeleting := ns.creationDeletionMap[namespaceToDelete.UUID]
@@ -1389,6 +1489,8 @@ func (j *namespaceDeletionJob) Execute() error {
 	delete(j.store.namespacesByUUID, j.target.UUID)
 	delete(j.store.namespacesByAccessor, j.target.ID)
 
+	j.store.core.sealManager.RemoveNamespace(j.target)
+
 	view := NamespaceScopedView(j.store.storage, j.parent).SubView(namespaceStoreSubPath)
 	if err := view.Delete(ctx, j.target.UUID); err != nil {
 		return fmt.Errorf("failed to delete namespace storage entry: %w", err)
@@ -1456,14 +1558,13 @@ func (j *namespaceCreationFailureJob) Execute() error {
 		delete(j.store.namespacesByUUID, j.target.UUID)
 		delete(j.store.namespacesByAccessor, j.target.ID)
 
+		j.store.core.sealManager.RemoveNamespace(j.target)
+
 		nsView := NamespaceScopedView(j.store.storage, j.parent).SubView(namespaceStoreSubPath)
-		if err := nsView.Delete(j.store.creationDeletionJobContext, j.target.UUID); err != nil {
+		if err := nsView.Delete(nsCtx, j.target.UUID); err != nil {
 			err = fmt.Errorf("failed to remove created namespace storage entry on failure: %w", err)
 			retErr = multierror.Append(retErr, err)
 		}
-
-		// TODO(wslabosz): think if sealmanager namespace removal should happen earlier.
-		j.store.core.sealManager.RemoveNamespace(j.target)
 	}
 
 	return retErr

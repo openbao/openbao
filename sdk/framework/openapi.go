@@ -324,8 +324,11 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 				}
 			}
 
-			// If both List and Read are defined, only process Read.
+			// If both List or Scan and Read are defined, only process Read.
 			if opType == logical.ListOperation && operations[logical.ReadOperation] != nil {
+				continue
+			}
+			if opType == logical.ScanOperation && operations[logical.ReadOperation] != nil {
 				continue
 			}
 
@@ -410,39 +413,68 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 
 			// LIST is represented as GET with a `list` query parameter.
 			if opType == logical.ListOperation {
-				// Only accepts List (due to the above skipping of ListOperations that also have ReadOperations)
+				// Only accepts List and maybe Scan (due to the above skipping of ListOperations that also have ReadOperations)
+				description := "Must be set to `true`"
+				if operations[logical.ScanOperation] != nil {
+					description = "Must be set to `true` or else `scan` must be set to `true`"
+
+					op.Parameters = append(op.Parameters, OASParameter{
+						Name:        "scan",
+						Description: "Must be set to `true` or else `list` must be set to `true`",
+						Required:    true,
+						In:          "query",
+						Schema:      &OASSchema{Type: "string", Enum: []interface{}{"true"}},
+					})
+				}
+
 				op.Parameters = append(op.Parameters, OASParameter{
 					Name:        "list",
-					Description: "Must be set to `true`",
+					Description: description,
 					Required:    true,
 					In:          "query",
 					Schema:      &OASSchema{Type: "string", Enum: []interface{}{"true"}},
 				})
 			} else if opType == logical.ScanOperation {
-				// Only accepts List (due to the above skipping of ListOperations that also have ReadOperations)
+				// Only accepts Scan and maybe List (due to the above skipping of ScanOperations that also have ReadOperations)
+				description := "Must be set to `true`"
+				if operations[logical.ListOperation] != nil {
+					description = "Must be set to `true` or else `list` must be set to `true`"
+
+					op.Parameters = append(op.Parameters, OASParameter{
+						Name:        "list",
+						Description: "Must be set to `true` or else `scan` must be set to `true`",
+						Required:    true,
+						In:          "query",
+						Schema:      &OASSchema{Type: "string", Enum: []interface{}{"true"}},
+					})
+				}
+
 				op.Parameters = append(op.Parameters, OASParameter{
 					Name:        "scan",
-					Description: "Must be set to `true`",
+					Description: description,
 					Required:    true,
 					In:          "query",
 					Schema:      &OASSchema{Type: "string", Enum: []interface{}{"true"}},
 				})
-			} else if opType == logical.ReadOperation && operations[logical.ListOperation] != nil {
-				// Accepts both Read and List
-				op.Parameters = append(op.Parameters, OASParameter{
-					Name:        "list",
-					Description: "Return a list if `true`",
-					In:          "query",
-					Schema:      &OASSchema{Type: "string"},
-				})
-			} else if opType == logical.ReadOperation && operations[logical.ScanOperation] != nil {
-				// Accepts both Read and List
-				op.Parameters = append(op.Parameters, OASParameter{
-					Name:        "scan",
-					Description: "Return a recursive list if `true`",
-					In:          "query",
-					Schema:      &OASSchema{Type: "string"},
-				})
+			} else if opType == logical.ReadOperation {
+				if operations[logical.ListOperation] != nil {
+					// Accepts both Read and List
+					op.Parameters = append(op.Parameters, OASParameter{
+						Name:        "list",
+						Description: "Return a list if `true`",
+						In:          "query",
+						Schema:      &OASSchema{Type: "string"},
+					})
+				}
+				if operations[logical.ScanOperation] != nil {
+					// Accepts both Read and List
+					op.Parameters = append(op.Parameters, OASParameter{
+						Name:        "scan",
+						Description: "Return a recursive list if `true`",
+						In:          "query",
+						Schema:      &OASSchema{Type: "string"},
+					})
+				}
 			}
 
 			// Add tags based on backend type
@@ -547,7 +579,7 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 			switch opType {
 			case logical.CreateOperation, logical.UpdateOperation:
 				pi.Post = op
-			case logical.ReadOperation, logical.ListOperation:
+			case logical.ReadOperation, logical.ListOperation, logical.ScanOperation:
 				pi.Get = op
 			case logical.DeleteOperation:
 				pi.Delete = op

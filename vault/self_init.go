@@ -47,7 +47,7 @@ func (c *Core) checkSelfInit(ctx context.Context) error {
 		return err
 	}
 	if entry == nil {
-		// This is out only happy path.
+		// This is the only happy path.
 		return nil
 	}
 

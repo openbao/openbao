@@ -9,8 +9,10 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -199,4 +201,59 @@ func TestPostgreSQL_ParallelInit(t *testing.T) {
 
 	t.Logf("State: total=%d active=%d sealed=%d", len(nodes), active, sealed)
 	require.Equal(t, len(nodes), active, "all nodes active")
+}
+
+func TestPostgreSQL_FatalInit(t *testing.T) {
+	t.Parallel()
+
+	binary := api.ReadBaoVariable("BAO_BINARY")
+	if binary == "" {
+		t.Skip("missing $BAO_BINARY")
+	}
+
+	psql := docker.NewPostgreSQLStorage(t, "")
+	defer func() {
+		require.NoError(t, psql.Cleanup())
+	}()
+
+	opts := &docker.DockerClusterOptions{
+		ImageRepo:   "quay.io/openbao/openbao",
+		ImageTag:    "latest",
+		VaultBinary: binary,
+		CopyFromTo: map[string]string{
+			"../../../command/server/test-fixtures/self-init.hcl":         "/openbao/config/self-init.hcl",
+			"../../../command/server/test-fixtures/self-init-failure.hcl": "/openbao/config/self-init-failure.hcl",
+			"../../../command/server/test-fixtures/static-seal.hcl":       "/openbao/config/static-seal.hcl",
+		},
+		Storage: psql,
+		ClusterOptions: testcluster.ClusterOptions{
+			NumCores: 1,
+			SkipInit: true,
+			// Set these manually since we don't use NewTestDockerCluster(), but
+			// NewDockerCluster directly.
+			ClusterName: strings.ReplaceAll(t.Name(), "/", "-"),
+			Logger:      logging.NewVaultLogger(log.Trace).Named(t.Name()),
+		},
+	}
+
+	cluster, err := docker.NewDockerCluster(t.Context(), opts)
+
+	// Don't forget to clean up just in case the assertion below fails and the
+	// test cluster didn't fail as expected.
+	defer func() {
+		if err == nil {
+			cluster.Cleanup()
+		}
+	}()
+
+	require.Error(t, err, "node should fail with bad self-init config")
+
+	// Remove the bad config:
+	opts.CopyFromTo = map[string]string{
+		"../../../command/server/test-fixtures/self-init.hcl":   "/openbao/config/self-init.hcl",
+		"../../../command/server/test-fixtures/static-seal.hcl": "/openbao/config/static-seal.hcl",
+	}
+
+	cluster, err = docker.NewDockerCluster(t.Context(), opts)
+	require.Error(t, err, "node should continue to refuse startup")
 }

@@ -145,7 +145,7 @@ func (s *storageView) SubView(prefix string) StorageView {
 
 // SanityCheck is used to perform a sanity check on a key
 func (s *storageView) SanityCheck(key string) error {
-	if strings.Contains(key, "..") {
+	if IsRelativePath(key) {
 		return ErrRelativePath
 	}
 	return nil

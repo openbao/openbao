@@ -719,3 +719,45 @@ path "secret/metadata/by-metadata/subdir/both" {
 		}
 	}
 }
+
+func TestRequestHandling_RelativePath(t *testing.T) {
+	core, _, root := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(t.Context())
+
+	req := &logical.Request{
+		Path:        "sys/policies/acl/../../../testing",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+	}
+	resp, err := core.HandleRequest(ctx, req)
+	require.ErrorContains(t, err, logical.ErrRelativePath.Error())
+	require.Nil(t, resp)
+
+	req = &logical.Request{
+		Path:        "sys/policies/acl/./testing",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+	}
+	resp, err = core.HandleRequest(ctx, req)
+	require.ErrorContains(t, err, logical.ErrRelativePath.Error())
+	require.NotContains(t, err.Error(), "read failed")
+	require.Nil(t, resp)
+}
+
+func TestRequestHandling_RelativePathAllowed(t *testing.T) {
+	core, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		UnsafeRelativePaths: true,
+	})
+	ctx := namespace.RootContext(t.Context())
+
+	req := &logical.Request{
+		Path:        "cubbyhole/asdf/../asdf",
+		ClientToken: root,
+		Operation:   logical.ReadOperation,
+	}
+	_, err := core.HandleRequest(ctx, req)
+
+	// While other places still disallow the relative paths (e.g., storage
+	// view), we know that we made it farther.
+	require.ErrorContains(t, err, "read failed")
+}

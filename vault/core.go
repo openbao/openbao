@@ -1848,6 +1848,10 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 		return err
 	}
 
+	if err := c.checkSelfInit(ctx); err != nil {
+		return err
+	}
+
 	if err := c.startClusterListener(ctx); err != nil {
 		return err
 	}

@@ -79,15 +79,21 @@ func (c *NamespaceLookupCommand) Run(args []string) int {
 		return 2
 	}
 
-	secret, err := client.Logical().Read("sys/namespaces/" + namespacePath)
+	resp, err := client.Sys().ReadNamespace(namespacePath)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error looking up namespace: %s", err))
 		return 2
 	}
-	if secret == nil {
+	if resp == nil {
 		c.UI.Error("Namespace not found")
 		return 2
 	}
 
-	return OutputSecret(c.UI, secret)
+	out, err := structToMap(resp)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error formatting response: %s", err))
+		return 2
+	}
+
+	return OutputData(c.UI, out)
 }

@@ -83,15 +83,15 @@ func (c *NamespaceDeleteCommand) Run(args []string) int {
 		return 2
 	}
 
-	secret, err := client.Logical().Delete("sys/namespaces/" + namespacePath)
+	resp, err := client.Sys().DeleteNamespace(namespacePath)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error deleting namespace: %s", err))
 		return 2
 	}
 
-	if secret != nil {
-		// Likely, we have warnings
-		return OutputSecret(c.UI, secret)
+	if resp == nil || resp.Status == "" {
+		c.UI.Warn("Requested namespace does not exist")
+		return 0
 	}
 
 	if !strings.HasSuffix(namespacePath, "/") {

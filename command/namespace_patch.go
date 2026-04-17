@@ -4,9 +4,7 @@
 package command
 
 import (
-	"context"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/hashicorp/cli"
@@ -107,35 +105,32 @@ func (c *NamespacePatchCommand) Run(args []string) int {
 		return 2
 	}
 
-	data := make(map[string]interface{})
 	customMetadata := make(map[string]interface{})
-
 	for key, value := range c.flagCustomMetadata {
 		customMetadata[key] = value
 	}
-
 	for _, key := range c.flagRemoveCustomMetadata {
 		// A null in a JSON merge patch payload will remove the associated key
 		customMetadata[key] = nil
 	}
 
-	data["custom_metadata"] = customMetadata
-
-	secret, err := client.Logical().JSONMergePatch(context.Background(), "sys/namespaces/"+namespacePath, data)
+	resp, err := client.Sys().PatchNamespace(namespacePath, &api.PatchNamespaceInput{
+		CustomMetadata: customMetadata,
+	})
 	if err != nil {
-		if re, ok := err.(*api.ResponseError); ok && re.StatusCode == http.StatusNotFound {
-			c.UI.Error("Namespace not found")
-			return 2
-		}
-
 		c.UI.Error(fmt.Sprintf("Error patching namespace: %s", err))
 		return 2
 	}
 
-	// Handle single field output
-	if c.flagField != "" {
-		return PrintRawField(c.UI, secret, c.flagField)
+	out, err := structToMap(resp)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error formatting response: %s", err))
+		return 2
 	}
 
-	return OutputSecret(c.UI, secret)
+	if c.flagField != "" {
+		return PrintRawField(c.UI, out, c.flagField)
+	}
+
+	return OutputData(c.UI, out)
 }

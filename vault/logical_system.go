@@ -140,6 +140,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Paths = append(b.Paths, b.lockedUserPaths()...)
 	b.Paths = append(b.Paths, b.leasePaths()...)
 	b.Paths = append(b.Paths, b.policyPaths()...)
+	b.Paths = append(b.Paths, b.namespaceSealPaths()...)
 	b.Paths = append(b.Paths, b.namespacePaths()...)
 	b.Paths = append(b.Paths, b.wrappingPaths()...)
 	b.Paths = append(b.Paths, b.toolsPaths()...)
@@ -4343,21 +4344,21 @@ type CoreSealStatusResponse struct {
 	Warnings    []string `json:"warnings,omitempty"`
 }
 
-func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatusResponse, error) {
-	sealed := core.Sealed()
-
-	initialized, err := core.Initialized(ctx)
+func (c *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatusResponse, error) {
+	sealed := c.Sealed()
+	initialized, err := c.Initialized(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	var sealConfig *SealConfig
 	var recoveryType string
-	if core.SealAccess().RecoveryKeySupported() {
-		sealConfig, err = core.SealAccess().RecoveryConfig(ctx)
-		recoveryType = core.SealAccess().RecoveryType()
+	sealAccess := c.SealAccess()
+	if sealAccess.RecoveryKeySupported() {
+		sealConfig, err = sealAccess.RecoveryConfig(ctx)
+		recoveryType = sealAccess.RecoveryType()
 	} else {
-		sealConfig, err = core.SealAccess().BarrierConfig(ctx)
+		sealConfig, err = sealAccess.BarrierConfig(ctx)
 	}
 	if err != nil {
 		return nil, err
@@ -4365,15 +4366,16 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatus
 
 	cssr := &CoreSealStatusResponse{
 		SealStatusResponse: SealStatusResponse{
-			Type:             core.SealAccess().BarrierType().String(),
+			Type:             sealAccess.BarrierType().String(),
 			Initialized:      initialized,
 			Sealed:           sealed,
-			RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
+			RecoverySeal:     sealAccess.RecoveryKeySupported(),
 			RecoverySealType: recoveryType,
 		},
-		StorageType: core.StorageType(),
+		StorageType: c.StorageType(),
 		Version:     version.GetVersion().VersionNumber(),
 		CommitDate:  version.CommitDate,
+		Migration:   c.IsInSealMigrationMode(lock) && !c.IsSealMigrated(lock),
 	}
 
 	if sealConfig == nil {
@@ -4381,8 +4383,8 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatus
 	}
 
 	// Fetch the local cluster name and identifier
-	if !sealed {
-		cluster, err := core.Cluster(ctx)
+	if !c.Sealed() {
+		cluster, err := c.Cluster(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -4391,13 +4393,12 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatus
 		cssr.ClusterID = cluster.ID
 	}
 
-	progress, nonce := core.SecretProgress(lock)
-
+	info := c.sealManager.unlockInformationByNamespace[namespace.RootNamespaceUUID]
+	if info != nil {
+		cssr.Progress, cssr.Nonce = len(info.Parts), info.Nonce
+	}
 	cssr.T = sealConfig.SecretThreshold
 	cssr.N = sealConfig.SecretShares
-	cssr.Progress = progress
-	cssr.Nonce = nonce
-	cssr.Migration = core.IsInSealMigrationMode(lock) && !core.IsSealMigrated(lock)
 
 	return cssr, nil
 }

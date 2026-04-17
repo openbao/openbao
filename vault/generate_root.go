@@ -37,7 +37,7 @@ type GenerateRootStrategy interface {
 type generateStandardRootToken struct{}
 
 func (g generateStandardRootToken) authenticate(ctx context.Context, c *Core, combinedKey []byte) error {
-	rootKey, err := c.unsealKeyToRootKeyPostUnseal(ctx, combinedKey)
+	rootKey, err := c.sealManager.unsealKeyToRootKey(ctx, c.seal, combinedKey, true, false)
 	if err != nil {
 		return fmt.Errorf("unable to authenticate: %w", err)
 	}

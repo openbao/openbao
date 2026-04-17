@@ -1,0 +1,155 @@
+---
+sidebar_label: Lightweight OCSP Support
+description: |-
+  An OpenBao RFC to lightweight OCSP Support (RFC5019).
+---
+
+# Lightweight OCSP Support
+
+## Summary
+
+This RFC proposes adding lightweight OCSP support to OpenBao, enabling the PKI secrets engine to serve certificate
+revocation status requests over plain HTTP as required by [RFC 5019](https://www.rfc-editor.org/rfc/rfc5019). Two new configuration primitives are
+introduced: a `public_routes` listener option and an `allowed_public_paths` mount tuning parameter. Together,
+these allow specific engine paths to be accessible over a dedicated non-TLS listener without exposing the rest of
+OpenBao to unencrypted traffic.
+
+---
+
+## Problem Statement
+
+Many network devices, including switches, routers, and IoT hardware, implement the lightweight OCSP profile defined
+in [RFC 5019](https://www.rfc-editor.org/rfc/rfc5019). A key requirement of this profile (Section 5) is the ability to send OCSP requests over plain HTTP,
+without TLS.
+
+OpenBao's PKI secrets engine already supports much of the lightweight OCSP profile, but it cannot satisfy this
+requirement. All listeners are either TLS-secured or fully open. Configuring an unencrypted TCP listener to accept
+OCSP requests exposes every other OpenBao path on that listener to unencrypted traffic, which is not an ideal security
+posture for production environments.
+
+As a result, operators who need to support RFC 5019 clients are forced to run an external plaintext HTTP proxy in
+front of OpenBao, which adds operational complexity and creates an additional potential failure point.
+
+---
+
+## User-Facing Description
+
+OpenBao gains the ability to serve OCSP requests over plain HTTP on a dedicated listener, enabling full RFC 5019
+compliance for certificate lifecycle management of network devices and IoT hardware that do not support TLS for OCSP.
+
+To use this feature, one would configure the following:
+
+1. Configure Openbao with a dedicated non-TLS listener with `public_routes = true`:
+
+```hcl
+listener "tcp" {
+  address     = "<host>:<port>"
+  tls_disable = true
+  public_routes = true
+}
+```
+
+2. Tune the target PKI mount to expose its OCSP path as a public route:
+
+```bash
+bao secrets tune -allowed-public-paths="ocsp,ocsp/*" pki/
+```
+
+Requests arriving on the public listener that do not match an `allowed_public_paths` pattern are rejected. All other
+OpenBao paths remain protected.
+
+---
+
+## Technical Description
+
+### Listener
+
+A new `public_routes` boolean option is added to the listener configuration. When enabled, the listener is
+designated as a public route listener that accepts plain HTTP requests only for paths that have been explicitly
+whitelisted by the operator. Any request to a non-whitelisted path is denied before it reaches the secrets engine.
+
+This option is intended to be used alongside `tls_disable = true` on a dedicated low-privileged listener.
+It should not be set on the primary TLS listener.
+
+### Mount Tuning
+
+A new `allowed_public_paths` parameter is added to mount tuning for both secrets engines and auth methods.
+It accepts a list of path patterns (relative to the mount) that may be accessed via a public routes listener.
+
+Patterns support the same wildcard syntax used elsewhere in OpenBao.
+
+Path matching is enforced before any secrets engine logic runs. A request that arrives on a public listener but does
+not match any whitelisted pattern is rejected with a permission denied error.
+
+### Request Flow
+
+When a request arrives on a public routes listener, OpenBao marks it internally as a public route request. Before the
+request is dispatched to any secrets engine, Openbao validates it against the target mount's `allowed_public_paths`.
+If no match is found, the request is rejected. If a match is found, the request proceeds normally through the
+existing routing pipeline; authentication, policy enforcement, and engine handling all apply as usual
+(OCSP endpoints are unauthenticated by design).
+
+---
+
+## Rationale and Alternatives
+
+### Chosen Approach
+
+Separating the concern into two independent primitives, the listener-level opt-in (`public_routes`) and mount-level
+path allowlist (`allowed_public_paths`), gives operators precise control. Exposure requires both: a listener that
+allows public routes and a mount that has whitelisted the specific path. Both are required.
+
+This design is also general-purpose: `allowed_public_paths` is not specific to OCSP or the PKI engine, and can
+be used for any mount that needs to expose select paths over plain HTTP.
+
+### Alternatives Considered
+
+**External HTTP proxy**: Running a reverse proxy (e.g., Nginx) in front of OpenBao to forward OCSP requests is the
+current workaround, but it adds operational overhead, an additional failure point, and requires keeping proxy routing
+rules in sync with mount paths.
+
+**Full plaintext listener**: OpenBao already supports `tls_disable = true`, but this exposes all paths, including token
+management, secret reads, and policy endpoints, to unencrypted traffic. This is not acceptable for most production
+deployments.
+
+**Per-engine OCSP mode flag**: An PKI engine-specific toggle to enable plaintext handling. Any other engine that later
+needs a similar capability would need its own flag, leading to fragmented and inconsistent configuration.
+
+---
+
+## Security Implications
+
+**Traffic is unencrypted**: Requests to a public-routes listener are transmitted in plaintext. Although OCSP data is
+not sensitive, access should be restricted appropriately.
+
+**Path isolation is enforced in core**: The allowlist check happens before any secrets engine logic executes. Paths
+not in `allowed_public_paths` are rejected unconditionally.
+
+**Credentials must not be sent over public listeners**: The public routes feature is intended for unauthenticated
+protocol endpoints like OCSP. Operators should not add paths that accept authentication tokens or other credentials
+to `allowed_public_paths` on a non-TLS listener, as those credentials would be transmitted in cleartext.
+
+**Wildcard scope**: Overly broad patterns (e.g., `*`) would expose all paths on a mount. Operators are responsible
+for specifying tight, minimal patterns. The pattern syntax enforces some constraints
+(e.g., only one `*` wildcard per pattern) to reduce the risk of accidental over-exposure.
+
+---
+
+## Downsides
+
+- **Additional listener to manage**: Operators must configure, secure, and monitor a second listener.
+Firewall rules and general network management would need to take account of extra listeners.
+
+- **Not a substitute for TLS**: This feature enables a narrow, controlled exception to the TLS requirement.
+It should not be treated as a general mechanism for running OpenBao without TLS.
+
+---
+
+## User / Developer Experience
+
+**Operators** gain a native path to RFC 5019 compliance without external infrastructure. Configuration uses familiar
+OpenBao primitives (`listener` stanza and `secrets tune`) and requires no changes to existing PKI setup or OCSP client
+configuration.
+
+**Developers** building on OpenBao can use `allowed_public_paths` for any mount that needs plaintext-accessible
+endpoints; the mechanism is not OCSP-specific.

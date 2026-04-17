@@ -5,7 +5,7 @@ module github.com/openbao/openbao/sdk/v2
 // automatically track the Go version used to build Vault itself.  Many projects import
 // the sdk module and we don't want to impose a newer version on them any more than we
 // have to.
-go 1.24.0
+go 1.25.0
 
 replace github.com/openbao/openbao/api/v2 => ../api
 
@@ -38,7 +38,7 @@ require (
 	github.com/hashicorp/go-version v1.8.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/hcl v1.0.1-vault-7
-	github.com/jackc/pgx/v5 v5.8.0
+	github.com/jackc/pgx/v5 v5.9.1
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-testing-interface v1.14.1
 	github.com/moby/go-archive v0.1.0

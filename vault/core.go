@@ -4154,7 +4154,6 @@ func (c *Core) performPolicyChecks(ctx context.Context, acl *policy.ACL, te *log
 		ret.RootPrivs = ret.ACLResults.RootPrivs
 		// Root is always allowed; skip Sentinel/MFA checks
 		if ret.ACLResults.IsRoot {
-			// logger.Warn("token is root, skipping checks")
 			ret.Allowed = true
 			return ret
 		}
@@ -4187,11 +4186,7 @@ func (c *Core) setupPolicyStore(ctx context.Context) error {
 	}
 
 	// Ensure that the default policy exists, and if not, create it
-	if err := c.policyStore.LoadDefaultPolicies(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return c.policyStore.LoadDefaultPolicies(ctx)
 }
 
 // teardownPolicyStore is used to reverse setupPolicyStore

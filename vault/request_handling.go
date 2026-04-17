@@ -41,6 +41,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	ident "github.com/openbao/openbao/vault/identity"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/vault/tokens"
 )
@@ -68,7 +69,6 @@ var (
 	DefaultMaxJsonStrings = int64(1000)
 
 	ErrNoApplicablePolicies = errors.New("no applicable policies")
-	ErrPolicyNotExist       = errors.New("policy does not exist")
 
 	// restrictedSysAPIs is the set of `sys/` APIs available only in the root namespace.
 	restrictedSysAPIs = pathmanager.New()
@@ -245,7 +245,7 @@ func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespac
 	for _, policyName := range nsPolicies {
 		policyNSCtx := namespace.ContextWithNamespace(ctx, policyNS)
 		t, err := c.policyStore.GetNonEGPPolicyType(policyNSCtx, policyName)
-		if err != nil && errors.Is(err, ErrPolicyNotExist) {
+		if err != nil && errors.Is(err, policy.ErrPolicyNotExist) {
 			// When we attempt to get a non-EGP policy type, and receive an
 			// explicit error that it doesn't exist (in the type map) we log the
 			// ns/policy and continue without error.
@@ -257,7 +257,7 @@ func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespac
 		}
 
 		switch *t {
-		case PolicyTypeACL:
+		case policy.TypeACL:
 			if policyApplicationMode != groupPolicyApplicationModeWithinNamespaceHierarchy {
 				// Group policy application mode isn't set to enforce
 				// the namespace hierarchy, so apply all the ACLs,
@@ -278,7 +278,7 @@ func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespac
 	return filteredPolicies, nil
 }
 
-func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Request) (*ACL, *logical.TokenEntry, *identity.Entity, map[string][]string, error) {
+func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Request) (*policy.ACL, *logical.TokenEntry, *identity.Entity, map[string][]string, error) {
 	defer metrics.MeasureSince([]string{"core", "fetch_acl_and_token"}, time.Now())
 
 	// Ensure there is a client token
@@ -361,7 +361,7 @@ func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Req
 	var tokenCtx context.Context
 	if len(policyNames) == 1 &&
 		len(policyNames[te.NamespaceID]) == 1 &&
-		policyNames[te.NamespaceID][0] == responseWrappingPolicyName &&
+		policyNames[te.NamespaceID][0] == policy.ResponseWrappingPolicyName &&
 		(strings.HasSuffix(req.Path, "sys/wrapping/unwrap") ||
 			strings.HasSuffix(req.Path, "sys/wrapping/lookup") ||
 			strings.HasSuffix(req.Path, "sys/wrapping/rewrap")) {
@@ -374,9 +374,9 @@ func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Req
 	}
 
 	// Add the inline policy if it's set
-	policies := make([]*Policy, 0)
+	policies := make([]*policy.Policy, 0)
 	if te.InlinePolicy != "" {
-		inlinePolicy, err := ParseACLPolicy(tokenNS, te.InlinePolicy)
+		inlinePolicy, err := policy.ParseACLPolicy(tokenNS, te.InlinePolicy)
 		if err != nil {
 			return nil, nil, nil, nil, ErrInternalError
 		}
@@ -394,10 +394,10 @@ func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Req
 	return acl, te, entity, identityPolicies, nil
 }
 
-func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool) (*logical.Auth, *ACL, *logical.TokenEntry, *identity.Entity, error) {
+func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool) (*logical.Auth, *policy.ACL, *logical.TokenEntry, *identity.Entity, error) {
 	defer metrics.MeasureSince([]string{"core", "check_token"}, time.Now())
 
-	var acl *ACL
+	var acl *policy.ACL
 	var te *logical.TokenEntry
 	var entity *identity.Entity
 	var identityPolicies map[string][]string
@@ -534,7 +534,7 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 
 	// Check the standard non-root ACLs. Return the token entry if it's not
 	// allowed so we can decrement the use count.
-	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &PolicyCheckOpts{
+	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.CheckOpts{
 		Unauth:            unauth,
 		RootPrivsRequired: rootPath,
 	})
@@ -1472,7 +1472,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	if resp != nil &&
 		req.Path == "cubbyhole/response" &&
 		len(te.Policies) == 1 &&
-		te.Policies[0] == responseWrappingPolicyName {
+		te.Policies[0] == policy.ResponseWrappingPolicyName {
 		resp.AddWarning("Reading from 'cubbyhole/response' is deprecated. Please use sys/wrapping/unwrap to unwrap responses, as it provides additional security checks and other benefits.")
 	}
 
@@ -1509,7 +1509,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 
 	// Do an unauth check. This will cause EGP policies to be checked
 	var auth *logical.Auth
-	var acl *ACL
+	var acl *policy.ACL
 	var te *logical.TokenEntry
 	var entity *identity.Entity
 	var ctErr error
@@ -1918,12 +1918,12 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 	// Prevent internal policies from being assigned to tokens. We check
 	// this on auth.Policies including derived ones from Identity before
 	// actually making the token.
-	for _, policy := range allPolicies {
-		if policy == "root" {
+	for _, pol := range allPolicies {
+		if pol == "root" {
 			return false, logical.ErrorResponse("auth methods cannot create root tokens"), logical.ErrInvalidRequest
 		}
-		if slices.Contains(nonAssignablePolicies, policy) {
-			return false, logical.ErrorResponse("cannot assign policy %q", policy), logical.ErrInvalidRequest
+		if slices.Contains(policy.NonAssignablePolicies, pol) {
+			return false, logical.ErrorResponse("cannot assign policy %q", pol), logical.ErrInvalidRequest
 		}
 	}
 

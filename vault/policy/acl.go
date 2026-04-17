@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package policy
 
 import (
 	"context"
@@ -19,7 +19,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/copystructure"
-	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -39,7 +38,7 @@ type ACL struct {
 	root *namespace.Namespace
 }
 
-type PolicyCheckOpts struct {
+type CheckOpts struct {
 	RootPrivsRequired bool
 	Unauth            bool
 }
@@ -94,7 +93,7 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 		}
 
 		switch policy.Type {
-		case PolicyTypeACL:
+		case TypeACL:
 		default:
 			return nil, errors.New("unable to parse policy (wrong type)")
 		}
@@ -816,34 +815,20 @@ SWCPATH:
 	return wcPathDescrs[len(wcPathDescrs)-1].perms
 }
 
-func (c *Core) performPolicyChecks(ctx context.Context, acl *ACL, te *logical.TokenEntry, req *logical.Request, inEntity *identity.Entity, opts *PolicyCheckOpts) *AuthResults {
-	ret := new(AuthResults)
+func (a *ACL) ExactRules() *radix.Tree {
+	return a.exactRules
+}
 
-	// First, perform normal ACL checks if requested. The only time no ACL
-	// should be applied is if we are only processing EGPs against a login
-	// path in which case opts.Unauth will be set.
-	if acl != nil && !opts.Unauth {
-		ret.ACLResults = acl.AllowOperation(ctx, req, false)
-		ret.RootPrivs = ret.ACLResults.RootPrivs
-		// Root is always allowed; skip Sentinel/MFA checks
-		if ret.ACLResults.IsRoot {
-			// logger.Warn("token is root, skipping checks")
-			ret.Allowed = true
-			return ret
-		}
-		if !ret.ACLResults.Allowed {
-			return ret
-		}
-		// Since HelpOperation was fast-pathed inside AllowOperation, RootPrivs will not have been populated in this
-		// case, so we need to special-case that here as well, or we'll block HelpOperation on all sudo-protected paths.
-		if !ret.RootPrivs && opts.RootPrivsRequired && req.Operation != logical.HelpOperation {
-			return ret
-		}
+func (a *ACL) PrefixRules() *radix.Tree {
+	return a.prefixRules
+}
+
+func (a *ACL) Root() *namespace.Namespace {
+	if a.root == nil {
+		return nil
 	}
 
-	ret.Allowed = true
-
-	return ret
+	return a.root.Clone(false)
 }
 
 func valueInParameterList(v interface{}, list []interface{}) bool {

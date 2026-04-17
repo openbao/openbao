@@ -14,7 +14,9 @@ import (
 
 	"github.com/openbao/openbao/command/server"
 	be "github.com/openbao/openbao/vault/backend"
+	"github.com/openbao/openbao/vault/barrier"
 	ident "github.com/openbao/openbao/vault/identity"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/routing"
 
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
@@ -666,8 +668,8 @@ func TestCore_LoadLoginMFAConfigs(t *testing.T) {
 
 	// prepare views
 	nsView := NamespaceScopedView(c.barrier, ns1)
-	mfaConfigBarrierView := nsView.SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
-	mfaEnforcementConfigBarrierView := nsView.SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+	mfaConfigBarrierView := nsView.SubView(barrier.SystemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	mfaEnforcementConfigBarrierView := nsView.SubView(barrier.SystemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
 
 	// verify empty storage
 	mfaConfigKeys, err := mfaConfigBarrierView.List(ctx, "")
@@ -2823,7 +2825,7 @@ path "secret/*" {
 `
 
 	ps := c.policyStore
-	policy, _ := ParseACLPolicy(namespace.RootNamespace, secretWritingPolicy)
+	policy, _ := policy.ParseACLPolicy(namespace.RootNamespace, secretWritingPolicy)
 	if err := ps.SetPolicy(namespace.RootContext(t.Context()), policy, nil); err != nil {
 		t.Fatal(err)
 	}

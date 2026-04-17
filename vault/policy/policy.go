@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package policy
 
 import (
 	"errors"
@@ -17,6 +17,7 @@ import (
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/template"
 	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -61,18 +62,18 @@ const (
 // policy type. However, if we do so, we should build the cache lazily,
 // which both improves memory consumption with large number of policies and
 // better supports namespace sealing.
-type PolicyType uint32
+type Type uint32
 
 const (
-	PolicyTypeACL PolicyType = iota
+	TypeACL Type = iota
 
 	// Triggers a lookup in the map to figure out if ACL or RGP
-	PolicyTypeToken PolicyType = iota + 2
+	TypeToken Type = iota + 2
 )
 
-func (p PolicyType) String() string {
+func (p Type) String() string {
 	switch p {
-	case PolicyTypeACL:
+	case TypeACL:
 		return "acl"
 	}
 
@@ -98,11 +99,11 @@ type Policy struct {
 	CASRequired bool
 	Paths       []*PathRules `hcl:"-"`
 	Raw         string
-	Type        PolicyType
+	Type        Type
 	Templated   bool
 	Expiration  time.Time
 	Modified    time.Time
-	namespace   *namespace.Namespace
+	Namespace   *namespace.Namespace
 }
 
 // ShallowClone returns a shallow clone of the policy. This should not be used
@@ -116,7 +117,7 @@ func (p *Policy) ShallowClone() *Policy {
 		Raw:         p.Raw,
 		Type:        p.Type,
 		Templated:   p.Templated,
-		namespace:   p.namespace,
+		Namespace:   p.Namespace,
 	}
 }
 
@@ -238,8 +239,8 @@ func addGrantingPoliciesToMap(m map[uint32][]logical.PolicyInfo, policy *Policy,
 
 		m[capability] = append(m[capability], logical.PolicyInfo{
 			Name:          policy.Name,
-			NamespaceId:   policy.namespace.ID,
-			NamespacePath: policy.namespace.Path,
+			NamespaceId:   policy.Namespace.ID,
+			NamespacePath: policy.Namespace.Path,
 			Type:          "acl",
 		})
 	}
@@ -251,14 +252,14 @@ func addGrantingPoliciesToMap(m map[uint32][]logical.PolicyInfo, policy *Policy,
 // intermediary set of policies, before being compiled into
 // the ACL
 func ParseACLPolicy(ns *namespace.Namespace, rules string) (*Policy, error) {
-	return parseACLPolicyWithTemplating(ns, rules, false, nil, nil)
+	return ParseACLPolicyWithTemplating(ns, rules, false, nil, nil)
 }
 
-// parseACLPolicyWithTemplating performs the actual work and checks whether we
+// ParseACLPolicyWithTemplating performs the actual work and checks whether we
 // should perform substitutions. If performTemplating is true we know that it
 // is templated so we don't check again, otherwise we check to see if it's a
 // templated policy.
-func parseACLPolicyWithTemplating(ns *namespace.Namespace, rules string, performTemplating bool, entity *identity.Entity, groups []*identity.Group) (*Policy, error) {
+func ParseACLPolicyWithTemplating(ns *namespace.Namespace, rules string, performTemplating bool, entity *identity.Entity, groups []*identity.Group) (*Policy, error) {
 	// Parse the rules
 	root, err := hclutil.ParseConfig([]byte(rules))
 	if err != nil {
@@ -283,8 +284,8 @@ func parseACLPolicyWithTemplating(ns *namespace.Namespace, rules string, perform
 	// Create the initial policy and store the raw text of the rules
 	p := Policy{
 		Raw:       rules,
-		Type:      PolicyTypeACL,
-		namespace: ns,
+		Type:      TypeACL,
+		Namespace: ns,
 	}
 	if err := hcl.DecodeObject(&p, list); err != nil {
 		return nil, fmt.Errorf("failed to parse policy: %w", err)
@@ -314,7 +315,7 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 				String:      key,
 				Entity:      identity.ToSDKEntity(entity),
 				Groups:      identity.ToSDKGroups(groups),
-				NamespaceID: result.namespace.ID,
+				NamespaceID: result.Namespace.ID,
 			})
 			if err != nil {
 				continue
@@ -386,7 +387,7 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 		}
 
 		// Ensure we are using the full request path internally
-		pc.Path = result.namespace.Path + pc.Path
+		pc.Path = result.Namespace.Path + pc.Path
 
 		if strings.Contains(pc.Path, "+*") {
 			return fmt.Errorf("path %q: invalid use of wildcards ('+*' is forbidden)", pc.Path)
@@ -483,7 +484,7 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 				return errors.New("list_scan_response_keys_filter_path needs to be used on a path with the list capability")
 			}
 
-			tmpl, err := compileTemplatePathForFiltering(pc.Permissions.ResponseKeysFilterPath)
+			tmpl, err := template.CompileTemplatePathForFiltering(pc.Permissions.ResponseKeysFilterPath)
 			if err != nil {
 				return fmt.Errorf("unable to compile template for list_scan_response_keys_filter_path: %w", err)
 			}
@@ -499,12 +500,12 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 				return fmt.Errorf("failed to generate random string to validate policy: %w", err)
 			}
 
-			checkPathOne, err := useTemplateForFiltering(tmpl, pc.Path, keyOne)
+			checkPathOne, err := template.UseTemplateForFiltering(tmpl, pc.Path, keyOne)
 			if err != nil {
 				return fmt.Errorf("failed to validate list_scan_response_keys_filter_path: %w", err)
 			}
 
-			checkPathTwo, err := useTemplateForFiltering(tmpl, pc.Path, keyTwo)
+			checkPathTwo, err := template.UseTemplateForFiltering(tmpl, pc.Path, keyTwo)
 			if err != nil {
 				return fmt.Errorf("failed to validate list_scan_response_keys_filter_path: %w", err)
 			}

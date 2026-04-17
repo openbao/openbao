@@ -9,6 +9,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/policy"
 )
 
 func (b *SystemBackend) configPaths() []*framework.Path {
@@ -3539,7 +3540,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Callback: b.handlePoliciesList(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3556,7 +3557,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					},
 				},
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Callback: b.handlePoliciesList(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3620,7 +3621,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesRead(PolicyTypeACL),
+					Callback: b.handlePoliciesRead(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3659,7 +3660,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Summary: "Retrieve the policy body for the named policy.",
 				},
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Callback: b.handlePoliciesList(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3676,7 +3677,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					},
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesSet(PolicyTypeACL),
+					Callback: b.handlePoliciesSet(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: "OK",
@@ -3686,7 +3687,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Summary: "Add a new or update an existing policy.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesDelete(PolicyTypeACL),
+					Callback: b.handlePoliciesDelete(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: "OK",
@@ -3711,7 +3712,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Callback: b.handlePoliciesList(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3770,7 +3771,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesRead(PolicyTypeACL),
+					Callback: b.handlePoliciesRead(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3809,7 +3810,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Summary: "Retrieve information about the named ACL policy.",
 				},
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Callback: b.handlePoliciesList(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3826,7 +3827,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					},
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesSet(PolicyTypeACL),
+					Callback: b.handlePoliciesSet(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: "OK",
@@ -3836,7 +3837,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Summary: "Add a new or update an existing ACL policy.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesDelete(PolicyTypeACL),
+					Callback: b.handlePoliciesDelete(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: "OK",

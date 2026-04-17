@@ -1294,7 +1294,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				Namespace:   namespace.RootNamespace,
 			},
 
-			wantViewPrefix: systemBarrierPrefix,
+			wantViewPrefix: barrier.SystemBarrierPrefix,
 		},
 		{
 			name: "entry of 'token' mount type",
@@ -1305,7 +1305,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				Namespace:   namespace.RootNamespace,
 			},
 
-			wantViewPrefix: systemBarrierPrefix + tokenSubPath,
+			wantViewPrefix: barrier.SystemBarrierPrefix + tokenSubPath,
 		},
 		{
 			name: "entry of 'credential' table type",

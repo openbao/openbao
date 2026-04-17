@@ -47,6 +47,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/version"
 )
@@ -2441,7 +2442,7 @@ func (b *SystemBackend) handleDisableAuth(ctx context.Context, req *logical.Requ
 }
 
 // handlePoliciesList handles /sys/policy/ and /sys/policies/<type> endpoints to provide the enabled policies
-func (b *SystemBackend) handlePoliciesList(policyType PolicyType) framework.OperationFunc {
+func (b *SystemBackend) handlePoliciesList(policyType policy.Type) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		prefix := ""
 		if _, present := data.Schema["name"]; present {
@@ -2458,7 +2459,7 @@ func (b *SystemBackend) handlePoliciesList(policyType PolicyType) framework.Oper
 		}
 
 		switch policyType {
-		case PolicyTypeACL:
+		case policy.TypeACL:
 			if ns.ID == namespace.RootNamespaceID && prefix == "" {
 				policies = append(policies, "root")
 			}
@@ -2476,23 +2477,23 @@ func (b *SystemBackend) handlePoliciesList(policyType PolicyType) framework.Oper
 }
 
 // handlePoliciesRead handles the "/sys/policy/<name>" and "/sys/policies/<type>/<name>" endpoints to read a policy
-func (b *SystemBackend) handlePoliciesRead(policyType PolicyType) framework.OperationFunc {
+func (b *SystemBackend) handlePoliciesRead(policyType policy.Type) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		name := data.Get("name").(string)
 
-		policy, err := b.Core.policyStore.GetPolicy(ctx, name, policyType)
+		pol, err := b.Core.policyStore.GetPolicy(ctx, name, policyType)
 		if err != nil {
 			return handleError(err)
 		}
 
-		if policy == nil {
+		if pol == nil {
 			return nil, nil
 		}
 
-		respData := readPolicyResponse(policy)
+		respData := readPolicyResponse(pol)
 
 		// If the request is from sys/policy/ we handle backwards compatibility
-		if policyType == PolicyTypeACL && strings.HasPrefix(req.Path, "policy") {
+		if policyType == policy.TypeACL && strings.HasPrefix(req.Path, "policy") {
 			respData["rules"] = respData["policy"]
 			delete(respData, "policy")
 		}
@@ -2503,7 +2504,7 @@ func (b *SystemBackend) handlePoliciesRead(policyType PolicyType) framework.Oper
 	}
 }
 
-func readPolicyResponse(policy *Policy) map[string]interface{} {
+func readPolicyResponse(policy *policy.Policy) map[string]interface{} {
 	data := map[string]interface{}{
 		"name":         policy.Name,
 		"version":      policy.DataVersion,
@@ -2523,7 +2524,7 @@ func readPolicyResponse(policy *Policy) map[string]interface{} {
 }
 
 // handlePoliciesSet handles the "/sys/policy/<name>" and "/sys/policies/<type>/<name>" endpoints to set a policy
-func (b *SystemBackend) handlePoliciesSet(policyType PolicyType) framework.OperationFunc {
+func (b *SystemBackend) handlePoliciesSet(policyType policy.Type) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		var resp *logical.Response
 
@@ -2533,33 +2534,33 @@ func (b *SystemBackend) handlePoliciesSet(policyType PolicyType) framework.Opera
 		}
 
 		name := data.Get("name").(string)
-		policy := &Policy{
+		pol := &policy.Policy{
 			Name:      strings.ToLower(name),
 			Type:      policyType,
-			namespace: ns,
+			Namespace: ns,
 		}
-		if policy.Name == "" {
+		if pol.Name == "" {
 			return logical.ErrorResponse("policy name must be provided in the URL"), nil
 		}
-		if name != policy.Name {
+		if name != pol.Name {
 			resp = &logical.Response{}
-			resp.AddWarning(fmt.Sprintf("policy name was converted to %s", policy.Name))
+			resp.AddWarning(fmt.Sprintf("policy name was converted to %s", pol.Name))
 		}
 
-		policy.Raw = data.Get("policy").(string)
-		if policy.Raw == "" && policyType == PolicyTypeACL && strings.HasPrefix(req.Path, "policy") {
-			policy.Raw = data.Get("rules").(string)
+		pol.Raw = data.Get("policy").(string)
+		if pol.Raw == "" && policyType == policy.TypeACL && strings.HasPrefix(req.Path, "policy") {
+			pol.Raw = data.Get("rules").(string)
 			if resp == nil {
 				resp = &logical.Response{}
 			}
 			resp.AddWarning("'rules' is deprecated, please use 'policy' instead")
 		}
-		if policy.Raw == "" {
+		if pol.Raw == "" {
 			return logical.ErrorResponse("'policy' parameter not supplied or empty"), nil
 		}
 
-		if polBytes, err := base64.StdEncoding.DecodeString(policy.Raw); err == nil {
-			policy.Raw = string(polBytes)
+		if polBytes, err := base64.StdEncoding.DecodeString(pol.Raw); err == nil {
+			pol.Raw = string(polBytes)
 		}
 
 		expirationRaw, expirationOk := data.GetOk("expiration")
@@ -2567,23 +2568,23 @@ func (b *SystemBackend) handlePoliciesSet(policyType PolicyType) framework.Opera
 		if expirationOk && ttlOk {
 			return logical.ErrorResponse("cannot supply both 'expiration' and 'ttl' for policies"), nil
 		} else if expirationOk {
-			policy.Expiration = expirationRaw.(time.Time)
+			pol.Expiration = expirationRaw.(time.Time)
 		} else if ttlOk {
-			policy.Expiration = time.Now().Add(time.Duration(ttlRaw.(int)) * time.Second)
+			pol.Expiration = time.Now().Add(time.Duration(ttlRaw.(int)) * time.Second)
 		}
 
-		if !policy.Expiration.IsZero() && !time.Now().Before(policy.Expiration) {
+		if !pol.Expiration.IsZero() && !time.Now().Before(pol.Expiration) {
 			return logical.ErrorResponse("refusing to update policy as expiration time has already elapsed"), nil
 		}
 
 		switch policyType {
-		case PolicyTypeACL:
-			p, err := ParseACLPolicy(ns, policy.Raw)
+		case policy.TypeACL:
+			p, err := policy.ParseACLPolicy(ns, pol.Raw)
 			if err != nil {
 				return handleError(err)
 			}
-			policy.Paths = p.Paths
-			policy.Templated = p.Templated
+			pol.Paths = p.Paths
+			pol.Templated = p.Templated
 
 		default:
 			return logical.ErrorResponse("unknown policy type"), nil
@@ -2597,10 +2598,10 @@ func (b *SystemBackend) handlePoliciesSet(policyType PolicyType) framework.Opera
 		}
 
 		casRequired := data.Get("cas_required").(bool)
-		policy.CASRequired = casRequired
+		pol.CASRequired = casRequired
 
 		// Update the policy
-		if err := b.Core.policyStore.SetPolicy(ctx, policy, cas); err != nil {
+		if err := b.Core.policyStore.SetPolicy(ctx, pol, cas); err != nil {
 			return handleError(err)
 		}
 
@@ -2608,7 +2609,7 @@ func (b *SystemBackend) handlePoliciesSet(policyType PolicyType) framework.Opera
 	}
 }
 
-func (b *SystemBackend) handlePoliciesDelete(policyType PolicyType) framework.OperationFunc {
+func (b *SystemBackend) handlePoliciesDelete(policyType policy.Type) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		name := data.Get("name").(string)
 
@@ -2833,7 +2834,7 @@ func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc 
 		}
 
 		// Get policies list
-		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, PolicyTypeACL, prefix, true)
+		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, policy.TypeACL, prefix, true)
 		if err != nil {
 			return nil, err
 		}
@@ -2850,7 +2851,7 @@ func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc 
 		// Get detailed information for each policy
 		policyInfos := make(map[string]interface{})
 		for _, policyName := range policies {
-			policy, err := b.Core.policyStore.GetPolicy(ctx, policyName, PolicyTypeACL)
+			policy, err := b.Core.policyStore.GetPolicy(ctx, policyName, policy.TypeACL)
 			if err != nil {
 				continue
 			}
@@ -3146,7 +3147,7 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 
 	var response string
 	switch te.Policies[0] {
-	case responseWrappingPolicyName:
+	case policy.ResponseWrappingPolicyName:
 		response, err = b.responseWrappingUnwrap(unwrapCtx, te, thirdParty)
 	}
 	if err != nil {
@@ -3700,7 +3701,7 @@ func (b *SystemBackend) pathRandomWrite(_ context.Context, _ *logical.Request, d
 	return random.HandleRandomAPI(d)
 }
 
-func hasMountAccess(ctx context.Context, acl *ACL, path string) bool {
+func hasMountAccess(ctx context.Context, acl *policy.ACL, path string) bool {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return false
@@ -3709,7 +3710,7 @@ func hasMountAccess(ctx context.Context, acl *ACL, path string) bool {
 	// If a policy is giving us direct access to the mount path then we can do
 	// a fast return.
 	capabilities := acl.Capabilities(ctx, ns.TrimmedPath(path))
-	if !slices.Contains(capabilities, DenyCapability) {
+	if !slices.Contains(capabilities, policy.DenyCapability) {
 		return true
 	}
 
@@ -3719,20 +3720,20 @@ func hasMountAccess(ctx context.Context, acl *ACL, path string) bool {
 			return false
 		}
 
-		perms := v.(*ACLPermissions)
+		perms := v.(*policy.ACLPermissions)
 
 		switch {
-		case perms.CapabilitiesBitmap&DenyCapabilityInt > 0:
+		case perms.CapabilitiesBitmap&policy.DenyCapabilityInt > 0:
 			return false
 
-		case perms.CapabilitiesBitmap&CreateCapabilityInt > 0,
-			perms.CapabilitiesBitmap&DeleteCapabilityInt > 0,
-			perms.CapabilitiesBitmap&ListCapabilityInt > 0,
-			perms.CapabilitiesBitmap&ReadCapabilityInt > 0,
-			perms.CapabilitiesBitmap&SudoCapabilityInt > 0,
-			perms.CapabilitiesBitmap&UpdateCapabilityInt > 0,
-			perms.CapabilitiesBitmap&PatchCapabilityInt > 0,
-			perms.CapabilitiesBitmap&ScanCapabilityInt > 0:
+		case perms.CapabilitiesBitmap&policy.CreateCapabilityInt > 0,
+			perms.CapabilitiesBitmap&policy.DeleteCapabilityInt > 0,
+			perms.CapabilitiesBitmap&policy.ListCapabilityInt > 0,
+			perms.CapabilitiesBitmap&policy.ReadCapabilityInt > 0,
+			perms.CapabilitiesBitmap&policy.SudoCapabilityInt > 0,
+			perms.CapabilitiesBitmap&policy.UpdateCapabilityInt > 0,
+			perms.CapabilitiesBitmap&policy.PatchCapabilityInt > 0,
+			perms.CapabilitiesBitmap&policy.ScanCapabilityInt > 0:
 
 			aclCapabilitiesGiven = true
 
@@ -3742,9 +3743,9 @@ func hasMountAccess(ctx context.Context, acl *ACL, path string) bool {
 		return false
 	}
 
-	acl.exactRules.WalkPrefix(path, walkFn)
+	acl.ExactRules().WalkPrefix(path, walkFn)
 	if !aclCapabilitiesGiven {
-		acl.prefixRules.WalkPrefix(path, walkFn)
+		acl.PrefixRules().WalkPrefix(path, walkFn)
 	}
 
 	if !aclCapabilitiesGiven {
@@ -3771,7 +3772,7 @@ func (b *SystemBackend) pathInternalUIMountsRead(ctx context.Context, req *logic
 	resp.Data["secret"] = secretMounts
 	resp.Data["auth"] = authMounts
 
-	var acl *ACL
+	var acl *policy.ACL
 	var isAuthed bool
 	if req.ClientToken != "" {
 		isAuthed = true
@@ -4071,7 +4072,7 @@ func (b *SystemBackend) pathInternalUIResultantACL(ctx context.Context, req *log
 		},
 	}
 
-	if acl.root != nil {
+	if acl.Root() != nil {
 		resp.Data["root"] = true
 		return resp, nil
 	}
@@ -4084,38 +4085,38 @@ func (b *SystemBackend) pathInternalUIResultantACL(ctx context.Context, req *log
 			return
 		}
 
-		perms := v.(*ACLPermissions)
+		perms := v.(*policy.ACLPermissions)
 		capabilities := []string{}
 
-		if perms.CapabilitiesBitmap&CreateCapabilityInt > 0 {
-			capabilities = append(capabilities, CreateCapability)
+		if perms.CapabilitiesBitmap&policy.CreateCapabilityInt > 0 {
+			capabilities = append(capabilities, policy.CreateCapability)
 		}
-		if perms.CapabilitiesBitmap&DeleteCapabilityInt > 0 {
-			capabilities = append(capabilities, DeleteCapability)
+		if perms.CapabilitiesBitmap&policy.DeleteCapabilityInt > 0 {
+			capabilities = append(capabilities, policy.DeleteCapability)
 		}
-		if perms.CapabilitiesBitmap&ListCapabilityInt > 0 {
-			capabilities = append(capabilities, ListCapability)
+		if perms.CapabilitiesBitmap&policy.ListCapabilityInt > 0 {
+			capabilities = append(capabilities, policy.ListCapability)
 		}
-		if perms.CapabilitiesBitmap&ReadCapabilityInt > 0 {
-			capabilities = append(capabilities, ReadCapability)
+		if perms.CapabilitiesBitmap&policy.ReadCapabilityInt > 0 {
+			capabilities = append(capabilities, policy.ReadCapability)
 		}
-		if perms.CapabilitiesBitmap&SudoCapabilityInt > 0 {
-			capabilities = append(capabilities, SudoCapability)
+		if perms.CapabilitiesBitmap&policy.SudoCapabilityInt > 0 {
+			capabilities = append(capabilities, policy.SudoCapability)
 		}
-		if perms.CapabilitiesBitmap&UpdateCapabilityInt > 0 {
-			capabilities = append(capabilities, UpdateCapability)
+		if perms.CapabilitiesBitmap&policy.UpdateCapabilityInt > 0 {
+			capabilities = append(capabilities, policy.UpdateCapability)
 		}
-		if perms.CapabilitiesBitmap&PatchCapabilityInt > 0 {
-			capabilities = append(capabilities, PatchCapability)
+		if perms.CapabilitiesBitmap&policy.PatchCapabilityInt > 0 {
+			capabilities = append(capabilities, policy.PatchCapability)
 		}
-		if perms.CapabilitiesBitmap&ScanCapabilityInt > 0 {
-			capabilities = append(capabilities, ScanCapability)
+		if perms.CapabilitiesBitmap&policy.ScanCapabilityInt > 0 {
+			capabilities = append(capabilities, policy.ScanCapability)
 		}
 
 		// If "deny" is explicitly set or if the path has no capabilities at all,
 		// set the path capabilities to "deny"
-		if perms.CapabilitiesBitmap&DenyCapabilityInt > 0 || len(capabilities) == 0 {
-			capabilities = []string{DenyCapability}
+		if perms.CapabilitiesBitmap&policy.DenyCapabilityInt > 0 || len(capabilities) == 0 {
+			capabilities = []string{policy.DenyCapability}
 		}
 
 		res := map[string]interface{}{}
@@ -4151,8 +4152,8 @@ func (b *SystemBackend) pathInternalUIResultantACL(ctx context.Context, req *log
 		return false
 	}
 
-	acl.exactRules.Walk(exactWalkFn)
-	acl.prefixRules.Walk(globWalkFn)
+	acl.ExactRules().Walk(exactWalkFn)
+	acl.PrefixRules().Walk(globWalkFn)
 
 	resp.Data["exact_paths"] = exact
 	resp.Data["glob_paths"] = glob

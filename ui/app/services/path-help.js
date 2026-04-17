@@ -10,6 +10,7 @@
 */
 import Model from '@ember-data/model';
 import Service from '@ember/service';
+import { inject as service } from '@ember/service';
 import { encodePath } from 'vault/utils/path-encoding-helpers';
 import { getOwner } from '@ember/application';
 import { assign } from '@ember/polyfills';
@@ -31,6 +32,7 @@ export function sanitizePath(path) {
 export default Service.extend({
   attrs: null,
   dynamicApiPath: '',
+  store: service(),
   ajax(url, options = {}) {
     const appAdapter = getOwner(this).lookup(`adapter:application`);
     const { data } = options;
@@ -41,9 +43,8 @@ export default Service.extend({
 
   getNewModel(modelType, backend, apiPath, itemType) {
     const owner = getOwner(this);
-    const modelName = `model:${modelType}`;
 
-    const modelFactory = owner.factoryFor(modelName);
+    const modelFactory = owner.factoryFor(`model:${modelType}`);
     let newModel, helpUrl;
     // if we have a factory, we need to take the existing model into account
     if (modelFactory) {
@@ -55,17 +56,17 @@ export default Service.extend({
       }
 
       helpUrl = modelProto.getHelpUrl(backend);
-      return this.registerNewModelWithProps(helpUrl, backend, newModel, modelName);
+      return this.registerNewModelWithProps(helpUrl, backend, newModel, modelType);
     } else {
       debug(`Creating new Model for ${modelType}`);
-      newModel = Model.extend({});
+      newModel = class extends Model {};
     }
 
     // we don't have an apiPath for dynamic secrets
     // and we don't need paths for them yet
     if (!apiPath) {
       helpUrl = newModel.proto().getHelpUrl(backend);
-      return this.registerNewModelWithProps(helpUrl, backend, newModel, modelName);
+      return this.registerNewModelWithProps(helpUrl, backend, newModel, modelType);
     }
 
     // use paths to dynamically create our openapi help url
@@ -94,7 +95,7 @@ export default Service.extend({
         helpUrl = `/v1/${apiPath}${path.slice(1)}?help=true`;
         pathInfo.paths = paths;
         newModel = newModel.extend({ paths: pathInfo });
-        return this.registerNewModelWithProps(helpUrl, backend, newModel, modelName);
+        return this.registerNewModelWithProps(helpUrl, backend, newModel, modelType);
       })
       .catch((err) => {
         // TODO: we should handle the error better here
@@ -301,7 +302,8 @@ export default Service.extend({
 
   registerNewModelWithProps(helpUrl, backend, newModel, modelName) {
     return this.getProps(helpUrl, backend).then((props) => {
-      const { attrs, newFields } = combineAttributes(newModel.attributes, props);
+      const origAttrs = this.store.getSchemaDefinitionService().attributesDefinitionFor({ type: modelName });
+      const { attrs, newFields } = combineAttributes(origAttrs, props);
       const owner = getOwner(this);
       newModel = newModel.extend(attrs, { newFields });
       // if our newModel doesn't have fieldGroups already
@@ -344,8 +346,9 @@ export default Service.extend({
         },
       });
       newModel.merged = true;
-      owner.unregister(modelName);
-      owner.register(modelName, newModel);
+      const regName = `model:${modelName}`;
+      owner.unregister(regName);
+      owner.register(regName, newModel);
     });
   },
   getFieldGroups(newModel) {

@@ -174,10 +174,13 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/sys/health", handleSysHealth(core))
 		mux.Handle("/v1/sys/monitor", handleLogicalNoForward(core))
 
-		mux.Handle("/v1/sys/generate-root/attempt",
-			handleAuditNonLogical(core, handleSysGenerateRootAttempt(core, vault.GenerateStandardRootTokenStrategy)))
-		mux.Handle("/v1/sys/generate-root/update",
-			handleAuditNonLogical(core, handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy)))
+		// Register without unauthenticated generate root, if necessary.
+		if props.ListenerConfig != nil && props.ListenerConfig.DisableUnauthedGenerateRootEndpoints != nil && !*props.ListenerConfig.DisableUnauthedGenerateRootEndpoints {
+			mux.Handle("/v1/sys/generate-root/attempt",
+				handleAuditNonLogical(core, handleSysGenerateRootAttempt(core, vault.GenerateStandardRootTokenStrategy)))
+			mux.Handle("/v1/sys/generate-root/update",
+				handleAuditNonLogical(core, handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy)))
+		}
 
 		// Register without unauthenticated rekey, if necessary.
 		if props.ListenerConfig != nil && props.ListenerConfig.DisableUnauthedRekeyEndpoints != nil && !*props.ListenerConfig.DisableUnauthedRekeyEndpoints {

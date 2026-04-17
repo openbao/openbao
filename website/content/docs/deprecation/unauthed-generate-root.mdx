@@ -1,0 +1,25 @@
+---
+sidebar_label: Unauthenticated Generate Root Endpoints
+description: |-
+  Deprecating the `sys/generate-root/*` endpoints.
+---
+
+# Deprecating Unauthenticated Generate Root Endpoints
+
+## What
+
+In OpenBao v2.5.3, the `disable_unauthed_generate_root_endpoints` parameter will be
+set to `true` by default (currently `false`), preventing all requests to the
+unauthenticated `sys/generate-root/*` endpoints.
+
+Instead, users can call the `auth/token/create` endpoint with a token with
+`sudo` permission to create new root tokens.
+
+## Why
+
+These endpoints pose a security risk. An unauthenticated attacker may call
+the cancel endpoint (`DELETE /sys/generate-root/init`), interrupting a valid
+generate root operation. Additionally, an attacker may choose to initiate
+their own generate root operation.
+
+Operations to this endpoint are audited.

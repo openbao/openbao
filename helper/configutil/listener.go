@@ -165,6 +165,15 @@ type Listener struct {
 	// `disable_unauthed_rekey_endpoints` value has to be set to false.
 	DisableUnauthedRekeyEndpoints    *bool       `hcl:"-"`
 	DisableUnauthedRekeyEndpointsRaw interface{} `hcl:"disable_unauthed_rekey_endpoints"`
+
+	// Whether to enable handling the unauthenticated generate-root endpoints
+	// (via /sys/generate-root/*) on this particular listener.
+	//
+	// This defaults to true, i.e., requests are not served; to enable handling
+	// the unauthenticated generate-root endpoints the
+	// `disable_unauthed_generate_root_endpoints` value has to be set to false.
+	DisableUnauthedGenerateRootEndpoints    *bool       `hcl:"-"`
+	DisableUnauthedGenerateRootEndpointsRaw interface{} `hcl:"disable_unauthed_generate_root_endpoints"`
 }
 
 // AgentAPI allows users to select which parts of the Agent API they want enabled.
@@ -562,6 +571,20 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 		} else {
 			disabled := true
 			l.DisableUnauthedRekeyEndpoints = &disabled
+		}
+
+		// Unauthed Generate Root
+		if l.DisableUnauthedGenerateRootEndpointsRaw != nil {
+			value, err := parseutil.ParseBool(l.DisableUnauthedGenerateRootEndpointsRaw)
+			if err != nil {
+				return multierror.Prefix(fmt.Errorf("invalid value for disable_unauthed_generate_root_endpoints: %w", err), fmt.Sprintf("listeners.%d", i))
+			}
+
+			l.DisableUnauthedGenerateRootEndpoints = &value
+			l.DisableUnauthedGenerateRootEndpointsRaw = nil
+		} else {
+			disabled := true
+			l.DisableUnauthedGenerateRootEndpoints = &disabled
 		}
 
 		// Validate forwarded certificate decoders. This list must be kept

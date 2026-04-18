@@ -4,8 +4,8 @@
 package vault
 
 import (
-	"bytes"
 	"context"
+	"crypto/subtle"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -268,11 +268,16 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		return nil, errors.New("incorrect strategy supplied; a generate root operation of another type is already in progress")
 	}
 
-	// Check if we already have this piece
+	// Check if we already have this piece. Scan every stored share in
+	// constant time: the bitwise OR forces each ConstantTimeCompare call
+	// to execute, so the duplicate-share response does not reveal in
+	// which provision slot the supplied share was already recorded.
+	var found int
 	for _, existing := range c.generateRootProgress {
-		if bytes.Equal(existing, key) {
-			return nil, errors.New("given key has already been provided during this generation operation")
-		}
+		found |= subtle.ConstantTimeCompare(existing, key)
+	}
+	if found == 1 {
+		return nil, errors.New("given key has already been provided during this generation operation")
 	}
 
 	// Store this key

@@ -337,11 +337,16 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 		return nil, logical.CodedError(http.StatusBadRequest, "incorrect nonce supplied; nonce for this rekey operation is %q", c.rootRotationConfig.Nonce)
 	}
 
-	// Check if we already have this piece
+	// Check if we already have this piece. Scan every stored share in
+	// constant time: the bitwise OR forces each ConstantTimeCompare call
+	// to execute, so the duplicate-share response does not reveal in
+	// which provision slot the supplied share was already recorded.
+	var found int
 	for _, existing := range c.rootRotationConfig.RotationProgress {
-		if subtle.ConstantTimeCompare(existing, key) == 1 {
-			return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this generation operation")
-		}
+		found |= subtle.ConstantTimeCompare(existing, key)
+	}
+	if found == 1 {
+		return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this generation operation")
 	}
 
 	// Store this key
@@ -576,11 +581,16 @@ func (c *Core) RecoveryRekeyUpdate(ctx context.Context, key []byte, nonce string
 		return nil, logical.CodedError(http.StatusBadRequest, "incorrect nonce supplied; nonce for this rekey operation is %q", c.recoveryRotationConfig.Nonce)
 	}
 
-	// Check if we already have this piece
+	// Check if we already have this piece. Scan every stored share in
+	// constant time: the bitwise OR forces each ConstantTimeCompare call
+	// to execute, so the duplicate-share response does not reveal in
+	// which provision slot the supplied share was already recorded.
+	var found int
 	for _, existing := range c.recoveryRotationConfig.RotationProgress {
-		if subtle.ConstantTimeCompare(existing, key) == 1 {
-			return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this rekey operation")
-		}
+		found |= subtle.ConstantTimeCompare(existing, key)
+	}
+	if found == 1 {
+		return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this rekey operation")
 	}
 
 	// Store this key
@@ -762,11 +772,16 @@ func (c *Core) RekeyVerify(ctx context.Context, key []byte, nonce string, recove
 		return nil, logical.CodedError(http.StatusBadRequest, "incorrect nonce supplied; nonce for this verify operation is %q", config.VerificationNonce)
 	}
 
-	// Check if we already have this piece
+	// Check if we already have this piece. Scan every stored share in
+	// constant time: the bitwise OR forces each ConstantTimeCompare call
+	// to execute, so the duplicate-share response does not reveal in
+	// which provision slot the supplied share was already recorded.
+	var found int
 	for _, existing := range config.VerificationProgress {
-		if subtle.ConstantTimeCompare(existing, key) == 1 {
-			return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this verify operation")
-		}
+		found |= subtle.ConstantTimeCompare(existing, key)
+	}
+	if found == 1 {
+		return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this verify operation")
 	}
 
 	// Store this key

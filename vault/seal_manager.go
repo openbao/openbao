@@ -371,12 +371,16 @@ func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespa
 func (sm *SealManager) recordUnsealPart(ns *namespace.Namespace, key []byte) (bool, error) {
 	info, exists := sm.unlockInformationByNamespace[ns.UUID]
 	if exists {
-		found := false
+		// Scan every stored share in constant time. Using bitwise OR
+		// (instead of a short-circuiting boolean OR) forces each
+		// ConstantTimeCompare call to execute, so the response time
+		// does not reveal which provision slot matched.
+		var found int
 		for _, existing := range info.Parts {
-			found = found || subtle.ConstantTimeCompare(existing, key) == 1
+			found |= subtle.ConstantTimeCompare(existing, key)
 		}
 
-		if found {
+		if found == 1 {
 			return false, nil
 		}
 	} else {

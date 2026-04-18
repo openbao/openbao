@@ -1601,12 +1601,17 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 
 // recordUnsealPart takes in a key fragment, and returns true if it's a new fragment.
 func (c *Core) recordUnsealPart(key []byte) (bool, error) {
-	// Check if we already have this piece
+	// Check if we already have this piece. Scan every stored share in
+	// constant time: the bitwise OR forces each ConstantTimeCompare call
+	// to execute, so the response time does not reveal which provision
+	// slot already holds the supplied share.
 	if c.unlockInfo != nil {
+		var found int
 		for _, existing := range c.unlockInfo.Parts {
-			if subtle.ConstantTimeCompare(existing, key) == 1 {
-				return false, nil
-			}
+			found |= subtle.ConstantTimeCompare(existing, key)
+		}
+		if found == 1 {
+			return false, nil
 		}
 	} else {
 		uuid, err := uuid.GenerateUUID()

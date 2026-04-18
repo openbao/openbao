@@ -1,0 +1,3 @@
+```release-note:security
+core: Prevent timing-based leak in Shamir key share duplicate checks during unseal, root token generation, key rotation, and rotation verification.
+```

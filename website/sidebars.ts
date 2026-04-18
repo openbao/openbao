@@ -562,6 +562,7 @@ const sidebars: SidebarsConfig = {
                         "rfcs/standby-nodes-handle-read-requests",
                     ],
                 },
+                "rfcs/version-gated-leader-election",
                 "rfcs/config-plugins",
                 "rfcs/postgresql",
                 "rfcs/invalidation",

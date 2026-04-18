@@ -1,0 +1,311 @@
+---
+sidebar_label: Version-Gated Leader Election
+description: |-
+  An OpenBao RFC on preventing older nodes from becoming HA leader after a newer
+  version has held leadership, enabling zero-downtime rolling upgrades.
+---
+
+# Version-Gated Leader Election
+
+### Summary
+
+This RFC proposes adding a version check to the HA leader election path that
+prevents a node from becoming leader if its version is strictly older than the
+last successful leader's version. This enforces the existing
+[HA upgrade documentation](../upgrading/ha-upgrade.mdx) guidance ("Do not fail
+over from a newer version of OpenBao to an older version") at the application
+layer, enabling Kubernetes Helm deployments to use `RollingUpdate` instead of
+`Recreate` strategy for zero-downtime upgrades.
+
+### Problem Statement
+
+OpenBao's HA upgrade docs state:
+
+> "Do not fail over from a newer version of OpenBao to an older version."
+
+This is documentation-only guidance. In
+[`vault/ha.go:waitForLeadership()`](https://github.com/openbao/openbao/blob/main/vault/ha.go#L604),
+the HA lock is acquired (line ~640), then the node proceeds to `postUnseal()`
+(line ~780) with no version check. Any node that grabs the lock becomes leader
+regardless of what version held leadership before.
+
+This was manageable when standbys were purely passive forwarders. With read
+replication landing in v2.5.0
+([#1986](https://github.com/openbao/openbao/pull/1986)), standbys now call
+`postUnseal()` in read-only mode
+([`runStandbyOnce()`](https://github.com/openbao/openbao/blob/main/vault/ha.go#L493)),
+loading mount tables, plugins, and caches to serve read requests locally. A
+version-mixed cluster during rolling upgrades risks:
+
+1. **An older node claiming leadership after a newer version modified
+   storage.** `postUnseal()` performs storage migrations. An older version may
+   not understand schema changes made by the newer leader.
+2. **Older standbys serving stale reads.** With read replication, standbys
+   process requests using their own mount table and plugin state. Different
+   versions could interpret cached state differently.
+
+Recent fixes to standby behavior confirm this is an active concern:
+[#2467](https://github.com/openbao/openbao/pull/2467) fixed standbys writing
+mount table upgrades during read-replication setup, and
+[#2549](https://github.com/openbao/openbao/pull/2549) fixed standbys
+scheduling lease expiration jobs requiring storage writes. Both would be worse
+in a version-mixed cluster.
+
+Kubernetes users cannot enforce version ordering at the orchestration layer.
+Helm hooks don't execute in `helm template | kubectl apply` workflows, and
+StatefulSet lifecycle doesn't support "upgrade standbys before leader"
+semantics without a custom Operator.
+
+### User-facing Description
+
+After this change, OpenBao prevents an older version from becoming HA leader
+if a newer version has previously held leadership. No operator action is
+required for normal rolling upgrades -- new-version nodes claim leadership,
+old-version nodes continue serving standby reads until replaced.
+
+If an operator accidentally rolls back to an older image, old-version nodes
+refuse leadership:
+
+```
+[WARN] core: refusing leadership: current version 2.5.0 is older than last leader version 2.6.0
+```
+
+All nodes enter standby mode, making the problem visible. For intentional
+rollbacks (e.g., restore from backup), operators set a config option:
+
+```hcl
+disable_leader_version_check = true
+```
+
+#### Observability
+
+- K8s pod label `openbao-version-blocked=true` when a node is blocked
+  (alongside existing `openbao-active`, `openbao-sealed`, etc.)
+- Counter metric `core.leadership_version_blocked`
+- Clear WARN log on each blocked election attempt
+
+With this in core, the Helm chart can switch to `RollingUpdate` as the default
+StatefulSet update strategy
+([openbao-helm#170](https://github.com/openbao/openbao-helm/issues/170)).
+
+### Technical Description
+
+#### Components involved
+
+| File | Change |
+|---|---|
+| `vault/ha.go` | Version check in `waitForLeadership()`, version store after `postUnseal()`, backoff loop for blocked nodes |
+| `vault/core.go` | Add `Version` field to `activeAdvertisement` struct |
+| `command/server/config.go` | New `disable_leader_version_check` config option |
+| `serviceregistration/service_registration.go` | New `NotifyVersionBlockedStateChange()` interface method |
+| `serviceregistration/kubernetes/service_registration.go` | `openbao-version-blocked` pod label |
+
+#### New storage entry: `core/leader-version`
+
+```go
+type leaderVersionEntry struct {
+    Version   string    `json:"version"`
+    Timestamp time.Time `json:"timestamp"`
+}
+```
+
+Written to `core/leader-version` in barrier storage. This is separate from the
+existing `core/versions/{version}` entries in `vault/version_store.go`, which
+record every version that has ever been leader (historical) rather than the
+most recent leader (authoritative).
+
+#### Changes to `waitForLeadership()` flow
+
+Current flow:
+
+```text
+loop:
+  lock = ha.LockWith(CoreLockPath, uuid)
+  acquireLock(lock)                  // blocks until lock obtained
+  barrier.SetReadOnly(false)
+  setupCluster()
+  advertiseLeader()
+  postUnseal()                       // storage migrations
+  standby.Store(false)               // now active
+  <wait for lock loss>
+  stepDown()
+```
+
+Proposed flow:
+
+```text
+loop:
+  lock = ha.LockWith(CoreLockPath, uuid)
+  acquireLock(lock)                  // blocks until lock obtained
+  err = isVersionLowerThanLeader()   // NEW: read core/leader-version
+  if err != nil:
+    lock.Unlock()                    // release the lock
+    log.Warn("refusing leadership", "error", err)
+    emit metric
+    notify service registration      // K8s label
+    sleep(10s backoff)
+    continue                         // back to loop
+  barrier.SetReadOnly(false)
+  setupCluster()
+  advertiseLeader()                  // includes version in advertisement
+  postUnseal()                       // storage migrations
+  storeLeaderVersion()               // NEW: write core/leader-version
+  standby.Store(false)               // now active
+  <wait for lock loss>
+  stepDown()
+```
+
+#### Placement rationale
+
+The check runs **after** lock acquisition (barrier must be initialized to read
+`core/leader-version`) and **before** `postUnseal()` (to prevent an older
+binary from running migrations on data modified by a newer version).
+
+`storeLeaderVersion()` runs **after** `postUnseal()` succeeds so we only
+record versions that actually functioned as leader.
+
+#### Barrier and replication safety
+
+`barrier.Get()` does not check `readOnly` mode -- only `Put` and `Delete` do
+(`vault/barrier/aes_gcm.go`). So standbys can always read
+`core/leader-version`. Standbys never write to it: `runStandbyOnce()` uses
+`readonlyUnsealStrategy` which never calls `handleVersionTimeStamps()`.
+Version-blocked standbys continue serving read requests normally.
+
+#### Version comparison
+
+Uses `github.com/hashicorp/go-version` (already imported in
+`vault/version_store.go`). Comparison behavior:
+
+| Condition | Result |
+|---|---|
+| No stored version (fresh cluster, pre-feature) | Allow leadership |
+| Stored version &lt;= current version | Allow leadership |
+| Stored version > current version | Block leadership |
+| Unparseable version string | Allow leadership (fail-open), WARN log |
+
+Fail-open on parse errors avoids blocking clusters with unusual version
+strings (dev builds, custom tags).
+
+### Rationale and Alternatives
+
+#### Why solve this in OpenBao core vs. orchestration
+
+Production operators running OpenBao on Kubernetes have concluded that Helm
+cannot reliably enforce version ordering. The problem reduces to: "Helm hooks
+don't execute in all workflows, and StatefulSet lifecycle doesn't support
+'upgrade standbys before leader' semantics natively."
+
+Solving this in OpenBao core means **every** deployment method (Kubernetes,
+systemd, Docker Compose, bare metal) gets the protection automatically.
+
+#### Alternatives considered
+
+1. **Custom Kubernetes Operator.** Could enforce version ordering via pod
+   scheduling. Rejected because it adds a dependency, doesn't help non-K8s
+   deployments, and the OpenBao Secrets Operator serves a different purpose.
+
+2. **Extend existing `core/versions/` tracking.** The version store records all
+   historical leader versions. We could check against the highest recorded
+   version. Rejected because `handleVersionTimeStamps()` runs *after*
+   `postUnseal()` (too late for a pre-unseal check) and the historical record
+   has different semantics than "most recent leader."
+
+3. **Leader advertisement version check.** Store version in
+   `activeAdvertisement`. Rejected because advertisements are ephemeral
+   (cleaned up on leadership transitions), so the version would be lost when
+   the leader steps down -- exactly when we need it.
+
+4. **Do nothing.** Operators follow the docs. Rejected because
+   documentation-only guidance can't prevent automated systems (K8s
+   controllers, auto-scaling) from creating version-mixed clusters.
+
+#### Impact
+
+- Enables `RollingUpdate` strategy in the Helm chart, removing the last blocker
+  for zero-downtime upgrades
+- Makes HA clusters safer by default, without operator intervention
+- Aligns with the "Operator Experience" pillar of the
+  [2025-2026 roadmap](https://github.com/openbao/openbao/issues/1974)
+
+### Downsides
+
+1. **First upgrade has no protection.** Nodes running a pre-feature version
+   don't have the check code. The first upgrade TO this feature version is
+   unprotected. All subsequent upgrades are protected. This is inherent to any
+   backward-compatible feature introduction.
+
+2. **Cascading failure scenario.** If all new-version nodes crash (bad
+   upgrade), old nodes are blocked from leadership, resulting in an outage.
+   This matches the existing documented behavior ("do not fail over to older
+   version"). The `disable_leader_version_check` config option provides an
+   escape hatch. Mitigation: backup before upgrade, test in staging.
+
+3. **Slightly longer leader election for blocked nodes.** Version-blocked nodes
+   acquire the lock, check, release, and sleep 10s before retrying. This adds a
+   brief period where the lock is held but no leader is active. In practice,
+   this window is sub-second (lock acquire + barrier read + lock release).
+
+### Security Implications
+
+Prevents an older binary from running `postUnseal()` on data modified by a
+newer version. The `core/leader-version` entry is stored in the encrypted
+barrier -- no new attack surface. The `disable_leader_version_check` escape
+hatch requires server config file access, which already implies operator-level
+access.
+
+### User/Developer Experience
+
+No change for normal upgrades -- they just work safely. On K8s, operators can
+switch to `RollingUpdate` strategy. Emergency rollback requires setting
+`disable_leader_version_check = true`.
+
+No impact on plugin or storage backend developers. The version check is
+entirely in the core leadership path.
+
+### Unresolved Questions
+
+1. **Should the version check use full semver or just major.minor?** The
+   current proposal uses full semver comparison (e.g., 2.5.1 > 2.5.0). An
+   argument could be made for only checking major.minor since patch releases
+   shouldn't introduce breaking storage changes. Using full semver is more
+   conservative.
+
+2. **Should there be a `bao operator reset-leader-version` command?** For
+   advanced recovery scenarios beyond the config escape hatch, a CLI command to
+   clear the `core/leader-version` entry could be useful. This could be
+   deferred to a follow-up.
+
+3. **Should version-blocked nodes participate in read replication?** Currently
+   proposed: yes, they continue serving reads. An argument could be made that
+   older-version standbys shouldn't serve reads at all during upgrades. However,
+   blocking reads would reduce availability during the upgrade window, which is
+   counter to the zero-downtime upgrade goal.
+
+4. **Interaction with future multi-active architecture.** Roadmap item #4
+   (TTL-based Cache Invalidation) lays groundwork for multi-active. In a
+   multi-active setup, the "leader version" concept would need to evolve to
+   "cluster minimum version" or similar. This RFC doesn't block that evolution.
+
+### Related Issues
+
+- [#2858](https://github.com/openbao/openbao/issues/2858) -- Feature request:
+  Enforce version-gated leader election
+- [openbao-helm#170](https://github.com/openbao/openbao-helm/issues/170) --
+  Helm chart: Support ZDU with RollingUpdate strategy
+- [#1974](https://github.com/openbao/openbao/issues/1974) -- 2025-2026
+  Roadmap (Operator Experience pillar)
+- [#1986](https://github.com/openbao/openbao/pull/1986) -- Read replication
+  (makes version-mixed clusters riskier)
+
+### Proof of Concept
+
+A working implementation has been tested on a k3d HA cluster (PostgreSQL
+backend, 2 replicas) with custom-built binaries at different versions:
+
+- Forward upgrade (v2.5.0 -> v2.6.0): zero downtime, clean leadership transfer
+- Bad rollback (v2.6.0 -> v2.5.0): old nodes refuse leadership, WARN log
+- Recovery (v2.5.0 -> v2.6.0): leadership restored immediately
+
+To reproduce, build two binaries with different `version/version_base.go`
+values and run them in an HA cluster.

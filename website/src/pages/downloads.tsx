@@ -1,7 +1,5 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+import React, { useState, useEffect, createContext, useContext, JSX, BaseSyntheticEvent } from "react";
 import Layout from "@theme/Layout";
-import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
-import styles from "./index.module.css";
 import Tabs from "@theme/Tabs";
 import TabItem from "@theme/TabItem";
 import CodeBlock from "@theme/CodeBlock";
@@ -12,6 +10,8 @@ import {
   ArchPackageMapApply
 } from "@site/src/components/Releases";
 import CodeBlockWrap from "@site/src/components/CodeBlockWrap";
+import Link from "@docusaurus/Link";
+import Heading from '@theme/Heading'
 
 // Create a context
 const OptionsContext = createContext(null);
@@ -27,8 +27,8 @@ const OptionsProvider = ({ children }) => {
     // Function to fetch options from API
     const fetchOptions = async () => {
       try {
-        const url = new URL(location);
-        var version = url.searchParams.get("version");
+        const searchParams = new URLSearchParams(location.search);
+        var version = searchParams.get("version");
 
         // Check if options are cached in localStorage and not expired
         const cachedOptions = localStorage.getItem("gh-releases");
@@ -107,13 +107,14 @@ const useOptions = () => useContext(OptionsContext);
 const VersionSelect = () => {
   const { options, selectedItem, setSelectedItem } = useOptions();
 
-  const handleSelectChange = (event) => {
+  const handleSelectChange = (event: BaseSyntheticEvent) => {
     let version = event.target.value;
     setSelectedItem(version);
 
-    const url = new URL(location);
+    const url = new URL(location.href);
     url.searchParams.set("version", version);
-    history.replaceState({}, "", url);
+
+    history.replaceState({}, "", url.href);
   };
 
   return (
@@ -123,7 +124,7 @@ const VersionSelect = () => {
         onChange={handleSelectChange}
         className="version-select"
       >
-        {Object.entries(options).map(([key, value]) => (
+        {Object.entries(options).map(([key]) => (
           <option key={key} value={key}>
             {key}
           </option>
@@ -138,7 +139,6 @@ const Asset = ({ urls }) => {
   let gpgSig: string;
   let coCert: string;
   let coSig: string;
-  let name: string = "Binary";
   let fileExtension: string = "";
 
   for (let url of urls) {
@@ -163,7 +163,7 @@ const Asset = ({ urls }) => {
 
     for (const ext of validExtensions) {
       if (fileName.endsWith(ext)) {
-          fileExtension = ext
+        fileExtension = ext
       }
     }
     asset = url;
@@ -179,37 +179,37 @@ const Asset = ({ urls }) => {
   return (
     <div className="card download-card">
       <div className="card__header">
-        <h3 className="download-card__header-title">
+        <Heading as="h3" className="download-card__header-title">
           {AssetArchitecture(asset)}
-        </h3>
+        </Heading>
       </div>
       <div className="card__body">
         <p className="download-card__version">Version: {selectedItem}</p>
         <div className="download-card__content-wrapper">
           <div className="download-card__links">
             {gpgSig && (
-              <a href={gpgSig}>
+              <Link href={gpgSig}>
                 GPG Signature
-              </a>
+              </Link>
             )}
             {coSig && (
-              <a href={coSig}>
+              <Link href={coSig}>
                 Cosign Signature
-              </a>
+              </Link>
             )}
             {coCert && (
-              <a href={coCert}>
+              <Link href={coCert}>
                 Cosign Certificate
-              </a>
+              </Link>
             )}
           </div>
           <div className="download-card__button-wrapper">
-            <a className="button button--primary" href={asset}>
+            <Link className="button button--primary" href={asset}>
               <span className="download-card__button-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"></path><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path></svg>
                 {buttonText}
               </span>
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -231,7 +231,7 @@ const DebRepo = ({ gpgKeyName }) => {
 
   return (
     <>
-      <h4>Installation via official Package Repository</h4>
+      <Heading as="h4">Installation via official Package Repository</Heading>
       Simply add this repository configuration to your DEB-sources. APT then
       verifies that the packages have been created and signed by the official
       pipeline and have not been tampered with.
@@ -247,7 +247,7 @@ Components: main
 Signed-By:
 ` + gpgKey.replaceAll(/^(?!$)/gm, " ")}
       </CodeBlockWrap>
-      <h4>Install OpenBao</h4>
+      <Heading as="h4">Install OpenBao</Heading>
       <CodeBlock language="shell">
         {`sudo apt update && sudo apt install openbao`}
       </CodeBlock>
@@ -258,7 +258,7 @@ Signed-By:
 const RpmRepo = ({ gpgKeyName }) => {
   return (
     <>
-      <h4>Installation via official Package Repository</h4>
+      <Heading as="h4">Installation via official Package Repository</Heading>
       Simply add this repository configuration to your YUM-repos. YUM then
       verifies that the packages have been created and signed by the official
       pipeline and have not been tampered with.
@@ -280,7 +280,7 @@ sslverify=1
 sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 metadata_expire=300`}
       </CodeBlock>
-      <h4>Install OpenBao</h4>
+      <Heading as="h4">Install OpenBao</Heading>
       <CodeBlock language="shell">{`sudo yum install -y openbao`}</CodeBlock>
     </>
   );
@@ -314,20 +314,19 @@ const DockerList = ({ version, registry }) => {
     } : {}),
   }
   return (
-      <>
-        {Object.entries(dockerDistros).map(([label, image]) => (
-          <div key={label}>
-            <p>{label}</p>
-            <CodeBlock language="shell">
-              {`docker pull ${registry}/${image}:${dockerVersion}`}
-            </CodeBlock>
-          </div>
-        ))}
-      </>
+    <>
+      {Object.entries(dockerDistros).map(([label, image]) => (
+        <div key={label}>
+          <p>{label}</p>
+          <CodeBlock language="shell">
+            {`docker pull ${registry}/${image}:${dockerVersion}`}
+          </CodeBlock>
+        </div>
+      ))}
+    </>
   )
 }
-const Docker = ({ version, name }) => {
-  const { options } = useOptions();
+const Docker = ({ version }) => {
   const registries = ["quay.io", "ghcr.io", "docker.io"];
   return (
     <Tabs>
@@ -336,60 +335,6 @@ const Docker = ({ version, name }) => {
           <DockerList version={version} registry={item} />
         </TabItem>
       ))}
-    </Tabs>
-  );
-};
-
-const LinuxPackage = ({ version, name }) => {
-  const { options } = useOptions();
-  return (
-    <Tabs>
-      <TabItem value="deb" label="DEB">
-        <PackageRepo type={"deb"} />
-        <nav className="pagination-nav">
-          {version &&
-            Object(options)[version]["assets"][name] &&
-            Object(options)[version]["assets"][name]["deb"] &&
-            ArchPackageMapApply(
-              Object(options)[version]["assets"][name]["deb"],
-              (props, idx) => <Asset key={idx} urls={props} />,
-            )}
-        </nav>
-      </TabItem>
-      <TabItem value="rpm" label="RPM">
-        <PackageRepo type={"rpm"} />
-        <nav className="pagination-nav">
-          {version &&
-            Object(options)[version]["assets"][name] &&
-            Object(options)[version]["assets"][name]["rpm"] &&
-            ArchPackageMapApply(
-              Object(options)[version]["assets"][name]["rpm"],
-              (props, idx) => <Asset key={idx} urls={props} />,
-            )}
-        </nav>
-      </TabItem>
-      <TabItem value="pkg" label="PKG">
-        <nav className="pagination-nav">
-          {version &&
-            Object(options)[version]["assets"][name] &&
-            Object(options)[version]["assets"][name]["pkg"] &&
-            ArchPackageMapApply(
-              Object(options)[version]["assets"][name]["pkg"],
-              (props, idx) => <Asset key={idx} urls={props} />,
-            )}
-        </nav>
-      </TabItem>
-      <TabItem value="binary" label="Binary">
-        <nav className="pagination-nav">
-          {version &&
-            Object(options)[version]["assets"][name] &&
-            Object(options)[version]["assets"][name]["binary"] &&
-            ArchPackageMapApply(
-              Object(options)[version]["assets"][name]["binary"],
-              (props, idx) => <Asset key={idx} urls={props} />,
-            )}
-        </nav>
-      </TabItem>
     </Tabs>
   );
 };
@@ -422,13 +367,13 @@ const OS = ({ name }) => {
     const hasAssets = version && options[version]?.assets?.[name]?.[tab.type];
 
     if (tab.type === "docker") {
-      return <Docker version={version} name={name} />;
+      return <Docker version={version} />;
     }
 
     return (
       <>
         <PackageRepo type={tab.type} />
-        {tab.header && <h4>{tab.header}</h4>}
+        {tab.header && <Heading as="h4">{tab.header}</Heading>}
         {hasAssets && (
           <nav className="pagination-nav">
             {ArchPackageMapApply(
@@ -445,7 +390,7 @@ const OS = ({ name }) => {
     <div className="col col-12 margin-vert--md">
       <div className="card">
         <div className="card__header">
-          <h2>{OsPrettyPrint(name)}</h2>
+          <Heading as="h2">{OsPrettyPrint(name)}</Heading>
         </div>
         <div className="card__body">
           {tabs.length > 1 ? (
@@ -465,9 +410,9 @@ const OS = ({ name }) => {
   );
 };
 
-const DownloadComponent = () => {
+const DownloadComponent = ({gpgKeyName} : {gpgKeyName: string}) => {
   const { options, selectedItem, loading, error } = useOptions();
-  var version = "";
+  let version: string;
   if (selectedItem === "" && options) {
     version = Object.keys(options)[0];
   } else {
@@ -479,7 +424,7 @@ const DownloadComponent = () => {
     if (version.includes("alpha") || version.includes("beta")) {
       prerelease_notice = (
         <div className="alert alert--danger" role="alert">
-          <h3>Warning</h3>
+          <Heading as="h3">Warning</Heading>
           This is an <strong>unstable</strong>, prerelease build! Use at your
           own caution.
         </div>
@@ -497,7 +442,7 @@ const DownloadComponent = () => {
             justifyContent: "space-between",
           }}
         >
-          <h1 className="margin-bottom--none">Download OpenBao</h1>
+          <Heading as='h1' className="margin-bottom--none">Download OpenBao</Heading>
           {!loading && !error && <VersionSelect />}
         </div>
       </div>
@@ -512,19 +457,19 @@ const DownloadComponent = () => {
           <p className="text--left">
             <br />
             GPG Signatures are performed with our{" "}
-            <a href="/assets/openbao-gpg-pub-20240618.asc">GPG key</a>. SBOMs
+            <Link href={`pathname:///assets/${gpgKeyName}`}>GPG key</Link>. SBOMs
             are available on our{" "}
-            <a
+            <Link
               href={
                 "https://github.com/openbao/openbao/releases/tag/" + version
               }
             >
               GitHub Release
-            </a>{" "}
+            </Link>{" "}
             page.
             <br />
             <br />
-            Check out our <a href="/docs/install/">installation guide</a> for
+            Check out our <Link href="/docs/install/">installation guide</Link> for
             more details!
           </p>
         </div>
@@ -533,7 +478,7 @@ const DownloadComponent = () => {
         <div className="row">
           <div className="col col--12 margin-horiz--md">
             <div className="alert alert--info" role="alert">
-              <h3>Loading...</h3>
+              <Heading as="h4">Loading...</Heading>
               Fetching release information from GitHub, please wait a moment.
             </div>
           </div>
@@ -542,12 +487,12 @@ const DownloadComponent = () => {
         <div className="row">
           <div className="col col--12 margin-horiz--md">
             <div className="alert alert--danger" role="alert">
-              <h3>Failed to load releases</h3>
+              <Heading as="h3">Failed to load releases</Heading>
               Unable to fetch releases from GitHub. Please try refreshing the
               page or visit the{" "}
-              <a href="https://github.com/openbao/openbao/releases">
+              <Link href="https://github.com/openbao/openbao/releases">
                 GitHub Releases page
-              </a>{" "}
+              </Link>{" "}
               directly.
             </div>
           </div>
@@ -557,7 +502,7 @@ const DownloadComponent = () => {
           {prerelease_notice}
           {version &&
             options[version]["assets"] &&
-            Object.entries(options[version]["assets"]).map(([key, value]) => (
+            Object.entries(options[version]["assets"]).map(([key]) => (
               <div key={key} className="row">
                 <OS name={key} />
               </div>
@@ -569,12 +514,10 @@ const DownloadComponent = () => {
 };
 
 export default function Download(): JSX.Element {
-  const { siteConfig } = useDocusaurusContext();
-
   return (
     <Layout title="Downloads" description="Download OpenBao">
       <OptionsProvider>
-        <DownloadComponent />
+        <DownloadComponent gpgKeyName={"openbao-gpg-pub-20240618.asc"}/>
       </OptionsProvider>
     </Layout>
   );

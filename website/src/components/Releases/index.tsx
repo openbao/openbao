@@ -1,3 +1,5 @@
+import { JSX } from "react";
+
 const arches: string[] = ["amd64", "arm64", "armhf", "armv7hl", "arm", "riscv64", "aarch64", "x86_64", "ppc64le", "s390x"];
 
 interface ArchPackageMap {
@@ -171,7 +173,7 @@ export function OsPrettyPrint(name: string): string {
 }
 
 interface ArchPackageMapApplicationLambda {
-    (value: string, key: string): JSX.Element;
+    (): JSX.Element;
 }
 
 export function ArchPackageMapApply(category: ArchPackageMap, lambda: ArchPackageMapApplicationLambda): JSX.Element[] {
@@ -181,6 +183,5 @@ export function ArchPackageMapApply(category: ArchPackageMap, lambda: ArchPackag
             result.push(lambda(category[arch], arch));
         }
     }
-
     return result;
 }

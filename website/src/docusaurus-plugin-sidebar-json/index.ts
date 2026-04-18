@@ -3,7 +3,6 @@ import * as path from "path";
 
 export default function pluginSidebarJson(
     context: LoadContext,
-    options: unknown,
 ): Plugin {
     return {
         name: "docusaurus-plugin-sidebar-json",

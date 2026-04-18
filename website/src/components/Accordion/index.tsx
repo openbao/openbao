@@ -1,14 +1,18 @@
 import styles from "./styles.module.css";
+import Heading from "@theme/Heading";
 
-type AccordionItem = {
+export type AccordionItem = {
   title: string;
   description: string;
 };
-type AccordionProps = {
+
+export type AccordionProps = {
   item: AccordionItem;
   isExpanded: boolean;
   onClick: () => void;
 };
+
+
 export default function Accordion({
   item,
   isExpanded,
@@ -32,8 +36,8 @@ export default function Accordion({
           aria-expanded={isExpanded}
           aria-label={(isExpanded ? "hide " : "show ") + item.description}
         >
-          <h3 className="margin-vert--none">{item.title}</h3>
-          <h3 className="margin-vert--none">{isExpanded ? "-" : "+"}</h3>
+          <Heading as="h3" className="margin-vert--none">{item.title}</Heading>
+          <Heading as="h3" className="margin-vert--none">{isExpanded ? "-" : "+"}</Heading>
         </div>
         {isExpanded ? (
           <div className={styles.accordion__item__description}>

@@ -257,7 +257,7 @@ func TestRaft_Autopilot_Stabilization_Delay(t *testing.T) {
 
 	cli := cluster.Cores[0].Client
 	// Write more keys than snapshot_threshold
-	for i := 0; i < 250; i++ {
+	for i := range 250 {
 		_, err := cli.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
 			"test": "data",
 		})

@@ -189,7 +189,7 @@ func TestGSuiteProvider_FetchUserInfo(t *testing.T) {
 
 			// Assert that expected user info is added to the JWT claims
 			customSchemas := tt.args.config.ProviderConfig["user_custom_schemas"].(string)
-			for _, schema := range strings.Split(customSchemas, ",") {
+			for schema := range strings.SplitSeq(customSchemas, ",") {
 				assert.Equal(t, tt.expected[schema], allClaims[schema])
 			}
 		})

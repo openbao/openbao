@@ -9,11 +9,14 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -569,6 +572,9 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 }
 
 func TestBackend_NonCAExpiry(t *testing.T) {
+	var resp *logical.Response
+	var err error
+
 	// Create CA and issue a short-lived leaf certificate.
 	shortExpiry := 3 * time.Second
 	ca := &certyaml.Certificate{
@@ -604,7 +610,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 		Data:      certData,
 	}
 
-	resp, err := b.HandleRequest(t.Context(), certReq)
+	resp, err = b.HandleRequest(t.Context(), certReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -642,7 +648,6 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 
 func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 	tc := setupTestCerts(t)
-
 	config := logical.TestBackendConfig()
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
@@ -739,7 +744,6 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 
 func TestBackend_CRLs(t *testing.T) {
 	tc := setupTestCerts(t)
-
 	config := logical.TestBackendConfig()
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
@@ -794,7 +798,9 @@ func TestBackend_CRLs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
-	loginReq.Connection.ConnState = &connState
+	loginReq.Connection = &logical.Connection{
+		ConnState: &connState,
+	}
 
 	// Attempt login with the updated connection
 	resp, err = b.HandleRequest(t.Context(), loginReq)
@@ -845,7 +851,9 @@ func TestBackend_CRLs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
-	loginReq.Connection.ConnState = &connState
+	loginReq.Connection = &logical.Connection{
+		ConnState: &connState,
+	}
 
 	// Attempt login with the updated connection
 	resp, err = b.HandleRequest(t.Context(), loginReq)
@@ -1676,9 +1684,7 @@ func testAccStepCertWithExtraParams(t *testing.T, name string, cert []byte, poli
 		"allowed_metadata_extensions":  testData.metadata_ext,
 		"lease":                        1000,
 	}
-	for k, v := range extraParams {
-		data[k] = v
-	}
+	maps.Copy(data, extraParams)
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "certs/" + name,
@@ -2220,6 +2226,20 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 		t.Fatal("expected a successful authentication")
 	}
 
+	// Putting an incorrect leaf into the Processed headers should be ignored.
+	//
+	// This would fail if we actually used our tampered certificate.
+	newAClient.AddHeader(vaulthttp.ProcessedForwardedClientCertHeader, url.QueryEscape(base64.StdEncoding.EncodeToString(certBTampered)))
+	newAClient.AddHeader("X-Processed-Tls-Client-Certificate-Resp", url.QueryEscape(base64.StdEncoding.EncodeToString(certBTampered)))
+
+	secret, err = newAClient.Logical().Write("auth/cert/login", map[string]interface{}{
+		"name": "trusted-leaf",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, secret)
+	require.NotNil(t, secret.Auth)
+	require.NotEmpty(t, secret.Auth.ClientToken)
+
 	// Create a new API client with the tampered leaves; it should fail.
 	tamperedAClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), tamperedACertFile, leafAKeyFile)
 
@@ -2244,4 +2264,55 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	if secret != nil {
 		t.Fatalf("when logging in with different leaf from trusted, expected empty secret but got %v", secret)
 	}
+}
+
+func TestBackend_IntegrationForwardedCerts(t *testing.T) {
+	tc := setupTestCerts(t)
+	core, _, root := vault.TestCoreUnsealedWithConfig(t, &vault.CoreConfig{
+		CredentialBackends: map[string]logical.Factory{
+			"cert": Factory,
+		},
+	})
+	vault.TestWaitActive(t, core)
+
+	ln, addr := vaulthttp.TestServerWithCertForwarding(t, core)
+	defer ln.Close() //nolint:errcheck // try to close, ignore error
+
+	config := api.DefaultConfig()
+	config.Address = addr
+
+	client, err := api.NewClient(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.SetToken(root)
+
+	// Enable the cert auth method
+	err = client.Sys().EnableAuthWithOptions("cert", &api.EnableAuthOptions{
+		Type: "cert",
+	})
+	require.NoError(t, err)
+
+	// Set the first leaf cert as a trusted certificate in the backend
+	_, err = client.Logical().Write("auth/cert/certs/leaf", map[string]interface{}{
+		"display_name": "trusted-cert",
+		"policies":     "default",
+		"certificate":  string(tc.exampleCert.CertPEM()),
+	})
+	require.NoError(t, err)
+
+	// Create an unauthenticated client.
+	unauthedClient, err := client.Clone()
+	require.NoError(t, err)
+	unauthedClient.SetToken("")
+
+	// Add auth header
+	unauthedClient.AddHeader("Client-Cert", url.QueryEscape(base64.StdEncoding.EncodeToString(tc.exampleCert.GeneratedCert.Certificate[0])))
+
+	// Authentication should succeed with the forwarded header.
+	resp, err := unauthedClient.Logical().Write("auth/cert/login", map[string]interface{}{})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Auth)
+	require.NotEmpty(t, resp.Auth.ClientToken)
 }

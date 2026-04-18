@@ -1,0 +1,3 @@
+```release-note:bug
+command/server: Error parsing when unknown keys are present in the declarative self-initialization configuration.
+```

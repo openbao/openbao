@@ -549,12 +549,8 @@ func TestLeaseCache_Concurrent_NonCacheable(t *testing.T) {
 	go func() {
 		var wg sync.WaitGroup
 		// 100 concurrent requests
-		for i := 0; i < 100; i++ {
-			wg.Add(1)
-
-			go func() {
-				defer wg.Done()
-
+		for range 100 {
+			wg.Go(func() {
 				// Send a request through the lease cache which is not cacheable (there is
 				// no lease information or auth information in the response)
 				sendReq := &SendRequest{
@@ -565,7 +561,7 @@ func TestLeaseCache_Concurrent_NonCacheable(t *testing.T) {
 				if err != nil {
 					errCh <- err
 				}
-			}()
+			})
 		}
 
 		wg.Wait()
@@ -601,12 +597,8 @@ func TestLeaseCache_Concurrent_Cacheable(t *testing.T) {
 	go func() {
 		var wg sync.WaitGroup
 		// Start 100 concurrent requests
-		for i := 0; i < 100; i++ {
-			wg.Add(1)
-
-			go func() {
-				defer wg.Done()
-
+		for range 100 {
+			wg.Go(func() {
 				sendReq := &SendRequest{
 					Token:   "autoauthtoken",
 					Request: httptest.NewRequest("GET", "http://example.com/v1/sample/api", nil),
@@ -620,7 +612,7 @@ func TestLeaseCache_Concurrent_Cacheable(t *testing.T) {
 				if resp.CacheMeta != nil && resp.CacheMeta.Hit {
 					cacheCount.Add(1)
 				}
-			}()
+			})
 		}
 
 		wg.Wait()

@@ -339,25 +339,34 @@ func (ns *NamespaceStore) invalidate(ctx context.Context, path string) {
 	ns.invalidated.Store(true)
 }
 
-// SetNamespace is used to create or update a given namespace
-func (ns *NamespaceStore) SetNamespace(ctx context.Context, namespace *namespace.Namespace) error {
+// SetNamespace is used to create or update a namespace.
+func (ns *NamespaceStore) SetNamespace(ctx context.Context, entry *namespace.Namespace) error {
 	defer metrics.MeasureSince([]string{"namespace", "set_namespace"}, time.Now())
 
 	if _, err := ns.lockWithInvalidation(ctx, true); err != nil {
 		return err
 	}
 
-	if err := ns.setNamespaceLocked(ctx, namespace); err != nil {
-		ns.logger.Error("set namespace failed", "error", err)
-		return err
+	_, err := ns.setNamespaceLocked(ctx, entry, nil)
+	return err
+}
+
+// SetNamespaceWithSeal is used to create namespace in sealed state.
+// It's not possible to update the Seal config of a namespace with this function;
+// only add a seal config to a net-new namespace.
+func (ns *NamespaceStore) SetNamespaceWithSeal(ctx context.Context, entry *namespace.Namespace, sealConfig *SealConfig) ([][]byte, error) {
+	defer metrics.MeasureSince([]string{"namespace", "set_namespace_with_seal"}, time.Now())
+
+	if _, err := ns.lockWithInvalidation(ctx, true); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return ns.setNamespaceLocked(ctx, entry, sealConfig)
 }
 
 // setNamespaceLocked must be called while holding a write lock over the
 // NamespaceStore. This function unlocks the lock once finished.
-func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *namespace.Namespace) error {
+func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *namespace.Namespace, sealConfig *SealConfig) ([][]byte, error) {
 	// If we are creating a net-new namespace, we have to unlock before
 	// creating required mounts as the mount type will call
 	// GetNamespaceByAccessor. In that case, we will manually call
@@ -378,40 +387,45 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	// Copy the entry before validating and potentially mutating it.
 	entry := nsEntry.Clone(true /* preserve unlock */)
 	if err := entry.Validate(); err != nil {
-		return logical.CodedError(http.StatusBadRequest, err.Error())
+		return nil, logical.CodedError(http.StatusBadRequest, err.Error())
 	}
 
 	// Validate that we have a parent namespace.
 	parent, err := namespace.FromContext(ctx)
 	if err != nil {
-		return fmt.Errorf("error loading parent namespace from context: %w", err)
+		return nil, fmt.Errorf("error loading parent namespace from context: %w", err)
 	}
 
 	var exists bool
 	if entry.UUID == "" {
 		id, err := ns.assignIdentifier(entry.Path)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		entry.ID = id
 		entry.UUID, err = uuid.GenerateUUID()
 		if err != nil {
-			return err
+			return nil, err
 		}
 	} else {
 		var existing *namespace.Namespace
 		existing, exists = ns.namespacesByUUID[entry.UUID]
 		if !exists {
-			return errors.New("trying to update a non-existent namespace")
+			return nil, errors.New("trying to update a non-existent namespace")
 		}
 
 		if existing.ID != entry.ID {
-			return errors.New("accessor ID does not match")
+			return nil, errors.New("accessor ID does not match")
 		}
 
 		if existing.Path != entry.Path {
-			return errors.New("unable to remount namespace at new path")
+			return nil, errors.New("unable to remount namespace at new path")
+		}
+
+		// reject update calls with seal config provided.
+		if sealConfig != nil {
+			return nil, errors.New("cannot modify existing namespace seal config")
 		}
 	}
 
@@ -425,15 +439,14 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		path := entry.Path
 		if parent.ID != namespace.RootNamespaceID {
 			if !entry.HasParent(parent) {
-				return errors.New("namespace path lacks parent as a prefix")
+				return nil, errors.New("namespace path lacks parent as a prefix")
 			}
 
 			path = namespace.Canonicalize(parent.TrimmedPath(entry.Path))
 		}
 
-		conflict := ns.core.router.MatchingPrefixInternal(ctx, path)
-		if conflict != "" {
-			return fmt.Errorf("new namespace conflicts with existing mount: %v", conflict)
+		if conflict := ns.core.router.MatchingPrefixInternal(ctx, path); conflict != "" {
+			return nil, fmt.Errorf("new namespace conflicts with existing mount: %v", conflict)
 		}
 	}
 
@@ -482,13 +495,12 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		// a lot of subsystems from using it if it is reloaded from storage.
 		entry.Tainted = true
 		if err := ns.writeNamespace(ctx, parentView, entry); err != nil {
-			return fmt.Errorf("failed to persist initial tainted namespace: %w", err)
+			return nil, fmt.Errorf("failed to persist initial tainted namespace: %w", err)
 		}
 
 		// But we don't mark our in-memory version as being tainted so that
 		// initial mounts can succeed.
 		entry.Tainted = false
-
 		ns.creationDeletionMap[entry.UUID] = true
 	}
 
@@ -496,14 +508,26 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	ns.namespacesByUUID[entry.UUID] = entry
 	ns.namespacesByAccessor[entry.ID] = entry
 
+	var sealKeyShares [][]byte
 	if !exists {
-		// unlock before initializeNamespace since that will re-acquire the lock
+		if sealConfig != nil {
+			if err := ns.core.sealManager.SetSeal(ctx, sealConfig, entry, true); err != nil {
+				return nil, fmt.Errorf("failed to set namespace seal: %w", err)
+			}
+
+			sealKeyShares, err = ns.core.sealManager.InitializeBarrier(ctx, entry)
+			if err != nil {
+				return nil, fmt.Errorf("failed to initialize namespace barrier: %w", err)
+			}
+		}
+
+		// unlock before initializeNamespace since that will re-acquire the lock.
 		ns.lock.Unlock()
 		unlocked = true
 
 		// Create sys/, token/ mounts and policies for the new namespace.
 		if err := ns.initializeNamespace(ctx, entry); err != nil {
-			return fmt.Errorf("failed to initialize namespace: %w", err)
+			return nil, fmt.Errorf("failed to initialize namespace: %w", err)
 		}
 
 		// Reacquire the lock to undo tainting in storage. We need the lock
@@ -516,7 +540,14 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	// Finally, write the non-tainted namespace or perform our only write if
 	// we are modifying an existing entry.
 	if err := ns.writeNamespace(ctx, parentView, entry); err != nil {
-		return fmt.Errorf("failed to persist namespace: %w", err)
+		return nil, fmt.Errorf("failed to persist namespace: %w", err)
+	}
+
+	// Seal the namespace, as we've finished the setup.
+	if sealConfig != nil {
+		if err := ns.sealNamespaceLocked(ctx, entry); err != nil {
+			return nil, fmt.Errorf("failed to seal namespace: %w", err)
+		}
 	}
 
 	// Since the write succeeded, copy back any potentially changed values.
@@ -527,7 +558,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	failed = false
 
 	// Lastly, push the change to all mounts.
-	return ns.pushToMounts(ctx, entry)
+	return sealKeyShares, ns.pushToMounts(ctx, entry)
 }
 
 func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage barrier.View, entry *namespace.Namespace) error {
@@ -819,33 +850,33 @@ func (ns *NamespaceStore) getNamespaceByPathLocked(
 // ModifyNamespace is used to perform modifications to a namespace while
 // holding a write lock to prevent other changes to namespaces from occurring
 // at the same time.
-func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string, callback func(context.Context, *namespace.Namespace) (*namespace.Namespace, error)) (*namespace.Namespace, error) {
+func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string, sealConfig *SealConfig, callback func(context.Context, *namespace.Namespace) (*namespace.Namespace, error)) (*namespace.Namespace, [][]byte, error) {
 	defer metrics.MeasureSince([]string{"namespace", "modify_namespace"}, time.Now())
 
 	parent, err := namespace.FromContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	path = namespace.Canonicalize(parent.Path + path)
 	if path == "" {
-		return nil, logical.CodedError(http.StatusBadRequest, "refusing to modify root namespace")
+		return nil, nil, logical.CodedError(http.StatusBadRequest, "refusing to modify root namespace")
 	}
 
 	unlock, err := ns.lockWithInvalidation(ctx, true)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	entry := ns.namespacesByPath.Get(path)
 	if entry != nil {
 		if entry.Tainted {
 			unlock()
-			return nil, errors.New("namespace with that name exists and is currently tainted")
+			return nil, nil, errors.New("namespace with that name exists and is currently tainted")
 		}
 		if value := ns.creationDeletionMap[entry.UUID]; value {
 			unlock()
-			return nil, errors.New("namespace with that name exists and is currently being created or deleted")
+			return nil, nil, errors.New("namespace with that name exists and is currently being created or deleted")
 		}
 
 		entry = entry.Clone(true /* preserve unlock key so we can copy it */)
@@ -863,20 +894,21 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		entry, err = callback(ctx, entry)
 		if err != nil {
 			unlock()
-			return nil, err
+			return nil, nil, err
 		}
 
 		// ModifyNamespaceByPath can never modify lock status.
 		entry.UnlockKey = unlockKey
 	}
 
-	// setNamespaceLocked will unlock ns.lock
-	if err := ns.setNamespaceLocked(ctx, entry); err != nil {
+	// setNamespaceLocked will unlock ns.lock.
+	nsKeyShares, err := ns.setNamespaceLocked(ctx, entry, sealConfig)
+	if err != nil {
 		ns.logger.Error("set namespace failed", "error", err)
-		return nil, err
+		return nil, nil, err
 	}
 
-	return entry.Clone(false), nil
+	return entry.Clone(false), nsKeyShares, nil
 }
 
 // ListAllNamespaces lists all available namespaces. includeRoot and includeSealed
@@ -1231,7 +1263,10 @@ func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, path s
 
 	// setNamespaceLocked now handles unlocking.
 	unlock = nil
-	return ns.setNamespaceLocked(parentCtx, namespaceToUnlock)
+	if _, err = ns.setNamespaceLocked(parentCtx, namespaceToUnlock, nil); err != nil {
+		return fmt.Errorf("unable to save unlocked namespace %q", namespaceToUnlock.Path)
+	}
+	return nil
 }
 
 // LockNamespace attempts to lock the namespace with provided path.
@@ -1287,7 +1322,7 @@ func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (strin
 
 	// setNamespaceLocked now handles unlocking.
 	unlock = nil
-	if err := ns.setNamespaceLocked(parentCtx, namespaceToLock); err != nil {
+	if _, err = ns.setNamespaceLocked(parentCtx, namespaceToLock, nil); err != nil {
 		return "", fmt.Errorf("unable to save locked namespace %q", namespaceToLock.Path)
 	}
 
@@ -1427,6 +1462,7 @@ func (j *namespaceCreationFailureJob) Execute() error {
 			retErr = multierror.Append(retErr, err)
 		}
 
+		// TODO(wslabosz): think if sealmanager namespace removal should happen earlier.
 		j.store.core.sealManager.RemoveNamespace(j.target)
 	}
 

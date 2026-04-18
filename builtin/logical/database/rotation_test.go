@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+	"maps"
 	"os"
 	"strings"
 	"testing"
@@ -741,9 +742,7 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 		"verify_connection": false,
 		"allowed_roles":     []string{"*"},
 	}
-	for k, v := range opts {
-		data[k] = v
-	}
+	maps.Copy(data, opts)
 
 	req := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -912,7 +911,7 @@ func TestBackend_StaticRole_LockRegression(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
-	for i := 0; i < 25; i++ {
+	for range 25 {
 		req = &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "static-roles/plugin-role-test",
@@ -1197,7 +1196,7 @@ func TestDeletesOlderWALsOnLoad(t *testing.T) {
 		NewPassword:       "some-new-password",
 		LastVaultRotation: time.Now(),
 	}
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		_, err := framework.PutWAL(ctx, storage, staticWALKey, wal)
 		if err != nil {
 			t.Fatal(err)

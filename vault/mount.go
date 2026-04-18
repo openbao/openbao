@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
 	"path"
 	"reflect"
 	"slices"
@@ -216,10 +217,8 @@ func (c *Core) mount(ctx context.Context, entry *routing.MountEntry) error {
 	}
 
 	// Do not allow more than one instance of a singleton mount
-	for _, p := range singletonMounts {
-		if entry.Type == p {
-			return logical.CodedError(403, "mount type of %q is not mountable", entry.Type)
-		}
+	if slices.Contains(singletonMounts, entry.Type) {
+		return logical.CodedError(403, "mount type of %q is not mountable", entry.Type)
 	}
 
 	// Mount internally
@@ -1630,9 +1629,7 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *routing.MountEntry,
 	}
 	// Set up conf to pass in plugin_name
 	conf := make(map[string]string)
-	for k, v := range entry.Options {
-		conf[k] = v
-	}
+	maps.Copy(conf, entry.Options)
 
 	switch entry.Type {
 	case routing.MountTypePlugin:

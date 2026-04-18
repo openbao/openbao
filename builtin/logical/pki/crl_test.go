@@ -281,7 +281,7 @@ func crlEnableDisableTestForBackend(t *testing.T, b *backend, s logical.Storage,
 	}
 
 	serials := make(map[int]string)
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		resp, err := CBWrite(b, s, "issue/test", map[string]interface{}{
 			"common_name": "test.foobar.com",
 		})

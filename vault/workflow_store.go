@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	urlpath "path"
 	"path/filepath"
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -23,6 +25,8 @@ import (
 const (
 	workflowSubPath   = "workflows/"
 	workflowOuterName = "flow"
+
+	maxWorkflowRecursion = 5
 )
 
 type WorkflowEntry struct {
@@ -72,6 +76,24 @@ func (we *WorkflowEntry) Parse(ctx context.Context) (*profiles.InputConfig, []*p
 
 	if len(profile) == 0 {
 		return nil, nil, nil, fmt.Errorf("workflow must have at least one %q block", workflowOuterName)
+	}
+
+	var unused []configutil.ConfigError
+	if input != nil {
+		unused = append(unused, input.ValidateUnused("workflow")...)
+	}
+	for _, o := range profile {
+		unused = append(unused, o.ValidateUnused("workflow")...)
+	}
+	if output != nil {
+		unused = append(unused, output.ValidateUnused("workflow")...)
+	}
+	if len(unused) > 0 {
+		var asError []error
+		for _, unusedErr := range unused {
+			asError = append(asError, unusedErr)
+		}
+		return nil, nil, nil, errors.Join(asError...)
 	}
 
 	return input, profile, output, nil
@@ -269,10 +291,15 @@ func (ws *WorkflowStore) List(ctx context.Context, prefix string, recursive bool
 	return results, nil
 }
 
-func (ws *WorkflowStore) Execute(ctx context.Context, path string, unauthed bool, trace bool, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (ws *WorkflowStore) Execute(ctx context.Context, reqId string, path string, unauthed bool, trace bool, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to find namespace in context: %w", err)
+	}
+
+	// Reject trace requests when unauthenticated.
+	if unauthed && trace {
+		return nil, logical.ErrPermissionDenied
 	}
 
 	workflow, err := func() (*WorkflowEntry, error) {
@@ -292,15 +319,40 @@ func (ws *WorkflowStore) Execute(ctx context.Context, path string, unauthed bool
 		return nil, logical.CodedError(http.StatusNotFound, "workflow does not exist")
 	}
 
+	// Reject recursive calls starting from an unauthenticated workflow. That
+	// is, don't allow a call like:
+	//
+	// unauthed -> unauthed
+	// unauthed -> authed
+	//
+	// However, recursive calls like authed -> unauthed are allowed (though,
+	// cannot subsequently call another profile!) or the recursive authed
+	// chain of authed -> authed [ -> authed ].
+	if strings.Contains(reqId, ".unauthed.workflow.") {
+		return nil, logical.ErrPermissionDenied
+	}
+
+	// Similarly, set a maximum limit on authenticated recursion based on
+	// number of workflows in the request identifier.
+	if strings.Count(reqId, ".workflow.") == maxWorkflowRecursion {
+		return nil, logical.CodedError(http.StatusBadRequest, "too much workflow recursion")
+	}
+
 	input, contents, output, err := workflow.Parse(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse workflow: %w", err)
+	}
+
+	authedStr := "authed"
+	if unauthed {
+		authedStr = "unauthed"
 	}
 
 	engine, err := profiles.NewEngine(
 		// Do not allow sources which could bypass authorization.
 		profiles.WithRequestSource(),
 		profiles.WithResponseSource(),
+		profiles.WithCELSource(),
 		profiles.WithTemplateSource(),
 		profiles.WithInputSource(input, req, data),
 		profiles.WithOutput(output),
@@ -313,6 +365,11 @@ func (ws *WorkflowStore) Execute(ctx context.Context, path string, unauthed bool
 
 		// Default token to use.
 		profiles.WithDefaultToken(req.ClientToken),
+
+		// Allow auditing our generated requests by tying this to the input
+		// API request. When handling recursive requests, this could get
+		// long.
+		profiles.WithRequestIdentifierPrefix(fmt.Sprintf("%v.%v.workflow.%v", reqId, authedStr, path)),
 
 		// Execute our request handler here; here is where we validate that
 		// this policy can only access requests under its own namespace and
@@ -327,7 +384,7 @@ func (ws *WorkflowStore) Execute(ctx context.Context, path string, unauthed bool
 				}
 
 				nsHeader := namespace.HeaderFromContext(ctx)
-				nsHeader = filepath.Join(nsHeader, values[0])
+				nsHeader = urlpath.Join(nsHeader, values[0])
 				ctx = namespace.ContextWithNamespaceHeader(ctx, nsHeader)
 			}
 
@@ -359,7 +416,7 @@ func (ws *WorkflowStore) Execute(ctx context.Context, path string, unauthed bool
 	}
 
 	if err := engine.Evaluate(noNsCtx); err != nil {
-		return nil, fmt.Errorf("failed to evaluate namespace: %w", err)
+		return nil, fmt.Errorf("failed to evaluate workflow: %w", err)
 	}
 
 	// Return 200 OK with no associated data rather than 204 to keep the

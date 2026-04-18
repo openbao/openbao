@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/sha3"
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
@@ -48,7 +49,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/version"
-	"golang.org/x/crypto/sha3"
 )
 
 const maxBytes = 128 * 1024
@@ -5611,54 +5611,6 @@ This path responds to the following HTTP methods.
 		`,
 	},
 
-	"list-namespaces": {
-		"List namespaces.",
-		`
-This path responds to the following HTTP methods.
-
-	LIST /
-		List namespaces.
-
-	SCAN /
-		Scan (recursively list) namespaces.
-		`,
-	},
-	"namespaces": {
-		"Create, read, update and delete namespaces.",
-		`
-This path responds to the following HTTP methods.
-
-	GET /<path>
-		Retrieve a namespace.
-
-	PUT /<path>
-		Create or update a namespace.
-
-	PATCH /<path>
-		Update a namespace's custom metadata.
-
-	DELETE /<path>
-		Delete a namespace.
-		`,
-	},
-	"namespaces-lock": {
-		"Lock a namespace.",
-		`
-This path responds to the following HTTP methods.
-
-	PUT /<path>
-		Lock the API for a namespace.
-		`,
-	},
-	"namespaces-unlock": {
-		"Unlock a namespace.",
-		`
-This path responds to the following HTTP methods.
-
-	PUT /<path>
-		Unlock the API for a namespace.
-		`,
-	},
 	"list-workflows": {
 		"List workflows.",
 		`

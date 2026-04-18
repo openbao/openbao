@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/openbao/openbao/helper/identity"
@@ -307,9 +308,7 @@ func (d dynamicSystemView) EntityInfo(entityID string) (*logical.Entity, error) 
 
 	if entity.Metadata != nil {
 		ret.Metadata = make(map[string]string, len(entity.Metadata))
-		for k, v := range entity.Metadata {
-			ret.Metadata[k] = v
-		}
+		maps.Copy(ret.Metadata, entity.Metadata)
 	}
 
 	aliases := make([]*logical.Alias, 0, len(entity.Aliases))

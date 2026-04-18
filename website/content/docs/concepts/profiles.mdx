@@ -10,9 +10,9 @@ supporting chained operations, allowing multiple API calls from a single
 entry point. This can be parsed from HCL or JSON as desired.
 
 Data sources are dependent on the profile call site: self-initialization has
-one set of allowed sources whereas API profiles have a different combination.
-Data sources can be nested; for instance, a template source can be used to
-combine an environment variable and the contents of a file.
+one set of allowed sources whereas the workflows API has a different
+combination. Data sources can be nested; for instance, a template source can
+be used to combine an environment variable and the contents of a file.
 
 :::info
 
@@ -28,7 +28,7 @@ unauthenticated rotation and audit device creation) still apply.
 
 A privileged operator designs the profile; this involves creating a
 configuration which describes what API endpoints to call. If this profile is
-executed from the API profile system, it also involves defining input and
+executed from the API workflow system, it also involves defining input and
 output parameters.
 
 This configuration either ends up in one or more files (if using declarative
@@ -56,7 +56,7 @@ profile run, there is no parallelism, guaranteeing that any request or
 response references always point to data that already exists. Additionally,
 requests are fully synchronous and are not executed in the background.
 
-If request fails unexpectedly, the engine stops immediately and returns an
+If a request fails unexpectedly, the engine stops immediately and returns an
 error to the caller; nothing after that point is attempted.
 
 History of all requests and responses are recorded, though, are not exposed
@@ -80,12 +80,12 @@ The core of a profile is the request, which contains the following fields:
  - `path` `(string: <required>)` - which API endpoint to invoke.
  - `token` `(string: <optional>)` - the OpenBao token to use to authenticate
    with; in some cases (like self-initialization or authenticated execution
-   of API profiles), this is inferred from the context automatically. However,
-   in the case of unauthenticated execution of API profiles, this would need
-   to be manually handled as none exists in the execution environment.
-   Unauthenticated APIs (such as login requests) can continue to be called
-   without this parameter or with this parameter explicitly set to the empty
-   string.
+   of the workflows API), this is inferred from the context automatically.
+   However, in the case of unauthenticated execution of the workflows API,
+   this would need to be manually handled as none exists in the execution
+   environment. Unauthenticated APIs (such as login requests) can continue to
+   be called without this parameter or with this parameter explicitly set to
+   the empty string.
  - `data` `(map[string]any: <optional>)` - any parameters for this request.
  - `headers` `(map[string][]string: <optional>)` - any headers for this
    request.
@@ -114,15 +114,90 @@ request "create-admin-policy" {
 Multiple requests can be grouped into a logical organization structure in
 certain profile execution environments:
 
-- `initialize` -- in declarative self-initialization
-- `context` -- in API profiles
+ - `initialize` -- in declarative self-initialization
+ - `flow` -- in the workflows API
 
 When doing so, the name of this outer grouping block is used for the `request`
 and `response` dynamic data source and must be specified.
 
+## Input
+
+When using the workflows API, input passed by the caller can be specified in
+an `input` block. This has the following named child blocks:
+
+ - `field` `([]FieldSchema: <optional>)` - a field definition to be parsed
+   from the API request's data.
+
+### FieldSchema
+
+The `FieldSchema` definition takes the following values:
+
+ - `type` `(string: <required>)` - the type of this field. This can be
+   specified as a key parameter on the block definition or as an explicit
+   parameter.
+ - `name` `(string: <required>)` - a name to reference this field by; this is
+   used in the CEL and templating engines below. This can be specified as a
+   key parameter on the block definition or as an explicit parameter.
+ - `default` `(any: <optional>)` - the default field value; if the field is
+   not required this field is required to have a value.
+ - `description` `(string: <optional>)` - a description of this field.
+ - `required` `(bool: false)` - whether this field is required.
+ - `deprecated` `(bool: false)` - whether this field is deprecated.
+ - `query` `(bool: false)` - whether this field is part of the request's query
+   strings.
+ - `allowed_values` `([]any: <optional>)` - an allow-list of possible values
+   for this field.
+
+Known field types are:
+
+ - `string`;
+ - `int`;
+ - `int64`;
+ - `bool`;
+ - `map`, for a generic map with string keys;
+ - `duration_second`, for unsigned duration;
+ - `signed_duration_second`;
+ - `slice`;
+ - `comma_slice_string`, for a field which is either a slice of strings or a
+   single string which is potentially comma-separated.
+ - `lower_case_string`;
+ - `name_string`, a URI-safe name;
+ - `kv_pairs`;
+ - `comma_int_slice`, for a field which is either a slice of ints or a single
+   string which is a potentially comma-separated list of ints.
+ - `header`, for parsing headers from intermediary systems which strip headers
+   and send them via request data;
+ - `float`; and
+ - `time`.
+
+For example:
+
+```
+input {
+  field {
+    type = "string"
+    name = "namespace"
+    description = "name of the namespace to create"
+    required = true
+  }
+
+  field "namespace" {
+    type = "string"
+    description = "name of the namespace to create"
+    required = true
+  }
+
+  field "string" {
+    name = "namespace"
+    description = "name of the namespace to create"
+    required = true
+  }
+}
+```
+
 ## Output
 
-When using API profiles, output returned to the caller must be specified in
+When using the workflows API, output returned to the caller must be specified in
 an `output` block. This takes the following values:
 
  - `data` - `(map[string]any: <optional>)` - any output information to be
@@ -132,6 +207,22 @@ an `output` block. This takes the following values:
 
 Note that both of these fields can use dynamic data sources to reference
 earlier responses.
+
+For example:
+
+```hcl
+output {
+  data = {
+    password = {
+      eval_source    = "response"
+      eval_type      = "string"
+      flow_name      = "generate-password"
+      response_name  = "generate"
+      field_selector = ["data", "password"]
+    }
+  }
+}
+```
 
 ## Value types and dynamic data sources
 
@@ -180,7 +271,7 @@ be source evaluations.
 :::info
 
 The `env` source is only available for declarative self-initialization; it
-is not available for API profiles
+is not available for the workflows API.
 
 :::
 
@@ -213,7 +304,7 @@ request "userpass-add-admin" {
 :::info
 
 The `file` source is only available for declarative self-initialization; it
-is not available for API profiles
+is not available for the workflows API.
 
 :::
 
@@ -239,9 +330,10 @@ request "provision-root-ca" {
 
 #### `request` source
 
-- `<outer-block>_name` `(string: <required>)` - name of the outer block block to
-  reference. `<outer-block>` is the type of the outer block; for self-init, this
-  is `initialize_name`; for profiles, this is `context_name`.
+- `<outer-block>_name` `(string: <initialize_name|flow_name>)` - name of the
+  outer block to reference. `<outer-block>` is the type of the outer
+  block; for self-init, this is `initialize_name`; for profiles, this is
+  `flow_name`.
 - `request_name` `(string: <required>)` - name of the request block inside the
   initialize block to reference. Must have already been executed.
 - `field_selector` `(string or []string: <required>)` - field within the request
@@ -273,9 +365,10 @@ initialize "namespace-identity" {
 
 #### `response` source
 
-- `<outer-block>_name` `(string: <required>)` - name of the outer block block to
-  reference. `<outer-block>` is the type of the outer block; for self-init, this
-  is `initialize_name`; for profiles, this is `context_name`.
+- `<outer-block>_name` `(string: <initialize_name|flow_name>)` - name of the
+  outer block block to reference. `<outer-block>` is the type of the outer
+  block; for self-init, this is `initialize_name`; for profiles, this is
+  `flow_name`.
 - `request_name` `(string: <required>)` - name of the request block inside the
   initialize block, to reference the corresponding response of. Must have
   already been executed.
@@ -344,8 +437,8 @@ request "sum" {
 - `data` `(map[string]interface{}: <optional>)`: additional context for the
   templating engine.
 
-Additionally, the following reserved values are injected into the CEL context
-when allowed as sources:
+Additionally, the following reserved values are injected into the
+`text/template` context when allowed as sources:
 
  - `requests`, if the `request` source is allowed
  - `responses`, if the `response` source is allowed
@@ -371,18 +464,28 @@ request "password" {
 
 :::info
 
-The `input` source is only available for API profiles; it is not available
+The `input` source is only available for the workflows API; it is not available
 for declarative self-initialization.
 
 :::
 
+Use of the `input` source requires a corresponding [`input`](#input) block
+definition.
+
 - `field_name` `(string: <required>)` - the field of the input request
   parameter to read.
 
-For example, if the parameter `password` was specified in a profile:
+For example, if the parameter `password` was specified in a workflow:
 
 ```hcl
-context "provision" {
+input {
+ field "string" "password" {
+    description = "Password to be stored."
+    required = true
+  }
+}
+
+flow "provision" {
   request "password" {
     operation = "update"
     path = "secret/data/my-secret"
@@ -390,8 +493,76 @@ context "provision" {
       "pem_bundle" = {
         eval_type = "string"
         eval_source = "input"
-        template = "{{ .input.password }}"
+        field_name = "password"
       }
+    }
+  }
+}
+```
+
+## Example Workflow
+
+The following example Workflow allows generating a password using a pre-existing 
+password policy and saving it directly into a KVv2 engine. 
+Additionally it returns the password to the caller as an output.
+
+```hcl
+input {
+  field "policy" {
+    type = "string"
+    required = true
+  }
+
+  field "mount" {
+    type = "string"
+    required = true
+  }
+
+  field "secret" {
+    type = "string"
+    required = true
+  }
+}
+
+flow "generate-password" {
+  request "generate" {
+    operation = "read"
+    path = {
+      eval_source = "template"
+      eval_type   = "string"
+      template    = "sys/policies/password/{{ .input.policy }}/generate"
+    }
+  }
+
+  request "store" {
+    operation = "update"
+    path = {
+      eval_source = "template"
+      eval_type   = "string"
+      template    = "{{ .input.mount }}/data/{{ .input.secret }}"
+    }
+    data = {
+      data = {
+        "password" = {
+          eval_source    = "response"
+          eval_type      = "string"
+          flow_name      = "generate-password"
+          response_name  = "generate"
+          field_selector = ["data", "password"]
+        }
+      }
+    }
+  }
+}
+
+output {
+  data = {
+    password = {
+      eval_source    = "response"
+      eval_type      = "string"
+      flow_name      = "generate-password"
+      response_name  = "generate"
+      field_selector = ["data", "password"]
     }
   }
 }

@@ -10,6 +10,7 @@ import (
 	"crypto/x509/pkix"
 	"fmt"
 	"math/big"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1122,13 +1123,7 @@ func buildAnyCRLsWithCerts(
 	// alternate, equivalent issuer however, we'll keep updating the shared
 	// CRL; all equivalent issuers must have their CRLs disabled.
 	for mapIssuerId := range internalCRLConfig.IssuerIDCRLMap {
-		stillHaveIssuer := false
-		for _, listedIssuerId := range issuers {
-			if mapIssuerId == listedIssuerId {
-				stillHaveIssuer = true
-				break
-			}
-		}
+		stillHaveIssuer := slices.Contains(issuers, mapIssuerId)
 
 		if !stillHaveIssuer {
 			delete(internalCRLConfig.IssuerIDCRLMap, mapIssuerId)

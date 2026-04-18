@@ -49,10 +49,8 @@ func (r *retryHandler) Run(shutdownCh <-chan struct{}, wait *sync.WaitGroup) {
 	r.setInitialState(shutdownCh)
 
 	// Run this in a go func so this call doesn't block.
-	wait.Add(1)
-	go func() {
+	wait.Go(func() {
 		// Make sure Vault will give us time to finish up here.
-		defer wait.Done()
 
 		var g run.Group
 
@@ -80,7 +78,7 @@ func (r *retryHandler) Run(shutdownCh <-chan struct{}, wait *sync.WaitGroup) {
 		if err := g.Run(); err != nil {
 			r.logger.Error("error encountered during periodic state update", "error", err)
 		}
-	}()
+	})
 }
 
 func (r *retryHandler) setInitialState(shutdownCh <-chan struct{}) {

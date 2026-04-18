@@ -239,8 +239,6 @@ func TestLogger_SetupLoggerWithInvalidLogFilePath(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		name := name
-		tc := tc
 		cfg := newTestLogConfig(t)
 		cfg.LogLevel = hclog.Info
 		cfg.LogFilePath = tc.path

@@ -159,6 +159,7 @@ func TestDynamicCredsRead_failures(t *testing.T) {
 			Once()
 
 		b := Backend(client)
+		require.NoError(t, b.Setup(t.Context(), logical.TestBackendConfig()))
 
 		req := &logical.Request{
 			Storage:     storage,

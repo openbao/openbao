@@ -38,7 +38,6 @@ func TestPKI_PathManageKeys_GenerateInternalKeys(t *testing.T) {
 		{"error-bad-type", "dskjfkdsfjdkf", []int{0}, true},
 	}
 	for _, tt := range tests {
-		tt := tt
 		for _, keyBitParam := range tt.keyBits {
 			keyName := fmt.Sprintf("%s-%d", tt.name, keyBitParam)
 			t.Run(keyName, func(t *testing.T) {

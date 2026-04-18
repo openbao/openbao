@@ -296,7 +296,10 @@ func TestValidateRequestNameUniqueness_EmptyType(t *testing.T) {
 func TestValidateNameConvention_Fail(t *testing.T) {
 	_, err := NewEngine(
 		WithProfileAndHandler(
-			[]*OuterConfig{{Type: "#bad", Requests: []*RequestConfig{{Type: "r"}}}},
+			[]*OuterConfig{
+				{Type: "#bad", Requests: []*RequestConfig{{Type: "r"}}},
+				{Type: "good", Requests: []*RequestConfig{{Type: "r"}}},
+			},
 			testHandler,
 			"#bad",
 		),
@@ -332,9 +335,7 @@ func TestValidate_SingleBlockEmptyOuterName(t *testing.T) {
 			"",
 		),
 	)
-	if err != nil {
-		t.Fatalf("expected no error for single block, got: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func Test_Evaluate_Success(t *testing.T) {

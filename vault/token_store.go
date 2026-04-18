@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"regexp"
 	"slices"
@@ -210,9 +211,7 @@ func (ts *TokenStore) paths() []*framework.Path {
 			Description: "Name of the role",
 		},
 	}
-	for k, v := range commonFieldsForCreate {
-		fieldsForCreateWithRole[k] = v
-	}
+	maps.Copy(fieldsForCreateWithRole, commonFieldsForCreate)
 
 	const operationPrefixToken = "token"
 

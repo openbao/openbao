@@ -332,7 +332,7 @@ func TestTidyCancellation(t *testing.T) {
 		"key_type":          "ec",
 	})
 	require.NoError(t, err)
-	for i := 0; i < numLeaves; i++ {
+	for range numLeaves {
 		_, err = CBWrite(b, s, "issue/local-testing", map[string]interface{}{
 			"common_name": "testing",
 			"ttl":         "1s",
@@ -1745,7 +1745,7 @@ func TestTidyPagination(t *testing.T) {
 	// Issue 27 leaf certificates to populate the cert store.
 	// This number is chosen to ensure that the tidy operation can process multiple pages,
 	// even when the page size limit is set below the total number of certificates.
-	for i := 0; i < 26; i++ {
+	for range 26 {
 		_, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
 			"common_name": "example.com",
 			"ttl":         "1s",
@@ -1762,7 +1762,7 @@ func TestTidyPagination(t *testing.T) {
 
 	// Issue another 4 leaf certificates then revoke them. This is done to ensure that
 	// the tidy operation can process certificates less than its the page size.
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
 			"common_name": "revoked.com",
 			"ttl":         "1s",

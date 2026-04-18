@@ -16,6 +16,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
@@ -70,14 +71,7 @@ func GenerateCert(caCertTemplate *x509.Certificate, caSigner crypto.Signer) (str
 	}
 
 	// Only add our hostname to SANs if it isn't found.
-	foundHostname := false
-	for _, value := range template.DNSNames {
-		if value == hostname {
-			foundHostname = true
-			break
-		}
-	}
-	if !foundHostname {
+	if !slices.Contains(template.DNSNames, hostname) {
 		template.DNSNames = append(template.DNSNames, hostname)
 	}
 

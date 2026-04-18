@@ -391,7 +391,7 @@ func migratePost14(t *testing.T, storage teststorage.ReusableStorage, cluster *v
 
 	// Wait for the followers to establish a new leader
 	var leaderIdx int
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		leaderIdx, err = testhelpers.AwaitLeader(t, cluster)
 		if err != nil {
 			t.Fatal(err)

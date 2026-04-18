@@ -52,6 +52,10 @@ func NewFileBackend(conf map[string]string, logger log.Logger) (physical.Backend
 		return nil, errors.New("'path' must be set")
 	}
 
+	if logger != nil {
+		logger.Warn("the file physical backend is deprecated; use bao operator migrate to move to a supported storage backend by v2.7.0")
+	}
+
 	return &FileBackend{
 		path:       path,
 		logger:     logger,

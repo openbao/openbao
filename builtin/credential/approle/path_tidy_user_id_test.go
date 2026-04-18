@@ -128,16 +128,14 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 				true,
 			)
 		}
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			roleSecretIDReq := &logical.Request{
 				Operation: logical.UpdateOperation,
 				Path:      "role/role1/secret-id",
 				Storage:   storage,
 			}
 			_ = b.requestNoErr(t, roleSecretIDReq)
-		}()
+		})
 
 		entry, err := logical.StorageEntryJSON(
 			fmt.Sprintf("accessor/invalid%d", count),

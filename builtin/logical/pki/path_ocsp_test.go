@@ -653,7 +653,7 @@ func setupOcspEnvWithCaKeyConfig(t *testing.T, keyType string, caKeyBits int, ca
 	})
 	requireSuccessNonNilResponse(t, resp, err, "config/crl failed")
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		resp, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
 			"key_type":       keyType,
 			"key_bits":       caKeyBits,

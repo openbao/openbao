@@ -77,7 +77,7 @@ func (c *Core) AddIrrevocableLease(ctx context.Context, pathPrefix string) (*bas
 // It returns a map of the mount accessor to the number of leases stored there
 func (c *Core) InjectIrrevocableLeases(ctx context.Context, count int) (map[string]int, error) {
 	out := make(map[string]int)
-	for i := 0; i < count; i++ {
+	for range count {
 		le, err := c.AddIrrevocableLease(ctx, "foo/")
 		if err != nil {
 			return nil, err

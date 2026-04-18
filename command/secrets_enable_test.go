@@ -76,8 +76,6 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -228,15 +226,15 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		modLines := strings.Split(string(modFile), "\n")
-		for _, p := range modLines {
+		modLines := strings.SplitSeq(string(modFile), "\n")
+		for p := range modLines {
 			splitLine := strings.Split(strings.TrimSpace(p), " ")
 			if len(splitLine) == 0 {
 				continue
 			}
 			potPlug := strings.TrimPrefix(splitLine[0], "github.com/openbao/")
-			if strings.HasPrefix(potPlug, "vault-plugin-secrets-") {
-				backends = append(backends, strings.TrimPrefix(potPlug, "vault-plugin-secrets-"))
+			if after, ok := strings.CutPrefix(potPlug, "vault-plugin-secrets-"); ok {
+				backends = append(backends, after)
 			}
 		}
 

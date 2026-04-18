@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
+	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-hclog"
@@ -46,6 +48,8 @@ type ProfileEngine struct {
 	input   *InputConfig
 	request *logical.Request
 	data    *framework.FieldData
+
+	reqIdPrefix string
 
 	output *OutputConfig
 	logger hclog.Logger
@@ -121,6 +125,14 @@ func WithOutput(config *OutputConfig) func(*ProfileEngine) {
 	}
 }
 
+// Sets the request id prefix for this engine, allowing better auditing by
+// tying the request to an inbound request.
+func WithRequestIdentifierPrefix(prefix string) func(*ProfileEngine) {
+	return func(p *ProfileEngine) {
+		p.reqIdPrefix = prefix
+	}
+}
+
 // SourceBuilder creates a new concrete source mapped to a particular
 // instance of a field.
 type SourceBuilder func(engine *ProfileEngine, field map[string]interface{}) Source
@@ -161,9 +173,12 @@ func (p *ProfileEngine) validate() error {
 	}
 
 	for _, outer := range p.profile {
-		if err := validateNameConvention("outer block", outer.Type); err != nil {
-			return err
+		if len(p.profile) > 1 {
+			if err := validateNameConvention("outer block", outer.Type); err != nil {
+				return err
+			}
 		}
+
 		for _, req := range outer.Requests {
 			if err := validateNameConvention(fmt.Sprintf("request in block '%s'", outer.Type), req.Type); err != nil {
 				return err
@@ -399,6 +414,9 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 	if p.outerBlockName != "" {
 		reqName = fmt.Sprintf("%v[%d].%v.%v", p.outerBlockName, outerIndex, outerBlock.Type, reqName)
 	}
+	if p.reqIdPrefix != "" {
+		reqName = fmt.Sprintf("%v.%v", p.reqIdPrefix, reqName)
+	}
 
 	req = &logical.Request{
 		ID: reqName,
@@ -416,6 +434,9 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 		err = fmt.Errorf("failed to evaluate path: %w", err)
 		return req, execute, allowFailure, err
 	}
+
+	// Ensure path doesn't have leading /.
+	req.Path, _ = strings.CutPrefix(req.Path, "/")
 
 	// For the token, if our request block did not specify a token, we use the
 	// default token, which may be empty. However, if one was specified, use
@@ -579,16 +600,12 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 		return nil, fmt.Errorf("failed to validate source '%v': %w", source, err)
 	}
 
-	for _, req := range accessedRequests {
-		if req == "" {
-			return nil, fmt.Errorf("invalid empty request name found")
-		}
+	if slices.Contains(accessedRequests, "") {
+		return nil, fmt.Errorf("invalid empty request name found")
 	}
 
-	for _, resp := range accessedResponses {
-		if resp == "" {
-			return nil, fmt.Errorf("invalid empty response name found")
-		}
+	if slices.Contains(accessedResponses, "") {
+		return nil, fmt.Errorf("invalid empty response name found")
 	}
 
 	val, err := sourceEval.Evaluate(ctx, history)

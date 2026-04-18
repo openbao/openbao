@@ -479,9 +479,10 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 	requireSuccessNonNilResponse(t, resp, err, "failed to create server leaf cert")
 	leafCert := resp.Data["certificate"].(string)
 	leafPrivateKey := resp.Data["private_key"].(string) + "\n"
-	fullChain := leafCert + "\n"
+	var fullChain strings.Builder
+	fullChain.WriteString(leafCert + "\n")
 	for _, cert := range resp.Data["ca_chain"].([]string) {
-		fullChain += cert + "\n"
+		fullChain.WriteString(cert + "\n")
 	}
 
 	// Issue a client leaf certificate.
@@ -546,7 +547,7 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 
 	crls := rootCRL + intCRL + deltaCRL
 
-	cleanup, host, port, networkName, networkAddr, networkPort := buildNginxContainer(t, rootCert, crls, fullChain, leafPrivateKey)
+	cleanup, host, port, networkName, networkAddr, networkPort := buildNginxContainer(t, rootCert, crls, fullChain.String(), leafPrivateKey)
 	defer cleanup()
 
 	if host != "127.0.0.1" && host != "::1" && strings.HasPrefix(host, containerName) {

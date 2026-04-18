@@ -8,7 +8,9 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
+	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 )
@@ -67,15 +69,7 @@ func (sc *storageContext) rebuildIssuersChains(referenceCert *issuerEntry /* opt
 	// Our provided reference cert might not be in the list of issuers. In
 	// that case, add it manually.
 	if referenceCert != nil {
-		missing := true
-		for _, issuer := range issuers {
-			if issuer == referenceCert.ID {
-				missing = false
-				break
-			}
-		}
-
-		if missing {
+		if !slices.Contains(issuers, referenceCert.ID) {
 			issuers = append(issuers, referenceCert.ID)
 		}
 	}
@@ -430,15 +424,15 @@ func (sc *storageContext) rebuildIssuersChains(referenceCert *issuerEntry /* opt
 	// Assumption: no nodes left unprocessed. They should've either been
 	// reached through the parent->child addition or they should've been
 	// self-loops.
-	var msg string
+	var msg strings.Builder
 	for _, issuer := range issuers {
 		if visited, ok := processedIssuers[issuer]; !ok || !visited {
 			pretty := prettyIssuer(issuerIdEntryMap, issuer)
-			msg += fmt.Sprintf("[failed to build chain correctly: unprocessed issuer %v: ok: %v; visited: %v]\n", pretty, ok, visited)
+			msg.WriteString(fmt.Sprintf("[failed to build chain correctly: unprocessed issuer %v: ok: %v; visited: %v]\n", pretty, ok, visited))
 		}
 	}
-	if len(msg) > 0 {
-		return errors.New(msg)
+	if len(msg.String()) > 0 {
+		return errors.New(msg.String())
 	}
 
 	// Finally, write all issuers to disk.
@@ -658,15 +652,7 @@ func processAnyCliqueOrCycle(
 			// the nodes of whatever grouping
 			foundNode := false
 			for _, clique := range cliques {
-				inClique := false
-				for _, cliqueNode := range clique {
-					if cliqueNode == node {
-						inClique = true
-						break
-					}
-				}
-
-				if inClique {
+				if slices.Contains(clique, node) {
 					foundNode = true
 
 					// Compute this node's CAChain. Note order doesn't matter
@@ -957,20 +943,6 @@ func isOnReissuedClique(
 	return clique, nil
 }
 
-func containsIssuer(collection []issuerID, target issuerID) bool {
-	if len(collection) == 0 {
-		return false
-	}
-
-	for _, needle := range collection {
-		if needle == target {
-			return true
-		}
-	}
-
-	return false
-}
-
 func appendCycleIfNotExisting(knownCycles [][]issuerID, candidate []issuerID) [][]issuerID {
 	// There's two ways to do cycle detection: canonicalize the cycles,
 	// rewriting them to have the least (or max) element first or just
@@ -1051,7 +1023,7 @@ func findCyclesNearClique(
 	// We know the node has at least one child, since the clique is non-empty.
 	for _, child := range issuerIdChildrenMap[cliqueNode] {
 		// Skip children that are part of the clique.
-		if containsIssuer(excludeNodes, child) {
+		if slices.Contains(excludeNodes, child) {
 			continue
 		}
 
@@ -1147,15 +1119,7 @@ func findAllCyclesWithNode(
 				continue
 			}
 
-			skipNode := false
-			for _, excluded := range exclude {
-				if excluded == child {
-					skipNode = true
-					break
-				}
-			}
-
-			if skipNode {
+			if slices.Contains(exclude, child) {
 				continue
 			}
 
@@ -1187,14 +1151,7 @@ func findAllCyclesWithNode(
 					// We only care about source->source cycles. If this
 					// cycles, but isn't a source->source cycle, don't add
 					// this path.
-					foundSelf := false
-					for _, node := range path {
-						if child == node {
-							foundSelf = true
-							break
-						}
-					}
-					if foundSelf {
+					if slices.Contains(path, child) {
 						// Skip this path.
 						continue
 					}

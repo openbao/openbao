@@ -45,7 +45,7 @@ type InputConfig struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
 	RawConfig  map[string]interface{}
 
-	Fields []*FieldSchemaConfig `hcl:"fields"`
+	Fields []*FieldSchemaConfig `hcl:"-"`
 }
 
 // FieldSchemaConfig is the HCL equivalent of sdk/v2/framework.FieldSchema;
@@ -54,15 +54,15 @@ type FieldSchemaConfig struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
 	RawConfig  map[string]interface{}
 
-	Type          framework.FieldType
-	TypeRaw       string        `hcl:"type"`
-	Name          string        `hcl:"name"`
-	Default       interface{}   `hcl:"default"`
-	Description   string        `hcl:"description"`
-	Required      bool          `hcl:"required"`
-	Deprecated    bool          `hcl:"deprecated"`
-	Query         bool          `hcl:"query"`
-	AllowedValues []interface{} `hcl:"allowed_values"`
+	Type          framework.FieldType `hcl:"-"`
+	TypeRaw       string              `hcl:"type"`
+	Name          string              `hcl:"name"`
+	Default       interface{}         `hcl:"default"`
+	Description   string              `hcl:"description"`
+	Required      bool                `hcl:"required"`
+	Deprecated    bool                `hcl:"deprecated"`
+	Query         bool                `hcl:"query"`
+	AllowedValues []interface{}       `hcl:"allowed_values"`
 }
 
 // OutputConfig is an untyped configuration object that controls the output
@@ -85,12 +85,12 @@ func ParseOuterConfig(outerBlockType string, list *ast.ObjectList) ([]*OuterConf
 	for index, item := range list.Items {
 		var i OuterConfig
 		if err := hcl.DecodeObject(&i, item.Val); err != nil {
-			return result, fmt.Errorf("%v.%d: %w", outerBlockType, index, err)
+			return result, fmt.Errorf("%v.%d: decoding into object failed with error: %w", outerBlockType, index, err)
 		}
 
 		var m map[string]interface{}
 		if err := hcl.DecodeObject(&m, item.Val); err != nil {
-			return result, fmt.Errorf("%v.%d: %w", outerBlockType, index, err)
+			return result, fmt.Errorf("%v.%d: decoding into map failed with error: %w", outerBlockType, index, err)
 		}
 		i.RawConfig = m
 
@@ -116,6 +116,8 @@ func ParseOuterConfig(outerBlockType string, list *ast.ObjectList) ([]*OuterConf
 			}
 
 			i.Requests = requests
+
+			delete(i.UnusedKeys, "request")
 		}
 
 		result = append(result, &i)
@@ -134,18 +136,27 @@ func CreateOuterConfig(requests []*RequestConfig) []*OuterConfig {
 	}
 }
 
+func (o *OuterConfig) ValidateUnused(path string) []configutil.ConfigError {
+	var errs []configutil.ConfigError
+	errs = append(errs, configutil.ValidateUnusedFields(o.UnusedKeys, path)...)
+	for _, request := range o.Requests {
+		errs = append(errs, request.ValidateUnused(path)...)
+	}
+	return errs
+}
+
 // ParseRequestConfig handles parsing of individual requests from an HCL AST.
 func ParseRequestConfig(list *ast.ObjectList) ([]*RequestConfig, error) {
 	result := make([]*RequestConfig, 0, len(list.Items))
 	for i, item := range list.Items {
 		var r RequestConfig
 		if err := hcl.DecodeObject(&r, item.Val); err != nil {
-			return result, fmt.Errorf("request.%d: %w", i, err)
+			return result, fmt.Errorf("request.%d: decoding into object failed with error: %w", i, err)
 		}
 
 		var m map[string]interface{}
 		if err := hcl.DecodeObject(&m, item.Val); err != nil {
-			return result, fmt.Errorf("request.%d: %w", i, err)
+			return result, fmt.Errorf("request.%d: decoding into map failed with error: %w", i, err)
 		}
 		r.RawConfig = m
 
@@ -163,6 +174,10 @@ func ParseRequestConfig(list *ast.ObjectList) ([]*RequestConfig, error) {
 	return result, nil
 }
 
+func (r *RequestConfig) ValidateUnused(path string) []configutil.ConfigError {
+	return configutil.ValidateUnusedFields(r.UnusedKeys, path)
+}
+
 // ParseInputConfig is a helper for profile systems which support declaring
 // request input blocks (e.g., to describe fields).
 func ParseInputConfig(list *ast.ObjectList) (*InputConfig, error) {
@@ -174,12 +189,12 @@ func ParseInputConfig(list *ast.ObjectList) (*InputConfig, error) {
 
 	var i InputConfig
 	if err := hcl.DecodeObject(&i, item.Val); err != nil {
-		return nil, fmt.Errorf("input: %w", err)
+		return nil, fmt.Errorf("input: decoding into object failed with error: %w", err)
 	}
 
 	var m map[string]interface{}
 	if err := hcl.DecodeObject(&m, item.Val); err != nil {
-		return nil, fmt.Errorf("input: %w", err)
+		return nil, fmt.Errorf("input: decoding into map failed with error: %w", err)
 	}
 	i.RawConfig = m
 
@@ -195,16 +210,27 @@ func ParseInputConfig(list *ast.ObjectList) (*InputConfig, error) {
 
 	itemList := objT.List
 
-	if o := itemList.Filter("fields"); len(o.Items) > 0 {
+	if o := itemList.Filter("field"); len(o.Items) > 0 {
 		fields, err := ParseFieldSchemaConfig(o)
 		if err != nil {
-			return nil, fmt.Errorf("input: error parsing 'fields': %w", err)
+			return nil, fmt.Errorf("input: error parsing 'field': %w", err)
 		}
 
 		i.Fields = fields
+
+		delete(i.UnusedKeys, "field")
 	}
 
 	return &i, nil
+}
+
+func (i *InputConfig) ValidateUnused(path string) []configutil.ConfigError {
+	var errs []configutil.ConfigError
+	errs = append(errs, configutil.ValidateUnusedFields(i.UnusedKeys, path)...)
+	for _, field := range i.Fields {
+		errs = append(errs, field.ValidateUnused(path)...)
+	}
+	return errs
 }
 
 // ParseFieldSchemaConfig handles parsing of individual field schemas from an
@@ -214,36 +240,54 @@ func ParseFieldSchemaConfig(list *ast.ObjectList) ([]*FieldSchemaConfig, error) 
 	for i, item := range list.Items {
 		var r FieldSchemaConfig
 		if err := hcl.DecodeObject(&r, item.Val); err != nil {
-			return result, fmt.Errorf("fields.%d: %w", i, err)
+			return result, fmt.Errorf("field.%d: decoding into object failed with error: %w", i, err)
 		}
 
 		var m map[string]interface{}
 		if err := hcl.DecodeObject(&m, item.Val); err != nil {
-			return result, fmt.Errorf("fields.%d: %w", i, err)
+			return result, fmt.Errorf("field.%d: decoding into map failed with error: %w", i, err)
 		}
 		r.RawConfig = m
 
 		switch {
 		case r.TypeRaw != "" && r.Name != "":
-		case r.TypeRaw != "" && len(item.Keys) == 1:
+		case r.TypeRaw != "" && r.Name == "" && len(item.Keys) == 1:
 			r.Name = item.Keys[0].Token.Value().(string)
-		case len(item.Keys) == 2:
+		case r.TypeRaw == "" && r.Name != "" && len(item.Keys) == 1:
+			r.TypeRaw = item.Keys[0].Token.Value().(string)
+		case r.TypeRaw == "" && r.Name == "" && len(item.Keys) == 2:
 			r.TypeRaw = item.Keys[0].Token.Value().(string)
 			r.Name = item.Keys[1].Token.Value().(string)
 		default:
-			return result, fmt.Errorf("fields.%d: field type and name must be specified", i)
+			return result, fmt.Errorf("field.%d: field type and name must be specified either as keys or block parameters", i)
 		}
 
 		var err error
 		r.Type, err = framework.ParseFieldType(r.TypeRaw)
 		if err != nil {
-			return result, fmt.Errorf("fields.%d: %w", i, err)
+			return result, fmt.Errorf("field.%d: %w", i, err)
 		}
 
 		result = append(result, &r)
 	}
 
 	return result, nil
+}
+
+func (s *FieldSchemaConfig) ToSchema() *framework.FieldSchema {
+	return &framework.FieldSchema{
+		Type:          s.Type,
+		Default:       s.Default,
+		Description:   s.Description,
+		Required:      s.Required,
+		Deprecated:    s.Deprecated,
+		Query:         s.Query,
+		AllowedValues: s.AllowedValues,
+	}
+}
+
+func (s *FieldSchemaConfig) ValidateUnused(path string) []configutil.ConfigError {
+	return configutil.ValidateUnusedFields(s.UnusedKeys, path)
 }
 
 // ParseOutputConfig is a helper for profile systems which support declaring
@@ -275,14 +319,6 @@ func ParseOutputConfig(list *ast.ObjectList) (*OutputConfig, error) {
 	return &i, nil
 }
 
-func (s FieldSchemaConfig) ToSchema() *framework.FieldSchema {
-	return &framework.FieldSchema{
-		Type:          s.Type,
-		Default:       s.Default,
-		Description:   s.Description,
-		Required:      s.Required,
-		Deprecated:    s.Deprecated,
-		Query:         s.Query,
-		AllowedValues: s.AllowedValues,
-	}
+func (o *OutputConfig) ValidateUnused(path string) []configutil.ConfigError {
+	return configutil.ValidateUnusedFields(o.UnusedKeys, path)
 }

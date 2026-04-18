@@ -350,9 +350,9 @@ func (l randomLister) Delete(ctx context.Context, path string) error {
 // generateData creates a map of 500 random keys and values
 func generateData() map[string][]byte {
 	result := make(map[string][]byte)
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		segments := make([]string, rand.Intn(8)+1)
-		for j := 0; j < len(segments); j++ {
+		for j := range segments {
 			s, _ := base62.Random(6)
 			segments[j] = s
 		}

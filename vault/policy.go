@@ -396,12 +396,12 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 			pc.HasSegmentWildcards = true
 		}
 
-		if strings.HasSuffix(pc.Path, "*") {
+		if before, ok := strings.CutSuffix(pc.Path, "*"); ok {
 			// If there are segment wildcards, don't actually strip the
 			// trailing asterisk, but don't want to hit the default case
 			if !pc.HasSegmentWildcards {
 				// Strip the glob character if found
-				pc.Path = strings.TrimSuffix(pc.Path, "*")
+				pc.Path = before
 				pc.IsPrefix = true
 			}
 		}

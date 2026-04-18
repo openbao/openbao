@@ -4,13 +4,12 @@
  */
 
 import { computed } from '@ember/object';
-import { A } from '@ember/array';
 import Service from '@ember/service';
 import { task, waitForEvent } from 'ember-concurrency';
 
 export default Service.extend({
   events: computed(function () {
-    return A([]);
+    return [];
   }),
   connectionViolations: computed('events.@each.violatedDirective', function () {
     return this.events.filter((e) => e.violatedDirective.startsWith('connect-src'));

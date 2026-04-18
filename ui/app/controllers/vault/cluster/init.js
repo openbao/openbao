@@ -3,93 +3,115 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { computed } from '@ember/object';
+import { tracked } from '@glimmer/tracking';
+import { action } from '@ember/object';
 import Controller from '@ember/controller';
 
-const DEFAULTS = {
-  keyData: null,
-  secret_shares: null,
-  secret_threshold: null,
-  pgp_keys: null,
-  use_pgp: false,
-  loading: false,
-};
+export default class InitController extends Controller {
+  @tracked
+  keyData;
+  @tracked
+  secret_shares;
+  @tracked
+  secret_threshold;
+  @tracked
+  pgp_keys;
+  @tracked
+  use_pgp;
+  @tracked
+  loading;
+  @tracked prefersInit = false;
 
-export default Controller.extend(DEFAULTS, {
+  constructor() {
+    super();
+    this.reset();
+  }
+
   reset() {
-    this.setProperties(DEFAULTS);
-  },
+    this.keyData = null;
+    this.secret_shares = null;
+    this.secret_threshold = null;
+    this.pgp_key = null;
+    this.use_pgp = false;
+    this.loading = false;
+  }
 
   initSuccess(resp) {
-    this.set('loading', false);
-    this.set('keyData', resp);
+    this.loading = false;
+    this.keyData = resp;
     this.model.reload();
-  },
+  }
 
   initError(e) {
-    this.set('loading', false);
+    this.loading = false;
     if (e.httpStatus === 400) {
-      this.set('errors', e.errors);
+      this.errors = e.errors;
     } else {
       throw e;
     }
-  },
+  }
 
-  keyFilename: computed('model.name', function () {
+  get keyFilename() {
     return `vault-cluster-${this.model.name}`;
-  }),
+  }
 
-  actions: {
-    initCluster(data) {
-      const isCloudSeal = !!this.model.sealType && this.model.sealType !== 'shamir';
-      if (data.secret_shares) {
-        const shares = parseInt(data.secret_shares, 10);
+  @action
+  initCluster(event) {
+    event.preventDefault();
+    const data = {};
+    const isCloudSeal = !!this.model.sealType && this.model.sealType !== 'shamir';
+    if (this.secret_shares) {
+      const shares = parseInt(this.secret_shares, 10);
+      if (isCloudSeal) {
+        data.recovery_shares = shares;
+        // API will throw an error if secret_shares is passed for seal types other than shamir (transit, AWSKMS etc.)
+      } else {
         data.secret_shares = shares;
-        if (isCloudSeal) {
-          data.recovery_shares = shares;
-          delete data.secret_shares; // API will throw an error if secret_shares is passed for seal types other than shamir (transit, AWSKMS etc.)
-        }
       }
-      if (data.secret_threshold) {
-        const threshold = parseInt(data.secret_threshold, 10);
+    }
+    if (this.secret_threshold) {
+      const threshold = parseInt(this.secret_threshold, 10);
+      if (isCloudSeal) {
+        data.recovery_threshold = threshold;
+        // API will throw an error if secret_threshold is passed for seal types other than shamir (transit, AWSKMS etc.)
+      } else {
         data.secret_threshold = threshold;
-        if (isCloudSeal) {
-          data.recovery_threshold = threshold;
-          delete data.secret_threshold; // API will throw an error if secret_threshold is passed for seal types other than shamir (transit, AWSKMS etc.)
-        }
       }
-      if (!data.use_pgp) {
-        delete data.pgp_keys;
-      }
-      if (data.use_pgp && isCloudSeal) {
-        data.recovery_pgp_keys = data.pgp_keys;
-      }
-      if (!data.use_pgp_for_root) {
-        delete data.root_token_pgp_key;
-      }
+    }
+    if (this.use_pgp) {
+      data.pgp_keys = this.pgp_keys;
+    }
+    if (this.use_pgp && isCloudSeal) {
+      data.recovery_pgp_keys = this.pgp_keys;
+    }
+    if (this.use_pgp_for_root) {
+      data.root_token_pgp_key = this.root_token_pgp_key;
+    }
 
-      delete data.use_pgp;
-      delete data.use_pgp_for_root;
-      const store = this.model.store;
-      this.setProperties({
-        loading: true,
-        errors: null,
-      });
-      store
-        .adapterFor('cluster')
-        .initCluster(data)
-        .then(
-          (resp) => this.initSuccess(resp),
-          (...errArgs) => this.initError(...errArgs)
-        );
-    },
+    const store = this.model.store;
+    this.loading = true;
+    this.errors = null;
+    store
+      .adapterFor('cluster')
+      .initCluster(data)
+      .then(
+        (resp) => this.initSuccess(resp),
+        (...errArgs) => this.initError(...errArgs)
+      );
+  }
 
-    setKeys(data) {
-      this.set('pgp_keys', data);
-    },
+  @action
+  setKeys(data) {
+    this.pgp_keys = data;
+  }
 
-    setRootKey([key]) {
-      this.set('root_token_pgp_key', key);
-    },
-  },
-});
+  @action
+  setRootKey([key]) {
+    this.root_token_pgp_key = key;
+  }
+
+  @action
+  setPrefersInit() {
+    this.prefersInit = true;
+  }
+}

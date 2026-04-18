@@ -8,12 +8,16 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -122,6 +126,79 @@ func TestRaft_TransactionalBackend(t *testing.T) {
 	physical.ExerciseTransactionalBackend(t, b)
 
 	testRaft_assertFastTxnTrackerCleanup(t, b)
+}
+
+func TestRaft_TransactionLeak(t *testing.T) {
+	t.Parallel()
+	b := GetRaft(t, true, true)
+
+	// create a logger, which we can inspect
+	writer := &bytes.Buffer{}
+	var writerLock sync.Mutex
+	logger := hclog.New(&hclog.LoggerOptions{
+		Output:      writer,
+		Mutex:       &writerLock,
+		JSONFormat:  true,
+		DisableTime: true,
+	})
+	b.logger = logger
+	decoder := json.NewDecoder(writer)
+
+	// start transaction
+	tx, err := b.BeginTx(t.Context())
+	require.NoError(t, err)
+
+	_, err = tx.List(t.Context(), "list/me")
+	require.NoError(t, err)
+
+	_, err = tx.Get(t.Context(), "read/me")
+	require.NoError(t, err)
+
+	err = tx.Put(t.Context(), &physical.Entry{
+		Key:   "write/me",
+		Value: []byte("value"),
+	})
+	require.NoError(t, err)
+
+	err = tx.Delete(t.Context(), "delete/me")
+	require.NoError(t, err)
+
+	// leak transaction
+	tx = nil
+
+	// wait for log
+	found := false
+	for range 100 {
+		runtime.GC()
+
+		writerLock.Lock()
+		for writer.Len() > 0 {
+			logEntry := map[string]any{}
+			err := decoder.Decode(&logEntry)
+			require.True(t, err == nil || errors.Is(err, io.EOF))
+
+			if logEntry["@level"] == "error" && logEntry["@message"] == "transaction was leaked" {
+				found = true
+				assert.ElementsMatch(t, []any{"list/me"}, logEntry["listed_keys"])
+				assert.ElementsMatch(t, []any{"read/me", "write/me", "delete/me"}, logEntry["read_keys"])
+				assert.ElementsMatch(t, []any{"write/me", "delete/me"}, logEntry["updated_keys"])
+			}
+		}
+		writerLock.Unlock()
+
+		if found {
+			break
+		}
+
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	assert.True(t, found, "expected log message not found")
+	assert.Equal(t, int64(1), b.transactionLeakCounter.Load())
+
+	// assert clean-up
+	assert.Equal(t, uint64(math.MaxUint64), b.fsm.fastTxnTracker.lowestActiveIndex())
+	assert.Equal(t, 0, b.txnPermitPool.CurrentPermits())
 }
 
 func TestRaft_ParseAutopilotUpgradeVersion(t *testing.T) {
@@ -548,6 +625,8 @@ func TestRaft_Backend_PutTxnMargin(t *testing.T) {
 
 			txnErr := txn.Put(t.Context(), entry)
 
+			require.NoError(t, txn.Rollback(t.Context()))
+
 			if (putErr == nil) != (txnErr == nil) {
 				t.Fatalf("[key=%v / value=%v (delta=%v)] expected both b.Put(...)=%v and txn.Put(...)=%v to fail at the same time", keySize, valueSize, valueSizeDelta, putErr, txnErr)
 			}
@@ -611,7 +690,7 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 	}
 	testName := b.Name()
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 		err = raft.Put(b.Context(), pe)
 		if err != nil {

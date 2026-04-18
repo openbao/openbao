@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -129,14 +130,15 @@ func (ts *TestServer) buildNamedConf() string {
 		forwarders += "\t};\n"
 	}
 
-	zones := "\n"
+	var zones strings.Builder
+	zones.WriteString("\n")
 	for _, domain := range ts.domains {
-		zones += fmt.Sprintf("zone \"%s\" {\n", domain)
-		zones += "\ttype primary;\n"
-		zones += fmt.Sprintf("\tfile \"%s.zone\";\n", domain)
-		zones += "\tallow-update {\n\t\tnone;\n\t};\n"
-		zones += "\tnotify no;\n"
-		zones += "};\n\n"
+		zones.WriteString(fmt.Sprintf("zone \"%s\" {\n", domain))
+		zones.WriteString("\ttype primary;\n")
+		zones.WriteString(fmt.Sprintf("\tfile \"%s.zone\";\n", domain))
+		zones.WriteString("\tallow-update {\n\t\tnone;\n\t};\n")
+		zones.WriteString("\tnotify no;\n")
+		zones.WriteString("};\n\n")
 	}
 
 	// Reverse lookups are not handles as they're not presently necessary.
@@ -149,20 +151,21 @@ func (ts *TestServer) buildNamedConf() string {
 	` + forwarders + `
 };
 
-` + zones
+` + zones.String()
 
 	return cfg
 }
 
 func (ts *TestServer) buildZoneFile(target string) string {
 	// One second TTL by default to allow quick refreshes.
-	zone := "$TTL 1;\n"
+	var zone strings.Builder
+	zone.WriteString("$TTL 1;\n")
 
 	ts.serial += 1
-	zone += fmt.Sprintf("@\tIN\tSOA\tns.%v.\troot.%v.\t(\n", target, target)
-	zone += fmt.Sprintf("\t\t\t%d;\n\t\t\t1;\n\t\t\t1;\n\t\t\t2;\n\t\t\t1;\n\t\t\t)\n\n", ts.serial)
-	zone += fmt.Sprintf("@\tIN\tNS\tns%d.%v.\n", ts.serial, target)
-	zone += fmt.Sprintf("ns%d.%v.\tIN\tA\t%v\n", ts.serial, target, "127.0.0.1")
+	zone.WriteString(fmt.Sprintf("@\tIN\tSOA\tns.%v.\troot.%v.\t(\n", target, target))
+	zone.WriteString(fmt.Sprintf("\t\t\t%d;\n\t\t\t1;\n\t\t\t1;\n\t\t\t2;\n\t\t\t1;\n\t\t\t)\n\n", ts.serial))
+	zone.WriteString(fmt.Sprintf("@\tIN\tNS\tns%d.%v.\n", ts.serial, target))
+	zone.WriteString(fmt.Sprintf("ns%d.%v.\tIN\tA\t%v\n", ts.serial, target, "127.0.0.1"))
 
 	for domain, records := range ts.records {
 		if !strings.HasSuffix(domain, target) {
@@ -171,12 +174,12 @@ func (ts *TestServer) buildZoneFile(target string) string {
 
 		for recordType, values := range records {
 			for _, value := range values {
-				zone += fmt.Sprintf("%s.\tIN\t%s\t%s\n", domain, recordType, value)
+				zone.WriteString(fmt.Sprintf("%s.\tIN\t%s\t%s\n", domain, recordType, value))
 			}
 		}
 	}
 
-	return zone
+	return zone.String()
 }
 
 func (ts *TestServer) pushNamedConf() {
@@ -294,10 +297,8 @@ func (ts *TestServer) AddDomain(domain string) {
 	ts.lock.Lock()
 	defer ts.lock.Unlock()
 
-	for _, existing := range ts.domains {
-		if existing == domain {
-			return
-		}
+	if slices.Contains(ts.domains, domain) {
+		return
 	}
 
 	ts.domains = append(ts.domains, domain)
@@ -324,11 +325,9 @@ func (ts *TestServer) AddRecord(domain string, record string, value string) {
 	}
 
 	if values, present := ts.records[domain][record]; present {
-		for _, candidate := range values {
-			if candidate == value {
-				// Already present; skip adding.
-				return
-			}
+		if slices.Contains(values, value) {
+			// Already present; skip adding.
+			return
 		}
 	}
 

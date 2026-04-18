@@ -51,7 +51,7 @@ func TestRaft_Chunking_Lifecycle(t *testing.T) {
 	var logs []*raft.Log
 	for i, b := range cmdBytes {
 		// Stage multiple operations so we can test restoring across multiple opnums
-		for j := 0; j < 10; j++ {
+		for j := range 10 {
 			chunkInfo := &raftchunkingtypes.ChunkInfo{
 				OpNum:       uint64(32 + j),
 				SequenceNum: uint32(i),
@@ -208,7 +208,7 @@ func TestRaft_Chunking_AppliedIndex(t *testing.T) {
 
 	currentIndex := raft.AppliedIndex()
 	// Write some data
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		err := raft.Put(t.Context(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: val,
@@ -225,7 +225,7 @@ func TestRaft_Chunking_AppliedIndex(t *testing.T) {
 		t.Fatalf("Did not apply chunks as expected, applied index = %d - %d = %d", newIndex, currentIndex, newIndex-currentIndex)
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		entry, err := raft.Get(t.Context(), fmt.Sprintf("key-%d", i))
 		if err != nil {
 			t.Fatal(err)

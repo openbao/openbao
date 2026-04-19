@@ -1,8 +1,12 @@
 package certutil
 
 import (
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
 	"testing"
 
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -120,6 +124,45 @@ func TestParseHexFormatted(t *testing.T) {
 			got := ParseHexFormatted(tc.input, tc.sep)
 
 			assert.Equal(t, tc.wantOut, got)
+		})
+	}
+}
+
+func TestGetSubjKeyID(t *testing.T) {
+	t.Parallel()
+
+	validPrivKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	assert.NoError(t, err)
+
+	errInternal := errutil.InternalError{Err: "passed-in private key is nil"}
+
+	testCases := []struct {
+		desc       string
+		privateKey crypto.Signer
+		wantErr    bool
+	}{
+		{
+			desc:       "Empty private key",
+			privateKey: nil,
+			wantErr:    true,
+		},
+		{
+			// Actual behaviour tested on TestGetSubjectKeyID
+			desc:       "Valid crypto signer",
+			privateKey: validPrivKey,
+			wantErr:    false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			_, err := GetSubjKeyID(tc.privateKey)
+
+			if tc.wantErr {
+				assert.ErrorIs(t, err, errInternal)
+			} else {
+				assert.NotErrorIs(t, err, errInternal)
+			}
 		})
 	}
 }

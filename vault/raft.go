@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"maps"
 	"net/http"
 	"net/url"
 	"strings"
@@ -18,15 +17,15 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/go-discover"
-	discoverk8s "github.com/hashicorp/go-discover/provider/k8s"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/joinplugin"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	joinsdk "github.com/openbao/openbao/sdk/v2/joinplugin"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/seal"
 	"golang.org/x/net/http2"
@@ -912,11 +911,6 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		leaderInfos[0].LeaderAPIAddr = adv.RedirectAddr
 	}
 
-	disco, err := newDiscover()
-	if err != nil {
-		return false, fmt.Errorf("failed to create auto-join discovery: %w", err)
-	}
-
 	retryFailures := leaderInfos[0].Retry
 	// answerChallenge performs the second part of a raft join: after we've issued
 	// the sys/storage/raft/bootstrap/challenge call to initiate the join, this
@@ -967,7 +961,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 	// challenge.  If we're unable to get a challenge from any leader, or if
 	// we fail to answer the challenge successfully, or if ctx times out,
 	// an error is returned.
-	join := func() error {
+	join := func(leaderInfos []*raft.LeaderJoinInfo, joinPlugins map[string]joinsdk.Join) error {
 		init, err := c.InitializedLocally(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to check if core is initialized: %w", err)
@@ -990,7 +984,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		challengeCh := make(chan *raftInformation)
 		var expandedJoinInfos []*raft.LeaderJoinInfo
 		for _, leaderInfo := range leaderInfos {
-			joinInfos, err := c.raftLeaderInfo(leaderInfo, disco)
+			joinInfos, err := c.raftLeaderInfo(ctx, joinPlugins, leaderInfo)
 			if err != nil {
 				c.logger.Error("error in retry_join stanza, will not use it for raft join", "error", err,
 					"leader_api_addr", leaderInfo.LeaderAPIAddr, "auto_join", leaderInfo.AutoJoin != "")
@@ -1034,16 +1028,44 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		return err
 	}
 
-	switch retryFailures {
-	case true:
+	catalog, err := joinplugin.NewCatalog(c.logger, c.rawConfig.Load())
+	if err != nil {
+		return false, fmt.Errorf("failed to create join plugin catalog: %w", err)
+	}
+
+	joinPlugins := make(map[string]joinsdk.Join, 0)
+	for _, info := range leaderInfos {
+		if info.AutoJoinPlugin == nil {
+			continue
+		}
+		name := info.AutoJoinPlugin.Plugin
+		if _, ok := joinPlugins[name]; ok {
+			continue
+		}
+		plugin, _, err := catalog.NewJoin(name)
+		if err != nil {
+			return false, fmt.Errorf("failed to create join plugin: %w", err)
+		}
+		joinPlugins[name] = plugin
+	}
+
+	if retryFailures {
 		go func() {
+			defer func() {
+				for name, plugin := range joinPlugins {
+					err := plugin.Cleanup(ctx)
+					if err != nil {
+						c.logger.Error("error cleaning up join plugin", "name", name, "error", err.Error())
+					}
+				}
+			}()
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				default:
 				}
-				err := join()
+				err := join(leaderInfos, joinPlugins)
 				if err == nil {
 					return
 				}
@@ -1054,8 +1076,16 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 
 		// Backgrounded so return false
 		return false, nil
-	default:
-		if err := join(); err != nil {
+	} else {
+		defer func() {
+			for name, plugin := range joinPlugins {
+				err := plugin.Cleanup(ctx)
+				if err != nil {
+					c.logger.Error("error cleaning up join plugin", "name", name, "error", err.Error())
+				}
+			}
+		}()
+		if err := join(leaderInfos, joinPlugins); err != nil {
 			c.logger.Error("failed to join raft cluster", "error", err)
 			return false, fmt.Errorf("failed to join raft cluster: %w", err)
 		}
@@ -1065,42 +1095,27 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 }
 
 // raftLeaderInfo uses go-discover to expand leaderInfo to include any auto-join results
-func (c *Core) raftLeaderInfo(leaderInfo *raft.LeaderJoinInfo, disco *discover.Discover) ([]*raft.LeaderJoinInfo, error) {
+func (c *Core) raftLeaderInfo(ctx context.Context, joinPlugins map[string]joinsdk.Join, leaderInfo *raft.LeaderJoinInfo) ([]*raft.LeaderJoinInfo, error) {
+	if err := leaderInfo.ValidateJoinMethods(); err != nil {
+		return nil, err
+	}
+
 	var ret []*raft.LeaderJoinInfo
 	switch {
-	case leaderInfo.LeaderAPIAddr != "" && leaderInfo.AutoJoin != "":
-		return nil, errors.New("cannot provide both leader address and auto-join metadata")
-
 	case leaderInfo.LeaderAPIAddr != "":
 		ret = append(ret, leaderInfo)
-
-	case leaderInfo.AutoJoin != "":
-		scheme := leaderInfo.AutoJoinScheme
-		if scheme == "" {
-			// default to HTTPS when no scheme is provided
-			scheme = "https"
-		}
-		port := leaderInfo.AutoJoinPort
-		if port == 0 {
-			// default to 8200 when no port is provided
-			port = 8200
-		}
-		// Addrs returns either IPv4 or IPv6 address, without scheme or port
-		clusterIPs, err := disco.Addrs(leaderInfo.AutoJoin, c.logger.StandardLogger(nil))
+	case leaderInfo.AutoJoinPlugin != nil:
+		join := joinPlugins[leaderInfo.AutoJoinPlugin.Plugin]
+		addrs, err := join.Candidates(ctx, leaderInfo.AutoJoinPlugin.Config)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse addresses from auto-join metadata: %w", err)
+			return nil, fmt.Errorf("failed to run join plugin: %w", err)
 		}
-		for _, ip := range clusterIPs {
-			if strings.Count(ip, ":") >= 2 && !strings.HasPrefix(ip, "[") {
-				// An IPv6 address in implicit form, however we need it in explicit form to use in a URL.
-				ip = fmt.Sprintf("[%s]", ip)
-			}
-			u := fmt.Sprintf("%s://%s:%d", scheme, ip, port)
+
+		for _, addr := range addrs {
 			info := *leaderInfo
-			info.LeaderAPIAddr = u
+			info.LeaderAPIAddr = fmt.Sprintf("%s://%s:%d", addr.Scheme, addr.Host, addr.Port)
 			ret = append(ret, &info)
 		}
-
 	default:
 		return nil, errors.New("must provide leader address or auto-join metadata")
 	}
@@ -1295,15 +1310,4 @@ type answerRespData struct {
 type answerResp struct {
 	Peers      []raft.Peer      `json:"peers"`
 	TLSKeyring *raft.TLSKeyring `json:"tls_keyring"`
-}
-
-func newDiscover() (*discover.Discover, error) {
-	providers := make(map[string]discover.Provider)
-	maps.Copy(providers, discover.Providers)
-
-	providers["k8s"] = &discoverk8s.Provider{}
-
-	return discover.New(
-		discover.WithProviders(providers),
-	)
 }

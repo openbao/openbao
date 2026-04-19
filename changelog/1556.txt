@@ -1,0 +1,3 @@
+```release-note:feature
+Add **Auto Join plugins** for Raft to support discovery in arbitrary environments via custom external plugins. 
+```

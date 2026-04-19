@@ -1,22 +1,13 @@
 ---
 description: >-
-  External Plugins are mountable backends that are implemented using OpenBao's
-  plugin system.
+  Learn about API-driven plugin management in OpenBao.
 ---
 
-# Plugin Management
+# API-driven Plugin Management
 
-External plugins are the components in OpenBao that can be implemented separately
-from OpenBao's built-in plugins. These plugins can be either authentication or
-secrets engines.
-
-The [`api_addr`][api_addr] must be set in order for the plugin process to
-establish communication with the OpenBao server during mount time. If the storage
-backend has HA enabled and supports automatic host address detection, OpenBao
-will automatically attempt to determine the `api_addr` as well.
-
-Detailed information regarding the plugin system can be found in the
-[internals documentation](index.mdx).
+External plugins are the components in OpenBao that can be implemented
+separately from OpenBao's built-in plugins. Refer to the [plugin system
+overview](./index.mdx) for an introduction to OpenBao's plugin system.
 
 ## Plugin distribution methods
 
@@ -30,7 +21,7 @@ OpenBao supports two methods for distributing external plugins:
 
 Both methods require the plugin to be registered in OpenBao before it can be used.
 
-## Registering external plugins
+## Registering external plugins via the API
 
 Before an external plugin can be mounted, it needs to be
 [registered](plugin-architecture.mdx#plugin-registration) in the
@@ -45,7 +36,7 @@ $ bao plugin register -sha256=<SHA256 Hex value of the plugin binary> \
 Success! Registered plugin: passthrough-plugin
 ```
 
-## Enabling/Disabling external plugins
+## Enabling/Disabling external plugins via the API
 
 After the plugin is registered, it can be mounted by specifying the registered
 plugin name:
@@ -72,8 +63,7 @@ $ bao secrets disable my-secrets
 
 ## Upgrading plugins
 
-Upgrade instructions can be found in the [Upgrading Plugins - Guides][upgrading_plugins]
-page.
+Upgrade instructions can be found in the [Upgrading Plugins -
+Guides][upgrading_plugins] page.
 
-[api_addr]: ../configuration/index.mdx#api_addr
 [upgrading_plugins]: ../upgrading/plugins.mdx

@@ -18,6 +18,44 @@ forum](https://github.com/orgs/openbao/discussions).
 Please refer to the [FAQ](faq.mdx) page for frequently asked questions
 concerning OpenBao feature deprecations.
 
+### HSM distribution
+
+> Announced **04/2026**, Deprecated in: **v2.6.0**, Removal: **v2.7.0**
+
+The HSM distribution will be deprecated and discontinued following the
+introduction of pluginized HSM/PKCS#11 support via KMS provider plugins. To
+prepare, modify your deployment to use the standard distribution of OpenBao
+and install the PKCS#11 KMS plugin, which provides drop-in support for existing
+PKCS#11 seal configuration.
+
+Also see:
+
+- [`seal` stanza](../configuration/seal/index.mdx)
+- [`pkcs11` seal](../configuration/seal/pkcs11.mdx)
+- [Plugin system](../plugins/index.mdx)
+
+### Vendor-specific built-in Auto Unseal mechanisms
+
+> Announced **04/2026**, Deprecated in: **v2.6.0**, Removal: **v2.7.0**
+
+Following the introduction of plugin support for Auto Unseal mechanisms via KMS
+provider plugins, vendor-specific built-in mechanisms will be removed. These
+include:
+
+- [`alicloudkms`](../configuration/seal/alicloudkms.mdx)
+- [`awskms`](../configuration/seal/awskms.mdx)
+- [`azurekeyvault`](../configuration/seal/azurekeyvault.mdx)
+- [`gcpckms`](../configuration/seal/gcpckms.mdx)
+- [`ocikms`](../configuration/seal/ocikms.mdx)
+
+All removed mechanisms remain supported via KMS plugins, which provide drop-in
+support for existing instances and their seal configuration.
+
+Also see:
+
+- [`seal` stanza](../configuration/seal/index.mdx)
+- [Plugin system](../plugins/index.mdx)
+
 ### File storage backend
 
 > Announced: **04/2026**, Deprecated in: **v2.6.0**, Removal: **v2.7.0**

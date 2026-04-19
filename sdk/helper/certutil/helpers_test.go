@@ -2,8 +2,14 @@ package certutil
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
+	"encoding/asn1"
+	"math/big"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
@@ -162,6 +168,122 @@ func TestGetSubjKeyID(t *testing.T) {
 				assert.ErrorIs(t, err, errInternal)
 			} else {
 				assert.NotErrorIs(t, err, errInternal)
+			}
+		})
+	}
+}
+
+func TestGetSubjectKeyID(t *testing.T) {
+	t.Parallel()
+
+	// Invalid RSA public key
+	invalidRsaPubKey := &rsa.PublicKey{
+		N: nil,
+		E: 65537,
+	}
+
+	// Happy path 1 - Valid RSA public key
+	validRsaPrivKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	assert.NoError(t, err)
+
+	validRsaPubKey := &validRsaPrivKey.PublicKey
+
+	type pkcs1PublicKey struct {
+		N *big.Int
+		E int
+	}
+
+	publicKeyBytes, err := asn1.Marshal(pkcs1PublicKey{
+		N: validRsaPubKey.N,
+		E: validRsaPubKey.E,
+	})
+	assert.NoError(t, err)
+
+	shaSum := sha1.Sum(publicKeyBytes)
+	validRsaPubKeySkid := shaSum[:]
+
+	// Happy path 2 - Valid ECDSA public key
+	ecdsaPrivKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	assert.NoError(t, err)
+
+	ecdsaPubKey := &ecdsaPrivKey.PublicKey
+	publicKeyBytes = elliptic.Marshal(ecdsaPubKey.Curve, ecdsaPubKey.X, ecdsaPubKey.Y)
+	publicKeyBytesSkidShaSum := sha1.Sum(publicKeyBytes)
+	publicKeyBytesSkid := publicKeyBytesSkidShaSum[:]
+
+	// Happy path 3 - Valid ED25519 key
+	ed25519PubKey, _, err := ed25519.GenerateKey(rand.Reader)
+	assert.NoError(t, err)
+
+	ed25519PubKeySkidShaSum := sha1.Sum(ed25519PubKey)
+	ed25519PubKeySkid := ed25519PubKeySkidShaSum[:]
+
+	testCases := []struct {
+		desc       string
+		inputKey   interface{}
+		wantSkid   []byte
+		wantErr    bool
+		wantErrMsg string
+	}{
+		{
+			desc:       "Nil input key",
+			inputKey:   nil,
+			wantSkid:   nil,
+			wantErr:    true,
+			wantErrMsg: "unsupported public key type: ",
+		},
+		{
+			desc:       "Unsupported public key type",
+			inputKey:   "not-an-actual-key",
+			wantSkid:   nil,
+			wantErr:    true,
+			wantErrMsg: "unsupported public key type: ",
+		},
+		{
+			desc:       "Invalid RSA public key",
+			inputKey:   invalidRsaPubKey,
+			wantSkid:   nil,
+			wantErr:    true,
+			wantErrMsg: "error marshalling public key: ",
+		},
+		{
+			desc:       "Valid RSA public key",
+			inputKey:   validRsaPubKey,
+			wantSkid:   validRsaPubKeySkid,
+			wantErr:    false,
+			wantErrMsg: "",
+		},
+		{
+			desc:       "Valid ECDSA public key",
+			inputKey:   ecdsaPubKey,
+			wantSkid:   publicKeyBytesSkid,
+			wantErr:    false,
+			wantErrMsg: "",
+		},
+		{
+			desc:       "Valid ED25519 public key",
+			inputKey:   ed25519PubKey,
+			wantSkid:   ed25519PubKeySkid,
+			wantErr:    false,
+			wantErrMsg: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			skid, err := GetSubjectKeyID(tc.inputKey)
+
+			assert.Equal(t, tc.wantSkid, skid)
+
+			if tc.wantErr {
+				assert.Error(t, err)
+
+				var errInternal errutil.InternalError
+				assert.ErrorAs(t, err, &errInternal)
+
+				assert.Contains(t, err.Error(), tc.wantErrMsg)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}

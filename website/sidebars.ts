@@ -554,6 +554,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/opentelemetry",
                 "rfcs/efficient-search-components",
                 "rfcs/emergency-seal",
+                "rfcs/lightweight-ocsp-support",
                 {
                     "UI/UX": ["rfcs/web-ui-modernization"],
                 },

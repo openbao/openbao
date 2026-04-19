@@ -8,16 +8,17 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net/netip"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/mediocregopher/radix/v4"
+	"github.com/moby/moby/api/types/network"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
-	"github.com/ory/dockertest/v3"
-	dc "github.com/ory/dockertest/v3/docker"
+	"github.com/ory/dockertest/v4"
+	"github.com/stretchr/testify/require"
 )
 
 var pre6dot5 = false // check for Pre 6.5.0 Valkey
@@ -35,12 +36,12 @@ const (
 
 var valkeyTls = false
 
-func prepareValkeyTestContainer(t *testing.T) (func(), string, int) {
+func prepareValkeyTestContainer(t *testing.T) (string, int) {
 	if os.Getenv("TEST_VALKEY_TLS") != "" {
 		valkeyTls = true
 	}
 	if os.Getenv("TEST_VALKEY_HOST") != "" {
-		return func() {}, os.Getenv("TEST_VALKEY_HOST"), 6379
+		return os.Getenv("TEST_VALKEY_HOST"), 6379
 	}
 	// redver should match a valkey repository tag. Default to latest.
 	redver := os.Getenv("VALKEY_VERSION")
@@ -48,41 +49,24 @@ func prepareValkeyTestContainer(t *testing.T) (func(), string, int) {
 		redver = "latest"
 	}
 
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		t.Fatalf("Failed to connect to docker: %s", err)
-	}
+	pool := dockertest.NewPoolT(t, "")
+	p, err := network.ParsePort("6379")
+	require.NoError(t, err)
 
-	ro := &dockertest.RunOptions{
-		Repository:   "docker.io/valkey/valkey",
-		Tag:          redver,
-		ExposedPorts: []string{"6379"},
-		PortBindings: map[dc.Port][]dc.PortBinding{
-			"6379": {
-				{HostIP: "0.0.0.0", HostPort: "6379"},
+	_ = pool.RunT(t,
+		"docker.io/valkey/valkey",
+		dockertest.WithTag(redver),
+		dockertest.WithPortBindings(
+			network.PortMap{
+				p: {
+					{HostIP: netip.IPv4Unspecified(), HostPort: p.Port()},
+				},
 			},
-		},
-	}
-	resource, err := pool.RunWithOptions(ro)
-	if err != nil {
-		t.Fatalf("Could not start local valkey docker container: %s", err)
-	}
-
-	cleanup := func() {
-		err := pool.Retry(func() error {
-			return pool.Purge(resource)
-		})
-		if err != nil {
-			if strings.Contains(err.Error(), "No such container") {
-				return
-			}
-			t.Fatalf("Failed to cleanup local container: %s", err)
-		}
-	}
+		),
+	)
 
 	address := "127.0.0.1:6379"
-
-	if err = pool.Retry(func() error {
+	if err = pool.Retry(t.Context(), 10*time.Second, func() error {
 		t.Log("Waiting for the database to start...")
 		poolConfig := radix.PoolConfig{}
 		_, err := poolConfig.New(t.Context(), "tcp", address)
@@ -93,10 +77,9 @@ func prepareValkeyTestContainer(t *testing.T) (func(), string, int) {
 		return nil
 	}); err != nil {
 		t.Fatalf("Could not connect to valkey: %s", err)
-		cleanup()
 	}
 	time.Sleep(3 * time.Second)
-	return cleanup, "0.0.0.0", 6379
+	return "0.0.0.0", 6379
 }
 
 func TestDriver(t *testing.T) {
@@ -111,8 +94,7 @@ func TestDriver(t *testing.T) {
 	}
 
 	// Spin up valkey
-	cleanup, host, port := prepareValkeyTestContainer(t)
-	defer cleanup()
+	host, port := prepareValkeyTestContainer(t)
 
 	err = createUser(t.Context(), host, port, valkeyTls, caCert, defaultUsername, defaultPassword, "Administrator", "password",
 		aclCat)

@@ -8,24 +8,17 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	paths "path"
-	"path/filepath"
+	"path"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/certhelpers"
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
-	dockertest "github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v4"
 )
 
 func TestInit_clientTLS(t *testing.T) {
-	t.Skip("Skipping this test because CircleCI can't mount the files we need without further investigation: " +
-		"https://support.circleci.com/hc/en-us/articles/360007324514-How-can-I-mount-volumes-to-docker-containers-")
-
-	// Set up temp directory so we can mount it to the docker container
-	confDir := makeTempDir(t)
-
 	// Create certificates for MySQL authentication
 	caCert := certhelpers.NewCert(t,
 		certhelpers.CommonName("test certificate authority"),
@@ -43,26 +36,26 @@ func TestInit_clientTLS(t *testing.T) {
 		certhelpers.Parent(caCert),
 	)
 
-	writeFile(t, paths.Join(confDir, "ca.pem"), caCert.CombinedPEM(), 0o644)
-	writeFile(t, paths.Join(confDir, "server-cert.pem"), serverCert.Pem, 0o644)
-	writeFile(t, paths.Join(confDir, "server-key.pem"), serverCert.PrivateKeyPEM(), 0o644)
-	writeFile(t, paths.Join(confDir, "client.pem"), clientCert.CombinedPEM(), 0o644)
+	// Set up temp directory so we can mount it to the docker container
+	confDir := t.TempDir()
+	writeFile(t, path.Join(confDir, "ca.pem"), caCert.CombinedPEM(), 0o644)
+	writeFile(t, path.Join(confDir, "server-cert.pem"), serverCert.Pem, 0o644)
+	writeFile(t, path.Join(confDir, "server-key.pem"), serverCert.PrivateKeyPEM(), 0o644)
+	writeFile(t, path.Join(confDir, "client.pem"), clientCert.CombinedPEM(), 0o644)
 
 	// //////////////////////////////////////////////////////
 	// Set up MySQL config file
 	rawConf := `
 [mysqld]
-ssl
-ssl-ca=/etc/mysql/ca.pem
-ssl-cert=/etc/mysql/server-cert.pem
-ssl-key=/etc/mysql/server-key.pem`
+ssl-ca=/etc/mysql/certs/ca.pem
+ssl-cert=/etc/mysql/certs/server-cert.pem
+ssl-key=/etc/mysql/certs/server-key.pem`
 
-	writeFile(t, paths.Join(confDir, "my.cnf"), []byte(rawConf), 0o644)
+	writeFile(t, path.Join(confDir, "my.cnf"), []byte(rawConf), 0o644)
 
 	// //////////////////////////////////////////////////////
 	// Start MySQL container
-	retURL, cleanup := startMySQLWithTLS(t, "5.7", confDir)
-	defer cleanup()
+	retURL := startMySQLWithTLS(t, "8.0", confDir)
 
 	// //////////////////////////////////////////////////////
 	// Set up x509 user
@@ -116,72 +109,34 @@ ssl-key=/etc/mysql/server-key.pem`
 	}
 }
 
-func makeTempDir(t *testing.T) string {
-	// Convert the directory to an absolute path because docker needs it when mounting
-	confDir, err := filepath.Abs(filepath.Clean(t.TempDir()))
-	if err != nil {
-		t.Fatalf("Unable to determine where temp directory is on absolute path: %s", err)
-	}
-	return confDir
-}
-
-func startMySQLWithTLS(t *testing.T, version string, confDir string) (retURL string, cleanup func()) {
+func startMySQLWithTLS(t *testing.T, version, confDir string) string {
 	if os.Getenv("MYSQL_URL") != "" {
-		return os.Getenv("MYSQL_URL"), func() {}
+		return os.Getenv("MYSQL_URL")
 	}
 
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		t.Fatalf("Failed to connect to docker: %s", err)
-	}
-	pool.MaxWait = 30 * time.Second
-
-	containerName := "mysql-unit-test"
-
-	// Remove previously running container if it is still running because cleanup failed
-	err = pool.RemoveContainerByName(containerName)
-	if err != nil {
-		t.Fatalf("Unable to remove old running containers: %s", err)
-	}
-
+	pool := dockertest.NewPoolT(t, "", dockertest.WithMaxWait(30*time.Second))
 	username := "root"
 	password := "x509test"
 
-	runOpts := &dockertest.RunOptions{
-		Name:       containerName,
-		Repository: "mysql",
-		Tag:        version,
-		Cmd:        []string{"--defaults-extra-file=/etc/mysql/my.cnf", "--auto-generate-certs=OFF"},
-		Env:        []string{fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", password)},
-		// Mount the directory from local filesystem into the container
-		Mounts: []string{
-			fmt.Sprintf("%s:/etc/mysql", confDir),
-		},
-	}
-
-	resource, err := pool.RunWithOptions(runOpts)
-	if err != nil {
-		t.Fatalf("Could not start local mysql docker container: %s", err)
-	}
-	resource.Expire(30)
-
-	cleanup = func() {
-		err := pool.Purge(resource)
-		if err != nil {
-			t.Fatalf("Failed to cleanup local container: %s", err)
-		}
-	}
+	resource := pool.RunT(t,
+		"mysql",
+		dockertest.WithTag(version),
+		dockertest.WithCmd([]string{"--auto-generate-certs=OFF"}),
+		dockertest.WithEnv([]string{fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", password)}),
+		// Mount certs and config from local filesystem into the container.
+		dockertest.WithMounts([]string{
+			fmt.Sprintf("%s:/etc/mysql/conf.d/my.cnf", path.Join(confDir, "my.cnf")),
+			fmt.Sprintf("%s:/etc/mysql/certs", confDir),
+		}),
+	)
 
 	dsn := fmt.Sprintf("{{username}}:{{password}}@tcp(localhost:%s)/mysql", resource.GetPort("3306/tcp"))
-
 	url := dbutil.QueryHelper(dsn, map[string]string{
 		"username": username,
 		"password": password,
 	})
 	// exponential backoff-retry
-	err = pool.Retry(func() error {
-		var err error
-
+	err := pool.Retry(t.Context(), 10*time.Second, func() error {
 		db, err := sql.Open("mysql", url)
 		if err != nil {
 			t.Logf("err: %s", err)
@@ -191,11 +146,10 @@ func startMySQLWithTLS(t *testing.T, version string, confDir string) (retURL str
 		return db.Ping()
 	})
 	if err != nil {
-		cleanup()
 		t.Fatalf("Could not connect to mysql docker container: %s", err)
 	}
 
-	return dsn, cleanup
+	return dsn
 }
 
 func connect(t *testing.T, dsn string) (db *sql.DB) {
@@ -225,7 +179,7 @@ func setUpX509User(t *testing.T, db *sql.DB, cert certhelpers.Certificate) (user
 
 	cmds := []string{
 		fmt.Sprintf("CREATE USER %s IDENTIFIED BY '' REQUIRE X509", username),
-		fmt.Sprintf("GRANT ALL ON mysql.* TO '%s'@'%s' REQUIRE X509", username, "%"),
+		fmt.Sprintf("GRANT ALL ON mysql.* TO '%s'@'%%'", username),
 	}
 
 	for _, cmd := range cmds {

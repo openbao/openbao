@@ -4,6 +4,16 @@ description: |-
   OpenBao.
 ---
 
+:::warning
+
+Note: As of v2.5.3 usage of these endpoints is [deprecated](/docs/deprecation/unauthed-generate-root)
+and will be disabled by default. Considering using [`auth/token/create`](../../auth/token.mdx)
+to create new root tokens from existing tokens with `sudo` permission.
+To re-enable, see the documentation around the `disable_unauthed_generate_root_endpoints`
+[listener parameter](/docs/configuration/listener/unix/).
+
+:::
+
 # `/sys/generate-root`
 
 The `/sys/generate-root` endpoint is used to create a new root key for OpenBao.

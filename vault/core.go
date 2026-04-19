@@ -630,6 +630,8 @@ type Core struct {
 	// instance.
 	allowUnauthedWorkflows bool
 	workflowStore          *WorkflowStore
+
+	unsafeRelativePaths bool
 }
 
 // c.stateLock needs to be held in read mode before calling this function.
@@ -783,6 +785,8 @@ type CoreConfig struct {
 	UnsafeCrossNamespaceIdentity bool
 
 	AllowUnauthenticatedWorkflows bool
+
+	UnsafeRelativePaths bool
 }
 
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
@@ -938,6 +942,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		detectDeadlocks:                detectDeadlocks,
 		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
 		allowUnauthedWorkflows:         conf.AllowUnauthenticatedWorkflows,
+		unsafeRelativePaths:            conf.UnsafeRelativePaths,
 	}
 
 	c.standby.Store(true)

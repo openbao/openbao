@@ -147,6 +147,10 @@ type Config struct {
 	// workflow author would have to embed a token, these still should be used
 	// with care.
 	AllowUnauthenticatedWorkflows bool `hcl:"allow_unauthenticated_workflows"`
+
+	// Whether to allow unsafe (usually URL encoded) relative request paths
+	// (containing `..`).
+	UnsafeRelativePaths bool `hcl:"unsafe_relative_paths"`
 }
 
 func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {

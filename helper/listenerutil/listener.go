@@ -188,55 +188,50 @@ Please see https://tools.ietf.org/html/rfc7540#appendix-A for further informatio
 
 // setFilePermissions handles configuring ownership and permissions
 // settings on a given file. All permission/ownership settings are
-// optional. If no user or group is specified, the current user/group
-// will be used. Mode is optional, and has no default (the operation is
-// not performed if absent). User may be specified by name or ID, but
-// group may only be specified by ID.
+// optional. Mode is optional, and has no default (the operation is
+// not performed if absent). User may be specified by name or ID, and
+// group may be specified by name or ID. If neither user nor group is
+// specified, ownership is not modified.
 func setFilePermissions(path string, user, group, mode string) error {
 	var err error
-	uid, gid := os.Getuid(), os.Getgid()
 
-	if user != "" {
-		if uid, err = strconv.Atoi(user); err == nil {
-			goto GROUP
+	if user != "" || group != "" {
+		uid, gid := os.Getuid(), os.Getgid()
+
+		if user != "" {
+			if uid, err = strconv.Atoi(user); err != nil {
+				u, lookupErr := osuser.Lookup(user)
+				if lookupErr != nil {
+					return fmt.Errorf("failed to look up user %q: %v", user, lookupErr)
+				}
+				uid, _ = strconv.Atoi(u.Uid)
+			}
 		}
 
-		// Try looking up the user by name
-		u, err := osuser.Lookup(user)
-		if err != nil {
-			return fmt.Errorf("failed to look up user %q: %v", user, err)
-		}
-		uid, _ = strconv.Atoi(u.Uid)
-	}
-
-GROUP:
-	if group != "" {
-		if gid, err = strconv.Atoi(group); err == nil {
-			goto OWN
+		if group != "" {
+			if gid, err = strconv.Atoi(group); err != nil {
+				g, lookupErr := osuser.LookupGroup(group)
+				if lookupErr != nil {
+					return fmt.Errorf("failed to look up group %q: %v", group, lookupErr)
+				}
+				gid, _ = strconv.Atoi(g.Gid)
+			}
 		}
 
-		// Try looking up the user by name
-		g, err := osuser.LookupGroup(group)
-		if err != nil {
-			return fmt.Errorf("failed to look up group %q: %v", user, err)
+		if err := os.Chown(path, uid, gid); err != nil {
+			return fmt.Errorf("failed setting ownership to %d:%d on %q: %v",
+				uid, gid, path, err)
 		}
-		gid, _ = strconv.Atoi(g.Gid)
-	}
-
-OWN:
-	if err := os.Chown(path, uid, gid); err != nil {
-		return fmt.Errorf("failed setting ownership to %d:%d on %q: %v",
-			uid, gid, path, err)
 	}
 
 	if mode != "" {
-		mode, err := strconv.ParseUint(mode, 8, 32)
+		parsedMode, err := strconv.ParseUint(mode, 8, 32)
 		if err != nil {
 			return fmt.Errorf("invalid mode specified: %v", mode)
 		}
-		if err := os.Chmod(path, os.FileMode(mode)); err != nil {
+		if err := os.Chmod(path, os.FileMode(parsedMode)); err != nil {
 			return fmt.Errorf("failed setting permissions to %d on %q: %v",
-				mode, path, err)
+				parsedMode, path, err)
 		}
 	}
 

@@ -1,0 +1,3 @@
+```release-note:bug
+core: Fail self-initialization if a previous self-initialization failed to run (partial failure detection)
+```

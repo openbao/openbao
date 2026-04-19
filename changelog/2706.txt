@@ -1,0 +1,3 @@
+```release-note:improvement
+command: Allow overriding the location of ~/.vault-token via the BAO_TOKEN_PATH environment variable.
+```

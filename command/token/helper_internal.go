@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/openbao/openbao/helper/homedir"
+	"github.com/openbao/openbao/api/v2"
 )
 
 var _ TokenHelper = (*InternalTokenHelper)(nil)
@@ -35,7 +36,12 @@ func NewInternalTokenHelper() (*InternalTokenHelper, error) {
 // populateTokenPath figures out the token path using homedir to get the user's
 // home directory
 func (i *InternalTokenHelper) populateTokenPath() {
-	i.tokenPath = filepath.Join(i.homeDir, ".vault-token")
+	baoTokenPath := api.ReadBaoVariable("BAO_TOKEN_PATH")
+	if baoTokenPath == "" {
+	    i.tokenPath = filepath.Join(i.homeDir, ".vault-token")
+	} else {
+	    i.tokenPath = baoTokenPath
+	}
 }
 
 func (i *InternalTokenHelper) Path() string {

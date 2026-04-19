@@ -151,6 +151,10 @@ type NonFatalError struct {
 	Err error
 }
 
+func (e *NonFatalError) Unwrap() error {
+	return e.Err
+}
+
 func (e *NonFatalError) WrappedErrors() []error {
 	return []error{e.Err}
 }

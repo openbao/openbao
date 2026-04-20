@@ -52,6 +52,10 @@ const (
 	EnvVaultProxyAddr        = "BAO_PROXY_ADDR"
 	EnvVaultDisableRedirects = "BAO_DISABLE_REDIRECTS"
 
+	// EnvTokenPath is the path to a file that holds a token. This is presently
+	// only respected by the `bao` CLI, not the API client.
+	EnvTokenPath = "BAO_TOKEN_PATH"
+
 	// NamespaceHeaderName is the header set to specify which namespace the
 	// request is intended for.
 	NamespaceHeaderName = "X-Vault-Namespace"

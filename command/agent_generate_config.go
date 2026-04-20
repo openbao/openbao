@@ -203,17 +203,13 @@ func generateConfiguration(ctx context.Context, client *api.Client, flagExec str
 		execCommand = []string{"env"}
 	}
 
-	var tokenPath string
-	var err error
-
-	baoTokenPath := api.ReadBaoVariable("BAO_TOKEN_PATH")
-	if baoTokenPath == "" {
+	tokenPath := api.ReadBaoVariable(api.EnvTokenPath)
+	if tokenPath == "" {
+		var err error
 		tokenPath, err = homedir.Expand("~/.vault-token")
 		if err != nil {
 			return nil, fmt.Errorf("could not expand home directory: %w", err)
 		}
-	} else {
-		tokenPath = baoTokenPath
 	}
 
 	templates, err := constructTemplates(ctx, client, flagPaths)

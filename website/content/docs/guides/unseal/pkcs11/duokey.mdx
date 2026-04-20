@@ -1,0 +1,79 @@
+---
+sidebar_label: DuoKey SD-HSM
+description: |-
+  This guide describes how to configure OpenBao auto-unsealing with a 
+  DuoKey SD-HSM by using the PKCS#11 interface.
+---
+
+# DuoKey SD-HSM
+
+This guide describes how to configure OpenBao auto-unsealing with a DuoKey Sofware Defined HSM (SD-HSM) by using the PKCS#11 interface.
+
+## Initial setup
+
+This guide assumes that before configuring OpenBao:
+1. You have access to your DuoKey Cockpit tenant or on-prem instance.
+2. A vault backend is configured (DuoKey SD-HSM).
+3. A cryptographic key is created in the vault:
+    - AES-256 key **or**
+    - RSA-4096 key
+4. A DuoKey Cockpit application **KMS App** is created.
+
+The key **must exist before OpenBao initialization**, as required by [OpenBao PKCS#11 seal configuration](../../../configuration/seal/pkcs11.mdx).
+
+## Installing the Library
+
+> Refer to DuoKey's official PKCS#11 guide (delivered together with your DuoKey Cockpit access) for detailed information.
+
+OpenBao interacts with the DuoKey SD-HSM using a PKCS#11 dynamic library. This library must be available on the system where OpenBao runs (e.g., container, VM, or bare metal).
+
+The upstream OpenBao container images do not include the DuoKey PKCS#11 library. To make it available in Kubernetes, you can either:
+- Build a custom OpenBao image including the library, or
+- Inject the library using an init container into `/usr/local/lib/pkcs11/`.
+
+## Configuring the Library
+
+> Refer to DuoKey's official PKCS#11 guide (delivered together with your DuoKey Cockpit access) for detailed information.
+
+The DuoKey PKCS#11 library is configured through environment variables which provide the necessary information for authentication to the DuoKey platform.
+
+## Configuring the PKCS#11 Seal
+
+Below are exemples of PKCS#11 seal configuration block to be placed in the OpenBao server configuration. Replace the `lib` value with the path that you placed the PKCS#11 library at in the previous step, and set `slot`, `pin` and `key_label` based on the values you chose during slot initialization and key material generation.
+
+### AES-GCM
+
+```hcl
+seal "pkcs11" {
+  lib       = "/usr/local/lib/pkcs11/duokey_pkcs11.so" # mandatory
+  slot      = "0"                                      # mandatory
+  pin       = "1234"                                   # mandatory
+  key_label = "bao-root-key-aes-256"                   # mandatory
+  mechanism = "0x1087"                                 # optional
+}
+```
+
+### RSA-OAEP
+
+```hcl
+seal "pkcs11" {
+  lib           = "/usr/local/lib/pkcs11/duokey_pkcs11.so" # mandatory
+  slot          = "0"                                      # mandatory
+  pin           = "1234"                                   # mandatory
+  key_label     = "bao-root-key-rsa-4096"                  # mandatory
+  mechanism     = "0x0009"                                 # optional
+  rsa_oaep_hash = "sha256"                                 # optional
+}
+```
+
+See [PKCS#11 Seal](../../../configuration/seal/pkcs11.mdx) for complete documentation on all available options, or how to set the above values via environment variables instead.
+
+## Initializing OpenBao
+
+With the key material, environment variables, dynamic library and server configuration all in place, start the OpenBao server. Unless [Self-initialization](../../../configuration/self-init.mdx) is used or a [Seal Migration](../../../concepts/seal.mdx#seal-migration) is performed, the final step is to manually initialize OpenBao:
+
+```shell-session
+$ bao operator init
+```
+
+If everything is configured correctly, the server should unseal automatically following the initialization. If this is not the case, check the server logs for error messages.

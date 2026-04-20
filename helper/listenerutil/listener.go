@@ -224,9 +224,18 @@ GROUP:
 	}
 
 OWN:
-	if err := os.Chown(path, uid, gid); err != nil {
-		return fmt.Errorf("failed setting ownership to %d:%d on %q: %v",
-			uid, gid, path, err)
+	// Only Chown when the operator actually asked us to change ownership.
+	// A previous version always invoked os.Chown with the current uid/gid;
+	// in environments where the current user cannot chown its own files
+	// (e.g. restricted container runtimes) that call returns EPERM and we
+	// short-circuit out before ever reaching the mode change below.
+	// That is the reported failure mode in #2594: socket_mode alone, with
+	// no socket_user / socket_group, silently fails to apply.
+	if user != "" || group != "" {
+		if err := os.Chown(path, uid, gid); err != nil {
+			return fmt.Errorf("failed setting ownership to %d:%d on %q: %v",
+				uid, gid, path, err)
+		}
 	}
 
 	if mode != "" {

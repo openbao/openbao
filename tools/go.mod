@@ -1,6 +1,6 @@
 module github.com/openbao/openbao/tools
 
-go 1.24.4
+go 1.25.0
 
 require (
 	github.com/favadi/protoc-go-inject-tag v1.4.0
@@ -210,7 +210,7 @@ require (
 	golang.org/x/exp/typeparams v0.0.0-20250911091902-df9299821621 // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/term v0.39.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/tools v0.41.0 // indirect

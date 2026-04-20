@@ -1,0 +1,3 @@
+```release-note:improvement
+storage/postgresql: Set constraint name to table+"_pkey" and ha_table+"_pkey" and index to table+"_idx" for uniqueness when reusing the same database partition for multiple OpenBao instances.
+```

@@ -2761,6 +2761,7 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
 		AdministrativeNamespacePath:    config.AdministrativeNamespacePath,
 		UnsafeCrossNamespaceIdentity:   config.UnsafeCrossNamespaceIdentity,
+		UnsafeRelativePaths:            config.UnsafeRelativePaths,
 	}
 
 	if config.DisableSSCTokens != nil {

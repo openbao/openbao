@@ -144,6 +144,10 @@ type Config struct {
 
 	// Whether read requests are disabled on standby nodes.
 	DisableStandbyReads bool `hcl:"disable_standby_reads"`
+
+	// Whether to allow unsafe (usually URL encoded) relative request paths
+	// (containing `..`).
+	UnsafeRelativePaths bool `hcl:"unsafe_relative_paths"`
 }
 
 func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {

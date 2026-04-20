@@ -200,6 +200,7 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	conf.AdministrativeNamespacePath = opts.AdministrativeNamespacePath
 	conf.ImpreciseLeaseRoleTracking = opts.ImpreciseLeaseRoleTracking
 	conf.UnsafeCrossNamespaceIdentity = opts.UnsafeCrossNamespaceIdentity
+	conf.UnsafeRelativePaths = opts.UnsafeRelativePaths
 
 	if opts.Logger != nil {
 		conf.Logger = opts.Logger

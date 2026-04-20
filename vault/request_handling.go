@@ -572,6 +572,10 @@ func (c *Core) HandleRequest(httpCtx context.Context, req *logical.Request) (res
 }
 
 func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.Request, doLocking bool) (resp *logical.Response, err error) {
+	if !c.unsafeRelativePaths && logical.IsRelativePath(req.Path) {
+		return nil, logical.CodedError(http.StatusBadRequest, logical.ErrRelativePath.Error())
+	}
+
 	if doLocking {
 		c.stateLock.RLock()
 		defer c.stateLock.RUnlock()

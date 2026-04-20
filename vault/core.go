@@ -661,6 +661,8 @@ type Core struct {
 	// Core invalidation tracker handles dispatching invalidations and
 	// refreshing the Core-adjacent caches afterwards.
 	invalidations *invalidationManager
+
+	unsafeRelativePaths bool
 }
 
 // c.stateLock needs to be held in read mode before calling this function.
@@ -818,6 +820,8 @@ type CoreConfig struct {
 	//
 	// See also: https://github.com/openbao/openbao/issues/1110
 	UnsafeCrossNamespaceIdentity bool
+
+	UnsafeRelativePaths bool
 }
 
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
@@ -996,6 +1000,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		impreciseLeaseRoleTracking:     conf.ImpreciseLeaseRoleTracking,
 		detectDeadlocks:                detectDeadlocks,
 		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
+		unsafeRelativePaths:            conf.UnsafeRelativePaths,
 	}
 
 	c.standby.Store(true)

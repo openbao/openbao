@@ -1,0 +1,6 @@
+```release-note:security
+core: Forbid request path traversal using `.` and `..` segments by default. If required, set the `unsafe_relative_paths`. Upstream HCSEC-2026-05 / CVE-2026-3605.
+```
+```release-note:bug
+core: Loosen overly strict check for view path check, strictly forbidding `..` as a substring within path segments.
+```

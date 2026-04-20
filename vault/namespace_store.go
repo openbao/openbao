@@ -52,10 +52,11 @@ const (
 	// overhead.
 	nsMaxWorkers = 2 + /* namespace and overhead */
 		1 + /* policies */
-		2 + /* auth + mount */
+		3 + /* reload + auth + mount */
 		1 + /* identity */
 		1 + /* quotas */
-		1 /* locked user entries */
+		1 + /* locked user entries */
+		1 /* final view clearing */
 )
 
 // NamespaceStore is used to provide durable storage of namespace. It is
@@ -1010,6 +1011,17 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 		}
 	}
 
+	// To clear auth+secret mounts, we first need to load that portion of the
+	// mount table that this namespace has. Otherwise, things like lease cleanup
+	// will not run if the mount was not already loaded.
+	nonTaintedNs := namespaceToDelete.Clone(false)
+	nonTaintedNs.Tainted = false
+	nonTaintedCtx := namespace.ContextWithNamespace(nsCtx, nonTaintedNs)
+
+	if err := ns.core.reloadNamespaceMounts(nonTaintedCtx, nonTaintedCtx, namespaceToDelete.UUID, false /* not yet deleted */); err != nil {
+		return fmt.Errorf("failed to reload namespace mounts: %w", err)
+	}
+
 	// clear auth mounts
 	ns.core.authLock.Lock()
 	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(nsCtx)
@@ -1065,6 +1077,23 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 		return fmt.Errorf("failed to clean up locked user entries: %w", err)
 	}
 
+	// clear any remaining storage; while ideally this would not occur, it
+	// gives us now a signal if it did (debug entries) and additionally
+	// gives us a clear path to remediate.
+	//
+	// This is in contrast to the current method where storage entries would
+	// be silently left lying around.
+	view := NamespaceView(ns.storage, namespaceToDelete)
+	if err := logical.ScanViewPaginated(nsCtx, view, ns.logger, logical.DefaultScanViewPageLimit, func(page int, index int, path string) (cont bool, err error) {
+		if err := view.Delete(nsCtx, path); err != nil {
+			return false, fmt.Errorf("failed removing entry: %w", err)
+		}
+
+		ns.logger.Debug("bug: removing entry remaining in namespace storage after all mounts were removed", "namespace", namespaceToDelete.Path, "path", path)
+		return true, nil
+	}); err != nil {
+		return fmt.Errorf("failed to clear namespace view: %w", err)
+	}
 	return nil
 }
 

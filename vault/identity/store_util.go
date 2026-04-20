@@ -51,7 +51,14 @@ func (i *IdentityStore) LoadGroups(ctx context.Context, readOnly bool) error {
 	}
 
 	i.logger.Debug("identity loading groups", "namespace", ns.Path)
-	existing, err := i.GroupPacker(ctx).View().List(ctx, groupBucketsPrefix)
+	// See LoadEntities: GroupPacker(ctx) returns nil when the namespace
+	// view is missing from the identity store table, and calling .View()
+	// on nil crashes the unseal path (#2921).
+	packer := i.GroupPacker(ctx)
+	if packer == nil {
+		return fmt.Errorf("cannot load groups: identity store is missing the group packer for namespace %s", ns.ID)
+	}
+	existing, err := packer.View().List(ctx, groupBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for groups: %w", err)
 	}
@@ -154,7 +161,18 @@ func (i *IdentityStore) LoadEntities(ctx context.Context, readOnly bool) error {
 	}
 
 	i.logger.Debug("loading entities", "namespace", ns.Path)
-	existing, err := i.EntityPacker(ctx).View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
+	// EntityPacker returns nil when the namespace is missing from the
+	// identity store table (e.g. a half-created namespace left behind by
+	// a crash during creation). Calling .View() on that nil segfaults
+	// the unseal path and sends the process into a crash loop, because
+	// every subsequent unseal walks the same broken namespace (#2921).
+	// Fail soft instead so the core can continue unsealing and an
+	// operator can clean up the partial state.
+	packer := i.EntityPacker(ctx)
+	if packer == nil {
+		return fmt.Errorf("cannot load entities: identity store is missing the entity packer for namespace %s", ns.ID)
+	}
+	existing, err := packer.View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for entities: %w", err)
 	}

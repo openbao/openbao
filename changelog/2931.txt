@@ -1,0 +1,3 @@
+```release-note:security
+database/postgresql: Correctly quote schema name in revoke statement. GHSA-6vgr-cp5c-ffx3 / CVE-2026-39946.
+```

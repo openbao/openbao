@@ -782,6 +782,14 @@ func TestTokenStore_AccessorIndex(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ts := c.tokenStore
 
+	ns1 := &namespace.Namespace{
+		Path: "ns1",
+	}
+	ns2 := &namespace.Namespace{
+		Path: "ns1/ns2",
+	}
+	TestCoreCreateNamespaces(t, c, ns1, ns2)
+
 	ent := &logical.TokenEntry{
 		Path:        "test",
 		Policies:    []string{"dev", "ops"},
@@ -810,6 +818,24 @@ func TestTokenStore_AccessorIndex(t *testing.T) {
 	if aEntry.TokenID != ent.ID {
 		t.Fatalf("bad: got\n%s\nexpected\n%s\n", aEntry.TokenID, ent.ID)
 	}
+
+	// Verify we can't do cross-namespace token lookups.
+	aEntry, err = ts.lookupByAccessor(namespace.ContextWithNamespace(ctx, ns1), out.Accessor, false, false)
+	require.Error(t, err, "successfully looked up accessor: %v", out.Accessor)
+	require.Nil(t, aEntry)
+
+	ent2 := *ent
+	ent2.ID = ""
+	ent2.NamespaceID = ns1.ID
+	testMakeTokenDirectly(t, ctx, ts, &ent2)
+
+	aEntry, err = ts.lookupByAccessor(ctx, ent2.Accessor, false, false)
+	require.Error(t, err)
+	require.Nil(t, aEntry)
+
+	aEntry, err = ts.lookupByAccessor(namespace.ContextWithNamespace(ctx, ns2), ent2.Accessor, false, false)
+	require.Error(t, err)
+	require.Nil(t, aEntry)
 
 	// Make sure a batch token doesn't get an accessor
 	ent.Type = logical.TokenTypeBatch

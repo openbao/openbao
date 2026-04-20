@@ -99,6 +99,11 @@ func (c *NamespacePatchCommand) Run(args []string) int {
 
 	namespacePath := strings.TrimSpace(args[0])
 
+	if len(c.flagCustomMetadata) == 0 && len(c.flagRemoveCustomMetadata) == 0 {
+		c.UI.Error("Must supply at least one of -custom-metadata or -remove-custom-metadata")
+		return 1
+	}
+
 	client, err := c.Client()
 	if err != nil {
 		c.UI.Error(err.Error())

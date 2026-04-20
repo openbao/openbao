@@ -9,8 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-
-	"github.com/go-viper/mapstructure/v2"
 )
 
 type UnsealNamespaceInput struct {
@@ -141,8 +139,7 @@ func (c *Sys) ListNamespacesWithContext(ctx context.Context) (*ListNamespacesRes
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	r := c.c.NewRequest("LIST", "/v1/sys/namespaces")
-	r.Method = http.MethodGet
+	r := c.c.NewRequest(http.MethodGet, "/v1/sys/namespaces/")
 	r.Params.Set("list", "true")
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
@@ -159,16 +156,12 @@ func (c *Sys) ListNamespacesWithContext(ctx context.Context) (*ListNamespacesRes
 		return nil, errors.New("data from server response is empty")
 	}
 
-	result := &ListNamespacesResponse{}
-	if err := mapstructure.Decode(secret.Data["keys"], &result.Keys); err != nil {
-		return nil, err
-	}
-
-	keyInfoJSON, err := json.Marshal(secret.Data["key_info"])
+	dataJSON, err := json.Marshal(secret.Data)
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(keyInfoJSON, &result.KeyInfo); err != nil {
+	result := &ListNamespacesResponse{}
+	if err := json.Unmarshal(dataJSON, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -181,6 +174,13 @@ func (c *Sys) CreateNamespace(path string, i *CreateNamespaceInput) (*CreateName
 
 // CreateNamespaceWithContext creates a new namespace at the given path.
 func (c *Sys) CreateNamespaceWithContext(ctx context.Context, path string, i *CreateNamespaceInput) (*CreateNamespaceResponse, error) {
+	if path == "" {
+		return nil, errors.New("path must not be empty")
+	}
+	if i == nil {
+		i = &CreateNamespaceInput{}
+	}
+
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -211,6 +211,13 @@ func (c *Sys) PatchNamespace(path string, i *PatchNamespaceInput) (*PatchNamespa
 
 // PatchNamespaceWithContext updates the metadata of an existing namespace at the given path.
 func (c *Sys) PatchNamespaceWithContext(ctx context.Context, path string, i *PatchNamespaceInput) (*PatchNamespaceResponse, error) {
+	if path == "" {
+		return nil, errors.New("path must not be empty")
+	}
+	if i == nil {
+		return nil, errors.New("input must not be nil")
+	}
+
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -242,6 +249,10 @@ func (c *Sys) DeleteNamespace(path string) (*DeleteNamespaceResponse, error) {
 
 // DeleteNamespaceWithContext removes the namespace at the given path.
 func (c *Sys) DeleteNamespaceWithContext(ctx context.Context, path string) (*DeleteNamespaceResponse, error) {
+	if path == "" {
+		return nil, errors.New("path must not be empty")
+	}
+
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -269,6 +280,10 @@ func (c *Sys) ReadNamespace(path string) (*ReadNamespaceResponse, error) {
 
 // ReadNamespaceWithContext returns information about the namespace at the given path.
 func (c *Sys) ReadNamespaceWithContext(ctx context.Context, path string) (*ReadNamespaceResponse, error) {
+	if path == "" {
+		return nil, errors.New("path must not be empty")
+	}
+
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 

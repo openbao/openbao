@@ -1,3 +1,23 @@
+## 2.5.3
+## April 20, 2026
+
+SECURITY:
+
+* auth/cert: Prevent token renewal with different-but-valid certificate. GHSA-7ccv-rp6m-rffr / CVE-2026-39388. [[GH-2932](https://github.com/openbao/openbao/pull/2932)]
+* auth/token: Prevent cross-namespace token renewal, revocation by accessor. GHSA-p49j-v9wc-wg57 / CVE-2026-40264. [[GH-2934](https://github.com/openbao/openbao/pull/2934)]
+* core: Disallow `sys/generate-root/*` by default due to unauthenticated cancellation; use `disable_unauthed_generate_root_endpoints=false` to temporarily re-enable. Upstream HCSEC-2026-08 / CVE-2026-5807. [[GH-2912](https://github.com/openbao/openbao/pull/2912)]
+* core: Forbid request path traversal using `.` and `..` segments by default. If required, set the `unsafe_relative_paths`. Upstream HCSEC-2026-05 / CVE-2026-3605. [[GH-2910](https://github.com/openbao/openbao/pull/2910)]
+* core/plugins: Validate and restrict downloaded plugin binary size from OCI images; set `plugin_download_max_size` to limit the size (defaults to 512MB). GHSA-r65v-xgwc-g56j / CVE-2026-39396. [[GH-2941](https://github.com/openbao/openbao/pull/2941)]
+* core/namespaces: Ensure lease revocation on namespace re-deletion. GHSA-vv66-6rp4-wr4f. [[GH-2935](https://github.com/openbao/openbao/pull/2935)]
+* database/postgresql: Correctly quote schema name in revoke statement. GHSA-6vgr-cp5c-ffx3 / CVE-2026-39946. [[GH-2931](https://github.com/openbao/openbao/pull/2931)]
+
+BUG FIXES:
+
+* command/server: Refuse repeated startup if self-initialization failed on initial run. [[GH-2908](https://github.com/openbao/openbao/pull/2908)]
+* core: Fix namespace invalidation on standby when disable_cache=true is set. [[GH-2822](https://github.com/openbao/openbao/pull/2822)]
+* core: Loosen overly strict check for view path check, strictly forbidding `..` as a substring within path segments. [[GH-2910](https://github.com/openbao/openbao/pull/2910)]
+* secret/database, secret/openldap, secret/rabbitmq: Fix dynamic secret requests failing with an "Internal Server Error" on standby nodes [[GH-2853](https://github.com/openbao/openbao/pull/2853)]
+
 ## 2.5.2
 ## March 25, 2026
 

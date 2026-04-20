@@ -277,13 +277,15 @@ func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *Evaluation
 	// 2. Call the request handler.
 	resp, err := p.requestHandler(ctx, req)
 	isFailure := err != nil || resp.IsError()
-	if err == nil && resp.IsError() {
+	if err == nil {
 		err = resp.Error()
 	}
 	if !allowFailure && isFailure {
 		if err != nil {
 			return fmt.Errorf("failed to evaluate request: %w", err)
 		}
+		// Fallback in case IsError() is true but Error() returned nil.
+		return errors.New("failed to evaluate request: request failed")
 	}
 
 	// 3. Stash request & response for future use.

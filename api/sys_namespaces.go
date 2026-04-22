@@ -92,15 +92,7 @@ type CreateNamespaceResponse struct {
 }
 
 // ReadNamespaceResponse is the response from the ReadNamespace operation.
-type ReadNamespaceResponse struct {
-	UUID           string            `json:"uuid"`
-	ID             string            `json:"id"`
-	Path           string            `json:"path"`
-	Tainted        bool              `json:"tainted"`
-	Locked         bool              `json:"locked"`
-	CustomMetadata map[string]string `json:"custom_metadata"`
-	KeyShares      []string          `json:"key_shares"`
-}
+type ReadNamespaceResponse = CreateNamespaceResponse
 
 // DeleteNamespaceResponse is the response from the DeleteNamespace operation.
 type DeleteNamespaceResponse struct {
@@ -114,15 +106,7 @@ type PatchNamespaceInput struct {
 }
 
 // PatchNamespaceResponse is the response from the PatchNamespace operation.
-type PatchNamespaceResponse struct {
-	UUID           string            `json:"uuid"`
-	ID             string            `json:"id"`
-	Path           string            `json:"path"`
-	Tainted        bool              `json:"tainted"`
-	Locked         bool              `json:"locked"`
-	CustomMetadata map[string]string `json:"custom_metadata"`
-	KeyShares      []string          `json:"key_shares"`
-}
+type PatchNamespaceResponse = CreateNamespaceResponse
 
 // ListNamespaces lists all child namespaces relative to the current namespace.
 func (c *Sys) ListNamespaces() (map[string]ReadNamespaceResponse, error) {

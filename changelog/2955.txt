@@ -1,0 +1,3 @@
+```release-note:improvement
+namespaces: add CreateNamespace, ReadNamespace, ListNamespaces, PatchNamespace and DeleteNamespace to the Sys() API client; fix PATCH returning 500 on missing or nonexistent namespace
+```

@@ -290,10 +290,15 @@ func (c *Sys) ReadNamespaceWithContext(ctx context.Context, path string) (*ReadN
 	r := c.c.NewRequest(http.MethodGet, fmt.Sprintf("/v1/sys/namespaces/%s", path))
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if resp != nil {
+		defer resp.Body.Close() //nolint:errcheck
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close() //nolint:errcheck
 
 	var result struct {
 		Data *ReadNamespaceResponse

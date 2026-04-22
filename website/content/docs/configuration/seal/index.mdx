@@ -7,11 +7,11 @@ description: >-
 
 # `seal` stanza
 
-The `seal` stanza configures an Auto Unseal mechanism to use to replace the
-default Shamir seal, such as using HSM or Cloud KMS solutions to encrypt and
-decrypt the root key. This stanza is optional, and if omitted, OpenBao will use
-the Shamir algorithm to cryptographically split the root key, requiring nodes to
-be unsealed manually.
+The `seal` stanza configures an Auto Unseal mechanism, replacing the default
+Shamir seal. It allows the use of external solutions - such as an HSM or Cloud
+KMS - to encrypt and decrypt the root key. This stanza is optional, and if
+omitted, OpenBao will default to a Shamir seal, requiring manual unsealing of
+nodes.
 
 :::info
 

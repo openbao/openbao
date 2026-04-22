@@ -1,3 +1,6 @@
 ```release-note:improvement
-namespaces: add CreateNamespace, ReadNamespace, ListNamespaces, PatchNamespace and DeleteNamespace to the Sys() API client; fix PATCH returning 500 on missing or nonexistent namespace
+api: Add first-class support for `/sys/namespaces` APIs via `.Sys().CreateNamespace(...)` & co.
+```
+```release-note:bug
+core/namespaces: Fix PATCH on a namespace returning status 500 on missing or nonexistent namespace.
 ```

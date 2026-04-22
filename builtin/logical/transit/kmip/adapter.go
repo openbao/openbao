@@ -6,6 +6,7 @@ package kmip
 import (
 	"context"
 
+	log "github.com/hashicorp/go-hclog"
 	kmiplib "github.com/ovh/kmip-go"
 )
 
@@ -41,6 +42,9 @@ type Adapter interface {
 
 	// DestroyKey destroys a key permanently.
 	DestroyKey(ctx context.Context, id string) error
+
+	// Logger returns the logger for the backend.
+	Logger() log.Logger
 }
 
 // CryptoAdapter supports cryptographic operations. Server register Encrypt/Decrypt/Sign/Verify handlers.

@@ -287,29 +287,26 @@ func TestDeleteNamespace(t *testing.T) {
 func TestListNamespaces(t *testing.T) {
 	for name, tc := range map[string]struct {
 		body     string
-		expected ListNamespacesResponse
+		expected map[string]ReadNamespaceResponse
 	}{
 		"multiple namespaces": {
 			body: listNamespacesResponse,
-			expected: ListNamespacesResponse{
-				Keys: []string{"ns1/", "ns2/"},
-				KeyInfo: map[string]ReadNamespaceResponse{
-					"ns1/": {
-						UUID:           "abc123",
-						ID:             "ns1",
-						Path:           "ns1/",
-						Tainted:        false,
-						Locked:         false,
-						CustomMetadata: map[string]string{"env": "prod"},
-					},
-					"ns2/": {
-						UUID:           "def456",
-						ID:             "ns2",
-						Path:           "ns2/",
-						Tainted:        false,
-						Locked:         false,
-						CustomMetadata: nil,
-					},
+			expected: map[string]ReadNamespaceResponse{
+				"ns1/": {
+					UUID:           "abc123",
+					ID:             "ns1",
+					Path:           "ns1/",
+					Tainted:        false,
+					Locked:         false,
+					CustomMetadata: map[string]string{"env": "prod"},
+				},
+				"ns2/": {
+					UUID:           "def456",
+					ID:             "ns2",
+					Path:           "ns2/",
+					Tainted:        false,
+					Locked:         false,
+					CustomMetadata: nil,
 				},
 			},
 		},
@@ -330,8 +327,8 @@ func TestListNamespaces(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if !reflect.DeepEqual(tc.expected, *resp) {
-				t.Errorf("expected: %#v\ngot: %#v", tc.expected, *resp)
+			if !reflect.DeepEqual(tc.expected, resp) {
+				t.Errorf("expected: %#v\ngot: %#v", tc.expected, resp)
 			}
 		})
 	}

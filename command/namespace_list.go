@@ -88,14 +88,18 @@ func (c *NamespaceListCommand) Run(args []string) int {
 		return 2
 	}
 
-	if resp == nil || len(resp.Keys) == 0 {
+	if len(resp) == 0 {
 		c.UI.Error("No namespaces found")
 		return 2
 	}
 
 	if c.flagDetailed && Format(c.UI) != "table" {
-		return OutputData(c.UI, resp.KeyInfo)
+		return OutputData(c.UI, resp)
 	}
 
-	return OutputData(c.UI, resp.Keys)
+	keys := make([]string, 0, len(resp))
+	for k := range resp {
+		keys = append(keys, k)
+	}
+	return OutputData(c.UI, keys)
 }

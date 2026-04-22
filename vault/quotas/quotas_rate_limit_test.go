@@ -10,13 +10,13 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/goleak"
 )
 
 type clientResult struct {
@@ -224,13 +224,13 @@ func TestRateLimitQuota_Allow_WithBlock(t *testing.T) {
 }
 
 func TestRateLimitQuota_Update(t *testing.T) {
-	defer goleak.VerifyNone(t)
-	qm, err := NewManager(logging.NewVaultLogger(log.Trace), metricsutil.BlackholeSink(), true)
+	qm, err := NewManager(logging.NewVaultLogger(log.Trace), metricsutil.BlackholeSink(), false)
 	require.NoError(t, err)
-
-	quota := NewRateLimitQuota("quota1", "", "", "", "", 10, time.Second, 0, false)
-	require.NoError(t, qm.SetQuota(t.Context(), TypeRateLimit.String(), quota, true))
-	require.NoError(t, qm.SetQuota(t.Context(), TypeRateLimit.String(), quota, true))
-
-	require.Nil(t, quota.close(t.Context()))
+	synctest.Test(t, func(t *testing.T) {
+		quota := NewRateLimitQuota("quota1", "", "", "", "", 10, time.Second, 0, false)
+		require.NoError(t, qm.SetQuota(t.Context(), TypeRateLimit.String(), quota, true))
+		require.NoError(t, qm.SetQuota(t.Context(), TypeRateLimit.String(), quota, true))
+		require.Nil(t, quota.close(t.Context()))
+		synctest.Wait()
+	})
 }

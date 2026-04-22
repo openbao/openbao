@@ -18,8 +18,6 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -1878,9 +1876,10 @@ func TestTokenStore_HandleRequest_CreateToken_DisplayName(t *testing.T) {
 }
 
 func deepEqualTokenEntries(t *testing.T, a *logical.TokenEntry, b *logical.TokenEntry) {
-	if diff := cmp.Diff(a, b, cmpopts.IgnoreFields(logical.TokenEntry{}, "ExternalID")); diff != "" {
-		t.Fatalf("bad diff in token entries: %s", diff)
-	}
+	// unset externalID before checking equality.
+	a.ExternalID = ""
+	b.ExternalID = ""
+	require.Equal(t, a, b)
 }
 
 func TestTokenStore_HandleRequest_CreateToken_NumUses(t *testing.T) {

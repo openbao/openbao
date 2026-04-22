@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -22,7 +23,6 @@ import (
 	"github.com/hashicorp/hcl/hcl/ast"
 	ctconfig "github.com/openbao/openbao-template/config"
 	ctsignals "github.com/openbao/openbao-template/signals"
-	"k8s.io/utils/strings/slices"
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared"

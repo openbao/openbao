@@ -4,11 +4,11 @@
 package command
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
@@ -161,14 +161,16 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 	return OutputData(c.UI, out)
 }
 
-// structToMap converts a struct to map[string]interface{} via JSON round-trip.
 func structToMap(v interface{}) (map[string]interface{}, error) {
-	b, err := json.Marshal(v)
+	m := map[string]interface{}{}
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		TagName: "json",
+		Result:  &m,
+	})
 	if err != nil {
 		return nil, err
 	}
-	var m map[string]interface{}
-	if err := json.Unmarshal(b, &m); err != nil {
+	if err := decoder.Decode(v); err != nil {
 		return nil, err
 	}
 	return m, nil

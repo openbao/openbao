@@ -59,6 +59,10 @@ Usage: bao namespace <subcommand> [options] [args]
 
       $ bao namespace unlock
 
+  Unseal the namespace:
+
+      $ bao namespace unseal
+
   Please see the individual subcommand help for detailed usage information.
 `
 

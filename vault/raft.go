@@ -1034,6 +1034,15 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 	}
 
 	joinPlugins := make(map[string]joinsdk.Join, 0)
+	cleanupPlugins := func() {
+		for name, plugin := range joinPlugins {
+			err := plugin.Cleanup(ctx)
+			if err != nil {
+				c.logger.Error("error cleaning up join plugin", "name", name, "error", err.Error())
+			}
+		}
+	}
+
 	for _, info := range leaderInfos {
 		if info.AutoJoinPlugin == nil {
 			continue
@@ -1044,6 +1053,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		}
 		plugin, _, err := catalog.NewJoin(name)
 		if err != nil {
+			cleanupPlugins()
 			return false, fmt.Errorf("failed to create join plugin: %w", err)
 		}
 		joinPlugins[name] = plugin
@@ -1051,14 +1061,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 
 	if retryFailures {
 		go func() {
-			defer func() {
-				for name, plugin := range joinPlugins {
-					err := plugin.Cleanup(ctx)
-					if err != nil {
-						c.logger.Error("error cleaning up join plugin", "name", name, "error", err.Error())
-					}
-				}
-			}()
+			defer cleanupPlugins()
 			for {
 				select {
 				case <-ctx.Done():
@@ -1077,14 +1080,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		// Backgrounded so return false
 		return false, nil
 	} else {
-		defer func() {
-			for name, plugin := range joinPlugins {
-				err := plugin.Cleanup(ctx)
-				if err != nil {
-					c.logger.Error("error cleaning up join plugin", "name", name, "error", err.Error())
-				}
-			}
-		}()
+		defer cleanupPlugins()
 		if err := join(leaderInfos, joinPlugins); err != nil {
 			c.logger.Error("failed to join raft cluster", "error", err)
 			return false, fmt.Errorf("failed to join raft cluster: %w", err)

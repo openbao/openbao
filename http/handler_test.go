@@ -13,7 +13,6 @@ import (
 	"net/http/httptest"
 	"net/textproto"
 	"net/url"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -25,10 +24,15 @@ import (
 	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
+	"github.com/openbao/openbao/internal/assert"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	EMPTY = ""
 )
 
 func TestHandler_parseMFAHandler(t *testing.T) {
@@ -48,9 +52,7 @@ func TestHandler_parseMFAHandler(t *testing.T) {
 		"my_third_mfa",
 	}
 	err = parseMFAHeader(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Ok(t, err)
 
 	// Verify that it is being parsed properly
 	expectedMFACreds = logical.MFACreds{
@@ -63,9 +65,7 @@ func TestHandler_parseMFAHandler(t *testing.T) {
 		},
 		"my_third_mfa": []string{},
 	}
-	if !reflect.DeepEqual(expectedMFACreds, req.MFACreds) {
-		t.Fatalf("bad: parsed MFACreds; expected: %#v\n actual: %#v\n", expectedMFACreds, req.MFACreds)
-	}
+	assert.Equal(t, req.MFACreds, expectedMFACreds)
 
 	// Split the creds of a method type in different headers and check if they
 	// all get merged together
@@ -75,9 +75,7 @@ func TestHandler_parseMFAHandler(t *testing.T) {
 		"my_mfa:day=tuesday",
 	}
 	err = parseMFAHeader(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Ok(t, err)
 
 	expectedMFACreds = logical.MFACreds{
 		"my_mfa": []string{
@@ -86,36 +84,28 @@ func TestHandler_parseMFAHandler(t *testing.T) {
 			"day=tuesday",
 		},
 	}
-	if !reflect.DeepEqual(expectedMFACreds, req.MFACreds) {
-		t.Fatalf("bad: parsed MFACreds; expected: %#v\n actual: %#v\n", expectedMFACreds, req.MFACreds)
-	}
+	assert.Equal(t, req.MFACreds, expectedMFACreds)
 
 	// Header without method name should error out
 	req.Headers[headerName] = []string{
 		":passcode=123456",
 	}
 	err = parseMFAHeader(req)
-	if err == nil {
-		t.Fatalf("expected an error; actual: %#v\n", req.MFACreds)
-	}
+	assert.DesiredError(t, err, req.MFACreds)
 
 	// Header without method name and method value should error out
 	req.Headers[headerName] = []string{
 		":",
 	}
 	err = parseMFAHeader(req)
-	if err == nil {
-		t.Fatalf("expected an error; actual: %#v\n", req.MFACreds)
-	}
+	assert.DesiredError(t, err, req.MFACreds)
 
 	// Header without method name and method value should error out
 	req.Headers[headerName] = []string{
 		"my_totp:",
 	}
 	err = parseMFAHeader(req)
-	if err == nil {
-		t.Fatalf("expected an error; actual: %#v\n", req.MFACreds)
-	}
+	assert.DesiredError(t, err, req.MFACreds)
 }
 
 func TestHandler_cors(t *testing.T) {
@@ -126,26 +116,18 @@ func TestHandler_cors(t *testing.T) {
 	// Enable CORS and allow from any origin for testing.
 	corsConfig := core.CORSConfig()
 	err := corsConfig.Enable(t.Context(), []string{addr}, nil, false)
-	if err != nil {
-		t.Fatalf("Error enabling CORS: %s", err)
-	}
+	assert.Ok(t, err, "Error enabling CORS: %s")
 
 	req, err := http.NewRequest(http.MethodOptions, addr+"/v1/sys/seal-status", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 	req.Header.Set("Origin", "BAD ORIGIN")
 
 	// Requests from unacceptable origins will be rejected with a 403.
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("Bad status:\nexpected: 403 Forbidden\nactual: %s", resp.Status)
-	}
+	assert.Equal(t, resp.StatusCode, http.StatusForbidden)
 
 	//
 	// Test preflight requests
@@ -159,23 +141,17 @@ func TestHandler_cors(t *testing.T) {
 
 	client = cleanhttp.DefaultClient()
 	resp, err = client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 
 	// Fail if an arbitrary method is accepted.
-	if resp.StatusCode != http.StatusMethodNotAllowed {
-		t.Fatalf("Bad status:\nexpected: 405 Method Not Allowed\nactual: %s", resp.Status)
-	}
+	assert.Equal(t, resp.StatusCode, http.StatusMethodNotAllowed)
 
 	// Server SHOULD accept acceptable methods.
 	req.Header.Set("Access-Control-Request-Method", http.MethodPost)
 
 	client = cleanhttp.DefaultClient()
 	resp, err = client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 
 	//
 	// Test that the CORS headers are applied correctly.
@@ -189,38 +165,26 @@ func TestHandler_cors(t *testing.T) {
 
 	for expHeader, expected := range expHeaders {
 		actual := resp.Header.Get(expHeader)
-		if actual == "" {
-			t.Fatalf("bad:\nHeader: %#v was not on response.", expHeader)
-		}
+		assert.NotEqual(t, actual, EMPTY)
 
-		if actual != expected {
-			t.Fatalf("bad:\nExpected: %#v\nActual: %#v\n", expected, actual)
-		}
+		assert.Equal(t, actual, expected)
 	}
 
 	// Test that the Access-Control-Allow-Credentials is set correctly when configured
 	err = corsConfig.Enable(t.Context(), []string{addr}, nil, true)
-	if err != nil {
-		t.Fatalf("Error enabling CORS: %s", err)
-	}
+	assert.Ok(t, err, "Error enabling CORS: %s")
 
 	client = cleanhttp.DefaultClient()
 	resp, err = client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 
 	expHeaders["Access-Control-Allow-Credentials"] = "true"
 
 	for expHeader, expected := range expHeaders {
 		actual := resp.Header.Get(expHeader)
-		if actual == "" {
-			t.Fatalf("bad:\nHeader: %#v was not on response.", expHeader)
-		}
+		assert.NotEqual(t, actual, EMPTY)
 
-		if actual != expected {
-			t.Fatalf("bad:\nExpected: %#v\nActual: %#v\n", expected, actual)
-		}
+		assert.Equal(t, actual, expected)
 	}
 }
 
@@ -259,19 +223,13 @@ func TestHandler_HostnameHeader(t *testing.T) {
 			defer ln.Close()
 
 			req, err := http.NewRequest("GET", addr+"/v1/sys/seal-status", nil)
-			if err != nil {
-				t.Fatalf("err: %s", err)
-			}
+			assert.Ok(t, err)
 
 			client := cleanhttp.DefaultClient()
 			resp, err := client.Do(req)
-			if err != nil {
-				t.Fatalf("err: %s", err)
-			}
+			assert.Ok(t, err)
 
-			if resp == nil {
-				t.Fatal("nil response")
-			}
+			assert.NotNil(t, resp)
 
 			hnHeader := resp.Header.Get(consts.HostnameHeaderName)
 			if tc.headerPresent && hnHeader == "" {
@@ -283,9 +241,7 @@ func TestHandler_HostnameHeader(t *testing.T) {
 			}
 
 			rniHeader := resp.Header.Get(consts.RaftNodeIDHeaderName)
-			if rniHeader != "" {
-				t.Fatalf("no raft node ID header was expected, since we're not running a raft cluster. instead, got %s", rniHeader)
-			}
+			assert.Equal(t, rniHeader, EMPTY, "no raft node ID header was expected, since we're not running a raft cluster. instead, got %s")
 		})
 	}
 }
@@ -296,31 +252,21 @@ func TestHandler_CacheControlNoStore(t *testing.T) {
 	defer ln.Close()
 
 	req, err := http.NewRequest("GET", addr+"/v1/sys/mounts", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 	req.Header.Set(consts.AuthHeaderName, token)
 	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 
-	if resp == nil {
-		t.Fatal("nil response")
-	}
+	assert.NotNil(t, resp)
 
 	actual := resp.Header.Get("Cache-Control")
 
-	if actual == "" {
-		t.Fatal("missing 'Cache-Control' header entry in response writer")
-	}
+	assert.NotEqual(t, actual, EMPTY)
 
-	if actual != "no-store" {
-		t.Fatalf("bad: Cache-Control. Expected: 'no-store', Actual: %q", actual)
-	}
+	assert.Equal(t, actual, "no-store", "bad: Cache-Control. Expected: 'no-store', Actual: %q")
 }
 
 func TestHandler_InFlightRequest(t *testing.T) {
@@ -330,20 +276,14 @@ func TestHandler_InFlightRequest(t *testing.T) {
 	TestServerAuth(t, addr, token)
 
 	req, err := http.NewRequest("GET", addr+"/v1/sys/in-flight-req", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 	req.Header.Set(consts.AuthHeaderName, token)
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 
-	if resp == nil {
-		t.Fatal("nil response")
-	}
+	assert.NotNil(t, resp)
 
 	var actual map[string]interface{}
 	testResponseStatus(t, resp, 200)
@@ -351,14 +291,11 @@ func TestHandler_InFlightRequest(t *testing.T) {
 	if len(actual) == 0 {
 		t.Fatal("expected to get at least one in-flight request, got nil or zero length map")
 	}
+	assert.NotEqual(t, len(actual), 0)
 	for _, v := range actual {
 		reqInfo, ok := v.(map[string]interface{})
-		if !ok {
-			t.Fatal("failed to read in-flight request")
-		}
-		if reqInfo["request_path"] != "/v1/sys/in-flight-req" {
-			t.Fatalf("expected /v1/sys/in-flight-req in-flight request path, got %s", actual["request_path"])
-		}
+		assert.Equal(t, ok, true, "Failed to read in-flight request")
+		assert.Equal(t, reqInfo["request_path"], "/v1/sys/in-flight-req")
 	}
 }
 
@@ -372,20 +309,14 @@ func TestHandler_MissingToken(t *testing.T) {
 	defer ln.Close()
 
 	req, err := http.NewRequest("GET", addr+"/v1/sys/internal/ui/mounts/cubbyhole", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 
 	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != 403 {
-		t.Fatalf("expected code 403, got: %d", resp.StatusCode)
-	}
+	assert.Ok(t, err)
+	assert.Equal(t, resp.StatusCode, 403)
 }
 
 func TestHandler_Accepted(t *testing.T) {
@@ -394,16 +325,12 @@ func TestHandler_Accepted(t *testing.T) {
 	defer ln.Close()
 
 	req, err := http.NewRequest("POST", addr+"/v1/auth/token/tidy", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 	req.Header.Set(consts.AuthHeaderName, token)
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 
 	testResponseStatus(t, resp, 202)
 }
@@ -415,16 +342,12 @@ func TestSysMounts_headerAuth(t *testing.T) {
 	defer ln.Close()
 
 	req, err := http.NewRequest("GET", addr+"/v1/sys/mounts", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 	req.Header.Set(consts.AuthHeaderName, token)
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 
 	var actual map[string]interface{}
 	expected := map[string]interface{}{
@@ -576,12 +499,9 @@ func TestSysMounts_headerAuth(t *testing.T) {
 
 	expected["request_id"] = actual["request_id"]
 	for k, v := range actual["data"].(map[string]interface{}) {
-		if v.(map[string]interface{})["accessor"] == "" {
-			t.Fatalf("no accessor from %s", k)
-		}
-		if v.(map[string]interface{})["uuid"] == "" {
-			t.Fatalf("no uuid from %s", k)
-		}
+		data := v.(map[string]any)
+		assert.NotEqual(t, data["accessor"], EMPTY)
+		assert.NotEqual(t, data["uuid"], EMPTY)
 
 		expected[k].(map[string]interface{})["accessor"] = v.(map[string]interface{})["accessor"]
 		expected[k].(map[string]interface{})["uuid"] = v.(map[string]interface{})["uuid"]
@@ -654,9 +574,7 @@ func TestSysMounts_headerAuth_Wrapped(t *testing.T) {
 	}
 	expected["wrap_info"].(map[string]interface{})["accessor"] = actualAccessor
 
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("bad:\nExpected: %#v\nActual: %#v\n%T %T", expected, actual, actual["warnings"], actual["data"])
-	}
+	assert.Equal(t, actual, expected)
 }
 
 func TestHandler_sealed(t *testing.T) {
@@ -763,12 +681,8 @@ func TestHandler_requestAuth(t *testing.T) {
 		if req.TokenEntry() == nil {
 			t.Fatal("token entry should not be nil")
 		}
-		if !reflect.DeepEqual(req.TokenEntry(), te) {
-			t.Fatal("token entry should be the same as the core")
-		}
-		if req.ClientTokenAccessor == "" {
-			t.Fatal("token accessor should not be empty")
-		}
+		assert.Equal(t, req.TokenEntry(), te)
+		assert.NotEqual(t, req.ClientTokenAccessor, EMPTY)
 	}
 
 	rNothing, err := http.NewRequest("GET", "v1/test/path", nil)
@@ -782,9 +696,7 @@ func TestHandler_requestAuth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %s", err)
 	}
-	if req.ClientToken != "" {
-		t.Fatalf("client token should not be filled, got %s", req.ClientToken)
-	}
+	assert.Equal(t, req.ClientToken, EMPTY)
 }
 
 func TestHandler_getTokenFromReq(t *testing.T) {

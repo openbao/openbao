@@ -72,34 +72,36 @@ func TestCreateNamespace(t *testing.T) {
 	for name, tc := range map[string]struct {
 		body     string
 		input    CreateNamespaceInput
-		expected CreateNamespaceResponse
+		expected CreateNamespaceOutput
 	}{
 		"namespace with custom metadata": {
 			body: createNamespaceResponse,
 			input: CreateNamespaceInput{
 				CustomMetadata: map[string]string{"env": "prod"},
 			},
-			expected: CreateNamespaceResponse{
-				UUID:           "abc123",
-				ID:             "ns1",
-				Path:           "ns1/",
-				Tainted:        false,
-				Locked:         false,
-				CustomMetadata: map[string]string{"env": "prod"},
-				KeyShares:      nil,
+			expected: CreateNamespaceOutput{
+				NamespaceOutput: NamespaceOutput{
+					UUID:           "abc123",
+					ID:             "ns1",
+					Path:           "ns1/",
+					Tainted:        false,
+					Locked:         false,
+					CustomMetadata: map[string]string{"env": "prod"},
+				},
 			},
 		},
 		"namespace without custom metadata": {
 			body:  createNamespaceResponseNoMetadata,
 			input: CreateNamespaceInput{},
-			expected: CreateNamespaceResponse{
-				UUID:           "def456",
-				ID:             "ns2",
-				Path:           "ns2/",
-				Tainted:        false,
-				Locked:         false,
-				CustomMetadata: nil,
-				KeyShares:      nil,
+			expected: CreateNamespaceOutput{
+				NamespaceOutput: NamespaceOutput{
+					UUID:           "def456",
+					ID:             "ns2",
+					Path:           "ns2/",
+					Tainted:        false,
+					Locked:         false,
+					CustomMetadata: nil,
+				},
 			},
 		},
 	} {
@@ -129,42 +131,36 @@ func TestCreateNamespace(t *testing.T) {
 func TestReadNamespace(t *testing.T) {
 	for name, tc := range map[string]struct {
 		body     string
-		expected ReadNamespaceResponse
+		expected NamespaceOutput
 	}{
 		"existing namespace": {
 			body: readNamespaceResponse,
-			expected: ReadNamespaceResponse{
+			expected: NamespaceOutput{
 				UUID:           "abc123",
 				ID:             "ns1",
 				Path:           "ns1/",
 				Tainted:        false,
 				Locked:         false,
 				CustomMetadata: map[string]string{"env": "prod"},
-				KeyShares:      nil,
 			},
 		},
 		"tainted namespace": {
 			body: readNamespaceTaintedResponse,
-			expected: ReadNamespaceResponse{
-				UUID:           "abc123",
-				ID:             "ns1",
-				Path:           "ns1/",
-				Tainted:        true,
-				Locked:         false,
-				CustomMetadata: nil,
-				KeyShares:      nil,
+			expected: NamespaceOutput{
+				UUID:    "abc123",
+				ID:      "ns1",
+				Path:    "ns1/",
+				Tainted: true,
+				Locked:  false,
 			},
 		},
 		"locked namespace": {
 			body: readNamespaceLockedResponse,
-			expected: ReadNamespaceResponse{
-				UUID:           "abc123",
-				ID:             "ns1",
-				Path:           "ns1/",
-				Tainted:        false,
-				Locked:         true,
-				CustomMetadata: nil,
-				KeyShares:      nil,
+			expected: NamespaceOutput{
+				UUID:   "abc123",
+				ID:     "ns1",
+				Path:   "ns1/",
+				Locked: true,
 			},
 		},
 	} {
@@ -195,21 +191,18 @@ func TestPatchNamespace(t *testing.T) {
 	for name, tc := range map[string]struct {
 		body     string
 		input    PatchNamespaceInput
-		expected PatchNamespaceResponse
+		expected NamespaceOutput
 	}{
 		"add metadata key": {
 			body: patchNamespaceResponse,
 			input: PatchNamespaceInput{
 				CustomMetadata: map[string]interface{}{"env": "staging"},
 			},
-			expected: PatchNamespaceResponse{
+			expected: NamespaceOutput{
 				UUID:           "abc123",
 				ID:             "ns1",
 				Path:           "ns1/",
-				Tainted:        false,
-				Locked:         false,
 				CustomMetadata: map[string]string{"env": "staging"},
-				KeyShares:      nil,
 			},
 		},
 		"remove metadata key": {
@@ -217,14 +210,11 @@ func TestPatchNamespace(t *testing.T) {
 			input: PatchNamespaceInput{
 				CustomMetadata: map[string]interface{}{"env": nil},
 			},
-			expected: PatchNamespaceResponse{
+			expected: NamespaceOutput{
 				UUID:           "abc123",
 				ID:             "ns1",
 				Path:           "ns1/",
-				Tainted:        false,
-				Locked:         false,
 				CustomMetadata: map[string]string{"env": "staging"},
-				KeyShares:      nil,
 			},
 		},
 	} {
@@ -287,26 +277,21 @@ func TestDeleteNamespace(t *testing.T) {
 func TestListNamespaces(t *testing.T) {
 	for name, tc := range map[string]struct {
 		body     string
-		expected map[string]ReadNamespaceResponse
+		expected map[string]*NamespaceOutput
 	}{
 		"multiple namespaces": {
 			body: listNamespacesResponse,
-			expected: map[string]ReadNamespaceResponse{
+			expected: map[string]*NamespaceOutput{
 				"ns1/": {
 					UUID:           "abc123",
 					ID:             "ns1",
 					Path:           "ns1/",
-					Tainted:        false,
-					Locked:         false,
 					CustomMetadata: map[string]string{"env": "prod"},
 				},
 				"ns2/": {
-					UUID:           "def456",
-					ID:             "ns2",
-					Path:           "ns2/",
-					Tainted:        false,
-					Locked:         false,
-					CustomMetadata: nil,
+					UUID: "def456",
+					ID:   "ns2",
+					Path: "ns2/",
 				},
 			},
 		},

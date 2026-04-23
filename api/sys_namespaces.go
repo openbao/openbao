@@ -80,41 +80,42 @@ type CreateNamespaceInput struct {
 	CustomMetadata map[string]string `json:"custom_metadata"`
 }
 
-// CreateNamespaceResponse is the response from the CreateNamespace operation.
-type CreateNamespaceResponse struct {
+// PatchNamespaceInput is the input for the PatchNamespace operation.
+// CustomMetadata values can be string to add or modify a key, or nil to remove
+// a key.
+type PatchNamespaceInput struct {
+	CustomMetadata map[string]interface{} `json:"custom_metadata"`
+}
+
+// NamespaceOutput is returned by ReadNamespace, PatchNamespace and ListNamespaces.
+type NamespaceOutput struct {
 	UUID           string            `json:"uuid"`
 	ID             string            `json:"id"`
 	Path           string            `json:"path"`
 	Tainted        bool              `json:"tainted"`
 	Locked         bool              `json:"locked"`
 	CustomMetadata map[string]string `json:"custom_metadata"`
-	KeyShares      []string          `json:"key_shares"`
 }
 
-// ReadNamespaceResponse is the response from the ReadNamespace operation.
-type ReadNamespaceResponse = CreateNamespaceResponse
+// CreateNamespaceOutput is returned by CreateNamespace and extends NamespaceOutput
+// with the key shares generated at creation time.
+type CreateNamespaceOutput struct {
+	NamespaceOutput
+	KeyShares []string `json:"key_shares"`
+}
 
-// DeleteNamespaceResponse is the response from the DeleteNamespace operation.
-type DeleteNamespaceResponse struct {
+// DeleteNamespaceOutput is returned by DeleteNamespace.
+type DeleteNamespaceOutput struct {
 	Status string `json:"status"`
 }
 
-// PatchNamespaceInput is the input for the PatchNamespace operation.
-// CustomMetadata values can be nil to remove a key.
-type PatchNamespaceInput struct {
-	CustomMetadata map[string]interface{} `json:"custom_metadata"`
-}
-
-// PatchNamespaceResponse is the response from the PatchNamespace operation.
-type PatchNamespaceResponse = CreateNamespaceResponse
-
 // ListNamespaces lists all child namespaces relative to the current namespace.
-func (c *Sys) ListNamespaces() (map[string]ReadNamespaceResponse, error) {
+func (c *Sys) ListNamespaces() (map[string]*NamespaceOutput, error) {
 	return c.ListNamespacesWithContext(context.Background())
 }
 
 // ListNamespacesWithContext lists all child namespaces relative to the current namespace.
-func (c *Sys) ListNamespacesWithContext(ctx context.Context) (map[string]ReadNamespaceResponse, error) {
+func (c *Sys) ListNamespacesWithContext(ctx context.Context) (map[string]*NamespaceOutput, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -137,10 +138,10 @@ func (c *Sys) ListNamespacesWithContext(ctx context.Context) (map[string]ReadNam
 
 	keyInfoRaw, ok := secret.Data["key_info"]
 	if !ok {
-		return map[string]ReadNamespaceResponse{}, nil
+		return map[string]*NamespaceOutput{}, nil
 	}
 
-	result := map[string]ReadNamespaceResponse{}
+	result := map[string]*NamespaceOutput{}
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName: "json",
 		Result:  &result,
@@ -155,12 +156,12 @@ func (c *Sys) ListNamespacesWithContext(ctx context.Context) (map[string]ReadNam
 }
 
 // CreateNamespace creates a new namespace with the given name.
-func (c *Sys) CreateNamespace(name string, i *CreateNamespaceInput) (*CreateNamespaceResponse, error) {
+func (c *Sys) CreateNamespace(name string, i *CreateNamespaceInput) (*CreateNamespaceOutput, error) {
 	return c.CreateNamespaceWithContext(context.Background(), name, i)
 }
 
 // CreateNamespaceWithContext creates a new namespace with the given name.
-func (c *Sys) CreateNamespaceWithContext(ctx context.Context, name string, i *CreateNamespaceInput) (*CreateNamespaceResponse, error) {
+func (c *Sys) CreateNamespaceWithContext(ctx context.Context, name string, i *CreateNamespaceInput) (*CreateNamespaceOutput, error) {
 	if name == "" {
 		return nil, errors.New("name must not be empty")
 	}
@@ -183,7 +184,7 @@ func (c *Sys) CreateNamespaceWithContext(ctx context.Context, name string, i *Cr
 	defer resp.Body.Close() //nolint:errcheck
 
 	var result struct {
-		Data *CreateNamespaceResponse
+		Data *CreateNamespaceOutput
 	}
 	if err := resp.DecodeJSON(&result); err != nil {
 		return nil, err
@@ -192,12 +193,12 @@ func (c *Sys) CreateNamespaceWithContext(ctx context.Context, name string, i *Cr
 }
 
 // PatchNamespace updates the metadata of an existing namespace with the given name.
-func (c *Sys) PatchNamespace(name string, i *PatchNamespaceInput) (*PatchNamespaceResponse, error) {
+func (c *Sys) PatchNamespace(name string, i *PatchNamespaceInput) (*NamespaceOutput, error) {
 	return c.PatchNamespaceWithContext(context.Background(), name, i)
 }
 
 // PatchNamespaceWithContext updates the metadata of an existing namespace with the given name.
-func (c *Sys) PatchNamespaceWithContext(ctx context.Context, name string, i *PatchNamespaceInput) (*PatchNamespaceResponse, error) {
+func (c *Sys) PatchNamespaceWithContext(ctx context.Context, name string, i *PatchNamespaceInput) (*NamespaceOutput, error) {
 	if name == "" {
 		return nil, errors.New("name must not be empty")
 	}
@@ -221,7 +222,7 @@ func (c *Sys) PatchNamespaceWithContext(ctx context.Context, name string, i *Pat
 	defer resp.Body.Close() //nolint:errcheck
 
 	var result struct {
-		Data *PatchNamespaceResponse
+		Data *NamespaceOutput
 	}
 	if err := resp.DecodeJSON(&result); err != nil {
 		return nil, err
@@ -230,12 +231,12 @@ func (c *Sys) PatchNamespaceWithContext(ctx context.Context, name string, i *Pat
 }
 
 // DeleteNamespace removes the namespace with the given name.
-func (c *Sys) DeleteNamespace(name string) (*DeleteNamespaceResponse, error) {
+func (c *Sys) DeleteNamespace(name string) (*DeleteNamespaceOutput, error) {
 	return c.DeleteNamespaceWithContext(context.Background(), name)
 }
 
 // DeleteNamespaceWithContext removes the namespace with the given name.
-func (c *Sys) DeleteNamespaceWithContext(ctx context.Context, name string) (*DeleteNamespaceResponse, error) {
+func (c *Sys) DeleteNamespaceWithContext(ctx context.Context, name string) (*DeleteNamespaceOutput, error) {
 	if name == "" {
 		return nil, errors.New("name must not be empty")
 	}
@@ -252,7 +253,7 @@ func (c *Sys) DeleteNamespaceWithContext(ctx context.Context, name string) (*Del
 	defer resp.Body.Close() //nolint:errcheck
 
 	var result struct {
-		Data *DeleteNamespaceResponse
+		Data *DeleteNamespaceOutput
 	}
 	if err := resp.DecodeJSON(&result); err != nil {
 		return nil, err
@@ -261,12 +262,12 @@ func (c *Sys) DeleteNamespaceWithContext(ctx context.Context, name string) (*Del
 }
 
 // ReadNamespace returns information about the namespace with the given name.
-func (c *Sys) ReadNamespace(name string) (*ReadNamespaceResponse, error) {
+func (c *Sys) ReadNamespace(name string) (*NamespaceOutput, error) {
 	return c.ReadNamespaceWithContext(context.Background(), name)
 }
 
 // ReadNamespaceWithContext returns information about the namespace with the given name.
-func (c *Sys) ReadNamespaceWithContext(ctx context.Context, name string) (*ReadNamespaceResponse, error) {
+func (c *Sys) ReadNamespaceWithContext(ctx context.Context, name string) (*NamespaceOutput, error) {
 	if name == "" {
 		return nil, errors.New("name must not be empty")
 	}
@@ -288,7 +289,7 @@ func (c *Sys) ReadNamespaceWithContext(ctx context.Context, name string) (*ReadN
 	}
 
 	var result struct {
-		Data *ReadNamespaceResponse
+		Data *NamespaceOutput
 	}
 	if err := resp.DecodeJSON(&result); err != nil {
 		return nil, err

@@ -12,17 +12,17 @@ import (
 
 // Adapter is an interface that OpenBao engine must implement to expose key management via KMIP.
 type Adapter interface {
-	// AuthenticateCert resolves a TLS client certificate Subject DN to a set of allowed operations and keys.
+	// AuthenticateCert resolves a TLS client certificate Subject DN to a set of allowed operations.
 	// empty allow list == "nothing allowed", nil slices == "all allowed"
-	AuthenticateCert(ctx context.Context, subjectDN string) (allowedOps []string, allowedKeys []string, err error)
+	AuthenticateCert(ctx context.Context, subjectDN string) (allowedOps []string, err error)
 
 	// CreateKey creates new key. KMIP algorithm and bit length come directly from the request, adapter converts to specific type.
-	CreateKey(ctx context.Context, name string, alg kmiplib.CryptographicAlgorithm, bitlen int) (string, error)
+	CreateKey(ctx context.Context, name string, alg kmiplib.CryptographicAlgorithm, bitlen int32) (string, error)
 
 	// ImportKey imports raw key material:
 	//   - symmetric: raw bytes
 	//   - asymmetric: PKCS8 DER
-	ImportKey(ctx context.Context, name string, alg kmiplib.CryptographicAlgorithm, bitlen int, keyMaterial []byte) (string, error)
+	ImportKey(ctx context.Context, alg kmiplib.CryptographicAlgorithm, bitlen int32, keyMaterial []byte) (string, error)
 
 	// GetKey retrieves key material for a given unique id.
 	GetKey(ctx context.Context, id string) (kmiplib.Object, error)

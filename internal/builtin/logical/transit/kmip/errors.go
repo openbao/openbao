@@ -22,6 +22,8 @@ func mapError(err error) error {
 	switch {
 	case errors.Is(err, logical.ErrPermissionDenied):
 		return kmipserver.Errorf(kmiplib.ResultReasonPermissionDenied, "%s", err.Error())
+	case errors.Is(err, logical.ErrUnsupportedOperation):
+		return kmipserver.Errorf(kmiplib.ResultReasonOperationNotSupported, "%s", err.Error())
 	default:
 		return kmipserver.Errorf(kmiplib.ResultReasonGeneralFailure, "%s", err.Error())
 	}

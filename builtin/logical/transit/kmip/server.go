@@ -8,19 +8,18 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/ovh/kmip-go/kmipserver"
 )
 
 type Server struct {
-	srv        *kmipserver.Server
-	listener   net.Listener
-	b          logical.Backend
-	listenAddr string
-	adapter    Adapter
+	srv           *kmipserver.Server
+	listener      net.Listener
+	listenAddr    string
+	adapter       Adapter
+	cryptoAdapter CryptoAdapter
 }
 
-func NewServer(a Adapter, b logical.Backend, cfg ServerConfig) (*Server, error) {
+func NewServer(a Adapter, cryptoA CryptoAdapter, cfg ServerConfig) (*Server, error) {
 	cert, err := tls.LoadX509KeyPair(cfg.CertPem, cfg.KeyPem)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load server cert/key: %w", err)
@@ -39,13 +38,12 @@ func NewServer(a Adapter, b logical.Backend, cfg ServerConfig) (*Server, error) 
 	executor := kmipserver.NewBatchExecutor()
 
 	executor.Use(authMiddleware(a))
-	registerHandlers(executor, b)
+	registerHandlers(executor, a)
 	srv := kmipserver.NewServer(listener, executor)
 
 	return &Server{
 		srv:        srv,
 		listener:   listener,
-		b:          b,
 		listenAddr: cfg.ListenAddr,
 		adapter:    a,
 	}, nil
@@ -54,7 +52,7 @@ func NewServer(a Adapter, b logical.Backend, cfg ServerConfig) (*Server, error) 
 func (s *Server) Start() {
 	go func() {
 		if err := s.srv.Serve(); err != nil {
-			s.b.Logger().Error("KMIP server stopped with error", "error", err)
+			s.adapter.Logger().Error("KMIP server stopped with error", "error", err)
 		}
 	}()
 }

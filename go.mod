@@ -41,7 +41,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/gocql/gocql v1.7.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
-	github.com/google/cel-go v0.27.0
+	github.com/google/cel-go v0.28.0
 	github.com/google/go-containerregistry v0.21.5
 	github.com/google/go-metrics-stackdriver v0.2.0
 	github.com/hashicorp/cap v0.12.0

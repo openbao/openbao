@@ -56,8 +56,9 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRaftBootstrapAnswerWrite(),
-					Summary:  "Accepts an answer from the peer to be joined to the raft cluster.",
+					Callback:                  b.handleRaftBootstrapAnswerWrite(),
+					Summary:                   "Accepts an answer from the peer to be joined to the raft cluster.",
+					ForwardPerformanceStandby: true,
 				},
 			},
 
@@ -75,8 +76,9 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRaftBootstrapChallengeWrite(),
-					Summary:  "Creates a challenge for the new peer to be joined to the raft cluster.",
+					Callback:                  b.handleRaftBootstrapChallengeWrite(),
+					Summary:                   "Creates a challenge for the new peer to be joined to the raft cluster.",
+					ForwardPerformanceStandby: true,
 				},
 			},
 

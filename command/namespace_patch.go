@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/posener/complete"
 )
 
@@ -127,11 +128,7 @@ func (c *NamespacePatchCommand) Run(args []string) int {
 		return 2
 	}
 
-	out, err := structToMap(resp)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error formatting response: %s", err))
-		return 2
-	}
+	out := structtomap.Map(resp)
 
 	if c.flagField != "" {
 		return PrintRawField(c.UI, out, c.flagField)

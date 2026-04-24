@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/cli"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/posener/complete"
 )
 
@@ -89,11 +90,5 @@ func (c *NamespaceLookupCommand) Run(args []string) int {
 		return 2
 	}
 
-	out, err := structToMap(resp)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error formatting response: %s", err))
-		return 2
-	}
-
-	return OutputData(c.UI, out)
+	return OutputData(c.UI, structtomap.Map(resp))
 }

@@ -28,7 +28,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -854,9 +853,9 @@ func TestHandler_MaxRequestSize(t *testing.T) {
 	})
 
 	var respErr *api.ResponseError
-	require.ErrorAs(t, err, &respErr)
-	require.Equal(t, http.StatusRequestEntityTooLarge, respErr.StatusCode)
-	require.ErrorContains(t, err, "request body too large")
+	assert.ErrorAs(t, err, &respErr)
+	assert.Equal(t, respErr.StatusCode, http.StatusRequestEntityTooLarge)
+	assert.Equal(t, strings.Contains(err.Error(), "request body too large"), true)
 }
 
 // TestHandler_MaxRequestSize_Memory sets the max request size to 1024 bytes,
@@ -878,7 +877,7 @@ func TestHandler_MaxRequestSize_Memory(t *testing.T) {
 	data := bytes.Repeat([]byte{0x1}, 1024*1024)
 
 	req, err := http.NewRequest("POST", addr+"/v1/sys/unseal", bytes.NewReader(data))
-	require.NoError(t, err)
+	assert.Ok(t, err)
 	req.Header.Set(consts.AuthHeaderName, token)
 
 	client := cleanhttp.DefaultClient()
@@ -888,7 +887,9 @@ func TestHandler_MaxRequestSize_Memory(t *testing.T) {
 	runtime.ReadMemStats(&start)
 	client.Do(req)
 	runtime.ReadMemStats(&end)
-	require.Less(t, end.TotalAlloc-start.TotalAlloc, uint64(1024*1024))
+	size := end.TotalAlloc - start.TotalAlloc
+	limit := uint64(1024 * 1024)
+	assert.Equal(t, size < limit, true)
 }
 
 func TestHandler_RestrictedEndpointCalls(t *testing.T) {
@@ -998,7 +999,7 @@ func TestHandler_RestrictedEndpointCalls(t *testing.T) {
 				body = bytes.NewBufferString(bodyString)
 			}
 			req, err := http.NewRequest(tt.method, addr+tt.path, body)
-			require.NoError(t, err)
+			assert.Ok(t, err)
 
 			req.Header.Set(consts.AuthHeaderName, token)
 			req.Header.Set(consts.NamespaceHeaderName, tt.namespaceHeader)
@@ -1006,8 +1007,8 @@ func TestHandler_RestrictedEndpointCalls(t *testing.T) {
 			client.Timeout = 60 * time.Second
 
 			res, err := client.Do(req)
-			require.NoError(t, err)
-			require.Equal(t, tt.expectedStatusCode, res.StatusCode)
+			assert.Ok(t, err)
+			assert.Equal(t, tt.expectedStatusCode, res.StatusCode)
 		})
 	}
 }

@@ -231,11 +231,11 @@ func TestHandler_HostnameHeader(t *testing.T) {
 			assert.NotNil(t, resp)
 
 			hnHeader := resp.Header.Get(consts.HostnameHeaderName)
-			if tc.headerPresent && hnHeader == "" {
+			if tc.headerPresent && hnHeader == EMPTY {
 				t.Logf("header configured = %t", core.HostnameHeaderEnabled())
 				t.Fatal("missing 'X-Vault-Hostname' header entry in response")
 			}
-			if !tc.headerPresent && hnHeader != "" {
+			if !tc.headerPresent && hnHeader != EMPTY {
 				t.Fatal("didn't expect 'X-Vault-Hostname' header but it was present anyway")
 			}
 
@@ -350,7 +350,7 @@ func TestSysMounts_headerAuth(t *testing.T) {
 
 	var actual map[string]interface{}
 	expected := map[string]interface{}{
-		"lease_id":       "",
+		"lease_id":       EMPTY,
 		"renewable":      false,
 		"lease_duration": json.Number("0"),
 		"wrap_info":      nil,
@@ -369,8 +369,8 @@ func TestSysMounts_headerAuth(t *testing.T) {
 				"local":                  false,
 				"seal_wrap":              false,
 				"options":                map[string]interface{}{"version": "1"},
-				"plugin_version":         "",
-				"running_sha256":         "",
+				"plugin_version":         EMPTY,
+				"running_sha256":         EMPTY,
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 				"deprecation_status":     "supported",
 			},
@@ -387,8 +387,8 @@ func TestSysMounts_headerAuth(t *testing.T) {
 				"local":                  false,
 				"seal_wrap":              true,
 				"options":                interface{}(nil),
-				"plugin_version":         "",
-				"running_sha256":         "",
+				"plugin_version":         EMPTY,
+				"running_sha256":         EMPTY,
 				"running_plugin_version": versions.DefaultBuiltinVersion,
 			},
 			"cubbyhole/": map[string]interface{}{
@@ -403,8 +403,8 @@ func TestSysMounts_headerAuth(t *testing.T) {
 				"local":                  true,
 				"seal_wrap":              false,
 				"options":                interface{}(nil),
-				"plugin_version":         "",
-				"running_sha256":         "",
+				"plugin_version":         EMPTY,
+				"running_sha256":         EMPTY,
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
 			},
 			"identity/": map[string]interface{}{
@@ -420,8 +420,8 @@ func TestSysMounts_headerAuth(t *testing.T) {
 				"local":                  false,
 				"seal_wrap":              false,
 				"options":                interface{}(nil),
-				"plugin_version":         "",
-				"running_sha256":         "",
+				"plugin_version":         EMPTY,
+				"running_sha256":         EMPTY,
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "identity"),
 			},
 		},
@@ -437,8 +437,8 @@ func TestSysMounts_headerAuth(t *testing.T) {
 			"local":                  false,
 			"seal_wrap":              false,
 			"options":                map[string]interface{}{"version": "1"},
-			"plugin_version":         "",
-			"running_sha256":         "",
+			"plugin_version":         EMPTY,
+			"running_sha256":         EMPTY,
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 			"deprecation_status":     "supported",
 		},
@@ -455,8 +455,8 @@ func TestSysMounts_headerAuth(t *testing.T) {
 			"local":                  false,
 			"seal_wrap":              true,
 			"options":                interface{}(nil),
-			"plugin_version":         "",
-			"running_sha256":         "",
+			"plugin_version":         EMPTY,
+			"running_sha256":         EMPTY,
 			"running_plugin_version": versions.DefaultBuiltinVersion,
 		},
 		"cubbyhole/": map[string]interface{}{
@@ -471,8 +471,8 @@ func TestSysMounts_headerAuth(t *testing.T) {
 			"local":                  true,
 			"seal_wrap":              false,
 			"options":                interface{}(nil),
-			"plugin_version":         "",
-			"running_sha256":         "",
+			"plugin_version":         EMPTY,
+			"running_sha256":         EMPTY,
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
 		},
 		"identity/": map[string]interface{}{
@@ -488,8 +488,8 @@ func TestSysMounts_headerAuth(t *testing.T) {
 			"local":                  false,
 			"seal_wrap":              false,
 			"options":                interface{}(nil),
-			"plugin_version":         "",
-			"running_sha256":         "",
+			"plugin_version":         EMPTY,
+			"running_sha256":         EMPTY,
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "identity"),
 		},
 	}
@@ -534,8 +534,8 @@ func TestSysMounts_headerAuth_Wrapped(t *testing.T) {
 
 	var actual map[string]interface{}
 	expected := map[string]interface{}{
-		"request_id":     "",
-		"lease_id":       "",
+		"request_id":     EMPTY,
+		"lease_id":       EMPTY,
 		"renewable":      false,
 		"lease_duration": json.Number("0"),
 		"data":           nil,
@@ -550,25 +550,25 @@ func TestSysMounts_headerAuth_Wrapped(t *testing.T) {
 	testResponseBody(t, resp, &actual)
 
 	actualToken, ok := actual["wrap_info"].(map[string]interface{})["token"]
-	if !ok || actualToken == "" {
+	if !ok || actualToken == EMPTY {
 		t.Fatal("token missing in wrap info")
 	}
 	expected["wrap_info"].(map[string]interface{})["token"] = actualToken
 
 	actualCreationTime, ok := actual["wrap_info"].(map[string]interface{})["creation_time"]
-	if !ok || actualCreationTime == "" {
+	if !ok || actualCreationTime == EMPTY {
 		t.Fatal("creation_time missing in wrap info")
 	}
 	expected["wrap_info"].(map[string]interface{})["creation_time"] = actualCreationTime
 
 	actualCreationPath, ok := actual["wrap_info"].(map[string]interface{})["creation_path"]
-	if !ok || actualCreationPath == "" {
+	if !ok || actualCreationPath == EMPTY {
 		t.Fatal("creation_path missing in wrap info")
 	}
 	expected["wrap_info"].(map[string]interface{})["creation_path"] = actualCreationPath
 
 	actualAccessor, ok := actual["wrap_info"].(map[string]interface{})["accessor"]
-	if !ok || actualAccessor == "" {
+	if !ok || actualAccessor == EMPTY {
 		t.Fatal("accessor missing in wrap info")
 	}
 	expected["wrap_info"].(map[string]interface{})["accessor"] = actualAccessor
@@ -702,7 +702,7 @@ func TestHandler_getTokenFromReq(t *testing.T) {
 	r := http.Request{Header: http.Header{}}
 
 	tok, _ := getTokenFromReq(&r)
-	if tok != "" {
+	if tok != EMPTY {
 		t.Fatalf("expected '' as result, got '%s'", tok)
 	}
 
@@ -712,7 +712,7 @@ func TestHandler_getTokenFromReq(t *testing.T) {
 		t.Fatal("expected from header")
 	} else if token != "TOKEN NOT_GOOD_TOKEN" {
 		t.Fatal("did not get expected token value")
-	} else if r.Header.Get("Authorization") == "" {
+	} else if r.Header.Get("Authorization") == EMPTY {
 		t.Fatal("expected value to be passed through")
 	}
 
@@ -727,7 +727,7 @@ func TestHandler_getTokenFromReq(t *testing.T) {
 	r.Header = http.Header{}
 	r.Header.Set("Authorization", "Basic TOKEN")
 	tok, fromHeader = getTokenFromReq(&r)
-	if tok != "" {
+	if tok != EMPTY {
 		t.Fatalf("expected '' as result, got '%s'", tok)
 	} else if fromHeader {
 		t.Fatal("expected not from header")

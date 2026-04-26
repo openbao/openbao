@@ -284,7 +284,7 @@ func TestHandler_InFlightRequest(t *testing.T) {
 
 	assert.NotNil(t, resp)
 
-	var actual map[string]interface{}
+	var actual map[string]any
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
 	if len(actual) == 0 {
@@ -292,7 +292,7 @@ func TestHandler_InFlightRequest(t *testing.T) {
 	}
 	assert.NotEqual(t, len(actual), 0)
 	for _, v := range actual {
-		reqInfo, ok := v.(map[string]interface{})
+		reqInfo, ok := v.(map[string]any)
 		assert.Equal(t, ok, true, "Failed to read in-flight request")
 		assert.Equal(t, reqInfo["request_path"], "/v1/sys/in-flight-req")
 	}
@@ -348,146 +348,146 @@ func TestSysMounts_headerAuth(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.Ok(t, err)
 
-	var actual map[string]interface{}
-	expected := map[string]interface{}{
+	var actual map[string]any
+	expected := map[string]any{
 		"lease_id":       EMPTY,
 		"renewable":      false,
 		"lease_duration": json.Number("0"),
 		"wrap_info":      nil,
 		"warnings":       nil,
 		"auth":           nil,
-		"data": map[string]interface{}{
-			"secret/": map[string]interface{}{
+		"data": map[string]any{
+			"secret/": map[string]any{
 				"description":             "key/value secret storage",
 				"type":                    "kv",
 				"external_entropy_access": false,
-				"config": map[string]interface{}{
+				"config": map[string]any{
 					"default_lease_ttl": json.Number("0"),
 					"max_lease_ttl":     json.Number("0"),
 					"force_no_cache":    false,
 				},
 				"local":                  false,
 				"seal_wrap":              false,
-				"options":                map[string]interface{}{"version": "1"},
+				"options":                map[string]any{"version": "1"},
 				"plugin_version":         EMPTY,
 				"running_sha256":         EMPTY,
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 				"deprecation_status":     "supported",
 			},
-			"sys/": map[string]interface{}{
+			"sys/": map[string]any{
 				"description":             "system endpoints used for control, policy and debugging",
 				"type":                    "system",
 				"external_entropy_access": false,
-				"config": map[string]interface{}{
+				"config": map[string]any{
 					"default_lease_ttl":           json.Number("0"),
 					"max_lease_ttl":               json.Number("0"),
 					"force_no_cache":              false,
-					"passthrough_request_headers": []interface{}{"Accept"},
+					"passthrough_request_headers": []any{"Accept"},
 				},
 				"local":                  false,
 				"seal_wrap":              true,
-				"options":                interface{}(nil),
+				"options":                any(nil),
 				"plugin_version":         EMPTY,
 				"running_sha256":         EMPTY,
 				"running_plugin_version": versions.DefaultBuiltinVersion,
 			},
-			"cubbyhole/": map[string]interface{}{
+			"cubbyhole/": map[string]any{
 				"description":             "per-token private secret storage",
 				"type":                    "cubbyhole",
 				"external_entropy_access": false,
-				"config": map[string]interface{}{
+				"config": map[string]any{
 					"default_lease_ttl": json.Number("0"),
 					"max_lease_ttl":     json.Number("0"),
 					"force_no_cache":    false,
 				},
 				"local":                  true,
 				"seal_wrap":              false,
-				"options":                interface{}(nil),
+				"options":                any(nil),
 				"plugin_version":         EMPTY,
 				"running_sha256":         EMPTY,
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
 			},
-			"identity/": map[string]interface{}{
+			"identity/": map[string]any{
 				"description":             "identity store",
 				"type":                    "identity",
 				"external_entropy_access": false,
-				"config": map[string]interface{}{
+				"config": map[string]any{
 					"default_lease_ttl":           json.Number("0"),
 					"max_lease_ttl":               json.Number("0"),
 					"force_no_cache":              false,
-					"passthrough_request_headers": []interface{}{"Authorization"},
+					"passthrough_request_headers": []any{"Authorization"},
 				},
 				"local":                  false,
 				"seal_wrap":              false,
-				"options":                interface{}(nil),
+				"options":                any(nil),
 				"plugin_version":         EMPTY,
 				"running_sha256":         EMPTY,
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "identity"),
 			},
 		},
-		"secret/": map[string]interface{}{
+		"secret/": map[string]any{
 			"description":             "key/value secret storage",
 			"type":                    "kv",
 			"external_entropy_access": false,
-			"config": map[string]interface{}{
+			"config": map[string]any{
 				"default_lease_ttl": json.Number("0"),
 				"max_lease_ttl":     json.Number("0"),
 				"force_no_cache":    false,
 			},
 			"local":                  false,
 			"seal_wrap":              false,
-			"options":                map[string]interface{}{"version": "1"},
+			"options":                map[string]any{"version": "1"},
 			"plugin_version":         EMPTY,
 			"running_sha256":         EMPTY,
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 			"deprecation_status":     "supported",
 		},
-		"sys/": map[string]interface{}{
+		"sys/": map[string]any{
 			"description":             "system endpoints used for control, policy and debugging",
 			"type":                    "system",
 			"external_entropy_access": false,
-			"config": map[string]interface{}{
+			"config": map[string]any{
 				"default_lease_ttl":           json.Number("0"),
 				"max_lease_ttl":               json.Number("0"),
 				"force_no_cache":              false,
-				"passthrough_request_headers": []interface{}{"Accept"},
+				"passthrough_request_headers": []any{"Accept"},
 			},
 			"local":                  false,
 			"seal_wrap":              true,
-			"options":                interface{}(nil),
+			"options":                any(nil),
 			"plugin_version":         EMPTY,
 			"running_sha256":         EMPTY,
 			"running_plugin_version": versions.DefaultBuiltinVersion,
 		},
-		"cubbyhole/": map[string]interface{}{
+		"cubbyhole/": map[string]any{
 			"description":             "per-token private secret storage",
 			"type":                    "cubbyhole",
 			"external_entropy_access": false,
-			"config": map[string]interface{}{
+			"config": map[string]any{
 				"default_lease_ttl": json.Number("0"),
 				"max_lease_ttl":     json.Number("0"),
 				"force_no_cache":    false,
 			},
 			"local":                  true,
 			"seal_wrap":              false,
-			"options":                interface{}(nil),
+			"options":                any(nil),
 			"plugin_version":         EMPTY,
 			"running_sha256":         EMPTY,
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
 		},
-		"identity/": map[string]interface{}{
+		"identity/": map[string]any{
 			"description":             "identity store",
 			"type":                    "identity",
 			"external_entropy_access": false,
-			"config": map[string]interface{}{
+			"config": map[string]any{
 				"default_lease_ttl":           json.Number("0"),
 				"max_lease_ttl":               json.Number("0"),
 				"force_no_cache":              false,
-				"passthrough_request_headers": []interface{}{"Authorization"},
+				"passthrough_request_headers": []any{"Authorization"},
 			},
 			"local":                  false,
 			"seal_wrap":              false,
-			"options":                interface{}(nil),
+			"options":                any(nil),
 			"plugin_version":         EMPTY,
 			"running_sha256":         EMPTY,
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "identity"),
@@ -497,15 +497,15 @@ func TestSysMounts_headerAuth(t *testing.T) {
 	testResponseBody(t, resp, &actual)
 
 	expected["request_id"] = actual["request_id"]
-	for k, v := range actual["data"].(map[string]interface{}) {
+	for k, v := range actual["data"].(map[string]any) {
 		data := v.(map[string]any)
 		assert.NotEqual(t, data["accessor"], EMPTY)
 		assert.NotEqual(t, data["uuid"], EMPTY)
 
-		expected[k].(map[string]interface{})["accessor"] = v.(map[string]interface{})["accessor"]
-		expected[k].(map[string]interface{})["uuid"] = v.(map[string]interface{})["uuid"]
-		expected["data"].(map[string]interface{})[k].(map[string]interface{})["accessor"] = v.(map[string]interface{})["accessor"]
-		expected["data"].(map[string]interface{})[k].(map[string]interface{})["uuid"] = v.(map[string]interface{})["uuid"]
+		expected[k].(map[string]any)["accessor"] = v.(map[string]any)["accessor"]
+		expected[k].(map[string]any)["uuid"] = v.(map[string]any)["uuid"]
+		expected["data"].(map[string]any)[k].(map[string]any)["accessor"] = v.(map[string]any)["accessor"]
+		expected["data"].(map[string]any)[k].(map[string]any)["uuid"] = v.(map[string]any)["uuid"]
 	}
 
 	if diff := deep.Equal(actual, expected); len(diff) > 0 {
@@ -532,14 +532,14 @@ func TestSysMounts_headerAuth_Wrapped(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	var actual map[string]interface{}
-	expected := map[string]interface{}{
+	var actual map[string]any
+	expected := map[string]any{
 		"request_id":     EMPTY,
 		"lease_id":       EMPTY,
 		"renewable":      false,
 		"lease_duration": json.Number("0"),
 		"data":           nil,
-		"wrap_info": map[string]interface{}{
+		"wrap_info": map[string]any{
 			"ttl": json.Number("60"),
 		},
 		"warnings": nil,
@@ -549,29 +549,29 @@ func TestSysMounts_headerAuth_Wrapped(t *testing.T) {
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
 
-	actualToken, ok := actual["wrap_info"].(map[string]interface{})["token"]
+	actualToken, ok := actual["wrap_info"].(map[string]any)["token"]
 	if !ok || actualToken == EMPTY {
 		t.Fatal("token missing in wrap info")
 	}
-	expected["wrap_info"].(map[string]interface{})["token"] = actualToken
+	expected["wrap_info"].(map[string]any)["token"] = actualToken
 
-	actualCreationTime, ok := actual["wrap_info"].(map[string]interface{})["creation_time"]
+	actualCreationTime, ok := actual["wrap_info"].(map[string]any)["creation_time"]
 	if !ok || actualCreationTime == EMPTY {
 		t.Fatal("creation_time missing in wrap info")
 	}
-	expected["wrap_info"].(map[string]interface{})["creation_time"] = actualCreationTime
+	expected["wrap_info"].(map[string]any)["creation_time"] = actualCreationTime
 
-	actualCreationPath, ok := actual["wrap_info"].(map[string]interface{})["creation_path"]
+	actualCreationPath, ok := actual["wrap_info"].(map[string]any)["creation_path"]
 	if !ok || actualCreationPath == EMPTY {
 		t.Fatal("creation_path missing in wrap info")
 	}
-	expected["wrap_info"].(map[string]interface{})["creation_path"] = actualCreationPath
+	expected["wrap_info"].(map[string]any)["creation_path"] = actualCreationPath
 
-	actualAccessor, ok := actual["wrap_info"].(map[string]interface{})["accessor"]
+	actualAccessor, ok := actual["wrap_info"].(map[string]any)["accessor"]
 	if !ok || actualAccessor == EMPTY {
 		t.Fatal("accessor missing in wrap info")
 	}
-	expected["wrap_info"].(map[string]interface{})["accessor"] = actualAccessor
+	expected["wrap_info"].(map[string]any)["accessor"] = actualAccessor
 
 	assert.Equal(t, actual, expected)
 }
@@ -821,7 +821,7 @@ func TestHandler_Parse_Form(t *testing.T) {
 	if apiResp == nil {
 		t.Fatal("api resp is nil")
 	}
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"zip":   "zap",
 		"abc":   "xyz",
 		"multi": "first,second",
@@ -848,7 +848,7 @@ func TestHandler_MaxRequestSize(t *testing.T) {
 	defer cluster.Cleanup()
 
 	client := cluster.Cores[0].Client
-	_, err := client.KVv2("secret").Put(t.Context(), "foo", map[string]interface{}{
+	_, err := client.KVv2("secret").Put(t.Context(), "foo", map[string]any{
 		"bar": strings.Repeat("a", 1025),
 	})
 

@@ -287,9 +287,6 @@ func TestHandler_InFlightRequest(t *testing.T) {
 	var actual map[string]any
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
-	if len(actual) == 0 {
-		t.Fatal("expected to get at least one in-flight request, got nil or zero length map")
-	}
 	assert.NotEqual(t, len(actual), 0)
 	for _, v := range actual {
 		reqInfo, ok := v.(map[string]any)
@@ -520,17 +517,13 @@ func TestSysMounts_headerAuth_Wrapped(t *testing.T) {
 	defer ln.Close()
 
 	req, err := http.NewRequest("GET", addr+"/v1/sys/mounts", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 	req.Header.Set(consts.AuthHeaderName, token)
 	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 
 	var actual map[string]any
 	expected := map[string]any{
@@ -584,9 +577,7 @@ func TestHandler_sealed(t *testing.T) {
 	core.Seal(token)
 
 	resp, err := http.Get(addr + "/v1/secret/foo")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 	testResponseStatus(t, resp, 503)
 }
 
@@ -596,9 +587,7 @@ func TestHandler_ui_default(t *testing.T) {
 	defer ln.Close()
 
 	resp, err := http.Get(addr + "/ui/")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 	testResponseStatus(t, resp, 404)
 }
 
@@ -608,9 +597,7 @@ func TestHandler_ui_enabled(t *testing.T) {
 	defer ln.Close()
 
 	resp, err := http.Get(addr + "/ui/")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 	testResponseStatus(t, resp, 200)
 }
 
@@ -619,9 +606,7 @@ func TestHandler_error(t *testing.T) {
 
 	respondError(w, 500, errors.New("test Error"))
 
-	if w.Code != 500 {
-		t.Fatalf("expected 500, got %d", w.Code)
-	}
+	assert.Equal(t, w.Code, 500)
 
 	// The code inside of the error should override
 	// the argument to respondError
@@ -630,18 +615,14 @@ func TestHandler_error(t *testing.T) {
 
 	respondError(w2, 500, e)
 
-	if w2.Code != 403 {
-		t.Fatalf("expected 403, got %d", w2.Code)
-	}
+	assert.Equal(t, w2.Code, 403)
 
 	// vault.ErrSealed is a special case
 	w3 := httptest.NewRecorder()
 
 	respondError(w3, 400, consts.ErrSealed)
 
-	if w3.Code != 503 {
-		t.Fatalf("expected 503, got %d", w3.Code)
-	}
+	assert.Equal(t, w3.Code, 503)
 }
 
 func TestHandler_requestAuth(t *testing.T) {
@@ -649,20 +630,14 @@ func TestHandler_requestAuth(t *testing.T) {
 
 	rootCtx := namespace.RootContext(t.Context())
 	te, err := core.LookupToken(rootCtx, token)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 
 	rWithAuthorization, err := http.NewRequest("GET", "v1/test/path", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 	rWithAuthorization.Header.Set("Authorization", "Bearer "+token)
 
 	rWithVault, err := http.NewRequest("GET", "v1/test/path", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 	rWithVault.Header.Set(consts.AuthHeaderName, token)
 
 	for _, r := range []*http.Request{rWithVault, rWithAuthorization} {
@@ -670,31 +645,21 @@ func TestHandler_requestAuth(t *testing.T) {
 		r = r.WithContext(rootCtx)
 		requestAuth(r, req)
 		err = core.PopulateTokenEntry(rootCtx, req)
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		assert.Ok(t, err)
 
-		if req.ClientToken != token {
-			t.Fatalf("client token should be filled with %s, got %s", token, req.ClientToken)
-		}
-		if req.TokenEntry() == nil {
-			t.Fatal("token entry should not be nil")
-		}
+		assert.Equal(t, req.ClientToken, token)
+		assert.NotEqual(t, req.TokenEntry(), nil)
 		assert.Equal(t, req.TokenEntry(), te)
 		assert.NotEqual(t, req.ClientTokenAccessor, EMPTY)
 	}
 
 	rNothing, err := http.NewRequest("GET", "v1/test/path", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 	req := logical.TestRequest(t, logical.ReadOperation, "test/path")
 
 	requestAuth(rNothing, req)
 	err = core.PopulateTokenEntry(rootCtx, req)
-	if err != nil {
-		t.Fatalf("expected no error, got %s", err)
-	}
+	assert.Ok(t, err)
 	assert.Equal(t, req.ClientToken, EMPTY)
 }
 
@@ -702,36 +667,24 @@ func TestHandler_getTokenFromReq(t *testing.T) {
 	r := http.Request{Header: http.Header{}}
 
 	tok, _ := getTokenFromReq(&r)
-	if tok != EMPTY {
-		t.Fatalf("expected '' as result, got '%s'", tok)
-	}
+	assert.Equal(t, tok, EMPTY)
 
 	r.Header.Set("Authorization", "Bearer TOKEN NOT_GOOD_TOKEN")
 	token, fromHeader := getTokenFromReq(&r)
-	if !fromHeader {
-		t.Fatal("expected from header")
-	} else if token != "TOKEN NOT_GOOD_TOKEN" {
-		t.Fatal("did not get expected token value")
-	} else if r.Header.Get("Authorization") == EMPTY {
-		t.Fatal("expected value to be passed through")
-	}
+	assert.Equal(t, fromHeader, true)
+	assert.Equal(t, token, "TOKEN NOT_GOOD_TOKEN")
+	assert.NotEqual(t, r.Header.Get("Authorization"), EMPTY)
 
 	r.Header.Set(consts.AuthHeaderName, "NEWTOKEN")
 	tok, _ = getTokenFromReq(&r)
-	if tok == "TOKEN" {
-		t.Fatalf("%s header should be prioritized", consts.AuthHeaderName)
-	} else if tok != "NEWTOKEN" {
-		t.Fatalf("expected 'NEWTOKEN' as result, got '%s'", tok)
-	}
+	assert.NotEqual(t, tok, "TOKEN")
+	assert.Equal(t, tok, "NEWTOKEN")
 
 	r.Header = http.Header{}
 	r.Header.Set("Authorization", "Basic TOKEN")
 	tok, fromHeader = getTokenFromReq(&r)
-	if tok != EMPTY {
-		t.Fatalf("expected '' as result, got '%s'", tok)
-	} else if fromHeader {
-		t.Fatal("expected not from header")
-	}
+	assert.Equal(t, tok, EMPTY)
+	assert.Equal(t, fromHeader, false)
 }
 
 func TestHandler_nonPrintableChars(t *testing.T) {
@@ -752,16 +705,12 @@ func testNonPrintable(t *testing.T, disable bool) {
 	defer ln.Close()
 
 	req, err := http.NewRequest("PUT", addr+"/v1/cubbyhole/foo\u2028bar", strings.NewReader(`{"zip": "zap"}`))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 	req.Header.Set(consts.AuthHeaderName, token)
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	assert.Ok(t, err)
 
 	if disable {
 		testResponseStatus(t, resp, 204)
@@ -796,31 +745,21 @@ func TestHandler_Parse_Form(t *testing.T) {
 		"empty": []string{},
 	}
 	req, err := http.NewRequest("POST", cores[0].Client.Address()+"/v1/secret/foo", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Ok(t, err)
 	req.Body = io.NopCloser(strings.NewReader(values.Encode()))
 	req.Header.Set("x-vault-token", cluster.RootToken)
 	req.Header.Set("content-type", "application/x-www-form-urlencoded")
 	resp, err := c.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Ok(t, err)
 
-	if resp.StatusCode != 204 {
-		t.Fatalf("bad response: %#v\nrequest was: %#v\nurl was: %#v", *resp, *req, req.URL)
-	}
+	assert.HttpStatusEqual(t, resp, 204)
 
 	client := cores[0].Client
 	client.SetToken(cluster.RootToken)
 
 	apiResp, err := client.Logical().Read("secret/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if apiResp == nil {
-		t.Fatal("api resp is nil")
-	}
+	assert.Ok(t, err)
+	assert.NotNil(t, apiResp)
 	expected := map[string]any{
 		"zip":   "zap",
 		"abc":   "xyz",

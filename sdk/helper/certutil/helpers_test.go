@@ -8,9 +8,13 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/pem"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/stretchr/testify/assert"
@@ -289,4 +293,77 @@ func TestGetSubjectKeyID(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParsePKIMap(t *testing.T) {
+	t.Parallel()
+
+	validCommonName := "root.localhost"
+	validCertPEM := generateTestCert(t, validCommonName)
+
+	testCases := []struct {
+		desc      string
+		inputData map[string]interface{}
+		wantErr   bool
+	}{
+		{
+			desc: "Valid data bundle",
+			inputData: map[string]interface{}{
+				"certificate": validCertPEM,
+			},
+			wantErr: false,
+		},
+		{
+			desc: "Invalid data type",
+			inputData: map[string]interface{}{
+				"certificate": 123456,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			parsedCertBundle, err := ParsePKIMap(tc.inputData)
+
+			if tc.wantErr {
+				assert.Error(t, err)
+
+				var errUser errutil.UserError
+				assert.ErrorAs(t, err, &errUser)
+			} else {
+				assert.NoError(t, err)
+
+				// Bundles are massive, so will just do some light checks to verify it worked
+				assert.NotNil(t, parsedCertBundle)
+				assert.NotNil(t, parsedCertBundle.Certificate)
+
+				assert.Equal(t, parsedCertBundle.Certificate.Subject.CommonName, validCommonName)
+			}
+		})
+	}
+}
+
+// generateTestCert helper generates a test certificate
+func generateTestCert(t *testing.T, commonName string) string {
+	t.Helper()
+
+	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	assert.NoError(t, err)
+
+	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	assert.NoError(t, err)
+
+	certTemplate := &x509.Certificate{
+		SerialNumber:          serialNumber,
+		Subject:               pkix.Name{CommonName: commonName},
+		NotBefore:             time.Now().Add(-1 * time.Hour),
+		NotAfter:              time.Now().Add(1 * time.Hour),
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+	}
+	derBytes, err := x509.CreateCertificate(rand.Reader, certTemplate, certTemplate, privKey.Public(), privKey)
+	assert.NoError(t, err)
+
+	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes}))
 }

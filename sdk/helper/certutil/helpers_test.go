@@ -207,7 +207,9 @@ func TestGetSubjectKeyID(t *testing.T) {
 	assert.NoError(t, err)
 
 	ecdsaPubKey := &ecdsaPrivKey.PublicKey
-	publicKeyBytes = elliptic.Marshal(ecdsaPubKey.Curve, ecdsaPubKey.X, ecdsaPubKey.Y)
+	publicKeyBytes, err = ecdsaPubKey.Bytes()
+	assert.NoError(t, err)
+
 	publicKeyBytesSkidShaSum := sha1.Sum(publicKeyBytes)
 	publicKeyBytesSkid := publicKeyBytesSkidShaSum[:]
 

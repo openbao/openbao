@@ -57,7 +57,11 @@ func (m *MockFSM) Snapshot() (raft.FSMSnapshot, error) {
 func (m *MockFSM) Restore(in io.ReadCloser) error {
 	m.Lock()
 	defer m.Unlock()
-	defer in.Close()
+	defer func() {
+		if err := in.Close(); err != nil {
+			log.Printf("Failed to close snapshot: %v", err)
+		}
+	}()
 	hd := codec.MsgpackHandle{}
 	dec := codec.NewDecoder(in, &hd)
 
@@ -75,8 +79,7 @@ func (m *MockSnapshot) Persist(sink raft.SnapshotSink) error {
 		}
 		return err
 	}
-	sink.Close()
-	return nil
+	return sink.Close()
 }
 
 // See raft.SnapshotSink.
@@ -115,11 +118,7 @@ func makeRaft(t *testing.T, dir string) (*raft.Raft, *MockFSM) {
 	}
 
 	timeout := time.After(10 * time.Second)
-	for {
-		if raft.Leader() != "" {
-			break
-		}
-
+	for raft.Leader() == "" {
 		select {
 		case <-raft.LeaderCh():
 		case <-time.After(1 * time.Second):

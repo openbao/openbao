@@ -118,7 +118,7 @@ func write(out io.Writer, metadata *raft.SnapshotMeta, snap io.Reader, sealer Se
 	}
 	if err := archive.WriteHeader(&tar.Header{
 		Name:    "meta.json",
-		Mode:    0600,
+		Mode:    0o600,
 		Size:    int64(metaBuffer.Len()),
 		ModTime: now,
 	}); err != nil {
@@ -132,7 +132,7 @@ func write(out io.Writer, metadata *raft.SnapshotMeta, snap io.Reader, sealer Se
 	snapHash := hl.Add("state.bin")
 	if err := archive.WriteHeader(&tar.Header{
 		Name:    "state.bin",
-		Mode:    0600,
+		Mode:    0o600,
 		Size:    metadata.Size,
 		ModTime: now,
 	}); err != nil {
@@ -149,7 +149,7 @@ func write(out io.Writer, metadata *raft.SnapshotMeta, snap io.Reader, sealer Se
 	}
 	if err := archive.WriteHeader(&tar.Header{
 		Name:    "SHA256SUMS",
-		Mode:    0600,
+		Mode:    0o600,
 		Size:    int64(shaBuffer.Len()),
 		ModTime: now,
 	}); err != nil {
@@ -174,7 +174,7 @@ func write(out io.Writer, metadata *raft.SnapshotMeta, snap io.Reader, sealer Se
 		sealedSHABuffer := bytes.NewBuffer(sealed)
 		if err := archive.WriteHeader(&tar.Header{
 			Name:    "SHA256SUMS.sealed",
-			Mode:    0600,
+			Mode:    0o600,
 			Size:    int64(sealedSHABuffer.Len()),
 			ModTime: now,
 		}); err != nil {

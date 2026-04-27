@@ -13,6 +13,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"os"
 
 	"github.com/hashicorp/go-hclog"
@@ -213,7 +214,7 @@ func Verify(in io.Reader) (*raft.SnapshotMeta, error) {
 	}
 	defer func() {
 		if err := decomp.Close(); err != nil {
-			fmt.Printf("failed to close decompressor: %v\n", err)
+			log.Printf("failed to close decompressor: %v\n", err)
 		}
 	}()
 
@@ -255,7 +256,7 @@ func Parse(in io.Reader, out io.Writer) (*raft.SnapshotMeta, error) {
 	}
 	defer func() {
 		if err := decomp.Close(); err != nil {
-			fmt.Printf("failed to close the decompressor: %v", err)
+			log.Printf("failed to close the decompressor: %v", err)
 		}
 	}()
 

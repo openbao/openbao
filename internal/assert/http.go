@@ -2,6 +2,7 @@ package assert
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"testing"
@@ -24,5 +25,19 @@ func HttpStatusEqual(t *testing.T, r *http.Response, code int) {
 			"actual HTTP status: %d; expectation: %d\nURL: %s\nBody: %s\n",
 			r.StatusCode, code, r.Request.URL, string(body),
 		)
+	}
+}
+
+func HttpJsonResponse(t *testing.T, r *http.Response, out any) {
+	if r == nil {
+		t.Fatalf("HTTP Response missing!")
+	}
+	defer r.Body.Close()
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.UseNumber()
+	decodingErr := decoder.Decode(out)
+	if decodingErr != nil {
+		t.Errorf("Error decoding JSON from HTTP Response: %s", decodingErr)
 	}
 }

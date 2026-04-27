@@ -285,8 +285,8 @@ func TestHandler_InFlightRequest(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	var actual map[string]any
-	testResponseStatus(t, resp, 200)
-	testResponseBody(t, resp, &actual)
+	assert.HttpStatusEqual(t, resp, 200)
+	assert.HttpJsonResponse(t, resp, &actual)
 	assert.NotEqual(t, len(actual), 0)
 	for _, v := range actual {
 		reqInfo, ok := v.(map[string]any)
@@ -328,7 +328,7 @@ func TestHandler_Accepted(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.Ok(t, err)
 
-	testResponseStatus(t, resp, 202)
+	assert.HttpStatusEqual(t, resp, 202)
 }
 
 // We use this test to verify header auth
@@ -490,8 +490,8 @@ func TestSysMounts_headerAuth(t *testing.T) {
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "identity"),
 		},
 	}
-	testResponseStatus(t, resp, 200)
-	testResponseBody(t, resp, &actual)
+	assert.HttpStatusEqual(t, resp, 200)
+	assert.HttpJsonResponse(t, resp, &actual)
 
 	expected["request_id"] = actual["request_id"]
 	for k, v := range actual["data"].(map[string]any) {
@@ -539,8 +539,8 @@ func TestSysMounts_headerAuth_Wrapped(t *testing.T) {
 		"auth":     nil,
 	}
 
-	testResponseStatus(t, resp, 200)
-	testResponseBody(t, resp, &actual)
+	assert.HttpStatusEqual(t, resp, 200)
+	assert.HttpJsonResponse(t, resp, &actual)
 
 	actualToken, ok := actual["wrap_info"].(map[string]any)["token"]
 	if !ok || actualToken == EMPTY {
@@ -578,7 +578,7 @@ func TestHandler_sealed(t *testing.T) {
 
 	resp, err := http.Get(addr + "/v1/secret/foo")
 	assert.Ok(t, err)
-	testResponseStatus(t, resp, 503)
+	assert.HttpStatusEqual(t, resp, 503)
 }
 
 func TestHandler_ui_default(t *testing.T) {
@@ -588,7 +588,7 @@ func TestHandler_ui_default(t *testing.T) {
 
 	resp, err := http.Get(addr + "/ui/")
 	assert.Ok(t, err)
-	testResponseStatus(t, resp, 404)
+	assert.HttpStatusEqual(t, resp, 404)
 }
 
 func TestHandler_ui_enabled(t *testing.T) {
@@ -598,7 +598,7 @@ func TestHandler_ui_enabled(t *testing.T) {
 
 	resp, err := http.Get(addr + "/ui/")
 	assert.Ok(t, err)
-	testResponseStatus(t, resp, 200)
+	assert.HttpStatusEqual(t, resp, 200)
 }
 
 func TestHandler_error(t *testing.T) {
@@ -713,9 +713,9 @@ func testNonPrintable(t *testing.T, disable bool) {
 	assert.Ok(t, err)
 
 	if disable {
-		testResponseStatus(t, resp, 204)
+		assert.HttpStatusEqual(t, resp, 204)
 	} else {
-		testResponseStatus(t, resp, 400)
+		assert.HttpStatusEqual(t, resp, 400)
 	}
 }
 

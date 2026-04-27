@@ -648,7 +648,7 @@ func TestHandler_requestAuth(t *testing.T) {
 		assert.Ok(t, err)
 
 		assert.Equal(t, req.ClientToken, token)
-		assert.NotEqual(t, req.TokenEntry(), nil)
+		assert.NotNil(t, req.TokenEntry())
 		assert.Equal(t, req.TokenEntry(), te)
 		assert.NotEqual(t, req.ClientTokenAccessor, EMPTY)
 	}

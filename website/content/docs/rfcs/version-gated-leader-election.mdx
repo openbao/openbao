@@ -240,7 +240,9 @@ systemd, Docker Compose, bare metal) gets the protection automatically.
    upgrade), old nodes are blocked from leadership, resulting in an outage.
    This matches the existing documented behavior ("do not fail over to older
    version"). The `disable_leader_version_check` config option provides an
-   escape hatch. Mitigation: backup before upgrade, test in staging.
+   escape hatch, and starting OpenBao in recovery mode remains available for
+   advanced cases (e.g., clearing `core/leader-version` directly). Mitigation:
+   backup before upgrade, test in staging.
 
 3. **Slightly longer leader election for blocked nodes.** Version-blocked nodes
    acquire the lock, check, release, and sleep 10s before retrying. This adds a
@@ -272,18 +274,13 @@ entirely in the core leadership path.
    shouldn't introduce breaking storage changes. Using full semver is more
    conservative.
 
-2. **Should there be a `bao operator reset-leader-version` command?** For
-   advanced recovery scenarios beyond the config escape hatch, a CLI command to
-   clear the `core/leader-version` entry could be useful. This could be
-   deferred to a follow-up.
-
-3. **Should version-blocked nodes participate in read replication?** Currently
+2. **Should version-blocked nodes participate in read replication?** Currently
    proposed: yes, they continue serving reads. An argument could be made that
    older-version standbys shouldn't serve reads at all during upgrades. However,
    blocking reads would reduce availability during the upgrade window, which is
    counter to the zero-downtime upgrade goal.
 
-4. **Interaction with future multi-active architecture.** Roadmap item #4
+3. **Interaction with future multi-active architecture.** Roadmap item #4
    (TTL-based Cache Invalidation) lays groundwork for multi-active. In a
    multi-active setup, the "leader version" concept would need to evolve to
    "cluster minimum version" or similar. This RFC doesn't block that evolution.

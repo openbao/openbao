@@ -302,7 +302,13 @@ export default Service.extend({
 
   registerNewModelWithProps(helpUrl, backend, newModel, modelName) {
     return this.getProps(helpUrl, backend).then((props) => {
-      const origAttrs = this.store.getSchemaDefinitionService().attributesDefinitionFor({ type: modelName });
+      const schemas = this.store.getSchemaDefinitionService();
+      let origAttrs;
+      if (schemas.doesTypeExist(modelName)) {
+        origAttrs = schemas.attributesDefinitionFor({ type: modelName });
+      } else {
+        origAttrs = {};
+      }
       const { attrs, newFields } = combineAttributes(origAttrs, props);
       const owner = getOwner(this);
       newModel = newModel.extend(attrs, { newFields });

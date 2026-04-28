@@ -604,7 +604,7 @@ func TestHandler_ui_enabled(t *testing.T) {
 func TestHandler_error(t *testing.T) {
 	w := httptest.NewRecorder()
 
-	respondError(w, 500, errors.New("test Error"))
+	assert.HttpErrorResponse(w, 500, errors.New("test Error"))
 
 	assert.Equal(t, w.Code, 500)
 
@@ -613,14 +613,14 @@ func TestHandler_error(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	e := logical.CodedError(403, "error text")
 
-	respondError(w2, 500, e)
+	assert.HttpErrorResponse(w2, 500, e)
 
 	assert.Equal(t, w2.Code, 403)
 
 	// vault.ErrSealed is a special case
 	w3 := httptest.NewRecorder()
 
-	respondError(w3, 400, consts.ErrSealed)
+	assert.HttpErrorResponse(w3, 400, consts.ErrSealed)
 
 	assert.Equal(t, w3.Code, 503)
 }

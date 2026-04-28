@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package audit
 
 import (
 	"context"
@@ -37,8 +37,8 @@ type AuditedHeadersConfig struct {
 	sync.RWMutex
 }
 
-// add adds or overwrites a header in the config and updates the barrier view
-func (a *AuditedHeadersConfig) add(ctx context.Context, header string, hmac bool) error {
+// Add adds or overwrites a header in the config and updates the barrier view.
+func (a *AuditedHeadersConfig) Add(ctx context.Context, header string, hmac bool) error {
 	if header == "" {
 		return errors.New("header value cannot be empty")
 	}
@@ -64,8 +64,8 @@ func (a *AuditedHeadersConfig) add(ctx context.Context, header string, hmac bool
 	return nil
 }
 
-// remove deletes a header out of the header config and updates the barrier view
-func (a *AuditedHeadersConfig) remove(ctx context.Context, header string) error {
+// Remove deletes a header out of the header config and updates the barrier view.
+func (a *AuditedHeadersConfig) Remove(ctx context.Context, header string) error {
 	if header == "" {
 		return errors.New("header value cannot be empty")
 	}
@@ -92,9 +92,9 @@ func (a *AuditedHeadersConfig) remove(ctx context.Context, header string) error 
 	return nil
 }
 
-// ApplyConfig returns a map of approved headers and their values, either
-// hmac'ed or plaintext
-func (a *AuditedHeadersConfig) ApplyConfig(ctx context.Context, headers map[string][]string, hashFunc func(context.Context, string) (string, error)) (result map[string][]string, retErr error) {
+// Apply returns a map of approved headers and their values, either
+// hmac'ed or plaintext.
+func (a *AuditedHeadersConfig) Apply(ctx context.Context, headers map[string][]string, hashFunc func(context.Context, string) (string, error)) (result map[string][]string, retErr error) {
 	// Grab a read lock
 	a.RLock()
 	defer a.RUnlock()
@@ -131,22 +131,21 @@ func (a *AuditedHeadersConfig) ApplyConfig(ctx context.Context, headers map[stri
 	return result, nil
 }
 
-// Initialize the headers config by loading from the barrier view
-func (c *Core) setupAuditedHeadersConfig(ctx context.Context) error {
+// newAuditedHeadersConfig setups the headers config by loading it from the barrier view.
+func newAuditedHeadersConfig(ctx context.Context, sysBarrierView barrier.View) (*AuditedHeadersConfig, error) {
 	// Create a sub-view
-	view := c.systemBarrierView.SubView(auditedHeadersSubPath)
+	view := sysBarrierView.SubView(auditedHeadersSubPath)
 
 	// Create the config
 	out, err := view.Get(ctx, auditedHeadersEntry)
 	if err != nil {
-		return fmt.Errorf("failed to read config: %w", err)
+		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
 
 	headers := make(map[string]*auditedHeaderSettings)
 	if out != nil {
-		err = out.DecodeJSON(&headers)
-		if err != nil {
-			return err
+		if err = out.DecodeJSON(&headers); err != nil {
+			return nil, err
 		}
 	}
 
@@ -157,10 +156,8 @@ func (c *Core) setupAuditedHeadersConfig(ctx context.Context) error {
 		lowerHeaders[strings.ToLower(k)] = v
 	}
 
-	c.auditedHeaders = &AuditedHeadersConfig{
+	return &AuditedHeadersConfig{
 		Headers: lowerHeaders,
 		view:    view,
-	}
-
-	return nil
+	}, nil
 }

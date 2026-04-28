@@ -47,6 +47,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	auditCore "github.com/openbao/openbao/vault/audit"
 	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/version"
@@ -650,8 +651,7 @@ func (b *SystemBackend) handleAuditedHeaderUpdate(ctx context.Context, req *logi
 		return logical.ErrorResponse("missing header name"), nil
 	}
 
-	headerConfig := b.Core.AuditedHeadersConfig()
-	err := headerConfig.add(ctx, header, hmac)
+	err := b.Core.AuditedHeadersConfig().Add(ctx, header, hmac)
 	if err != nil {
 		return nil, err
 	}
@@ -666,8 +666,7 @@ func (b *SystemBackend) handleAuditedHeaderDelete(ctx context.Context, req *logi
 		return logical.ErrorResponse("missing header name"), nil
 	}
 
-	headerConfig := b.Core.AuditedHeadersConfig()
-	err := headerConfig.remove(ctx, header)
+	err := b.Core.AuditedHeadersConfig().Remove(ctx, header)
 	if err != nil {
 		return nil, err
 	}
@@ -2869,13 +2868,13 @@ func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc 
 
 // handleAuditTable handles the "audit" endpoint to provide the audit table
 func (b *SystemBackend) handleAuditTable(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	b.Core.auditLock.RLock()
-	defer b.Core.auditLock.RUnlock()
+	b.Core.audit.RLock()
+	defer b.Core.audit.RUnlock()
 
 	resp := &logical.Response{
 		Data: make(map[string]interface{}),
 	}
-	for _, entry := range b.Core.audit.Entries {
+	for _, entry := range b.Core.audit.Mt.Entries {
 		info := map[string]interface{}{
 			"path":        entry.Path,
 			"type":        entry.Type,
@@ -2899,7 +2898,7 @@ func (b *SystemBackend) handleAuditHash(ctx context.Context, req *logical.Reques
 
 	path = sanitizePath(path)
 
-	hash, err := b.Core.auditBroker.GetHash(ctx, path, input)
+	hash, err := b.Core.audit.Broker.GetHash(ctx, path, input)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
@@ -2934,7 +2933,7 @@ func (b *SystemBackend) handleEnableAudit(ctx context.Context, req *logical.Requ
 	// Create the mount entry
 	me := &routing.MountEntry{
 		// API-created
-		Table:       auditTableType,
+		Table:       auditCore.TableType,
 		Path:        path,
 		Type:        backendType,
 		Description: description,
@@ -2943,7 +2942,7 @@ func (b *SystemBackend) handleEnableAudit(ctx context.Context, req *logical.Requ
 	}
 
 	// Attempt enabling
-	if err := b.Core.enableAudit(ctx, me, true); err != nil {
+	if err := b.Core.audit.EnableAudit(ctx, me, true); err != nil {
 		b.Backend.Logger().Error("enable audit mount failed", "path", me.Path, "error", err)
 		return handleError(err)
 	}
@@ -2962,10 +2961,10 @@ func (b *SystemBackend) handleDisableAudit(ctx context.Context, req *logical.Req
 		return handleError(errors.New("audit device path must be specified"))
 	}
 
-	b.Core.auditLock.RLock()
-	table := b.Core.audit.ShallowClone()
+	b.Core.audit.RLock()
+	table := b.Core.audit.Mt.ShallowClone()
 	entry, err := table.FindByPath(ctx, path)
-	b.Core.auditLock.RUnlock()
+	b.Core.audit.RUnlock()
 
 	if err != nil {
 		return handleError(err)
@@ -2974,12 +2973,12 @@ func (b *SystemBackend) handleDisableAudit(ctx context.Context, req *logical.Req
 		return nil, nil
 	}
 
-	if entry.Table == configAuditTableType {
+	if entry.Table == auditCore.ConfigTableType {
 		return handleError(errors.New("cannot disable configuration-managed audit device"))
 	}
 
 	// Attempt disable
-	if existed, err := b.Core.disableAudit(ctx, path, true); existed && err != nil {
+	if existed, err := b.Core.audit.DisableAudit(ctx, path, true); existed && err != nil {
 		b.Backend.Logger().Error("disable audit mount failed", "path", path, "error", err)
 		return handleError(err)
 	}

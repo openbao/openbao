@@ -13,6 +13,7 @@ import (
 
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	auditCore "github.com/openbao/openbao/vault/audit"
 	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/routing"
@@ -20,7 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/go-test/deep"
-	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
@@ -866,40 +866,23 @@ func TestDefaultMountTable(t *testing.T) {
 func TestCore_MountTable_UpgradeToTyped(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 
-	c.auditBackends["noop"] = func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
-		return &corehelpers.NoopAudit{
-			Config: config,
-		}, nil
-	}
-
-	me := &routing.MountEntry{
-		Table: auditTableType,
-		Path:  "foo",
-		Type:  "noop",
-	}
-	err := c.enableAudit(namespace.RootContext(t.Context()), me, true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
 	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
 		return &be.Noop{
 			BackendType: logical.TypeCredential,
 		}, nil
 	}
 
-	me = &routing.MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err = c.enableCredential(namespace.RootContext(t.Context()), me)
+	err := c.enableCredential(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	testCore_MountTable_UpgradeToTyped_Common(t, c, "mounts")
-	testCore_MountTable_UpgradeToTyped_Common(t, c, "audits")
 	testCore_MountTable_UpgradeToTyped_Common(t, c, "credentials")
 }
 
@@ -914,9 +897,6 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	case "mounts":
 		path = coreMountConfigPath
 		mt = c.mounts
-	case "audits":
-		path = coreAuditConfigPath
-		mt = c.audit
 	case "credentials":
 		path = coreAuthConfigPath
 		mt = c.auth
@@ -956,7 +936,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 
 	// Remove any transactional storage entries: we want to replace the mount
 	// table with a pre-transactional variant to force upgrades to be run.
-	if _, ok := c.barrier.(logical.TransactionalStorage); ok && testType != "audits" {
+	if _, ok := c.barrier.(logical.TransactionalStorage); ok {
 		postTxnEntries, err := c.barrier.List(t.Context(), path+"/")
 		if err != nil {
 			t.Fatal(err)
@@ -991,16 +971,6 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		err = c.loadCredentials(t.Context(), false)
 		persistFunc = c.persistAuth
 		mt = c.auth
-	case "audits":
-		err = c.loadAudits(t.Context(), false)
-		persistFunc = func(ctx context.Context, barrier logical.Storage, mt *routing.MountTable, b *bool, mount string) error {
-			if b == nil {
-				b = new(bool)
-				*b = false
-			}
-			return c.persistAudit(ctx, mt, *b)
-		}
-		mt = c.audit
 	}
 	if err != nil {
 		t.Fatal(err)
@@ -1008,7 +978,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 
 	// If we are using a transactional backend, validate the migrated path.
 	var actual []byte
-	if _, ok := c.barrier.(logical.TransactionalStorage); ok && testType != "audits" {
+	if _, ok := c.barrier.(logical.TransactionalStorage); ok {
 		// Assume we got the outer, implicit type correct.
 		postTxnEntries, err := c.barrier.List(t.Context(), path+"/")
 		if err != nil {
@@ -1308,12 +1278,12 @@ func TestCore_MountEntryView(t *testing.T) {
 			name: "entry of 'audit' table type",
 			mountEntry: &routing.MountEntry{
 				UUID:        testMountEntryUUID,
-				Table:       auditTableType,
+				Table:       auditCore.TableType,
 				NamespaceID: namespace.RootNamespaceID,
 				Namespace:   namespace.RootNamespace,
 			},
 
-			wantViewPrefix: auditBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: auditCore.BarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table type and 'identity' type",
@@ -1405,7 +1375,7 @@ func TestCore_MountEntryView(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			gotView, err := c.mountEntryView(tt.mountEntry)
+			gotView, err := c.MountEntryView(tt.mountEntry)
 			require.Equalf(t, tt.wantError, (err != nil), "(*Core).mountEntryView() got unexpected error: %v", err)
 			if err == nil {
 				require.Equalf(t, tt.wantViewPrefix, gotView.Prefix(), "(*Core).mountEntryView() gotViewPrefix: %v, want: %v", gotView.Prefix(), tt.wantViewPrefix)

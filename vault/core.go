@@ -56,6 +56,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	sr "github.com/openbao/openbao/serviceregistration"
+	coreAudit "github.com/openbao/openbao/vault/audit"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/forwarding"
@@ -328,21 +329,9 @@ type Core struct {
 	// change underneath a calling function
 	authLock locking.DeadlockRWMutex
 
-	// audit is loaded after unseal since it is a protected
-	// configuration
-	audit *routing.MountTable
-
-	// auditLock is used to ensure that the audit table does not
-	// change underneath a calling function
-	auditLock sync.RWMutex
-
-	// auditBroker is used to ingest the audit events and fan
-	// out into the configured audit backends
-	auditBroker *AuditBroker
-
-	// auditedHeaders is used to configure which http headers
-	// can be output in the audit logs
-	auditedHeaders *AuditedHeadersConfig
+	// audit is an audit mounts table loaded after unseal since
+	// it is a protected configuration.
+	audit *coreAudit.Table
 
 	// systemBackend is the backend which is used to manage internal operations
 	systemBackend   *SystemBackend
@@ -1925,7 +1914,7 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 		Auth:    auth,
 		Request: req,
 	}
-	if err := c.auditBroker.LogRequest(ctx, logInput, c.auditedHeaders); err != nil {
+	if err := c.audit.Broker.LogRequest(ctx, logInput); err != nil {
 		c.logger.Error("failed to audit request", "request_path", req.Path, "error", err)
 		return errors.New("failed to audit request, cannot continue")
 	}
@@ -2253,7 +2242,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	// Adding new audit devices only occurs on the active node. Standby nodes
 	// will consume audit devices from storage only, but we want to run this
 	// from startup anyways to report any discrepancies.
-	if err := c.handleAuditLogSetup(ctx, standby); err != nil {
+	if err := c.audit.HandleAuditLogSetup(ctx, c.rawConfig.Load(), standby); err != nil {
 		return err
 	}
 	if err := c.loadIdentityStoreArtifacts(ctx, standby); err != nil {
@@ -2262,10 +2251,6 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 
 	c.setupCachedMFAResponseAuth()
 	if err := c.loadLoginMFAConfigs(ctx); err != nil {
-		return err
-	}
-
-	if err := c.setupAuditedHeadersConfig(ctx); err != nil {
 		return err
 	}
 
@@ -2495,8 +2480,8 @@ func (c *Core) BarrierKeyLength() (min, max int) {
 	return min, max
 }
 
-func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {
-	return c.auditedHeaders
+func (c *Core) AuditedHeadersConfig() *coreAudit.AuditedHeadersConfig {
+	return c.audit.Broker.AuditedHeaderConfig()
 }
 
 func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfig, error) {
@@ -2903,8 +2888,11 @@ type BuiltinRegistry interface {
 	DeprecationStatus(name string, pluginType consts.PluginType) (consts.DeprecationStatus, bool)
 }
 
-func (c *Core) AuditLogger() AuditLogger {
-	return &basicAuditor{c: c}
+func (c *Core) AuditLogger() (coreAudit.AuditLogger, error) {
+	if c.audit == nil {
+		return nil, consts.ErrSealed
+	}
+	return coreAudit.NewBasicAuditor(c.audit.Broker), nil
 }
 
 // isMountable tells us whether or not we can continue mounting a plugin-based
@@ -2962,14 +2950,6 @@ func (c *Core) ResolveNamespaceFromRequest(nsHeader, reqPath string) (*namespace
 	}
 
 	return c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, reqPath)
-}
-
-func (c *Core) setupQuotas(ctx context.Context) error {
-	if c.quotaManager == nil {
-		return nil
-	}
-
-	return c.quotaManager.Setup(ctx, c.systemBarrierView)
 }
 
 // ApplyRateLimitQuota checks the request against all the applicable quota rules.
@@ -3993,28 +3973,4 @@ func (c *Core) performPolicyChecks(ctx context.Context, acl *policy.ACL, te *log
 	ret.Allowed = true
 
 	return ret
-}
-
-// setupPolicyStore is used to initialize the policy store
-// when the vault is being unsealed.
-func (c *Core) setupPolicyStore(ctx context.Context) error {
-	// Create the policy store
-	var err error
-	sysView := &dynamicSystemView{core: c}
-	psLogger := c.baseLogger.Named("policy")
-	c.AddLogger(psLogger)
-	c.policyStore, err = policy.NewStore(ctx, c, c.systemBarrierView, sysView, psLogger)
-	if err != nil {
-		return err
-	}
-
-	// Ensure that the default policy exists, and if not, create it
-	return c.policyStore.LoadDefaultPolicies(ctx)
-}
-
-// teardownPolicyStore is used to reverse setupPolicyStore
-// when the vault is being sealed.
-func (c *Core) teardownPolicyStore() error {
-	c.policyStore = nil
-	return nil
 }

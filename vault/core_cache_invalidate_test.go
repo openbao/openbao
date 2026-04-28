@@ -510,7 +510,7 @@ func TestCore_Invalidate_Audit(t *testing.T) {
 	c.invalidateSynchronous("core/audit")
 
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
-		require.Equal(collect, 0, c.auditBroker.Count())
+		require.Equal(collect, 0, c.audit.Broker.Count())
 	}, 10*time.Second, 10*time.Millisecond)
 
 	require.EqualValues(t, 1, callCount.Load(), "expected audit factory to be called exactly once")
@@ -528,7 +528,7 @@ func TestCore_Invalidate_Audit(t *testing.T) {
 
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		require.EqualValues(collect, 2, callCount.Load(), "expected audit factory to be called exactly twice")
-		require.Equal(collect, 1, c.auditBroker.Count())
+		require.Equal(collect, 1, c.audit.Broker.Count())
 	}, 10*time.Second, 10*time.Millisecond)
 
 	require.Len(t, currentBackend.Req, 0, "expected 0 audit request event") // factory is called again, storage will be reset

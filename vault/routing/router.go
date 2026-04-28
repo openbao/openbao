@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/salt"
@@ -354,6 +355,23 @@ func (r *Router) MatchingMountByUUID(mountID string) *MountEntry {
 
 	r.l.RUnlock()
 	return raw.(*MountEntry)
+}
+
+// GenerateMountAccessor generates a random unused uuid for a mount.
+func (r *Router) GenerateMountAccessor(entryType string) (string, error) {
+	var accessor string
+	for {
+		randBytes, err := uuid.GenerateRandomBytes(4)
+		if err != nil {
+			return "", err
+		}
+		accessor = fmt.Sprintf("%s_%s", entryType, fmt.Sprintf("%08x", randBytes[0:4]))
+		if entry := r.MatchingMountByAccessor(accessor); entry == nil {
+			break
+		}
+	}
+
+	return accessor, nil
 }
 
 // MatchingMountByAccessor returns the MountEntry by accessor lookup

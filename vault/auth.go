@@ -127,7 +127,7 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *rout
 		entry.BackendAwareUUID = bUUID
 	}
 	if entry.Accessor == "" {
-		accessor, err := c.generateMountAccessor("auth_" + entry.Type)
+		accessor, err := c.router.GenerateMountAccessor("auth_" + entry.Type)
 		if err != nil {
 			return err
 		}
@@ -136,7 +136,7 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *rout
 	// Sync values to the cache
 	entry.SyncCache()
 
-	view, err := c.mountEntryView(entry)
+	view, err := c.MountEntryView(entry)
 	if err != nil {
 		return err
 	}
@@ -436,7 +436,7 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 		}
 	}
 
-	dstBarrierView, err := c.mountEntryView(mountEntry)
+	dstBarrierView, err := c.MountEntryView(mountEntry)
 	if err != nil {
 		c.authLock.Unlock()
 		return err
@@ -790,7 +790,7 @@ func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage
 			needPersist = true
 		}
 		if entry.Accessor == "" {
-			accessor, err := c.generateMountAccessor("auth_" + entry.Type)
+			accessor, err := c.router.GenerateMountAccessor("auth_" + entry.Type)
 			if err != nil {
 				return err
 			}
@@ -1114,7 +1114,7 @@ func (c *Core) setupCredentialsForNamespace(ctx context.Context, ns *namespace.N
 // setupCredential initializes the credential backend
 // and updates the router for specific mount entry.
 func (c *Core) setupCredential(ctx context.Context, entry *routing.MountEntry) (func(), error) {
-	view, err := c.mountEntryView(entry)
+	view, err := c.MountEntryView(entry)
 	if err != nil {
 		return nil, err
 	}
@@ -1338,7 +1338,7 @@ func (c *Core) defaultAuthTable(ctx context.Context) (*routing.MountTable, error
 	if err != nil {
 		return nil, fmt.Errorf("could not generate UUID for default auth table token entry: %w", err)
 	}
-	tokenAccessor, err := c.generateMountAccessor("auth_token")
+	tokenAccessor, err := c.router.GenerateMountAccessor("auth_token")
 	if err != nil {
 		return nil, fmt.Errorf("could not generate accessor for default auth table token entry: %w", err)
 	}

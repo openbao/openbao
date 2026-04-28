@@ -100,7 +100,7 @@ type PasswordPolicy interface {
 }
 
 type ExtendedSystemView interface {
-	Auditor() Auditor
+	Auditor() (Auditor, error)
 	ForwardGenericRequest(context.Context, *Request) (*Response, error)
 
 	// APILockShouldBlockRequest returns whether a namespace for the requested
@@ -139,8 +139,8 @@ func (a noopAuditor) AuditResponse(ctx context.Context, input *LogInput) error {
 	return nil
 }
 
-func (d StaticSystemView) Auditor() Auditor {
-	return noopAuditor{}
+func (d StaticSystemView) Auditor() (Auditor, error) {
+	return noopAuditor{}, nil
 }
 
 func (d StaticSystemView) ForwardGenericRequest(ctx context.Context, req *Request) (*Response, error) {

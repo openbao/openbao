@@ -120,7 +120,8 @@ needs a similar capability would need its own flag, leading to fragmented and in
 ## Security Implications
 
 **Traffic is unencrypted**: Requests to a public-routes listener are transmitted in plaintext. Although OCSP data is
-not sensitive, access should be restricted appropriately.
+not sensitive, access should be restricted appropriately. Letting plugin authors limit
+paths gives safer operationalization than blanket wildcards in the tunables.
 
 **Path isolation is enforced in core**: The allowlist check happens before any secrets engine logic executes. Paths
 not in `allowed_public_paths` are rejected unconditionally.

@@ -16,8 +16,7 @@ import (
 
 func handleSysGenerateRootAttempt(core *vault.Core, generateStrategy vault.GenerateRootStrategy) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		standby := core.Standby()
-		if standby {
+		if core.HAEnabled() && core.Standby() {
 			respondStandby(core, w, r.URL)
 			return
 		}
@@ -151,8 +150,7 @@ func handleSysGenerateRootAttemptDelete(core *vault.Core, w http.ResponseWriter,
 
 func handleSysGenerateRootUpdate(core *vault.Core, generateStrategy vault.GenerateRootStrategy) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		standby := core.Standby()
-		if standby {
+		if core.HAEnabled() && core.Standby() {
 			respondStandby(core, w, r.URL)
 			return
 		}

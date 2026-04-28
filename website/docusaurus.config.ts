@@ -114,6 +114,8 @@ const config: Config = {
           blogTitle: "OpenBao Blog",
           blogDescription:
             "Official blog of the Bao Evangelism Taskforce (BET)",
+          blogSidebarCount: 'ALL',
+          blogSidebarTitle: 'All posts',
           path: "content/blog",
         },
         theme: {

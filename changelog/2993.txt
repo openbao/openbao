@@ -1,0 +1,3 @@
+```release-note:bug
+core: Forward generate-root requests to active node, fixing failures when sending request via load balancer.
+```

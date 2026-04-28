@@ -153,7 +153,7 @@
     "ember-cli-flash": "4.0.0",
     "ember-cli-htmlbars": "^6.3.0",
     "ember-cli-inject-live-reload": "^2.1.0",
-    "ember-cli-mirage": "2.4.0",
+    "ember-cli-mirage": "3.0.4",
     "ember-cli-page-object": "1.17.10",
     "ember-cli-sass": "11.0.1",
     "ember-cli-sri": "2.1.0",

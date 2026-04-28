@@ -84,7 +84,7 @@ not match any whitelisted pattern is rejected with a permission denied error.
 ### Request Flow
 
 When a request arrives on a public routes listener, OpenBao marks it internally as a public route request. Before the
-request is dispatched to any secrets engine, Openbao validates it against the target mount's `allowed_public_paths`.
+request is dispatched to any secrets engine, OpenBao validates it against the target mount's `allowed_public_paths`.
 If no match is found, the request is rejected. If a match is found, the request proceeds normally through the
 existing routing pipeline; authentication, policy enforcement, and engine handling all apply as usual
 (OCSP endpoints are unauthenticated by design).

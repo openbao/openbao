@@ -115,6 +115,11 @@ deployments.
 **Per-engine OCSP mode flag**: An PKI engine-specific toggle to enable plaintext handling. Any other engine that later
 needs a similar capability would need its own flag, leading to fragmented and inconsistent configuration.
 
+**Tunable allowed_public_paths field**: A mount tune configuration that accepts wildcard paths. If a request path
+matches a value in the mount’s `allowed_public_paths` tune configuration field, OpenBao forwards the request to the mount for processing.
+Example: `allowed_public_paths=ocsp,ocsp/*`.
+
+
 ---
 
 ## Security Implications

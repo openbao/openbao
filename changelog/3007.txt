@@ -1,0 +1,3 @@
+```release-note:improvement
+core: `SystemBackend` is now a singleton shared across all namespaces, reducing idle memory usage of the OpenBao instance.
+```

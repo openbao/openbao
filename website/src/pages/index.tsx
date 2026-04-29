@@ -29,8 +29,8 @@ function HomepageHeader() {
               Manage, store, and distribute sensitive data with OpenBao
             </Heading>
             <p className="hero__subtitle">
-              {siteConfig.title} is an open source, community-driven fork of Vault
-              managed by the Linux Foundation.
+              {siteConfig.title} is an open source, community-driven secrets manager and
+              fork of Vault managed by the Linux Foundation's OpenSSF.
             </p>
             <div className={styles.buttons}>
               <Link

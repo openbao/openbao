@@ -1,3 +1,5 @@
+//go:build !blackbox
+
 package http
 
 import (

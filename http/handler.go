@@ -168,7 +168,7 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/sys/init", handleSysInit(core))
 		mux.Handle("/v1/sys/seal-status", handleSysSealStatus(core))
 		mux.Handle("/v1/sys/seal", handleSysSeal(core))
-		mux.Handle("/v1/sys/step-down", handleSysStepDown(core))
+		mux.Handle("/v1/sys/step-down", handleForwardIfStandby(core, handleSysStepDown(core)))
 		mux.Handle("/v1/sys/unseal", handleSysUnseal(core))
 		mux.Handle("/v1/sys/leader", handleSysLeader(core))
 		mux.Handle("/v1/sys/health", handleSysHealth(core))
@@ -177,25 +177,25 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		// Register without unauthenticated generate root, if necessary.
 		if props.ListenerConfig != nil && props.ListenerConfig.DisableUnauthedGenerateRootEndpoints != nil && !*props.ListenerConfig.DisableUnauthedGenerateRootEndpoints {
 			mux.Handle("/v1/sys/generate-root/attempt",
-				handleAuditNonLogical(core, handleSysGenerateRootAttempt(core, vault.GenerateStandardRootTokenStrategy)))
+				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysGenerateRootAttempt(core, vault.GenerateStandardRootTokenStrategy))))
 			mux.Handle("/v1/sys/generate-root/update",
-				handleAuditNonLogical(core, handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy)))
+				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy))))
 		}
 
 		// Register without unauthenticated rekey, if necessary.
 		if props.ListenerConfig != nil && props.ListenerConfig.DisableUnauthedRekeyEndpoints != nil && !*props.ListenerConfig.DisableUnauthedRekeyEndpoints {
 			mux.Handle("/v1/sys/rekey/init",
-				handleAuditNonLogical(core, handleSysRekeyInit(core, false)))
+				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysRekeyInit(core, false))))
 			mux.Handle("/v1/sys/rekey/update",
-				handleAuditNonLogical(core, handleSysRekeyUpdate(core, false)))
+				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysRekeyUpdate(core, false))))
 			mux.Handle("/v1/sys/rekey/verify",
-				handleAuditNonLogical(core, handleSysRekeyVerify(core, false)))
+				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysRekeyVerify(core, false))))
 			mux.Handle("/v1/sys/rekey-recovery-key/init",
-				handleAuditNonLogical(core, handleSysRekeyInit(core, true)))
+				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysRekeyInit(core, true))))
 			mux.Handle("/v1/sys/rekey-recovery-key/update",
-				handleAuditNonLogical(core, handleSysRekeyUpdate(core, true)))
+				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysRekeyUpdate(core, true))))
 			mux.Handle("/v1/sys/rekey-recovery-key/verify",
-				handleAuditNonLogical(core, handleSysRekeyVerify(core, true)))
+				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysRekeyVerify(core, true))))
 		}
 
 		mux.Handle("/v1/sys/storage/raft/bootstrap", handleSysRaftBootstrap(core))
@@ -1294,4 +1294,14 @@ func respondOIDCPermissionDenied(w http.ResponseWriter) {
 
 	enc := json.NewEncoder(w)
 	enc.Encode(oidcResponse)
+}
+
+func handleForwardIfStandby(core *vault.Core, handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if core.HAEnabled() && core.Standby() {
+			forwardRequest(core, w, r)
+		} else {
+			handler.ServeHTTP(w, r)
+		}
+	})
 }

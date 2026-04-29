@@ -1,0 +1,3 @@
+```release-note:bug
+core: Forward generate-root, step-down and rekey requests to active node to resolve inconsistent standby behavior.
+```

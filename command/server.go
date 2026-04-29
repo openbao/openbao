@@ -52,6 +52,7 @@ import (
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -1304,6 +1305,12 @@ func (c *ServerCommand) Run(args []string) int {
 	core.SetClusterListenerAddrs(clusterAddrs)
 	core.SetClusterHandler(vaulthttp.Handler.Handler(&vault.HandlerProperties{
 		Core: core,
+		// The cluster handler allows all endpoints to support forwarding.
+		// The decision to disable unauthed endpoints is made by external-facing listeners, so this is safe.
+		ListenerConfig: &configutil.Listener{
+			DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+			DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(false),
+		},
 	}))
 
 	// Attempt unsealing in a background goroutine. This is needed for when a

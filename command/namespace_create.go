@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/cli"
+	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/posener/complete"
 )
 
@@ -22,6 +23,9 @@ type NamespaceCreateCommand struct {
 
 	flagCustomMetadata map[string]string
 	flagSealConfigPath string
+	flagKeyShares      int
+	flagKeyThreshold   int
+	flagPGPKeys        []string
 }
 
 func (c *NamespaceCreateCommand) Synopsis() string {
@@ -66,6 +70,35 @@ func (c *NamespaceCreateCommand) Flags() *FlagSets {
 		Target:     &c.flagSealConfigPath,
 		Completion: complete.PredictFilesSet([]string{"*.hcl", "*.json"}),
 		Usage:      "Path to a HCL file with exactly one seal stanza.",
+	})
+
+	f.IntVar(&IntVar{
+		Name:       "key-shares",
+		Aliases:    []string{"n"},
+		Target:     &c.flagKeyShares,
+		Completion: complete.PredictAnything,
+		Usage: "Number of key shares to split the generated root key into. " +
+			"This is the number of \"unseal keys\" to generate.",
+	})
+
+	f.IntVar(&IntVar{
+		Name:       "key-threshold",
+		Aliases:    []string{"t"},
+		Target:     &c.flagKeyThreshold,
+		Completion: complete.PredictAnything,
+		Usage: "Number of key shares required to reconstruct the root key. " +
+			"This must be less than or equal to -key-shares.",
+	})
+
+	f.VarFlag(&VarFlag{
+		Name:       "pgp-keys",
+		Value:      (*pgpkeys.PubKeyFilesFlag)(&c.flagPGPKeys),
+		Completion: complete.PredictAnything,
+		Usage: "Comma-separated list of paths to files on disk containing " +
+			"public PGP keys OR a comma-separated list of Keybase usernames using " +
+			"the format \"keybase:<username>\". When supplied, the generated " +
+			"unseal keys will be encrypted and base64-encoded in the order " +
+			"specified in this list. The number of entries must match -key-shares.",
 	})
 
 	return set
@@ -117,6 +150,21 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 
 	if sealConfig != nil {
 		data["seal"] = string(sealConfig)
+	}
+
+	if c.flagKeyShares != 0 || c.flagKeyThreshold != 0 {
+		// if either -key-shares or -key-threshold is given, assume we create a
+		// shamir-sealed namespace; unless an explicit seal config was given
+		if _, ok := data["seal"]; !ok {
+			data["seal"] = `seal "shamir" {}`
+		}
+
+		data["secret_shares"] = c.flagKeyShares
+		data["secret_threshold"] = c.flagKeyThreshold
+	}
+
+	if len(c.flagPGPKeys) > 0 {
+		data["pgp_keys"] = c.flagPGPKeys
 	}
 
 	secret, err := client.Logical().Write("sys/namespaces/"+namespacePath, data)

@@ -42,12 +42,9 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 
 	t.Run("can unseal namespace with required number of keyshares", func(t *testing.T) {
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/baz")
-		req.Data["seal"] = `
-seal "shamir" {
-	secret_shares = 3
-	secret_threshold = 2
-}		
-`
+		req.Data["seal"] = `seal "shamir" {}`
+		req.Data["secret_shares"] = 3
+		req.Data["secret_threshold"] = 2
 		res, err := b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
 

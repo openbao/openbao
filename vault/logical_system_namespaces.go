@@ -12,11 +12,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/hashicorp/hcl"
-	"github.com/hashicorp/hcl/hcl/ast"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -193,6 +191,18 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 					Type:        framework.TypeString,
 					Description: "User provided seal config.",
 				},
+				"secret_shares": {
+					Type:        framework.TypeInt,
+					Description: "Specifies the number of shares to split the namespace root key into.",
+				},
+				"secret_threshold": {
+					Type:        framework.TypeInt,
+					Description: "Specifies the number of shares required to reconstruct the namespace root key.",
+				},
+				"pgp_keys": {
+					Type:        framework.TypeStringSlice,
+					Description: "Specifies an array of PGP public keys used to encrypt the output unseal keys.",
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -352,13 +362,34 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			var err error
 			sealString, ok := sealRaw.(string)
 			if !ok {
-				err := errors.New("seal config must be sent as HCL or JSON string")
-				return logical.ErrorResponse("invalid seal config: %v", err), err
+				return nil, errors.New("seal config must be a HCL or JSON string")
 			}
-			sealConfig, err = parseNamespaceSealConfig(sealString)
+			kmses, err := configutil.ParseKMSes(sealString)
 			if err != nil {
-				return logical.ErrorResponse("invalid seal config: %v", err), err
+				return nil, fmt.Errorf("unable to parse seal config: %w", err)
 			}
+			if len(kmses) != 1 {
+				return nil, errors.New("seal config must contain exactly one seal stanza")
+			}
+			kms := kmses[0]
+			if kms.Type != "shamir" {
+				return nil, errors.New("namespaces currently only support shamir seals")
+			}
+
+			sealConfig = &SealConfig{
+				Type: kms.Type,
+			}
+
+			if shares, ok := data.GetOk("secret_shares"); ok {
+				sealConfig.SecretShares = shares.(int)
+			}
+			if threshold, ok := data.GetOk("secret_threshold"); ok {
+				sealConfig.SecretThreshold = threshold.(int)
+			}
+			if pgpkeys, ok := data.GetOk("pgp_keys"); ok {
+				sealConfig.PGPKeys = pgpkeys.([]string)
+			}
+
 			if err := sealConfig.Validate(); err != nil {
 				return logical.ErrorResponse("invalid seal config: %v", err), err
 			}
@@ -384,36 +415,6 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 
 		return resp, nil
 	}
-}
-
-func parseNamespaceSealConfig(raw string) (*SealConfig, error) {
-	root, err := hclutil.ParseConfig([]byte(raw))
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse seal config: %w", err)
-	}
-
-	// Top-level item should be the object list
-	list, ok := root.Node.(*ast.ObjectList)
-	if !ok {
-		return nil, errors.New("failed to parse seal config: does not contain a root object")
-	}
-
-	if len(list.Items) != 1 {
-		return nil, errors.New("seal config must contain exactly one seal stanza")
-	}
-
-	// Check for invalid top-level keys
-	valid := []string{"seal"}
-	if err := hclutil.CheckHCLKeys(list, valid); err != nil {
-		return nil, fmt.Errorf("failed to parse seal config: %w", err)
-	}
-
-	var sealConfig SealConfig
-	if err := hcl.DecodeObject(&sealConfig, list.Items[0]); err != nil {
-		return nil, fmt.Errorf("failed to parse seal config: %w", err)
-	}
-
-	return &sealConfig, nil
 }
 
 // customMetadataPatchPreprocessor is passed to framework.HandlePatchOperation within the handleNamespacesPatch handler.

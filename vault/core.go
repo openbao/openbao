@@ -1247,7 +1247,12 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 		b := NewSystemBackend(c, sysBackendLogger)
 		return b, b.Setup(ctx, config)
 	}
-	logicalBackends[routing.MountTypeNSSystem] = logicalBackends[routing.MountTypeSystem]
+	logicalBackends[routing.MountTypeNSSystem] = func(ctx context.Context, bc *logical.BackendConfig) (logical.Backend, error) {
+		if c.systemBackend != nil {
+			return c.systemBackend, nil
+		}
+		return nil, errors.New("system backend does not exist")
+	}
 
 	// Identity
 	logicalBackends[routing.MountTypeIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {

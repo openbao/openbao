@@ -41,7 +41,7 @@
     "@docusaurus/types": "^3.10.0",
     "markdownlint": "^0.40.0",
     "markdownlint-cli2": "^0.22.1",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.3"
   },
   "browserslist": {
     "production": [

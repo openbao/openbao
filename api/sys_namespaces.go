@@ -51,3 +51,20 @@ func (s *Sys) UnsealNamespaceWithContext(ctx context.Context, req *UnsealNamespa
 	err = resp.DecodeJSON(&result)
 	return result.Data, err
 }
+
+func (c *Sys) SealNamespace(name string) error {
+	return c.SealNamespaceWithContext(context.Background(), name)
+}
+
+func (c *Sys) SealNamespaceWithContext(ctx context.Context, name string) error {
+	r := c.c.NewRequest(http.MethodPut, fmt.Sprintf("/v1/sys/namespaces/%s/seal", name))
+
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	_, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return err
+	}
+	return nil
+}

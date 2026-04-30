@@ -342,6 +342,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"namespace seal": func() (cli.Command, error) {
+			return &NamespaceSealCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"namespace unseal": func() (cli.Command, error) {
 			return &NamespaceUnsealCommand{
 				BaseCommand: getBaseCommand(),

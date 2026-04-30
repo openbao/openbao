@@ -114,7 +114,7 @@ require (
 	github.com/openbao/openbao/api/v2 v2.5.0
 	github.com/openbao/openbao/sdk/v2 v2.5.0
 	github.com/ory/dockertest/v4 v4.0.0
-	github.com/pires/go-proxyproto v0.11.0
+	github.com/pires/go-proxyproto v0.12.0
 	github.com/posener/complete v1.2.3
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.23.2

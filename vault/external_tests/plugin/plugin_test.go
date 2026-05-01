@@ -593,11 +593,7 @@ func testSystemBackendMock(t *testing.T, numCores, numMounts int, backendType lo
 		},
 	}
 
-	// Create a tempdir, cluster.Cleanup will clean up this directory
-	tempDir, err := os.MkdirTemp("", "vault-test-cluster")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tempDir := t.TempDir()
 
 	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
 		HandlerFunc:        vaulthttp.Handler,
@@ -667,11 +663,7 @@ func testSystemBackend_SingleCluster_Env(t *testing.T, env []string) *vault.Test
 			"test": plugin.Factory,
 		},
 	}
-	// Create a tempdir, cluster.Cleanup will clean up this directory
-	tempDir, err := os.MkdirTemp("", "vault-test-cluster")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tempDir := t.TempDir()
 
 	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
 		HandlerFunc:        vaulthttp.Handler,

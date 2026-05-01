@@ -98,11 +98,7 @@ func TestExtractPluginFromImage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a temporary directory for the test
-			tempDir, err := os.MkdirTemp("", "oci-plugin-test")
-			if err != nil {
-				t.Fatalf("failed to create temp dir: %v", err)
-			}
-			defer os.RemoveAll(tempDir) //nolint:errcheck
+			tempDir := t.TempDir()
 
 			// Create the test OCI image
 			img := createTestOCIImage(t, tt.binaryName, tt.binaryContent)
@@ -114,7 +110,7 @@ func TestExtractPluginFromImage(t *testing.T) {
 
 			// Test the extraction
 			targetPath := filepath.Join(tempDir, "extracted-plugin")
-			err = downloader.ExtractPluginFromImage(img, targetPath, tt.targetBinary, logger)
+			err := downloader.ExtractPluginFromImage(img, targetPath, tt.targetBinary, logger)
 
 			if tt.expectError {
 				if err == nil {
@@ -370,11 +366,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 // TestPluginCacheStructure tests the new hidden cache structure and symlink functionality
 func TestPluginCacheStructure(t *testing.T) {
 	// Create a temporary directory for plugins
-	tempDir, err := os.MkdirTemp("", "oci-cache-test")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir) //nolint:errcheck
+	tempDir := t.TempDir()
 
 	// Test plugin configuration
 	pluginConfig := &server.PluginConfig{
@@ -392,7 +384,7 @@ func TestPluginCacheStructure(t *testing.T) {
 	cachedPluginPath := filepath.Join(cacheDir, pluginConfig.BinaryName)
 
 	// Create the cache directory
-	err = os.MkdirAll(cacheDir, 0o755)
+	err := os.MkdirAll(cacheDir, 0o755)
 	if err != nil {
 		t.Fatalf("failed to create cache directory: %v", err)
 	}

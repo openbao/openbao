@@ -15,7 +15,6 @@ import { encodePath } from 'vault/utils/path-encoding-helpers';
 import { getOwner } from '@ember/application';
 import { assign } from '@ember/polyfills';
 import { expandOpenApiProps, combineAttributes } from 'vault/utils/openapi-to-attrs';
-import fieldToAttrs from 'vault/utils/field-to-attrs';
 import { resolve, reject } from 'rsvp';
 import { debug } from '@ember/debug';
 import { dasherize, capitalize } from '@ember/string';
@@ -309,7 +308,7 @@ export default Service.extend({
       } else {
         origAttrs = {};
       }
-      const { attrs, newFields } = combineAttributes(origAttrs, props);
+      const { attrs, meta, newFields } = combineAttributes(origAttrs, props);
       const owner = getOwner(this);
       newModel = newModel.extend(attrs, { newFields });
       // if our newModel doesn't have fieldGroups already
@@ -319,7 +318,7 @@ export default Service.extend({
         let fieldGroups = newModel.proto().fieldGroups;
         if (!fieldGroups) {
           debug(`Constructing fieldGroups for ${backend}`);
-          fieldGroups = this.getFieldGroups(newModel);
+          fieldGroups = this.getFieldGroups(meta);
           newModel = newModel.extend({ fieldGroups });
           // Build and add validations on model
           // NOTE: For initial phase, initialize validations only for user pass auth
@@ -357,28 +356,31 @@ export default Service.extend({
       owner.register(regName, newModel);
     });
   },
-  getFieldGroups(newModel) {
+  getFieldGroups(meta) {
     const groups = {
       default: [],
     };
     const fieldGroups = [];
-    newModel.attributes.forEach((attr) => {
+    // TODO: get field groups from props
+    for (const name in meta) {
       // if the attr comes in with a fieldGroup from OpenAPI,
       // add it to that group
-      if (attr.options.fieldGroup) {
-        if (groups[attr.options.fieldGroup]) {
-          groups[attr.options.fieldGroup].push(attr.name);
+      const attr = meta[name];
+      const fieldGroup = attr.options.fieldGroup;
+      if (fieldGroup) {
+        if (groups[fieldGroup]) {
+          groups[fieldGroup].push(attr);
         } else {
-          groups[attr.options.fieldGroup] = [attr.name];
+          groups[fieldGroup] = [attr];
         }
       } else {
         // otherwise just add that attr to the default group
-        groups.default.push(attr.name);
+        groups.default.push(name);
       }
-    });
+    }
     for (const group in groups) {
       fieldGroups.push({ [group]: groups[group] });
     }
-    return fieldToAttrs(newModel, fieldGroups);
+    return fieldGroups;
   },
 });

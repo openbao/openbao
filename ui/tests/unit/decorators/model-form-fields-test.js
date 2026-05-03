@@ -9,33 +9,39 @@ import { withFormFields } from 'vault/decorators/model-form-fields';
 import sinon from 'sinon';
 import Model, { attr } from '@ember-data/model';
 
-// create class using decorator
-const createClass = (propertyNames, groups) => {
-  @withFormFields(propertyNames, groups)
-  class Foo extends Model {
-    @attr('string', {
-      label: 'Foo',
-      subText: 'A form field',
-    })
-    foo;
-    @attr('boolean', {
-      label: 'Bar',
-      subText: 'Maybe a checkbox',
-    })
-    bar;
-    @attr('number', {
-      label: 'Baz',
-      subText: 'A number field',
-    })
-    baz;
-  }
-  return new Foo();
-};
-
 module('Unit | Decorators | ModelFormFields', function (hooks) {
   setupTest(hooks);
 
+  let owner;
+
+  // create class using decorator
+  const createClass = (propertyNames, groups) => {
+    @withFormFields(propertyNames, groups)
+    class Foo extends Model {
+      @attr('string', {
+        label: 'Foo',
+        subText: 'A form field',
+      })
+      foo;
+      @attr('boolean', {
+        label: 'Bar',
+        subText: 'Maybe a checkbox',
+      })
+      bar;
+      @attr('number', {
+        label: 'Baz',
+        subText: 'A number field',
+      })
+      baz;
+    }
+
+    owner.register('model:foo', Foo);
+
+    return owner.lookup('service:store').createRecord('foo', {});
+  };
+
   hooks.beforeEach(function () {
+    owner = this.owner;
     this.spy = sinon.spy(console, 'error');
     this.fooField = {
       name: 'foo',

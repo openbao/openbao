@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { getOwner } from '@ember/application';
+import { getOwner } from '@ember/owner';
 import fieldToAttrs, { expandAttributeMeta } from 'vault/utils/field-to-attrs';
 import Model from '@ember-data/model';
 

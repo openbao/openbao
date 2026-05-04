@@ -191,6 +191,11 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 					Type:        framework.TypeMap,
 					Description: "User provided seal config.",
 				},
+				"force": {
+					Type:        framework.TypeBool,
+					Description: "If true, forcibly delete a sealed namespace by erasing its physical storage. Requires sudo privilege.",
+					Default:     false,
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -489,7 +494,13 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 			return nil, errors.New("path must not contain /")
 		}
 
-		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, path)
+		force := data.Get("force").(bool)
+		isSudo := b.System().(extendedSystemView).SudoPrivilege(ctx, req.MountPoint+req.Path, req.ClientToken)
+		if force && !isSudo {
+			return logical.ErrorResponse("force deletion of sealed namespaces requires sudo privilege"), logical.ErrPermissionDenied
+		}
+
+		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, path, force)
 		if err != nil {
 			return handleError(err)
 		}

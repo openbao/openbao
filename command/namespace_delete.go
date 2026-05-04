@@ -18,6 +18,8 @@ var (
 
 type NamespaceDeleteCommand struct {
 	*BaseCommand
+
+	flagForce bool
 }
 
 func (c *NamespaceDeleteCommand) Synopsis() string {
@@ -36,9 +38,13 @@ Usage: bao namespace delete [options] PATH
 
       $ bao namespace delete ns1
 
-  Delete a namespace namespace from a parent namespace (e.g. ns1/ns2/):
+  Delete a namespace from a parent namespace (e.g. ns1/ns2/):
 
       $ bao namespace delete -namespace=ns1 ns2
+
+  Force-delete a sealed namespace (requires sudo privilege):
+
+      $ bao namespace delete -force ns1
 
 ` + c.Flags().Help()
 
@@ -46,7 +52,17 @@ Usage: bao namespace delete [options] PATH
 }
 
 func (c *NamespaceDeleteCommand) Flags() *FlagSets {
-	return c.flagSet(FlagSetHTTP)
+	set := c.flagSet(FlagSetHTTP)
+
+	f := set.NewFlagSet("Command Options")
+	f.BoolVar(&BoolVar{
+		Name:    "force",
+		Target:  &c.flagForce,
+		Default: false,
+		Usage:   "If set, forcibly delete a sealed namespace by erasing its physical storage. Requires sudo privilege.",
+	})
+
+	return set
 }
 
 func (c *NamespaceDeleteCommand) AutocompleteArgs() complete.Predictor {
@@ -83,6 +99,23 @@ func (c *NamespaceDeleteCommand) Run(args []string) int {
 		return 2
 	}
 
+	if c.flagForce {
+		resp, err := client.Sys().ForceDeleteNamespace(namespacePath)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error deleting namespace: %s", err))
+			return 2
+		}
+		if resp == nil || resp.Status == "" {
+			c.UI.Warn("Requested namespace does not exist")
+			return 0
+		}
+		if !strings.HasSuffix(namespacePath, "/") {
+			namespacePath = namespacePath + "/"
+		}
+		c.UI.Output(fmt.Sprintf("Namespace force deletion scheduled: %s", namespacePath))
+		return 0
+	}
+
 	secret, err := client.Logical().Delete("sys/namespaces/" + namespacePath)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error deleting namespace: %s", err))
@@ -90,7 +123,6 @@ func (c *NamespaceDeleteCommand) Run(args []string) int {
 	}
 
 	if secret != nil {
-		// Likely, we have warnings
 		return OutputSecret(c.UI, secret)
 	}
 

@@ -1,6 +1,6 @@
 ---
 description: |-
-  The `/sys/generate-root/` endpoints are used to create a new root key for
+  The `/sys/generate-root/` endpoints are used to create a new root token for
   OpenBao.
 ---
 
@@ -17,7 +17,7 @@ do so only for the short period of time required to create a new root token.
 
 # `/sys/generate-root`
 
-The `/sys/generate-root` endpoint is used to create a new root key for OpenBao.
+The `/sys/generate-root` endpoint is used to create a new root token for OpenBao.
 
 ## Read root generation progress
 
@@ -50,9 +50,9 @@ $ curl \
 }
 ```
 
-If a root generation is started, `progress` is how many unseal keys have been
-provided for this generation attempt, where `required` must be reached to
-complete. The `nonce` for the current attempt and whether the attempt is
+If a root generation is started, `progress` tracks how many unseal keys have
+been provided for this generation attempt, where `required` must be reached
+to complete. The `nonce` for the current attempt and whether the attempt is
 complete is also displayed.
 
 If a PGP key is being used to encrypt the final root
@@ -77,7 +77,7 @@ generation attempt can take place at a time.
 
 ### Parameters
 
-- `pgp_key` `(string: <optional>)` – Specifies a base64-encoded PGP public key.
+- `pgp_key` `(string: <optional>)` - Specifies a base64-encoded PGP public key.
   The raw bytes of the token will be encrypted with this value before being
   returned to the final unseal key provider.
 
@@ -135,9 +135,9 @@ nonce must be provided with each call.
 
 ### Parameters
 
-- `key` `(string: <required>)` – Specifies a single root key share.
+- `key` `(string: <required>)` - Specifies a single root key share.
 
-- `nonce` `(string: <required>)` – Specifies the nonce of the attempt.
+- `nonce` `(string: <required>)` - Specifies the nonce of the attempt.
 
 ### Sample payload
 

@@ -56,6 +56,10 @@ func (c *OperatorGenerateRootCommand) Help() string {
 	helpText := `
 Usage: bao operator generate-root [options] [KEY]
 
+  WARNING: this method is deprecated, please consider using:
+    $ bao auth token create
+  with an existing root token with 'sudo' permission instead.
+
   Generates a new root token by combining a quorum of share holders. One of
   the following must be provided to start the root token generation:
 
@@ -297,7 +301,7 @@ func (c *OperatorGenerateRootCommand) decode(client *api.Client, encoded, otp st
 
 	if encoded == "-" {
 		// Pull our fake stdin if needed
-		stdin := (io.Reader)(os.Stdin)
+		stdin := io.Reader(os.Stdin)
 		if c.testStdin != nil {
 			stdin = c.testStdin
 		}
@@ -379,6 +383,12 @@ func (c *OperatorGenerateRootCommand) init(client *api.Client, otp, pgpKey strin
 // provide prompts the user for the seal key and posts it to the update root
 // endpoint. If this is the last unseal, this function outputs it.
 func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, kind generateRootKind) int {
+	c.UI.Warn(wrapAtLength(
+		"This root token generation method is considered insecure and requires " +
+			"\"disable_unauthed_generate_root_endpoints\" configuration parameter set to 'true', " +
+			"consider generation of the root token through \"bao auth token create\" instead.",
+	))
+
 	f := client.Sys().GenerateRootStatus
 	switch kind {
 	case generateRootRecovery:
@@ -395,11 +405,13 @@ func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, ki
 	if !status.Started {
 		c.UI.Error(wrapAtLength(
 			"No root generation is in progress. Start a root generation by " +
-				"running \"bao operator generate-root -init\"."))
+				"running \"bao operator generate-root -init\".",
+		))
 		c.UI.Warn(wrapAtLength(fmt.Sprintf(
 			"If starting root generation using the OTP method and generating "+
 				"your own OTP, the length of the OTP string needs to be %d "+
-				"characters in length.", status.OTPLength)))
+				"characters in length.", status.OTPLength,
+		)))
 		return 1
 	}
 
@@ -410,7 +422,7 @@ func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, ki
 		nonce = c.flagNonce
 
 		// Pull our fake stdin if needed
-		stdin := (io.Reader)(os.Stdin)
+		stdin := io.Reader(os.Stdin)
 		if c.testStdin != nil {
 			stdin = c.testStdin
 		}
@@ -503,6 +515,12 @@ func (c *OperatorGenerateRootCommand) cancel(client *api.Client, kind generateRo
 
 // status is used just to fetch and dump the status
 func (c *OperatorGenerateRootCommand) status(client *api.Client, kind generateRootKind) int {
+	c.UI.Warn(wrapAtLength(
+		"This root token generation method is considered insecure and requires " +
+			"\"disable_unauthed_generate_root_endpoints\" configuration parameter set to 'true', " +
+			"consider generation of the root token through \"bao auth token create\" instead.",
+	))
+
 	f := client.Sys().GenerateRootStatus
 	switch kind {
 	case generateRootRecovery:

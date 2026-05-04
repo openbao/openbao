@@ -1057,6 +1057,16 @@ func (b *backend) getRole(ctx context.Context, s logical.Storage, n string) (*ro
 		modified = true
 	}
 
+	// Update not_after_bound, not_before_bound
+	if result.NotAfterBound == "" {
+		result.NotAfterBound = PermitNotAfterBound.String()
+		modified = true
+	}
+	if result.NotBeforeBound == "" {
+		result.NotBeforeBound = PermitNotBeforeBound.String()
+		modified = true
+	}
+
 	// Ensure the role is valid after updating.
 	_, err = validateRole(b, &result, ctx, s)
 	if err != nil {
@@ -1278,7 +1288,7 @@ func validateNotAfterBound(notAfterBound string) (*logical.Response, error) {
 	default:
 		_, err = time.Parse(time.RFC3339, notAfterBound)
 		if err != nil {
-			resp = logical.ErrorResponse("Unknown value for field `not_after_bound`. Possible values are `forbid`, `ttl`, or an explicit timestamp.")
+			resp = logical.ErrorResponse("Unknown value for field `not_after_bound`. Possible values are `permit`, `ttl-limited`, `forbid`, or an explicit timestamp.")
 		}
 	}
 	return resp, err
@@ -1296,7 +1306,7 @@ func validateNoBeforeBound(notBeforebound string) (*logical.Response, error) {
 	case PermitNotBeforeBound.String():
 	// nothing to do
 	default:
-		resp = logical.ErrorResponse("Unknown value for field `not_before_bound`. Possible values are `permit` or `forbid`")
+		resp = logical.ErrorResponse("Unknown value for field `not_before_bound`. Possible values are `permit` `duration` or `forbid`")
 		err = errors.New("unknown value")
 	}
 	return resp, err

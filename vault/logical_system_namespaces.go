@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -190,14 +191,6 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				"seal": {
 					Type:        framework.TypeString,
 					Description: "User provided seal config.",
-				},
-				"secret_shares": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the number of shares to split the namespace root key into.",
-				},
-				"secret_threshold": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the number of shares required to reconstruct the namespace root key.",
 				},
 				"pgp_keys": {
 					Type:        framework.TypeStringSlice,
@@ -380,11 +373,19 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 				Type: kms.Type,
 			}
 
-			if shares, ok := data.GetOk("secret_shares"); ok {
-				sealConfig.SecretShares = shares.(int)
+			if val, ok := kms.Config["shares"]; ok {
+				shares, err := parseutil.ParseInt(val)
+				if err != nil {
+					return nil, errors.New("value of shares parameter must be integer")
+				}
+				sealConfig.SecretShares = int(shares)
 			}
-			if threshold, ok := data.GetOk("secret_threshold"); ok {
-				sealConfig.SecretThreshold = threshold.(int)
+			if val, ok := kms.Config["threshold"]; ok {
+				threshold, err := parseutil.ParseInt(val)
+				if err != nil {
+					return nil, errors.New("value of shares parameter must be integer")
+				}
+				sealConfig.SecretThreshold = int(threshold)
 			}
 			if pgpkeys, ok := data.GetOk("pgp_keys"); ok {
 				sealConfig.PGPKeys = pgpkeys.([]string)

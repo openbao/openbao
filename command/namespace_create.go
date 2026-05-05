@@ -156,11 +156,11 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		// if either -key-shares or -key-threshold is given, assume we create a
 		// shamir-sealed namespace; unless an explicit seal config was given
 		if _, ok := data["seal"]; !ok {
-			data["seal"] = `seal "shamir" {}`
+			data["seal"] = fmt.Sprintf(`seal "shamir" {
+    shares = %d
+    threshold = %d
+}`, c.flagKeyShares, c.flagKeyThreshold)
 		}
-
-		data["secret_shares"] = c.flagKeyShares
-		data["secret_threshold"] = c.flagKeyThreshold
 	}
 
 	if len(c.flagPGPKeys) > 0 {

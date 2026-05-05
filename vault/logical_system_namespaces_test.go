@@ -59,11 +59,12 @@ func TestNamespaceBackend_Set(t *testing.T) {
 	t.Run("create sealable namespace", func(t *testing.T) {
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/sealable-hcl")
 		customMetadata := map[string]string{"abc": "def"}
-		sealConfig := `seal "shamir" {}`
+		sealConfig := `seal "shamir" {
+    shares = 3
+    threshold = 2
+}`
 		req.Data["custom_metadata"] = customMetadata
 		req.Data["seal"] = sealConfig
-		req.Data["secret_shares"] = 3
-		req.Data["secret_threshold"] = 2
 		res, err := b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
 
@@ -79,11 +80,9 @@ func TestNamespaceBackend_Set(t *testing.T) {
 	t.Run("create sealable namespace with json seal config", func(t *testing.T) {
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/sealable-json")
 		customMetadata := map[string]string{"abc": "def"}
-		sealConfig := `{ "seal": { "shamir": {} } }`
+		sealConfig := `{ "seal": { "shamir": { "shares": 3, "threshold": 2 } } }`
 		req.Data["custom_metadata"] = customMetadata
 		req.Data["seal"] = sealConfig
-		req.Data["secret_shares"] = 3
-		req.Data["secret_threshold"] = 2
 		res, err := b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
 
@@ -200,6 +199,8 @@ func TestNamespaceBackend_Set(t *testing.T) {
 	t.Run("create namespace with multiple seal configs should fail", func(t *testing.T) {
 		sealConfig := `
 seal "shamir" {
+    shares = 3
+    threshold = 2
 }
 
 seal "transit" {
@@ -210,8 +211,6 @@ seal "transit" {
 
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bad_seal_ns")
 		req.Data["seal"] = sealConfig
-		req.Data["secret_shares"] = 3
-		req.Data["secret_threshold"] = 2
 		_, err := b.HandleRequest(rootCtx, req)
 		require.Error(t, err)
 

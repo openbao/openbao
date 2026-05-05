@@ -281,9 +281,9 @@ func validateTLS(t *testing.T, ctx context.Context, root string, networkName str
 	// in a certificate with the container network's IP address rather than
 	// localhost.
 	containerfile := `
-FROM ubuntu:latest
+FROM alpine:latest
 
-RUN apt update && DEBIAN_FRONTEND="noninteractive" apt install -y curl
+RUN apk add --no-cache curl
 
 COPY root.pem /root.pem
 `

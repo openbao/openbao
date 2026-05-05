@@ -1179,11 +1179,13 @@ func (c *AgentCommand) reloadLogLevel() error {
 	return nil
 }
 
-// reloadCerts reloads TLS certificates for the agent's own listeners (inbound
-// connections to the agent's API/cache proxy). These reload funcs are registered
-// during listener configuration and re-read the listener cert/key from disk.
+// reloadCerts will attempt to reload certificates using a reload func which
+// was provided when the listeners were configured, only funcs that were appended
+// to the AgentCommand slice will be invoked.
+// This function returns a multierror type so that every func can report an error
+// if it encounters one.
 // This does NOT affect the outbound connection to the OpenBao server — see
-// reloadVaultTLS for that.
+// reloadVaultTLS for that functionality.
 func (c *AgentCommand) reloadCerts() error {
 	var errors error
 

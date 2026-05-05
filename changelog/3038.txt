@@ -1,0 +1,3 @@
+```release-note:improvement
+agent: SIGHUP reloads the client TLS configuration
+```

@@ -37,6 +37,7 @@ func registerHandlers(executor *kmipserver.BatchExecutor, a Adapter) {
 	executor.Route(kmiplib.OperationCreate, bindAdapter(a, handleCreate))
 	executor.Route(kmiplib.OperationGet, bindAdapter(a, handleGet))
 	executor.Route(kmiplib.OperationGetAttributes, bindAdapter(a, handleGetAttributes))
+	executor.Route(kmiplib.OperationLocate, bindAdapter(a, handleLocate))
 
 	if cryptoA, ok := a.(CryptoAdapter); ok {
 		executor.Route(kmiplib.OperationEncrypt, bindCrypto(cryptoA, handleEncrypt))
@@ -160,6 +161,23 @@ func handleGet(ctx context.Context, a Adapter, req *payloads.GetRequestPayload) 
 		ObjectType:       obj.ObjectType(),
 		UniqueIdentifier: uid,
 		Object:           obj,
+	}, nil
+}
+
+// handleLocate - this operation requests that the server search for one or more Managed Objects,
+// depending on the attributes specified in the request.
+func handleLocate(ctx context.Context, a Adapter, req *payloads.LocateRequestPayload) (*payloads.LocateResponsePayload, error) {
+	if err := authOp(ctx, kmiplib.OperationLocate); err != nil {
+		return nil, err
+	}
+
+	// Maximum Items, Offset Items, Storage Status Mask, and Object Group Member are skipped initially.
+	ids, err := a.LocateKeys(ctx, req.Attribute)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return &payloads.LocateResponsePayload{
+		UniqueIdentifier: ids,
 	}, nil
 }
 

@@ -36,6 +36,7 @@ func registerHandlers(executor *kmipserver.BatchExecutor, a Adapter) {
 	executor.Route(kmiplib.OperationRegister, bindAdapter(a, handleRegister))
 	executor.Route(kmiplib.OperationCreate, bindAdapter(a, handleCreate))
 	executor.Route(kmiplib.OperationGet, bindAdapter(a, handleGet))
+	executor.Route(kmiplib.OperationGetAttributes, bindAdapter(a, handleGetAttributes))
 
 	if cryptoA, ok := a.(CryptoAdapter); ok {
 		executor.Route(kmiplib.OperationEncrypt, bindCrypto(cryptoA, handleEncrypt))
@@ -159,6 +160,32 @@ func handleGet(ctx context.Context, a Adapter, req *payloads.GetRequestPayload) 
 		ObjectType:       obj.ObjectType(),
 		UniqueIdentifier: uid,
 		Object:           obj,
+	}, nil
+}
+
+// handleGetAttributes requests attributes associated with a ManagedObject. Object specified by it's Unique Identifier
+// and the attributes by their name in the request.
+func handleGetAttributes(ctx context.Context, a Adapter, req *payloads.GetAttributesRequestPayload) (*payloads.GetAttributesResponsePayload, error) {
+	if err := authOp(ctx, kmiplib.OperationGetAttributes); err != nil {
+		return nil, err
+	}
+
+	uid, err := kmipserver.GetIdOrPlaceholder(ctx, req.UniqueIdentifier)
+	if err != nil {
+		return nil, kmipserver.Errorf(
+			kmiplib.ResultReasonInvalidField,
+			"UniqueIdentifier omitted and ID Placeholder is empty",
+		)
+	}
+
+	attrs, err := a.GetAttributes(ctx, uid, req.AttributeName)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return &payloads.GetAttributesResponsePayload{
+		UniqueIdentifier: uid,
+		Attribute:        attrs,
 	}, nil
 }
 

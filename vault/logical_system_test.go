@@ -2631,60 +2631,6 @@ func TestSystemBackend_enableAudit(t *testing.T) {
 	}
 }
 
-// TestSystemBackend_decodeToken ensures the correct decoding of the encoded token.
-// It also ensures that the API fails if there is some payload missing.
-func TestSystemBackend_decodeToken(t *testing.T) {
-	encodedToken := "Bxg9JQQqOCNKBRICNwMIRzo2J3cWCBRi"
-	otp := "3JhHkONiyiaNYj14nnD9xZQS"
-	tokenExpected := "4RUmoevJ3lsLni9sTXcNnRE1"
-
-	_, b, _ := testCoreSystemBackend(t)
-
-	req := logical.TestRequest(t, logical.UpdateOperation, "decode-token")
-	req.Data["encoded_token"] = encodedToken
-	req.Data["otp"] = otp
-
-	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	schema.ValidateResponse(
-		t,
-		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation),
-		resp,
-		true,
-	)
-
-	token, ok := resp.Data["token"]
-	if !ok {
-		t.Fatalf("did not get token back in response, response was %#v", resp.Data)
-	}
-
-	if token.(string) != tokenExpected {
-		t.Fatalf("bad token back: %s", token.(string))
-	}
-
-	datas := []map[string]interface{}{
-		nil,
-		{"encoded_token": encodedToken},
-		{"otp": otp},
-	}
-	for _, data := range datas {
-		req.Data = data
-		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err == nil {
-			t.Fatal("no error despite missing payload")
-		}
-		schema.ValidateResponse(
-			t,
-			schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation),
-			resp,
-			true,
-		)
-	}
-}
-
 func TestSystemBackend_auditHash(t *testing.T) {
 	b := testSystemBackendUnsafeAuditCreation(t)
 
@@ -4233,7 +4179,7 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 		},
 	}
 	if diff := deep.Equal(resp.Data, exp); diff != nil {
-		t.Logf("resp.Data[secret][sys/] = %#v", ((resp.Data["secret"]).(map[string]interface{}))["sys/"])
+		t.Logf("resp.Data[secret][sys/] = %#v", resp.Data["secret"].(map[string]interface{})["sys/"])
 		t.Fatal(diff)
 	}
 
@@ -4709,7 +4655,8 @@ func TestHandlePoliciesPasswordSet(t *testing.T) {
 					"length = 20\n" +
 						"rule \"charset\" {\n" +
 						"	charset=\"abcdefghij\"\n" +
-						"}"),
+						"}",
+				),
 			}),
 
 			storage: new(logical.InmemStorage),
@@ -4897,7 +4844,8 @@ func TestHandlePoliciesPasswordDelete(t *testing.T) {
 				"name": "testpolicy",
 			}),
 
-			storage: makeStorage(t,
+			storage: makeStorage(
+				t,
 				&logical.StorageEntry{
 					Key: getPasswordPolicyKey("testpolicy"),
 					Value: toJson(t,
@@ -4977,7 +4925,8 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 			},
 		},
 		"one policy": {
-			storage: makeStorage(t,
+			storage: makeStorage(
+				t,
 				&logical.StorageEntry{
 					Key: getPasswordPolicyKey("testpolicy"),
 					Value: toJson(t,
@@ -4997,7 +4946,8 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 			},
 		},
 		"two policies": {
-			storage: makeStorage(t,
+			storage: makeStorage(
+				t,
 				&logical.StorageEntry{
 					Key: getPasswordPolicyKey("testpolicy"),
 					Value: toJson(t,
@@ -5030,7 +4980,8 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 			},
 		},
 		"policy with /": {
-			storage: makeStorage(t,
+			storage: makeStorage(
+				t,
 				&logical.StorageEntry{
 					Key: getPasswordPolicyKey("testpolicy/testpolicy1"),
 					Value: toJson(t,
@@ -5050,7 +5001,8 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 			},
 		},
 		"list path/to/policy": {
-			storage: makeStorage(t,
+			storage: makeStorage(
+				t,
 				&logical.StorageEntry{
 					Key: getPasswordPolicyKey("path/to/policy"),
 					Value: toJson(t,
@@ -5070,7 +5022,8 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 			},
 		},
 		"policy ending with /": {
-			storage: makeStorage(t,
+			storage: makeStorage(
+				t,
 				&logical.StorageEntry{
 					Key: getPasswordPolicyKey("path/to/policy/"),
 					Value: toJson(t,

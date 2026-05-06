@@ -83,7 +83,6 @@ func init() {
 		"config/reload",
 		"config/state",
 		"config/ui",
-		"decode-token",
 		"generate-recovery-token",
 		"generate-root",
 		"health",

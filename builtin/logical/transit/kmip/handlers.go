@@ -38,6 +38,8 @@ func registerHandlers(executor *kmipserver.BatchExecutor, a Adapter) {
 	executor.Route(kmiplib.OperationGet, bindAdapter(a, handleGet))
 	executor.Route(kmiplib.OperationGetAttributes, bindAdapter(a, handleGetAttributes))
 	executor.Route(kmiplib.OperationLocate, bindAdapter(a, handleLocate))
+	executor.Route(kmiplib.OperationActivate, bindAdapter(a, handleActivate))
+	executor.Route(kmiplib.OperationRevoke, bindAdapter(a, handleRevoke))
 
 	if cryptoA, ok := a.(CryptoAdapter); ok {
 		executor.Route(kmiplib.OperationEncrypt, bindCrypto(cryptoA, handleEncrypt))
@@ -171,7 +173,7 @@ func handleLocate(ctx context.Context, a Adapter, req *payloads.LocateRequestPay
 		return nil, err
 	}
 
-	// Maximum Items, Offset Items, Storage Status Mask, and Object Group Member are skipped initially.
+	// TODO: Maximum Items, Offset Items, Storage Status Mask, and Object Group Member are skipped initially.
 	ids, err := a.LocateKeys(ctx, req.Attribute)
 	if err != nil {
 		return nil, mapError(err)
@@ -205,6 +207,49 @@ func handleGetAttributes(ctx context.Context, a Adapter, req *payloads.GetAttrib
 		UniqueIdentifier: uid,
 		Attribute:        attrs,
 	}, nil
+}
+
+// handleActivate - This operation requests the server to activate a Managed Cryptographic Object.
+func handleActivate(ctx context.Context, a Adapter, req *payloads.ActivateRequestPayload) (*payloads.ActivateResponsePayload, error) {
+	if err := authOp(ctx, kmiplib.OperationActivate); err != nil {
+		return nil, err
+	}
+
+	uid, err := kmipserver.GetIdOrPlaceholder(ctx, req.UniqueIdentifier)
+	if err != nil {
+		return nil, kmipserver.Errorf(
+			kmiplib.ResultReasonInvalidField,
+			"UniqueIdentifier omitted and ID Placeholder is empty",
+		)
+	}
+
+	if err = a.ActivateKey(ctx, uid); err != nil {
+		return nil, mapError(err)
+	}
+
+	return &payloads.ActivateResponsePayload{UniqueIdentifier: uid}, nil
+}
+
+// handleRevoke - This operation requests the server to revoke a Managed Cryptographic Object or an Opaque Object.
+func handleRevoke(ctx context.Context, a Adapter, req *payloads.RevokeRequestPayload) (*payloads.RevokeResponsePayload, error) {
+	if err := authOp(ctx, kmiplib.OperationRevoke); err != nil {
+		return nil, err
+	}
+
+	uid, err := kmipserver.GetIdOrPlaceholder(ctx, req.UniqueIdentifier)
+	if err != nil {
+		return nil, kmipserver.Errorf(
+			kmiplib.ResultReasonInvalidField,
+			"UniqueIdentifier omitted and ID Placeholder is empty",
+		)
+	}
+
+	// TODO: Revocation Reason, Compromise Occurrence Date are skipped intially
+	if err = a.RevokeKey(ctx, uid); err != nil {
+		return nil, mapError(err)
+	}
+
+	return &payloads.RevokeResponsePayload{UniqueIdentifier: uid}, nil
 }
 
 // === CRYPTO ADAPTER OPERATIONS === //

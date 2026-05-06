@@ -1,14 +1,14 @@
 ---
-description: The `/sys/decode-token` endpoint is used to decode the encoded token which is the result of /sys/generate-root.
+description: The `/sys/decode-token` endpoint is used to decode the encoded root token generated through `/sys/generate-root-token` (or unauthenticated `sys/generate-root`) endpoints.
 ---
 
 # `/sys/decode-token`
 
-The `/sys/decode-token` endpoint is used to decode the encoded token which is the result of the [/sys/generate-root](generate-root.mdx) API.
+The `/sys/decode-token` endpoint is used to decode the encoded token which is the result of the [/sys/generate-root-token](generate-root-token.mdx) (or unauthenticated [/sys/generate-root](generate-root.mdx)) API.
 
 ## Parameters
 
-- `encoded_token` `(string: <required>)` – Specifies the encoded token (result from /sys/generate-root).
+- `encoded_token` `(string: <required>)` - Specifies the encoded token.
 
 - `otp` `(string: <required>)` - Specifies the otp code for decode.
 

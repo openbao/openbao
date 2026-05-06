@@ -40,6 +40,7 @@ func registerHandlers(executor *kmipserver.BatchExecutor, a Adapter) {
 	executor.Route(kmiplib.OperationLocate, bindAdapter(a, handleLocate))
 	executor.Route(kmiplib.OperationActivate, bindAdapter(a, handleActivate))
 	executor.Route(kmiplib.OperationRevoke, bindAdapter(a, handleRevoke))
+	executor.Route(kmiplib.OperationDestroy, bindAdapter(a, handleDestroy))
 
 	if cryptoA, ok := a.(CryptoAdapter); ok {
 		executor.Route(kmiplib.OperationEncrypt, bindCrypto(cryptoA, handleEncrypt))
@@ -250,6 +251,28 @@ func handleRevoke(ctx context.Context, a Adapter, req *payloads.RevokeRequestPay
 	}
 
 	return &payloads.RevokeResponsePayload{UniqueIdentifier: uid}, nil
+}
+
+// handleDestroy - This operation is used to indicate to the server that
+// the key material for the specified Managed Object SHALL be destroyed.
+func handleDestroy(ctx context.Context, a Adapter, req *payloads.DestroyRequestPayload) (*payloads.DestroyResponsePayload, error) {
+	if err := authOp(ctx, kmiplib.OperationDestroy); err != nil {
+		return nil, err
+	}
+
+	uid, err := kmipserver.GetIdOrPlaceholder(ctx, req.UniqueIdentifier)
+	if err != nil {
+		return nil, kmipserver.Errorf(
+			kmiplib.ResultReasonInvalidField,
+			"UniqueIdentifier omitted and ID Placeholder is empty",
+		)
+	}
+
+	if err = a.DestroyKey(ctx, uid); err != nil {
+		return nil, mapError(err)
+	}
+
+	return &payloads.DestroyResponsePayload{UniqueIdentifier: uid}, nil
 }
 
 // === CRYPTO ADAPTER OPERATIONS === //

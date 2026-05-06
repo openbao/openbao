@@ -150,9 +150,9 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 
 	ctx := namespace.RootContext(context.Background())
 	testMakeTokenDirectly(t, ctx, c.tokenStore, te)
-	require.NotEmpty(t, te.ID)                 // id has been created
-	require.Empty(t, te.Meta["control_group"]) // no control group
-	require.Empty(t, te.InternalMeta["control_group"]) // no control group
+	require.NotEmpty(t, te.ID)                          // id has been created
+	require.Empty(t, te.Meta["control_group"])          // no control group
+	require.Empty(t, te.InternalMeta["control_group"])  // no control group
 	require.Empty(t, te.InternalMeta["request_entity"]) // no request data
 
 	cg := logical.ControlGroup{
@@ -183,7 +183,7 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	}
 
 	requestEntity := logical.Entity{
-		ID: "requesting-entity",
+		ID:   "requesting-entity",
 		Name: "Joe User",
 	}
 
@@ -195,7 +195,6 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	err = c.setEntityInTokenEntry(ctx, te, &requestEntity)
 	require.Nil(t, err)
 
-	
 	// addAuthorzation
 	var groups []*logical.Alias
 	groups = append(groups, &logical.Alias{
@@ -282,9 +281,8 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 		},
 	}
 
-
 	requestEntity := logical.Entity{
-		ID: "requesting-entity",
+		ID:   "requesting-entity",
 		Name: "Joe User",
 	}
 
@@ -306,7 +304,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	auth := logical.Auth{
 		DisplayName:  "user@example.com",
 		GroupAliases: groups,
-		EntityID: entityID,
+		EntityID:     entityID,
 	}
 	err = c.addAuthorization(ctx, te.ID, &auth)
 	require.Nil(t, err)

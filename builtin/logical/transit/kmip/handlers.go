@@ -34,6 +34,7 @@ func bindCrypto[Req, Resp kmiplib.OperationPayload](
 
 func registerHandlers(executor *kmipserver.BatchExecutor, a Adapter) {
 	executor.Route(kmiplib.OperationRegister, bindAdapter(a, handleRegister))
+	executor.Route(kmiplib.OperationCreate, bindAdapter(a, handleCreate))
 
 	if cryptoA, ok := a.(CryptoAdapter); ok {
 		executor.Route(kmiplib.OperationEncrypt, bindCrypto(cryptoA, handleEncrypt))
@@ -110,18 +111,29 @@ func handleRegister(ctx context.Context, a Adapter, req *payloads.RegisterReques
 }
 
 // handleCreateKey implements the KMIP CreateKey operation by creating a new key in transit.
-func handleCreate(ctx context.Context, a Adapter, req *payloads.CreateRequestPayload) (*payloads.CreateRequestPayload, error) {
+func handleCreate(ctx context.Context, a Adapter, req *payloads.CreateRequestPayload) (*payloads.CreateResponsePayload, error) {
 	if err := authOp(ctx, kmiplib.OperationCreate); err != nil {
 		return nil, err
 	}
 
-	alg, _ := AlgAndBitLenFromTemplateAttribute(req.TemplateAttribute)
+	alg, bitlen := AlgAndBitLenFromTemplateAttribute(req.TemplateAttribute)
 	if alg == 0 {
 		return nil, kmipserver.Errorf(kmiplib.ResultReasonInvalidField, "Cryptographic algorithm is required")
 	}
+	if bitlen == 0 {
+		return nil, kmipserver.Errorf(kmiplib.ResultReasonInvalidField, "Cryptographic length is requiered")
+	}
 
-	return nil, nil
+	name := NameFromTemplateAttribute(req.TemplateAttribute)
+	id, err := a.CreateKey(ctx, name, alg, bitlen)
+	if err != nil {
+		return nil, mapError(err)
+	}
 
+	return &payloads.CreateResponsePayload{
+		ObjectType:       req.ObjectType,
+		UniqueIdentifier: id,
+	}, nil
 }
 
 // === CRYPTO ADAPTER OPERATIONS === //

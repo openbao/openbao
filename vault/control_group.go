@@ -140,9 +140,7 @@ func (c *Core) getControlGroupFromTokenEntry(ctx context.Context, tokenEntry *lo
 func (c *Core) getEntityFromTokenEntry(ctx context.Context, tokenEntry *logical.TokenEntry) (*logical.Entity, error) {
 	entityJson, ok := tokenEntry.InternalMeta["request_entity"]
 	if !ok {
-		// if there's no control group, nothing to return but it's not an error
-		// nolint:nilnil
-		return nil, nil
+		return nil, errors.New("no entity stored in token internal meta")
 	}
 
 	entity := logical.Entity{}
@@ -152,6 +150,20 @@ func (c *Core) getEntityFromTokenEntry(ctx context.Context, tokenEntry *logical.
 
 	return &entity, nil
 }
+
+// setEntityInTokenEntry replaces the original request logical  entity in the given token entry
+func (c *Core) setEntityInTokenEntry(ctx context.Context, tokenEntry *logical.TokenEntry, requestEntity *logical.Entity) error {
+	entity, err := jsonutil.EncodeJSON(requestEntity)
+	if err != nil {
+		return err
+	}
+	if tokenEntry.InternalMeta == nil {
+		tokenEntry.InternalMeta = map[string]string{}
+	}
+	tokenEntry.InternalMeta["request_entity"] = string(entity)
+	return c.tokenStore.store(ctx, tokenEntry)
+}
+
 
 // setControlGroupInTokenEntry replaces the control group meta data on a given token entry
 func (c *Core) setControlGroupInTokenEntry(ctx context.Context, tokenEntry *logical.TokenEntry, cg *logical.ControlGroup) error {
@@ -228,14 +240,14 @@ func (c *Core) addAuthorization(ctx context.Context, token string, approver *log
 		return err
 	}
 
-	originalEntity, err := c.getEntityFromTokenEntry(ctx, tokenEntry)
-	if err != nil {
-		return err
-	}
-
 	// if there's no control group, no action taken but not an error
 	if cg == nil {
 		return nil
+	}
+
+	originalEntity, err := c.getEntityFromTokenEntry(ctx, tokenEntry)
+	if err != nil {
+		return err
 	}
 
 	addingAuthorization := false

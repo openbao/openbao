@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -281,8 +282,18 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 		},
 	}
 
-	// Set control group via token
+
+	requestEntity := logical.Entity{
+		ID: "requesting-entity",
+		Name: "Joe User",
+	}
+
+	// Set control group in token
 	err := c.setControlGroupInTokenEntry(ctx, te, &cg)
+	require.Nil(t, err)
+
+	// Set request entity in token
+	err = c.setEntityInTokenEntry(ctx, te, &requestEntity)
 	require.Nil(t, err)
 
 	// addAuthorzation
@@ -290,9 +301,12 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	groups = append(groups, &logical.Alias{
 		Name: "secops",
 	})
+	entityID, err := uuid.GenerateUUID()
+	require.Nil(t, err)
 	auth := logical.Auth{
 		DisplayName:  "user@example.com",
 		GroupAliases: groups,
+		EntityID: entityID,
 	}
 	err = c.addAuthorization(ctx, te.ID, &auth)
 	require.Nil(t, err)
@@ -308,7 +322,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	require.True(t, validates)
 
 	// Second auth by different user should authorize
-	auth.DisplayName = "different.user@example.com"
+	auth.EntityID = auth.EntityID + "_new"
 	err = c.addAuthorization(ctx, te.ID, &auth)
 	require.Nil(t, err)
 

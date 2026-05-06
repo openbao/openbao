@@ -951,8 +951,7 @@ path "sys/control-group/request" {
 	reqPbBytes, err := proto.Marshal(reqPb)
 	require.Nil(t, err)
 	extraData["request"] = base64.StdEncoding.EncodeToString(reqPbBytes)
-	//nolint:copylocks
-	entityJson, err := jsonutil.EncodeJSON(requestingEntity)
+	entityJson, err := jsonutil.EncodeJSON(&requestingEntity)
 	require.Nil(t, err)
 	extraData["request_entity"] = string(entityJson)
 

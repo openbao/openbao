@@ -164,7 +164,6 @@ func (c *Core) setEntityInTokenEntry(ctx context.Context, tokenEntry *logical.To
 	return c.tokenStore.store(ctx, tokenEntry)
 }
 
-
 // setControlGroupInTokenEntry replaces the control group meta data on a given token entry
 func (c *Core) setControlGroupInTokenEntry(ctx context.Context, tokenEntry *logical.TokenEntry, cg *logical.ControlGroup) error {
 	cgJson, err := jsonutil.EncodeJSON(cg)

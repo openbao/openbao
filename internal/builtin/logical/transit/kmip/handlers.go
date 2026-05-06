@@ -35,6 +35,7 @@ func bindCrypto[Req, Resp kmiplib.OperationPayload](
 func registerHandlers(executor *kmipserver.BatchExecutor, a Adapter) {
 	executor.Route(kmiplib.OperationRegister, bindAdapter(a, handleRegister))
 	executor.Route(kmiplib.OperationCreate, bindAdapter(a, handleCreate))
+	executor.Route(kmiplib.OperationGet, bindAdapter(a, handleGet))
 
 	if cryptoA, ok := a.(CryptoAdapter); ok {
 		executor.Route(kmiplib.OperationEncrypt, bindCrypto(cryptoA, handleEncrypt))
@@ -133,6 +134,31 @@ func handleCreate(ctx context.Context, a Adapter, req *payloads.CreateRequestPay
 	return &payloads.CreateResponsePayload{
 		ObjectType:       req.ObjectType,
 		UniqueIdentifier: id,
+	}, nil
+}
+
+// handleGet implements the KMIP Get for Managed Object specified by it's Unique Identifier
+func handleGet(ctx context.Context, a Adapter, req *payloads.GetRequestPayload) (*payloads.GetResponsePayload, error) {
+	if err := authOp(ctx, kmiplib.OperationGet); err != nil {
+		return nil, err
+	}
+
+	uid, err := kmipserver.GetIdOrPlaceholder(ctx, req.UniqueIdentifier)
+	if err != nil {
+		return nil, kmipserver.Errorf(
+			kmiplib.ResultReasonInvalidField,
+			"UniqueIdentifier omitted and ID Placeholder is empty",
+		)
+	}
+	obj, err := a.GetKey(ctx, uid)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return &payloads.GetResponsePayload{
+		ObjectType:       obj.ObjectType(),
+		UniqueIdentifier: uid,
+		Object:           obj,
 	}, nil
 }
 

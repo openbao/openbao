@@ -18,8 +18,6 @@ var (
 
 type NamespaceDeleteCommand struct {
 	*BaseCommand
-
-	flagForce bool
 }
 
 func (c *NamespaceDeleteCommand) Synopsis() string {
@@ -42,9 +40,9 @@ Usage: bao namespace delete [options] PATH
 
       $ bao namespace delete -namespace=ns1 ns2
 
-  Force-delete a sealed namespace (requires sudo privilege):
+  Delete a sealed namespace (requires sudo privilege on the path):
 
-      $ bao namespace delete -force ns1
+      $ bao namespace delete ns1
 
 ` + c.Flags().Help()
 
@@ -52,17 +50,7 @@ Usage: bao namespace delete [options] PATH
 }
 
 func (c *NamespaceDeleteCommand) Flags() *FlagSets {
-	set := c.flagSet(FlagSetHTTP)
-
-	f := set.NewFlagSet("Command Options")
-	f.BoolVar(&BoolVar{
-		Name:    "force",
-		Target:  &c.flagForce,
-		Default: false,
-		Usage:   "If set, forcibly delete a sealed namespace by erasing its physical storage. Requires sudo privilege.",
-	})
-
-	return set
+	return c.flagSet(FlagSetHTTP)
 }
 
 func (c *NamespaceDeleteCommand) AutocompleteArgs() complete.Predictor {
@@ -99,37 +87,21 @@ func (c *NamespaceDeleteCommand) Run(args []string) int {
 		return 2
 	}
 
-	if c.flagForce {
-		resp, err := client.Sys().ForceDeleteNamespace(namespacePath)
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error deleting namespace: %s", err))
-			return 2
-		}
-		if resp == nil || resp.Status == "" {
-			c.UI.Warn("Requested namespace does not exist")
-			return 0
-		}
-		if !strings.HasSuffix(namespacePath, "/") {
-			namespacePath = namespacePath + "/"
-		}
-		c.UI.Output(fmt.Sprintf("Namespace force deletion scheduled: %s", namespacePath))
-		return 0
-	}
-
-	secret, err := client.Logical().Delete("sys/namespaces/" + namespacePath)
+	resp, err := client.Sys().DeleteNamespace(namespacePath)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error deleting namespace: %s", err))
 		return 2
 	}
 
-	if secret != nil {
-		return OutputSecret(c.UI, secret)
+	if resp == nil || resp.Status == "" {
+		c.UI.Warn("Requested namespace does not exist")
+		return 0
 	}
 
 	if !strings.HasSuffix(namespacePath, "/") {
 		namespacePath = namespacePath + "/"
 	}
 
-	c.UI.Output(fmt.Sprintf("Success! Namespace deleted at: %s", namespacePath))
+	c.UI.Output(fmt.Sprintf("Success! Namespace deletion scheduled: %s", namespacePath))
 	return 0
 }

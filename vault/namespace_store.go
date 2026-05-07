@@ -61,6 +61,10 @@ const (
 		1 /* final view clearing */
 )
 
+// ErrNamespaceSealed is returned by DeleteNamespace when the target namespace
+// is sealed and the caller has not provided sudo privilege.
+var ErrNamespaceSealed = errors.New("namespace is sealed; sudo privilege is required to delete physically")
+
 // NamespaceStore is used to provide durable storage of namespace. It is
 // a singleton store across the Core and contains all child namespaces.
 type NamespaceStore struct {
@@ -1116,9 +1120,9 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, parent, namespaceT
 	return ns.pushToMounts(ctx, namespaceToTaint.Clone(false))
 }
 
-// DeleteNamespace is used to delete the named namespace. If force is true and
-// the namespace is sealed, physical deletion is performed without requiring
-// barrier access. This operation requires sudo privilege and is irreversible.
+// DeleteNamespace deletes the named namespace. If the namespace is sealed and
+// force is false, ErrNamespaceSealed is returned so the caller can verify sudo
+// privilege before retrying with force set to true.
 func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string, force bool) (string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "delete_namespace"}, time.Now())
 
@@ -1138,7 +1142,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string, forc
 
 	sealed := ns.core.NamespaceSealed(namespaceToDelete)
 	if sealed && !force {
-		return "", errors.New("cannot delete sealed namespace; use force to delete physically")
+		return "", ErrNamespaceSealed
 	}
 
 	isNamespaceDeleting := ns.creationDeletionMap[namespaceToDelete.UUID]

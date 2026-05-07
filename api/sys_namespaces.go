@@ -10,20 +10,22 @@ import (
 	"net/http"
 )
 
-// ForceDeleteNamespaceOutput is returned by ForceDeleteNamespace.
-type ForceDeleteNamespaceOutput struct {
+// DeleteNamespaceOutput is returned by DeleteNamespace.
+type DeleteNamespaceOutput struct {
 	Status string `json:"status"`
 }
 
-// ForceDeleteNamespace removes a sealed namespace by erasing its physical
-// storage. The caller must hold sudo privilege on the path.
-func (c *Sys) ForceDeleteNamespace(name string) (*ForceDeleteNamespaceOutput, error) {
-	return c.ForceDeleteNamespaceWithContext(context.Background(), name)
+// DeleteNamespace removes the namespace with the given name. If the namespace
+// is sealed and the caller holds sudo privilege on the path, the server
+// automatically performs a physical storage wipe.
+func (c *Sys) DeleteNamespace(name string) (*DeleteNamespaceOutput, error) {
+	return c.DeleteNamespaceWithContext(context.Background(), name)
 }
 
-// ForceDeleteNamespaceWithContext removes a sealed namespace by erasing its
-// physical storage. The caller must hold sudo privilege on the path.
-func (c *Sys) ForceDeleteNamespaceWithContext(ctx context.Context, name string) (*ForceDeleteNamespaceOutput, error) {
+// DeleteNamespaceWithContext removes the namespace with the given name. If the
+// namespace is sealed and the caller holds sudo privilege on the path, the
+// server automatically performs a physical storage wipe.
+func (c *Sys) DeleteNamespaceWithContext(ctx context.Context, name string) (*DeleteNamespaceOutput, error) {
 	if name == "" {
 		return nil, errors.New("name must not be empty")
 	}
@@ -32,7 +34,6 @@ func (c *Sys) ForceDeleteNamespaceWithContext(ctx context.Context, name string) 
 	defer cancelFunc()
 
 	r := c.c.NewRequest(http.MethodDelete, fmt.Sprintf("/v1/sys/namespaces/%s", name))
-	r.Params.Set("force", "true")
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err != nil {
@@ -41,7 +42,7 @@ func (c *Sys) ForceDeleteNamespaceWithContext(ctx context.Context, name string) 
 	defer resp.Body.Close() //nolint:errcheck
 
 	var result struct {
-		Data *ForceDeleteNamespaceOutput
+		Data *DeleteNamespaceOutput
 	}
 	if err := resp.DecodeJSON(&result); err != nil {
 		return nil, err

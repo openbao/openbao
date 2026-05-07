@@ -23,13 +23,14 @@ description:
   en:
     shortDescription: OpenBao is an open source, community-driven secrets
       manager and fork of Vault managed by the Linux Foundation's OpenSSF.
-    longDescription: OpenBao is an identity-based secrets and encryption
-    management system. A secret is anything that you want to tightly control
-    access to, such as API tokens, encryption keys, passwords, and
-    certificates. OpenBao provides encryption services that are gated by
-    authentication and authorization methods. Using OpenBao's UI, CLI, or HTTP
-    API, access to secrets and other sensitive data can be securely stored and
-    managed, tightly controlled (restricted), and auditable.
+    longDescription: >-
+      OpenBao is an identity-based secrets and encryption
+      management system. A secret is anything that you want to tightly control
+      access to, such as API tokens, encryption keys, passwords, and
+      certificates. OpenBao provides encryption services that are gated by
+      authentication and authorization methods. Using OpenBao's UI, CLI, or
+      HTTP API, access to secrets and other sensitive data can be securely
+      stored and managed, tightly controlled (restricted), and auditable.
     documentation: https://openbao.org/docs/
     apiDocumentation: https://openbao.org/api-docs/
     features:

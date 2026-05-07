@@ -961,6 +961,58 @@ func TestNamespaceDeletionSealingInteraction(t *testing.T) {
 		require.NoError(t, s.SealNamespace(ctx, "ns3"))
 
 		_, err := s.DeleteNamespace(ctx, "ns3")
-		require.Error(t, err)
+		require.ErrorIs(t, err, ErrNamespaceSealed)
 	})
+}
+
+// TestNamespaceStore_DeleteSudoSealed verifies that sudo privilege does not
+// bypass child namespace protection and that a sealed childless namespace can
+// be force-deleted with sudo.
+func TestNamespaceStore_DeleteSudoSealed(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+	ctx := namespace.RootContext(t.Context())
+	sudoCtx := contextWithSudoPrivilege(ctx, true)
+
+	// Sudo must not bypass in-memory child namespace protection.
+	parent := &namespace.Namespace{Path: "sudo-parent/"}
+	require.NoError(t, s.SetNamespace(ctx, parent))
+
+	child := &namespace.Namespace{Path: "sudo-parent/sudo-child/"}
+	require.NoError(t, s.SetNamespace(ctx, child))
+
+	_, err := s.DeleteNamespace(sudoCtx, "sudo-parent")
+	require.Error(t, err, "sudo must not bypass child namespace protection")
+	require.ErrorContains(t, err, "child namespaces")
+
+	// Sudo must not bypass child protection for a sealed namespace either.
+	// The physical storage check fires before the sudo check, so even a privileged
+	// caller cannot delete a sealed namespace that has child namespaces on disk.
+	// The parent is created with its own barrier (unsealed), the child is then
+	// added while the parent is unsealed. Sealing the parent afterwards leaves
+	// the child's key name visible via the root barrier (key names are not
+	// encrypted), which is what the physical check exploits.
+	TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "sealed-with-child/"})
+	TestCoreCreateNamespaces(t, c, &namespace.Namespace{Path: "sealed-with-child/sealed-child/"})
+	require.NoError(t, s.SealNamespace(ctx, "sealed-with-child"))
+
+	_, err = s.DeleteNamespace(sudoCtx, "sealed-with-child")
+	require.Error(t, err, "sudo must not bypass child protection for sealed namespace")
+	require.ErrorContains(t, err, "child namespaces")
+
+	// Sealed childless namespace with sudo must be deleted and eventually gone.
+	TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "sealed-sudo-test/"})
+	require.NoError(t, s.SealNamespace(ctx, "sealed-sudo-test"))
+
+	status, err := s.DeleteNamespace(sudoCtx, "sealed-sudo-test")
+	require.NoError(t, err)
+	require.Equal(t, "in-progress", status)
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		ns, err := s.GetNamespaceByPath(ctx, "sealed-sudo-test/")
+		require.NoError(ct, err)
+		require.Nil(ct, ns, "sealed namespace must be gone after sudo deletion completes")
+	}, 5*time.Second, 10*time.Millisecond)
 }

@@ -87,13 +87,16 @@ func (c *NamespaceDeleteCommand) Run(args []string) int {
 		return 2
 	}
 
-	resp, err := client.Sys().DeleteNamespace(namespacePath)
+	secret, err := client.Logical().Delete("sys/namespaces/" + namespacePath)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error deleting namespace: %s", err))
 		return 2
 	}
 
-	if resp == nil || resp.Status == "" {
+	if secret == nil || secret.Data == nil {
+		if secret != nil {
+			return OutputSecret(c.UI, secret)
+		}
 		c.UI.Warn("Requested namespace does not exist")
 		return 0
 	}
@@ -102,6 +105,9 @@ func (c *NamespaceDeleteCommand) Run(args []string) int {
 		namespacePath = namespacePath + "/"
 	}
 
+	for _, w := range secret.Warnings {
+		c.UI.Warn(w)
+	}
 	c.UI.Output(fmt.Sprintf("Success! Namespace deletion scheduled: %s", namespacePath))
 	return 0
 }

@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"net/http"
 	"path"
 	"testing"
 	"time"
@@ -371,9 +372,9 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 		// three namespaces: "foobar", "foobar/bar" and "foobar/baz"
 		req := logical.TestRequest(t, logical.DeleteOperation, "namespaces/foobar")
 		res, err := b.HandleRequest(rootCtx, req)
-		// fails as foobar contains child namespaces
-		require.Error(t, err)
-		require.Error(t, res.Error())
+		// fails as foobar contains child namespaces — 409 Conflict, no Go error
+		require.NoError(t, err)
+		require.Equal(t, http.StatusConflict, res.Data["http_status_code"])
 
 		req = logical.TestRequest(t, logical.DeleteOperation, "namespaces/baz")
 		res, err = b.HandleRequest(nestedCtx, req)

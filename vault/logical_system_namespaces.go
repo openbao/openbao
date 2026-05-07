@@ -489,25 +489,22 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 			return nil, errors.New("path must not contain /")
 		}
 
-		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, path, false)
-		if errors.Is(err, ErrNamespaceSealed) {
-			isSudo := b.System().(extendedSystemView).SudoPrivilege(ctx, req.MountPoint+req.Path, req.ClientToken)
-			if !isSudo {
-				return logical.ErrorResponse("sealed namespace deletion requires sudo privilege"), logical.ErrPermissionDenied
-			}
-			status, err = b.Core.namespaceStore.DeleteNamespace(ctx, path, true)
-			if err != nil {
-				return handleError(err)
-			}
-			resp := &logical.Response{
-				Data: map[string]interface{}{
-					"status": status,
-				},
-			}
-			resp.AddWarning("sealed namespace deletion performed using sudo capabilities")
-			return resp, nil
-		}
+		isSudo := b.System().(extendedSystemView).SudoPrivilege(ctx, req.MountPoint+req.Path, req.ClientToken)
+
+		// Pre-check whether the target is sealed so we can attach a warning
+		// to the response without a second round-trip into the store.
+		nsEntry, _ := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		isSealed := nsEntry != nil && b.Core.NamespaceSealed(nsEntry)
+
+		ctx = contextWithSudoPrivilege(ctx, isSudo)
+		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, path)
 		if err != nil {
+			if errors.Is(err, ErrNamespaceSealed) {
+				return logical.ErrorResponse(err.Error()), logical.ErrPermissionDenied
+			}
+			if errors.Is(err, ErrNamespaceHasChildren) {
+				return logical.RespondWithStatusCode(logical.ErrorResponse(err.Error()), req, http.StatusConflict)
+			}
 			return handleError(err)
 		}
 
@@ -517,11 +514,15 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 			return resp, nil
 		}
 
-		return &logical.Response{
+		resp := &logical.Response{
 			Data: map[string]interface{}{
 				"status": status,
 			},
-		}, nil
+		}
+		if isSealed && isSudo {
+			resp.AddWarning("sealed namespace deletion performed using sudo capabilities")
+		}
+		return resp, nil
 	}
 }
 

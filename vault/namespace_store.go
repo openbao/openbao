@@ -65,6 +65,26 @@ const (
 // is sealed and the caller has not provided sudo privilege.
 var ErrNamespaceSealed = errors.New("namespace is sealed; sudo privilege is required to delete physically")
 
+// ErrNamespaceHasChildren is returned by DeleteNamespace when child namespaces
+// exist, regardless of whether the caller holds sudo privilege.
+var ErrNamespaceHasChildren = errors.New("namespace has child namespaces; delete children first")
+
+type contextKeyType int
+
+const contextKeySudo contextKeyType = iota
+
+// contextWithSudoPrivilege stores sudo privilege in ctx for DeleteNamespace.
+func contextWithSudoPrivilege(ctx context.Context, sudo bool) context.Context {
+	return context.WithValue(ctx, contextKeySudo, sudo)
+}
+
+// sudoPrivilegeFromContext returns the sudo privilege stored by the handler.
+// Defaults to false when not set, so callers without sudo cannot force deletion.
+func sudoPrivilegeFromContext(ctx context.Context) bool {
+	v, _ := ctx.Value(contextKeySudo).(bool)
+	return v
+}
+
 // NamespaceStore is used to provide durable storage of namespace. It is
 // a singleton store across the Core and contains all child namespaces.
 type NamespaceStore struct {
@@ -1120,10 +1140,10 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, parent, namespaceT
 	return ns.pushToMounts(ctx, namespaceToTaint.Clone(false))
 }
 
-// DeleteNamespace deletes the named namespace. If the namespace is sealed and
-// force is false, ErrNamespaceSealed is returned so the caller can verify sudo
-// privilege before retrying with force set to true.
-func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string, force bool) (string, error) {
+// DeleteNamespace deletes the named namespace. If the namespace is sealed,
+// sudo privilege must be present in ctx via contextWithSudoPrivilege;
+// otherwise ErrNamespaceSealed is returned.
+func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "delete_namespace"}, time.Now())
 
 	unlock, err := ns.lockWithInvalidation(ctx, true)
@@ -1140,9 +1160,40 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string, forc
 		return "", nil
 	}
 
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return "", fmt.Errorf("error loading parent namespace from context: %w", err)
+	}
+
+	// Authorization gate: sealed namespaces require sudo privilege.
+	// This check precedes all state validation so that callers without
+	// the required privilege always receive a consistent 403, regardless
+	// of whether child namespaces exist.
 	sealed := ns.core.NamespaceSealed(namespaceToDelete)
-	if sealed && !force {
-		return "", ErrNamespaceSealed
+	if sealed {
+		if !sudoPrivilegeFromContext(ctx) {
+			return "", ErrNamespaceSealed
+		}
+	}
+
+	// Physical storage check for child namespaces. Key names are never
+	// encrypted, so the parent's barrier (or the root barrier as fallback)
+	// can list them even when the in-memory tree is incomplete — for example,
+	// after a restart when children of sealed namespaces are not reloaded.
+	baseStorage := logical.Storage(ns.storage)
+	if b := ns.core.sealManager.NamespaceBarrier(parent.Path); b != nil && !b.Sealed() {
+		baseStorage = b
+	}
+	view := NamespaceScopedView(baseStorage, namespaceToDelete)
+	childKeys, err := view.List(ctx, namespaceStoreSubPath)
+	if err != nil {
+		return "", fmt.Errorf("cannot verify child namespaces for %q: %w", namespaceToDelete.Path, err)
+	}
+	if len(childKeys) > 0 {
+		if sealed {
+			return "", fmt.Errorf("sealed namespace %q has child namespaces; please unseal the namespace barrier and delete children before retrying: %w", namespaceToDelete.Path, ErrNamespaceHasChildren)
+		}
+		return "", fmt.Errorf("namespace %q has child namespaces; please delete children first: %w", namespaceToDelete.Path, ErrNamespaceHasChildren)
 	}
 
 	isNamespaceDeleting := ns.creationDeletionMap[namespaceToDelete.UUID]
@@ -1161,12 +1212,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string, forc
 	}
 
 	if len(childNS) > 0 {
-		return "", fmt.Errorf("cannot delete namespace (%q) containing child namespaces", namespaceToDelete.Path)
-	}
-
-	parent, err := namespace.FromContext(ctx)
-	if err != nil {
-		return "", fmt.Errorf("error loading parent namespace from context: %w", err)
+		return "", fmt.Errorf("namespace %q has child namespaces: %w", namespaceToDelete.Path, ErrNamespaceHasChildren)
 	}
 
 	if !namespaceToDelete.Tainted {

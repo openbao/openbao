@@ -467,6 +467,9 @@ func (c *Config) ConfigureTLS(t *TLSConfig) error {
 // TLS configuration without recreating the client, which is useful for rotating
 // short-lived TLS credentials.
 func (c *Client) ConfigureTLS(t *TLSConfig) error {
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
+
 	return c.config.ConfigureTLS(t)
 }
 

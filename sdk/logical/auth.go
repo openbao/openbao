@@ -162,11 +162,14 @@ type PolicyInfo struct {
 }
 
 func (cg *ControlGroup) Authorizations() []*ControlGroupAuthorization {
+	authSet := map[string]interface{}{}
 	auths := []*ControlGroupAuthorization{}
 	for _, factor := range cg.Factors {
 		for _, approval := range factor.Authorizations {
-			// TODO dedupe this list
-			auths = append(auths, &approval)
+			if _, ok := authSet[approval.EntityID]; !ok {
+				auths = append(auths, &approval)
+				authSet[approval.EntityID] = true
+			}
 		}
 	}
 	return auths

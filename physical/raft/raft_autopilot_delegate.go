@@ -138,7 +138,12 @@ func (d *Delegate) KnownServers() map[raft.ServerID]*autopilot.Server {
 		return nil
 	}
 
-	apServerStates := d.autopilot.GetState().Servers
+	var apServerStates map[raft.ServerID]*autopilot.ServerState
+	if d.autopilot != nil {
+		if state := d.autopilot.GetState(); state != nil {
+			apServerStates = state.Servers
+		}
+	}
 	servers := future.Configuration().Servers
 	serverIDs := make([]string, 0, len(servers))
 	for _, server := range servers {

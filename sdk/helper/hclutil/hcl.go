@@ -13,7 +13,7 @@ import (
 	jsonParser "github.com/hashicorp/hcl/json/parser"
 )
 
-// WhenHCLKeyPresent will execute the provided function with matching nodes as argument
+// WhenHCLKeyPresent will execute the provided function with all matching child nodes as argument
 func WhenHCLKeyPresent(node ast.Node, key string, fn func(ast.Node) error) error {
 	var list *ast.ObjectList
 	switch n := node.(type) {

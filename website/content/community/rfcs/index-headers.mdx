@@ -1,0 +1,143 @@
+---
+sidebar_label: Index headers
+description: |-
+  An OpenBao RFC for allowing a client-indicated minimum storage index
+  coupled with server-returned post-operation index.
+---
+
+# Support client-indicated minimum storage indices
+
+## Summary
+
+When introducing [horizontal read scalability](./standby-nodes-handle-read-requests.mdx),
+eventual consistency was assumed to be sufficient as it was the semantics of
+Vault Enterprise. This RFC proposes a series of headers allowing clients to
+better achieve consistency guarantees through a mixture of retry and server
+request forwarding, if enabled by the server operator. All server requests on
+indexed storage backends will return the new `X-Vault-Index` response header,
+with clients being able to specify the `X-Vault-Index` request header to
+ensure that index has been replicated before processing the request.
+
+## Problem Statement
+
+While Vault Enterprise has eventual consistency guarantees, the previous cold
+HA-only standby option implicitly had strict consistency by only having a
+single active node. This affects certain provisioning flows and similar: mount
+enablement being asynchronous means that OpenTofu and similar tools need to
+know to retry after mounts are present if they happen to be talking to a
+standby node.
+
+We first need a way of achieving strict consistency from a client's
+perspective while allowing updates to the client's code.
+
+## User-facing Description
+
+Responses from OpenBao will include the `X-Vault-Index` header, indicating
+the underlying index from the storage backend. This index is expected to be
+opaque and passed back to OpenBao via the `X-Vault-Index` request header.
+Whenever the client expects a write to have occurred as a result of the
+request (or always depending on the preferences of the caller), it can specify
+the returned index or any later value on all future requests to ensure the
+specified index has been met by the server.
+
+This will have one of the following behaviors:
+
+1. If the `X-Vault-Inconsistent` header is missing or takes the value
+   `retry-stale`, the request will be rejected with a 412 HTTP status code
+   and the client should retry the request later.
+2. If the `X-Vault-Inconsistent` header is set to `forward-active-node`, the
+   request will be forwarded to the active node.
+3. If the `X-Vault-Inconsistent` header is set to `await-state`, the request
+   will be held until the operator configured timeout has been met and then
+   will be either forwarded or rejected depending on operator preference.
+
+## Technical Description
+
+With [GRPC invalidation](./grpc-invalidation.mdx), all storage backends will
+implement the `physical.ReplicationIndexBackend` type, allowing us to check
+and compare indices. On every request, we'll call
+`backend.AppliedReplicationIndex(...)` to check the latest index; we assume
+this function should be reasonably fast.
+
+We'll add a few new functions to core to check indices and potentially forward
+or back off a client until replication is synced. Sync here means both that
+storage is up-to-date and all invalidations from previous indices have been
+processed. To do so, we'll need to:
+
+1. Update invalidation to record the corresponding storage index at the time
+   of invalidation.
+2. Check if the index or any predecessors exist in the pending invalidation
+   queue.
+3. Check the underlying job manager for any pending jobs with the target index
+   or any predecessors.
+
+Lastly, for the actual handling of the headers we'll inject a new middleware
+that applies fairly early in the stack.
+
+While nominally Vault Enterprise only returns the `X-Vault-Index` response
+header on operations which incurred a write, we'll opt to always return the
+index for ease of use.
+
+## Rationale and Alternatives
+
+This gives clients and operators an additional tool in the consistency
+spectrum, to give the appearance of strict consistency without the system
+actually having it.
+
+Alternatives such as the restored server-side consistent tokens do not fully
+solve this problem: the existing SSCT logic was only for cross-cluster
+consistency, meaning we currently embed the equivalent of a zero index. While
+we could add our new index logic to that value, it has a few shortcomings:
+
+1. Some storage engines, like PostgreSQL, use semi-opaque strings rather than
+   integers. We'd ideally want to continue supporting non-string indices in
+   case other systems have this property as well.
+2. Tokens are not updatable and only reflect the index on issuance. By using
+   response/request headers, we can handle arbitrary post-auth writes without
+   having to create a nested series of tokens with new indices and incur even
+   more storage writes.
+
+Another alternative would be server-side consistency: on all write requests,
+we could wait for the request to return until known standby nodes are
+up-to-date with the specified index. However, this could cause issues when the
+request was successfully processed but a slow standby node hasn't yet
+confirmed it.
+
+## Downsides
+
+Go's goroutine parking is already fairly efficient; this means the overhead
+of handling server-side wait will likely be less than the work of handling a
+request whose corresponding index hasn't yet been reached.
+
+Cost of the index handling is only incurred when a client indicates the
+header value.
+
+## Security Implications
+
+This should have no meaningful security impact: specifying an index too far
+in the future will at worst forward the request to the active node (though,
+should not be relied on!) and at best is a self-DoS.
+
+As HashiCorp Vault Enterprise's indices are opaque base64 values, we could
+apply a HMAC or similar protection to returned index headers, though these
+mostly have a client-local impact and malformed or future indices would not
+cause much stress on the server.
+
+## User/Developer Experience
+
+We can build these changes into the API client to give us a consistent by
+default client. Other clients will need to use additional mechanisms. This
+would be compatible with Vault Enterprise's implementation.
+
+## Unresolved Questions
+
+n/a
+
+## Related Issues
+
+- https://github.com/openbao/openbao/issues/1462
+
+## Proof of Concept
+
+See [proof of concept](https://github.com/openbao/openbao/compare/main...cipherboy:openbao:index-headers?expand=1)
+branch.

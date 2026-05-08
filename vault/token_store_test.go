@@ -987,7 +987,7 @@ path "sys/control-group/request" {
 	if approver == nil {
 		t.Fatalf("err: %s", err)
 	}
-	// if token has no control group, expect no error
+	// if token has no control group, expect error
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/control-group/authorize")
 	req.Data = map[string]interface{}{
 		"accessor": wrapped.Accessor,
@@ -995,15 +995,8 @@ path "sys/control-group/request" {
 	req.ClientToken = "approver-token"
 
 	resp, err := c.HandleRequest(ctx, req)
-	if err != nil {
+	if err == nil {
 		t.Fatalf("err: %s; resp: %+v", err, resp)
-	}
-	if resp.Data == nil {
-		t.Fatalf("response should contain data; resp: %+v", resp)
-	}
-
-	if resp.Data["approved"] == nil {
-		t.Fatalf("response should contain approved result; resp: %+v", resp)
 	}
 
 	// if token has control group, expect change to meta data

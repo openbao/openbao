@@ -1,0 +1,3 @@
+```release-note:bug
+core/policies: Fix `list_scan_response_keys_filter_path` incorrectly erring on empty list responses.
+```

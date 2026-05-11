@@ -1,0 +1,3 @@
+```release-note:improvement
+raft: improve snapshot duration while slightly increasing snapshot size
+```

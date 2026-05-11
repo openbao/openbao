@@ -141,7 +141,10 @@ func Write(logger hclog.Logger, r *raft.Raft, sealer Sealer, w io.Writer) error 
 	}()
 
 	// Wrap the file writer in a gzip compressor.
-	compressor := gzip.NewWriter(w)
+	compressor, err := gzip.NewWriterLevel(w, gzip.NoCompression)
+	if err != nil {
+		return fmt.Errorf("failed to create snapshot file: %v", err)
+	}
 
 	// Write the archive.
 	if err := write(compressor, metadata, snap, sealer); err != nil {

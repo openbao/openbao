@@ -5,7 +5,7 @@
 
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
-import { click, currentRouteName, fillIn, visit } from '@ember/test-helpers';
+import { click, currentRouteName, fillIn, visit, settled } from '@ember/test-helpers';
 
 import { setupMirage } from 'ember-cli-mirage/test-support';
 import { v4 as uuidv4 } from 'uuid';
@@ -30,14 +30,17 @@ module('Acceptance | pki tidy', function (hooks) {
       `write ${this.mountPath}/root/generate/internal common_name="Hashicorp Test" name="Hashicorp Test"`,
     ]);
     await logout.visit();
+    await settled();
   });
 
   hooks.afterEach(async function () {
     await logout.visit();
+    await settled();
     await authPage.login();
     // Cleanup engine
     await runCommands([`delete sys/mounts/${this.mountPath}`]);
     await logout.visit();
+    await settled();
   });
 
   test('it configures a manual tidy operation and shows its details and tidy states', async function (assert) {

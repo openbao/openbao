@@ -30,6 +30,7 @@ module('Acceptance | cluster', function (hooks) {
 
   hooks.beforeEach(async function () {
     await logout.visit();
+    await settled();
     return authPage.login();
   });
 
@@ -42,11 +43,13 @@ module('Acceptance | cluster', function (hooks) {
 
     const userToken = await tokenWithPolicy('hide-policies-nav', deny_policies_policy);
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
     await visit('/vault/access');
 
     assert.dom('[data-test-sidebar-nav-link="Policies"]').doesNotExist();
     await logout.visit();
+    await settled();
   });
 
   skip('it hides mfa setup if user has not entityId (ex: is a root user)', async function (assert) {
@@ -63,6 +66,7 @@ module('Acceptance | cluster', function (hooks) {
     await click('[data-test-user-menu-trigger]');
     assert.dom('[data-test-user-menu-item="mfa"]').exists();
     await logout.visit();
+    await settled();
 
     await authPage.login('root');
     await settled();

@@ -31,7 +31,8 @@ Resolves: #
 ## Acknowledgements
 
  - [ ] By contributing this change, I certify I have not used generative AI
-       (GitHub Copilot, Cursor, Claude Code, &c) in authoring these changes.
+       (GitHub Copilot, Cursor, Claude Code, &c) in authoring these changes or
+       filling out the pull request description or associated issue.
  - [ ] By contributing this change, I certify I have signed-off on the
        [DCO ownership](https://developercertificate.org/) statement
        and this change did not use post-BUSL-licensed code from HashiCorp.

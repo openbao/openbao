@@ -6,7 +6,7 @@
       </h1>
     </Page.header>
     <Page.content>
-      <RaftJoin @onDismiss={{action (mut this.prefersInit) true}} />
+      <RaftJoin @onDismiss={{this.setPrefersInit}} />
     </Page.content>
   {{else if this.keyData}}
     <Page.header>
@@ -109,21 +109,7 @@
       </h1>
     </Page.header>
     <Page.content>
-      <form
-        {{action
-          "initCluster"
-          (hash
-            secret_shares=this.secret_shares
-            secret_threshold=this.secret_threshold
-            pgp_keys=this.pgp_keys
-            use_pgp=this.use_pgp
-            use_pgp_for_root=this.use_pgp_for_root
-            root_token_pgp_key=this.root_token_pgp_key
-          )
-          on="submit"
-        }}
-        id="init"
-      >
+      <form {{on "submit" this.initCluster}} id="init">
         <div class="box is-marginless is-shadowless">
           <MessageError @errors={{this.errors}} />
           <div class="field">
@@ -182,7 +168,7 @@
               <p class="help has-text-grey">
                 The output unseal keys will be encrypted and hex-encoded, in order, with the given public keys.
               </p>
-              <PgpList @listLength={{this.secret_shares}} @onDataUpdate={{action "setKeys"}} />
+              <PgpList @listLength={{this.secret_shares}} @onDataUpdate={{this.setKeys}} />
             </div>
           {{/if}}
           <ToggleButton
@@ -197,7 +183,7 @@
               <p class="help has-text-grey">
                 The root unseal key will be encrypted and hex-encoded with the given public key.
               </p>
-              <PgpList @listLength={{1}} @onDataUpdate={{action "setRootKey"}} />
+              <PgpList @listLength={{1}} @onDataUpdate={{this.setRootKey}} />
             </div>
           {{/if}}
         </div>

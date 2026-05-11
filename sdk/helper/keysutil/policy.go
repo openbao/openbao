@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"maps"
 	"math/big"
 	"path"
 	"strconv"
@@ -610,9 +611,7 @@ func (p *Policy) Persist(ctx context.Context, storage logical.Storage) (retErr e
 
 	if p.Keys != nil {
 		priorKeys = keyEntryMap{}
-		for k, v := range p.Keys {
-			priorKeys[k] = v
-		}
+		maps.Copy(priorKeys, p.Keys)
 	}
 
 	defer func() {
@@ -694,9 +693,7 @@ func (p *Policy) Upgrade(ctx context.Context, storage logical.Storage, randReade
 
 	if p.Keys != nil {
 		priorKeys = keyEntryMap{}
-		for k, v := range p.Keys {
-			priorKeys[k] = v
-		}
+		maps.Copy(priorKeys, p.Keys)
 	}
 
 	defer func() {
@@ -1642,9 +1639,7 @@ func (p *Policy) Rotate(ctx context.Context, storage logical.Storage, randReader
 
 	if p.Keys != nil {
 		priorKeys = keyEntryMap{}
-		for k, v := range p.Keys {
-			priorKeys[k] = v
-		}
+		maps.Copy(priorKeys, p.Keys)
 	}
 
 	defer func() {

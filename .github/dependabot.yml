@@ -34,6 +34,16 @@ updates:
       semver-patch-days: 7
       semver-minor-days: 14
       semver-major-days: 30
+    groups:
+      golang-x:
+        patterns:
+          - "golang.org/x/*"
+      k8s:
+        patterns:
+          - "k8s.io/*"
+      google-golang:
+        patterns:
+          - "google.golang.org/*"
     ignore:
       # armon/go-metrics was moved to hashicorp/go-metrics, but we cannot
       # drop the indirect dependency on it just yet. This causes errors in

@@ -56,7 +56,7 @@ commit signing, such as using `PGP` or `gitsign`.
 If you have met the above requirements, you can add your sign-off by including
 the --signoff option in your `git commit` or `git rebase` commands:
 
-```
+```bash
 # Sign off a commit
 git commit --signoff -m"my commit"
 
@@ -69,7 +69,7 @@ git rebase --signoff master
 
 This will add a line similar to the following at the end of your commit:
 
-```
+```commit
 Signed-off-by: Alex Smith <alex@example.com>
 ```
 
@@ -106,6 +106,12 @@ quickly merge or address your contributions.
 
 ### Reporting an Issue
 
+> [!CAUTION]
+>
+> Please do not use generative AI to create issues against OpenBao; take the
+> time to comment in your own words. Issues which are very clearly AI
+> generated may be closed and/or locked with no response from the community.
+
 * Make sure you test against the latest released version. It is possible we
   already fixed the bug you're experiencing. Even better is if you can test
   against the `development` branch, as the bugs are regularly fixed but new versions
@@ -124,6 +130,10 @@ quickly merge or address your contributions.
 
 * Respond as promptly as possible to any questions made by the OpenBao
   team to your issue.
+
+* Use of generative AI as an assistant in debugging or understanding issues
+  remains okay, but please do not post AI generated text, _especially_ without
+  clearly identifying it as such.
 
 ### Issue Lifecycle
 
@@ -151,18 +161,29 @@ quickly merge or address your contributions.
 
 ## Pull requests
 
-When submitting a PR you should reference an existing issue. If no issue already exists,
-please create one. This can be skipped for trivial PRs like fixing typos or
-for backports.
+> [!CAUTION]
+>
+> Pull requests which ignore [our template](/.github/pull_request_template.md)
+> especially from first-time contributors risk being rejected with no
+> explanation. All pull requests from new and existing contributors should
+> have the Acknowledgements section filled out.
+>
+> In particular, see the note above (in DCO sign-off) about not using
+> generative AI for code generation. This also includes the PR and/or issue
+> description.
 
-Creating an issue in advance of working on the PR can help to avoid duplication of effort,
-e.g. maybe we know of existing related work. Or it may be that we can provide guidance
-that will help with your approach.
+When submitting a PR you should reference an existing issue. If no issue already
+exists, please create one. This can be skipped for trivial PRs like fixing typos
+or for backports.
 
-Your pull request should have a description of what it accomplishes, how it does so,
-and why you chose the approach you did.  PRs should include unit tests that validate
-correctness and the existing tests must pass. Follow-up work to fix tests
-does not need a fresh issue filed.
+Creating an issue in advance of working on the PR can help to avoid duplication
+of effort, e.g. maybe we know of existing related work. Or it may be that we can
+provide guidance that will help with your approach.
+
+Your pull request should have a description of what it accomplishes, how it does
+so, and why you chose the approach you did. PRs should include unit tests that
+validate correctness and the existing tests must pass. Follow-up work to fix
+tests does not need a fresh issue filed.
 
 Someone will do a first pass review on your PR making sure it follows the guidelines
 in this document. If it doesn't we'll mark the PR incomplete and ask you to follow
@@ -195,7 +216,7 @@ Please include a file within your PR named `changelog/#.txt`, where `#` is your
 pull request ID.  There are many examples under [changelog](changelog/), but
 the general format is
 
-````
+````markdown
 ```release-note:CATEGORY
 COMPONENT: summary of change
 ```
@@ -212,6 +233,57 @@ whichever one you see that seems the closest match.
 You do not need to include the link at the end of the summary that appears in
 CHANGELOG.md, those are generated automatically by the changelog-building
 process.
+
+### Merge Policy
+
+PRs might only be merged once all the following conditions are met:
+
+* Codeowner rules must be satisfied (as defined in the repos
+  [`CODEOWNERS`](./CODEOWNERS) file). See [examples](#codeowners-examples)
+  below.
+* At least one qualified review must be done by someone from a different
+  organization than the PR author. "Qualified" means someone with write access
+  to the repo (As of today, GitHub indicates this with a green check-mark next
+  to the reviewer name as opposed to a gray check-mark for non-qualified
+  reviews). Independent contributors are considered to be a one person
+  organization here. If organization A pays organization B for contributing to
+  OpenBao, they will be considered to be the same organization.
+* All review comments are resolved.
+
+The preferred person to actually hit the merge button is the author of the PR,
+if they have the required permissions to do so, as they are expected to be aware
+of any inter-PR dependencies (e.g. a feature PR depending on a bug-fix from a
+different PR).
+
+#### Codeowners Examples
+
+Given the following `CODEOWNERS` file:
+
+```CODEOWNERS
+component-a/  @a-team  @core-team
+component-b/  @b-team  @core-team
+component-c/  @c-team  @core-team
+```
+
+And a PR that touches files in `component-a` and `component-b`, the PR will need
+a review from either:
+
+* Two people, one member of the `a-team` and one member of the `b-team`
+* One person, who is a member of both the `a-team` and the `b-team`
+* One person, who is a member of the `core-team`
+
+Also, in the `CODEOWNERS` only the last matching pattern applies to a file. For example:
+
+```CODEOWNERS
+component-a/                    @a-team
+component-a/subcomponent-alpha  @alpha-team
+```
+
+In a PR that only changes `component-a/subcomponent-alpha/`, you will need a
+review from the `alpha-team`, but not from the `a-team`.
+
+This rules should reflect the [documented behavior of
+GitHub][github-about-code-owners].
 
 ### OpenBao UI
 
@@ -242,3 +314,4 @@ following steps listed in the README, under the section [Developing OpenBao][1].
 
 [1]: https://github.com/openbao/openbao#developing-openbao
 [2]: https://github.com/openbao/openbao/discussions
+[github-about-code-owners]: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners#codeowners-and-branch-protection

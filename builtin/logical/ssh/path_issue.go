@@ -5,7 +5,6 @@ package ssh
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -125,7 +124,7 @@ func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *fra
 func (b *backend) pathIssueCertificate(ctx context.Context, req *logical.Request, data *framework.FieldData, role *sshRole, keySpecs *keySpecs) (*logical.Response, error) {
 	sc := b.makeStorageContext(ctx, req.Storage)
 
-	publicKey, privateKey, err := generateSSHKeyPair(rand.Reader, keySpecs.Type, keySpecs.Bits)
+	publicKey, privateKey, err := generateSSHKeyPair(keySpecs.Type, keySpecs.Bits)
 	if err != nil {
 		return nil, err
 	}

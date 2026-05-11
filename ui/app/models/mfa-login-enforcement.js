@@ -37,12 +37,12 @@ const validations = {
 export default class MfaLoginEnforcementModel extends Model {
   @service store;
   @attr('string') name;
-  @hasMany('mfa-method') mfa_methods;
+  @hasMany('mfa-method', { async: true, inverse: null }) mfa_methods;
   @attr('string') namespace_id;
   @attr('array', { defaultValue: () => [] }) auth_method_accessors; // ["auth_approle_17a552c6"]
   @attr('array', { defaultValue: () => [] }) auth_method_types; // ["userpass"]
-  @hasMany('identity/entity') identity_entities;
-  @hasMany('identity/group') identity_groups;
+  @hasMany('identity/entity', { async: true, inverse: null }) identity_entities;
+  @hasMany('identity/group', { async: true, inverse: null }) identity_groups;
 
   get targets() {
     return ArrayProxy.extend(PromiseProxyMixin).create({
@@ -68,8 +68,8 @@ export default class MfaLoginEnforcementModel extends Model {
       const selectedAuthMethods = authMethods.filter((model) => {
         return this.auth_method_accessors.includes(model.accessor);
       });
-      targets.addObjects(
-        selectedAuthMethods.map((method) => ({
+      targets.push(
+        ...selectedAuthMethods.map((method) => ({
           icon: this.iconForMount(method.type),
           link: 'vault.cluster.access.method',
           linkModels: [method.path.slice(0, -1)],
@@ -82,7 +82,7 @@ export default class MfaLoginEnforcementModel extends Model {
     this.auth_method_types.forEach((type) => {
       const icon = this.iconForMount(type);
       const mountCount = authMethods.filterBy('type', type).length;
-      targets.addObject({
+      targets.push({
         key: 'auth_method_types',
         icon,
         title: type,
@@ -92,7 +92,7 @@ export default class MfaLoginEnforcementModel extends Model {
 
     for (const key of ['identity_entities', 'identity_groups']) {
       (await this[key]).forEach((model) => {
-        targets.addObject({
+        targets.push({
           key,
           icon: 'user',
           link: 'vault.cluster.access.identity.show',
@@ -108,7 +108,7 @@ export default class MfaLoginEnforcementModel extends Model {
 
   iconForMount(type) {
     const mountableMethods = methods();
-    const mount = mountableMethods.findBy('type', type);
+    const mount = mountableMethods.find((x) => x.type === type);
     return mount ? mount.glyph || mount.type : 'token';
   }
 }

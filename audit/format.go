@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"strings"
 	"time"
 
@@ -212,9 +213,7 @@ func (f *AuditFormatter) FormatResponse(ctx context.Context, w io.Writer, config
 		if elideListResponseData && resp.Data != nil {
 			// Copy the data map before making changes, but we only need to go one level deep in this case
 			respData = make(map[string]interface{}, len(resp.Data))
-			for k, v := range resp.Data {
-				respData[k] = v
-			}
+			maps.Copy(respData, resp.Data)
 
 			doElideListResponseData(respData)
 		} else {

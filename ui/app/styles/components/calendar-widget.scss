@@ -2,6 +2,7 @@
  * Copyright (c) HashiCorp, Inc.
  * SPDX-License-Identifier: MPL-2.0
  */
+@use 'sass:color';
 
 $dark-gray: #535f73;
 
@@ -56,14 +57,14 @@ $dark-gray: #535f73;
       border: 1px solid $ui-gray-900;
     }
     &:hover {
-      background-color: lighten($dark-gray, 30%);
+      background-color: color.adjust($dark-gray, $lightness: 30%, $space: hsl);
       color: $white;
       text-align: center;
       cursor: pointer;
     }
     &.is-readOnly {
       background-color: $ui-gray-100;
-      color: lighten($dark-gray, 30%);
+      color: color.adjust($dark-gray, $lightness: 30%, $space: hsl);
       pointer-events: none;
     }
   }

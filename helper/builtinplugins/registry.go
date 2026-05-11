@@ -4,6 +4,8 @@
 package builtinplugins
 
 import (
+	"slices"
+
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
 	credJWT "github.com/openbao/openbao/builtin/credential/jwt"
@@ -152,12 +154,7 @@ func (r *registry) Keys(pluginType consts.PluginType) []string {
 }
 
 func (r *registry) Contains(name string, pluginType consts.PluginType) bool {
-	for _, key := range r.Keys(pluginType) {
-		if key == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(r.Keys(pluginType), name)
 }
 
 // DeprecationStatus returns the Deprecation status for a builtin with type `pluginType`

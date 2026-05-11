@@ -189,7 +189,7 @@ jobs:
               -parallel=${{ inputs.go-test-parallelism }} \
               $INPUTS_EXTRA_FLAGS \
       - name: Archive test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results-${{ matrix.id }}-${{ inputs.name == '' && 'default' || inputs.name }}
           path: test-results/go-test
@@ -199,7 +199,7 @@ jobs:
       - name: Fetch job logs URL
         env:
           INPUTS_NAME: ${{ inputs.name }}
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         if: success() || failure()
         continue-on-error: true
         with:
@@ -263,7 +263,7 @@ jobs:
           "failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}$INPUTS_NAME.json" \
           >> "failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}$INPUTS_NAME.md"
       - name: Upload failure summary
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: success() || failure()
         with:
           name: failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}${{inputs.name}}
@@ -272,14 +272,14 @@ jobs:
   test-collect-reports:
     if: ${{ ! cancelled() }}
     needs: [test-go, test-matrix]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
-      - uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: test-results/go-test
           key: go-test-reports-${{ github.run_number }}
           restore-keys: go-test-reports-
-      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: test-results/go-test
           pattern: test-results-*-${{ inputs.name == '' && 'default' || inputs.name }}

@@ -18,8 +18,12 @@ type ConfigError struct {
 	Position token.Pos
 }
 
-func (c *ConfigError) String() string {
+func (c ConfigError) String() string {
 	return fmt.Sprintf("%s at %s", c.Problem, c.Position.String())
+}
+
+func (c ConfigError) Error() string {
+	return c.String()
 }
 
 type ValidatableConfig interface {

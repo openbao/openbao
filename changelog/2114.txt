@@ -1,0 +1,3 @@
+```release-note:feature
+jwt/auth: Add new Kubernetes JWT provider that authenticates to the Kubernetes API using a pod's Service Account token.
+```

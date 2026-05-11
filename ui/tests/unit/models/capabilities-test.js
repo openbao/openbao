@@ -25,10 +25,10 @@ module('Unit | Model | capabilities', function (hooks) {
       })
     );
 
-    assert.ok(model.get('canRead'));
-    assert.ok(model.get('canList'));
-    assert.notOk(model.get('canUpdate'));
-    assert.notOk(model.get('canDelete'));
+    assert.ok(model.canRead);
+    assert.ok(model.canList);
+    assert.notOk(model.canUpdate);
+    assert.notOk(model.canDelete);
   });
 
   test('it allows everything if root is present', function (assert) {
@@ -38,11 +38,11 @@ module('Unit | Model | capabilities', function (hooks) {
         capabilities: ['root', 'deny', 'read'],
       })
     );
-    assert.ok(model.get('canRead'));
-    assert.ok(model.get('canCreate'));
-    assert.ok(model.get('canUpdate'));
-    assert.ok(model.get('canDelete'));
-    assert.ok(model.get('canList'));
+    assert.ok(model.canRead);
+    assert.ok(model.canCreate);
+    assert.ok(model.canUpdate);
+    assert.ok(model.canDelete);
+    assert.ok(model.canList);
   });
 
   test('it denies everything if deny is present', function (assert) {
@@ -52,11 +52,11 @@ module('Unit | Model | capabilities', function (hooks) {
         capabilities: ['sudo', 'deny', 'read'],
       })
     );
-    assert.notOk(model.get('canRead'));
-    assert.notOk(model.get('canCreate'));
-    assert.notOk(model.get('canUpdate'));
-    assert.notOk(model.get('canDelete'));
-    assert.notOk(model.get('canList'));
+    assert.notOk(model.canRead);
+    assert.notOk(model.canCreate);
+    assert.notOk(model.canUpdate);
+    assert.notOk(model.canDelete);
+    assert.notOk(model.canList);
   });
 
   test('it requires sudo on sudo paths', function (assert) {
@@ -66,11 +66,11 @@ module('Unit | Model | capabilities', function (hooks) {
         capabilities: ['sudo', 'read'],
       })
     );
-    assert.ok(model.get('canRead'));
-    assert.notOk(model.get('canCreate'), 'sudo requires the capability to be set as well');
-    assert.notOk(model.get('canUpdate'));
-    assert.notOk(model.get('canDelete'));
-    assert.notOk(model.get('canList'));
+    assert.ok(model.canRead);
+    assert.notOk(model.canCreate, 'sudo requires the capability to be set as well');
+    assert.notOk(model.canUpdate);
+    assert.notOk(model.canDelete);
+    assert.notOk(model.canList);
   });
 
   test('it requires sudo on sudo paths prefixes', function (assert) {
@@ -80,11 +80,11 @@ module('Unit | Model | capabilities', function (hooks) {
         capabilities: ['sudo', 'read'],
       })
     );
-    assert.ok(model.get('canRead'));
-    assert.notOk(model.get('canCreate'), 'sudo requires the capability to be set as well');
-    assert.notOk(model.get('canUpdate'));
-    assert.notOk(model.get('canDelete'));
-    assert.notOk(model.get('canList'));
+    assert.ok(model.canRead);
+    assert.notOk(model.canCreate, 'sudo requires the capability to be set as well');
+    assert.notOk(model.canUpdate);
+    assert.notOk(model.canDelete);
+    assert.notOk(model.canList);
   });
 
   test('it does not require sudo on sys/leases/revoke if update capability is present and path is not fully a sudo prefix', function (assert) {
@@ -94,11 +94,11 @@ module('Unit | Model | capabilities', function (hooks) {
         capabilities: ['update', 'read'],
       })
     );
-    assert.ok(model.get('canRead'));
-    assert.notOk(model.get('canCreate'), 'sudo requires the capability to be set as well');
-    assert.ok(model.get('canUpdate'), 'should not require sudo if it has update');
-    assert.notOk(model.get('canDelete'));
-    assert.notOk(model.get('canList'));
+    assert.ok(model.canRead);
+    assert.notOk(model.canCreate, 'sudo requires the capability to be set as well');
+    assert.ok(model.canUpdate, 'should not require sudo if it has update');
+    assert.notOk(model.canDelete);
+    assert.notOk(model.canList);
   });
 
   test('it requires sudo on prefix path even if capability is present', function (assert) {
@@ -108,11 +108,11 @@ module('Unit | Model | capabilities', function (hooks) {
         capabilities: ['update', 'read'],
       })
     );
-    assert.notOk(model.get('canRead'));
-    assert.notOk(model.get('canCreate'));
-    assert.notOk(model.get('canUpdate'), 'should still require sudo');
-    assert.notOk(model.get('canDelete'));
-    assert.notOk(model.get('canList'));
+    assert.notOk(model.canRead);
+    assert.notOk(model.canCreate);
+    assert.notOk(model.canUpdate, 'should still require sudo');
+    assert.notOk(model.canDelete);
+    assert.notOk(model.canList);
   });
 
   test('it does not require sudo on prefix path if both update and sudo capabilities are present', function (assert) {
@@ -122,10 +122,10 @@ module('Unit | Model | capabilities', function (hooks) {
         capabilities: ['sudo', 'update', 'read'],
       })
     );
-    assert.ok(model.get('canRead'));
-    assert.notOk(model.get('canCreate'));
-    assert.ok(model.get('canUpdate'), 'should not require sudo');
-    assert.notOk(model.get('canDelete'));
-    assert.notOk(model.get('canList'));
+    assert.ok(model.canRead);
+    assert.notOk(model.canCreate);
+    assert.ok(model.canUpdate, 'should not require sudo');
+    assert.notOk(model.canDelete);
+    assert.notOk(model.canList);
   });
 });

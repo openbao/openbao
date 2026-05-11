@@ -29,7 +29,6 @@ import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import KVObject from 'vault/lib/kv-object';
 import { maybeQueryRecord } from 'vault/macros/maybe-query-record';
-import { alias, or } from '@ember/object/computed';
 
 export default class SecretEdit extends Component {
   @service store;
@@ -68,8 +67,14 @@ export default class SecretEdit extends Component {
     'mode'
   )
   checkSecretCapabilities;
-  @alias('checkSecretCapabilities.canUpdate') canUpdateSecretData;
-  @alias('checkSecretCapabilities.canRead') canReadSecretData;
+
+  get canUpdateSecretData() {
+    return this.checkSecretCapabilities.get('canUpdate');
+  }
+
+  get canReadSecretData() {
+    return this.checkSecretCapabilities.get('canRead');
+  }
 
   @maybeQueryRecord(
     'capabilities',
@@ -90,12 +95,26 @@ export default class SecretEdit extends Component {
     'mode'
   )
   checkMetadataCapabilities;
-  @alias('checkMetadataCapabilities.canDelete') canDeleteSecretMetadata;
-  @alias('checkMetadataCapabilities.canUpdate') canUpdateSecretMetadata;
-  @alias('checkMetadataCapabilities.canRead') canReadSecretMetadata;
 
-  @or('model.isLoading', 'model.isReloading', 'model.isSaving') requestInFlight;
-  @or('requestInFlight', 'model.isFolder', 'model.flagsIsInvalid') buttonDisabled;
+  get canDeleteSecretMetadata() {
+    return this.checkMetadataCapabilities.get('canDelete');
+  }
+
+  get canUpdateSecretMetadata() {
+    return this.checkMetadataCapabilities.get('canUpdate');
+  }
+
+  get canReadSecretMetadata() {
+    return this.checkMetadataCapabilities.get('canRead');
+  }
+
+  get requestInFlight() {
+    return this.model?.isLoading || this.model?.isReloading || this.model?.isSaving;
+  }
+
+  get buttonDisabled() {
+    return this.requestInFlight || this.model?.isFolder || this.model?.flagIsInvalid;
+  }
 
   get modelForData() {
     const { model } = this.args;

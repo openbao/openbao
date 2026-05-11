@@ -6,6 +6,7 @@ package token
 import (
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"runtime"
 	"strings"
@@ -30,9 +31,7 @@ func TestExternalTokenHelperPath(t *testing.T) {
 		runtimeCases = unixCases
 	}
 
-	for k, v := range runtimeCases {
-		cases[k] = v
-	}
+	maps.Copy(cases, runtimeCases)
 
 	// We don't expect those to actually exist, so we expect an error. For now,
 	// I'm commenting out the rest of this code as we don't have real external

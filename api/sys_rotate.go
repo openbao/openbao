@@ -16,7 +16,6 @@ import (
 type RotateInitRequest struct {
 	SecretShares        int      `json:"secret_shares"`
 	SecretThreshold     int      `json:"secret_threshold"`
-	StoredShares        int      `json:"stored_shares"`
 	PGPKeys             []string `json:"pgp_keys"`
 	Backup              bool     `json:"backup"`
 	RequireVerification bool     `json:"require_verification"`

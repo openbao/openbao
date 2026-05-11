@@ -47,7 +47,7 @@ undertaking, primarily due to the complex logic required to allow offline seals
 to catch up after a root key rotation. This proposal outlines a phased approach
 to partly achieve that vision. By implementing the critical "break-glass"
 emergency feature first, we can deliver value faster while also building a
-foundation that will seamlessly integrate with the full Paralell Unseal
+foundation that will seamlessly integrate with the full Parallel Unseal
 implementation later.
 
 ## User-facing description
@@ -153,7 +153,7 @@ graph TD
     style RootKey fill:#f9f,stroke:#333,stroke-width:2px
 ```
 
-The emergency seal is stored in storage as a fully-formed, indepedent seal
+The emergency seal is stored in storage as a fully-formed, independent seal
 configuration in its own storage path (e.g., `core/seals/emergency`). This means
 the emergency key can be used to decrypt the encrypted root key, effectively
 unsealing the OpenBao instance/namespace.
@@ -184,7 +184,7 @@ rotation is always allowed.
 
 ### API & CLI changes
 
-To ensure forward compatiblity and reduce future work, the API and CLI changes
+To ensure forward compatibility and reduce future work, the API and CLI changes
 adopt relevant specifications proposed by Parallel Unseal.
 
 ---

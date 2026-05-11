@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"reflect"
 	"sort"
 	"testing"
@@ -15,7 +14,7 @@ import (
 )
 
 func TestCubbyholeBackend_Write(t *testing.T) {
-	b := testCubbyholeBackend()
+	b := testCubbyholeBackend(t)
 	req := logical.TestRequest(t, logical.UpdateOperation, "foo")
 	clientToken, err := uuid.GenerateUUID()
 	if err != nil {
@@ -25,7 +24,7 @@ func TestCubbyholeBackend_Write(t *testing.T) {
 	storage := req.Storage
 	req.Data["raw"] = "test"
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -36,14 +35,14 @@ func TestCubbyholeBackend_Write(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "foo")
 	req.Storage = storage
 	req.ClientToken = clientToken
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 }
 
 func TestCubbyholeBackend_Read(t *testing.T) {
-	b := testCubbyholeBackend()
+	b := testCubbyholeBackend(t)
 	req := logical.TestRequest(t, logical.UpdateOperation, "foo")
 	req.Data["raw"] = "test"
 	storage := req.Storage
@@ -53,7 +52,7 @@ func TestCubbyholeBackend_Read(t *testing.T) {
 	}
 	req.ClientToken = clientToken
 
-	if _, err := b.HandleRequest(context.Background(), req); err != nil {
+	if _, err := b.HandleRequest(t.Context(), req); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -61,7 +60,7 @@ func TestCubbyholeBackend_Read(t *testing.T) {
 	req.Storage = storage
 	req.ClientToken = clientToken
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -78,7 +77,7 @@ func TestCubbyholeBackend_Read(t *testing.T) {
 }
 
 func TestCubbyholeBackend_Delete(t *testing.T) {
-	b := testCubbyholeBackend()
+	b := testCubbyholeBackend(t)
 	req := logical.TestRequest(t, logical.UpdateOperation, "foo")
 	req.Data["raw"] = "test"
 	storage := req.Storage
@@ -88,14 +87,14 @@ func TestCubbyholeBackend_Delete(t *testing.T) {
 	}
 	req.ClientToken = clientToken
 
-	if _, err := b.HandleRequest(context.Background(), req); err != nil {
+	if _, err := b.HandleRequest(t.Context(), req); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	req = logical.TestRequest(t, logical.DeleteOperation, "foo")
 	req.Storage = storage
 	req.ClientToken = clientToken
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -106,7 +105,7 @@ func TestCubbyholeBackend_Delete(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "foo")
 	req.Storage = storage
 	req.ClientToken = clientToken
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -116,7 +115,7 @@ func TestCubbyholeBackend_Delete(t *testing.T) {
 }
 
 func TestCubbyholeBackend_List(t *testing.T) {
-	b := testCubbyholeBackend()
+	b := testCubbyholeBackend(t)
 	req := logical.TestRequest(t, logical.UpdateOperation, "foo")
 	clientToken, err := uuid.GenerateUUID()
 	if err != nil {
@@ -126,7 +125,7 @@ func TestCubbyholeBackend_List(t *testing.T) {
 	req.ClientToken = clientToken
 	storage := req.Storage
 
-	if _, err := b.HandleRequest(context.Background(), req); err != nil {
+	if _, err := b.HandleRequest(t.Context(), req); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -135,14 +134,14 @@ func TestCubbyholeBackend_List(t *testing.T) {
 	req.ClientToken = clientToken
 	req.Storage = storage
 
-	if _, err := b.HandleRequest(context.Background(), req); err != nil {
+	if _, err := b.HandleRequest(t.Context(), req); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	req = logical.TestRequest(t, logical.ListOperation, "")
 	req.Storage = storage
 	req.ClientToken = clientToken
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -157,7 +156,7 @@ func TestCubbyholeBackend_List(t *testing.T) {
 }
 
 func TestCubbyholeIsolation(t *testing.T) {
-	b := testCubbyholeBackend()
+	b := testCubbyholeBackend(t)
 
 	clientTokenA, err := uuid.GenerateUUID()
 	if err != nil {
@@ -176,7 +175,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	storageA = req.Storage
 	req.Data["raw"] = "test"
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -187,7 +186,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "foo")
 	req.Storage = storageA
 	req.ClientToken = clientTokenA
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -208,7 +207,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	storageB = req.Storage
 	req.Data["raw"] = "baz"
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -219,7 +218,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "bar")
 	req.Storage = storageB
 	req.ClientToken = clientTokenB
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -238,7 +237,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "foo")
 	req.Storage = storageB
 	req.ClientToken = clientTokenB
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -249,7 +248,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "bar")
 	req.Storage = storageA
 	req.ClientToken = clientTokenA
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -258,8 +257,9 @@ func TestCubbyholeIsolation(t *testing.T) {
 	}
 }
 
-func testCubbyholeBackend() logical.Backend {
-	b, _ := CubbyholeBackendFactory(context.Background(), &logical.BackendConfig{
+func testCubbyholeBackend(t *testing.T) logical.Backend {
+	t.Helper()
+	b, _ := CubbyholeBackendFactory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: logical.StaticSystemView{
 			DefaultLeaseTTLVal: time.Hour * 24,

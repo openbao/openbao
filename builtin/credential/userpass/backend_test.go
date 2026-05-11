@@ -4,7 +4,6 @@
 package userpass
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"reflect"
@@ -18,6 +17,8 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -34,7 +35,7 @@ func TestBackend_CRUD(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = storage
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	b, err := Factory(ctx, config)
 	if err != nil {
@@ -135,7 +136,7 @@ func TestBackend_CRUD(t *testing.T) {
 }
 
 func TestBackend_basic(t *testing.T) {
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	b, err := Factory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: testSysTTL,
@@ -158,7 +159,7 @@ func TestBackend_basic(t *testing.T) {
 }
 
 func TestBackend_userCrud(t *testing.T) {
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	b, err := Factory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: testSysTTL,
@@ -181,7 +182,7 @@ func TestBackend_userCrud(t *testing.T) {
 }
 
 func TestBackend_userCreateOperation(t *testing.T) {
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	b, err := Factory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: testSysTTL,
@@ -195,14 +196,16 @@ func TestBackend_userCreateOperation(t *testing.T) {
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: b,
 		Steps: []logicaltest.TestStep{
-			testUserCreateOperation(t, "web", "password", "foo"),
+			testUserCreateOperation(t, "web", "password", false, "foo"),
 			testAccStepLogin(t, "web", "password", []string{"default", "foo"}),
+			testUserCreateOperation(t, "web", "newpassword", true, "foo"),
+			testAccStepLogin(t, "web", "newpassword", []string{"default", "foo"}),
 		},
 	})
 }
 
 func TestBackend_passwordUpdate(t *testing.T) {
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	b, err := Factory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: testSysTTL,
@@ -221,12 +224,14 @@ func TestBackend_passwordUpdate(t *testing.T) {
 			testAccStepLogin(t, "web", "password", []string{"default", "foo"}),
 			testUpdatePassword(t, "web", "newpassword"),
 			testAccStepLogin(t, "web", "newpassword", []string{"default", "foo"}),
+			testUpdatePasswordHash(t, "web", "newerpassword"),
+			testAccStepLogin(t, "web", "newerpassword", []string{"default", "foo"}),
 		},
 	})
 }
 
 func TestBackend_policiesUpdate(t *testing.T) {
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	b, err := Factory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: testSysTTL,
@@ -256,6 +261,18 @@ func testUpdatePassword(t *testing.T, user, password string) logicaltest.TestSte
 		Path:      "users/" + user + "/password",
 		Data: map[string]interface{}{
 			"password": password,
+		},
+	}
+}
+
+func testUpdatePasswordHash(t *testing.T, user, password string) logicaltest.TestStep {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	require.NoError(t, err)
+	return logicaltest.TestStep{
+		Operation: logical.UpdateOperation,
+		Path:      "users/" + user + "/password",
+		Data: map[string]interface{}{
+			"password_hash": string(hash),
 		},
 	}
 }
@@ -303,15 +320,20 @@ func testAccStepLogin(t *testing.T, user string, pass string, policies []string)
 }
 
 func testUserCreateOperation(
-	t *testing.T, name string, password string, policies string,
+	t *testing.T, name string, password string, useHash bool, policies string,
 ) logicaltest.TestStep {
+	data := map[string]any{"policies": policies}
+	if useHash {
+		passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		require.NoError(t, err)
+		data["password_hash"] = string(passwordHash)
+	} else {
+		data["password"] = password
+	}
 	return logicaltest.TestStep{
 		Operation: logical.CreateOperation,
 		Path:      "users/" + name,
-		Data: map[string]interface{}{
-			"password": password,
-			"policies": policies,
-		},
+		Data:      data,
 	}
 }
 
@@ -370,7 +392,7 @@ func TestBackend_UserUpgrade(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = s
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	b := Backend()
 	if b == nil {

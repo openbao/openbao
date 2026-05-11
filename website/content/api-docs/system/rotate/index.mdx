@@ -17,10 +17,9 @@ also possible to configure automatic encryption key rotation using
 The `/sys/rotate/root` endpoints are used to rotate the root key for OpenBao,
 and the unseal key shares when using Shamir's manual unseal mechanism.
 
-On seals that support stored keys (e.g. HSM PKCS#11), the recovery key share(s)
-can be provided to rotate the root key since no unseal keys are available. The
-secret shares, secret threshold, and stored shares parameters must be set to 1.
-Upon successful rotation, no split unseal key shares are returned.
+When using Auto Unseal, the recovery key share(s) can be provided to rotate
+the root key since no unseal keys are available. Upon successful rotation, no
+unseal key share(s) are returned.
 
 The `/sys/rotate/recovery` endpoints are used to rotate the recovery keys for
 OpenBao. These endpoints only apply to seals that support recovery keys.

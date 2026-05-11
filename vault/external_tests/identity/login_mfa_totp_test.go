@@ -32,13 +32,13 @@ func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, u
 		t.Fatalf("failed to create UserpassAuth: %v", err)
 	}
 
-	mfaSecret, err := client.Auth().MFALogin(context.Background(), upMethod)
+	mfaSecret, err := client.Auth().MFALogin(t.Context(), upMethod)
 	if err != nil {
 		t.Fatalf("failed to login with userpass auth method: %v", err)
 	}
 
 	secret, err := client.Auth().MFAValidate(
-		context.Background(),
+		t.Context(),
 		mfaSecret,
 		map[string]interface{}{
 			methodID: []string{totpPasscode},
@@ -56,13 +56,13 @@ func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, u
 
 	// Redo the test, ensuring that the TOTP cannot be reused. This validates
 	// against HCSEC-2025-19 / CVE-2025-6015.
-	mfaSecret, err = client.Auth().MFALogin(context.Background(), upMethod)
+	mfaSecret, err = client.Auth().MFALogin(t.Context(), upMethod)
 	if err != nil {
 		t.Fatalf("failed to initiate second login with userpass auth method: %v", err)
 	}
 
 	secret, err = client.Auth().MFAValidate(
-		context.Background(),
+		t.Context(),
 		mfaSecret,
 		map[string]interface{}{
 			methodID: []string{totpPasscode},
@@ -78,7 +78,7 @@ func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, u
 		t.Fatalf("Failed to clone client for lookup validation")
 	}
 	userClient2.SetToken(clientToken)
-	secret, err = userClient2.Logical().ReadWithContext(context.Background(), "auth/token/lookup-self")
+	secret, err = userClient2.Logical().ReadWithContext(t.Context(), "auth/token/lookup-self")
 	if err != nil {
 		t.Fatalf("failed to lookup userpass authenticated token: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	verifyLoginRequest := func(secret *api.Secret) {
 		userpassToken := secret.Auth.ClientToken
 		userClient1.SetToken(client.Token())
-		secret, err := userClient1.Logical().WriteWithContext(context.Background(), "auth/token/lookup", map[string]interface{}{
+		secret, err := userClient1.Logical().WriteWithContext(t.Context(), "auth/token/lookup", map[string]interface{}{
 			"token": userpassToken,
 		})
 		if err != nil {
@@ -195,7 +195,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 		totpPasscode := testhelpers.GetTOTPCodeFromEngine(t, client, enginePath1)
 		userClient1.AddHeader(consts.MFAHeaderName, fmt.Sprintf("%s:%s", methodIdentifier, totpPasscode))
 		defer clearMFARequestHeaders(userClient1)
-		secret, err = userClient1.Logical().WriteWithContext(context.Background(), userpassPath, map[string]interface{}{
+		secret, err = userClient1.Logical().WriteWithContext(t.Context(), userpassPath, map[string]interface{}{
 			"password": "testpassword",
 		})
 		if err != nil {
@@ -240,7 +240,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	testhelpers.RetryUntilAtCadence(t, 20*time.Second, time.Duration(waitPeriod)*time.Second, singlePhaseInlineLoginFunc)
 
 	// Two-phase login
-	secret, err = userClient1.Logical().WriteWithContext(context.Background(), userpassPath, map[string]interface{}{
+	secret, err = userClient1.Logical().WriteWithContext(t.Context(), userpassPath, map[string]interface{}{
 		"password": "testpassword",
 	})
 	if err != nil {
@@ -278,7 +278,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	var totpPasscode1 string
 	mfaValidateFunc := func() error {
 		totpPasscode1 = testhelpers.GetTOTPCodeFromEngine(t, client, enginePath1)
-		secret, err = userClient1.Logical().WriteWithContext(context.Background(), "sys/mfa/validate", map[string]interface{}{
+		secret, err = userClient1.Logical().WriteWithContext(t.Context(), "sys/mfa/validate", map[string]interface{}{
 			"mfa_request_id": mfaReqID,
 			"mfa_payload": map[string][]string{
 				methodIdentifier: {totpPasscode1},
@@ -299,7 +299,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	testhelpers.RetryUntilAtCadence(t, 20*time.Second, time.Duration(waitPeriod)*time.Second, mfaValidateFunc)
 
 	// two phase login with method name
-	secret, err = userClient1.Logical().WriteWithContext(context.Background(), userpassPath, map[string]interface{}{
+	secret, err = userClient1.Logical().WriteWithContext(t.Context(), userpassPath, map[string]interface{}{
 		"password": "testpassword",
 	})
 	if err != nil {
@@ -326,7 +326,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	}
 
 	// check for login request expiration
-	secret, err = userClient1.Logical().WriteWithContext(context.Background(), userpassPath, map[string]interface{}{
+	secret, err = userClient1.Logical().WriteWithContext(t.Context(), userpassPath, map[string]interface{}{
 		"password": "testpassword",
 	})
 	if err != nil {
@@ -337,7 +337,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 		t.Fatal("two phase login returned nil MFARequirement")
 	}
 
-	_, err = userClient1.Logical().WriteWithContext(context.Background(), "sys/mfa/validate", map[string]interface{}{
+	_, err = userClient1.Logical().WriteWithContext(t.Context(), "sys/mfa/validate", map[string]interface{}{
 		"mfa_request_id": secret.Auth.MFARequirement.MFARequestID,
 		"mfa_payload": map[string][]string{
 			methodID: {totpPasscode1},
@@ -351,7 +351,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	}
 
 	// check for reaching max failed validation requests
-	secret, err = userClient1.Logical().WriteWithContext(context.Background(), userpassPath, map[string]interface{}{
+	secret, err = userClient1.Logical().WriteWithContext(t.Context(), userpassPath, map[string]interface{}{
 		"password": "testpassword",
 	})
 	if err != nil {
@@ -362,7 +362,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	// We should get the max validation attempts error message exactly at
 	// attempt n + 1, not before.
 	for i := range maxValidationAttempts + 1 {
-		_, maxErr = userClient1.Logical().WriteWithContext(context.Background(), "sys/mfa/validate", map[string]interface{}{
+		_, maxErr = userClient1.Logical().WriteWithContext(t.Context(), "sys/mfa/validate", map[string]interface{}{
 			"mfa_request_id": secret.Auth.MFARequirement.MFARequestID,
 			"mfa_payload": map[string][]string{
 				methodID: {fmt.Sprintf("%d23456", i)},
@@ -389,7 +389,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	doTwoPhaseLogin(t, userClient1, enginePath1, methodID, testuser1, entityID1)
 
 	// Destroy the secret so that the token can self generate
-	_, err = client.Logical().WriteWithContext(context.Background(), "identity/mfa/method/totp/admin-destroy", map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), "identity/mfa/method/totp/admin-destroy", map[string]interface{}{
 		"entity_id": entityID1,
 		"method_id": methodID,
 	})

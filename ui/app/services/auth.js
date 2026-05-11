@@ -119,7 +119,7 @@ export default Service.extend({
     const stored = this.getTokenData(token);
 
     return assign(stored, {
-      backend: BACKENDS.findBy('type', backend),
+      backend: BACKENDS.find((x) => x.type === backend),
     });
   }),
 
@@ -237,7 +237,7 @@ export default Service.extend({
       backend = options.backend;
     }
 
-    const currentBackend = BACKENDS.findBy('type', backend);
+    const currentBackend = BACKENDS.find((x) => x.type === backend);
     let displayName;
     if (isArray(currentBackend.displayNamePath)) {
       displayName = currentBackend.displayNamePath.map((name) => get(resp, name)).join('/');

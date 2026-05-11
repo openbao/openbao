@@ -1,7 +1,6 @@
 package transit
 
 import (
-	"context"
 	cryptoRand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -72,7 +71,7 @@ func testTransit_Certificates_CreateCSR(t *testing.T, keyType string, pemTemplat
 	}
 
 	// request creation of key
-	resp, err = b.HandleRequest(context.Background(), policyReq)
+	resp, err = b.HandleRequest(t.Context(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("resp: %#v\nerr:%v", resp, err)
 	}
@@ -87,7 +86,7 @@ func testTransit_Certificates_CreateCSR(t *testing.T, keyType string, pemTemplat
 	}
 
 	// request the CSR
-	resp, err = b.HandleRequest(context.Background(), csrSignReq)
+	resp, err = b.HandleRequest(t.Context(), csrSignReq)
 	switch keyType {
 	case "rsa-2048", "rsa-3072", "rsa-4096", "ecdsa-p256", "ecdsa-p384", "ecdsa-p521", "ed25519":
 		if err != nil || (resp != nil && resp.IsError()) {
@@ -225,7 +224,7 @@ func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Clien
 	require.NoError(t, err)
 
 	// create role to be used in the certificate issuing
-	resp, err = apiClient.Logical().Write("pki/roles/example-dot-com", map[string]interface{}{
+	_, err = apiClient.Logical().Write("pki/roles/example-dot-com", map[string]interface{}{
 		"issuer_ref":                         issuerName,
 		"allowed_domains":                    "example.com",
 		"allow_bare_domains":                 true,

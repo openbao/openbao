@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -12,6 +11,7 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
@@ -22,11 +22,10 @@ func TestCore_Rekey_Lifecycle(t *testing.T) {
 	bc := &SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
-		StoredShares:    1,
 	}
 	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, bc, nil)
 	if len(rootKeys) != 1 {
-		t.Fatalf("expected %d secret shares and %v stored shares for a total of 1 root key, got %d", bc.SecretShares, bc.StoredShares, len(rootKeys))
+		t.Fatalf("expected %d secret shares for a total of 1 root key, got %d", bc.SecretShares, len(rootKeys))
 	}
 	testCore_Rekey_Lifecycle_Common(t, c, false)
 }
@@ -34,7 +33,7 @@ func TestCore_Rekey_Lifecycle(t *testing.T) {
 func testCore_Rekey_Lifecycle_Common(t *testing.T, c *Core, recovery bool) {
 	min, _ := c.barrier.KeyLength()
 	// Verify update not allowed
-	_, err := c.RekeyUpdate(context.Background(), make([]byte, min), "", recovery)
+	_, err := c.RekeyUpdate(t.Context(), make([]byte, min), "", recovery)
 	expected := "no barrier rekey in progress"
 	if recovery {
 		expected = "no recovery rekey in progress"
@@ -182,7 +181,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	// Provide the root/recovery keys
 	var result *RekeyResult
 	for _, key := range keys {
-		result, err = c.RekeyUpdate(context.Background(), key, rkconf.Nonce, recovery)
+		result, err = c.RekeyUpdate(t.Context(), key, rkconf.Nonce, recovery)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -211,9 +210,9 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	// SealConfig should update
 	var sealConf *SealConfig
 	if recovery {
-		sealConf, err = c.seal.RecoveryConfig(context.Background())
+		sealConf, err = c.seal.RecoveryConfig(t.Context())
 	} else {
-		sealConf, err = c.seal.BarrierConfig(context.Background())
+		sealConf, err = c.seal.BarrierConfig(t.Context())
 	}
 	if err != nil {
 		t.Fatalf("seal config retrieval error: %v", err)
@@ -274,8 +273,8 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 
 	// Provide the parts root
 	oldResult := result
-	for i := 0; i < 3; i++ {
-		result, err = c.RekeyUpdate(context.Background(), TestKeyCopy(oldResult.SecretShares[i]), rkconf.Nonce, recovery)
+	for i := range 3 {
+		result, err = c.RekeyUpdate(t.Context(), TestKeyCopy(oldResult.SecretShares[i]), rkconf.Nonce, recovery)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -312,9 +311,9 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 
 	// SealConfig should update
 	if recovery {
-		sealConf, err = c.seal.RecoveryConfig(context.Background())
+		sealConf, err = c.seal.RecoveryConfig(t.Context())
 	} else {
-		sealConf, err = c.seal.BarrierConfig(context.Background())
+		sealConf, err = c.seal.BarrierConfig(t.Context())
 	}
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -328,12 +327,9 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 
 func TestCore_Rekey_Invalid(t *testing.T) {
 	bc := &SealConfig{
-		SecretShares:    5,
-		SecretThreshold: 3,
+		SecretShares:    1,
+		SecretThreshold: 1,
 	}
-	bc.StoredShares = 0
-	bc.SecretShares = 1
-	bc.SecretThreshold = 1
 	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, bc, nil)
 	testCore_Rekey_Invalid_Common(t, c, rootKeys, false)
 }
@@ -359,7 +355,7 @@ func testCore_Rekey_Invalid_Common(t *testing.T, c *Core, keys [][]byte, recover
 	}
 
 	// Provide the nonce (invalid)
-	_, err = c.RekeyUpdate(context.Background(), keys[0], "abcd", recovery)
+	_, err = c.RekeyUpdate(t.Context(), keys[0], "abcd", recovery)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -369,7 +365,7 @@ func testCore_Rekey_Invalid_Common(t *testing.T, c *Core, keys [][]byte, recover
 	oldkeystr := fmt.Sprintf("%#v", key)
 	key[0]++
 	newkeystr := fmt.Sprintf("%#v", key)
-	ret, err := c.RekeyUpdate(context.Background(), key, rkconf.Nonce, recovery)
+	ret, err := c.RekeyUpdate(t.Context(), key, rkconf.Nonce, recovery)
 	if err == nil {
 		t.Fatalf("expected error, ret is %#v\noldkeystr: %s\nnewkeystr: %s", *ret, oldkeystr, newkeystr)
 	}
@@ -455,7 +451,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 	}
 	var rekeyResult *RekeyResult
 	for _, key := range keys {
-		rekeyResult, err = core.RekeyUpdate(context.Background(), key, rkconf.Nonce, false)
+		rekeyResult, err = core.RekeyUpdate(t.Context(), key, rkconf.Nonce, false)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -488,7 +484,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 	}
 	var rekeyResult2 *RekeyResult
 	for _, key := range rekeyResult.SecretShares {
-		rekeyResult2, err = core2.RekeyUpdate(context.Background(), key, rkconf.Nonce, false)
+		rekeyResult2, err = core2.RekeyUpdate(t.Context(), key, rkconf.Nonce, false)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -503,13 +499,12 @@ func TestCore_Rekey_Standby(t *testing.T) {
 // the keys aren't returned
 func TestSysRekey_Verification_Invalid(t *testing.T) {
 	core, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
-		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
-		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedGeneric})
+		&SealConfig{SecretShares: 1, SecretThreshold: 1},
+		&SealConfig{SecretShares: 1, SecretThreshold: 1},
+		&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 
 	err := core.BarrierRekeyInit(&SealConfig{
 		VerificationRequired: true,
-		StoredShares:         1,
 	})
 
 	if err == nil {

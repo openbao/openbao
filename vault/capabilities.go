@@ -9,6 +9,7 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/policy"
 )
 
 // Capabilities is used to fetch the capabilities of the given token on the
@@ -62,9 +63,9 @@ func (c *Core) Capabilities(ctx context.Context, token, path string) ([]string, 
 	}
 
 	// Add capabilities of the inline policy if it's set
-	policies := make([]*Policy, 0)
+	policies := make([]*policy.Policy, 0)
 	if te.InlinePolicy != "" {
-		inlinePolicy, err := ParseACLPolicy(tokenNS, te.InlinePolicy)
+		inlinePolicy, err := policy.ParseACLPolicy(tokenNS, te.InlinePolicy)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +74,7 @@ func (c *Core) Capabilities(ctx context.Context, token, path string) ([]string, 
 	}
 
 	if policyCount == 0 {
-		return []string{DenyCapability}, nil
+		return []string{policy.DenyCapability}, nil
 	}
 
 	// Construct the corresponding ACL object. ACL construction should be

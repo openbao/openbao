@@ -29,17 +29,17 @@ export default class VaultClusterAccessMethodsController extends Controller {
       // names are individualized across type so you can't have the same name for an aws auth method and userpass.
       // this means it's fine to filter by first type and then name or just name.
       if (this.selectedAuthName) {
-        return this.model.filter((method) => this.selectedAuthName === method.id);
+        return [...this.model].filter((method) => this.selectedAuthName === method.id);
       }
       // otherwise filter by auth type
-      return this.model.filter((method) => this.selectedAuthType === method.type);
+      return [...this.model].filter((method) => this.selectedAuthType === method.type);
     }
     // return an options list to filter by auth name, ex: 'my-userpass'
     if (this.selectedAuthName) {
-      return this.model.filter((method) => this.selectedAuthName === method.id);
+      return [...this.model].filter((method) => this.selectedAuthName === method.id);
     }
     // no filters, return full sorted list.
-    return this.model;
+    return [...this.model];
   }
 
   get authMethodArrayByType() {

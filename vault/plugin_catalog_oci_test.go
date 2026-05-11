@@ -7,7 +7,6 @@ package vault
 import (
 	"archive/tar"
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
@@ -99,11 +98,7 @@ func TestExtractPluginFromImage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a temporary directory for the test
-			tempDir, err := os.MkdirTemp("", "oci-plugin-test")
-			if err != nil {
-				t.Fatalf("failed to create temp dir: %v", err)
-			}
-			defer os.RemoveAll(tempDir) //nolint:errcheck
+			tempDir := t.TempDir()
 
 			// Create the test OCI image
 			img := createTestOCIImage(t, tt.binaryName, tt.binaryContent)
@@ -115,7 +110,7 @@ func TestExtractPluginFromImage(t *testing.T) {
 
 			// Test the extraction
 			targetPath := filepath.Join(tempDir, "extracted-plugin")
-			err = downloader.ExtractPluginFromImage(img, targetPath, tt.targetBinary, logger)
+			err := downloader.ExtractPluginFromImage(img, targetPath, tt.targetBinary, logger)
 
 			if tt.expectError {
 				if err == nil {
@@ -198,12 +193,11 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	// Store the config
 	core.rawConfig.Store(config)
 
-	// Test the OCI plugin reconciliation
-	ctx := context.Background()
-	err = core.reconcileOCIPlugins(ctx, false /* standby */)
-	// Verify the download worked
-	if err != nil {
-		t.Fatalf("OCI plugin reconciliation failed: %v", err)
+	ctx := t.Context()
+
+	// Download plugins.
+	if err := oci.NewPluginDownloader(tempDir, config, core.logger).ReconcilePlugins(ctx); err != nil {
+		t.Fatalf("OCI plugin download failed: %v", err)
 	}
 
 	// Verify the plugin was downloaded and symlinked correctly
@@ -255,22 +249,27 @@ func TestReconcileOCIPlugins(t *testing.T) {
 		t.Errorf("SHA256 mismatch: expected %s, got %s", nomadPluginSHA256, actualSHA256)
 	}
 
-	// Try to register downloaded plugin
+	// Register plugins automatically based on config.
+	if err := core.registerDeclarativePlugins(ctx, false /* standby */); err != nil {
+		t.Errorf("failed to register plugins: %v", err)
+	}
+
+	// Register plugins manually via plugin catalog.
 	pluginType, _ := consts.ParsePluginType(config.Plugins[0].Type)
 	pluginSha, _ := hex.DecodeString(config.Plugins[0].SHA256Sum)
 
-	err = core.pluginCatalog.Set(context.Background(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version, config.Plugins[0].FullName(), []string{}, []string{}, pluginSha, false)
+	err = core.pluginCatalog.Set(t.Context(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version, config.Plugins[0].FullName(), []string{}, []string{}, pluginSha, false)
 	if err == nil {
 		t.Errorf("expected failed to register OCI plugin without setting oci=true: %v", err)
 	}
 
-	err = core.pluginCatalog.Set(context.Background(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version, config.Plugins[0].FullName(), []string{}, []string{}, pluginSha, true)
+	err = core.pluginCatalog.Set(t.Context(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version, config.Plugins[0].FullName(), []string{}, []string{}, pluginSha, true)
 	if err != nil {
 		t.Errorf("failed to register plugin: %v", err)
 	}
 
 	// Try to unregister it.
-	err = core.pluginCatalog.Delete(context.Background(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version)
+	err = core.pluginCatalog.Delete(t.Context(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version)
 	if err != nil {
 		t.Errorf("failed to deregister plugin: %v", err)
 	}
@@ -301,6 +300,11 @@ func TestReconcileOCIPlugins(t *testing.T) {
 		PluginAutoRegister:     true,
 	}
 	core.rawConfig.Store(config)
+
+	// Re-download.
+	if err := oci.NewPluginDownloader(tempDir, config, core.logger).ReconcilePlugins(ctx); err != nil {
+		t.Fatalf("OCI plugin reconciliation failed: %v", err)
+	}
 
 	// Reconcile, but this time use the SIGHUP handler.
 	core.ReloadPlugins()
@@ -362,11 +366,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 // TestPluginCacheStructure tests the new hidden cache structure and symlink functionality
 func TestPluginCacheStructure(t *testing.T) {
 	// Create a temporary directory for plugins
-	tempDir, err := os.MkdirTemp("", "oci-cache-test")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir) //nolint:errcheck
+	tempDir := t.TempDir()
 
 	// Test plugin configuration
 	pluginConfig := &server.PluginConfig{
@@ -384,7 +384,7 @@ func TestPluginCacheStructure(t *testing.T) {
 	cachedPluginPath := filepath.Join(cacheDir, pluginConfig.BinaryName)
 
 	// Create the cache directory
-	err = os.MkdirAll(cacheDir, 0o755)
+	err := os.MkdirAll(cacheDir, 0o755)
 	if err != nil {
 		t.Fatalf("failed to create cache directory: %v", err)
 	}

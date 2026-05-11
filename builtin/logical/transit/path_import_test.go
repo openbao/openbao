@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
@@ -94,7 +93,7 @@ func TestTransit_ImportNSSEd25519Key(t *testing.T) {
 	generateKeys(t)
 	b, s := createBackendWithStorage(t)
 
-	wrappingKey, err := b.getWrappingKey(context.Background(), s)
+	wrappingKey, err := b.getWrappingKey(t.Context(), s)
 	if err != nil || wrappingKey == nil {
 		t.Fatalf("failed to retrieve public wrapping key: %s", err)
 	}
@@ -117,7 +116,7 @@ func TestTransit_ImportNSSEd25519Key(t *testing.T) {
 		},
 	}
 
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("failed to import NSS-formatted Ed25519 key: %v", err)
 	}
@@ -127,7 +126,7 @@ func TestTransit_ImportRSAPSS(t *testing.T) {
 	generateKeys(t)
 	b, s := createBackendWithStorage(t)
 
-	wrappingKey, err := b.getWrappingKey(context.Background(), s)
+	wrappingKey, err := b.getWrappingKey(t.Context(), s)
 	if err != nil || wrappingKey == nil {
 		t.Fatalf("failed to retrieve public wrapping key: %s", err)
 	}
@@ -150,7 +149,7 @@ func TestTransit_ImportRSAPSS(t *testing.T) {
 		},
 	}
 
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("failed to import RSA-PSS private key: %v", err)
 	}
@@ -182,7 +181,7 @@ func TestTransit_Import(t *testing.T) {
 					"ciphertext": importBlob,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err == nil {
 				t.Fatal("import prior to wrapping key generation incorrectly succeeded")
 			}
@@ -190,7 +189,7 @@ func TestTransit_Import(t *testing.T) {
 	)
 
 	// Retrieve public wrapping key
-	wrappingKey, err := b.getWrappingKey(context.Background(), s)
+	wrappingKey, err := b.getWrappingKey(t.Context(), s)
 	if err != nil || wrappingKey == nil {
 		t.Fatalf("failed to retrieve public wrapping key: %s", err)
 	}
@@ -212,7 +211,7 @@ func TestTransit_Import(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s", keyID),
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("unexpected error creating key: %s", err)
 			}
@@ -227,7 +226,7 @@ func TestTransit_Import(t *testing.T) {
 					"ciphertext": importBlob,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err == nil {
 				t.Fatal("import into an existing key incorrectly succeeded")
 			}
@@ -255,7 +254,7 @@ func TestTransit_Import(t *testing.T) {
 							"ciphertext":    importBlob,
 						},
 					}
-					_, err = b.HandleRequest(context.Background(), req)
+					_, err = b.HandleRequest(t.Context(), req)
 					if err != nil {
 						t.Fatalf("failed to import valid key: %s", err)
 					}
@@ -322,7 +321,7 @@ func TestTransit_Import(t *testing.T) {
 				if tt.hashFn != nil {
 					req.Data["hash_function"] = tt.hashFn
 				}
-				_, err = b.HandleRequest(context.Background(), req)
+				_, err = b.HandleRequest(t.Context(), req)
 				if err == nil {
 					t.Fatal("invalid import request incorrectly succeeded")
 				}
@@ -348,7 +347,7 @@ func TestTransit_Import(t *testing.T) {
 					"ciphertext":            importBlob,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err == nil {
 				t.Fatal("import of convergent key incorrectly succeeded")
 			}
@@ -375,7 +374,7 @@ func TestTransit_Import(t *testing.T) {
 					"ciphertext":     importBlob,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to import key: %s", err)
 			}
@@ -386,7 +385,7 @@ func TestTransit_Import(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/rotate", keyID),
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to rotate key: %s", err)
 			}
@@ -413,7 +412,7 @@ func TestTransit_Import(t *testing.T) {
 					"ciphertext":     importBlob,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to import key: %s", err)
 			}
@@ -424,7 +423,7 @@ func TestTransit_Import(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/rotate", keyID),
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err == nil {
 				t.Fatal("rotation of key with allow_rotation incorrectly succeeded")
 			}
@@ -457,7 +456,7 @@ func TestTransit_Import(t *testing.T) {
 					"type":       keyType,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to import ed25519 key: %v", err)
 			}
@@ -489,7 +488,7 @@ func TestTransit_Import(t *testing.T) {
 					"type":       keyType,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to import public key: %s", err)
 			}
@@ -522,7 +521,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 					"ciphertext": importBlob,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err == nil {
 				t.Fatal("import_version prior to wrapping key generation incorrectly succeeded")
 			}
@@ -530,7 +529,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 	)
 
 	// Retrieve public wrapping key
-	wrappingKey, err := b.getWrappingKey(context.Background(), s)
+	wrappingKey, err := b.getWrappingKey(t.Context(), s)
 	if err != nil || wrappingKey == nil {
 		t.Fatalf("failed to retrieve public wrapping key: %s", err)
 	}
@@ -554,7 +553,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 					"ciphertext": importBlob,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err == nil {
 				t.Fatal("import_version into a non-existent key incorrectly succeeded")
 			}
@@ -575,7 +574,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s", keyID),
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to generate a key within transit: %s", err)
 			}
@@ -591,7 +590,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 					"ciphertext": importBlob,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err == nil {
 				t.Fatal("import_version into an internally-generated key incorrectly succeeded")
 			}
@@ -618,7 +617,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 					"type":       "rsa-2048",
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to generate a key within transit: %s", err)
 			}
@@ -634,7 +633,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 					"ciphertext": importBlob,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err == nil {
 				t.Fatal("import_version into a key of a different type incorrectly succeeded")
 			}
@@ -668,7 +667,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 					"type":       keyType,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to import public key: %s", err)
 			}
@@ -682,7 +681,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 					"ciphertext": importBlob,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to update key: %s", err)
 			}
@@ -695,7 +694,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 	b, s := createBackendWithStorage(t)
 
 	// Retrieve public wrapping key
-	wrappingKey, err := b.getWrappingKey(context.Background(), s)
+	wrappingKey, err := b.getWrappingKey(t.Context(), s)
 	if err != nil || wrappingKey == nil {
 		t.Fatalf("failed to retrieve public wrapping key: %s", err)
 	}
@@ -730,7 +729,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 					"type":       keyType,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to import public key: %s", err)
 			}
@@ -744,7 +743,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 					"ciphertext": importBlob,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to update key: %s", err)
 			}
@@ -755,7 +754,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Operation: logical.ReadOperation,
 				Path:      fmt.Sprintf("export/public-key/%s", keyID),
 			}
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to export key: %s", err)
 			}
@@ -794,7 +793,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 					"type":       keyType,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to update key: %s", err)
 			}
@@ -808,7 +807,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 					"public_key": publicKeyBytes,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to import public key: %s", err)
 			}
@@ -819,7 +818,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Operation: logical.ReadOperation,
 				Path:      fmt.Sprintf("export/public-key/%s", keyID),
 			}
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to export key: %s", err)
 			}
@@ -868,7 +867,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 					"type":       keyType,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to update key: %s", err)
 			}
@@ -882,7 +881,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 					"public_key": publicKeyBytes2,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to import public key: %s", err)
 			}
@@ -893,7 +892,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Operation: logical.ReadOperation,
 				Path:      fmt.Sprintf("export/public-key/%s", keyID),
 			}
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to export key: %s", err)
 			}
@@ -911,7 +910,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 					"ciphertext": importBlob2,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to import private key: %s", err)
 			}
@@ -926,7 +925,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 					"version":    1,
 				},
 			}
-			_, err = b.HandleRequest(context.Background(), req)
+			_, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to import private key: %s", err)
 			}
@@ -937,7 +936,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Operation: logical.ReadOperation,
 				Path:      fmt.Sprintf("export/public-key/%s", keyID),
 			}
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("failed to export key: %s", err)
 			}

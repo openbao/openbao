@@ -572,7 +572,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		n.DataVolumeName = vol.Volume.Name
 		n.cleanupVolume = func() {
 			_, _ = n.DockerAPI.VolumeRemove(ctx, vol.Volume.Name, docker.VolumeRemoveOptions{
-				Force: false,
+				Force: true,
 			})
 		}
 	}
@@ -621,6 +621,21 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 
 	vaultCfg["telemetry"] = map[string]interface{}{
 		"disable_hostname": true,
+	}
+
+	// Set up audit devices.
+	if opts.VaultNodeConfig != nil && opts.VaultNodeConfig.AuditLogStdout {
+		vaultCfg["audit"] = map[string]any{
+			"file": map[string]any{
+				"stdout": map[string]any{
+					"description": "stdout audit log device added for testing",
+					"options": map[string]any{
+						"path":    "stdout",
+						"log_raw": "true",
+					},
+				},
+			},
+		}
 	}
 
 	// Setup storage. Default is raft.
@@ -694,16 +709,21 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	wg.Add(1)
 	var seenLogs atomic.Bool
 	logConsumer := func(s string) {
+		n.Logger.Trace(s)
+	}
+	logStdout := &LogConsumerWriter{func(s string) {
+		// HACK: The first message printed to stdout implies that listeners are
+		// ready, or that startup failed. We use this to time the rotation of
+		// the initial certificate, such that:
+		// 1. SIGHUP is not sent too early.
+		// 2. We don't cause a race condition on the file system where OpenBao
+		//    will see either no cert or a mismatched cert/key.
 		if seenLogs.CompareAndSwap(false, true) {
 			wg.Done()
 		}
 		n.Logger.Trace(s)
-	}
-	logStdout := &LogConsumerWriter{logConsumer}
+	}}
 	logStderr := &LogConsumerWriter{func(s string) {
-		if seenLogs.CompareAndSwap(false, true) {
-			wg.Done()
-		}
 		testcluster.JSONLogNoTimestamp(n.Logger, s)
 	}}
 
@@ -815,6 +835,40 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 func (n *DockerClusterNode) Pause(ctx context.Context) error {
 	_, err := n.DockerAPI.ContainerPause(ctx, n.Container.ID, docker.ContainerPauseOptions{})
 	return err
+}
+
+func (n *DockerClusterNode) Upgrade(ctx context.Context, opts *DockerClusterOptions) error {
+	n.Stop()
+
+	tag, err := n.Cluster.setupImage(ctx, opts)
+	if err != nil {
+		return fmt.Errorf("error setting up image: %w", err)
+	}
+
+	n.ImageTag = tag
+	n.WorkDir = filepath.Join(n.Cluster.tmpDir, n.NodeID+"-upgrade")
+	n.Logger = n.Cluster.Logger.Named(n.NodeID + "-upgrade")
+
+	if err := os.MkdirAll(n.WorkDir, 0o755); err != nil {
+		return err
+	}
+
+	if err := n.Start(ctx, opts); err != nil {
+		return fmt.Errorf("failed to start node: %w", err)
+	}
+
+	nodeIndex := -1
+	for idx, node := range n.Cluster.ClusterNodes {
+		if node == n {
+			nodeIndex = idx
+			break
+		}
+	}
+	if nodeIndex == -1 {
+		return fmt.Errorf("unable to find node in cluster: %v -> %v", n, n.Cluster.ClusterNodes)
+	}
+
+	return testcluster.UnsealNode(ctx, n.Cluster, nodeIndex)
 }
 
 func (n *DockerClusterNode) AddNetworkDelay(ctx context.Context, delay time.Duration, targetIP string) error {
@@ -944,6 +998,7 @@ type DockerClusterOptions struct {
 	NetworkName string
 	ImageRepo   string
 	ImageTag    string
+	TagSuffix   string
 	CA          *testcluster.CA
 	VaultBinary string
 	Args        []string
@@ -1145,9 +1200,15 @@ func (dc *DockerCluster) setupImage(ctx context.Context, opts *DockerClusterOpti
 		return sourceTag, nil
 	}
 
-	suffix := "testing"
+	suffix := opts.ClusterName
+	if opts.ClusterName == "" {
+		suffix = "testing"
+	}
 	if sha := os.Getenv("COMMIT_SHA"); sha != "" {
-		suffix = sha
+		suffix += "-" + sha
+	}
+	if opts.TagSuffix != "" {
+		suffix += "-" + opts.TagSuffix
 	}
 	tag := sourceTag + "-" + suffix
 	if _, ok := dc.builtTags[tag]; ok {

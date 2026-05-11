@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/quotas"
 )
 
@@ -240,7 +241,6 @@ func isTransactionalMountPath(key string) bool {
 
 func isKeyringPath(key string) bool {
 	return key == barrierSealConfigPath ||
-		key == coreKeyringCanaryPath ||
 		key == barrier.KeyringPath ||
 		key == barrier.LegacyRootKeyPath ||
 		key == recoverySealConfigPath ||
@@ -252,7 +252,7 @@ func isKeyringPath(key string) bool {
 }
 
 func isMissedMountKey(key string) bool {
-	return strings.HasPrefix(key, credentialBarrierPrefix) ||
+	return strings.HasPrefix(key, barrier.CredentialBarrierPrefix) ||
 		strings.HasPrefix(key, backendBarrierPrefix) ||
 		strings.HasPrefix(key, auditBarrierPrefix)
 }
@@ -361,12 +361,12 @@ func (ij *invalidationJob) Execute() error {
 	case strings.HasPrefix(key, namespaceStoreSubPath):
 		ij.fatal = true
 		return ij.namespaceInvalidation(ctx)
-	case strings.HasPrefix(key, systemBarrierPrefix+policyACLSubPath):
+	case strings.HasPrefix(key, barrier.SystemBarrierPrefix+policy.ACLSubPath):
 		// Policy invalidation is not fatal as it contains a LRU cache: we
 		// know removal is strict and it is only potentially preloading an
 		// entry which may err.
 		return ij.policyInvalidation(ctx)
-	case strings.HasPrefix(key, systemBarrierPrefix+quotas.StoragePrefix):
+	case strings.HasPrefix(key, barrier.SystemBarrierPrefix+quotas.StoragePrefix):
 		ij.fatal = true
 		return ij.quotaInvalidation(ctx)
 	case key == coreAuditConfigPath || key == coreLocalAuditConfigPath:
@@ -451,7 +451,7 @@ func (ij *invalidationJob) namespaceInvalidation(ctx context.Context) error {
 	childCtx := namespace.ContextWithNamespace(ctx, preferredNs)
 
 	// Invalidate all policies within the namespace.
-	ij.im.core.policyStore.invalidateNamespace(childCtx, namespaceUUID)
+	ij.im.core.policyStore.InvalidateNamespace(childCtx, namespaceUUID)
 
 	// Now reload all mounts within the namespace.
 	if err := ij.im.core.reloadNamespaceMounts(childCtx, namespaceUUID, deleted); err != nil {
@@ -462,12 +462,12 @@ func (ij *invalidationJob) namespaceInvalidation(ctx context.Context) error {
 }
 
 func (ij *invalidationJob) policyInvalidation(ctx context.Context) error {
-	policyPath := strings.TrimPrefix(ij.nsKey, systemBarrierPrefix+policyACLSubPath)
-	return ij.im.core.policyStore.invalidate(ctx, policyPath, PolicyTypeACL)
+	policyPath := strings.TrimPrefix(ij.nsKey, barrier.SystemBarrierPrefix+policy.ACLSubPath)
+	return ij.im.core.policyStore.Invalidate(ctx, policyPath, policy.TypeACL)
 }
 
 func (ij *invalidationJob) quotaInvalidation(ctx context.Context) error {
-	quotaPath := strings.TrimPrefix(ij.nsKey, systemBarrierPrefix+quotas.StoragePrefix)
+	quotaPath := strings.TrimPrefix(ij.nsKey, barrier.SystemBarrierPrefix+quotas.StoragePrefix)
 	return ij.im.core.quotaManager.Invalidate(quotaPath)
 }
 
@@ -481,12 +481,11 @@ func (ij *invalidationJob) auditInvalidation(ctx context.Context) error {
 }
 
 func (ij *invalidationJob) legacyMountInvalidation(ctx context.Context) error {
-	if ij.nsUUID != namespace.RootNamespaceUUID {
-		ij.im.dispacherLogger.Warn("skipping invalidating legacy mount table in non-root namespace", "ns", ij.nsUUID, "key", ij.nsKey)
-		return nil
+	if err := ij.im.core.reloadLegacyMounts(ctx, ij.nsKey); err != nil {
+		return fmt.Errorf("unable to invalidate legacy mount for key %q in namespace %q: %w", ij.nsKey, ij.nsUUID, err)
 	}
 
-	return ij.im.core.reloadLegacyMounts(ctx, ij.nsKey)
+	return nil
 }
 
 func (ij *invalidationJob) transactionalMountInvalidation(ctx context.Context) error {

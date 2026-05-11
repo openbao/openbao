@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/helper/configutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -53,10 +54,35 @@ func TestServerWithListener(tb testing.TB, ln net.Listener, addr string, core *v
 		Core: core,
 		// This is needed for testing custom response headers
 		ListenerConfig: &configutil.Listener{
-			Address: ip,
+			Address:                              ip,
+			DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
 		},
 	}
 	TestServerWithListenerAndProperties(tb, ln, addr, core, props)
+}
+
+func TestServerWithCertForwarding(tb testing.TB, core *vault.Core) (net.Listener, string) {
+	ln, addr := TestListener(tb)
+
+	ip, _, _ := net.SplitHostPort(ln.Addr().String())
+
+	// Create a muxer to handle our requests so that we can authenticate
+	// for tests.
+	props := &vault.HandlerProperties{
+		Core: core,
+		// This is needed for testing custom response headers
+		ListenerConfig: &configutil.Listener{
+			Address:                                 ip,
+			XForwardedForClientCertHeader:           "Client-Cert",
+			XForwardedForClientCertDecoders:         []string{"URL"},
+			XForwardedForClientCertKeepUnauthorized: true,
+			XForwardedForClientCertKeepNotForwarded: true,
+		},
+	}
+
+	TestServerWithListenerAndProperties(tb, ln, addr, core, props)
+
+	return ln, addr
 }
 
 func TestServer(tb testing.TB, core *vault.Core) (net.Listener, string) {

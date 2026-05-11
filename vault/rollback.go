@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/helper/fairshare"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 const (
@@ -43,9 +44,9 @@ type RollbackManager struct {
 	// This gives the current mount table of both logical and credential backends,
 	// plus a RWMutex that is locked for reading. It is up to the caller to RUnlock
 	// it when done with the mount table.
-	backends func() []*MountEntry
+	backends func() []*routing.MountEntry
 
-	router *Router
+	router *routing.Router
 	period time.Duration
 
 	inflightAll  sync.WaitGroup
@@ -101,7 +102,7 @@ func (r *rollbackJob) OnFailure(err error) {
 }
 
 // NewRollbackManager is used to create a new rollback manager
-func NewRollbackManager(ctx context.Context, logger log.Logger, backendsFunc func() []*MountEntry, router *Router, core *Core) *RollbackManager {
+func NewRollbackManager(ctx context.Context, logger log.Logger, backendsFunc func() []*routing.MountEntry, router *routing.Router, core *Core) *RollbackManager {
 	r := &RollbackManager{
 		logger:      logger,
 		backends:    backendsFunc,
@@ -198,17 +199,17 @@ func (m *RollbackManager) triggerRollbacks() {
 
 	for _, e := range backends {
 		path := e.Path
-		if e.Table == credentialTableType {
-			path = credentialRoutePrefix + path
+		if e.Table == routing.CredentialTableType {
+			path = routing.CredentialRoutePrefix + path
 		}
 
 		// When the mount is filtered, the backend will be nil
-		ctx := namespace.ContextWithNamespace(m.quitContext, e.namespace)
+		ctx := namespace.ContextWithNamespace(m.quitContext, e.Namespace)
 		backend := m.router.MatchingBackend(ctx, path)
 		if backend == nil {
 			continue
 		}
-		fullPath := e.namespace.Path + path
+		fullPath := e.Namespace.Path + path
 
 		// Start a rollback if necessary
 		m.startOrLookupRollback(ctx, fullPath, true)
@@ -381,8 +382,8 @@ func (m *RollbackManager) Rollback(ctx context.Context, path string) error {
 
 // startRollback is used to start the rollback manager after unsealing
 func (c *Core) startRollback() error {
-	backendsFunc := func() []*MountEntry {
-		ret := []*MountEntry{}
+	backendsFunc := func() []*routing.MountEntry {
+		ret := []*routing.MountEntry{}
 		c.mountsLock.RLock()
 		defer c.mountsLock.RUnlock()
 		// During teardown/setup after a leader change or unseal there could be

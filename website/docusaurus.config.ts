@@ -50,10 +50,10 @@ const config: Config = {
   staticDirectories: ["public"],
 
   future: {
+    faster: true,
     v4: {
-      removeLegacyPostBuildHeadAttribute: true, // needed by experimental_faster
+      removeLegacyPostBuildHeadAttribute: true, // needed by faster.
     },
-    experimental_faster: true,
   },
 
   markdown: {
@@ -114,6 +114,8 @@ const config: Config = {
           blogTitle: "OpenBao Blog",
           blogDescription:
             "Official blog of the Bao Evangelism Taskforce (BET)",
+          blogSidebarCount: 'ALL',
+          blogSidebarTitle: 'All posts',
           path: "content/blog",
         },
         theme: {
@@ -180,6 +182,7 @@ const config: Config = {
   ],
 
   themeConfig: {
+    colorMode: { respectPrefersColorScheme: true },
     navbar: {
       title: "OpenBao",
       logo: {
@@ -221,10 +224,6 @@ const config: Config = {
             {
               label: "Zulip Chat Server",
               href: "https://linuxfoundation.zulipchat.com/",
-            },
-            {
-              label: "LF Edge Wiki",
-              href: "https://lf-edge.atlassian.net/wiki/spaces/OP/overview",
             },
             {
               label: "Charter",

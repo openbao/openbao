@@ -34,6 +34,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 const (
@@ -99,7 +100,7 @@ type pendingInfo struct {
 // the ExpirationManager will handle doing automatic revocation.
 type ExpirationManager struct {
 	core       *Core
-	router     *Router
+	router     *routing.Router
 	tokenStore *TokenStore
 	logger     log.Logger
 
@@ -444,11 +445,11 @@ func (c *Core) stopExpiration() error {
 }
 
 func (m *ExpirationManager) leaseView(ns *namespace.Namespace) barrier.View {
-	return NamespaceView(m.core.barrier, ns).SubView(systemBarrierPrefix + expirationSubPath + leaseViewPrefix)
+	return NamespaceScopedView(m.core.barrier, ns).SubView(barrier.SystemBarrierPrefix + expirationSubPath + leaseViewPrefix)
 }
 
 func (m *ExpirationManager) tokenIndexView(ns *namespace.Namespace) barrier.View {
-	return NamespaceView(m.core.barrier, ns).SubView(systemBarrierPrefix + expirationSubPath + tokenViewPrefix)
+	return NamespaceScopedView(m.core.barrier, ns).SubView(barrier.SystemBarrierPrefix + expirationSubPath + tokenViewPrefix)
 }
 
 func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, int, error) {
@@ -1411,7 +1412,7 @@ func (m *ExpirationManager) RenewToken(ctx context.Context, req *logical.Request
 		if resp.Auth.Alias != nil {
 			mountAccessor = resp.Auth.Alias.MountAccessor
 		}
-		validAliases, err := m.core.identityStore.refreshExternalGroupMembershipsByEntityID(ctx, resp.Auth.EntityID, resp.Auth.GroupAliases, mountAccessor)
+		validAliases, err := m.core.identityStore.RefreshExternalGroupMembershipsByEntityID(ctx, resp.Auth.EntityID, resp.Auth.GroupAliases, mountAccessor)
 		if err != nil {
 			return nil, err
 		}

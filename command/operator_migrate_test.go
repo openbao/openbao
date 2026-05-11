@@ -23,6 +23,7 @@ import (
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault"
+	"github.com/stretchr/testify/require"
 )
 
 const trailing_slash_key = "trailing_slash/"
@@ -43,7 +44,7 @@ func TestMigration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := storeData(from, data); err != nil {
+		if err := storeData(t.Context(), from, data); err != nil {
 			t.Fatal(err)
 		}
 
@@ -56,11 +57,11 @@ func TestMigration(t *testing.T) {
 		cmd := OperatorMigrateCommand{
 			logger: log.NewNullLogger(),
 		}
-		if err := cmd.migrateAll(context.Background(), from, to, 1); err != nil {
+		if err := cmd.migrateAll(t.Context(), from, to, 1); err != nil {
 			t.Fatal(err)
 		}
 
-		if err := compareStoredData(to, data, ""); err != nil {
+		if err := compareStoredData(t.Context(), to, data, ""); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -80,7 +81,7 @@ func TestMigration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := storeData(from, data); err != nil {
+		if err := storeData(t.Context(), from, data); err != nil {
 			t.Fatal(err)
 		}
 
@@ -95,10 +96,10 @@ func TestMigration(t *testing.T) {
 			logger: log.NewNullLogger(),
 		}
 
-		if err := cmd.migrateAll(context.Background(), from, to, 10); err != nil {
+		if err := cmd.migrateAll(t.Context(), from, to, 10); err != nil {
 			t.Fatal(err)
 		}
-		if err := compareStoredData(to, data, ""); err != nil {
+		if err := compareStoredData(t.Context(), to, data, ""); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -112,7 +113,7 @@ func TestMigration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := storeData(from, data); err != nil {
+		if err := storeData(t.Context(), from, data); err != nil {
 			t.Fatal(err)
 		}
 
@@ -133,11 +134,11 @@ func TestMigration(t *testing.T) {
 			logger:    log.NewNullLogger(),
 			flagStart: start,
 		}
-		if err := cmd.migrateAll(context.Background(), from, to, 1); err != nil {
+		if err := cmd.migrateAll(t.Context(), from, to, 1); err != nil {
 			t.Fatal(err)
 		}
 
-		if err := compareStoredData(to, data, start); err != nil {
+		if err := compareStoredData(t.Context(), to, data, start); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -151,7 +152,7 @@ func TestMigration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := storeData(from, data); err != nil {
+		if err := storeData(t.Context(), from, data); err != nil {
 			t.Fatal(err)
 		}
 
@@ -172,11 +173,11 @@ func TestMigration(t *testing.T) {
 			logger:    log.NewNullLogger(),
 			flagStart: start,
 		}
-		if err := cmd.migrateAll(context.Background(), from, to, 10); err != nil {
+		if err := cmd.migrateAll(t.Context(), from, to, 10); err != nil {
 			t.Fatal(err)
 		}
 
-		if err := compareStoredData(to, data, start); err != nil {
+		if err := compareStoredData(t.Context(), to, data, start); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -272,7 +273,7 @@ storage_destination "dest_type2" {
 		data["c/d/e/f"] = []byte{}
 		data["c/d/e/g"] = []byte{}
 		data["c"] = []byte{}
-		storeData(s, data)
+		require.NoError(t, storeData(t.Context(), s, data))
 
 		l := randomLister{s}
 
@@ -281,13 +282,13 @@ storage_destination "dest_type2" {
 			lock sync.Mutex
 		}
 		outKeys := SafeAppend{}
-		dfsScan(context.Background(), l, 10, func(ctx context.Context, path string) error {
+		require.NoError(t, dfsScan(t.Context(), l, 10, func(ctx context.Context, path string) error {
 			outKeys.lock.Lock()
 			defer outKeys.lock.Unlock()
 
 			outKeys.out = append(outKeys.out, path)
 			return nil
-		})
+		}))
 
 		delete(data, trailing_slash_key)
 		delete(data, "")
@@ -349,9 +350,9 @@ func (l randomLister) Delete(ctx context.Context, path string) error {
 // generateData creates a map of 500 random keys and values
 func generateData() map[string][]byte {
 	result := make(map[string][]byte)
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		segments := make([]string, rand.Intn(8)+1)
-		for j := 0; j < len(segments); j++ {
+		for j := range segments {
 			s, _ := base62.Random(6)
 			segments[j] = s
 		}
@@ -372,14 +373,14 @@ func generateData() map[string][]byte {
 	return result
 }
 
-func storeData(s physical.Backend, ref map[string][]byte) error {
+func storeData(ctx context.Context, s physical.Backend, ref map[string][]byte) error {
 	for k, v := range ref {
 		entry := physical.Entry{
 			Key:   k,
 			Value: v,
 		}
 
-		err := s.Put(context.Background(), &entry)
+		err := s.Put(ctx, &entry)
 		if err != nil {
 			return err
 		}
@@ -387,9 +388,9 @@ func storeData(s physical.Backend, ref map[string][]byte) error {
 	return nil
 }
 
-func compareStoredData(s physical.Backend, ref map[string][]byte, start string) error {
+func compareStoredData(ctx context.Context, s physical.Backend, ref map[string][]byte, start string) error {
 	for k, v := range ref {
-		entry, err := s.Get(context.Background(), k)
+		entry, err := s.Get(ctx, k)
 		if err != nil {
 			return err
 		}

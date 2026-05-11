@@ -41,7 +41,8 @@ func Test_StrictIPBinding(t *testing.T) {
 		VaultBinary: binary,
 		ClusterOptions: testcluster.ClusterOptions{
 			VaultNodeConfig: &testcluster.VaultNodeConfig{
-				LogLevel: "TRACE",
+				LogLevel:       "TRACE",
+				AuditLogStdout: true,
 			},
 			NumCores: 1,
 		},
@@ -50,7 +51,7 @@ func Test_StrictIPBinding(t *testing.T) {
 	cluster := docker.NewTestDockerCluster(t, opts)
 	defer cluster.Cleanup()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 	nodeIndex, err := testcluster.WaitForActiveNode(ctx, cluster)
 	require.NoError(t, err)
@@ -161,7 +162,7 @@ func Test_StrictIPBinding(t *testing.T) {
 
 	// Using the remote token locally should fail...
 	cloned.SetToken(remoteToken)
-	resp, err = cloned.Logical().Read("sys/host-info")
+	_, err = cloned.Logical().Read("sys/host-info")
 	require.Error(t, err)
 
 	// ...but using it remotely should work fine

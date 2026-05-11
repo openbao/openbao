@@ -5,8 +5,10 @@ import (
 	"fmt"
 )
 
+const responseSourceName = "response"
+
 // ResponseSourceBuilder allows reading inputs from past responses.
-func ResponseSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
+func ResponseSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
 	return &ResponseSource{
 		outer: engine.outerBlockName,
 		field: field,
@@ -17,8 +19,13 @@ var _ SourceBuilder = ResponseSourceBuilder
 
 func WithResponseSource() func(*ProfileEngine) {
 	return func(p *ProfileEngine) {
-		p.sourceBuilders["response"] = ResponseSourceBuilder
+		p.sourceBuilders[responseSourceName] = ResponseSourceBuilder
 	}
+}
+
+func HasResponseSource(engine *ProfileEngine) bool {
+	_, ok := engine.sourceBuilders[responseSourceName]
+	return ok
 }
 
 type ResponseSource struct {
@@ -32,7 +39,7 @@ type ResponseSource struct {
 
 var _ Source = &ResponseSource{}
 
-func (s *ResponseSource) Validate(_ context.Context) ([]string, []string, error) {
+func (s *ResponseSource) Validate() ([]string, []string, error) {
 	var responseName string
 
 	if s.outer != "" {

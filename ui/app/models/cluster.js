@@ -11,7 +11,7 @@ import { computed } from '@ember/object';
 export default Model.extend({
   version: service(),
 
-  nodes: hasMany('nodes', { async: false }),
+  nodes: hasMany('nodes', { async: false, inverse: null }),
   name: attr('string'),
   status: attr('string'),
   standby: attr('boolean'),
@@ -20,22 +20,22 @@ export default Model.extend({
 
   needsInit: computed('nodes', 'nodes.@each.initialized', function () {
     // needs init if no nodes are initialized
-    return this.nodes.isEvery('initialized', false);
+    return this.nodes.every((x) => x.initialized === false);
   }),
 
   unsealed: computed('nodes', 'nodes.{[],@each.sealed}', function () {
     // unsealed if there's at least one unsealed node
-    return !!this.nodes.findBy('sealed', false);
+    return !!this.nodes.find((x) => x.sealed === false);
   }),
 
   sealed: not('unsealed'),
 
   leaderNode: computed('nodes', 'nodes.[]', function () {
     const nodes = this.nodes;
-    if (nodes.get('length') === 1) {
-      return nodes.get('firstObject');
+    if (nodes.length === 1) {
+      return nodes[0];
     } else {
-      return nodes.findBy('isLeader');
+      return nodes.find((x) => x.isLeader);
     }
   }),
 

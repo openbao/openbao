@@ -34,6 +34,10 @@ const (
 	NonVoterPath = "autopilot/non-voters"
 )
 
+// ErrRaftAutopilotNotInitialized is returned when an autopilot is not initialized
+// (configuration mismatch or standby node)
+var ErrRaftAutopilotNotInitialized = errors.New("raft storage autopilot is not initialized")
+
 func (c CleanupDeadServersValue) Value() bool {
 	switch c {
 	case CleanupDeadServersTrue:

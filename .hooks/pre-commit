@@ -48,7 +48,7 @@ ui_lint() {
 
   # Silently succeed if the linter has not been installed.
   # We assume that if you're doing UI dev, you will have installed the linter
-  # by running yarn.
+  # by running pnpm.
   if [ ! -x $DIR/$LINTER ]; then
     return 0
   fi

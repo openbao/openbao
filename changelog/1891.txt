@@ -1,0 +1,3 @@
+```release-note:feature
+command/login: Support Kubernetes service account token authentication via `-method=kubernetes` with both interactive and non-interactive modes.
+```

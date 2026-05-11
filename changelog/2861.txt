@@ -1,0 +1,3 @@
+```release-note:bug
+pki: sign-verbatim now preserves the original subject encoding from the CSR. Previously, UTF8String values were re-encoded as PrintableString when the subject contained only ASCII characters.
+```

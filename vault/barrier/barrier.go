@@ -6,7 +6,6 @@ package barrier
 import (
 	"context"
 	"errors"
-	"io"
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -76,6 +75,16 @@ const (
 	// used by standbys to handle rotations. It also comes into play when
 	// restoring raft snapshots.
 	ShamirKekPath = "core/shamir-kek"
+
+	// SystemBarrierPrefix is the prefix used for the
+	// system logical backend.
+	SystemBarrierPrefix = "sys/"
+)
+
+const (
+	// CredentialBarrierPrefix is the prefix to the UUID used in the
+	// barrier view for the credential backends.
+	CredentialBarrierPrefix = "auth/"
 )
 
 type SecurityBarrierCore interface {
@@ -87,10 +96,10 @@ type SecurityBarrierCore interface {
 	// and makes use of the given root key.  When sealKey is provided
 	// it's because we're using a new-style Shamir seal, and rootKey
 	// is to be stored using sealKey to encrypt it.
-	Initialize(ctx context.Context, rootKey []byte, sealKey []byte, random io.Reader) error
+	Initialize(ctx context.Context, rootKey []byte, sealKey []byte) error
 
 	// GenerateKey is used to generate a new key
-	GenerateKey(io.Reader) ([]byte, error)
+	GenerateKey() ([]byte, error)
 
 	// KeyLength is used to sanity check a key
 	KeyLength() (int, int)
@@ -127,7 +136,7 @@ type SecurityBarrierCore interface {
 
 	// Rotate is used to create a new encryption key. All future writes
 	// should use the new key, while old values should still be decryptable.
-	Rotate(ctx context.Context, reader io.Reader) (uint32, error)
+	Rotate(ctx context.Context) (uint32, error)
 
 	// CreateUpgrade creates an upgrade path key to the given term from the previous term
 	CreateUpgrade(ctx context.Context, term uint32) error

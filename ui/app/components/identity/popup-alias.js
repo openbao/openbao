@@ -7,7 +7,7 @@ import Base from './_popup-base';
 
 export default Base.extend({
   messageArgs(model) {
-    const type = model.get('identityType');
+    const type = model.identityType;
     const id = model.id;
     return [type, id];
   },

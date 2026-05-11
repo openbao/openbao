@@ -4,7 +4,6 @@
 package cachememdb
 
 import (
-	"context"
 	"net/http"
 	"testing"
 	"time"
@@ -24,7 +23,7 @@ func TestSerializeDeserialize(t *testing.T) {
 		Lease:         "lease id",
 		LeaseToken:    "lease token id",
 		Response:      []byte(`{"something": "here"}`),
-		RenewCtxInfo:  NewContextInfo(context.Background()),
+		RenewCtxInfo:  NewContextInfo(t.Context()),
 		RequestMethod: "GET",
 		RequestToken:  "request token",
 		RequestHeader: http.Header{

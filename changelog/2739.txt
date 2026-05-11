@@ -1,0 +1,3 @@
+```release-note:improvement
+command/server: Allow conditional execution of self-initialization requests with `when` keyword.
+```

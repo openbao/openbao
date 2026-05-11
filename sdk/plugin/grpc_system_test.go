@@ -18,7 +18,7 @@ import (
 )
 
 func TestSystem_GRPC_ReturnsErrIfSystemViewNil(t *testing.T) {
-	_, err := new(gRPCSystemViewServer).ReplicationState(context.Background(), nil)
+	_, err := new(gRPCSystemViewServer).ReplicationState(t.Context(), nil)
 	if err == nil {
 		t.Error("Expected error when using server with no impl")
 	}
@@ -127,7 +127,7 @@ func TestSystem_GRPC_lookupPlugin(t *testing.T) {
 
 	testSystemView := newGRPCSystemView(client)
 
-	if _, err := testSystemView.LookupPlugin(context.Background(), "foo", consts.PluginTypeDatabase); err == nil {
+	if _, err := testSystemView.LookupPlugin(t.Context(), "foo", consts.PluginTypeDatabase); err == nil {
 		t.Fatal("LookPlugin(): expected error on due to unsupported call from plugin")
 	}
 }
@@ -232,12 +232,12 @@ func TestSystem_GRPC_pluginEnv(t *testing.T) {
 
 	testSystemView := newGRPCSystemView(client)
 
-	expected, err := sys.PluginEnv(context.Background())
+	expected, err := sys.PluginEnv(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	actual, err := testSystemView.PluginEnv(context.Background())
+	actual, err := testSystemView.PluginEnv(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +269,7 @@ func TestSystem_GRPC_GeneratePasswordFromPolicy(t *testing.T) {
 
 	testSystemView := newGRPCSystemView(client)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 
 	password, err := testSystemView.GeneratePasswordFromPolicy(ctx, policyName)

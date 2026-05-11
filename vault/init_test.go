@@ -19,7 +19,7 @@ import (
 func TestCore_Init(t *testing.T) {
 	testCoreInitCommon(t, nil, &SealConfig{SecretShares: 5, SecretThreshold: 3}, nil)
 
-	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Name: "transit"})
+	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 	autoSeal, err := NewAutoSeal(testSeal)
 	require.NoError(t, err)
 	testCoreInitCommon(t, autoSeal, &SealConfig{SecretShares: 1, SecretThreshold: 1}, &SealConfig{SecretShares: 0, SecretThreshold: 0})
@@ -51,8 +51,8 @@ func testCoreNewTestCore(t *testing.T, seal Seal) (*Core, *CoreConfig) {
 	return c, conf
 }
 
-func testCoreInitCommon(t *testing.T, seal Seal, barrierConf, recoveryConf *SealConfig) {
-	c, conf := testCoreNewTestCore(t, seal)
+func testCoreInitCommon(t *testing.T, s Seal, barrierConf, recoveryConf *SealConfig) {
+	c, conf := testCoreNewTestCore(t, s)
 	ctx := namespace.RootContext(t.Context())
 	init, err := c.Initialized(ctx)
 	require.NoError(t, err)
@@ -76,7 +76,7 @@ func testCoreInitCommon(t *testing.T, seal Seal, barrierConf, recoveryConf *Seal
 	require.NoError(t, err)
 
 	require.Falsef(t,
-		c.seal.BarrierType() == wrapping.WrapperTypeShamir && len(res.SecretShares) != barrierConf.SecretShares,
+		c.seal.BarrierType() == seal.WrapperTypeShamir && len(res.SecretShares) != barrierConf.SecretShares,
 		"Bad: got\n%#v\nexpected conf matching\n%#v\n", *res, *barrierConf,
 	)
 

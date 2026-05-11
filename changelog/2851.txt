@@ -1,0 +1,3 @@
+```release-note:improvement
+agent: Add uid and gid configuration options for the file sink
+```

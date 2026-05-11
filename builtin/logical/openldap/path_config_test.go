@@ -4,7 +4,6 @@
 package openldap
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -215,14 +214,14 @@ func TestConfig_Create(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			b, storage := getBackend(t, false)
-			defer b.Cleanup(context.Background())
+			defer b.Cleanup(t.Context())
 
 			req := &logical.Request{
 				Storage:   storage,
 				Operation: logical.CreateOperation,
 			}
 
-			resp, err := b.configCreateUpdateOperation(context.Background(), req, test.createData)
+			resp, err := b.configCreateUpdateOperation(t.Context(), req, test.createData)
 			if test.createExpectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -237,7 +236,7 @@ func TestConfig_Create(t *testing.T) {
 				Storage: storage,
 			}
 
-			resp, err = b.configReadOperation(context.Background(), readReq, nil)
+			resp, err = b.configReadOperation(t.Context(), readReq, nil)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
@@ -252,7 +251,7 @@ func TestConfig_Create(t *testing.T) {
 func TestConfig_Update(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn":      "tester",
@@ -268,7 +267,7 @@ func TestConfig_Update(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -287,7 +286,7 @@ func TestConfig_Update(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -299,7 +298,7 @@ func TestConfig_Update(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -311,7 +310,7 @@ func TestConfig_Update(t *testing.T) {
 
 	t.Run("missing bindpass", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn": "tester",
@@ -325,7 +324,7 @@ func TestConfig_Update(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err == nil {
 			t.Fatal("should have got error, didn't")
 		}
@@ -336,7 +335,7 @@ func TestConfig_Update(t *testing.T) {
 
 	t.Run("update retains prior config values in storage", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn":      "tester",
@@ -352,7 +351,7 @@ func TestConfig_Update(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -372,7 +371,7 @@ func TestConfig_Update(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -384,7 +383,7 @@ func TestConfig_Update(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -398,7 +397,7 @@ func TestConfig_Update(t *testing.T) {
 
 	t.Run("update retains prior schema and password_policy values in storage", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		initialSchema := "ad"
 		initialPasswordPolicy := "test_policy"
@@ -419,7 +418,7 @@ func TestConfig_Update(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -439,7 +438,7 @@ func TestConfig_Update(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -451,7 +450,7 @@ func TestConfig_Update(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -472,7 +471,7 @@ func TestConfig_Update(t *testing.T) {
 func TestConfig_Delete(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn":      "tester",
@@ -488,7 +487,7 @@ func TestConfig_Delete(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -500,7 +499,7 @@ func TestConfig_Delete(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}

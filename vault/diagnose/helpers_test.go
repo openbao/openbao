@@ -67,7 +67,7 @@ func TestDiagnoseOtelResults(t *testing.T) {
 	}
 	sess := New(os.Stdout)
 	sess.SkipFilters = []string{"dispose-grounds"}
-	ctx := Context(context.Background(), sess)
+	ctx := Context(t.Context(), sess)
 
 	func() {
 		ctx, span := StartSpan(ctx, "make-coffee")

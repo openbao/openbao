@@ -31,8 +31,8 @@ func TestParseHelp(t *testing.T) {
 			detail:  "This is an error.",
 		},
 		{
-			err:     "Errors: * Vault login failed. Because of reasons.",
-			summary: "Vault login failed.",
+			err:     "Errors: * OpenBao login failed. Because of reasons.",
+			summary: "OpenBao login failed.",
 			detail:  "Because of reasons.",
 		},
 		{

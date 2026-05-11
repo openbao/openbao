@@ -4,7 +4,6 @@
 package audit
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/require"
 
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
@@ -100,14 +100,14 @@ func TestCopy_response(t *testing.T) {
 
 func TestHashString(t *testing.T) {
 	inmemStorage := &logical.InmemStorage{}
-	err := inmemStorage.Put(context.Background(), &logical.StorageEntry{
+	err := inmemStorage.Put(t.Context(), &logical.StorageEntry{
 		Key:   "salt",
 		Value: []byte("foo"),
 	})
 	if err != nil {
 		t.Fatalf("Error storing salt: %s", err)
 	}
-	localSalt, err := salt.NewSalt(context.Background(), inmemStorage, &salt.Config{
+	localSalt, err := salt.NewSalt(t.Context(), inmemStorage, &salt.Config{
 		HMAC:     sha256.New,
 		HMACType: "hmac-sha256",
 	})
@@ -151,14 +151,14 @@ func TestHashAuth(t *testing.T) {
 	}
 
 	inmemStorage := &logical.InmemStorage{}
-	err := inmemStorage.Put(context.Background(), &logical.StorageEntry{
+	err := inmemStorage.Put(t.Context(), &logical.StorageEntry{
 		Key:   "salt",
 		Value: []byte("foo"),
 	})
 	if err != nil {
 		t.Fatalf("Error storing salt: %s", err)
 	}
-	localSalt, err := salt.NewSalt(context.Background(), inmemStorage, &salt.Config{
+	localSalt, err := salt.NewSalt(t.Context(), inmemStorage, &salt.Config{
 		HMAC:     sha256.New,
 		HMACType: "hmac-sha256",
 	})
@@ -216,14 +216,14 @@ func TestHashRequest(t *testing.T) {
 	}
 
 	inmemStorage := &logical.InmemStorage{}
-	err := inmemStorage.Put(context.Background(), &logical.StorageEntry{
+	err := inmemStorage.Put(t.Context(), &logical.StorageEntry{
 		Key:   "salt",
 		Value: []byte("foo"),
 	})
 	if err != nil {
 		t.Fatalf("Error storing salt: %s", err)
 	}
-	localSalt, err := salt.NewSalt(context.Background(), inmemStorage, &salt.Config{
+	localSalt, err := salt.NewSalt(t.Context(), inmemStorage, &salt.Config{
 		HMAC:     sha256.New,
 		HMACType: "hmac-sha256",
 	})
@@ -480,11 +480,11 @@ func TestHashResponse(t *testing.T) {
 	}
 
 	inmemStorage := &logical.InmemStorage{}
-	inmemStorage.Put(context.Background(), &logical.StorageEntry{
+	require.NoError(t, inmemStorage.Put(t.Context(), &logical.StorageEntry{
 		Key:   "salt",
 		Value: []byte("foo"),
-	})
-	localSalt, err := salt.NewSalt(context.Background(), inmemStorage, &salt.Config{
+	}))
+	localSalt, err := salt.NewSalt(t.Context(), inmemStorage, &salt.Config{
 		HMAC:     sha256.New,
 		HMACType: "hmac-sha256",
 	})

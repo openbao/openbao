@@ -114,7 +114,7 @@ export default Component.extend({
   }),
 
   selectedFeatures: computed('allFeatures.@each.selected', function () {
-    return this.allFeatures.filterBy('selected').mapBy('key');
+    return this.allFeatures.filterBy('selected').map((x) => x.key);
   }),
 
   cannotStartWizard: not('selectedFeatures.length'),

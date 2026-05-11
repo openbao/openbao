@@ -18,7 +18,7 @@ export default class MountSecretBackendController extends Controller {
   onMountSuccess(type, path) {
     let transition;
     if (SUPPORTED_BACKENDS.includes(type)) {
-      const engineInfo = allEngines().findBy('type', type);
+      const engineInfo = allEngines().find((x) => x.type === type);
       if (engineInfo?.engineRoute) {
         transition = this.router.transitionTo(
           `vault.cluster.secrets.backend.${engineInfo.engineRoute}`,

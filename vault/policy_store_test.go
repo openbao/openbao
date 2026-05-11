@@ -11,11 +11,13 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/policy"
+	"github.com/openbao/openbao/vault/policy/policytest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func mockPolicyWithCore(t *testing.T, disableCache bool) (*Core, [][]byte, string, *PolicyStore) {
+func mockPolicyWithCore(t *testing.T, disableCache bool) (*Core, [][]byte, string, *policy.Store) {
 	conf := &CoreConfig{
 		DisableCache: disableCache,
 	}
@@ -35,10 +37,10 @@ func TestPolicyStore_Root(t *testing.T) {
 	})
 }
 
-func testPolicyRoot(t *testing.T, ps *PolicyStore, ns *namespace.Namespace, expectFound bool) {
+func testPolicyRoot(t *testing.T, ps *policy.Store, ns *namespace.Namespace, expectFound bool) {
 	// Get should return a special policy
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
-	p, err := ps.GetPolicy(ctx, "root", PolicyTypeToken)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
+	p, err := ps.GetPolicy(ctx, "root", policy.TypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -57,21 +59,21 @@ func testPolicyRoot(t *testing.T, ps *PolicyStore, ns *namespace.Namespace, expe
 		}
 		// Create root policy for subsequent modification and deletion failure
 		// tests
-		p = &Policy{
+		p = &policy.Policy{
 			Name: "root",
 		}
 	}
 
 	// Set should fail
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.SetPolicy(ctx, p, nil)
 	if err.Error() != `cannot update "root" policy` {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Delete should fail
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	err = ps.DeletePolicy(ctx, "root", PolicyTypeACL)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	err = ps.DeletePolicy(ctx, "root", policy.TypeACL)
 	if err.Error() != `cannot delete "root" policy` {
 		t.Fatalf("err: %v", err)
 	}
@@ -91,7 +93,7 @@ func TestPolicyStore_CRUD(t *testing.T) {
 	})
 }
 
-func testPolicyStoreCRUD(t *testing.T, core *Core, shares [][]byte, token string, ps *PolicyStore, ns *namespace.Namespace) {
+func testPolicyStoreCRUD(t *testing.T, core *Core, shares [][]byte, token string, ps *policy.Store, ns *namespace.Namespace) {
 	testPolicyStoreCRUDOneShot(t, ps, ns)
 
 	// Seal, unseal, and try again.
@@ -108,10 +110,10 @@ func testPolicyStoreCRUD(t *testing.T, core *Core, shares [][]byte, token string
 	testPolicyStoreCRUDOneShot(t, ps, ns)
 }
 
-func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) {
+func testPolicyStoreCRUDOneShot(t *testing.T, ps *policy.Store, ns *namespace.Namespace) {
 	// Get should return nothing
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
-	p, err := ps.GetPolicy(ctx, "Dev", PolicyTypeToken)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
+	p, err := ps.GetPolicy(ctx, "Dev", policy.TypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -120,15 +122,15 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Nam
 	}
 
 	// Delete should be no-op
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	err = ps.DeletePolicy(ctx, "deV", PolicyTypeACL)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	err = ps.DeletePolicy(ctx, "deV", policy.TypeACL)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// List should be blank
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	out, err := ps.ListPolicies(ctx, PolicyTypeACL, true)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	out, err := ps.ListPolicies(ctx, policy.TypeACL, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -137,26 +139,26 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Nam
 	}
 
 	// Set should work
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	policy, _ := ParseACLPolicy(ns, aclPolicy)
-	err = ps.SetPolicy(ctx, policy, nil)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	pol, _ := policy.ParseACLPolicy(ns, policytest.ACLPolicy)
+	err = ps.SetPolicy(ctx, pol, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Get should work
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	p, err = ps.GetPolicy(ctx, "dEv", PolicyTypeToken)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	p, err = ps.GetPolicy(ctx, "dEv", policy.TypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	if !reflect.DeepEqual(p, policy) {
+	if !reflect.DeepEqual(p, pol) {
 		t.Fatalf("bad: %v", p)
 	}
 
 	// List should contain two elements
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	out, err = ps.ListPolicies(ctx, PolicyTypeACL, true)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	out, err = ps.ListPolicies(ctx, policy.TypeACL, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -170,15 +172,15 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Nam
 	}
 
 	// Delete should be clear the entry
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	err = ps.DeletePolicy(ctx, "Dev", PolicyTypeACL)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	err = ps.DeletePolicy(ctx, "Dev", policy.TypeACL)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// List should contain one element
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	out, err = ps.ListPolicies(ctx, PolicyTypeACL, true)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	out, err = ps.ListPolicies(ctx, policy.TypeACL, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -187,8 +189,8 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Nam
 	}
 
 	// Get should fail
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	p, err = ps.GetPolicy(ctx, "deV", PolicyTypeToken)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	p, err = ps.GetPolicy(ctx, "deV", policy.TypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -205,10 +207,10 @@ func TestPolicyStore_Predefined(t *testing.T) {
 }
 
 // Test predefined policy handling
-func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) {
+func testPolicyStorePredefined(t *testing.T, ps *policy.Store, ns *namespace.Namespace) {
 	// List should be two elements
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
-	out, err := ps.ListPolicies(ctx, PolicyTypeACL, true)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
+	out, err := ps.ListPolicies(ctx, policy.TypeACL, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -218,31 +220,31 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 	}
 
 	// Response-wrapping policy checks
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	pCubby, err := ps.GetPolicy(ctx, "response-wrapping", PolicyTypeToken)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	pCubby, err := ps.GetPolicy(ctx, "response-wrapping", policy.TypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	if pCubby == nil {
 		t.Fatal("nil cubby policy")
 	}
-	if pCubby.Raw != responseWrappingPolicy {
-		t.Fatalf("bad: expected\n%s\ngot\n%s\n", responseWrappingPolicy, pCubby.Raw)
+	if pCubby.Raw != policy.ResponseWrappingPolicy {
+		t.Fatalf("bad: expected\n%s\ngot\n%s\n", policy.ResponseWrappingPolicy, pCubby.Raw)
 	}
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.SetPolicy(ctx, pCubby, nil)
 	if err == nil {
 		t.Fatalf("expected err setting %s", pCubby.Name)
 	}
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	err = ps.DeletePolicy(ctx, pCubby.Name, PolicyTypeACL)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	err = ps.DeletePolicy(ctx, pCubby.Name, policy.TypeACL)
 	if err == nil {
 		t.Fatalf("expected err deleting %s", pCubby.Name)
 	}
 
 	// Root policy checks, behavior depending on namespace
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	pRoot, err := ps.GetPolicy(ctx, "root", PolicyTypeToken)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	pRoot, err := ps.GetPolicy(ctx, "root", policy.TypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -254,17 +256,17 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 		if pRoot != nil {
 			t.Fatal("expected nil root policy")
 		}
-		pRoot = &Policy{
+		pRoot = &policy.Policy{
 			Name: "root",
 		}
 	}
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.SetPolicy(ctx, pRoot, nil)
 	if err == nil {
 		t.Fatalf("expected err setting %s", pRoot.Name)
 	}
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	err = ps.DeletePolicy(ctx, pRoot.Name, PolicyTypeACL)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	err = ps.DeletePolicy(ctx, pRoot.Name, policy.TypeACL)
 	if err == nil {
 		t.Fatalf("expected err deleting %s", pRoot.Name)
 	}
@@ -277,36 +279,36 @@ func TestPolicyStore_ACL(t *testing.T) {
 	})
 }
 
-func testPolicyStoreACL(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) {
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
-	policy, _ := ParseACLPolicy(ns, aclPolicy)
-	err := ps.SetPolicy(ctx, policy, nil)
+func testPolicyStoreACL(t *testing.T, ps *policy.Store, ns *namespace.Namespace) {
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
+	pol, _ := policy.ParseACLPolicy(ns, policytest.ACLPolicy)
+	err := ps.SetPolicy(ctx, pol, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	policy, _ = ParseACLPolicy(ns, aclPolicy2)
-	err = ps.SetPolicy(ctx, policy, nil)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
+	pol, _ = policy.ParseACLPolicy(ns, policytest.ACLPolicy2)
+	err = ps.SetPolicy(ctx, pol, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	acl, err := ps.ACL(ctx, nil, map[string][]string{ns.ID: {"dev", "ops"}})
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	testLayeredACL(t, acl, ns)
+	policytest.TestLayeredACL(t, acl, ns)
 }
 
 func TestDefaultPolicy(t *testing.T) {
-	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+	ctx := namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace)
 
-	policy, err := ParseACLPolicy(namespace.RootNamespace, defaultPolicy)
+	pol, err := policy.ParseACLPolicy(namespace.RootNamespace, policy.DefaultPolicy)
 	if err != nil {
 		t.Fatal(err)
 	}
-	acl, err := NewACL(ctx, []*Policy{policy})
+	acl, err := policy.NewACL(ctx, []*policy.Policy{pol})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -352,20 +354,20 @@ func TestPolicyStore_GetNonEGPPolicyType(t *testing.T) {
 		policyStoreValue     any
 		paramNamespace       string
 		paramPolicyName      string
-		paramPolicyType      PolicyType
+		paramPolicyType      policy.Type
 		isErrorExpected      bool
 		expectedErrorMessage string
 	}{
 		"happy-acl": {
 			policyStoreKey:   "root/default",
-			policyStoreValue: PolicyTypeACL,
+			policyStoreValue: policy.TypeACL,
 			paramNamespace:   "root",
 			paramPolicyName:  "default",
-			paramPolicyType:  PolicyTypeACL,
+			paramPolicyType:  policy.TypeACL,
 		},
 		"not-in-map-acl": {
 			policyStoreKey:       "root/policy2",
-			policyStoreValue:     PolicyTypeACL,
+			policyStoreValue:     policy.TypeACL,
 			paramNamespace:       "root",
 			paramPolicyName:      "policy2",
 			isErrorExpected:      true,
@@ -374,13 +376,11 @@ func TestPolicyStore_GetNonEGPPolicyType(t *testing.T) {
 	}
 
 	for name, tc := range tests {
-		name := name
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
 			_, _, _, ps := mockPolicyWithCore(t, false)
-			ctx := namespace.RootContext(context.Background())
+			ctx := namespace.RootContext(t.Context())
 			got, err := ps.GetNonEGPPolicyType(ctx, tc.paramPolicyName)
 			if tc.isErrorExpected {
 				require.Error(t, err)
@@ -401,7 +401,7 @@ func TestPolicyStore_GetNonEGPPolicyType(t *testing.T) {
 // correctly loads policies into the current namespace.
 func TestPolicyStore_LoadACLPolicyNamespaces(t *testing.T) {
 	core, _, token := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	ps := core.policyStore
 
 	// Create a namespace
@@ -429,11 +429,11 @@ path "secret/*" {
 `
 
 	// Load the policy through loadACLPolicyNamespaces from the namespace context
-	err = ps.loadACLPolicy(nsCtx, "test-load-policy", testPolicy)
+	err = ps.LoadACLPolicy(nsCtx, "test-load-policy", testPolicy)
 	require.NoError(t, err)
 
 	// Verify the policy exists in the namespace
-	nsPolicy, err := ps.GetPolicy(nsCtx, "test-load-policy", PolicyTypeToken)
+	nsPolicy, err := ps.GetPolicy(nsCtx, "test-load-policy", policy.TypeToken)
 	require.NoError(t, err)
 	require.NotNil(t, nsPolicy, "expected policy to exist in namespace")
 
@@ -446,14 +446,14 @@ path "secret/*" {
 }
 `
 
-	// Create a new policy in the namespace
-	policy, _ := ParseACLPolicy(ns, modifiedPolicy)
-	policy.Name = "test-load-policy"
-	err = ps.SetPolicy(nsCtx, policy, nil)
+	// Create a new pol in the namespace
+	pol, _ := policy.ParseACLPolicy(ns, modifiedPolicy)
+	pol.Name = "test-load-policy"
+	err = ps.SetPolicy(nsCtx, pol, nil)
 	require.NoError(t, err)
 
 	// Verify the policies are now different
-	nsPolicy, _ = ps.GetPolicy(nsCtx, "test-load-policy", PolicyTypeToken)
+	nsPolicy, _ = ps.GetPolicy(nsCtx, "test-load-policy", policy.TypeToken)
 	assert.Equal(t, modifiedPolicy, nsPolicy.Raw)
 }
 
@@ -461,7 +461,7 @@ path "secret/*" {
 // respective namespace's storage prefix and not in the root namespace.
 func TestPolicyStore_NamespaceStorage(t *testing.T) {
 	core, _, token := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	ps := core.policyStore
 
 	// Create a namespace
@@ -482,29 +482,29 @@ func TestPolicyStore_NamespaceStorage(t *testing.T) {
 
 	// Create policy in namespace
 	nsCtx := namespace.ContextWithNamespace(ctx, ns)
-	policy, _ := ParseACLPolicy(ns, aclPolicy)
-	policy.Name = "test-policy"
-	require.NoError(t, ps.SetPolicy(nsCtx, policy, nil))
+	pol, _ := policy.ParseACLPolicy(ns, policytest.ACLPolicy)
+	pol.Name = "test-policy"
+	require.NoError(t, ps.SetPolicy(nsCtx, pol, nil))
 
 	// Verify the policy exists in the namespace
-	p, err := ps.GetPolicy(nsCtx, "test-policy", PolicyTypeToken)
+	p, err := ps.GetPolicy(nsCtx, "test-policy", policy.TypeToken)
 	require.NoError(t, err)
 	require.NotNil(t, p, "expected policy to exist in namespace")
 
 	// Verify the policy is not retrievable from the root namespace
-	rootP, err := ps.GetPolicy(ctx, "test-policy", PolicyTypeToken)
+	rootP, err := ps.GetPolicy(ctx, "test-policy", policy.TypeToken)
 	require.NoError(t, err)
 	assert.Nil(t, rootP, "unexpected policy found in root namespace")
 
 	// Check storage locations
-	nsBarrierView := ps.getACLView(ns)
+	nsBarrierView := ps.GetACLView(ns)
 	require.NotNil(t, nsBarrierView, "expected namespace storage")
 
 	out, err := nsBarrierView.Get(nsCtx, "test-policy")
 	require.NoError(t, err)
 	require.NotNil(t, out, "expected policy in namespace storage")
 
-	rootBarrierView := ps.getACLView(namespace.RootNamespace)
+	rootBarrierView := ps.GetACLView(namespace.RootNamespace)
 	require.NotNil(t, rootBarrierView, "expected root namespace storage")
 
 	rootOut, err := rootBarrierView.Get(ctx, "test-policy")
@@ -512,17 +512,17 @@ func TestPolicyStore_NamespaceStorage(t *testing.T) {
 	assert.Nil(t, rootOut, "policy should not exist in root storage")
 
 	// Check policy listings
-	policies, err := ps.ListPolicies(nsCtx, PolicyTypeACL, true)
+	policies, err := ps.ListPolicies(nsCtx, policy.TypeACL, true)
 	require.NoError(t, err)
 	assert.Contains(t, policies, "test-policy", "policy not found in namespace listing")
 
-	rootPolicies, err := ps.ListPolicies(ctx, PolicyTypeACL, true)
+	rootPolicies, err := ps.ListPolicies(ctx, policy.TypeACL, true)
 	require.NoError(t, err)
 	assert.NotContains(t, rootPolicies, "test-policy", "namespace policy found in root listing")
 
 	// Delete and verify
-	require.NoError(t, ps.DeletePolicy(nsCtx, "test-policy", PolicyTypeACL))
-	p, err = ps.GetPolicy(nsCtx, "test-policy", PolicyTypeToken)
+	require.NoError(t, ps.DeletePolicy(nsCtx, "test-policy", policy.TypeACL))
+	p, err = ps.GetPolicy(nsCtx, "test-policy", policy.TypeToken)
 	require.NoError(t, err)
 	assert.Nil(t, p, "policy should be deleted")
 }
@@ -530,7 +530,7 @@ func TestPolicyStore_NamespaceStorage(t *testing.T) {
 // TestPolicyStore_NamespaceAPI tests namespace policy operations through the API
 func TestPolicyStore_NamespaceAPI(t *testing.T) {
 	core, _, token := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 
 	// Create a namespace
 	nsPath := "test-ns-api"
@@ -630,7 +630,7 @@ func TestPolicyStore_NamespaceAPI(t *testing.T) {
 // and cross-namespace access control.
 func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 	core, _, token := TestCoreUnsealed(t)
-	rootCtx := namespace.RootContext(context.Background())
+	rootCtx := namespace.RootContext(t.Context())
 	ps := core.policyStore
 
 	// Create parent namespace
@@ -675,7 +675,7 @@ func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 	}
 
 	for _, tmpl := range policyTemplates {
-		policy, _ := ParseACLPolicy(tmpl.ns, tmpl.content)
+		policy, _ := policy.ParseACLPolicy(tmpl.ns, tmpl.content)
 		policy.Name = tmpl.name
 		require.NoError(t, ps.SetPolicy(tmpl.ctx, policy, nil))
 	}
@@ -736,19 +736,19 @@ func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 	}
 
 	// Verify child namespace only sees its own policy
-	childPolicies, err := ps.ListPolicies(childCtx, PolicyTypeACL, true)
+	childPolicies, err := ps.ListPolicies(childCtx, policy.TypeACL, true)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []string{"default", "child-policy"}, childPolicies,
 		"child namespace should only contain its own policy and default")
 
 	// Verify parent namespace listing
-	parentPolicies, err := ps.ListPolicies(parentCtx, PolicyTypeACL, true)
+	parentPolicies, err := ps.ListPolicies(parentCtx, policy.TypeACL, true)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []string{"default", "parent-policy"}, parentPolicies,
 		"parent namespace should contain its own policy and default")
 
 	// Verify root namespace listing
-	rootPolicies, err := ps.ListPolicies(rootCtx, PolicyTypeACL, true)
+	rootPolicies, err := ps.ListPolicies(rootCtx, policy.TypeACL, true)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []string{"default", "root-policy"}, rootPolicies,
 		"root namespace should contain its own policy and default")
@@ -756,7 +756,7 @@ func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 
 func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	core, _, token := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	ps := core.policyStore
 
 	// Create a parent namespace
@@ -797,40 +797,40 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	childPolicy := `path "secret/*" { capabilities = ["read", "list", "create"] }`
 
 	// Create in root namespace
-	policy, _ := ParseACLPolicy(namespace.RootNamespace, rootPolicy)
-	policy.Name = "test-nested-policy"
-	require.NoError(t, ps.SetPolicy(ctx, policy, nil))
+	pol, _ := policy.ParseACLPolicy(namespace.RootNamespace, rootPolicy)
+	pol.Name = "test-nested-policy"
+	require.NoError(t, ps.SetPolicy(ctx, pol, nil))
 
 	// Create in parent namespace
-	policy, _ = ParseACLPolicy(parentNS, parentPolicy)
-	policy.Name = "test-nested-policy"
-	require.NoError(t, ps.SetPolicy(parentCtx, policy, nil))
+	pol, _ = policy.ParseACLPolicy(parentNS, parentPolicy)
+	pol.Name = "test-nested-policy"
+	require.NoError(t, ps.SetPolicy(parentCtx, pol, nil))
 
 	// Create in child namespace
-	policy, _ = ParseACLPolicy(childNS, childPolicy)
-	policy.Name = "test-nested-policy"
-	require.NoError(t, ps.SetPolicy(childCtx, policy, nil))
+	pol, _ = policy.ParseACLPolicy(childNS, childPolicy)
+	pol.Name = "test-nested-policy"
+	require.NoError(t, ps.SetPolicy(childCtx, pol, nil))
 
 	// Verify policies were stored in correct locations
-	rootP, err := ps.GetPolicy(ctx, "test-nested-policy", PolicyTypeToken)
+	rootP, err := ps.GetPolicy(ctx, "test-nested-policy", policy.TypeToken)
 	require.NoError(t, err)
 	require.NotNil(t, rootP, "expected policy in root namespace")
 	assert.Contains(t, rootP.Raw, `capabilities = ["read"]`)
 
-	parentP, err := ps.GetPolicy(parentCtx, "test-nested-policy", PolicyTypeToken)
+	parentP, err := ps.GetPolicy(parentCtx, "test-nested-policy", policy.TypeToken)
 	require.NoError(t, err)
 	require.NotNil(t, parentP, "expected policy in parent namespace")
 	assert.Contains(t, parentP.Raw, `capabilities = ["read", "list"]`)
 
-	childP, err := ps.GetPolicy(childCtx, "test-nested-policy", PolicyTypeToken)
+	childP, err := ps.GetPolicy(childCtx, "test-nested-policy", policy.TypeToken)
 	require.NoError(t, err)
 	require.NotNil(t, childP, "expected policy in child namespace")
 	assert.Contains(t, childP.Raw, `capabilities = ["read", "list", "create"]`)
 
 	// Verify storage locations by directly accessing the barrier views
-	rootView := ps.getACLView(namespace.RootNamespace)
-	parentView := ps.getACLView(parentNS)
-	childView := ps.getACLView(childNS)
+	rootView := ps.GetACLView(namespace.RootNamespace)
+	parentView := ps.GetACLView(parentNS)
+	childView := ps.GetACLView(childNS)
 
 	rootEntry, err := rootView.Get(ctx, "test-nested-policy")
 	require.NoError(t, err)
@@ -845,15 +845,15 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	require.NotNil(t, childViewEntry, "policy not found in child storage")
 
 	// Verify namespace visibility
-	rootList, err := ps.ListPolicies(ctx, PolicyTypeACL, true)
+	rootList, err := ps.ListPolicies(ctx, policy.TypeACL, true)
 	require.NoError(t, err)
 	assert.Contains(t, rootList, "test-nested-policy", "policy missing in root listing")
 
-	parentList, err := ps.ListPolicies(parentCtx, PolicyTypeACL, true)
+	parentList, err := ps.ListPolicies(parentCtx, policy.TypeACL, true)
 	require.NoError(t, err)
 	assert.Contains(t, parentList, "test-nested-policy", "policy missing in parent listing")
 
-	childList, err := ps.ListPolicies(childCtx, PolicyTypeACL, true)
+	childList, err := ps.ListPolicies(childCtx, policy.TypeACL, true)
 	require.NoError(t, err)
 	assert.Contains(t, childList, "test-nested-policy", "policy missing in child listing")
 
@@ -863,7 +863,7 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 
 	// Test policy inheritance
 	// Child namespace should not see root policy when using its own context
-	rootPolicyInChild, err := ps.GetPolicy(childCtx, "test-nested-policy", PolicyTypeToken)
+	rootPolicyInChild, err := ps.GetPolicy(childCtx, "test-nested-policy", policy.TypeToken)
 	require.NoError(t, err)
 	assert.NotEqual(t, rootP.Raw, rootPolicyInChild.Raw, "child namespace should not inherit root policy")
 
@@ -871,31 +871,31 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	// We error here due to the relative path; in the past this
 	// was treated like a not-found policy, which is technically
 	// correct but less informative.
-	parentPolicyInChild, err := ps.GetPolicy(childCtx, "../test-nested-policy", PolicyTypeToken)
+	parentPolicyInChild, err := ps.GetPolicy(childCtx, "../test-nested-policy", policy.TypeToken)
 	require.Error(t, err)
 	assert.Nil(t, parentPolicyInChild, "child namespace should not access parent policy via relative path")
 
 	// Test cross-namespace policy access
 	// Root namespace should not see child's policy
-	childPolicyInRoot, err := ps.GetPolicy(ctx, childNS.ID+"/test-nested-policy", PolicyTypeToken)
+	childPolicyInRoot, err := ps.GetPolicy(ctx, childNS.ID+"/test-nested-policy", policy.TypeToken)
 	require.NoError(t, err)
 	assert.Nil(t, childPolicyInRoot, "root namespace should not see child policy")
 
 	// Test policy deletion isolation
 	// Delete policy in child namespace
-	require.NoError(t, ps.DeletePolicy(childCtx, "test-nested-policy", PolicyTypeACL))
+	require.NoError(t, ps.DeletePolicy(childCtx, "test-nested-policy", policy.TypeACL))
 
 	// Verify policy was deleted only in child namespace
-	deletedChildPolicy, err := ps.GetPolicy(childCtx, "test-nested-policy", PolicyTypeToken)
+	deletedChildPolicy, err := ps.GetPolicy(childCtx, "test-nested-policy", policy.TypeToken)
 	require.NoError(t, err)
 	assert.Nil(t, deletedChildPolicy, "policy should be deleted in child namespace")
 
 	// Verify parent and root policies still exist
-	parentPolicyAfterDelete, err := ps.GetPolicy(parentCtx, "test-nested-policy", PolicyTypeToken)
+	parentPolicyAfterDelete, err := ps.GetPolicy(parentCtx, "test-nested-policy", policy.TypeToken)
 	require.NoError(t, err)
 	assert.NotNil(t, parentPolicyAfterDelete, "parent policy should still exist")
 
-	rootPolicyAfterDelete, err := ps.GetPolicy(ctx, "test-nested-policy", PolicyTypeToken)
+	rootPolicyAfterDelete, err := ps.GetPolicy(ctx, "test-nested-policy", policy.TypeToken)
 	require.NoError(t, err)
 	assert.NotNil(t, rootPolicyAfterDelete, "root policy should still exist")
 }
@@ -905,9 +905,9 @@ func TestPolicyStore_Expiration(t *testing.T) {
 	t.Parallel()
 	_, _, _, ps := mockPolicyWithCore(t, false)
 
-	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+	ctx := namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace)
 
-	p, err := ParseACLPolicy(namespace.RootNamespace, `path "*" { capabilities = ["read"] }`)
+	p, err := policy.ParseACLPolicy(namespace.RootNamespace, `path "*" { capabilities = ["read"] }`)
 	require.NoError(t, err)
 	require.NotNil(t, p)
 
@@ -934,9 +934,9 @@ func TestPolicyStore_CAS(t *testing.T) {
 	t.Parallel()
 	_, _, _, ps := mockPolicyWithCore(t, false)
 
-	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+	ctx := namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace)
 
-	p, err := ParseACLPolicy(namespace.RootNamespace, `path "*" { capabilities = ["read"] }`)
+	p, err := policy.ParseACLPolicy(namespace.RootNamespace, `path "*" { capabilities = ["read"] }`)
 	require.NoError(t, err)
 	require.NotNil(t, p)
 

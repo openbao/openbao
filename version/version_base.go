@@ -12,7 +12,10 @@ var (
 	GitCommit   string
 	GitDescribe string
 
-	// The compilation date. This will be filled in by the compiler.
+	// The date of the commit. This will be filled in by the compiler.
+	CommitDate string
+
+	// Deprecated, backwards-compatibility only: Replaced by CommitDate
 	BuildDate string
 
 	// Whether cgo is enabled or not; set at build time
@@ -23,3 +26,9 @@ var (
 	Version, VersionPrerelease, _ = strings.Cut(strings.TrimSpace(fullVersion), "-")
 	VersionMetadata               = ""
 )
+
+func init() {
+	if CommitDate == "" {
+		CommitDate = BuildDate
+	}
+}

@@ -26,6 +26,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/seal"
 )
 
@@ -46,7 +47,9 @@ const (
 	leaderPrefixCleanDelay = 200 * time.Millisecond
 )
 
-// Standby checks if the Vault is in standby mode
+// Standby checks if the Vault is in standby mode.
+// Usage of this function at core initialization/setup stage is not advised
+// as it always evaluates to true until after postUnseal() method.
 func (c *Core) Standby() bool {
 	return c.standby.Load()
 }
@@ -73,7 +76,7 @@ func (c *Core) getHAMembers() ([]HAStatusNode, error) {
 		Version:        c.effectiveSDKVersion,
 	}
 
-	if rb := c.getRaftBackend(); rb != nil {
+	if rb := c.GetRaftBackend(); rb != nil {
 		leader.UpgradeVersion = rb.EffectiveVersion()
 	}
 
@@ -212,7 +215,7 @@ func (c *Core) LeaderLocked() (isLeader bool, leaderAddr, clusterAddr string, er
 	// to ourself, there's no point in paying any attention to it.  And by
 	// disregarding it, we can avoid a panic in raft tests using the Inmem network
 	// layer when we try to connect back to ourself.
-	if adv.ClusterAddr == c.ClusterAddr() && adv.RedirectAddr == c.redirectAddr && c.getRaftBackend() != nil {
+	if adv.ClusterAddr == c.ClusterAddr() && adv.RedirectAddr == c.redirectAddr && c.GetRaftBackend() != nil {
 		return false, "", "", nil
 	}
 
@@ -264,7 +267,7 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 		return nil
 	}
 
-	ctx, cancel := context.WithCancel(namespace.RootContext(nil))
+	ctx, cancel := context.WithCancel(namespace.RootContext(context.Background()))
 	defer cancel()
 
 	go func() {
@@ -337,7 +340,7 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 	}
 
 	// Verify that this operation is allowed
-	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &PolicyCheckOpts{
+	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.CheckOpts{
 		RootPrivsRequired: true,
 	})
 	if !authResults.Allowed {
@@ -517,10 +520,10 @@ func (c *Core) runStandbyOnce(doneCh chan<- struct{}, manualStepDownCh chan stru
 		c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceStandby))
 		if err := c.postUnseal(readStandbyCtx, readStandbyCancel, readonlyUnsealStrategy{}); err != nil {
 			c.logger.Error("read-only post-unseal setup failed", "error", err)
-			if err := c.barrier.Seal(); err != nil {
-				c.logger.Error("failed to re-seal barrier after post-unseal setup failed", "error", err)
+			if err := c.sealManager.sealAll(); err != nil {
+				c.logger.Error("failed to re-seal all barriers after post-unseal setup failed", "error", err)
 			}
-			c.logger.Warn("vault is sealed")
+			c.logger.Warn("OpenBao is sealed")
 		}
 
 		// Yield the state lock.
@@ -688,7 +691,7 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 		c.heldHALock = lock
 
 		// Create the active context
-		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(nil))
+		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(context.Background()))
 		c.activeContext = activeCtx
 		c.activeContextCancelFunc.Store(&activeCtxCancel)
 
@@ -697,9 +700,10 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 
 		// Perform seal migration
 		if err := c.migrateSeal(c.activeContext); err != nil {
-			c.logger.Error("seal migration error", "error", err)
-			c.barrier.Seal()
-			c.logger.Warn("vault is sealed")
+			c.logger.Error("root seal migration error", "error", err)
+			// nothing we can do about it here
+			_ = c.sealManager.sealAll()
+			c.logger.Warn("OpenBao is sealed")
 			c.heldHALock = nil
 			lock.Unlock()
 			c.stateLock.Unlock()
@@ -845,17 +849,14 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 				}
 			}
 
-			// If we are not meant to keep the HA lock, clear it
-			if !c.keepHALockOnStepDown.Load() {
-				if err := c.clearLeader(uuid); err != nil {
-					c.logger.Error("clearing leader advertisement failed", "error", err)
-				}
-
-				if err := c.heldHALock.Unlock(); err != nil {
-					c.logger.Error("unlocking HA lock failed", "error", err)
-				}
-				c.heldHALock = nil
+			if err := c.clearLeader(uuid); err != nil {
+				c.logger.Error("clearing leader advertisement failed", "error", err)
 			}
+
+			if err := c.heldHALock.Unlock(); err != nil {
+				c.logger.Error("unlocking HA lock failed", "error", err)
+			}
+			c.heldHALock = nil
 
 			// Advertise ourselves as a standby.
 			if c.serviceRegistration != nil {
@@ -1005,7 +1006,7 @@ func (c *Core) periodicLeaderRefresh(stopCh chan struct{}) {
 
 // periodicCheckKeyUpgrade is used to watch for key rotation events as a standby
 func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{}) {
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 	isRaft := raftBackend != nil
 
 	opCount := atomic.Int32{}
@@ -1022,20 +1023,6 @@ func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{
 			go func() {
 				// Only check if we are a standby
 				if !c.standby.Load() {
-					opCount.Add(-1)
-					return
-				}
-
-				// Check for a poison pill. If we can read it, it means we have stale
-				// keys (e.g. from replication being activated) and we need to seal to
-				// be unsealed again.
-				entry, _ := c.barrier.Get(ctx, poisonPillPath)
-				if entry != nil && len(entry.Value) > 0 {
-					c.logger.Warn("encryption keys have changed out from underneath us (possibly due to replication enabling), must be unsealed again")
-					// If we are using raft storage we do not want to shut down
-					// raft during replication secondary enablement. This will
-					// allow us to keep making progress on the raft log.
-					go c.sealInternalWithOptions(true, false, !isRaft)
 					opCount.Add(-1)
 					return
 				}
@@ -1099,27 +1086,24 @@ func (c *Core) reloadShamirKey(ctx context.Context) error {
 	if cfg, _ := c.seal.BarrierConfig(ctx); cfg == nil {
 		return nil
 	}
-	var shamirKey []byte
-	switch c.seal.StoredKeysSupported() {
-	case seal.StoredKeysSupportedGeneric:
+
+	if c.seal.BarrierType() != seal.WrapperTypeShamir {
 		return nil
-	case seal.StoredKeysSupportedShamirRoot:
-		entry, err := c.barrier.Get(ctx, barrier.ShamirKekPath)
-		if err != nil {
-			return err
-		}
-		if entry == nil {
-			return nil
-		}
-		shamirKey = entry.Value
-	case seal.StoredKeysNotSupported:
-		return errors.New("legacy shamir seals are not supported by OpenBao")
 	}
+
+	entry, err := c.barrier.Get(ctx, barrier.ShamirKekPath)
+	if err != nil {
+		return err
+	}
+	if entry == nil {
+		return nil
+	}
+
 	shamirWrapper, err := c.seal.GetShamirWrapper()
 	if err != nil {
 		return err
 	}
-	return shamirWrapper.SetAesGcmKeyBytes(shamirKey)
+	return shamirWrapper.SetAesGcmKeyBytes(entry.Value)
 }
 
 func (c *Core) performKeyUpgrades(ctx context.Context) error {

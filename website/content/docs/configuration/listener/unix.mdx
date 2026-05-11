@@ -39,6 +39,19 @@ multiple sockets.
 
   :::
 
+- `disable_unauthed_generate_root_endpoints` `(bool: true)` - Whether to
+  disable requests to the legacy unauthenticated generate root endpoints
+  (under `/sys/generate-root/*`). These are a security risk to leave exposed
+  on public listeners: unauthenticated users can cancel any inflight root
+  generation requests.
+
+  :::warning
+
+  **As of OpenBao v2.5.3, this parameter defaults to true, forbidding any calls
+  to the unauthenticated generate root endpoints.**
+
+  :::
+
 ### `telemetry` parameters
 
 - `unauthenticated_metrics_access` `(bool: false)` - If set to true, allows

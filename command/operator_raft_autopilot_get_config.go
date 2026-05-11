@@ -71,6 +71,10 @@ func (c *OperatorRaftAutopilotGetConfigCommand) Run(args []string) int {
 
 	var config *api.AutopilotConfig
 	config, err = client.Sys().RaftAutopilotConfiguration()
+	if err != nil {
+		c.UI.Error(err.Error())
+		return 2
+	}
 
 	if config == nil {
 		return 0

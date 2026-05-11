@@ -112,8 +112,8 @@ func ParseHexFormatted(in, sep string) []byte {
 	var ret bytes.Buffer
 	var err error
 	var inBits uint64
-	inBytes := strings.Split(in, sep)
-	for _, inByte := range inBytes {
+	inBytes := strings.SplitSeq(in, sep)
+	for inByte := range inBytes {
 		if inBits, err = strconv.ParseUint(inByte, 16, 8); err != nil {
 			return nil
 		}
@@ -160,13 +160,11 @@ func GetSubjectKeyID(pub interface{}) ([]byte, error) {
 			return nil, errutil.InternalError{Err: fmt.Sprintf("error marshalling public key: %s", err)}
 		}
 	case *ecdsa.PublicKey:
-		// TODO: Replace usage of elliptic.Marshal by below code once we compile with Go 1.25
-		// var err error
-		// publicKeyBytes, err = pub.Bytes()
-		// if err != nil {
-		// 	return nil, errutil.InternalError{Err: fmt.Sprintf("error marshalling public key: %s", err)}
-		// }
-		publicKeyBytes = elliptic.Marshal(pub.Curve, pub.X, pub.Y)
+		var err error
+		publicKeyBytes, err = pub.Bytes()
+		if err != nil {
+			return nil, errutil.InternalError{Err: fmt.Sprintf("error marshalling public key: %s", err)}
+		}
 	case ed25519.PublicKey:
 		publicKeyBytes = pub
 	default:
@@ -1392,7 +1390,7 @@ func signCertificate(data *CreationBundle, randReader io.Reader) (*ParsedCertBun
 	}
 
 	if data.Params.UseCSRValues {
-		certTemplate.Subject = data.CSR.Subject
+		certTemplate.RawSubject = data.CSR.RawSubject
 		certTemplate.Subject.ExtraNames = certTemplate.Subject.Names
 
 		certTemplate.DNSNames = data.CSR.DNSNames

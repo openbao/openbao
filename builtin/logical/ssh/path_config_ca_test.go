@@ -4,7 +4,6 @@
 package ssh
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -61,7 +60,7 @@ cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
 		},
 		Storage: s,
 	}
-	resp, err := b.HandleRequest(context.Background(), roleReq)
+	resp, err := b.HandleRequest(t.Context(), roleReq)
 	require.NoError(t, err, "cannot create role")
 	require.Nil(t, resp, "unexpected response creating role")
 
@@ -71,7 +70,7 @@ cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
 		Path:      "config/ca",
 		Storage:   s,
 	}
-	resp, err = b.HandleRequest(context.Background(), defaultCaReq)
+	resp, err = b.HandleRequest(t.Context(), defaultCaReq)
 	require.NoError(t, err, "cannot create default CA issuer")
 	require.False(t, resp != nil && resp.IsError(), "unexpected error response creating default CA issuer")
 
@@ -92,7 +91,7 @@ cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
 		},
 		Storage: s,
 	}
-	resp, err = b.HandleRequest(context.Background(), signReq)
+	resp, err = b.HandleRequest(t.Context(), signReq)
 	require.NoError(t, err, "cannot sign key")
 	require.False(t, resp != nil && resp.IsError(), "unexpected error response signing key")
 
@@ -151,7 +150,7 @@ func TestSSH_ConfigCAKeyTypes(t *testing.T) {
 		Data:      roleOptions,
 		Storage:   s,
 	}
-	_, err = b.HandleRequest(context.Background(), roleReq)
+	_, err = b.HandleRequest(t.Context(), roleReq)
 	require.NoError(t, err, "cannot create role to issue against")
 
 	for index, scenario := range cases {
@@ -184,7 +183,7 @@ func TestSSH_ConfigCAPurgeIssuers(t *testing.T) {
 			},
 			Storage: s,
 		}
-		resp, err := b.HandleRequest(context.Background(), defaultCaReq)
+		resp, err := b.HandleRequest(t.Context(), defaultCaReq)
 		require.NoError(t, err, "issuer %d: cannot create CA issuer to perform signing operations", id)
 		require.False(t, resp != nil && resp.IsError(), "issuer %d: unexpected error response creating CA issuer", id)
 	}
@@ -195,7 +194,7 @@ func TestSSH_ConfigCAPurgeIssuers(t *testing.T) {
 		Path:      "issuers",
 		Storage:   s,
 	}
-	resp, err := b.HandleRequest(context.Background(), listReq)
+	resp, err := b.HandleRequest(t.Context(), listReq)
 	require.NoError(t, err, "cannot list issuers")
 	require.False(t, resp != nil && resp.IsError(), "unexpected error response listing issuers")
 
@@ -207,12 +206,12 @@ func TestSSH_ConfigCAPurgeIssuers(t *testing.T) {
 		Path:      "config/ca",
 		Storage:   s,
 	}
-	resp, err = b.HandleRequest(context.Background(), purgeReq)
+	resp, err = b.HandleRequest(t.Context(), purgeReq)
 	require.NoError(t, err, "cannot purge CA issuers")
 	require.False(t, resp != nil && resp.IsError(), "unexpected error response purging CA issuers")
 
 	// list all isuers make sure none are present
-	resp, err = b.HandleRequest(context.Background(), listReq)
+	resp, err = b.HandleRequest(t.Context(), listReq)
 	require.NoError(t, err, "cannot list issuers")
 	require.False(t, resp != nil && resp.IsError(), "unexpected error response listing issuers")
 
@@ -224,7 +223,7 @@ func TestSSH_ConfigCAParams(t *testing.T) {
 	b, s := CreateBackendWithStorage(t)
 
 	t.Run("GenerateSigningKeyFalse", func(t *testing.T) {
-		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "config/ca",
 			Storage:   s,
@@ -238,7 +237,7 @@ func TestSSH_ConfigCAParams(t *testing.T) {
 	})
 
 	t.Run("NoPrivateKeySet", func(t *testing.T) {
-		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "config/ca",
 			Storage:   s,
@@ -253,7 +252,7 @@ func TestSSH_ConfigCAParams(t *testing.T) {
 	})
 
 	t.Run("GenerateSigningKeyTrue", func(t *testing.T) {
-		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "config/ca",
 			Storage:   s,
@@ -268,7 +267,7 @@ func TestSSH_ConfigCAParams(t *testing.T) {
 	})
 
 	t.Run("GenerateSigningKeyTrueAndKeyMaterial", func(t *testing.T) {
-		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "config/ca",
 			Storage:   s,
@@ -284,7 +283,7 @@ func TestSSH_ConfigCAParams(t *testing.T) {
 	})
 
 	t.Run("NoParametersSet", func(t *testing.T) {
-		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "config/ca",
 			Storage:   s,
@@ -309,7 +308,7 @@ func TestSSH_ConfigCAReadDefaultIssuer(t *testing.T) {
 		},
 		Storage: s,
 	}
-	resp, err := b.HandleRequest(context.Background(), createCaIssuerReq)
+	resp, err := b.HandleRequest(t.Context(), createCaIssuerReq)
 	require.NoError(t, err, "cannot submit CA issuer as default")
 	require.False(t, resp != nil && resp.IsError(), "unexpected error response submitting CA issuer as default")
 
@@ -323,7 +322,7 @@ func TestSSH_ConfigCAReadDefaultIssuer(t *testing.T) {
 		},
 		Storage: s,
 	}
-	resp, err = b.HandleRequest(context.Background(), configDefaultCARequest)
+	resp, err = b.HandleRequest(t.Context(), configDefaultCARequest)
 	require.NoError(t, err, "cannot submit a new CA and override existing 'default'")
 	require.False(t, resp != nil && resp.IsError(), "unexpected error response submitting new CA")
 
@@ -333,7 +332,7 @@ func TestSSH_ConfigCAReadDefaultIssuer(t *testing.T) {
 		Path:      "config/ca",
 		Storage:   s,
 	}
-	resp, err = b.HandleRequest(context.Background(), readDefaultIssuerRequest)
+	resp, err = b.HandleRequest(t.Context(), readDefaultIssuerRequest)
 	require.NoError(t, err, "cannot read default issuer")
 	require.False(t, resp != nil && resp.IsError(), "unexpected error response reading default issuer")
 
@@ -353,7 +352,7 @@ func createDeleteHelper(t *testing.T, b logical.Backend, s logical.Storage, inde
 		"key_type":             keyType,
 		"key_bits":             keyBits,
 	}
-	resp, err := b.HandleRequest(context.Background(), caReq)
+	resp, err := b.HandleRequest(t.Context(), caReq)
 	require.NoError(t, err, "bad case %v", index)
 	require.False(t, resp != nil && resp.IsError(), "bad case %v", index)
 	require.Contains(t, resp.Data["public_key"].(string), caReq.Data["key_type"].(string), "bad case %v: expected public key of type %v but was %v", index, caReq.Data["key_type"], resp.Data["public_key"])
@@ -368,13 +367,13 @@ func createDeleteHelper(t *testing.T, b logical.Backend, s logical.Storage, inde
 		Data:      issueOptions,
 		Storage:   s,
 	}
-	resp, err = b.HandleRequest(context.Background(), issueReq)
+	resp, err = b.HandleRequest(t.Context(), issueReq)
 	require.NoError(t, err, "bad case %v", index)
 	require.False(t, resp != nil && resp.IsError(), "bad case %v", index)
 
 	// Delete the configured keys
 	caReq.Operation = logical.DeleteOperation
-	resp, err = b.HandleRequest(context.Background(), caReq)
+	resp, err = b.HandleRequest(t.Context(), caReq)
 	require.NoError(t, err, "bad case %v", index)
 	require.False(t, resp != nil && resp.IsError(), "bad case %v", index)
 }

@@ -42,7 +42,7 @@ func TestNewPluginClient(t *testing.T) {
 					dispenseResp: gRPCClient{client: fakeClient{}},
 					dispenseErr:  nil,
 				},
-				Database: gRPCClient{client: proto.NewDatabaseClient(nil), versionClient: logical.NewPluginVersionClient(nil), doneCtx: context.Context(nil)},
+				Database: gRPCClient{client: proto.NewDatabaseClient(nil), versionClient: logical.NewPluginVersionClient(nil)},
 			},
 			expectedErr: nil,
 		},
@@ -70,14 +70,12 @@ func TestNewPluginClient(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			ctx := context.Background()
-
 			mockWrapper := new(mockRunnerUtil)
-			mockWrapper.On("NewPluginClient", ctx, mock.Anything).
+			mockWrapper.On("NewPluginClient", t.Context(), mock.Anything).
 				Return(test.pluginClient, nil)
 			defer mockWrapper.AssertNumberOfCalls(t, "NewPluginClient", 1)
 
-			resp, err := NewPluginClient(ctx, mockWrapper, test.config)
+			resp, err := NewPluginClient(t.Context(), mockWrapper, test.config)
 			if test.expectedErr != nil && err == nil {
 				t.Fatal("err expected, got nil")
 			}

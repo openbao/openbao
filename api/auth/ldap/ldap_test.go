@@ -4,7 +4,6 @@
 package ldap
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -100,7 +99,7 @@ func TestLogin(t *testing.T) {
 		t.Fatalf("error initializing LDAPAuth with password file: %v", err)
 	}
 
-	loginRespFromFile, err := client.Auth().Login(context.TODO(), authFromFile)
+	loginRespFromFile, err := client.Auth().Login(t.Context(), authFromFile)
 	if err != nil {
 		t.Fatalf("error logging in with password from file: %v", err)
 	}
@@ -115,7 +114,7 @@ func TestLogin(t *testing.T) {
 		t.Fatalf("error initializing LDAPAuth with password env var: %v", err)
 	}
 
-	loginRespFromEnv, err := client.Auth().Login(context.TODO(), authFromEnv)
+	loginRespFromEnv, err := client.Auth().Login(t.Context(), authFromEnv)
 	if err != nil {
 		t.Fatalf("error logging in with password from env var: %v", err)
 	}
@@ -130,7 +129,7 @@ func TestLogin(t *testing.T) {
 		t.Fatalf("error initializing LDAPAuth with password string: %v", err)
 	}
 
-	loginRespFromStr, err := client.Auth().Login(context.TODO(), authFromStr)
+	loginRespFromStr, err := client.Auth().Login(t.Context(), authFromStr)
 	if err != nil {
 		t.Fatalf("error logging in with string: %v", err)
 	}

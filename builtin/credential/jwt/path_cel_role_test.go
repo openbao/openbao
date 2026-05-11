@@ -4,7 +4,6 @@
 package jwtauth
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"testing"
@@ -64,7 +63,7 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 				Data:      roleData,
 			}
 
-			resp, err = b.HandleRequest(context.Background(), roleReq)
+			resp, err = b.HandleRequest(t.Context(), roleReq)
 			updateError := err != nil || (resp != nil && resp.IsError())
 			if tc.ExpectErr {
 				if !updateError {
@@ -78,7 +77,7 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 
 			// Read back the role to verify
 			roleReq.Operation = logical.ReadOperation
-			roleDataResp, err = b.HandleRequest(context.Background(), roleReq)
+			roleDataResp, err = b.HandleRequest(t.Context(), roleReq)
 			// if we expected an error above there should be no cel role to read
 			found := err == nil && roleDataResp != nil
 			if tc.ExpectErr {
@@ -103,7 +102,7 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 			// List roles to verify
 			roleReq.Path = "cel/role"
 			roleReq.Operation = logical.ListOperation
-			roleListResp, err := b.HandleRequest(context.Background(), roleReq)
+			roleListResp, err := b.HandleRequest(t.Context(), roleReq)
 			if err != nil {
 				t.Fatalf("bad [%d/%s] unexpected error %v", tcNum, tc.Name, err)
 			}

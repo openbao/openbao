@@ -84,7 +84,7 @@ The proposed solution involves the following technical components and logic:
 1.  **Configuration Parsing:** OpenBao's configuration loader will be extended
     to parse a new top-level `plugin` block. This block will be a single plugin,
     with two required keys: the plugin type (e.g., `secret`) and the plugin name
-    (e.g., `"my-secret-plugin"`) and the object containings `image` (string),
+    (e.g., `"my-secret-plugin"`) and the object containing `image` (string),
     `binary_name` (string), and `sha256sum` (string).
 2.  **Plugin Directory Management:** OpenBao will use a configurable plugin
     directory (e.g., via `VAULT_PLUGIN_DIR` environment variable or a
@@ -231,5 +231,5 @@ This proposal significantly improves OpenBao's plugin security posture:
     need to define a custom Manifest structure similar to [OpenTofu](https://opentofu.org/docs/main/cli/oci_registries/provider-mirror/#manifest-structure)?
   * **Plugin registration:** Should the downloaded plugins also automatically be
     registered in the plugin catalog?
-  * **Multiple Plugin Versions:** How to best handle mulitple versions of the same plugin?
+  * **Multiple Plugin Versions:** How to best handle multiple versions of the same plugin?
 

@@ -1,7 +1,6 @@
 package profiles
 
 import (
-	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -25,14 +24,13 @@ func TestWithRequestSource_RegistersBuilder(t *testing.T) {
 }
 
 func TestRequestSourceBuilder_Success(t *testing.T) {
-	ctx := context.Background()
 	engine := &ProfileEngine{
 		outerBlockName: "initialize",
 		sourceBuilders: make(map[string]SourceBuilder),
 	}
 	field := map[string]interface{}{"request": "userpass"}
 
-	source := RequestSourceBuilder(ctx, engine, field)
+	source := RequestSourceBuilder(engine, field)
 	if source == nil {
 		t.Fatal("expected non-nil Source")
 	}
@@ -48,9 +46,8 @@ func TestRequestSourceBuilder_Success(t *testing.T) {
 
 func TestRequestSource_ValidateMissingField(t *testing.T) {
 	source := &RequestSource{field: map[string]interface{}{}}
-	ctx := context.Background()
 
-	_, _, err := source.Validate(ctx)
+	_, _, err := source.Validate()
 	if err == nil {
 		t.Fatal("expected error for missing 'request_name' field, got nil")
 	}
@@ -66,7 +63,7 @@ func TestRequestSource_Validate_MissingOuterNameField(t *testing.T) {
 		field: map[string]interface{}{"request_name": "r1"},
 	}
 
-	_, _, err := rs.Validate(context.Background())
+	_, _, err := rs.Validate()
 	want := "request source is missing required field 'profile_name'"
 	if err == nil {
 		t.Fatalf("expected error %q, got nil", want)
@@ -83,9 +80,8 @@ func TestRequestSource_Validate_Success(t *testing.T) {
 			"field_selector": "",
 		},
 	}
-	ctx := context.Background()
 
-	reqs, _, err := source.Validate(ctx)
+	reqs, _, err := source.Validate()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -103,7 +99,7 @@ func TestRequestValidate_OuterNameWrongType(t *testing.T) {
 		field: map[string]interface{}{"profile_name": 123, "request_name": "r1"},
 	}
 
-	_, _, err := rs.Validate(context.Background())
+	_, _, err := rs.Validate()
 	want := "field 'profile_name' is of wrong type: expected 'string' got 'int'"
 	if err == nil {
 		t.Fatalf("expected error %q, got nil", want)
@@ -123,7 +119,7 @@ func TestRequestValidate_OuterNameOK(t *testing.T) {
 		},
 	}
 
-	gotReqDeps, gotRespDeps, err := rs.Validate(context.Background())
+	gotReqDeps, gotRespDeps, err := rs.Validate()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -138,7 +134,7 @@ func TestRequestValidate_OuterNameOK(t *testing.T) {
 }
 
 func TestRequestSource_Close(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	source := &RequestSource{}
 	err := source.Close(ctx)
 	if err != nil {
@@ -147,13 +143,13 @@ func TestRequestSource_Close(t *testing.T) {
 }
 
 func TestRequestSource_Evaluate_WithFieldSelector_String(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	history := &EvaluationHistory{}
 	source := &RequestSource{
 		field: map[string]interface{}{"request_name": "mount-userpass", "field_selector": "userPass"},
 	}
 
-	if _, _, err := source.Validate(ctx); err != nil {
+	if _, _, err := source.Validate(); err != nil {
 		t.Fatalf("Validate error: %v", err)
 	}
 
@@ -175,13 +171,13 @@ func TestRequestSource_Evaluate_WithFieldSelector_String(t *testing.T) {
 }
 
 func TestRequestSource_Evaluate_WithFieldSelector_Interface(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	history := &EvaluationHistory{}
 	source := &RequestSource{
 		field: map[string]interface{}{"request_name": "mount-userpass", "field_selector": []interface{}{"userPass", 0}},
 	}
 
-	_, _, err := source.Validate(ctx)
+	_, _, err := source.Validate()
 	require.NoError(t, err)
 
 	requestData := map[string]interface{}{

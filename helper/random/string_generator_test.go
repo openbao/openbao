@@ -75,13 +75,13 @@ func TestStringGenerator_Generate_successful(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			// One context to rule them all, one context to find them, one context to bring them all and in the darkness bind them.
-			ctx, cancel := context.WithTimeout(context.Background(), test.timeout)
+			ctx, cancel := context.WithTimeout(t.Context(), test.timeout)
 			defer cancel()
 
 			runeset := map[rune]bool{}
 			runesFound := []rune{}
 
-			for i := 0; i < 100; i++ {
+			for range 100 {
 				actual, err := test.generator.Generate(ctx, nil)
 				if err != nil {
 					t.Fatalf("no error expected, but got: %s", err)
@@ -190,7 +190,7 @@ func TestStringGenerator_Generate_errors(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			// One context to rule them all, one context to find them, one context to bring them all and in the darkness bind them.
-			ctx, cancel := context.WithTimeout(context.Background(), test.timeout)
+			ctx, cancel := context.WithTimeout(t.Context(), test.timeout)
 			defer cancel()
 
 			actual, err := test.generator.Generate(ctx, test.rng)
@@ -286,7 +286,7 @@ func TestRandomRunes_successful(t *testing.T) {
 			runeset := map[rune]bool{}
 			runesFound := []rune{}
 
-			for i := 0; i < 10000; i++ {
+			for range 10000 {
 				actual, err := randomRunes(rand.Reader, test.charset, test.length)
 				if err != nil {
 					t.Fatalf("no error expected, but got: %s", err)
@@ -470,7 +470,7 @@ func BenchmarkStringGenerator_Generate(b *testing.B) {
 			for _, length := range lengths {
 				bench.generator.Length = length
 				b.Run(fmt.Sprintf("length=%d", length), func(b *testing.B) {
-					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					ctx, cancel := context.WithTimeout(b.Context(), 10*time.Second)
 					defer cancel()
 
 					b.ResetTimer()
@@ -496,7 +496,7 @@ func BenchmarkStringGenerator_Generate(b *testing.B) {
 			Rules:   nil,
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(b.Context(), 10*time.Second)
 		defer cancel()
 
 		b.ResetTimer()
@@ -787,7 +787,7 @@ func TestRandomRunes_Bias(t *testing.T) {
 
 			generations := 50000
 			length := 100
-			for i := 0; i < generations; i++ {
+			for range generations {
 				str, err := randomRunes(nil, test.charset, length)
 				if err != nil {
 					t.Fatal(err)
@@ -797,11 +797,8 @@ func TestRandomRunes_Bias(t *testing.T) {
 				}
 			}
 
-			chars := charCounts{}
-
 			var sum float64
-			for r, count := range runeCounts {
-				chars = append(chars, charCount{r, count})
+			for _, count := range runeCounts {
 				sum += float64(count)
 			}
 
@@ -820,14 +817,3 @@ func TestRandomRunes_Bias(t *testing.T) {
 		})
 	}
 }
-
-type charCount struct {
-	r     rune
-	count int
-}
-
-type charCounts []charCount
-
-func (s charCounts) Len() int           { return len(s) }
-func (s charCounts) Less(i, j int) bool { return s[i].r < s[j].r }
-func (s charCounts) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }

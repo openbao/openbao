@@ -33,6 +33,18 @@ func pathCode(b *backend) *framework.Path {
 				Type:        framework.TypeString,
 				Description: "TOTP code to be validated.",
 			},
+			"generated": {
+				Type:        framework.TypeInt64,
+				Description: "Unix Epoch timestamp of the code generation.",
+			},
+			"expire_time": {
+				Type:        framework.TypeInt64,
+				Description: "Unix Epoch timestamp of the code expiry time.",
+			},
+			"period": {
+				Type:        framework.TypeString,
+				Description: "TOTP configuration's period.",
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -68,7 +80,8 @@ func (b *backend) pathReadCode(ctx context.Context, req *logical.Request, data *
 	}
 
 	// Generate password using totp library
-	totpToken, err := totplib.GenerateCodeCustom(key.Key, time.Now(), totplib.ValidateOpts{
+	tNow := time.Now()
+	totpToken, err := totplib.GenerateCodeCustom(key.Key, tNow, totplib.ValidateOpts{
 		Period:    key.Period,
 		Digits:    key.Digits,
 		Algorithm: key.Algorithm,
@@ -77,10 +90,18 @@ func (b *backend) pathReadCode(ctx context.Context, req *logical.Request, data *
 		return nil, err
 	}
 
-	// Return the secret
+	// key.Period is number of seconds represented by uint
+	// so we need to convert to duration seconds
+	period := time.Duration(key.Period) * time.Second
+
+	// calculate time step
+	ts := time.Duration(tNow.Unix()/int64(key.Period)) * period
 	return &logical.Response{
 		Data: map[string]interface{}{
-			"code": totpToken,
+			"code":        totpToken,
+			"generated":   tNow.Unix(),
+			"expire_time": time.Unix(int64(ts.Seconds()), 0).Add(period).Unix(),
+			"period":      period.String(),
 		},
 	}, nil
 }
@@ -141,10 +162,9 @@ func (b *backend) pathValidateCode(ctx context.Context, req *logical.Request, da
 }
 
 const pathCodeHelpSyn = `
-Request time-based one-time use password or validate a password for a certain key .
+Request time-based one-time use password or validate a password for a certain key.
 `
 
 const pathCodeHelpDesc = `
 This path generates and validates time-based one-time use passwords for a certain key. 
-
 `

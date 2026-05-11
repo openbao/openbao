@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -232,7 +231,7 @@ func testOpsFailAfterDeletion(t *testing.T, keyType string, encrypt bool, sign b
 		req.Data["key_size"] = 32
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
@@ -242,7 +241,7 @@ func testOpsFailAfterDeletion(t *testing.T, keyType string, encrypt bool, sign b
 		"type": "rsa-4096",
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
@@ -254,7 +253,7 @@ func testOpsFailAfterDeletion(t *testing.T, keyType string, encrypt bool, sign b
 	req.Operation = logical.DeleteOperation
 	req.Data = nil
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
@@ -265,7 +264,7 @@ func testOpsFailAfterDeletion(t *testing.T, keyType string, encrypt bool, sign b
 	req.Path = "keys/test/soft-delete-restore"
 	req.Operation = logical.UpdateOperation
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
@@ -280,7 +279,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 		Operation: logical.ReadOperation,
 		Storage:   s,
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
@@ -293,7 +292,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 			"plaintext": base64.StdEncoding.EncodeToString([]byte("hello world")),
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if expectedFailure {
 			require.Error(t, err)
 			resp = &logical.Response{
@@ -311,7 +310,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 			"ciphertext": resp.Data["ciphertext"],
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if expectedFailure {
 			require.Error(t, err)
 		} else {
@@ -329,7 +328,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 			"input": base64.StdEncoding.EncodeToString([]byte("hello world")),
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if expectedFailure {
 			require.Error(t, err)
 			resp = &logical.Response{
@@ -348,7 +347,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 			"signature": resp.Data["signature"],
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if expectedFailure {
 			require.Error(t, err)
 		} else {
@@ -365,7 +364,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 		"input": base64.StdEncoding.EncodeToString([]byte("hello world")),
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if expectedFailure {
 		require.Error(t, err)
 		resp = &logical.Response{
@@ -384,7 +383,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 		"hmac":  resp.Data["hmac"],
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if expectedFailure {
 		require.Error(t, err)
 	} else {
@@ -398,7 +397,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 	req.Path = "keys/test/rotate"
 	req.Data = nil
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if expectedFailure {
 		require.Error(t, err)
 	} else {
@@ -416,7 +415,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 		req.Path = "export/hmac-key/test"
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if expectedFailure {
 		require.Error(t, err)
 	} else {
@@ -427,7 +426,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 	// Validate that BYOK exporting conditionally fails.
 	req.Path = "byok-export/byok-key/test"
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if expectedFailure {
 		require.Error(t, err)
 	} else {

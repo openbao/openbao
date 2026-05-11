@@ -1,0 +1,3 @@
+```release-note:improvement
+command/server: Add CEL support to self-initialization, allowing finer control over structuring requests.
+```

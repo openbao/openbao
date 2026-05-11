@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 
@@ -773,12 +774,7 @@ func (c *SSHCommand) isSingleSSHArg(arg string) bool {
 	// We want to get the first character after the dash. This is so args like -vvv are picked up as just being -v
 	flag := string(arg[1])
 
-	for _, a := range singleArgs {
-		if flag == a {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(singleArgs, flag)
 }
 
 // Finds the hostname, username (optional) and port (optional) from any valid ssh command

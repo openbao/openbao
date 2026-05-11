@@ -15,25 +15,29 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/require"
 )
 
 // mockRollback returns a mock rollback manager
-func mockRollback(t *testing.T) (*RollbackManager, *NoopBackend) {
-	backend := new(NoopBackend)
-	mounts := new(MountTable)
-	router := NewRouter()
+func mockRollback(t *testing.T) (*RollbackManager, *be.Noop) {
+	logger := logging.NewVaultLogger(log.Trace)
+
+	backend := new(be.Noop)
+	mounts := new(routing.MountTable)
+	router := routing.NewRouter(logger)
 	core, _, _ := TestCoreUnsealed(t)
 
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
 
-	mounts.Entries = []*MountEntry{
+	mounts.Entries = []*routing.MountEntry{
 		{
 			Path:        "foo",
 			NamespaceID: namespace.RootNamespaceID,
-			namespace:   namespace.RootNamespace,
+			Namespace:   namespace.RootNamespace,
 		},
 	}
 	meUUID, err := uuid.GenerateUUID()
@@ -41,17 +45,15 @@ func mockRollback(t *testing.T) (*RollbackManager, *NoopBackend) {
 		t.Fatal(err)
 	}
 
-	if err := router.Mount(backend, "foo", &MountEntry{UUID: meUUID, Accessor: "noopaccessor", NamespaceID: namespace.RootNamespaceID, namespace: namespace.RootNamespace}, view); err != nil {
+	if err := router.Mount(backend, "foo", &routing.MountEntry{UUID: meUUID, Accessor: "noopaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
-	mountsFunc := func() []*MountEntry {
+	mountsFunc := func() []*routing.MountEntry {
 		return mounts.Entries
 	}
 
-	logger := logging.NewVaultLogger(log.Trace)
-
-	rb := NewRollbackManager(context.Background(), logger, mountsFunc, router, core)
+	rb := NewRollbackManager(t.Context(), logger, mountsFunc, router, core)
 	rb.period = 10 * time.Millisecond
 	return rb, backend
 }
@@ -95,8 +97,8 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 	// create 10 backends
 	// when a rollback happens, each backend will try to write to an unbuffered
 	// channel, then wait to be released
-	for i := 0; i < 10; i++ {
-		b := &NoopBackend{}
+	for i := range 10 {
+		b := &be.Noop{}
 		b.RequestHandler = func(ctx context.Context, request *logical.Request) (*logical.Response, error) {
 			if request.Operation == logical.RollbackOperation {
 				ran <- request.Path
@@ -107,26 +109,26 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 		b.Root = []string{fmt.Sprintf("foo/%d", i)}
 		meUUID, err := uuid.GenerateUUID()
 		require.NoError(t, err)
-		mountEntry := &MountEntry{
-			Table:       mountTableType,
+		mountEntry := &routing.MountEntry{
+			Table:       routing.MountTableType,
 			UUID:        meUUID,
 			Accessor:    fmt.Sprintf("accessor-%d", i),
 			NamespaceID: namespace.RootNamespaceID,
-			namespace:   namespace.RootNamespace,
+			Namespace:   namespace.RootNamespace,
 			Path:        fmt.Sprintf("logical/foo/%d", i),
 		}
 		func() {
 			core.mountsLock.Lock()
 			defer core.mountsLock.Unlock()
-			newTable := core.mounts.shallowClone()
+			newTable := core.mounts.ShallowClone()
 			newTable.Entries = append(newTable.Entries, mountEntry)
 			core.mounts = newTable
 			err = core.router.Mount(b, "logical", mountEntry, view)
-			require.NoError(t, core.persistMounts(context.Background(), nil, newTable, &mountEntry.Local, mountEntry.UUID))
+			require.NoError(t, core.persistMounts(t.Context(), core.NamespaceView(mountEntry.Namespace), newTable, &mountEntry.Local, mountEntry.UUID))
 		}()
 	}
 
-	timeout, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	timeout, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
 	got := make(map[string]bool)
 	hasMore := true
@@ -178,8 +180,8 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 	// create 10 backends
 	// when a rollback happens, each backend will try to write to an unbuffered
 	// channel, then wait to be released
-	for i := 0; i < 10; i++ {
-		b := &NoopBackend{}
+	for i := range 10 {
+		b := &be.Noop{}
 		b.RequestHandler = func(ctx context.Context, request *logical.Request) (*logical.Response, error) {
 			if request.Operation == logical.RollbackOperation {
 				ran <- request.Path
@@ -190,26 +192,26 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 		b.Root = []string{fmt.Sprintf("foo/%d", i)}
 		meUUID, err := uuid.GenerateUUID()
 		require.NoError(t, err)
-		mountEntry := &MountEntry{
-			Table:       mountTableType,
+		mountEntry := &routing.MountEntry{
+			Table:       routing.MountTableType,
 			UUID:        meUUID,
 			Accessor:    fmt.Sprintf("accessor-%d", i),
 			NamespaceID: namespace.RootNamespaceID,
-			namespace:   namespace.RootNamespace,
+			Namespace:   namespace.RootNamespace,
 			Path:        fmt.Sprintf("logical/foo/%d", i),
 		}
 		func() {
 			core.mountsLock.Lock()
 			defer core.mountsLock.Unlock()
-			newTable := core.mounts.shallowClone()
+			newTable := core.mounts.ShallowClone()
 			newTable.Entries = append(newTable.Entries, mountEntry)
 			core.mounts = newTable
 			err = core.router.Mount(b, "logical", mountEntry, view)
-			require.NoError(t, core.persistMounts(context.Background(), nil, newTable, &mountEntry.Local, mountEntry.UUID))
+			require.NoError(t, core.persistMounts(t.Context(), core.NamespaceView(mountEntry.Namespace), newTable, &mountEntry.Local, mountEntry.UUID))
 		}()
 	}
 
-	timeout, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	timeout, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
 	got := make(map[string]bool)
 	hasMore := true
@@ -337,7 +339,7 @@ func TestRollbackManager_Join(t *testing.T) {
 	errCh := make(chan error, 3)
 	go func() {
 		defer wg.Done()
-		err := m.Rollback(namespace.RootContext(nil), "foo")
+		err := m.Rollback(namespace.RootContext(t.Context()), "foo")
 		if err != nil {
 			errCh <- err
 		}
@@ -345,7 +347,7 @@ func TestRollbackManager_Join(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		err := m.Rollback(namespace.RootContext(nil), "foo")
+		err := m.Rollback(namespace.RootContext(t.Context()), "foo")
 		if err != nil {
 			errCh <- err
 		}
@@ -353,7 +355,7 @@ func TestRollbackManager_Join(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		err := m.Rollback(namespace.RootContext(nil), "foo")
+		err := m.Rollback(namespace.RootContext(t.Context()), "foo")
 		if err != nil {
 			errCh <- err
 		}

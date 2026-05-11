@@ -4,7 +4,6 @@
 package policy
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/openbao/openbao/builtin/credential/ldap"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	ldaphelper "github.com/openbao/openbao/helper/testhelpers/ldap"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -72,7 +72,7 @@ func TestPolicy_NoDefaultPolicy(t *testing.T) {
 	}
 
 	// Create a local user in LDAP
-	secret, err := client.Logical().Write("auth/ldap/users/hermes conrad", map[string]interface{}{
+	_, err = client.Logical().Write("auth/ldap/users/hermes conrad", map[string]interface{}{
 		"policies": "foo",
 	})
 	if err != nil {
@@ -80,7 +80,7 @@ func TestPolicy_NoDefaultPolicy(t *testing.T) {
 	}
 
 	// Login with LDAP and create a token
-	secret, err = client.Logical().Write("auth/ldap/login/hermes conrad", map[string]interface{}{
+	secret, err := client.Logical().Write("auth/ldap/login/hermes conrad", map[string]interface{}{
 		"password": "hermes",
 	})
 	if err != nil {
@@ -148,13 +148,13 @@ func TestPolicy_NoConfiguredPolicy(t *testing.T) {
 	}
 
 	// Create a local user in LDAP without any policies configured
-	secret, err := client.Logical().Write("auth/ldap/users/hermes conrad", map[string]interface{}{})
+	_, err = client.Logical().Write("auth/ldap/users/hermes conrad", map[string]interface{}{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Login with LDAP and create a token
-	secret, err = client.Logical().Write("auth/ldap/login/hermes conrad", map[string]interface{}{
+	secret, err := client.Logical().Write("auth/ldap/login/hermes conrad", map[string]interface{}{
 		"password": "hermes",
 	})
 	if err != nil {
@@ -272,7 +272,7 @@ func TestPolicy_TokenRenewal(t *testing.T) {
 				entityID := resp.Data["id"].(string)
 
 				// Create an alias
-				resp, err = client.Logical().Write("identity/entity-alias", map[string]interface{}{
+				_, err = client.Logical().Write("identity/entity-alias", map[string]interface{}{
 					"name":           "testuser",
 					"mount_accessor": userpassAccessor,
 					"canonical_id":   entityID,
@@ -373,22 +373,22 @@ func TestPolicy_PaginationLimit(t *testing.T) {
 	require.NoError(t, err, "failed to mount kv")
 
 	for i := 1; i <= 100; i++ {
-		_, err = client.KVv2("kv").Put(context.Background(), fmt.Sprintf("a/key-%v", i), map[string]interface{}{
+		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("a/key-%v", i), map[string]interface{}{
 			"value": i,
 		})
 		require.NoError(t, err, "failed writing k/v key")
 
-		_, err = client.KVv2("kv").Put(context.Background(), fmt.Sprintf("b/key-%v", i), map[string]interface{}{
+		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("b/key-%v", i), map[string]interface{}{
 			"value": i,
 		})
 		require.NoError(t, err, "failed writing k/v key")
 
-		_, err = client.KVv2("kv").Put(context.Background(), fmt.Sprintf("c/key-%v", i), map[string]interface{}{
+		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("c/key-%v", i), map[string]interface{}{
 			"value": i,
 		})
 		require.NoError(t, err, "failed writing k/v key")
 
-		_, err = client.KVv2("kv").Put(context.Background(), fmt.Sprintf("d/key-%v", i), map[string]interface{}{
+		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("d/key-%v", i), map[string]interface{}{
 			"value": i,
 		})
 		require.NoError(t, err, "failed writing k/v key")
@@ -448,7 +448,7 @@ path "kv/metadata/" {
 	testPagination(t, client, "", false, true)
 
 	// Test scan limits.
-	resp, err = client.Logical().Scan("kv/metadata")
+	_, err = client.Logical().Scan("kv/metadata")
 	require.Error(t, err, "expected error scanning without limits")
 
 	resp, err = client.Logical().ScanPage("kv/metadata", "", 10)
@@ -509,4 +509,52 @@ func testPagination(t *testing.T, client *api.Client, path string, raw bool, lim
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data)
 	require.LessOrEqual(t, len(resp.Data["keys"].([]interface{})), 10)
+}
+
+func TestPolicyStore_DisabledCacheInvalidation(t *testing.T) {
+	t.Parallel()
+
+	coreConfig := &vault.CoreConfig{
+		DisableCache: true,
+	}
+
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		NumCores:    2,
+	})
+
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	cores := cluster.Cores
+
+	vault.TestWaitActive(t, cores[0].Core)
+
+	client := cores[0].Client
+
+	_, err := client.Logical().Write("sys/namespaces/my-test", nil)
+	require.NoError(t, err)
+
+	testPolicy := `
+path "secret/*" {
+	capabilities = ["read"]
+}
+`
+
+	err = client.Sys().PutPolicy("admin-reader", testPolicy)
+	require.NoError(t, err)
+
+	corehelpers.RetryUntil(t, 10*time.Second, func() error {
+		standby := cores[1].Client
+		policy, err := standby.Sys().GetPolicy("admin-reader")
+		if err != nil {
+			return err
+		}
+
+		if policy != testPolicy {
+			return fmt.Errorf("expected policy:\n%v\n\ngot policy: %v\n", testPolicy, policy)
+		}
+
+		return nil
+	})
 }

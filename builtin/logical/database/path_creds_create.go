@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -106,6 +107,18 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 				role.CredentialType.String()), nil
 		}
 
+		ttl, _, err := framework.CalculateTTL(b.System(), 0, role.DefaultTTL, 0, role.MaxTTL, 0, time.Time{})
+		if err != nil {
+			return nil, err
+		}
+
+		// basic request validation is now done, but before we actually connect
+		// to the database lets check, if we can even persist the lease in the
+		// end
+		if b.System().ReplicationState().HasState(consts.ReplicationPerformanceStandby) {
+			return nil, logical.ErrReadOnly
+		}
+
 		// Get the Database object
 		dbi, err := b.GetConnection(ctx, req.Storage, role.DBName)
 		if err != nil {
@@ -115,10 +128,6 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 		dbi.RLock()
 		defer dbi.RUnlock()
 
-		ttl, _, err := framework.CalculateTTL(b.System(), 0, role.DefaultTTL, 0, role.MaxTTL, 0, time.Time{})
-		if err != nil {
-			return nil, err
-		}
 		expiration := time.Now().Add(ttl)
 		// Adding a small buffer since the TTL will be calculated again after this call
 		// to ensure the database credential does not expire before the lease

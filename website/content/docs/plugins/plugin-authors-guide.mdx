@@ -95,3 +95,39 @@ loop (i.e. using the [`bao lease revoke`](../../commands/lease/revoke/) command
 with the `-force` flag).
 
 [Consul plugin revoke operation]: https://github.com/openbao/openbao-plugins/blob/c3eb5134e359ee112754cc0f488e2b91d71a6129/secrets/consul/secret_token.go#L101-L114
+
+## Docker-based Tests
+
+OpenBao's SDK offers test helpers to automatically spin up an OpenBao cluster
+in Go tests. This is both very handy for plugin development but also used in the
+main OpenBao repository for end-to-end testing.
+
+Here's an example of how to use it:
+
+```go
+import (
+  "testing"
+  "github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
+)
+
+func Test_Something_With_Docker(t *testing.T) {
+  opts := docker.DefaultOptions(t)
+  cluster := docker.NewTestDockerCluster(t, opts)
+  defer cluster.Cleanup()
+
+  client := cluster.Nodes()[0].APIClient()
+  _, err := client.Logical().Read("sys/storage/raft/configuration")
+  if err != nil {
+    t.Fatal(err)
+  }
+}
+```
+
+By default, this is based on the latest `openbao/openbao:latest` container
+image. However, you can customize the `bao` binary present in the container
+simply by building a custom version of it locally (though make sure it targets
+`GOOS=linux`) and pointing at it via the `BAO_BINARY` environment variable. The
+test helper will pick this up and copy the binary into the container at startup.
+
+Additionally, you can optionally set `COMMIT_SHA`, which will be appended to the
+image name we build as a debugging convenience.

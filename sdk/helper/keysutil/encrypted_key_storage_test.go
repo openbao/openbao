@@ -4,7 +4,6 @@
 package keysutil
 
 import (
-	"context"
 	"crypto/rand"
 	"fmt"
 	"reflect"
@@ -79,7 +78,7 @@ func TestEncryptedKeysStorage_List(t *testing.T) {
 		VersionTemplate:      EncryptedKeyPolicyVersionTpl,
 	})
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	err := policy.Rotate(ctx, s, rand.Reader)
 	if err != nil {
@@ -165,7 +164,7 @@ func TestEncryptedKeysStorage_CRUD(t *testing.T) {
 		VersionTemplate:      EncryptedKeyPolicyVersionTpl,
 	})
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	err := policy.Rotate(ctx, s, rand.Reader)
 	if err != nil {
@@ -258,7 +257,7 @@ func BenchmarkEncrytedKeyStorage_List(b *testing.B) {
 		VersionTemplate:      EncryptedKeyPolicyVersionTpl,
 	})
 
-	ctx := context.Background()
+	ctx := b.Context()
 
 	err := policy.Rotate(ctx, s, rand.Reader)
 	if err != nil {
@@ -273,7 +272,7 @@ func BenchmarkEncrytedKeyStorage_List(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		err = es.Wrap(s).Put(ctx, &logical.StorageEntry{
 			Key:   fmt.Sprintf("test/%d", i),
 			Value: []byte("test"),
@@ -304,7 +303,7 @@ func BenchmarkEncrytedKeyStorage_Put(b *testing.B) {
 		VersionTemplate:      EncryptedKeyPolicyVersionTpl,
 	})
 
-	ctx := context.Background()
+	ctx := b.Context()
 
 	err := policy.Rotate(ctx, s, rand.Reader)
 	if err != nil {

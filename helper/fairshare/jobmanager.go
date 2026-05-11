@@ -108,7 +108,10 @@ func (j *JobManager) AddJob(job Job, queueID string) {
 		defer func() {
 			// newWork must be buffered to avoid deadlocks if work is added
 			// before the job manager is started
-			j.newWork <- struct{}{}
+			select {
+			case j.newWork <- struct{}{}:
+			default:
+			}
 		}()
 	}
 	defer j.l.Unlock()

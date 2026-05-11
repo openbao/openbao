@@ -4,7 +4,6 @@
 package api
 
 import (
-	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -35,7 +34,7 @@ var (
 // which will perform the cleanup of all existing versions of the secret, as
 // well as the secret that was written for comparison.
 func setupKVv2Test(t *testing.T) (func(t *testing.T), *api.KVSecret) {
-	writtenSecret, err := client.KVv2(v2MountPath).Put(context.Background(), secretPath, secretData)
+	writtenSecret, err := client.KVv2(v2MountPath).Put(t.Context(), secretPath, secretData)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +43,7 @@ func setupKVv2Test(t *testing.T) (func(t *testing.T), *api.KVSecret) {
 	}
 
 	return func(t *testing.T) {
-		err := client.KVv2(v2MountPath).DeleteMetadata(context.Background(), secretPath)
+		err := client.KVv2(v2MountPath).DeleteMetadata(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -76,7 +75,7 @@ func TestKVHelpers(t *testing.T) {
 
 	// mount the KVv2 backend
 	// (the test cluster has already mounted the KVv1 backend at "secret")
-	err := client.Sys().MountWithContext(context.Background(), "secret-v2", &api.MountInput{
+	err := client.Sys().MountWithContext(t.Context(), "secret-v2", &api.MountInput{
 		Type: "kv-v2",
 	})
 	if err != nil {
@@ -85,11 +84,11 @@ func TestKVHelpers(t *testing.T) {
 
 	//// v1 ////
 	t.Run("kv v1: put, get, and delete data", func(t *testing.T) {
-		if err := client.KVv1(v1MountPath).Put(context.Background(), secretPath, secretData); err != nil {
+		if err := client.KVv1(v1MountPath).Put(t.Context(), secretPath, secretData); err != nil {
 			t.Fatal(err)
 		}
 
-		secret, err := client.KVv1(v1MountPath).Get(context.Background(), secretPath)
+		secret, err := client.KVv1(v1MountPath).Get(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -98,18 +97,18 @@ func TestKVHelpers(t *testing.T) {
 			t.Fatal("kv v1 secret did not contain expected value")
 		}
 
-		if err := client.KVv1(v1MountPath).Delete(context.Background(), secretPath); err != nil {
+		if err := client.KVv1(v1MountPath).Delete(t.Context(), secretPath); err != nil {
 			t.Fatal(err)
 		}
 
-		_, err = client.KVv1(v1MountPath).Get(context.Background(), secretPath)
+		_, err = client.KVv1(v1MountPath).Get(t.Context(), secretPath)
 		if !errors.Is(err, api.ErrSecretNotFound) {
 			t.Fatalf("KVv1.Get is expected to return an api.ErrSecretNotFound wrapped error after secret had been deleted; got %v", err)
 		}
 	})
 
 	t.Run("kv v1: get secret that does not exist", func(t *testing.T) {
-		_, err = client.KVv1(v1MountPath).Get(context.Background(), "does/not/exist")
+		_, err = client.KVv1(v1MountPath).Get(t.Context(), "does/not/exist")
 		if err == nil {
 			t.Fatal("KVv1.Get is expected to return an error for a missing secret")
 		}
@@ -123,7 +122,7 @@ func TestKVHelpers(t *testing.T) {
 		teardownTest, originalSecret := setupKVv2Test(t)
 		defer teardownTest(t)
 
-		secret, err := client.KVv2(v2MountPath).Get(context.Background(), secretPath)
+		secret, err := client.KVv2(v2MountPath).Get(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -135,7 +134,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// get its full metadata
-		fullMetadata, err := client.KVv2(v2MountPath).GetMetadata(context.Background(), secretPath)
+		fullMetadata, err := client.KVv2(v2MountPath).GetMetadata(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -148,17 +147,17 @@ func TestKVHelpers(t *testing.T) {
 		teardownTest, _ := setupKVv2Test(t)
 		defer teardownTest(t)
 
-		_, err = client.KVv2(v2MountPath).Get(context.Background(), "does/not/exist")
+		_, err = client.KVv2(v2MountPath).Get(t.Context(), "does/not/exist")
 		if !errors.Is(err, api.ErrSecretNotFound) {
 			t.Fatalf("KVv2.Get is expected to return an api.ErrSecretNotFound wrapped error for a missing secret; got %v", err)
 		}
 
-		_, err = client.KVv2(v2MountPath).GetMetadata(context.Background(), "does/not/exist")
+		_, err = client.KVv2(v2MountPath).GetMetadata(t.Context(), "does/not/exist")
 		if !errors.Is(err, api.ErrSecretNotFound) {
 			t.Fatalf("KVv2.GetMetadata is expected to return an api.ErrSecretNotFound wrapped error for a missing secret; got %v", err)
 		}
 
-		_, err = client.KVv2(v2MountPath).GetVersion(context.Background(), secretPath, 99)
+		_, err = client.KVv2(v2MountPath).GetVersion(t.Context(), secretPath, 99)
 		if !errors.Is(err, api.ErrSecretNotFound) {
 			t.Fatalf("KVv2.GetVersion is expected to return an api.ErrSecretNotFound wrapped error for a missing secret version; got %v", err)
 		}
@@ -169,14 +168,14 @@ func TestKVHelpers(t *testing.T) {
 		defer teardownTest(t)
 
 		// create a second version
-		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Put(t.Context(), secretPath, map[string]interface{}{
 			"foo": "baz",
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		s2, err := client.KVv2(v2MountPath).Get(context.Background(), secretPath)
+		s2, err := client.KVv2(v2MountPath).Get(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -193,7 +192,7 @@ func TestKVHelpers(t *testing.T) {
 		defer teardownTest(t)
 
 		// create a second version
-		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Put(t.Context(), secretPath, map[string]interface{}{
 			"foo": "baz",
 		})
 		if err != nil {
@@ -201,7 +200,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// get a specific past version
-		s1, err := client.KVv2(v2MountPath).GetVersion(context.Background(), secretPath, 1)
+		s1, err := client.KVv2(v2MountPath).GetVersion(t.Context(), secretPath, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -210,11 +209,11 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// delete that version
-		if err = client.KVv2(v2MountPath).DeleteVersions(context.Background(), secretPath, []int{1}); err != nil {
+		if err = client.KVv2(v2MountPath).DeleteVersions(t.Context(), secretPath, []int{1}); err != nil {
 			t.Fatal(err)
 		}
 
-		s1AfterDelete, err := client.KVv2(v2MountPath).GetVersion(context.Background(), secretPath, 1)
+		s1AfterDelete, err := client.KVv2(v2MountPath).GetVersion(t.Context(), secretPath, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -228,12 +227,12 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// undelete it
-		err = client.KVv2(v2MountPath).Undelete(context.Background(), secretPath, []int{1})
+		err = client.KVv2(v2MountPath).Undelete(t.Context(), secretPath, []int{1})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		s1AfterUndelete, err := client.KVv2(v2MountPath).GetVersion(context.Background(), secretPath, 1)
+		s1AfterUndelete, err := client.KVv2(v2MountPath).GetVersion(t.Context(), secretPath, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -247,12 +246,12 @@ func TestKVHelpers(t *testing.T) {
 		teardownTest, _ := setupKVv2Test(t)
 		defer teardownTest(t)
 
-		err = client.KVv2(v2MountPath).Destroy(context.Background(), secretPath, []int{1})
+		err = client.KVv2(v2MountPath).Destroy(t.Context(), secretPath, []int{1})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		destroyedSecret, err := client.KVv2(v2MountPath).Get(context.Background(), secretPath)
+		destroyedSecret, err := client.KVv2(v2MountPath).Get(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -268,7 +267,7 @@ func TestKVHelpers(t *testing.T) {
 
 		// check that KVOption works
 		// WithCheckAndSet
-		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Put(t.Context(), secretPath, map[string]interface{}{
 			"meow": "woof",
 		}, api.WithCheckAndSet(99))
 		// should fail
@@ -277,7 +276,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// WithOption (generic)
-		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Put(t.Context(), secretPath, map[string]interface{}{
 			"bow": "wow",
 		}, api.WithOption("cas", 99))
 		// should fail
@@ -291,7 +290,7 @@ func TestKVHelpers(t *testing.T) {
 		defer teardownTest(t)
 
 		// WithMergeMethod Patch (implicit)
-		patch, err := client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]interface{}{
+		patch, err := client.KVv2(v2MountPath).Patch(t.Context(), secretPath, map[string]interface{}{
 			"dog": "cat",
 		})
 		if err != nil {
@@ -302,7 +301,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// WithMergeMethod Patch (explicit)
-		patchExp, err := client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]interface{}{
+		patchExp, err := client.KVv2(v2MountPath).Patch(t.Context(), secretPath, map[string]interface{}{
 			"rat": "mouse",
 		}, api.WithMergeMethod(api.KVMergeMethodPatch))
 		if err != nil {
@@ -313,7 +312,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// WithMergeMethod RW
-		patchRW, err := client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]interface{}{
+		patchRW, err := client.KVv2(v2MountPath).Patch(t.Context(), secretPath, map[string]interface{}{
 			"bird": "tweet",
 		}, api.WithMergeMethod(api.KVMergeMethodReadWrite))
 		if err != nil {
@@ -323,7 +322,7 @@ func TestKVHelpers(t *testing.T) {
 			t.Fatalf("incorrect version %d, expected 4", patchRW.VersionMetadata.Version)
 		}
 
-		secretAfterPatches, err := client.KVv2(v2MountPath).Get(context.Background(), secretPath)
+		secretAfterPatches, err := client.KVv2(v2MountPath).Get(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -345,13 +344,13 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// patch an existing field
-		_, err = client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Patch(t.Context(), secretPath, map[string]interface{}{
 			"dog": "pug",
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		patchedFieldKV, err := client.KVv2(v2MountPath).Get(context.Background(), secretPath)
+		patchedFieldKV, err := client.KVv2(v2MountPath).Get(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -361,13 +360,13 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// delete a key in a secret via patch
-		_, err = client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Patch(t.Context(), secretPath, map[string]interface{}{
 			"dog": nil,
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		deletedFieldKV, err := client.KVv2(v2MountPath).Get(context.Background(), secretPath)
+		deletedFieldKV, err := client.KVv2(v2MountPath).Get(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -377,13 +376,13 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// set a key to an empty string via patch
-		_, err = client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Patch(t.Context(), secretPath, map[string]interface{}{
 			"dog": "",
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		emptyValueKV, err := client.KVv2(v2MountPath).Get(context.Background(), secretPath)
+		emptyValueKV, err := client.KVv2(v2MountPath).Get(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -400,7 +399,7 @@ func TestKVHelpers(t *testing.T) {
 			{api.WithMergeMethod(api.KVMergeMethodReadWrite)},
 		} {
 			_, err = client.KVv2(v2MountPath).Patch(
-				context.Background(),
+				t.Context(),
 				"does/not/exist",
 				map[string]interface{}{"no": "nope"},
 				method...,
@@ -416,7 +415,7 @@ func TestKVHelpers(t *testing.T) {
 		defer teardownTest(t)
 
 		// create a second version
-		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Put(t.Context(), secretPath, map[string]interface{}{
 			"color": "yellow",
 		})
 		if err != nil {
@@ -424,7 +423,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// get versions as list
-		versions, err := client.KVv2(v2MountPath).GetVersionsAsList(context.Background(), secretPath)
+		versions, err := client.KVv2(v2MountPath).GetVersionsAsList(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -439,7 +438,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// roll back to version 1
-		rb, err := client.KVv2(v2MountPath).Rollback(context.Background(), secretPath, 1)
+		rb, err := client.KVv2(v2MountPath).Rollback(t.Context(), secretPath, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -448,13 +447,13 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// destroy version 1
-		err = client.KVv2(v2MountPath).Destroy(context.Background(), secretPath, []int{1})
+		err = client.KVv2(v2MountPath).Destroy(t.Context(), secretPath, []int{1})
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// roll back but fail
-		_, err = client.KVv2(v2MountPath).Rollback(context.Background(), secretPath, 1)
+		_, err = client.KVv2(v2MountPath).Rollback(t.Context(), secretPath, 1)
 		if err == nil {
 			t.Fatal("expected error from trying to rollback to destroyed version")
 		}
@@ -465,7 +464,7 @@ func TestKVHelpers(t *testing.T) {
 		defer teardownTest(t)
 
 		// create a second version
-		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Put(t.Context(), secretPath, map[string]interface{}{
 			"color": "yellow",
 		})
 		if err != nil {
@@ -473,12 +472,12 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// delete it all
-		err = client.KVv2(v2MountPath).DeleteMetadata(context.Background(), secretPath)
+		err = client.KVv2(v2MountPath).DeleteMetadata(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		versions, err := client.KVv2(v2MountPath).GetVersionsAsList(context.Background(), secretPath)
+		versions, err := client.KVv2(v2MountPath).GetVersionsAsList(t.Context(), secretPath)
 		if err == nil {
 			t.Fatal("expected to be unable to get list of versions since all metadata was destroyed")
 		}
@@ -493,7 +492,7 @@ func TestKVHelpers(t *testing.T) {
 		noDataSecretPath := "empty"
 
 		// create a secret with metadata but no data
-		err = client.KVv2(v2MountPath).PutMetadata(context.Background(), noDataSecretPath, api.KVMetadataPutInput{
+		err = client.KVv2(v2MountPath).PutMetadata(t.Context(), noDataSecretPath, api.KVMetadataPutInput{
 			DeleteVersionAfter: 5 * time.Hour,
 			MaxVersions:        5,
 			CustomMetadata:     map[string]interface{}{"ape": "gorilla"},
@@ -503,7 +502,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// get its metadata to make sure it was created successfully
-		md, err := client.KVv2(v2MountPath).GetMetadata(context.Background(), noDataSecretPath)
+		md, err := client.KVv2(v2MountPath).GetMetadata(t.Context(), noDataSecretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -519,13 +518,13 @@ func TestKVHelpers(t *testing.T) {
 		teardownTest, _ := setupKVv2Test(t)
 		defer teardownTest(t)
 
-		md, err := client.KVv2(v2MountPath).GetMetadata(context.Background(), secretPath)
+		md, err := client.KVv2(v2MountPath).GetMetadata(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// replace all modifiable metadata fields
-		err = client.KVv2(v2MountPath).PutMetadata(context.Background(), secretPath, api.KVMetadataPutInput{
+		err = client.KVv2(v2MountPath).PutMetadata(t.Context(), secretPath, api.KVMetadataPutInput{
 			CASRequired:        true,
 			DeleteVersionAfter: 6 * time.Hour,
 			MaxVersions:        6,
@@ -536,7 +535,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// check that metadata was replaced
-		md2, err := client.KVv2(v2MountPath).GetMetadata(context.Background(), secretPath)
+		md2, err := client.KVv2(v2MountPath).GetMetadata(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -546,7 +545,7 @@ func TestKVHelpers(t *testing.T) {
 
 		// now let's try a patch
 		maxVersions := 7
-		err = client.KVv2(v2MountPath).PatchMetadata(context.Background(), secretPath, api.KVMetadataPatchInput{
+		err = client.KVv2(v2MountPath).PatchMetadata(t.Context(), secretPath, api.KVMetadataPatchInput{
 			MaxVersions:    &maxVersions,
 			CustomMetadata: map[string]interface{}{"foo": nil, "rat": "brown"},
 		})
@@ -555,7 +554,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// check that the metadata was only partially replaced
-		md3, err := client.KVv2(v2MountPath).GetMetadata(context.Background(), secretPath)
+		md3, err := client.KVv2(v2MountPath).GetMetadata(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -597,7 +596,7 @@ func TestKVHelpers(t *testing.T) {
 			explicitZero     int
 			explicitTimeZero time.Duration
 		)
-		err = client.KVv2(v2MountPath).PatchMetadata(context.Background(), secretPath, api.KVMetadataPatchInput{
+		err = client.KVv2(v2MountPath).PatchMetadata(t.Context(), secretPath, api.KVMetadataPatchInput{
 			CASRequired:        &explicitFalse,
 			MaxVersions:        &explicitZero,
 			DeleteVersionAfter: &explicitTimeZero,
@@ -608,7 +607,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// check that those fields were reset to their zero value
-		md4, err := client.KVv2(v2MountPath).GetMetadata(context.Background(), secretPath)
+		md4, err := client.KVv2(v2MountPath).GetMetadata(t.Context(), secretPath)
 		if err != nil {
 			t.Fatal(err)
 		}

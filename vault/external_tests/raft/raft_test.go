@@ -5,7 +5,6 @@ package rafttests
 
 import (
 	"bytes"
-	"context"
 	"crypto/md5"
 	"errors"
 	"fmt"
@@ -108,7 +107,7 @@ func TestRaft_BoltDBMetrics(t *testing.T) {
 	leaderClient := cluster.Cores[0].Client
 
 	// Write a few keys
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
 			fmt.Sprintf("foo%d", i): fmt.Sprintf("bar%d", i),
 		})
@@ -180,7 +179,7 @@ func TestRaft_RetryAutoJoin(t *testing.T) {
 		core := cluster.Cores[1]
 		core.UnderlyingRawStorage.(*raft.RaftBackend).SetServerAddressProvider(addressProvider)
 
-		_, err := core.JoinRaftCluster(namespace.RootContext(context.Background()), leaderInfos, false)
+		_, err := core.JoinRaftCluster(namespace.RootContext(t.Context()), leaderInfos, false)
 		require.NoError(t, err)
 	}
 
@@ -228,7 +227,7 @@ func TestRaft_Retry_Join(t *testing.T) {
 			t.Helper()
 			defer wg.Done()
 			core.UnderlyingRawStorage.(*raft.RaftBackend).SetServerAddressProvider(addressProvider)
-			_, err := core.JoinRaftCluster(namespace.RootContext(context.Background()), leaderInfos, false)
+			_, err := core.JoinRaftCluster(namespace.RootContext(t.Context()), leaderInfos, false)
 			if err != nil {
 				t.Error(err)
 			}
@@ -454,7 +453,7 @@ func TestRaft_SnapshotAPI(t *testing.T) {
 	leaderClient := cluster.Cores[0].Client
 
 	// Write a few keys
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
 			"test": "data",
 		})
@@ -523,7 +522,7 @@ func TestRaft_SnapshotAPI_MidstreamFailure(t *testing.T) {
 	// Write a bunch of keys; if too few, the detection code in api.RaftSnapshot
 	// will never make it into the tar part, it'll fail merely when trying to
 	// decompress the stream.
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
 			"test": "data",
 		})
@@ -596,7 +595,7 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 			leaderClient := cluster.Cores[0].Client
 
 			// Write a few keys
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
 					"test": "data",
 				})
@@ -680,7 +679,7 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resp, err = client.Do(httpReq)
+			_, err = client.Do(httpReq)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -761,7 +760,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 			leaderClient := cluster.Cores[0].Client
 
 			// Write a few keys
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
 					"test": "data",
 				})
@@ -853,7 +852,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resp, err = client.Do(httpReq)
+			_, err = client.Do(httpReq)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -887,7 +886,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resp, err = client.Do(httpReq)
+			_, err = client.Do(httpReq)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -937,7 +936,7 @@ func TestRaft_SnapshotAPI_DifferentCluster(t *testing.T) {
 	leaderClient := cluster.Cores[0].Client
 
 	// Write a few keys
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
 			"test": "data",
 		})
@@ -1014,7 +1013,7 @@ func TestRaft_SnapshotAPI_DifferentCluster(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp, err = client.Do(httpReq)
+		_, err = client.Do(httpReq)
 		if err != nil {
 			t.Fatal(err)
 		}

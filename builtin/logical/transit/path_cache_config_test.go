@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -19,7 +18,7 @@ func TestTransit_CacheConfig(t *testing.T) {
 	b1, storage := createBackendWithSysView(t)
 
 	doReq := func(b *backend, req *logical.Request) *logical.Response {
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("got err:\n%#v\nreq:\n%#v\n", err, *req)
 		}
@@ -27,7 +26,7 @@ func TestTransit_CacheConfig(t *testing.T) {
 	}
 
 	doErrReq := func(b *backend, req *logical.Request) {
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err == nil {
 			if resp == nil || !resp.IsError() {
 				t.Fatalf("expected error; req:\n%#v\n", *req)
@@ -95,7 +94,7 @@ func TestTransit_CacheConfig(t *testing.T) {
 	// Change cache size to targetCacheSize 12345 and validate that cache size is updated
 	doReq(b1, writeReq)
 	validateResponse(doReq(b1, readReq), targetCacheSize, false)
-	b1.invalidate(context.Background(), "cache-config/")
+	b1.invalidate(t.Context(), "cache-config/")
 
 	// Change the cache size to 1000 to mock the scenario where
 	// current cache size and stored cache size are different and

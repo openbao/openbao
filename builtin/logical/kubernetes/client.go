@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -260,12 +261,10 @@ func makeRoleType(roleType string) string {
 	}
 }
 
-func combineMaps(maps ...map[string]string) map[string]string {
+func combineMaps(combine ...map[string]string) map[string]string {
 	newMap := make(map[string]string)
-	for _, m := range maps {
-		for k, v := range m {
-			newMap[k] = v
-		}
+	for _, m := range combine {
+		maps.Copy(newMap, m)
 	}
 	return newMap
 }

@@ -82,7 +82,9 @@
     font-weight: $font-weight-semibold;
     padding: $size-6 $size-8 $size-8;
     text-decoration: none;
-    transition: background-color $speed, border-color $speed;
+    transition:
+      background-color $speed,
+      border-color $speed;
 
     &:hover,
     &:active {

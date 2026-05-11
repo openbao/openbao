@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/openbao/openbao/builtin/logical/openldap/client"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/text/encoding/unicode"
@@ -67,6 +68,12 @@ func (b *backend) pathDynamicCredsRead(ctx context.Context, req *logical.Request
 	}
 	if config == nil {
 		return nil, errors.New("missing LDAP configuration")
+	}
+
+	// basic request validation is now done, but before we actually connect to
+	// LDAP lets check, if we can even persist the lease in the end
+	if b.System().ReplicationState().HasState(consts.ReplicationPerformanceStandby) {
+		return nil, logical.ErrReadOnly
 	}
 
 	// Generate dynamic data

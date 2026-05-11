@@ -4,7 +4,6 @@
 package approle
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -18,17 +17,8 @@ func createBackendWithStorage(t *testing.T) (*backend, logical.Storage) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 
-	b, err := Backend(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if b == nil {
-		t.Fatal("failed to create backend")
-	}
-	err = b.Setup(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	b := Backend(config)
+	require.NoError(t, b.Setup(t.Context(), config))
 	return b, config.StorageView
 }
 
@@ -36,7 +26,7 @@ func TestAppRole_RoleServiceToBatchNumUses(t *testing.T) {
 	b, s := createBackendWithStorage(t)
 
 	requestFunc := func(operation logical.Operation, data map[string]interface{}) {
-		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/testrole",
 			Operation: operation,
 			Storage:   s,
@@ -63,7 +53,7 @@ func TestAppRole_RoleServiceToBatchNumUses(t *testing.T) {
 	data["token_type"] = "batch"
 	requestFunc(logical.UpdateOperation, data)
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Path:      "role/testrole/role-id",
 		Operation: logical.ReadOperation,
 		Storage:   s,
@@ -73,7 +63,7 @@ func TestAppRole_RoleServiceToBatchNumUses(t *testing.T) {
 	}
 	roleID := resp.Data["role_id"]
 
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Path:      "role/testrole/secret-id",
 		Operation: logical.UpdateOperation,
 		Storage:   s,
@@ -83,7 +73,7 @@ func TestAppRole_RoleServiceToBatchNumUses(t *testing.T) {
 	}
 	secretID := resp.Data["secret_id"]
 
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Path:      "login",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -105,7 +95,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		b, s := createBackendWithStorage(t)
 
 		// Create the role
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/" + roleName,
 			Operation: logical.CreateOperation,
 			Storage:   s,
@@ -115,7 +105,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Get the role-id
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/" + roleName + "/role-id",
 			Operation: logical.ReadOperation,
 			Storage:   s,
@@ -126,7 +116,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		roleID := resp.Data["role_id"]
 
 		// Create a secret-id
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/" + roleName + "/secret-id",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
@@ -138,7 +128,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		secretIDAccessor := resp.Data["secret_id_accessor"]
 
 		// Ensure login works
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
 			Data: map[string]interface{}{
@@ -155,7 +145,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Destroy secret ID accessor
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/" + roleName + "/secret-id-accessor/destroy",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
@@ -168,7 +158,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Login again using the accessor's corresponding secret ID should fail
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
 			Data: map[string]interface{}{
@@ -185,7 +175,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Generate another secret ID
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/" + roleName + "/secret-id",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
@@ -196,7 +186,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		secretID = resp.Data["secret_id"]
 
 		// Ensure login works
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
 			Data: map[string]interface{}{
@@ -213,7 +203,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Destroy the secret ID
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/" + roleName + "/secret-id/destroy",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
@@ -226,7 +216,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Login again using the same secret ID should fail
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
 			Data: map[string]interface{}{
@@ -243,7 +233,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Generate another secret ID
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/" + roleName + "/secret-id",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
@@ -254,7 +244,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		secretID = resp.Data["secret_id"]
 
 		// Ensure login works
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
 			Data: map[string]interface{}{
@@ -271,7 +261,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Destroy the secret ID using lower cased role name
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/" + strings.ToLower(roleName) + "/secret-id/destroy",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
@@ -284,7 +274,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Login again using the same secret ID should fail
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
 			Data: map[string]interface{}{
@@ -301,7 +291,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Generate another secret ID
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/" + roleName + "/secret-id",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
@@ -312,7 +302,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		secretID = resp.Data["secret_id"]
 
 		// Ensure login works
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
 			Data: map[string]interface{}{
@@ -329,7 +319,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Destroy the secret ID using upper cased role name
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/" + strings.ToUpper(roleName) + "/secret-id/destroy",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
@@ -342,7 +332,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Login again using the same secret ID should fail
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
 			Data: map[string]interface{}{
@@ -359,7 +349,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Generate another secret ID
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/" + roleName + "/secret-id",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
@@ -370,7 +360,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		secretID = resp.Data["secret_id"]
 
 		// Ensure login works
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
 			Data: map[string]interface{}{
@@ -387,7 +377,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Destroy the secret ID using mixed case name
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/saMpleRolEnaMe/secret-id/destroy",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
@@ -400,7 +390,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		}
 
 		// Login again using the same secret ID should fail
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
 			Data: map[string]interface{}{

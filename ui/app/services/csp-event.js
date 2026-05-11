@@ -4,7 +4,6 @@
  */
 
 import { computed } from '@ember/object';
-
 import Service from '@ember/service';
 import { task, waitForEvent } from 'ember-concurrency';
 
@@ -29,7 +28,7 @@ export default Service.extend({
 
     while (true) {
       const event = yield waitForEvent(window.document, 'securitypolicyviolation');
-      this.events.addObject(event);
+      this.events.pushObject(event);
     }
   }),
 });

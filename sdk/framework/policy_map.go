@@ -54,7 +54,7 @@ func (p *PolicyMap) Policies(ctx context.Context, s logical.Storage, names ...st
 			continue
 		}
 
-		for _, p := range strings.Split(values, ",") {
+		for p := range strings.SplitSeq(values, ",") {
 			if p = strings.TrimSpace(p); p != "" {
 				set[p] = struct{}{}
 			}

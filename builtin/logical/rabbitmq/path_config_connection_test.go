@@ -4,7 +4,6 @@
 package rabbitmq
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -17,7 +16,7 @@ func TestBackend_ConfigConnection_DefaultUsernameTemplate(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	b := Backend()
-	if err = b.Setup(context.Background(), config); err != nil {
+	if err = b.Setup(t.Context(), config); err != nil {
 		t.Fatal(err)
 	}
 
@@ -33,7 +32,7 @@ func TestBackend_ConfigConnection_DefaultUsernameTemplate(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      configData,
 	}
-	resp, err = b.HandleRequest(context.Background(), configReq)
+	resp, err = b.HandleRequest(t.Context(), configReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr:%s", resp, err)
 	}
@@ -41,7 +40,7 @@ func TestBackend_ConfigConnection_DefaultUsernameTemplate(t *testing.T) {
 		t.Fatal("expected a nil response")
 	}
 
-	actualConfig, err := readConfig(context.Background(), config.StorageView)
+	actualConfig, err := readConfig(t.Context(), config.StorageView)
 	if err != nil {
 		t.Fatalf("unable to read configuration: %v", err)
 	}
@@ -64,7 +63,7 @@ func TestBackend_ConfigConnection_CustomUsernameTemplate(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	b := Backend()
-	if err = b.Setup(context.Background(), config); err != nil {
+	if err = b.Setup(t.Context(), config); err != nil {
 		t.Fatal(err)
 	}
 
@@ -81,7 +80,7 @@ func TestBackend_ConfigConnection_CustomUsernameTemplate(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      configData,
 	}
-	resp, err = b.HandleRequest(context.Background(), configReq)
+	resp, err = b.HandleRequest(t.Context(), configReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr:%s", resp, err)
 	}
@@ -89,7 +88,7 @@ func TestBackend_ConfigConnection_CustomUsernameTemplate(t *testing.T) {
 		t.Fatal("expected a nil response")
 	}
 
-	actualConfig, err := readConfig(context.Background(), config.StorageView)
+	actualConfig, err := readConfig(t.Context(), config.StorageView)
 	if err != nil {
 		t.Fatalf("unable to read configuration: %v", err)
 	}

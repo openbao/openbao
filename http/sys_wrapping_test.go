@@ -111,7 +111,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	wrapInfo := secret.WrapInfo
 
 	// Test this twice to ensure no ill effect to the wrapping token as a result of the lookup
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		secret, err = client.Logical().Write("sys/wrapping/lookup", map[string]interface{}{
 			"token": wrapInfo.Token,
 		})
@@ -279,7 +279,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	client.SetWrappingLookupFunc(func(operation, path string) string {
 		return ""
 	})
-	secret, err = client.Logical().Write("sys/wrapping/wrap", data)
+	_, err = client.Logical().Write("sys/wrapping/wrap", data)
 	if err == nil {
 		t.Fatal("expected error")
 	}

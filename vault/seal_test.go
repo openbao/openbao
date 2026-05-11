@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"reflect"
 	"testing"
 )
@@ -23,12 +22,12 @@ func TestDefaultSeal_Config(t *testing.T) {
 
 	defSeal := NewDefaultSeal(nil)
 	defSeal.SetCore(core)
-	err := defSeal.SetBarrierConfig(context.Background(), bc)
+	err := defSeal.SetBarrierConfig(t.Context(), bc)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	newBc, err := defSeal.BarrierConfig(context.Background())
+	newBc, err := defSeal.BarrierConfig(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +38,7 @@ func TestDefaultSeal_Config(t *testing.T) {
 	// Now, test without the benefit of the cached value in the seal
 	defSeal = NewDefaultSeal(nil)
 	defSeal.SetCore(core)
-	newBc, err = defSeal.BarrierConfig(context.Background())
+	newBc, err = defSeal.BarrierConfig(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

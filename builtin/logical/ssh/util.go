@@ -66,7 +66,7 @@ func cidrListContainsIP(ip, cidrList string) (bool, error) {
 	if len(cidrList) == 0 {
 		return false, errors.New("IP does not belong to role")
 	}
-	for _, item := range strings.Split(cidrList, ",") {
+	for item := range strings.SplitSeq(cidrList, ",") {
 		_, cidrIPNet, err := net.ParseCIDR(item)
 		if err != nil {
 			return false, fmt.Errorf("invalid CIDR entry %q", item)
@@ -169,7 +169,7 @@ func (b *backend) handleKeyGeneration(data *framework.FieldData) (publicKey stri
 		keyType := data.Get("key_type").(string)
 		keyBits := data.Get("key_bits").(int)
 
-		publicKey, privateKey, err = generateSSHKeyPair(b.GetRandomReader(), keyType, keyBits)
+		publicKey, privateKey, err = generateSSHKeyPair(keyType, keyBits)
 		if err != nil {
 			err = errutil.InternalError{Err: err.Error()}
 			return publicKey, privateKey, generateSigningKey, err

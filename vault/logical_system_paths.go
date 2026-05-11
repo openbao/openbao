@@ -9,6 +9,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/policy"
 )
 
 func (b *SystemBackend) configPaths() []*framework.Path {
@@ -398,8 +399,8 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["generate-root"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["generate-root"][1]),
+			HelpSynopsis:    strings.TrimSpace(generateRootSysHelp["generate-root-token"][0]),
+			HelpDescription: strings.TrimSpace(generateRootSysHelp["generate-root-token"][1]),
 		},
 		{
 			Pattern: "generate-root/update$",
@@ -471,33 +472,8 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["generate-root"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["generate-root"][1]),
-		},
-		{
-			Pattern: "decode-token$",
-			Fields: map[string]*framework.FieldSchema{
-				"encoded_token": {
-					Type:        framework.TypeString,
-					Description: "Specifies the encoded token (result from generate-root).",
-				},
-				"otp": {
-					Type:        framework.TypeString,
-					Description: "Specifies the otp code for decode.",
-				},
-			},
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleGenerateRootDecodeTokenUpdate,
-					DisplayAttrs: &framework.DisplayAttributes{
-						OperationVerb: "decode",
-					},
-					Summary: "Decodes the encoded token with the otp.",
-					Responses: map[int][]framework.Response{
-						http.StatusOK: {{Description: "OK"}},
-					},
-				},
-			},
+			HelpSynopsis:    strings.TrimSpace(generateRootSysHelp["generate-root-token"][0]),
+			HelpDescription: strings.TrimSpace(generateRootSysHelp["generate-root-token"][1]),
 		},
 
 		{
@@ -564,10 +540,6 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 					Type:        framework.TypeInt,
 					Description: "Specifies the number of shares required to reconstruct the unseal key. This must be less than or equal secret_shares. If using OpenBao HSM with auto-unsealing, this value must be the same as `secret_shares`.",
 				},
-				"stored_shares": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the number of shares that should be encrypted by the HSM and stored for auto-unsealing. Currently must be the same as `secret_shares`.",
-				},
 				"recovery_shares": {
 					Type:        framework.TypeInt,
 					Description: "Specifies the number of shares to split the recovery key into.",
@@ -595,7 +567,7 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationSuffix: "system",
 					},
 					Summary:     "Initialize a new OpenBao instance.",
-					Description: "The OpenBao instance must not have been previously initialized. The recovery options, as well as the stored shares option, are only available when using OpenBao HSM.",
+					Description: "The OpenBao instance must not have been previously initialized. The recovery options are only available when using Auto Unseal.",
 				},
 			},
 
@@ -1218,7 +1190,7 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 									Type:     framework.TypeString,
 									Required: true,
 								},
-								"build_date": {
+								"commit_date": {
 									Type:     framework.TypeString,
 									Required: true,
 								},
@@ -1366,7 +1338,7 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 									Type:     framework.TypeString,
 									Required: true,
 								},
-								"build_date": {
+								"commit_date": {
 									Type:     framework.TypeString,
 									Required: true,
 								},
@@ -3543,7 +3515,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Callback: b.handlePoliciesList(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3560,7 +3532,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					},
 				},
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Callback: b.handlePoliciesList(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3624,7 +3596,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesRead(PolicyTypeACL),
+					Callback: b.handlePoliciesRead(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3663,7 +3635,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Summary: "Retrieve the policy body for the named policy.",
 				},
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Callback: b.handlePoliciesList(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3680,7 +3652,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					},
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesSet(PolicyTypeACL),
+					Callback: b.handlePoliciesSet(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: "OK",
@@ -3690,7 +3662,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Summary: "Add a new or update an existing policy.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesDelete(PolicyTypeACL),
+					Callback: b.handlePoliciesDelete(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: "OK",
@@ -3715,7 +3687,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Callback: b.handlePoliciesList(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3774,7 +3746,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesRead(PolicyTypeACL),
+					Callback: b.handlePoliciesRead(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3813,7 +3785,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Summary: "Retrieve information about the named ACL policy.",
 				},
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Callback: b.handlePoliciesList(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3830,7 +3802,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					},
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesSet(PolicyTypeACL),
+					Callback: b.handlePoliciesSet(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: "OK",
@@ -3840,7 +3812,7 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Summary: "Add a new or update an existing ACL policy.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handlePoliciesDelete(PolicyTypeACL),
+					Callback: b.handlePoliciesDelete(policy.TypeACL),
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: "OK",

@@ -134,7 +134,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 		logger.Trace("wrote dh param file", "path", dhpath)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 
 	aaConfig := map[string]interface{}{}
 
@@ -470,7 +470,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 	// Auth handler (auto-auth) setup
 	// /////////////
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 
 	am, err := agentcert.NewCertAuthMethod(&auth.AuthConfig{
 		Logger:    logger.Named("auth.cert"),

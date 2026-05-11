@@ -7,13 +7,14 @@ import Application from '@ember/application';
 import Resolver from 'ember-resolver';
 import loadInitializers from 'ember-load-initializers';
 import config from 'vault/config/environment';
+import './deprecation-workflow';
 
 export default class App extends Application {
   modulePrefix = config.modulePrefix;
   podModulePrefix = config.podModulePrefix;
   Resolver = Resolver;
   engines = {
-    openApiExplorer: {
+    'open-api-explorer': {
       dependencies: {
         services: ['auth', 'flash-messages', 'namespace', 'router', 'version'],
       },

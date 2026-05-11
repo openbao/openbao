@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -104,9 +105,7 @@ func fieldsForType(roleType string) map[string]*framework.FieldSchema {
 		typeFields = staticFields()
 	}
 
-	for k, v := range typeFields {
-		fields[k] = v
-	}
+	maps.Copy(fields, typeFields)
 
 	return fields
 }

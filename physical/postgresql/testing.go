@@ -4,6 +4,7 @@
 package postgresql
 
 import (
+	"database/sql"
 	"fmt"
 	"testing"
 
@@ -15,6 +16,18 @@ import (
 )
 
 func SetupDatabaseObjects(t *testing.T, pg *PostgreSQLBackend) {
+	var haTable string
+	if pg.haEnabled {
+		haTable = pg.haTable
+	}
+
+	err := SetupDatabaseObjectsWithClient(pg.client, pg.table, pg.tableConstraint, pg.index, haTable, pg.haTableConstraint)
+	if err != nil {
+		t.Fatalf("failed to setup database: %v", err)
+	}
+}
+
+func SetupDatabaseObjectsWithClient(client *sql.DB, table string, constraint string, index string, haTable string, haTableConstraint string) error {
 	var err error
 	// Setup tables and indexes if not exists.
 	createTableSQL := fmt.Sprintf(
@@ -23,34 +36,38 @@ func SetupDatabaseObjects(t *testing.T, pg *PostgreSQLBackend) {
 			"  path        TEXT COLLATE \"C\", "+
 			"  key         TEXT COLLATE \"C\", "+
 			"  value       BYTEA, "+
-			"  CONSTRAINT pkey PRIMARY KEY (path, key) "+
-			" ); ", pg.table)
+			"  CONSTRAINT %v PRIMARY KEY (path, key) "+
+			" ); ", table, constraint)
 
-	_, err = pg.client.Exec(createTableSQL)
+	_, err = client.Exec(createTableSQL)
 	if err != nil {
-		t.Fatalf("Failed to create table: %v", err)
+		return fmt.Errorf("failed to create table: %v", err)
 	}
 
-	createIndexSQL := fmt.Sprintf(" CREATE INDEX IF NOT EXISTS parent_path_idx ON %v (parent_path); ", pg.table)
+	createIndexSQL := fmt.Sprintf(" CREATE INDEX IF NOT EXISTS %v ON %v (parent_path); ", index, table)
 
-	_, err = pg.client.Exec(createIndexSQL)
+	_, err = client.Exec(createIndexSQL)
 	if err != nil {
-		t.Fatalf("Failed to create index: %v", err)
+		return fmt.Errorf("failed to create index: %v", err)
 	}
 
-	createHaTableSQL := fmt.Sprintf(
-		" CREATE TABLE IF NOT EXISTS %v ( "+
-			" ha_key                                      TEXT COLLATE \"C\" NOT NULL, "+
-			" ha_identity                                 TEXT COLLATE \"C\" NOT NULL, "+
-			" ha_value                                    TEXT COLLATE \"C\", "+
-			" valid_until                                 TIMESTAMP WITH TIME ZONE NOT NULL, "+
-			" CONSTRAINT ha_key PRIMARY KEY (ha_key) "+
-			" ); ", pg.haTable)
+	if haTable != "" {
+		createHaTableSQL := fmt.Sprintf(
+			" CREATE TABLE IF NOT EXISTS %v ( "+
+				" ha_key                                      TEXT COLLATE \"C\" NOT NULL, "+
+				" ha_identity                                 TEXT COLLATE \"C\" NOT NULL, "+
+				" ha_value                                    TEXT COLLATE \"C\", "+
+				" valid_until                                 TIMESTAMP WITH TIME ZONE NOT NULL, "+
+				" CONSTRAINT %v PRIMARY KEY (ha_key) "+
+				" ); ", haTable, haTableConstraint)
 
-	_, err = pg.client.Exec(createHaTableSQL)
-	if err != nil {
-		t.Fatalf("Failed to create hatable: %v", err)
+		_, err = client.Exec(createHaTableSQL)
+		if err != nil {
+			return fmt.Errorf("failed to create hatable: %v", err)
+		}
 	}
+
+	return nil
 }
 
 func GetTestPostgreSQLBackend(t *testing.T, logger log.Logger) (physical.Backend, func()) {

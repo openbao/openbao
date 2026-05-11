@@ -3,8 +3,6 @@
 package crosstest
 
 import (
-	"context"
-	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -47,7 +45,7 @@ func Test_ExerciseBackends(t *testing.T) {
 	// we wrote to the same area of storage in lots of places.
 	for name, backend := range backends {
 		if txn, ok := backend.(logical.Transaction); ok {
-			err := txn.Rollback(context.Background())
+			err := txn.Rollback(t.Context())
 			require.NoError(t, err, "failed to rollback transaction: %v", name)
 		}
 	}
@@ -76,7 +74,7 @@ func Test_RandomOpsTransactionalBackends(t *testing.T) {
 
 func Test_ExerciseTransactionalBackends(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	backends := allTransactionalLogical(t)
 
@@ -132,7 +130,7 @@ func getFile(t *testing.T, logger log.Logger) physical.Backend {
 }
 
 func allLogical(t *testing.T) (map[string]logical.Storage, func()) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := logging.NewVaultLogger(log.Debug)
 	disableTxConf := map[string]string{"disable_transactions": "true"}
 
@@ -186,11 +184,11 @@ func allLogical(t *testing.T) (map[string]logical.Storage, func()) {
 
 func newAESBarrier(t *testing.T, parent physical.Backend) barrier.SecurityBarrier {
 	b := barrier.NewAESGCMBarrier(parent, "")
-	key, err := b.GenerateKey(crand.Reader)
+	key, err := b.GenerateKey()
 	require.NoError(t, err, "failed generating random key")
 
-	b.Initialize(context.Background(), key, nil, crand.Reader)
-	b.Unseal(context.Background(), key)
+	require.NoError(t, b.Initialize(t.Context(), key, nil))
+	require.NoError(t, b.Unseal(t.Context(), key))
 
 	return b
 }
@@ -255,7 +253,7 @@ func allDoList(t *testing.T, backends map[string]logical.Storage, prefix string)
 	results := make(map[string][]string, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
-		result, err := backend.List(context.Background(), prefix)
+		result, err := backend.List(t.Context(), prefix)
 		results[name] = result
 		errs[name] = err
 	}
@@ -267,7 +265,7 @@ func allDoListPage(t *testing.T, backends map[string]logical.Storage, prefix str
 	results := make(map[string][]string, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
-		result, err := backend.ListPage(context.Background(), prefix, after, limit)
+		result, err := backend.ListPage(t.Context(), prefix, after, limit)
 		results[name] = result
 		errs[name] = err
 	}
@@ -278,7 +276,7 @@ func allDoListPage(t *testing.T, backends map[string]logical.Storage, prefix str
 func allDoDelete(t *testing.T, backends map[string]logical.Storage, key string) map[string]error {
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
-		err := backend.Delete(context.Background(), key)
+		err := backend.Delete(t.Context(), key)
 		errs[name] = err
 	}
 
@@ -289,7 +287,7 @@ func allDoPut(t *testing.T, backends map[string]logical.Storage, key string, val
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
 		// Other entry fields are unnecessary.
-		err := backend.Put(context.Background(), &logical.StorageEntry{
+		err := backend.Put(t.Context(), &logical.StorageEntry{
 			Key:   key,
 			Value: value,
 		})
@@ -303,7 +301,7 @@ func allDoGet(t *testing.T, backends map[string]logical.Storage, key string) (ma
 	results := make(map[string]*logical.StorageEntry, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
-		result, err := backend.Get(context.Background(), key)
+		result, err := backend.Get(t.Context(), key)
 		results[name] = result
 		errs[name] = err
 	}
@@ -316,7 +314,7 @@ func allDoBeginTx(t *testing.T, backends map[string]logical.TransactionalStorage
 	results := make(map[string]logical.Storage, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
-		result, err := backend.BeginTx(context.Background())
+		result, err := backend.BeginTx(t.Context())
 		results[name] = result
 		errs[name] = err
 	}
@@ -328,7 +326,7 @@ func allDoBeginReadOnlyTx(t *testing.T, backends map[string]logical.Transactiona
 	results := make(map[string]logical.Storage, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
-		result, err := backend.BeginReadOnlyTx(context.Background())
+		result, err := backend.BeginReadOnlyTx(t.Context())
 		results[name] = result
 		errs[name] = err
 	}
@@ -340,7 +338,7 @@ func allDoCommit(t *testing.T, backends map[string]logical.Storage) map[string]e
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
 		tx := backend.(logical.Transaction)
-		err := tx.Commit(context.Background())
+		err := tx.Commit(t.Context())
 		errs[name] = err
 	}
 
@@ -351,7 +349,7 @@ func allDoRollback(t *testing.T, backends map[string]logical.Storage) map[string
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
 		tx := backend.(logical.Transaction)
-		err := tx.Rollback(context.Background())
+		err := tx.Rollback(t.Context())
 		errs[name] = err
 	}
 
@@ -700,7 +698,7 @@ func exerciseBackends(t *testing.T, backends map[string]logical.Storage) {
 
 	// Finally, test pagination exhaustively.
 	var created []string
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		name := fmt.Sprintf("key-%d", i)
 		allDoSamePut(t, backends, name, testString, false)
 		created = append(created, name)
@@ -930,7 +928,7 @@ func getRandomOps(t *testing.T, count int, transactional bool, txLimit int) []*i
 		opContents[len(opContents)-1] += "0123456789"
 	}
 
-	for i := 0; i < count; i++ {
+	for range count {
 		opI := rand.Intn(len(opTypes))
 		op := opTypes[opI]
 

@@ -21,14 +21,18 @@ import (
 	"golang.org/x/net/http2"
 
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/openbao/openbao/api/v2"
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
 	"github.com/openbao/openbao/builtin/logical/transit"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHTTP_Fallback_Bad_Address(t *testing.T) {
@@ -615,4 +619,77 @@ func TestHTTP_Forwarding_LocalOnly(t *testing.T) {
 
 	testLocalOnly(cores[1].Client)
 	testLocalOnly(cores[2].Client)
+}
+
+func TestHTTP_Forwarding_StandbySystemEndpoints(t *testing.T) {
+	cluster := vault.NewTestCluster(t, &vault.CoreConfig{}, &vault.TestClusterOptions{
+		HandlerFunc: Handler,
+		DefaultHandlerProperties: vault.HandlerProperties{
+			ListenerConfig: &configutil.Listener{
+				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+				DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(false),
+			},
+		},
+		NumCores: 2,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
+
+	// Get a client that sends request to a standby.
+	standbyClient := func() *api.Client {
+		standbys := testhelpers.DeriveStandbyCores(t, cluster)
+		require.NotEmpty(t, standbys, "expected at least one standby core")
+		return standbys[0].Client
+	}
+
+	// Test that generate-root forwards to active.
+	otp, err := base62.Random(vault.TokenPrefixLength + vault.TokenLength)
+	require.NoError(t, err)
+	generateRootResponse, err := standbyClient().Sys().GenerateRootInit(otp, "")
+	require.NoError(t, err, "expected no error when request is successfully forwarded to active")
+	require.NotNil(t, generateRootResponse)
+	for _, k := range cluster.BarrierKeys {
+		generateRootResponse, err = standbyClient().Sys().GenerateRootUpdate(base64.StdEncoding.EncodeToString(k), generateRootResponse.Nonce)
+		require.NoError(t, err, "expected no error when request is successfully forwarded to active")
+	}
+	require.True(t, generateRootResponse.Complete)
+
+	// Test that rekey/init forwards to active.
+	//nolint:staticcheck // endpoint already marked as deprecated
+	rekeyInitResponse, err := standbyClient().Sys().RekeyInit(&api.RekeyInitRequest{
+		SecretShares:        1,
+		SecretThreshold:     1,
+		RequireVerification: true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, rekeyInitResponse)
+	require.True(t, rekeyInitResponse.Started)
+
+	// Test that rekey/update forwards to active.
+	var rekeyUpdateResponse *api.RekeyUpdateResponse
+	for _, k := range cluster.BarrierKeys {
+		//nolint:staticcheck // endpoint already marked as deprecated
+		rekeyUpdateResponse, err = standbyClient().Sys().RekeyUpdate(base64.StdEncoding.EncodeToString(k), rekeyInitResponse.Nonce)
+		require.NoError(t, err)
+	}
+	require.True(t, rekeyUpdateResponse.Complete)
+
+	// Test that rekey/verify forwards to active.
+	var rekeyVerifyResponse *api.RekeyVerificationUpdateResponse
+	for _, k := range rekeyUpdateResponse.Keys {
+		//nolint:staticcheck // endpoint already marked as deprecated
+		rekeyVerifyResponse, err = standbyClient().Sys().RekeyVerificationUpdate(k, rekeyUpdateResponse.VerificationNonce)
+		require.NoError(t, err)
+	}
+	require.True(t, rekeyVerifyResponse.Complete)
+
+	// Test that step-down forwards to active.
+	activeBeforeStepDown := testhelpers.DeriveActiveCore(t, cluster)
+	err = standbyClient().Sys().StepDown()
+	require.NoError(t, err)
+	testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
+	activeAfterStepDown := testhelpers.DeriveActiveCore(t, cluster)
+	require.NotEqual(t, activeBeforeStepDown.NodeID, activeAfterStepDown.NodeID, "expected different active after step-down")
 }

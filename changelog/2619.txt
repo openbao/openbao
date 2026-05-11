@@ -1,0 +1,3 @@
+```release-note:bug
+core/seal: Fix `/sys/rotate/root` call rotating both root key and unseal key when using a Shamir Seal, losing all key shares.
+```

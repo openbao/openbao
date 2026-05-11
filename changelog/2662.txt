@@ -1,0 +1,6 @@
+```release-note:change
+api: Removed the `StoredShares` field from `InitRequest` and `RotateInitRequest` structs.
+```
+```release-note:change
+sys/init, sys/rekey/init: The `stored_shares` parameter was removed and will now be ignored.
+```

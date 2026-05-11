@@ -6,6 +6,7 @@ package radius
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -151,10 +152,8 @@ func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *fra
 
 func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	policies := policyutil.ParsePolicies(d.Get("policies"))
-	for _, policy := range policies {
-		if policy == "root" {
-			return logical.ErrorResponse("root policy cannot be granted by an auth method"), nil
-		}
+	if slices.Contains(policies, "root") {
+		return logical.ErrorResponse("root policy cannot be granted by an auth method"), nil
 	}
 
 	// Store it

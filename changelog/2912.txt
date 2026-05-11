@@ -1,0 +1,3 @@
+```release-note:security
+core: Disallow `sys/generate-root/*` by default due to unauthenticated cancellation; use `disable_unauthed_generate_root_endpoints=false` to temporarily re-enable. Upstream HCSEC-2026-08 / CVE-2026-5807.
+```

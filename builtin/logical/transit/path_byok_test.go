@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -52,7 +51,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 	if keyType == "hmac" {
 		keyReq.Data["key_size"] = 32
 	}
-	resp, err = b.HandleRequest(context.Background(), keyReq)
+	resp, err = b.HandleRequest(t.Context(), keyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("resp: %#v\nerr: %v", resp, err)
 	}
@@ -63,7 +62,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 		Operation: logical.ReadOperation,
 		Storage:   s,
 	}
-	resp, err = b.HandleRequest(context.Background(), wrapKeyReq)
+	resp, err = b.HandleRequest(t.Context(), wrapKeyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("resp: %#v\nerr: %v", resp, err)
 	}
@@ -78,7 +77,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 			"type":       "rsa-4096",
 		},
 	}
-	resp, err = b.HandleRequest(context.Background(), wrapKeyImportReq)
+	resp, err = b.HandleRequest(t.Context(), wrapKeyImportReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("resp: %#v\nerr: %v", resp, err)
 	}
@@ -89,7 +88,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 		Operation: logical.ReadOperation,
 		Storage:   s,
 	}
-	resp, err = b.HandleRequest(context.Background(), backupReq)
+	resp, err = b.HandleRequest(t.Context(), backupReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("resp: %#v\nerr: %v", resp, err)
 	}
@@ -105,7 +104,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 			"type":       keyType,
 		},
 	}
-	resp, err = b.HandleRequest(context.Background(), restoreReq)
+	resp, err = b.HandleRequest(t.Context(), restoreReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("resp: %#v\nerr: %v", resp, err)
 	}
@@ -124,7 +123,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 				"plaintext": plaintextB64,
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), encryptReq)
+		resp, err = b.HandleRequest(t.Context(), encryptReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("resp: %#v\nerr: %v", resp, err)
 		}
@@ -139,7 +138,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 				"input": plaintextB64,
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), signReq)
+		resp, err = b.HandleRequest(t.Context(), signReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("resp: %#v\nerr: %v", resp, err)
 		}
@@ -154,7 +153,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 				"input": plaintextB64,
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), hmacReq)
+		resp, err = b.HandleRequest(t.Context(), hmacReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("resp: %#v\nerr: %v", resp, err)
 		}
@@ -176,7 +175,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 					"ciphertext": ciphertext,
 				},
 			}
-			resp, err = b.HandleRequest(context.Background(), decryptReq)
+			resp, err = b.HandleRequest(t.Context(), decryptReq)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("resp: %#v\nerr: %v", resp, err)
 			}
@@ -194,7 +193,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 					"input":     plaintextB64,
 				},
 			}
-			resp, err = b.HandleRequest(context.Background(), verifyReq)
+			resp, err = b.HandleRequest(t.Context(), verifyReq)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("resp: %#v\nerr: %v", resp, err)
 			}
@@ -212,7 +211,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 					"input": plaintextB64,
 				},
 			}
-			resp, err = b.HandleRequest(context.Background(), verifyReq)
+			resp, err = b.HandleRequest(t.Context(), verifyReq)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("resp: %#v\nerr: %v", resp, err)
 			}

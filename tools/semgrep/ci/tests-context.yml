@@ -1,0 +1,15 @@
+# Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
+# SPDX-License-Identifier: MPL-2.0
+
+rules:
+  - id: use-test-context
+    patterns:
+      - pattern-either:
+        - pattern: context.Background
+        - pattern: context.TODO
+    message: "Use (t/b).Context() in tests!"
+    languages: [go]
+    severity: ERROR
+    paths:
+      include:
+        - "*_test.go"

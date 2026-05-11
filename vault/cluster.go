@@ -210,7 +210,7 @@ func (c *Core) setupCluster(ctx context.Context) error {
 		// Create a private key
 		if c.localClusterPrivateKey.Load() == nil {
 			c.logger.Debug("generating cluster private key")
-			key, err := ecdsa.GenerateKey(elliptic.P521(), c.secureRandomReader)
+			key, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 			if err != nil {
 				c.logger.Error("failed to generate local cluster key", "error", err)
 				return err
@@ -379,4 +379,22 @@ func (c *Core) SetClusterHandler(handler http.Handler) {
 
 func (c *Core) ClusterID() string {
 	return c.clusterID.Load().(string)
+}
+
+type contextKeyOriginalRequestPath struct{}
+
+var contextOriginalRequestPath contextKeyOriginalRequestPath = struct{}{}
+
+func OriginalRequestPathFromContext(ctx context.Context) (string, bool) {
+	path := ctx.Value(contextOriginalRequestPath)
+
+	if path != nil {
+		return path.(string), true
+	}
+
+	return "", false
+}
+
+func ContextWithOriginalRequestPath(ctx context.Context, reqPath string) context.Context {
+	return context.WithValue(ctx, contextOriginalRequestPath, reqPath)
 }

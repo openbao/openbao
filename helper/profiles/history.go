@@ -21,8 +21,8 @@ type EvaluationHistory struct {
 	//  - Name of request block
 	//  - Actual data (usually map string->interface)
 
-	Requests  map[string]map[string]map[string]interface{}
-	Responses map[string]map[string]map[string]interface{}
+	Requests  map[string]map[string]map[string]interface{} `json:"requests"`
+	Responses map[string]map[string]map[string]interface{} `json:"responses"`
 }
 
 func (eh *EvaluationHistory) AddRequest(outerBlock string, requestBlock string, request *logical.Request) error {

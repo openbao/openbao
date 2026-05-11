@@ -203,7 +203,7 @@ func randomRunes(rng io.Reader, charset []rune, length int) (candidate []rune, e
 		}
 
 		// Append characters until either we're out of indexes or the length is long enough
-		for i := 0; i < numBytes; i++ {
+		for i := range numBytes {
 			// Be careful to ensure that maxAllowedRNGValue isn't >= 256 as it will overflow and this
 			// comparison will prevent characters from being selected from the charset
 			if data[i] > byte(maxAllowedRNGValue) {

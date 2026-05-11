@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,6 +22,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/policy"
 )
 
 const (
@@ -37,7 +39,7 @@ func (c *Core) ensureWrappingKey(ctx context.Context) error {
 	var keyParams certutil.ClusterKeyParams
 
 	if entry == nil {
-		key, err := ecdsa.GenerateKey(elliptic.P521(), c.secureRandomReader)
+		key, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 		if err != nil {
 			return fmt.Errorf("failed to generate wrapping key: %w", err)
 		}
@@ -459,7 +461,7 @@ func IsWrappingToken(te *logical.TokenEntry) bool {
 		return false
 	}
 
-	if te.Policies[0] != responseWrappingPolicyName {
+	if te.Policies[0] != policy.ResponseWrappingPolicyName {
 		return false
 	}
 

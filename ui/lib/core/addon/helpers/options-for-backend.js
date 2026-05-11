@@ -191,7 +191,9 @@ export function optionsForBackend(backend, tab, isEngine) {
   let backendOptions;
   if (selected && selected.tabs) {
     const tabData =
-      selected.tabs.findBy('name', tab) || selected.tabs.findBy('modelPrefix', tab) || selected.tabs[0];
+      selected.tabs.find((x) => x.name === tab) ||
+      selected.tabs.find((x) => x.modelPrefix === tab) ||
+      selected.tabs[0];
     backendOptions = { ...selected, ...tabData };
   } else if (selected) {
     backendOptions = selected;

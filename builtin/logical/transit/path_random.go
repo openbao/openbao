@@ -58,7 +58,7 @@ func (b *backend) pathRandom() *framework.Path {
 }
 
 func (b *backend) pathRandomWrite(_ context.Context, _ *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return random.HandleRandomAPI(d, b.GetRandomReader())
+	return random.HandleRandomAPI(d)
 }
 
 const pathRandomHelpSyn = `Generate random bytes`

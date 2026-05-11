@@ -1,0 +1,3 @@
+```release-note:improvement
+command/server: Add `text/template` support to self-initialization, allowing templating of values from other requests/responses.
+```

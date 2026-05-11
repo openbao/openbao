@@ -1,0 +1,17 @@
+```release-note:feature
+**Auto Unseal plugins**: Add a new `kms` plugin type that enables pluggable Auto
+Unseal mechanisms.
+  - Declaratively register KMS plugins using `plugin "kms" "<name>" { ... }`
+    configuration stanzas, making `<name>` available as `seal "<name>" { ... }`.
+  - Automatically restart and recover from crashes, avoiding a full instance
+    restart when a seal reaches a bad state (e.g., via a misbehaving PKCS#11
+    library).
+  - Pre-built plugins for many of the seals currently built into OpenBao are
+    available at https://github.com/openbao/openbao-plugins. We expect to phase
+    many of the vendor-specific built-in seals out of the `bao` binary by v2.7;
+    the v2.6 series retains all previously built-in seals to enable testing the
+    migration from a built-in seal to a pluginized seal. A pluginized seal takes
+    priority over a built-in seal if a matching plugin is installed.
+  - Develop custom Auto Unseal mechanisms tailored to your use case using the
+    [SDK](https://github.com/openbao/go-kms-wrapping/tree/main/plugin).
+```

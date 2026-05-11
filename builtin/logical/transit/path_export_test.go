@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	cryptoRand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -63,7 +62,7 @@ func verifyExportsCorrectVersion(t *testing.T, exportType, keyType string) {
 	if keyType == "hmac" {
 		req.Data["key_size"] = 32
 	}
-	_, err := b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +73,7 @@ func verifyExportsCorrectVersion(t *testing.T, exportType, keyType string) {
 			Operation: logical.ReadOperation,
 			Path:      fmt.Sprintf("export/%s/foo/%s", exportType, versionRequest),
 		}
-		rsp, err := b.HandleRequest(context.Background(), req)
+		rsp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -116,7 +115,7 @@ func verifyExportsCorrectVersion(t *testing.T, exportType, keyType string) {
 
 	req.Path = "keys/foo/rotate"
 	// v2
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +127,7 @@ func verifyExportsCorrectVersion(t *testing.T, exportType, keyType string) {
 	verifyVersion("latest", 2)
 
 	// v3
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,19 +151,19 @@ func TestTransit_Export_ValidVersionsOnly(t *testing.T) {
 	req.Data = map[string]interface{}{
 		"exportable": true,
 	}
-	_, err := b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	req.Path = "keys/foo/rotate"
 	// v2
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// v3
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +174,7 @@ func TestTransit_Export_ValidVersionsOnly(t *testing.T) {
 			Operation: logical.ReadOperation,
 			Path:      "export/encryption-key/foo",
 		}
-		rsp, err := b.HandleRequest(context.Background(), req)
+		rsp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -207,7 +206,7 @@ func TestTransit_Export_ValidVersionsOnly(t *testing.T) {
 	req.Data = map[string]interface{}{
 		"min_decryption_version": 3,
 	}
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +220,7 @@ func TestTransit_Export_ValidVersionsOnly(t *testing.T) {
 	req.Data = map[string]interface{}{
 		"min_decryption_version": 2,
 	}
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +232,7 @@ func TestTransit_Export_ValidVersionsOnly(t *testing.T) {
 		Path:      "keys/foo/rotate",
 	}
 	// v4
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +250,7 @@ func TestTransit_Export_KeysNotMarkedExportable_ReturnsError(t *testing.T) {
 	req.Data = map[string]interface{}{
 		"exportable": false,
 	}
-	_, err := b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +260,7 @@ func TestTransit_Export_KeysNotMarkedExportable_ReturnsError(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "export/encryption-key/foo",
 	}
-	rsp, err := b.HandleRequest(context.Background(), req)
+	rsp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +281,7 @@ func TestTransit_Export_SigningDoesNotSupportSigning_ReturnsError(t *testing.T) 
 		"exportable": true,
 		"type":       "aes256-gcm96",
 	}
-	_, err := b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -292,7 +291,7 @@ func TestTransit_Export_SigningDoesNotSupportSigning_ReturnsError(t *testing.T) 
 		Operation: logical.ReadOperation,
 		Path:      "export/signing-key/foo",
 	}
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err == nil {
 		t.Fatal("Key does not support signing but was exported without error.")
 	}
@@ -317,7 +316,7 @@ func testTransit_Export_EncryptionDoesNotSupportEncryption_ReturnsError(t *testi
 		"exportable": true,
 		"type":       keyType,
 	}
-	_, err := b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -327,7 +326,7 @@ func testTransit_Export_EncryptionDoesNotSupportEncryption_ReturnsError(t *testi
 		Operation: logical.ReadOperation,
 		Path:      "export/encryption-key/foo",
 	}
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	if err == nil {
 		t.Fatalf("Key %s does not support encryption but was exported without error.", keyType)
 	}
@@ -341,7 +340,7 @@ func TestTransit_Export_KeysDoesNotExist_ReturnsNotFound(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "export/encryption-key/foo",
 	}
-	rsp, err := b.HandleRequest(context.Background(), req)
+	rsp, err := b.HandleRequest(t.Context(), req)
 
 	if rsp != nil || err != nil {
 		t.Fatal("Key does not exist: should return no response and no error.")
@@ -360,7 +359,7 @@ func TestTransit_Export_EncryptionKey_DoesNotExportHMACKey(t *testing.T) {
 		"exportable": true,
 		"type":       "aes256-gcm96",
 	}
-	_, err := b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,12 +369,12 @@ func TestTransit_Export_EncryptionKey_DoesNotExportHMACKey(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "export/encryption-key/foo",
 	}
-	encryptionKeyRsp, err := b.HandleRequest(context.Background(), req)
+	encryptionKeyRsp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	req.Path = "export/hmac-key/foo"
-	hmacKeyRsp, err := b.HandleRequest(context.Background(), req)
+	hmacKeyRsp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -450,7 +449,7 @@ func verifyExportsCorrectFormat(t *testing.T, exportType, keyType string) {
 	if keyType == "hmac" {
 		req.Data["key_size"] = 32
 	}
-	_, err := b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -467,7 +466,7 @@ func verifyExportsCorrectFormat(t *testing.T, exportType, keyType string) {
 			},
 		}
 
-		rsp, err := b.HandleRequest(context.Background(), req)
+		rsp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatalf("on req to %v: %v", req.Path, err)
 		}

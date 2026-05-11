@@ -19,7 +19,7 @@ export default {
   }),
   lastLogOutput: getter(function () {
     const count = this.logOutputItems.length;
-    const outputItemText = this.logOutputItems.objectAt(count - 1).text;
+    const outputItemText = this.logOutputItems[count - 1].text;
     return outputItemText;
   }),
   logTextItems: collection('[data-test-component="console/log-text"]', {
@@ -27,14 +27,14 @@ export default {
   }),
   lastTextOutput: getter(function () {
     const count = this.logTextItems.length;
-    return this.logTextItems.objectAt(count - 1).text;
+    return this.logTextItems[count - 1].text;
   }),
   logJSONItems: collection('[data-test-component="console/log-json"]', {
     text: text(),
   }),
   lastJSONOutput: getter(function () {
     const count = this.logJSONItems.length;
-    return this.logJSONItems.objectAt(count - 1).text;
+    return this.logJSONItems[count - 1].text;
   }),
   up: triggerable('keyup', '[data-test-component="console/command-input"] input', {
     eventProperties: { keyCode: keys.UP },

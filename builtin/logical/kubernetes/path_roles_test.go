@@ -4,7 +4,6 @@
 package kubesecrets
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -269,7 +268,7 @@ func TestRoles(t *testing.T) {
 		}, resp.Data)
 
 		// Delete one
-		resp, err = testRolesDelete(t, b, s, "jsonrules")
+		_, err = testRolesDelete(t, b, s, "jsonrules")
 		require.NoError(t, err)
 		// Now there should be three
 		resp, err = testRolesList(t, b, s)
@@ -278,11 +277,11 @@ func TestRoles(t *testing.T) {
 			"keys": []string{"jsonselector", "yamlrules", "yamlselector"},
 		}, resp.Data)
 		// Delete the last three
-		resp, err = testRolesDelete(t, b, s, "yamlrules")
+		_, err = testRolesDelete(t, b, s, "yamlrules")
 		require.NoError(t, err)
-		resp, err = testRolesDelete(t, b, s, "jsonselector")
+		_, err = testRolesDelete(t, b, s, "jsonselector")
 		require.NoError(t, err)
-		resp, err = testRolesDelete(t, b, s, "yamlselector")
+		_, err = testRolesDelete(t, b, s, "yamlselector")
 		require.NoError(t, err)
 		// Now there should be none
 		resp, err = testRolesList(t, b, s)
@@ -294,7 +293,7 @@ func TestRoles(t *testing.T) {
 func testRoleCreate(t *testing.T, b *backend, s logical.Storage, name string, d map[string]interface{}) (*logical.Response, error) {
 	t.Helper()
 
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      rolesPath + name,
 		Data:      d,
@@ -309,7 +308,7 @@ func testRoleCreate(t *testing.T, b *backend, s logical.Storage, name string, d 
 
 func testRoleRead(t *testing.T, b *backend, s logical.Storage, name string) (*logical.Response, error) {
 	t.Helper()
-	return b.HandleRequest(context.Background(), &logical.Request{
+	return b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      rolesPath + name,
 		Storage:   s,
@@ -318,7 +317,7 @@ func testRoleRead(t *testing.T, b *backend, s logical.Storage, name string) (*lo
 
 func testRolesList(t *testing.T, b *backend, s logical.Storage) (*logical.Response, error) {
 	t.Helper()
-	return b.HandleRequest(context.Background(), &logical.Request{
+	return b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.ListOperation,
 		Path:      rolesPath,
 		Storage:   s,
@@ -327,7 +326,7 @@ func testRolesList(t *testing.T, b *backend, s logical.Storage) (*logical.Respon
 
 func testRolesDelete(t *testing.T, b *backend, s logical.Storage, name string) (*logical.Response, error) {
 	t.Helper()
-	return b.HandleRequest(context.Background(), &logical.Request{
+	return b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.DeleteOperation,
 		Path:      rolesPath + name,
 		Storage:   s,

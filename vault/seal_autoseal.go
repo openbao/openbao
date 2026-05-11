@@ -71,10 +71,6 @@ func NewAutoSeal(lowLevel seal.Access) (*autoSeal, error) {
 	return ret, nil
 }
 
-func (d *autoSeal) SealWrapable() bool {
-	return true
-}
-
 func (d *autoSeal) GetAccess() seal.Access {
 	return d.Access
 }
@@ -118,10 +114,6 @@ func (d *autoSeal) BarrierType() wrapping.WrapperType {
 
 func (d *autoSeal) GetShamirWrapper() (*seal.ShamirWrapper, error) {
 	return nil, errors.New("autoSeal does not use a ShamirWrapper")
-}
-
-func (d *autoSeal) StoredKeysSupported() seal.StoredKeysSupport {
-	return seal.StoredKeysSupportedGeneric
 }
 
 func (d *autoSeal) RecoveryKeySupported() bool {

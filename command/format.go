@@ -318,8 +318,8 @@ func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, data interface{}) erro
 		out = append(out, fmt.Sprintf("Version | %s", status.Version))
 	}
 
-	if status.BuildDate != "" {
-		out = append(out, fmt.Sprintf("Build Date | %s", status.BuildDate))
+	if status.CommitDate != "" {
+		out = append(out, fmt.Sprintf("Commit Date | %s", status.CommitDate))
 	}
 
 	if status.StorageType != "" {

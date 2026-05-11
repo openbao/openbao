@@ -29,11 +29,11 @@ import (
 	"github.com/hashicorp/raft"
 	autopilot "github.com/hashicorp/raft-autopilot"
 	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
-	snapshot "github.com/hashicorp/raft-snapshot"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/tlsdebug"
+	"github.com/openbao/openbao/physical/raft/snapshot"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
@@ -206,6 +206,8 @@ type RaftBackend struct {
 
 	effectiveSDKVersion string
 	failGetInTxn        atomic.Bool
+
+	transactionLeakCounter atomic.Int64
 }
 
 // HookInvalidate implements physical.CacheInvalidationBackend.
@@ -1226,7 +1228,7 @@ func (b *RaftBackend) RemovePeer(ctx context.Context, peerID string) error {
 	}
 
 	if b.autopilot == nil {
-		return errors.New("raft storage autopilot is not initialized")
+		return ErrRaftAutopilotNotInitialized
 	}
 
 	b.logger.Trace("removing server from raft via autopilot", "id", peerID)
@@ -1272,7 +1274,7 @@ func (b *RaftBackend) PromotePeer(ctx context.Context, peerID string) error {
 	}
 
 	if b.autopilot == nil {
-		return errors.New("raft storage autopilot is not initialized")
+		return ErrRaftAutopilotNotInitialized
 	}
 
 	if !b.delegate.IsNonVoter(raft.ServerID(peerID)) {
@@ -1330,7 +1332,7 @@ func (b *RaftBackend) DemotePeer(ctx context.Context, peerID string) error {
 	}
 
 	if b.autopilot == nil {
-		return errors.New("raft storage autopilot is not initialized")
+		return ErrRaftAutopilotNotInitialized
 	}
 
 	b.logger.Trace("demoting voter to non-voter", "id", peerID)
@@ -1443,7 +1445,7 @@ func (b *RaftBackend) AddPeer(ctx context.Context, peerID, clusterAddr string, v
 	}
 
 	if b.autopilot == nil {
-		return errors.New("raft storage autopilot is not initialized")
+		return ErrRaftAutopilotNotInitialized
 	}
 
 	var nodeType autopilot.NodeType
@@ -1453,7 +1455,6 @@ func (b *RaftBackend) AddPeer(ctx context.Context, peerID, clusterAddr string, v
 		nodeType = NodeNonVoter
 	}
 
-	b.logger.Debug("adding server to raft via autopilot", "id", peerID)
 	if !voter {
 		b.logger.Debug("adding non-voter to raft via autopilot", "id", peerID)
 		err := b.delegate.AddNonVoter(raft.ServerID(peerID))
@@ -1461,6 +1462,8 @@ func (b *RaftBackend) AddPeer(ctx context.Context, peerID, clusterAddr string, v
 			return err
 		}
 	}
+
+	b.logger.Debug("adding server to raft via autopilot", "id", peerID)
 	return b.autopilot.AddServer(&autopilot.Server{
 		ID:          raft.ServerID(peerID),
 		Name:        peerID,

@@ -49,8 +49,8 @@ module('Unit | Service | permissions', function (hooks) {
 
   test('sets paths properly', async function (assert) {
     await this.service.getPaths.perform();
-    assert.deepEqual(this.service.get('exactPaths'), PERMISSIONS_RESPONSE.data.exact_paths);
-    assert.deepEqual(this.service.get('globPaths'), PERMISSIONS_RESPONSE.data.glob_paths);
+    assert.deepEqual(this.service.exactPaths, PERMISSIONS_RESPONSE.data.exact_paths);
+    assert.deepEqual(this.service.globPaths, PERMISSIONS_RESPONSE.data.glob_paths);
   });
 
   test('returns true if a policy includes access to an exact path', function (assert) {

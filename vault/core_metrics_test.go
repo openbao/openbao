@@ -15,6 +15,9 @@ import (
 	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	be "github.com/openbao/openbao/vault/backend"
+	ident "github.com/openbao/openbao/vault/identity"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 func TestCoreMetrics_KvSecretGauge(t *testing.T) {
@@ -22,7 +25,7 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 	AddTestLogicalBackend("kv", logicalKv.Factory)
 	// Clean up for the next test-- is there a better way?
 	defer func() {
-		delete(testLogicalBackends, "kv")
+		delete(be.TestLogicalBackends, "kv")
 	}()
 	core, _, root := TestCoreUnsealed(t)
 
@@ -40,12 +43,12 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 		{"prefix/secret4/", "kv", "2", 5},
 		{"generic/", "generic", "1", 3},
 	}
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(t.Context())
 
 	// skip 0, secret/ is already mounted
 	for _, tm := range testMounts[1:] {
-		me := &MountEntry{
-			Table:   mountTableType,
+		me := &routing.MountEntry{
+			Table:   routing.MountTableType,
 			Path:    sanitizePath(tm.Path),
 			Type:    tm.Type,
 			Options: map[string]string{"version": tm.Version},
@@ -88,7 +91,7 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 		}
 	}
 	for _, p := range v2secrets {
-		for i := 0; i < 50; i++ {
+		for range 50 {
 			req := logical.TestRequest(t, logical.CreateOperation, p)
 			req.Data["data"] = map[string]interface{}{"foo": "bar"}
 			req.ClientToken = root
@@ -156,17 +159,17 @@ func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 	AddTestLogicalBackend("kv", logicalKv.Factory)
 	// Clean up for the next test.
 	defer func() {
-		delete(testLogicalBackends, "kv")
+		delete(be.TestLogicalBackends, "kv")
 	}()
 	core, _, _ := TestCoreUnsealed(t)
 
-	me := &MountEntry{
-		Table:   mountTableType,
+	me := &routing.MountEntry{
+		Table:   routing.MountTableType,
 		Path:    sanitizePath("kv1"),
 		Type:    "kv",
 		Options: map[string]string{"version": "1"},
 	}
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(t.Context())
 	err := core.mount(ctx, me)
 	if err != nil {
 		t.Fatalf("mount error: %v", err)
@@ -210,7 +213,7 @@ func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 
 func TestCoreMetrics_KvSecretGaugeError(t *testing.T) {
 	core, _, _, sink := TestCoreUnsealedWithMetrics(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(t.Context())
 
 	badKvMount := &kvMount{
 		Namespace:  namespace.RootNamespace,
@@ -264,20 +267,20 @@ func metricLabelsMatch(t *testing.T, actual []metrics.Label, expected map[string
 }
 
 func TestCoreMetrics_EntityGauges(t *testing.T) {
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
 
 	testCoreMetricsEntityGauges(t, ctx, is, approleAccessor, upAccessor, core)
 }
 
 func TestCoreMetrics_EntityGaugesUnsafeSharedIdentity(t *testing.T) {
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
 
 	testCoreMetricsEntityGauges(t, ctx, is, approleAccessor, upAccessor, core)
 }
 
-func testCoreMetricsEntityGauges(t *testing.T, ctx context.Context, is *IdentityStore, approleAccessor string, upAccessor string, core *Core) {
+func testCoreMetricsEntityGauges(t *testing.T, ctx context.Context, is *ident.IdentityStore, approleAccessor string, upAccessor string, core *Core) {
 	// Create an entity
 	alias1 := &logical.Alias{
 		MountType:     "approle",

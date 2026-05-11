@@ -54,7 +54,7 @@ func handleSysGenerateRootAttemptGet(core *vault.Core, w http.ResponseWriter, r 
 	}
 
 	// Get the generation configuration
-	generationConfig, err := core.GenerateRootConfiguration()
+	generationConfig, err := core.GenerateRootConfiguration(ctx)
 	switch {
 	// we return the progress as 0 in this case, root generation has not started
 	case errors.Is(err, vault.ErrNoRootGeneration):
@@ -64,7 +64,7 @@ func handleSysGenerateRootAttemptGet(core *vault.Core, w http.ResponseWriter, r 
 	}
 
 	// Get the progress
-	progress, err := core.GenerateRootProgress()
+	progress, err := core.GenerateRootProgress(ctx)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err)
 		return
@@ -95,7 +95,9 @@ func handleSysGenerateRootAttemptGet(core *vault.Core, w http.ResponseWriter, r 
 }
 
 func handleSysGenerateRootAttemptPut(core *vault.Core, w http.ResponseWriter, r *http.Request, generateStrategy vault.GenerateRootStrategy) {
-	// Parse the request
+	ctx, cancel := core.GetContext()
+	defer cancel()
+
 	var req GenerateRootInitRequest
 	if err := parseJSONRequest(r, w, &req); err != nil && err != io.EOF {
 		respondError(w, http.StatusBadRequest, err)
@@ -121,7 +123,7 @@ func handleSysGenerateRootAttemptPut(core *vault.Core, w http.ResponseWriter, r 
 	}
 
 	// Attemptialize the generation
-	if err := core.GenerateRootInit(req.OTP, req.PGPKey, generateStrategy); err != nil {
+	if err := core.GenerateRootInit(ctx, req.OTP, req.PGPKey, generateStrategy); err != nil {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -135,7 +137,10 @@ func handleSysGenerateRootAttemptPut(core *vault.Core, w http.ResponseWriter, r 
 }
 
 func handleSysGenerateRootAttemptDelete(core *vault.Core, w http.ResponseWriter, r *http.Request) {
-	err := core.GenerateRootCancel()
+	ctx, cancel := core.GetContext()
+	defer cancel()
+
+	err := core.GenerateRootCancel(ctx)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err)
 		return

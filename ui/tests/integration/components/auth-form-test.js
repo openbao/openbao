@@ -51,7 +51,7 @@ module('Integration | Component | auth form', function (hooks) {
     this.set('selectedAuth', 'token');
     await render(hbs`{{auth-form cluster=this.cluster selectedAuth=this.selectedAuth}}`);
     assert.false(component.errorMessagePresent, false);
-    this.owner.lookup('service:csp-event').events.addObject({ violatedDirective: 'connect-src' });
+    this.owner.lookup('service:csp-event').events.pushObject({ violatedDirective: 'connect-src' });
     await settled();
     assert.strictEqual(component.errorText, CSP_ERR_TEXT);
   });
@@ -135,8 +135,8 @@ module('Integration | Component | auth form', function (hooks) {
     await render(hbs`{{auth-form cluster=this.cluster }}`);
 
     assert.strictEqual(component.tabs.length, 2, 'renders a tab for userpass and Other');
-    assert.strictEqual(component.tabs.objectAt(0).name, 'foo', 'uses the path in the label');
-    assert.strictEqual(component.tabs.objectAt(1).name, 'Other', 'second tab is the Other tab');
+    assert.strictEqual(component.tabs[0].name, 'foo', 'uses the path in the label');
+    assert.strictEqual(component.tabs[1].name, 'Other', 'second tab is the Other tab');
     server.shutdown();
   });
 

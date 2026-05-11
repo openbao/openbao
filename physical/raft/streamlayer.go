@@ -14,7 +14,6 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	fmt "fmt"
-	"io"
 	"math/big"
 	mathrand "math/rand"
 	"net"
@@ -90,8 +89,8 @@ func (k *TLSKeyring) GetActive() *TLSKey {
 	return nil
 }
 
-func GenerateTLSKey(reader io.Reader) (*TLSKey, error) {
-	key, err := ecdsa.GenerateKey(elliptic.P521(), reader)
+func GenerateTLSKey() (*TLSKey, error) {
+	key, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	if err != nil {
 		return nil, err
 	}
@@ -333,16 +332,14 @@ func (l *raftLayer) Handoff(ctx context.Context, wg *sync.WaitGroup, quit chan s
 		return errors.New("raft is shutdown")
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		select {
 		case l.connCh <- conn:
 		case <-l.closeCh:
 		case <-ctx.Done():
 		case <-quit:
 		}
-	}()
+	})
 
 	return nil
 }

@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -37,13 +36,13 @@ func TestTransit_HMAC(t *testing.T) {
 			Operation: logical.UpdateOperation,
 			Path:      "keys/" + c.name,
 		}
-		_, err := b.HandleRequest(context.Background(), req)
+		_, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Now, change the key value to something we control
-		p, _, err := b.GetPolicy(context.Background(), keysutil.PolicyRequest{
+		p, _, err := b.GetPolicy(t.Context(), keysutil.PolicyRequest{
 			Storage: storage,
 			Name:    c.name,
 		}, b.GetRandomReader())
@@ -56,7 +55,7 @@ func TestTransit_HMAC(t *testing.T) {
 		keyEntry.HMACKey = []byte("01234567890123456789012345678901")
 		keyEntry.Key = []byte("01234567890123456789012345678901")
 		p.Keys[latestVersion] = keyEntry
-		if err = p.Persist(context.Background(), storage); err != nil {
+		if err = p.Persist(t.Context(), storage); err != nil {
 			t.Fatal(err)
 		}
 
@@ -69,7 +68,7 @@ func TestTransit_HMAC(t *testing.T) {
 			path := req.Path
 			defer func() { req.Path = path }()
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil && !errExpected {
 				panic(fmt.Sprintf("%v", err))
 			}
@@ -96,7 +95,7 @@ func TestTransit_HMAC(t *testing.T) {
 			// Now verify
 			req.Path = strings.ReplaceAll(req.Path, "hmac", "verify")
 			req.Data["hmac"] = value.(string)
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("%v: %v", err, resp)
 			}
@@ -159,7 +158,7 @@ func TestTransit_HMAC(t *testing.T) {
 		req.Data["input"] = "dGhlIHF1aWNrIGJyb3duIGZveA=="
 
 		// Rotate
-		err = p.Rotate(context.Background(), storage, b.GetRandomReader())
+		err = p.Rotate(t.Context(), storage, b.GetRandomReader())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -167,7 +166,7 @@ func TestTransit_HMAC(t *testing.T) {
 		// Set to another value we control
 		keyEntry.HMACKey = []byte("12345678901234567890123456789012")
 		p.Keys["2"] = keyEntry
-		if err = p.Persist(context.Background(), storage); err != nil {
+		if err = p.Persist(t.Context(), storage); err != nil {
 			t.Fatal(err)
 		}
 
@@ -177,7 +176,7 @@ func TestTransit_HMAC(t *testing.T) {
 		req.Path = "verify/" + c.name
 
 		req.Data["hmac"] = "vault:v1:UcBvm5VskkukzZHlPgm3p5P/Yr/PV6xpuOGZISya3A4="
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatalf("%v: %v", err, resp)
 		}
@@ -190,7 +189,7 @@ func TestTransit_HMAC(t *testing.T) {
 
 		// Try a bad value
 		req.Data["hmac"] = "vault:v1:UcBvm4VskkukzZHlPgm3p5P/Yr/PV6xpuOGZISya3A4="
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatalf("%v: %v", err, resp)
 		}
@@ -203,12 +202,12 @@ func TestTransit_HMAC(t *testing.T) {
 
 		// Set min decryption version, attempt to verify
 		p.MinDecryptionVersion = 2
-		if err = p.Persist(context.Background(), storage); err != nil {
+		if err = p.Persist(t.Context(), storage); err != nil {
 			t.Fatal(err)
 		}
 
 		req.Data["hmac"] = "vault:v1:UcBvm5VskkukzZHlPgm3p5P/Yr/PV6xpuOGZISya3A4="
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err == nil {
 			t.Fatalf("expected an error, got response %#v", resp)
 		}
@@ -227,13 +226,13 @@ func TestTransit_batchHMAC(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "keys/foo",
 	}
-	_, err := b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Now, change the key value to something we control
-	p, _, err := b.GetPolicy(context.Background(), keysutil.PolicyRequest{
+	p, _, err := b.GetPolicy(t.Context(), keysutil.PolicyRequest{
 		Storage: storage,
 		Name:    "foo",
 	}, b.GetRandomReader())
@@ -245,7 +244,7 @@ func TestTransit_batchHMAC(t *testing.T) {
 	keyEntry := p.Keys[latestVersion]
 	keyEntry.HMACKey = []byte("01234567890123456789012345678901")
 	p.Keys[latestVersion] = keyEntry
-	if err = p.Persist(context.Background(), storage); err != nil {
+	if err = p.Persist(t.Context(), storage); err != nil {
 		t.Fatal(err)
 	}
 
@@ -270,7 +269,7 @@ func TestTransit_batchHMAC(t *testing.T) {
 		"batch_input": batchInput,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
@@ -306,7 +305,7 @@ func TestTransit_batchHMAC(t *testing.T) {
 		"batch_input": verifyBatch,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("%v: %v", err, resp)
 	}
@@ -322,7 +321,7 @@ func TestTransit_batchHMAC(t *testing.T) {
 
 	// Try a bad value
 	verifyBatch[0]["hmac"] = bad_hmac
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("%v: %v", err, resp)
 	}
@@ -337,7 +336,7 @@ func TestTransit_batchHMAC(t *testing.T) {
 	}
 
 	// Rotate
-	err = p.Rotate(context.Background(), storage, b.GetRandomReader())
+	err = p.Rotate(t.Context(), storage, b.GetRandomReader())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,20 +344,20 @@ func TestTransit_batchHMAC(t *testing.T) {
 	// Set to another value we control
 	keyEntry.HMACKey = []byte("12345678901234567890123456789012")
 	p.Keys["2"] = keyEntry
-	if err = p.Persist(context.Background(), storage); err != nil {
+	if err = p.Persist(t.Context(), storage); err != nil {
 		t.Fatal(err)
 	}
 
 	// Set min decryption version, attempt to verify
 	p.MinDecryptionVersion = 2
-	if err = p.Persist(context.Background(), storage); err != nil {
+	if err = p.Persist(t.Context(), storage); err != nil {
 		t.Fatal(err)
 	}
 
 	// supply a good hmac, but with expired key version
 	verifyBatch[0]["hmac"] = good_hmac
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("%v: %v", err, resp)
 	}

@@ -447,7 +447,7 @@ func assertAllFieldsSetValue(name string, rVal reflect.Value) error {
 	}
 
 	switch rVal.Kind() {
-	case reflect.Ptr, reflect.Interface:
+	case reflect.Pointer, reflect.Interface:
 		return assertAllFieldsSetValue(name, rVal.Elem())
 	case reflect.Struct:
 		return assertAllFieldsSetStruct(name, rVal)
@@ -483,7 +483,7 @@ func assertAllFieldsSetValue(name string, rVal reflect.Value) error {
 
 func assertAllFieldsSetStruct(name string, rVal reflect.Value) error {
 	switch rVal.Type() {
-	case reflect.TypeOf(timestamppb.Timestamp{}):
+	case reflect.TypeFor[timestamppb.Timestamp]():
 		ts := rVal.Interface().(timestamppb.Timestamp)
 		if ts.AsTime().IsZero() {
 			return fmt.Errorf("%s is zero", name)

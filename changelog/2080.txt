@@ -1,0 +1,3 @@
+```release-note:improvement
+auth/cert: Add support for X-Tls-Client-Cert, to allow processing of a leaf certificate forwarded from a TLS-terminating reverse proxy.
+```

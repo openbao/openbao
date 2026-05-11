@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { currentURL, currentRouteName, visit } from '@ember/test-helpers';
+import { currentURL, currentRouteName, visit, settled } from '@ember/test-helpers';
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
 import authPage from 'vault/tests/pages/auth';
@@ -16,8 +16,9 @@ module('Acceptance | policies', function (hooks) {
     return authPage.login();
   });
 
-  hooks.afterEach(function () {
-    return logout.visit();
+  hooks.afterEach(async function () {
+    await logout.visit();
+    await settled();
   });
 
   test('it redirects to acls with unknown policy type', async function (assert) {

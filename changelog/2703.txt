@@ -1,0 +1,3 @@
+```release-note:bug
+core/listeners: Close HTTP servers first before closing the underlying listener.
+```

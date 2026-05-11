@@ -13,6 +13,8 @@ import (
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	be "github.com/openbao/openbao/vault/backend"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 type basicLeaseTestInfo struct {
@@ -75,7 +77,7 @@ func (c *Core) AddIrrevocableLease(ctx context.Context, pathPrefix string) (*bas
 // It returns a map of the mount accessor to the number of leases stored there
 func (c *Core) InjectIrrevocableLeases(ctx context.Context, count int) (map[string]int, error) {
 	out := make(map[string]int)
-	for i := 0; i < count; i++ {
+	for range count {
 		le, err := c.AddIrrevocableLease(ctx, "foo/")
 		if err != nil {
 			return nil, err
@@ -101,13 +103,13 @@ type backend struct {
 func mountNoopBackends(c *Core, backends []*backend) (map[string]string, error) {
 	// enable the noop backend
 	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{}, nil
+		return &be.Noop{}, nil
 	}
 
 	pathToMount := make(map[string]string)
 	for _, backend := range backends {
-		me := &MountEntry{
-			Table: mountTableType,
+		me := &routing.MountEntry{
+			Table: routing.MountTableType,
 			Path:  backend.path,
 			Type:  "noop",
 		}

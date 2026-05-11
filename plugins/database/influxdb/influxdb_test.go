@@ -6,6 +6,7 @@ package influxdb
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"reflect"
@@ -75,7 +76,7 @@ func prepareInfluxdbTestContainer(t *testing.T) (func(), *Config) {
 	if err != nil {
 		t.Fatalf("Could not start docker InfluxDB: %s", err)
 	}
-	svc, err := runner.StartService(context.Background(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
+	svc, err := runner.StartService(t.Context(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
 		c.ServiceURL = *docker.NewServiceURL(url.URL{
 			Scheme: "http",
 			Host:   fmt.Sprintf("%s:%d", host, port),
@@ -186,7 +187,7 @@ func TestInfluxdb_Initialize(t *testing.T) {
 			db := new()
 			defer dbtesting.AssertClose(t, db)
 
-			resp, err := db.Initialize(context.Background(), test.req)
+			resp, err := db.Initialize(t.Context(), test.req)
 			if test.expectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -214,9 +215,7 @@ func makeConfig(rootConfig map[string]interface{}, keyValues ...interface{}) map
 
 	// Make a copy of the map so there isn't a chance of test bleedover between maps
 	config := make(map[string]interface{}, len(rootConfig)+(len(keyValues)/2))
-	for k, v := range rootConfig {
-		config[k] = v
-	}
+	maps.Copy(config, rootConfig)
 	for i := 0; i < len(keyValues); i += 2 {
 		k := keyValues[i].(string) // Will panic if the key field isn't a string and that's fine in a test
 		v := keyValues[i+1]
@@ -399,7 +398,7 @@ func TestInfluxdb_RevokeDeletedUser(t *testing.T) {
 	delReq := dbplugin.DeleteUserRequest{
 		Username: "someuser",
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	_, err := db.DeleteUser(ctx, delReq)
 	if err != nil {

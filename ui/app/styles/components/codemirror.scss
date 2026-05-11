@@ -2,6 +2,7 @@
  * Copyright (c) HashiCorp, Inc.
  * SPDX-License-Identifier: MPL-2.0
  */
+@use 'sass:color';
 
 $light-grey: #dde3e7;
 $light-gray: #a4a4a4;
@@ -17,7 +18,7 @@ $serf: #dd4e58;
 $packer: #1ddba3;
 
 // Our colors
-$gray: lighten($black, 89%);
+$gray: color.adjust($black, $lightness: 89%, $space: hsl);
 $red: #ff3d3d;
 $green: #39b54a;
 $dark-gray: #535f73;
@@ -28,7 +29,7 @@ $gutter-grey: #2a2f36;
   background-color: #f9f9fa;
   border: 1px solid $light-gray;
   border-radius: 0;
-  color: lighten($black, 13%);
+  color: color.adjust($black, $lightness: 13%, $space: hsl);
   font-family: $family-monospace;
   font-size: 13px;
   padding: 7px 8px 9px;
@@ -49,7 +50,7 @@ $gutter-grey: #2a2f36;
     color: $packer;
   }
   span.cm-property {
-    color: lighten($consul, 20%);
+    color: color.adjust($consul, $lightness: 20%, $space: hsl);
   }
 }
 
@@ -112,11 +113,11 @@ $gutter-grey: #2a2f36;
   }
 
   span.cm-variable {
-    color: lighten($consul, 20%);
+    color: color.adjust($consul, $lightness: 20%, $space: hsl);
   }
 
   span.cm-variable-2 {
-    color: lighten($consul, 20%);
+    color: color.adjust($consul, $lightness: 20%, $space: hsl);
   }
 
   span.cm-def {
@@ -151,7 +152,7 @@ $gutter-grey: #2a2f36;
   }
 
   span.cm-property {
-    color: lighten($consul, 20%);
+    color: color.adjust($consul, $lightness: 20%, $space: hsl);
   }
 
   span.cm-variable-3 {

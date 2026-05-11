@@ -495,34 +495,20 @@ func (b *SystemBackend) handleKeyRotationConfigUpdate() framework.OperationFunc 
 // a root key rotation without requiring existing key shares to be provided.
 func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 	return func(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-		// Get the seal configuration
-		existingConfig, err := b.Core.SealAccess().BarrierConfig(ctx)
+		initialized, err := b.Core.Initialized(ctx)
 		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, "failed to fetch existing config: %v", err)
+			return handleError(err)
 		}
 
-		// Ensure the barrier is initialized
-		if existingConfig == nil {
+		if !initialized {
 			return handleError(ErrNotInit)
 		}
 
-		// Set the rotation config
-		b.Core.rootRotationConfig = existingConfig.Clone()
-
-		// Generate a new key
-		newKey, err := b.Core.barrier.GenerateKey(b.Core.secureRandomReader)
-		if err != nil {
-			b.Core.logger.Error("failed to generate root key", "error", err)
-			return nil, logical.CodedError(http.StatusInternalServerError, "root key generation failed: %v", err)
+		if err := b.Core.RotateBarrierRootKey(ctx); err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to rotate barrier root key: %v", err)
 		}
 
-		// Perform the rotation
-		if err := b.Core.performBarrierRekey(ctx, newKey); err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, "failed to perform barrier rekey: %v", err)
-		}
-
-		// Remove the rotation config
-		b.Core.rootRotationConfig = nil
+		b.Core.logger.Info("barrier root key rotated")
 		return nil, nil
 	}
 }
@@ -537,7 +523,7 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 		}
 
 		if barrierConfig == nil {
-			return handleError(errors.New("server is not yet initialized"))
+			return handleError(ErrNotInit)
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
@@ -752,7 +738,7 @@ func (b *SystemBackend) handleRotateVerifyGet() framework.OperationFunc {
 			return handleError(err)
 		}
 		if barrierConfig == nil {
-			return handleError(errors.New("server is not yet initialized"))
+			return handleError(ErrNotInit)
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")

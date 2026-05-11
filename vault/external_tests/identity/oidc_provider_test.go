@@ -4,7 +4,6 @@
 package identity
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -203,7 +202,7 @@ func TestOIDC_Auth_Code_Flow_Default_Resources(t *testing.T) {
 			require.NoError(t, err)
 
 			// Get the URL for the authorization endpoint from the OIDC client
-			authURL, err := p.AuthURL(context.Background(), oidcRequest)
+			authURL, err := p.AuthURL(t.Context(), oidcRequest)
 			require.NoError(t, err)
 			parsedAuthURL, err := url.Parse(authURL)
 			require.NoError(t, err)
@@ -227,7 +226,7 @@ func TestOIDC_Auth_Code_Flow_Default_Resources(t *testing.T) {
 			// client-side requirements of the OIDC spec. See the validation code at:
 			// - https://github.com/hashicorp/cap/blob/main/oidc/provider.go#L240
 			// - https://github.com/hashicorp/cap/blob/main/oidc/provider.go#L441
-			token, err := p.Exchange(context.Background(), oidcRequest, authResp.State, authResp.Code)
+			token, err := p.Exchange(t.Context(), oidcRequest, authResp.State, authResp.Code)
 			require.NoError(t, err)
 			require.NotNil(t, token)
 			idToken := token.IDToken()
@@ -242,7 +241,7 @@ func TestOIDC_Auth_Code_Flow_Default_Resources(t *testing.T) {
 			subject := allClaims["sub"].(string)
 
 			// Request userinfo using the access token
-			err = p.UserInfo(context.Background(), accessToken, subject, &allClaims)
+			err = p.UserInfo(t.Context(), accessToken, subject, &allClaims)
 			require.NoError(t, err)
 
 			// Assert that claims computed during the flow (i.e., not known
@@ -542,7 +541,7 @@ func TestOIDC_Auth_Code_Flow_Confidential_CAP_Client(t *testing.T) {
 			require.NoError(t, err)
 
 			// Get the URL for the authorization endpoint from the OIDC client
-			authURL, err := p.AuthURL(context.Background(), oidcRequest)
+			authURL, err := p.AuthURL(t.Context(), oidcRequest)
 			require.NoError(t, err)
 			parsedAuthURL, err := url.Parse(authURL)
 			require.NoError(t, err)
@@ -566,7 +565,7 @@ func TestOIDC_Auth_Code_Flow_Confidential_CAP_Client(t *testing.T) {
 			// client-side requirements of the OIDC spec. See the validation code at:
 			// - https://github.com/hashicorp/cap/blob/main/oidc/provider.go#L240
 			// - https://github.com/hashicorp/cap/blob/main/oidc/provider.go#L441
-			token, err := p.Exchange(context.Background(), oidcRequest, authResp.State, authResp.Code)
+			token, err := p.Exchange(t.Context(), oidcRequest, authResp.State, authResp.Code)
 			require.NoError(t, err)
 			require.NotNil(t, token)
 			idToken := token.IDToken()
@@ -581,7 +580,7 @@ func TestOIDC_Auth_Code_Flow_Confidential_CAP_Client(t *testing.T) {
 			subject := allClaims["sub"].(string)
 
 			// Request userinfo using the access token
-			err = p.UserInfo(context.Background(), accessToken, subject, &allClaims)
+			err = p.UserInfo(t.Context(), accessToken, subject, &allClaims)
 			require.NoError(t, err)
 
 			// Assert that claims computed during the flow (i.e., not known
@@ -606,7 +605,7 @@ func TestOIDC_Auth_Code_Flow_Confidential_CAP_Client(t *testing.T) {
 				"allowed_client_ids": []string{},
 			})
 			require.NoError(t, err)
-			err = p.UserInfo(context.Background(), accessToken, subject, &allClaims)
+			err = p.UserInfo(t.Context(), accessToken, subject, &allClaims)
 			require.Error(t, err)
 			require.Equal(t, `Provider.UserInfo: provider UserInfo request failed: 403 Forbidden: {"error":"access_denied","error_description":"client is not authorized to use the provider"}`,
 				err.Error())
@@ -878,7 +877,7 @@ func TestOIDC_Auth_Code_Flow_Public_CAP_Client(t *testing.T) {
 			require.NoError(t, err)
 
 			// Get the URL for the authorization endpoint from the OIDC client
-			authURL, err := p.AuthURL(context.Background(), oidcRequest)
+			authURL, err := p.AuthURL(t.Context(), oidcRequest)
 			require.NoError(t, err)
 			parsedAuthURL, err := url.Parse(authURL)
 			require.NoError(t, err)
@@ -902,7 +901,7 @@ func TestOIDC_Auth_Code_Flow_Public_CAP_Client(t *testing.T) {
 			// client-side requirements of the OIDC spec. See the validation code at:
 			// - https://github.com/hashicorp/cap/blob/main/oidc/provider.go#L240
 			// - https://github.com/hashicorp/cap/blob/main/oidc/provider.go#L441
-			token, err := p.Exchange(context.Background(), oidcRequest, authResp.State, authResp.Code)
+			token, err := p.Exchange(t.Context(), oidcRequest, authResp.State, authResp.Code)
 			require.NoError(t, err)
 			require.NotNil(t, token)
 			idToken := token.IDToken()
@@ -917,7 +916,7 @@ func TestOIDC_Auth_Code_Flow_Public_CAP_Client(t *testing.T) {
 			subject := allClaims["sub"].(string)
 
 			// Request userinfo using the access token
-			err = p.UserInfo(context.Background(), accessToken, subject, &allClaims)
+			err = p.UserInfo(t.Context(), accessToken, subject, &allClaims)
 			require.NoError(t, err)
 
 			// Assert that claims computed during the flow (i.e., not known
@@ -942,7 +941,7 @@ func TestOIDC_Auth_Code_Flow_Public_CAP_Client(t *testing.T) {
 				"allowed_client_ids": []string{},
 			})
 			require.NoError(t, err)
-			err = p.UserInfo(context.Background(), accessToken, subject, &allClaims)
+			err = p.UserInfo(t.Context(), accessToken, subject, &allClaims)
 			require.Error(t, err)
 			require.Equal(t, `Provider.UserInfo: provider UserInfo request failed: 403 Forbidden: {"error":"access_denied","error_description":"client is not authorized to use the provider"}`,
 				err.Error())

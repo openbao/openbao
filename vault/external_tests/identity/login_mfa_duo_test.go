@@ -91,7 +91,7 @@ path "secret/foo" {
 
 	userpassToken := secret.Auth.ClientToken
 
-	secret, err = client.Logical().Write("auth/token/lookup", map[string]interface{}{
+	_, err = client.Logical().Write("auth/token/lookup", map[string]interface{}{
 		"token": userpassToken,
 	})
 	if err != nil {
@@ -167,13 +167,13 @@ func TestInteg_LoginMFADUO(t *testing.T) {
 		t.Fatalf("failed to enable userpass auth: %v", err)
 	}
 
-	err = mfaGenerateLoginDUOTest(client)
+	err = mfaGenerateLoginDUOTest(t.Context(), client)
 	if err != nil {
 		t.Fatalf("DUO verification failed. error: %s", err)
 	}
 }
 
-func mfaGenerateLoginDUOTest(client *api.Client) error {
+func mfaGenerateLoginDUOTest(ctx context.Context, client *api.Client) error {
 	var err error
 
 	auths, err := client.Sys().ListAuth()
@@ -268,7 +268,7 @@ func mfaGenerateLoginDUOTest(client *api.Client) error {
 	}
 
 	// validation
-	secret, err = client.Sys().MFAValidateWithContext(context.Background(),
+	secret, err = client.Sys().MFAValidateWithContext(ctx,
 		secret.Auth.MFARequirement.MFARequestID,
 		map[string]interface{}{
 			methodID: []string{},

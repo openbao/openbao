@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -106,7 +105,7 @@ func TestACMEIssuerRoleLoading(t *testing.T) {
 
 			acmePath = strings.TrimLeft(acmePath+"/acme/directory", "/")
 
-			resp, err := f(context.Background(), &logical.Request{Path: acmePath, Storage: s}, &framework.FieldData{
+			resp, err := f(t.Context(), &logical.Request{Path: acmePath, Storage: s}, &framework.FieldData{
 				Raw:    fieldRaw,
 				Schema: getCsrSignVerbatimSchemaFields(),
 			})

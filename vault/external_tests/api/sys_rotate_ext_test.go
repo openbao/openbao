@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/testhelpers"
@@ -49,7 +50,8 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		HandlerFunc: vaulthttp.Handler,
 		DefaultHandlerProperties: vault.HandlerProperties{
 			ListenerConfig: &configutil.Listener{
-				DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+				DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(false),
+				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
 			},
 		},
 	}
@@ -57,7 +59,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 	case recovery:
 		opts.SealFunc = func() vault.Seal {
 			return vault.NewTestSeal(t, &seal.TestSealOpts{
-				StoredKeys: seal.StoredKeysSupportedGeneric,
+				Wrapper: wrapping.WrapperTypeTest,
 			})
 		}
 	}
@@ -163,7 +165,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 
 	doStartVerify := func() {
 		// Start the process
-		for i := 0; i < 2; i++ {
+		for i := range 2 {
 			status, err := verificationUpdateFunc(newKeys[i], verificationNonce)
 			if err != nil {
 				t.Fatal(err)
@@ -315,12 +317,17 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 func testSysRotate_Verification(t *testing.T, recovery bool) {
 	opts := &vault.TestClusterOptions{
 		HandlerFunc: vaulthttp.Handler,
+		DefaultHandlerProperties: vault.HandlerProperties{
+			ListenerConfig: &configutil.Listener{
+				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+			},
+		},
 	}
 
 	if recovery {
 		opts.SealFunc = func() vault.Seal {
 			return vault.NewTestSeal(t, &seal.TestSealOpts{
-				StoredKeys: seal.StoredKeysSupportedGeneric,
+				Wrapper: wrapping.WrapperTypeTest,
 			})
 		}
 	}

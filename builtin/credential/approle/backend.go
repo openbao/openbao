@@ -67,30 +67,22 @@ type backend struct {
 }
 
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
-	b, err := Backend(conf)
-	if err != nil {
-		return nil, err
-	}
+	b := Backend(conf)
 	if err := b.Setup(ctx, conf); err != nil {
 		return nil, err
 	}
 	return b, nil
 }
 
-func Backend(conf *logical.BackendConfig) (*backend, error) {
-	// Create a backend object
+func Backend(conf *logical.BackendConfig) *backend {
 	b := &backend{
 		view: conf.StorageView,
-
 		// Create locks to modify the registered roles
 		roleLocks: locksutil.CreateLocks(),
-
 		// Create locks to modify the generated RoleIDs
 		roleIDLocks: locksutil.CreateLocks(),
-
 		// Create locks to modify the generated SecretIDs
 		secretIDLocks: locksutil.CreateLocks(),
-
 		// Create locks to modify the generated SecretIDAccessors
 		secretIDAccessorLocks: locksutil.CreateLocks(),
 	}
@@ -121,7 +113,7 @@ func Backend(conf *logical.BackendConfig) (*backend, error) {
 		BackendType:    logical.TypeCredential,
 		RunningVersion: ReportedVersion,
 	}
-	return b, nil
+	return b
 }
 
 func (b *backend) Salt(ctx context.Context) (*salt.Salt, error) {

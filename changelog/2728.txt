@@ -1,0 +1,6 @@
+```release-note:feature
+Support **Workflows** in Core. This adds new endpoints under `sys/workflows` to allow operators to create workflows and users to execute them.
+  - Workflows allow the creation of simplified or managed interfaces over OpenBao's standard API.
+  - Use of the `allow_unauthenticated_workflows` server configuration value enables unauthenticated execution of workflows; any dispatched requests still require authentication but this can be provided as a request parameter.
+  - Workflows are built on the common profile engine powering declarative self-initialization and use the same syntax.
+```

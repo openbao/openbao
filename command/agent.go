@@ -22,7 +22,6 @@ import (
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/kr/pretty"
@@ -79,13 +78,10 @@ type AgentCommand struct {
 	tlsReloadFuncs     []reloadutil.ReloadFunc
 
 	logWriter io.Writer
-	logGate   *gatedwriter.Writer
 	logger    hclog.Logger
 
 	// Telemetry object
 	metricsHelper *metricsutil.MetricsHelper
-
-	cleanupGuard sync.Once
 
 	startedCh  chan struct{} // for tests
 	reloadedCh chan struct{} // for tests
@@ -180,11 +176,7 @@ func (c *AgentCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Create a logger. We wrap it in a gated writer so that it doesn't
-	// start logging too early.
-	c.logGate = gatedwriter.NewWriter(os.Stderr)
-	c.logWriter = c.logGate
-
+	c.logWriter = os.Stderr
 	if c.logFlags.flagCombineLogs {
 		c.logWriter = os.Stdout
 	}
@@ -223,11 +215,6 @@ func (c *AgentCommand) Run(args []string) int {
 		InferLevels:              true,
 		InferLevelsWithTimestamp: true,
 	})
-
-	// release log gate if the disable-gated-logs flag is set
-	if c.logFlags.flagDisableGatedLogs {
-		c.logGate.Flush()
-	}
 
 	infoKeys := make([]string, 0, 10)
 	info := make(map[string]string)
@@ -397,12 +384,11 @@ func (c *AgentCommand) Run(args []string) int {
 				"from the 'cert' auto-auth method specified in the 'vault' stanza. Consider " +
 				"specifying certificate information in the 'cert' auto-auth's config stanza."))
 		}
-
 	}
 
 	// Output the header that the agent has started
 	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> OpenBao Agent started! Log data will stream in below:\n")
+		c.UI.Output("==> OpenBao Agent started!")
 	}
 
 	var leaseCache *cache.LeaseCache
@@ -471,8 +457,6 @@ func (c *AgentCommand) Run(args []string) int {
 		}
 	}
 
-	var listeners []net.Listener
-
 	// If there are templates, add an in-process listener
 	if len(config.Templates) > 0 || len(config.EnvTemplates) > 0 {
 		config.Listeners = append(config.Listeners, &configutil.Listener{Type: listenerutil.BufConnType})
@@ -480,6 +464,27 @@ func (c *AgentCommand) Run(args []string) int {
 
 	// Ensure we've added all the reload funcs for TLS before anyone triggers a reload.
 	c.tlsReloadFuncsLock.Lock()
+
+	var (
+		listeners []net.Listener
+		servers   []*http.Server
+	)
+
+	// Ensure that listeners and HTTP servers are closed at all the exits.
+	defer func() {
+		var errs error
+		for _, srv := range servers {
+			errs = errors.Join(srv.Close())
+		}
+		// Closing an HTTP server will close the underlying listener, so avoid
+		// double-closing it.
+		for _, ln := range listeners[len(servers):] {
+			errs = errors.Join(errs, ln.Close())
+		}
+		if errs != nil {
+			c.UI.Error(fmt.Sprintf("Error closing listeners: %v", errs))
+		}
+	}()
 
 	for i, lnConfig := range config.Listeners {
 		var ln net.Listener
@@ -578,19 +583,11 @@ func (c *AgentCommand) Run(args []string) int {
 				c.UI.Error(fmt.Sprintf("HTTP server (listening on %s) exited with error: %v", ln.Addr().String(), err))
 			}
 		}(ln)
+
+		servers = append(servers, server)
 	}
 
 	c.tlsReloadFuncsLock.Unlock()
-
-	// Ensure that listeners are closed at all the exits
-	listenerCloseFunc := func() {
-		for _, ln := range listeners {
-			if err := ln.Close(); err != nil {
-				c.UI.Error(fmt.Sprintf("Could not close listener (listening on %s): %v", ln.Addr().String(), err))
-			}
-		}
-	}
-	defer c.cleanupGuard.Do(listenerCloseFunc)
 
 	// Inform any tests that the server is ready
 	if c.startedCh != nil {
@@ -773,7 +770,7 @@ func (c *AgentCommand) Run(args []string) int {
 	padding := 24
 	sort.Strings(infoKeys)
 	caser := cases.Title(language.English, cases.NoLower)
-	c.UI.Output("==> OpenBao Agent configuration:\n")
+	c.UI.Output("\n==> OpenBao Agent configuration:\n")
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
 			"%s%s: %s",
@@ -782,9 +779,6 @@ func (c *AgentCommand) Run(args []string) int {
 			info[k]))
 	}
 	c.UI.Output("")
-
-	// Release the log gate.
-	c.logGate.Flush()
 
 	// Write out the PID to the file now that server has successfully started
 	if err := c.storePidFile(config.PidFile); err != nil {
@@ -1135,6 +1129,7 @@ func (c *AgentCommand) loadConfig(paths []string) (*agentConfig.Config, error) {
 // Currently only reloading the following are supported:
 // * log level
 // * TLS certs for listeners
+// * TLS config for the upstream vault connection (ca_cert, ca_path, client_cert, client_key)
 func (c *AgentCommand) reloadConfig(paths []string) error {
 	// Notify systemd that the server is reloading
 	c.notifySystemd(systemd.SdNotifyReloading)
@@ -1162,6 +1157,12 @@ func (c *AgentCommand) reloadConfig(paths []string) error {
 		errors = multierror.Append(errors, err)
 	}
 
+	// Update upstream vault connection TLS
+	err = c.reloadVaultTLS()
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
 	return errors
 }
 
@@ -1183,6 +1184,8 @@ func (c *AgentCommand) reloadLogLevel() error {
 // to the AgentCommand slice will be invoked.
 // This function returns a multierror type so that every func can report an error
 // if it encounters one.
+// This does NOT affect the outbound connection to the OpenBao server — see
+// reloadVaultTLS for that functionality.
 func (c *AgentCommand) reloadCerts() error {
 	var errors error
 
@@ -1200,6 +1203,30 @@ func (c *AgentCommand) reloadCerts() error {
 	}
 
 	return errors
+}
+
+// reloadVaultTLS re-reads the vault stanza TLS configuration (ca_cert, ca_path,
+// client_cert, client_key) from disk and updates the API client's HTTP transport
+// used for outbound connections to the OpenBao server. This allows the agent to
+// pick up rotated CA bundles without a restart.
+// This is distinct from reloadCerts which handles the agent's own listener TLS.
+func (c *AgentCommand) reloadVaultTLS() error {
+	if c.config.Vault == nil {
+		return nil
+	}
+	v := c.config.Vault
+	if v.CACert == "" && v.CAPath == "" && v.ClientCert == "" && v.ClientKey == "" {
+		return nil
+	}
+	c.logger.Info("reloading vault stanza TLS configuration")
+	return c.client.ConfigureTLS(&api.TLSConfig{
+		CACert:        v.CACert,
+		CAPath:        v.CAPath,
+		ClientCert:    v.ClientCert,
+		ClientKey:     v.ClientKey,
+		TLSServerName: v.TLSServerName,
+		Insecure:      v.TLSSkipVerify,
+	})
 }
 
 // outputErrors will take an error or multierror and handle outputting each to the UI

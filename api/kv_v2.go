@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"sort"
 	"strconv"
@@ -733,9 +734,7 @@ func readThenWrite(ctx context.Context, client *Client, mountPath string, secret
 
 	// Copy new data over with existing data
 	combinedData := existingVersion.Data
-	for k, v := range newData {
-		combinedData[k] = v
-	}
+	maps.Copy(combinedData, newData)
 
 	updatedSecret, err := client.KVv2(mountPath).Put(ctx, secretPath, combinedData, WithCheckAndSet(existingVersion.VersionMetadata.Version))
 	if err != nil {

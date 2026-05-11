@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -38,7 +37,7 @@ func TestTransit_Restore(t *testing.T) {
 			"exportable": true,
 		},
 	}
-	resp, err := b.HandleRequest(context.Background(), keyReq)
+	resp, err := b.HandleRequest(t.Context(), keyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("resp: %#v\nerr: %v", resp, err)
 	}
@@ -53,7 +52,7 @@ func TestTransit_Restore(t *testing.T) {
 			"allow_plaintext_backup": true,
 		},
 	}
-	resp, err = b.HandleRequest(context.Background(), configReq)
+	resp, err = b.HandleRequest(t.Context(), configReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("resp: %#v\nerr: %v", resp, err)
 	}
@@ -64,7 +63,7 @@ func TestTransit_Restore(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Storage:   s,
 	}
-	resp, err = b.HandleRequest(context.Background(), backupReq)
+	resp, err = b.HandleRequest(t.Context(), backupReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("resp: %#v\nerr: %v", resp, err)
 	}
@@ -76,7 +75,7 @@ func TestTransit_Restore(t *testing.T) {
 
 	// Delete the key to start test cases with clean slate
 	keyReq.Operation = logical.DeleteOperation
-	resp, err = b.HandleRequest(context.Background(), keyReq)
+	resp, err = b.HandleRequest(t.Context(), keyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("resp: %#v\nerr: %v", resp, err)
 	}
@@ -178,7 +177,7 @@ func TestTransit_Restore(t *testing.T) {
 					},
 				}
 
-				resp, err := b.HandleRequest(context.Background(), seedRestoreReq)
+				resp, err := b.HandleRequest(t.Context(), seedRestoreReq)
 				if resp != nil && resp.IsError() {
 					t.Fatalf("resp: %#v\nerr: %v", resp, err)
 				}
@@ -205,7 +204,7 @@ func TestTransit_Restore(t *testing.T) {
 				restoreReq.Data["force"] = *tc.Force
 			}
 
-			resp, err = b.HandleRequest(context.Background(), restoreReq)
+			resp, err = b.HandleRequest(t.Context(), restoreReq)
 			if resp != nil && resp.IsError() {
 				t.Fatalf("resp: %#v\nerr: %v", resp, err)
 			}
@@ -234,7 +233,7 @@ func TestTransit_Restore(t *testing.T) {
 				Storage:   s,
 			}
 
-			resp, _ = b.HandleRequest(context.Background(), readReq)
+			resp, _ = b.HandleRequest(t.Context(), readReq)
 			if resp != nil && resp.IsError() {
 				t.Fatalf("resp: %#v\nerr: %v", resp, err)
 			}
@@ -245,7 +244,7 @@ func TestTransit_Restore(t *testing.T) {
 
 			// cleanup / delete key after each run
 			keyReq.Operation = logical.DeleteOperation
-			resp, err = b.HandleRequest(context.Background(), keyReq)
+			resp, err = b.HandleRequest(t.Context(), keyReq)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("resp: %#v\nerr: %v", resp, err)
 			}
@@ -253,7 +252,7 @@ func TestTransit_Restore(t *testing.T) {
 			// cleanup / delete restore key after each run, if it was created
 			if tc.RestoreName != "" && tc.ExpectedErr == nil {
 				readReq.Operation = logical.DeleteOperation
-				resp, err = b.HandleRequest(context.Background(), readReq)
+				resp, err = b.HandleRequest(t.Context(), readReq)
 				if err != nil || (resp != nil && resp.IsError()) {
 					t.Fatalf("resp: %#v\nerr: %v", resp, err)
 				}

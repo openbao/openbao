@@ -4,6 +4,18 @@
  */
 
 import Controller from '@ember/controller';
-import BackendCrumbMixin from 'vault/mixins/backend-crumb';
+import { tracked } from '@glimmer/tracking';
 
-export default class DiffController extends Controller.extend(BackendCrumbMixin) {}
+export default class DiffController extends Controller {
+  @tracked backend;
+  get backendCrumb() {
+    const backend = this.backend;
+
+    return {
+      label: backend,
+      text: backend,
+      path: 'vault.cluster.secrets.backend.list-root',
+      model: backend,
+    };
+  }
+}

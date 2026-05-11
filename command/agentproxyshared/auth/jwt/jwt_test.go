@@ -23,14 +23,9 @@ func TestIngressToken(t *testing.T) {
 		symlinked = "symlinked"
 	)
 
-	rootDir := t.TempDir()
-
 	setupTestDir := func() string {
-		testDir, err := os.MkdirTemp(rootDir, "")
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = os.WriteFile(path.Join(testDir, file), []byte("test"), 0o644)
+		testDir := t.TempDir()
+		err := os.WriteFile(path.Join(testDir, file), []byte("test"), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}

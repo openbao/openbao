@@ -27,6 +27,9 @@ the mount to restrict more specific API paths.
 - `block_interval` `(string: "")` - If set, when a client reaches a rate limit
   threshold, the client will be prohibited from any further requests until after
   the 'block_interval' has elapsed.
+- `inheritable` `(bool: false)` - If set to `true`, child namespaces will use
+  this quota unless another more specific quota exists. This can only be set on
+  namespace quotas. A quota on the root namespace is inheritable by default.
 - `role` `(string: "")` - If set on a quota where `path` is set to an auth mount with a
   concept of roles (such as `/auth/approle/`), this will make the quota restrict login
   requests to that mount that are made with the specified role. The request will fail if
@@ -39,7 +42,8 @@ the mount to restrict more specific API paths.
   "path": "",
   "rate": 897.3,
   "interval": "2m",
-  "block_interval": "5m"
+  "block_interval": "5m",
+  "inheritable": true
 }
 ```
 
@@ -98,6 +102,7 @@ $ curl \
   "data": {
     "block_interval": 300,
     "interval": 2,
+    "inheritable": true,
     "name": "global-rate-limiter",
     "path": "",
     "rate": 897.3,

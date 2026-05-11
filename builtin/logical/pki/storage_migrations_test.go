@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +16,7 @@ import (
 func Test_migrateStorageEmptyStorage(t *testing.T) {
 	t.Parallel()
 	startTime := time.Now()
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := CreateBackendWithStorage(t)
 	sc := b.makeStorageContext(ctx, s)
 
@@ -66,7 +65,7 @@ func Test_migrateStorageEmptyStorage(t *testing.T) {
 func Test_migrateStorageOnlyKey(t *testing.T) {
 	t.Parallel()
 	startTime := time.Now()
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := CreateBackendWithStorage(t)
 	sc := b.makeStorageContext(ctx, s)
 
@@ -148,7 +147,7 @@ func Test_migrateStorageOnlyKey(t *testing.T) {
 func Test_migrateStorageSimpleBundle(t *testing.T) {
 	t.Parallel()
 	startTime := time.Now()
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := CreateBackendWithStorage(t)
 	sc := b.makeStorageContext(ctx, s)
 
@@ -254,7 +253,7 @@ func Test_migrateStorageSimpleBundle(t *testing.T) {
 
 func TestMigration_OnceChainRebuild(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := CreateBackendWithStorage(t)
 	sc := b.makeStorageContext(ctx, s)
 
@@ -364,7 +363,7 @@ func TestMigration_OnceChainRebuild(t *testing.T) {
 
 func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := CreateBackendWithStorage(t)
 	// Reset the version the helper above set to 1.
 	b.pkiStorageVersion.Store(false)
@@ -377,7 +376,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	require.NoError(t, err)
 
 	// generate role
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "roles/allow-all",
 		Storage:   s,
@@ -391,7 +390,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	require.NotNil(t, resp, "got nil response object from creating role")
 
 	// List roles
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.ListOperation,
 		Path:       "roles",
 		Storage:    s,
@@ -403,7 +402,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	require.Contains(t, resp.Data["keys"], "allow-all", "failed to list our roles")
 
 	// Read roles
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.ReadOperation,
 		Path:       "roles/allow-all",
 		Storage:    s,
@@ -415,7 +414,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	require.NotEmpty(t, resp.Data, "data map should not have been empty of reading role")
 
 	// Issue a cert from our legacy bundle.
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "issue/allow-all",
 		Storage:   s,
@@ -432,7 +431,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	require.NotEmpty(t, serialNum)
 
 	// Make sure we can list
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.ListOperation,
 		Path:       "certs",
 		Storage:    s,
@@ -444,7 +443,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	require.Contains(t, resp.Data["keys"], serialNum, "failed to list our cert")
 
 	// Revoke the cert now.
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "revoke",
 		Storage:   s,
@@ -463,7 +462,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	requireSerialNumberInCRL(t, crl, serialNum)
 
 	// Set CRL config
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/crl",
 		Storage:   s,
@@ -477,7 +476,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	require.NotNil(t, resp, "got nil response setting CRL config")
 
 	// Set URL config
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/urls",
 		Storage:   s,
@@ -490,7 +489,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 
 	// Make sure we can fetch the old values...
 	for _, path := range []string{"ca/pem", "ca_chain", "cert/" + serialNum, "cert/ca", "cert/crl", "cert/ca_chain", "config/crl", "config/urls"} {
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Operation:  logical.ReadOperation,
 			Path:       path,
 			Storage:    s,
@@ -504,7 +503,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	// Sign CSR
 	_, csr := generateTestCsr(t, certutil.ECPrivateKey, 224)
 	for _, path := range []string{"sign/allow-all", "root/sign-intermediate", "sign-verbatim"} {
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      path,
 			Storage:   s,
@@ -519,7 +518,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	}
 
 	// Sign self-issued
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "root/sign-self-issued",
 		Storage:   s,
@@ -533,7 +532,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	require.NotEmpty(t, resp.Data, "data map response was empty from path root/sign-self-issued")
 
 	// Delete Role
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.DeleteOperation,
 		Path:       "roles/allow-all",
 		Storage:    s,
@@ -543,7 +542,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	require.Nil(t, resp, "got non-nil response object from deleting role")
 
 	// Delete Root
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  logical.DeleteOperation,
 		Path:       "root",
 		Storage:    s,
@@ -595,7 +594,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 
 func TestBackupBundle(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := CreateBackendWithStorage(t)
 	sc := b.makeStorageContext(ctx, s)
 
@@ -787,7 +786,7 @@ func TestDeletedIssuersPostMigration(t *testing.T) {
 	//            re-migration.
 
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := CreateBackendWithStorage(t)
 	sc := b.makeStorageContext(ctx, s)
 
@@ -871,7 +870,7 @@ func TestDeletedIssuersPostMigration(t *testing.T) {
 
 // requireFailInMigration validate that we fail the operation with the appropriate error message to the end-user
 func requireFailInMigration(t *testing.T, b *backend, s logical.Storage, operation logical.Operation, path string) {
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation:  operation,
 		Path:       path,
 		Storage:    s,

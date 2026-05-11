@@ -5,7 +5,6 @@ package kv
 
 import (
 	"bytes"
-	"context"
 	"strings"
 	"sync"
 	"testing"
@@ -60,7 +59,7 @@ func TestKVv2_UpgradePaths(t *testing.T) {
 
 	cluster.EnsureCoresSealed(t)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Delete the policy from storage, to trigger the clean slate necessary for
 	// the error

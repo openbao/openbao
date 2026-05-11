@@ -30,6 +30,7 @@ import (
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
 	credOIDC "github.com/openbao/openbao/builtin/credential/jwt"
 	credKerb "github.com/openbao/openbao/builtin/credential/kerberos"
+	credKube "github.com/openbao/openbao/builtin/credential/kubernetes"
 	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
 	credToken "github.com/openbao/openbao/builtin/credential/token"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
@@ -108,8 +109,6 @@ const (
 	flagNameDisableRedirects = "disable-redirects"
 	// flagNameCombineLogs is used to specify whether log output should be combined and sent to stdout
 	flagNameCombineLogs = "combine-logs"
-	// flagDisableGatedLogs is used to disable gated logs and immediately show the vault logs as they become available
-	flagDisableGatedLogs = "disable-gated-logs"
 	// flagNameLogFile is used to specify the path to the log file that Vault should use for logging
 	flagNameLogFile = "log-file"
 	// flagNameLogRotateBytes is the flag used to specify the number of bytes a log file should be before it is rotated.
@@ -162,10 +161,11 @@ var (
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.CommandFactory {
 	loginHandlers := map[string]LoginHandler{
-		"cert":     &credCert.CLIHandler{},
-		"kerberos": &credKerb.CLIHandler{},
-		"ldap":     &credLdap.CLIHandler{},
-		"oidc":     &credOIDC.CLIHandler{},
+		"cert":       &credCert.CLIHandler{},
+		"kerberos":   &credKerb.CLIHandler{},
+		"kubernetes": &credKube.CLIHandler{},
+		"ldap":       &credLdap.CLIHandler{},
+		"oidc":       &credOIDC.CLIHandler{},
 		"radius": &credUserpass.CLIHandler{
 			DefaultMount: "radius",
 		},
@@ -339,6 +339,16 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 		"namespace unlock": func() (cli.Command, error) {
 			return &NamespaceAPIUnlockCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"namespace seal": func() (cli.Command, error) {
+			return &NamespaceSealCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"namespace unseal": func() (cli.Command, error) {
+			return &NamespaceUnsealCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},

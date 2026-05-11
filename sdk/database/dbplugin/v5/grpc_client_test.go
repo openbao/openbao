@@ -99,7 +99,7 @@ func TestGRPCClient_Initialize(t *testing.T) {
 			}
 
 			// Context doesn't need to timeout since this is just passed through
-			ctx := context.Background()
+			ctx := t.Context()
 
 			resp, err := c.Initialize(ctx, test.req)
 			test.assertErr(t, err)
@@ -112,8 +112,8 @@ func TestGRPCClient_Initialize(t *testing.T) {
 }
 
 func TestGRPCClient_NewUser(t *testing.T) {
-	runningCtx := context.Background()
-	cancelledCtx, cancel := context.WithCancel(context.Background())
+	runningCtx := t.Context()
+	cancelledCtx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	type testCase struct {
@@ -190,7 +190,7 @@ func TestGRPCClient_NewUser(t *testing.T) {
 				doneCtx: test.doneCtx,
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			resp, err := c.NewUser(ctx, test.req)
 			test.assertErr(t, err)
@@ -203,8 +203,8 @@ func TestGRPCClient_NewUser(t *testing.T) {
 }
 
 func TestGRPCClient_UpdateUser(t *testing.T) {
-	runningCtx := context.Background()
-	cancelledCtx, cancel := context.WithCancel(context.Background())
+	runningCtx := t.Context()
+	cancelledCtx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	type testCase struct {
@@ -319,7 +319,7 @@ func TestGRPCClient_UpdateUser(t *testing.T) {
 				doneCtx: test.doneCtx,
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			_, err := c.UpdateUser(ctx, test.req)
 			test.assertErr(t, err)
@@ -328,8 +328,8 @@ func TestGRPCClient_UpdateUser(t *testing.T) {
 }
 
 func TestGRPCClient_DeleteUser(t *testing.T) {
-	runningCtx := context.Background()
-	cancelledCtx, cancel := context.WithCancel(context.Background())
+	runningCtx := t.Context()
+	cancelledCtx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	type testCase struct {
@@ -383,7 +383,7 @@ func TestGRPCClient_DeleteUser(t *testing.T) {
 				doneCtx: test.doneCtx,
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			_, err := c.DeleteUser(ctx, test.req)
 			test.assertErr(t, err)
@@ -392,8 +392,8 @@ func TestGRPCClient_DeleteUser(t *testing.T) {
 }
 
 func TestGRPCClient_Type(t *testing.T) {
-	runningCtx := context.Background()
-	cancelledCtx, cancel := context.WithCancel(context.Background())
+	runningCtx := t.Context()
+	cancelledCtx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	type testCase struct {
@@ -448,8 +448,8 @@ func TestGRPCClient_Type(t *testing.T) {
 }
 
 func TestGRPCClient_Close(t *testing.T) {
-	runningCtx := context.Background()
-	cancelledCtx, cancel := context.WithCancel(context.Background())
+	runningCtx := t.Context()
+	cancelledCtx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	type testCase struct {

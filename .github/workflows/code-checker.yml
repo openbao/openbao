@@ -14,18 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  vulnerabilities:
-    name: Vulnerable dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: ./.github/actions/set-up-go
-      - name: Check dependencies for vulnerabilities
-        run: make vulncheck
-
   codechecker:
     name: Code checks
     runs-on: ubuntu-latest
@@ -86,7 +74,7 @@ jobs:
 
   gomod:
     name: Go mod checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/set-up-go
@@ -133,9 +121,9 @@ jobs:
         run: |
           mkdir -p ~/.protoc
           cd ~/.protoc
-          wget https://github.com/google/protobuf/releases/download/v32.1/protoc-32.1-linux-x86_64.zip
-          sha256sum -c <<< 'e9c129c176bb7df02546c4cd6185126ca53c89e7d2f09511e209319704b5dd7e  protoc-32.1-linux-x86_64.zip' || exit 1
-          unzip protoc-32.1-linux-x86_64.zip
+          wget https://github.com/google/protobuf/releases/download/v34.0/protoc-34.0-linux-x86_64.zip
+          sha256sum -c <<< 'e9a91b6fcfe4177ec2cd35fc8f15c1e811fa0ecdef9372755cd6d3513d5faaab  protoc-34.0-linux-x86_64.zip' || exit 1
+          unzip protoc-34.0-linux-x86_64.zip
           sudo ln -s $PWD/bin/protoc /usr/local/bin
           protoc --version
       - name: Run protobuf and check for differences

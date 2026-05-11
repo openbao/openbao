@@ -4,10 +4,9 @@
  */
 
 import Route from '@ember/routing/route';
-import UnloadModelRoute from 'vault/mixins/unload-model-route';
 import { inject as service } from '@ember/service';
 
-export default Route.extend(UnloadModelRoute, {
+export default Route.extend({
   store: service(),
 
   beforeModel() {
@@ -20,5 +19,13 @@ export default Route.extend(UnloadModelRoute, {
   model() {
     const modelType = `identity/entity-merge`;
     return this.store.createRecord(modelType);
+  },
+
+  resetController(controller, isExiting) {
+    this._super(...arguments);
+
+    if (isExiting) {
+      controller.cleanupModel?.();
+    }
   },
 });

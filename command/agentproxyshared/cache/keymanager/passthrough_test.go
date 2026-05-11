@@ -5,7 +5,6 @@ package keymanager
 
 import (
 	"bytes"
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -34,7 +33,7 @@ func TestKeyManager_PassthrougKeyManager(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			m, err := NewPassthroughKeyManager(ctx, tc.key)

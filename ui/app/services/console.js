@@ -58,7 +58,7 @@ export default Service.extend({
     }
     log.clear();
     if (history) {
-      log.addObjects(history);
+      log.push(...history);
     }
   },
 

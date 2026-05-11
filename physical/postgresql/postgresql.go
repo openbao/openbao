@@ -56,7 +56,10 @@ var (
 // PostgreSQL Backend is a physical backend that stores data
 // within a PostgreSQL database.
 type PostgreSQLBackend struct {
-	table  string
+	table           string
+	tableConstraint string
+	index           string
+
 	client *sql.DB
 
 	putQuery             string
@@ -67,6 +70,7 @@ type PostgreSQLBackend struct {
 	listPageLimitedQuery string
 
 	haTable                  string
+	haTableConstraint        string
 	haGetLockValueQuery      string
 	haUpsertLockIdentityExec string
 	haRenewLockIdentityExec  string
@@ -190,16 +194,21 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		return nil, errors.New("PostgreSQL version must be at least 9.5")
 	}
 
-	unquotedHaTable, ok := conf["haTable"]
+	unquotedHaTable, ok := conf["ha_table"]
 	if !ok {
-		unquotedHaTable = "openbao_ha_locks"
+		unquotedHaTable, ok = conf["haTable"]
+		if !ok {
+			unquotedHaTable = "openbao_ha_locks"
+		}
 	}
 	quotedHaTable := dbutil.QuoteIdentifier(unquotedHaTable)
 
 	// Setup the backend.
 	m := &PostgreSQLBackend{
-		table:  quotedTable,
-		client: db,
+		table:           quotedTable,
+		tableConstraint: dbutil.QuoteIdentifier(unquotedTable + "_pkey"),
+		index:           dbutil.QuoteIdentifier(unquotedTable + "_idx"),
+		client:          db,
 		putQuery: "INSERT INTO " + quotedTable + " VALUES($1, $2, $3, $4)" +
 			" ON CONFLICT (path, key) DO " +
 			" UPDATE SET (parent_path, path, key, value) = ($1, $2, $3, $4)",
@@ -217,7 +226,8 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 			" UNION ALL SELECT DISTINCT substring(substr(path, length($1)+1) from '^.*?/') FROM " + quotedTable +
 			" WHERE parent_path LIKE $1 || '%' AND substring(substr(path, length($1)+1) from '^.*?/') > $2" +
 			" ORDER BY key LIMIT $3",
-		haTable: quotedHaTable,
+		haTable:           quotedHaTable,
+		haTableConstraint: dbutil.QuoteIdentifier(unquotedHaTable + "_pkey"),
 		haGetLockValueQuery:
 		// only read non expired data
 		" SELECT ha_value FROM " + quotedHaTable + " WHERE NOW() <= valid_until AND ha_key = $1 ",
@@ -324,7 +334,7 @@ func (m *PostgreSQLBackend) createTables() error {
 		`  path        TEXT COLLATE "C",` +
 		`  key         TEXT COLLATE "C",` +
 		`  value       BYTEA,` +
-		`  CONSTRAINT pkey PRIMARY KEY (path, key)` +
+		`  CONSTRAINT ` + m.tableConstraint + ` PRIMARY KEY (path, key)` +
 		`);`
 	if _, err := txn.Exec(createTableQuery); err != nil {
 		if strings.Contains(err.Error(), "SQLSTATE 25006") {
@@ -339,7 +349,7 @@ func (m *PostgreSQLBackend) createTables() error {
 		return fmt.Errorf("failed to execute create query: %w", err)
 	}
 
-	createIndexQuery := `CREATE INDEX IF NOT EXISTS parent_path_idx ON ` + m.table + ` (parent_path);`
+	createIndexQuery := `CREATE INDEX IF NOT EXISTS ` + m.index + ` ON ` + m.table + ` (parent_path);`
 	if _, err := txn.Exec(createIndexQuery); err != nil {
 		if strings.Contains(err.Error(), "SQLSTATE 23505") {
 			m.logger.Warn("Skipping table creation as other processes have already created the index", "err", err)
@@ -355,7 +365,7 @@ func (m *PostgreSQLBackend) createTables() error {
 			`  ha_identity TEXT COLLATE "C" NOT NULL,` +
 			`  ha_value    TEXT COLLATE "C",` +
 			`  valid_until TIMESTAMP WITH TIME ZONE NOT NULL,` +
-			`  CONSTRAINT ha_key PRIMARY KEY (ha_key)` +
+			`  CONSTRAINT ` + m.haTableConstraint + ` PRIMARY KEY (ha_key)` +
 			`);`
 		if _, err := txn.Exec(createTableQuery); err != nil {
 			if strings.Contains(err.Error(), "SQLSTATE 23505") {

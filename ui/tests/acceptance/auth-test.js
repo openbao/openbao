@@ -7,7 +7,8 @@
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
 import sinon from 'sinon';
-import { click, currentURL, visit, waitUntil, find } from '@ember/test-helpers';
+import { click, currentURL, visit, waitUntil, find, settled } from '@ember/test-helpers';
+import { _cancelTimers as cancelTimers } from '@ember/runloop';
 import { supportedAuthBackends } from 'vault/helpers/supported-auth-backends';
 import authForm from '../pages/components/auth-form';
 import jwtForm from '../pages/components/auth-jwt';
@@ -21,19 +22,22 @@ const jwtComponent = create(jwtForm);
 module('Acceptance | auth', function (hooks) {
   setupApplicationTest(hooks);
 
-  hooks.beforeEach(function () {
+  hooks.beforeEach(async function () {
     this.clock = sinon.useFakeTimers({
       now: Date.now(),
       shouldAdvanceTime: true,
     });
     this.server = apiStub({ usePassthrough: true });
-    return logout.visit();
+    await logout.visit();
+    await settled();
   });
 
-  hooks.afterEach(function () {
+  hooks.afterEach(async function () {
+    cancelTimers();
     this.clock.restore();
     this.server.shutdown();
-    return logout.visit();
+    await logout.visit();
+    await settled();
   });
 
   test('auth query params', async function (assert) {
@@ -41,7 +45,7 @@ module('Acceptance | auth', function (hooks) {
     assert.expect(backends.length + 1);
     await visit('/vault/auth');
     assert.strictEqual(currentURL(), '/vault/auth?with=token');
-    for (const backend of backends.reverse()) {
+    for (const backend of [...backends].reverse()) {
       await component.selectMethod(backend.type);
       assert.strictEqual(
         currentURL(),
@@ -54,7 +58,8 @@ module('Acceptance | auth', function (hooks) {
   test('it clears token when changing selected auth method', async function (assert) {
     await visit('/vault/auth');
     assert.strictEqual(currentURL(), '/vault/auth?with=token');
-    await component.token('token').selectMethod('github');
+    await component.token('token');
+    await component.selectMethod('userpass');
     await component.selectMethod('token');
     assert.strictEqual(component.tokenValue, '', 'it clears the token value when toggling methods');
   });
@@ -63,7 +68,7 @@ module('Acceptance | auth', function (hooks) {
     assert.expect(6);
     const backends = supportedAuthBackends();
     await visit('/vault/auth');
-    for (const backend of backends.reverse()) {
+    for (const backend of [...backends].reverse()) {
       await component.selectMethod(backend.type);
       if (backend.type === 'github') {
         await component.token('token');

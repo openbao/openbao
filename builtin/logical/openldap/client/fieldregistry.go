@@ -29,7 +29,7 @@ func newFieldRegistry() *fieldRegistry {
 
 	registryFields := vOfReg.Elem()
 	for i := 0; i < registryFields.NumField(); i++ {
-		if registryFields.Field(i).Kind() == reflect.Ptr {
+		if registryFields.Field(i).Kind() == reflect.Pointer {
 
 			field := registryFields.Type().Field(i)
 			ldapString := field.Tag.Get("ldap")

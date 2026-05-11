@@ -135,7 +135,7 @@ Some string 6841cf80`,
 	})
 
 	t.Run("unix_time", func(t *testing.T) {
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			st, err := NewTemplate(
 				Template("{{unix_time}}"),
 			)
@@ -149,7 +149,7 @@ Some string 6841cf80`,
 	})
 
 	t.Run("unix_time_millis", func(t *testing.T) {
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			st, err := NewTemplate(
 				Template("{{unix_time_millis}}"),
 			)
@@ -163,7 +163,7 @@ Some string 6841cf80`,
 	})
 
 	t.Run("timestamp", func(t *testing.T) {
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			st, err := NewTemplate(
 				Template(`{{timestamp "2006-01-02T15:04:05.000Z"}}`),
 			)

@@ -151,8 +151,6 @@ func TestTruncateToSeconds(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.d.String(), func(t *testing.T) {
 			t.Parallel()
 
@@ -198,8 +196,6 @@ func TestParseFlagFile(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.value, func(t *testing.T) {
 			content, err := parseFlagFile(tc.value)
 			if err != nil {
@@ -271,8 +267,6 @@ func TestArgWarnings(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.expected, func(t *testing.T) {
 			warnings := generateFlagWarnings(tc.args)
 			if !strings.Contains(warnings, tc.expected) {

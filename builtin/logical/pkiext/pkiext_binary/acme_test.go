@@ -93,7 +93,7 @@ type caddyConfig struct {
 // SubtestACMECaddy returns an ACME test for Caddy using the provided template.
 func SubtestACMECaddy(configTemplate string, enableEAB bool) func(*testing.T, *VaultPkiCluster) {
 	return func(t *testing.T, cluster *VaultPkiCluster) {
-		ctx := context.Background()
+		ctx := t.Context()
 
 		// Roll a random run ID for mount and hostname uniqueness.
 		runID, err := uuid.GenerateUUID()
@@ -272,12 +272,14 @@ func SubtestACMECertbot(t *testing.T, cluster *VaultPkiCluster) {
 	})
 	require.NoError(t, err, "failed creating service runner")
 
-	ctx := context.Background()
+	ctx := t.Context()
 	result, err := runner.Start(ctx, true, false)
 	require.NoError(t, err, "could not start container")
 	require.NotNil(t, result, "could not start container")
 
-	defer runner.Stop(context.Background(), result.Container.ID)
+	defer func() {
+		_ = runner.Stop(ctx, result.Container.ID)
+	}()
 
 	networks, err := runner.GetNetworkAndAddresses(result.Container.ID)
 	require.NoError(t, err, "could not read container's IP address")
@@ -463,12 +465,14 @@ func SubtestACMECertbotEab(t *testing.T, cluster *VaultPkiCluster) {
 	})
 	require.NoError(t, err, "failed creating service runner")
 
-	ctx := context.Background()
+	ctx := t.Context()
 	result, err := runner.Start(ctx, true, false)
 	require.NoError(t, err, "could not start container")
 	require.NotNil(t, result, "could not start container")
 
-	defer runner.Stop(context.Background(), result.Container.ID)
+	defer func() {
+		_ = runner.Stop(ctx, result.Container.ID)
+	}()
 
 	networks, err := runner.GetNetworkAndAddresses(result.Container.ID)
 	require.NoError(t, err, "could not read container's IP address")
@@ -586,13 +590,16 @@ func SubtestACMEIPAndDNS(t *testing.T, cluster *VaultPkiCluster) {
 	})
 	require.NoError(t, err, "failed creating service runner")
 
-	ctx := context.Background()
+	ctx := t.Context()
 	result, err := runner.Start(ctx, true, false)
 	require.NoError(t, err, "could not start container")
 	require.NotNil(t, result, "could not start container")
 
 	nginxContainerId := result.Container.ID
-	defer runner.Stop(context.Background(), nginxContainerId)
+	defer func() {
+		_ = runner.Stop(ctx, nginxContainerId)
+	}()
+
 	networks, err := runner.GetNetworkAndAddresses(nginxContainerId)
 	require.NoError(t, err)
 
@@ -719,7 +726,7 @@ func doAcmeValidationWithGoLibrary(t *testing.T, directoryUrl string, acmeOrderI
 		DirectoryURL: directoryUrl,
 	}
 
-	testCtx, cancelFunc := context.WithTimeout(context.Background(), 2*time.Minute)
+	testCtx, cancelFunc := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancelFunc()
 
 	// Create new account
@@ -970,7 +977,7 @@ func SubtestACMEStepDownNode(t *testing.T, cluster *VaultPkiCluster) {
 		DirectoryURL: basePath + "/acme/directory",
 	}
 
-	testCtx, cancelFunc := context.WithTimeout(context.Background(), 2*time.Minute)
+	testCtx, cancelFunc := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancelFunc()
 
 	// Create new account

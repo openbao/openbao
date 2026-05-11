@@ -380,7 +380,7 @@ func (s *BoltSnapshotSink) writeBoltDBFile() error {
 
 				// Commit in batches of 50k. Bolt holds all the data in memory and
 				// doesn't split the pages until commit so we do incremental writes.
-				for i := 0; i < 50000; i++ {
+				for range 50000 {
 					err := protoReader.ReadMsg(entry)
 					if err != nil {
 						if err == io.EOF {

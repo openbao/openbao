@@ -19,7 +19,6 @@ import (
 
 	"github.com/openbao/openbao/api/v2"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
-	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	kv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/configutil"
@@ -325,7 +324,7 @@ func TestLogical_RequestSizeDisableLimit(t *testing.T) {
 func TestLogical_ListSuffix(t *testing.T) {
 	core, _, rootToken := vault.TestCoreUnsealed(t)
 	req, _ := http.NewRequest("GET", "http://127.0.0.1:8200/v1/secret/foo", nil)
-	req = req.WithContext(namespace.RootContext(nil))
+	req = req.WithContext(namespace.RootContext(t.Context()))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	lreq, status, err := buildLogicalRequest(core, nil, req)
@@ -340,7 +339,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	}
 
 	req, _ = http.NewRequest("GET", "http://127.0.0.1:8200/v1/secret/foo?list=true", nil)
-	req = req.WithContext(namespace.RootContext(nil))
+	req = req.WithContext(namespace.RootContext(t.Context()))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	lreq, status, err = buildLogicalRequest(core, nil, req)
@@ -355,7 +354,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	}
 
 	req, _ = http.NewRequest("LIST", "http://127.0.0.1:8200/v1/secret/foo", nil)
-	req = req.WithContext(namespace.RootContext(nil))
+	req = req.WithContext(namespace.RootContext(t.Context()))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	_, status, err = buildLogicalRequestNoAuth(nil, req)
@@ -431,7 +430,7 @@ func TestLogical_ListWithQueryParameters(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			req, _ := http.NewRequest(tc.requestMethod, tc.url, nil)
-			req = req.WithContext(namespace.RootContext(nil))
+			req = req.WithContext(namespace.RootContext(t.Context()))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
 			lreq, status, err := buildLogicalRequest(core, nil, req)
@@ -457,7 +456,7 @@ func TestLogical_ListWithQueryParameters(t *testing.T) {
 func TestLogical_ScanSuffix(t *testing.T) {
 	core, _, rootToken := vault.TestCoreUnsealed(t)
 	req, _ := http.NewRequest("GET", "http://127.0.0.1:8200/v1/secret/foo", nil)
-	req = req.WithContext(namespace.RootContext(nil))
+	req = req.WithContext(namespace.RootContext(t.Context()))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	lreq, status, err := buildLogicalRequest(core, nil, req)
@@ -472,7 +471,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	}
 
 	req, _ = http.NewRequest("GET", "http://127.0.0.1:8200/v1/secret/foo?scan=true", nil)
-	req = req.WithContext(namespace.RootContext(nil))
+	req = req.WithContext(namespace.RootContext(t.Context()))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	lreq, status, err = buildLogicalRequest(core, nil, req)
@@ -487,7 +486,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	}
 
 	req, _ = http.NewRequest("SCAN", "http://127.0.0.1:8200/v1/secret/foo", nil)
-	req = req.WithContext(namespace.RootContext(nil))
+	req = req.WithContext(namespace.RootContext(t.Context()))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	_, status, err = buildLogicalRequestNoAuth(nil, req)
@@ -563,7 +562,7 @@ func TestLogical_ScanWithQueryParameters(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			req, _ := http.NewRequest(tc.requestMethod, tc.url, nil)
-			req = req.WithContext(namespace.RootContext(nil))
+			req = req.WithContext(namespace.RootContext(t.Context()))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
 			lreq, status, err := buildLogicalRequest(core, nil, req)
@@ -828,78 +827,6 @@ func TestLogical_AuditPort(t *testing.T) {
 	numExpectedEntries := (numFailures * 2) + 4
 	if count != numExpectedEntries {
 		t.Fatalf("wrong number of audit entries expected: %d got: %d", numExpectedEntries, count)
-	}
-}
-
-func TestLogical_ErrRelativePath(t *testing.T) {
-	coreConfig := &vault.CoreConfig{
-		CredentialBackends: map[string]logical.Factory{
-			"userpass": credUserpass.Factory,
-		},
-	}
-
-	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
-		HandlerFunc: Handler,
-	})
-
-	cluster.Start()
-	defer cluster.Cleanup()
-
-	cores := cluster.Cores
-
-	core := cores[0].Core
-	c := cluster.Cores[0].Client
-	vault.TestWaitActive(t, core)
-
-	err := c.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
-		Type: "userpass",
-	})
-	if err != nil {
-		t.Fatalf("failed to enable userpass, err: %v", err)
-	}
-
-	resp, err := c.Logical().Read("auth/userpass/users/user..aaa")
-
-	if err == nil || resp != nil {
-		t.Fatalf("expected read request to fail, resp: %#v, err: %v", resp, err)
-	}
-
-	respErr, ok := err.(*api.ResponseError)
-
-	if !ok {
-		t.Fatalf("unexpected error type, err: %#v", err)
-	}
-
-	if respErr.StatusCode != 400 {
-		t.Errorf("expected 400 response for read, actual: %d", respErr.StatusCode)
-	}
-
-	if !strings.Contains(respErr.Error(), logical.ErrRelativePath.Error()) {
-		t.Errorf("expected response for read to include %q", logical.ErrRelativePath.Error())
-	}
-
-	data := map[string]interface{}{
-		"password": "abc123",
-	}
-
-	resp, err = c.Logical().Write("auth/userpass/users/user..aaa", data)
-
-	if err == nil || resp != nil {
-		t.Fatalf("expected write request to fail, resp: %#v, err: %v", resp, err)
-	}
-
-	respErr, ok = err.(*api.ResponseError)
-
-	if !ok {
-		t.Fatalf("unexpected error type, err: %#v", err)
-	}
-
-	if respErr.StatusCode != 400 {
-		t.Errorf("expected 400 response for write, actual: %d", respErr.StatusCode)
-	}
-
-	if !strings.Contains(respErr.Error(), logical.ErrRelativePath.Error()) {
-		t.Errorf("expected response for write to include %q", logical.ErrRelativePath.Error())
 	}
 }
 

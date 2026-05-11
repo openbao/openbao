@@ -1,7 +1,6 @@
 package barrier
 
 import (
-	"crypto/rand"
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
@@ -18,8 +17,8 @@ func MockBarrier(t testing.TB, logger hclog.Logger) (physical.Backend, SecurityB
 	b := NewAESGCMBarrier(inm, "")
 
 	// Initialize and unseal
-	key, _ := b.GenerateKey(rand.Reader)
-	err = b.Initialize(t.Context(), key, nil, rand.Reader)
+	key, _ := b.GenerateKey()
+	err = b.Initialize(t.Context(), key, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

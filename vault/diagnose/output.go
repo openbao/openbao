@@ -48,7 +48,7 @@ func (s status) String() string {
 }
 
 func (s status) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprint("\"", s.String(), "\"")), nil
+	return fmt.Append(nil, "\"", s.String(), "\""), nil
 }
 
 type Result struct {
@@ -311,7 +311,7 @@ const (
 )
 
 func indent(sb *strings.Builder, depth int) {
-	for i := 0; i < depth; i++ {
+	for range depth {
 		sb.WriteString(indentString)
 	}
 }

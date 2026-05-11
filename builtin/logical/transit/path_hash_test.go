@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -23,7 +22,7 @@ func TestTransit_Hash(t *testing.T) {
 	}
 
 	doRequest := func(req *logical.Request, errExpected bool, expected string) {
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil && !errExpected {
 			t.Fatal(err)
 		}

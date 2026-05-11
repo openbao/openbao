@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -995,14 +996,7 @@ func (b *backend) getRole(ctx context.Context, s logical.Storage, n string) (*ro
 		modified = true
 	}
 	if result.AllowedBaseDomain != "" {
-		found := false
-		for _, v := range result.AllowedDomains {
-			if v == result.AllowedBaseDomain {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !slices.Contains(result.AllowedDomains, result.AllowedBaseDomain) {
 			result.AllowedDomains = append(result.AllowedDomains, result.AllowedBaseDomain)
 		}
 		result.AllowedBaseDomain = ""
@@ -1060,6 +1054,16 @@ func (b *backend) getRole(ctx context.Context, s logical.Storage, n string) (*ro
 	// Update CN Validations to be the present default, "email,hostname"
 	if len(result.CNValidations) == 0 {
 		result.CNValidations = []string{"email", "hostname"}
+		modified = true
+	}
+
+	// Update not_after_bound, not_before_bound
+	if result.NotAfterBound == "" {
+		result.NotAfterBound = PermitNotAfterBound.String()
+		modified = true
+	}
+	if result.NotBeforeBound == "" {
+		result.NotBeforeBound = PermitNotBeforeBound.String()
 		modified = true
 	}
 
@@ -1284,7 +1288,7 @@ func validateNotAfterBound(notAfterBound string) (*logical.Response, error) {
 	default:
 		_, err = time.Parse(time.RFC3339, notAfterBound)
 		if err != nil {
-			resp = logical.ErrorResponse("Unknown value for field `not_after_bound`. Possible values are `forbid`, `ttl`, or an explicit timestamp.")
+			resp = logical.ErrorResponse("Unknown value for field `not_after_bound`. Possible values are `permit`, `ttl-limited`, `forbid`, or an explicit timestamp.")
 		}
 	}
 	return resp, err
@@ -1302,7 +1306,7 @@ func validateNoBeforeBound(notBeforebound string) (*logical.Response, error) {
 	case PermitNotBeforeBound.String():
 	// nothing to do
 	default:
-		resp = logical.ErrorResponse("Unknown value for field `not_before_bound`. Possible values are `permit` or `forbid`")
+		resp = logical.ErrorResponse("Unknown value for field `not_before_bound`. Possible values are `permit` `duration` or `forbid`")
 		err = errors.New("unknown value")
 	}
 	return resp, err

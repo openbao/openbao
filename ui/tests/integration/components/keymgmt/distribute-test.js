@@ -115,7 +115,7 @@ module('Integration | Component | keymgmt/distribute', function (hooks) {
     await settled();
     assert.dom(SELECTORS.operationsSection).doesNotHaveAttribute('disabled');
     // Remove selection
-    await ssComponent.deleteButtons.objectAt(0).click();
+    await ssComponent.deleteButtons[0].click();
     // Select Azure
     await clickTrigger();
     await typeInSearch('azure');
@@ -150,7 +150,7 @@ module('Integration | Component | keymgmt/distribute', function (hooks) {
     assert.dom(SELECTORS.inlineError).exists({ count: 1 }, 'only shows single error');
     assert.dom(SELECTORS.errorKey).exists('Shows error on key selector when key/provider mismatch');
     // Remove selection
-    await ssComponent.deleteButtons.objectAt(0).click();
+    await ssComponent.deleteButtons[0].click();
     // Select new key
     await clickTrigger();
     await typeInSearch('new-key');

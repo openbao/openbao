@@ -35,7 +35,10 @@
 
 a.list-item-row,
 .linked-block.list-item-row {
-  transition: box-shadow $speed, margin $speed, padding $speed;
+  transition:
+    box-shadow $speed,
+    margin $speed,
+    padding $speed;
   will-change: box-shadow, margin, padding;
 
   &:hover,
@@ -46,7 +49,10 @@ a.list-item-row,
     padding-left: $size-9;
     padding-right: $size-9;
     position: relative;
-    box-shadow: 0 2px 0 -1px $grey-light, 0 -2px 0 -1px $grey-light, $box-link-hover-shadow,
+    box-shadow:
+      0 2px 0 -1px $grey-light,
+      0 -2px 0 -1px $grey-light,
+      $box-link-hover-shadow,
       $box-shadow-middle;
   }
 

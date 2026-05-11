@@ -6,7 +6,7 @@
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
 import { setupMirage } from 'ember-cli-mirage/test-support';
-import { click, currentURL, fillIn, visit, isSettled, waitUntil, find } from '@ember/test-helpers';
+import { click, currentURL, fillIn, visit, isSettled, waitUntil, find, settled } from '@ember/test-helpers';
 import { v4 as uuidv4 } from 'uuid';
 
 import authPage from 'vault/tests/pages/auth';
@@ -27,14 +27,17 @@ module('Acceptance | pki configuration test', function (hooks) {
     await enablePage.enable('pki', mountPath);
     this.mountPath = mountPath;
     await logout.visit();
+    await settled();
   });
 
   hooks.afterEach(async function () {
     await logout.visit();
+    await settled();
     await authPage.login();
     // Cleanup engine
     await runCommands([`delete sys/mounts/${this.mountPath}`]);
     await logout.visit();
+    await settled();
   });
 
   module('delete all issuers modal and empty states', function (hooks) {

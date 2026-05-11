@@ -155,3 +155,11 @@ func TestLoadConfigFile_IgnoreDuplicates(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadConfigFile_topLevel(t *testing.T) {
+	testLoadConfigFile_topLevel(t)
+}
+
+func TestLoadConfigFile_json2(t *testing.T) {
+	testLoadConfigFile_json2(t)
+}

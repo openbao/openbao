@@ -126,6 +126,19 @@ default value in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-u
 
   :::
 
+- `disable_unauthed_generate_root_endpoints` `(bool: true)` - Whether to
+  disable requests to the legacy unauthenticated generate root endpoints
+  (under `/sys/generate-root/*`). These are a security risk to leave exposed
+  on public listeners: unauthenticated users can cancel any inflight root
+  generation requests.
+
+  :::warning
+
+  **As of OpenBao v2.5.3, this parameter defaults to true, forbidding any calls
+  to the unauthenticated generate root endpoints.**
+
+  :::
+
 - `tls_disable` `(string: "false")` – Specifies if TLS will be disabled. OpenBao
   assumes TLS by default, so you must explicitly disable TLS to opt-in to
   insecure communication.

@@ -4,7 +4,6 @@
 package plugin
 
 import (
-	"context"
 	"testing"
 
 	"google.golang.org/grpc"
@@ -18,7 +17,7 @@ import (
 )
 
 func TestStorage_GRPC_ReturnsErrIfStorageNil(t *testing.T) {
-	_, err := new(GRPCStorageServer).Get(context.Background(), nil)
+	_, err := new(GRPCStorageServer).Get(t.Context(), nil)
 	if err == nil {
 		t.Error("Expected error when using server with no impl")
 	}
@@ -57,7 +56,7 @@ func TestStorage_GRPCTransaction(t *testing.T) {
 	})
 	defer client.Close()
 
-	testStorage, err := newGRPCStorageClient(context.TODO(), client)
+	testStorage, err := newGRPCStorageClient(t.Context(), client)
 	if err != nil {
 		t.Fatalf("failed to create client: %v", err)
 	}

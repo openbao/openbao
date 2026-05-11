@@ -239,7 +239,7 @@ This greatly improves the operator experience, solving early initialization issu
 
 We do have some prior art: `bao server -dev` supports a command-line flag,
 `-dev-root-token-id`, which [writes into
-storge](https://github.com/openbao/openbao/blob/ef8d04c6cbc14fd34e68f0fd4071faf06e528266/command/server.go#L1746-L1763)
+storage](https://github.com/openbao/openbao/blob/ef8d04c6cbc14fd34e68f0fd4071faf06e528266/command/server.go#L1746-L1763)
 a new root token. This token is persisted throughout the lifetime of the
 server, which in dev-mode is safely bounded by restart and is not intended
 for production. One issue with this alternative approach is that we do not

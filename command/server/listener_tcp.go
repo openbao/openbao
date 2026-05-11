@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -19,7 +18,7 @@ import (
 	"github.com/openbao/openbao/helper/listenerutil"
 )
 
-func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, _ io.Writer, ui cli.Ui) (net.Listener, map[string]string, listenerutil.ReloadableCertGetter, error) {
+func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (net.Listener, map[string]string, listenerutil.ReloadableCertGetter, error) {
 	addr := l.Address
 	if addr == "" {
 		addr = "127.0.0.1:8200"

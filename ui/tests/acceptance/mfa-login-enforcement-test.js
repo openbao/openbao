@@ -5,7 +5,7 @@
 
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
-import { click, currentRouteName, fillIn, visit } from '@ember/test-helpers';
+import { click, currentRouteName, fillIn, visit, settled } from '@ember/test-helpers';
 import authPage from 'vault/tests/pages/auth';
 import { setupMirage } from 'ember-cli-mirage/test-support';
 import ENV from 'vault/config/environment';
@@ -17,8 +17,9 @@ module('Acceptance | mfa-login-enforcement', function (hooks) {
   hooks.before(function () {
     ENV['ember-cli-mirage'].handler = 'mfaConfig';
   });
-  hooks.beforeEach(function () {
-    return authPage.login();
+  hooks.beforeEach(async function () {
+    await authPage.login();
+    await settled();
   });
   hooks.after(function () {
     ENV['ember-cli-mirage'].handler = null;

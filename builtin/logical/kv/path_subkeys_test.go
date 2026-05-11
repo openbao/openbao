@@ -1,7 +1,6 @@
 package kv
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -21,7 +20,7 @@ func TestVersionedKV_Subkeys_NotFound(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || resp != nil {
 		t.Fatalf("unexpected ReadOperation response, err: %v, resp %#v", err, resp)
 	}
@@ -58,7 +57,7 @@ func TestVersionedKV_Subkeys_CurrentVersion(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("CreateOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -69,7 +68,7 @@ func TestVersionedKV_Subkeys_CurrentVersion(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("ReadOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -130,7 +129,7 @@ func TestVersionedKV_Subkeys_VersionParam(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data CreateOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -147,7 +146,7 @@ func TestVersionedKV_Subkeys_VersionParam(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data CreateOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -161,7 +160,7 @@ func TestVersionedKV_Subkeys_VersionParam(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("subkeys ReadOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -190,7 +189,7 @@ func TestVersionedKV_Subkeys_VersionParamDoesNotExist(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data CreateOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -207,7 +206,7 @@ func TestVersionedKV_Subkeys_VersionParamDoesNotExist(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data CreateOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -221,7 +220,7 @@ func TestVersionedKV_Subkeys_VersionParamDoesNotExist(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp != nil {
 		t.Fatalf("unexpected subkeys ReadOperation response, err: %v, resp %#v", err, resp)
 	}
@@ -303,7 +302,7 @@ func TestVersionedKV_Subkeys_DepthParam(t *testing.T) {
 				},
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("data CreateOperation request failed, err: %v, resp %#v", err, resp)
 			}
@@ -321,7 +320,7 @@ func TestVersionedKV_Subkeys_DepthParam(t *testing.T) {
 				Data:      subkeysData,
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if err != nil || resp == nil {
 				t.Fatalf("subkeys ReadOperation request failed, err: %v, resp %#v", err, resp)
 			}
@@ -353,7 +352,7 @@ func TestVersionedKV_Subkeys_EmptyData(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("CreateOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -364,7 +363,7 @@ func TestVersionedKV_Subkeys_EmptyData(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("ReadOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -390,7 +389,7 @@ func TestVersionedKV_Subkeys_VersionDeleted(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data CreateOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -401,7 +400,7 @@ func TestVersionedKV_Subkeys_VersionDeleted(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("subkeys ReadOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -419,7 +418,7 @@ func TestVersionedKV_Subkeys_VersionDeleted(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("metadata DeleteOperation request failed - err: %v, resp: %#v\n", err, resp)
 	}
@@ -430,7 +429,7 @@ func TestVersionedKV_Subkeys_VersionDeleted(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("subkeys ReadOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -485,7 +484,7 @@ func TestVersionedKV_Subkeys_VersionDestroyed(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("data CreateOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -496,7 +495,7 @@ func TestVersionedKV_Subkeys_VersionDestroyed(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("subkeys ReadOperation request failed, err: %v, resp %#v", err, resp)
 	}
@@ -517,7 +516,7 @@ func TestVersionedKV_Subkeys_VersionDestroyed(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("destroy CreateOperation request failed - err: %v resp:%#v\n", err, resp)
 	}
@@ -528,7 +527,7 @@ func TestVersionedKV_Subkeys_VersionDestroyed(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("subkeys ReadOperation request failed, err: %v, resp %#v", err, resp)
 	}

@@ -76,8 +76,6 @@ func TestSharedConfig_Sanitized_LogFields(t *testing.T) {
 	}
 
 	for name, tc := range tests {
-		name := name
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			cfg := tc.Value.Sanitized()
 			switch {

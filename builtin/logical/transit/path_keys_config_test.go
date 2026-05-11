@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -24,14 +23,14 @@ func TestTransit_ConfigSettings(t *testing.T) {
 	b, storage := createBackendWithSysView(t)
 
 	doReq := func(req *logical.Request) *logical.Response {
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("got err:\n%#v\nreq:\n%#v\n", err, *req)
 		}
 		return resp
 	}
 	doErrReq := func(req *logical.Request) {
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err == nil {
 			if resp == nil || !resp.IsError() {
 				t.Fatalf("expected error; req:\n%#v\n", *req)
@@ -372,7 +371,7 @@ func TestTransit_UpdateKeyConfigWithAutorotation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resp, err := client.Logical().Write(fmt.Sprintf("transit/keys/%s/config", keyName), map[string]interface{}{
+			_, err = client.Logical().Write(fmt.Sprintf("transit/keys/%s/config", keyName), map[string]interface{}{
 				"auto_rotate_period": test.newAutoRotatePeriod,
 			})
 			switch {
@@ -383,7 +382,7 @@ func TestTransit_UpdateKeyConfigWithAutorotation(t *testing.T) {
 			}
 
 			if !test.shouldError {
-				resp, err = client.Logical().Read(fmt.Sprintf("transit/keys/%s", keyName))
+				resp, err := client.Logical().Read(fmt.Sprintf("transit/keys/%s", keyName))
 				if err != nil {
 					t.Fatal(err)
 				}

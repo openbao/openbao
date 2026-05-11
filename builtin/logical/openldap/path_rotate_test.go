@@ -4,7 +4,6 @@
 package openldap
 
 import (
-	"context"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -13,7 +12,7 @@ import (
 func TestManualRotate(t *testing.T) {
 	t.Run("rotate root", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		originalBindPass := "pa$$w0rd"
 
@@ -31,7 +30,7 @@ func TestManualRotate(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -43,12 +42,12 @@ func TestManualRotate(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		config, err := readConfig(context.Background(), storage)
+		config, err := readConfig(t.Context(), storage)
 		if err != nil {
 			t.Fatalf("expected nil error, got %v", err)
 		}
@@ -63,7 +62,7 @@ func TestManualRotate(t *testing.T) {
 
 	t.Run("rotate root that doesn't exist", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		req := &logical.Request{
 			Operation: logical.CreateOperation,
@@ -72,7 +71,7 @@ func TestManualRotate(t *testing.T) {
 			Data:      nil,
 		}
 
-		_, err := b.HandleRequest(context.Background(), req)
+		_, err := b.HandleRequest(t.Context(), req)
 		if err == nil {
 			t.Fatal("should have got error, didn't")
 		}
@@ -80,7 +79,7 @@ func TestManualRotate(t *testing.T) {
 
 	t.Run("rotate role", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		data := map[string]interface{}{
 			"binddn":      "tester",
@@ -96,7 +95,7 @@ func TestManualRotate(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -108,7 +107,7 @@ func TestManualRotate(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -126,7 +125,7 @@ func TestManualRotate(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -138,7 +137,7 @@ func TestManualRotate(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -155,7 +154,7 @@ func TestManualRotate(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -167,7 +166,7 @@ func TestManualRotate(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -183,7 +182,7 @@ func TestManualRotate(t *testing.T) {
 
 	t.Run("rotate role that doesn't exist", func(t *testing.T) {
 		b, storage := getBackend(t, false)
-		defer b.Cleanup(context.Background())
+		defer b.Cleanup(t.Context())
 
 		req := &logical.Request{
 			Operation: logical.UpdateOperation,
@@ -192,7 +191,7 @@ func TestManualRotate(t *testing.T) {
 			Data:      nil,
 		}
 
-		resp, _ := b.HandleRequest(context.Background(), req)
+		resp, _ := b.HandleRequest(t.Context(), req)
 		if resp == nil || !resp.IsError() {
 			t.Fatal("expected error")
 		}

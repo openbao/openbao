@@ -9,11 +9,12 @@ import (
 	"strings"
 
 	"github.com/openbao/openbao/helper/identity"
-	"github.com/openbao/openbao/sdk/v2/helper/template"
+	"github.com/openbao/openbao/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/policy"
 )
 
-func (c *Core) filterListResponse(ctx context.Context, req *logical.Request, unauth bool, auth *logical.Auth, acl *ACL, te *logical.TokenEntry, entity *identity.Entity, resp *logical.Response) error {
+func (c *Core) filterListResponse(ctx context.Context, req *logical.Request, unauth bool, auth *logical.Auth, acl *policy.ACL, te *logical.TokenEntry, entity *identity.Entity, resp *logical.Response) error {
 	// Ignore non-list operations.
 	switch req.Operation {
 	case logical.ListOperation:
@@ -73,14 +74,14 @@ func (c *Core) filterListResponse(ctx context.Context, req *logical.Request, una
 	}
 
 	filteredKeys := make([]string, 0, len(keys))
-	tmpl, err := compileTemplatePathForFiltering(auth.ResponseKeysFilterPath)
+	tmpl, err := template.CompileTemplatePathForFiltering(auth.ResponseKeysFilterPath)
 	if err != nil {
 		c.logger.Error("failed to compile template on filtered list response", "path", req.Path, "err", err)
 		return ErrInternalError
 	}
 
 	for _, key := range keys {
-		checkPath, err := useTemplateForFiltering(tmpl, req.Path, key)
+		checkPath, err := template.UseTemplateForFiltering(tmpl, req.Path, key)
 		if err != nil {
 			c.logger.Error("failed to use template on filtered list response", "path", req.Path, "err", err)
 			return ErrInternalError
@@ -110,7 +111,7 @@ func (c *Core) filterListResponse(ctx context.Context, req *logical.Request, una
 			continue
 		}
 
-		authResults := c.performPolicyChecks(ctx, acl, te, checkReq, entity, &PolicyCheckOpts{
+		authResults := c.performPolicyChecks(ctx, acl, te, checkReq, entity, &policy.CheckOpts{
 			Unauth:            unauth,
 			RootPrivsRequired: rootPath,
 		})
@@ -134,15 +135,4 @@ func (c *Core) filterListResponse(ctx context.Context, req *logical.Request, una
 	}
 
 	return nil
-}
-
-func compileTemplatePathForFiltering(tmpl string) (template.StringTemplate, error) {
-	return template.NewTemplate(template.Template(tmpl))
-}
-
-func useTemplateForFiltering(t template.StringTemplate, path string, key string) (string, error) {
-	return t.Generate(map[string]interface{}{
-		"key":  key,
-		"path": path,
-	})
 }

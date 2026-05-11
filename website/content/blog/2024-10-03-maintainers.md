@@ -1,5 +1,5 @@
 ---
-title: Maintainers, Commiters, and Moderators Oh-My!
+title: Maintainers, Committers, and Moderators Oh-My!
 description: OpenBao's Community Roles policy is an important step towards open governance.
 slug: maintainers
 authors: cipherboy

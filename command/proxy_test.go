@@ -363,11 +363,9 @@ api_proxy {
 	cmd.startedCh = make(chan struct{})
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		cmd.Run([]string{"-config", configPath})
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -457,11 +455,9 @@ vault {
 	cmd.startedCh = make(chan struct{})
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		cmd.Run([]string{"-config", configPath})
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -549,11 +545,9 @@ vault {
 	cmd.startedCh = make(chan struct{})
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		cmd.Run([]string{"-config", configPath})
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -627,11 +621,9 @@ vault {
 	cmd.startedCh = make(chan struct{})
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		cmd.Run([]string{"-config", configPath})
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -799,11 +791,9 @@ vault {
 			cmd.startedCh = make(chan struct{})
 
 			wg := &sync.WaitGroup{}
-			wg.Add(1)
-			go func() {
+			wg.Go(func() {
 				cmd.Run([]string{"-config", configPath})
-				wg.Done()
-			}()
+			})
 
 			select {
 			case <-cmd.startedCh:
@@ -876,16 +866,14 @@ listener "tcp" {
 	cmd.startedCh = make(chan struct{})
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		code := cmd.Run([]string{"-config", configPath})
 		if code != 0 {
 			t.Errorf("non-zero return code when running proxy: %d", code)
 			t.Logf("STDOUT from proxy:\n%s", ui.OutputWriter.String())
 			t.Logf("STDERR from proxy:\n%s", ui.ErrorWriter.String())
 		}
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -982,11 +970,9 @@ cache {}
 	cmd.startedCh = make(chan struct{})
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		cmd.Run([]string{"-config", configPath})
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:

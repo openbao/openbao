@@ -1,0 +1,3 @@
+```release-note:bug
+core/mounts, core/namespaces: Fix lock ordering in mount deletion racing against namespace updates, causing deadlocks.
+```

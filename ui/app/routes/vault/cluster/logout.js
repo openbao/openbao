@@ -7,9 +7,9 @@ import Ember from 'ember';
 import { computed } from '@ember/object';
 import { inject as service } from '@ember/service';
 import Route from '@ember/routing/route';
-import ModelBoundaryRoute from 'vault/mixins/model-boundary-route';
 
-export default Route.extend(ModelBoundaryRoute, {
+export default Route.extend({
+  store: service(),
   auth: service(),
   flashMessages: service(),
   console: service(),
@@ -42,5 +42,12 @@ export default Route.extend(ModelBoundaryRoute, {
       const { cluster_name } = this.paramsFor('vault.cluster');
       location.assign(this.router.urlFor('vault.cluster.auth', cluster_name, { queryParams }));
     }
+  },
+
+  deactivate() {
+    this._super(...arguments);
+    this.modelTypes.forEach((type) => {
+      this.store.unloadAll(type);
+    });
   },
 });

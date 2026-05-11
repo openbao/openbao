@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -327,13 +328,7 @@ func (c *Client) retryOCSP(
 					retErr = multierror.Append(retErr, err)
 					continue
 				}
-				haveEKU := false
-				for _, ku := range ocspRes.Certificate.ExtKeyUsage {
-					if ku == x509.ExtKeyUsageOCSPSigning {
-						haveEKU = true
-						break
-					}
-				}
+				haveEKU := slices.Contains(ocspRes.Certificate.ExtKeyUsage, x509.ExtKeyUsageOCSPSigning)
 				if !haveEKU {
 					err := fmt.Errorf("error checking delegated OCSP responder on %v OCSP response: certificate lacks the OCSP Signing EKU", method)
 					retErr = multierror.Append(retErr, err)
@@ -568,7 +563,7 @@ func (c *Client) VerifyLeafCertificate(ctx context.Context, subject, issuer *x50
 
 // VerifyPeerCertificate verifies all of certificate revocation status
 func (c *Client) VerifyPeerCertificate(ctx context.Context, verifiedChains [][]*x509.Certificate, conf *VerifyConfig) error {
-	for i := 0; i < len(verifiedChains); i++ {
+	for i := range verifiedChains {
 		// Certificate signed by Root CA. This should be one before the last in the Certificate Chain
 		numberOfNoneRootCerts := len(verifiedChains[i]) - 1
 		if !verifiedChains[i][numberOfNoneRootCerts].IsCA || string(verifiedChains[i][numberOfNoneRootCerts].RawIssuer) != string(verifiedChains[i][numberOfNoneRootCerts].RawSubject) {
@@ -594,7 +589,7 @@ func (c *Client) VerifyPeerCertificate(ctx context.Context, verifiedChains [][]*
 }
 
 func (c *Client) canEarlyExitForOCSP(results []*ocspStatus, chainSize int, conf *VerifyConfig) *ocspStatus {
-	msg := ""
+	var msg strings.Builder
 	if conf.OcspFailureMode == FailOpenFalse {
 		// Fail closed. any error is returned to stop connection
 		for _, r := range results {
@@ -616,20 +611,20 @@ func (c *Client) canEarlyExitForOCSP(results []*ocspStatus, chainSize int, conf 
 				return r
 			}
 			if r != nil && r.code != ocspStatusGood && r.err != nil {
-				msg += "" + r.err.Error()
+				msg.WriteString("" + r.err.Error())
 			}
 		}
 	}
-	if len(msg) > 0 {
+	if len(msg.String()) > 0 {
 		c.Logger().Warn(
-			"OCSP is set to fail-open, and could not retrieve OCSP based revocation checking but proceeding.", "detail", msg)
+			"OCSP is set to fail-open, and could not retrieve OCSP based revocation checking but proceeding.", "detail", msg.String())
 	}
 	return nil
 }
 
 func (c *Client) validateWithCacheForAllCertificates(verifiedChains []*x509.Certificate) (bool, error) {
 	n := len(verifiedChains) - 1
-	for j := 0; j < n; j++ {
+	for j := range n {
 		subject := verifiedChains[j]
 		issuer := verifiedChains[j+1]
 		status, _, _, err := c.validateWithCache(subject, issuer)
@@ -666,7 +661,7 @@ func (c *Client) GetAllRevocationStatus(ctx context.Context, verifiedChains []*x
 	}
 	n := len(verifiedChains) - 1
 	results := make([]*ocspStatus, n)
-	for j := 0; j < n; j++ {
+	for j := range n {
 		results[j], err = c.GetRevocationStatus(ctx, verifiedChains[j], verifiedChains[j+1], conf)
 		if err != nil {
 			return nil, err

@@ -598,7 +598,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		}
 		nonce := status.Nonce
 
-		var combined string
+		var combined strings.Builder
 		// Supply the unseal keys
 		for _, key := range keys {
 			ui, cmd := testOperatorRekeyCommand(t)
@@ -613,11 +613,11 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			}
 
 			// Append to our output string
-			combined += ui.OutputWriter.String()
+			combined.WriteString(ui.OutputWriter.String())
 		}
 
 		re := regexp.MustCompile(`Key 1 fingerprint: (.+); value: (.+)`)
-		match := re.FindAllStringSubmatch(combined, -1)
+		match := re.FindAllStringSubmatch(combined.String(), -1)
 		if len(match) < 1 || len(match[0]) < 3 {
 			t.Fatalf("bad match: %#v", match)
 		}

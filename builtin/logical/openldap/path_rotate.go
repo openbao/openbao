@@ -185,7 +185,7 @@ func (b *backend) pathRotateRoleCredentialsUpdate(ctx context.Context, req *logi
 // because LDAP may still be propagating the previous password change.
 func (b *backend) rollBackPassword(ctx context.Context, config *config, oldPassword string) error {
 	var err error
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		waitSeconds := math.Pow(float64(i), 2)
 		timer := time.NewTimer(time.Duration(waitSeconds) * time.Second)
 		select {

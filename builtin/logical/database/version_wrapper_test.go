@@ -22,7 +22,7 @@ func TestInitDatabase_missingDB(t *testing.T) {
 	dbw := databaseVersionWrapper{}
 
 	req := v5.InitializeRequest{}
-	resp, err := dbw.Initialize(context.Background(), req)
+	resp, err := dbw.Initialize(t.Context(), req)
 	if err == nil {
 		t.Fatal("err expected, got nil")
 	}
@@ -92,7 +92,7 @@ func TestInitDatabase_newDB(t *testing.T) {
 				v5: newDB,
 			}
 
-			resp, err := dbw.Initialize(context.Background(), test.req)
+			resp, err := dbw.Initialize(t.Context(), test.req)
 			if test.expectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -163,7 +163,7 @@ func TestInitDatabase_legacyDB(t *testing.T) {
 				v4: legacyDB,
 			}
 
-			resp, err := dbw.Initialize(context.Background(), test.req)
+			resp, err := dbw.Initialize(t.Context(), test.req)
 			if test.expectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -182,7 +182,7 @@ func TestNewUser_missingDB(t *testing.T) {
 	dbw := databaseVersionWrapper{}
 
 	req := v5.NewUserRequest{}
-	resp, pass, err := dbw.NewUser(context.Background(), req)
+	resp, pass, err := dbw.NewUser(t.Context(), req)
 	if err == nil {
 		t.Fatal("err expected, got nil")
 	}
@@ -249,7 +249,7 @@ func TestNewUser_newDB(t *testing.T) {
 				v5: newDB,
 			}
 
-			resp, password, err := dbw.NewUser(context.Background(), test.req)
+			resp, password, err := dbw.NewUser(t.Context(), test.req)
 			if test.expectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -322,7 +322,7 @@ func TestNewUser_legacyDB(t *testing.T) {
 				v4: legacyDB,
 			}
 
-			resp, password, err := dbw.NewUser(context.Background(), test.req)
+			resp, password, err := dbw.NewUser(t.Context(), test.req)
 			if test.expectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -345,7 +345,7 @@ func TestUpdateUser_missingDB(t *testing.T) {
 	dbw := databaseVersionWrapper{}
 
 	req := v5.UpdateUserRequest{}
-	resp, err := dbw.UpdateUser(context.Background(), req, false)
+	resp, err := dbw.UpdateUser(t.Context(), req, false)
 	if err == nil {
 		t.Fatal("err expected, got nil")
 	}
@@ -395,7 +395,7 @@ func TestUpdateUser_newDB(t *testing.T) {
 				v5: newDB,
 			}
 
-			_, err := dbw.UpdateUser(context.Background(), test.req, false)
+			_, err := dbw.UpdateUser(t.Context(), test.req, false)
 			if test.expectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -629,7 +629,7 @@ func TestUpdateUser_legacyDB(t *testing.T) {
 				v4: legacyDB,
 			}
 
-			newConfig, err := dbw.UpdateUser(context.Background(), test.req, test.isRootUser)
+			newConfig, err := dbw.UpdateUser(t.Context(), test.req, test.isRootUser)
 			if test.expectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -648,7 +648,7 @@ func TestDeleteUser_missingDB(t *testing.T) {
 	dbw := databaseVersionWrapper{}
 
 	req := v5.DeleteUserRequest{}
-	_, err := dbw.DeleteUser(context.Background(), req)
+	_, err := dbw.DeleteUser(t.Context(), req)
 	if err == nil {
 		t.Fatal("err expected, got nil")
 	}
@@ -698,7 +698,7 @@ func TestDeleteUser_newDB(t *testing.T) {
 				v5: newDB,
 			}
 
-			_, err := dbw.DeleteUser(context.Background(), test.req)
+			_, err := dbw.DeleteUser(t.Context(), test.req)
 			if test.expectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -753,7 +753,7 @@ func TestDeleteUser_legacyDB(t *testing.T) {
 				v4: legacyDB,
 			}
 
-			_, err := dbw.DeleteUser(context.Background(), test.req)
+			_, err := dbw.DeleteUser(t.Context(), test.req)
 			if test.expectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -842,7 +842,7 @@ func TestStoreConfig(t *testing.T) {
 				putErr: test.putErr,
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 			defer cancel()
 			err := storeConfig(ctx, storage, "testconfig", test.config)
 			if test.expectErr && err == nil {

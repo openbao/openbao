@@ -35,23 +35,19 @@ func InduceDeadlock(t *testing.T, vaultcore *Core, expected uint32) {
 	}
 	var mtx deadlock.Mutex
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		vaultcore.expiration.coreStateLock.Lock()
 		mtx.Lock()
 		mtx.Unlock() //nolint:staticcheck
 		vaultcore.expiration.coreStateLock.Unlock()
-	}()
+	})
 	wg.Wait()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		mtx.Lock()
 		vaultcore.expiration.coreStateLock.RLock()
 		vaultcore.expiration.coreStateLock.RUnlock() //nolint:staticcheck
 		mtx.Unlock()
-	}()
+	})
 	wg.Wait()
 	if deadlocks.Load() != expected {
 		t.Fatalf("expected 1 deadlock, detected %d", deadlocks.Load())

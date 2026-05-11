@@ -31,6 +31,20 @@ import Member from './lib/Member.tsx';
       [GatePlane](https://gateplane.io/) provides full IAM integration for OpenBao, turning it into a Privileged Access Management (PAM) solution that supports approval-based conditional access through their [OpenBao plugins](https://github.com/gateplane-io/vault-plugins) (available under their always-free Community License).
   </Member>
 
+  <Member title="Warden">
+      [Warden](https://github.com/stephnangue/warden) is an open-source identity-aware egress gateway that intercepts outbound cloud API calls and forwards them using short-lived credentials minted via OpenBao, so that credentials never reach client applications.
+  </Member>
+
+  <Member title="Sigstore" logoName="sigstore">
+      [Sigstore](https://www.sigstore.dev/) is an OpenSSF project that secures the software supply chain. It integrates with OpenBao by leveraging it as a KMS for signing artifacts.
+  </Member>
+
+  <Member title="OVHcloud">
+      [OVHcloud](https://www.ovhcloud.com/) provides cloud infrastructure and security services that integrate with OpenBao to manage secrets across distributed environments, supporting high availability, private networking, and HSM-backed encryption.
+  </Member>
+  <Member title="DuoKey" logoName="duokey">
+    [DuoKey](https://www.duokey.com/) provides a [Software Defined HSM and KMS integrating with OpenBao](https://duokey.com/en/products/vault). Using Multi-Party Computation, keys are never reconstructed and cryptographic operations never expose key material or plaintext, enabling HSM-grade protection and cloud-native scalability.
+  </Member>
 </Randomize>
 </div>
 </div>

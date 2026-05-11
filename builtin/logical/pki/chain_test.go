@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"context"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
@@ -230,7 +229,7 @@ type CBValidateChain struct {
 func (c CBValidateChain) ChainToPEMs(t testing.TB, parent string, chain []string, knownCerts map[string]string) []string {
 	var result []string
 	for entryIndex, entry := range chain {
-		var chainEntry string
+		var chainEntry strings.Builder
 		modifiedEntry := entry
 		if entryIndex == 0 && entry == "self" {
 			modifiedEntry = parent
@@ -242,9 +241,9 @@ func (c CBValidateChain) ChainToPEMs(t testing.TB, parent string, chain []string
 			cert, ok := knownCerts[issuer]
 			require.Truef(t, ok, "Unknown issuer %v in chain for %v: %v", issuer, parent, chain)
 
-			chainEntry += cert
+			chainEntry.WriteString(cert)
 		}
-		result = append(result, chainEntry)
+		result = append(result, chainEntry.String())
 	}
 
 	return result
@@ -1539,8 +1538,7 @@ func BenchmarkChainBuilding(benchies *testing.B) {
 			}
 
 			// Run the benchmark.
-			ctx := context.Background()
-			sc := b.makeStorageContext(ctx, s)
+			sc := b.makeStorageContext(benchies.Context(), s)
 			for bench.Loop() {
 				_ = sc.rebuildIssuersChains(nil)
 			}

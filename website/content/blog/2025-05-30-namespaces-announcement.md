@@ -73,7 +73,7 @@ $ bao namespace create -ns tenants tenant-c
 $ bao namespace create -ns tenants/tenant-c prod
 ```
 
-Note how we use the `-ns` (short form for `-namespace`) flag to create a child-namepace `tenant-c` within the namespace `tenant`. To view status and metadata, we can utilize the `lookup` command:
+Note how we use the `-ns` (short form for `-namespace`) flag to create a child-namespace `tenant-c` within the namespace `tenant`. To view status and metadata, we can utilize the `lookup` command:
 
 ```bash
 $ bao namespace lookup -ns tenants/tenant-c prod

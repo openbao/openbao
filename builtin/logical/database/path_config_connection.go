@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"sort"
 
@@ -447,9 +448,7 @@ func (b *databaseBackend) connectionWriteHandler() framework.OperationFunc {
 			if config.ConnectionDetails == nil {
 				config.ConnectionDetails = make(map[string]interface{})
 			}
-			for k, v := range data.Raw {
-				config.ConnectionDetails[k] = v
-			}
+			maps.Copy(config.ConnectionDetails, data.Raw)
 		}
 
 		// Create a database plugin and initialize it.

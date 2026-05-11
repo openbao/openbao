@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -21,7 +20,7 @@ func TestTransit_Random(t *testing.T) {
 	storage := &logical.InmemStorage{}
 	sysView.CachingDisabledVal = true
 
-	b, _ = Backend(context.Background(), &logical.BackendConfig{
+	b, _ = Backend(t.Context(), &logical.BackendConfig{
 		StorageView: storage,
 		System:      sysView,
 	})
@@ -35,7 +34,7 @@ func TestTransit_Random(t *testing.T) {
 
 	doRequest := func(req *logical.Request, errExpected bool, format string, numBytes int) {
 		getResponse := func() []byte {
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 			if err != nil && !errExpected {
 				t.Fatal(err)
 			}

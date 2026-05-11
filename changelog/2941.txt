@@ -1,0 +1,3 @@
+```release-note:security
+core/plugins: Validate and restrict downloaded plugin binary size from OCI images; set `plugin_download_max_size` to limit the size (defaults to 512MB). GHSA-r65v-xgwc-g56j / CVE-2026-39396.
+```

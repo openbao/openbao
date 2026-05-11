@@ -1,7 +1,6 @@
 package kv
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -36,7 +35,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -47,7 +46,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -88,7 +87,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 	}
 
 	// Should fail with with cas required error
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err == nil || resp.Error().Error() != "check-and-set parameter required for this call" {
 		t.Fatalf("expected error, %#v", resp)
 	}
@@ -109,7 +108,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -134,7 +133,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -159,7 +158,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -175,7 +174,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -214,7 +213,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 	}
 
 	// Should fail with with metadata_cas required error
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || !resp.IsError() {
 		t.Fatalf("expected error response, got err:%s resp:%#v", err, resp)
 	}
@@ -238,7 +237,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -256,7 +255,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -272,7 +271,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -306,7 +305,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		Storage:   storage,
 	}
 
-	listResp, err := b.HandleRequest(context.Background(), req)
+	listResp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || listResp == nil || listResp.IsError() {
 		t.Fatalf("err:%s resp:%#v\n", err, listResp)
 	}
@@ -336,7 +335,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 	}
 
 	// Should fail with with metadata_cas mismatch error
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || !resp.IsError() {
 		t.Fatalf("expected error response, got err:%s resp:%#v", err, resp)
 	}
@@ -358,7 +357,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -369,7 +368,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -394,7 +393,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -418,7 +417,7 @@ func TestVersionedKV_Metadata_Delete(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -434,7 +433,7 @@ func TestVersionedKV_Metadata_Delete(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -446,7 +445,7 @@ func TestVersionedKV_Metadata_Delete(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -461,7 +460,7 @@ func TestVersionedKV_Metadata_Delete(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -471,12 +470,12 @@ func TestVersionedKV_Metadata_Delete(t *testing.T) {
 
 	// Verify all the version data was deleted.
 	for i := 0; i <= 5; i++ {
-		versionKey, err := b.(*versionedKVBackend).getVersionKey(context.Background(), "foo", uint64(i+1), req.Storage)
+		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i+1), req.Storage)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		v, err := storage.Get(context.Background(), versionKey)
+		v, err := storage.Get(t.Context(), versionKey)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -523,7 +522,7 @@ func TestVersionedKV_Metadata_Put_Bad_CustomMetadata(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 
 	if err != nil || resp == nil {
 		t.Fatalf("Write err: %s resp: %#v\n", err, resp)
@@ -574,7 +573,7 @@ func TestVersionedKV_Metadata_Put_Bad_CustomMetadata(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("Read err: %#v, resp: %#v", err, resp)
 	}
@@ -598,7 +597,7 @@ func TestVersionedKV_Metadata_Put_Bad_CustomMetadata(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || resp == nil {
 		t.Fatalf("Write err: %s resp: %#v\n", err, resp)
@@ -623,7 +622,7 @@ func TestVersionedKv_Metadata_Put_Too_Many_CustomMetadata_Keys(t *testing.T) {
 
 	customMetadata := map[string]string{}
 
-	for i := 0; i < maxCustomMetadataKeys+1; i++ {
+	for i := range maxCustomMetadataKeys + 1 {
 		k := fmt.Sprint(i)
 		customMetadata[k] = k
 	}
@@ -639,7 +638,7 @@ func TestVersionedKv_Metadata_Put_Too_Many_CustomMetadata_Keys(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 
 	if err != nil || resp == nil {
 		t.Fatalf("Write err: %s resp: %#v\n", err, resp)
@@ -667,7 +666,7 @@ func TestVersionedKv_Metadata_Put_Too_Many_CustomMetadata_Keys(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("Read err: %#v, resp :%#v", err, resp)
 	}
@@ -693,7 +692,7 @@ func TestVersionedKV_Metadata_Put_Empty_CustomMetadata(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("Write err: %s, resp: %#v", err, resp)
@@ -705,7 +704,7 @@ func TestVersionedKV_Metadata_Put_Empty_CustomMetadata(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("Read err: %s, resp %#v", err, resp)
@@ -736,7 +735,7 @@ func TestVersionedKV_Metadata_Put_Merge_Behavior(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("Write err: %s, resp: %#v", err, resp)
@@ -748,7 +747,7 @@ func TestVersionedKV_Metadata_Put_Merge_Behavior(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("Read err: %s, resp %#v", err, resp)
@@ -791,7 +790,7 @@ func TestVersionedKV_Metadata_Put_Merge_Behavior(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("Write err: %s, resp: %#v", err, resp)
@@ -803,7 +802,7 @@ func TestVersionedKV_Metadata_Put_Merge_Behavior(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("Read err: %s, resp %#v", err, resp)
@@ -845,7 +844,7 @@ func TestVersionedKV_Metadata_Put_Merge_Behavior(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("Write err: %s, resp: %#v", err, resp)
@@ -857,7 +856,7 @@ func TestVersionedKV_Metadata_Put_Merge_Behavior(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("Read err: %s, resp %#v", err, resp)
@@ -895,7 +894,7 @@ func TestVersionedKV_Metadata_Put_Merge_Behavior(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("Write err: %s, resp: %#v", err, resp)
@@ -907,7 +906,7 @@ func TestVersionedKV_Metadata_Put_Merge_Behavior(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("Read err: %s, resp %#v", err, resp)
@@ -931,7 +930,7 @@ func TestVersionedKV_Metadata_Patch_MissingPath(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 
 	if err != nil || resp == nil {
 		t.Fatalf("unexpected patch error, err: %#v, resp: %#v", err, resp)
@@ -1038,7 +1037,7 @@ func TestVersionedKV_Metadata_Patch_Validation(t *testing.T) {
 				},
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("create request failed, err: %#v, resp: %#v", err, resp)
@@ -1051,7 +1050,7 @@ func TestVersionedKV_Metadata_Patch_Validation(t *testing.T) {
 				Data:      tc.metadata,
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 			if err != nil {
 				t.Fatalf("unexpected patch error, err: %#v", err)
 			}
@@ -1081,7 +1080,7 @@ func TestVersionedKV_Metadata_Patch_NotFound(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("request failed, err:%s resp:%#v\n", err, resp)
@@ -1104,7 +1103,7 @@ func TestVersionedKV_Metadata_Patch_CasRequiredWarning(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("config request failed, err:%s resp:%#v\n", err, resp)
@@ -1119,7 +1118,7 @@ func TestVersionedKV_Metadata_Patch_CasRequiredWarning(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("metadata create request failed, err:%s resp:%#v\n", err, resp)
@@ -1134,7 +1133,7 @@ func TestVersionedKV_Metadata_Patch_CasRequiredWarning(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("metadata patch request failed, err:%s resp:%#v\n", err, resp)
@@ -1151,7 +1150,7 @@ func TestVersionedKV_Metadata_Patch_CasRequiredWarning(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("metadata create request failed, err:%s resp:%#v\n", err, resp)
@@ -1177,7 +1176,7 @@ func TestVersionedKV_Metadata_Patch_MetadataCasRequiredWarning(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("config request failed, err:%s resp:%#v\n", err, resp)
 	}
@@ -1193,7 +1192,7 @@ func TestVersionedKV_Metadata_Patch_MetadataCasRequiredWarning(t *testing.T) {
 	}
 
 	// Should fail with with metadata_cas required error
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || !resp.IsError() {
 		t.Fatalf("expected error response, got err:%s resp:%#v", err, resp)
 	}
@@ -1212,7 +1211,7 @@ func TestVersionedKV_Metadata_Patch_MetadataCasRequiredWarning(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("metadata create request failed, err:%s resp:%#v\n", err, resp)
 	}
@@ -1228,7 +1227,7 @@ func TestVersionedKV_Metadata_Patch_MetadataCasRequiredWarning(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("metadata patch request failed, err:%s resp:%#v\n", err, resp)
 	}
@@ -1257,7 +1256,7 @@ func TestVersionedKV_Metadata_Create_InvalidMetadataCasError(t *testing.T) {
 	}
 
 	// Should fail with with invalid metadata_cas error
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || resp == nil || !resp.IsError() {
 		t.Fatalf("expected error response, got err:%s resp:%#v", err, resp)
 	}
@@ -1276,7 +1275,7 @@ func TestVersionedKV_Metadata_Create_InvalidMetadataCasError(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("metadata create request failed, err:%s resp:%#v\n", err, resp)
 	}
@@ -1361,7 +1360,7 @@ func TestVersionedKV_Metadata_Patch_CustomMetadata(t *testing.T) {
 				},
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("create request failed, err: %#v, resp: %#v", err, resp)
@@ -1376,7 +1375,7 @@ func TestVersionedKV_Metadata_Patch_CustomMetadata(t *testing.T) {
 				},
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("patch request failed, err: %#v, resp: %#v", err, resp)
@@ -1388,7 +1387,7 @@ func TestVersionedKV_Metadata_Patch_CustomMetadata(t *testing.T) {
 				Storage:   storage,
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("read request failed, err: %#v, resp: %#v", err, resp)
@@ -1468,7 +1467,7 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 				},
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("create request failed, err: %#v, resp: %#v", err, resp)
@@ -1480,7 +1479,7 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 				Storage:   storage,
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("read request failed, err: %#v, resp: %#v", err, resp)
@@ -1497,7 +1496,7 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 
 			time.Sleep(time.Second)
 
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("patch request failed, err: %#v, resp: %#v", err, resp)
@@ -1509,7 +1508,7 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 				Storage:   storage,
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
+			resp, err = b.HandleRequest(t.Context(), req)
 
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("read request failed, err: %#v, resp: %#v", err, resp)
@@ -1563,7 +1562,7 @@ func TestVersionedKV_Metadata_Patch_NilsUnset(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("create request failed, err: %#v, resp: %#v", err, resp)
@@ -1575,7 +1574,7 @@ func TestVersionedKV_Metadata_Patch_NilsUnset(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("read request failed, err: %#v, resp: %#v", err, resp)
@@ -1594,7 +1593,7 @@ func TestVersionedKV_Metadata_Patch_NilsUnset(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("patch request failed, err: %#v, resp: %#v", err, resp)
@@ -1606,7 +1605,7 @@ func TestVersionedKV_Metadata_Patch_NilsUnset(t *testing.T) {
 		Storage:   storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("read request failed, err: %#v, resp: %#v", err, resp)
@@ -1634,7 +1633,7 @@ func TestVersionedKV_ListDetailedMetadata(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("create request failed, err: %#v, resp: %#v", err, resp)
 	}
@@ -1645,7 +1644,7 @@ func TestVersionedKV_ListDetailedMetadata(t *testing.T) {
 		Storage:   storage,
 	}
 
-	listResp, err := b.HandleRequest(context.Background(), req)
+	listResp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || listResp == nil || listResp.IsError() {
 		t.Fatalf("err:%s resp:%#v\n", err, listResp)
 	}

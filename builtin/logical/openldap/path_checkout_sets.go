@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -30,10 +31,8 @@ func (l *librarySet) Validate() error {
 	if len(l.ServiceAccountNames) < 1 {
 		return errors.New("at least one service account must be configured")
 	}
-	for _, name := range l.ServiceAccountNames {
-		if name == "" {
-			return errors.New("service account name must not be empty")
-		}
+	if slices.Contains(l.ServiceAccountNames, "") {
+		return errors.New("service account name must not be empty")
 	}
 	if l.MaxTTL > 0 {
 		if l.MaxTTL < l.TTL {

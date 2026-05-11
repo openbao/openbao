@@ -315,7 +315,7 @@ func ExerciseBackend(t testing.TB, b Backend) {
 	// Create multiple items in a path iteratively and ensure
 	// paginated lists work as expected.
 	var created []string
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		name := fmt.Sprintf("key-%d", i)
 		e = &Entry{Key: "foo/" + name, Value: []byte("baz")}
 		err = b.Put(context.Background(), e)

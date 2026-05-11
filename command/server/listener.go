@@ -6,7 +6,6 @@ package server
 import (
 	_ "crypto/sha512"
 	"fmt"
-	"io"
 	"net"
 
 	// We must import sha512 so that it registers with the runtime so that
@@ -20,7 +19,7 @@ import (
 )
 
 // ListenerFactory is the factory function to create a listener.
-type ListenerFactory func(*configutil.Listener, hclog.Logger, io.Writer, cli.Ui) (net.Listener, map[string]string, listenerutil.ReloadableCertGetter, error)
+type ListenerFactory func(*configutil.Listener, hclog.Logger, cli.Ui) (net.Listener, map[string]string, listenerutil.ReloadableCertGetter, error)
 
 // BuiltinListeners is the list of built-in listener types.
 var BuiltinListeners = map[string]ListenerFactory{
@@ -30,13 +29,13 @@ var BuiltinListeners = map[string]ListenerFactory{
 
 // NewListener creates a new listener of the given type with the given
 // configuration. The type is looked up in the BuiltinListeners map.
-func NewListener(l *configutil.Listener, logger hclog.Logger, logGate io.Writer, ui cli.Ui) (net.Listener, map[string]string, listenerutil.ReloadableCertGetter, error) {
+func NewListener(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (net.Listener, map[string]string, listenerutil.ReloadableCertGetter, error) {
 	f, ok := BuiltinListeners[l.Type]
 	if !ok {
 		return nil, nil, nil, fmt.Errorf("unknown listener type: %q", l.Type)
 	}
 
-	return f(l, logger, logGate, ui)
+	return f(l, logger, ui)
 }
 
 func listenerWrapProxy(ln net.Listener, l *configutil.Listener) (net.Listener, error) {

@@ -40,7 +40,7 @@ func TestNewProviderConfig(t *testing.T) {
 			"test": &testProviderConfig{},
 		}
 
-		theProvider, err := NewProviderConfig(context.Background(), jc, pMap)
+		theProvider, err := NewProviderConfig(t.Context(), jc, pMap)
 		assert.NoError(t, err)
 		assert.Equal(t, "yes", theProvider.(*testProviderConfig).initialized)
 
@@ -54,7 +54,7 @@ func TestNewProviderConfig(t *testing.T) {
 			"test": &testProviderConfig{},
 		}
 
-		theProvider, err := NewProviderConfig(context.Background(), jc, pMap)
+		theProvider, err := NewProviderConfig(t.Context(), jc, pMap)
 		assert.NoError(t, err)
 		assert.Nil(t, theProvider)
 	})
@@ -69,7 +69,7 @@ func TestNewProviderConfig(t *testing.T) {
 			"test": &testProviderConfig{},
 		}
 
-		theProvider, err := NewProviderConfig(context.Background(), jc, pMap)
+		theProvider, err := NewProviderConfig(t.Context(), jc, pMap)
 		assert.EqualError(t, err, "'provider' field not found in provider_config")
 		assert.Nil(t, theProvider)
 	})
@@ -85,7 +85,7 @@ func TestNewProviderConfig(t *testing.T) {
 			"not-test": &testProviderConfig{},
 		}
 
-		theProvider, err := NewProviderConfig(context.Background(), jc, pMap)
+		theProvider, err := NewProviderConfig(t.Context(), jc, pMap)
 		assert.EqualError(t, err, "provider \"test\" not found in custom providers")
 		assert.Nil(t, theProvider)
 	})
@@ -100,7 +100,7 @@ func TestNewProviderConfig(t *testing.T) {
 			"test": &testProviderConfig{},
 		}
 
-		theProvider, err := NewProviderConfig(context.Background(), jc, pMap)
+		theProvider, err := NewProviderConfig(t.Context(), jc, pMap)
 		assert.EqualError(t, err, "'provider' field not found in provider_config")
 		assert.Nil(t, theProvider)
 	})
@@ -116,7 +116,7 @@ func TestNewProviderConfig(t *testing.T) {
 			"test": &testProviderConfig{throwError: true},
 		}
 
-		theProvider, err := NewProviderConfig(context.Background(), jc, pMap)
+		theProvider, err := NewProviderConfig(t.Context(), jc, pMap)
 		assert.EqualError(t, err, "error initializing \"test\" provider_config: i'm throwing an error")
 		assert.Nil(t, theProvider)
 	})

@@ -153,7 +153,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 		logger.Trace("wrote dh param file", "path", dhpath)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 
 	var fileNameToUseAsPath string
 	if useSymlink {

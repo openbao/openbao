@@ -4,7 +4,6 @@
 package kerberos
 
 import (
-	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -27,7 +26,7 @@ func getTestBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	}
 
 	b := Backend()
-	if err := b.Setup(context.Background(), config); err != nil {
+	if err := b.Setup(t.Context(), config); err != nil {
 		t.Fatalf("unable to create backend: %v", err)
 	}
 
@@ -52,7 +51,7 @@ func TestConfig_ReadWrite(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err: %s resp: %#v\n", err, resp)
 	}
@@ -64,7 +63,7 @@ func TestConfig_ReadWrite(t *testing.T) {
 		Data:      nil,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err: %s resp: %#v\n", err, resp)
 	}
@@ -107,7 +106,7 @@ func testConfigWriteError(t *testing.T, b logical.Backend, storage logical.Stora
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}

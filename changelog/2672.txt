@@ -1,0 +1,3 @@
+```release-note:bug
+core/metrics: fix count of leases/tokens/kv-secrets/entities metric not being emitted.
+```

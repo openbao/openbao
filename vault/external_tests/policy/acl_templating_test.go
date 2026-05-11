@@ -216,7 +216,7 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 
 	// Test that adding group membership now allows access
 	client.SetToken(rootToken)
-	resp, err = client.Logical().Write("identity/group", map[string]interface{}{
+	_, err = client.Logical().Write("identity/group", map[string]interface{}{
 		"id": foobarGroupID,
 		"member_entity_ids": []string{
 			entityID,

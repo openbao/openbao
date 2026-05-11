@@ -1,0 +1,88 @@
+---
+sidebar_label: Shared Listener Config
+description: |-
+  Shared config options for every listener type.
+---
+
+# Shared listener parameters
+
+There is config that is common between all listeners.
+
+## Client certificate header parameters
+
+- `x_forwarded_for_client_cert_header` `(string: "")` -
+  Specifies the header to be used for client certificate authentication. This is required
+  if [Client Certificate Auth](../../auth/cert.mdx) is used and your server is behind a reverse
+  proxy. It is recommended to have this set to the canonical `Client-Cert` header as defined in
+  [RFC 9440](https://www.rfc-editor.org/rfc/rfc9440.html). The header value should result in
+  base64 encoded DER at the end of processing.
+
+  :::warning
+
+  **Warning**: This should be used with `x_forwarded_for_authorized_addrs` set and
+  `x_forwarded_for_reject_not_present` and `x_forwarded_for_reject_not_authorized`
+  set to true if using the [`tcp`][tcp-listener] listener. Otherwise, if a direct request is made,
+  a public cert could be used without proper validation of the connection.
+  :::
+
+- `x_forwarded_for_client_cert_decoders` `(string array: [])` -
+  List of processors to handle `x_forwarded_for_client_cert_header`
+  These are processed in the order of the array.
+
+  Available values are
+  - URL - Urldecode the supplied value
+  - PEM - Convert a PEM certificate to base64 encoded DER
+  - RFC9440 - Use base64 encoded DER as defined in [RFC 9440 2.1][RFC 9440 2.1]
+
+  The result of this processing should end up with a base64 encoded DER certificate.
+  If the header value is already base64 encoded DER then no value needs to be set.
+
+  :::info
+
+  **Note:** this implementation is not 1:1 compatible with upstream. The PEM encoder
+  is called DER in upstream. This was changed to avoid confusion and to keep it in line
+  with the other decoder names. Also, this was changed from a comma seperated string to a full
+  list to allow easier implementation.
+
+  :::
+
+- `x_forwarded_for_client_cert_keep_not_forwarded` `(bool: false)` - allows
+  keeping headers on non-forwarded requests. This is dangerous to enable as
+  it means arbitrary clients can set these values.
+
+- `x_forwarded_for_client_cert_keep_unauthorized` `(bool: false)` - allows
+  keeping headers on non-forwarded requests. This is dangerous to enable as
+  it means that clients connected to unauthorized forwarders (or, directly
+  to OpenBao) could set these headers.
+
+### Example configs
+
+#### NGINX
+
+OpenBao config
+```hcl
+listener "tcp" {
+  address = "127.0.0.1:8200"
+  x_forwarded_for_authorized_addrs = "127.0.0.1"
+  x_forwarded_for_reject_not_authorized = true
+  x_forwarded_for_reject_not_present = true
+  x_forwarded_for_client_cert_header = "Client-Cert"
+  x_forwarded_for_client_cert_decoders = ["URL", "PEM"]
+}
+```
+
+NGINX config snippet
+```
+location / {
+    ...
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header Client-Cert       $ssl_client_escaped_cert;
+    ...
+}
+```
+
+
+
+[RFC 9440 2.1]: https://www.rfc-editor.org/rfc/rfc9440.html#section-2.1
+[tcp-listener]: tcp.mdx#tcp-listener-parameters

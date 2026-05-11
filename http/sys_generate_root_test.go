@@ -4,7 +4,6 @@
 package http
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -218,7 +217,7 @@ func enableNoopAudit(t *testing.T, token string, core *vault.Core) {
 			"type": "noop",
 		},
 	}
-	resp, err := core.HandleRequest(namespace.RootContext(context.Background()), auditReq)
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), auditReq)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -224,13 +224,12 @@ At some point, we should deprecate support for PostgreSQL 9.5 and
 enforce a new minimum. Whether this will have `ha_enabled=true` by
 default will be up for discussion then.
 
-We should document that we do not intend to add the PostgreSQL
-equivalent of the [`sys/storage/raft/snapshot`](/api-docs/system/storage/raft/#take-a-snapshot-of-the-raft-cluster)
-endpoint, and instead should rely on native, database-level [backup andd
-restore procedures](https://www.postgresql.org/docs/current/backup.html).
-This will be possible and durable especially after the remaining work
-of [using transactions (#607)](https://github.com/openbao/openbao/issues/607)
-finishes.
+We should document that we do not intend to add the PostgreSQL equivalent of the
+[`sys/storage/raft/snapshot`](/api-docs/system/storage/raft/#take-a-snapshot-of-the-raft-cluster)
+endpoint, and instead should rely on native, database-level [backup and restore
+procedures](https://www.postgresql.org/docs/current/backup.html). This will be
+possible and durable especially after the remaining work of [using transactions
+(#607)](https://github.com/openbao/openbao/issues/607) finishes.
 
 ## Rationale and Alternatives
 

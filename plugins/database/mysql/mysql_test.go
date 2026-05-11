@@ -156,7 +156,7 @@ func testInitialize(t *testing.T, rootPassword string) {
 		t.Run(name, func(t *testing.T) {
 			db := newMySQL(DefaultUserNameTemplate)
 			defer dbtesting.AssertClose(t, db)
-			initResp, err := db.Initialize(context.Background(), test.initRequest)
+			initResp, err := db.Initialize(t.Context(), test.initRequest)
 			if test.expectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -305,10 +305,10 @@ func TestMySQL_NewUser_nonLegacy(t *testing.T) {
 
 			db := newMySQL(DefaultUserNameTemplate)
 			defer db.Close()
-			_, err := db.Initialize(context.Background(), initReq)
+			_, err := db.Initialize(t.Context(), initReq)
 			require.NoError(t, err)
 
-			userResp, err := db.NewUser(context.Background(), test.newUserReq)
+			userResp, err := db.NewUser(t.Context(), test.newUserReq)
 			if test.expectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -459,10 +459,10 @@ func TestMySQL_NewUser_legacy(t *testing.T) {
 
 			db := newMySQL(DefaultLegacyUserNameTemplate)
 			defer db.Close()
-			_, err := db.Initialize(context.Background(), initReq)
+			_, err := db.Initialize(t.Context(), initReq)
 			require.NoError(t, err)
 
-			userResp, err := db.NewUser(context.Background(), test.newUserReq)
+			userResp, err := db.NewUser(t.Context(), test.newUserReq)
 			if test.expectErr && err == nil {
 				t.Fatal("err expected, got nil")
 			}
@@ -509,7 +509,7 @@ func TestMySQL_RotateRootCredentials(t *testing.T) {
 			}
 
 			// Give a timeout just in case the test decides to be problematic
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
 
 			initReq := dbplugin.InitializeRequest{
@@ -519,7 +519,7 @@ func TestMySQL_RotateRootCredentials(t *testing.T) {
 
 			db := newMySQL(DefaultUserNameTemplate)
 			defer db.Close()
-			_, err := db.Initialize(context.Background(), initReq)
+			_, err := db.Initialize(t.Context(), initReq)
 			if err != nil {
 				t.Fatalf("err: %s", err)
 			}
@@ -598,7 +598,7 @@ func TestMySQL_DeleteUser(t *testing.T) {
 
 	db := newMySQL(DefaultUserNameTemplate)
 	defer db.Close()
-	_, err := db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(t.Context(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -627,7 +627,7 @@ func TestMySQL_DeleteUser(t *testing.T) {
 			}
 
 			// Give a timeout just in case the test decides to be problematic
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
 
 			userResp, err := db.NewUser(ctx, createReq)
@@ -645,7 +645,7 @@ func TestMySQL_DeleteUser(t *testing.T) {
 					Commands: test.revokeStmts,
 				},
 			}
-			_, err = db.DeleteUser(context.Background(), deleteReq)
+			_, err = db.DeleteUser(t.Context(), deleteReq)
 			if err != nil {
 				t.Fatalf("err: %s", err)
 			}
@@ -656,7 +656,7 @@ func TestMySQL_DeleteUser(t *testing.T) {
 
 			if test.deleteTwice { // revoke again https://openbao.org/docs/plugins/plugin-authors-guide/#revoke-operations-should-ignore-not-found-errors
 				t.Log("calling delete again")
-				_, err = db.DeleteUser(context.Background(), deleteReq)
+				_, err = db.DeleteUser(t.Context(), deleteReq)
 				if err != nil {
 					t.Fatalf("err: %s", err)
 				}
@@ -712,12 +712,12 @@ func TestMySQL_UpdateUser(t *testing.T) {
 			}
 
 			// Give a timeout just in case the test decides to be problematic
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
 
 			db := newMySQL(DefaultUserNameTemplate)
 			defer db.Close()
-			_, err := db.Initialize(context.Background(), initReq)
+			_, err := db.Initialize(t.Context(), initReq)
 			if err != nil {
 				t.Fatalf("err: %s", err)
 			}
@@ -764,7 +764,7 @@ func createTestMySQLUser(t *testing.T, connURL, username, password, query string
 	defer db.Close()
 
 	// Start a transaction
-	ctx := context.Background()
+	ctx := t.Context()
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatal(err)

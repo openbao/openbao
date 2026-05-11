@@ -53,7 +53,7 @@ func getBackend(t *testing.T, throwsErr bool) (*backend, logical.Storage) {
 	b.credRotationQueue = queue.New()
 	// Create a context with a cancel method for processing any WAL entries and
 	// populating the queue
-	initCtx := context.Background()
+	initCtx := t.Context()
 	ictx, cancel := context.WithCancel(initCtx)
 	b.cancelQueue = cancel
 

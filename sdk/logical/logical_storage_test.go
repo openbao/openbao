@@ -1,7 +1,6 @@
 package logical
 
 import (
-	"context"
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
@@ -36,7 +35,7 @@ func TestStartTxStorage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := &Request{Storage: tt.initialStorage}
-			rollback, err := StartTxStorage(context.Background(), req)
+			rollback, err := StartTxStorage(t.Context(), req)
 			assert.NoError(t, err)
 			assert.NotNil(t, rollback)
 			assert.IsType(t, func() {}, rollback)
@@ -62,7 +61,7 @@ func TestEndTxStorage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := &Request{Storage: tt.initialStorage}
-			err := EndTxStorage(context.Background(), req)
+			err := EndTxStorage(t.Context(), req)
 			assert.NoError(t, err)
 			assert.IsType(t, tt.finalStorage, req.Storage)
 			assert.Nil(t, req.OriginalStorage)
@@ -86,7 +85,7 @@ func makeStorage(t *testing.T) Storage {
 func makeTxStorage(t *testing.T) Transaction {
 	logicalStorage := makeStorage(t)
 	if txStorage, ok := logicalStorage.(TransactionalStorage); ok {
-		txn, err := txStorage.BeginTx(context.Background())
+		txn, err := txStorage.BeginTx(t.Context())
 		if err != nil {
 			t.Fatalf("err: %s", err)
 		}

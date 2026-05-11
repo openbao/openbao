@@ -309,6 +309,10 @@ func (s *encryptedKeyStorage) encryptPath(path string) (string, error) {
 		return s.prefix, nil
 	}
 
+	if logical.IsRelativePath(path) {
+		return "", logical.ErrRelativePath
+	}
+
 	path = paths.Clean(path)
 
 	// Trim the prefix if it starts with a "/"

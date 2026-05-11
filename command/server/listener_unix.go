@@ -4,7 +4,6 @@
 package server
 
 import (
-	"io"
 	"net"
 
 	"github.com/hashicorp/cli"
@@ -13,7 +12,7 @@ import (
 	"github.com/openbao/openbao/helper/listenerutil"
 )
 
-func unixListenerFactory(l *configutil.Listener, _ hclog.Logger, _ io.Writer, ui cli.Ui) (net.Listener, map[string]string, listenerutil.ReloadableCertGetter, error) {
+func unixListenerFactory(l *configutil.Listener, _ hclog.Logger, ui cli.Ui) (net.Listener, map[string]string, listenerutil.ReloadableCertGetter, error) {
 	addr := l.Address
 	if addr == "" {
 		addr = "/run/vault.sock"

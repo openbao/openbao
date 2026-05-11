@@ -28,6 +28,7 @@ export default Controller.extend(CONFIG_ATTRS, {
     this.model.rollbackAttributes();
     this.setProperties(CONFIG_ATTRS);
   },
+
   actions: {
     saveConfig(options = { delete: false }) {
       const isDelete = options.delete;

@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -458,10 +459,8 @@ func (b *kubeAuthBackend) updateTLSConfig(config *kubeConfig) error {
 }
 
 func validateAliasNameSource(source string) error {
-	for _, s := range aliasNameSources {
-		if s == source {
-			return nil
-		}
+	if slices.Contains(aliasNameSources, source) {
+		return nil
 	}
 	return errInvalidAliasNameSource
 }

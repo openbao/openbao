@@ -8,77 +8,17 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	paths "path"
-	"path/filepath"
+	"path"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/certhelpers"
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
-	dockertest "github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v4"
 )
 
-func Test_addTLStoDSN(t *testing.T) {
-	type testCase struct {
-		rootUrl        string
-		tlsConfigName  string
-		expectedResult string
-	}
-
-	tests := map[string]testCase{
-		"no tls, no query string": {
-			rootUrl:        "user:password@tcp(localhost:3306)/test",
-			tlsConfigName:  "",
-			expectedResult: "user:password@tcp(localhost:3306)/test",
-		},
-		"tls, no query string": {
-			rootUrl:        "user:password@tcp(localhost:3306)/test",
-			tlsConfigName:  "tlsTest101",
-			expectedResult: "user:password@tcp(localhost:3306)/test?tls=tlsTest101",
-		},
-		"tls, query string": {
-			rootUrl:        "user:password@tcp(localhost:3306)/test?foo=bar",
-			tlsConfigName:  "tlsTest101",
-			expectedResult: "user:password@tcp(localhost:3306)/test?tls=tlsTest101&foo=bar",
-		},
-		"tls, query string, ? in password": {
-			rootUrl:        "user:pa?ssword?@tcp(localhost:3306)/test?foo=bar",
-			tlsConfigName:  "tlsTest101",
-			expectedResult: "user:pa?ssword?@tcp(localhost:3306)/test?tls=tlsTest101&foo=bar",
-		},
-		"tls, valid tls parameter in query string": {
-			rootUrl:        "user:password@tcp(localhost:3306)/test?tls=true",
-			tlsConfigName:  "",
-			expectedResult: "user:password@tcp(localhost:3306)/test?tls=true",
-		},
-	}
-
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			tCase := mySQLConnectionProducer{
-				ConnectionURL: test.rootUrl,
-				tlsConfigName: test.tlsConfigName,
-			}
-
-			actual, err := tCase.addTLStoDSN()
-			if err != nil {
-				t.Fatalf("error occurred in test: %s", err)
-			}
-			if actual != test.expectedResult {
-				t.Fatalf("generated: %s, expected: %s", actual, test.expectedResult)
-			}
-		})
-	}
-}
-
 func TestInit_clientTLS(t *testing.T) {
-	t.Skip("Skipping this test because CircleCI can't mount the files we need without further investigation: " +
-		"https://support.circleci.com/hc/en-us/articles/360007324514-How-can-I-mount-volumes-to-docker-containers-")
-
-	// Set up temp directory so we can mount it to the docker container
-	confDir := makeTempDir(t)
-
 	// Create certificates for MySQL authentication
 	caCert := certhelpers.NewCert(t,
 		certhelpers.CommonName("test certificate authority"),
@@ -96,26 +36,26 @@ func TestInit_clientTLS(t *testing.T) {
 		certhelpers.Parent(caCert),
 	)
 
-	writeFile(t, paths.Join(confDir, "ca.pem"), caCert.CombinedPEM(), 0o644)
-	writeFile(t, paths.Join(confDir, "server-cert.pem"), serverCert.Pem, 0o644)
-	writeFile(t, paths.Join(confDir, "server-key.pem"), serverCert.PrivateKeyPEM(), 0o644)
-	writeFile(t, paths.Join(confDir, "client.pem"), clientCert.CombinedPEM(), 0o644)
+	// Set up temp directory so we can mount it to the docker container
+	confDir := t.TempDir()
+	writeFile(t, path.Join(confDir, "ca.pem"), caCert.CombinedPEM(), 0o644)
+	writeFile(t, path.Join(confDir, "server-cert.pem"), serverCert.Pem, 0o644)
+	writeFile(t, path.Join(confDir, "server-key.pem"), serverCert.PrivateKeyPEM(), 0o644)
+	writeFile(t, path.Join(confDir, "client.pem"), clientCert.CombinedPEM(), 0o644)
 
 	// //////////////////////////////////////////////////////
 	// Set up MySQL config file
 	rawConf := `
 [mysqld]
-ssl
-ssl-ca=/etc/mysql/ca.pem
-ssl-cert=/etc/mysql/server-cert.pem
-ssl-key=/etc/mysql/server-key.pem`
+ssl-ca=/etc/mysql/certs/ca.pem
+ssl-cert=/etc/mysql/certs/server-cert.pem
+ssl-key=/etc/mysql/certs/server-key.pem`
 
-	writeFile(t, paths.Join(confDir, "my.cnf"), []byte(rawConf), 0o644)
+	writeFile(t, path.Join(confDir, "my.cnf"), []byte(rawConf), 0o644)
 
 	// //////////////////////////////////////////////////////
 	// Start MySQL container
-	retURL, cleanup := startMySQLWithTLS(t, "5.7", confDir)
-	defer cleanup()
+	retURL := startMySQLWithTLS(t, "8.0", confDir)
 
 	// //////////////////////////////////////////////////////
 	// Set up x509 user
@@ -134,7 +74,7 @@ ssl-key=/etc/mysql/server-key.pem`
 		"tls_ca":              caCert.Pem,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	_, err := mysql.Init(ctx, conf, true)
@@ -169,72 +109,34 @@ ssl-key=/etc/mysql/server-key.pem`
 	}
 }
 
-func makeTempDir(t *testing.T) string {
-	// Convert the directory to an absolute path because docker needs it when mounting
-	confDir, err := filepath.Abs(filepath.Clean(t.TempDir()))
-	if err != nil {
-		t.Fatalf("Unable to determine where temp directory is on absolute path: %s", err)
-	}
-	return confDir
-}
-
-func startMySQLWithTLS(t *testing.T, version string, confDir string) (retURL string, cleanup func()) {
+func startMySQLWithTLS(t *testing.T, version, confDir string) string {
 	if os.Getenv("MYSQL_URL") != "" {
-		return os.Getenv("MYSQL_URL"), func() {}
+		return os.Getenv("MYSQL_URL")
 	}
 
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		t.Fatalf("Failed to connect to docker: %s", err)
-	}
-	pool.MaxWait = 30 * time.Second
-
-	containerName := "mysql-unit-test"
-
-	// Remove previously running container if it is still running because cleanup failed
-	err = pool.RemoveContainerByName(containerName)
-	if err != nil {
-		t.Fatalf("Unable to remove old running containers: %s", err)
-	}
-
+	pool := dockertest.NewPoolT(t, "", dockertest.WithMaxWait(30*time.Second))
 	username := "root"
 	password := "x509test"
 
-	runOpts := &dockertest.RunOptions{
-		Name:       containerName,
-		Repository: "mysql",
-		Tag:        version,
-		Cmd:        []string{"--defaults-extra-file=/etc/mysql/my.cnf", "--auto-generate-certs=OFF"},
-		Env:        []string{fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", password)},
-		// Mount the directory from local filesystem into the container
-		Mounts: []string{
-			fmt.Sprintf("%s:/etc/mysql", confDir),
-		},
-	}
-
-	resource, err := pool.RunWithOptions(runOpts)
-	if err != nil {
-		t.Fatalf("Could not start local mysql docker container: %s", err)
-	}
-	resource.Expire(30)
-
-	cleanup = func() {
-		err := pool.Purge(resource)
-		if err != nil {
-			t.Fatalf("Failed to cleanup local container: %s", err)
-		}
-	}
+	resource := pool.RunT(t,
+		"mysql",
+		dockertest.WithTag(version),
+		dockertest.WithCmd([]string{"--auto-generate-certs=OFF"}),
+		dockertest.WithEnv([]string{fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", password)}),
+		// Mount certs and config from local filesystem into the container.
+		dockertest.WithMounts([]string{
+			fmt.Sprintf("%s:/etc/mysql/conf.d/my.cnf", path.Join(confDir, "my.cnf")),
+			fmt.Sprintf("%s:/etc/mysql/certs", confDir),
+		}),
+	)
 
 	dsn := fmt.Sprintf("{{username}}:{{password}}@tcp(localhost:%s)/mysql", resource.GetPort("3306/tcp"))
-
 	url := dbutil.QueryHelper(dsn, map[string]string{
 		"username": username,
 		"password": password,
 	})
 	// exponential backoff-retry
-	err = pool.Retry(func() error {
-		var err error
-
+	err := pool.Retry(t.Context(), 10*time.Second, func() error {
 		db, err := sql.Open("mysql", url)
 		if err != nil {
 			t.Logf("err: %s", err)
@@ -244,11 +146,10 @@ func startMySQLWithTLS(t *testing.T, version string, confDir string) (retURL str
 		return db.Ping()
 	})
 	if err != nil {
-		cleanup()
 		t.Fatalf("Could not connect to mysql docker container: %s", err)
 	}
 
-	return dsn, cleanup
+	return dsn
 }
 
 func connect(t *testing.T, dsn string) (db *sql.DB) {
@@ -271,14 +172,14 @@ func connect(t *testing.T, dsn string) (db *sql.DB) {
 }
 
 func setUpX509User(t *testing.T, db *sql.DB, cert certhelpers.Certificate) (username string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	username = cert.Template.Subject.CommonName
 
 	cmds := []string{
 		fmt.Sprintf("CREATE USER %s IDENTIFIED BY '' REQUIRE X509", username),
-		fmt.Sprintf("GRANT ALL ON mysql.* TO '%s'@'%s' REQUIRE X509", username, "%"),
+		fmt.Sprintf("GRANT ALL ON mysql.* TO '%s'@'%%'", username),
 	}
 
 	for _, cmd := range cmds {
@@ -309,5 +210,91 @@ func writeFile(t *testing.T, filename string, data []byte, perms os.FileMode) {
 	err := os.WriteFile(filename, data, perms)
 	if err != nil {
 		t.Fatalf("Unable to write to file [%s]: %s", filename, err)
+	}
+}
+
+func Test_parseMultiHostDSN(t *testing.T) {
+	type testCase struct {
+		connectionURL         string
+		expectedHosts         []string
+		expectedConnectionURL string
+	}
+
+	tests := map[string]testCase{
+		"single host": {
+			connectionURL:         "user:password@tcp(localhost:3306)/test",
+			expectedHosts:         []string{"localhost:3306"},
+			expectedConnectionURL: "user:password@tcp(localhost:3306)/test",
+		},
+		"multiple hosts": {
+			connectionURL:         "user:password@tcp(host1:3306,host2:3307)/test",
+			expectedHosts:         []string{"host1:3306", "host2:3307"},
+			expectedConnectionURL: "user:password@tcp(host1:3306)/test",
+		},
+		"multiple hosts without ports": {
+			connectionURL:         "user:password@tcp(host1,host2)/test",
+			expectedHosts:         []string{"host1:3306", "host2:3306"},
+			expectedConnectionURL: "user:password@tcp(host1:3306)/test",
+		},
+		"unix socket": {
+			connectionURL:         "user:password@unix(/var/run/mysqld/mysqld.sock)/test",
+			expectedHosts:         nil,
+			expectedConnectionURL: "user:password@unix(/var/run/mysqld/mysqld.sock)/test",
+		},
+		"multiple hosts with tls param": {
+			connectionURL:         "user:password@tcp(host1:3306,host2:3307)/test?tls=skip-verify",
+			expectedHosts:         []string{"host1:3306", "host2:3307"},
+			expectedConnectionURL: "user:password@tcp(host1:3306)/test?tls=skip-verify",
+		},
+		"ipv6 single host": {
+			connectionURL:         "user:password@tcp([::1]:3306)/test",
+			expectedHosts:         []string{"[::1]:3306"},
+			expectedConnectionURL: "user:password@tcp([::1]:3306)/test",
+		},
+		"ipv6 without port": {
+			connectionURL:         "user:password@tcp([::1])/test",
+			expectedHosts:         []string{"[::1]:3306"},
+			expectedConnectionURL: "user:password@tcp([::1])/test",
+		},
+		"ipv6 multiple hosts": {
+			connectionURL:         "user:password@tcp([::1]:3306,[::2]:3307)/test",
+			expectedHosts:         []string{"[::1]:3306", "[::2]:3307"},
+			expectedConnectionURL: "user:password@tcp([::1]:3306)/test",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			producer := &mySQLConnectionProducer{
+				ConnectionURL: test.connectionURL,
+			}
+
+			err := producer.parseMultiHostDSN()
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+
+			if !reflect.DeepEqual(producer.hosts, test.expectedHosts) {
+				t.Fatalf("hosts: got %v, expected %v", producer.hosts, test.expectedHosts)
+			}
+
+			if producer.ConnectionURL != test.expectedConnectionURL {
+				t.Fatalf("connectionURL: got %s, expected %s", producer.ConnectionURL, test.expectedConnectionURL)
+			}
+		})
+	}
+}
+
+func Test_dialWithFailover(t *testing.T) {
+	producer := &mySQLConnectionProducer{
+		hosts: []string{"invalid-host-1:3306", "invalid-host-2:3306"},
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+
+	_, err := producer.dialWithFailover(ctx, "tcp", "ignored")
+	if err == nil {
+		t.Fatal("expected error when connecting to invalid hosts")
 	}
 }

@@ -4,7 +4,6 @@
 package integrationtest
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -209,20 +208,20 @@ func checkObjects(t *testing.T, roleConfig map[string]interface{}, isClusterBind
 	// Check the k8s objects that should have been created (all but the ServiceAccount)
 	operation := func() (none struct{}, err error) {
 		if existingRole == "" {
-			exists, err := checkRoleExists(k8sClient, listOptions, roleType)
+			exists, err := checkRoleExists(t, k8sClient, listOptions, roleType)
 			require.NoError(t, err)
 			if exists != shouldExist {
 				return none, fmt.Errorf("%s exists (%v) but should be (%v)", roleType, exists, shouldExist)
 			}
 		}
 
-		exists, err := checkRoleBindingExists(k8sClient, listOptions, isClusterBinding)
+		exists, err := checkRoleBindingExists(t, k8sClient, listOptions, isClusterBinding)
 		require.NoError(t, err)
 		if exists != shouldExist {
 			return none, fmt.Errorf("binding (cluster %v) exists (%v) but should be (%v)", isClusterBinding, exists, shouldExist)
 		}
 
-		exists, err = checkServiceAccountExists(k8sClient, listOptions)
+		exists, err = checkServiceAccountExists(t, k8sClient, listOptions)
 		require.NoError(t, err)
 		// No permission to create services accounts, so they should never get created
 		if exists {
@@ -240,10 +239,10 @@ func checkObjects(t *testing.T, roleConfig map[string]interface{}, isClusterBind
 	assert.NoError(t, err, "timed out waiting for objects to exist=%v", shouldExist)
 }
 
-func checkRoleExists(k8sClient kubernetes.Interface, listOptions metav1.ListOptions, roleType string) (bool, error) {
+func checkRoleExists(t *testing.T, k8sClient kubernetes.Interface, listOptions metav1.ListOptions, roleType string) (bool, error) {
 	switch roleType {
 	case "role":
-		roles, err := k8sClient.RbacV1().Roles("test").List(context.Background(), listOptions)
+		roles, err := k8sClient.RbacV1().Roles("test").List(t.Context(), listOptions)
 		if err != nil {
 			return false, err
 		}
@@ -252,7 +251,7 @@ func checkRoleExists(k8sClient kubernetes.Interface, listOptions metav1.ListOpti
 		}
 		return len(roles.Items) > 0, nil
 	case "clusterrole":
-		roles, err := k8sClient.RbacV1().ClusterRoles().List(context.Background(), listOptions)
+		roles, err := k8sClient.RbacV1().ClusterRoles().List(t.Context(), listOptions)
 		if err != nil {
 			return false, err
 		}
@@ -265,9 +264,9 @@ func checkRoleExists(k8sClient kubernetes.Interface, listOptions metav1.ListOpti
 	return false, fmt.Errorf("unknown roleType: %s", roleType)
 }
 
-func checkRoleBindingExists(k8sClient kubernetes.Interface, listOptions metav1.ListOptions, isClusterBinding bool) (bool, error) {
+func checkRoleBindingExists(t *testing.T, k8sClient kubernetes.Interface, listOptions metav1.ListOptions, isClusterBinding bool) (bool, error) {
 	if isClusterBinding {
-		clusterBindings, err := k8sClient.RbacV1().ClusterRoleBindings().List(context.Background(), listOptions)
+		clusterBindings, err := k8sClient.RbacV1().ClusterRoleBindings().List(t.Context(), listOptions)
 		if err != nil {
 			return false, err
 		}
@@ -276,7 +275,7 @@ func checkRoleBindingExists(k8sClient kubernetes.Interface, listOptions metav1.L
 		}
 		return len(clusterBindings.Items) > 0, nil
 	} else {
-		bindings, err := k8sClient.RbacV1().RoleBindings("test").List(context.Background(), listOptions)
+		bindings, err := k8sClient.RbacV1().RoleBindings("test").List(t.Context(), listOptions)
 		if err != nil {
 			return false, err
 		}
@@ -287,8 +286,8 @@ func checkRoleBindingExists(k8sClient kubernetes.Interface, listOptions metav1.L
 	}
 }
 
-func checkServiceAccountExists(k8sClient kubernetes.Interface, listOptions metav1.ListOptions) (bool, error) {
-	acct, err := k8sClient.CoreV1().ServiceAccounts("test").List(context.Background(), listOptions)
+func checkServiceAccountExists(t *testing.T, k8sClient kubernetes.Interface, listOptions metav1.ListOptions) (bool, error) {
+	acct, err := k8sClient.CoreV1().ServiceAccounts("test").List(t.Context(), listOptions)
 	if err != nil {
 		return false, err
 	}

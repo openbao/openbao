@@ -5,7 +5,7 @@
 
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
-import { click, fillIn, render, triggerEvent } from '@ember/test-helpers';
+import { click, fillIn, find, render, triggerEvent } from '@ember/test-helpers';
 import hbs from 'htmlbars-inline-precompile';
 import sinon from 'sinon';
 import Pretender from 'pretender';
@@ -121,7 +121,9 @@ module('Integration | Component | policy-form', function (hooks) {
     await click(SELECTORS.uploadFileToggle);
     assert.dom(SELECTORS.policyUpload).exists({ count: 1 }, 'Policy upload is shown after toggle');
     assert.dom(SELECTORS.policyEditor).doesNotExist('Policy editor is not shown');
-    await triggerEvent(SELECTORS.policyUpload, 'change', { files: [this.file] });
+    const input = find(SELECTORS.policyUpload);
+    Object.defineProperty(input, 'files', { value: [this.file], configurable: true });
+    await triggerEvent(SELECTORS.policyUpload, 'change');
     assert.dom(SELECTORS.nameInput).hasValue('test-policy', 'it fills in policy name');
     await click(SELECTORS.saveButton);
     assert.propEqual(this.onSave.lastCall.args[0].policy, policy, 'policy content saves in correct format');

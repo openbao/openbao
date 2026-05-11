@@ -1,0 +1,3 @@
+```release-note:security
+auth/jwt: prompt for confirmation during direct callback mode to authorize OpenBao token issuance. CVE-2026-33757.
+```

@@ -139,7 +139,7 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 			}
 
 			// login for default lockout threshold times with wrong credentials
-			for i := 0; i < UserLockoutThresholdDefault; i++ {
+			for range UserLockoutThresholdDefault {
 				_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]interface{}{
 					"password": "wrongPassword",
 				})

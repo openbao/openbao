@@ -4,7 +4,6 @@
 package rabbitmq
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -17,7 +16,7 @@ func TestBackend_config_lease_RU(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	b := Backend()
-	if err = b.Setup(context.Background(), config); err != nil {
+	if err = b.Setup(t.Context(), config); err != nil {
 		t.Fatal(err)
 	}
 
@@ -31,7 +30,7 @@ func TestBackend_config_lease_RU(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      configData,
 	}
-	resp, err = b.HandleRequest(context.Background(), configReq)
+	resp, err = b.HandleRequest(t.Context(), configReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr:%s", resp, err)
 	}
@@ -40,7 +39,7 @@ func TestBackend_config_lease_RU(t *testing.T) {
 	}
 
 	configReq.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), configReq)
+	resp, err = b.HandleRequest(t.Context(), configReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr:%s", resp, err)
 	}

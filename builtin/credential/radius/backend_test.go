@@ -44,7 +44,7 @@ func prepareRadiusTestContainer(t *testing.T) (func(), string, int) {
 	// ranges than Docker).
 	//
 	// See also: https://freeradius.org/radiusd/man/clients.conf.html
-	ctx := context.Background()
+	ctx := t.Context()
 	clientsConfig := `
 client 0.0.0.0/1 {
  ipaddr = 0.0.0.0/1
@@ -97,7 +97,7 @@ COPY clients.conf /etc/raddb/clients.conf
 
 	t.Logf("Image build output: %v", string(output))
 
-	svc, err := runner.StartService(context.Background(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
+	svc, err := runner.StartService(t.Context(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
 		time.Sleep(2 * time.Second)
 		return docker.NewServiceHostPort(host, port), nil
 	})
@@ -111,7 +111,7 @@ COPY clients.conf /etc/raddb/clients.conf
 }
 
 func TestBackend_Config(t *testing.T) {
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	b, err := Factory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: testSysTTL,
@@ -164,7 +164,7 @@ func TestBackend_Config(t *testing.T) {
 }
 
 func TestBackend_users(t *testing.T) {
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	b, err := Factory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: testSysTTL,
@@ -186,7 +186,7 @@ func TestBackend_users(t *testing.T) {
 }
 
 func TestBackend_acceptance(t *testing.T) {
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	b, err := Factory(t.Context(), &logical.BackendConfig{
 		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: testSysTTL,

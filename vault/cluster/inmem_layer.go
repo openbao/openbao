@@ -383,7 +383,7 @@ func NewInmemLayerCluster(clusterName string, nodes int, logger log.Logger) (*In
 	}
 
 	layers := make([]*InmemLayer, nodes)
-	for i := 0; i < nodes; i++ {
+	for i := range nodes {
 		layers[i] = NewInmemLayer(fmt.Sprintf("%s_node_%d", clusterName, i), logger)
 	}
 

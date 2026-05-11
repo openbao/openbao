@@ -22,17 +22,21 @@
 
 export default function handleHasManySelection(selectedIds, modelCollection, store, modelRecord) {
   // first check for existing models that have been removed from selection
-  modelCollection.forEach((model) => {
-    if (!selectedIds.includes(model.id)) {
-      modelCollection.removeObject(model);
+  const toRemove = modelCollection.filter((model) => !selectedIds.includes(model.id));
+  toRemove.forEach((model) => {
+    const idx = modelCollection.indexOf(model);
+    if (idx !== -1) {
+      modelCollection.splice(idx, 1);
     }
   });
   // now check for selected items that don't exist and add them to the model
-  const modelIds = modelCollection.mapBy('id');
+  const modelIds = modelCollection.map((x) => x.id);
   selectedIds.forEach((id) => {
     if (!modelIds.includes(id)) {
       const model = store.peekRecord(modelRecord, id);
-      modelCollection.addObject(model);
+      if (!modelCollection.includes(model)) {
+        modelCollection.push(model);
+      }
     }
   });
 }

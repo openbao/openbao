@@ -94,7 +94,7 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 	pBackend := newTestBackend(t)
 	core.physical = pBackend
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	inkeys := [][]byte{[]byte("grist"), []byte("house")}
 	if err := autoSeal.SetStoredKeys(ctx, inkeys); err != nil {

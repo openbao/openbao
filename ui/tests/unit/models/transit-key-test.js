@@ -24,7 +24,7 @@ module('Unit | Model | transit key', function (hooks) {
       })
     );
 
-    const supportedActions = model.get('supportedActions').map((k) => k.name);
+    const supportedActions = model.supportedActions.map((k) => k.name);
     assert.deepEqual(['encrypt', 'decrypt', 'datakey', 'rewrap', 'hmac', 'verify'], supportedActions);
   });
 
@@ -38,14 +38,10 @@ module('Unit | Model | transit key', function (hooks) {
         latestVersion: 5,
       })
     );
-    assert.deepEqual([5, 4, 3, 2, 1], model.get('encryptionKeyVersions'), 'lists all available versions');
+    assert.deepEqual([5, 4, 3, 2, 1], model.encryptionKeyVersions, 'lists all available versions');
     run(() => {
       model.set('minDecryptionVersion', 3);
-      assert.deepEqual(
-        [5, 4, 3],
-        model.get('encryptionKeyVersions'),
-        'adjusts to a change in minDecryptionVersion'
-      );
+      assert.deepEqual([5, 4, 3], model.encryptionKeyVersions, 'adjusts to a change in minDecryptionVersion');
       done();
     });
   });
@@ -63,13 +59,13 @@ module('Unit | Model | transit key', function (hooks) {
 
     assert.deepEqual(
       [5, 4, 3, 2, 1],
-      model.get('keysForEncryption'),
+      model.keysForEncryption,
       'lists all available versions when no min is set'
     );
 
     run(() => {
       model.set('minEncryptionVersion', 4);
-      assert.deepEqual([5, 4], model.get('keysForEncryption'), 'calculates using minEncryptionVersion');
+      assert.deepEqual([5, 4], model.keysForEncryption, 'calculates using minEncryptionVersion');
       done();
     });
   });

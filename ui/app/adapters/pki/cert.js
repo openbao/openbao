@@ -54,7 +54,7 @@ export default Adapter.extend({
       return;
     }
     const id = snapshot.id;
-    const backend = snapshot.record.get('backend');
+    const backend = snapshot.record.backend;
     const data = {
       serial_number: id,
     };

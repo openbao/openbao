@@ -51,12 +51,20 @@ func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAcc
 		return nil, err
 	}
 
+	// check if we are trying to access protected path.
+	for _, p := range protectedPaths {
+		if strings.HasPrefix(rest, p) {
+			return nil, fmt.Errorf("cannot access %q", rest)
+		}
+	}
+
 	// These paths use the "upper" barrier, which is the direct physical layer
 	// for the root namespace.
 	specialPath := rest == barrierSealConfigPath || rest == recoverySealConfigPath
 
-	// Fast-path root, we do not need a lookup into the seal manager.
-	if ns.ID == namespace.RootNamespaceID {
+	// Fast-path root or deleted namespaces; we do not need a lookup into the
+	// seal manager.
+	if ns == nil || ns.ID == namespace.RootNamespaceID {
 		if specialPath {
 			return &directStorageAccess{physical: b.core.physical}, nil
 		} else {
@@ -64,11 +72,11 @@ func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAcc
 		}
 	}
 
-	// TODO(wslabosz): awaiting seal manager implementation
 	if specialPath {
-		return &secureStorageAccess{barrier: b.core.barrier}, nil
+		parent, _ := ns.ParentPath()
+		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(parent)}, nil
 	} else {
-		return &secureStorageAccess{barrier: b.core.barrier}, nil
+		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)}, nil
 	}
 }
 
@@ -89,14 +97,6 @@ func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, da
 
 	if b.core.recoveryMode {
 		b.logger.Info("reading", "path", path)
-	}
-
-	// Prevent access of protected paths
-	for _, p := range protectedPaths {
-		if strings.HasPrefix(path, p) {
-			err := fmt.Sprintf("cannot read %q", path)
-			return logical.ErrorResponse(err), logical.ErrInvalidRequest
-		}
 	}
 
 	barrier, err := b.storageByPath(ctx, path)
@@ -158,14 +158,6 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 
 	if b.core.recoveryMode {
 		b.logger.Info("writing", "path", path)
-	}
-
-	// Prevent access of protected paths
-	for _, p := range protectedPaths {
-		if strings.HasPrefix(path, p) {
-			err := fmt.Sprintf("cannot write %q", path)
-			return logical.ErrorResponse(err), logical.ErrInvalidRequest
-		}
 	}
 
 	v := data.Get("value").(string)
@@ -248,14 +240,6 @@ func (b *RawBackend) handleRawDelete(ctx context.Context, req *logical.Request, 
 		b.logger.Info("deleting", "path", path)
 	}
 
-	// Prevent access of protected paths
-	for _, p := range protectedPaths {
-		if strings.HasPrefix(path, p) {
-			err := fmt.Sprintf("cannot delete %q", path)
-			return logical.ErrorResponse(err), logical.ErrInvalidRequest
-		}
-	}
-
 	barrier, err := b.storageByPath(ctx, path)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
@@ -282,14 +266,6 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 
 	if b.core.recoveryMode {
 		b.logger.Info("listing", "path", path)
-	}
-
-	// Prevent access of protected paths
-	for _, p := range protectedPaths {
-		if strings.HasPrefix(path, p) {
-			err := fmt.Sprintf("cannot list %q", path)
-			return logical.ErrorResponse(err), logical.ErrInvalidRequest
-		}
 	}
 
 	barrier, err := b.storageByPath(ctx, path)

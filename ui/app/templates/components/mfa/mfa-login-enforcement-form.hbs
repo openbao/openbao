@@ -30,7 +30,7 @@
       {{#if @model.mfa_methods.isFulfilled}}
         <SearchSelect
           @placeholder="Type to search for existing MFA methods"
-          @inputValue={{map-by "id" @model.mfa_methods}}
+          @inputValue={{this.mfaMethodIds}}
           @shouldRenderName={{true}}
           @disallowNewItems={{true}}
           @models={{array "mfa-method"}}

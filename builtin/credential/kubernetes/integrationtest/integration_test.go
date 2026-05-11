@@ -4,7 +4,6 @@
 package integrationtest
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -65,7 +64,7 @@ func createToken(t *testing.T, sa string, audiences []string) string {
 		t.Fatal(err)
 	}
 
-	resp, err := k8sClient.CoreV1().ServiceAccounts("test").CreateToken(context.Background(), sa, &authenticationv1.TokenRequest{
+	resp, err := k8sClient.CoreV1().ServiceAccounts("test").CreateToken(t.Context(), sa, &authenticationv1.TokenRequest{
 		Spec: authenticationv1.TokenRequestSpec{
 			Audiences: audiences,
 		},

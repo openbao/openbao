@@ -1,3 +1,43 @@
+## 2.5.3
+## April 20, 2026
+
+SECURITY:
+
+* auth/cert: Prevent token renewal with different-but-valid certificate. GHSA-7ccv-rp6m-rffr / CVE-2026-39388. [[GH-2932](https://github.com/openbao/openbao/pull/2932)]
+* auth/token: Prevent cross-namespace token renewal, revocation by accessor. GHSA-p49j-v9wc-wg57 / CVE-2026-40264. [[GH-2934](https://github.com/openbao/openbao/pull/2934)]
+* core: Disallow `sys/generate-root/*` by default due to unauthenticated cancellation; use `disable_unauthed_generate_root_endpoints=false` to temporarily re-enable. Upstream HCSEC-2026-08 / CVE-2026-5807. [[GH-2912](https://github.com/openbao/openbao/pull/2912)]
+* core: Forbid request path traversal using `.` and `..` segments by default. If required, set the `unsafe_relative_paths`. Upstream HCSEC-2026-05 / CVE-2026-3605. [[GH-2910](https://github.com/openbao/openbao/pull/2910)]
+* core/plugins: Validate and restrict downloaded plugin binary size from OCI images; set `plugin_download_max_size` to limit the size (defaults to 512MB). GHSA-r65v-xgwc-g56j / CVE-2026-39396. [[GH-2941](https://github.com/openbao/openbao/pull/2941)]
+* core/namespaces: Ensure lease revocation on namespace re-deletion. GHSA-vv66-6rp4-wr4f. [[GH-2935](https://github.com/openbao/openbao/pull/2935)]
+* database/postgresql: Correctly quote schema name in revoke statement. GHSA-6vgr-cp5c-ffx3 / CVE-2026-39946. [[GH-2931](https://github.com/openbao/openbao/pull/2931)]
+
+BUG FIXES:
+
+* command/server: Refuse repeated startup if self-initialization failed on initial run. [[GH-2908](https://github.com/openbao/openbao/pull/2908)]
+* core: Fix namespace invalidation on standby when disable_cache=true is set. [[GH-2822](https://github.com/openbao/openbao/pull/2822)]
+* core: Loosen overly strict check for view path check, strictly forbidding `..` as a substring within path segments. [[GH-2910](https://github.com/openbao/openbao/pull/2910)]
+* secret/database, secret/openldap, secret/rabbitmq: Fix dynamic secret requests failing with an "Internal Server Error" on standby nodes [[GH-2853](https://github.com/openbao/openbao/pull/2853)]
+
+## 2.5.2
+## March 25, 2026
+
+SECURITY:
+
+* auth/jwt: Prevent XSS via `error_description` parameter in `callback_mode=direct` auth methods. CVE-2026-33758. [[GH-2709](https://github.com/openbao/openbao/pull/2709)]
+* auth/jwt: Prompt for confirmation during direct callback mode to authorize OpenBao token issuance. CVE-2026-33757. [[GH-2710](https://github.com/openbao/openbao/pull/2710)]
+
+BUG FIXES:
+
+* command: External token helpers now inherit environment variables from the parent process. [[GH-2570](https://github.com/openbao/openbao/pull/2570)]
+* core/metrics: Fix count of leases/tokens/kv-secrets/entities metric not being emitted. [[GH-2672](https://github.com/openbao/openbao/pull/2672)]
+* core/mounts, core/namespaces: Fix lock ordering in mount deletion racing against namespace updates, causing deadlocks. [[GH-2625](https://github.com/openbao/openbao/pull/2625)]
+* core/seal: Fix `/sys/rotate/root` call rotating both root key and unseal key when using a Shamir Seal, losing all key shares. [[GH-2619](https://github.com/openbao/openbao/pull/2619)]
+* core: Skip re-scheduling lease expiration jobs that need to write to storage when a node unseals in read-only mode. [[GH-2549](https://github.com/openbao/openbao/pull/2549)]
+* core: Fix potential deadlock in JobManager, which can cause mount deletion timeouts. [[GH-2630](https://github.com/openbao/openbao/pull/2630)]
+* http: Forward help requests to active node when unable to handle them on standby with read requests handling disabled. [[GH-2572](https://github.com/openbao/openbao/pull/2572)]
+* identity/oidc: Fix OIDC named key rotation silently skipping in non-root namespaces due to double namespace prefix in storage path lookup. [[GH-2669](https://github.com/openbao/openbao/pull/2669)]
+* raft: Propagate peer join/remove/promote/demote and autopilot read/update requests to active node. [[GH-2574](https://github.com/openbao/openbao/pull/2574)]
+
 ## 2.5.1
 ## February 23, 2026
 
@@ -19,7 +59,7 @@ CHANGES:
 * core/identity: Remove pre-v2.5.0 corrupt namespace identity groups during unseal; corrupt groups need to be recreated by an admin. Check for `deleting corrupt group` in server startup logs. [[GH-2454](https://github.com/openbao/openbao/pull/2454)]
 
 ## 2.5.0
-## Feburary 4, 2026
+## February 4, 2026
 
 SECURITY:
 
@@ -80,7 +120,7 @@ BUG FIXES:
 * auth/jwt: Fix ordering of variable declarations in CEL program roles. [[GH-1854](https://github.com/openbao/openbao/pull/1854)]
 * core/identity: Ensure periodic func only operates on a single namespace at a time, decreasing storage contention. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
 * core/identity: fix corrupt data being stored when referencing `member_group_ids` across namespaces (requires `unsafe_cross_namespace_identity=true`) [[GH-2321](https://github.com/openbao/openbao/pull/2321)]
-* core/namespaces: Ensure namespace creation is interruptable, allowing namespace deletion for cleanup. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
+* core/namespaces: Ensure namespace creation is interruptible, allowing namespace deletion for cleanup. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
 * core/namespaces: Fix deadlock on namespace creation, deletion due to transaction/lock ordering. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
 * core/namespaces: Fix storage failures in namespace creation leading to a total system deadlock. [[GH-2166](https://github.com/openbao/openbao/pull/2166)]
 * core/namespaces: improve recovery from partial deletion of namespaces, preventing server startup failure. [[GH-2188](https://github.com/openbao/openbao/pull/2188)]
@@ -470,7 +510,7 @@ FEATURES:
 * **ACME TLS Listener Certificate Provisioning**: Automatically fetch TLS certificates for OpenBao Server's TCP listeners via an Automatic Certificate Management Environment (ACME - RFC 8555) capable certificate authority (CA). This allows OpenBao to be self-hosted, using a CA contained within the instance to sign the instance's own certificates. [[GH-857](https://github.com/openbao/openbao/pull/857)]
 * **PKCS#11 Auto-Unseal**: Add support for automatic unsealing of OpenBao using a PKCS#11-enabled Hardware Security Module (HSM) or Key Management System (KMS). [[GH-889](https://github.com/openbao/openbao/pull/889)]
 * **Scanning**: introduce the ability to recursively list (scan) within plugins, adding a separate `scan` ACL capability, operation type, HTTP verb (`SCAN` with `GET` fallback via `?scan=true`), API, and CLI support. This also adds support to the KVv1 and KVv2 engines. [[GH-763](https://github.com/openbao/openbao/pull/763)]
-* **Transit**: Add support for key derivation mechansims (derives a new key from a base key).
+* **Transit**: Add support for key derivation mechanisms (derives a new key from a base key).
    - This path uses the named base key and derivation algorithm specific parameters to derive a new named key.
    - Currently, only the ECDH key agreement algorithm is supported: the base key is one's own ECC private key and the "peer_public_key" is the pem-encoded other party's ECC public key.The computed shared secret is the resulting derived key. [[GH-811](https://github.com/openbao/openbao/pull/811)]
 * **UI**: Reintroduction of the WebUI. [[GH-940](https://github.com/openbao/openbao/pull/940)]
@@ -478,7 +518,7 @@ FEATURES:
 
 IMPROVEMENTS:
 
-* audit: modify the hashWalker to handle nested structs without panicing [[GH-887](https://github.com/openbao/openbao/pull/887)]
+* audit: modify the hashWalker to handle nested structs without panicking [[GH-887](https://github.com/openbao/openbao/pull/887)]
 * auth: Use transactions for read-then-write methods in the credential package [[GH-952](https://github.com/openbao/openbao/pull/952)]
 * auth: Use transactions for write and delete config for various auth methods. [[GH-878](https://github.com/openbao/openbao/pull/878)]
 * core/mounts: Allow tuning HMAC request and response parameters on sys/, cubbyhole/, and identity/, enabling auditing of core policy changes. [[GH-921](https://github.com/openbao/openbao/pull/921)]
@@ -515,7 +555,7 @@ FEATURES:
 * **ACME TLS Listener Certificate Provisioning**: Automatically fetch TLS certificates for OpenBao Server's TCP listeners via an Automatic Certificate Management Environment (ACME - RFC 8555) capable certificate authority (CA). This allows OpenBao to be self-hosted, using a CA contained within the instance to sign the instance's own certificates. [[GH-857](https://github.com/openbao/openbao/pull/857)]
 * **PKCS#11 Auto-Unseal**: Add support for automatic unsealing of OpenBao using a PKCS#11-enabled Hardware Security Module (HSM) or Key Management System (KMS). [[GH-889](https://github.com/openbao/openbao/pull/889)]
 * **Scanning**: introduce the ability to recursively list (scan) within plugins, adding a separate `scan` ACL capability, operation type, HTTP verb (`SCAN` with `GET` fallback via `?scan=true`), API, and CLI support. This also adds support to the KVv1 and KVv2 engines. [[GH-763](https://github.com/openbao/openbao/pull/763)]
-* **Transit**: Add support for key derivation mechansims (derives a new key from a base key).
+* **Transit**: Add support for key derivation mechanisms (derives a new key from a base key).
    - This path uses the named base key and derivation algorithm specific parameters to derive a new named key.
    - Currently, only the ECDH key agreement algorithm is supported: the base key is one's own ECC private key and the "peer_public_key" is the pem-encoded other party's ECC public key.The computed shared secret is the resulting derived key. [[GH-811](https://github.com/openbao/openbao/pull/811)]
 * **UI**: Reintroduction of the WebUI. [[GH-940](https://github.com/openbao/openbao/pull/940)]
@@ -523,7 +563,7 @@ FEATURES:
 
 IMPROVEMENTS:
 
-* audit: modify the hashWalker to handle nested structs without panicing [[GH-887](https://github.com/openbao/openbao/pull/887)]
+* audit: modify the hashWalker to handle nested structs without panicking [[GH-887](https://github.com/openbao/openbao/pull/887)]
 * auth: Use transactions for read-then-write methods in the credential package [[GH-952](https://github.com/openbao/openbao/pull/952)]
 * auth: Use transactions for write and delete config for various auth methods. [[GH-878](https://github.com/openbao/openbao/pull/878)]
 * core/mounts: Allow tuning HMAC request and response parameters on sys/, cubbyhole/, and identity/, enabling auditing of core policy changes. [[GH-921](https://github.com/openbao/openbao/pull/921)]
@@ -576,7 +616,7 @@ core: Drop support for pre Vault 1.0 namespaces. [[GH-457](https://github.com/op
 FEATURES:
 
 * **Remove Mount Table Limits**: Using transactional storage, we've split the
-auth and secret mount tables into separate storage entires, removing the
+auth and secret mount tables into separate storage entries, removing the
 requirement that the entire table fit into a single storage entry limited by
 `max_entry_size`. This allows potentially hundreds of thousands of mounts on
 a single scaled-up server. [[GH-622](https://github.com/openbao/openbao/pull/622)]
@@ -654,7 +694,7 @@ core: Drop support for pre Vault 1.0 namespaces. [[GH-457](https://github.com/op
 FEATURES:
 
 * **Remove Mount Table Limits**: Using transactional storage, we've split the
-auth and secret mount tables into separate storage entires, removing the
+auth and secret mount tables into separate storage entries, removing the
 requirement that the entire table fit into a single storage entry limited by
 `max_entry_size`. This allows potentially hundreds of thousands of mounts on
 a single scaled-up server. [[GH-622](https://github.com/openbao/openbao/pull/622)]

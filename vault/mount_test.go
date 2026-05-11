@@ -13,7 +13,9 @@ import (
 
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -37,15 +39,15 @@ func TestMount_ReadOnlyViewDuringMount(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), logical.ErrSetupReadOnly.Error()) {
 			t.Fatal("expected a read-only error")
 		}
-		return &NoopBackend{}, nil
+		return &be.Noop{}, nil
 	}
 
-	me := &MountEntry{
-		Table: mountTableType,
+	me := &routing.MountEntry{
+		Table: routing.MountTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.mount(namespace.RootContext(nil), me)
+	err := c.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -54,7 +56,7 @@ func TestMount_ReadOnlyViewDuringMount(t *testing.T) {
 func TestLogicalMountMetrics(t *testing.T) {
 	c, _, _, _ := TestCoreUnsealedWithMetrics(t)
 	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{
+		return &be.Noop{
 			BackendType: logical.TypeLogical,
 		}, nil
 	}
@@ -67,12 +69,12 @@ func TestLogicalMountMetrics(t *testing.T) {
 	if !ok || numEntriesMetric.Value != 3 {
 		t.Fatalf("Auth values should be: %+v", numEntriesMetric)
 	}
-	me := &MountEntry{
-		Table: mountTableType,
+	me := &routing.MountEntry{
+		Table: routing.MountTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.mount(namespace.RootContext(nil), me)
+	err := c.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -144,24 +146,24 @@ func TestCore_DefaultMountTable(t *testing.T) {
 		}
 	}
 
-	if diff := deep.Equal(c.mounts.sortEntriesByPath(), c2.mounts.sortEntriesByPath()); len(diff) > 0 {
+	if diff := deep.Equal(c.mounts.SortEntriesByPath(), c2.mounts.SortEntriesByPath()); len(diff) > 0 {
 		t.Fatalf("mismatch: %v", diff)
 	}
 }
 
 func TestCore_Mount(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
-	me := &MountEntry{
-		Table: mountTableType,
+	me := &routing.MountEntry{
+		Table: routing.MountTableType,
 		Path:  "foo",
 		Type:  "kv",
 	}
-	err := c.mount(namespace.RootContext(nil), me)
+	err := c.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	match := c.router.MatchingMount(namespace.RootContext(nil), "foo/bar")
+	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "foo/bar")
 	if match != "foo/" {
 		t.Fatal("missing mount")
 	}
@@ -189,32 +191,32 @@ func TestCore_Mount(t *testing.T) {
 	}
 
 	// Verify matching mount tables
-	if diff := deep.Equal(c.mounts.sortEntriesByPath(), c2.mounts.sortEntriesByPath()); len(diff) > 0 {
+	if diff := deep.Equal(c.mounts.SortEntriesByPath(), c2.mounts.SortEntriesByPath()); len(diff) > 0 {
 		t.Fatalf("mismatch: %v", diff)
 	}
 }
 
 func TestCore_Mount_secrets_builtin_RunningVersion(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	me := &MountEntry{
-		Table: mountTableType,
+	me := &routing.MountEntry{
+		Table: routing.MountTableType,
 		Path:  "foo",
 		Type:  "generic",
 	}
-	err := c.mount(namespace.RootContext(nil), me)
+	err := c.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	match := c.router.MatchingMount(namespace.RootContext(nil), "foo/bar")
+	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "foo/bar")
 	if match != "foo/" {
 		t.Fatal("missing mount")
 	}
 
-	raw, _ := c.router.root.Get(match)
+	re, _ := c.router.Get(match)
 	// we override the running version of builtins
-	if !versions.IsBuiltinVersion(raw.(*routeEntry).mountEntry.RunningVersion) {
-		t.Errorf("Expected mount to have builtin version but got %s", raw.(*routeEntry).mountEntry.RunningVersion)
+	if !versions.IsBuiltinVersion(re.MountEntry.RunningVersion) {
+		t.Errorf("Expected mount to have builtin version but got %s", re.MountEntry.RunningVersion)
 	}
 }
 
@@ -222,17 +224,17 @@ func TestCore_Mount_secrets_builtin_RunningVersion(t *testing.T) {
 // kv alias "generic"
 func TestCore_Mount_kv_generic(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
-	me := &MountEntry{
-		Table: mountTableType,
+	me := &routing.MountEntry{
+		Table: routing.MountTableType,
 		Path:  "foo",
 		Type:  "generic",
 	}
-	err := c.mount(namespace.RootContext(nil), me)
+	err := c.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	match := c.router.MatchingMount(namespace.RootContext(nil), "foo/bar")
+	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "foo/bar")
 	if match != "foo/" {
 		t.Fatal("missing mount")
 	}
@@ -260,7 +262,7 @@ func TestCore_Mount_kv_generic(t *testing.T) {
 	}
 
 	// Verify matching mount tables
-	if diff := deep.Equal(c.mounts.sortEntriesByPath(), c2.mounts.sortEntriesByPath()); len(diff) > 0 {
+	if diff := deep.Equal(c.mounts.SortEntriesByPath(), c2.mounts.SortEntriesByPath()); len(diff) > 0 {
 		t.Fatalf("mismatch: %v", diff)
 	}
 }
@@ -271,34 +273,34 @@ func TestCore_Mount_kv_generic(t *testing.T) {
 func TestCore_Mount_Local(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 
-	c.mounts = &MountTable{
-		Type: mountTableType,
-		Entries: []*MountEntry{
+	c.mounts = &routing.MountTable{
+		Type: routing.MountTableType,
+		Entries: []*routing.MountEntry{
 			{
-				Table:            mountTableType,
+				Table:            routing.MountTableType,
 				Path:             "noop/",
 				Type:             "kv",
 				UUID:             "abcd",
 				Accessor:         "kv-abcd",
 				BackendAwareUUID: "abcde",
 				NamespaceID:      namespace.RootNamespaceID,
-				namespace:        namespace.RootNamespace,
+				Namespace:        namespace.RootNamespace,
 			},
 			{
-				Table:            mountTableType,
+				Table:            routing.MountTableType,
 				Path:             "noop2/",
 				Type:             "kv",
 				UUID:             "bcde",
 				Accessor:         "kv-bcde",
 				BackendAwareUUID: "bcdea",
 				NamespaceID:      namespace.RootNamespaceID,
-				namespace:        namespace.RootNamespace,
+				Namespace:        namespace.RootNamespace,
 			},
 		},
 	}
 
 	// Both should set up successfully
-	err := c.setupMounts(namespace.RootContext(nil))
+	err := c.setupMounts(namespace.RootContext(t.Context()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,7 +308,7 @@ func TestCore_Mount_Local(t *testing.T) {
 		t.Fatalf("expected two entries, got %d", len(c.mounts.Entries))
 	}
 
-	localEntries, err := c.barrier.List(context.Background(), coreLocalMountConfigPath+"/")
+	localEntries, err := c.barrier.List(t.Context(), coreLocalMountConfigPath+"/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,7 +316,7 @@ func TestCore_Mount_Local(t *testing.T) {
 		t.Fatalf("expected one entry in local mount table, got %#v", localEntries)
 	}
 	for _, localEntry := range localEntries {
-		rawLocal, err := c.barrier.Get(context.Background(), coreLocalMountConfigPath+"/"+localEntry)
+		rawLocal, err := c.barrier.Get(t.Context(), coreLocalMountConfigPath+"/"+localEntry)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -322,7 +324,7 @@ func TestCore_Mount_Local(t *testing.T) {
 			t.Fatal("expected non-nil local mounts")
 		}
 
-		localMountEntry := &MountEntry{}
+		localMountEntry := &routing.MountEntry{}
 		if err := jsonutil.DecodeJSON(rawLocal.Value, localMountEntry); err != nil {
 			t.Fatal(err)
 		}
@@ -333,7 +335,7 @@ func TestCore_Mount_Local(t *testing.T) {
 	}
 
 	c.mounts.Entries[1].Local = true
-	if err := c.persistMounts(context.Background(), nil, c.mounts, nil, ""); err != nil {
+	if err := c.persistMounts(t.Context(), c.barrier, c.mounts, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -341,7 +343,7 @@ func TestCore_Mount_Local(t *testing.T) {
 	// table, the table initially when core unseals contains cubbyhole as per
 	// above, but then we overwrite it with our own table with one local entry,
 	// so we should now only expect the noop2 entry
-	localEntries, err = c.barrier.List(context.Background(), coreLocalMountConfigPath+"/")
+	localEntries, err = c.barrier.List(t.Context(), coreLocalMountConfigPath+"/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,7 +351,7 @@ func TestCore_Mount_Local(t *testing.T) {
 		t.Fatalf("expected one entry in local mount table, got %#v", localEntries)
 	}
 	for _, localEntry := range localEntries {
-		rawLocal, err := c.barrier.Get(context.Background(), coreLocalMountConfigPath+"/"+localEntry)
+		rawLocal, err := c.barrier.Get(t.Context(), coreLocalMountConfigPath+"/"+localEntry)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -357,7 +359,7 @@ func TestCore_Mount_Local(t *testing.T) {
 			t.Fatal("expected non-nil local mounts")
 		}
 
-		localMountEntry := &MountEntry{}
+		localMountEntry := &routing.MountEntry{}
 		if err := jsonutil.DecodeJSON(rawLocal.Value, localMountEntry); err != nil {
 			t.Fatal(err)
 		}
@@ -367,7 +369,7 @@ func TestCore_Mount_Local(t *testing.T) {
 	}
 
 	oldMounts := c.mounts
-	if err := c.loadMounts(context.Background(), false); err != nil {
+	if err := c.loadMounts(t.Context(), false); err != nil {
 		t.Fatal(err)
 	}
 	compEntries := c.mounts.Entries[:0]
@@ -395,34 +397,34 @@ func TestCore_FindOps(t *testing.T) {
 	path1 := "kv1"
 	path2 := "kv2"
 
-	c.mounts = &MountTable{
-		Type: mountTableType,
-		Entries: []*MountEntry{
+	c.mounts = &routing.MountTable{
+		Type: routing.MountTableType,
+		Entries: []*routing.MountEntry{
 			{
-				Table:            mountTableType,
+				Table:            routing.MountTableType,
 				Path:             path1,
 				Type:             "kv",
 				UUID:             "abcd",
 				Accessor:         "kv-abcd",
 				BackendAwareUUID: uuid1,
 				NamespaceID:      namespace.RootNamespaceID,
-				namespace:        namespace.RootNamespace,
+				Namespace:        namespace.RootNamespace,
 			},
 			{
-				Table:            mountTableType,
+				Table:            routing.MountTableType,
 				Path:             path2,
 				Type:             "kv",
 				UUID:             "bcde",
 				Accessor:         "kv-bcde",
 				BackendAwareUUID: uuid2,
 				NamespaceID:      namespace.RootNamespaceID,
-				namespace:        namespace.RootNamespace,
+				Namespace:        namespace.RootNamespace,
 			},
 		},
 	}
 
 	// Both should set up successfully
-	if err := c.setupMounts(namespace.RootContext(nil)); err != nil {
+	if err := c.setupMounts(namespace.RootContext(t.Context())); err != nil {
 		t.Fatal(err)
 	}
 
@@ -431,17 +433,17 @@ func TestCore_FindOps(t *testing.T) {
 	}
 
 	// Unknown uuids/paths should return nil, nil
-	entry, err := c.mounts.findByBackendUUID(namespace.RootContext(nil), "unknown")
+	entry, err := c.mounts.FindByBackendUUID(namespace.RootContext(t.Context()), "unknown")
 	if err != nil || entry != nil {
 		t.Fatalf("expected no errors nor matches got, error: %#v entry: %#v", err, entry)
 	}
-	entry, err = c.mounts.findByPath(namespace.RootContext(nil), "unknown")
+	entry, err = c.mounts.FindByPath(namespace.RootContext(t.Context()), "unknown")
 	if err != nil || entry != nil {
 		t.Fatalf("expected no errors nor matches got, error: %#v entry: %#v", err, entry)
 	}
 
 	// Find our entry by its uuid
-	entry, err = c.mounts.findByBackendUUID(namespace.RootContext(nil), uuid1)
+	entry, err = c.mounts.FindByBackendUUID(namespace.RootContext(t.Context()), uuid1)
 	if err != nil || entry == nil {
 		t.Fatalf("failed finding entry by uuid error: %#v entry: %#v", err, entry)
 	}
@@ -450,7 +452,7 @@ func TestCore_FindOps(t *testing.T) {
 	}
 
 	// Find another entry by its path
-	entry, err = c.mounts.findByPath(namespace.RootContext(nil), path2)
+	entry, err = c.mounts.FindByPath(namespace.RootContext(t.Context()), path2)
 	if err != nil || entry == nil {
 		t.Fatalf("failed finding entry by path error: %#v entry: %#v", err, entry)
 	}
@@ -461,12 +463,12 @@ func TestCore_FindOps(t *testing.T) {
 
 func TestCore_Unmount(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
-	err := c.unmount(namespace.RootContext(nil), "secret")
+	err := c.unmount(namespace.RootContext(t.Context()), "secret")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	match := c.router.MatchingMount(namespace.RootContext(nil), "secret/foo")
+	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "secret/foo")
 	if match != "" {
 		t.Fatal("backend present")
 	}
@@ -505,31 +507,31 @@ func TestCore_Unmount_Cleanup(t *testing.T) {
 }
 
 func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
-	noop := &NoopBackend{}
+	noop := &be.Noop{}
 	c, _, root := TestCoreUnsealed(t)
 	c.logicalBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
 		return noop, nil
 	}
 
 	// Mount the noop backend
-	me := &MountEntry{
-		Table: mountTableType,
+	me := &routing.MountEntry{
+		Table: routing.MountTableType,
 		Path:  "test/",
 		Type:  "noop",
 	}
-	if err := c.mount(namespace.RootContext(nil), me); err != nil {
+	if err := c.mount(namespace.RootContext(t.Context()), me); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Store the view
-	view := c.router.MatchingStorageByAPIPath(namespace.RootContext(nil), "test/")
+	view := c.router.MatchingStorageByAPIPath(namespace.RootContext(t.Context()), "test/")
 
 	// Inject data
 	se := &logical.StorageEntry{
 		Key:   "plstodelete",
 		Value: []byte("test"),
 	}
-	if err := view.Put(context.Background(), se); err != nil {
+	if err := view.Put(t.Context(), se); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -553,7 +555,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 		ClientToken: root,
 	}
 	r.SetTokenEntry(&logical.TokenEntry{ID: root, NamespaceID: "root", Policies: []string{"root"}})
-	resp, err := c.HandleRequest(namespace.RootContext(nil), r)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), r)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -566,7 +568,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 	}
 
 	// Unmount, this should cleanup
-	err = c.unmount(namespace.RootContext(nil), "test/")
+	err = c.unmount(namespace.RootContext(t.Context()), "test/")
 	switch {
 	case err != nil && causeFailure:
 	case err == nil && causeFailure:
@@ -589,7 +591,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 	}
 
 	// View should be empty
-	out, err := logical.CollectKeys(context.Background(), view)
+	out, err := logical.CollectKeys(t.Context(), view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -604,7 +606,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 	}
 
 	// At this point just in the failure case, check mounting
-	if err := c.mount(namespace.RootContext(nil), me); err == nil {
+	if err := c.mount(namespace.RootContext(t.Context()), me); err == nil {
 		t.Fatal("expected error")
 	} else {
 		if !strings.Contains(err.Error(), "path is already in use at") {
@@ -615,12 +617,12 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 
 func TestCore_Remount(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
-	err := c.remountSecretsEngineCurrentNamespace(namespace.RootContext(nil), "secret", "foo", true)
+	err := c.remountSecretsEngineCurrentNamespace(namespace.RootContext(t.Context()), "secret", "foo", true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	match := c.router.MatchingMount(namespace.RootContext(nil), "foo/bar")
+	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "foo/bar")
 	if match != "foo/" {
 		t.Fatal("failed remount")
 	}
@@ -636,38 +638,38 @@ func TestCore_Remount(t *testing.T) {
 		}
 	}
 
-	match = c.router.MatchingMount(namespace.RootContext(nil), "foo/bar")
+	match = c.router.MatchingMount(namespace.RootContext(t.Context()), "foo/bar")
 	if match != "foo/" {
 		t.Fatal("failed remount")
 	}
 }
 
 func TestCore_Remount_Cleanup(t *testing.T) {
-	noop := &NoopBackend{}
+	noop := &be.Noop{}
 	c, _, root := TestCoreUnsealed(t)
 	c.logicalBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
 		return noop, nil
 	}
 
 	// Mount the noop backend
-	me := &MountEntry{
-		Table: mountTableType,
+	me := &routing.MountEntry{
+		Table: routing.MountTableType,
 		Path:  "test/",
 		Type:  "noop",
 	}
-	if err := c.mount(namespace.RootContext(nil), me); err != nil {
+	if err := c.mount(namespace.RootContext(t.Context()), me); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Store the view
-	view := c.router.MatchingStorageByAPIPath(namespace.RootContext(nil), "test/")
+	view := c.router.MatchingStorageByAPIPath(namespace.RootContext(t.Context()), "test/")
 
 	// Inject data
 	se := &logical.StorageEntry{
 		Key:   "plstokeep",
 		Value: []byte("test"),
 	}
-	if err := view.Put(context.Background(), se); err != nil {
+	if err := view.Put(t.Context(), se); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -691,7 +693,7 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 		ClientToken: root,
 	}
 	r.SetTokenEntry(&logical.TokenEntry{ID: root, NamespaceID: "root", Policies: []string{"root"}})
-	resp, err := c.HandleRequest(namespace.RootContext(nil), r)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), r)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -700,7 +702,7 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 	}
 
 	// Remount, this should cleanup
-	if err := c.remountSecretsEngineCurrentNamespace(namespace.RootContext(nil), "test/", "new/", true); err != nil {
+	if err := c.remountSecretsEngineCurrentNamespace(namespace.RootContext(t.Context()), "test/", "new/", true); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -718,7 +720,7 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 	}
 
 	// View should not be empty
-	out, err := logical.CollectKeys(context.Background(), view)
+	out, err := logical.CollectKeys(t.Context(), view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -729,150 +731,135 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 
 func TestCore_Remount_Protected(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	err := c.remountSecretsEngineCurrentNamespace(namespace.RootContext(nil), "sys", "foo", true)
+	err := c.remountSecretsEngineCurrentNamespace(namespace.RootContext(t.Context()), "sys", "foo", true)
 	if err.Error() != `cannot remount "sys/"` {
 		t.Fatalf("err: %v", err)
 	}
 }
 
-type RemountStruct struct {
-	Title        string
-	SrcParentCtx context.Context
-	DstParentCtx context.Context
-	SrcNS        namespace.MountPathDetails
-	DstNs        namespace.MountPathDetails
-	TestSecret   *logical.Request
-}
+func TestCore_RemountMount_Namespaces(t *testing.T) {
+	c, keys, _ := TestCoreUnsealed(t)
+	ns := &namespace.Namespace{Path: "ns/"}
+	unsealable1 := &namespace.Namespace{Path: "ns/unsealable1/"}
+	unsealable2 := &namespace.Namespace{Path: "ns/unsealable2/"}
+	sealable1 := &namespace.Namespace{Path: "ns/sealable1/"}
+	sealable2 := &namespace.Namespace{Path: "ns/sealable2/"}
+	TestCoreCreateNamespaces(t, c, ns, unsealable1, unsealable2)
+	unsealKeys := TestCoreCreateUnsealedNamespaces(t, c, sealable1, sealable2)
+	unsealKeys["root"] = keys
 
-func TestCore_Remount_Namespaces(t *testing.T) {
-	c, keys, token := TestCoreUnsealed(t)
-	rootCtx := namespace.RootContext(nil)
-	ns1 := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
-	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
-	ns2 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns2", nil)
-	// ns2Ctx := namespace.ContextWithNamespace(rootCtx, ns2)
-	ns3 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns3", nil)
-	// ns3Ctx := namespace.ContextWithNamespace(rootCtx, ns3)
+	me := &routing.MountEntry{
+		Table: routing.MountTableType,
+		Path:  "foo",
+		Type:  "kv",
+	}
 
-	table := []RemountStruct{
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
+	err := c.mount(namespace.ContextWithNamespace(ctx, unsealable1), me)
+	require.NoError(t, err)
+
+	table := []struct {
+		name string
+		src  namespace.MountPathDetails
+		dst  namespace.MountPathDetails
+	}{
 		{
-			Title:        "Remount Namespace ns1/ns2 to Namespace ns1/ns3",
-			SrcParentCtx: ns1Ctx,
-			SrcNS: namespace.MountPathDetails{
-				Namespace: ns2,
-				MountPath: "secret/",
+			name: "remount unsealable -> unsealable",
+			src: namespace.MountPathDetails{
+				Namespace: unsealable1,
+				MountPath: "foo/",
 			},
-			DstParentCtx: ns1Ctx,
-			DstNs: namespace.MountPathDetails{
-				Namespace: ns3,
-				MountPath: "secret1/",
+			dst: namespace.MountPathDetails{
+				Namespace: unsealable2,
+				MountPath: "bar/",
 			},
 		},
 		{
-			Title:        "Remount Namespace ns1 to Root",
-			SrcParentCtx: rootCtx,
-			SrcNS: namespace.MountPathDetails{
-				Namespace: ns1,
-				MountPath: "secret/",
+			name: "remount unsealable -> sealable",
+			src: namespace.MountPathDetails{
+				Namespace: unsealable2,
+				MountPath: "bar/",
 			},
-			DstParentCtx: rootCtx,
-			DstNs: namespace.MountPathDetails{
-				Namespace: namespace.RootNamespace,
-				MountPath: "secret2/",
+			dst: namespace.MountPathDetails{
+				Namespace: sealable1,
+				MountPath: "foo/",
 			},
 		},
 		{
-			Title:        "Remount Root to Root",
-			SrcParentCtx: rootCtx,
-			SrcNS: namespace.MountPathDetails{
-				Namespace: namespace.RootNamespace,
-				MountPath: "secret/",
+			name: "remount sealable -> sealable",
+			src: namespace.MountPathDetails{
+				Namespace: sealable1,
+				MountPath: "foo/",
 			},
-			DstParentCtx: rootCtx,
-			DstNs: namespace.MountPathDetails{
-				Namespace: namespace.RootNamespace,
-				MountPath: "secretFoo/",
+			dst: namespace.MountPathDetails{
+				Namespace: sealable2,
+				MountPath: "bar/",
 			},
 		},
 		{
-			Title:        "Remount Root to Namespace ns1/ns2",
-			SrcParentCtx: rootCtx,
-			SrcNS: namespace.MountPathDetails{
-				Namespace: namespace.RootNamespace,
-				MountPath: "secretFoo/", // Note that this is depending on previous test case
+			name: "remount sealable -> unsealable",
+			src: namespace.MountPathDetails{
+				Namespace: sealable2,
+				MountPath: "bar/",
 			},
-			DstParentCtx: ns1Ctx,
-			DstNs: namespace.MountPathDetails{
-				Namespace: ns2,
-				MountPath: "secret3/",
+			dst: namespace.MountPathDetails{
+				Namespace: unsealable1,
+				MountPath: "foo/",
 			},
 		},
 	}
 
-	for _, test := range table {
-		t.Run(test.Title, func(t *testing.T) {
-			src := test.SrcNS
-			dst := test.DstNs
-
-			srcNSCtx := namespace.ContextWithNamespace(test.SrcParentCtx, src.Namespace)
-			dstNSCtx := namespace.ContextWithNamespace(test.DstParentCtx, dst.Namespace)
-
-			srcMountPath := src.MountPath
-			dstMountPath := dst.MountPath
-
-			// Create a secret in the source namespace
-			// Already present in root
-			if src.Namespace != namespace.RootNamespace {
-				testCoreAddSecretMountContext(srcNSCtx, t, c, srcMountPath, token)
-			}
-
-			match := c.router.MatchingMount(srcNSCtx, srcMountPath+"bar")
-			if match != src.Namespace.Path+srcMountPath {
-				t.Fatalf("missing mount, match %q", match)
-			}
-
-			err := c.remountSecretsEngine(test.SrcParentCtx, src, dst, true)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
-
-			match = c.router.MatchingMount(srcNSCtx, srcMountPath+"bar")
-			if match != "" {
-				t.Fatalf("secret still at old location, match %q", match)
-			}
-
-			match = c.router.MatchingMount(dstNSCtx, dstMountPath+"bar")
-			if match != dst.Namespace.Path+dstMountPath {
-				t.Fatalf("secret not at new location, match %q", match)
-			}
-
-			c.sealInternal()
-			for i, key := range keys {
-				unseal, err := TestCoreUnseal(c, key)
-				if err != nil {
-					t.Fatalf("err: %v", err)
+	for _, tt := range table {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, ns := range []*namespace.Namespace{tt.src.Namespace, tt.dst.Namespace} {
+				for i, key := range unsealKeys[ns.Path] {
+					unsealed, err := TestNamespaceUnseal(c, ns, key)
+					require.NoError(t, err)
+					require.False(t, i+1 == len(keys) && !unsealed, "should be unsealed")
 				}
-				if i+1 == len(keys) && !unseal {
-					t.Fatal("should be unsealed")
+			}
+			srcCtx := namespace.ContextWithNamespace(ctx, tt.src.Namespace)
+			dstCtx := namespace.ContextWithNamespace(ctx, tt.dst.Namespace)
+
+			match := c.router.MatchingMount(srcCtx, tt.src.MountPath+"foobar")
+			require.Equalf(t, tt.src.Namespace.Path+tt.src.MountPath, match, "missing mount, match: %q", match)
+
+			err := c.remountSecretsEngine(ctx, tt.src, tt.dst, true)
+			require.NoError(t, err)
+
+			match = c.router.MatchingMount(srcCtx, tt.src.MountPath+"foobar")
+			require.Equalf(t, "", match, "mount still at old location, match: %q", match)
+
+			match = c.router.MatchingMount(dstCtx, tt.dst.MountPath+"baz")
+			require.Equalf(t, tt.dst.Namespace.Path+tt.dst.MountPath, match, "mount not at new location, match: %q", match)
+
+			_ = c.sealInternal()
+			for i, key := range unsealKeys["root"] {
+				unsealed, err := TestCoreUnseal(c, key)
+				require.NoError(t, err)
+				require.False(t, i+1 == len(keys) && !unsealed, "should be unsealed")
+			}
+
+			for _, ns := range []*namespace.Namespace{tt.src.Namespace, tt.dst.Namespace} {
+				for i, key := range unsealKeys[ns.Path] {
+					unsealed, err := TestNamespaceUnseal(c, ns, key)
+					require.NoError(t, err)
+					require.False(t, i+1 == len(keys) && !unsealed, "should be unsealed")
 				}
 			}
 
-			match = c.router.MatchingMount(srcNSCtx, srcMountPath+"bar")
-			if match != "" {
-				t.Fatalf("secret still at old location after unseal, match %q", match)
-			}
+			match = c.router.MatchingMount(srcCtx, tt.src.MountPath+"foobar")
+			require.Equalf(t, "", match, "mount still at old location after unseal, match: %q", match)
 
-			match = c.router.MatchingMount(dstNSCtx, dstMountPath+"bar")
-			if match != dst.Namespace.Path+dstMountPath {
-				t.Fatalf("secret not at new location after unseal, match %q", match)
-			}
+			match = c.router.MatchingMount(dstCtx, tt.dst.MountPath+"baz")
+			require.Equalf(t, tt.dst.Namespace.Path+tt.dst.MountPath, match, "mount not at new location after unseal, match: %q", match)
 		})
 	}
 }
 
 func TestDefaultMountTable(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	table := c.defaultMountTable(context.Background())
+	table := c.defaultMountTable(t.Context())
 	verifyDefaultTable(t, table, 3)
 }
 
@@ -885,28 +872,28 @@ func TestCore_MountTable_UpgradeToTyped(t *testing.T) {
 		}, nil
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: auditTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableAudit(namespace.RootContext(nil), me, true)
+	err := c.enableAudit(namespace.RootContext(t.Context()), me, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{
+		return &be.Noop{
 			BackendType: logical.TypeCredential,
 		}, nil
 	}
 
-	me = &MountEntry{
-		Table: credentialTableType,
+	me = &routing.MountEntry{
+		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err = c.enableCredential(namespace.RootContext(nil), me)
+	err = c.enableCredential(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -922,7 +909,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	testType string,
 ) {
 	var path string
-	var mt *MountTable
+	var mt *routing.MountTable
 	switch testType {
 	case "mounts":
 		path = coreMountConfigPath
@@ -970,14 +957,14 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	// Remove any transactional storage entries: we want to replace the mount
 	// table with a pre-transactional variant to force upgrades to be run.
 	if _, ok := c.barrier.(logical.TransactionalStorage); ok && testType != "audits" {
-		postTxnEntries, err := c.barrier.List(context.Background(), path+"/")
+		postTxnEntries, err := c.barrier.List(t.Context(), path+"/")
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		for _, txnEntry := range postTxnEntries {
 			t.Logf("removing entry: %v", path+"/"+txnEntry)
-			if err := c.barrier.Delete(context.Background(), path+"/"+txnEntry); err != nil {
+			if err := c.barrier.Delete(t.Context(), path+"/"+txnEntry); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -988,25 +975,25 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		Key:   path,
 		Value: raw,
 	}
-	if err := c.barrier.Put(context.Background(), entry); err != nil {
+	if err := c.barrier.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}
 
-	var persistFunc func(context.Context, logical.Storage, *MountTable, *bool, string) error
+	var persistFunc func(context.Context, logical.Storage, *routing.MountTable, *bool, string) error
 
 	// It should load successfully and be upgraded and persisted
 	switch testType {
 	case "mounts":
-		err = c.loadMounts(context.Background(), false)
+		err = c.loadMounts(t.Context(), false)
 		persistFunc = c.persistMounts
 		mt = c.mounts
 	case "credentials":
-		err = c.loadCredentials(context.Background(), false)
+		err = c.loadCredentials(t.Context(), false)
 		persistFunc = c.persistAuth
 		mt = c.auth
 	case "audits":
-		err = c.loadAudits(context.Background(), false)
-		persistFunc = func(ctx context.Context, barrier logical.Storage, mt *MountTable, b *bool, mount string) error {
+		err = c.loadAudits(t.Context(), false)
+		persistFunc = func(ctx context.Context, barrier logical.Storage, mt *routing.MountTable, b *bool, mount string) error {
 			if b == nil {
 				b = new(bool)
 				*b = false
@@ -1023,14 +1010,14 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	var actual []byte
 	if _, ok := c.barrier.(logical.TransactionalStorage); ok && testType != "audits" {
 		// Assume we got the outer, implicit type correct.
-		postTxnEntries, err := c.barrier.List(context.Background(), path+"/")
+		postTxnEntries, err := c.barrier.List(t.Context(), path+"/")
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		mapEntries := make(map[string]string)
 		for _, txnEntry := range postTxnEntries {
-			entry, err = c.barrier.Get(context.Background(), path+"/"+txnEntry)
+			entry, err = c.barrier.Get(t.Context(), path+"/"+txnEntry)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1058,7 +1045,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		actual = []byte(`{"type":"` + mt.Type + `","entries":[` + entries + `]}`)
 
 		// Read the old mount table entry and ensure it was deleted.
-		entry, err = c.barrier.Get(context.Background(), path)
+		entry, err = c.barrier.Get(t.Context(), path)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1066,7 +1053,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 			t.Fatalf("expected empty entry at non-transactional mount table path: %v\n\tentry: %#v", path, string(entry.Value))
 		}
 	} else {
-		entry, err = c.barrier.Get(context.Background(), path)
+		entry, err = c.barrier.Get(t.Context(), path)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1103,29 +1090,29 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	// Now try saving invalid versions
 	origTableType := mt.Type
 	mt.Type = "foo"
-	if err := persistFunc(context.Background(), nil, mt, nil, ""); err == nil {
+	if err := persistFunc(t.Context(), c.barrier, mt, nil, ""); err == nil {
 		t.Fatal("expected error")
 	}
 
 	if len(mt.Entries) > 0 {
 		mt.Type = origTableType
 		mt.Entries[0].Table = "bar"
-		if err := persistFunc(context.Background(), nil, mt, nil, ""); err == nil {
+		if err := persistFunc(t.Context(), c.barrier, mt, nil, ""); err == nil {
 			t.Fatal("expected error")
 		}
 
 		mt.Entries[0].Table = mt.Type
-		if err := persistFunc(context.Background(), nil, mt, nil, ""); err != nil {
+		if err := persistFunc(t.Context(), c.barrier, mt, nil, ""); err != nil {
 			t.Fatal(err)
 		}
 	}
 }
 
-func verifyDefaultTable(t *testing.T, table *MountTable, expected int) {
+func verifyDefaultTable(t *testing.T, table *routing.MountTable, expected int) {
 	if len(table.Entries) != expected {
 		t.Fatalf("bad: %v", table.Entries)
 	}
-	table.sortEntriesByPath()
+	table.SortEntriesByPath()
 	for _, entry := range table.Entries {
 		switch entry.Path {
 		case "cubbyhole/":
@@ -1148,7 +1135,7 @@ func verifyDefaultTable(t *testing.T, table *MountTable, expected int) {
 				t.Fatalf("bad: %v", entry)
 			}
 		}
-		if entry.Table != mountTableType {
+		if entry.Table != routing.MountTableType {
 			t.Fatalf("bad: %v", entry)
 		}
 		if entry.Description == "" {
@@ -1189,10 +1176,10 @@ func TestSingletonMountTableFunc(t *testing.T) {
 
 func TestCore_MountInitialize(t *testing.T) {
 	{
-		backend := &InitializableBackend{
-			&NoopBackend{
+		backend := &be.InitializableBackend{
+			Noop: &be.Noop{
 				BackendType: logical.TypeLogical,
-			}, false,
+			}, IsInitialized: false,
 		}
 
 		c, _, _ := TestCoreUnsealed(t)
@@ -1201,24 +1188,24 @@ func TestCore_MountInitialize(t *testing.T) {
 		}
 
 		// Mount the noop backend
-		me := &MountEntry{
-			Table: mountTableType,
+		me := &routing.MountEntry{
+			Table: routing.MountTableType,
 			Path:  "foo/",
 			Type:  "initable",
 		}
-		if err := c.mount(namespace.RootContext(nil), me); err != nil {
+		if err := c.mount(namespace.RootContext(t.Context()), me); err != nil {
 			t.Fatalf("err: %v", err)
 		}
 
-		if !backend.isInitialized {
+		if !backend.IsInitialized {
 			t.Fatal("backend is not initialized")
 		}
 	}
 	{
-		backend := &InitializableBackend{
-			&NoopBackend{
+		backend := &be.InitializableBackend{
+			Noop: &be.Noop{
 				BackendType: logical.TypeLogical,
-			}, false,
+			}, IsInitialized: false,
 		}
 
 		c, _, _ := TestCoreUnsealed(t)
@@ -1226,23 +1213,23 @@ func TestCore_MountInitialize(t *testing.T) {
 			return backend, nil
 		}
 
-		c.mounts = &MountTable{
-			Type: mountTableType,
-			Entries: []*MountEntry{
+		c.mounts = &routing.MountTable{
+			Type: routing.MountTableType,
+			Entries: []*routing.MountEntry{
 				{
-					Table:            mountTableType,
+					Table:            routing.MountTableType,
 					Path:             "foo/",
 					Type:             "initable",
 					UUID:             "abcd",
 					Accessor:         "initable-abcd",
 					BackendAwareUUID: "abcde",
 					NamespaceID:      namespace.RootNamespaceID,
-					namespace:        namespace.RootNamespace,
+					Namespace:        namespace.RootNamespace,
 				},
 			},
 		}
 
-		err := c.setupMounts(namespace.RootContext(nil))
+		err := c.setupMounts(namespace.RootContext(t.Context()))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1252,7 +1239,7 @@ func TestCore_MountInitialize(t *testing.T) {
 			f()
 		}
 
-		if !backend.isInitialized {
+		if !backend.IsInitialized {
 			t.Fatal("backend is not initialized")
 		}
 	}
@@ -1268,158 +1255,150 @@ func TestCore_MountEntryView(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		mountEntry *MountEntry
+		mountEntry *routing.MountEntry
 
 		wantViewPrefix string
 		wantError      bool
 	}{
 		{
 			name: "entry without type nor table type leading to error",
-			mountEntry: &MountEntry{
-				UUID: testMountEntryUUID,
+			mountEntry: &routing.MountEntry{
+				UUID:        testMountEntryUUID,
+				NamespaceID: namespace.RootNamespaceID,
+				Namespace:   namespace.RootNamespace,
 			},
 
 			wantError: true,
 		},
 		{
 			name: "entry of 'system' mount type",
-			mountEntry: &MountEntry{
-				UUID: testMountEntryUUID,
-				Type: mountTypeSystem,
+			mountEntry: &routing.MountEntry{
+				UUID:        testMountEntryUUID,
+				Type:        routing.MountTypeSystem,
+				NamespaceID: namespace.RootNamespaceID,
+				Namespace:   namespace.RootNamespace,
 			},
 
-			wantViewPrefix: systemBarrierPrefix,
+			wantViewPrefix: barrier.SystemBarrierPrefix,
 		},
 		{
 			name: "entry of 'token' mount type",
-			mountEntry: &MountEntry{
-				UUID: testMountEntryUUID,
-				Type: mountTypeToken,
+			mountEntry: &routing.MountEntry{
+				UUID:        testMountEntryUUID,
+				Type:        routing.MountTypeToken,
+				NamespaceID: namespace.RootNamespaceID,
+				Namespace:   namespace.RootNamespace,
 			},
 
-			wantViewPrefix: systemBarrierPrefix + tokenSubPath,
+			wantViewPrefix: barrier.SystemBarrierPrefix + tokenSubPath,
 		},
 		{
 			name: "entry of 'credential' table type",
-			mountEntry: &MountEntry{
-				UUID:  testMountEntryUUID,
-				Type:  "approle",
-				Table: credentialTableType,
+			mountEntry: &routing.MountEntry{
+				UUID:        testMountEntryUUID,
+				Type:        "approle",
+				Table:       routing.CredentialTableType,
+				NamespaceID: namespace.RootNamespaceID,
+				Namespace:   namespace.RootNamespace,
 			},
 
-			wantViewPrefix: credentialBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'audit' table type",
-			mountEntry: &MountEntry{
-				UUID:  testMountEntryUUID,
-				Table: auditTableType,
+			mountEntry: &routing.MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       auditTableType,
+				NamespaceID: namespace.RootNamespaceID,
+				Namespace:   namespace.RootNamespace,
 			},
 
 			wantViewPrefix: auditBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table type and 'identity' type",
-			mountEntry: &MountEntry{
-				UUID:  testMountEntryUUID,
-				Table: mountTableType,
-				Type:  mountTypeIdentity,
+			mountEntry: &routing.MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       routing.MountTableType,
+				Type:        routing.MountTypeIdentity,
+				NamespaceID: namespace.RootNamespaceID,
+				Namespace:   namespace.RootNamespace,
 			},
 
 			wantViewPrefix: backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table type, and 'cubbyholeNS' type",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:        testMountEntryUUID,
-				Table:       mountTableType,
-				Type:        mountTypeNSCubbyhole,
+				Table:       routing.MountTableType,
+				Type:        routing.MountTypeNSCubbyhole,
 				NamespaceID: testNamespace1.ID,
-				namespace:   testNamespace1,
+				Namespace:   testNamespace1,
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table type, and 'cubbyholeNS' type with namespace not present in store",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:  testMountEntryUUID,
-				Table: mountTableType,
-				Type:  mountTypeNSCubbyhole,
+				Table: routing.MountTableType,
+				Type:  routing.MountTypeNSCubbyhole,
 				// does not exist in store
 				NamespaceID: "ns-2",
-				namespace:   testNamespace1,
+				Namespace:   testNamespace1,
 			},
 
 			wantError: true,
 		},
 		{
 			name: "entry of 'mount' table, and 'kv' type with namespace present",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:        testMountEntryUUID,
-				Table:       mountTableType,
-				Type:        mountTypeKV,
+				Table:       routing.MountTableType,
+				Type:        routing.MountTypeKV,
 				NamespaceID: testNamespace1.ID,
-				namespace:   testNamespace1,
+				Namespace:   testNamespace1,
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table, and 'kv' type with nested namespace present",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:        testMountEntryUUID,
-				Table:       mountTableType,
-				Type:        mountTypeKV,
+				Table:       routing.MountTableType,
+				Type:        routing.MountTypeKV,
 				NamespaceID: testNamespace2.ID,
-				namespace:   testNamespace2,
+				Namespace:   testNamespace2,
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
-			name: "entry of 'mount' table, and 'kv' type without namespace present",
-			mountEntry: &MountEntry{
-				UUID:  testMountEntryUUID,
-				Table: mountTableType,
-				Type:  mountTypeKV,
-			},
-
-			wantViewPrefix: backendBarrierPrefix + testMountEntryUUID + "/",
-		},
-		{
 			name: "entry of 'auth' table, and 'userpass' type with namespace present",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:        testMountEntryUUID,
-				Table:       credentialTableType,
+				Table:       routing.CredentialTableType,
 				Type:        "userpass",
 				NamespaceID: testNamespace1.ID,
-				namespace:   testNamespace1,
+				Namespace:   testNamespace1,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'auth' table, and 'userpass' type with nested namespace present",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:        testMountEntryUUID,
-				Table:       credentialTableType,
+				Table:       routing.CredentialTableType,
 				Type:        "userpass",
 				NamespaceID: testNamespace2.ID,
-				namespace:   testNamespace2,
+				Namespace:   testNamespace2,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
-		},
-		{
-			name: "entry of 'auth' table, and 'userpass' type without namespace present",
-			mountEntry: &MountEntry{
-				UUID:  testMountEntryUUID,
-				Table: credentialTableType,
-				Type:  "userpass",
-			},
-
-			wantViewPrefix: credentialBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 	}
 
@@ -1438,20 +1417,21 @@ func TestCore_MountEntryView(t *testing.T) {
 func TestNamespaceMount_Exclusion(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{}, nil
+		return &be.Noop{}, nil
 	}
 
 	// Creating a mount and then a namespace with the same name should fail.
-	me := &MountEntry{
-		Table:       mountTableType,
+	me := &routing.MountEntry{
+		Table:       routing.MountTableType,
 		Path:        "foo/",
 		Type:        "noop",
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	err := c.mount(namespace.RootContext(nil), me)
+	ctx := namespace.RootContext(t.Context())
+	err := c.mount(ctx, me)
 	require.NoError(t, err)
 
-	ns, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "foo/", nil)
+	ns, _, err := c.namespaceStore.ModifyNamespaceByPath(ctx, "foo/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
@@ -1459,38 +1439,38 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	// object lying around. This meant that list and subsequent create
 	// namespace operations returned this ghost structure and did not error
 	// properly. Retrying the create ensures no ghost object exists.
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "foo/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(ctx, "foo/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
 	// Creating a deeply nested mount should also cause failures.
-	me = &MountEntry{
-		Table:       mountTableType,
+	me = &routing.MountEntry{
+		Table:       routing.MountTableType,
 		Path:        "fud/bar/baz/foo/",
 		Type:        "noop",
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	err = c.mount(namespace.RootContext(nil), me)
+	err = c.mount(ctx, me)
 	require.NoError(t, err)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "fud/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(ctx, "fud/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "fud/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(ctx, "fud/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
 	// Creating a new namespace should succeed.
-	nsBar, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "bar/", nil)
+	nsBar, _, err := c.namespaceStore.ModifyNamespaceByPath(ctx, "bar/", nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, nsBar)
 
-	barCtx := namespace.ContextWithNamespace(context.Background(), nsBar)
+	barCtx := namespace.ContextWithNamespace(t.Context(), nsBar)
 
 	// Doing the above inside bar should behave the same.
-	me = &MountEntry{
-		Table:       mountTableType,
+	me = &routing.MountEntry{
+		Table:       routing.MountTableType,
 		Path:        "foo/",
 		Type:        "noop",
 		NamespaceID: nsBar.ID,
@@ -1498,16 +1478,16 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	err = c.mount(barCtx, me)
 	require.NoError(t, err)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
-	me = &MountEntry{
-		Table:       mountTableType,
+	me = &routing.MountEntry{
+		Table:       routing.MountTableType,
 		Path:        "fud/bar/baz/foo/",
 		Type:        "noop",
 		NamespaceID: nsBar.ID,
@@ -1515,36 +1495,36 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	err = c.mount(barCtx, me)
 	require.NoError(t, err)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
 	// Creating a mount at the root level that conflicts with bar/ should fail.
-	me = &MountEntry{
-		Table:       mountTableType,
+	me = &routing.MountEntry{
+		Table:       routing.MountTableType,
 		Path:        "bar/",
 		Type:        "noop",
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	err = c.mount(namespace.RootContext(nil), me)
+	err = c.mount(ctx, me)
 	require.Error(t, err)
 
-	me = &MountEntry{
-		Table:       mountTableType,
+	me = &routing.MountEntry{
+		Table:       routing.MountTableType,
 		Path:        "bar/baz/",
 		Type:        "noop",
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	err = c.mount(namespace.RootContext(nil), me)
+	err = c.mount(ctx, me)
 	require.Error(t, err)
 
 	// Ensure creating sibling mounts still works.
-	me = &MountEntry{
-		Table:       mountTableType,
+	me = &routing.MountEntry{
+		Table:       routing.MountTableType,
 		Path:        "fud/bar/baz/qux/",
 		Type:        "noop",
 		NamespaceID: nsBar.ID,
@@ -1554,8 +1534,8 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 }
 
 func TestMount_Delta(t *testing.T) {
-	old := MountTable{
-		Entries: []*MountEntry{{
+	old := routing.MountTable{
+		Entries: []*routing.MountEntry{{
 			Accessor: "f",
 		}, {
 			Accessor: "a",
@@ -1568,8 +1548,8 @@ func TestMount_Delta(t *testing.T) {
 		}},
 	}
 
-	new := MountTable{
-		Entries: []*MountEntry{{
+	new := routing.MountTable{
+		Entries: []*routing.MountEntry{{
 			Accessor: "a",
 		}, {
 			Accessor: "b",
@@ -1584,7 +1564,7 @@ func TestMount_Delta(t *testing.T) {
 		}},
 	}
 
-	additions, deletions := old.delta(&new)
+	additions, deletions := old.Delta(&new)
 	require.Len(t, additions, 2)
 	require.Len(t, deletions, 1)
 

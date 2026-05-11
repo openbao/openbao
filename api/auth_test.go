@@ -36,7 +36,7 @@ func TestAuth_Login(t *testing.T) {
 			t.Errorf("client token was %v expected to be unset", a.c.Token())
 		}
 
-		_, err := a.Login(context.Background(), &m)
+		_, err := a.Login(t.Context(), &m)
 		if err != nil {
 			t.Errorf("Login() error = %v", err)
 			return
@@ -64,7 +64,7 @@ func TestAuth_MFALoginSinglePhase(t *testing.T) {
 			mockedError: nil,
 		}
 
-		_, err := a.MFALogin(context.Background(), &m, "testMethod:testPasscode")
+		_, err := a.MFALogin(t.Context(), &m, "testMethod:testPasscode")
 		if err != nil {
 			t.Errorf("MFALogin() error %v", err)
 			return
@@ -116,7 +116,7 @@ func TestAuth_MFALoginTwoPhase(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			secret, err := tt.a.MFALogin(context.Background(), tt.m)
+			secret, err := tt.a.MFALogin(t.Context(), tt.m)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MFALogin() error = %v, wantErr %v", err, tt.wantErr)
 				return

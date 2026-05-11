@@ -4,7 +4,6 @@
 package transit
 
 import (
-	"context"
 	"crypto"
 	"crypto/ed25519"
 	cryptoRand "crypto/rand"
@@ -48,9 +47,9 @@ func createBackendWithStorage(t testing.TB) (*backend, logical.Storage) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 
-	b, _ := Backend(context.Background(), config)
+	b, _ := Backend(t.Context(), config)
 	require.NotNilf(t, b, "failed to create backend")
-	err := b.Setup(context.Background(), config)
+	err := b.Setup(t.Context(), config)
 	require.NoError(t, err)
 	return b, config.StorageView
 }
@@ -64,10 +63,10 @@ func createBackendWithSysView(t testing.TB) (*backend, logical.Storage) {
 		System:      sysView,
 	}
 
-	b, _ := Backend(context.Background(), conf)
+	b, _ := Backend(t.Context(), conf)
 	require.NotNilf(t, b, "failed to create backend")
 
-	err := b.Setup(context.Background(), conf)
+	err := b.Setup(t.Context(), conf)
 	require.NoError(t, err)
 
 	return b, storage
@@ -81,10 +80,10 @@ func createBackendWithSysViewWithStorage(t testing.TB, s logical.Storage) *backe
 		System:      sysView,
 	}
 
-	b, _ := Backend(context.Background(), conf)
+	b, _ := Backend(t.Context(), conf)
 	require.NotNilf(t, b, "failed to create backend")
 
-	err := b.Setup(context.Background(), conf)
+	err := b.Setup(t.Context(), conf)
 	require.NoError(t, err)
 
 	return b
@@ -99,10 +98,10 @@ func createBackendWithForceNoCacheWithSysViewWithStorage(t testing.TB, s logical
 		System:      sysView,
 	}
 
-	b, _ := Backend(context.Background(), conf)
+	b, _ := Backend(t.Context(), conf)
 	require.NotNilf(t, b, "failed to create backend")
 
-	err := b.Setup(context.Background(), conf)
+	err := b.Setup(t.Context(), conf)
 	require.NoError(t, err)
 
 	return b
@@ -128,7 +127,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		Storage: storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), keyReq)
+	resp, err = b.HandleRequest(t.Context(), keyReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 
@@ -143,7 +142,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), encryptReq)
+	resp, err = b.HandleRequest(t.Context(), encryptReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 
@@ -158,7 +157,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	resp, err = b.HandleRequest(t.Context(), decryptReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 
@@ -172,12 +171,12 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
 	}
-	resp, err = b.HandleRequest(context.Background(), rotateReq)
+	resp, err = b.HandleRequest(t.Context(), rotateReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 
 	// Encrypt again
-	resp, err = b.HandleRequest(context.Background(), encryptReq)
+	resp, err = b.HandleRequest(t.Context(), encryptReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 	ciphertext2 := resp.Data["ciphertext"].(string)
@@ -185,7 +184,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 	require.NotEqualf(t, ciphertext1, ciphertext2, "expected different ciphertexts")
 
 	// See if the older ciphertext can still be decrypted
-	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	resp, err = b.HandleRequest(t.Context(), decryptReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 	require.Equalf(t, resp.Data["plaintext"].(string), plaintext, "failed to decrypt old ciphertext after rotating the key")
@@ -194,7 +193,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 	decryptReq.Data = map[string]interface{}{
 		"ciphertext": ciphertext2,
 	}
-	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	resp, err = b.HandleRequest(t.Context(), decryptReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 	require.Equalf(t, resp.Data["plaintext"].(string), plaintext, "failed to decrypt ciphertext after rotating the key")
@@ -207,7 +206,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 			"input": plaintext,
 		},
 	}
-	resp, err = b.HandleRequest(context.Background(), signReq)
+	resp, err = b.HandleRequest(t.Context(), signReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 	signature := resp.Data["signature"].(string)
@@ -222,7 +221,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), verifyReq)
+	resp, err = b.HandleRequest(t.Context(), verifyReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 	require.Truef(t, resp.Data["valid"].(bool), "failed to verify the RSA signature")
@@ -231,14 +230,14 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		"input":          plaintext,
 		"hash_algorithm": "invalid",
 	}
-	_, err = b.HandleRequest(context.Background(), signReq)
+	_, err = b.HandleRequest(t.Context(), signReq)
 	require.Error(t, err)
 
 	signReq.Data = map[string]interface{}{
 		"input":          plaintext,
 		"hash_algorithm": "sha2-512",
 	}
-	resp, err = b.HandleRequest(context.Background(), signReq)
+	resp, err = b.HandleRequest(t.Context(), signReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 	signature = resp.Data["signature"].(string)
@@ -247,7 +246,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		"input":     plaintext,
 		"signature": signature,
 	}
-	resp, err = b.HandleRequest(context.Background(), verifyReq)
+	resp, err = b.HandleRequest(t.Context(), verifyReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp.Data["valid"].(bool), "expected validation to fail")
@@ -257,7 +256,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		"signature":      signature,
 		"hash_algorithm": "sha2-512",
 	}
-	resp, err = b.HandleRequest(context.Background(), verifyReq)
+	resp, err = b.HandleRequest(t.Context(), verifyReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 	require.Truef(t, resp.Data["valid"].(bool), "failed to verify the RSA signature")
@@ -270,7 +269,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		"signature_algorithm": "pkcs1v15",
 		"prehashed":           true,
 	}
-	resp, err = b.HandleRequest(context.Background(), signReq)
+	resp, err = b.HandleRequest(t.Context(), signReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 	signature = resp.Data["signature"].(string)
@@ -282,7 +281,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		"signature_algorithm": "pkcs1v15",
 		"prehashed":           true,
 	}
-	resp, err = b.HandleRequest(context.Background(), verifyReq)
+	resp, err = b.HandleRequest(t.Context(), verifyReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 	require.Truef(t, resp.Data["valid"].(bool), "failed to verify the RSA signature")
@@ -933,7 +932,8 @@ func testDerivedKeyUpgrade(t *testing.T, keyType keysutil.KeyType) {
 	}
 
 	p.MigrateKeyToKeysMap()
-	p.Upgrade(context.Background(), storage, cryptoRand.Reader) // Need to run the upgrade code to make the migration stick
+	// Need to run the upgrade code to make the migration stick
+	require.NoError(t, p.Upgrade(t.Context(), storage, cryptoRand.Reader))
 
 	require.Equalf(t, p.KDF, keysutil.Kdf_hmac_sha256_counter, "bad KDF value by default; counter val is %d, KDF val is %d, policy is %#v", keysutil.Kdf_hmac_sha256_counter, p.KDF, p)
 
@@ -979,7 +979,7 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 			"type":                  keyType.String(),
 		},
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNilf(t, resp, "expected non-nil response")
 	require.Truef(t, resp.IsError(), "bad: expected error response, got %#v", *resp)
@@ -994,11 +994,11 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 			"type":                  keyType.String(),
 		},
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp, "expected populated request")
 
-	p, err := keysutil.LoadPolicy(context.Background(), storage, path.Join("policy", "testkey"))
+	p, err := keysutil.LoadPolicy(t.Context(), storage, path.Join("policy", "testkey"))
 	require.NoError(t, err)
 	require.NotNilf(t, p, "got nil policy")
 
@@ -1007,21 +1007,21 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 	} else {
 		p.ConvergentVersion = ver
 	}
-	err = p.Persist(context.Background(), storage)
+	err = p.Persist(t.Context(), storage)
 	require.NoError(t, err)
-	b.invalidate(context.Background(), "policy/testkey")
+	b.invalidate(t.Context(), "policy/testkey")
 
 	if ver < 3 {
 		// There will be an embedded key version of 3, so specifically clear it
 		key := p.Keys[strconv.Itoa(p.LatestVersion)]
 		key.ConvergentVersion = 0
 		p.Keys[strconv.Itoa(p.LatestVersion)] = key
-		err = p.Persist(context.Background(), storage)
+		err = p.Persist(t.Context(), storage)
 		require.NoError(t, err)
-		b.invalidate(context.Background(), "policy/testkey")
+		b.invalidate(t.Context(), "policy/testkey")
 
 		// Verify it
-		p, err = keysutil.LoadPolicy(context.Background(), storage, path.Join(p.StoragePrefix, "policy", "testkey"))
+		p, err = keysutil.LoadPolicy(t.Context(), storage, path.Join(p.StoragePrefix, "policy", "testkey"))
 		require.NoError(t, err)
 		require.NotNilf(t, p, "got nil policy")
 		require.Equalf(t, p.ConvergentVersion, ver, "bad convergent version %d", p.ConvergentVersion)
@@ -1037,7 +1037,7 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 			"nonce":     "Zm9vIGJhcg==", // "foo bar"
 			"context":   "pWZ6t/im3AORd0lVYE0zBdKpX6Bl3/SvFtoVTPWbdkzjG788XmMAnOlxandSdd7S",
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		require.Errorf(t, err, "expected error, got nil, version is %d", ver)
 		require.NotNilf(t, resp, "expected non-nil response")
 		require.Truef(t, resp.IsError(), "expected error response, got %#v", *resp)
@@ -1047,7 +1047,7 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 			"plaintext": "emlwIHphcA==", // "zip zap"
 			"context":   "pWZ6t/im3AORd0lVYE0zBdKpX6Bl3/SvFtoVTPWbdkzjG788XmMAnOlxandSdd7S",
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		require.Errorf(t, err, "expected error response")
 		require.Falsef(t, resp == nil || !resp.IsError(), "expected error response")
 	}
@@ -1060,13 +1060,13 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 	if ver == 0 {
 		req.Data["nonce"] = "b25ldHdvdGhyZWVl" // "onetwothreee"
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNilf(t, resp, "expected non-nil response")
 	require.Falsef(t, resp.IsError(), "got error response: %#v", *resp)
 	ciphertext1 := resp.Data["ciphertext"].(string)
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNilf(t, resp, "expected non-nil response")
 	require.Falsef(t, resp.IsError(), "got error response: %#v", *resp)
@@ -1085,13 +1085,13 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 		req.Data["context"] = "pWZ6t/im3AORd0lVYE0zBdKpX6Bl3/SvFtoVTPWbdkzjG788XmMAnOldandSdd7S"
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNilf(t, resp, "expected non-nil response")
 	require.Falsef(t, resp.IsError(), "got error response: %#v", *resp)
 	ciphertext3 := resp.Data["ciphertext"].(string)
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNilf(t, resp, "expected non-nil response")
 	require.Falsef(t, resp.IsError(), "got error response: %#v", *resp)
@@ -1108,13 +1108,13 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 	if ver == 0 {
 		req.Data["nonce"] = "dHdvdGhyZWVmb3Vy" // "twothreefour"
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNilf(t, resp, "expected non-nil response")
 	require.Falsef(t, resp.IsError(), "got error response: %#v", *resp)
 	ciphertext5 := resp.Data["ciphertext"].(string)
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNilf(t, resp, "expected non-nil response")
 	require.Falsef(t, resp.IsError(), "got error response: %#v", *resp)
@@ -1126,7 +1126,7 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 
 	// If running version 2, check upgrade handling
 	if ver == 2 {
-		curr, err := keysutil.LoadPolicy(context.Background(), storage, path.Join(p.StoragePrefix, "policy", "testkey"))
+		curr, err := keysutil.LoadPolicy(t.Context(), storage, path.Join(p.StoragePrefix, "policy", "testkey"))
 		require.NoError(t, err)
 		require.NotNilf(t, curr, "got nil policy")
 		require.Equalf(t, curr.ConvergentVersion, 2, "bad convergent version %d", curr.ConvergentVersion)
@@ -1134,12 +1134,12 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 		require.Equalf(t, key.ConvergentVersion, 0, "bad convergent key version %d", key.ConvergentVersion)
 
 		curr.ConvergentVersion = 3
-		err = curr.Persist(context.Background(), storage)
+		err = curr.Persist(t.Context(), storage)
 		require.NoError(t, err)
-		b.invalidate(context.Background(), "policy/testkey")
+		b.invalidate(t.Context(), "policy/testkey")
 
 		// Different algorithm, should be different value
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		require.NoError(t, err)
 		require.NotNilf(t, resp, "expected non-nil response")
 		require.Falsef(t, resp.IsError(), "got error response: %#v", *resp)
@@ -1151,11 +1151,11 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 		key.ConvergentVersion = 3
 		curr.Keys[strconv.Itoa(curr.LatestVersion)] = key
 		curr.ConvergentVersion = 2
-		err = curr.Persist(context.Background(), storage)
+		err = curr.Persist(t.Context(), storage)
 		require.NoError(t, err)
-		b.invalidate(context.Background(), "policy/testkey")
+		b.invalidate(t.Context(), "policy/testkey")
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err = b.HandleRequest(t.Context(), req)
 		require.NoError(t, err)
 		require.NotNilf(t, resp, "expected non-nil response")
 		require.Falsef(t, resp.IsError(), "got error response: %#v", *resp)
@@ -1174,7 +1174,7 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 	if ver == 0 {
 		req.Data["nonce"] = "dHdvdGhyZWVmb3Vy" // "twothreefour"
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.Errorf(t, err, "expected error, got nil")
 	require.NotNilf(t, resp, "expected non-nil response")
 	require.Truef(t, resp.IsError(), "expected error response, got: %#v", *resp)
@@ -1187,13 +1187,13 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 	if ver == 0 {
 		req.Data["nonce"] = "dHdvdGhyZWVmb3Vy" // "twothreefour"
 	}
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNilf(t, resp, "expected non-nil response")
 	require.Falsef(t, resp.IsError(), "got error response: %#v", *resp)
 	ciphertext7 := resp.Data["ciphertext"].(string)
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNilf(t, resp, "expected non-nil response")
 	require.Falsef(t, resp.IsError(), "got error response: %#v", *resp)
@@ -1210,14 +1210,14 @@ func TestPolicyFuzzing(t *testing.T) {
 		System: sysView,
 	}
 
-	be, _ = Backend(context.Background(), conf)
-	err := be.Setup(context.Background(), conf)
+	be, _ = Backend(t.Context(), conf)
+	err := be.Setup(t.Context(), conf)
 	require.NoError(t, err)
 	testPolicyFuzzingCommon(t, be)
 
 	sysView.CachingDisabledVal = true
-	be, _ = Backend(context.Background(), conf)
-	err = be.Setup(context.Background(), conf)
+	be, _ = Backend(t.Context(), conf)
+	err = be.Setup(t.Context(), conf)
 	require.NoError(t, err)
 	testPolicyFuzzingCommon(t, be)
 }
@@ -1266,7 +1266,7 @@ func testPolicyFuzzingCommon(t *testing.T, be *backend) {
 			fd.Schema = be.pathKeys().Fields
 
 			// Try to write the key to make sure it exists
-			_, err := be.pathPolicyWrite(context.Background(), req, fd)
+			_, err := be.pathPolicyWrite(t.Context(), req, fd)
 			assert.NoErrorf(t, err, "got an error: %v", err)
 
 			switch chosenFunc {
@@ -1275,7 +1275,7 @@ func testPolicyFuzzingCommon(t *testing.T, be *backend) {
 				// t.Errorf("%s, %s, %d", chosenFunc, chosenKey, id)
 				fd.Raw["plaintext"] = base64.StdEncoding.EncodeToString([]byte(testPlaintext))
 				fd.Schema = be.pathEncrypt().Fields
-				resp, err := be.pathEncryptWrite(context.Background(), req, fd)
+				resp, err := be.pathEncryptWrite(t.Context(), req, fd)
 				assert.NoErrorf(t, err, "got an error: %v, resp is %#v", err, *resp)
 				latestEncryptedText[chosenKey] = resp.Data["ciphertext"].(string)
 
@@ -1283,7 +1283,7 @@ func testPolicyFuzzingCommon(t *testing.T, be *backend) {
 			case "rotate":
 				// t.Errorf("%s, %s, %d", chosenFunc, chosenKey, id)
 				fd.Schema = be.pathRotate().Fields
-				resp, err := be.pathRotateWrite(context.Background(), req, fd)
+				resp, err := be.pathRotateWrite(t.Context(), req, fd)
 				assert.NoErrorf(t, err, "got an error: %v, resp is %#v, chosenKey is %s", err, *resp, chosenKey)
 
 			// Decrypt the ciphertext and compare the result
@@ -1296,7 +1296,7 @@ func testPolicyFuzzingCommon(t *testing.T, be *backend) {
 
 				fd.Raw["ciphertext"] = ct
 				fd.Schema = be.pathDecrypt().Fields
-				resp, err := be.pathDecryptWrite(context.Background(), req, fd)
+				resp, err := be.pathDecryptWrite(t.Context(), req, fd)
 				if err != nil {
 					// This could well happen since the min version is jumping around
 					if resp.Data["error"].(string) == keysutil.ErrTooOld {
@@ -1319,7 +1319,7 @@ func testPolicyFuzzingCommon(t *testing.T, be *backend) {
 			// Change the min version, which also tests the archive functionality
 			case "change_min_version":
 				// t.Errorf("%s, %s, %d", chosenFunc, chosenKey, id)
-				resp, err := be.pathPolicyRead(context.Background(), req, fd)
+				resp, err := be.pathPolicyRead(t.Context(), req, fd)
 				assert.NoErrorf(t, err, "got an error reading policy %s: %v", chosenKey, err)
 				latestVersion := resp.Data["latest_version"].(int)
 
@@ -1327,7 +1327,7 @@ func testPolicyFuzzingCommon(t *testing.T, be *backend) {
 				setVersion := (rand.Int() % latestVersion) + 1
 				fd.Raw["min_decryption_version"] = setVersion
 				fd.Schema = be.pathKeysConfig().Fields
-				_, err = be.pathKeysConfigWrite(context.Background(), req, fd)
+				_, err = be.pathKeysConfigWrite(t.Context(), req, fd)
 				assert.NoErrorf(t, err, "got an error setting min decryption version: %v", err)
 			}
 		}
@@ -1352,7 +1352,7 @@ func TestBadInput(t *testing.T) {
 		Path:      "keys/test",
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp, "expected populated request")
 
@@ -1361,7 +1361,7 @@ func TestBadInput(t *testing.T) {
 		"ciphertext": "vault:v1:abcd",
 	}
 
-	_, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(t.Context(), req)
 	require.Errorf(t, err, "expected error")
 }
 
@@ -1421,10 +1421,10 @@ func TestTransit_AutoRotateKeys(t *testing.T) {
 					System:      sysView,
 				}
 
-				b, _ := Backend(context.Background(), conf)
+				b, _ := Backend(t.Context(), conf)
 				require.NotNilf(t, b, "failed to create backend")
 
-				err := b.Setup(context.Background(), conf)
+				err := b.Setup(t.Context(), conf)
 				require.NoError(t, err)
 
 				// Write a key with the default auto rotate value (0/disabled)
@@ -1433,7 +1433,7 @@ func TestTransit_AutoRotateKeys(t *testing.T) {
 					Operation: logical.UpdateOperation,
 					Path:      "keys/test1",
 				}
-				resp, err := b.HandleRequest(context.Background(), req)
+				resp, err := b.HandleRequest(t.Context(), req)
 				require.NoError(t, err)
 				require.NotNil(t, resp, "expected populated request")
 
@@ -1446,56 +1446,56 @@ func TestTransit_AutoRotateKeys(t *testing.T) {
 						"auto_rotate_period": 24 * time.Hour,
 					},
 				}
-				resp, err = b.HandleRequest(context.Background(), req)
+				resp, err = b.HandleRequest(t.Context(), req)
 				require.NoError(t, err)
 				require.NotNil(t, resp, "expected populated request")
 
 				// Run the rotation check and ensure none of the keys have rotated
 				b.checkAutoRotateAfter = time.Now()
-				err = b.autoRotateKeys(context.Background(), &logical.Request{Storage: storage})
+				err = b.autoRotateKeys(t.Context(), &logical.Request{Storage: storage})
 				require.NoError(t, err)
 				req = &logical.Request{
 					Storage:   storage,
 					Operation: logical.ReadOperation,
 					Path:      "keys/test1",
 				}
-				resp, err = b.HandleRequest(context.Background(), req)
+				resp, err = b.HandleRequest(t.Context(), req)
 				require.NoError(t, err)
 				require.NotNilf(t, resp, "expected non-nil response")
 				require.Equalf(t, resp.Data["latest_version"], 1, "incorrect latest_version found, got: %d, want: %d", resp.Data["latest_version"], 1)
 
 				req.Path = "keys/test2"
-				resp, err = b.HandleRequest(context.Background(), req)
+				resp, err = b.HandleRequest(t.Context(), req)
 				require.NoError(t, err)
 				require.NotNilf(t, resp, "expected non-nil response")
 				require.Equalf(t, resp.Data["latest_version"], 1, "incorrect latest_version found, got: %d, want: %d", resp.Data["latest_version"], 1)
 
 				// Update auto rotate period on one key to be one nanosecond
-				p, _, err := b.GetPolicy(context.Background(), keysutil.PolicyRequest{
+				p, _, err := b.GetPolicy(t.Context(), keysutil.PolicyRequest{
 					Storage: storage,
 					Name:    "test2",
 				}, b.GetRandomReader())
 				require.NoError(t, err)
 				require.NotNilf(t, p, "expected non-nil policy")
 				p.AutoRotatePeriod = time.Nanosecond
-				err = p.Persist(context.Background(), storage)
+				err = p.Persist(t.Context(), storage)
 				require.NoError(t, err)
 
 				// Run the rotation check and validate the state of key rotations
 				b.checkAutoRotateAfter = time.Now()
-				err = b.autoRotateKeys(context.Background(), &logical.Request{Storage: storage})
+				err = b.autoRotateKeys(t.Context(), &logical.Request{Storage: storage})
 				require.NoError(t, err)
 				req = &logical.Request{
 					Storage:   storage,
 					Operation: logical.ReadOperation,
 					Path:      "keys/test1",
 				}
-				resp, err = b.HandleRequest(context.Background(), req)
+				resp, err = b.HandleRequest(t.Context(), req)
 				require.NoError(t, err)
 				require.NotNilf(t, resp, "expected non-nil response")
 				require.Equalf(t, resp.Data["latest_version"], 1, "incorrect latest_version found, got: %d, want: %d", resp.Data["latest_version"], 1)
 				req.Path = "keys/test2"
-				resp, err = b.HandleRequest(context.Background(), req)
+				resp, err = b.HandleRequest(t.Context(), req)
 				require.NoError(t, err)
 				require.NotNilf(t, resp, "expected non-nil response")
 				expectedVersion := 1
@@ -1529,7 +1529,7 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 		Storage: storage,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), keyReq)
+	resp, err = b.HandleRequest(t.Context(), keyReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 
@@ -1546,7 +1546,7 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), encryptReq)
+	resp, err = b.HandleRequest(t.Context(), encryptReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 
@@ -1561,7 +1561,7 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	resp, err = b.HandleRequest(t.Context(), decryptReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 
@@ -1571,13 +1571,13 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 
 	// Using associated as ciphertext should fail.
 	decryptReq.Data["ciphertext"] = associated
-	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	resp, err = b.HandleRequest(t.Context(), decryptReq)
 	require.Errorf(t, err, "bad expected error: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && !resp.IsError(), "bad expected error: err: %v\nresp: %#v", err, resp)
 
 	// Redoing the above with additional data should work.
 	encryptReq.Data["associated_data"] = associated
-	resp, err = b.HandleRequest(context.Background(), encryptReq)
+	resp, err = b.HandleRequest(t.Context(), encryptReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 
@@ -1585,7 +1585,7 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 	decryptReq.Data["ciphertext"] = ciphertext2
 	decryptReq.Data["associated_data"] = associated
 
-	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	resp, err = b.HandleRequest(t.Context(), decryptReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 
@@ -1596,7 +1596,7 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 	decryptReq.Data = map[string]interface{}{
 		"ciphertext": ciphertext2,
 	}
-	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	resp, err = b.HandleRequest(t.Context(), decryptReq)
 	require.Errorf(t, err, "bad expected error: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && !resp.IsError(), "bad expected error: err: %v\nresp: %#v", err, resp)
 
@@ -1604,7 +1604,7 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 	// decryption.
 	decryptReq.Data["ciphertext"] = ciphertext1
 	decryptReq.Data["associated_data"] = associated
-	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	resp, err = b.HandleRequest(t.Context(), decryptReq)
 	require.Errorf(t, err, "bad expected error: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && !resp.IsError(), "bad expected error: err: %v\nresp: %#v", err, resp)
 
@@ -1616,7 +1616,7 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 		Data:      map[string]interface{}{},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), generateDataKeyReq)
+	resp, err = b.HandleRequest(t.Context(), generateDataKeyReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 
@@ -1627,7 +1627,7 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 		"ciphertext": ciphertext1,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	resp, err = b.HandleRequest(t.Context(), decryptReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 
@@ -1637,13 +1637,13 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 
 	// Using associated as ciphertext should fail.
 	decryptReq.Data["ciphertext"] = associated
-	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	resp, err = b.HandleRequest(t.Context(), decryptReq)
 	require.Errorf(t, err, "bad expected error: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && !resp.IsError(), "bad expected error: err: %v\nresp: %#v", err, resp)
 
 	// Redoing the above with additional data should work.
 	generateDataKeyReq.Data["associated_data"] = associated
-	resp, err = b.HandleRequest(context.Background(), generateDataKeyReq)
+	resp, err = b.HandleRequest(t.Context(), generateDataKeyReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 
@@ -1652,7 +1652,7 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 	decryptReq.Data["ciphertext"] = ciphertext2
 	decryptReq.Data["associated_data"] = associated
 
-	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	resp, err = b.HandleRequest(t.Context(), decryptReq)
 	require.NoErrorf(t, err, "bad: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "bad: err: %v\nresp: %#v", err, resp)
 
@@ -1663,7 +1663,7 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 	decryptReq.Data = map[string]interface{}{
 		"ciphertext": ciphertext2,
 	}
-	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	resp, err = b.HandleRequest(t.Context(), decryptReq)
 	require.Errorf(t, err, "bad expected error: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && !resp.IsError(), "bad expected error: err: %v\nresp: %#v", err, resp)
 
@@ -1671,7 +1671,7 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 	// decryption.
 	decryptReq.Data["ciphertext"] = ciphertext1
 	decryptReq.Data["associated_data"] = associated
-	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	resp, err = b.HandleRequest(t.Context(), decryptReq)
 	require.Errorf(t, err, "bad expected error: err: %v\nresp: %#v", err, resp)
 	require.Falsef(t, resp != nil && !resp.IsError(), "bad expected error: err: %v\nresp: %#v", err, resp)
 }
@@ -1853,7 +1853,7 @@ func testTransit_ReadPublicKeyImported(t *testing.T, keyType string) {
 			"type":       keyType,
 		},
 	}
-	importResp, err := b.HandleRequest(context.Background(), importReq)
+	importResp, err := b.HandleRequest(t.Context(), importReq)
 	require.NoErrorf(t, err, "failed to import public key. err: %s\nresp: %#v", err, importResp)
 	require.Falsef(t, importResp != nil && importResp.IsError(), "failed to import public key. err: %s\nresp: %#v", err, importResp)
 
@@ -1864,7 +1864,7 @@ func testTransit_ReadPublicKeyImported(t *testing.T, keyType string) {
 		Storage:   s,
 	}
 
-	readResp, err := b.HandleRequest(context.Background(), readReq)
+	readResp, err := b.HandleRequest(t.Context(), readReq)
 	require.NoErrorf(t, err, "failed to read key. err: %s\nresp: %#v", err, readResp)
 	require.Falsef(t, readResp != nil && readResp.IsError(), "failed to read key. err: %s\nresp: %#v", err, readResp)
 }
@@ -1896,7 +1896,7 @@ func testTransit_SignWithImportedPublicKey(t *testing.T, keyType string) {
 			"type":       keyType,
 		},
 	}
-	importResp, err := b.HandleRequest(context.Background(), importReq)
+	importResp, err := b.HandleRequest(t.Context(), importReq)
 	require.NoErrorf(t, err, "failed to import public key. err: %s\nresp: %#v", err, importResp)
 	require.Falsef(t, importResp != nil && importResp.IsError(), "failed to import public key. err: %s\nresp: %#v", err, importResp)
 
@@ -1910,7 +1910,7 @@ func testTransit_SignWithImportedPublicKey(t *testing.T, keyType string) {
 		},
 	}
 
-	_, err = b.HandleRequest(context.Background(), signReq)
+	_, err = b.HandleRequest(t.Context(), signReq)
 	require.Errorf(t, err, "expected error, should have failed to sign input")
 }
 
@@ -1927,7 +1927,7 @@ func TestTransit_VerifyWithImportedPublicKey(t *testing.T) {
 	require.NoError(t, err)
 
 	// Retrieve public wrapping key
-	wrappingKey, err := b.getWrappingKey(context.Background(), s)
+	wrappingKey, err := b.getWrappingKey(t.Context(), s)
 	require.NoErrorf(t, err, "failed to retrieve public wrapping key: %s", err)
 	require.NotNilf(t, wrappingKey, "retrieved public wrapping key is nil")
 
@@ -1947,7 +1947,7 @@ func TestTransit_VerifyWithImportedPublicKey(t *testing.T) {
 			"type":       keyType,
 		},
 	}
-	importResp, err := b.HandleRequest(context.Background(), importReq)
+	importResp, err := b.HandleRequest(t.Context(), importReq)
 	require.NoErrorf(t, err, "failed to import key. err: %s\nresp: %#v", err, importResp)
 	require.Falsef(t, importResp != nil && importResp.IsError(), "failed to import key. err: %s\nresp: %#v", err, importResp)
 
@@ -1961,7 +1961,7 @@ func TestTransit_VerifyWithImportedPublicKey(t *testing.T) {
 		},
 	}
 
-	signResp, err := b.HandleRequest(context.Background(), signReq)
+	signResp, err := b.HandleRequest(t.Context(), signReq)
 	require.NoErrorf(t, err, "failed to sign plaintext. err: %s\nresp: %#v", err, signResp)
 	require.Falsef(t, signResp != nil && signResp.IsError(), "failed to sign plaintext. err: %s\nresp: %#v", err, signResp)
 
@@ -1978,7 +1978,7 @@ func TestTransit_VerifyWithImportedPublicKey(t *testing.T) {
 			"type":       keyType,
 		},
 	}
-	importPubResp, err := b.HandleRequest(context.Background(), importPubReq)
+	importPubResp, err := b.HandleRequest(t.Context(), importPubReq)
 	require.NoErrorf(t, err, "failed to import public key. err: %s\nresp: %#v", err, importPubResp)
 	require.Falsef(t, importPubResp != nil && importPubResp.IsError(), "failed to import public key. err: %s\nresp: %#v", err, importPubResp)
 
@@ -1993,7 +1993,7 @@ func TestTransit_VerifyWithImportedPublicKey(t *testing.T) {
 		},
 	}
 
-	verifyResp, err := b.HandleRequest(context.Background(), verifyReq)
+	verifyResp, err := b.HandleRequest(t.Context(), verifyReq)
 	require.NoErrorf(t, err, "failed to verify signed data. err: %s\nresp: %#v", err, importResp)
 	require.Falsef(t, verifyResp != nil && verifyResp.IsError(), "failed to verify signed data. err: %s\nresp: %#v", err, importResp)
 }
@@ -2028,7 +2028,7 @@ func testTransit_ExportPublicKeyImported(t *testing.T, keyType string) {
 			"exportable": true,
 		},
 	}
-	importResp, err := b.HandleRequest(context.Background(), importReq)
+	importResp, err := b.HandleRequest(t.Context(), importReq)
 	require.NoErrorf(t, err, "failed to import public key. err: %s\nresp: %#v", err, importResp)
 	require.Falsef(t, importResp != nil && importResp.IsError(), "failed to import public key. err: %s\nresp: %#v", err, importResp)
 
@@ -2041,7 +2041,7 @@ func testTransit_ExportPublicKeyImported(t *testing.T, keyType string) {
 		Storage:   s,
 	}
 
-	exportResp, err := b.HandleRequest(context.Background(), exportReq)
+	exportResp, err := b.HandleRequest(t.Context(), exportReq)
 	require.NoErrorf(t, err, "failed to export key. err: %v\nresp: %#v", err, exportResp)
 	require.Falsef(t, exportResp != nil && exportResp.IsError(), "failed to export key. err: %v\nresp: %#v", err, exportResp)
 

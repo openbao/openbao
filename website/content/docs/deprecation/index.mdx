@@ -4,26 +4,105 @@ description: |-
   An announcement page to communicate feature deprecations and plans.
 ---
 
-# Feature deprecation notice and plans
+# Feature deprecation notices and plans
 
-This announcement page is maintained and updated periodically to communicate important decisions made concerning End of Support(EoS) for OpenBao features as well as features we have removed or disabled from the project. We document the removal of features, enable the community with a plan and timeline for eventual deprecations, and supply alternative paths to explore and evaluate to minimize business disruptions. If you have questions or concerns about a deprecated feature, please create a topic on [the community forum](https://github.com/orgs/openbao/discussions). Please refer to the [FAQ](faq.mdx) page for frequently asked questions concerning OpenBao feature deprecations.
+This announcement page is maintained and updated periodically to communicate
+plans to deprecate, disable and/or remove features from OpenBao.
 
-**Deprecation Announcement**: This indicates the release version during which the announcement was made to deprecate a feature.
+We document the scope of deprecations, enable the community with a plan
+and timeline to account for these, and supply alternative paths to explore
+and evaluate to minimize business disruptions. If you have questions or
+concerns about a deprecated feature, please create a topic on [the community
+forum](https://github.com/orgs/openbao/discussions).
 
-**End of Support**: This indicates when a deprecated feature becomes unsupported. Consult the table below and consider the timeline provided to upgrade.
+Please refer to the [FAQ](faq.mdx) page for frequently asked questions
+concerning OpenBao feature deprecations.
 
-**Feature Removal**: This indicates that the feature is completely removed/disabled from the project.
+### File storage backend
 
-:::warning
+> Announced: **04/2026**, Deprecated in: **v2.6.0**, Removal: **v2.7.0**
 
-**Note**: All specified targeted version announcements for End of Support and Feature Removal may be subject to change.
+The `file` storage backend is a development-only, non-production backend that
+will be removed. Use the `bao operator migrate` command to move to a supported
+storage backend.
 
-:::
+Also see:
 
-| Feature | Deprecation announcement | End of Support | Feature Removal | Migration Path/Impact | Resources |
-| ------- | ------------------------ | -------------- | --------------- | --------------------- | --------- |
-| Audit log format of "jsonx" | v2.4.3 | v2.5.0 | v2.5.0 | Modify your audit configuration file omitting "format" config property or switching the value to "json". | [Server configuration](../configuration/index.mdx), [Audit devices](../audit/index.mdx) |
-| Configuration of PKCS#11 auto-unseal using the duplicate and undocumented `module`, `token` and `key` options is now deprecated. Use the documented alternative options `lib`, `token_label` and `key_label` instead, respectively. ([More details](https://github.com/openbao/go-kms-wrapping/pull/33#discussion_r2112177962)) | v2.2.2 | TBD | No | Modify your configuration file to use the respective supported option, see [PKCS#11 Unseal](../configuration/seal/pkcs11.mdx). Impact is minimal as the deprecated options were undocumented. The switch to the supported options should be trivial. | [PKCS#11 Unseal](../configuration/seal/pkcs11.mdx) |
-| Unauthenticated Rekey & Root Rotation Endpoints | [Link](unauthed-rekey.mdx) | v2.5.0 | n/a | Move to future authenticated variants or set `disable_unauthed_rekey_endpoints=false` in listeners explicitly. | [Listener Configuration](../configuration/listener/index.mdx) |
-| Support for PostgreSQL older than 9.5 | v2.3.2 | v2.4.0 | v2.4.0 | Upgrade to a [supported PostgreSQL version](https://endoflife.date/postgresql) | [PostgreSQL configuration](../configuration/storage/postgresql.mdx) |
-| Audit device creation via the API | v2.3.2 | n/a | n/a | Temporarily set `unsafe_allow_api_audit_creation` when creating new audit devices | [Server configuration](../configuration/index.mdx), [Audit devices](../audit/index.mdx) |
+- [Storage backends](../concepts/storage.mdx)
+- [`bao operator migrate`](../commands/operator/migrate.mdx)
+
+### JSONX audit log format
+
+> Announced: **11/2025**, Deprecated in: **v2.5.0**, Removal: **v2.5.0**
+
+The `format=jsonx` audit log option will be removed. Switch to `format=json`
+either by explicitly setting it or by omitting the `format` parameter entirely.
+
+Also see:
+
+- [Audit devices](../audit/index.mdx)
+- [Server configuration](../configuration/index.mdx)
+
+### Undocumented AEAD seal mechanism
+
+> Announced: **10/2025**, Deprecated in: **v2.5.0**, Removal: **v2.5.0**
+
+The `aead` seal mechanism was never documented and will be removed. If this
+was somehow depended on, consider replacing its usage with the [`static` seal
+mechanism](../configuration/seal/static.mdx).
+
+### Audit device creation via the API
+
+> Announced: **08/2025**, Deprecated in: **unplanned**, Removal: **unplanned**
+
+API-driven audit device creation via the `/sys/audit` endpoints will be
+disabled by default starting with **v2.3.2**. If necessary, temporarily
+set `unsafe_allow_api_audit_creation` to re-enable. [Declarative audit
+devices](../configuration/audit.mdx) are available starting with **v2.4.0** and
+represent the preferred alternative audit device management approach.
+
+Also see:
+
+- [Audit devices](../audit/index.mdx)
+- [Server configuration](../configuration/index.mdx)
+
+### Support for PostgreSQL versions lower than v9.5
+
+> Announced: **07/2025**, Deprecated in: **v2.4.0**, Removal: **v2.4.0**
+
+Upgrade to a [supported PostgreSQL version](https://endoflife.date/postgresql).
+
+Also see:
+
+- [PostgreSQL configuration](../configuration/storage/postgresql.mdx)
+
+### Unauthenticated rekey & root rotation endpoints
+
+> Announced: **07/2025**, Deprecated in: **v2.5.0**, Removal: **unplanned**
+
+See [Deprecating Unauthenticated Rekey Endpoints](./unauthed-rekey.mdx) for
+details and reasoning. As of **v2.4.0**, the `/sys/rotate` endpoints are
+available as the preferred alternative going forward.
+
+Also see:
+
+- [Listener configuration](../configuration/listener/index.mdx)
+
+### Undocumented PKCS#11 seal option aliases
+
+> Announced: **05/2025**, Deprecated in: **v2.3.1**, Removal: **v2.7.0**
+
+The PKCS#11 Auto Unseal mechanism exposes undocumented aliases for several
+configuration options: `module`, `token` and `key`. Use the documented aliases
+`lib`, `token_label` and `key_label` instead, respectively.
+
+### Unauthenticated generate root endpoints
+
+> Announced: **04/2026**, Deprecated in: **v2.5.3**, Removal: **unplanned**
+
+See [Deprecating Unauthenticated Generate Root Endpoints](./unauthed-generate-root.mdx)
+for details and reasoning.
+
+Also see:
+
+- [Listener configuration](../configuration/listener/index.mdx)

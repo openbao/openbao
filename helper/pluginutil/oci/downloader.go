@@ -23,10 +23,12 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/osutil"
+	"github.com/shirou/gopsutil/v4/disk"
 )
 
 const (
-	PluginCacheDir = ".oci-cache"
+	PluginCacheDir     = ".oci-cache"
+	PluginMaxSizeBytes = 512 * 1024 * 1024 // 512 MB
 )
 
 // PluginDownloader handles downloading and managing OCI-based plugins
@@ -53,7 +55,16 @@ func (d *PluginDownloader) ReconcilePlugins(ctx context.Context) error {
 		return nil
 	}
 
+	if d.pluginDirectory == "" {
+		return errors.New("plugin directory is not configured")
+	}
+
 	for _, pluginConfig := range plugins {
+		// Skip plugins which are manually downloaded but defined declaratively.
+		if pluginConfig.Image == "" {
+			continue
+		}
+
 		pluginLogger := d.logger.With("plugin", pluginConfig.Slug())
 		configErr := pluginConfig.Validate("")
 
@@ -69,11 +80,6 @@ func (d *PluginDownloader) ReconcilePlugins(ctx context.Context) error {
 				pluginLogger.Warn("plugin config not valid")
 				continue
 			}
-		}
-
-		// Skip plugins which are manually downloaded but defined declaratively.
-		if pluginConfig.Image == "" {
-			continue
 		}
 
 		pluginLogger.Debug("processing plugin", "url", pluginConfig.URL(), "binary_name", pluginConfig.BinaryName)
@@ -106,6 +112,15 @@ func (d *PluginDownloader) shouldFailOnPluginError() bool {
 	}
 
 	return behavior == server.PluginDownloadFail
+}
+
+// maxPluginSize returns the maximum allowed plugin binary size
+func (d *PluginDownloader) maxPluginSize() int64 {
+	if d.config.PluginDownloadMaxSize > 0 {
+		return d.config.PluginDownloadMaxSize
+	}
+
+	return PluginMaxSizeBytes
 }
 
 // IsPluginCacheValid checks if the plugin already exists in the plugin directory
@@ -162,6 +177,10 @@ func (d *PluginDownloader) IsPluginCacheValid(config *server.PluginConfig) bool 
 
 // DownloadPlugin downloads a plugin from an OCI registry
 func (d *PluginDownloader) DownloadPlugin(ctx context.Context, config *server.PluginConfig, logger hclog.Logger) error {
+	if d.pluginDirectory == "" {
+		return errors.New("plugin directory is not configured")
+	}
+
 	logger.Info("downloading plugin from OCI registry",
 		"url", config.URL())
 
@@ -290,6 +309,19 @@ func (d *PluginDownloader) ExtractPluginFromImage(img v1.Image, targetPath strin
 				continue
 			}
 
+			if header.Size > d.maxPluginSize() {
+				return fmt.Errorf("plugin binary size of %d MiB exceeds allowed size of %d MiB", header.Size/1024/1024, d.maxPluginSize()/1024/1024)
+			}
+
+			diskUsage, err := disk.Usage(filepath.Dir(targetPath))
+			if err != nil {
+				return fmt.Errorf("failed to get disk usage: %w", err)
+			}
+
+			if diskUsage.Free < uint64(header.Size) {
+				return fmt.Errorf("not enough space left on disk to download plugin")
+			}
+
 			logger.Info("found plugin binary in OCI image", "entry", header.Name, "size", header.Size)
 
 			// Create the output file
@@ -298,8 +330,15 @@ func (d *PluginDownloader) ExtractPluginFromImage(img v1.Image, targetPath strin
 				return fmt.Errorf("failed to create output file: %w", err)
 			}
 
-			if _, copyErr := io.Copy(outFile, tarReader); copyErr != nil {
+			// wrap tarReader in an io.LimitReader to protect against malicious Tar Headers that report a wrong file size
+			limitReader := io.LimitReader(tarReader, header.Size+1)
+
+			n, copyErr := io.Copy(outFile, limitReader)
+			if copyErr != nil {
 				err = fmt.Errorf("failed to extract binary data: %w", copyErr)
+			}
+			if n != header.Size {
+				err = fmt.Errorf("file size was different than reported in tar header")
 			}
 
 			if closeErr := outFile.Close(); closeErr != nil {

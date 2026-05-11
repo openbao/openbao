@@ -7,9 +7,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,12 +30,23 @@ const (
 const (
 	// OIDC error prefixes. These are searched for specifically by the UI, so any
 	// changes to them must be aligned with a UI change.
-	errLoginFailed       = "Vault login failed."
+	errLoginFailed       = "OpenBao login failed."
 	errNoResponse        = "No response from provider."
 	errTokenVerification = "Token verification failed."
 	errNotOIDCFlow       = "OIDC login is not configured for this mount"
 
 	noCode = "no_code"
+)
+
+// RFC 6749 §4.1.2.1 defined error codes for Authorization Code Grant error responses
+const (
+	oidcErrInvalidRequest          = "invalid_request"
+	oidcErrUnauthorizedClient      = "unauthorized_client"
+	oidcErrAccessDenied            = "access_denied"
+	oidcErrUnsupportedResponseType = "unsupported_response_type"
+	oidcErrInvalidScope            = "invalid_scope"
+	oidcErrServerError             = "server_error"
+	oidcErrTemporarilyUnavailable  = "temporarily_unavailable"
 )
 
 // oidcRequest represents a single OIDC authentication flow. It is created when
@@ -55,6 +68,10 @@ type oidcRequest struct {
 
 	// the device flow code
 	deviceCode string
+
+	// requesterIP is the remote address of the client that called authURL, so that it can be displayed
+	// on the confirmation page (RFC 8628 5.4)
+	requesterIP string
 }
 
 func pathOIDC(b *jwtAuthBackend) []*framework.Path {
@@ -85,8 +102,21 @@ func pathOIDC(b *jwtAuthBackend) []*framework.Path {
 					Type:  framework.TypeString,
 					Query: true,
 				},
+				"error": {
+					Type:  framework.TypeString,
+					Query: true,
+				},
 				"error_description": {
-					Type: framework.TypeString,
+					Type:  framework.TypeString,
+					Query: true,
+				},
+				"error_uri": {
+					Type:  framework.TypeString,
+					Query: true,
+				},
+				"confirmation": {
+					Type:  framework.TypeString,
+					Query: true,
 				},
 			},
 
@@ -259,6 +289,22 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		return logical.ErrorResponse(errLoginFailed + " Role could not be found"), nil
 	}
 
+	// For direct callback mode, require explicit user confirmation to reduce
+	// attack surface before processing the authorization code.
+	if role.CallbackMode == callbackModeDirect && !role.OIDCDisableConfirmation {
+		confirmation := d.Get("confirmation").(string)
+		if confirmation == "" {
+			deleteRequest = false // preserve state for the confirmed follow-up request
+			resp := &logical.Response{}
+			resp.Data = map[string]interface{}{
+				logical.HTTPContentType: "text/html",
+				logical.HTTPStatusCode:  http.StatusOK,
+				logical.HTTPRawBody:     []byte(confirmHTML(oidcReq.requesterIP, oidcReq.rolename)),
+			}
+			return resp, nil
+		}
+	}
+
 	useHttp := false
 	if role.CallbackMode == callbackModeDirect {
 		useHttp = true
@@ -266,9 +312,24 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		deleteRequest = false
 	}
 
-	errorDescription := d.Get("error_description").(string)
-	if errorDescription != "" {
-		return loginFailedResponse(useHttp, errorDescription), nil
+	// error parameter per OpenID Connect Core 1.0 spec
+	// If present, the login has failed
+	oidcError := strings.ToLower(strings.TrimSpace(d.Get("error").(string)))
+	if oidcError != "" {
+		// strconv.Quote - for log-safe string output.
+		b.Logger().Warn("OIDC callback received error from provider",
+			"error", strconv.Quote(oidcError),
+			"error_description", strconv.Quote(d.Get("error_description").(string)),
+			"error_uri", strconv.Quote(d.Get("error_uri").(string)),
+		)
+		switch oidcError {
+		case oidcErrInvalidRequest, oidcErrUnauthorizedClient, oidcErrAccessDenied,
+			oidcErrUnsupportedResponseType, oidcErrInvalidScope, oidcErrServerError,
+			oidcErrTemporarilyUnavailable:
+			return loginFailedResponse(useHttp, oidcError), nil
+		default:
+			return loginFailedResponse(useHttp, "An unknown error occurred during OIDC authentication. Check server logs for details"), nil
+		}
 	}
 
 	clientNonce := d.Get("client_nonce").(string)
@@ -424,9 +485,7 @@ func (b *jwtAuthBackend) processToken(ctx context.Context, req *logical.Request,
 	}
 
 	tokenMetadata := make(map[string]string)
-	for k, v := range alias.Metadata {
-		tokenMetadata[k] = v
-	}
+	maps.Copy(tokenMetadata, alias.Metadata)
 	for k, v := range oauth2Metadata {
 		tokenMetadata["oauth2_"+k] = v
 	}
@@ -642,6 +701,11 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 		return logical.ErrorResponse("missing client_nonce"), nil
 	}
 
+	var requesterIP string
+	if req.Connection != nil {
+		requesterIP = req.Connection.RemoteAddr
+	}
+
 	if role.CallbackMode == callbackModeDevice {
 		caCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM, config.OverrideAllowedServerNames)
 		if err != nil {
@@ -684,7 +748,7 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 		}
 		// currently hashicorp/cap/oidc.NewRequest requires
 		//  redirectURL to be non-empty so throw in place holder
-		oidcReq, err := b.createOIDCRequest(config, role, roleName, "-", deviceCode.DeviceCode, clientNonce)
+		oidcReq, err := b.createOIDCRequest(config, role, roleName, "-", deviceCode.DeviceCode, clientNonce, requesterIP)
 		if err != nil {
 			logger.Warn("error generating OAuth state", "error", err)
 			return resp, nil
@@ -755,7 +819,7 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 		return resp, nil
 	}
 
-	oidcReq, err := b.createOIDCRequest(config, role, roleName, redirectURI, "", clientNonce)
+	oidcReq, err := b.createOIDCRequest(config, role, roleName, redirectURI, "", clientNonce, requesterIP)
 	if err != nil {
 		logger.Warn("error generating OAuth state", "error", err)
 		return resp, nil
@@ -788,7 +852,7 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 
 // createOIDCRequest makes an expiring request object, associated with a random state ID
 // that is passed throughout the OAuth process. A nonce is also included in the auth process.
-func (b *jwtAuthBackend) createOIDCRequest(config *jwtConfig, role *jwtRole, rolename, redirectURI, deviceCode string, clientNonce string) (*oidcRequest, error) {
+func (b *jwtAuthBackend) createOIDCRequest(config *jwtConfig, role *jwtRole, rolename, redirectURI, deviceCode string, clientNonce string, requesterIP string) (*oidcRequest, error) {
 	options := []oidc.Option{
 		oidc.WithAudiences(role.BoundAudiences...),
 		oidc.WithScopes(role.OIDCScopes...),
@@ -819,6 +883,7 @@ func (b *jwtAuthBackend) createOIDCRequest(config *jwtConfig, role *jwtRole, rol
 		rolename:    rolename,
 		clientNonce: clientNonce,
 		deviceCode:  deviceCode,
+		requesterIP: requesterIP,
 	}
 	b.oidcRequests.Set(request.State(), oidcReq)
 

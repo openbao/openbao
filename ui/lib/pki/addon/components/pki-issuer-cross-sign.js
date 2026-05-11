@@ -92,9 +92,12 @@ export default class PkiIssuerCrossSign extends Component {
 
       // for cross-signing error handling we want to record the list of issuers before the process starts
       this.intermediateIssuers[intermediateMount] = issuers;
-      this.validationErrors.addObject({
+      const obj = {
         newCrossSignedIssuer: this.nameValidation(newCrossSignedIssuer, issuers),
-      });
+      };
+      if (!this.validationErrors.includes(obj)) {
+        this.validationErrors.push(obj);
+      }
     }
     if (this.validationErrors.any((row) => !row.newCrossSignedIssuer.isValid)) return;
 
@@ -109,13 +112,16 @@ export default class PkiIssuerCrossSign extends Component {
           intermediateIssuer,
           newCrossSignedIssuer
         );
-        this.signedIssuers.addObject({ ...data, hasError: false });
+        this.signedIssuers = [...this.signedIssuers, { ...data, hasError: false }];
       } catch (error) {
-        this.signedIssuers.addObject({
-          ...this.formData[row],
-          hasError: errorMessage(error),
-          hasUnsupportedParams: error.cause ? error.cause.map((e) => e.message).join(', ') : null,
-        });
+        this.signedIssuers = [
+          ...this.signedIssuers,
+          {
+            ...this.formData[row],
+            hasError: errorMessage(error),
+            hasUnsupportedParams: error.cause ? error.cause.map((e) => e.message).join(', ') : null,
+          },
+        ];
       }
     }
   }

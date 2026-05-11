@@ -29,7 +29,6 @@
 package crosstest
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -71,7 +70,7 @@ func Test_ExerciseBackends(t *testing.T) {
 	// we wrote to the same area of storage in lots of places.
 	for name, backend := range backends {
 		if txn, ok := backend.(physical.Transaction); ok {
-			err := txn.Rollback(context.Background())
+			err := txn.Rollback(t.Context())
 			require.NoError(t, err, "failed to rollback transaction: %v", name)
 		}
 	}
@@ -100,7 +99,7 @@ func Test_RandomOpsTransactionalBackends(t *testing.T) {
 
 func Test_ExerciseTransactionalBackends(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	backends := allTransactionalPhysical(t)
 
@@ -156,7 +155,7 @@ func getFile(t *testing.T, logger log.Logger) physical.Backend {
 }
 
 func allPhysical(t *testing.T) (map[string]physical.Backend, func()) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := logging.NewVaultLogger(log.Debug)
 	disableTxConf := map[string]string{"disable_transactions": "true"}
 
@@ -359,7 +358,7 @@ func allDoList(t *testing.T, backends map[string]physical.Backend, prefix string
 	results := make(map[string][]string, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
-		result, err := backend.List(context.Background(), prefix)
+		result, err := backend.List(t.Context(), prefix)
 		results[name] = result
 		errs[name] = err
 	}
@@ -371,7 +370,7 @@ func allDoListPage(t *testing.T, backends map[string]physical.Backend, prefix st
 	results := make(map[string][]string, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
-		result, err := backend.ListPage(context.Background(), prefix, after, limit)
+		result, err := backend.ListPage(t.Context(), prefix, after, limit)
 		results[name] = result
 		errs[name] = err
 	}
@@ -382,7 +381,7 @@ func allDoListPage(t *testing.T, backends map[string]physical.Backend, prefix st
 func allDoDelete(t *testing.T, backends map[string]physical.Backend, key string) map[string]error {
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
-		err := backend.Delete(context.Background(), key)
+		err := backend.Delete(t.Context(), key)
 		errs[name] = err
 	}
 
@@ -393,7 +392,7 @@ func allDoPut(t *testing.T, backends map[string]physical.Backend, key string, va
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
 		// Other entry fields are unnecessary.
-		err := backend.Put(context.Background(), &physical.Entry{
+		err := backend.Put(t.Context(), &physical.Entry{
 			Key:   key,
 			Value: value,
 		})
@@ -407,7 +406,7 @@ func allDoGet(t *testing.T, backends map[string]physical.Backend, key string) (m
 	results := make(map[string]*physical.Entry, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
-		result, err := backend.Get(context.Background(), key)
+		result, err := backend.Get(t.Context(), key)
 		results[name] = result
 		errs[name] = err
 	}
@@ -420,7 +419,7 @@ func allDoBeginTx(t *testing.T, backends map[string]physical.TransactionalBacken
 	results := make(map[string]physical.Backend, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
-		result, err := backend.BeginTx(context.Background())
+		result, err := backend.BeginTx(t.Context())
 		results[name] = result
 		errs[name] = err
 	}
@@ -432,7 +431,7 @@ func allDoBeginReadOnlyTx(t *testing.T, backends map[string]physical.Transaction
 	results := make(map[string]physical.Backend, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
-		result, err := backend.BeginReadOnlyTx(context.Background())
+		result, err := backend.BeginReadOnlyTx(t.Context())
 		results[name] = result
 		errs[name] = err
 	}
@@ -444,7 +443,7 @@ func allDoCommit(t *testing.T, backends map[string]physical.Backend) map[string]
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
 		tx := backend.(physical.Transaction)
-		err := tx.Commit(context.Background())
+		err := tx.Commit(t.Context())
 		errs[name] = err
 	}
 
@@ -455,7 +454,7 @@ func allDoRollback(t *testing.T, backends map[string]physical.Backend) map[strin
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
 		tx := backend.(physical.Transaction)
-		err := tx.Rollback(context.Background())
+		err := tx.Rollback(t.Context())
 		errs[name] = err
 	}
 
@@ -804,7 +803,7 @@ func exerciseBackends(t *testing.T, backends map[string]physical.Backend) {
 
 	// Finally, test pagination exhaustively.
 	var created []string
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		name := fmt.Sprintf("key-%d", i)
 		allDoSamePut(t, backends, name, testString, false)
 		created = append(created, name)
@@ -1034,7 +1033,7 @@ func getRandomOps(t *testing.T, count int, transactional bool, txLimit int) []*i
 		opContents[len(opContents)-1] += "0123456789"
 	}
 
-	for i := 0; i < count; i++ {
+	for range count {
 		opI := rand.Intn(len(opTypes))
 		op := opTypes[opI]
 
@@ -1234,16 +1233,16 @@ func BenchmarkClearView(b *testing.B) {
 		s := &logical.InmemStorage{}
 
 		randomData(b, s, "secrets-without-pagination/"+prefix, b.N, size)
-		count, err := logical.CountKeys(context.Background(), s)
+		count, err := logical.CountKeys(b.Context(), s)
 		require.NoError(b, err)
 		require.Equal(b, b.N, count)
 		b.ResetTimer()
 
 		b.Logf("Starting clear")
-		logical.ClearViewWithoutPagination(context.Background(), s, logger)
+		require.NoError(b, logical.ClearViewWithoutPagination(b.Context(), s, logger))
 		b.Logf("Ending clear")
 
-		count, err = logical.CountKeys(context.Background(), s)
+		count, err = logical.CountKeys(b.Context(), s)
 		require.NoError(b, err)
 		require.Equal(b, 0, count)
 	})
@@ -1252,16 +1251,16 @@ func BenchmarkClearView(b *testing.B) {
 		s := &logical.InmemStorage{}
 
 		randomData(b, s, "secrets-with-pagination/"+prefix, b.N, size)
-		count, err := logical.CountKeys(context.Background(), s)
+		count, err := logical.CountKeys(b.Context(), s)
 		require.NoError(b, err)
 		require.Equal(b, b.N, count)
 		b.ResetTimer()
 
 		b.Logf("Starting clear")
-		logical.ClearViewWithPagination(context.Background(), s, logger)
+		require.NoError(b, logical.ClearViewWithPagination(b.Context(), s, logger))
 		b.Logf("Ending clear")
 
-		count, err = logical.CountKeys(context.Background(), s)
+		count, err = logical.CountKeys(b.Context(), s)
 		require.NoError(b, err)
 		require.Equal(b, 0, count)
 	})
@@ -1272,16 +1271,16 @@ func BenchmarkClearView(b *testing.B) {
 		r := logical.NewLogicalStorage(raft)
 
 		randomData(b, r, "secrets-without-pagination/"+prefix, b.N, size)
-		count, err := logical.CountKeys(context.Background(), r)
+		count, err := logical.CountKeys(b.Context(), r)
 		require.NoError(b, err)
 		require.Equal(b, b.N, count)
 		b.ResetTimer()
 
 		b.Logf("Starting clear")
-		logical.ClearViewWithoutPagination(context.Background(), r, logger)
+		require.NoError(b, logical.ClearViewWithoutPagination(b.Context(), r, logger))
 		b.Logf("Ending clear")
 
-		count, err = logical.CountKeys(context.Background(), r)
+		count, err = logical.CountKeys(b.Context(), r)
 		require.NoError(b, err)
 		require.Equal(b, 0, count)
 	})
@@ -1292,23 +1291,23 @@ func BenchmarkClearView(b *testing.B) {
 		r := logical.NewLogicalStorage(raft)
 
 		randomData(b, r, "secrets-with-pagination/"+prefix, b.N, size)
-		count, err := logical.CountKeys(context.Background(), r)
+		count, err := logical.CountKeys(b.Context(), r)
 		require.NoError(b, err)
 		require.Equal(b, b.N, count)
 		b.ResetTimer()
 
 		b.Logf("Starting clear")
-		logical.ClearViewWithPagination(context.Background(), r, logger)
+		require.NoError(b, logical.ClearViewWithPagination(b.Context(), r, logger))
 		b.Logf("Ending clear")
 
-		count, err = logical.CountKeys(context.Background(), r)
+		count, err = logical.CountKeys(b.Context(), r)
 		require.NoError(b, err)
 		require.Equal(b, 0, count)
 	})
 }
 
 func randomData(t testing.TB, s logical.Storage, prefix string, count int, size int) {
-	for i := 0; i < count; i++ {
+	for i := range count {
 		contents := fmt.Sprintf("%d", i%10)
 		for len(contents) < size {
 			contents += contents
@@ -1317,7 +1316,7 @@ func randomData(t testing.TB, s logical.Storage, prefix string, count int, size 
 
 		entry := fmt.Sprintf("%v-%v", prefix, i)
 
-		if err := s.Put(context.Background(), &logical.StorageEntry{
+		if err := s.Put(t.Context(), &logical.StorageEntry{
 			Key:   entry,
 			Value: []byte(contents),
 		}); err != nil {

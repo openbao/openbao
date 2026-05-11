@@ -16,12 +16,6 @@ import (
 
 func handleSysRekeyInit(core *vault.Core, recovery bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		standby := core.Standby()
-		if standby {
-			respondStandby(core, w, r.URL)
-			return
-		}
-
 		ctx, cancel := core.GetContext()
 		defer cancel()
 
@@ -121,7 +115,6 @@ func handleSysRekeyInitPut(ctx context.Context, core *vault.Core, recovery bool,
 	err := core.RekeyInit(&vault.SealConfig{
 		SecretShares:         req.SecretShares,
 		SecretThreshold:      req.SecretThreshold,
-		StoredShares:         req.StoredShares,
 		PGPKeys:              req.PGPKeys,
 		Backup:               req.Backup,
 		VerificationRequired: req.RequireVerification,
@@ -144,12 +137,6 @@ func handleSysRekeyInitDelete(ctx context.Context, core *vault.Core, recovery bo
 
 func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		standby := core.Standby()
-		if standby {
-			respondStandby(core, w, r.URL)
-			return
-		}
-
 		// Parse the request
 		var req RekeyUpdateRequest
 		if err := parseJSONRequest(r, w, &req); err != nil {
@@ -217,12 +204,6 @@ func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 
 func handleSysRekeyVerify(core *vault.Core, recovery bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		standby := core.Standby()
-		if standby {
-			respondStandby(core, w, r.URL)
-			return
-		}
-
 		ctx, cancel := core.GetContext()
 		defer cancel()
 
@@ -290,7 +271,7 @@ func handleSysRekeyVerifyDelete(ctx context.Context, core *vault.Core, recovery 
 	handleSysRekeyVerifyGet(ctx, core, recovery, w, r)
 }
 
-func handleSysRekeyVerifyPut(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
+func handleSysRekeyVerifyPut(_ context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
 	// Parse the request
 	var req RekeyVerificationUpdateRequest
 	if err := parseJSONRequest(r, w, &req); err != nil {
@@ -344,7 +325,6 @@ func handleSysRekeyVerifyPut(ctx context.Context, core *vault.Core, recovery boo
 type RekeyRequest struct {
 	SecretShares        int      `json:"secret_shares"`
 	SecretThreshold     int      `json:"secret_threshold"`
-	StoredShares        uint     `json:"stored_shares"`
 	PGPKeys             []string `json:"pgp_keys"`
 	Backup              bool     `json:"backup"`
 	RequireVerification bool     `json:"require_verification"`

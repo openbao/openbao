@@ -5,16 +5,25 @@ package vault
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
+
+var namespacePathSchema = &framework.FieldSchema{
+	Type:        framework.TypeString,
+	Required:    false,
+	Description: "Path of the namespace.",
+}
 
 func (b *SystemBackend) namespacePaths() []*framework.Path {
 	namespaceListSchema := map[string]*framework.FieldSchema{
@@ -59,6 +68,11 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			Required:    true,
 			Description: "User provided key-value pairs.",
 		},
+		"key_shares": {
+			Type:        framework.TypeMap,
+			Required:    false,
+			Description: "Key shares used to combine into unseal/recovery key of the namespace.",
+		},
 	}
 
 	return []*framework.Path{
@@ -86,8 +100,8 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["list-namespaces"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["list-namespaces"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesHelp["list-namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesHelp["list-namespaces"][1]),
 		},
 
 		{
@@ -103,11 +117,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			},
 
 			Fields: map[string]*framework.FieldSchema{
-				"path": {
-					Type:        framework.TypeString,
-					Required:    false,
-					Description: "Path of the namespace.",
-				},
+				"path": namespacePathSchema,
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -126,8 +136,8 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-lock"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces-lock"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesHelp["namespaces-lock"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesHelp["namespaces-lock"][1]),
 		},
 
 		{
@@ -143,11 +153,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			},
 
 			Fields: map[string]*framework.FieldSchema{
-				"path": {
-					Type:        framework.TypeString,
-					Required:    false,
-					Description: "Path of the namespace.",
-				},
+				"path": namespacePathSchema,
 				"unlock_key": {
 					Type:        framework.TypeString,
 					Required:    true,
@@ -165,8 +171,8 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-unlock"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces-unlock"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesHelp["namespaces-unlock"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesHelp["namespaces-unlock"][1]),
 		},
 
 		{
@@ -177,14 +183,18 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			},
 
 			Fields: map[string]*framework.FieldSchema{
-				"path": {
-					Type:        framework.TypeString,
-					Required:    true,
-					Description: "Path of the namespace.",
-				},
+				"path": namespacePathSchema,
 				"custom_metadata": {
 					Type:        framework.TypeMap,
 					Description: "User provided key-value pairs.",
+				},
+				"seal": {
+					Type:        framework.TypeString,
+					Description: "User provided seal config.",
+				},
+				"pgp_keys": {
+					Type:        framework.TypeStringSlice,
+					Description: "Specifies an array of PGP public keys used to encrypt the output unseal keys.",
 				},
 			},
 
@@ -230,8 +240,8 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesHelp["namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesHelp["namespaces"][1]),
 		},
 	}
 }
@@ -339,15 +349,72 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		entry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
-			ns.CustomMetadata = metadata
-			return ns, nil
-		})
+		sealRaw, ok := data.GetOk("seal")
+		var sealConfig *SealConfig
+		if ok {
+			var err error
+			sealString, ok := sealRaw.(string)
+			if !ok {
+				return nil, errors.New("seal config must be a HCL or JSON string")
+			}
+			kmses, err := configutil.ParseKMSes(sealString)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse seal config: %w", err)
+			}
+			if len(kmses) != 1 {
+				return nil, errors.New("seal config must contain exactly one seal stanza")
+			}
+			kms := kmses[0]
+			if kms.Type != "shamir" {
+				return nil, errors.New("namespaces currently only support shamir seals")
+			}
+
+			sealConfig = &SealConfig{
+				Type: kms.Type,
+			}
+
+			if val, ok := kms.Config["shares"]; ok {
+				shares, err := parseutil.ParseInt(val)
+				if err != nil {
+					return nil, errors.New("value of shares parameter must be integer")
+				}
+				sealConfig.SecretShares = int(shares)
+			}
+			if val, ok := kms.Config["threshold"]; ok {
+				threshold, err := parseutil.ParseInt(val)
+				if err != nil {
+					return nil, errors.New("value of shares parameter must be integer")
+				}
+				sealConfig.SecretThreshold = int(threshold)
+			}
+			if pgpkeys, ok := data.GetOk("pgp_keys"); ok {
+				sealConfig.PGPKeys = pgpkeys.([]string)
+			}
+
+			if err := sealConfig.Validate(); err != nil {
+				return logical.ErrorResponse("invalid seal config: %v", err), err
+			}
+		}
+
+		entry, keyShares, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, sealConfig,
+			func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+				ns.CustomMetadata = metadata
+				return ns, nil
+			})
 		if err != nil {
 			return handleError(err)
 		}
 
-		return &logical.Response{Data: createNamespaceDataResponse(entry)}, nil
+		resp := &logical.Response{Data: createNamespaceDataResponse(entry)}
+		if len(keyShares) != 0 {
+			encoded := make([]string, 0, len(keyShares))
+			for _, share := range keyShares {
+				encoded = append(encoded, hex.EncodeToString(share))
+			}
+			resp.Data["key_shares"] = encoded
+		}
+
+		return resp, nil
 	}
 }
 
@@ -376,7 +443,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, errors.New("path must not contain /")
 		}
 
-		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		ns, _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, nil, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			if ns.UUID == "" {
 				return nil, fmt.Errorf("requested namespace does not exist")
 			}
@@ -478,4 +545,47 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 			},
 		}, nil
 	}
+}
+
+var sysNamespacesHelp = map[string][2]string{
+	"list-namespaces": {
+		"List namespaces.",
+		`
+This path responds to the following HTTP methods.
+	LIST /
+		List namespaces.
+	SCAN /
+		Scan (recursively list) namespaces.
+		`,
+	},
+	"namespaces": {
+		"Create, read, update and delete namespaces.",
+		`
+This path responds to the following HTTP methods.
+	GET /<name>
+		Retrieve a namespace.
+	PUT /<name>
+		Create or update a namespace.
+	PATCH /<name>
+		Update a namespace's custom metadata.
+	DELETE /<name>
+		Delete a namespace.
+		`,
+	},
+	"namespaces-lock": {
+		"Lock a namespace.",
+		`
+This path responds to the following HTTP methods.
+	PUT /<name>
+		Lock the API for a namespace.
+		`,
+	},
+	"namespaces-unlock": {
+		"Unlock a namespace.",
+		`
+This path responds to the following HTTP methods.
+	PUT /<name>
+		Unlock the API for a namespace.
+		`,
+	},
 }

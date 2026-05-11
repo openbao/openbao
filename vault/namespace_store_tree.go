@@ -35,8 +35,7 @@ func newNamespaceTree(root *namespace.Namespace) *namespaceTree {
 	}
 }
 
-// Get returns the namespace at a given path
-func (nt *namespaceTree) Get(path string) *namespace.Namespace {
+func (nt *namespaceTree) nodeAt(path string) *namespaceNode {
 	path = namespace.Canonicalize(path)
 	var segments []string
 	if path != "" {
@@ -51,6 +50,15 @@ func (nt *namespaceTree) Get(path string) *namespace.Namespace {
 		}
 
 		node = n
+	}
+	return node
+}
+
+// Get returns the namespace at a given path
+func (nt *namespaceTree) Get(path string) *namespace.Namespace {
+	node := nt.nodeAt(path)
+	if node == nil {
+		return nil
 	}
 
 	return node.entry
@@ -81,6 +89,30 @@ func (nt *namespaceTree) LongestPrefix(path string) (string, *namespace.Namespac
 	return namespacePrefix, node.entry.Clone(false), pathSuffix
 }
 
+func (nt *namespaceTree) PostOrderTraversal(path string, op func(namespace *namespace.Namespace)) {
+	node := nt.nodeAt(path)
+	if node == nil {
+		return
+	}
+
+	nodes := []*namespaceNode{node}
+	ordNodes := []*namespaceNode{}
+
+	for len(nodes) > 0 {
+		node := nodes[len(nodes)-1]
+		nodes = nodes[:len(nodes)-1]
+		ordNodes = append(ordNodes, node)
+
+		for _, childNode := range node.children {
+			nodes = append(nodes, childNode)
+		}
+	}
+
+	for i := len(ordNodes) - 1; i >= 0; i-- {
+		op(ordNodes[i].entry)
+	}
+}
+
 func (nt *namespaceTree) WalkPath(path string, predicate func(namespace *namespace.Namespace) bool) {
 	path = namespace.Canonicalize(path)
 	var segments []string
@@ -105,20 +137,9 @@ func (nt *namespaceTree) WalkPath(path string, predicate func(namespace *namespa
 // namespace at the given path, optionally recursing down into all child
 // namespaces.
 func (nt *namespaceTree) List(path string, includeParent bool, recursive bool, tainted map[string]bool) ([]*namespace.Namespace, error) {
-	path = namespace.Canonicalize(path)
-	var segments []string
-	if path != "" {
-		segments = strings.SplitAfter(path, "/")
-		segments = segments[:len(segments)-1]
-	}
-	node := nt.root
-	for i, segment := range segments {
-		n, ok := node.children[segment]
-		if !ok {
-			return nil, fmt.Errorf("unknown path: %s", namespace.Canonicalize(strings.Join(segments[:i], "/")))
-		}
-
-		node = n
+	node := nt.nodeAt(path)
+	if node == nil {
+		return nil, fmt.Errorf("unknown path: %s", namespace.Canonicalize(path))
 	}
 
 	var nodes []*namespaceNode

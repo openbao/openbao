@@ -380,14 +380,12 @@ listener "tcp" {
 	var output string
 	var code int
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		code = cmd.Run([]string{"-config", configPath})
 		if code != 0 {
 			output = ui.ErrorWriter.String() + ui.OutputWriter.String()
 		}
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -529,14 +527,7 @@ func TestAgent_Template_UserAgent(t *testing.T) {
 
 	roleIDPath, secretIDPath := setupAppRoleAndKVMounts(t, serverClient)
 
-	// make a temp directory to hold renders. Each test will create a temp dir
-	// inside this one
-	tmpDirRoot := t.TempDir()
-	// create temp dir for this test run
-	tmpDir, err := os.MkdirTemp(tmpDirRoot, "TestAgent_Template_UserAgent")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tmpDir := t.TempDir()
 
 	// make some template files
 	var templatePaths []string
@@ -588,16 +579,14 @@ auto_auth {
 	cmd.startedCh = make(chan struct{})
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		code := cmd.Run([]string{"-config", configPath})
 		if code != 0 {
 			t.Errorf("non-zero return code when running agent: %d", code)
 			t.Logf("STDOUT from agent:\n%s", ui.OutputWriter.String())
 			t.Logf("STDERR from agent:\n%s", ui.ErrorWriter.String())
 		}
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -697,10 +686,6 @@ func TestAgent_Template_Basic(t *testing.T) {
 
 	roleIDPath, secretIDPath := setupAppRoleAndKVMounts(t, serverClient)
 
-	// make a temp directory to hold renders. Each test will create a temp dir
-	// inside this one
-	tmpDirRoot := t.TempDir()
-
 	// start test cases here
 	testCases := map[string]struct {
 		templateCount int
@@ -725,10 +710,7 @@ func TestAgent_Template_Basic(t *testing.T) {
 	for tcname, tc := range testCases {
 		t.Run(tcname, func(t *testing.T) {
 			// create temp dir for this test run
-			tmpDir, err := os.MkdirTemp(tmpDirRoot, tcname)
-			if err != nil {
-				t.Fatal(err)
-			}
+			tmpDir := t.TempDir()
 
 			// make some template files
 			var templatePaths []string
@@ -767,20 +749,17 @@ auto_auth {
 }
 
 %s
-
-%s
 `
-
-			// conditionally set the exit_after_auth flag
-			exitAfterAuth := ""
-			if tc.exitAfterAuth {
-				exitAfterAuth = "exit_after_auth = true"
-			}
 
 			// flatten the template configs
 			templateConfig := strings.Join(templateConfigStrings, " ")
+			config = fmt.Sprintf(config, serverClient.Address(), roleIDPath, secretIDPath, templateConfig)
 
-			config = fmt.Sprintf(config, serverClient.Address(), roleIDPath, secretIDPath, templateConfig, exitAfterAuth)
+			// conditionally set the exit_after_auth flag
+			if tc.exitAfterAuth {
+				config = fmt.Sprintf("%s\n\n %s", config, "exit_after_auth = true")
+			}
+
 			configPath := makeTempFile(t, "config.hcl", config)
 			defer os.Remove(configPath)
 
@@ -790,16 +769,14 @@ auto_auth {
 			cmd.startedCh = make(chan struct{})
 
 			wg := &sync.WaitGroup{}
-			wg.Add(1)
-			go func() {
+			wg.Go(func() {
 				code := cmd.Run([]string{"-config", configPath})
 				if code != 0 {
 					t.Errorf("non-zero return code when running agent: %d", code)
 					t.Logf("STDOUT from agent:\n%s", ui.OutputWriter.String())
 					t.Logf("STDERR from agent:\n%s", ui.ErrorWriter.String())
 				}
-				wg.Done()
-			}()
+			})
 
 			select {
 			case <-cmd.startedCh:
@@ -824,7 +801,7 @@ auto_auth {
 				// the temp dir before Agent has had time to render and will
 				// likely fail the test
 				tick := time.Tick(1 * time.Second)
-				timeout := time.After(20 * time.Second)
+				timeout := time.After(25 * time.Second)
 				var err error
 				for {
 					select {
@@ -1060,16 +1037,14 @@ auto_auth {
 			cmd.startedCh = make(chan struct{})
 
 			wg := &sync.WaitGroup{}
-			wg.Add(1)
-			go func() {
+			wg.Go(func() {
 				code := cmd.Run([]string{"-config", configPath})
 				if code != 0 {
 					t.Errorf("non-zero return code when running agent: %d", code)
 					t.Logf("STDOUT from agent:\n%s", ui.OutputWriter.String())
 					t.Logf("STDERR from agent:\n%s", ui.ErrorWriter.String())
 				}
-				wg.Done()
-			}()
+			})
 
 			select {
 			case <-cmd.startedCh:
@@ -1139,7 +1114,7 @@ func testListFiles(t *testing.T, dir, extension string) int {
 // similar to TestAgent_Template_Basic, but differs by using a consistent number
 // of secrets from multiple sources, where as the basic test could possibly
 // generate a random number of secrets, but all using the same source. This test
-// reproduces https://github.com/openbao/openbao/issues/7883
+// reproduces https://github.com/hashicorp/vault/issues/7883
 func TestAgent_Template_ExitCounter(t *testing.T) {
 	//----------------------------------------------------
 	// Start the server and agent
@@ -1171,15 +1146,7 @@ func TestAgent_Template_ExitCounter(t *testing.T) {
 
 	roleIDPath, secretIDPath := setupAppRoleAndKVMounts(t, serverClient)
 
-	// make a temp directory to hold renders. Each test will create a temp dir
-	// inside this one
-	tmpDirRoot := t.TempDir()
-
-	// create temp dir for this test run
-	tmpDir, err := os.MkdirTemp(tmpDirRoot, "agent-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tmpDir := t.TempDir()
 
 	// Create a config file
 	config := `
@@ -1235,16 +1202,14 @@ exit_after_auth = true
 	cmd.startedCh = make(chan struct{})
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		code := cmd.Run([]string{"-config", configPath})
 		if code != 0 {
 			t.Errorf("non-zero return code when running agent: %d", code)
 			t.Logf("STDOUT from agent:\n%s", ui.OutputWriter.String())
 			t.Logf("STDERR from agent:\n%s", ui.ErrorWriter.String())
 		}
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -1473,10 +1438,6 @@ func TestAgent_Template_Retry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// make a temp directory to hold renders. Each test will create a temp dir
-	// inside this one
-	tmpDirRoot := t.TempDir()
-
 	intRef := func(i int) *int {
 		return &i
 	}
@@ -1518,11 +1479,7 @@ func TestAgent_Template_Retry(t *testing.T) {
 			// perspective) attempt, it will succeed.
 			h.failCount = 6
 
-			// create temp dir for this test run
-			tmpDir, err := os.MkdirTemp(tmpDirRoot, tcname)
-			if err != nil {
-				t.Fatal(err)
-			}
+			tmpDir := t.TempDir()
 
 			// make some template files
 			templatePath := filepath.Join(tmpDir, "render_0.tmpl")
@@ -1787,11 +1744,9 @@ api_proxy {
 	cmd.startedCh = make(chan struct{})
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		cmd.Run([]string{"-config", configPath})
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -1878,11 +1833,9 @@ vault {
 	cmd.startedCh = make(chan struct{})
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		cmd.Run([]string{"-config", configPath})
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -1970,11 +1923,9 @@ vault {
 	cmd.startedCh = make(chan struct{})
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		cmd.Run([]string{"-config", configPath})
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -2046,11 +1997,9 @@ vault {
 	cmd.startedCh = make(chan struct{})
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		cmd.Run([]string{"-config", configPath})
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -2218,11 +2167,9 @@ vault {
 			cmd.startedCh = make(chan struct{})
 
 			wg := &sync.WaitGroup{}
-			wg.Add(1)
-			go func() {
+			wg.Go(func() {
 				cmd.Run([]string{"-config", configPath})
-				wg.Done()
-			}()
+			})
 
 			select {
 			case <-cmd.startedCh:
@@ -2313,10 +2260,6 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// make a temp directory to hold renders. Each test will create a temp dir
-	// inside this one
-	tmpDirRoot := t.TempDir()
 
 	// Note that missing key is different from a non-existent secret. A missing
 	// key (2xx response with missing keys in the response map) can still yield
@@ -2415,11 +2358,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 
 	for tcName, tc := range testCases {
 		t.Run(tcName, func(t *testing.T) {
-			// create temp dir for this test run
-			tmpDir, err := os.MkdirTemp(tmpDirRoot, tcName)
-			if err != nil {
-				t.Fatal(err)
-			}
+			tmpDir := t.TempDir()
 
 			listenAddr := generateListenerAddress(t)
 			listenConfig := fmt.Sprintf(`
@@ -2601,14 +2540,12 @@ listener "tcp" {
 	var output string
 	var code int
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		code = cmd.Run([]string{"-config", configPath})
 		if code != 0 {
 			output = ui.ErrorWriter.String() + ui.OutputWriter.String()
 		}
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -2711,11 +2648,9 @@ cache {}
 	cmd.startedCh = make(chan struct{})
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		cmd.Run([]string{"-config", configPath})
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:
@@ -3040,13 +2975,11 @@ vault {
 	var output string
 	var code int
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		if code = cmd.Run([]string{"-config", configPath}); code != 0 {
 			output = ui.ErrorWriter.String() + ui.OutputWriter.String()
 		}
-		wg.Done()
-	}()
+	})
 
 	select {
 	case <-cmd.startedCh:

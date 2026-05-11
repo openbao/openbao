@@ -4,7 +4,6 @@
 package openldap
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -15,7 +14,7 @@ import (
 // is a discrete set of features. This test suite provides
 // end-to-end tests of these interrelated endpoints.
 func TestCheckOuts(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := getBackend(t, false)
 	defer b.Cleanup(ctx)
 
@@ -68,7 +67,7 @@ func TestCheckOutRaces(t *testing.T) {
 		t.Skip("skipping check for races in the checkout system due to short flag")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	b, s := getBackend(t, false)
 	defer b.Cleanup(ctx)
 
@@ -76,7 +75,7 @@ func TestCheckOutRaces(t *testing.T) {
 	numParallel := 100
 	start := make(chan bool, 1)
 	end := make(chan bool, numParallel)
-	for i := 0; i < numParallel; i++ {
+	for range numParallel {
 		go func() {
 			<-start
 			b.HandleRequest(ctx, &logical.Request{
@@ -183,7 +182,7 @@ func TestCheckOutRaces(t *testing.T) {
 
 	// Wait for them all to finish.
 	timer := time.NewTimer(15 * time.Second)
-	for i := 0; i < numParallel; i++ {
+	for range numParallel {
 		select {
 		case <-timer.C:
 			t.Fatal("test took more than 15 seconds, may be deadlocked")
@@ -206,7 +205,7 @@ func WriteSet(b logical.Backend, s logical.Storage) func(t *testing.T) {
 				"disable_check_in_enforcement": true,
 			},
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}
@@ -226,7 +225,7 @@ func AddAnotherServiceAccount(b logical.Backend, s logical.Storage) func(t *test
 				"service_account_names": []string{"tester1@example.com", "tester2@example.com", "tester3@example.com"},
 			},
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}
@@ -246,7 +245,7 @@ func RemoveServiceAccount(b logical.Backend, s logical.Storage) func(t *testing.
 				"service_account_names": []string{"tester1@example.com", "tester2@example.com"},
 			},
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}
@@ -263,7 +262,7 @@ func ReadSet(b logical.Backend, s logical.Storage) func(t *testing.T) {
 			Path:      libraryPrefix + "test-set",
 			Storage:   s,
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}
@@ -301,7 +300,7 @@ func WriteSetToggleOff(b logical.Backend, s logical.Storage) func(t *testing.T) 
 				"disable_check_in_enforcement": false,
 			},
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}
@@ -318,7 +317,7 @@ func ReadSetToggleOff(b logical.Backend, s logical.Storage) func(t *testing.T) {
 			Path:      libraryPrefix + "test-set",
 			Storage:   s,
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}
@@ -343,7 +342,7 @@ func ReadSetStatus(b logical.Backend, s logical.Storage) func(t *testing.T) {
 			Path:      libraryPrefix + "test-set/status",
 			Storage:   s,
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}
@@ -373,7 +372,7 @@ func WriteSetWithConflictingServiceAccounts(b logical.Backend, s logical.Storage
 				"service_account_names": "tester1@example.com",
 			},
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -390,7 +389,7 @@ func ListSets(b logical.Backend, s logical.Storage) func(t *testing.T) {
 			Path:      libraryPrefix,
 			Storage:   s,
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}
@@ -417,7 +416,7 @@ func DeleteSet(b logical.Backend, s logical.Storage) func(t *testing.T) {
 			Path:      libraryPrefix + "test-set",
 			Storage:   s,
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}
@@ -434,7 +433,7 @@ func CheckInitialStatus(b logical.Backend, s logical.Storage) func(t *testing.T)
 			Path:      libraryPrefix + "test-set/status",
 			Storage:   s,
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}
@@ -468,7 +467,7 @@ func PerformCheckOut(b logical.Backend, s logical.Storage) func(t *testing.T) {
 			Path:      libraryPrefix + "test-set/check-out",
 			Storage:   s,
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}
@@ -510,7 +509,7 @@ func CheckUpdatedStatus(b logical.Backend, s logical.Storage) func(t *testing.T)
 			Path:      libraryPrefix + "test-set/status",
 			Storage:   s,
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}
@@ -546,7 +545,7 @@ func NormalCheckIn(b logical.Backend, s logical.Storage) func(t *testing.T) {
 			Path:      libraryPrefix + "test-set/check-in",
 			Storage:   s,
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}
@@ -567,7 +566,7 @@ func ForceCheckIn(b logical.Backend, s logical.Storage) func(t *testing.T) {
 			Path:      libraryPrefix + "manage/test-set/check-in",
 			Storage:   s,
 		}
-		resp, err := b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(t.Context(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatal(err)
 		}

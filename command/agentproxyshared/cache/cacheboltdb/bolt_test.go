@@ -4,7 +4,6 @@
 package cacheboltdb
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path"
@@ -24,14 +23,14 @@ import (
 func getTestKeyManager(t *testing.T) keymanager.KeyManager {
 	t.Helper()
 
-	km, err := keymanager.NewPassthroughKeyManager(context.Background(), nil)
+	km, err := keymanager.NewPassthroughKeyManager(t.Context(), nil)
 	require.NoError(t, err)
 
 	return km
 }
 
 func TestBolt_SetGet(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	path := t.TempDir()
 
@@ -55,7 +54,7 @@ func TestBolt_SetGet(t *testing.T) {
 }
 
 func TestBoltDelete(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	path := t.TempDir()
 
@@ -85,7 +84,7 @@ func TestBoltDelete(t *testing.T) {
 }
 
 func TestBoltClear(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	path := t.TempDir()
 
@@ -131,7 +130,7 @@ func TestBoltClear(t *testing.T) {
 }
 
 func TestBoltSetAutoAuthToken(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	path := t.TempDir()
 
@@ -256,7 +255,7 @@ func Test_SetGetRetrievalToken(t *testing.T) {
 }
 
 func TestBolt_MigrateFromV1ToV2Schema(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	path := t.TempDir()
 
@@ -333,7 +332,7 @@ func TestBolt_MigrateFromV1ToV2Schema(t *testing.T) {
 }
 
 func TestBolt_MigrateFromInvalidToV2Schema(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	path := t.TempDir()
 

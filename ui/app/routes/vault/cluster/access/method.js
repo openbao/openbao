@@ -15,7 +15,7 @@ export default Route.extend({
   model(params) {
     const { path } = params;
     return this.store.findAll('auth-method').then((modelArray) => {
-      const model = modelArray.findBy('id', path);
+      const model = modelArray.find((x) => x.id === path);
       if (!model) {
         const error = new AdapterError();
         set(error, 'httpStatus', 404);

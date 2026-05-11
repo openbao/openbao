@@ -45,14 +45,15 @@ func (fw *testingFormatWriter) Salt(ctx context.Context) (*salt.Salt, error) {
 
 // hashExpectedValueForComparison replicates enough of the audit HMAC process on a piece of expected data in a test,
 // so that we can use assert.Equal to compare the expected and output values.
-func (fw *testingFormatWriter) hashExpectedValueForComparison(input map[string]interface{}) map[string]interface{} {
+func (fw *testingFormatWriter) hashExpectedValueForComparison(t *testing.T, input map[string]interface{}) map[string]interface{} {
+	t.Helper()
 	// Copy input before modifying, since we may re-use the same data in another test
 	copiedAsMap, err := getUnmarshaledCopy(input)
 	if err != nil {
 		panic(err)
 	}
 
-	salter, err := fw.Salt(context.Background())
+	salter, err := fw.Salt(t.Context())
 	if err != nil {
 		panic(err)
 	}
@@ -71,14 +72,14 @@ func TestFormatRequestErrors(t *testing.T) {
 		AuditFormatWriter: &testingFormatWriter{},
 	}
 
-	if err := formatter.FormatRequest(context.Background(), io.Discard, config, &logical.LogInput{}); err == nil {
+	if err := formatter.FormatRequest(t.Context(), io.Discard, config, &logical.LogInput{}); err == nil {
 		t.Fatal("expected error due to nil request")
 	}
 
 	in := &logical.LogInput{
 		Request: &logical.Request{},
 	}
-	if err := formatter.FormatRequest(context.Background(), nil, config, in); err == nil {
+	if err := formatter.FormatRequest(t.Context(), nil, config, in); err == nil {
 		t.Fatal("expected error due to nil writer")
 	}
 }
@@ -89,14 +90,14 @@ func TestFormatResponseErrors(t *testing.T) {
 		AuditFormatWriter: &testingFormatWriter{},
 	}
 
-	if err := formatter.FormatResponse(context.Background(), io.Discard, config, &logical.LogInput{}); err == nil {
+	if err := formatter.FormatResponse(t.Context(), io.Discard, config, &logical.LogInput{}); err == nil {
 		t.Fatal("expected error due to nil request")
 	}
 
 	in := &logical.LogInput{
 		Request: &logical.Request{},
 	}
-	if err := formatter.FormatResponse(context.Background(), nil, config, in); err == nil {
+	if err := formatter.FormatResponse(t.Context(), nil, config, in); err == nil {
 		t.Fatal("expected error due to nil writer")
 	}
 }
@@ -104,7 +105,7 @@ func TestFormatResponseErrors(t *testing.T) {
 func TestElideListResponses(t *testing.T) {
 	tfw := testingFormatWriter{}
 	formatter := AuditFormatter{&tfw}
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 
 	type test struct {
 		name         string
@@ -194,7 +195,7 @@ func TestElideListResponses(t *testing.T) {
 		for _, tc := range tests {
 			t.Run(tc.name, func(t *testing.T) {
 				formatResponse(t, config, logical.ListOperation, tc.inputData)
-				assert.Equal(t, tfw.hashExpectedValueForComparison(tc.expectedData), tfw.lastResponse.Response.Data)
+				assert.Equal(t, tfw.hashExpectedValueForComparison(t, tc.expectedData), tfw.lastResponse.Response.Data)
 			})
 		}
 	})
@@ -203,7 +204,7 @@ func TestElideListResponses(t *testing.T) {
 		config := FormatterConfig{ElideListResponses: true}
 		tc := oneInterestingTestCase
 		formatResponse(t, config, logical.ReadOperation, tc.inputData)
-		assert.Equal(t, tfw.hashExpectedValueForComparison(fixupInputData(tc.inputData)),
+		assert.Equal(t, tfw.hashExpectedValueForComparison(t, fixupInputData(tc.inputData)),
 			tfw.lastResponse.Response.Data)
 	})
 
@@ -211,7 +212,7 @@ func TestElideListResponses(t *testing.T) {
 		config := FormatterConfig{ElideListResponses: false}
 		tc := oneInterestingTestCase
 		formatResponse(t, config, logical.ListOperation, tc.inputData)
-		assert.Equal(t, tfw.hashExpectedValueForComparison(fixupInputData(tc.inputData)),
+		assert.Equal(t, tfw.hashExpectedValueForComparison(t, fixupInputData(tc.inputData)),
 			tfw.lastResponse.Response.Data)
 	})
 

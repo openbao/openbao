@@ -718,14 +718,6 @@ func (k *KeyMetadata) AddVersion(createdTime, deletionTime *timestamppb.Timestam
 	return vm, 0
 }
 
-func max(a, b uint32) uint32 {
-	if b > a {
-		return b
-	}
-
-	return a
-}
-
 const (
 	dataHelpSyn  = `Write, Patch, Read, and Delete data in the Key-Value Store.`
 	dataHelpDesc = `

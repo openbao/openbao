@@ -5,7 +5,6 @@ package jwtauth
 
 import (
 	"bytes"
-	"context"
 	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
@@ -74,7 +73,7 @@ func TestLogin_ibmisam_fetchGroups(t *testing.T) {
 	require.NoError(t, err)
 
 	b, storage := getBackend(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	data := map[string]interface{}{
 		"oidc_discovery_url":    aServer.server.URL,
@@ -96,7 +95,7 @@ func TestLogin_ibmisam_fetchGroups(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}
@@ -115,7 +114,7 @@ func TestLogin_ibmisam_fetchGroups(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}

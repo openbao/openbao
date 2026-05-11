@@ -99,11 +99,11 @@ export default class CreateAndEditRolePageComponent extends Component {
     this.selectedTemplateId = '1';
 
     if (generatedRoleRules) {
-      const template = rulesTemplates.findBy('rules', generatedRoleRules);
+      const template = rulesTemplates.find((x) => x.rules === generatedRoleRules);
       if (template) {
         this.selectedTemplateId = template.id;
       } else {
-        rulesTemplates.findBy('id', '1').rules = generatedRoleRules;
+        rulesTemplates.find((x) => x.id === '1').rules = generatedRoleRules;
       }
     }
     this.roleRulesTemplates = rulesTemplates;
@@ -134,7 +134,7 @@ export default class CreateAndEditRolePageComponent extends Component {
   *save() {
     try {
       // set generatedRoleRoles to value of selected template
-      const selectedTemplate = this.roleRulesTemplates?.findBy('id', this.selectedTemplateId);
+      const selectedTemplate = this.roleRulesTemplates?.find((x) => x.id === this.selectedTemplateId);
       if (selectedTemplate) {
         this.args.model.generatedRoleRules = selectedTemplate.rules;
       }

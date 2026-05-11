@@ -32,7 +32,7 @@ func TestMultiplexingSupported(t *testing.T) {
 		{
 			name: "multiplexing is supported if plugin is not opted out",
 			args: args{
-				ctx:  context.Background(),
+				ctx:  t.Context(),
 				cc:   &MockClientConnInterfaceNoop{},
 				name: "plugin",
 			},
@@ -42,7 +42,7 @@ func TestMultiplexingSupported(t *testing.T) {
 		{
 			name: "multiplexing is not supported if plugin is opted out",
 			args: args{
-				ctx:  context.Background(),
+				ctx:  t.Context(),
 				cc:   &MockClientConnInterfaceNoop{},
 				name: "optedOutPlugin",
 			},
@@ -52,7 +52,7 @@ func TestMultiplexingSupported(t *testing.T) {
 		{
 			name: "multiplexing is not supported if plugin among one of the opted out",
 			args: args{
-				ctx:  context.Background(),
+				ctx:  t.Context(),
 				cc:   &MockClientConnInterfaceNoop{},
 				name: "optedOutPlugin",
 			},
@@ -62,7 +62,7 @@ func TestMultiplexingSupported(t *testing.T) {
 		{
 			name: "multiplexing is supported if different plugin is opted out",
 			args: args{
-				ctx:  context.Background(),
+				ctx:  t.Context(),
 				cc:   &MockClientConnInterfaceNoop{},
 				name: "plugin",
 			},
@@ -94,7 +94,7 @@ func TestGetMultiplexIDFromContext(t *testing.T) {
 
 	tests := map[string]testCase{
 		"missing plugin multiplexing metadata": {
-			ctx:          context.Background(),
+			ctx:          t.Context(),
 			expectedResp: "",
 			expectedErr:  errors.New("missing plugin multiplexing metadata"),
 		},
@@ -140,7 +140,7 @@ func TestGetMultiplexIDFromContext(t *testing.T) {
 // metadata
 func idCtx(t *testing.T, ids ...string) context.Context {
 	// Context doesn't need to timeout since this is just passed through
-	ctx := context.Background()
+	ctx := t.Context()
 	md := metadata.MD{}
 	for _, id := range ids {
 		md.Append(MultiplexingCtxKey, id)

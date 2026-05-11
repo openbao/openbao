@@ -4,7 +4,6 @@
 package kubeauth
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -58,7 +57,7 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		},
 		StorageView: &logical.InmemStorage{},
 	}
-	if err := b.Setup(context.Background(), config); err != nil {
+	if err := b.Setup(t.Context(), config); err != nil {
 		t.Fatalf("unable to setup backend: %v", err)
 	}
 
@@ -279,7 +278,7 @@ func TestPath_Create(t *testing.T) {
 				Data:      tc.data,
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 
 			if tc.wantErr != nil {
 				var actual error
@@ -299,7 +298,7 @@ func TestPath_Create(t *testing.T) {
 					t.Fatalf("err:%s resp:%#v\n", err, resp)
 				}
 
-				actual, err := b.(*kubeAuthBackend).role(context.Background(), storage, name)
+				actual, err := b.(*kubeAuthBackend).role(t.Context(), storage, name)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -355,7 +354,7 @@ func TestPath_Read(t *testing.T) {
 		Data:      configData,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -367,7 +366,7 @@ func TestPath_Read(t *testing.T) {
 		Data:      configData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -397,7 +396,7 @@ func TestPath_Delete(t *testing.T) {
 		Data:      configData,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -409,7 +408,7 @@ func TestPath_Delete(t *testing.T) {
 		Data:      nil,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -425,7 +424,7 @@ func TestPath_Delete(t *testing.T) {
 		Data:      nil,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -561,7 +560,7 @@ func TestPath_Update(t *testing.T) {
 				Value:    data,
 				SealWrap: false,
 			}
-			if err := storage.Put(context.Background(), entry); err != nil {
+			if err := storage.Put(t.Context(), entry); err != nil {
 				t.Fatal(err)
 			}
 
@@ -572,7 +571,7 @@ func TestPath_Update(t *testing.T) {
 				Data:      tc.requestData,
 			}
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			resp, err := b.HandleRequest(t.Context(), req)
 
 			if tc.wantErr != nil {
 				var actual error
@@ -592,7 +591,7 @@ func TestPath_Update(t *testing.T) {
 					t.Fatalf("err:%s resp:%#v\n", err, resp)
 				}
 
-				actual, err := b.(*kubeAuthBackend).role(context.Background(), storage, name)
+				actual, err := b.(*kubeAuthBackend).role(t.Context(), storage, name)
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -114,7 +114,7 @@ Thus 2 is excluded.
 
 This means it is between 1 & 3. 1's strict exclusion is sufficiently restrictive (one global writer, which may cause locking problems due to lock/transaction acquisition order) that we'll want to isolate it to only the lower layer. Allowing transactions to be disabled will allow users (who want to trade off performance/raft log size with unsafeness) to make a decision best suited for their environment.
 
-This means, we'll implment 3.
+This means, we'll implement 3.
 
 We have a few tricks for improving 3:
 
@@ -154,7 +154,7 @@ The following identifiers are defined by this RFC:
 Hashing is done as follows:
 
 1. A single `{` is written to the hash function input stream.
-2. The value of the operation's key is written to the hash function input tsream.
+2. The value of the operation's key is written to the hash function input stream.
 3. A single `}` is written to the hash function input stream.
 4. The value of the data to be hashed (either the direct storage entry in the case of a `Get` operation or a new-line joined output from `List`).
 

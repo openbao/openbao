@@ -105,7 +105,7 @@ module('Integration | Component | search select with modal', function (hooks) {
     />
   `);
     assert.strictEqual(component.selectedOptions.length, 1, 'there is one selected option');
-    assert.strictEqual(component.selectedOptions.objectAt(0).text, 'acl-test', 'renders inputted policies');
+    assert.strictEqual(component.selectedOptions[0].text, 'acl-test', 'renders inputted policies');
 
     await clickTrigger();
     assert.strictEqual(component.options.length, 3, 'does not render all options returned from query');

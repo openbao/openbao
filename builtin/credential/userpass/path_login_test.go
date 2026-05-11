@@ -4,7 +4,6 @@
 package userpass
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -29,7 +28,7 @@ func TestPathLogin_TimingLeak(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = storage
 
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(t.Context())
 	b, err := Factory(ctx, config)
 	require.NoError(t, err)
 	require.NotNil(t, b)

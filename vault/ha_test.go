@@ -49,7 +49,6 @@ func TestGrabLockOrStop(t *testing.T) {
 
 	// Start a bunch of worker goroutines.
 	for g := range workers {
-		g := g
 		go func() {
 			defer workerWg.Done()
 			for time.Since(start) < testDuration {
@@ -58,14 +57,12 @@ func TestGrabLockOrStop(t *testing.T) {
 				// closerWg waits until the closer goroutine exits before we do
 				// another iteration. This makes sure goroutines don't pile up.
 				var closerWg sync.WaitGroup
-				closerWg.Add(1)
-				go func() {
-					defer closerWg.Done()
+				closerWg.Go(func() {
 					// Close the stop channel half the time.
 					if rand.Int()%2 == 0 {
 						close(stop)
 					}
-				}()
+				})
 
 				// Half the goroutines lock/unlock and the other half rlock/runlock.
 				if g%2 == 0 {

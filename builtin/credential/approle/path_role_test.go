@@ -4,7 +4,6 @@
 package approle
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -19,11 +18,12 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func (b *backend) requestNoErr(t *testing.T, req *logical.Request) *logical.Response {
 	t.Helper()
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -85,7 +85,7 @@ func TestAppRole_LocalNonLocalSecretIDs(t *testing.T) {
 
 	count := 10
 	// Create secret IDs on testrole1
-	for i := 0; i < count; i++ {
+	for range count {
 		b.requestNoErr(t, &logical.Request{
 			Path:      "role/testrole1/secret-id",
 			Operation: logical.UpdateOperation,
@@ -105,8 +105,8 @@ func TestAppRole_LocalNonLocalSecretIDs(t *testing.T) {
 	}
 
 	// Create secret IDs on testrole1
-	for i := 0; i < count; i++ {
-		resp = b.requestNoErr(t, &logical.Request{
+	for range count {
+		b.requestNoErr(t, &logical.Request{
 			Path:      "role/testrole2/secret-id",
 			Operation: logical.UpdateOperation,
 			Storage:   storage,
@@ -131,7 +131,7 @@ func TestAppRole_UpgradeSecretIDPrefix(t *testing.T) {
 	b, storage := createBackendWithStorage(t)
 
 	// Create a role entry directly in storage without SecretIDPrefix
-	err = b.setRoleEntry(context.Background(), storage, "testrole", &roleStorageEntry{
+	err = b.setRoleEntry(t.Context(), storage, "testrole", &roleStorageEntry{
 		RoleID:           "testroleid",
 		HMACKey:          "testhmackey",
 		Policies:         []string{"default"},
@@ -143,7 +143,7 @@ func TestAppRole_UpgradeSecretIDPrefix(t *testing.T) {
 	}
 
 	// Reading the role entry should upgrade it to contain SecretIDPrefix
-	role, err := b.roleEntry(context.Background(), storage, "testrole")
+	role, err := b.roleEntry(t.Context(), storage, "testrole")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +186,7 @@ func TestAppRole_LocalSecretIDImmutability(t *testing.T) {
 	})
 
 	// Attempt to modify local_secret_ids should fail
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Path:      "role/testrole",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -243,7 +243,7 @@ func TestAppRole_UpgradeBoundCIDRList(t *testing.T) {
 		BoundCIDRListOld: "127.0.0.1/18,192.178.1.2/24",
 		SecretIDPrefix:   secretIDPrefix,
 	}
-	err = b.setRoleEntry(context.Background(), storage, "testrole", role, "")
+	err = b.setRoleEntry(t.Context(), storage, "testrole", role, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,6 +254,8 @@ func TestAppRole_UpgradeBoundCIDRList(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Storage:   storage,
 	})
+
+	actual = resp.Data["secret_id_bound_cidrs"].([]string)
 
 	if !reflect.DeepEqual(expected, actual) {
 		t.Fatalf("bad: bound_cidr_list; expected: %#v\nactual: %#v\n", expected, actual)
@@ -303,7 +305,7 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 		BindSecretID:   true,
 		SecretIDPrefix: secretIDPrefix,
 	}
-	err = b.setRoleEntry(context.Background(), storage, "testRoleName", role, "")
+	err = b.setRoleEntry(t.Context(), storage, "testRoleName", role, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +321,7 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 	roleID = "testroleid"
 
 	// Regular login flow. This should succeed.
-	resp = b.requestNoErr(t, &logical.Request{
+	b.requestNoErr(t, &logical.Request{
 		Path:      "login",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -336,7 +338,7 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 	secretID = resp.Data["secret_id"].(string)
 
 	// Login should fail
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Path:      "login",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -355,21 +357,20 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 	// Delete the role and create it again. This time don't directly persist
 	// it, but route the request to the creation handler so that it sets the
 	// LowerCaseRoleName to true.
-	resp = b.requestNoErr(t, &logical.Request{
+	b.requestNoErr(t, &logical.Request{
 		Path:      "role/testRoleName",
 		Operation: logical.DeleteOperation,
 		Storage:   storage,
 	})
 
-	roleReq := &logical.Request{
+	b.requestNoErr(t, &logical.Request{
 		Path:      "role/testRoleName",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
 		Data: map[string]interface{}{
 			"bind_secret_id": true,
 		},
-	}
-	resp = b.requestNoErr(t, roleReq)
+	})
 
 	// Create secret id with lower cased role name
 	resp = b.requestNoErr(t, &logical.Request{
@@ -389,7 +390,7 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 	roleID = resp.Data["role_id"].(string)
 
 	// Login should pass
-	resp = b.requestNoErr(t, &logical.Request{
+	b.requestNoErr(t, &logical.Request{
 		Path:      "login",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -455,7 +456,7 @@ func TestAppRole_RoleReadSetIndex(t *testing.T) {
 	roleID := resp.Data["role_id"].(string)
 
 	// Delete the role ID index
-	err = b.roleIDEntryDelete(context.Background(), storage, roleID)
+	err = b.roleIDEntryDelete(t.Context(), storage, roleID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -469,7 +470,7 @@ func TestAppRole_RoleReadSetIndex(t *testing.T) {
 		t.Fatal("bad: expected a warning in the response")
 	}
 
-	roleIDIndex, err := b.roleIDEntry(context.Background(), storage, roleID)
+	roleIDIndex, err := b.roleIDEntry(t.Context(), storage, roleID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -487,10 +488,10 @@ func TestAppRole_RoleReadSetIndex(t *testing.T) {
 
 	// Check if updating and reading of roles work and that there are no lock
 	// contentions dangling due to previous operation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 }
 
 func TestAppRole_CIDRSubset(t *testing.T) {
@@ -524,7 +525,7 @@ func TestAppRole_CIDRSubset(t *testing.T) {
 		Data:      secretIDData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), secretIDReq)
+	resp, err = b.HandleRequest(t.Context(), secretIDReq)
 	if resp != nil {
 		t.Fatalf("resp:%#v", resp)
 	}
@@ -583,7 +584,7 @@ func TestAppRole_TokenBoundCIDRSubset32Mask(t *testing.T) {
 		Data:      secretIDData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), secretIDReq)
+	resp, err = b.HandleRequest(t.Context(), secretIDReq)
 	if resp != nil {
 		t.Fatalf("resp:%#v", resp)
 	}
@@ -623,7 +624,7 @@ func TestAppRole_RoleConstraints(t *testing.T) {
 	roleReq.Operation = logical.UpdateOperation
 	roleData["bound_cidr_list"] = ""
 	roleData["bind_secret_id"] = false
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if resp != nil && resp.IsError() {
 		t.Fatalf("err:%v, resp:%#v", err, resp)
 	}
@@ -714,24 +715,24 @@ func TestAppRole_RoleIDUniqueness(t *testing.T) {
 	b.requestNoErr(t, roleReq)
 
 	roleReq.Path = "role/testrole2"
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err == nil && (resp == nil || !resp.IsError()) {
 		t.Fatalf("expected an error: got resp:%#v", resp)
 	}
 
 	roleData["role_id"] = "role-id-456"
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.UpdateOperation
 	roleData["role_id"] = "role-id-123"
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err == nil && (resp == nil || !resp.IsError()) {
 		t.Fatalf("expected an error: got resp:%#v", resp)
 	}
 
 	roleReq.Path = "role/testrole1"
 	roleData["role_id"] = "role-id-456"
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err == nil && (resp == nil || !resp.IsError()) {
 		t.Fatalf("expected an error: got resp:%#v", resp)
 	}
@@ -745,24 +746,24 @@ func TestAppRole_RoleIDUniqueness(t *testing.T) {
 		Storage:   storage,
 		Data:      roleIDData,
 	}
-	resp, err = b.HandleRequest(context.Background(), roleIDReq)
+	resp, err = b.HandleRequest(t.Context(), roleIDReq)
 	if err == nil && (resp == nil || !resp.IsError()) {
 		t.Fatalf("expected an error: got resp:%#v", resp)
 	}
 
 	roleIDData["role_id"] = "role-id-123"
 	roleIDReq.Path = "role/testrole2/role-id"
-	resp, err = b.HandleRequest(context.Background(), roleIDReq)
+	resp, err = b.HandleRequest(t.Context(), roleIDReq)
 	if err == nil && (resp == nil || !resp.IsError()) {
 		t.Fatalf("expected an error: got resp:%#v", resp)
 	}
 
 	roleIDData["role_id"] = "role-id-2000"
-	resp = b.requestNoErr(t, roleIDReq)
+	b.requestNoErr(t, roleIDReq)
 
 	roleIDData["role_id"] = "role-id-1000"
 	roleIDReq.Path = "role/testrole1/role-id"
-	resp = b.requestNoErr(t, roleIDReq)
+	b.requestNoErr(t, roleIDReq)
 }
 
 func TestAppRole_RoleDeleteSecretID(t *testing.T) {
@@ -797,9 +798,9 @@ func TestAppRole_RoleDeleteSecretID(t *testing.T) {
 		Storage:   storage,
 		Path:      "role/role1",
 	}
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
-	resp, err := b.HandleRequest(context.Background(), listReq)
+	resp, err := b.HandleRequest(t.Context(), listReq)
 	if err != nil || resp == nil || !resp.IsError() {
 		t.Fatalf("expected an error. err:%v resp:%#v", err, resp)
 	}
@@ -845,8 +846,8 @@ func TestAppRole_RoleSecretIDReadDelete(t *testing.T) {
 			"secret_id": secretID,
 		},
 	}
-	resp = b.requestNoErr(t, deleteSecretIDReq)
-	resp, err = b.HandleRequest(context.Background(), secretIDReq)
+	b.requestNoErr(t, deleteSecretIDReq)
+	resp, err = b.HandleRequest(t.Context(), secretIDReq)
 	if resp != nil && resp.IsError() {
 		t.Fatalf("error response:%#v", resp)
 	}
@@ -892,10 +893,10 @@ func TestAppRole_RoleSecretIDAccessorReadDelete(t *testing.T) {
 	}
 
 	hmacReq.Path = "role/role1/secret-id-accessor/destroy"
-	resp = b.requestNoErr(t, hmacReq)
+	b.requestNoErr(t, hmacReq)
 
 	hmacReq.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), hmacReq)
+	resp, err = b.HandleRequest(t.Context(), hmacReq)
 	if resp != nil && resp.IsError() {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -916,7 +917,7 @@ func TestAppRoleSecretIDLookup(t *testing.T) {
 			"secret_id_accessor": "invalid",
 		},
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1236,7 +1237,7 @@ func TestAppRole_ErrorsRoleSecretIDWithInvalidFields(t *testing.T) {
 					Storage:   storage,
 				}
 				roleSecretIDReq.Data = tc.payload
-				resp, err = b.HandleRequest(context.Background(), roleSecretIDReq)
+				resp, err = b.HandleRequest(t.Context(), roleSecretIDReq)
 				if err != nil || (resp != nil && !resp.IsError()) {
 					t.Fatalf("err:%v resp:%#v", err, resp)
 				}
@@ -1245,7 +1246,7 @@ func TestAppRole_ErrorsRoleSecretIDWithInvalidFields(t *testing.T) {
 				}
 
 				roleSecretIDReq.Path = fmt.Sprintf("role/role%d/custom-secret-id", i)
-				resp, err = b.HandleRequest(context.Background(), roleSecretIDReq)
+				resp, err = b.HandleRequest(t.Context(), roleSecretIDReq)
 				if err != nil || (resp != nil && !resp.IsError()) {
 					t.Fatalf("err:%v resp:%#v", err, resp)
 				}
@@ -1324,7 +1325,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	roleReq.Data = roleData
 	roleReq.Operation = logical.UpdateOperation
 
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1361,7 +1362,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 
 	roleReq.Data = map[string]interface{}{"role_id": "custom_role_id"}
 	roleReq.Operation = logical.UpdateOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1373,11 +1374,11 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	// RUD for bind_secret_id field
 	roleReq.Path = "role/role1/bind-secret-id"
 	roleReq.Operation = logical.ReadOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Data = map[string]interface{}{"bind_secret_id": false}
 	roleReq.Operation = logical.UpdateOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1386,7 +1387,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 		t.Fatalf("bad: bind_secret_id: expected:false actual:%t\n", resp.Data["bind_secret_id"].(bool))
 	}
 	roleReq.Operation = logical.DeleteOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1398,11 +1399,11 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	// RUD for policies field
 	roleReq.Path = "role/role1/policies"
 	roleReq.Operation = logical.ReadOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Data = map[string]interface{}{"policies": "a1,b1,c1,d1"}
 	roleReq.Operation = logical.UpdateOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1414,7 +1415,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 		t.Fatalf("bad: policies: actual:%s\n", resp.Data["policies"].([]string))
 	}
 	roleReq.Operation = logical.DeleteOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1428,11 +1429,11 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	// RUD for secret-id-num-uses field
 	roleReq.Path = "role/role1/secret-id-num-uses"
 	roleReq.Operation = logical.ReadOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Data = map[string]interface{}{"secret_id_num_uses": 200}
 	roleReq.Operation = logical.UpdateOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1441,7 +1442,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 		t.Fatalf("bad: secret_id_num_uses: expected:200 actual:%d\n", resp.Data["secret_id_num_uses"].(int))
 	}
 	roleReq.Operation = logical.DeleteOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1453,11 +1454,11 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	// RUD for secret_id_ttl field
 	roleReq.Path = "role/role1/secret-id-ttl"
 	roleReq.Operation = logical.ReadOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Data = map[string]interface{}{"secret_id_ttl": 3001}
 	roleReq.Operation = logical.UpdateOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1466,7 +1467,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 		t.Fatalf("bad: secret_id_ttl: expected:3001 actual:%d\n", resp.Data["secret_id_ttl"].(time.Duration))
 	}
 	roleReq.Operation = logical.DeleteOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1486,7 +1487,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 
 	roleReq.Data = map[string]interface{}{"token_num_uses": 60}
 	roleReq.Operation = logical.UpdateOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1496,7 +1497,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	}
 
 	roleReq.Operation = logical.DeleteOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1508,11 +1509,11 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	// RUD for 'period' field
 	roleReq.Path = "role/role1/period"
 	roleReq.Operation = logical.ReadOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Data = map[string]interface{}{"period": 9001}
 	roleReq.Operation = logical.UpdateOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1521,7 +1522,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 		t.Fatalf("bad: period: expected:9001 actual:%d\n", resp.Data["9001"].(time.Duration))
 	}
 	roleReq.Operation = logical.DeleteOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1533,11 +1534,11 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	// RUD for token_ttl field
 	roleReq.Path = "role/role1/token-ttl"
 	roleReq.Operation = logical.ReadOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Data = map[string]interface{}{"token_ttl": 4001}
 	roleReq.Operation = logical.UpdateOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1546,7 +1547,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 		t.Fatalf("bad: token_ttl: expected:4001 actual:%d\n", resp.Data["token_ttl"].(time.Duration))
 	}
 	roleReq.Operation = logical.DeleteOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1558,11 +1559,11 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	// RUD for token_max_ttl field
 	roleReq.Path = "role/role1/token-max-ttl"
 	roleReq.Operation = logical.ReadOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Data = map[string]interface{}{"token_max_ttl": 5001}
 	roleReq.Operation = logical.UpdateOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1571,7 +1572,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 		t.Fatalf("bad: token_max_ttl: expected:5001 actual:%d\n", resp.Data["token_max_ttl"].(time.Duration))
 	}
 	roleReq.Operation = logical.DeleteOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1583,10 +1584,10 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	// Delete test for role
 	roleReq.Path = "role/role1"
 	roleReq.Operation = logical.DeleteOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -1664,7 +1665,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 	roleReq.Data = roleData
 	roleReq.Operation = logical.UpdateOperation
 
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1702,7 +1703,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 
 	roleReq.Data = map[string]interface{}{"secret_id_bound_cidrs": []string{"127.0.0.1/20"}}
 	roleReq.Operation = logical.UpdateOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1712,7 +1713,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 	}
 
 	roleReq.Operation = logical.DeleteOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1737,7 +1738,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 
 	roleReq.Data = map[string]interface{}{"token_bound_cidrs": []string{"127.0.0.1/20"}}
 	roleReq.Operation = logical.UpdateOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1747,7 +1748,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 	}
 
 	roleReq.Operation = logical.DeleteOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1759,10 +1760,10 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 	// Delete test for role
 	roleReq.Path = "role/role1"
 	roleReq.Operation = logical.DeleteOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -1875,10 +1876,10 @@ func TestAppRole_RoleWithTokenTypeCRUD(t *testing.T) {
 	// Delete test for role
 	roleReq.Path = "role/role1"
 	roleReq.Operation = logical.DeleteOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(context.Background(), roleReq)
+	resp, err = b.HandleRequest(t.Context(), roleReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -1938,18 +1939,10 @@ func TestAppRole_TokenutilUpgrade(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = s
 
-	ctx := context.Background()
+	ctx := t.Context()
 
-	b, err := Backend(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if b == nil {
-		t.Fatal("failed to create backend")
-	}
-	if err := b.Setup(ctx, config); err != nil {
-		t.Fatal(err)
-	}
+	b := Backend(config)
+	require.NoError(t, b.Setup(ctx, config))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -2119,7 +2112,7 @@ func TestAppRole_RoleSecretIDAccessorCrossDelete(t *testing.T) {
 	})
 
 	// Attempt to destroy role2 secretID accessor using role1 path
-	_, err = b.HandleRequest(context.Background(), &logical.Request{
+	_, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
 		Path:      "role/role1/secret-id-accessor/destroy",

@@ -4,9 +4,6 @@
 package barrier
 
 import (
-	"context"
-	"crypto/rand"
-	"reflect"
 	"testing"
 	"time"
 
@@ -15,6 +12,8 @@ import (
 )
 
 func testBarrier(t *testing.T, b SecurityBarrier) {
+	ctx := t.Context()
+
 	var prefix string
 	switch cb := b.(type) {
 	case *AESGCMBarrier:
@@ -23,135 +22,81 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 		prefix = cb.metaPrefix
 	}
 
-	e, key, err := testInitAndUnseal(t, b)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	e, key := testInitAndUnseal(t, b)
 
 	// Operations should work
-	out, err := b.Get(context.Background(), prefix+"test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if out != nil {
-		t.Fatalf("bad: %v", out)
-	}
+	out, err := b.Get(ctx, prefix+"test")
+	require.NoError(t, err)
+	require.Nil(t, out)
 
 	// List should have only "core/"
-	keys, err := b.List(context.Background(), prefix)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if len(keys) != 1 || keys[0] != "core/" {
-		t.Fatalf("bad: %v", keys)
-	}
+	keys, err := b.List(ctx, prefix)
+	require.NoError(t, err)
+	require.Equal(t, []string{"core/"}, keys)
 
 	// Try to write
-	if err := b.Put(context.Background(), e); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Put(ctx, e))
 
 	// Should be equal
-	out, err = b.Get(context.Background(), prefix+"test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if !reflect.DeepEqual(out, e) {
-		t.Fatalf("bad: %v exp: %v", out, e)
-	}
+	out, err = b.Get(ctx, prefix+"test")
+	require.NoError(t, err)
+	require.Equal(t, e, out)
 
 	// List should show the items
-	keys, err = b.List(context.Background(), prefix)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if len(keys) != 2 {
-		t.Fatalf("bad: %v", keys)
-	}
-	if keys[0] != "core/" || keys[1] != "test" {
-		t.Fatalf("bad: %v", keys)
-	}
+	keys, err = b.List(ctx, prefix)
+	require.NoError(t, err)
+	require.Equal(t, []string{"core/", "test"}, keys)
 
 	// Delete should clear
-	err = b.Delete(context.Background(), prefix+"test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Delete(ctx, prefix+"test"))
 
 	// Double Delete is fine
-	err = b.Delete(context.Background(), prefix+"test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Delete(ctx, prefix+"test"))
 
 	// Should be nil
-	out, err = b.Get(context.Background(), prefix+"test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if out != nil {
-		t.Fatalf("bad: %v", out)
-	}
+	out, err = b.Get(ctx, prefix+"test")
+	require.NoError(t, err)
+	require.Nil(t, out)
 
 	// List should have nothing
-	keys, err = b.List(context.Background(), prefix)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if len(keys) != 1 || keys[0] != "core/" {
-		t.Fatalf("bad: %v", keys)
-	}
+	keys, err = b.List(ctx, prefix)
+	require.NoError(t, err)
+	require.Equal(t, []string{"core/"}, keys)
 
 	// Add the item back
-	if err := b.Put(context.Background(), e); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Put(ctx, e))
 
 	// Reseal should prevent any updates
-	if err := b.Seal(); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Seal())
 
 	// No access allowed
-	if _, err := b.Get(context.Background(), prefix+"test"); err != ErrBarrierSealed {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = b.Get(ctx, prefix+"test")
+	require.ErrorIs(t, err, ErrBarrierSealed)
 
 	// Unseal should work
-	if err := b.Unseal(context.Background(), key); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Unseal(ctx, key))
 
 	// Should be equal
-	out, err = b.Get(context.Background(), prefix+"test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if !reflect.DeepEqual(out, e) {
-		t.Fatalf("bad: %v exp: %v", out, e)
-	}
+	out, err = b.Get(ctx, prefix+"test")
+	require.NoError(t, err)
+	require.Equal(t, e, out)
 
 	// Final cleanup
-	err = b.Delete(context.Background(), prefix+"test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Delete(ctx, prefix+"test"))
 
 	// Reseal should prevent any updates
-	if err := b.Seal(); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Seal())
 
 	// Modify the key
 	key[0]++
 
 	// Unseal should fail
-	if err := b.Unseal(context.Background(), key); err != ErrBarrierInvalidKey {
-		t.Fatalf("err: %v", err)
-	}
+	require.ErrorIs(t, b.Unseal(ctx, key), ErrBarrierInvalidKey)
 }
 
-func testInitAndUnseal(t *testing.T, b SecurityBarrier) (*logical.StorageEntry, []byte, error) {
+func testInitAndUnseal(t *testing.T, b SecurityBarrier) (*logical.StorageEntry, []byte) {
+	ctx := t.Context()
+
 	var prefix string
 	switch cb := b.(type) {
 	case *AESGCMBarrier:
@@ -161,393 +106,232 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (*logical.StorageEntry, 
 	}
 
 	// Should not be initialized
-	init, err := b.Initialized(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if init {
-		t.Fatal("should not be initialized")
-	}
+	init, err := b.Initialized(ctx)
+	require.NoError(t, err)
+	require.False(t, init, "should not be initialized")
 
 	// Should start sealed
-	if !b.Sealed() {
-		t.Fatal("should be sealed")
-	}
+	require.True(t, b.Sealed(), "should be sealed")
 
 	// Sealing should be a no-op
-	if err := b.Seal(); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Seal())
 
 	// All operations should fail
 	e := &logical.StorageEntry{Key: prefix + "test", Value: []byte("test")}
-	if err := b.Put(context.Background(), e); err != ErrBarrierSealed {
-		t.Fatalf("err: %v", err)
-	}
-	if _, err := b.Get(context.Background(), prefix+"test"); err != ErrBarrierSealed {
-		t.Fatalf("err: %v", err)
-	}
-	if err := b.Delete(context.Background(), prefix+"test"); err != ErrBarrierSealed {
-		t.Fatalf("err: %v", err)
-	}
-	if _, err := b.List(context.Background(), prefix); err != ErrBarrierSealed {
-		t.Fatalf("err: %v", err)
-	}
+	require.ErrorIs(t, b.Put(ctx, e), ErrBarrierSealed)
+	_, err = b.Get(ctx, prefix+"test")
+	require.ErrorIs(t, err, ErrBarrierSealed)
+	require.ErrorIs(t, b.Delete(ctx, prefix+"test"), ErrBarrierSealed)
+	_, err = b.List(ctx, prefix)
+	require.ErrorIs(t, err, ErrBarrierSealed)
 
 	// Get a new key
-	key, err := b.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	key, err := b.GenerateKey()
+	require.NoError(t, err)
 
 	// Validate minimum key length
 	min, max := b.KeyLength()
-	if min < 16 {
-		t.Fatalf("minimum key size too small: %d", min)
-	}
-	if max < min {
-		t.Fatal("maximum key size smaller than min")
-	}
+	require.GreaterOrEqual(t, min, 16, "minimum key size too small")
+	require.GreaterOrEqual(t, max, min, "maximum key size smaller than min")
 
 	// Unseal should not work
-	if err := b.Unseal(context.Background(), key); err != ErrBarrierNotInit {
-		t.Fatalf("err: %v", err)
-	}
+	require.ErrorIs(t, b.Unseal(ctx, key), ErrBarrierNotInit)
 
 	// Initialize the vault
-	if err := b.Initialize(context.Background(), key, nil, rand.Reader); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Initialize(ctx, key, nil))
 
 	// Double Initialize should fail
-	if err := b.Initialize(context.Background(), key, nil, rand.Reader); err != ErrBarrierAlreadyInit {
-		t.Fatalf("err: %v", err)
-	}
+	require.ErrorIs(t, b.Initialize(ctx, key, nil), ErrBarrierAlreadyInit)
 
 	// Should be initialized
-	init, err = b.Initialized(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if !init {
-		t.Fatal("should be initialized")
-	}
+	init, err = b.Initialized(ctx)
+	require.NoError(t, err)
+	require.True(t, init)
 
 	// Should still be sealed
-	if !b.Sealed() {
-		t.Fatal("should sealed")
-	}
+	require.True(t, b.Sealed())
 
 	// Unseal should work
-	if err := b.Unseal(context.Background(), key); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Unseal(ctx, key))
 
 	// Unseal should no-op when done twice
-	if err := b.Unseal(context.Background(), key); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Unseal(ctx, key))
 
 	// Should no longer be sealed
-	if b.Sealed() {
-		t.Fatal("should be unsealed")
-	}
+	require.False(t, b.Sealed())
 
 	// Verify the root key
-	if err := b.VerifyRoot(key); err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	return e, key, err
+	require.NoError(t, b.VerifyRoot(key))
+
+	return e, key
 }
 
 func testBarrier_Rotate(t *testing.T, b SecurityBarrier) {
+	ctx := t.Context()
+
 	// Initialize the barrier
-	key, _ := b.GenerateKey(rand.Reader)
-	b.Initialize(context.Background(), key, nil, rand.Reader)
-	err := b.Unseal(context.Background(), key)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	key, _ := b.GenerateKey()
+	require.NoError(t, b.Initialize(ctx, key, nil))
+	require.NoError(t, b.Unseal(ctx, key))
 
 	// Check the key info
 	info, err := b.ActiveKeyInfo()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if info.Term != 1 {
-		t.Fatalf("Bad term: %d", info.Term)
-	}
-	if time.Since(info.InstallTime) > time.Second {
-		t.Fatalf("Bad install: %v", info.InstallTime)
-	}
+	require.NoError(t, err)
+	require.Equal(t, 1, info.Term)
+	require.False(t, time.Since(info.InstallTime) > time.Second)
 	first := info.InstallTime
 
 	// Write a key
 	e1 := &logical.StorageEntry{Key: "test", Value: []byte("test")}
-	if err := b.Put(context.Background(), e1); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Put(ctx, e1))
 
 	// Rotate the encryption key
-	newTerm, err := b.Rotate(context.Background(), rand.Reader)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if newTerm != 2 {
-		t.Fatalf("bad: %v", newTerm)
-	}
+	newTerm, err := b.Rotate(ctx)
+	require.NoError(t, err)
+	require.EqualValues(t, 2, newTerm)
 
 	// Check the key info
 	info, err = b.ActiveKeyInfo()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if info.Term != 2 {
-		t.Fatalf("Bad term: %d", info.Term)
-	}
-	if !info.InstallTime.After(first) {
-		t.Fatalf("Bad install: %v", info.InstallTime)
-	}
+	require.NoError(t, err)
+	require.True(t, info.InstallTime.After(first))
 
 	// Write another key
 	e2 := &logical.StorageEntry{Key: "foo", Value: []byte("test")}
-	if err := b.Put(context.Background(), e2); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Put(ctx, e2))
 
 	// Reading both should work
-	out, err := b.Get(context.Background(), e1.Key)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if out == nil {
-		t.Fatalf("bad: %v", out)
-	}
+	out, err := b.Get(ctx, e1.Key)
+	require.NoError(t, err)
+	require.NotNil(t, out)
 
-	out, err = b.Get(context.Background(), e2.Key)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if out == nil {
-		t.Fatalf("bad: %v", out)
-	}
+	out, err = b.Get(ctx, e2.Key)
+	require.NoError(t, err)
+	require.NotNil(t, out)
 
 	// Seal and unseal
-	err = b.Seal()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	err = b.Unseal(context.Background(), key)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Seal())
+	require.NoError(t, b.Unseal(ctx, key))
 
 	// Reading both should work
-	out, err = b.Get(context.Background(), e1.Key)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if out == nil {
-		t.Fatalf("bad: %v", out)
-	}
+	out, err = b.Get(ctx, e1.Key)
+	require.NoError(t, err)
+	require.NotNil(t, out)
 
-	out, err = b.Get(context.Background(), e2.Key)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if out == nil {
-		t.Fatalf("bad: %v", out)
-	}
+	out, err = b.Get(ctx, e2.Key)
+	require.NoError(t, err)
+	require.NotNil(t, out)
 
 	// Should be fine to reload keyring
-	err = b.ReloadKeyring(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.ReloadKeyring(ctx))
 }
 
 func testBarrier_RotateRootKey(t *testing.T, b SecurityBarrier) {
+	ctx := t.Context()
+
 	// Initialize the barrier
-	key, _ := b.GenerateKey(rand.Reader)
-	b.Initialize(context.Background(), key, nil, rand.Reader)
-	err := b.Unseal(context.Background(), key)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	key, _ := b.GenerateKey()
+	require.NoError(t, b.Initialize(ctx, key, nil))
+	require.NoError(t, b.Unseal(ctx, key))
 
 	// Write a key
 	e1 := &logical.StorageEntry{Key: "test", Value: []byte("test")}
-	if err := b.Put(context.Background(), e1); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Put(ctx, e1))
 
 	// Verify the root key
-	if err := b.VerifyRoot(key); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.VerifyRoot(key))
 
 	// Rotate to a new root key
-	newKey, _ := b.GenerateKey(rand.Reader)
-	err = b.RotateRootKey(context.Background(), newKey)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	newKey, _ := b.GenerateKey()
+	require.NoError(t, b.RotateRootKey(ctx, newKey))
 
 	// Verify the old root key
-	if err := b.VerifyRoot(key); err != ErrBarrierInvalidKey {
-		t.Fatalf("err: %v", err)
-	}
+	require.ErrorIs(t, b.VerifyRoot(key), ErrBarrierInvalidKey)
 
 	// Verify the new root key
-	if err := b.VerifyRoot(newKey); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.VerifyRoot(newKey))
 
 	// Reading should work
-	out, err := b.Get(context.Background(), e1.Key)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if out == nil {
-		t.Fatalf("bad: %v", out)
-	}
+	out, err := b.Get(ctx, e1.Key)
+	require.NoError(t, err)
+	require.NotNil(t, out)
 
 	// Seal
-	err = b.Seal()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Seal())
 
 	// Unseal with old key should fail
-	err = b.Unseal(context.Background(), key)
-	if err == nil {
-		t.Fatal("unseal should fail")
-	}
+	require.Error(t, b.Unseal(ctx, key))
 
 	// Unseal with new keys should work
-	err = b.Unseal(context.Background(), newKey)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.Unseal(ctx, newKey))
 
 	// Reading should work
-	out, err = b.Get(context.Background(), e1.Key)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if out == nil {
-		t.Fatalf("bad: %v", out)
-	}
+	out, err = b.Get(ctx, e1.Key)
+	require.NoError(t, err)
+	require.NotNil(t, out)
 
 	// Should be fine to reload keyring
-	err = b.ReloadKeyring(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.ReloadKeyring(ctx))
 }
 
 func testBarrier_Upgrade(t *testing.T, b1, b2 SecurityBarrier) {
+	ctx := t.Context()
+
 	// Initialize the barrier
-	key, _ := b1.GenerateKey(rand.Reader)
-	b1.Initialize(context.Background(), key, nil, rand.Reader)
-	err := b1.Unseal(context.Background(), key)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	err = b2.Unseal(context.Background(), key)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	key, _ := b1.GenerateKey()
+	require.NoError(t, b1.Initialize(ctx, key, nil))
+	require.NoError(t, b1.Unseal(ctx, key))
+	require.NoError(t, b2.Unseal(ctx, key))
 
 	// Rotate the encryption key
-	newTerm, err := b1.Rotate(context.Background(), rand.Reader)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
+	newTerm, err := b1.Rotate(ctx)
+	require.NoError(t, err)
 	// Create upgrade path
-	err = b1.CreateUpgrade(context.Background(), newTerm)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b1.CreateUpgrade(ctx, newTerm))
 
 	// Check for an upgrade
-	did, updated, err := b2.CheckUpgrade(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if !did || updated != newTerm {
-		t.Fatal("failed to upgrade")
-	}
+	did, updated, err := b2.CheckUpgrade(ctx)
+	require.NoError(t, err)
+	require.True(t, did, "failed to upgrade")
+	require.True(t, updated == newTerm, "failed to upgrade")
 
 	// Should have no upgrades pending
-	did, updated, err = b2.CheckUpgrade(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if did {
-		t.Fatal("should not have upgrade")
-	}
+	did, updated, err = b2.CheckUpgrade(ctx)
+	require.NoError(t, err)
+	require.False(t, did, "should not have upgrade")
 	require.EqualValues(t, 0, updated)
 
 	// Rotate the encryption key
-	newTerm, err = b1.Rotate(context.Background(), rand.Reader)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	newTerm, err = b1.Rotate(ctx)
+	require.NoError(t, err)
 
 	// Create upgrade path
-	err = b1.CreateUpgrade(context.Background(), newTerm)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
+	require.NoError(t, b1.CreateUpgrade(ctx, newTerm))
 	// Destroy upgrade path
-	err = b1.DestroyUpgrade(context.Background(), newTerm)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b1.DestroyUpgrade(ctx, newTerm))
 
 	// Should have no upgrades pending
-	did, updated, err = b2.CheckUpgrade(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if did {
-		t.Fatal("should not have upgrade")
-	}
+	did, updated, err = b2.CheckUpgrade(ctx)
+	require.NoError(t, err)
+	require.False(t, did, "should not have upgrade")
 	require.EqualValues(t, 0, updated)
 }
 
 func testBarrier_Upgrade_RotateRootKey(t *testing.T, b1, b2 SecurityBarrier) {
+	ctx := t.Context()
+
 	// Initialize the barrier
-	key, _ := b1.GenerateKey(rand.Reader)
-	b1.Initialize(context.Background(), key, nil, rand.Reader)
-	err := b1.Unseal(context.Background(), key)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	err = b2.Unseal(context.Background(), key)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	key, _ := b1.GenerateKey()
+	require.NoError(t, b1.Initialize(ctx, key, nil))
+	require.NoError(t, b1.Unseal(ctx, key))
+	require.NoError(t, b2.Unseal(ctx, key))
 
 	// Rotate to a new root key
-	newKey, _ := b1.GenerateKey(rand.Reader)
-	err = b1.RotateRootKey(context.Background(), newKey)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	newKey, _ := b1.GenerateKey()
+	require.NoError(t, b1.RotateRootKey(ctx, newKey))
 
 	// Reload the root key
-	err = b2.ReloadRootKey(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b2.ReloadRootKey(ctx))
 
 	// Reload the keyring
-	err = b2.ReloadKeyring(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b2.ReloadKeyring(ctx))
 }

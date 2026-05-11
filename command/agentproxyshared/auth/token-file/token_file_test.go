@@ -59,7 +59,7 @@ func TestNewTokenFileAuthenticate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	path, headers, data, err := am.Authenticate(nil, nil)
+	path, headers, data, err := am.Authenticate(t.Context(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

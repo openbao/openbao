@@ -4,7 +4,6 @@
 package framework
 
 import (
-	"context"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -23,7 +22,7 @@ func TestPathStruct(t *testing.T) {
 	storage := new(logical.InmemStorage)
 	var b logical.Backend = &Backend{Paths: p.Paths()}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Write via HTTP
 	_, err := b.HandleRequest(ctx, &logical.Request{

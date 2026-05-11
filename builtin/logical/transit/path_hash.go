@@ -6,12 +6,11 @@ package transit
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/sha3"
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
 	"hash"
-
-	"golang.org/x/crypto/sha3"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"

@@ -28,7 +28,6 @@ import (
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/mount"
 	"github.com/moby/moby/api/types/network"
-	"github.com/moby/moby/api/types/strslice"
 	"github.com/moby/moby/client"
 )
 
@@ -369,7 +368,7 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		}
 	}
 	if len(d.RunOptions.Entrypoint) > 0 {
-		cfg.Entrypoint = strslice.StrSlice(d.RunOptions.Entrypoint)
+		cfg.Entrypoint = d.RunOptions.Entrypoint
 	}
 
 	hostConfig := &container.HostConfig{

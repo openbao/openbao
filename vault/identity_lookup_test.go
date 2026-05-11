@@ -14,7 +14,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(t.Context())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityReq := &logical.Request{
@@ -180,7 +180,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(t.Context())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	groupReq := &logical.Request{

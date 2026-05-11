@@ -9,7 +9,7 @@ import (
 )
 
 // FileSourceBuilder allows reading files from disk.
-func FileSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
+func FileSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
 	return &FileSource{
 		field: field,
 	}
@@ -31,7 +31,7 @@ type FileSource struct {
 
 var _ Source = &FileSource{}
 
-func (s *FileSource) Validate(_ context.Context) ([]string, []string, error) {
+func (s *FileSource) Validate() ([]string, []string, error) {
 	rawPath, present := s.field["path"]
 	if !present {
 		return nil, nil, errors.New("file source is missing required field 'path'")

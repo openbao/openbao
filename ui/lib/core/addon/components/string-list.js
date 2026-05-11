@@ -70,7 +70,7 @@ export default class StringList extends Component {
   }
 
   toVal() {
-    const inputs = this.inputList.filter((x) => x.value).mapBy('value');
+    const inputs = this.inputList.filter((x) => x.value).map((x) => x.value);
     if (this.args.type === 'string') {
       return inputs.join(',');
     }
@@ -102,7 +102,7 @@ export default class StringList extends Component {
   @action
   addInput() {
     const inputList = this.inputList;
-    if (inputList.get('lastObject.value') !== '') {
+    if (inputList.objectAt(inputList.length - 1)?.value !== '') {
       inputList.pushObject({ value: '' });
     }
   }

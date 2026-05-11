@@ -24,9 +24,6 @@ unauthenticated rotation and audit device creation) still apply.
 
 ## Profiles end to end workflow
 
-<<<<<<< docs/fix-broken-links
-1. Profile Selection
-=======
 1. **Profile Creation**
 
 A privileged operator designs the profile; this involves creating a
@@ -58,25 +55,14 @@ Requests are executed exactly in the order they are listed. Within a single
 profile run, there is no parallelism, guaranteeing that any request or
 response references always point to data that already exists. Additionally,
 requests are fully synchronous and are not executed in the background.
->>>>>>> main
 
 If a request fails unexpectedly, the engine stops immediately and returns an
 error to the caller; nothing after that point is attempted.
 
-<<<<<<< docs/fix-broken-links
-2. Input Validation
-Before any OpenBao operation is attempted, the engine:
-- Ensures every declared parameter is present and of the correct type, e.g., string, int, bool.
-- Confirms that each referenced source (environment variable, file path, earlier request, earlier response) is available.
-- Rejects a run immediately if required inputs are missing, preventing half-configured states
-
-3. Source Evaluation
-=======
 History of all requests and responses are recorded, though, are not exposed
 to the caller by default.
 
 4. **Output Generation**
->>>>>>> main
 
 Depending on context, the profile system may output information back to the
 caller. In the case of self-initialization, this information is logged at the

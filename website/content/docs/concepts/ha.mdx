@@ -155,7 +155,7 @@ if active, should advertise to the standbys to use for server-to-server
 communications, and lives as a top-level value in the configuration file. On
 each node, this should be set to a host name or IP address that a standby can
 use to reach one of that node's
-[`cluster_address`](../configuration/index.mdx#cluster_address) values set in the
+[`cluster_address`](../configuration/listener/tcp.mdx#cluster_address) values set in the
 [`listener`](../configuration/listener/index.mdx) blocks, including port. (Note that
 this will always be forced to `https` since only TLS connections are used
 between servers.)
@@ -175,7 +175,7 @@ page](../configuration/storage/index.mdx) should be referenced.
 The [OpenBao Integrated Storage](../configuration/storage/raft.mdx) is
 recommended as the default HA backend for new deployments of OpenBao. See the
 [comparison
-chart](../configuration/storage/index.mdx#integrated-storage-vs-external-storage)
+chart](../configuration/storage/index.mdx#integrated-storage-raft-vs-postgresql)
 for help deciding which option is best for you.
 
 If you're interested in implementing another backend or adding HA support to

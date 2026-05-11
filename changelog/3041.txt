@@ -1,0 +1,4 @@
+```release-note:feature
+**Authenticated root generation**: 
+  Introduced authenticated `/sys/generate-root-token` endpoints in replacement of deprecated unauthenticated ones.
+```

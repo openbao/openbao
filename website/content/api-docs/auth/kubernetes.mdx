@@ -9,7 +9,7 @@ description: This is the API documentation for the OpenBao Kubernetes auth metho
 **Note**: This engine can use external X.509 certificates as part of TLS or signature validation.
    Verifying signatures against X.509 certificates that use SHA-1 is deprecated and is no longer
    usable without a workaround. See the
-   [deprecation FAQ](/docs/deprecation/faq#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
+   [deprecation FAQ](/docs/deprecation/faq#q-what-is-the-impact-of-removing-support-for-x509-certificates-with-signatures-that-use-sha-1)
    for more information.
 
 :::
@@ -38,7 +38,7 @@ access the Kubernetes API.
 - `kubernetes_host` `(string: <required>)` - Host must be a host string, a host:port pair, or a URL to the base of the Kubernetes API server.
 - `kubernetes_ca_cert` `(string: "")` - PEM encoded CA cert for use by the TLS client used to talk with the Kubernetes API. NOTE: Every line must end with a newline: `\n`
   If not set, the local CA cert will be used if running in a Kubernetes pod.
-- `token_reviewer_jwt` `(string: "")` - A service account JWT used to access the TokenReview
+- `token_reviewer_jwt` `(string: "")` <a name="token_reviewer_jwt"></a> - A service account JWT used to access the TokenReview
   API to validate other JWTs during login. If not set,
   the local service account token is used if running in a Kubernetes pod, otherwise
   the JWT submitted in the login payload will be used to access the Kubernetes TokenReview API.
@@ -58,8 +58,7 @@ The following fields have been deprecated and will be removed in a future releas
 :::
 
 - `disable_iss_validation` `(bool: true)` **Deprecated** Disable JWT issuer validation. Allows to skip ISS validation.
-
-- `issuer` `(string: "")` **Deprecated** Optional JWT issuer. If no issuer is specified, then this plugin will use `kubernetes/serviceaccount` as the default issuer.
+- `issuer` `(string: "")` <a name="issuer"></a> **Deprecated** Optional JWT issuer. If no issuer is specified, then this plugin will use `kubernetes/serviceaccount` as the default issuer.
 See [these instructions](/docs/auth/kubernetes#discovering-the-service-account-issuer) for looking up the issuer for a given Kubernetes cluster.
 
 ### Caveats
@@ -140,7 +139,7 @@ entities attempting to login.
   names able to access this role. If set to "\*" all names are allowed.
 - `bound_service_account_namespaces` `(array: <required>)` - List of namespaces
   allowed to access this role. If set to "\*" all namespaces are allowed.
-- `audience` `(string: "")` - Optional Audience claim to verify in the JWT.
+- `audience` `(string: "")` <a name="audience"></a> - Optional Audience claim to verify in the JWT.
 - `alias_name_source` `(string: "serviceaccount_uid")` - Configures how identity aliases are generated.
   Valid choices are: `serviceaccount_uid`, `serviceaccount_name`
   When `serviceaccount_uid` is specified, the machine generated UID from the service account will be used as the identity alias name.

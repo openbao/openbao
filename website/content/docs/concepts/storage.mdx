@@ -18,7 +18,7 @@ information.
 :::info
 
 **Choosing a storage backend:** Refer to the [integrated Storage vs. external
-storage](../configuration/storage/index.mdx#integrated-storage-vs-external-storage)
+storage](../configuration/storage/index.mdx#integrated-storage-raft-vs-postgresql)
 section of the storage configuration page to help make a decision about which
 storage backend to use.
 
@@ -98,11 +98,11 @@ restoring backups.
 There is currently no built-in support for automated snapshots. However, OpenBao
 snapshots can be automated in various ways such as using a cron job.
 
-We maintain [a repository](https://github.com/openbao/openbao-snapshot-agent) 
-containing a collection of external tools and instructions for automating snapshots. 
+We maintain [a repository](https://github.com/openbao/openbao-snapshot-agent)
+containing a collection of external tools and instructions for automating snapshots.
 
-Currently for [VMs, we rely on systemd unit 
-files](https://github.com/openbao/openbao-snapshot-agent/blob/main/docs/vm-configuration.md) 
+Currently for [VMs, we rely on systemd unit
+files](https://github.com/openbao/openbao-snapshot-agent/blob/main/docs/vm-configuration.md)
 and cronjobs while for [Kubernetes we provide a container image and CronJob
 resource](https://github.com/openbao/openbao-snapshot-agent/blob/main/docs/k8s-configuration.md).
 The Kubernetes CronJob can also be configured and deployed via the [OpenBao Helm

@@ -18,7 +18,7 @@ developers.
 
 OpenBao provides a feature, resource quotas, that allows OpenBao operators to specify
 limits on resources used in OpenBao. Specifically, OpenBao allows operators to create
-and configure API rate limits. 
+and configure API rate limits.
 
 ## Rate limit quotas
 
@@ -45,7 +45,7 @@ to a non-zero value, any client that hits a rate limit threshold will be blocked
 from all subsequent requests for a duration of `block_interval` seconds.
 
 OpenBao also allows the inspection of the state of rate limiting in an OpenBao node
-through various [metrics](../internals/telemetry/index.mdx#Resource-Quota-Metrics) exposed
+through various [metrics](../internals/telemetry/metrics/core-system.mdx#quota-metrics) exposed
 and through enabling optional audit logging.
 
 ## Exempt routes

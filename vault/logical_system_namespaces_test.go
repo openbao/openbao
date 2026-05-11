@@ -57,13 +57,12 @@ func TestNamespaceBackend_Set(t *testing.T) {
 	})
 
 	t.Run("create sealable namespace", func(t *testing.T) {
-		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/sealable-foo")
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/sealable-hcl")
 		customMetadata := map[string]string{"abc": "def"}
-		sealConfig := map[string]any{
-			"type":             "shamir",
-			"secret_shares":    3,
-			"secret_threshold": 2,
-		}
+		sealConfig := `seal "shamir" {
+    shares = 3
+    threshold = 2
+}`
 		req.Data["custom_metadata"] = customMetadata
 		req.Data["seal"] = sealConfig
 		res, err := b.HandleRequest(rootCtx, req)
@@ -71,7 +70,25 @@ func TestNamespaceBackend_Set(t *testing.T) {
 
 		require.NotEmpty(t, res.Data["uuid"].(string), "namespace has no UUID")
 		require.NotEmpty(t, res.Data["id"].(string), "namespace has no ID")
-		require.Equal(t, res.Data["path"].(string), "sealable-foo/")
+		require.Equal(t, res.Data["path"].(string), "sealable-hcl/")
+		require.Equal(t, res.Data["tainted"].(bool), false)
+		require.Equal(t, res.Data["locked"].(bool), false)
+		require.Equal(t, res.Data["custom_metadata"], customMetadata)
+		require.Len(t, res.Data["key_shares"], 3)
+	})
+
+	t.Run("create sealable namespace with json seal config", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/sealable-json")
+		customMetadata := map[string]string{"abc": "def"}
+		sealConfig := `{ "seal": { "shamir": { "shares": 3, "threshold": 2 } } }`
+		req.Data["custom_metadata"] = customMetadata
+		req.Data["seal"] = sealConfig
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+
+		require.NotEmpty(t, res.Data["uuid"].(string), "namespace has no UUID")
+		require.NotEmpty(t, res.Data["id"].(string), "namespace has no ID")
+		require.Equal(t, res.Data["path"].(string), "sealable-json/")
 		require.Equal(t, res.Data["tainted"].(bool), false)
 		require.Equal(t, res.Data["locked"].(bool), false)
 		require.Equal(t, res.Data["custom_metadata"], customMetadata)
@@ -165,11 +182,49 @@ func TestNamespaceBackend_Set(t *testing.T) {
 	})
 
 	t.Run("create namespace with bad seal config should fail", func(t *testing.T) {
-		sealConfig := map[string]any{
-			"type":             "shamir",
-			"secret_shares":    0,
-			"secret_threshold": 0,
-		}
+		sealConfig := `seal "shamir" {}`
+
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bad_seal_ns")
+		req.Data["seal"] = sealConfig
+		_, err := b.HandleRequest(rootCtx, req)
+		require.Error(t, err)
+
+		// namespace should not exist
+		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/bad_seal_ns")
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res)
+	})
+
+	t.Run("create namespace with multiple seal configs should fail", func(t *testing.T) {
+		sealConfig := `
+seal "shamir" {
+    shares = 3
+    threshold = 2
+}
+
+seal "transit" {
+	address = "https://openbao:8200"
+	token = "s.Qf1s5zigZ4OX6akYjQXJC1jY"
+}
+`
+
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bad_seal_ns")
+		req.Data["seal"] = sealConfig
+		_, err := b.HandleRequest(rootCtx, req)
+		require.Error(t, err)
+
+		// namespace should not exist
+		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/bad_seal_ns")
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res)
+	})
+
+	t.Run("create namespace with invalid seal config should fail", func(t *testing.T) {
+		sealConfig := `
+seal "shamir" {
+`
 
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bad_seal_ns")
 		req.Data["seal"] = sealConfig

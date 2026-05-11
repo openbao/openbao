@@ -131,7 +131,7 @@ group has a large number of members.
 | Maximum number of groups (100 entities per group)                                        | ~50,000                            |
 | Maximum number of members in a group                                                     | ~23,000                            |
 
-The number of entities can be monitored using OpenBao's [telemetry](telemetry/index.mdx#token-identity-and-lease-metrics); see `vault.identity.num_entities` (total) or `vault.identity.entities.count` (by namespace).
+The number of entities can be monitored using OpenBao's [telemetry](telemetry/metrics/authn.mdx); see `vault.identity.num_entities` (total) or `vault.identity.entities.count` (by namespace).
 
 The cost of entity and group updates grows as the number of objects in
 each shard increases. This cost can be monitored via the
@@ -174,7 +174,7 @@ policies attached to that token, to the entity, to any groups that the
 entity belongs to, and recursively to any groups that contain those groups.
 Very large numbers of policies are possible, but can cause OpenBao’s
 response time to increase. You can monitor the
-[`vault.core.fetch_acl_and_token`](telemetry/index.mdx#core-metrics)
+[`vault.core.fetch_acl_and_token`](telemetry/metrics/core-system.mdx#vault-core-fetch_acl_and_token)
 metric to determine if the time required to assemble an access control list
 is becoming excessive.
 
@@ -221,7 +221,7 @@ This limit depends on the key size.
 | ecdsa-p523 keys      | 1078                               |
 | 1024-bit RSA keys    | 333                                |
 | 2048-bit RSA keys    | 233                                |
-| 4096-bit RSA kyes    | 178                                |
+| 4096-bit RSA keys    | 178                                |
 
 ## Other limits
 
@@ -282,7 +282,7 @@ unexpired leases, or a large number of simultaneous expirations.
 | Maximum duration of lease or token | 768 hours by default      |
 
 The current number of unexpired leases can be monitored via the
-[`vault.expire.num_leases`](telemetry/index.mdx#token-identity-and-lease-metrics) metric.
+[`vault.expire.num_leases`](telemetry/metrics/authn.mdx#vault-expire-num_leases) metric.
 
 ### External plugin limits
 

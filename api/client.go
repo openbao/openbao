@@ -463,6 +463,16 @@ func (c *Config) ConfigureTLS(t *TLSConfig) error {
 	return c.configureTLS(t)
 }
 
+// ConfigureTLS invokes config.ConfigureTLS. This exposes the ability to reload
+// TLS configuration without recreating the client, which is useful for rotating
+// short-lived TLS credentials.
+func (c *Client) ConfigureTLS(t *TLSConfig) error {
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
+
+	return c.config.ConfigureTLS(t)
+}
+
 // ReadEnvironment reads configuration information from the environment. If
 // there is an error, no configuration value is updated. This is a no-op if
 // DisableEnvironment is set.

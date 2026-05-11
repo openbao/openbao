@@ -8,7 +8,7 @@ description: |-
 # auth tune
 
 The `auth tune` command tunes the configuration options for the auth method at
-the given PATH. 
+the given PATH.
 
 :::note
 
@@ -54,7 +54,7 @@ max_lease_ttl        768h
 token_type           default-service
 ```
 
-To restore back to the system default, you can use `-1`. 
+To restore back to the system default, you can use `-1`.
 
 ```shell-session
 $ bao auth tune -default-lease-ttl=-1 github/
@@ -141,7 +141,7 @@ flags](../index.mdx) included on all commands.
   mount in the UI-specific listing endpoint. Valid values are `"unauth"` or `"hidden"`.
   Passing empty string leaves the current setting unchanged.
 
-- `-max-lease-ttl` `(duration: "")` - The maximum lease TTL for this auth
+- `-max-lease-ttl` `(duration: "")` <a name="_max_lease_ttl"></a> - The maximum lease TTL for this auth
   method. If unspecified, this defaults to the OpenBao server's globally
   configured [maximum lease TTL](../../configuration/index.mdx#max_lease_ttl), or a
   previously configured value for the auth method. This value is allowed to
@@ -158,12 +158,12 @@ flags](../index.mdx) included on all commands.
   to use. The new version will not start running until the mount is
   [reloaded](../plugin/reload.mdx).
 
-- `-user-lockout-threshold` `(string: "")` - Specifies the number of failed login attempts 
+- `-user-lockout-threshold` `(string: "")` - Specifies the number of failed login attempts
   after which the user is locked out.
 
 - `-user-lockout-duration` `(duration: "")` - Specifies the duration for which a user will be locked out.
 
-- `-user-lockout-counter-reset-duration` `(duration: "")` - Specifies the duration after which the lockout 
+- `-user-lockout-counter-reset-duration` `(duration: "")` - Specifies the duration after which the lockout
   counter is reset with no failed login attempts.
 
 - `-user-lockout-disable` `(bool: false)` - Disables the user lockout feature if set to true.

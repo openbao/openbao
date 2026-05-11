@@ -12,7 +12,7 @@ description: |-
 **Note**: This engine can use external X.509 certificates as part of TLS or signature validation.
    Verifying signatures against X.509 certificates that use SHA-1 is deprecated and is no longer
    usable without a workaround. See the
-   [deprecation FAQ](/docs/deprecation/faq#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
+   [deprecation FAQ](/docs/deprecation/faq#q-what-is-the-impact-of-removing-support-for-x509-certificates-with-signatures-that-use-sha-1)
    for more information.
 
 :::
@@ -41,7 +41,7 @@ set.
 - `oidc_discovery_ca_pem` `(string: <optional>)` - The contents of a CA certificate or chain of certificates, in PEM format, to use to validate connections to the OIDC Discovery URL. If not set, system certificates are used.
 - `oidc_client_id` `(string: <optional>)` - The OAuth Client ID from the provider for OIDC roles.
 - `oidc_client_secret` `(string: <optional>)` - The OAuth Client Secret from the provider for OIDC roles.
-- `oidc_response_mode` `(string: <optional>)` - The response mode to be used in the OAuth2 request. Allowed values are "query" and "form_post". Defaults to "query".
+- `oidc_response_mode` `(string: <optional>)` <a name="oidc_response_mode"></a> - The response mode to be used in the OAuth2 request. Allowed values are "query" and "form_post". Defaults to "query".
 - `oidc_response_types` `(comma-separated string, or array of strings: <optional>)` - The response types to request. Allowed values are "code" and "id_token". Defaults to "code".
   Note: "id_token" may only be used if "oidc_response_mode" is set to "form_post".
 - `jwks_url` `(string: <optional>)` - JWKS URL to use to authenticate signatures. Cannot be used with "oidc_discovery_url" or "jwt_validation_pubkeys".
@@ -122,7 +122,7 @@ entities attempting to login. At least one of the bound values must be set.
 - `bound_audiences` `(array: <optional>)` - List of `aud` claims to match against.
   Any match is sufficient. For "jwt" roles, at least one of `bound_audiences`, `bound_subject`,
   `bound_claims` or `token_bound_cidrs` is required. Optional for "oidc" roles.
-- `user_claim` `(string: <required>)` - The claim to use to uniquely identify
+- `user_claim` `(string: <required>)` <a name="user_claim"></a> - The claim to use to uniquely identify
   the user; this will be used as the name for the Identity entity alias created
   due to a successful login. The claim value must be a string.
 - `user_claim_json_pointer` `(bool: false)` - Specifies if the `user_claim` value uses
@@ -146,16 +146,16 @@ entities attempting to login. At least one of the bound values must be set.
   The expected value may be a single string or a list of strings. The interpretation of the bound
   claim values is configured with `bound_claims_type`. Keys support [JSON pointer](/docs/auth/jwt#claim-specifications-and-json-pointer)
   syntax for referencing claims.
-- `bound_claims_type` `(string: "string")` - Configures the interpretation of the bound_claims values.
+- `bound_claims_type` `(string: "string")`<a name="bound_claims_type"></a> - Configures the interpretation of the bound_claims values.
   If `"string"` (the default), the values will treated as string literals and must match exactly.
   If set to `"glob"`, the values will be interpreted as globs, with `*` matching any number of
   characters.
-- `groups_claim` `(string: <optional>)` - The claim to use to uniquely identify
+- `groups_claim` `(string: <optional>)` <a name="groups_claim"></a> - The claim to use to uniquely identify
   the set of groups to which the user belongs; this will be used as the names
   for the Identity group aliases created due to a successful login. The claim
   value must be a list of strings. Supports [JSON pointer](/docs/auth/jwt#claim-specifications-and-json-pointer)
   syntax for referencing claims.
-- `claim_mappings` `(map: <optional>)` - If set, a map of claims (keys) to be copied to
+- `claim_mappings` `(map: <optional>)` <a name="claim_mappings"></a> - If set, a map of claims (keys) to be copied to
   specified metadata fields (values). Keys support [JSON pointer](/docs/auth/jwt#claim-specifications-and-json-pointer)
   syntax for referencing claims but may also be direct claim key names.
   [See claim mapping documentation](/docs/auth/jwt#claims-as-metadata) for
@@ -183,7 +183,7 @@ entities attempting to login. At least one of the bound values must be set.
   displays during direct callback mode before processing the authorization code. This confirmation step is a security measure
   against token-hijacking attacks (see [RFC 8628 5.4](https://www.rfc-editor.org/rfc/rfc8628#section-5.4)) and is enabled by default.
   **It's recommended to set `oidc_disable_confirmation` to `true` only if your OIDC provider always presents its own confirmation prompt to the user.**
-- `verbose_oidc_logging` `(bool: false)` - Log received OIDC tokens and claims when debug-level
+- `verbose_oidc_logging` `(bool: false)` <a name="verbose_oidc_logging"></a> - Log received OIDC tokens and claims when debug-level
   logging is active. Not recommended in production since sensitive information may be present
   in OIDC responses.
 - `max_age` `(int or string: <optional>)` - Specifies the allowable elapsed time in seconds since the last

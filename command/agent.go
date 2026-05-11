@@ -1129,6 +1129,7 @@ func (c *AgentCommand) loadConfig(paths []string) (*agentConfig.Config, error) {
 // Currently only reloading the following are supported:
 // * log level
 // * TLS certs for listeners
+// * TLS config for the upstream vault connection (ca_cert, ca_path, client_cert, client_key)
 func (c *AgentCommand) reloadConfig(paths []string) error {
 	// Notify systemd that the server is reloading
 	c.notifySystemd(systemd.SdNotifyReloading)
@@ -1156,6 +1157,12 @@ func (c *AgentCommand) reloadConfig(paths []string) error {
 		errors = multierror.Append(errors, err)
 	}
 
+	// Update upstream vault connection TLS
+	err = c.reloadVaultTLS()
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
 	return errors
 }
 
@@ -1177,6 +1184,8 @@ func (c *AgentCommand) reloadLogLevel() error {
 // to the AgentCommand slice will be invoked.
 // This function returns a multierror type so that every func can report an error
 // if it encounters one.
+// This does NOT affect the outbound connection to the OpenBao server — see
+// reloadVaultTLS for that functionality.
 func (c *AgentCommand) reloadCerts() error {
 	var errors error
 
@@ -1194,6 +1203,30 @@ func (c *AgentCommand) reloadCerts() error {
 	}
 
 	return errors
+}
+
+// reloadVaultTLS re-reads the vault stanza TLS configuration (ca_cert, ca_path,
+// client_cert, client_key) from disk and updates the API client's HTTP transport
+// used for outbound connections to the OpenBao server. This allows the agent to
+// pick up rotated CA bundles without a restart.
+// This is distinct from reloadCerts which handles the agent's own listener TLS.
+func (c *AgentCommand) reloadVaultTLS() error {
+	if c.config.Vault == nil {
+		return nil
+	}
+	v := c.config.Vault
+	if v.CACert == "" && v.CAPath == "" && v.ClientCert == "" && v.ClientKey == "" {
+		return nil
+	}
+	c.logger.Info("reloading vault stanza TLS configuration")
+	return c.client.ConfigureTLS(&api.TLSConfig{
+		CACert:        v.CACert,
+		CAPath:        v.CAPath,
+		ClientCert:    v.ClientCert,
+		ClientKey:     v.ClientKey,
+		TLSServerName: v.TLSServerName,
+		Insecure:      v.TLSSkipVerify,
+	})
 }
 
 // outputErrors will take an error or multierror and handle outputting each to the UI

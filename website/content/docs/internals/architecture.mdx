@@ -16,7 +16,7 @@ OpenBao is an intricate system with numerous distinct components. This page deta
 
 The diagram below illustrates the intricacies and distinct components of OpenBao.
 
-[![Architecture Overview](/img/layers.png)](/img/layers.png)
+![Architecture Overview](/img/layers.png)
 
 OpenBao’s encryption layer, referred to as the _barrier_, is responsible for encrypting and decrypting OpenBao data. When the OpenBao server starts, it writes data to its storage backend. Since the storage backend resides outside the barrier, it’s considered untrusted so OpenBao will encrypt the data before it sends them to the storage backend. This mechanism ensures that if a malicious attacker attempts to gain access to the storage backend, the data cannot be compromised since it remains encrypted, until OpenBao decrypts the data. The storage backend provides a durable data persistent layer where data is secured and available across server restarts.
 
@@ -34,7 +34,7 @@ which is then used to decrypt the OpenBao's root key.
 
 ![Unseal keys](/img/openbao-shamir-seal.png)
 
-Refer to the [Seal/Unseal](../concepts/seal.mdx#seal-unseal) documentation for
+Refer to the [Seal/Unseal](../concepts/seal.mdx) documentation for
 further details.
 
 The number of shares and the minimum number of shards required can both be specified.

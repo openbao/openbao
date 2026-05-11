@@ -44,7 +44,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/policy"
@@ -103,8 +102,6 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"unseal",
 				"leader",
 				"health",
-				"generate-root/attempt",
-				"generate-root/update",
 				"decode-token",
 				"mfa/validate",
 
@@ -118,6 +115,13 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"rekey-recovery-key/init",
 				"rekey-recovery-key/update",
 				"rekey-recovery-key/verify",
+
+				// These endpoints are unauthenticated only with the
+				// "disable_unauthed_generate_root_endpoints" listener property explicitly
+				// set to false. Note that they are not routable through the normal
+				// SystemBackend calls but are instead specially handled by http.
+				"generate-root/attempt",
+				"generate-root/update",
 			},
 
 			LocalStorage: []string{
@@ -130,6 +134,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Paths = append(b.Paths, b.configPaths()...)
 	b.Paths = append(b.Paths, b.rekeyPaths()...)
 	b.Paths = append(b.Paths, b.rotatePaths()...)
+	b.Paths = append(b.Paths, b.generateRootPaths()...)
 	b.Paths = append(b.Paths, b.sealPaths()...)
 	b.Paths = append(b.Paths, b.statusPaths()...)
 	b.Paths = append(b.Paths, b.pluginsCatalogListPaths()...)
@@ -850,22 +855,6 @@ func (b *SystemBackend) handleRekeyDeleteRecovery(ctx context.Context, req *logi
 	return b.handleRekeyDelete(ctx, req, data, true)
 }
 
-func (b *SystemBackend) handleGenerateRootDecodeTokenUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	encodedToken := data.Get("encoded_token").(string)
-	otp := data.Get("otp").(string)
-
-	if encodedToken == "" || otp == "" {
-		return handleError(errors.New("provided encoded_token or otp is empty"))
-	}
-
-	token, err := roottoken.DecodeToken(encodedToken, otp, len(otp))
-	if err != nil {
-		return handleError(err)
-	}
-
-	return &logical.Response{Data: map[string]interface{}{"token": token}}, nil
-}
-
 func (b *SystemBackend) mountInfo(ctx context.Context, entry *routing.MountEntry) map[string]interface{} {
 	info := map[string]interface{}{
 		"type":                    entry.Type,
@@ -977,14 +966,16 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	err := expandStringValsWithCommas(configMap)
 	if err != nil {
 		return logical.ErrorResponse(
-				"unable to parse given auth config information"),
+				"unable to parse given auth config information",
+			),
 			logical.ErrInvalidRequest
 	}
 	if len(configMap) != 0 {
 		err := mapstructure.Decode(configMap, &apiConfig)
 		if err != nil {
 			return logical.ErrorResponse(
-					"unable to convert given mount config information"),
+					"unable to convert given mount config information",
+				),
 				logical.ErrInvalidRequest
 		}
 	}
@@ -1020,14 +1011,16 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 
 	if config.DefaultLeaseTTL > b.Core.maxLeaseTTL && config.MaxLeaseTTL == 0 {
 		return logical.ErrorResponse(
-				"given default lease TTL greater than system max lease TTL of %d", int(b.Core.maxLeaseTTL.Seconds())),
+				"given default lease TTL greater than system max lease TTL of %d", int(b.Core.maxLeaseTTL.Seconds()),
+			),
 			logical.ErrInvalidRequest
 	}
 
 	switch logicalType {
 	case "":
 		return logical.ErrorResponse(
-				"backend type must be specified as a string"),
+				"backend type must be specified as a string",
+			),
 			logical.ErrInvalidRequest
 	case "plugin":
 		// Only set plugin-name if mount is of type plugin, with apiConfig.PluginName
@@ -1039,7 +1032,8 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 			logicalType = pluginName
 		default:
 			return logical.ErrorResponse(
-					"plugin_name must be provided for plugin backend"),
+					"plugin_name must be provided for plugin backend",
+				),
 				logical.ErrInvalidRequest
 		}
 	}
@@ -1274,7 +1268,8 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 	toPath := data.Get("to").(string)
 	if fromPath == "" || toPath == "" {
 		return logical.ErrorResponse(
-				"both 'from' and 'to' path must be specified as a string"),
+				"both 'from' and 'to' path must be specified as a string",
+			),
 			logical.ErrInvalidRequest
 	}
 
@@ -1409,7 +1404,8 @@ func (b *SystemBackend) handleAuthTuneRead(ctx context.Context, req *logical.Req
 	path := data.Get("path").(string)
 	if path == "" {
 		return logical.ErrorResponse(
-				"path must be specified as a string"),
+				"path must be specified as a string",
+			),
 			logical.ErrInvalidRequest
 	}
 	return b.handleTuneReadCommon(ctx, "auth/"+path)
@@ -1419,7 +1415,8 @@ func (b *SystemBackend) handleRemountStatusCheck(ctx context.Context, req *logic
 	migrationID := data.Get("migration_id").(string)
 	if migrationID == "" {
 		return logical.ErrorResponse(
-				"migrationID must be specified"),
+				"migrationID must be specified",
+			),
 			logical.ErrInvalidRequest
 	}
 
@@ -1441,7 +1438,8 @@ func (b *SystemBackend) handleMountTuneRead(ctx context.Context, req *logical.Re
 	path := data.Get("path").(string)
 	if path == "" {
 		return logical.ErrorResponse(
-				"path must be specified as a string"),
+				"path must be specified as a string",
+			),
 			logical.ErrInvalidRequest
 	}
 
@@ -1669,7 +1667,8 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 			err := mapstructure.Decode(userLockoutConfigMap, &apiUserLockoutConfig)
 			if err != nil {
 				return logical.ErrorResponse(
-						"unable to convert given user lockout config information"),
+						"unable to convert given user lockout config information",
+					),
 					logical.ErrInvalidRequest
 			}
 
@@ -1920,14 +1919,16 @@ func (b *SystemBackend) handleUnlockUser(ctx context.Context, req *logical.Reque
 	mountAccessor := data.Get("mount_accessor").(string)
 	if mountAccessor == "" {
 		return logical.ErrorResponse(
-				"missing mount_accessor"),
+				"missing mount_accessor",
+			),
 			logical.ErrInvalidRequest
 	}
 
 	aliasName := data.Get("alias_identifier").(string)
 	if aliasName == "" {
 		return logical.ErrorResponse(
-				"missing alias_identifier"),
+				"missing alias_identifier",
+			),
 			logical.ErrInvalidRequest
 	}
 
@@ -2206,14 +2207,16 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	err := expandStringValsWithCommas(configMap)
 	if err != nil {
 		return logical.ErrorResponse(
-				"unable to parse given auth config information"),
+				"unable to parse given auth config information",
+			),
 			logical.ErrInvalidRequest
 	}
 	if len(configMap) != 0 {
 		err := mapstructure.Decode(configMap, &apiConfig)
 		if err != nil {
 			return logical.ErrorResponse(
-					"unable to convert given auth config information"),
+					"unable to convert given auth config information",
+				),
 				logical.ErrInvalidRequest
 		}
 	}
@@ -2249,7 +2252,8 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 
 	if config.DefaultLeaseTTL > b.Core.maxLeaseTTL && config.MaxLeaseTTL == 0 {
 		return logical.ErrorResponse(
-				"given default lease TTL greater than system max lease TTL of %d", int(b.Core.maxLeaseTTL.Seconds())),
+				"given default lease TTL greater than system max lease TTL of %d", int(b.Core.maxLeaseTTL.Seconds()),
+			),
 			logical.ErrInvalidRequest
 	}
 
@@ -2269,7 +2273,8 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	switch logicalType {
 	case "":
 		return logical.ErrorResponse(
-				"backend type must be specified as a string"),
+				"backend type must be specified as a string",
+			),
 			logical.ErrInvalidRequest
 	case "plugin":
 		// Only set plugin name if mount is of type plugin, with apiConfig.PluginName
@@ -2281,7 +2286,8 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 			logicalType = pluginName
 		default:
 			return logical.ErrorResponse(
-					"plugin_name must be provided for plugin backend"),
+					"plugin_name must be provided for plugin backend",
+				),
 				logical.ErrInvalidRequest
 		}
 	}
@@ -4829,27 +4835,7 @@ This path responds to the following HTTP methods.
 		Returns health information about OpenBao.
 		`,
 	},
-	"generate-root": {
-		"Reads, generates, or deletes a root token regeneration process.",
-		`
-This path responds to multiple HTTP methods which change the behavior. Those
-HTTP methods are listed below.
 
-    GET /attempt
-        Reads the configuration and progress of the current root generation
-        attempt.
-
-    POST /attempt
-        Initializes a new root generation attempt. Only a single root generation
-        attempt can take place at a time. One (and only one) of otp or pgp_key
-        are required.
-
-    DELETE /attempt
-        Cancels any in-progress root generation attempt. This clears any
-        progress made. This must be called to change the OTP or PGP key being
-        used.
-		`,
-	},
 	"seal-status": {
 		"Returns the seal status of the OpenBao instance.",
 		`

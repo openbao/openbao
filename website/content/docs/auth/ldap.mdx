@@ -12,7 +12,7 @@ description: |-
 **Note**: This engine can use external X.509 certificates as part of TLS or signature validation.
    Verifying signatures against X.509 certificates that use SHA-1 is deprecated and is no longer
    usable without a workaround. See the
-   [deprecation FAQ](../deprecation/faq.mdx#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
+   [deprecation FAQ](../deprecation/faq.mdx#q-what-is-the-impact-of-removing-support-for-x509-certificates-with-signatures-that-use-sha-1)
    for more information.
 
 :::
@@ -145,13 +145,13 @@ There are two alternate methods of resolving the user object used to authenticat
 - `userfilter` (string, optional) - Go template used to construct a ldap user search filter. The template can access the following context variables: \[`UserAttr`, `Username`\]. The default userfilter is `({{.UserAttr}}={{.Username}})` or `(userPrincipalName={{.Username}}@UPNDomain)` if the `upndomain` parameter is set. The user search filter can be used to restrict what user can attempt to log in. For example, to limit login to users that are not contractors, you could write `(&(objectClass=user)({{.UserAttr}}={{.Username}})(!(employeeType=Contractor)))`.
 
   :::warning
-  
+
   When specifying a `userfilter`, either the templated value `{{.UserAttr}}` or
   the literal value that matches `userattr` should be present in the filter to
   ensure that the search returns a unique result that takes `userattr` into
   consideration for entity alias mapping purposes and avoid possible collisions
   on login.
-  
+
   :::
 
 - `deny_null_bind` (bool, optional) - This option prevents users from bypassing authentication when providing an empty password. The default is `true`.

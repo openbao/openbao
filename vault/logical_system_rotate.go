@@ -92,15 +92,15 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 	rotateConfigSchema := map[string]*framework.FieldSchema{
 		"enabled": {
 			Type:        framework.TypeBool,
-			Description: strings.TrimSpace(sysHelp["rotation-enabled"][0]),
+			Description: "Whether automatic rotation is enabled.",
 		},
 		"max_operations": {
 			Type:        framework.TypeInt64,
-			Description: strings.TrimSpace(sysHelp["rotation-max-operations"][0]),
+			Description: "The number of encryption operations performed before the barrier key is automatically rotated.",
 		},
 		"interval": {
 			Type:        framework.TypeDurationSecond,
-			Description: strings.TrimSpace(sysHelp["rotation-interval"][0]),
+			Description: "How long after installation of an active key term that the key will be automatically rotated.",
 		},
 	}
 
@@ -109,13 +109,14 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 			// "/rotate" equivalent to "/rotate/keyring"
 			Pattern: "rotate(/keyring)?",
 			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "encryption-key",
 				OperationVerb:   "rotate",
+				OperationSuffix: "encryption-key",
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleRotate(),
+					Summary:  "Rotate the encryption key.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: http.StatusText(http.StatusNoContent),
@@ -124,23 +125,24 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-keyring"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate-keyring"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysRotateHelp["rotate-keyring"][0]),
+			HelpDescription: strings.TrimSpace(sysRotateHelp["rotate-keyring"][1]),
 		},
 		{
 			// "/rotate/config" equivalent to "/rotate/keyring/config"
 			Pattern: "rotate/(keyring/)?config",
 			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "encryption-key",
+				OperationSuffix: "encryption-key-config",
 			},
 			Fields: rotateConfigSchema,
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleKeyRotationConfigRead(),
+					Summary:  "Get the automatic key rotation config.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationVerb:   "read",
-						OperationSuffix: "rotation-configuration",
+						OperationSuffix: "encryption-key-config",
 					},
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
@@ -151,9 +153,10 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleKeyRotationConfigUpdate(),
+					Summary:  "Configure the automatic key rotation.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationVerb:   "configure",
-						OperationSuffix: "rotation-configuration",
+						OperationSuffix: "encryption-key-config",
 					},
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
@@ -165,8 +168,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-config"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate-config"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysRotateHelp["rotate-config"][0]),
+			HelpDescription: strings.TrimSpace(sysRotateHelp["rotate-config"][1]),
 		},
 		// The bare `sys/rotate/root` is a `sudo`-protected endpoint to directly
 		// perform a root key rotation without requiring existing key shares be provided.
@@ -188,8 +191,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-root"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate-root"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysRotateHelp["rotate-root"][0]),
+			HelpDescription: strings.TrimSpace(sysRotateHelp["rotate-root"][1]),
 		},
 		{
 			Pattern: "rotate/(root|recovery)/init",
@@ -242,8 +245,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-init"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate-init"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysRotateHelp["rotate-init"][0]),
+			HelpDescription: strings.TrimSpace(sysRotateHelp["rotate-init"][0]),
 		},
 		{
 			Pattern: "rotate/(root|recovery)/update",
@@ -275,8 +278,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-update"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate-update"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysRotateHelp["rotate-update"][0]),
+			HelpDescription: strings.TrimSpace(sysRotateHelp["rotate-update"][0]),
 		},
 		{
 			Pattern: "rotate/(root|recovery)/verify",
@@ -354,8 +357,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-verify"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate-verify"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysRotateHelp["rotate-verify"][0]),
+			HelpDescription: strings.TrimSpace(sysRotateHelp["rotate-verify"][0]),
 		},
 		{
 			Pattern: "rotate/(root|recovery)/backup",
@@ -397,8 +400,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate-backup"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysRotateHelp["rotate-backup"][0]),
+			HelpDescription: strings.TrimSpace(sysRotateHelp["rotate-backup"][0]),
 		},
 	}
 }
@@ -407,7 +410,12 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 // endpoints used to trigger an encryption key rotation.
 func (b *SystemBackend) handleRotate() framework.OperationFunc {
 	return func(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-		if err := b.rotateBarrierKey(ctx); err != nil {
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if err := b.Core.sealManager.RotateBarrierKey(ctx, ns); err != nil {
 			b.Backend.Logger().Error("error handling key rotation", "error", err)
 			return handleError(err)
 		}
@@ -418,8 +426,18 @@ func (b *SystemBackend) handleRotate() framework.OperationFunc {
 // handleKeyRotationConfigRead handles the GET `/sys/rotate/config` and GET `/sys/rotate/keyring/config`
 // endpoints returning the auto rotation config.
 func (b *SystemBackend) handleKeyRotationConfigRead() framework.OperationFunc {
-	return func(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-		rotateConf, err := b.Core.barrier.RotationConfig()
+	return func(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return handleError(err)
+		}
+
+		barr := b.Core.sealManager.NamespaceBarrier(ns.Path)
+		if barr == nil {
+			return handleError(ErrNotSealable)
+		}
+
+		rotateConf, err := barr.RotationConfig()
 		if err != nil {
 			return handleError(err)
 		}
@@ -444,7 +462,17 @@ func (b *SystemBackend) handleKeyRotationConfigRead() framework.OperationFunc {
 // endpoints updating the auto rotation config.
 func (b *SystemBackend) handleKeyRotationConfigUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		rotateConf, err := b.Core.barrier.RotationConfig()
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return handleError(err)
+		}
+
+		barr := b.Core.sealManager.NamespaceBarrier(ns.Path)
+		if barr == nil {
+			return handleError(ErrNotSealable)
+		}
+
+		rotateConf, err := barr.RotationConfig()
 		if err != nil {
 			return handleError(err)
 		}
@@ -483,7 +511,7 @@ func (b *SystemBackend) handleKeyRotationConfigUpdate() framework.OperationFunc 
 		}
 
 		// Store the rotation config
-		if err = b.Core.barrier.SetRotationConfig(ctx, rotateConf); err != nil {
+		if err = barr.SetRotationConfig(ctx, rotateConf); err != nil {
 			return handleError(err)
 		}
 
@@ -495,17 +523,28 @@ func (b *SystemBackend) handleKeyRotationConfigUpdate() framework.OperationFunc 
 // a root key rotation without requiring existing key shares to be provided.
 func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 	return func(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-		initialized, err := b.Core.Initialized(ctx)
+		ns, err := namespace.FromContext(ctx)
 		if err != nil {
 			return handleError(err)
 		}
 
-		if !initialized {
-			return handleError(ErrNotInit)
-		}
+		if ns.UUID != namespace.RootNamespaceUUID {
+			if err := b.Core.sealManager.RotateBarrierRootKey(ctx, ns); err != nil {
+				return nil, logical.CodedError(http.StatusInternalServerError, "failed to rotate barrier root key: %v", err)
+			}
+		} else {
+			initialized, err := b.Core.Initialized(ctx)
+			if err != nil {
+				return handleError(err)
+			}
 
-		if err := b.Core.RotateBarrierRootKey(ctx); err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, "failed to rotate barrier root key: %v", err)
+			if !initialized {
+				return handleError(ErrNotInit)
+			}
+
+			if err := b.Core.RotateBarrierRootKey(ctx); err != nil {
+				return nil, logical.CodedError(http.StatusInternalServerError, "failed to rotate barrier root key: %v", err)
+			}
 		}
 
 		b.Core.logger.Info("barrier root key rotated")
@@ -517,20 +556,25 @@ func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 // endpoints retrieving the on-going rotation (if there's any) operation status.
 func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		barrierConfig, err := b.Core.SealAccess().BarrierConfig(ctx)
+		ns, err := namespace.FromContext(ctx)
 		if err != nil {
 			return handleError(err)
-		}
-
-		if barrierConfig == nil {
-			return handleError(ErrNotInit)
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		rotConf := b.Core.RotationConfig(recovery)
-		sealThreshold, err := b.Core.RotationThreshold(ctx, recovery)
+		seal := b.Core.sealManager.NamespaceSeal(ns.UUID)
+		if seal == nil {
+			return handleError(ErrNotSealable)
+		}
+
+		var config *SealConfig
+		if recovery || seal.RecoveryKeySupported() {
+			config, err = seal.RecoveryConfig(ctx)
+		} else {
+			config, err = seal.BarrierConfig(ctx)
+		}
 		if err != nil {
-			return handleError(err)
+			return handleError(logical.CodedError(http.StatusInternalServerError, "unable to look up config: %w", err))
 		}
 
 		resp := &logical.Response{
@@ -538,21 +582,17 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 				"started":  false,
 				"t":        0,
 				"n":        0,
-				"required": sealThreshold,
+				"required": config.SecretThreshold,
 			},
 		}
 
+		rotConf := b.Core.sealManager.RotationConfig(ns.UUID, recovery)
 		if rotConf != nil {
-			started, progress, err := b.Core.RotationProgress(recovery, false)
-			if err != nil {
-				return handleError(err)
-			}
-
 			resp.Data["nonce"] = rotConf.Nonce
-			resp.Data["started"] = started
+			resp.Data["started"] = true
 			resp.Data["t"] = rotConf.SecretThreshold
 			resp.Data["n"] = rotConf.SecretShares
-			resp.Data["progress"] = progress
+			resp.Data["progress"] = len(rotConf.RotationProgress)
 			resp.Data["verification_required"] = rotConf.VerificationRequired
 			resp.Data["verification_nonce"] = rotConf.VerificationNonce
 			if len(rotConf.PGPKeys) != 0 {
@@ -572,6 +612,11 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 // endpoints starting the rotation process, returning the operation status.
 func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return handleError(err)
+		}
+
 		rotateConf := &SealConfig{}
 		secretShares, ok, err := data.GetOkErr("secret_shares")
 		if err != nil {
@@ -614,7 +659,7 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		result, err := b.Core.InitRotation(ctx, rotateConf, recovery)
+		result, err := b.Core.sealManager.InitRotation(ctx, ns, rotateConf, recovery)
 		if err != nil {
 			return handleError(err)
 		}
@@ -651,9 +696,14 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 // handleRotateInitDelete handles the DELETE `/sys/rotate/root/init` and `/sys/rotate/recovery/init`
 // endpoints cancelling any in-progress rotation.
 func (b *SystemBackend) handleRotateInitDelete() framework.OperationFunc {
-	return func(_ context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+	return func(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return handleError(err)
+		}
+
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.CancelRotation(recovery); err != nil {
+		if err := b.Core.sealManager.CancelRotation(ctx, ns.UUID, recovery); err != nil {
 			return handleError(err)
 		}
 		return nil, nil
@@ -663,7 +713,12 @@ func (b *SystemBackend) handleRotateInitDelete() framework.OperationFunc {
 // handleRotateUpdate handles the POST `/sys/rotate/root/update` and `/sys/rotate/recovery/update`
 // endpoints used for providing a single root key share progressing the rotation of the key.
 func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
-	return func(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return handleError(err)
+		}
+
 		ikey, ok, err := data.GetOkErr("key")
 		if err != nil {
 			return handleError(err)
@@ -682,9 +737,14 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 		}
 		reqNonce := inonce.(string)
 
+		barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
+		if barrier == nil {
+			return handleError(ErrNotSealable)
+		}
+
 		// We check min and max here to ensure that a string that is base64 encoded
 		// but also valid hex will not be valid and we instead base64 decode it
-		min, max := b.Core.BarrierKeyLength()
+		min, max := barrier.KeyLength()
 		max += shamir.ShareOverhead
 		key, err := hex.DecodeString(reqKey)
 		if err != nil || len(key) < min || len(key) > max {
@@ -694,12 +754,12 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 			}
 		}
 
-		ctx, cancel := context.WithCancel(namespace.RootContext(b.Core.activeContext.Load()))
+		ctx, cancel := context.WithCancel(namespace.ContextWithNamespace(b.Core.activeContext.Load(), ns))
 		defer cancel()
 
 		// Use the key to make progress on rotation (rekey)
 		recovery := strings.Contains(req.Path, "recovery")
-		result, err := b.Core.UpdateRotation(ctx, key, reqNonce, recovery)
+		result, err := b.Core.sealManager.UpdateRotation(ctx, ns, key, reqNonce, recovery)
 		if err != nil {
 			return handleError(err)
 		}
@@ -733,32 +793,24 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 // endpoints retrieving the on-going rotation verification (if there's any) operation status.
 func (b *SystemBackend) handleRotateVerifyGet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		barrierConfig, err := b.Core.SealAccess().BarrierConfig(ctx)
+		ns, err := namespace.FromContext(ctx)
 		if err != nil {
 			return handleError(err)
-		}
-		if barrierConfig == nil {
-			return handleError(ErrNotInit)
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		rotateConf := b.Core.RotationConfig(recovery)
-		if rotateConf == nil {
+		rotConf := b.Core.sealManager.RotationConfig(ns.UUID, recovery)
+		if rotConf == nil {
 			return handleError(errors.New("no rotation configuration found"))
-		}
-
-		started, progress, err := b.Core.RotationProgress(recovery, true)
-		if err != nil {
-			return handleError(err)
 		}
 
 		return &logical.Response{
 			Data: map[string]interface{}{
-				"started":  started,
-				"nonce":    rotateConf.VerificationNonce,
-				"t":        rotateConf.SecretThreshold,
-				"n":        rotateConf.SecretShares,
-				"progress": progress,
+				"nonce":    rotConf.VerificationNonce,
+				"started":  len(rotConf.VerificationKey) > 0,
+				"t":        rotConf.SecretThreshold,
+				"n":        rotConf.SecretShares,
+				"progress": len(rotConf.VerificationProgress),
 			},
 		}, nil
 	}
@@ -767,7 +819,12 @@ func (b *SystemBackend) handleRotateVerifyGet() framework.OperationFunc {
 // handleRotateVerifyPut handles the POST `/sys/rotate/root/verify` and `/sys/rotate/recovery/verify`
 // endpoints used to enter a single key share to progress the rotation verification operation.
 func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
-	return func(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return handleError(err)
+		}
+
 		ikey, ok, err := data.GetOkErr("key")
 		if err != nil {
 			return handleError(err)
@@ -786,7 +843,12 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 		}
 		reqNonce := inonce.(string)
 
-		min, max := b.Core.BarrierKeyLength()
+		barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
+		if barrier == nil {
+			return handleError(ErrNotSealable)
+		}
+
+		min, max := barrier.KeyLength()
 		max += shamir.ShareOverhead
 		key, err := hex.DecodeString(reqKey)
 		// We check min and max here to ensure that a string that is base64 encoded
@@ -798,12 +860,12 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 			}
 		}
 
-		ctx, cancel := context.WithCancel(namespace.RootContext(b.Core.activeContext.Load()))
+		ctx, cancel := context.WithCancel(namespace.ContextWithNamespace(b.Core.activeContext.Load(), ns))
 		defer cancel()
 
 		// Use the key to make progress on rotation (rekey) verification
 		recovery := strings.Contains(req.Path, "recovery")
-		result, err := b.Core.VerifyRotation(ctx, key, reqNonce, recovery)
+		result, err := b.Core.sealManager.VerifyRotation(ctx, ns, key, reqNonce, recovery)
 		if err != nil {
 			return handleError(err)
 		}
@@ -825,8 +887,13 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 // endpoints cancelling any in-progress rotation verification operation.
 func (b *SystemBackend) handleRotateVerifyDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return handleError(err)
+		}
+
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.RestartRotationVerification(recovery); err != nil {
+		if err := b.Core.sealManager.RestartRotationVerification(ns.UUID, recovery); err != nil {
 			return handleError(err)
 		}
 		return b.handleRotateVerifyGet()(ctx, req, data)
@@ -837,8 +904,13 @@ func (b *SystemBackend) handleRotateVerifyDelete() framework.OperationFunc {
 // endpoints, returning backed-up, PGP-encrypted unseal keys.
 func (b *SystemBackend) handleRotateBackupRetrieve() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return handleError(err)
+		}
+
 		recovery := strings.Contains(req.Path, "recovery")
-		backup, err := b.Core.RetrieveRotationBackup(ctx, recovery)
+		backup, err := b.Core.sealManager.RetrieveRotationBackup(ctx, ns.Path, recovery)
 		if err != nil {
 			return handleError(fmt.Errorf("unable to look up backed-up keys: %w", err))
 		}
@@ -876,11 +948,69 @@ func (b *SystemBackend) handleRotateBackupRetrieve() framework.OperationFunc {
 // endpoints, deleting backed-up, PGP-encrypted unseal keys.
 func (b *SystemBackend) handleRotateBackupDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return handleError(err)
+		}
+
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.DeleteRotationBackup(ctx, recovery); err != nil {
+		if err := b.Core.sealManager.DeleteRotationBackup(ctx, ns.Path, recovery); err != nil {
 			return handleError(err)
 		}
 
 		return nil, nil
 	}
+}
+
+var sysRotateHelp = map[string][2]string{
+	"rotate-keyring": {
+		"Rotates the backend encryption key used to persist data.",
+		`
+		Rotate generates a new encryption key which is used to encrypt all
+		data going to the storage backend. The old encryption keys are kept
+		so that data encrypted using those keys can still be decrypted.
+		`,
+	},
+	"rotate-keyring-config": {
+		"Configures settings related to the backend encryption key management.",
+		`
+		Configures settings related to the automatic rotation of the backend
+		encryption key.
+		`,
+	},
+
+	"rotate-root": {
+		"Perform a root key rotation without requiring key shares to be provided.",
+		"",
+	},
+
+	"rotate-init": {
+		`Initialize, read status or cancel the process of the rotation of
+		the root or recovery key.
+		`,
+		"",
+	},
+
+	"rotate-update": {
+		"Progress the rotation process by providing a single key share.",
+		`This endpoint is used to enter a single key share to progress the
+		rotation of the recovery or root key. If the threshold number of key
+		shares is reached, rotation will be completed. Otherwise, this API
+		must be called multiple times until that threshold is met.
+		The rotation nonce operation must be provided with each call.
+		On the final call, any new key shares will be returned immediately.
+		`,
+	},
+
+	"rotate-verify": {
+		`Read status of, progress or cancel the verification process of the
+		rotation attempt.
+		`,
+		"",
+	},
+
+	"rotate-backup": {
+		"Allows fetching or deleting the backup of the rotated unseal keys.",
+		"",
+	},
 }

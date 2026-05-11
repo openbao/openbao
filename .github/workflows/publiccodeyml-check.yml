@@ -1,0 +1,27 @@
+name: Validate publiccode.yml
+
+on:
+  push:
+    paths:
+      - "publiccode.yml"
+      - ".github/workflows/publiccodeyml-check.yml"
+  pull_request:
+    paths:
+      - "publiccode.yml"
+      - ".github/workflows/publiccodeyml-check.yml"
+
+permissions: {}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    name: publiccode.yml validation
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - uses: italia/publiccode-parser-action@21086c73ec0563e14c6748787efa1b34b025ad8c # v1
+        with:
+          publiccode: "publiccode.yml"
+          no-network: true

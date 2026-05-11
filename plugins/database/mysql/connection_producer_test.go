@@ -20,17 +20,20 @@ import (
 
 func TestInit_clientTLS(t *testing.T) {
 	// Create certificates for MySQL authentication
-	caCert := certhelpers.NewCert(t,
+	caCert := certhelpers.NewCert(
+		t,
 		certhelpers.CommonName("test certificate authority"),
 		certhelpers.IsCA(true),
 		certhelpers.SelfSign(),
 	)
-	serverCert := certhelpers.NewCert(t,
+	serverCert := certhelpers.NewCert(
+		t,
 		certhelpers.CommonName("server"),
 		certhelpers.DNS("localhost"),
 		certhelpers.Parent(caCert),
 	)
-	clientCert := certhelpers.NewCert(t,
+	clientCert := certhelpers.NewCert(
+		t,
 		certhelpers.CommonName("client"),
 		certhelpers.DNS("client"),
 		certhelpers.Parent(caCert),
@@ -118,8 +121,9 @@ func startMySQLWithTLS(t *testing.T, version, confDir string) string {
 	username := "root"
 	password := "x509test"
 
-	resource := pool.RunT(t,
-		"mysql",
+	resource := pool.RunT(
+		t,
+		"docker.mirror.hashicorp.services/library/mysql",
 		dockertest.WithTag(version),
 		dockertest.WithCmd([]string{"--auto-generate-certs=OFF"}),
 		dockertest.WithEnv([]string{fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", password)}),
@@ -136,7 +140,7 @@ func startMySQLWithTLS(t *testing.T, version, confDir string) string {
 		"password": password,
 	})
 	// exponential backoff-retry
-	err := pool.Retry(t.Context(), 10*time.Second, func() error {
+	err := pool.Retry(t.Context(), 15*time.Second, func() error {
 		db, err := sql.Open("mysql", url)
 		if err != nil {
 			t.Logf("err: %s", err)

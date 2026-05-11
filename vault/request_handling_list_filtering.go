@@ -40,7 +40,7 @@ func (c *Core) filterListResponse(ctx context.Context, req *logical.Request, una
 	}
 
 	// Exit early when there is no data.
-	if resp.Data == nil {
+	if len(resp.Data) == 0 {
 		return nil
 	}
 

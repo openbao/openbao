@@ -633,9 +633,27 @@ path "secret/metadata/by-metadata/subdir/both" {
 	require.NotNil(t, tokenResp)
 	require.False(t, tokenResp.IsError())
 
+	// test list operation without any data
+	req.Operation = logical.ListOperation
+	req.Data = nil
+	req.Path = "secret/metadata/by-metadata/"
+
+	req.ClientToken = tokenResp.Auth.ClientToken
+	req.ClientTokenAccessor = tokenResp.Auth.Accessor
+
+	noDataResp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err, "[%v] path: %v", req.Operation, req.Path)
+	require.NotNil(t, noDataResp, "[%v] path: %v", req.Operation, req.Path)
+	require.Empty(t, noDataResp.Data)
+
+	// reset the client infos
+	req.ClientToken = root
+	req.ClientTokenAccessor = ""
+
 	// Create all entries.
 	for _, prefix := range []string{"by-data", "by-metadata", "by-data/subdir", "by-metadata/subdir"} {
 		for _, name := range []string{"data-yes", "data-no", "metadata-yes", "metadata-no", "elided", "both"} {
+			req.Operation = logical.UpdateOperation
 			req.Path = fmt.Sprintf("secret/data/%v/%v", prefix, name)
 			req.Data = map[string]interface{}{
 				"data": map[string]interface{}{

@@ -887,6 +887,31 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			if !valid {
 				return nil, consts.ErrInvalidWrappingToken
 			}
+			// Handle deferred requests for approved control-group unwrap
+			if req.Path == "sys/wrapping/unwrap" {
+				token, _ := req.Data["token"].(string)
+				if token == "" {
+					token = req.ClientToken
+				}
+				tokenEntry, err := c.tokenStore.lookupTainted(ctx, token)
+				if err != nil {
+					return nil, err
+				}
+				deferredReq, err := c.getRequestFromTokenEntry(ctx, tokenEntry)
+				if err != nil && err != DeferredRequestNotFound {
+					return nil, err
+				}
+				if deferredReq != nil {
+					valid, err = c.validateControlGroup(ctx, tokenEntry, deferredReq.Operation)
+					if err != nil {
+						return nil, err
+					}
+					if valid {
+						deferredReq.ForwardedFrom = forwardedFromDeferral
+						return c.handleCancelableRequest(ctx, deferredReq)
+					}
+				}
+			}
 
 		// The -self paths have no meaning outside of the token NS, so
 		// requests for these paths always go to the token NS

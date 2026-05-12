@@ -1,6 +1,6 @@
 ---
 sidebar_label: Overview
-description: >- 
+description: >-
   The `/sys/rotate` endpoints are used to rotate unseal, root, backend encryption keys.
 ---
 
@@ -25,7 +25,7 @@ Upon successful rotation, no split unseal key shares are returned.
 The `/sys/rotate/recovery` endpoints are used to rotate the recovery keys for
 OpenBao. These endpoints only apply to seals that support recovery keys.
 
-Depending on the variable in the request path (`root` or `recovery`) 
+Depending on the variable in the request path (`root` or `recovery`)
 operation is performed for the root or recovery keys.
 
 ### Progress rotation

@@ -24,8 +24,8 @@ Raft is a consensus algorithm that is based on
 to Paxos, Raft is designed to have fewer states and a simpler, more
 understandable algorithm.
 
-The Raft protocol will not be fully covered here. However, a high level description is 
-provided to help you build a mental model. Refer to the 
+The Raft protocol will not be fully covered here. However, a high level description is
+provided to help you build a mental model. Refer to the
 complete specification that's described in [this paper](https://raft.github.io/raft.pdf).
 
 #### Terminology
@@ -75,14 +75,14 @@ are blocked until they are _committed_ and _applied_.
 #### Compacting logs
 
 It would be undesirable to allow a replicated log to grow in an unbounded
-fashion. Raft provides a mechanism by which the current state is saved to 
-snapshots and its related logs are compacted. Because of the FSM abstraction, 
-restoring the state of the FSM must result in the same state as a replay of old 
-logs. This allows Raft to capture the FSM state at a point in time and then remove 
-all the logs that were used to reach that state. This is performed automatically 
-without user intervention and prevents unbounded disk usage while also minimizing 
-the time spent replaying logs. One of the advantages of using BoltDB is that it 
-allows OpenBao's snapshots to be very light weight. Since OpenBao's data is already 
+fashion. Raft provides a mechanism by which the current state is saved to
+snapshots and its related logs are compacted. Because of the FSM abstraction,
+restoring the state of the FSM must result in the same state as a replay of old
+logs. This allows Raft to capture the FSM state at a point in time and then remove
+all the logs that were used to reach that state. This is performed automatically
+without user intervention and prevents unbounded disk usage while also minimizing
+the time spent replaying logs. One of the advantages of using BoltDB is that it
+allows OpenBao's snapshots to be very light weight. Since OpenBao's data is already
 persisted to disk in BoltDB, the snapshot process just needs to truncate the raft logs.
 
 #### Quorum
@@ -111,7 +111,7 @@ Thus, performance is bound by disk I/O and network latency.
 ### Raft in OpenBao
 
 When getting started, a single OpenBao server is
-[initialized](../commands/operator/init.mdx#operator-init). At this point, the
+[initialized](../commands/operator/init.mdx). At this point, the
 cluster is of size 1, which allows the node to self-elect as a leader. Once a
 leader is elected, other servers can be added to the peer set in a way that
 preserves consistency and safety.
@@ -135,41 +135,41 @@ will be encrypted by OpenBao's barrier.
 
 #### Autopilot
 
-An [Autopilot feature](../concepts/integrated-storage/autopilot.mdx) 
-is available in HashiCorp Vault 1.7.x & later versions that includes configurable parameters 
-for when a node is treated as healthy before it's considered an eligible voter in the 
-quorum list. Other features which may be enabled include the ability to remove nodes 
+An [Autopilot feature](../concepts/integrated-storage/autopilot.mdx)
+is available in HashiCorp Vault 1.7.x & later versions that includes configurable parameters
+for when a node is treated as healthy before it's considered an eligible voter in the
+quorum list. Other features which may be enabled include the ability to remove nodes
 considered as dead from the quorum list after a certain period.
 
-Autopilot is enabled by default and the default configuration values 
+Autopilot is enabled by default and the default configuration values
 should work well for most OpenBao deployments, but they can be changed if needed.
 
 Autopilot includes stabilization logic for nodes joining the cluster.
-Recently joined nodes are 
-accepted as non-voters initially until they are in sync with matching Raft index 
+Recently joined nodes are
+accepted as non-voters initially until they are in sync with matching Raft index
 and only after reaching a stability threshold are they then full voting members.
 Setting the stability threshold too low can result in cluster instability as nodes will be
 counted as voters before they are capable of voting.
 
-A dead server cleanup capability is available. With this feature 
-enabled, unhealthy nodes are automatically removed from the Raft cluster without 
+A dead server cleanup capability is available. With this feature
+enabled, unhealthy nodes are automatically removed from the Raft cluster without
 manual operator intervention. This is enabled via the [Autopilot API](/api-docs/system/storage/raftautopilot).
-If you wish to decommission a node manually, this can be done with the 
+If you wish to decommission a node manually, this can be done with the
 `remove peer` [command](../commands/operator/raft.mdx#remove-peer).
 
 #### Without autopilot
 
-In scenarios involving those when a node joins a Raft cluster, it attempts to 
-catch up with the rest of the nodes through the data that it's replicating from 
-the leader. While in this initial synchronisation state, the node cannot 
-vote but is counted for the purposes of quorum. If a number of new nodes join 
+In scenarios involving those when a node joins a Raft cluster, it attempts to
+catch up with the rest of the nodes through the data that it's replicating from
+the leader. While in this initial synchronization state, the node cannot
+vote but is counted for the purposes of quorum. If a number of new nodes join
 the cluster simultaneously or at similar times, and thereby exceeding the failure
 tolerance of the cluster, quorum may be lost and the cluster can fail.
 
-For example, consider a scenario where there is a 3-node cluster with a large 
-amount of data and a failure tolerance of 1. An additional 3 new nodes then 
-join the cluster. The cluster now consists of 6 nodes with a failure tolerance 
-of 2, but since all 3 nodes are still catching up, this will result in a loss of 
+For example, consider a scenario where there is a 3-node cluster with a large
+amount of data and a failure tolerance of 1. An additional 3 new nodes then
+join the cluster. The cluster now consists of 6 nodes with a failure tolerance
+of 2, but since all 3 nodes are still catching up, this will result in a loss of
 quorum.
 
 * A 3 node cluster with a large amount of data that's at a failure tolerance of 1.
@@ -239,23 +239,23 @@ in a failure scenario.
 The OpenBao Reference Architecture recommends a 5 node cluster
 to ensure a minimum failure tolerance of at least 2.
 
-It is good practise, wherever possible, to retain a failure tolerance of 2 or 
+It is good practice, wherever possible, to retain a failure tolerance of 2 or
 more.
 
-A scaling approach can be pursued in the event of maintenance and other changes 
-where an additional pair of nodes (ie two) are added in an existing 5 node cluster 
-making for a 7 node cluster. Once new joiners are confirmed to be in sync then 
-the 2 older nodes can be stopped and or destroyed with the same processes being 
-repeated until all other nodes have been replaced. This use of additional nodes 
-on a temporary basis of a 7 node cluster arrangement, concluding back to 5 nodes, 
-may be one way to ensure sufficient failure tolerance is maintained and that 
-changes are made progressively in proportion to the cluster failure tolerance and 
+A scaling approach can be pursued in the event of maintenance and other changes
+where an additional pair of nodes (ie two) are added in an existing 5 node cluster
+making for a 7 node cluster. Once new joiners are confirmed to be in sync then
+the 2 older nodes can be stopped and or destroyed with the same processes being
+repeated until all other nodes have been replaced. This use of additional nodes
+on a temporary basis of a 7 node cluster arrangement, concluding back to 5 nodes,
+may be one way to ensure sufficient failure tolerance is maintained and that
+changes are made progressively in proportion to the cluster failure tolerance and
 never exceeding the available failure tolerance in any given time.
 
-The intent with any change or scaling ought to be with the loss of quorum and 
-reduction of the quorum failure tolerances at the forefront and discouraging 
-any practises that compromise that.
+The intent with any change or scaling ought to be with the loss of quorum and
+reduction of the quorum failure tolerances at the forefront and discouraging
+any practices that compromise that.
 
-Scaling clusters up or down in pairs with 2 nodes each time also has the added 
-advantage of avoiding even numbers and it is always recommended to 
+Scaling clusters up or down in pairs with 2 nodes each time also has the added
+advantage of avoiding even numbers and it is always recommended to
 allow for an odd number of total voters in any cluster.

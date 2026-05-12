@@ -116,17 +116,17 @@ For a list of examples and supported providers, please see the
 
 **Warning:** Recovery keys cannot decrypt the root key, and thus are not
 sufficient to unseal OpenBao if the Auto Unseal mechanism isn't working. They
-are purely an authorization mechanism.  Using Auto Unseal 
-creates a strict OpenBao lifecycle dependency on the underlying seal mechanism. 
-This means that if the seal mechanism (such as the Cloud KMS key) becomes unavailable, 
-or deleted before the seal is migrated, then there is no ability to recover 
-access to the OpenBao cluster until the mechanism is available again. **If the seal 
+are purely an authorization mechanism.  Using Auto Unseal
+creates a strict OpenBao lifecycle dependency on the underlying seal mechanism.
+This means that if the seal mechanism (such as the Cloud KMS key) becomes unavailable,
+or deleted before the seal is migrated, then there is no ability to recover
+access to the OpenBao cluster until the mechanism is available again. **If the seal
 mechanism or its keys are permanently deleted, then the OpenBao cluster cannot be recovered, even
 from backups.**
 To mitigate this risk, we recommend careful controls around management of the seal
-mechanism, for example using 
+mechanism, for example using
 [AWS Service Control Policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html)
-or similar.  
+or similar. 
 
 :::
 
@@ -158,7 +158,7 @@ and their API equivalents in the [/sys/init](/api-docs/system/init) endpoint:
   an array, not a string.
 
 Additionally, OpenBao will refuse to initialize if the option has not been set to
-generate a key, and no key is found. 
+generate a key, and no key is found.
 
 ### Rotation
 
@@ -176,7 +176,7 @@ The recovery key can be rotated to change the number of shares/threshold or to
 target different key holders via different PGP keys. When using the OpenBao CLI,
 this is performed by using the `-target=recovery` flag to `bao operator rotate-keys`.
 
-Via the API, the rotation is performed using 
+Via the API, the rotation is performed using
 [`/sys/rotate/recovery` endpoint](/api-docs/system/rotate).
 
 ## Seal migration

@@ -2,7 +2,7 @@
 sidebar_label: user-lockout
 description: |-
   The user_lockout stanza specifies various configurations for user lockout behaviour for
-  failed logins in OpenBao. 
+  failed logins in OpenBao.
 ---
 # User lockout
 
@@ -35,14 +35,14 @@ The user lockout feature can be disabled as follows:
 
 ## `user_lockout` stanza
 
-The `user_lockout` stanza specifies various configurations for user lockout 
+The `user_lockout` stanza specifies various configurations for user lockout
 behaviour for failed logins in OpenBao. They can be configured for all supported auth methods
-(userpass, ldap and approle) using "all" user_lockout stanza name or for a specific auth method 
-using the auth method name in stanza. 
+(userpass, ldap and approle) using "all" user_lockout stanza name or for a specific auth method
+using the auth method name in stanza.
 
 Supported user_lockout stanza names are all, userpass, ldap and approle.
 
-The configurations for a specific auth method takes precedence over the configurations specified 
+The configurations for a specific auth method takes precedence over the configurations specified
 for all auth methods using "all" user_lockout stanza name in the config file.
 
 ## Configuration
@@ -74,12 +74,12 @@ user_lockout "ldap" {
 }
 ```
 
-Here, user lockout feature will be disabled for ldap auth methods. Userpass auth methods will have lockout threshold of 25, 
-lockout duration of 5 minutes, lockout counter reset of 10 minutes. Approle auth methods will have a lockout threshold of 
+Here, user lockout feature will be disabled for ldap auth methods. Userpass auth methods will have lockout threshold of 25,
+lockout duration of 5 minutes, lockout counter reset of 10 minutes. Approle auth methods will have a lockout threshold of
 5 (considers default as this value is not configured), lockout duration of 10 minutes and lockout counter reset of 10 minutes.
 
 The user lockout configuration for the auth method at a given path can be tuned using auth tune. Please see [auth tune command](../commands/auth/tune.mdx)
-or [auth tune api](/api-docs/system/auth#tune-auth-method) for more details. 
+or [auth tune api](/api-docs/system/auth#tune-auth-method) for more details.
 
 ## `user_lockout` parameters
 

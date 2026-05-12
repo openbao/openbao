@@ -18,14 +18,14 @@ to protect data written to the storage backend.
 ![Key Rotate](/img/openbao-key-rotate.png)
 
 To enable key rotation, we need to support changing the unseal keys, root key, and the
-backend encryption key. 
+backend encryption key.
 
 :::warning
 
-Note: Historically these actions were split into two separate operations, `rekey` and 
+Note: Historically these actions were split into two separate operations, `rekey` and
 `rotate`. To further enhance the clarity and address the ambiguity of the terms all
 key rotation processes described by the `rekey` verb were renamed to `rotate/<key-name>`
-instead. 
+instead.
 
 :::
 

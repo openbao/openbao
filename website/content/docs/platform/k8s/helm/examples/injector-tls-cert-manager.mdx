@@ -80,7 +80,7 @@ injector-selfsigned-ca   True    injector-ca-secret   selfsigned   Certificate i
 
 Next we can create a request for cert-manager to generate a certificate and key
 signed by the certificate authority above. This certificate and key will be used
-by the OpenBao Agent Injector for TLS communications with the Kubernetes API. 
+by the OpenBao Agent Injector for TLS communications with the Kubernetes API.
 
 The Certificate request object references the CA issuer created above, and specifies the name of the Secret where the CA, Certificate, and Key will be stored by cert-manager.
 

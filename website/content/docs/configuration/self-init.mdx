@@ -15,7 +15,7 @@ service state through request-driven initialization that occurs
 automatically on first server start. Operators can reference environment
 variables and files to provision initial authentication, audit, and secret
 mounts in addition to having full control over general requests.
-Instead of manually executing multiple API commands after starting the server, 
+Instead of manually executing multiple API commands after starting the server,
 all necessary settings can be defined in advance.
 
 :::info
@@ -123,7 +123,7 @@ The `initialize` stanza can only contain one or more `request` stanzas. Each
 - `data` `(value[map]: <optional>)` - the request data for this call.
 - `allow_failure` `(value[bool]: false)` - when true, allows this call to fail
   without erring out the entire self-initialization process.
-  
+
 ## Profiles
 
 For more information on profiles, see the [concepts page](../concepts/profiles.mdx).

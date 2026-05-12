@@ -42,7 +42,7 @@ and arguments.
 The following `write` command creates a new user (`bob`) in the userpass auth
 method. It passes the `-address` flag to specify the OpenBao server address which
 precedes the path (`auth/userpass/users/bob`) and its
-[argument](/api-docs/auth/userpass#create-update-user)
+[argument](/api-docs/auth/userpass#createupdate-user)
 (`password="long-password"`) at last.
 
 ```shell-session
@@ -50,7 +50,7 @@ $ bao write -address="http://127.0.0.1:8200" auth/userpass/users/bob password="l
 ```
 
 If multiple options (`-address` and `-namespace`) and
-[arguments](/api-docs/auth/userpass#create-update-user) (`password` and
+[arguments](/api-docs/auth/userpass#createupdate-user) (`password` and
 `policies`) are specified, the command would look like:
 
 ```shell-session
@@ -269,7 +269,7 @@ this file at any time to "logout" of OpenBao.
 
 The CLI reads the following environment variables to set behavioral defaults.
 This can alleviate the need to repetitively type a flag. Flags always take
-precedence over the environment variables. Each of the following environment 
+precedence over the environment variables. Each of the following environment
 variables must be set on the OpenBao process. All environment  variables
 available to the OpenBao process will be logged during startup.
 

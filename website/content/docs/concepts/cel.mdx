@@ -7,8 +7,8 @@ description: How is Common Expression Language implemented in OpenBao.
 
 The Common Expression Language (CEL) is used in PKI and JWT to declare validation rules
 and policies:
-- [CEL for JWT Auth](../rfcs/cel-jwt.mdx)
-- [CEL in PKI](../rfcs/cel-pki.mdx)
+- [CEL for JWT Auth](/community/rfcs/cel-jwt)
+- [CEL in PKI](/community/rfcs/cel-pki)
 
 The main CEL `Expression` in a `Celprogram` is typically one line of code. This can be broken down
 into multiple CEL expressions by using `CelVariable`'s. The following sections cover how to build
@@ -35,7 +35,7 @@ a request.
 
 - A custom `string` error message or `bool` should be returned on
   failure. The error message can be constructed using a CEL expression.
-  For instance: 
+  For instance:
   ```go
   require_cn ? 'request should have a common_name' : (validate_ttl ? 'request has invalid TTL' : "Request Rejected")
   ```
@@ -109,7 +109,7 @@ Expression: string
     {
       "name": "cert",
       "expression": `CertTemplate{
-        Subject: PKIX.Name{                   
+        Subject: PKIX.Name{                  
         CommonName: cn_value,
         },
         NotBefore: now,

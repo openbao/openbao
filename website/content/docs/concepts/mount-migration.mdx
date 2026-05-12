@@ -9,8 +9,8 @@ is supported by API endpoints and a CLI helper around them.
 
 ## Why
 
-There can be several reasons for wanting to migrate mounts. In OpenBao, the use cases could be for 
-renaming mounts to align with org standards. 
+There can be several reasons for wanting to migrate mounts. In OpenBao, the use cases could be for
+renaming mounts to align with org standards.
 
 ## Async behavior
 
@@ -21,11 +21,11 @@ the migration status using the `sys/remount/status` endpoint.
 ## Namespaces
 
 The `sys/remount` endpoint can move mounts across namespaces with the namespaces supplied as prefixes
-on the path arguments. In this case, namespaces, for both the source and destination mounts, must be 
-either the namespace in which the `/sys/remount` endpoint is called or the children of that namespace. Let us assume that 
-we have three namespaces `ns1/`, `ns1/ns2/`, and `ns1/ns3`. We want to move the mount `my-secret` from `ns1/ns2/my-secret` to `ns1/ns3/my-secret`. 
-Moving the mount can be accomplished in two ways. The first way is to invoke `/sys/remount` from the root namespace with the `from` argument as `ns1/ns2/my-secret` 
-and `to` argument as `ns1/ns3/my-secret`. The second way is to invoke `/sys/remount` from the namespace `ns1/`, with `from` as `ns2/my-secret` and `to` 
+on the path arguments. In this case, namespaces, for both the source and destination mounts, must be
+either the namespace in which the `/sys/remount` endpoint is called or the children of that namespace. Let us assume that
+we have three namespaces `ns1/`, `ns1/ns2/`, and `ns1/ns3`. We want to move the mount `my-secret` from `ns1/ns2/my-secret` to `ns1/ns3/my-secret`.
+Moving the mount can be accomplished in two ways. The first way is to invoke `/sys/remount` from the root namespace with the `from` argument as `ns1/ns2/my-secret`
+and `to` argument as `ns1/ns3/my-secret`. The second way is to invoke `/sys/remount` from the namespace `ns1/`, with `from` as `ns2/my-secret` and `to`
 as `ns3/my-secret`.
 
 ## Leases
@@ -55,8 +55,8 @@ OpenBao will dynamically generate them upon login operations.
 ### Policies
 
 Remounting can also result in policies referring to invalid paths. Any policy that refers to a moved secrets engine
-would need to be updated to point to the new location of the engine, assuming that the policy is in the target namespace 
-or a parent of the target namespace, or updated to remove the original mount path if not. 
+would need to be updated to point to the new location of the engine, assuming that the policy is in the target namespace
+or a parent of the target namespace, or updated to remove the original mount path if not.
 Any policies associated with roles on a moved auth mount need to be inspected
 to see if they still refer to valid paths after the remount operation. Say in namespace `ns1/`, a child of the root namespace, a role on the mount `approle/`
 has policies granting access to `/my-secret`. If the mount is moved to another child of the root namespace, say `ns2/`,

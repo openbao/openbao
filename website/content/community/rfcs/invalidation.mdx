@@ -1,0 +1,217 @@
+---
+sidebar_label: Invalidation with Raft
+description: |-
+  An OpenBao RFC for handling cache invalidations to allow read-enabled
+  standby nodes.
+---
+
+# Implementation of Invalidation with Raft
+
+:::info
+
+Note that the PostgreSQL-specific portions were not implemented. Support for
+Raft landed in v2.5.0.
+
+:::
+
+## Summary
+
+As part of the changes to allow read-enabled standby nodes, we need to trigger
+the invalidation hooks which allow caches and plugins to detect changes to
+cached entries. This design is currently absent from the `physical.Backend`
+interface which this solves.
+
+## Problem Statement
+
+Various layers in OpenBao perform caching:
+
+1. The `sdk/physical/cache.go` engine, placed above the actual physical
+   storage implementation.
+2. Various core components like the policy store, namespace store, identity
+   store, and others.
+3. The plugins themselves, such as PKI or Transit which cache parsed
+   representations of keys to avoid the overhead of re-parsing on frequently
+   used key material.
+
+The current design supports an invalidate function `Invalidate(ctx, key)`;
+notably, storage isn't present in this call as it is simply meant to
+invalidate the given (storage) key in the relevant caches and is not used
+to reload the new value.
+
+However, `physical.Backend` has no hook allow `vault.Core` to build and call
+its invalidation router.
+
+This proposes such a mechanism that HA backends must implement, allowing
+replicated HA storage engines to send storage change events to OpenBao. With
+Raft, the committed log entry approach lends itself naturally to
+invalidations. Additionally, we propose mechanisms for allowing PostgreSQL to
+send these events itself.
+
+## User-facing Description
+
+There will be no user-facing changes to this MR.
+
+## Technical Description
+
+### Physical
+
+We extend the `physical.HABackend` interface as follows:
+
+```go
+type InvalidateFunc func(key string)
+
+type HABackend interface {
+    ... existing methods ...
+    HookInvalidate(hook InvalidateFunc)
+}
+```
+
+`HookInvalidate(...)` accepts a single function, which `vault.Core` will
+implement, taking only a key of a written (updated or deleted) entry. Note
+that unlike the `sdk.Backend` implementation, `InvalidateFunc` does not take
+a context as that is assumed to be supplied by `vault.Core` (one derived from
+the present active context).
+
+This function is assumed to be fast and called when all updates in a
+transaction are finished and assumed to be visible. That is, it should not be
+called when a pending write transaction is not yet called.
+
+This function is not called on the node on which the write occurred. If a
+GRPC-backed cross-cluster write capability is created in the future, the
+higher level `vault.Core` function would need to be called manually by the
+GRPC interface.
+
+### Vault Core
+
+Within the Core function, we'll implement the `physical.InvalidateFunc` with
+the direct approach for the time being:
+
+```go
+func (c *Core) Invalidate(key string) {
+    // Route invalidation based on key:
+    ctx := activeContext
+
+    if strings.HasPrefix(key, namespaceBarrierPrefix) {
+        // lookup namespace and adjust ctx appropriately
+    }
+
+    // Dispatch to appropriate subsystem:
+    //
+    // 1. A plugin backend.
+    // 2. Namespace store
+    // 3. Token store
+    // 4. Quota manager
+    // 5. Audit broker
+    // 6. Expiration manager
+    // 7. Policy store
+    // 8. Identity store
+    // 9. Login MFA store
+}
+```
+
+This function will be set as the invalidation hook for the physical backend
+when it is HA-enabled.
+
+### Raft Support
+
+This will be hooked from `raft.FSM.ApplyBatch(...)` after the batch has been
+applied and committed.
+
+### PostgreSQL Support
+
+Only a single viable mechanism exists to support invalidation in PostgreSQL:
+building an additional table, `openbao_wal_store`, which writes entries to be
+invalidated, maintaining explicit state via GRPC-based invalidation
+notifications from standby nodes back to the active leader. Because standby
+nodes can wait until their replica is up-to-date before joining the cluster,
+we only need to maintain WAL entries for actively connected nodes and can fully
+prune the WAL when leadership changes. Likewise, for standby nodes which exist
+on an out-of-date replica, we can add a maximum lifetime for WAL entries and
+remove any entry for which the standby node does not confirm fast enough; this
+missed standby can then be forced to wait for their replica to catch up again
+before rejoining the WAL mechanism.
+
+This table has the schema:
+
+```sql
+CREATE TABLE openbao_wal-store (
+  idx BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  path  TEXT COLLATE "C" NOT NULL
+);
+```
+
+On periodic heartbeats, standby nodes will send their PostgreSQL WAL state to
+the leaders, who can verify if they've cleared the OpenBao WAL table since that
+WAL, prompting the standby to restart and wait for their node to catch up.
+Subsequently, when an invalidation is processed, the standby node can use the
+same RPC mechanism to inform the leader that the invalidation has been
+processed.
+
+## Rationale and Alternatives
+
+There are other alternatives to the PostgreSQL changes:
+
+1. Using `LISTEN`/`NOTIFY`. This does not work across PostgreSQL replicas,
+   which we otherwise currently support, and would not work with PGBouncer or
+   similar, as they are best-effort.
+2. Using a GRPC call from active to the standby with generation value sent
+   over the wire. This requires significant changes to the storage layer, to
+   allow GRPC calls invoked by the `physical.Backend` implementation and is
+   not durable: a standby node at time X may receive a GRPC with a future
+   generation ID, crash at time X+1, restart at time X+2 and load the previous
+   value into cache, get the replicated entry at time X+3 and never be
+   invalidated. This would require the active node store a log of all past
+   GRPC events sent and the standby to confirm they've seen them. This two-way
+   ACK approach does not help with net-new servers, which again may be loaded
+   with out-of-date storage and thus would require past invalidations be sent
+   as well.
+3. Hooking the native replication log: this allows OpenBao to know about
+   all changes in PostgreSQL and decode storage entries. For background on
+   this see [`pg_replication_slot`](https://www.postgresql.org/docs/current/view-pg-replication-slots.html),
+   [logical decoding](https://www.postgresql.org/docs/current/logicaldecoding.html),
+   and [standby servers](https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS).
+   Note that the [default level](https://www.postgresql.org/docs/current/runtime-config-wal.html#GUC-WAL-LEVEL),
+   `replica`, is not sufficient to enable this feature. There is a
+   [go library](https://github.com/jackc/pglogrepl) we can use handle this.
+
+   However, this configuration change--and the lack of support for
+   notifications on PostgreSQL replicas--means that we cannot easily support
+   a horizontally-scalable setup across disconnected (from an OpenBao
+   credential PoV) PostgreSQL replicas like we can today. This makes this option
+   not a good fit.
+4. Modifying our schema to include an `updated_at` column. On startup, we
+   can query the highest value and then periodically check for invalidations
+   which have occurred. This approach does not work for two major reasons: it
+   fails to track deletes and it does not guarantee a sort order, making it
+   hard to explicitly determine which events have been seen without keeping
+   track on both the active and standby nodes.
+
+Each of these has issues.
+
+## Downsides
+
+This complexity is necessary to enable read-enabled standby nodes. Memory
+usage in OpenBao and storage pressure on PostgreSQL may temporarily spike as
+a result of write-heavy workloads.
+
+## Security Implications
+
+None; this is at the physical layer and does not change various security
+attributes. The invalidation should be reliable and not cause invalidation issues.
+
+## User/Developer Experience
+
+n/a
+
+## Unresolved Questions
+
+n/a
+
+## Related Issues
+
+- https://github.com/openbao/openbao/issues/1528
+
+## Proof of Concept
+
+n/a
+

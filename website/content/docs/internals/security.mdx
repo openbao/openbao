@@ -98,7 +98,7 @@ permitted to make login requests.
 All server-to-server traffic between OpenBao instances within a cluster uses
 mutually-authenticated TLS to ensure the confidentiality and integrity of data
 in transit. Nodes are authenticated prior to joining the cluster by an
-[unseal challenge](../concepts/integrated-storage/index.mdx#vault-networking-recap).
+[unseal challenge](../concepts/integrated-storage/index.mdx#openbao-networking-recap).
 
 The storage backends used by OpenBao are also untrusted by design. OpenBao uses a
 security barrier for all requests made to the backend. The security barrier

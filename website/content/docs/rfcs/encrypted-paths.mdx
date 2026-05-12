@@ -1,0 +1,99 @@
+---
+sidebar_label: Encrypted paths
+description: |-
+  An OpenBao RFC to discuss enabling encryption on all barrier-encrypted
+  paths, preventing the last remaining information leak on snapshots.
+---
+
+# Encrypted storage paths
+
+## Summary
+
+OpenBao's barrier currently protects the contents of data written to OpenBao,
+but doesn't handle encrypting paths. This means that certain sensitive paths,
+most notably KVv1 entries, are written in plaintext and visible in snapshots
+or to anyone with access to the underlying storage. By layering the existing
+`keysutil.EncryptedKeyStorageWrapper` helper on top of barrier, we can improve
+the defense of these paths.
+
+## Problem Statement
+
+OpenBao currently has storage paths which are not encrypted, despite the
+data itself being encrypted. This is a metadata leak that we should ideally
+resolve and is something already addressed in the KVv2 storage engine through
+the use of `keysutil.EncryptedKeyStorageWrapper`. This contains a LRU cache,
+decreasing the overhead of encrypting all paths in OpenBao.
+
+Notably, paths not encrypted with the barrier are out of scope.
+
+## User-facing Description
+
+On initialization, operators can set `with_encrypted_storage_paths=true`.
+
+No change is expected for consumers of the API; `sys/raw` will additionally
+already decode paths. Only direct viewers of the raw underlying physical
+backend would be impacted.
+
+Rotation of key material occurs at the same time as barrier key rotation.
+
+## Technical Description
+
+When `with_encrypted_storage_paths=true` is set, we can provision a copy of
+`keysutil.EncryptedKeyStorageWrapper` over the top of `vault.Core.barrier`,
+taking into account the specialized interface of `c.barrier`. This already
+supports transactions and parallel access, so no real technical challenges
+exist. The proof of concept is relatively compact.
+
+The biggest gap remains in unanswered questions: how would we implement
+migrations, if desired. One possibility would be to do this in the offline
+`bao operator migrate`.
+
+## Rationale and Alternatives
+
+This fixes a long-standing metadata leak in OpenBao and HashiCorp Vault.
+
+We could implement a different wrapper than the existing
+`keysutil.EncryptedKeyStorageWrapper`, though this would be much more work
+and likely look similar to the existing interface.
+
+## Downsides
+
+This would add some performance loss, similar to the overhead of KVv1 vs KVv2,
+though less as the latter also incurs multiple storage requests for most
+operations.
+
+## Security Implications
+
+The backend for encrypting paths is already used by KVv2 and is thus fairly
+mature. We've recently strengthened it in the course of handling
+[HCSEC-2026-05](https://discuss.hashicorp.com/t/hcsec-2026-05-vault-kvv2-metadata-and-secret-deletion-policy-bypass-denial-of-service/77342).
+
+This would not help for an attacker actively watching network traffic
+between OpenBao and its storage engine, but would defend against offline
+attacks.
+
+## User/Developer Experience
+
+This might impact performance on some large list/scan operations mostly but
+otherwise with the LRU cache and AES acceleration be fairly fast.
+
+## Unresolved Questions
+
+- Should we allow migrating an unencrypted storage to encrypted?
+  - This would add some moderate complexity and we'll need to decide
+    how to do so: on first unseal, incrementally, on access?
+  - What about the reverse, downgrading to unencrypted paths?
+    - This would add even more complexity.
+- Should we also allow (or, separately allow) encrypting namespaces?
+  - Should that be step-up security only? i.e., not allowing decrypted
+    namespaces if the root operator has denied such?
+
+## Related Issues
+
+n/a; I could've sworn we've had some discussions about this, perhaps on
+GitHub or a community call but I cannot find a source right now.
+
+## Proof of Concept
+
+See [proof of concept](https://github.com/openbao/openbao/compare/main...cipherboy:openbao:encrypted-barrier-paths?expand=1)
+branch.

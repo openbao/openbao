@@ -1082,6 +1082,27 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 	// out. We still want to return the raw value to avoid automatic updating
 	// to any of it.
 	if req.Path == "sys/wrapping/unwrap" {
+
+		// Handle execution of deferred request when approved
+		te := req.TokenEntry()
+		if te != nil {
+			deferredReq, err := c.getRequestFromTokenEntry(ctx, te)
+			if err != nil && !errors.Is(err, DeferredRequestNotFound) {
+				return nil, err
+			}
+			if deferredReq != nil {
+				approved, err := c.validateControlGroup(ctx, te, deferredReq.Operation)
+				if err != nil {
+					return nil, err
+				}
+				if approved {
+					// reenter this function with deferred request and ForwardedFrom marker
+					deferredReq.ForwardedFrom = forwardedFromDeferral
+					return c.handleCancelableRequest(ctx, deferredReq)
+				}
+			}
+		}
+
 		if resp != nil &&
 			resp.Data != nil &&
 			resp.Data[logical.HTTPRawBody] != nil {
@@ -1098,24 +1119,6 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 				}
 
 				auditResp = logical.HTTPResponseToLogicalResponse(httpResp)
-			}
-		} else {
-			// Handle execution of deferred request when approved
-			te := req.TokenEntry()
-			deferredReq, err := c.getRequestFromTokenEntry(ctx, te)
-			if err != nil {
-				return nil, err
-			}
-			if deferredReq != nil {
-				approved, err := c.validateControlGroup(ctx, te, deferredReq.Operation)
-				if err != nil {
-					return nil, err
-				}
-				if approved {
-					// reenter this function with deferred request and ForwardedFrom marker
-					deferredReq.ForwardedFrom = forwardedFromDeferral
-					return c.handleCancelableRequest(ctx, deferredReq)
-				}
 			}
 		}
 	}

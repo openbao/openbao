@@ -28,6 +28,9 @@ const (
 // ControlGroupNotFound error indicates that a token entry is not governed by a control group
 var ControlGroupNotFound = errors.New("token internal meta does not contain control group")
 
+// DeferredRequestNotFound error indicates that a token entry does not contain deferred request
+var DeferredRequestNotFound = errors.New("token internal meta does not contain deferred request")
+
 // controlGroupRequestResponseSchema defines the response schema for control group lookup
 // This schema is used both for OpenAPI generation and ensures handler consistency
 var controlGroupRequestResponseSchema = map[string]*framework.FieldSchema{
@@ -95,7 +98,7 @@ func makeLogicalControlGroup(authResultsControlGroup *policy.ControlGroup) *logi
 func (c *Core) getRequestFromTokenEntry(ctx context.Context, tokenEntry *logical.TokenEntry) (*logical.Request, error) {
 	reqProtoBase64, ok := tokenEntry.InternalMeta["request"]
 	if !ok {
-		return nil, errors.New("token internal meta does not contain request")
+		return nil, DeferredRequestNotFound
 	}
 
 	reqBytes, err := base64.StdEncoding.DecodeString(reqProtoBase64)

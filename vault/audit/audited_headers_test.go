@@ -1,20 +1,22 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package audit
 
 import (
 	"context"
 	"reflect"
 	"testing"
 
+	log "github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/salt"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/stretchr/testify/require"
 )
 
 func mockAuditedHeadersConfig(t *testing.T) *AuditedHeadersConfig {
-	_, barr, _ := barrier.MockBarrier(t, logger)
+	_, barr, _ := barrier.MockBarrier(t, logging.NewVaultLogger(log.Trace))
 	view := barrier.NewView(barr, "foo/")
 	return &AuditedHeadersConfig{
 		Headers: make(map[string]*auditedHeaderSettings),
@@ -30,7 +32,7 @@ func TestAuditedHeadersConfig_CRUD(t *testing.T) {
 }
 
 func testAuditedHeadersConfig_Add(t *testing.T, conf *AuditedHeadersConfig) {
-	err := conf.add(t.Context(), "X-Test-Header", false)
+	err := conf.Add(t.Context(), "X-Test-Header", false)
 	if err != nil {
 		t.Fatalf("Error when adding header to config: %s", err)
 	}
@@ -68,7 +70,7 @@ func testAuditedHeadersConfig_Add(t *testing.T, conf *AuditedHeadersConfig) {
 		t.Fatalf("Expected config didn't match actual. Expected: %#v, Got: %#v", expected, headers)
 	}
 
-	err = conf.add(t.Context(), "X-Vault-Header", true)
+	err = conf.Add(t.Context(), "X-Vault-Header", true)
 	if err != nil {
 		t.Fatalf("Error when adding header to config: %s", err)
 	}
@@ -106,7 +108,7 @@ func testAuditedHeadersConfig_Add(t *testing.T, conf *AuditedHeadersConfig) {
 }
 
 func testAuditedHeadersConfig_Remove(t *testing.T, conf *AuditedHeadersConfig) {
-	err := conf.remove(t.Context(), "X-Test-Header")
+	err := conf.Remove(t.Context(), "X-Test-Header")
 	if err != nil {
 		t.Fatalf("Error when adding header to config: %s", err)
 	}
@@ -140,7 +142,7 @@ func testAuditedHeadersConfig_Remove(t *testing.T, conf *AuditedHeadersConfig) {
 		t.Fatalf("Expected config didn't match actual. Expected: %#v, Got: %#v", expected, headers)
 	}
 
-	err = conf.remove(t.Context(), "x-VaulT-Header")
+	err = conf.Remove(t.Context(), "x-VaulT-Header")
 	if err != nil {
 		t.Fatalf("Error when adding header to config: %s", err)
 	}
@@ -174,8 +176,8 @@ func testAuditedHeadersConfig_Remove(t *testing.T, conf *AuditedHeadersConfig) {
 func TestAuditedHeadersConfig_ApplyConfig(t *testing.T) {
 	conf := mockAuditedHeadersConfig(t)
 
-	require.NoError(t, conf.add(t.Context(), "X-TesT-Header", false))
-	require.NoError(t, conf.add(t.Context(), "X-Vault-HeAdEr", true))
+	require.NoError(t, conf.Add(t.Context(), "X-TesT-Header", false))
+	require.NoError(t, conf.Add(t.Context(), "X-Vault-HeAdEr", true))
 
 	reqHeaders := map[string][]string{
 		"X-Test-Header":  {"foo"},
@@ -185,7 +187,7 @@ func TestAuditedHeadersConfig_ApplyConfig(t *testing.T) {
 
 	hashFunc := func(ctx context.Context, s string) (string, error) { return "hashed", nil }
 
-	result, err := conf.ApplyConfig(t.Context(), reqHeaders, hashFunc)
+	result, err := conf.Apply(t.Context(), reqHeaders, hashFunc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +240,7 @@ func BenchmarkAuditedHeaderConfig_ApplyConfig(b *testing.B) {
 	// Reset the timer since we did a lot above
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err = conf.ApplyConfig(b.Context(), reqHeaders, hashFunc)
+		_, err = conf.Apply(b.Context(), reqHeaders, hashFunc)
 		require.NoError(b, err)
 	}
 }

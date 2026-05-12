@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	coreAudit "github.com/openbao/openbao/vault/audit"
 	"github.com/openbao/openbao/vault/barrier"
 	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/openbao/openbao/vault/routing"
@@ -97,22 +98,6 @@ func knownMountType(entryType string) error {
 	}
 
 	return nil
-}
-
-func (c *Core) generateMountAccessor(entryType string) (string, error) {
-	var accessor string
-	for {
-		randBytes, err := uuid.GenerateRandomBytes(4)
-		if err != nil {
-			return "", err
-		}
-		accessor = fmt.Sprintf("%s_%s", entryType, fmt.Sprintf("%08x", randBytes[0:4]))
-		if entry := c.router.MatchingMountByAccessor(accessor); entry == nil {
-			break
-		}
-	}
-
-	return accessor, nil
 }
 
 func (c *Core) decodeMountEntries(ctx context.Context, entry *logical.StorageEntry) ([]*routing.MountEntry, error) {
@@ -260,7 +245,7 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *routing.MountEn
 		entry.BackendAwareUUID = bUUID
 	}
 	if entry.Accessor == "" {
-		accessor, err := c.generateMountAccessor(entry.Type)
+		accessor, err := c.router.GenerateMountAccessor(entry.Type)
 		if err != nil {
 			return err
 		}
@@ -269,7 +254,7 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *routing.MountEn
 	// Sync values to the cache
 	entry.SyncCache()
 
-	view, err := c.mountEntryView(entry)
+	view, err := c.MountEntryView(entry)
 	if err != nil {
 		return err
 	}
@@ -700,7 +685,7 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	srcPath := mountEntry.Path
 	mountEntry.Path = dst.MountPath
 
-	dstBarrierView, err := c.mountEntryView(mountEntry)
+	dstBarrierView, err := c.MountEntryView(mountEntry)
 	if err != nil {
 		return err
 	}
@@ -1167,7 +1152,7 @@ func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, nee
 			needPersist = true
 		}
 		if entry.Accessor == "" {
-			accessor, err := c.generateMountAccessor(entry.Type)
+			accessor, err := c.router.GenerateMountAccessor(entry.Type)
 			if err != nil {
 				return err
 			}
@@ -1497,7 +1482,7 @@ func (c *Core) setupMountsForNamespace(ctx context.Context, ns *namespace.Namesp
 // and updates the router for specific mount entry.
 func (c *Core) setupMount(ctx context.Context, entry *routing.MountEntry) (func(), error) {
 	// Initialize the backend, special casing for system
-	view, err := c.mountEntryView(entry)
+	view, err := c.MountEntryView(entry)
 	if err != nil {
 		return nil, err
 	}
@@ -1708,7 +1693,7 @@ func (c *Core) defaultMountTable(ctx context.Context) *routing.MountTable {
 		if err != nil {
 			panic(fmt.Sprintf("could not create default secret mount UUID: %v", err))
 		}
-		mountAccessor, err := c.generateMountAccessor(routing.MountTypeKV)
+		mountAccessor, err := c.router.GenerateMountAccessor(routing.MountTypeKV)
 		if err != nil {
 			panic(fmt.Sprintf("could not generate default secret mount accessor: %v", err))
 		}
@@ -1754,7 +1739,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*routing.MountTable, err
 	if err != nil {
 		return nil, fmt.Errorf("could not create cubbyhole UUID: %w", err)
 	}
-	cubbyholeAccessor, err := c.generateMountAccessor("cubbyhole")
+	cubbyholeAccessor, err := c.router.GenerateMountAccessor("cubbyhole")
 	if err != nil {
 		return nil, fmt.Errorf("could not generate cubbyhole accessor: %w", err)
 	}
@@ -1781,7 +1766,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*routing.MountTable, err
 	if err != nil {
 		return nil, fmt.Errorf("could not create sys UUID: %w", err)
 	}
-	sysAccessor, err := c.generateMountAccessor("system")
+	sysAccessor, err := c.router.GenerateMountAccessor("system")
 	if err != nil {
 		return nil, fmt.Errorf("could not generate sys accessor: %w", err)
 	}
@@ -1811,7 +1796,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*routing.MountTable, err
 	if err != nil {
 		return nil, fmt.Errorf("could not create identity mount entry UUID: %w", err)
 	}
-	identityAccessor, err := c.generateMountAccessor("identity")
+	identityAccessor, err := c.router.GenerateMountAccessor("identity")
 	if err != nil {
 		return nil, fmt.Errorf("could not generate identity accessor: %w", err)
 	}
@@ -2238,8 +2223,8 @@ func (c *Core) mountEntrySysView(entry *routing.MountEntry) extendedSystemView {
 	}
 }
 
-// mountEntryView returns the barrier view object with prefix depending on the mount entry type, table and namespace.
-func (c *Core) mountEntryView(me *routing.MountEntry) (barrier.View, error) {
+// MountEntryView returns the barrier view object with prefix depending on the mount entry type, table and namespace.
+func (c *Core) MountEntryView(me *routing.MountEntry) (barrier.View, error) {
 	if me.Namespace != nil && me.Namespace.ID != me.NamespaceID {
 		return nil, errors.New("invalid namespace")
 	}
@@ -2256,8 +2241,8 @@ func (c *Core) mountEntryView(me *routing.MountEntry) (barrier.View, error) {
 		return c.NamespaceView(me.Namespace).SubView(path.Join(backendBarrierPrefix, me.UUID) + "/"), nil
 	case routing.CredentialTableType:
 		return c.NamespaceView(me.Namespace).SubView(path.Join(barrier.CredentialBarrierPrefix, me.UUID) + "/"), nil
-	case auditTableType, configAuditTableType:
-		return NamespaceScopedView(c.barrier, me.Namespace).SubView(path.Join(auditBarrierPrefix, me.UUID) + "/"), nil
+	case coreAudit.TableType, coreAudit.ConfigTableType:
+		return NamespaceScopedView(c.barrier, me.Namespace).SubView(path.Join(coreAudit.BarrierPrefix, me.UUID) + "/"), nil
 	}
 
 	return nil, errors.New("invalid mount entry")
@@ -2284,7 +2269,7 @@ func (c *Core) tableMetrics(tableType string, isLocal bool, entryCount, compress
 		routing.MountTableType:      {Name: "type", Value: "logical"},
 		routing.CredentialTableType: {Name: "type", Value: "auth"},
 		// we don't report number of audit mounts, but it is here for consistency
-		auditTableType: {Name: "type", Value: "audit"},
+		coreAudit.TableType: {Name: "type", Value: "audit"},
 	}
 
 	localLabelMap := map[bool]metrics.Label{

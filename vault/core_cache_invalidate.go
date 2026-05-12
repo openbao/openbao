@@ -17,6 +17,7 @@ import (
 	"github.com/openbao/openbao/helper/fairshare"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	auditCore "github.com/openbao/openbao/vault/audit"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/quotas"
@@ -254,7 +255,7 @@ func isKeyringPath(key string) bool {
 func isMissedMountKey(key string) bool {
 	return strings.HasPrefix(key, barrier.CredentialBarrierPrefix) ||
 		strings.HasPrefix(key, backendBarrierPrefix) ||
-		strings.HasPrefix(key, auditBarrierPrefix)
+		strings.HasPrefix(key, auditCore.BarrierPrefix)
 }
 
 func (ij *invalidationJob) Execute() error {
@@ -369,7 +370,7 @@ func (ij *invalidationJob) Execute() error {
 	case strings.HasPrefix(key, barrier.SystemBarrierPrefix+quotas.StoragePrefix):
 		ij.fatal = true
 		return ij.quotaInvalidation(ctx)
-	case key == coreAuditConfigPath || key == coreLocalAuditConfigPath:
+	case key == auditCore.ConfigPath || key == auditCore.LocalConfigPath:
 		ij.fatal = true
 		return ij.auditInvalidation(ctx)
 	case isLegacyMountPath(key):
@@ -477,7 +478,7 @@ func (ij *invalidationJob) auditInvalidation(ctx context.Context) error {
 		return nil
 	}
 
-	return ij.im.core.invalidateAudits(ctx)
+	return ij.im.core.audit.InvalidateAudits(ctx)
 }
 
 func (ij *invalidationJob) legacyMountInvalidation(ctx context.Context) error {

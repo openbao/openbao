@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	coreAudit "github.com/openbao/openbao/vault/audit"
 	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/version"
@@ -43,12 +44,11 @@ type extendedSystemViewImpl struct {
 	dynamicSystemView
 }
 
-func (e extendedSystemViewImpl) Auditor() logical.Auditor {
-	return genericAuditor{
-		mountType: e.mountEntry.Type,
-		namespace: e.mountEntry.Namespace,
-		c:         e.core,
+func (e extendedSystemViewImpl) Auditor() (logical.Auditor, error) {
+	if e.core.audit == nil || e.core.audit.Broker == nil {
+		return nil, consts.ErrSealed
 	}
+	return coreAudit.NewGenericAuditor(e.core.audit.Broker, e.mountEntry.Type, e.mountEntry.Namespace), nil
 }
 
 func (e extendedSystemViewImpl) ForwardGenericRequest(ctx context.Context, req *logical.Request) (*logical.Response, error) {

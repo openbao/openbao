@@ -37,26 +37,40 @@ front of OpenBao, which adds operational complexity and creates an additional po
 OpenBao gains the ability to serve OCSP requests over plain HTTP on a dedicated listener, enabling full RFC 5019
 compliance for certificate lifecycle management of network devices and IoT hardware that do not support TLS for OCSP.
 
-To use this feature, one would configure the following:
+Public routes are declared by the backend/plugin author (e.g., the PKI secrets engine) on the Backend
+instance. For example:
 
-1. Configure Openbao with a dedicated non-TLS listener with `only_public_routes = true`:
-
-```hcl
-listener "tcp" {
-  address     = "<host>:<port>"
-  tls_disable = true
-  public_routes = true
+```go
+backend := &framework.Backend{
+    // ...
+    PathsSpecial: &logical.Paths{
+        // ...
+        AllowedPublicPaths: []string{
+            "ocsp",
+            "ocsp/*",
+        },
+    },
 }
 ```
 
-2. Tune the target PKI mount to expose its OCSP path as a public route:
+To expose a backend's pre-defined public paths, an operator would configure the following:
 
-```bash
-bao secrets tune -allowed-public-paths="ocsp,ocsp/*" pki/
+1. Configure Openbao with a dedicated non-TLS listener with `only_public_routes = true`:
+```hcl
+listener "tcp" {
+    address       = "<host>:<port>"
+    tls_disable   = true
+    public_routes = true
+}
 ```
 
-Requests arriving on the public listener that do not match an `allowed_public_paths` pattern are rejected. All other
-OpenBao paths remain protected.
+2. Tune the target PKI mount to expose its public paths:
+
+```bash
+bao secrets tune -expose-public-paths=true pki/
+```
+Requests arriving on the public listener that do not match a pattern in the backend's `AllowedPublicPaths` list
+are rejected. All other OpenBao paths remain protected.
 
 ---
 

@@ -95,6 +95,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/config-plugins",
                 "rfcs/postgresql",
                 "rfcs/invalidation",
+                "rfcs/lightweight-ocsp-support"
             ],
         },
         {

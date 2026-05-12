@@ -170,7 +170,7 @@ type ControlGroup struct {
 	TTL                      time.Duration `hcl:"-"`
 	TTLHCL                   interface{}   `hcl:"ttl"`
 	Factors                  []ControlGroupFactor
-	SelfAuthorizationAllowed bool `hcl:"self_authorization_allowed"`
+	SelfAuthorizationAllowed bool `hcl:"self_auth_allowed"`
 }
 
 type ControlGroupFactor struct {

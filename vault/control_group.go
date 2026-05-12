@@ -78,7 +78,8 @@ func makeLogicalControlGroup(authResultsControlGroup *policy.ControlGroup) *logi
 	}
 
 	cg := &logical.ControlGroup{
-		TTL: authResultsControlGroup.TTL,
+		TTL:                      authResultsControlGroup.TTL,
+		SelfAuthorizationAllowed: authResultsControlGroup.SelfAuthorizationAllowed,
 	}
 	cg.Factors = make([]logical.ControlGroupFactor, len(authResultsControlGroup.Factors))
 	for i, factor := range authResultsControlGroup.Factors {
@@ -262,7 +263,7 @@ func (c *Core) addAuthorization(ctx context.Context, token string, approver *log
 		for _, group := range approver.GroupAliases {
 			if slices.Contains(identityGroups, group.Name) {
 				// make sure token doesn't have same identity as approver
-				if originalEntity.ID == approver.EntityID {
+				if !cg.SelfAuthorizationAllowed && originalEntity.ID == approver.EntityID {
 					return fmt.Errorf("token owner cannot be approver")
 				}
 

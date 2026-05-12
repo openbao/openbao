@@ -230,6 +230,17 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	auth.EntityID = "requesting-entity"
 	err = c.addAuthorization(ctx, te.ID, &auth)
 	require.NotNil(t, err)
+
+	// Authorization by the token owner will NOT result in error
+	// if policy permits self authorization
+	cg.SelfAuthorizationAllowed = true
+	err = c.setControlGroupInTokenEntry(ctx, te, &cg)
+	require.Nil(t, err)
+
+	// Self-authorize, no error
+	auth.EntityID = "requesting-entity"
+	err = c.addAuthorization(ctx, te.ID, &auth)
+	require.Nil(t, err)
 }
 
 func TestControlGroup_validateControlGroup(t *testing.T) {

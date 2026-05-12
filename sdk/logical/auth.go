@@ -144,8 +144,9 @@ type ControlGroupIdentity struct {
 }
 
 type ControlGroup struct {
-	TTL     time.Duration        `json:"ttl"`
-	Factors []ControlGroupFactor `json:"factors"`
+	TTL                      time.Duration        `json:"ttl"`
+	Factors                  []ControlGroupFactor `json:"factors"`
+	SelfAuthorizationAllowed bool                 `json:"self_auth_allowed"`
 }
 
 type ControlGroupAuthorization struct {

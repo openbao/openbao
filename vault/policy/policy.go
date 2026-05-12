@@ -167,9 +167,10 @@ type ACLPermissions struct {
 }
 
 type ControlGroup struct {
-	TTL     time.Duration `hcl:"-"`
-	TTLHCL  interface{}   `hcl:"ttl"`
-	Factors []ControlGroupFactor
+	TTL                      time.Duration `hcl:"-"`
+	TTLHCL                   interface{}   `hcl:"ttl"`
+	Factors                  []ControlGroupFactor
+	SelfAuthorizationAllowed bool `hcl:"self_authorization_allowed"`
 }
 
 type ControlGroupFactor struct {

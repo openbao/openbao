@@ -22,41 +22,36 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/set-up-go
-      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
-        with:
-          version: v2.5
-          only-new-issues: true
-      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+      - name: Install golangci-lint
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.5.0
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      - name: Verify versions
+        run: |
+          go version
+          golangci-lint version
+      - name: Run golangci-lint (root)
+        run: golangci-lint run
+      - name: Run golangci-lint (api)
         if: always()
-        with:
-          version: v2.5
-          only-new-issues: true
-          working-directory: ./api
-      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        working-directory: ./api
+        run: golangci-lint run
+      - name: Run golangci-lint (approle)
         if: always()
-        with:
-          version: v2.5
-          only-new-issues: true
-          working-directory: ./api/auth/approle
-      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        working-directory: ./api/auth/approle
+        run: golangci-lint run
+      - name: Run golangci-lint (kubernetes)
         if: always()
-        with:
-          version: v2.5
-          only-new-issues: true
-          working-directory: ./api/auth/kubernetes
-      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        working-directory: ./api/auth/kubernetes
+        run: golangci-lint run
+      - name: Run golangci-lint (userpass)
         if: always()
-        with:
-          version: v2.5
-          only-new-issues: true
-          working-directory: ./api/auth/userpass
-      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        working-directory: ./api/auth/userpass
+        run: golangci-lint run
+      - name: Run golangci-lint (sdk)
         if: always()
-        with:
-          version: v2.5
-          only-new-issues: true
-          working-directory: ./sdk
-
+        working-directory: ./sdk
+        run: golangci-lint run
   semgrep:
     name: Semgrep
     runs-on: ubuntu-latest

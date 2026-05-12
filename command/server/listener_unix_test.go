@@ -28,8 +28,9 @@ func TestUnixListener(t *testing.T) {
 	testListenerImpl(t, ln, connFn, "", 0, "", false)
 }
 
-func TestUnixListener_SocketModeOnly(t *testing.T) {
-	sockPath := filepath.Join(t.TempDir(), "vault.sock")
+func TestUnixListener_ModeOnly(t *testing.T) {
+	// Use a short filename to stay under the 104-byte sun_path limit on macOS.
+	sockPath := filepath.Join(t.TempDir(), "s.sock")
 
 	ln, _, _, err := unixListenerFactory(&configutil.Listener{
 		Address:    sockPath,

@@ -1,0 +1,3 @@
+```release-note: improvement
+http: Replace inline comparisons in tests with new, native assertions. Remove testify pkg from tests. Add blackbox testing.
+```

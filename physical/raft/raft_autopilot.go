@@ -356,14 +356,23 @@ func (b *RaftBackend) startFollowerHeartbeatTracker() {
 // on the active node.
 func (b *RaftBackend) StopAutopilot() {
 	b.l.Lock()
-	defer b.l.Unlock()
 
 	if b.autopilot == nil {
+		b.l.Unlock()
 		return
 	}
-	b.autopilot.Stop()
+	doneCh := b.autopilot.Stop()
+	b.l.Unlock()
+
+	// Wait for autopilot goroutines to exit before clearing the pointer.
+	// b.l must not be held here: delegate callbacks (e.g. KnownServers) call
+	// b.l.RLock() and would deadlock.
+	<-doneCh
+
+	b.l.Lock()
 	b.autopilot = nil
 	b.followerHeartbeatTicker.Stop()
+	b.l.Unlock()
 }
 
 // AutopilotState represents the health information retrieved from autopilot.

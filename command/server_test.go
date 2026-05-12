@@ -197,8 +197,6 @@ func TestServer_ReloadListener(t *testing.T) {
 }
 
 func TestServer(t *testing.T) {
-	t.Parallel()
-
 	cases := []struct {
 		name     string
 		contents string
@@ -287,8 +285,6 @@ func TestServer(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			ui, cmd := testServerCommand(t)
 
 			f, err := os.CreateTemp(t.TempDir(), "")

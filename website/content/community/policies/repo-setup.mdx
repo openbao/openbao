@@ -1,0 +1,52 @@
+---
+layout: docs
+page_title: OpenBao Repository Setup
+sidebar_label: Repo Setup
+description: |-
+  The OpenBao checklist for repository set up
+---
+
+# OpenBao Repository Setup
+
+## Secrets
+
+### GPG Key for Signing
+
+Ask the TSC chair to provision secrets:
+
+- `GPG_PASSWORD`, from 1Password
+- `GPG_PRIVATE_KEY`, from 1Password
+- `GPG_PRIVATE_KEY_BASE64`, from 1Password with `cat ... | base64` applied.
+
+### Container Registries
+
+For each registry (Quay, DockerHub), we provision a username and password.
+
+#### Quay
+
+1. [Create a repository](https://quay.io/new/?namespace=openbao) in the
+   [OpenBao organization](https://quay.io/organization/openbao), named after
+   the source repo (e.g., `openbao-snapshot-agent`).
+2. Add team memberships in the [settings tab](https://quay.io/repository/openbao/openbao-snapshot-agent?tab=settings):
+   1. Assign the [`owners` team](https://quay.io/organization/openbao/teams/owners)
+      `admin` permissions.
+   2. Create a new robot account and assign `write` permission.
+      - Name the robot account after the repository name, but with underscores
+        instead of dashes.
+      - After saving the account and assigning the permission, click on the
+        blue part of the new robot name.
+      - The value for `QUAY_USERNAME` is the Username in the first box.
+      - The value for `QUAY_TOKEN` is the Robot Account in the second box.
+
+#### DockerHub
+
+1. [Create a repository](https://hub.docker.com/repository/create?namespace=openbao)
+   in the [OpenBao organization](https://hub.docker.com/orgs/openbao), named
+   after the source repo (e.g., `openbao-snapshot-agent`).
+2. [Create an organization access token](https://app.docker.com/accounts/openbao/admin/org-access-tokens/create):
+   1. Label should be the name of the repository (e.g., `openbao-snapshot-agent`).
+   2. Description should point to the full GitHub repository path.
+   3. Resources should include only the specified repository with `scope-image-push`.
+   4. Generate token.
+   5. The value for `DOCKER_USERNAME` is the organization name (`openbao`).
+   6. The value for `DOCKER_TOKEN` is what is present on the screen after creation.

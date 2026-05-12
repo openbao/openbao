@@ -4,13 +4,13 @@ description: "OpenBao's travels back home"
 slug: bao-back-home
 authors: cipherboy
 tags: [community, conferences, stickers]
-image: https://openbao.org/img/alex-fosdem-25-speaking.jpg
+image: /img/alex-fosdem-25-speaking.jpg
 ---
 
 OpenBao returns from FOSDEM '25 and OpenUK's State of Open Con this week,
 reflecting on the travels and activities of the events.
 
-Many thanks to Fatima for running the [community calls](/docs/contributing/)
+Many thanks to Fatima for running the [community calls](/community/contributing/)
 in our absence!
 
 ![Alex-Presenting-FOSDEM](/img/alex-fosdem-25-speaking.jpg)

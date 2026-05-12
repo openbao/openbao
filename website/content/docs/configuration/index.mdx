@@ -108,7 +108,7 @@ to specify where the configuration is.
 
 - `user_lockout` `([UserLockout][user-lockout]: nil)` –
   Configures the user-lockout behaviour for failed logins. For more information, please see the
-  [user lockout configuration documentation](user-lockout.mdx). 
+  [user lockout configuration documentation](user-lockout.mdx).
 
 - `seal` `([Seal][seal]: nil)` – Configures the seal type to use for
   auto-unsealing, as well as for
@@ -143,25 +143,25 @@ to specify where the configuration is.
 - `telemetry` `([Telemetry][telemetry]: <none>)` – Specifies the telemetry
   reporting system.
 
-- `default_lease_ttl` `(string: "768h")` – Specifies the default lease duration
+- `default_lease_ttl` `(string: "768h")` <a name="default_lease_ttl"></a> – Specifies the default lease duration
   for tokens and secrets. This is specified using a label suffix like `"30s"` or
   `"1h"`. This value cannot be larger than `max_lease_ttl`.
 
-- `max_lease_ttl` `(string: "768h")` – Specifies the maximum possible lease
+- `max_lease_ttl` `(string: "768h")` <a name="max_lease_ttl"></a> – Specifies the maximum possible lease
   duration for tokens and secrets. This is specified using a label
   suffix like `"30s"` or `"1h"`. Individual mounts can override this value
   by tuning the mount with the `max-lease-ttl` flag of the
-  [auth](../commands/auth/tune.mdx#max-lease-ttl) or
-  [secret](../commands/secrets/tune.mdx#max-lease-ttl) commands.
+  [auth](../commands/auth/tune.mdx#_max_lease_ttl) or
+  [secret](../commands/secrets/tune.mdx#_max_lease_ttl) commands.
 
-- `default_max_request_duration` `(string: "90s")` – Specifies the default
+- `default_max_request_duration` `(string: "90s")` <a name="default_max_request_duration"></a> – Specifies the default
   maximum request duration allowed before OpenBao cancels the request. This can
   be overridden per listener via the `max_request_duration` value.
 
-- `detect_deadlocks` `(string: "")` - A comma separated string that specifies the internal 
-mutex locks that should be monitored for potential deadlocks. Currently supported values 
+- `detect_deadlocks` `(string: "")` - A comma separated string that specifies the internal
+mutex locks that should be monitored for potential deadlocks. Currently supported values
 include `statelock`, `quotas` and `expiration` which will cause "POTENTIAL DEADLOCK:"
-to be logged when an attempt at a core state lock appears to be deadlocked. Enabling this 
+to be logged when an attempt at a core state lock appears to be deadlocked. Enabling this
 can have a negative effect on performance due to the tracking of each lock attempt.
 
 - `raw_storage_endpoint` `(bool: false)` – Enables the `sys/raw` endpoint which
@@ -171,7 +171,7 @@ can have a negative effect on performance due to the tracking of each lock attem
 - `introspection_endpoint` `(bool: false)` - Enables the `sys/internal/inspect` endpoint
   which allows users with a root token or sudo privileges to inspect certain subsystems inside OpenBao.
 
-- `ui` `(bool: false)` – Enables the built-in web UI, which is available on all
+- `ui` `(bool: false)` <a name="ui"></a> – Enables the built-in web UI, which is available on all
   listeners (address + port) at the `/ui` path. Browsers accessing the standard
   OpenBao API address will automatically redirect there. This can also be provided
   via the environment variable `VAULT_UI`. For more information, please see the
@@ -241,7 +241,7 @@ can have a negative effect on performance due to the tracking of each lock attem
 
 The following parameters are used on backends that support [High Availability][high-availability].
 
-- `api_addr` `(string: "")` – Specifies the address (full URL) to advertise to
+- `api_addr` `(string: "")` <a name="api_addr"></a> – Specifies the address (full URL) to advertise to
   other OpenBao servers in the cluster for client redirection. This value is also
   used for [plugin backends][plugins]. This can also be provided via the
   environment variable `VAULT_API_ADDR`. In general this should be set as a full
@@ -250,7 +250,7 @@ The following parameters are used on backends that support [High Availability][h
   [go-sockaddr template](https://pkg.go.dev/github.com/hashicorp/go-sockaddr/template)
   that is resolved at runtime.
 
-- `cluster_addr` `(string: "")` – Specifies the address to advertise to other
+- `cluster_addr` `(string: "")` <a name="cluster_addr"></a> – Specifies the address to advertise to other
   OpenBao servers in the cluster for request forwarding. This can also be provided
   via the environment variable `VAULT_CLUSTER_ADDR`. This is a full URL, like
   `api_addr`, but OpenBao will ignore the scheme (all cluster members always

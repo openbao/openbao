@@ -96,6 +96,25 @@ const config: Config = {
         ],
       },
     ],
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "community",
+        path: "content/community",
+        routeBasePath: "community",
+        sidebarPath: "./sidebarsCommunity.ts",
+        editUrl: "https://github.com/openbao/openbao/tree/main/website/",
+        beforeDefaultRemarkPlugins: [
+          [
+            includeMarkdown,
+            {
+              resolveMdx: true,
+              resolveFrom: path.join(process.cwd(), "content", "partials"),
+            },
+          ],
+        ],
+      },
+    ],
     require.resolve("docusaurus-lunr-search"),
   ],
 
@@ -125,36 +144,9 @@ const config: Config = {
           position: "left",
         },
         {
-          type: "dropdown",
+          to: "/community/",
           label: "Community",
           position: "left",
-          items: [
-            {
-              label: "GitHub Discussions",
-              href: "https://github.com/openbao/openbao/discussions",
-            },
-            {
-              label: "Matrix Chat Server",
-              href: "https://chat.lfx.linuxfoundation.org/",
-            },
-            {
-              label: "LF Edge Wiki",
-              href: "https://lf-edge.atlassian.net/wiki/spaces/OP/overview",
-            },
-            {
-              label: "Charter",
-              to: "pathname:///assets/OpenBao-Technical-Charter-Final-2024-05-08.pdf",
-              target: "_blank",
-            },
-            {
-              label: "Policies",
-              to: "/docs/policies/",
-            },
-            {
-              label: "Contributing",
-              to: "/docs/contributing/",
-            },
-          ],
         },
         {
           href: "https://github.com/openbao/openbao",

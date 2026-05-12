@@ -1,0 +1,44 @@
+---
+sidebar_label: Overview
+description: |-
+  An announcement page to communicate feature deprecations and plans.
+---
+
+# Feature deprecation notices and plans
+
+This announcement page is maintained and updated periodically to communicate
+plans to deprecate, disable and/or remove features from OpenBao.
+
+We document the scope of deprecations, enable the community with a plan
+and timeline to account for these, and supply alternative paths to explore
+and evaluate to minimize business disruptions. If you have questions or
+concerns about a deprecated feature, please create a topic on [the community
+forum](https://github.com/orgs/openbao/discussions).
+
+Please refer to the [FAQ](faq.mdx) page for frequently asked questions
+concerning OpenBao feature deprecations.
+
+### File storage backend
+
+> Announced: **04/2026**, Deprecated in: **v2.6.0**, Removal: **v2.7.0**
+
+The `file` storage backend is a development-only, non-production backend that
+will be removed. Use the `bao operator migrate` command to move to a supported
+storage backend.
+
+Also see:
+
+- [Storage backends](/docs/concepts/storage)
+- [`bao operator migrate`](/docs/commands/operator/migrate)
+
+### JSONX audit log format
+
+> Announced: **11/2025**, Deprecated in: **v2.5.0**, Removal: **v2.5.0**
+
+The `format=jsonx` audit log option will be removed. Switch to `format=json`
+either by explicitly setting it or by omitting the `format` parameter entirely.
+
+Also see:
+
+- [Audit devices](/docs/audit)
+- [Server configuration](/docs/configuration)

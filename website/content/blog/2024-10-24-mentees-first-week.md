@@ -6,7 +6,7 @@ authors: FattiesPatties
 tags:  [mentee]
 ---
 
-![openbao-mentee-doodle](https://openbao.org/img/mentee-blog.png)
+![openbao-mentee-doodle](/img/mentee-blog.png)
 
 ## My Journey Begins
 Hey everyone! I’m Fatima and I’m excited to share how my OpenBao journey started! I had been working on app development but was eager to break into the cybersecurity world. So I browsed through various open-source projects and stumbled upon OpenBao. The project’s purpose caught my interest and, of course, the little bao mascot sealed the deal so I decided to dive in and set it up.

@@ -48,8 +48,8 @@ func StartListener(lnConfig *configutil.Listener) (*ListenerBundle, error) {
 
 	case "unix":
 		var uConfig *listenerutil.UnixSocketsConfig
-		if lnConfig.SocketMode != "" &&
-			lnConfig.SocketUser != "" &&
+		if lnConfig.SocketMode != "" ||
+			lnConfig.SocketUser != "" ||
 			lnConfig.SocketGroup != "" {
 			uConfig = &listenerutil.UnixSocketsConfig{
 				Mode:  lnConfig.SocketMode,

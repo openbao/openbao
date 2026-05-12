@@ -25,11 +25,11 @@ const (
 	controlGroupAuthorizeHelp = `This endpoint will authorize a token associated with the given accessor. Response will not contain the token ID. Only applicable when control-group policy resulted in wrapped response.`
 )
 
-// ControlGroupNotFound error indicates that a token entry is not governed by a control group
-var ControlGroupNotFound = errors.New("token internal meta does not contain control group")
+// ErrControlGroupNotFound error indicates that a token entry is not governed by a control group
+var ErrControlGroupNotFound = errors.New("token internal meta does not contain control group")
 
-// DeferredRequestNotFound error indicates that a token entry does not contain deferred request
-var DeferredRequestNotFound = errors.New("token internal meta does not contain deferred request")
+// ErrDeferredRequestNotFound error indicates that a token entry does not contain deferred request
+var ErrDeferredRequestNotFound = errors.New("token internal meta does not contain deferred request")
 
 // controlGroupRequestResponseSchema defines the response schema for control group lookup
 // This schema is used both for OpenAPI generation and ensures handler consistency
@@ -98,7 +98,7 @@ func makeLogicalControlGroup(authResultsControlGroup *policy.ControlGroup) *logi
 func (c *Core) getRequestFromTokenEntry(ctx context.Context, tokenEntry *logical.TokenEntry) (*logical.Request, error) {
 	reqProtoBase64, ok := tokenEntry.InternalMeta["request"]
 	if !ok {
-		return nil, DeferredRequestNotFound
+		return nil, ErrDeferredRequestNotFound
 	}
 
 	reqBytes, err := base64.StdEncoding.DecodeString(reqProtoBase64)
@@ -132,7 +132,7 @@ func (c *Core) getControlGroup(ctx context.Context, token string) (*logical.Cont
 func (c *Core) getControlGroupFromTokenEntry(ctx context.Context, tokenEntry *logical.TokenEntry) (*logical.ControlGroup, error) {
 	controlGroup, ok := tokenEntry.InternalMeta["control_group"]
 	if !ok {
-		return nil, ControlGroupNotFound
+		return nil, ErrControlGroupNotFound
 	}
 
 	cg := logical.ControlGroup{}
@@ -188,7 +188,7 @@ func (c *Core) setControlGroupInTokenEntry(ctx context.Context, tokenEntry *logi
 func (c *Core) validateControlGroup(ctx context.Context, tokenEntry *logical.TokenEntry, requestCapability logical.Operation) (bool, error) {
 	cg, err := c.getControlGroupFromTokenEntry(ctx, tokenEntry)
 	// when no control group policy found, we pass the validation check
-	if errors.Is(err, ControlGroupNotFound) {
+	if errors.Is(err, ErrControlGroupNotFound) {
 		return true, nil
 	}
 	if err != nil {

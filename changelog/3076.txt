@@ -1,0 +1,3 @@
+```release-note:bug
+core/auth: fix audit logs dropping custom headers when using inline auth
+```

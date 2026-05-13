@@ -458,7 +458,7 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		delete(req.Headers, consts.InlineAuthPathHeaderName)
 		delete(req.Headers, consts.InlineAuthOperationHeaderName)
 		for header := range req.Headers {
-			if !strings.HasPrefix(header, consts.InlineAuthParameterHeaderPrefix) {
+			if strings.HasPrefix(header, consts.InlineAuthParameterHeaderPrefix) {
 				delete(req.Headers, header)
 			}
 		}

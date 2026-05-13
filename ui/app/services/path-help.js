@@ -354,6 +354,9 @@ export default Service.extend({
       const regName = `model:${modelName}`;
       owner.unregister(regName);
       owner.register(regName, newModel);
+      delete schemas._attributesDefCache[modelName];
+      delete schemas._relationshipsDefCache[modelName];
+      delete this.store._modelFactoryCache[modelName];
     });
   },
   getFieldGroups(meta) {

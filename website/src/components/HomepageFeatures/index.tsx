@@ -71,7 +71,7 @@ const FeatureList: FeatureItem[] = [
   },
 ];
 
-function Feature({ title, description }: FeatureItem) {
+const Feature = ({ title, description }: FeatureItem) => {
   return (
     <div className={clsx("col col--4 padding-bottom--lg")}>
       <div className="card card--full-height">
@@ -86,7 +86,7 @@ function Feature({ title, description }: FeatureItem) {
   );
 }
 
-export default function HomepageFeatures(): JSX.Element {
+const HomepageFeatures=(): JSX.Element => {
   return (
     <section className="padding-vert--md margin-vert--lg">
       <div className="container">
@@ -102,3 +102,6 @@ export default function HomepageFeatures(): JSX.Element {
     </section>
   );
 }
+
+
+export default HomepageFeatures

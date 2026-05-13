@@ -9,12 +9,9 @@ type CodeBlockWrapProps = {
   showLineNumbers?: boolean;
 };
 
-export default function CodeBlockWrap({
-  children,
-  language,
-  title,
-  showLineNumbers
-}: CodeBlockWrapProps) {
+const CodeBlockWrap = (props: CodeBlockWrapProps) => {
+  const {children, language, title, showLineNumbers} = props
+
   const checkboxId = React.useId();
 
   return (
@@ -29,3 +26,5 @@ export default function CodeBlockWrap({
     </div>
   );
 }
+
+export default CodeBlockWrap

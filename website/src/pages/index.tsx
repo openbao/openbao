@@ -4,7 +4,7 @@ import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import Layout from "@theme/Layout";
 import HomepageFeatures from "@site/src/components/HomepageFeatures";
 import Heading from "@theme/Heading";
-import React from "react";
+import React, { JSX } from "react";
 import LogoSvg from "@site/public/img/linux-foundation.svg";
 import FAQSection from "@site/src/components/FAQSection";
 
@@ -21,7 +21,7 @@ function HomepageHeader() {
           <div className="col col--8 col--offset-2">
             <LogoSvg
               style={{
-                "max-width": "400px",
+                maxWidth: "400px",
                 width: "75%",
               }}
             />

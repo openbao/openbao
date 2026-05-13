@@ -1,10 +1,19 @@
 import { JSX } from "react";
 
-const arches: string[] = ["amd64", "arm64", "armhf", "armv7hl", "arm", "riscv64", "aarch64", "x86_64", "ppc64le", "s390x"];
+const ARCHES = [
+    "amd64",
+    "arm64",
+    "armhf",
+    "armv7hl",
+    "arm",
+    "riscv64",
+    "aarch64",
+    "x86_64",
+    "ppc64le",
+    "s390x",
+];
 
-interface ArchPackageMap {
-    [key: string]: string[];
-}
+type ArchPackageMap = Record<string, string[]>;
 
 interface Release {
     assets: {
@@ -15,27 +24,15 @@ interface Release {
             binary: ArchPackageMap;
             docker: ArchPackageMap;
         };
-        darwin: {
-            binary: ArchPackageMap;
-        };
-        freebsd: {
-            binary: ArchPackageMap;
-        };
-        netbsd: {
-            binary: ArchPackageMap;
-        };
-        openbsd: {
-            binary: ArchPackageMap;
-        };
-        windows: {
-            binary: ArchPackageMap;
-        };
+        darwin: { binary: ArchPackageMap };
+        freebsd: { binary: ArchPackageMap };
+        netbsd: { binary: ArchPackageMap };
+        openbsd: { binary: ArchPackageMap };
+        windows: { binary: ArchPackageMap };
     };
 }
 
-interface Releases {
-    [key: string]: Release;
-}
+type Releases = Record<string, Release>;
 
 interface GHRelease {
     tag_name: string;
@@ -46,107 +43,82 @@ interface GHAsset {
     browser_download_url: string;
 }
 
-function NewArchPackageMap(): ArchPackageMap {
-    let x: ArchPackageMap = {};
-    for (let arch of arches) {
-        x[arch] = [];
+
+const newArchPackageMap = (): ArchPackageMap => {
+    const map: ArchPackageMap = {};
+    for (const arch of ARCHES) {
+        map[arch] = [];
     }
-    x["<none>"] = [];
-    return x;
+    map["<none>"] = [];
+    return map;
 }
 
-export function GetReleases(response): Releases {
-    const releases: GHRelease[] = response as GHRelease[];
+
+const GetReleases = (response: unknown): Releases => {
+    const releases = response as GHRelease[];
     const result: Releases = {};
 
-    releases.forEach((r) => {
+    for (const r of releases) {
         const version = r.tag_name;
-
-        var release = {
+        const release: Release = {
             assets: {
                 linux: {
-                    deb: NewArchPackageMap(),
-                    rpm: NewArchPackageMap(),
-                    pkg: NewArchPackageMap(),
-                    binary: NewArchPackageMap(),
-                    docker: NewArchPackageMap(),
+                    deb: newArchPackageMap(),
+                    rpm: newArchPackageMap(),
+                    pkg: newArchPackageMap(),
+                    binary: newArchPackageMap(),
+                    docker: newArchPackageMap(),
                 },
-                darwin: {
-                    binary: NewArchPackageMap(),
-                },
-                freebsd: {
-                    binary: NewArchPackageMap(),
-                },
-                netbsd: {
-                    binary: NewArchPackageMap(),
-                },
-                openbsd: {
-                    binary: NewArchPackageMap(),
-                },
-                windows: {
-                    binary: NewArchPackageMap(),
-                },
+                darwin: { binary: newArchPackageMap() },
+                freebsd: { binary: newArchPackageMap() },
+                netbsd: { binary: newArchPackageMap() },
+                openbsd: { binary: newArchPackageMap() },
+                windows: { binary: newArchPackageMap() },
             },
-        } as Release;
-        for (var a of r.assets) {
-            let arch = AssetArchitecture(a.browser_download_url);
-            if (a.browser_download_url.toLowerCase().includes("sbom")) {
-                // skip SBOM release assets, they are not relevant for the
-                // download page
+        };
+
+        for (const asset of r.assets) {
+            const url = asset.browser_download_url;
+            const urlLower = url.toLowerCase();
+            const arch = AssetArchitecture(url);
+
+            if (urlLower.includes("sbom") || urlLower.includes("checksums")) {
                 continue;
             }
-            if (a.browser_download_url.toLowerCase().includes("checksums")) {
-                // skip checksum files, they are not relevant for the
-                // download page
+
+            if (urlLower.includes("windows")) {
+                release.assets.windows.binary[arch].push(url);
+            } else if (urlLower.includes("openbsd")) {
+                release.assets.openbsd.binary[arch].push(url);
+            } else if (urlLower.includes("netbsd")) {
+                release.assets.netbsd.binary[arch].push(url);
+            } else if (urlLower.includes("freebsd")) {
+                release.assets.freebsd.binary[arch].push(url);
+            } else if (urlLower.includes("darwin")) {
+                release.assets.darwin.binary[arch].push(url);
+            } else if (urlLower.includes("docker")) {
+                release.assets.linux.docker[arch].push(url);
                 continue;
-            }
-            if (a.browser_download_url.toLowerCase().includes("windows")) {
-                release.assets.windows.binary[arch].push(a.browser_download_url);
-            }
-            if (a.browser_download_url.toLowerCase().includes("openbsd")) {
-                release.assets.openbsd.binary[arch].push(a.browser_download_url);
-            }
-            if (a.browser_download_url.toLowerCase().includes("netbsd")) {
-                release.assets.netbsd.binary[arch].push(a.browser_download_url);
-            }
-            if (a.browser_download_url.toLowerCase().includes("freebsd")) {
-                release.assets.freebsd.binary[arch].push(a.browser_download_url);
-            }
-            if (a.browser_download_url.toLowerCase().includes("darwin")) {
-                release.assets.darwin.binary[arch].push(a.browser_download_url);
-            }
-            if (a.browser_download_url.toLowerCase().includes("docker")) {
-                release.assets.linux.docker[arch].push(a.browser_download_url);
-                // docker urls also contain "linux", so continue if we find it
+            } else if (urlLower.includes(".rpm")) {
+                release.assets.linux.rpm[arch].push(url);
                 continue;
-            }
-            if (a.browser_download_url.toLowerCase().includes(".rpm")) {
-                release.assets.linux.rpm[arch].push(a.browser_download_url);
-                // rpm urls also contain "linux", so continue if we find it
+            } else if (urlLower.includes(".deb")) {
+                release.assets.linux.deb[arch].push(url);
                 continue;
-            }
-            if (a.browser_download_url.toLowerCase().includes(".deb")) {
-                release.assets.linux.deb[arch].push(a.browser_download_url);
-                // deb urls also contain "linux", so continue if we find it
+            } else if (urlLower.includes(".pkg")) {
+                release.assets.linux.pkg[arch].push(url);
                 continue;
-            }
-            if (a.browser_download_url.toLowerCase().includes(".pkg")) {
-                release.assets.linux.pkg[arch].push(a.browser_download_url);
-                // pkg urls also contain "linux", so continue if we find it
-                continue;
-            }
-            if (a.browser_download_url.toLowerCase().includes("linux")) {
-                release.assets.linux.binary[arch].push(a.browser_download_url);
+            } else if (urlLower.includes("linux")) {
+                release.assets.linux.binary[arch].push(url);
             }
         }
         result[version] = release;
-    });
-
+    }
     return result;
 }
 
-export function AssetArchitecture(url: string): string {
-    for (let arch of arches) {
+const AssetArchitecture = (url: string): string => {
+    for (const arch of ARCHES) {
         if (url.includes(arch)) {
             return arch;
         }
@@ -154,7 +126,7 @@ export function AssetArchitecture(url: string): string {
     return "<none>";
 }
 
-export function OsPrettyPrint(name: string): string {
+const OsPrettyPrint = (name: string): string => {
     switch (name) {
         case "linux":
             return "Linux";
@@ -168,20 +140,27 @@ export function OsPrettyPrint(name: string): string {
             return "NetBSD";
         case "windows":
             return "Windows";
+        default:
+            return "";
     }
-    return "";
 }
 
-interface ArchPackageMapApplicationLambda {
-    (): JSX.Element;
-}
 
-export function ArchPackageMapApply(category: ArchPackageMap, lambda: ArchPackageMapApplicationLambda): JSX.Element[] {
-    var result: JSX.Element[] = [];
-    for (let arch of arches) {
+type ArchPackageMapApplicationLambda = (urls: string[], arch: string) => JSX.Element;
+
+const ArchPackageMapApply = (
+    category: ArchPackageMap,
+    lambda: ArchPackageMapApplicationLambda
+): JSX.Element[] => {
+    const result: JSX.Element[] = [];
+
+    for (const arch of ARCHES) {
         if (arch in category) {
             result.push(lambda(category[arch], arch));
         }
     }
+
     return result;
-}
+};
+
+export { ArchPackageMapApply, ArchPackageMap, ArchPackageMapApplicationLambda, GetReleases, OsPrettyPrint, AssetArchitecture }

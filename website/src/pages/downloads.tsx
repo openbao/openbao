@@ -1,95 +1,112 @@
-import React, { useState, useEffect, createContext, useContext, JSX, BaseSyntheticEvent } from "react";
-import Layout from "@theme/Layout";
-import Tabs from "@theme/Tabs";
-import TabItem from "@theme/TabItem";
-import CodeBlock from "@theme/CodeBlock";
-import {
-  GetReleases,
-  AssetArchitecture,
-  OsPrettyPrint,
-  ArchPackageMapApply
-} from "@site/src/components/Releases";
-import CodeBlockWrap from "@site/src/components/CodeBlockWrap";
 import Link from "@docusaurus/Link";
-import Heading from '@theme/Heading'
+import {
+  ArchPackageMap,
+  ArchPackageMapApply,
+  AssetArchitecture,
+  GetReleases,
+  OsPrettyPrint,
+} from "@site/src/components/Releases";
+import CodeBlock from "@theme/CodeBlock";
+import Heading from "@theme/Heading";
+import Layout from "@theme/Layout";
+import TabItem from "@theme/TabItem";
+import Tabs from "@theme/Tabs";
+import {
+  ChangeEvent,
+  createContext,
+  JSX,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
-// Create a context
-const OptionsContext = createContext(null);
+import DebRepo from "./Downloads/Repoes/Debian";
+import RpmRepo from "./Downloads/Repoes/Rpm";
 
-// Provider component
-const OptionsProvider = ({ children }) => {
-  const [options, setOptions] = useState({});
-  const [selectedItem, setSelectedItem] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+type ReleaseAssets = Record<string, Record<string, ArchPackageMap>>;
+interface DownloadRelease {
+  assets: ReleaseAssets;
+}
+
+type ReleasesMap = Record<string, DownloadRelease>;
+
+interface OptionsContextValue {
+  options: ReleasesMap;
+  selectedItem: string;
+  setSelectedItem: (version: string) => void;
+  loading: boolean;
+  error: boolean;
+}
+
+interface CachedReleases {
+  data: ReleasesMap;
+  timestamp: number;
+}
+
+const CACHE_KEY = "gh-releases";
+const CACHE_TTL_MS = 600_000; // 10 minutes
+const GPG_KEY_NAME = "openbao-gpg-pub-20240618.asc";
+const DOCKER_REGISTRIES = ["quay.io", "ghcr.io", "docker.io"] as const;
+
+const OptionsContext = createContext<OptionsContextValue | null>(null);
+
+const OptionsProvider = ({ children }: { children: React.ReactNode }) => {
+  const [options, setOptions] = useState<ReleasesMap>({});
+  const [selectedItem, setSelectedItem] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<boolean>(false);
 
   useEffect(() => {
-    // Function to fetch options from API
     const fetchOptions = async () => {
       try {
         const searchParams = new URLSearchParams(location.search);
-        var version = searchParams.get("version");
+        const queryVersion = searchParams.get("version") ?? "";
 
-        // Check if options are cached in localStorage and not expired
-        const cachedOptions = localStorage.getItem("gh-releases");
-        if (cachedOptions) {
-          const { data, timestamp } = JSON.parse(cachedOptions);
-          if (new Date().getTime() - timestamp < 600000) {
-            setOptions(data);
-            setLoading(false);
-            const versions = Object.keys(data);
-
-            // Prefer version from the query string, if present.
-            if (version !== "" && versions.includes(version)) {
-              setSelectedItem(version);
-              return;
-            }
-
-            // Auto-select the first option otherwise.
-            if (versions.length > 0) {
-              setSelectedItem(versions[0]);
-              return;
-            }
+        // Check cache
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, timestamp }: CachedReleases = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_TTL_MS) {
+            applyReleases(data, queryVersion);
+            return;
           }
         }
 
         const response = await fetch(
-          "https://api.github.com/repos/openbao/openbao/releases",
+          "https://api.github.com/repos/openbao/openbao/releases"
         );
         if (!response.ok) {
-          throw new Error("Failed to fetch gh-releases");
+          throw new Error(`GitHub API error: ${response.status}`);
         }
+
         const ghReleases = await response.json();
-        const releases = GetReleases(ghReleases);
-        const versions = Object.keys(releases);
-        setOptions(releases);
-        setLoading(false);
+        const releases: ReleasesMap = GetReleases(ghReleases);
+
         localStorage.setItem(
-          "gh-releases",
-          JSON.stringify({
-            data: releases,
-            timestamp: new Date().getTime(),
-          }),
+          CACHE_KEY,
+          JSON.stringify({ data: releases, timestamp: Date.now() } satisfies CachedReleases)
         );
 
-        // Prefer version from the query string, if present.
-        if (version !== "" && versions.includes(version)) {
-          setSelectedItem(version);
-          return;
-        }
-
-        // Auto-select the first option.
-        if (versions.length > 0) {
-          setSelectedItem(versions[0]);
-        }
-      } catch (error) {
-        console.error(error);
-        setLoading(false);
+        applyReleases(releases, queryVersion);
+      } catch (err) {
+        console.error(err);
         setError(true);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchOptions(); // Call the fetchOptions function when the component mounts
+    const applyReleases = (releases: ReleasesMap, queryVersion: string) => {
+      setOptions(releases);
+      const versions = Object.keys(releases);
+      if (queryVersion && versions.includes(queryVersion)) {
+        setSelectedItem(queryVersion);
+      } else if (versions.length > 0) {
+        setSelectedItem(versions[0]);
+      }
+    };
+
+    fetchOptions();
   }, []);
 
   return (
@@ -101,52 +118,58 @@ const OptionsProvider = ({ children }) => {
   );
 };
 
-// Custom hook to consume the context
-const useOptions = () => useContext(OptionsContext);
+const useOptions = (): OptionsContextValue => {
+  const ctx = useContext(OptionsContext);
+  if (!ctx) {
+    throw new Error("useOptions must be used within OptionsProvider");
+  }
+  return ctx;
+};
 
 const VersionSelect = () => {
   const { options, selectedItem, setSelectedItem } = useOptions();
 
-  const handleSelectChange = (event: BaseSyntheticEvent) => {
-    let version = event.target.value;
+  const handleSelectChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const version = event.target.value;
     setSelectedItem(version);
 
     const url = new URL(location.href);
     url.searchParams.set("version", version);
-
     history.replaceState({}, "", url.href);
   };
 
   return (
-    <>
-      <select
-        value={selectedItem}
-        onChange={handleSelectChange}
-        className="version-select"
-      >
-        {Object.entries(options).map(([key]) => (
-          <option key={key} value={key}>
-            {key}
-          </option>
-        ))}
-      </select>
-    </>
+    <select
+      value={selectedItem}
+      onChange={handleSelectChange}
+      className="version-select"
+    >
+      {Object.keys(options).map((key) => (
+        <option key={key} value={key}>
+          {key}
+        </option>
+      ))}
+    </select>
   );
 };
 
-const Asset = ({ urls }) => {
-  let asset: string;
-  let gpgSig: string;
-  let coCert: string;
-  let coSig: string;
-  let fileExtension: string = "";
+const VALID_EXTENSIONS = [".tar.gz", ".deb", ".rpm", ".pkg.tar.zst", ".zip"] as const;
 
-  for (let url of urls) {
-    const fileName = url.toLowerCase().split("/").pop().split("?")[0]
+interface AssetProps {
+  urls: string[];
+}
 
-    const validExtensions = [
-      ".tar.gz", ".deb", ".rpm", ".pkg.tar.zst", ".zip"
-    ]
+const Asset = ({ urls }: AssetProps) => {
+  const { selectedItem } = useOptions();
+
+  let asset: string | undefined;
+  let gpgSig: string | undefined;
+  let coCert: string | undefined;
+  let coSig: string | undefined;
+  let fileExtension = "";
+
+  for (const url of urls) {
+    const fileName = url.toLowerCase().split("/").pop()?.split("?")[0] ?? "";
 
     if (fileName.endsWith(".gpgsig")) {
       gpgSig = url;
@@ -161,19 +184,15 @@ const Asset = ({ urls }) => {
       continue;
     }
 
-    for (const ext of validExtensions) {
-      if (fileName.endsWith(ext)) {
-        fileExtension = ext
-      }
+    const matchedExt = VALID_EXTENSIONS.find((ext) => fileName.endsWith(ext));
+    if (matchedExt) {
+      fileExtension = matchedExt;
+      asset = url;
     }
-    asset = url;
   }
 
-  if (asset === undefined) {
-    return;
-  }
+  if (!asset) return null;
 
-  const { selectedItem } = useOptions();
   const buttonText = fileExtension ? `Download ${fileExtension}` : "Download Binary";
 
   return (
@@ -187,26 +206,14 @@ const Asset = ({ urls }) => {
         <p className="download-card__version">Version: {selectedItem}</p>
         <div className="download-card__content-wrapper">
           <div className="download-card__links">
-            {gpgSig && (
-              <Link href={gpgSig}>
-                GPG Signature
-              </Link>
-            )}
-            {coSig && (
-              <Link href={coSig}>
-                Cosign Signature
-              </Link>
-            )}
-            {coCert && (
-              <Link href={coCert}>
-                Cosign Certificate
-              </Link>
-            )}
+            {gpgSig && <Link href={gpgSig}>GPG Signature</Link>}
+            {coSig && <Link href={coSig}>Cosign Signature</Link>}
+            {coCert && <Link href={coCert}>Cosign Certificate</Link>}
           </div>
           <div className="download-card__button-wrapper">
             <Link className="button button--primary" href={asset}>
               <span className="download-card__button-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"></path><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path></svg>
+                <DownloadIcon />
                 {buttonText}
               </span>
             </Link>
@@ -217,102 +224,67 @@ const Asset = ({ urls }) => {
   );
 };
 
-const DebRepo = ({ gpgKeyName }) => {
-  const [gpgKey, setGPGKey] = useState("");
-  useEffect(() => {
-    try {
-      fetch("/assets/" + gpgKeyName)
-        .then((r) => r.text())
-        .then((data) => setGPGKey(data.replace("\n\n", "\n.\n")));
-    } catch (error) {
-      console.error(error);
-    }
-  }, []);
+const DownloadIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M12 15V3" />
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <path d="m7 10 5 5 5-5" />
+  </svg>
+);
 
-  return (
-    <>
-      <Heading as="h4">Installation via official Package Repository</Heading>
-      Simply add this repository configuration to your DEB-sources. APT then
-      verifies that the packages have been created and signed by the official
-      pipeline and have not been tampered with.
-      <CodeBlockWrap
-        language="shell"
-        title="/etc/apt/sources.list.d/openbao.sources"
-        showLineNumbers
-      >
-        {`Types: deb
-URIs: https://pkgs.openbao.org/deb/
-Suites: stable
-Components: main
-Signed-By:
-` + gpgKey.replaceAll(/^(?!$)/gm, " ")}
-      </CodeBlockWrap>
-      <Heading as="h4">Install OpenBao</Heading>
-      <CodeBlock language="shell">
-        {`sudo apt update && sudo apt install openbao`}
-      </CodeBlock>
-    </>
-  );
-};
+type PackageRepoType = "deb" | "rpm" | string;
 
-const RpmRepo = ({ gpgKeyName }) => {
-  return (
-    <>
-      <Heading as="h4">Installation via official Package Repository</Heading>
-      Simply add this repository configuration to your YUM-repos. YUM then
-      verifies that the packages have been created and signed by the official
-      pipeline and have not been tampered with.
-      <CodeBlock
-        language="shell"
-        title="/etc/yum.repos.de/openbao.repo"
-        showLineNumbers
-      >
-        {`[openbao]
-name=openbao
-baseurl=https://pkgs.openbao.org/rpm/$basearch
-repo_gpgcheck=0
-gpgcheck=1
-enabled=1
-gpgkey=https://openbao.org/assets/` +
-          gpgKeyName +
-          `
-sslverify=1
-sslcacert=/etc/pki/tls/certs/ca-bundle.crt
-metadata_expire=300`}
-      </CodeBlock>
-      <Heading as="h4">Install OpenBao</Heading>
-      <CodeBlock language="shell">{`sudo yum install -y openbao`}</CodeBlock>
-    </>
-  );
-};
+interface PackageRepoProps {
+  type: PackageRepoType;
+}
 
-const PackageRepo = ({ type }) => {
-  var gpgKeyName = "openbao-gpg-pub-20240618.asc";
+const PackageRepo = ({ type }: PackageRepoProps) => (
+  <>
+    {type === "deb" && <DebRepo gpgKeyName={GPG_KEY_NAME} />}
+    {type === "rpm" && <RpmRepo gpgKeyName={GPG_KEY_NAME} />}
+  </>
+);
 
-  return (
-    <>
-      {type === "deb" && <DebRepo gpgKeyName={gpgKeyName} />}
-      {type === "rpm" && <RpmRepo gpgKeyName={gpgKeyName} />}
-    </>
-  );
-};
-const DockerList = ({ version, registry }) => {
-  const dockerVersion = version.slice(1);
+// ---------------------------------------------------------------------------
+// Docker
+// ---------------------------------------------------------------------------
 
-  // For example: 2.6.0, 2.5.0-beta20251125.
-  // Consider replacing with a more complete semver parser once required.
-  const [major, minor, _patch] = dockerVersion
-    .match(/^(\d+)\.(\d+)\.(\d+)/).slice(1).map(v => parseInt(v));
+interface DockerListProps {
+  version: string;
+  registry: string;
+}
 
-  const dockerDistros = {
+const DockerList = ({ version, registry }: DockerListProps) => {
+  // Strip leading "v": "v2.6.0" → "2.6.0"
+  const dockerVersion = version.startsWith("v") ? version.slice(1) : version;
+
+  const match = dockerVersion.match(/^(\d+)\.(\d+)\.(\d+)/);
+  const [major, minor] = match
+    ? [parseInt(match[1], 10), parseInt(match[2], 10)]
+    : [0, 0];
+
+  const dockerDistros: Record<string, string> = {
     "Alpine Image Distribution": "openbao/openbao",
     "Alpine Image Distribution with HSM Support": "openbao/openbao-hsm",
     "Red Hat Universal Base Image (UBI) Distribution": "openbao/openbao-ubi",
-    "Red Hat Universal Base Image (UBI) Distribution with HSM support": "openbao/openbao-hsm-ubi",
-    ...(major >= 2 && minor >= 6 ? {
-      "Distroless Distribution": "openbao/openbao-distroless",
-    } : {}),
-  }
+    "Red Hat Universal Base Image (UBI) Distribution with HSM support":
+      "openbao/openbao-hsm-ubi",
+    ...(major >= 2 && minor >= 6
+      ? { "Distroless Distribution": "openbao/openbao-distroless" }
+      : {}),
+  };
+
   return (
     <>
       {Object.entries(dockerDistros).map(([label, image]) => (
@@ -324,47 +296,57 @@ const DockerList = ({ version, registry }) => {
         </div>
       ))}
     </>
-  )
-}
-const Docker = ({ version }) => {
-  const registries = ["quay.io", "ghcr.io", "docker.io"];
-  return (
-    <Tabs>
-      {registries.map((item) => (
-        <TabItem key={item} value={item} label={item}>
-          <DockerList version={version} registry={item} />
-        </TabItem>
-      ))}
-    </Tabs>
   );
 };
 
-const OS = ({ name }) => {
+interface DockerProps {
+  version: string;
+}
+
+const Docker = ({ version }: DockerProps) => (
+  <Tabs>
+    {DOCKER_REGISTRIES.map((registry) => (
+      <TabItem key={registry} value={registry} label={registry}>
+        <DockerList version={version} registry={registry} />
+      </TabItem>
+    ))}
+  </Tabs>
+);
+
+type TabType = "binary" | "docker" | "deb" | "rpm" | "pkg";
+
+interface TabConfig {
+  type: TabType;
+  label: string;
+  header?: string;
+}
+
+const OS_TAB_CONFIG: Record<string, TabConfig[]> = {
+  linux: [
+    { type: "binary", label: "Binary", header: "Binary download" },
+    { type: "docker", label: "Docker" },
+    { type: "deb", label: "DEB", header: "DEB package download" },
+    { type: "rpm", label: "RPM", header: "RPM package download" },
+    { type: "pkg", label: "PKG", header: "Arch package download" },
+  ],
+};
+
+const DEFAULT_TAB_CONFIG: TabConfig[] = [
+  { type: "binary", label: "Binary", header: "Binary download" },
+];
+
+interface OSProps {
+  name: string;
+}
+
+const OS = ({ name }: OSProps) => {
   const { options, selectedItem } = useOptions();
-  var version = "";
-  if (selectedItem === undefined && options) {
-    version = Object.keys(options)[0];
-  } else {
-    version = selectedItem;
-  }
+  const version = selectedItem || Object.keys(options)[0] || "";
+  const tabs = OS_TAB_CONFIG[name] ?? DEFAULT_TAB_CONFIG;
 
-  const tabConfig = {
-    linux: [
-      { type: "binary", label: "Binary", header: "Binary download" },
-      { type: "docker", label: "Docker" },
-      { type: "deb", label: "DEB", header: "DEB package download" },
-      { type: "rpm", label: "RPM", header: "RPM package download" },
-      { type: "pkg", label: "PKG", header: "Arch package download" },
-    ],
-    default: [
-      { type: "binary", label: "Binary", header: "Binary download" },
-    ],
-  };
-
-  const tabs = tabConfig[name] || tabConfig.default;
-
-  const renderTabContent = (tab) => {
-    const hasAssets = version && options[version]?.assets?.[name]?.[tab.type];
+  const renderTabContent = (tab: TabConfig) => {
+    const hasAssets =
+      version && options[version]?.assets?.[name]?.[tab.type];
 
     if (tab.type === "docker") {
       return <Docker version={version} />;
@@ -378,7 +360,7 @@ const OS = ({ name }) => {
           <nav className="pagination-nav">
             {ArchPackageMapApply(
               options[version].assets[name][tab.type],
-              (props, idx) => <Asset key={idx} urls={props} />,
+              (props, arch) => <Asset key={arch} urls={props} />
             )}
           </nav>
         )}
@@ -410,75 +392,59 @@ const OS = ({ name }) => {
   );
 };
 
-const DownloadComponent = ({gpgKeyName} : {gpgKeyName: string}) => {
-  const { options, selectedItem, loading, error } = useOptions();
-  let version: string;
-  if (selectedItem === "" && options) {
-    version = Object.keys(options)[0];
-  } else {
-    version = selectedItem;
-  }
 
-  var prerelease_notice = null;
-  if (version && options[version]["assets"] !== undefined) {
-    if (version.includes("alpha") || version.includes("beta")) {
-      prerelease_notice = (
-        <div className="alert alert--danger" role="alert">
-          <Heading as="h3">Warning</Heading>
-          This is an <strong>unstable</strong>, prerelease build! Use at your
-          own caution.
-        </div>
-      );
-    }
-  }
+const DownloadComponent = () => {
+  const { options, selectedItem, loading, error } = useOptions();
+  const version = selectedItem || Object.keys(options)[0] || "";
+  const isPrerelease =
+    version &&
+    options[version]?.assets !== undefined &&
+    (version.includes("alpha") || version.includes("beta"));
 
   return (
     <div className="container margin-vert--lg all-downloads">
       <div className="row">
         <div
           className="col col--12 text--center margin-horiz--md downloads-header"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-          }}
+          style={{ display: "flex", justifyContent: "space-between" }}
         >
-          <Heading as='h1' className="margin-bottom--none">Download OpenBao</Heading>
+          <Heading as="h1" className="margin-bottom--none">
+            Download OpenBao
+          </Heading>
           {!loading && !error && <VersionSelect />}
         </div>
       </div>
+
       <div className="row">
         <div
           className="col col--12 text--center margin-horiz--md"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-          }}
+          style={{ display: "flex", justifyContent: "space-between" }}
         >
           <p className="text--left">
             <br />
             GPG Signatures are performed with our{" "}
-            <Link href={`pathname:///assets/${gpgKeyName}`}>GPG key</Link>. SBOMs
-            are available on our{" "}
+            <Link href={`pathname:///assets/${GPG_KEY_NAME}`}>GPG key</Link>.
+            SBOMs are available on our{" "}
             <Link
-              href={
-                "https://github.com/openbao/openbao/releases/tag/" + version
-              }
+              href={`https://github.com/openbao/openbao/releases/tag/${version}`}
             >
               GitHub Release
             </Link>{" "}
             page.
             <br />
             <br />
-            Check out our <Link href="/docs/install/">installation guide</Link> for
-            more details!
+            Check out our{" "}
+            <Link href="/docs/install/">installation guide</Link> for more
+            details!
           </p>
         </div>
       </div>
+
       {loading ? (
         <div className="row">
           <div className="col col--12 margin-horiz--md">
             <div className="alert alert--info" role="alert">
-              <Heading as="h4">Loading...</Heading>
+              <Heading as="h4">Loading…</Heading>
               Fetching release information from GitHub, please wait a moment.
             </div>
           </div>
@@ -499,10 +465,16 @@ const DownloadComponent = ({gpgKeyName} : {gpgKeyName: string}) => {
         </div>
       ) : (
         <>
-          {prerelease_notice}
+          {isPrerelease && (
+            <div className="alert alert--danger" role="alert">
+              <Heading as="h3">Warning</Heading>
+              This is an <strong>unstable</strong>, prerelease build! Use at
+              your own caution.
+            </div>
+          )}
           {version &&
-            options[version]["assets"] &&
-            Object.entries(options[version]["assets"]).map(([key]) => (
+            options[version]?.assets &&
+            Object.keys(options[version].assets).map((key) => (
               <div key={key} className="row">
                 <OS name={key} />
               </div>
@@ -513,12 +485,15 @@ const DownloadComponent = ({gpgKeyName} : {gpgKeyName: string}) => {
   );
 };
 
-export default function Download(): JSX.Element {
+const Download = (): JSX.Element => {
   return (
     <Layout title="Downloads" description="Download OpenBao">
       <OptionsProvider>
-        <DownloadComponent gpgKeyName={"openbao-gpg-pub-20240618.asc"}/>
+        <DownloadComponent />
       </OptionsProvider>
     </Layout>
   );
 }
+
+
+export default Download

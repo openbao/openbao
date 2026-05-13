@@ -1,9 +1,10 @@
+import { KeyboardEvent, ReactNode } from "react";
 import styles from "./styles.module.css";
 import Heading from "@theme/Heading";
 
 export type AccordionItem = {
   title: string;
-  description: string;
+  description: ReactNode;
 };
 
 export type AccordionProps = {
@@ -12,12 +13,20 @@ export type AccordionProps = {
   onClick: () => void;
 };
 
+const Accordion = (props: AccordionProps) => {
+  const {
+    onClick,
+    isExpanded,
+    item,
+  } = props
 
-export default function Accordion({
-  item,
-  isExpanded,
-  onClick,
-}: AccordionProps) {
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter") {
+      onClick();
+    }
+  }
+
   return (
     <>
       <div
@@ -25,11 +34,7 @@ export default function Accordion({
         onClick={onClick}
         tabIndex={0}
         role="button"
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            onClick();
-          }
-        }}
+        onKeyDown={handleKeyDown}
       >
         <div
           className={styles.accordion__item__title}
@@ -48,3 +53,5 @@ export default function Accordion({
     </>
   );
 }
+
+export default Accordion

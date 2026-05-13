@@ -41,150 +41,52 @@ When necessary, new images can be created on-demand; please [file an issue](http
 
 The colors used on our website and logo are:
 
-<div style={{
+<div
+  style={{
     display: "flex",
     flexWrap: "wrap",
     width: "100%",
-}}>
-    <div style={{
+  }}
+>
+  {[
+    ["Primary", "#336d5c"],
+    ["Secondary Green", "#87d6be"],
+    ["Shadow Green", "#79c0ab"],
+    ["Bao #1", "#fdfccf"],
+    ["Bao #2", "#fdd0a4"],
+    ["Bao #3", "#dab991"],
+    ["Border", "#091a28"],
+  ].map(([label, color]) => (
+    <div
+      key={color}
+      style={{
         boxShadow: "2px 2px 5px 2px rgba(0,0,0,0.55)",
         padding: "2px",
         width: "105px",
-        margin: "10px"
-    }}>
-        <div style={{
-            width: "100px",
-            height: "161px",
-            display: "block",
-            backgroundColor: "#336d5c",
-            margin: "0 auto"
-        }}>
-        </div>
-        <p style={{ textAlign: "center" }}>
-            Primary
-            <pre>#336d5c</pre>
-        </p>
-    </div>
+        margin: "10px",
+      }}
+    >
+      <div
+        style={{
+          width: "100px",
+          height: "161px",
+          display: "block",
+          backgroundColor: color,
+          margin: "0 auto",
+        }}
+      />
 
-    <div style={{
-        boxShadow: "2px 2px 5px 2px rgba(0,0,0,0.55)",
-        padding: "2px",
-        width: "105px",
-        margin: "10px"
-    }}>
-        <div style={{
-            width: "100px",
-            height: "161px",
-            display: "block",
-            backgroundColor: "#87d6be",
-            margin: "0 auto"
-        }}>
-        </div>
-        <p style={{ textAlign: "center" }}>
-            Secondary Green
-            <pre>#87d6be</pre>
-        </p>
+      <div
+        style={{
+          textAlign: "center",
+          paddingTop: "8px",
+        }}
+      >
+        <div>{label}</div>
+        <code>{color}</code>
+      </div>
     </div>
-
-    <div style={{
-        boxShadow: "2px 2px 5px 2px rgba(0,0,0,0.55)",
-        padding: "2px",
-        width: "105px",
-        margin: "10px"
-    }}>
-        <div style={{
-            width: "100px",
-            height: "161px",
-            display: "block",
-            backgroundColor: "#79c0ab",
-            margin: "0 auto"
-        }}>
-        </div>
-        <p style={{ textAlign: "center" }}>
-            Shadow Green
-            <pre>#79c0ab</pre>
-        </p>
-    </div>
-
-    <div style={{
-        boxShadow: "2px 2px 5px 2px rgba(0,0,0,0.55)",
-        padding: "2px",
-        width: "105px",
-        margin: "10px"
-    }}>
-        <div style={{
-            width: "100px",
-            height: "161px",
-            display: "block",
-            backgroundColor: "#fdfccf",
-            margin: "0 auto"
-        }}>
-        </div>
-        <p style={{ textAlign: "center" }}>
-            Bao #1
-            <pre>#fdfccf</pre>
-        </p>
-    </div>
-
-    <div style={{
-        boxShadow: "2px 2px 5px 2px rgba(0,0,0,0.55)",
-        padding: "2px",
-        width: "105px",
-        margin: "10px"
-    }}>
-        <div style={{
-            width: "100px",
-            height: "161px",
-            display: "block",
-            backgroundColor: "#fdd0a4",
-            margin: "0 auto"
-        }}>
-        </div>
-        <p style={{ textAlign: "center" }}>
-            Bao #2
-            <pre>#fdd0a4</pre>
-        </p>
-    </div>
-
-    <div style={{
-        boxShadow: "2px 2px 5px 2px rgba(0,0,0,0.55)",
-        padding: "2px",
-        width: "105px",
-        margin: "10px"
-    }}>
-        <div style={{
-            width: "100px",
-            height: "161px",
-            display: "block",
-            backgroundColor: "#dab991",
-            margin: "0 auto"
-        }}>
-        </div>
-        <p style={{ textAlign: "center" }}>
-            Bao #3
-            <pre>#dab991</pre>
-        </p>
-    </div>
-
-    <div style={{
-        boxShadow: "2px 2px 5px 2px rgba(0,0,0,0.55)",
-        padding: "2px",
-        width: "105px",
-        margin: "10px"
-    }}>
-        <div style={{
-            width: "100px",
-            height: "161px",
-            display: "block",
-            backgroundColor: "#091a28",
-            margin: "0 auto"
-        }}>
-        </div>
-        <p style={{ textAlign: "center" }}>
-            Border
-            <pre>#091a28</pre>
-        </p>
-    </div>
+  ))}
 </div>
 
 ## Font
@@ -199,7 +101,8 @@ please use [DM Sans](https://fonts.google.com/specimen/DM+Sans?preview.text=Open
 ## Stickers
 
 When getting stickers printed, please refer to the sticker artwork available
-in our [`sticker/` folder of the artwork repository](https://github.com/openbao/artwork/tree/main/stickers).
+in our [`stickers/` folder of the artwork repository](https://github.com/openbao/artwork/tree/main/stickers).
+
 We prefer to maintain the wordmark association with the OpenBao logo for most
 uses. Stickers can be printed with a simple shape (rectangle, square, circle)
 or die-cut to image shape.
@@ -210,6 +113,6 @@ to image shape.
 
 ## Press releases
 
-For any press releases, please reach out the OpenBao TSC (`openbao-tsc@lists.openssf.org`)
-and to Jill Lovato at the Linux Foundation; the LF must review and approve all press
-releases prior to publication.
+For any press releases, please reach out to the OpenBao TSC
+(`openbao-tsc@lists.openssf.org`) and to Jill Lovato at the Linux Foundation;
+the LF must review and approve all press releases prior to publication.

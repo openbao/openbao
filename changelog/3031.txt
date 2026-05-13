@@ -1,0 +1,3 @@
+```release-note:bug
+pki: Add missing migration for `not_after_bound` and `not_before_bound` role fields.
+```

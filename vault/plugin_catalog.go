@@ -212,11 +212,12 @@ func (c *Core) ReloadPlugins() {
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
 
-	if c.Sealed() || (c.standby.Load() && !c.StandbyReadsEnabled()) || c.activeContext == nil {
+	ctx := c.activeContext.Load()
+	if c.Sealed() || (c.standby.Load() && !c.StandbyReadsEnabled()) || ctx.IsNil() {
 		return
 	}
 
-	if err := c.registerDeclarativePlugins(c.activeContext, c.Standby()); err != nil {
+	if err := c.registerDeclarativePlugins(ctx, c.Standby()); err != nil {
 		c.logger.Error("failed to set up plugins on reload", "error", err)
 	}
 }

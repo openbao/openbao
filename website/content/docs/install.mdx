@@ -101,7 +101,7 @@ command-line, ensure that you place the binary somewhere on your `PATH`.
 These instructions are for a **development** build; do not rely on them for
 release binaries.
 
-Instead, [refer to our packaging guide](contributing/packaging.mdx).
+Instead, [refer to our packaging guide](/community/contributing/packaging).
 
 :::
 
@@ -159,7 +159,7 @@ disabled, run `systemctl cat openbao` and check for the line `MemorySwapMax=0`.
 Alternatively, to allow the openbao process to swap out, make sure that line is
 deleted.
 
-If you are not using systemd, you can achieve the same effect by setting the 
+If you are not using systemd, you can achieve the same effect by setting the
 cgroupv2 value `memory.swap.max` to `0` using your tool of choice. You can
 disable swap for the entire OS by running `swapoff` (this is not recommended).
 Encrypting swap space in Linux is possible, but as usual, there are many

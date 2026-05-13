@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v4"
 )
 
 func setupTestBackend(t *testing.T) (logical.Backend, logical.Storage) {
@@ -39,9 +40,7 @@ func setupTestBackend(t *testing.T) (logical.Backend, logical.Storage) {
 func TestLogin(t *testing.T) {
 	b, storage := setupTestBackend(t)
 
-	cleanup, connURL := prepareLDAPTestContainer(t)
-	defer cleanup()
-
+	connURL := prepareLDAPTestContainer(t)
 	ldapReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      ldapConfPath,
@@ -88,35 +87,20 @@ func TestLogin(t *testing.T) {
 	}
 }
 
-func prepareLDAPTestContainer(t *testing.T) (cleanup func(), retURL string) {
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		t.Fatalf("Failed to connect to docker: %s", err)
-	}
-
-	runOpts := &dockertest.RunOptions{
-		Repository: "quay.io/minio/openldap",
-		Tag:        "latest",
-		Env: []string{
+func prepareLDAPTestContainer(t *testing.T) string {
+	pool := dockertest.NewPoolT(t, "")
+	resource := pool.RunT(t, "quay.io/minio/openldap",
+		dockertest.WithTag("latest"),
+		dockertest.WithEnv([]string{
 			"LDAP_TLS=false",
 			"LDAP_DOMAIN=min.io", // Required for minio/openldap to boot up...
-		},
-	}
-	resource, err := pool.RunWithOptions(runOpts)
-	if err != nil {
-		t.Fatalf("Could not start local MSSQL docker container: %s", err)
-	}
+		}),
+	)
 
-	cleanup = func() {
-		if err := pool.Purge(resource); err != nil {
-			t.Fatalf("Failed to cleanup local container: %s", err)
-		}
-	}
-
-	retURL = fmt.Sprintf("ldap://localhost:%s", resource.GetPort("389/tcp"))
+	retURL := fmt.Sprintf("ldap://localhost:%s", resource.GetPort("389/tcp"))
 
 	// exponential backoff-retry
-	if err = pool.Retry(func() error {
+	if err := pool.Retry(t.Context(), 10*time.Second, func() error {
 		conn, err := ldap.DialURL(retURL)
 		if err != nil {
 			return err
@@ -146,5 +130,5 @@ func prepareLDAPTestContainer(t *testing.T) (cleanup func(), retURL string) {
 		t.Fatalf("Could not connect to ldap auth docker container: %s", err)
 	}
 
-	return cleanup, retURL
+	return retURL
 }

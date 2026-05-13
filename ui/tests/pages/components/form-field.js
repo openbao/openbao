@@ -39,8 +39,8 @@ export default {
   fields: collection('[data-test-field]', {
     clickLabel: clickable('label'),
     toggleTtl: clickable('[data-test-toggle-input="Foo"]'),
-    for: attribute('for', 'label', { multiple: true }),
-    labelText: text('label', { multiple: true }),
+    for: attribute('for', 'label'),
+    labelText: text('label'),
     input: fillable('input'),
     ttlTime: fillable('[data-test-ttl-value]'),
     select: fillable('select'),
@@ -57,14 +57,14 @@ export default {
   fillInTextarea: async function (name, value) {
     return this.fields
       .filter((field) => {
-        return field.for.includes(name);
+        return field.for && field.for.includes(name);
       })[0]
       .textarea(value);
   },
   fillIn: async function (name, value) {
     return this.fields
       .filter((field) => {
-        return field.for.includes(name);
+        return field.for && field.for.includes(name);
       })[0]
       .input(value);
   },

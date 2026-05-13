@@ -52,6 +52,7 @@ import (
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -1304,14 +1305,22 @@ func (c *ServerCommand) Run(args []string) int {
 	core.SetClusterListenerAddrs(clusterAddrs)
 	core.SetClusterHandler(vaulthttp.Handler.Handler(&vault.HandlerProperties{
 		Core: core,
+		// The cluster handler allows all endpoints to support forwarding.
+		// The decision to disable unauthed endpoints is made by external-facing listeners, so this is safe.
+		ListenerConfig: &configutil.Listener{
+			DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+			DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(false),
+		},
 	}))
 
 	// Attempt unsealing in a background goroutine. This is needed for when a
 	// OpenBao cluster with multiple servers is configured with auto-unseal but is
 	// uninitialized. Once one server initializes the storage backend, this
 	// goroutine will pick up the unseal keys and unseal this instance.
+	var sealShutdownCh chan struct{}
 	if !core.IsInSealMigrationMode(true) {
-		go runUnseal(c, core, context.Background())
+		sealShutdownCh = make(chan struct{})
+		go runUnseal(c, core, sealShutdownCh)
 	}
 
 	// When the underlying storage is raft, kick off retry join if it was specified
@@ -1345,8 +1354,10 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	// Else if we're in production mode, initialize the core as well.
-	err = c.Initialize(core, config)
-	if err != nil {
+	if err = c.Initialize(core, config); err != nil {
+		// Bubble this error up to both the logger and the UI for better
+		// visibility.
+		c.logger.Error("failed to initialize", "error", err)
 		c.UI.Error(err.Error())
 		return 1
 	}
@@ -1439,6 +1450,10 @@ func (c *ServerCommand) Run(args []string) int {
 
 	for !shutdownTriggered {
 		select {
+		case <-sealShutdownCh:
+			c.UI.Output("==> OpenBao core was shut down")
+			retCode = 1
+			shutdownTriggered = true
 		case <-coreShutdownDoneCh:
 			c.UI.Output("==> OpenBao core was shut down")
 			retCode = 1
@@ -1754,11 +1769,9 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		RecoveryConfig: recoveryConfig,
 	})
 	if err != nil {
-		core.Logger().Error("failed to initialize", "error", err)
 		if errors.Is(err, vault.ErrParallelInit) || errors.Is(err, vault.ErrAlreadyInit) {
 			return nil
 		}
-
 		return fmt.Errorf("self-initialization failed: %w", err)
 	}
 
@@ -1774,8 +1787,20 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		return fmt.Errorf("initializing node did not win leadership election: ensure only one active, voting node during initialization")
 	}
 
-	// Now perform the component requests of self-initialization.
-	return c.doSelfInit(core, config, init.RootToken)
+	// Begin by marking self-init as started:
+	if err := core.MarkSelfInitStarted(ctx); err != nil {
+		return fmt.Errorf("failed to mark self-init started: %w", err)
+	}
+	// Then perform self-init steps:
+	if err := c.doSelfInit(core, config, init.RootToken); err != nil {
+		return err
+	}
+	// Then mark self-init as completed:
+	if err := core.MarkSelfInitCompleted(ctx); err != nil {
+		return fmt.Errorf("failed to mark self-init complete: %w", err)
+	}
+
+	return nil
 }
 
 // doSelfInit is the internal helper that uses the profile system with this
@@ -2667,17 +2692,25 @@ CLUSTER_SYNTHESIS_COMPLETE:
 	return nil
 }
 
-func runUnseal(c *ServerCommand, core *vault.Core, ctx context.Context) {
+func runUnseal(c *ServerCommand, core *vault.Core, sealShutdownCh chan<- struct{}) {
 	for {
-		err := core.UnsealWithStoredKeys(ctx)
+		err := core.UnsealWithStoredKeys(context.Background())
 		if err == nil {
 			return
 		}
 
-		if vault.IsFatalError(err) {
+		if errors.Is(err, vault.ErrSelfInitFailed) {
 			c.logger.Error("error unsealing core", "error", err)
+			if err := core.Shutdown(); err != nil {
+				c.logger.Error("error shutting down core", "error", err)
+			}
+			// Shutting down core only triggers an exit in Run() if
+			// flagExitOnCoreShutdown is set, so send a notification on this
+			// channel additionally. This will trigger a process exit.
+			close(sealShutdownCh)
 			return
 		}
+
 		c.logger.Warn("failed to unseal core", "error", err)
 
 		timer := time.NewTimer(5 * time.Second)
@@ -2733,6 +2766,7 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
 		UnsafeCrossNamespaceIdentity:   config.UnsafeCrossNamespaceIdentity,
 		AllowUnauthenticatedWorkflows:  config.AllowUnauthenticatedWorkflows,
+		UnsafeRelativePaths:            config.UnsafeRelativePaths,
 	}
 
 	if config.DisableSSCTokens != nil {

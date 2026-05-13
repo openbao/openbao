@@ -114,6 +114,8 @@ const config: Config = {
           blogTitle: "OpenBao Blog",
           blogDescription:
             "Official blog of the Bao Evangelism Taskforce (BET)",
+          blogSidebarCount: 'ALL',
+          blogSidebarTitle: 'All posts',
           path: "content/blog",
         },
         theme: {
@@ -166,6 +168,25 @@ const config: Config = {
       },
     ],
     [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "community",
+        path: "content/community",
+        routeBasePath: "community",
+        sidebarPath: "./sidebarsCommunity.ts",
+        editUrl: "https://github.com/openbao/openbao/tree/main/website/",
+        beforeDefaultRemarkPlugins: [
+          [
+            includeMarkdown,
+            {
+              resolveMdx: true,
+              resolveFrom: path.join(process.cwd(), "content", "partials"),
+            },
+          ],
+        ],
+      },
+    ],
+    [
       "@docusaurus/plugin-client-redirects",
       {
         redirects: [
@@ -174,6 +195,19 @@ const config: Config = {
             to: "/api-docs/system/rotate/keyring-config",
           },
         ],
+        createRedirects(existingPath) {
+          if (existingPath.includes('/community/') && existingPath !== '/community/') {
+            return [
+              existingPath.replace('/community/', '/docs/'),
+              existingPath.replace('/community/', '/docs/next/'),
+              existingPath.replace('/community/', '/docs/2.5.x/'),
+              existingPath.replace('/community/', '/docs/2.4.x/'),
+              existingPath.replace('/community/', '/docs/2.3.x/'),
+            ];
+          }
+
+          return undefined;
+        },
       },
     ],
     pluginSidebarJson,
@@ -211,31 +245,9 @@ const config: Config = {
           position: "left",
         },
         {
-          type: "dropdown",
+          to: "/community/",
           label: "Community",
           position: "left",
-          items: [
-            {
-              label: "GitHub Discussions",
-              href: "https://github.com/openbao/openbao/discussions",
-            },
-            {
-              label: "Zulip Chat Server",
-              href: "https://linuxfoundation.zulipchat.com/",
-            },
-            {
-              label: "Charter",
-              href: "https://github.com/openbao/openbao/blob/main/CHARTER.md",
-            },
-            {
-              label: "Policies",
-              to: "/docs/policies/",
-            },
-            {
-              label: "Contributing",
-              to: "/docs/contributing/",
-            },
-          ],
         },
         {
           type: "docsVersionDropdown",

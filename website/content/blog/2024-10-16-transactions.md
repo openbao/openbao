@@ -7,11 +7,11 @@ tags: [technical, storage, core]
 image: https://raw.githubusercontent.com/openbao/artwork/refs/heads/main/color/openbao-text-color.svg
 ---
 
-Recently we merged the last of the [transactional storage](/docs/rfcs/transactions/) [pull requests](https://github.com/openbao/openbao/pull/262), including [PostgreSQL support](https://github.com/openbao/openbao/pull/608)!
+Recently we merged the last of the [transactional storage](/community/rfcs/transactions/) [pull requests](https://github.com/openbao/openbao/pull/262), including [PostgreSQL support](https://github.com/openbao/openbao/pull/608)!
 
 <!-- truncate -->
 
-Previously, upstream's storage model was built on [four basic operations](https://github.com/openbao/openbao/blob/2cb5d444b26cfdc79d814f9696c7f68f9c43606f/sdk/logical/storage.go#L31-L38): `Get(...)`, `Put(...)`, `List(...)`, and `Delete(...)`. Ahead of [OpenBao's initial v2.0.0 GA release](/docs/release-notes/2-0-0/), we added support for a fifth operation, [paginated list's](/docs/rfcs/paginated-lists/) `ListPage(...)`. Each of these operations were individually atomic, in that they either succeeded or erred with no change for a partial change.
+Previously, upstream's storage model was built on [four basic operations](https://github.com/openbao/openbao/blob/2cb5d444b26cfdc79d814f9696c7f68f9c43606f/sdk/logical/storage.go#L31-L38): `Get(...)`, `Put(...)`, `List(...)`, and `Delete(...)`. Ahead of [OpenBao's initial v2.0.0 GA release](/community/release-notes/2-0-0/), we added support for a fifth operation, [paginated list's](/community/rfcs/paginated-lists/) `ListPage(...)`. Each of these operations were individually atomic, in that they either succeeded or erred with no change for a partial change.
 
 However, there were no consistency guarantees across storage operations: two parallel requests coming into the same plugin could result in silently conflicting storage operations. For example, [in the PKI engine](/docs/secrets/pki/), fetching the default issuer (certificate authority) required at least the following reads:
 
@@ -24,7 +24,7 @@ Transactions fix this and allow a plugin to have a consistent view of storage an
 
 Transactions also let us make several incremental design improvements: previously only single entries had consistency guarantees so the mount table had to fit within a single storage entry. Now, we can [split the mount table](https://github.com/openbao/openbao/issues/432) into separate entries and use transactions to have durable, safe modifications to these entries.
 
-Implementing transactions had several design challenges: The HashiCorp Raft implementation had no native support for transactions, so we needed to figure out how to reconcile this with the underlying operation log. We opted to put all commits (with write operations) on the log, regardless of if they'd conflict, allowing all nodes to verify the consistency of the transaction. Further, PostgreSQL's internal locking [means that two transactions cannot be executed from the same thread](https://stackoverflow.com/questions/32255557/postgresql-hang-forever-on-serializable-transaction). This forced us to loosen up some of our transaction semantic testing, to ensure we remain compatible with both implementations. If you're interested in the exact details [be sure to check out the RFC](/docs/rfcs/transactions/).
+Implementing transactions had several design challenges: The HashiCorp Raft implementation had no native support for transactions, so we needed to figure out how to reconcile this with the underlying operation log. We opted to put all commits (with write operations) on the log, regardless of if they'd conflict, allowing all nodes to verify the consistency of the transaction. Further, PostgreSQL's internal locking [means that two transactions cannot be executed from the same thread](https://stackoverflow.com/questions/32255557/postgresql-hang-forever-on-serializable-transaction). This forced us to loosen up some of our transaction semantic testing, to ensure we remain compatible with both implementations. If you're interested in the exact details [be sure to check out the RFC](/community/rfcs/transactions/).
 
 Most importantly, we're excited about the possibilities that safer, more durable storage semantics bring!
 

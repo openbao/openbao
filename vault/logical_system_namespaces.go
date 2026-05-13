@@ -12,7 +12,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-viper/mapstructure/v2"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -188,8 +189,12 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 					Description: "User provided key-value pairs.",
 				},
 				"seal": {
-					Type:        framework.TypeMap,
+					Type:        framework.TypeString,
 					Description: "User provided seal config.",
+				},
+				"pgp_keys": {
+					Type:        framework.TypeStringSlice,
+					Description: "Specifies an array of PGP public keys used to encrypt the output unseal keys.",
 				},
 			},
 
@@ -347,9 +352,43 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		sealRaw, ok := data.GetOk("seal")
 		var sealConfig *SealConfig
 		if ok {
-			sealConfig = &SealConfig{}
-			if err := mapstructure.Decode(sealRaw, &sealConfig); err != nil {
-				return logical.ErrorResponse("invalid seal config data"), logical.ErrInvalidRequest
+			var err error
+			sealString, ok := sealRaw.(string)
+			if !ok {
+				return nil, errors.New("seal config must be a HCL or JSON string")
+			}
+			kmses, err := configutil.ParseKMSes(sealString)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse seal config: %w", err)
+			}
+			if len(kmses) != 1 {
+				return nil, errors.New("seal config must contain exactly one seal stanza")
+			}
+			kms := kmses[0]
+			if kms.Type != "shamir" {
+				return nil, errors.New("namespaces currently only support shamir seals")
+			}
+
+			sealConfig = &SealConfig{
+				Type: kms.Type,
+			}
+
+			if val, ok := kms.Config["shares"]; ok {
+				shares, err := parseutil.ParseInt(val)
+				if err != nil {
+					return nil, errors.New("value of shares parameter must be integer")
+				}
+				sealConfig.SecretShares = int(shares)
+			}
+			if val, ok := kms.Config["threshold"]; ok {
+				threshold, err := parseutil.ParseInt(val)
+				if err != nil {
+					return nil, errors.New("value of shares parameter must be integer")
+				}
+				sealConfig.SecretThreshold = int(threshold)
+			}
+			if pgpkeys, ok := data.GetOk("pgp_keys"); ok {
+				sealConfig.PGPKeys = pgpkeys.([]string)
 			}
 
 			if err := sealConfig.Validate(); err != nil {

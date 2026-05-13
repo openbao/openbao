@@ -39,15 +39,28 @@ multiple sockets.
 
   :::
 
+- `disable_unauthed_generate_root_endpoints` `(bool: true)` - Whether to
+  disable requests to the legacy unauthenticated generate root endpoints
+  (under `/sys/generate-root/*`). These are a security risk to leave exposed
+  on public listeners: unauthenticated users can cancel any inflight root
+  generation requests.
+
+  :::warning
+
+  **As of OpenBao v2.5.3, this parameter defaults to true, forbidding any calls
+  to the unauthenticated generate root endpoints.**
+
+  :::
+
 ### `telemetry` parameters
 
 - `unauthenticated_metrics_access` `(bool: false)` - If set to true, allows
   unauthenticated access to the `/v1/sys/metrics` endpoint.
 
-- `disallow_metrics` `(bool: false)` - Specifies if the `/v1/sys/metrics` endpoint is disabled on this listener. 
+- `disallow_metrics` `(bool: false)` - Specifies if the `/v1/sys/metrics` endpoint is disabled on this listener.
   This is useful for hardening a listener that handles general client traffic, preventing API clients from scraping metrics.
 
-- `metrics_only` `(bool: false)` - Specifies if the listener should *only* serve the `/v1/sys/metrics` endpoint, blocking all other API requests. 
+- `metrics_only` `(bool: false)` - Specifies if the listener should *only* serve the `/v1/sys/metrics` endpoint, blocking all other API requests.
   This is useful for creating a dedicated, secure listener for monitoring systems.
 
 - `metrics_path` `(string: "")` - If present, specifies an alternative path the metrics
@@ -94,9 +107,9 @@ listener "unix" {
 
 ### Configuring Metrics Security and Access
 
-This example configures two UNIX socket listeners to separate API traffic from metrics monitoring. 
-Access to these sockets is controlled by file system permissions. 
-The first socket handles API requests with metrics disabled, 
+This example configures two UNIX socket listeners to separate API traffic from metrics monitoring.
+Access to these sockets is controlled by file system permissions.
+The first socket handles API requests with metrics disabled,
 while a second socket is dedicated only to serving metrics for monitoring tools.
 
 ```hcl

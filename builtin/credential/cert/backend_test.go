@@ -2003,11 +2003,8 @@ func Test_Renew(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp == nil {
-		t.Fatal("got nil response from renew")
-	}
-	if !resp.IsError() {
-		t.Fatal("expected error")
+	if resp != nil {
+		t.Fatalf("got non-nil response from renew: %v", resp)
 	}
 }
 

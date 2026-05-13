@@ -397,6 +397,36 @@ func Test_Evaluate_When(t *testing.T) {
 	}
 }
 
+func Test_Evaluate_OuterWhen(t *testing.T) {
+	ctx := t.Context()
+
+	engine, err := NewEngine(
+		WithProfile([]*OuterConfig{
+			{
+				Type: "test",
+				Requests: []*RequestConfig{
+					{
+						Type:      "test-request-skipped",
+						Operation: "read",
+						Path:      "sys/health",
+					},
+				},
+				When: "false",
+			},
+		}),
+		WithRequestHandler(errHandler),
+		WithOuterBlockName("test"),
+	)
+	if err != nil {
+		t.Fatalf("NewEngine error: %v", err)
+	}
+
+	err = engine.Evaluate(ctx)
+	if err != nil {
+		t.Fatalf("Evaluate error: %v", err)
+	}
+}
+
 func TestBuildRequest_BasicRequestCreation(t *testing.T) {
 	engine := &ProfileEngine{
 		sourceBuilders: map[string]SourceBuilder{},

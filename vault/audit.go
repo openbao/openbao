@@ -659,11 +659,12 @@ func (c *Core) ReloadAuditLogs() {
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
 
-	if c.Sealed() || (c.standby.Load() && !c.StandbyReadsEnabled()) || c.activeContext == nil {
+	ctx := c.activeContext.Load()
+	if c.Sealed() || (c.standby.Load() && !c.StandbyReadsEnabled()) || ctx.IsNil() {
 		return
 	}
 
-	if err := c.handleAuditLogSetup(c.activeContext, c.standby.Load()); err != nil {
+	if err := c.handleAuditLogSetup(ctx, c.standby.Load()); err != nil {
 		c.logger.Error("failed to set up audit logs on reload", "error", err)
 	}
 }

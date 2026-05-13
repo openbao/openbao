@@ -189,7 +189,7 @@ func (c *Core) setupRaftActiveNode(ctx context.Context) error {
 		c.logger.Error("failed to load autopilot config from storage when setting up cluster; continuing since autopilot falls back to default config", "error", err)
 	}
 
-	raftBackend.SetupAutopilot(c.activeContext, autopilotConfig, c.raftFollowerStates, c.disableAutopilot)
+	raftBackend.SetupAutopilot(c.activeContext.Load(), autopilotConfig, c.raftFollowerStates, c.disableAutopilot)
 
 	// Reload the raft TLS keys to ensure we are using the latest version.
 	if err := c.checkRaftTLSKeyUpgrades(ctx); err != nil {

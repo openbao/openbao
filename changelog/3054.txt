@@ -1,0 +1,3 @@
+```release-note:bug
+physical/raft: wait for shutdown to avoid panic
+```

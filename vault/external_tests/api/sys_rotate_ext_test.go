@@ -50,7 +50,8 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		HandlerFunc: vaulthttp.Handler,
 		DefaultHandlerProperties: vault.HandlerProperties{
 			ListenerConfig: &configutil.Listener{
-				DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+				DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(false),
+				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
 			},
 		},
 	}
@@ -316,6 +317,11 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 func testSysRotate_Verification(t *testing.T, recovery bool) {
 	opts := &vault.TestClusterOptions{
 		HandlerFunc: vaulthttp.Handler,
+		DefaultHandlerProperties: vault.HandlerProperties{
+			ListenerConfig: &configutil.Listener{
+				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+			},
+		},
 	}
 
 	if recovery {

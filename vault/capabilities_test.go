@@ -12,6 +12,8 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/policy"
+	"github.com/openbao/openbao/vault/policy/policytest"
 )
 
 func TestCapabilities_DerivedPolicies(t *testing.T) {
@@ -41,20 +43,20 @@ path "secret/sample" {
 }
 `
 	// Create the above policies
-	policy, _ := ParseACLPolicy(namespace.RootNamespace, policy1)
-	err = c.policyStore.SetPolicy(ctx, policy, nil)
+	pol, _ := policy.ParseACLPolicy(namespace.RootNamespace, policy1)
+	err = c.policyStore.SetPolicy(ctx, pol, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	policy, _ = ParseACLPolicy(namespace.RootNamespace, policy2)
-	err = c.policyStore.SetPolicy(ctx, policy, nil)
+	pol, _ = policy.ParseACLPolicy(namespace.RootNamespace, policy2)
+	err = c.policyStore.SetPolicy(ctx, pol, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	policy, _ = ParseACLPolicy(namespace.RootNamespace, policy3)
-	err = c.policyStore.SetPolicy(ctx, policy, nil)
+	pol, _ = policy.ParseACLPolicy(namespace.RootNamespace, policy3)
+	err = c.policyStore.SetPolicy(ctx, pol, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -174,7 +176,7 @@ func TestCapabilities_TemplatedPolicies(t *testing.T) {
 	}
 	for _, tCase := range tCases {
 		// Create the above policies
-		policy, err := ParseACLPolicy(namespace.RootNamespace, tCase.policy)
+		policy, err := policy.ParseACLPolicy(namespace.RootNamespace, tCase.policy)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -208,7 +210,7 @@ func TestCapabilities(t *testing.T) {
 	}
 
 	// Create a policy
-	policy, _ := ParseACLPolicy(namespace.RootNamespace, aclPolicy)
+	policy, _ := policy.ParseACLPolicy(namespace.RootNamespace, policytest.ACLPolicy)
 	err = c.policyStore.SetPolicy(ctx, policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)

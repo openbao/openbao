@@ -1,0 +1,233 @@
+---
+sidebar_label: Nitrokey NetHSM
+description: |-
+  This guide describes how to configure auto-unsealing for OpenBao using
+  the Nitrokey NetHSM via PKCS#11.
+---
+
+# Nitrokey Open Source NetHSM
+
+This guide describes how to configure auto-unsealing for OpenBao using the
+[Nitrokey NetHSM](https://www.nitrokey.com/products/nethsm) via PKCS#11.
+
+:::info
+
+Properly operating a HSM in production requires some care.
+This guide seeks to only provide a basic working configuration and a simple
+setup example for the NetHSM integration with OpenBao.
+Please refer to the [NetHSM Documentation](https://docs.nitrokey.com/nethsm/)
+for a comprehensive guide on NetHSM usage!
+
+:::
+
+## Initial Setup
+
+This guide only covers how to configure your OpenBao instance to auto-unseal through a
+NetHSM instance. It assumes that you already have access to a NetHSM instance and
+the necessary tools to configure it. Make sure the following requirements are met:
+
+- You have access to a NetHSM instance, which can be either:
+    - A [NetHSM hardware appliance](https://www.nitrokey.com/products/nethsm)
+    - A [NetHSM container instance](https://docs.nitrokey.com/nethsm/container/index)
+- The NetHSM is
+[already provisioned](https://docs.nitrokey.com/nethsm/getting-started#provisioning)
+and in [operational state](https://docs.nitrokey.com/nethsm/administration#state)
+- You have access to a NetHSM user with the
+[Administrator Role](https://docs.nitrokey.com/nethsm/administration#roles)
+
+:::info
+
+If you just want to get started quickly and verify, that OpenBao works as
+expected with auto-unsealing through the NetHSM, there is an
+[example setup based on the NetHSM test image](https://github.com/Nitrokey/nethsm-pkcs11/tree/main/container/openbao)
+and a simple compose file. The example contains the necessary configuration
+for a full working test setup.
+
+:::
+
+:::warning
+
+The 
+[NetHSM Test Image](https://docs.nitrokey.com/nethsm/container/test-image)
+and the public
+[NetHSM Demo Instance](https://docs.nitrokey.com/nethsm/integration#demo-instance)
+should **only** ever be used for testing!
+
+:::
+
+## Preparing the NetHSM
+
+To configure your NetHSM you can use the
+[nitropy tool](https://docs.nitrokey.com/software/nitropy/index)
+or directly access the
+[REST API](https://nethsmdemo.nitrokey.com/api_docs/index.html).
+The rest of this guide will use nitropy, which is the recommended way
+to interact with NetHSM.
+
+:::note
+
+Available (sub)commands and options for configuring the NetHSM
+with nitropy are available in the help menu `nitropy nethsm --help`.
+When following this guide to make sure to set the `--host` parameter
+or set the `NETHSM_HOST` environment variable to access the right
+NetHSM instance when executing nitropy.
+
+:::
+
+:::warning
+
+All passwords and secrets used in this guide are only examples and should
+be replaced!
+
+:::
+
+### Adding an operator user
+
+To access the required key usage operations a user with the
+[Operator Role](https://docs.nitrokey.com/nethsm/administration#roles)
+is required. The following command creates a user with user id `operator`
+and role `operator`. You have to authenticate with a user of the
+[Administrator Role](https://docs.nitrokey.com/nethsm/administration#roles)
+to execute this operation. The nitropy tool will ask you for credentials
+if they are not already provided.
+
+```sh
+$ nitropy nethsm add-user --user-id operator --role operator --passphrase 'OperatorOperator' --real-name "OpenBao Operator"
+```
+
+### Generate the sealing key
+
+The following command will generate a 2048 bit RSA-OAEP key with
+key-id `bao-root-rsa`:
+
+```sh
+$ nitropy nethsm generate-key --type rsa --mechanism rsa_decryption_oaep_sha256 --length 2048 --key-id bao-root-rsa
+```
+
+The nitropy tool will require the admin credentials again for the
+key generation operation.
+
+:::note
+
+The NetHSM currently does not support AES-GCM, so RSA-OAEP has to be used for
+auto-unsealing.
+
+:::
+
+## Preparing the OpenBao host
+
+### Installing the NetHSM PKCS#11 library
+
+OpenBao will interact with the NetHSM using the
+[open-source PKCS#11 library](https://github.com/Nitrokey/nethsm-pkcs11)
+You will need to make this library available on the system that OpenBao
+will run on.
+
+You can either get the NetHSM PKCS#11 library as
+[precompiled binary](https://docs.nitrokey.com/nethsm/pkcs11-setup#precompiled-binaries)
+or
+[compile it from source](https://docs.nitrokey.com/nethsm/pkcs11-setup#compile-from-source).
+
+When working with containers you can build your own OpenBao image based
+on the official `openbao-hsm-ubi` image and include the `nethsm-pkcs11`
+library. You can use
+[the Dockerfile from the example setup](https://github.com/Nitrokey/nethsm-pkcs11/blob/main/container/openbao/Dockerfile)
+as reference.
+
+:::note
+
+OpenBao must be compiled with HSM support to load the library. HSM-enabled
+binaries, packages and container images are generally available as part of
+[OpenBao's releases](https://github.com/openbao/openbao/releases).
+
+:::
+
+:::note
+
+The precompiled NetHSM PKCS#11
+[libraries are released](https://github.com/Nitrokey/nethsm-pkcs11/releases)
+for both glibc and musl based systems.
+Make sure to use the right version for you host system.
+When working with containers then use the glibc version for the
+`openbao-hsm-ubi` image and use the musl version for the Alpine-based
+`openbao-hsm` image.
+
+:::
+
+### Configuring the PKCS#11 Seal
+
+Below is an exemplary PKCS#11 seal configuration section to be placed in the
+OpenBao server configuration.
+Replace the `lib` value with the path, at which you installed the PKCS#11
+library in the previous step.
+
+```hcl
+seal "pkcs11" {
+  lib       = "/usr/lib/nitrokey/libnethsm_pkcs11.so"
+  slot      = "0"
+  key_label = "bao-root-rsa"
+  pin       = "OperatorOperator"
+}
+```
+
+Refer to [PKCS#11 Seal](../../../configuration/seal/pkcs11.mdx) for complete
+documentation on all available options.
+
+### Configuring the NetHSM PKCS#11 library
+
+A configuration file is used to make nethsm-pkcs11 to connect to the NetHSM.
+The following is an example configuration, which can be placed at
+`/etc/nitrokey/p11nethsm.conf`:
+
+```yaml
+slots:
+  - label: LocalHSM
+    description: Local HSM
+    operator:
+      username: "operator"
+    instances:
+      - url: "https://nethsm:8443/api/v1"
+        danger_insecure_cert: true
+```
+
+Make sure to replace the domain part in the `url` instance option with the
+actual domain of the NetHSM.
+
+For a comprehensive documentation on nethsm-pkcs11 configuration refer to
+[the official documentation](https://docs.nitrokey.com/nethsm/pkcs11-setup#configuration).
+
+## Initializing OpenBao
+
+Unless
+[Self-initialization](../../../configuration/self-init.mdx) is used or a [Seal
+Migration](../../../concepts/seal.mdx#seal-migration) is performed, the final step is
+to manually initialize OpenBao:
+
+```sh
+$ bao operator init
+```
+
+If everything is configured correctly, the server should auto-unseal following
+the initialization. If this is not the case, check the server logs for error
+messages.
+
+:::note
+
+The NetHSM has to be in operational state when OpenBao attempts auto-unseal.
+You can just restart the OpenBao service to trigger auto-unseal.
+
+:::
+
+:::note
+
+After manually sealing an OpenBao instance that is configured for
+auto-unseal you can use the recovery keys
+[to trigger a manual unseal](../../../concepts/seal.mdx#auto-unseal).
+The recovery keys are only used for authorization here. The OpenBao root key
+cannot be decrypted without access to the NetHSM! Have a look at NetHSM's
+[backup](https://docs.nitrokey.com/nethsm/administration#backup)
+and
+[clustering](https://docs.nitrokey.com/nethsm/clustering)
+functionality for information on NetHSM disaster recovery and redundancy.
+
+:::

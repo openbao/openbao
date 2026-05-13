@@ -33,6 +33,13 @@ type ParsedCert struct {
 	Certificates []*x509.Certificate
 }
 
+var loginSchema = map[string]*framework.FieldSchema{
+	"name": {
+		Type:        framework.TypeString,
+		Description: "The name of the certificate role to authenticate against.",
+	},
+}
+
 func pathLogin(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: "login",
@@ -40,12 +47,7 @@ func pathLogin(b *backend) *framework.Path {
 			OperationPrefix: operationPrefixCert,
 			OperationVerb:   "login",
 		},
-		Fields: map[string]*framework.FieldSchema{
-			"name": {
-				Type:        framework.TypeString,
-				Description: "The name of the certificate role to authenticate against.",
-			},
-		},
+		Fields: loginSchema,
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.loginPathWrapper(b.pathLogin),
@@ -161,6 +163,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, data *fra
 
 	skid := base64.StdEncoding.EncodeToString(clientCerts[0].SubjectKeyId)
 	akid := base64.StdEncoding.EncodeToString(clientCerts[0].AuthorityKeyId)
+	cert := base64.StdEncoding.EncodeToString(clientCerts[0].Raw)
 
 	metadata := map[string]string{
 		"cert_name":        matched.Entry.Name,
@@ -176,6 +179,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, data *fra
 
 	auth := &logical.Auth{
 		InternalData: map[string]interface{}{
+			"certificate":      cert,
 			"subject_key_id":   skid,
 			"authority_key_id": akid,
 		},
@@ -208,36 +212,8 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 		b.updatedConfig(config)
 	}
 
-	if !config.DisableBinding {
-		var matched *ParsedCert
-		if verifyResp, resp, err := b.verifyCredentials(ctx, req, d); err != nil {
-			return nil, err
-		} else if resp != nil {
-			return resp, nil
-		} else {
-			matched = verifyResp
-		}
-
-		if matched == nil {
-			return nil, nil
-		}
-
-		clientCerts, err := b.handleCerts(req)
-		if err != nil {
-			return logical.ErrorResponse(err.Error()), nil
-		}
-
-		skid := base64.StdEncoding.EncodeToString(clientCerts[0].SubjectKeyId)
-		akid := base64.StdEncoding.EncodeToString(clientCerts[0].AuthorityKeyId)
-
-		// Certificate should not only match a registered certificate policy.
-		// Also, the identity of the certificate presented should match the identity of the certificate used during login
-		if req.Auth.InternalData["subject_key_id"] != skid && req.Auth.InternalData["authority_key_id"] != akid {
-			return nil, errors.New("client identity during renewal not matching client identity used during login")
-		}
-
-	}
-	// Get the cert and use its TTL
+	// Get the cert and use its TTL; ensure that it hasn't materially changed
+	// w.r.t. policies.
 	cert, err := b.Cert(ctx, req.Storage, req.Auth.Metadata["cert_name"])
 	if err != nil {
 		return nil, err
@@ -249,6 +225,56 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 
 	if !policyutil.EquivalentPolicies(cert.TokenPolicies, req.Auth.TokenPolicies) {
 		return nil, errors.New("policies have changed, not renewing")
+	}
+
+	if !config.DisableBinding {
+		certBase64, ok := req.Auth.InternalData["certificate"]
+		if !ok {
+			return nil, errors.New("cannot validate renewal for cert auth for non-stored client certificate")
+		}
+
+		// d contains the output from the initial login; this lacks the role
+		// and is otherwise not useful for verifyCredentials; create a new
+		// request data and bind the verification to the original
+		// certificate's role.
+		roleData := &framework.FieldData{
+			Raw: map[string]interface{}{
+				"name": req.Auth.Metadata["cert_name"],
+			},
+			Schema: loginSchema,
+		}
+
+		var matched *ParsedCert
+		if verifyResp, resp, err := b.verifyCredentials(ctx, req, roleData); err != nil {
+			return nil, err
+		} else if resp != nil {
+			return resp, nil
+		} else {
+			matched = verifyResp
+		}
+
+		if matched == nil {
+			return nil, nil
+		}
+
+		// At this point we know that the request had a valid certificate and
+		// it matches the current value of the role from the original request.
+		// We want to ensure the original request certificate and this
+		// certificate match. A renewed certificate does not match and thus
+		// will be rejected.
+		originalCertRaw, err := base64.StdEncoding.DecodeString(certBase64.(string))
+		if err != nil {
+			return nil, fmt.Errorf("failed to base64-decode original certificate: %w", err)
+		}
+
+		clientCerts, err := b.handleCerts(req)
+		if err != nil {
+			return logical.ErrorResponse(err.Error()), nil
+		}
+
+		if subtle.ConstantTimeCompare(originalCertRaw, clientCerts[0].Raw) == 0 {
+			return nil, fmt.Errorf("client identity during renewal not matching client identity used during login:\n\toriginal: %v\n\trenewal: %v", originalCertRaw, matched.Certificates[0].Raw)
+		}
 	}
 
 	resp := &logical.Response{Auth: req.Auth}

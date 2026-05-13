@@ -621,6 +621,90 @@ func TestConfigureTLS(t *testing.T) {
 	}
 }
 
+func TestClientConfigureTLS(t *testing.T) {
+	cwd, _ := os.Getwd()
+	caCertPath := cwd + "/test-fixtures/keys/cert.pem"
+
+	tests := []struct {
+		name      string
+		tlsConfig *TLSConfig
+		wantErr   assert.ErrorAssertionFunc
+		assert    func(t *testing.T, c *Config)
+	}{
+		{
+			name:      "updates RootCAs on existing client",
+			tlsConfig: &TLSConfig{CACert: caCertPath},
+			assert: func(t *testing.T, c *Config) {
+				tr := c.HttpClient.Transport.(*http.Transport)
+				require.NotNil(t, tr.TLSClientConfig.RootCAs,
+					"RootCAs should be set after ConfigureTLS")
+			},
+		},
+		{
+			name:      "invalid CA cert returns error",
+			tlsConfig: &TLSConfig{CACert: "/nonexistent/ca.pem"},
+			wantErr: func(t assert.TestingT, err error, _ ...interface{}) bool {
+				return assert.ErrorContains(t, err, "Error loading CA File")
+			},
+		},
+		{
+			name:      "updates InsecureSkipVerify",
+			tlsConfig: &TLSConfig{Insecure: true},
+			assert: func(t *testing.T, c *Config) {
+				tr := c.HttpClient.Transport.(*http.Transport)
+				assert.True(t, tr.TLSClientConfig.InsecureSkipVerify)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			config := DefaultConfig()
+			client, err := NewClient(config)
+			require.NoError(t, err)
+
+			err = client.ConfigureTLS(tc.tlsConfig)
+			if tc.wantErr != nil {
+				tc.wantErr(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			if tc.assert != nil {
+				tc.assert(t, config)
+			}
+		})
+	}
+}
+
+// TestClientConfigureTLS_Reload verifies that calling ConfigureTLS a second
+// time re-reads certificates from disk and updates the transport's RootCAs,
+// simulating a CA rotation.
+func TestClientConfigureTLS_Reload(t *testing.T) {
+	cwd, _ := os.Getwd()
+	caCertPath := cwd + "/test-fixtures/keys/cert.pem"
+
+	config := DefaultConfig()
+	err := config.ConfigureTLS(&TLSConfig{CACert: caCertPath})
+	require.NoError(t, err)
+
+	client, err := NewClient(config)
+	require.NoError(t, err)
+
+	tr := config.HttpClient.Transport.(*http.Transport)
+	firstRootCAs := tr.TLSClientConfig.RootCAs
+	require.NotNil(t, firstRootCAs)
+
+	// Second call re-reads the same file from disk, proving the pool is replaced.
+	err = client.ConfigureTLS(&TLSConfig{CACert: caCertPath})
+	require.NoError(t, err)
+
+	secondRootCAs := tr.TLSClientConfig.RootCAs
+	require.NotNil(t, secondRootCAs)
+	assert.True(t, secondRootCAs.Equal(firstRootCAs),
+		"pools loaded from the same file should be equal")
+}
+
 func TestClientEnvNamespace(t *testing.T) {
 	var seenNamespace string
 	handler := func(w http.ResponseWriter, req *http.Request) {

@@ -120,6 +120,10 @@ certain profile execution environments:
 When doing so, the name of this outer grouping block is used for the `request`
 and `response` dynamic data source and must be specified.
 
+Inside an outer block, the following fields are supported:
+
+ - `when` `(bool: true)` - when false, skips execution of the entire block.
+
 ## Input
 
 When using the workflows API, input passed by the caller can be specified in
@@ -502,8 +506,8 @@ flow "provision" {
 
 ## Example Workflow
 
-The following example Workflow allows generating a password using a pre-existing 
-password policy and saving it directly into a KVv2 engine. 
+The following example Workflow allows generating a password using a pre-existing
+password policy and saving it directly into a KVv2 engine.
 Additionally it returns the password to the caller as an output.
 
 ```hcl

@@ -41,7 +41,8 @@ func Test_StrictIPBinding(t *testing.T) {
 		VaultBinary: binary,
 		ClusterOptions: testcluster.ClusterOptions{
 			VaultNodeConfig: &testcluster.VaultNodeConfig{
-				LogLevel: "TRACE",
+				LogLevel:       "TRACE",
+				AuditLogStdout: true,
 			},
 			NumCores: 1,
 		},

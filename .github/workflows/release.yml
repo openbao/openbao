@@ -39,7 +39,7 @@ permissions:
 
 jobs:
   setup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Disable release on nightly repository
         if: ${{ !inputs.nightly }}
@@ -89,17 +89,17 @@ jobs:
           git tag "$nightly_tag"
 
       - name: Node setup
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version-file: ui/package.json
 
       - name: PNPM setup
-        uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v6.0.0
+        uses: pnpm/action-setup@8912a9102ac27614460f54aedde9e1e7f9aec20d # v6.0.5
         with:
           package_json_file: ui/package.json
 
       - name: UI Cache Setup
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             http/web_ui/
@@ -230,7 +230,7 @@ jobs:
 
       - name: UI Cache Setup
         if: inputs.dogorelease
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             http/web_ui/
@@ -296,7 +296,7 @@ jobs:
 
       - name: Install GoReleaser
         if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
-        uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7.0.0
+        uses: goreleaser/goreleaser-action@1a80836c5c9d9e5755a25cb59ec6f45a3b5f41a8 # v7.2.1
         with:
           install-only: true
           # TODO: remove version pinning when Goreleaser 2.8 is released

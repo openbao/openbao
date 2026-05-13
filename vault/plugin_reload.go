@@ -191,9 +191,6 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 	if err != nil {
 		return err
 	}
-	if backend == nil {
-		return fmt.Errorf("nil backend of type %q returned from creation function", entry.Type)
-	}
 
 	// update the entry running version with the configured version, which was verified during registration.
 	entry.RunningVersion = entry.Version

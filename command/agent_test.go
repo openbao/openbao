@@ -527,14 +527,7 @@ func TestAgent_Template_UserAgent(t *testing.T) {
 
 	roleIDPath, secretIDPath := setupAppRoleAndKVMounts(t, serverClient)
 
-	// make a temp directory to hold renders. Each test will create a temp dir
-	// inside this one
-	tmpDirRoot := t.TempDir()
-	// create temp dir for this test run
-	tmpDir, err := os.MkdirTemp(tmpDirRoot, "TestAgent_Template_UserAgent")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tmpDir := t.TempDir()
 
 	// make some template files
 	var templatePaths []string
@@ -693,10 +686,6 @@ func TestAgent_Template_Basic(t *testing.T) {
 
 	roleIDPath, secretIDPath := setupAppRoleAndKVMounts(t, serverClient)
 
-	// make a temp directory to hold renders. Each test will create a temp dir
-	// inside this one
-	tmpDirRoot := t.TempDir()
-
 	// start test cases here
 	testCases := map[string]struct {
 		templateCount int
@@ -721,10 +710,7 @@ func TestAgent_Template_Basic(t *testing.T) {
 	for tcname, tc := range testCases {
 		t.Run(tcname, func(t *testing.T) {
 			// create temp dir for this test run
-			tmpDir, err := os.MkdirTemp(tmpDirRoot, tcname)
-			if err != nil {
-				t.Fatal(err)
-			}
+			tmpDir := t.TempDir()
 
 			// make some template files
 			var templatePaths []string
@@ -1160,15 +1146,7 @@ func TestAgent_Template_ExitCounter(t *testing.T) {
 
 	roleIDPath, secretIDPath := setupAppRoleAndKVMounts(t, serverClient)
 
-	// make a temp directory to hold renders. Each test will create a temp dir
-	// inside this one
-	tmpDirRoot := t.TempDir()
-
-	// create temp dir for this test run
-	tmpDir, err := os.MkdirTemp(tmpDirRoot, "agent-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tmpDir := t.TempDir()
 
 	// Create a config file
 	config := `
@@ -1460,10 +1438,6 @@ func TestAgent_Template_Retry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// make a temp directory to hold renders. Each test will create a temp dir
-	// inside this one
-	tmpDirRoot := t.TempDir()
-
 	intRef := func(i int) *int {
 		return &i
 	}
@@ -1505,11 +1479,7 @@ func TestAgent_Template_Retry(t *testing.T) {
 			// perspective) attempt, it will succeed.
 			h.failCount = 6
 
-			// create temp dir for this test run
-			tmpDir, err := os.MkdirTemp(tmpDirRoot, tcname)
-			if err != nil {
-				t.Fatal(err)
-			}
+			tmpDir := t.TempDir()
 
 			// make some template files
 			templatePath := filepath.Join(tmpDir, "render_0.tmpl")
@@ -2291,10 +2261,6 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// make a temp directory to hold renders. Each test will create a temp dir
-	// inside this one
-	tmpDirRoot := t.TempDir()
-
 	// Note that missing key is different from a non-existent secret. A missing
 	// key (2xx response with missing keys in the response map) can still yield
 	// a successful render unless error_on_missing_key is specified, whereas a
@@ -2392,11 +2358,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 
 	for tcName, tc := range testCases {
 		t.Run(tcName, func(t *testing.T) {
-			// create temp dir for this test run
-			tmpDir, err := os.MkdirTemp(tmpDirRoot, tcName)
-			if err != nil {
-				t.Fatal(err)
-			}
+			tmpDir := t.TempDir()
 
 			listenAddr := generateListenerAddress(t)
 			listenConfig := fmt.Sprintf(`

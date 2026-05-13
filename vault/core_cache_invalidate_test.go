@@ -21,6 +21,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/quotas"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/assert"
@@ -304,10 +305,10 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 			testCore_Invalidate_handleRequest(t, ctx, c, req)
 
 			// 2. Manipulate Storage
-			policy, err := c.policyStore.GetPolicy(ctx, "test-policy", PolicyTypeACL)
+			pol, err := c.policyStore.GetPolicy(ctx, "test-policy", policy.TypeACL)
 			require.NoError(t, err)
 
-			clone := policy.ShallowClone()
+			clone := pol.ShallowClone()
 			clone.Expiration = time.Date(2099, 1, 1, 12, 0, 0, 0, time.UTC)
 
 			newEntry, err := logical.StorageEntryJSON(storagePath, clone)
@@ -326,7 +327,7 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 			c.invalidateSynchronous(storagePath)
 
 			// 4. Check cache was properly invalidated
-			updatedPolicy, err := c.policyStore.GetPolicy(ctx, "test-policy", PolicyTypeACL)
+			updatedPolicy, err := c.policyStore.GetPolicy(ctx, "test-policy", policy.TypeACL)
 			require.NoError(t, err)
 
 			require.Equal(t, clone.Expiration, updatedPolicy.Expiration)

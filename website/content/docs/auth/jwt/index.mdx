@@ -7,16 +7,6 @@ description: >-
 
 # JWT/OIDC auth method
 
-:::warning
-
-**Note**: This engine can use external X.509 certificates as part of TLS or signature validation.
-   Verifying signatures against X.509 certificates that use SHA-1 is deprecated and is no longer
-   usable without a workaround. See the
-   [deprecation FAQ](../../deprecation/faq.mdx#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
-   for more information.
-
-:::
-
 The `jwt` auth method can be used to authenticate with OpenBao using
 [OIDC](https://en.wikipedia.org/wiki/OpenID_Connect) or by providing a
 [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token).
@@ -288,7 +278,7 @@ management tool.
        default_role="demo"
    ```
 
-   If you need to perform JWT verification with JWT token validation, then leave the `oidc_client_id` and `oidc_client_secret` blank. 
+   If you need to perform JWT verification with JWT token validation, then leave the `oidc_client_id` and `oidc_client_secret` blank.
 
    ```text
    $ bao write auth/jwt/config \

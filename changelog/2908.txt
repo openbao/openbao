@@ -1,0 +1,3 @@
+```release-note:bug
+command/server: Refuse repeated startup if self-initialization failed on initial run.
+```

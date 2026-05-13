@@ -196,8 +196,7 @@ module('Integration | Component | mfa-form', function (hooks) {
       `);
 
       await fillIn('[data-test-mfa-passcode]', code);
-      later(() => cancelTimers(), 50);
-      await click('[data-test-mfa-validate]');
+      click('[data-test-mfa-validate]');
       await waitUntil(() => find('[data-test-mfa-countdown]'));
       const expectedTime = code === 'used' ? '45' : '15';
       assert

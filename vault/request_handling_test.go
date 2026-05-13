@@ -633,9 +633,27 @@ path "secret/metadata/by-metadata/subdir/both" {
 	require.NotNil(t, tokenResp)
 	require.False(t, tokenResp.IsError())
 
+	// test list operation without any data
+	req.Operation = logical.ListOperation
+	req.Data = nil
+	req.Path = "secret/metadata/by-metadata/"
+
+	req.ClientToken = tokenResp.Auth.ClientToken
+	req.ClientTokenAccessor = tokenResp.Auth.Accessor
+
+	noDataResp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err, "[%v] path: %v", req.Operation, req.Path)
+	require.NotNil(t, noDataResp, "[%v] path: %v", req.Operation, req.Path)
+	require.Empty(t, noDataResp.Data)
+
+	// reset the client infos
+	req.ClientToken = root
+	req.ClientTokenAccessor = ""
+
 	// Create all entries.
 	for _, prefix := range []string{"by-data", "by-metadata", "by-data/subdir", "by-metadata/subdir"} {
 		for _, name := range []string{"data-yes", "data-no", "metadata-yes", "metadata-no", "elided", "both"} {
+			req.Operation = logical.UpdateOperation
 			req.Path = fmt.Sprintf("secret/data/%v/%v", prefix, name)
 			req.Data = map[string]interface{}{
 				"data": map[string]interface{}{
@@ -718,4 +736,46 @@ path "secret/metadata/by-metadata/subdir/both" {
 			}
 		}
 	}
+}
+
+func TestRequestHandling_RelativePath(t *testing.T) {
+	core, _, root := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(t.Context())
+
+	req := &logical.Request{
+		Path:        "sys/policies/acl/../../../testing",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+	}
+	resp, err := core.HandleRequest(ctx, req)
+	require.ErrorContains(t, err, logical.ErrRelativePath.Error())
+	require.Nil(t, resp)
+
+	req = &logical.Request{
+		Path:        "sys/policies/acl/./testing",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+	}
+	resp, err = core.HandleRequest(ctx, req)
+	require.ErrorContains(t, err, logical.ErrRelativePath.Error())
+	require.NotContains(t, err.Error(), "read failed")
+	require.Nil(t, resp)
+}
+
+func TestRequestHandling_RelativePathAllowed(t *testing.T) {
+	core, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		UnsafeRelativePaths: true,
+	})
+	ctx := namespace.RootContext(t.Context())
+
+	req := &logical.Request{
+		Path:        "cubbyhole/asdf/../asdf",
+		ClientToken: root,
+		Operation:   logical.ReadOperation,
+	}
+	_, err := core.HandleRequest(ctx, req)
+
+	// While other places still disallow the relative paths (e.g., storage
+	// view), we know that we made it farther.
+	require.ErrorContains(t, err, "read failed")
 }

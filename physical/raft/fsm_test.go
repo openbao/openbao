@@ -6,7 +6,6 @@ package raft
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"sort"
 	"sync/atomic"
 	"testing"
@@ -20,11 +19,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func getFSM(t testing.TB) (*FSM, string) {
-	raftDir, err := os.MkdirTemp("", "vault-raft-")
-	if err != nil {
-		t.Fatal(err)
-	}
+func getFSM(t testing.TB) *FSM {
+	raftDir := t.TempDir()
 	t.Logf("raft dir: %s", raftDir)
 
 	logger := hclog.New(&hclog.LoggerOptions{
@@ -37,13 +33,12 @@ func getFSM(t testing.TB) (*FSM, string) {
 		t.Fatal(err)
 	}
 
-	return fsm, raftDir
+	return fsm
 }
 
 func TestFSM_Batching(t *testing.T) {
 	t.Parallel()
-	fsm, dir := getFSM(t)
-	defer func() { _ = os.RemoveAll(dir) }()
+	fsm := getFSM(t)
 
 	var index uint64
 	var term uint64 = 1
@@ -145,8 +140,7 @@ func TestFSM_Batching(t *testing.T) {
 
 func TestFSM_List(t *testing.T) {
 	t.Parallel()
-	fsm, dir := getFSM(t)
-	defer func() { _ = os.RemoveAll(dir) }()
+	fsm := getFSM(t)
 
 	ctx := t.Context()
 	count := 100

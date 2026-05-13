@@ -163,6 +163,10 @@ plugin_auto_register = true
 - `true` - server startup and `SIGHUP` triggers registering of plugins; can still be manually registered with `bao plugin register`.
 - `false` - only `bao plugin register` will manually register plugins.
 
+## `plugin_download_max_size`
+
+A number defining the maximum allowed plugin binary size in bytes when extracted from an OCI image. Defaults to `536870912` (512 MiB) if not set.
+
 ## Authentication
 
 When downloading plugin images from a private registry, OpenBao will use

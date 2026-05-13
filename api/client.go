@@ -54,6 +54,10 @@ const (
 	EnvVaultProxyAddr        = "BAO_PROXY_ADDR"
 	EnvVaultDisableRedirects = "BAO_DISABLE_REDIRECTS"
 
+	// EnvTokenPath is the path to a file that holds a token. This is presently
+	// only respected by the `bao` CLI, not the API client.
+	EnvTokenPath = "BAO_TOKEN_PATH"
+
 	// NamespaceHeaderName is the header set to specify which namespace the
 	// request is intended for.
 	NamespaceHeaderName = "X-Vault-Namespace"
@@ -457,6 +461,16 @@ func (c *Config) ConfigureTLS(t *TLSConfig) error {
 	defer c.modifyLock.Unlock()
 
 	return c.configureTLS(t)
+}
+
+// ConfigureTLS invokes config.ConfigureTLS. This exposes the ability to reload
+// TLS configuration without recreating the client, which is useful for rotating
+// short-lived TLS credentials.
+func (c *Client) ConfigureTLS(t *TLSConfig) error {
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
+
+	return c.config.ConfigureTLS(t)
 }
 
 // ReadEnvironment reads configuration information from the environment. If

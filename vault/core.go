@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -41,6 +40,7 @@ import (
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/command/server"
 	fwd "github.com/openbao/openbao/helper/forwarding"
+	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/identity/mfa"
 	"github.com/openbao/openbao/helper/locking"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -60,6 +60,7 @@ import (
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/forwarding"
 	ident "github.com/openbao/openbao/vault/identity"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/quotas"
 	"github.com/openbao/openbao/vault/routing"
 	vaultseal "github.com/openbao/openbao/vault/seal"
@@ -149,6 +150,10 @@ var logger = logging.NewVaultLogger(log.Trace)
 // displayed but not cause a program exit
 type NonFatalError struct {
 	Err error
+}
+
+func (e *NonFatalError) Unwrap() error {
+	return e.Err
 }
 
 func (e *NonFatalError) WrappedErrors() []error {
@@ -290,14 +295,10 @@ type Core struct {
 	// conditions.
 	shutdownDoneCh *atomic.Value
 
-	// unlockInfo has the keys provided to Unseal until the threshold number of parts is available, as well as the operation nonce
-	unlockInfo *unlockInformation
-
-	// generateRootProgress holds the shares until we reach enough
-	// to verify the root key
-	generateRootConfig   *GenerateRootConfig
-	generateRootProgress [][]byte
-	generateRootLock     sync.Mutex
+	// namespaceRootGens holds the shares for each namespace
+	// until we reach enough to verify the root key.
+	namespaceRootGens    map[string]*rootTokenGeneration
+	namespaceRootGenLock sync.RWMutex
 
 	// These variables holds the config and shares we have until we reach
 	// enough to verify the appropriate root key. Note that the same lock is
@@ -360,7 +361,7 @@ type Core struct {
 	rollback *RollbackManager
 
 	// policy store is used to manage named ACL policies
-	policyStore *PolicyStore
+	policyStore *policy.Store
 
 	// token store is used to manage authentication tokens
 	tokenStore *TokenStore
@@ -508,8 +509,7 @@ type Core struct {
 
 	// This can be used to trigger operations to stop running when Vault is
 	// going to be shut down, stepped down, or sealed
-	activeContext           context.Context
-	activeContextCancelFunc atomic.Pointer[context.CancelFunc]
+	activeContext atomic.Pointer[atomicContext]
 
 	// unsealwithStoredKeysLock is a mutex that prevents multiple processes from
 	// unsealing with stored keys are the same time.
@@ -630,6 +630,8 @@ type Core struct {
 	// instance.
 	allowUnauthedWorkflows bool
 	workflowStore          *WorkflowStore
+
+	unsafeRelativePaths bool
 }
 
 // c.stateLock needs to be held in read mode before calling this function.
@@ -783,6 +785,8 @@ type CoreConfig struct {
 	UnsafeCrossNamespaceIdentity bool
 
 	AllowUnauthenticatedWorkflows bool
+
+	UnsafeRelativePaths bool
 }
 
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
@@ -938,6 +942,8 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		detectDeadlocks:                detectDeadlocks,
 		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
 		allowUnauthedWorkflows:         conf.AllowUnauthenticatedWorkflows,
+		unsafeRelativePaths:            conf.UnsafeRelativePaths,
+		namespaceRootGens:              make(map[string]*rootTokenGeneration),
 	}
 
 	c.standby.Store(true)
@@ -1049,6 +1055,12 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 		return nil, err
 	}
 
+	if c.recoveryMode {
+		// When in recovery mode, assign a default context during startup.
+		ctx, cancel := context.WithCancel(context.Background())
+		c.activeContext.Store(NewAtomicContext(ctx, cancel))
+	}
+
 	// Construct a new AES-GCM barrier
 	c.barrier = barrier.NewAESGCMBarrier(c.physical, "")
 	c.SetupSealManager()
@@ -1106,7 +1118,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	c.configureAuditBackends(conf.AuditBackends)
 
 	// UI
-	uiStoragePrefix := systemBarrierPrefix + "ui"
+	uiStoragePrefix := barrier.SystemBarrierPrefix + "ui"
 	c.uiConfig = NewUIConfig(conf.EnableUI, physical.NewView(c.physical, uiStoragePrefix), barrier.NewView(c.barrier, uiStoragePrefix))
 
 	// Listeners
@@ -1240,7 +1252,12 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 		b := NewSystemBackend(c, sysBackendLogger)
 		return b, b.Setup(ctx, config)
 	}
-	logicalBackends[routing.MountTypeNSSystem] = logicalBackends[routing.MountTypeSystem]
+	logicalBackends[routing.MountTypeNSSystem] = func(ctx context.Context, bc *logical.BackendConfig) (logical.Backend, error) {
+		if c.systemBackend != nil {
+			return c.systemBackend, nil
+		}
+		return nil, errors.New("system backend does not exist")
+	}
 
 	// Identity
 	logicalBackends[routing.MountTypeIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
@@ -1373,7 +1390,7 @@ func (c *Core) GetContext() (context.Context, context.CancelFunc) {
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
 
-	return context.WithCancel(namespace.RootContext(c.activeContext))
+	return context.WithCancel(namespace.RootContext(c.activeContext.Load()))
 }
 
 // Sealed checks if the Vault is currently sealed
@@ -1387,28 +1404,10 @@ func (c *Core) NamespaceSealed(ns *namespace.Namespace) bool {
 	return c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path).Sealed()
 }
 
-// SecretProgress returns the number of keys provided so far. Lock
-// should only be false if the caller is already holding the read
-// statelock (such as calls originating from switchedLockHandleRequest).
-func (c *Core) SecretProgress(lock bool) (int, string) {
-	if lock {
-		c.stateLock.RLock()
-		defer c.stateLock.RUnlock()
-	}
-	switch c.unlockInfo {
-	case nil:
-		return 0, ""
-	default:
-		return len(c.unlockInfo.Parts), c.unlockInfo.Nonce
-	}
-}
-
 // ResetUnsealProcess removes the current unlock parts from memory, to reset
 // the unsealing process
 func (c *Core) ResetUnsealProcess() {
-	c.stateLock.Lock()
-	defer c.stateLock.Unlock()
-	c.unlockInfo = nil
+	c.sealManager.ResetUnsealProcess(namespace.RootNamespaceUUID)
 }
 
 func (c *Core) UnsealMigrate(key []byte) (bool, error) {
@@ -1428,29 +1427,28 @@ func (c *Core) Unseal(key []byte) (bool, error) {
 // target threshold.
 //
 // The provided key should be a recovery key fragment if the seal
-// is an autoseal, or a regular seal key fragment for shamir.  In
+// is an autoseal, or a regular seal key fragment for shamir. In
 // migration scenarios "seal" in the preceding sentence refers to
 // the migration seal in c.migrationInfo.seal.
 //
 // We use getUnsealKey to work out if we have enough fragments,
-// and if we don't have enough we return early.  Otherwise we get
+// and if we don't have enough we return early. Otherwise we get
 // back the combined key.
 //
 // For shamir the combined key is used to decrypt the root key
-// read from storage.  For autoseal the combined key isn't used
+// read from storage. For autoseal the combined key isn't used
 // except to verify that the stored recovery key matches.
 //
 // In migration scenarios a side-effect of unsealing is that
 // the members of c.migrationInfo are populated (excluding
-// .seal, which must already be populated before unseal is called.)
+// .seal, which must already be populated before unseal is called).
 func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	defer metrics.MeasureSince([]string{"core", "unseal"}, time.Now())
 
 	c.stateLock.Lock()
 	defer c.stateLock.Unlock()
 
-	ctx := context.Background()
-
+	ctx := namespace.RootContext(context.Background())
 	if migrate && c.migrationInfo == nil {
 		return errors.New("can't perform a seal migration, no migration seal found")
 	}
@@ -1479,16 +1477,6 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 		return ErrNotInit
 	}
 
-	// Verify the key length
-	min, max := c.barrier.KeyLength()
-	max += shamir.ShareOverhead
-	if len(key) < min {
-		return &ErrInvalidKey{fmt.Sprintf("key is shorter than minimum %d bytes", min)}
-	}
-	if len(key) > max {
-		return &ErrInvalidKey{fmt.Sprintf("key is longer than maximum %d bytes", max)}
-	}
-
 	// Check if already unsealed
 	if !c.Sealed() {
 		return nil
@@ -1500,17 +1488,11 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 		sealToUse = c.migrationInfo.seal
 	}
 
-	newKey, err := c.recordUnsealPart(key)
-	if !newKey || err != nil {
-		return err
-	}
-
-	// getUnsealKey returns either a recovery key (in the case of an autoseal)
-	// or an unseal key (new-style shamir).
-	combinedKey, err := c.getUnsealKey(ctx, sealToUse)
+	combinedKey, err := c.sealManager.unsealFragment(ctx, namespace.RootNamespace, sealToUse, c.barrier, key)
 	if err != nil || combinedKey == nil {
 		return err
 	}
+
 	if migrate {
 		c.migrationInfo.unsealKey = combinedKey
 	}
@@ -1518,10 +1500,12 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	if c.isRaftUnseal() {
 		return c.unsealWithRaft(combinedKey)
 	}
-	rootKey, err := c.unsealKeyToRootKeyPreUnseal(ctx, sealToUse, combinedKey)
+
+	rootKey, err := c.sealManager.unsealKeyToRootKey(ctx, sealToUse, combinedKey, false, true)
 	if err != nil {
 		return err
 	}
+
 	return c.unsealInternal(ctx, rootKey)
 }
 
@@ -1579,7 +1563,7 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 			}
 			if keyringFound && len(rootKey) == 0 {
 				var err error
-				rootKey, err = c.unsealKeyToRootKeyPreUnseal(ctx, c.seal, combinedKey)
+				rootKey, err = c.sealManager.unsealKeyToRootKey(ctx, c.seal, combinedKey, false, true)
 				if err != nil {
 					c.logger.Error("failed to read root key", "error", err)
 					return
@@ -1597,92 +1581,6 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 	}()
 
 	return nil
-}
-
-// recordUnsealPart takes in a key fragment, and returns true if it's a new fragment.
-func (c *Core) recordUnsealPart(key []byte) (bool, error) {
-	// Check if we already have this piece
-	if c.unlockInfo != nil {
-		for _, existing := range c.unlockInfo.Parts {
-			if subtle.ConstantTimeCompare(existing, key) == 1 {
-				return false, nil
-			}
-		}
-	} else {
-		uuid, err := uuid.GenerateUUID()
-		if err != nil {
-			return false, err
-		}
-		c.unlockInfo = &unlockInformation{
-			Nonce: uuid,
-		}
-	}
-
-	// Store this key
-	c.unlockInfo.Parts = append(c.unlockInfo.Parts, key)
-	return true, nil
-}
-
-// getUnsealKey uses key fragments recorded by recordUnsealPart and
-// returns the combined key if the key share threshold is met.
-// If the key fragments are part of a recovery key, also verify that
-// it matches the stored recovery key on disk.
-func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
-	var config *SealConfig
-	var err error
-
-	raftInfo := c.raftInfo.Load()
-
-	switch {
-	case seal.RecoveryKeySupported():
-		config, err = seal.RecoveryConfig(ctx)
-	case raftInfo != nil:
-		// Ignore follower's seal config and refer to leader's barrier
-		// configuration.
-		config = raftInfo.leaderBarrierConfig
-	default:
-		config, err = seal.BarrierConfig(ctx)
-	}
-	if err != nil {
-		return nil, err
-	}
-	if config == nil {
-		return nil, errors.New("failed to obtain seal/recovery configuration")
-	}
-
-	// Check if we don't have enough keys to unlock, proceed through the rest of
-	// the call only if we have met the threshold
-	if len(c.unlockInfo.Parts) < config.SecretThreshold {
-		if c.logger.IsDebug() {
-			c.logger.Debug("cannot unseal, not enough keys", "keys", len(c.unlockInfo.Parts), "threshold", config.SecretThreshold, "nonce", c.unlockInfo.Nonce)
-		}
-		return nil, nil
-	}
-
-	defer func() {
-		c.unlockInfo = nil
-	}()
-
-	// Recover the split key. recoveredKey is the shamir combined
-	// key, or the single provided key if the threshold is 1.
-	var unsealKey []byte
-	if config.SecretThreshold == 1 {
-		unsealKey = make([]byte, len(c.unlockInfo.Parts[0]))
-		copy(unsealKey, c.unlockInfo.Parts[0])
-	} else {
-		unsealKey, err = shamir.Combine(c.unlockInfo.Parts)
-		if err != nil {
-			return nil, &ErrInvalidKey{fmt.Sprintf("failed to compute combined key: %v", err)}
-		}
-	}
-
-	if seal.RecoveryKeySupported() {
-		if err := seal.VerifyRecoveryKey(ctx, unsealKey); err != nil {
-			return nil, &ErrInvalidKey{fmt.Sprintf("failed to verify recovery key: %v", err)}
-		}
-	}
-
-	return unsealKey, nil
 }
 
 // sealMigrated must be called with the stateLock held. It returns true if
@@ -1845,6 +1743,10 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 	// Attempt to unlock
 	if err := c.barrier.Unseal(ctx, rootKey); err != nil {
+		return err
+	}
+
+	if err := c.checkSelfInit(ctx); err != nil {
 		return err
 	}
 
@@ -2062,7 +1964,7 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 	}
 
 	// Verify that this operation is allowed
-	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &PolicyCheckOpts{
+	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.CheckOpts{
 		RootPrivsRequired: true,
 	})
 	if !authResults.Allowed {
@@ -2076,9 +1978,9 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 	if te != nil && te.NumUses == tokenRevocationPending {
 		// Token needs to be revoked. We do this immediately here because
 		// we won't have a token store after sealing.
-		leaseID, err := c.expiration.CreateOrFetchRevocationLeaseByToken(c.activeContext, te)
+		leaseID, err := c.expiration.CreateOrFetchRevocationLeaseByToken(c.activeContext.Load(), te)
 		if err == nil {
-			err = c.expiration.Revoke(c.activeContext, leaseID)
+			err = c.expiration.Revoke(c.activeContext.Load(), leaseID)
 		}
 		if err != nil {
 			c.logger.Error("token needed revocation before seal but failed to revoke", "error", err)
@@ -2129,7 +2031,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 	c.clearForwardingClients()
 	c.requestForwardingConnectionLock.Unlock()
 
-	activeCtxCancel := c.activeContextCancelFunc.Load()
+	activeCtxCancel := c.activeContext.Load().Canceler()
 	cancelCtxAndLock := func() {
 		doneCh := make(chan struct{})
 		go func() {
@@ -2137,9 +2039,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 			case <-doneCh:
 			// Attempt to drain any inflight requests
 			case <-time.After(DefaultMaxRequestDuration):
-				if activeCtxCancel != nil {
-					(*activeCtxCancel)()
-				}
+				activeCtxCancel()
 			}
 		}()
 
@@ -2153,9 +2053,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 		close(doneCh)
 
 		// Stop requests from processing
-		if activeCtxCancel != nil {
-			(*activeCtxCancel)()
-		}
+		activeCtxCancel()
 	}
 
 	// Do pre-seal teardown if HA is not enabled
@@ -2168,9 +2066,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 		c.standby.Store(true)
 
 		// Stop requests from processing
-		if activeCtxCancel != nil {
-			(*activeCtxCancel)()
-		}
+		activeCtxCancel()
 	} else {
 		// If we are keeping the lock we already have the state write lock
 		// held. Otherwise grab it here so that when stopCh is triggered we are
@@ -2191,6 +2087,9 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 		// Wait for runStandby to stop
 		<-c.standbyDoneCh
 		c.logger.Debug("runStandby done")
+
+		// Stop requests from processing
+		activeCtxCancel()
 	}
 
 	// Stop all running subsystems.
@@ -2258,7 +2157,7 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 
 	if c.autoRotateCancel == nil {
 		var autoRotateCtx context.Context
-		autoRotateCtx, c.autoRotateCancel = context.WithCancel(c.activeContext)
+		autoRotateCtx, c.autoRotateCancel = context.WithCancel(c.activeContext.Load())
 		go c.autoRotateBarrierLoop(autoRotateCtx)
 	}
 
@@ -2394,8 +2293,7 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	c.postUnsealFuncs = nil
 
 	// Create a new request context
-	c.activeContext = ctx
-	c.activeContextCancelFunc.Store(&ctxCancelFunc)
+	c.activeContext.Store(NewAtomicContext(ctx, ctxCancelFunc))
 
 	defer func() {
 		if retErr != nil {
@@ -2434,32 +2332,46 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	// the keys used for auto unsealing ensures Vault and its data will
 	// continue to be accessible even after prior seal keys are destroyed.
 	if seal, ok := c.seal.(*autoSeal); ok {
-		if err := seal.UpgradeKeys(c.activeContext); err != nil {
+		if err := seal.UpgradeKeys(c.activeContext.Load()); err != nil {
 			c.logger.Warn("post-unseal upgrade seal keys failed", "error", err)
 		}
 
-		// Start a periodic but infrequent heartbeat to detect auto-seal backend outages at runtime rather than being
-		// surprised by this at the next need to unseal.
+		// Start a periodic but infrequent heartbeat to detect auto-seal backend
+		// outages at runtime rather than being surprised by this at the next
+		// need to unseal.
 		seal.StartHealthCheck()
 	}
 
-	// This is intentionally the last block in this function. We want to allow
-	// writes just before allowing client requests, to ensure everything has
-	// been set up properly before any writes can have happened.
-	//
-	// Use a small temporary worker pool to run postUnsealFuncs in parallel
+	// This is intentionally (almost) the last block in this function. We want
+	// to allow writes just before allowing client requests, to ensure
+	// everything has been set up properly before any writes happen.
+	c.runPostUnsealFuncs(c.postUnsealFuncs)
+
+	if api.ReadBaoVariable(EnvVaultDisableLocalAuthMountEntities) != "" {
+		c.logger.Warn("disabling entities for local auth mounts through env var", "env", EnvVaultDisableLocalAuthMountEntities)
+	}
+
+	c.loginMFABackend.usedCodes = zcache.New[string, struct{}](0, 30*time.Second)
+	c.loginMFABackend.rateLimits = zcache.New[string, uint32](0, 30*time.Second)
+
+	c.logger.Info("post-unseal setup complete")
+	return nil
+}
+
+// runPostUnsealFuncs uses a small temporary worker pool to run postUnsealFuncs in parallel.
+func (c *Core) runPostUnsealFuncs(postUnsealFuncs []func()) {
 	postUnsealFuncConcurrency := runtime.NumCPU() * 2
 	if v := api.ReadBaoVariable("BAO_POSTUNSEAL_FUNC_CONCURRENCY"); v != "" {
 		pv, err := strconv.Atoi(v)
 		if err != nil || pv < 1 {
-			c.logger.Warn("invalid value for VAULT_POSTUNSEAL_FUNC_CURRENCY, must be a positive integer", "error", err, "value", pv)
+			c.logger.Warn("invalid value for BAO_POSTUNSEAL_FUNC_CURRENCY, must be a positive integer", "error", err, "value", pv)
 		} else {
 			postUnsealFuncConcurrency = pv
 		}
 	}
 	if postUnsealFuncConcurrency <= 1 {
 		// Out of paranoia, keep the old logic for parallism=1
-		for _, v := range c.postUnsealFuncs {
+		for _, v := range postUnsealFuncs {
 			v()
 		}
 	} else {
@@ -2473,23 +2385,13 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 				}
 			}()
 		}
-		for _, v := range c.postUnsealFuncs {
+		for _, v := range postUnsealFuncs {
 			wg.Add(1)
 			jobs <- v
 		}
 		wg.Wait()
 		close(jobs)
 	}
-
-	if api.ReadBaoVariable(EnvVaultDisableLocalAuthMountEntities) != "" {
-		c.logger.Warn("disabling entities for local auth mounts through env var", "env", EnvVaultDisableLocalAuthMountEntities)
-	}
-
-	c.loginMFABackend.usedCodes = zcache.New[string, struct{}](0, 30*time.Second)
-	c.loginMFABackend.rateLimits = zcache.New[string, uint32](0, 30*time.Second)
-
-	c.logger.Info("post-unseal setup complete")
-	return nil
 }
 
 // preSeal is invoked before the barrier is sealed, allowing
@@ -2803,77 +2705,6 @@ func (c *Core) adjustSealConfigDuringMigration(existBarrierSealConfig, existReco
 
 		newRecoveryConfig := existBarrierSealConfig.Clone()
 		c.seal.SetCachedRecoveryConfig(newRecoveryConfig)
-	}
-}
-
-func (c *Core) unsealKeyToRootKeyPostUnseal(ctx context.Context, combinedKey []byte) ([]byte, error) {
-	return c.unsealKeyToRootKey(ctx, c.seal, combinedKey, true, false)
-}
-
-func (c *Core) unsealKeyToRootKeyPreUnseal(ctx context.Context, seal Seal, combinedKey []byte) ([]byte, error) {
-	return c.unsealKeyToRootKey(ctx, seal, combinedKey, false, true)
-}
-
-// unsealKeyToRootKey takes a key provided by the user, either a recovery key
-// if using an autoseal or an unseal key with Shamir. It returns a nil error
-// if the key is valid and an error otherwise. It also returns the root key
-// that can be used to unseal the barrier.
-// If useTestSeal is true, seal will not be modified; this is used when not
-// invoked as part of an unseal process; In shamir case the combinedKey
-// will be set in the seal, which means subsequent attempts to use the seal
-// to read the root key will succeed, assuming combinedKey is valid.
-// If allowMissing is true, a failure to find the root key in storage results
-// in a nil error and a nil root key being returned.
-func (c *Core) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []byte, useTestSeal bool, allowMissing bool) ([]byte, error) {
-	switch seal.BarrierType() {
-	case vaultseal.WrapperTypeShamir:
-		if useTestSeal {
-			testseal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
-			testseal.SetCore(c)
-			cfg, err := seal.BarrierConfig(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to setup test barrier config: %w", err)
-			}
-			testseal.SetCachedBarrierConfig(cfg)
-			seal = testseal
-		}
-
-		shamirWrapper, err := seal.GetShamirWrapper()
-		if err != nil {
-			return nil, err
-		}
-		err = shamirWrapper.SetAesGcmKeyBytes(combinedKey)
-		if err != nil {
-			return nil, &ErrInvalidKey{fmt.Sprintf("failed to setup unseal key: %v", err)}
-		}
-		storedKeys, err := seal.GetStoredKeys(ctx)
-		if storedKeys == nil && err == nil && allowMissing {
-			return nil, nil
-		}
-		if err == nil && len(storedKeys) != 1 {
-			err = fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
-		}
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
-		}
-		return storedKeys[0], nil
-	default:
-		if err := seal.VerifyRecoveryKey(ctx, combinedKey); err != nil {
-			return nil, fmt.Errorf("recovery key verification failed: %w", err)
-		}
-
-		storedKeys, err := seal.GetStoredKeys(ctx)
-		if storedKeys == nil && err == nil && allowMissing {
-			return nil, nil
-		}
-
-		if err == nil && len(storedKeys) != 1 {
-			err = fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
-		}
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
-		}
-		return storedKeys[0], nil
 	}
 }
 
@@ -3292,7 +3123,7 @@ func (c *Core) setupCachedMFAResponseAuth() {
 	mfaQueue := c.mfaResponseAuthQueue
 	c.mfaResponseAuthQueueLock.Unlock()
 
-	ctx := c.activeContext
+	ctx := c.activeContext.Load()
 
 	go func() {
 		ticker := time.Tick(5 * time.Second)
@@ -3318,7 +3149,7 @@ func (c *Core) updateLockedUserEntries() {
 	}
 
 	var updateLockedUserEntriesCtx context.Context
-	updateLockedUserEntriesCtx, c.updateLockedUserEntriesCancel = context.WithCancel(c.activeContext)
+	updateLockedUserEntriesCtx, c.updateLockedUserEntriesCancel = context.WithCancel(c.activeContext.Load())
 
 	if err := c.runLockedUserEntryUpdates(updateLockedUserEntriesCtx); err != nil {
 		c.Logger().Error("failed to run locked user entry updates", "error", err)
@@ -4139,4 +3970,57 @@ func (c *Core) RedirectAddr() string {
 
 func (c *Core) UnsafeCrossNamespaceIdentity() bool {
 	return c.unsafeCrossNamespaceIdentity
+}
+
+func (c *Core) performPolicyChecks(ctx context.Context, acl *policy.ACL, te *logical.TokenEntry, req *logical.Request, inEntity *identity.Entity, opts *policy.CheckOpts) *policy.AuthResults {
+	ret := new(policy.AuthResults)
+
+	// First, perform normal ACL checks if requested. The only time no ACL
+	// should be applied is if we are only processing EGPs against a login
+	// path in which case opts.Unauth will be set.
+	if acl != nil && !opts.Unauth {
+		ret.ACLResults = acl.AllowOperation(ctx, req, false)
+		ret.RootPrivs = ret.ACLResults.RootPrivs
+		// Root is always allowed; skip Sentinel/MFA checks
+		if ret.ACLResults.IsRoot {
+			ret.Allowed = true
+			return ret
+		}
+		if !ret.ACLResults.Allowed {
+			return ret
+		}
+		// Since HelpOperation was fast-pathed inside AllowOperation, RootPrivs will not have been populated in this
+		// case, so we need to special-case that here as well, or we'll block HelpOperation on all sudo-protected paths.
+		if !ret.RootPrivs && opts.RootPrivsRequired && req.Operation != logical.HelpOperation {
+			return ret
+		}
+	}
+
+	ret.Allowed = true
+
+	return ret
+}
+
+// setupPolicyStore is used to initialize the policy store
+// when the vault is being unsealed.
+func (c *Core) setupPolicyStore(ctx context.Context) error {
+	// Create the policy store
+	var err error
+	sysView := &dynamicSystemView{core: c}
+	psLogger := c.baseLogger.Named("policy")
+	c.AddLogger(psLogger)
+	c.policyStore, err = policy.NewStore(ctx, c, c.systemBarrierView, sysView, psLogger)
+	if err != nil {
+		return err
+	}
+
+	// Ensure that the default policy exists, and if not, create it
+	return c.policyStore.LoadDefaultPolicies(ctx)
+}
+
+// teardownPolicyStore is used to reverse setupPolicyStore
+// when the vault is being sealed.
+func (c *Core) teardownPolicyStore() error {
+	c.policyStore = nil
+	return nil
 }

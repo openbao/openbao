@@ -769,3 +769,33 @@ func TestPostgreSQLBackend_LockSemantics(t *testing.T) {
 	default:
 	}
 }
+
+func TestPostgreSQLBackend_ParallelTables(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.NewVaultLogger(log.Debug)
+
+	cleanup, connURL := postgresql.PrepareTestContainer(t, "11.1")
+	defer cleanup()
+
+	// Create two in the same database instance.
+	b1, err := NewPostgreSQLBackend(map[string]string{
+		"connection_url": connURL,
+		"table":          "store_1",
+		"ha_table":       "store_1_ha",
+		"ha_enabled":     "true",
+	}, logger)
+	require.NoError(t, err)
+
+	b2, err := NewPostgreSQLBackend(map[string]string{
+		"connection_url": connURL,
+		"table":          "store_2",
+		"ha_table":       "store_2_ha",
+		"ha_enabled":     "true",
+	}, logger)
+	require.NoError(t, err)
+
+	logger.Info("Running basic backend tests")
+	physical.ExerciseBackend(t, b1)
+	physical.ExerciseBackend(t, b2)
+}

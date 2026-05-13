@@ -20,29 +20,29 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@docusaurus/core": "^3.10.0",
-    "@docusaurus/faster": "^3.10.0",
-    "@docusaurus/plugin-client-redirects": "^3.10.0",
-    "@docusaurus/plugin-content-docs": "^3.10.0",
-    "@docusaurus/plugin-sitemap": "^3.10.0",
-    "@docusaurus/preset-classic": "^3.10.0",
-    "@docusaurus/theme-common": "^3.10.0",
-    "@docusaurus/theme-mermaid": "^3.10.0",
+    "@docusaurus/core": "^3.10.1",
+    "@docusaurus/faster": "^3.10.1",
+    "@docusaurus/plugin-client-redirects": "^3.10.1",
+    "@docusaurus/plugin-content-docs": "^3.10.1",
+    "@docusaurus/plugin-sitemap": "^3.10.1",
+    "@docusaurus/preset-classic": "^3.10.1",
+    "@docusaurus/theme-common": "^3.10.1",
+    "@docusaurus/theme-mermaid": "^3.10.1",
     "@easyops-cn/docusaurus-search-local": "^0.55.1",
     "@hashicorp/remark-plugins": "^4.1.1",
     "@mdx-js/react": "^3.1.1",
     "clsx": "^2.1.1",
     "lodash": "^4.18.1",
-    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#2a9b49a1fcd2de89e7e35a1628d5dfd0289d4dd4",
+    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#ab2ccb85e2ee39a3756ce7a222eaa648aa1a3b20",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },
   "devDependencies": {
     "@docusaurus/eslint-plugin": "^3.9.2",
-    "@docusaurus/module-type-aliases": "^3.10.0",
-    "@docusaurus/tsconfig": "^3.10.0",
-    "@docusaurus/types": "^3.10.0",
+    "@docusaurus/module-type-aliases": "^3.10.1",
+    "@docusaurus/tsconfig": "^3.10.1",
+    "@docusaurus/types": "^3.10.1",
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
@@ -53,8 +53,8 @@
     "eslint-plugin-import": "^2.32.0",
     "globals": "^17.4.0",
     "markdownlint": "^0.40.0",
-    "markdownlint-cli2": "^0.22.0",
-    "typescript": "^5.9.3"
+    "markdownlint-cli2": "^0.22.1",
+    "typescript": "^6.0.3"
   },
   "browserslist": {
     "production": [

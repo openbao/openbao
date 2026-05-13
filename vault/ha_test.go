@@ -111,7 +111,7 @@ func testCoreRestart(t *testing.T, core int) {
 	TestWaitActive(t, c.Cores[0].Core)
 
 	c.Cores[core].stateLock.RLock()
-	activeContextDone := c.Cores[core].activeContext.Done()
+	activeContextDone := c.Cores[core].activeContext.Load().Done()
 	c.Cores[core].stateLock.RUnlock()
 
 	// trigger the restart
@@ -128,7 +128,7 @@ func testCoreRestart(t *testing.T, core int) {
 	require.EventuallyWithT(t, func(t *assert.CollectT) {
 		c.Cores[core].stateLock.RLock()
 		defer c.Cores[core].stateLock.RUnlock()
-		require.NotNil(t, c.Cores[core].activeContext)
-		require.Nil(t, c.Cores[core].activeContext.Err())
+		require.NotNil(t, c.Cores[core].activeContext.Load())
+		require.Nil(t, c.Cores[core].activeContext.Load().Err())
 	}, 10*time.Second, 10*time.Millisecond)
 }

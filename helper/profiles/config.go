@@ -18,6 +18,8 @@ type OuterConfig struct {
 
 	Type     string
 	Requests []*RequestConfig `hcl:"-"`
+
+	When interface{} `hcl:"when"`
 }
 
 // RequestConfig maps a single API request invocation.

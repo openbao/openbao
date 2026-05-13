@@ -1,0 +1,3 @@
+```release-note:security
+auth/token: Prevent cross-namespace token renewal, revocation by accessor. GHSA-p49j-v9wc-wg57 / CVE-2026-40264.
+```

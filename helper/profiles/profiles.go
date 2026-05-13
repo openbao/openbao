@@ -343,6 +343,18 @@ func (p *ProfileEngine) evaluateHistory(ctx context.Context) (*EvaluationHistory
 	var history EvaluationHistory
 	for outerIndex, outerBlock := range p.profile {
 		if err := func() error {
+			// Check if our outer block needs to be skipped.
+			if outerBlock.When != nil {
+				var execute bool
+				if err := p.evaluateField(ctx, &history, outerBlock.When, &execute); err != nil {
+					return fmt.Errorf("failed to evaluate when: %w", err)
+				}
+
+				if !execute {
+					return nil
+				}
+			}
+
 			for requestIndex, requestBlock := range outerBlock.Requests {
 				if err := func() error {
 					return p.evaluateRequest(ctx, &history, outerIndex, outerBlock, requestIndex, requestBlock)
@@ -388,13 +400,15 @@ func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *Evaluation
 	// 4. Call the request handler.
 	resp, err := p.requestHandler(ctx, req)
 	isFailure := err != nil || resp.IsError()
-	if err == nil && resp.IsError() {
+	if err == nil {
 		err = resp.Error()
 	}
 	if !allowFailure && isFailure {
 		if err != nil {
 			return fmt.Errorf("failed to evaluate request: %w", err)
 		}
+		// Fallback in case IsError() is true but Error() returned nil.
+		return errors.New("failed to evaluate request: request failed")
 	}
 
 	// 5. Stash response for future use.

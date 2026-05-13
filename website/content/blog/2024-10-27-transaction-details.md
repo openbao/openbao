@@ -156,7 +156,7 @@ performance discrepancies via [GitHub issue][file-issue].
 [raft-fsm]: https://github.com/openbao/openbao/blob/c9201295ed833b431249f4592f32b1946b69f263/physical/raft/fsm.go
 [storage-write]: https://github.com/openbao/openbao/blob/c9201295ed833b431249f4592f32b1946b69f263/physical/raft/raft.go#L1523-L1553
 [storage-read]: https://github.com/openbao/openbao/blob/c9201295ed833b431249f4592f32b1946b69f263/physical/raft/raft.go#L1493-L1521
-[transaction-rfc]: /docs/rfcs/transactions/
+[transaction-rfc]: /community/rfcs/transactions/
 [bbolt-txn]: https://pkg.go.dev/go.etcd.io/bbolt#Tx
 [bbolt-txn-limits]: https://pkg.go.dev/go.etcd.io/bbolt#pkg-overview
 [txn-commit]: https://github.com/openbao/openbao/blob/c9201295ed833b431249f4592f32b1946b69f263/physical/raft/transaction.go#L610-L722

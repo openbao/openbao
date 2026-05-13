@@ -1,0 +1,3 @@
+```release-note:security
+core/namespaces: Ensure lease revocation on namespace re-deletion. GHSA-vv66-6rp4-wr4f.
+```

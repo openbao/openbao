@@ -21,8 +21,8 @@ func TestSealManager_Reset(t *testing.T) {
 	// verify initial state of seal manager
 	require.Len(t, c.sealManager.barrierByNamespace.ToMap(), 1)
 	require.Len(t, c.sealManager.sealByNamespace, 1)
-	require.Len(t, c.sealManager.unlockInformationByNamespace, 1)
-	require.Len(t, c.sealManager.rotationConfigByNamespace, 1)
+	require.Len(t, c.sealManager.unlockInformationByNamespace, 0)
+	require.Len(t, c.sealManager.rotationConfigByNamespace, 0)
 
 	sealConfig := &SealConfig{
 		Type:            "shamir",
@@ -36,15 +36,16 @@ func TestSealManager_Reset(t *testing.T) {
 	}
 	require.Len(t, c.sealManager.barrierByNamespace.ToMap(), 11)
 	require.Len(t, c.sealManager.sealByNamespace, 11)
-	require.Len(t, c.sealManager.unlockInformationByNamespace, 11)
-	require.Len(t, c.sealManager.rotationConfigByNamespace, 11)
+	// until we start unlock/rotation process for the namespace, we do not populate the map.
+	require.Len(t, c.sealManager.unlockInformationByNamespace, 0)
+	require.Len(t, c.sealManager.rotationConfigByNamespace, 0)
 
 	c.sealManager.Reset()
 
 	require.Len(t, c.sealManager.barrierByNamespace.ToMap(), 1)
 	require.Len(t, c.sealManager.sealByNamespace, 1)
-	require.Len(t, c.sealManager.unlockInformationByNamespace, 1)
-	require.Len(t, c.sealManager.rotationConfigByNamespace, 1)
+	require.Len(t, c.sealManager.unlockInformationByNamespace, 0)
+	require.Len(t, c.sealManager.rotationConfigByNamespace, 0)
 }
 
 func TestSealManager_SetSeal(t *testing.T) {
@@ -105,8 +106,6 @@ func TestSealManager_SetSeal(t *testing.T) {
 
 			require.NotEmpty(t, c.sealManager.NamespaceBarrier(tt.ns.Path))
 			require.NotEmpty(t, c.sealManager.NamespaceSeal(tt.ns.UUID))
-			require.NotNil(t, c.sealManager.NamespaceUnlockInformation(tt.ns.UUID))
-			require.NotNil(t, c.sealManager.NamespaceRotationConfig(tt.ns.UUID))
 
 			// verify storage
 			cfg, err := seal.BarrierConfig(ctx)
@@ -263,16 +262,23 @@ func TestSealManager_UnsealBarrier(t *testing.T) {
 	require.NotNil(t, b)
 	require.False(t, b.Sealed())
 
+	require.Nil(t, c.sealManager.NamespaceUnlockInformation(ns.UUID))
+
 	err = b.Seal()
 	require.NoError(t, err)
 	require.True(t, b.Sealed())
 
-	unsealed, err := c.sealManager.unsealFragment(ctx, ns, b, keyShares[0])
+	unsealed, err := c.sealManager.UnsealNamespace(ctx, ns, keyShares[0])
 	require.NoError(t, err)
 	require.False(t, unsealed)
 
-	unsealed, err = c.sealManager.unsealFragment(ctx, ns, b, keyShares[1])
+	info := c.sealManager.NamespaceUnlockInformation(ns.UUID)
+	require.Len(t, info.Parts, 1)
+	require.NotEmpty(t, info.Nonce)
+
+	unsealed, err = c.sealManager.UnsealNamespace(ctx, ns, keyShares[1])
 	require.NoError(t, err)
 	require.True(t, unsealed)
 	require.False(t, b.Sealed())
+	require.Nil(t, c.sealManager.NamespaceUnlockInformation(ns.UUID))
 }

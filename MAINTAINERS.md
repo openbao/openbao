@@ -14,18 +14,19 @@ See the information about community membership roles to learn about the role of 
 
 ## Repository-Level Committers
 
-| Name             | GitHub                                               | Projects                                                                                          |
-| ---------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Andrii Fedorchuk | [@driif](https://github.com/driif)                   | [`vault/`], and [openbao-plugins `secrets/consul/`]                                               |
-| Christoph Voigt  | [@voigt](https://github.com/voigt)                   | [`vault/`]                                                                                        |
-| Dave Dykstra     | [@DrDaveD](https://github.com/DrDaveD)               | [`auth/jwt` and `auth/oidc`](https://github.com/openbao/openbao/tree/main/builtin/credential/jwt) |
-| Geoffrey Wilson  | [@suprjinx](https://github.com/suprjinx)             | [`vault/`]                                                                                        |
-| Pascal Reeb      | [@pree](https://github.com/pree)                     | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
-| Philipp Stehle   | [@phil9909](https://github.com/phil9909)             | [`vault/`], and [openbao-plugins]                                                                 |
-| Tom Gehrke       | [@phyrog](https://github.com/phyrog)                 | [`vault/`]                                                                                        |
-| Toni Tauro       | [@eyenx](https://github.com/eyenx)                   | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
-| Wojciech Slabosz | [@wslabosz-reply](https://github.com/wslabosz-reply) | [`vault/`]                                                                                        |
-| Yannis           | [@Nerkho](https://github.com/Nerkho)                 | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
+| Name             | GitHub                                                 | Projects                                                                                          |
+| ---------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| Andrii Fedorchuk | [@driif](https://github.com/driif)                     | [`vault/`], and [openbao-plugins `secrets/consul/`]                                               |
+| Christoph Voigt  | [@voigt](https://github.com/voigt)                     | [`vault/`]                                                                                        |
+| Dave Dykstra     | [@DrDaveD](https://github.com/DrDaveD)                 | [`auth/jwt` and `auth/oidc`](https://github.com/openbao/openbao/tree/main/builtin/credential/jwt) |
+| Geoffrey Wilson  | [@suprjinx](https://github.com/suprjinx)               | [`vault/`]                                                                                        |
+| Pascal Reeb      | [@pree](https://github.com/pree)                       | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
+| Philipp Stehle   | [@phil9909](https://github.com/phil9909)               | [`vault/`], and [openbao-plugins]                                                                 |
+| Tom Gehrke       | [@phyrog](https://github.com/phyrog)                   | [`vault/`]                                                                                        |
+| Tomasz Madej     | [@tomek-securosys](https://github.com/tomek-securosys) | [`go-kms-wrapping/{kms,wrapper}/securosyshsm`][g-k-w]                                             |
+| Toni Tauro       | [@eyenx](https://github.com/eyenx)                     | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
+| Wojciech Slabosz | [@wslabosz-reply](https://github.com/wslabosz-reply)   | [`vault/`]                                                                                        |
+| Yannis           | [@Nerkho](https://github.com/Nerkho)                   | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
 
 [`vault/`]: https://github.com/openbao/openbao/tree/main/vault
 [openbao-plugins]: https://github.com/openbao/openbao-plugins
@@ -34,6 +35,7 @@ See the information about community membership roles to learn about the role of 
 [csi-provider]: https://github.com/openbao/openbao-csi-provider
 [k8s]: https://github.com/openbao/openbao-k8s
 [secrets-operator]: https://github.com/openbao/openbao-secrets-operator
+[g-k-w]: https://github.com/openbao/go-kms-wrapping/
 
 ## Organization-Level Moderators
 

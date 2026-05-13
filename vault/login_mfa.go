@@ -46,7 +46,7 @@ import (
 
 const (
 	memDBMFALoginEnforcementsTable = "login_enforcements"
-	mfaTOTPKeysPrefix              = systemBarrierPrefix + "mfa/totpkeys/"
+	mfaTOTPKeysPrefix              = barrier.SystemBarrierPrefix + "mfa/totpkeys/"
 
 	// loginMFAConfigPrefix is the storage prefix for persisting login MFA method
 	// configs
@@ -177,7 +177,7 @@ func (b *LoginMFABackend) ResetLoginMFAMemDB() error {
 // loadMFAMethodConfigs loads MFA method configs for login MFA
 func (b *LoginMFABackend) loadMFAMethodConfigs(ctx context.Context, ns *namespace.Namespace) error {
 	b.mfaLogger.Trace("loading login MFA configurations")
-	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(barrier.SystemBarrierPrefix).SubView(loginMFAConfigPrefix)
 	existing, err := barrierView.List(ctx, "")
 	if err != nil {
 		return fmt.Errorf("failed to list MFA configurations for namespace %s and prefix %s: %w", ns.Path, loginMFAConfigPrefix, err)
@@ -213,7 +213,7 @@ func (b *LoginMFABackend) loadMFAMethodConfigs(ctx context.Context, ns *namespac
 // loadMFAEnforcementConfigs loads MFA method configs for login MFA
 func (b *LoginMFABackend) loadMFAEnforcementConfigs(ctx context.Context, ns *namespace.Namespace) ([]*mfa.MFAEnforcementConfig, error) {
 	b.mfaLogger.Trace("loading login MFA enforcement configurations")
-	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(barrier.SystemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
 	existing, err := barrierView.List(ctx, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list MFA enforcement configurations for namespace %s with prefix %s: %w", ns.Path, mfaLoginEnforcementPrefix, err)
@@ -1876,7 +1876,7 @@ func (b *LoginMFABackend) DeleteMFALoginEnforcementConfigByNameAndNamespace(ctx 
 		return err
 	}
 
-	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(barrier.SystemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
 	err = barrierView.Delete(ctx, eConfig.ID)
 	if err != nil {
 		return err
@@ -1948,7 +1948,7 @@ func (b *LoginMFABackend) DeleteMFAConfigByMethodID(ctx context.Context, configI
 		return err
 	}
 
-	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(barrier.SystemBarrierPrefix).SubView(loginMFAConfigPrefix)
 	err = barrierView.Delete(ctx, configID)
 	if err != nil {
 		return err
@@ -2052,7 +2052,7 @@ func (b *LoginMFABackend) PutMFAConfigByID(ctx context.Context, mConfig *mfa.Con
 		return err
 	}
 
-	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(barrier.SystemBarrierPrefix).SubView(loginMFAConfigPrefix)
 	marshaledEntry, err := proto.Marshal(mConfig)
 	if err != nil {
 		return err
@@ -2113,7 +2113,7 @@ func (b *LoginMFABackend) PutMFALoginEnforcementConfig(ctx context.Context, eCon
 		return err
 	}
 
-	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(barrier.SystemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
 
 	return barrierView.Put(ctx, &logical.StorageEntry{
 		Key:   eConfig.ID,

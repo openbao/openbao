@@ -30,6 +30,7 @@ import (
 	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
 	ident "github.com/openbao/openbao/vault/identity"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/routing"
 )
 
@@ -485,7 +486,7 @@ func TestIdentityStore_WrapInfoInheritance(t *testing.T) {
 	// sys/wrapping/wrap
 	te := &logical.TokenEntry{
 		Path:     "test",
-		Policies: []string{"default", responseWrappingPolicyName},
+		Policies: []string{"default", policy.ResponseWrappingPolicyName},
 		EntityID: entityID,
 		TTL:      time.Hour,
 	}

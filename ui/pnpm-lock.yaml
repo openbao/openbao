@@ -369,8 +369,8 @@ importers:
         specifier: ^2.1.0
         version: 2.1.0
       ember-cli-mirage:
-        specifier: 2.4.0
-        version: 2.4.0(@babel/core@7.29.0)(@ember/test-helpers@2.9.3(@babel/core@7.29.0)(@glint/template@1.7.7)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4)))(@glint/template@1.7.7)(ember-data@4.11.3(@babel/core@7.29.0)(@ember/string@3.1.1)(@glimmer/tracking@1.1.2)(@glint/template@1.7.7)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4))(webpack@5.105.4))(ember-qunit@6.2.0(@ember/test-helpers@2.9.3(@babel/core@7.29.0)(@glint/template@1.7.7)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4)))(@glint/template@1.7.7)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4))(qunit@2.25.0)(webpack@5.105.4))
+        specifier: 3.0.4
+        version: 3.0.4(cfde6af724c1b31c42f6f1dafc755bc0)
       ember-cli-page-object:
         specifier: 1.17.10
         version: 1.17.10(@babel/core@7.29.0)
@@ -3185,9 +3185,6 @@ packages:
     resolution: {integrity: sha512-k6b0OnNuRcUnJ9TXA0o6RvqXOkTQ6APKoLsZeMJHAe/YjLjE1uTlfw4Z88GfGmi8gwtLHdnkrhBoJ7YdIkcVZA==}
     engines: {node: '>= 6.0.0'}
 
-  broccoli-file-creator@1.2.0:
-    resolution: {integrity: sha512-l9zthHg6bAtnOfRr/ieZ1srRQEsufMZID7xGYRW3aBDv3u/3Eux+Iawl10tAGYE5pL9YB4n5X4vxkp6iNOoZ9g==}
-
   broccoli-file-creator@2.1.1:
     resolution: {integrity: sha512-YpjOExWr92C5vhnK0kmD81kM7U09kdIRZk9w4ZDCDHuHXW+VE/x6AGEOQQW3loBQQ6Jk+k+TSm8dESy4uZsnjw==}
     engines: {node: ^4.5 || 6.* || >= 7.*}
@@ -4637,14 +4634,19 @@ packages:
     resolution: {integrity: sha512-QkLGcYv1WRK35g4MWu/uIeJ5Suk2eJXKtZ+8s+qE7C9INmpCPyPxzaqZABquYzcWNzIdw6kYwz3NWAFdKYFxwg==}
     engines: {node: ^4.5 || 6.* || >= 7.*}
 
-  ember-cli-mirage@2.4.0:
-    resolution: {integrity: sha512-cy8B+IZV07V6xgnFzktKUsntTQvIqPSS3u4+XaLdNW91yOowLsN2BsuQldN3eCnwswgE3a9eGNGS4I0BD4llNA==}
-    engines: {node: '>= 10.*'}
+  ember-cli-mirage@3.0.4:
+    resolution: {integrity: sha512-JpfZJIrvUAcwOVQ44aAzlYSbGiO4/nqnVAbzAKU4kztqgYvYGBa27FX5WxfpIGZMBdnt6OKh78rsimChWo6f/Q==}
+    engines: {node: 16.* || >= 18}
     peerDependencies:
+      '@ember-data/model': '*'
       '@ember/test-helpers': '*'
       ember-data: '*'
       ember-qunit: '*'
+      ember-source: '>= 3.28.0'
+      miragejs: ^0.1.43
     peerDependenciesMeta:
+      '@ember-data/model':
+        optional: true
       '@ember/test-helpers':
         optional: true
       ember-data:
@@ -4810,10 +4812,6 @@ packages:
 
   ember-focus-trap@1.2.0:
     resolution: {integrity: sha512-+/AkXjWF9Qtv6a3tSZQvzFTF+vSoSNuWVemN8kbp4d3MmHWnbXzv5brd9wmAFFlp4yYRr2be7bVhNVxzJMLEhw==}
-
-  ember-get-config@0.5.0:
-    resolution: {integrity: sha512-y1osD6g8wV/BlDjuaN6OG5MT0iHY2X/yE38gUj/05uUIMIRfpcwOdWnFQHBiXIhDojvAJQTEF1VOYFIETQMkeQ==}
-    engines: {node: 12.* || 14.* || >= 16}
 
   ember-get-config@2.1.1:
     resolution: {integrity: sha512-uNmv1cPG/4qsac8oIf5txJ2FZ8p88LEpG4P3dNcjsJS98Y8hd0GPMFwVqpnzI78Lz7VYRGQWY4jnE4qm5R3j4g==}
@@ -5993,6 +5991,10 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
+  hasown@2.0.3:
+    resolution: {integrity: sha512-ej4AhfhfL2Q2zpMmLo7U1Uv9+PyhIZpgQLGT1F9miIGmiCJIoCgSmczFdrc97mWT4kVY72KA+WnnhJ5pghSvSg==}
+    engines: {node: '>= 0.4'}
+
   heimdalljs-fs-monitor@1.1.2:
     resolution: {integrity: sha512-M7OPf3Tu+ybhAXdiC07O1vUYFyhCgfew4L3vaG2nn4Be05xzNvtBcU6IKMTfHJ9AxWFa3w9rrmiJovkxHhpopw==}
 
@@ -6710,9 +6712,6 @@ packages:
     resolution: {integrity: sha512-gvVijfZvn7R+2qyPX8mAuKcFGDf6Nc61GdvGafQsHL0sBIxfKzA+usWn4GFC/bk+QdwPUD4kWFJLhElipq+0VA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  lodash-es@4.18.1:
-    resolution: {integrity: sha512-J8xewKD/Gk22OZbhpOVSwcs60zhd95ESDwezOFuA3/099925PdHJ7OFHNTGtajL3AlZkykD32HykiMo+BIBI8A==}
-
   lodash._baseassign@3.2.0:
     resolution: {integrity: sha512-t3N26QR2IdSN+gqSy9Ds9pBu/J1EAFEshKlUHpJG3rvyJOYgcELIxcIeKKfZk7sjOz11cFfzJRsyFry/JyabJQ==}
 
@@ -6830,8 +6829,8 @@ packages:
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
 
-  lru-cache@11.2.7:
-    resolution: {integrity: sha512-aY/R+aEsRelme17KGQa/1ZSIpLpNYYrhcrepKTZgE+W3WM16YMCaPwOHLHsmopZHELU0Ojin1lPVxKR0MihncA==}
+  lru-cache@11.3.5:
+    resolution: {integrity: sha512-NxVFwLAnrd9i7KUBxC4DrUhmgjzOs+1Qm50D3oF1/oL+r1NpZ4gA7xvG0/zJ8evR7zIKn4vLf7qTNduWFtCrRw==}
     engines: {node: 20 || >=22}
 
   lru-cache@5.1.1:
@@ -8148,6 +8147,11 @@ packages:
 
   resolve@1.22.11:
     resolution: {integrity: sha512-RfqAvLnMl313r7c9oclB1HhUEAezcpLjz95wFH4LVuhk9JF/r22qmVP9AMmOU4vMX7Q8pN8jwNg/CSpdFnMjTQ==}
+    engines: {node: '>= 0.4'}
+    hasBin: true
+
+  resolve@1.22.12:
+    resolution: {integrity: sha512-TyeJ1zif53BPfHootBGwPRYT1RUt6oGWsaQr8UyZW/eAm9bKoijtvruSDEmZHm92CwS9nj7/fWttqPCgzep8CA==}
     engines: {node: '>= 0.4'}
     hasBin: true
 
@@ -11428,7 +11432,7 @@ snapshots:
 
   '@types/glob@9.0.0':
     dependencies:
-      glob: 13.0.6
+      glob: 8.1.0
 
   '@types/http-errors@2.0.5': {}
 
@@ -12341,7 +12345,7 @@ snapshots:
       glob: 9.3.5
       pkg-up: 3.1.0
       reselect: 4.1.8
-      resolve: 1.22.11
+      resolve: 1.22.12
 
   babel-plugin-polyfill-corejs2@0.4.17(@babel/core@7.29.0):
     dependencies:
@@ -12940,11 +12944,6 @@ snapshots:
       symlink-or-copy: 1.3.1
     transitivePeerDependencies:
       - supports-color
-
-  broccoli-file-creator@1.2.0:
-    dependencies:
-      broccoli-plugin: 1.3.1
-      mkdirp: 0.5.6
 
   broccoli-file-creator@2.1.1:
     dependencies:
@@ -15051,29 +15050,28 @@ snapshots:
 
   ember-cli-lodash-subset@2.0.1: {}
 
-  ember-cli-mirage@2.4.0(@babel/core@7.29.0)(@ember/test-helpers@2.9.3(@babel/core@7.29.0)(@glint/template@1.7.7)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4)))(@glint/template@1.7.7)(ember-data@4.11.3(@babel/core@7.29.0)(@ember/string@3.1.1)(@glimmer/tracking@1.1.2)(@glint/template@1.7.7)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4))(webpack@5.105.4))(ember-qunit@6.2.0(@ember/test-helpers@2.9.3(@babel/core@7.29.0)(@glint/template@1.7.7)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4)))(@glint/template@1.7.7)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4))(qunit@2.25.0)(webpack@5.105.4)):
+  ember-cli-mirage@3.0.4(cfde6af724c1b31c42f6f1dafc755bc0):
     dependencies:
+      '@babel/core': 7.29.0
       '@embroider/macros': 1.20.2(@glint/template@1.7.7)
       broccoli-file-creator: 2.1.1
       broccoli-funnel: 3.0.8
       broccoli-merge-trees: 4.2.0
-      ember-auto-import: 1.12.2
-      ember-cli-babel: 7.26.11
-      ember-destroyable-polyfill: 2.0.3(@babel/core@7.29.0)
-      ember-get-config: 0.5.0
+      ember-auto-import: 2.10.0(@glint/template@1.7.7)(webpack@5.105.4)
+      ember-cli-babel: 8.3.1(@babel/core@7.29.0)
+      ember-get-config: 2.1.1(@glint/template@1.7.7)
       ember-inflector: 4.0.2
-      lodash-es: 4.18.1
+      ember-source: 4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4)
       miragejs: 0.1.48
     optionalDependencies:
+      '@ember-data/model': 4.11.3(@babel/core@7.29.0)(@ember-data/record-data@4.11.3)(@ember-data/store@4.11.3)(@ember-data/tracking@4.11.3)(@ember/string@3.1.1)(@glint/template@1.7.7)(ember-inflector@4.0.2)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4))(webpack@5.105.4)
       '@ember/test-helpers': 2.9.3(@babel/core@7.29.0)(@glint/template@1.7.7)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4))
       ember-data: 4.11.3(@babel/core@7.29.0)(@ember/string@3.1.1)(@glimmer/tracking@1.1.2)(@glint/template@1.7.7)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4))(webpack@5.105.4)
       ember-qunit: 6.2.0(@ember/test-helpers@2.9.3(@babel/core@7.29.0)(@glint/template@1.7.7)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4)))(@glint/template@1.7.7)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4))(qunit@2.25.0)(webpack@5.105.4)
     transitivePeerDependencies:
-      - '@babel/core'
       - '@glint/template'
       - supports-color
-      - webpack-cli
-      - webpack-command
+      - webpack
 
   ember-cli-node-assets@0.2.2:
     dependencies:
@@ -15082,7 +15080,7 @@ snapshots:
       broccoli-source: 1.1.0
       debug: 2.6.9
       lodash: 4.18.1
-      resolve: 1.22.11
+      resolve: 1.22.12
     transitivePeerDependencies:
       - supports-color
 
@@ -15221,7 +15219,7 @@ snapshots:
       ember-cli-babel-plugin-helpers: 1.1.1
       execa: 3.4.0
       fs-extra: 8.1.0
-      resolve: 1.22.11
+      resolve: 1.22.12
       rsvp: 4.8.5
       semver: 6.3.1
       stagehand: 1.0.1
@@ -15449,7 +15447,7 @@ snapshots:
       '@babel/core': 7.29.0
       broccoli-funnel: 2.0.1
       ember-cli-babel: 7.26.11
-      resolve: 1.22.11
+      resolve: 1.22.12
     transitivePeerDependencies:
       - supports-color
 
@@ -15618,14 +15616,6 @@ snapshots:
       focus-trap: 7.8.0
     transitivePeerDependencies:
       - '@babel/core'
-      - supports-color
-
-  ember-get-config@0.5.0:
-    dependencies:
-      broccoli-file-creator: 1.2.0
-      ember-cli-babel: 7.26.11
-      ember-cli-htmlbars: 5.7.2
-    transitivePeerDependencies:
       - supports-color
 
   ember-get-config@2.1.1(@glint/template@1.7.7):
@@ -17372,6 +17362,10 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
+  hasown@2.0.3:
+    dependencies:
+      function-bind: 1.1.2
+
   heimdalljs-fs-monitor@1.1.2:
     dependencies:
       callsites: 3.1.0
@@ -17613,7 +17607,7 @@ snapshots:
 
   is-accessor-descriptor@1.0.1:
     dependencies:
-      hasown: 2.0.2
+      hasown: 2.0.3
 
   is-alphabetical@1.0.4: {}
 
@@ -17663,11 +17657,11 @@ snapshots:
 
   is-core-module@2.16.1:
     dependencies:
-      hasown: 2.0.2
+      hasown: 2.0.3
 
   is-data-descriptor@1.0.1:
     dependencies:
-      hasown: 2.0.2
+      hasown: 2.0.3
 
   is-data-view@1.0.2:
     dependencies:
@@ -18094,8 +18088,6 @@ snapshots:
     dependencies:
       p-locate: 6.0.0
 
-  lodash-es@4.18.1: {}
-
   lodash._baseassign@3.2.0:
     dependencies:
       lodash._basecopy: 3.0.1
@@ -18218,7 +18210,7 @@ snapshots:
 
   lru-cache@10.4.3: {}
 
-  lru-cache@11.2.7: {}
+  lru-cache@11.3.5: {}
 
   lru-cache@5.1.1:
     dependencies:
@@ -18765,7 +18757,7 @@ snapshots:
   normalize-package-data@2.5.0:
     dependencies:
       hosted-git-info: 2.8.9
-      resolve: 1.22.11
+      resolve: 1.22.12
       semver: 5.7.2
       validate-npm-package-license: 3.0.4
 
@@ -19121,7 +19113,7 @@ snapshots:
 
   path-scurry@2.0.2:
     dependencies:
-      lru-cache: 11.2.7
+      lru-cache: 11.3.5
       minipass: 7.1.3
 
   path-to-regexp@0.1.13: {}
@@ -19683,12 +19675,12 @@ snapshots:
   resolve-package-path@1.2.7:
     dependencies:
       path-root: 0.1.1
-      resolve: 1.22.11
+      resolve: 1.22.12
 
   resolve-package-path@2.0.0:
     dependencies:
       path-root: 0.1.1
-      resolve: 1.22.11
+      resolve: 1.22.12
 
   resolve-package-path@3.1.0:
     dependencies:
@@ -19712,6 +19704,13 @@ snapshots:
 
   resolve@1.22.11:
     dependencies:
+      is-core-module: 2.16.1
+      path-parse: 1.0.7
+      supports-preserve-symlinks-flag: 1.0.0
+
+  resolve@1.22.12:
+    dependencies:
+      es-errors: 1.3.0
       is-core-module: 2.16.1
       path-parse: 1.0.7
       supports-preserve-symlinks-flag: 1.0.0

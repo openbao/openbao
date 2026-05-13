@@ -1,0 +1,3 @@
+```release-note:security
+auth/cert: Prevent token renewal with different-but-valid certificate. GHSA-7ccv-rp6m-rffr / CVE-2026-39388.
+```

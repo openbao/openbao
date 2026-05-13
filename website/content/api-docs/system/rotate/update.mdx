@@ -12,10 +12,10 @@ The `/sys/rotate/(root|recovery)/update` endpoints are available from version `v
 
 This endpoint is used to enter a single key share to progress the rotation
 of the OpenBao. If the threshold number of key shares is reached, OpenBao will
-complete the rotation. Otherwise, this API call must be repeated until 
+complete the rotation. Otherwise, this API call must be repeated until
 threshold is met. The nonce must be provided with each call.
 
-When the operation is complete, response will be returned in the format of the 
+When the operation is complete, response will be returned in the format of the
 example below; otherwise the response will be the same as the `GET` method
 against `sys/rotate/(root|recovery)/init`, providing current operation status.
 

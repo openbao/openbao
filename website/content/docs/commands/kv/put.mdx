@@ -59,15 +59,15 @@ included on all commands.
 ### Command options
 
 - `-cas` `(int: 0)` - Specifies to use a Check-And-Set operation. If not set the
-  write will be allowed. In order for a write to be successful, `cas` must be set to 
-  the current version of the secret. If set to 0 a write will only be allowed if 
-  the key doesn’t exist as unset keys do not have any version information. Also 
+  write will be allowed. In order for a write to be successful, `cas` must be set to
+  the current version of the secret. If set to 0 a write will only be allowed if
+  the key doesn’t exist as unset keys do not have any version information. Also
   remember that soft deletes do not remove any underlying version data from storage.
-  In order to write to a soft deleted key, the cas parameter must match the key's 
+  In order to write to a soft deleted key, the cas parameter must match the key's
   current version. The default is -1.
 
-- `-mount` `(string: "")` - Specifies the path where the KV backend is mounted. 
-  If specified, the next argument will be interpreted as the secret path. If 
-  this flag is not specified, the next argument will be interpreted as the 
-  combined mount path and secret path, with /data/ automatically inserted for 
+- `-mount` `(string: "")` - Specifies the path where the KV backend is mounted.
+  If specified, the next argument will be interpreted as the secret path. If
+  this flag is not specified, the next argument will be interpreted as the
+  combined mount path and secret path, with /data/ automatically inserted for
   KV v2 secrets.

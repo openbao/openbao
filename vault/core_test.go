@@ -14,7 +14,9 @@ import (
 
 	"github.com/openbao/openbao/command/server"
 	be "github.com/openbao/openbao/vault/backend"
+	"github.com/openbao/openbao/vault/barrier"
 	ident "github.com/openbao/openbao/vault/identity"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/routing"
 
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
@@ -396,8 +398,8 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 		t.Fatal("should be sealed")
 	}
 
-	if prog, _ := c.SecretProgress(true); prog != 0 {
-		t.Fatalf("bad progress: %d", prog)
+	if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != 0 {
+		t.Fatalf("bad progress: %d", len(info.Parts))
 	}
 
 	for i := range 5 {
@@ -415,15 +417,15 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 			if !unseal {
 				t.Fatal("should be unsealed")
 			}
-			if prog, _ := c.SecretProgress(true); prog != 0 {
-				t.Fatalf("bad progress: %d", prog)
+			if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != 0 {
+				t.Fatalf("bad progress: %d", len(info.Parts))
 			}
 		} else {
 			if unseal {
 				t.Fatal("should not be unsealed")
 			}
-			if prog, _ := c.SecretProgress(true); prog != i+1 {
-				t.Fatalf("bad progress: %d", prog)
+			if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != i+1 {
+				t.Fatalf("bad progress: %d", len(info.Parts))
 			}
 		}
 	}
@@ -575,8 +577,8 @@ func TestCore_Unseal_Single(t *testing.T) {
 		t.Fatal("should be sealed")
 	}
 
-	if prog, _ := c.SecretProgress(true); prog != 0 {
-		t.Fatalf("bad progress: %d", prog)
+	if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != 0 {
+		t.Fatalf("bad progress: %d", len(info.Parts))
 	}
 
 	unseal, err := TestCoreUnseal(c, res.SecretShares[0])
@@ -587,8 +589,8 @@ func TestCore_Unseal_Single(t *testing.T) {
 	if !unseal {
 		t.Fatal("should be unsealed")
 	}
-	if prog, _ := c.SecretProgress(true); prog != 0 {
-		t.Fatalf("bad progress: %d", prog)
+	if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != 0 {
+		t.Fatalf("bad progress: %d", len(info.Parts))
 	}
 
 	if c.Sealed() {
@@ -666,8 +668,8 @@ func TestCore_LoadLoginMFAConfigs(t *testing.T) {
 
 	// prepare views
 	nsView := NamespaceScopedView(c.barrier, ns1)
-	mfaConfigBarrierView := nsView.SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
-	mfaEnforcementConfigBarrierView := nsView.SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+	mfaConfigBarrierView := nsView.SubView(barrier.SystemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	mfaEnforcementConfigBarrierView := nsView.SubView(barrier.SystemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
 
 	// verify empty storage
 	mfaConfigKeys, err := mfaConfigBarrierView.List(ctx, "")
@@ -904,7 +906,7 @@ func TestCore_OneTenPlus_BatchTokens(t *testing.T) {
 		}
 	}
 
-	err := c.loadVersionHistory(c.activeContext)
+	err := c.loadVersionHistory(t.Context())
 	if err != nil {
 		t.Fatalf("failed to populate version history cache, err: %s", err.Error())
 	}
@@ -2462,7 +2464,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 	// Wait for postUnseal to conclude
 	require.Eventually(t, func() bool {
 		core2.stateLock.RLock()
-		c2ctx := core2.activeContext
+		c2ctx := core2.activeContext.Load()
 		core2.stateLock.RUnlock()
 
 		return c2ctx != nil
@@ -2823,7 +2825,7 @@ path "secret/*" {
 `
 
 	ps := c.policyStore
-	policy, _ := ParseACLPolicy(namespace.RootNamespace, secretWritingPolicy)
+	policy, _ := policy.ParseACLPolicy(namespace.RootNamespace, secretWritingPolicy)
 	if err := ps.SetPolicy(namespace.RootContext(t.Context()), policy, nil); err != nil {
 		t.Fatal(err)
 	}

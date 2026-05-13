@@ -51,7 +51,7 @@ func TestVersionStore_GetOldestVersion(t *testing.T) {
 		}
 	}
 
-	err := c.loadVersionHistory(c.activeContext)
+	err := c.loadVersionHistory(t.Context())
 	if err != nil {
 		t.Fatalf("failed to populate version history cache, err: %s", err.Error())
 	}
@@ -90,7 +90,7 @@ func TestVersionStore_GetNewestVersion(t *testing.T) {
 		}
 	}
 
-	err := c.loadVersionHistory(c.activeContext)
+	err := c.loadVersionHistory(t.Context())
 	if err != nil {
 		t.Fatalf("failed to populate version history cache, err: %s", err.Error())
 	}
@@ -131,7 +131,7 @@ func TestVersionStore_SelfHealUTC(t *testing.T) {
 		}
 	}
 
-	err = c.loadVersionHistory(c.activeContext)
+	err = c.loadVersionHistory(t.Context())
 	if err != nil {
 		t.Fatalf("failed to load version timestamps, err: %s", err.Error())
 	}

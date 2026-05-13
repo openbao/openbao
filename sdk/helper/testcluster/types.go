@@ -75,12 +75,19 @@ type VaultNodeConfig struct {
 	EnableResponseHeaderHostname   bool          `json:"enable_response_header_hostname"`
 	LogRequestsLevel               string        `json:"log_requests_level"`
 	EnableResponseHeaderRaftNodeID bool          `json:"enable_response_header_raft_node_id"`
+	UnsafeAllowAPIAuditCreation    bool          `json:"unsafe_allow_api_audit_creation"`
+	AllowAuditLogPrefixing         bool          `json:"allow_audit_log_prefixing"`
+	DisableStandbyReads            bool          `json:"disable_standby_reads"`
+	AllowUnauthenticatedWorkflows  bool          `json:"allow_unauthenticated_workflows"`
 
 	// Additional addresses in addition to the default tls-enabled
 	// 0.0.0.0:8200 listener. Currently only works for
 	// DockerClusterNode containers. Each slice item is a map
 	// of listener type -> listener configuration.
 	AdditionalListeners []interface{} `json:"listeners"`
+
+	// Enable a stdout audit log device through configuration.
+	AuditLogStdout bool `json:"-"`
 }
 
 type ClusterNode struct {

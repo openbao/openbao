@@ -15,6 +15,7 @@ import {
   ChangeEvent,
   createContext,
   JSX,
+  ReactNode,
   useContext,
   useEffect,
   useState,
@@ -33,7 +34,7 @@ type ReleasesMap = Record<string, DownloadRelease>;
 interface OptionsContextValue {
   options: ReleasesMap;
   selectedItem: string;
-  setSelectedItem: (version: string) => void;
+  setSelectedItem: () => void;
   loading: boolean;
   error: boolean;
 }
@@ -50,7 +51,7 @@ const DOCKER_REGISTRIES = ["quay.io", "ghcr.io", "docker.io"] as const;
 
 const OptionsContext = createContext<OptionsContextValue | null>(null);
 
-const OptionsProvider = ({ children }: { children: React.ReactNode }) => {
+const OptionsProvider = ({ children }: { children: ReactNode }) => {
   const [options, setOptions] = useState<ReleasesMap>({});
   const [selectedItem, setSelectedItem] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);

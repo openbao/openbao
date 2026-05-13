@@ -1,15 +1,8 @@
 "use client";
-import React, { JSX } from "react";
-import Accordion from "../Accordion";
 import Heading from "@theme/Heading";
-import Link from "@docusaurus/Link";
+import React from "react";
+import Accordion from "../Accordion";
 import accordionData from "./accordiondata";
-
-type AccordionItem = {
-  title: string;
-  description: JSX.Element;
-};
-
 
 const FAQSection = () => {
   const [expanded, setExpanded] = React.useState<number>(0);

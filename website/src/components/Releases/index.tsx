@@ -146,7 +146,7 @@ const OsPrettyPrint = (name: string): string => {
 }
 
 
-type ArchPackageMapApplicationLambda = (urls: string[], arch: string) => JSX.Element;
+type ArchPackageMapApplicationLambda = () => JSX.Element;
 
 const ArchPackageMapApply = (
     category: ArchPackageMap,

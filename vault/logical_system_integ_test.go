@@ -96,11 +96,6 @@ func TestSystemBackend_InternalUIResultantACL(t *testing.T) {
 					"update",
 				},
 			},
-			"sys/renew": map[string]interface{}{
-				"capabilities": []interface{}{
-					"update",
-				},
-			},
 			"sys/tools/hash": map[string]interface{}{
 				"capabilities": []interface{}{
 					"update",

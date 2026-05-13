@@ -2671,15 +2671,15 @@ func TestExpiration_RevokeForce(t *testing.T) {
 	}
 
 	req.Operation = logical.UpdateOperation
-	req.Path = "sys/revoke-prefix/badrenew/creds"
+	req.Path = "sys/leases/revoke-prefix/badrenew/creds"
 
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
-	req.Path = "sys/revoke-force/badrenew/creds"
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	req.Path = "sys/leases/revoke-force/badrenew/creds"
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("got error: %s", err)
 	}
@@ -2736,15 +2736,15 @@ func TestExpiration_RevokeForceSingle(t *testing.T) {
 		t.Fatalf("expected id %q, got %q", leaseID, resp.Data["id"].(string))
 	}
 
-	req.Path = "sys/revoke-prefix/" + leaseID
+	req.Path = "sys/leases/revoke-prefix/" + leaseID
 
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
-	req.Path = "sys/revoke-force/" + leaseID
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	req.Path = "sys/leases/revoke-force/" + leaseID
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("got error: %s", err)
 	}

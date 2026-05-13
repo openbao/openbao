@@ -1654,16 +1654,35 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 func (b *SystemBackend) sealPaths() []*framework.Path {
 	return []*framework.Path{
 		{
-			Pattern: "key-status$",
+			Pattern: "key-status",
 
 			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "encryption-key",
 				OperationVerb:   "status",
+				OperationSuffix: "encryption-key",
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
+					Summary:  "Provides information about the backend encryption key.",
 					Callback: b.handleKeyStatus,
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Fields: map[string]*framework.FieldSchema{
+								"term": {
+									Type:     framework.TypeInt,
+									Required: true,
+								},
+								"install_time": {
+									Type:     framework.TypeTime,
+									Required: true,
+								},
+								"encryptions": {
+									Type:     framework.TypeInt64,
+									Required: true,
+								},
+							},
+						}},
+					},
 				},
 			},
 

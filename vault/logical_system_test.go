@@ -3383,22 +3383,44 @@ func TestSystemBackend_rawDelete(t *testing.T) {
 	}
 }
 
-func TestSystemBackend_keyStatus(t *testing.T) {
-	b := testSystemBackend(t)
-	req := logical.TestRequest(t, logical.ReadOperation, "key-status")
-	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+func TestSystemBackend_KeyStatus(t *testing.T) {
+	t.Parallel()
+	c, _, _ := TestCoreUnsealed(t)
+	b := c.systemBackend
+	rootCtx := namespace.RootContext(t.Context())
 
-	exp := map[string]interface{}{
-		"term": 1,
-	}
-	delete(resp.Data, "install_time")
-	delete(resp.Data, "encryptions")
-	if !reflect.DeepEqual(resp.Data, exp) {
-		t.Fatalf("got: %#v expect: %#v", resp.Data, exp)
-	}
+	t.Run("returns key info for root namespace", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.ReadOperation, "key-status")
+		resp, err := b.HandleRequest(rootCtx, req)
+
+		require.NoError(t, err)
+		require.Equal(t, resp.Data["term"], 1)
+		require.NotEmpty(t, resp.Data["encryptions"])
+		require.NotEmpty(t, resp.Data["install_time"])
+	})
+
+	t.Run("returns error for non-sealable namespace", func(t *testing.T) {
+		ns := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+		req := logical.TestRequest(t, logical.ReadOperation, "key-status")
+		resp, err := b.HandleRequest(nsCtx, req)
+
+		require.Error(t, err)
+		require.ErrorContains(t, resp.Error(), ErrNotSealable.Error())
+	})
+
+	t.Run("returns key info for sealable namespace", func(t *testing.T) {
+		ns := &namespace.Namespace{Path: "bar/"}
+		_ = TestCoreCreateUnsealedNamespaces(t, c, ns)
+		req := logical.TestRequest(t, logical.ReadOperation, "key-status")
+		nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+		resp, err := b.HandleRequest(nsCtx, req)
+
+		require.NoError(t, err)
+		require.Equal(t, resp.Data["term"], 1)
+		require.NotEmpty(t, resp.Data["encryptions"])
+		require.NotEmpty(t, resp.Data["install_time"])
+	})
 }
 
 func TestSystemBackend_deprecatedRotateConfig(t *testing.T) {

@@ -21,15 +21,15 @@ type OperatorKeyStatusCommand struct {
 }
 
 func (c *OperatorKeyStatusCommand) Synopsis() string {
-	return "Provides information about the active encryption key"
+	return "Provides information about specific namespace barrier encryption key"
 }
 
 func (c *OperatorKeyStatusCommand) Help() string {
 	helpText := `
 Usage: bao operator key-status [options]
 
-  Provides information about the active encryption key. Specifically,
-  the current key term and the key installation time.
+  Provides information about specific namespace barrier encryption key.
+  Specifically the current key term, installation time and encryption count.
 
 ` + c.Flags().Help()
 

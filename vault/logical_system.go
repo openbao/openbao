@@ -3075,22 +3075,31 @@ func (b *SystemBackend) handleConfigUIHeadersDelete(ctx context.Context, req *lo
 	return nil, nil
 }
 
-// handleKeyStatus returns status information about the backend key
+// handleKeyStatus handles the "/sys/key-status" endpoint
+// to return status information about the (namespace scoped) backend key.
 func (b *SystemBackend) handleKeyStatus(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	// Get the key info
-	info, err := b.Core.barrier.ActiveKeyInfo()
+	ns, err := namespace.FromContext(ctx)
 	if err != nil {
-		return nil, err
+		return handleError(err)
 	}
 
-	resp := &logical.Response{
+	barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
+	if barrier == nil {
+		return handleError(ErrNotSealable)
+	}
+
+	info, err := barrier.ActiveKeyInfo()
+	if err != nil {
+		return handleError(err)
+	}
+
+	return &logical.Response{
 		Data: map[string]interface{}{
 			"term":         info.Term,
 			"install_time": info.InstallTime.Format(time.RFC3339Nano),
 			"encryptions":  info.Encryptions,
 		},
-	}
-	return resp, nil
+	}, nil
 }
 
 func (b *SystemBackend) handleWrappingWrap(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -5260,9 +5269,9 @@ Enable a new audit backend or disable an existing backend.
 	},
 
 	"key-status": {
-		"Provides information about the backend encryption key.",
+		"Provides information about the specific namespace barrier encryption key.",
 		`
-		Provides the current backend encryption key term and installation time.
+		Provides the current encryption key term, installation time and encryption count.
 		`,
 	},
 

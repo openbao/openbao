@@ -94,7 +94,6 @@ func init() {
 		"internal/counters/activity/monthly",
 		"internal/counters/config",
 		"internal/inspect/router",
-		"key-status",
 		"loggers",
 		"metrics",
 		"mfa/method",

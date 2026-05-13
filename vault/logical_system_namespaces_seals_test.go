@@ -13,6 +13,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNamespaceBackend_SealStatus(t *testing.T) {
+	t.Parallel()
+	c, _, _ := TestCoreUnsealed(t)
+	b := c.systemBackend
+	rootCtx := namespace.RootContext(context.Background())
+
+	t.Run("returns error on non-sealable namespace", func(t *testing.T) {
+		testCreateNamespace(t, rootCtx, b, "foo", nil)
+
+		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/foo/seal-status")
+		resp, err := b.HandleRequest(rootCtx, req)
+		require.Error(t, err)
+		require.ErrorContains(t, resp.Error(), ErrNotSealable.Error())
+	})
+
+	t.Run("can read seal status", func(t *testing.T) {
+		TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "bar/"})
+
+		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/bar/seal-status")
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, "shamir", res.Data["type"])
+		require.Equal(t, false, res.Data["sealed"])
+		require.Equal(t, 3, res.Data["t"])
+		require.Equal(t, 3, res.Data["n"])
+		require.Equal(t, 0, res.Data["progress"])
+	})
+}
+
 func TestNamespaceBackend_SealUnseal(t *testing.T) {
 	t.Parallel()
 	c, rootShares, root := TestCoreUnsealed(t)

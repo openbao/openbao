@@ -52,9 +52,36 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 
 	return []*framework.Path{
 		{
+			Pattern: "namespaces/(?P<path>.+)/seal-status",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+				OperationSuffix: "seal",
+			},
+			Fields: map[string]*framework.FieldSchema{
+				"path": namespacePathSchema,
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Summary:  "Check the seal status of an OpenBao namespace.",
+					Callback: b.handleNamespaceSealStatus(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: http.StatusText(http.StatusOK),
+							Fields:      sealStatusSchema,
+						}},
+					},
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][1]),
+		},
+		{
 			Pattern: "namespaces/(?P<path>.+)/seal",
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
+				OperationVerb:   "seal",
 			},
 			Fields: map[string]*framework.FieldSchema{
 				"path": namespacePathSchema,
@@ -80,6 +107,7 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 			Pattern: "namespaces/(?P<path>.+)/unseal",
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
+				OperationVerb:   "unseal",
 			},
 			Fields: map[string]*framework.FieldSchema{
 				"path": namespacePathSchema,
@@ -109,6 +137,43 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][0]),
 			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][1]),
 		},
+	}
+}
+
+// handleNamespaceSealStatus handles the "/sys/namespaces/<path>/seal-status" endpoint
+// to retrieve a seal status of the namespace.
+func (b *SystemBackend) handleNamespaceSealStatus() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
+			return nil, errors.New("path must not contain /")
+		}
+
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if ns == nil {
+			return nil, fmt.Errorf("namespace %q doesn't exist", path)
+		}
+
+		status, err := b.Core.sealManager.SealStatus(ctx, ns)
+		if err != nil {
+			return handleError(err)
+		}
+
+		return &logical.Response{
+			Data: map[string]interface{}{
+				"type":        status.Type,
+				"initialized": status.Initialized,
+				"sealed":      status.Sealed,
+				"t":           status.T,
+				"n":           status.N,
+				"progress":    status.Progress,
+				"nonce":       status.Nonce,
+			},
+		}, nil
 	}
 }
 
@@ -212,9 +277,6 @@ This path responds to the following HTTP methods.
 
 	GET /<path>/seal-status
 		Returns the seal status of the namespace.
-
-	GET /<path>/key-status
-		Provides the namespace current backend encryption key term and installation time.
 		`,
 	},
 }

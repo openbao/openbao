@@ -1,4 +1,5 @@
 import Heading from "@theme/Heading";
+import { JSX } from "react";
 
 type SupportItem = {
     title: string;
@@ -48,17 +49,17 @@ const SupportList: SupportItem[] = [
     },
 ];
 
-function Supporter({ title, description }: SupportItem) {
+const Supporter = ({ title, description }: SupportItem) => {
     return (
         <div className="row">
             <div
                 className="col col--8 col--offset-2 padding-vert--md"
                 style={{
-                    "border-bottom": "solid 1px var(--ifm-table-border-color)",
+                    borderBottom: "solid 1px var(--ifm-table-border-color)",
                     gap: "1rem",
                     display: "flex",
-                    "justify-content": "space-between",
-                    "align-items": "center",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                 }}
             >
                 <span className="text--bold">{title}</span>
@@ -68,7 +69,7 @@ function Supporter({ title, description }: SupportItem) {
     );
 }
 
-export default function Supporters(): JSX.Element {
+const Supporters = (): JSX.Element => {
     return (
         <section className="padding-vert--md margin-vert--lg">
             <div className="container">
@@ -86,3 +87,5 @@ export default function Supporters(): JSX.Element {
         </section>
     );
 }
+
+export default Supporters

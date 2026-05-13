@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import Heading from "@theme/Heading";
+import { JSX } from "react";
 
 type FeatureItem = {
   title: string;
@@ -70,12 +71,12 @@ const FeatureList: FeatureItem[] = [
   },
 ];
 
-function Feature({ title, description }: FeatureItem) {
+const Feature = ({ title, description }: FeatureItem) => {
   return (
     <div className={clsx("col col--4 padding-bottom--lg")}>
       <div className="card card--full-height">
         <div className="card__header">
-          <h3>{title}</h3>
+          <Heading as="h3">{title}</Heading>
         </div>
         <div className="card__body">
           <p>{description}</p>
@@ -85,7 +86,7 @@ function Feature({ title, description }: FeatureItem) {
   );
 }
 
-export default function HomepageFeatures(): JSX.Element {
+const HomepageFeatures=(): JSX.Element => {
   return (
     <section className="padding-vert--md margin-vert--lg">
       <div className="container">
@@ -101,3 +102,6 @@ export default function HomepageFeatures(): JSX.Element {
     </section>
   );
 }
+
+
+export default HomepageFeatures

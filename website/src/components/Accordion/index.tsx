@@ -1,19 +1,32 @@
+import { KeyboardEvent, ReactNode } from "react";
 import styles from "./styles.module.css";
+import Heading from "@theme/Heading";
 
-type AccordionItem = {
+export type AccordionItem = {
   title: string;
-  description: string;
+  description: ReactNode;
 };
-type AccordionProps = {
+
+export type AccordionProps = {
   item: AccordionItem;
   isExpanded: boolean;
   onClick: () => void;
 };
-export default function Accordion({
-  item,
-  isExpanded,
-  onClick,
-}: AccordionProps) {
+
+const Accordion = (props: AccordionProps) => {
+  const {
+    onClick,
+    isExpanded,
+    item,
+  } = props
+
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter") {
+      onClick();
+    }
+  }
+
   return (
     <>
       <div
@@ -21,19 +34,15 @@ export default function Accordion({
         onClick={onClick}
         tabIndex={0}
         role="button"
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            onClick();
-          }
-        }}
+        onKeyDown={handleKeyDown}
       >
         <div
           className={styles.accordion__item__title}
           aria-expanded={isExpanded}
           aria-label={(isExpanded ? "hide " : "show ") + item.description}
         >
-          <h3 className="margin-vert--none">{item.title}</h3>
-          <h3 className="margin-vert--none">{isExpanded ? "-" : "+"}</h3>
+          <Heading as="h3" className="margin-vert--none">{item.title}</Heading>
+          <Heading as="h3" className="margin-vert--none">{isExpanded ? "-" : "+"}</Heading>
         </div>
         {isExpanded ? (
           <div className={styles.accordion__item__description}>
@@ -44,3 +53,5 @@ export default function Accordion({
     </>
   );
 }
+
+export default Accordion

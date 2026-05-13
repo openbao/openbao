@@ -6,16 +6,15 @@ import { useActiveDocContext } from "@docusaurus/plugin-content-docs/client";
 
 type Props = WrapperProps<typeof DocsVersionDropdownNavbarItemType>;
 
-export default function DocsVersionDropdownNavbarItemWrapper(
+const DocsVersionDropdownNavbarItemWrapper = (
   props: Props,
-): ReactNode {
+): ReactNode => {
   const activeDocContext = useActiveDocContext(props.docsPluginId);
   if (!activeDocContext.activeDoc) {
     return null;
   }
-  return (
-    <>
-      <DocsVersionDropdownNavbarItem {...props} />
-    </>
-  );
+  return <DocsVersionDropdownNavbarItem {...props} />
 }
+
+
+export default DocsVersionDropdownNavbarItemWrapper

@@ -1,7 +1,7 @@
 import Heading from "@theme/Heading";
 import Link from "@docusaurus/Link";
 
-export default function Contributing(): JSX.Element {
+const Contributing = () => {
     return (
         <section className="padding-vert--md margin-vert--lg">
             <div className="container">
@@ -30,3 +30,5 @@ export default function Contributing(): JSX.Element {
         </section>
     );
 }
+
+export default Contributing

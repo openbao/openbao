@@ -48,8 +48,8 @@ importers:
         specifier: ^4.18.1
         version: 4.18.1
       openbao-ecosystem-logos:
-        specifier: github:openbao/openbao-ecosystem-logos#ab2ccb85e2ee39a3756ce7a222eaa648aa1a3b20
-        version: https://codeload.github.com/openbao/openbao-ecosystem-logos/tar.gz/ab2ccb85e2ee39a3756ce7a222eaa648aa1a3b20
+        specifier: github:openbao/openbao-ecosystem-logos#879411a1d50129b5678f4fa89cf5228c65f8eb32
+        version: https://codeload.github.com/openbao/openbao-ecosystem-logos/tar.gz/879411a1d50129b5678f4fa89cf5228c65f8eb32
       prism-react-renderer:
         specifier: ^2.4.1
         version: 2.4.1(react@19.2.6)
@@ -4755,8 +4755,8 @@ packages:
     resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
     engines: {node: '>=12'}
 
-  openbao-ecosystem-logos@https://codeload.github.com/openbao/openbao-ecosystem-logos/tar.gz/ab2ccb85e2ee39a3756ce7a222eaa648aa1a3b20:
-    resolution: {tarball: https://codeload.github.com/openbao/openbao-ecosystem-logos/tar.gz/ab2ccb85e2ee39a3756ce7a222eaa648aa1a3b20}
+  openbao-ecosystem-logos@https://codeload.github.com/openbao/openbao-ecosystem-logos/tar.gz/879411a1d50129b5678f4fa89cf5228c65f8eb32:
+    resolution: {tarball: https://codeload.github.com/openbao/openbao-ecosystem-logos/tar.gz/879411a1d50129b5678f4fa89cf5228c65f8eb32}
     version: 0.0.0
 
   opener@1.5.2:
@@ -12571,7 +12571,7 @@ snapshots:
       is-docker: 2.2.1
       is-wsl: 2.2.0
 
-  openbao-ecosystem-logos@https://codeload.github.com/openbao/openbao-ecosystem-logos/tar.gz/ab2ccb85e2ee39a3756ce7a222eaa648aa1a3b20: {}
+  openbao-ecosystem-logos@https://codeload.github.com/openbao/openbao-ecosystem-logos/tar.gz/879411a1d50129b5678f4fa89cf5228c65f8eb32: {}
 
   opener@1.5.2: {}
 

@@ -99,6 +99,7 @@ type ServerCommand struct {
 	SigUSR2Ch  chan struct{}
 
 	WaitGroup *sync.WaitGroup
+	Context   context.Context
 
 	logWriter io.Writer
 	logger    hclog.InterceptLogger
@@ -1331,20 +1332,23 @@ func (c *ServerCommand) Run(args []string) int {
 		go runUnseal(c, core, sealShutdownCh)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	// Context + WaitGroup to manage spawned processed - spawned processes can
+	// wait on the context, and we wait on the group before exiting
+	c.WaitGroup = &sync.WaitGroup{}
+	c.Context = ctx
+	defer cancel()
 	// When the underlying storage is raft, kick off retry join if it was specified
 	// in the configuration
 	// TODO: Should we also support retry_join for ha_storage?
 	if config.Storage.Type == storageTypeRaft {
-		if err := core.InitiateRetryJoin(context.Background()); err != nil {
+		if err := core.InitiateRetryJoin(c.Context, c.WaitGroup); err != nil {
 			c.UI.Error(fmt.Sprintf("Failed to initiate raft retry join, %q", err.Error()))
 			return 1
 		}
 	}
 
 	// Perform initialization of HTTP server after the verifyOnly check.
-
-	// Instantiate the wait group
-	c.WaitGroup = &sync.WaitGroup{}
 
 	// If service discovery is available, run service discovery
 	err = runListeners(c, &coreConfig, config, configSR)

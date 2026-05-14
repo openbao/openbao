@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"sync/atomic"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
@@ -97,7 +98,8 @@ const (
 	// rate limit resource quotas. Specifically, when this toggle is false, we can
 	// infer a Vault node is operating with an initial default set and on a subsequent
 	// update to that set, we should not overwrite it on Setup.
-	DefaultRateLimitExemptPathsToggle = StoragePrefix + "default_rate_limit_exempt_paths_toggle"
+	DefaultRateLimitExemptPathsToggle     = StoragePrefix + DefaultRateLimitExemptPathsToggleName
+	DefaultRateLimitExemptPathsToggleName = "default_rate_limit_exempt_paths_toggle"
 )
 
 var (
@@ -148,7 +150,8 @@ type Manager struct {
 	db *memdb.MemDB
 
 	// config containing operator preferences and quota behaviors
-	config *Config
+	config                 *Config
+	usingConfigExemptPaths atomic.Bool
 
 	rateLimitPathManager *pathmanager.PathManager
 
@@ -944,15 +947,26 @@ func dbSchema() *memdb.DBSchema {
 // updates the caches and data structures to reflect those updates.
 func (m *Manager) Invalidate(key string) error {
 	switch key {
+	case DefaultRateLimitExemptPathsToggleName:
+		if err := m.loadQuotaExemptConfig(m.ctx, m.storage); err != nil {
+			return fmt.Errorf("error loading quota default exempt paths configuration: %w", err)
+		}
+
+		fallthrough
 	case "config":
 		config, err := LoadConfig(m.ctx, m.storage)
 		if err != nil {
 			return fmt.Errorf("failed to invalidate quota config: %w", err)
 		}
 
+		exemptPaths := defaultExemptPaths
+		if m.usingConfigExemptPaths.Load() {
+			exemptPaths = config.RateLimitExemptPaths
+		}
+
 		m.SetEnableRateLimitAuditLogging(config.EnableRateLimitAuditLogging)
 		m.SetEnableRateLimitResponseHeaders(config.EnableRateLimitResponseHeaders)
-		m.SetRateLimitExemptPaths(config.RateLimitExemptPaths)
+		m.SetRateLimitExemptPaths(exemptPaths)
 
 	default:
 		splitKeys := strings.Split(key, "/")
@@ -1043,6 +1057,10 @@ func (m *Manager) Setup(ctx context.Context, storage logical.Storage) error {
 	m.storage = storage
 	m.ctx = ctx
 
+	if err := m.loadQuotaExemptConfig(ctx, storage); err != nil {
+		return fmt.Errorf("error loading quota default exempt paths configuration: %w", err)
+	}
+
 	// Load the quota configuration from storage and load it into the quota
 	// manager.
 	config, err := LoadConfig(ctx, storage)
@@ -1050,6 +1068,29 @@ func (m *Manager) Setup(ctx context.Context, storage logical.Storage) error {
 		return err
 	}
 
+	exemptPaths := defaultExemptPaths
+	if m.usingConfigExemptPaths.Load() {
+		exemptPaths = config.RateLimitExemptPaths
+	}
+
+	m.setEnableRateLimitAuditLoggingLocked(config.EnableRateLimitAuditLogging)
+	m.setEnableRateLimitResponseHeadersLocked(config.EnableRateLimitResponseHeaders)
+	m.setRateLimitExemptPathsLocked(exemptPaths)
+	if err = m.resetCache(); err != nil {
+		return err
+	}
+
+	for _, qType := range quotaTypes() {
+		if err := m.setupQuotaType(ctx, storage, qType); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *Manager) loadQuotaExemptConfig(ctx context.Context, storage logical.Storage) error {
+	// Reload our toggle value.
 	entry, err := storage.Get(ctx, DefaultRateLimitExemptPathsToggle)
 	if err != nil {
 		return err
@@ -1066,22 +1107,7 @@ func (m *Manager) Setup(ctx context.Context, storage logical.Storage) error {
 		}
 	}
 
-	exemptPaths := defaultExemptPaths
-	if toggle {
-		exemptPaths = config.RateLimitExemptPaths
-	}
-
-	m.setEnableRateLimitAuditLoggingLocked(config.EnableRateLimitAuditLogging)
-	m.setEnableRateLimitResponseHeadersLocked(config.EnableRateLimitResponseHeaders)
-	m.setRateLimitExemptPathsLocked(exemptPaths)
-	if err = m.resetCache(); err != nil {
-		return err
-	}
-
-	for _, qType := range quotaTypes() {
-		m.setupQuotaType(ctx, storage, qType)
-	}
-
+	m.usingConfigExemptPaths.Store(toggle)
 	return nil
 }
 

@@ -50,7 +50,7 @@ jobs:
           name: test-results-ui
           path: ui/test-results
         if: success() || failure()
-      - uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86 # v2.4
+      - uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5 # v2.6
         with:
           paths: "ui/test-results/qunit/results.xml"
           show: "fail"

@@ -1342,7 +1342,11 @@ func (c *ServerCommand) Run(args []string) int {
 	// in the configuration
 	// TODO: Should we also support retry_join for ha_storage?
 	if config.Storage.Type == storageTypeRaft {
-		if err := core.InitiateRetryJoin(context.Background()); err != nil {
+		wg := sync.WaitGroup{}
+		defer wg.Wait()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		if err := core.InitiateRetryJoin(ctx, &wg); err != nil {
 			c.UI.Error(fmt.Sprintf("Failed to initiate raft retry join, %q", err.Error()))
 			return 1
 		}

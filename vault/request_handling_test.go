@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -759,4 +760,46 @@ func TestRequestHandling_RelativePathAllowed(t *testing.T) {
 	// While other places still disallow the relative paths (e.g., storage
 	// view), we know that we made it farther.
 	require.ErrorContains(t, err, "read failed")
+}
+
+func TestRequestHandling_DisallowLogicalTokenCreation(t *testing.T) {
+	t.Parallel()
+
+	core, _, _ := TestCoreUnsealed(t)
+
+	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	core.logicalBackends["test"] = func(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
+		b := &NoopBackend{
+			Login: []string{"login"},
+			Response: &logical.Response{
+				Auth: &logical.Auth{},
+			},
+		}
+		if err := b.Setup(ctx, conf); err != nil {
+			return nil, err
+		}
+		return b, nil
+	}
+
+	meUUID, _ := uuid.GenerateUUID()
+	err := core.mount(namespace.RootContext(t.Context()), &MountEntry{
+		Table: mountTableType,
+		UUID:  meUUID,
+		Path:  "test",
+		Type:  "test",
+	})
+	require.NoError(t, err)
+
+	req := &logical.Request{
+		Path:      "test/login",
+		Operation: logical.ReadOperation,
+	}
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if resp != nil {
+		require.Nil(t, resp.Auth)
+	}
+	require.Error(t, err, ErrInternalError)
 }

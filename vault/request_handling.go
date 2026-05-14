@@ -1387,7 +1387,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	// other request this is an internal error.
 	if resp != nil && resp.Auth != nil {
 		if !strings.HasPrefix(req.Path, "auth/token/") {
-			c.logger.Error("unexpected Auth response for non-token backend", "request_path", req.Path)
+			c.logger.Error("unexpected auth response for non-token backend", "request_path", req.Path)
 			retErr = multierror.Append(retErr, ErrInternalError)
 			return nil, auth, retErr
 		}
@@ -1665,8 +1665,17 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 		retErr = multierror.Append(retErr, ErrInternalError)
 		return retResp, retAuth, retErr
 	}
+
 	// If the response generated an authentication, then generate the token
 	if resp != nil && resp.Auth != nil && req.Path != "sys/mfa/validate" {
+		// When the request path is part of a logical backend (and not a
+		// credential backend), reject the token creation.
+		if !strings.HasPrefix(req.Path, "auth/") {
+			c.logger.Error("unexpected auth response for logical secret backend", "request_path", req.Path)
+			retErr = multierror.Append(retErr, ErrInternalError)
+			return nil, nil, retErr
+		}
+
 		// Check for request role in context to role based quotas
 		var role string
 		reqRole := ctx.Value(logical.CtxKeyRequestRole{})

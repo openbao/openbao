@@ -256,6 +256,11 @@ func isMissedMountKey(key string) bool {
 		strings.HasPrefix(key, auditBarrierPrefix)
 }
 
+func isLoginMFA(key string) bool {
+	return strings.HasPrefix(key, systemBarrierPrefix+loginMFAConfigPrefix) ||
+		strings.HasPrefix(key, systemBarrierPrefix+mfaLoginEnforcementPrefix)
+}
+
 func (ij *invalidationJob) Execute() error {
 	ij.im.dispacherLogger.Trace("processing invalidation", "key", ij.key)
 	defer ij.im.dispacherLogger.Trace("concluding processing of invalidation", "key", ij.key)
@@ -392,6 +397,9 @@ func (ij *invalidationJob) Execute() error {
 	case strings.HasPrefix(ij.key, "autopilot/") || ij.key == raftAutopilotConfigurationStoragePath:
 		// Raft context is reloaded when a standby becomes active, so it is
 		// safe to ignore changes to autopilot state.
+	case isLoginMFA(ij.key):
+		ij.fatal = true
+		return ij.loginMFAInvalidation(ctx, ns)
 	case ij.im.core.router.Invalidate(shortCtx, ij.key):
 		// if router.Invalidate returns true, a matching plugin was found and
 		// the invalidation is therefore dispatched.
@@ -491,6 +499,14 @@ func (ij *invalidationJob) legacyMountInvalidation(ctx context.Context) error {
 func (ij *invalidationJob) transactionalMountInvalidation(ctx context.Context) error {
 	if err := ij.im.core.reloadMount(ctx, ij.nsKey); err != nil {
 		return fmt.Errorf("unable to invalidate mount for key %q in namespace %q: %w", ij.nsKey, ij.nsUUID, err)
+	}
+
+	return nil
+}
+
+func (ij *invalidationJob) loginMFAInvalidation(ctx context.Context, ns *namespace.Namespace) error {
+	if err := ij.im.core.loginMFABackend.invalidate(ctx, ns, ij.nsKey); err != nil {
+		return fmt.Errorf("unable to invalidate login MFA config for key %q in namespace %q: %w", ij.nsKey, ij.nsUUID, err)
 	}
 
 	return nil

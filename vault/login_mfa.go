@@ -589,6 +589,32 @@ func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, re
 	return nil, nil
 }
 
+func (b *LoginMFABackend) invalidate(ctx context.Context, ns *namespace.Namespace, path string) error {
+	switch {
+	case strings.HasPrefix(path, systemBarrierPrefix+loginMFAConfigPrefix):
+		key, _ := strings.CutPrefix(path, systemBarrierPrefix+loginMFAConfigPrefix)
+		barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
+
+		return b.loadMFAMethodConfig(ctx, ns, barrierView, key)
+	case strings.HasPrefix(path, systemBarrierPrefix+mfaLoginEnforcementPrefix):
+		key, _ := strings.CutPrefix(path, systemBarrierPrefix+mfaLoginEnforcementPrefix)
+		barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+
+		mConfig, err := b.loadMFAEnforcementConfig(ctx, ns, barrierView, key)
+		if err != nil {
+			return err
+		}
+
+		if mConfig == nil {
+			return nil
+		}
+
+		return b.loginMFAMethodExistenceCheck(mConfig)
+	default:
+		return fmt.Errorf("unknown path to invalidate: %v", path)
+	}
+}
+
 // loadMFAMethodConfigs loads MFA method configs for login MFA
 func (b *LoginMFABackend) loadMFAMethodConfigs(ctx context.Context, ns *namespace.Namespace) error {
 	b.mfaLogger.Trace("loading login MFA configurations")
@@ -600,27 +626,35 @@ func (b *LoginMFABackend) loadMFAMethodConfigs(ctx context.Context, ns *namespac
 	b.mfaLogger.Trace("methods collected", "num_existing", len(existing))
 
 	for _, key := range existing {
-		b.mfaLogger.Trace("loading method", "method", key)
-
-		// Read the config from storage
-		mConfig, err := b.getMFAConfig(ctx, key, barrierView)
-		if err != nil {
-			return err
-		}
-
-		if mConfig == nil {
-			b.mfaLogger.Trace("failed to find the config related to a method", "namespace", ns.Path, "prefix", loginMFAConfigPrefix, "method", key)
-			continue
-		}
-
-		// Load the config in MemDB
-		err = b.MemDBUpsertMFAConfig(ctx, mConfig)
-		if err != nil {
-			return fmt.Errorf("failed to load configuration ID %s prefix %s in MemDB: %w", mConfig.ID, loginMFAConfigPrefix, err)
+		if err := b.loadMFAMethodConfig(ctx, ns, barrierView, key); err != nil {
+			return fmt.Errorf("failed to load MFA method config %v: %w", key, err)
 		}
 	}
 
 	b.mfaLogger.Trace("configurations restored", "namespace", ns.Path, "prefix", loginMFAConfigPrefix)
+
+	return nil
+}
+
+func (b *LoginMFABackend) loadMFAMethodConfig(ctx context.Context, ns *namespace.Namespace, barrierView BarrierView, key string) error {
+	b.mfaLogger.Trace("loading method", "method", key)
+
+	// Read the config from storage
+	mConfig, err := b.getMFAConfig(ctx, key, barrierView)
+	if err != nil {
+		return err
+	}
+
+	if mConfig == nil {
+		b.mfaLogger.Trace("failed to find the config related to a method", "namespace", ns.Path, "prefix", loginMFAConfigPrefix, "method", key)
+		return nil
+	}
+
+	// Load the config in MemDB
+	err = b.MemDBUpsertMFAConfig(ctx, mConfig)
+	if err != nil {
+		return fmt.Errorf("failed to load configuration ID %s prefix %s in MemDB: %w", mConfig.ID, loginMFAConfigPrefix, err)
+	}
 
 	return nil
 }
@@ -637,31 +671,42 @@ func (b *LoginMFABackend) loadMFAEnforcementConfigs(ctx context.Context, ns *nam
 
 	eConfigs := make([]*mfa.MFAEnforcementConfig, 0)
 	for _, key := range existing {
-		b.mfaLogger.Trace("loading enforcement", "config", key)
-
-		// Read the config from storage
-		mConfig, err := b.getMFALoginEnforcementConfig(ctx, key, barrierView)
+		mConfig, err := b.loadMFAEnforcementConfig(ctx, ns, barrierView, key)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error loading login MFA enforcement config %v: %w", key, err)
 		}
 
-		if mConfig == nil {
-			b.mfaLogger.Trace("failed to find an enforcement config", "namespace", ns.Path, "prefix", mfaLoginEnforcementPrefix, "config", key)
-			continue
+		if mConfig != nil {
+			eConfigs = append(eConfigs, mConfig)
 		}
-
-		// Load the config in MemDB
-		err = b.MemDBUpsertMFALoginEnforcementConfig(ctx, mConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load enforcement configuration ID %s with prefix %s in MemDB: %w", mConfig.ID, mfaLoginEnforcementPrefix, err)
-		}
-
-		eConfigs = append(eConfigs, mConfig)
 	}
 
 	b.mfaLogger.Trace("enforcement configurations restored", "namespace", ns.Path, "prefix", mfaLoginEnforcementPrefix)
 
 	return eConfigs, nil
+}
+
+func (b *LoginMFABackend) loadMFAEnforcementConfig(ctx context.Context, ns *namespace.Namespace, barrierView BarrierView, key string) (*mfa.MFAEnforcementConfig, error) {
+	b.mfaLogger.Trace("loading enforcement", "config", key)
+
+	// Read the config from storage
+	mConfig, err := b.getMFALoginEnforcementConfig(ctx, key, barrierView)
+	if err != nil {
+		return nil, err
+	}
+
+	if mConfig == nil {
+		b.mfaLogger.Trace("failed to find an enforcement config", "namespace", ns.Path, "prefix", mfaLoginEnforcementPrefix, "config", key)
+		return nil, nil
+	}
+
+	// Load the config in MemDB
+	err = b.MemDBUpsertMFALoginEnforcementConfig(ctx, mConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load enforcement configuration ID %s with prefix %s in MemDB: %w", mConfig.ID, mfaLoginEnforcementPrefix, err)
+	}
+
+	return mConfig, nil
 }
 
 func (b *LoginMFABackend) loginMFAMethodExistenceCheck(eConfig *mfa.MFAEnforcementConfig) error {

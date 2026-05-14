@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/openbao/vault/quotas"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func testCore_Invalidate_TestCore(t *testing.T, config *CoreConfig) (*Core, string) {
@@ -349,6 +350,56 @@ func TestCore_Invalidate_Quota(t *testing.T) {
 	resp := testCore_Invalidate_handleRequest(t, t.Context(), c, req)
 
 	require.Equal(t, 1, resp.Data["interval"])
+}
+
+func TestCore_Invalidate_LoginMFA(t *testing.T) {
+	t.Parallel()
+	c, root := testCore_Invalidate_TestCore(t, nil)
+	rootCtx := namespace.RootContext(t.Context())
+
+	// 1. Create a login MFA to populate the cache.
+	req := logical.TestRequest(t, logical.CreateOperation, "identity/mfa/method/totp")
+	req.ClientToken = root
+	req.Data = map[string]any{
+		"method_name": "testing",
+		"issuer":      "OpenBao",
+	}
+	resp := testCore_Invalidate_handleRequest(t, rootCtx, c, req)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "method_id")
+	path := resp.Data["method_id"].(string)
+
+	// 2. Manipulate Storage
+	barrierView := NamespaceView(c.barrier, namespace.RootNamespace).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	mfa, err := c.loginMFABackend.getMFAConfig(rootCtx, path, barrierView)
+	require.NoError(t, err)
+	require.NotNil(t, mfa)
+	require.Equal(t, mfa.Name, "testing")
+
+	clone, err := mfa.Clone()
+	require.NoError(t, err)
+
+	clone.Name = "my-custom-name"
+
+	fullPath := systemBarrierPrefix + loginMFAConfigPrefix + path
+	newEntry, err := proto.Marshal(clone)
+	require.NoError(t, err)
+
+	testCore_Invalidate_sneakValueAroundCache(t, c, &logical.StorageEntry{
+		Key:   fullPath,
+		Value: newEntry,
+	})
+
+	// 3. Invalidate path
+	c.invalidateSynchronous(fullPath)
+
+	// 4. Check cache was properly invalidated
+	req = logical.TestRequest(t, logical.ReadOperation, "identity/mfa/method/totp/"+path)
+	req.ClientToken = root
+
+	resp = testCore_Invalidate_handleRequest(t, rootCtx, c, req)
+	require.Contains(t, resp.Data, "name")
+	require.Equal(t, "my-custom-name", resp.Data["name"])
 }
 
 func TestCore_Invalidate_Plugin(t *testing.T) {

@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -823,6 +824,54 @@ func TestRequestHandling_DisallowLogicalTokenCreation(t *testing.T) {
 		Operation: logical.ReadOperation,
 	}
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if resp != nil {
+		require.Nil(t, resp.Auth)
+	}
+	require.Error(t, err, ErrInternalError)
+}
+
+func TestRequestHandling_DisallowAuthErrorTokenCreation(t *testing.T) {
+	t.Parallel()
+
+	core, _, root := TestCoreUnsealed(t)
+
+	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	core.credentialBackends["test"] = func(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
+		b := &backendTest.Noop{
+			Login:       []string{"login"},
+			BackendType: logical.TypeCredential,
+			RequestHandler: func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
+				return &logical.Response{
+					Auth: &logical.Auth{},
+				}, errors.New("erring for test")
+			},
+		}
+		if err := b.Setup(ctx, conf); err != nil {
+			return nil, err
+		}
+		return b, nil
+	}
+
+	req := &logical.Request{
+		Path:        "sys/auth/test",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"type": "test",
+		},
+	}
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.Nil(t, resp)
+
+	req = &logical.Request{
+		Path:      "auth/test/login",
+		Operation: logical.ReadOperation,
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	if resp != nil {
 		require.Nil(t, resp.Auth)
 	}

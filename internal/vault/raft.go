@@ -713,7 +713,7 @@ func (c *Core) raftSnapshotRestoreCallback(grabLock bool, sealNode bool) func(co
 	}
 }
 
-func (c *Core) InitiateRetryJoin(ctx context.Context) error {
+func (c *Core) InitiateRetryJoin(ctx context.Context, wg *sync.WaitGroup) error {
 	raftBackend := c.GetRaftBackend()
 	if raftBackend == nil {
 		return nil
@@ -735,7 +735,7 @@ func (c *Core) InitiateRetryJoin(ctx context.Context) error {
 
 	c.logger.Info("raft retry join initiated")
 
-	if _, err = c.JoinRaftCluster(ctx, leaderInfos, raftBackend.NonVoter()); err != nil {
+	if _, err = c.JoinRaftCluster(ctx, wg, leaderInfos, raftBackend.NonVoter()); err != nil {
 		return err
 	}
 
@@ -842,7 +842,7 @@ func (c *Core) getRaftChallenge(leaderInfo *raft.LeaderJoinInfo) (*raftInformati
 	}, nil
 }
 
-func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJoinInfo, nonVoter bool) (bool, error) {
+func (c *Core) JoinRaftCluster(ctx context.Context, wg *sync.WaitGroup, leaderInfos []*raft.LeaderJoinInfo, nonVoter bool) (bool, error) {
 	raftBackend := c.GetRaftBackend()
 	if raftBackend == nil {
 		return false, errors.New("raft backend not in use")
@@ -1037,10 +1037,10 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 	joinPlugins := make(map[string]joinsdk.Join, 0)
 	cleanupPlugins := func() {
 		for name, plugin := range joinPlugins {
-			err := plugin.Cleanup(ctx)
-			if err != nil {
+			if err := plugin.Cleanup(ctx); err != nil {
 				c.logger.Error("error cleaning up join plugin", "name", name, "error", err.Error())
 			}
+			wg.Done()
 		}
 	}
 
@@ -1057,6 +1057,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 			cleanupPlugins()
 			return false, fmt.Errorf("failed to create join plugin: %w", err)
 		}
+		wg.Add(1)
 		joinPlugins[name] = plugin
 	}
 

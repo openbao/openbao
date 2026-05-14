@@ -862,7 +862,7 @@ func joinRaftFollowers(t *testing.T, cluster *vault.TestCluster, useStoredKeys b
 	// Join followers
 	for i := 1; i < len(cluster.Cores); i++ {
 		core := cluster.Cores[i]
-		_, err := core.JoinRaftCluster(namespace.RootContext(context.Background()), leaderInfos, false)
+		_, err := core.JoinRaftCluster(namespace.RootContext(context.Background()), nil, leaderInfos, false)
 		if err != nil {
 			t.Fatal(err)
 		}

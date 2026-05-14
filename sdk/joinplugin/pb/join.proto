@@ -1,0 +1,25 @@
+syntax = "proto3";
+package join;
+
+option go_package = "github.com/openbao/openbao/sdk/v2/plugin/join/pb";
+
+message Empty {}
+
+message CandidateArgs {
+    map<string, string> config = 1;
+}
+
+message Candidate {
+    string host = 1;
+    string scheme = 2;
+    uint32 port = 3;
+}
+
+message Candidates {
+    repeated Candidate candidates = 1;
+}
+
+service Join {
+    rpc candidates(CandidateArgs) returns (Candidates);
+    rpc cleanup(Empty) returns (Empty);
+}

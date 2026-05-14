@@ -44,7 +44,7 @@ require (
 	github.com/google/cel-go v0.28.0
 	github.com/google/go-containerregistry v0.21.5
 	github.com/google/go-metrics-stackdriver v0.2.0
-	github.com/hashicorp/cap v0.12.0
+	github.com/hashicorp/cap v0.13.0
 	github.com/hashicorp/cli v1.1.7
 	github.com/hashicorp/consul/sdk v0.14.0
 	github.com/hashicorp/errwrap v1.1.0

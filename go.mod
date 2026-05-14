@@ -140,7 +140,7 @@ require (
 	golang.org/x/net v0.53.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.20.0
-	golang.org/x/sys v0.43.0
+	golang.org/x/sys v0.44.0
 	golang.org/x/term v0.42.0
 	golang.org/x/text v0.36.0
 	google.golang.org/api v0.276.0

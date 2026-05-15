@@ -306,6 +306,10 @@ jobs:
         if: inputs.dogorelease && matrix.release_os == 'hsm'
         run: sudo apt install -y gcc-aarch64-linux-gnu
 
+      - name: Create Go module cache dir for Syft license resolution
+        if: inputs.dogorelease
+        run: mkdir -p "${HOME}/go/pkg/mod"
+
       - name: "GoReleaser: Release"
         if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
         run: |

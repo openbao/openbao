@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/raft"
+	autopilot "github.com/hashicorp/raft-autopilot"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -117,6 +118,49 @@ func TestRaft_Backend(t *testing.T) {
 	b := GetRaft(t, true, true)
 
 	physical.ExerciseBackend(t, b)
+}
+
+func TestAutopilotStateHasServer(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		state  *autopilot.State
+		peerID string
+		want   bool
+	}{
+		"nil state": {
+			peerID: "node1",
+			want:   false,
+		},
+		"missing server": {
+			state: &autopilot.State{
+				Servers: map[raft.ServerID]*autopilot.ServerState{
+					raft.ServerID("node1"): {},
+				},
+			},
+			peerID: "node2",
+			want:   false,
+		},
+		"present server": {
+			state: &autopilot.State{
+				Servers: map[raft.ServerID]*autopilot.ServerState{
+					raft.ServerID("node1"): {},
+				},
+			},
+			peerID: "node1",
+			want:   true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := autopilotStateHasServer(tt.state, tt.peerID); got != tt.want {
+				t.Fatalf("autopilotStateHasServer() = %t, want %t", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestRaft_TransactionalBackend(t *testing.T) {

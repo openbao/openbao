@@ -1277,6 +1277,10 @@ func (b *RaftBackend) PromotePeer(ctx context.Context, peerID string) error {
 		return ErrRaftAutopilotNotInitialized
 	}
 
+	if !autopilotStateHasServer(b.autopilot.GetState(), peerID) {
+		return fmt.Errorf("server %s not found in raft autopilot state", peerID)
+	}
+
 	if !b.delegate.IsNonVoter(raft.ServerID(peerID)) {
 		return errors.New("server is not a non-voter")
 	}
@@ -1335,6 +1339,10 @@ func (b *RaftBackend) DemotePeer(ctx context.Context, peerID string) error {
 		return ErrRaftAutopilotNotInitialized
 	}
 
+	if !autopilotStateHasServer(b.autopilot.GetState(), peerID) {
+		return fmt.Errorf("server %s not found in raft autopilot state", peerID)
+	}
+
 	b.logger.Trace("demoting voter to non-voter", "id", peerID)
 
 	if b.delegate.IsNonVoter(raft.ServerID(peerID)) {
@@ -1342,6 +1350,14 @@ func (b *RaftBackend) DemotePeer(ctx context.Context, peerID string) error {
 	}
 
 	return b.delegate.AddNonVoter(raft.ServerID(peerID))
+}
+
+func autopilotStateHasServer(state *autopilot.State, peerID string) bool {
+	if state == nil {
+		return false
+	}
+	_, ok := state.Servers[raft.ServerID(peerID)]
+	return ok
 }
 
 // GetConfigurationOffline is used to read the stale, last known raft

@@ -40,6 +40,12 @@ Additionally, quotas defined with a `role` to limit login requests made using
 that role on the specified auth mount will take precedence over all other quotas.
 In other words, the most specific quota rule will be applied.
 
+Namespace quotas can also be marked as `inheritable`. When enabled, a child
+namespace can fall back to the closest inheritable quota from one of its parent
+namespaces if it does not have a more specific namespace, mount, full API path,
+or role-based quota. Quotas defined on mounts, full API paths, or roles are not
+inherited. Root namespace quotas are inheritable by default.
+
 A rate limit can be created with an optional `block_interval`, such that when set
 to a non-zero value, any client that hits a rate limit threshold will be blocked
 from all subsequent requests for a duration of `block_interval` seconds.

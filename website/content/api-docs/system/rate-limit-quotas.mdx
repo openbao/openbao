@@ -35,6 +35,19 @@ the mount to restrict more specific API paths.
   requests to that mount that are made with the specified role. The request will fail if
   the auth mount does not have a concept of roles, or `path` is not an auth mount.
 
+### Namespace inheritance
+
+Rate limit quotas use the most specific matching quota for a request. A quota
+created in a namespace with `inheritable` set to `true` can apply to child
+namespaces only when the child namespace does not have a more specific
+namespace, mount, full API path, or role-based quota. If multiple parent
+namespaces have inheritable quotas, OpenBao uses the closest matching parent
+namespace quota.
+
+The `inheritable` flag is valid only for namespace quotas. Mount, full API path,
+and role-based quotas are not inherited by child namespaces. Root namespace
+quotas are inheritable by default when `inheritable` is omitted.
+
 ### Sample payload
 
 ```json

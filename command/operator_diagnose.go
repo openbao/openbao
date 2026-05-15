@@ -398,26 +398,26 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 		goto SEALFAIL
 	}
 
-	for _, seal := range seals {
-		// There is always one nil seal. We need to skip it so we don't start an empty Finalize-Seal-Shamir
-		// section.
-		if seal == nil {
-			continue
-		}
-		seal := seal // capture range variable
-		// Ensure that the seal finalizer is called, even if using verify-only
-		defer func(seal *vault.Seal) {
-			sealType := diagnose.CapitalizeFirstLetter((*seal).BarrierType().String())
+	// Ensure that the seal finalizers are called, even if using verify-only.
+	defer func() {
+		for i := len(seals) - 1; i >= 0; i-- {
+			seal := seals[i]
+			// There is always one nil seal. We need to skip it so we don't start an empty Finalize-Seal-Shamir
+			// section.
+			if seal == nil {
+				continue
+			}
+			sealType := diagnose.CapitalizeFirstLetter(seal.BarrierType().String())
 			finalizeSealContext, finalizeSealSpan := diagnose.StartSpan(ctx, "Finalize "+sealType+" Seal")
-			err = (*seal).Finalize(finalizeSealContext)
+			err = seal.Finalize(finalizeSealContext)
 			if err != nil {
 				diagnose.Fail(finalizeSealContext, "Error finalizing seal.")
 				diagnose.Advise(finalizeSealContext, "This likely means that the barrier is still in use; therefore, finalizing the seal timed out.")
 				finalizeSealSpan.End()
 			}
 			finalizeSealSpan.End()
-		}(&seal)
-	}
+		}
+	}()
 
 	if barrierSeal == nil {
 		diagnose.Fail(sealcontext, "Could not create barrier seal. No error was generated, but it is likely that the seal stanza is misconfigured. For guidance, see Vault's configuration documentation on the seal stanza.")

@@ -737,7 +737,7 @@ func TestOIDC_Callback(t *testing.T) {
 			}
 
 			b, storage, s := getBackendAndServer(t, useBoundCIDRs, callbackMode)
-			defer s.server.Close()
+			t.Cleanup(s.server.Close)
 
 			clientNonce := "456"
 

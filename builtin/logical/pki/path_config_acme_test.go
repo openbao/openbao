@@ -91,17 +91,17 @@ func TestAcmeConfig(t *testing.T) {
 	testCtx := t.Context()
 
 	for _, tc := range cases {
-		deadline := time.Now().Add(1 * time.Minute)
-		subTestCtx, cancel := context.WithDeadline(testCtx, deadline)
-		defer cancel()
-
-		_, err := client.Logical().WriteWithContext(subTestCtx, "pki/roles/exists", roleConfig)
-		require.NoError(t, err)
-		_, err = client.Logical().WriteWithContext(subTestCtx, "pki/roles/good", roleConfig)
-		require.NoError(t, err)
-
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := client.Logical().WriteWithContext(subTestCtx, "pki/config/acme", tc.AcmeConfig)
+			deadline := time.Now().Add(1 * time.Minute)
+			subTestCtx, cancel := context.WithDeadline(testCtx, deadline)
+			defer cancel()
+
+			_, err := client.Logical().WriteWithContext(subTestCtx, "pki/roles/exists", roleConfig)
+			require.NoError(t, err)
+			_, err = client.Logical().WriteWithContext(subTestCtx, "pki/roles/good", roleConfig)
+			require.NoError(t, err)
+
+			_, err = client.Logical().WriteWithContext(subTestCtx, "pki/config/acme", tc.AcmeConfig)
 
 			if tc.validConfig {
 				require.NoError(t, err)

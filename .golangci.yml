@@ -2,6 +2,7 @@ version: "2"
 linters:
   enable:
     - cyclop
+    - gocritic
     - misspell
   settings:
     cyclop:
@@ -9,6 +10,10 @@ linters:
       # 135 -> 124
       # Highest: (*ServerCommand).Run (123) in command/server.go
       max-complexity: 124
+    gocritic:
+      disable-all: true
+      enabled-checks:
+        - deferInLoop
 formatters:
   enable:
     - gofumpt

@@ -70,8 +70,11 @@ func doACMEForCSRWithDNS(t *testing.T, dns *dnstest.TestServer, acmeClient *acme
 				challengeBody, err := acmeClient.DNS01ChallengeRecord(challenge.Token)
 				require.NoError(t, err, "failed generating challenge response")
 
-				dns.AddRecord("_acme-challenge."+auth.Identifier.Value, "TXT", challengeBody)
-				defer dns.RemoveRecord("_acme-challenge."+auth.Identifier.Value, "TXT", challengeBody)
+				recordName := "_acme-challenge." + auth.Identifier.Value
+				dns.AddRecord(recordName, "TXT", challengeBody)
+				t.Cleanup(func() {
+					dns.RemoveRecord(recordName, "TXT", challengeBody)
+				})
 
 				require.NoError(t, err, "failed setting DNS record")
 

@@ -229,6 +229,13 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 		},
 	}
 
+	var stopGaugeCollectors []func()
+	defer func() {
+		for i := len(stopGaugeCollectors) - 1; i >= 0; i-- {
+			stopGaugeCollectors[i]()
+		}
+	}()
+
 	// Disable collection if configured.
 	if c.MetricSink().GaugeInterval == time.Duration(0) {
 		c.logger.Info("usage gauge collection is disabled")
@@ -252,12 +259,12 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 				c.logger.Error("failed to start collector", "metric", init.MetricName, "error", err)
 			} else {
 				go proc.Run()
-				defer proc.Stop()
+				stopGaugeCollectors = append(stopGaugeCollectors, proc.Stop)
 			}
 		}
 	}
 
-	// When this returns, all the defers set up above will fire.
+	// When this returns, all collectors started above will be stopped.
 	c.metricsLoop(stopCh)
 }
 

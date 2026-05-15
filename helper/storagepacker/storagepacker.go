@@ -173,8 +173,12 @@ func (s *StoragePacker) DeleteMultipleItemsWithStorage(ctx context.Context, logg
 	locks := locksutil.LocksForKeys(s.storageLocks, lockKeys)
 	for _, lock := range locks {
 		lock.Lock()
-		defer lock.Unlock()
 	}
+	defer func() {
+		for i := len(locks) - 1; i >= 0; i-- {
+			locks[i].Unlock()
+		}
+	}()
 
 	logger.Debug("deleting multiple items from storagepacker; caching and deleting from buckets", "total_items", len(itemIDs))
 

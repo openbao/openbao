@@ -452,6 +452,12 @@ func (c *Core) reconcileAudits(req reconcileAuditsRequests) error {
 	additions, deletions := oldTable.Delta(c.audit)
 
 	var multiErr *multierror.Error
+	var restoreReadOnlyErrs []func()
+	defer func() {
+		for i := len(restoreReadOnlyErrs) - 1; i >= 0; i-- {
+			restoreReadOnlyErrs[i]()
+		}
+	}()
 
 	for _, entry := range deletions {
 		c.removeAuditReloadFunc(entry)
@@ -479,7 +485,9 @@ func (c *Core) reconcileAudits(req reconcileAuditsRequests) error {
 				view.SetReadOnlyErr(origViewReadOnlyErr)
 			})
 		} else {
-			defer view.SetReadOnlyErr(origViewReadOnlyErr)
+			restoreReadOnlyErrs = append(restoreReadOnlyErrs, func() {
+				view.SetReadOnlyErr(origViewReadOnlyErr)
+			})
 		}
 
 		// Initialize the backend

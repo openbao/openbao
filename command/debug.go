@@ -669,9 +669,8 @@ func (c *DebugCommand) collectHostInfo(ctx context.Context) {
 			return
 		}
 		if resp != nil {
-			defer resp.Body.Close() //nolint:errcheck
-
 			secret, err := api.ParseSecret(resp.Body)
+			_ = resp.Body.Close()
 			if err != nil {
 				c.captureError("host", err)
 				return
@@ -707,10 +706,9 @@ func (c *DebugCommand) collectMetrics(ctx context.Context) {
 			continue
 		}
 		if resp != nil {
-			defer resp.Body.Close() //nolint:errcheck
-
 			metricsEntry := make(map[string]interface{})
 			err := json.NewDecoder(resp.Body).Decode(&metricsEntry)
+			_ = resp.Body.Close()
 			if err != nil {
 				c.captureError("metrics", err)
 				continue
@@ -842,9 +840,8 @@ func (c *DebugCommand) collectReplicationStatus(ctx context.Context) {
 			return
 		}
 		if resp != nil {
-			defer resp.Body.Close() //nolint:errcheck
-
 			secret, err := api.ParseSecret(resp.Body)
+			_ = resp.Body.Close()
 			if err != nil {
 				c.captureError("replication-status", err)
 				return
@@ -916,8 +913,8 @@ func (c *DebugCommand) collectInFlightRequestStatus(ctx context.Context) {
 
 		var data map[string]interface{}
 		if resp != nil {
-			defer resp.Body.Close() //nolint:errcheck
 			err = jsonutil.DecodeJSONFromReader(resp.Body, &data)
+			_ = resp.Body.Close()
 			if err != nil {
 				c.captureError("requests", err)
 				return

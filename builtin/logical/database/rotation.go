@@ -536,6 +536,7 @@ func (b *databaseBackend) initQueue(ctx context.Context, conf *logical.BackendCo
 		// Poll for a PutWAL call that does not return a "read-only storage" error.
 		// This ensures the startup phases of loading WAL entries from any possible
 		// failed rotations can complete without error when deleting from storage.
+		var readonlyWALID string
 	READONLY_LOOP:
 		for {
 			select {
@@ -547,7 +548,7 @@ func (b *databaseBackend) initQueue(ctx context.Context, conf *logical.BackendCo
 
 			walID, err := framework.PutWAL(ctx, conf.StorageView, staticWALKey, &setCredentialsWAL{RoleName: "vault-readonlytest"})
 			if walID != "" && err == nil {
-				defer framework.DeleteWAL(ctx, conf.StorageView, walID)
+				readonlyWALID = walID
 			}
 			switch {
 			case err == nil:
@@ -558,6 +559,13 @@ func (b *databaseBackend) initQueue(ctx context.Context, conf *logical.BackendCo
 				b.Logger().Error("deleting nil key resulted in error", "error", err)
 				return
 			}
+		}
+		if readonlyWALID != "" {
+			defer func() {
+				if err := framework.DeleteWAL(ctx, conf.StorageView, readonlyWALID); err != nil {
+					b.Logger().Error("failed to delete read-only startup WAL", "error", err)
+				}
+			}()
 		}
 
 		// Load roles and populate queue with static accounts

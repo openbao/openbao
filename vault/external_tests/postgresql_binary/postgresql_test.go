@@ -185,8 +185,8 @@ func TestPostgreSQL_ParallelInit(t *testing.T) {
 	var active, sealed int
 	for i, node := range nodes {
 		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-		defer cancel()
 		_, err := node.APIClient().Sys().ListPoliciesWithContext(ctx)
+		cancel()
 		switch {
 		case err == nil:
 			active++

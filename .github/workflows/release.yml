@@ -224,6 +224,14 @@ jobs:
         if: inputs.dogorelease
         uses: ./.github/actions/set-up-go
 
+      - name: Prepare Go module cache for Syft
+        if: inputs.dogorelease
+        run: |
+          GOMODCACHE_PATH=$(go env GOMODCACHE)
+          echo "GOMODCACHE=$GOMODCACHE_PATH" >> "$GITHUB_ENV"
+          echo "SYFT_GOLANG_LOCAL_MOD_CACHE_DIR=$GOMODCACHE_PATH" >> "$GITHUB_ENV"
+          mkdir -p "$GOMODCACHE_PATH"
+
       - name: go-check
         if: inputs.dogorelease
         run: go version

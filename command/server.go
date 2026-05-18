@@ -131,6 +131,7 @@ type ServerCommand struct {
 	flagDevThreeNode       bool
 	flagDevAutoSeal        bool
 	flagDevClusterJson     string
+	flagDevCrossNsIdentity bool
 	flagTestVerifyOnly     bool
 	flagTestServerConfig   bool
 	flagExitOnCoreShutdown bool
@@ -334,6 +335,13 @@ func (c *ServerCommand) Flags() *FlagSets {
 		Name:   "dev-cluster-json",
 		Target: &c.flagDevClusterJson,
 		Usage:  "File to write cluster definition to",
+	})
+
+	f.BoolVar(&BoolVar{
+		Name:    "dev-cross-namespace-identity",
+		Target:  &c.flagDevCrossNsIdentity,
+		Default: false,
+		Usage:   "Enable the UnsafeCrossNamespaceIdentity option",
 	})
 
 	// TODO: should the below flags be public?
@@ -2774,7 +2782,7 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		MetricSink:                     metricSink,
 		EnableResponseHeaderHostname:   config.EnableResponseHeaderHostname,
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
-		UnsafeCrossNamespaceIdentity:   config.UnsafeCrossNamespaceIdentity,
+		UnsafeCrossNamespaceIdentity:   config.UnsafeCrossNamespaceIdentity || c.flagDevCrossNsIdentity,
 		AllowUnauthenticatedWorkflows:  config.AllowUnauthenticatedWorkflows,
 		UnsafeRelativePaths:            config.UnsafeRelativePaths,
 	}

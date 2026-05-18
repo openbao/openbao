@@ -157,19 +157,21 @@ func (im *invalidationManager) processPendingQueue(quitCh chan struct{}, quitCon
 			case <-im.pendingNotify:
 			}
 
-			defer metrics.MeasureSince([]string{dispatcherName, "enqueue-pending"}, time.Now())
+			func() {
+				defer metrics.MeasureSince([]string{dispatcherName, "enqueue-pending"}, time.Now())
 
-			im.pendingLock.Lock()
-			pending := im.pending
-			im.pending = nil
-			im.pendingLock.Unlock()
+				im.pendingLock.Lock()
+				pending := im.pending
+				im.pending = nil
+				im.pendingLock.Unlock()
 
-			im.core.metricSink.SetGauge([]string{dispatcherName, "pending-dequeue-size"}, float32(len(pending)))
+				im.core.metricSink.SetGauge([]string{dispatcherName, "pending-dequeue-size"}, float32(len(pending)))
 
-			for _, key := range pending {
-				job, queue := im.buildInvalidateJobForKey(quitCh, quitContext, key)
-				im.dispatcher.AddJob(job, queue)
-			}
+				for _, key := range pending {
+					job, queue := im.buildInvalidateJobForKey(quitCh, quitContext, key)
+					im.dispatcher.AddJob(job, queue)
+				}
+			}()
 		}
 	}()
 }

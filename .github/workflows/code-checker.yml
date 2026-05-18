@@ -8,6 +8,7 @@ on:
     branches:
       - main
       - release/**
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.head_ref || github.run_id }}-lint

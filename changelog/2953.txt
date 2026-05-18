@@ -1,0 +1,3 @@
+```release-note:bug
+core/quotas: Correctly handle default rate limit exempt paths on quota configuration invalidation.
+```

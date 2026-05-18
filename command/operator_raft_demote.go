@@ -73,6 +73,13 @@ func (c *OperatorRaftDemoteCommand) Run(args []string) int {
 		return 1
 	}
 
+	// Reject help-like arguments that are not valid server IDs
+	switch serverID {
+	case "?", "-h", "--help", "-help", "help":
+		c.UI.Error(fmt.Sprintf("Incorrect arguments (expected a server ID, got %q)", serverID)))
+		return 1
+	}
+
 	client, err := c.Client()
 	if err != nil {
 		c.UI.Error(err.Error())
@@ -83,7 +90,7 @@ func (c *OperatorRaftDemoteCommand) Run(args []string) int {
 		"server_id": serverID,
 	})
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error promoting server: %s", err))
+		c.UI.Error(fmt.Sprintf("Error demoting server: %s", err))
 		return 2
 	}
 

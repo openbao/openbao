@@ -8,6 +8,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "website/**"
+  workflow_dispatch:
 
 jobs:
   check-links:

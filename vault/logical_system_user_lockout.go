@@ -35,7 +35,7 @@ func (b *SystemBackend) unlockUser(ctx context.Context, mountAccessor, aliasName
 	// remove entry for locked user from storage
 	// if read only error, the error is handled by handleError in logical_system.go
 	// this will be forwarded to the active node
-	view := NamespaceScopedView(b.Core.barrier, ns).SubView(coreLockedUsersPath).SubView(mountAccessor + "/")
+	view := b.Core.NamespaceView(ns).SubView(coreLockedUsersPath + mountAccessor + "/")
 	if err := view.Delete(ctx, aliasName); err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (b *SystemBackend) getLockedUsersResponses(ctx context.Context, mountAccess
 
 	if mountAccessor != "" {
 		// get the locked user response for mount_accessor provided with request
-		view := NamespaceScopedView(b.Core.barrier, queryNS).SubView(coreLockedUsersPath)
+		view := b.Core.NamespaceView(queryNS).SubView(coreLockedUsersPath)
 		totalCountForNS, mountAccessorsResponse, err := b.getMountAccessorsLockedUsers(ctx,
 			view, mountAccessor+"/")
 		if err != nil {
@@ -109,7 +109,7 @@ func (b *SystemBackend) getLockedUsersResponses(ctx context.Context, mountAccess
 
 	for _, ns := range nsList {
 		// get mount accessors of locked users for this namespace
-		view := NamespaceScopedView(b.Core.barrier, ns).SubView(coreLockedUsersPath)
+		view := b.Core.NamespaceView(ns).SubView(coreLockedUsersPath)
 		mountAccessors, err := view.List(ctx, "")
 		if err != nil {
 			return 0, nil, err

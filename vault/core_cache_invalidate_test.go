@@ -392,7 +392,7 @@ func TestCore_Invalidate_LoginMFA(t *testing.T) {
 	path := resp.Data["method_id"].(string)
 
 	// 2. Manipulate Storage
-	barrierView := NamespaceScopedView(c.barrier, namespace.RootNamespace).SubView(barrier.SystemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	barrierView := c.NamespaceView(namespace.RootNamespace).SubView(barrier.SystemBarrierPrefix + loginMFAConfigPrefix)
 	mfa, err := c.loginMFABackend.getMFAConfig(rootCtx, path, barrierView)
 	require.NoError(t, err)
 	require.NotNil(t, mfa)

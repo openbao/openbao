@@ -689,9 +689,9 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 	success := true
 
 	// clear auth mounts
-	ns.core.authLock.Lock()
+	ns.core.authLock.RLock()
 	authMountEntries, err := ns.core.auth.FindAllNamespaceMounts(nsCtx)
-	ns.core.authLock.Unlock()
+	ns.core.authLock.RUnlock()
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace credentials", "namespace", namespaceToDelete.Path, "error", err.Error())
 		success = false
@@ -711,9 +711,9 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 	}
 
 	// clear mounts
-	ns.core.mountsLock.Lock()
+	ns.core.mountsLock.RLock()
 	mountEntries, err := ns.core.mounts.FindAllNamespaceMounts(nsCtx)
-	ns.core.mountsLock.Unlock()
+	ns.core.mountsLock.RUnlock()
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace mounts", "namespace", namespaceToDelete.Path, "error", err.Error())
 		success = false
@@ -1086,6 +1086,10 @@ func (ns *NamespaceStore) postNamespaceUnseal(ctx context.Context, unsealedNames
 		postUnsealFuncs = append(postUnsealFuncs, postUnsealCredFuncs...)
 	}
 
+	if err := ns.core.loadIdentityStoreArtifactsForNamespace(ctx, unsealedNamespace, ns.core.Standby()); err != nil {
+		return err
+	}
+
 	// now we run the collected post unseal functions to finalize unsealing
 	ns.core.runPostUnsealFuncs(postUnsealFuncs)
 	return nil
@@ -1194,9 +1198,9 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent,
 	}
 
 	// clear auth mounts
-	ns.core.authLock.Lock()
+	ns.core.authLock.RLock()
 	authMountEntries, err := ns.core.auth.FindAllNamespaceMounts(nsCtx)
-	ns.core.authLock.Unlock()
+	ns.core.authLock.RUnlock()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve namespace auth mounts: %w", err)
 	}
@@ -1213,9 +1217,9 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent,
 	}
 
 	// clear mounts
-	ns.core.mountsLock.Lock()
+	ns.core.mountsLock.RLock()
 	mountEntries, err := ns.core.mounts.FindAllNamespaceMounts(nsCtx)
-	ns.core.mountsLock.Unlock()
+	ns.core.mountsLock.RUnlock()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve namespace secret mounts: %w", err)
 	}

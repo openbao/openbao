@@ -228,8 +228,8 @@ func TestRateLimitQuota_Update(t *testing.T) {
 	require.NoError(t, err)
 	synctest.Test(t, func(t *testing.T) {
 		quota := NewRateLimitQuota("quota1", "", "", "", "", 10, time.Second, 0, false)
-		require.NoError(t, qm.SetQuota(t.Context(), TypeRateLimit.String(), quota, true))
-		require.NoError(t, qm.SetQuota(t.Context(), TypeRateLimit.String(), quota, true))
+		require.NoError(t, qm.SetQuota(t.Context(), TypeRateLimit.String(), quota))
+		require.NoError(t, qm.SetQuota(t.Context(), TypeRateLimit.String(), quota))
 		require.Nil(t, quota.close(t.Context()))
 		synctest.Wait()
 	})

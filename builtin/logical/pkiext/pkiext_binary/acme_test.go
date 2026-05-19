@@ -269,7 +269,7 @@ func SubtestACMECertbot(t *testing.T, cluster *VaultPkiCluster) {
 	runner, err := hDocker.NewServiceRunner(hDocker.RunOptions{
 		ImageRepo: "docker.mirror.hashicorp.services/certbot/certbot",
 		ImageTag:  "latest",
-		//Append runID so parallel re-runs don't collide on the container name.
+		// Append runID so parallel re-runs don't collide on the container name.
 		ContainerName: fmt.Sprintf("vault_pki_certbot_test_%s", runID),
 		NetworkName:   vaultNetwork,
 		Entrypoint:    []string{"sleep", sleepTimer},

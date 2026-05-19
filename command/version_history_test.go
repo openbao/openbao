@@ -28,23 +28,32 @@ func TestVersionHistoryCommand_TableOutput(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	ui, cmd := testVersionHistoryCommand(t)
-	cmd.client = client
+	// Use explicit stdout/stderr buffers (same pattern as JsonOutput test)
+	// to avoid data races on cli.MockUi's shared buffers
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+	runOpts := &RunOptions{
+		Stdout: stdout,
+		Stderr: stderr,
+		Client: client,
+	}
 
-	code := cmd.Run([]string{})
+	args, _, _, _, _ := setupEnv([]string{"version-history"})
+
+	code := RunCustom(args, runOpts)
 
 	if expectedCode := 0; code != expectedCode {
-		t.Fatalf("expected %d to be %d: %s", code, expectedCode, ui.ErrorWriter.String())
+		t.Fatalf("expected exit code %d, got %d: %s", expectedCode, code, stderr.String())
 	}
 
-	if errorString := ui.ErrorWriter.String(); !strings.Contains(errorString, versionTrackingWarning) {
-		t.Errorf("expected %q to contain %q", errorString, versionTrackingWarning)
+	// versionTrackingWarning is always written to stderr regardless of format.
+	if stderrStr := stderr.String(); !strings.Contains(stderrStr, versionTrackingWarning) {
+		t.Errorf("expected stderr %q to contain warning %q", stderrStr, versionTrackingWarning)
 	}
 
-	output := ui.OutputWriter.String()
-
-	if !strings.Contains(output, version.Version) {
-		t.Errorf("expected %q to contain version %q", output, version.Version)
+	// Table output goes to stdout; current binary version must appear.
+	if stdoutStr := stdout.String(); !strings.Contains(stdoutStr, version.Version) {
+		t.Errorf("expected stdout %q to contain version %q", stdoutStr, version.Version)
 	}
 }
 

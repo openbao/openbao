@@ -9,20 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/version"
 )
-
-func testVersionHistoryCommand(tb testing.TB) (*cli.MockUi, *VersionHistoryCommand) {
-	tb.Helper()
-
-	ui := cli.NewMockUi()
-	return ui, &VersionHistoryCommand{
-		BaseCommand: &BaseCommand{
-			UI: ui,
-		},
-	}
-}
 
 func TestVersionHistoryCommand_TableOutput(t *testing.T) {
 	client, closer := testVaultServer(t)

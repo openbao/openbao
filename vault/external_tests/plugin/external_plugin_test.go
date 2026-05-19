@@ -295,11 +295,13 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 	defer cluster.Cleanup()
 
 	plugin := cluster.Plugins[0]
-	client := cluster.Cores[0].Client
-	client.SetToken(cluster.RootToken)
 
-	// Register
-	if err := client.Sys().RegisterPlugin(&api.RegisterPluginInput{
+	// Use a dedicated root client for registration/deregistration only.
+	// Never share this client with subtests, else bad things happen like race conditions :(
+	rootClient := cluster.Cores[0].Client
+	rootClient.SetToken(cluster.RootToken)
+
+	if err := rootClient.Sys().RegisterPlugin(&api.RegisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
 		Command: plugin.Name,
@@ -316,13 +318,24 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 		// loop to mount 5 auth methods that will each share a single
 		// plugin process
 		for i := range 5 {
+			i := i
 			pluginPath := fmt.Sprintf("%s-%d", plugin.Name, i)
-			client := cluster.Cores[i].Client
+
+			// Clone a fresh client per subtest so parallel goroutines
+			// never race on SetToken or the shared HTTP cookie/token
+			// state inside the base client.
+			subClient, err := cluster.Cores[i].Client.Clone()
+			if err != nil {
+				t.Fatal(err)
+			}
+
 			t.Run(pluginPath, func(t *testing.T) {
 				t.Parallel()
-				client.SetToken(cluster.RootToken)
+
+				subClient.SetToken(cluster.RootToken)
+
 				// Enable
-				if err := client.Sys().EnableAuthWithOptions(pluginPath, &api.EnableAuthOptions{
+				if err := subClient.Sys().EnableAuthWithOptions(pluginPath, &api.EnableAuthOptions{
 					Type: plugin.Name,
 				}); err != nil {
 					t.Fatal(err)
@@ -332,7 +345,7 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 				// secondary has not yet invalidated the mount from the call
 				// above.
 				require.EventuallyWithT(t, func(collect *assert.CollectT) {
-					_, err := client.Logical().Write("auth/"+pluginPath+"/role/role1", map[string]interface{}{
+					_, err := subClient.Logical().Write("auth/"+pluginPath+"/role/role1", map[string]interface{}{
 						"bind_secret_id": "true",
 						"period":         "300",
 					})
@@ -344,12 +357,12 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 					err    error
 				)
 				require.EventuallyWithT(t, func(collect *assert.CollectT) {
-					secret, err = client.Logical().Write("auth/"+pluginPath+"/role/role1/secret-id", nil)
+					secret, err = subClient.Logical().Write("auth/"+pluginPath+"/role/role1/secret-id", nil)
 					require.NoError(collect, err)
 				}, 20*time.Second, 10*time.Millisecond)
 				secretID := secret.Data["secret_id"].(string)
 
-				secret, err = client.Logical().Read("auth/" + pluginPath + "/role/role1/role-id")
+				secret, err = subClient.Logical().Read("auth/" + pluginPath + "/role/role1/role-id")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -364,46 +377,51 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				_, err = client.Auth().Login(t.Context(), authMethod)
+				_, err = subClient.Auth().Login(t.Context(), authMethod)
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				// Renew
-				_, err = client.Auth().Token().RenewSelf(30)
+				// Renew using the token that Login placed on subClient.
+				// No SetToken call needed here — Login already set it.
+				_, err = subClient.Auth().Token().RenewSelf(30)
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				// Login - expect SUCCESS
-				resp, err := client.Auth().Login(t.Context(), authMethod)
+				// Login again - expect SUCCESS
+				resp, err := subClient.Auth().Login(t.Context(), authMethod)
 				if err != nil {
 					t.Fatal(err)
 				}
 
+				// Capture the token to revoke before resetting to root.
 				revokeToken := resp.Auth.ClientToken
-				// Revoke
-				if err = client.Auth().Token().RevokeSelf(revokeToken); err != nil {
-					t.Fatal(err)
+
+				// Revoke using the freshly-obtained token explicitly
+				// rather than relying on the client's current token state.
+				if err = subClient.Auth().Token().RevokeAccessor(resp.Auth.Accessor); err != nil {
+					// Fall back to RevokeSelf with the explicit token set.
+					subClient.SetToken(revokeToken)
+					if err2 := subClient.Auth().Token().RevokeSelf(revokeToken); err2 != nil {
+						t.Fatal(err2)
+					}
 				}
 
-				// Reset root token
-				client.SetToken(cluster.RootToken)
+				// Reset to root token for the Lookup check.
+				subClient.SetToken(cluster.RootToken)
 
-				// Lookup - expect FAILURE
+				// Lookup - expect FAILURE (token was revoked)
 				require.EventuallyWithT(t, func(collect *assert.CollectT) {
-					_, err = client.Auth().Token().Lookup(revokeToken)
+					_, err = subClient.Auth().Token().Lookup(revokeToken)
 					require.Error(collect, err)
 				}, 20*time.Second, 10*time.Millisecond)
-
-				// Reset root token
-				client.SetToken(cluster.RootToken)
 			})
 		}
 	})
 
-	// Deregister
-	if err := client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
+	// Deregister — all subtests have finished by the time we reach here.
+	if err := rootClient.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
 		Version: plugin.Version,

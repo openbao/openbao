@@ -24,14 +24,13 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/crypto/acme"
-
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/builtin/logical/pkiext"
 	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	hDocker "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/acme"
 )
 
 //go:embed testdata/caddy_http.json
@@ -69,7 +68,6 @@ func Test_ACME(t *testing.T) {
 			// Trap the function to be embedded later in the run so it
 			// doesn't get clobbered on the next for iteration
 			testFunc := tc[testName]
-
 			gt.Run(testName, func(st *testing.T) {
 				st.Parallel()
 				testFunc(st, cluster)
@@ -77,8 +75,9 @@ func Test_ACME(t *testing.T) {
 		}
 	})
 
-	// Do not run these tests in parallel.
-	t.Run("step down", func(gt *testing.T) { SubtestACMEStepDownNode(gt, cluster) })
+	t.Run("step down", func(gt *testing.T) {
+		SubtestACMEStepDownNode(gt, cluster)
+	})
 }
 
 // caddyConfig contains information used to render a Caddy configuration file from a template.
@@ -244,10 +243,17 @@ func SubtestACMECaddy(configTemplate string, enableEAB bool) func(*testing.T, *V
 }
 
 func SubtestACMECertbot(t *testing.T, cluster *VaultPkiCluster) {
-	pki, err := cluster.CreateAcmeMount("pki")
+	// Use a unique mount name instead of the generic "pki" to avoid collisions
+	// if the test is retried or run alongside other tests that also claim "pki".
+	runID, err := uuid.GenerateUUID()
+	require.NoError(t, err, "failed to generate run ID")
+	runID = strings.Split(runID, "-")[0]
+	mountName := "pki-certbot-" + runID
+
+	pki, err := cluster.CreateAcmeMount(mountName)
 	require.NoError(t, err, "failed setting up acme mount")
 
-	directory := "https://" + pki.GetActiveContainerIP() + ":8200/v1/pki/acme/directory"
+	directory := "https://" + pki.GetActiveContainerIP() + ":8200/v1/" + mountName + "/acme/directory"
 	vaultNetwork := pki.GetContainerNetworkName()
 
 	logConsumer, logStdout, logStderr := getDockerLog(t)
@@ -261,9 +267,10 @@ func SubtestACMECertbot(t *testing.T, cluster *VaultPkiCluster) {
 
 	t.Logf("creating on network: %v", vaultNetwork)
 	runner, err := hDocker.NewServiceRunner(hDocker.RunOptions{
-		ImageRepo:     "docker.mirror.hashicorp.services/certbot/certbot",
-		ImageTag:      "latest",
-		ContainerName: "vault_pki_certbot_test",
+		ImageRepo: "docker.mirror.hashicorp.services/certbot/certbot",
+		ImageTag:  "latest",
+		//Append runID so parallel re-runs don't collide on the container name.
+		ContainerName: fmt.Sprintf("vault_pki_certbot_test_%s", runID),
 		NetworkName:   vaultNetwork,
 		Entrypoint:    []string{"sleep", sleepTimer},
 		LogConsumer:   logConsumer,
@@ -286,7 +293,8 @@ func SubtestACMECertbot(t *testing.T, cluster *VaultPkiCluster) {
 	require.Contains(t, networks, vaultNetwork, "expected to contain vault network")
 
 	ipAddr := networks[vaultNetwork]
-	hostname := "certbot-acme-client.dadgarcorp.com"
+	// FIX: Unique hostname to avoid DNS record conflicts across retries.
+	hostname := fmt.Sprintf("certbot-acme-client-%s.dadgarcorp.com", runID)
 
 	err = pki.AddHostname(hostname, ipAddr)
 	require.NoError(t, err, "failed to update vault host files")
@@ -435,7 +443,13 @@ func SubtestACMECertbot(t *testing.T, cluster *VaultPkiCluster) {
 }
 
 func SubtestACMECertbotEab(t *testing.T, cluster *VaultPkiCluster) {
-	mountName := "pki-certbot-eab"
+	// Generate a unique run ID so the mount name, container name, and hostname are
+	// all unique, matching the same pattern used in the other certbot subtest.
+	runID, err := uuid.GenerateUUID()
+	require.NoError(t, err, "failed to generate run ID")
+	runID = strings.Split(runID, "-")[0]
+
+	mountName := "pki-certbot-eab-" + runID
 	pki, err := cluster.CreateAcmeMount(mountName)
 	require.NoError(t, err, "failed setting up acme mount")
 
@@ -452,13 +466,20 @@ func SubtestACMECertbotEab(t *testing.T, cluster *VaultPkiCluster) {
 
 	logConsumer, logStdout, logStderr := getDockerLog(t)
 
+	// FIX: Respect the same local/regression timeout as the standard certbot test.
+	sleepTimer := "45"
+	if testhelpers.IsLocalOrRegressionTests() {
+		sleepTimer = "120"
+	}
+
 	t.Logf("creating on network: %v", vaultNetwork)
 	runner, err := hDocker.NewServiceRunner(hDocker.RunOptions{
-		ImageRepo:     "docker.mirror.hashicorp.services/certbot/certbot",
-		ImageTag:      "latest",
-		ContainerName: "vault_pki_certbot_eab_test",
+		ImageRepo: "docker.mirror.hashicorp.services/certbot/certbot",
+		ImageTag:  "latest",
+		// Unique container name to avoid "already in use" errors on retry.
+		ContainerName: fmt.Sprintf("vault_pki_certbot_eab_test_%s", runID),
 		NetworkName:   vaultNetwork,
-		Entrypoint:    []string{"sleep", "45"},
+		Entrypoint:    []string{"sleep", sleepTimer},
 		LogConsumer:   logConsumer,
 		LogStdout:     logStdout,
 		LogStderr:     logStderr,
@@ -479,7 +500,8 @@ func SubtestACMECertbotEab(t *testing.T, cluster *VaultPkiCluster) {
 	require.Contains(t, networks, vaultNetwork, "expected to contain vault network")
 
 	ipAddr := networks[vaultNetwork]
-	hostname := "certbot-eab-acme-client.dadgarcorp.com"
+	// Unique hostname to avoid DNS record conflicts on retry.
+	hostname := fmt.Sprintf("certbot-eab-acme-client-%s.dadgarcorp.com", runID)
 
 	err = pki.AddHostname(hostname, ipAddr)
 	require.NoError(t, err, "failed to update vault host files")

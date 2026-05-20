@@ -477,7 +477,7 @@ func SubtestACMECertbotEab(t *testing.T, cluster *VaultPkiCluster) {
 		ImageRepo: "docker.mirror.hashicorp.services/certbot/certbot",
 		ImageTag:  "latest",
 		// Unique container name to avoid "already in use" errors on retry.
-		ContainerName: fmt.Sprintf("vault_pki_certbot_eab_test_%s", runID),
+		ContainerName: fmt.Sprintf("vault-pki-certbot-eab-test_%s", runID),
 		NetworkName:   vaultNetwork,
 		Entrypoint:    []string{"sleep", sleepTimer},
 		LogConsumer:   logConsumer,

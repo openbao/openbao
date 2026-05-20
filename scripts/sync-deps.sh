@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 modules=$(find . -mindepth 2 -name go.mod)
 

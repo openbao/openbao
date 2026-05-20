@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script will print the appropriate nightly tag version for the current
 # branch to standard out

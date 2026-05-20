@@ -138,7 +138,7 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 
 	creationTime := time.Now()
-	te := &logical.TokenEntry{
+	wrappingTokenEntry := &logical.TokenEntry{
 		Path:           "token/create",
 		Policies:       []string{"response-wrapping"},
 		CreationTime:   creationTime.Unix(),
@@ -152,11 +152,10 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	}
 
 	ctx := namespace.RootContext(context.Background())
-	testMakeTokenDirectly(t, ctx, c.tokenStore, te)
-	require.NotEmpty(t, te.ID)                          // id has been created
-	require.Empty(t, te.Meta["control_group"])          // no control group
-	require.Empty(t, te.InternalMeta["control_group"])  // no control group
-	require.Empty(t, te.InternalMeta["request_entity"]) // no request data
+	testMakeTokenDirectly(t, ctx, c.tokenStore, wrappingTokenEntry)
+	require.NotEmpty(t, wrappingTokenEntry.ID)                          // id has been created
+	require.Empty(t, wrappingTokenEntry.InternalMeta["control_group"])  // no control group
+	require.Empty(t, wrappingTokenEntry.InternalMeta["request_entity"]) // no request data
 
 	cg := logical.ControlGroup{
 		TTL: time.Duration(14440),
@@ -191,11 +190,11 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	}
 
 	// Set control group in token
-	err := c.setControlGroupInTokenEntry(ctx, te, &cg)
+	err := c.setControlGroupInTokenEntry(ctx, wrappingTokenEntry, &cg)
 	require.Nil(t, err)
 
 	// Set request entity in token
-	err = c.setEntityInTokenEntry(ctx, te, &requestEntity)
+	err = c.setEntityInTokenEntry(ctx, wrappingTokenEntry, &requestEntity)
 	require.Nil(t, err)
 
 	// addAuthorzation
@@ -204,16 +203,17 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 		Name: "secops",
 	})
 	auth := logical.Auth{
+		EntityID:     "approving-user-id",
 		DisplayName:  "user@example.com",
 		GroupAliases: groups,
 	}
-	err = c.addAuthorization(ctx, te.ID, &auth)
+	err = c.addAuthorization(ctx, wrappingTokenEntry.ID, &auth)
 	require.Nil(t, err)
 
 	// Token entry should now have the authorization
-	te, err = c.tokenStore.lookupInternal(ctx, te.ID, false, false)
+	wrappingTokenEntry, err = c.tokenStore.lookupInternal(ctx, wrappingTokenEntry.ID, false, false)
 	require.Nil(t, err)
-	cgFetched, err := c.getControlGroupFromTokenEntry(ctx, te)
+	cgFetched, err := c.getControlGroupFromTokenEntry(ctx, wrappingTokenEntry)
 	require.Nil(t, err)
 
 	// expect all matching factors to receive an authorization
@@ -223,23 +223,23 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	require.Len(t, cgFetched.Factors[2].Authorizations, 1)
 
 	// Second authorization by same user will result in error
-	err = c.addAuthorization(ctx, te.ID, &auth)
+	err = c.addAuthorization(ctx, wrappingTokenEntry.ID, &auth)
 	require.NotNil(t, err)
 
-	// Authorization by the token owner will result in error
-	auth.EntityID = "requesting-entity"
-	err = c.addAuthorization(ctx, te.ID, &auth)
+	// Authorization by the original request entity will result in error
+	auth.EntityID = requestEntity.ID
+	err = c.addAuthorization(ctx, wrappingTokenEntry.ID, &auth)
 	require.NotNil(t, err)
 
 	// Authorization by the token owner will NOT result in error
 	// if policy permits self authorization
 	cg.SelfAuthorizationAllowed = true
-	err = c.setControlGroupInTokenEntry(ctx, te, &cg)
+	err = c.setControlGroupInTokenEntry(ctx, wrappingTokenEntry, &cg)
 	require.Nil(t, err)
 
 	// Self-authorize, no error
-	auth.EntityID = "requesting-entity"
-	err = c.addAuthorization(ctx, te.ID, &auth)
+	auth.EntityID = requestEntity.ID
+	err = c.addAuthorization(ctx, wrappingTokenEntry.ID, &auth)
 	require.Nil(t, err)
 }
 

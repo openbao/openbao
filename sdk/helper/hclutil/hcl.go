@@ -14,7 +14,7 @@ import (
 )
 
 // WhenHCLKeyPresent will execute the provided function with each matching child node as argument
-func WhenHCLKeyPresent(node ast.Node, key string, fn func(ast.Node) error) error {
+func WhenHCLKeyPresent(node ast.Node, key string, fn func(*ast.ObjectItem) error) error {
 	var list *ast.ObjectList
 	switch n := node.(type) {
 	case *ast.ObjectList:
@@ -27,7 +27,7 @@ func WhenHCLKeyPresent(node ast.Node, key string, fn func(ast.Node) error) error
 	filtered := list.Filter(key)
 	var result error
 	for _, item := range filtered.Items {
-		err := fn(item.Val)
+		err := fn(item)
 		if err != nil {
 			result = multierror.Append(result, err)
 		}

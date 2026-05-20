@@ -132,16 +132,14 @@ path "test/control_group" {
 	capabilities = ["create", "list"]
 	control_group = {
 		ttl = "48m"
-		factors = [
-			{
-				name = "admin-approval"
-				controlled_capabilities = ["create"]
-				identity = {
-					group_names = ["admin"]
-					approvals = 1
-				}
+		factor "admin-approval" {
+			name = "admin-approval"
+			controlled_capabilities = ["create"]
+			identity = {
+				group_names = ["admin"]
+				approvals = 1
 			}
-		]
+		}
 	}
 }
 `)

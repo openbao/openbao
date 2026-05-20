@@ -167,14 +167,14 @@ type ACLPermissions struct {
 }
 
 type ControlGroup struct {
-	TTL                      time.Duration `hcl:"-"`
-	TTLHCL                   interface{}   `hcl:"ttl"`
-	Factors                  []ControlGroupFactor
-	SelfAuthorizationAllowed bool `hcl:"self_auth_allowed"`
+	TTL                      time.Duration        `hcl:"-"`
+	TTLHCL                   interface{}          `hcl:"ttl"`
+	Factors                  []ControlGroupFactor `hcl:"-"`
+	SelfAuthorizationAllowed bool                 `hcl:"self_auth_allowed"`
 }
 
 type ControlGroupFactor struct {
-	Name                      string
+	Name                      string              `hcl:"-"`
 	ControlledCapabilitiesHCL []string            `hcl:"controlled_capabilities"`
 	ControlledCapabilities    []logical.Operation `hcl:"-"`
 	Identity                  ControlGroupIdentity
@@ -399,11 +399,34 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 		pc.Permissions = new(ACLPermissions)
 
 		// decode ControlGroup if needed
-		if err := hclutil.WhenHCLKeyPresent(item.Val, "control_group", func(val ast.Node) error {
+		if err := hclutil.WhenHCLKeyPresent(item.Val, "control_group", func(item *ast.ObjectItem) error {
 			cg := new(ControlGroup)
-			if err := hcl.DecodeObject(&cg, val); err != nil {
+			if err := hcl.DecodeObject(&cg, item.Val); err != nil {
 				return multierror.Prefix(err, "path control_group:")
 			}
+			// decode factors in control_group
+			if err := hclutil.WhenHCLKeyPresent(item.Val, "factor", func(factorItem *ast.ObjectItem) error {
+				var factor ControlGroupFactor
+				if err := hcl.DecodeObject(&factor, factorItem.Val); err != nil {
+					return multierror.Prefix(err, "path control_group factor:")
+				}
+				// get factor name from the item key
+				if len(factorItem.Keys) < 1 {
+					return fmt.Errorf("path control_group factor: require name key")
+				}
+				label, ok := factorItem.Keys[0].Token.Value().(string)
+				if ok {
+					factor.Name = label
+				} else {
+					return fmt.Errorf("path control_group factor: invalid name key")
+				}
+
+				cg.Factors = append(cg.Factors, factor)
+				return nil
+			}); err != nil {
+				return fmt.Errorf("error handling control_group factor: %w", err)
+			}
+
 			ttl, err := parseutil.ParseDurationSecond(cg.TTLHCL)
 			if err != nil {
 				return fmt.Errorf("path control_group: invalid ttl: %w", err)

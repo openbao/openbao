@@ -1,3 +1,27 @@
+## 2.5.4
+## May 20, 2026
+
+SECURITY:
+
+* core/auth: Fix audit logs dropping custom headers when using inline auth. GHSA-q8cj-789h-vg24 / CVE-2026-46358. [[GH-3076](https://github.com/openbao/openbao/pull/3076)]
+* core: Prevent hidden default token issuance from auth plugin endpoints returning both a `logical.Auth{}` response object and an error. GHSA-7j6w-vvw2-5f9c / CVE-2026-46405. [[GH-3150](https://github.com/openbao/openbao/pull/3150)]
+* core: Remove legacy lease endpoints (`sys/revoke`, `sys/renew`, `sys/revoke-prefix`, and `sys/revoke-force`) due to cross-namespace lease modification. GHSA-v8v8-cm84-m686 / CVE-2026-45808. [[GH-3152](https://github.com/openbao/openbao/pull/3152)]
+
+IMPROVEMENTS:
+
+* storage/postgresql: Set constraint name to `table+"_pkey"` and `ha_table+"_pkey"` and index to `table+"_idx"` for uniqueness when reusing the same database partition for multiple OpenBao instances. [[GH-2876](https://github.com/openbao/openbao/pull/2876)]
+
+BUG FIXES:
+
+* auth/kerberos: Do not return `logical.Auth{}` response during initial negotiation at the same time as an error. [[GH-3150](https://github.com/openbao/openbao/pull/3150)]
+* core/mfa: Handle invalidation for login MFA, ensuring standby nodes respond appropriately on writes. [[GH-3083](https://github.com/openbao/openbao/pull/3083)]
+* core/policies: Fix `list_scan_response_keys_filter_path` incorrectly erring on empty list responses. [[GH-3063](https://github.com/openbao/openbao/pull/3063)]
+* core/quotas: Correctly handle default rate limit exempt paths on quota configuration invalidation. [[GH-2953](https://github.com/openbao/openbao/pull/2953)]
+* core: Disallow logical secret engines from creating authentication tokens. [[GH-3087](https://github.com/openbao/openbao/pull/3087)]
+* core: Forward generate-root, step-down and rekey requests to active node to resolve inconsistent standby behavior. [[GH-3006](https://github.com/openbao/openbao/pull/3006)]
+* storage/raft: Wait for autopilot shutdown to avoid panic when racing to retrieve known servers. [[GH-3054](https://github.com/openbao/openbao/pull/3054)]
+* storage/postgresql: Revert accidental rename of `ha_table` option to `haTable`. Both spellings are now supported to retain compatibility, though `ha_table` takes precedence. [[GH-2876](https://github.com/openbao/openbao/pull/2876)]
+
 ## 2.5.3
 ## April 20, 2026
 

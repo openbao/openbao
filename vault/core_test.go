@@ -2728,19 +2728,6 @@ func TestCore_RenewSameLease(t *testing.T) {
 	original := resp.Secret.LeaseID
 
 	// Renew the lease
-	req = logical.TestRequest(t, logical.UpdateOperation, "sys/renew/"+resp.Secret.LeaseID)
-	req.ClientToken = root
-	resp, err = c.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	// Verify the lease did not change
-	if resp.Secret.LeaseID != original {
-		t.Fatalf("lease id changed: %s %s", original, resp.Secret.LeaseID)
-	}
-
-	// Renew the lease (alternate path)
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/leases/renew/"+resp.Secret.LeaseID)
 	req.ClientToken = root
 	resp, err = c.HandleRequest(namespace.RootContext(nil), req)
@@ -2785,7 +2772,7 @@ func TestCore_RenewToken_SingleRegister(t *testing.T) {
 	}
 
 	// Revoke using the renew prefix
-	req = logical.TestRequest(t, logical.UpdateOperation, "sys/revoke-prefix/auth/token/renew/")
+	req = logical.TestRequest(t, logical.UpdateOperation, "sys/leases/revoke-prefix/auth/token/renew/")
 	req.ClientToken = root
 	resp, err = c.HandleRequest(namespace.RootContext(nil), req)
 	if err != nil {

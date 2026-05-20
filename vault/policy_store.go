@@ -86,9 +86,6 @@ path "sys/internal/ui/resultant-acl" {
 
 # Allow a token to renew a lease via lease_id in the request body; old path for
 # old clients, new path for newer
-path "sys/renew" {
-    capabilities = ["update"]
-}
 path "sys/leases/renew" {
     capabilities = ["update"]
 }

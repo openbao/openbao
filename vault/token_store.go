@@ -3192,14 +3192,14 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 }
 
 // handleRevokeSelf handles the auth/token/revoke-self path for revocation of tokens
-// in a way that revokes all child tokens. Normally, using sys/revoke/leaseID will revoke
+// in a way that revokes all child tokens. Normally, using sys/leases/revoke/leaseID will revoke
 // the token and all children anyways, but that is only available when there is a lease.
 func (ts *TokenStore) handleRevokeSelf(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	return ts.revokeCommon(ctx, req, data, req.ClientToken)
 }
 
 // handleRevokeTree handles the auth/token/revoke/id path for revocation of tokens
-// in a way that revokes all child tokens. Normally, using sys/revoke/leaseID will revoke
+// in a way that revokes all child tokens. Normally, using sys/leases/revoke/leaseID will revoke
 // the token and all children anyways, but that is only available when there is a lease.
 func (ts *TokenStore) handleRevokeTree(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	id := data.Get("token").(string)
@@ -3250,7 +3250,7 @@ func (ts *TokenStore) revokeCommon(ctx context.Context, req *logical.Request, da
 }
 
 // handleRevokeOrphan handles the auth/token/revoke-orphan/id path for revocation of tokens
-// in a way that leaves child tokens orphaned. Normally, using sys/revoke/leaseID will revoke
+// in a way that leaves child tokens orphaned. Normally, using sys/leases/revoke/leaseID will revoke
 // the token and all children.
 func (ts *TokenStore) handleRevokeOrphan(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	// Parse the id

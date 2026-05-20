@@ -18,8 +18,6 @@ function getLogo(title: string, logoName: string) {
     const darkLogoPng = `./${key}/dark.png`
     const lightLogoPng = `./${key}/light.png`
 
-    console.log(logos);
-
     if (colorMode == "dark" && logos.keys().includes(darkLogo)) {
         return logos(`${darkLogo}`).default ?? logos(`./${darkLogo}`);
     } else if (colorMode != "dark" && logos.keys().includes(lightLogo)) {

@@ -7,8 +7,6 @@ before:
     - go mod tidy
     - go generate ./...
     - make bootstrap
-    - sh -c cd ui && pnpm install --shamefully-hoist
-    - syft scan dir:ui -o spdx-json=ui-sbom.spdx.json
 
 env:
   - NIGHTLY_RELEASE={{ if and (index .Env "NIGHTLY_RELEASE") (eq .Env.NIGHTLY_RELEASE "true") }}-nightly{{ end }}

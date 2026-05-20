@@ -2,7 +2,7 @@ import clsx from "clsx";
 import styles from "./styles.module.css";
 
 const logos = require.context(
-    "openbao-ecosystem-logos", true, /\.svg$/
+    "openbao-ecosystem-logos", true, /\.(svg|png)$/
 );
 
 import { useColorMode } from '@docusaurus/theme-common';
@@ -15,11 +15,21 @@ function getLogo(title: string, logoName: string) {
 
     const darkLogo = `./${key}/dark.svg`
     const lightLogo = `./${key}/light.svg`
+    const darkLogoPng = `./${key}/dark.png`
+    const lightLogoPng = `./${key}/light.png`
+
+    console.log(logos);
 
     if (colorMode == "dark" && logos.keys().includes(darkLogo)) {
         return logos(`${darkLogo}`).default ?? logos(`./${darkLogo}`);
     } else if (colorMode != "dark" && logos.keys().includes(lightLogo)) {
         return logos(`${lightLogo}`).default ?? logos(`./${lightLogo}`);
+    } else if (colorMode == "dark" && logos.keys().includes(darkLogoPng)) {
+        return logos(`${darkLogoPng}`).default ?? logos(`${darkLogoPng}`);
+    } else if (colorMode != "dark" && logos.keys().includes(lightLogoPng)) {
+        return logos(`${lightLogoPng}`).default ?? logos(`${lightLogoPng}`);
+    } else if (logos.keys().includes(`./${key}.png`)) {
+        return logos(`./${key}.png`).default ?? logos(`./${key}.png`);
     } else {
         return logos(`./${key}.svg`).default ?? logos(`./${key}.svg`);
     }

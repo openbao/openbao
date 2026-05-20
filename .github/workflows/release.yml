@@ -162,7 +162,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dist-tarball
-          path: '*.xz'
+          path: "*.xz"
           retention-days: 1
 
   release-main:
@@ -318,6 +318,17 @@ jobs:
         if: inputs.dogorelease
         run: mkdir -p "${HOME}/go/pkg/mod"
 
+      - name: Download Go modules for Syft license resolution
+        if: inputs.dogorelease
+        run: |
+          go mod download
+
+      - name: Install UI dependencies
+        if: inputs.dogorelease
+        run: |
+          cd website
+          pnpm install --frozen-lockfile
+      
       - name: "GoReleaser: Release"
         if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
         run: |
@@ -341,7 +352,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: deb-packages-${{ matrix.release_os }}
-          path: 'dist/*.deb'
+          path: "dist/*.deb"
           retention-days: 1
           if-no-files-found: ignore
 
@@ -350,7 +361,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rpm-packages-${{ matrix.release_os }}
-          path: 'dist/*.rpm'
+          path: "dist/*.rpm"
           retention-days: 1
           if-no-files-found: ignore
 
@@ -401,7 +412,7 @@ jobs:
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
-      AWS_REGION: 'fra'
+      AWS_REGION: "fra"
       AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
       BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
     steps:
@@ -461,7 +472,7 @@ jobs:
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
-      AWS_REGION: 'fra'
+      AWS_REGION: "fra"
       AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
       BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
       TAGNAME: v${{ needs.build-ui-dist.outputs.version }}
@@ -496,3 +507,4 @@ jobs:
       - name: Upload RPM repository
         run: |
           aws s3 sync build/rpm s3://${BUCKET}/rpm
+

@@ -833,7 +833,7 @@ func TestRequestHandling_DisallowAuthErrorTokenCreation(t *testing.T) {
 	}
 
 	core.credentialBackends["test"] = func(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
-		b := &backendTest.Noop{
+		b := &NoopBackend{
 			Login:       []string{"login"},
 			BackendType: logical.TypeCredential,
 			RequestHandler: func(ctx context.Context, req *logical.Request) (*logical.Response, error) {

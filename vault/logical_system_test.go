@@ -1554,7 +1554,7 @@ func TestSystemBackend_renew(t *testing.T) {
 	}
 
 	// Test orig path
-	req2 = logical.TestRequest(t, logical.UpdateOperation, "renew")
+	req2 = logical.TestRequest(t, logical.UpdateOperation, "leases/renew")
 	req2.Data["lease_id"] = resp.Secret.LeaseID
 	resp2, err = b.HandleRequest(namespace.RootContext(t.Context()), req2)
 	if err != nil {
@@ -1600,7 +1600,7 @@ func TestSystemBackend_renew_invalidID_origUrl(t *testing.T) {
 	b := testSystemBackend(t)
 
 	// Attempt renew
-	req := logical.TestRequest(t, logical.UpdateOperation, "renew/foobarbaz")
+	req := logical.TestRequest(t, logical.UpdateOperation, "leases/renew/foobarbaz")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1610,7 +1610,7 @@ func TestSystemBackend_renew_invalidID_origUrl(t *testing.T) {
 	}
 
 	// Attempt renew with other method
-	req = logical.TestRequest(t, logical.UpdateOperation, "renew")
+	req = logical.TestRequest(t, logical.UpdateOperation, "leases/renew")
 	req.Data["lease_id"] = "foobarbaz"
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != logical.ErrInvalidRequest {
@@ -1653,7 +1653,7 @@ func TestSystemBackend_revoke(t *testing.T) {
 	}
 
 	// Attempt revoke
-	req2 := logical.TestRequest(t, logical.UpdateOperation, "revoke/"+resp.Secret.LeaseID)
+	req2 := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke/"+resp.Secret.LeaseID)
 	resp2, err := b.HandleRequest(namespace.RootContext(t.Context()), req2)
 	if err != nil {
 		t.Fatalf("err: %v %#v", err, resp2)
@@ -1663,7 +1663,7 @@ func TestSystemBackend_revoke(t *testing.T) {
 	}
 
 	// Attempt renew
-	req3 := logical.TestRequest(t, logical.UpdateOperation, "renew/"+resp.Secret.LeaseID)
+	req3 := logical.TestRequest(t, logical.UpdateOperation, "leases/renew/"+resp.Secret.LeaseID)
 	resp3, err := b.HandleRequest(namespace.RootContext(t.Context()), req3)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1688,7 +1688,7 @@ func TestSystemBackend_revoke(t *testing.T) {
 	}
 
 	// Test the other route path
-	req2 = logical.TestRequest(t, logical.UpdateOperation, "revoke")
+	req2 = logical.TestRequest(t, logical.UpdateOperation, "leases/revoke")
 	req2.Data["lease_id"] = resp.Secret.LeaseID
 	resp2, err = b.HandleRequest(namespace.RootContext(t.Context()), req2)
 	if err != nil {
@@ -1763,7 +1763,7 @@ func TestSystemBackend_revoke_invalidID_origUrl(t *testing.T) {
 	b := testSystemBackend(t)
 
 	// Attempt revoke
-	req := logical.TestRequest(t, logical.UpdateOperation, "revoke/foobarbaz")
+	req := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke/foobarbaz")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1773,7 +1773,7 @@ func TestSystemBackend_revoke_invalidID_origUrl(t *testing.T) {
 	}
 
 	// Attempt revoke with other method
-	req = logical.TestRequest(t, logical.UpdateOperation, "revoke")
+	req = logical.TestRequest(t, logical.UpdateOperation, "leases/revoke")
 	req.Data["lease_id"] = "foobarbaz"
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
@@ -1873,7 +1873,7 @@ func TestSystemBackend_revokePrefix_origUrl(t *testing.T) {
 	}
 
 	// Attempt revoke
-	req2 := logical.TestRequest(t, logical.UpdateOperation, "revoke-prefix/secret/")
+	req2 := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke-prefix/secret/")
 	resp2, err := b.HandleRequest(namespace.RootContext(t.Context()), req2)
 	if err != nil {
 		t.Fatalf("err: %v %#v", err, resp2)
@@ -1883,7 +1883,7 @@ func TestSystemBackend_revokePrefix_origUrl(t *testing.T) {
 	}
 
 	// Attempt renew
-	req3 := logical.TestRequest(t, logical.UpdateOperation, "renew/"+resp.Secret.LeaseID)
+	req3 := logical.TestRequest(t, logical.UpdateOperation, "leases/renew/"+resp.Secret.LeaseID)
 	resp3, err := b.HandleRequest(namespace.RootContext(t.Context()), req3)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -2008,7 +2008,7 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	req := logical.TestRequest(t, logical.UpdateOperation, "revoke-prefix/auth/github/")
+	req := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke-prefix/auth/github/")
 	resp, err := b.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %v %v", err, resp)

@@ -328,7 +328,7 @@ func Test(tt TestT, c TestCase) {
 			// Revoke this secret later
 			revoke = append(revoke, &logical.Request{
 				Operation: logical.UpdateOperation,
-				Path:      "sys/revoke/" + resp.Secret.LeaseID,
+				Path:      "sys/leases/revoke/" + resp.Secret.LeaseID,
 			})
 		}
 

@@ -2672,7 +2672,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "(leases/)?renew" + framework.OptionalParamRegex("url_lease_id"),
+			Pattern: "leases/renew" + framework.OptionalParamRegex("url_lease_id"),
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "leases",
@@ -2712,7 +2712,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "(leases/)?revoke" + framework.OptionalParamRegex("url_lease_id"),
+			Pattern: "leases/revoke" + framework.OptionalParamRegex("url_lease_id"),
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "leases",
@@ -2753,7 +2753,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "(leases/)?revoke-force/(?P<prefix>.+)",
+			Pattern: "leases/revoke-force/(?P<prefix>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "leases",
@@ -2786,7 +2786,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "(leases/)?revoke-prefix/(?P<prefix>.+)",
+			Pattern: "leases/revoke-prefix/(?P<prefix>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "leases",

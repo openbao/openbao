@@ -256,7 +256,7 @@ func IsSudoPath(path string) bool {
 	}
 
 	// Some sudo paths have templated fields in them.
-	// (e.g. /sys/revoke-prefix/{prefix})
+	// (e.g. /sys/leases/revoke-prefix/{prefix})
 	// The values in the sudoPaths map are actually regular expressions,
 	// so we can check if our path matches against them.
 	for _, sudoPathRegexp := range sudoPaths {

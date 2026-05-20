@@ -177,12 +177,12 @@ jobs:
       matrix:
         release_os:
           - linux
-          - hsm
-          - darwin
-          - freebsd
-          - netbsd
-          - openbsd
-          - windows
+          # - hsm
+          # - darwin
+          # - freebsd
+          # - netbsd
+          # - openbsd
+          # - windows
     steps:
       - name: Free additional storage on runner
         if: inputs.dogorelease

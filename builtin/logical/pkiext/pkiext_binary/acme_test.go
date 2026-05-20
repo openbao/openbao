@@ -89,16 +89,20 @@ type caddyConfig struct {
 	EABKey    string
 }
 
+func generateRandomId(t *testing.T) string {
+	// Roll a random run ID for mount and hostname uniqueness.
+	runID, err := uuid.GenerateUUID()
+	require.NoError(t, err, "failed to generate a unique ID for test run")
+	runID = strings.Split(runID, "-")[0]
+	return runID
+}
+
 // SubtestACMECaddy returns an ACME test for Caddy using the provided template.
 func SubtestACMECaddy(configTemplate string, enableEAB bool) func(*testing.T, *VaultPkiCluster) {
 	return func(t *testing.T, cluster *VaultPkiCluster) {
 		ctx := t.Context()
 
-		// Roll a random run ID for mount and hostname uniqueness.
-		runID, err := uuid.GenerateUUID()
-		require.NoError(t, err, "failed to generate a unique ID for test run")
-		runID = strings.Split(runID, "-")[0]
-
+		runID := generateRandomId(t)
 		// Create the PKI mount with ACME enabled
 		pki, err := cluster.CreateAcmeMount(runID)
 		require.NoError(t, err, "failed to set up ACME mount")
@@ -265,12 +269,13 @@ func SubtestACMECertbot(t *testing.T, cluster *VaultPkiCluster) {
 		sleepTimer = "120"
 	}
 
+	containerName := fmt.Sprintf("vault_pki_certbot_test_%s", runID)
+
 	t.Logf("creating on network: %v", vaultNetwork)
 	runner, err := hDocker.NewServiceRunner(hDocker.RunOptions{
-		ImageRepo: "docker.mirror.hashicorp.services/certbot/certbot",
-		ImageTag:  "latest",
-		// Append runID so parallel re-runs don't collide on the container name.
-		ContainerName: fmt.Sprintf("vault_pki_certbot_test_%s", runID),
+		ImageRepo:     "docker.mirror.hashicorp.services/certbot/certbot",
+		ImageTag:      "latest",
+		ContainerName: containerName,
 		NetworkName:   vaultNetwork,
 		Entrypoint:    []string{"sleep", sleepTimer},
 		LogConsumer:   logConsumer,
@@ -294,7 +299,7 @@ func SubtestACMECertbot(t *testing.T, cluster *VaultPkiCluster) {
 
 	ipAddr := networks[vaultNetwork]
 	// FIX: Unique hostname to avoid DNS record conflicts across retries.
-	hostname := fmt.Sprintf("certbot-acme-client-%s.dadgarcorp.com", runID)
+	hostname := fmt.Sprintf("certbot_acme_client_%s.dadgarcorp.com", runID)
 
 	err = pki.AddHostname(hostname, ipAddr)
 	require.NoError(t, err, "failed to update vault host files")
@@ -477,7 +482,7 @@ func SubtestACMECertbotEab(t *testing.T, cluster *VaultPkiCluster) {
 		ImageRepo: "docker.mirror.hashicorp.services/certbot/certbot",
 		ImageTag:  "latest",
 		// Unique container name to avoid "already in use" errors on retry.
-		ContainerName: fmt.Sprintf("vault-pki-certbot-eab-test_%s", runID),
+		ContainerName: fmt.Sprintf("vault_pki_certbot_eab_test_%s", runID),
 		NetworkName:   vaultNetwork,
 		Entrypoint:    []string{"sleep", sleepTimer},
 		LogConsumer:   logConsumer,
@@ -501,7 +506,7 @@ func SubtestACMECertbotEab(t *testing.T, cluster *VaultPkiCluster) {
 
 	ipAddr := networks[vaultNetwork]
 	// Unique hostname to avoid DNS record conflicts on retry.
-	hostname := fmt.Sprintf("certbot-eab-acme-client-%s.dadgarcorp.com", runID)
+	hostname := fmt.Sprintf("certbot_eab_acme_client_%s.dadgarcorp.com", runID)
 
 	err = pki.AddHostname(hostname, ipAddr)
 	require.NoError(t, err, "failed to update vault host files")
@@ -600,11 +605,14 @@ func SubtestACMEIPAndDNS(t *testing.T, cluster *VaultPkiCluster) {
 
 	logConsumer, logStdout, logStderr := getDockerLog(t)
 
+	runID := generateRandomId(t)
+	containerName := fmt.Sprintf("vault_pki_ipsans_test_%s", runID)
+
 	// Setup an nginx container that we can have respond the queries for ips
 	runner, err := hDocker.NewServiceRunner(hDocker.RunOptions{
 		ImageRepo:     "docker.mirror.hashicorp.services/nginx",
 		ImageTag:      "latest",
-		ContainerName: "vault_pki_ipsans_test",
+		ContainerName: containerName,
 		NetworkName:   pki.GetContainerNetworkName(),
 		LogConsumer:   logConsumer,
 		LogStdout:     logStdout,

@@ -1389,7 +1389,11 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	}
 
 	// Only the token store is allowed to return an auth block, for any
-	// other request this is an internal error.
+	// other request this is an internal error. When the request fails,
+	// do not generate a token even if the backend returned an auth block.
+	if resp != nil && resp.Auth != nil && routeErr != nil {
+		resp.Auth = nil
+	}
 	if resp != nil && resp.Auth != nil {
 		if !strings.HasPrefix(req.Path, "auth/token/") {
 			c.logger.Error("unexpected auth response for non-token backend", "request_path", req.Path)
@@ -1672,6 +1676,10 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	}
 
 	// If the response generated an authentication, then generate the token
+	// only if it did not also err as the err would shadow the token.
+	if resp != nil && resp.Auth != nil && routeErr != nil {
+		resp.Auth = nil
+	}
 	if resp != nil && resp.Auth != nil && req.Path != "sys/mfa/validate" {
 		// When the request path is part of a logical backend (and not a
 		// credential backend), reject the token creation.

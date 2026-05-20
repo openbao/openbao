@@ -267,7 +267,8 @@ func (b *SystemBackend) handleGenerateRootInit() framework.OperationFunc {
 			}
 		}
 
-		if err := b.Core.GenerateRootInit(ctx, otp, pgpKey, GenerateStandardRootTokenStrategy); err != nil {
+		// expecting state lock to already be held by switchedLockHandleRequest
+		if err := b.Core.lockedGenerateRootInit(ctx, otp, pgpKey, GenerateStandardRootTokenStrategy); err != nil {
 			return handleError(err)
 		}
 
@@ -313,7 +314,8 @@ func (b *SystemBackend) handleGenerateRootUpdate() framework.OperationFunc {
 			}
 		}
 
-		result, err := b.Core.GenerateRootUpdate(ctx, decodedKey, nonce, GenerateStandardRootTokenStrategy)
+		// expecting state lock to already be held by switchedLockHandleRequest
+		result, err := b.Core.lockedGenerateRootUpdate(ctx, decodedKey, nonce, GenerateStandardRootTokenStrategy)
 		if err != nil {
 			return nil, err
 		}
@@ -332,7 +334,8 @@ func (b *SystemBackend) handleGenerateRootUpdate() framework.OperationFunc {
 
 func (b *SystemBackend) handleGenerateRootCancel() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		if err := b.Core.GenerateRootCancel(ctx); err != nil {
+		// expecting state lock to already be held by switchedLockHandleRequest
+		if err := b.Core.lockedGenerateRootCancel(ctx); err != nil {
 			return handleError(err)
 		}
 
@@ -382,7 +385,8 @@ func (b *SystemBackend) generateRootStatus(ctx context.Context, otp string) (*lo
 		}
 	}
 
-	generationConfig, err := b.Core.GenerateRootConfiguration(ctx)
+	// expecting state lock to already be held by switchedLockHandleRequest
+	generationConfig, err := b.Core.lockedGenerateRootConfiguration(ctx)
 	switch {
 	// Return the progress as 0 in this case, root generation has not started.
 	case errors.Is(err, ErrNoRootGeneration):
@@ -390,7 +394,8 @@ func (b *SystemBackend) generateRootStatus(ctx context.Context, otp string) (*lo
 		return handleError(err)
 	}
 
-	progress, err := b.Core.GenerateRootProgress(ctx)
+	// expecting state lock to already be held by switchedLockHandleRequest
+	progress, err := b.Core.lockedGenerateRootProgress(ctx)
 	if err != nil {
 		return handleError(err)
 	}

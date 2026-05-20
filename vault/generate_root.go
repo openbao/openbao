@@ -116,6 +116,10 @@ func (c *Core) GenerateRootProgress(ctx context.Context) (int, error) {
 	}
 	defer unlock()
 
+	return c.lockedGenerateRootProgress(ctx)
+}
+
+func (c *Core) lockedGenerateRootProgress(ctx context.Context) (int, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return 0, err
@@ -140,6 +144,10 @@ func (c *Core) GenerateRootConfiguration(ctx context.Context) (*GenerateRootConf
 	}
 	defer unlock()
 
+	return c.lockedGenerateRootConfiguration(ctx)
+}
+
+func (c *Core) lockedGenerateRootConfiguration(ctx context.Context) (*GenerateRootConfig, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -168,6 +176,10 @@ func (c *Core) GenerateRootInit(ctx context.Context, otp, pgpKey string, strateg
 	}
 	defer unlock()
 
+	return c.lockedGenerateRootInit(ctx, otp, pgpKey, strategy)
+}
+
+func (c *Core) lockedGenerateRootInit(ctx context.Context, otp, pgpKey string, strategy GenerateRootStrategy) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
@@ -256,6 +268,10 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	}
 	defer unlock()
 
+	return c.lockedGenerateRootUpdate(ctx, key, nonce, strategy)
+}
+
+func (c *Core) lockedGenerateRootUpdate(ctx context.Context, key []byte, nonce string, strategy GenerateRootStrategy) (*GenerateRootResult, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -407,6 +423,10 @@ func (c *Core) GenerateRootCancel(ctx context.Context) error {
 	}
 	defer unlock()
 
+	return c.lockedGenerateRootCancel(ctx)
+}
+
+func (c *Core) lockedGenerateRootCancel(ctx context.Context) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err

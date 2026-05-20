@@ -41,8 +41,9 @@ func (b *SystemBackend) generateRootPaths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Summary:  "Read the status of root token generation.",
-					Callback: b.handleGenerateRootStatus(),
+					Summary:                   "Read the status of root token generation.",
+					Callback:                  b.handleGenerateRootStatus(),
+					ForwardPerformanceStandby: true,
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),
@@ -83,9 +84,10 @@ func (b *SystemBackend) generateRootPaths() []*framework.Path {
 					},
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Summary:     "Initialize root token generation.",
-					Description: "Only a single root generation attempt can take place at a time. One (and only one) of otp or pgp_key are required.",
-					Callback:    b.handleGenerateRootInit(),
+					Summary:                   "Initialize root token generation.",
+					Description:               "Only a single root generation attempt can take place at a time. One (and only one) of otp or pgp_key are required.",
+					Callback:                  b.handleGenerateRootInit(),
+					ForwardPerformanceStandby: true,
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),
@@ -126,8 +128,9 @@ func (b *SystemBackend) generateRootPaths() []*framework.Path {
 					},
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Summary:  "Cancel root token generation.",
-					Callback: b.handleGenerateRootCancel(),
+					Summary:                   "Cancel root token generation.",
+					Callback:                  b.handleGenerateRootCancel(),
+					ForwardPerformanceStandby: true,
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: http.StatusText(http.StatusNoContent),
@@ -159,9 +162,10 @@ func (b *SystemBackend) generateRootPaths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Summary:     "Provide an unseal key share for root token generation.",
-					Description: "If the threshold number of unseal key shares is reached, OpenBao will complete the root generation and issue the new token. Otherwise, this API must be called multiple times until that threshold is met. The attempt nonce must be provided with each call.",
-					Callback:    b.handleGenerateRootUpdate(),
+					Summary:                   "Provide an unseal key share for root token generation.",
+					Description:               "If the threshold number of unseal key shares is reached, OpenBao will complete the root generation and issue the new token. Otherwise, this API must be called multiple times until that threshold is met. The attempt nonce must be provided with each call.",
+					Callback:                  b.handleGenerateRootUpdate(),
+					ForwardPerformanceStandby: true,
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),

@@ -400,12 +400,19 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 
 		// decode ControlGroup if needed
 		if err := hclutil.WhenHCLKeyPresent(item.Val, "control_group", func(item *ast.ObjectItem) error {
+			if err := hclutil.CheckHCLKeys(item.Val, []string{"ttl", "self_auth_allowed", "factor"}); err != nil {
+				return multierror.Prefix(err, "path control_group:")
+			}
 			cg := new(ControlGroup)
 			if err := hcl.DecodeObject(&cg, item.Val); err != nil {
 				return multierror.Prefix(err, "path control_group:")
 			}
 			// decode factors in control_group
 			if err := hclutil.WhenHCLKeyPresent(item.Val, "factor", func(factorItem *ast.ObjectItem) error {
+				if err := hclutil.CheckHCLKeys(factorItem.Val, []string{"controlled_capabilities", "identity"}); err != nil {
+					return multierror.Prefix(err, "path control_group factor:")
+				}
+
 				var factor ControlGroupFactor
 				if err := hcl.DecodeObject(&factor, factorItem.Val); err != nil {
 					return multierror.Prefix(err, "path control_group factor:")

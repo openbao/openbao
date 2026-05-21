@@ -111,16 +111,13 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		capabilities = ["create", "list", "read"]
 		control_group = {
 			ttl = "15s"
-			factors = [
-				{
-					name = "admin-approval"
-					controlled_capabilities = ["read"]
-					identity = {
-						group_names = ["admin"]
-						approvals = 1
-					}
+			factor "admin-approval" {
+				controlled_capabilities = ["read"]
+				identity = {
+					group_names = ["admin"]
+					approvals = 1
 				}
-			]
+			}
 		}
 	}
 	`

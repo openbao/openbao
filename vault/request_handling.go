@@ -908,7 +908,12 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 					}
 					if valid {
 						deferredReq.ForwardedFrom = forwardedFromDeferral
-						return c.handleCancelableRequest(ctx, deferredReq)
+						deferredReqNS, err := c.NamespaceByID(ctx, tokenEntry.NamespaceID)
+						if err != nil {
+							return nil, fmt.Errorf("cannot find namespace for token: %w", err)
+						}
+						deferredReqCtx := namespace.ContextWithNamespace(ctx, deferredReqNS)
+						return c.handleCancelableRequest(deferredReqCtx, deferredReq)
 					}
 				}
 			}

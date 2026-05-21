@@ -74,7 +74,7 @@ jobs:
         run: |
           go list ./... github.com/openbao/openbao/api/v2/... github.com/openbao/openbao/sdk/v2/... \
             | grep -v "_binary" \
-            | go run gotest.tools/gotestsum@latest tool ci-matrix --debug \
+            | go tool -modfile=tools/go.mod gotestsum tool ci-matrix --debug \
               --partitions "$INPUTS_TOTAL_RUNNERS" \
               --timing-files 'test-results/go-test/*.json' > matrix.json
       - name: Capture list of binary tests
@@ -139,7 +139,7 @@ jobs:
           git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN}}@github.com".insteadOf https://github.com
       - id: build
         if: inputs.binary-tests && matrix.id == inputs.total-runners
-        run: time make ci-bootstrap dev
+        run: time make dev
       - id: run-go-tests
         name: Run Go tests
         timeout-minutes: ${{ fromJSON(env.TIMEOUT_IN_MINUTES) }}
@@ -177,7 +177,7 @@ jobs:
 
           # shellcheck disable=SC2086 # can't quote RERUN_FAILS
           GOARCH="$INPUTS_GO_ARCH" \
-            go run gotest.tools/gotestsum@latest --format=short-verbose \
+            go tool -modfile=tools/go.mod gotestsum --format=short-verbose \
               --junitfile test-results/go-test/results-${{ matrix.id }}.xml \
               --jsonfile test-results/go-test/results-${{ matrix.id }}.json \
               --jsonfile-timing-events "failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}$INPUTS_NAME.json" \

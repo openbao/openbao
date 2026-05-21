@@ -24,6 +24,10 @@ jobs:
         uses: ./.github/actions/set-up-go
       - name: Run sync-deps
         run: make sync-deps
+      - name: Sync golangci-lint version to code-checker workflow
+        run: |
+          version=$(go list -modfile=tools/go.mod -m -f '{{ .Version }}' github.com/golangci/golangci-lint/v2)
+          sed -i "s/GOLANGCI_LINT_VERSION: v.*/GOLANGCI_LINT_VERSION: ${version}/" .github/workflows/code-checker.yml
       - name: Check for changes
         id: changes
         run: |

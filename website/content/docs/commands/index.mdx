@@ -175,6 +175,20 @@ format.
 $ bao kv put secret/password value=itsasecret
 ```
 
+### Basic maps
+
+To write data alongside a basic map, you can use the command in format as follows (this example is for a `map[string]interface {}`)
+
+```shell-session
+$ bao write auth/oidc/roles/test param1="first" - \
+  param2="second" \
+    <<EOF
+    {
+      "map_param": {"name":["value1", "value2"]}
+    }
+    EOF
+```
+
 However, some OpenBao API require more advanced structures such as maps. You can
 use stdin or file input instead.
 

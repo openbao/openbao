@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/golangci/golangci-lint/v2 v2.5.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.1
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gotest.tools/gotestsum v1.12.3
 )
 

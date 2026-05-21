@@ -143,8 +143,8 @@ require (
 	golang.org/x/sys v0.44.0
 	golang.org/x/term v0.42.0
 	golang.org/x/text v0.36.0
-	google.golang.org/api v0.277.0
-	google.golang.org/grpc v1.80.0
+	google.golang.org/api v0.278.0
+	google.golang.org/grpc v1.81.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0
 	k8s.io/api v0.35.4

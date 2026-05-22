@@ -207,8 +207,8 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/sys/", handleLogical(core))
 		mux.Handle("/v1/", handleLogical(core))
 		if core.UIEnabled() {
-			if uiBuiltIn {
-				fs := getUIAssets() // nil if UI stub, else real FS
+			fs := getUIAssets() // nil if UI stub, else real FS
+			if uiBuiltIn && fs != nil {
 				uiHandler := precompressedUIHandler(
 					http.FileServer(&UIAssetWrapper{FileSystem: fs}),
 					fs,
@@ -872,6 +872,10 @@ type UIAssetWrapper struct {
 }
 
 func (fsw *UIAssetWrapper) Open(name string) (http.File, error) {
+	if fsw == nil || fsw.FileSystem == nil {
+		return nil, fs.ErrNotExist
+	}
+
 	file, err := fsw.FileSystem.Open(name)
 	if err == nil {
 		return file, nil

@@ -22,7 +22,9 @@ type Adapter interface {
 	// ImportKey imports raw key material:
 	//   - symmetric: raw bytes
 	//   - asymmetric: PKCS8 DER
-	ImportKey(ctx context.Context, alg kmiplib.CryptographicAlgorithm, bitlen int32, keyMaterial []byte) (string, error)
+	// If name is empty, the server assigns a UniqueIdentifier; otherwise the
+	// client-supplied Name attribute is used and reused as the identifier.
+	ImportKey(ctx context.Context, name string, alg kmiplib.CryptographicAlgorithm, bitlen int32, keyMaterial []byte) (string, error)
 
 	// GetKey retrieves key material for a given unique id.
 	GetKey(ctx context.Context, id string) (kmiplib.Object, error)

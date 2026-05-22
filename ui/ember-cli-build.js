@@ -27,6 +27,10 @@ const appConfig = {
     rootURL: '/ui/',
   },
   fingerprint: {
+    gzip: {
+      extensions: ['html', 'js', 'css', 'json', 'svg', 'xml', 'txt'],
+      keepUncompressed: true,
+    },
     exclude: ['images/'],
   },
   assetLoader: {

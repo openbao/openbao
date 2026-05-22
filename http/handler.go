@@ -749,10 +749,10 @@ func precompressedUIHandler(next http.Handler, fs http.FileSystem) http.Handler 
 
 		// Check if .gz version exists
 		gzPath := r.URL.Path + ".gz"
-		if f, err := fs.Open(gzPath); err == nil {
-			err := f.Close()
-			if err != nil {
-				respondError(w, http.StatusInternalServerError, fmt.Errorf("error closing precompressed file: %w", err))
+		if f, err := fs.Open(gzPath); err == nil && f != nil {
+			if err := f.Close(); err != nil {
+				respondError(w, http.StatusInternalServerError,
+					fmt.Errorf("error closing precompressed file: %w", err))
 				return
 			}
 			r.URL.Path = gzPath
@@ -872,7 +872,12 @@ type UIAssetWrapper struct {
 }
 
 func (fsw *UIAssetWrapper) Open(name string) (http.File, error) {
-	if fsw == nil || fsw.FileSystem == nil {
+	if fsw == nil {
+		return nil, fs.ErrNotExist
+	}
+
+	// Protect against typed-nil filesystem implementations.
+	if fsw.FileSystem == nil {
 		return nil, fs.ErrNotExist
 	}
 

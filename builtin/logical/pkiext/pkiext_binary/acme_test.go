@@ -927,7 +927,7 @@ func SubtestACMEPreventsICADNS(t *testing.T, cluster *VaultPkiCluster) {
 	// Redo validation with a role this time.
 	err = pki.UpdateRole("ica", map[string]interface{}{
 		"key_type":                    "any",
-		"allowed_domains":             fmt.Sprintf("go-lang-intermediate-ca-cert.%s.dadgarcorp.com", generateRandomId(t)),
+		"allowed_domains":             hostname,
 		"allow_subdomains":            true,
 		"allow_bare_domains":          true,
 		"allow_wildcard_certificates": true,

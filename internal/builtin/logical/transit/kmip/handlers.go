@@ -106,7 +106,8 @@ func handleRegister(ctx context.Context, a Adapter, req *payloads.RegisterReques
 		return nil, err
 	}
 
-	id, err := a.ImportKey(ctx, alg, bitlen, material)
+	name := NameFromTemplateAttribute(req.TemplateAttribute)
+	id, err := a.ImportKey(ctx, name, alg, bitlen, material)
 	if err != nil {
 		return nil, mapError(err)
 	}

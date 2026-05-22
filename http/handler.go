@@ -21,6 +21,7 @@ import (
 	"net/textproto"
 	"net/url"
 	"os"
+	"path"
 	"regexp"
 	"strings"
 	"time"
@@ -30,7 +31,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
-	gziphandler "github.com/klauspost/compress/gzhttp"
 	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/listenerutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -208,14 +208,18 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/", handleLogical(core))
 		if core.UIEnabled() {
 			if uiBuiltIn {
-				mux.Handle("/ui/", http.StripPrefix("/ui/", gziphandler.GzipHandler(handleUIHeaders(core, handleUI(http.FileServer(&UIAssetWrapper{FileSystem: assetFS()}))))))
-				mux.Handle("/robots.txt", gziphandler.GzipHandler(handleUIHeaders(core, handleUI(http.FileServer(&UIAssetWrapper{FileSystem: assetFS()})))))
+				fs := getUIAssets() // nil if UI stub, else real FS
+				uiHandler := precompressedUIHandler(
+					http.FileServer(&UIAssetWrapper{FileSystem: fs}),
+					fs,
+				)
+				mux.Handle("/ui/", http.StripPrefix("/ui/", handleUIHeaders(core, handleUI(uiHandler))))
+				mux.Handle("/robots.txt", handleUIHeaders(core, handleUI(uiHandler)))
 			} else {
 				mux.Handle("/ui/", handleUIHeaders(core, handleUIStub()))
 			}
 			mux.Handle("/ui", handleUIRedirect())
 			mux.Handle("/", handleUIRedirect())
-
 		}
 
 		// Register metrics path without authentication if enabled
@@ -713,6 +717,45 @@ func wrapClientCertificateHandler(h http.Handler, props *vault.HandlerProperties
 
 		// Call our next handler.
 		h.ServeHTTP(w, r)
+	})
+}
+
+// precompressedUIHandler wraps a FileServer and serves pre‑compressed .gz files
+// when they exist and the client accepts gzip. If fs is nil (UI not built),
+// it just passes through to the next handler.
+func precompressedUIHandler(next http.Handler, fs http.FileSystem) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Fast path: if no filesystem (UI stub), just serve what we have
+		if fs == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Only GET requests, and only when client accepts gzip
+		if r.Method != http.MethodGet || !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Limit to compressible extensions (must match build‑time list)
+		ext := path.Ext(r.URL.Path)
+		switch ext {
+		case ".html", ".js", ".css", ".json", ".svg", ".xml", ".txt":
+			// these are pre‑compressed
+		default:
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Check if .gz version exists
+		gzPath := r.URL.Path + ".gz"
+		if f, err := fs.Open(gzPath); err == nil {
+			f.Close()
+			r.URL.Path = gzPath
+			w.Header().Set("Content-Encoding", "gzip")
+			w.Header().Set("Vary", "Accept-Encoding")
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 

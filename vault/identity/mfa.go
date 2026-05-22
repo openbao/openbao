@@ -5,7 +5,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -49,22 +51,22 @@ func (i *IdentityStore) handleMFAMethodListPingID(ctx context.Context, req *logi
 	return i.handleMFAMethodList(ctx, req, d, MfaMethodTypePingID)
 }
 
-func (i *IdentityStore) handleMFAMethodListGlobal(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	keys, configInfo, err := i.mfaBackend.MfaMethodList(ctx, "")
+func (i *IdentityStore) handleMFAMethodListGlobal(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+	configInfo, err := i.mfaBackend.MfaMethodList(ctx, "")
 	if err != nil {
 		return nil, err
 	}
 
-	return logical.ListResponseWithInfo(keys, configInfo), nil
+	return logical.ListResponseWithInfo(slices.Collect(maps.Keys(configInfo)), configInfo), nil
 }
 
-func (i *IdentityStore) handleMFAMethodList(ctx context.Context, req *logical.Request, d *framework.FieldData, methodType string) (*logical.Response, error) {
-	keys, configInfo, err := i.mfaBackend.MfaMethodList(ctx, methodType)
+func (i *IdentityStore) handleMFAMethodList(ctx context.Context, _ *logical.Request, _ *framework.FieldData, methodType string) (*logical.Response, error) {
+	configInfo, err := i.mfaBackend.MfaMethodList(ctx, methodType)
 	if err != nil {
 		return nil, err
 	}
 
-	return logical.ListResponseWithInfo(keys, configInfo), nil
+	return logical.ListResponseWithInfo(slices.Collect(maps.Keys(configInfo)), configInfo), nil
 }
 
 func (i *IdentityStore) handleMFAMethodTOTPRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -98,7 +100,7 @@ func (i *IdentityStore) handleMFAMethodReadCommon(ctx context.Context, req *logi
 		return nil, err
 	}
 
-	respData, err := i.mfaBackend.MfaConfigReadByMethodID(methodID)
+	respData, err := i.mfaBackend.ReadMFAConfigByMethodID(methodID)
 	if err != nil {
 		return nil, err
 	}
@@ -130,21 +132,28 @@ func (i *IdentityStore) handleMFAMethodReadCommon(ctx context.Context, req *logi
 type MFABackend interface {
 	Lock()
 	Unlock()
+	HandleMFAGenerateTOTP(context.Context, *mfa.Config, string) (*logical.Response, error)
+	ValidateAuthEntriesForAccessorOrType(context.Context, *namespace.Namespace, func(entry *routing.MountEntry) bool) (bool, error)
+	CleanupNamespace(context.Context, *namespace.Namespace, bool) error
+
+	// Login Method Configs CRUD
+	PutMFAConfigByID(context.Context, *mfa.Config) error
+	ReadMFAConfigByMethodID(string) (map[string]any, error)
+	DeleteMFAConfigByMethodID(context.Context, string, string, string) error
+	MfaMethodList(context.Context, string) (map[string]any, error)
+
+	// Login Enforcement Configs CRUD
+	PutMFALoginEnforcementConfig(context.Context, *mfa.MFAEnforcementConfig, *namespace.Namespace) error
+	ReadMFALoginEnforcementConfigByNameAndNamespace(string, *namespace.Namespace) (map[string]interface{}, error)
+	DeleteMFALoginEnforcementConfigByNameAndNamespace(context.Context, string, *namespace.Namespace) error
+	MfaLoginEnforcementList(context.Context) (map[string]any, error)
+
+	// MemDB methods
+	MemDBUpsertMFAConfig(context.Context, *mfa.Config) error
 	MemDBMFAConfigByID(string) (*mfa.Config, error)
 	MemDBMFAConfigByName(context.Context, string) (*mfa.Config, error)
-	PutMFAConfigByID(context.Context, *mfa.Config) error
-	MemDBUpsertMFAConfig(context.Context, *mfa.Config) error
-	MemDBMFALoginEnforcementConfigByNameAndNamespace(name, namespaceId string) (*mfa.MFAEnforcementConfig, error)
-	MemDBUpsertMFALoginEnforcementConfig(ctx context.Context, eConfig *mfa.MFAEnforcementConfig) error
-	MfaMethodList(ctx context.Context, s string) ([]string, map[string]any, error)
-	MfaConfigReadByMethodID(methodID string) (map[string]any, error)
-	DeleteMFAConfigByMethodID(context.Context, string, string, string) error
-	HandleMFAGenerateTOTP(context.Context, *mfa.Config, string) (*logical.Response, error)
-	MfaLoginEnforcementList(context.Context) ([]string, map[string]any, error)
-	MfaLoginEnforcementConfigByNameAndNamespace(name, namespaceId string) (map[string]interface{}, error)
-	ValidateAuthEntriesForAccessorOrType(ctx context.Context, ns *namespace.Namespace, validFunc func(entry *routing.MountEntry) bool) (bool, error)
-	PutMFALoginEnforcementConfig(ctx context.Context, eConfig *mfa.MFAEnforcementConfig) error
-	DeleteMFALoginEnforcementConfigByNameAndNamespace(ctx context.Context, name, namespaceId string) error
+	MemDBMFALoginEnforcementConfigByNameAndNamespace(string, string) (*mfa.MFAEnforcementConfig, error)
+	MemDBUpsertMFALoginEnforcementConfig(context.Context, *mfa.MFAEnforcementConfig) error
 }
 
 func (i *IdentityStore) handleMFAMethodUpdateCommon(ctx context.Context, req *logical.Request, d *framework.FieldData, methodType string) (*logical.Response, error) {
@@ -181,6 +190,7 @@ func (i *IdentityStore) handleMFAMethodUpdateCommon(ctx context.Context, req *lo
 		if err != nil {
 			return nil, err
 		}
+
 		if namedMfaConfig != nil {
 			if mConfig == nil {
 				mConfig = namedMfaConfig
@@ -204,20 +214,14 @@ func (i *IdentityStore) handleMFAMethodUpdateCommon(ctx context.Context, req *lo
 		}
 	}
 
-	// Updating the method config name
+	// Upserting method config name
 	if methodName != "" {
 		mConfig.Name = methodName
 	}
 
-	mfaNs, err := i.namespacer.NamespaceByID(ctx, mConfig.NamespaceID)
-	if err != nil {
-		return nil, err
-	}
-
-	// this logic assumes that the config namespace and the current
-	// namespace should be the same. Note an ancestor of mfaNs is not allowed
-	// to create/update methodID
-	if ns.ID != mfaNs.ID {
+	// Disallow updates of configs in different namespace
+	// than provided in request context.
+	if ns.ID != mConfig.NamespaceID {
 		return logical.ErrorResponse("request namespace does not match method namespace"), nil
 	}
 
@@ -274,10 +278,10 @@ func (i *IdentityStore) handleMFAMethodUpdateCommon(ctx context.Context, req *lo
 				"method_id": mConfig.ID,
 			},
 		}, nil
-	} else {
-		//nolint:nilnil
-		return nil, nil
 	}
+
+	//nolint:nilnil
+	return nil, nil
 }
 
 func (i *IdentityStore) handleMFAMethodTOTPUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -465,21 +469,26 @@ func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, re
 }
 
 func (i *IdentityStore) handleMFALoginEnforcementList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	keys, configInfo, err := i.mfaBackend.MfaLoginEnforcementList(ctx)
+	configInfo, err := i.mfaBackend.MfaLoginEnforcementList(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return logical.ListResponseWithInfo(keys, configInfo), nil
+	return logical.ListResponseWithInfo(slices.Collect(maps.Keys(configInfo)), configInfo), nil
 }
 
 func (i *IdentityStore) handleMFALoginEnforcementRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	name := d.Get("name").(string)
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	respData, err := i.mfaBackend.MfaLoginEnforcementConfigByNameAndNamespace(name, ns.ID)
+
+	name, ok := d.GetOk("name")
+	if !ok || name == "" {
+		return logical.ErrorResponse("missing login enforcement config name"), nil
+	}
+
+	respData, err := i.mfaBackend.ReadMFALoginEnforcementConfigByNameAndNamespace(name.(string), ns)
 	if err != nil {
 		return nil, err
 	}
@@ -500,24 +509,21 @@ func (i *IdentityStore) handleMFALoginEnforcementRead(ctx context.Context, req *
 }
 
 func (i *IdentityStore) handleMFALoginEnforcementUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	var err error
-	var eConfig *mfa.MFAEnforcementConfig
-
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	name := d.Get("name").(string)
-	if name == "" {
-		return logical.ErrorResponse("missing enforcement name"), nil
+	name, ok := d.GetOk("name")
+	if !ok || name == "" {
+		return logical.ErrorResponse("missing login enforcement config name"), nil
 	}
 
 	b := i.mfaBackend
 	b.Lock()
 	defer b.Unlock()
 
-	eConfig, err = b.MemDBMFALoginEnforcementConfigByNameAndNamespace(name, ns.ID)
+	eConfig, err := b.MemDBMFALoginEnforcementConfigByNameAndNamespace(name.(string), ns.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -528,7 +534,7 @@ func (i *IdentityStore) handleMFALoginEnforcementUpdate(ctx context.Context, req
 			return nil, fmt.Errorf("failed to generate an identifier for MFA login enforcement config: %w", err)
 		}
 		eConfig = &mfa.MFAEnforcementConfig{
-			Name:        name,
+			Name:        name.(string),
 			NamespaceID: ns.ID,
 			ID:          configID,
 		}
@@ -541,7 +547,7 @@ func (i *IdentityStore) handleMFALoginEnforcementUpdate(ctx context.Context, req
 
 	for _, mmid := range mfaMethodIds.([]string) {
 		// make sure this method id actually exists
-		config, err := b.MfaConfigReadByMethodID(mmid)
+		config, err := b.ReadMFAConfigByMethodID(mmid)
 		if err != nil {
 			return nil, err
 		}
@@ -630,7 +636,7 @@ func (i *IdentityStore) handleMFALoginEnforcementUpdate(ctx context.Context, req
 	}
 
 	// Store the config
-	err = b.PutMFALoginEnforcementConfig(ctx, eConfig)
+	err = b.PutMFALoginEnforcementConfig(ctx, eConfig, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -640,12 +646,17 @@ func (i *IdentityStore) handleMFALoginEnforcementUpdate(ctx context.Context, req
 }
 
 func (i *IdentityStore) handleMFALoginEnforcementDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	name := d.Get("name").(string)
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return nil, i.mfaBackend.DeleteMFALoginEnforcementConfigByNameAndNamespace(ctx, name, ns.ID)
+
+	name, ok := d.GetOk("name")
+	if !ok || name == "" {
+		return logical.ErrorResponse("missing login enforcement config name"), nil
+	}
+
+	return nil, i.mfaBackend.DeleteMFALoginEnforcementConfigByNameAndNamespace(ctx, name.(string), ns)
 }
 
 func parseTOTPConfig(mConfig *mfa.Config, d *framework.FieldData) error {

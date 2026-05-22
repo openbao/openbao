@@ -686,7 +686,7 @@ func TestCore_LoadLoginMFAConfigs(t *testing.T) {
 	require.NoError(t, err)
 
 	eConfig := &mfa.MFAEnforcementConfig{Name: "eConfig", NamespaceID: ns1.ID, ID: "eConfigID"}
-	err = c.loginMFABackend.PutMFALoginEnforcementConfig(ctx, eConfig)
+	err = c.loginMFABackend.PutMFALoginEnforcementConfig(ctx, eConfig, ns1)
 	require.NoError(t, err)
 
 	// check for errors when loading

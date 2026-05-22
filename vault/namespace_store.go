@@ -1090,6 +1090,10 @@ func (ns *NamespaceStore) postNamespaceUnseal(ctx context.Context, unsealedNames
 		return err
 	}
 
+	if err := ns.core.loadLoginMFAConfigsForNamespace(ctx, unsealedNamespace); err != nil {
+		return err
+	}
+
 	// now we run the collected post unseal functions to finalize unsealing
 	ns.core.runPostUnsealFuncs(postUnsealFuncs)
 	return nil
@@ -1238,6 +1242,11 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent,
 	// clear identity store
 	if err := ns.core.identityStore.RemoveNamespaceView(entry); err != nil {
 		return fmt.Errorf("failed to clean identity store: %w", err)
+	}
+
+	// clear login mfa
+	if err := ns.core.loginMFABackend.CleanupNamespace(nsCtx, entry, updateStorage); err != nil {
+		return fmt.Errorf("failed to cleanup mfa login configs: %w", err)
 	}
 
 	if updateStorage {

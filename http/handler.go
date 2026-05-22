@@ -750,7 +750,11 @@ func precompressedUIHandler(next http.Handler, fs http.FileSystem) http.Handler 
 		// Check if .gz version exists
 		gzPath := r.URL.Path + ".gz"
 		if f, err := fs.Open(gzPath); err == nil {
-			f.Close()
+			err := f.Close()
+			if err != nil {
+				respondError(w, http.StatusInternalServerError, fmt.Errorf("error closing precompressed file: %w", err))
+				return
+			}
 			r.URL.Path = gzPath
 			w.Header().Set("Content-Encoding", "gzip")
 			w.Header().Set("Vary", "Accept-Encoding")

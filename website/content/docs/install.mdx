@@ -245,21 +245,62 @@ Primary key fingerprint: 66D1 5FDD 8728 7219 C8E1  5478 D200 CD70 2853 E6D0
      Subkey fingerprint: E617 DCD4 065C 2AFC 0B2C  F7A7 BA8B C08C 0F69 1F94
 ```
 
-### Cosign and Rekor
+### CoSign
 
-To verify Cosign signed artifacts, use `rekor-cli` or `curl` to [pull the entry from Rekor](https://edu.chainguard.dev/open-source/sigstore/rekor/how-to-verify-file-signatures-with-rekor-or-curl/).
-
-For example, to verify `checksums.txt` with the `checksums.txt.sig` stored locally:
+To verify CoSign signed artifacts, you can use the [CoSign
+CLI](https://docs.sigstore.dev/cosign/system_config/installation/). For example,
+to verify `checksums-linux.txt` with the `checksums-linux.txt.sigstore.json`
+stored locally:
 
 ```shell-session
-$ SHASUM="$(openssl sha256 -r checksums.txt | awk '{print $1}')"
-bc53476e7e69c98650bf69690caf1aa32dc08c19735375819ae3b29bb9c2b733
-$ curl -X POST -H "Content-type: application/json" 'https://rekor.sigstore.dev/api/v1/index/retrieve' --data-raw "{\"hash\":\"sha256:$SHASUM\"}"
-24296fb24b8ad77aedcc1a0cea8b33a04926d6f3b8db35107a1e864c007bb4aa84416a5153cc0bca
-$ UUID=24296fb24b8ad77aedcc1a0cea8b33a04926d6f3b8db35107a1e864c007bb4aa84416a5153cc0bca
-$ curl -X GET "https://rekor.sigstore.dev/api/v1/log/entries/${UUID}" > response.json
-$ jq -r ".[\"$UUID\"].body" < response.json | base64 -d | jq -r '.spec.signature.publicKey.content' | base64 -d > certificate.pem
-$ base64 -d < checksums-freebsd.txt.sig > checksums-freebsd.txt.rawsig
-$ openssl pkeyutl -verify -certin -inkey certificate.pem -sigfile checksums-freebsd.txt.rawsig -in checksums-freebsd.txt -rawin
-Signature Verified Successfully
+$ cosign verify-blob --bundle checksums-linux.txt.sigstore.json \
+                     --certificate-identity='https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.5.4' \
+                     --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+                     checksums-linux.txt
+Verified OK
 ```
+
+:::tip
+
+Notice: The OpenBao version is part of the verification process.
+This protects you against downgrade attacks.
+
+If you use the wrong version, you output will look like this:
+
+```shell-session
+$ cosign verify-blob --bundle checksums-linux.txt.sigstore.json \
+                     --certificate-identity='https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.0.0' \
+                     --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+                     checksums-linux.txt
+Error: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected SAN value "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.0.0", got "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.5.4"
+error during command execution: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected SAN value "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.0.0", got "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.5.4"
+```
+
+You can use the `--certificate-identity-regexp` flag instead to work around
+this. E.g. use
+`'https://github\.com/openbao/openbao/\.github/workflows/release\.yml@refs/tags/v2\..*'`
+to accept any version starting with `v2.`.
+
+But keep in mind: This will make you vulnerable to downgrade attacks.
+
+:::
+
+If the signature and the signed file don't match, you should see this instead:
+
+```shell-session
+$ cosign verify-blob --bundle checksums-linux.txt.sigstore.json \
+                     --certificate-identity='https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.5.4' \
+                     --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+                     checksums-linux.txt
+Error: failed to verify signature: could not verify message: invalid signature when validating ASN.1 encoded signature
+error during command execution: failed to verify signature: could not verify message: invalid signature when validating ASN.1 encoded signature
+```
+
+### CoSign and Rekor
+
+Keyless verification has been integrated directly into the CoSign CLI, the Rekor
+CLI is no longer needed as `cosign` will fetch data from the Rekor API
+automatically.
+
+For verification instructions, see [the section above](#cosign) and please
+update your bookmarks.

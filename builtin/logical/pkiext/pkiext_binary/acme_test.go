@@ -849,7 +849,7 @@ func SubtestACMEWildcardDNS(t *testing.T, cluster *VaultPkiCluster) {
 	// Redo validation with a role this time.
 	err = pki.UpdateRole("wildcard", map[string]interface{}{
 		"key_type":                    "any",
-		"allowed_domains":             "go-lang-wildcard-client.dadgarcorp.com",
+		"allowed_domains":             hostname,
 		"allow_subdomains":            true,
 		"allow_bare_domains":          true,
 		"allow_wildcard_certificates": true,

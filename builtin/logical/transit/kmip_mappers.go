@@ -66,7 +66,7 @@ func keyTypeFor(alg kmiplib.CryptographicAlgorithm, bitlen int32) (keysutil.KeyT
 // kmipAttrsForPolicy returns KMIP attribute values for a transit policy key.
 // For variable-length key types (HMAC) the bit length is derived from entry's
 // key material — caller must pass the relevant KeyEntry.
-func kmipAttrsForPolicy(kt keysutil.KeyType, entry keysutil.KeyEntry) (kmiplib.CryptographicAlgorithm, int32, kmiplib.ObjectType, error) {
+func kmipAttrsForPolicy(entry keysutil.KeyEntry, kt keysutil.KeyType) (kmiplib.CryptographicAlgorithm, int32, kmiplib.ObjectType, error) {
 	switch kt {
 	case keysutil.KeyType_AES128_GCM96:
 		return kmiplib.CryptographicAlgorithmAES, 128, kmiplib.ObjectTypeSymmetricKey, nil
@@ -99,7 +99,7 @@ func kmipAttrsForPolicy(kt keysutil.KeyType, entry keysutil.KeyEntry) (kmiplib.C
 }
 
 func keyEntryToKmipObject(entry keysutil.KeyEntry, kt keysutil.KeyType) (kmiplib.Object, error) {
-	alg, bitlen, objType, err := kmipAttrsForPolicy(kt, entry)
+	alg, bitlen, objType, err := kmipAttrsForPolicy(entry, kt)
 	if err != nil {
 		return nil, err
 	}

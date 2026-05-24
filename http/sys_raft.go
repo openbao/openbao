@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/openbao/openbao/physical/raft"
@@ -86,7 +87,9 @@ func handleSysRaftJoinPost(core *vault.Core, w http.ResponseWriter, r *http.Requ
 		},
 	}
 
-	joined, err := core.JoinRaftCluster(context.Background(), leaderInfos, req.NonVoter)
+	// TODO: Create a useful wait-group to pass in.
+	wg := &sync.WaitGroup{}
+	joined, err := core.JoinRaftCluster(context.Background(), wg, leaderInfos, req.NonVoter)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err)
 		return

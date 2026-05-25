@@ -480,6 +480,7 @@ type DockerClusterNode struct {
 	RealAPIAddr          string
 	ContainerNetworkName string
 	ContainerIPAddress   string
+	ContainerGatewayIP   string
 	ImageRepo            string
 	ImageTag             string
 	DataVolumeName       string
@@ -789,6 +790,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		VolumeNameToMountPoint: map[string]string{
 			n.DataVolumeName: "/openbao/file",
 		},
+		PublishPorts: opts.PublishPorts,
 	})
 	if err != nil {
 		return err
@@ -839,6 +841,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	}
 	n.ContainerNetworkName = netName
 	n.ContainerIPAddress = svc.Container.NetworkSettings.Networks[netName].IPAddress.String()
+	n.ContainerGatewayIP = svc.Container.NetworkSettings.Networks[netName].Gateway.String()
 	n.RealAPIAddr = "https://" + n.ContainerIPAddress + ":8200"
 	n.cleanupContainer = svc.Cleanup
 
@@ -1029,6 +1032,7 @@ type DockerClusterOptions struct {
 	Entrypoint         string
 	HADisabled         bool
 	SkipStorageCleanup bool
+	PublishPorts       map[uint16]uint16 // Host port -> container port.
 }
 
 func DefaultOptions(t *testing.T) *DockerClusterOptions {

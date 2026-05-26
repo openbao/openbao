@@ -119,7 +119,8 @@ core:
 1. Issues the peer a UUID identifying it internally in logs on both this
    active node and the remote standby peer.
 2. Sends the current storage index of the active to the remote peer, so
-   it can wait until it sees that index to begin read-request handling.
+   it can wait until it sees that index to begin read-only unseal and
+   read-request handling.
 3. Immediately starts sending all subsequent invalidations to the remote
    peer for queuing until startup is finished.
 4. Ejects peers which have not had a GRPC heartbeat request in a recent

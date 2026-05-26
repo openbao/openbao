@@ -1936,7 +1936,7 @@ func (c *Core) reloadNamespaceMounts(childCtx context.Context, uuid string, dele
 			return fmt.Errorf("failed to get namespace from context: %w", err)
 		}
 
-		barrier := NamespaceScopedView(c.barrier, ns)
+		barrier := c.NamespaceView(ns)
 
 		mountGlobal, mountLocal, err := listTransactionalMountsForNamespace(childCtx, barrier)
 		if err != nil {
@@ -2257,6 +2257,7 @@ func (c *Core) mountEntryView(me *routing.MountEntry) (barrier.View, error) {
 	case routing.CredentialTableType:
 		return c.NamespaceView(me.Namespace).SubView(path.Join(barrier.CredentialBarrierPrefix, me.UUID) + "/"), nil
 	case auditTableType, configAuditTableType:
+		// If we introduce per-ns audit devices, this has to be adjusted to use the appropriate namespace barrier.
 		return NamespaceScopedView(c.barrier, me.Namespace).SubView(path.Join(auditBarrierPrefix, me.UUID) + "/"), nil
 	}
 

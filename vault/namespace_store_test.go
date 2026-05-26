@@ -8,8 +8,14 @@ import (
 	"testing"
 	"time"
 
+	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	be "github.com/openbao/openbao/vault/backend"
+	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/policy"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/vault/seal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -963,4 +969,114 @@ func TestNamespaceDeletionSealingInteraction(t *testing.T) {
 		_, err := s.DeleteNamespace(ctx, "ns3")
 		require.Error(t, err)
 	})
+}
+
+func TestNamespaceSealResourcesLifecycle(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	c.credentialBackends["approle"] = credAppRole.Factory
+	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		return &be.Noop{
+			BackendType: logical.TypeLogical,
+		}, nil
+	}
+
+	s := c.namespaceStore
+	ctx := namespace.RootContext(t.Context())
+
+	ns := &namespace.Namespace{Path: "ns1/"}
+	nsCtx := namespace.ContextWithNamespace(ctx, ns)
+	nsKeys := TestCoreCreateUnsealedNamespaces(t, c, ns)
+
+	tPolicy := `
+		name = "tPolicy"
+		path "ns1/*" {
+			policy = "sudo"
+		}
+	`
+	p, err := policy.ParseACLPolicy(ns, tPolicy)
+	require.NoError(t, err)
+	require.NoError(t, c.policyStore.SetPolicy(nsCtx, p, nil))
+
+	approleMe := &routing.MountEntry{
+		Table: routing.CredentialTableType,
+		Path:  "approle/",
+		Type:  "approle",
+	}
+	require.NoError(t, c.enableCredential(nsCtx, approleMe))
+
+	require.NoError(t, c.mount(nsCtx, &routing.MountEntry{
+		Table: routing.MountTableType,
+		Path:  "foo",
+		Type:  "noop",
+	}))
+
+	alias := &logical.Alias{
+		MountType:     "approle",
+		MountAccessor: approleMe.Accessor,
+		Name:          "approleuser",
+	}
+
+	entity, _, err := c.identityStore.CreateOrFetchEntity(nsCtx, alias)
+	require.NoError(t, err)
+	require.NotNil(t, entity)
+
+	checkState := func() {
+		// policies
+		policies, err := c.policyStore.ListPolicies(nsCtx, policy.TypeACL, false)
+		require.NoError(t, err)
+		require.Len(t, policies, 3)
+
+		// auth mounts
+		authMounts, err := c.auth.FindAllNamespaceMounts(nsCtx)
+		require.NoError(t, err)
+		require.Len(t, authMounts, 2)
+
+		// mounts
+		mounts, err := c.mounts.FindAllNamespaceMounts(nsCtx)
+		require.NoError(t, err)
+		require.Len(t, mounts, 4)
+
+		// identity
+		counts, err := c.identityStore.CountEntitiesByNamespace(nsCtx)
+		require.NoError(t, err)
+		require.Equal(t, 1, counts[ns.ID])
+	}
+
+	checkState()
+
+	// verify after seal
+	require.NoError(t, s.SealNamespace(ctx, ns.Path))
+	baseView := NamespaceScopedView(c.barrier, ns)
+
+	_, err = c.policyStore.ListPolicies(nsCtx, policy.TypeACL, false)
+	require.Error(t, err)
+	keys, err := baseView.SubView(barrier.SystemBarrierPrefix+policy.ACLSubPath).List(ctx, "")
+	require.NoError(t, err)
+	require.Len(t, keys, 3)
+
+	authMounts, err := c.auth.FindAllNamespaceMounts(nsCtx)
+	require.NoError(t, err)
+	require.Len(t, authMounts, 0)
+
+	mounts, err := c.mounts.FindAllNamespaceMounts(nsCtx)
+	require.NoError(t, err)
+	require.Len(t, mounts, 0)
+
+	require.Nil(t, c.identityStore.View(nsCtx))
+	counts, err := c.identityStore.CountEntitiesByNamespace(nsCtx)
+	require.NoError(t, err)
+	require.Equal(t, 0, counts[ns.ID])
+
+	for _, key := range nsKeys[ns.Path] {
+		unsealed, err := TestNamespaceUnseal(c, ns, key)
+		require.NoError(t, err)
+		if unsealed {
+			break
+		}
+	}
+
+	require.False(t, c.NamespaceSealed(ns))
+
+	// verify after unseal
+	checkState()
 }

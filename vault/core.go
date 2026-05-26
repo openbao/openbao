@@ -3208,9 +3208,9 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 
 // runLockedUserEntryUpdatesForNamespace runs updates for locked users storage entries
 // for a single namespace. If a forceDelete flag is passed all login entries are deleted.
-func (c *Core) runLockedUserEntryUpdatesForNamespace(ctx context.Context, namespace *namespace.Namespace, forceDelete bool) (int, error) {
+func (c *Core) runLockedUserEntryUpdatesForNamespace(ctx context.Context, ns *namespace.Namespace, forceDelete bool) (int, error) {
 	// get the list of mount accessors of locked users of a namespace
-	view := NamespaceScopedView(c.barrier, namespace).SubView(coreLockedUsersPath)
+	view := c.NamespaceView(ns).SubView(coreLockedUsersPath)
 	mountAccessors, err := view.List(ctx, "")
 	if err != nil {
 		return 0, err

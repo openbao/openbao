@@ -146,7 +146,7 @@ func (ws *WorkflowStore) rLockWithUnlock(ctx context.Context) func() {
 
 // getView returns the storage view for the given namespace
 func (ws *WorkflowStore) getView(ns *namespace.Namespace) barrier.View {
-	return NamespaceScopedView(ws.core.barrier, ns).SubView(workflowSubPath)
+	return ws.core.NamespaceView(ns).SubView(workflowSubPath)
 }
 
 func (ws *WorkflowStore) Get(ctx context.Context, path string) (*WorkflowEntry, error) {

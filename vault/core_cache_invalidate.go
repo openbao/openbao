@@ -478,7 +478,7 @@ func (ij *invalidationJob) policyInvalidation(ctx context.Context) error {
 
 func (ij *invalidationJob) quotaInvalidation(ctx context.Context) error {
 	quotaPath := strings.TrimPrefix(ij.nsKey, barrier.SystemBarrierPrefix+quotas.StoragePrefix)
-	return ij.im.core.quotaManager.Invalidate(quotaPath)
+	return ij.im.core.quotaManager.Invalidate(ctx, quotaPath)
 }
 
 func (ij *invalidationJob) auditInvalidation(ctx context.Context) error {

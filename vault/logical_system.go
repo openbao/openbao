@@ -346,36 +346,31 @@ func (b *SystemBackend) handlePluginCatalogTypedList(ctx context.Context, req *l
 		return nil, err
 	}
 
-	plugins, err := b.Core.pluginCatalog.List(ctx, pluginType)
+	plugins, err := b.Core.pluginCatalog.ListVersionedPlugins(ctx, pluginType)
 	if err != nil {
 		return nil, err
 	}
-	sort.Strings(plugins)
-	return logical.ListResponse(plugins), nil
+
+	return logical.ListResponse(uniquePluginNames(plugins)), nil
 }
 
 func (b *SystemBackend) handlePluginCatalogUntypedList(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	var versionedPlugins []pluginutil.VersionedPlugin
 	for _, pluginType := range pluginTypes {
-		plugins, err := b.Core.pluginCatalog.List(ctx, pluginType)
-		if err != nil {
-			return nil, err
-		}
-		if len(plugins) > 0 {
-			sort.Strings(plugins)
-			data[pluginType.String()] = plugins
-		}
-
-		versioned, err := b.Core.pluginCatalog.ListVersionedPlugins(ctx, pluginType)
+		plugins, err := b.Core.pluginCatalog.ListVersionedPlugins(ctx, pluginType)
 		if err != nil {
 			return nil, err
 		}
 
 		// Sort for consistent ordering
-		sortVersionedPlugins(versioned)
+		sortVersionedPlugins(plugins)
 
-		versionedPlugins = append(versionedPlugins, versioned...)
+		if len(plugins) > 0 {
+			data[pluginType.String()] = uniquePluginNames(plugins)
+		}
+
+		versionedPlugins = append(versionedPlugins, plugins...)
 	}
 
 	if len(versionedPlugins) != 0 {
@@ -406,6 +401,20 @@ func (b *SystemBackend) handlePluginCatalogUntypedList(ctx context.Context, _ *l
 	return &logical.Response{
 		Data: data,
 	}, nil
+}
+
+func uniquePluginNames(plugins []pluginutil.VersionedPlugin) []string {
+	pluginNames := make([]string, 0, len(plugins))
+
+	for _, plugin := range plugins {
+		index, match := slices.BinarySearch(pluginNames, plugin.Name)
+		if match {
+			continue
+		}
+		pluginNames = slices.Insert(pluginNames, index, plugin.Name)
+	}
+
+	return pluginNames
 }
 
 func sortVersionedPlugins(versionedPlugins []pluginutil.VersionedPlugin) {

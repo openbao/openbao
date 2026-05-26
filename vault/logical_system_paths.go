@@ -1892,6 +1892,15 @@ func (b *SystemBackend) pluginsCatalogListPaths() []*framework.Path {
 									Type:     framework.TypeMap,
 									Required: false,
 								},
+								"auth": {
+									Type: framework.TypeStringSlice,
+								},
+								"database": {
+									Type: framework.TypeStringSlice,
+								},
+								"secret": {
+									Type: framework.TypeStringSlice,
+								},
 							},
 						}},
 					},

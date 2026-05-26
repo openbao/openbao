@@ -299,10 +299,11 @@ func TestTLSListener_NonPrivileged(t *testing.T) {
 	dns.AddRecord("openbao.dadgarcorp.com", "A", cluster.ClusterNodes[node].ContainerGatewayIP)
 	dns.PushConfig()
 
-	client.Logical().Write("pki/config/acme", map[string]interface{}{
+	_, err = client.Logical().Write("pki/config/acme", map[string]interface{}{
 		"enabled":      true,
 		"dns_resolver": dns.GetRemoteAddr(),
 	})
+	require.NoError(t, err)
 
 	// Validate ACME cert acquisition works.
 	validateTLS(t, ctx, root, cluster.ClusterNodes[node].ContainerNetworkName, "openbao.dadgarcorp.com:443", dns.GetRemoteAddr(), false)

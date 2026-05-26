@@ -66,16 +66,13 @@ func (b *backend) pathKmipConfigRead(ctx context.Context, req *logical.Request, 
 	if err != nil {
 		return nil, err
 	}
-	if cfg == nil {
-		return nil, nil
-	}
 
 	return &logical.Response{
 		Data: map[string]interface{}{
 			"enabled":             cfg.Enabled,
 			"listen_addr":         cfg.ListenAddr,
-			"server_cert_pem":     cfg.ServerCertPEM,
-			"tls_ca_cert_pem":     cfg.TLSCACertPEM,
+			"server_cert_pem":     cfg.CertPem,
+			"tls_ca_cert_pem":     cfg.TlsCaCertPem,
 			"require_client_cert": cfg.RequireClientCert,
 		},
 	}, nil

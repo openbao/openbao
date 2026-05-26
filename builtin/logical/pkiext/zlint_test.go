@@ -5,106 +5,30 @@ package pkiext
 
 import (
 	"encoding/json"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 	"slices"
-	"sync"
 	"testing"
 
 	"github.com/openbao/openbao/builtin/logical/pki"
-	"github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	zRunner        *docker.Runner
-	buildZLintOnce sync.Once
-)
+func RunZLint(t *testing.T, certificate string) []byte {
+	t.Helper()
 
-func buildZLintContainer(t *testing.T) {
-	containerfile := `
-FROM docker.mirror.hashicorp.services/library/golang:latest
+	certFile := filepath.Join(t.TempDir(), "cert.pem")
+	require.NoError(t, os.WriteFile(certFile, []byte(certificate), 0o600))
 
-RUN go install github.com/zmap/zlint/v3/cmd/zlint@latest
-`
+	cmd := exec.Command("go", "tool", "-modfile=tools/go.mod", "zlint", certFile)
+	_, thisFile, _, _ := runtime.Caller(0)
+	cmd.Dir = filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "zlint failed: %v", err)
 
-	bCtx := docker.NewBuildContext()
-
-	imageName := "vault_pki_zlint_validator"
-	imageTag := "latest"
-
-	var err error
-	zRunner, err = docker.NewServiceRunner(docker.RunOptions{
-		ImageRepo:     imageName,
-		ImageTag:      imageTag,
-		ContainerName: "pki_zlint",
-		// We want to run sleep in the background so we're not stuck waiting
-		// for the default golang container's shell to prompt for input.
-		Entrypoint: []string{"sleep", "45"},
-		LogConsumer: func(s string) {
-			if t.Failed() {
-				t.Logf("container logs: %s", s)
-			}
-		},
-	})
-	if err != nil {
-		t.Fatalf("Could not provision docker service runner: %s", err)
-	}
-
-	ctx := t.Context()
-	output, err := zRunner.BuildImage(ctx, containerfile, bCtx,
-		docker.BuildRemove(true), docker.BuildForceRemove(true),
-		docker.BuildPullParent(true),
-		docker.BuildTags([]string{imageName + ":" + imageTag}))
-	if err != nil {
-		t.Fatalf("Could not build new image: %v", err)
-	}
-
-	t.Logf("Image build output: %v", string(output))
-}
-
-func RunZLintContainer(t *testing.T, certificate string) []byte {
-	buildZLintOnce.Do(func() {
-		buildZLintContainer(t)
-	})
-
-	ctx := t.Context()
-	// We don't actually care about the address, we just want to start the
-	// container so we can run commands in it. We'd ideally like to skip this
-	// step and only build a new image, but the zlint output would be
-	// intermingled with container build stages, so its not that useful.
-	result, err := zRunner.Start(ctx, true, false)
-	if err != nil {
-		t.Fatalf("Could not start golang container for zlint: %s", err)
-	}
-
-	// Copy the cert into the newly running container.
-	certCtx := docker.NewBuildContext()
-	certCtx["cert.pem"] = docker.PathContentsFromBytes([]byte(certificate))
-	if err := zRunner.CopyTo(result.Container.ID, "/go/", certCtx); err != nil {
-		t.Fatalf("Could not copy certificate into container: %v", err)
-	}
-
-	// Run the zlint command and save the output.
-	cmd := []string{"/go/bin/zlint", "/go/cert.pem"}
-	stdout, stderr, retcode, err := zRunner.RunCmdWithOutput(ctx, result.Container.ID, cmd)
-	if err != nil {
-		t.Fatalf("Could not run command in container: %v", err)
-	}
-
-	if len(stderr) != 0 {
-		t.Logf("Got stderr from command:\n%v\n", string(stderr))
-	}
-
-	if retcode != 0 {
-		t.Logf("Got stdout from command:\n%v\n", string(stdout))
-		t.Fatalf("Got unexpected non-zero retcode from zlint: %v\n", retcode)
-	}
-
-	// Clean up after ourselves.
-	if err := zRunner.Stop(t.Context(), result.Container.ID); err != nil {
-		t.Fatalf("failed to stop container: %v", err)
-	}
-
-	return stdout
+	return out
 }
 
 func RunZLintRootTest(t *testing.T, keyType string, keyBits int, usePSS bool, ignored []string) {
@@ -122,7 +46,7 @@ func RunZLintRootTest(t *testing.T, keyType string, keyBits int, usePSS bool, ig
 	rootCert := resp.Data["certificate"].(string)
 
 	var parsed map[string]interface{}
-	output := RunZLintContainer(t, rootCert)
+	output := RunZLint(t, rootCert)
 
 	if err := json.Unmarshal(output, &parsed); err != nil {
 		t.Fatalf("failed to parse zlint output as JSON: %v\nOutput:\n%v\n\n", err, string(output))

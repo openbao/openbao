@@ -10,6 +10,10 @@ before:
 
 env:
   - NIGHTLY_RELEASE={{ if and (index .Env "NIGHTLY_RELEASE") (eq .Env.NIGHTLY_RELEASE "true") }}-nightly{{ end }}
+  - GOMODCACHE=/home/runner/go/pkg/mod
+  - SYFT_GOLANG_SEARCH_LOCAL_MOD_CACHE_LICENSES=true
+  - SYFT_GOLANG_SEARCH_REMOTE_LICENSES=true
+  - SYFT_JAVASCRIPT_SEARCH_REMOTE_LICENSES=true
 
 builds:
   - id: builds-linux
@@ -23,11 +27,11 @@ builds:
       - linux
     goarch:
       - amd64
-      - arm
-      - arm64
-      - ppc64le
-      - riscv64
-      - s390x
+      # - arm
+      # - arm64
+      # - ppc64le
+      # - riscv64
+      # - s390x
     goarm:
       - "6"
     ignore:
@@ -42,70 +46,71 @@ builds:
     skip: false
 report_sizes: true
 
-nfpms:
-  - vendor: OpenBao
-    package_name: openbao
-    homepage: https://openbao.org
-    maintainer: OpenBao <openbao@lists.openssf.org>
-    description: |
-      OpenBao exists to provide a software solution to manage, store, and distribute
-      sensitive data including secrets, certificates, and keys.
-    license: MPL-2.0
-    formats:
-      - deb
-      - rpm
-      - archlinux
-    dependencies:
-      - openssl
-    provides:
-      - openbao
-    conflicts:
-      - bao
-      - bao-hsm
-    replaces:
-      - bao
-    bindir: /usr/bin
-    section: default
-    contents:
-      - src: ./LICENSE
-        dst: /usr/share/doc/openbao/copyright
-        file_info:
-          mode: 0644
-      - src: ./.release/linux/package/etc/openbao/openbao.env
-        dst: /etc/openbao/openbao.env
-        type: config|noreplace
-        file_info:
-          mode: 0644
-      - src: ./.release/linux/package/etc/openbao/openbao.hcl
-        dst: /etc/openbao/openbao.hcl
-        type: config|noreplace
-        file_info:
-          mode: 0644
-      - src: ./.release/linux/package/usr/lib/systemd/system/openbao.service
-        dst: /usr/lib/systemd/system/openbao.service
-        type: config|noreplace
-        file_info:
-          mode: 0644
-    scripts:
-      preinstall: ".release/linux/preinst"
-      postinstall: ".release/linux/postinst"
-      postremove: ".release/linux/postrm"
-    overrides:
-      deb:
-        dependencies:
-          - openssl
-      rpm:
-        dependencies:
-          - openssl
-      archlinux:
-        dependencies:
-          - openssl
-    deb:
-      signature:
-        key_file: "{{ .Env.GPG_KEY_FILE }}"
-    rpm:
-      signature:
-        key_file: "{{ .Env.GPG_KEY_FILE }}"
+# nfpms:
+#   - vendor: OpenBao
+#     package_name: openbao
+#     homepage: https://openbao.org
+#     maintainer: OpenBao <openbao@lists.openssf.org>
+#     description: |
+#       OpenBao exists to provide a software solution to manage, store, and distribute
+#       sensitive data including secrets, certificates, and keys.
+#     license: MPL-2.0
+#     formats:
+#       - deb
+#       - rpm
+#       - archlinux
+#     dependencies:
+#       - openssl
+#     provides:
+#       - openbao
+#     conflicts:
+#       - bao
+#       - bao-hsm
+#     replaces:
+#       - bao
+#     bindir: /usr/bin
+#     section: default
+#     contents:
+#       - src: ./LICENSE
+#         dst: /usr/share/doc/openbao/copyright
+#         file_info:
+#           mode: 0644
+#       - src: ./.release/linux/package/etc/openbao/openbao.env
+#         dst: /etc/openbao/openbao.env
+#         type: config|noreplace
+#         file_info:
+#           mode: 0644
+#       - src: ./.release/linux/package/etc/openbao/openbao.hcl
+#         dst: /etc/openbao/openbao.hcl
+#         type: config|noreplace
+#         file_info:
+#           mode: 0644
+#       - src: ./.release/linux/package/usr/lib/systemd/system/openbao.service
+#         dst: /usr/lib/systemd/system/openbao.service
+#         type: config|noreplace
+#         file_info:
+#           mode: 0644
+#     scripts:
+#       preinstall: ".release/linux/preinst"
+#       postinstall: ".release/linux/postinst"
+#       postremove: ".release/linux/postrm"
+#     overrides:
+#       deb:
+#         dependencies:
+#           - openssl
+#       rpm:
+#         dependencies:
+#           - openssl
+#       archlinux:
+#         dependencies:
+#           - openssl
+#     deb:
+#       signature:
+#         key_file: "{{ .Env.GPG_KEY_FILE }}"
+#     rpm:
+#       signature:
+#         key_file: "{{ .Env.GPG_KEY_FILE }}"
+
 checksum:
   name_template: "checksums-linux.txt"
   disable: false
@@ -926,6 +931,7 @@ archives:
       - "LICENSE"
       - "README.md"
       - "CHANGELOG.md"
+      - "ui-sbom.spdx.json"   
     builds_info:
       group: root
       owner: root
@@ -934,11 +940,45 @@ archives:
       mtime: 2008-01-02T15:04:05Z
 
 sboms:
+  - id: ui-pnpm
+    artifacts: none
+    cmd: syft
+    args:
+      - scan
+      - "dir:ui"
+      - -o
+      - "spdx-json=ui-sbom.spdx.json"
+      - "--exclude"
+      - "**/node_modules/**"
   - artifacts: archive
+    cmd: syft
+    args:
+      - scan
+      - "$artifact"
+      - -o
+      - "spdx-json=$artifact.sbom.json"
+      - --enrich
+      - golang
   - id: binary
     artifacts: binary
+    cmd: syft
+    args:
+      - scan
+      - "$artifact"
+      - -o
+      - "spdx-json=$artifact.sbom.json"
+      - --enrich
+      - golang
   - id: package
     artifacts: package
+    cmd: syft
+    args:
+      - scan
+      - "$artifact"
+      - -o
+      - "spdx-json=$artifact.sbom.json"
+      - --enrich
+      - golang
 
 changelog:
   disable: "{{ if gt (len .Env.NIGHTLY_RELEASE) 0 }}true{{ end }}"
@@ -949,27 +989,27 @@ changelog:
       - "^docs:"
       - "^test:"
 
-signs:
-  - id: cosign
-    artifacts: all
-    cmd: cosign
-    signature: "${artifact}.sigstore.json"
-    args:
-      - "sign-blob"
-      - "--bundle=${signature}" # needed on cosign 3.0.0+
-      - "${artifact}"
-      - "--yes" # needed on cosign 2.0.0+
-  - id: gpg
-    artifacts: all
-    signature: "${artifact}.gpgsig"
-    cmd: gpg
-    stdin: "{{ .Env.GPG_PASSWORD }}"
-    args:
-      - "--batch"
-      - "--default-key={{ .Env.GPG_FINGERPRINT }}"
-      - "--output=${signature}"
-      - "--detach-sign"
-      - "${artifact}"
+# signs:
+#   - id: cosign
+#     artifacts: all
+#     cmd: cosign
+#     signature: "${artifact}.sigstore.json"
+#     args:
+#       - "sign-blob"
+#       - "--bundle=${signature}" # needed on cosign 3.0.0+
+#       - "${artifact}"
+#       - "--yes" # needed on cosign 2.0.0+
+#   - id: gpg
+#     artifacts: all
+#     signature: "${artifact}.gpgsig"
+#     cmd: gpg
+#     stdin: "{{ .Env.GPG_PASSWORD }}"
+#     args:
+#       - "--batch"
+#       - "--default-key={{ .Env.GPG_FINGERPRINT }}"
+#       - "--output=${signature}"
+#       - "--detach-sign"
+#       - "${artifact}"
 
 docker_signs:
   - artifacts: all

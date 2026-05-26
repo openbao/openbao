@@ -19,6 +19,7 @@ func mapError(err error) error {
 		return err
 	}
 
+	// ToDo: not found / already exists / invalied field etc...
 	switch {
 	case errors.Is(err, logical.ErrPermissionDenied):
 		return kmipserver.Errorf(kmiplib.ResultReasonPermissionDenied, "%s", err.Error())

@@ -14,6 +14,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/openbao/go-kms-wrapping/v2/kms"
+	"github.com/openbao/openbao/internal/builtin/logical/transit/kmip"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
@@ -123,6 +124,8 @@ type backend struct {
 	checkAutoRotateAfter time.Time
 	autoRotateOnce       sync.Once
 	backendUUID          string
+	kmipServer           *kmip.Server
+	kmipMu               sync.Mutex
 }
 
 func GetCacheSizeFromStorage(ctx context.Context, s logical.Storage) (int, error) {

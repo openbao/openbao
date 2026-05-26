@@ -169,7 +169,7 @@ connection; without writing to the underlying database table, this is
 impossible to avoid. Even in that case, we'd still have to require some form
 of connection to allow efficient cleanup of the invalidation table.
 
-However, in the future we could make this more of a mesh network topology
+However, in the future we could make this more of a tree network topology
 by binding the cluster listener address on standby nodes and allowing
 other standby nodes to connect to receive invalidations.
 

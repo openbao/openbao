@@ -1,7 +1,6 @@
 package kmip
 
 import (
-	"github.com/ovh/kmip-go"
 	kmiplib "github.com/ovh/kmip-go"
 )
 
@@ -11,11 +10,11 @@ func AlgAndBitLenFromTemplateAttribute(ta kmiplib.TemplateAttribute) (kmiplib.Cr
 
 	for _, attr := range ta.Attribute {
 		switch attr.AttributeName {
-		case kmip.AttributeNameCryptographicAlgorithm:
+		case kmiplib.AttributeNameCryptographicAlgorithm:
 			if v, ok := attr.AttributeValue.(kmiplib.CryptographicAlgorithm); ok {
 				alg = v
 			}
-		case kmip.AttributeNameCryptographicLength:
+		case kmiplib.AttributeNameCryptographicLength:
 			if v, ok := attr.AttributeValue.(int32); ok {
 				bitlen = v
 			}

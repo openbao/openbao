@@ -141,7 +141,7 @@ jobs:
       - name: Make LICENSE_DEPENDENCIES.md
         if: inputs.dodistrelease
         run: |
-          go run github.com/google/go-licenses@v1.6.0 report ./... --ignore github.com/openbao/openbao --template LICENSE_DEPENDENCIES.tpl > LICENSE_DEPENDENCIES.md
+          go tool -modfile=tools/go.mod go-licenses report ./... --ignore github.com/openbao/openbao --template LICENSE_DEPENDENCIES.tpl > LICENSE_DEPENDENCIES.md
 
       - name: go mod vendor
         if: inputs.dodistrelease

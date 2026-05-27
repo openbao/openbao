@@ -2,15 +2,15 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: MPL-2.0
 
-echo "==> Checking that code complies with gofmt requirements..."
+echo "==> Checking that code complies with gofumpt..."
 
 files=$(echo $1 | xargs)
-if [ -n "$files" ]; then
+if [[ -n "$files" ]]; then
     echo "Checking changed files..."
-    gofmt_files="$(echo $1 | grep -v pb.go | grep -v vendor | xargs go run mvdan.cc/gofumpt@latest -l)"
+    gofmt_files="$(echo $1 | grep -v 'pb\\.go' | xargs go tool -modfile=tools/go.mod gofumpt -l)"
 else
     echo "Checking all files..."
-    gofmt_files="$(find . -name '*.go' | grep -v pb.go | grep -v vendor | xargs go run mvdan.cc/gofumpt@latest -l)"
+    gofmt_files="$(go tool -modfile=tools/go.mod gofumpt -l .)"
 fi
 
 if [[ -n "${gofmt_files}" ]]; then

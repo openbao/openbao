@@ -2,14 +2,13 @@
 # Be sure to place this BEFORE `include` directives, if any.
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
-GO_CMD?=go
 DOCKER_CMD?=docker
 
-TEST?=$$($(GO_CMD) list ./... github.com/openbao/openbao/api/v2/... github.com/openbao/openbao/sdk/v2/... | grep -v /vendor/ | grep -v /integ)
+TEST?=$$(go list ./... github.com/openbao/openbao/api/v2/... github.com/openbao/openbao/sdk/v2/... | grep -v /vendor/ | grep -v /integ)
 TEST_TIMEOUT?=45m
 EXTENDED_TEST_TIMEOUT=60m
 INTEG_TEST_TIMEOUT=120m
-GO_MODS?=$$(find . -name 'go.mod' | xargs -L 1 dirname)
+GO_MODS?=$$(find . -name go.mod -not -path ./tools/go.mod | xargs -L 1 dirname)
 SED?=$(shell command -v gsed || command -v sed)
 
 GO_VERSION_MIN=$$(cat $(CURDIR)/.go-version)
@@ -62,11 +61,11 @@ test: prep
 	BAO_TOKEN= \
 	BAO_DEV_ROOT_TOKEN_ID= \
 	BAO_ACC= \
-	$(GO_CMD) test -tags='$(BUILD_TAGS)' $(TEST) $(TESTARGS) -timeout=$(TEST_TIMEOUT) -parallel=20
+	go test -tags='$(BUILD_TAGS)' $(TEST) $(TESTARGS) -timeout=$(TEST_TIMEOUT) -parallel=20
 
 testcompile: prep
 	@for pkg in $(TEST) ; do \
-		$(GO_CMD) test -v -c -tags='$(BUILD_TAGS)' $$pkg -parallel=4 ; \
+		go test -v -c -tags='$(BUILD_TAGS)' $$pkg -parallel=4 ; \
 	done
 
 # testacc runs acceptance tests
@@ -75,7 +74,7 @@ testacc: prep
 		echo "ERROR: Set TEST to a specific package"; \
 		exit 1; \
 	fi
-	BAO_ACC=1 $(GO_CMD) test -tags='$(BUILD_TAGS)' $(TEST) -v $(TESTARGS) -timeout=$(EXTENDED_TEST_TIMEOUT)
+	BAO_ACC=1 go test -tags='$(BUILD_TAGS)' $(TEST) -v $(TESTARGS) -timeout=$(EXTENDED_TEST_TIMEOUT)
 
 # testrace runs the race checker
 testrace: prep
@@ -84,7 +83,7 @@ testrace: prep
 	BAO_TOKEN= \
 	BAO_DEV_ROOT_TOKEN_ID= \
 	BAO_ACC= \
-	$(GO_CMD) test -tags='$(BUILD_TAGS)' -race $(TEST) $(TESTARGS) -timeout=$(EXTENDED_TEST_TIMEOUT) -parallel=20
+	go test -tags='$(BUILD_TAGS)' -race $(TEST) $(TESTARGS) -timeout=$(EXTENDED_TEST_TIMEOUT) -parallel=20
 
 cover:
 	./scripts/coverage.sh --html
@@ -94,7 +93,7 @@ cover:
 .PHONY: vet
 vet:
 	@for dir in $(GO_MODS); do \
-		cd $$dir && $(GO_CMD) vet ./...; if [ $$? -eq 1 ]; then \
+		cd $$dir && go vet ./...; if [ $$? -eq 1 ]; then \
 			echo ""; \
 			echo "Vet found suspicious constructs. Please check the reported constructs"; \
 			echo "and fix them if necessary before submitting the code for reviewal."; \
@@ -117,7 +116,7 @@ lint-new: lint
 .PHONY: lint
 lint:
 	@for dir in $(GO_MODS); do \
-		cd $$dir && golangci-lint run $(LINT_FLAGS); if [ $$? -eq 1 ]; then \
+		cd $$dir && go tool -modfile=$(realpath tools/go.mod) golangci-lint run $(LINT_FLAGS); if [ $$? -eq 1 ]; then \
 			echo ""; \
 			echo "Lint found suspicious constructs. Please check the reported constructs"; \
 			echo "and fix them if necessary before submitting the code for reviewal."; \
@@ -125,28 +124,21 @@ lint:
 		cd $(CURDIR); \
 	done
 
-# prep runs `go generate` to build the dynamically generated
-# source files.
-#
 # n.b.: prep used to depend on fmtcheck, but since fmtcheck is
 # now run as a pre-commit hook (and there's little value in
 # making every build run the formatter), we've removed that
 # dependency.
 prep:
-	@sh -c "'$(CURDIR)/scripts/goversioncheck.sh' '$(GO_VERSION_MIN)'"
-	@GOARCH= GOOS= $(GO_CMD) generate $$($(GO_CMD) list ./... | grep -v /vendor/)
-	@GOARCH= GOOS= $(GO_CMD) generate $$($(GO_CMD) list github.com/openbao/openbao/api/v2/... | grep -v /vendor/)
-	@GOARCH= GOOS= $(GO_CMD) generate $$($(GO_CMD) list github.com/openbao/openbao/sdk/v2/... | grep -v /vendor/)
 	@if [ -d .git/hooks ]; then cp .hooks/* .git/hooks/; fi
 
 # bootstrap the build by downloading additional tools that may be used by devs
+#
+# Grep for tools that include a "." to select only those defined in tools/go.mod
+# and exclude standard ones.
 bootstrap:
-	go generate -tags tools tools/tools.go
-
-# Note: if you have plugins in GOPATH you can update all of them via something like:
-# for i in $(ls | grep openbao-plugin-); do cd $i; git remote update; git reset --hard origin/master; dep ensure -update; git add .; git commit; git push; cd ..; done
-update-plugins:
-	grep openbao-plugin- go.mod | cut -d ' ' -f 1 | while read -r P; do echo "Updating $P..."; go get -v "$P"; done
+	@for tool in $$(go tool -modfile=tools/go.mod | grep \\.); do \
+		go install -modfile=tools/go.mod "$$tool"; \
+	done
 
 static-assets-dir:
 	@mkdir -p ./http/web_ui
@@ -158,10 +150,6 @@ install-ui-dependencies:
 test-ember: install-ui-dependencies
 	@echo "--> Running ember tests"
 	@cd ui && pnpm test
-
-test-ember-enos: install-ui-dependencies
-	@echo "--> Running ember tests with a real backend"
-	@cd ui && pnpm test:enos
 
 check-openbao-in-path:
 	@OPENBAO_BIN=$$(command -v bao) || { echo "bao command not found"; exit 1; }; \
@@ -205,14 +193,12 @@ proto: bootstrap
 	$(SED) -i -e 's/Idp/IDP/' -e 's/Url/URL/' -e 's/Id/ID/' -e 's/IDentity/Identity/' -e 's/EntityId/EntityID/' -e 's/Api/API/' -e 's/Qr/QR/' -e 's/Totp/TOTP/' -e 's/Mfa/MFA/' -e 's/Pingid/PingID/' -e 's/namespaceId/namespaceID/' -e 's/Ttl/TTL/' -e 's/BoundCidrs/BoundCIDRs/' -e 's/SPDX-License-IDentifier/SPDX-License-Identifier/' helper/identity/types.pb.go helper/identity/mfa/types.pb.go helper/storagepacker/types.pb.go sdk/plugin/pb/backend.pb.go sdk/logical/identity.pb.go
 
 .PHONY: fmtcheck
-fmtcheck: LINT_FLAGS+="-c=$(CURDIR)/.golangci.fmt.yml"
-fmtcheck: lint
+fmtcheck:
+	./scripts/gofmtcheck.sh
 
 .PHONY: fmt
 fmt:
-	@for dir in $(GO_MODS); do \
-		cd $$dir; golangci-lint fmt; cd $(CURDIR); \
-	done
+	go tool -modfile=tools/go.mod gofumpt -w .
 
 semgrep:
 	semgrep --include '*.go' -a -f tools/semgrep .
@@ -232,24 +218,24 @@ assetcheck:
 
 spellcheck:
 	@echo "==> Spell checking website..."
-	$(GO_CMD) run github.com/golangci/misspell/cmd/misspell@latest -w -source=text website/content
+	go tool -modfile=tools/go.mod misspell -w -source=text website/content
 
 mysql-database-plugin:
-	@CGO_ENABLED=0 $(GO_CMD) build -o bin/mysql-database-plugin ./plugins/database/mysql/mysql-database-plugin
+	@CGO_ENABLED=0 go build -o bin/mysql-database-plugin ./plugins/database/mysql/mysql-database-plugin
 
 mysql-legacy-database-plugin:
-	@CGO_ENABLED=0 $(GO_CMD) build -o bin/mysql-legacy-database-plugin ./plugins/database/mysql/mysql-legacy-database-plugin
+	@CGO_ENABLED=0 go build -o bin/mysql-legacy-database-plugin ./plugins/database/mysql/mysql-legacy-database-plugin
 
 cassandra-database-plugin:
-	@CGO_ENABLED=0 $(GO_CMD) build -o bin/cassandra-database-plugin ./plugins/database/cassandra/cassandra-database-plugin
+	@CGO_ENABLED=0 go build -o bin/cassandra-database-plugin ./plugins/database/cassandra/cassandra-database-plugin
 
 influxdb-database-plugin:
-	@CGO_ENABLED=0 $(GO_CMD) build -o bin/influxdb-database-plugin ./plugins/database/influxdb/influxdb-database-plugin
+	@CGO_ENABLED=0 go build -o bin/influxdb-database-plugin ./plugins/database/influxdb/influxdb-database-plugin
 
 postgresql-database-plugin:
-	@CGO_ENABLED=0 $(GO_CMD) build -o bin/postgresql-database-plugin ./plugins/database/postgresql/postgresql-database-plugin
+	@CGO_ENABLED=0 go build -o bin/postgresql-database-plugin ./plugins/database/postgresql/postgresql-database-plugin
 
-.PHONY: bin default prep test vet bootstrap ci-bootstrap fmt fmtcheck mysql-database-plugin mysql-legacy-database-plugin cassandra-database-plugin influxdb-database-plugin postgresql-database-plugin ember-dist ember-dist-dev static-dist static-dist-dev assetcheck check-openbao-in-path packages build build-ci semgrep semgrep-ci vet-godoctests ci-vet-godoctests
+.PHONY: bin default prep test vet bootstrap fmt fmtcheck mysql-database-plugin mysql-legacy-database-plugin cassandra-database-plugin influxdb-database-plugin postgresql-database-plugin ember-dist ember-dist-dev static-dist static-dist-dev assetcheck check-openbao-in-path packages build build-ci semgrep semgrep-ci vet-godoctests ci-vet-godoctests
 
 .NOTPARALLEL: ember-dist ember-dist-dev
 
@@ -259,9 +245,9 @@ openapi: dev
 
 .PHONY: vulncheck
 vulncheck:
-	$(GO_CMD) run golang.org/x/vuln/cmd/govulncheck@latest -show verbose ./...
-	$(GO_CMD) run golang.org/x/vuln/cmd/govulncheck@latest -show verbose github.com/openbao/openbao/api/v2/...
-	$(GO_CMD) run golang.org/x/vuln/cmd/govulncheck@latest -show verbose github.com/openbao/openbao/sdk/v2/...
+	go tool -modfile=tools/go.mod govulncheck -show verbose ./...
+	go tool -modfile=tools/go.mod govulncheck -show verbose github.com/openbao/openbao/api/v2/...
+	go tool -modfile=tools/go.mod govulncheck -show verbose github.com/openbao/openbao/sdk/v2/...
 
 .PHONY: tidy-all
 tidy-all:
@@ -277,7 +263,7 @@ ci-tidy-all:
 release-changelog: $(wildcard changelog/*.txt)
 	@:$(if $(LAST_RELEASE),,$(error please set the LAST_RELEASE environment variable for changelog generation))
 	@:$(if $(THIS_RELEASE),,$(error please set the THIS_RELEASE environment variable for changelog generation))
-	changelog-build -changelog-template changelog/changelog.tmpl -entries-dir changelog -git-dir . -note-template changelog/note.tmpl -last-release $(LAST_RELEASE) -this-release $(THIS_RELEASE)
+	go tool -modfile=tools/go.mod changelog-build -changelog-template changelog/changelog.tmpl -entries-dir changelog -git-dir . -note-template changelog/note.tmpl -last-release $(LAST_RELEASE) -this-release $(THIS_RELEASE)
 
 .PHONY: dev-gorelease
 dev-gorelease: export GORELEASER_PREVIOUS_TAG := $(shell git describe --tags --exclude "api/*" --exclude "sdk/*" --abbrev=0)
@@ -287,13 +273,13 @@ dev-gorelease:
 	@echo GORELEASER_CURRENT_TAG: $(GORELEASER_CURRENT_TAG)
 	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
 	@$(SED) -i 's/^#LINUXONLY#//g' $(CURDIR)/.goreleaser.yaml
-	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest release --clean --timeout=60m --verbose --parallelism 2 --snapshot --skip docker,sbom,sign
+	goreleaser release --clean --timeout=60m --verbose --parallelism 2 --snapshot --skip docker,sbom,sign
 
 .PHONY: goreleaser-check
 goreleaser-check:
-	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.hsm.yaml
-	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.linux.yaml
-	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.other.yaml
+	goreleaser check -f goreleaser.hsm.yaml
+	goreleaser check -f goreleaser.linux.yaml
+	goreleaser check -f goreleaser.other.yaml
 
 .PHONY: sync-deps
 sync-deps:

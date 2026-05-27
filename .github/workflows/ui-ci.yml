@@ -38,7 +38,7 @@ jobs:
         run: pnpm install
       - id: build-go-dev
         name: build-go-dev
-        run: make ci-bootstrap dev
+        run: make dev
       - id: test-ui
         name: test-ui
         run: |

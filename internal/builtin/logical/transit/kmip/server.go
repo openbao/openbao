@@ -42,10 +42,11 @@ func NewServer(a Adapter, cryptoA CryptoAdapter, cfg ServerConfig) (*Server, err
 	srv := kmipserver.NewServer(listener, executor)
 
 	return &Server{
-		srv:        srv,
-		listener:   listener,
-		listenAddr: cfg.ListenAddr,
-		adapter:    a,
+		srv:           srv,
+		listener:      listener,
+		listenAddr:    cfg.ListenAddr,
+		adapter:       a,
+		cryptoAdapter: cryptoA,
 	}, nil
 }
 

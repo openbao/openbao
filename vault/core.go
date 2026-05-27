@@ -41,7 +41,6 @@ import (
 	"github.com/openbao/openbao/command/server"
 	fwd "github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/helper/identity"
-	"github.com/openbao/openbao/helper/identity/mfa"
 	"github.com/openbao/openbao/helper/locking"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -1103,9 +1102,9 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	// MFA method
-	c.loginMFABackend = NewLoginMFABackend(c, conf.Logger)
-	if c.loginMFABackend.mfaLogger != nil {
-		c.AddLogger(c.loginMFABackend.mfaLogger)
+	c.loginMFABackend, err = NewLoginMFABackend(c, conf.Logger)
+	if err != nil {
+		return nil, err
 	}
 
 	// Logical backends
@@ -3078,27 +3077,32 @@ func (c *Core) isPrimary() bool {
 }
 
 func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {
-	eConfigs := make([]*mfa.MFAEnforcementConfig, 0)
-	allNamespaces, err := c.ListNamespaces(ctx)
+	namespaces, err := c.ListNamespaces(ctx)
 	if err != nil {
 		return err
 	}
 
-	for _, ns := range allNamespaces {
-		err := c.loginMFABackend.loadMFAMethodConfigs(ctx, ns)
-		if err != nil {
-			return fmt.Errorf("error loading MFA method Config, namespace %s, error: %w", ns.Path, err)
+	for _, ns := range namespaces {
+		if err := c.loadLoginMFAConfigsForNamespace(ctx, ns); err != nil {
+			return err
 		}
-
-		loadedConfigs, err := c.loginMFABackend.loadMFAEnforcementConfigs(ctx, ns)
-		if err != nil {
-			return fmt.Errorf("error loading MFA enforcement Config, namespace %s, error: %w", ns.Path, err)
-		}
-
-		eConfigs = append(eConfigs, loadedConfigs...)
 	}
 
-	for _, conf := range eConfigs {
+	return nil
+}
+
+func (c *Core) loadLoginMFAConfigsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+	err := c.loginMFABackend.loadMFAMethodConfigs(ctx, ns)
+	if err != nil {
+		return fmt.Errorf("error loading MFA method Config, namespace %s, error: %w", ns.Path, err)
+	}
+
+	loadedConfigs, err := c.loginMFABackend.loadMFAEnforcementConfigs(ctx, ns)
+	if err != nil {
+		return fmt.Errorf("error loading MFA enforcement Config, namespace %s, error: %w", ns.Path, err)
+	}
+
+	for _, conf := range loadedConfigs {
 		if err := c.loginMFABackend.loginMFAMethodExistenceCheck(conf); err != nil {
 			c.loginMFABackend.mfaLogger.Error("failed to find all MFA methods that exist in MFA enforcement configs", "configID", conf.ID, "namespaceID", conf.NamespaceID, "error", err.Error())
 		}

@@ -10,10 +10,12 @@ import (
 
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/helper/benchhelpers"
+	"github.com/openbao/openbao/helper/identity/mfa"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
+	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/vault/seal"
@@ -1020,6 +1022,16 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, entity)
 
+	mConfig := &mfa.Config{Name: "mConfig", NamespaceID: ns.ID, ID: "mConfigID", Type: ident.MfaMethodTypeTOTP, Config: &mfa.Config_TOTPConfig{
+		TOTPConfig: &mfa.TOTPConfig{},
+	}}
+	require.NoError(t, c.loginMFABackend.PutMFAConfigByID(nsCtx, mConfig))
+	require.NoError(t, c.loginMFABackend.MemDBUpsertMFAConfig(nsCtx, mConfig))
+
+	eConfig := &mfa.MFAEnforcementConfig{Name: "eConfig", NamespaceID: ns.ID, ID: "eConfigID"}
+	require.NoError(t, c.loginMFABackend.PutMFALoginEnforcementConfig(nsCtx, eConfig, ns))
+	require.NoError(t, c.loginMFABackend.MemDBUpsertMFALoginEnforcementConfig(nsCtx, eConfig))
+
 	checkState := func() {
 		// policies
 		policies, err := c.policyStore.ListPolicies(nsCtx, policy.TypeACL, false)
@@ -1040,6 +1052,14 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 		counts, err := c.identityStore.CountEntitiesByNamespace(nsCtx)
 		require.NoError(t, err)
 		require.Equal(t, 1, counts[ns.ID])
+
+		// mfa
+		mfaMethods, err := c.loginMFABackend.MfaMethodList(nsCtx, "")
+		require.NoError(t, err)
+		require.Len(t, mfaMethods, 1)
+		enfConfigs, err := c.loginMFABackend.MfaLoginEnforcementList(nsCtx)
+		require.NoError(t, err)
+		require.Len(t, enfConfigs, 1)
 	}
 
 	checkState()
@@ -1066,6 +1086,14 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 	counts, err := c.identityStore.CountEntitiesByNamespace(nsCtx)
 	require.NoError(t, err)
 	require.Equal(t, 0, counts[ns.ID])
+
+	mfaMethods, err := c.loginMFABackend.MfaMethodList(ctx, "")
+	require.NoError(t, err)
+	require.Len(t, mfaMethods, 0)
+
+	mfaEnfConfigs, err := c.loginMFABackend.MfaLoginEnforcementList(nsCtx)
+	require.NoError(t, err)
+	require.Len(t, mfaEnfConfigs, 0)
 
 	for _, key := range nsKeys[ns.Path] {
 		unsealed, err := TestNamespaceUnseal(c, ns, key)

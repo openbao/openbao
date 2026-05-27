@@ -79,12 +79,23 @@ func Backend(ctx context.Context, conf *logical.BackendConfig) (*backend, error)
 			b.pathConfigKeys(),
 			b.pathCreateCSR(),
 			b.pathImportCertChain(),
+			b.pathKmipConfig(),
 		},
 
 		Secrets:      []*framework.Secret{},
 		Invalidate:   b.invalidate,
 		BackendType:  logical.TypeLogical,
 		PeriodicFunc: b.periodicFunc,
+		InitializeFunc: func(ctx context.Context, req *logical.InitializationRequest) error {
+			cfg, err := b.getKmipConfig(ctx, req.Storage)
+			if err != nil {
+				return err
+			}
+			return b.restartKmipServer(cfg, req.Storage)
+		},
+		Clean: func(_ context.Context) {
+			b.stopKmipServer()
+		},
 	}
 
 	b.backendUUID = conf.BackendUUID

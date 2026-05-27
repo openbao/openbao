@@ -56,6 +56,12 @@ func (b *backend) pathKmipConfig() *framework.Path {
 			logical.ReadOperation: &framework.PathOperation{
 				Callback: b.pathKmipConfigRead,
 			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathKmipConfigWrite,
+			},
+			logical.CreateOperation: &framework.PathOperation{
+				Callback: b.pathKmipConfigWrite,
+			},
 		},
 
 		HelpSynopsis:    pathKmipConfigHelpSyn,

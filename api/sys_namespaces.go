@@ -78,6 +78,11 @@ func (c *Sys) SealNamespaceWithContext(ctx context.Context, name string) error {
 // CreateNamespaceInput is the input for the CreateNamespace operation.
 type CreateNamespaceInput struct {
 	CustomMetadata map[string]string `json:"custom_metadata"`
+	// Seal is a HCL string with exactly one seal stanza, e.g.:
+	//   seal "shamir" { shares = 5 threshold = 3 }
+	// If empty the namespace is not sealable.
+	Seal    string   `json:"seal,omitempty"`
+	PGPKeys []string `json:"pgp_keys,omitempty"`
 }
 
 // CreateNamespaceOutput is returned by CreateNamespace.

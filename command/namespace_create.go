@@ -50,6 +50,14 @@ Usage: bao namespace create [options] PATH
 
       $ bao namespace create -namespace=ns1 ns2
 
+  Create a sealable namespace with Shamir seal:
+
+      $ bao namespace create -key-shares=5 -key-threshold=3 ns1
+
+  Create a sealable namespace from a HCL seal config file:
+
+      $ bao namespace create -seal=seal.hcl ns1
+
 ` + c.Flags().Help()
 
 	return strings.TrimSpace(helpText)
@@ -67,6 +75,7 @@ func (c *NamespaceCreateCommand) Flags() *FlagSets {
 			"This can be specified multiple times to add multiple pieces of metadata.",
 	})
 
+	f = set.NewFlagSet("Seal Options")
 	f.StringVar(&StringVar{
 		Name:       "seal",
 		Target:     &c.flagSealConfigPath,
@@ -140,12 +149,43 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		return 2
 	}
 
-	resp, err := client.Sys().CreateNamespace(namespacePath, &api.CreateNamespaceInput{
+	input := &api.CreateNamespaceInput{
 		CustomMetadata: c.flagCustomMetadata,
-	})
+		PGPKeys:        c.flagPGPKeys,
+	}
+
+	if c.flagSealConfigPath != "" {
+		hcl, err := os.ReadFile(c.flagSealConfigPath)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error reading seal config file: %s", err))
+			return 2
+		}
+		input.Seal = string(hcl)
+	} else if c.flagKeyShares != 0 || c.flagKeyThreshold != 0 {
+		input.Seal = fmt.Sprintf("seal \"shamir\" {\n    shares = %d\n    threshold = %d\n}",
+			c.flagKeyShares, c.flagKeyThreshold)
+	}
+
+	resp, err := client.Sys().CreateNamespace(namespacePath, input)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error creating namespace: %s", err))
 		return 2
+	}
+
+	if resp != nil && len(resp.KeyShares) > 0 {
+		for i, key := range resp.KeyShares {
+			c.UI.Output(fmt.Sprintf("Unseal Key %d: %s", i+1, key))
+		}
+		c.UI.Output("")
+		c.UI.Output(wrapAtLength(fmt.Sprintf(
+			"Namespace initialized with %d key shares and a key threshold of %d. Please "+
+				"securely distribute the key shares printed above. When the namespace is "+
+				"re-sealed, you must supply at least %d of these keys to unseal it.",
+			c.flagKeyShares,
+			c.flagKeyThreshold,
+			c.flagKeyThreshold,
+		)))
+		c.UI.Output("")
 	}
 
 	out := structtomap.Map(resp)
@@ -155,13 +195,4 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 	}
 
 	return OutputData(c.UI, out)
-}
-
-func (c *NamespaceCreateCommand) readSealConfig() ([]byte, error) {
-	path := c.flagSealConfigPath
-	if path == "" {
-		return nil, nil
-	}
-
-	return os.ReadFile(path)
 }

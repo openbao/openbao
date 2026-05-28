@@ -32,22 +32,39 @@ func bindCrypto[Req, Resp kmiplib.OperationPayload](
 	})
 }
 
+func coreRoutes(a Adapter) map[kmiplib.Operation]kmipserver.OperationHandler {
+	return map[kmiplib.Operation]kmipserver.OperationHandler{
+		kmiplib.OperationRegister:      bindAdapter(a, handleRegister),
+		kmiplib.OperationCreate:        bindAdapter(a, handleCreate),
+		kmiplib.OperationGet:           bindAdapter(a, handleGet),
+		kmiplib.OperationGetAttributes: bindAdapter(a, handleGetAttributes),
+		kmiplib.OperationLocate:        bindAdapter(a, handleLocate),
+		kmiplib.OperationActivate:      bindAdapter(a, handleActivate),
+		kmiplib.OperationRevoke:        bindAdapter(a, handleRevoke),
+		kmiplib.OperationDestroy:       bindAdapter(a, handleDestroy),
+	}
+}
+
+func cryptoRoutes(c CryptoAdapter) map[kmiplib.Operation]kmipserver.OperationHandler {
+	return map[kmiplib.Operation]kmipserver.OperationHandler{
+		kmiplib.OperationEncrypt:         bindCrypto(c, handleEncrypt),
+		kmiplib.OperationDecrypt:         bindCrypto(c, handleDecrypt),
+		kmiplib.OperationSign:            bindCrypto(c, handleSign),
+		kmiplib.OperationSignatureVerify: bindCrypto(c, handleVerify),
+	}
+}
+
 func registerHandlers(executor *kmipserver.BatchExecutor, a Adapter) {
-	executor.Route(kmiplib.OperationRegister, bindAdapter(a, handleRegister))
-	executor.Route(kmiplib.OperationCreate, bindAdapter(a, handleCreate))
-	executor.Route(kmiplib.OperationGet, bindAdapter(a, handleGet))
-	executor.Route(kmiplib.OperationGetAttributes, bindAdapter(a, handleGetAttributes))
-	executor.Route(kmiplib.OperationLocate, bindAdapter(a, handleLocate))
-	executor.Route(kmiplib.OperationActivate, bindAdapter(a, handleActivate))
-	executor.Route(kmiplib.OperationRevoke, bindAdapter(a, handleRevoke))
-	executor.Route(kmiplib.OperationDestroy, bindAdapter(a, handleDestroy))
+	for op, h := range coreRoutes(a) {
+		executor.Route(op, h)
+	}
 
 	if cryptoA, ok := a.(CryptoAdapter); ok {
-		executor.Route(kmiplib.OperationEncrypt, bindCrypto(cryptoA, handleEncrypt))
-		executor.Route(kmiplib.OperationDecrypt, bindCrypto(cryptoA, handleDecrypt))
-		executor.Route(kmiplib.OperationSign, bindCrypto(cryptoA, handleSign))
-		executor.Route(kmiplib.OperationSignatureVerify, bindCrypto(cryptoA, handleVerify))
+		for op, h := range cryptoRoutes(cryptoA) {
+			executor.Route(op, h)
+		}
 	}
+
 }
 
 // handleRegister implements the KMIP Register operation by importing a pre-existing key into transit.

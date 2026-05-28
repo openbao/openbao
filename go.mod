@@ -24,7 +24,7 @@ replace github.com/openbao/openbao/sdk/v2 => ./sdk
 replace github.com/boltdb/bolt => ./helper/stubbolt
 
 require (
-	cloud.google.com/go/monitoring v1.28.0
+	cloud.google.com/go/monitoring v1.29.0
 	github.com/ProtonMail/go-crypto v1.4.1
 	github.com/armon/go-radix v1.0.0
 	github.com/caddyserver/certmagic v0.25.3

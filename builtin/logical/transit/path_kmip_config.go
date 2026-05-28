@@ -32,7 +32,7 @@ func (b *backend) pathKmipConfig() *framework.Path {
 				Default:     "0.0.0.0:5696",
 				Description: "TCP address the KMIP server will listen on (host:port).",
 			},
-			"server_cert_perm": {
+			"server_cert_pem": {
 				Type:        framework.TypeString,
 				Description: "PEM-encoded TLS certificate for the KMIP server.",
 			},

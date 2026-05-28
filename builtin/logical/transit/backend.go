@@ -80,6 +80,8 @@ func Backend(ctx context.Context, conf *logical.BackendConfig) (*backend, error)
 			b.pathCreateCSR(),
 			b.pathImportCertChain(),
 			b.pathKmipConfig(),
+			b.pathKmipRoles(),
+			b.pathKmipRoleList(),
 		},
 
 		Secrets:      []*framework.Secret{},

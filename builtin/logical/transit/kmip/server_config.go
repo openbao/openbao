@@ -3,7 +3,10 @@
 
 package kmip
 
-const ConfigStoragePath = "kmip/config"
+const (
+	ConfigStoragePath = "kmip/config"
+	RoleStoragePrefix = "kmip/roles/"
+)
 
 type ServerConfig struct {
 	Enabled           bool   `json:"enabled"`

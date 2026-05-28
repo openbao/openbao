@@ -33,13 +33,14 @@ func (b *backend) restartKmipServer(cfg kmip.ServerConfig, s logical.Storage) er
 	b.kmipMu.Lock()
 	defer b.kmipMu.Unlock()
 
-	if !cfg.Enabled {
-		if b.kmipServer != nil {
-			if err := b.kmipServer.Stop(); err != nil {
-				b.Logger().Error("stop KMIP server", "error", err)
-			}
-			b.kmipServer = nil
+	if b.kmipServer != nil {
+		if err := b.kmipServer.Stop(); err != nil {
+			b.Logger().Error("stop KMIP server", "error", err)
 		}
+		b.kmipServer = nil
+	}
+
+	if !cfg.Enabled {
 		return nil
 	}
 

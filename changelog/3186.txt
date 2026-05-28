@@ -1,0 +1,3 @@
+```release-note:bug
+sys: fix `/sys/plugins/catalog` and `/sys/plugins/catalog/<type>` not returning versioned plugins
+```

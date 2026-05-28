@@ -25,9 +25,17 @@ var (
 	_ kmip.CryptoAdapter = (*transitAdapter)(nil)
 )
 
-// POC: allow-all.
+// AuthenticateCert returns allowed operations by subject DN.
 func (a *transitAdapter) AuthenticateCert(ctx context.Context, subjectDN string) (allowedOps []string, err error) {
-	return nil, nil
+	role, err := a.b.findKmipRoleByDN(ctx, a.s, subjectDN)
+	if err != nil {
+		return nil, err
+	}
+	if role == nil {
+		return nil, kmip.ErrNoRole
+	}
+
+	return role.AllowedOps, nil
 }
 
 // CreateKey creates a new key. KMIP algorithm and bit length come directly from the request, adapter converts to specific type.

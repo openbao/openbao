@@ -3846,7 +3846,7 @@ func TestSystemBackend_PluginCatalog_List(t *testing.T) {
 	pluginDir := t.TempDir()
 	file, err := os.Create(path.Join(pluginDir, "foo"))
 	require.NoError(t, err)
-	file.Close()
+	require.NoError(t, file.Close())
 
 	c, b, _ := testCoreSystemBackend(t)
 	// Bootstrap the pluginCatalog

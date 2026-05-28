@@ -23,6 +23,13 @@ var SupportedOperations = []kmiplib.Operation{
 	kmiplib.OperationDecrypt,
 	kmiplib.OperationSign,
 	kmiplib.OperationSignatureVerify,
+	kmiplib.OperationQuery,
+}
+
+var SupportedObjectTypes = []kmiplib.ObjectType{
+	kmiplib.ObjectTypeSymmetricKey,
+	kmiplib.ObjectTypePrivateKey,
+	kmiplib.ObjectTypePublicKey,
 }
 
 func ValidOperations() []string {

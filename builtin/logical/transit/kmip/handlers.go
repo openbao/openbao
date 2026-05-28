@@ -42,6 +42,7 @@ func coreRoutes(a Adapter) map[kmiplib.Operation]kmipserver.OperationHandler {
 		kmiplib.OperationActivate:      bindAdapter(a, handleActivate),
 		kmiplib.OperationRevoke:        bindAdapter(a, handleRevoke),
 		kmiplib.OperationDestroy:       bindAdapter(a, handleDestroy),
+		kmiplib.OperationQuery:         bindAdapter(a, handleQuery),
 	}
 }
 
@@ -64,7 +65,42 @@ func registerHandlers(executor *kmipserver.BatchExecutor, a Adapter) {
 			executor.Route(op, h)
 		}
 	}
+}
 
+// handleQuery used by the client to interrogate the server to determine its capabilities and/or protocol mechanisms.
+// Per spec, Query is invocable by unauthenticated clients - no authOp
+func handleQuery(ctx context.Context, a Adapter, req *payloads.QueryRequestPayload) (*payloads.QueryResponsePayload, error) {
+	resp := &payloads.QueryResponsePayload{}
+
+	for _, qf := range req.QueryFunction {
+		switch qf {
+		case kmiplib.QueryFunctionOperations:
+			resp.Operations = append(resp.Operations, SupportedOperations...)
+		case kmiplib.QueryFunctionObjects:
+			resp.ObjectType = append(resp.ObjectType, SupportedObjectTypes...)
+		case kmiplib.QueryFunctionServerInformation:
+			resp.VendorIdentification = "OpenBao Transit KMIP"
+		}
+	}
+
+	if len(req.QueryFunction) == 0 {
+		resp.Operations = append(resp.Operations, SupportedOperations...)
+		resp.ObjectType = append(resp.ObjectType, SupportedObjectTypes...)
+		resp.VendorIdentification = "OpenBao Transit KMIP"
+	}
+
+	// TODO: Check if needed
+	// Query Application Namespaces
+	// Query Extension List
+	// Query Extension Map
+	// Query Attestation Types
+	// Query RNGs
+	// Query Validations
+	// Query Profiles
+	// Query Capabilities
+	// Query Client Registration Methods
+
+	return resp, nil
 }
 
 // handleRegister implements the KMIP Register operation by importing a pre-existing key into transit.

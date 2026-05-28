@@ -5,6 +5,7 @@ package kmip
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 
@@ -20,14 +21,22 @@ type Server struct {
 }
 
 func NewServer(a Adapter, cryptoA CryptoAdapter, cfg ServerConfig) (*Server, error) {
-	cert, err := tls.LoadX509KeyPair(cfg.CertPem, cfg.KeyPem)
+	cert, err := tls.X509KeyPair([]byte(cfg.CertPem), []byte(cfg.KeyPem))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load server cert/key: %w", err)
 	}
 
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},
-		ClientAuth:   tls.RequireAndVerifyClientCert,
+	}
+
+	if cfg.RequireClientCert {
+		caPool := x509.NewCertPool()
+		if !caPool.AppendCertsFromPEM([]byte(cfg.TlsCaCertPem)) {
+			return nil, fmt.Errorf("failed to parse tls_ca_cert_pem")
+		}
+		tlsConfig.ClientCAs = caPool
+		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 
 	listener, err := tls.Listen("tcp", cfg.ListenAddr, tlsConfig)

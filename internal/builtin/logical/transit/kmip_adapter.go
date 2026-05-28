@@ -143,7 +143,7 @@ func (a *transitAdapter) GetKey(ctx context.Context, id string) (kmiplib.Object,
 	if p == nil {
 		return nil, nil
 	}
-	if a.b.System().CachingDisabled() {
+	if !a.b.System().CachingDisabled() {
 		p.Lock(false)
 	}
 	defer p.Unlock()
@@ -175,7 +175,7 @@ func (a *transitAdapter) GetAttributes(ctx context.Context, id string, names []k
 	if p == nil {
 		return nil, nil
 	}
-	if a.b.System().CachingDisabled() {
+	if !a.b.System().CachingDisabled() {
 		p.Lock(false)
 	}
 	defer p.Unlock()
@@ -291,7 +291,7 @@ func (a *transitAdapter) LocateKeys(ctx context.Context, attrs []kmiplib.Attribu
 		if p == nil {
 			return false, nil
 		}
-		if a.b.System().CachingDisabled() {
+		if !a.b.System().CachingDisabled() {
 			p.Lock(false)
 		}
 		defer p.Unlock()
@@ -353,7 +353,7 @@ func (a *transitAdapter) Encrypt(ctx context.Context, id string, plaintext []byt
 	if p == nil {
 		return nil, nil
 	}
-	if a.b.System().CachingDisabled() {
+	if !a.b.System().CachingDisabled() {
 		p.Lock(false)
 	}
 	defer p.Unlock()
@@ -365,6 +365,7 @@ func (a *transitAdapter) Encrypt(ctx context.Context, id string, plaintext []byt
 
 	return []byte(pt), nil
 }
+
 func (a *transitAdapter) Decrypt(ctx context.Context, id string, ciphertext []byte) ([]byte, error) {
 	p, _, err := a.b.GetPolicy(
 		ctx,
@@ -380,7 +381,7 @@ func (a *transitAdapter) Decrypt(ctx context.Context, id string, ciphertext []by
 	if p == nil {
 		return nil, nil
 	}
-	if a.b.System().CachingDisabled() {
+	if !a.b.System().CachingDisabled() {
 		p.Lock(false)
 	}
 	defer p.Unlock()
@@ -392,6 +393,7 @@ func (a *transitAdapter) Decrypt(ctx context.Context, id string, ciphertext []by
 
 	return []byte(pt), nil
 }
+
 func (a *transitAdapter) Sign(ctx context.Context, id string, data []byte) ([]byte, error) {
 	p, _, err := a.b.GetPolicy(
 		ctx,
@@ -407,7 +409,7 @@ func (a *transitAdapter) Sign(ctx context.Context, id string, data []byte) ([]by
 	if p == nil {
 		return nil, nil
 	}
-	if a.b.System().CachingDisabled() {
+	if !a.b.System().CachingDisabled() {
 		p.Lock(false)
 	}
 	defer p.Unlock()
@@ -417,8 +419,8 @@ func (a *transitAdapter) Sign(ctx context.Context, id string, data []byte) ([]by
 		return nil, err
 	}
 	return []byte(res.Signature), nil
-
 }
+
 func (a *transitAdapter) Verify(ctx context.Context, id string, data, signature []byte) (bool, error) {
 	p, _, err := a.b.GetPolicy(
 		ctx,
@@ -434,7 +436,7 @@ func (a *transitAdapter) Verify(ctx context.Context, id string, data, signature 
 	if p == nil {
 		return false, nil
 	}
-	if a.b.System().CachingDisabled() {
+	if !a.b.System().CachingDisabled() {
 		p.Lock(false)
 	}
 	defer p.Unlock()

@@ -404,7 +404,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 	results := &RekeyResult{}
 	// Generate new unseal/recovery keys if running shamir seal.
 	if c.seal.BarrierType() == seal.WrapperTypeShamir {
-		newSealKey, results, err = c.generateKey(c.rootRotationConfig)
+		newSealKey, results, err = c.sealManager.generateKey("", c.rootRotationConfig)
 		if err != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
 		}

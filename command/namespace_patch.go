@@ -4,13 +4,12 @@
 package command
 
 import (
-	"context"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/posener/complete"
 )
 
@@ -101,41 +100,39 @@ func (c *NamespacePatchCommand) Run(args []string) int {
 
 	namespacePath := strings.TrimSpace(args[0])
 
+	if len(c.flagCustomMetadata) == 0 && len(c.flagRemoveCustomMetadata) == 0 {
+		c.UI.Error("Must supply at least one of -custom-metadata or -remove-custom-metadata")
+		return 1
+	}
+
 	client, err := c.Client()
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 2
 	}
 
-	data := make(map[string]interface{})
 	customMetadata := make(map[string]interface{})
-
 	for key, value := range c.flagCustomMetadata {
 		customMetadata[key] = value
 	}
-
 	for _, key := range c.flagRemoveCustomMetadata {
 		// A null in a JSON merge patch payload will remove the associated key
 		customMetadata[key] = nil
 	}
 
-	data["custom_metadata"] = customMetadata
-
-	secret, err := client.Logical().JSONMergePatch(context.Background(), "sys/namespaces/"+namespacePath, data)
+	resp, err := client.Sys().PatchNamespace(namespacePath, &api.PatchNamespaceInput{
+		CustomMetadata: customMetadata,
+	})
 	if err != nil {
-		if re, ok := err.(*api.ResponseError); ok && re.StatusCode == http.StatusNotFound {
-			c.UI.Error("Namespace not found")
-			return 2
-		}
-
 		c.UI.Error(fmt.Sprintf("Error patching namespace: %s", err))
 		return 2
 	}
 
-	// Handle single field output
+	out := structtomap.Map(resp)
+
 	if c.flagField != "" {
-		return PrintRawField(c.UI, secret, c.flagField)
+		return PrintRawField(c.UI, out, c.flagField)
 	}
 
-	return OutputSecret(c.UI, secret)
+	return OutputData(c.UI, out)
 }

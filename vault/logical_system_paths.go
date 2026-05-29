@@ -1654,16 +1654,35 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 func (b *SystemBackend) sealPaths() []*framework.Path {
 	return []*framework.Path{
 		{
-			Pattern: "key-status$",
+			Pattern: "key-status",
 
 			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "encryption-key",
 				OperationVerb:   "status",
+				OperationSuffix: "encryption-key",
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
+					Summary:  "Provides information about the backend encryption key.",
 					Callback: b.handleKeyStatus,
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Fields: map[string]*framework.FieldSchema{
+								"term": {
+									Type:     framework.TypeInt,
+									Required: true,
+								},
+								"install_time": {
+									Type:     framework.TypeTime,
+									Required: true,
+								},
+								"encryptions": {
+									Type:     framework.TypeInt64,
+									Required: true,
+								},
+							},
+						}},
+					},
 				},
 			},
 
@@ -1872,6 +1891,15 @@ func (b *SystemBackend) pluginsCatalogListPaths() []*framework.Path {
 								"detailed": {
 									Type:     framework.TypeMap,
 									Required: false,
+								},
+								"auth": {
+									Type: framework.TypeStringSlice,
+								},
+								"database": {
+									Type: framework.TypeStringSlice,
+								},
+								"secret": {
+									Type: framework.TypeStringSlice,
 								},
 							},
 						}},
@@ -2653,7 +2681,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "(leases/)?renew" + framework.OptionalParamRegex("url_lease_id"),
+			Pattern: "leases/renew" + framework.OptionalParamRegex("url_lease_id"),
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "leases",
@@ -2693,7 +2721,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "(leases/)?revoke" + framework.OptionalParamRegex("url_lease_id"),
+			Pattern: "leases/revoke" + framework.OptionalParamRegex("url_lease_id"),
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "leases",
@@ -2734,7 +2762,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "(leases/)?revoke-force/(?P<prefix>.+)",
+			Pattern: "leases/revoke-force/(?P<prefix>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "leases",
@@ -2767,7 +2795,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "(leases/)?revoke-prefix/(?P<prefix>.+)",
+			Pattern: "leases/revoke-prefix/(?P<prefix>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "leases",

@@ -341,7 +341,8 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 							"source address %q unauthorized by CIDR restrictions on the secret ID: %w",
 							req.Connection.RemoteAddr,
 							err,
-						).Error()), nil
+						).Error(),
+					), nil
 				}
 			}
 		}
@@ -360,7 +361,8 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 					"source address %q unauthorized by CIDR restrictions on the role: %w",
 					req.Connection.RemoteAddr,
 					err,
-				).Error()), nil
+				).Error(),
+			), nil
 		}
 	}
 

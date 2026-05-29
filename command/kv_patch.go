@@ -155,7 +155,7 @@ func (c *KVPatchCommand) Run(args []string) int {
 
 	args = f.Args()
 	// Pull our fake stdin if needed
-	stdin := (io.Reader)(os.Stdin)
+	stdin := io.Reader(os.Stdin)
 	if c.testStdin != nil {
 		stdin = c.testStdin
 	}

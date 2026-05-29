@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -25,7 +26,6 @@ import (
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/random"
@@ -1554,7 +1554,7 @@ func TestSystemBackend_renew(t *testing.T) {
 	}
 
 	// Test orig path
-	req2 = logical.TestRequest(t, logical.UpdateOperation, "renew")
+	req2 = logical.TestRequest(t, logical.UpdateOperation, "leases/renew")
 	req2.Data["lease_id"] = resp.Secret.LeaseID
 	resp2, err = b.HandleRequest(namespace.RootContext(t.Context()), req2)
 	if err != nil {
@@ -1600,7 +1600,7 @@ func TestSystemBackend_renew_invalidID_origUrl(t *testing.T) {
 	b := testSystemBackend(t)
 
 	// Attempt renew
-	req := logical.TestRequest(t, logical.UpdateOperation, "renew/foobarbaz")
+	req := logical.TestRequest(t, logical.UpdateOperation, "leases/renew/foobarbaz")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1610,7 +1610,7 @@ func TestSystemBackend_renew_invalidID_origUrl(t *testing.T) {
 	}
 
 	// Attempt renew with other method
-	req = logical.TestRequest(t, logical.UpdateOperation, "renew")
+	req = logical.TestRequest(t, logical.UpdateOperation, "leases/renew")
 	req.Data["lease_id"] = "foobarbaz"
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != logical.ErrInvalidRequest {
@@ -1653,7 +1653,7 @@ func TestSystemBackend_revoke(t *testing.T) {
 	}
 
 	// Attempt revoke
-	req2 := logical.TestRequest(t, logical.UpdateOperation, "revoke/"+resp.Secret.LeaseID)
+	req2 := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke/"+resp.Secret.LeaseID)
 	resp2, err := b.HandleRequest(namespace.RootContext(t.Context()), req2)
 	if err != nil {
 		t.Fatalf("err: %v %#v", err, resp2)
@@ -1663,7 +1663,7 @@ func TestSystemBackend_revoke(t *testing.T) {
 	}
 
 	// Attempt renew
-	req3 := logical.TestRequest(t, logical.UpdateOperation, "renew/"+resp.Secret.LeaseID)
+	req3 := logical.TestRequest(t, logical.UpdateOperation, "leases/renew/"+resp.Secret.LeaseID)
 	resp3, err := b.HandleRequest(namespace.RootContext(t.Context()), req3)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1688,7 +1688,7 @@ func TestSystemBackend_revoke(t *testing.T) {
 	}
 
 	// Test the other route path
-	req2 = logical.TestRequest(t, logical.UpdateOperation, "revoke")
+	req2 = logical.TestRequest(t, logical.UpdateOperation, "leases/revoke")
 	req2.Data["lease_id"] = resp.Secret.LeaseID
 	resp2, err = b.HandleRequest(namespace.RootContext(t.Context()), req2)
 	if err != nil {
@@ -1763,7 +1763,7 @@ func TestSystemBackend_revoke_invalidID_origUrl(t *testing.T) {
 	b := testSystemBackend(t)
 
 	// Attempt revoke
-	req := logical.TestRequest(t, logical.UpdateOperation, "revoke/foobarbaz")
+	req := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke/foobarbaz")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1773,7 +1773,7 @@ func TestSystemBackend_revoke_invalidID_origUrl(t *testing.T) {
 	}
 
 	// Attempt revoke with other method
-	req = logical.TestRequest(t, logical.UpdateOperation, "revoke")
+	req = logical.TestRequest(t, logical.UpdateOperation, "leases/revoke")
 	req.Data["lease_id"] = "foobarbaz"
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
@@ -1873,7 +1873,7 @@ func TestSystemBackend_revokePrefix_origUrl(t *testing.T) {
 	}
 
 	// Attempt revoke
-	req2 := logical.TestRequest(t, logical.UpdateOperation, "revoke-prefix/secret/")
+	req2 := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke-prefix/secret/")
 	resp2, err := b.HandleRequest(namespace.RootContext(t.Context()), req2)
 	if err != nil {
 		t.Fatalf("err: %v %#v", err, resp2)
@@ -1883,7 +1883,7 @@ func TestSystemBackend_revokePrefix_origUrl(t *testing.T) {
 	}
 
 	// Attempt renew
-	req3 := logical.TestRequest(t, logical.UpdateOperation, "renew/"+resp.Secret.LeaseID)
+	req3 := logical.TestRequest(t, logical.UpdateOperation, "leases/renew/"+resp.Secret.LeaseID)
 	resp3, err := b.HandleRequest(namespace.RootContext(t.Context()), req3)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -2008,7 +2008,7 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	req := logical.TestRequest(t, logical.UpdateOperation, "revoke-prefix/auth/github/")
+	req := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke-prefix/auth/github/")
 	resp, err := b.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %v %v", err, resp)
@@ -3383,22 +3383,44 @@ func TestSystemBackend_rawDelete(t *testing.T) {
 	}
 }
 
-func TestSystemBackend_keyStatus(t *testing.T) {
-	b := testSystemBackend(t)
-	req := logical.TestRequest(t, logical.ReadOperation, "key-status")
-	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+func TestSystemBackend_KeyStatus(t *testing.T) {
+	t.Parallel()
+	c, _, _ := TestCoreUnsealed(t)
+	b := c.systemBackend
+	rootCtx := namespace.RootContext(t.Context())
 
-	exp := map[string]interface{}{
-		"term": 1,
-	}
-	delete(resp.Data, "install_time")
-	delete(resp.Data, "encryptions")
-	if !reflect.DeepEqual(resp.Data, exp) {
-		t.Fatalf("got: %#v expect: %#v", resp.Data, exp)
-	}
+	t.Run("returns key info for root namespace", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.ReadOperation, "key-status")
+		resp, err := b.HandleRequest(rootCtx, req)
+
+		require.NoError(t, err)
+		require.Equal(t, resp.Data["term"], 1)
+		require.NotEmpty(t, resp.Data["encryptions"])
+		require.NotEmpty(t, resp.Data["install_time"])
+	})
+
+	t.Run("returns error for non-sealable namespace", func(t *testing.T) {
+		ns := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+		req := logical.TestRequest(t, logical.ReadOperation, "key-status")
+		resp, err := b.HandleRequest(nsCtx, req)
+
+		require.Error(t, err)
+		require.ErrorContains(t, resp.Error(), ErrNotSealable.Error())
+	})
+
+	t.Run("returns key info for sealable namespace", func(t *testing.T) {
+		ns := &namespace.Namespace{Path: "bar/"}
+		_ = TestCoreCreateUnsealedNamespaces(t, c, ns)
+		req := logical.TestRequest(t, logical.ReadOperation, "key-status")
+		nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+		resp, err := b.HandleRequest(nsCtx, req)
+
+		require.NoError(t, err)
+		require.Equal(t, resp.Data["term"], 1)
+		require.NotEmpty(t, resp.Data["encryptions"])
+		require.NotEmpty(t, resp.Data["install_time"])
+	})
 }
 
 func TestSystemBackend_deprecatedRotateConfig(t *testing.T) {
@@ -3605,25 +3627,8 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	}
 	c.pluginCatalog.directory = sym
 
-	req := logical.TestRequest(t, logical.ListOperation, "plugins/catalog/database")
+	req := logical.TestRequest(t, logical.ReadOperation, "plugins/catalog/database/mysql-database-plugin")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	schema.ValidateResponse(
-		t,
-		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation),
-		resp,
-		true,
-	)
-
-	if len(resp.Data["keys"].([]string)) != len(c.builtinRegistry.Keys(consts.PluginTypeDatabase)) {
-		t.Fatalf("Wrong number of plugins, got %d, expected %d", len(resp.Data["keys"].([]string)), len(builtinplugins.Registry.Keys(consts.PluginTypeDatabase)))
-	}
-
-	req = logical.TestRequest(t, logical.ReadOperation, "plugins/catalog/database/mysql-database-plugin")
-	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -3835,6 +3840,177 @@ func TestSystemBackend_PluginCatalog_CannotRegisterBuiltinPlugins(t *testing.T) 
 	if !strings.Contains(resp.Error().Error(), "reserved metadata") {
 		t.Fatalf("err: %v", resp.Error())
 	}
+}
+
+func TestSystemBackend_PluginCatalog_List(t *testing.T) {
+	pluginDir := t.TempDir()
+	file, err := os.Create(path.Join(pluginDir, "foo"))
+	require.NoError(t, err)
+	require.NoError(t, file.Close())
+
+	c, b, _ := testCoreSystemBackend(t)
+	// Bootstrap the pluginCatalog
+	sym, err := filepath.EvalSymlinks(pluginDir)
+	require.NoError(t, err)
+	c.pluginCatalog.directory = sym
+
+	// Set a plugin
+	req := logical.TestRequest(t, logical.UpdateOperation, "plugins/catalog/database/test-plugin")
+	req.Data["sha256"] = hex.EncodeToString([]byte{'1'})
+	req.Data["command"] = "foo"
+	req.Data["version"] = "v1.2.3"
+	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Error())
+
+	t.Run("typed", func(t *testing.T) {
+		t.Parallel()
+
+		req := logical.TestRequest(t, logical.ListOperation, "plugins/catalog/database")
+		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Error())
+
+		schema.ValidateResponse(
+			t,
+			schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation),
+			resp,
+			true,
+		)
+
+		if diff := deep.Equal(resp.Data, map[string]any{
+			"keys": []string{
+				"cassandra-database-plugin", "influxdb-database-plugin", "mysql-aurora-database-plugin",
+				"mysql-database-plugin", "mysql-legacy-database-plugin", "mysql-rds-database-plugin",
+				"postgresql-database-plugin", "redis-database-plugin", "test-plugin", "valkey-database-plugin",
+			},
+		}); diff != nil {
+			t.Fatal(strings.Join(diff, "\n"))
+		}
+	})
+
+	t.Run("untyped", func(t *testing.T) {
+		t.Parallel()
+
+		req := logical.TestRequest(t, logical.ReadOperation, "plugins/catalog")
+		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Error())
+
+		schema.ValidateResponse(
+			t,
+			schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation),
+			resp,
+			true,
+		)
+
+		require.Equal(t, resp.Data, map[string]any{
+			"secret": []string{"keymgmt", "kmip", "kv", "transform"},
+			"auth":   []string{"approle", "pending-removal-test-plugin"},
+			"database": []string{
+				"cassandra-database-plugin", "influxdb-database-plugin", "mysql-aurora-database-plugin",
+				"mysql-database-plugin", "mysql-legacy-database-plugin", "mysql-rds-database-plugin",
+				"postgresql-database-plugin", "redis-database-plugin", "test-plugin", "valkey-database-plugin",
+			},
+			"detailed": []map[string]any{{
+				"name":               "approle",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "auth",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"name":               "pending-removal-test-plugin",
+				"builtin":            true,
+				"deprecation_status": "pending removal",
+				"type":               "auth",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"name":               "cassandra-database-plugin",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "database",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"name":               "influxdb-database-plugin",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "database",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"name":               "mysql-aurora-database-plugin",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "database",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"name":               "mysql-database-plugin",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "database",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"name":               "mysql-legacy-database-plugin",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "database",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"name":               "mysql-rds-database-plugin",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "database",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"name":               "postgresql-database-plugin",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "database",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"name":               "redis-database-plugin",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "database",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"sha256":  "31",
+				"builtin": false,
+				"name":    "test-plugin",
+				"type":    "database",
+				"version": "v1.2.3",
+			}, {
+				"name":               "valkey-database-plugin",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "database",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"name":               "keymgmt",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "secret",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"name":               "kmip",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "secret",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"name":               "kv",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "secret",
+				"version":            "v2.0.0+builtin.bao",
+			}, {
+				"name":               "transform",
+				"builtin":            true,
+				"deprecation_status": "supported",
+				"type":               "secret",
+				"version":            "v2.0.0+builtin.bao",
+			}},
+		})
+	})
 }
 
 func TestSystemBackend_ToolsHash(t *testing.T) {

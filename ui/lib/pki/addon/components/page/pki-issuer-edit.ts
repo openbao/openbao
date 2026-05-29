@@ -19,7 +19,7 @@ interface Args {
 }
 
 export default class PkiIssuerEditComponent extends Component<Args> {
-  @service declare readonly router: RouterService;
+  @service declare readonly 'host-router': RouterService;
   @service declare readonly flashMessages: FlashMessageService;
 
   @tracked usageValues: Array<string> = [];
@@ -31,7 +31,7 @@ export default class PkiIssuerEditComponent extends Component<Args> {
   }
 
   toDetails() {
-    this.router.transitionTo('vault.cluster.secrets.backend.pki.issuers.issuer.details');
+    this['host-router'].transitionTo('vault.cluster.secrets.backend.pki.issuers.issuer.details');
   }
 
   @action

@@ -100,7 +100,8 @@ func (i *IdentityStore) LoadGroups(ctx context.Context, readOnly bool) error {
 			}
 			if groupByName != nil {
 				i.logger.Warn(
-					ErrDuplicateIdentityName.Error(), "group_name", group.Name, "conflicting_group_name", groupByName.Name, "action", "merge the contents of duplicated groups into one and delete the other")
+					ErrDuplicateIdentityName.Error(), "group_name", group.Name, "conflicting_group_name", groupByName.Name, "action", "merge the contents of duplicated groups into one and delete the other",
+				)
 				if !i.disableLowerCasedNames {
 					return ErrDuplicateIdentityName
 				}

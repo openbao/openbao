@@ -37,7 +37,8 @@ func SetupDatabaseObjectsWithClient(client *sql.DB, table string, constraint str
 			"  key         TEXT COLLATE \"C\", "+
 			"  value       BYTEA, "+
 			"  CONSTRAINT %v PRIMARY KEY (path, key) "+
-			" ); ", table, constraint)
+			" ); ", table, constraint,
+	)
 
 	_, err = client.Exec(createTableSQL)
 	if err != nil {
@@ -59,7 +60,8 @@ func SetupDatabaseObjectsWithClient(client *sql.DB, table string, constraint str
 				" ha_value                                    TEXT COLLATE \"C\", "+
 				" valid_until                                 TIMESTAMP WITH TIME ZONE NOT NULL, "+
 				" CONSTRAINT %v PRIMARY KEY (ha_key) "+
-				" ); ", haTable, haTableConstraint)
+				" ); ", haTable, haTableConstraint,
+		)
 
 		_, err = client.Exec(createHaTableSQL)
 		if err != nil {

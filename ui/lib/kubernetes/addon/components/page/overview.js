@@ -19,7 +19,7 @@ import { action } from '@ember/object';
  */
 
 export default class OverviewPageComponent extends Component {
-  @service router;
+  @service 'host-router';
 
   @tracked selectedRole = null;
   @tracked roleOptions = [];
@@ -38,7 +38,7 @@ export default class OverviewPageComponent extends Component {
 
   @action
   generateCredential() {
-    this.router.transitionTo(
+    this['host-router'].transitionTo(
       'vault.cluster.secrets.backend.kubernetes.roles.role.credentials',
       this.selectedRole
     );

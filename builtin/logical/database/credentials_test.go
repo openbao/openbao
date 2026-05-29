@@ -552,7 +552,8 @@ func Test_passwordGenerator_generate(t *testing.T) {
 
 			// Set the password policy for the test case
 			config.System.(*logical.StaticSystemView).SetPasswordPolicy(
-				"test-policy", tt.args.passGen)
+				"test-policy", tt.args.passGen,
+			)
 
 			// Generate the password
 			pg, err := newPasswordGenerator(tt.args.config)

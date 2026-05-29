@@ -1,0 +1,6 @@
+```release-note:security
+core: Prevent hidden default token issuance from auth plugin endpoints returning both a `logical.Auth{}` response object and an error. GHSA-7j6w-vvw2-5f9c / CVE-2026-46405.
+```
+```release-note:bug
+auth/kerberos: Do not return `logical.Auth{}` response during initial negotiation at the same time as an error.
+```

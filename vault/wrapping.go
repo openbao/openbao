@@ -217,7 +217,8 @@ DONELISTHANDLING:
 		}
 		sig, err := jose.NewSigner(
 			jose.SigningKey{Algorithm: jose.ES512, Key: c.wrappingJWTKey},
-			(&jose.SignerOptions{}).WithType("JWT"))
+			(&jose.SignerOptions{}).WithType("JWT"),
+		)
 		if err != nil {
 			c.tokenStore.revokeOrphan(ctx, te.ID)
 			c.logger.Error("failed to create JWT builder", "error", err)

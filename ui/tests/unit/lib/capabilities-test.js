@@ -21,8 +21,17 @@ module('Unit | lib | attach capabilities', function (hooks) {
     deletePath;
   }
 
+  hooks.beforeEach(function () {
+    this.owner.register('model:test', TestModel);
+  });
+
   test('it creates relationships for capabilities', function (assert) {
-    let relationship = TestModel.relationshipsByName.get('updatePath');
+    const relationships = this.owner
+      .lookup('service:store')
+      .getSchemaDefinitionService()
+      .relationshipsDefinitionFor({ type: 'test' });
+
+    let relationship = relationships['updatePath'];
 
     assert.strictEqual(relationship.key, 'updatePath', 'has updatePath relationship');
     assert.strictEqual(relationship.kind, 'belongsTo', 'kind of relationship is belongsTo');

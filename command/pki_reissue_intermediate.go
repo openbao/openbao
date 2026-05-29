@@ -79,7 +79,7 @@ func (c *PKIReIssueCACommand) Run(args []string) int {
 		return 1
 	}
 
-	stdin := (io.Reader)(os.Stdin)
+	stdin := io.Reader(os.Stdin)
 	if c.flagNonInteractive {
 		stdin = bytes.NewReader(nil)
 	}
@@ -169,7 +169,7 @@ func parseTemplateCertificate(certificate x509.Certificate, useExistingKey bool,
 		"street_address":        certificate.Subject.StreetAddress,
 		"postal_code":           certificate.Subject.PostalCode,
 		"serial_number":         certificate.Subject.SerialNumber,
-		"ttl":                   (certificate.NotAfter.Sub(certificate.NotBefore)).String(),
+		"ttl":                   certificate.NotAfter.Sub(certificate.NotBefore).String(),
 		"max_path_length":       certificate.MaxPathLen,
 		"permitted_dns_domains": strings.Join(certificate.PermittedDNSDomains, ","),
 		"use_pss":               isPSS(certificate.SignatureAlgorithm),

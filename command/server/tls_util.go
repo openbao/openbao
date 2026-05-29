@@ -76,7 +76,8 @@ func GenerateCert(caCertTemplate *x509.Certificate, caSigner crypto.Signer) (str
 	}
 
 	bs, err := x509.CreateCertificate(
-		rand.Reader, &template, caCertTemplate, signer.Public(), caSigner)
+		rand.Reader, &template, caCertTemplate, signer.Public(), caSigner,
+	)
 	if err != nil {
 		return "", "", fmt.Errorf("error creating server certificate: %v", err)
 	}
@@ -125,7 +126,8 @@ func GenerateCA() (*CaCert, error) {
 	}
 
 	bs, err := x509.CreateCertificate(
-		rand.Reader, &template, &template, signer.Public(), signer)
+		rand.Reader, &template, &template, signer.Public(), signer,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating CA certificate: %v", err)
 	}

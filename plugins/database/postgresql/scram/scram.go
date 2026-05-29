@@ -67,7 +67,8 @@ func hashPassword(rawPassword, salt []byte, iter, keyLen int) string {
 	storedKey := getSHA256Sum(clientKey)
 	serverKey := getHMACSum(digestKey, serverRawKey)
 
-	return fmt.Sprintf("SCRAM-SHA-256$%d:%s$%s:%s",
+	return fmt.Sprintf(
+		"SCRAM-SHA-256$%d:%s$%s:%s",
 		iter,
 		string(encodeB64(salt)),
 		string(encodeB64(storedKey)),

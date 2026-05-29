@@ -512,7 +512,8 @@ func TestAgent_Template_UserAgent(t *testing.T) {
 					h.requestMethodToCheck = "GET"
 					h.t = t
 					return &h
-				}),
+				},
+			),
 		})
 	cluster.Start()
 	defer cluster.Cleanup()
@@ -1402,7 +1403,8 @@ func TestAgent_Template_Retry(t *testing.T) {
 					h.props = properties
 					h.t = t
 					return &h
-				}),
+				},
+			),
 		})
 	cluster.Start()
 	defer cluster.Cleanup()
@@ -1677,7 +1679,8 @@ func TestAgent_AutoAuth_UserAgent(t *testing.T) {
 				h.pathToCheck = "auth/approle/login"
 				h.t = t
 				return &h
-			}),
+			},
+		),
 	})
 	cluster.Start()
 	defer cluster.Cleanup()
@@ -1798,7 +1801,8 @@ func TestAgent_APIProxyWithoutCache_UserAgent(t *testing.T) {
 				h.requestMethodToCheck = "GET"
 				h.t = t
 				return &h
-			}),
+			},
+		),
 	})
 	cluster.Start()
 	defer cluster.Cleanup()
@@ -1883,7 +1887,8 @@ func TestAgent_APIProxyWithCache_UserAgent(t *testing.T) {
 				h.requestMethodToCheck = "GET"
 				h.t = t
 				return &h
-			}),
+			},
+		),
 	})
 	cluster.Start()
 	defer cluster.Cleanup()

@@ -377,7 +377,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 			"No configuration files found. Please provide configurations with the " +
 				"-config flag. If you are supplying the path to a directory, please " +
 				"ensure the directory contains files with the .hcl or .json " +
-				"extension."))
+				"extension.",
+		))
 		return 1
 	}
 
@@ -476,7 +477,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 		seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 	default:
 		wrapper, config, err := kms.ConfigureWrapper(
-			context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config))
+			context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config),
+		)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error configuring seal %q: %s", configSeal.Type, err))
 			return 1
@@ -594,7 +596,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 			"%s%s: %s",
 			strings.Repeat(" ", padding-len(k)),
 			titleCaser.String(k),
-			info[k]))
+			info[k],
+		))
 	}
 
 	c.UI.Output("")
@@ -635,7 +638,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 	if newCoreError != nil {
 		c.UI.Warn(wrapAtLength(
 			"WARNING! A non-fatal error occurred during initialization. Please " +
-				"check the logs for more information."))
+				"check the logs for more information.",
+		))
 		c.UI.Warn("")
 	}
 
@@ -937,7 +941,8 @@ func (c *ServerCommand) Run(args []string) int {
 		case c.flagDevRootTokenID != "":
 			c.UI.Warn(wrapAtLength(
 				"You cannot specify a custom root token ID outside of \"dev\" mode. " +
-					"Your request has been ignored."))
+					"Your request has been ignored.",
+			))
 			c.flagDevRootTokenID = ""
 		}
 	}
@@ -982,7 +987,8 @@ func (c *ServerCommand) Run(args []string) int {
 			"No configuration files found. Please provide configurations with the " +
 				"-config flag. If you are supplying the path to a directory, please " +
 				"ensure the directory contains files with the .hcl or .json " +
-				"extension."))
+				"extension.",
+		))
 		return 1
 	}
 
@@ -1125,7 +1131,7 @@ func (c *ServerCommand) Run(args []string) int {
 
 	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink)
 	if c.flagDevThreeNode {
-		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, c.flagDevListenAddr, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
+		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
 	}
 
 	if allowPendingRemoval := api.ReadBaoVariable(consts.EnvVaultAllowPendingRemovalMounts); allowPendingRemoval != "" {
@@ -1197,7 +1203,8 @@ func (c *ServerCommand) Run(args []string) int {
 		}
 		c.UI.Warn(wrapAtLength(
 			"WARNING! A non-fatal error occurred during initialization. Please " +
-				"check the logs for more information."))
+				"check the logs for more information.",
+		))
 		c.UI.Warn("")
 
 	}
@@ -1289,7 +1296,8 @@ func (c *ServerCommand) Run(args []string) int {
 		c.UI.Output(fmt.Sprintf(
 			"%24s: %s",
 			titleCaser.String(k),
-			info[k]))
+			info[k],
+		))
 	}
 
 	c.UI.Output("")
@@ -1994,7 +2002,7 @@ func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig
 	return init, nil
 }
 
-func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info map[string]string, infoKeys []string, devListenAddress, tempDir string) int {
+func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info map[string]string, infoKeys []string, tempDir string) int {
 	conf, opts := teststorage.ClusterSetup(base, &vault.TestClusterOptions{
 		HandlerFunc:       vaulthttp.Handler,
 		BaseListenAddress: c.flagDevListenAddr,
@@ -2052,7 +2060,8 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 			"%s%s: %s",
 			strings.Repeat(" ", padding-len(k)),
 			titleCaser.String(k),
-			info[k]))
+			info[k],
+		))
 	}
 
 	c.UI.Output("")
@@ -2494,7 +2503,8 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 			seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 		default:
 			wrapper, config, err := kms.ConfigureWrapper(
-				context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config))
+				context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config),
+			)
 			if err != nil {
 				//nolint:staticcheck // User-facing error.
 				return nil, nil, nil, nil, nil, fmt.Errorf("Error configuring seal %q: %w", configSeal.Type, err)
@@ -2851,94 +2861,101 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 
 		var qw *quiescenceSink
 		var qwo sync.Once
-		qw = &quiescenceSink{
-			t: time.AfterFunc(100*time.Millisecond, func() {
-				qwo.Do(func() {
-					c.logger.DeregisterSink(qw)
 
-					// Print the big dev mode warning!
-					c.UI.Warn("")
-					c.UI.Warn(wrapAtLength(
-						"WARNING! dev mode is enabled! In this mode, OpenBao runs entirely " +
-							"in-memory and starts unsealed with a single unseal key. The root " +
-							"token is already authenticated to the CLI, so you can immediately " +
-							"begin using OpenBao."))
-					c.UI.Warn("")
-					c.UI.Warn("You may need to set the following environment variables:")
-					c.UI.Warn("")
+		qw = &quiescenceSink{}
+		qw.t = time.AfterFunc(100*time.Millisecond, func() {
+			qwo.Do(func() {
+				c.logger.DeregisterSink(qw)
 
-					protocol := "http://"
-					if c.flagDevTLS {
-						protocol = "https://"
-					}
+				// Print the big dev mode warning!
+				c.UI.Warn("")
+				c.UI.Warn(wrapAtLength(
+					"WARNING! dev mode is enabled! In this mode, OpenBao runs entirely " +
+						"in-memory and starts unsealed with a single unseal key. The root " +
+						"token is already authenticated to the CLI, so you can immediately " +
+						"begin using OpenBao.",
+				))
+				c.UI.Warn("")
+				c.UI.Warn("You may need to set the following environment variables:")
+				c.UI.Warn("")
 
-					endpointURL := protocol + config.Listeners[0].Address
+				protocol := "http://"
+				if c.flagDevTLS {
+					protocol = "https://"
+				}
+
+				endpointURL := protocol + config.Listeners[0].Address
+				if runtime.GOOS == "windows" {
+					c.UI.Warn("PowerShell:")
+					c.UI.Warn(fmt.Sprintf("    $env:BAO_ADDR=\"%s\"", endpointURL))
+					c.UI.Warn("cmd.exe:")
+					c.UI.Warn(fmt.Sprintf("    set BAO_ADDR=%s", endpointURL))
+				} else {
+					c.UI.Warn(fmt.Sprintf("    $ export BAO_ADDR='%s'", endpointURL))
+				}
+
+				if c.flagDevTLS {
 					if runtime.GOOS == "windows" {
 						c.UI.Warn("PowerShell:")
-						c.UI.Warn(fmt.Sprintf("    $env:BAO_ADDR=\"%s\"", endpointURL))
+						c.UI.Warn(fmt.Sprintf("    $env:BAO_CACERT=\"%s/vault-ca.pem\"", certDir))
 						c.UI.Warn("cmd.exe:")
-						c.UI.Warn(fmt.Sprintf("    set BAO_ADDR=%s", endpointURL))
+						c.UI.Warn(fmt.Sprintf("    set BAO_CACERT=%s/vault-ca.pem", certDir))
 					} else {
-						c.UI.Warn(fmt.Sprintf("    $ export BAO_ADDR='%s'", endpointURL))
+						c.UI.Warn(fmt.Sprintf("    $ export BAO_CACERT='%s/vault-ca.pem'", certDir))
 					}
+					c.UI.Warn("")
+				}
 
-					if c.flagDevTLS {
-						if runtime.GOOS == "windows" {
-							c.UI.Warn("PowerShell:")
-							c.UI.Warn(fmt.Sprintf("    $env:BAO_CACERT=\"%s/vault-ca.pem\"", certDir))
-							c.UI.Warn("cmd.exe:")
-							c.UI.Warn(fmt.Sprintf("    set BAO_CACERT=%s/vault-ca.pem", certDir))
-						} else {
-							c.UI.Warn(fmt.Sprintf("    $ export BAO_CACERT='%s/vault-ca.pem'", certDir))
-						}
-						c.UI.Warn("")
-					}
-
-					if len(init.SecretShares) > 0 {
-						c.UI.Warn("")
-						c.UI.Warn(wrapAtLength(
-							"The unseal key and root token are displayed below in case you want " +
-								"to seal/unseal the Vault or re-authenticate."))
-						c.UI.Warn("")
-						c.UI.Warn(fmt.Sprintf("Unseal Key: %s", base64.StdEncoding.EncodeToString(init.SecretShares[0])))
-					}
-
-					if len(init.RecoveryShares) > 0 {
-						c.UI.Warn("")
-						c.UI.Warn(wrapAtLength(
-							"The recovery key and root token are displayed below in case you want " +
-								"to seal/unseal the Vault or re-authenticate."))
-						c.UI.Warn("")
-						c.UI.Warn(fmt.Sprintf("Recovery Key: %s", base64.StdEncoding.EncodeToString(init.RecoveryShares[0])))
-					}
-
-					c.UI.Warn(fmt.Sprintf("Root Token: %s", init.RootToken))
-
-					if len(plugins) > 0 {
-						c.UI.Warn("")
-						c.UI.Warn(wrapAtLength(
-							"The following dev plugins are registered in the catalog:"))
-						for _, p := range plugins {
-							c.UI.Warn(fmt.Sprintf("    - %s", p))
-						}
-					}
-
-					if len(pluginsNotLoaded) > 0 {
-						c.UI.Warn("")
-						c.UI.Warn(wrapAtLength(
-							"The following dev plugins FAILED to be registered in the catalog due to unknown type:"))
-						for _, p := range pluginsNotLoaded {
-							c.UI.Warn(fmt.Sprintf("    - %s", p))
-						}
-					}
-
+				if len(init.SecretShares) > 0 {
 					c.UI.Warn("")
 					c.UI.Warn(wrapAtLength(
-						"Development mode should NOT be used in production installations!"))
+						"The unseal key and root token are displayed below in case you want " +
+							"to seal/unseal the Vault or re-authenticate.",
+					))
 					c.UI.Warn("")
-				})
-			}),
-		}
+					c.UI.Warn(fmt.Sprintf("Unseal Key: %s", base64.StdEncoding.EncodeToString(init.SecretShares[0])))
+				}
+
+				if len(init.RecoveryShares) > 0 {
+					c.UI.Warn("")
+					c.UI.Warn(wrapAtLength(
+						"The recovery key and root token are displayed below in case you want " +
+							"to seal/unseal the Vault or re-authenticate.",
+					))
+					c.UI.Warn("")
+					c.UI.Warn(fmt.Sprintf("Recovery Key: %s", base64.StdEncoding.EncodeToString(init.RecoveryShares[0])))
+				}
+
+				c.UI.Warn(fmt.Sprintf("Root Token: %s", init.RootToken))
+
+				if len(plugins) > 0 {
+					c.UI.Warn("")
+					c.UI.Warn(wrapAtLength(
+						"The following dev plugins are registered in the catalog:",
+					))
+					for _, p := range plugins {
+						c.UI.Warn(fmt.Sprintf("    - %s", p))
+					}
+				}
+
+				if len(pluginsNotLoaded) > 0 {
+					c.UI.Warn("")
+					c.UI.Warn(wrapAtLength(
+						"The following dev plugins FAILED to be registered in the catalog due to unknown type:",
+					))
+					for _, p := range pluginsNotLoaded {
+						c.UI.Warn(fmt.Sprintf("    - %s", p))
+					}
+				}
+
+				c.UI.Warn("")
+				c.UI.Warn(wrapAtLength(
+					"Development mode should NOT be used in production installations!",
+				))
+				c.UI.Warn("")
+			})
+		})
+
 		c.logger.RegisterSink(qw)
 	}
 	return nil

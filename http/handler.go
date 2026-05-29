@@ -466,7 +466,8 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 				ReqPath:          r.URL.Path,
 				ClientRemoteAddr: clientAddr,
 				Method:           requestMethod,
-			})
+			},
+		)
 		defer func() {
 			// Not expecting this fail, so skipping the assertion check
 			core.FinalizeInFlightReqData(inFlightReqID, nw.StatusCode)

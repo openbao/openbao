@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 modules=$(find "$GO_KMS_WRAPPING" -name go.mod)
 

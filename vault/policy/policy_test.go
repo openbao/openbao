@@ -301,14 +301,14 @@ func validatePolicy(t *testing.T, p *Policy) {
 			Path:         "test/patch",
 			Capabilities: []string{"patch"},
 			Permissions: &ACLPermissions{
-				CapabilitiesBitmap: (PatchCapabilityInt),
+				CapabilitiesBitmap: PatchCapabilityInt,
 			},
 		},
 		{
 			Path:         "test/scan",
 			Capabilities: []string{"scan"},
 			Permissions: &ACLPermissions{
-				CapabilitiesBitmap: (ScanCapabilityInt),
+				CapabilitiesBitmap: ScanCapabilityInt,
 			},
 		},
 		{

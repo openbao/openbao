@@ -322,7 +322,8 @@ func (c *OperatorRekeyCommand) init(client *api.Client) int {
 					"with the -pgp-keys flag to protect the returned %s keys along "+
 					"with -backup to allow recovery of the encrypted keys in case of "+
 					"emergency. You can delete the backed up keys later using the -delete "+
-					"flag.", strings.ToLower(keyTypeRequired))))
+					"flag.", strings.ToLower(keyTypeRequired)),
+			))
 			c.UI.Output("")
 		}
 		if len(c.flagPGPKeys) > 0 && !c.flagBackup {
@@ -333,7 +334,8 @@ func (c *OperatorRekeyCommand) init(client *api.Client) int {
 					"returned, you will not be able to recover them. Consider canceling "+
 					"this operation and re-running with -backup to allow recovery of the "+
 					"encrypted unseal keys in case of emergency. You can delete the "+
-					"backed up keys later using the -delete flag.", strings.ToLower(keyTypeRequired))))
+					"backed up keys later using the -delete flag.", strings.ToLower(keyTypeRequired)),
+			))
 			c.UI.Output("")
 		}
 	}
@@ -456,7 +458,8 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 	if !started {
 		c.UI.Error(wrapAtLength(
 			"No rekey is in progress. Start a rekey process by running " +
-				"\"bao operator rekey -init\"."))
+				"\"bao operator rekey -init\".",
+		))
 		return 1
 	}
 
@@ -465,7 +468,7 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 		nonce = c.flagNonce
 
 		// Pull our fake stdin if needed
-		stdin := (io.Reader)(os.Stdin)
+		stdin := io.Reader(os.Stdin)
 		if c.testStdin != nil {
 			stdin = c.testStdin
 		}
@@ -703,7 +706,8 @@ func (c *OperatorRekeyCommand) printWarnings(client *api.Client, status *api.Rot
 					"of these keys to unseal it before it can start servicing requests.",
 				status.N,
 				status.T,
-				status.T)))
+				status.T,
+			)))
 			warningText = "unseal"
 		case "recovery", "hsm":
 			c.UI.Output(wrapAtLength(fmt.Sprintf(
@@ -711,7 +715,8 @@ func (c *OperatorRekeyCommand) printWarnings(client *api.Client, status *api.Rot
 					"key threshold of %d. These will not be active until after verification is "+
 					"complete. Please securely distribute the key shares printed above.",
 				status.N,
-				status.T)))
+				status.T,
+			)))
 			warningText = "authenticate with"
 		}
 
@@ -721,7 +726,8 @@ func (c *OperatorRekeyCommand) printWarnings(client *api.Client, status *api.Rot
 				"Do not lose or discard your current key shares until after verification "+
 				"is complete or you will be unable to %s OpenBao. If you cancel the "+
 				"rekey process or seal OpenBao before verification is complete the new "+
-				"shares will be discarded and the current shares will remain valid.", warningText)))
+				"shares will be discarded and the current shares will remain valid.", warningText,
+		)))
 		c.UI.Output("")
 		c.UI.Warn(wrapAtLength(
 			"The current verification status, including initial nonce, is shown below.",
@@ -741,13 +747,15 @@ func (c *OperatorRekeyCommand) printWarnings(client *api.Client, status *api.Rot
 					"these keys to unseal it before it can start servicing requests.",
 				status.N,
 				status.T,
-				status.T)))
+				status.T,
+			)))
 		case "recovery", "hsm":
 			c.UI.Output(wrapAtLength(fmt.Sprintf(
 				"OpenBao recovery keys rekeyed to %d key shares and a key threshold of %d. "+
 					"Please securely distribute the key shares printed above.",
 				status.N,
-				status.T)))
+				status.T,
+			)))
 		}
 	}
 

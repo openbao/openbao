@@ -542,7 +542,8 @@ SEALFAIL:
 				return fmt.Errorf("Error initializing core: %s.", newCoreError)
 			}
 			diagnose.Warn(ctx, wrapAtLength(
-				"A non-fatal error occurred during initialization. Please check the logs for more information."))
+				"A non-fatal error occurred during initialization. Please check the logs for more information.",
+			))
 		} else {
 			vaultCore = core
 		}

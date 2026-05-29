@@ -73,7 +73,8 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 		metrics.Default(),
 		configutil.UsageGaugeDefaultPeriod, // TODO: add config settings for these, or add plumbing to the main config settings
 		configutil.MaximumGaugeCardinalityDefault,
-		b.logger)
+		b.logger,
+	)
 	if err != nil {
 		return nil, err
 	}

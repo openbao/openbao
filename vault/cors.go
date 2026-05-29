@@ -156,7 +156,7 @@ func (c *CORSConfig) IsValidOrigin(origin string) bool {
 		return false
 	}
 
-	if len(c.AllowedOrigins) == 1 && (c.AllowedOrigins)[0] == "*" {
+	if len(c.AllowedOrigins) == 1 && c.AllowedOrigins[0] == "*" {
 		return true
 	}
 

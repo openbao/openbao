@@ -148,7 +148,8 @@ func TestFormatJSON_formatRequest(t *testing.T) {
 		if !strings.HasSuffix(strings.TrimSpace(buf.String()), string(expectedBytes)) {
 			t.Fatalf(
 				"bad: %s\nResult:\n\n%q\n\nExpected:\n\n%q",
-				name, buf.String(), string(expectedBytes))
+				name, buf.String(), string(expectedBytes),
+			)
 		}
 	}
 }

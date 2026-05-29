@@ -59,7 +59,8 @@ func TestTCPListener_tls(t *testing.T) {
 
 	clientCert, _ := tls.LoadX509KeyPair(
 		cwd+"/test-fixtures/reload/reload_foo.pem",
-		cwd+"/test-fixtures/reload/reload_foo.key")
+		cwd+"/test-fixtures/reload/reload_foo.key",
+	)
 
 	connFn := func(clientCerts bool) func(net.Listener) (net.Conn, error) {
 		return func(lnReal net.Listener) (net.Conn, error) {
@@ -135,7 +136,8 @@ func TestTCPListener_tls13(t *testing.T) {
 
 	clientCert, _ := tls.LoadX509KeyPair(
 		cwd+"/test-fixtures/reload/reload_foo.pem",
-		cwd+"/test-fixtures/reload/reload_foo.key")
+		cwd+"/test-fixtures/reload/reload_foo.key",
+	)
 
 	connFn := func(clientCerts bool) func(net.Listener) (net.Conn, error) {
 		return func(lnReal net.Listener) (net.Conn, error) {

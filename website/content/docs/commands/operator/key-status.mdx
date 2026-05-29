@@ -1,14 +1,15 @@
 ---
 sidebar_label: key-status
 description: |-
-  The "operator key-status" provides information about the active encryption
-  key.
+  The "operator key-status" provides information about specific
+  namespace barrier active encryption key.
 ---
 
 # operator key-status
 
-The `operator key-status` provides information about the active encryption key.
-Specifically, the current key term and the key installation time.
+The `operator key-status` provides information about specific 
+namespace barrier active encryption key. Specifically
+the current key term, installation time and encryption count.
 
 ## Examples
 
@@ -19,6 +20,15 @@ $ bao operator key-status
 Key Term          2
 Install Time      01 Jan 17 12:30 UTC
 Encryption Count  4494
+```
+
+you can also specify namespace:
+
+```shell-session
+$ bao operator -ns=teamA key-status
+Key Term          1
+Install Time      01 Jan 17 12:30 UTC
+Encryption Count  3333
 ```
 
 ## Usage

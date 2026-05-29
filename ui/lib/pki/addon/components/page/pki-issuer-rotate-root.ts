@@ -27,7 +27,7 @@ const RADIO_BUTTON_KEY = {
 
 export default class PagePkiIssuerRotateRootComponent extends Component<Args> {
   @service declare readonly store: Store;
-  @service declare readonly router: Router;
+  @service declare readonly 'host-router': Router;
   @service declare readonly flashMessages: FlashMessageService;
   @service declare readonly secretMountPath: SecretMountPath;
 

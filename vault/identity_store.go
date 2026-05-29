@@ -26,20 +26,7 @@ func (c *Core) loadIdentityStoreArtifacts(ctx context.Context, readOnly bool) er
 		}
 
 		for _, ns := range allNs {
-			if ns.Tainted {
-				c.logger.Info("skipping loading entities for tainted namespace", "ns", ns.ID)
-				continue
-			}
-
-			nsCtx := namespace.ContextWithNamespace(ctx, ns)
-
-			if err := c.identityStore.LoadEntities(nsCtx, readOnly); err != nil {
-				return err
-			}
-			if err := c.identityStore.LoadGroups(nsCtx, readOnly); err != nil {
-				return err
-			}
-			if err := c.identityStore.LoadOIDCClients(nsCtx); err != nil {
+			if err = c.loadIdentityStoreArtifactsForNamespace(ctx, ns, readOnly); err != nil {
 				return err
 			}
 		}
@@ -72,4 +59,22 @@ func (c *Core) loadIdentityStoreArtifacts(ctx context.Context, readOnly bool) er
 	// Attempt to load identity artifacts once more after memdb is reset to
 	// accept case sensitive names
 	return loadFunc(ctx)
+}
+
+func (c *Core) loadIdentityStoreArtifactsForNamespace(ctx context.Context, ns *namespace.Namespace, readOnly bool) error {
+	if ns.Tainted {
+		c.logger.Info("skipping loading entities for tainted namespace", "ns", ns.ID)
+		return nil
+	}
+
+	ctx = namespace.ContextWithNamespace(ctx, ns)
+
+	if err := c.identityStore.LoadEntities(ctx, readOnly); err != nil {
+		return err
+	}
+	if err := c.identityStore.LoadGroups(ctx, readOnly); err != nil {
+		return err
+	}
+
+	return c.identityStore.LoadOIDCClients(ctx)
 }

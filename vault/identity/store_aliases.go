@@ -350,7 +350,7 @@ func (i *IdentityStore) handleAliasCreate(ctx context.Context, canonicalID, name
 func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name, mountAccessor string, alias *identity.Alias, customMetadata map[string]string) (*logical.Response, error) {
 	if name == alias.Name &&
 		mountAccessor == alias.MountAccessor &&
-		(canonicalID == alias.CanonicalID || canonicalID == "") && (strutil.EqualStringMaps(customMetadata, alias.CustomMetadata)) {
+		(canonicalID == alias.CanonicalID || canonicalID == "") && strutil.EqualStringMaps(customMetadata, alias.CustomMetadata) {
 		// Nothing to do; return nil to be idempotent
 		return nil, nil
 	}

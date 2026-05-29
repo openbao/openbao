@@ -667,7 +667,7 @@ func TestCore_LoadLoginMFAConfigs(t *testing.T) {
 	TestCoreCreateNamespaces(t, c, ns1)
 
 	// prepare views
-	nsView := NamespaceScopedView(c.barrier, ns1)
+	nsView := c.NamespaceView(ns1)
 	mfaConfigBarrierView := nsView.SubView(barrier.SystemBarrierPrefix).SubView(loginMFAConfigPrefix)
 	mfaEnforcementConfigBarrierView := nsView.SubView(barrier.SystemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
 
@@ -686,7 +686,7 @@ func TestCore_LoadLoginMFAConfigs(t *testing.T) {
 	require.NoError(t, err)
 
 	eConfig := &mfa.MFAEnforcementConfig{Name: "eConfig", NamespaceID: ns1.ID, ID: "eConfigID"}
-	err = c.loginMFABackend.PutMFALoginEnforcementConfig(ctx, eConfig)
+	err = c.loginMFABackend.PutMFALoginEnforcementConfig(ctx, eConfig, ns1)
 	require.NoError(t, err)
 
 	// check for errors when loading
@@ -714,7 +714,7 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 	testNamespace := &namespace.Namespace{Path: "test"}
 	TestCoreCreateNamespaces(t, core, testNamespace)
 
-	barrier := NamespaceScopedView(core.barrier, testNamespace).SubView(coreLockedUsersPath).SubView("mountAccessor1/")
+	barrier := core.NamespaceView(testNamespace).SubView(coreLockedUsersPath + "mountAccessor1/")
 	// cleanup
 	defer barrier.Delete(ctx, "aliasName1")
 
@@ -773,7 +773,7 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 	testNamespace := &namespace.Namespace{Path: "test"}
 	TestCoreCreateNamespaces(t, core, testNamespace)
 
-	barrier := NamespaceScopedView(core.barrier, testNamespace).SubView(coreLockedUsersPath).SubView("mountAccessor1/")
+	barrier := core.NamespaceView(testNamespace).SubView(coreLockedUsersPath + "mountAccessor1/")
 	// cleanup
 	defer barrier.Delete(ctx, "aliasName1")
 
@@ -2718,19 +2718,6 @@ func TestCore_RenewSameLease(t *testing.T) {
 	original := resp.Secret.LeaseID
 
 	// Renew the lease
-	req = logical.TestRequest(t, logical.UpdateOperation, "sys/renew/"+resp.Secret.LeaseID)
-	req.ClientToken = root
-	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	// Verify the lease did not change
-	if resp.Secret.LeaseID != original {
-		t.Fatalf("lease id changed: %s %s", original, resp.Secret.LeaseID)
-	}
-
-	// Renew the lease (alternate path)
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/leases/renew/"+resp.Secret.LeaseID)
 	req.ClientToken = root
 	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -2775,7 +2762,7 @@ func TestCore_RenewToken_SingleRegister(t *testing.T) {
 	}
 
 	// Revoke using the renew prefix
-	req = logical.TestRequest(t, logical.UpdateOperation, "sys/revoke-prefix/auth/token/renew/")
+	req = logical.TestRequest(t, logical.UpdateOperation, "sys/leases/revoke-prefix/auth/token/renew/")
 	req.ClientToken = root
 	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {

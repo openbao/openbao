@@ -89,7 +89,8 @@ func TestLogin(t *testing.T) {
 
 func prepareLDAPTestContainer(t *testing.T) string {
 	pool := dockertest.NewPoolT(t, "")
-	resource := pool.RunT(t, "quay.io/minio/openldap",
+	resource := pool.RunT(
+		t, "quay.io/minio/openldap",
 		dockertest.WithTag("latest"),
 		dockertest.WithEnv([]string{
 			"LDAP_TLS=false",

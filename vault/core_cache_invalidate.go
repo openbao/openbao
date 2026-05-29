@@ -159,19 +159,21 @@ func (im *invalidationManager) processPendingQueue(quitCh chan struct{}, quitCon
 			case <-im.pendingNotify:
 			}
 
-			defer metrics.MeasureSince([]string{dispatcherName, "enqueue-pending"}, time.Now())
+			func() {
+				defer metrics.MeasureSince([]string{dispatcherName, "enqueue-pending"}, time.Now())
 
-			im.pendingLock.Lock()
-			pending := im.pending
-			im.pending = nil
-			im.pendingLock.Unlock()
+				im.pendingLock.Lock()
+				pending := im.pending
+				im.pending = nil
+				im.pendingLock.Unlock()
 
-			im.core.metricSink.SetGauge([]string{dispatcherName, "pending-dequeue-size"}, float32(len(pending)))
+				im.core.metricSink.SetGauge([]string{dispatcherName, "pending-dequeue-size"}, float32(len(pending)))
 
-			for _, key := range pending {
-				job, queue := im.buildInvalidateJobForKey(quitCh, quitContext, key)
-				im.dispatcher.AddJob(job, queue)
-			}
+				for _, key := range pending {
+					job, queue := im.buildInvalidateJobForKey(quitCh, quitContext, key)
+					im.dispatcher.AddJob(job, queue)
+				}
+			}()
 		}
 	}()
 }
@@ -255,6 +257,11 @@ func isMissedMountKey(key string) bool {
 	return strings.HasPrefix(key, barrier.CredentialBarrierPrefix) ||
 		strings.HasPrefix(key, backendBarrierPrefix) ||
 		strings.HasPrefix(key, auditBarrierPrefix)
+}
+
+func isLoginMFA(key string) bool {
+	return strings.HasPrefix(key, barrier.SystemBarrierPrefix+loginMFAConfigPrefix) ||
+		strings.HasPrefix(key, barrier.SystemBarrierPrefix+mfaLoginEnforcementPrefix)
 }
 
 func (ij *invalidationJob) Execute() error {
@@ -393,6 +400,9 @@ func (ij *invalidationJob) Execute() error {
 	case strings.HasPrefix(ij.key, "autopilot/") || ij.key == raftAutopilotConfigurationStoragePath:
 		// Raft context is reloaded when a standby becomes active, so it is
 		// safe to ignore changes to autopilot state.
+	case isLoginMFA(ij.key):
+		ij.fatal = true
+		return ij.loginMFAInvalidation(ctx, ns)
 	case ij.im.core.router.Invalidate(shortCtx, ij.key):
 		// if router.Invalidate returns true, a matching plugin was found and
 		// the invalidation is therefore dispatched.
@@ -468,7 +478,7 @@ func (ij *invalidationJob) policyInvalidation(ctx context.Context) error {
 
 func (ij *invalidationJob) quotaInvalidation(ctx context.Context) error {
 	quotaPath := strings.TrimPrefix(ij.nsKey, barrier.SystemBarrierPrefix+quotas.StoragePrefix)
-	return ij.im.core.quotaManager.Invalidate(quotaPath)
+	return ij.im.core.quotaManager.Invalidate(ctx, quotaPath)
 }
 
 func (ij *invalidationJob) auditInvalidation(ctx context.Context) error {
@@ -491,6 +501,14 @@ func (ij *invalidationJob) legacyMountInvalidation(ctx context.Context) error {
 func (ij *invalidationJob) transactionalMountInvalidation(ctx context.Context) error {
 	if err := ij.im.core.reloadMount(ctx, ij.nsKey); err != nil {
 		return fmt.Errorf("unable to invalidate mount for key %q in namespace %q: %w", ij.nsKey, ij.nsUUID, err)
+	}
+
+	return nil
+}
+
+func (ij *invalidationJob) loginMFAInvalidation(ctx context.Context, ns *namespace.Namespace) error {
+	if err := ij.im.core.loginMFABackend.invalidate(ctx, ns, ij.nsKey); err != nil {
+		return fmt.Errorf("unable to invalidate login MFA config for key %q in namespace %q: %w", ij.nsKey, ij.nsUUID, err)
 	}
 
 	return nil

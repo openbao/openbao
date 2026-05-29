@@ -760,10 +760,10 @@ func toMetadataMap(patchInput KVMetadataPatchInput) (map[string]interface{}, err
 	// the field remain unchanged (e.g. nil). This way, they only need to pass
 	// the fields they want to change.
 	if patchInput.MaxVersions != nil {
-		metadataMap[maxVersionsKey] = *(patchInput.MaxVersions)
+		metadataMap[maxVersionsKey] = *patchInput.MaxVersions
 	}
 	if patchInput.CASRequired != nil {
-		metadataMap[casRequiredKey] = *(patchInput.CASRequired)
+		metadataMap[casRequiredKey] = *patchInput.CASRequired
 	}
 	if patchInput.CustomMetadata != nil {
 		if len(patchInput.CustomMetadata) == 0 { // empty non-nil map means delete all the keys

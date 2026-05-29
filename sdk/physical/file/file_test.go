@@ -48,7 +48,8 @@ func TestFileBackend_Base64URLEncoding(t *testing.T) {
 	f, err := os.OpenFile(
 		rawFullPath,
 		os.O_CREATE|os.O_TRUNC|os.O_WRONLY,
-		0o600)
+		0o600,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +151,8 @@ func TestFileBackend_Base64URLEncoding(t *testing.T) {
 	f, err = os.OpenFile(
 		rawFullPath,
 		os.O_CREATE|os.O_TRUNC|os.O_WRONLY,
-		0o600)
+		0o600,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}

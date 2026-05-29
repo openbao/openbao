@@ -9,7 +9,9 @@ import (
 	"strings"
 
 	"github.com/hashicorp/cli"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/posener/complete"
 )
 
@@ -48,6 +50,14 @@ Usage: bao namespace create [options] PATH
 
       $ bao namespace create -namespace=ns1 ns2
 
+  Create a sealable namespace with Shamir seal:
+
+      $ bao namespace create -key-shares=5 -key-threshold=3 ns1
+
+  Create a sealable namespace from a HCL seal config file:
+
+      $ bao namespace create -seal=seal.hcl ns1
+
 ` + c.Flags().Help()
 
 	return strings.TrimSpace(helpText)
@@ -65,6 +75,7 @@ func (c *NamespaceCreateCommand) Flags() *FlagSets {
 			"This can be specified multiple times to add multiple pieces of metadata.",
 	})
 
+	f = set.NewFlagSet("Seal Options")
 	f.StringVar(&StringVar{
 		Name:       "seal",
 		Target:     &c.flagSealConfigPath,
@@ -138,54 +149,50 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		return 2
 	}
 
-	sealConfig, err := c.readSealConfig()
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error while parsing seal configs: %s", err))
-		return 2
+	input := &api.CreateNamespaceInput{
+		CustomMetadata: c.flagCustomMetadata,
+		PGPKeys:        c.flagPGPKeys,
 	}
 
-	data := map[string]interface{}{
-		"custom_metadata": c.flagCustomMetadata,
-	}
-
-	if sealConfig != nil {
-		data["seal"] = string(sealConfig)
-	}
-
-	if c.flagKeyShares != 0 || c.flagKeyThreshold != 0 {
-		// if either -key-shares or -key-threshold is given, assume we create a
-		// shamir-sealed namespace; unless an explicit seal config was given
-		if _, ok := data["seal"]; !ok {
-			data["seal"] = fmt.Sprintf(`seal "shamir" {
-    shares = %d
-    threshold = %d
-}`, c.flagKeyShares, c.flagKeyThreshold)
+	if c.flagSealConfigPath != "" {
+		hcl, err := os.ReadFile(c.flagSealConfigPath)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error reading seal config file: %s", err))
+			return 2
 		}
+		input.Seal = string(hcl)
+	} else if c.flagKeyShares != 0 || c.flagKeyThreshold != 0 {
+		input.Seal = fmt.Sprintf("seal \"shamir\" {\n    shares = %d\n    threshold = %d\n}",
+			c.flagKeyShares, c.flagKeyThreshold)
 	}
 
-	if len(c.flagPGPKeys) > 0 {
-		data["pgp_keys"] = c.flagPGPKeys
-	}
-
-	secret, err := client.Logical().Write("sys/namespaces/"+namespacePath, data)
+	resp, err := client.Sys().CreateNamespace(namespacePath, input)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error creating namespace: %s", err))
 		return 2
 	}
 
-	// Handle single field output
+	if resp != nil && len(resp.KeyShares) > 0 {
+		for i, key := range resp.KeyShares {
+			c.UI.Output(fmt.Sprintf("Unseal Key %d: %s", i+1, key))
+		}
+		c.UI.Output("")
+		c.UI.Output(wrapAtLength(fmt.Sprintf(
+			"Namespace initialized with %d key shares and a key threshold of %d. Please "+
+				"securely distribute the key shares printed above. When the namespace is "+
+				"re-sealed, you must supply at least %d of these keys to unseal it.",
+			c.flagKeyShares,
+			c.flagKeyThreshold,
+			c.flagKeyThreshold,
+		)))
+		c.UI.Output("")
+	}
+
+	out := structtomap.Map(resp)
+
 	if c.flagField != "" {
-		return PrintRawField(c.UI, secret, c.flagField)
+		return PrintRawField(c.UI, out, c.flagField)
 	}
 
-	return OutputSecret(c.UI, secret)
-}
-
-func (c *NamespaceCreateCommand) readSealConfig() ([]byte, error) {
-	path := c.flagSealConfigPath
-	if path == "" {
-		return nil, nil
-	}
-
-	return os.ReadFile(path)
+	return OutputData(c.UI, out)
 }

@@ -13,6 +13,7 @@ on:
     branches:
       - main
       - release/**
+  workflow_dispatch:
 
 jobs:
   test-ui:
@@ -24,20 +25,20 @@ jobs:
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version-file: ui/package.json
-      - uses: pnpm/action-setup@8912a9102ac27614460f54aedde9e1e7f9aec20d # v6.0.5
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
         with:
           package_json_file: ui/package.json
           cache: true
           cache_dependency_path: ui/pnpm-lock.yaml
       - id: install-browser
-        uses: browser-actions/setup-chrome@4f8e94349a351df0f048634f25fec36c3c91eded # v2.1.1
+        uses: browser-actions/setup-chrome@2e1d749697dd1612b833dba4a722266286fbefcd # v2.1.2
       - id: ui-dependencies
         name: ui-dependencies
         working-directory: ./ui
         run: pnpm install
       - id: build-go-dev
         name: build-go-dev
-        run: make ci-bootstrap dev
+        run: make dev
       - id: test-ui
         name: test-ui
         run: |
@@ -50,7 +51,7 @@ jobs:
           name: test-results-ui
           path: ui/test-results
         if: success() || failure()
-      - uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86 # v2.4
+      - uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5 # v2.6
         with:
           paths: "ui/test-results/qunit/results.xml"
           show: "fail"

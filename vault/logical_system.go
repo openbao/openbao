@@ -346,36 +346,31 @@ func (b *SystemBackend) handlePluginCatalogTypedList(ctx context.Context, req *l
 		return nil, err
 	}
 
-	plugins, err := b.Core.pluginCatalog.List(ctx, pluginType)
+	plugins, err := b.Core.pluginCatalog.ListVersionedPlugins(ctx, pluginType)
 	if err != nil {
 		return nil, err
 	}
-	sort.Strings(plugins)
-	return logical.ListResponse(plugins), nil
+
+	return logical.ListResponse(uniquePluginNames(plugins)), nil
 }
 
 func (b *SystemBackend) handlePluginCatalogUntypedList(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	var versionedPlugins []pluginutil.VersionedPlugin
 	for _, pluginType := range pluginTypes {
-		plugins, err := b.Core.pluginCatalog.List(ctx, pluginType)
-		if err != nil {
-			return nil, err
-		}
-		if len(plugins) > 0 {
-			sort.Strings(plugins)
-			data[pluginType.String()] = plugins
-		}
-
-		versioned, err := b.Core.pluginCatalog.ListVersionedPlugins(ctx, pluginType)
+		plugins, err := b.Core.pluginCatalog.ListVersionedPlugins(ctx, pluginType)
 		if err != nil {
 			return nil, err
 		}
 
 		// Sort for consistent ordering
-		sortVersionedPlugins(versioned)
+		sortVersionedPlugins(plugins)
 
-		versionedPlugins = append(versionedPlugins, versioned...)
+		if len(plugins) > 0 {
+			data[pluginType.String()] = uniquePluginNames(plugins)
+		}
+
+		versionedPlugins = append(versionedPlugins, plugins...)
 	}
 
 	if len(versionedPlugins) != 0 {
@@ -406,6 +401,20 @@ func (b *SystemBackend) handlePluginCatalogUntypedList(ctx context.Context, _ *l
 	return &logical.Response{
 		Data: data,
 	}, nil
+}
+
+func uniquePluginNames(plugins []pluginutil.VersionedPlugin) []string {
+	pluginNames := make([]string, 0, len(plugins))
+
+	for _, plugin := range plugins {
+		index, match := slices.BinarySearch(pluginNames, plugin.Name)
+		if match {
+			continue
+		}
+		pluginNames = slices.Insert(pluginNames, index, plugin.Name)
+	}
+
+	return pluginNames
 }
 
 func sortVersionedPlugins(versionedPlugins []pluginutil.VersionedPlugin) {
@@ -3075,22 +3084,31 @@ func (b *SystemBackend) handleConfigUIHeadersDelete(ctx context.Context, req *lo
 	return nil, nil
 }
 
-// handleKeyStatus returns status information about the backend key
+// handleKeyStatus handles the "/sys/key-status" endpoint
+// to return status information about the (namespace scoped) backend key.
 func (b *SystemBackend) handleKeyStatus(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	// Get the key info
-	info, err := b.Core.barrier.ActiveKeyInfo()
+	ns, err := namespace.FromContext(ctx)
 	if err != nil {
-		return nil, err
+		return handleError(err)
 	}
 
-	resp := &logical.Response{
+	barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
+	if barrier == nil {
+		return handleError(ErrNotSealable)
+	}
+
+	info, err := barrier.ActiveKeyInfo()
+	if err != nil {
+		return handleError(err)
+	}
+
+	return &logical.Response{
 		Data: map[string]interface{}{
 			"term":         info.Term,
 			"install_time": info.InstallTime.Format(time.RFC3339Nano),
 			"encryptions":  info.Encryptions,
 		},
-	}
-	return resp, nil
+	}, nil
 }
 
 func (b *SystemBackend) handleWrappingWrap(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -5260,9 +5278,9 @@ Enable a new audit backend or disable an existing backend.
 	},
 
 	"key-status": {
-		"Provides information about the backend encryption key.",
+		"Provides information about the specific namespace barrier encryption key.",
 		`
-		Provides the current backend encryption key term and installation time.
+		Provides the current encryption key term, installation time and encryption count.
 		`,
 	},
 

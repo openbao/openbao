@@ -6,6 +6,7 @@
 import { expandAttributeMeta } from 'vault/utils/field-to-attrs';
 import Model from '@ember-data/model';
 import { assert } from '@ember/debug';
+import { getOwner } from '@ember/owner';
 
 /**
  * sets allByKey properties on model class. These are all the attributes on the model
@@ -53,9 +54,11 @@ export function withExpandedAttributes() {
           // First, get attr names which are on the model directly
           // By this time, OpenAPI should have populated non-explicit attrs
           const mainFields = [];
-          this.eachAttribute(function (key) {
-            mainFields.push(key);
-          });
+
+          const schemaDefs = getOwner(this).lookup('service:store').getSchemaDefinitionService();
+
+          const attributes = schemaDefs.attributesDefinitionFor({ type: this.constructor.modelName });
+          mainFields.push(...Object.keys(attributes));
           const expanded = expandAttributeMeta(this, mainFields);
           expanded.forEach((attr) => {
             // Add expanded attributes from the model

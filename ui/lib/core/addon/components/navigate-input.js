@@ -62,7 +62,7 @@ const routeFor = function (type, mode, urls) {
 };
 
 export default class NavigateInput extends Component {
-  @service router;
+  @service 'host-router';
   inputId = `nav-input-${guidFor(this)}`;
 
   get mode() {
@@ -77,7 +77,7 @@ export default class NavigateInput extends Component {
       return encodePath(param);
     });
 
-    this.router.transitionTo(...params);
+    this['host-router'].transitionTo(...params);
   }
 
   keyForNav(key) {

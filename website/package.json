@@ -30,10 +30,10 @@
     "@mdx-js/react": "^3.1.1",
     "clsx": "^2.1.1",
     "lodash": "^4.18.1",
-    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#ab2ccb85e2ee39a3756ce7a222eaa648aa1a3b20",
+    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#5f0dacaa5e36fcf5d8cad04e669f249242734d11",
     "prism-react-renderer": "^2.4.1",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.10.1",

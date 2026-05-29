@@ -520,6 +520,65 @@ func TestOpenAPI_Paths(t *testing.T) {
 		testPath(t, p, sp, expected("operations_list"))
 	})
 
+	t.Run("Operations - Scan Only", func(t *testing.T) {
+		p := &Path{
+			Pattern: "foo/" + GenericNameRegex("id"),
+			Fields: map[string]*FieldSchema{
+				"id": {
+					Type:        TypeString,
+					Description: "id path parameter",
+				},
+				"flavors": {
+					Type:        TypeCommaStringSlice,
+					Description: "the flavors",
+				},
+				"name": {
+					Type:        TypeNameString,
+					Default:     "Larry",
+					Description: "the name",
+				},
+				"age": {
+					Type:          TypeInt,
+					Description:   "the age",
+					AllowedValues: []interface{}{1, 2, 3},
+					Required:      true,
+					DisplayAttrs: &DisplayAttributes{
+						Name:      "Age",
+						Sensitive: true,
+						Group:     "Some Group",
+						Value:     7,
+					},
+				},
+				"x-abc-token": {
+					Type:          TypeHeader,
+					Description:   "a header value",
+					AllowedValues: []interface{}{"a", "b", "c"},
+				},
+				"format": {
+					Type:        TypeString,
+					Description: "a query param",
+					Query:       true,
+				},
+			},
+			HelpSynopsis:    "Synopsis",
+			HelpDescription: "Description",
+			Operations: map[logical.Operation]OperationHandler{
+				logical.ScanOperation: &PathOperation{
+					Summary:     "Scan Summary",
+					Description: "Scan Description",
+				},
+			},
+			DisplayAttrs: &DisplayAttributes{
+				Navigation: true,
+			},
+		}
+
+		sp := &logical.Paths{
+			Root: []string{"foo*"},
+		}
+		testPath(t, p, sp, expected("operations_scan"))
+	})
+
 	t.Run("Responses", func(t *testing.T) {
 		p := &Path{
 			Pattern:         "foo",

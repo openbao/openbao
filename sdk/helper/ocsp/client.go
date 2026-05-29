@@ -420,7 +420,8 @@ func (c *Client) GetRevocationStatus(ctx context.Context, subject, issuer *x509.
 				defer wg.Done()
 			}
 			ocspRes, _, ocspS, err := c.retryOCSP(
-				ctx, ocspClient, retryablehttp.NewRequest, u, headers, ocspReq, issuer)
+				ctx, ocspClient, retryablehttp.NewRequest, u, headers, ocspReq, issuer,
+			)
 			ocspResponses[i] = ocspRes
 			if err != nil {
 				allErrors[i] = err
@@ -617,7 +618,8 @@ func (c *Client) canEarlyExitForOCSP(results []*ocspStatus, chainSize int, conf 
 	}
 	if len(msg.String()) > 0 {
 		c.Logger().Warn(
-			"OCSP is set to fail-open, and could not retrieve OCSP based revocation checking but proceeding.", "detail", msg.String())
+			"OCSP is set to fail-open, and could not retrieve OCSP based revocation checking but proceeding.", "detail", msg.String(),
+		)
 	}
 	return nil
 }

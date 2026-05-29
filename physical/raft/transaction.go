@@ -242,7 +242,8 @@ func (b *RaftBackend) newTransaction(ctx context.Context, writable bool) (*RaftT
 		if b.transactionLeakCounter.Add(1) == 1 { // "Add" returns the new value, for the first leak we want to print an error
 			log = b.logger.Error
 		}
-		log("transaction was leaked",
+		log(
+			"transaction was leaked",
 			// we include some details about the transaction, to make it easier to find the leak
 			"start_index", startIndex,
 			"updated_keys", slices.Collect(maps.Keys(updates)),

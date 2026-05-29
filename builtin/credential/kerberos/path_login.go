@@ -66,7 +66,6 @@ func parseKeytab(b64EncodedKt string) (*keytab.Keytab, error) {
 
 func (b *backend) pathLoginGet(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	return &logical.Response{
-		Auth: &logical.Auth{},
 		Headers: map[string][]string{
 			"www-authenticate": {"Negotiate"},
 		},

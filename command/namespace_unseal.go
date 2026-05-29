@@ -147,7 +147,7 @@ func (c *NamespaceUnsealCommand) Run(args []string) int {
 		}
 
 		// Override the output
-		writer := (io.Writer)(os.Stdout)
+		writer := io.Writer(os.Stdout)
 		if c.testOutput != nil {
 			writer = c.testOutput
 		}

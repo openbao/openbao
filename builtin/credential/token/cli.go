@@ -74,7 +74,8 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 	if token == "" {
 		return nil, fmt.Errorf(
 			"a token must be passed to auth, please view the help for more " +
-				"information")
+				"information",
+		)
 	}
 
 	// If the user declined verification, return now. Note that we will not have

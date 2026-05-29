@@ -149,7 +149,8 @@ func (b *backend) pathValidateCode(ctx context.Context, req *logical.Request, da
 	err = b.usedCodes.AddWithExpire(usedName, struct{}{}, time.Duration(
 		int64(time.Second)*
 			int64(key.Period)*
-			int64((2+key.Skew))))
+			int64((2+key.Skew)),
+	))
 	if err != nil {
 		return nil, fmt.Errorf("error adding code to used cache: %w", err)
 	}

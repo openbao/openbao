@@ -388,7 +388,8 @@ func TestRaft_Backend_ThreeNode(t *testing.T) {
 func testRaft_assertFastTxnTrackerCleanup(t testing.TB, raft *RaftBackend) {
 	t.Helper()
 	if assert.Equal(t, raft.fsm.fastTxnTracker.lowestActiveIndex(), uint64(math.MaxUint64), "the test assumes that no transaction is in flight") {
-		assert.Len(t, raft.fsm.fastTxnTracker.indexModifiedMap,
+		assert.Len(
+			t, raft.fsm.fastTxnTracker.indexModifiedMap,
 			2,
 			"two entries are expected: the one that was the latest when we applied the final operation and the final operation itself",
 			// Why? we can not evict the currently active as a new transaction might be started concurrently to our apply

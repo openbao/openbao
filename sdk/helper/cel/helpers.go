@@ -31,8 +31,10 @@ func checkValidEmail(value ref.Val) ref.Val {
 
 // checkValidEmailFunction adds the check_valid_email function.
 func CheckValidEmailFunction() cel.EnvOption {
-	return cel.Function("check_valid_email",
-		cel.Overload("check_valid_email_string",
+	return cel.Function(
+		"check_valid_email",
+		cel.Overload(
+			"check_valid_email_string",
 			[]*cel.Type{cel.StringType}, // Takes a string input
 			cel.BoolType,                // Returns a boolean
 			cel.UnaryBinding(checkValidEmail),
@@ -123,7 +125,8 @@ func decodeJSON(value ref.Val) ref.Val {
 
 // EncodeJSONFunction adds the encode_json function.
 func EncodeJSONFunction() cel.EnvOption {
-	return cel.Function("encode_json",
+	return cel.Function(
+		"encode_json",
 		cel.Overload(
 			"encode_json_dyn",
 			[]*cel.Type{cel.DynType},
@@ -135,7 +138,8 @@ func EncodeJSONFunction() cel.EnvOption {
 
 // DecodeJSONFunction adds the decode_json function.
 func DecodeJSONFunction() cel.EnvOption {
-	return cel.Function("decode_json",
+	return cel.Function(
+		"decode_json",
 		cel.Overload(
 			"decode_json_string",
 			[]*cel.Type{cel.StringType},

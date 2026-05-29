@@ -1,0 +1,3 @@
+```release-note:security
+core: Remove legacy lease endpoints (`sys/revoke`, `sys/renew`, `sys/revoke-prefix`, and `sys/revoke-force`) due to cross-namespace lease modification. GHSA-v8v8-cm84-m686 / CVE-2026-45808.
+```

@@ -1832,7 +1832,8 @@ func (cluster *TestCluster) StartCore(t testing.T, idx int, opts *TestClusterOpt
 
 	cluster.setupClusterListener(
 		t, idx, newCore, tcc.CoreConfig,
-		opts, tcc.Listeners, tcc.Handler)
+		opts, tcc.Listeners, tcc.Handler,
+	)
 
 	tcc.Client = cluster.getAPIClient(t, opts, tcc.Listeners[0].Address.Port, tcc.tlsConfig)
 

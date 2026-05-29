@@ -44,7 +44,8 @@ func TestSelfSignedCA(t *testing.T) {
 		EnableHostVerification: true,
 	}
 
-	host, cleanup := cassandra.PrepareTestContainer(t,
+	host, cleanup := cassandra.PrepareTestContainer(
+		t,
 		cassandra.CopyFromTo(copyFromTo),
 		cassandra.SslOpts(sslOpts),
 	)

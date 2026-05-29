@@ -106,7 +106,8 @@ func handleSysUnseal(core *vault.Core) http.Handler {
 		if req.Key == "" {
 			respondError(
 				w, http.StatusBadRequest,
-				errors.New("'key' must be specified in request body as JSON, or 'reset' set to true"))
+				errors.New("'key' must be specified in request body as JSON, or 'reset' set to true"),
+			)
 			return
 		}
 
@@ -121,7 +122,8 @@ func handleSysUnseal(core *vault.Core) http.Handler {
 			if err != nil {
 				respondError(
 					w, http.StatusBadRequest,
-					errors.New("'key' must be a valid hex or base64 string"))
+					errors.New("'key' must be a valid hex or base64 string"),
+				)
 				return
 			}
 		}

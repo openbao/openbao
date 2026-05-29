@@ -1,0 +1,3 @@
+```release-note:change
+core: `net/http.ServeMux` in Go 1.26.x now uses 307 redirect instead of 301 when given a bare path which doesn't exist in the multiplexer but which a path with a trailing slash exists for. This causes some `POST`/`PUT` operations to fail with a 400 instead of 404, as OpenBao does not allow writes to paths ending in a slash. See also: https://go.dev/doc/go1.26.
+```

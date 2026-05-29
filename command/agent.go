@@ -240,7 +240,8 @@ func (c *AgentCommand) Run(args []string) int {
 		if api.ReadBaoVariable("BAO_TEST_VERIFY_ONLY_DUMP_CONFIG") != "" {
 			c.UI.Output(fmt.Sprintf(
 				"\nConfiguration:\n%s\n",
-				pretty.Sprint(*c.config)))
+				pretty.Sprint(*c.config),
+			))
 		}
 		return 0
 	}
@@ -252,7 +253,8 @@ func (c *AgentCommand) Run(args []string) int {
 	if err != nil {
 		c.UI.Error(fmt.Sprintf(
 			"Error fetching client: %v",
-			err))
+			err,
+		))
 		return 1
 	}
 
@@ -776,7 +778,8 @@ func (c *AgentCommand) Run(args []string) int {
 			"%s%s: %s",
 			strings.Repeat(" ", padding-len(k)),
 			caser.String(k),
-			info[k]))
+			info[k],
+		))
 	}
 	c.UI.Output("")
 

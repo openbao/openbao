@@ -97,7 +97,8 @@ func (b *backend) pathKeysConfigWrite(ctx context.Context, req *logical.Request,
 	}
 	if p == nil {
 		return logical.ErrorResponse(
-				fmt.Sprintf("no existing key named %s could be found", name)),
+				fmt.Sprintf("no existing key named %s could be found", name),
+			),
 			logical.ErrInvalidRequest
 	}
 	if !b.System().CachingDisabled() {
@@ -141,7 +142,8 @@ func (b *backend) pathKeysConfigWrite(ctx context.Context, req *logical.Request,
 		if minDecryptionVersion != p.MinDecryptionVersion {
 			if minDecryptionVersion > p.LatestVersion {
 				return logical.ErrorResponse(
-					fmt.Sprintf("cannot set min decryption version of %d, latest key version is %d", minDecryptionVersion, p.LatestVersion)), nil
+					fmt.Sprintf("cannot set min decryption version of %d, latest key version is %d", minDecryptionVersion, p.LatestVersion),
+				), nil
 			}
 			p.MinDecryptionVersion = minDecryptionVersion
 			persistNeeded = true
@@ -159,7 +161,8 @@ func (b *backend) pathKeysConfigWrite(ctx context.Context, req *logical.Request,
 		if minEncryptionVersion != p.MinEncryptionVersion {
 			if minEncryptionVersion > p.LatestVersion {
 				return logical.ErrorResponse(
-					fmt.Sprintf("cannot set min encryption version of %d, latest key version is %d", minEncryptionVersion, p.LatestVersion)), nil
+					fmt.Sprintf("cannot set min encryption version of %d, latest key version is %d", minEncryptionVersion, p.LatestVersion),
+				), nil
 			}
 			p.MinEncryptionVersion = minEncryptionVersion
 			persistNeeded = true
@@ -171,7 +174,8 @@ func (b *backend) pathKeysConfigWrite(ctx context.Context, req *logical.Request,
 	if p.MinEncryptionVersion > 0 &&
 		p.MinEncryptionVersion < p.MinDecryptionVersion {
 		return logical.ErrorResponse(
-			fmt.Sprintf("cannot set min encryption/decryption values; min encryption version of %d must be greater than or equal to min decryption version of %d", p.MinEncryptionVersion, p.MinDecryptionVersion)), nil
+			fmt.Sprintf("cannot set min encryption/decryption values; min encryption version of %d must be greater than or equal to min decryption version of %d", p.MinEncryptionVersion, p.MinDecryptionVersion),
+		), nil
 	}
 
 	allowDeletionInt, ok := d.GetOk("deletion_allowed")

@@ -32,7 +32,7 @@ interface PkiTidyBooleans {
 }
 
 export default class PkiTidyForm extends Component<Args> {
-  @service declare readonly router: RouterService;
+  @service declare readonly 'host-router': RouterService;
 
   @tracked errorBanner = '';
   @tracked invalidFormAlert = '';

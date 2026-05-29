@@ -25,6 +25,7 @@ See the information about community membership roles to learn about the role of 
 | Tom Gehrke       | [@phyrog](https://github.com/phyrog)                   | [`vault/`]                                                                                        |
 | Tomasz Madej     | [@tomek-securosys](https://github.com/tomek-securosys) | [`go-kms-wrapping/{kms,wrapper}/securosyshsm`][g-k-w]                                             |
 | Toni Tauro       | [@eyenx](https://github.com/eyenx)                     | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
+| Valentin Weber   | [@weberval](https://github.com/weberval)               | [dependency-vulnerabilities]                                                                      |
 | Wojciech Slabosz | [@wslabosz-reply](https://github.com/wslabosz-reply)   | [`vault/`]                                                                                        |
 | Yannis           | [@Nerkho](https://github.com/Nerkho)                   | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
 
@@ -36,6 +37,7 @@ See the information about community membership roles to learn about the role of 
 [k8s]: https://github.com/openbao/openbao-k8s
 [secrets-operator]: https://github.com/openbao/openbao-secrets-operator
 [g-k-w]: https://github.com/openbao/go-kms-wrapping/
+[dependency-vulnerabilities]: https://github.com/openbao/dependency-vulnerabilities/
 
 ## Organization-Level Moderators
 
@@ -44,7 +46,8 @@ See the information about community membership roles to learn about the role of 
 | Fatima Patel    | [@fatima2003](https://github.com/fatima2003)             |
 | Gabriel Santos  | [@Gabrielopesantos](https://github.com/Gabrielopesantos) |
 | Michael Hofer   | [@karras](https://github.com/karras)                     |
-| Klaus Kiefer    | [@klaus-sap](https://klaus-sap)                          |
+| Klaus Kiefer    | [@klaus-sap](https://github.com/klaus-sap)               |
+| Tero Saarni     | [@tsaarni](https://github.com/tsaarni)                   |
 
 # OpenBao Community Roles
 

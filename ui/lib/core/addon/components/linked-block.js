@@ -32,7 +32,7 @@ import { encodePath } from 'vault/utils/path-encoding-helpers';
  */
 
 export default class LinkedBlockComponent extends Component {
-  @service router;
+  @service 'host-router';
 
   @action
   onClick(event) {
@@ -62,7 +62,7 @@ export default class LinkedBlockComponent extends Component {
           targetRoute = `${this.args.linkPrefix}.${targetRoute}`;
           this.args.params[0] = targetRoute;
         }
-        this.router.transitionTo(...params);
+        this['host-router'].transitionTo(...params);
       }
     }
   }

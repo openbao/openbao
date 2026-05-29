@@ -1,0 +1,3 @@
+```release-note:bug
+core: Disallow logical secret engines from creating authentication tokens.
+```

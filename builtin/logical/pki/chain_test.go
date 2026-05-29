@@ -321,7 +321,8 @@ func (c CBValidateChain) Run(t testing.TB, b *backend, s logical.Storage, knownK
 			// the chain against a single value. Instead, use strings.Contains
 			// to validate the current cert is in the list of allowed
 			// possibilities.
-			require.Containsf(t, expectedChain[currentIndex], currentCert,
+			require.Containsf(
+				t, expectedChain[currentIndex], currentCert,
 				"chain mismatch at index %v for issuer %v: got cert:\n[%v]\n[pretty: %v]\nbut expected one of\n[%v]\n[pretty: %v]\n",
 				currentIndex, issuer, currentCert, c.FindNameForCert(t, currentCert, knownCerts), expectedChain[currentIndex], chain[currentIndex],
 			)
@@ -331,7 +332,8 @@ func (c CBValidateChain) Run(t testing.TB, b *backend, s logical.Storage, knownK
 		// in the chain is only used once. Validate that now.
 		for thisIndex, thisCert := range currentChain {
 			for otherIndex, otherCert := range currentChain[thisIndex+1:] {
-				require.NotEqualf(t, thisCert, otherCert,
+				require.NotEqualf(
+					t, thisCert, otherCert,
 					"cert reused in chain for %v:\n[%v]\n[pretty: %v / index: %v]\n[%v]\n[pretty: %v / index: %v]\n",
 					issuer, thisCert, c.FindNameForCert(t, thisCert, knownCerts), thisIndex, otherCert, c.FindNameForCert(t, otherCert, knownCerts), otherIndex+thisIndex+1,
 				)
@@ -357,7 +359,8 @@ func (c CBValidateChain) Run(t testing.TB, b *backend, s logical.Storage, knownK
 				}
 			}
 
-			require.Truef(t, foundCert,
+			require.Truef(
+				t, foundCert,
 				"malformed test scenario: certificate at chain index %v when validating %v does not validate any previous certificates:\n[%v]\n[pretty: %v]\n",
 				thisIndex, issuer, thisCertPem, c.FindNameForCert(t, thisCertPem, knownCerts),
 			)
@@ -437,13 +440,15 @@ func (c CBIssueLeaf) IssueLeaf(t testing.TB, b *backend, s logical.Storage, know
 	issuer := ToCertificate(t, raw_issuer)
 
 	// Validate issuer and signatures are good.
-	require.Equalf(t, strings.TrimSpace(raw_issuer), strings.TrimSpace(knownCerts[c.Issuer]),
+	require.Equalf(
+		t, strings.TrimSpace(raw_issuer), strings.TrimSpace(knownCerts[c.Issuer]),
 		"signing certificate ended with wrong certificate for issuer %v:\n[%v]\n\nvs\n\n[%v]\n",
 		c.Issuer, raw_issuer, knownCerts[c.Issuer],
 	)
 
 	err = cert.CheckSignatureFrom(issuer)
-	require.NoErrorf(t, err,
+	require.NoErrorf(
+		t, err,
 		"failed to verify signature on issued certificate from %v: %v\n[%v]\n[%v]\n",
 		c.Issuer, err, raw_cert, raw_issuer,
 	)
@@ -466,7 +471,8 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 	require.NoErrorf(t, err, "failed to revoke issued certificate (%v) under role %v / issuer %v: %v", api_serial, c.Role, c.Issuer, err)
 	require.NotNilf(t, resp, "failed to revoke issued certificate (%v) under role %v / issuer %v: nil response", api_serial, c.Role, c.Issuer)
 	_, ok := resp.Data["revocation_time"]
-	require.Truef(t, ok,
+	require.Truef(
+		t, ok,
 		"failed to revoke issued certificate (%v) under role %v / issuer %v: expected response parameter revocation_time was missing from response:\n%v",
 		api_serial, c.Role, c.Issuer, resp.Data,
 	)
@@ -535,7 +541,8 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 			}
 		}
 
-		require.FailNow(t,
+		require.FailNow(
+			t,
 			"expected to find certificate with serial [%v] on issuer %v's CRL but was missing: %v revoked certs\n\nCRL:\n[%v]\n\nLeaf:\n[%v]\n\nIssuer (hasCRL: %v):\n[%v]\n",
 			api_serial, c.Issuer, len(crl.RevokedCertificateEntries), raw_crl, raw_cert, hasCRL, raw_issuer,
 		)
@@ -626,7 +633,8 @@ func ensureStableOrderingOfChains(t testing.TB, b *backend, s logical.Storage, k
 
 			rawCurrentChain := resp.Data["ca_chain"].([]string)
 			for index, entry := range rawCurrentChain {
-				require.Equalf(t, certChains[issuer][index], strings.TrimSpace(entry),
+				require.Equalf(
+					t, certChains[issuer][index], strings.TrimSpace(entry),
 					"iteration %d - chain for issuer %v differed at index %d\n%v\nvs\n%v",
 					i, issuer, index, entry, certChains[issuer][index],
 				)

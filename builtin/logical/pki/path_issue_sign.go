@@ -640,7 +640,8 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 	format := getFormat(data)
 	if format == "" {
 		return logical.ErrorResponse(
-			`the "format" path parameter must be "pem", "der", or "pem_bundle"`), nil
+			`the "format" path parameter must be "pem", "der", or "pem_bundle"`,
+		), nil
 	}
 
 	input := &inputBundle{
@@ -739,7 +740,8 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 			respData,
 			map[string]interface{}{
 				"serial_number": cb.SerialNumber,
-			})
+			},
+		)
 		resp.Secret.TTL = time.Until(parsedBundle.Certificate.NotAfter)
 	}
 
@@ -793,7 +795,8 @@ func (b *backend) getCelEvalConfig(useCSR bool) *celhelper.EvalConfig {
 			celgo.Variable("parsed_csr",
 				types.NewMapType(
 					types.StringType,
-					types.DynType)))
+					types.DynType,
+				)))
 	}
 
 	return &celhelper.EvalConfig{
@@ -1008,7 +1011,8 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 			respData,
 			map[string]interface{}{
 				"serial_number": cb.SerialNumber,
-			})
+			},
+		)
 		resp.Secret.TTL = time.Until(parsedBundle.Certificate.NotAfter)
 	} else {
 		// Non-Leased Certificate
@@ -1122,10 +1126,12 @@ func (b *backend) fetchCaSigningBundle(ctx context.Context, req *logical.Request
 		switch caErr.(type) {
 		case errutil.UserError:
 			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-				"could not fetch the CA certificate (was one set?): %s", caErr)}
+				"could not fetch the CA certificate (was one set?): %s", caErr,
+			)}
 		default:
 			return nil, nil, errutil.InternalError{Err: fmt.Sprintf(
-				"error fetching CA certificate: %s", caErr)}
+				"error fetching CA certificate: %s", caErr,
+			)}
 		}
 	}
 	return signingBundle, sc, nil

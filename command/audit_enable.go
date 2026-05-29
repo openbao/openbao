@@ -128,7 +128,7 @@ func (c *AuditEnableCommand) Run(args []string) int {
 	auditPath = ensureTrailingSlash(auditPath)
 
 	// Pull our fake stdin if needed
-	stdin := (io.Reader)(os.Stdin)
+	stdin := io.Reader(os.Stdin)
 	if c.testStdin != nil {
 		stdin = c.testStdin
 	}

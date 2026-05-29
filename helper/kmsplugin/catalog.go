@@ -201,7 +201,8 @@ func (c *Catalog) checkFilePath(plugin *server.PluginConfig) error {
 	} else {
 		// Declarative, OCI-based plugin.
 		ok = filepath.Dir(path) == filepath.Join(
-			c.pluginDirectory, oci.PluginCacheDir, plugin.Slug(), plugin.SHA256Sum[:8])
+			c.pluginDirectory, oci.PluginCacheDir, plugin.Slug(), plugin.SHA256Sum[:8],
+		)
 	}
 	if !ok {
 		return errors.New("cannot execute files outside of configured plugin directory")

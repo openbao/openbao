@@ -95,5 +95,6 @@ func formatOutputPolicy(path string, capabilities []string) string {
 	return fmt.Sprintf(
 		`path "%s" {
   capabilities = ["%s"]
-}`, path, capStr)
+}`, path, capStr,
+	)
 }

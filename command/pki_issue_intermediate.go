@@ -81,7 +81,7 @@ func (c *PKIIssueCACommand) Run(args []string) int {
 		return 1
 	}
 
-	stdin := (io.Reader)(os.Stdin)
+	stdin := io.Reader(os.Stdin)
 	if c.flagNonInteractive {
 		stdin = bytes.NewReader(nil)
 	}

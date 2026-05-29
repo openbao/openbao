@@ -1056,7 +1056,8 @@ func TestClientWithNamespace(t *testing.T) {
 	client.SetNamespace(ogNS)
 	_, err = client.rawRequestWithContext(
 		t.Context(),
-		client.NewRequest(http.MethodGet, "/"))
+		client.NewRequest(http.MethodGet, "/"),
+	)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -1068,7 +1069,8 @@ func TestClientWithNamespace(t *testing.T) {
 	newNS := "new-namespace"
 	_, err = client.WithNamespace(newNS).rawRequestWithContext(
 		t.Context(),
-		client.NewRequest(http.MethodGet, "/"))
+		client.NewRequest(http.MethodGet, "/"),
+	)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -1078,7 +1080,8 @@ func TestClientWithNamespace(t *testing.T) {
 	// ensure client has not been modified
 	_, err = client.rawRequestWithContext(
 		t.Context(),
-		client.NewRequest(http.MethodGet, "/"))
+		client.NewRequest(http.MethodGet, "/"),
+	)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -1089,7 +1092,8 @@ func TestClientWithNamespace(t *testing.T) {
 	// make call with empty ns
 	_, err = client.WithNamespace("").rawRequestWithContext(
 		t.Context(),
-		client.NewRequest(http.MethodGet, "/"))
+		client.NewRequest(http.MethodGet, "/"),
+	)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

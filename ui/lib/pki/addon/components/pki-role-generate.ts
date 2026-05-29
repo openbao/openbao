@@ -23,7 +23,7 @@ interface Args {
 }
 
 export default class PkiRoleGenerate extends Component<Args> {
-  @service declare readonly router: Router;
+  @service declare readonly 'host-router': Router;
   @service declare readonly store: Store;
   @service declare readonly flashMessages: FlashMessageService;
   @service declare readonly download: DownloadService;
@@ -54,6 +54,6 @@ export default class PkiRoleGenerate extends Component<Args> {
 
   @action cancel() {
     this.args.model.unloadRecord();
-    this.router.transitionTo('vault.cluster.secrets.backend.pki.roles.role.details');
+    this['host-router'].transitionTo('vault.cluster.secrets.backend.pki.roles.role.details');
   }
 }

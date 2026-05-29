@@ -141,7 +141,8 @@ func TestCRUDCelRoles(t *testing.T) {
 	for _, v := range vars {
 		if v.Name == "require_ip_sans" {
 			found = true
-			require.Equal(t,
+			require.Equal(
+				t,
 				"size(request.ip_sans) >= 2",
 				v.Expression,
 				"`require_ip_sans` expression not updated",

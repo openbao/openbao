@@ -61,7 +61,6 @@ builds:
         goarm: "7"
       - goos: windows
         goarch: arm
-        goarm: "7"
       - goos: windows
         goarch: riscv64
     mod_timestamp: "{{ .CommitTimestamp }}"

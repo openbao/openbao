@@ -69,7 +69,11 @@ changelog:
   disable: true
 
 archives:
-  - format: tar.gz
+  - format_overrides:
+      - formats: tar.gz
+      # Use zip for windows archives.
+      - goos: windows
+        formats: zip
     # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
       {{ .ProjectName }}_{{ .Version }}_{{- title .Os }}_
@@ -77,10 +81,6 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
-    format_overrides:
-      - goos: windows
-        format: zip
     files:
       - "LICENSE"
       - "README.md"

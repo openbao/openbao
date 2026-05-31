@@ -367,7 +367,8 @@ changelog:
   disable: true
 
 archives:
-  - format: tar.gz
+  - format_overrides:
+      - formats: tar.gz
     # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
       {{ .ProjectName }}-hsm_{{ .Version }}_{{- title .Os }}_

@@ -385,11 +385,8 @@ archives:
       mtime: 2008-01-02T15:04:05Z
 
 sboms:
-  - artifacts: archive
-  - id: binary
-    artifacts: binary
-    documents:
-      - "{{ .Binary }}-hsm_{{ .Version }}_{{ .Os }}_{{ .Arch }}.sbom.json"
+  - id: archive
+    artifacts: archive
   - id: package
     artifacts: package
 

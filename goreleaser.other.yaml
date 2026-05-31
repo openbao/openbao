@@ -63,8 +63,7 @@ builds:
 report_sizes: true
 
 checksum:
-  name_template: "checksums-other.txt"
-  disable: false
+  disable: true
 
 changelog:
   disable: true

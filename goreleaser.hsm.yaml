@@ -111,8 +111,7 @@ nfpms:
         key_file: "{{ .Env.GPG_KEY_FILE }}"
 
 checksum:
-  name_template: "checksums-linux-hsm.txt"
-  disable: false
+  disable: true
 
 dockers:
   - id: hsm-alpine-amd64

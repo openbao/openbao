@@ -14,28 +14,6 @@ builds:
       - >-
         {{- if eq .Arch "amd64"}}CC=x86_64-linux-gnu-gcc{{- end}}
         {{- if eq .Arch "arm64"}}CC=aarch64-linux-gnu-gcc{{- end}}
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
-    ignore:
-      - goos: darwin
-      - goos: dragonfly
-      - goos: freebsd
-      - goos: illumos
-      - goos: netbsd
-      - goos: openbsd
-      - goos: wasip1
-      - goos: windows
-      - goos: linux
-        goarch: arm
-      - goos: linux
-        goarch: ppc64le
-      - goos: linux
-        goarch: s390x
-      - goos: linux
-        goarch: riscv
     mod_timestamp: "{{ .CommitTimestamp }}"
     skip: false
 

@@ -10,25 +10,6 @@ builds:
       - -X github.com/openbao/openbao/version.fullVersion={{ .Version }} -X github.com/openbao/openbao/version.GitCommit={{ .Commit }} -X github.com/openbao/openbao/version.CommitDate={{ .Date }}
     env:
       - CGO_ENABLED=0
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm
-      - arm64
-      - ppc64le
-      - riscv64
-      - s390x
-    goarm:
-      - "6"
-    ignore:
-      - goos: darwin
-      - goos: dragonfly
-      - goos: freebsd
-      - goos: illumos
-      - goos: netbsd
-      - goos: openbsd
-      - goos: windows
     mod_timestamp: "{{ .CommitTimestamp }}"
     skip: false
 report_sizes: true

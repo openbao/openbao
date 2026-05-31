@@ -66,6 +66,9 @@ checksum:
   name_template: "checksums-other.txt"
   disable: false
 
+changelog:
+  disable: true
+
 archives:
   - format: tar.gz
     # this name template makes the OS and Arch compatible with the results of `uname`.
@@ -95,15 +98,6 @@ sboms:
     artifacts: archive
   - id: package
     artifacts: package
-
-changelog:
-  disable: "{{ if gt (len .Env.NIGHTLY_RELEASE) 0 }}true{{ end }}"
-  use: github
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
 
 signs:
   - id: cosign

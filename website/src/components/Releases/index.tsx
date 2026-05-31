@@ -1,4 +1,6 @@
-const arches: string[] = ["amd64", "arm64", "armhf", "armv7hl", "arm", "riscv64", "aarch64", "x86_64", "ppc64le", "s390x"];
+const arches: string[] = [
+    "amd64", "arm64", "armhf", "armv7hl", "arm", "armv6", "armv7", "riscv64", "aarch64", "x86_64", "ppc64le", "s390x",
+];
 
 interface ArchPackageMap {
     [key: string]: string[];

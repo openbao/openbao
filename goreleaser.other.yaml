@@ -2,9 +2,6 @@ version: 2
 
 project_name: bao
 
-env:
-  - NIGHTLY_RELEASE={{ if and (index .Env "NIGHTLY_RELEASE") (eq .Env.NIGHTLY_RELEASE "true") }}-nightly{{ end }}
-
 builds:
   - id: builds-other
     tags:
@@ -116,13 +113,12 @@ signs:
       - "${artifact}"
 
 release:
-  github:
-    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
-    name: openbao{{ .Env.NIGHTLY_RELEASE }}
-
   prerelease: auto
   disable: false
 
   draft: false
   replace_existing_draft: false
   replace_existing_artifacts: false
+  github:
+    name: "{{ base .Env.GITHUB_REPOSITORY }}"
+    owner: "{{ dir .Env.GITHUB_REPOSITORY }}"

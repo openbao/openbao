@@ -57,10 +57,11 @@ func (a *transitAdapter) CreateKey(ctx context.Context, name string, alg kmiplib
 	p, upserted, err := a.b.GetPolicy(
 		ctx,
 		keysutil.PolicyRequest{
-			Storage: a.s,
-			Name:    name,
-			KeyType: kt,
-			Upsert:  true,
+			Storage:    a.s,
+			Name:       name,
+			KeyType:    kt,
+			Upsert:     true,
+			Exportable: true,
 		},
 		a.b.GetRandomReader(),
 	)
@@ -193,11 +194,31 @@ func (a *transitAdapter) GetAttributes(ctx context.Context, id string, names []k
 
 	attrs := []kmiplib.Attribute{
 		{AttributeName: kmiplib.AttributeNameName, AttributeValue: kmiplib.Name{NameValue: p.Name, NameType: kmiplib.NameTypeUninterpretedTextString}},
+		{AttributeName: kmiplib.AttributeNameUniqueIdentifier, AttributeValue: p.Name},
 		{AttributeName: kmiplib.AttributeNameObjectType, AttributeValue: objType},
 		{AttributeName: kmiplib.AttributeNameCryptographicAlgorithm, AttributeValue: alg},
 		{AttributeName: kmiplib.AttributeNameCryptographicLength, AttributeValue: int32(bitlen)},
 		{AttributeName: kmiplib.AttributeNameState, AttributeValue: kmiplib.StateActive},
 	}
+
+	// InitialDate/ActivationDate come from the first key version, not the latest
+	// rotation → fall back to MinDecryptionVersion if version 1 was archived.
+	initialVersionStr := "1"
+	if _, ok := p.Keys[initialVersionStr]; !ok {
+		initialVersionStr = strconv.Itoa(p.MinDecryptionVersion)
+	}
+	if initialEntry, ok := p.Keys[initialVersionStr]; ok {
+		attrs = append(attrs, kmiplib.Attribute{
+			AttributeName:  kmiplib.AttributeNameInitialDate,
+			AttributeValue: initialEntry.CreationTime,
+		})
+		// State=Active is only consistent with an ActivationDate set → supply it.
+		attrs = append(attrs, kmiplib.Attribute{
+			AttributeName:  kmiplib.AttributeNameActivationDate,
+			AttributeValue: initialEntry.CreationTime,
+		})
+	}
+
 	if len(names) == 0 {
 		return attrs, nil
 	}
@@ -207,6 +228,7 @@ func (a *transitAdapter) GetAttributes(ctx context.Context, id string, names []k
 		for _, attr := range attrs {
 			if attr.AttributeName == want {
 				filtered = append(filtered, attr)
+				break
 			}
 		}
 	}
@@ -214,21 +236,24 @@ func (a *transitAdapter) GetAttributes(ctx context.Context, id string, names []k
 	return filtered, nil
 }
 
-// LocateKeys returns a []IDs of keys matching attrs.
-// Returns only non-revoked keys, empty []attr means return all active keys.
+// LocateKeys returns a []IDs of keys matching attrs (still AND across all).
+// Empty []attr means return all keys.
 //
-// TODO: support additional Locate filters (still AND across all):
+// Unsupported filters are ignored, not rejected → clients (e.g. MySQL's
+// keyring_kmip) that send extra attributes can still locate their key.
 //   - State?
 //   - CryptographicAlgorithm
 //   - CryptographicLength
-//   - CryptographicUsageMask
 //   - UniqueIdentifier
 //
-// TODO: MaximumItems / OffsetItems ?
+// TODO: CryptographicUsageMask filter?
 func (a *transitAdapter) LocateKeys(ctx context.Context, attrs []kmiplib.Attribute) ([]string, error) {
 	var (
 		wantName       string
 		wantObjectType kmiplib.ObjectType
+		wantAlg        kmiplib.CryptographicAlgorithm
+		wantBitlen     int32
+		wantState      kmiplib.State
 	)
 	for _, attr := range attrs {
 		switch attr.AttributeName {
@@ -244,6 +269,19 @@ func (a *transitAdapter) LocateKeys(ctx context.Context, attrs []kmiplib.Attribu
 				return nil, nil
 			}
 			wantName = n.NameValue
+		case kmiplib.AttributeNameUniqueIdentifier:
+			// UniqueIdentifier is the policy name in transit.
+			id, ok := attr.AttributeValue.(string)
+			if !ok || id == "" {
+				return nil, kmipserver.Errorf(
+					kmiplib.ResultReasonInvalidField,
+					"UniqueIdentifier attribute is empty or invalid",
+				)
+			}
+			if wantName != "" && wantName != id {
+				return nil, nil
+			}
+			wantName = id
 		case kmiplib.AttributeNameObjectType:
 			ot, ok := attr.AttributeValue.(kmiplib.ObjectType)
 			if !ok {
@@ -256,6 +294,12 @@ func (a *transitAdapter) LocateKeys(ctx context.Context, attrs []kmiplib.Attribu
 				return nil, nil
 			}
 			wantObjectType = ot
+		case kmiplib.AttributeNameCryptographicAlgorithm:
+			wantAlg, _ = attr.AttributeValue.(kmiplib.CryptographicAlgorithm)
+		case kmiplib.AttributeNameCryptographicLength:
+			wantBitlen, _ = attr.AttributeValue.(int32)
+		case kmiplib.AttributeNameState:
+			wantState, _ = attr.AttributeValue.(kmiplib.State)
 		default:
 			return nil, kmipserver.Errorf(
 				kmiplib.ResultReasonOperationNotSupported,
@@ -264,8 +308,8 @@ func (a *transitAdapter) LocateKeys(ctx context.Context, attrs []kmiplib.Attribu
 		}
 	}
 
-	// no Name and no ObjectType → just list.
-	if wantName == "" && wantObjectType == 0 {
+	// no filter at all → just list.
+	if wantName == "" && wantObjectType == 0 && wantAlg == 0 && wantBitlen == 0 && wantState == 0 {
 		return a.s.List(ctx, "policy/")
 	}
 
@@ -296,7 +340,12 @@ func (a *transitAdapter) LocateKeys(ctx context.Context, attrs []kmiplib.Attribu
 		}
 		defer p.Unlock()
 
-		if wantObjectType == 0 {
+		// transit keys are Active once created.
+		if wantState != 0 && wantState != kmiplib.StateActive {
+			return false, nil
+		}
+		// nothing key-specific to match → it's a hit.
+		if wantObjectType == 0 && wantAlg == 0 && wantBitlen == 0 {
 			return true, nil
 		}
 		versionStr := strconv.Itoa(p.LatestVersion)
@@ -304,11 +353,20 @@ func (a *transitAdapter) LocateKeys(ctx context.Context, attrs []kmiplib.Attribu
 		if !ok {
 			return false, nil
 		}
-		_, _, objType, err := kmipAttrsForPolicy(keyEntry, p.Type)
+		alg, bitlen, objType, err := kmipAttrsForPolicy(keyEntry, p.Type)
 		if err != nil {
 			return false, err
 		}
-		return objType == wantObjectType, nil
+		if wantObjectType != 0 && objType != wantObjectType {
+			return false, nil
+		}
+		if wantAlg != 0 && alg != wantAlg {
+			return false, nil
+		}
+		if wantBitlen != 0 && bitlen != wantBitlen {
+			return false, nil
+		}
+		return true, nil
 	}
 
 	out := make([]string, 0, len(candidates))

@@ -5,7 +5,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.34.0
-// source: helper/identity/mfa/types.proto
+// source: internal/helper/identity/mfa/types.proto
 
 package mfa
 
@@ -49,7 +49,7 @@ type Config struct {
 
 func (x *Config) Reset() {
 	*x = Config{}
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[0]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -61,7 +61,7 @@ func (x *Config) String() string {
 func (*Config) ProtoMessage() {}
 
 func (x *Config) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[0]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -74,7 +74,7 @@ func (x *Config) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Config.ProtoReflect.Descriptor instead.
 func (*Config) Descriptor() ([]byte, []int) {
-	return file_helper_identity_mfa_types_proto_rawDescGZIP(), []int{0}
+	return file_internal_helper_identity_mfa_types_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Config) GetType() string {
@@ -211,7 +211,7 @@ type TOTPConfig struct {
 
 func (x *TOTPConfig) Reset() {
 	*x = TOTPConfig{}
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[1]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -223,7 +223,7 @@ func (x *TOTPConfig) String() string {
 func (*TOTPConfig) ProtoMessage() {}
 
 func (x *TOTPConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[1]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -236,7 +236,7 @@ func (x *TOTPConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TOTPConfig.ProtoReflect.Descriptor instead.
 func (*TOTPConfig) Descriptor() ([]byte, []int) {
-	return file_helper_identity_mfa_types_proto_rawDescGZIP(), []int{1}
+	return file_internal_helper_identity_mfa_types_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *TOTPConfig) GetIssuer() string {
@@ -310,7 +310,7 @@ type DuoConfig struct {
 
 func (x *DuoConfig) Reset() {
 	*x = DuoConfig{}
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[2]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -322,7 +322,7 @@ func (x *DuoConfig) String() string {
 func (*DuoConfig) ProtoMessage() {}
 
 func (x *DuoConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[2]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -335,7 +335,7 @@ func (x *DuoConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DuoConfig.ProtoReflect.Descriptor instead.
 func (*DuoConfig) Descriptor() ([]byte, []int) {
-	return file_helper_identity_mfa_types_proto_rawDescGZIP(), []int{2}
+	return file_internal_helper_identity_mfa_types_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *DuoConfig) GetIntegrationKey() string {
@@ -388,7 +388,7 @@ type OktaConfig struct {
 
 func (x *OktaConfig) Reset() {
 	*x = OktaConfig{}
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[3]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -400,7 +400,7 @@ func (x *OktaConfig) String() string {
 func (*OktaConfig) ProtoMessage() {}
 
 func (x *OktaConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[3]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -413,7 +413,7 @@ func (x *OktaConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OktaConfig.ProtoReflect.Descriptor instead.
 func (*OktaConfig) Descriptor() ([]byte, []int) {
-	return file_helper_identity_mfa_types_proto_rawDescGZIP(), []int{3}
+	return file_internal_helper_identity_mfa_types_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *OktaConfig) GetOrgName() string {
@@ -467,7 +467,7 @@ type PingIDConfig struct {
 
 func (x *PingIDConfig) Reset() {
 	*x = PingIDConfig{}
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[4]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -479,7 +479,7 @@ func (x *PingIDConfig) String() string {
 func (*PingIDConfig) ProtoMessage() {}
 
 func (x *PingIDConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[4]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -492,7 +492,7 @@ func (x *PingIDConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PingIDConfig.ProtoReflect.Descriptor instead.
 func (*PingIDConfig) Descriptor() ([]byte, []int) {
-	return file_helper_identity_mfa_types_proto_rawDescGZIP(), []int{4}
+	return file_internal_helper_identity_mfa_types_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *PingIDConfig) GetUseBase64Key() string {
@@ -559,7 +559,7 @@ type Secret struct {
 
 func (x *Secret) Reset() {
 	*x = Secret{}
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[5]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -571,7 +571,7 @@ func (x *Secret) String() string {
 func (*Secret) ProtoMessage() {}
 
 func (x *Secret) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[5]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -584,7 +584,7 @@ func (x *Secret) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Secret.ProtoReflect.Descriptor instead.
 func (*Secret) Descriptor() ([]byte, []int) {
-	return file_helper_identity_mfa_types_proto_rawDescGZIP(), []int{5}
+	return file_internal_helper_identity_mfa_types_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Secret) GetMethodName() string {
@@ -640,7 +640,7 @@ type TOTPSecret struct {
 
 func (x *TOTPSecret) Reset() {
 	*x = TOTPSecret{}
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[6]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -652,7 +652,7 @@ func (x *TOTPSecret) String() string {
 func (*TOTPSecret) ProtoMessage() {}
 
 func (x *TOTPSecret) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[6]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -665,7 +665,7 @@ func (x *TOTPSecret) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TOTPSecret.ProtoReflect.Descriptor instead.
 func (*TOTPSecret) Descriptor() ([]byte, []int) {
-	return file_helper_identity_mfa_types_proto_rawDescGZIP(), []int{6}
+	return file_internal_helper_identity_mfa_types_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *TOTPSecret) GetIssuer() string {
@@ -742,7 +742,7 @@ type MFAEnforcementConfig struct {
 
 func (x *MFAEnforcementConfig) Reset() {
 	*x = MFAEnforcementConfig{}
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[7]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -754,7 +754,7 @@ func (x *MFAEnforcementConfig) String() string {
 func (*MFAEnforcementConfig) ProtoMessage() {}
 
 func (x *MFAEnforcementConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_mfa_types_proto_msgTypes[7]
+	mi := &file_internal_helper_identity_mfa_types_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -767,7 +767,7 @@ func (x *MFAEnforcementConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MFAEnforcementConfig.ProtoReflect.Descriptor instead.
 func (*MFAEnforcementConfig) Descriptor() ([]byte, []int) {
-	return file_helper_identity_mfa_types_proto_rawDescGZIP(), []int{7}
+	return file_internal_helper_identity_mfa_types_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *MFAEnforcementConfig) GetName() string {
@@ -826,11 +826,11 @@ func (x *MFAEnforcementConfig) GetID() string {
 	return ""
 }
 
-var File_helper_identity_mfa_types_proto protoreflect.FileDescriptor
+var File_internal_helper_identity_mfa_types_proto protoreflect.FileDescriptor
 
-const file_helper_identity_mfa_types_proto_rawDesc = "" +
+const file_internal_helper_identity_mfa_types_proto_rawDesc = "" +
 	"\n" +
-	"\x1fhelper/identity/mfa/types.proto\x12\x03mfa\"\x90\x03\n" +
+	"(internal/helper/identity/mfa/types.proto\x12\x03mfa\"\x90\x03\n" +
 	"\x06Config\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x0e\n" +
@@ -905,22 +905,22 @@ const file_helper_identity_mfa_types_proto_rawDesc = "" +
 	"\x11auth_method_types\x18\x05 \x03(\tR\x0fauthMethodTypes\x12,\n" +
 	"\x12identity_group_ids\x18\x06 \x03(\tR\x10identityGroupIDs\x12.\n" +
 	"\x13identity_entity_ids\x18\a \x03(\tR\x11identityEntityIDs\x12\x0e\n" +
-	"\x02id\x18\b \x01(\tR\x02idB0Z.github.com/openbao/openbao/helper/identity/mfab\x06proto3"
+	"\x02id\x18\b \x01(\tR\x02idB<Z:github.com/openbao/openbao/v2/internal/helper/identity/mfab\x06proto3"
 
 var (
-	file_helper_identity_mfa_types_proto_rawDescOnce sync.Once
-	file_helper_identity_mfa_types_proto_rawDescData []byte
+	file_internal_helper_identity_mfa_types_proto_rawDescOnce sync.Once
+	file_internal_helper_identity_mfa_types_proto_rawDescData []byte
 )
 
-func file_helper_identity_mfa_types_proto_rawDescGZIP() []byte {
-	file_helper_identity_mfa_types_proto_rawDescOnce.Do(func() {
-		file_helper_identity_mfa_types_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_helper_identity_mfa_types_proto_rawDesc), len(file_helper_identity_mfa_types_proto_rawDesc)))
+func file_internal_helper_identity_mfa_types_proto_rawDescGZIP() []byte {
+	file_internal_helper_identity_mfa_types_proto_rawDescOnce.Do(func() {
+		file_internal_helper_identity_mfa_types_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_helper_identity_mfa_types_proto_rawDesc), len(file_internal_helper_identity_mfa_types_proto_rawDesc)))
 	})
-	return file_helper_identity_mfa_types_proto_rawDescData
+	return file_internal_helper_identity_mfa_types_proto_rawDescData
 }
 
-var file_helper_identity_mfa_types_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
-var file_helper_identity_mfa_types_proto_goTypes = []any{
+var file_internal_helper_identity_mfa_types_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_internal_helper_identity_mfa_types_proto_goTypes = []any{
 	(*Config)(nil),               // 0: mfa.Config
 	(*TOTPConfig)(nil),           // 1: mfa.TOTPConfig
 	(*DuoConfig)(nil),            // 2: mfa.DuoConfig
@@ -930,7 +930,7 @@ var file_helper_identity_mfa_types_proto_goTypes = []any{
 	(*TOTPSecret)(nil),           // 6: mfa.TOTPSecret
 	(*MFAEnforcementConfig)(nil), // 7: mfa.MFAEnforcementConfig
 }
-var file_helper_identity_mfa_types_proto_depIDxs = []int32{
+var file_internal_helper_identity_mfa_types_proto_depIDxs = []int32{
 	1, // 0: mfa.Config.totp_config:type_name -> mfa.TOTPConfig
 	3, // 1: mfa.Config.okta_config:type_name -> mfa.OktaConfig
 	2, // 2: mfa.Config.duo_config:type_name -> mfa.DuoConfig
@@ -943,35 +943,35 @@ var file_helper_identity_mfa_types_proto_depIDxs = []int32{
 	0, // [0:5] is the sub-list for field type_name
 }
 
-func init() { file_helper_identity_mfa_types_proto_init() }
-func file_helper_identity_mfa_types_proto_init() {
-	if File_helper_identity_mfa_types_proto != nil {
+func init() { file_internal_helper_identity_mfa_types_proto_init() }
+func file_internal_helper_identity_mfa_types_proto_init() {
+	if File_internal_helper_identity_mfa_types_proto != nil {
 		return
 	}
-	file_helper_identity_mfa_types_proto_msgTypes[0].OneofWrappers = []any{
+	file_internal_helper_identity_mfa_types_proto_msgTypes[0].OneofWrappers = []any{
 		(*Config_TOTPConfig)(nil),
 		(*Config_OktaConfig)(nil),
 		(*Config_DuoConfig)(nil),
 		(*Config_PingIDConfig)(nil),
 	}
-	file_helper_identity_mfa_types_proto_msgTypes[5].OneofWrappers = []any{
+	file_internal_helper_identity_mfa_types_proto_msgTypes[5].OneofWrappers = []any{
 		(*Secret_TOTPSecret)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_helper_identity_mfa_types_proto_rawDesc), len(file_helper_identity_mfa_types_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_helper_identity_mfa_types_proto_rawDesc), len(file_internal_helper_identity_mfa_types_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_helper_identity_mfa_types_proto_goTypes,
-		DependencyIndexes: file_helper_identity_mfa_types_proto_depIDxs,
-		MessageInfos:      file_helper_identity_mfa_types_proto_msgTypes,
+		GoTypes:           file_internal_helper_identity_mfa_types_proto_goTypes,
+		DependencyIndexes: file_internal_helper_identity_mfa_types_proto_depIDxs,
+		MessageInfos:      file_internal_helper_identity_mfa_types_proto_msgTypes,
 	}.Build()
-	File_helper_identity_mfa_types_proto = out.File
-	file_helper_identity_mfa_types_proto_goTypes = nil
-	file_helper_identity_mfa_types_proto_depIDxs = nil
+	File_internal_helper_identity_mfa_types_proto = out.File
+	file_internal_helper_identity_mfa_types_proto_goTypes = nil
+	file_internal_helper_identity_mfa_types_proto_depIDxs = nil
 }

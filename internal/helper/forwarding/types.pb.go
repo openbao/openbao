@@ -5,7 +5,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.34.0
-// source: helper/forwarding/types.proto
+// source: internal/helper/forwarding/types.proto
 
 package forwarding
 
@@ -42,7 +42,7 @@ type Request struct {
 
 func (x *Request) Reset() {
 	*x = Request{}
-	mi := &file_helper_forwarding_types_proto_msgTypes[0]
+	mi := &file_internal_helper_forwarding_types_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -54,7 +54,7 @@ func (x *Request) String() string {
 func (*Request) ProtoMessage() {}
 
 func (x *Request) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_forwarding_types_proto_msgTypes[0]
+	mi := &file_internal_helper_forwarding_types_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -67,7 +67,7 @@ func (x *Request) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Request.ProtoReflect.Descriptor instead.
 func (*Request) Descriptor() ([]byte, []int) {
-	return file_helper_forwarding_types_proto_rawDescGZIP(), []int{0}
+	return file_internal_helper_forwarding_types_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Request) GetMethod() string {
@@ -139,7 +139,7 @@ type URL struct {
 
 func (x *URL) Reset() {
 	*x = URL{}
-	mi := &file_helper_forwarding_types_proto_msgTypes[1]
+	mi := &file_internal_helper_forwarding_types_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -151,7 +151,7 @@ func (x *URL) String() string {
 func (*URL) ProtoMessage() {}
 
 func (x *URL) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_forwarding_types_proto_msgTypes[1]
+	mi := &file_internal_helper_forwarding_types_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -164,7 +164,7 @@ func (x *URL) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use URL.ProtoReflect.Descriptor instead.
 func (*URL) Descriptor() ([]byte, []int) {
-	return file_helper_forwarding_types_proto_rawDescGZIP(), []int{1}
+	return file_internal_helper_forwarding_types_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *URL) GetScheme() string {
@@ -225,7 +225,7 @@ type HeaderEntry struct {
 
 func (x *HeaderEntry) Reset() {
 	*x = HeaderEntry{}
-	mi := &file_helper_forwarding_types_proto_msgTypes[2]
+	mi := &file_internal_helper_forwarding_types_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -237,7 +237,7 @@ func (x *HeaderEntry) String() string {
 func (*HeaderEntry) ProtoMessage() {}
 
 func (x *HeaderEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_forwarding_types_proto_msgTypes[2]
+	mi := &file_internal_helper_forwarding_types_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -250,7 +250,7 @@ func (x *HeaderEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeaderEntry.ProtoReflect.Descriptor instead.
 func (*HeaderEntry) Descriptor() ([]byte, []int) {
-	return file_helper_forwarding_types_proto_rawDescGZIP(), []int{2}
+	return file_internal_helper_forwarding_types_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *HeaderEntry) GetValues() []string {
@@ -277,7 +277,7 @@ type Response struct {
 
 func (x *Response) Reset() {
 	*x = Response{}
-	mi := &file_helper_forwarding_types_proto_msgTypes[3]
+	mi := &file_internal_helper_forwarding_types_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -289,7 +289,7 @@ func (x *Response) String() string {
 func (*Response) ProtoMessage() {}
 
 func (x *Response) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_forwarding_types_proto_msgTypes[3]
+	mi := &file_internal_helper_forwarding_types_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -302,7 +302,7 @@ func (x *Response) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Response.ProtoReflect.Descriptor instead.
 func (*Response) Descriptor() ([]byte, []int) {
-	return file_helper_forwarding_types_proto_rawDescGZIP(), []int{3}
+	return file_internal_helper_forwarding_types_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Response) GetStatusCode() uint32 {
@@ -333,11 +333,11 @@ func (x *Response) GetLastRemoteWal() uint64 {
 	return 0
 }
 
-var File_helper_forwarding_types_proto protoreflect.FileDescriptor
+var File_internal_helper_forwarding_types_proto protoreflect.FileDescriptor
 
-const file_helper_forwarding_types_proto_rawDesc = "" +
+const file_internal_helper_forwarding_types_proto_rawDesc = "" +
 	"\n" +
-	"\x1dhelper/forwarding/types.proto\x12\n" +
+	"&internal/helper/forwarding/types.proto\x12\n" +
 	"forwarding\"\xe4\x02\n" +
 	"\aRequest\x12\x16\n" +
 	"\x06method\x18\x02 \x01(\tR\x06method\x12!\n" +
@@ -369,22 +369,22 @@ const file_helper_forwarding_types_proto_rawDesc = "" +
 	"\x0flast_remote_wal\x18\x05 \x01(\x04R\rlastRemoteWal\x1aY\n" +
 	"\x12HeaderEntriesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
-	"\x05value\x18\x02 \x01(\v2\x17.forwarding.HeaderEntryR\x05value:\x028\x01B.Z,github.com/openbao/openbao/helper/forwardingb\x06proto3"
+	"\x05value\x18\x02 \x01(\v2\x17.forwarding.HeaderEntryR\x05value:\x028\x01B:Z8github.com/openbao/openbao/v2/internal/helper/forwardingb\x06proto3"
 
 var (
-	file_helper_forwarding_types_proto_rawDescOnce sync.Once
-	file_helper_forwarding_types_proto_rawDescData []byte
+	file_internal_helper_forwarding_types_proto_rawDescOnce sync.Once
+	file_internal_helper_forwarding_types_proto_rawDescData []byte
 )
 
-func file_helper_forwarding_types_proto_rawDescGZIP() []byte {
-	file_helper_forwarding_types_proto_rawDescOnce.Do(func() {
-		file_helper_forwarding_types_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_helper_forwarding_types_proto_rawDesc), len(file_helper_forwarding_types_proto_rawDesc)))
+func file_internal_helper_forwarding_types_proto_rawDescGZIP() []byte {
+	file_internal_helper_forwarding_types_proto_rawDescOnce.Do(func() {
+		file_internal_helper_forwarding_types_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_helper_forwarding_types_proto_rawDesc), len(file_internal_helper_forwarding_types_proto_rawDesc)))
 	})
-	return file_helper_forwarding_types_proto_rawDescData
+	return file_internal_helper_forwarding_types_proto_rawDescData
 }
 
-var file_helper_forwarding_types_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_helper_forwarding_types_proto_goTypes = []any{
+var file_internal_helper_forwarding_types_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_internal_helper_forwarding_types_proto_goTypes = []any{
 	(*Request)(nil),     // 0: forwarding.Request
 	(*URL)(nil),         // 1: forwarding.URL
 	(*HeaderEntry)(nil), // 2: forwarding.HeaderEntry
@@ -392,7 +392,7 @@ var file_helper_forwarding_types_proto_goTypes = []any{
 	nil,                 // 4: forwarding.Request.HeaderEntriesEntry
 	nil,                 // 5: forwarding.Response.HeaderEntriesEntry
 }
-var file_helper_forwarding_types_proto_depIdxs = []int32{
+var file_internal_helper_forwarding_types_proto_depIdxs = []int32{
 	1, // 0: forwarding.Request.url:type_name -> forwarding.URL
 	4, // 1: forwarding.Request.header_entries:type_name -> forwarding.Request.HeaderEntriesEntry
 	5, // 2: forwarding.Response.header_entries:type_name -> forwarding.Response.HeaderEntriesEntry
@@ -405,26 +405,26 @@ var file_helper_forwarding_types_proto_depIdxs = []int32{
 	0, // [0:5] is the sub-list for field type_name
 }
 
-func init() { file_helper_forwarding_types_proto_init() }
-func file_helper_forwarding_types_proto_init() {
-	if File_helper_forwarding_types_proto != nil {
+func init() { file_internal_helper_forwarding_types_proto_init() }
+func file_internal_helper_forwarding_types_proto_init() {
+	if File_internal_helper_forwarding_types_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_helper_forwarding_types_proto_rawDesc), len(file_helper_forwarding_types_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_helper_forwarding_types_proto_rawDesc), len(file_internal_helper_forwarding_types_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_helper_forwarding_types_proto_goTypes,
-		DependencyIndexes: file_helper_forwarding_types_proto_depIdxs,
-		MessageInfos:      file_helper_forwarding_types_proto_msgTypes,
+		GoTypes:           file_internal_helper_forwarding_types_proto_goTypes,
+		DependencyIndexes: file_internal_helper_forwarding_types_proto_depIdxs,
+		MessageInfos:      file_internal_helper_forwarding_types_proto_msgTypes,
 	}.Build()
-	File_helper_forwarding_types_proto = out.File
-	file_helper_forwarding_types_proto_goTypes = nil
-	file_helper_forwarding_types_proto_depIdxs = nil
+	File_internal_helper_forwarding_types_proto = out.File
+	file_internal_helper_forwarding_types_proto_goTypes = nil
+	file_internal_helper_forwarding_types_proto_depIdxs = nil
 }

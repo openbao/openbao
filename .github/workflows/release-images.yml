@@ -25,6 +25,17 @@ on:
           - openbao-hsm
           - openbao-hsm-ubi
 
+  # This trigger is called directly by "release.yml" to automatically trigger
+  # image releases on nightly releases.
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      distro:
+        default: all
+        type: string
+
 env:
   # Pick the right version input based on the workflow trigger.
   VERSION: ${{ case(github.event_name == 'release', github.ref_name, inputs.version) }}

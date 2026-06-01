@@ -821,14 +821,14 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 			uuid := resp.Data["uuid"].(string)
 			entryPath := path.Join(coreMountConfigPath, uuid)
 
-			triggerReadCall := func(collect require.TestingT, expectedErrors ...string) {
+			triggerReadCall := func(collect require.TestingT, path string, expectedErrors ...string) {
 				testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
 					Operation:   logical.ReadOperation,
 					ClientToken: root,
-					Path:        "my-kv-mount",
+					Path:        path,
 				}, expectedErrors...)
 			}
-			triggerReadCall(t)
+			triggerReadCall(t, "my-kv-mount")
 			require.EqualValues(t, 1, readCallCount.Load(), "expected one read call")
 
 			ns, err := namespace.FromContext(ctx)
@@ -855,7 +855,7 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
 
 			// 6. verify 404
-			triggerReadCall(t, "unsupported path")
+			triggerReadCall(t, "my-kv-mount", "unsupported path")
 
 			// 7. Manipulate mount table in storage: restore mount
 			testCore_Invalidate_sneakValueAroundCache(t, ctx, c, storageEntry)
@@ -868,15 +868,26 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 				defer c.mountsLock.RUnlock()
 				require.Equal(collect, mountTableCount+1, len(c.mounts.Entries), "expected mount table to grew by one")
 				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
-				triggerReadCall(collect)
+				triggerReadCall(collect, "my-kv-mount")
 			}, 10*time.Second, 10*time.Millisecond)
 			require.EqualValues(t, 2, readCallCount.Load(), "expected two read calls")
 
-			// 9. Manipulate mount table in storage: taint mount
+			// 9. Remount secret mount
+			require.NoError(t, c.remountSecretsEngine(ctx, c.splitNamespaceAndMountFromPath(ns.Path, "my-kv-mount"), c.splitNamespaceAndMountFromPath(ns.Path, "new-kv-mount")))
+
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				triggerReadCall(t, "my-kv-mount", "unsupported path")
+				triggerReadCall(t, "new-kv-mount")
+			}, 10*time.Second, 10*time.Millisecond)
+
+			// 10. Manipulate mount table in storage: taint mount
+			storageEntry, err = view.Get(ctx, entryPath)
+			require.NoError(t, err)
+			require.NotNil(t, storageEntry, "expected mount entry to be written at %s", view.Prefix()+entryPath)
+
 			mountEntry := new(routing.MountEntry)
 			require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountEntry))
 			mountEntry.Tainted = true
-
 			updatedData, err := jsonutil.EncodeJSON(mountEntry)
 			require.NoError(t, err)
 
@@ -885,14 +896,14 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 				Value: updatedData,
 			})
 
-			// 10. call invalidate
+			// 11. call invalidate
 			require.NoError(t, c.invalidateSynchronous(view.Prefix()+entryPath))
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
-				triggerReadCall(collect, "unsupported path")
+				triggerReadCall(collect, "new-kv-mount", "unsupported path")
 			}, 10*time.Second, 10*time.Millisecond)
 
-			// 11. Manipulate mount table in storage: untaint and allow header
+			// 12. Manipulate mount table in storage: untaint and allow header
 			mountEntry.Tainted = false
 			mountEntry.Config.AllowedResponseHeaders = []string{"Test-Header"}
 
@@ -904,21 +915,21 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 				Value: updatedData,
 			})
 
-			// 12. call invalidate
+			// 13. call invalidate
 			require.NoError(t, c.invalidateSynchronous(view.Prefix()+entryPath))
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				resp := testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
 					Operation:   logical.ReadOperation,
 					ClientToken: root,
-					Path:        "my-kv-mount",
+					Path:        "new-kv-mount",
 				})
 				require.Equal(collect, map[string][]string{
 					"Test-Header": {"test-value"},
 				}, resp.Headers)
 			}, 10*time.Second, 10*time.Millisecond)
 
-			// 13. Manipulate mount table in storage: change kv version
+			// 14. Manipulate mount table in storage: change kv version
 			mountEntry.Options["version"] = "2"
 
 			updatedData, err = jsonutil.EncodeJSON(mountEntry)
@@ -929,12 +940,12 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 				Value: updatedData,
 			})
 
-			// 14. call invalidate
+			// 15. call invalidate
 			require.NoError(t, c.invalidateSynchronous(view.Prefix()+entryPath))
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
-				require.EqualValues(collect, 3, factoryCallCount.Load(), "expected factory to be called exactly thrice")
-				triggerReadCall(collect)
+				require.EqualValues(collect, 3, factoryCallCount.Load(), "expected factory to be called exactly 3 times")
+				triggerReadCall(collect, "new-kv-mount")
 			}, 10*time.Second, 10*time.Millisecond)
 		})
 	}
@@ -1020,14 +1031,14 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
 			require.Equal(t, mountTableCount+1, len(c.mounts.Entries), "expected mount table to grew by one")
 
-			triggerReadCall := func(collect require.TestingT, expectedErrors ...string) {
+			triggerReadCall := func(collect require.TestingT, path string, expectedErrors ...string) {
 				testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
 					Operation:   logical.ReadOperation,
 					ClientToken: root,
-					Path:        "my-kv-mount",
+					Path:        path,
 				}, expectedErrors...)
 			}
-			triggerReadCall(t)
+			triggerReadCall(t, "my-kv-mount")
 			require.EqualValues(t, 1, readCallCount.Load(), "expected one read call")
 
 			ns, err := namespace.FromContext(ctx)
@@ -1066,7 +1077,7 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
 
 			// 5. verify 404
-			triggerReadCall(t, "unsupported path")
+			triggerReadCall(t, "my-kv-mount", "unsupported path")
 
 			// 6. Manipulate mount table in storage: restore mount
 			testCore_Invalidate_sneakValueAroundCache(t, ctx, c, storageEntry)
@@ -1079,9 +1090,35 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 				defer c.mountsLock.RUnlock()
 				require.Equal(collect, mountTableCount+1, len(c.mounts.Entries), "expected mount table to grew by one")
 				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
-				triggerReadCall(collect)
+				triggerReadCall(collect, "my-kv-mount")
 			}, 10*time.Second, 10*time.Millisecond)
 			require.EqualValues(t, 2, readCallCount.Load(), "expected two read calls")
+
+			// 8. Remount secret mount
+			require.NoError(t, c.remountSecretsEngine(ctx, c.splitNamespaceAndMountFromPath(ns.Path, "my-kv-mount"), c.splitNamespaceAndMountFromPath(ns.Path, "new-kv-mount")))
+
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				triggerReadCall(t, "my-kv-mount", "unsupported path")
+				triggerReadCall(t, "new-kv-mount")
+			}, 10*time.Second, 10*time.Millisecond)
+
+			// 9. Manipulate mount table in storage: taint mount
+			mountTable.Entries[len(mountTable.Entries)-1].Tainted = true
+
+			updatedData, err = jsonutil.EncodeJSON(mountTable)
+			require.NoError(t, err)
+
+			testCore_Invalidate_sneakValueAroundCache(t, ctx, c, &logical.StorageEntry{
+				Key:   coreMountConfigPath,
+				Value: updatedData,
+			})
+
+			// 10. call invalidate
+			require.NoError(t, c.invalidateSynchronous(view.Prefix()+coreMountConfigPath))
+
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				triggerReadCall(collect, "new-kv-mount", "unsupported path")
+			}, 10*time.Second, 10*time.Millisecond)
 		})
 	}
 }
@@ -1168,14 +1205,14 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 			uuid := resp.Data["uuid"].(string)
 			entryPath := path.Join(coreAuthConfigPath, uuid)
 
-			callLogin := func(collect require.TestingT, expectedErrors ...string) {
+			callLogin := func(collect require.TestingT, path string, expectedErrors ...string) {
 				testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
 					Operation:   logical.ReadOperation,
 					ClientToken: root,
-					Path:        "auth/my-auth",
+					Path:        fmt.Sprintf("auth/%s", path),
 				}, expectedErrors...)
 			}
-			callLogin(t)
+			callLogin(t, "my-auth")
 			require.EqualValues(t, 1, readCallCount.Load(), "expected one read call")
 
 			ns, err := namespace.FromContext(ctx)
@@ -1202,7 +1239,7 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
 
 			// 6. verify 404
-			callLogin(t, "unsupported path")
+			callLogin(t, "my-auth", "unsupported path")
 
 			// 7. Manipulate mount table in storage: restore mount
 			testCore_Invalidate_sneakValueAroundCache(t, ctx, c, storageEntry)
@@ -1215,15 +1252,26 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 				defer c.authLock.RUnlock()
 				require.Equal(collect, mountTableCount+1, len(c.auth.Entries), "expected mount table to grew by one")
 				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
-				callLogin(collect)
+				callLogin(collect, "my-auth")
 			}, 10*time.Second, 10*time.Millisecond)
 			require.EqualValues(t, 2, readCallCount.Load(), "expected two read calls")
 
-			// 9. Manipulate mount table in storage: taint mount
+			// 9. Remount credential mount
+			require.NoError(t, c.remountCredential(ctx, c.splitNamespaceAndMountFromPath(ns.Path, "auth/my-auth"), c.splitNamespaceAndMountFromPath(ns.Path, "auth/new-auth")))
+
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				callLogin(t, "my-auth", "unsupported path")
+				callLogin(t, "new-auth")
+			}, 10*time.Second, 10*time.Millisecond)
+
+			// 10. Manipulate mount table in storage: taint mount
+			storageEntry, err = view.Get(ctx, entryPath)
+			require.NoError(t, err)
+			require.NotNil(t, storageEntry, "expected mount entry to be written at %s", view.Prefix()+entryPath)
+
 			mountEntry := new(routing.MountEntry)
 			require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountEntry))
 			mountEntry.Tainted = true
-
 			updatedData, err := jsonutil.EncodeJSON(mountEntry)
 			require.NoError(t, err)
 
@@ -1232,11 +1280,11 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 				Value: updatedData,
 			})
 
-			// 10. call invalidate
+			// 11. call invalidate
 			require.NoError(t, c.invalidateSynchronous(view.Prefix()+entryPath))
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
-				callLogin(collect, "unsupported path")
+				callLogin(collect, "new-auth", "unsupported path")
 			}, 10*time.Second, 10*time.Millisecond)
 		})
 	}
@@ -1321,14 +1369,14 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
 			require.Equal(t, mountTableCount+1, len(c.auth.Entries), "expected mount table to grew by one")
 
-			callLogin := func(collect require.TestingT, expectedErrors ...string) {
+			callLogin := func(collect require.TestingT, path string, expectedErrors ...string) {
 				testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
 					Operation:   logical.ReadOperation,
 					ClientToken: root,
-					Path:        "auth/my-auth",
+					Path:        fmt.Sprintf("auth/%s", path),
 				}, expectedErrors...)
 			}
-			callLogin(t)
+			callLogin(t, "my-auth")
 			require.EqualValues(t, 1, readCallCount.Load(), "expected one read call")
 
 			ns, err := namespace.FromContext(ctx)
@@ -1367,7 +1415,7 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
 
 			// 5. verify 404
-			callLogin(t, "unsupported path")
+			callLogin(t, "my-auth", "unsupported path")
 
 			// 6. Manipulate mount table in storage: restore mount
 			testCore_Invalidate_sneakValueAroundCache(t, ctx, c, storageEntry)
@@ -1380,12 +1428,19 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 				defer c.authLock.RUnlock()
 				require.Equal(collect, mountTableCount+1, len(c.auth.Entries), "expected mount table to grew by one")
 				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
-				callLogin(collect)
+				callLogin(collect, "my-auth")
 			}, 10*time.Second, 10*time.Millisecond)
 			require.EqualValues(t, 2, readCallCount.Load(), "expected two read calls")
 
-			// 8. Manipulate mount table in storage: taint mount
-			require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountTable))
+			// 8. Remount credential mount
+			require.NoError(t, c.remountCredential(ctx, c.splitNamespaceAndMountFromPath(ns.Path, "auth/my-auth"), c.splitNamespaceAndMountFromPath(ns.Path, "auth/new-auth")))
+
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				callLogin(t, "my-auth", "unsupported path")
+				callLogin(t, "new-auth")
+			}, 10*time.Second, 10*time.Millisecond)
+
+			// 9. Manipulate mount table in storage: taint mount
 			mountTable.Entries[len(mountTable.Entries)-1].Tainted = true
 
 			updatedData, err = jsonutil.EncodeJSON(mountTable)
@@ -1396,11 +1451,11 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 				Value: updatedData,
 			})
 
-			// 9. call invalidate
+			// 10. call invalidate
 			require.NoError(t, c.invalidateSynchronous(view.Prefix()+coreAuthConfigPath))
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
-				callLogin(collect, "unsupported path")
+				callLogin(collect, "new-auth", "unsupported path")
 			}, 10*time.Second, 10*time.Millisecond)
 		})
 	}

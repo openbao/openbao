@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"encoding/json"
+	"path"
 	"reflect"
 	"strings"
 	"testing"
@@ -619,12 +620,20 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 
 func TestCore_Remount(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
-	err := c.remountSecretsEngineCurrentNamespace(namespace.RootContext(t.Context()), "secret", "foo", true)
+	ctx := namespace.RootContext(t.Context())
+
+	// Verify it's forbidden to remount protected mounts.
+	err := c.remountSecretsEngineCurrentNamespace(ctx, "sys", "foo")
+	if err.Error() != `cannot remount "sys/"` {
+		t.Fatalf("err: %v", err)
+	}
+
+	err = c.remountSecretsEngineCurrentNamespace(ctx, "secret", "foo")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "foo/bar")
+	match := c.router.MatchingMount(ctx, "foo/bar")
 	if match != "foo/" {
 		t.Fatal("failed remount")
 	}
@@ -640,7 +649,7 @@ func TestCore_Remount(t *testing.T) {
 		}
 	}
 
-	match = c.router.MatchingMount(namespace.RootContext(t.Context()), "foo/bar")
+	match = c.router.MatchingMount(ctx, "foo/bar")
 	if match != "foo/" {
 		t.Fatal("failed remount")
 	}
@@ -704,7 +713,7 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 	}
 
 	// Remount, this should cleanup
-	if err := c.remountSecretsEngineCurrentNamespace(namespace.RootContext(t.Context()), "test/", "new/", true); err != nil {
+	if err := c.remountSecretsEngineCurrentNamespace(namespace.RootContext(t.Context()), "test/", "new/"); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -731,16 +740,8 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 	}
 }
 
-func TestCore_Remount_Protected(t *testing.T) {
-	c, _, _ := TestCoreUnsealed(t)
-	err := c.remountSecretsEngineCurrentNamespace(namespace.RootContext(t.Context()), "sys", "foo", true)
-	if err.Error() != `cannot remount "sys/"` {
-		t.Fatalf("err: %v", err)
-	}
-}
-
 func TestCore_RemountMount_Namespaces(t *testing.T) {
-	c, keys, _ := TestCoreUnsealed(t)
+	c, keys, rootToken := TestCoreUnsealed(t)
 	ns := &namespace.Namespace{Path: "ns/"}
 	unsealable1 := &namespace.Namespace{Path: "ns/unsealable1/"}
 	unsealable2 := &namespace.Namespace{Path: "ns/unsealable2/"}
@@ -757,8 +758,15 @@ func TestCore_RemountMount_Namespaces(t *testing.T) {
 	}
 
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
-	err := c.mount(namespace.ContextWithNamespace(ctx, unsealable1), me)
+	require.NoError(t, c.mount(namespace.ContextWithNamespace(ctx, unsealable1), me))
+
+	// Write data to kv mount
+	req := logical.TestRequest(t, logical.CreateOperation, "unsealable1/foo/secret")
+	req.ClientToken = rootToken
+	req.Data = map[string]any{"foo": "bar"}
+	resp, err := c.HandleRequest(ctx, req)
 	require.NoError(t, err)
+	require.NoError(t, resp.Error())
 
 	table := []struct {
 		name string
@@ -826,7 +834,7 @@ func TestCore_RemountMount_Namespaces(t *testing.T) {
 			match := c.router.MatchingMount(srcCtx, tt.src.MountPath+"foobar")
 			require.Equalf(t, tt.src.Namespace.Path+tt.src.MountPath, match, "missing mount, match: %q", match)
 
-			err := c.remountSecretsEngine(ctx, tt.src, tt.dst, true)
+			err := c.remountSecretsEngine(ctx, tt.src, tt.dst)
 			require.NoError(t, err)
 
 			match = c.router.MatchingMount(srcCtx, tt.src.MountPath+"foobar")
@@ -855,6 +863,20 @@ func TestCore_RemountMount_Namespaces(t *testing.T) {
 
 			match = c.router.MatchingMount(dstCtx, tt.dst.MountPath+"baz")
 			require.Equalf(t, tt.dst.Namespace.Path+tt.dst.MountPath, match, "mount not at new location after unseal, match: %q", match)
+
+			// Read written secret
+			req := logical.TestRequest(t, logical.ReadOperation, path.Join(tt.dst.MountPath, "secret"))
+			req.ClientToken = rootToken
+			resp, err := c.HandleRequest(dstCtx, req)
+			require.NoError(t, err)
+			require.Equal(t, "bar", resp.Data["foo"])
+
+			// Verify storage entries have moved
+			view := c.NamespaceView(tt.dst.Namespace)
+			secrets, err := view.List(ctx, path.Join(backendBarrierPrefix, me.UUID)+"/")
+			require.NoError(t, err)
+			require.Len(t, secrets, 1)
+			require.Equal(t, "secret", secrets[0])
 		})
 	}
 }

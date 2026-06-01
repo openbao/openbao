@@ -1380,9 +1380,9 @@ func (b *SystemBackend) moveMount(ns *namespace.Namespace, logger log.Logger, mi
 	// Attempt remount
 	switch entry.Table {
 	case routing.CredentialTableType:
-		err = b.Core.remountCredential(revokeCtx, fromPathDetails, toPathDetails, true)
+		err = b.Core.remountCredential(revokeCtx, fromPathDetails, toPathDetails)
 	case routing.MountTableType:
-		err = b.Core.remountSecretsEngine(revokeCtx, fromPathDetails, toPathDetails, true)
+		err = b.Core.remountSecretsEngine(revokeCtx, fromPathDetails, toPathDetails)
 	default:
 		return fmt.Errorf("cannot remount mount of table %q", entry.Table)
 	}

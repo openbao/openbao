@@ -409,11 +409,7 @@ func (c *Core) unmount(ctx context.Context, path string) error {
 	}
 
 	// Unmount mount internally
-	if err := c.unmountInternal(ctx, path, true); err != nil {
-		return err
-	}
-
-	return nil
+	return c.unmountInternal(ctx, path, true)
 }
 
 func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage bool) error {
@@ -439,7 +435,7 @@ func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage b
 	backend := c.router.MatchingBackend(ctx, path)
 
 	// Mark the entry as tainted
-	if err := c.taintMountEntry(ctx, ns.ID, path, updateStorage, true); err != nil {
+	if err := c.taintMountEntry(ctx, ns.ID, path, updateStorage); err != nil {
 		c.logger.Error("failed to taint mount entry for path being unmounted", "error", err, "namespace", ns.Path, "path", path)
 		return err
 	}
@@ -545,24 +541,46 @@ func (c *Core) removeMountEntryWithLock(ctx context.Context, path string, update
 	return nil
 }
 
-// taintMountEntry is used to mark an entry in the mount table as tainted
-func (c *Core) taintMountEntry(ctx context.Context, nsID, mountPath string, updateStorage, unmounting bool) error {
+// taintMountEntry is used to mark an entry in the mount table as tainted.
+func (c *Core) taintMountEntry(ctx context.Context, nsID, mountPath string, updateStorage bool) error {
+	c.mountsLock.Lock()
+	defer c.mountsLock.Unlock()
+
+	// As modifying the taint of an entry affects shallow clones,
+	// we simply use the original.
+	entry := c.mounts.Taint(nsID, mountPath)
+	if entry == nil {
+		c.logger.Error("nil entry found tainting entry in mount table", "path", mountPath)
+		return logical.CodedError(500, "failed to taint entry in mount table")
+	}
+
+	if updateStorage {
+		if err := c.persistMounts(ctx, c.NamespaceView(entry.Namespace), c.mounts, &entry.Local, entry.UUID); err != nil {
+			c.logger.Error("failed to taint entry in mount table", "error", err)
+			return logical.CodedError(500, "failed to taint entry in mount table: %v", err)
+		}
+	}
+
+	return nil
+}
+
+// untaintMountEntry is used to mark an entry in the mount table as untainted.
+func (c *Core) untaintMountEntry(ctx context.Context, nsID, mountPath string, updateStorage bool) error {
 	c.mountsLock.Lock()
 	defer c.mountsLock.Unlock()
 
 	// As modifying the taint of an entry affects shallow clones,
 	// we simply use the original
-	entry := c.mounts.SetTaint(nsID, mountPath)
+	entry := c.mounts.Untaint(nsID, mountPath)
 	if entry == nil {
-		c.logger.Error("nil entry found tainting entry in mounts table", "path", mountPath)
-		return logical.CodedError(500, "failed to taint entry in mounts table")
+		c.logger.Error("nil entry found untainting entry in mount table", "path", mountPath)
+		return logical.CodedError(500, "failed to untaint entry in mount table")
 	}
 
 	if updateStorage {
-		// Update the mount table
 		if err := c.persistMounts(ctx, c.NamespaceView(entry.Namespace), c.mounts, &entry.Local, entry.UUID); err != nil {
-			c.logger.Error("failed to taint entry in mounts table", "error", err)
-			return logical.CodedError(500, "failed to taint entry in mounts table: %v", err)
+			c.logger.Error("failed to untaint entry in mount table", "error", err)
+			return logical.CodedError(500, "failed to untaint entry in mount table: %v", err)
 		}
 	}
 
@@ -614,7 +632,7 @@ func (c *Core) handleDeprecatedMountEntry(ctx context.Context, entry *routing.Mo
 	return nil, nil
 }
 
-func (c *Core) remountSecretsEngineCurrentNamespace(ctx context.Context, src, dst string, updateStorage bool) error {
+func (c *Core) remountSecretsEngineCurrentNamespace(ctx context.Context, src, dst string) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
@@ -622,11 +640,11 @@ func (c *Core) remountSecretsEngineCurrentNamespace(ctx context.Context, src, ds
 
 	srcPathDetails := c.splitNamespaceAndMountFromPath(ns.Path, src)
 	dstPathDetails := c.splitNamespaceAndMountFromPath(ns.Path, dst)
-	return c.remountSecretsEngine(ctx, srcPathDetails, dstPathDetails, updateStorage)
+	return c.remountSecretsEngine(ctx, srcPathDetails, dstPathDetails)
 }
 
 // remountSecretsEngine is used to remount a path at a new mount point.
-func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.MountPathDetails, updateStorage bool) error {
+func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.MountPathDetails) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
@@ -657,7 +675,7 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	}
 
 	// Mark the entry as tainted
-	if err := c.taintMountEntry(ctx, src.Namespace.ID, src.MountPath, updateStorage, false); err != nil {
+	if err := c.taintMountEntry(ctx, src.Namespace.ID, src.MountPath, true); err != nil {
 		return err
 	}
 
@@ -670,9 +688,8 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	// various periodic funcs (e.g., PKI) can legitimately error; the
 	// periodic rollback manager logs these errors rather than failing
 	// replication like returning this error would do.
-	rCtx := namespace.ContextWithNamespace(c.activeContext.Load(), ns)
 	if c.rollback != nil && c.router.MatchingBackend(ctx, srcRelativePath) != nil {
-		if err := c.rollback.Rollback(rCtx, srcRelativePath); err != nil {
+		if err := c.rollback.Rollback(ctx, srcRelativePath); err != nil {
 			c.logger.Error("ignoring rollback error during remount", "error", err, "path", src.Namespace.Path+src.MountPath)
 			err = nil //nolint:ineffassign // we explicitly ignore the error
 		}
@@ -690,23 +707,16 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 		return fmt.Errorf("path in use at %q", match)
 	}
 
-	mountEntry.Tainted = false
 	mountEntry.NamespaceID = dst.Namespace.ID
 	mountEntry.Namespace = dst.Namespace
 	srcPath := mountEntry.Path
 	mountEntry.Path = dst.MountPath
-
-	dstBarrierView, err := c.mountEntryView(mountEntry)
-	if err != nil {
-		return err
-	}
 
 	// Update the mount table
 	if err := c.persistMounts(ctx, c.NamespaceView(mountEntry.Namespace), c.mounts, &mountEntry.Local, mountEntry.UUID); err != nil {
 		mountEntry.Namespace = src.Namespace
 		mountEntry.NamespaceID = src.Namespace.ID
 		mountEntry.Path = srcPath
-		mountEntry.Tainted = true
 		c.mountsLock.Unlock()
 		return fmt.Errorf("failed to update mount table with error %+v", err)
 	}
@@ -717,6 +727,11 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 			c.mountsLock.Unlock()
 			return err
 		}
+	}
+
+	dstBarrierView, err := c.mountEntryView(mountEntry)
+	if err != nil {
+		return err
 	}
 
 	// Remount the backend
@@ -731,12 +746,13 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	}
 	c.mountsLock.Unlock()
 
-	// Un-taint the path
-	if err := c.router.Untaint(ctx, dstRelativePath); err != nil {
+	// Mark the entry as untainted.
+	if err := c.untaintMountEntry(ctx, dst.Namespace.ID, dst.MountPath, true); err != nil {
 		return err
 	}
 
-	return nil
+	// Un-taint the new path in the router.
+	return c.router.Untaint(ctx, dstRelativePath)
 }
 
 // moveMountStorage moves storage entries of a mount mountEntry to its new destination.
@@ -2162,6 +2178,24 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 	case desiredMountEntry != nil && actualMountEntry != nil: // mount was modified (e.g. tuned or tainted)
 		c.logger.Debug("cache invalidation: mount was modified", "type", table, "uuid", uuid)
 
+		if desiredMountEntry.Path != actualMountEntry.Path { // mount was moved
+			// Taint the mount entry as it's gonna be removed on active node
+			// as last part of storage move.
+			if err := c.taintMountEntry(ctx, actualMountEntry.Namespace.ID, actualMountEntry.Path, false); err != nil {
+				return err
+			}
+
+			// pre-emptiveely taint router path to new location of mount entry
+			routerPath := desiredMountEntry.Path
+			if table == routing.CredentialTableType {
+				routerPath = path.Join(routing.CredentialRoutePrefix, routerPath) + "/"
+			}
+
+			if err := c.router.Taint(ctx, routerPath); err != nil {
+				return err
+			}
+		}
+
 		if desiredMountEntry.Tainted != actualMountEntry.Tainted {
 			routerPath := actualMountEntry.Path
 			if table == routing.CredentialTableType {
@@ -2169,14 +2203,12 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 			}
 
 			if desiredMountEntry.Tainted {
-				err := c.router.Taint(ctx, routerPath)
-				if err != nil {
+				if err := c.router.Taint(ctx, routerPath); err != nil {
 					return err
 				}
 				actualMountEntry.Tainted = true
 			} else {
-				err := c.router.Untaint(ctx, routerPath)
-				if err != nil {
+				if err := c.router.Untaint(ctx, routerPath); err != nil {
 					return err
 				}
 				actualMountEntry.Tainted = false
@@ -2189,10 +2221,7 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 		}
 
 		if desiredMountEntry.Options["version"] != actualMountEntry.Options["version"] {
-			err := c.reloadBackendCommon(ctx, desiredMountEntry, table == routing.CredentialTableType)
-			if err != nil {
-				return err
-			}
+			return c.reloadBackendCommon(ctx, desiredMountEntry, table == routing.CredentialTableType)
 		}
 	}
 

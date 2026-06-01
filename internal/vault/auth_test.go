@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -16,11 +17,13 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	"github.com/openbao/openbao/v2/internal/helper/metricsutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/v2/internal/helper/versions"
 	be "github.com/openbao/openbao/v2/internal/vault/backend"
+	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
 )
 
@@ -705,10 +708,10 @@ func TestCore_CredentialInitialize(t *testing.T) {
 	}
 }
 
-func remountCredentialFromRoot(ctx context.Context, c *Core, src, dst string, updateStorage bool) error {
+func remountCredentialFromRoot(ctx context.Context, c *Core, src, dst string) error {
 	srcPathDetails := c.splitNamespaceAndMountFromPath("", src)
 	dstPathDetails := c.splitNamespaceAndMountFromPath("", dst)
-	return c.remountCredential(namespace.RootContext(ctx), srcPathDetails, dstPathDetails, updateStorage)
+	return c.remountCredential(namespace.RootContext(ctx), srcPathDetails, dstPathDetails)
 }
 
 func TestCore_RemountCredential(t *testing.T) {
@@ -734,7 +737,7 @@ func TestCore_RemountCredential(t *testing.T) {
 		t.Fatalf("missing mount, match: %q", match)
 	}
 
-	err = remountCredentialFromRoot(t.Context(), c, "auth/foo", "auth/bar", true)
+	err = remountCredentialFromRoot(t.Context(), c, "auth/foo", "auth/bar")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -812,7 +815,7 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 	}
 
 	// Disable should cleanup
-	err = remountCredentialFromRoot(t.Context(), c, "auth/foo", "auth/bar", true)
+	err = remountCredentialFromRoot(t.Context(), c, "auth/foo", "auth/bar")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -837,7 +840,8 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 }
 
 func TestCore_RemountCredential_Namespaces(t *testing.T) {
-	c, keys, _ := TestCoreUnsealed(t)
+	require.NoError(t, be.AddTestCredentialBackend("userpass", userpass.Factory))
+	c, keys, rootToken := TestCoreUnsealed(t)
 	ns := &namespace.Namespace{Path: "ns/"}
 	unsealable1 := &namespace.Namespace{Path: "ns/unsealable1/"}
 	unsealable2 := &namespace.Namespace{Path: "ns/unsealable2/"}
@@ -850,11 +854,19 @@ func TestCore_RemountCredential_Namespaces(t *testing.T) {
 	me := &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
-		Type:  "noop",
+		Type:  "userpass",
 	}
 
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	require.NoError(t, c.enableCredential(namespace.ContextWithNamespace(ctx, unsealable1), me))
+
+	// Write data to userpass mount
+	req := logical.TestRequest(t, logical.CreateOperation, "unsealable1/auth/foo/users/user")
+	req.ClientToken = rootToken
+	req.Data = map[string]any{"password": "pass"}
+	resp, err := c.HandleRequest(ctx, req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Error())
 
 	tests := []struct {
 		name string
@@ -923,7 +935,7 @@ func TestCore_RemountCredential_Namespaces(t *testing.T) {
 			match := c.router.MatchingMount(srcCtx, tt.src.MountPath+"foobar")
 			require.Equalf(t, tt.src.Namespace.Path+tt.src.MountPath, match, "missing mount, match: %q", match)
 
-			require.NoError(t, c.remountCredential(ctx, tt.src, tt.dst, true))
+			require.NoError(t, c.remountCredential(ctx, tt.src, tt.dst))
 
 			match = c.router.MatchingMount(srcCtx, tt.src.MountPath+"foobar")
 			require.Equalf(t, "", match, "auth method still at old location, match: %q", match)
@@ -951,13 +963,27 @@ func TestCore_RemountCredential_Namespaces(t *testing.T) {
 
 			match = c.router.MatchingMount(dstCtx, tt.dst.MountPath+"baz")
 			require.Equalf(t, tt.dst.Namespace.Path+tt.dst.MountPath, match, "auth method not at new location after unseal, match: %q", match)
+
+			// Read written auth user
+			req := logical.TestRequest(t, logical.ReadOperation, path.Join(tt.dst.MountPath, "users", "user"))
+			req.ClientToken = rootToken
+			resp, err := c.HandleRequest(dstCtx, req)
+			require.NoError(t, err)
+			require.NotNil(t, resp.Data)
+
+			// Verify storage entries have moved
+			view := c.NamespaceView(tt.dst.Namespace)
+			creds, err := view.List(ctx, path.Join(barrier.CredentialBarrierPrefix, me.UUID)+"/")
+			require.NoError(t, err)
+			require.Len(t, creds, 1)
+			require.Equal(t, "user/", creds[0])
 		})
 	}
 }
 
 func TestCore_RemountCredential_InvalidSource(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	err := remountCredentialFromRoot(t.Context(), c, "foo", "auth/bar", true)
+	err := remountCredentialFromRoot(t.Context(), c, "foo", "auth/bar")
 	if err.Error() != `cannot remount non-auth mount "foo/"` {
 		t.Fatalf("err: %v", err)
 	}
@@ -965,7 +991,7 @@ func TestCore_RemountCredential_InvalidSource(t *testing.T) {
 
 func TestCore_RemountCredential_InvalidDestination(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	err := remountCredentialFromRoot(t.Context(), c, "auth/foo", "bar", true)
+	err := remountCredentialFromRoot(t.Context(), c, "auth/foo", "bar")
 	if err.Error() != `cannot remount auth mount to non-auth mount "bar/"` {
 		t.Fatalf("err: %v", err)
 	}
@@ -973,7 +999,7 @@ func TestCore_RemountCredential_InvalidDestination(t *testing.T) {
 
 func TestCore_RemountCredential_ProtectedSource(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	err := remountCredentialFromRoot(t.Context(), c, "auth/token", "auth/bar", true)
+	err := remountCredentialFromRoot(t.Context(), c, "auth/token", "auth/bar")
 	if err.Error() != `cannot remount "auth/token/"` {
 		t.Fatalf("err: %v", err)
 	}
@@ -981,7 +1007,7 @@ func TestCore_RemountCredential_ProtectedSource(t *testing.T) {
 
 func TestCore_RemountCredential_ProtectedDestination(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	err := remountCredentialFromRoot(t.Context(), c, "auth/foo", "auth/token", true)
+	err := remountCredentialFromRoot(t.Context(), c, "auth/foo", "auth/token")
 	if err.Error() != `cannot remount to "auth/token/"` {
 		t.Fatalf("err: %v", err)
 	}

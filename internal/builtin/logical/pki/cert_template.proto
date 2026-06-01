@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package openbao.pki;
 
-option go_package = "github.com/openbao/openbao/builtin/logical/pki";
+option go_package = "github.com/openbao/openbao/v2/internal/builtin/logical/pki";
 
 import "google/protobuf/timestamp.proto";
 

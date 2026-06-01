@@ -3,9 +3,9 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/openbao/openbao/vault/forwarding";
+option go_package = "github.com/openbao/openbao/v2/internal/vault/forwarding";
 
-import "helper/forwarding/types.proto";
+import "internal/helper/forwarding/types.proto";
 
 package forwarding;
 

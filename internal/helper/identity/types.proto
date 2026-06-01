@@ -3,12 +3,12 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/openbao/openbao/helper/identity";
+option go_package = "github.com/openbao/openbao/v2/internal/helper/identity";
 
 package identity;
 
 import "google/protobuf/timestamp.proto";
-import "helper/identity/mfa/types.proto";
+import "internal/helper/identity/mfa/types.proto";
 
 // Group represents an identity group.
 message Group {

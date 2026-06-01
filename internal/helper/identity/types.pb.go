@@ -5,7 +5,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.34.0
-// source: helper/identity/types.proto
+// source: internal/helper/identity/types.proto
 
 package identity
 
@@ -73,7 +73,7 @@ type Group struct {
 
 func (x *Group) Reset() {
 	*x = Group{}
-	mi := &file_helper_identity_types_proto_msgTypes[0]
+	mi := &file_internal_helper_identity_types_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -85,7 +85,7 @@ func (x *Group) String() string {
 func (*Group) ProtoMessage() {}
 
 func (x *Group) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_types_proto_msgTypes[0]
+	mi := &file_internal_helper_identity_types_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -98,7 +98,7 @@ func (x *Group) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Group.ProtoReflect.Descriptor instead.
 func (*Group) Descriptor() ([]byte, []int) {
-	return file_helper_identity_types_proto_rawDescGZIP(), []int{0}
+	return file_internal_helper_identity_types_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Group) GetID() string {
@@ -203,7 +203,7 @@ type LocalAliases struct {
 
 func (x *LocalAliases) Reset() {
 	*x = LocalAliases{}
-	mi := &file_helper_identity_types_proto_msgTypes[1]
+	mi := &file_internal_helper_identity_types_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -215,7 +215,7 @@ func (x *LocalAliases) String() string {
 func (*LocalAliases) ProtoMessage() {}
 
 func (x *LocalAliases) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_types_proto_msgTypes[1]
+	mi := &file_internal_helper_identity_types_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -228,7 +228,7 @@ func (x *LocalAliases) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LocalAliases.ProtoReflect.Descriptor instead.
 func (*LocalAliases) Descriptor() ([]byte, []int) {
-	return file_helper_identity_types_proto_rawDescGZIP(), []int{1}
+	return file_internal_helper_identity_types_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *LocalAliases) GetAliases() []*Alias {
@@ -294,7 +294,7 @@ type Entity struct {
 
 func (x *Entity) Reset() {
 	*x = Entity{}
-	mi := &file_helper_identity_types_proto_msgTypes[2]
+	mi := &file_internal_helper_identity_types_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -306,7 +306,7 @@ func (x *Entity) String() string {
 func (*Entity) ProtoMessage() {}
 
 func (x *Entity) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_types_proto_msgTypes[2]
+	mi := &file_internal_helper_identity_types_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -319,7 +319,7 @@ func (x *Entity) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Entity.ProtoReflect.Descriptor instead.
 func (*Entity) Descriptor() ([]byte, []int) {
-	return file_helper_identity_types_proto_rawDescGZIP(), []int{2}
+	return file_internal_helper_identity_types_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Entity) GetAliases() []*Alias {
@@ -462,7 +462,7 @@ type Alias struct {
 
 func (x *Alias) Reset() {
 	*x = Alias{}
-	mi := &file_helper_identity_types_proto_msgTypes[3]
+	mi := &file_internal_helper_identity_types_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -474,7 +474,7 @@ func (x *Alias) String() string {
 func (*Alias) ProtoMessage() {}
 
 func (x *Alias) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_types_proto_msgTypes[3]
+	mi := &file_internal_helper_identity_types_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -487,7 +487,7 @@ func (x *Alias) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Alias.ProtoReflect.Descriptor instead.
 func (*Alias) Descriptor() ([]byte, []int) {
-	return file_helper_identity_types_proto_rawDescGZIP(), []int{3}
+	return file_internal_helper_identity_types_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Alias) GetID() string {
@@ -607,7 +607,7 @@ type EntityStorageEntry struct {
 
 func (x *EntityStorageEntry) Reset() {
 	*x = EntityStorageEntry{}
-	mi := &file_helper_identity_types_proto_msgTypes[4]
+	mi := &file_internal_helper_identity_types_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -619,7 +619,7 @@ func (x *EntityStorageEntry) String() string {
 func (*EntityStorageEntry) ProtoMessage() {}
 
 func (x *EntityStorageEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_types_proto_msgTypes[4]
+	mi := &file_internal_helper_identity_types_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -632,7 +632,7 @@ func (x *EntityStorageEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EntityStorageEntry.ProtoReflect.Descriptor instead.
 func (*EntityStorageEntry) Descriptor() ([]byte, []int) {
-	return file_helper_identity_types_proto_rawDescGZIP(), []int{4}
+	return file_internal_helper_identity_types_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *EntityStorageEntry) GetPersonas() []*PersonaIndexEntry {
@@ -724,7 +724,7 @@ type PersonaIndexEntry struct {
 
 func (x *PersonaIndexEntry) Reset() {
 	*x = PersonaIndexEntry{}
-	mi := &file_helper_identity_types_proto_msgTypes[5]
+	mi := &file_internal_helper_identity_types_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -736,7 +736,7 @@ func (x *PersonaIndexEntry) String() string {
 func (*PersonaIndexEntry) ProtoMessage() {}
 
 func (x *PersonaIndexEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_identity_types_proto_msgTypes[5]
+	mi := &file_internal_helper_identity_types_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -749,7 +749,7 @@ func (x *PersonaIndexEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersonaIndexEntry.ProtoReflect.Descriptor instead.
 func (*PersonaIndexEntry) Descriptor() ([]byte, []int) {
-	return file_helper_identity_types_proto_rawDescGZIP(), []int{5}
+	return file_internal_helper_identity_types_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *PersonaIndexEntry) GetID() string {
@@ -822,11 +822,11 @@ func (x *PersonaIndexEntry) GetMergedFromEntityIDs() []string {
 	return nil
 }
 
-var File_helper_identity_types_proto protoreflect.FileDescriptor
+var File_internal_helper_identity_types_proto protoreflect.FileDescriptor
 
-const file_helper_identity_types_proto_rawDesc = "" +
+const file_internal_helper_identity_types_proto_rawDesc = "" +
 	"\n" +
-	"\x1bhelper/identity/types.proto\x12\bidentity\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1fhelper/identity/mfa/types.proto\"\xbc\x04\n" +
+	"$internal/helper/identity/types.proto\x12\bidentity\x1a\x1fgoogle/protobuf/timestamp.proto\x1a(internal/helper/identity/mfa/types.proto\"\xbc\x04\n" +
 	"\x05Group\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -929,22 +929,22 @@ const file_helper_identity_types_proto_rawDesc = "" +
 	" \x03(\tR\x13mergedFromEntityIDs\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B,Z*github.com/openbao/openbao/helper/identityb\x06proto3"
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B8Z6github.com/openbao/openbao/v2/internal/helper/identityb\x06proto3"
 
 var (
-	file_helper_identity_types_proto_rawDescOnce sync.Once
-	file_helper_identity_types_proto_rawDescData []byte
+	file_internal_helper_identity_types_proto_rawDescOnce sync.Once
+	file_internal_helper_identity_types_proto_rawDescData []byte
 )
 
-func file_helper_identity_types_proto_rawDescGZIP() []byte {
-	file_helper_identity_types_proto_rawDescOnce.Do(func() {
-		file_helper_identity_types_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_helper_identity_types_proto_rawDesc), len(file_helper_identity_types_proto_rawDesc)))
+func file_internal_helper_identity_types_proto_rawDescGZIP() []byte {
+	file_internal_helper_identity_types_proto_rawDescOnce.Do(func() {
+		file_internal_helper_identity_types_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_helper_identity_types_proto_rawDesc), len(file_internal_helper_identity_types_proto_rawDesc)))
 	})
-	return file_helper_identity_types_proto_rawDescData
+	return file_internal_helper_identity_types_proto_rawDescData
 }
 
-var file_helper_identity_types_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
-var file_helper_identity_types_proto_goTypes = []any{
+var file_internal_helper_identity_types_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_internal_helper_identity_types_proto_goTypes = []any{
 	(*Group)(nil),                 // 0: identity.Group
 	(*LocalAliases)(nil),          // 1: identity.LocalAliases
 	(*Entity)(nil),                // 2: identity.Entity
@@ -962,7 +962,7 @@ var file_helper_identity_types_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
 	(*mfa.Secret)(nil),            // 15: mfa.Secret
 }
-var file_helper_identity_types_proto_depIDxs = []int32{
+var file_internal_helper_identity_types_proto_depIDxs = []int32{
 	6,  // 0: identity.Group.metadata:type_name -> identity.Group.MetadataEntry
 	14, // 1: identity.Group.creation_time:type_name -> google.protobuf.Timestamp
 	14, // 2: identity.Group.last_update_time:type_name -> google.protobuf.Timestamp
@@ -994,26 +994,26 @@ var file_helper_identity_types_proto_depIDxs = []int32{
 	0,  // [0:24] is the sub-list for field type_name
 }
 
-func init() { file_helper_identity_types_proto_init() }
-func file_helper_identity_types_proto_init() {
-	if File_helper_identity_types_proto != nil {
+func init() { file_internal_helper_identity_types_proto_init() }
+func file_internal_helper_identity_types_proto_init() {
+	if File_internal_helper_identity_types_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_helper_identity_types_proto_rawDesc), len(file_helper_identity_types_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_helper_identity_types_proto_rawDesc), len(file_internal_helper_identity_types_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_helper_identity_types_proto_goTypes,
-		DependencyIndexes: file_helper_identity_types_proto_depIDxs,
-		MessageInfos:      file_helper_identity_types_proto_msgTypes,
+		GoTypes:           file_internal_helper_identity_types_proto_goTypes,
+		DependencyIndexes: file_internal_helper_identity_types_proto_depIDxs,
+		MessageInfos:      file_internal_helper_identity_types_proto_msgTypes,
 	}.Build()
-	File_helper_identity_types_proto = out.File
-	file_helper_identity_types_proto_goTypes = nil
-	file_helper_identity_types_proto_depIDxs = nil
+	File_internal_helper_identity_types_proto = out.File
+	file_internal_helper_identity_types_proto_goTypes = nil
+	file_internal_helper_identity_types_proto_depIDxs = nil
 }

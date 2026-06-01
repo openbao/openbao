@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/openbao/openbao/builtin/logical/kv";
+option go_package = "github.com/openbao/openbao/v2/internal/builtin/logical/kv";
 
 package kv;
 

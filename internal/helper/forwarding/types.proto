@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/openbao/openbao/helper/forwarding";
+option go_package = "github.com/openbao/openbao/v2/internal/helper/forwarding";
 
 package forwarding;
 

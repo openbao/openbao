@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.34.0
-// source: builtin/logical/pki/cert_template.proto
+// source: internal/builtin/logical/pki/cert_template.proto
 
 package pki
 
@@ -76,11 +76,11 @@ func (x KeyUsage) String() string {
 }
 
 func (KeyUsage) Descriptor() protoreflect.EnumDescriptor {
-	return file_builtin_logical_pki_cert_template_proto_enumTypes[0].Descriptor()
+	return file_internal_builtin_logical_pki_cert_template_proto_enumTypes[0].Descriptor()
 }
 
 func (KeyUsage) Type() protoreflect.EnumType {
-	return &file_builtin_logical_pki_cert_template_proto_enumTypes[0]
+	return &file_internal_builtin_logical_pki_cert_template_proto_enumTypes[0]
 }
 
 func (x KeyUsage) Number() protoreflect.EnumNumber {
@@ -89,7 +89,7 @@ func (x KeyUsage) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use KeyUsage.Descriptor instead.
 func (KeyUsage) EnumDescriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{0}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{0}
 }
 
 type ExtKeyUsage int32
@@ -158,11 +158,11 @@ func (x ExtKeyUsage) String() string {
 }
 
 func (ExtKeyUsage) Descriptor() protoreflect.EnumDescriptor {
-	return file_builtin_logical_pki_cert_template_proto_enumTypes[1].Descriptor()
+	return file_internal_builtin_logical_pki_cert_template_proto_enumTypes[1].Descriptor()
 }
 
 func (ExtKeyUsage) Type() protoreflect.EnumType {
-	return &file_builtin_logical_pki_cert_template_proto_enumTypes[1]
+	return &file_internal_builtin_logical_pki_cert_template_proto_enumTypes[1]
 }
 
 func (x ExtKeyUsage) Number() protoreflect.EnumNumber {
@@ -171,7 +171,7 @@ func (x ExtKeyUsage) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ExtKeyUsage.Descriptor instead.
 func (ExtKeyUsage) EnumDescriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{1}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{1}
 }
 
 type PKIX struct {
@@ -182,7 +182,7 @@ type PKIX struct {
 
 func (x *PKIX) Reset() {
 	*x = PKIX{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[0]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -194,7 +194,7 @@ func (x *PKIX) String() string {
 func (*PKIX) ProtoMessage() {}
 
 func (x *PKIX) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[0]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -207,7 +207,7 @@ func (x *PKIX) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PKIX.ProtoReflect.Descriptor instead.
 func (*PKIX) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{0}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{0}
 }
 
 type ObjectIdentifier struct {
@@ -220,7 +220,7 @@ type ObjectIdentifier struct {
 
 func (x *ObjectIdentifier) Reset() {
 	*x = ObjectIdentifier{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[1]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -232,7 +232,7 @@ func (x *ObjectIdentifier) String() string {
 func (*ObjectIdentifier) ProtoMessage() {}
 
 func (x *ObjectIdentifier) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[1]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -245,7 +245,7 @@ func (x *ObjectIdentifier) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ObjectIdentifier.ProtoReflect.Descriptor instead.
 func (*ObjectIdentifier) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{1}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ObjectIdentifier) GetArc() []uint32 {
@@ -263,7 +263,7 @@ type Net struct {
 
 func (x *Net) Reset() {
 	*x = Net{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[2]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -275,7 +275,7 @@ func (x *Net) String() string {
 func (*Net) ProtoMessage() {}
 
 func (x *Net) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[2]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -288,7 +288,7 @@ func (x *Net) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Net.ProtoReflect.Descriptor instead.
 func (*Net) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{2}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{2}
 }
 
 type Userinfo struct {
@@ -302,7 +302,7 @@ type Userinfo struct {
 
 func (x *Userinfo) Reset() {
 	*x = Userinfo{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[3]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -314,7 +314,7 @@ func (x *Userinfo) String() string {
 func (*Userinfo) ProtoMessage() {}
 
 func (x *Userinfo) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[3]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -327,7 +327,7 @@ func (x *Userinfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Userinfo.ProtoReflect.Descriptor instead.
 func (*Userinfo) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{3}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Userinfo) GetUsername() string {
@@ -359,7 +359,7 @@ type Url struct {
 
 func (x *Url) Reset() {
 	*x = Url{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[4]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -371,7 +371,7 @@ func (x *Url) String() string {
 func (*Url) ProtoMessage() {}
 
 func (x *Url) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[4]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -384,7 +384,7 @@ func (x *Url) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Url.ProtoReflect.Descriptor instead.
 func (*Url) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{4}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{4}
 }
 
 // An OID represents an ASN.1 OBJECT IDENTIFIER.
@@ -397,7 +397,7 @@ type OID struct {
 
 func (x *OID) Reset() {
 	*x = OID{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[5]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -409,7 +409,7 @@ func (x *OID) String() string {
 func (*OID) ProtoMessage() {}
 
 func (x *OID) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[5]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -422,7 +422,7 @@ func (x *OID) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OID.ProtoReflect.Descriptor instead.
 func (*OID) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{5}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *OID) GetArc() []uint64 {
@@ -442,7 +442,7 @@ type PolicyMapping struct {
 
 func (x *PolicyMapping) Reset() {
 	*x = PolicyMapping{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[6]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -454,7 +454,7 @@ func (x *PolicyMapping) String() string {
 func (*PolicyMapping) ProtoMessage() {}
 
 func (x *PolicyMapping) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[6]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -467,7 +467,7 @@ func (x *PolicyMapping) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicyMapping.ProtoReflect.Descriptor instead.
 func (*PolicyMapping) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{6}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *PolicyMapping) GetIssuerDomainPolicy() *OID {
@@ -506,7 +506,7 @@ type ValidationOutput struct {
 
 func (x *ValidationOutput) Reset() {
 	*x = ValidationOutput{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[7]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -518,7 +518,7 @@ func (x *ValidationOutput) String() string {
 func (*ValidationOutput) ProtoMessage() {}
 
 func (x *ValidationOutput) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[7]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -531,7 +531,7 @@ func (x *ValidationOutput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidationOutput.ProtoReflect.Descriptor instead.
 func (*ValidationOutput) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{7}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ValidationOutput) GetTemplate() *CertTemplate {
@@ -649,7 +649,7 @@ type CertTemplate struct {
 
 func (x *CertTemplate) Reset() {
 	*x = CertTemplate{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[8]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -661,7 +661,7 @@ func (x *CertTemplate) String() string {
 func (*CertTemplate) ProtoMessage() {}
 
 func (x *CertTemplate) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[8]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -674,7 +674,7 @@ func (x *CertTemplate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CertTemplate.ProtoReflect.Descriptor instead.
 func (*CertTemplate) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{8}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CertTemplate) GetVersion() int64 {
@@ -939,7 +939,7 @@ type PKIX_Name struct {
 
 func (x *PKIX_Name) Reset() {
 	*x = PKIX_Name{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[9]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -951,7 +951,7 @@ func (x *PKIX_Name) String() string {
 func (*PKIX_Name) ProtoMessage() {}
 
 func (x *PKIX_Name) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[9]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -964,7 +964,7 @@ func (x *PKIX_Name) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PKIX_Name.ProtoReflect.Descriptor instead.
 func (*PKIX_Name) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{0, 0}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{0, 0}
 }
 
 func (x *PKIX_Name) GetCountry() []string {
@@ -1041,7 +1041,7 @@ type PKIX_Extension struct {
 
 func (x *PKIX_Extension) Reset() {
 	*x = PKIX_Extension{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[10]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1053,7 +1053,7 @@ func (x *PKIX_Extension) String() string {
 func (*PKIX_Extension) ProtoMessage() {}
 
 func (x *PKIX_Extension) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[10]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1066,7 +1066,7 @@ func (x *PKIX_Extension) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PKIX_Extension.ProtoReflect.Descriptor instead.
 func (*PKIX_Extension) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{0, 1}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{0, 1}
 }
 
 func (x *PKIX_Extension) GetId() []int64 {
@@ -1099,7 +1099,7 @@ type Net_IP struct {
 
 func (x *Net_IP) Reset() {
 	*x = Net_IP{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[11]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1111,7 +1111,7 @@ func (x *Net_IP) String() string {
 func (*Net_IP) ProtoMessage() {}
 
 func (x *Net_IP) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[11]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1124,7 +1124,7 @@ func (x *Net_IP) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Net_IP.ProtoReflect.Descriptor instead.
 func (*Net_IP) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{2, 0}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{2, 0}
 }
 
 func (x *Net_IP) GetIP() []byte {
@@ -1144,7 +1144,7 @@ type Net_IPNet struct {
 
 func (x *Net_IPNet) Reset() {
 	*x = Net_IPNet{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[12]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1156,7 +1156,7 @@ func (x *Net_IPNet) String() string {
 func (*Net_IPNet) ProtoMessage() {}
 
 func (x *Net_IPNet) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[12]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1169,7 +1169,7 @@ func (x *Net_IPNet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Net_IPNet.ProtoReflect.Descriptor instead.
 func (*Net_IPNet) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{2, 1}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{2, 1}
 }
 
 func (x *Net_IPNet) GetIP() *Net_IP {
@@ -1195,7 +1195,7 @@ type Net_IPMask struct {
 
 func (x *Net_IPMask) Reset() {
 	*x = Net_IPMask{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[13]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1207,7 +1207,7 @@ func (x *Net_IPMask) String() string {
 func (*Net_IPMask) ProtoMessage() {}
 
 func (x *Net_IPMask) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[13]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1220,7 +1220,7 @@ func (x *Net_IPMask) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Net_IPMask.ProtoReflect.Descriptor instead.
 func (*Net_IPMask) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{2, 2}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{2, 2}
 }
 
 func (x *Net_IPMask) GetIPMask() []byte {
@@ -1249,7 +1249,7 @@ type Url_URL struct {
 
 func (x *Url_URL) Reset() {
 	*x = Url_URL{}
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[14]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1261,7 +1261,7 @@ func (x *Url_URL) String() string {
 func (*Url_URL) ProtoMessage() {}
 
 func (x *Url_URL) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_pki_cert_template_proto_msgTypes[14]
+	mi := &file_internal_builtin_logical_pki_cert_template_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1274,7 +1274,7 @@ func (x *Url_URL) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Url_URL.ProtoReflect.Descriptor instead.
 func (*Url_URL) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{4, 0}
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP(), []int{4, 0}
 }
 
 func (x *Url_URL) GetScheme() string {
@@ -1354,11 +1354,11 @@ func (x *Url_URL) GetRawFragment() string {
 	return ""
 }
 
-var File_builtin_logical_pki_cert_template_proto protoreflect.FileDescriptor
+var File_internal_builtin_logical_pki_cert_template_proto protoreflect.FileDescriptor
 
-const file_builtin_logical_pki_cert_template_proto_rawDesc = "" +
+const file_internal_builtin_logical_pki_cert_template_proto_rawDesc = "" +
 	"\n" +
-	"'builtin/logical/pki/cert_template.proto\x12\vopenbao.pki\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8a\x03\n" +
+	"0internal/builtin/logical/pki/cert_template.proto\x12\vopenbao.pki\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8a\x03\n" +
 	"\x04PKIX\x1a\xb2\x02\n" +
 	"\x04Name\x12\x18\n" +
 	"\aCountry\x18\x01 \x03(\tR\aCountry\x12\"\n" +
@@ -1491,23 +1491,23 @@ const file_builtin_logical_pki_cert_template_proto_rawDesc = "" +
 	"\x12(\n" +
 	"$ExtKeyUsageNetscapeServerGatedCrypto\x10\v\x12-\n" +
 	")ExtKeyUsageMicrosoftCommercialCodeSigning\x10\f\x12)\n" +
-	"%ExtKeyUsageMicrosoftKernelCodeSigning\x10\rB0Z.github.com/openbao/openbao/builtin/logical/pkib\x06proto3"
+	"%ExtKeyUsageMicrosoftKernelCodeSigning\x10\rB<Z:github.com/openbao/openbao/v2/internal/builtin/logical/pkib\x06proto3"
 
 var (
-	file_builtin_logical_pki_cert_template_proto_rawDescOnce sync.Once
-	file_builtin_logical_pki_cert_template_proto_rawDescData []byte
+	file_internal_builtin_logical_pki_cert_template_proto_rawDescOnce sync.Once
+	file_internal_builtin_logical_pki_cert_template_proto_rawDescData []byte
 )
 
-func file_builtin_logical_pki_cert_template_proto_rawDescGZIP() []byte {
-	file_builtin_logical_pki_cert_template_proto_rawDescOnce.Do(func() {
-		file_builtin_logical_pki_cert_template_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_builtin_logical_pki_cert_template_proto_rawDesc), len(file_builtin_logical_pki_cert_template_proto_rawDesc)))
+func file_internal_builtin_logical_pki_cert_template_proto_rawDescGZIP() []byte {
+	file_internal_builtin_logical_pki_cert_template_proto_rawDescOnce.Do(func() {
+		file_internal_builtin_logical_pki_cert_template_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_builtin_logical_pki_cert_template_proto_rawDesc), len(file_internal_builtin_logical_pki_cert_template_proto_rawDesc)))
 	})
-	return file_builtin_logical_pki_cert_template_proto_rawDescData
+	return file_internal_builtin_logical_pki_cert_template_proto_rawDescData
 }
 
-var file_builtin_logical_pki_cert_template_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_builtin_logical_pki_cert_template_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
-var file_builtin_logical_pki_cert_template_proto_goTypes = []any{
+var file_internal_builtin_logical_pki_cert_template_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_internal_builtin_logical_pki_cert_template_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_internal_builtin_logical_pki_cert_template_proto_goTypes = []any{
 	(KeyUsage)(0),                 // 0: openbao.pki.KeyUsage
 	(ExtKeyUsage)(0),              // 1: openbao.pki.ExtKeyUsage
 	(*PKIX)(nil),                  // 2: openbao.pki.PKIX
@@ -1527,7 +1527,7 @@ var file_builtin_logical_pki_cert_template_proto_goTypes = []any{
 	(*Url_URL)(nil),               // 16: openbao.pki.url.URL
 	(*timestamppb.Timestamp)(nil), // 17: google.protobuf.Timestamp
 }
-var file_builtin_logical_pki_cert_template_proto_depIdxs = []int32{
+var file_internal_builtin_logical_pki_cert_template_proto_depIdxs = []int32{
 	7,  // 0: openbao.pki.PolicyMapping.IssuerDomainPolicy:type_name -> openbao.pki.OID
 	7,  // 1: openbao.pki.PolicyMapping.SubjectDomainPolicy:type_name -> openbao.pki.OID
 	10, // 2: openbao.pki.ValidationOutput.template:type_name -> openbao.pki.CertTemplate
@@ -1555,27 +1555,27 @@ var file_builtin_logical_pki_cert_template_proto_depIdxs = []int32{
 	0,  // [0:20] is the sub-list for field type_name
 }
 
-func init() { file_builtin_logical_pki_cert_template_proto_init() }
-func file_builtin_logical_pki_cert_template_proto_init() {
-	if File_builtin_logical_pki_cert_template_proto != nil {
+func init() { file_internal_builtin_logical_pki_cert_template_proto_init() }
+func file_internal_builtin_logical_pki_cert_template_proto_init() {
+	if File_internal_builtin_logical_pki_cert_template_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_builtin_logical_pki_cert_template_proto_rawDesc), len(file_builtin_logical_pki_cert_template_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_builtin_logical_pki_cert_template_proto_rawDesc), len(file_internal_builtin_logical_pki_cert_template_proto_rawDesc)),
 			NumEnums:      2,
 			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_builtin_logical_pki_cert_template_proto_goTypes,
-		DependencyIndexes: file_builtin_logical_pki_cert_template_proto_depIdxs,
-		EnumInfos:         file_builtin_logical_pki_cert_template_proto_enumTypes,
-		MessageInfos:      file_builtin_logical_pki_cert_template_proto_msgTypes,
+		GoTypes:           file_internal_builtin_logical_pki_cert_template_proto_goTypes,
+		DependencyIndexes: file_internal_builtin_logical_pki_cert_template_proto_depIdxs,
+		EnumInfos:         file_internal_builtin_logical_pki_cert_template_proto_enumTypes,
+		MessageInfos:      file_internal_builtin_logical_pki_cert_template_proto_msgTypes,
 	}.Build()
-	File_builtin_logical_pki_cert_template_proto = out.File
-	file_builtin_logical_pki_cert_template_proto_goTypes = nil
-	file_builtin_logical_pki_cert_template_proto_depIdxs = nil
+	File_internal_builtin_logical_pki_cert_template_proto = out.File
+	file_internal_builtin_logical_pki_cert_template_proto_goTypes = nil
+	file_internal_builtin_logical_pki_cert_template_proto_depIdxs = nil
 }

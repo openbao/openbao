@@ -5,7 +5,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.34.0
-// source: helper/storagepacker/types.proto
+// source: internal/helper/storagepacker/types.proto
 
 package storagepacker
 
@@ -42,7 +42,7 @@ type Item struct {
 
 func (x *Item) Reset() {
 	*x = Item{}
-	mi := &file_helper_storagepacker_types_proto_msgTypes[0]
+	mi := &file_internal_helper_storagepacker_types_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -54,7 +54,7 @@ func (x *Item) String() string {
 func (*Item) ProtoMessage() {}
 
 func (x *Item) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_storagepacker_types_proto_msgTypes[0]
+	mi := &file_internal_helper_storagepacker_types_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -67,7 +67,7 @@ func (x *Item) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Item.ProtoReflect.Descriptor instead.
 func (*Item) Descriptor() ([]byte, []int) {
-	return file_helper_storagepacker_types_proto_rawDescGZIP(), []int{0}
+	return file_internal_helper_storagepacker_types_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Item) GetID() string {
@@ -104,7 +104,7 @@ type Bucket struct {
 
 func (x *Bucket) Reset() {
 	*x = Bucket{}
-	mi := &file_helper_storagepacker_types_proto_msgTypes[1]
+	mi := &file_internal_helper_storagepacker_types_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -116,7 +116,7 @@ func (x *Bucket) String() string {
 func (*Bucket) ProtoMessage() {}
 
 func (x *Bucket) ProtoReflect() protoreflect.Message {
-	mi := &file_helper_storagepacker_types_proto_msgTypes[1]
+	mi := &file_internal_helper_storagepacker_types_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -129,7 +129,7 @@ func (x *Bucket) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Bucket.ProtoReflect.Descriptor instead.
 func (*Bucket) Descriptor() ([]byte, []int) {
-	return file_helper_storagepacker_types_proto_rawDescGZIP(), []int{1}
+	return file_internal_helper_storagepacker_types_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Bucket) GetKey() string {
@@ -153,11 +153,11 @@ func (x *Bucket) GetItemMap() map[string]*anypb.Any {
 	return nil
 }
 
-var File_helper_storagepacker_types_proto protoreflect.FileDescriptor
+var File_internal_helper_storagepacker_types_proto protoreflect.FileDescriptor
 
-const file_helper_storagepacker_types_proto_rawDesc = "" +
+const file_internal_helper_storagepacker_types_proto_rawDesc = "" +
 	"\n" +
-	" helper/storagepacker/types.proto\x12\rstoragepacker\x1a\x19google/protobuf/any.proto\"F\n" +
+	")internal/helper/storagepacker/types.proto\x12\rstoragepacker\x1a\x19google/protobuf/any.proto\"F\n" +
 	"\x04Item\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
 	"\amessage\x18\x02 \x01(\v2\x14.google.protobuf.AnyR\amessage\"\xd6\x01\n" +
@@ -167,28 +167,28 @@ const file_helper_storagepacker_types_proto_rawDesc = "" +
 	"\bitem_map\x18\x03 \x03(\v2\".storagepacker.Bucket.ItemMapEntryR\aitemMap\x1aP\n" +
 	"\fItemMapEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12*\n" +
-	"\x05value\x18\x02 \x01(\v2\x14.google.protobuf.AnyR\x05value:\x028\x01B1Z/github.com/openbao/openbao/helper/storagepackerb\x06proto3"
+	"\x05value\x18\x02 \x01(\v2\x14.google.protobuf.AnyR\x05value:\x028\x01B=Z;github.com/openbao/openbao/v2/internal/helper/storagepackerb\x06proto3"
 
 var (
-	file_helper_storagepacker_types_proto_rawDescOnce sync.Once
-	file_helper_storagepacker_types_proto_rawDescData []byte
+	file_internal_helper_storagepacker_types_proto_rawDescOnce sync.Once
+	file_internal_helper_storagepacker_types_proto_rawDescData []byte
 )
 
-func file_helper_storagepacker_types_proto_rawDescGZIP() []byte {
-	file_helper_storagepacker_types_proto_rawDescOnce.Do(func() {
-		file_helper_storagepacker_types_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_helper_storagepacker_types_proto_rawDesc), len(file_helper_storagepacker_types_proto_rawDesc)))
+func file_internal_helper_storagepacker_types_proto_rawDescGZIP() []byte {
+	file_internal_helper_storagepacker_types_proto_rawDescOnce.Do(func() {
+		file_internal_helper_storagepacker_types_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_helper_storagepacker_types_proto_rawDesc), len(file_internal_helper_storagepacker_types_proto_rawDesc)))
 	})
-	return file_helper_storagepacker_types_proto_rawDescData
+	return file_internal_helper_storagepacker_types_proto_rawDescData
 }
 
-var file_helper_storagepacker_types_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_helper_storagepacker_types_proto_goTypes = []any{
+var file_internal_helper_storagepacker_types_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_internal_helper_storagepacker_types_proto_goTypes = []any{
 	(*Item)(nil),      // 0: storagepacker.Item
 	(*Bucket)(nil),    // 1: storagepacker.Bucket
 	nil,               // 2: storagepacker.Bucket.ItemMapEntry
 	(*anypb.Any)(nil), // 3: google.protobuf.Any
 }
-var file_helper_storagepacker_types_proto_depIDxs = []int32{
+var file_internal_helper_storagepacker_types_proto_depIDxs = []int32{
 	3, // 0: storagepacker.Item.message:type_name -> google.protobuf.Any
 	0, // 1: storagepacker.Bucket.items:type_name -> storagepacker.Item
 	2, // 2: storagepacker.Bucket.item_map:type_name -> storagepacker.Bucket.ItemMapEntry
@@ -200,26 +200,26 @@ var file_helper_storagepacker_types_proto_depIDxs = []int32{
 	0, // [0:4] is the sub-list for field type_name
 }
 
-func init() { file_helper_storagepacker_types_proto_init() }
-func file_helper_storagepacker_types_proto_init() {
-	if File_helper_storagepacker_types_proto != nil {
+func init() { file_internal_helper_storagepacker_types_proto_init() }
+func file_internal_helper_storagepacker_types_proto_init() {
+	if File_internal_helper_storagepacker_types_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_helper_storagepacker_types_proto_rawDesc), len(file_helper_storagepacker_types_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_helper_storagepacker_types_proto_rawDesc), len(file_internal_helper_storagepacker_types_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_helper_storagepacker_types_proto_goTypes,
-		DependencyIndexes: file_helper_storagepacker_types_proto_depIDxs,
-		MessageInfos:      file_helper_storagepacker_types_proto_msgTypes,
+		GoTypes:           file_internal_helper_storagepacker_types_proto_goTypes,
+		DependencyIndexes: file_internal_helper_storagepacker_types_proto_depIDxs,
+		MessageInfos:      file_internal_helper_storagepacker_types_proto_msgTypes,
 	}.Build()
-	File_helper_storagepacker_types_proto = out.File
-	file_helper_storagepacker_types_proto_goTypes = nil
-	file_helper_storagepacker_types_proto_depIDxs = nil
+	File_internal_helper_storagepacker_types_proto = out.File
+	file_internal_helper_storagepacker_types_proto_goTypes = nil
+	file_internal_helper_storagepacker_types_proto_depIDxs = nil
 }

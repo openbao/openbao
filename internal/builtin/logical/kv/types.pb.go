@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.34.0
-// source: builtin/logical/kv/types.proto
+// source: internal/builtin/logical/kv/types.proto
 
 package kv
 
@@ -36,7 +36,7 @@ type Configuration struct {
 
 func (x *Configuration) Reset() {
 	*x = Configuration{}
-	mi := &file_builtin_logical_kv_types_proto_msgTypes[0]
+	mi := &file_internal_builtin_logical_kv_types_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -48,7 +48,7 @@ func (x *Configuration) String() string {
 func (*Configuration) ProtoMessage() {}
 
 func (x *Configuration) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_kv_types_proto_msgTypes[0]
+	mi := &file_internal_builtin_logical_kv_types_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -61,7 +61,7 @@ func (x *Configuration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Configuration.ProtoReflect.Descriptor instead.
 func (*Configuration) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_kv_types_proto_rawDescGZIP(), []int{0}
+	return file_internal_builtin_logical_kv_types_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Configuration) GetMaxVersions() uint32 {
@@ -109,7 +109,7 @@ type VersionMetadata struct {
 
 func (x *VersionMetadata) Reset() {
 	*x = VersionMetadata{}
-	mi := &file_builtin_logical_kv_types_proto_msgTypes[1]
+	mi := &file_internal_builtin_logical_kv_types_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -121,7 +121,7 @@ func (x *VersionMetadata) String() string {
 func (*VersionMetadata) ProtoMessage() {}
 
 func (x *VersionMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_kv_types_proto_msgTypes[1]
+	mi := &file_internal_builtin_logical_kv_types_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -134,7 +134,7 @@ func (x *VersionMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VersionMetadata.ProtoReflect.Descriptor instead.
 func (*VersionMetadata) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_kv_types_proto_rawDescGZIP(), []int{1}
+	return file_internal_builtin_logical_kv_types_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *VersionMetadata) GetCreatedTime() *timestamppb.Timestamp {
@@ -200,7 +200,7 @@ type KeyMetadata struct {
 
 func (x *KeyMetadata) Reset() {
 	*x = KeyMetadata{}
-	mi := &file_builtin_logical_kv_types_proto_msgTypes[2]
+	mi := &file_internal_builtin_logical_kv_types_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -212,7 +212,7 @@ func (x *KeyMetadata) String() string {
 func (*KeyMetadata) ProtoMessage() {}
 
 func (x *KeyMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_kv_types_proto_msgTypes[2]
+	mi := &file_internal_builtin_logical_kv_types_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -225,7 +225,7 @@ func (x *KeyMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeyMetadata.ProtoReflect.Descriptor instead.
 func (*KeyMetadata) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_kv_types_proto_rawDescGZIP(), []int{2}
+	return file_internal_builtin_logical_kv_types_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *KeyMetadata) GetKey() string {
@@ -329,7 +329,7 @@ type Version struct {
 
 func (x *Version) Reset() {
 	*x = Version{}
-	mi := &file_builtin_logical_kv_types_proto_msgTypes[3]
+	mi := &file_internal_builtin_logical_kv_types_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -341,7 +341,7 @@ func (x *Version) String() string {
 func (*Version) ProtoMessage() {}
 
 func (x *Version) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_kv_types_proto_msgTypes[3]
+	mi := &file_internal_builtin_logical_kv_types_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -354,7 +354,7 @@ func (x *Version) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Version.ProtoReflect.Descriptor instead.
 func (*Version) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_kv_types_proto_rawDescGZIP(), []int{3}
+	return file_internal_builtin_logical_kv_types_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Version) GetData() []byte {
@@ -391,7 +391,7 @@ type UpgradeInfo struct {
 
 func (x *UpgradeInfo) Reset() {
 	*x = UpgradeInfo{}
-	mi := &file_builtin_logical_kv_types_proto_msgTypes[4]
+	mi := &file_internal_builtin_logical_kv_types_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -403,7 +403,7 @@ func (x *UpgradeInfo) String() string {
 func (*UpgradeInfo) ProtoMessage() {}
 
 func (x *UpgradeInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_builtin_logical_kv_types_proto_msgTypes[4]
+	mi := &file_internal_builtin_logical_kv_types_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -416,7 +416,7 @@ func (x *UpgradeInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpgradeInfo.ProtoReflect.Descriptor instead.
 func (*UpgradeInfo) Descriptor() ([]byte, []int) {
-	return file_builtin_logical_kv_types_proto_rawDescGZIP(), []int{4}
+	return file_internal_builtin_logical_kv_types_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *UpgradeInfo) GetStartedTime() *timestamppb.Timestamp {
@@ -433,11 +433,11 @@ func (x *UpgradeInfo) GetDone() bool {
 	return false
 }
 
-var File_builtin_logical_kv_types_proto protoreflect.FileDescriptor
+var File_internal_builtin_logical_kv_types_proto protoreflect.FileDescriptor
 
-const file_builtin_logical_kv_types_proto_rawDesc = "" +
+const file_internal_builtin_logical_kv_types_proto_rawDesc = "" +
 	"\n" +
-	"\x1ebuiltin/logical/kv/types.proto\x12\x02kv\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\"\xd7\x01\n" +
+	"'internal/builtin/logical/kv/types.proto\x12\x02kv\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\"\xd7\x01\n" +
 	"\rConfiguration\x12!\n" +
 	"\fmax_versions\x18\x01 \x01(\rR\vmaxVersions\x12!\n" +
 	"\fcas_required\x18\x02 \x01(\bR\vcasRequired\x12K\n" +
@@ -473,22 +473,22 @@ const file_builtin_logical_kv_types_proto_rawDesc = "" +
 	"\rdeletion_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\fdeletionTime\"`\n" +
 	"\vUpgradeInfo\x12=\n" +
 	"\fstarted_time\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\vstartedTime\x12\x12\n" +
-	"\x04done\x18\x02 \x01(\bR\x04doneB/Z-github.com/openbao/openbao/builtin/logical/kvb\x06proto3"
+	"\x04done\x18\x02 \x01(\bR\x04doneB;Z9github.com/openbao/openbao/v2/internal/builtin/logical/kvb\x06proto3"
 
 var (
-	file_builtin_logical_kv_types_proto_rawDescOnce sync.Once
-	file_builtin_logical_kv_types_proto_rawDescData []byte
+	file_internal_builtin_logical_kv_types_proto_rawDescOnce sync.Once
+	file_internal_builtin_logical_kv_types_proto_rawDescData []byte
 )
 
-func file_builtin_logical_kv_types_proto_rawDescGZIP() []byte {
-	file_builtin_logical_kv_types_proto_rawDescOnce.Do(func() {
-		file_builtin_logical_kv_types_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_builtin_logical_kv_types_proto_rawDesc), len(file_builtin_logical_kv_types_proto_rawDesc)))
+func file_internal_builtin_logical_kv_types_proto_rawDescGZIP() []byte {
+	file_internal_builtin_logical_kv_types_proto_rawDescOnce.Do(func() {
+		file_internal_builtin_logical_kv_types_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_builtin_logical_kv_types_proto_rawDesc), len(file_internal_builtin_logical_kv_types_proto_rawDesc)))
 	})
-	return file_builtin_logical_kv_types_proto_rawDescData
+	return file_internal_builtin_logical_kv_types_proto_rawDescData
 }
 
-var file_builtin_logical_kv_types_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
-var file_builtin_logical_kv_types_proto_goTypes = []any{
+var file_internal_builtin_logical_kv_types_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_internal_builtin_logical_kv_types_proto_goTypes = []any{
 	(*Configuration)(nil),         // 0: kv.Configuration
 	(*VersionMetadata)(nil),       // 1: kv.VersionMetadata
 	(*KeyMetadata)(nil),           // 2: kv.KeyMetadata
@@ -499,7 +499,7 @@ var file_builtin_logical_kv_types_proto_goTypes = []any{
 	(*durationpb.Duration)(nil),   // 7: google.protobuf.Duration
 	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
 }
-var file_builtin_logical_kv_types_proto_depIdxs = []int32{
+var file_internal_builtin_logical_kv_types_proto_depIdxs = []int32{
 	7,  // 0: kv.Configuration.delete_version_after:type_name -> google.protobuf.Duration
 	8,  // 1: kv.VersionMetadata.created_time:type_name -> google.protobuf.Timestamp
 	8,  // 2: kv.VersionMetadata.deletion_time:type_name -> google.protobuf.Timestamp
@@ -519,26 +519,26 @@ var file_builtin_logical_kv_types_proto_depIdxs = []int32{
 	0,  // [0:12] is the sub-list for field type_name
 }
 
-func init() { file_builtin_logical_kv_types_proto_init() }
-func file_builtin_logical_kv_types_proto_init() {
-	if File_builtin_logical_kv_types_proto != nil {
+func init() { file_internal_builtin_logical_kv_types_proto_init() }
+func file_internal_builtin_logical_kv_types_proto_init() {
+	if File_internal_builtin_logical_kv_types_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_builtin_logical_kv_types_proto_rawDesc), len(file_builtin_logical_kv_types_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_builtin_logical_kv_types_proto_rawDesc), len(file_internal_builtin_logical_kv_types_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_builtin_logical_kv_types_proto_goTypes,
-		DependencyIndexes: file_builtin_logical_kv_types_proto_depIdxs,
-		MessageInfos:      file_builtin_logical_kv_types_proto_msgTypes,
+		GoTypes:           file_internal_builtin_logical_kv_types_proto_goTypes,
+		DependencyIndexes: file_internal_builtin_logical_kv_types_proto_depIdxs,
+		MessageInfos:      file_internal_builtin_logical_kv_types_proto_msgTypes,
 	}.Build()
-	File_builtin_logical_kv_types_proto = out.File
-	file_builtin_logical_kv_types_proto_goTypes = nil
-	file_builtin_logical_kv_types_proto_depIdxs = nil
+	File_internal_builtin_logical_kv_types_proto = out.File
+	file_internal_builtin_logical_kv_types_proto_goTypes = nil
+	file_internal_builtin_logical_kv_types_proto_depIdxs = nil
 }

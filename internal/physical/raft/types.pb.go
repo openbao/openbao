@@ -5,7 +5,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.34.0
-// source: physical/raft/types.proto
+// source: internal/physical/raft/types.proto
 
 package raft
 
@@ -40,7 +40,7 @@ type LogOperation struct {
 
 func (x *LogOperation) Reset() {
 	*x = LogOperation{}
-	mi := &file_physical_raft_types_proto_msgTypes[0]
+	mi := &file_internal_physical_raft_types_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -52,7 +52,7 @@ func (x *LogOperation) String() string {
 func (*LogOperation) ProtoMessage() {}
 
 func (x *LogOperation) ProtoReflect() protoreflect.Message {
-	mi := &file_physical_raft_types_proto_msgTypes[0]
+	mi := &file_internal_physical_raft_types_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -65,7 +65,7 @@ func (x *LogOperation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogOperation.ProtoReflect.Descriptor instead.
 func (*LogOperation) Descriptor() ([]byte, []int) {
-	return file_physical_raft_types_proto_rawDescGZIP(), []int{0}
+	return file_internal_physical_raft_types_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *LogOperation) GetOpType() uint32 {
@@ -107,7 +107,7 @@ type LogData struct {
 
 func (x *LogData) Reset() {
 	*x = LogData{}
-	mi := &file_physical_raft_types_proto_msgTypes[1]
+	mi := &file_internal_physical_raft_types_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -119,7 +119,7 @@ func (x *LogData) String() string {
 func (*LogData) ProtoMessage() {}
 
 func (x *LogData) ProtoReflect() protoreflect.Message {
-	mi := &file_physical_raft_types_proto_msgTypes[1]
+	mi := &file_internal_physical_raft_types_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -132,7 +132,7 @@ func (x *LogData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogData.ProtoReflect.Descriptor instead.
 func (*LogData) Descriptor() ([]byte, []int) {
-	return file_physical_raft_types_proto_rawDescGZIP(), []int{1}
+	return file_internal_physical_raft_types_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *LogData) GetOperations() []*LogOperation {
@@ -159,7 +159,7 @@ type IndexValue struct {
 
 func (x *IndexValue) Reset() {
 	*x = IndexValue{}
-	mi := &file_physical_raft_types_proto_msgTypes[2]
+	mi := &file_internal_physical_raft_types_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -171,7 +171,7 @@ func (x *IndexValue) String() string {
 func (*IndexValue) ProtoMessage() {}
 
 func (x *IndexValue) ProtoReflect() protoreflect.Message {
-	mi := &file_physical_raft_types_proto_msgTypes[2]
+	mi := &file_internal_physical_raft_types_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -184,7 +184,7 @@ func (x *IndexValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IndexValue.ProtoReflect.Descriptor instead.
 func (*IndexValue) Descriptor() ([]byte, []int) {
-	return file_physical_raft_types_proto_rawDescGZIP(), []int{2}
+	return file_internal_physical_raft_types_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *IndexValue) GetTerm() uint64 {
@@ -212,7 +212,7 @@ type Server struct {
 
 func (x *Server) Reset() {
 	*x = Server{}
-	mi := &file_physical_raft_types_proto_msgTypes[3]
+	mi := &file_internal_physical_raft_types_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -224,7 +224,7 @@ func (x *Server) String() string {
 func (*Server) ProtoMessage() {}
 
 func (x *Server) ProtoReflect() protoreflect.Message {
-	mi := &file_physical_raft_types_proto_msgTypes[3]
+	mi := &file_internal_physical_raft_types_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -237,7 +237,7 @@ func (x *Server) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Server.ProtoReflect.Descriptor instead.
 func (*Server) Descriptor() ([]byte, []int) {
-	return file_physical_raft_types_proto_rawDescGZIP(), []int{3}
+	return file_internal_physical_raft_types_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Server) GetSuffrage() int32 {
@@ -271,7 +271,7 @@ type ConfigurationValue struct {
 
 func (x *ConfigurationValue) Reset() {
 	*x = ConfigurationValue{}
-	mi := &file_physical_raft_types_proto_msgTypes[4]
+	mi := &file_internal_physical_raft_types_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -283,7 +283,7 @@ func (x *ConfigurationValue) String() string {
 func (*ConfigurationValue) ProtoMessage() {}
 
 func (x *ConfigurationValue) ProtoReflect() protoreflect.Message {
-	mi := &file_physical_raft_types_proto_msgTypes[4]
+	mi := &file_internal_physical_raft_types_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -296,7 +296,7 @@ func (x *ConfigurationValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfigurationValue.ProtoReflect.Descriptor instead.
 func (*ConfigurationValue) Descriptor() ([]byte, []int) {
-	return file_physical_raft_types_proto_rawDescGZIP(), []int{4}
+	return file_internal_physical_raft_types_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ConfigurationValue) GetIndex() uint64 {
@@ -322,7 +322,7 @@ type LocalNodeConfigValue struct {
 
 func (x *LocalNodeConfigValue) Reset() {
 	*x = LocalNodeConfigValue{}
-	mi := &file_physical_raft_types_proto_msgTypes[5]
+	mi := &file_internal_physical_raft_types_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -334,7 +334,7 @@ func (x *LocalNodeConfigValue) String() string {
 func (*LocalNodeConfigValue) ProtoMessage() {}
 
 func (x *LocalNodeConfigValue) ProtoReflect() protoreflect.Message {
-	mi := &file_physical_raft_types_proto_msgTypes[5]
+	mi := &file_internal_physical_raft_types_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -347,7 +347,7 @@ func (x *LocalNodeConfigValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LocalNodeConfigValue.ProtoReflect.Descriptor instead.
 func (*LocalNodeConfigValue) Descriptor() ([]byte, []int) {
-	return file_physical_raft_types_proto_rawDescGZIP(), []int{5}
+	return file_internal_physical_raft_types_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *LocalNodeConfigValue) GetDesiredSuffrage() string {
@@ -357,11 +357,11 @@ func (x *LocalNodeConfigValue) GetDesiredSuffrage() string {
 	return ""
 }
 
-var File_physical_raft_types_proto protoreflect.FileDescriptor
+var File_internal_physical_raft_types_proto protoreflect.FileDescriptor
 
-const file_physical_raft_types_proto_rawDesc = "" +
+const file_internal_physical_raft_types_proto_rawDesc = "" +
 	"\n" +
-	"\x19physical/raft/types.proto\x12\x04raft\"e\n" +
+	"\"internal/physical/raft/types.proto\x12\x04raft\"e\n" +
 	"\fLogOperation\x12\x17\n" +
 	"\aop_type\x18\x01 \x01(\rR\x06opType\x12\x14\n" +
 	"\x05flags\x18\x02 \x01(\x04R\x05flags\x12\x10\n" +
@@ -385,22 +385,22 @@ const file_physical_raft_types_proto_rawDesc = "" +
 	"\x05index\x18\x01 \x01(\x04R\x05index\x12&\n" +
 	"\aservers\x18\x02 \x03(\v2\f.raft.ServerR\aservers\"A\n" +
 	"\x14LocalNodeConfigValue\x12)\n" +
-	"\x10desired_suffrage\x18\x01 \x01(\tR\x0fdesiredSuffrageB*Z(github.com/openbao/openbao/physical/raftb\x06proto3"
+	"\x10desired_suffrage\x18\x01 \x01(\tR\x0fdesiredSuffrageB6Z4github.com/openbao/openbao/v2/internal/physical/raftb\x06proto3"
 
 var (
-	file_physical_raft_types_proto_rawDescOnce sync.Once
-	file_physical_raft_types_proto_rawDescData []byte
+	file_internal_physical_raft_types_proto_rawDescOnce sync.Once
+	file_internal_physical_raft_types_proto_rawDescData []byte
 )
 
-func file_physical_raft_types_proto_rawDescGZIP() []byte {
-	file_physical_raft_types_proto_rawDescOnce.Do(func() {
-		file_physical_raft_types_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_physical_raft_types_proto_rawDesc), len(file_physical_raft_types_proto_rawDesc)))
+func file_internal_physical_raft_types_proto_rawDescGZIP() []byte {
+	file_internal_physical_raft_types_proto_rawDescOnce.Do(func() {
+		file_internal_physical_raft_types_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_physical_raft_types_proto_rawDesc), len(file_internal_physical_raft_types_proto_rawDesc)))
 	})
-	return file_physical_raft_types_proto_rawDescData
+	return file_internal_physical_raft_types_proto_rawDescData
 }
 
-var file_physical_raft_types_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_physical_raft_types_proto_goTypes = []any{
+var file_internal_physical_raft_types_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_internal_physical_raft_types_proto_goTypes = []any{
 	(*LogOperation)(nil),         // 0: raft.LogOperation
 	(*LogData)(nil),              // 1: raft.LogData
 	(*IndexValue)(nil),           // 2: raft.IndexValue
@@ -408,7 +408,7 @@ var file_physical_raft_types_proto_goTypes = []any{
 	(*ConfigurationValue)(nil),   // 4: raft.ConfigurationValue
 	(*LocalNodeConfigValue)(nil), // 5: raft.LocalNodeConfigValue
 }
-var file_physical_raft_types_proto_depIdxs = []int32{
+var file_internal_physical_raft_types_proto_depIdxs = []int32{
 	0, // 0: raft.LogData.operations:type_name -> raft.LogOperation
 	3, // 1: raft.ConfigurationValue.servers:type_name -> raft.Server
 	2, // [2:2] is the sub-list for method output_type
@@ -418,27 +418,27 @@ var file_physical_raft_types_proto_depIdxs = []int32{
 	0, // [0:2] is the sub-list for field type_name
 }
 
-func init() { file_physical_raft_types_proto_init() }
-func file_physical_raft_types_proto_init() {
-	if File_physical_raft_types_proto != nil {
+func init() { file_internal_physical_raft_types_proto_init() }
+func file_internal_physical_raft_types_proto_init() {
+	if File_internal_physical_raft_types_proto != nil {
 		return
 	}
-	file_physical_raft_types_proto_msgTypes[1].OneofWrappers = []any{}
+	file_internal_physical_raft_types_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_physical_raft_types_proto_rawDesc), len(file_physical_raft_types_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_physical_raft_types_proto_rawDesc), len(file_internal_physical_raft_types_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_physical_raft_types_proto_goTypes,
-		DependencyIndexes: file_physical_raft_types_proto_depIdxs,
-		MessageInfos:      file_physical_raft_types_proto_msgTypes,
+		GoTypes:           file_internal_physical_raft_types_proto_goTypes,
+		DependencyIndexes: file_internal_physical_raft_types_proto_depIdxs,
+		MessageInfos:      file_internal_physical_raft_types_proto_msgTypes,
 	}.Build()
-	File_physical_raft_types_proto = out.File
-	file_physical_raft_types_proto_goTypes = nil
-	file_physical_raft_types_proto_depIdxs = nil
+	File_internal_physical_raft_types_proto = out.File
+	file_internal_physical_raft_types_proto_goTypes = nil
+	file_internal_physical_raft_types_proto_depIdxs = nil
 }

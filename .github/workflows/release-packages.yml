@@ -1,0 +1,101 @@
+name: Release distro packages
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  deb:
+    name: Release DEBs
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref_name, 'nightly') }}
+    env:
+      BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
+      AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
+      AWS_REGION: ${{ secrets.PKG_S3_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
+    steps:
+      - name: Import GPG key
+        id: gpg-import
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSWORD }}
+
+      - name: Install reprepro from debian experimental
+        run: |
+          sudo apt update && sudo apt install -y debian-archive-keyring
+          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian experimental main" | sudo tee /etc/apt/sources.list.d/debian-experimental.list > /dev/null # required for reprepro with "Limit" support
+          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian sid main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null # required for libgpgme45 >= 1.23.2
+          sudo apt update && sudo apt install -t experimental -y reprepro
+
+      - name: Download db and dists
+        run: |
+          aws s3 sync "s3://${BUCKET}/deb/db" build/deb/db
+          aws s3 sync "s3://${BUCKET}/deb/dists" build/deb/dists
+
+      - name: Download packages from release
+        run: gh release download --repo='${{ github.repository }}' --pattern='*.deb' '${{ github.ref_name }}'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Update repository
+        run: |
+          mkdir -p build/deb/conf
+          cat > build/deb/conf/distributions <<EOF
+          Origin: OpenBao - Official
+          Label: OpenBao
+          Suite: stable
+          Codename: stable
+          Architectures: amd64 arm64 armhf ppc64el riscv64 s390x
+          Components: main
+          Description: Official APT repository for OpenBao
+          SignWith: ${GPG_FINGERPRINT}
+          Limit: 0
+          EOF
+          reprepro -b build/deb includedeb stable *.deb
+        env:
+          GPG_FINGERPRINT: ${{ steps.gpg-import.outputs.fingerprint }}
+
+      - name: Upload repository
+        run: aws s3 sync build/deb "s3://${BUCKET}/deb"
+    
+  rpm:
+    name: Release RPMs
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref_name, 'nightly') }}
+    env:
+      BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
+      AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
+      AWS_REGION: ${{ secrets.PKG_S3_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
+    steps:
+      - name: Install createrepo_c from Debian trixie
+        run: |
+          sudo apt update && sudo apt install -y debian-archive-keyring
+          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian trixie main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null # required for createrepo-c > 0.17.3
+          sudo apt update && sudo apt install -t trixie -y createrepo-c
+
+      - name: Download repodata
+        run: aws s3 sync "s3://${BUCKET}/rpm" build/rpm --exclude \*.rpm
+
+      - name: Download packages from release
+        run: gh release download --repo='${{ github.repository }}' --pattern='*.rpm' '${{ github.ref_name }}'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Update repository
+        run: |
+          ls *.rpm > pkglist.txt
+          while read pkg; do
+            ARCH=$(rpm -q $pkg --qf "%{arch}")
+            mkdir -p build/rpm/$ARCH
+            mv $pkg build/rpm/$ARCH/
+            createrepo_c --update --recycle-pkglist --skip-stat --includepkg $(basename $pkg) build/rpm/$ARCH
+          done < pkglist.txt
+
+      - name: Upload repository
+        run: aws s3 sync build/rpm "s3://${BUCKET}/rpm"

@@ -311,3 +311,20 @@ jobs:
         env:
           VERSION: ${{ needs.setup.outputs.version }}
           GITHUB_TOKEN: ${{ github.token }}
+
+  publish-nightly:
+    name: Auto-publish nightly release
+    if: inputs.nightly
+    runs-on: ubuntu-slim
+    needs:
+      - setup
+      - build
+      - build-dist
+    permissions:
+      contents: write
+    steps:
+      - name: Publish release
+        run: gh release edit "$VERSION" --draft=false --repo "$GITHUB_REPOSITORY"
+        env:
+          VERSION: ${{ needs.setup.outputs.version }}
+          GITHUB_TOKEN: ${{ github.token }}

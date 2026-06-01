@@ -46,7 +46,7 @@ func TestAuthMoveCommand_Run(t *testing.T) {
 		{
 			"non_existent",
 			[]string{"not_real", "over_here"},
-			"Error moving auth method not_real/ to over_here/",
+			"Error moving auth method auth/not_real/ to auth/over_here/",
 			2,
 		},
 	}
@@ -93,7 +93,7 @@ func TestAuthMoveCommand_Run(t *testing.T) {
 		}
 
 		code := cmd.Run([]string{
-			"auth/my-auth/", "auth/my-auth-2/",
+			"my-auth/", "my-auth-2/",
 		})
 		if exp := 0; code != exp {
 			t.Errorf("expected %d to be %d", code, exp)
@@ -125,7 +125,7 @@ func TestAuthMoveCommand_Run(t *testing.T) {
 		cmd.client = client
 
 		code := cmd.Run([]string{
-			"auth/my-auth/", "auth/my-auth-2/",
+			"my-auth/", "my-auth-2/",
 		})
 		if exp := 2; code != exp {
 			t.Errorf("expected %d to be %d", code, exp)

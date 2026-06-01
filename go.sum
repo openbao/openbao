@@ -616,8 +616,6 @@ github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJw
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
 github.com/ory/dockertest/v4 v4.0.0 h1:i19aFsO/VXE0VrMk4ifnKW4G/KIJ93PCjLOslxXoPME=
 github.com/ory/dockertest/v4 v4.0.0/go.mod h1:b5Ofu8VIxWNhXFvQcLu17pRNQdoUBKtXBW74G4Ygzx8=
-github.com/ovh/kmip-go v0.7.2 h1:O+gK7el92gpC57WzYGeyAPySeMPIDEWDUeT1IvkdrF0=
-github.com/ovh/kmip-go v0.7.2/go.mod h1:0UZqQCIlZ4/W+cYFbmtRwZ4if582CjlEvy86Xx+ob8E=
 github.com/ovh/kmip-go v0.8.1 h1:/f//wfyshvDxPH+QwD2i/NHe6fHS6arR63b5E6qYtAk=
 github.com/ovh/kmip-go v0.8.1/go.mod h1:vZDmUCBchiQzWWr1v7EmotrKwQkpGATikl/zNgonjDo=
 github.com/packethost/packngo v0.1.1-0.20180711074735-b9cb5096f54c h1:vwpFWvAO8DeIZfFeqASzZfsxuWPno9ncAebBEP0N3uE=

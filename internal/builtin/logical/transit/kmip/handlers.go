@@ -228,12 +228,29 @@ func handleLocate(ctx context.Context, a Adapter, req *payloads.LocateRequestPay
 		return nil, err
 	}
 
-	// TODO: Maximum Items, Offset Items, Storage Status Mask, and Object Group Member are skipped initially.
+	// TODO: Storage Status Mask and Object Group Member are skipped initially
 	ids, err := a.LocateKeys(ctx, req.Attribute)
 	if err != nil {
 		return nil, mapError(err)
 	}
+
+	// Total number of matches, reported back via Located Items
+	located := int32(len(ids))
+
+	if req.OffsetItems > 0 {
+		if int(req.OffsetItems) >= len(ids) {
+			ids = nil
+		} else {
+			ids = ids[req.OffsetItems:]
+		}
+	}
+
+	if req.MaximumItems > 0 && int(req.MaximumItems) < len(ids) {
+		ids = ids[:req.MaximumItems]
+	}
+
 	return &payloads.LocateResponsePayload{
+		LocatedItems:     &located,
 		UniqueIdentifier: ids,
 	}, nil
 }

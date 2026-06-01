@@ -222,7 +222,7 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 			}
 		}
 
-		modFile, err := os.ReadFile("../go.mod")
+		modFile, err := os.ReadFile("../../go.mod")
 		if err != nil {
 			t.Fatal(err)
 		}

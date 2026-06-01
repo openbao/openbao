@@ -216,7 +216,7 @@ func Test_RegistryStatus(t *testing.T) {
 
 // Test_RegistryMatchesGenOpenapi ensures that the plugins mounted in gen_openapi.sh match registry.go
 func Test_RegistryMatchesGenOpenapi(t *testing.T) {
-	const scriptPath = "../../scripts/gen_openapi.sh"
+	const scriptPath = "../../../scripts/gen_openapi.sh"
 
 	// parseScript fetches the contents of gen_openapi.sh script & extract the relevant lines
 	parseScript := func(path string) ([]string, []string, error) {

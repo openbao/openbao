@@ -34,6 +34,7 @@ func authMiddleware(a Adapter) kmipserver.Middleware {
 		allowedOps, err := a.AuthenticateCert(ctx, subjectDN)
 		if err != nil {
 			if errors.Is(err, ErrNoRole) {
+				a.Logger().Debug("kmip auth: no role found for client certificate", "subject_dn", subjectDN)
 				return nil, kmipserver.Errorf(kmiplib.ResultReasonPermissionDenied, "no matching role for certificate subject %q", subjectDN)
 			}
 			return nil, kmipserver.Errorf(kmiplib.ResultReasonGeneralFailure, "failed to lookup role: %s", err)

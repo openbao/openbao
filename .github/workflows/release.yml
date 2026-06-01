@@ -89,6 +89,13 @@ jobs:
           PRERELEASE: ${{ inputs.nightly || contains(steps.version.outputs.version, '-') }}
           GH_TOKEN: ${{ github.token }}
 
+      - name: Upload GPG signing key
+        if: github.repository == 'openbao/openbao'
+        run: gh release upload "$VERSION" website/public/assets/openbao-gpg-pub-20240618.asc
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+
   build-ui:
     name: Build UI
     runs-on: ubuntu-latest

@@ -52,7 +52,7 @@ func GetPlugin(t testing.T, typ consts.PluginType) (string, string, string, stri
 	case consts.PluginTypeDatabase:
 		pluginType = "postgresql"
 		pluginName = "vault-plugin-database-" + pluginType
-		pluginMain = filepath.Join("plugins", "database", pluginType, fmt.Sprintf("%s-database-plugin", pluginType), "main.go")
+		pluginMain = filepath.Join("builtin", "database", pluginType, fmt.Sprintf("%s-database-plugin", pluginType), "main.go")
 		pluginVersionLocation = fmt.Sprintf("github.com/openbao/openbao/v2/internal/builtin/database/%s.ReportedVersion", pluginType)
 	default:
 		t.Fatal(typ.String())
@@ -74,17 +74,13 @@ func CompilePlugin(t testing.T, typ consts.PluginType, pluginVersion string, plu
 
 	dir := ""
 	var err error
-	pluginRootDir := "builtin"
-	if typ == consts.PluginTypeDatabase {
-		pluginRootDir = "plugins"
-	}
 	for {
 		dir, err = os.Getwd()
 		if err != nil {
 			t.Fatal(err)
 		}
 		// detect if we are in a subdirectory or the root directory and compensate
-		if _, err := os.Stat(pluginRootDir); os.IsNotExist(err) {
+		if _, err := os.Stat("builtin"); os.IsNotExist(err) {
 			err := os.Chdir("..")
 			if err != nil {
 				t.Fatal(err)

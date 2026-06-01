@@ -1,0 +1,3 @@
+```release-note:breaking-change
+packaging: The Go module was moved to github.com/openbao/openbao/v2 and large portions of the codebase were moved behind an `internal/` package. As a result, packagers must update their `-ldflags` to embed version information at `github.com/openbao/openbao/v2/internal/version` instead of `github.com/openbao/openbao/version`.
+```

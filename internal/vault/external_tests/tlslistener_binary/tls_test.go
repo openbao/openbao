@@ -24,7 +24,7 @@ func entrypointPath(t *testing.T) string {
 		return ".release/docker/docker-entrypoint.sh"
 	}
 
-	return filepath.Join(filepath.Dir(file), "../../../", ".release/docker/docker-entrypoint.sh")
+	return filepath.Join(filepath.Dir(file), "../../../../", ".release/docker/docker-entrypoint.sh")
 }
 
 func TestTLSListener_SelfHostedNonStandard(t *testing.T) {

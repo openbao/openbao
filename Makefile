@@ -141,7 +141,7 @@ bootstrap:
 	done
 
 static-assets-dir:
-	@mkdir -p ./http/web_ui
+	@mkdir -p ./internal/http/web_ui
 
 install-ui-dependencies:
 	@echo "--> Installing JavaScript assets"
@@ -219,22 +219,7 @@ spellcheck:
 	@echo "==> Spell checking website..."
 	go tool -modfile=tools/go.mod misspell -w -source=text website/content
 
-mysql-database-plugin:
-	@CGO_ENABLED=0 go build -o bin/mysql-database-plugin ./plugins/database/mysql/mysql-database-plugin
-
-mysql-legacy-database-plugin:
-	@CGO_ENABLED=0 go build -o bin/mysql-legacy-database-plugin ./plugins/database/mysql/mysql-legacy-database-plugin
-
-cassandra-database-plugin:
-	@CGO_ENABLED=0 go build -o bin/cassandra-database-plugin ./plugins/database/cassandra/cassandra-database-plugin
-
-influxdb-database-plugin:
-	@CGO_ENABLED=0 go build -o bin/influxdb-database-plugin ./plugins/database/influxdb/influxdb-database-plugin
-
-postgresql-database-plugin:
-	@CGO_ENABLED=0 go build -o bin/postgresql-database-plugin ./plugins/database/postgresql/postgresql-database-plugin
-
-.PHONY: bin default prep test vet bootstrap fmt fmtcheck mysql-database-plugin mysql-legacy-database-plugin cassandra-database-plugin influxdb-database-plugin postgresql-database-plugin ember-dist ember-dist-dev static-dist static-dist-dev assetcheck check-openbao-in-path packages build build-ci semgrep semgrep-ci vet-godoctests ci-vet-godoctests
+.PHONY: bin default prep test vet bootstrap fmt fmtcheck ember-dist ember-dist-dev static-dist static-dist-dev assetcheck check-openbao-in-path packages build build-ci semgrep semgrep-ci vet-godoctests ci-vet-godoctests
 
 .NOTPARALLEL: ember-dist ember-dist-dev
 

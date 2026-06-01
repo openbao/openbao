@@ -1,0 +1,247 @@
+name: Release container images
+
+on:
+  release:
+    types:
+      - published
+
+  # The manual trigger can be used to rebuild images based on later based images
+  # and packages without creating a new release/tag.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to (re-)release, e.g., v2.0.0
+        required: true
+        type: string
+      distro:
+        description: Distribution to (re-)release
+        default: all
+        type: choice
+        options:
+          - all
+          - openbao
+          - openbao-distroless
+          - openbao-ubi
+          - openbao-hsm
+          - openbao-hsm-ubi
+
+env:
+  # Pick the right version input based on the workflow trigger.
+  VERSION: ${{ case(github.event_name == 'release', github.ref_name, inputs.version) }}
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    name: Setup
+    runs-on: ubuntu-slim
+    outputs:
+      tags: ${{ steps.tags.outputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-tags: true
+
+      # This is ultimately easier to do than to coerce docker/metadata-action
+      # into doing what we want.
+      - name: Determine image tags
+        id: tags
+        run: |
+          # Check that our version is tagged.
+          if [[ -z "$(git tag --list "$VERSION")" ]]; then
+            echo "::error::Tag $VERSION not found!" && exit 1
+          fi
+
+          version="${VERSION#v}"
+
+          case "$VERSION" in
+            # Pre-release -> Only absolute version.
+            v[0-9]*.[0-9]*.[0-9]*-*)
+              tags=$(jq -c -n --arg v "$version" '[$v]')
+              ;;
+
+            # GA release.
+            v[0-9]*.[0-9]*.[0-9])
+              IFS=. read -r major minor patch <<< "${VERSION#v}"
+
+              releases=$(git tag --list \
+                  | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+                  | sort -r --version-sort)
+
+              latest_major=$(grep -F "v${major}." <<< "$releases" | head -n 1)
+              latest_minor=$(grep -F "v${major}.${minor}." <<< "$releases" | head -n 1)
+
+              # Start out with the absolute version.
+              tags=$(jq -c -n --arg v "$version" '[$v]')
+
+              # Latest patch in its minor series -> Add "$major.$minor".
+              if [[ "$latest_minor" == "$VERSION" ]]; then
+                tags=$(jq -c --arg v "${major}.${minor}" '[$v] + .' <<< "$tags")
+              fi
+              # Latest minor in major series -> Add "$major".
+              if [[ "$latest_major" == "$VERSION" ]]; then
+                tags=$(jq -c --arg v "${major}" '[$v] + .' <<< "$tags")
+              fi
+              # Latest overall -> Add "latest".
+              if [[ "$(head -n 1 <<< "$releases")" == "$VERSION" ]]; then
+                tags=$(jq -c '["latest"] + .' <<< "$tags")
+              fi
+              ;;
+            *)
+              echo "::error::Malformed version: $version" && exit 1
+              ;;
+          esac
+          echo "tags=${tags}" >> "$GITHUB_OUTPUT"
+
+  release:
+    name: ${{ matrix.distro.name }}
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        distro:
+          - name: openbao
+            target: default
+            include: ${{ github.event_name == 'release' || contains(fromJSON('["all", "openbao"]'), inputs.distro) }}
+            platforms: linux/amd64,linux/arm64,linux/arm/v6,linux/ppc64le,linux/riscv64,linux/s390x
+          - name: openbao-ubi
+            target: ubi
+            include: ${{ github.event_name == 'release' || contains(fromJSON('["all", "openbao-ubi"]'), inputs.distro) }}
+            platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
+          - name: openbao-distroless
+            target: distroless
+            include: ${{ github.event_name == 'release' || contains(fromJSON('["all", "openbao-distroless"]'), inputs.distro) }}
+            platforms: linux/amd64,linux/arm64,linux/arm,linux/ppc64le,linux/riscv64,linux/s390x
+          - name: openbao-hsm
+            target: default
+            include: ${{ github.event_name == 'release' || contains(fromJSON('["all", "openbao-hsm"]'), inputs.distro) }}
+            platforms: linux/amd64,linux/arm64
+          - name: openbao-hsm-ubi
+            target: ubi
+            include: ${{ github.event_name == 'release' || contains(fromJSON('["all", "openbao-hsm-ubi"]'), inputs.distro) }}
+            platforms: linux/amd64,linux/arm64
+        exclude:
+          - distro:
+              include: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      # Enable ghcr.io only on forks to ease testing, but enable all registries
+      # on upstream repos.
+      - name: Determine registries
+        id: registries
+        run: |
+          case '${{ github.repository }}' in
+            openbao/openbao|openbao/openbao-nightly)
+              echo 'registries=["ghcr.io", "quay.io", "docker.io"]' >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo 'registries=["ghcr.io"]' >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Log into ghcr.io
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        if: contains(fromJSON(steps.registries.outputs.registries), 'ghcr.io')
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log into docker.io
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        if: contains(fromJSON(steps.registries.outputs.registries), 'docker.io')
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Log into quay.io
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        if: contains(fromJSON(steps.registries.outputs.registries), 'quay.io')
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_TOKEN }}
+
+      - name: Download release artifacts
+        run: gh release download --dir=bin --pattern='${{ env.ARTIFACT_PATTERN }}' "$VERSION"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_PATTERN: ${{ case(startsWith(matrix.distro.name, 'openbao-hsm'), 'bao-hsm', 'bao') }}_*_linux_*.tar.gz
+
+      - name: Extract binaries
+        run: |
+          for archive in bin/*; do
+            arch=$(echo "$archive" \
+              | sed -E 's/.*_linux_([^.]+)\.tar\.gz/\1/' \
+              | sed -E 's/arm(v6|v7)/arm/')
+            mkdir -p "bin/$arch" && tar xf "$archive" -C "bin/$arch" bao && rm -f "$archive"
+          done
+
+      - name: Get date
+        id: date
+        run: echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+
+      - name: Determine full tags
+        id: tags
+        run: |
+          echo 'tags<<EOF' >> "$GITHUB_OUTPUT"
+          # This renders the cartesian product of all tags and registries.
+          jq -r -n \
+            --arg image "${IMAGE_NAME,,}" \
+            --argjson tags '${{ needs.setup.outputs.tags }}' \
+            --argjson registries '${{ steps.registries.outputs.registries }}' \
+            '$registries[] as $r | $tags[] as $t | "\($r)/\($image):\($t)"' \
+            >> "$GITHUB_OUTPUT"
+          echo 'EOF' >> "$GITHUB_OUTPUT"
+        env:
+          IMAGE_NAME: ${{ github.repository_owner }}/${{ matrix.distro.name }}${{ case(contains(env.VERSION, 'nightly'), '-nightly', '') }}
+
+      - name: Build and push images
+        id: build
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+        with:
+          push: true
+          context: .
+          target: ${{ matrix.distro.target }}
+          platforms: ${{ matrix.distro.platforms }}
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.created=${{ steps.date.outputs.date }}
+            org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>
+            org.opencontainers.image.url=https://github.com/openbao/openbao
+            org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md
+            org.opencontainers.image.source=https://github.com/openbao/openbao
+            org.opencontainers.image.version=${{ env.VERSION }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.vendor=OpenBao
+            org.opencontainers.image.licenses=MPL-2.0
+            org.opencontainers.image.title=OpenBao
+            org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets
+
+      - name: Sign images w/ Cosign
+        run: |
+          images=""
+          for tag in ${TAGS}; do
+            images+="${tag}@${DIGEST} "
+          done
+          cosign sign --yes ${images}
+        env:
+          TAGS: ${{ steps.tags.outputs.tags }}
+          DIGEST: ${{ steps.build.outputs.digest }}

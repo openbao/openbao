@@ -70,3 +70,7 @@ func (s *Server) Start() {
 func (s *Server) Stop() error {
 	return s.srv.Shutdown()
 }
+
+func (s *Server) Addr() string {
+	return s.listener.Addr().String()
+}

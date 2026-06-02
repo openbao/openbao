@@ -280,7 +280,7 @@ jobs:
         run: |
           go tool -modfile=tools/go.mod go-licenses report ./... \
             --ignore github.com/openbao/openbao \
-            --template LICENSE_DEPENDENCIES.tpl \
+            --template .release/LICENSE_DEPENDENCIES.tpl \
             > LICENSE_DEPENDENCIES.md
 
       - name: Vendor Go modules

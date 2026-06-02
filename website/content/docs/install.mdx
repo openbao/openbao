@@ -20,7 +20,7 @@ There are several options to install OpenBao:
 
 ## Package manager
 
-### Homebrew - MacOS
+### Homebrew - macOS
 
 ```shell-session
 $ brew info openbao
@@ -76,7 +76,6 @@ to the following registries:
 
 For container images based on [RHEL UBI](https://www.redhat.com/en/blog/introducing-red-hat-universal-base-image),
 we push to the following registries:
-
 
  1. [`ghcr.io/openbao/openbao-ubi`](https://github.com/openbao/openbao/pkgs/container/openbao-ubi)
  1. [`quay.io/openbao/openbao-ubi`](https://quay.io/repository/openbao/openbao-ubi)
@@ -232,10 +231,11 @@ gpg: Total number processed: 1
 gpg:               imported: 1
 ```
 
-To verify GPG signed artifacts, use `gpg2` from the command line. For example, to verify `checksums-freebsd.txt` with the `checksums-freebsd.txt.gpgsig` stored locally:
+To verify GPG signed artifacts, use `gpg2` from the command line. For example,
+to verify `checksums.txt` with the `checksums.gpgsig` stored locally:
 
 ```shell-session
-$ gpg2 --verify checksums-freebsd.txt.gpgsig checksums-freebsd.txt
+$ gpg2 --verify checksums.txt.gpgsig checksums.txt
 gpg: Signature made Wed 17 Jul 2024 06:12:03 PM EDT
 gpg:                using RSA key E617DCD4065C2AFC0B2CF7A7BA8BC08C0F691F94
 gpg: Good signature from "OpenBao <openbao@lists.lfedge.org>" [unknown]
@@ -249,39 +249,36 @@ Primary key fingerprint: 66D1 5FDD 8728 7219 C8E1  5478 D200 CD70 2853 E6D0
 
 To verify CoSign signed artifacts, you can use the [CoSign
 CLI](https://docs.sigstore.dev/cosign/system_config/installation/). For example,
-to verify `checksums-linux.txt` with the `checksums-linux.txt.sigstore.json`
-stored locally:
+to verify `checksums.txt` with the `checksums.sigstore.json` stored locally:
 
 ```shell-session
-$ cosign verify-blob --bundle checksums-linux.txt.sigstore.json \
-                     --certificate-identity='https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.5.4' \
+$ cosign verify-blob --bundle checksums.txt.sigstore.json \
                      --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-                     checksums-linux.txt
+                     --certificate-identity-regexp='https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/(main|release/)' \
+                     checksums.txt
 Verified OK
 ```
 
 :::tip
 
-Notice: The OpenBao version is part of the verification process.
-This protects you against downgrade attacks.
+OpenBao will always publish releases from either the protected `main` branch
+or the protected `release/...` set of branches. This is reflected in the
+certificate identity checked by cosign.
 
-If you use the wrong version, you output will look like this:
+You can enforce that an artifact was signed by a workflow running on a
+particular branch by passing a fixed `--certificate-identity` instead of
+`--certificate-identity-regexp`:
+
+If published from the wrong branch, the output will look like this:
 
 ```shell-session
-$ cosign verify-blob --bundle checksums-linux.txt.sigstore.json \
-                     --certificate-identity='https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.0.0' \
+$ cosign verify-blob --bundle checksums.txt.sigstore.json \
+                     --certificate-identity='https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/release/2.6.x' \
                      --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-                     checksums-linux.txt
-Error: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected SAN value "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.0.0", got "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.5.4"
-error during command execution: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected SAN value "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.0.0", got "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.5.4"
+                     checksums.txt
+Error: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected SAN value "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/release/2.6.x", got "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/bad-branch"
+error during command execution: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected SAN value "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/release/2.6.x", got "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/bad-branch"
 ```
-
-You can use the `--certificate-identity-regexp` flag instead to work around
-this. E.g. use
-`'https://github\.com/openbao/openbao/\.github/workflows/release\.yml@refs/tags/v2\..*'`
-to accept any version starting with `v2.`.
-
-But keep in mind: This will make you vulnerable to downgrade attacks.
 
 :::
 
@@ -289,8 +286,8 @@ If the signature and the signed file don't match, you should see this instead:
 
 ```shell-session
 $ cosign verify-blob --bundle checksums-linux.txt.sigstore.json \
-                     --certificate-identity='https://github.com/openbao/openbao/.github/workflows/release.yml@refs/tags/v2.5.4' \
                      --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+                     --certificate-identity-regexp='https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/(main|release/)' \
                      checksums-linux.txt
 Error: failed to verify signature: could not verify message: invalid signature when validating ASN.1 encoded signature
 error during command execution: failed to verify signature: could not verify message: invalid signature when validating ASN.1 encoded signature

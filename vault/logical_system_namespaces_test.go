@@ -74,6 +74,7 @@ func TestNamespaceBackend_Set(t *testing.T) {
 		require.Equal(t, res.Data["tainted"].(bool), false)
 		require.Equal(t, res.Data["locked"].(bool), false)
 		require.Equal(t, res.Data["custom_metadata"], customMetadata)
+		require.Equal(t, res.Data["key_threshold"], 2)
 		require.Len(t, res.Data["key_shares"], 3)
 	})
 
@@ -92,6 +93,7 @@ func TestNamespaceBackend_Set(t *testing.T) {
 		require.Equal(t, res.Data["tainted"].(bool), false)
 		require.Equal(t, res.Data["locked"].(bool), false)
 		require.Equal(t, res.Data["custom_metadata"], customMetadata)
+		require.Equal(t, res.Data["key_threshold"], 2)
 		require.Len(t, res.Data["key_shares"], 3)
 	})
 

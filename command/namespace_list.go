@@ -28,9 +28,9 @@ func (c *NamespaceListCommand) Help() string {
 	helpText := `
 Usage: bao namespace list [options]
 
-  Lists the enabled child namespaces.
+  Lists unsealed child namespaces.
 
-  List all enabled child namespaces:
+  List all unsealed child namespaces:
 
       $ bao namespace list
 
@@ -82,24 +82,33 @@ func (c *NamespaceListCommand) Run(args []string) int {
 		return 2
 	}
 
-	resp, err := client.Sys().ListNamespaces()
+	secret, err := client.Logical().List("sys/namespaces")
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error listing namespaces: %s", err))
 		return 2
 	}
 
-	if len(resp) == 0 {
+	_, ok := extractListData(secret)
+	if Format(c.UI) != "table" {
+		if secret == nil || secret.Data == nil || !ok {
+			OutputData(c.UI, map[string]interface{}{})
+			return 2
+		}
+	}
+
+	if secret == nil || !ok {
 		c.UI.Error("No namespaces found")
 		return 2
 	}
 
-	if c.flagDetailed && Format(c.UI) != "table" {
-		return OutputData(c.UI, resp)
+	// There could be e.g. warnings
+	if secret.Data == nil || (secret.WrapInfo != nil && secret.WrapInfo.TTL != 0) {
+		return OutputSecret(c.UI, secret)
 	}
 
-	keys := make([]string, 0, len(resp))
-	for k := range resp {
-		keys = append(keys, k)
+	if c.flagDetailed && Format(c.UI) != "table" {
+		return OutputData(c.UI, secret.Data["key_info"])
 	}
-	return OutputData(c.UI, keys)
+
+	return OutputList(c.UI, secret)
 }

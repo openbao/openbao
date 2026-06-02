@@ -181,9 +181,9 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 			"Namespace initialized with %d key shares and a key threshold of %d. Please "+
 				"securely distribute the key shares printed above. When the namespace is "+
 				"re-sealed, you must supply at least %d of these keys to unseal it.",
-			c.flagKeyShares,
-			c.flagKeyThreshold,
-			c.flagKeyThreshold,
+			len(resp.KeyShares),
+			resp.KeyThreshold,
+			resp.KeyThreshold,
 		)))
 		c.UI.Output("")
 	}

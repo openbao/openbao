@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-msgpack/codec"
 	"github.com/hashicorp/raft"
@@ -154,12 +153,7 @@ func fileSha256(t *testing.T, f *os.File) string {
 }
 
 func TestSnapshot(t *testing.T) {
-	dir := testutil.TempDir(t, "snapshot")
-	defer func() {
-		if err := os.RemoveAll(dir); err != nil {
-			t.Fatalf("failed to remove directory: %v", err)
-		}
-	}()
+	dir := t.TempDir()
 
 	// Make a Raft and populate it with some data. We tee everything we
 	// apply off to a buffer for checking post-snapshot.
@@ -253,12 +247,7 @@ func TestSnapshot(t *testing.T) {
 }
 
 func TestSnapshotWrite(t *testing.T) {
-	dir := testutil.TempDir(t, "snapshot")
-	defer func() {
-		if err := os.RemoveAll(dir); err != nil {
-			t.Fatalf("failed to remove the directory: %v", err)
-		}
-	}()
+	dir := t.TempDir()
 
 	// Make a Raft and populate it with some data. We tee everything we
 	// apply off to a buffer for checking post-snapshot.
@@ -379,12 +368,7 @@ func TestSnapshot_BadVerify(t *testing.T) {
 }
 
 func TestSnapshot_TruncatedVerify(t *testing.T) {
-	dir := testutil.TempDir(t, "snapshot")
-	defer func() {
-		if err := os.RemoveAll(dir); err != nil {
-			t.Fatalf("failed to remove the directory: %v", err)
-		}
-	}()
+	dir := t.TempDir()
 
 	// Make a Raft and populate it with some data. We tee everything we
 	// apply off to a buffer for checking post-snapshot.
@@ -443,12 +427,7 @@ func TestSnapshot_TruncatedVerify(t *testing.T) {
 }
 
 func TestSnapshot_BadRestore(t *testing.T) {
-	dir := testutil.TempDir(t, "snapshot")
-	defer func() {
-		if err := os.RemoveAll(dir); err != nil {
-			t.Fatalf("failed to remove the directory: %v", err)
-		}
-	}()
+	dir := t.TempDir()
 
 	// Make a Raft and populate it with some data.
 	before, _ := makeRaft(t, filepath.Join(dir, "before"))

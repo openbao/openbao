@@ -1,6 +1,6 @@
 ```release-note:change
-releases: Disable publishing checksum artifacts to releases on GitHub. GitHub
-natively provides checksums available via both UI and API.
+releases: Checksums are now provided as a single, consolidated `checksums.txt`
+artifact opposed to per-OS checksum files such as `checksums-linux.txt`.
 ```
 
 ```release-note:change

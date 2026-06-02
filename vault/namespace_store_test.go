@@ -989,6 +989,12 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 	nsCtx := namespace.ContextWithNamespace(ctx, ns)
 	nsKeys := TestCoreCreateUnsealedNamespaces(t, c, ns)
 
+	ns2, _, err := c.namespaceStore.ModifyNamespaceByPath(nsCtx, "ns2/", nil, func(ctx context.Context, obj *namespace.Namespace) (*namespace.Namespace, error) {
+		return obj, nil
+	})
+	require.NoError(t, err)
+	require.NotNil(t, ns2)
+
 	tPolicy := `
 		name = "tPolicy"
 		path "ns1/*" {
@@ -1060,6 +1066,11 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 		enfConfigs, err := c.loginMFABackend.MfaLoginEnforcementList(nsCtx)
 		require.NoError(t, err)
 		require.Len(t, enfConfigs, 1)
+
+		// namespaces
+		childNs, err := c.namespaceStore.ListNamespaces(nsCtx, false, true)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(childNs))
 	}
 
 	checkState()

@@ -42,8 +42,8 @@ func TestSealManager_Reset(t *testing.T) {
 
 	c.sealManager.Reset()
 
-	require.Len(t, c.sealManager.barrierByNamespace.ToMap(), 1)
-	require.Len(t, c.sealManager.sealByNamespace, 1)
+	require.Len(t, c.sealManager.barrierByNamespace.ToMap(), 11)
+	require.Len(t, c.sealManager.sealByNamespace, 11)
 	require.Len(t, c.sealManager.unlockInformationByNamespace, 0)
 	require.Len(t, c.sealManager.rotationConfigByNamespace, 0)
 }
@@ -121,7 +121,7 @@ func TestSealManager_SetSeal(t *testing.T) {
 			require.Empty(t, c.sealManager.NamespaceBarrier(tt.ns.Path))
 			require.Empty(t, c.sealManager.NamespaceSeal(tt.ns.UUID))
 			require.Nil(t, c.sealManager.NamespaceUnlockInformation(tt.ns.UUID))
-			require.Nil(t, c.sealManager.NamespaceRotationConfig(tt.ns.UUID))
+			require.Nil(t, c.sealManager.RotationConfig(tt.ns.UUID, false))
 		})
 	}
 }

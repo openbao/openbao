@@ -176,7 +176,7 @@ func (kv *KVv2) GetVersionsAsList(ctx context.Context, secretPath string) ([]KVV
 		return nil, fmt.Errorf("%w: no metadata at %s", ErrSecretNotFound, pathToRead)
 	}
 
-	md, err := extractFullMetadata(secret)
+	md, err := extractFullMetadata(secret.Data)
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract metadata from secret to determine versions: %w", err)
 	}
@@ -203,7 +203,7 @@ func (kv *KVv2) GetMetadata(ctx context.Context, secretPath string) (*KVMetadata
 		return nil, fmt.Errorf("%w: no metadata at %s", ErrSecretNotFound, pathToRead)
 	}
 
-	md, err := extractFullMetadata(secret)
+	md, err := extractFullMetadata(secret.Data)
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract metadata from secret: %w", err)
 	}
@@ -581,14 +581,14 @@ func extractVersionMetadata(secret *Secret) (*KVVersionMetadata, error) {
 	return metadata, nil
 }
 
-func extractFullMetadata(secret *Secret) (*KVMetadata, error) {
+func extractFullMetadata(data map[string]any) (*KVMetadata, error) {
 	var metadata *KVMetadata
 
-	if secret.Data == nil {
+	if data == nil {
 		return nil, nil
 	}
 
-	if versions, ok := secret.Data["versions"]; ok {
+	if versions, ok := data["versions"]; ok {
 		versionsMap := versions.(map[string]any)
 		if len(versionsMap) > 0 {
 			for version, metadata := range versionsMap {
@@ -606,7 +606,7 @@ func extractFullMetadata(secret *Secret) (*KVMetadata, error) {
 				versionsMap[version] = metadataMap // save the updated copy of the metadata map
 			}
 		}
-		secret.Data["versions"] = versionsMap // save the updated copy of the versions map
+		data["versions"] = versionsMap // save the updated copy of the versions map
 	}
 
 	d, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
@@ -620,7 +620,7 @@ func extractFullMetadata(secret *Secret) (*KVMetadata, error) {
 		return nil, fmt.Errorf("error setting up decoder for API response: %w", err)
 	}
 
-	err = d.Decode(secret.Data)
+	err = d.Decode(data)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding metadata from API response into KVMetadata: %w", err)
 	}

@@ -222,36 +222,34 @@ func TestExtractFullMetadata(t *testing.T) {
 		t.Fatalf("unable to parse expected deletion time: %v", err)
 	}
 
-	metadataResp := &Secret{
-		Data: map[string]any{
-			"cas_required":    true,
-			"created_time":    inputCreatedTimeStr,
-			"current_version": 2,
-			"custom_metadata": map[string]any{
-				"org": "eng",
+	metadataResp := map[string]any{
+		"cas_required":    true,
+		"created_time":    inputCreatedTimeStr,
+		"current_version": 2,
+		"custom_metadata": map[string]any{
+			"org": "eng",
+		},
+		"delete_version_after": "200s",
+		"max_versions":         3,
+		"oldest_version":       1,
+		"updated_time":         inputUpdatedTimeStr,
+		"versions": map[string]any{
+			"2": map[string]any{
+				"created_time":  inputUpdatedTimeStr,
+				"deletion_time": "",
+				"destroyed":     false,
 			},
-			"delete_version_after": "200s",
-			"max_versions":         3,
-			"oldest_version":       1,
-			"updated_time":         inputUpdatedTimeStr,
-			"versions": map[string]any{
-				"2": map[string]any{
-					"created_time":  inputUpdatedTimeStr,
-					"deletion_time": "",
-					"destroyed":     false,
-				},
-				"1": map[string]any{
-					"created_time":  inputCreatedTimeStr,
-					"deletion_time": inputDeletedTimeStr,
-					"destroyed":     false,
-				},
+			"1": map[string]any{
+				"created_time":  inputCreatedTimeStr,
+				"deletion_time": inputDeletedTimeStr,
+				"destroyed":     false,
 			},
 		},
 	}
 
 	testCases := []struct {
 		name     string
-		input    *Secret
+		input    map[string]any
 		expected *KVMetadata
 	}{
 		{

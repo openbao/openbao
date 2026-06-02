@@ -191,10 +191,34 @@ jobs:
           password: ${{ secrets.QUAY_TOKEN }}
 
       - name: Download release artifacts
-        run: gh release download --dir=bin --pattern='${{ env.ARTIFACT_PATTERN }}' "$VERSION"
+        run: |
+          gh release download \
+            --dir=bin \
+            --pattern="$ARTIFACT_PATTERN" \
+            --pattern="$ARTIFACT_PATTERN.sigstore.json" \
+            --pattern=checksums.txt \
+            --pattern=checksums.txt.sigstore.json \
+            "$VERSION"
         env:
           GH_TOKEN: ${{ github.token }}
           ARTIFACT_PATTERN: ${{ case(startsWith(matrix.distro.name, 'openbao-hsm'), 'bao-hsm', 'bao') }}_*_linux_*.tar.gz
+
+      - name: Verify artifacts
+        run: |
+          for f in *.tar.gz; do
+            echo "Verifying $f via checksum..."
+            awk -v f="$f" '$2 == f' checksums.txt | sha256sum -c -
+          done
+          for f in checksums.txt *.tar.gz; do
+            echo "Verifying $f via cosign..."
+            cosign verify-blob \
+              --bundle="$f.sigstore.json" \
+              --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+              --certificate-identity-regexp='https://github.com/${{ github.repository }}/.github/workflows/release.yml@refs/.*' \
+              "$f"
+          done
+          rm -f checksums.txt *.sigstore.json
+        working-directory: bin
 
       - name: Extract binaries
         run: |

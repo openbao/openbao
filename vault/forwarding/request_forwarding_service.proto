@@ -17,7 +17,7 @@ message EchoRequest {
 	// ClusterAddrs is used to send up a list of cluster addresses to a dr
 	// primary from a dr secondary
 	repeated string cluster_addrs = 3;
-    
+
 	uint64 raft_applied_index = 4;
 	string raft_node_id = 5;
 	NodeInformation node_info = 6;
@@ -52,7 +52,49 @@ message ClientKey {
     bytes d = 4;
 }
 
+message NamespaceKey {
+    string uuid = 1;
+    bytes key = 2;
+}
+
+message AdvertiseNamespaceKeysRequest {
+    repeated string namespaces = 1;
+}
+
+message AdvertiseNamespaceKeysReply {
+    repeated string namespaces = 1;
+    bool retry = 2;
+}
+
+message SendNamespaceKeysRequest {
+    repeated NamespaceKey keys = 1;
+}
+
+message SendNamespaceKeysReply {
+    bool retry = 1;
+}
+
+message GetNamespaceKeysRequest {
+    repeated string namespaces = 1;
+}
+
+message GetNamespaceKeysReply {
+    repeated NamespaceKey keys = 1;
+}
+
 service RequestForwarding {
 	rpc ForwardRequest(forwarding.Request) returns (forwarding.Response) {}
 	rpc Echo(EchoRequest) returns (EchoReply) {}
+
+    // Namespace key sharing.
+
+    // standby->active; used when the standby was formerly the active node
+    // and a new active takes over without knowledge of past keys. This is
+    // a two-step process to avoid sending keys which the active node
+    // already knows about.
+    rpc AdvertiseNamespaceKeys(AdvertiseNamespaceKeysRequest) returns (AdvertiseNamespaceKeysReply) {};
+    rpc SendNamespaceKeys(SendNamespaceKeysRequest) returns (SendNamespaceKeysReply) {};
+
+    // active->standby; used by the standby to refresh keys.
+    rpc GetNamespaceKeys(GetNamespaceKeysRequest) returns (GetNamespaceKeysReply) {};
 }

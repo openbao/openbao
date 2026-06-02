@@ -42,6 +42,7 @@ type Namespace struct {
 	UUID           string            `json:"uuid" mapstructure:"uuid"`
 	Path           string            `json:"path" mapstructure:"path"`
 	Tainted        bool              `json:"tainted" mapstructure:"tainted"`
+	ManuallySealed bool              `json:"manually_sealed" mapstructure:"manually_sealed"`
 	Locked         bool              `json:"-"`
 	UnlockKey      string            `json:"unlock_key" mapstructure:"unlock_key"`
 	CustomMetadata map[string]string `json:"custom_metadata" mapstructure:"custom_metadata"`
@@ -101,6 +102,7 @@ var (
 		UUID:           RootNamespaceUUID,
 		Path:           "",
 		Tainted:        false,
+		ManuallySealed: false,
 		Locked:         false,
 		CustomMetadata: make(map[string]string),
 	}
@@ -152,6 +154,7 @@ func (n *Namespace) Clone(withUnlock bool) *Namespace {
 		UUID:           n.UUID,
 		Path:           n.Path,
 		Tainted:        n.Tainted,
+		ManuallySealed: n.ManuallySealed,
 		Locked:         n.Locked,
 		CustomMetadata: meta,
 	}

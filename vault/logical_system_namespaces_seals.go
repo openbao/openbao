@@ -96,6 +96,7 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
+					ForwardPerformanceStandby: true,
 				},
 			},
 
@@ -131,6 +132,7 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 							Fields:      sealStatusSchema,
 						}},
 					},
+					ForwardPerformanceStandby: true,
 				},
 			},
 

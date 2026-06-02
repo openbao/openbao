@@ -23,8 +23,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RequestForwarding_ForwardRequest_FullMethodName = "/forwarding.RequestForwarding/ForwardRequest"
-	RequestForwarding_Echo_FullMethodName           = "/forwarding.RequestForwarding/Echo"
+	RequestForwarding_ForwardRequest_FullMethodName         = "/forwarding.RequestForwarding/ForwardRequest"
+	RequestForwarding_Echo_FullMethodName                   = "/forwarding.RequestForwarding/Echo"
+	RequestForwarding_AdvertiseNamespaceKeys_FullMethodName = "/forwarding.RequestForwarding/AdvertiseNamespaceKeys"
+	RequestForwarding_SendNamespaceKeys_FullMethodName      = "/forwarding.RequestForwarding/SendNamespaceKeys"
+	RequestForwarding_GetNamespaceKeys_FullMethodName       = "/forwarding.RequestForwarding/GetNamespaceKeys"
 )
 
 // RequestForwardingClient is the client API for RequestForwarding service.
@@ -33,6 +36,14 @@ const (
 type RequestForwardingClient interface {
 	ForwardRequest(ctx context.Context, in *forwarding.Request, opts ...grpc.CallOption) (*forwarding.Response, error)
 	Echo(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoReply, error)
+	// standby->active; used when the standby was formerly the active node
+	// and a new active takes over without knowledge of past keys. This is
+	// a two-step process to avoid sending keys which the active node
+	// already knows about.
+	AdvertiseNamespaceKeys(ctx context.Context, in *AdvertiseNamespaceKeysRequest, opts ...grpc.CallOption) (*AdvertiseNamespaceKeysReply, error)
+	SendNamespaceKeys(ctx context.Context, in *SendNamespaceKeysRequest, opts ...grpc.CallOption) (*SendNamespaceKeysReply, error)
+	// active->standby; used by the standby to refresh keys.
+	GetNamespaceKeys(ctx context.Context, in *GetNamespaceKeysRequest, opts ...grpc.CallOption) (*GetNamespaceKeysReply, error)
 }
 
 type requestForwardingClient struct {
@@ -63,12 +74,50 @@ func (c *requestForwardingClient) Echo(ctx context.Context, in *EchoRequest, opt
 	return out, nil
 }
 
+func (c *requestForwardingClient) AdvertiseNamespaceKeys(ctx context.Context, in *AdvertiseNamespaceKeysRequest, opts ...grpc.CallOption) (*AdvertiseNamespaceKeysReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AdvertiseNamespaceKeysReply)
+	err := c.cc.Invoke(ctx, RequestForwarding_AdvertiseNamespaceKeys_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *requestForwardingClient) SendNamespaceKeys(ctx context.Context, in *SendNamespaceKeysRequest, opts ...grpc.CallOption) (*SendNamespaceKeysReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendNamespaceKeysReply)
+	err := c.cc.Invoke(ctx, RequestForwarding_SendNamespaceKeys_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *requestForwardingClient) GetNamespaceKeys(ctx context.Context, in *GetNamespaceKeysRequest, opts ...grpc.CallOption) (*GetNamespaceKeysReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetNamespaceKeysReply)
+	err := c.cc.Invoke(ctx, RequestForwarding_GetNamespaceKeys_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RequestForwardingServer is the server API for RequestForwarding service.
 // All implementations must embed UnimplementedRequestForwardingServer
 // for forward compatibility.
 type RequestForwardingServer interface {
 	ForwardRequest(context.Context, *forwarding.Request) (*forwarding.Response, error)
 	Echo(context.Context, *EchoRequest) (*EchoReply, error)
+	// standby->active; used when the standby was formerly the active node
+	// and a new active takes over without knowledge of past keys. This is
+	// a two-step process to avoid sending keys which the active node
+	// already knows about.
+	AdvertiseNamespaceKeys(context.Context, *AdvertiseNamespaceKeysRequest) (*AdvertiseNamespaceKeysReply, error)
+	SendNamespaceKeys(context.Context, *SendNamespaceKeysRequest) (*SendNamespaceKeysReply, error)
+	// active->standby; used by the standby to refresh keys.
+	GetNamespaceKeys(context.Context, *GetNamespaceKeysRequest) (*GetNamespaceKeysReply, error)
 	mustEmbedUnimplementedRequestForwardingServer()
 }
 
@@ -84,6 +133,15 @@ func (UnimplementedRequestForwardingServer) ForwardRequest(context.Context, *for
 }
 func (UnimplementedRequestForwardingServer) Echo(context.Context, *EchoRequest) (*EchoReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method Echo not implemented")
+}
+func (UnimplementedRequestForwardingServer) AdvertiseNamespaceKeys(context.Context, *AdvertiseNamespaceKeysRequest) (*AdvertiseNamespaceKeysReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method AdvertiseNamespaceKeys not implemented")
+}
+func (UnimplementedRequestForwardingServer) SendNamespaceKeys(context.Context, *SendNamespaceKeysRequest) (*SendNamespaceKeysReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendNamespaceKeys not implemented")
+}
+func (UnimplementedRequestForwardingServer) GetNamespaceKeys(context.Context, *GetNamespaceKeysRequest) (*GetNamespaceKeysReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetNamespaceKeys not implemented")
 }
 func (UnimplementedRequestForwardingServer) mustEmbedUnimplementedRequestForwardingServer() {}
 func (UnimplementedRequestForwardingServer) testEmbeddedByValue()                           {}
@@ -142,6 +200,60 @@ func _RequestForwarding_Echo_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RequestForwarding_AdvertiseNamespaceKeys_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdvertiseNamespaceKeysRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RequestForwardingServer).AdvertiseNamespaceKeys(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RequestForwarding_AdvertiseNamespaceKeys_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RequestForwardingServer).AdvertiseNamespaceKeys(ctx, req.(*AdvertiseNamespaceKeysRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RequestForwarding_SendNamespaceKeys_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendNamespaceKeysRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RequestForwardingServer).SendNamespaceKeys(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RequestForwarding_SendNamespaceKeys_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RequestForwardingServer).SendNamespaceKeys(ctx, req.(*SendNamespaceKeysRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RequestForwarding_GetNamespaceKeys_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNamespaceKeysRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RequestForwardingServer).GetNamespaceKeys(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RequestForwarding_GetNamespaceKeys_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RequestForwardingServer).GetNamespaceKeys(ctx, req.(*GetNamespaceKeysRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RequestForwarding_ServiceDesc is the grpc.ServiceDesc for RequestForwarding service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -156,6 +268,18 @@ var RequestForwarding_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Echo",
 			Handler:    _RequestForwarding_Echo_Handler,
+		},
+		{
+			MethodName: "AdvertiseNamespaceKeys",
+			Handler:    _RequestForwarding_AdvertiseNamespaceKeys_Handler,
+		},
+		{
+			MethodName: "SendNamespaceKeys",
+			Handler:    _RequestForwarding_SendNamespaceKeys_Handler,
+		},
+		{
+			MethodName: "GetNamespaceKeys",
+			Handler:    _RequestForwarding_GetNamespaceKeys_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

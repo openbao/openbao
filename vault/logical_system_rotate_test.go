@@ -27,33 +27,41 @@ func TestBackend_Rotate(t *testing.T) {
 		require.ErrorContains(t, res.Error(), ErrNotSealable.Error())
 	})
 
-	ns := &namespace.Namespace{Path: "foobar/"}
-	_ = TestCoreCreateUnsealedNamespaces(t, b.Core, ns)
-	namespaces := []*namespace.Namespace{namespace.RootNamespace, ns}
-	for _, ns := range namespaces {
-		t.Run(fmt.Sprintf("rotates the barrier key for namespace: %s", ns.ID), func(t *testing.T) {
-			nsCtx := namespace.ContextWithNamespace(ctx, ns)
+	ns1 := &namespace.Namespace{Path: "foobar/"}
+	ns2 := &namespace.Namespace{Path: "barfoo/"}
+	_ = TestCoreCreateUnsealedNamespaces(t, b.Core, ns1, ns2)
+	testBackend_Rotate(t, b, namespace.RootNamespace)
 
-			req := logical.TestRequest(t, logical.ReadOperation, "key-status")
-			res, err := b.HandleRequest(nsCtx, req)
-			require.NoError(t, err)
-			require.Equal(t, 1, res.Data["term"])
-			require.NotEmpty(t, res.Data["encryptions"])
-			require.NotEmpty(t, res.Data["install_time"])
+	t.Run("rotates the barrier key for namespaces in parallel", func(t *testing.T) {
+		testBackend_Rotate(t, b, ns1)
+		testBackend_Rotate(t, b, ns2)
+	})
+}
 
-			req = logical.TestRequest(t, logical.UpdateOperation, "rotate/keyring")
-			res, err = b.HandleRequest(nsCtx, req)
-			require.NoError(t, err)
-			require.Empty(t, res)
+func testBackend_Rotate(t *testing.T, b *SystemBackend, ns *namespace.Namespace) {
+	t.Run(fmt.Sprintf("rotates the barrier key for namespace: %s", ns.Path), func(t *testing.T) {
+		t.Parallel()
+		nsCtx := namespace.ContextWithNamespace(t.Context(), ns)
 
-			req = logical.TestRequest(t, logical.ReadOperation, "key-status")
-			res, err = b.HandleRequest(nsCtx, req)
-			require.NoError(t, err)
-			require.Equal(t, 2, res.Data["term"])
-			require.Equal(t, int64(0), res.Data["encryptions"])
-			require.NotEmpty(t, res.Data["install_time"])
-		})
-	}
+		req := logical.TestRequest(t, logical.ReadOperation, "key-status")
+		res, err := b.HandleRequest(nsCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, 1, res.Data["term"])
+		require.NotEmpty(t, res.Data["encryptions"])
+		require.NotEmpty(t, res.Data["install_time"])
+
+		req = logical.TestRequest(t, logical.UpdateOperation, "rotate/keyring")
+		res, err = b.HandleRequest(nsCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "key-status")
+		res, err = b.HandleRequest(nsCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, 2, res.Data["term"])
+		require.Equal(t, int64(0), res.Data["encryptions"])
+		require.NotEmpty(t, res.Data["install_time"])
+	})
 }
 
 func TestBackend_RotateRoot(t *testing.T) {
@@ -66,7 +74,7 @@ func TestBackend_RotateRoot(t *testing.T) {
 	_ = TestCoreCreateUnsealedNamespaces(t, b.Core, ns)
 	namespaces := []*namespace.Namespace{namespace.RootNamespace, ns}
 	for _, ns := range namespaces {
-		t.Run(fmt.Sprintf("rotates the barrier root key for namespace: %s", ns.ID), func(t *testing.T) {
+		t.Run(fmt.Sprintf("rotates the barrier root key for namespace: %s", ns.Path), func(t *testing.T) {
 			nsCtx := namespace.ContextWithNamespace(ctx, ns)
 
 			prevKeyring, err := b.Core.sealManager.NamespaceBarrier(ns.Path).Keyring()
@@ -106,28 +114,36 @@ func TestBackend_RotateConfig(t *testing.T) {
 		require.ErrorContains(t, res.Error(), ErrNotSealable.Error())
 	})
 
-	ns := &namespace.Namespace{Path: "foobar/"}
-	_ = TestCoreCreateUnsealedNamespaces(t, b.Core, ns)
-	namespaces := []*namespace.Namespace{namespace.RootNamespace, ns}
-	for _, ns := range namespaces {
-		t.Run(fmt.Sprintf("updates the key rotation config for namespace: %s", ns.ID), func(t *testing.T) {
-			nsCtx := namespace.ContextWithNamespace(ctx, ns)
-			req := logical.TestRequest(t, logical.UpdateOperation, "rotate/keyring/config")
-			req.Data["max_operations"] = 1_234_567
-			req.Data["interval"] = "25h"
-			req.Data["enabled"] = false
-			res, err := b.HandleRequest(nsCtx, req)
-			require.NoError(t, err)
-			require.Empty(t, res)
+	ns1 := &namespace.Namespace{Path: "foobar/"}
+	ns2 := &namespace.Namespace{Path: "barfoo/"}
+	_ = TestCoreCreateUnsealedNamespaces(t, b.Core, ns1, ns2)
+	testBackend_RotateConfig(t, b, namespace.RootNamespace)
 
-			req = logical.TestRequest(t, logical.ReadOperation, "rotate/keyring/config")
-			res, err = b.HandleRequest(nsCtx, req)
-			require.NoError(t, err)
-			require.Equal(t, int64(1_234_567), res.Data["max_operations"])
-			require.Equal(t, "25h0m0s", res.Data["interval"])
-			require.Equal(t, false, res.Data["enabled"])
-		})
-	}
+	t.Run("updates the key rotation config for namespaces in parallel", func(t *testing.T) {
+		testBackend_RotateConfig(t, b, ns1)
+		testBackend_RotateConfig(t, b, ns2)
+	})
+}
+
+func testBackend_RotateConfig(t *testing.T, b *SystemBackend, ns *namespace.Namespace) {
+	t.Run(fmt.Sprintf("updates the key rotation config for namespace: %s", ns.Path), func(t *testing.T) {
+		t.Parallel()
+		nsCtx := namespace.ContextWithNamespace(t.Context(), ns)
+		req := logical.TestRequest(t, logical.UpdateOperation, "rotate/keyring/config")
+		req.Data["max_operations"] = 1_234_567
+		req.Data["interval"] = "25h"
+		req.Data["enabled"] = false
+		res, err := b.HandleRequest(nsCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "rotate/keyring/config")
+		res, err = b.HandleRequest(nsCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, int64(1_234_567), res.Data["max_operations"])
+		require.Equal(t, "25h0m0s", res.Data["interval"])
+		require.Equal(t, false, res.Data["enabled"])
+	})
 }
 
 func TestBackend_RotateInitStatus(t *testing.T) {
@@ -149,40 +165,47 @@ func TestBackend_RotateInitStatus(t *testing.T) {
 		require.ErrorContains(t, res.Error(), ErrNotSealable.Error())
 	})
 
-	ns := &namespace.Namespace{Path: "foo/"}
-	_ = TestCoreCreateUnsealedNamespaces(t, b.Core, ns)
-	namespaces := []*namespace.Namespace{namespace.RootNamespace, ns}
-	for _, ns := range namespaces {
-		t.Run(fmt.Sprintf("rotates init responds with rotation status for namespace: %s", ns.ID), func(t *testing.T) {
-			nsCtx := namespace.ContextWithNamespace(ctx, ns)
+	ns1 := &namespace.Namespace{Path: "foobar/"}
+	ns2 := &namespace.Namespace{Path: "barfoo/"}
+	_ = TestCoreCreateUnsealedNamespaces(t, b.Core, ns1, ns2)
+	testBackend_RotateInitStatus(t, b, namespace.RootNamespace)
 
-			// read root rotation status without initializing beforehand
-			req := logical.TestRequest(t, logical.ReadOperation, "rotate/root/init")
-			res, err := b.HandleRequest(nsCtx, req)
+	t.Run("rotates init responds with rotation status for namespaces in parallel", func(t *testing.T) {
+		testBackend_RotateInitStatus(t, b, ns1)
+		testBackend_RotateInitStatus(t, b, ns2)
+	})
+}
 
-			require.NoError(t, err)
-			require.Equal(t, false, res.Data["started"])
-			require.Equal(t, 0, res.Data["n"])
-			require.Equal(t, 0, res.Data["t"])
-			require.Equal(t, 3, res.Data["required"])
+func testBackend_RotateInitStatus(t *testing.T, b *SystemBackend, ns *namespace.Namespace) {
+	t.Run(fmt.Sprintf("rotates init responds with rotation status for namespace: %s", ns.Path), func(t *testing.T) {
+		nsCtx := namespace.ContextWithNamespace(t.Context(), ns)
 
-			// initialize rotation
-			req = logical.TestRequest(t, logical.UpdateOperation, "rotate/root/init")
-			req.Data["secret_shares"] = 5
-			req.Data["secret_threshold"] = 3
-			res, err = b.HandleRequest(nsCtx, req)
+		// read root rotation status without initializing beforehand
+		req := logical.TestRequest(t, logical.ReadOperation, "rotate/root/init")
+		res, err := b.HandleRequest(nsCtx, req)
 
-			require.NoError(t, err)
-			require.Equal(t, true, res.Data["started"])
-			require.Equal(t, 5, res.Data["n"])
-			require.Equal(t, 3, res.Data["t"])
-			require.Equal(t, 3, res.Data["required"])
-			require.Equal(t, 0, res.Data["progress"])
-			require.Equal(t, false, res.Data["verification_required"])
-			require.Empty(t, res.Data["verification_nonce"])
-			require.NotEmpty(t, res.Data["nonce"])
-		})
-	}
+		require.NoError(t, err)
+		require.Equal(t, false, res.Data["started"])
+		require.Equal(t, 0, res.Data["n"])
+		require.Equal(t, 0, res.Data["t"])
+		require.Equal(t, 3, res.Data["required"])
+
+		// initialize rotation
+		req = logical.TestRequest(t, logical.UpdateOperation, "rotate/root/init")
+		req.Data["secret_shares"] = 5
+		req.Data["secret_threshold"] = 3
+		res, err = b.HandleRequest(nsCtx, req)
+
+		require.NoError(t, err)
+		require.Equal(t, true, res.Data["started"])
+		require.Equal(t, 5, res.Data["n"])
+		require.Equal(t, 3, res.Data["t"])
+		require.Equal(t, 3, res.Data["required"])
+		require.Equal(t, 0, res.Data["progress"])
+		require.Equal(t, false, res.Data["verification_required"])
+		require.Empty(t, res.Data["verification_nonce"])
+		require.NotEmpty(t, res.Data["nonce"])
+	})
 }
 
 func TestBackend_RotateInitDispatch(t *testing.T) {
@@ -223,23 +246,8 @@ func TestBackend_RotateInitDispatch(t *testing.T) {
 		res, err = b.HandleRequest(nsCtx, req)
 		require.Error(t, err)
 		require.ErrorContains(t, res.Error(), "rotation already in progress")
-	})
 
-	t.Run("can cancel the rotation and dispatch again", func(t *testing.T) {
-		ns := &namespace.Namespace{Path: "bar/"}
-		nsCtx := namespace.ContextWithNamespace(ctx, ns)
-		_ = TestCoreCreateUnsealedNamespaces(t, c, ns)
-
-		// initialize rotation
-		req := logical.TestRequest(t, logical.UpdateOperation, "rotate/root/init")
-		req.Data["secret_shares"] = 5
-		req.Data["secret_threshold"] = 3
-		res, err := b.HandleRequest(nsCtx, req)
-
-		require.NoError(t, err)
-		require.NotEmpty(t, res)
-
-		// cancel rotation
+		// can cancel the rotation and dispatch again
 		req = logical.TestRequest(t, logical.DeleteOperation, "rotate/root/init")
 		res, err = b.HandleRequest(nsCtx, req)
 		require.NoError(t, err)
@@ -258,7 +266,7 @@ func TestBackend_RotateInitDispatch(t *testing.T) {
 
 func TestBackend_RotateUpdate(t *testing.T) {
 	t.Parallel()
-	c, _, _ := TestCoreUnsealed(t)
+	c, rootUnsealShares, _ := TestCoreUnsealed(t)
 	b := c.systemBackend
 	ctx := namespace.RootContext(t.Context())
 
@@ -298,10 +306,21 @@ func TestBackend_RotateUpdate(t *testing.T) {
 		require.ErrorContains(t, res.Error(), "'key' must be a valid hex or base64 string")
 	})
 
-	t.Run("rotate update complete", func(t *testing.T) {
-		ns := &namespace.Namespace{Path: "bar/"}
-		nsCtx := namespace.ContextWithNamespace(ctx, ns)
-		unsealShares := TestCoreCreateUnsealedNamespaces(t, c, ns)
+	ns1 := &namespace.Namespace{Path: "foobar/"}
+	ns2 := &namespace.Namespace{Path: "barfoo/"}
+	unsealShares := TestCoreCreateUnsealedNamespaces(t, b.Core, ns1, ns2)
+	testBackend_RotateUpdateComplete(t, b, namespace.RootNamespace, rootUnsealShares)
+
+	t.Run("updates the key rotation config for namespaces in parallel", func(t *testing.T) {
+		testBackend_RotateUpdateComplete(t, b, ns1, unsealShares["foobar/"])
+		testBackend_RotateUpdateComplete(t, b, ns2, unsealShares["barfoo/"])
+	})
+}
+
+func testBackend_RotateUpdateComplete(t *testing.T, b *SystemBackend, ns *namespace.Namespace, unsealShares [][]byte) {
+	t.Run(fmt.Sprintf("rotate update complete for namespace: %s", ns.Path), func(t *testing.T) {
+		t.Parallel()
+		nsCtx := namespace.ContextWithNamespace(t.Context(), ns)
 
 		// init root rotation
 		req := logical.TestRequest(t, logical.UpdateOperation, "rotate/root/init")
@@ -317,12 +336,12 @@ func TestBackend_RotateUpdate(t *testing.T) {
 		req = logical.TestRequest(t, logical.UpdateOperation, "rotate/root/update")
 		req.Data["nonce"] = nonce
 
-		for i := range len(unsealShares["bar/"]) {
-			req.Data["key"] = base64.StdEncoding.EncodeToString(unsealShares["bar/"][i])
+		for i := range len(unsealShares) {
+			req.Data["key"] = base64.StdEncoding.EncodeToString(unsealShares[i])
 			res, err = b.HandleRequest(nsCtx, req)
 			require.NoError(t, err)
 
-			if i == len(unsealShares["bar/"])-1 {
+			if i == len(unsealShares)-1 {
 				break
 			}
 

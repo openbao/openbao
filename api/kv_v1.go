@@ -32,7 +32,7 @@ func (kv *KVv1) Get(ctx context.Context, secretPath string) (*KVSecret, error) {
 	}, nil
 }
 
-// Put inserts a key-value secret (e.g. {"password": "Hashi123"}) into the
+// Put inserts a key-value secret (e.g. {"password": "password123"}) into the
 // KV v1 secrets engine.
 //
 // If the secret already exists, it will be overwritten.

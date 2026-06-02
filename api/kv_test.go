@@ -33,7 +33,7 @@ func TestExtractVersionMetadata(t *testing.T) {
 			input: &Secret{
 				Data: map[string]any{
 					"data": map[string]any{
-						"password": "Hashi123",
+						"password": "password123",
 					},
 					"metadata": map[string]any{
 						"version":         10,
@@ -56,7 +56,7 @@ func TestExtractVersionMetadata(t *testing.T) {
 			input: &Secret{
 				Data: map[string]any{
 					"data": map[string]any{
-						"password": "Hashi123",
+						"password": "password123",
 					},
 					"metadata": map[string]any{
 						"version":         10,
@@ -123,7 +123,7 @@ func TestExtractDataAndVersionMetadata(t *testing.T) {
 	readResp := &Secret{
 		Data: map[string]any{
 			"data": map[string]any{
-				"password": "Hashi123",
+				"password": "password123",
 			},
 			"metadata": map[string]any{
 				"version":         10,
@@ -158,7 +158,7 @@ func TestExtractDataAndVersionMetadata(t *testing.T) {
 			input: readResp,
 			expected: &KVSecret{
 				Data: map[string]any{
-					"password": "Hashi123",
+					"password": "password123",
 				},
 				VersionMetadata: &KVVersionMetadata{
 					Version:      10,

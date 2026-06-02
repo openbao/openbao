@@ -211,7 +211,7 @@ func (kv *KVv2) GetMetadata(ctx context.Context, secretPath string) (*KVMetadata
 	return md, nil
 }
 
-// Put inserts a key-value secret (e.g. {"password": "Hashi123"})
+// Put inserts a key-value secret (e.g. {"password": "password123"})
 // into the KV v2 secrets engine.
 //
 // If the secret already exists, a new version will be created

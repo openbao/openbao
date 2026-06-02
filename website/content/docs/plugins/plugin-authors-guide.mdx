@@ -147,6 +147,7 @@ instance of OpenBao, hence bugs or abuse pose risks:
   is lost or ciphertext is otherwise irrecoverable.
 - A faulty or malicious implementation may result in compromise of OpenBao's
   root key if insecure cryptography is used (e.g., via weak algorithms, weak key
-  material or unprotected key material).
+  material or unprotected key material). If handled badly, this can lead to data
+  inside OpenBao's secure storage being compromised.
 
 [Consul plugin revoke operation]: https://github.com/openbao/openbao-plugins/blob/c3eb5134e359ee112754cc0f488e2b91d71a6129/secrets/consul/secret_token.go#L101-L114

@@ -26,7 +26,7 @@ v2.7.0 and remain available as external plugins only.
 
 ```release-note:deprecation
 packaging, seal/pkcs11: Following the introduction of pluginized HSM/PKCS#11
-Auto Unseal support in this release, The HSM distribution of OpenBao will be
+Auto Unseal support in this release, the HSM distribution of OpenBao will be
 discontinued by v2.7.0. PKCS#11 support remains available via the PKCS#11 plugin
 which can be used together with the standard distribution of OpenBao.
 ```

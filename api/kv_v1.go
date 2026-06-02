@@ -58,3 +58,28 @@ func (kv *KVv1) Delete(ctx context.Context, secretPath string) error {
 
 	return nil
 }
+
+// List returns the list of available keys at the specified location.
+func (kv *KVv1) List(ctx context.Context, secretPath string) (*KVList, error) {
+	pathToList := fmt.Sprintf("%s/%s", kv.mountPath, secretPath)
+
+	resp, err := kv.c.Logical().ListWithContext(ctx, pathToList)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets at %s: %w", pathToList, err)
+	}
+
+	return extractKeyList(resp)
+}
+
+// Scan returns the list of available keys at the specified location, recursing
+// into sub-folders.
+func (kv *KVv1) Scan(ctx context.Context, secretPath string) (*KVList, error) {
+	pathToList := fmt.Sprintf("%s/%s", kv.mountPath, secretPath)
+
+	resp, err := kv.c.Logical().ScanWithContext(ctx, pathToList)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets at %s: %w", pathToList, err)
+	}
+
+	return extractKeyList(resp)
+}

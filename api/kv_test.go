@@ -4,9 +4,13 @@
 package api
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExtractVersionMetadata(t *testing.T) {
@@ -384,5 +388,105 @@ func TestExtractCustomMetadata(t *testing.T) {
 		if !reflect.DeepEqual(cm, tc.expected) {
 			t.Fatalf("%s: got\n%#v\nexpected\n%#v\n", tc.name, cm, tc.expected)
 		}
+	}
+}
+
+func TestExtractExtractKeyList(t *testing.T) {
+	testCases := []struct {
+		name            string
+		input           *Secret
+		expectedKeys    []string
+		expectedDetails map[string]KVMetadata
+		expectedError   error
+	}{{
+		name: "happy case: empty data",
+		input: &Secret{
+			Data: map[string]any{},
+		},
+	}, {
+		name: "happy case: only keys",
+		input: &Secret{
+			Data: map[string]any{
+				"keys": []any{"a", "b", "c"},
+			},
+		},
+		expectedKeys: []string{"a", "b", "c"},
+	}, {
+		name: "happy case: with details",
+		input: &Secret{
+			Data: map[string]any{
+				"keys": []any{"a", "b"},
+				"key_info": map[string]any{
+					"a": map[string]any{
+						"current_version": 42,
+					},
+					"b": map[string]any{
+						"current_version": 1337,
+					},
+				},
+			},
+		},
+		expectedKeys: []string{"a", "b"},
+		expectedDetails: map[string]KVMetadata{
+			"a": {
+				CurrentVersion: 42,
+			},
+			"b": {
+				CurrentVersion: 1337,
+			},
+		},
+	}, {
+		name: "error: invalid data keys",
+		input: &Secret{
+			Data: map[string]any{
+				"keys": "this should be an array",
+			},
+		},
+		expectedError: errors.New(`invalid response from server: expected "keys" to be of type []any but got string`),
+	}, {
+		name: "error: invalid data single key",
+		input: &Secret{
+			Data: map[string]any{
+				"keys": []any{"1", "2", 3},
+			},
+		},
+		expectedError: errors.New(`invalid response from server: expected every key to be of type string but got int`),
+	}, {
+		name: "error: invalid key_info",
+		input: &Secret{
+			Data: map[string]any{
+				"keys":     []any{"a", "b", "c"},
+				"key_info": "this should be a map",
+			},
+		},
+		expectedError: errors.New(`invalid response from server: expected "key_info" to be of type map[string]any but got string`),
+	}, {
+		name: "error: invalid key_info entry",
+		input: &Secret{
+			Data: map[string]any{
+				"keys": []any{"a", "b", "c"},
+				"key_info": map[string]any{
+					"a": "invalid",
+				},
+			},
+		},
+		expectedError: errors.New(`invalid response from server: expected all "key_info" entries to be of type map[string]any but got string`),
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			list, err := extractKeyList(tc.input)
+
+			if tc.expectedError == nil {
+				require.NoError(t, err)
+				require.NotNil(t, list)
+				assert.Equal(t, tc.expectedKeys, list.Keys)
+				assert.Equal(t, tc.expectedDetails, list.Metadata)
+				assert.Equal(t, tc.input, list.Raw)
+			} else {
+				assert.Equal(t, tc.expectedError, err)
+				assert.Nil(t, list)
+			}
+		})
 	}
 }

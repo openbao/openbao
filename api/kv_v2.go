@@ -489,6 +489,57 @@ func (kv *KVv2) Rollback(ctx context.Context, secretPath string, toVersion int) 
 	return kvs, nil
 }
 
+// List returns the list of available keys at the specified location.
+func (kv *KVv2) List(ctx context.Context, secretPath string) (*KVList, error) {
+	pathToList := fmt.Sprintf("%s/metadata/%s", kv.mountPath, secretPath)
+
+	resp, err := kv.c.Logical().ListWithContext(ctx, pathToList)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets at %s: %w", pathToList, err)
+	}
+
+	return extractKeyList(resp)
+}
+
+// Scan returns the list of available keys at the specified location, recursing
+// into sub-folders.
+func (kv *KVv2) Scan(ctx context.Context, secretPath string) (*KVList, error) {
+	pathToList := fmt.Sprintf("%s/metadata/%s", kv.mountPath, secretPath)
+
+	resp, err := kv.c.Logical().ScanWithContext(ctx, pathToList)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets at %s: %w", pathToList, err)
+	}
+
+	return extractKeyList(resp)
+}
+
+// List returns the list of available keys and their metadata at the specified
+// location.
+func (kv *KVv2) ListWithDetails(ctx context.Context, secretPath string) (*KVList, error) {
+	pathToList := fmt.Sprintf("%s/detailed-metadata/%s", kv.mountPath, secretPath)
+
+	resp, err := kv.c.Logical().ListWithContext(ctx, pathToList)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets at %s: %w", pathToList, err)
+	}
+
+	return extractKeyList(resp)
+}
+
+// Scan returns the list of available keys and their metadata at the specified
+// location, recursing into sub-folders.
+func (kv *KVv2) ScanWithDetails(ctx context.Context, secretPath string) (*KVList, error) {
+	pathToList := fmt.Sprintf("%s/detailed-metadata/%s", kv.mountPath, secretPath)
+
+	resp, err := kv.c.Logical().ScanWithContext(ctx, pathToList)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets at %s: %w", pathToList, err)
+	}
+
+	return extractKeyList(resp)
+}
+
 func extractCustomMetadata(secret *Secret) map[string]any {
 	// Logical Writes return the metadata directly, Reads return it nested inside the "metadata" key
 	customMetadataInterface, ok := secret.Data["custom_metadata"]
@@ -777,4 +828,60 @@ func toMetadataMap(patchInput KVMetadataPatchInput) (map[string]any, error) {
 	}
 
 	return metadataMap, nil
+}
+
+func extractKeyList(resp *Secret) (*KVList, error) {
+	result := KVList{
+		Raw: resp,
+	}
+
+	if resp == nil {
+		return nil, nil
+	}
+
+	keysUntyped, ok := resp.Data["keys"]
+	if !ok {
+		return &result, nil
+	}
+
+	keysAny, ok := keysUntyped.([]any)
+	if !ok {
+		return nil, fmt.Errorf(`invalid response from server: expected "keys" to be of type []any but got %T`, keysUntyped)
+	}
+
+	result.Keys = make([]string, 0, len(keysAny))
+	for _, key := range keysAny {
+		keyString, ok := key.(string)
+		if !ok {
+			return nil, fmt.Errorf(`invalid response from server: expected every key to be of type string but got %T`, key)
+		}
+
+		result.Keys = append(result.Keys, keyString)
+	}
+
+	keysInfoUntyped, ok := resp.Data["key_info"]
+	if !ok {
+		return &result, nil
+	}
+
+	keyInfo, ok := keysInfoUntyped.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf(`invalid response from server: expected "key_info" to be of type map[string]any but got %T`, keysInfoUntyped)
+	}
+
+	result.Metadata = make(map[string]KVMetadata, len(keyInfo))
+	for key, value := range keyInfo {
+		valueAsMap, ok := value.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf(`invalid response from server: expected all "key_info" entries to be of type map[string]any but got %T`, value)
+		}
+
+		valueAsStruct, err := extractFullMetadata(valueAsMap)
+		if err != nil {
+			return nil, err
+		}
+		result.Metadata[key] = *valueAsStruct
+	}
+
+	return &result, nil
 }

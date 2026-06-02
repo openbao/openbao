@@ -97,7 +97,7 @@ func GenerateRootWithError(t testing.T, cluster *vault.TestCluster, kind Generat
 		}
 	}
 	if !status.Complete {
-		return "", errors.New("generate root operation did not end successfully")
+		return "", fmt.Errorf("generate root operation did not end successfully: %d / %d", status.Progress, status.Required)
 	}
 
 	tokenBytes, err := base64.RawStdEncoding.DecodeString(status.EncodedToken)

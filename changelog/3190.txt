@@ -1,0 +1,7 @@
+```release-note:change
+api: `(*Sys).GenerateRoot*` methods now use the authenticated `/sys/generate-root-token` endpoints instead of the deprecated `/sys/generate-root` endpoints.
+```
+
+```release-note:change
+command: `operator generate-root` now uses the authenticated `/sys/generate-root-token` endpoints instead of the deprecated `/sys/generate-root` endpoints.
+```

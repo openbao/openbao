@@ -41,8 +41,9 @@ func (b *SystemBackend) generateRootPaths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Summary:  "Read the status of root token generation.",
-					Callback: b.handleGenerateRootStatus(),
+					Summary:                   "Read the status of root token generation.",
+					Callback:                  b.handleGenerateRootStatus(),
+					ForwardPerformanceStandby: true,
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),
@@ -83,9 +84,10 @@ func (b *SystemBackend) generateRootPaths() []*framework.Path {
 					},
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Summary:     "Initialize root token generation.",
-					Description: "Only a single root generation attempt can take place at a time. One (and only one) of otp or pgp_key are required.",
-					Callback:    b.handleGenerateRootInit(),
+					Summary:                   "Initialize root token generation.",
+					Description:               "Only a single root generation attempt can take place at a time. One (and only one) of otp or pgp_key are required.",
+					Callback:                  b.handleGenerateRootInit(),
+					ForwardPerformanceStandby: true,
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),
@@ -126,8 +128,9 @@ func (b *SystemBackend) generateRootPaths() []*framework.Path {
 					},
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Summary:  "Cancel root token generation.",
-					Callback: b.handleGenerateRootCancel(),
+					Summary:                   "Cancel root token generation.",
+					Callback:                  b.handleGenerateRootCancel(),
+					ForwardPerformanceStandby: true,
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: http.StatusText(http.StatusNoContent),
@@ -159,9 +162,10 @@ func (b *SystemBackend) generateRootPaths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Summary:     "Provide an unseal key share for root token generation.",
-					Description: "If the threshold number of unseal key shares is reached, OpenBao will complete the root generation and issue the new token. Otherwise, this API must be called multiple times until that threshold is met. The attempt nonce must be provided with each call.",
-					Callback:    b.handleGenerateRootUpdate(),
+					Summary:                   "Provide an unseal key share for root token generation.",
+					Description:               "If the threshold number of unseal key shares is reached, OpenBao will complete the root generation and issue the new token. Otherwise, this API must be called multiple times until that threshold is met. The attempt nonce must be provided with each call.",
+					Callback:                  b.handleGenerateRootUpdate(),
+					ForwardPerformanceStandby: true,
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),
@@ -267,7 +271,8 @@ func (b *SystemBackend) handleGenerateRootInit() framework.OperationFunc {
 			}
 		}
 
-		if err := b.Core.GenerateRootInit(ctx, otp, pgpKey, GenerateStandardRootTokenStrategy); err != nil {
+		// expecting state lock to already be held by switchedLockHandleRequest
+		if err := b.Core.lockedGenerateRootInit(ctx, otp, pgpKey, GenerateStandardRootTokenStrategy); err != nil {
 			return handleError(err)
 		}
 
@@ -313,7 +318,8 @@ func (b *SystemBackend) handleGenerateRootUpdate() framework.OperationFunc {
 			}
 		}
 
-		result, err := b.Core.GenerateRootUpdate(ctx, decodedKey, nonce, GenerateStandardRootTokenStrategy)
+		// expecting state lock to already be held by switchedLockHandleRequest
+		result, err := b.Core.lockedGenerateRootUpdate(ctx, decodedKey, nonce, GenerateStandardRootTokenStrategy)
 		if err != nil {
 			return nil, err
 		}
@@ -332,7 +338,8 @@ func (b *SystemBackend) handleGenerateRootUpdate() framework.OperationFunc {
 
 func (b *SystemBackend) handleGenerateRootCancel() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		if err := b.Core.GenerateRootCancel(ctx); err != nil {
+		// expecting state lock to already be held by switchedLockHandleRequest
+		if err := b.Core.lockedGenerateRootCancel(ctx); err != nil {
 			return handleError(err)
 		}
 
@@ -382,7 +389,8 @@ func (b *SystemBackend) generateRootStatus(ctx context.Context, otp string) (*lo
 		}
 	}
 
-	generationConfig, err := b.Core.GenerateRootConfiguration(ctx)
+	// expecting state lock to already be held by switchedLockHandleRequest
+	generationConfig, err := b.Core.lockedGenerateRootConfiguration(ctx)
 	switch {
 	// Return the progress as 0 in this case, root generation has not started.
 	case errors.Is(err, ErrNoRootGeneration):
@@ -390,7 +398,8 @@ func (b *SystemBackend) generateRootStatus(ctx context.Context, otp string) (*lo
 		return handleError(err)
 	}
 
-	progress, err := b.Core.GenerateRootProgress(ctx)
+	// expecting state lock to already be held by switchedLockHandleRequest
+	progress, err := b.Core.lockedGenerateRootProgress(ctx)
 	if err != nil {
 		return handleError(err)
 	}

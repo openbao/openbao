@@ -1,0 +1,11 @@
+```release-note:improvement
+seal/pkcs11: When using public/private key encryption, fall back to finding the public key via the private key's `CKA_ID` if both key halves did not share the same `CKA_LABEL`.
+```
+
+```release-note:bug
+seal/pkcs11: Properly strip hex prefix when setting `key_id` as hex value.
+```
+
+```release-note:bug
+seal/pkcs11: Fix "invalid key format" error when `key_id` but no `key_label` is provided.
+```

@@ -4,7 +4,15 @@ description: |-
   The KMIP seal configures OpenBao to use the KMIP protocol as the
   autounseal mechanism.
 ---
+
 # `kmip` seal
+
+:::info
+
+This mechanism is built into OpenBao and does not require an external KMS
+provider plugin.
+
+:::
 
 The KMIP seal configures OpenBao to use a KMS or an HSM through the KMIP protocol as the autounseal
 mechanism. OpenBao's KMIP support is activated by one of the following:

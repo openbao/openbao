@@ -212,7 +212,7 @@ func (w *wrapper) reload(ctx context.Context, canary *client) error {
 	}
 	if w.initOpts != nil {
 		// Replay Init if it was called on the original wrapper.
-		if err := wrapper.Init(ctx, w.configOpts...); err != nil {
+		if err := wrapper.Init(ctx, w.initOpts...); err != nil {
 			return err
 		}
 	}

@@ -75,6 +75,11 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			Required:    false,
 			Description: "Key shares used to combine into unseal/recovery key of the namespace.",
 		},
+		"key_threshold": {
+			Type:        framework.TypeInt,
+			Required:    false,
+			Description: "Number of keys required to reconstruct unseal/recovery key of the namespace.",
+		},
 	}
 
 	return []*framework.Path{
@@ -414,6 +419,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 				encoded = append(encoded, hex.EncodeToString(share))
 			}
 			resp.Data["key_shares"] = encoded
+			resp.Data["key_threshold"] = sealConfig.SecretThreshold
 		}
 
 		return resp, nil

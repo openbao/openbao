@@ -33,7 +33,7 @@ func TestNamespaceListCommand_Run(t *testing.T) {
 		{
 			"no_namespaces",
 			[]string{},
-			"Error listing namespaces",
+			"No namespaces found",
 			2,
 		},
 		{

@@ -216,9 +216,7 @@ func (c *Core) BarrierRekeyInit(config *SealConfig) logical.HTTPCodedError {
 	}
 	c.rootRotationConfig.Nonce = nonce
 
-	if c.logger.IsInfo() {
-		c.logger.Info("rekey initialized", "nonce", c.rootRotationConfig.Nonce, "shares", c.rootRotationConfig.SecretShares, "threshold", c.rootRotationConfig.SecretThreshold, "validation_required", c.rootRotationConfig.VerificationRequired)
-	}
+	c.logger.Info("rekey initialized", "nonce", c.rootRotationConfig.Nonce, "shares", c.rootRotationConfig.SecretShares, "threshold", c.rootRotationConfig.SecretThreshold, "validation_required", c.rootRotationConfig.VerificationRequired)
 	return nil
 }
 
@@ -264,9 +262,7 @@ func (c *Core) RecoveryRekeyInit(config *SealConfig) logical.HTTPCodedError {
 	}
 	c.recoveryRotationConfig.Nonce = nonce
 
-	if c.logger.IsInfo() {
-		c.logger.Info("rekey initialized", "nonce", c.recoveryRotationConfig.Nonce, "shares", c.recoveryRotationConfig.SecretShares, "threshold", c.recoveryRotationConfig.SecretThreshold, "validation_required", c.recoveryRotationConfig.VerificationRequired)
-	}
+	c.logger.Info("rekey initialized", "nonce", c.recoveryRotationConfig.Nonce, "shares", c.recoveryRotationConfig.SecretShares, "threshold", c.recoveryRotationConfig.SecretThreshold, "validation_required", c.recoveryRotationConfig.VerificationRequired)
 	return nil
 }
 
@@ -349,9 +345,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 
 	// Check if we don't have enough keys to unlock
 	if len(c.rootRotationConfig.RotationProgress) < existingConfig.SecretThreshold {
-		if c.logger.IsDebug() {
-			c.logger.Debug("cannot rekey yet, not enough keys", "keys", len(c.rootRotationConfig.RotationProgress), "threshold", existingConfig.SecretThreshold)
-		}
+		c.logger.Debug("cannot rekey yet, not enough keys", "keys", len(c.rootRotationConfig.RotationProgress), "threshold", existingConfig.SecretThreshold)
 		return nil, nil
 	}
 
@@ -501,9 +495,7 @@ func (c *Core) performBarrierRekey(ctx context.Context, newSealKey []byte) logic
 		c.logger.Error("failed to rekey barrier", "error", err)
 		return logical.CodedError(http.StatusInternalServerError, "failed to rekey barrier: %v", err)
 	}
-	if c.logger.IsInfo() {
-		c.logger.Info("security barrier rekeyed", "shares", c.rootRotationConfig.SecretShares, "threshold", c.rootRotationConfig.SecretThreshold)
-	}
+	c.logger.Info("security barrier rekeyed", "shares", c.rootRotationConfig.SecretShares, "threshold", c.rootRotationConfig.SecretThreshold)
 
 	if isShamirSeal {
 		err := c.barrier.Put(ctx, &logical.StorageEntry{
@@ -588,9 +580,7 @@ func (c *Core) RecoveryRekeyUpdate(ctx context.Context, key []byte, nonce string
 
 	// Check if we don't have enough keys to unlock
 	if len(c.recoveryRotationConfig.RotationProgress) < existingConfig.SecretThreshold {
-		if c.logger.IsDebug() {
-			c.logger.Debug("cannot rekey yet, not enough keys", "keys", len(c.recoveryRotationConfig.RotationProgress), "threshold", existingConfig.SecretThreshold)
-		}
+		c.logger.Debug("cannot rekey yet, not enough keys", "keys", len(c.recoveryRotationConfig.RotationProgress), "threshold", existingConfig.SecretThreshold)
 		return nil, nil
 	}
 
@@ -774,9 +764,7 @@ func (c *Core) RekeyVerify(ctx context.Context, key []byte, nonce string, recove
 
 	// Check if we don't have enough keys to unlock
 	if len(config.VerificationProgress) < config.SecretThreshold {
-		if c.logger.IsDebug() {
-			c.logger.Debug("cannot verify yet, not enough keys", "keys", len(config.VerificationProgress), "threshold", config.SecretThreshold)
-		}
+		c.logger.Debug("cannot verify yet, not enough keys", "keys", len(config.VerificationProgress), "threshold", config.SecretThreshold)
 		return nil, nil
 	}
 

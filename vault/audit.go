@@ -171,9 +171,7 @@ func (c *Core) enableAudit(ctx context.Context, entry *routing.MountEntry, updat
 
 	// Register the backend
 	c.auditBroker.Register(entry.Path, backend, view, entry.Local)
-	if c.logger.IsInfo() {
-		c.logger.Info("enabled audit backend", "path", entry.Path, "type", entry.Type)
-	}
+	c.logger.Info("enabled audit backend", "path", entry.Path, "type", entry.Type)
 
 	return nil
 }
@@ -224,9 +222,7 @@ func (c *Core) disableAudit(ctx context.Context, path string, updateStorage bool
 
 	// Unmount the backend
 	c.auditBroker.Deregister(path)
-	if c.logger.IsInfo() {
-		c.logger.Info("disabled audit backend", "path", path)
-	}
+	c.logger.Info("disabled audit backend", "path", path)
 
 	return true, nil
 }
@@ -457,9 +453,7 @@ func (c *Core) reconcileAudits(req reconcileAuditsRequests) error {
 		c.removeAuditReloadFunc(entry)
 
 		c.auditBroker.Deregister(entry.Path)
-		if c.logger.IsInfo() {
-			c.logger.Info("disabled audit backend", "path", entry.Path)
-		}
+		c.logger.Info("disabled audit backend", "path", entry.Path)
 	}
 
 	for _, entry := range additions {
@@ -495,9 +489,7 @@ func (c *Core) reconcileAudits(req reconcileAuditsRequests) error {
 
 		// Register the backend
 		c.auditBroker.Register(entry.Path, backend, view, entry.Local)
-		if c.logger.IsInfo() {
-			c.logger.Info("enabled audit backend", "path", entry.Path, "type", entry.Type)
-		}
+		c.logger.Info("enabled audit backend", "path", entry.Path, "type", entry.Type)
 	}
 
 	return multiErr.ErrorOrNil()
@@ -528,9 +520,7 @@ func (c *Core) removeAuditReloadFunc(entry *routing.MountEntry) {
 		key := "audit_file|" + entry.Path
 		c.reloadFuncsLock.Lock()
 
-		if c.logger.IsDebug() {
-			c.baseLogger.Named("audit").Debug("removing reload function", "path", entry.Path)
-		}
+		c.baseLogger.Named("audit").Debug("removing reload function", "path", entry.Path)
 
 		delete(c.reloadFuncs, key)
 
@@ -571,32 +561,24 @@ func (c *Core) newAuditBackend(ctx context.Context, entry *routing.MountEntry, v
 
 		c.reloadFuncsLock.Lock()
 
-		if auditLogger.IsDebug() {
-			auditLogger.Debug("adding reload function", "path", entry.Path)
-			if entry.Options != nil {
-				auditLogger.Debug("file backend options", "path", entry.Path, "file_path", entry.Options["file_path"])
-			}
+		auditLogger.Debug("adding reload function", "path", entry.Path)
+		if entry.Options != nil {
+			auditLogger.Debug("file backend options", "path", entry.Path, "file_path", entry.Options["file_path"])
 		}
 
 		c.reloadFuncs[key] = append(c.reloadFuncs[key], func() error {
-			if auditLogger.IsInfo() {
-				auditLogger.Info("reloading file audit backend", "path", entry.Path)
-			}
+			auditLogger.Info("reloading file audit backend", "path", entry.Path)
 			return be.Reload(ctx)
 		})
 
 		c.reloadFuncsLock.Unlock()
 	case "socket":
-		if auditLogger.IsDebug() {
-			if entry.Options != nil {
-				auditLogger.Debug("socket backend options", "path", entry.Path, "address", entry.Options["address"], "socket type", entry.Options["socket_type"])
-			}
+		if entry.Options != nil {
+			auditLogger.Debug("socket backend options", "path", entry.Path, "address", entry.Options["address"], "socket type", entry.Options["socket_type"])
 		}
 	case "syslog":
-		if auditLogger.IsDebug() {
-			if entry.Options != nil {
-				auditLogger.Debug("syslog backend options", "path", entry.Path, "facility", entry.Options["facility"], "tag", entry.Options["tag"])
-			}
+		if entry.Options != nil {
+			auditLogger.Debug("syslog backend options", "path", entry.Path, "facility", entry.Options["facility"], "tag", entry.Options["tag"])
 		}
 	}
 

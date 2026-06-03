@@ -1093,9 +1093,7 @@ func (m *ExpirationManager) revokeCommon(ctx context.Context, leaseID string, fo
 				return err
 			}
 
-			if m.logger.IsWarn() {
-				m.logger.Warn("revocation from the backend failed, but in force mode so ignoring", "error", err)
-			}
+			m.logger.Warn("revocation from the backend failed, but in force mode so ignoring", "error", err)
 		}
 	}
 
@@ -1142,7 +1140,7 @@ func (m *ExpirationManager) revokeCommon(ctx context.Context, leaseID string, fo
 	}
 	m.pendingLock.Unlock()
 
-	if m.logger.IsInfo() && !skipToken && m.logLeaseExpirations {
+	if !skipToken && m.logLeaseExpirations {
 		m.logger.Info("revoked lease", "lease_id", leaseID)
 	}
 	if m.logger.IsWarn() && !skipToken && le.isIncorrectlyNonExpiring() {

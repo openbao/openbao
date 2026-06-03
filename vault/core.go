@@ -1805,20 +1805,14 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 	c.sealed.Store(false)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
 
-	if c.logger.IsInfo() {
-		c.logger.Info("vault is unsealed")
-	}
+	c.logger.Info("vault is unsealed")
 
 	if c.serviceRegistration != nil {
 		if err := c.serviceRegistration.NotifySealedStateChange(false); err != nil {
-			if c.logger.IsWarn() {
-				c.logger.Warn("failed to notify unsealed status", "error", err)
-			}
+			c.logger.Warn("failed to notify unsealed status", "error", err)
 		}
 		if err := c.serviceRegistration.NotifyInitializedStateChange(true); err != nil {
-			if c.logger.IsWarn() {
-				c.logger.Warn("failed to notify initialized status", "error", err)
-			}
+			c.logger.Warn("failed to notify initialized status", "error", err)
 		}
 	}
 	return nil
@@ -2114,9 +2108,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 
 	if c.serviceRegistration != nil {
 		if err := c.serviceRegistration.NotifySealedStateChange(true); err != nil {
-			if c.logger.IsWarn() {
-				c.logger.Warn("failed to notify sealed status", "error", err)
-			}
+			c.logger.Warn("failed to notify sealed status", "error", err)
 		}
 	}
 

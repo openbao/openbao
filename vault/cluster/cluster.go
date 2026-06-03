@@ -292,9 +292,7 @@ func (cl *Listener) Run(ctx context.Context) error {
 		// Wrap the listener with TLS
 		tlsLn := tls.NewListener(localLn, tlsConfig)
 
-		if cl.logger.IsInfo() {
-			cl.logger.Info("serving cluster requests", "cluster_listen_address", tlsLn.Addr())
-		}
+		cl.logger.Info("serving cluster requests", "cluster_listen_address", tlsLn.Addr())
 
 		cl.shutdownWg.Add(1)
 		// Start our listening loop
@@ -369,18 +367,14 @@ func (cl *Listener) Run(ctx context.Context) error {
 				// aggressive here is fine.
 				err = tlsConn.SetDeadline(time.Now().Add(30 * time.Second))
 				if err != nil {
-					if cl.logger.IsDebug() {
-						cl.logger.Debug("error setting deadline for cluster connection", "error", err)
-					}
+					cl.logger.Debug("error setting deadline for cluster connection", "error", err)
 					tlsConn.Close()
 					continue
 				}
 
 				err = tlsConn.Handshake()
 				if err != nil {
-					if cl.logger.IsDebug() {
-						cl.logger.Debug("error handshaking cluster connection", "error", err)
-					}
+					cl.logger.Debug("error handshaking cluster connection", "error", err)
 					tlsConn.Close()
 					continue
 				}
@@ -390,9 +384,7 @@ func (cl *Listener) Run(ctx context.Context) error {
 				// Now, set it back to unlimited
 				err = tlsConn.SetDeadline(time.Time{})
 				if err != nil {
-					if cl.logger.IsDebug() {
-						cl.logger.Debug("error setting deadline for cluster connection", "error", err)
-					}
+					cl.logger.Debug("error setting deadline for cluster connection", "error", err)
 					tlsConn.Close()
 					continue
 				}

@@ -1112,9 +1112,7 @@ func (c *Core) checkKeyUpgrades(ctx context.Context) error {
 		if !didUpgrade {
 			break
 		}
-		if c.logger.IsInfo() {
-			c.logger.Info("upgraded to new key term", "term", newTerm)
-		}
+		c.logger.Info("upgraded to new key term", "term", newTerm)
 	}
 	return nil
 }
@@ -1271,9 +1269,7 @@ func (c *Core) advertiseLeader(ctx context.Context, uuid string, leaderLostCh <-
 
 	if c.serviceRegistration != nil {
 		if err := c.serviceRegistration.NotifyActiveStateChange(true); err != nil {
-			if c.logger.IsWarn() {
-				c.logger.Warn("failed to notify active status", "error", err)
-			}
+			c.logger.Warn("failed to notify active status", "error", err)
 		}
 	}
 	return nil

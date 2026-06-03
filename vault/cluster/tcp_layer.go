@@ -64,9 +64,7 @@ func (l *TCPLayer) Listeners() []NetworkListener {
 
 	listeners := []NetworkListener{}
 	for i, laddr := range l.addrs {
-		if l.logger.IsInfo() {
-			l.logger.Info("starting listener", "listener_address", laddr)
-		}
+		l.logger.Info("starting listener", "listener_address", laddr)
 
 		tcpLn, err := net.ListenTCP("tcp", laddr)
 		if err != nil {

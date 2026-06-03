@@ -7,14 +7,9 @@ import (
 	"encoding/hex"
 	"net/http"
 	"reflect"
-	"strconv"
 	"testing"
 
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	"github.com/openbao/openbao/builtin/logical/transit"
-	"github.com/openbao/openbao/sdk/v2/helper/logging"
-	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/seal"
 	"github.com/stretchr/testify/require"
@@ -158,18 +153,13 @@ func TestSysInit_Put_AutoUnseal(t *testing.T) {
 	autoSeal, err := vault.NewAutoSeal(testSeal)
 	require.NoError(t, err)
 
-	// Create the transit server.
 	conf := &vault.CoreConfig{
-		LogicalBackends: map[string]logical.Factory{
-			"transit": transit.Factory,
-		},
 		Seal: autoSeal,
 	}
 	opts := &vault.TestClusterOptions{
 		NumCores:    1,
 		HandlerFunc: Handler,
 		SkipInit:    true,
-		Logger:      logging.NewVaultLogger(hclog.Trace).Named(t.Name()).Named("transit-seal" + strconv.Itoa(0)),
 	}
 	cluster := vault.NewTestCluster(t, conf, opts)
 	cluster.Start()
@@ -195,23 +185,18 @@ func TestSysInit_Put_AutoUnseal(t *testing.T) {
 }
 
 func TestSysInit_Put_ValidateParams_AutoUnseal(t *testing.T) {
-	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTransit})
+	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: "potato"})
 	autoSeal, err := vault.NewAutoSeal(testSeal)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Create the transit server.
 	conf := &vault.CoreConfig{
-		LogicalBackends: map[string]logical.Factory{
-			"transit": transit.Factory,
-		},
 		Seal: autoSeal,
 	}
 	opts := &vault.TestClusterOptions{
 		NumCores:    1,
 		HandlerFunc: Handler,
-		Logger:      logging.NewVaultLogger(hclog.Trace).Named(t.Name()).Named("transit-seal" + strconv.Itoa(0)),
 	}
 	cluster := vault.NewTestCluster(t, conf, opts)
 	cluster.Start()
@@ -232,7 +217,7 @@ func TestSysInit_Put_ValidateParams_AutoUnseal(t *testing.T) {
 	testResponseStatus(t, resp, http.StatusBadRequest)
 	body := map[string][]string{}
 	testResponseBody(t, resp, &body)
-	if body["errors"][0] != "parameters secret_shares,secret_threshold not applicable to seal type transit" {
+	if body["errors"][0] != "parameters secret_shares,secret_threshold not applicable to seal type potato" {
 		t.Fatal(body)
 	}
 }

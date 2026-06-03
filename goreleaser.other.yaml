@@ -4,6 +4,7 @@ project_name: openbao
 
 builds:
   - id: builds-other
+    binary: bao
     tags:
       - ui
     ldflags:

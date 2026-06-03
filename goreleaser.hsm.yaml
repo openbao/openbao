@@ -4,6 +4,7 @@ project_name: openbao
 
 builds:
   - id: builds-hsm
+    binary: bao
     tags:
       - ui
       - hsm

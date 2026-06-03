@@ -172,7 +172,12 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		return 2
 	}
 
-	if resp != nil && len(resp.KeyShares) > 0 {
+	// Only print the human-facing seal initialization message if we're in table
+	// output mode to not disturb serialized formats such as JSON when captured
+	// from stdout.
+	isTable := Format(c.UI) == "table"
+
+	if isTable && resp != nil && len(resp.KeyShares) != 0 {
 		for i, key := range resp.KeyShares {
 			c.UI.Output(fmt.Sprintf("Unseal Key %d: %s", i+1, key))
 		}
@@ -192,6 +197,13 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 
 	if c.flagField != "" {
 		return PrintRawField(c.UI, out, c.flagField)
+	}
+
+	if isTable || len(resp.KeyShares) == 0 {
+		// These were either already printed above or are set to zero values;
+		// remove them to reduce clutter.
+		delete(out, "key_shares")
+		delete(out, "key_threshold")
 	}
 
 	return OutputData(c.UI, out)

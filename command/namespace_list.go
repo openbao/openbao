@@ -28,11 +28,13 @@ func (c *NamespaceListCommand) Help() string {
 	helpText := `
 Usage: bao namespace list [options]
 
-  Lists unsealed child namespaces.
+  List child namespaces.
 
-  List all unsealed child namespaces:
+  List all direct child namespaces:
 
       $ bao namespace list
+
+  See 'namespace scan' to recursively list namespaces.
 
 ` + c.Flags().Help()
 

@@ -28,15 +28,18 @@ func (c *NamespaceScanCommand) Help() string {
 	helpText := `
 Usage: bao namespace scan [options]
 
-  Lists the enabled child namespaces recursively.
+  List child namespaces recursively.
 
-  List all enabled child namespaces recursively:
+  List all child namespaces recursively:
 
       $ bao namespace scan
 
-  List enabled child namespaces relative to parent:
+  List child namespaces relative to a given parent namespace:
 
       $ bao namespace scan -namespace=my-parent
+
+  Note that namespaces nested under any sealed namespaces encountered in the
+  scanned tree cannot be enumerated any further and will be omitted.
 
 ` + c.Flags().Help()
 

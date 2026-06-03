@@ -1026,7 +1026,7 @@ func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSe
 			// namespaces which was marked sealed, but retain the pointer to
 			// the sealed namespace itself.
 			if err := ns.namespacesByPath.Delete(entry.Path); err != nil {
-				errs = errors.Join(errs, err)
+				panic(err)
 			}
 			delete(ns.namespacesByUUID, entry.UUID)
 			delete(ns.namespacesByAccessor, entry.ID)

@@ -1,3 +1,0 @@
-```release-note:bug
-auth/kubernetes: document bound_service_account_namespace_selector usage
-```

@@ -154,6 +154,7 @@ const sidebars: SidebarsConfig = {
         "system/unseal",
         "system/user-lockout",
         "system/version-history",
+        "system/workflows",
         "system/wrapping-lookup",
         "system/wrapping-rewrap",
         "system/wrapping-unwrap",

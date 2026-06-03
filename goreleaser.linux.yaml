@@ -1,6 +1,6 @@
 version: 2
 
-project_name: bao
+project_name: openbao
 
 builds:
   - id: builds-linux

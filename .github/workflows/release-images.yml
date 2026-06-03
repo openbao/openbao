@@ -201,7 +201,7 @@ jobs:
             "$VERSION"
         env:
           GH_TOKEN: ${{ github.token }}
-          ARTIFACT_PATTERN: ${{ case(startsWith(matrix.distro.name, 'openbao-hsm'), 'bao-hsm', 'bao') }}_*_linux_*.tar.gz
+          ARTIFACT_PATTERN: ${{ case(startsWith(matrix.distro.name, 'openbao-hsm'), 'openbao-hsm', 'openbao') }}_*_linux_*.tar.gz
 
       - name: Verify artifacts
         run: |

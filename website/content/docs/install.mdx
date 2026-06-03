@@ -202,19 +202,21 @@ Download the release and checksum files:
 
 ```shell-session
 $ OS="freebsd"
-$ ARCH="x86_64"
-$ PLATFORM="$OS_$ARCH"
+$ ARCH="amd64"
+$ PLATFORM="${OS}_${ARCH}"
 $ VERSION=$(curl -s https://api.github.com/repos/openbao/openbao/releases | jq -r '.[0] .tag_name' | cut -d'v' -f2-)
-$ RELEASE="bao_$VERSION_$PLATFORM.tar.gz"
-$ wget https://github.com/openbao/openbao/releases/download/v$VERSION/bao_$VERSION_$PLATFORM.tar.gz
-$ wget https://github.com/openbao/openbao/releases/download/v$VERSION/checksums-$OS.txt
-$ wget https://github.com/openbao/openbao/releases/download/v$VERSION/checksums-$OS.txt.gpgsig
+$ RELEASE="openbao_${VERSION}_${PLATFORM}.tar.gz"
+$ wget "https://github.com/openbao/openbao/releases/download/v$VERSION/$RELEASE"
+$ wget "https://github.com/openbao/openbao/releases/download/v$VERSION/checksums.txt"
+$ wget "https://github.com/openbao/openbao/releases/download/v$VERSION/checksums.txt.gpgsig"
+$ wget "https://github.com/openbao/openbao/releases/download/v$VERSION/checksums.txt.sigstore.json"
 ```
 
 Verify the checksum using `sha256sum`:
 
 ```shell-session
-$ sha256sum --check checksums-$OS.txt 2>/dev/null
+$ sha256sum --ignore-missing --check checksums.txt
+bao_2.6.0_freebsd_amd64.tar.gz: OK
 ```
 
 ## Signature Verification

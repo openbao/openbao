@@ -286,9 +286,12 @@ func testRotateInvalidCommon(t *testing.T, c *Core, ns *namespace.Namespace, key
 	_, err = c.sealManager.UpdateRotation(ctx, ns, keys[0], "abcd", recovery)
 	require.Error(t, err)
 
+	// Corrupt the first byte of the first key so we'll fail once $threshold
+	// keys have been provided.
+	keys[0][0]++
+
 	// Provide invalid keys
 	for i, key := range keys {
-		key[0]++
 		ret, err := c.sealManager.UpdateRotation(ctx, ns, key, rotConfig.Nonce, recovery)
 		require.Nil(t, ret)
 		if i == 3 {

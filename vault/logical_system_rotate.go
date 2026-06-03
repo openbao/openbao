@@ -528,23 +528,17 @@ func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 			return handleError(err)
 		}
 
-		if ns.UUID != namespace.RootNamespaceUUID {
-			if err := b.Core.sealManager.RotateBarrierRootKey(ctx, ns); err != nil {
-				return nil, logical.CodedError(http.StatusInternalServerError, "failed to rotate barrier root key: %v", err)
-			}
-		} else {
-			initialized, err := b.Core.Initialized(ctx)
-			if err != nil {
-				return handleError(err)
-			}
+		initialized, err := b.Core.Initialized(ctx)
+		if err != nil {
+			return handleError(err)
+		}
 
-			if !initialized {
-				return handleError(ErrNotInit)
-			}
+		if !initialized {
+			return handleError(ErrNotInit)
+		}
 
-			if err := b.Core.RotateBarrierRootKey(ctx); err != nil {
-				return nil, logical.CodedError(http.StatusInternalServerError, "failed to rotate barrier root key: %v", err)
-			}
+		if err := b.Core.sealManager.RotateBarrierRootKey(ctx, ns); err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to rotate barrier root key: %v", err)
 		}
 
 		b.Core.logger.Info("barrier root key rotated")

@@ -6,6 +6,7 @@ package kmip
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 
@@ -61,7 +62,8 @@ func NewServer(a Adapter, cryptoA CryptoAdapter, cfg ServerConfig) (*Server, err
 
 func (s *Server) Start() {
 	go func() {
-		if err := s.srv.Serve(); err != nil {
+		// ErrShutdown is the expected return from Stop()/Shutdown() → not an error.
+		if err := s.srv.Serve(); err != nil && !errors.Is(err, kmipserver.ErrShutdown) {
 			s.adapter.Logger().Error("KMIP server stopped with error", "error", err)
 		}
 	}()

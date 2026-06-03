@@ -28,4 +28,6 @@ import (
 	_ "gotest.tools/gotestsum"
 
 	_ "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"
+
+	_ "github.com/zmap/zlint/v3/cmd/zlint"
 )

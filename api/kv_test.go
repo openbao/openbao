@@ -396,7 +396,7 @@ func TestExtractExtractKeyList(t *testing.T) {
 		name            string
 		input           *Secret
 		expectedKeys    []string
-		expectedDetails map[string]KVMetadata
+		expectedDetails map[string]*KVMetadata
 		expectedError   error
 	}{{
 		name: "happy case: empty data",
@@ -427,7 +427,7 @@ func TestExtractExtractKeyList(t *testing.T) {
 			},
 		},
 		expectedKeys: []string{"a", "b"},
-		expectedDetails: map[string]KVMetadata{
+		expectedDetails: map[string]*KVMetadata{
 			"a": {
 				CurrentVersion: 42,
 			},

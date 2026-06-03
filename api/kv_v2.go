@@ -869,7 +869,7 @@ func extractKeyList(resp *Secret) (*KVList, error) {
 		return nil, fmt.Errorf(`invalid response from server: expected "key_info" to be of type map[string]any but got %T`, keysInfoUntyped)
 	}
 
-	result.Metadata = make(map[string]KVMetadata, len(keyInfo))
+	result.Metadata = make(map[string]*KVMetadata, len(keyInfo))
 	for key, value := range keyInfo {
 		valueAsMap, ok := value.(map[string]any)
 		if !ok {
@@ -880,7 +880,7 @@ func extractKeyList(resp *Secret) (*KVList, error) {
 		if err != nil {
 			return nil, err
 		}
-		result.Metadata[key] = *valueAsStruct
+		result.Metadata[key] = valueAsStruct
 	}
 
 	return &result, nil

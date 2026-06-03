@@ -39,7 +39,7 @@ type KVSecret struct {
 // The Raw field can be used to access e.g. the request id.
 type KVList struct {
 	Keys     []string
-	Metadata map[string]KVMetadata
+	Metadata map[string]*KVMetadata
 	Raw      *Secret
 }
 

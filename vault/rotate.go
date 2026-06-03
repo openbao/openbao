@@ -50,16 +50,9 @@ func (sm *SealManager) rotationConfig(nsUUID string, recovery bool) *SealConfig 
 
 	// Return requested seal config.
 	if recovery {
-		if rotationConfig.recoveryConfig != nil {
-			return rotationConfig.recoveryConfig
-		}
-	} else {
-		if rotationConfig.rootConfig != nil {
-			return rotationConfig.rootConfig
-		}
+		return rotationConfig.recoveryConfig
 	}
-
-	return nil
+	return rotationConfig.rootConfig
 }
 
 // setRotationConfig sets the root or recovery rotation config for a given namespace.
@@ -169,9 +162,7 @@ func (sm *SealManager) InitRotation(ctx context.Context, ns *namespace.Namespace
 		return nil, logical.CodedError(http.StatusInternalServerError, "failed to update rotate config: %w", err)
 	}
 
-	if sm.logger.IsInfo() {
-		sm.logger.Info("rotation initialized", "namespace", ns.Path, "nonce", config.Nonce, "shares", config.SecretShares, "threshold", config.SecretThreshold, "validation_required", config.VerificationRequired)
-	}
+	sm.logger.Info("rotation initialized", "namespace", ns.Path, "nonce", config.Nonce, "shares", config.SecretShares, "threshold", config.SecretThreshold, "validation_required", config.VerificationRequired)
 
 	if recovery {
 		// if no key shares exist, meaning we've initialized the instance
@@ -434,9 +425,7 @@ func (sm *SealManager) performRootRotation(ctx context.Context, ns *namespace.Na
 		return logical.CodedError(http.StatusInternalServerError, "failed to rotate root key: %w", err)
 	}
 
-	if sm.logger.IsInfo() {
-		sm.logger.Info("root key rotated", "namespace", ns.Path, "shares", rotationConfig.SecretShares, "threshold", rotationConfig.SecretThreshold)
-	}
+	sm.logger.Info("root key rotated", "namespace", ns.Path, "shares", rotationConfig.SecretShares, "threshold", rotationConfig.SecretThreshold)
 
 	if isShamirSeal {
 		if len(newSealKey) > 0 {

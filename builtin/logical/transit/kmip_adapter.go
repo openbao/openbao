@@ -5,6 +5,8 @@ package transit
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"strconv"
 
@@ -390,6 +392,27 @@ func (a *transitAdapter) RevokeKey(ctx context.Context, id string) error { retur
 
 // DestroyKey destroys a key permanently.
 func (a *transitAdapter) DestroyKey(ctx context.Context, id string) error {
+	p, _, err := a.b.GetPolicy(ctx, keysutil.PolicyRequest{Storage: a.s, Name: id}, a.b.GetRandomReader())
+	if err != nil {
+		return err
+	}
+	if p == nil {
+		return nil
+	}
+
+	// KMIP Destroy = permanent removal, but transit refuses deletion unless the
+	// policy opts in → flip DeletionAllowed (and persist) before DeletePolicy.
+	if !p.DeletionAllowed {
+		if !a.b.System().CachingDisabled() {
+			p.Lock(true)
+		}
+		p.DeletionAllowed = true
+		err = p.Persist(ctx, a.s)
+		p.Unlock()
+		if err != nil {
+			return err
+		}
+	}
 	return a.b.lm.DeletePolicy(ctx, a.s, id)
 }
 
@@ -416,12 +439,13 @@ func (a *transitAdapter) Encrypt(ctx context.Context, id string, plaintext []byt
 	}
 	defer p.Unlock()
 
-	pt, err := p.EncryptWithFactory(p.LatestVersion, nil, nil, string(plaintext), nil)
+	// transit's EncryptWithFactory base64-decodes its plaintext arg → encode first.
+	ct, err := p.EncryptWithFactory(p.LatestVersion, nil, nil, base64.StdEncoding.EncodeToString(plaintext), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return []byte(pt), nil
+	return []byte(ct), nil
 }
 
 func (a *transitAdapter) Decrypt(ctx context.Context, id string, ciphertext []byte) ([]byte, error) {
@@ -444,12 +468,18 @@ func (a *transitAdapter) Decrypt(ctx context.Context, id string, ciphertext []by
 	}
 	defer p.Unlock()
 
-	pt, err := p.DecryptWithFactory(nil, nil, string(ciphertext), nil)
+	b64, err := p.DecryptWithFactory(nil, nil, string(ciphertext), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return []byte(pt), nil
+	// transit returns base64-encoded plaintext → decode back to raw bytes.
+	pt, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		return nil, err
+	}
+
+	return pt, nil
 }
 
 func (a *transitAdapter) Sign(ctx context.Context, id string, data []byte) ([]byte, error) {
@@ -472,7 +502,9 @@ func (a *transitAdapter) Sign(ctx context.Context, id string, data []byte) ([]by
 	}
 	defer p.Unlock()
 
-	res, err := p.Sign(p.LatestVersion, nil, data, keysutil.HashTypeSHA2256, "", keysutil.MarshalingTypeASN1)
+	// transit signs the input as-is (treats it as the digest) → pre-hash here.
+	digest := sha256.Sum256(data)
+	res, err := p.Sign(p.LatestVersion, nil, digest[:], keysutil.HashTypeSHA2256, "", keysutil.MarshalingTypeASN1)
 	if err != nil {
 		return nil, err
 	}
@@ -499,5 +531,7 @@ func (a *transitAdapter) Verify(ctx context.Context, id string, data, signature 
 	}
 	defer p.Unlock()
 
-	return p.VerifySignature(nil, data, keysutil.HashTypeSHA2256, "", keysutil.MarshalingTypeASN1, string(signature))
+	// must match Sign → verify against the same SHA-256 digest, not raw data.
+	digest := sha256.Sum256(data)
+	return p.VerifySignature(nil, digest[:], keysutil.HashTypeSHA2256, "", keysutil.MarshalingTypeASN1, string(signature))
 }

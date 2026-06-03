@@ -213,6 +213,9 @@ func handleGet(ctx context.Context, a Adapter, req *payloads.GetRequestPayload) 
 	if err != nil {
 		return nil, mapError(err)
 	}
+	if obj == nil {
+		return nil, kmipserver.Errorf(kmiplib.ResultReasonItemNotFound, "object %q not found", uid)
+	}
 
 	return &payloads.GetResponsePayload{
 		ObjectType:       obj.ObjectType(),

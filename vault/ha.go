@@ -375,21 +375,21 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 	return retErr
 }
 
-func (c *Core) stopStandby() {
-	standbyStopCh := c.standbyStopCh.Load()
-	if standbyStopCh == nil {
+func (c *Core) stopHALoop() {
+	haLoopStopCh := c.haLoopStopCh.Load()
+	if haLoopStopCh == nil {
 		return
 	}
 
 	select {
-	case standbyStopCh.(chan struct{}) <- struct{}{}:
+	case haLoopStopCh.(chan struct{}) <- struct{}{}:
 	default:
-		c.logger.Warn("ignoring standby stop request: stop is already in progress")
+		c.logger.Warn("ignoring HA loop stop request: stop is already in progress")
 	}
 }
 
 func (c *Core) restart() {
-	restartCh := c.standbyRestartCh.Load()
+	restartCh := c.haLoopRestartCh.Load()
 	if restartCh == nil {
 		return
 	}
@@ -403,7 +403,7 @@ func (c *Core) restart() {
 
 func (c *Core) drainPendingRestarts() {
 	for {
-		restartCh := c.standbyRestartCh.Load()
+		restartCh := c.haLoopRestartCh.Load()
 		if restartCh == nil {
 			return
 		}
@@ -470,7 +470,7 @@ func (c *Core) runStandbyGrabStateLock(stopCh <-chan struct{}) error {
 	return nil
 }
 
-// runStandby is a long running process that manages a number of the HA
+// runHALoop is a long running process that manages a number of the HA
 // subsystems.
 // doneCh will be closed once the standby has finished operating in this
 // invocation.
@@ -484,53 +484,19 @@ func (c *Core) runStandbyGrabStateLock(stopCh <-chan struct{}) error {
 //
 // stopCh and restartCh differ in that the former is terminal and the latter is
 // re-entrant. Both can be triggered by writing to the respective channel.
-func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}, stopCh, restartCh <-chan struct{}) {
+func (c *Core) runHALoop(doneCh chan<- struct{}, manualStepDownCh chan struct{}, stopCh, restartCh <-chan struct{}) {
 	defer close(doneCh)
 	defer close(manualStepDownCh)
 
 	for restart := true; restart; {
-		restart = c.runStandbyOnce(doneCh, manualStepDownCh, stopCh, restartCh)
+		restart = c.runHALoopOnce(manualStepDownCh, stopCh, restartCh)
 	}
 
-	c.logger.Info("runStandby stopped")
+	c.logger.Info("runHALoop stopped")
 }
 
-func (c *Core) runStandbyOnce(doneCh chan<- struct{}, manualStepDownCh chan struct{}, stopCh, restartCh <-chan struct{}) bool {
-	c.logger.Info("entering standby mode")
+func (c *Core) runHALoopOnce(manualStepDownCh chan struct{}, stopCh, restartCh <-chan struct{}) bool {
 	restart := false
-
-	if c.StandbyReadsEnabled() {
-		c.logger.Info("enabling horizontal scalability (reads)")
-		c.barrier.SetReadOnly(true)
-
-		if err := c.runStandbyGrabStateLock(stopCh); err != nil {
-			c.logger.Error("runStandby: unable to grab state lock", "err", err)
-			return false
-		}
-
-		// wipe any existing mount tables
-		if err := c.preSeal(); err != nil {
-			c.logger.Error("pre-seal teardown failed", "error", err)
-		}
-
-		c.drainPendingRestarts()
-
-		readStandbyCtx, readStandbyCancel := context.WithCancel(namespace.RootContext(context.Background()))
-		defer readStandbyCancel()
-
-		// Unseal, holding the state lock.
-		atomic.StoreUint32(c.replicationState, uint32(consts.ReplicationDRDisabled|consts.ReplicationPerformanceStandby))
-		if err := c.postUnseal(readStandbyCtx, readStandbyCancel, readonlyUnsealStrategy{}); err != nil {
-			c.logger.Error("read-only post-unseal setup failed", "error", err)
-			if err := c.barrier.Seal(); err != nil {
-				c.logger.Error("failed to re-seal barrier after post-unseal setup failed", "error", err)
-			}
-			c.logger.Warn("vault is sealed")
-		}
-
-		// Yield the state lock.
-		c.stateLock.Unlock()
-	}
 
 	var g run.Group
 	{
@@ -597,7 +563,7 @@ func (c *Core) runStandbyOnce(doneCh chan<- struct{}, manualStepDownCh chan stru
 	// we'll exit from this with an error.
 	err := g.Run()
 	if err != nil {
-		c.logger.Error("unexpected error in runStandby", "error", err.Error())
+		c.logger.Error("unexpected error in runHALoop", "error", err.Error())
 	}
 
 	return restart
@@ -609,25 +575,56 @@ func (c *Core) runStandbyOnce(doneCh chan<- struct{}, manualStepDownCh chan stru
 func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 	var manualStepDown bool
 	firstIteration := true
+
+	// We pin the current standby or active context to this out-of-loop variable
+	// to ensure it gets a deferred cancel if the loop exits due to an error.
+	// This method really needs a refactor :)
+	ctxCancel := context.CancelFunc(func() {})
+	defer func() {
+		ctxCancel()
+	}()
+
 	for {
+		// Cancel any old context from the previous iteration.
+		ctxCancel()
+
 		// Check for a shutdown
 		select {
 		case <-stopCh:
-			c.logger.Debug("stop channel triggered in runStandby")
+			c.logger.Debug("stop channel triggered in runHALoop")
 			return
 		default:
-			// If we've just down, we could instantly grab the lock again. Give
-			// the other nodes a chance.
-			if manualStepDown {
-				time.Sleep(manualStepDownSleepPeriod)
-				manualStepDown = false
-			} else if !firstIteration {
-				// If we restarted the for loop due to an error, wait a second
-				// so that we don't busy loop if the error persists.
-				time.Sleep(1 * time.Second)
+		}
+
+		if !firstIteration && !manualStepDown {
+			// If we restarted the for loop due to an error, wait a second
+			// so that we don't busy loop if the error persists.
+			time.Sleep(1 * time.Second)
+		}
+
+		firstIteration = false
+
+		c.logger.Info("entering standby mode")
+
+		// Create the standby context (this becomes activeCtx on core, oh well).
+		standbyCtx, standbyCtxCancel := context.WithCancel(namespace.RootContext(context.Background()))
+		// Cancel if we exit the loop without transitioning to active.
+		ctxCancel = standbyCtxCancel
+
+		// If possible, unseal in read-only mode and start acting as a
+		// read-enabled standby.
+		if c.StandbyReadsEnabled() {
+			if stop := c.runReadEnabledStandby(standbyCtx, standbyCtxCancel, stopCh); stop {
+				return
 			}
 		}
-		firstIteration = false
+
+		// If we've just stepped down, we could instantly grab the lock
+		// again. Give the other nodes a chance.
+		if manualStepDown {
+			time.Sleep(manualStepDownSleepPeriod)
+			manualStepDown = false
+		}
 
 		// Create a lock
 		uuid, err := uuid.GenerateUUID()
@@ -676,6 +673,20 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 		// detect flapping
 		activeTime := time.Now()
 
+		// We're transitioning to active, so cancel the standby context.
+		// Spawn this in a goroutine so we can cancel the context and unblock
+		// any inflight requests that are holding the state lock.
+		go func() {
+			timer := time.NewTimer(DefaultMaxRequestDuration)
+			select {
+			case <-standbyCtx.Done():
+				timer.Stop()
+			case <-timer.C:
+				// Attempt to drain any inflight requests.
+				standbyCtxCancel()
+			}
+		}()
+
 		// Grab the statelock or stop
 		l := newLockGrabber(c.stateLock.Lock, c.stateLock.Unlock, stopCh)
 		go l.grab()
@@ -693,6 +704,9 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 			return
 		}
 
+		// Cancel the standby context if it hasn't already been.
+		standbyCtxCancel()
+
 		// Clear pending standby restarts, not that it matters too much.
 		c.drainPendingRestarts()
 
@@ -703,6 +717,9 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(nil))
 		c.activeContext = activeCtx
 		c.activeContextCancelFunc.Store(activeCtxCancel)
+
+		// Ensure it gets cancelled eventually.
+		ctxCancel = activeCtxCancel
 
 		// Mark storage as readable again.
 		c.barrier.SetReadOnly(false)
@@ -820,15 +837,15 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 
 		// Stop Active Duty
 		{
-			// Spawn this in a go routine so we can cancel the context and
-			// unblock any inflight requests that are holding the statelock.
+			// Spawn this in a goroutine so we can cancel the context and
+			// unblock any inflight requests that are holding the state lock.
 			go func() {
 				timer := time.NewTimer(DefaultMaxRequestDuration)
 				select {
 				case <-activeCtx.Done():
 					timer.Stop()
-					// Attempt to drain any inflight requests
 				case <-timer.C:
+					// Attempt to drain any inflight requests.
 					activeCtxCancel()
 				}
 			}()
@@ -883,6 +900,35 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 			c.stateLock.Unlock()
 		}
 	}
+}
+
+// runReadEnabledStandby grabs the state lock and unseals in read-only mode. It
+// returns true if stopped or timed out.
+func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.CancelFunc, stopCh <-chan struct{}) bool {
+	c.logger.Info("enabling horizontal scalability (reads)")
+	c.barrier.SetReadOnly(true)
+
+	if err := c.runStandbyGrabStateLock(stopCh); err != nil {
+		c.logger.Error("unable to grab state lock for standby", "err", err)
+		return true
+	}
+
+	defer c.stateLock.Unlock()
+
+	// Wipe any existing state.
+	if err := c.preSeal(); err != nil {
+		c.logger.Error("pre-seal teardown failed", "error", err)
+	}
+
+	c.drainPendingRestarts()
+
+	// Unseal, holding the state lock.
+	atomic.StoreUint32(c.replicationState, uint32(consts.ReplicationDRDisabled|consts.ReplicationPerformanceStandby))
+	if err := c.postUnseal(ctx, ctxCancel, readonlyUnsealStrategy{}); err != nil {
+		c.logger.Error("read-only post-unseal setup failed", "error", err)
+	}
+
+	return false
 }
 
 // grabLockOrStop returns stopped=false if the lock is acquired. Returns

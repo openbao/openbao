@@ -160,6 +160,7 @@ func testTransit_SignVerify_ECDSA(t *testing.T, bits int) {
 	req.Data = map[string]interface{}{
 		"input": "dGhlIHF1aWNrIGJyb3duIGZveA==",
 	}
+	p.Unlock()
 
 	signRequest := func(req *logical.Request, errExpected bool, postpath string) string {
 		t.Helper()
@@ -619,7 +620,9 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 	if err = fooP.Persist(context.Background(), storage); err != nil {
 		t.Fatal(err)
 	}
-	err = barP.Rotate(context.Background(), storage, b.GetRandomReader())
+	fooP.Unlock()
+
+	err = barP.Rotate(t.Context(), storage, b.GetRandomReader())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -631,6 +634,7 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 	if err = barP.Persist(context.Background(), storage); err != nil {
 		t.Fatal(err)
 	}
+	barP.Unlock()
 
 	req.Data = map[string]interface{}{
 		"input":   "dGhlIHF1aWNrIGJyb3duIGZveA==",

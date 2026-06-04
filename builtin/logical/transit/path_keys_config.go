@@ -88,7 +88,7 @@ func (b *backend) pathKeysConfigWrite(ctx context.Context, req *logical.Request,
 	name := d.Get("name").(string)
 
 	// Check if the policy already exists before we lock everything
-	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
+	p, _, err := b.GetPolicyExclusive(ctx, keysutil.PolicyRequest{
 		Storage: req.Storage,
 		Name:    name,
 	}, b.GetRandomReader())
@@ -99,9 +99,6 @@ func (b *backend) pathKeysConfigWrite(ctx context.Context, req *logical.Request,
 		return logical.ErrorResponse(
 				fmt.Sprintf("no existing key named %s could be found", name)),
 			logical.ErrInvalidRequest
-	}
-	if !b.System().CachingDisabled() {
-		p.Lock(true)
 	}
 	defer p.Unlock()
 

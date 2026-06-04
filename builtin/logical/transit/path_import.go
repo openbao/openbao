@@ -230,9 +230,7 @@ func (b *backend) pathImportWrite(ctx context.Context, req *logical.Request, d *
 	}
 
 	if p != nil {
-		if b.System().CachingDisabled() {
-			p.Unlock()
-		}
+		p.Unlock()
 		return nil, errors.New("the import path cannot be used with an existing key; use import-version to rotate an existing imported key")
 	}
 
@@ -271,24 +269,22 @@ func (b *backend) pathImportVersionWrite(ctx context.Context, req *logical.Reque
 		Upsert:       false,
 		IsPrivateKey: isCiphertextSet,
 	}
-	p, _, err := b.GetPolicy(ctx, polReq, b.GetRandomReader())
+	p, _, err := b.GetPolicyExclusive(ctx, polReq, b.GetRandomReader())
 	if err != nil {
 		return nil, err
 	}
 	if p == nil {
 		return nil, fmt.Errorf("no key found with name %s; to import a new key, use the import/ endpoint", name)
 	}
+
+	defer p.Unlock()
+
 	if !p.Imported {
 		return nil, errors.New("the import_version endpoint can only be used with an imported key")
 	}
 	if p.ConvergentEncryption {
 		return nil, errors.New("import_version cannot be used on keys with convergent encryption enabled")
 	}
-
-	if !b.System().CachingDisabled() {
-		p.Lock(true)
-	}
-	defer p.Unlock()
 
 	key, resp, err := b.extractKeyFromFields(ctx, req, d, p.Type, isCiphertextSet)
 	if err != nil {

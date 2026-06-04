@@ -142,6 +142,14 @@ func GetCacheSizeFromStorage(ctx context.Context, s logical.Storage) (int, error
 
 // Update cache size and get policy
 func (b *backend) GetPolicy(ctx context.Context, polReq keysutil.PolicyRequest, rand io.Reader) (retP *keysutil.Policy, retUpserted bool, retErr error) {
+	return b.getPolicy(ctx, polReq, rand, false /* not exclusive */)
+}
+
+func (b *backend) GetPolicyExclusive(ctx context.Context, polReq keysutil.PolicyRequest, rand io.Reader) (retP *keysutil.Policy, retUpserted bool, retErr error) {
+	return b.getPolicy(ctx, polReq, rand, true /* exclusive */)
+}
+
+func (b *backend) getPolicy(ctx context.Context, polReq keysutil.PolicyRequest, rand io.Reader, exclusive bool) (retP *keysutil.Policy, retUpserted bool, retErr error) {
 	// Acquire read lock to read cacheSizeChanged
 	b.configMutex.RLock()
 	if b.lm.GetUseCache() && b.cacheSizeChanged {
@@ -167,7 +175,7 @@ func (b *backend) GetPolicy(ctx context.Context, polReq keysutil.PolicyRequest, 
 	} else {
 		b.configMutex.RUnlock()
 	}
-	p, _, err := b.lm.GetPolicy(ctx, polReq, rand)
+	p, _, err := b.lm.GetPolicyWithLockType(ctx, polReq, rand, exclusive)
 	if err != nil {
 		return p, false, err
 	}
@@ -237,7 +245,7 @@ func (b *backend) autoRotateKeys(ctx context.Context, req *logical.Request) erro
 	var errs *multierror.Error
 
 	for _, key := range keys {
-		p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
+		p, _, err := b.GetPolicyExclusive(ctx, keysutil.PolicyRequest{
 			Storage: req.Storage,
 			Name:    key,
 		}, b.GetRandomReader())
@@ -262,9 +270,6 @@ func (b *backend) autoRotateKeys(ctx context.Context, req *logical.Request) erro
 
 // rotateIfRequired rotates a key if it is due for autorotation.
 func (b *backend) rotateIfRequired(ctx context.Context, req *logical.Request, key string, p *keysutil.Policy) error {
-	if !b.System().CachingDisabled() {
-		p.Lock(true)
-	}
 	defer p.Unlock()
 
 	// If the key is imported, it can only be rotated from within Vault if allowed.

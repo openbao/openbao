@@ -1715,10 +1715,9 @@ func TestTransit_AutoRotateKeys(t *testing.T) {
 					t.Fatal("expected non-nil policy")
 				}
 				p.AutoRotatePeriod = time.Nanosecond
-				err = p.Persist(context.Background(), storage)
-				if err != nil {
-					t.Fatal(err)
-				}
+				err = p.Persist(t.Context(), storage)
+				require.NoError(t, err)
+				p.Unlock()
 
 				// Run the rotation check and validate the state of key rotations
 				b.checkAutoRotateAfter = time.Now()

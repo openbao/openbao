@@ -282,9 +282,9 @@ type Core struct {
 	sealed    atomic.Bool
 
 	standby          atomic.Bool
-	standbyDoneCh    chan struct{}
-	standbyStopCh    atomic.Value
-	standbyRestartCh atomic.Value
+	haLoopDoneCh     chan struct{}
+	haLoopStopCh     atomic.Value
+	haLoopRestartCh  atomic.Value
 	manualStepDownCh chan struct{}
 	heldHALock       physical.Lock
 
@@ -946,8 +946,8 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	c.standby.Store(true)
-	c.standbyStopCh.Store(make(chan struct{}, 1))
-	c.standbyRestartCh.Store(make(chan struct{}, 1))
+	c.haLoopStopCh.Store(make(chan struct{}, 1))
+	c.haLoopRestartCh.Store(make(chan struct{}, 1))
 	c.sealed.Store(true)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
 
@@ -1794,11 +1794,11 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 		c.standby.Store(false)
 	} else {
 		// Go to standby mode, wait until we are active to unseal
-		c.standbyDoneCh = make(chan struct{})
+		c.haLoopDoneCh = make(chan struct{})
 		c.manualStepDownCh = make(chan struct{}, 1)
-		c.standbyStopCh.Store(make(chan struct{}, 1))
-		c.standbyRestartCh.Store(make(chan struct{}, 1))
-		go c.runStandby(c.standbyDoneCh, c.manualStepDownCh, c.standbyStopCh.Load().(chan struct{}), c.standbyRestartCh.Load().(chan struct{}))
+		c.haLoopStopCh.Store(make(chan struct{}, 1))
+		c.haLoopRestartCh.Store(make(chan struct{}, 1))
+		go c.runHALoop(c.haLoopDoneCh, c.manualStepDownCh, c.haLoopStopCh.Load().(chan struct{}), c.haLoopRestartCh.Load().(chan struct{}))
 	}
 
 	// Success!
@@ -2042,10 +2042,9 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 			}
 		}()
 
-		// Stop the standby before attempting to acquire the standby lock.
-		// This will prevent a race condition between runStandby and this
-		// method.
-		c.stopStandby()
+		// Stop the HA loop before attempting to acquire the state lock. This
+		// will prevent a race condition between runHALoop and this method.
+		c.stopHALoop()
 
 		// Acquire the state lock.
 		c.stateLock.Lock()
@@ -2076,18 +2075,17 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 		}
 
 		// If we are trying to acquire the lock, force it to return with nil so
-		// runStandby will exit
-		// If we are active, signal the standby goroutine to shut down and wait
-		// for completion. We have the state lock here so nothing else should
-		// be toggling standby status.
-		close(c.standbyStopCh.Load().(chan struct{}))
-		c.logger.Debug("finished triggering standbyStopCh for runStandby")
+		// runHALoop will exit. If we are active, signal the standby goroutine
+		// to shut down and wait for completion. We have the state lock here so
+		// nothing else should be toggling standby status.
+		close(c.haLoopStopCh.Load().(chan struct{}))
+		c.logger.Debug("finished triggering haLoopCh for runHALoop")
 
-		// Wait for runStandby to stop
-		<-c.standbyDoneCh
-		c.logger.Debug("runStandby done")
+		// Wait for runHALoop to stop.
+		<-c.haLoopDoneCh
+		c.logger.Debug("runHALoop done")
 
-		// Stop requests from processing
+		// Stop requests from processing.
 		activeCtxCancel()
 	}
 

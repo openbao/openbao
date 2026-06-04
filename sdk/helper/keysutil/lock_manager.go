@@ -304,7 +304,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 
 	// If we are using the cache, defer the lock unlock; otherwise we will
 	// return from here with the lock still held.
-	cleanup := func() {
+	defer func() {
 		switch {
 		// If using the cache we always unlock, the caller locks the policy
 		// themselves
@@ -316,8 +316,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 		case retP == nil:
 			lock.Unlock()
 		}
-	}
-	defer cleanup()
+	}()
 
 	// Check the cache again
 	if lm.useCache {
@@ -370,7 +369,6 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 
 		case KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
 			if req.Derived || req.Convergent {
-				cleanup()
 				return nil, false, fmt.Errorf("key derivation and convergent encryption not supported for keys of type %v", req.KeyType)
 			}
 		case KeyType_HMAC:

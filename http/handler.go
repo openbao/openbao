@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"maps"
 	"mime"
@@ -858,33 +857,6 @@ func parseQuery(values url.Values) map[string]interface{} {
 		return data
 	}
 	return nil
-}
-
-func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) error {
-	ctx := r.Context()
-
-	// Enforce limits on JSON complexity.
-	_, _, err := EnforceJSONComplexityLimits(ctx, r.Body)
-	if err != nil {
-		return fmt.Errorf("failed to limit JSON input: %w", err)
-	}
-
-	// Reset to the beginning.
-	if err := resetBody(r); err != nil {
-		return fmt.Errorf("failed to reset body: %w", err)
-	}
-
-	err = jsonutil.DecodeJSONFromReader(r.Body, out)
-	if err != nil && err != io.EOF {
-		return fmt.Errorf("failed to parse JSON input: %w", err)
-	}
-
-	// Reset to the beginning again.
-	if err := resetBody(r); err != nil {
-		return fmt.Errorf("failed to reset body: %w", err)
-	}
-
-	return err
 }
 
 // parseFormRequest parses values from a form POST.

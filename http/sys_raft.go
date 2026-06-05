@@ -49,7 +49,7 @@ func handleSysRaftJoin(core *vault.Core) http.Handler {
 func handleSysRaftJoinPost(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 	// Parse the request
 	var req JoinRequest
-	if err := parseJSONRequest(r, w, &req); err != nil && err != io.EOF {
+	if err := parseJSONRequest(r, &req); err != nil && !errors.Is(err, io.EOF) {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}

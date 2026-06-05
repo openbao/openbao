@@ -293,3 +293,29 @@ func (c *Sys) ReadNamespaceWithContext(ctx context.Context, name string) (*ReadN
 	}
 	return result.Data, nil
 }
+
+// NamespaceSealStatus returns information about the seal status of the namespace with the given name.
+func (c *Sys) NamespaceSealStatus(name string) (*NamespaceSealStatusOutput, error) {
+	return c.NamespaceSealStatusWithContext(context.Background(), name)
+}
+
+// NamespaceSealStatusWithContext returns information about the seal status of the namespace with the given name.
+func (c *Sys) NamespaceSealStatusWithContext(ctx context.Context, name string) (*NamespaceSealStatusOutput, error) {
+	if name == "" || name == "/" {
+		return nil, errors.New("name must not be empty")
+	}
+
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	secret, err := c.c.Logical().ReadWithContext(ctx, "sys/namespaces/"+name+"/seal-status")
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Data *NamespaceSealStatusOutput
+	}
+
+	return result.Data, mapstructure.Decode(secret, &result)
+}

@@ -200,7 +200,7 @@ jobs:
             --pattern=checksums.txt.sigstore.json \
             "$VERSION"
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
           ARTIFACT_PATTERN: ${{ case(startsWith(matrix.distro.name, 'openbao-hsm'), 'openbao-hsm', 'openbao') }}_*_linux_*.tar.gz
 
       - name: Verify artifacts

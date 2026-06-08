@@ -116,8 +116,8 @@ jobs:
       matrix:
         target:
           - { os: linux,   arch: amd64       }
-          - { os: linux,   arch: arm, arm: 6 }
           - { os: linux,   arch: arm64       }
+          - { os: linux,   arch: arm, arm: 6 }
           - { os: linux,   arch: ppc64le     }
           - { os: linux,   arch: riscv64     }
           - { os: linux,   arch: s390x       }

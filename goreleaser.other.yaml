@@ -1,90 +1,35 @@
 version: 2
 
-project_name: bao
-
-before:
-  hooks:
-    - go mod tidy
-    - go generate ./...
-    - make bootstrap
-
-env:
-  - NIGHTLY_RELEASE={{ if and (index .Env "NIGHTLY_RELEASE") (eq .Env.NIGHTLY_RELEASE "true") }}-nightly{{ end }}
+project_name: openbao
 
 builds:
   - id: builds-other
+    binary: bao
     tags:
       - ui
     ldflags:
       - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.CommitDate={{ .Date }}
     env:
       - CGO_ENABLED=0
-    goos:
-      - darwin
-      - freebsd
-      - netbsd
-      - openbsd
-      - windows
-    goarch:
-      - amd64
-      - arm
-      - arm64
-      - riscv64
-    goarm:
-      - "6"
-      - "7"
-    ignore:
-      - goos: linux
-      - goos: illumos
-      - goos: solaris
-      - goos: darwin
-        goarm: "6"
-      - goos: darwin
-        goarch: arm
-      - goos: darwin
-        goarch: riscv64
-      - goos: dragonfly
-        goarch: arm
-      - goos: dragonfly
-        goarch: arm64
-      - goos: dragonfly
-        goarch: riscv64
-      - goos: freebsd
-        goarm: "7"
-      - goos: netbsd
-        goarch: riscv64
-      - goos: netbsd
-        goarm: "7"
-      - goos: openbsd
-        goarch: riscv64
-      - goos: openbsd
-        goarm: "7"
-      - goos: windows
-        goarch: arm
-      - goos: windows
-        goarch: riscv64
     mod_timestamp: "{{ .CommitTimestamp }}"
     skip: false
 
 report_sizes: true
 
 checksum:
-  name_template: "checksums-other.txt"
-  disable: false
+  disable: true
+
+changelog:
+  disable: true
 
 archives:
-  - format: tar.gz
-    # this name template makes the OS and Arch compatible with the results of `uname`.
-    name_template: >-
-      {{ .ProjectName }}_{{ .Version }}_{{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
-    format_overrides:
+  - format_overrides:
+      - formats: tar.gz
+      # Use zip for windows archives.
       - goos: windows
-        format: zip
+        formats: zip
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
     files:
       - "LICENSE"
       - "README.md"
@@ -97,20 +42,10 @@ archives:
       mtime: 2008-01-02T15:04:05Z
 
 sboms:
-  - artifacts: archive
-  - id: binary
-    artifacts: binary
+  - id: archive
+    artifacts: archive
   - id: package
     artifacts: package
-
-changelog:
-  disable: "{{ if gt (len .Env.NIGHTLY_RELEASE) 0 }}true{{ end }}"
-  use: github
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
 
 signs:
   - id: cosign
@@ -133,15 +68,3 @@ signs:
       - "--output=${signature}"
       - "--detach-sign"
       - "${artifact}"
-
-release:
-  github:
-    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
-    name: openbao{{ .Env.NIGHTLY_RELEASE }}
-
-  prerelease: auto
-  disable: false
-
-  draft: false
-  replace_existing_draft: false
-  replace_existing_artifacts: false

@@ -1,0 +1,111 @@
+name: Release distro packages
+
+on:
+  release:
+    types:
+      - published
+
+  # Use the manual trigger when the workflow or related scripts had to be
+  # updated post-release to successfully publish.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to (re-)publish, e.g., v2.0.0
+        required: true
+        type: string
+
+env:
+  # Pick the right version input based on the workflow trigger.
+  VERSION: ${{ case(github.event_name == 'release', github.ref_name, inputs.version) }}
+
+permissions:
+  contents: read
+
+jobs:
+  deb:
+    name: Release DEBs
+    runs-on: ubuntu-latest
+    if: github.event_name != 'release' || !contains(github.ref_name, 'nightly')
+    env:
+      BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
+      AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
+      AWS_REGION: ${{ secrets.PKG_S3_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Import GPG key
+        id: gpg-import
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSWORD }}
+
+      - name: Install reprepro from Debian experimental
+        run: |
+          sudo apt update && sudo apt install -y debian-archive-keyring
+          # Required for reprepro with "Limit" support.
+          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian experimental main" | sudo tee /etc/apt/sources.list.d/debian-experimental.list > /dev/null
+          # Required for libgpgme45 >= 1.23.2.
+          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian sid main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null
+          sudo apt update && sudo apt install -t experimental -y reprepro
+
+      - name: Download db and dists
+        run: |
+          aws s3 sync "s3://${BUCKET}/deb/db" build/deb/db
+          aws s3 sync "s3://${BUCKET}/deb/dists" build/deb/dists
+
+      - name: Download packages from release
+        run: ./scripts/release/download-artifacts.sh
+        env:
+          PATTERN: '*.deb'
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Update repository
+        run: ./scripts/release/update-deb-repo.sh
+        env:
+          GPG_FINGERPRINT: ${{ steps.gpg-import.outputs.fingerprint }}
+
+      - name: Upload repository
+        run: aws s3 sync build/deb "s3://${BUCKET}/deb"
+    
+  rpm:
+    name: Release RPMs
+    runs-on: ubuntu-latest
+    # Skip if triggered by a nightly release being published.
+    if: github.event_name != 'release' || !contains(github.ref_name, 'nightly')
+    env:
+      BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
+      AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
+      AWS_REGION: ${{ secrets.PKG_S3_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Install rpm & createrepo_c
+        run: sudo apt install -y rpm createrepo-c
+
+      - name: Download repodata
+        run: aws s3 sync "s3://${BUCKET}/rpm" build/rpm --exclude \*.rpm
+
+      - name: Download packages from release
+        run: ./scripts/release/download-artifacts.sh
+        env:
+          PATTERN: '*.rpm'
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Update repository
+        run: ./scripts/release/update-rpm-repo.sh
+
+      - name: Upload repository
+        run: aws s3 sync build/rpm "s3://${BUCKET}/rpm"

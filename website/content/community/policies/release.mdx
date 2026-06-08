@@ -51,26 +51,27 @@ a better release process going forward.
 
 ## Release checklist
 
- - [ ] Open PR to update `CHANGELOG.md` and release notes on website.
+ - [ ] Open & merge PR to update `CHANGELOG.md` and release notes on website.
       - [ ] Patch versions should go in the corresponding minor version's
             existing page; new minor and major versions should get their own
             page.
       - [ ] If doing a patch release off an existing major or minor release
-            branch, update the `main` repository's `CHANGELOG.md` file as
-            well, ordering it according to version number.
+            branch, forward-port the changelog to the `main` branch.
       - [ ] Update docs versions in `doc-versions.json` if necessary
- - [ ] Tag release commit (`CHANGELOG.md` change).
  - [ ] Start [release workflow](https://github.com/openbao/openbao/actions/workflows/release.yml):
-       select target tag (not branch) and untick "Mark as nightly build".
- - [ ] Manually upload [GPG signing key](https://openbao.org/assets/openbao-gpg-pub-20240618.asc)
-       to the release artifacts.
- - [ ] Spot-check release artifacts:
-      - [ ] Container images work.
-      - [ ] Linux binaries work.
-      - [ ] Website download page.
-      - [ ] CoSign and GPG Signatures on binaries.
- - [ ] In the event of issues during the release that require new tags to be
-       pushed, write a postmortem indicating why.
+       Select the appropriate branch and set the desired release version. This
+       will stage a draft release on GitHub and upload release artifacts to it.
+ - [ ] Spot-check stage-one release artifacts:
+      - [ ] Binaries work.
+      - [ ] CoSign and GPG signatures on artifacts are valid.
+-  [ ] On failure, delete the draft release, merge necessary adjustments, and
+       retry the above two steps.
+ - [ ] Attach release notes to the release draft.
+ - [ ] Publish the release draft. This pushes the release tag and triggers
+       workflows to build & publish container images and to update repos hosted
+       on pkgs.openbao.org.
+ - [ ] Spot-check stage-two release artifacts:
+      - [ ] Container images work and have valid CoSign signatures.
  - [ ] Share release notification announcement:
       - [ ] OpenBao Core mailing list (cc TSC mailing list)
       - [ ] GitHub Discussions

@@ -13,9 +13,9 @@ RUN apk add --no-cache ca-certificates libcap su-exec dumb-init tzdata gcompat
 
 # The OpenBao binary is built externally in CI and copied into the container
 # build.
-ARG BIN_NAME
-COPY ${BIN_NAME} /bin/
-RUN ln -s /bin/${BIN_NAME} /bin/vault
+ARG TARGETARCH
+COPY bin/${TARGETARCH}/bao /bin/
+RUN ln -s /bin/bao /bin/vault
 
 # /openbao/logs is made available to use as a location to store audit logs, if
 # desired; /openbao/file is made available to use as a location with the file
@@ -67,9 +67,9 @@ RUN groupadd --gid 1000 openbao && \
 
 # The OpenBao binary is built externally in CI and copied into the container
 # build.
-ARG BIN_NAME
-COPY ${BIN_NAME} /bin/
-RUN ln -s /bin/${BIN_NAME} /bin/vault
+ARG TARGETARCH
+COPY bin/${TARGETARCH}/bao /bin/
+RUN ln -s /bin/bao /bin/vault
 
 # /openbao/logs is made available to use as a location to store audit logs, if
 # desired; /openbao/file is made available to use as a location with the file
@@ -117,8 +117,8 @@ COPY LICENSE /licenses/mozilla.txt
 
 # The OpenBao binary is built externally in CI and copied into the container
 # build.
-ARG BIN_NAME
-COPY ${BIN_NAME} /bin/
+ARG TARGETARCH
+COPY bin/${TARGETARCH}/bao /bin/
 
 # 8200/tcp is the primary interface that applications use to interact with
 # OpenBao.

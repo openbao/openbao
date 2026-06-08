@@ -60,7 +60,7 @@ jobs:
           done
 
           # Then generate a nightly tag for this commit.
-          echo "version=$(./scripts/nightly_tag.sh)" >> "$GITHUB_OUTPUT"
+          echo "version=$(./scripts/release/nightly-tag.sh)" >> "$GITHUB_OUTPUT"
         env:
           VERSION: ${{ inputs.version }}
           NIGHTLY_RELEASE: ${{ inputs.nightly }}
@@ -186,33 +186,12 @@ jobs:
         run: sudo apt install -y gcc-aarch64-linux-gnu
 
       - name: Run GoReleaser
-        run: |
-          # Pick the right file:
-          file='goreleaser.${{ matrix.target.os }}.yaml'
-          [[ ! -f "$file" ]] && file=goreleaser.other.yaml
-
-          # Inject 'goos' and 'goarch':
-          query='
-              .builds[0].goos   |= ["${{ case(matrix.target.os == 'hsm', 'linux', matrix.target.os) }}"]
-            | .builds[0].goarch |= ["${{ matrix.target.arch }}"]
-          '
-
-          # Inject 'goarm' if defined:
-          if [[ ! -z '${{ matrix.target.arm }}' ]]; then
-            query="$query"' | .builds[0].goarm |= ["${{ matrix.target.arm }}"]'
-          fi
-
-          # Create the tag locally so goreleaser knows what to target:
-          git tag "$VERSION"
-
-          # Build:
-          yq eval "$query" "$file" | goreleaser release --clean --verbose --skip=publish --timeout=30m -f -
-
-          # Remove files in 'dist' that we don't want. This leaves only those
-          # artifacts that we want uploaded to the final release.
-          rm -rf dist/config.yaml dist/metadata.json dist/artifacts.json dist/builds-*
+        run: ./scripts/release/goreleaser-build.sh
         env:
           VERSION: ${{ needs.setup.outputs.version }}
+          TARGET_OS: ${{ matrix.target.os }}
+          TARGET_ARM: ${{ matrix.target.arm }}
+          TARGET_ARCH: ${{ matrix.target.arch }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           GPG_FINGERPRINT: ${{ steps.gpg-import.outputs.fingerprint }}
@@ -333,28 +312,10 @@ jobs:
           merge-multiple: true
 
       - name: Generate & sign checksums
-        run: |
-          # Checksum all files in dist, except for signatures.
-          find . -type f -not -name '*.gpgsig' -not -name '*.sigstore.json' -exec basename {} \; \
-            | sort \
-            | xargs sha256sum \
-            > ../checksums.txt && mv ../checksums.txt .
-          # Sign with cosign:
-          cosign sign-blob \
-            --yes \
-            --bundle=checksums.txt.sigstore.json \
-            checksums.txt
-          # Sign with gpg:
-          gpg \
-            --batch \
-            --detach-sign \
-            --default-key="$GPG_FINGERPRINT" \
-            --output=checksums.txt.gpgsig \
-            checksums.txt <<< "$GPG_PASSWORD"
+        run: ./scripts/release/checksums.sh
         env:
           GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
           GPG_FINGERPRINT: ${{ steps.gpg-import.outputs.fingerprint }}
-        working-directory: dist
 
       - name: Create draft release
         run: |

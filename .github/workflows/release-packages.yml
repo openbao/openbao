@@ -9,7 +9,7 @@ jobs:
   deb:
     name: Release DEBs
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.ref_name, 'nightly') }}
+    if: "!contains(github.ref_name, 'nightly')"
     env:
       BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
       AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
@@ -17,6 +17,9 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
@@ -27,11 +30,13 @@ jobs:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSWORD }}
 
-      - name: Install reprepro from debian experimental
+      - name: Install reprepro from Debian experimental
         run: |
           sudo apt update && sudo apt install -y debian-archive-keyring
-          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian experimental main" | sudo tee /etc/apt/sources.list.d/debian-experimental.list > /dev/null # required for reprepro with "Limit" support
-          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian sid main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null # required for libgpgme45 >= 1.23.2
+          # Required for reprepro with "Limit" support.
+          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian experimental main" | sudo tee /etc/apt/sources.list.d/debian-experimental.list > /dev/null
+          # Required for libgpgme45 >= 1.23.2.
+          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian sid main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null
           sudo apt update && sudo apt install -t experimental -y reprepro
 
       - name: Download db and dists
@@ -39,48 +44,15 @@ jobs:
           aws s3 sync "s3://${BUCKET}/deb/db" build/deb/db
           aws s3 sync "s3://${BUCKET}/deb/dists" build/deb/dists
 
-      - name: Download release artifacts
-        run: |
-          gh release download \
-            --repo='${{ github.repository }}' \
-            --pattern='*.deb' \
-            --pattern='*.deb.sigstore.json' \
-            --pattern=checksums.txt \
-            --pattern=checksums.txt.sigstore.json \
-            '${{ github.ref_name }}'
+      - name: Download packages from release
+        run: ./scripts/release/download-artifacts.sh
         env:
+          PATTERN: '*.deb'
+          VERSION: ${{ github.ref_name }}
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Verify artifacts
-        run: |
-          for f in *.deb; do
-            echo "Verifying $f via checksum..."
-            awk -v f="$f" '$2 == f' checksums.txt | sha256sum -c -
-          done
-          for f in checksums.txt *.deb; do
-            echo "Verifying $f via cosign..."
-            cosign verify-blob \
-              --bundle="$f.sigstore.json" \
-              --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-              --certificate-identity-regexp='https://github.com/${{ github.repository }}/.github/workflows/release.yml@refs/.*' \
-              "$f"
-          done
-
       - name: Update repository
-        run: |
-          mkdir -p build/deb/conf
-          cat > build/deb/conf/distributions <<EOF
-          Origin: OpenBao - Official
-          Label: OpenBao
-          Suite: stable
-          Codename: stable
-          Architectures: amd64 arm64 armhf ppc64el riscv64 s390x
-          Components: main
-          Description: Official APT repository for OpenBao
-          SignWith: ${GPG_FINGERPRINT}
-          Limit: 0
-          EOF
-          reprepro -b build/deb includedeb stable *.deb
+        run: ./scripts/release/update-deb-repo.sh
         env:
           GPG_FINGERPRINT: ${{ steps.gpg-import.outputs.fingerprint }}
 
@@ -90,7 +62,7 @@ jobs:
   rpm:
     name: Release RPMs
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.ref_name, 'nightly') }}
+    if: "!contains(github.ref_name, 'nightly')"
     env:
       BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
       AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
@@ -98,54 +70,27 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
-      - name: Install createrepo_c from Debian trixie
-        run: |
-          sudo apt update && sudo apt install -y debian-archive-keyring
-          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian trixie main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null # required for createrepo-c > 0.17.3
-          sudo apt update && sudo apt install -t trixie -y createrepo-c
+      - name: Install rpm & createrepo_c
+        run: sudo apt install -y rpm createrepo-c
 
       - name: Download repodata
         run: aws s3 sync "s3://${BUCKET}/rpm" build/rpm --exclude \*.rpm
 
       - name: Download packages from release
-        run: |
-          gh release download \
-            --repo='${{ github.repository }}' \
-            --pattern='*.rpm' \
-            --pattern='*.rpm.sigstore.json' \
-            --pattern=checksums.txt \
-            --pattern=checksums.txt.sigstore.json \
-            '${{ github.ref_name }}'
+        run: ./scripts/release/download-artifacts.sh
         env:
+          PATTERN: '*.rpm'
+          VERSION: ${{ github.ref_name }}
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Verify artifacts
-        run: |
-          for f in *.rpm; do
-            echo "Verifying $f via checksum..."
-            awk -v f="$f" '$2 == f' checksums.txt | sha256sum -c -
-          done
-          for f in checksums.txt *.rpm; do
-            echo "Verifying $f via cosign..."
-            cosign verify-blob \
-              --bundle="$f.sigstore.json" \
-              --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-              --certificate-identity-regexp='https://github.com/${{ github.repository }}/.github/workflows/release.yml@refs/.*' \
-              "$f"
-          done
-
       - name: Update repository
-        run: |
-          ls *.rpm > pkglist.txt
-          while read pkg; do
-            ARCH=$(rpm -q $pkg --qf "%{arch}")
-            mkdir -p build/rpm/$ARCH
-            mv $pkg build/rpm/$ARCH/
-            createrepo_c --update --recycle-pkglist --skip-stat --includepkg $(basename $pkg) build/rpm/$ARCH
-          done < pkglist.txt
+        run: ./scripts/update-rpm-repo.sh
 
       - name: Upload repository
         run: aws s3 sync build/rpm "s3://${BUCKET}/rpm"

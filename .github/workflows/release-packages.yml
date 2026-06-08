@@ -5,11 +5,27 @@ on:
     types:
       - published
 
+  # Use the manual trigger when the workflow or related scripts had to be
+  # updated post-release to successfully publish.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to (re-)publish, e.g., v2.0.0
+        required: true
+        type: string
+
+env:
+  # Pick the right version input based on the workflow trigger.
+  VERSION: ${{ case(github.event_name == 'release', github.ref_name, inputs.version) }}
+
+permissions:
+  contents: read
+
 jobs:
   deb:
     name: Release DEBs
     runs-on: ubuntu-latest
-    if: "!contains(github.ref_name, 'nightly')"
+    if: github.event_name != 'release' || !contains(github.ref_name, 'nightly')
     env:
       BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
       AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
@@ -48,7 +64,6 @@ jobs:
         run: ./scripts/release/download-artifacts.sh
         env:
           PATTERN: '*.deb'
-          VERSION: ${{ github.ref_name }}
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Update repository
@@ -62,7 +77,8 @@ jobs:
   rpm:
     name: Release RPMs
     runs-on: ubuntu-latest
-    if: "!contains(github.ref_name, 'nightly')"
+    # Skip if triggered by a nightly release being published.
+    if: github.event_name != 'release' || !contains(github.ref_name, 'nightly')
     env:
       BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
       AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
@@ -86,11 +102,10 @@ jobs:
         run: ./scripts/release/download-artifacts.sh
         env:
           PATTERN: '*.rpm'
-          VERSION: ${{ github.ref_name }}
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Update repository
-        run: ./scripts/update-rpm-repo.sh
+        run: ./scripts/release/update-rpm-repo.sh
 
       - name: Upload repository
         run: aws s3 sync build/rpm "s3://${BUCKET}/rpm"

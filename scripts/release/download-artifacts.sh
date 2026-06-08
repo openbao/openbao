@@ -13,7 +13,7 @@ set -euo pipefail
 
 GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-openbao/openbao}
 
-mkdir dist -p && cd dist
+mkdir -p dist && cd dist
 
 gh release download \
   --repo="$GITHUB_REPOSITORY" \

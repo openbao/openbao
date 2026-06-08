@@ -15,7 +15,6 @@ import (
 	"time"
 
 	uuid "github.com/hashicorp/go-uuid"
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -493,7 +492,7 @@ func (sm *SealManager) validateRotationConfig(ns *namespace.Namespace, newConfig
 			return nil, logical.CodedError(http.StatusInternalServerError, "invalid recovery configuration: %w", err)
 		}
 	} else {
-		if seal.BarrierType() != wrapping.WrapperTypeShamir {
+		if seal.BarrierType() != vaultseal.WrapperTypeShamir {
 			newConfig.SecretShares = 1
 			newConfig.SecretThreshold = 1
 

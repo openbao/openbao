@@ -384,8 +384,11 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	doTwoPhaseLogin(t, userClient2, enginePath2, methodID, testuser2, entityID2)
 
 	// let's see if user1 is able to login after 5 seconds
-	time.Sleep(5 * time.Second)
+	time.Sleep(time.Duration(waitPeriod) * time.Second)
 	doTwoPhaseLogin(t, userClient1, enginePath1, methodID, testuser1, entityID1)
+
+	// check two phase login on standbys (depends on the time.Sleep above to get a fresh TOTP code)
+	doTwoPhaseLogin(t, cluster.Cores[1].Client, enginePath2, methodID, testuser2, entityID2)
 
 	// Destroy the secret so that the token can self generate
 	_, err = client.Logical().WriteWithContext(context.Background(), "identity/mfa/method/totp/admin-destroy", map[string]interface{}{

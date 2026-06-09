@@ -17,7 +17,6 @@ type namespaceTree struct {
 }
 
 type namespaceNode struct {
-	parent   *namespaceNode
 	children map[string]*namespaceNode
 	entry    *namespace.Namespace
 }
@@ -54,7 +53,7 @@ func (nt *namespaceTree) nodeAt(path string) *namespaceNode {
 	return node
 }
 
-// Get returns the namespace at a given path
+// Get returns the namespace at a given path.
 func (nt *namespaceTree) Get(path string) *namespace.Namespace {
 	node := nt.nodeAt(path)
 	if node == nil {
@@ -62,6 +61,17 @@ func (nt *namespaceTree) Get(path string) *namespace.Namespace {
 	}
 
 	return node.entry
+}
+
+// IsLeaf returns true if the given path represents a leaf node, i.e., a
+// namespace with no children.
+func (nt *namespaceTree) IsLeaf(path string) bool {
+	node := nt.nodeAt(path)
+	if node == nil {
+		return false
+	}
+
+	return len(node.children) == 0
 }
 
 // LongestPrefix finds the longest prefix of path that leads to a namespace. It
@@ -113,6 +123,9 @@ func (nt *namespaceTree) PostOrderTraversal(path string, op func(namespace *name
 	}
 }
 
+// WalkPath calls predicate by walking towards the given namespace, starting
+// from the root, until the predicate returns true or the namespace was reached
+// or not found.
 func (nt *namespaceTree) WalkPath(path string, predicate func(namespace *namespace.Namespace) bool) {
 	path = namespace.Canonicalize(path)
 	var segments []string
@@ -133,45 +146,34 @@ func (nt *namespaceTree) WalkPath(path string, predicate func(namespace *namespa
 	}
 }
 
-// List lists child Namespace entries at a given path, optionally including the
-// namespace at the given path, optionally recursing down into all child
-// namespaces.
-func (nt *namespaceTree) List(path string, includeParent bool, recursive bool, tainted map[string]bool) ([]*namespace.Namespace, error) {
+// Walk walks the tree starting at path and calls callback on each encountered
+// child namespace. An error is returned if the initial path does not exist.
+func (nt *namespaceTree) Walk(
+	path string,
+	recursive bool,
+	callback func(*namespace.Namespace),
+) error {
 	node := nt.nodeAt(path)
 	if node == nil {
-		return nil, fmt.Errorf("unknown path: %s", namespace.Canonicalize(path))
+		return fmt.Errorf("unknown path: %s", namespace.Canonicalize(path))
 	}
 
-	var nodes []*namespaceNode
-	nodes = append(nodes, node)
-
-	var entries []*namespace.Namespace
-	if includeParent {
-		entries = make([]*namespace.Namespace, 0, len(node.children)+1)
-
-		entry := node.entry.Clone(false)
-		if value := tainted[entry.UUID]; value {
-			entry.Tainted = value
-		}
-
-		entries = append(entries, entry)
+	queue := make([]*namespaceNode, 0, len(node.children))
+	for _, child := range node.children {
+		queue = append(queue, child)
 	}
-	for idx := 0; idx < len(nodes); idx++ {
-		node = nodes[idx]
-		for _, child := range node.children {
-			entry := child.entry.Clone(false)
-			if value := tainted[entry.UUID]; value {
-				entry.Tainted = value
-			}
 
-			entries = append(entries, entry)
-			if recursive {
-				nodes = append(nodes, child)
+	for len(queue) > 0 {
+		node, queue = queue[0], queue[1:]
+		callback(node.entry)
+		if recursive {
+			for _, child := range node.children {
+				queue = append(queue, child)
 			}
 		}
 	}
 
-	return entries, nil
+	return nil
 }
 
 // Insert adds or updates the namespace with the given entry. It refuses to add
@@ -192,7 +194,6 @@ func (nt *namespaceTree) Insert(entry *namespace.Namespace) error {
 				return errors.New("can't insert namespace with missing parent")
 			}
 			node.children[segment] = &namespaceNode{
-				parent:   node,
 				children: make(map[string]*namespaceNode),
 				entry:    entry,
 			}
@@ -215,23 +216,27 @@ func (nt *namespaceTree) Delete(path string) error {
 	if path == "" {
 		return errors.New("can't delete root namespace")
 	}
+
 	segments := strings.SplitAfter(path, "/")
 	segments = segments[:len(segments)-1]
+
 	node := nt.root
+	var parent *namespaceNode
+
 	for _, segment := range segments {
 		n, ok := node.children[segment]
 		if !ok {
 			return nil
 		}
 
-		node = n
+		node, parent = n, node
 	}
 
 	if len(node.children) > 0 {
 		return errors.New("can't delete namespace with children")
 	}
 
-	delete(node.parent.children, segments[len(segments)-1])
+	delete(parent.children, segments[len(segments)-1])
 	nt.size -= 1
 
 	return nil

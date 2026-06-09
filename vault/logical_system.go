@@ -3958,7 +3958,7 @@ func (b *SystemBackend) pathInternalUINamespacesRead(ctx context.Context, req *l
 		return nil, err
 	}
 
-	list, err := b.Core.namespaceStore.ListNamespaces(ctx, false, false)
+	list, err := b.Core.namespaceStore.ListNamespaces(ctx, ListNamespaceOpts{IncludeSealed: true})
 	if err != nil {
 		return nil, errors.New("failed to list namespaces")
 	}

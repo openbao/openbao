@@ -273,7 +273,9 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		entries, err := b.Core.namespaceStore.ListNamespaces(ctx, false, false)
+		entries, err := b.Core.namespaceStore.ListNamespaces(ctx, ListNamespaceOpts{
+			IncludeSealed: true,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -297,7 +299,10 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		entries, err := b.Core.namespaceStore.ListNamespaces(ctx, false, true)
+		entries, err := b.Core.namespaceStore.ListNamespaces(ctx, ListNamespaceOpts{
+			Recursive:     true,
+			IncludeSealed: true,
+		})
 		if err != nil {
 			return nil, err
 		}

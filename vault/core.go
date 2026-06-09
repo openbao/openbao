@@ -3331,6 +3331,9 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, vi
 // PopMFAResponseAuthByID pops an item from the mfaResponseAuthQueue by ID
 // it returns the cached auth response or an error
 func (c *Core) PopMFAResponseAuthByID(reqID string) (*MFACachedAuthResponse, error) {
+	if c.standby.Load() {
+		return nil, logical.ErrReadOnly
+	}
 	c.mfaResponseAuthQueueLock.Lock()
 	defer c.mfaResponseAuthQueueLock.Unlock()
 	return c.mfaResponseAuthQueue.PopByKey(reqID)
@@ -3339,6 +3342,9 @@ func (c *Core) PopMFAResponseAuthByID(reqID string) (*MFACachedAuthResponse, err
 // SaveMFAResponseAuth pushes an MFACachedAuthResponse to the mfaResponseAuthQueue.
 // it returns an error in case of failure
 func (c *Core) SaveMFAResponseAuth(respAuth *MFACachedAuthResponse) error {
+	if c.standby.Load() {
+		return logical.ErrReadOnly
+	}
 	c.mfaResponseAuthQueueLock.Lock()
 	defer c.mfaResponseAuthQueueLock.Unlock()
 	return c.mfaResponseAuthQueue.Push(respAuth)

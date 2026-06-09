@@ -360,6 +360,7 @@ const sidebars: SidebarsConfig = {
                         "secrets/pki/setup",
                         "secrets/pki/quick-start-root-ca",
                         "secrets/pki/quick-start-intermediate-ca",
+                        "secrets/pki/quick-start-cel",
                         "secrets/pki/considerations",
                         "secrets/pki/troubleshooting-acme",
                         "secrets/pki/rotation-primitives",

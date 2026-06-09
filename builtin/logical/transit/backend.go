@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/openbao/openbao/builtin/logical/transit/kmip"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
@@ -78,12 +79,25 @@ func Backend(ctx context.Context, conf *logical.BackendConfig) (*backend, error)
 			b.pathConfigKeys(),
 			b.pathCreateCSR(),
 			b.pathImportCertChain(),
+			b.pathKmipConfig(),
+			b.pathKmipRoles(),
+			b.pathKmipRoleList(),
 		},
 
 		Secrets:      []*framework.Secret{},
 		Invalidate:   b.invalidate,
 		BackendType:  logical.TypeLogical,
 		PeriodicFunc: b.periodicFunc,
+		InitializeFunc: func(ctx context.Context, req *logical.InitializationRequest) error {
+			cfg, err := b.getKmipConfig(ctx, req.Storage)
+			if err != nil {
+				return err
+			}
+			return b.restartKmipServer(cfg, req.Storage)
+		},
+		Clean: func(_ context.Context) {
+			b.stopKmipServer()
+		},
 	}
 
 	b.backendUUID = conf.BackendUUID
@@ -122,6 +136,9 @@ type backend struct {
 	checkAutoRotateAfter time.Time
 	autoRotateOnce       sync.Once
 	backendUUID          string
+
+	kmipServer *kmip.Server
+	kmipMu     sync.Mutex
 }
 
 func GetCacheSizeFromStorage(ctx context.Context, s logical.Storage) (int, error) {

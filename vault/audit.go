@@ -654,11 +654,10 @@ func (g genericAuditor) AuditResponse(ctx context.Context, input *logical.LogInp
 }
 
 func (c *Core) ReloadAuditLogs() {
-	// Ensure we are already unsealed
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
 
-	if c.Sealed() || (c.standby.Load() && !c.StandbyReadsEnabled()) || c.activeContext == nil {
+	if c.activeContext == nil || c.audit == nil {
 		return
 	}
 
@@ -734,7 +733,7 @@ func (c *Core) handleAuditLogSetup(ctx context.Context, standby bool) error {
 		}
 
 		c.logger.Info("disabling removed audit device", "path", auditMount.Path)
-		if existed, err := c.disableAudit(ctx, auditMount.Path, true); existed && err != nil {
+		if existed, err := c.disableAudit(ctx, auditMount.Path, standby); existed && err != nil {
 			return fmt.Errorf("failed to disable removed audit %v: %w", auditMount.Path, err)
 		}
 	}

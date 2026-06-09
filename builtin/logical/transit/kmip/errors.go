@@ -14,7 +14,7 @@ import (
 
 func mapError(err error) error {
 	if err == nil {
-		return err
+		return nil
 	}
 
 	var kmipErr *kmipserver.Error

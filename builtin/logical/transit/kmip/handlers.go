@@ -181,7 +181,7 @@ func handleCreate(ctx context.Context, a Adapter, req *payloads.CreateRequestPay
 		return nil, kmipserver.Errorf(kmiplib.ResultReasonInvalidField, "Cryptographic algorithm is required")
 	}
 	if bitlen == 0 {
-		return nil, kmipserver.Errorf(kmiplib.ResultReasonInvalidField, "Cryptographic length is requiered")
+		return nil, kmipserver.Errorf(kmiplib.ResultReasonInvalidField, "Cryptographic length is required")
 	}
 
 	name := NameFromTemplateAttribute(req.TemplateAttribute)
@@ -319,7 +319,7 @@ func handleRevoke(ctx context.Context, a Adapter, req *payloads.RevokeRequestPay
 		)
 	}
 
-	// TODO: Revocation Reason, Compromise Occurrence Date are skipped intially
+	// TODO: Revocation Reason, Compromise Occurrence Date are skipped initially
 	if err = a.RevokeKey(ctx, uid); err != nil {
 		return nil, mapError(err)
 	}

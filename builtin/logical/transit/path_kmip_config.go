@@ -119,7 +119,7 @@ func (b *backend) pathKmipConfigWrite(ctx context.Context, req *logical.Request,
 
 	if cfg.Enabled {
 		if cfg.CertPem == "" || cfg.KeyPem == "" {
-			return logical.ErrorResponse("server_cert_pem and server_key_pem are requiered when enabling KMIP"), logical.ErrInvalidRequest
+			return logical.ErrorResponse("server_cert_pem and server_key_pem are required when enabling KMIP"), logical.ErrInvalidRequest
 		}
 		if _, err := tls.X509KeyPair([]byte(cfg.CertPem), []byte(cfg.KeyPem)); err != nil {
 			return logical.ErrorResponse("invalid server cert/key: %s", err), logical.ErrInvalidRequest

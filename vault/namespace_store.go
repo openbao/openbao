@@ -1070,7 +1070,7 @@ func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSe
 	namespaceToSeal.ManuallySealed = true
 	nsCopy := namespaceToSeal.Clone(true /* preserve unlock */)
 	if err := ns.writeNamespace(ctx, ns.core.NamespaceView(parent), nsCopy); err != nil {
-		return fmt.Errorf("failed to persist namespace seal: %w", err)
+		return fmt.Errorf("failed to persist namespace: %w", err)
 	}
 
 	return errs
@@ -1123,7 +1123,7 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 	namespaceToUnseal.ManuallySealed = false
 	nsCopy := namespaceToUnseal.Clone(true /* preserve unlock */)
 	if err := ns.writeNamespace(ctx, ns.core.NamespaceView(parent), nsCopy); err != nil {
-		return fmt.Errorf("failed to modify namespace seal: %w", err)
+		return fmt.Errorf("failed to modify namespace: %w", err)
 	}
 
 	// Unlock before calling unsealNamespace; we recurse back into the

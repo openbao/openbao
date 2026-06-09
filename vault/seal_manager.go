@@ -657,7 +657,7 @@ func (sm *SealManager) NamespacesWithKeys() []string {
 	return namespaces
 }
 
-// NamespacesWithKeys is a list of namespace UUIDs which are currently sealed.
+// NamespacesMissingKeys is a list of namespace UUIDs which are currently sealed.
 func (sm *SealManager) NamespacesMissingKeys() []string {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()

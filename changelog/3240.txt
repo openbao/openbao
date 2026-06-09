@@ -1,0 +1,3 @@
+```release-note:improvement
+http: Always include full JSON parse and complexity errors in the response instead of hiding it behind a constant error message.
+```

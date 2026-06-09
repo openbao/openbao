@@ -133,15 +133,8 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 
 				data = formData
 			} else {
-				err = parseJSONRequest(r, w, &data)
-				if err == io.EOF {
-					data = nil
-					err = nil
-				}
-				if err != nil {
-					status := http.StatusBadRequest
-					logical.AdjustErrorStatusCode(&status, err)
-					return nil, status, errors.New("error parsing JSON")
+				if err := parseJSONRequest(r, &data); err != nil && !errors.Is(err, io.EOF) {
+					return nil, http.StatusBadRequest, err
 				}
 			}
 		}
@@ -161,17 +154,8 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 			return nil, http.StatusUnsupportedMediaType, fmt.Errorf("PATCH requires Content-Type of %s, provided %s", MergePatchContentTypeHeader, contentType)
 		}
 
-		err = parseJSONRequest(r, w, &data)
-
-		if err == io.EOF {
-			data = nil
-			err = nil
-		}
-
-		if err != nil {
-			status := http.StatusBadRequest
-			logical.AdjustErrorStatusCode(&status, err)
-			return nil, status, errors.New("error parsing JSON")
+		if err := parseJSONRequest(r, &data); err != nil && !errors.Is(err, io.EOF) {
+			return nil, http.StatusBadRequest, err
 		}
 
 	case "LIST":

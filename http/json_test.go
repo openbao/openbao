@@ -83,7 +83,7 @@ func TestSafeJSONReader(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, "POST", "/v1/sys/testing", body)
 		require.NoError(t, err)
 
-		err = parseJSONRequest(req, nil, &out)
+		err = parseJSONRequest(req, &out)
 		require.NoError(t, err)
 
 		// Decreasing memory by one, if allowed, should cause a failure. This
@@ -97,7 +97,7 @@ func TestSafeJSONReader(t *testing.T) {
 			req, err := http.NewRequestWithContext(ctx, "POST", "/v1/sys/testing", bytes.NewBufferString(test))
 			require.NoError(t, err)
 
-			err = parseJSONRequest(req, nil, &out)
+			err = parseJSONRequest(req, &out)
 			require.Error(t, err)
 			require.ErrorContains(t, err, ErrJSONExceededMemory.Error())
 		}
@@ -113,7 +113,7 @@ func TestSafeJSONReader(t *testing.T) {
 			req, err := http.NewRequestWithContext(ctx, "POST", "/v1/sys/testing", bytes.NewBufferString(test))
 			require.NoError(t, err)
 
-			err = parseJSONRequest(req, nil, &out)
+			err = parseJSONRequest(req, &out)
 			require.Error(t, err)
 			require.ErrorContains(t, err, ErrJSONExceededStrings.Error())
 		}

@@ -203,3 +203,58 @@ Key Term            2
 Install Time        10 Jun 26 08:37 UTC
 Encryption Count    0
 ```
+
+## Generate a Sealable Namespace Root Token
+
+You can use the `bao operator generate-root` command to generate a namespace-scoped root token for a sealable namespace.
+
+```shell-session
+$ bao operator generate-root -ns=tenants/my-tenant -init
+A One-Time-Password has been generated for you and is shown in the OTP field.
+You will need this value to decode the resulting root token, so keep it safe.
+Nonce         ad287b9e-cb19-613b-3720-84b5ac4ac1ef
+Started       true
+Progress      0/3
+Complete      false
+OTP           zs6S1qnRj6meHCEUsyFv7AclrDpI4jHbQ
+OTP Length    33
+```
+
+You will then have to provide the appropriate number of seal shares to finish the root token generation.
+
+```shell-session
+$ bao operator generate-root -ns=tenants/my-tenant
+Operation nonce: ad287b9e-cb19-613b-3720-84b5ac4ac1ef
+Unseal Key (will be hidden): 
+Nonce            ad287b9e-cb19-613b-3720-84b5ac4ac1ef
+Started          true
+Progress         3/3
+Complete         true
+Encoded Token    CV1XEQdDCApdBi88eDF9YRYgfhBeESQjFgdeLXEBBywf
+```
+
+See the documentation of [`operator generate-root`](../../commands/operator/generate-root) for more infos on this and how to decode the returned token.
+
+Check out the generated token using `bao token lookup`:
+
+```shell-session
+$ bao token lookup
+Key                 Value
+---                 -----
+accessor            W4gespQDyq6NDI2flWOxiPR7.dEkONN
+creation_time       1781095090
+creation_ttl        0s
+display_name        dEkONN_root
+entity_id           n/a
+expire_time         <nil>
+explicit_max_ttl    0s
+id                  s.aB62fX70BY0r84eY8fiPGOdC.dEkONN
+meta                <nil>
+namespace_path      tenants/my-tenant/
+num_uses            0
+orphan              true
+path                namespaces/62a3560f-bb0c-1436-ff45-9f1f8192cafd/auth/token/root
+policies            [root]
+ttl                 0s
+type                service
+```

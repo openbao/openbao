@@ -81,9 +81,6 @@ func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Req
 	if dstP == nil {
 		return nil, errors.New("no such destination key to export to")
 	}
-	if !b.System().CachingDisabled() {
-		dstP.Lock(false)
-	}
 	defer dstP.Unlock()
 
 	if dstP.SoftDeleted {
@@ -99,9 +96,6 @@ func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Req
 	}
 	if srcP == nil {
 		return nil, errors.New("no such source key for export")
-	}
-	if !b.System().CachingDisabled() {
-		srcP.Lock(false)
 	}
 	defer srcP.Unlock()
 

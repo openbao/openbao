@@ -58,6 +58,7 @@ func TestTransit_HMAC(t *testing.T) {
 		if err = p.Persist(t.Context(), storage); err != nil {
 			t.Fatal(err)
 		}
+		p.Unlock()
 
 		req.Path = "hmac/" + c.name
 		req.Data = map[string]interface{}{
@@ -247,6 +248,7 @@ func TestTransit_batchHMAC(t *testing.T) {
 	if err = p.Persist(t.Context(), storage); err != nil {
 		t.Fatal(err)
 	}
+	p.Unlock()
 
 	req.Path = "hmac/foo"
 	batchInput := []batchRequestHMACItem{

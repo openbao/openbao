@@ -1480,6 +1480,7 @@ func TestTransit_AutoRotateKeys(t *testing.T) {
 				p.AutoRotatePeriod = time.Nanosecond
 				err = p.Persist(t.Context(), storage)
 				require.NoError(t, err)
+				p.Unlock()
 
 				// Run the rotation check and validate the state of key rotations
 				b.checkAutoRotateAfter = time.Now()

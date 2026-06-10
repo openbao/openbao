@@ -85,9 +85,7 @@ func (b *backend) getWrappingKey(ctx context.Context, storage logical.Storage) (
 	if p == nil {
 		return nil, errors.New("error retrieving wrapping key: returned policy was nil")
 	}
-	if b.System().CachingDisabled() {
-		p.Unlock()
-	}
+	defer p.Unlock()
 
 	return p, nil
 }

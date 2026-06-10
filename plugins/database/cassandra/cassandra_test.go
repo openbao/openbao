@@ -21,7 +21,6 @@ import (
 func getCassandra(t *testing.T, protocolVersion interface{}) (*Cassandra, func()) {
 	host, cleanup := cassandra.PrepareTestContainer(
 		t,
-		cassandra.Version("3.11"),
 		cassandra.CopyFromTo(insecureFileMounts),
 	)
 
@@ -144,7 +143,6 @@ func TestCreateUser(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			host, cleanup := cassandra.PrepareTestContainer(
 				t,
-				cassandra.Version("3.11"),
 				cassandra.CopyFromTo(insecureFileMounts),
 			)
 			defer cleanup()

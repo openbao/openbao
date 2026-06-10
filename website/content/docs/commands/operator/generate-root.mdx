@@ -5,14 +5,12 @@ description: |-
   quorum of share holders.
 ---
 
-:::warning
+:::info
 
-Note: As of v2.5.3 usage of this command is [deprecated](/community/deprecation/unauthed-generate-root)
-and will be rejected by default. Consider using [`token create`](../token/create.mdx)
-command to create new root tokens from existing tokens with `sudo` permission.
-To re-enable, see the documentation around the `disable_unauthed_generate_root_endpoints`
-[listener parameter](../../configuration/listener/unix.mdx): it is suggested to
-do so only for the short period of time required to create a new root token.
+Note: As of v2.6.0, this command uses the new and authenticated
+`/sys/generate-root-token` endpoint instead of the deprecated and
+unauthenticated `/sys/generate-root` endpoint. It now also supports generating
+root tokens for sealable namespaces.
 
 :::
 

@@ -23,8 +23,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RequestForwarding_ForwardRequest_FullMethodName         = "/forwarding.RequestForwarding/ForwardRequest"
 	RequestForwarding_Echo_FullMethodName                   = "/forwarding.RequestForwarding/Echo"
+	RequestForwarding_ForwardRequest_FullMethodName         = "/forwarding.RequestForwarding/ForwardRequest"
 	RequestForwarding_AdvertiseNamespaceKeys_FullMethodName = "/forwarding.RequestForwarding/AdvertiseNamespaceKeys"
 	RequestForwarding_SendNamespaceKeys_FullMethodName      = "/forwarding.RequestForwarding/SendNamespaceKeys"
 	RequestForwarding_GetNamespaceKeys_FullMethodName       = "/forwarding.RequestForwarding/GetNamespaceKeys"
@@ -33,16 +33,22 @@ const (
 // RequestForwardingClient is the client API for RequestForwarding service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// RequestForwarding service is always a standby->active RPC invocation. While
+// named for legacy reasons (renaming a service is a breaking change), this
+// service handles more than just pure request forwarding.
+//
+// See also: https://medium.com/@hoangxuantoank13/grpc-non-breaking-changes-breaking-changes-and-versioning-solution-1dcb989beb16
 type RequestForwardingClient interface {
-	ForwardRequest(ctx context.Context, in *forwarding.Request, opts ...grpc.CallOption) (*forwarding.Response, error)
 	Echo(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoReply, error)
-	// standby->active; used when the standby was formerly the active node
-	// and a new active takes over without knowledge of past keys. This is
-	// a two-step process to avoid sending keys which the active node
-	// already knows about.
+	ForwardRequest(ctx context.Context, in *forwarding.Request, opts ...grpc.CallOption) (*forwarding.Response, error)
+	// standby->active key sharing; used when the standby has knowledge of
+	// namespace keys that a new active node does not. This is a two-step
+	// process to avoid sending keys which the active node already knows
+	// about over the wire.
 	AdvertiseNamespaceKeys(ctx context.Context, in *AdvertiseNamespaceKeysRequest, opts ...grpc.CallOption) (*AdvertiseNamespaceKeysReply, error)
 	SendNamespaceKeys(ctx context.Context, in *SendNamespaceKeysRequest, opts ...grpc.CallOption) (*SendNamespaceKeysReply, error)
-	// active->standby; used by the standby to refresh keys.
+	// active->standby key sharing; used by the standby to refresh keys.
 	GetNamespaceKeys(ctx context.Context, in *GetNamespaceKeysRequest, opts ...grpc.CallOption) (*GetNamespaceKeysReply, error)
 }
 
@@ -54,20 +60,20 @@ func NewRequestForwardingClient(cc grpc.ClientConnInterface) RequestForwardingCl
 	return &requestForwardingClient{cc}
 }
 
-func (c *requestForwardingClient) ForwardRequest(ctx context.Context, in *forwarding.Request, opts ...grpc.CallOption) (*forwarding.Response, error) {
+func (c *requestForwardingClient) Echo(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(forwarding.Response)
-	err := c.cc.Invoke(ctx, RequestForwarding_ForwardRequest_FullMethodName, in, out, cOpts...)
+	out := new(EchoReply)
+	err := c.cc.Invoke(ctx, RequestForwarding_Echo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *requestForwardingClient) Echo(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoReply, error) {
+func (c *requestForwardingClient) ForwardRequest(ctx context.Context, in *forwarding.Request, opts ...grpc.CallOption) (*forwarding.Response, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(EchoReply)
-	err := c.cc.Invoke(ctx, RequestForwarding_Echo_FullMethodName, in, out, cOpts...)
+	out := new(forwarding.Response)
+	err := c.cc.Invoke(ctx, RequestForwarding_ForwardRequest_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -107,16 +113,22 @@ func (c *requestForwardingClient) GetNamespaceKeys(ctx context.Context, in *GetN
 // RequestForwardingServer is the server API for RequestForwarding service.
 // All implementations must embed UnimplementedRequestForwardingServer
 // for forward compatibility.
+//
+// RequestForwarding service is always a standby->active RPC invocation. While
+// named for legacy reasons (renaming a service is a breaking change), this
+// service handles more than just pure request forwarding.
+//
+// See also: https://medium.com/@hoangxuantoank13/grpc-non-breaking-changes-breaking-changes-and-versioning-solution-1dcb989beb16
 type RequestForwardingServer interface {
-	ForwardRequest(context.Context, *forwarding.Request) (*forwarding.Response, error)
 	Echo(context.Context, *EchoRequest) (*EchoReply, error)
-	// standby->active; used when the standby was formerly the active node
-	// and a new active takes over without knowledge of past keys. This is
-	// a two-step process to avoid sending keys which the active node
-	// already knows about.
+	ForwardRequest(context.Context, *forwarding.Request) (*forwarding.Response, error)
+	// standby->active key sharing; used when the standby has knowledge of
+	// namespace keys that a new active node does not. This is a two-step
+	// process to avoid sending keys which the active node already knows
+	// about over the wire.
 	AdvertiseNamespaceKeys(context.Context, *AdvertiseNamespaceKeysRequest) (*AdvertiseNamespaceKeysReply, error)
 	SendNamespaceKeys(context.Context, *SendNamespaceKeysRequest) (*SendNamespaceKeysReply, error)
-	// active->standby; used by the standby to refresh keys.
+	// active->standby key sharing; used by the standby to refresh keys.
 	GetNamespaceKeys(context.Context, *GetNamespaceKeysRequest) (*GetNamespaceKeysReply, error)
 	mustEmbedUnimplementedRequestForwardingServer()
 }
@@ -128,11 +140,11 @@ type RequestForwardingServer interface {
 // pointer dereference when methods are called.
 type UnimplementedRequestForwardingServer struct{}
 
-func (UnimplementedRequestForwardingServer) ForwardRequest(context.Context, *forwarding.Request) (*forwarding.Response, error) {
-	return nil, status.Error(codes.Unimplemented, "method ForwardRequest not implemented")
-}
 func (UnimplementedRequestForwardingServer) Echo(context.Context, *EchoRequest) (*EchoReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method Echo not implemented")
+}
+func (UnimplementedRequestForwardingServer) ForwardRequest(context.Context, *forwarding.Request) (*forwarding.Response, error) {
+	return nil, status.Error(codes.Unimplemented, "method ForwardRequest not implemented")
 }
 func (UnimplementedRequestForwardingServer) AdvertiseNamespaceKeys(context.Context, *AdvertiseNamespaceKeysRequest) (*AdvertiseNamespaceKeysReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method AdvertiseNamespaceKeys not implemented")
@@ -164,24 +176,6 @@ func RegisterRequestForwardingServer(s grpc.ServiceRegistrar, srv RequestForward
 	s.RegisterService(&RequestForwarding_ServiceDesc, srv)
 }
 
-func _RequestForwarding_ForwardRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(forwarding.Request)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RequestForwardingServer).ForwardRequest(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: RequestForwarding_ForwardRequest_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RequestForwardingServer).ForwardRequest(ctx, req.(*forwarding.Request))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _RequestForwarding_Echo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EchoRequest)
 	if err := dec(in); err != nil {
@@ -196,6 +190,24 @@ func _RequestForwarding_Echo_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RequestForwardingServer).Echo(ctx, req.(*EchoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RequestForwarding_ForwardRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(forwarding.Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RequestForwardingServer).ForwardRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RequestForwarding_ForwardRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RequestForwardingServer).ForwardRequest(ctx, req.(*forwarding.Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -262,12 +274,12 @@ var RequestForwarding_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*RequestForwardingServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ForwardRequest",
-			Handler:    _RequestForwarding_ForwardRequest_Handler,
-		},
-		{
 			MethodName: "Echo",
 			Handler:    _RequestForwarding_Echo_Handler,
+		},
+		{
+			MethodName: "ForwardRequest",
+			Handler:    _RequestForwarding_ForwardRequest_Handler,
 		},
 		{
 			MethodName: "AdvertiseNamespaceKeys",

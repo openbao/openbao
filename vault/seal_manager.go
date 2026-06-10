@@ -49,7 +49,6 @@ type SealManager struct {
 	// invalidated atomic.Bool
 
 	sealByNamespace              map[string]Seal
-	barrierByNamespace           map[string]barrier.SecurityBarrier
 	unlockInformationByNamespace map[string]*unlockInformation
 	rotationConfigByNamespace    map[string]*rotationConfig
 	barrierByNamespacePath       *radix.Tree
@@ -67,9 +66,6 @@ func NewSealManager(core *Core, logger hclog.Logger) *SealManager {
 		}),
 		sealByNamespace: map[string]Seal{
 			namespace.RootNamespaceUUID: core.seal,
-		},
-		barrierByNamespace: map[string]barrier.SecurityBarrier{
-			namespace.RootNamespaceUUID: core.barrier,
 		},
 		unlockInformationByNamespace: make(map[string]*unlockInformation),
 		rotationConfigByNamespace:    make(map[string]*rotationConfig),
@@ -142,10 +138,9 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 		return fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	nsBarrier := barrier.NewAESGCMBarrier(sm.core.physical, metaPrefix)
+	nsBarrier := barrier.NewAESGCMBarrier(sm.core.physical, ns)
 	sm.barrierByNamespacePath.Insert(ns.Path, nsBarrier)
 	sm.sealByNamespace[ns.UUID] = defaultSeal
-	sm.barrierByNamespace[ns.UUID] = nsBarrier
 
 	if writeToStorage {
 		if err := defaultSeal.SetBarrierConfig(ctx, sealConfig); err != nil {
@@ -165,7 +160,6 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 		return
 	}
 
-	delete(sm.barrierByNamespace, ns.UUID)
 	delete(sm.sealByNamespace, ns.UUID)
 	delete(sm.unlockInformationByNamespace, ns.UUID)
 	delete(sm.rotationConfigByNamespace, ns.UUID)
@@ -648,11 +642,21 @@ func (sm *SealManager) NamespacesWithKeys() []string {
 	defer sm.lock.RUnlock()
 
 	var namespaces []string
-	for uuid, b := range sm.barrierByNamespace {
-		if !b.Sealed() && uuid != namespace.RootNamespaceUUID {
-			namespaces = append(namespaces, uuid)
+	sm.barrierByNamespacePath.Walk(func(_ string, b interface{}) bool {
+		if b == nil {
+			return false
 		}
-	}
+
+		nsBarrier := b.(barrier.SecurityBarrier)
+		ns := nsBarrier.Namespace()
+		if nsBarrier.Sealed() || ns.UUID == namespace.RootNamespaceUUID {
+			// Skip sealed or root namespaces
+			return false
+		}
+
+		namespaces = append(namespaces, ns.UUID)
+		return false
+	})
 
 	return namespaces
 }
@@ -663,11 +667,21 @@ func (sm *SealManager) NamespacesMissingKeys() []string {
 	defer sm.lock.RUnlock()
 
 	var namespaces []string
-	for uuid, b := range sm.barrierByNamespace {
-		if b.Sealed() && uuid != namespace.RootNamespaceUUID {
-			namespaces = append(namespaces, uuid)
+	sm.barrierByNamespacePath.Walk(func(_ string, b interface{}) bool {
+		if b == nil {
+			return false
 		}
-	}
+
+		nsBarrier := b.(barrier.SecurityBarrier)
+		ns := nsBarrier.Namespace()
+		if !nsBarrier.Sealed() || ns.UUID == namespace.RootNamespaceUUID {
+			// Skip unsealed or root namespaces.
+			return false
+		}
+
+		namespaces = append(namespaces, ns.UUID)
+		return false
+	})
 
 	return namespaces
 }
@@ -675,18 +689,16 @@ func (sm *SealManager) NamespacesMissingKeys() []string {
 // GetRootKey yields the underlying root key of the barrier for the given
 // namespace.
 func (sm *SealManager) GetRootKey(ctx context.Context, ns *namespace.Namespace) ([]byte, error) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
 	if ns.ID == namespace.RootNamespaceID {
 		return nil, errors.New("refusing to return root namespace's root key")
 	}
 
-	path, v, exists := sm.barrierByNamespacePath.LongestPrefix(ns.Path)
+	v, exists := sm.barrierByNamespacePath.Get(ns.Path)
 	if !exists {
 		return nil, ErrNotInit
-	}
-
-	// namespace is not sealed?
-	if path != ns.Path {
-		return nil, nil
 	}
 
 	b := v.(barrier.SecurityBarrier)

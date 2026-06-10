@@ -8,6 +8,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -79,6 +80,10 @@ const (
 	// SystemBarrierPrefix is the prefix used for the
 	// system logical backend.
 	SystemBarrierPrefix = "sys/"
+
+	// NamespacePrefix is the prefix to the UUID of a namespace
+	// used in the barrier view for the namespace-owned backends.
+	NamespacePrefix = "namespaces/"
 )
 
 const (
@@ -178,6 +183,9 @@ type SecurityBarrierCore interface {
 	// SetReadOnly allows marking storage as read-only; this is useful for
 	// HA mode but could be more broadly useful.
 	SetReadOnly(readOnly bool)
+
+	// Namespace returns the namespace related to this barrier.
+	Namespace() *namespace.Namespace
 }
 
 // SecurityBarrier is a critical component of Vault. It is used to wrap

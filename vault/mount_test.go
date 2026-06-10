@@ -1341,7 +1341,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				Namespace:   testNamespace1,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: barrier.NamespacePrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table type, and 'cubbyholeNS' type with namespace not present in store",
@@ -1366,7 +1366,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				Namespace:   testNamespace1,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: barrier.NamespacePrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table, and 'kv' type with nested namespace present",
@@ -1378,7 +1378,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				Namespace:   testNamespace2,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: barrier.NamespacePrefix + testNamespace2.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'auth' table, and 'userpass' type with namespace present",
@@ -1390,7 +1390,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				Namespace:   testNamespace1,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: barrier.NamespacePrefix + testNamespace1.UUID + "/" + barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'auth' table, and 'userpass' type with nested namespace present",
@@ -1402,7 +1402,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				Namespace:   testNamespace2,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: barrier.NamespacePrefix + testNamespace2.UUID + "/" + barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 	}
 

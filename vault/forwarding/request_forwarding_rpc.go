@@ -240,6 +240,7 @@ func (c *Client) Start() {
 				c.core.Logger().Warn("another namespace key synchronization is still running")
 				return
 			}
+			defer syncRunning.Store(false)
 
 			c.core.Logger().Info("synchronizing namespace keys with active node")
 
@@ -249,8 +250,6 @@ func (c *Client) Start() {
 			defer cancel()
 
 			c.SynchronizeKeys(ctx)
-
-			syncRunning.Store(false)
 		}
 
 		tick()
@@ -276,13 +275,13 @@ func (c *Client) SynchronizeKeys(ctx context.Context) {
 	var wg sync.WaitGroup
 	wg.Go(func() {
 		if err := c.shipKeys(ctx); err != nil {
-			c.core.Logger().Error("got error sending keys", "error", err)
+			c.core.Logger().Error("error sending namespace keys", "error", err)
 		}
 	})
 
 	wg.Go(func() {
 		if err := c.getKeys(ctx); err != nil {
-			c.core.Logger().Error("got error receiving keys", "error", err)
+			c.core.Logger().Error("error receiving namespace keys", "error", err)
 		}
 	})
 
@@ -309,9 +308,11 @@ func (c *Client) shipKeys(ctx context.Context) error {
 		return nil
 	}
 
-	keys, getNamespaceErr := c.core.NamespaceKeys(ctx, response.Namespaces)
+	// Even if we have errs, if we have a non-empty key set, we should still
+	// attempt to send them to the active node.
+	keys, errs := c.core.NamespaceKeys(ctx, response.Namespaces)
 	if len(keys) == 0 {
-		return getNamespaceErr
+		return errs
 	}
 
 	reply := &SendNamespaceKeysRequest{}
@@ -324,10 +325,10 @@ func (c *Client) shipKeys(ctx context.Context) error {
 
 	_, err = c.SendNamespaceKeys(ctx, reply)
 	if err != nil {
-		return multierror.Append(getNamespaceErr, err)
+		return multierror.Append(errs, err)
 	}
 
-	return getNamespaceErr
+	return errs
 }
 
 func (c *Client) getKeys(ctx context.Context) error {
@@ -344,7 +345,7 @@ func (c *Client) getKeys(ctx context.Context) error {
 		return fmt.Errorf("failed getting namespace keys from active node: %w", err)
 	}
 
-	if len(keys.Keys) == 0 {
+	if keys == nil || len(keys.Keys) == 0 {
 		return nil
 	}
 

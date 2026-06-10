@@ -564,7 +564,7 @@ func (im *invalidationManager) splitNamespaceFromKey(key string) (string, string
 	namespaceUUID := namespace.RootNamespaceUUID
 	namespacedKey := key
 
-	if keySuffix, ok := strings.CutPrefix(key, namespaceBarrierPrefix); ok {
+	if keySuffix, ok := strings.CutPrefix(key, barrier.NamespacePrefix); ok {
 		namespaceUUID, namespacedKey, _ = strings.Cut(keySuffix, "/")
 	}
 

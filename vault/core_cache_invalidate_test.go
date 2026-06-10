@@ -322,7 +322,7 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 			require.NoError(t, err)
 
 			if ns.ID != namespace.RootNamespaceID {
-				storagePath = path.Join(namespaceBarrierPrefix, ns.UUID, storagePath)
+				storagePath = path.Join(barrier.NamespacePrefix, ns.UUID, storagePath)
 			}
 
 			// 3. Invalidate Path

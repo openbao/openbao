@@ -4,6 +4,7 @@
 package barrier
 
 import (
+	"cmp"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -13,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,6 +22,7 @@ import (
 	"time"
 
 	metrics "github.com/hashicorp/go-metrics/compat"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 )
@@ -64,6 +67,7 @@ var (
 // and integrity.
 type AESGCMBarrier struct {
 	backend    physical.Backend
+	namespace  *namespace.Namespace
 	metaPrefix string
 
 	l        sync.RWMutex
@@ -128,16 +132,20 @@ func (b *AESGCMBarrier) SetRotationConfig(ctx context.Context, rotConfig KeyRota
 
 // NewAESGCMBarrier is used to construct a new barrier that uses
 // the provided physical backend for storage.
-func NewAESGCMBarrier(storage physical.Backend, metaPrefix string) SecurityBarrier {
+func NewAESGCMBarrier(storage physical.Backend, ns *namespace.Namespace) SecurityBarrier {
 	b := &AESGCMBarrier{
 		backend:                  storage,
-		metaPrefix:               metaPrefix,
+		namespace:                cmp.Or(ns, namespace.RootNamespace),
 		sealed:                   true,
 		cache:                    make(map[uint32]cipher.AEAD),
 		currentAESGCMVersionByte: byte(AESGCMVersion2),
 		UnaccountedEncryptions:   &atomic.Int64{},
 		RemoteEncryptions:        &atomic.Int64{},
 		totalLocalEncryptions:    &atomic.Int64{},
+	}
+
+	if ns != nil && ns.UUID != namespace.RootNamespaceUUID {
+		b.metaPrefix = path.Join(NamespacePrefix, ns.UUID) + "/"
 	}
 
 	if _, ok := storage.(physical.TransactionalBackend); ok {
@@ -1280,6 +1288,10 @@ func (b *AESGCMBarrier) encryptions() int64 {
 
 func (b *AESGCMBarrier) SetReadOnly(readOnly bool) {
 	b.readOnly.Store(readOnly)
+}
+
+func (b *AESGCMBarrier) Namespace() *namespace.Namespace {
+	return b.namespace
 }
 
 func (b *TransactionalAESGCMBarrier) BeginReadOnlyTx(ctx context.Context) (logical.Transaction, error) {

@@ -40,10 +40,6 @@ const (
 	// Namespace storage location.
 	namespaceStoreSubPath = "core/namespaces/"
 
-	// namespaceBarrierPrefix is the prefix to the UUID of a namespaces
-	// used in the barrier view for the namespace-owned backends.
-	namespaceBarrierPrefix = "namespaces/"
-
 	// nsDispatcherName is the name of the jobmanager instance for metrics.
 	nsDispatcherName = "namespace-deletion"
 
@@ -134,7 +130,7 @@ func NamespaceStoragePathPrefix(ns *namespace.Namespace) string {
 		return ""
 	}
 
-	return path.Join(namespaceBarrierPrefix, ns.UUID) + "/"
+	return path.Join(barrier.NamespacePrefix, ns.UUID) + "/"
 }
 
 // cancelNamespaceDeletion cancels goroutine that runs namespace deletion.
@@ -1628,7 +1624,7 @@ func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (strin
 // NamespaceByStoragePath parses an absolute storage path and returns the
 // matching namespace that the path belongs to.
 func (c *Core) NamespaceByStoragePath(ctx context.Context, path string) (*namespace.Namespace, string, error) {
-	rest, ok := strings.CutPrefix(path, namespaceBarrierPrefix)
+	rest, ok := strings.CutPrefix(path, barrier.NamespacePrefix)
 	if !ok || rest == "" {
 		return namespace.RootNamespace, path, nil
 	}

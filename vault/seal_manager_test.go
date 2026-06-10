@@ -21,7 +21,6 @@ func TestSealManager_Reset(t *testing.T) {
 	// verify initial state of seal manager
 	require.Len(t, c.sealManager.barrierByNamespacePath.ToMap(), 1)
 	require.Len(t, c.sealManager.sealByNamespace, 1)
-	require.Len(t, c.sealManager.barrierByNamespace, 1)
 	require.Len(t, c.sealManager.unlockInformationByNamespace, 0)
 	require.Len(t, c.sealManager.rotationConfigByNamespace, 0)
 
@@ -37,7 +36,6 @@ func TestSealManager_Reset(t *testing.T) {
 	}
 	require.Len(t, c.sealManager.barrierByNamespacePath.ToMap(), 11)
 	require.Len(t, c.sealManager.sealByNamespace, 11)
-	require.Len(t, c.sealManager.barrierByNamespace, 11)
 	// until we start unlock/rotation process for the namespace, we do not populate the map.
 	require.Len(t, c.sealManager.unlockInformationByNamespace, 0)
 	require.Len(t, c.sealManager.rotationConfigByNamespace, 0)
@@ -46,7 +44,6 @@ func TestSealManager_Reset(t *testing.T) {
 
 	require.Len(t, c.sealManager.barrierByNamespacePath.ToMap(), 11)
 	require.Len(t, c.sealManager.sealByNamespace, 11)
-	require.Len(t, c.sealManager.barrierByNamespace, 11)
 	require.Len(t, c.sealManager.unlockInformationByNamespace, 0)
 	require.Len(t, c.sealManager.rotationConfigByNamespace, 0)
 }
@@ -147,9 +144,8 @@ func TestSealManager_InitializeBarrier(t *testing.T) {
 	_, err = c.sealManager.InitializeBarrier(ctx, flawedNS)
 	require.ErrorIs(t, err, ErrNotSealable)
 
-	nsBarrier := barrier.NewAESGCMBarrier(c.physical, NamespaceStoragePathPrefix(flawedNS))
+	nsBarrier := barrier.NewAESGCMBarrier(c.physical, flawedNS)
 	c.sealManager.barrierByNamespacePath.Insert(flawedNS.Path, nsBarrier)
-	c.sealManager.barrierByNamespace["notpresent"] = nsBarrier
 
 	// check seal config presence in storage
 	_, err = c.sealManager.InitializeBarrier(ctx, flawedNS)

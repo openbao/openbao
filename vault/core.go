@@ -1073,7 +1073,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	// Construct a new AES-GCM barrier
-	c.barrier = barrier.NewAESGCMBarrier(c.physical, "")
+	c.barrier = barrier.NewAESGCMBarrier(c.physical, nil)
 	c.SetupSealManager()
 
 	// We create the funcs here, then populate the given config with it so that

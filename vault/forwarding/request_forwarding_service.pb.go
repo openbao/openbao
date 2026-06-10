@@ -766,9 +766,9 @@ const file_vault_forwarding_request_forwarding_service_proto_rawDesc = "" +
 	"namespaces\"E\n" +
 	"\x15GetNamespaceKeysReply\x12,\n" +
 	"\x04keys\x18\x01 \x03(\v2\x18.forwarding.NamespaceKeyR\x04keys2\xbb\x03\n" +
-	"\x11RequestForwarding\x12=\n" +
-	"\x0eForwardRequest\x12\x13.forwarding.Request\x1a\x14.forwarding.Response\"\x00\x128\n" +
-	"\x04Echo\x12\x17.forwarding.EchoRequest\x1a\x15.forwarding.EchoReply\"\x00\x12n\n" +
+	"\x11RequestForwarding\x128\n" +
+	"\x04Echo\x12\x17.forwarding.EchoRequest\x1a\x15.forwarding.EchoReply\"\x00\x12=\n" +
+	"\x0eForwardRequest\x12\x13.forwarding.Request\x1a\x14.forwarding.Response\"\x00\x12n\n" +
 	"\x16AdvertiseNamespaceKeys\x12).forwarding.AdvertiseNamespaceKeysRequest\x1a'.forwarding.AdvertiseNamespaceKeysReply\"\x00\x12_\n" +
 	"\x11SendNamespaceKeys\x12$.forwarding.SendNamespaceKeysRequest\x1a\".forwarding.SendNamespaceKeysReply\"\x00\x12\\\n" +
 	"\x10GetNamespaceKeys\x12#.forwarding.GetNamespaceKeysRequest\x1a!.forwarding.GetNamespaceKeysReply\"\x00B-Z+github.com/openbao/openbao/vault/forwardingb\x06proto3"
@@ -806,13 +806,13 @@ var file_vault_forwarding_request_forwarding_service_proto_depIDxs = []int32{
 	2,  // 1: forwarding.EchoReply.node_info:type_name -> forwarding.NodeInformation
 	4,  // 2: forwarding.SendNamespaceKeysRequest.keys:type_name -> forwarding.NamespaceKey
 	4,  // 3: forwarding.GetNamespaceKeysReply.keys:type_name -> forwarding.NamespaceKey
-	11, // 4: forwarding.RequestForwarding.ForwardRequest:input_type -> forwarding.Request
-	0,  // 5: forwarding.RequestForwarding.Echo:input_type -> forwarding.EchoRequest
+	0,  // 4: forwarding.RequestForwarding.Echo:input_type -> forwarding.EchoRequest
+	11, // 5: forwarding.RequestForwarding.ForwardRequest:input_type -> forwarding.Request
 	5,  // 6: forwarding.RequestForwarding.AdvertiseNamespaceKeys:input_type -> forwarding.AdvertiseNamespaceKeysRequest
 	7,  // 7: forwarding.RequestForwarding.SendNamespaceKeys:input_type -> forwarding.SendNamespaceKeysRequest
 	9,  // 8: forwarding.RequestForwarding.GetNamespaceKeys:input_type -> forwarding.GetNamespaceKeysRequest
-	12, // 9: forwarding.RequestForwarding.ForwardRequest:output_type -> forwarding.Response
-	1,  // 10: forwarding.RequestForwarding.Echo:output_type -> forwarding.EchoReply
+	1,  // 9: forwarding.RequestForwarding.Echo:output_type -> forwarding.EchoReply
+	12, // 10: forwarding.RequestForwarding.ForwardRequest:output_type -> forwarding.Response
 	6,  // 11: forwarding.RequestForwarding.AdvertiseNamespaceKeys:output_type -> forwarding.AdvertiseNamespaceKeysReply
 	8,  // 12: forwarding.RequestForwarding.SendNamespaceKeys:output_type -> forwarding.SendNamespaceKeysReply
 	10, // 13: forwarding.RequestForwarding.GetNamespaceKeys:output_type -> forwarding.GetNamespaceKeysReply

@@ -466,16 +466,26 @@ func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, 
 			continue
 		}
 
-		view := m.leaseView(namespace)
-		keys, err := logical.CollectKeys(m.quitContext, view)
+		keys, err := m.collectNamespaceLeases(namespace)
 		if err != nil {
-			return nil, 0, fmt.Errorf("failed to scan for leases: %w", err)
+			return nil, 0, err
 		}
+
 		existing[namespace] = keys
 		leaseCount += len(keys)
 	}
 
 	return existing, leaseCount, nil
+}
+
+func (m *ExpirationManager) collectNamespaceLeases(ns *namespace.Namespace) ([]string, error) {
+	view := m.leaseView(ns)
+	keys, err := logical.CollectKeys(m.quitContext, view)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan for leases: %w", err)
+	}
+
+	return keys, nil
 }
 
 // lockLease takes out a lock for a given lease ID
@@ -679,8 +689,31 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 }
 
 // Restore is used to recover the lease states when starting.
+//
 // This is used after starting the vault.
-func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
+func (m *ExpirationManager) Restore(errorFunc func()) error {
+	return m.restore(m.collectLeases, errorFunc)
+}
+
+// Restore is used to restore the leases belonging to a particular namespace
+// when it unseals.
+func (m *ExpirationManager) RestoreNamespace(ns *namespace.Namespace, errorFunc func()) error {
+	m.restoreMode.Store(true)
+	m.restoreLocks = locksutil.CreateLocks()
+
+	return m.restore(func() (map[*namespace.Namespace][]string, int, error) {
+		leases, err := m.collectNamespaceLeases(ns)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		return map[*namespace.Namespace][]string{
+			ns.Clone(false): leases,
+		}, len(leases), nil
+	}, errorFunc)
+}
+
+func (m *ExpirationManager) restore(collect func() (map[*namespace.Namespace][]string, int, error), errorFunc func()) (retErr error) {
 	defer func() {
 		// Turn off restore mode. We can do this safely without the lock because
 		// if restore mode finished successfully, restore mode was already
@@ -708,11 +741,11 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 
 	// Accumulate existing leases
 	m.logger.Debug("collecting leases")
-	existing, leaseCount, err := m.collectLeases()
+	existing, leaseCount, err := collect()
 	if err != nil {
 		return err
 	}
-	m.logger.Debug("leases collected", "num_existing", leaseCount)
+	m.logger.Debug("leases collected", "num_existing", leaseCount, "namespaces", len(existing))
 
 	// Make the channels used for the worker pool
 	type lease struct {
@@ -897,6 +930,55 @@ func (m *ExpirationManager) Stop() error {
 	m.emptyUniquePolicies.Stop()
 
 	return nil
+}
+
+// StopNamespace removes all information related to a namespace without
+// affecting other namespaces.
+func (m *ExpirationManager) StopNamespace(ns *namespace.Namespace) {
+	m.pendingLock.Lock()
+	defer m.pendingLock.Unlock()
+
+	leaseIds := make(map[string]struct{})
+
+	m.irrevocable.Range(func(keyRaw any, _ any) bool {
+		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
+			m.irrevocable.Delete(key)
+			m.pending.Delete(key)
+			m.nonexpiring.Delete(key)
+			m.lockPerLease.Delete(key)
+			m.irrevocableLeaseCount -= 1
+			leaseIds[key] = struct{}{}
+		}
+		return true
+	})
+
+	m.pending.Range(func(keyRaw any, _ any) bool {
+		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
+			m.pending.Delete(key)
+			m.nonexpiring.Delete(key)
+			m.lockPerLease.Delete(key)
+			leaseIds[key] = struct{}{}
+		}
+		return true
+	})
+
+	m.nonexpiring.Range(func(keyRaw any, _ any) bool {
+		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
+			m.nonexpiring.Delete(key)
+			m.lockPerLease.Delete(key)
+			leaseIds[key] = struct{}{}
+		}
+		return true
+	})
+
+	m.lockPerLease.Range(func(keyRaw any, _ any) bool {
+		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
+			m.lockPerLease.Delete(key)
+		}
+		return true
+	})
+
+	m.leaseCount -= len(leaseIds)
 }
 
 // Revoke is used to revoke a secret named by the given LeaseID

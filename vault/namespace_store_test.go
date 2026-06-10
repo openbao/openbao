@@ -490,6 +490,8 @@ func TestNamespaceHierarchy(t *testing.T) {
 }
 
 func TestNamespaceTree(t *testing.T) {
+	t.Parallel()
+
 	rootNs := namespace.RootNamespace
 	tree := newNamespaceTree(rootNs)
 
@@ -728,6 +730,8 @@ func BenchmarkNamespace_Set(b *testing.B) {
 
 // TestNamespaces_ResolveNamespaceFromRequest verifies namespace resolution logic from request.
 func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
+	t.Parallel()
+
 	core, _, _ := TestCoreUnsealed(t)
 	nsStore := core.namespaceStore
 
@@ -841,6 +845,8 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 }
 
 func TestNamespaceStorage(t *testing.T) {
+	t.Parallel()
+
 	c, keys, root := TestCoreUnsealed(t)
 	s := c.namespaceStore
 
@@ -898,6 +904,8 @@ func TestNamespaceStorage(t *testing.T) {
 }
 
 func TestNamespaceDeletionSealingInteraction(t *testing.T) {
+	t.Parallel()
+
 	c, keys, _ := TestCoreUnsealed(t)
 	s := c.namespaceStore
 	ctx := namespace.RootContext(t.Context())
@@ -974,7 +982,9 @@ func TestNamespaceDeletionSealingInteraction(t *testing.T) {
 }
 
 func TestNamespaceSealResourcesLifecycle(t *testing.T) {
-	c, _, _ := TestCoreUnsealed(t)
+	t.Parallel()
+
+	c, _, rootToken := TestCoreUnsealed(t)
 	c.credentialBackends["approle"] = credAppRole.Factory
 	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		return &be.Noop{
@@ -1038,6 +1048,47 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 	require.NoError(t, c.loginMFABackend.PutMFALoginEnforcementConfig(nsCtx, eConfig, ns))
 	require.NoError(t, c.loginMFABackend.MemDBUpsertMFALoginEnforcementConfig(nsCtx, eConfig))
 
+	resp, err := c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/approle/role/testing",
+		Operation:   logical.CreateOperation,
+		ClientToken: rootToken,
+	})
+	require.NoError(t, err)
+	require.Nil(t, resp)
+
+	resp, err = c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/approle/role/testing/role-id",
+		Operation:   logical.ReadOperation,
+		ClientToken: rootToken,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "role_id")
+	roleId := resp.Data["role_id"].(string)
+
+	resp, err = c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/approle/role/testing/secret-id",
+		Operation:   logical.CreateOperation,
+		ClientToken: rootToken,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "secret_id")
+	secretId := resp.Data["secret_id"].(string)
+
+	authResp, err := c.HandleRequest(nsCtx, &logical.Request{
+		Path:      "auth/approle/login",
+		Operation: logical.CreateOperation,
+		Data: map[string]any{
+			"role_id":   roleId,
+			"secret_id": secretId,
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, authResp)
+
+	t.Logf("\n\nauth: %#v\n\n", authResp)
+
 	checkState := func() {
 		// policies
 		policies, err := c.policyStore.ListPolicies(nsCtx, policy.TypeACL, false)
@@ -1057,7 +1108,7 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 		// identity
 		counts, err := c.identityStore.CountEntitiesByNamespace(nsCtx)
 		require.NoError(t, err)
-		require.Equal(t, 1, counts[ns.ID])
+		require.Equal(t, 2, counts[ns.ID])
 
 		// mfa
 		mfaMethods, err := c.loginMFABackend.MfaMethodList(nsCtx, "")
@@ -1071,6 +1122,20 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 		childNs, err := c.namespaceStore.ListNamespaces(nsCtx, false, true)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(childNs))
+
+		// leases
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			found := false
+			c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+				key := keyRaw.(string)
+				if ns.MatchesID(key) {
+					found = true
+				}
+
+				return true
+			})
+			require.True(collect, found)
+		}, time.Second, 100*time.Millisecond)
 	}
 
 	checkState()

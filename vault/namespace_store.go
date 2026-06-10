@@ -1159,6 +1159,17 @@ func (ns *NamespaceStore) postNamespaceUnseal(ctx context.Context, unsealedNames
 		return err
 	}
 
+	// load expirations
+	if err := ns.core.expiration.RestoreNamespace(unsealedNamespace, func() {
+		go func() {
+			if err := ns.SealNamespace(ns.core.activeContext.Load(), unsealedNamespace.Path); err != nil {
+				ns.logger.Error("failed to re-seal namespace after erring loading leases", "err", err)
+			}
+		}()
+	}); err != nil {
+		return err
+	}
+
 	// now we run the collected post unseal functions to finalize unsealing
 	ns.core.runPostUnsealFuncs(postUnsealFuncs)
 	return nil
@@ -1248,6 +1259,9 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 }
 
 func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent, entry *namespace.Namespace, updateStorage bool) error {
+	// clear expirations.
+	ns.core.expiration.StopNamespace(entry)
+
 	// clear ACL policies
 	if err := ns.clearNamespacePolicies(nsCtx, entry, updateStorage); err != nil {
 		return err

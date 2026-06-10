@@ -201,6 +201,13 @@ func (n *Namespace) ValidateUUID(candidate string) error {
 	return nil
 }
 
+// MatchesID returns true if the given accessor/lease ID matches the current
+// namespace.
+func (n *Namespace) MatchesID(id string) bool {
+	_, nsId := SplitIDFromString(id)
+	return nsId == n.ID || (nsId == "" && n.ID == RootNamespaceID)
+}
+
 // ContextWithNamespace adds the given namespace to the given context
 func ContextWithNamespace(ctx context.Context, ns *Namespace) context.Context {
 	return context.WithValue(ctx, contextNamespace, ns)

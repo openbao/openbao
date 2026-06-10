@@ -915,37 +915,20 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 	return entry.Clone(false), nsKeyShares, nil
 }
 
-// ListAllNamespaces lists all available namespaces. includeRoot and includeSealed
-// flags control whether the result slice contains root and sealed namespaces
-// respectively.
-func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot, includeSealed bool) ([]*namespace.Namespace, error) {
-	defer metrics.MeasureSince([]string{"namespace", "list_all_namespaces"}, time.Now())
-
-	unlock, err := ns.lockWithInvalidation(ctx, false)
-	if err != nil {
-		return nil, err
-	}
-	defer unlock()
-
-	namespaces := make([]*namespace.Namespace, 0, len(ns.namespacesByUUID))
-	for _, entry := range ns.namespacesByUUID {
-		switch {
-		case !includeRoot && entry.ID == namespace.RootNamespaceID,
-			!includeSealed && ns.core.NamespaceSealed(entry):
-			continue
-		default:
-			namespaces = append(namespaces, entry.Clone(false))
-		}
-	}
-
-	return namespaces, nil
+// ListNamespaceOpts is passed to [NamespaceStore.ListNamespaces].
+type ListNamespaceOpts struct {
+	// Whether to list recursively, or at the current level only.
+	Recursive bool
+	// Whether to include the parent namespace that we're listing at.
+	IncludeParent bool
+	// Whether to include sealed namespaces.
+	IncludeSealed bool
 }
 
-// ListNamespaces is used to list namespaces below a parent namespace.
-// Optionally it can include the parent namespace itself and/or include all
-// descendants of the child namespaces.
-func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool, recursive bool) ([]*namespace.Namespace, error) {
-	defer metrics.MeasureSince([]string{"namespace", "list_namespace_entries"}, time.Now())
+// ListNamespaces is used to list namespaces below a parent namespace. Precise
+// listing behavior can be tuned via the passed [ListNamespaceOpts].
+func (ns *NamespaceStore) ListNamespaces(ctx context.Context, opts ListNamespaceOpts) ([]*namespace.Namespace, error) {
+	defer metrics.MeasureSince([]string{"namespace", "list_namespaces"}, time.Now())
 
 	parent, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -958,7 +941,41 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool
 	}
 	defer unlock()
 
-	return ns.namespacesByPath.List(parent.Path, includeParent, recursive, ns.creationDeletionMap)
+	var namespaces []*namespace.Namespace
+
+	// This enqueues a namespace to be returned.
+	push := func(entry *namespace.Namespace) {
+		if !opts.IncludeSealed && ns.core.NamespaceSealed(entry) {
+			return
+		}
+		entry = entry.Clone(false)
+		entry.Tainted = entry.Tainted || ns.creationDeletionMap[entry.UUID]
+		namespaces = append(namespaces, entry)
+	}
+
+	// Fast-path avoid tree traversal in case we're listing recursively starting
+	// from the root namespace.
+	if parent.ID == namespace.RootNamespaceID && opts.Recursive {
+		namespaces = make([]*namespace.Namespace, 0, len(ns.namespacesByAccessor))
+		for id, entry := range ns.namespacesByAccessor {
+			if opts.IncludeParent || id != parent.ID {
+				push(entry)
+			}
+		}
+		return namespaces, nil
+	}
+
+	if opts.IncludeParent {
+		push(parent)
+	}
+
+	// Defer to the namespace tree for any queries that are not easily handled
+	// by the flat lookup maps.
+	if err := ns.namespacesByPath.Walk(parent.Path, opts.Recursive, push); err != nil {
+		return nil, err
+	}
+
+	return namespaces, nil
 }
 
 // SealNamespace acquires a read lock, and seals provided namespace,
@@ -1220,14 +1237,8 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 		return "", errors.New("unable to delete root namespace")
 	}
 
-	// checking whether namespace has child namespaces
-	childNS, err := ns.namespacesByPath.List(namespaceToDelete.Path, false, false, map[string]bool{})
-	if err != nil {
-		return "", err
-	}
-
-	if len(childNS) > 0 {
-		return "", fmt.Errorf("cannot delete namespace (%q) containing child namespaces", namespaceToDelete.Path)
+	if !ns.namespacesByPath.IsLeaf(namespaceToDelete.Path) {
+		return "", errors.New("unable to delete namespace containing child namespaces")
 	}
 
 	parent, err := namespace.FromContext(ctx)

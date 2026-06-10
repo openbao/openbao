@@ -351,8 +351,10 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		},
 	}
 
+	ctx := namespace.RootContext(t.Context())
+
 	// Both should set up successfully
-	err := c.setupCredentials(t.Context())
+	err := c.setupCredentials(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +362,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		t.Fatalf("expected two entries, got %d", len(c.auth.Entries))
 	}
 
-	localEntries, err := c.barrier.List(t.Context(), coreLocalAuthConfigPath+"/")
+	localEntries, err := c.barrier.List(ctx, coreLocalAuthConfigPath+"/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -369,11 +371,11 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	}
 
 	c.auth.Entries[1].Local = true
-	if err := c.persistAuth(t.Context(), c.barrier, c.auth, nil, ""); err != nil {
+	if err := c.persistAuth(ctx, c.barrier, c.auth, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 
-	localEntries, err = c.barrier.List(t.Context(), coreLocalAuthConfigPath+"/")
+	localEntries, err = c.barrier.List(ctx, coreLocalAuthConfigPath+"/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -381,7 +383,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		t.Fatalf("expected one entry in local auth table, got %#v", localEntries)
 	}
 	for _, localEntry := range localEntries {
-		rawLocal, err := c.barrier.Get(t.Context(), coreLocalAuthConfigPath+"/"+localEntry)
+		rawLocal, err := c.barrier.Get(ctx, coreLocalAuthConfigPath+"/"+localEntry)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -399,7 +401,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	}
 
 	oldCredential := c.auth
-	if err := c.loadCredentials(t.Context(), false); err != nil {
+	if err := c.loadCredentials(ctx, false); err != nil {
 		t.Fatal(err)
 	}
 

@@ -103,23 +103,14 @@ func (c *NamespaceScanCommand) Run(args []string) int {
 		}
 	}
 
-	if secret == nil {
+	if secret == nil || !ok {
 		c.UI.Error("No namespaces found")
 		return 2
 	}
 
 	// There could be e.g. warnings
-	if secret.Data == nil {
+	if secret.Data == nil || (secret.WrapInfo != nil && secret.WrapInfo.TTL != 0) {
 		return OutputSecret(c.UI, secret)
-	}
-
-	if secret.WrapInfo != nil && secret.WrapInfo.TTL != 0 {
-		return OutputSecret(c.UI, secret)
-	}
-
-	if !ok {
-		c.UI.Error("No entries found")
-		return 2
 	}
 
 	if c.flagDetailed && Format(c.UI) != "table" {

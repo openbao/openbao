@@ -102,7 +102,7 @@ func (b *SystemBackend) getLockedUsersResponses(ctx context.Context, mountAccess
 
 	// no mount_accessor is provided in request, get information
 	// for current namespace and all unsealed child namespaces
-	nsList, err := b.Core.namespaceStore.ListAllNamespaces(ctx, true, false)
+	nsList, err := b.Core.ListNamespaces(ctx)
 	if err != nil {
 		return 0, nil, err
 	}

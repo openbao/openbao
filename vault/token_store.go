@@ -3863,7 +3863,8 @@ func (ts *TokenStore) gaugeCollector(ctx context.Context) ([]metricsutil.GaugeLa
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, true)
+	ctx = namespace.RootContext(ctx)
+	allNamespaces, err := ts.core.ListNamespaces(ctx)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -3922,7 +3923,8 @@ func (ts *TokenStore) gaugeCollectorByPolicy(ctx context.Context) ([]metricsutil
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, true)
+	ctx = namespace.RootContext(ctx)
+	allNamespaces, err := ts.core.ListNamespaces(ctx)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -3984,7 +3986,8 @@ func (ts *TokenStore) gaugeCollectorByTtl(ctx context.Context) ([]metricsutil.Ga
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, true)
+	ctx = namespace.RootContext(ctx)
+	allNamespaces, err := ts.core.ListNamespaces(ctx)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -4055,8 +4058,8 @@ func (ts *TokenStore) gaugeCollectorByMethod(ctx context.Context) ([]metricsutil
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	rootContext := namespace.RootContext(ctx)
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, true)
+	ctx = namespace.RootContext(ctx)
+	allNamespaces, err := ts.core.ListNamespaces(ctx)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -4068,11 +4071,10 @@ func (ts *TokenStore) gaugeCollectorByMethod(ctx context.Context) ([]metricsutil
 	prefixTree := radix.New()
 
 	pathToPrefix := func(nsID string, path string) string {
-		ns, err := ts.core.NamespaceByID(rootContext, nsID)
+		ns, err := ts.core.NamespaceByID(ctx, nsID)
 		if ns == nil || err != nil {
 			return "unknown"
 		}
-		ctx := namespace.ContextWithNamespace(rootContext, ns)
 
 		key := ns.Path + path
 		_, method, ok := prefixTree.LongestPrefix(key)

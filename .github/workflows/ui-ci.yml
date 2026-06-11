@@ -13,6 +13,8 @@ on:
     branches:
       - main
       - release/**
+    paths:
+      - "ui/**"
   workflow_dispatch:
 
 jobs:

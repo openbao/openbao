@@ -184,6 +184,47 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 
 		{
+			// Must be registered before the generic "namespaces/(?P<path>.+)"
+			// pattern so that the router matches this specific suffix first.
+			Pattern: "namespaces/(?P<path>[^/]+)/delete-sealed",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"path": namespacePathSchema,
+				"force": {
+					Type:        framework.TypeBool,
+					Description: "If true, recursively deletes all child namespaces of the sealed namespace.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.handleNamespacesDeleteSealed(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {
+							{
+								Description: "OK",
+								Fields: map[string]*framework.FieldSchema{
+									"status": {
+										Type:        framework.TypeString,
+										Description: "Status of the deletion operation.",
+									},
+								},
+							},
+						},
+					},
+					Summary: "Delete a sealed namespace by wiping its physical storage.",
+				},
+			},
+
+			HelpSynopsis:    "Delete a sealed namespace.",
+			HelpDescription: "Physically deletes a sealed namespace by wiping its storage. Requires sudo privilege. Pass force=true to also delete child namespaces.",
+		},
+
+		{
 			Pattern: "namespaces/(?P<path>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -546,7 +587,7 @@ func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
 	}
 }
 
-// handleNamespacesDelete handles the "/sys/namespace/<path>" endpoint to delete a namespace.
+// handleNamespacesDelete handles DELETE /sys/namespaces/<path> for unsealed namespaces.
 func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))
@@ -571,6 +612,50 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 				"status": status,
 			},
 		}, nil
+	}
+}
+
+// handleNamespacesDeleteSealed handles DELETE /sys/namespaces/<path>/delete-sealed.
+// It requires sudo privilege and physically wipes the sealed namespace storage
+// through the root barrier. If the namespace has child namespaces, force=true
+// must be passed to authorize recursive deletion of the entire subtree.
+func (b *SystemBackend) handleNamespacesDeleteSealed() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+
+		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
+			return nil, errors.New("path must not contain /")
+		}
+
+		isSudo := b.System().(extendedSystemView).SudoPrivilege(ctx, req.MountPoint+req.Path, req.ClientToken)
+		if !isSudo {
+			return logical.ErrorResponse("sudo privilege is required to delete a sealed namespace"), logical.ErrPermissionDenied
+		}
+
+		force := data.Get("force").(bool)
+
+		status, err := b.Core.namespaceStore.DeleteSealedNamespace(ctx, path, force)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if status == "" {
+			resp := &logical.Response{}
+			resp.AddWarning("requested namespace does not exist")
+			return resp, nil
+		}
+
+		resp := &logical.Response{
+			Data: map[string]interface{}{
+				"status": status,
+			},
+		}
+		if force {
+			resp.AddWarning("sealed namespace tree deletion performed using sudo capabilities")
+		} else {
+			resp.AddWarning("sealed namespace deletion performed using sudo capabilities")
+		}
+		return resp, nil
 	}
 }
 

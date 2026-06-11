@@ -3,6 +3,7 @@ package vault
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"path"
 	"strconv"
 	"testing"
@@ -997,7 +998,7 @@ func TestNamespaceDeletionSealingInteraction(t *testing.T) {
 		require.NoError(t, s.SealNamespace(ctx, "ns3"))
 
 		_, err := s.DeleteNamespace(ctx, "ns3")
-		require.Error(t, err)
+		require.ErrorContains(t, err, "namespace is sealed")
 	})
 }
 
@@ -1205,4 +1206,66 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 
 	// verify after unseal
 	checkState()
+}
+
+// TestNamespaceStore_DeleteSudoSealed verifies DeleteSealedNamespace behaviour:
+// child protection, force requirement, and successful deletion paths.
+func TestNamespaceStore_DeleteSudoSealed(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+	ctx := namespace.RootContext(t.Context())
+
+	// Unsealed namespace with children: DeleteNamespace is rejected.
+	parent := &namespace.Namespace{Path: "parent/"}
+	require.NoError(t, s.SetNamespace(ctx, parent))
+	child := &namespace.Namespace{Path: "parent/child/"}
+	require.NoError(t, s.SetNamespace(ctx, child))
+
+	_, err := s.DeleteNamespace(ctx, "parent")
+	coded, ok := err.(logical.HTTPCodedError)
+	require.True(t, ok, "DeleteNamespace must reject namespace with children")
+	require.Equal(t, http.StatusConflict, coded.Code(), "DeleteNamespace must reject namespace with children")
+
+	// Sealed namespace: DeleteNamespace must be rejected.
+	TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "sealed-with-child/"})
+	TestCoreCreateNamespaces(t, c, &namespace.Namespace{Path: "sealed-with-child/sealed-child/"})
+	require.NoError(t, s.SealNamespace(ctx, "sealed-with-child"))
+
+	_, err = s.DeleteNamespace(ctx, "sealed-with-child")
+	coded, ok = err.(logical.HTTPCodedError)
+	require.True(t, ok, "DeleteNamespace must reject sealed namespace")
+	require.Equal(t, http.StatusBadRequest, coded.Code(), "DeleteNamespace must reject sealed namespace")
+
+	// Sealed namespace with children: DeleteSealedNamespace without force is rejected.
+	_, err = s.DeleteSealedNamespace(ctx, "sealed-with-child", false)
+	coded, ok = err.(logical.HTTPCodedError)
+	require.True(t, ok, "force=false must be rejected when sealed namespace has children")
+	require.Equal(t, http.StatusConflict, coded.Code(), "force=false must be rejected when sealed namespace has children")
+
+	// Sealed namespace with children: force=true succeeds and eventually removes the tree.
+	status, err := s.DeleteSealedNamespace(ctx, "sealed-with-child", true)
+	require.NoError(t, err)
+	require.Equal(t, "in-progress", status)
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		ns, err := s.GetNamespaceByPath(ctx, "sealed-with-child/")
+		require.NoError(ct, err)
+		require.Nil(ct, ns, "sealed namespace tree must be gone after recursive deletion completes")
+	}, 5*time.Second, 10*time.Millisecond)
+
+	// Sealed childless namespace: DeleteSealedNamespace without force succeeds (no children to protect).
+	TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "sealed-solo/"})
+	require.NoError(t, s.SealNamespace(ctx, "sealed-solo"))
+
+	status, err = s.DeleteSealedNamespace(ctx, "sealed-solo", false)
+	require.NoError(t, err)
+	require.Equal(t, "in-progress", status)
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		ns, err := s.GetNamespaceByPath(ctx, "sealed-solo/")
+		require.NoError(ct, err)
+		require.Nil(ct, ns, "sealed namespace must be gone after deletion completes")
+	}, 5*time.Second, 10*time.Millisecond)
 }

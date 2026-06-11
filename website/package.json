@@ -32,8 +32,8 @@
     "lodash": "^4.18.1",
     "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#4b67bcec69b9efbe2ea7c6e297f4420ac881e16d",
     "prism-react-renderer": "^2.4.1",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.10.1",

@@ -358,8 +358,9 @@ func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, det
 	if shouldProcessExp {
 		// active nodes start by running in restore mode by default
 		exp.restoreMode.Store(true)
-		exp.restoreLocks = locksutil.CreateLocks()
 	}
+
+	exp.restoreLocks = locksutil.CreateLocks()
 
 	exp.expireFunc.Store(&e)
 	if exp.revokeRetryBase == 0 {
@@ -699,8 +700,6 @@ func (m *ExpirationManager) Restore(errorFunc func()) error {
 // when it unseals.
 func (m *ExpirationManager) RestoreNamespace(ns *namespace.Namespace, errorFunc func()) error {
 	m.restoreMode.Store(true)
-	m.restoreLocks = locksutil.CreateLocks()
-
 	return m.restore(func() (map[*namespace.Namespace][]string, int, error) {
 		leases, err := m.collectNamespaceLeases(ns)
 		if err != nil {
@@ -852,7 +851,6 @@ LOOP:
 		m.restoreLoaded.Delete(k)
 		return true
 	})
-	m.restoreLocks = nil
 	m.restoreModeLock.Unlock()
 
 	m.logger.Info("lease restore complete")
@@ -940,32 +938,45 @@ func (m *ExpirationManager) StopNamespace(ns *namespace.Namespace) {
 
 	leaseIds := make(map[string]struct{})
 
+	// irrevocable holds an in-memory copy of a lease; safe to delete.
 	m.irrevocable.Range(func(keyRaw any, _ any) bool {
 		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
 			m.irrevocable.Delete(key)
-			m.pending.Delete(key)
-			m.nonexpiring.Delete(key)
-			m.lockPerLease.Delete(key)
 			m.irrevocableLeaseCount -= 1
 			leaseIds[key] = struct{}{}
 		}
 		return true
 	})
 
-	m.pending.Range(func(keyRaw any, _ any) bool {
+	// pending holds a pendingInfo object; cancel the associated timer so
+	// we don't spam failures to revoke.
+	m.pending.Range(func(keyRaw any, infoRaw any) bool {
 		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
+			info, ok := infoRaw.(pendingInfo)
+			if !ok {
+				return true
+			}
+
+			// Cancel the timer so it doesn't fire again.
+			info.timer.Stop()
 			m.pending.Delete(key)
-			m.nonexpiring.Delete(key)
-			m.lockPerLease.Delete(key)
 			leaseIds[key] = struct{}{}
 		}
 		return true
 	})
 
-	m.nonexpiring.Range(func(keyRaw any, _ any) bool {
+	// nonexpiring holds a pendingInfo object; cancel the associated timer so
+	// we don't spam failures to revoke.
+	m.nonexpiring.Range(func(keyRaw any, infoRaw any) bool {
 		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
+			info, ok := infoRaw.(pendingInfo)
+			if !ok {
+				return true
+			}
+
+			// Cancel the timer so it doesn't fire again.
+			info.timer.Stop()
 			m.nonexpiring.Delete(key)
-			m.lockPerLease.Delete(key)
 			leaseIds[key] = struct{}{}
 		}
 		return true
@@ -973,7 +984,7 @@ func (m *ExpirationManager) StopNamespace(ns *namespace.Namespace) {
 
 	m.lockPerLease.Range(func(keyRaw any, _ any) bool {
 		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
-			m.lockPerLease.Delete(key)
+			m.deleteLockForLease(key)
 		}
 		return true
 	})

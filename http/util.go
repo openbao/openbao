@@ -204,9 +204,7 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 			quotaErr := fmt.Errorf("request path %q: %w", path, quotas.ErrRateLimitQuotaExceeded)
 			respondError(w, http.StatusTooManyRequests, quotaErr)
 
-			if core.Logger().IsTrace() {
-				core.Logger().Trace("request rejected due to rate limit quota violation", "request_path", path)
-			}
+			core.Logger().Trace("request rejected due to rate limit quota violation", "request_path", path)
 
 			if core.RateLimitAuditLoggingEnabled() {
 				req, status, err := buildLogicalRequestNoAuth(w, r)

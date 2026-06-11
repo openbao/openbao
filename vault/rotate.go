@@ -262,9 +262,7 @@ func (sm *SealManager) progressRotation(rotationConfig, existingConfig *SealConf
 
 	// Check if we don't have enough keys to unlock
 	if len(rotationConfig.RotationProgress) < existingConfig.SecretThreshold {
-		if sm.logger.IsDebug() {
-			sm.logger.Debug("cannot rotate yet, not enough keys", "keys", len(rotationConfig.RotationProgress), "threshold", existingConfig.SecretThreshold)
-		}
+		sm.logger.Debug("cannot rotate yet, not enough keys", "keys", len(rotationConfig.RotationProgress), "threshold", existingConfig.SecretThreshold)
 		return nil, nil
 	}
 
@@ -713,9 +711,7 @@ func (sm *SealManager) VerifyRotation(ctx context.Context, ns *namespace.Namespa
 
 	// Check if we don't have enough keys to unlock
 	if len(rotationConfig.VerificationProgress) < rotationConfig.SecretThreshold {
-		if sm.logger.IsDebug() {
-			sm.logger.Debug("cannot verify yet, not enough keys", "keys", len(rotationConfig.VerificationProgress), "threshold", rotationConfig.SecretThreshold)
-		}
+		sm.logger.Debug("cannot verify yet, not enough keys", "keys", len(rotationConfig.VerificationProgress), "threshold", rotationConfig.SecretThreshold)
 		return nil, nil
 	}
 

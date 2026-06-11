@@ -280,9 +280,7 @@ func Test(tt TestT, c TestCase) {
 	// Make requests
 	var revoke []*logical.Request
 	for i, s := range c.Steps {
-		if logger.IsWarn() {
-			logger.Warn("Executing test step", "step_number", i+1)
-		}
+		logger.Warn("Executing test step", "step_number", i+1)
 
 		// Create the request
 		req := &logical.Request{
@@ -373,9 +371,7 @@ func Test(tt TestT, c TestCase) {
 	// Revoke any secrets we might have.
 	var failedRevokes []*logical.Secret
 	for _, req := range revoke {
-		if logger.IsWarn() {
-			logger.Warn("Revoking secret", "secret", fmt.Sprintf("%#v", req))
-		}
+		logger.Warn("Revoking secret", "secret", fmt.Sprintf("%#v", req))
 		req.ClientToken = client.Token()
 		resp, err := core.HandleRequest(ctx, req)
 		if err == nil && resp.IsError() {

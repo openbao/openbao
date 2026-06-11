@@ -200,9 +200,7 @@ func (c *Core) setupPluginCatalog(ctx context.Context) error {
 		return err
 	}
 
-	if c.logger.IsInfo() {
-		c.logger.Info("successfully setup plugin catalog", "plugin-directory", c.pluginDirectory)
-	}
+	c.logger.Info("successfully setup plugin catalog", "plugin-directory", c.pluginDirectory)
 
 	return nil
 }

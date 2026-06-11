@@ -107,9 +107,7 @@ func (i *IdentityStore) LoadGroups(ctx context.Context, readOnly bool) error {
 				}
 			}
 
-			if i.logger.IsDebug() {
-				i.logger.Debug("loading group", "name", group.Name, "id", group.ID)
-			}
+			i.logger.Debug("loading group", "name", group.Name, "id", group.ID)
 
 			txn := i.db(ctx).Txn(true)
 
@@ -140,9 +138,7 @@ func (i *IdentityStore) LoadGroups(ctx context.Context, readOnly bool) error {
 		}
 	}
 
-	if i.logger.IsInfo() {
-		i.logger.Info("groups restored")
-	}
+	i.logger.Info("groups restored")
 
 	return nil
 }
@@ -324,9 +320,7 @@ LOOP:
 		i.logger.Warn("One or more entities have multiple aliases on the same mount(s), remove duplicates to avoid ACL templating issues", "mount_accessors", duplicatedAccessorsList)
 	}
 
-	if i.logger.IsInfo() {
-		i.logger.Info("entities restored")
-	}
+	i.logger.Info("entities restored")
 
 	return nil
 }

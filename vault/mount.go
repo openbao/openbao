@@ -347,9 +347,7 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *routing.MountEn
 	}
 
 	success = true
-	if c.logger.IsInfo() {
-		c.logger.Info("successful mount", "namespace", entry.Namespace.Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
-	}
+	c.logger.Info("successful mount", "namespace", entry.Namespace.Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
 
 	return nil
 }
@@ -504,9 +502,7 @@ func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage b
 		}
 	}
 
-	if c.logger.IsInfo() {
-		c.logger.Info("successfully unmounted", "namespace", ns.Path, "path", path)
-	}
+	c.logger.Info("successfully unmounted", "namespace", ns.Path, "path", path)
 
 	return nil
 }
@@ -1582,9 +1578,7 @@ func (c *Core) setupMount(ctx context.Context, entry *routing.MountEntry) (func(
 		}
 	}
 
-	if c.logger.IsInfo() {
-		c.logger.Info("successfully mounted", "type", entry.Type, "version", entry.RunningVersion, "path", entry.Path, "namespace", entry.Namespace)
-	}
+	c.logger.Info("successfully mounted", "type", entry.Type, "version", entry.RunningVersion, "path", entry.Path, "namespace", entry.Namespace)
 
 	// Ensure the path is tainted if set in the mount table.
 	if entry.Tainted {

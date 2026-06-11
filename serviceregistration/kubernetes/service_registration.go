@@ -116,8 +116,6 @@ func getRequiredField(logger hclog.Logger, config map[string]string, envVar, con
 	default:
 		return "", fmt.Errorf(`%s must be provided via %q or the %q config parameter`, configParam, envVar, configParam)
 	}
-	if logger.IsDebug() {
-		logger.Debug(fmt.Sprintf("%q: %q", configParam, value))
-	}
+	logger.Debug(fmt.Sprintf("%q: %q", configParam, value))
 	return value, nil
 }

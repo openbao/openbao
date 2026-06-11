@@ -246,15 +246,13 @@ func (c *Core) lockedGenerateRootInit(ctx context.Context, otp, pgpKey string, s
 		Strategy:       strategy,
 	}
 
-	if c.logger.IsInfo() {
-		switch strategy.(type) {
-		case generateStandardRootToken:
-			c.logger.Info("root generation initialized", "nonce", gen.Config.Nonce)
-		case *generateRecoveryToken:
-			c.logger.Info("recovery operation token generation initialized", "nonce", gen.Config.Nonce)
-		default:
-			c.logger.Info("dr operation token generation initialized", "nonce", gen.Config.Nonce)
-		}
+	switch strategy.(type) {
+	case generateStandardRootToken:
+		c.logger.Info("root generation initialized", "nonce", gen.Config.Nonce)
+	case *generateRecoveryToken:
+		c.logger.Info("recovery operation token generation initialized", "nonce", gen.Config.Nonce)
+	default:
+		c.logger.Info("dr operation token generation initialized", "nonce", gen.Config.Nonce)
 	}
 
 	return nil
@@ -343,9 +341,7 @@ func (c *Core) lockedGenerateRootUpdate(ctx context.Context, key []byte, nonce s
 
 	// Check if we don't have enough keys to unlock
 	if progress < config.SecretThreshold {
-		if c.logger.IsDebug() {
-			c.logger.Debug("cannot generate root, not enough keys", "keys", progress, "threshold", config.SecretThreshold)
-		}
+		c.logger.Debug("cannot generate root, not enough keys", "keys", progress, "threshold", config.SecretThreshold)
 		return &GenerateRootResult{
 			Progress:       progress,
 			Required:       config.SecretThreshold,

@@ -205,9 +205,7 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *rout
 	}
 
 	success = true
-	if c.logger.IsInfo() {
-		c.logger.Info("enabled credential backend", "namespace", entry.Namespace.Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
-	}
+	c.logger.Info("enabled credential backend", "namespace", entry.Namespace.Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
 
 	return nil
 }
@@ -310,9 +308,7 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 		}
 	}
 
-	if c.logger.IsInfo() {
-		c.logger.Info("disabled credential backend", "namespace", ns.Path, "path", path)
-	}
+	c.logger.Info("disabled credential backend", "namespace", ns.Path, "path", path)
 
 	return nil
 }
@@ -1210,9 +1206,7 @@ func (c *Core) setupCredential(ctx context.Context, entry *routing.MountEntry) (
 		}
 	}
 
-	if c.logger.IsInfo() {
-		c.logger.Info("successfully mounted", "type", entry.Type, "version", entry.RunningVersion, "path", entry.Path, "namespace", entry.Namespace)
-	}
+	c.logger.Info("successfully mounted", "type", entry.Type, "version", entry.RunningVersion, "path", entry.Path, "namespace", entry.Namespace)
 
 	// Ensure the path is tainted if set in the auth table.
 	if entry.Tainted {

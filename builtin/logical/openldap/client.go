@@ -9,7 +9,6 @@ import (
 	"github.com/go-ldap/ldap/v3"
 	"github.com/go-ldap/ldif"
 	"github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/sdk/v2/helper/ldaputil"
 
 	"github.com/openbao/openbao/builtin/logical/openldap/client"
 )
@@ -50,7 +49,7 @@ func (c *Client) UpdateDNPassword(conf *client.Config, dn string, newPassword st
 
 	if field == client.FieldRegistry.UserPrincipalName {
 		scope = ldap.ScopeWholeSubtree
-		bindUser := fmt.Sprintf("%s@%s", ldaputil.EscapeLDAPValue(dn), conf.UPNDomain)
+		bindUser := fmt.Sprintf("%s@%s", ldap.EscapeFilter(dn), conf.UPNDomain)
 		filters[field] = []string{bindUser}
 		dn = conf.UserDN
 	}

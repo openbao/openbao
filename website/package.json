@@ -25,7 +25,7 @@
     "@docusaurus/preset-classic": "^3.10.1",
     "@docusaurus/theme-common": "^3.10.1",
     "@docusaurus/theme-mermaid": "^3.10.1",
-    "@easyops-cn/docusaurus-search-local": "^0.55.1",
+    "@easyops-cn/docusaurus-search-local": "^0.55.2",
     "@hashicorp/remark-plugins": "^4.1.1",
     "@mdx-js/react": "^3.1.1",
     "clsx": "^2.1.1",

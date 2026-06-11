@@ -55,6 +55,12 @@ Enter an unseal key to progress root token generation:
 $ bao operator generate-root -otp="..."
 ```
 
+Start root token generation for a sealable namespace:
+
+```shell-session
+$ bao operator generate-root -ns=tenants/my-tenant -init
+```
+
 ## Usage
 
 The following flags are available in addition to the [standard set of
@@ -97,3 +103,5 @@ flags](../index.mdx) included on all commands.
 - `-dr-token` `(bool: false)` - Generate DR operational token
 
 - `-recovery-token` `(bool: false)` - Generate recovery operational token
+
+- `-namespace` `(string: "")` - Sealable namespace to generate the root token for. Defaults to the root namespace.

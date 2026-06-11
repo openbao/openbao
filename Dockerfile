@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}.
-FROM alpine:3.23.4 AS default
+FROM alpine:3.24.0 AS default
 
 COPY LICENSE /licenses/mozilla.txt
 

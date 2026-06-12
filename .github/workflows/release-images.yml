@@ -171,27 +171,30 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           PATTERN: ${{ case(startsWith(matrix.distro.name, 'openbao-hsm'), 'openbao-hsm', 'openbao') }}_*_linux_*.tar.gz
 
-      - name: Get date
-        id: date
-        run: echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+      - name: Get release info
+        id: info
+        run: |
+          echo "sha=$(git rev-parse "$VERSION")" >> "$GITHUB_OUTPUT"
+          echo "epoch=$(git log -1 --format=%ct "$VERSION")" >> "$GITHUB_OUTPUT"
 
       - name: Build and push images
         id: build
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
-          push: true
           context: .
-          target: ${{ matrix.distro.target }}
+          push: true
           tags: ${{ join(fromJSON(steps.tags.outputs.tags), ',') }}
+          target: ${{ matrix.distro.target }}
           platforms: ${{ join(matrix.distro.platforms, ',') }}
+          outputs: type=registry,rewrite-timestamp=true
+          build-args: SOURCE_DATE_EPOCH=${{ steps.info.outputs.epoch }}
           labels: |
-            org.opencontainers.image.created=${{ steps.date.outputs.date }}
             org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>
             org.opencontainers.image.url=https://github.com/openbao/openbao
             org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md
             org.opencontainers.image.source=https://github.com/openbao/openbao
             org.opencontainers.image.version=${{ env.VERSION }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ steps.info.outputs.sha }}
             org.opencontainers.image.vendor=OpenBao
             org.opencontainers.image.licenses=MPL-2.0
             org.opencontainers.image.title=OpenBao

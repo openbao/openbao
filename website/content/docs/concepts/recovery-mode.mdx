@@ -113,7 +113,8 @@ When OpenBao is started in recovery mode, `Recovery Mode: true` will be visible 
 ### Generate a recovery token
 
 In recovery mode, every request to OpenBao needs to be authenticated with a recovery token. Such
-tokens can be generated similarly to a root token.
+tokens can be generated similarly to a root token. Only one recovery token can be generated for a
+given session; restart the server to generate a new one and invalidate the existing one.
 
 Start by generating an OTP:
 ```shell-session

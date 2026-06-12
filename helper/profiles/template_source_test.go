@@ -14,7 +14,7 @@ func TestTemplateSourceBuilder_EvaluateAndClose(t *testing.T) {
 	}}
 
 	field := map[string]interface{}{"template": "{{ .requests.test.value }}"}
-	src := TemplateSourceBuilder(engine, field)
+	src := TemplateSourceBuilder(engine, field, nil)
 	require.NotNil(t, src)
 	require.IsType(t, &TemplateSource{}, src)
 
@@ -41,7 +41,7 @@ func TestTemplateSourceBuilder_RequestNotAllowed(t *testing.T) {
 	}}
 
 	field := map[string]interface{}{"template": "{{ .requests.test.value }}"}
-	src := TemplateSourceBuilder(engine, field)
+	src := TemplateSourceBuilder(engine, field, nil)
 	require.NotNil(t, src)
 
 	_, _, err := src.Validate()
@@ -56,7 +56,7 @@ func TestTemplateSourceBuilder_ResponseNotAllowed(t *testing.T) {
 	engine := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{}}
 
 	field := map[string]interface{}{"template": "{{ .response.test.value }}"}
-	src := TemplateSourceBuilder(engine, field)
+	src := TemplateSourceBuilder(engine, field, nil)
 	require.NotNil(t, src)
 
 	_, _, err := src.Validate()
@@ -71,7 +71,7 @@ func TestTemplateSourceBuilder_Constant(t *testing.T) {
 	engine := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{}}
 
 	field := map[string]interface{}{"template": "123"}
-	src := TemplateSourceBuilder(engine, field)
+	src := TemplateSourceBuilder(engine, field, nil)
 	require.NotNil(t, src)
 
 	_, _, err := src.Validate()
@@ -94,7 +94,7 @@ func TestTemplateSourceBuilder_EvaluateAdditionalData(t *testing.T) {
 			"alex": "test",
 		},
 	}
-	src := TemplateSourceBuilder(engine, field)
+	src := TemplateSourceBuilder(engine, field, nil)
 	require.NotNil(t, src)
 	require.IsType(t, &TemplateSource{}, src)
 

@@ -129,7 +129,7 @@ func (c *NamespaceUnsealCommand) Run(args []string) int {
 			c.UI.Error(fmt.Sprintf("Error resetting unseal process: %s", err))
 			return 2
 		}
-		return OutputData(c.UI, SealStatusOutput{SealStatusResponse: api.SealStatusResponse{
+		return OutputData(c.UI, api.SealStatusResponse{
 			Type:        status.Type,
 			Initialized: status.Initialized,
 			Sealed:      status.Sealed,
@@ -137,7 +137,7 @@ func (c *NamespaceUnsealCommand) Run(args []string) int {
 			N:           status.N,
 			Progress:    status.Progress,
 			Nonce:       status.Nonce,
-		}})
+		})
 	}
 
 	if unsealKey == "" {
@@ -180,7 +180,7 @@ func (c *NamespaceUnsealCommand) Run(args []string) int {
 		return 2
 	}
 
-	return OutputData(c.UI, SealStatusOutput{SealStatusResponse: api.SealStatusResponse{
+	return OutputData(c.UI, api.SealStatusResponse{
 		Type:        status.Type,
 		Initialized: status.Initialized,
 		Sealed:      status.Sealed,
@@ -188,5 +188,5 @@ func (c *NamespaceUnsealCommand) Run(args []string) int {
 		N:           status.N,
 		Progress:    status.Progress,
 		Nonce:       status.Nonce,
-	}})
+	})
 }

@@ -110,9 +110,12 @@ seal "shamir" {
 		"ns3": ns3Shares,
 	}
 
-	// All namespaces should be sealed.
+	// All namespaces should be sealed; this is wrapped in an eventually as
+	// the namespaces can take a minute to be created on the standby nodes.
 	for ns := range allNamespaces {
-		requireSealed(t, ns, allClients...)
+		require.EventuallyWithT(t, func(t *assert.CollectT) {
+			requireSealed(t, ns, allClients...)
+		}, 25*time.Second, 100*time.Millisecond)
 	}
 
 	// Unsealing with secondary client should result in namespace immediately

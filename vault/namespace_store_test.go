@@ -3,7 +3,6 @@ package vault
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"path"
 	"strconv"
 	"testing"
@@ -253,6 +252,108 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	keys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, parentNamespace.UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Empty(t, keys, "Expected empty namespace store on storage level")
+}
+
+func TestNamespaceStore_DeleteSealedNamespace(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+	ctx := namespace.RootContext(t.Context())
+
+	_ = TestCoreCreateUnsealedNamespaces(
+		t, c,
+		&namespace.Namespace{Path: "a/"},
+		&namespace.Namespace{Path: "b/"},
+		&namespace.Namespace{Path: "c/"},
+		&namespace.Namespace{Path: "tree/"},
+	)
+	TestCoreCreateNamespaces(
+		t, c,
+		&namespace.Namespace{Path: "tree/a/"},
+		&namespace.Namespace{Path: "tree/b/"},
+		&namespace.Namespace{Path: "tree/a/b/"},
+	)
+
+	type test struct {
+		path  string
+		force bool
+	}
+
+	// Inputs that should all fail while namespaces are unsealed.
+	tests := map[string]test{
+		"root":       {"/", false},
+		"root+force": {"/", true},
+		"a":          {"a/", false},
+		"a+force":    {"a/", true},
+		"tree":       {"tree/", false},
+		"tree+force": {"tree/", true},
+	}
+
+	for name, tt := range tests {
+		t.Run(fmt.Sprintf("unsealed+%s", name), func(t *testing.T) {
+			_, err := s.DeleteSealedNamespace(ctx, tt.path, tt.force)
+			require.Error(t, err)
+		})
+	}
+
+	// Seal the world:
+	require.NoError(t, s.SealNamespace(ctx, "a/"))
+	require.NoError(t, s.SealNamespace(ctx, "b/"))
+	require.NoError(t, s.SealNamespace(ctx, "tree/"))
+
+	// Inputs that should all fail even after sealing the namespaces.
+	tests = map[string]test{
+		"root":       {"/", false},
+		"root+force": {"/", true},
+		"tree":       {"tree/", false},
+	}
+
+	for name, tt := range tests {
+		t.Run(fmt.Sprintf("sealed+%s", name), func(t *testing.T) {
+			_, err := s.DeleteSealedNamespace(ctx, tt.path, tt.force)
+			require.Error(t, err)
+		})
+	}
+
+	// Inputs that should all wipe namespaces down to the last bit.
+	tests = map[string]test{
+		// We have single-level "a" and "b" in this test just so one can be
+		// force deleted while the other isn't.
+		"a":          {"a/", false},
+		"b+force":    {"b/", true},
+		"tree+force": {"tree/", true},
+	}
+
+	for name, tt := range tests {
+		t.Run(fmt.Sprintf("sealed+%s", name), func(t *testing.T) {
+			status, err := s.DeleteSealedNamespace(ctx, tt.path, tt.force)
+			require.NoError(t, err)
+			require.Equal(t, "in-progress", status)
+			// Wait for the deletion to finish asynchronously.
+			require.EventuallyWithT(t, func(t *assert.CollectT) {
+				status, err := s.DeleteSealedNamespace(ctx, tt.path, tt.force)
+				require.Equal(t, "", status)
+				require.NoError(t, err)
+			}, time.Second*10, time.Millisecond*10)
+		})
+	}
+
+	// Check that the namespace store no longer knows of any namespaces, except
+	// for "c/", which we never touched:
+	namespaces, err := s.ListNamespaces(ctx, ListNamespaceOpts{
+		Recursive:     true,
+		IncludeSealed: true,
+	})
+	require.Len(t, namespaces, 1)
+	require.Equal(t, namespaces[0].Path, "c/")
+	require.NoError(t, err)
+
+	// Check that namespace storage is entirely empty, except for c's UUID.
+	keys, err := c.barrier.List(ctx, barrier.NamespacePrefix)
+	require.Len(t, keys, 1)
+	require.Equal(t, keys[0], namespaces[0].UUID+"/")
+	require.NoError(t, err)
 }
 
 // TestNamespaceStore_LockNamespace tests the lock namespace method of the namespace store
@@ -1206,66 +1307,4 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 
 	// verify after unseal
 	checkState()
-}
-
-// TestNamespaceStore_DeleteSudoSealed verifies DeleteSealedNamespace behaviour:
-// child protection, force requirement, and successful deletion paths.
-func TestNamespaceStore_DeleteSudoSealed(t *testing.T) {
-	t.Parallel()
-
-	c, _, _ := TestCoreUnsealed(t)
-	s := c.namespaceStore
-	ctx := namespace.RootContext(t.Context())
-
-	// Unsealed namespace with children: DeleteNamespace is rejected.
-	parent := &namespace.Namespace{Path: "parent/"}
-	require.NoError(t, s.SetNamespace(ctx, parent))
-	child := &namespace.Namespace{Path: "parent/child/"}
-	require.NoError(t, s.SetNamespace(ctx, child))
-
-	_, err := s.DeleteNamespace(ctx, "parent")
-	coded, ok := err.(logical.HTTPCodedError)
-	require.True(t, ok, "DeleteNamespace must reject namespace with children")
-	require.Equal(t, http.StatusConflict, coded.Code(), "DeleteNamespace must reject namespace with children")
-
-	// Sealed namespace: DeleteNamespace must be rejected.
-	TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "sealed-with-child/"})
-	TestCoreCreateNamespaces(t, c, &namespace.Namespace{Path: "sealed-with-child/sealed-child/"})
-	require.NoError(t, s.SealNamespace(ctx, "sealed-with-child"))
-
-	_, err = s.DeleteNamespace(ctx, "sealed-with-child")
-	coded, ok = err.(logical.HTTPCodedError)
-	require.True(t, ok, "DeleteNamespace must reject sealed namespace")
-	require.Equal(t, http.StatusBadRequest, coded.Code(), "DeleteNamespace must reject sealed namespace")
-
-	// Sealed namespace with children: DeleteSealedNamespace without force is rejected.
-	_, err = s.DeleteSealedNamespace(ctx, "sealed-with-child", false)
-	coded, ok = err.(logical.HTTPCodedError)
-	require.True(t, ok, "force=false must be rejected when sealed namespace has children")
-	require.Equal(t, http.StatusConflict, coded.Code(), "force=false must be rejected when sealed namespace has children")
-
-	// Sealed namespace with children: force=true succeeds and eventually removes the tree.
-	status, err := s.DeleteSealedNamespace(ctx, "sealed-with-child", true)
-	require.NoError(t, err)
-	require.Equal(t, "in-progress", status)
-
-	require.EventuallyWithT(t, func(ct *assert.CollectT) {
-		ns, err := s.GetNamespaceByPath(ctx, "sealed-with-child/")
-		require.NoError(ct, err)
-		require.Nil(ct, ns, "sealed namespace tree must be gone after recursive deletion completes")
-	}, 5*time.Second, 10*time.Millisecond)
-
-	// Sealed childless namespace: DeleteSealedNamespace without force succeeds (no children to protect).
-	TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "sealed-solo/"})
-	require.NoError(t, s.SealNamespace(ctx, "sealed-solo"))
-
-	status, err = s.DeleteSealedNamespace(ctx, "sealed-solo", false)
-	require.NoError(t, err)
-	require.Equal(t, "in-progress", status)
-
-	require.EventuallyWithT(t, func(ct *assert.CollectT) {
-		ns, err := s.GetNamespaceByPath(ctx, "sealed-solo/")
-		require.NoError(ct, err)
-		require.Nil(ct, ns, "sealed namespace must be gone after deletion completes")
-	}, 5*time.Second, 10*time.Millisecond)
 }

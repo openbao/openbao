@@ -1573,7 +1573,7 @@ func (ns *NamespaceStore) wipeStorageTree(ctx context.Context, root *namespace.N
 				return err == nil, err
 			},
 		); err != nil {
-			return fmt.Errorf("failed to clear namespace view: %w", err)
+			return fmt.Errorf("failed to clear namespace view for %q: %w", uuid, err)
 		}
 	}
 

@@ -73,7 +73,7 @@ and re-join them to the recovered node, or use the
 [Manual Recovery Using peers.json](integrated-storage/index.mdx#manual-recovery-using-peersjson)
 approach to get all nodes to agree on what nodes are part of the cluster.
 
-# Usage
+## Usage
 
 :::warning
 
@@ -81,14 +81,14 @@ Be very careful when modifying or deleting keys in recovery mode. Always have a 
 
 :::
 
-## Pre-requisite
+### Pre-requisite
 
 * Take a snapshot before entering recovery mode
 * Have the recovery/unseal keys ready
 
-## Step-by-step process
+### Step-by-step process
 
-### Restart the OpenBao server in recovery mode
+1. **Restart the OpenBao server in recovery mode**
 
 To start OpenBao in recovery mode, add the `-recovery` flag to your `bao` startup command:
 ```shell-session
@@ -110,7 +110,7 @@ When OpenBao is started in recovery mode, `Recovery Mode: true` will be visible 
              Version Sha: 21db149765f9b3db983557e40c006bed37e7d8f6
 ```
 
-### Generate a recovery token
+2. **Generate a recovery token**
 
 In recovery mode, every request to OpenBao needs to be authenticated with a recovery token. Such
 tokens can be generated similarly to a root token. Only one recovery token can be generated for a

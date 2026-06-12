@@ -28,9 +28,10 @@ func (c *NamespaceDeleteCommand) Help() string {
 	helpText := `
 Usage: bao namespace delete [options] PATH
 
-  Delete an existing namespace. The namespace deleted will be relative to the
-  namespace provided in either the BAO_NAMESPACE environment variable or
-  -namespace CLI flag.
+  Delete a namespace.
+
+  The namespace deleted will be relative to the namespace provided in either the
+  BAO_NAMESPACE environment variable or -namespace CLI flag.
 
   Delete a namespace (e.g. ns1/):
 
@@ -43,6 +44,9 @@ Usage: bao namespace delete [options] PATH
   To delete a sealed namespace, use the delete-sealed subcommand instead:
 
       $ bao namespace delete-sealed ns1
+
+  Note that this requires the sudo capability, and will not clean up external
+  resources via lease deletion like standard namespace deletion does.
 
 ` + c.Flags().Help()
 

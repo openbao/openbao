@@ -373,14 +373,16 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 
 		// three namespaces: "foobar", "foobar/bar" and "foobar/baz"
 		req := logical.TestRequest(t, logical.DeleteOperation, "namespaces/foobar")
-		_, err := b.HandleRequest(rootCtx, req)
-		// fails as foobar contains child namespaces — 409 Conflict returned as error
+		res, err := b.HandleRequest(rootCtx, req)
+		// fails as foobar contains child namespaces
+		require.Error(t, err)
+		require.Error(t, res.Error())
 		coded, ok := err.(logical.HTTPCodedError)
 		require.True(t, ok, "expected HTTPCodedError")
 		require.Equal(t, http.StatusConflict, coded.Code())
 
 		req = logical.TestRequest(t, logical.DeleteOperation, "namespaces/baz")
-		res, err := b.HandleRequest(nestedCtx, req)
+		res, err = b.HandleRequest(nestedCtx, req)
 		require.NoError(t, err)
 		require.Equal(t, "in-progress", res.Data["status"])
 

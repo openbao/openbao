@@ -227,10 +227,12 @@ func (c *Sys) PatchNamespaceWithContext(ctx context.Context, name string, i *Pat
 	return result.Data, mapstructure.Decode(secret, &result)
 }
 
+// DeleteNamespace removes the namespace with the given name.
 func (c *Sys) DeleteNamespace(name string) (*DeleteNamespaceOutput, error) {
 	return c.DeleteNamespaceWithContext(context.Background(), name)
 }
 
+// DeleteNamespaceWithContext removes the namespace with the given name.
 func (c *Sys) DeleteNamespaceWithContext(ctx context.Context, name string) (*DeleteNamespaceOutput, error) {
 	if name == "" {
 		return nil, errors.New("name must not be empty")

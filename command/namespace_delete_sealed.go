@@ -30,8 +30,12 @@ func (c *NamespaceDeleteSealedCommand) Help() string {
 	helpText := `
 Usage: bao namespace delete-sealed [options] PATH
 
-  Delete a sealed namespace by physically wiping its storage. Requires sudo
-  privilege on the path.
+  Delete a sealed namespace by physically wiping its storage.
+
+  Note that this requires the sudo capability, and will not clean up external
+  resources via lease deletion like standard namespace deletion does. Prefer the
+  standard 'bao namespace delete' command unless the namespace is irrecoverable
+  due to lost seal keys.
 
   The namespace deleted will be relative to the namespace provided in either
   the BAO_NAMESPACE environment variable or -namespace CLI flag.
@@ -40,7 +44,7 @@ Usage: bao namespace delete-sealed [options] PATH
 
       $ bao namespace delete-sealed ns1
 
-  Delete a sealed namespace and all its child namespaces:
+  Delete a sealed namespace and recursively wipe its child namespaces:
 
       $ bao namespace delete-sealed -force ns1
 

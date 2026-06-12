@@ -132,8 +132,8 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	rotationResult, hErr := c.sealManager.InitRotation(ctx, ns, newConf, recovery)
-	require.NoError(t, hErr)
+	rotationResult, err := c.sealManager.InitRotation(ctx, ns, newConf, recovery)
+	require.NoError(t, err)
 	require.Empty(t, rotationResult)
 
 	// Fetch new config with generated nonce
@@ -142,7 +142,6 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 
 	// Provide the root/recovery keys
 	var result *RekeyResult
-	var err error
 	for _, key := range keys {
 		result, err = c.sealManager.UpdateRotation(ctx, ns, key, rotConfig.Nonce, recovery)
 		require.NoError(t, err)
@@ -164,8 +163,6 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	}
 	require.NoError(t, err)
 	require.NotNil(t, sealConf)
-
-	newConf.Nonce = rotConfig.Nonce
 	require.Equal(t, sealConf, newConf)
 
 	// At this point bail if we are rotating the barrier key with recovery
@@ -248,9 +245,10 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 		sealConf, err = seal.BarrierConfig(ctx)
 	}
 	require.NoError(t, err)
-
-	newConf.Nonce = rotConfig.Nonce
 	require.Equal(t, sealConf, newConf)
+
+	// verfiy nonce was removed after rotation.
+	require.Empty(t, sealConf.Nonce)
 }
 
 func TestRotateInvalid(t *testing.T) {

@@ -1111,7 +1111,7 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 	}
 
 	if !namespaceToUnseal.HasParent(parent) {
-		return fmt.Errorf("given parent namespace from context is not the parent of this namespace")
+		return fmt.Errorf("namespace from context is not the parent of the target namespace to unseal")
 	}
 
 	// Now modify just this one namespace in storage to mark it unsealed,

@@ -782,7 +782,7 @@ func (c *Core) SetNamespaceKeys(rpcCtx context.Context, keys map[string][]byte) 
 		}
 
 		if ns.ManuallySealed {
-			c.logger.Info("skipping unsealing namespace which has been manually sealed", "path", ns.Path, "uuid", uuid)
+			c.logger.Debug("skipping unsealing namespace which has been manually sealed", "path", ns.Path, "uuid", uuid)
 			continue
 		}
 

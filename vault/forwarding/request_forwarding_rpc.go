@@ -242,7 +242,7 @@ func (c *Client) Start() {
 			}
 			defer syncRunning.Store(false)
 
-			c.core.Logger().Info("synchronizing namespace keys with active node")
+			c.core.Logger().Trace("synchronizing namespace keys with active node")
 
 			// We don't want to hang forever waiting to synchronize namespace
 			// seal keys with the active node. Bind it to a reasonable length.

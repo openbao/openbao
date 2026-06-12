@@ -706,7 +706,7 @@ func BenchmarkClearNamespaceResources(b *testing.B) {
 
 	for b.Loop() {
 		ns := randomNamespace(s)
-		err := s.clearNamespaceResources(ctx, namespace.RootNamespace, ns, true)
+		err := s.clearNamespaceResources(ctx, ns, true)
 		require.NoError(b, err)
 	}
 }

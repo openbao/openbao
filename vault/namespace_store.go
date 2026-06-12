@@ -40,10 +40,6 @@ const (
 	// Namespace storage location.
 	namespaceStoreSubPath = "core/namespaces/"
 
-	// namespaceBarrierPrefix is the prefix to the UUID of a namespaces
-	// used in the barrier view for the namespace-owned backends.
-	namespaceBarrierPrefix = "namespaces/"
-
 	// nsDispatcherName is the name of the jobmanager instance for metrics.
 	nsDispatcherName = "namespace-deletion"
 
@@ -134,7 +130,7 @@ func NamespaceStoragePathPrefix(ns *namespace.Namespace) string {
 		return ""
 	}
 
-	return path.Join(namespaceBarrierPrefix, ns.UUID) + "/"
+	return path.Join(barrier.NamespacePrefix, ns.UUID) + "/"
 }
 
 // cancelNamespaceDeletion cancels goroutine that runs namespace deletion.
@@ -242,6 +238,16 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 		}
 		namespacesByUUID[namespace.UUID] = namespace
 		namespacesByAccessor[namespace.ID] = namespace
+
+		if namespace.ManuallySealed {
+			barrier := ns.core.sealManager.NamespaceBarrier(namespace.Path)
+			if barrier != nil && !barrier.Sealed() {
+				if err := barrier.Seal(); err != nil {
+					ns.logger.Warn("unable to seal namespace barrier", "error", err, "ns", namespace.Path, "uuid", namespace.UUID)
+				}
+			}
+		}
+
 		return nil
 	}
 
@@ -1050,6 +1056,19 @@ func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSe
 		}
 	})
 
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get parent namespace from context: %w", err)
+	}
+
+	// Now modify just this one namespace in storage to mark it sealed,
+	// forgetting the keys from all other nodes.
+	namespaceToSeal.ManuallySealed = true
+	nsCopy := namespaceToSeal.Clone(true /* preserve unlock */)
+	if err := ns.writeNamespace(ctx, ns.core.NamespaceView(parent), nsCopy); err != nil {
+		return fmt.Errorf("failed to persist namespace: %w", err)
+	}
+
 	return errs
 }
 
@@ -1057,7 +1076,28 @@ func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSe
 func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key []byte) error {
 	defer metrics.MeasureSince([]string{"namespace", "unseal_namespace"}, time.Now())
 
-	namespaceToUnseal, err := ns.GetNamespaceByPath(ctx, path)
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("error loading parent namespace from context: %w", err)
+	}
+
+	unlocker, err := ns.lockWithInvalidation(ctx, false)
+	if err != nil {
+		return err
+	}
+
+	// We have multiple code paths we want to call unlock on.
+	var unlocked atomic.Bool
+	unlock := func() {
+		if !unlocked.CompareAndSwap(false, true) {
+			return
+		}
+
+		unlocker()
+	}
+	defer unlock()
+
+	namespaceToUnseal, err := ns.getNamespaceByPathLocked(ctx, path, false)
 	if err != nil {
 		return err
 	}
@@ -1069,6 +1109,22 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 	if namespaceToUnseal.ID == namespace.RootNamespaceID {
 		return errors.New("cannot unseal root namespace with this operation")
 	}
+
+	if !namespaceToUnseal.HasParent(parent) {
+		return fmt.Errorf("namespace from context is not the parent of the target namespace to unseal")
+	}
+
+	// Now modify just this one namespace in storage to mark it unsealed,
+	// letting other nodes unseal it as well.
+	namespaceToUnseal.ManuallySealed = false
+	nsCopy := namespaceToUnseal.Clone(true /* preserve unlock */)
+	if err := ns.writeNamespace(ctx, ns.core.NamespaceView(parent), nsCopy); err != nil {
+		return fmt.Errorf("failed to modify namespace: %w", err)
+	}
+
+	// Unlock before calling unsealNamespace; we recurse back into the
+	// namespace store here.
+	unlock()
 
 	_, err = ns.unsealNamespace(ctx, namespaceToUnseal, key)
 	return err
@@ -1568,7 +1624,7 @@ func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (strin
 // NamespaceByStoragePath parses an absolute storage path and returns the
 // matching namespace that the path belongs to.
 func (c *Core) NamespaceByStoragePath(ctx context.Context, path string) (*namespace.Namespace, string, error) {
-	rest, ok := strings.CutPrefix(path, namespaceBarrierPrefix)
+	rest, ok := strings.CutPrefix(path, barrier.NamespacePrefix)
 	if !ok || rest == "" {
 		return namespace.RootNamespace, path, nil
 	}

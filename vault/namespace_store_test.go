@@ -249,7 +249,7 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 		break
 	}
 
-	keys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, parentNamespace.UUID, namespaceStoreSubPath)+"/")
+	keys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, parentNamespace.UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Empty(t, keys, "Expected empty namespace store on storage level")
 }
@@ -885,21 +885,21 @@ func TestNamespaceStorage(t *testing.T) {
 	require.Len(t, nsKeys, 2)
 	require.ElementsMatch(t, nsKeys, []string{namespaces[0].UUID, namespaces[1].UUID})
 
-	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[0].UUID, namespaceStoreSubPath)+"/")
+	nsKeys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, namespaces[0].UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Len(t, nsKeys, 1)
 	require.ElementsMatch(t, nsKeys, []string{namespaces[2].UUID})
 
-	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[1].UUID, namespaceStoreSubPath)+"/")
+	nsKeys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, namespaces[1].UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Len(t, nsKeys, 0)
 
-	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[2].UUID, namespaceStoreSubPath)+"/")
+	nsKeys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, namespaces[2].UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Len(t, nsKeys, 1)
 	require.ElementsMatch(t, nsKeys, []string{namespaces[3].UUID})
 
-	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[3].UUID, namespaceStoreSubPath)+"/")
+	nsKeys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, namespaces[3].UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Len(t, nsKeys, 0)
 

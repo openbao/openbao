@@ -35,11 +35,15 @@ func (c *Core) Invalidate(key ...string) {
 	c.invalidations.Add(key...)
 }
 
-func (c *Core) invalidateSynchronous(key string) {
+func (c *Core) invalidateSynchronous(key string) error {
 	job, _ := c.invalidations.buildInvalidateJobForKey(make(chan struct{}), context.Background(), key)
+
 	if err := job.Execute(); err != nil {
 		job.OnFailure(err)
+		return err
 	}
+
+	return nil
 }
 
 // invalidationManager is a long-lived subset of Core which is used to handle
@@ -356,6 +360,18 @@ func (ij *invalidationJob) Execute() error {
 		return nil
 	}
 
+	nsBarrier := ij.im.core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+	if nsBarrier.Namespace().UUID != namespace.RootNamespaceUUID && nsBarrier.Sealed() {
+		// When the parent namespace is sealed, ignore the request: this
+		// means we're unable to process the invalidation regardless of
+		// what the actual invalidated entry is. Only when this parent
+		// namespace becomes unsealed can we process changes to data within
+		// it. Notably, the namespace entry for a sealed namespace sits in
+		// the namespace above it, so it is not its own parent and thus will
+		// be correctly invalidated.
+		return nil
+	}
+
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 
 	// Lastly, create a short version of the context for plugin invalidations.
@@ -400,7 +416,7 @@ func (ij *invalidationJob) Execute() error {
 	case strings.HasPrefix(ij.key, "autopilot/") || ij.key == raftAutopilotConfigurationStoragePath:
 		// Raft context is reloaded when a standby becomes active, so it is
 		// safe to ignore changes to autopilot state.
-	case isLoginMFA(ij.key):
+	case isLoginMFA(ij.nsKey):
 		ij.fatal = true
 		return ij.loginMFAInvalidation(ctx, ns)
 	case ij.im.core.router.Invalidate(shortCtx, ij.key):

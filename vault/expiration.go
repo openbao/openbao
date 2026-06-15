@@ -133,7 +133,7 @@ type ExpirationManager struct {
 
 	tidyLock atomic.Bool
 
-	restoreMode        atomic.Bool
+	restoreMode        atomic.Int64
 	restoreModeLock    sync.RWMutex
 	restoreRequestLock sync.RWMutex
 	restoreLocks       []*locksutil.LockEntry
@@ -335,6 +335,8 @@ func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, det
 		logger:      logger,
 		pendingLock: &locking.SyncRWMutex{},
 
+		restoreLocks: locksutil.CreateLocks(),
+
 		uniquePolicies:      make(map[string][]string),
 		emptyUniquePolicies: time.NewTicker(7 * 24 * time.Hour),
 
@@ -357,10 +359,8 @@ func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, det
 	// active node
 	if shouldProcessExp {
 		// active nodes start by running in restore mode by default
-		exp.restoreMode.Store(true)
+		exp.restoreMode.Add(1)
 	}
-
-	exp.restoreLocks = locksutil.CreateLocks()
 
 	exp.expireFunc.Store(&e)
 	if exp.revokeRetryBase == 0 {
@@ -501,7 +501,7 @@ func (m *ExpirationManager) unlockLease(leaseID string) {
 
 // inRestoreMode returns if we are currently in restore mode
 func (m *ExpirationManager) inRestoreMode() bool {
-	return m.restoreMode.Load()
+	return m.restoreMode.Load() > 0
 }
 
 // invalidate will be used in the future for implementing read replica nodes
@@ -693,7 +693,7 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 //
 // This is used after starting the vault.
 func (m *ExpirationManager) Restore(errorFunc func()) error {
-	return m.restore(m.collectLeases, errorFunc)
+	return m.restore(m.collectLeases, nil /* global */, errorFunc)
 }
 
 // Restore is used to restore the leases belonging to a particular namespace
@@ -704,7 +704,7 @@ func (m *ExpirationManager) RestoreNamespace(ns *namespace.Namespace, errorFunc 
 		return nil
 	}
 
-	m.restoreMode.Store(true)
+	m.restoreMode.Add(1)
 	return m.restore(func() (map[*namespace.Namespace][]string, int, error) {
 		leases, err := m.collectNamespaceLeases(ns)
 		if err != nil {
@@ -714,16 +714,16 @@ func (m *ExpirationManager) RestoreNamespace(ns *namespace.Namespace, errorFunc 
 		return map[*namespace.Namespace][]string{
 			ns.Clone(false): leases,
 		}, len(leases), nil
-	}, errorFunc)
+	}, ns, errorFunc)
 }
 
-func (m *ExpirationManager) restore(collect func() (map[*namespace.Namespace][]string, int, error), errorFunc func()) (retErr error) {
+func (m *ExpirationManager) restore(collect func() (map[*namespace.Namespace][]string, int, error), restoreNs *namespace.Namespace, errorFunc func()) (retErr error) {
 	defer func() {
 		// Turn off restore mode. We can do this safely without the lock because
 		// if restore mode finished successfully, restore mode was already
 		// disabled with the lock. In an error state, this will allow the
 		// Stop() function to shut everything down.
-		m.restoreMode.Store(false)
+		m.restoreMode.Add(-1)
 
 		switch {
 		case retErr == nil:
@@ -851,9 +851,10 @@ LOOP:
 	}
 
 	m.restoreModeLock.Lock()
-	m.restoreMode.Store(false)
-	m.restoreLoaded.Range(func(k, v interface{}) bool {
-		m.restoreLoaded.Delete(k)
+	m.restoreLoaded.Range(func(keyRaw any, _ any) bool {
+		if key, ok := keyRaw.(string); ok && (restoreNs == nil || restoreNs.MatchesID(key)) {
+			m.restoreLoaded.Delete(key)
+		}
 		return true
 	})
 	m.restoreModeLock.Unlock()
@@ -990,6 +991,13 @@ func (m *ExpirationManager) StopNamespace(ns *namespace.Namespace) {
 	m.lockPerLease.Range(func(keyRaw any, _ any) bool {
 		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
 			m.deleteLockForLease(key)
+		}
+		return true
+	})
+
+	m.restoreLoaded.Range(func(keyRaw any, _ any) bool {
+		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
+			m.restoreLoaded.Delete(key)
 		}
 		return true
 	})

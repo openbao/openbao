@@ -699,6 +699,11 @@ func (m *ExpirationManager) Restore(errorFunc func()) error {
 // Restore is used to restore the leases belonging to a particular namespace
 // when it unseals.
 func (m *ExpirationManager) RestoreNamespace(ns *namespace.Namespace, errorFunc func()) error {
+	if m.core.Standby() {
+		m.logger.Info("skipping namespace lease restoration - standby")
+		return nil
+	}
+
 	m.restoreMode.Store(true)
 	return m.restore(func() (map[*namespace.Namespace][]string, int, error) {
 		leases, err := m.collectNamespaceLeases(ns)

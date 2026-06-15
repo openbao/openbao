@@ -263,7 +263,7 @@ func Canonicalize(nsPath string) string {
 	// Remove duplicate slashes and any ../ values if present.
 	nsPath = path.Clean(nsPath)
 
-	if nsPath == "." || nsPath == "root" {
+	if nsPath == "." {
 		return ""
 	}
 
@@ -273,6 +273,26 @@ func Canonicalize(nsPath string) string {
 	}
 
 	return nsPath
+}
+
+// ParseName ensures that input is a valid non-empty, non-root namespace name
+// (path segment) and returns its canonicalized form.
+func ParseName(input string) (string, error) {
+	name := Canonicalize(input)
+	if name == "" {
+		return "", errors.New("namespace name cannot be empty")
+	}
+
+	// Clip off the final slash added by canonicalization.
+	clipped := name[:len(name)-1]
+	switch {
+	case strings.Contains(clipped, "/"):
+		return "", errors.New("namespace name cannot contain /")
+	case slices.Contains(reservedNames, clipped):
+		return "", fmt.Errorf("%q is a reserved path and cannot be used as a namespace name", name)
+	}
+
+	return name, nil
 }
 
 func SplitIDFromString(input string) (string, string) {

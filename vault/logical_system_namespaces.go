@@ -301,10 +301,9 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 // handleNamespacesRead handles the "/sys/namespaces/<path>" endpoints to read a namespace.
 func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
-
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return nil, errors.New("path must not contain /")
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
 		}
 
 		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
@@ -323,10 +322,9 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 // handleNamespaceSet handles the "/sys/namespaces/<path>" endpoint to set a namespace.
 func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
-
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return logical.ErrorResponse("path must not contain /"), logical.ErrInvalidRequest
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
 		}
 
 		imetadata, ok := data.GetOk("custom_metadata")
@@ -355,10 +353,9 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 // handleNamespacesPatch handles the "/sys/namespace/<path>" endpoints to update a namespace's custom metadata.
 func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
-
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return handleError(errors.New("path must not contain /"))
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
 		}
 
 		patch, ok := data.Get("custom_metadata").(map[string]any)
@@ -469,10 +466,9 @@ func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
 // handleNamespacesDelete handles the "/sys/namespace/<path>" endpoint to delete a namespace.
 func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
-
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return nil, errors.New("path must not contain /")
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
 		}
 
 		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, path)

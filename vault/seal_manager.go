@@ -767,17 +767,17 @@ func (c *Core) SetNamespaceKeys(rpcCtx context.Context, keys map[string][]byte) 
 	stop := context.AfterFunc(rpcCtx, cancel)
 	defer stop()
 
-	var err error
+	var errs error
 	for uuid, encRootKey := range keys {
-		rootKey, decErr := c.barrier.Decrypt(ctx, fmt.Sprintf(namespaceUnsealKeyPath, uuid), encRootKey)
-		if decErr != nil {
-			err = multierror.Append(err, fmt.Errorf("for namespace %v: failed to decrypt root key: %w", uuid, decErr))
+		rootKey, err := c.barrier.Decrypt(ctx, fmt.Sprintf(namespaceUnsealKeyPath, uuid), encRootKey)
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("for namespace %v: failed to decrypt root key: %w", uuid, err))
 			continue
 		}
 
 		ns, nsErr := c.namespaceStore.GetNamespace(ctx, uuid)
 		if nsErr != nil {
-			err = multierror.Append(err, fmt.Errorf("for namespace %v: %w", uuid, nsErr))
+			errs = multierror.Append(errs, fmt.Errorf("for namespace %v: %w", uuid, nsErr))
 			continue
 		}
 
@@ -788,19 +788,19 @@ func (c *Core) SetNamespaceKeys(rpcCtx context.Context, keys map[string][]byte) 
 
 		// Because we have a root key here, we can't call UnsealNamespace(...)
 		// as that expects a key share.
-		if unsealErr := c.sealManager.UnsealWithRootKey(ctx, ns, rootKey); unsealErr != nil {
-			err = multierror.Append(err, fmt.Errorf("for namespace %v: %w", uuid, unsealErr))
+		if err := c.sealManager.UnsealWithRootKey(ctx, ns, rootKey); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("for namespace %v: %w", uuid, err))
 			continue
 		}
 
 		go func() {
-			if err := c.namespaceStore.postNamespaceUnseal(c.activeContext.Load(), ns); err != nil {
+			if err := c.namespaceStore.unsealNamespace(c.activeContext.Load(), ns); err != nil {
 				c.logger.Error("failed to load namespace after unseal", "error", err, "ns", uuid)
 			}
 		}()
 	}
 
-	return err
+	return errs
 }
 
 // NamespaceKeys returns the root keys for the given namespaces, encrypted

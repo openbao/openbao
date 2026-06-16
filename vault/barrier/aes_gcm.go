@@ -998,7 +998,7 @@ func (b *AESGCMBarrier) aeadFromKey(key []byte) (cipher.AEAD, error) {
 	}
 
 	// Create the GCM mode AEAD
-	gcm, err := cipher.NewGCM(aesCipher)
+	gcm, err := cipher.NewGCMWithRandomNonce(aesCipher)
 	if err != nil {
 		return nil, errors.New("failed to initialize GCM mode")
 	}
@@ -1025,26 +1025,16 @@ func (b *AESGCMBarrier) encrypt(path string, term uint32, gcm cipher.AEAD, plain
 	// Set the version byte
 	out[4] = b.currentAESGCMVersionByte
 
-	// Generate a random nonce
-	nonce := out[5 : 5+gcm.NonceSize()]
-	n, err := rand.Read(nonce)
-	if err != nil {
-		return nil, err
-	}
-	if n != len(nonce) {
-		return nil, errors.New("unable to read enough random bytes to fill gcm nonce")
-	}
-
 	// Seal the output
 	switch b.currentAESGCMVersionByte {
 	case AESGCMVersion1:
-		out = gcm.Seal(out, nonce, plain, nil)
+		out = gcm.Seal(out, nil, plain, nil)
 	case AESGCMVersion2:
 		aad := []byte(nil)
 		if path != "" {
 			aad = []byte(path)
 		}
-		out = gcm.Seal(out, nonce, plain, aad)
+		out = gcm.Seal(out, nil, plain, aad)
 	default:
 		panic("Unknown AESGCM version")
 	}

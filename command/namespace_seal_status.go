@@ -89,7 +89,7 @@ func (c *NamespaceSealStatusCommand) Run(args []string) int {
 		return 2
 	}
 
-	return OutputData(c.UI, SealStatusOutput{SealStatusResponse: api.SealStatusResponse{
+	return OutputData(c.UI, api.SealStatusResponse{
 		Type:        status.Type,
 		Initialized: status.Initialized,
 		Sealed:      status.Sealed,
@@ -97,5 +97,5 @@ func (c *NamespaceSealStatusCommand) Run(args []string) int {
 		N:           status.N,
 		Progress:    status.Progress,
 		Nonce:       status.Nonce,
-	}})
+	})
 }

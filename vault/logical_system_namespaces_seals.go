@@ -231,8 +231,7 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 				}
 			}
 
-			err = b.Core.namespaceStore.UnsealNamespace(ctx, path, decodedKey)
-			if err != nil {
+			if _, err = b.Core.namespaceStore.UnsealNamespace(ctx, path, decodedKey); err != nil {
 				invalidKeyErr := &ErrInvalidKey{}
 				switch {
 				case errors.As(err, &invalidKeyErr):

@@ -1073,17 +1073,17 @@ func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSe
 }
 
 // UnsealNamespace attempts unsealing namespace with a given path, using provided unseal key.
-func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key []byte) error {
+func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key []byte) (bool, error) {
 	defer metrics.MeasureSince([]string{"namespace", "unseal_namespace"}, time.Now())
 
 	parent, err := namespace.FromContext(ctx)
 	if err != nil {
-		return fmt.Errorf("error loading parent namespace from context: %w", err)
+		return false, fmt.Errorf("error loading parent namespace from context: %w", err)
 	}
 
 	unlocker, err := ns.lockWithInvalidation(ctx, false)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// We have multiple code paths we want to call unlock on.
@@ -1099,38 +1099,21 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 
 	namespaceToUnseal, err := ns.getNamespaceByPathLocked(ctx, path, false)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if namespaceToUnseal == nil {
-		return fmt.Errorf("namespace %q not found", path)
+		return false, fmt.Errorf("namespace %q not found", path)
 	}
 
 	if namespaceToUnseal.ID == namespace.RootNamespaceID {
-		return errors.New("cannot unseal root namespace with this operation")
+		return false, errors.New("cannot unseal root namespace with this operation")
 	}
 
 	if !namespaceToUnseal.HasParent(parent) {
-		return fmt.Errorf("namespace from context is not the parent of the target namespace to unseal")
+		return false, errors.New("namespace from context is not the parent of the target namespace to unseal")
 	}
 
-	// Now modify just this one namespace in storage to mark it unsealed,
-	// letting other nodes unseal it as well.
-	namespaceToUnseal.ManuallySealed = false
-	nsCopy := namespaceToUnseal.Clone(true /* preserve unlock */)
-	if err := ns.writeNamespace(ctx, ns.core.NamespaceView(parent), nsCopy); err != nil {
-		return fmt.Errorf("failed to modify namespace: %w", err)
-	}
-
-	// Unlock before calling unsealNamespace; we recurse back into the
-	// namespace store here.
-	unlock()
-
-	_, err = ns.unsealNamespace(ctx, namespaceToUnseal, key)
-	return err
-}
-
-func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal *namespace.Namespace, key []byte) (bool, error) {
 	// Namespace wasn't sealed before the call.
 	if !ns.core.NamespaceSealed(namespaceToUnseal) {
 		return true, nil
@@ -1141,11 +1124,28 @@ func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal
 		return false, err
 	}
 
-	// We do not have enough shards yet, namespace is still sealed, return early.
+	// We do not have enough shards yet, namespace is still sealed, return
+	// early.
 	if !unsealed {
-		return unsealed, nil
+		return false, nil
 	}
 
+	// Now modify just this one namespace in storage to mark it unsealed,
+	// letting other nodes unseal it as well.
+	namespaceToUnseal.ManuallySealed = false
+	nsCopy := namespaceToUnseal.Clone(true /* preserve unlock */)
+	if err := ns.writeNamespace(ctx, ns.core.NamespaceView(parent), nsCopy); err != nil {
+		return true, fmt.Errorf("failed to modify namespace: %w", err)
+	}
+
+	// Unlock before calling unsealNamespace; we recurse back into the
+	// namespace store here.
+	unlock()
+
+	return true, ns.unsealNamespace(ctx, namespaceToUnseal)
+}
+
+func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal *namespace.Namespace) error {
 	var collected []*namespace.Namespace
 	collected = append(collected, namespaceToUnseal.Clone(false))
 
@@ -1186,18 +1186,18 @@ func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal
 			})
 		})
 	}(); err != nil {
-		return unsealed, err
+		return err
 	}
 
 	for index, newNs := range collected {
 		ns.logger.Info("calling post-unseal for namespace", "ns_path", newNs.Path, "ns_uuid", newNs.UUID)
 
 		if err := ns.postNamespaceUnseal(ctx, newNs); err != nil {
-			return unsealed, fmt.Errorf("failed to run namespace post-unseal [%d/%v]: %w", index, newNs.ID, err)
+			return fmt.Errorf("failed to run namespace post-unseal [%d/%v]: %w", index, newNs.ID, err)
 		}
 	}
 
-	return unsealed, nil
+	return nil
 }
 
 // postNamespaceUnseal loads namespace credential and secret mounts,

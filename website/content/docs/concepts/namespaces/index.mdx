@@ -76,6 +76,24 @@ policies for a child namespace might reference entities or groups from the paren
 namespace. Parent namespaces can also **assert** policies on identities within
 a child namespace.
 
+### Cross-namespaces identities
+
+Entities or groups from a parent namespace are not enabled by default.
+
+The configuration setting `unsafe_cross_namespace_identity` gives compatibility with Vault Enterprise's cross-namespace group membership and should be enabled.
+
+Example:
+
+```hcl
+api_addr = "..."
+listener "tcp" {
+  ...
+}
+
+# Allow child namespaces to reference parent namespaces entities or groups
+unsafe_cross_namespace_identity = true
+```
+
 ## Delegation and namespace administrators
 
 OpenBao system administrators can assign administration rights to delegate

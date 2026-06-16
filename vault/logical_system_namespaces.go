@@ -20,8 +20,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-var errNamespaceNotFound = errors.New("requested namespace does not exist")
-
 var namespacePathSchema = &framework.FieldSchema{
 	Type:        framework.TypeString,
 	Required:    false,
@@ -546,7 +544,7 @@ func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
 	}
 }
 
-// handleNamespacesDelete handles the "/sys/namespace/<path>" endpoint to delete a namespace.
+// handleNamespacesDelete handles the "/sys/namespaces/<path>" endpoint to delete a namespace.
 func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))

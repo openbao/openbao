@@ -139,11 +139,50 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][0]),
 			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][1]),
 		},
+
+		{
+			Pattern: "namespaces/(?P<path>.+)/delete-sealed",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"path": namespacePathSchema,
+				"force": {
+					Type:        framework.TypeBool,
+					Description: "If true, recursively deletes all child namespaces of the sealed namespace.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.handleNamespacesDeleteSealed(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {
+							{
+								Description: "OK",
+								Fields: map[string]*framework.FieldSchema{
+									"status": {
+										Type:        framework.TypeString,
+										Description: "Status of the deletion operation.",
+									},
+								},
+							},
+						},
+					},
+					Summary: "Delete a sealed namespace by wiping its physical storage.",
+				},
+			},
+
+			HelpSynopsis:    "Delete a sealed namespace.",
+			HelpDescription: "Physically deletes a sealed namespace by wiping its storage. Requires sudo privilege. Pass force=true to also delete child namespaces.",
+		},
 	}
 }
 
-// handleNamespaceSealStatus handles the "/sys/namespaces/<path>/seal-status" endpoint
-// to retrieve a seal status of the namespace.
+// handleNamespaceSealStatus handles the "/sys/namespaces/<path>/seal-status"
+// endpoint to retrieve a seal status of the namespace.
 func (b *SystemBackend) handleNamespaceSealStatus() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))
@@ -179,7 +218,8 @@ func (b *SystemBackend) handleNamespaceSealStatus() framework.OperationFunc {
 	}
 }
 
-// handleNamespacesSeal handles the "/sys/namespaces/<path>/seal" endpoint to seal the namespace.
+// handleNamespacesSeal handles the "/sys/namespaces/<path>/seal" endpoint to
+// seal the namespace.
 func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))
@@ -196,7 +236,8 @@ func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
 	}
 }
 
-// handleNamespacesUnseal handles the "/sys/namespaces/<path>/unseal" endpoint to unseal the namespace.
+// handleNamespacesUnseal handles the "/sys/namespaces/<path>/unseal" endpoint
+// to unseal the namespace.
 func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))
@@ -264,9 +305,41 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 	}
 }
 
+// handleNamespacesDeleteSealed handles the "/sys/namespaces/<path>/delete-sealed"
+// endpoint to delete a sealed namespace.
+func (b *SystemBackend) handleNamespacesDeleteSealed() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+
+		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
+			return handleError(errors.New("path must not contain /"))
+		}
+
+		if !b.System().(extendedSystemView).SudoPrivilege(ctx, req.MountPoint+req.Path, req.ClientToken) {
+			return nil, logical.ErrPermissionDenied
+		}
+
+		force := data.Get("force").(bool)
+		status, err := b.Core.namespaceStore.DeleteSealedNamespace(ctx, path, force)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if status == "" {
+			resp := &logical.Response{}
+			resp.AddWarning("requested namespace does not exist")
+			return resp, nil
+		}
+
+		return &logical.Response{
+			Data: map[string]any{"status": status},
+		}, nil
+	}
+}
+
 var sysNamespacesSealsHelp = map[string][2]string{
 	"namespaces-seal": {
-		"Seal, unseal and check seal status of a namespace.",
+		"Seal, unseal and delete sealable namespaces and check their seal status.",
 		`
 This path responds to the following HTTP methods.
 
@@ -278,6 +351,9 @@ This path responds to the following HTTP methods.
 
 	GET /<path>/seal-status
 		Returns the seal status of the namespace.
+
+	DELETE /<path>/delete-sealed
+		Delete a sealed namespace by wiping its storage.
 		`,
 	},
 }

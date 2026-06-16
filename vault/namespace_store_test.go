@@ -255,6 +255,108 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.Empty(t, keys, "Expected empty namespace store on storage level")
 }
 
+func TestNamespaceStore_DeleteSealedNamespace(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+	ctx := namespace.RootContext(t.Context())
+
+	_ = TestCoreCreateUnsealedNamespaces(
+		t, c,
+		&namespace.Namespace{Path: "a/"},
+		&namespace.Namespace{Path: "b/"},
+		&namespace.Namespace{Path: "c/"},
+		&namespace.Namespace{Path: "tree/"},
+	)
+	TestCoreCreateNamespaces(
+		t, c,
+		&namespace.Namespace{Path: "tree/a/"},
+		&namespace.Namespace{Path: "tree/b/"},
+		&namespace.Namespace{Path: "tree/a/b/"},
+	)
+
+	type test struct {
+		path  string
+		force bool
+	}
+
+	// Inputs that should all fail while namespaces are unsealed.
+	tests := map[string]test{
+		"root":       {"/", false},
+		"root+force": {"/", true},
+		"a":          {"a/", false},
+		"a+force":    {"a/", true},
+		"tree":       {"tree/", false},
+		"tree+force": {"tree/", true},
+	}
+
+	for name, tt := range tests {
+		t.Run(fmt.Sprintf("unsealed+%s", name), func(t *testing.T) {
+			_, err := s.DeleteSealedNamespace(ctx, tt.path, tt.force)
+			require.Error(t, err)
+		})
+	}
+
+	// Seal the world:
+	require.NoError(t, s.SealNamespace(ctx, "a/"))
+	require.NoError(t, s.SealNamespace(ctx, "b/"))
+	require.NoError(t, s.SealNamespace(ctx, "tree/"))
+
+	// Inputs that should all fail even after sealing the namespaces.
+	tests = map[string]test{
+		"root":       {"/", false},
+		"root+force": {"/", true},
+		"tree":       {"tree/", false},
+	}
+
+	for name, tt := range tests {
+		t.Run(fmt.Sprintf("sealed+%s", name), func(t *testing.T) {
+			_, err := s.DeleteSealedNamespace(ctx, tt.path, tt.force)
+			require.Error(t, err)
+		})
+	}
+
+	// Inputs that should all wipe namespaces down to the last bit.
+	tests = map[string]test{
+		// We have single-level "a" and "b" in this test just so one can be
+		// force deleted while the other isn't.
+		"a":          {"a/", false},
+		"b+force":    {"b/", true},
+		"tree+force": {"tree/", true},
+	}
+
+	for name, tt := range tests {
+		t.Run(fmt.Sprintf("sealed+%s", name), func(t *testing.T) {
+			status, err := s.DeleteSealedNamespace(ctx, tt.path, tt.force)
+			require.NoError(t, err)
+			require.Equal(t, "in-progress", status)
+			// Wait for the deletion to finish asynchronously.
+			require.EventuallyWithT(t, func(t *assert.CollectT) {
+				status, err := s.DeleteSealedNamespace(ctx, tt.path, tt.force)
+				require.Equal(t, "", status)
+				require.NoError(t, err)
+			}, time.Second*10, time.Millisecond*10)
+		})
+	}
+
+	// Check that the namespace store no longer knows of any namespaces, except
+	// for "c/", which we never touched:
+	namespaces, err := s.ListNamespaces(ctx, ListNamespaceOpts{
+		Recursive:     true,
+		IncludeSealed: true,
+	})
+	require.Len(t, namespaces, 1)
+	require.Equal(t, namespaces[0].Path, "c/")
+	require.NoError(t, err)
+
+	// Check that namespace storage is entirely empty, except for c's UUID.
+	keys, err := c.barrier.List(ctx, barrier.NamespacePrefix)
+	require.Len(t, keys, 1)
+	require.Equal(t, keys[0], namespaces[0].UUID+"/")
+	require.NoError(t, err)
+}
+
 // TestNamespaceStore_LockNamespace tests the lock namespace method of the namespace store
 func TestNamespaceStore_LockNamespace(t *testing.T) {
 	t.Parallel()
@@ -706,7 +808,7 @@ func BenchmarkClearNamespaceResources(b *testing.B) {
 
 	for b.Loop() {
 		ns := randomNamespace(s)
-		err := s.clearNamespaceResources(ctx, namespace.RootNamespace, ns, true)
+		err := s.clearNamespaceResources(ctx, ns, true)
 		require.NoError(b, err)
 	}
 }
@@ -998,7 +1100,7 @@ func TestNamespaceDeletionSealingInteraction(t *testing.T) {
 		require.NoError(t, s.SealNamespace(ctx, "ns3"))
 
 		_, err := s.DeleteNamespace(ctx, "ns3")
-		require.Error(t, err)
+		require.ErrorContains(t, err, "namespace is sealed")
 	})
 }
 

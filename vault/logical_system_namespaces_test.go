@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"path"
 	"testing"
 	"time"
@@ -376,6 +377,9 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 		// fails as foobar contains child namespaces
 		require.Error(t, err)
 		require.Error(t, res.Error())
+		coded, ok := err.(logical.HTTPCodedError)
+		require.True(t, ok, "expected HTTPCodedError")
+		require.Equal(t, http.StatusConflict, coded.Code())
 
 		req = logical.TestRequest(t, logical.DeleteOperation, "namespaces/baz")
 		res, err = b.HandleRequest(nestedCtx, req)

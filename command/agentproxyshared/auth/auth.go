@@ -415,7 +415,7 @@ func (ah *AuthHandler) Run(ctx context.Context, am AuthMethod) error {
 
 				tokenType := secret.Data["type"].(string)
 				if tokenType == "batch" {
-					ah.logger.Info("note that this token type is batch, and batch tokens cannot be renewed", "ttl", leaseDuration)
+					ah.logger.Info("note that this token type is batch and batch tokens cannot be renewed", "ttl", leaseDuration)
 				}
 			} else {
 				if secret == nil || secret.Auth == nil {

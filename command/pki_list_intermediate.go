@@ -44,7 +44,7 @@ Usage: bao pki list-intermediates PARENT [CHILD] [CHILD] [CHILD] ...
   PARENT, or pki mounts to look for certificates on. If CHILD is omitted
   entirely, the list will be constructed from all accessible pki mounts.
 
-  This returns a list of issuing certificates, and whether they are a match.
+  This returns a list of issuing certificates and whether they are a match.
   By default, the type of match required is whether the PARENT has the
   expected subject, key_id, and could have (directly) signed this issuer. 
   The match criteria can be updated by changed the corresponding flag.

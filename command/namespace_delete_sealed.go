@@ -32,7 +32,7 @@ Usage: bao namespace delete-sealed [options] PATH
 
   Delete a sealed namespace by physically wiping its storage.
 
-  Note that this requires the sudo capability, and will not clean up external
+  Note that this requires the sudo capability and will not clean up external
   resources via lease deletion like standard namespace deletion does. Prefer the
   standard 'bao namespace delete' command unless the namespace is irrecoverable
   due to lost seal keys.

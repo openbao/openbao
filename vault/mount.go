@@ -765,7 +765,7 @@ func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, 
 		key, keys = keys[0], keys[1:]
 		entryKey := path.Join(prefix, me.UUID, key)
 		if strings.HasSuffix(key, "/") {
-			nestedKeys, err := srcBarrier.List(ctx, entryKey)
+			nestedKeys, err := srcBarrier.List(ctx, entryKey+"/")
 			if err != nil {
 				return err
 			}

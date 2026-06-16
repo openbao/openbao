@@ -897,6 +897,9 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 				if err != nil {
 					return nil, err
 				}
+				if tokenEntry == nil {
+					return nil, errors.New("cannot find token entry")
+				}
 				deferredReq, err := c.getRequestFromTokenEntry(ctx, tokenEntry)
 				if err != nil && err != ErrDeferredRequestNotFound {
 					return nil, err

@@ -1020,18 +1020,15 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSeal *namespace.Namespace) error {
 	var errs error
 	ns.namespacesByPath.PostOrderTraversal(namespaceToSeal.Path, func(entry *namespace.Namespace) {
-		if entry.ID == namespace.RootNamespaceID || ns.core.NamespaceSealed(entry) {
+		if entry.ID == namespace.RootNamespaceID {
 			return
 		}
 
-		barrier := ns.core.sealManager.NamespaceBarrier(entry.Path)
-		if barrier != nil && barrier.Sealed() {
-			return
+		if !ns.core.NamespaceSealed(entry) {
+			errs = ns.clearNamespaceResources(namespace.ContextWithNamespace(ctx, entry), entry, false)
 		}
 
-		errs = ns.clearNamespaceResources(namespace.ContextWithNamespace(ctx, entry), entry, false)
-
-		if barrier != nil {
+		if barrier := ns.core.sealManager.NamespaceBarrier(entry.Path); barrier != nil {
 			if err := barrier.Seal(); err != nil {
 				errs = errors.Join(errs, err)
 			}

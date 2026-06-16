@@ -62,6 +62,7 @@ This endpoint creates a namespace at the given path.
   will be created.
 - `custom_metadata` `(map<string|string>: nil)` - A map of arbitrary string to string valued user-provided metadata meant
   to describe the namespace.
+- `seal` `(string: "")` - An optional seal config document (JSON or HCL) to create a sealable namespace
 
 ### Sample payload
 
@@ -70,7 +71,8 @@ This endpoint creates a namespace at the given path.
   "custom_metadata": {
     "foo": "abc",
     "bar": "123"
-  }
+  },
+  "seal": "seal \"shamir\" {\n    shares = 5\n    threshold = 3\n}"
 }
 ```
 
@@ -166,3 +168,90 @@ $ curl \
 }
 ```
 
+## Read namespace seal status (sealable namespaces only)
+
+This endpoint gets the seal status for the given sealable namespace path.
+
+| Method | Path                    |
+| :----- | :---------------------- |
+| `GET`  | `/sys/namespaces/:path/seal-status` |
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/namespaces/ns1/seal-status
+```
+
+### Sample response
+
+```json
+{
+  "initialized": true,
+  "n": 5,
+  "nonce": "",
+  "progress": 0,
+  "sealed": false,
+  "t": 3,
+  "type": "shamir"
+}
+```
+
+## Unseal a namespace (sealable namespaces only)
+
+This endpoint unseals the given sealable namespace.
+
+| Method | Path                    |
+| :----- | :---------------------- |
+| `PUT`  | `/sys/namespaces/:path/unseal` |
+
+### Sample payload
+
+```json
+{
+  "key": "...",
+  "reset": false,
+}
+```
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request PUT \
+    --data @payload.json \
+    http://127.0.0.1:8200/v1/sys/namespaces/ns1/unseal
+```
+
+### Sample response
+
+```json
+{
+  "initialized": true,
+  "n": 5,
+  "nonce": "",
+  "progress": 1,
+  "sealed": true,
+  "t": 3,
+  "type": "shamir"
+}
+```
+
+## Seal a namespace (sealable namespaces only)
+
+This endpoint seals the given sealable namespace.
+
+| Method | Path                    |
+| :----- | :---------------------- |
+| `PUT`  | `/sys/namespaces/:path/seal` |
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request PUT \
+    http://127.0.0.1:8200/v1/sys/namespaces/ns1/seal
+```

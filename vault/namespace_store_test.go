@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -1205,4 +1206,829 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 
 	// verify after unseal
 	checkState()
+}
+
+func TestNamespaceSealManyLeases(t *testing.T) {
+	t.Parallel()
+
+	c, _, rootToken := TestCoreUnsealed(t)
+	c.credentialBackends["approle"] = credAppRole.Factory
+	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		return &be.Noop{
+			RequestHandler: func(context.Context, *logical.Request) (*logical.Response, error) {
+				return &logical.Response{
+					Secret: &logical.Secret{
+						LeaseOptions: logical.LeaseOptions{
+							TTL:       512 * time.Second,
+							Renewable: true,
+						},
+					},
+				}, nil
+			},
+			DefaultLeaseTTL: 512 * time.Second,
+			MaxLeaseTTL:     512 * time.Second,
+			BackendType:     logical.TypeLogical,
+		}, nil
+	}
+
+	s := c.namespaceStore
+	ctx := namespace.RootContext(t.Context())
+
+	nsCount := 8
+	childNsNames := []string{"foo", "bar"}
+	tokenCounts := 64
+
+	var listNs []*namespace.Namespace
+	namespaces := make(map[string]*namespace.Namespace)
+	nsContexts := make(map[string]context.Context)
+	for i := range nsCount {
+		name := fmt.Sprintf("ns%v/", i)
+		namespaces[name] = &namespace.Namespace{Path: name}
+		nsContexts[name] = namespace.ContextWithNamespace(ctx, namespaces[name])
+		listNs = append(listNs, namespaces[name])
+	}
+
+	nsKeys := TestCoreCreateUnsealedNamespaces(t, c, listNs...)
+
+	for parent := range nsCount {
+		parentName := fmt.Sprintf("ns%v/", parent)
+		parentCtx := nsContexts[parentName]
+		for child := range childNsNames {
+			childName := fmt.Sprintf("child-%v/", child)
+			childPath := parentName + childName
+
+			childNs, _, err := c.namespaceStore.ModifyNamespaceByPath(parentCtx, childName, nil, func(ctx context.Context, obj *namespace.Namespace) (*namespace.Namespace, error) {
+				return obj, nil
+			})
+			require.NoError(t, err)
+			require.NotNil(t, childNs)
+
+			namespaces[childPath] = childNs
+			nsContexts[childPath] = namespace.ContextWithNamespace(ctx, childNs)
+		}
+	}
+
+	var wg sync.WaitGroup
+	var leases sync.Map
+	var rootLeases sync.Map
+	var tokens sync.Map
+
+	for path, nsCtx := range nsContexts {
+		ns := namespaces[path]
+
+		tPolicy := `
+		name = "tpolicy"
+		path "*" {
+			policy = "sudo"
+		}
+	`
+		p, err := policy.ParseACLPolicy(ns, tPolicy)
+		require.NoError(t, err)
+		require.NoError(t, c.policyStore.SetPolicy(nsCtx, p, nil))
+
+		approleMe := &routing.MountEntry{
+			Table: routing.CredentialTableType,
+			Path:  "approle/",
+			Type:  "approle",
+		}
+		require.NoError(t, c.enableCredential(nsCtx, approleMe), "enabling for namespace: %v", path)
+
+		require.NoError(t, c.mount(nsCtx, &routing.MountEntry{
+			Table: routing.MountTableType,
+			Path:  "foo",
+			Type:  "noop",
+		}), "enabling for namespace: %v", path)
+
+		resp, err := c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "auth/approle/role/testing",
+			Operation:   logical.CreateOperation,
+			ClientToken: rootToken,
+			Data: map[string]any{
+				"token_policies": []string{"tpolicy"},
+			},
+		})
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		resp, err = c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "auth/approle/role/testing/role-id",
+			Operation:   logical.ReadOperation,
+			ClientToken: rootToken,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "role_id")
+		roleId := resp.Data["role_id"].(string)
+
+		resp, err = c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "auth/approle/role/testing/secret-id",
+			Operation:   logical.CreateOperation,
+			ClientToken: rootToken,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "secret_id")
+		secretId := resp.Data["secret_id"].(string)
+
+		for i := range tokenCounts {
+			wg.Go(func() {
+				authResp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:      "auth/approle/login",
+					Operation: logical.CreateOperation,
+					Data: map[string]any{
+						"role_id":   roleId,
+						"secret_id": secretId,
+					},
+				})
+				require.NoError(t, err, "failed to fetch approle token: %v", i)
+				require.NotNil(t, authResp, "failed to fetch approle token: %v", i)
+				require.NotNil(t, authResp.Auth, "failed to fetch approle token: %v", i)
+				require.NotEmpty(t, authResp.Auth.ClientToken, "failed to fetch approle token: %v", i)
+				require.Contains(t, authResp.Auth.Policies, "tpolicy")
+
+				secretResp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:        "foo/create",
+					Operation:   logical.CreateOperation,
+					ClientToken: authResp.Auth.ClientToken,
+				})
+				require.NoError(t, err, "failed to fetch secret lease with token: %v", i)
+				require.NotNil(t, secretResp, "failed to fetch secret lease with token: %v", i)
+				require.NotNil(t, secretResp.Secret, "failed to fetch secret lease with token: %v", i)
+				require.NotEmpty(t, secretResp.Secret.LeaseID, "failed to fetch secret lease with token: %v", i)
+
+				tokens.Store(authResp.Auth.ClientToken, secretResp.Secret.LeaseID)
+				leases.Store(secretResp.Secret.LeaseID, secretResp)
+			})
+		}
+
+		for i := range tokenCounts {
+			wg.Go(func() {
+				secretResp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:        "foo/create",
+					Operation:   logical.CreateOperation,
+					ClientToken: rootToken,
+				})
+				require.NoError(t, err, "failed to fetch secret lease: %v", i)
+				require.NotNil(t, secretResp, "failed to fetch secret lease: %v", i)
+				require.NotNil(t, secretResp.Secret, "failed to fetch secret lease: %v", i)
+				require.NotEmpty(t, secretResp.Secret.LeaseID, "failed to fetch secret lease: %v", i)
+
+				leases.Store(secretResp.Secret.LeaseID, secretResp)
+				rootLeases.Store(secretResp.Secret.LeaseID, secretResp)
+			})
+		}
+	}
+
+	wg.Wait()
+
+	checkState := func() {
+		for path, nsCtx := range nsContexts {
+			ns := namespaces[path]
+
+			// auth mounts
+			authMounts, err := c.auth.FindAllNamespaceMounts(nsCtx)
+			require.NoError(t, err, "for namespace: %v", path)
+			require.Len(t, authMounts, 2, "for namespace: %v", path)
+
+			// mounts
+			mounts, err := c.mounts.FindAllNamespaceMounts(nsCtx)
+			require.NoError(t, err, "for namespace: %v", path)
+			require.Len(t, mounts, 4, "for namespace: %v", path)
+
+			// leases
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				count := 0
+				c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+					key := keyRaw.(string)
+					if ns.MatchesID(key) {
+						count += 1
+					}
+
+					return true
+				})
+				require.GreaterOrEqual(collect, count, 2*tokenCounts)
+
+				leases.Range(func(leaseIdRaw any, _ any) bool {
+					leaseId := leaseIdRaw.(string)
+					if !ns.MatchesID(leaseId) {
+						return true
+					}
+
+					found := false
+					c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+						key := keyRaw.(string)
+						found = found || key == leaseId
+						return true
+					})
+					require.True(collect, found, "did not find expected lease: %v", leaseId)
+					return true
+				})
+			}, time.Second, 100*time.Millisecond)
+
+		}
+	}
+
+	checkState()
+
+	// verify after seal
+	for path := range nsKeys {
+		require.NoError(t, s.SealNamespace(ctx, path))
+	}
+
+	for path, keys := range nsKeys {
+		wg.Go(func() {
+			ns := namespaces[path]
+			for _, key := range keys {
+				unsealed, err := TestNamespaceUnseal(c, ns, key)
+				require.NoError(t, err)
+				if unsealed {
+					break
+				}
+			}
+		})
+	}
+
+	wg.Wait()
+
+	for path := range nsKeys {
+		ns := namespaces[path]
+		require.False(t, c.NamespaceSealed(ns))
+	}
+
+	// verify after unseal
+	checkState()
+
+	t.Logf("Revoking root-owned leases...")
+
+	// now renew and then revoke all root-owned leases
+	for path, nsCtx := range nsContexts {
+		ns := namespaces[path]
+
+		rootLeases.Range(func(leaseIdRaw any, _ any) bool {
+			leaseId := leaseIdRaw.(string)
+			if !ns.MatchesID(leaseId) {
+				return true
+			}
+
+			resp, err := c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "sys/leases/renew",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"lease_id": leaseId,
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+
+			resp, err = c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "sys/leases/revoke",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"lease_id": leaseId,
+				},
+			})
+			require.NoError(t, err)
+			require.Nil(t, resp)
+
+			return true
+		})
+	}
+
+	// now renew and then revoke all tokens and verify that the lease also
+	// got revoked
+	t.Logf("Revoking tokens...")
+	for path, nsCtx := range nsContexts {
+		ns := namespaces[path]
+
+		tokens.Range(func(tokenIdRaw any, leaseIdRaw any) bool {
+			tokenId := tokenIdRaw.(string)
+			tokenLeaseId := leaseIdRaw.(string)
+			if !ns.MatchesID(tokenId) {
+				return true
+			}
+
+			resp, err := c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "auth/token/renew",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"token": tokenId,
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+
+			resp, err = c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "auth/token/revoke",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"token": tokenId,
+				},
+			})
+			require.NoError(t, err)
+			require.Nil(t, resp)
+
+			// Try to look up the lease; this will be asynchronously deleted.
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				resp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:        "sys/leases/lookup",
+					Operation:   logical.CreateOperation,
+					ClientToken: rootToken,
+					Data: map[string]any{
+						"lease_id": tokenLeaseId,
+					},
+				})
+				require.Error(collect, err, "resp: %v", resp)
+			}, 25*time.Second, 10*time.Millisecond)
+
+			return true
+		})
+	}
+}
+
+func TestNamespaceManyLeases(t *testing.T) {
+	t.Parallel()
+
+	c, sealKeys, rootToken := TestCoreUnsealed(t)
+	c.credentialBackends["approle"] = credAppRole.Factory
+	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		return &be.Noop{
+			RequestHandler: func(context.Context, *logical.Request) (*logical.Response, error) {
+				return &logical.Response{
+					Secret: &logical.Secret{
+						LeaseOptions: logical.LeaseOptions{
+							TTL:       512 * time.Second,
+							Renewable: true,
+						},
+					},
+				}, nil
+			},
+			DefaultLeaseTTL: 512 * time.Second,
+			MaxLeaseTTL:     512 * time.Second,
+			BackendType:     logical.TypeLogical,
+		}, nil
+	}
+
+	ctx := namespace.RootContext(t.Context())
+
+	nsCount := 8
+	childNsNames := []string{"foo", "bar"}
+	tokenCounts := 64
+
+	var listNs []*namespace.Namespace
+	namespaces := make(map[string]*namespace.Namespace)
+	nsContexts := make(map[string]context.Context)
+	for i := range nsCount {
+		name := fmt.Sprintf("ns%v/", i)
+		namespaces[name] = &namespace.Namespace{Path: name}
+		nsContexts[name] = namespace.ContextWithNamespace(ctx, namespaces[name])
+		listNs = append(listNs, namespaces[name])
+	}
+
+	TestCoreCreateNamespaces(t, c, listNs...)
+
+	for parent := range nsCount {
+		parentName := fmt.Sprintf("ns%v/", parent)
+		parentCtx := nsContexts[parentName]
+		for child := range childNsNames {
+			childName := fmt.Sprintf("child-%v/", child)
+			childPath := parentName + childName
+
+			childNs, _, err := c.namespaceStore.ModifyNamespaceByPath(parentCtx, childName, nil, func(ctx context.Context, obj *namespace.Namespace) (*namespace.Namespace, error) {
+				return obj, nil
+			})
+			require.NoError(t, err)
+			require.NotNil(t, childNs)
+
+			namespaces[childPath] = childNs
+			nsContexts[childPath] = namespace.ContextWithNamespace(ctx, childNs)
+		}
+	}
+
+	var wg sync.WaitGroup
+	var leases sync.Map
+	var rootLeases sync.Map
+	var tokens sync.Map
+
+	for path, nsCtx := range nsContexts {
+		ns := namespaces[path]
+
+		tPolicy := `
+		name = "tpolicy"
+		path "*" {
+			policy = "sudo"
+		}
+	`
+		p, err := policy.ParseACLPolicy(ns, tPolicy)
+		require.NoError(t, err)
+		require.NoError(t, c.policyStore.SetPolicy(nsCtx, p, nil))
+
+		approleMe := &routing.MountEntry{
+			Table: routing.CredentialTableType,
+			Path:  "approle/",
+			Type:  "approle",
+		}
+		require.NoError(t, c.enableCredential(nsCtx, approleMe), "enabling for namespace: %v", path)
+
+		require.NoError(t, c.mount(nsCtx, &routing.MountEntry{
+			Table: routing.MountTableType,
+			Path:  "foo",
+			Type:  "noop",
+		}), "enabling for namespace: %v", path)
+
+		resp, err := c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "auth/approle/role/testing",
+			Operation:   logical.CreateOperation,
+			ClientToken: rootToken,
+			Data: map[string]any{
+				"token_policies": []string{"tpolicy"},
+			},
+		})
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		resp, err = c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "auth/approle/role/testing/role-id",
+			Operation:   logical.ReadOperation,
+			ClientToken: rootToken,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "role_id")
+		roleId := resp.Data["role_id"].(string)
+
+		resp, err = c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "auth/approle/role/testing/secret-id",
+			Operation:   logical.CreateOperation,
+			ClientToken: rootToken,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "secret_id")
+		secretId := resp.Data["secret_id"].(string)
+
+		for i := range tokenCounts {
+			wg.Go(func() {
+				authResp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:      "auth/approle/login",
+					Operation: logical.CreateOperation,
+					Data: map[string]any{
+						"role_id":   roleId,
+						"secret_id": secretId,
+					},
+				})
+				require.NoError(t, err, "failed to fetch approle token: %v", i)
+				require.NotNil(t, authResp, "failed to fetch approle token: %v", i)
+				require.NotNil(t, authResp.Auth, "failed to fetch approle token: %v", i)
+				require.NotEmpty(t, authResp.Auth.ClientToken, "failed to fetch approle token: %v", i)
+				require.Contains(t, authResp.Auth.Policies, "tpolicy")
+
+				secretResp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:        "foo/create",
+					Operation:   logical.CreateOperation,
+					ClientToken: authResp.Auth.ClientToken,
+				})
+				require.NoError(t, err, "failed to fetch secret lease with token: %v", i)
+				require.NotNil(t, secretResp, "failed to fetch secret lease with token: %v", i)
+				require.NotNil(t, secretResp.Secret, "failed to fetch secret lease with token: %v", i)
+				require.NotEmpty(t, secretResp.Secret.LeaseID, "failed to fetch secret lease with token: %v", i)
+
+				tokens.Store(authResp.Auth.ClientToken, secretResp.Secret.LeaseID)
+				leases.Store(secretResp.Secret.LeaseID, secretResp)
+			})
+		}
+
+		for i := range tokenCounts {
+			wg.Go(func() {
+				secretResp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:        "foo/create",
+					Operation:   logical.CreateOperation,
+					ClientToken: rootToken,
+				})
+				require.NoError(t, err, "failed to fetch secret lease: %v", i)
+				require.NotNil(t, secretResp, "failed to fetch secret lease: %v", i)
+				require.NotNil(t, secretResp.Secret, "failed to fetch secret lease: %v", i)
+				require.NotEmpty(t, secretResp.Secret.LeaseID, "failed to fetch secret lease: %v", i)
+
+				leases.Store(secretResp.Secret.LeaseID, secretResp)
+				rootLeases.Store(secretResp.Secret.LeaseID, secretResp)
+			})
+		}
+	}
+
+	wg.Wait()
+
+	checkState := func() {
+		for path, nsCtx := range nsContexts {
+			ns := namespaces[path]
+
+			// auth mounts
+			authMounts, err := c.auth.FindAllNamespaceMounts(nsCtx)
+			require.NoError(t, err, "for namespace: %v", path)
+			require.Len(t, authMounts, 2, "for namespace: %v", path)
+
+			// mounts
+			mounts, err := c.mounts.FindAllNamespaceMounts(nsCtx)
+			require.NoError(t, err, "for namespace: %v", path)
+			require.Len(t, mounts, 4, "for namespace: %v", path)
+
+			// leases
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				count := 0
+				c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+					key := keyRaw.(string)
+					if ns.MatchesID(key) {
+						count += 1
+					}
+
+					return true
+				})
+				require.GreaterOrEqual(collect, count, 2*tokenCounts)
+
+				leases.Range(func(leaseIdRaw any, _ any) bool {
+					leaseId := leaseIdRaw.(string)
+					if !ns.MatchesID(leaseId) {
+						return true
+					}
+
+					found := false
+					c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+						key := keyRaw.(string)
+						found = found || key == leaseId
+						return true
+					})
+					require.True(collect, found, "did not find expected lease: %v", leaseId)
+					return true
+				})
+			}, time.Second, 100*time.Millisecond)
+
+		}
+	}
+
+	checkState()
+
+	// verify after seal
+	require.NoError(t, TestCoreSeal(c))
+	for _, key := range sealKeys {
+		_, err := TestCoreUnseal(c, key)
+		require.NoError(t, err)
+	}
+	require.NotNil(t, sealKeys)
+
+	// verify after unseal
+	checkState()
+
+	t.Logf("Revoking root-owned leases...")
+
+	// now renew and then revoke all root-owned leases
+	for path, nsCtx := range nsContexts {
+		ns := namespaces[path]
+
+		rootLeases.Range(func(leaseIdRaw any, _ any) bool {
+			leaseId := leaseIdRaw.(string)
+			if !ns.MatchesID(leaseId) {
+				return true
+			}
+
+			resp, err := c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "sys/leases/renew",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"lease_id": leaseId,
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+
+			resp, err = c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "sys/leases/revoke",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"lease_id": leaseId,
+				},
+			})
+			require.NoError(t, err)
+			require.Nil(t, resp)
+
+			return true
+		})
+	}
+
+	// now renew and then revoke all tokens and verify that the lease also
+	// got revoked
+	t.Logf("Revoking tokens...")
+	for path, nsCtx := range nsContexts {
+		ns := namespaces[path]
+
+		tokens.Range(func(tokenIdRaw any, leaseIdRaw any) bool {
+			tokenId := tokenIdRaw.(string)
+			tokenLeaseId := leaseIdRaw.(string)
+			if !ns.MatchesID(tokenId) {
+				return true
+			}
+
+			resp, err := c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "auth/token/renew",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"token": tokenId,
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+
+			resp, err = c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "auth/token/revoke",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"token": tokenId,
+				},
+			})
+			require.NoError(t, err)
+			require.Nil(t, resp)
+
+			// Try to look up the lease.
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				resp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:        "sys/leases/lookup",
+					Operation:   logical.CreateOperation,
+					ClientToken: rootToken,
+					Data: map[string]any{
+						"lease_id": tokenLeaseId,
+					},
+				})
+				require.Error(collect, err, "resp: %v", resp)
+			}, 50*time.Second, 10*time.Millisecond)
+
+			return true
+		})
+	}
+}
+
+func TestNamespaceSealedLeaseTokenRevoke(t *testing.T) {
+	t.Parallel()
+
+	c, sealKeys, rootToken := TestCoreUnsealed(t)
+	c.credentialBackends["approle"] = credAppRole.Factory
+	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		return &be.Noop{
+			// This is safe as this is not multi-threaded.
+			Response: &logical.Response{
+				Secret: &logical.Secret{
+					LeaseOptions: logical.LeaseOptions{
+						TTL:       512 * time.Second,
+						Renewable: true,
+					},
+				},
+			},
+			DefaultLeaseTTL: 512 * time.Second,
+			MaxLeaseTTL:     512 * time.Second,
+			BackendType:     logical.TypeLogical,
+		}, nil
+	}
+
+	ctx := namespace.RootContext(t.Context())
+
+	ns := &namespace.Namespace{Path: "ns1/"}
+	nsCtx := namespace.ContextWithNamespace(ctx, ns)
+	nsKeys := TestCoreCreateUnsealedNamespaces(t, c, ns)
+	require.NotEmpty(t, nsKeys)
+
+	tPolicy := `
+		name = "tpolicy"
+		path "*" {
+			policy = "sudo"
+		}
+	`
+	p, err := policy.ParseACLPolicy(ns, tPolicy)
+	require.NoError(t, err)
+	require.NoError(t, c.policyStore.SetPolicy(nsCtx, p, nil))
+
+	approleMe := &routing.MountEntry{
+		Table: routing.CredentialTableType,
+		Path:  "approle/",
+		Type:  "approle",
+	}
+	require.NoError(t, c.enableCredential(nsCtx, approleMe), "enabling for namespace: %v", ns.Path)
+
+	require.NoError(t, c.mount(nsCtx, &routing.MountEntry{
+		Table: routing.MountTableType,
+		Path:  "foo",
+		Type:  "noop",
+	}), "enabling for namespace: %v", ns.Path)
+
+	resp, err := c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/approle/role/testing",
+		Operation:   logical.CreateOperation,
+		ClientToken: rootToken,
+		Data: map[string]any{
+			"token_policies": []string{"tpolicy"},
+		},
+	})
+	require.NoError(t, err)
+	require.Nil(t, resp)
+
+	resp, err = c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/approle/role/testing/role-id",
+		Operation:   logical.ReadOperation,
+		ClientToken: rootToken,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "role_id")
+	roleId := resp.Data["role_id"].(string)
+
+	resp, err = c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/approle/role/testing/secret-id",
+		Operation:   logical.CreateOperation,
+		ClientToken: rootToken,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "secret_id")
+	secretId := resp.Data["secret_id"].(string)
+
+	authResp, err := c.HandleRequest(nsCtx, &logical.Request{
+		Path:      "auth/approle/login",
+		Operation: logical.CreateOperation,
+		Data: map[string]any{
+			"role_id":   roleId,
+			"secret_id": secretId,
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, authResp)
+	require.NotNil(t, authResp.Auth)
+	require.NotEmpty(t, authResp.Auth.ClientToken)
+	require.Contains(t, authResp.Auth.Policies, "tpolicy")
+
+	secretResp, err := c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "foo/create",
+		Operation:   logical.CreateOperation,
+		ClientToken: authResp.Auth.ClientToken,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, secretResp)
+	require.NotNil(t, secretResp.Secret)
+	require.NotEmpty(t, secretResp.Secret.LeaseID)
+
+	// verify after seal
+	require.NoError(t, TestCoreSeal(c))
+	for _, key := range sealKeys {
+		_, err := TestCoreUnseal(c, key)
+		require.NoError(t, err)
+	}
+	require.NotNil(t, sealKeys)
+
+	for _, key := range nsKeys["ns1/"] {
+		unsealed, err := TestNamespaceUnseal(c, ns, key)
+		require.NoError(t, err)
+		if unsealed {
+			break
+		}
+	}
+
+	t.Logf("Revoking tokens...")
+
+	resp, err = c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/token/renew",
+		Operation:   logical.CreateOperation,
+		ClientToken: rootToken,
+		Data: map[string]any{
+			"token": authResp.Auth.ClientToken,
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	resp, err = c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/token/revoke",
+		Operation:   logical.CreateOperation,
+		ClientToken: rootToken,
+		Data: map[string]any{
+			"token": authResp.Auth.ClientToken,
+		},
+	})
+	require.NoError(t, err)
+	require.Nil(t, resp)
+
+	// Try to look up the lease.
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		resp, err := c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "sys/leases/lookup",
+			Operation:   logical.CreateOperation,
+			ClientToken: rootToken,
+			Data: map[string]any{
+				"lease_id": secretResp.Secret.LeaseID,
+			},
+		})
+		require.Error(collect, err, "resp: %v", resp)
+	}, 25*time.Second, 10*time.Millisecond)
 }

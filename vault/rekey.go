@@ -507,7 +507,9 @@ func (c *Core) performBarrierRekey(ctx context.Context, newSealKey []byte) logic
 			return logical.CodedError(http.StatusInternalServerError, "failed to store new seal key: %v", err)
 		}
 
+		// Unset VerificationKey and Nonce as we finished rotation.
 		c.rootRotationConfig.VerificationKey = nil
+		c.rootRotationConfig.Nonce = ""
 
 		if err := c.seal.SetBarrierConfig(ctx, c.rootRotationConfig); err != nil {
 			c.logger.Error("error saving rekey seal configuration", "error", err)
@@ -698,7 +700,9 @@ func (c *Core) performRecoveryRekey(ctx context.Context, newRootKey []byte) logi
 		return logical.CodedError(http.StatusInternalServerError, "failed to set recovery key: %v", err)
 	}
 
+	// Unset VerificationKey and Nonce as we finished rotation.
 	c.recoveryRotationConfig.VerificationKey = nil
+	c.recoveryRotationConfig.Nonce = ""
 
 	if err := c.seal.SetRecoveryConfig(ctx, c.recoveryRotationConfig); err != nil {
 		c.logger.Error("error saving rekey seal configuration", "error", err)

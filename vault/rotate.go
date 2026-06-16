@@ -436,7 +436,9 @@ func (sm *SealManager) performRootRotation(ctx context.Context, ns *namespace.Na
 			}
 		}
 
+		// Unset VerificationKey and Nonce as we finished rotation.
 		rotationConfig.VerificationKey = nil
+		rotationConfig.Nonce = ""
 
 		if err := seal.SetBarrierConfig(ctx, rotationConfig); err != nil {
 			sm.logger.Error("error saving rotate seal configuration", "error", err)
@@ -454,7 +456,9 @@ func (sm *SealManager) performRecoveryRotation(ctx context.Context, newRootKey [
 		return logical.CodedError(http.StatusInternalServerError, "failed to set recovery key: %w", err)
 	}
 
+	// Unset VerificationKey and Nonce as we finished rotation.
 	rotationConfig.VerificationKey = nil
+	rotationConfig.Nonce = ""
 
 	if err := seal.SetRecoveryConfig(ctx, rotationConfig); err != nil {
 		sm.logger.Error("error saving rotate seal configuration", "error", err)

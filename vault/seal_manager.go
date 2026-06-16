@@ -823,32 +823,35 @@ func (c *Core) NamespaceKeys(rpcCtx context.Context, namespaces []string) (map[s
 	stop := context.AfterFunc(rpcCtx, cancel)
 	defer stop()
 
-	var err error
+	var errs error
 	rootKeys := make(map[string][]byte, len(namespaces))
 
 	for _, uuid := range namespaces {
-		ns, nsErr := c.namespaceStore.GetNamespace(ctx, uuid)
-		if nsErr != nil {
-			err = multierror.Append(err, fmt.Errorf("for namespace %v: %w", uuid, nsErr))
+		ns, err := c.namespaceStore.GetNamespace(ctx, uuid)
+		switch {
+		case err != nil:
+			errs = multierror.Append(errs, fmt.Errorf("for namespace %v: %w", uuid, err))
 			continue
-		}
-		if ns == nil {
-			continue
-		}
-
-		rootKey, rootKeyErr := c.sealManager.GetRootKey(ctx, ns)
-		if rootKeyErr != nil && !errors.Is(rootKeyErr, barrier.ErrNamespaceSealed) {
-			err = multierror.Append(err, fmt.Errorf("for namespace %v: %w", uuid, rootKeyErr))
+		case ns == nil:
 			continue
 		}
 
-		encRootKey, encErr := c.barrier.Encrypt(ctx, fmt.Sprintf(namespaceUnsealKeyPath, uuid), rootKey)
-		if encErr != nil {
-			err = multierror.Append(err, fmt.Errorf("for namespace %v: failed to encrypt root key: %w", uuid, encErr))
+		rootKey, err := c.sealManager.GetRootKey(ctx, ns)
+		switch {
+		case errors.Is(err, barrier.ErrBarrierSealed):
+			continue
+		case err != nil:
+			errs = multierror.Append(errs, fmt.Errorf("for namespace %v: %w", uuid, err))
+			continue
+		}
+
+		encRootKey, err := c.barrier.Encrypt(ctx, fmt.Sprintf(namespaceUnsealKeyPath, uuid), rootKey)
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("for namespace %v: failed to encrypt root key: %w", uuid, err))
 		}
 
 		rootKeys[uuid] = encRootKey
 	}
 
-	return rootKeys, err
+	return rootKeys, errs
 }

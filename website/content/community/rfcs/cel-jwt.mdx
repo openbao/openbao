@@ -1,10 +1,16 @@
+---
+sidebar_label: CEL for JWT Auth
+description: |-
+  An OpenBao RFC for enabling CEL roles in the JWT auth method.
+---
+
 # RFC: CEL Expression Support for JWT Authentication
 
 ## Summary
 
 This feature offers support for [Common Expression Language (CEL)](https://github.com/google/cel-spec) in OpenBao's jwt-based auth engines (oidc, jwt) to create a flexible framework for validating claims and dynamically assigning token policies. CEL will allow administrators to define fine-grained rules for claim validation and dynamic policy assignment, extending the more static assignment of role- and identity-based policies.
 
-JWT CEL support is implemented as a new type of CEL role and follows the [general plan for CEL support](https://github.com/openbao/openbao/blob/main/website/content/community/rfcs/cel-best-practices.mdx) in OpenBao.
+JWT CEL support is implemented as a new type of CEL role and follows the [general plan for CEL support](cel-best-practices.mdx) in OpenBao.
 
 ---
 

@@ -101,6 +101,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/grpc-invalidation",
                 "rfcs/control-groups",
                 "rfcs/pqc",
+                "rfcs/cel-cert-auth",
             ],
         },
         {

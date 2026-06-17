@@ -3198,7 +3198,7 @@ func (ts *TokenStore) handleRevokeSelf(ctx context.Context, req *logical.Request
 	return ts.revokeCommon(ctx, req, data, req.ClientToken)
 }
 
-// handleRevokeTree handles the auth/token/revoke/id path for revocation of tokens
+// handleRevokeTree handles the auth/token/revoke path for revocation of tokens
 // in a way that revokes all child tokens. Normally, using sys/leases/revoke/leaseID will revoke
 // the token and all children anyways, but that is only available when there is a lease.
 func (ts *TokenStore) handleRevokeTree(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -3249,7 +3249,7 @@ func (ts *TokenStore) revokeCommon(ctx context.Context, req *logical.Request, da
 	return nil, nil
 }
 
-// handleRevokeOrphan handles the auth/token/revoke-orphan/id path for revocation of tokens
+// handleRevokeOrphan handles the auth/token/revoke-orphan path for revocation of tokens
 // in a way that leaves child tokens orphaned. Normally, using sys/leases/revoke/leaseID will revoke
 // the token and all children.
 func (ts *TokenStore) handleRevokeOrphan(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -3294,7 +3294,7 @@ func (ts *TokenStore) handleLookupSelf(ctx context.Context, req *logical.Request
 	return ts.handleLookup(ctx, req, data)
 }
 
-// handleLookup handles the auth/token/lookup/id path for querying information about
+// handleLookup handles the auth/token/lookup path for querying information about
 // a particular token. This can be used to see which policies are applicable.
 func (ts *TokenStore) handleLookup(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	id := data.Get("token").(string)
@@ -3407,7 +3407,7 @@ func (ts *TokenStore) handleRenewSelf(ctx context.Context, req *logical.Request,
 	return ts.handleRenew(ctx, req, data)
 }
 
-// handleRenew handles the auth/token/renew/id path for renewal of tokens.
+// handleRenew handles the auth/token/renew path for renewal of tokens.
 // This is used to prevent token expiration and revocation.
 func (ts *TokenStore) handleRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	id := data.Get("token").(string)

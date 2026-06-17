@@ -881,7 +881,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		// using the token's embedded nsID if a relative path was provided.
 		// The operation will still be gated by ACLs, which are checked later.
 		case "auth/token/lookup", "auth/token/renew", "auth/token/revoke", "auth/token/revoke-orphan":
-			token, ok := req.Data["token"]
+			raw, ok := req.Data["token"]
 			// If the token is not present (e.g. a bad request), break out and let the backend
 			// handle the error
 			if !ok {
@@ -893,14 +893,15 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 				}
 				break
 			}
-			if token == nil {
+			token, ok := raw.(string)
+			if !ok {
 				return logical.ErrorResponse("invalid token"), logical.ErrPermissionDenied
 			}
 			// We don't care if the token is a server side consistent token or not. Either way, we're going
 			// to be returning it for these paths instead of the short token stored in vault.
-			requestBodyToken = token.(string)
-			if IsSSCToken(token.(string)) {
-				token, err = c.CheckSSCToken(ctx, token.(string), c.isLoginRequest(ctx, req))
+			requestBodyToken = token
+			if IsSSCToken(token) {
+				token, err = c.CheckSSCToken(ctx, token, c.isLoginRequest(ctx, req))
 				// If we receive an error from CheckSSCToken, we can assume the token is bad somehow, and the client
 				// should receive a 403 bad token error like they do for all other invalid tokens, unless the error
 				// specifies that we should forward the request or retry the request.
@@ -912,7 +913,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 				}
 				req.Data["token"] = token
 			}
-			_, nsID := namespace.SplitIDFromString(token.(string))
+			_, nsID := namespace.SplitIDFromString(token)
 			if nsID != "" {
 				ns, err := c.NamespaceByID(ctx, nsID)
 				if err != nil {
@@ -928,26 +929,54 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 	// The following relative sys/leases/ paths handles re-routing requests
 	// to the proper namespace using the lease ID on applicable paths.
 	case strings.HasPrefix(req.Path, "sys/leases/"):
-		switch req.Path {
 		// For the following operations, we can set the proper namespace context
-		// using the lease's embedded nsID if a relative path was provided.
-		// The operation will still be gated by ACLs, which are checked later.
-		case "sys/leases/lookup", "sys/leases/renew", "sys/leases/revoke", "sys/leases/revoke-force":
-			leaseID, ok := req.Data["lease_id"]
-			// If lease ID is not present, break out and let the backend handle the error
-			if !ok || leaseID == nil {
-				break
+		// using the lease's embedded nsID if a relative path was provided. The
+		// operation will still be gated by ACLs, which are checked later.
+		//
+		// sys/leases/lookup takes 'lease_id' by request data only, but
+		// sys/leases/renew and sys/leases/revoke take it by path segment, too.
+		// Request data takes precedence in any case.
+		byData, byPath := any(nil), ""
+		switch req.Path {
+		case "sys/leases/lookup", "sys/leases/renew", "sys/leases/revoke":
+			byData = req.Data["lease_id"]
+		default:
+			for _, prefix := range []string{
+				"sys/leases/renew/", "sys/leases/revoke/",
+			} {
+				if suffix, ok := strings.CutPrefix(req.Path, prefix); ok {
+					byData, byPath = req.Data["lease_id"], suffix
+				}
 			}
-			_, nsID := namespace.SplitIDFromString(leaseID.(string))
-			if nsID != "" {
-				ns, err := c.NamespaceByID(ctx, nsID)
-				if err != nil {
-					c.Logger().Warn("error looking up namespace from the lease's namespace ID", "error", err)
-					return nil, err
-				}
-				if ns != nil {
-					ctx = namespace.ContextWithNamespace(ctx, ns)
-				}
+		}
+
+		leaseID, ok := "", false
+		if byData != nil {
+			leaseID, ok = byData.(string)
+		} else {
+			leaseID, ok = byPath, true
+		}
+
+		// Check for a failed conversion and error if so.
+		if !ok {
+			return logical.ErrorResponse("invalid lease ID"), logical.ErrInvalidRequest
+		}
+
+		// If lease ID is not present or empty, break out and let the backend
+		// handle the error.
+		if leaseID == "" {
+			break
+		}
+
+		_, nsID := namespace.SplitIDFromString(leaseID)
+		if nsID != "" {
+			ns, err := c.NamespaceByID(ctx, nsID)
+			if err != nil {
+				c.Logger().Warn("error looking up namespace from the lease's namespace ID", "error", err)
+				return nil, err
+			}
+			if ns != nil {
+				ctx = namespace.ContextWithNamespace(ctx, ns)
 			}
 		}
 

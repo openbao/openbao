@@ -120,6 +120,43 @@ HA Enabled         false
 
 Retrieving the seal status of a non-sealable namespace will result in an error.
 
+## Deleting a Sealable Namespace
+
+If a sealable namespace is unsealed and empty, it can be deleted with the normal `bao namespace delete` command:
+
+```shell-session
+$ bao namespace delete -ns=tenants my-tenant
+Success! Namespace deleted at: tenants/my-tenant/
+```
+
+If a namespace is sealed and does not contain child namespaces, it can be
+deleted with `bao namespace delete-sealed`:
+
+```shell-session
+$ bao namespace delete-sealed -ns=tenants my-tenant
+Success! Namespace deletion scheduled: tenants/my-tenant/
+```
+
+Sealed namespaces that are not empty can be deleted by passing the `-force`
+flag. This will delete any data in that namespace and any child-namespaces that
+might exist.
+
+```shell-session
+$ bao namespace delete-sealed -ns=tenants -force my-tenant
+Success! Namespace deletion scheduled: tenants/my-tenant/
+```
+
+:::info
+
+Note that `bao namespace delete-sealed` requires the sudo capability, and will
+not clean up external resources via lease deletion like standard namespace
+deletion does.
+
+Prefer the standard `bao namespace delete` command unless the namespace is
+irrecoverable due to lost seal keys.
+
+:::
+
 ## Rotate Unseal Keys
 
 To start generating a new set of unseal keys for a sealable namespace, use the

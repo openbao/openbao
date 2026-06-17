@@ -139,6 +139,36 @@ $ curl \
     http://127.0.0.1:8200/v1/sys/namespaces/ns1
 ```
 
+## Delete sealed namespace
+
+:::info
+
+Note that this requires the sudo capability and will not clean up external
+resources via lease deletion like standard namespace deletion does. Prefer the
+standard `DELETE /sys/namespaces/:path` endpoint unless the namespace is
+irrecoverable due to lost seal keys.
+
+:::
+
+This endpoint deletes a sealed namespace at the specified path.
+
+| Method   | Path                    |
+| :------- | :---------------------- |
+| `DELETE` | `/sys/namespaces/:path/delete-sealed` |
+
+### Parameters
+
+- `force` `(bool: false)` - if set to true, will also recursively delete any child namespaces.
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request DELETE \
+    http://127.0.0.1:8200/v1/sys/namespaces/ns1/delete-sealed?force=true
+```
+
 ## Read namespace information
 
 This endpoint gets the metadata for the given namespace path.

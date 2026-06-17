@@ -57,6 +57,18 @@ Delete the namespace at path `ns1/`:
 $ bao namespace delete ns1/
 ```
 
+Delete a sealed namespace with no child namespaces (requires sudo):
+
+```shell-session
+$ bao namespace delete-sealed ns1
+```
+
+Delete a sealed namespace and recursively wipe its child namespaces (requires sudo):
+
+```shell-session
+$ bao namespace delete-sealed -force ns1
+```
+
 Lookup the namespace information at path `ns1/`:
 
 ```shell-session
@@ -117,6 +129,7 @@ Usage: bao namespace <subcommand> [options] [args]
 Subcommands:
     create         Create a new namespace
     delete         Delete an existing namespace
+    delete-sealed  Delete a sealed namespace
     list           List child namespaces
     lock           Lock the API for particular namespaces
     lookup         Look up an existing namespace

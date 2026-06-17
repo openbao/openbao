@@ -92,6 +92,7 @@ const sidebars: SidebarsConfig = {
                         "rfcs/standby-nodes-handle-read-requests",
                     ],
                 },
+                "rfcs/migrations",
                 "rfcs/config-plugins",
                 "rfcs/postgresql",
                 "rfcs/invalidation",

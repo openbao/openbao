@@ -1738,7 +1738,7 @@ func (c *ServerCommand) waitForLeader(core *vault.Core) (bool, error) {
 // Initialize performs declarative self-initialization of a production-mode
 // OpenBao core. This will exit early if there is no configuration for this
 // or if the core is already initialized.
-func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) error {
+func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) (retErr error) {
 	// Skip initialize for dev server as it is handled in initDevCore
 	if len(config.Initialization) == 0 || c.flagDev {
 		return nil
@@ -1780,6 +1780,36 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		}
 		return fmt.Errorf("self-initialization failed: %w", err)
 	}
+	defer func() {
+		req := &logical.Request{
+			ID:          "self-init-revoke-root",
+			Operation:   logical.UpdateOperation,
+			ClientToken: init.RootToken,
+			Path:        "auth/token/revoke-self",
+		}
+		alreadyRevoked := func() bool {
+			entry, lookupErr := core.LookupToken(ctx, init.RootToken)
+			if lookupErr != nil {
+				retErr = errors.Join(retErr, fmt.Errorf("failed to confirm self-init root token revocation: %w", lookupErr))
+				return false
+			}
+			return entry == nil
+		}
+		resp, err := core.HandleRequest(ctx, req)
+		if err != nil {
+			if alreadyRevoked() {
+				return
+			}
+			retErr = errors.Join(retErr, fmt.Errorf("failed to revoke self-init root token: %w", err))
+			return
+		}
+		if resp != nil && resp.IsError() {
+			if alreadyRevoked() {
+				return
+			}
+			retErr = errors.Join(retErr, fmt.Errorf("failed to revoke self-init root token: %s", resp.Error()))
+		}
+	}()
 
 	// Wait for leadership; if we don't get the leadership status, it means
 	// that someone has brought up more than one node at a time and we've

@@ -1385,6 +1385,24 @@ func TestCore_Invalidate_SealedNamespaces(t *testing.T) {
 					},
 				),
 			)
+
+			// Try invalidating the namespace entry itself.
+			parentPath, ok := ns.ParentPath()
+			require.True(t, ok, "expected namespace to have parent")
+
+			parentNs, err := c.namespaceStore.GetNamespaceByPath(namespace.RootContext(t.Context()), parentPath)
+			require.NoError(t, err)
+			require.NotNil(t, parentNs)
+
+			childNsPath := path.Join(namespaceStoreSubPath, ns.UUID)
+			if parentNs.UUID != namespace.RootNamespaceUUID {
+				childNsPath = path.Join(barrier.NamespacePrefix, parentNs.UUID, childNsPath)
+			}
+
+			// Call invalidate on the full path; this should not err. We've
+			// not made any updates but we're more interested in downstream
+			// effects.
+			require.NoError(t, c.invalidateSynchronous(childNsPath))
 		})
 	}
 }

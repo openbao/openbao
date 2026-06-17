@@ -1,0 +1,156 @@
+---
+sidebar_label: CEL for Cert Auth
+description: |-
+  An OpenBao RFC for enabling CEL roles in the Certificate Auth method.
+---
+
+# RFC: CEL Expression Support for Certificate Authentication
+
+## Summary
+
+This feature offers support for [Common Expression Language
+(CEL)](https://github.com/google/cel-spec) in OpenBao's certificate-based auth
+engine to create a flexible framework for validating extensions and dynamically
+assigning token policies. CEL will allow administrators to define fine-grained
+rules for claim validation and dynamic policy assignment, extending the more
+static assignment of role- and identity-based policies.
+
+Cert Auth CEL support is implemented as a new type of CEL role and follows the
+[general plan for CEL support](cel-best-practices.mdx) in OpenBao.
+
+## Problem Statement
+
+OpenBao's X.509 certificate-based auth engine currently assemble token
+policies from `roles` and `identities`. However, administrators cannot enforce
+complex constraints, such as validating combinations of extensions or
+dynamically assigning token policies based on extension values.
+
+## User-facing description
+
+**_Administrators_** can define CEL roles under a new endpoint,
+`auth/cert/cel/roles/:name`, to be executed during authentication. CEL roles
+should evaluate all incoming certificate fields and generate `logical.Auth{}`
+instances having appropriate token policies. In defining a CEL program, the
+administrator takes on all validation responsibility shy of cryptographic
+verification. This means they must avoid granting policies, entities, or
+aliases based on unvalidated attributes.
+
+**_Users_** authenticating with X.509 certificates will have their certs
+validated through the CEL indicated role. If successful, they receive a token
+with policies and other attributes.
+
+For example:
+
+- A CEL role validates that the cert contains specific claims like:
+  `"cn=admin" in cert.subject && matches(cert.extensions[1.5.3.2], [0-9]+)"`.
+- If validation passes, the CEL program assigns the token policies `admin` and
+  `team-12345` (using `cert.extensions[1.5.3.2]` to form the policy name).
+
+This could be codified in the following CEL program:
+
+```json
+("admin" in cert.subject &&
+ matches(cert.extensions[1.5.3.2], [0-9]+)) ?
+pb.Auth{ policies: ["admin", "team-" + string(cert.extensions[1.5.3.2])] } :
+false
+```
+
+## Technical Description
+
+### CEL in Vault Auth Engines
+
+CEL roles integrate with OpenBao's Auth engine to dynamically evaluate
+claims. Instead of using static role-to-policy assignment with
+`allowed_*_names`, CEL programs validate claims and return a `logical.Auth{}`
+instance containing dynamically assigned token policies.
+
+**Workflow:**
+
+1. A user authenticates with an X.509 certificate.
+2. The incoming certificate fields are passed to the CEL role for validation.
+3. If the CEL policy evaluates successfully:
+    - A `logical.Auth{}` instance is returned.
+    - Token policies are assigned dynamically based on the CEL program logic.
+4. If validation fails, `false` or `string` (error message) is returned and
+   token is not generated.
+
+### **API Endpoints**
+
+| Use                          | Method   | Path                             |
+|------------------------------|----------|----------------------------------|
+| List CEL roles               | `LIST`   | `auth/cert/cel/roles`            |
+| Retrieve a specific CEL role | `GET`    | `auth/cert/cel/roles/:name`      |
+| Create a CEL role            | `POST`   | `auth/cert/cel/roles/:name`      |
+| Update a CEL role            | `PATCH`  | `auth/cert/cel/roles/:name`      |
+| Delete a CEL role            | `DELETE` | `auth/cert/cel/roles/:name`      |
+| Login with CEL role          | `POST`   | `auth/cert/cel/login name=:name` |
+
+### CEL Role Format
+
+A CEL role is defined as a JSON object with the following fields:
+```json
+{
+  "name": "string",
+  "cel_program": {
+    "variables": [
+      {
+        "name": "string",
+        "expression": "string"
+      }
+    ],
+    "expression": "string",
+  },
+  "expiration_leeway": "int",
+  "not_before_leeway": "int",
+  "clock_skew_leeway": "int",
+  "bound_audiences": [
+    "string"
+  ],
+}
+```
+
+The following parameters are supplied by the CEL policy engine and may be
+used in the expression:
+
+- `cert` `(CertTemplate: required)` - all fields contained in an X.509
+  certificate. See implementation in [CEL for PKI](cel-pki.mdx) for more
+  information.
+
+### CEL Reply Format (CEL role to Auth Engine)
+
+The CEL role engine evaluates the claims and returns a `logical.Auth{}` object
+or error that determines the authenticated user's token and policies.
+
+The CEL expression itself may return one of the following:
+- `pb.Auth` `(protobuf Auth: optional)` - A `logical.Auth` instance containing
+  the following fields:
+    - `policies` `([]string: required)`  - List of token policies assigned
+      to the user.
+    - `lease_duration` `(int: required)` - Duration (in seconds) for which the
+      token is valid.
+    - `renewable` `(bool: required)` - whether the token is renewable.
+- `bool` `(false: optional)` - A boolean false value indicates failed
+  authorization.
+- `string` `(error: optional)` - A detailed error when the program fails.
+
+## Rationale and alternatives
+
+[Unlike JWT](/api-docs/auth/jwt/#acl-policy-templating-examples), cert auth
+currently has no format for dynamic templating of policies. While easier with
+JWTs as many claims are simple strings, certificate extensions are often
+custom ASN.1 structures which are unlikely to be parseable in `text/template`.
+
+Some form CEL or regex evaluation could be added to existing role instead
+of creating a new type of role, though this deviates from the pattern
+established elsewhere.
+
+Alternatively, a web hook approach like [Vault's
+CIEPS](https://developer.hashicorp.com/vault/docs/secrets/pki/cieps) could
+be used to achieve similar flexibility. However, the performance implications
+and system brittleness make this an unattractive alternative.
+
+## Downsides
+
+Additional complexity of a new type; not backwards compatible with Vault for
+operators or application developers as the role name is required in CEL auth
+unlike normal roles which support defaults.

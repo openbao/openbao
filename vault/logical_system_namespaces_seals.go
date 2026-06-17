@@ -185,9 +185,9 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 // endpoint to retrieve a seal status of the namespace.
 func (b *SystemBackend) handleNamespaceSealStatus() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return nil, errors.New("path must not contain /")
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
 		}
 
 		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
@@ -222,10 +222,9 @@ func (b *SystemBackend) handleNamespaceSealStatus() framework.OperationFunc {
 // seal the namespace.
 func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
-
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return nil, errors.New("path must not contain /")
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
 		}
 
 		if err := b.Core.namespaceStore.SealNamespace(ctx, path); err != nil {
@@ -240,9 +239,9 @@ func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
 // to unseal the namespace.
 func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return nil, errors.New("path must not contain /")
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
 		}
 
 		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
@@ -309,10 +308,9 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 // endpoint to delete a sealed namespace.
 func (b *SystemBackend) handleNamespacesDeleteSealed() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
-
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return handleError(errors.New("path must not contain /"))
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
 		}
 
 		if !b.System().(extendedSystemView).SudoPrivilege(ctx, req.MountPoint+req.Path, req.ClientToken) {

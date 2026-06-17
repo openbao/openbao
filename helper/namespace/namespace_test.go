@@ -24,7 +24,7 @@ func TestCanonicalize(t *testing.T) {
 		},
 		{
 			"root",
-			"",
+			"root/",
 		},
 		{
 			"ns1",

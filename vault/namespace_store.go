@@ -1102,8 +1102,16 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 // "trimmed" request path devoid of any namespace components.
 func (ns *NamespaceStore) ResolveNamespaceFromRequest(nsHeader, reqPath string) (*namespace.Namespace, string) {
 	nsHeader = namespace.Canonicalize(nsHeader)
+
+	// Re-route a header that's literally "root" to the root namespace by
+	// clearing it.
+	if nsHeader == "root/" {
+		nsHeader = ""
+	}
+
 	// Naively stack header ahead of request path.
 	reqPath = nsHeader + reqPath
+
 	// Find namespace that matches the longest prefix of reqPath.
 	ns.lock.RLock()
 	_, resolvedNs, trimmedPath := ns.namespacesByPath.LongestPrefix(reqPath)

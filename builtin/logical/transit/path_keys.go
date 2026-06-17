@@ -313,9 +313,6 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 	if p == nil {
 		return nil, errors.New("error generating key: returned policy was nil")
 	}
-	if !b.System().CachingDisabled() {
-		p.Lock(false)
-	}
 	defer p.Unlock()
 
 	resp, err := b.formatKeyPolicy(p, nil)
@@ -348,9 +345,6 @@ func (b *backend) pathPolicyRead(ctx context.Context, req *logical.Request, d *f
 	}
 	if p == nil {
 		return nil, nil
-	}
-	if !b.System().CachingDisabled() {
-		p.Lock(false)
 	}
 	defer p.Unlock()
 
@@ -528,7 +522,7 @@ func (b *backend) pathPolicySoftDelete(ctx context.Context, req *logical.Request
 
 	name := d.Get("name").(string)
 
-	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
+	p, _, err := b.GetPolicyExclusive(ctx, keysutil.PolicyRequest{
 		Storage: req.Storage,
 		Name:    name,
 	}, b.GetRandomReader())
@@ -537,9 +531,6 @@ func (b *backend) pathPolicySoftDelete(ctx context.Context, req *logical.Request
 	}
 	if p == nil {
 		return nil, nil
-	}
-	if !b.System().CachingDisabled() {
-		p.Lock(true)
 	}
 	defer p.Unlock()
 
@@ -575,7 +566,7 @@ func (b *backend) pathPolicySoftDeleteRestore(ctx context.Context, req *logical.
 
 	name := d.Get("name").(string)
 
-	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
+	p, _, err := b.GetPolicyExclusive(ctx, keysutil.PolicyRequest{
 		Storage: req.Storage,
 		Name:    name,
 	}, b.GetRandomReader())
@@ -584,9 +575,6 @@ func (b *backend) pathPolicySoftDeleteRestore(ctx context.Context, req *logical.
 	}
 	if p == nil {
 		return nil, nil
-	}
-	if !b.System().CachingDisabled() {
-		p.Lock(true)
 	}
 	defer p.Unlock()
 

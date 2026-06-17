@@ -368,9 +368,6 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 	if p == nil {
 		return logical.ErrorResponse("signing key not found"), logical.ErrInvalidRequest
 	}
-	if !b.System().CachingDisabled() {
-		p.Lock(false)
-	}
 	defer p.Unlock()
 
 	if !p.Type.SigningSupported() {
@@ -603,9 +600,6 @@ func (b *backend) pathVerifyWrite(ctx context.Context, req *logical.Request, d *
 	}
 	if p == nil {
 		return logical.ErrorResponse("signature verification key not found"), logical.ErrInvalidRequest
-	}
-	if !b.System().CachingDisabled() {
-		p.Lock(false)
 	}
 	defer p.Unlock()
 

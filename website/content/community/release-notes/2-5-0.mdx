@@ -5,6 +5,25 @@ description: Release notes for OpenBao 2.5.x
 
 # OpenBao 2.5.x release notes
 
+## v2.5.5
+
+**Release date:** June 17, 2026
+
+### SECURITY
+
+* auth/ldap: Prevent unlikely post-bind LDAP injection via bind DN to group resolution. GHSA-6mwx-4547-5vc9. [[GH-3306](https://github.com/openbao/openbao/pull/3306)]
+* secrets/ldap: Prevent potential LDAP injection with unsanitized DNs for service accounts. GHSA-6mwx-4547-5vc9. [[GH-3306](https://github.com/openbao/openbao/pull/3306)]
+* secrets/transit: Prevent server crash due to unlock of unlocked mutex for RSA keys created with `derived=true`. GHSA-8w8f-r2xv-4q4j. [[GH-3309](https://github.com/openbao/openbao/pull/3309)]
+* core/leases: Fix unauthorized cross-namespace lease revocation via leaked lease identifiers. GHSA-c36x-h252-g9x2. [[GH-3307]](https://github.com/openbao/openbao/pull/3307)
+* core/namespaces: Fix namespace path canonicalization of "root" enabling unauthorized operations on the parent namespace. GHSA-mwr2-wmgp-crj6. [[GH-3308]](https://github.com/openbao/openbao/pull/3308)
+
+### BUG FIXES
+
+* core/ha: Return to read-enabled standby mode instead of read-disabled standby mode after stepping down from active mode when standby reads are enabled. This also fixes SIGHUPs crashing standby nodes if they've previously stepped down from active. [[GH-3223](https://github.com/openbao/openbao/pull/3223)]
+* auth/mfa: Correctly forward two-phase MFA validations on standby nodes. [[GH-3246](https://github.com/openbao/openbao/pull/3246)]
+* sys/namespaces: Support clearing a namespace's `custom_metadata` by providing a patch that sets `custom_metadata` to `null` at the top-level. [[GH-3273](https://github.com/openbao/openbao/pull/3273)]
+* sys/plugins: Fix `/sys/plugins/catalog` and `/sys/plugins/catalog/<type>` not returning versioned plugins. [[GH-3186](https://github.com/openbao/openbao/pull/3186)]
+
 ## v2.5.4
 
 **Release date:** May 20, 2026

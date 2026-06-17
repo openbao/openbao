@@ -1239,14 +1239,6 @@ func (m *ExpirationManager) Renew(ctx context.Context, leaseID string, increment
 		return logical.ErrorResponse("lease does not correspond to a secret"), nil
 	}
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if ns.ID != le.namespace.ID {
-		return nil, errors.New("cannot renew a lease across namespaces")
-	}
-
 	sysViewCtx := namespace.ContextWithNamespace(ctx, le.namespace)
 	sysView := m.router.MatchingSystemView(sysViewCtx, le.Path)
 	if sysView == nil {
@@ -1711,14 +1703,17 @@ func (m *ExpirationManager) FetchLeaseTimesByToken(ctx context.Context, te *logi
 func (m *ExpirationManager) FetchLeaseTimes(ctx context.Context, leaseID string) (*leaseEntry, error) {
 	defer metrics.MeasureSince([]string{"expire", "fetch-lease-times"}, time.Now())
 
-	info, ok := m.pending.Load(leaseID)
-	if ok && info.(pendingInfo).cachedLeaseInfo != nil {
-		return m.leaseTimesForExport(info.(pendingInfo).cachedLeaseInfo), nil
-	}
-
-	info, ok = m.irrevocable.Load(leaseID)
-	if ok && info.(*leaseEntry) != nil {
-		return m.leaseTimesForExport(info.(*leaseEntry)), nil
+	le := m.fetchCachedLease(leaseID)
+	if le != nil {
+		ns, err := namespace.FromContext(ctx)
+		switch {
+		case err != nil:
+			return nil, err
+		case ns.ID != le.namespace.ID:
+			return nil, nil
+		default:
+			return le, nil
+		}
 	}
 
 	// Load the entry
@@ -1733,12 +1728,29 @@ func (m *ExpirationManager) FetchLeaseTimes(ctx context.Context, leaseID string)
 	return m.leaseTimesForExport(le), nil
 }
 
+// fetchCachedLease attempts to look up a lease ID by pending or irrevocable
+// leases to skip a storage read.
+func (m *ExpirationManager) fetchCachedLease(leaseID string) *leaseEntry {
+	info, ok := m.pending.Load(leaseID)
+	if ok && info.(pendingInfo).cachedLeaseInfo != nil {
+		return m.leaseTimesForExport(info.(pendingInfo).cachedLeaseInfo)
+	}
+
+	info, ok = m.irrevocable.Load(leaseID)
+	if ok && info.(*leaseEntry) != nil {
+		return m.leaseTimesForExport(info.(*leaseEntry))
+	}
+
+	return nil
+}
+
 // Returns lease times for outside callers based on the full leaseEntry passed in
 func (m *ExpirationManager) leaseTimesForExport(le *leaseEntry) *leaseEntry {
 	ret := &leaseEntry{
 		IssueTime:       le.IssueTime,
 		ExpireTime:      le.ExpireTime,
 		LastRenewalTime: le.LastRenewalTime,
+		namespace:       le.namespace,
 	}
 	if le.Secret != nil {
 		ret.Secret = &logical.Secret{}
@@ -2003,19 +2015,6 @@ func (m *ExpirationManager) loadEntry(ctx context.Context, leaseID string) (*lea
 			m.lockLease(leaseID)
 			defer m.unlockLease(leaseID)
 		}
-	}
-
-	_, nsID := namespace.SplitIDFromString(leaseID)
-	if nsID != "" {
-		leaseNS, err := m.core.NamespaceByID(ctx, nsID)
-		if err != nil {
-			return nil, err
-		}
-		if leaseNS != nil {
-			ctx = namespace.ContextWithNamespace(ctx, leaseNS)
-		}
-	} else {
-		ctx = namespace.ContextWithNamespace(ctx, namespace.RootNamespace)
 	}
 
 	// If a lease entry is nil, proactively delete the lease lock, in case we

@@ -78,9 +78,13 @@ a child namespace.
 
 ### Cross-namespaces identities
 
-Entities or groups from a parent namespace are not enabled by default.
+Entities or groups from any namespace are not enabled by default.
 
-The configuration setting `unsafe_cross_namespace_identity` gives compatibility with Vault Enterprise's cross-namespace group membership and should be enabled.
+:::warning
+
+The configuration setting `unsafe_cross_namespace_identity` gives compatibility with Vault Enterprise's cross-namespace group membership and should not be enabled.
+
+**Warning**: There are no mitigating controls on what identities or groups another namespace can reference and allows for unconfined permission sharing.
 
 Example:
 
@@ -90,7 +94,7 @@ listener "tcp" {
   ...
 }
 
-# Allow child namespaces to reference parent namespaces entities or groups
+# Allow namespaces to reference other namespaces' entities or groups
 unsafe_cross_namespace_identity = true
 ```
 

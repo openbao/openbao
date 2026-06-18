@@ -18,7 +18,7 @@ ARG TARGETARCH
 COPY --chmod=555 bin/${TARGETARCH}/bao /usr/bin/bao
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}.
-FROM alpine:3.24.0 AS default
+FROM alpine:3.24.1 AS default
 
 COPY LICENSE /licenses/mozilla.txt
 

@@ -32,7 +32,7 @@ require (
 	github.com/containerd/platforms v0.2.1
 	github.com/coreos/go-systemd/v22 v22.6.0
 	github.com/duosecurity/duo_api_golang v0.2.0
-	github.com/evanphx/json-patch/v5 v5.6.0
+	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/fatih/color v1.19.0
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/go-ldap/ldap/v3 v3.4.13

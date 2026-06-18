@@ -5,7 +5,6 @@ package vault
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -438,63 +437,10 @@ func (ij *invalidationJob) Execute() error {
 }
 
 func (ij *invalidationJob) namespaceInvalidation(ctx context.Context) error {
-	ij.im.dispacherLogger.Trace("issuing namespace invalidation")
-
-	// The namespace name is the final path segment; ij.nsUUID contains the
+	// The namespace UUID is the final path segment; ij.nsUUID contains the
 	// parent namespace UUID.
-	namespaceUUID := strings.TrimPrefix(ij.nsKey, namespaceStoreSubPath)
-
-	beforeNs, beforeErr := ij.im.core.namespaceStore.GetNamespace(ctx, namespaceUUID)
-
-	// First notify the namespace storage that our next lookup might be stale.
-	ij.im.core.namespaceStore.invalidate(ctx, ij.key)
-
-	afterNs, afterErr := ij.im.core.namespaceStore.GetNamespace(ctx, namespaceUUID)
-
-	// There are three happy paths for namespace invalidation:
-	//
-	// 1. Namespace deletion; before the namespace would be present but
-	//    afterwards it would be nil.
-	// 2. Namespace creation; before the namespace would be missing and
-	//    afterwards it will be present.
-	// 3. Namespace update; this exists in both places but we'd prefer the
-	//    updated version.
-	var preferredNs *namespace.Namespace
-	var deleted bool
-	switch {
-	case beforeErr != nil && afterErr != nil:
-		return fmt.Errorf("failed loading invalidated namespace; before=%w; after=%v", beforeErr, afterErr)
-	case beforeNs == nil && afterNs == nil:
-		return errors.New("failed loading invalidated namespace: does not exist before or after")
-	case afterNs != nil && afterErr == nil:
-		preferredNs = afterNs
-	case beforeNs != nil && beforeErr == nil:
-		preferredNs = beforeNs
-		deleted = true
-	}
-
-	nsBarrier := ij.im.core.sealManager.NamespaceBarrierByLongestPrefix(preferredNs.Path)
-	if nsBarrier.Sealed() {
-		// Namespace is sealed; nothing more we can do with it.
-		return nil
-	} else if preferredNs.ManuallySealed {
-		// Namespace was manually sealed but we're not actually sealed locally;
-		// seal it.
-		ij.im.dispacherLogger.Info("sealing manually sealed namespace", "path", preferredNs.Path, "uuid", preferredNs.UUID)
-		return ij.im.core.namespaceStore.SealNamespace(ctx, preferredNs.Path)
-	}
-
-	childCtx := namespace.ContextWithNamespace(ctx, preferredNs)
-
-	// Invalidate all policies within the namespace.
-	ij.im.core.policyStore.InvalidateNamespace(childCtx, namespaceUUID)
-
-	// Now reload all mounts within the namespace.
-	if err := ij.im.core.reloadNamespaceMounts(childCtx, namespaceUUID, deleted); err != nil {
-		return fmt.Errorf("unable to invalidate mounts in namespace %q: %w", ij.nsUUID, err)
-	}
-
-	return nil
+	childUUID := strings.TrimPrefix(ij.nsKey, namespaceStoreSubPath)
+	return ij.im.core.namespaceStore.Invalidate(ctx, ij.nsUUID, childUUID)
 }
 
 func (ij *invalidationJob) policyInvalidation(ctx context.Context) error {

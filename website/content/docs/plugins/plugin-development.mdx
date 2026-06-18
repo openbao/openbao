@@ -12,40 +12,47 @@ plugins, we recommend not reading this section of the documentation.
 
 :::
 
-Because OpenBao communicates to plugins over a RPC interface, you can build and
-distribute a plugin for OpenBao without having to rebuild OpenBao itself. This makes
-it easy for you to build an OpenBao plugin for your organization's internal use,
-for a proprietary API that you don't want to open source, or to prototype
-something before contributing it back to the main project.
+Because OpenBao communicates to plugins over a gRPC interface, you can build
+and distribute a plugin for OpenBao without having to rebuild OpenBao itself.
+This makes it easy for you to build an OpenBao plugin for your organization's
+internal use, for a proprietary API that you don't want to open source, or to
+prototype something before contributing it back to the main project.
 
-In theory, because the plugin interface is HTTP, you could even develop a plugin
-using a completely different programming language! (Disclaimer, you would also
-have to re-implement the plugin API which is not a trivial amount of work.)
+Developing a plugin is simple. The only knowledge necessary to write a plugin
+is basic command-line skills and basic knowledge of the [Go programming
+language](http://go.dev).
 
-Developing a plugin is simple. The only knowledge necessary to write
-a plugin is basic command-line skills and basic knowledge of the
-[Go programming language](http://golang.org).
-
-Your plugin implementation needs to satisfy the interface for the plugin
-type you want to build. You can find these definitions in the docs for the
-backend running the plugin.
+Your plugin implementation needs to satisfy the interface for the plugin type
+you want to build. You can find these definitions in the docs for the backend
+running the plugin.
 
 :::warning
 
-Note: Plugins should be prepared to handle multiple concurrent requests
-from OpenBao.
+Plugins should be prepared to handle multiple concurrent requests from OpenBao.
 
 :::
 
 ## Serving a plugin
 
-### Serving a plugin with multiplexing
+Serving a plugin requires calling into the respective plugin entrypoint function
+exposed by the appropriate plugin server SDK for type of plugin developed:
 
-:::warning
+- Auth method and secrets engine plugins: Use
+  [`ServeMultiplex`](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2/plugin#ServeMultiplex)
+  from
+  [`github.com/openbao/openbao/sdk/v2/plugin`](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2/plugin).
+- Database provider plugins: Use
+  [`ServeMultiplex`](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2/database/dbplugin#ServeMultiplex)
+  from
+  [`github.com/openbao/openbao/sdk/v2/database/dbplugin`](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2/database/dbplugin).
+- KMS provider plugins: Use
+  [`Serve`](https://pkg.go.dev/github.com/openbao/go-kms-wrapping/plugin/v2#Serve)
+  from
+  [`github.com/openbao/go-kms-wrapping/plugin/v2`](https://pkg.go.dev/github.com/openbao/go-kms-wrapping/plugin/v2).
 
-Plugin multiplexing requires `github.com/openbao/openbao/sdk v0.5.4` or above.
-
-:::
+Plenty of real-world plugin examples are available in the official
+[`openbao-plugins`](https://github.com/openbao/openbao-plugins) plugin
+collection.
 
 The following code exhibits an example main package for an OpenBao plugin using
 the OpenBao SDK for a secrets engine or auth method:
@@ -75,7 +82,6 @@ func main() {
 	})
 	if err != nil {
 		logger := hclog.New(&hclog.LoggerOptions{})
-
 		logger.Error("plugin shutting down", "error", err)
 		os.Exit(1)
 	}
@@ -90,23 +96,21 @@ plugin.
 Let's take a closer look at a snippet from the above main package.
 
 ```go
-	err := plugin.ServeMultiplex(&plugin.ServeOpts{
-		BackendFactoryFunc: myPlugin.Factory,
-		TLSProviderFunc:    tlsProviderFunc,
-	})
+err := plugin.ServeMultiplex(&plugin.ServeOpts{
+	BackendFactoryFunc: myPlugin.Factory,
+	TLSProviderFunc:    tlsProviderFunc,
+})
 ```
 
 The call to `plugin.ServeMultiplex` ensures that the plugin will use
-OpenBao's [plugin
-multiplexing](plugin-architecture.mdx#plugin-multiplexing) feature.
-However, this plugin will not be multiplexed if it is run by a version of OpenBao
-that does not support multiplexing. OpenBao will simply fall back to a plugin
-version that it can run. Additionally, we set the `TLSProviderFunc` to ensure
-that our plugin is backwards compatible with versions of OpenBao that do not
-support automatic mutual TLS for secure [plugin
-communication](plugin-architecture.mdx#plugin-communication). If you
-are certain your plugin does not need backwards compatibility, this field can
-be omitted.
+OpenBao's [plugin multiplexing](plugin-architecture.mdx#plugin-multiplexing)
+feature. However, this plugin will not be multiplexed if it is run by a
+version of OpenBao that does not support multiplexing. OpenBao will simply
+fall back to a plugin version that it can run. Additionally, we set the
+`TLSProviderFunc` to ensure that our plugin is backwards compatible with
+versions of OpenBao that do not support automatic mutual TLS for secure [plugin
+communication](plugin-architecture.mdx#plugin-communication). If you are certain
+your plugin does not need backwards compatibility, this field can be omitted.
 
 ## Leveraging plugin versioning
 
@@ -125,12 +129,5 @@ interface directly.
 
 To build a plugin from source, first navigate to the location holding the
 desired plugin version. Next, run `go build` to obtain a new binary for the
-plugin. Finally,
-[register](plugin-architecture.mdx#plugin-registration) the
+plugin. Finally, [register](plugin-architecture.mdx#plugin-registration) the
 plugin and enable it.
-
-## Plugin development - resources
-
-Other HashiCorp plugin development resources:
-
-* [vault-auth-plugin-example](https://github.com/hashicorp/vault-auth-plugin-example)

@@ -94,9 +94,6 @@ func (b *backend) pathCreateCSRWrite(ctx context.Context, req *logical.Request, 
 		return logical.ErrorResponse("key with provided name '%s' not found", name), logical.ErrInvalidRequest
 	}
 
-	if !b.System().CachingDisabled() {
-		policy.Lock(false)
-	}
 	defer policy.Unlock()
 
 	// check if key supports signing
@@ -163,7 +160,7 @@ func (b *backend) pathImportCertChainWrite(ctx context.Context, req *logical.Req
 
 	name := data.Get("name").(string)
 
-	policy, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
+	policy, _, err := b.GetPolicyExclusive(ctx, keysutil.PolicyRequest{
 		Storage: req.Storage,
 		Name:    name,
 	}, b.GetRandomReader())
@@ -174,9 +171,6 @@ func (b *backend) pathImportCertChainWrite(ctx context.Context, req *logical.Req
 		return logical.ErrorResponse("key with provided name '%s' not found", name), logical.ErrInvalidRequest
 	}
 
-	if !b.System().CachingDisabled() {
-		policy.Lock(true)
-	}
 	defer policy.Unlock()
 
 	// check if transit key supports signing

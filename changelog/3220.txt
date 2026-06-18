@@ -1,0 +1,3 @@
+```release-note:improvement
+api: Add methods to list and scan keys to the KVv1 and KVv2 client.
+```

@@ -24,7 +24,7 @@ type PKIIssueCACommand struct {
 }
 
 func (c *PKIIssueCACommand) Synopsis() string {
-	return "Given a parent certificate, and a list of generation parameters, creates an issuer on a specified mount"
+	return "Given a parent certificate and a list of generation parameters, creates an issuer on a specified mount"
 }
 
 func (c *PKIIssueCACommand) Help() string {

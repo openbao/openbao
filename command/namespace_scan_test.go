@@ -33,7 +33,7 @@ func TestNamespaceScanCommand_Run(t *testing.T) {
 		{
 			"no_entries",
 			[]string{},
-			"No entries found",
+			"No namespaces found",
 			2,
 		},
 		{

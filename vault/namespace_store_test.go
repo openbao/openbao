@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -32,7 +33,10 @@ func TestNamespaceStore(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
 
 	// Initial store should be empty.
-	ns, err := s.ListAllNamespaces(ctx, false, true)
+	ns, err := s.ListNamespaces(ctx, ListNamespaceOpts{
+		Recursive:     true,
+		IncludeSealed: true,
+	})
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -53,7 +57,9 @@ func TestNamespaceStore(t *testing.T) {
 	itemPath := item.Path
 
 	// We should now have one item.
-	ns, err = s.ListAllNamespaces(ctx, false, true)
+	ns, err = s.ListNamespaces(ctx, ListNamespaceOpts{
+		Recursive: true,
+	})
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0].UUID, item.UUID)
@@ -95,7 +101,9 @@ func TestNamespaceStore(t *testing.T) {
 	s = c.namespaceStore
 
 	// We should still have one item.
-	ns, err = s.ListAllNamespaces(ctx, false, true)
+	ns, err = s.ListNamespaces(ctx, ListNamespaceOpts{
+		Recursive: true,
+	})
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0].UUID, itemUUID)
@@ -108,7 +116,7 @@ func TestNamespaceStore(t *testing.T) {
 	// Wait until deletion has finished.
 	maxRetries := 50
 	for range maxRetries {
-		ns, err = s.ListAllNamespaces(ctx, false, true)
+		ns, err = s.ListNamespaces(ctx, ListNamespaceOpts{})
 		require.NoError(t, err)
 		if len(ns) > 0 {
 			time.Sleep(1 * time.Millisecond)
@@ -118,7 +126,9 @@ func TestNamespaceStore(t *testing.T) {
 	}
 
 	// Store should be empty.
-	ns, err = s.ListAllNamespaces(ctx, false, true)
+	ns, err = s.ListNamespaces(ctx, ListNamespaceOpts{
+		Recursive: true,
+	})
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -139,7 +149,9 @@ func TestNamespaceStore(t *testing.T) {
 	// however, the s.SetNamespace function is still using the previous namespace.
 	s = c.namespaceStore
 
-	ns, err = s.ListAllNamespaces(ctx, false, true)
+	ns, err = s.ListNamespaces(ctx, ListNamespaceOpts{
+		Recursive: true,
+	})
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -189,7 +201,10 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	}
 
 	// verify namespace deletion
-	nsList, err := s.ListAllNamespaces(ctx, false, true)
+	nsList, err := s.ListNamespaces(ctx, ListNamespaceOpts{
+		Recursive:     true,
+		IncludeSealed: true,
+	})
 	require.NoError(t, err)
 	require.Empty(t, nsList)
 
@@ -235,9 +250,111 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 		break
 	}
 
-	keys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, parentNamespace.UUID, namespaceStoreSubPath)+"/")
+	keys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, parentNamespace.UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Empty(t, keys, "Expected empty namespace store on storage level")
+}
+
+func TestNamespaceStore_DeleteSealedNamespace(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+	ctx := namespace.RootContext(t.Context())
+
+	_ = TestCoreCreateUnsealedNamespaces(
+		t, c,
+		&namespace.Namespace{Path: "a/"},
+		&namespace.Namespace{Path: "b/"},
+		&namespace.Namespace{Path: "c/"},
+		&namespace.Namespace{Path: "tree/"},
+	)
+	TestCoreCreateNamespaces(
+		t, c,
+		&namespace.Namespace{Path: "tree/a/"},
+		&namespace.Namespace{Path: "tree/b/"},
+		&namespace.Namespace{Path: "tree/a/b/"},
+	)
+
+	type test struct {
+		path  string
+		force bool
+	}
+
+	// Inputs that should all fail while namespaces are unsealed.
+	tests := map[string]test{
+		"root":       {"/", false},
+		"root+force": {"/", true},
+		"a":          {"a/", false},
+		"a+force":    {"a/", true},
+		"tree":       {"tree/", false},
+		"tree+force": {"tree/", true},
+	}
+
+	for name, tt := range tests {
+		t.Run(fmt.Sprintf("unsealed+%s", name), func(t *testing.T) {
+			_, err := s.DeleteSealedNamespace(ctx, tt.path, tt.force)
+			require.Error(t, err)
+		})
+	}
+
+	// Seal the world:
+	require.NoError(t, s.SealNamespace(ctx, "a/"))
+	require.NoError(t, s.SealNamespace(ctx, "b/"))
+	require.NoError(t, s.SealNamespace(ctx, "tree/"))
+
+	// Inputs that should all fail even after sealing the namespaces.
+	tests = map[string]test{
+		"root":       {"/", false},
+		"root+force": {"/", true},
+		"tree":       {"tree/", false},
+	}
+
+	for name, tt := range tests {
+		t.Run(fmt.Sprintf("sealed+%s", name), func(t *testing.T) {
+			_, err := s.DeleteSealedNamespace(ctx, tt.path, tt.force)
+			require.Error(t, err)
+		})
+	}
+
+	// Inputs that should all wipe namespaces down to the last bit.
+	tests = map[string]test{
+		// We have single-level "a" and "b" in this test just so one can be
+		// force deleted while the other isn't.
+		"a":          {"a/", false},
+		"b+force":    {"b/", true},
+		"tree+force": {"tree/", true},
+	}
+
+	for name, tt := range tests {
+		t.Run(fmt.Sprintf("sealed+%s", name), func(t *testing.T) {
+			status, err := s.DeleteSealedNamespace(ctx, tt.path, tt.force)
+			require.NoError(t, err)
+			require.Equal(t, "in-progress", status)
+			// Wait for the deletion to finish asynchronously.
+			require.EventuallyWithT(t, func(t *assert.CollectT) {
+				status, err := s.DeleteSealedNamespace(ctx, tt.path, tt.force)
+				require.Equal(t, "", status)
+				require.NoError(t, err)
+			}, time.Second*10, time.Millisecond*10)
+		})
+	}
+
+	// Check that the namespace store no longer knows of any namespaces, except
+	// for "c/", which we never touched:
+	namespaces, err := s.ListNamespaces(ctx, ListNamespaceOpts{
+		Recursive:     true,
+		IncludeSealed: true,
+	})
+	require.Len(t, namespaces, 1)
+	require.Equal(t, namespaces[0].Path, "c/")
+	require.NoError(t, err)
+
+	// Check that namespace storage is entirely empty, except for c's UUID.
+	keys, err := c.barrier.List(ctx, barrier.NamespacePrefix)
+	require.Len(t, keys, 1)
+	require.Equal(t, keys[0], namespaces[0].UUID+"/")
+	require.NoError(t, err)
 }
 
 // TestNamespaceStore_LockNamespace tests the lock namespace method of the namespace store
@@ -317,13 +434,10 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 	require.Empty(t, ret.UnlockKey)
 
 	// Verify that listing does not return locks.
-	all, err := c.namespaceStore.ListAllNamespaces(ctx, true, true)
-	require.NoError(t, err)
-	for index, ns := range all {
-		require.Empty(t, ns.UnlockKey, "namespace: %v / index: %v", ns, index)
-	}
-
-	all, err = c.namespaceStore.ListNamespaces(ctx, true, true)
+	all, err := c.namespaceStore.ListNamespaces(ctx, ListNamespaceOpts{
+		Recursive:     true,
+		IncludeParent: true,
+	})
 	require.NoError(t, err)
 	for index, ns := range all {
 		require.Empty(t, ns.UnlockKey, "namespace: %v / index: %v", ns, index)
@@ -413,7 +527,9 @@ func TestNamespaceHierarchy(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
 
 	// Initial store should be empty.
-	ns, err := s.ListAllNamespaces(ctx, false, true)
+	ns, err := s.ListNamespaces(ctx, ListNamespaceOpts{
+		Recursive: true,
+	})
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -446,7 +562,9 @@ func TestNamespaceHierarchy(t *testing.T) {
 
 	t.Run("ListNamespaces", func(t *testing.T) {
 		t.Run("no root namespace", func(t *testing.T) {
-			nsList, err := s.ListAllNamespaces(ctx, false, true)
+			nsList, err := s.ListNamespaces(ctx, ListNamespaceOpts{
+				Recursive: true,
+			})
 			require.NoError(t, err)
 			containsRoot := false
 			for _, nss := range nsList {
@@ -455,11 +573,14 @@ func TestNamespaceHierarchy(t *testing.T) {
 					break
 				}
 			}
-			require.Falsef(t, containsRoot, "ListAllNamespaces must not contain root namespace")
-			require.Equal(t, len(namespaces), len(nsList), "ListAllNamespaces must return all namespaces, excluding root")
+			require.Falsef(t, containsRoot, "must not contain root namespace")
+			require.Equal(t, len(namespaces), len(nsList), "must return all namespaces, excluding root")
 		})
 		t.Run("with root namespace", func(t *testing.T) {
-			nsList, err := s.ListAllNamespaces(ctx, true, true)
+			nsList, err := s.ListNamespaces(ctx, ListNamespaceOpts{
+				IncludeParent: true,
+				Recursive:     true,
+			})
 			require.NoError(t, err)
 			containsRoot := false
 			for _, nss := range nsList {
@@ -468,21 +589,23 @@ func TestNamespaceHierarchy(t *testing.T) {
 					break
 				}
 			}
-			require.Truef(t, containsRoot, "ListAllNamespaces must contain root namespace")
-			require.Equal(t, len(namespaces)+1, len(nsList), "ListAllNamespaces must return all namespaces")
+			require.Truef(t, containsRoot, "must contain root namespace")
+			require.Equal(t, len(namespaces)+1, len(nsList), "must return all namespaces")
 		})
 		t.Run("list child namespaces", func(t *testing.T) {
 			ctx := namespace.ContextWithNamespace(ctx, namespaces[0].Namespace)
-			nsList, err := s.ListNamespaces(ctx, false, false)
+			nsList, err := s.ListNamespaces(ctx, ListNamespaceOpts{
+				IncludeParent: true,
+			})
 			require.NoError(t, err)
 			for _, nss := range nsList {
 				t.Logf("> ID  : %s\n", nss.ID)
 				t.Logf("> Path: %s\n", nss.Path)
 			}
-			require.Equal(t, 1, len(nsList))
+			require.Equal(t, 2, len(nsList))
 
 			ctx = namespace.ContextWithNamespace(ctx, namespaces[1].Namespace)
-			nsList, err = s.ListNamespaces(ctx, false, false)
+			nsList, err = s.ListNamespaces(ctx, ListNamespaceOpts{})
 			require.NoError(t, err)
 			require.Equal(t, 0, len(nsList))
 		})
@@ -490,6 +613,8 @@ func TestNamespaceHierarchy(t *testing.T) {
 }
 
 func TestNamespaceTree(t *testing.T) {
+	t.Parallel()
+
 	rootNs := namespace.RootNamespace
 	tree := newNamespaceTree(rootNs)
 
@@ -546,13 +671,17 @@ func TestNamespaceTree(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, beforeSize-1, tree.size)
 
-	entries, err := tree.List("", false, false, map[string]bool{})
-	require.NoError(t, err)
-	require.Equal(t, 2, len(entries))
+	count := 0
+	require.NoError(t, tree.Walk("", false, func(n *namespace.Namespace) {
+		count++
+	}))
+	require.Equal(t, 2, count)
 
-	entries, err = tree.List("", true, true, map[string]bool{})
-	require.NoError(t, err)
-	require.Equal(t, tree.size, len(entries))
+	count = 0
+	require.NoError(t, tree.Walk("", true, func(n *namespace.Namespace) {
+		count++
+	}))
+	require.Equal(t, tree.size, count+1)
 
 	entry := tree.Get("ns1/")
 	require.NotNil(t, entry)
@@ -607,21 +736,21 @@ func BenchmarkNamespaceStore(b *testing.B) {
 	b.Run("GetNamespace", func(b *testing.B) {
 		for b.Loop() {
 			uuid := randomNamespace(s).UUID
-			s.GetNamespace(ctx, uuid)
+			_, _ = s.GetNamespace(ctx, uuid)
 		}
 	})
 
 	b.Run("GetNamespaceByAccessor", func(b *testing.B) {
 		for b.Loop() {
 			accessor := randomNamespace(s).ID
-			s.GetNamespaceByAccessor(ctx, accessor)
+			_, _ = s.GetNamespaceByAccessor(ctx, accessor)
 		}
 	})
 
 	b.Run("GetNamespaceByPath", func(b *testing.B) {
 		for b.Loop() {
 			path := randomNamespace(s).Path
-			s.GetNamespaceByPath(ctx, path)
+			_, _ = s.GetNamespaceByPath(ctx, path)
 		}
 	})
 
@@ -632,17 +761,11 @@ func BenchmarkNamespaceStore(b *testing.B) {
 		}
 	})
 
-	b.Run("ListAllNamespaces", func(b *testing.B) {
-		for b.Loop() {
-			_, _ = s.ListAllNamespaces(ctx, false, true)
-		}
-	})
-
 	b.Run("ListNamespaces non-recursive", func(b *testing.B) {
 		for b.Loop() {
 			parent := randomNamespace(s)
 			ctx = namespace.ContextWithNamespace(ctx, parent)
-			s.ListNamespaces(ctx, false, false)
+			_, _ = s.ListNamespaces(ctx, ListNamespaceOpts{})
 		}
 	})
 
@@ -650,14 +773,16 @@ func BenchmarkNamespaceStore(b *testing.B) {
 		for b.Loop() {
 			parent := randomNamespace(s)
 			ctx = namespace.ContextWithNamespace(ctx, parent)
-			s.ListNamespaces(ctx, false, true)
+			_, _ = s.ListNamespaces(ctx, ListNamespaceOpts{
+				Recursive: true,
+			})
 		}
 	})
 
 	b.Run("ResolveNamespaceFromRequest", func(b *testing.B) {
 		for b.Loop() {
 			ns := randomNamespace(s)
-			c.ResolveNamespaceFromRequest(ns.Path, "/sys/namespaces")
+			_, _ = c.ResolveNamespaceFromRequest(ns.Path, "/sys/namespaces")
 		}
 	})
 }
@@ -683,7 +808,7 @@ func BenchmarkClearNamespaceResources(b *testing.B) {
 
 	for b.Loop() {
 		ns := randomNamespace(s)
-		err := s.clearNamespaceResources(ctx, namespace.RootNamespace, ns, true)
+		err := s.clearNamespaceResources(ctx, ns, true)
 		require.NoError(b, err)
 	}
 }
@@ -728,6 +853,8 @@ func BenchmarkNamespace_Set(b *testing.B) {
 
 // TestNamespaces_ResolveNamespaceFromRequest verifies namespace resolution logic from request.
 func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
+	t.Parallel()
+
 	core, _, _ := TestCoreUnsealed(t)
 	nsStore := core.namespaceStore
 
@@ -841,6 +968,8 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 }
 
 func TestNamespaceStorage(t *testing.T) {
+	t.Parallel()
+
 	c, keys, root := TestCoreUnsealed(t)
 	s := c.namespaceStore
 
@@ -859,21 +988,21 @@ func TestNamespaceStorage(t *testing.T) {
 	require.Len(t, nsKeys, 2)
 	require.ElementsMatch(t, nsKeys, []string{namespaces[0].UUID, namespaces[1].UUID})
 
-	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[0].UUID, namespaceStoreSubPath)+"/")
+	nsKeys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, namespaces[0].UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Len(t, nsKeys, 1)
 	require.ElementsMatch(t, nsKeys, []string{namespaces[2].UUID})
 
-	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[1].UUID, namespaceStoreSubPath)+"/")
+	nsKeys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, namespaces[1].UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Len(t, nsKeys, 0)
 
-	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[2].UUID, namespaceStoreSubPath)+"/")
+	nsKeys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, namespaces[2].UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Len(t, nsKeys, 1)
 	require.ElementsMatch(t, nsKeys, []string{namespaces[3].UUID})
 
-	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[3].UUID, namespaceStoreSubPath)+"/")
+	nsKeys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, namespaces[3].UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Len(t, nsKeys, 0)
 
@@ -898,6 +1027,8 @@ func TestNamespaceStorage(t *testing.T) {
 }
 
 func TestNamespaceDeletionSealingInteraction(t *testing.T) {
+	t.Parallel()
+
 	c, keys, _ := TestCoreUnsealed(t)
 	s := c.namespaceStore
 	ctx := namespace.RootContext(t.Context())
@@ -969,12 +1100,14 @@ func TestNamespaceDeletionSealingInteraction(t *testing.T) {
 		require.NoError(t, s.SealNamespace(ctx, "ns3"))
 
 		_, err := s.DeleteNamespace(ctx, "ns3")
-		require.Error(t, err)
+		require.ErrorContains(t, err, "namespace is sealed")
 	})
 }
 
 func TestNamespaceSealResourcesLifecycle(t *testing.T) {
-	c, _, _ := TestCoreUnsealed(t)
+	t.Parallel()
+
+	c, _, rootToken := TestCoreUnsealed(t)
 	c.credentialBackends["approle"] = credAppRole.Factory
 	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		return &be.Noop{
@@ -988,6 +1121,12 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 	ns := &namespace.Namespace{Path: "ns1/"}
 	nsCtx := namespace.ContextWithNamespace(ctx, ns)
 	nsKeys := TestCoreCreateUnsealedNamespaces(t, c, ns)
+
+	ns2, _, err := c.namespaceStore.ModifyNamespaceByPath(nsCtx, "ns2/", nil, func(ctx context.Context, obj *namespace.Namespace) (*namespace.Namespace, error) {
+		return obj, nil
+	})
+	require.NoError(t, err)
+	require.NotNil(t, ns2)
 
 	tPolicy := `
 		name = "tPolicy"
@@ -1032,6 +1171,47 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 	require.NoError(t, c.loginMFABackend.PutMFALoginEnforcementConfig(nsCtx, eConfig, ns))
 	require.NoError(t, c.loginMFABackend.MemDBUpsertMFALoginEnforcementConfig(nsCtx, eConfig))
 
+	resp, err := c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/approle/role/testing",
+		Operation:   logical.CreateOperation,
+		ClientToken: rootToken,
+	})
+	require.NoError(t, err)
+	require.Nil(t, resp)
+
+	resp, err = c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/approle/role/testing/role-id",
+		Operation:   logical.ReadOperation,
+		ClientToken: rootToken,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "role_id")
+	roleId := resp.Data["role_id"].(string)
+
+	resp, err = c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/approle/role/testing/secret-id",
+		Operation:   logical.CreateOperation,
+		ClientToken: rootToken,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "secret_id")
+	secretId := resp.Data["secret_id"].(string)
+
+	authResp, err := c.HandleRequest(nsCtx, &logical.Request{
+		Path:      "auth/approle/login",
+		Operation: logical.CreateOperation,
+		Data: map[string]any{
+			"role_id":   roleId,
+			"secret_id": secretId,
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, authResp)
+
+	t.Logf("\n\nauth: %#v\n\n", authResp)
+
 	checkState := func() {
 		// policies
 		policies, err := c.policyStore.ListPolicies(nsCtx, policy.TypeACL, false)
@@ -1051,7 +1231,7 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 		// identity
 		counts, err := c.identityStore.CountEntitiesByNamespace(nsCtx)
 		require.NoError(t, err)
-		require.Equal(t, 1, counts[ns.ID])
+		require.Equal(t, 2, counts[ns.ID])
 
 		// mfa
 		mfaMethods, err := c.loginMFABackend.MfaMethodList(nsCtx, "")
@@ -1060,6 +1240,27 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 		enfConfigs, err := c.loginMFABackend.MfaLoginEnforcementList(nsCtx)
 		require.NoError(t, err)
 		require.Len(t, enfConfigs, 1)
+
+		// namespaces
+		childNs, err := c.namespaceStore.ListNamespaces(nsCtx, ListNamespaceOpts{
+			Recursive: true,
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, len(childNs))
+
+		// leases
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			found := false
+			c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+				key := keyRaw.(string)
+				if ns.MatchesID(key) {
+					found = true
+				}
+
+				return true
+			})
+			require.True(collect, found)
+		}, time.Second, 100*time.Millisecond)
 	}
 
 	checkState()
@@ -1107,4 +1308,829 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 
 	// verify after unseal
 	checkState()
+}
+
+func TestNamespaceSealManyLeases(t *testing.T) {
+	t.Parallel()
+
+	c, _, rootToken := TestCoreUnsealed(t)
+	c.credentialBackends["approle"] = credAppRole.Factory
+	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		return &be.Noop{
+			RequestHandler: func(context.Context, *logical.Request) (*logical.Response, error) {
+				return &logical.Response{
+					Secret: &logical.Secret{
+						LeaseOptions: logical.LeaseOptions{
+							TTL:       512 * time.Second,
+							Renewable: true,
+						},
+					},
+				}, nil
+			},
+			DefaultLeaseTTL: 512 * time.Second,
+			MaxLeaseTTL:     512 * time.Second,
+			BackendType:     logical.TypeLogical,
+		}, nil
+	}
+
+	s := c.namespaceStore
+	ctx := namespace.RootContext(t.Context())
+
+	nsCount := 8
+	childNsNames := []string{"foo", "bar"}
+	tokenCounts := 64
+
+	var listNs []*namespace.Namespace
+	namespaces := make(map[string]*namespace.Namespace)
+	nsContexts := make(map[string]context.Context)
+	for i := range nsCount {
+		name := fmt.Sprintf("ns%v/", i)
+		namespaces[name] = &namespace.Namespace{Path: name}
+		nsContexts[name] = namespace.ContextWithNamespace(ctx, namespaces[name])
+		listNs = append(listNs, namespaces[name])
+	}
+
+	nsKeys := TestCoreCreateUnsealedNamespaces(t, c, listNs...)
+
+	for parent := range nsCount {
+		parentName := fmt.Sprintf("ns%v/", parent)
+		parentCtx := nsContexts[parentName]
+		for child := range childNsNames {
+			childName := fmt.Sprintf("child-%v/", child)
+			childPath := parentName + childName
+
+			childNs, _, err := c.namespaceStore.ModifyNamespaceByPath(parentCtx, childName, nil, func(ctx context.Context, obj *namespace.Namespace) (*namespace.Namespace, error) {
+				return obj, nil
+			})
+			require.NoError(t, err)
+			require.NotNil(t, childNs)
+
+			namespaces[childPath] = childNs
+			nsContexts[childPath] = namespace.ContextWithNamespace(ctx, childNs)
+		}
+	}
+
+	var wg sync.WaitGroup
+	var leases sync.Map
+	var rootLeases sync.Map
+	var tokens sync.Map
+
+	for path, nsCtx := range nsContexts {
+		ns := namespaces[path]
+
+		tPolicy := `
+		name = "tpolicy"
+		path "*" {
+			policy = "sudo"
+		}
+	`
+		p, err := policy.ParseACLPolicy(ns, tPolicy)
+		require.NoError(t, err)
+		require.NoError(t, c.policyStore.SetPolicy(nsCtx, p, nil))
+
+		approleMe := &routing.MountEntry{
+			Table: routing.CredentialTableType,
+			Path:  "approle/",
+			Type:  "approle",
+		}
+		require.NoError(t, c.enableCredential(nsCtx, approleMe), "enabling for namespace: %v", path)
+
+		require.NoError(t, c.mount(nsCtx, &routing.MountEntry{
+			Table: routing.MountTableType,
+			Path:  "foo",
+			Type:  "noop",
+		}), "enabling for namespace: %v", path)
+
+		resp, err := c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "auth/approle/role/testing",
+			Operation:   logical.CreateOperation,
+			ClientToken: rootToken,
+			Data: map[string]any{
+				"token_policies": []string{"tpolicy"},
+			},
+		})
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		resp, err = c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "auth/approle/role/testing/role-id",
+			Operation:   logical.ReadOperation,
+			ClientToken: rootToken,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "role_id")
+		roleId := resp.Data["role_id"].(string)
+
+		resp, err = c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "auth/approle/role/testing/secret-id",
+			Operation:   logical.CreateOperation,
+			ClientToken: rootToken,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "secret_id")
+		secretId := resp.Data["secret_id"].(string)
+
+		for i := range tokenCounts {
+			wg.Go(func() {
+				authResp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:      "auth/approle/login",
+					Operation: logical.CreateOperation,
+					Data: map[string]any{
+						"role_id":   roleId,
+						"secret_id": secretId,
+					},
+				})
+				require.NoError(t, err, "failed to fetch approle token: %v", i)
+				require.NotNil(t, authResp, "failed to fetch approle token: %v", i)
+				require.NotNil(t, authResp.Auth, "failed to fetch approle token: %v", i)
+				require.NotEmpty(t, authResp.Auth.ClientToken, "failed to fetch approle token: %v", i)
+				require.Contains(t, authResp.Auth.Policies, "tpolicy")
+
+				secretResp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:        "foo/create",
+					Operation:   logical.CreateOperation,
+					ClientToken: authResp.Auth.ClientToken,
+				})
+				require.NoError(t, err, "failed to fetch secret lease with token: %v", i)
+				require.NotNil(t, secretResp, "failed to fetch secret lease with token: %v", i)
+				require.NotNil(t, secretResp.Secret, "failed to fetch secret lease with token: %v", i)
+				require.NotEmpty(t, secretResp.Secret.LeaseID, "failed to fetch secret lease with token: %v", i)
+
+				tokens.Store(authResp.Auth.ClientToken, secretResp.Secret.LeaseID)
+				leases.Store(secretResp.Secret.LeaseID, secretResp)
+			})
+		}
+
+		for i := range tokenCounts {
+			wg.Go(func() {
+				secretResp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:        "foo/create",
+					Operation:   logical.CreateOperation,
+					ClientToken: rootToken,
+				})
+				require.NoError(t, err, "failed to fetch secret lease: %v", i)
+				require.NotNil(t, secretResp, "failed to fetch secret lease: %v", i)
+				require.NotNil(t, secretResp.Secret, "failed to fetch secret lease: %v", i)
+				require.NotEmpty(t, secretResp.Secret.LeaseID, "failed to fetch secret lease: %v", i)
+
+				leases.Store(secretResp.Secret.LeaseID, secretResp)
+				rootLeases.Store(secretResp.Secret.LeaseID, secretResp)
+			})
+		}
+	}
+
+	wg.Wait()
+
+	checkState := func() {
+		for path, nsCtx := range nsContexts {
+			ns := namespaces[path]
+
+			// auth mounts
+			authMounts, err := c.auth.FindAllNamespaceMounts(nsCtx)
+			require.NoError(t, err, "for namespace: %v", path)
+			require.Len(t, authMounts, 2, "for namespace: %v", path)
+
+			// mounts
+			mounts, err := c.mounts.FindAllNamespaceMounts(nsCtx)
+			require.NoError(t, err, "for namespace: %v", path)
+			require.Len(t, mounts, 4, "for namespace: %v", path)
+
+			// leases
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				count := 0
+				c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+					key := keyRaw.(string)
+					if ns.MatchesID(key) {
+						count += 1
+					}
+
+					return true
+				})
+				require.GreaterOrEqual(collect, count, 2*tokenCounts)
+
+				leases.Range(func(leaseIdRaw any, _ any) bool {
+					leaseId := leaseIdRaw.(string)
+					if !ns.MatchesID(leaseId) {
+						return true
+					}
+
+					found := false
+					c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+						key := keyRaw.(string)
+						found = found || key == leaseId
+						return true
+					})
+					require.True(collect, found, "did not find expected lease: %v", leaseId)
+					return true
+				})
+			}, time.Second, 100*time.Millisecond)
+
+		}
+	}
+
+	checkState()
+
+	// verify after seal
+	for path := range nsKeys {
+		require.NoError(t, s.SealNamespace(ctx, path))
+	}
+
+	for path, keys := range nsKeys {
+		wg.Go(func() {
+			ns := namespaces[path]
+			for _, key := range keys {
+				unsealed, err := TestNamespaceUnseal(c, ns, key)
+				require.NoError(t, err)
+				if unsealed {
+					break
+				}
+			}
+		})
+	}
+
+	wg.Wait()
+
+	for path := range nsKeys {
+		ns := namespaces[path]
+		require.False(t, c.NamespaceSealed(ns))
+	}
+
+	// verify after unseal
+	checkState()
+
+	t.Logf("Revoking root-owned leases...")
+
+	// now renew and then revoke all root-owned leases
+	for path, nsCtx := range nsContexts {
+		ns := namespaces[path]
+
+		rootLeases.Range(func(leaseIdRaw any, _ any) bool {
+			leaseId := leaseIdRaw.(string)
+			if !ns.MatchesID(leaseId) {
+				return true
+			}
+
+			resp, err := c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "sys/leases/renew",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"lease_id": leaseId,
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+
+			resp, err = c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "sys/leases/revoke",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"lease_id": leaseId,
+				},
+			})
+			require.NoError(t, err)
+			require.Nil(t, resp)
+
+			return true
+		})
+	}
+
+	// now renew and then revoke all tokens and verify that the lease also
+	// got revoked
+	t.Logf("Revoking tokens...")
+	for path, nsCtx := range nsContexts {
+		ns := namespaces[path]
+
+		tokens.Range(func(tokenIdRaw any, leaseIdRaw any) bool {
+			tokenId := tokenIdRaw.(string)
+			tokenLeaseId := leaseIdRaw.(string)
+			if !ns.MatchesID(tokenId) {
+				return true
+			}
+
+			resp, err := c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "auth/token/renew",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"token": tokenId,
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+
+			resp, err = c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "auth/token/revoke",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"token": tokenId,
+				},
+			})
+			require.NoError(t, err)
+			require.Nil(t, resp)
+
+			// Try to look up the lease; this will be asynchronously deleted.
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				resp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:        "sys/leases/lookup",
+					Operation:   logical.CreateOperation,
+					ClientToken: rootToken,
+					Data: map[string]any{
+						"lease_id": tokenLeaseId,
+					},
+				})
+				require.Error(collect, err, "resp: %v", resp)
+			}, 25*time.Second, 10*time.Millisecond)
+
+			return true
+		})
+	}
+}
+
+func TestNamespaceManyLeases(t *testing.T) {
+	t.Parallel()
+
+	c, sealKeys, rootToken := TestCoreUnsealed(t)
+	c.credentialBackends["approle"] = credAppRole.Factory
+	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		return &be.Noop{
+			RequestHandler: func(context.Context, *logical.Request) (*logical.Response, error) {
+				return &logical.Response{
+					Secret: &logical.Secret{
+						LeaseOptions: logical.LeaseOptions{
+							TTL:       512 * time.Second,
+							Renewable: true,
+						},
+					},
+				}, nil
+			},
+			DefaultLeaseTTL: 512 * time.Second,
+			MaxLeaseTTL:     512 * time.Second,
+			BackendType:     logical.TypeLogical,
+		}, nil
+	}
+
+	ctx := namespace.RootContext(t.Context())
+
+	nsCount := 8
+	childNsNames := []string{"foo", "bar"}
+	tokenCounts := 64
+
+	var listNs []*namespace.Namespace
+	namespaces := make(map[string]*namespace.Namespace)
+	nsContexts := make(map[string]context.Context)
+	for i := range nsCount {
+		name := fmt.Sprintf("ns%v/", i)
+		namespaces[name] = &namespace.Namespace{Path: name}
+		nsContexts[name] = namespace.ContextWithNamespace(ctx, namespaces[name])
+		listNs = append(listNs, namespaces[name])
+	}
+
+	TestCoreCreateNamespaces(t, c, listNs...)
+
+	for parent := range nsCount {
+		parentName := fmt.Sprintf("ns%v/", parent)
+		parentCtx := nsContexts[parentName]
+		for child := range childNsNames {
+			childName := fmt.Sprintf("child-%v/", child)
+			childPath := parentName + childName
+
+			childNs, _, err := c.namespaceStore.ModifyNamespaceByPath(parentCtx, childName, nil, func(ctx context.Context, obj *namespace.Namespace) (*namespace.Namespace, error) {
+				return obj, nil
+			})
+			require.NoError(t, err)
+			require.NotNil(t, childNs)
+
+			namespaces[childPath] = childNs
+			nsContexts[childPath] = namespace.ContextWithNamespace(ctx, childNs)
+		}
+	}
+
+	var wg sync.WaitGroup
+	var leases sync.Map
+	var rootLeases sync.Map
+	var tokens sync.Map
+
+	for path, nsCtx := range nsContexts {
+		ns := namespaces[path]
+
+		tPolicy := `
+		name = "tpolicy"
+		path "*" {
+			policy = "sudo"
+		}
+	`
+		p, err := policy.ParseACLPolicy(ns, tPolicy)
+		require.NoError(t, err)
+		require.NoError(t, c.policyStore.SetPolicy(nsCtx, p, nil))
+
+		approleMe := &routing.MountEntry{
+			Table: routing.CredentialTableType,
+			Path:  "approle/",
+			Type:  "approle",
+		}
+		require.NoError(t, c.enableCredential(nsCtx, approleMe), "enabling for namespace: %v", path)
+
+		require.NoError(t, c.mount(nsCtx, &routing.MountEntry{
+			Table: routing.MountTableType,
+			Path:  "foo",
+			Type:  "noop",
+		}), "enabling for namespace: %v", path)
+
+		resp, err := c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "auth/approle/role/testing",
+			Operation:   logical.CreateOperation,
+			ClientToken: rootToken,
+			Data: map[string]any{
+				"token_policies": []string{"tpolicy"},
+			},
+		})
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		resp, err = c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "auth/approle/role/testing/role-id",
+			Operation:   logical.ReadOperation,
+			ClientToken: rootToken,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "role_id")
+		roleId := resp.Data["role_id"].(string)
+
+		resp, err = c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "auth/approle/role/testing/secret-id",
+			Operation:   logical.CreateOperation,
+			ClientToken: rootToken,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "secret_id")
+		secretId := resp.Data["secret_id"].(string)
+
+		for i := range tokenCounts {
+			wg.Go(func() {
+				authResp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:      "auth/approle/login",
+					Operation: logical.CreateOperation,
+					Data: map[string]any{
+						"role_id":   roleId,
+						"secret_id": secretId,
+					},
+				})
+				require.NoError(t, err, "failed to fetch approle token: %v", i)
+				require.NotNil(t, authResp, "failed to fetch approle token: %v", i)
+				require.NotNil(t, authResp.Auth, "failed to fetch approle token: %v", i)
+				require.NotEmpty(t, authResp.Auth.ClientToken, "failed to fetch approle token: %v", i)
+				require.Contains(t, authResp.Auth.Policies, "tpolicy")
+
+				secretResp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:        "foo/create",
+					Operation:   logical.CreateOperation,
+					ClientToken: authResp.Auth.ClientToken,
+				})
+				require.NoError(t, err, "failed to fetch secret lease with token: %v", i)
+				require.NotNil(t, secretResp, "failed to fetch secret lease with token: %v", i)
+				require.NotNil(t, secretResp.Secret, "failed to fetch secret lease with token: %v", i)
+				require.NotEmpty(t, secretResp.Secret.LeaseID, "failed to fetch secret lease with token: %v", i)
+
+				tokens.Store(authResp.Auth.ClientToken, secretResp.Secret.LeaseID)
+				leases.Store(secretResp.Secret.LeaseID, secretResp)
+			})
+		}
+
+		for i := range tokenCounts {
+			wg.Go(func() {
+				secretResp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:        "foo/create",
+					Operation:   logical.CreateOperation,
+					ClientToken: rootToken,
+				})
+				require.NoError(t, err, "failed to fetch secret lease: %v", i)
+				require.NotNil(t, secretResp, "failed to fetch secret lease: %v", i)
+				require.NotNil(t, secretResp.Secret, "failed to fetch secret lease: %v", i)
+				require.NotEmpty(t, secretResp.Secret.LeaseID, "failed to fetch secret lease: %v", i)
+
+				leases.Store(secretResp.Secret.LeaseID, secretResp)
+				rootLeases.Store(secretResp.Secret.LeaseID, secretResp)
+			})
+		}
+	}
+
+	wg.Wait()
+
+	checkState := func() {
+		for path, nsCtx := range nsContexts {
+			ns := namespaces[path]
+
+			// auth mounts
+			authMounts, err := c.auth.FindAllNamespaceMounts(nsCtx)
+			require.NoError(t, err, "for namespace: %v", path)
+			require.Len(t, authMounts, 2, "for namespace: %v", path)
+
+			// mounts
+			mounts, err := c.mounts.FindAllNamespaceMounts(nsCtx)
+			require.NoError(t, err, "for namespace: %v", path)
+			require.Len(t, mounts, 4, "for namespace: %v", path)
+
+			// leases
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				count := 0
+				c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+					key := keyRaw.(string)
+					if ns.MatchesID(key) {
+						count += 1
+					}
+
+					return true
+				})
+				require.GreaterOrEqual(collect, count, 2*tokenCounts)
+
+				leases.Range(func(leaseIdRaw any, _ any) bool {
+					leaseId := leaseIdRaw.(string)
+					if !ns.MatchesID(leaseId) {
+						return true
+					}
+
+					found := false
+					c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+						key := keyRaw.(string)
+						found = found || key == leaseId
+						return true
+					})
+					require.True(collect, found, "did not find expected lease: %v", leaseId)
+					return true
+				})
+			}, time.Second, 100*time.Millisecond)
+
+		}
+	}
+
+	checkState()
+
+	// verify after seal
+	require.NoError(t, TestCoreSeal(c))
+	for _, key := range sealKeys {
+		_, err := TestCoreUnseal(c, key)
+		require.NoError(t, err)
+	}
+	require.NotNil(t, sealKeys)
+
+	// verify after unseal
+	checkState()
+
+	t.Logf("Revoking root-owned leases...")
+
+	// now renew and then revoke all root-owned leases
+	for path, nsCtx := range nsContexts {
+		ns := namespaces[path]
+
+		rootLeases.Range(func(leaseIdRaw any, _ any) bool {
+			leaseId := leaseIdRaw.(string)
+			if !ns.MatchesID(leaseId) {
+				return true
+			}
+
+			resp, err := c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "sys/leases/renew",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"lease_id": leaseId,
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+
+			resp, err = c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "sys/leases/revoke",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"lease_id": leaseId,
+				},
+			})
+			require.NoError(t, err)
+			require.Nil(t, resp)
+
+			return true
+		})
+	}
+
+	// now renew and then revoke all tokens and verify that the lease also
+	// got revoked
+	t.Logf("Revoking tokens...")
+	for path, nsCtx := range nsContexts {
+		ns := namespaces[path]
+
+		tokens.Range(func(tokenIdRaw any, leaseIdRaw any) bool {
+			tokenId := tokenIdRaw.(string)
+			tokenLeaseId := leaseIdRaw.(string)
+			if !ns.MatchesID(tokenId) {
+				return true
+			}
+
+			resp, err := c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "auth/token/renew",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"token": tokenId,
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+
+			resp, err = c.HandleRequest(nsCtx, &logical.Request{
+				Path:        "auth/token/revoke",
+				Operation:   logical.CreateOperation,
+				ClientToken: rootToken,
+				Data: map[string]any{
+					"token": tokenId,
+				},
+			})
+			require.NoError(t, err)
+			require.Nil(t, resp)
+
+			// Try to look up the lease.
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				resp, err := c.HandleRequest(nsCtx, &logical.Request{
+					Path:        "sys/leases/lookup",
+					Operation:   logical.CreateOperation,
+					ClientToken: rootToken,
+					Data: map[string]any{
+						"lease_id": tokenLeaseId,
+					},
+				})
+				require.Error(collect, err, "resp: %v", resp)
+			}, 50*time.Second, 10*time.Millisecond)
+
+			return true
+		})
+	}
+}
+
+func TestNamespaceSealedLeaseTokenRevoke(t *testing.T) {
+	t.Parallel()
+
+	c, sealKeys, rootToken := TestCoreUnsealed(t)
+	c.credentialBackends["approle"] = credAppRole.Factory
+	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		return &be.Noop{
+			// This is safe as this is not multi-threaded.
+			Response: &logical.Response{
+				Secret: &logical.Secret{
+					LeaseOptions: logical.LeaseOptions{
+						TTL:       512 * time.Second,
+						Renewable: true,
+					},
+				},
+			},
+			DefaultLeaseTTL: 512 * time.Second,
+			MaxLeaseTTL:     512 * time.Second,
+			BackendType:     logical.TypeLogical,
+		}, nil
+	}
+
+	ctx := namespace.RootContext(t.Context())
+
+	ns := &namespace.Namespace{Path: "ns1/"}
+	nsCtx := namespace.ContextWithNamespace(ctx, ns)
+	nsKeys := TestCoreCreateUnsealedNamespaces(t, c, ns)
+	require.NotEmpty(t, nsKeys)
+
+	tPolicy := `
+		name = "tpolicy"
+		path "*" {
+			policy = "sudo"
+		}
+	`
+	p, err := policy.ParseACLPolicy(ns, tPolicy)
+	require.NoError(t, err)
+	require.NoError(t, c.policyStore.SetPolicy(nsCtx, p, nil))
+
+	approleMe := &routing.MountEntry{
+		Table: routing.CredentialTableType,
+		Path:  "approle/",
+		Type:  "approle",
+	}
+	require.NoError(t, c.enableCredential(nsCtx, approleMe), "enabling for namespace: %v", ns.Path)
+
+	require.NoError(t, c.mount(nsCtx, &routing.MountEntry{
+		Table: routing.MountTableType,
+		Path:  "foo",
+		Type:  "noop",
+	}), "enabling for namespace: %v", ns.Path)
+
+	resp, err := c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/approle/role/testing",
+		Operation:   logical.CreateOperation,
+		ClientToken: rootToken,
+		Data: map[string]any{
+			"token_policies": []string{"tpolicy"},
+		},
+	})
+	require.NoError(t, err)
+	require.Nil(t, resp)
+
+	resp, err = c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/approle/role/testing/role-id",
+		Operation:   logical.ReadOperation,
+		ClientToken: rootToken,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "role_id")
+	roleId := resp.Data["role_id"].(string)
+
+	resp, err = c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/approle/role/testing/secret-id",
+		Operation:   logical.CreateOperation,
+		ClientToken: rootToken,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "secret_id")
+	secretId := resp.Data["secret_id"].(string)
+
+	authResp, err := c.HandleRequest(nsCtx, &logical.Request{
+		Path:      "auth/approle/login",
+		Operation: logical.CreateOperation,
+		Data: map[string]any{
+			"role_id":   roleId,
+			"secret_id": secretId,
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, authResp)
+	require.NotNil(t, authResp.Auth)
+	require.NotEmpty(t, authResp.Auth.ClientToken)
+	require.Contains(t, authResp.Auth.Policies, "tpolicy")
+
+	secretResp, err := c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "foo/create",
+		Operation:   logical.CreateOperation,
+		ClientToken: authResp.Auth.ClientToken,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, secretResp)
+	require.NotNil(t, secretResp.Secret)
+	require.NotEmpty(t, secretResp.Secret.LeaseID)
+
+	// verify after seal
+	require.NoError(t, TestCoreSeal(c))
+	for _, key := range sealKeys {
+		_, err := TestCoreUnseal(c, key)
+		require.NoError(t, err)
+	}
+	require.NotNil(t, sealKeys)
+
+	for _, key := range nsKeys["ns1/"] {
+		unsealed, err := TestNamespaceUnseal(c, ns, key)
+		require.NoError(t, err)
+		if unsealed {
+			break
+		}
+	}
+
+	t.Logf("Revoking tokens...")
+
+	resp, err = c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/token/renew",
+		Operation:   logical.CreateOperation,
+		ClientToken: rootToken,
+		Data: map[string]any{
+			"token": authResp.Auth.ClientToken,
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	resp, err = c.HandleRequest(nsCtx, &logical.Request{
+		Path:        "auth/token/revoke",
+		Operation:   logical.CreateOperation,
+		ClientToken: rootToken,
+		Data: map[string]any{
+			"token": authResp.Auth.ClientToken,
+		},
+	})
+	require.NoError(t, err)
+	require.Nil(t, resp)
+
+	// Try to look up the lease.
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		resp, err := c.HandleRequest(nsCtx, &logical.Request{
+			Path:        "sys/leases/lookup",
+			Operation:   logical.CreateOperation,
+			ClientToken: rootToken,
+			Data: map[string]any{
+				"lease_id": secretResp.Secret.LeaseID,
+			},
+		})
+		require.Error(collect, err, "resp: %v", resp)
+	}, 25*time.Second, 10*time.Millisecond)
 }

@@ -209,9 +209,7 @@ func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 
 	// If the seal configuration is missing, we are not initialized
 	if valueBytes == nil {
-		if d.logger.IsInfo() {
-			d.logger.Info("seal configuration missing, not initialized", "seal_type", sealType)
-		}
+		d.logger.Info("seal configuration missing, not initialized", "seal_type", sealType)
 		return nil, nil
 	}
 

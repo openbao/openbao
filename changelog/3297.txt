@@ -1,0 +1,8 @@
+```release-note:feature
+**Namespace Sealing**: Allow Shamir seal configuration on namespace creation.
+ - Partitions tenant storage with distinct cryptographic key material.
+ - Allows tenants to revoke access to their namespace via seal operation
+   without impacting other tenants.
+ - Uses global synchronization of namespace seal status, allowing easier
+   management from multi-node deployments.
+```

@@ -221,7 +221,6 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 		t.Fatal("seal configuration is nil")
 	}
 
-	newConf.Nonce = rkconf.Nonce
 	if !reflect.DeepEqual(sealConf, newConf) {
 		t.Fatalf("\nexpected: %#v\nactual: %#v\nexpType: %s\nrecovery: %t", newConf, sealConf, expType, recovery)
 	}
@@ -251,7 +250,6 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	}
 
 	// Start another rekey, this time we require a quorum!
-
 	newConf = &SealConfig{
 		Type:            expType,
 		SecretThreshold: 1,
@@ -319,7 +317,6 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 		t.Fatalf("err: %v", err)
 	}
 
-	newConf.Nonce = rkconf.Nonce
 	if !reflect.DeepEqual(sealConf, newConf) {
 		t.Fatalf("bad: %#v", sealConf)
 	}

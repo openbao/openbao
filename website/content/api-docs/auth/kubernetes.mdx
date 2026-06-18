@@ -129,6 +129,10 @@ entities attempting to login.
   names able to access this role. If set to "\*" all names are allowed.
 - `bound_service_account_namespaces` `(array: <required>)` - List of namespaces
   allowed to access this role. If set to "\*" all namespaces are allowed.
+- `bound_service_account_namespace_selector` `(string: "")` - A label selector for Kubernetes namespaces 
+  which are allowed to access this role. Accepts either a JSON or YAML object. To use label selectors, OpenBao
+  must have read permission for namespaces in the Kubernetes cluster. If set with `bound_service_account_namespaces`, the 
+  conditions are `OR`ed.
 - `audience` `(string: "")` <a name="audience"></a> - Optional Audience claim to verify in the JWT.
 - `alias_name_source` `(string: "serviceaccount_uid")` - Configures how identity aliases are generated.
   Valid choices are: `serviceaccount_uid`, `serviceaccount_name`

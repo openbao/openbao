@@ -23,18 +23,18 @@ import (
 
 var builtinWrappers = map[wrapping.WrapperType]builtinWrapper{
 	// Standards-based or generic:
-	wrapping.WrapperTypeKmip:    {toWrapper(kmip.NewWrapper), false},
-	wrapping.WrapperTypeStatic:  {toWrapper(static.NewWrapper), false},
-	wrapping.WrapperTypeTransit: {toWrapper(transit.NewWrapper), false},
+	kmip.Type:    {toWrapper(kmip.NewWrapper), false},
+	static.Type:  {toWrapper(static.NewWrapper), false},
+	transit.Type: {toWrapper(transit.NewWrapper), false},
 
 	// Cloud providers:
-	wrapping.WrapperTypeAliCloudKms:   {toWrapper(alicloudkms.NewWrapper), true},
-	wrapping.WrapperTypeAwsKms:        {toWrapper(awskms.NewWrapper), true},
-	wrapping.WrapperTypeAzureKeyVault: {toWrapper(azurekeyvault.NewWrapper), true},
-	wrapping.WrapperTypeGcpCkms:       {toWrapper(gcpckms.NewWrapper), true},
-	wrapping.WrapperTypeOciKms:        {toWrapper(ocikms.NewWrapper), true},
+	alicloudkms.Type:   {toWrapper(alicloudkms.NewWrapper), true},
+	awskms.Type:        {toWrapper(awskms.NewWrapper), true},
+	azurekeyvault.Type: {toWrapper(azurekeyvault.NewWrapper), true},
+	gcpckms.Type:       {toWrapper(gcpckms.NewWrapper), true},
+	ocikms.Type:        {toWrapper(ocikms.NewWrapper), true},
 
-	wrapping.WrapperTypePkcs11: {func() (wrapping.Wrapper, error) {
+	"pkcs11": {func() (wrapping.Wrapper, error) {
 		// The real wrapper is conditionally enabled pkcs11.go.
 		return nil, errors.New("this build of OpenBao has PKCS#11 disabled")
 	}, false},
@@ -212,7 +212,7 @@ func (w *wrapper) reload(ctx context.Context, canary *client) error {
 	}
 	if w.initOpts != nil {
 		// Replay Init if it was called on the original wrapper.
-		if err := wrapper.Init(ctx, w.configOpts...); err != nil {
+		if err := wrapper.Init(ctx, w.initOpts...); err != nil {
 			return err
 		}
 	}

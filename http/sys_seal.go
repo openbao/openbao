@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"io"
 	"net/http"
 
 	"github.com/hashicorp/errwrap"
@@ -88,7 +89,7 @@ func handleSysUnseal(core *vault.Core) http.Handler {
 
 		// Parse the request
 		var req UnsealRequest
-		if err := parseJSONRequest(r, w, &req); err != nil {
+		if err := parseJSONRequest(r, &req); err != nil && !errors.Is(err, io.EOF) {
 			respondError(w, http.StatusBadRequest, err)
 			return
 		}

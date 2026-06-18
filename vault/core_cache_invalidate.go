@@ -35,11 +35,15 @@ func (c *Core) Invalidate(key ...string) {
 	c.invalidations.Add(key...)
 }
 
-func (c *Core) invalidateSynchronous(key string) {
+func (c *Core) invalidateSynchronous(key string) error {
 	job, _ := c.invalidations.buildInvalidateJobForKey(make(chan struct{}), context.Background(), key)
+
 	if err := job.Execute(); err != nil {
 		job.OnFailure(err)
+		return err
 	}
+
+	return nil
 }
 
 // invalidationManager is a long-lived subset of Core which is used to handle
@@ -356,6 +360,18 @@ func (ij *invalidationJob) Execute() error {
 		return nil
 	}
 
+	nsBarrier := ij.im.core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+	if nsBarrier.Namespace().UUID != namespace.RootNamespaceUUID && nsBarrier.Sealed() {
+		// When the parent namespace is sealed, ignore the request: this
+		// means we're unable to process the invalidation regardless of
+		// what the actual invalidated entry is. Only when this parent
+		// namespace becomes unsealed can we process changes to data within
+		// it. Notably, the namespace entry for a sealed namespace sits in
+		// the namespace above it, so it is not its own parent and thus will
+		// be correctly invalidated.
+		return nil
+	}
+
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 
 	// Lastly, create a short version of the context for plugin invalidations.
@@ -363,29 +379,28 @@ func (ij *invalidationJob) Execute() error {
 	defer shortCancel()
 
 	// Now handle the actual event.
-	key := ij.nsKey
 	switch {
-	case strings.HasPrefix(key, namespaceStoreSubPath):
+	case strings.HasPrefix(ij.nsKey, namespaceStoreSubPath):
 		ij.fatal = true
 		return ij.namespaceInvalidation(ctx)
-	case strings.HasPrefix(key, barrier.SystemBarrierPrefix+policy.ACLSubPath):
+	case strings.HasPrefix(ij.nsKey, barrier.SystemBarrierPrefix+policy.ACLSubPath):
 		// Policy invalidation is not fatal as it contains a LRU cache: we
 		// know removal is strict and it is only potentially preloading an
 		// entry which may err.
 		return ij.policyInvalidation(ctx)
-	case strings.HasPrefix(key, barrier.SystemBarrierPrefix+quotas.StoragePrefix):
+	case strings.HasPrefix(ij.nsKey, barrier.SystemBarrierPrefix+quotas.StoragePrefix):
 		ij.fatal = true
 		return ij.quotaInvalidation(ctx)
-	case key == coreAuditConfigPath || key == coreLocalAuditConfigPath:
+	case ij.nsKey == coreAuditConfigPath || ij.nsKey == coreLocalAuditConfigPath:
 		ij.fatal = true
 		return ij.auditInvalidation(ctx)
-	case isLegacyMountPath(key):
+	case isLegacyMountPath(ij.nsKey):
 		ij.fatal = true
 		return ij.legacyMountInvalidation(ctx)
-	case isTransactionalMountPath(key):
+	case isTransactionalMountPath(ij.nsKey):
 		ij.fatal = true
 		return ij.transactionalMountInvalidation(ctx)
-	case isKeyringPath(key):
+	case isKeyringPath(ij.nsKey):
 		// The HA subsystem handles keyring rotations via the
 		// periodicCheckKeyUpgrades(...) actor.
 	case strings.HasPrefix(ij.key, coreLeaderPrefix):
@@ -400,7 +415,7 @@ func (ij *invalidationJob) Execute() error {
 	case strings.HasPrefix(ij.key, "autopilot/") || ij.key == raftAutopilotConfigurationStoragePath:
 		// Raft context is reloaded when a standby becomes active, so it is
 		// safe to ignore changes to autopilot state.
-	case isLoginMFA(ij.key):
+	case isLoginMFA(ij.nsKey):
 		ij.fatal = true
 		return ij.loginMFAInvalidation(ctx, ns)
 	case ij.im.core.router.Invalidate(shortCtx, ij.key):
@@ -416,7 +431,7 @@ func (ij *invalidationJob) Execute() error {
 		//
 		// This is true in reverse for deletions.
 	default:
-		ij.im.dispacherLogger.Warn("no mechanism to invalidate cache for specified key", "key", key)
+		ij.im.dispacherLogger.Warn("no mechanism to invalidate cache for specified key", "key", ij.nsKey, "full_key", ij.key)
 	}
 
 	return nil
@@ -456,6 +471,17 @@ func (ij *invalidationJob) namespaceInvalidation(ctx context.Context) error {
 	case beforeNs != nil && beforeErr == nil:
 		preferredNs = beforeNs
 		deleted = true
+	}
+
+	nsBarrier := ij.im.core.sealManager.NamespaceBarrierByLongestPrefix(preferredNs.Path)
+	if nsBarrier.Sealed() {
+		// Namespace is sealed; nothing more we can do with it.
+		return nil
+	} else if preferredNs.ManuallySealed {
+		// Namespace was manually sealed but we're not actually sealed locally;
+		// seal it.
+		ij.im.dispacherLogger.Info("sealing manually sealed namespace", "path", preferredNs.Path, "uuid", preferredNs.UUID)
+		return ij.im.core.namespaceStore.SealNamespace(ctx, preferredNs.Path)
 	}
 
 	childCtx := namespace.ContextWithNamespace(ctx, preferredNs)
@@ -564,7 +590,7 @@ func (im *invalidationManager) splitNamespaceFromKey(key string) (string, string
 	namespaceUUID := namespace.RootNamespaceUUID
 	namespacedKey := key
 
-	if keySuffix, ok := strings.CutPrefix(key, namespaceBarrierPrefix); ok {
+	if keySuffix, ok := strings.CutPrefix(key, barrier.NamespacePrefix); ok {
 		namespaceUUID, namespacedKey, _ = strings.Cut(keySuffix, "/")
 	}
 

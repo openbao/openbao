@@ -275,7 +275,7 @@ func (c *AgentCommand) Run(args []string) int {
 		// A customer could have a listener defined but only be using e.g. the cache-clear API,
 		// even though the API proxy is something they have available.
 		c.UI.Warn("==> Note: OpenBao Agent will be deprecating API proxy functionality in a future " +
-			"release, and this functionality has moved to a new subcommand, OpenBao proxy. If you rely on this " +
+			"release and this functionality has moved to a new subcommand, OpenBao proxy. If you rely on this " +
 			"functionality, plan to move to OpenBao Proxy instead.")
 	}
 

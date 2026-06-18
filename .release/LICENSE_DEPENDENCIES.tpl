@@ -5,14 +5,16 @@ license terms. These dependencies are managed via the `go.mod` and
 `go.sum` files, and included in the source tarball.
 
 The dependencies and their licenses are as follows:
-
-{{ range . }}
+{{- range . }}
 
 ## {{ .Name }}
 
 **License:** {{ .LicenseName }}
 
+{{- if ne .LicensePath "Unknown" }}
+
 ```
 {{ .LicenseText }}
 ```
-{{ end }}
+{{- end -}}
+{{- end -}}

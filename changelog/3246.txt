@@ -1,0 +1,3 @@
+```release-note:bug
+auth/mfa: Correctly forward two-phase MFA validations on standby nodes
+```

@@ -1,0 +1,16 @@
+```release-note:change
+releases: Checksums are now provided as a single, consolidated `checksums.txt`
+artifact opposed to per-OS checksum files such as `checksums-linux.txt`.
+```
+
+```release-note:change
+releases: Artifacts on GitHub now follow consistent naming across archives,
+SBOMs and signatures. Most notably, "x86_64" or "amd64" is now always "amd64",
+and the operating system is always lowercased.
+```
+
+```release-note:deprecation
+packaging/container: Architecture-specific container image tags such as
+`openbao/openbao:2.6.0-arm64` will not be published starting with this release.
+Refer to multi-arch container images instead (Simply `openbao/openbao:2.6.0`).
+```

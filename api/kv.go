@@ -21,10 +21,26 @@ var ErrSecretNotFound = errors.New("secret not found")
 // The Raw field can be inspected for information about the lease,
 // and passed to a LifetimeWatcher object for periodic renewal.
 type KVSecret struct {
-	Data            map[string]interface{}
+	Data            map[string]any
 	VersionMetadata *KVVersionMetadata
-	CustomMetadata  map[string]interface{}
+	CustomMetadata  map[string]any
 	Raw             *Secret
+}
+
+// A KVList is a list of secrets returned by OpenBao's KV secrets engine.
+//
+// Keys contains a list of sub-keys of the path, while metadata contains the
+// metadata for every sub-key as a map.
+// The Metadata field for a KV v1 list response will always be nil, as metadata
+// is only supported starting in KV v2. For KV v2 the Metadata will only be
+// available if requested explicitly (i.e. via `ListWithDetails` or
+// `ScanWithDetails`).
+//
+// The Raw field can be used to access e.g. the request id.
+type KVList struct {
+	Keys     []string
+	Metadata map[string]*KVMetadata
+	Raw      *Secret
 }
 
 // KVv1 is used to return a client for reads and writes against

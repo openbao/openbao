@@ -94,13 +94,14 @@ type CreateNamespaceOutput struct {
 	Locked         bool              `json:"locked"`
 	CustomMetadata map[string]string `json:"custom_metadata"`
 	KeyShares      []string          `json:"key_shares"`
+	KeyThreshold   int               `json:"key_threshold"`
 }
 
 // PatchNamespaceInput is the input for the PatchNamespace operation.
 // CustomMetadata values can be string to add or modify a key, or nil to remove
 // a key.
 type PatchNamespaceInput struct {
-	CustomMetadata map[string]interface{} `json:"custom_metadata"`
+	CustomMetadata map[string]interface{} `json:"custom_metadata" mapstructure:"custom_metadata"`
 }
 
 // PatchNamespaceOutput is returned by PatchNamespace.
@@ -110,7 +111,7 @@ type PatchNamespaceOutput struct {
 	Path           string            `json:"path"`
 	Tainted        bool              `json:"tainted"`
 	Locked         bool              `json:"locked"`
-	CustomMetadata map[string]string `json:"custom_metadata"`
+	CustomMetadata map[string]string `json:"custom_metadata" mapstructure:"custom_metadata"`
 }
 
 // ReadNamespaceOutput is returned by ReadNamespace.
@@ -130,12 +131,12 @@ type DeleteNamespaceOutput struct {
 
 // ListNamespaceOutput is returned by ListNamespaces for each namespace entry.
 type ListNamespaceOutput struct {
-	UUID           string            `json:"uuid"`
-	ID             string            `json:"id"`
-	Path           string            `json:"path"`
-	Tainted        bool              `json:"tainted"`
-	Locked         bool              `json:"locked"`
-	CustomMetadata map[string]string `json:"custom_metadata"`
+	UUID           string            `json:"uuid" mapstructure:"uuid"`
+	ID             string            `json:"id" mapstructure:"id"`
+	Path           string            `json:"path" mapstructure:"path"`
+	Tainted        bool              `json:"tainted" mapstructure:"tainted"`
+	Locked         bool              `json:"locked" mapstructure:"locked"`
+	CustomMetadata map[string]string `json:"custom_metadata" mapstructure:"custom_metadata"`
 }
 
 // ListNamespaces lists all child namespaces relative to the current namespace.
@@ -145,43 +146,17 @@ func (c *Sys) ListNamespaces() (map[string]*ListNamespaceOutput, error) {
 
 // ListNamespacesWithContext lists all child namespaces relative to the current namespace.
 func (c *Sys) ListNamespacesWithContext(ctx context.Context) (map[string]*ListNamespaceOutput, error) {
-	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
-	defer cancelFunc()
-
-	r := c.c.NewRequest(http.MethodGet, "/v1/sys/namespaces/")
-	r.Params.Set("list", "true")
-
-	resp, err := c.c.rawRequestWithContext(ctx, r)
+	secret, err := c.c.Logical().ListWithContext(ctx, "sys/namespaces")
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close() //nolint:errcheck
 
-	secret, err := ParseSecret(resp.Body)
-	if err != nil {
-		return nil, err
-	}
 	if secret == nil || secret.Data == nil {
-		return nil, errors.New("data from server response is empty")
-	}
-
-	keyInfoRaw, ok := secret.Data["key_info"]
-	if !ok {
 		return map[string]*ListNamespaceOutput{}, nil
 	}
 
 	result := map[string]*ListNamespaceOutput{}
-	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		TagName: "json",
-		Result:  &result,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if err := decoder.Decode(keyInfoRaw); err != nil {
-		return nil, err
-	}
-	return result, nil
+	return result, mapstructure.Decode(secret.Data["key_info"], &result)
 }
 
 // CreateNamespace creates a new namespace with the given name.
@@ -235,28 +210,21 @@ func (c *Sys) PatchNamespaceWithContext(ctx context.Context, name string, i *Pat
 		return nil, errors.New("input must not be nil")
 	}
 
-	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
-	defer cancelFunc()
-
-	r := c.c.NewRequest(http.MethodPatch, fmt.Sprintf("/v1/sys/namespaces/%s", name))
-	r.Headers.Set("Content-Type", "application/merge-patch+json")
-	if err := r.SetJSONBody(i); err != nil {
-		return nil, err
+	var data map[string]interface{}
+	if err := mapstructure.Decode(i, &data); err != nil {
+		return nil, errors.New("couldn't decode input")
 	}
 
-	resp, err := c.c.rawRequestWithContext(ctx, r)
+	secret, err := c.c.Logical().JSONMergePatch(ctx, "sys/namespaces/"+name, data)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close() //nolint:errcheck
 
 	var result struct {
 		Data *PatchNamespaceOutput
 	}
-	if err := resp.DecodeJSON(&result); err != nil {
-		return nil, err
-	}
-	return result.Data, nil
+
+	return result.Data, mapstructure.Decode(secret, &result)
 }
 
 // DeleteNamespace removes the namespace with the given name.
@@ -324,4 +292,30 @@ func (c *Sys) ReadNamespaceWithContext(ctx context.Context, name string) (*ReadN
 		return nil, err
 	}
 	return result.Data, nil
+}
+
+// NamespaceSealStatus returns information about the seal status of the namespace with the given name.
+func (c *Sys) NamespaceSealStatus(name string) (*NamespaceSealStatusOutput, error) {
+	return c.NamespaceSealStatusWithContext(context.Background(), name)
+}
+
+// NamespaceSealStatusWithContext returns information about the seal status of the namespace with the given name.
+func (c *Sys) NamespaceSealStatusWithContext(ctx context.Context, name string) (*NamespaceSealStatusOutput, error) {
+	if name == "" || name == "/" {
+		return nil, errors.New("name must not be empty")
+	}
+
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	secret, err := c.c.Logical().ReadWithContext(ctx, "sys/namespaces/"+name+"/seal-status")
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Data *NamespaceSealStatusOutput
+	}
+
+	return result.Data, mapstructure.Decode(secret, &result)
 }

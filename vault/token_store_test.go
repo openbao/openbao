@@ -1308,7 +1308,7 @@ func TestTokenStore_CreateLookup_ExpirationInRestoreMode(t *testing.T) {
 
 	// Reset expiration manager to restore mode
 	ts.expiration.restoreModeLock.Lock()
-	ts.expiration.restoreMode.Store(true)
+	ts.expiration.restoreMode.Add(1)
 	ts.expiration.restoreLocks = locksutil.CreateLocks()
 	ts.expiration.restoreModeLock.Unlock()
 

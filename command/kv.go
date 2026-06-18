@@ -24,8 +24,8 @@ func (c *KVCommand) Help() string {
 Usage: bao kv <subcommand> [options] [args]
 
   This command has subcommands for interacting with OpenBao's key-value
-  store. Here are some simple examples, and more detailed examples are
-  available in the subcommands or the documentation.
+  store. Here are some simple examples; more detailed examples are available
+  in the subcommands or the documentation.
 
   Create or update the key named "foo" in the "secret" mount with the value
   "bar=baz":

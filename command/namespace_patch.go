@@ -5,6 +5,7 @@ package command
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/cli"
@@ -124,6 +125,10 @@ func (c *NamespacePatchCommand) Run(args []string) int {
 		CustomMetadata: customMetadata,
 	})
 	if err != nil {
+		if re, ok := err.(*api.ResponseError); ok && re.StatusCode == http.StatusNotFound {
+			c.UI.Error("Namespace not found")
+			return 2
+		}
 		c.UI.Error(fmt.Sprintf("Error patching namespace: %s", err))
 		return 2
 	}

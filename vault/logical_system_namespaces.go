@@ -12,14 +12,13 @@ import (
 	"net/http"
 	"strings"
 
+	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
-
-var errNamespaceNotFound = errors.New("requested namespace does not exist")
 
 var namespacePathSchema = &framework.FieldSchema{
 	Type:        framework.TypeString,
@@ -74,6 +73,11 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			Type:        framework.TypeMap,
 			Required:    false,
 			Description: "Key shares used to combine into unseal/recovery key of the namespace.",
+		},
+		"key_threshold": {
+			Type:        framework.TypeInt,
+			Required:    false,
+			Description: "Number of keys required to reconstruct unseal/recovery key of the namespace.",
 		},
 	}
 
@@ -268,7 +272,9 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		entries, err := b.Core.namespaceStore.ListNamespaces(ctx, false, false)
+		entries, err := b.Core.namespaceStore.ListNamespaces(ctx, ListNamespaceOpts{
+			IncludeSealed: true,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -292,7 +298,10 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		entries, err := b.Core.namespaceStore.ListNamespaces(ctx, false, true)
+		entries, err := b.Core.namespaceStore.ListNamespaces(ctx, ListNamespaceOpts{
+			Recursive:     true,
+			IncludeSealed: true,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -312,10 +321,9 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 // handleNamespacesRead handles the "/sys/namespaces/<path>" endpoints to read a namespace.
 func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
-
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return nil, errors.New("path must not contain /")
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
 		}
 
 		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
@@ -334,10 +342,9 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 // handleNamespaceSet handles the "/sys/namespaces/<path>" endpoint to set a namespace.
 func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
-
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return logical.ErrorResponse("path must not contain /"), logical.ErrInvalidRequest
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
 		}
 
 		imetadata, ok := data.GetOk("custom_metadata")
@@ -414,69 +421,75 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 				encoded = append(encoded, hex.EncodeToString(share))
 			}
 			resp.Data["key_shares"] = encoded
+			resp.Data["key_threshold"] = sealConfig.SecretThreshold
 		}
 
 		return resp, nil
 	}
 }
 
-// customMetadataPatchPreprocessor is passed to framework.HandlePatchOperation within the handleNamespacesPatch handler.
-func customMetadataPatchPreprocessor(input map[string]interface{}) (map[string]interface{}, error) {
-	imetadata, ok := input["custom_metadata"]
-	var metadata map[string]interface{}
-	if ok {
-		metadata = imetadata.(map[string]interface{})
-		for _, v := range metadata {
-			// Allow nil values in addition to strings so keys can be removed.
-			if _, ok = v.(string); !ok && v != nil {
-				return nil, fmt.Errorf("custom_metadata values must be strings")
-			}
-		}
-	}
-	return metadata, nil
-}
-
 // handleNamespacesPatch handles the "/sys/namespace/<path>" endpoints to update a namespace's custom metadata.
 func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
-
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return nil, errors.New("path must not contain /")
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
 		}
 
-		if _, ok := data.Raw["custom_metadata"]; !ok {
-			return logical.ErrorResponse("request body must include custom_metadata"), logical.ErrInvalidRequest
+		patch, ok := data.Get("custom_metadata").(map[string]any)
+		if !ok {
+			return handleError(errors.New(`missing required field "custom_metadata"`))
+		}
+
+		for _, v := range patch {
+			switch v.(type) {
+			case string, nil:
+			default:
+				// This is also enforced by finally unmarshaling into a
+				// map[string]string post-patch, but we can validate earlier.
+				return handleError(fmt.Errorf("metadata patch can only have string or null values, got %T", v))
+			}
 		}
 
 		ns, _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, nil, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			if ns.UUID == "" {
-				return nil, errNamespaceNotFound
+				return nil, logical.CodedError(http.StatusNotFound, "namespace not found")
 			}
 
-			current := make(map[string]interface{})
-			for k, v := range ns.CustomMetadata {
-				current[k] = v
+			// Special case: An explicit nil/null patch clears metadata
+			// entirely. The jsonpatch library doesn't handle this because we're
+			// not calling it on the entire namespace object, but from the API
+			// caller's perspective this is valid RFC7396 behavior.
+			if patch == nil {
+				ns.CustomMetadata = nil
+				return ns, nil
 			}
 
-			patchedBytes, err := framework.HandlePatchOperation(data, current, customMetadataPatchPreprocessor)
+			// Do the merge patch.
+			docBytes, err := json.Marshal(ns.CustomMetadata)
+			if err != nil {
+				return nil, err
+			}
+			patchBytes, err := json.Marshal(patch)
+			if err != nil {
+				return nil, err
+			}
+			resultBytes, err := jsonpatch.MergePatch(docBytes, patchBytes)
 			if err != nil {
 				return nil, err
 			}
 
-			var patched map[string]string
-			if err = json.Unmarshal(patchedBytes, &patched); err != nil {
+			// Write back to the namespace.
+			var result map[string]string
+			if err := json.Unmarshal(resultBytes, &result); err != nil {
 				return nil, err
 			}
+			ns.CustomMetadata = result
 
-			ns.CustomMetadata = patched
 			return ns, nil
 		})
 		if err != nil {
-			if errors.Is(err, errNamespaceNotFound) {
-				return nil, logical.CodedError(http.StatusNotFound, "namespace not found")
-			}
-			return nil, fmt.Errorf("failed to modify namespace: %w", err)
+			return handleError(err)
 		}
 
 		return &logical.Response{Data: createNamespaceDataResponse(ns)}, nil
@@ -528,13 +541,12 @@ func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
 	}
 }
 
-// handleNamespacesDelete handles the "/sys/namespace/<path>" endpoint to delete a namespace.
+// handleNamespacesDelete handles the "/sys/namespaces/<path>" endpoint to delete a namespace.
 func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
-
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return nil, errors.New("path must not contain /")
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
 		}
 
 		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, path)

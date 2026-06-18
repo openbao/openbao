@@ -124,9 +124,7 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing max_parallel parameter: %w", err)
 		}
-		if logger.IsDebug() {
-			logger.Debug("max_parallel set", "max_parallel", maxParInt)
-		}
+		logger.Debug("max_parallel set", "max_parallel", maxParInt)
 	} else {
 		maxParInt = physical.DefaultParallelOperations
 	}
@@ -138,9 +136,7 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing transaction_max_parallel parameter: %w", err)
 		}
-		if logger.IsDebug() {
-			logger.Debug("transaction_max_parallel set", "transaction_max_parallel", txnMaxParInt)
-		}
+		logger.Debug("transaction_max_parallel set", "transaction_max_parallel", txnMaxParInt)
 	} else {
 		txnMaxParInt = physical.DefaultParallelTransactions
 	}
@@ -152,9 +148,7 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing max_idle_connections parameter: %w", err)
 		}
-		if logger.IsDebug() {
-			logger.Debug("max_idle_connections set", "max_idle_connections", maxIdleConnsStr)
-		}
+		logger.Debug("max_idle_connections set", "max_idle_connections", maxIdleConnsStr)
 	}
 
 	// Set maximum retries for DB connection liveness check on startup.
@@ -165,9 +159,7 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing max_connect_retries parameter: %w", err)
 		}
-		if logger.IsDebug() {
-			logger.Debug("max_connect_retries set", "max_connect_retries", maxRetriesInt)
-		}
+		logger.Debug("max_connect_retries set", "max_connect_retries", maxRetriesInt)
 	} else {
 		maxRetriesInt = 1
 	}

@@ -58,7 +58,7 @@ func (b *backend) pathTrimUpdate() framework.OperationFunc {
 
 		name := d.Get("name").(string)
 
-		p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
+		p, _, err := b.GetPolicyExclusive(ctx, keysutil.PolicyRequest{
 			Storage: req.Storage,
 			Name:    name,
 		}, b.GetRandomReader())
@@ -67,9 +67,6 @@ func (b *backend) pathTrimUpdate() framework.OperationFunc {
 		}
 		if p == nil {
 			return logical.ErrorResponse("invalid key name"), logical.ErrInvalidRequest
-		}
-		if !b.System().CachingDisabled() {
-			p.Lock(true)
 		}
 		defer p.Unlock()
 

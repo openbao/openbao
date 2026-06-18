@@ -843,9 +843,7 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 
 	}
 	if !disableClustering {
-		if c.logger.IsDebug() {
-			c.logger.Debug("cluster listener addresses synthesized", "cluster_addresses", clusterAddrs)
-		}
+		c.logger.Debug("cluster listener addresses synthesized", "cluster_addresses", clusterAddrs)
 	}
 	return 0, lns, clusterAddrs, nil
 }

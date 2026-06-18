@@ -12,269 +12,209 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	uuid "github.com/hashicorp/go-uuid"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/openbao/openbao/sdk/v2/physical"
-	"github.com/openbao/openbao/vault/seal"
+	"github.com/openbao/openbao/vault/barrier"
+	vaultseal "github.com/openbao/openbao/vault/seal"
 )
 
-// RotationConfig is used to read the rotation configuration
-func (c *Core) RotationConfig(recovery bool) *SealConfig {
-	c.rotationLock.Lock()
-	defer c.rotationLock.Unlock()
+// These variables hold the config and shares we have until we reach
+// enough to verify the appropriate root key.
+type rotationConfig struct {
+	rootConfig     *SealConfig
+	recoveryConfig *SealConfig
+}
 
-	// Copy the specified seal config
+// RotationConfig acquires a read lock and reads the rotation config of
+// a given namespace.
+func (sm *SealManager) RotationConfig(nsUUID string, recovery bool) *SealConfig {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+	return sm.rotationConfig(nsUUID, recovery)
+}
+
+// RotationConfig returns the rotation config of the namespace
+// with the given UUID.
+func (sm *SealManager) rotationConfig(nsUUID string, recovery bool) *SealConfig {
+	rotationConfig, ok := sm.rotationConfigByNamespace[nsUUID]
+	if !ok {
+		return nil
+	}
+
+	// Return requested seal config.
 	if recovery {
-		if c.recoveryRotationConfig != nil {
-			return c.recoveryRotationConfig.Clone()
-		}
+		return rotationConfig.recoveryConfig
+	}
+	return rotationConfig.rootConfig
+}
+
+// setRotationConfig sets the root or recovery rotation config for a given namespace.
+func (sm *SealManager) setRotationConfig(nsUUID string, recovery bool, newConfig *SealConfig) error {
+	config, ok := sm.rotationConfigByNamespace[nsUUID]
+	if !ok {
+		config = &rotationConfig{}
+		sm.rotationConfigByNamespace[nsUUID] = config
+	}
+
+	if recovery {
+		config.recoveryConfig = newConfig
 	} else {
-		if c.rootRotationConfig != nil {
-			return c.rootRotationConfig.Clone()
-		}
+		config.rootConfig = newConfig
 	}
 
 	return nil
 }
 
-// RotationThreshold returns the secret threshold for the current seal config.
-// This threshold can either be the barrier key threshold or the recovery key
-// threshold, depending on whether rotation is being performed on the recovery
-// key, or whether the seal supports recovery keys.
-func (c *Core) RotationThreshold(ctx context.Context, recovery bool) (int, logical.HTTPCodedError) {
-	c.rotationLock.RLock()
-	defer c.rotationLock.RUnlock()
+// RotateBarrierRootKey rotates the barrier root key, doesn't require reconstruction
+// of the unseal key to perform rotation, rotates root key independent from recovery
+// key shares or Shamir (KEK).
+func (sm *SealManager) RotateBarrierRootKey(ctx context.Context, ns *namespace.Namespace) error {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
 
-	var config *SealConfig
-	var err error
-	// If we are rotating the recovery key, or if the seal supports
-	// recovery keys and we are rotating the barrier key, we use the
-	// recovery config as the threshold instead.
-	if recovery || c.seal.RecoveryKeySupported() {
-		config, err = c.seal.RecoveryConfig(ctx)
-	} else {
-		config, err = c.seal.BarrierConfig(ctx)
+	b := sm.namespaceBarrier(ns.Path)
+	if b == nil {
+		return ErrNotSealable
 	}
 
+	newRootKey, err := b.GenerateKey()
 	if err != nil {
-		return 0, logical.CodedError(http.StatusInternalServerError, "unable to look up config: %v", err)
+		return fmt.Errorf("failed to generate new root key: %v", err)
 	}
 
-	if config == nil {
-		return 0, logical.CodedError(http.StatusBadRequest, ErrNotInit.Error())
+	seal := sm.sealByNamespace[ns.UUID]
+	if seal == nil {
+		return ErrNotSealable
 	}
 
-	return config.SecretThreshold, nil
+	if err := seal.SetStoredKeys(ctx, [][]byte{newRootKey}); err != nil {
+		return fmt.Errorf("failed to store keys: %v", err)
+	}
+
+	return b.RotateRootKey(ctx, newRootKey)
 }
 
-// RotationProgress is used to return the rotation progress (num shares).
-func (c *Core) RotationProgress(recovery, verification bool) (bool, int, error) {
-	c.rotationLock.RLock()
-	defer c.rotationLock.RUnlock()
+// RotateBarrierKey rotates the barrier key.
+// Returns an error if the given namespace is not a sealable namespace.
+func (sm *SealManager) RotateBarrierKey(ctx context.Context, ns *namespace.Namespace) error {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
 
-	var conf *SealConfig
-	if recovery {
-		conf = c.recoveryRotationConfig
-	} else {
-		conf = c.rootRotationConfig
+	b := sm.namespaceBarrier(ns.Path)
+	if b == nil {
+		return ErrNotSealable
 	}
 
-	if conf == nil {
-		return false, 0, errors.New("rotation not in progress")
+	newTerm, err := b.Rotate(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create new encryption key: %w", err)
+	}
+	sm.logger.Info("installed new encryption key")
+
+	// In HA mode, we need to an upgrade path for the standby instances
+	// we are using the same key rotate grace period for all namespaces for now.
+	if sm.core.ha != nil && sm.core.KeyRotateGracePeriod() > 0 {
+		// Create the upgrade path to the new term
+		if err := b.CreateUpgrade(ctx, newTerm); err != nil {
+			sm.logger.Error("failed to create new upgrade", "term", newTerm, "error", err, "namespace", ns.Path)
+		}
+
+		// Schedule the destroy of the upgrade path
+		time.AfterFunc(sm.core.KeyRotateGracePeriod(), func() {
+			sm.logger.Debug("cleaning up upgrade keys", "waited", sm.core.KeyRotateGracePeriod())
+			if err := b.DestroyUpgrade(sm.core.activeContext.Load(), newTerm); err != nil {
+				sm.logger.Error("failed to destroy upgrade", "term", newTerm, "error", err, "namespace", ns.Path)
+			}
+		})
 	}
 
-	if verification {
-		return len(conf.VerificationKey) > 0, len(conf.VerificationProgress), nil
-	}
-
-	return true, len(conf.RotationProgress), nil
+	return nil
 }
 
 // InitRotation will either initialize the rotation of barrier or recovery key
 // depending on the value of recovery parameter.
-func (c *Core) InitRotation(ctx context.Context, config *SealConfig, recovery bool) (*RekeyResult, logical.HTTPCodedError) {
-	// Initialize the nonce for rotation
+func (sm *SealManager) InitRotation(ctx context.Context, ns *namespace.Namespace, newConfig *SealConfig, recovery bool) (*RekeyResult, error) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	seal, err := sm.validateRotationConfig(ns, newConfig, recovery)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize the nonce for rotation operation
 	nonce, err := uuid.GenerateUUID()
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, "error generating nonce for procedure: %v", err)
+		return nil, logical.CodedError(http.StatusInternalServerError, "error generating nonce for procedure: %w", err)
 	}
 
+	// Copy the configuration
+	config := newConfig.Clone()
+	config.Nonce = nonce
+	if err := sm.setRotationConfig(ns.UUID, recovery, config); err != nil {
+		return nil, logical.CodedError(http.StatusInternalServerError, "failed to update rotate config: %w", err)
+	}
+
+	sm.logger.Info("rotation initialized", "namespace", ns.Path, "nonce", config.Nonce, "shares", config.SecretShares, "threshold", config.SecretThreshold, "validation_required", config.VerificationRequired)
+
 	if recovery {
-		if c.recoveryRotationConfig != nil {
-			return nil, logical.CodedError(http.StatusBadRequest, "rotation already in progress")
-		}
-
-		initErr := c.initRecoveryRotation(config, nonce)
-		if initErr != nil {
-			return nil, initErr
-		}
-
 		// if no key shares exist, meaning we've initialized the instance
 		// without creating them at time, then return the keys immediately
-		existingRecoveryConfig, err := c.seal.RecoveryConfig(ctx)
-		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, "failed to fetch existing recovery config: %v", err)
-		}
-
-		if existingRecoveryConfig == nil {
-			return nil, logical.CodedError(http.StatusBadRequest, ErrNotInit.Error())
-		}
-
-		if existingRecoveryConfig.SecretShares == 0 {
-			newRecoveryKey, result, err := c.generateKey(c.recoveryRotationConfig)
-			if err != nil {
-				return nil, err
-			}
-
-			// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
-			if len(c.recoveryRotationConfig.PGPKeys) > 0 {
-				var encryptError error
-				result, encryptError = c.pgpEncryptShares(ctx, c.recoveryRotationConfig, result, true)
-				if encryptError != nil {
-					return nil, logical.CodedError(http.StatusInternalServerError, encryptError.Error())
-				}
-			}
-
-			// If we are requiring validation, return now; otherwise save the recovery key
-			if c.recoveryRotationConfig.VerificationRequired {
-				return c.requireVerification(c.recoveryRotationConfig, result, newRecoveryKey)
-			}
-
-			if err := c.performRecoveryRekey(ctx, newRecoveryKey); err != nil {
-				return nil, logical.CodedError(http.StatusInternalServerError, "failed to perform recovery rotation: %v", err)
-			}
-
-			c.recoveryRotationConfig = nil
-			return result, nil
-		}
-
-		return nil, nil
+		return sm.rotateRecoveryNoKeyShares(ctx, ns, seal, config)
 	}
 
-	if c.rootRotationConfig != nil {
-		return nil, logical.CodedError(http.StatusBadRequest, "rotation already in progress")
-	}
-
-	return nil, c.initBarrierRotation(config, nonce)
+	//nolint:nilnil // we do not return any keys, nor we fail at something.
+	return nil, nil
 }
 
-// initRecoveryRotation initializes rotation of recovery key.
-func (c *Core) initRecoveryRotation(config *SealConfig, nonce string) logical.HTTPCodedError {
-	// Check if the seal configuration is valid
-	// intentionally invoke the `Validate()` instead of `ValidateRecovery()`
-	// deny the request if it does not pass the validation check
-	if err := config.Validate(); err != nil {
-		c.logger.Error("invalid recovery configuration", "error", err)
-		return logical.CodedError(http.StatusInternalServerError, "invalid recovery configuration: %v", err)
-	}
+// CancelRotation is used to cancel an in-progress rotation operation.
+func (sm *SealManager) CancelRotation(ctx context.Context, nsUUID string, recovery bool) error {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
 
-	c.rotationLock.Lock()
-	defer c.rotationLock.Unlock()
-
-	// Copy the configuration
-	c.recoveryRotationConfig = config.Clone()
-	c.recoveryRotationConfig.Nonce = nonce
-
-	if c.logger.IsInfo() {
-		c.logger.Info("rotation initialized", "nonce", c.recoveryRotationConfig.Nonce, "shares", c.recoveryRotationConfig.SecretShares, "threshold", c.recoveryRotationConfig.SecretThreshold, "validation_required", c.recoveryRotationConfig.VerificationRequired)
-	}
-	return nil
-}
-
-// initBarrierRotation initializes rotation of barrier root key.
-func (c *Core) initBarrierRotation(config *SealConfig, nonce string) logical.HTTPCodedError {
-	if c.seal.BarrierType() != seal.WrapperTypeShamir {
-		config.SecretShares = 0
-		config.SecretThreshold = 0
-
-		if len(config.PGPKeys) > 0 {
-			return logical.CodedError(http.StatusBadRequest, "PGP key encryption not supported when rotating the barrier key with recovery keys")
-		}
-		if config.Backup {
-			return logical.CodedError(http.StatusBadRequest, "key backup not supported when rotating the barrier key with recovery keys")
-		}
-		if config.VerificationRequired {
-			return logical.CodedError(http.StatusBadRequest, "requiring verification not supported when rotating the barrier root key with recovery keys")
-		}
-		c.logger.Debug("using recovery seal configuration to rotate barrier key")
-	} else {
-		// Rotating shamir unseal keys and root key, need to validate config.
-		if err := config.Validate(); err != nil {
-			c.logger.Error("invalid rotate seal configuration", "error", err)
-			return logical.CodedError(http.StatusInternalServerError, "invalid rotate seal configuration: %v", err)
-		}
-	}
-
-	c.rotationLock.Lock()
-	defer c.rotationLock.Unlock()
-
-	// Copy the configuration
-	c.rootRotationConfig = config.Clone()
-	c.rootRotationConfig.Nonce = nonce
-
-	if c.logger.IsInfo() {
-		c.logger.Info("rotation initialized", "nonce", c.rootRotationConfig.Nonce, "shares", c.rootRotationConfig.SecretShares, "threshold", c.rootRotationConfig.SecretThreshold, "verification_required", c.rootRotationConfig.VerificationRequired)
-	}
-	return nil
-}
-
-// CancelRotation is used to cancel an in-progress rotation.
-func (c *Core) CancelRotation(recovery bool) logical.HTTPCodedError {
-	c.rotationLock.Lock()
-	defer c.rotationLock.Unlock()
-
-	// Clear any progress or config
-	if recovery {
-		c.recoveryRotationConfig = nil
-	} else {
-		c.rootRotationConfig = nil
-	}
-	return nil
+	return sm.setRotationConfig(nsUUID, recovery, nil)
 }
 
 // UpdateRotation is used to provide a new key share for the rotation
 // of barrier or recovery key.
-func (c *Core) UpdateRotation(ctx context.Context, key []byte, nonce string, recovery bool) (*RekeyResult, logical.HTTPCodedError) {
-	c.rotationLock.Lock()
-	defer c.rotationLock.Unlock()
+func (sm *SealManager) UpdateRotation(ctx context.Context, ns *namespace.Namespace, key []byte, nonce string, recovery bool) (*RekeyResult, error) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	seal := sm.sealByNamespace[ns.UUID]
+	if seal == nil {
+		return nil, ErrNotSealable
+	}
 
 	var config *SealConfig
 	var err error
 	// We are rotating recovery keys or rotating root key while running auto seal.
-	if recovery || c.seal.RecoveryKeySupported() {
-		config, err = c.seal.RecoveryConfig(ctx)
+	if recovery || seal.RecoveryKeySupported() {
+		config, err = seal.RecoveryConfig(ctx)
 	} else {
-		config, err = c.seal.BarrierConfig(ctx)
+		config, err = seal.BarrierConfig(ctx)
 	}
 
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, "failed to fetch existing config: %v", err)
+		return nil, logical.CodedError(http.StatusInternalServerError, "failed to fetch existing config: %w", err)
 	}
 
 	if config == nil {
-		return nil, logical.CodedError(http.StatusBadRequest, ErrNotInit.Error())
+		return nil, ErrNotInit
 	}
 
-	if recovery {
-		if c.recoveryRotationConfig == nil {
-			return nil, logical.CodedError(http.StatusBadRequest, "no recovery rotation in progress")
-		}
-		return c.updateRecoveryRotation(ctx, config, key, nonce)
+	rotationConfig := sm.rotationConfig(ns.UUID, recovery)
+	if rotationConfig == nil {
+		return nil, errors.New("no rotation in progress")
 	}
 
-	if c.rootRotationConfig == nil {
-		return nil, logical.CodedError(http.StatusBadRequest, "no barrier rotation in progress")
-	}
-	return c.updateBarrierRotation(ctx, config, key, nonce)
-}
-
-// updateRecoveryRotation is used to provide a new key share for recovery key rotation.
-func (c *Core) updateRecoveryRotation(ctx context.Context, config *SealConfig, key []byte, nonce string) (*RekeyResult, logical.HTTPCodedError) {
-	recoveryKey, err := c.progressRotation(c.recoveryRotationConfig, config, key, nonce)
+	recoveryKey, err := sm.progressRotation(rotationConfig, config, key, nonce)
 	if err != nil {
 		return nil, err
 	}
@@ -283,129 +223,37 @@ func (c *Core) updateRecoveryRotation(ctx context.Context, config *SealConfig, k
 		return nil, nil
 	}
 
-	// Verify the recovery key
-	if err := c.seal.VerifyRecoveryKey(ctx, recoveryKey); err != nil {
-		c.logger.Error("recovery key verification failed", "error", err)
-		return nil, logical.CodedError(http.StatusBadRequest, "recovery key verification failed: %v", err)
-	}
-
-	newRecoveryKey, result, err := c.generateKey(c.recoveryRotationConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
-	if len(c.recoveryRotationConfig.PGPKeys) > 0 {
-		var encryptError error
-		result, encryptError = c.pgpEncryptShares(ctx, c.recoveryRotationConfig, result, true)
-		if encryptError != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, encryptError.Error())
+	if recovery || seal.RecoveryKeySupported() {
+		if err := seal.VerifyRecoveryKey(ctx, recoveryKey); err != nil {
+			sm.logger.Error("recovery key verification failed", "error", err)
+			return nil, fmt.Errorf("recovery key verification failed: %w", err)
 		}
 	}
 
-	// If we are requiring validation, return now; otherwise save the recovery key
-	if c.recoveryRotationConfig.VerificationRequired {
-		return c.requireVerification(c.recoveryRotationConfig, result, newRecoveryKey)
+	if recovery {
+		return sm.updateRecoveryRotation(ctx, ns, seal, rotationConfig)
 	}
 
-	if err := c.performRecoveryRekey(ctx, newRecoveryKey); err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, "failed to perform recovery rotation: %v", err)
-	}
-
-	c.recoveryRotationConfig = nil
-	return result, nil
-}
-
-// updateBarrierRotation is used to progress barrier root key rotation.
-func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, key []byte, nonce string) (*RekeyResult, logical.HTTPCodedError) {
-	recoveredKey, err := c.progressRotation(c.rootRotationConfig, config, key, nonce)
-	if err != nil {
-		return nil, err
-	}
-
-	if recoveredKey == nil {
-		return nil, nil
-	}
-
-	switch {
-	case c.seal.RecoveryKeySupported():
-		if err := c.seal.VerifyRecoveryKey(ctx, recoveredKey); err != nil {
-			c.logger.Error("recovery key verification failed", "error", err)
-			return nil, logical.CodedError(http.StatusBadRequest, "recovery key verification failed: %v", err)
-		}
-	case c.seal.BarrierType() == seal.WrapperTypeShamir:
-		shamirWrapper := seal.NewShamirWrapper()
-		if err := shamirWrapper.SetAesGcmKeyBytes(recoveredKey); err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup unseal key: %v", err)
-		}
-
-		testseal := NewDefaultSeal(seal.NewAccess(shamirWrapper))
-		testseal.SetCore(c)
-
-		cfg, err := c.seal.BarrierConfig(ctx)
-		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup test barrier config: %v", err)
-		}
-		testseal.SetCachedBarrierConfig(cfg)
-
-		stored, err := testseal.GetStoredKeys(ctx)
-		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, "failed to read root key: %v", err)
-		}
-		recoveredKey = stored[0]
-		if err := c.barrier.VerifyRoot(recoveredKey); err != nil {
-			c.logger.Error("root key verification failed", "error", err)
-			return nil, logical.CodedError(http.StatusBadRequest, "root key verification failed: %v", err)
-		}
-	}
-
-	var newSealKey []byte
-	result := &RekeyResult{}
-	// Generate new unseal keys if running shamir seal.
-	if c.seal.BarrierType() == seal.WrapperTypeShamir {
-		newSealKey, result, err = c.generateKey(c.rootRotationConfig)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
-	if len(c.rootRotationConfig.PGPKeys) > 0 {
-		var encryptError error
-		result, encryptError = c.pgpEncryptShares(ctx, c.rootRotationConfig, result, false)
-		if encryptError != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, encryptError.Error())
-		}
-	}
-
-	// If we are requiring validation, return now; otherwise rotate barrier root key.
-	if c.rootRotationConfig.VerificationRequired {
-		return c.requireVerification(c.rootRotationConfig, result, newSealKey)
-	}
-
-	if err := c.performBarrierRekey(ctx, newSealKey); err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, "failed to rotate barrier root key: %v", err)
-	}
-
-	c.rootRotationConfig = nil
-	return result, nil
+	return sm.updateRootRotation(ctx, ns, seal, rotationConfig, recoveryKey)
 }
 
 // progressRotation checks the key rotation progress, verifying if we have
 // enough shares to recover the key.
-func (c *Core) progressRotation(rotationConfig, existingConfig *SealConfig, key []byte, nonce string) ([]byte, logical.HTTPCodedError) {
+func (sm *SealManager) progressRotation(rotationConfig, existingConfig *SealConfig, key []byte, nonce string) ([]byte, error) {
 	if len(rotationConfig.VerificationKey) > 0 {
-		return nil, logical.CodedError(http.StatusBadRequest, "rotation already finished; verification must be performed; nonce for the verification operation is %q", rotationConfig.VerificationNonce)
+		return nil, fmt.Errorf("rotation already finished; verification must be performed; nonce for the verification operation is %q", rotationConfig.VerificationNonce)
 	}
 
 	if nonce != rotationConfig.Nonce {
-		return nil, logical.CodedError(http.StatusBadRequest, "incorrect nonce supplied; nonce for rotation is %q", rotationConfig.Nonce)
+		return nil, fmt.Errorf("incorrect nonce supplied; nonce for rotation is %q", rotationConfig.Nonce)
 	}
 
 	// Check if we already have this piece
+	found := false
 	for _, existing := range rotationConfig.RotationProgress {
-		if subtle.ConstantTimeCompare(existing, key) == 1 {
-			return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this rotation")
+		found = found || subtle.ConstantTimeCompare(existing, key) == 1
+		if found {
+			return nil, errors.New("given key has already been provided during this rotation")
 		}
 	}
 
@@ -414,9 +262,7 @@ func (c *Core) progressRotation(rotationConfig, existingConfig *SealConfig, key 
 
 	// Check if we don't have enough keys to unlock
 	if len(rotationConfig.RotationProgress) < existingConfig.SecretThreshold {
-		if c.logger.IsDebug() {
-			c.logger.Debug("cannot rotate yet, not enough keys", "keys", len(rotationConfig.RotationProgress), "threshold", existingConfig.SecretThreshold)
-		}
+		sm.logger.Debug("cannot rotate yet, not enough keys", "keys", len(rotationConfig.RotationProgress), "threshold", existingConfig.SecretThreshold)
 		return nil, nil
 	}
 
@@ -430,19 +276,315 @@ func (c *Core) progressRotation(rotationConfig, existingConfig *SealConfig, key 
 		recoveredKey, err = shamir.Combine(rotationConfig.RotationProgress)
 		rotationConfig.RotationProgress = nil
 		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, "failed to compute key: %v", err)
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to compute key: %w", err)
 		}
 	}
 
 	return recoveredKey, nil
 }
 
-// generateKey generates new unseal/recovery key dividing it into desired number of key shares.
-func (c *Core) generateKey(rotationConfig *SealConfig) ([]byte, *RekeyResult, logical.HTTPCodedError) {
-	newKey, err := c.barrier.GenerateKey()
+// updateRecoveryRotation updates the recovery key rotation with provided new key share.
+func (sm *SealManager) updateRecoveryRotation(ctx context.Context, ns *namespace.Namespace, seal Seal, rotationConfig *SealConfig) (*RekeyResult, error) {
+	newRecoveryKey, result, err := sm.generateKey(ns.Path, rotationConfig)
 	if err != nil {
-		c.logger.Error("failed to generate key", "error", err)
-		return nil, nil, logical.CodedError(http.StatusInternalServerError, "key generation failed: %v", err)
+		return nil, err
+	}
+
+	// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
+	if len(rotationConfig.PGPKeys) > 0 {
+		var err error
+		result, err = sm.pgpEncryptShares(ctx, ns, rotationConfig, result, true)
+		if err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
+		}
+	}
+
+	// If we are requiring validation, return now; otherwise save the recovery key
+	if rotationConfig.VerificationRequired {
+		return sm.requireVerification(rotationConfig, result, newRecoveryKey)
+	}
+
+	if err := sm.performRecoveryRotation(ctx, newRecoveryKey, rotationConfig, seal); err != nil {
+		return nil, err
+	}
+
+	// reset rotation config
+	if err := sm.setRotationConfig(ns.UUID, true, nil); err != nil {
+		return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
+	}
+
+	return result, nil
+}
+
+// updateRootRotation updates the root key rotation with provided new key share.
+func (sm *SealManager) updateRootRotation(ctx context.Context, ns *namespace.Namespace, seal Seal, rotationConfig *SealConfig, recoveryKey []byte) (*RekeyResult, error) {
+	var newSealKey []byte
+	result := &RekeyResult{}
+
+	if seal.BarrierType() == vaultseal.WrapperTypeShamir {
+		shamirWrapper := vaultseal.NewShamirWrapper()
+		if err := shamirWrapper.SetAesGcmKeyBytes(recoveryKey); err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup unseal key: %w", err)
+		}
+
+		testseal := NewDefaultSeal(vaultseal.NewAccess(shamirWrapper))
+		testseal.SetCore(sm.core)
+
+		if ns.ID != namespace.RootNamespaceID {
+			testseal.SetMetaPrefix(NamespaceStoragePathPrefix(ns))
+		}
+
+		cfg, err := seal.BarrierConfig(ctx)
+		if err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup test barrier config: %w", err)
+		}
+		testseal.SetCachedBarrierConfig(cfg)
+
+		stored, err := testseal.GetStoredKeys(ctx)
+		if err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to read root key: %w", err)
+		}
+		recoveryKey = stored[0]
+
+		barrier := sm.namespaceBarrier(ns.Path)
+		if barrier == nil {
+			return nil, ErrNotSealable
+		}
+
+		if err := barrier.VerifyRoot(recoveryKey); err != nil {
+			sm.logger.Error("root key verification failed", "error", err)
+			return nil, fmt.Errorf("root key verification failed: %w", err)
+		}
+
+		// Generate new unseal keys if running shamir seal.
+		newSealKey, result, err = sm.generateKey(ns.Path, rotationConfig)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
+	if len(rotationConfig.PGPKeys) > 0 {
+		var encryptError error
+		result, encryptError = sm.pgpEncryptShares(ctx, ns, rotationConfig, result, false)
+		if encryptError != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, encryptError.Error())
+		}
+	}
+
+	// If we are requiring validation, return now; otherwise rotate barrier key
+	if rotationConfig.VerificationRequired {
+		return sm.requireVerification(rotationConfig, result, newSealKey)
+	}
+
+	if err := sm.performRootRotation(ctx, ns, newSealKey, rotationConfig, seal); err != nil {
+		return nil, err
+	}
+
+	// reset rotation config
+	if err := sm.setRotationConfig(ns.UUID, false, nil); err != nil {
+		return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
+	}
+
+	return result, nil
+}
+
+func (sm *SealManager) performRootRotation(ctx context.Context, ns *namespace.Namespace, newSealKey []byte, rotationConfig *SealConfig, seal Seal) error {
+	isShamirSeal := seal.BarrierType() == vaultseal.WrapperTypeShamir
+	if isShamirSeal {
+		shamirWrapper, err := seal.GetShamirWrapper()
+		if err == nil {
+			err = shamirWrapper.SetAesGcmKeyBytes(newSealKey)
+		}
+		if err != nil {
+			return logical.CodedError(http.StatusInternalServerError, "failed to update barrier seal key: %w", err)
+		}
+	}
+
+	b := sm.namespaceBarrier(ns.Path)
+	if b == nil {
+		return ErrNotSealable
+	}
+
+	newRootKey, err := b.GenerateKey()
+	if err != nil {
+		return logical.CodedError(http.StatusInternalServerError, "failed to perform rotation: %w", err)
+	}
+
+	if err := seal.SetStoredKeys(ctx, [][]byte{newRootKey}); err != nil {
+		sm.logger.Error("failed to store keys", "error", err)
+		return logical.CodedError(http.StatusInternalServerError, "failed to store keys: %w", err)
+	}
+
+	// Rotate the barrier
+	if err := b.RotateRootKey(ctx, newRootKey); err != nil {
+		sm.logger.Error("failed to rotate root key", "error", err)
+		return logical.CodedError(http.StatusInternalServerError, "failed to rotate root key: %w", err)
+	}
+
+	sm.logger.Info("root key rotated", "namespace", ns.Path, "shares", rotationConfig.SecretShares, "threshold", rotationConfig.SecretThreshold)
+
+	if isShamirSeal {
+		if len(newSealKey) > 0 {
+			err := b.Put(ctx, &logical.StorageEntry{
+				Key:   barrier.ShamirKekPath,
+				Value: newSealKey,
+			})
+			if err != nil {
+				sm.logger.Error("failed to store new seal key", "error", err)
+				return logical.CodedError(http.StatusInternalServerError, "failed to store new seal key: %w", err)
+			}
+		}
+
+		// Unset VerificationKey and Nonce as we finished rotation.
+		rotationConfig.VerificationKey = nil
+		rotationConfig.Nonce = ""
+
+		if err := seal.SetBarrierConfig(ctx, rotationConfig); err != nil {
+			sm.logger.Error("error saving rotate seal configuration", "error", err)
+			return logical.CodedError(http.StatusInternalServerError, "failed to save rotate seal configuration: %w", err)
+		}
+	}
+
+	rotationConfig.RotationProgress = nil
+	return nil
+}
+
+func (sm *SealManager) performRecoveryRotation(ctx context.Context, newRootKey []byte, rotationConfig *SealConfig, seal Seal) error {
+	if err := seal.SetRecoveryKey(ctx, newRootKey); err != nil {
+		sm.logger.Error("failed to set recovery key", "error", err)
+		return logical.CodedError(http.StatusInternalServerError, "failed to set recovery key: %w", err)
+	}
+
+	// Unset VerificationKey and Nonce as we finished rotation.
+	rotationConfig.VerificationKey = nil
+	rotationConfig.Nonce = ""
+
+	if err := seal.SetRecoveryConfig(ctx, rotationConfig); err != nil {
+		sm.logger.Error("error saving rotate seal configuration", "error", err)
+		return logical.CodedError(http.StatusInternalServerError, "failed to save rotate seal configuration: %w", err)
+	}
+
+	rotationConfig.RotationProgress = nil
+	return nil
+}
+
+// validateRotationConfig validates properties of recovery or barrier rotation config.
+func (sm *SealManager) validateRotationConfig(ns *namespace.Namespace, newConfig *SealConfig, recovery bool) (Seal, error) {
+	currRotConfig := sm.rotationConfig(ns.UUID, recovery)
+	if currRotConfig != nil {
+		return nil, errors.New("rotation already in progress")
+	}
+
+	seal := sm.sealByNamespace[ns.UUID]
+	if seal == nil {
+		return nil, ErrNotSealable
+	}
+
+	if recovery {
+		if !seal.RecoveryKeySupported() {
+			return nil, errors.New("recovery keys not supported")
+		}
+
+		// Check if the seal configuration is valid
+		// intentionally invoke the `Validate()` instead of `ValidateRecovery()`
+		// deny the request if it does not pass the validation check
+		if err := newConfig.Validate(); err != nil {
+			sm.logger.Error("invalid recovery configuration", "error", err)
+			return nil, logical.CodedError(http.StatusInternalServerError, "invalid recovery configuration: %w", err)
+		}
+	} else {
+		if seal.BarrierType() != vaultseal.WrapperTypeShamir {
+			newConfig.SecretShares = 1
+			newConfig.SecretThreshold = 1
+
+			if len(newConfig.PGPKeys) > 0 {
+				return nil, errors.New("PGP key encryption not supported when using stored keys")
+			}
+			if newConfig.Backup {
+				return nil, errors.New("key backup not supported when using stored keys")
+			}
+		}
+
+		if seal.RecoveryKeySupported() {
+			if newConfig.VerificationRequired {
+				return nil, errors.New("requiring verification not supported when rotating the barrier key with recovery keys")
+			}
+			sm.logger.Debug("using recovery seal configuration to rotate barrier key")
+		}
+
+		// Check if the seal configuration is valid
+		if err := newConfig.Validate(); err != nil {
+			sm.logger.Error("invalid rotate seal configuration", "error", err)
+			return nil, logical.CodedError(http.StatusInternalServerError, "invalid rotate seal configuration: %w", err)
+		}
+	}
+
+	return seal, nil
+}
+
+// rotateRecoveryNoKeyShares verifies that recovery config exists and if its
+// `SecretShares` property value is set as 0, immediately returns back
+// new rotated recovery key shares.
+func (sm *SealManager) rotateRecoveryNoKeyShares(ctx context.Context, ns *namespace.Namespace, seal Seal, rotConfig *SealConfig) (*RekeyResult, error) {
+	existingRecoveryConfig, err := seal.RecoveryConfig(ctx)
+	if err != nil {
+		return nil, logical.CodedError(http.StatusInternalServerError, "failed to fetch existing recovery config: %w", err)
+	}
+
+	if existingRecoveryConfig == nil {
+		return nil, ErrNotInit
+	}
+
+	if existingRecoveryConfig.SecretShares == 0 {
+		newRecoveryKey, result, err := sm.generateKey(ns.Path, rotConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
+		if len(rotConfig.PGPKeys) > 0 {
+			result, err = sm.pgpEncryptShares(ctx, ns, rotConfig, result, true)
+			if err != nil {
+				return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
+			}
+		}
+
+		// If we are requiring validation, return now
+		// otherwise save the recovery key
+		if rotConfig.VerificationRequired {
+			return sm.requireVerification(rotConfig, result, newRecoveryKey)
+		}
+
+		if err := sm.performRecoveryRotation(ctx, newRecoveryKey, rotConfig, seal); err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform recovery rotation: %w", err).Error())
+		}
+
+		// reset rotation config
+		if err := sm.setRotationConfig(ns.UUID, true, nil); err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
+		}
+
+		return result, nil
+	}
+
+	//nolint:nilnil // we do not return any keys, nor we fail at something.
+	return nil, nil
+}
+
+// generateKey generates a new root/recovery key dividing it into desired number
+// of key shares.
+func (sm *SealManager) generateKey(nsPath string, rotationConfig *SealConfig) ([]byte, *RekeyResult, error) {
+	barrier := sm.namespaceBarrier(nsPath)
+	if barrier == nil {
+		return nil, nil, ErrNotSealable
+	}
+
+	// Generate a new root/recovery key
+	newKey, err := barrier.GenerateKey()
+	if err != nil {
+		sm.logger.Error("failed to generate key", "error", err)
+		return nil, nil, logical.CodedError(http.StatusInternalServerError, "key generation failed: %w", err)
 	}
 
 	result := &RekeyResult{
@@ -457,7 +599,7 @@ func (c *Core) generateKey(rotationConfig *SealConfig) ([]byte, *RekeyResult, lo
 		// Split the new key using the Shamir algorithm
 		shares, err := shamir.Split(newKey, rotationConfig.SecretShares, rotationConfig.SecretThreshold)
 		if err != nil {
-			c.logger.Error("failed to split shamir shares", "error", err)
+			sm.logger.Error("failed to split shamir shares", "error", err)
 			return nil, nil, logical.CodedError(http.StatusInternalServerError, "failed to split shamir shares: %v", err)
 		}
 		result.SecretShares = shares
@@ -467,8 +609,9 @@ func (c *Core) generateKey(rotationConfig *SealConfig) ([]byte, *RekeyResult, lo
 }
 
 // pgpEncryptShares encrypts the rotation secret shares using the provided pgp keys.
-// If the rotation config also specifies backup, the backup information in saved to storage.
-func (c *Core) pgpEncryptShares(ctx context.Context, rotationConfig *SealConfig, rotationResult *RekeyResult, recovery bool) (*RekeyResult, error) {
+// If the rotation config also specifies backup, the backup information is saved to
+// the storage.
+func (sm *SealManager) pgpEncryptShares(ctx context.Context, ns *namespace.Namespace, rotationConfig *SealConfig, rotationResult *RekeyResult, recovery bool) (*RekeyResult, error) {
 	hexEncodedShares := make([][]byte, len(rotationResult.SecretShares))
 	for i := range rotationResult.SecretShares {
 		hexEncodedShares[i] = []byte(hex.EncodeToString(rotationResult.SecretShares[i]))
@@ -480,7 +623,8 @@ func (c *Core) pgpEncryptShares(ctx context.Context, rotationConfig *SealConfig,
 		return nil, fmt.Errorf("failed to encrypt shares: %w", err)
 	}
 
-	// If backup is enabled, store backup info in vault.coreBarrierUnsealKeysBackupPath
+	// If backup is enabled, store backup info in
+	// coreBarrierUnsealKeysBackupPath or coreRecoveryUnsealKeysBackupPath
 	if rotationConfig.Backup {
 		backupInfo := map[string][]string{}
 		for i := 0; i < len(rotationResult.PGPFingerprints); i++ {
@@ -498,20 +642,22 @@ func (c *Core) pgpEncryptShares(ctx context.Context, rotationConfig *SealConfig,
 		}
 		buf, err := json.Marshal(backupVals)
 		if err != nil {
-			c.logger.Error("failed to marshal key backup", "error", err)
+			sm.logger.Error("failed to marshal key backup", "error", err)
 			return nil, fmt.Errorf("failed to marshal key backup: %w", err)
 		}
 
-		pe := &physical.Entry{
+		entry := &logical.StorageEntry{
 			Key:   coreBarrierUnsealKeysBackupPath,
 			Value: buf,
 		}
+
 		if recovery {
-			pe.Key = coreRecoveryUnsealKeysBackupPath
+			entry.Key = coreRecoveryUnsealKeysBackupPath
 		}
 
-		if err = c.physical.Put(ctx, pe); err != nil {
-			c.logger.Error("failed to save unseal key backup", "error", err)
+		barrier := sm.namespaceBarrier(ns.Path)
+		if err = barrier.Put(ctx, entry); err != nil {
+			sm.logger.Error("failed to save unseal key backup", "error", err)
 			return nil, fmt.Errorf("failed to save unseal key backup: %w", err)
 		}
 	}
@@ -519,13 +665,13 @@ func (c *Core) pgpEncryptShares(ctx context.Context, rotationConfig *SealConfig,
 	return rotationResult, nil
 }
 
-// requireVerification sets the verification properties on the rotationConfig
-// adds a nonce and required flag and returns the result.
-func (c *Core) requireVerification(rotationConfig *SealConfig, rotationResult *RekeyResult, newKey []byte) (*RekeyResult, logical.HTTPCodedError) {
+// requireVerification sets the verification properties on the
+// rotationConfig adding nonce and required flag, returns the result.
+func (sm *SealManager) requireVerification(rotationConfig *SealConfig, rotationResult *RekeyResult, newKey []byte) (*RekeyResult, error) {
 	nonce, err := uuid.GenerateUUID()
 	if err != nil {
 		rotationConfig = nil
-		return nil, logical.CodedError(http.StatusInternalServerError, "failed to generate verification nonce: %v", err)
+		return nil, logical.CodedError(http.StatusInternalServerError, "failed to generate verification nonce: %w", err)
 	}
 	rotationConfig.VerificationNonce = nonce
 	rotationConfig.VerificationKey = newKey
@@ -535,76 +681,54 @@ func (c *Core) requireVerification(rotationConfig *SealConfig, rotationResult *R
 	return rotationResult, nil
 }
 
-// RotateBarrierRootKey rotates the barrier root key, doesn't require reconstruction
-// of the unseal key to perform rotation, rotates root key independent from recovery
-// key shares or Shamir (KEK).
-func (c *Core) RotateBarrierRootKey(ctx context.Context) error {
-	c.rotationLock.Lock()
-	defer c.rotationLock.Unlock()
+// VerifyRotation verifies the progress of the verification of the rotation operation.
+func (sm *SealManager) VerifyRotation(ctx context.Context, ns *namespace.Namespace, key []byte, nonce string, recovery bool) (ret *RekeyVerifyResult, err error) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
 
-	newRootKey, err := c.barrier.GenerateKey()
-	if err != nil {
-		return fmt.Errorf("failed to generate new root key: %v", err)
-	}
-
-	if err := c.seal.SetStoredKeys(ctx, [][]byte{newRootKey}); err != nil {
-		return fmt.Errorf("failed to store keys: %v", err)
-	}
-
-	return c.barrier.RotateRootKey(ctx, newRootKey)
-}
-
-// VerifyRotation verifies the progress of the verification of the rotation.
-func (c *Core) VerifyRotation(ctx context.Context, key []byte, nonce string, recovery bool) (ret *RekeyVerifyResult, retErr logical.HTTPCodedError) {
-	c.rotationLock.Lock()
-	defer c.rotationLock.Unlock()
-
-	config := c.rootRotationConfig
-	if recovery {
-		config = c.recoveryRotationConfig
-	}
+	rotationConfig := sm.rotationConfig(ns.UUID, recovery)
 
 	// Ensure a rotation is in progress
-	if config == nil {
-		return nil, logical.CodedError(http.StatusBadRequest, "no rotation in progress")
+	if rotationConfig == nil {
+		return nil, errors.New("no rotation in progress")
 	}
 
-	if len(config.VerificationKey) == 0 {
-		return nil, logical.CodedError(http.StatusBadRequest, "no rotation verification in progress")
+	if len(rotationConfig.VerificationKey) == 0 {
+		return nil, errors.New("no rotation verification in progress")
 	}
 
-	if nonce != config.VerificationNonce {
-		return nil, logical.CodedError(http.StatusBadRequest, "incorrect nonce supplied; nonce for this verify operation is %q", config.VerificationNonce)
+	if nonce != rotationConfig.VerificationNonce {
+		return nil, fmt.Errorf("incorrect nonce supplied; nonce for this verify operation is %q", rotationConfig.VerificationNonce)
 	}
 
 	// Check if we already have this piece
-	for _, existing := range config.VerificationProgress {
-		if subtle.ConstantTimeCompare(existing, key) == 1 {
-			return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this verify operation")
+	found := false
+	for _, existing := range rotationConfig.RotationProgress {
+		found = found || subtle.ConstantTimeCompare(existing, key) == 1
+		if found {
+			return nil, errors.New("given key has already been provided during this verify operation")
 		}
 	}
 
 	// Store this key
-	config.VerificationProgress = append(config.VerificationProgress, key)
+	rotationConfig.VerificationProgress = append(rotationConfig.VerificationProgress, key)
 
 	// Check if we don't have enough keys to unlock
-	if len(config.VerificationProgress) < config.SecretThreshold {
-		if c.logger.IsDebug() {
-			c.logger.Debug("cannot verify yet, not enough keys", "keys", len(config.VerificationProgress), "threshold", config.SecretThreshold)
-		}
+	if len(rotationConfig.VerificationProgress) < rotationConfig.SecretThreshold {
+		sm.logger.Debug("cannot verify yet, not enough keys", "keys", len(rotationConfig.VerificationProgress), "threshold", rotationConfig.SecretThreshold)
 		return nil, nil
 	}
 
-	// Schedule the progress for forgetting and rotate the nonce if possible
+	// Defer reset of progress and rotation of the nonce
 	defer func() {
-		config.VerificationProgress = nil
+		rotationConfig.VerificationProgress = nil
 		if ret != nil && ret.Complete {
 			return
 		}
 		// Not complete, so rotate nonce
 		nonce, err := uuid.GenerateUUID()
 		if err == nil {
-			config.VerificationNonce = nonce
+			rotationConfig.VerificationNonce = nonce
 			if ret != nil {
 				ret.Nonce = nonce
 			}
@@ -613,110 +737,110 @@ func (c *Core) VerifyRotation(ctx context.Context, key []byte, nonce string, rec
 
 	// Recover the root key or recovery key
 	var recoveredKey []byte
-	if config.SecretThreshold == 1 {
-		recoveredKey = config.VerificationProgress[0]
+	if rotationConfig.SecretThreshold == 1 {
+		recoveredKey = rotationConfig.VerificationProgress[0]
 	} else {
 		var err error
-		recoveredKey, err = shamir.Combine(config.VerificationProgress)
+		recoveredKey, err = shamir.Combine(rotationConfig.VerificationProgress)
 		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, "failed to compute key for verification: %v", err)
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to compute key for verification: %w", err)
 		}
 	}
 
-	if subtle.ConstantTimeCompare(recoveredKey, config.VerificationKey) != 1 {
-		c.logger.Error("rotation verification failed")
-		return nil, logical.CodedError(http.StatusBadRequest, "rotation verification failed; incorrect key shares supplied")
+	if subtle.ConstantTimeCompare(recoveredKey, rotationConfig.VerificationKey) != 1 {
+		sm.logger.Error("rotation verification failed")
+		return nil, errors.New("rotation verification failed; incorrect key shares supplied")
+	}
+
+	seal := sm.sealByNamespace[ns.UUID]
+	if seal == nil {
+		return nil, ErrNotSealable
 	}
 
 	if recovery {
-		if err := c.performRecoveryRekey(ctx, recoveredKey); err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, "failed to perform recovery key rotation: %v", err)
+		if err := sm.performRecoveryRotation(ctx, recoveredKey, rotationConfig, seal); err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to perform recovery key rotation: %w", err)
 		}
-		c.recoveryRotationConfig = nil
 	} else {
-		if err := c.performBarrierRekey(ctx, recoveredKey); err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, "failed to perform barrier key rotation: %v", err)
+		if err := sm.performRootRotation(ctx, ns, recoveredKey, rotationConfig, seal); err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to perform barrier key rotation: %w", err)
 		}
-		c.rootRotationConfig = nil
+	}
+
+	// reset rotation config
+	if err := sm.setRotationConfig(ns.UUID, recovery, nil); err != nil {
+		return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
 	}
 
 	return &RekeyVerifyResult{
-		Nonce:    config.VerificationNonce,
+		Nonce:    rotationConfig.VerificationNonce,
 		Complete: true,
 	}, nil
 }
 
-// RestartRotationVerification is used to start the rotation verification process over.
-func (c *Core) RestartRotationVerification(recovery bool) logical.HTTPCodedError {
-	c.rotationLock.Lock()
-	defer c.rotationLock.Unlock()
+// RestartRotationVerification is used to restart the rotation verification process.
+func (sm *SealManager) RestartRotationVerification(nsUUID string, recovery bool) error {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
 
 	// Attempt to generate a new nonce, but don't bail if it doesn't succeed
-	// (which is extraordinarily unlikely)
+	// (which is extremely unlikely).
 	nonce, nonceErr := uuid.GenerateUUID()
+	rotationConfig := sm.rotationConfig(nsUUID, recovery)
 
 	// Clear any progress or config
-	if recovery {
-		if c.recoveryRotationConfig != nil {
-			c.recoveryRotationConfig.VerificationProgress = nil
-			if nonceErr == nil {
-				c.recoveryRotationConfig.VerificationNonce = nonce
-			}
-		}
-	} else {
-		if c.rootRotationConfig != nil {
-			c.rootRotationConfig.VerificationProgress = nil
-			if nonceErr == nil {
-				c.rootRotationConfig.VerificationNonce = nonce
-			}
+	if rotationConfig != nil {
+		rotationConfig.VerificationProgress = nil
+		if nonceErr == nil {
+			rotationConfig.VerificationNonce = nonce
 		}
 	}
 
 	return nil
 }
 
-// RetrieveRotationBackup is used to retrieve any backed-up PGP-encrypted unseal keys.
-func (c *Core) RetrieveRotationBackup(ctx context.Context, recovery bool) (*RekeyBackup, logical.HTTPCodedError) {
-	c.rotationLock.RLock()
-	defer c.rotationLock.RUnlock()
+// RetrieveRotationBackup is used to retrieve any backed-up PGP-encrypted
+// unseal keys.
+func (sm *SealManager) RetrieveRotationBackup(ctx context.Context, nsPath string, recovery bool) (*RekeyBackup, error) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
 
-	var entry *physical.Entry
-	var err error
+	path := coreBarrierUnsealKeysBackupPath
 	if recovery {
-		entry, err = c.physical.Get(ctx, coreRecoveryUnsealKeysBackupPath)
-	} else {
-		entry, err = c.physical.Get(ctx, coreBarrierUnsealKeysBackupPath)
+		path = coreRecoveryUnsealKeysBackupPath
 	}
+
+	barrier := sm.namespaceBarrier(nsPath)
+	entry, err := barrier.Get(ctx, path)
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, "error getting keys from backup: %v", err)
+		return nil, logical.CodedError(http.StatusInternalServerError, "error getting keys from backup: %w", err)
 	}
 	if entry == nil {
 		return nil, nil
 	}
 
 	ret := &RekeyBackup{}
-	err = jsonutil.DecodeJSON(entry.Value, ret)
-	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, "error decoding backup keys: %v", err)
+	if err = jsonutil.DecodeJSON(entry.Value, ret); err != nil {
+		return nil, logical.CodedError(http.StatusInternalServerError, "error decoding backup keys: %w", err)
 	}
 
 	return ret, nil
 }
 
 // DeleteRotationBackup is used to delete any backed-up PGP-encrypted unseal keys.
-func (c *Core) DeleteRotationBackup(ctx context.Context, recovery bool) logical.HTTPCodedError {
-	c.rotationLock.Lock()
-	defer c.rotationLock.Unlock()
+func (sm *SealManager) DeleteRotationBackup(ctx context.Context, nsPath string, recovery bool) error {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
 
-	var err error
+	path := coreBarrierUnsealKeysBackupPath
 	if recovery {
-		err = c.physical.Delete(ctx, coreRecoveryUnsealKeysBackupPath)
-	} else {
-		err = c.physical.Delete(ctx, coreBarrierUnsealKeysBackupPath)
+		path = coreRecoveryUnsealKeysBackupPath
 	}
 
-	if err != nil {
-		return logical.CodedError(http.StatusInternalServerError, "error deleting backup keys: %v", err)
+	barrier := sm.namespaceBarrier(nsPath)
+	if err := barrier.Delete(ctx, path); err != nil {
+		return logical.CodedError(http.StatusInternalServerError, "error deleting backup keys: %w", err)
 	}
+
 	return nil
 }

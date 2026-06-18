@@ -379,29 +379,28 @@ func (ij *invalidationJob) Execute() error {
 	defer shortCancel()
 
 	// Now handle the actual event.
-	key := ij.nsKey
 	switch {
-	case strings.HasPrefix(key, namespaceStoreSubPath):
+	case strings.HasPrefix(ij.nsKey, namespaceStoreSubPath):
 		ij.fatal = true
 		return ij.namespaceInvalidation(ctx)
-	case strings.HasPrefix(key, barrier.SystemBarrierPrefix+policy.ACLSubPath):
+	case strings.HasPrefix(ij.nsKey, barrier.SystemBarrierPrefix+policy.ACLSubPath):
 		// Policy invalidation is not fatal as it contains a LRU cache: we
 		// know removal is strict and it is only potentially preloading an
 		// entry which may err.
 		return ij.policyInvalidation(ctx)
-	case strings.HasPrefix(key, barrier.SystemBarrierPrefix+quotas.StoragePrefix):
+	case strings.HasPrefix(ij.nsKey, barrier.SystemBarrierPrefix+quotas.StoragePrefix):
 		ij.fatal = true
 		return ij.quotaInvalidation(ctx)
-	case key == coreAuditConfigPath || key == coreLocalAuditConfigPath:
+	case ij.nsKey == coreAuditConfigPath || ij.nsKey == coreLocalAuditConfigPath:
 		ij.fatal = true
 		return ij.auditInvalidation(ctx)
-	case isLegacyMountPath(key):
+	case isLegacyMountPath(ij.nsKey):
 		ij.fatal = true
 		return ij.legacyMountInvalidation(ctx)
-	case isTransactionalMountPath(key):
+	case isTransactionalMountPath(ij.nsKey):
 		ij.fatal = true
 		return ij.transactionalMountInvalidation(ctx)
-	case isKeyringPath(key):
+	case isKeyringPath(ij.nsKey):
 		// The HA subsystem handles keyring rotations via the
 		// periodicCheckKeyUpgrades(...) actor.
 	case strings.HasPrefix(ij.key, coreLeaderPrefix):
@@ -432,7 +431,7 @@ func (ij *invalidationJob) Execute() error {
 		//
 		// This is true in reverse for deletions.
 	default:
-		ij.im.dispacherLogger.Warn("no mechanism to invalidate cache for specified key", "key", key)
+		ij.im.dispacherLogger.Warn("no mechanism to invalidate cache for specified key", "key", ij.nsKey, "full_key", ij.key)
 	}
 
 	return nil
@@ -472,6 +471,17 @@ func (ij *invalidationJob) namespaceInvalidation(ctx context.Context) error {
 	case beforeNs != nil && beforeErr == nil:
 		preferredNs = beforeNs
 		deleted = true
+	}
+
+	nsBarrier := ij.im.core.sealManager.NamespaceBarrierByLongestPrefix(preferredNs.Path)
+	if nsBarrier.Sealed() {
+		// Namespace is sealed; nothing more we can do with it.
+		return nil
+	} else if preferredNs.ManuallySealed {
+		// Namespace was manually sealed but we're not actually sealed locally;
+		// seal it.
+		ij.im.dispacherLogger.Info("sealing manually sealed namespace", "path", preferredNs.Path, "uuid", preferredNs.UUID)
+		return ij.im.core.namespaceStore.SealNamespace(ctx, preferredNs.Path)
 	}
 
 	childCtx := namespace.ContextWithNamespace(ctx, preferredNs)

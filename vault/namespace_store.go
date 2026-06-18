@@ -238,16 +238,6 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 		}
 		namespacesByUUID[namespace.UUID] = namespace
 		namespacesByAccessor[namespace.ID] = namespace
-
-		if namespace.ManuallySealed {
-			barrier := ns.core.sealManager.NamespaceBarrier(namespace.Path)
-			if barrier != nil && !barrier.Sealed() {
-				if err := barrier.Seal(); err != nil {
-					ns.logger.Warn("unable to seal namespace barrier", "error", err, "ns", namespace.Path, "uuid", namespace.UUID)
-				}
-			}
-		}
-
 		return nil
 	}
 
@@ -1012,6 +1002,27 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 		return errors.New("unable to seal tainted namespace")
 	}
 
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get parent namespace from context: %w", err)
+	}
+
+	if !namespaceToSeal.HasParent(parent) {
+		return errors.New("namespace from context is not the parent of the target namespace to seal")
+	}
+
+	// Mark the namespace as sealed before we seal it; this ensures future
+	// loads will reflect the desired status.
+	if !ns.core.Standby() {
+		// Now modify just this one namespace in storage to mark it sealed,
+		// forgetting the keys from all other nodes.
+		namespaceToSeal.ManuallySealed = true
+		nsCopy := namespaceToSeal.Clone(true /* preserve unlock */)
+		if err := ns.writeNamespace(ctx, ns.core.NamespaceView(parent), nsCopy); err != nil {
+			return fmt.Errorf("failed to persist namespace: %w", err)
+		}
+	}
+
 	return ns.sealNamespaceLocked(ctx, namespaceToSeal)
 }
 
@@ -1046,19 +1057,6 @@ func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSe
 			delete(ns.namespacesByAccessor, entry.ID)
 		}
 	})
-
-	parent, err := namespace.FromContext(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get parent namespace from context: %w", err)
-	}
-
-	// Now modify just this one namespace in storage to mark it sealed,
-	// forgetting the keys from all other nodes.
-	namespaceToSeal.ManuallySealed = true
-	nsCopy := namespaceToSeal.Clone(true /* preserve unlock */)
-	if err := ns.writeNamespace(ctx, ns.core.NamespaceView(parent), nsCopy); err != nil {
-		return fmt.Errorf("failed to persist namespace: %w", err)
-	}
 
 	return errs
 }

@@ -263,8 +263,68 @@ func (c *Core) teardownNamespaceStore() error {
 	return nil
 }
 
-func (ns *NamespaceStore) Invalidate(ctx context.Context, parentUUID, childUUID string) error {
-	return nil
+func (ns *NamespaceStore) Invalidate(ctx context.Context, parentUUID, childUUID string) (*namespace.Namespace, bool, error) {
+	ns.lock.Lock()
+	defer ns.lock.Unlock()
+
+	// Do we know the parent namespace at all?
+	parent, ok := ns.namespacesByUUID[parentUUID]
+	if !ok {
+		// If not, it is most likely a child namespace of a sealable namespace
+		// that we simply don't know about on this standby, in which case we
+		// shouldn't error.
+		return nil, false, nil
+	}
+
+	// Try to re-read the namespace.
+	entry, err := ns.core.NamespaceView(parent).Get(ctx, namespaceStoreSubPath+childUUID)
+	switch {
+	case errors.Is(err, barrier.ErrBarrierSealed):
+		// This is okay, we have nothing to do as the parent is sealed.
+		return nil, false, nil
+	case err != nil:
+		return nil, false, err
+	}
+
+	// The namespace was deleted.
+	if entry == nil {
+		// If we have it in memory, remove it, or do nothing.
+		child, ok := ns.namespacesByUUID[childUUID]
+		if !ok {
+			return nil, false, nil
+		}
+
+		// If there remain further child namespaces in the tree, the ordering of
+		// this invalidation did not make much sense and we'd prefer to error.
+		if err := ns.namespacesByPath.Delete(child.Path); err != nil {
+			return nil, false, err
+		}
+		delete(ns.namespacesByUUID, child.UUID)
+		delete(ns.namespacesByAccessor, child.ID)
+		return child, true, nil
+	}
+
+	// The namespace was either modified or created. Refresh our in-memory
+	// state.
+	var child namespace.Namespace
+	if err := entry.DecodeJSON(&child); err != nil {
+		return nil, false, err
+	}
+
+	child.Locked = child.UnlockKey != ""
+
+	if err := ns.namespacesByPath.Insert(&child); err != nil {
+		return nil, false, err
+	}
+	ns.namespacesByUUID[child.UUID] = &child
+	ns.namespacesByAccessor[child.ID] = &child
+
+	if child.ManuallySealed {
+		// Ensure this namespace is sealed locally.
+		return &child, false, ns.sealNamespaceLocked(ctx, &child)
+	}
+
+	return &child, false, nil
 }
 
 // SetNamespace is used to create or update a namespace.
@@ -920,16 +980,13 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 		return errors.New("namespace from context is not the parent of the target namespace to seal")
 	}
 
-	// Mark the namespace as sealed before we seal it; this ensures future
-	// loads will reflect the desired status.
-	if !ns.core.Standby() {
-		// Now modify just this one namespace in storage to mark it sealed,
-		// forgetting the keys from all other nodes.
-		namespaceToSeal.ManuallySealed = true
-		nsCopy := namespaceToSeal.Clone(true /* preserve unlock */)
-		if err := ns.writeNamespace(ctx, ns.core.NamespaceView(parent), nsCopy); err != nil {
-			return fmt.Errorf("failed to persist namespace: %w", err)
-		}
+	// Mark the namespace as manually sealed before we seal it; this ensures
+	// future loads will reflect the desired status. Additionally, standbys will
+	// see this update and seal the namespace accordingly.
+	namespaceToSeal.ManuallySealed = true
+	nsCopy := namespaceToSeal.Clone(true /* preserve unlock */)
+	if err := ns.writeNamespace(ctx, ns.core.NamespaceView(parent), nsCopy); err != nil {
+		return fmt.Errorf("failed to persist namespace: %w", err)
 	}
 
 	return ns.sealNamespaceLocked(ctx, namespaceToSeal)

@@ -440,7 +440,28 @@ func (ij *invalidationJob) namespaceInvalidation(ctx context.Context) error {
 	// The namespace UUID is the final path segment; ij.nsUUID contains the
 	// parent namespace UUID.
 	childUUID := strings.TrimPrefix(ij.nsKey, namespaceStoreSubPath)
-	return ij.im.core.namespaceStore.Invalidate(ctx, ij.nsUUID, childUUID)
+
+	// Reload the namespace entry:
+	child, deleted, err := ij.im.core.namespaceStore.Invalidate(ctx, ij.nsUUID, childUUID)
+	switch {
+	case err != nil:
+		return err
+	case child == nil, ij.im.core.NamespaceSealed(child):
+		// Nothing to do.
+		return nil
+	}
+
+	ctx = namespace.ContextWithNamespace(ctx, child)
+
+	// Invalidate all policies within the namespace.
+	ij.im.core.policyStore.InvalidateNamespace(ctx, childUUID)
+
+	// Now reload all mounts within the namespace.
+	if err := ij.im.core.reloadNamespaceMounts(ctx, childUUID, deleted); err != nil {
+		return fmt.Errorf("unable to invalidate mounts in namespace %q: %w", ij.nsUUID, err)
+	}
+
+	return nil
 }
 
 func (ij *invalidationJob) policyInvalidation(ctx context.Context) error {

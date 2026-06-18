@@ -276,8 +276,11 @@ func (ns *NamespaceStore) Invalidate(ctx context.Context, parentUUID, childUUID 
 		return nil, false, nil
 	}
 
+	// Get the parent's barrier.
+	b := ns.core.sealManager.NamespaceBarrierByLongestPrefix(parent.Path)
+
 	// Try to re-read the namespace.
-	entry, err := ns.core.NamespaceView(parent).Get(ctx, namespaceStoreSubPath+childUUID)
+	entry, err := NamespaceScopedView(b, parent).Get(ctx, namespaceStoreSubPath+childUUID)
 	switch {
 	case errors.Is(err, barrier.ErrBarrierSealed):
 		// This is okay, we have nothing to do as the parent is sealed.
@@ -318,6 +321,18 @@ func (ns *NamespaceStore) Invalidate(ctx context.Context, parentUUID, childUUID 
 	}
 	ns.namespacesByUUID[child.UUID] = &child
 	ns.namespacesByAccessor[child.ID] = &child
+
+	if entry, err := NamespaceScopedView(b, &child).Get(ctx, barrierSealConfigPath); err != nil {
+		return nil, false, err
+	} else if entry != nil {
+		var config SealConfig
+		if err := entry.DecodeJSON(&config); err != nil {
+			return nil, false, err
+		}
+		if err := ns.core.sealManager.SetSeal(ctx, &config, &child, false); err != nil {
+			return nil, false, err
+		}
+	}
 
 	if child.ManuallySealed {
 		// Ensure this namespace is sealed locally.

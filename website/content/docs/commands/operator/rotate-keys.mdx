@@ -105,6 +105,12 @@ Perform the verification of the rotation using the verification nonce:
 $ bao operator rotate-keys -verify -nonce="..."
 ```
 
+Perform a rotation on a sealable namespace:
+
+```shell-session
+$ bao operator rotate-keys -ns=tenants/my-tenant -init
+```
+
 ## Usage
 
 The following flags are available in addition to the [standard set of
@@ -150,6 +156,8 @@ flags](../index.mdx) included on all commands.
 - `-verify` `(bool: false)` - Indicate during the phase `-init` that the
   verification process is activated for the rotation. Along with `-nonce` option
   it indicates that the nonce given is for the verification process.
+
+- `-namespace` `(string: "")` - Sealable namespace to rotate the unseal key for. Defaults to the root namespace.
 
 ### Backup options
 

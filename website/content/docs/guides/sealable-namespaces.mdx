@@ -1,0 +1,297 @@
+---
+sidebar_label: Sealable Namespace Guide
+description: >-
+  This page contains a guide to get started with sealable namespaces in OpenBao
+---
+
+# Getting Started with Sealable Namespaces
+
+:::info
+
+For understanding the concept of sealable namespaces, check out the [Sealable Namespaces](../../concepts/namespaces/sealable-namespaces) concept page.
+
+If you are working with the API instead of the CLI, you can add `-output-curl-string` to any of these commands to find the correct path and header values or check the API docs.
+
+:::
+
+## Creating a Namespace
+
+You can create a sealable namespace `my-tenant` under an existing namespace `tenants` with a Shamir seal like this:
+
+```shell-session
+$ bao namespace create -ns=tenants -key-shares=5 -key-threshold=3 my-tenant
+Unseal Key 1: 639c362ebf75b0ebfdc0f62b6e40da5a3471d6f9ad9223c968a62ba369b8f453ab
+Unseal Key 2: cee185da54cce9d4cd87154d4a228edfd61473b497a599208c3686b9377c1f13b4
+Unseal Key 3: 6280d458eac88def949b197bcda005d1b639ed18c55ef6699b1db3ba1556c54d96
+Unseal Key 4: fe223cc4d2d10322a2955175af11fe23b007338bb9ca8a1ddab005ff6ba59d4b90
+Unseal Key 5: 6024203476e44f811c6720b938d478f7ebb05c776cd756cc942b0e5652accb2594
+
+Namespace initialized with 5 key shares and a key threshold of 3. Please
+securely distribute the key shares printed above. When the namespace is
+re-sealed, you must supply at least 3 of these keys to unseal it.
+
+Key                Value
+---                -----
+custom_metadata    map[]
+id                 dEkONN
+locked             false
+path               tenants/my-tenant/
+tainted            false
+uuid               62a3560f-bb0c-1436-ff45-9f1f8192cafd
+```
+
+:::info
+
+**Note**: You'll always need to specify the parent namespace with the `-ns`
+flag, since the namespace itself might not be able to accept requests when in a
+sealed state.
+
+:::
+
+Just like `bao operator init`, you can specify a list of PGP or Keybase keys to
+encrypt the key shares with. See [`operator
+init`](../../commands/operator/init#examples) docs for more details.
+
+
+:::warning
+
+**Important**: Migrating an existing non-sealable namespace to a sealable one or vice versa is currently not supported.
+
+:::
+
+## Unsealing a Namespace
+
+A newly created sealable namespace is sealed. To unseal a Shamir-sealed namespace, use the command `bao namespace unseal`:
+
+```shell-session
+$ bao namespace unseal -ns=tenants my-tenant
+Unseal Key (will be hidden): 
+Key                Value
+---                -----
+Seal Type          shamir
+Initialized        true
+Sealed             true
+Total Shares       5
+Threshold          3
+Unseal Progress    1/3
+Unseal Nonce       0f975b9c-5644-6763-e4dc-73e7094ac136
+HA Enabled         false
+```
+
+Cancelling an in-progress unsealing procedure can be done by passing the `-reset` flag to the `namespace unseal` command.
+
+Unlike the global OpenBao seal, namespaces do not have to be unsealed per node,
+but just once per cluster.
+
+## Sealing a Namespace
+
+To seal a sealable namespace, use the command `bao namespace seal`:
+
+```shell-session
+$ bao namespace seal -ns=tenants my-tenant
+Success! Namespace "my-tenant" is sealed.
+```
+
+Sealing a namespace:
+- immediately discards the in-memory namespace keys
+- causes all subsequent requests to that namespace to fail until it is unsealed again
+- if an unseal is in progress, sealing resets the process. Key holders will need to re-enter their shares
+- sealing a namespace that is already sealed has no effect (and will not reset the unseal progress)
+
+If a parent namespace is sealed, all child namespaces with their own seal configurations are also sealed.
+
+## Seal Status
+
+To retrieve the seal status of a namespace, you can use the command `bao namespace seal-status`:
+
+```shell-session
+$ bao namespace seal-status -ns=tenants my-tenant
+Key                Value
+---                -----
+Seal Type          shamir
+Initialized        true
+Sealed             true
+Total Shares       5
+Threshold          3
+Unseal Progress    1/3
+Unseal Nonce       0f975b9c-5644-6763-e4dc-73e7094ac136
+HA Enabled         false
+```
+
+Retrieving the seal status of a non-sealable namespace will result in an error.
+
+## Deleting a Sealable Namespace
+
+If a sealable namespace is unsealed and empty, it can be deleted with the normal `bao namespace delete` command:
+
+```shell-session
+$ bao namespace delete -ns=tenants my-tenant
+Success! Namespace deleted at: tenants/my-tenant/
+```
+
+If a namespace is sealed and does not contain child namespaces, it can be
+deleted with `bao namespace delete-sealed`:
+
+```shell-session
+$ bao namespace delete-sealed -ns=tenants my-tenant
+Success! Namespace deletion scheduled: tenants/my-tenant/
+```
+
+Sealed namespaces that are not empty can be deleted by passing the `-force`
+flag. This will delete any data in that namespace and any child-namespaces that
+might exist.
+
+```shell-session
+$ bao namespace delete-sealed -ns=tenants -force my-tenant
+Success! Namespace deletion scheduled: tenants/my-tenant/
+```
+
+:::info
+
+Note that `bao namespace delete-sealed` requires the sudo capability, and will
+not clean up external resources via lease deletion like standard namespace
+deletion does.
+
+Prefer the standard `bao namespace delete` command unless the namespace is
+irrecoverable due to lost seal keys.
+
+:::
+
+## Rotate Unseal Keys
+
+To start generating a new set of unseal keys for a sealable namespace, use the
+`bao operator rotate-keys` command with the `-ns` flag. 
+
+```shell-session
+$ bao operator rotate-keys -ns=tenants/my-tenant -init
+WARNING! If you lose the keys after they are returned, there is no recovery.
+Consider canceling this operation and re-initializing with the -pgp-keys flag
+to protect the returned unseal keys along with -backup to allow recovery of
+the encrypted keys in case of emergency. You can delete the stored keys later
+using the -delete flag.
+
+Key                      Value
+---                      -----
+Nonce                    393bcb43-93b0-bd74-393e-19fa7a929cee
+Started                  true
+Progress                 0/3
+New Shares               5
+New Threshold            3
+Verification Required    false
+```
+
+:::info
+
+**Note**: Unlike the `bao namespace` commands, the `bao operator` commands require
+specifying the **target namespace** via the `-ns` flag.
+
+:::
+
+You can optionally provide the `-key-shares` and `-key-threshold` flags to
+change the number of shares and threshold.
+
+Then you will have to provide a quorum of the old key shares to finish the key
+rotation procedure using the same command without the `-init` flag:
+
+```shell-session
+$ bao operator rotate-keys -ns=tenants/my-tenant
+rotation nonce: 393bcb43-93b0-bd74-393e-19fa7a929cee
+Unseal Key (will be hidden): 
+
+Key 1: PBkUn7edaxLU1RoWhQ2V1WB/d+fDqD7vbTGdZn3RvlJL
+Key 2: Kevv2P/y8quC2Z+fC0U+NFDv2QgHk8wz+xQWcR3kbHSn
+Key 3: zCgyQ4nR65veU2N5w3KkJOI8LsIkDyCUlMn98bY6bvQn
+Key 4: ivlPCrBJtMKGN66m6FTQVu+yW22WjE304Zz02tEyNF0o
+Key 5: hFZUpb3i6L8m+aYcISaUVkF0FVFfKa4FMIo/oLifU9Ym
+
+Operation nonce: 393bcb43-93b0-bd74-393e-19fa7a929cee
+
+OpenBao unseal keys rotated to 5 key shares and a key threshold of 3. Please
+securely distribute the key shares printed above. When OpenBao is re-sealed,
+restarted, or stopped, you must supply at least 3 of these keys to unseal it
+before it can start servicing requests.
+```
+
+You can cancel the rotation procedure at any time using the `-cancel` flag.
+
+For more details see the documentation for the [`operator
+rotate-keys`](../../commands/operator/rotate-keys#examples) command.
+
+## Keyring Rotation
+
+To rotate the data encryption keys of a namespace, you can use the existing `bao
+operator rotate` command, while specifying the namespace with the `-ns` flag.
+This requires the namespace to be unsealed.
+
+```shell-session
+$ bao operator rotate -ns=tenants/my-tenant
+Success! Rotated key
+
+Key Term            2
+Install Time        10 Jun 26 08:37 UTC
+Encryption Count    0
+```
+
+You can always check the current status of the namespace keyring by using the `bao operator key-status` command:
+
+```shell-session
+$ bao operator key-status -ns=tenants/my-tenant
+Key Term            2
+Install Time        10 Jun 26 08:37 UTC
+Encryption Count    0
+```
+
+## Generate a Sealable Namespace Root Token
+
+You can use the `bao operator generate-root` command to generate a namespace-scoped root token for a sealable namespace.
+
+```shell-session
+$ bao operator generate-root -ns=tenants/my-tenant -init
+A One-Time-Password has been generated for you and is shown in the OTP field.
+You will need this value to decode the resulting root token, so keep it safe.
+Nonce         ad287b9e-cb19-613b-3720-84b5ac4ac1ef
+Started       true
+Progress      0/3
+Complete      false
+OTP           zs6S1qnRj6meHCEUsyFv7AclrDpI4jHbQ
+OTP Length    33
+```
+
+You will then have to provide the appropriate number of seal shares to finish the root token generation.
+
+```shell-session
+$ bao operator generate-root -ns=tenants/my-tenant
+Operation nonce: ad287b9e-cb19-613b-3720-84b5ac4ac1ef
+Unseal Key (will be hidden): 
+Nonce            ad287b9e-cb19-613b-3720-84b5ac4ac1ef
+Started          true
+Progress         3/3
+Complete         true
+Encoded Token    CV1XEQdDCApdBi88eDF9YRYgfhBeESQjFgdeLXEBBywf
+```
+
+See the documentation of [`operator generate-root`](../../commands/operator/generate-root) for more infos on this and how to decode the returned token.
+
+Check out the generated token using `bao token lookup`:
+
+```shell-session
+$ bao token lookup
+Key                 Value
+---                 -----
+accessor            W4gespQDyq6NDI2flWOxiPR7.dEkONN
+creation_time       1781095090
+creation_ttl        0s
+display_name        dEkONN_root
+entity_id           n/a
+expire_time         <nil>
+explicit_max_ttl    0s
+id                  s.aB62fX70BY0r84eY8fiPGOdC.dEkONN
+meta                <nil>
+namespace_path      tenants/my-tenant/
+num_uses            0
+orphan              true
+path                namespaces/62a3560f-bb0c-1436-ff45-9f1f8192cafd/auth/token/root
+policies            [root]
+ttl                 0s
+type                service
+```

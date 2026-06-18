@@ -977,12 +977,12 @@ func (m *Manager) Invalidate(ctx context.Context, key string) error {
 
 		switch quota {
 		case nil:
-			// Handle quota deletion
+			m.logger.Debug("cache invalidation: quota was deleted", "name", name)
 			if err := m.DeleteQuota(ctx, qType, name); err != nil {
 				return fmt.Errorf("failed to delete invalidated quota rule: %w", err)
 			}
 		default:
-			// Handle quota update
+			m.logger.Debug("cache invalidation: quota was updated", "name", name)
 			if err := m.SetQuota(ctx, qType, quota); err != nil {
 				return fmt.Errorf("failed to update invalidated quota rule: %w", err)
 			}

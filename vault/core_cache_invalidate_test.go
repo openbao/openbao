@@ -353,7 +353,8 @@ func TestCore_Invalidate_Quota(t *testing.T) {
 	t.Parallel()
 	c, root := testCore_Invalidate_TestCore(t, nil)
 	rootCtx := namespace.RootContext(t.Context())
-	// 1. Create some qutoa to populate cache
+
+	// 1. Create quota to populate cache
 	req := logical.TestRequest(t, logical.CreateOperation, "sys/quotas/rate-limit/test-quota")
 	req.ClientToken = root
 	req.Data = map[string]any{
@@ -362,7 +363,7 @@ func TestCore_Invalidate_Quota(t *testing.T) {
 	}
 	testCore_Invalidate_handleRequest(t, rootCtx, c, req)
 
-	// 2. Manipulate Storage
+	// 2. Manipulate storage: write updated quota
 	quota, err := c.quotaManager.QuotaByName("rate-limit", "test-quota")
 	require.NoError(t, err)
 
@@ -375,14 +376,37 @@ func TestCore_Invalidate_Quota(t *testing.T) {
 	testCore_Invalidate_sneakValueAroundCache(t, rootCtx, c, newEntry)
 
 	// 3. Invalidate Path
-	require.NoError(t, c.invalidateSynchronous("sys/quotas/rate-limit/test-quota"))
+	require.NoError(t, c.invalidateSynchronous(newEntry.Key))
 
-	// 4. Check cache was properly invalidated
-	req = logical.TestRequest(t, logical.ReadOperation, "sys/quotas/rate-limit/test-quota")
+	// 4. Check cache: quota updated
+	req = logical.TestRequest(t, logical.ReadOperation, newEntry.Key)
 	req.ClientToken = root
 
 	resp := testCore_Invalidate_handleRequest(t, rootCtx, c, req)
+	require.Equal(t, 1, resp.Data["interval"])
 
+	// 5. Delete quota
+	testCore_Invalidate_sneakValueAroundCacheDelete(t, rootCtx, c, newEntry.Key)
+
+	// 6. Invalidate Path
+	require.NoError(t, c.invalidateSynchronous(newEntry.Key))
+
+	// 7. Check cache: quota deleted
+	req = logical.TestRequest(t, logical.ReadOperation, newEntry.Key)
+	req.ClientToken = root
+	resp = testCore_Invalidate_handleRequest(t, rootCtx, c, req)
+
+	require.Nil(t, resp)
+
+	// 8. Manipulate quota in storage: restore quota
+	testCore_Invalidate_sneakValueAroundCache(t, rootCtx, c, newEntry)
+
+	// 9. Invalidate path
+	require.NoError(t, c.invalidateSynchronous(newEntry.Key))
+
+	// 10. Check cache: quota brought back
+	resp = testCore_Invalidate_handleRequest(t, rootCtx, c, req)
+	require.NotNil(t, resp.Data)
 	require.Equal(t, 1, resp.Data["interval"])
 }
 

@@ -2122,15 +2122,11 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 
 	actualMountEntry := c.router.MatchingMountByUUID(uuid)
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-
 	switch {
 	case desiredMountEntry == nil && actualMountEntry != nil: // mount was deleted
 		c.logger.Debug("cache invalidation: mount was deleted", "type", table, "uuid", uuid)
 
+		var err error
 		if table == routing.CredentialTableType {
 			err = c.removeCredEntryWithLock(ctx, actualMountEntry.Path, false)
 		} else {
@@ -2144,49 +2140,42 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 		if table == routing.CredentialTableType {
 			routerPath = path.Join(routing.CredentialRoutePrefix, routerPath) + "/"
 		}
+
 		if err := c.router.Unmount(ctx, routerPath); err != nil {
 			return err
-		}
-
-		if c.quotaManager != nil {
-			if err := c.quotaManager.HandleBackendDisabling(ctx, ns.Path, actualMountEntry.APIPathNoNamespace()); err != nil {
-				c.logger.Error("failed to update quotas after disabling mount", "error", err, "namespace", ns.Path, "uuid", uuid)
-				return err
-			}
 		}
 
 	case desiredMountEntry != nil && actualMountEntry == nil: // mount was created
 		c.logger.Debug("cache invalidation: mount was created", "type", table, "uuid", uuid)
 
+		var err error
 		if table == routing.CredentialTableType {
 			err = c.enableCredentialInternalWithLock(ctx, desiredMountEntry, false)
-			if err != nil {
-				return err
-			}
 		} else {
 			c.logger.Info("calling mount internal", "path", desiredMountEntry.Path)
-			err := c.mountInternalWithLock(ctx, desiredMountEntry, false)
-			if err != nil {
-				return err
-			}
+			err = c.mountInternalWithLock(ctx, desiredMountEntry, false)
+		}
+		if err != nil {
+			return err
 		}
 
 	case desiredMountEntry != nil && actualMountEntry != nil: // mount was modified (e.g. tuned or tainted)
 		c.logger.Debug("cache invalidation: mount was modified", "type", table, "uuid", uuid)
-		routerPath := actualMountEntry.Path
-		if table == routing.CredentialTableType {
-			routerPath = path.Join(routing.CredentialRoutePrefix, routerPath) + "/"
-		}
 
 		if desiredMountEntry.Tainted != actualMountEntry.Tainted {
+			routerPath := actualMountEntry.Path
+			if table == routing.CredentialTableType {
+				routerPath = path.Join(routing.CredentialRoutePrefix, routerPath) + "/"
+			}
+
 			if desiredMountEntry.Tainted {
-				err = c.router.Taint(ctx, routerPath)
+				err := c.router.Taint(ctx, routerPath)
 				if err != nil {
 					return err
 				}
 				actualMountEntry.Tainted = true
 			} else {
-				err = c.router.Untaint(ctx, routerPath)
+				err := c.router.Untaint(ctx, routerPath)
 				if err != nil {
 					return err
 				}
@@ -2200,7 +2189,7 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 		}
 
 		if desiredMountEntry.Options["version"] != actualMountEntry.Options["version"] {
-			err = c.reloadBackendCommon(ctx, desiredMountEntry, table == routing.CredentialTableType)
+			err := c.reloadBackendCommon(ctx, desiredMountEntry, table == routing.CredentialTableType)
 			if err != nil {
 				return err
 			}

@@ -1,3 +1,0 @@
-```release-note:bug
-namespaces: seal namespace back on failed postNamespaceUnseal to avoid dirty partial state
-```

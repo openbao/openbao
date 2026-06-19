@@ -349,9 +349,10 @@ func (ij *invalidationJob) Execute() error {
 		ij.fatal = true
 		return fmt.Errorf("failed to load namespace %q from store: %w", ij.nsUUID, err)
 	}
-	if ns == nil {
-		// Namespace was deleted; this is safe to ignore, because it occurs in
-		// one of two scenarios:
+	if ns == nil || ns.Tainted {
+		// Namespace was deleted or created (or is in process of being
+		// deleted/created); this is safe to ignore, because it occurs in one of
+		// two scenarios:
 		//
 		// 1. The namespace was deleted already (invalidation on
 		//    core/namespaces/<uuid> was processed first) and we're getting an

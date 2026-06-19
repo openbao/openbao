@@ -270,9 +270,9 @@ func (ns *NamespaceStore) Invalidate(ctx context.Context, parentUUID, childUUID 
 	// Do we know the parent namespace at all?
 	parent, ok := ns.namespacesByUUID[parentUUID]
 	if !ok {
-		// If not, it is most likely a child namespace of a sealable namespace
-		// that we simply don't know about on this standby, in which case we
-		// shouldn't error.
+		// If not, the parent namespace is most likely itself a child namespace
+		// of a sealable namespace that isn't yet unsealed on this standby, so
+		// we're good to ignore this invalidation.
 		return nil, false, nil
 	}
 
@@ -304,6 +304,7 @@ func (ns *NamespaceStore) Invalidate(ctx context.Context, parentUUID, childUUID 
 		}
 		delete(ns.namespacesByUUID, child.UUID)
 		delete(ns.namespacesByAccessor, child.ID)
+		ns.core.sealManager.RemoveNamespace(child)
 		return child, true, nil
 	}
 

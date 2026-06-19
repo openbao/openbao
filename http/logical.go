@@ -185,13 +185,19 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to generate identifier for the request: %w", err)
 	}
 
+	// The http package removes the Host header when deserializing
+	// the http request.  This adds it back in so it is available
+	// in the logical request.
+	reqHeader := r.Header.Clone()
+	reqHeader.Add("Host", r.Host)
+
 	req := &logical.Request{
 		ID:         requestId,
 		Operation:  op,
 		Path:       path,
 		Data:       data,
 		Connection: getConnection(r),
-		Headers:    r.Header.Clone(),
+		Headers:    reqHeader,
 	}
 
 	if passHTTPReq {

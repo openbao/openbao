@@ -47,7 +47,6 @@ import (
 )
 
 const (
-	replTimeout                           = 1 * time.Second
 	EnvVaultDisableLocalAuthMountEntities = "BAO_DISABLE_LOCAL_AUTH_MOUNT_ENTITIES"
 
 	// coreLockedUsersPath is a base path to store locked users
@@ -592,18 +591,37 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	stop := context.AfterFunc(httpCtx, cancel)
 	defer stop()
 
-	// A namespace was manually passed to HandleRequest, as can be the case with:
-	// 1. Synthesized logical requests not originating from an HTTP request
-	// 2. Tests
-	ns, err := namespace.FromContext(httpCtx)
-	var nsHeader string
-	if err != nil {
-		// If the above is not the case, resolve the namespace from header & request path.
-		nsHeader = namespace.HeaderFromContext(httpCtx)
-		ns, req.Path = c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, req.Path)
-		if ns == nil {
-			return nil, logical.CodedError(http.StatusNotFound, "namespace not found")
-		}
+	contextNS, err := namespace.FromContext(httpCtx)
+	haveContextNS := err == nil
+
+	if haveContextNS {
+		// If we have a namespace in context, prepend its path to the request
+		// path before namespace resolution. We prepend to request path instead
+		// of prepending to header to guarantee that the header is always
+		// interpreted as an absolute path.
+		req.Path = contextNS.Path + req.Path
+	}
+
+	// Resolve the namespace for this request from header & path.
+	var ns *namespace.Namespace
+	nsHeader := namespace.HeaderFromContext(httpCtx)
+	ns, req.Path = c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, req.Path)
+	if ns == nil {
+		return nil, logical.CodedError(http.StatusNotFound, "namespace not found")
+	}
+
+	if haveContextNS && !ns.HasParent(contextNS) {
+		// If we were externally passed a namespace via context previously (as
+		// is the case for some tests and synthetic requests sent within
+		// core), ensure that the namespace resolved above does not escape the
+		// context's namespace. This is important e.g. for the workflow store,
+		// where we'd like subsequent requests to not escape the namespace that
+		// the workflow is hosted in.
+		return nil, logical.CodedError(
+			http.StatusBadRequest,
+			"subsequent request to namespace %q cannot escape namespace %q",
+			ns.Path, contextNS.Path,
+		)
 	}
 
 	if ns.ID != namespace.RootNamespaceID {

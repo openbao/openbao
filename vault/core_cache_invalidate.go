@@ -200,11 +200,18 @@ func (im *invalidationManager) buildInvalidateJobForKey(quitCh chan struct{}, qu
 	ns, subkey := im.splitNamespaceFromKey(key)
 
 	queue := ns
-	if ns == namespace.RootNamespaceUUID {
-		if strings.HasPrefix(subkey, "core/") {
-			queue = key
-		}
-	} else if strings.HasPrefix(subkey, "core/") {
+
+	isCore := strings.HasPrefix(subkey, "core/")
+	isNamespaceStore := isCore && strings.HasPrefix(subkey, namespaceStoreSubPath)
+
+	switch {
+	case isNamespaceStore:
+		// Namespaces are laid out in a dense tree, so ordering is important.
+		// Send all namespace store updates to the same queue.
+		queue = "namespaces"
+	case queue == namespace.RootNamespaceUUID && isCore:
+		queue = key
+	case isCore:
 		queue += "-core"
 	}
 

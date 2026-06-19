@@ -2139,38 +2139,39 @@ func TestNamespaceSealedLeaseTokenRevoke(t *testing.T) {
 // fails partway through, the namespace is sealed back to a known clean state
 // rather than being left in a dirty partially-initialized state.
 func TestNamespaceStore_UnsealRollbackOnFailure(t *testing.T) {
-	// corruptEntry overwrites the first entry under prefix with invalid JSON.
-	// Transactional backends store individual entries at prefix/<uuid>;
-	// legacy backends store a single combined entry at prefix directly.
-	corruptEntry := func(t *testing.T, ctx context.Context, view logical.Storage, prefix string) {
+	// corruptEntry overwrites the first transactional entry under prefix with invalid JSON.
+	corruptEntry := func(t *testing.T, view logical.Storage, prefix string) {
 		t.Helper()
-		uuids, err := view.List(ctx, prefix+"/")
+		uuids, err := view.List(t.Context(), prefix+"/")
 		require.NoError(t, err)
-		key := prefix
-		if len(uuids) > 0 {
-			key = prefix + "/" + uuids[0]
-		}
-		require.NoError(t, view.Put(ctx, &logical.StorageEntry{
-			Key:   key,
+		require.NotEmpty(t, uuids, "expected at least one transactional mount entry under %s", prefix)
+		require.NoError(t, view.Put(t.Context(), &logical.StorageEntry{
+			Key:   prefix + "/" + uuids[0],
 			Value: []byte("{not valid json}"),
 		}))
 	}
 
 	testCases := []struct {
-		name    string
-		corrupt func(t *testing.T, ctx context.Context, c *Core, nsEntry *namespace.Namespace)
+		name        string
+		corrupt     func(t *testing.T, c *Core, nsEntry *namespace.Namespace)
+		expectError bool
 	}{
 		{
+			name: "no corruption: unseal succeeds",
+		},
+		{
 			name: "corrupt mount table causes rollback",
-			corrupt: func(t *testing.T, ctx context.Context, c *Core, nsEntry *namespace.Namespace) {
-				corruptEntry(t, ctx, c.NamespaceView(nsEntry), coreMountConfigPath)
+			corrupt: func(t *testing.T, c *Core, nsEntry *namespace.Namespace) {
+				corruptEntry(t, c.NamespaceView(nsEntry), coreMountConfigPath)
 			},
+			expectError: true,
 		},
 		{
 			name: "corrupt auth table causes rollback",
-			corrupt: func(t *testing.T, ctx context.Context, c *Core, nsEntry *namespace.Namespace) {
-				corruptEntry(t, ctx, c.NamespaceView(nsEntry), coreAuthConfigPath)
+			corrupt: func(t *testing.T, c *Core, nsEntry *namespace.Namespace) {
+				corruptEntry(t, c.NamespaceView(nsEntry), coreAuthConfigPath)
 			},
+			expectError: true,
 		},
 	}
 
@@ -2188,7 +2189,9 @@ func TestNamespaceStore_UnsealRollbackOnFailure(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, nsEntry)
 
-			tc.corrupt(t, ctx, c, nsEntry)
+			if tc.corrupt != nil {
+				tc.corrupt(t, c, nsEntry)
+			}
 
 			require.NoError(t, s.SealNamespace(ctx, "rollback-test"))
 			require.True(t, c.NamespaceSealed(nsEntry))
@@ -2196,13 +2199,20 @@ func TestNamespaceStore_UnsealRollbackOnFailure(t *testing.T) {
 			keys := keyShares["rollback-test/"]
 			var unsealErr error
 			for _, key := range keys {
-				_, unsealErr = s.UnsealNamespace(ctx, "rollback-test", key)
-				if unsealErr != nil {
+				var unsealed bool
+				unsealed, unsealErr = s.UnsealNamespace(ctx, "rollback-test", key)
+				if unsealErr != nil || unsealed {
 					break
 				}
 			}
-			require.Error(t, unsealErr)
-			require.True(t, c.NamespaceSealed(nsEntry), "namespace must be sealed back after failed postNamespaceUnseal")
+
+			if tc.expectError {
+				require.Error(t, unsealErr)
+				require.True(t, c.NamespaceSealed(nsEntry), "namespace must be sealed back after failed postNamespaceUnseal")
+			} else {
+				require.NoError(t, unsealErr)
+				require.False(t, c.NamespaceSealed(nsEntry), "namespace must be unsealed after successful postNamespaceUnseal")
+			}
 		})
 	}
 }

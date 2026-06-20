@@ -1169,7 +1169,9 @@ func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal
 				ns.namespacesByUUID[newNs.UUID] = newNs
 				ns.namespacesByAccessor[newNs.ID] = newNs
 
-				collected = append(collected, newNs.Clone(false))
+				if !ns.core.NamespaceSealed(newNs) {
+					collected = append(collected, newNs.Clone(false))
+				}
 
 				return nil
 			})

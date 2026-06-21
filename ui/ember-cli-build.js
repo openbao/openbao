@@ -26,10 +26,12 @@ const appConfig = {
     sourceDirs: ['node_modules/@hashicorp/structure-icons/dist', 'public'],
     rootURL: '/ui/',
   },
+  gzip: {
+    enabled: true,
+  },
   fingerprint: {
     gzip: {
       extensions: ['html', 'js', 'css', 'json', 'svg', 'xml', 'txt'],
-      keepUncompressed: true,
     },
     exclude: ['images/'],
   },

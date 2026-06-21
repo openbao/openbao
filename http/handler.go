@@ -60,13 +60,15 @@ const (
 	RFC9440ClientChainHeader = "Client-Chain"
 )
 
+// uiAssets is the file system for UI assets. It is set by the build‑tagged
+// files (ui.go or stub_asset.go) to either the real embed.FS or nil.
+var uiAssets http.FileSystem
+
 var (
+
 	// canonicalMFAHeaderName is the MFA header value's format in the request
 	// headers. Do not alter the casing of this string.
 	canonicalMFAHeaderName = http.CanonicalHeaderKey(consts.MFAHeaderName)
-
-	// Set to false by stub_asset if the ui build tag isn't enabled
-	uiBuiltIn = true
 
 	alwaysRedirectPaths = pathmanager.New()
 
@@ -105,6 +107,8 @@ var (
 
 	oidcProtectedPathRegex = regexp.MustCompile(`^identity/oidc/provider/\w(([\w-.]+)?\w)?/userinfo$`)
 )
+
+var gzipAcceptEncodingRegex = regexp.MustCompile(`(?i)(?:^|[ \t,])gzip(?:$|[ \t,;])`)
 
 func init() {
 	alwaysRedirectPaths.AddPaths([]string{
@@ -208,11 +212,10 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/sys/", handleLogical(core))
 		mux.Handle("/v1/", handleLogical(core))
 		if core.UIEnabled() {
-			fs := getUIAssets() // nil if UI stub, else real FS
-			if uiBuiltIn && fs != nil {
+			if uiAssets != nil {
 				uiHandler := precompressedUIHandler(
-					http.FileServer(&UIAssetWrapper{FileSystem: fs}),
-					fs,
+					http.FileServer(&UIAssetWrapper{FileSystem: uiAssets}),
+					uiAssets,
 				)
 				mux.Handle("/ui/", http.StripPrefix("/ui/", handleUIHeaders(core, handleUI(uiHandler))))
 				mux.Handle("/robots.txt", handleUIHeaders(core, handleUI(uiHandler)))
@@ -732,8 +735,10 @@ func precompressedUIHandler(next http.Handler, fs http.FileSystem) http.Handler 
 			return
 		}
 
-		// Only GET requests, and only when client accepts gzip
-		if r.Method != http.MethodGet || !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		// Only GET requests, and only when client explicitly accepts gzip.
+		// We intentionally match the gzip token rather than substring search to
+		// avoid false positives like pack200-gzip or gzip2.
+		if r.Method != http.MethodGet || !gzipAcceptEncodingRegex.MatchString(r.Header.Get("Accept-Encoding")) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -755,7 +760,12 @@ func precompressedUIHandler(next http.Handler, fs http.FileSystem) http.Handler 
 			}
 			r.URL.Path = gzPath
 			w.Header().Set("Content-Encoding", "gzip")
-			w.Header().Set("Vary", "Accept-Encoding")
+			w.Header().Add("Vary", "Accept-Encoding")
+
+			// Ensure the correct MIME type is returned for precompressed files.
+			if mimeType := mime.TypeByExtension(ext); mimeType != "" {
+				w.Header().Set("Content-Type", mimeType)
+			}
 		}
 		next.ServeHTTP(w, r)
 	})

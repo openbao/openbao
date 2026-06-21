@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/go-test/deep"
@@ -115,6 +116,75 @@ func TestHandler_parseMFAHandler(t *testing.T) {
 	err = parseMFAHeader(req)
 	if err == nil {
 		t.Fatalf("expected an error; actual: %#v\n", req.MFACreds)
+	}
+}
+
+func TestHandler_precompressedUIHandlerGzipToken(t *testing.T) {
+	t.Parallel()
+
+	fsys := http.FS(fstest.MapFS{
+		"index.html.gz": {Data: []byte("compressed content")},
+	})
+
+	testCases := []struct {
+		name         string
+		acceptHeader string
+		expectedPath string
+		expectedGzip bool
+	}{
+		{
+			name:         "explicit gzip",
+			acceptHeader: "gzip",
+			expectedPath: "/index.html.gz",
+			expectedGzip: true,
+		},
+		{
+			name:         "gzip with qvalue",
+			acceptHeader: "gzip;q=1.0, br",
+			expectedPath: "/index.html.gz",
+			expectedGzip: true,
+		},
+		{
+			name:         "pack200-gzip should not match",
+			acceptHeader: "pack200-gzip",
+			expectedPath: "/index.html",
+			expectedGzip: false,
+		},
+		{
+			name:         "gzip2 should not match",
+			acceptHeader: "gzip2",
+			expectedPath: "/index.html",
+			expectedGzip: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotPath string
+			next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotPath = r.URL.Path
+				w.WriteHeader(http.StatusNoContent)
+			})
+
+			h := precompressedUIHandler(next, fsys)
+			req := httptest.NewRequest(http.MethodGet, "http://example.com/index.html", nil)
+			req.Header.Set("Accept-Encoding", tc.acceptHeader)
+
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, req)
+
+			if gotPath != tc.expectedPath {
+				t.Fatalf("expected next handler path %q, got %q", tc.expectedPath, gotPath)
+			}
+
+			if tc.expectedGzip {
+				if got := w.Header().Get("Content-Encoding"); got != "gzip" {
+					t.Fatalf("expected Content-Encoding gzip, got %q", got)
+				}
+			} else if got := w.Header().Get("Content-Encoding"); got != "" {
+				t.Fatalf("expected no Content-Encoding, got %q", got)
+			}
+		})
 	}
 }
 

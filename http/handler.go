@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -739,10 +740,7 @@ func precompressedUIHandler(next http.Handler, fs http.FileSystem) http.Handler 
 
 		// Limit to compressible extensions (must match build‑time list)
 		ext := path.Ext(r.URL.Path)
-		switch ext {
-		case ".html", ".js", ".css", ".json", ".svg", ".xml", ".txt":
-			// these are pre‑compressed
-		default:
+		if !slices.Contains([]string{".html", ".js", ".css", ".json", ".svg", ".xml", ".txt"}, ext) {
 			next.ServeHTTP(w, r)
 			return
 		}

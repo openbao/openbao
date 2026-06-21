@@ -46,6 +46,7 @@ func TestTransit_Trim(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	p.Unlock()
 
 	// Archive: 0, 1
 	archive, err := p.LoadArchive(namespace.RootContext(t.Context()), storage)

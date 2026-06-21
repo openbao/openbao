@@ -24,7 +24,7 @@ func TestCanonicalize(t *testing.T) {
 		},
 		{
 			"root",
-			"",
+			"root/",
 		},
 		{
 			"ns1",
@@ -134,6 +134,16 @@ func TestSplitIDFromString(t *testing.T) {
 		pre, id := SplitIDFromString(c.input)
 		if pre != c.prefix || id != c.id {
 			t.Fatalf("bad test case %d: %s != %s, %s != %s", i, pre, c.prefix, id, c.id)
+		}
+
+		if c.id == "" {
+			require.True(t, RootNamespace.MatchesID(c.input), "input: %v", c.input)
+		} else {
+			ns := &Namespace{
+				ID: c.id,
+			}
+			require.True(t, ns.MatchesID(c.input), "input: %v", c.input)
+			require.False(t, RootNamespace.MatchesID(c.input), "input: %v", c.input)
 		}
 	}
 }

@@ -17,18 +17,29 @@ func (c *Sys) GenerateRecoveryOperationTokenStatus() (*GenerateRootStatusRespons
 }
 
 func (c *Sys) GenerateRootStatusWithContext(ctx context.Context) (*GenerateRootStatusResponse, error) {
-	return c.generateRootStatusCommonWithContext(ctx, "/v1/sys/generate-root/attempt")
-}
-
-func (c *Sys) GenerateRecoveryOperationTokenStatusWithContext(ctx context.Context) (*GenerateRootStatusResponse, error) {
-	return c.generateRootStatusCommonWithContext(ctx, "/v1/sys/generate-recovery-token/attempt")
-}
-
-func (c *Sys) generateRootStatusCommonWithContext(ctx context.Context, path string) (*GenerateRootStatusResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	r := c.c.NewRequest(http.MethodGet, path)
+	r := c.c.NewRequest(http.MethodGet, "/v1/sys/generate-root-token/attempt")
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	var result struct {
+		Data GenerateRootStatusResponse `json:"data"`
+	}
+	err = resp.DecodeJSON(&result)
+	return &result.Data, err
+}
+
+func (c *Sys) GenerateRecoveryOperationTokenStatusWithContext(ctx context.Context) (*GenerateRootStatusResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodGet, "/v1/sys/generate-recovery-token/attempt")
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err != nil {
@@ -50,14 +61,6 @@ func (c *Sys) GenerateRecoveryOperationTokenInit(otp, pgpKey string) (*GenerateR
 }
 
 func (c *Sys) GenerateRootInitWithContext(ctx context.Context, otp, pgpKey string) (*GenerateRootStatusResponse, error) {
-	return c.generateRootInitCommonWithContext(ctx, "/v1/sys/generate-root/attempt", otp, pgpKey)
-}
-
-func (c *Sys) GenerateRecoveryOperationTokenInitWithContext(ctx context.Context, otp, pgpKey string) (*GenerateRootStatusResponse, error) {
-	return c.generateRootInitCommonWithContext(ctx, "/v1/sys/generate-recovery-token/attempt", otp, pgpKey)
-}
-
-func (c *Sys) generateRootInitCommonWithContext(ctx context.Context, path, otp, pgpKey string) (*GenerateRootStatusResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -66,7 +69,34 @@ func (c *Sys) generateRootInitCommonWithContext(ctx context.Context, path, otp, 
 		"pgp_key": pgpKey,
 	}
 
-	r := c.c.NewRequest(http.MethodPut, path)
+	r := c.c.NewRequest(http.MethodPut, "/v1/sys/generate-root-token/attempt")
+	if err := r.SetJSONBody(body); err != nil {
+		return nil, err
+	}
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	var result struct {
+		Data GenerateRootStatusResponse `json:"data"`
+	}
+	err = resp.DecodeJSON(&result)
+	return &result.Data, err
+}
+
+func (c *Sys) GenerateRecoveryOperationTokenInitWithContext(ctx context.Context, otp, pgpKey string) (*GenerateRootStatusResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	body := map[string]interface{}{
+		"otp":     otp,
+		"pgp_key": pgpKey,
+	}
+
+	r := c.c.NewRequest(http.MethodPut, "/v1/sys/generate-recovery-token/attempt")
 	if err := r.SetJSONBody(body); err != nil {
 		return nil, err
 	}
@@ -91,7 +121,7 @@ func (c *Sys) GenerateRecoveryOperationTokenCancel() error {
 }
 
 func (c *Sys) GenerateRootCancelWithContext(ctx context.Context) error {
-	return c.generateRootCancelCommonWithContext(ctx, "/v1/sys/generate-root/attempt")
+	return c.generateRootCancelCommonWithContext(ctx, "/v1/sys/generate-root-token/attempt")
 }
 
 func (c *Sys) GenerateRecoveryOperationTokenCancelWithContext(ctx context.Context) error {
@@ -120,14 +150,6 @@ func (c *Sys) GenerateRecoveryOperationTokenUpdate(shard, nonce string) (*Genera
 }
 
 func (c *Sys) GenerateRootUpdateWithContext(ctx context.Context, shard, nonce string) (*GenerateRootStatusResponse, error) {
-	return c.generateRootUpdateCommonWithContext(ctx, "/v1/sys/generate-root/update", shard, nonce)
-}
-
-func (c *Sys) GenerateRecoveryOperationTokenUpdateWithContext(ctx context.Context, shard, nonce string) (*GenerateRootStatusResponse, error) {
-	return c.generateRootUpdateCommonWithContext(ctx, "/v1/sys/generate-recovery-token/update", shard, nonce)
-}
-
-func (c *Sys) generateRootUpdateCommonWithContext(ctx context.Context, path, shard, nonce string) (*GenerateRootStatusResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -136,7 +158,34 @@ func (c *Sys) generateRootUpdateCommonWithContext(ctx context.Context, path, sha
 		"nonce": nonce,
 	}
 
-	r := c.c.NewRequest(http.MethodPut, path)
+	r := c.c.NewRequest(http.MethodPut, "/v1/sys/generate-root-token/update")
+	if err := r.SetJSONBody(body); err != nil {
+		return nil, err
+	}
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	var result struct {
+		Data GenerateRootStatusResponse `json:"Data"`
+	}
+	err = resp.DecodeJSON(&result)
+	return &result.Data, err
+}
+
+func (c *Sys) GenerateRecoveryOperationTokenUpdateWithContext(ctx context.Context, shard, nonce string) (*GenerateRootStatusResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	body := map[string]interface{}{
+		"key":   shard,
+		"nonce": nonce,
+	}
+
+	r := c.c.NewRequest(http.MethodPut, "/v1/sys/generate-recovery-token/update")
 	if err := r.SetJSONBody(body); err != nil {
 		return nil, err
 	}

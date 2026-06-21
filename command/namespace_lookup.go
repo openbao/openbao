@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/cli"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/posener/complete"
 )
 
@@ -79,15 +80,15 @@ func (c *NamespaceLookupCommand) Run(args []string) int {
 		return 2
 	}
 
-	secret, err := client.Logical().Read("sys/namespaces/" + namespacePath)
+	resp, err := client.Sys().ReadNamespace(namespacePath)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error looking up namespace: %s", err))
 		return 2
 	}
-	if secret == nil {
+	if resp == nil {
 		c.UI.Error("Namespace not found")
 		return 2
 	}
 
-	return OutputSecret(c.UI, secret)
+	return OutputData(c.UI, structtomap.Map(resp))
 }

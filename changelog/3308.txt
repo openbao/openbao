@@ -1,0 +1,3 @@
+```release-note:security
+core/namespaces: Fix namespace path canonicalization of "root" enabling unauthorized operations on the parent namespace. GHSA-mwr2-wmgp-crj6.
+```

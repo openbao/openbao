@@ -1,0 +1,6 @@
+```release-note:security
+secrets/transit: Prevent server crash due to unlock of unlocked mutex for RSA keys created with `derived=true`. GHSA-8w8f-r2xv-4q4j.
+```
+```release-notes:change
+sdk/keysutil: Ensure mutex received is always locked regardless of cache state, simplifying caller locking behavior.
+```

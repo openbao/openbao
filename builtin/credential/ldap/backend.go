@@ -100,15 +100,11 @@ func (b *backend) Login(ctx context.Context, req *logical.Request, username stri
 
 	userBindDN, err := ldapClient.GetUserBindDN(cfg.ConfigEntry, c, username)
 	if err != nil {
-		if b.Logger().IsDebug() {
-			b.Logger().Debug("error getting user bind DN", "error", err)
-		}
+		b.Logger().Debug("error getting user bind DN", "error", err)
 		return "", nil, logical.ErrorResponse(errUserBindFailed), nil, logical.ErrInvalidCredentials
 	}
 
-	if b.Logger().IsDebug() {
-		b.Logger().Debug("user binddn fetched", "username", username, "binddn", userBindDN)
-	}
+	b.Logger().Debug("user binddn fetched", "username", username, "binddn", userBindDN)
 
 	// Try to bind as the login user. This is where the actual authentication takes place.
 	if len(password) > 0 {
@@ -117,9 +113,7 @@ func (b *backend) Login(ctx context.Context, req *logical.Request, username stri
 		err = c.UnauthenticatedBind(userBindDN)
 	}
 	if err != nil {
-		if b.Logger().IsDebug() {
-			b.Logger().Debug("ldap bind failed", "error", err)
-		}
+		b.Logger().Debug("ldap bind failed", "error", err)
 		return "", nil, logical.ErrorResponse(errUserBindFailed), nil, logical.ErrInvalidCredentials
 	}
 
@@ -127,14 +121,10 @@ func (b *backend) Login(ctx context.Context, req *logical.Request, username stri
 	// the BindDN should be the one to search, not the user logging in.
 	if cfg.BindDN != "" && cfg.BindPassword != "" {
 		if err := c.Bind(cfg.BindDN, cfg.BindPassword); err != nil {
-			if b.Logger().IsDebug() {
-				b.Logger().Debug("error while attempting to re-bind with the BindDN User", "error", err)
-			}
+			b.Logger().Debug("error while attempting to re-bind with the BindDN User", "error", err)
 			return "", nil, logical.ErrorResponse("ldap operation failed: failed to re-bind with the BindDN user"), nil, logical.ErrInvalidCredentials
 		}
-		if b.Logger().IsDebug() {
-			b.Logger().Debug("re-bound to original binddn")
-		}
+		b.Logger().Debug("re-bound to original binddn")
 	}
 
 	userDN, err := ldapClient.GetUserDN(cfg.ConfigEntry, c, userBindDN, username)
@@ -154,9 +144,7 @@ func (b *backend) Login(ctx context.Context, req *logical.Request, username stri
 	if err != nil {
 		return "", nil, logical.ErrorResponse(err.Error()), nil, nil
 	}
-	if b.Logger().IsDebug() {
-		b.Logger().Debug("groups fetched from server", "num_server_groups", len(ldapGroups), "server_groups", ldapGroups)
-	}
+	b.Logger().Debug("groups fetched from server", "num_server_groups", len(ldapGroups), "server_groups", ldapGroups)
 
 	ldapResponse := &logical.Response{
 		Data: map[string]interface{}{},
@@ -178,9 +166,7 @@ func (b *backend) Login(ctx context.Context, req *logical.Request, username stri
 	// Import the custom added groups from ldap backend
 	user, err := b.User(ctx, req.Storage, canonicalUsername)
 	if err == nil && user != nil && user.Groups != nil {
-		if b.Logger().IsDebug() {
-			b.Logger().Debug("adding local groups", "num_local_groups", len(user.Groups), "local_groups", user.Groups)
-		}
+		b.Logger().Debug("adding local groups", "num_local_groups", len(user.Groups), "local_groups", user.Groups)
 		allGroups = append(allGroups, user.Groups...)
 	}
 	// Merge local and LDAP groups

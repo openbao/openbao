@@ -436,3 +436,51 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 
 	// Soft deleted keys remain updatable.
 }
+
+func TestCreateDerivedKey(t *testing.T) {
+	b, s := createBackendWithStorage(t)
+
+	for _, algo := range []string{
+		"aes128-gcm96", "aes256-gcm96", "chacha20-poly1305",
+		"xchacha20-poly1305", "ed25519",
+	} {
+		req := &logical.Request{
+			Path:      "keys/" + algo,
+			Operation: logical.UpdateOperation,
+			Storage:   s,
+			Data: map[string]interface{}{
+				"type":    algo,
+				"derived": true,
+			},
+		}
+		if algo == "hmac" {
+			req.Data["key_size"] = 32
+		}
+
+		resp, err := b.HandleRequest(t.Context(), req)
+		require.NoError(t, err, algo)
+		require.NotNil(t, resp, algo)
+	}
+
+	for _, algo := range []string{
+		"hmac", "rsa-2048", "rsa-3072", "rsa-4096", "ecdsa-p256",
+		"ecdsa-p384", "ecdsa-p521",
+	} {
+		req := &logical.Request{
+			Path:      "keys/" + algo,
+			Operation: logical.UpdateOperation,
+			Storage:   s,
+			Data: map[string]interface{}{
+				"type":    algo,
+				"derived": true,
+			},
+		}
+		if algo == "hmac" {
+			req.Data["key_size"] = 32
+		}
+
+		resp, err := b.HandleRequest(t.Context(), req)
+		require.Error(t, err, algo)
+		require.Nil(t, resp, algo)
+	}
+}

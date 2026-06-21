@@ -133,7 +133,7 @@ type ExpirationManager struct {
 
 	tidyLock atomic.Bool
 
-	restoreMode        atomic.Bool
+	restoreMode        atomic.Int64
 	restoreModeLock    sync.RWMutex
 	restoreRequestLock sync.RWMutex
 	restoreLocks       []*locksutil.LockEntry
@@ -335,6 +335,8 @@ func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, det
 		logger:      logger,
 		pendingLock: &locking.SyncRWMutex{},
 
+		restoreLocks: locksutil.CreateLocks(),
+
 		uniquePolicies:      make(map[string][]string),
 		emptyUniquePolicies: time.NewTicker(7 * 24 * time.Hour),
 
@@ -357,8 +359,7 @@ func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, det
 	// active node
 	if shouldProcessExp {
 		// active nodes start by running in restore mode by default
-		exp.restoreMode.Store(true)
-		exp.restoreLocks = locksutil.CreateLocks()
+		exp.restoreMode.Add(1)
 	}
 
 	exp.expireFunc.Store(&e)
@@ -445,11 +446,11 @@ func (c *Core) stopExpiration() error {
 }
 
 func (m *ExpirationManager) leaseView(ns *namespace.Namespace) barrier.View {
-	return NamespaceScopedView(m.core.barrier, ns).SubView(barrier.SystemBarrierPrefix + expirationSubPath + leaseViewPrefix)
+	return m.core.NamespaceView(ns).SubView(barrier.SystemBarrierPrefix + expirationSubPath + leaseViewPrefix)
 }
 
 func (m *ExpirationManager) tokenIndexView(ns *namespace.Namespace) barrier.View {
-	return NamespaceScopedView(m.core.barrier, ns).SubView(barrier.SystemBarrierPrefix + expirationSubPath + tokenViewPrefix)
+	return m.core.NamespaceView(ns).SubView(barrier.SystemBarrierPrefix + expirationSubPath + tokenViewPrefix)
 }
 
 func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, int, error) {
@@ -466,16 +467,26 @@ func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, 
 			continue
 		}
 
-		view := m.leaseView(namespace)
-		keys, err := logical.CollectKeys(m.quitContext, view)
+		keys, err := m.collectNamespaceLeases(namespace)
 		if err != nil {
-			return nil, 0, fmt.Errorf("failed to scan for leases: %w", err)
+			return nil, 0, err
 		}
+
 		existing[namespace] = keys
 		leaseCount += len(keys)
 	}
 
 	return existing, leaseCount, nil
+}
+
+func (m *ExpirationManager) collectNamespaceLeases(ns *namespace.Namespace) ([]string, error) {
+	view := m.leaseView(ns)
+	keys, err := logical.CollectKeys(m.quitContext, view)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan for leases: %w", err)
+	}
+
+	return keys, nil
 }
 
 // lockLease takes out a lock for a given lease ID
@@ -490,7 +501,7 @@ func (m *ExpirationManager) unlockLease(leaseID string) {
 
 // inRestoreMode returns if we are currently in restore mode
 func (m *ExpirationManager) inRestoreMode() bool {
-	return m.restoreMode.Load()
+	return m.restoreMode.Load() > 0
 }
 
 // invalidate will be used in the future for implementing read replica nodes
@@ -679,14 +690,40 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 }
 
 // Restore is used to recover the lease states when starting.
+//
 // This is used after starting the vault.
-func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
+func (m *ExpirationManager) Restore(errorFunc func()) error {
+	return m.restore(m.collectLeases, nil /* global */, errorFunc)
+}
+
+// Restore is used to restore the leases belonging to a particular namespace
+// when it unseals.
+func (m *ExpirationManager) RestoreNamespace(ns *namespace.Namespace, errorFunc func()) error {
+	if m.core.Standby() {
+		m.logger.Info("skipping namespace lease restoration - standby")
+		return nil
+	}
+
+	m.restoreMode.Add(1)
+	return m.restore(func() (map[*namespace.Namespace][]string, int, error) {
+		leases, err := m.collectNamespaceLeases(ns)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		return map[*namespace.Namespace][]string{
+			ns.Clone(false): leases,
+		}, len(leases), nil
+	}, ns, errorFunc)
+}
+
+func (m *ExpirationManager) restore(collect func() (map[*namespace.Namespace][]string, int, error), restoreNs *namespace.Namespace, errorFunc func()) (retErr error) {
 	defer func() {
 		// Turn off restore mode. We can do this safely without the lock because
 		// if restore mode finished successfully, restore mode was already
 		// disabled with the lock. In an error state, this will allow the
 		// Stop() function to shut everything down.
-		m.restoreMode.Store(false)
+		m.restoreMode.Add(-1)
 
 		switch {
 		case retErr == nil:
@@ -708,11 +745,11 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 
 	// Accumulate existing leases
 	m.logger.Debug("collecting leases")
-	existing, leaseCount, err := m.collectLeases()
+	existing, leaseCount, err := collect()
 	if err != nil {
 		return err
 	}
-	m.logger.Debug("leases collected", "num_existing", leaseCount)
+	m.logger.Debug("leases collected", "num_existing", leaseCount, "namespaces", len(existing))
 
 	// Make the channels used for the worker pool
 	type lease struct {
@@ -814,12 +851,12 @@ LOOP:
 	}
 
 	m.restoreModeLock.Lock()
-	m.restoreMode.Store(false)
-	m.restoreLoaded.Range(func(k, v interface{}) bool {
-		m.restoreLoaded.Delete(k)
+	m.restoreLoaded.Range(func(keyRaw any, _ any) bool {
+		if key, ok := keyRaw.(string); ok && (restoreNs == nil || restoreNs.MatchesID(key)) {
+			m.restoreLoaded.Delete(key)
+		}
 		return true
 	})
-	m.restoreLocks = nil
 	m.restoreModeLock.Unlock()
 
 	m.logger.Info("lease restore complete")
@@ -897,6 +934,75 @@ func (m *ExpirationManager) Stop() error {
 	m.emptyUniquePolicies.Stop()
 
 	return nil
+}
+
+// StopNamespace removes all information related to a namespace without
+// affecting other namespaces.
+func (m *ExpirationManager) StopNamespace(ns *namespace.Namespace) {
+	m.pendingLock.Lock()
+	defer m.pendingLock.Unlock()
+
+	leaseIds := make(map[string]struct{})
+
+	// irrevocable holds an in-memory copy of a lease; safe to delete.
+	m.irrevocable.Range(func(keyRaw any, _ any) bool {
+		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
+			m.irrevocable.Delete(key)
+			m.irrevocableLeaseCount -= 1
+			leaseIds[key] = struct{}{}
+		}
+		return true
+	})
+
+	// pending holds a pendingInfo object; cancel the associated timer so
+	// we don't spam failures to revoke.
+	m.pending.Range(func(keyRaw any, infoRaw any) bool {
+		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
+			info, ok := infoRaw.(pendingInfo)
+			if !ok {
+				return true
+			}
+
+			// Cancel the timer so it doesn't fire again.
+			info.timer.Stop()
+			m.pending.Delete(key)
+			leaseIds[key] = struct{}{}
+		}
+		return true
+	})
+
+	// nonexpiring holds a pendingInfo object; cancel the associated timer so
+	// we don't spam failures to revoke.
+	m.nonexpiring.Range(func(keyRaw any, infoRaw any) bool {
+		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
+			info, ok := infoRaw.(pendingInfo)
+			if !ok {
+				return true
+			}
+
+			// Cancel the timer so it doesn't fire again.
+			info.timer.Stop()
+			m.nonexpiring.Delete(key)
+			leaseIds[key] = struct{}{}
+		}
+		return true
+	})
+
+	m.lockPerLease.Range(func(keyRaw any, _ any) bool {
+		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
+			m.deleteLockForLease(key)
+		}
+		return true
+	})
+
+	m.restoreLoaded.Range(func(keyRaw any, _ any) bool {
+		if key, ok := keyRaw.(string); ok && ns.MatchesID(key) {
+			m.restoreLoaded.Delete(key)
+		}
+		return true
+	})
+
+	m.leaseCount -= len(leaseIds)
 }
 
 // Revoke is used to revoke a secret named by the given LeaseID
@@ -1011,9 +1117,7 @@ func (m *ExpirationManager) revokeCommon(ctx context.Context, leaseID string, fo
 				return err
 			}
 
-			if m.logger.IsWarn() {
-				m.logger.Warn("revocation from the backend failed, but in force mode so ignoring", "error", err)
-			}
+			m.logger.Warn("revocation from the backend failed, but in force mode so ignoring", "error", err)
 		}
 	}
 
@@ -1060,7 +1164,7 @@ func (m *ExpirationManager) revokeCommon(ctx context.Context, leaseID string, fo
 	}
 	m.pendingLock.Unlock()
 
-	if m.logger.IsInfo() && !skipToken && m.logLeaseExpirations {
+	if !skipToken && m.logLeaseExpirations {
 		m.logger.Info("revoked lease", "lease_id", leaseID)
 	}
 	if m.logger.IsWarn() && !skipToken && le.isIncorrectlyNonExpiring() {
@@ -1228,14 +1332,6 @@ func (m *ExpirationManager) Renew(ctx context.Context, leaseID string, increment
 			return logical.ErrorResponse("tokens cannot be renewed through this endpoint"), nil
 		}
 		return logical.ErrorResponse("lease does not correspond to a secret"), nil
-	}
-
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if ns.ID != le.namespace.ID {
-		return nil, errors.New("cannot renew a lease across namespaces")
 	}
 
 	sysViewCtx := namespace.ContextWithNamespace(ctx, le.namespace)
@@ -1701,14 +1797,17 @@ func (m *ExpirationManager) FetchLeaseTimesByToken(ctx context.Context, te *logi
 func (m *ExpirationManager) FetchLeaseInfo(ctx context.Context, leaseID string) (*leaseEntry, error) {
 	defer metrics.MeasureSince([]string{"expire", "fetch-lease-times"}, time.Now())
 
-	info, ok := m.pending.Load(leaseID)
-	if ok && info.(pendingInfo).cachedLeaseInfo != nil {
-		return m.leaseInfoForExport(info.(pendingInfo).cachedLeaseInfo), nil
-	}
-
-	info, ok = m.irrevocable.Load(leaseID)
-	if ok && info.(*leaseEntry) != nil {
-		return m.leaseInfoForExport(info.(*leaseEntry)), nil
+	le := m.fetchCachedLease(leaseID)
+	if le != nil {
+		ns, err := namespace.FromContext(ctx)
+		switch {
+		case err != nil:
+			return nil, err
+		case ns.ID != le.namespace.ID:
+			return nil, nil
+		default:
+			return le, nil
+		}
 	}
 
 	// Load the entry
@@ -1721,6 +1820,22 @@ func (m *ExpirationManager) FetchLeaseInfo(ctx context.Context, leaseID string) 
 	}
 
 	return m.leaseInfoForExport(le), nil
+}
+
+// fetchCachedLease attempts to look up a lease ID by pending or irrevocable
+// leases to skip a storage read.
+func (m *ExpirationManager) fetchCachedLease(leaseID string) *leaseEntry {
+	info, ok := m.pending.Load(leaseID)
+	if ok && info.(pendingInfo).cachedLeaseInfo != nil {
+		return m.leaseInfoForExport(info.(pendingInfo).cachedLeaseInfo)
+	}
+
+	info, ok = m.irrevocable.Load(leaseID)
+	if ok && info.(*leaseEntry) != nil {
+		return m.leaseInfoForExport(info.(*leaseEntry))
+	}
+
+	return nil
 }
 
 // Returns redacted leaseEntry for outside callers based on the full leaseEntry passed in
@@ -1996,19 +2111,6 @@ func (m *ExpirationManager) loadEntry(ctx context.Context, leaseID string) (*lea
 			m.lockLease(leaseID)
 			defer m.unlockLease(leaseID)
 		}
-	}
-
-	_, nsID := namespace.SplitIDFromString(leaseID)
-	if nsID != "" {
-		leaseNS, err := m.core.NamespaceByID(ctx, nsID)
-		if err != nil {
-			return nil, err
-		}
-		if leaseNS != nil {
-			ctx = namespace.ContextWithNamespace(ctx, leaseNS)
-		}
-	} else {
-		ctx = namespace.ContextWithNamespace(ctx, namespace.RootNamespace)
 	}
 
 	// If a lease entry is nil, proactively delete the lease lock, in case we

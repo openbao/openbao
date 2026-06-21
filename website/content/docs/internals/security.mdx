@@ -63,6 +63,9 @@ The following are not considered part of the OpenBao threat model:
   systems external to OpenBao. If an attacker can compromise credentials or otherwise
   exploit a vulnerability in these external systems, then the confidentiality or
   integrity of data may be compromised.
+  For example, misconfiguration or compromise of third-party IdPs
+  (including, but not limited to, the issuance of JWTs with malicious claims)
+  is considered out of scope for the OpenBao threat model.
 
 - **Protecting against malicious plugins or code execution on the underlying host.**
   If an attacker can gain code execution or write privileges to the underlying host,

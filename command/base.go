@@ -487,7 +487,7 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 				Target:  &c.flagOutputPolicy,
 				Default: false,
 				Usage: "Instead of executing the request, print an example HCL " +
-					"policy that would be required to run this command, and exit.",
+					"policy that would be required to run this command and exit.",
 			})
 
 			f.StringVar(&StringVar{

@@ -23,14 +23,14 @@ type KVv2 struct {
 
 // KVMetadata is the full metadata for a given KV v2 secret.
 type KVMetadata struct {
-	CASRequired        bool                   `mapstructure:"cas_required"`
-	CreatedTime        time.Time              `mapstructure:"created_time"`
-	CurrentVersion     int                    `mapstructure:"current_version"`
-	CustomMetadata     map[string]interface{} `mapstructure:"custom_metadata"`
-	DeleteVersionAfter time.Duration          `mapstructure:"delete_version_after"`
-	MaxVersions        int                    `mapstructure:"max_versions"`
-	OldestVersion      int                    `mapstructure:"oldest_version"`
-	UpdatedTime        time.Time              `mapstructure:"updated_time"`
+	CASRequired        bool           `mapstructure:"cas_required"`
+	CreatedTime        time.Time      `mapstructure:"created_time"`
+	CurrentVersion     int            `mapstructure:"current_version"`
+	CustomMetadata     map[string]any `mapstructure:"custom_metadata"`
+	DeleteVersionAfter time.Duration  `mapstructure:"delete_version_after"`
+	MaxVersions        int            `mapstructure:"max_versions"`
+	OldestVersion      int            `mapstructure:"oldest_version"`
+	UpdatedTime        time.Time      `mapstructure:"updated_time"`
 	// Keys are stringified ints, e.g. "3". To get a sorted slice of version metadata, use GetVersionsAsList.
 	Versions map[string]KVVersionMetadata `mapstructure:"versions"`
 	Raw      *Secret
@@ -43,7 +43,7 @@ type KVMetadata struct {
 // struct will be reset to their zero value.
 type KVMetadataPutInput struct {
 	CASRequired        bool
-	CustomMetadata     map[string]interface{}
+	CustomMetadata     map[string]any
 	DeleteVersionAfter time.Duration
 	MaxVersions        int
 }
@@ -60,7 +60,7 @@ type KVMetadataPutInput struct {
 // custom metadata.
 type KVMetadataPatchInput struct {
 	CASRequired        *bool
-	CustomMetadata     map[string]interface{}
+	CustomMetadata     map[string]any
 	DeleteVersionAfter *time.Duration
 	MaxVersions        *int
 }
@@ -74,7 +74,7 @@ type KVVersionMetadata struct {
 }
 
 // Currently supported options: WithOption, WithCheckAndSet, WithMethod
-type KVOption func() (key string, value interface{})
+type KVOption func() (key string, value any)
 
 const (
 	KVOptionCheckAndSet    = "cas"
@@ -85,8 +85,8 @@ const (
 
 // WithOption can optionally be passed to provide generic options for a
 // KV request. Valid keys and values depend on the type of request.
-func WithOption(key string, value interface{}) KVOption {
-	return func() (string, interface{}) {
+func WithOption(key string, value any) KVOption {
+	return func() (string, any) {
 		return key, value
 	}
 }
@@ -176,7 +176,7 @@ func (kv *KVv2) GetVersionsAsList(ctx context.Context, secretPath string) ([]KVV
 		return nil, fmt.Errorf("%w: no metadata at %s", ErrSecretNotFound, pathToRead)
 	}
 
-	md, err := extractFullMetadata(secret)
+	md, err := extractFullMetadata(secret.Data)
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract metadata from secret to determine versions: %w", err)
 	}
@@ -203,7 +203,7 @@ func (kv *KVv2) GetMetadata(ctx context.Context, secretPath string) (*KVMetadata
 		return nil, fmt.Errorf("%w: no metadata at %s", ErrSecretNotFound, pathToRead)
 	}
 
-	md, err := extractFullMetadata(secret)
+	md, err := extractFullMetadata(secret.Data)
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract metadata from secret: %w", err)
 	}
@@ -211,16 +211,16 @@ func (kv *KVv2) GetMetadata(ctx context.Context, secretPath string) (*KVMetadata
 	return md, nil
 }
 
-// Put inserts a key-value secret (e.g. {"password": "Hashi123"})
+// Put inserts a key-value secret (e.g. {"password": "password123"})
 // into the KV v2 secrets engine.
 //
 // If the secret already exists, a new version will be created
 // and the previous version can be accessed with the GetVersion method.
 // GetMetadata can provide a list of available versions.
-func (kv *KVv2) Put(ctx context.Context, secretPath string, data map[string]interface{}, opts ...KVOption) (*KVSecret, error) {
+func (kv *KVv2) Put(ctx context.Context, secretPath string, data map[string]any, opts ...KVOption) (*KVSecret, error) {
 	pathToWriteTo := fmt.Sprintf("%s/data/%s", kv.mountPath, secretPath)
 
-	wrappedData := map[string]interface{}{
+	wrappedData := map[string]any{
 		"data": data,
 	}
 
@@ -228,7 +228,7 @@ func (kv *KVv2) Put(ctx context.Context, secretPath string, data map[string]inte
 	// We leave this as an optional arg so that most users
 	// can just pass plain key-value secret data without
 	// having to remember to put the extra layer "data" in there.
-	options := make(map[string]interface{})
+	options := make(map[string]any)
 	for _, opt := range opts {
 		k, v := opt()
 		options[k] = v
@@ -279,7 +279,7 @@ func (kv *KVv2) PutMetadata(ctx context.Context, secretPath string, metadata KVM
 	)
 
 	// convert values to a map we can pass to Logical
-	metadataMap := make(map[string]interface{})
+	metadataMap := make(map[string]any)
 	metadataMap[maxVersionsKey] = metadata.MaxVersions
 	metadataMap[deleteVersionAfterKey] = metadata.DeleteVersionAfter.String()
 	metadataMap[casRequiredKey] = metadata.CASRequired
@@ -302,7 +302,7 @@ func (kv *KVv2) PutMetadata(ctx context.Context, secretPath string, metadata KVM
 // only be able to use the old "rw" (read-then-write) style of partial update,
 // whereas newer Vault servers can use the default value of "patch" if the
 // client token's policy has the "patch" capability.
-func (kv *KVv2) Patch(ctx context.Context, secretPath string, newData map[string]interface{}, opts ...KVOption) (*KVSecret, error) {
+func (kv *KVv2) Patch(ctx context.Context, secretPath string, newData map[string]any, opts ...KVOption) (*KVSecret, error) {
 	// determine patch method
 	var patchMethod string
 	var ok bool
@@ -386,7 +386,7 @@ func (kv *KVv2) DeleteVersions(ctx context.Context, secretPath string, versions 
 	for _, version := range versions {
 		versionsToDelete = append(versionsToDelete, strconv.Itoa(version))
 	}
-	versionsMap := map[string]interface{}{
+	versionsMap := map[string]any{
 		"versions": versionsToDelete,
 	}
 	_, err := kv.c.Logical().WriteWithContext(ctx, pathToDelete, versionsMap)
@@ -417,7 +417,7 @@ func (kv *KVv2) DeleteMetadata(ctx context.Context, secretPath string) error {
 func (kv *KVv2) Undelete(ctx context.Context, secretPath string, versions []int) error {
 	pathToUndelete := fmt.Sprintf("%s/undelete/%s", kv.mountPath, secretPath)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"versions": versions,
 	}
 
@@ -437,7 +437,7 @@ func (kv *KVv2) Undelete(ctx context.Context, secretPath string, versions []int)
 func (kv *KVv2) Destroy(ctx context.Context, secretPath string, versions []int) error {
 	pathToDestroy := fmt.Sprintf("%s/destroy/%s", kv.mountPath, secretPath)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"versions": versions,
 	}
 
@@ -489,19 +489,70 @@ func (kv *KVv2) Rollback(ctx context.Context, secretPath string, toVersion int) 
 	return kvs, nil
 }
 
-func extractCustomMetadata(secret *Secret) map[string]interface{} {
+// List returns the list of available keys at the specified location.
+func (kv *KVv2) List(ctx context.Context, secretPath string) (*KVList, error) {
+	pathToList := fmt.Sprintf("%s/metadata/%s", kv.mountPath, secretPath)
+
+	resp, err := kv.c.Logical().ListWithContext(ctx, pathToList)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets at %s: %w", pathToList, err)
+	}
+
+	return extractKeyList(resp)
+}
+
+// Scan returns the list of available keys at the specified location, recursing
+// into sub-folders.
+func (kv *KVv2) Scan(ctx context.Context, secretPath string) (*KVList, error) {
+	pathToList := fmt.Sprintf("%s/metadata/%s", kv.mountPath, secretPath)
+
+	resp, err := kv.c.Logical().ScanWithContext(ctx, pathToList)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets at %s: %w", pathToList, err)
+	}
+
+	return extractKeyList(resp)
+}
+
+// List returns the list of available keys and their metadata at the specified
+// location.
+func (kv *KVv2) ListWithDetails(ctx context.Context, secretPath string) (*KVList, error) {
+	pathToList := fmt.Sprintf("%s/detailed-metadata/%s", kv.mountPath, secretPath)
+
+	resp, err := kv.c.Logical().ListWithContext(ctx, pathToList)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets at %s: %w", pathToList, err)
+	}
+
+	return extractKeyList(resp)
+}
+
+// Scan returns the list of available keys and their metadata at the specified
+// location, recursing into sub-folders.
+func (kv *KVv2) ScanWithDetails(ctx context.Context, secretPath string) (*KVList, error) {
+	pathToList := fmt.Sprintf("%s/detailed-metadata/%s", kv.mountPath, secretPath)
+
+	resp, err := kv.c.Logical().ScanWithContext(ctx, pathToList)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets at %s: %w", pathToList, err)
+	}
+
+	return extractKeyList(resp)
+}
+
+func extractCustomMetadata(secret *Secret) map[string]any {
 	// Logical Writes return the metadata directly, Reads return it nested inside the "metadata" key
 	customMetadataInterface, ok := secret.Data["custom_metadata"]
 	if !ok {
 		metadataInterface := secret.Data["metadata"]
-		metadataMap, ok := metadataInterface.(map[string]interface{})
+		metadataMap, ok := metadataInterface.(map[string]any)
 		if !ok {
 			return nil
 		}
 		customMetadataInterface = metadataMap["custom_metadata"]
 	}
 
-	cm, ok := customMetadataInterface.(map[string]interface{})
+	cm, ok := customMetadataInterface.(map[string]any)
 	if !ok {
 		return nil
 	}
@@ -513,7 +564,7 @@ func extractDataAndVersionMetadata(secret *Secret) (*KVSecret, error) {
 	// A nil map is a valid value for data: secret.Data will be nil when this
 	// version of the secret has been deleted, but the metadata is still
 	// available.
-	var data map[string]interface{}
+	var data map[string]any
 	if secret.Data != nil {
 		dataInterface, ok := secret.Data["data"]
 		if !ok {
@@ -521,7 +572,7 @@ func extractDataAndVersionMetadata(secret *Secret) (*KVSecret, error) {
 		}
 
 		if dataInterface != nil {
-			data, ok = dataInterface.(map[string]interface{})
+			data, ok = dataInterface.(map[string]any)
 			if !ok {
 				return nil, fmt.Errorf("unexpected type for 'data' element: %T (%#v)", data, data)
 			}
@@ -548,10 +599,10 @@ func extractVersionMetadata(secret *Secret) (*KVVersionMetadata, error) {
 	}
 
 	// Logical Writes return the metadata directly, Reads return it nested inside the "metadata" key
-	var metadataMap map[string]interface{}
+	var metadataMap map[string]any
 	metadataInterface, ok := secret.Data["metadata"]
 	if ok {
-		metadataMap, ok = metadataInterface.(map[string]interface{})
+		metadataMap, ok = metadataInterface.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("unexpected type for 'metadata' element: %T (%#v)", metadataInterface, metadataInterface)
 		}
@@ -581,18 +632,18 @@ func extractVersionMetadata(secret *Secret) (*KVVersionMetadata, error) {
 	return metadata, nil
 }
 
-func extractFullMetadata(secret *Secret) (*KVMetadata, error) {
+func extractFullMetadata(data map[string]any) (*KVMetadata, error) {
 	var metadata *KVMetadata
 
-	if secret.Data == nil {
+	if data == nil {
 		return nil, nil
 	}
 
-	if versions, ok := secret.Data["versions"]; ok {
-		versionsMap := versions.(map[string]interface{})
+	if versions, ok := data["versions"]; ok {
+		versionsMap := versions.(map[string]any)
 		if len(versionsMap) > 0 {
 			for version, metadata := range versionsMap {
-				metadataMap := metadata.(map[string]interface{})
+				metadataMap := metadata.(map[string]any)
 				// deletion_time usually comes in as an empty string which can't be
 				// processed as time.RFC3339, so we reset it to a convertible value
 				if metadataMap["deletion_time"] == "" {
@@ -606,7 +657,7 @@ func extractFullMetadata(secret *Secret) (*KVMetadata, error) {
 				versionsMap[version] = metadataMap // save the updated copy of the metadata map
 			}
 		}
-		secret.Data["versions"] = versionsMap // save the updated copy of the versions map
+		data["versions"] = versionsMap // save the updated copy of the versions map
 	}
 
 	d, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
@@ -620,7 +671,7 @@ func extractFullMetadata(secret *Secret) (*KVMetadata, error) {
 		return nil, fmt.Errorf("error setting up decoder for API response: %w", err)
 	}
 
-	err = d.Decode(secret.Data)
+	err = d.Decode(data)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding metadata from API response into KVMetadata: %w", err)
 	}
@@ -656,15 +707,15 @@ func validateRollbackVersion(rollbackVersion *KVSecret) error {
 	return nil
 }
 
-func mergePatch(ctx context.Context, client *Client, mountPath string, secretPath string, newData map[string]interface{}, opts ...KVOption) (*KVSecret, error) {
+func mergePatch(ctx context.Context, client *Client, mountPath string, secretPath string, newData map[string]any, opts ...KVOption) (*KVSecret, error) {
 	pathToMergePatch := fmt.Sprintf("%s/data/%s", mountPath, secretPath)
 
 	// take any other additional options provided
 	// and pass them along to the patch request
-	wrappedData := map[string]interface{}{
+	wrappedData := map[string]any{
 		"data": newData,
 	}
-	options := make(map[string]interface{})
+	options := make(map[string]any)
 	for _, opt := range opts {
 		k, v := opt()
 		options[k] = v
@@ -715,7 +766,7 @@ func mergePatch(ctx context.Context, client *Client, mountPath string, secretPat
 	return kvSecret, nil
 }
 
-func readThenWrite(ctx context.Context, client *Client, mountPath string, secretPath string, newData map[string]interface{}) (*KVSecret, error) {
+func readThenWrite(ctx context.Context, client *Client, mountPath string, secretPath string, newData map[string]any) (*KVSecret, error) {
 	// First, read the secret.
 	existingVersion, err := client.KVv2(mountPath).Get(ctx, secretPath)
 	if err != nil {
@@ -744,8 +795,8 @@ func readThenWrite(ctx context.Context, client *Client, mountPath string, secret
 	return updatedSecret, nil
 }
 
-func toMetadataMap(patchInput KVMetadataPatchInput) (map[string]interface{}, error) {
-	metadataMap := make(map[string]interface{})
+func toMetadataMap(patchInput KVMetadataPatchInput) (map[string]any, error) {
+	metadataMap := make(map[string]any)
 
 	const (
 		casRequiredKey        = "cas_required"
@@ -777,4 +828,60 @@ func toMetadataMap(patchInput KVMetadataPatchInput) (map[string]interface{}, err
 	}
 
 	return metadataMap, nil
+}
+
+func extractKeyList(resp *Secret) (*KVList, error) {
+	result := KVList{
+		Raw: resp,
+	}
+
+	if resp == nil {
+		return nil, nil
+	}
+
+	keysUntyped, ok := resp.Data["keys"]
+	if !ok {
+		return &result, nil
+	}
+
+	keysAny, ok := keysUntyped.([]any)
+	if !ok {
+		return nil, fmt.Errorf(`invalid response from server: expected "keys" to be of type []any but got %T`, keysUntyped)
+	}
+
+	result.Keys = make([]string, 0, len(keysAny))
+	for _, key := range keysAny {
+		keyString, ok := key.(string)
+		if !ok {
+			return nil, fmt.Errorf(`invalid response from server: expected every key to be of type string but got %T`, key)
+		}
+
+		result.Keys = append(result.Keys, keyString)
+	}
+
+	keysInfoUntyped, ok := resp.Data["key_info"]
+	if !ok {
+		return &result, nil
+	}
+
+	keyInfo, ok := keysInfoUntyped.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf(`invalid response from server: expected "key_info" to be of type map[string]any but got %T`, keysInfoUntyped)
+	}
+
+	result.Metadata = make(map[string]*KVMetadata, len(keyInfo))
+	for key, value := range keyInfo {
+		valueAsMap, ok := value.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf(`invalid response from server: expected all "key_info" entries to be of type map[string]any but got %T`, value)
+		}
+
+		valueAsStruct, err := extractFullMetadata(valueAsMap)
+		if err != nil {
+			return nil, err
+		}
+		result.Metadata[key] = valueAsStruct
+	}
+
+	return &result, nil
 }

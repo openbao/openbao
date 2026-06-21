@@ -40,6 +40,11 @@ type core interface {
 	clusterInfoGetter
 	GetRaftBackend() *raft.RaftBackend
 	Logger() log.Logger
+
+	NamespacesWithKeys() []string
+	NamespacesMissingKeys() []string
+	SetNamespaceKeys(context.Context, map[string][]byte) error
+	NamespaceKeys(context.Context, []string) (map[string][]byte, error)
 }
 
 type clusterPeerClusterAddrsCache interface {

@@ -642,7 +642,7 @@ func (c *Core) raftSnapshotRestoreCallback(grabLock bool, sealNode bool) func(co
 
 		if grabLock {
 			// Grab statelock
-			l := newLockGrabber(c.stateLock.Lock, c.stateLock.Unlock, c.standbyStopCh.Load().(chan struct{}))
+			l := newLockGrabber(c.stateLock.Lock, c.stateLock.Unlock, c.haLoopStopCh.Load().(chan struct{}))
 			go l.grab()
 			if stopped := l.lockOrStop(); stopped {
 				c.logger.Error("did not apply snapshot; vault is shutting down")
@@ -1237,10 +1237,8 @@ func (c *Core) loadAutopilotConfiguration(ctx context.Context) (*raft.AutopilotC
 // backend. If raft is not part for the storage or HA storage backend, this
 // call results in an error.
 func (c *Core) RaftBootstrap(ctx context.Context, onInit bool) error {
-	if c.logger.IsDebug() {
-		c.logger.Debug("bootstrapping raft backend")
-		defer c.logger.Debug("finished bootstrapping raft backend")
-	}
+	c.logger.Debug("bootstrapping raft backend")
+	defer c.logger.Debug("finished bootstrapping raft backend")
 
 	raftBackend := c.GetRaftBackend()
 	if raftBackend == nil {

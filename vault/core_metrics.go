@@ -406,6 +406,8 @@ func (c *Core) entityGaugeCollector(ctx context.Context) ([]metricsutil.GaugeLab
 		return []metricsutil.GaugeLabelValues{}, errors.New("nil identity store")
 	}
 
+	ctx = namespace.RootContext(ctx)
+
 	byNamespace, err := identityStore.CountEntitiesByNamespace(ctx)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
@@ -436,6 +438,8 @@ func (c *Core) entityGaugeCollectorByMount(ctx context.Context) ([]metricsutil.G
 	if identityStore == nil {
 		return []metricsutil.GaugeLabelValues{}, errors.New("nil identity store")
 	}
+
+	ctx = namespace.RootContext(ctx)
 
 	byAccessor, err := identityStore.CountEntitiesByMountAccessor(ctx)
 	if err != nil {

@@ -173,11 +173,9 @@ func (c *Client) do(req *http.Request, ptrToReturnObj interface{}) error {
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			if c.logger.IsWarn() {
-				// Failing to close response bodies can present as a memory leak so it's
-				// important to surface it.
-				c.logger.Warn(fmt.Sprintf("unable to close response body: %s", err))
-			}
+			// Failing to close response bodies can present as a memory leak so it's
+			// important to surface it.
+			c.logger.Warn("unable to close response body", "err", err)
 		}
 	}()
 

@@ -872,8 +872,8 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate-backup"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysRotateHelp["rotate-backup"][0]),
+			HelpDescription: strings.TrimSpace(sysRotateHelp["rotate-backup"][0]),
 		},
 
 		{
@@ -926,8 +926,8 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate-backup"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysRotateHelp["rotate-backup"][0]),
+			HelpDescription: strings.TrimSpace(sysRotateHelp["rotate-backup"][0]),
 		},
 		{
 			Pattern: "rekey/update",
@@ -1891,6 +1891,15 @@ func (b *SystemBackend) pluginsCatalogListPaths() []*framework.Path {
 								"detailed": {
 									Type:     framework.TypeMap,
 									Required: false,
+								},
+								"auth": {
+									Type: framework.TypeStringSlice,
+								},
+								"database": {
+									Type: framework.TypeStringSlice,
+								},
+								"secret": {
+									Type: framework.TypeStringSlice,
 								},
 							},
 						}},

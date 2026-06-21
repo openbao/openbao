@@ -200,9 +200,7 @@ func (c *Core) setupPluginCatalog(ctx context.Context) error {
 		return err
 	}
 
-	if c.logger.IsInfo() {
-		c.logger.Info("successfully setup plugin catalog", "plugin-directory", c.pluginDirectory)
-	}
+	c.logger.Info("successfully setup plugin catalog", "plugin-directory", c.pluginDirectory)
 
 	return nil
 }
@@ -373,7 +371,7 @@ func (c *PluginCatalog) registerDeclarativePlugins(ctx context.Context, plugins 
 	// Check if we need to remove any plugins.
 	for _, pluginType := range pluginTypes {
 		if err := func() error {
-			storedPlugins, err := c.listInternal(ctx, pluginType, true /* versioned */)
+			storedPlugins, err := c.listInternal(ctx, pluginType)
 			if err != nil {
 				return fmt.Errorf("failed to list plugins: %w", err)
 			}
@@ -1285,40 +1283,14 @@ func (c *PluginCatalog) deleteInternal(ctx context.Context, name string, pluginT
 	return c.catalogView.Delete(ctx, pluginKey)
 }
 
-// List returns a list of all the known plugin names. If an external and builtin
-// plugin share the same name, only one instance of the name will be returned.
-func (c *PluginCatalog) List(ctx context.Context, pluginType consts.PluginType) ([]string, error) {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-
-	plugins, err := c.listInternal(ctx, pluginType, false)
-	if err != nil {
-		return nil, err
-	}
-
-	// Use a set to de-dupe between builtin and unversioned external plugins.
-	// External plugins with the same name as a builtin override the builtin.
-	uniquePluginNames := make(map[string]struct{})
-	for _, plugin := range plugins {
-		uniquePluginNames[plugin.Name] = struct{}{}
-	}
-
-	retList := make([]string, 0, len(uniquePluginNames))
-	for plugin := range uniquePluginNames {
-		retList = append(retList, plugin)
-	}
-
-	return retList, nil
-}
-
 func (c *PluginCatalog) ListVersionedPlugins(ctx context.Context, pluginType consts.PluginType) ([]pluginutil.VersionedPlugin, error) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	return c.listInternal(ctx, pluginType, true)
+	return c.listInternal(ctx, pluginType)
 }
 
-func (c *PluginCatalog) listInternal(ctx context.Context, pluginType consts.PluginType, includeVersioned bool) ([]pluginutil.VersionedPlugin, error) {
+func (c *PluginCatalog) listInternal(ctx context.Context, pluginType consts.PluginType) ([]pluginutil.VersionedPlugin, error) {
 	var result []pluginutil.VersionedPlugin
 
 	// Collect keys for external plugins in the barrier.
@@ -1347,10 +1319,6 @@ func (c *PluginCatalog) listInternal(ctx context.Context, pluginType consts.Plug
 				return nil, err
 			}
 		} else {
-			if !includeVersioned {
-				continue
-			}
-
 			semanticVersion, err = semver.NewVersion(plugin.Version)
 			if err != nil {
 				return nil, fmt.Errorf("unexpected error parsing version from plugin catalog entry %q: %w", key, err)

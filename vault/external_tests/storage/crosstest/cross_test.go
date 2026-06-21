@@ -16,6 +16,7 @@ import (
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/stretchr/testify/require"
 
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/postgresql"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
@@ -183,7 +184,7 @@ func allLogical(t *testing.T) (map[string]logical.Storage, func()) {
 }
 
 func newAESBarrier(t *testing.T, parent physical.Backend) barrier.SecurityBarrier {
-	b := barrier.NewAESGCMBarrier(parent, "")
+	b := barrier.NewAESGCMBarrier(parent, namespace.RootNamespace)
 	key, err := b.GenerateKey()
 	require.NoError(t, err, "failed generating random key")
 

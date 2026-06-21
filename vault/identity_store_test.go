@@ -263,17 +263,17 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 
 func TestIdentityStore_CreateOrFetchEntity(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
-	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
-	testIdentityStoreCreateOrFetchEntity(t, ctx, is, approleAccessor, upAccessor, core)
+	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
+	testIdentityStoreCreateOrFetchEntity(t, ctx, is, approleAccessor, upAccessor)
 }
 
 func TestIdentityStore_CreateOrFetchEntity_UnsafeShared(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
-	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
-	testIdentityStoreCreateOrFetchEntity(t, ctx, is, approleAccessor, upAccessor, core)
+	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
+	testIdentityStoreCreateOrFetchEntity(t, ctx, is, approleAccessor, upAccessor)
 }
 
-func testIdentityStoreCreateOrFetchEntity(t *testing.T, ctx context.Context, is *ident.IdentityStore, approleAccessor string, upAccessor string, core *Core) {
+func testIdentityStoreCreateOrFetchEntity(t *testing.T, ctx context.Context, is *ident.IdentityStore, approleAccessor string, upAccessor string) {
 	alias := &logical.Alias{
 		MountType:     "approle",
 		MountAccessor: approleAccessor,

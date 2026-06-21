@@ -10,6 +10,7 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -22,14 +23,14 @@ var logger = logging.NewVaultLogger(log.Trace)
 func TestAESGCMBarrier_Basic(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 	testBarrier(t, b)
 }
 
 func TestAESGCMBarrier_Rotate(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 	testBarrier_Rotate(t, b)
 }
 
@@ -38,7 +39,7 @@ func TestAESGCMBarrier_MissingRotateConfig(t *testing.T) {
 
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 
 	// Initialize and unseal
 	key, _ := b.GenerateKey()
@@ -58,8 +59,8 @@ func TestAESGCMBarrier_MissingRotateConfig(t *testing.T) {
 func TestAESGCMBarrier_Upgrade(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b1 := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
-	b2 := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b1 := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
+	b2 := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 	testBarrier_Upgrade(t, b1, b2)
 }
 
@@ -68,8 +69,8 @@ func TestAESGCMBarrier_Upgrade_RotateRootKey(t *testing.T) {
 
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b1 := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
-	b2 := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b1 := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
+	b2 := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 	testBarrier_Upgrade_RotateRootKey(t, b1, b2)
 
 	// Test migration from legacy to new root key path. Move the existing
@@ -111,7 +112,7 @@ func TestAESGCMBarrier_Upgrade_RotateRootKey(t *testing.T) {
 func TestAESGCMBarrier_RotateRootKey(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 	testBarrier_RotateRootKey(t, b)
 }
 
@@ -121,7 +122,7 @@ func TestAESGCMBarrier_Confidential(t *testing.T) {
 
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 
 	// Initialize and unseal
 	key, _ := b.GenerateKey()
@@ -146,7 +147,7 @@ func TestAESGCMBarrier_Integrity(t *testing.T) {
 
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 
 	// Initialize and unseal
 	key, _ := b.GenerateKey()
@@ -173,7 +174,7 @@ func TestAESGCMBarrier_MoveIntegrityV1(t *testing.T) {
 
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 	b.currentAESGCMVersionByte = AESGCMVersion1
 
 	// Initialize and unseal
@@ -200,7 +201,7 @@ func TestAESGCMBarrier_MoveIntegrityV2(t *testing.T) {
 
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 	b.currentAESGCMVersionByte = AESGCMVersion2
 
 	// Initialize and unseal
@@ -227,7 +228,7 @@ func TestAESGCMBarrier_UpgradeV1toV2(t *testing.T) {
 
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 	b.currentAESGCMVersionByte = AESGCMVersion1
 
 	// Initialize and unseal
@@ -243,7 +244,7 @@ func TestAESGCMBarrier_UpgradeV1toV2(t *testing.T) {
 	require.NoError(t, b.Seal())
 
 	// Open again as version 2
-	b = NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b = NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 	b.currentAESGCMVersionByte = AESGCMVersion2
 
 	// Unseal
@@ -259,7 +260,7 @@ func TestEncrypt_Unique(t *testing.T) {
 
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 
 	key, _ := b.GenerateKey()
 	require.NoError(t, b.Initialize(ctx, key, nil))
@@ -283,7 +284,7 @@ func TestInitialize_KeyLength(t *testing.T) {
 
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 
 	long := []byte("ThisKeyDoesNotHaveTheRightLength!")
 	middle := []byte("ThisIsASecretKeyAndMore")
@@ -300,7 +301,7 @@ func TestEncrypt_BarrierEncryptor(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
 
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 	// Initialize and unseal
 	key, _ := b.GenerateKey()
 	require.NoError(t, b.Initialize(ctx, key, nil))
@@ -319,7 +320,7 @@ func TestDecrypt_InvalidCipherLength(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
 
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 	key, err := b.GenerateKey()
 	require.NoError(t, err)
 
@@ -343,7 +344,7 @@ func TestDecrypt_InvalidCipherLength(t *testing.T) {
 func TestAESGCMBarrier_ReloadKeyring(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 
 	// Initialize and unseal
 	key, _ := b.GenerateKey()
@@ -361,7 +362,7 @@ func TestAESGCMBarrier_ReloadKeyring(t *testing.T) {
 
 	{
 		// Create a second barrier and rotate the keyring
-		b2 := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+		b2 := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 		require.NoError(t, b2.Unseal(ctx, key))
 		_, err = b2.Rotate(ctx)
 		require.NoError(t, err)
@@ -388,7 +389,7 @@ func TestAESGCMBarrier_ReloadKeyring(t *testing.T) {
 func TestBarrier_LegacyRotate(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b1 := NewAESGCMBarrier(inm, "").(*TransactionalAESGCMBarrier)
+	b1 := NewAESGCMBarrier(inm, nil).(*TransactionalAESGCMBarrier)
 
 	key, _ := b1.GenerateKey()
 
@@ -446,7 +447,7 @@ func TestBarrier_persistKeyring_Context(t *testing.T) {
 			// Set up barrier
 			backend, err := inmem.NewInmem(nil, corehelpers.NewTestLogger(t))
 			require.NoError(t, err)
-			barrier := NewAESGCMBarrier(backend, "").(*TransactionalAESGCMBarrier)
+			barrier := NewAESGCMBarrier(backend, nil).(*TransactionalAESGCMBarrier)
 			key, _ := barrier.GenerateKey()
 			require.NoError(t, barrier.Initialize(ctx, key, nil))
 			require.NoError(t, barrier.Unseal(ctx, key))
@@ -483,14 +484,14 @@ func TestBarrier_persistKeyring_Context(t *testing.T) {
 func TestAESGCMBarrier_Prefix_Basic(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "prefix/").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, &namespace.Namespace{UUID: "prefix"}).(*TransactionalAESGCMBarrier)
 	testBarrier(t, b)
 }
 
 func TestAESGCMBarrier_Prefix_Rotate(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "prefix/").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, &namespace.Namespace{UUID: "prefix"}).(*TransactionalAESGCMBarrier)
 	testBarrier_Rotate(t, b)
 }
 
@@ -499,7 +500,7 @@ func TestAESGCMBarrier_Prefix_MissingRotateConfig(t *testing.T) {
 
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "prefix/").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, &namespace.Namespace{UUID: "prefix"}).(*TransactionalAESGCMBarrier)
 
 	// Initialize and unseal
 	key, _ := b.GenerateKey()
@@ -519,22 +520,22 @@ func TestAESGCMBarrier_Prefix_MissingRotateConfig(t *testing.T) {
 func TestAESGCMBarrier_Prefix_Upgrade(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b1 := NewAESGCMBarrier(inm, "prefix/").(*TransactionalAESGCMBarrier)
-	b2 := NewAESGCMBarrier(inm, "prefix/").(*TransactionalAESGCMBarrier)
+	b1 := NewAESGCMBarrier(inm, &namespace.Namespace{UUID: "prefix"}).(*TransactionalAESGCMBarrier)
+	b2 := NewAESGCMBarrier(inm, &namespace.Namespace{UUID: "prefix"}).(*TransactionalAESGCMBarrier)
 	testBarrier_Upgrade(t, b1, b2)
 }
 
 func TestAESGCMBarrier_Prefix_Upgrade_RotateRootKey(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b1 := NewAESGCMBarrier(inm, "prefix/").(*TransactionalAESGCMBarrier)
-	b2 := NewAESGCMBarrier(inm, "prefix/").(*TransactionalAESGCMBarrier)
+	b1 := NewAESGCMBarrier(inm, &namespace.Namespace{UUID: "prefix"}).(*TransactionalAESGCMBarrier)
+	b2 := NewAESGCMBarrier(inm, &namespace.Namespace{UUID: "prefix"}).(*TransactionalAESGCMBarrier)
 	testBarrier_Upgrade_RotateRootKey(t, b1, b2)
 }
 
 func TestAESGCMBarrier_Prefix_RotateRootKey(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
-	b := NewAESGCMBarrier(inm, "prefix/").(*TransactionalAESGCMBarrier)
+	b := NewAESGCMBarrier(inm, &namespace.Namespace{UUID: "prefix"}).(*TransactionalAESGCMBarrier)
 	testBarrier_RotateRootKey(t, b)
 }

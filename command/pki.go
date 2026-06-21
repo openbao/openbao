@@ -24,8 +24,8 @@ func (c *PKICommand) Help() string {
 Usage: bao pki <subcommand> [options] [args]
 
   This command has subcommands for interacting with OpenBao's PKI Secrets
-  Engine. Here are some simple examples, and more detailed examples are
-  available in the subcommands or the documentation.
+  Engine. Here are some simple examples; more detailed examples are available
+  in the subcommands or the documentation.
 
   Check the health of a PKI mount, to the best of this token's abilities:
 

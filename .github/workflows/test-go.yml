@@ -60,7 +60,7 @@ jobs:
   test-matrix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ inputs.checkout-ref }}
           persist-credentials: false
@@ -74,7 +74,7 @@ jobs:
         run: |
           go list ./... github.com/openbao/openbao/api/v2/... github.com/openbao/openbao/sdk/v2/... \
             | grep -v "_binary" \
-            | go run gotest.tools/gotestsum@latest tool ci-matrix --debug \
+            | go tool -modfile=tools/go.mod gotestsum tool ci-matrix --debug \
               --partitions "$INPUTS_TOTAL_RUNNERS" \
               --timing-files 'test-results/go-test/*.json' > matrix.json
       - name: Capture list of binary tests
@@ -128,7 +128,7 @@ jobs:
     env:
       TIMEOUT_IN_MINUTES: ${{ inputs.timeout-minutes }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ inputs.checkout-ref }}
           persist-credentials: false
@@ -139,7 +139,7 @@ jobs:
           git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN}}@github.com".insteadOf https://github.com
       - id: build
         if: inputs.binary-tests && matrix.id == inputs.total-runners
-        run: time make ci-bootstrap dev
+        run: time make dev
       - id: run-go-tests
         name: Run Go tests
         timeout-minutes: ${{ fromJSON(env.TIMEOUT_IN_MINUTES) }}
@@ -177,7 +177,7 @@ jobs:
 
           # shellcheck disable=SC2086 # can't quote RERUN_FAILS
           GOARCH="$INPUTS_GO_ARCH" \
-            go run gotest.tools/gotestsum@latest --format=short-verbose \
+            go tool -modfile=tools/go.mod gotestsum --format=short-verbose \
               --junitfile test-results/go-test/results-${{ matrix.id }}.xml \
               --jsonfile test-results/go-test/results-${{ matrix.id }}.json \
               --jsonfile-timing-events "failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}$INPUTS_NAME.json" \

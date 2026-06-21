@@ -797,17 +797,13 @@ func TestRequestHandling_DisallowLogicalTokenCreation(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	core.logicalBackends["test"] = func(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
-		b := &backendTest.Noop{
+	core.logicalBackends["test"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
+		return &backendTest.Noop{
 			Login: []string{"login"},
 			Response: &logical.Response{
 				Auth: &logical.Auth{},
 			},
-		}
-		if err := b.Setup(ctx, conf); err != nil {
-			return nil, err
-		}
-		return b, nil
+		}, nil
 	}
 
 	meUUID, _ := uuid.GenerateUUID()
@@ -839,20 +835,16 @@ func TestRequestHandling_DisallowAuthErrorTokenCreation(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	core.credentialBackends["test"] = func(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
-		b := &backendTest.Noop{
+	core.credentialBackends["test"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
+		return &backendTest.Noop{
 			Login:       []string{"login"},
 			BackendType: logical.TypeCredential,
-			RequestHandler: func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
+			RequestHandler: func(context.Context, *logical.Request) (*logical.Response, error) {
 				return &logical.Response{
 					Auth: &logical.Auth{},
 				}, errors.New("erring for test")
 			},
-		}
-		if err := b.Setup(ctx, conf); err != nil {
-			return nil, err
-		}
-		return b, nil
+		}, nil
 	}
 
 	req := &logical.Request{
@@ -876,4 +868,202 @@ func TestRequestHandling_DisallowAuthErrorTokenCreation(t *testing.T) {
 		require.Nil(t, resp.Auth)
 	}
 	require.Error(t, err, ErrInternalError)
+}
+
+// TestRequestHandling_CrossNamespaceRouting tests that requests for tokens and
+// leases are routed based on the embedded namespace ID, and that there is no
+// accidental cross-namespace access path that evades ACLs.
+func TestRequestHandling_CrossNamespaceRouting(t *testing.T) {
+	t.Parallel()
+
+	core, _, rootToken := TestCoreUnsealed(t)
+
+	ns1 := &namespace.Namespace{Path: "ns1"}
+	ns2 := &namespace.Namespace{Path: "ns2"}
+
+	ctx := namespace.RootContext(t.Context())
+
+	ns1Ctx := namespace.ContextWithNamespace(t.Context(), ns1)
+	ns2Ctx := namespace.ContextWithNamespace(t.Context(), ns2)
+
+	TestCoreCreateNamespaces(t, core, ns1, ns2)
+
+	// Create a backend that always generates a new lease.
+	core.logicalBackends["test"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
+		return &backendTest.Noop{
+			BackendType: logical.TypeLogical,
+			Response: &logical.Response{
+				Secret: &logical.Secret{
+					LeaseOptions: logical.LeaseOptions{
+						TTL:       time.Hour,
+						Renewable: true,
+					},
+				},
+			},
+		}, nil
+	}
+
+	// Mount the backend in all namespaces so we can create leases in each.
+	for _, ctx := range []context.Context{ctx, ns1Ctx, ns2Ctx} {
+		res, err := core.HandleRequest(ctx, &logical.Request{
+			Path:        "sys/mounts/test",
+			Operation:   logical.UpdateOperation,
+			ClientToken: rootToken,
+			Data:        map[string]any{"type": "test"},
+		})
+		require.NoError(t, errors.Join(err, res.Error()))
+	}
+
+	// Create policies + tokens for the namespaces so we can scope down
+	// requests.
+	token := func(t *testing.T, ns *namespace.Namespace) string {
+		ctx := namespace.ContextWithNamespace(ctx, ns)
+		res, err := core.HandleRequest(ctx, &logical.Request{
+			Path:        "sys/policy/test",
+			Operation:   logical.UpdateOperation,
+			ClientToken: rootToken,
+			Data: map[string]any{
+				"rules": `path "*" { capabilities = ["create", "read", "update"] }`,
+			},
+		})
+		require.NoError(t, errors.Join(err, res.Error()))
+		res, err = core.HandleRequest(ctx, &logical.Request{
+			Path:        "auth/token/create",
+			Operation:   logical.UpdateOperation,
+			ClientToken: rootToken,
+			Data:        map[string]any{"policies": []string{"test"}},
+		})
+		require.NoError(t, errors.Join(err, res.Error()))
+		return res.Auth.ClientToken
+	}
+
+	ns1Token := token(t, ns1)
+	ns2Token := token(t, ns2)
+
+	tests := map[string]struct {
+		source *namespace.Namespace // The namespace targeted by the request.
+		lease  *namespace.Namespace // The namespace that the lease is created in.
+		token  string               // The token to use.
+		err    bool                 // Should it fail?
+	}{
+		// Happy paths.
+		"root->root via root token": {
+			lease:  namespace.RootNamespace,
+			source: namespace.RootNamespace,
+			token:  rootToken,
+		},
+		"root->ns1 via root token": {
+			source: namespace.RootNamespace, lease: ns1, token: rootToken,
+		},
+		"root->ns1 via ns1 token": {
+			source: namespace.RootNamespace, lease: ns1, token: ns1Token,
+		},
+		"ns1->ns1 via root token": {
+			source: ns1, lease: ns1, token: rootToken,
+		},
+		"ns1->ns1 via ns1 token": {
+			source: ns1, lease: ns1, token: ns1Token,
+		},
+		"ns2->ns2 via ns2 token": {
+			source: ns2, lease: ns2, token: ns2Token,
+		},
+		"ns2->ns1 via ns1 token": {
+			source: ns2, lease: ns1, token: ns1Token,
+		},
+
+		// Bad paths.
+		"root->root via ns1 token": {
+			source: namespace.RootNamespace,
+			lease:  namespace.RootNamespace,
+			token:  ns1Token,
+			err:    true,
+		},
+		"root->ns1 via ns2 token": {
+			source: namespace.RootNamespace, lease: ns1, token: ns2Token,
+			err: true,
+		},
+		"ns1->ns1 via ns2 token": {
+			source: ns1, lease: ns1, token: ns2Token,
+			err: true,
+		},
+		"ns2->ns1 via ns2 token": {
+			source: ns2, lease: ns1, token: ns2Token,
+			err: true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Helper to send a request to core and enforce the expected result.
+			check := func(t *testing.T, req *logical.Request) {
+				t.Helper()
+
+				ctx := namespace.ContextWithNamespace(ctx, tt.source)
+				res, err := core.HandleRequest(ctx, req)
+
+				if err := errors.Join(err, res.Error()); tt.err {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
+			}
+
+			// Helper to generate a fresh lease in the given namespace and get
+			// its ID.
+			lease := func(t *testing.T) string {
+				t.Helper()
+				ctx := namespace.ContextWithNamespace(ctx, tt.lease)
+				res, err := core.HandleRequest(ctx, &logical.Request{
+					Operation:   logical.ReadOperation,
+					Path:        "test/generate-lease",
+					ClientToken: rootToken,
+				})
+				require.NoError(t, errors.Join(err, res.Error()))
+				return res.Secret.LeaseID
+			}
+
+			t.Run("sys/leases/lookup", func(t *testing.T) {
+				check(t, &logical.Request{
+					Path:        "sys/leases/lookup",
+					Operation:   logical.UpdateOperation,
+					Data:        map[string]any{"lease_id": lease(t)},
+					ClientToken: tt.token,
+				})
+			})
+
+			t.Run("sys/leases/renew", func(t *testing.T) {
+				check(t, &logical.Request{
+					Path:        "sys/leases/renew",
+					Operation:   logical.UpdateOperation,
+					Data:        map[string]any{"lease_id": lease(t)},
+					ClientToken: tt.token,
+				})
+			})
+
+			t.Run("sys/leases/revoke", func(t *testing.T) {
+				check(t, &logical.Request{
+					Path:        "sys/leases/revoke",
+					Operation:   logical.UpdateOperation,
+					Data:        map[string]any{"lease_id": lease(t)},
+					ClientToken: tt.token,
+				})
+			})
+
+			t.Run("sys/leases/renew/id", func(t *testing.T) {
+				check(t, &logical.Request{
+					Path:        fmt.Sprintf("sys/leases/renew/%s", lease(t)),
+					Operation:   logical.UpdateOperation,
+					ClientToken: tt.token,
+				})
+			})
+
+			t.Run("sys/leases/revoke/id", func(t *testing.T) {
+				check(t, &logical.Request{
+					Path:        fmt.Sprintf("sys/leases/revoke/%s", lease(t)),
+					Operation:   logical.UpdateOperation,
+					ClientToken: tt.token,
+				})
+			})
+		})
+	}
 }

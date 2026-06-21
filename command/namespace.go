@@ -24,8 +24,6 @@ func (c *NamespaceCommand) Help() string {
 Usage: bao namespace <subcommand> [options] [args]
 
   This command groups subcommands for interacting with OpenBao namespaces.
-  These subcommands operate in the context of the namespace that the
-  currently logged in token belongs to.
 
   List enabled child namespaces:
 

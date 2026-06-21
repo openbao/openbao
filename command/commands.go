@@ -332,6 +332,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"namespace delete-sealed": func() (cli.Command, error) {
+			return &NamespaceDeleteSealedCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"namespace lock": func() (cli.Command, error) {
 			return &NamespaceAPILockCommand{
 				BaseCommand: getBaseCommand(),
@@ -349,6 +354,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 		"namespace unseal": func() (cli.Command, error) {
 			return &NamespaceUnsealCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"namespace seal-status": func() (cli.Command, error) {
+			return &NamespaceSealStatusCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},

@@ -264,7 +264,7 @@ const RpmRepo = ({ gpgKeyName }) => {
       pipeline and have not been tampered with.
       <CodeBlock
         language="shell"
-        title="/etc/yum.repos.de/openbao.repo"
+        title="/etc/yum.repos.d/openbao.repo"
         showLineNumbers
       >
         {`[openbao]

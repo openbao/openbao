@@ -151,9 +151,7 @@ func (l *InmemLayer) DialContext(ctx context.Context, addr string, tlsConfig *tl
 		alpn = tlsConfig.NextProtos[0]
 	}
 
-	if l.logger.IsDebug() {
-		l.logger.Debug("dialing connection", "node", l.addr, "remote", addr, "alpn", alpn)
-	}
+	l.logger.Debug("dialing connection", "node", l.addr, "remote", addr, "alpn", alpn)
 
 	if connectionCh != nil {
 		select {
@@ -208,9 +206,7 @@ func (l *InmemLayer) clientConn(addr string) (net.Conn, error) {
 	pendingConns := l.listener.pendingConns
 	l.l.Unlock()
 
-	if l.logger.IsDebug() {
-		l.logger.Debug("received connection", "node", l.addr, "remote", addr)
-	}
+	l.logger.Debug("received connection", "node", l.addr, "remote", addr)
 	if connectionCh != nil {
 		select {
 		case connectionCh <- &ConnectionInfo{

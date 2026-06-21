@@ -334,9 +334,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		c.logger.Error("failed to initialize barrier", "error", err)
 		return nil, fmt.Errorf("failed to initialize barrier: %w", err)
 	}
-	if c.logger.IsInfo() {
-		c.logger.Info("security barrier initialized", "shares", barrierConfig.SecretShares, "threshold", barrierConfig.SecretThreshold)
-	}
+	c.logger.Info("security barrier initialized", "shares", barrierConfig.SecretShares, "threshold", barrierConfig.SecretThreshold)
 
 	// Unseal the barrier
 	if err := c.barrier.Unseal(ctx, barrierKey); err != nil {
@@ -460,9 +458,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 
 	if c.serviceRegistration != nil {
 		if err := c.serviceRegistration.NotifyInitializedStateChange(true); err != nil {
-			if c.logger.IsWarn() {
-				c.logger.Warn("notification of initialization failed", "error", err)
-			}
+			c.logger.Warn("notification of initialization failed", "error", err)
 		}
 	}
 

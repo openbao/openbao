@@ -279,10 +279,26 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 
 	cleanup := func() {
 		for range 10 {
-			_, err := d.DockerAPI.ContainerRemove(ctx, result.Container.ID, client.ContainerRemoveOptions{Force: true})
-			if err == nil || errdefs.IsNotFound(err) {
+			if func() bool {
+				// Container removal may take a little bit, but do not
+				// prematurely time out because our parent context was
+				// cancelled on us.
+				cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				// We don't necessarily have anywhere to surface this error
+				// so swallow it.
+				_, err := d.DockerAPI.ContainerRemove(cleanupCtx, result.Container.ID, client.ContainerRemoveOptions{Force: true})
+				if err == nil || errdefs.IsNotFound(err) {
+					return true
+				}
+
+				return false
+			}() {
+				// OK to return early
 				return
 			}
+
 			time.Sleep(1 * time.Second)
 		}
 	}

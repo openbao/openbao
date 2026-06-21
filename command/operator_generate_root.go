@@ -56,10 +56,6 @@ func (c *OperatorGenerateRootCommand) Help() string {
 	helpText := `
 Usage: bao operator generate-root [options] [KEY]
 
-  WARNING: this method is deprecated, please consider using:
-    $ bao auth token create
-  with an existing root token with 'sudo' permission instead.
-
   Generates a new root token by combining a quorum of share holders. One of
   the following must be provided to start the root token generation:
 
@@ -383,12 +379,6 @@ func (c *OperatorGenerateRootCommand) init(client *api.Client, otp, pgpKey strin
 // provide prompts the user for the seal key and posts it to the update root
 // endpoint. If this is the last unseal, this function outputs it.
 func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, kind generateRootKind) int {
-	c.UI.Warn(wrapAtLength(
-		"This root token generation method is considered insecure and requires " +
-			"\"disable_unauthed_generate_root_endpoints\" configuration parameter set to 'true', " +
-			"consider generation of the root token through \"bao auth token create\" instead.",
-	))
-
 	f := client.Sys().GenerateRootStatus
 	switch kind {
 	case generateRootRecovery:
@@ -515,12 +505,6 @@ func (c *OperatorGenerateRootCommand) cancel(client *api.Client, kind generateRo
 
 // status is used just to fetch and dump the status
 func (c *OperatorGenerateRootCommand) status(client *api.Client, kind generateRootKind) int {
-	c.UI.Warn(wrapAtLength(
-		"This root token generation method is considered insecure and requires " +
-			"\"disable_unauthed_generate_root_endpoints\" configuration parameter set to 'true', " +
-			"consider generation of the root token through \"bao auth token create\" instead.",
-	))
-
 	f := client.Sys().GenerateRootStatus
 	switch kind {
 	case generateRootRecovery:

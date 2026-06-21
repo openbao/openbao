@@ -133,15 +133,8 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 
 				data = formData
 			} else {
-				err = parseJSONRequest(r, w, &data)
-				if err == io.EOF {
-					data = nil
-					err = nil
-				}
-				if err != nil {
-					status := http.StatusBadRequest
-					logical.AdjustErrorStatusCode(&status, err)
-					return nil, status, errors.New("error parsing JSON")
+				if err := parseJSONRequest(r, &data); err != nil && !errors.Is(err, io.EOF) {
+					return nil, http.StatusBadRequest, err
 				}
 			}
 		}
@@ -161,17 +154,8 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 			return nil, http.StatusUnsupportedMediaType, fmt.Errorf("PATCH requires Content-Type of %s, provided %s", MergePatchContentTypeHeader, contentType)
 		}
 
-		err = parseJSONRequest(r, w, &data)
-
-		if err == io.EOF {
-			data = nil
-			err = nil
-		}
-
-		if err != nil {
-			status := http.StatusBadRequest
-			logical.AdjustErrorStatusCode(&status, err)
-			return nil, status, errors.New("error parsing JSON")
+		if err := parseJSONRequest(r, &data); err != nil && !errors.Is(err, io.EOF) {
+			return nil, http.StatusBadRequest, err
 		}
 
 	case "LIST":
@@ -201,13 +185,19 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to generate identifier for the request: %w", err)
 	}
 
+	// The http package removes the Host header when deserializing
+	// the http request.  This adds it back in so it is available
+	// in the logical request.
+	reqHeader := r.Header.Clone()
+	reqHeader.Add("Host", r.Host)
+
 	req := &logical.Request{
 		ID:         requestId,
 		Operation:  op,
 		Path:       path,
 		Data:       data,
 		Connection: getConnection(r),
-		Headers:    r.Header.Clone(),
+		Headers:    reqHeader,
 	}
 
 	if passHTTPReq {

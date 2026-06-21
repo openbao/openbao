@@ -49,7 +49,7 @@ func (b *backend) pathRotateWrite(ctx context.Context, req *logical.Request, d *
 	name := d.Get("name").(string)
 
 	// Get the policy
-	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
+	p, _, err := b.GetPolicyExclusive(ctx, keysutil.PolicyRequest{
 		Storage: req.Storage,
 		Name:    name,
 	}, b.GetRandomReader())
@@ -58,9 +58,6 @@ func (b *backend) pathRotateWrite(ctx context.Context, req *logical.Request, d *
 	}
 	if p == nil {
 		return logical.ErrorResponse("key not found"), logical.ErrInvalidRequest
-	}
-	if !b.System().CachingDisabled() {
-		p.Lock(true)
 	}
 	defer p.Unlock()
 

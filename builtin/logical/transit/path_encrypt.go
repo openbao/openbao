@@ -288,7 +288,7 @@ func (b *backend) pathEncryptExistenceCheck(ctx context.Context, req *logical.Re
 	if err != nil {
 		return false, err
 	}
-	if p != nil && b.System().CachingDisabled() {
+	if p != nil {
 		p.Unlock()
 	}
 
@@ -417,9 +417,6 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 	}
 	if p == nil {
 		return logical.ErrorResponse("encryption key not found"), logical.ErrInvalidRequest
-	}
-	if !b.System().CachingDisabled() {
-		p.Lock(false)
 	}
 	defer p.Unlock()
 

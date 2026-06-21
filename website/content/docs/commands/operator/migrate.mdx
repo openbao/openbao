@@ -69,7 +69,9 @@ storage_destination "file" {
 
 ## Migrating to integrated raft storage
 
-### Example configuration
+### Example configurations
+
+#### File to Raft
 
 The below configuration will migrate away from Filesystem storage to integrated
 raft storage. The raft data will be stored on the local filesystem in the
@@ -91,6 +93,29 @@ storage_destination "raft" {
   path = "/path/to/raft/data"
   node_id = "raft_node_1"
 }
+cluster_addr = "http://127.0.0.1:8201"
+```
+
+#### Raft to PostgreSQL
+
+The below configuration will migrate away from integrated storage to PostgreSQL
+storage. For more configuration options see the [raft storage configuration
+documentation](../../configuration/storage/raft.mdx) and
+[PostgreSQL configuration documentation](../../configuration/storage/postgresql.mdx).
+
+```hcl
+storage_source "raft" {
+  path = "/path/to/raft/data"
+  node_id = "raft_node_1"
+}
+
+storage_destination "postgresql" {
+  ha_enabled = true
+  max_parallel = 5
+  max_idle_connections = 2
+  max_connect_retries = 20
+}
+
 cluster_addr = "http://127.0.0.1:8201"
 ```
 

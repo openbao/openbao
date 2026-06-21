@@ -181,9 +181,7 @@ func (c *Core) setupCluster(ctx context.Context) error {
 		}
 
 		cluster.Name = c.clusterName
-		if c.logger.IsDebug() {
-			c.logger.Debug("cluster name set", "name", cluster.Name)
-		}
+		c.logger.Debug("cluster name set", "name", cluster.Name)
 		modified = true
 	}
 
@@ -199,9 +197,7 @@ func (c *Core) setupCluster(ctx context.Context) error {
 			c.logger.Error("failed to generate cluster identifier", "error", err)
 			return err
 		}
-		if c.logger.IsDebug() {
-			c.logger.Debug("cluster ID set", "id", cluster.ID)
-		}
+		c.logger.Debug("cluster ID set", "id", cluster.ID)
 		modified = true
 	}
 

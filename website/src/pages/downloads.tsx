@@ -306,9 +306,13 @@ const DockerList = ({ version, registry }) => {
 
   const dockerDistros = {
     "Alpine Image Distribution": "openbao/openbao",
-    "Alpine Image Distribution with HSM Support": "openbao/openbao-hsm",
     "Red Hat Universal Base Image (UBI) Distribution": "openbao/openbao-ubi",
-    "Red Hat Universal Base Image (UBI) Distribution with HSM support": "openbao/openbao-hsm-ubi",
+    // *-hsm images are available only up to v2.6.
+    ...(major >= 2 && minor <= 6 ? {
+      "Alpine Image Distribution with HSM Support": "openbao/openbao-hsm",
+      "Red Hat Universal Base Image (UBI) Distribution with HSM support": "openbao/openbao-hsm-ubi",
+    } : {}),
+    // openbao-distroless is available starting with v2.6.
     ...(major >= 2 && minor >= 6 ? {
       "Distroless Distribution": "openbao/openbao-distroless",
     } : {}),

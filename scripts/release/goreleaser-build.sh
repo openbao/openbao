@@ -24,11 +24,6 @@ case "$TARGET_OS" in
     linux)
         file=goreleaser.linux.yaml
         ;;
-    hsm)
-        # Rewrite from 'hsm' to 'linux', but pick the right file.
-        export TARGET_OS=linux
-        file=goreleaser.hsm.yaml
-        ;;
     *)
         file=goreleaser.other.yaml
         ;;

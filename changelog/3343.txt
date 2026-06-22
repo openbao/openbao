@@ -1,0 +1,3 @@
+```release-note:bug
+core/auth: Ensure inline auth does not generate in-memory lease information.
+```

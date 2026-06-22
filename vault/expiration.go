@@ -1703,6 +1703,11 @@ func (m *ExpirationManager) RegisterAuth(ctx context.Context, te *logical.TokenE
 		return consts.ErrPathContainsParentReferences
 	}
 
+	if !persistLease {
+		// Do no further work if we are not persisting the lease.
+		return nil
+	}
+
 	tokenNS, err := m.core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return err
@@ -1740,10 +1745,8 @@ func (m *ExpirationManager) RegisterAuth(ctx context.Context, te *logical.TokenE
 	defer leaseLock.Unlock()
 
 	// Encode the entry
-	if persistLease {
-		if err := m.persistEntry(ctx, &le); err != nil {
-			return err
-		}
+	if err := m.persistEntry(ctx, &le); err != nil {
+		return err
 	}
 
 	// Setup revocation timer

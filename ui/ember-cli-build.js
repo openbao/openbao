@@ -27,7 +27,9 @@ const appConfig = {
     rootURL: '/ui/',
   },
   gzip: {
-    enabled: true,
+    enabled: isProd,
+    // tests need the non-gzipped assets to correctly load them
+    keepUncompressed: isTest,
   },
   fingerprint: {
     gzip: {

@@ -2277,7 +2277,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 		return err
 	}
 
-	c.setupWorkflowStore(ctx)
+	c.setupWorkflowStore()
 
 	return nil
 }

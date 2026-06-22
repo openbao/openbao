@@ -2135,9 +2135,9 @@ func TestNamespaceSealedLeaseTokenRevoke(t *testing.T) {
 	}, 25*time.Second, 10*time.Millisecond)
 }
 
-// TestNamespaceStore_UnsealRollbackOnFailure verifies that if postNamespaceUnseal
-// fails partway through, the namespace is sealed back to a known clean state
-// rather than being left in a dirty partially-initialized state.
+// TestNamespaceStore_UnsealRollbackOnFailure verifies that if unsealing a
+// namespace fails partway through, the namespace is sealed back to a known
+// clean state rather than being left in a dirty partially-initialized state.
 func TestNamespaceStore_UnsealRollbackOnFailure(t *testing.T) {
 	// corruptEntry overwrites the first transactional entry under prefix with invalid JSON.
 	corruptEntry := func(t *testing.T, view logical.Storage, prefix string) {
@@ -2185,16 +2185,12 @@ func TestNamespaceStore_UnsealRollbackOnFailure(t *testing.T) {
 			keyShares := TestCoreCreateUnsealedNamespaces(t, c, ns)
 			require.False(t, c.NamespaceSealed(ns))
 
-			nsEntry, err := s.GetNamespaceByPath(ctx, "rollback-test/")
-			require.NoError(t, err)
-			require.NotNil(t, nsEntry)
-
 			if tc.corrupt != nil {
-				tc.corrupt(t, c, nsEntry)
+				tc.corrupt(t, c, ns)
 			}
 
 			require.NoError(t, s.SealNamespace(ctx, "rollback-test"))
-			require.True(t, c.NamespaceSealed(nsEntry))
+			require.True(t, c.NamespaceSealed(ns))
 
 			keys := keyShares["rollback-test/"]
 			var unsealErr error
@@ -2208,10 +2204,10 @@ func TestNamespaceStore_UnsealRollbackOnFailure(t *testing.T) {
 
 			if tc.expectError {
 				require.Error(t, unsealErr)
-				require.True(t, c.NamespaceSealed(nsEntry), "namespace must be sealed back after failed postNamespaceUnseal")
+				require.True(t, c.NamespaceSealed(ns), "namespace must be sealed back after failed unseal")
 			} else {
 				require.NoError(t, unsealErr)
-				require.False(t, c.NamespaceSealed(nsEntry), "namespace must be unsealed after successful postNamespaceUnseal")
+				require.False(t, c.NamespaceSealed(ns), "namespace must be unsealed after successful unseal")
 			}
 		})
 	}

@@ -591,20 +591,19 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	stop := context.AfterFunc(httpCtx, cancel)
 	defer stop()
 
+	nsHeader := namespace.HeaderFromContext(httpCtx)
 	contextNS, err := namespace.FromContext(httpCtx)
 	haveContextNS := err == nil
 
-	if haveContextNS {
+	if haveContextNS && nsHeader == "" {
 		// If we have a namespace in context, prepend its path to the request
-		// path before namespace resolution. We prepend to request path instead
-		// of prepending to header to guarantee that the header is always
-		// interpreted as an absolute path.
+		// path before namespace resolution unless a header is defined, which
+		// would set a new absolute path to join the request path to.
 		req.Path = contextNS.Path + req.Path
 	}
 
 	// Resolve the namespace for this request from header & path.
 	var ns *namespace.Namespace
-	nsHeader := namespace.HeaderFromContext(httpCtx)
 	ns, req.Path = c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, req.Path)
 	if ns == nil {
 		return nil, logical.CodedError(http.StatusNotFound, "namespace not found")

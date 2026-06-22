@@ -1110,7 +1110,17 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 	return true, ns.unsealNamespace(ctx, namespaceToUnseal)
 }
 
-func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal *namespace.Namespace) error {
+func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal *namespace.Namespace) (err error) {
+	defer func() {
+		if err != nil {
+			// If any step fails, the namespace is sealed back to avoid a dirty
+			// partial state.
+			if err := ns.SealNamespace(ns.core.activeContext.Load(), namespaceToUnseal.Path); err != nil {
+				ns.logger.Error("failed to re-seal namespace after failed unseal", "namespace", namespaceToUnseal.Path)
+			}
+		}
+	}()
+
 	var collected []*namespace.Namespace
 	collected = append(collected, namespaceToUnseal.Clone(false))
 

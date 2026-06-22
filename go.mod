@@ -112,7 +112,7 @@ require (
 	github.com/openbao/openbao-template v1.0.1
 	github.com/openbao/openbao/api/auth/approle/v2 v2.0.0
 	github.com/openbao/openbao/api/auth/userpass/v2 v2.0.0
-	github.com/openbao/openbao/api/v2 v2.5.1
+	github.com/openbao/openbao/api/v2 v2.6.0
 	github.com/openbao/openbao/sdk/v2 v2.5.1
 	github.com/ory/dockertest/v4 v4.0.0
 	github.com/pires/go-proxyproto v0.12.0

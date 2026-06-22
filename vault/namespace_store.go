@@ -1134,7 +1134,17 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 	return true, ns.unsealNamespace(ctx, namespaceToUnseal)
 }
 
-func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal *namespace.Namespace) error {
+func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal *namespace.Namespace) (err error) {
+	defer func() {
+		if err != nil {
+			// If any step fails, the namespace is sealed back to avoid a dirty
+			// partial state.
+			if err := ns.SealNamespace(ns.core.activeContext.Load(), namespaceToUnseal.Path); err != nil {
+				ns.logger.Error("failed to re-seal namespace after failed unseal", "namespace", namespaceToUnseal.Path)
+			}
+		}
+	}()
+
 	var collected []*namespace.Namespace
 	collected = append(collected, namespaceToUnseal.Clone(false))
 
@@ -1191,16 +1201,7 @@ func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal
 
 // postNamespaceUnseal loads namespace credential and secret mounts,
 // initializes the backends and updates the router.
-// If any step fails the namespace is sealed back to avoid a dirty partial state.
-func (ns *NamespaceStore) postNamespaceUnseal(ctx context.Context, unsealedNamespace *namespace.Namespace) (retErr error) {
-	defer func() {
-		if retErr != nil {
-			if err := ns.SealNamespace(ns.core.activeContext.Load(), unsealedNamespace.Path); err != nil {
-				ns.logger.Error("failed to re-seal namespace after failed unseal", "namespace", unsealedNamespace.Path)
-			}
-		}
-	}()
-
+func (ns *NamespaceStore) postNamespaceUnseal(ctx context.Context, unsealedNamespace *namespace.Namespace) error {
 	if err := ns.core.loadMountsForNamespace(ctx, unsealedNamespace); err != nil {
 		return fmt.Errorf("failed to load mounts for namespace: %w", err)
 	}

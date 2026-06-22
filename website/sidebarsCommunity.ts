@@ -26,6 +26,7 @@ const sidebars: SidebarsConfig = {
         {
             "Release Notes": [
                 "release-notes/index",
+                "release-notes/2-6-0",
                 "release-notes/2-5-0",
                 "release-notes/2-4-0",
                 "release-notes/2-3-0",

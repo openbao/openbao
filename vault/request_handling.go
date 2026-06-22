@@ -595,11 +595,13 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	contextNS, err := namespace.FromContext(httpCtx)
 	haveContextNS := err == nil
 
-	if haveContextNS && nsHeader == "" {
-		// If we have a namespace in context, prepend its path to the request
-		// path before namespace resolution unless a header is defined, which
-		// would set a new absolute path to join the request path to.
-		req.Path = contextNS.Path + req.Path
+	if haveContextNS {
+		// If we have a namespace in context, prepend its path to namespace
+		// header. As a result, the namespace header is relative when a
+		// namespace is in context (e.g., if this call originates from the
+		// workflow store), but absolute otherwise. A canonicalized namespace
+		// path ends in a '/', so a basic concatenation is fine.
+		nsHeader = contextNS.Path + nsHeader
 	}
 
 	// Resolve the namespace for this request from header & path.

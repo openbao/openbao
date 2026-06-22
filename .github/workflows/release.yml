@@ -328,7 +328,7 @@ jobs:
             dist/*
         env:
           VERSION: ${{ needs.setup.outputs.version }}
-          PRERELEASE: ${{ inputs.nightly || contains(steps.version.outputs.version, '-') }}
+          PRERELEASE: ${{ inputs.nightly || contains(needs.setup.outputs.version, '-') }}
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Upload GPG signing key

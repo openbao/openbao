@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -55,6 +56,18 @@ const (
 		1 + /* locked user entries */
 		1 /* final view clearing */
 )
+
+// knownNamespaceCoreEntriesToCleanup is a "whitelist" of known paths to storage
+// entries we delete during final view clearing while namespace deletion.
+var knownNamespaceCoreEntriesToCleanup = []string{
+	barrier.KeyringPath,
+	barrier.RootKeyPath,
+	barrier.ShamirKekPath,
+	barrierSealConfigPath,
+	recoverySealConfigPath,
+	recoveryKeyPath,
+	StoredBarrierKeysPath,
+}
 
 // NamespaceStore is used to provide durable storage of namespace. It is
 // a singleton store across the Core and contains all child namespaces.
@@ -560,7 +573,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	failed = false
 
 	// Lastly, push the change to all mounts.
-	return sealKeyShares, ns.pushToMounts(ctx, entry)
+	return sealKeyShares, ns.pushToMounts(entry)
 }
 
 func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage barrier.View, entry *namespace.Namespace) error {
@@ -735,7 +748,7 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 	return success
 }
 
-func (ns *NamespaceStore) pushToMounts(ctx context.Context, entry *namespace.Namespace) error {
+func (ns *NamespaceStore) pushToMounts(entry *namespace.Namespace) error {
 	ns.core.mountsLock.Lock()
 	defer ns.core.mountsLock.Unlock()
 
@@ -1239,7 +1252,7 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, parent, namespaceT
 	}
 
 	// Push the update to all mounts.
-	return ns.pushToMounts(ctx, namespaceToTaint.Clone(false))
+	return ns.pushToMounts(namespaceToTaint.Clone(false))
 }
 
 // DeleteNamespace deletes an unsealed namespace.
@@ -1463,7 +1476,12 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, entry *
 				return false, fmt.Errorf("failed removing entry: %w", err)
 			}
 
-			ns.logger.Debug("bug: removing entry remaining in namespace storage after all mounts were removed", "namespace", entry.Path, "path", path)
+			// List of paths we know we are clearing with this final scan.
+			// Limit the warn log to entries stored under "core/" prefix.
+			if !slices.Contains(knownNamespaceCoreEntriesToCleanup, path) && strings.HasPrefix(path, "core/") {
+				ns.logger.Warn("bug: removing entry remaining in namespace storage after all mounts were removed", "namespace", entry.Path, "path", path)
+			}
+
 			return true, nil
 		}); err != nil {
 			return fmt.Errorf("failed to clear namespace view: %w", err)

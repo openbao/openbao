@@ -18,7 +18,7 @@ ARG TARGETARCH
 COPY --chmod=555 bin/${TARGETARCH}/bao /usr/bin/bao
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}.
-FROM alpine:3.24.1 AS default
+FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS default
 
 COPY LICENSE /licenses/mozilla.txt
 
@@ -67,7 +67,7 @@ CMD ["server", "-dev", "-dev-no-store-token"]
 
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}-ubi.
-FROM registry.access.redhat.com/ubi10-minimal:10.2 AS ubi
+FROM registry.access.redhat.com/ubi10-minimal:10.2@sha256:3948fdfe71007909b37faf48c52eda28bfab7c4e440d6f4d4619422d06ceeb4c AS ubi
 
 COPY LICENSE /licenses/mozilla.txt
 

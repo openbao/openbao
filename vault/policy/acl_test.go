@@ -52,7 +52,7 @@ path "test/control_group" {
 	control_group = {
 		ttl = "48m"
 		factor "admin-approval" {
-		        controlled_capabilities = ["create"]
+			controlled_capabilities = ["create"]
 			identity = {
 				group_names = ["admin"]
 				approvals = 1

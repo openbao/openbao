@@ -910,6 +910,10 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 						return nil, err
 					}
 					if valid {
+						// ensure we're on the active/leader node
+						if c.Standby() {
+							return nil, logical.ErrPerfStandbyPleaseForward
+						}
 						deferredReq.ForwardedFrom = forwardedFromDeferral
 						deferredReqNS, err := c.NamespaceByID(ctx, tokenEntry.NamespaceID)
 						if err != nil {

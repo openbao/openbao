@@ -13,6 +13,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -1249,15 +1250,15 @@ func (b *RaftBackend) PromotePeer(ctx context.Context, peerID string) error {
 		return fmt.Errorf("failed to get Raft peers: %s", err)
 	}
 
-	found := false
-	addr := ""
-	for _, peer := range peers {
-		if peer.ID == peerID {
-			addr = peer.Address
-			found = true
-			break
+	var addr string
+	found := slices.ContainsFunc(peers, func(p Peer) bool {
+		if p.ID == peerID {
+			addr = p.Address
+			return true
 		}
-	}
+		return false
+	})
+
 	if !found {
 		return fmt.Errorf("server %s not found in raft configuration", peerID)
 	}
@@ -1296,15 +1297,7 @@ func (b *RaftBackend) DemotePeer(ctx context.Context, peerID string) error {
 		return fmt.Errorf("failed to get Raft peers: %s", err)
 	}
 
-	found := false
-	for _, peer := range peers {
-		if peer.ID == peerID {
-			found = true
-			break
-		}
-	}
-
-	if !found {
+	if !slices.ContainsFunc(peers, func(p Peer) bool { return p.ID == peerID }) {
 		return fmt.Errorf("server %s not found in raft configuration", peerID)
 	}
 

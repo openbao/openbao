@@ -118,6 +118,7 @@ type OASPathItem struct {
 
 	Get    *OASOperation `json:"get,omitempty"`
 	Post   *OASOperation `json:"post,omitempty"`
+	Patch  *OASOperation `json:"patch,omitempty"`
 	Delete *OASOperation `json:"delete,omitempty"`
 }
 
@@ -346,8 +347,8 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 			op.Deprecated = props.Deprecated
 			op.OperationID = operationID
 
-			// Add any fields not present in the path as body parameters for POST.
-			if opType == logical.CreateOperation || opType == logical.UpdateOperation {
+			// Add any fields not present in the path as body parameters for POST or PATCH.
+			if opType == logical.CreateOperation || opType == logical.UpdateOperation || opType == logical.PatchOperation {
 				s := &OASSchema{
 					Type:       "object",
 					Properties: make(map[string]*OASSchema),
@@ -581,6 +582,8 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 				pi.Get = op
 			case logical.DeleteOperation:
 				pi.Delete = op
+			case logical.PatchOperation:
+				pi.Patch = op
 			}
 		}
 
@@ -1129,7 +1132,7 @@ func (d *OASDocument) CreateOperationIDs(context string) {
 
 	for _, path := range paths {
 		pi := d.Paths[path]
-		for _, method := range []string{"get", "post", "delete"} {
+		for _, method := range []string{"get", "post", "delete", "patch"} {
 			var oasOperation *OASOperation
 			switch method {
 			case "get":
@@ -1138,6 +1141,8 @@ func (d *OASDocument) CreateOperationIDs(context string) {
 				oasOperation = pi.Post
 			case "delete":
 				oasOperation = pi.Delete
+			case "patch":
+				oasOperation = pi.Patch
 			}
 
 			if oasOperation == nil {

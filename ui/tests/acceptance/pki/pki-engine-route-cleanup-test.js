@@ -372,6 +372,11 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await authPage.login();
       await settled();
       await visit(`/vault/secrets/${this.mountPath}/pki/overview`);
+      assert.strictEqual(
+        currentURL(),
+        `/vault/secrets/${this.mountPath}/pki/overview`,
+        'Overview route loaded successfully'
+      );
       await click(SELECTORS.keysTab);
       keys = this.store.peekAll('pki/key');
       const configKeyId = keys[0].id;

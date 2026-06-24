@@ -15,8 +15,6 @@
     "@types/ember-data__model": "latest",
     "@types/ember-data__serializer": "latest",
     "@types/ember-data__store": "latest",
-    "@types/ember-qunit": "latest",
-    "@types/ember-resolver": "latest",
     "@types/ember__application": "latest",
     "@types/ember__array": "latest",
     "@types/ember__component": "latest",
@@ -33,7 +31,6 @@
     "@types/ember__string": "latest",
     "@types/ember__template": "latest",
     "@types/ember__test": "latest",
-    "@types/ember__test-helpers": "latest",
     "@types/ember__utils": "latest",
     "@types/qunit": "latest",
     "@types/rsvp": "latest"

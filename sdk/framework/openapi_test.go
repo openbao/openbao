@@ -437,6 +437,10 @@ func TestOpenAPI_Paths(t *testing.T) {
 					Summary:     "Update Summary",
 					Description: "Update Description",
 				},
+				logical.PatchOperation: &PathOperation{
+					Summary:     "Patch Summary",
+					Description: "Patch Description",
+				},
 				logical.CreateOperation: &PathOperation{
 					Summary:     "Create Summary",
 					Description: "Create Description",

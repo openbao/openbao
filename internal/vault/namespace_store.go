@@ -923,6 +923,8 @@ type ListNamespaceOpts struct {
 	IncludeParent bool
 	// Whether to include sealed namespaces.
 	IncludeSealed bool
+	// Which namespace types to include.
+	IncludeTypes namespace.Type
 }
 
 // ListNamespaces is used to list namespaces below a parent namespace. Precise
@@ -941,13 +943,18 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, opts ListNamespace
 	var namespaces []*namespace.Namespace
 
 	// This enqueues a namespace to be returned.
-	push := func(entry *namespace.Namespace) {
+	push := func(entry *namespace.Namespace) bool {
 		if !opts.IncludeSealed && ns.core.NamespaceSealed(entry) {
-			return
+			return false
+		}
+		if opts.IncludeTypes != 0 && opts.IncludeTypes&ns.core.NamespaceType(entry) == 0 {
+			return false
 		}
 		entry = entry.Clone(false)
 		entry.Tainted = entry.Tainted || ns.creationDeletionMap[entry.UUID]
 		namespaces = append(namespaces, entry)
+
+		return true
 	}
 
 	// Fast-path avoid tree traversal in case we're listing recursively starting

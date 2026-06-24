@@ -178,6 +178,37 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 			HelpSynopsis:    "Delete a sealed namespace.",
 			HelpDescription: "Physically deletes a sealed namespace by wiping its storage. Requires sudo privilege. Pass force=true to also delete child namespaces.",
 		},
+		{
+			Pattern: "namespaces/(?P<path>.+)/migrate-seal",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+				OperationVerb:   "migrate-seal",
+			},
+			Fields: map[string]*framework.FieldSchema{
+				"path": namespacePathSchema,
+				"seal": {
+					Type:        framework.TypeString,
+					Description: "User provided seal config.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Summary:  "Migrate a namespace seal.",
+					Callback: b.handleNamespacesMigrateSeal(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: http.StatusText(http.StatusOK),
+							Fields:      sealStatusSchema,
+						}},
+					},
+					ForwardPerformanceStandby: true,
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][1]),
+		},
 	}
 }
 

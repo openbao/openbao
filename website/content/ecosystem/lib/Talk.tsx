@@ -19,7 +19,7 @@ function getOptionalLogo(member) {
 }
 
 export function Talk({ title, memberName, children }) {
-    const logo = getOptionalLogo(memberName);
+    const logo = getLogo(memberName) ?? favicon;
 
     return (
         <div className="col col--6 padding-bottom--lg">
@@ -36,11 +36,10 @@ export function Talk({ title, memberName, children }) {
     );
 }
 
-export default function YouTubeTalk({ title, memberName, vid, lowres, children }) {
-    let preview = `https://img.youtube.com/vi/${ vid }/maxresdefault.jpg`;
-    if (lowres) {
-        preview = `https://i3.ytimg.com/vi/${ vid }/mqdefault.jpg`;
-    }
+export function YouTubeTalk({ title, memberName, vid, lowres, children }) {
+    const preview = lowres
+        ? `https://i3.ytimg.com/vi/${vid}/mqdefault.jpg`;
+        : `https://img.youtube.com/vi/${vid}/maxresdefault.jpg`;
 
     return (
         <Talk title={ title } memberName={ memberName }>
@@ -54,7 +53,7 @@ export default function YouTubeTalk({ title, memberName, vid, lowres, children }
                 }} />
             </a>
 
-            { children }
+            {children}
 
             <a href={`https://youtube.com/watch?v=${ vid }`}>
                 <i>Watch on YouTube.</i>

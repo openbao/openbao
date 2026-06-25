@@ -22,8 +22,6 @@ on:
           - openbao
           - openbao-distroless
           - openbao-ubi
-          - openbao-hsm
-          - openbao-hsm-ubi
 
   # This trigger is called directly by "release.yml" to automatically trigger
   # image releases on nightly releases.
@@ -95,26 +93,6 @@ jobs:
               - linux/ppc64le
               - linux/riscv64
               - linux/s390x
-          - name: openbao-hsm
-            target: default
-            include: >-
-              ${{
-                github.event_name == 'release' ||
-                contains(fromJSON('["all", "openbao-hsm"]'), inputs.distro)
-              }}
-            platforms:
-              - linux/amd64
-              - linux/arm64
-          - name: openbao-hsm-ubi
-            target: ubi
-            include: >-
-              ${{
-                github.event_name == 'release' ||
-                contains(fromJSON('["all", "openbao-hsm-ubi"]'), inputs.distro)
-              }}
-            platforms:
-              - linux/amd64
-              - linux/arm64
         exclude:
           - distro:
               include: false
@@ -169,7 +147,7 @@ jobs:
           ./scripts/release/extract-linux-binaries.sh
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          PATTERN: ${{ case(startsWith(matrix.distro.name, 'openbao-hsm'), 'openbao-hsm', 'openbao') }}_*_linux_*.tar.gz
+          PATTERN: openbao_*_linux_*.tar.gz
 
       - name: Get release info
         id: info

@@ -17,7 +17,7 @@ FROM scratch AS bin
 ARG TARGETARCH
 COPY --chmod=555 bin/${TARGETARCH}/bao /usr/bin/bao
 
-# This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}.
+# This is {docker.io,quay.io,ghcr.io}/openbao/openbao.
 FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS default
 
 COPY LICENSE /licenses/mozilla.txt
@@ -66,7 +66,7 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["server", "-dev", "-dev-no-store-token"]
 
 
-# This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}-ubi.
+# This is {docker.io,quay.io,ghcr.io}/openbao/openbao-ubi.
 FROM registry.access.redhat.com/ubi10-minimal:10.2@sha256:5bc43c1af14ccc8bf73bb0306db13edcae1a30589569e9cdf7db5d4668b3ed24 AS ubi
 
 COPY LICENSE /licenses/mozilla.txt

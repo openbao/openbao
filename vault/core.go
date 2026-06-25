@@ -35,7 +35,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	"github.com/openbao/go-kms-wrapping/wrappers/awskms/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/command/server"
@@ -1020,9 +1019,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	// Load seal information.
 	if c.seal == nil {
-		wrapper := vaultseal.NewShamirWrapper()
-		wrapper.SetConfig(context.Background(), awskms.WithLogger(c.logger.Named("shamir")))
-		c.seal = NewDefaultSeal(vaultseal.NewAccess(wrapper))
+		c.seal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 	}
 	c.seal.SetCore(c)
 

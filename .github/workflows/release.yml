@@ -236,6 +236,12 @@ jobs:
         with:
           package_json_file: ui/package.json
 
+      - name: Set up UI cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: http/web_ui/
+          key: ${{ github.ref }}-ui
+
       - name: Make LICENSE_NODE_MODULES.txt
         run: |
           pnpm install
@@ -244,15 +250,22 @@ jobs:
 
       - name: Make SPDX_NODE_MODULES.txt
         run: |
-          jq -r .license ui/node_modules/*/package.json | \
-            grep -v url | \
-            sed 's/.*"type": "//;s/",//' | \
-            grep -v { | grep -v } | grep -v ^null$ | \
-            awk '{if ((($2 == "OR") || ($2 == "AND")) && (substr($1, 0, 1) != "(")) { print "(" $0 ")"} else {print $0}}' | \
-            sort -u > SPDX_NODE_MODULES.txt
+          pnpm licenses list --prod --json \
+            | jq -r '. | keys[]' \
+            | awk '{if ((($2 == "OR") || ($2 == "AND")) && (substr($1, 0, 1) != "(")) { print "(" $0 ")"} else {print $0}}' \
+            | sort -u \
+            > ../SPDX_NODE_MODULES.txt
+        working-directory: ui
 
       - name: Make VERSION_NODE_MODULES.txt
-        run: jq -r '"\(.name) \(.version)"' ui/node_modules/*/package.json > VERSION_NODE_MODULES.txt
+        run: |
+          # Note: Also use 'pnpm licenses list' instead of 'pnpm list' just for
+          # version listing as this yields a flat list, while 'pnpm list' lists
+          # a tree that is harder to traverse.
+          pnpm licenses list --prod --json \
+            | jq -r 'to_entries[] | .value[] | .name as $name | .versions[] | "\($name) \(.)"' \
+            > ../VERSION_NODE_MODULES.txt
+        working-directory: ui
 
       - name: Make LICENSE_DEPENDENCIES.md
         run: |

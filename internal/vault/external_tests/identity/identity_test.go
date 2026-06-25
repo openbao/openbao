@@ -3,28 +3,8 @@
 
 package identity
 
-import (
-	"fmt"
-	"slices"
-	"testing"
-
-	"github.com/openbao/openbao/api/v2"
-	"github.com/openbao/openbao/sdk/v2/helper/ldaputil"
-	"github.com/openbao/openbao/sdk/v2/logical"
-
-	"github.com/stretchr/testify/require"
-
-	"github.com/openbao/openbao/v2/internal/helper/testhelpers/teststorage"
-
-	"github.com/go-ldap/ldap/v3"
-	log "github.com/hashicorp/go-hclog"
-	ldapcred "github.com/openbao/openbao/v2/internal/builtin/credential/ldap"
-	"github.com/openbao/openbao/v2/internal/helper/namespace"
-	ldaphelper "github.com/openbao/openbao/v2/internal/helper/testhelpers/ldap"
-	vaulthttp "github.com/openbao/openbao/v2/internal/http"
-	"github.com/openbao/openbao/v2/internal/vault"
-)
-
+/*
+// TODO: rewrite test to not rely on LDAP plugin
 func TestIdentityStore_ExternalGroupMemberships_DifferentMounts(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
 		CredentialBackends: map[string]logical.Factory{
@@ -763,3 +743,4 @@ func TestLDAPNamespaceMultipleCreates(t *testing.T) {
 		require.NotNil(t, resp, "response for namespace %s is nil", ns)
 	}
 }
+*/

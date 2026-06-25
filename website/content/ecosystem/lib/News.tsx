@@ -5,7 +5,7 @@ const favicon = "/img/favicon.svg"
 
 import { getLogo } from './Member.tsx';
 
-export function Talk({ title, memberName, children }) {
+export function News({ title, memberName, children }) {
     const logo = memberName
         ? ( getLogo(memberName) ?? favicon)
         : favicon;
@@ -25,17 +25,30 @@ export function Talk({ title, memberName, children }) {
     );
 }
 
+export function NewsBlurb({ title, memberName, link, children }) {
+    return (
+        <News title={title} memberName={memberName}>
+            { children }
+
+
+            <a href={link} target="_blank">
+                <i>Continue reading.</i>
+            </a>
+        </News>
+    );
+}
+
 export function YouTubeTalk({ title, memberName, vid, lowres, children }) {
     const preview = lowres
         ? `https://i3.ytimg.com/vi/${vid}/mqdefault.jpg`
         : `https://img.youtube.com/vi/${vid}/maxresdefault.jpg`;
 
     return (
-        <Talk title={title} memberName={memberName}>
+        <News title={title} memberName={memberName}>
             <a href={`https://youtube.com/watch?v=${vid}`}>
                 <img src={preview} alt="Video Preview" style={{
-                    width: "80%",
-                    maxHeight: "200px",
+                    maxHeight: "min(200px, 30vh)",
+                    maxWidth: "min(400px, 70vw)",
                     margin: "0 auto",
                     display: "block",
                     paddingBottom: "25px",
@@ -44,9 +57,9 @@ export function YouTubeTalk({ title, memberName, vid, lowres, children }) {
 
             {children}
 
-            <a href={`https://youtube.com/watch?v=${vid}`}>
+            <a href={`https://youtube.com/watch?v=${vid}`} target="_blank">
                 <i>Watch on YouTube.</i>
             </a>
-        </Talk>
+        </News>
     );
 }

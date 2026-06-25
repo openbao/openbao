@@ -1,0 +1,12 @@
+```release-note:deprecation
+secret/ldap: The built-in LDAP secrets plugin has been deprecated and slated for removal from the main OpenBao binary distribution in v2.7.0. It will be included in [openbao-plugins](https://github.com/openbao/openbao-plugins) going forward.
+```
+```release-note:deprecation
+auth/ldap: The built-in LDAP auth plugin has been deprecated and slated for removal from the main OpenBao binary distribution in v2.7.0. It will be included in [openbao-plugins](https://github.com/openbao/openbao-plugins) going forward.
+```
+```release-note:deprecation
+auth/kerberos: The built-in Kerberos auth plugin has been deprecated and slated for removal from the main OpenBao binary distribution in v2.7.0. It will be included in [openbao-plugins](https://github.com/openbao/openbao-plugins) going forward.
+```
+```release-note:deprecation
+auth/radius: The built-in RADIUS auth plugin has been deprecated and slated for removal from the main OpenBao binary distribution in v2.7.0. It will be included in [openbao-plugins](https://github.com/openbao/openbao-plugins) going forward.
+```

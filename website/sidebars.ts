@@ -124,6 +124,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/seal/ocikms",
                         "configuration/seal/pkcs11",
                         "configuration/seal/static",
+                        "configuration/seal/tcloudpublickms",
                         "configuration/seal/transit",
                     ],
                     service_registration: [

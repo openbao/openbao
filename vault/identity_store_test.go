@@ -2043,3 +2043,42 @@ func TestIdentityStore_UnsafeCrossNamespace(t *testing.T) {
 	err = is.SanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
 	require.NoError(t, err)
 }
+
+// TestLoadIdentityStoreArtifactsForNamespace verifies both the happy path and
+// the crash-recovery path for loadIdentityStoreArtifactsForNamespace.
+// A namespace whose setup completed normally must load without error; a
+// namespace present in storage but absent from the identity store's in-memory
+// view (setup crashed before AddNamespaceView was called) must be skipped
+// gracefully instead of causing a nil pointer dereference panic.
+func TestLoadIdentityStoreArtifactsForNamespace(t *testing.T) {
+	testCases := []struct {
+		name        string
+		ns          *namespace.Namespace
+		expectError bool
+	}{
+		{
+			name: "registered namespace loads successfully",
+			ns:   namespace.RootNamespace,
+		},
+		{
+			name: "unregistered namespace is skipped without panic",
+			ns: &namespace.Namespace{
+				ID:   "orphan1234",
+				UUID: "orphan-uuid-1234-5678-abcd-ef0123456789",
+				Path: "orphan/",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _, _ := TestCoreUnsealed(t)
+			err := c.loadIdentityStoreArtifactsForNamespace(t.Context(), tc.ns, false)
+			if tc.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

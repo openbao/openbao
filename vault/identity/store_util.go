@@ -28,9 +28,10 @@ import (
 )
 
 var (
-	ErrDuplicateIdentityName = errors.New("duplicate identity name")
-	ErrCycleDetectedPrefix   = "cyclic relationship detected for member group ID"
-	tmpSuffix                = ".tmp"
+	ErrDuplicateIdentityName       = errors.New("duplicate identity name")
+	ErrNamespaceNotInIdentityStore = errors.New("namespace not registered in identity store")
+	ErrCycleDetectedPrefix         = "cyclic relationship detected for member group ID"
+	tmpSuffix                      = ".tmp"
 )
 
 func (i *IdentityStore) sanitizeName(name string) string {
@@ -51,7 +52,11 @@ func (i *IdentityStore) LoadGroups(ctx context.Context, readOnly bool) error {
 	}
 
 	i.logger.Debug("identity loading groups", "namespace", ns.Path)
-	existing, err := i.GroupPacker(ctx).View().List(ctx, groupBucketsPrefix)
+	gp := i.GroupPacker(ctx)
+	if gp == nil {
+		return fmt.Errorf("%w: %s", ErrNamespaceNotInIdentityStore, ns.UUID)
+	}
+	existing, err := gp.View().List(ctx, groupBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for groups: %w", err)
 	}
@@ -151,7 +156,11 @@ func (i *IdentityStore) LoadEntities(ctx context.Context, readOnly bool) error {
 	}
 
 	i.logger.Debug("loading entities", "namespace", ns.Path)
-	existing, err := i.EntityPacker(ctx).View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
+	ep := i.EntityPacker(ctx)
+	if ep == nil {
+		return fmt.Errorf("%w: %s", ErrNamespaceNotInIdentityStore, ns.UUID)
+	}
+	existing, err := ep.View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for entities: %w", err)
 	}

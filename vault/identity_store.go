@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/errwrap"
@@ -69,10 +70,24 @@ func (c *Core) loadIdentityStoreArtifactsForNamespace(ctx context.Context, ns *n
 
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 
+	warnAndSkip := func() {
+		c.logger.Warn("skipping identity store loading for namespace whose setup did not complete; "+
+			"use recovery mode to remove the corrupt entry if this persists",
+			"namespace_id", ns.ID)
+	}
+
 	if err := c.identityStore.LoadEntities(ctx, readOnly); err != nil {
+		if errors.Is(err, ident.ErrNamespaceNotInIdentityStore) {
+			warnAndSkip()
+			return nil
+		}
 		return err
 	}
 	if err := c.identityStore.LoadGroups(ctx, readOnly); err != nil {
+		if errors.Is(err, ident.ErrNamespaceNotInIdentityStore) {
+			warnAndSkip()
+			return nil
+		}
 		return err
 	}
 

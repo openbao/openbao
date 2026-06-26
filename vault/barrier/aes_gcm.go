@@ -1007,16 +1007,16 @@ func (b *AESGCMBarrier) aeadFromKey(key []byte) (cipher.AEAD, error) {
 
 // encrypt is used to encrypt a value
 func (b *AESGCMBarrier) encrypt(path string, term uint32, gcm cipher.AEAD, plain []byte) ([]byte, error) {
-	// Allocate the output buffer with room for tern, version byte,
+	// Allocate the output buffer with room for term, version byte,
 	// nonce, GCM tag and the plaintext
 
-	extra := termSize + 1 + gcm.NonceSize() + gcm.Overhead()
+	extra := termSize + 1 + gcm.Overhead()
 	if len(plain) > math.MaxInt-extra {
 		return nil, ErrPlaintextTooLarge
 	}
 
 	capacity := len(plain) + extra
-	size := termSize + 1 + gcm.NonceSize()
+	size := termSize + 1
 	out := make([]byte, size, capacity)
 
 	// Set the key term
@@ -1053,24 +1053,23 @@ func termLabel(term uint32) []metrics.Label {
 
 // decrypt is used to decrypt a value using the keyring
 func (b *AESGCMBarrier) decrypt(path string, gcm cipher.AEAD, cipher []byte) ([]byte, error) {
-	if len(cipher) < 5+gcm.NonceSize() {
+	if len(cipher) <= 5 {
 		return nil, errors.New("invalid cipher length")
 	}
-	// Capture the parts
-	nonce := cipher[5 : 5+gcm.NonceSize()]
-	raw := cipher[5+gcm.NonceSize():]
-	out := make([]byte, 0, len(raw)-gcm.NonceSize())
+
+	raw := cipher[5:]
+	var out []byte
 
 	// Attempt to open
 	switch cipher[4] {
 	case AESGCMVersion1:
-		return gcm.Open(out, nonce, raw, nil)
+		return gcm.Open(out, nil, raw, nil)
 	case AESGCMVersion2:
 		aad := []byte(nil)
 		if path != "" {
 			aad = []byte(path)
 		}
-		return gcm.Open(out, nonce, raw, aad)
+		return gcm.Open(out, nil, raw, aad)
 	default:
 		return nil, errors.New("version bytes mis-match")
 	}

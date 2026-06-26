@@ -48,6 +48,7 @@ See the information about community membership roles to learn about the role of 
 | Michael Hofer   | [@karras](https://github.com/karras)                     |
 | Klaus Kiefer    | [@klaus-sap](https://github.com/klaus-sap)               |
 | Tero Saarni     | [@tsaarni](https://github.com/tsaarni)                   |
+| Valentin Weber  | [@weberval](https://github.com/weberval)                 |
 
 # OpenBao Community Roles
 

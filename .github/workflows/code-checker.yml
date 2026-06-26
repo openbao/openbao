@@ -4,6 +4,20 @@ on:
   merge_group:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      # Top-level files:
+      - "!*.md"
+      - "!*.yml"
+      - "!*.yaml"
+      - "!CODEOWNERS"
+      - "!Dockerfile"
+      - "!Makefile"
+      # Non-Go source trees:
+      - "!.github/**"
+      - "!ui/**"
+      - "!website/**"
+      # Re-include top-level linter configs:
+      - ".golangci*.yml"
   push:
     branches:
       - main

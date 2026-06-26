@@ -10,6 +10,18 @@ on:
     branches: [ "main", "release/*" ]
   pull_request:
     branches: [ "main", "release/*" ]
+    paths-ignore:
+      # Top-level files:
+      - "*.md"
+      - "*.yml"
+      - "*.yaml"
+      - "CODEOWNERS"
+      - "Dockerfile"
+      - "Makefile"
+      # Non-Go source trees:
+      - ".github/**"
+      - "ui/**"
+      - "website/**"
   schedule:
     - cron: '34 23 * * 4'
 

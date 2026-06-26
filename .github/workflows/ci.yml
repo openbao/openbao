@@ -8,9 +8,17 @@ on:
     # ready, we run everything, including the stuff we'd have skipped up until now.
     types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
-      - "website/**"
-      - "ui/**"
+      # Top-level files:
+      - "*.md"
+      - "*.yml"
+      - "*.yaml"
+      - "CODEOWNERS"
+      - "Dockerfile"
+      - "Makefile"
+      # Non-Go source trees:
       - ".github/**"
+      - "ui/**"
+      - "website/**"
   push:
     branches:
       - main

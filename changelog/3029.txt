@@ -1,0 +1,3 @@
+```release-note:improvement
+command/server: Add `for` keyword to support iterated evaluation of `initialize` and `request` blocks over a list or map.
+```

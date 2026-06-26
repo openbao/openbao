@@ -135,7 +135,7 @@ func WithRequestIdentifierPrefix(prefix string) func(*ProfileEngine) {
 
 // SourceBuilder creates a new concrete source mapped to a particular
 // instance of a field.
-type SourceBuilder func(engine *ProfileEngine, field map[string]interface{}) Source
+type SourceBuilder func(engine *ProfileEngine, field map[string]interface{}, this *IterContext) Source
 
 // RequestHandler takes logical requests and executes them.
 type RequestHandlerFunc func(ctx context.Context, req *logical.Request) (*logical.Response, error)
@@ -343,28 +343,39 @@ func (p *ProfileEngine) evaluateHistory(ctx context.Context) (*EvaluationHistory
 	var history EvaluationHistory
 	for outerIndex, outerBlock := range p.profile {
 		if err := func() error {
-			// Check if our outer block needs to be skipped.
-			if outerBlock.When != nil {
-				var execute bool
-				if err := p.evaluateField(ctx, &history, outerBlock.When, &execute); err != nil {
-					return fmt.Errorf("failed to evaluate when: %w", err)
+			// Evaluate for each.
+			if err := p.DoForEach(ctx, &history, nil /* no this yet */, outerBlock.ForEach, func(this *IterContext) error {
+				outerBlock = this.MaybeCloneOuter(outerBlock)
+
+				// Check if our outer block needs to be skipped.
+				if outerBlock.When != nil {
+					var execute bool
+					if err := p.evaluateField(ctx, &history, this, outerBlock.When, &execute); err != nil {
+						return fmt.Errorf("failed to evaluate when: %w", err)
+					}
+
+					if !execute {
+						return nil
+					}
 				}
 
-				if !execute {
-					return nil
+				for requestIndex, requestBlock := range outerBlock.Requests {
+					if err := func() error {
+						return p.evaluateRequest(ctx, &history, outerIndex, outerBlock, this, requestIndex, requestBlock)
+					}(); err != nil {
+						return fmt.Errorf("request.[%v (%d)]: %w", requestBlock.Type, requestIndex, err)
+					}
 				}
-			}
 
-			for requestIndex, requestBlock := range outerBlock.Requests {
-				if err := func() error {
-					return p.evaluateRequest(ctx, &history, outerIndex, outerBlock, requestIndex, requestBlock)
-				}(); err != nil {
-					return fmt.Errorf("request.[%v (%d)]: %w", requestBlock.Type, requestIndex, err)
-				}
+				return nil
+			}); err != nil {
+				// foreach
+				return err
 			}
 
 			return nil
 		}(); err != nil {
+			// closure
 			if p.outerBlockName != "" {
 				return &history, fmt.Errorf("%v.[%v (%d)]: %w", p.outerBlockName, outerBlock.Type, outerIndex, err)
 			}
@@ -377,9 +388,16 @@ func (p *ProfileEngine) evaluateHistory(ctx context.Context) (*EvaluationHistory
 }
 
 // evaluateRequest evaluates a single request within the broader profile.
-func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *EvaluationHistory, outerIndex int, outerBlock *OuterConfig, requestIndex int, requestBlock *RequestConfig) error {
+func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *EvaluationHistory, outerIndex int, outerBlock *OuterConfig, this *IterContext, requestIndex int, requestBlock *RequestConfig) error {
+	return p.DoForEach(ctx, history, this, requestBlock.ForEach, func(this *IterContext) error {
+		requestBlock = this.MaybeCloneRequest(requestBlock)
+		return p.evaluateOneRequest(ctx, history, this, outerIndex, outerBlock, requestIndex, requestBlock)
+	})
+}
+
+func (p *ProfileEngine) evaluateOneRequest(ctx context.Context, history *EvaluationHistory, this *IterContext, outerIndex int, outerBlock *OuterConfig, requestIndex int, requestBlock *RequestConfig) error {
 	// 1. Build logical request.
-	req, execute, allowFailure, err := p.buildRequest(ctx, history, outerIndex, outerBlock, requestIndex, requestBlock)
+	req, execute, allowFailure, err := p.buildRequest(ctx, history, this, outerIndex, outerBlock, requestIndex, requestBlock)
 	if err != nil {
 		return fmt.Errorf("in building request: %w", err)
 	}
@@ -423,7 +441,7 @@ func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *Evaluation
 
 // buildRequest transforms an input configuration's request into a proper
 // output
-func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHistory, outerIndex int, outerBlock *OuterConfig, requestIndex int, requestBlock *RequestConfig) (req *logical.Request, execute bool, allowFailure bool, err error) {
+func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHistory, this *IterContext, outerIndex int, outerBlock *OuterConfig, requestIndex int, requestBlock *RequestConfig) (req *logical.Request, execute bool, allowFailure bool, err error) {
 	reqName := fmt.Sprintf("request[%d].%v", requestIndex, requestBlock.Type)
 	if p.outerBlockName != "" {
 		reqName = fmt.Sprintf("%v[%d].%v.%v", p.outerBlockName, outerIndex, outerBlock.Type, reqName)
@@ -439,12 +457,12 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 	// Execute requests by default.
 	execute = true
 
-	if err = p.evaluateField(ctx, history, requestBlock.Operation, &req.Operation); err != nil {
+	if err = p.evaluateField(ctx, history, this, requestBlock.Operation, &req.Operation); err != nil {
 		err = fmt.Errorf("failed to evaluate operation: %w", err)
 		return req, execute, allowFailure, err
 	}
 
-	if err = p.evaluateField(ctx, history, requestBlock.Path, &req.Path); err != nil {
+	if err = p.evaluateField(ctx, history, this, requestBlock.Path, &req.Path); err != nil {
 		err = fmt.Errorf("failed to evaluate path: %w", err)
 		return req, execute, allowFailure, err
 	}
@@ -458,30 +476,30 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 	if requestBlock.Token == nil {
 		req.ClientToken = p.defaultToken
 	} else {
-		if err = p.evaluateField(ctx, history, requestBlock.Token, &req.ClientToken); err != nil {
+		if err = p.evaluateField(ctx, history, this, requestBlock.Token, &req.ClientToken); err != nil {
 			err = fmt.Errorf("failed to evaluate token: %w", err)
 			return req, execute, allowFailure, err
 		}
 	}
 
-	if err = p.evaluateField(ctx, history, requestBlock.Data, &req.Data); err != nil {
+	if err = p.evaluateField(ctx, history, this, requestBlock.Data, &req.Data); err != nil {
 		err = fmt.Errorf("failed to evaluate data: %w", err)
 		return req, execute, allowFailure, err
 	}
 
-	if err = p.evaluateField(ctx, history, requestBlock.Headers, &req.Headers); err != nil {
+	if err = p.evaluateField(ctx, history, this, requestBlock.Headers, &req.Headers); err != nil {
 		err = fmt.Errorf("failed to evaluate data: %w", err)
 		return req, execute, allowFailure, err
 	}
 
-	if err = p.evaluateField(ctx, history, requestBlock.AllowFailure, &allowFailure); err != nil {
+	if err = p.evaluateField(ctx, history, this, requestBlock.AllowFailure, &allowFailure); err != nil {
 		err = fmt.Errorf("failed to evaluate allow failure: %w", err)
 		return req, execute, allowFailure, err
 	}
 
 	// Only override the value of execute if specified.
 	if requestBlock.When != nil {
-		if err = p.evaluateField(ctx, history, requestBlock.When, &execute); err != nil {
+		if err = p.evaluateField(ctx, history, this, requestBlock.When, &execute); err != nil {
 			err = fmt.Errorf("failed to evaluate when: %w", err)
 			return req, execute, allowFailure, err
 		}
@@ -494,13 +512,13 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 // output destination, using mapstructure.WeakDecode(...) to handle type
 // differences between input and output. This allows for e.g., a string
 // environment variable to be used as an integer.
-func (p *ProfileEngine) evaluateField(ctx context.Context, history *EvaluationHistory, _obj interface{}, destination interface{}) error {
+func (p *ProfileEngine) evaluateField(ctx context.Context, history *EvaluationHistory, this *IterContext, _obj interface{}, destination interface{}) error {
 	var err error
 	var value interface{}
 
 	switch obj := _obj.(type) {
 	case map[string]interface{}:
-		value, err = p.maybeEvaluateTypedField(ctx, history, obj)
+		value, err = p.maybeEvaluateTypedField(ctx, history, this, obj)
 		if err != nil {
 			return err
 		}
@@ -519,7 +537,7 @@ func (p *ProfileEngine) evaluateField(ctx context.Context, history *EvaluationHi
 			}
 		}
 
-		value, err = p.maybeEvaluateTypedField(ctx, history, collapsed)
+		value, err = p.maybeEvaluateTypedField(ctx, history, this, collapsed)
 		if err != nil {
 			return err
 		}
@@ -527,7 +545,7 @@ func (p *ProfileEngine) evaluateField(ctx context.Context, history *EvaluationHi
 		var results []interface{}
 		for index, orig := range obj {
 			var dest interface{}
-			if err := p.evaluateField(ctx, history, orig, &dest); err != nil {
+			if err := p.evaluateField(ctx, history, this, orig, &dest); err != nil {
 				return fmt.Errorf("list.%d: %w", index, err)
 			}
 
@@ -555,7 +573,7 @@ func (p *ProfileEngine) evaluateField(ctx context.Context, history *EvaluationHi
 //
 // Notably, evaluation must be constants and pre-determined; we do not
 // support conditional evaluation types.
-func (p *ProfileEngine) maybeEvaluateTypedField(ctx context.Context, history *EvaluationHistory, obj map[string]interface{}) (interface{}, error) {
+func (p *ProfileEngine) maybeEvaluateTypedField(ctx context.Context, history *EvaluationHistory, this *IterContext, obj map[string]interface{}) (interface{}, error) {
 	sourceRaw, sourcePresent := obj["eval_source"]
 	objTypeRaw, objPresent := obj["eval_type"]
 
@@ -571,7 +589,7 @@ func (p *ProfileEngine) maybeEvaluateTypedField(ctx context.Context, history *Ev
 		var result interface{}
 
 		// Parse the final value of this field.
-		if err := p.evaluateField(ctx, history, value, &result); err != nil {
+		if err := p.evaluateField(ctx, history, this, value, &result); err != nil {
 			return nil, fmt.Errorf("while evaluating map.%v: %w", key, err)
 		}
 
@@ -594,18 +612,18 @@ func (p *ProfileEngine) maybeEvaluateTypedField(ctx context.Context, history *Ev
 		return nil, fmt.Errorf("malformed object; 'eval_type' was of wrong type; expected 'string' got '%T'", sourceRaw)
 	}
 
-	return p.evaluateTypedField(ctx, history, resolved, source, objType)
+	return p.evaluateTypedField(ctx, history, this, resolved, source, objType)
 }
 
 // evaluateTypedField actually performs the source builder-backed evaluation
 // of fields from other data sources.
-func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *EvaluationHistory, obj map[string]interface{}, source string, objType string) (interface{}, error) {
+func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *EvaluationHistory, this *IterContext, obj map[string]interface{}, source string, objType string) (interface{}, error) {
 	sourceBuilder, present := p.sourceBuilders[source]
 	if !present {
 		return nil, fmt.Errorf("unknown value for 'eval_source': %v", source)
 	}
 
-	sourceEval := sourceBuilder(p, obj)
+	sourceEval := sourceBuilder(p, obj, this)
 
 	defer sourceEval.Close(ctx)
 
@@ -696,7 +714,7 @@ func (p *ProfileEngine) evaluateOutput(ctx context.Context, history *EvaluationH
 		Headers: map[string][]string{},
 	}
 
-	if err := p.evaluateField(ctx, history, p.output.Data, &resp.Data); err != nil {
+	if err := p.evaluateField(ctx, history, nil /* this */, p.output.Data, &resp.Data); err != nil {
 		return nil, fmt.Errorf("failed to evaluate output data: %w", err)
 	}
 
@@ -704,7 +722,7 @@ func (p *ProfileEngine) evaluateOutput(ctx context.Context, history *EvaluationH
 		var values []string
 		for index, expr := range exprs {
 			var value string
-			if err := p.evaluateField(ctx, history, expr, &value); err != nil {
+			if err := p.evaluateField(ctx, history, nil /* this */, expr, &value); err != nil {
 				return nil, fmt.Errorf("failed to evaluate response header [%v/%d]: %w", headerName, index, err)
 			}
 

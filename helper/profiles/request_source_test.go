@@ -30,7 +30,7 @@ func TestRequestSourceBuilder_Success(t *testing.T) {
 	}
 	field := map[string]interface{}{"request": "userpass"}
 
-	source := RequestSourceBuilder(engine, field)
+	source := RequestSourceBuilder(engine, field, nil)
 	if source == nil {
 		t.Fatal("expected non-nil Source")
 	}

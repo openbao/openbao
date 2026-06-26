@@ -8,7 +8,7 @@ import (
 const requestSourceName = "request"
 
 // RequestSourceBuilder allows reading inputs from past requests.
-func RequestSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
+func RequestSourceBuilder(engine *ProfileEngine, field map[string]interface{}, this *IterContext) Source {
 	return &RequestSource{
 		outer: engine.outerBlockName,
 		field: field,

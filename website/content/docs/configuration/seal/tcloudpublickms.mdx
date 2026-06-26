@@ -22,7 +22,7 @@ following:
 
 - The presence of a `seal "tcloudpublickms"` block in OpenBao's configuration
   file.
-- The presence of the environment variable `VAULT_SEAL_TYPE` set to
+- The presence of the environment variable `BAO_SEAL_TYPE` set to
   `tcloudpublickms`. If enabling via environment variable, all other required
   values specific to T Cloud Public KMS (i.e. `TCLOUDPUBLIC_KMS_KEY_ID`, etc.)
   must also be supplied, as well as all other T Cloud Public-related
@@ -113,7 +113,7 @@ Alternatively, the T Cloud Public KMS seal can be activated by providing the
 following environment variables.
 
 OpenBao Seal specific values:
-- `VAULT_SEAL_TYPE`
+- `BAO_SEAL_TYPE`
 
 Provider-specific environment variables are documented with their corresponding
 configuration parameters above.

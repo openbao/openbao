@@ -4,7 +4,6 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [OpenBao UI](#openbao-ui)
-  - [Ember CLI Version Matrix](#ember-cli-version-matrix)
   - [Prerequisites](#prerequisites)
   - [Running an OpenBao Server](#running-an-openbao-server)
   - [Running / Development](#running--development)

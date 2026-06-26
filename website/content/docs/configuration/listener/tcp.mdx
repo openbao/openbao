@@ -316,6 +316,17 @@ in the root of the TCP listener configuration.
   the ALPN challenge type cannot work for some reason (e.g., a load balancer
   sitting in front of OpenBao).
 
+- `tls_acme_http_challenge_port` `(int: 80)` - Specifies an optional port to use for HTTP challenges
+  instead of the default. Useful when running behind a load balancer that forwards
+  port 80 to a different port.
+
+- `tls_acme_alpn_challenge_port` `(int: 443)` - Specifies an optional port to use for TLS-ALPN challenges
+  instead of the default. Useful when running behind a load balancer that forwards
+  port 443 to a different port.
+
+- `tls_acme_challenge_host` `(string: "")` - Specifies an optional host to listen on for ACME challenges.
+  Useful when wanting to limit the ACME challenge listener to a specific interface.
+
 ### `telemetry` parameters
 
 - `unauthenticated_metrics_access` `(bool: false)` - If set to true, allows

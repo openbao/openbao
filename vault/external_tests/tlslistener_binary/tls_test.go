@@ -234,6 +234,81 @@ func TestTLSListener_ALPN(t *testing.T) {
 	validateTLS(t, ctx, root, cluster.ClusterNodes[node].ContainerNetworkName, "invalid.dadgarcorp.com:443", dns.GetRemoteAddr(), true)
 }
 
+func TestTLSListener_NonPrivileged(t *testing.T) {
+	binary := api.ReadBaoVariable("BAO_BINARY")
+	if binary == "" {
+		t.Skip("only running docker test when $BAO_BINARY present")
+	}
+
+	opts := &docker.DockerClusterOptions{
+		ImageRepo:    "quay.io/openbao/openbao",
+		ImageTag:     "latest",
+		VaultBinary:  binary,
+		Root:         false,
+		Entrypoint:   entrypointPath(t),
+		PublishPorts: map[uint16]uint16{443: 8443},
+		ClusterOptions: testcluster.ClusterOptions{
+			NumCores: 1,
+			VaultNodeConfig: &testcluster.VaultNodeConfig{
+				LogLevel: "TRACE",
+				AdditionalListeners: []interface{}{
+					map[string]interface{}{
+						"tcp": map[string]interface{}{
+							"address":     "127.0.0.1:8300", // TCP listener that acts as ACME server.
+							"tls_disable": true,
+						},
+					},
+					map[string]interface{}{
+						"tcp": map[string]interface{}{
+							"address":                         "0.0.0.0:8443", // Non-privileged TCP listener that receives ACME challenge.
+							"tls_acme_cache_path":             "/tmp",
+							"tls_acme_ca_directory":           "http://127.0.0.1:8300/v1/pki/acme/directory",
+							"tls_acme_disable_http_challenge": true,
+							"tls_acme_domains":                []string{"openbao.dadgarcorp.com"},
+
+							// CertMagic's listener is set to dummy non-privileged port to avoid root.
+							"tls_acme_alpn_challenge_port": 8222,
+							"tls_acme_challenge_host":      "127.0.0.1",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	cluster := docker.NewTestDockerCluster(t, opts)
+	defer cluster.Cleanup()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
+	defer cancel()
+
+	node, err := testcluster.WaitForActiveNode(ctx, cluster)
+	require.NoError(t, err, "failed to get active node")
+	require.NotNil(t, node)
+
+	client := cluster.ClusterNodes[node].APIClient()
+	require.NotNil(t, client)
+
+	// Configure PKI mount for self-hosting ACME.
+	root := setupPki(t, client, ":8300")
+
+	dns := dnstest.SetupResolverOnNetwork(t, "dadgarcorp.com", cluster.ClusterNodes[node].ContainerNetworkName)
+	defer dns.Cleanup()
+
+	// Point the domain at the gateway IP so the ACME server connects through Docker's port mapping (host:443 -> container:8443).
+	dns.AddRecord("openbao.dadgarcorp.com", "A", cluster.ClusterNodes[node].ContainerGatewayIP)
+	dns.PushConfig()
+
+	_, err = client.Logical().Write("pki/config/acme", map[string]interface{}{
+		"enabled":      true,
+		"dns_resolver": dns.GetRemoteAddr(),
+	})
+	require.NoError(t, err)
+
+	// Validate ACME cert acquisition works.
+	validateTLS(t, ctx, root, cluster.ClusterNodes[node].ContainerNetworkName, "openbao.dadgarcorp.com:443", dns.GetRemoteAddr(), false)
+}
+
 func setupPki(t *testing.T, client *api.Client, acmePort string) string {
 	err := client.Sys().Mount("pki", &api.MountInput{
 		Type: "pki",

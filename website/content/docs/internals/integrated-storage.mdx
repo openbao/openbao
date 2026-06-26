@@ -75,15 +75,12 @@ are blocked until they are _committed_ and _applied_.
 #### Compacting logs
 
 It would be undesirable to allow a replicated log to grow in an unbounded
-fashion. Raft provides a mechanism by which the current state is saved to
-snapshots and its related logs are compacted. Because of the FSM abstraction,
-restoring the state of the FSM must result in the same state as a replay of old
-logs. This allows Raft to capture the FSM state at a point in time and then remove
-all the logs that were used to reach that state. This is performed automatically
+fashion. OpenBao periodically truncates old log entries that have already been
+applied to the FSM. Since the data is already persisted to disk in
+BoltDB, old log entries can simply be deleted. This is performed automatically
 without user intervention and prevents unbounded disk usage while also minimizing
-the time spent replaying logs. One of the advantages of using BoltDB is that it
-allows OpenBao's snapshots to be very light weight. Since OpenBao's data is already
-persisted to disk in BoltDB, the snapshot process just needs to truncate the raft logs.
+the time spent replaying logs. BoltDB does not shrink files on disk when data is
+deleted; it marks the space as free for reuse by future writes.
 
 #### Quorum
 

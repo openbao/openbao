@@ -99,6 +99,7 @@ const sidebars: SidebarsConfig = {
                                 "guides/unseal/pkcs11/utimaco",
                                 "guides/unseal/pkcs11/duokey",
                                 "guides/unseal/pkcs11/nitrokey",
+                                "guides/unseal/pkcs11/luna7"
                             ],
                         },
                     ],

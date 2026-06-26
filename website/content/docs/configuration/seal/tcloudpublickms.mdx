@@ -1,0 +1,130 @@
+---
+sidebar_label: T Cloud Public KMS
+description: |-
+  The T Cloud Public KMS seal configures OpenBao to use T Cloud Public KMS as
+  the seal wrapping mechanism.
+---
+
+# `tcloudpublickms` seal
+
+:::info
+
+This seal is available as an external KMS provider plugin in the
+[openbao-plugins](https://github.com/openbao/openbao-plugins) plugin
+collection. For more information on Auto Unseal plugins, see the [overview
+section](./index.mdx#plugins).
+
+:::
+
+The T Cloud Public KMS seal configures OpenBao to use T Cloud Public KMS as the
+seal wrapping mechanism. The T Cloud Public KMS seal is activated by one of the
+following:
+
+- The presence of a `seal "tcloudpublickms"` block in OpenBao's configuration
+  file.
+- The presence of the environment variable `VAULT_SEAL_TYPE` set to
+  `tcloudpublickms`. If enabling via environment variable, all other required
+  values specific to T Cloud Public KMS (i.e. `TCLOUDPUBLIC_KMS_KEY_ID`, etc.)
+  must also be supplied, as well as all other T Cloud Public-related
+  environment variables required for successful authentication.
+
+## `tcloudpublickms` example
+
+This example shows how to configure the T Cloud Public KMS seal through the
+OpenBao configuration file:
+
+```hcl
+seal "tcloudpublickms" {
+  key_id            = "00000000-0000-0000-0000-000000000000"
+  access_key        = "access-key-example"
+  secret_key        = "secret-key-example"
+}
+```
+
+## `tcloudpublickms` parameters
+
+These parameters apply to the `seal` stanza in the OpenBao configuration file.
+When a value is provided both in the configuration file and through an
+environment variable, the environment variable takes precedence.
+
+- `key_id` `(string: <required>)`: The T Cloud Public KMS key ID to use for
+  encryption. May also be specified by the `TCLOUDPUBLIC_KMS_KEY_ID` environment
+  variable.
+
+- `region` `(string: "eu-de")`: The T Cloud Public region where the encryption
+  key lives. May also be specified by the `TCLOUDPUBLIC_REGION` environment
+  variable.
+
+- `project` `(string: "")`: The T Cloud Public project scope to use. May also be
+  specified by the `TCLOUDPUBLIC_PROJECT` environment variable. If not set, the
+  global KMS endpoint is used.
+
+- `access_key` `(string: <required>)`: The T Cloud Public access key to use for
+  authentication. May also be specified by the `TCLOUDPUBLIC_ACCESS_KEY`
+  environment variable.
+
+- `secret_key` `(string: <required>)`: The T Cloud Public secret key to use for
+  authentication. May also be specified by the `TCLOUDPUBLIC_SECRET_KEY`
+  environment variable.
+
+- `identity_endpoint` `(string: "https://iam.eu-de.otc.t-systems.com:443/v3")`:
+  The T Cloud Public IAM identity endpoint to use for authentication. May also
+  be specified by the `TCLOUDPUBLIC_IDENTITY_ENDPOINT` environment variable.
+
+- `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
+
+Refer to the [Seal Migration](../../concepts/seal.mdx#seal-migration) documentation for more information about the seal migration process.
+
+## Authentication
+
+Authentication-related values must be provided, either as environment variables
+or as configuration parameters. The wrapper authenticates to T Cloud Public IAM
+using access key and secret key credentials.
+
+:::warning
+
+**Note:** Although the configuration file allows you to pass in `access_key` and
+`secret_key` as part of the seal's parameters, it is _strongly_ recommended to
+set these values via environment variables.
+
+:::
+
+T Cloud Public authentication values:
+
+- `TCLOUDPUBLIC_ACCESS_KEY`
+- `TCLOUDPUBLIC_SECRET_KEY`
+- `TCLOUDPUBLIC_REGION`
+
+Optional T Cloud Public authentication values:
+
+- `TCLOUDPUBLIC_PROJECT`
+- `TCLOUDPUBLIC_IDENTITY_ENDPOINT`
+
+OpenBao needs the following permission on the KMS key:
+
+- `kms:cmk:crypto`
+
+This can be granted via IAM permissions at the project level or with Enterprise
+Project Service on the principal that OpenBao uses for T Cloud Public KMS.
+
+## `tcloudpublickms` environment variables
+
+Alternatively, the T Cloud Public KMS seal can be activated by providing the
+following environment variables.
+
+OpenBao Seal specific values:
+- `VAULT_SEAL_TYPE`
+
+Provider-specific environment variables are documented with their corresponding
+configuration parameters above.
+
+## Key rotation
+
+This seal supports key aliases and key rotation. Encryption uses the configured
+`key_id`, which allows T Cloud Public KMS to resolve an alias to the current key.
+The resolved key ID returned by KMS is stored with the encrypted data, and
+decryption uses the metadata stored with that encrypted data.
+
+Old keys must not be disabled or deleted while they are still needed to decrypt
+older data. Any new or updated data will be encrypted with the current key
+defined in the seal configuration or resolved from the configured key alias.

@@ -1,0 +1,3 @@
+```release-note:feature
+storage/mysql: add MySQL/OceanBase external storage backend (HA, transactions, pagination)
+```

@@ -38,6 +38,7 @@ import (
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
 	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 
+	physMysql "github.com/openbao/openbao/physical/mysql"
 	physPostgresql "github.com/openbao/openbao/physical/postgresql"
 	physRaft "github.com/openbao/openbao/physical/raft"
 	physFile "github.com/openbao/openbao/sdk/v2/physical/file"
@@ -148,6 +149,7 @@ var (
 		"file":       physFile.NewFileBackend,
 		"inmem_ha":   physInmem.NewInmemHA,
 		"inmem":      physInmem.NewInmem,
+		"mysql":      physMysql.NewMySQLBackend,
 		"raft":       physRaft.NewRaftBackend,
 		"postgresql": physPostgresql.NewPostgreSQLBackend,
 	}

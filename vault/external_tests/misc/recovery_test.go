@@ -15,6 +15,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRecovery(t *testing.T) {
@@ -91,14 +92,31 @@ func TestRecovery(t *testing.T) {
 		defer cluster.Cleanup()
 
 		client := cluster.Cores[0].Client
+
+		// Perform an initial request: make sure nothing can be done before a token can be created.
+		client.SetToken("garbage")
+		secret, err := client.Logical().List(path.Join("sys/raw/logical", secretUUID))
+		require.Error(t, err, "expected failure with garbage token before generation")
+		require.Nil(t, secret)
+
+		client.SetToken("")
+		secret, err = client.Logical().List(path.Join("sys/raw/logical", secretUUID))
+		require.Error(t, err, "expected failure with nil token before generation")
+		require.Nil(t, secret)
+
 		recoveryToken := testhelpers.GenerateRoot(t, cluster, testhelpers.GenerateRecovery)
 		_, err = testhelpers.GenerateRootWithError(t, cluster, testhelpers.GenerateRecovery)
 		if err == nil {
 			t.Fatal("expected second generate-root to fail")
 		}
+
+		secret, err = client.Logical().List(path.Join("sys/raw/logical", secretUUID))
+		require.Error(t, err, "expected failure with nil token after generation")
+		require.Nil(t, secret)
+
 		client.SetToken(recoveryToken)
 
-		secret, err := client.Logical().List(path.Join("sys/raw/logical", secretUUID))
+		secret, err = client.Logical().List(path.Join("sys/raw/logical", secretUUID))
 		if err != nil {
 			t.Fatal(err)
 		}

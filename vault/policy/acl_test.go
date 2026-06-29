@@ -6,6 +6,7 @@ package policy
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -995,6 +996,84 @@ func TestACLGrantingPolicies(t *testing.T) {
 	}
 }
 
+func TestACL_ListScanWildcardDeny(t *testing.T) {
+	ns := namespace.RootNamespace
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
+
+	tests := []struct {
+		path    string
+		allowed bool
+	}{
+		{
+			path:    "foo",
+			allowed: false,
+		},
+		{
+			path:    "foo/metadata",
+			allowed: true,
+		},
+		{
+			path:    "foo/metadata/test",
+			allowed: true,
+		},
+		{
+			path:    "foo/metadata/private",
+			allowed: false,
+		},
+		{
+			path:    "foo/metadata/private/internal",
+			allowed: false,
+		},
+		{
+			path:    "foo/metadata/private/granted",
+			allowed: true,
+		},
+		{
+			path:    "foo/metadata/private/granted/test",
+			allowed: true,
+		},
+	}
+
+	for i, pt := range tests {
+		policy, err := ParseACLPolicy(ns, listScanDenyPolicy)
+		require.NoError(t, err)
+		require.NotNil(t, policy)
+
+		acl, err := NewACL(ctx, []*Policy{policy})
+		require.NoError(t, err)
+		require.NotNil(t, acl)
+
+		for _, operation := range []logical.Operation{
+			logical.ScanOperation,
+			logical.ListOperation,
+		} {
+			request := new(logical.Request)
+			request.Path = pt.path
+			request.Operation = operation
+
+			require.False(t, strings.HasSuffix(request.Path, "/"))
+			request.Path += "/"
+
+			authResults := acl.AllowOperation(ctx, request, false)
+			require.Equal(
+				t,
+				pt.allowed,
+				authResults.Allowed,
+				"bad:\n"+
+					"case %d\n"+
+					"\t%#v\n"+
+					"operation: %v\n"+
+					"engine: %v != expected: %v",
+				i,
+				pt,
+				operation,
+				authResults.Allowed,
+				pt.allowed,
+			)
+		}
+	}
+}
+
 var grantingTestPolicy = `
 name = "granting_policy"
 path "kv/foo" {
@@ -1400,4 +1479,10 @@ path "test/star" {
 	denied_parameters = {
 	}
 }
+`
+
+var listScanDenyPolicy = `
+path "foo/metadata/*" { capabilities = ["list","scan"] }
+path "foo/metadata/private/*" { capabilities = ["deny"] }
+path "foo/metadata/private/granted/*" { capabilities = ["list","scan"] }
 `

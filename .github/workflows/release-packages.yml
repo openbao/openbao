@@ -95,8 +95,15 @@ jobs:
       - name: Install rpm & createrepo_c
         run: sudo apt install -y rpm createrepo-c
 
+      - name: Determine repository
+        run: |
+          case "$VERSION" in
+            *-*) echo REPO=rpm-testing ;;
+            *)   echo REPO=rpm ;;
+          esac > "$GITHUB_ENV"
+
       - name: Download repodata
-        run: aws s3 sync "s3://${BUCKET}/rpm" build/rpm --exclude \*.rpm
+        run: aws s3 sync "s3://${BUCKET}/${REPO}" build/rpm --exclude \*.rpm
 
       - name: Download packages from release
         run: ./scripts/release/download-artifacts.sh
@@ -108,4 +115,4 @@ jobs:
         run: ./scripts/release/update-rpm-repo.sh
 
       - name: Upload repository
-        run: aws s3 sync build/rpm "s3://${BUCKET}/rpm"
+        run: aws s3 sync build/rpm "s3://${BUCKET}/${REPO}"

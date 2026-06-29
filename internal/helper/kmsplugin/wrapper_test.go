@@ -24,7 +24,7 @@ func TestConfigureWrapper(t *testing.T) {
 
 	catalog, err := NewCatalog(logger, &server.Config{
 		PluginDirectory: filepath.Dir(os.Args[0]),
-		Plugins:         []*server.PluginConfig{testPluginConfig(t)},
+		Plugins:         []*server.PluginConfig{StaticPluginConfig},
 	})
 	require.NoError(t, err, "catalog should create successfully")
 
@@ -45,7 +45,7 @@ func TestConfigureWrapper(t *testing.T) {
 	require.NoError(t, err, "should configure wrapper successfully")
 	require.NotNil(t, config, "should return a config")
 	require.NotNil(t, w1, "should return a wrapper")
-	require.IsType(t, &wrapper{}, w1, "wrapper should be external")
+	require.IsType(t, &remoteWrapper{}, w1, "wrapper should be external")
 
 	blob, err := w1.Encrypt(ctx, plaintext)
 	require.NoError(t, err, "should encrypt plaintext")
@@ -61,7 +61,7 @@ func TestConfigureWrapper(t *testing.T) {
 	require.NoError(t, err, "should configure wrapper successfully")
 	require.NotNil(t, config, "should return a config")
 	require.NotNil(t, w2, "should return a wrapper")
-	require.IsType(t, &wrapper{}, w1, "wrapper should be external")
+	require.IsType(t, &remoteWrapper{}, w1, "wrapper should be external")
 
 	require.NoError(t, w1.(wrapping.InitFinalizer).Finalize(ctx), "should finalize gracefully")
 	require.Len(t, catalog.clients, 1, "should keep the plugin client alive")
@@ -87,7 +87,7 @@ func TestReloadWrapper(t *testing.T) {
 
 	catalog, err := NewCatalog(logger, &server.Config{
 		PluginDirectory: filepath.Dir(os.Args[0]),
-		Plugins:         []*server.PluginConfig{testPluginConfig(t)},
+		Plugins:         []*server.PluginConfig{StaticPluginConfig},
 	})
 	require.NoError(t, err, "catalog should create successfully")
 
@@ -102,7 +102,7 @@ func TestReloadWrapper(t *testing.T) {
 		}))
 	require.NoError(t, err, "should configure wrapper successfully")
 	require.NotNil(t, w1, "should return a wrapper")
-	require.IsType(t, &wrapper{}, w1, "wrapper should be external")
+	require.IsType(t, &remoteWrapper{}, w1, "wrapper should be external")
 
 	w2, _, err := catalog.ConfigureWrapper(ctx, "static",
 		wrapping.WithConfigMap(map[string]string{
@@ -111,13 +111,13 @@ func TestReloadWrapper(t *testing.T) {
 		}))
 	require.NoError(t, err, "should configure wrapper successfully")
 	require.NotNil(t, w2, "should return a wrapper")
-	require.IsType(t, &wrapper{}, w2, "wrapper should be external")
+	require.IsType(t, &remoteWrapper{}, w2, "wrapper should be external")
 
 	blob, err := w1.Encrypt(ctx, plaintext)
 	require.NoError(t, err, "should encrypt plaintext")
 
 	// Kill the underlying plugin process that serves both wrappers:
-	w1.(*wrapper).client.process.Kill()
+	w1.(*remoteWrapper).client.process.Kill()
 
 	output, err := w1.Decrypt(ctx, blob)
 	require.NoError(t, err, "should decrypt blob with reloaded wrapper")
@@ -150,5 +150,5 @@ func TestBuiltinWrapper(t *testing.T) {
 	require.NoError(t, err, "should configure wrapper successfully")
 	require.NotNil(t, config, "should return a config")
 	require.NotNil(t, w, "should return a wrapper")
-	require.IsNotType(t, &wrapper{}, w, "wrapper should not be external")
+	require.IsNotType(t, &remoteWrapper{}, w, "wrapper should not be external")
 }

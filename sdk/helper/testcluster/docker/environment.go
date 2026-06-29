@@ -1273,6 +1273,21 @@ COPY bao /bin/bao
 	return tag, nil
 }
 
+// InmemStorage configures a test cluster to use the inmem storage backend.
+// This avoids waiting for initial Raft leader election or PostgreSQL container
+// startup when testing against a single-node cluster, significantly reducing
+// test setup time.
+type InmemStorage struct{}
+
+func (InmemStorage) Start(context.Context, *testcluster.ClusterOptions) error { return nil }
+func (InmemStorage) Cleanup() error                                           { return nil }
+func (InmemStorage) Opts() map[string]any                                     { return make(map[string]any) }
+func (InmemStorage) Type() string                                             { return "inmem" }
+
+var _ testcluster.ClusterStorage = InmemStorage{}
+
+// PostgreSQLStorage configures a test cluster to use the postgresql storage
+// backend and provides the required PostgreSQL instance in a container.
 type PostgreSQLStorage struct {
 	cleanup     func()
 	ExternalUrl string
@@ -1284,8 +1299,8 @@ type PostgreSQLStorage struct {
 
 var _ testcluster.ClusterStorage = &PostgreSQLStorage{}
 
-// NewPostgreSQLStorage starts the underlying PSQL container and saves its
-// connection URL.
+// NewPostgreSQLStorage creates a new PostgreSQLStorage and starts its backing
+// container.
 func NewPostgreSQLStorage(t *testing.T, network string) *PostgreSQLStorage {
 	env := []string{
 		"POSTGRES_PASSWORD=secret",

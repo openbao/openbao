@@ -95,7 +95,7 @@ the root of this repository. That document is considered part of this document.
 
 | Working Group                                                  | Chair       | Voting Members                                                                      |
 |----------------------------------------------------------------|-------------| ----------------------------------------------------------------------------------- |
-| [Development Working Group](https://github.com/openbao/dev-wg) | Alex Scheel | Dan Ghita, Nathan Phelps, Jan Martens, Dave Dykstra, Jonas Köhnen, Andrii Fedorchuk |
+| [Development Working Group](https://github.com/openbao/dev-wg) | Alex Scheel | Dan Ghita, Nathan Phelps, Jan Martens, Dave Dykstra, Jonas Köhnen, Andrii Fedorchuk, Wojciech Slabosz, Huy Dinh, Philipp Stehle, Pascal Reeb |
 
 ## Issues
 

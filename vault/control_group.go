@@ -310,31 +310,31 @@ func (c *Core) handleControlGroupRequest(ctx context.Context, req *logical.Reque
 		return nil, &logical.StatusBadRequest{Err: "invalid accessor"}
 	}
 
-	out, err := c.tokenStore.lookupInternal(ctx, aEntry.TokenID, false, true)
+	wrappingToken, err := c.tokenStore.lookupInternal(ctx, aEntry.TokenID, false, true)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
-	if out == nil {
-		return logical.ErrorResponse("bad token"), logical.ErrPermissionDenied
+	if wrappingToken == nil {
+		return nil, &logical.StatusBadRequest{Err: "invalid wrapping token"}
 	}
 
-	approved, err := c.validateControlGroup(ctx, out, logical.ReadOperation)
+	originalRequest, err := c.getRequestFromTokenEntry(ctx, wrappingToken)
+	if err != nil {
+		return nil, &logical.StatusBadRequest{Err: "invalid wrapping token"}
+	}
+
+	approved, err := c.validateControlGroup(ctx, wrappingToken, originalRequest.Operation)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
-	originalRequest, err := c.getRequestFromTokenEntry(ctx, out)
+	cg, err := c.getControlGroupFromTokenEntry(ctx, wrappingToken)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
-	cg, err := c.getControlGroupFromTokenEntry(ctx, out)
-	if err != nil {
-		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-	}
-
-	originalEntity, err := c.getEntityFromTokenEntry(ctx, out)
+	originalEntity, err := c.getEntityFromTokenEntry(ctx, wrappingToken)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}

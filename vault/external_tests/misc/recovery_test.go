@@ -96,22 +96,20 @@ func TestRecovery(t *testing.T) {
 		// Perform an initial request: make sure nothing can be done before a token can be created.
 		client.SetToken("garbage")
 		secret, err := client.Logical().List(path.Join("sys/raw/logical", secretUUID))
-		require.Error(t, err, "expected failure with garbage token before generation")
+		require.ErrorContains(t, err, "403", "expected failure with garbage token before generation")
 		require.Nil(t, secret)
 
 		client.SetToken("")
 		secret, err = client.Logical().List(path.Join("sys/raw/logical", secretUUID))
-		require.Error(t, err, "expected failure with nil token before generation")
+		require.ErrorContains(t, err, "403", "expected failure with nil token before generation")
 		require.Nil(t, secret)
 
 		recoveryToken := testhelpers.GenerateRoot(t, cluster, testhelpers.GenerateRecovery)
 		_, err = testhelpers.GenerateRootWithError(t, cluster, testhelpers.GenerateRecovery)
-		if err == nil {
-			t.Fatal("expected second generate-root to fail")
-		}
+		require.ErrorContains(t, err, "attempted to generate recovery operation token when already unsealed", "expected second generate-root to fail")
 
 		secret, err = client.Logical().List(path.Join("sys/raw/logical", secretUUID))
-		require.Error(t, err, "expected failure with nil token after generation")
+		require.ErrorContains(t, err, "403", "expected failure with nil token after generation")
 		require.Nil(t, secret)
 
 		client.SetToken(recoveryToken)

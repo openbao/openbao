@@ -3,7 +3,7 @@ title: "OpenBao Features - Paginated Lists"
 description: "Blog series describing OpenBao's features. This episode focuses on paginated lists."
 slug: features-paginated-lists
 authors: cipherboy
-tags: [features, storage, techincal]
+tags: [features, storage, technical]
 ---
 
 This is the start of a [multi-part series on OpenBao's features](/blog/tags/features).

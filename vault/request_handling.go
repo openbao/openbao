@@ -40,6 +40,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/routing"
@@ -51,6 +52,10 @@ const (
 
 	// coreLockedUsersPath is a base path to store locked users
 	coreLockedUsersPath = "core/login/lockedUsers/"
+
+	// forwardedFromDeferral indicates that a request originated from deferred execution
+	// in the unwrap workflow
+	forwardedFromDeferral = "unwrap-deferred"
 )
 
 var (
@@ -546,13 +551,16 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		return auth, acl, te, entity, retErr
 	}
 
-	if authResults.ACLResults != nil && len(authResults.ACLResults.GrantingPolicies) > 0 {
-		auth.PolicyResults.GrantingPolicies = authResults.ACLResults.GrantingPolicies
+	if authResults.ACLResults != nil {
+		if len(authResults.ACLResults.GrantingPolicies) > 0 {
+			auth.PolicyResults.GrantingPolicies = authResults.ACLResults.GrantingPolicies
+		}
+		// Create logical.ControlGroup for PolicyResults
+		auth.PolicyResults.ControlGroup = makeLogicalControlGroup(authResults.ACLResults.ControlGroup)
 	}
 	if authResults.SentinelResults != nil && len(authResults.SentinelResults.GrantingPolicies) > 0 {
 		auth.PolicyResults.GrantingPolicies = append(auth.PolicyResults.GrantingPolicies, authResults.SentinelResults.GrantingPolicies...)
 	}
-
 	return auth, acl, te, entity, nil
 }
 
@@ -889,6 +897,43 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			if !valid {
 				return nil, consts.ErrInvalidWrappingToken
 			}
+			// Handle deferred requests for approved control-group unwrap
+			if req.Path == "sys/wrapping/unwrap" {
+				token, _ := req.Data["token"].(string)
+				if token == "" {
+					token = req.ClientToken
+				}
+				tokenEntry, err := c.tokenStore.lookupTainted(ctx, token)
+				if err != nil {
+					return nil, err
+				}
+				if tokenEntry == nil {
+					return nil, errors.New("cannot find token entry")
+				}
+				deferredReq, err := c.getRequestFromTokenEntry(ctx, tokenEntry)
+				if err != nil && err != ErrDeferredRequestNotFound {
+					return nil, err
+				}
+				if deferredReq != nil {
+					valid, err = c.validateControlGroup(ctx, tokenEntry, deferredReq.Operation)
+					if err != nil {
+						return nil, err
+					}
+					if valid {
+						// ensure we're on the active/leader node
+						if c.Standby() {
+							return nil, logical.ErrPerfStandbyPleaseForward
+						}
+						deferredReq.ForwardedFrom = forwardedFromDeferral
+						deferredReqNS, err := c.NamespaceByID(ctx, tokenEntry.NamespaceID)
+						if err != nil {
+							return nil, fmt.Errorf("cannot find namespace for token: %w", err)
+						}
+						deferredReqCtx := namespace.ContextWithNamespace(ctx, deferredReqNS)
+						return c.handleCancelableRequest(deferredReqCtx, deferredReq)
+					}
+				}
+			}
 
 		// The -self paths have no meaning outside of the token NS, so
 		// requests for these paths always go to the token NS
@@ -1061,7 +1106,36 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		resp.WrapInfo.Token == ""
 
 	if wrapping {
-		cubbyResp, cubbyErr := c.wrapInCubbyhole(ctx, req, resp, auth)
+		extraData := map[string]string{}
+		// For controlgroup, store the original request and control group details with the cubbyhole data
+		if auth.PolicyResults != nil && auth.PolicyResults.ControlGroup != nil {
+			// Obtain identity info for wrapping token metadata
+			_, _, authEntity, _, err := c.fetchACLTokenEntryAndEntity(ctx, req)
+			if err != nil {
+				return nil, err
+			}
+			reqPb, err := pb.LogicalRequestToProtoRequest(req)
+			if err != nil {
+				return resp, err
+			}
+			reqPbBytes, err := proto.Marshal(reqPb)
+			if err != nil {
+				return resp, err
+			}
+			extraData["request"] = base64.StdEncoding.EncodeToString(reqPbBytes)
+			entityJson, err := jsonutil.EncodeJSON(authEntity)
+			if err != nil {
+				return resp, err
+			}
+			extraData["request_entity"] = string(entityJson)
+			cgJson, err := jsonutil.EncodeJSON(auth.PolicyResults.ControlGroup)
+			if err != nil {
+				return resp, err
+			}
+			extraData["control_group"] = string(cgJson)
+		}
+
+		cubbyResp, cubbyErr := c.wrapInCubbyhole(ctx, req, resp, auth, extraData)
 		// If not successful, returns either an error response from the
 		// cubbyhole backend or an error; if either is set, set resp and err to
 		// those and continue so that that's what we audit log. Otherwise
@@ -1076,29 +1150,31 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			}
 			resp = wrappingResp
 		}
+
 	}
 
 	auditResp := resp
 	// When unwrapping we want to log the actual response that will be written
 	// out. We still want to return the raw value to avoid automatic updating
 	// to any of it.
-	if req.Path == "sys/wrapping/unwrap" &&
-		resp != nil &&
-		resp.Data != nil &&
-		resp.Data[logical.HTTPRawBody] != nil {
+	if req.Path == "sys/wrapping/unwrap" {
+		if resp != nil &&
+			resp.Data != nil &&
+			resp.Data[logical.HTTPRawBody] != nil {
 
-		// Decode the JSON
-		if resp.Data[logical.HTTPRawBodyAlreadyJSONDecoded] != nil {
-			delete(resp.Data, logical.HTTPRawBodyAlreadyJSONDecoded)
-		} else {
-			httpResp := &logical.HTTPResponse{}
-			err := jsonutil.DecodeJSON(resp.Data[logical.HTTPRawBody].([]byte), httpResp)
-			if err != nil {
-				c.logger.Error("failed to unmarshal wrapped HTTP response for audit logging", "error", err)
-				return nil, ErrInternalError
+			// Decode the JSON
+			if resp.Data[logical.HTTPRawBodyAlreadyJSONDecoded] != nil {
+				delete(resp.Data, logical.HTTPRawBodyAlreadyJSONDecoded)
+			} else {
+				httpResp := &logical.HTTPResponse{}
+				err := jsonutil.DecodeJSON(resp.Data[logical.HTTPRawBody].([]byte), httpResp)
+				if err != nil {
+					c.logger.Error("failed to unmarshal wrapped HTTP response for audit logging", "error", err)
+					return nil, ErrInternalError
+				}
+
+				auditResp = logical.HTTPResponseToLogicalResponse(httpResp)
 			}
-
-			auditResp = logical.HTTPResponseToLogicalResponse(httpResp)
 		}
 	}
 
@@ -1141,8 +1217,30 @@ func (c *Core) doRouting(ctx context.Context, req *logical.Request) (*logical.Re
 	return c.router.Route(ctx, req)
 }
 
+// doRoutingIfApproved will check if the request needs approval before routing
+func (c *Core) doRoutingIfApproved(ctx context.Context, req *logical.Request, auth *logical.Auth) (*logical.Response, error) {
+	var routeErr error
+	var resp *logical.Response
+	if !c.needsApproval(ctx, req, auth) {
+		resp, routeErr = c.doRouting(ctx, req)
+	} else {
+		resp = &logical.Response{}
+	}
+	return resp, routeErr
+}
+
 func (c *Core) isLoginRequest(ctx context.Context, req *logical.Request) bool {
 	return c.router.LoginPath(ctx, req.Path)
+}
+
+// needsApproval will assess if a ControlGroup policy is applicable, so that request is deferred until unwrap
+func (c *Core) needsApproval(ctx context.Context, req *logical.Request, auth *logical.Auth) bool {
+	if auth.PolicyResults != nil &&
+		auth.PolicyResults.ControlGroup != nil &&
+		req.ForwardedFrom != forwardedFromDeferral {
+		return true
+	}
+	return false
 }
 
 func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp *logical.Response, retAuth *logical.Auth, retErr error) {
@@ -1279,7 +1377,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	}
 
 	// Route the request
-	resp, routeErr := c.doRouting(ctx, req)
+	resp, routeErr := c.doRoutingIfApproved(ctx, req, auth)
 	if resp != nil {
 
 		// If wrapping is used, use the shortest between the request and response
@@ -1311,6 +1409,14 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 			// the request format
 			if req.WrapInfo.Format != "" && wrapFormat == "" {
 				wrapFormat = req.WrapInfo.Format
+			}
+		}
+
+		// Set wrapTTL from ControlGroup.TTL if present
+		if c.needsApproval(ctx, req, auth) {
+			cgTTL := auth.PolicyResults.ControlGroup.TTL
+			if cgTTL > 0 {
+				wrapTTL = cgTTL
 			}
 		}
 
@@ -1643,7 +1749,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	}
 
 	// Route the request
-	resp, routeErr := c.doRouting(ctx, req)
+	resp, routeErr := c.doRoutingIfApproved(ctx, req, auth)
 
 	// if routeErr has invalid credentials error, update the userFailedLoginMap
 	if routeErr != nil && routeErr == logical.ErrInvalidCredentials {

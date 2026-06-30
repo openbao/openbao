@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -376,6 +377,33 @@ const (
 	RenewOperation    Operation = "renew"
 	RollbackOperation Operation = "rollback"
 )
+
+// ValidateOperation will verify the given Operation(s) are supported
+func ValidateOperation(vals ...Operation) error {
+	ops := []Operation{
+		CreateOperation,
+		ReadOperation,
+		UpdateOperation,
+		PatchOperation,
+		DeleteOperation,
+		ListOperation,
+		ScanOperation,
+		HelpOperation,
+		AliasLookaheadOperation,
+		ResolveRoleOperation,
+		HeaderOperation,
+		RevokeOperation,
+		RenewOperation,
+		RollbackOperation,
+	}
+	for _, val := range vals {
+		if !slices.Contains(ops, val) {
+			return fmt.Errorf("Operation(s) not valid: %v", val)
+		}
+	}
+
+	return nil
+}
 
 type MFACreds map[string][]string
 

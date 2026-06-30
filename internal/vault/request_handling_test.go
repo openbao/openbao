@@ -1,0 +1,1069 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package vault
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/go-test/deep"
+	metrics "github.com/hashicorp/go-metrics/compat"
+	uuid "github.com/hashicorp/go-uuid"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/builtin/credential/approle"
+	credUserpass "github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
+	"github.com/openbao/openbao/v2/internal/helper/namespace"
+	backendTest "github.com/openbao/openbao/v2/internal/vault/backend"
+	"github.com/openbao/openbao/v2/internal/vault/routing"
+	"github.com/stretchr/testify/require"
+)
+
+func TestRequestHandling_Wrapping(t *testing.T) {
+	core, _, root := TestCoreUnsealed(t)
+
+	core.logicalBackends["kv"] = PassthroughBackendFactory
+
+	meUUID, _ := uuid.GenerateUUID()
+	err := core.mount(namespace.RootContext(t.Context()), &routing.MountEntry{
+		Table: routing.MountTableType,
+		UUID:  meUUID,
+		Path:  "wraptest",
+		Type:  "kv",
+	})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	// No duration specified
+	req := &logical.Request{
+		Path:        "wraptest/foo",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"zip": "zap",
+		},
+	}
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	req = &logical.Request{
+		Path:        "wraptest/foo",
+		ClientToken: root,
+		Operation:   logical.ReadOperation,
+		WrapInfo: &logical.RequestWrapInfo{
+			TTL: time.Duration(15 * time.Second),
+		},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("bad: %v", resp)
+	}
+	if resp.WrapInfo == nil || resp.WrapInfo.TTL != time.Duration(15*time.Second) {
+		t.Fatalf("bad: %#v", resp)
+	}
+}
+
+func TestRequestHandling_LoginWrapping(t *testing.T) {
+	core, _, root := TestCoreUnsealed(t)
+
+	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	core.credentialBackends["userpass"] = credUserpass.Factory
+
+	// No duration specified
+	req := &logical.Request{
+		Path:        "sys/auth/userpass",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"type": "userpass",
+		},
+		Connection: &logical.Connection{},
+	}
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	req.Path = "auth/userpass/users/test"
+	req.Data = map[string]interface{}{
+		"password": "foo",
+		"policies": "default",
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	req = &logical.Request{
+		Path:      "auth/userpass/login/test",
+		Operation: logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"password": "foo",
+		},
+		Connection: &logical.Connection{},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("bad: %v", resp)
+	}
+	if resp.WrapInfo != nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	req = &logical.Request{
+		Path:      "auth/userpass/login/test",
+		Operation: logical.UpdateOperation,
+		WrapInfo: &logical.RequestWrapInfo{
+			TTL: time.Duration(15 * time.Second),
+		},
+		Data: map[string]interface{}{
+			"password": "foo",
+		},
+		Connection: &logical.Connection{},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("bad: %v", resp)
+	}
+	if resp.WrapInfo == nil || resp.WrapInfo.TTL != time.Duration(15*time.Second) {
+		t.Fatalf("bad: %#v", resp)
+	}
+}
+
+func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
+	core, _, root := TestCoreUnsealed(t)
+
+	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	core.credentialBackends["approle"] = approle.Factory
+
+	// Enable approle
+	req := &logical.Request{
+		Path:        "sys/auth/approle",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"type": "approle",
+		},
+		Connection: &logical.Connection{},
+	}
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	// Create role
+	req.Path = "auth/approle/role/role-period"
+	req.Data = map[string]interface{}{
+		"period": "5s",
+	}
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	// Get role ID
+	req.Path = "auth/approle/role/role-period/role-id"
+	req.Operation = logical.ReadOperation
+	req.Data = nil
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil || resp.Data == nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+	roleID := resp.Data["role_id"]
+
+	// Get secret ID
+	req.Path = "auth/approle/role/role-period/secret-id"
+	req.Operation = logical.UpdateOperation
+	req.Data = nil
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil || resp.Data == nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+	secretID := resp.Data["secret_id"]
+
+	// Perform login
+	req = &logical.Request{
+		Path:      "auth/approle/login",
+		Operation: logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"role_id":   roleID,
+			"secret_id": secretID,
+		},
+		Connection: &logical.Connection{},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil || resp.Auth == nil {
+		t.Fatalf("bad: %v", resp)
+	}
+	loginToken := resp.Auth.ClientToken
+	entityID := resp.Auth.EntityID
+	accessor := resp.Auth.Accessor
+
+	// Perform token lookup on the generated token
+	req = &logical.Request{
+		Path:        "auth/token/lookup",
+		Operation:   logical.UpdateOperation,
+		ClientToken: root,
+		Data: map[string]interface{}{
+			"token": loginToken,
+		},
+		Connection: &logical.Connection{},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("bad: %v", resp)
+	}
+	if resp.Data == nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	if resp.Data["creation_time"].(int64) == 0 {
+		t.Fatal("creation time was zero")
+	}
+
+	// Depending on timing of the test this may have ticked down, so reset it
+	// back to the original value as long as it's not expired.
+	if resp.Data["ttl"].(int64) > 0 && resp.Data["ttl"].(int64) < 5 {
+		resp.Data["ttl"] = int64(5)
+	}
+
+	exp := map[string]interface{}{
+		"accessor":         accessor,
+		"creation_time":    resp.Data["creation_time"].(int64),
+		"creation_ttl":     int64(5),
+		"display_name":     "approle",
+		"entity_id":        entityID,
+		"expire_time":      resp.Data["expire_time"].(time.Time),
+		"explicit_max_ttl": int64(0),
+		"id":               loginToken,
+		"issue_time":       resp.Data["issue_time"].(time.Time),
+		"meta":             map[string]string{"role_name": "role-period"},
+		"num_uses":         0,
+		"orphan":           true,
+		"path":             "auth/approle/login",
+		"period":           int64(5),
+		"policies":         []string{"default"},
+		"renewable":        true,
+		"ttl":              int64(5),
+		"type":             "service",
+	}
+
+	if diff := deep.Equal(resp.Data, exp); diff != nil {
+		t.Fatal(diff)
+	}
+}
+
+func labelsMatch(actual, expected map[string]string) bool {
+	for expected_label, expected_val := range expected {
+		if v, ok := actual[expected_label]; ok {
+			if v != expected_val {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+	return true
+}
+
+func checkCounter(t *testing.T, inmemSink *metrics.InmemSink, keyPrefix string, expectedLabels map[string]string) {
+	t.Helper()
+
+	intervals := inmemSink.Data()
+	if len(intervals) > 1 {
+		t.Skip("Detected interval crossing.")
+	}
+
+	var counter *metrics.SampledValue = nil
+	var labels map[string]string
+	for _, c := range intervals[0].Counters {
+		if !strings.HasPrefix(c.Name, keyPrefix) {
+			continue
+		}
+		counter = &c
+
+		labels = make(map[string]string)
+		for _, l := range counter.Labels {
+			labels[l.Name] = l.Value
+		}
+
+		// Distinguish between different label sets
+		if labelsMatch(labels, expectedLabels) {
+			break
+		}
+	}
+	if counter == nil {
+		t.Fatalf("No %q counter found with matching labels", keyPrefix)
+	}
+
+	if !labelsMatch(labels, expectedLabels) {
+		t.Errorf("No matching label set, found %v", labels)
+	}
+
+	if counter.Count != 1 {
+		t.Errorf("Counter number of samples %v is not 1.", counter.Count)
+	}
+
+	if counter.Sum != 1.0 {
+		t.Errorf("Counter sum %v is not 1.", counter.Sum)
+	}
+}
+
+func TestRequestHandling_LoginMetric(t *testing.T) {
+	core, _, root, sink := TestCoreUnsealedWithMetrics(t)
+
+	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	core.credentialBackends["userpass"] = credUserpass.Factory
+
+	// Setup mount
+	req := &logical.Request{
+		Path:        "sys/auth/userpass",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"type": "userpass",
+		},
+		Connection: &logical.Connection{},
+	}
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	// Create user
+	req.Path = "auth/userpass/users/test"
+	req.Data = map[string]interface{}{
+		"password": "foo",
+		"policies": "default",
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	// Login with response wrapping
+	req = &logical.Request{
+		Path:      "auth/userpass/login/test",
+		Operation: logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"password": "foo",
+		},
+		WrapInfo: &logical.RequestWrapInfo{
+			TTL: time.Duration(15 * time.Second),
+		},
+		Connection: &logical.Connection{},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("bad: %v", resp)
+	}
+
+	// There should be two counters
+	checkCounter(
+		t, sink, "token.creation",
+		map[string]string{
+			"cluster":      "test-cluster",
+			"namespace":    "root",
+			"auth_method":  "userpass",
+			"mount_point":  "auth/userpass/",
+			"creation_ttl": "+Inf",
+			"token_type":   "service",
+		},
+	)
+	checkCounter(
+		t, sink, "token.creation",
+		map[string]string{
+			"cluster":      "test-cluster",
+			"namespace":    "root",
+			"auth_method":  "response_wrapping",
+			"mount_point":  "auth/userpass/",
+			"creation_ttl": "1m",
+			"token_type":   "service",
+		},
+	)
+}
+
+func TestRequestHandling_SecretLeaseMetric(t *testing.T) {
+	core, _, root, sink := TestCoreUnsealedWithMetrics(t)
+
+	// Create a key with a lease
+	req := logical.TestRequest(t, logical.UpdateOperation, "secret/foo")
+	req.Data["foo"] = "bar"
+	req.ClientToken = root
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	// Read a key with a LeaseID
+	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
+	req.ClientToken = root
+	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	checkCounter(
+		t, sink, "secret.lease.creation",
+		map[string]string{
+			"cluster":       "test-cluster",
+			"namespace":     "root",
+			"secret_engine": "kv",
+			"mount_point":   "secret/",
+			"creation_ttl":  "+Inf",
+		},
+	)
+}
+
+// TestRequestHandling_ListFiltering validates that list filtering occurs as
+// expected, including with templating and wildcards.
+func TestRequestHandling_ListFiltering(t *testing.T) {
+	t.Parallel()
+
+	core, _, root := TestCoreUnsealed(t)
+
+	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	core.credentialBackends["userpass"] = credUserpass.Factory
+
+	// Upgrade to kv-v2
+	TestCoreUpgradeToKVv2(t, core, root)
+
+	// Enable userpass
+	req := &logical.Request{
+		Path:        "sys/auth/userpass",
+		Operation:   logical.UpdateOperation,
+		ClientToken: root,
+		Data: map[string]interface{}{
+			"type": "userpass",
+		},
+	}
+
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
+
+	// Add policy
+	req.Path = "sys/policies/acl/list-filtered"
+	req.Data = map[string]interface{}{
+		"policy": `
+path "secret/metadata/by-data/*" {
+	capabilities = ["list", "scan"]
+	list_scan_response_keys_filter_path = "{{ .path | replace \"secret/metadata/\" \"secret/data/\" }}{{ .key }}"
+}
+
+path "secret/detailed-metadata/by-data/*" {
+	capabilities = ["list", "scan"]
+	list_scan_response_keys_filter_path = "{{ .path | replace \"secret/detailed-metadata/\" \"secret/data/\" }}{{ .key }}"
+}
+
+path "secret/data/by-data/data-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-data/data-no" {
+	capabilities = ["deny"]
+}
+
+path "secret/metadata/by-data/metadata-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-data/both" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-data/both" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-data/subdir/data-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-data/subdir/data-no" {
+	capabilities = ["deny"]
+}
+
+path "secret/metadata/by-data/subdir/metadata-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-data/subdir/both" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-data/subdir/both" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-metadata/*" {
+	capabilities = ["list", "scan"]
+	list_scan_response_keys_filter_path = "{{ .path }}{{ .key }}"
+}
+
+path "secret/detailed-metadata/by-metadata/*" {
+	capabilities = ["list", "scan"]
+	list_scan_response_keys_filter_path = "{{ .path | replace \"secret/detailed-metadata/\" \"secret/metadata/\" }}{{ .key }}"
+}
+
+path "secret/metadata/by-metadata/metadata-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-metadata/metadata-no" {
+	capabilities = ["deny"]
+}
+
+path "secret/data/by-metadata/data-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-metadata/both" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-metadata/both" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-metadata/subdir/metadata-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-metadata/subdir/metadata-no" {
+	capabilities = ["deny"]
+}
+
+path "secret/data/by-metadata/subdir/data-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-metadata/subdir/both" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-metadata/subdir/both" {
+	capabilities = ["read"]
+}
+`,
+	}
+
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
+
+	req.Path = "auth/userpass/users/filtered"
+	req.Data = map[string]interface{}{
+		"password":       "filtered",
+		"token_policies": "list-filtered",
+	}
+
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
+
+	req.Path = "auth/userpass/login/filtered"
+	tokenResp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.NotNil(t, tokenResp)
+	require.False(t, tokenResp.IsError())
+
+	// test list operation without any data
+	req.Operation = logical.ListOperation
+	req.Data = nil
+	req.Path = "secret/metadata/by-metadata/"
+
+	req.ClientToken = tokenResp.Auth.ClientToken
+	req.ClientTokenAccessor = tokenResp.Auth.Accessor
+
+	noDataResp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err, "[%v] path: %v", req.Operation, req.Path)
+	require.NotNil(t, noDataResp, "[%v] path: %v", req.Operation, req.Path)
+	require.Empty(t, noDataResp.Data)
+
+	// reset the client infos
+	req.ClientToken = root
+	req.ClientTokenAccessor = ""
+
+	// Create all entries.
+	for _, prefix := range []string{"by-data", "by-metadata", "by-data/subdir", "by-metadata/subdir"} {
+		for _, name := range []string{"data-yes", "data-no", "metadata-yes", "metadata-no", "elided", "both"} {
+			req.Operation = logical.UpdateOperation
+			req.Path = fmt.Sprintf("secret/data/%v/%v", prefix, name)
+			req.Data = map[string]interface{}{
+				"data": map[string]interface{}{
+					"key-name": req.Path,
+				},
+			}
+
+			resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+			require.NoError(t, err)
+			require.False(t, resp.IsError())
+		}
+	}
+
+	// map from prefix (by-data or by-metadata) to allowed keys, with
+	// indication whether it shows on list and scan (true) vs just scan
+	// (false).
+	allowed := map[string]map[string]bool{
+		"by-data": {
+			"data-yes":        true,
+			"both":            true,
+			"subdir/data-yes": false,
+			"subdir/both":     false,
+		},
+		"by-data/subdir": {
+			"data-yes": true,
+			"both":     true,
+		},
+		"by-metadata": {
+			"metadata-yes":        true,
+			"both":                true,
+			"subdir/metadata-yes": false,
+			"subdir/both":         false,
+		},
+		"by-metadata/subdir": {
+			"metadata-yes": true,
+			"both":         true,
+		},
+	}
+
+	req.ClientToken = tokenResp.Auth.ClientToken
+	req.ClientTokenAccessor = tokenResp.Auth.Accessor
+
+	for prefix, entries := range allowed {
+		for _, op := range []string{"list", "scan"} {
+			for _, listType := range []string{"metadata", "detailed-metadata"} {
+				isDetailed := strings.Contains(listType, "detailed")
+
+				req.Operation = logical.Operation(op)
+				req.Data = nil
+				req.Path = fmt.Sprintf("secret/%v/%v/", listType, prefix)
+
+				resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+				require.NoError(t, err, "[%v] path: %v", req.Operation, req.Path)
+				require.NotNil(t, resp, "[%v] path: %v", req.Operation, req.Path)
+				require.False(t, resp.IsError())
+
+				require.NotEmpty(t, resp.Data, "[%v] path: %v\n\tresp: %#v", req.Operation, req.Path, resp)
+				require.NotEmpty(t, resp.Data["keys"], "[%v] path: %v\n\tresp: %#v", req.Operation, req.Path, resp)
+
+				if isDetailed {
+					require.NotEmpty(t, resp.Data["key_info"], "[%v] path: %v\n\tresp: %#v", req.Operation, req.Path, resp)
+				}
+
+				for _, entry := range resp.Data["keys"].([]string) {
+					if strings.HasSuffix(entry, "/") {
+						continue
+					}
+
+					onList, present := entries[entry]
+					require.True(
+						t,
+						present,
+						"list included %v but shouldn't have; path: %v\n\texpected: %#v\n\tactual: %#v", entry, req.Path, entries, resp.Data["keys"].([]string),
+					)
+
+					require.False(
+						t,
+						req.Operation == logical.ListOperation && !onList,
+						"list operation included recursive entry %v\n\tactual: %#v", entry, resp.Data["keys"].([]string),
+					)
+				}
+			}
+		}
+	}
+}
+
+func TestRequestHandling_RelativePath(t *testing.T) {
+	core, _, root := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(t.Context())
+
+	req := &logical.Request{
+		Path:        "sys/policies/acl/../../../testing",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+	}
+	resp, err := core.HandleRequest(ctx, req)
+	require.ErrorContains(t, err, logical.ErrRelativePath.Error())
+	require.Nil(t, resp)
+
+	req = &logical.Request{
+		Path:        "sys/policies/acl/./testing",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+	}
+	resp, err = core.HandleRequest(ctx, req)
+	require.ErrorContains(t, err, logical.ErrRelativePath.Error())
+	require.NotContains(t, err.Error(), "read failed")
+	require.Nil(t, resp)
+}
+
+func TestRequestHandling_RelativePathAllowed(t *testing.T) {
+	core, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		UnsafeRelativePaths: true,
+	})
+	ctx := namespace.RootContext(t.Context())
+
+	req := &logical.Request{
+		Path:        "cubbyhole/asdf/../asdf",
+		ClientToken: root,
+		Operation:   logical.ReadOperation,
+	}
+	_, err := core.HandleRequest(ctx, req)
+
+	// While other places still disallow the relative paths (e.g., storage
+	// view), we know that we made it farther.
+	require.ErrorContains(t, err, "read failed")
+}
+
+func TestRequestHandling_DisallowLogicalTokenCreation(t *testing.T) {
+	t.Parallel()
+
+	core, _, _ := TestCoreUnsealed(t)
+
+	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	core.logicalBackends["test"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
+		return &backendTest.Noop{
+			Login: []string{"login"},
+			Response: &logical.Response{
+				Auth: &logical.Auth{},
+			},
+		}, nil
+	}
+
+	meUUID, _ := uuid.GenerateUUID()
+	err := core.mount(namespace.RootContext(t.Context()), &routing.MountEntry{
+		Table: routing.MountTableType,
+		UUID:  meUUID,
+		Path:  "test",
+		Type:  "test",
+	})
+	require.NoError(t, err)
+
+	req := &logical.Request{
+		Path:      "test/login",
+		Operation: logical.ReadOperation,
+	}
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if resp != nil {
+		require.Nil(t, resp.Auth)
+	}
+	require.Error(t, err, ErrInternalError)
+}
+
+func TestRequestHandling_DisallowAuthErrorTokenCreation(t *testing.T) {
+	t.Parallel()
+
+	core, _, root := TestCoreUnsealed(t)
+
+	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	core.credentialBackends["test"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
+		return &backendTest.Noop{
+			Login:       []string{"login"},
+			BackendType: logical.TypeCredential,
+			RequestHandler: func(context.Context, *logical.Request) (*logical.Response, error) {
+				return &logical.Response{
+					Auth: &logical.Auth{},
+				}, errors.New("erring for test")
+			},
+		}, nil
+	}
+
+	req := &logical.Request{
+		Path:        "sys/auth/test",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"type": "test",
+		},
+	}
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.Nil(t, resp)
+
+	req = &logical.Request{
+		Path:      "auth/test/login",
+		Operation: logical.ReadOperation,
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if resp != nil {
+		require.Nil(t, resp.Auth)
+	}
+	require.Error(t, err, ErrInternalError)
+}
+
+// TestRequestHandling_CrossNamespaceRouting tests that requests for tokens and
+// leases are routed based on the embedded namespace ID, and that there is no
+// accidental cross-namespace access path that evades ACLs.
+func TestRequestHandling_CrossNamespaceRouting(t *testing.T) {
+	t.Parallel()
+
+	core, _, rootToken := TestCoreUnsealed(t)
+
+	ns1 := &namespace.Namespace{Path: "ns1"}
+	ns2 := &namespace.Namespace{Path: "ns2"}
+
+	ctx := namespace.RootContext(t.Context())
+
+	ns1Ctx := namespace.ContextWithNamespace(t.Context(), ns1)
+	ns2Ctx := namespace.ContextWithNamespace(t.Context(), ns2)
+
+	TestCoreCreateNamespaces(t, core, ns1, ns2)
+
+	// Create a backend that always generates a new lease.
+	core.logicalBackends["test"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
+		return &backendTest.Noop{
+			BackendType: logical.TypeLogical,
+			Response: &logical.Response{
+				Secret: &logical.Secret{
+					LeaseOptions: logical.LeaseOptions{
+						TTL:       time.Hour,
+						Renewable: true,
+					},
+				},
+			},
+		}, nil
+	}
+
+	// Mount the backend in all namespaces so we can create leases in each.
+	for _, ctx := range []context.Context{ctx, ns1Ctx, ns2Ctx} {
+		res, err := core.HandleRequest(ctx, &logical.Request{
+			Path:        "sys/mounts/test",
+			Operation:   logical.UpdateOperation,
+			ClientToken: rootToken,
+			Data:        map[string]any{"type": "test"},
+		})
+		require.NoError(t, errors.Join(err, res.Error()))
+	}
+
+	// Create policies + tokens for the namespaces so we can scope down
+	// requests.
+	token := func(t *testing.T, ns *namespace.Namespace) string {
+		ctx := namespace.ContextWithNamespace(ctx, ns)
+		res, err := core.HandleRequest(ctx, &logical.Request{
+			Path:        "sys/policy/test",
+			Operation:   logical.UpdateOperation,
+			ClientToken: rootToken,
+			Data: map[string]any{
+				"rules": `path "*" { capabilities = ["create", "read", "update"] }`,
+			},
+		})
+		require.NoError(t, errors.Join(err, res.Error()))
+		res, err = core.HandleRequest(ctx, &logical.Request{
+			Path:        "auth/token/create",
+			Operation:   logical.UpdateOperation,
+			ClientToken: rootToken,
+			Data:        map[string]any{"policies": []string{"test"}},
+		})
+		require.NoError(t, errors.Join(err, res.Error()))
+		return res.Auth.ClientToken
+	}
+
+	ns1Token := token(t, ns1)
+	ns2Token := token(t, ns2)
+
+	tests := map[string]struct {
+		source *namespace.Namespace // The namespace targeted by the request.
+		lease  *namespace.Namespace // The namespace that the lease is created in.
+		token  string               // The token to use.
+		err    bool                 // Should it fail?
+	}{
+		// Happy paths.
+		"root->root via root token": {
+			lease:  namespace.RootNamespace,
+			source: namespace.RootNamespace,
+			token:  rootToken,
+		},
+		"root->ns1 via root token": {
+			source: namespace.RootNamespace, lease: ns1, token: rootToken,
+		},
+		"root->ns1 via ns1 token": {
+			source: namespace.RootNamespace, lease: ns1, token: ns1Token,
+		},
+		"ns1->ns1 via root token": {
+			source: ns1, lease: ns1, token: rootToken,
+		},
+		"ns1->ns1 via ns1 token": {
+			source: ns1, lease: ns1, token: ns1Token,
+		},
+		"ns2->ns2 via ns2 token": {
+			source: ns2, lease: ns2, token: ns2Token,
+		},
+		"ns2->ns1 via ns1 token": {
+			source: ns2, lease: ns1, token: ns1Token,
+		},
+
+		// Bad paths.
+		"root->root via ns1 token": {
+			source: namespace.RootNamespace,
+			lease:  namespace.RootNamespace,
+			token:  ns1Token,
+			err:    true,
+		},
+		"root->ns1 via ns2 token": {
+			source: namespace.RootNamespace, lease: ns1, token: ns2Token,
+			err: true,
+		},
+		"ns1->ns1 via ns2 token": {
+			source: ns1, lease: ns1, token: ns2Token,
+			err: true,
+		},
+		"ns2->ns1 via ns2 token": {
+			source: ns2, lease: ns1, token: ns2Token,
+			err: true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Helper to send a request to core and enforce the expected result.
+			check := func(t *testing.T, req *logical.Request) {
+				t.Helper()
+
+				ctx := namespace.ContextWithNamespace(ctx, tt.source)
+				res, err := core.HandleRequest(ctx, req)
+
+				if err := errors.Join(err, res.Error()); tt.err {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
+			}
+
+			// Helper to generate a fresh lease in the given namespace and get
+			// its ID.
+			lease := func(t *testing.T) string {
+				t.Helper()
+				ctx := namespace.ContextWithNamespace(ctx, tt.lease)
+				res, err := core.HandleRequest(ctx, &logical.Request{
+					Operation:   logical.ReadOperation,
+					Path:        "test/generate-lease",
+					ClientToken: rootToken,
+				})
+				require.NoError(t, errors.Join(err, res.Error()))
+				return res.Secret.LeaseID
+			}
+
+			t.Run("sys/leases/lookup", func(t *testing.T) {
+				check(t, &logical.Request{
+					Path:        "sys/leases/lookup",
+					Operation:   logical.UpdateOperation,
+					Data:        map[string]any{"lease_id": lease(t)},
+					ClientToken: tt.token,
+				})
+			})
+
+			t.Run("sys/leases/renew", func(t *testing.T) {
+				check(t, &logical.Request{
+					Path:        "sys/leases/renew",
+					Operation:   logical.UpdateOperation,
+					Data:        map[string]any{"lease_id": lease(t)},
+					ClientToken: tt.token,
+				})
+			})
+
+			t.Run("sys/leases/revoke", func(t *testing.T) {
+				check(t, &logical.Request{
+					Path:        "sys/leases/revoke",
+					Operation:   logical.UpdateOperation,
+					Data:        map[string]any{"lease_id": lease(t)},
+					ClientToken: tt.token,
+				})
+			})
+
+			t.Run("sys/leases/renew/id", func(t *testing.T) {
+				check(t, &logical.Request{
+					Path:        fmt.Sprintf("sys/leases/renew/%s", lease(t)),
+					Operation:   logical.UpdateOperation,
+					ClientToken: tt.token,
+				})
+			})
+
+			t.Run("sys/leases/revoke/id", func(t *testing.T) {
+				check(t, &logical.Request{
+					Path:        fmt.Sprintf("sys/leases/revoke/%s", lease(t)),
+					Operation:   logical.UpdateOperation,
+					ClientToken: tt.token,
+				})
+			})
+		})
+	}
+}

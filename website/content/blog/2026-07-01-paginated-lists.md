@@ -112,7 +112,7 @@ By enforcing this with [`pagination_limit`](/docs/concepts/policies/#limiting-pa
 in an ACL policy, operators can now that clients use pagination and set
 maximum result set sizes going forward.
 
-In short, OpenBao now aligns with long-standing industry expectations for
+In short, OpenBao aligns with long-standing industry expectations for
 expensive list calls and operators have more control with OpenBao than with
 Vault for managing the performance impact of these types of API requests.
 

@@ -20,6 +20,7 @@ var (
 	ErrNoEntityAttachedToToken       = errors.New("string contains entity template directives but no entity was provided")
 	ErrNoGroupsAttachedToToken       = errors.New("string contains groups template directives but no groups were provided")
 	ErrTemplateValueNotFound         = errors.New("no value could be found for one of the template directives")
+	ErrTemplateWildcard              = errors.New(`template substitution contains wildcard: "*" and "+" are forbidden`)
 )
 
 const (
@@ -154,6 +155,9 @@ func PopulateString(p PopulateStringInput) (bool, string, error) {
 				tmplStr, err := performTemplating(strings.TrimSpace(splitPiece[0]), &p)
 				if err != nil {
 					return false, "", err
+				}
+				if strings.ContainsAny(tmplStr, "*+") {
+					return false, "", ErrTemplateWildcard
 				}
 				b.WriteString(tmplStr)
 				b.WriteString(splitPiece[1])

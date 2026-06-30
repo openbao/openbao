@@ -380,6 +380,43 @@ func TestPopulate_Basic(t *testing.T) {
 			aliasCustomMetadata: map[string]string{"foo": "abc", "bar": "123"},
 			output:              `{}`,
 		},
+
+		// wildcard injection tests
+		{
+			mode:     ACLTemplating,
+			name:     "wildcard in template definition (acl)",
+			input:    `path "*" {{identity.entity.metadata.x}}`,
+			metadata: map[string]string{"x": "ok", "unused_wildcard_is_ok": "*"},
+			output:   `path "*" ok`,
+		},
+		{
+			mode:     ACLTemplating,
+			name:     "wildcard in template substitution (acl)",
+			input:    `path "bad" {{identity.entity.metadata.x}}`,
+			metadata: map[string]string{"x": "this * is not ok"},
+			err:      ErrTemplateWildcard,
+		},
+		{
+			mode:     ACLTemplating,
+			name:     "wildcard plus in template substitution (acl)",
+			input:    `path "bad" {{identity.entity.metadata.x}}`,
+			metadata: map[string]string{"x": "this + is also not ok"},
+			err:      ErrTemplateWildcard,
+		},
+		{
+			mode:     JSONTemplating,
+			name:     "wildcard in template definition (json)",
+			input:    `{ "test/*": {{identity.entity.metadata.x}} }`,
+			metadata: map[string]string{"x": "ok", "unused_wildcard_is_ok": "*"},
+			output:   `{ "test/*": "ok" }`,
+		},
+		{
+			mode:     JSONTemplating,
+			name:     "wildcard in template substitution (json)",
+			input:    `{ "test/bad": {{identity.entity.metadata.x}} }`,
+			metadata: map[string]string{"x": "this * is not ok"},
+			err:      ErrTemplateWildcard,
+		},
 	}
 
 	for _, test := range tests {
@@ -435,7 +472,7 @@ func TestPopulate_Basic(t *testing.T) {
 				t.Fatalf("%s: expected success, got error: %v", test.name, err)
 			}
 			if err.Error() != test.err.Error() {
-				t.Fatalf("%s: got error: %v", test.name, err)
+				t.Fatalf("%s: expected %v, got error: %v", test.name, test.err, err)
 			}
 		}
 		if out != test.output {

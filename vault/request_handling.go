@@ -1178,6 +1178,18 @@ func (c *Core) doRouting(ctx context.Context, req *logical.Request) (*logical.Re
 	return c.router.Route(ctx, req)
 }
 
+// doRoutingIfApproved will check if the request needs approval before routing
+func (c *Core) doRoutingIfApproved(ctx context.Context, req *logical.Request, auth *logical.Auth) (*logical.Response, error) {
+	var routeErr error
+	var resp *logical.Response
+	if !c.needsApproval(ctx, req, auth) {
+		resp, routeErr = c.doRouting(ctx, req)
+	} else {
+		resp = &logical.Response{}
+	}
+	return resp, routeErr
+}
+
 func (c *Core) isLoginRequest(ctx context.Context, req *logical.Request) bool {
 	return c.router.LoginPath(ctx, req.Path)
 }
@@ -1326,13 +1338,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	}
 
 	// Route the request
-	var routeErr error
-	var resp *logical.Response
-	if !c.needsApproval(ctx, req, auth) {
-		resp, routeErr = c.doRouting(ctx, req)
-	} else {
-		resp = &logical.Response{}
-	}
+	resp, routeErr := c.doRoutingIfApproved(ctx, req, auth)
 	if resp != nil {
 
 		// If wrapping is used, use the shortest between the request and response
@@ -1701,7 +1707,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	}
 
 	// Route the request
-	resp, routeErr := c.doRouting(ctx, req)
+	resp, routeErr := c.doRoutingIfApproved(ctx, req, auth)
 
 	// if routeErr has invalid credentials error, update the userFailedLoginMap
 	if routeErr != nil && routeErr == logical.ErrInvalidCredentials {

@@ -31,17 +31,22 @@ type VaultUI struct {
 const (
 	globalFlagOutputCurlString = "output-curl-string"
 	globalFlagOutputPolicy     = "output-policy"
+	globalFlagOutputProfile    = "output-profile"
 	globalFlagFormat           = "format"
 	globalFlagDetailed         = "detailed"
 )
 
 var globalFlags = []string{
-	globalFlagOutputCurlString, globalFlagOutputPolicy, globalFlagFormat, globalFlagDetailed,
+	globalFlagOutputCurlString,
+	globalFlagOutputPolicy,
+	globalFlagOutputProfile,
+	globalFlagFormat,
+	globalFlagDetailed,
 }
 
 // setupEnv parses args and may replace them and sets some env vars to known
 // values based on format options
-func setupEnv(args []string) (retArgs []string, format string, detailed bool, outputCurlString bool, outputPolicy bool) {
+func setupEnv(args []string) (retArgs []string, format string, detailed bool, outputCurlString bool, outputPolicy bool, outputProfile bool) {
 	var err error
 	var nextArgFormat bool
 	var haveDetailed bool
@@ -69,6 +74,11 @@ func setupEnv(args []string) (retArgs []string, format string, detailed bool, ou
 
 		if isGlobalFlag(arg, globalFlagOutputPolicy) {
 			outputPolicy = true
+			continue
+		}
+
+		if isGlobalFlag(arg, globalFlagOutputProfile) {
+			outputProfile = true
 			continue
 		}
 
@@ -117,7 +127,7 @@ func setupEnv(args []string) (retArgs []string, format string, detailed bool, ou
 		}
 	}
 
-	return args, format, detailed, outputCurlString, outputPolicy
+	return args, format, detailed, outputCurlString, outputPolicy, outputProfile
 }
 
 func isGlobalFlag(arg string, flag string) bool {
@@ -157,7 +167,8 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	var detailed bool
 	var outputCurlString bool
 	var outputPolicy bool
-	args, format, detailed, outputCurlString, outputPolicy = setupEnv(args)
+	var outputProfile bool
+	args, format, detailed, outputCurlString, outputPolicy, outputProfile = setupEnv(args)
 
 	// Don't use color if disabled
 	useColor := !color.NoColor && api.ReadBaoVariable(EnvVaultCLINoColor) == ""
@@ -183,7 +194,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	}
 
 	uiErrWriter := runOpts.Stderr
-	if outputCurlString || outputPolicy {
+	if outputCurlString || outputPolicy || outputProfile {
 		uiErrWriter = &bytes.Buffer{}
 	}
 
@@ -241,6 +252,8 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 		return generateCurlString(exitCode, runOpts, uiErrWriter.(*bytes.Buffer))
 	} else if outputPolicy {
 		return generatePolicy(exitCode, runOpts, uiErrWriter.(*bytes.Buffer))
+	} else if outputProfile {
+		return generateProfile(exitCode, runOpts, uiErrWriter.(*bytes.Buffer))
 	} else if err != nil {
 		_, _ = fmt.Fprintf(runOpts.Stderr, "Error executing CLI: %s\n", err.Error())
 		return 1
@@ -347,6 +360,32 @@ func generatePolicy(exitCode int, runOpts *RunOptions, preParsingErrBuf *bytes.B
 	hcl, err := api.LastOutputPolicyError.HCLString()
 	if err != nil {
 		_, _ = fmt.Fprintf(runOpts.Stderr, "Error assembling policy HCL: %s\n", err)
+		return 1
+	}
+
+	_, _ = fmt.Fprintf(runOpts.Stdout, "%s\n", hcl)
+	return 0
+}
+
+func generateProfile(exitCode int, runOpts *RunOptions, preParsingErrBuf *bytes.Buffer) int {
+	if exitCode == 0 {
+		_, _ = fmt.Fprint(runOpts.Stderr, "Could not generate profile")
+		return 1
+	}
+
+	if api.LastOutputProfileError == nil {
+		if exitCode == 127 {
+			// Usage, just pass it through
+			return exitCode
+		}
+		_, _ = runOpts.Stderr.Write(preParsingErrBuf.Bytes())
+		_, _ = fmt.Fprint(runOpts.Stderr, "Unable to generate profile from command\n")
+		return exitCode
+	}
+
+	hcl, err := api.LastOutputProfileError.HCLString()
+	if err != nil {
+		_, _ = fmt.Fprintf(runOpts.Stderr, "Error assembling profile HCL: %s\n", err)
 		return 1
 	}
 

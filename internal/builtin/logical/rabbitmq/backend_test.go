@@ -1,0 +1,483 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package rabbitmq
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"testing"
+
+	"github.com/go-viper/mapstructure/v2"
+	"github.com/hashicorp/go-secure-stdlib/base62"
+	rabbithole "github.com/michaelklishin/rabbit-hole/v3"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/docker"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	logicaltest "github.com/openbao/openbao/v2/internal/helper/testhelpers/logical"
+	vaulthttp "github.com/openbao/openbao/v2/internal/http"
+	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
+)
+
+const (
+	envRabbitMQConnectionURI = "RABBITMQ_CONNECTION_URI"
+	envRabbitMQUsername      = "RABBITMQ_USERNAME"
+	envRabbitMQPassword      = "RABBITMQ_PASSWORD"
+)
+
+const (
+	testTags        = "administrator"
+	testVHosts      = `{"/": {"configure": ".*", "write": ".*", "read": ".*"}}`
+	testVHostTopics = `{"/": {"amq.topic": {"write": ".*", "read": ".*"}}}`
+
+	roleName = "web"
+)
+
+func prepareRabbitMQTestContainer(t *testing.T) (func(), string) {
+	if os.Getenv(envRabbitMQConnectionURI) != "" {
+		return func() {}, os.Getenv(envRabbitMQConnectionURI)
+	}
+
+	runner, err := docker.NewServiceRunner(docker.RunOptions{
+		ImageRepo:     "docker.mirror.hashicorp.services/library/rabbitmq",
+		ImageTag:      "4-management",
+		ContainerName: "rabbitmq",
+		Ports:         []string{"15672/tcp"},
+	})
+	if err != nil {
+		t.Fatalf("could not start docker rabbitmq: %s", err)
+	}
+
+	svc, err := runner.StartService(t.Context(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
+		connURL := fmt.Sprintf("http://%s:%d", host, port)
+		rmqc, err := rabbithole.NewClient(connURL, "guest", "guest")
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = rmqc.Overview()
+		if err != nil {
+			return nil, err
+		}
+
+		return docker.NewServiceURLParse(connURL)
+	})
+	if err != nil {
+		t.Fatalf("could not start docker rabbitmq: %s", err)
+	}
+	return svc.Cleanup, svc.Config.URL().String()
+}
+
+func TestBackend_basic(t *testing.T) {
+	t.Parallel()
+
+	b, _ := Factory(t.Context(), logical.TestBackendConfig())
+
+	cleanup, uri := prepareRabbitMQTestContainer(t)
+	defer cleanup()
+
+	logicaltest.Test(t, logicaltest.TestCase{
+		PreCheck:       testAccPreCheckFunc(t, uri),
+		LogicalBackend: b,
+		Steps: []logicaltest.TestStep{
+			testAccStepConfig(t, uri, ""),
+			testAccStepRole(t),
+			testAccStepReadCreds(t, b, uri, roleName),
+		},
+	})
+}
+
+func TestBackend_returnsErrs(t *testing.T) {
+	t.Parallel()
+
+	b, _ := Factory(t.Context(), logical.TestBackendConfig())
+
+	cleanup, uri := prepareRabbitMQTestContainer(t)
+	defer cleanup()
+
+	logicaltest.Test(t, logicaltest.TestCase{
+		PreCheck:       testAccPreCheckFunc(t, uri),
+		LogicalBackend: b,
+		Steps: []logicaltest.TestStep{
+			testAccStepConfig(t, uri, ""),
+			{
+				Operation: logical.CreateOperation,
+				Path:      fmt.Sprintf("roles/%s", roleName),
+				Data: map[string]interface{}{
+					"tags":         testTags,
+					"vhosts":       `{"invalid":{"write": ".*", "read": ".*"}}`,
+					"vhost_topics": testVHostTopics,
+				},
+			},
+			{
+				Operation: logical.ReadOperation,
+				Path:      fmt.Sprintf("creds/%s", roleName),
+				ErrorOk:   true,
+			},
+		},
+	})
+}
+
+func TestBackend_roleCrud(t *testing.T) {
+	t.Parallel()
+
+	b, _ := Factory(t.Context(), logical.TestBackendConfig())
+
+	cleanup, uri := prepareRabbitMQTestContainer(t)
+	defer cleanup()
+
+	logicaltest.Test(t, logicaltest.TestCase{
+		PreCheck:       testAccPreCheckFunc(t, uri),
+		LogicalBackend: b,
+		Steps: []logicaltest.TestStep{
+			testAccStepConfig(t, uri, ""),
+			testAccStepRole(t),
+			testAccStepReadRole(t, roleName, testTags, testVHosts, testVHostTopics),
+			testAccStepDeleteRole(t, roleName),
+			testAccStepReadRole(t, roleName, "", "", ""),
+		},
+	})
+}
+
+func TestBackend_roleWithPasswordPolicy(t *testing.T) {
+	t.Parallel()
+
+	if os.Getenv(logicaltest.TestEnvVar) == "" {
+		t.Skipf("Acceptance tests skipped unless env %q set", logicaltest.TestEnvVar)
+		return
+	}
+
+	backendConfig := logical.TestBackendConfig()
+	passGen := func() (password string, err error) {
+		return base62.Random(30)
+	}
+	backendConfig.System.(*logical.StaticSystemView).SetPasswordPolicy("testpolicy", passGen)
+	b, _ := Factory(t.Context(), backendConfig)
+
+	cleanup, uri := prepareRabbitMQTestContainer(t)
+	defer cleanup()
+
+	logicaltest.Test(t, logicaltest.TestCase{
+		PreCheck:       testAccPreCheckFunc(t, uri),
+		LogicalBackend: b,
+		Steps: []logicaltest.TestStep{
+			testAccStepConfig(t, uri, "testpolicy"),
+			testAccStepRole(t),
+			testAccStepReadCreds(t, b, uri, roleName),
+		},
+	})
+}
+
+func testAccPreCheckFunc(t *testing.T, uri string) func() {
+	return func() {
+		if uri == "" {
+			t.Fatal("RabbitMQ URI must be set for acceptance tests")
+		}
+	}
+}
+
+func testAccStepConfig(t *testing.T, uri string, passwordPolicy string) logicaltest.TestStep {
+	username := os.Getenv(envRabbitMQUsername)
+	if len(username) == 0 {
+		username = "guest"
+	}
+	password := os.Getenv(envRabbitMQPassword)
+	if len(password) == 0 {
+		password = "guest"
+	}
+
+	return logicaltest.TestStep{
+		Operation: logical.UpdateOperation,
+		Path:      "config/connection",
+		Data: map[string]interface{}{
+			"connection_uri":  uri,
+			"username":        username,
+			"password":        password,
+			"password_policy": passwordPolicy,
+		},
+	}
+}
+
+func testAccStepRole(t *testing.T) logicaltest.TestStep {
+	return logicaltest.TestStep{
+		Operation: logical.UpdateOperation,
+		Path:      fmt.Sprintf("roles/%s", roleName),
+		Data: map[string]interface{}{
+			"tags":         testTags,
+			"vhosts":       testVHosts,
+			"vhost_topics": testVHostTopics,
+		},
+	}
+}
+
+func testAccStepDeleteRole(t *testing.T, n string) logicaltest.TestStep {
+	return logicaltest.TestStep{
+		Operation: logical.DeleteOperation,
+		Path:      "roles/" + n,
+	}
+}
+
+func testAccStepReadCreds(t *testing.T, b logical.Backend, uri, name string) logicaltest.TestStep {
+	return logicaltest.TestStep{
+		Operation: logical.ReadOperation,
+		Path:      "creds/" + name,
+		Check: func(resp *logical.Response) error {
+			var d struct {
+				Username string `mapstructure:"username"`
+				Password string `mapstructure:"password"`
+			}
+			if err := mapstructure.Decode(resp.Data, &d); err != nil {
+				return err
+			}
+			log.Printf("[WARN] Generated credentials: %v", d)
+
+			client, err := rabbithole.NewClient(uri, d.Username, d.Password)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			_, err = client.ListQueues()
+			if err != nil {
+				t.Fatalf("unable to list queues with generated credentials: %s", err)
+			}
+
+			resp, err = b.HandleRequest(t.Context(), &logical.Request{
+				Operation: logical.RevokeOperation,
+				Secret: &logical.Secret{
+					InternalData: map[string]interface{}{
+						"secret_type": "creds",
+						"username":    d.Username,
+					},
+				},
+			})
+			if err != nil {
+				return err
+			}
+			if resp != nil {
+				if resp.IsError() {
+					return fmt.Errorf("error on resp: %#v", *resp)
+				}
+			}
+
+			client, err = rabbithole.NewClient(uri, d.Username, d.Password)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			_, err = client.ListQueues()
+			if err == nil {
+				t.Fatalf("expected to fail listing queues: %s", err)
+			}
+
+			return nil
+		},
+	}
+}
+
+func testAccStepReadRole(t *testing.T, name, tags, rawVHosts string, rawVHostTopics string) logicaltest.TestStep {
+	return logicaltest.TestStep{
+		Operation: logical.ReadOperation,
+		Path:      "roles/" + name,
+		Check: func(resp *logical.Response) error {
+			if resp == nil {
+				if tags == "" && rawVHosts == "" && rawVHostTopics == "" {
+					return nil
+				}
+
+				return fmt.Errorf("bad: %#v", resp)
+			}
+
+			var d struct {
+				Tags        string                                     `mapstructure:"tags"`
+				VHosts      map[string]vhostPermission                 `mapstructure:"vhosts"`
+				VHostTopics map[string]map[string]vhostTopicPermission `mapstructure:"vhost_topics"`
+			}
+			if err := mapstructure.Decode(resp.Data, &d); err != nil {
+				return err
+			}
+
+			if d.Tags != tags {
+				return fmt.Errorf("bad: %#v", resp)
+			}
+
+			var vhosts map[string]vhostPermission
+			if err := jsonutil.DecodeJSON([]byte(rawVHosts), &vhosts); err != nil {
+				return fmt.Errorf("bad expected vhosts %#v: %s", vhosts, err)
+			}
+
+			for host, permission := range vhosts {
+				actualPermission, ok := d.VHosts[host]
+				if !ok {
+					return fmt.Errorf("expected vhost: %s", host)
+				}
+
+				if actualPermission.Configure != permission.Configure {
+					return fmt.Errorf("expected permission %s to be %s, got %s", "configure", permission.Configure, actualPermission.Configure)
+				}
+
+				if actualPermission.Write != permission.Write {
+					return fmt.Errorf("expected permission %s to be %s, got %s", "write", permission.Write, actualPermission.Write)
+				}
+
+				if actualPermission.Read != permission.Read {
+					return fmt.Errorf("expected permission %s to be %s, got %s", "read", permission.Read, actualPermission.Read)
+				}
+			}
+
+			var vhostTopics map[string]map[string]vhostTopicPermission
+			if err := jsonutil.DecodeJSON([]byte(rawVHostTopics), &vhostTopics); err != nil {
+				return fmt.Errorf("bad expected vhostTopics %#v: %s", vhostTopics, err)
+			}
+
+			for host, permissions := range vhostTopics {
+				for exchange, permission := range permissions {
+					actualPermissions, ok := d.VHostTopics[host]
+					if !ok {
+						return fmt.Errorf("expected vhost topics: %s", host)
+					}
+
+					actualPermission, ok := actualPermissions[exchange]
+					if !ok {
+						return fmt.Errorf("expected vhost topic exchange: %s", exchange)
+					}
+
+					if actualPermission.Write != permission.Write {
+						return fmt.Errorf("expected permission %s to be %s, got %s", "write", permission.Write, actualPermission.Write)
+					}
+
+					if actualPermission.Read != permission.Read {
+						return fmt.Errorf("expected permission %s to be %s, got %s", "read", permission.Read, actualPermission.Read)
+					}
+				}
+			}
+
+			return nil
+		},
+	}
+}
+
+func TestBackend_RoleReadCrash(t *testing.T) {
+	// Reproducer from https://github.com/openbao/openbao/issues/97.
+	t.Parallel()
+
+	coreConfig := &vault.CoreConfig{
+		LogicalBackends: map[string]logical.Factory{
+			"rabbitmq": Factory,
+		},
+	}
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+	client := cluster.Cores[0].Client
+
+	cleanup, uri := prepareRabbitMQTestContainer(t)
+	defer cleanup()
+
+	err := client.Sys().Mount("rabbitmq", &api.MountInput{
+		Type: "rabbitmq",
+	})
+	if err != nil {
+		t.Fatalf("failed to mount: %v", err)
+	}
+
+	resp, err := client.Logical().Write("rabbitmq/config/connection", map[string]interface{}{
+		"connection_uri": uri,
+		"username":       "guest",
+		"password":       "guest",
+	})
+	if err != nil {
+		t.Fatalf("bad: err: %v resp: %#v", err, resp)
+	}
+
+	resp, err = client.Logical().Write("rabbitmq/roles/newrole", map[string]interface{}{
+		"tags": "administrator",
+		"vhosts": `
+{
+  "/": {
+    "configure": ".*",
+    "write": ".*",
+    "read": ".*"
+  }
+}
+`,
+		"vhost_topics": `
+{
+	"/": {
+		"amq.topic": {
+			"write": ".*",
+			"read": ".*"
+		}
+	}
+}
+`,
+	})
+	if err != nil {
+		t.Fatalf("bad: err: %v resp: %#v", err, resp)
+	}
+
+	// Crash here in audit subsystem due to typing of vhost_topics.
+	resp, err = client.Logical().Read("rabbitmq/roles/newrole")
+	if err != nil {
+		t.Fatalf("bad: err: %v resp: %#v", err, resp)
+	}
+	t.Logf("response: %#v", resp)
+}
+
+func TestBackend_RevokeMissingCredentials(t *testing.T) {
+	t.Parallel()
+
+	coreConfig := &vault.CoreConfig{
+		LogicalBackends: map[string]logical.Factory{
+			"rabbitmq": Factory,
+		},
+	}
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		NumCores:    1,
+		HandlerFunc: vaulthttp.Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+	client := cluster.Cores[0].Client
+
+	cleanup, uri := prepareRabbitMQTestContainer(t)
+	defer cleanup()
+
+	// mount
+	err := client.Sys().Mount("rabbitmq", &api.MountInput{
+		Type: "rabbitmq",
+	})
+	require.NoError(t, err)
+
+	// configure connection
+	_, err = client.Logical().Write("rabbitmq/config/connection", map[string]interface{}{
+		"connection_uri": uri,
+		"username":       "guest",
+		"password":       "guest",
+	})
+	require.NoError(t, err)
+
+	// configure role
+	_, err = client.Logical().Write("rabbitmq/roles/newrole", map[string]interface{}{
+		"tags": "administrator",
+	})
+	require.NoError(t, err)
+
+	// read credentials
+	resp, err := client.Logical().Read("rabbitmq/creds/newrole")
+	require.NoError(t, err)
+
+	// delete credentials with RabbitMQ API
+	rabbitClient, err := rabbithole.NewClient(uri, "guest", "guest")
+	require.NoError(t, err)
+	_, err = rabbitClient.DeleteUser(resp.Data["username"].(string))
+	require.NoError(t, err)
+
+	// revoke
+	require.NoError(t, client.Sys().Revoke(resp.LeaseID))
+}

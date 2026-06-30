@@ -1,0 +1,102 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package http
+
+import (
+	"fmt"
+	"net"
+	"net/http"
+	"testing"
+
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
+	"github.com/openbao/openbao/v2/internal/vault"
+)
+
+func TestListener(tb testing.TB) (net.Listener, string) {
+	fail := func(format string, args ...interface{}) {
+		panic(fmt.Sprintf(format, args...))
+	}
+	if tb != nil {
+		fail = tb.Fatalf
+	}
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		fail("err: %s", err)
+	}
+	addr := "http://" + ln.Addr().String()
+	return ln, addr
+}
+
+func TestServerWithListenerAndProperties(tb testing.TB, ln net.Listener, addr string, core *vault.Core, props *vault.HandlerProperties) {
+	// Create a muxer to handle our requests so that we can authenticate
+	// for tests.
+	mux := http.NewServeMux()
+	mux.Handle("/_test/auth", http.HandlerFunc(testHandleAuth))
+	mux.Handle("/", Handler.Handler(props))
+
+	server := &http.Server{
+		Addr:     ln.Addr().String(),
+		Handler:  mux,
+		ErrorLog: core.Logger().StandardLogger(nil),
+	}
+	go server.Serve(ln)
+}
+
+func TestServerWithListener(tb testing.TB, ln net.Listener, addr string, core *vault.Core) {
+	ip, _, _ := net.SplitHostPort(ln.Addr().String())
+
+	// Create a muxer to handle our requests so that we can authenticate
+	// for tests.
+	props := &vault.HandlerProperties{
+		Core: core,
+		// This is needed for testing custom response headers
+		ListenerConfig: &configutil.Listener{
+			Address:                              ip,
+			DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+		},
+	}
+	TestServerWithListenerAndProperties(tb, ln, addr, core, props)
+}
+
+func TestServerWithCertForwarding(tb testing.TB, core *vault.Core) (net.Listener, string) {
+	ln, addr := TestListener(tb)
+
+	ip, _, _ := net.SplitHostPort(ln.Addr().String())
+
+	// Create a muxer to handle our requests so that we can authenticate
+	// for tests.
+	props := &vault.HandlerProperties{
+		Core: core,
+		// This is needed for testing custom response headers
+		ListenerConfig: &configutil.Listener{
+			Address:                                 ip,
+			XForwardedForClientCertHeader:           "Client-Cert",
+			XForwardedForClientCertDecoders:         []string{"URL"},
+			XForwardedForClientCertKeepUnauthorized: true,
+			XForwardedForClientCertKeepNotForwarded: true,
+		},
+	}
+
+	TestServerWithListenerAndProperties(tb, ln, addr, core, props)
+
+	return ln, addr
+}
+
+func TestServer(tb testing.TB, core *vault.Core) (net.Listener, string) {
+	ln, addr := TestListener(tb)
+	TestServerWithListener(tb, ln, addr, core)
+	return ln, addr
+}
+
+func TestServerAuth(tb testing.TB, addr string, token string) {
+	if _, err := http.Get(addr + "/_test/auth?token=" + token); err != nil {
+		tb.Fatalf("error authenticating: %s", err)
+	}
+}
+
+func testHandleAuth(w http.ResponseWriter, req *http.Request) {
+	respondOk(w, nil)
+}

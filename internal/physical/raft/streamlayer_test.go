@@ -1,0 +1,72 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package raft
+
+import (
+	"context"
+	"crypto/tls"
+	"net"
+	"testing"
+
+	"github.com/openbao/openbao/v2/internal/vault/cluster"
+)
+
+type mockClusterHook struct {
+	address net.Addr
+}
+
+func (*mockClusterHook) AddClient(alpn string, client cluster.Client)       {}
+func (*mockClusterHook) RemoveClient(alpn string)                           {}
+func (*mockClusterHook) AddHandler(alpn string, handler cluster.Handler)    {}
+func (*mockClusterHook) StopHandler(alpn string)                            {}
+func (*mockClusterHook) TLSConfig(ctx context.Context) (*tls.Config, error) { return nil, nil }
+func (m *mockClusterHook) Addr() net.Addr                                   { return m.address }
+func (*mockClusterHook) GetContextDialerFunc(ctx context.Context, alpnProto string) func(context.Context, string) (net.Conn, error) {
+	return func(context.Context, string) (net.Conn, error) {
+		return nil, nil
+	}
+}
+
+func TestStreamLayer_UnspecifiedIP(t *testing.T) {
+	t.Parallel()
+	m := &mockClusterHook{
+		address: &cluster.NetAddr{
+			Host: "0.0.0.0:8200",
+		},
+	}
+
+	raftTLSKey, err := GenerateTLSKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	raftTLS := &TLSKeyring{
+		Keys:        []*TLSKey{raftTLSKey},
+		ActiveKeyID: raftTLSKey.ID,
+	}
+
+	layer, err := NewRaftLayer(nil, raftTLS, m)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if err.Error() != "cannot use unspecified IP with raft storage: 0.0.0.0:8200" {
+		t.Fatalf("unexpected error: %s", err.Error())
+	}
+
+	if layer != nil {
+		t.Fatal("expected nil layer")
+	}
+
+	m.address.(*cluster.NetAddr).Host = "10.0.0.1:8200"
+
+	layer, err = NewRaftLayer(nil, raftTLS, m)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if layer == nil {
+		t.Fatal("nil layer")
+	}
+}

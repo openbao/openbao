@@ -6,7 +6,7 @@ package main // import "github.com/openbao/openbao"
 import (
 	"os"
 
-	"github.com/openbao/openbao/command"
+	"github.com/openbao/openbao/v2/internal/command"
 )
 
 func main() {

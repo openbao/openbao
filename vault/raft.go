@@ -613,6 +613,15 @@ func (c *Core) checkRaftTLSKeyUpgrades(ctx context.Context) error {
 		return nil
 	}
 
+	hasState, err := raftBackend.HasState()
+	if err != nil {
+		return err
+	}
+
+	if !hasState || !raftBackend.Initialized() {
+		return nil
+	}
+
 	tlsKeyringEntry, err := c.barrier.Get(ctx, raftTLSStoragePath)
 	if err != nil {
 		return err

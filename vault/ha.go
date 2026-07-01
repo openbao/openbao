@@ -38,10 +38,6 @@ const (
 	// leaderCheckInterval is how often a standby checks for a new leader
 	leaderCheckInterval = 2500 * time.Millisecond
 
-	// keyRotateCheckInterval is how often a standby checks for a key
-	// rotation taking place.
-	keyRotateCheckInterval = 10 * time.Second
-
 	// leaderPrefixCleanDelay is how long to wait between deletions
 	// of orphaned leader keys, to prevent slamming the backend.
 	leaderPrefixCleanDelay = 200 * time.Millisecond
@@ -508,18 +504,6 @@ func (c *Core) runHALoopOnce(manualStepDownCh chan struct{}, stopCh, restartCh <
 			}
 			return nil
 		}, func(error) {})
-	}
-	{
-		// Monitor for key rotations
-		keyRotateStop := make(chan struct{})
-
-		g.Add(func() error {
-			c.periodicCheckKeyUpgrades(context.Background(), keyRotateStop)
-			return nil
-		}, func(error) {
-			close(keyRotateStop)
-			c.logger.Debug("shutting down periodic key rotation checker")
-		})
 	}
 	{
 		// Monitor for new leadership
@@ -1049,78 +1033,23 @@ func (c *Core) periodicLeaderRefresh(stopCh chan struct{}) {
 	}
 }
 
-// periodicCheckKeyUpgrade is used to watch for key rotation events as a standby
-func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{}) {
-	raftBackend := c.GetRaftBackend()
-	isRaft := raftBackend != nil
-
-	opCount := atomic.Int32{}
-	for {
-		timer := time.NewTimer(keyRotateCheckInterval)
-		select {
-		case <-timer.C:
-			count := opCount.Add(1)
-			if count > 1 {
-				opCount.Add(-1)
-				continue
-			}
-
-			go func() {
-				// Only check if we are a standby
-				if !c.standby.Load() {
-					opCount.Add(-1)
-					return
-				}
-
-				if err := c.checkKeyUpgrades(ctx); err != nil {
-					c.logger.Error("key rotation periodic upgrade check failed", "error", err)
-				}
-
-				if isRaft {
-					hasState, err := raftBackend.HasState()
-					if err != nil {
-						c.logger.Error("could not check raft state", "error", err)
-					}
-
-					if raftBackend.Initialized() && hasState {
-						if err := c.checkRaftTLSKeyUpgrades(ctx); err != nil {
-							c.logger.Error("raft tls periodic upgrade check failed", "error", err)
-						}
-					}
-				}
-
-				opCount.Add(-1)
-			}()
-		case <-stopCh:
-			timer.Stop()
-			return
-		}
+// checkKeyringUpgrade is used to rotate the keyring to the new term
+// if there have been any key rotations performed on a leader node.
+func (c *Core) checkKeyringUpgrade(ctx context.Context, nsPath string) error {
+	b := c.sealManager.NamespaceBarrier(nsPath)
+	if b == nil {
+		return fmt.Errorf("couldn't retrieve barrier for a namespace: %q", nsPath)
 	}
-}
 
-// checkKeyUpgrades is used to check if there have been any key rotations
-// and if there is a chain of upgrades available
-func (c *Core) checkKeyUpgrades(ctx context.Context) error {
-	for {
-		// Check for an upgrade
-		didUpgrade, newTerm, err := c.barrier.CheckUpgrade(ctx)
-		if err != nil {
-			return err
-		}
+	didUpgrade, newTerm, err := b.CheckUpgrade(ctx)
+	if err != nil {
+		return err
+	}
 
-		// Nothing to do if no upgrade
-		if !didUpgrade {
-			break
-		}
+	if didUpgrade {
 		c.logger.Info("upgraded to new key term", "term", newTerm)
 	}
-	return nil
-}
 
-func (c *Core) reloadRootKey(ctx context.Context) error {
-	if err := c.barrier.ReloadRootKey(ctx); err != nil {
-		return fmt.Errorf("error reloading root key: %w", err)
-	}
 	return nil
 }
 
@@ -1150,11 +1079,11 @@ func (c *Core) reloadShamirKey(ctx context.Context) error {
 }
 
 func (c *Core) performKeyUpgrades(ctx context.Context) error {
-	if err := c.checkKeyUpgrades(ctx); err != nil {
+	if err := c.checkKeyringUpgrade(ctx, namespace.RootNamespace.Path); err != nil {
 		return fmt.Errorf("error checking for key upgrades: %w", err)
 	}
 
-	if err := c.reloadRootKey(ctx); err != nil {
+	if err := c.barrier.ReloadRootKey(ctx); err != nil {
 		return fmt.Errorf("error reloading root key: %w", err)
 	}
 
@@ -1174,7 +1103,8 @@ func (c *Core) performKeyUpgrades(ctx context.Context) error {
 }
 
 // scheduleUpgradeCleanup is used to ensure that all the upgrade paths
-// are cleaned up in a timely manner if a leader failover takes place
+// are cleaned up in a timely manner if a leader failover takes place.
+// Unfortunately we have to this for all sealable namespaces also.
 func (c *Core) scheduleUpgradeCleanup(ctx context.Context) error {
 	// List the upgrades
 	upgrades, err := c.barrier.List(ctx, barrier.KeyringUpgradePrefix)

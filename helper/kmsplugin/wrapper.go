@@ -16,13 +16,11 @@ import (
 	"github.com/openbao/go-kms-wrapping/wrappers/transit/v2"
 )
 
-var builtinWrappers = map[wrapping.WrapperType]wrapperFactory{
+var builtinWrappers = map[wrapping.WrapperType]func() wrapping.Wrapper{
 	kmip.Type:    toWrapper(kmip.NewWrapper),
 	static.Type:  toWrapper(static.NewWrapper),
 	transit.Type: toWrapper(transit.NewWrapper),
 }
-
-type wrapperFactory func() (wrapping.Wrapper, error)
 
 // wrapperInitFinalizer is a joint wrapping.Wrapper & wrapping.InitFinalizer, as
 // is always returned by go-kms-wrapping/plugin.
@@ -32,10 +30,10 @@ type wrapperInitFinalizer interface {
 }
 
 // toWrapper is a hack to go from func() <concrete wrapper type> to func()
-// (wrapping.Wrapper, error), as constructors in go-kms-wrapping tend to return
-// the concrete type.
-func toWrapper[T wrapping.Wrapper](f func() T) wrapperFactory {
-	return func() (wrapping.Wrapper, error) { return f(), nil }
+// wrapping.Wrapper, as constructors in go-kms-wrapping tend to return the
+// concrete type.
+func toWrapper[T wrapping.Wrapper](f func() T) func() wrapping.Wrapper {
+	return func() wrapping.Wrapper { return f() }
 }
 
 // ConfigureWrapper creates a new wrapper instance and calls SetConfig with
@@ -51,7 +49,7 @@ func (c *Catalog) ConfigureWrapper(ctx context.Context, name string, opts ...wra
 	if err != nil {
 		// If we fail to configure the wrapper, ensure any underlying client is
 		// closed to avoid leaking it.
-		if w, ok := w.(*wrapper); ok {
+		if w, ok := w.(*remoteWrapper); ok {
 			w.client.close()
 		}
 		return nil, nil, err
@@ -81,8 +79,7 @@ func (c *Catalog) getWrapper(name string) (wrapping.Wrapper, bool, error) {
 	case !ok:
 		// Try builtin wrappers.
 		if builtin, ok := builtinWrappers[wrapping.WrapperType(name)]; ok {
-			w, err := builtin()
-			return w, true, err
+			return builtin(), true, nil
 		}
 		return nil, false, fmt.Errorf("unknown wrapper: %s", name)
 	}
@@ -94,15 +91,15 @@ func (c *Catalog) getWrapper(name string) (wrapping.Wrapper, bool, error) {
 		return nil, false, err
 	}
 
-	return &wrapper{
+	return &remoteWrapper{
 		client:  client,
 		wrapper: raw.(wrapperInitFinalizer),
 	}, false, nil
 }
 
-// wrapper adds plugin reloading & finalization hooks on top of a pluginized
-// wrapping.Wrapper.
-type wrapper struct {
+// remoteWrapper adds plugin reloading & finalization hooks on top of a
+// pluginized wrapping.Wrapper.
+type remoteWrapper struct {
 	mu sync.RWMutex
 
 	client  *client
@@ -112,7 +109,7 @@ type wrapper struct {
 }
 
 // retry calls f and retries it once if interrupted by a plugin shutdown.
-func (w *wrapper) retry(ctx context.Context, f func() error) error {
+func (w *remoteWrapper) retry(ctx context.Context, f func() error) error {
 	canary, err := w.call(f)
 
 	if err != gkwplugin.ErrPluginShutdown {
@@ -133,7 +130,7 @@ func (w *wrapper) retry(ctx context.Context, f func() error) error {
 
 // call is a helper to call f under a read lock and return the current client
 // pointer as a reload canary value.
-func (w *wrapper) call(f func() error) (*client, error) {
+func (w *remoteWrapper) call(f func() error) (*client, error) {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
@@ -146,7 +143,7 @@ func (w *wrapper) call(f func() error) (*client, error) {
 
 // reload attempts to reload the underlying external plugin and reinstantiate
 // the remote wrapper instance.
-func (w *wrapper) reload(ctx context.Context, canary *client) error {
+func (w *remoteWrapper) reload(ctx context.Context, canary *client) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -191,7 +188,7 @@ func (w *wrapper) reload(ctx context.Context, canary *client) error {
 	return nil
 }
 
-func (w *wrapper) SetConfig(ctx context.Context, opts ...wrapping.Option) (config *wrapping.WrapperConfig, err error) {
+func (w *remoteWrapper) SetConfig(ctx context.Context, opts ...wrapping.Option) (config *wrapping.WrapperConfig, err error) {
 	if err = w.retry(ctx, func() error {
 		config, err = w.wrapper.SetConfig(ctx, opts...)
 		return err
@@ -207,7 +204,7 @@ func (w *wrapper) SetConfig(ctx context.Context, opts ...wrapping.Option) (confi
 	return config, nil
 }
 
-func (w *wrapper) Init(ctx context.Context, opts ...wrapping.Option) error {
+func (w *remoteWrapper) Init(ctx context.Context, opts ...wrapping.Option) error {
 	if err := w.retry(ctx, func() error {
 		return w.wrapper.Init(ctx, opts...)
 	}); err != nil {
@@ -222,7 +219,7 @@ func (w *wrapper) Init(ctx context.Context, opts ...wrapping.Option) error {
 	return nil
 }
 
-func (w *wrapper) Finalize(ctx context.Context, opts ...wrapping.Option) error {
+func (w *remoteWrapper) Finalize(ctx context.Context, opts ...wrapping.Option) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -243,7 +240,7 @@ func (w *wrapper) Finalize(ctx context.Context, opts ...wrapping.Option) error {
 	}
 }
 
-func (w *wrapper) Type(ctx context.Context) (ty wrapping.WrapperType, err error) {
+func (w *remoteWrapper) Type(ctx context.Context) (ty wrapping.WrapperType, err error) {
 	err = w.retry(ctx, func() (err error) {
 		ty, err = w.wrapper.Type(ctx)
 		return err
@@ -251,7 +248,7 @@ func (w *wrapper) Type(ctx context.Context) (ty wrapping.WrapperType, err error)
 	return ty, err
 }
 
-func (w *wrapper) KeyId(ctx context.Context) (id string, err error) {
+func (w *remoteWrapper) KeyId(ctx context.Context) (id string, err error) {
 	err = w.retry(ctx, func() (err error) {
 		id, err = w.wrapper.KeyId(ctx)
 		return err
@@ -259,7 +256,7 @@ func (w *wrapper) KeyId(ctx context.Context) (id string, err error) {
 	return id, err
 }
 
-func (w *wrapper) Encrypt(ctx context.Context, plaintext []byte, opts ...wrapping.Option) (blob *wrapping.BlobInfo, err error) {
+func (w *remoteWrapper) Encrypt(ctx context.Context, plaintext []byte, opts ...wrapping.Option) (blob *wrapping.BlobInfo, err error) {
 	err = w.retry(ctx, func() (err error) {
 		blob, err = w.wrapper.Encrypt(ctx, plaintext, opts...)
 		return err
@@ -267,7 +264,7 @@ func (w *wrapper) Encrypt(ctx context.Context, plaintext []byte, opts ...wrappin
 	return blob, err
 }
 
-func (w *wrapper) Decrypt(ctx context.Context, blob *wrapping.BlobInfo, opts ...wrapping.Option) (plaintext []byte, err error) {
+func (w *remoteWrapper) Decrypt(ctx context.Context, blob *wrapping.BlobInfo, opts ...wrapping.Option) (plaintext []byte, err error) {
 	err = w.retry(ctx, func() (err error) {
 		plaintext, err = w.wrapper.Decrypt(ctx, blob, opts...)
 		return err

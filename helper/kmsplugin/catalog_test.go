@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/openbao/go-kms-wrapping/kms/transit/v2"
 	gkwplugin "github.com/openbao/go-kms-wrapping/plugin/v2"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/static/v2"
@@ -20,39 +21,56 @@ import (
 
 const TestPluginServerEnv = "BAO_TEST_PLUGIN_SERVER"
 
-// TestPluginServer is not an actual test but a hack to reuse the test binary
-// as a plugin binary that is called into by the same test binary from the main
-// test runner process.
-func TestPluginServer(t *testing.T) {
+// TestStaticPluginServer runs a plugin that serves the static wrapper.
+func TestStaticPluginServer(t *testing.T) {
 	if _, ok := os.LookupEnv(TestPluginServerEnv); !ok {
 		t.Skip()
 	}
 
 	gkwplugin.Serve(&gkwplugin.ServeOpts{
 		WrapperFactoryFunc: func() wrapping.Wrapper {
-			// We use the static wrapper as the wrapper to test with as it does
-			// not require making any external infrastructure available.
 			return static.NewWrapper()
 		},
 	})
 }
 
-// testBinaryHash returns the SHA-256 hash of the executing test binary.
-func testBinaryHash(t *testing.T) string {
-	hash, err := osutil.FileSha256Sum(os.Args[0])
-	require.NoError(t, err)
-	return hash
+// TestTransitPluginServer runs a plugin that serves the Transit KMS.
+func TestTransitPluginServer(t *testing.T) {
+	if _, ok := os.LookupEnv(TestPluginServerEnv); !ok {
+		t.Skip()
+	}
+
+	gkwplugin.Serve(&gkwplugin.ServeOpts{
+		KMSFactoryFunc: transit.New,
+	})
 }
 
-// testPluginConfig returns a plugin config for [TestPluginServer].
-func testPluginConfig(t *testing.T) *server.PluginConfig {
-	return &server.PluginConfig{
-		Type:      consts.PluginTypeKMS.String(),
-		Name:      "static",
-		Command:   filepath.Base(os.Args[0]),
-		Env:       []string{TestPluginServerEnv + "=1"},
-		Args:      []string{"-test.run=TestPluginServer"},
-		SHA256Sum: testBinaryHash(t),
+var StaticPluginConfig = &server.PluginConfig{
+	Name: "static",
+	Args: []string{"-test.run=TestStaticPluginServer"},
+}
+
+var TransitPluginConfig = &server.PluginConfig{
+	Name: "transit",
+	Args: []string{"-test.run=TestTransitPluginServer"},
+}
+
+func init() {
+	command := filepath.Base(os.Args[0])
+
+	sha256sum, err := osutil.FileSha256Sum(os.Args[0])
+	if err != nil {
+		panic(err)
+	}
+
+	for _, config := range []*server.PluginConfig{
+		StaticPluginConfig,
+		TransitPluginConfig,
+	} {
+		config.Type = consts.PluginTypeKMS.String()
+		config.Command = command
+		config.SHA256Sum = sha256sum
+		config.Env = []string{TestPluginServerEnv + "=1"}
 	}
 }
 
@@ -62,7 +80,7 @@ func TestGetClient(t *testing.T) {
 	catalog, err := NewCatalog(logger, &server.Config{
 		PluginDirectory: filepath.Dir(os.Args[0]),
 		Plugins: []*server.PluginConfig{
-			testPluginConfig(t),
+			StaticPluginConfig,
 			// This one should be ignored as it is a secrets engine plugin.
 			{Type: consts.PluginTypeSecrets.String(), Name: "foo"},
 		},
@@ -101,7 +119,7 @@ func TestReloadClient(t *testing.T) {
 	logger := hclog.Default()
 	catalog, err := NewCatalog(logger, &server.Config{
 		PluginDirectory: filepath.Dir(os.Args[0]),
-		Plugins:         []*server.PluginConfig{testPluginConfig(t)},
+		Plugins:         []*server.PluginConfig{StaticPluginConfig},
 	})
 	require.NoError(t, err, "catalog should create successfully")
 
@@ -137,27 +155,32 @@ func TestBadClientConfig(t *testing.T) {
 	logger := hclog.Default()
 	tests := map[string]*server.Config{
 		"NoPluginDirectory": {
-			Plugins: []*server.PluginConfig{testPluginConfig(t)},
+			Plugins: []*server.PluginConfig{StaticPluginConfig},
 		},
 		"BadPluginDirectory": {
 			PluginDirectory: t.TempDir(),
-			Plugins:         []*server.PluginConfig{testPluginConfig(t)},
+			Plugins:         []*server.PluginConfig{StaticPluginConfig},
 		},
 		"NoChecksum": {
 			PluginDirectory: filepath.Dir(os.Args[0]),
-			Plugins: []*server.PluginConfig{func() *server.PluginConfig {
-				config := testPluginConfig(t)
-				config.SHA256Sum = ""
-				return config
-			}()},
+			Plugins: []*server.PluginConfig{{
+				Type:    StaticPluginConfig.Type,
+				Name:    StaticPluginConfig.Name,
+				Command: StaticPluginConfig.Command,
+				Args:    StaticPluginConfig.Args,
+				Env:     StaticPluginConfig.Env,
+			}},
 		},
 		"BadChecksum": {
 			PluginDirectory: filepath.Dir(os.Args[0]),
-			Plugins: []*server.PluginConfig{func() *server.PluginConfig {
-				config := testPluginConfig(t)
-				config.SHA256Sum = config.SHA256Sum[1:] + "0"
-				return config
-			}()},
+			Plugins: []*server.PluginConfig{{
+				Type:      StaticPluginConfig.Type,
+				Name:      StaticPluginConfig.Name,
+				Command:   StaticPluginConfig.Command,
+				Args:      StaticPluginConfig.Args,
+				Env:       StaticPluginConfig.Env,
+				SHA256Sum: StaticPluginConfig.SHA256Sum[:1] + "0",
+			}},
 		},
 	}
 

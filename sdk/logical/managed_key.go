@@ -32,7 +32,7 @@ type ManagedKey interface {
 	UUID() string
 	// Present returns true if the key is established in the KMS.  This may return false if for example
 	// an HSM library is not configured on all cluster nodes.
-	Present(ctx context.Context) (bool, error)
+	Present(ctx context.Context) (present bool, err error)
 
 	// AllowsAll returns true if all the requested usages are supported by the managed key.
 	AllowsAll(usages []KeyUsage) bool
@@ -76,13 +76,13 @@ type ManagedKeySystemView interface {
 
 type ManagedAsymmetricKey interface {
 	ManagedKey
-	GetPublicKey(ctx context.Context) (crypto.PublicKey, error)
+	GetPublicKey(ctx context.Context) (pub crypto.PublicKey, err error)
 }
 
 type ManagedKeyLifecycle interface {
 	// GenerateKey generates a key in the KMS if it didn't yet exist, returning the id.
 	// If it already existed, returns the existing id.  KMSKey's key material is ignored if present.
-	GenerateKey(ctx context.Context) (string, error)
+	GenerateKey(ctx context.Context) (uuid string, err error)
 }
 
 type ManagedSigningKey interface {
@@ -92,34 +92,34 @@ type ManagedSigningKey interface {
 	// that generated the value (if any).
 	// The optional randomSource specifies the source of random values and may be ignored by the implementation
 	// (such as on HSMs with their own internal RNG)
-	Sign(ctx context.Context, value []byte, randomSource io.Reader, opts crypto.SignerOpts) ([]byte, error)
+	Sign(ctx context.Context, value []byte, randomSource io.Reader, opts crypto.SignerOpts) (sig []byte, err error)
 
 	// Verify verifies the provided signature against the value.  The SignerOpts param must provide the hash function
 	// that generated the value (if any).
 	// If true is returned the signature is correct, false otherwise.
-	Verify(ctx context.Context, signature, value []byte, opts crypto.SignerOpts) (bool, error)
+	Verify(ctx context.Context, signature, value []byte, opts crypto.SignerOpts) (ok bool, err error)
 
 	// GetSigner returns an implementation of crypto.Signer backed by the managed key.  This should be called
 	// as needed so as to use per request contexts.
-	GetSigner(context.Context) (crypto.Signer, error)
+	GetSigner(context.Context) (signer crypto.Signer, err error)
 }
 
 type ManagedEncryptingKey interface {
 	ManagedKey
-	Encrypt(ctx context.Context, plaintext []byte, options ...wrapping.Option) ([]byte, error)
-	Decrypt(ctx context.Context, ciphertext []byte, options ...wrapping.Option) ([]byte, error)
+	Encrypt(ctx context.Context, plaintext []byte, options ...wrapping.Option) (ciphertext []byte, err error)
+	Decrypt(ctx context.Context, ciphertext []byte, options ...wrapping.Option) (plaintext []byte, err error)
 }
 
 type ManagedMACKey interface {
 	ManagedKey
 
 	// MAC generates a MAC tag using the provided algorithm for the provided value.
-	MAC(ctx context.Context, algorithm string, data []byte) ([]byte, error)
+	MAC(ctx context.Context, algorithm string, data []byte) (digest []byte, err error)
 }
 
 type ManagedKeyRandomSource interface {
 	ManagedKey
 
 	// GetRandomBytes returns a number (specified by the count parameter) of random bytes sourced from the target managed key.
-	GetRandomBytes(count int) ([]byte, error)
+	GetRandomBytes(count int) (entropy []byte, err error)
 }

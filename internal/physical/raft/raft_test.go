@@ -551,7 +551,7 @@ func TestRaft_Recovery(t *testing.T) {
 
 func TestRaft_Backend_Performance(t *testing.T) {
 	t.Parallel()
-	b := GetRaft(t, true, false)
+	b := GetRaft(t, false, false)
 	dir := b.dataDir
 
 	defaultConfig := raft.DefaultConfig()

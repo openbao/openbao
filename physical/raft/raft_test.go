@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -550,7 +551,7 @@ func TestRaft_Recovery(t *testing.T) {
 
 func TestRaft_Backend_Performance(t *testing.T) {
 	t.Parallel()
-	b := GetRaft(t, true, false)
+	b := GetRaft(t, false, false)
 	dir := b.dataDir
 
 	defaultConfig := raft.DefaultConfig()
@@ -647,6 +648,97 @@ func TestRaft_LeaderConstant(t *testing.T) {
 	// Delete(...) operations on the standby result in forwarding
 	// to the active.
 	require.True(t, logical.ShouldForward(raft.ErrNotLeader))
+}
+
+func TestRaft_LogTruncation(t *testing.T) {
+	const (
+		snapshotThreshold = 5
+		trailingLogs      = 5
+	)
+
+	conf := map[string]string{
+		"path":                   t.TempDir(),
+		"node_id":                "abc123",
+		"trailing_logs":          strconv.Itoa(trailingLogs),
+		"snapshot_threshold":     strconv.Itoa(snapshotThreshold),
+		"snapshot_interval":      "1s",
+		"performance_multiplier": "1",
+	}
+
+	backend, err := NewRaftBackend(conf, hclog.NewNullLogger())
+	require.NoError(t, err)
+	rb := backend.(*RaftBackend)
+	require.NoError(t, rb.Bootstrap([]Peer{{ID: rb.NodeID(), Address: rb.NodeID()}}))
+
+	// startCluster restarts the cluster and waits for it to be up.
+	startCluster := func() {
+		require.NoError(t, rb.TeardownCluster(nil))
+		require.NoError(t, rb.SetupCluster(t.Context(), SetupOpts{}))
+		require.Eventually(t, func() bool {
+			return rb.raft.State() == raft.Leader && rb.raft.AppliedIndex() >= rb.raft.LastIndex()
+		}, 3*time.Second, 100*time.Millisecond, "expected leader with all entries applied")
+	}
+
+	// writeEntries writes n entries and waits for them to be applied.
+	writeEntries := func(n int) {
+		for i := range n {
+			require.NoError(t, rb.Put(t.Context(), &physical.Entry{
+				Key:   fmt.Sprintf("key-%d", i),
+				Value: []byte("value"),
+			}))
+		}
+		require.Eventually(t, func() bool {
+			state, _ := rb.fsm.LatestState()
+			return state.Index >= rb.raft.LastIndex()
+		}, 5*time.Second, 100*time.Millisecond, "expected all entries to be applied")
+	}
+
+	// assertFirstIndex until the log's first index equals expected, or fails on timeout
+	assertFirstIndex := func(expected uint64) {
+		t.Helper()
+		var actual uint64
+		require.Eventually(t, func() bool {
+			var err error
+			actual, err = rb.logStore.FirstIndex()
+			return err == nil && actual == expected
+		}, 10*time.Second, 100*time.Millisecond, "expected firstIndex=%d, got %d", expected, actual)
+	}
+
+	// logEntryCount returns the number of log entries currently in the log.
+	logEntryCount := func() uint64 {
+		first, err := rb.logStore.FirstIndex()
+		require.NoError(t, err)
+		last, err := rb.logStore.LastIndex()
+		require.NoError(t, err)
+		return last - first + 1
+	}
+
+	startCluster()
+
+	// 1. Start with empty log. First index in raft.db should be 1.
+	assertFirstIndex(1)
+
+	// 2. Write entries but stay below the truncation trigger (snapshotThreshold + trailingLogs = 10).
+	writeEntries(5)
+	require.Less(t, logEntryCount(), uint64(snapshotThreshold+trailingLogs),
+		"entries below snapshot threshold, no snapshot expected")
+	assertFirstIndex(1)
+
+	// 3. Restart the cluster.
+	startCluster()
+
+	// 4. Write enough entries so the log exceeds the truncation trigger.
+	writeEntries(3)
+	require.Greater(t, logEntryCount(), uint64(snapshotThreshold+trailingLogs),
+		"entries exceed snapshot threshold, snapshot should fire")
+
+	// 5. Snapshot should delete log entries from raft.db, leaving only trailing logs.
+	last, err := rb.logStore.LastIndex()
+	require.NoError(t, err)
+	expectedFirst := last - trailingLogs + 1
+	assertFirstIndex(expectedFirst)
+
+	require.NoError(t, rb.TeardownCluster(nil))
 }
 
 func BenchmarkDB_Puts(b *testing.B) {

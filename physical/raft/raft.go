@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -127,6 +128,21 @@ type RaftBackend struct {
 	// stableStore is used by the raft library to store additional metadata in
 	// durable storage.
 	stableStore raft.StableStore
+
+	// snapshotThreshold defines the minimum number of log entries between log truncation operations.
+	snapshotThreshold uint64
+
+	// trailingLogs defines how many log entries are left in the log store after log truncation.
+	trailingLogs uint64
+
+	// snapshotInterval defines how often to check if log truncation is needed.
+	snapshotInterval time.Duration
+
+	// logTruncationStopCh is closed to stop the log truncation worker.
+	logTruncationStopCh chan struct{}
+
+	// logTruncationDoneCh is closed when the log truncation worker has exited.
+	logTruncationDoneCh chan struct{}
 
 	// bootstrapConfig is only set when this node needs to be bootstrapped upon
 	// startup.
@@ -811,33 +827,48 @@ func (b *RaftBackend) applyConfigSettings(config *raft.Config) error {
 	config.HeartbeatTimeout *= time.Duration(multiplier)
 	config.LeaderLeaseTimeout *= time.Duration(multiplier)
 
+	b.snapshotThreshold = config.SnapshotThreshold
+	b.trailingLogs = config.TrailingLogs
+	b.snapshotInterval = config.SnapshotInterval
+
+	// Disable hashicorp/raft's snapshot-driven log truncation.
+	// It counts entries since the last snapshot to decide when to truncate, but
+	// BoltSnapshotStore.List() must report a snapshot at the last applied index,
+	// otherwise Raft replays the log at startup. This resets the counter and
+	// prevents truncation from triggering if fewer than snapshot_threshold
+	// entries are written before next restart.
+	config.SnapshotThreshold = math.MaxUint64
+	config.SnapshotInterval = math.MaxInt64 / 2
+	config.TrailingLogs = math.MaxUint64
+
 	snapThresholdRaw, ok := b.conf["snapshot_threshold"]
 	if ok {
-		var err error
 		snapThreshold, err := strconv.Atoi(snapThresholdRaw)
 		if err != nil {
 			return err
 		}
-		config.SnapshotThreshold = uint64(snapThreshold)
+		b.snapshotThreshold = uint64(snapThreshold)
 	}
 
 	trailingLogsRaw, ok := b.conf["trailing_logs"]
 	if ok {
-		var err error
 		trailingLogs, err := strconv.Atoi(trailingLogsRaw)
 		if err != nil {
 			return err
 		}
-		config.TrailingLogs = uint64(trailingLogs)
+		b.trailingLogs = uint64(trailingLogs)
 	}
+
 	snapshotIntervalRaw, ok := b.conf["snapshot_interval"]
 	if ok {
-		var err error
 		snapshotInterval, err := parseutil.ParseDurationSecond(snapshotIntervalRaw)
 		if err != nil {
 			return err
 		}
-		config.SnapshotInterval = snapshotInterval
+		if snapshotInterval < 5*time.Millisecond {
+			return fmt.Errorf("snapshot_interval is too low")
+		}
+		b.snapshotInterval = snapshotInterval
 	}
 
 	config.NoSnapshotRestoreOnStart = true
@@ -1134,6 +1165,11 @@ func (b *RaftBackend) SetupCluster(ctx context.Context, opts SetupOpts) error {
 		}
 	}
 
+	// Start background log truncation worker.
+	b.logTruncationStopCh = make(chan struct{})
+	b.logTruncationDoneCh = make(chan struct{})
+	go b.startLogTruncationWorker()
+
 	b.logger.Trace("finished setting up raft cluster")
 	return nil
 }
@@ -1159,6 +1195,13 @@ func (b *RaftBackend) TeardownCluster(clusterListener cluster.ClusterHook) error
 	// If we're tearing down, then we need to recreate the raftInitCh
 	b.raftInitCh = make(chan struct{})
 	b.l.Unlock()
+
+	// Stop the truncation worker and wait for any unfinished delete operations to finish.
+	if b.logTruncationStopCh != nil {
+		close(b.logTruncationStopCh)
+		<-b.logTruncationDoneCh
+		b.logTruncationStopCh = nil
+	}
 
 	if future != nil {
 		return future.Error()
@@ -1816,6 +1859,52 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 	}
 
 	return nil
+}
+
+// startLogTruncationWorker runs the background log truncation loop.
+func (b *RaftBackend) startLogTruncationWorker() {
+	defer close(b.logTruncationDoneCh)
+
+	// Truncate logs at startup to remove entries that exceeded the threshold before previous shutdown.
+	b.truncateLog()
+
+	for {
+		extra := time.Duration(rand.Int63()) % b.snapshotInterval
+		timer := time.NewTimer(b.snapshotInterval + extra)
+		select {
+		case <-b.logTruncationStopCh:
+			timer.Stop()
+			return
+		case <-timer.C:
+			b.truncateLog()
+		}
+	}
+}
+
+// truncateLog deletes old log entries if the log has grown beyond snapshotThreshold + trailingLogs.
+// After truncation, only trailingLogs entries are kept.
+func (b *RaftBackend) truncateLog() {
+	minLog, err := b.logStore.FirstIndex()
+	if err != nil || minLog == 0 {
+		return
+	}
+
+	applied, _ := b.fsm.LatestState()
+	if applied.Index < minLog {
+		return
+	}
+
+	entryCount := applied.Index - minLog + 1
+	if entryCount <= b.snapshotThreshold+b.trailingLogs {
+		return
+	}
+
+	maxLog := applied.Index - b.trailingLogs
+	err = b.logStore.DeleteRange(minLog, maxLog)
+	if err != nil {
+		b.logger.Error("raft log truncation failed", "from", minLog, "to", maxLog, "error", err)
+		return
+	}
 }
 
 // HAEnabled is the implementation of the HABackend interface

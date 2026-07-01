@@ -3620,6 +3620,14 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Type:        framework.TypeBool,
 					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
 				},
+				"allow_wildcards_in_substitutions": {
+					Type:    framework.TypeBool,
+					Default: false,
+				},
+				"allow_slashes_in_substitutions": {
+					Type:    framework.TypeBool,
+					Default: false,
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -3654,6 +3662,14 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 									Required: true,
 								},
 								"cas_required": {
+									Type:     framework.TypeBool,
+									Required: true,
+								},
+								"allow_wildcards_in_substitutions": {
+									Type:     framework.TypeBool,
+									Required: true,
+								},
+								"allow_slashes_in_substitutions": {
 									Type:     framework.TypeBool,
 									Required: true,
 								},
@@ -3770,6 +3786,14 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Type:        framework.TypeBool,
 					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
 				},
+				"allow_wildcards_in_substitutions": {
+					Type:    framework.TypeBool,
+					Default: false,
+				},
+				"allow_slashes_in_substitutions": {
+					Type:    framework.TypeBool,
+					Default: false,
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -3804,6 +3828,14 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 									Required: true,
 								},
 								"cas_required": {
+									Type:     framework.TypeBool,
+									Required: true,
+								},
+								"allow_wildcards_in_substitutions": {
+									Type:     framework.TypeBool,
+									Required: true,
+								},
+								"allow_slashes_in_substitutions": {
 									Type:     framework.TypeBool,
 									Required: true,
 								},

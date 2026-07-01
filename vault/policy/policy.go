@@ -94,30 +94,34 @@ var cap2Int = map[string]uint32{
 
 // Policy is used to represent the policy specified by an ACL configuration.
 type Policy struct {
-	Name        string `hcl:"name"`
-	DataVersion int
-	CASRequired bool
-	Paths       []*PathRules `hcl:"-"`
-	Raw         string
-	Type        Type
-	Templated   bool
-	Expiration  time.Time
-	Modified    time.Time
-	Namespace   *namespace.Namespace
+	Name                          string `hcl:"name"`
+	DataVersion                   int
+	CASRequired                   bool
+	Paths                         []*PathRules `hcl:"-"`
+	Raw                           string
+	Type                          Type
+	Templated                     bool
+	Expiration                    time.Time
+	Modified                      time.Time
+	Namespace                     *namespace.Namespace
+	AllowWildcardsInSubstitutions bool
+	AllowSlashesInSubstitutions   bool
 }
 
 // ShallowClone returns a shallow clone of the policy. This should not be used
 // if any of the reference-typed fields are going to be modified
 func (p *Policy) ShallowClone() *Policy {
 	return &Policy{
-		Name:        p.Name,
-		DataVersion: p.DataVersion,
-		CASRequired: p.CASRequired,
-		Paths:       p.Paths,
-		Raw:         p.Raw,
-		Type:        p.Type,
-		Templated:   p.Templated,
-		Namespace:   p.Namespace,
+		Name:                          p.Name,
+		DataVersion:                   p.DataVersion,
+		CASRequired:                   p.CASRequired,
+		Paths:                         p.Paths,
+		Raw:                           p.Raw,
+		Type:                          p.Type,
+		Templated:                     p.Templated,
+		Namespace:                     p.Namespace,
+		AllowWildcardsInSubstitutions: p.AllowWildcardsInSubstitutions,
+		AllowSlashesInSubstitutions:   p.AllowSlashesInSubstitutions,
 	}
 }
 
@@ -291,14 +295,14 @@ func addGrantingPoliciesToMap(m map[uint32][]logical.PolicyInfo, policy *Policy,
 // intermediary set of policies, before being compiled into
 // the ACL
 func ParseACLPolicy(ns *namespace.Namespace, rules string) (*Policy, error) {
-	return ParseACLPolicyWithTemplating(ns, rules, false, nil, nil)
+	return ParseACLPolicyWithTemplating(ns, rules, false, nil, nil, nil)
 }
 
 // ParseACLPolicyWithTemplating performs the actual work and checks whether we
 // should perform substitutions. If performTemplating is true we know that it
 // is templated so we don't check again, otherwise we check to see if it's a
 // templated policy.
-func ParseACLPolicyWithTemplating(ns *namespace.Namespace, rules string, performTemplating bool, entity *identity.Entity, groups []*identity.Group) (*Policy, error) {
+func ParseACLPolicyWithTemplating(ns *namespace.Namespace, rules string, performTemplating bool, blockedSubstitutions []string, entity *identity.Entity, groups []*identity.Group) (*Policy, error) {
 	// Parse the rules
 	root, err := hclutil.ParseConfig([]byte(rules))
 	if err != nil {
@@ -331,7 +335,7 @@ func ParseACLPolicyWithTemplating(ns *namespace.Namespace, rules string, perform
 	}
 
 	if o := list.Filter("path"); len(o.Items) > 0 {
-		if err := parsePaths(&p, o, performTemplating, entity, groups); err != nil {
+		if err := parsePaths(&p, o, performTemplating, blockedSubstitutions, entity, groups); err != nil {
 			return nil, fmt.Errorf("failed to parse policy: %w", err)
 		}
 	}
@@ -339,7 +343,7 @@ func ParseACLPolicyWithTemplating(ns *namespace.Namespace, rules string, perform
 	return &p, nil
 }
 
-func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, entity *identity.Entity, groups []*identity.Group) error {
+func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, blockedSubstitutions []string, entity *identity.Entity, groups []*identity.Group) error {
 	paths := make([]*PathRules, 0, len(list.Items))
 	for _, item := range list.Items {
 		key := "path"
@@ -350,11 +354,12 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 		// Check the path
 		if performTemplating {
 			_, templated, err := identitytpl.PopulateString(identitytpl.PopulateStringInput{
-				Mode:        identitytpl.ACLTemplating,
-				String:      key,
-				Entity:      identity.ToSDKEntity(entity),
-				Groups:      identity.ToSDKGroups(groups),
-				NamespaceID: result.Namespace.ID,
+				Mode:                 identitytpl.ACLTemplating,
+				String:               key,
+				Entity:               identity.ToSDKEntity(entity),
+				Groups:               identity.ToSDKGroups(groups),
+				NamespaceID:          result.Namespace.ID,
+				BlockedSubstitutions: blockedSubstitutions,
 			})
 			if err != nil {
 				continue

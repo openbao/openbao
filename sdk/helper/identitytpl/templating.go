@@ -118,9 +118,6 @@ func PopulateString(p PopulateStringInput) (bool, string, error) {
 	switch p.Mode {
 	case ACLTemplating:
 		p.templateHandler = aclTemplateHandler
-		if p.BlockedSubstitutions == nil {
-			p.BlockedSubstitutions = []string{"*", "+"}
-		}
 	case JSONTemplating:
 		p.templateHandler = jsonTemplateHandler
 	default:

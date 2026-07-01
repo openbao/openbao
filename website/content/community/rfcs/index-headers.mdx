@@ -43,7 +43,7 @@ specified index has been met by the server.
 This will have one of the following behaviors:
 
 1. If the `X-Vault-Inconsistent` header is missing or takes the value
-   `retry-stale`, the request will be rejected with a 412 HTTP status code
+   `fail`, the request will be rejected with a 412 HTTP status code
    and the client should retry the request later.
 2. If the `X-Vault-Inconsistent` header is set to `forward-active-node`, the
    request will be forwarded to the active node.

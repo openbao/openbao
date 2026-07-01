@@ -31,10 +31,10 @@ The answer lies in its historical great-common-denominator storage interface:
 ```go
 // Storage is the way that logical backends are able read/write data.
 type Storage interface {
-    List(context.Context, string) ([]string, error)
-    Get(context.Context, string) (*StorageEntry, error)
-    Put(context.Context, *StorageEntry) error
-    Delete(context.Context, string) error
+    List(context.Context, prefix string) (entries []string, err error)
+    Get(context.Context, path string) (entry *StorageEntry, err error)
+    Put(context.Context, entry *StorageEntry) error
+    Delete(context.Context, path string) error
 }
 ```
 
@@ -62,11 +62,11 @@ OpenBao's storage interface now looks like:
 ```go
 // Storage is the way that logical backends are able read/write data.
 type Storage interface {
-	List(context.Context, string) ([]string, error)
-	ListPage(context.Context, string, string, int) ([]string, error)
-	Get(context.Context, string) (*StorageEntry, error)
-	Put(context.Context, *StorageEntry) error
-	Delete(context.Context, string) error
+	List(context.Context, prefix string) (entries []string, err error)
+	ListPage(context.Context, prefix string, after string, limit int) (entries []string, err error)
+	Get(context.Context, path string) (entry *StorageEntry, err error)
+	Put(context.Context, entry *StorageEntry) error
+	Delete(context.Context, path string) error
 }
 ```
 
@@ -109,7 +109,7 @@ large number of stored leaf certificates. We exposed a new `page_size` option
 memory during a single PKI tidy operation.
 
 By enforcing this with [`pagination_limit`](/docs/concepts/policies/#limiting-pagination)
-in an ACL policy, operators can now that clients use pagination and set
+in an ACL policy, operators can now ensure that clients use pagination and set
 maximum result set sizes going forward.
 
 In short, OpenBao aligns with long-standing industry expectations for

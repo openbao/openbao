@@ -20,24 +20,25 @@ var testNow = time.Now().Add(100 * time.Hour)
 
 func TestPopulate_Basic(t *testing.T) {
 	tests := []struct {
-		mode                int
-		name                string
-		input               string
-		output              string
-		err                 error
-		entityName          string
-		metadata            map[string]string
-		aliasAccessor       string
-		aliasID             string
-		aliasName           string
-		nilEntity           bool
-		validityCheckOnly   bool
-		aliasMetadata       map[string]string
-		aliasCustomMetadata map[string]string
-		groupName           string
-		groupMetadata       map[string]string
-		groupMemberships    []string
-		now                 time.Time
+		mode                 int
+		name                 string
+		input                string
+		blockedSubstitutions []string
+		output               string
+		err                  error
+		entityName           string
+		metadata             map[string]string
+		aliasAccessor        string
+		aliasID              string
+		aliasName            string
+		nilEntity            bool
+		validityCheckOnly    bool
+		aliasMetadata        map[string]string
+		aliasCustomMetadata  map[string]string
+		groupName            string
+		groupMetadata        map[string]string
+		groupMemberships     []string
+		now                  time.Time
 	}{
 		// time.* tests. Keep tests with time.Now() at the front to avoid false
 		// positives due to the second changing during the test
@@ -391,17 +392,33 @@ func TestPopulate_Basic(t *testing.T) {
 		},
 		{
 			mode:     ACLTemplating,
-			name:     "wildcard in template substitution (acl)",
+			name:     "wildcard star in template substitution (acl)",
 			input:    `path "bad" {{identity.entity.metadata.x}}`,
 			metadata: map[string]string{"x": "this * is not ok"},
-			err:      ErrTemplateWildcard,
+			err:      errors.New(`template substitution contains forbidden value "*"`),
 		},
 		{
 			mode:     ACLTemplating,
 			name:     "wildcard plus in template substitution (acl)",
 			input:    `path "bad" {{identity.entity.metadata.x}}`,
 			metadata: map[string]string{"x": "this + is also not ok"},
-			err:      ErrTemplateWildcard,
+			err:      errors.New(`template substitution contains forbidden value "+"`),
+		},
+		{
+			mode:                 ACLTemplating,
+			name:                 "explicitly allowed wildcard in template substitution (acl)",
+			input:                `path "ok" "{{identity.entity.metadata.x}}"`,
+			blockedSubstitutions: []string{},
+			metadata:             map[string]string{"x": "this + is * explicitly allowed"},
+			output:               `path "ok" "this + is * explicitly allowed"`,
+		},
+		{
+			mode:                 ACLTemplating,
+			name:                 "explicitly block string in template substitution (acl)",
+			input:                `path "bad" "{{identity.entity.metadata.x}}"`,
+			blockedSubstitutions: []string{"that", "this", "other"},
+			metadata:             map[string]string{"x": `+ and * are ok, but "this" is not`},
+			err:                  errors.New(`template substitution contains forbidden value "this"`),
 		},
 		{
 			mode:     JSONTemplating,
@@ -414,8 +431,16 @@ func TestPopulate_Basic(t *testing.T) {
 			mode:     JSONTemplating,
 			name:     "wildcard in template substitution (json)",
 			input:    `{ "test/bad": {{identity.entity.metadata.x}} }`,
-			metadata: map[string]string{"x": "this * is not ok"},
-			err:      ErrTemplateWildcard,
+			metadata: map[string]string{"x": "this * is also + ok"},
+			output:   `{ "test/bad": "this * is also + ok" }`,
+		},
+		{
+			mode:                 JSONTemplating,
+			name:                 "explicitly block string in template substitution (json)",
+			input:                `{ "test/bad": {{identity.entity.metadata.x}} }`,
+			blockedSubstitutions: []string{"that", "this", "other"},
+			metadata:             map[string]string{"x": `+ and * are ok, but "this" is not`},
+			err:                  errors.New(`template substitution contains forbidden value "this"`),
 		},
 	}
 
@@ -459,13 +484,14 @@ func TestPopulate_Basic(t *testing.T) {
 		}
 
 		subst, out, err := PopulateString(PopulateStringInput{
-			Mode:              test.mode,
-			ValidityCheckOnly: test.validityCheckOnly,
-			String:            test.input,
-			Entity:            entity,
-			Groups:            groups,
-			NamespaceID:       "root",
-			Now:               test.now,
+			Mode:                 test.mode,
+			ValidityCheckOnly:    test.validityCheckOnly,
+			String:               test.input,
+			BlockedSubstitutions: test.blockedSubstitutions,
+			Entity:               entity,
+			Groups:               groups,
+			NamespaceID:          "root",
+			Now:                  test.now,
 		})
 		if err != nil {
 			if test.err == nil {

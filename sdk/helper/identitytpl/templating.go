@@ -20,7 +20,7 @@ var (
 	ErrNoEntityAttachedToToken       = errors.New("string contains entity template directives but no entity was provided")
 	ErrNoGroupsAttachedToToken       = errors.New("string contains groups template directives but no groups were provided")
 	ErrTemplateValueNotFound         = errors.New("no value could be found for one of the template directives")
-	ErrTemplateWildcard              = errors.New(`template substitution contains wildcard: "*" and "+" are forbidden`)
+	ErrTemplateWildcard              = `template substitution contains forbidden value %q`
 )
 
 const (
@@ -29,13 +29,14 @@ const (
 )
 
 type PopulateStringInput struct {
-	String            string
-	ValidityCheckOnly bool
-	Entity            *logical.Entity
-	Groups            []*logical.Group
-	NamespaceID       string
-	Mode              int       // processing mode, ACLTemplate or JSONTemplating
-	Now               time.Time // optional, defaults to current time
+	String               string
+	ValidityCheckOnly    bool
+	Entity               *logical.Entity
+	Groups               []*logical.Group
+	NamespaceID          string
+	Mode                 int       // processing mode, ACLTemplate or JSONTemplating
+	Now                  time.Time // optional, defaults to current time
+	BlockedSubstitutions []string  // optional, defaults to ["*", "+"] if (.Mode == ACLTemplate) and [] otherwise
 
 	templateHandler templateHandlerFunc
 	groupIDs        []string
@@ -117,6 +118,9 @@ func PopulateString(p PopulateStringInput) (bool, string, error) {
 	switch p.Mode {
 	case ACLTemplating:
 		p.templateHandler = aclTemplateHandler
+		if p.BlockedSubstitutions == nil {
+			p.BlockedSubstitutions = []string{"*", "+"}
+		}
 	case JSONTemplating:
 		p.templateHandler = jsonTemplateHandler
 	default:
@@ -156,8 +160,10 @@ func PopulateString(p PopulateStringInput) (bool, string, error) {
 				if err != nil {
 					return false, "", err
 				}
-				if strings.ContainsAny(tmplStr, "*+") {
-					return false, "", ErrTemplateWildcard
+				for _, blocked := range p.BlockedSubstitutions {
+					if strings.Contains(tmplStr, blocked) {
+						return false, "", fmt.Errorf(ErrTemplateWildcard, blocked)
+					}
 				}
 				b.WriteString(tmplStr)
 				b.WriteString(splitPiece[1])

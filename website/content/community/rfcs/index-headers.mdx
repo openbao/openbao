@@ -90,7 +90,7 @@ consistency, meaning we currently embed the equivalent of a zero index. While
 we could add our new index logic to that value, it has a few shortcomings:
 
 1. Some storage engines, like PostgreSQL, use semi-opaque strings rather than
-   integers. We'd ideally want to continue supporting non-string indices in
+   integers. We'd ideally want to continue supporting non-integer indices in
    case other systems have this property as well.
 2. Tokens are not updatable and only reflect the index on issuance. By using
    response/request headers, we can handle arbitrary post-auth writes without

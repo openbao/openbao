@@ -1,0 +1,59 @@
+# Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
+# SPDX-License-Identifier: MPL-2.0
+
+rules:
+  - id: non-nil-err-auth-response
+    patterns:
+      - pattern-either:
+          - pattern: |
+              return &logical.Response{
+                Auth: &logical.Auth{ ... },
+                ...
+              }, err
+          - pattern: |
+              return &logical.Response{
+                Auth: &logical.Auth{ ... },
+                ...
+              }, logical.CodedError(...)
+          - pattern: |
+              return &logical.Response{
+                Auth: &logical.Auth{ ... },
+                ...
+              }, fmt.Errorf(...)
+          - pattern: |
+              return &logical.Response{
+                Auth: &logical.Auth{ ... },
+                ...
+              }, errors.New(...)
+          - pattern: |
+              $FOO = &logical.Response{
+                Auth: &logical.Auth{ ... },
+                ...
+              }
+              ...
+              return $FOO, err
+          - pattern: |
+              $FOO = &logical.Response{
+                Auth: &logical.Auth{ ... },
+                ...
+              }
+              ...
+              return $FOO, logical.CodedError(...)
+          - pattern: |
+              $FOO = &logical.Response{
+                Auth: &logical.Auth{ ... },
+                ...
+              }
+              ...
+              return $FOO, fmt.Errorf(...)
+          - pattern: |
+              $FOO = &logical.Response{
+                Auth: &logical.Auth{ ... },
+                ...
+              }
+              ...
+              return $FOO, errors.New(...)
+    message: a non-nil error should not include an auth response
+    languages:
+      - go
+    severity: ERROR

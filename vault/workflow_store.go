@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	urlpath "path"
 	"path/filepath"
 	"strings"
 
@@ -107,6 +106,7 @@ type WorkflowStore struct {
 
 func NewWorkflowStore(c *Core) *WorkflowStore {
 	logger := c.baseLogger.Named("workflow")
+	c.AddLogger(logger)
 	return &WorkflowStore{
 		core:        c,
 		modifyLocks: locksutil.CreateLocks(),
@@ -114,7 +114,7 @@ func NewWorkflowStore(c *Core) *WorkflowStore {
 	}
 }
 
-func (c *Core) setupWorkflowStore(ctx context.Context) {
+func (c *Core) setupWorkflowStore() {
 	c.workflowStore = NewWorkflowStore(c)
 }
 
@@ -146,7 +146,7 @@ func (ws *WorkflowStore) rLockWithUnlock(ctx context.Context) func() {
 
 // getView returns the storage view for the given namespace
 func (ws *WorkflowStore) getView(ns *namespace.Namespace) barrier.View {
-	return NamespaceScopedView(ws.core.barrier, ns).SubView(workflowSubPath)
+	return ws.core.NamespaceView(ns).SubView(workflowSubPath)
 }
 
 func (ws *WorkflowStore) Get(ctx context.Context, path string) (*WorkflowEntry, error) {
@@ -292,11 +292,6 @@ func (ws *WorkflowStore) List(ctx context.Context, prefix string, recursive bool
 }
 
 func (ws *WorkflowStore) Execute(ctx context.Context, reqId string, path string, unauthed bool, trace bool, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("unable to find namespace in context: %w", err)
-	}
-
 	// Reject trace requests when unauthenticated.
 	if unauthed && trace {
 		return nil, logical.ErrPermissionDenied
@@ -375,17 +370,13 @@ func (ws *WorkflowStore) Execute(ctx context.Context, reqId string, path string,
 		// this policy can only access requests under its own namespace and
 		// forbid requests to parent namespaces.
 		profiles.WithRequestHandler(func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
-			// When a namespace header exists in the synthetic request, we
-			// have to inject it into the namespace header, ensuring we set
-			// the prefix accordingly.
+			// When a namespace header exists in the synthetic request, we have
+			// to inject it into the namespace header.
 			if values, ok := req.Headers[consts.NamespaceHeaderName]; ok {
 				if len(values) > 1 {
 					return nil, fmt.Errorf("have %q values for %q header; expected only 1", len(values), consts.NamespaceHeaderName)
 				}
-
-				nsHeader := namespace.HeaderFromContext(ctx)
-				nsHeader = urlpath.Join(nsHeader, values[0])
-				ctx = namespace.ContextWithNamespaceHeader(ctx, nsHeader)
+				ctx = namespace.ContextWithNamespaceHeader(ctx, values[0])
 			}
 
 			// We guarantee we come in from the profile system, which means
@@ -398,24 +389,18 @@ func (ws *WorkflowStore) Execute(ctx context.Context, reqId string, path string,
 		return nil, fmt.Errorf("failed building profile engine: %w", err)
 	}
 
-	// HandleRequest will force all requests with a given namespace to be
-	// routed to the namespace in the context, even if the request path has
-	// a different namespace.
-	noNsCtx := namespace.ContextWithNamespace(ctx, nil)
-	noNsCtx = namespace.ContextWithNamespaceHeader(noNsCtx, ns.Path)
-
 	if trace {
-		result := engine.Debug(noNsCtx)
+		result := engine.Debug(ctx)
 		return &logical.Response{
 			Data: result,
 		}, nil
 	}
 
 	if output != nil {
-		return engine.EvaluateResponse(noNsCtx)
+		return engine.EvaluateResponse(ctx)
 	}
 
-	if err := engine.Evaluate(noNsCtx); err != nil {
+	if err := engine.Evaluate(ctx); err != nil {
 		return nil, fmt.Errorf("failed to evaluate workflow: %w", err)
 	}
 

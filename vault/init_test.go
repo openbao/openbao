@@ -75,13 +75,15 @@ func testCoreInitCommon(t *testing.T, s Seal, barrierConf, recoveryConf *SealCon
 	})
 	require.NoError(t, err)
 
-	require.Falsef(t,
+	require.Falsef(
+		t,
 		c.seal.BarrierType() == seal.WrapperTypeShamir && len(res.SecretShares) != barrierConf.SecretShares,
 		"Bad: got\n%#v\nexpected conf matching\n%#v\n", *res, *barrierConf,
 	)
 
 	if recoveryConf != nil {
-		require.Falsef(t,
+		require.Falsef(
+			t,
 			len(res.RecoveryShares) != recoveryConf.SecretShares,
 			"Bad: got\n%#v\nexpected conf matching\n%#v\n", *res, *recoveryConf,
 		)

@@ -290,20 +290,23 @@ func (c *OperatorInitCommand) init(client *api.Client, req *api.InitRequest) int
 				"these keys to unseal it before it can start servicing requests.",
 			req.SecretShares,
 			req.SecretThreshold,
-			req.SecretThreshold)))
+			req.SecretThreshold,
+		)))
 
 		c.UI.Output("")
 		c.UI.Output(wrapAtLength(fmt.Sprintf(
 			"Vault does not store the generated root key. Without at least %d "+
 				"keys to reconstruct the root key, Vault will remain permanently "+
 				"sealed!",
-			req.SecretThreshold)))
+			req.SecretThreshold,
+		)))
 
 		c.UI.Output("")
 		c.UI.Output(wrapAtLength(
 			"It is possible to generate new unseal keys, provided you have a quorum " +
 				"of existing unseal keys shares. See \"bao operator rotate-keys\" for " +
-				"more information."))
+				"more information.",
+		))
 	} else {
 		c.UI.Output("")
 		c.UI.Output("Success! Vault is initialized")
@@ -315,7 +318,8 @@ func (c *OperatorInitCommand) init(client *api.Client, req *api.InitRequest) int
 			"Recovery key initialized with %d key shares and a key threshold of %d. "+
 				"Please securely distribute the key shares printed above.",
 			req.RecoveryShares,
-			req.RecoveryThreshold)))
+			req.RecoveryThreshold,
+		)))
 	}
 
 	return 0

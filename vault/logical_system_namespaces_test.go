@@ -6,7 +6,7 @@ package vault
 import (
 	"context"
 	"fmt"
-	"maps"
+	"net/http"
 	"path"
 	"testing"
 	"time"
@@ -74,6 +74,7 @@ func TestNamespaceBackend_Set(t *testing.T) {
 		require.Equal(t, res.Data["tainted"].(bool), false)
 		require.Equal(t, res.Data["locked"].(bool), false)
 		require.Equal(t, res.Data["custom_metadata"], customMetadata)
+		require.Equal(t, res.Data["key_threshold"], 2)
 		require.Len(t, res.Data["key_shares"], 3)
 	})
 
@@ -92,6 +93,7 @@ func TestNamespaceBackend_Set(t *testing.T) {
 		require.Equal(t, res.Data["tainted"].(bool), false)
 		require.Equal(t, res.Data["locked"].(bool), false)
 		require.Equal(t, res.Data["custom_metadata"], customMetadata)
+		require.Equal(t, res.Data["key_threshold"], 2)
 		require.Len(t, res.Data["key_shares"], 3)
 	})
 
@@ -291,106 +293,52 @@ func TestNamespaceBackend_Read(t *testing.T) {
 func TestNamespaceBackend_Patch(t *testing.T) {
 	t.Parallel()
 	b := testSystemBackend(t)
-	rootCtx := namespace.RootContext(t.Context())
+	ctx := namespace.RootContext(t.Context())
 
-	t.Run("add metadata keys", func(t *testing.T) {
-		testCreateNamespace(t, rootCtx, b, "foo", nil)
+	testCreateNamespace(t, ctx, b, "foo", map[string]string{"abc": "def"})
 
+	tests := []struct {
+		patch map[string]any    // The patch to supply.
+		want  map[string]string // The desired output.
+		err   bool              // Should it error?
+	}{
+		{
+			patch: map[string]any{"def": "abc"},
+			want:  map[string]string{"abc": "def", "def": "abc"},
+		},
+		{
+			patch: map[string]any{"def": "abc", "abc": nil},
+			want:  map[string]string{"def": "abc"},
+		},
+		{
+			patch: nil,
+			want:  map[string]string{},
+		},
+		{
+			patch: map[string]any{"foo": "bar", "bar": 1},
+			err:   true,
+		},
+		{
+			patch: map[string]any{"foo": "bar"},
+			want:  map[string]string{"foo": "bar"},
+		},
+		{
+			patch: map[string]any{},
+			want:  map[string]string{"foo": "bar"},
+		},
+	}
+
+	for _, tt := range tests {
 		req := logical.TestRequest(t, logical.PatchOperation, "namespaces/foo")
-		patch := map[string]string{"abc": "def"}
-		req.Data["custom_metadata"] = patch
-		res, err := b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-		outputMetadata := res.Data["custom_metadata"].(map[string]string)
-		require.Equal(t, outputMetadata, patch, "returned metadata does not match metadata patch")
-
-		req = logical.TestRequest(t, logical.PatchOperation, "namespaces/foo")
-		patch = map[string]string{"testing": "hello"}
-		req.Data["custom_metadata"] = patch
-		res, err = b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-		outputMetadata = res.Data["custom_metadata"].(map[string]string)
-		expected := map[string]string{"abc": "def"}
-		maps.Copy(expected, patch)
-		require.Equal(t, outputMetadata, expected, "returned metadata does not match expected updated metadata")
-
-		req = logical.TestRequest(t, logical.PatchOperation, "namespaces/foo")
-		illegalPatch := map[string]interface{}{"illegal": 1337}
-		req.Data["custom_metadata"] = illegalPatch
-		res, err = b.HandleRequest(rootCtx, req)
-		require.ErrorContains(t, err, "custom_metadata values must be strings", "got unwanted error")
-		require.Empty(t, res, "patch failure should have empty response")
-	})
-
-	t.Run("remove metadata keys", func(t *testing.T) {
-		customMetadata := map[string]string{"abc": "def"}
-		testCreateNamespace(t, rootCtx, b, "bar", customMetadata)
-
-		req := logical.TestRequest(t, logical.PatchOperation, "namespaces/bar")
-		patch := map[string]interface{}{"abc": nil}
-		req.Data["custom_metadata"] = patch
-		res, err := b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-		outputMetadata := res.Data["custom_metadata"].(map[string]string)
-		require.Equal(t, outputMetadata, map[string]string{},
-			"expected custom_metadata to be empty after patching out only key")
-
-		req = logical.TestRequest(t, logical.PatchOperation, "namespaces/bar")
-		patch = map[string]interface{}{"abc": nil}
-		req.Data["custom_metadata"] = patch
-		res, err = b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-		outputMetadata = res.Data["custom_metadata"].(map[string]string)
-		require.Equal(t, outputMetadata, map[string]string{},
-			"expected custom_metadata to stay empty after patching out non-existing key")
-	})
-
-	t.Run("add and remove keys in one shot", func(t *testing.T) {
-		customMetadata := map[string]string{"abc": "def"}
-		testCreateNamespace(t, rootCtx, b, "baz", customMetadata)
-
-		req := logical.TestRequest(t, logical.PatchOperation, "namespaces/baz")
-		patch := map[string]interface{}{"abc": nil, "testing": "hello"}
-		req.Data["custom_metadata"] = patch
-		res, err := b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-		outputMetadata := res.Data["custom_metadata"].(map[string]string)
-		require.Equal(t, outputMetadata, map[string]string{"testing": "hello"},
-			"expected old key to be removed and new key to be added")
-	})
-
-	t.Run("patch nested namespace", func(t *testing.T) {
-		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
-		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
-		testCreateNamespace(t, nestedCtx, b, "bar", map[string]string{"abc": "def"})
-
-		// ctx ns = /, path = foo/bar
-		req := logical.TestRequest(t, logical.PatchOperation, "namespaces/foo/bar")
-		patch := map[string]string{"abc": "fed"}
-		req.Data["custom_metadata"] = patch
-		res, err := b.HandleRequest(rootCtx, req)
-		require.Error(t, err)
-		require.Empty(t, res)
-
-		// ctx ns = foo, path = bar
-		req = logical.TestRequest(t, logical.PatchOperation, "namespaces/bar")
-		patch = map[string]string{"testing": "hello"}
-		req.Data["custom_metadata"] = patch
-		res, err = b.HandleRequest(nestedCtx, req)
-		require.NoError(t, err)
-		outputMetadata := res.Data["custom_metadata"].(map[string]string)
-		expected := map[string]string{"abc": "def"}
-		maps.Copy(expected, patch)
-		require.Equal(t, outputMetadata, expected, "returned metadata does not match expected updated metadata")
-
-		// ctx ns = foo, path = bar
-		req = logical.TestRequest(t, logical.PatchOperation, "namespaces/bar")
-		illegalPatch := map[string]interface{}{"illegal": 1337}
-		req.Data["custom_metadata"] = illegalPatch
-		res, err = b.HandleRequest(nestedCtx, req)
-		require.ErrorContains(t, err, "custom_metadata values must be strings", "got unwanted error")
-		require.Empty(t, res, "patch failure should have empty response")
-	})
+		req.Data["custom_metadata"] = tt.patch
+		res, err := b.HandleRequest(ctx, req)
+		if tt.err {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, tt.want, res.Data["custom_metadata"])
+		}
+	}
 }
 
 func TestNamespaceBackend_Delete(t *testing.T) {
@@ -429,6 +377,9 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 		// fails as foobar contains child namespaces
 		require.Error(t, err)
 		require.Error(t, res.Error())
+		coded, ok := err.(logical.HTTPCodedError)
+		require.True(t, ok, "expected HTTPCodedError")
+		require.Equal(t, http.StatusConflict, coded.Code())
 
 		req = logical.TestRequest(t, logical.DeleteOperation, "namespaces/baz")
 		res, err = b.HandleRequest(nestedCtx, req)

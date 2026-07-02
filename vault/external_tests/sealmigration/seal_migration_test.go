@@ -23,7 +23,8 @@ func testVariousBackends(t *testing.T, tf testFunc, basePort int, includeRaft bo
 
 		logger := logger.Named("inmem")
 		storage, cleanup := teststorage.MakeReusableStorage(
-			t, logger, teststorage.MakeInmemBackend(t, logger))
+			t, logger, teststorage.MakeInmemBackend(t, logger),
+		)
 		defer cleanup()
 		tf(t, logger, storage, basePort+100)
 	})

@@ -28,9 +28,10 @@ import (
 )
 
 var (
-	ErrDuplicateIdentityName = errors.New("duplicate identity name")
-	ErrCycleDetectedPrefix   = "cyclic relationship detected for member group ID"
-	tmpSuffix                = ".tmp"
+	ErrDuplicateIdentityName       = errors.New("duplicate identity name")
+	ErrNamespaceNotInIdentityStore = errors.New("namespace not registered in identity store")
+	ErrCycleDetectedPrefix         = "cyclic relationship detected for member group ID"
+	tmpSuffix                      = ".tmp"
 )
 
 func (i *IdentityStore) sanitizeName(name string) string {
@@ -51,7 +52,11 @@ func (i *IdentityStore) LoadGroups(ctx context.Context, readOnly bool) error {
 	}
 
 	i.logger.Debug("identity loading groups", "namespace", ns.Path)
-	existing, err := i.GroupPacker(ctx).View().List(ctx, groupBucketsPrefix)
+	gp := i.GroupPacker(ctx)
+	if gp == nil {
+		return fmt.Errorf("%w: %s", ErrNamespaceNotInIdentityStore, ns.UUID)
+	}
+	existing, err := gp.View().List(ctx, groupBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for groups: %w", err)
 	}
@@ -100,15 +105,14 @@ func (i *IdentityStore) LoadGroups(ctx context.Context, readOnly bool) error {
 			}
 			if groupByName != nil {
 				i.logger.Warn(
-					ErrDuplicateIdentityName.Error(), "group_name", group.Name, "conflicting_group_name", groupByName.Name, "action", "merge the contents of duplicated groups into one and delete the other")
+					ErrDuplicateIdentityName.Error(), "group_name", group.Name, "conflicting_group_name", groupByName.Name, "action", "merge the contents of duplicated groups into one and delete the other",
+				)
 				if !i.disableLowerCasedNames {
 					return ErrDuplicateIdentityName
 				}
 			}
 
-			if i.logger.IsDebug() {
-				i.logger.Debug("loading group", "name", group.Name, "id", group.ID)
-			}
+			i.logger.Debug("loading group", "name", group.Name, "id", group.ID)
 
 			txn := i.db(ctx).Txn(true)
 
@@ -139,9 +143,7 @@ func (i *IdentityStore) LoadGroups(ctx context.Context, readOnly bool) error {
 		}
 	}
 
-	if i.logger.IsInfo() {
-		i.logger.Info("groups restored")
-	}
+	i.logger.Info("groups restored")
 
 	return nil
 }
@@ -154,7 +156,11 @@ func (i *IdentityStore) LoadEntities(ctx context.Context, readOnly bool) error {
 	}
 
 	i.logger.Debug("loading entities", "namespace", ns.Path)
-	existing, err := i.EntityPacker(ctx).View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
+	ep := i.EntityPacker(ctx)
+	if ep == nil {
+		return fmt.Errorf("%w: %s", ErrNamespaceNotInIdentityStore, ns.UUID)
+	}
+	existing, err := ep.View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for entities: %w", err)
 	}
@@ -323,9 +329,7 @@ LOOP:
 		i.logger.Warn("One or more entities have multiple aliases on the same mount(s), remove duplicates to avoid ACL templating issues", "mount_accessors", duplicatedAccessorsList)
 	}
 
-	if i.logger.IsInfo() {
-		i.logger.Info("entities restored")
-	}
+	i.logger.Info("entities restored")
 
 	return nil
 }

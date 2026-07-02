@@ -81,7 +81,8 @@ func TestSudoPaths(t *testing.T) {
 			t.Fatalf(
 				"A path in the OpenAPI spec is missing from the static list of "+
 					"sudo paths in the api module (%s). Please reconcile the two "+
-					"accordingly.", path)
+					"accordingly.", path,
+			)
 		}
 	}
 }

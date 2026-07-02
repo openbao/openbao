@@ -162,7 +162,8 @@ func (c *AuthListCommand) detailedMounts(auths map[string]*api.AuthMount) []stri
 
 		pluginName := mount.Type
 
-		out = append(out, fmt.Sprintf("%s | %s | %s | %s | %s | %s | %s | %t | %v | %s | %s | %s | %s | %s | %s | %s",
+		out = append(out, fmt.Sprintf(
+			"%s | %s | %s | %s | %s | %s | %s | %t | %v | %s | %s | %s | %s | %s | %s | %s",
 			path,
 			pluginName,
 			mount.Accessor,

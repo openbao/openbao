@@ -125,7 +125,8 @@ func testResponseStatus(t *testing.T, resp *http.Response, code int) {
 
 		t.Fatalf(
 			"Expected status %d, got %d. Body:\n\n%s",
-			code, resp.StatusCode, body.String())
+			code, resp.StatusCode, body.String(),
+		)
 	}
 }
 

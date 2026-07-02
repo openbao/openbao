@@ -560,7 +560,8 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 
 	if ttl != 0 && maxTTL != 0 && ttl > maxTTL {
 		return nil, logical.ErrorResponse(
-			`"ttl" value must be less than "max_ttl" when both are specified`)
+			`"ttl" value must be less than "max_ttl" when both are specified`,
+		)
 	}
 
 	// Persist TTLs
@@ -785,24 +786,18 @@ func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, data *
 		role, err := b.getRole(ctx, req.Storage, entry)
 		if err != nil {
 			// On error, log warning and continue
-			if b.Logger().IsWarn() {
-				b.Logger().Warn("error getting role info", "role", entry, "error", err)
-			}
+			b.Logger().Warn("error getting role info", "role", entry, "error", err)
 			continue
 		}
 		if role == nil {
 			// On empty role, log warning and continue
-			if b.Logger().IsWarn() {
-				b.Logger().Warn("no role info found", "role", entry)
-			}
+			b.Logger().Warn("no role info found", "role", entry)
 			continue
 		}
 
 		roleInfo, err := b.parseRole(role)
 		if err != nil {
-			if b.Logger().IsWarn() {
-				b.Logger().Warn("error parsing role info", "role", entry, "error", err)
-			}
+			b.Logger().Warn("error parsing role info", "role", entry, "error", err)
 			continue
 		}
 

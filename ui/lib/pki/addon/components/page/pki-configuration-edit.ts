@@ -43,7 +43,7 @@ interface ErrorObject {
   message: string;
 }
 export default class PkiConfigurationEditComponent extends Component<Args> {
-  @service declare readonly router: RouterService;
+  @service declare readonly 'host-router': RouterService;
   @service declare readonly flashMessages: FlashMessageService;
   @service declare readonly version: VersionService;
 
@@ -79,13 +79,13 @@ export default class PkiConfigurationEditComponent extends Component<Args> {
     if (this.errors.length) {
       this.invalidFormAlert = 'There was an error submitting this form.';
     } else {
-      this.router.transitionTo('vault.cluster.secrets.backend.pki.configuration.index');
+      this['host-router'].transitionTo('vault.cluster.secrets.backend.pki.configuration.index');
     }
   }
 
   @action
   cancel() {
-    this.router.transitionTo('vault.cluster.secrets.backend.pki.configuration.index');
+    this['host-router'].transitionTo('vault.cluster.secrets.backend.pki.configuration.index');
   }
 
   @action

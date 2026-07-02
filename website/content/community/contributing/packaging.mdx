@@ -79,7 +79,6 @@ The following tags are known:
 | Tag   | Effect |
 | :---- | :----- |
 | `ui`  | Enables bundling of the WebUI into the release. |
-| `hsm` | Enables PKCS#11 HSM support. Requires [CGo](#cgo) to be enabled. |
 
 :::warning
 
@@ -97,13 +96,8 @@ The following flags **SHOULD NOT** be used in a release version:
 ### CGo
 
 CGo can be enabled on any platform but has no effect on most as OpenBao is
-generally built as a static library. Occasionally, the Go toolchain will
+generally built as a static binary. Occasionally, the Go toolchain will
 change its behavior on various platforms if CGo is enabled.
-
-The exception to this is PKCS#11 HSM support. This only works on glibc-based
-distributions and does not support musl or other alternative stdlib
-implementations. To enable CGo support (and thus, PKCS#11 HSM support), set
-`CGO_ENABLED=1` in the release binary and assert the `hsm` tag.
 
 ### Building
 

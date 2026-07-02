@@ -1,6 +1,6 @@
 import Component from '@glimmer/component';
 import { parsedParameterKeys } from 'vault/utils/parse-pki-cert-oids';
-import { ParsedCertificateData } from 'vault/vault/utils/parse-pki-cert';
+import type { ParsedCertificateData } from 'vault/vault/utils/parse-pki-cert';
 
 /**
  * @module ParsedCertificateInfoRowsComponent

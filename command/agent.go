@@ -240,7 +240,8 @@ func (c *AgentCommand) Run(args []string) int {
 		if api.ReadBaoVariable("BAO_TEST_VERIFY_ONLY_DUMP_CONFIG") != "" {
 			c.UI.Output(fmt.Sprintf(
 				"\nConfiguration:\n%s\n",
-				pretty.Sprint(*c.config)))
+				pretty.Sprint(*c.config),
+			))
 		}
 		return 0
 	}
@@ -252,7 +253,8 @@ func (c *AgentCommand) Run(args []string) int {
 	if err != nil {
 		c.UI.Error(fmt.Sprintf(
 			"Error fetching client: %v",
-			err))
+			err,
+		))
 		return 1
 	}
 
@@ -273,7 +275,7 @@ func (c *AgentCommand) Run(args []string) int {
 		// A customer could have a listener defined but only be using e.g. the cache-clear API,
 		// even though the API proxy is something they have available.
 		c.UI.Warn("==> Note: OpenBao Agent will be deprecating API proxy functionality in a future " +
-			"release, and this functionality has moved to a new subcommand, OpenBao proxy. If you rely on this " +
+			"release and this functionality has moved to a new subcommand, OpenBao proxy. If you rely on this " +
 			"functionality, plan to move to OpenBao Proxy instead.")
 	}
 
@@ -776,7 +778,8 @@ func (c *AgentCommand) Run(args []string) int {
 			"%s%s: %s",
 			strings.Repeat(" ", padding-len(k)),
 			caser.String(k),
-			info[k]))
+			info[k],
+		))
 	}
 	c.UI.Output("")
 

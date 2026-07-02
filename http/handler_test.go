@@ -118,6 +118,38 @@ func TestHandler_parseMFAHandler(t *testing.T) {
 	}
 }
 
+type nilResponseWriter struct{}
+
+func (w *nilResponseWriter) Header() http.Header {
+	return make(http.Header)
+}
+
+func (w *nilResponseWriter) Write(b []byte) (int, error) {
+	return 0, nil
+}
+
+func (w *nilResponseWriter) WriteHeader(statusCode int) {}
+
+func TestHandler_HostHeader(t *testing.T) {
+	r, err := http.NewRequest(http.MethodGet, "http://domain.example/v1/path", nil)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	r.Header.Add("user-agent", "Test")
+	req, status, err := buildLogicalRequestNoAuth(&nilResponseWriter{}, r)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	if status != 0 {
+		t.Fatalf("status: %d", status)
+	}
+
+	require.Subset(t, req.Headers, http.Header{
+		http.CanonicalHeaderKey("user-agent"): {"Test"},
+		http.CanonicalHeaderKey("host"):       {"domain.example"},
+	})
+}
+
 func TestHandler_cors(t *testing.T) {
 	core, _, _ := vault.TestCoreUnsealed(t)
 	ln, addr := TestServer(t, core)
@@ -982,7 +1014,8 @@ func TestHandler_MaxRequestSize_Memory(t *testing.T) {
 func TestHandler_RestrictedEndpointCalls(t *testing.T) {
 	core, _, token := vault.TestCoreUnsealed(t)
 	// add namespaces for tests
-	vault.TestCoreCreateNamespaces(t, core,
+	vault.TestCoreCreateNamespaces(
+		t, core,
 		&namespace.Namespace{Path: "test"},
 		&namespace.Namespace{Path: "test/test2"},
 	)

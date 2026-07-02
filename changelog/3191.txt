@@ -1,0 +1,3 @@
+```release-note:deprecation
+packaging: Drop builds for 32-bit ARM Windows as part of its [removal from Go 1.26](https://go.dev/doc/go1.26#windows).
+```

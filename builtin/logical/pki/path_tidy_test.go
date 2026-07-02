@@ -265,7 +265,7 @@ func TestAutoTidy(t *testing.T) {
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data)
 	require.NotEmpty(t, resp.Data["certificate"])
-	revocationTime, err := (resp.Data["revocation_time"].(json.Number)).Int64()
+	revocationTime, err := resp.Data["revocation_time"].(json.Number).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(0), revocationTime, "revocation time was not zero")
 	require.Empty(t, resp.Data["revocation_time_rfc3339"], "revocation_time_rfc3339 was not empty")
@@ -282,7 +282,7 @@ func TestAutoTidy(t *testing.T) {
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data)
 	require.NotEmpty(t, resp.Data["certificate"])
-	revocationTime, err = (resp.Data["revocation_time"].(json.Number)).Int64()
+	revocationTime, err = resp.Data["revocation_time"].(json.Number).Int64()
 	require.NoError(t, err, "failed converting %s to int", resp.Data["revocation_time"])
 	revTime := time.Unix(revocationTime, 0)
 	now := time.Now()
@@ -548,8 +548,9 @@ func TestCertStorageMetrics(t *testing.T) {
 
 	// We set up a metrics accumulator
 	inmemSink := metrics.NewInmemSink(
-		2*newPeriod,  // A short time period is ideal here to test metrics are emitted every periodic func
-		10*newPeriod) // Do not keep a huge amount of metrics in the sink forever, clear them out to save memory usage.
+		2*newPeriod, // A short time period is ideal here to test metrics are emitted every periodic func
+		10*newPeriod,
+	) // Do not keep a huge amount of metrics in the sink forever, clear them out to save memory usage.
 
 	metricsConf := metrics.DefaultConfig("")
 	metricsConf.EnableHostname = false
@@ -724,7 +725,7 @@ func TestCertStorageMetrics(t *testing.T) {
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data)
 	require.NotEmpty(t, resp.Data["certificate"])
-	revocationTime, err := (resp.Data["revocation_time"].(json.Number)).Int64()
+	revocationTime, err := resp.Data["revocation_time"].(json.Number).Int64()
 	require.Equal(t, int64(0), revocationTime, "revocation time was not zero")
 	require.Empty(t, resp.Data["revocation_time_rfc3339"], "revocation_time_rfc3339 was not empty")
 	require.Empty(t, resp.Data["issuer_id"], "issuer_id was not empty")

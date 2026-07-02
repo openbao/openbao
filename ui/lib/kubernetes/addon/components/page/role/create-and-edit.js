@@ -20,7 +20,7 @@ import errorMessage from 'vault/utils/error-message';
  */
 
 export default class CreateAndEditRolePageComponent extends Component {
-  @service router;
+  @service 'host-router';
   @service flashMessages;
 
   @tracked roleRulesTemplates;
@@ -139,7 +139,7 @@ export default class CreateAndEditRolePageComponent extends Component {
         this.args.model.generatedRoleRules = selectedTemplate.rules;
       }
       yield this.args.model.save();
-      this.router.transitionTo(
+      this['host-router'].transitionTo(
         'vault.cluster.secrets.backend.kubernetes.roles.role.details',
         this.args.model.name
       );
@@ -168,6 +168,6 @@ export default class CreateAndEditRolePageComponent extends Component {
     const { model } = this.args;
     const method = model.isNew ? 'unloadRecord' : 'rollbackAttributes';
     model[method]();
-    this.router.transitionTo('vault.cluster.secrets.backend.kubernetes.roles');
+    this['host-router'].transitionTo('vault.cluster.secrets.backend.kubernetes.roles');
   }
 }

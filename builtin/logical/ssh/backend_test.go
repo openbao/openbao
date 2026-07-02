@@ -368,7 +368,8 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 }
 
 func TestBackend_AllowedUsersTemplate(t *testing.T) {
-	testAllowedUsersTemplate(t,
+	testAllowedUsersTemplate(
+		t,
 		"{{ identity.entity.metadata.ssh_username }}",
 		testUserName, map[string]string{
 			"ssh_username": testUserName,
@@ -377,7 +378,8 @@ func TestBackend_AllowedUsersTemplate(t *testing.T) {
 }
 
 func TestBackend_MultipleAllowedUsersTemplate(t *testing.T) {
-	testAllowedUsersTemplate(t,
+	testAllowedUsersTemplate(
+		t,
 		"{{ identity.entity.metadata.ssh_username }}",
 		testUserName, map[string]string{
 			"ssh_username": testMultiUserName,
@@ -386,7 +388,8 @@ func TestBackend_MultipleAllowedUsersTemplate(t *testing.T) {
 }
 
 func TestBackend_AllowedUsersTemplate_WithStaticPrefix(t *testing.T) {
-	testAllowedUsersTemplate(t,
+	testAllowedUsersTemplate(
+		t,
 		"ssh-{{ identity.entity.metadata.ssh_username }}",
 		"ssh-"+testUserName, map[string]string{
 			"ssh_username": testUserName,
@@ -395,7 +398,8 @@ func TestBackend_AllowedUsersTemplate_WithStaticPrefix(t *testing.T) {
 }
 
 func TestBackend_DefaultUserTemplate(t *testing.T) {
-	testDefaultUserTemplate(t,
+	testDefaultUserTemplate(
+		t,
 		"{{ identity.entity.metadata.ssh_username }}",
 		testUserName,
 		map[string]string{
@@ -405,7 +409,8 @@ func TestBackend_DefaultUserTemplate(t *testing.T) {
 }
 
 func TestBackend_DefaultUserTemplate_WithStaticPrefix(t *testing.T) {
-	testDefaultUserTemplate(t,
+	testDefaultUserTemplate(
+		t,
 		"user-{{ identity.entity.metadata.ssh_username }}",
 		"user-"+testUserName,
 		map[string]string{
@@ -516,17 +521,20 @@ func TestBackend_DefaultUserTemplateFalse_AllowedUsersTemplateFalse(t *testing.T
 	}
 	actualPrincipals := parsedKey.(*ssh.Certificate).ValidPrincipals
 	if len(actualPrincipals) < 1 {
-		t.Fatalf("No ValidPrincipals returned: should have been %v",
+		t.Fatalf(
+			"No ValidPrincipals returned: should have been %v",
 			[]string{"{{identity.entity.metadata.ssh_username}}"},
 		)
 	}
 	if len(actualPrincipals) > 1 {
-		t.Errorf("incorrect number ValidPrincipals, expected only 1: %v should be %v",
+		t.Errorf(
+			"incorrect number ValidPrincipals, expected only 1: %v should be %v",
 			actualPrincipals, []string{"{{identity.entity.metadata.ssh_username}}"},
 		)
 	}
 	if actualPrincipals[0] != "{{identity.entity.metadata.ssh_username}}" {
-		t.Fatalf("incorrect ValidPrincipals: %v should be %v",
+		t.Fatalf(
+			"incorrect ValidPrincipals: %v should be %v",
 			actualPrincipals, []string{"{{identity.entity.metadata.ssh_username}}"},
 		)
 	}
@@ -1891,7 +1899,8 @@ func testDefaultUserTemplate(t *testing.T, testDefaultUserTemplate string,
 	}
 	actualPrincipals := parsedKey.(*ssh.Certificate).ValidPrincipals
 	if actualPrincipals[0] != expectedValidPrincipal {
-		t.Fatalf("incorrect ValidPrincipals: %v should be %v",
+		t.Fatalf(
+			"incorrect ValidPrincipals: %v should be %v",
 			actualPrincipals, []string{expectedValidPrincipal},
 		)
 	}
@@ -1941,7 +1950,8 @@ func testAllowedPrincipalsTemplate(t *testing.T, testAllowedDomainsTemplate stri
 	}
 	actualPrincipals := parsedKey.(*ssh.Certificate).ValidPrincipals
 	if actualPrincipals[0] != expectedValidPrincipal {
-		t.Fatalf("incorrect ValidPrincipals: %v should be %v",
+		t.Fatalf(
+			"incorrect ValidPrincipals: %v should be %v",
 			actualPrincipals, []string{expectedValidPrincipal},
 		)
 	}

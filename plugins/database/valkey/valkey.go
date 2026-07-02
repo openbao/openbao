@@ -71,7 +71,8 @@ func (c *ValkeyDB) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (db
 
 	username, err := credsutil.GenerateUsername(
 		credsutil.DisplayName(req.UsernameConfig.DisplayName, maxKeyLength),
-		credsutil.RoleName(req.UsernameConfig.RoleName, maxKeyLength))
+		credsutil.RoleName(req.UsernameConfig.RoleName, maxKeyLength),
+	)
 	if err != nil {
 		return dbplugin.NewUserResponse{}, fmt.Errorf("failed to generate username: %w", err)
 	}

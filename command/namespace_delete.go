@@ -28,17 +28,25 @@ func (c *NamespaceDeleteCommand) Help() string {
 	helpText := `
 Usage: bao namespace delete [options] PATH
 
-  Delete an existing namespace. The namespace deleted will be relative to the
-  namespace provided in either the BAO_NAMESPACE environment variable or
-  -namespace CLI flag.
+  Delete a namespace.
+
+  The namespace deleted will be relative to the namespace provided in either the
+  BAO_NAMESPACE environment variable or -namespace CLI flag.
 
   Delete a namespace (e.g. ns1/):
 
       $ bao namespace delete ns1
 
-  Delete a namespace namespace from a parent namespace (e.g. ns1/ns2/):
+  Delete a namespace from a parent namespace (e.g. ns1/ns2/):
 
       $ bao namespace delete -namespace=ns1 ns2
+
+  To delete a sealed namespace, use the delete-sealed subcommand instead:
+
+      $ bao namespace delete-sealed ns1
+
+  Note that this requires the sudo capability, and will not clean up external
+  resources via lease deletion like standard namespace deletion does.
 
 ` + c.Flags().Help()
 
@@ -83,21 +91,21 @@ func (c *NamespaceDeleteCommand) Run(args []string) int {
 		return 2
 	}
 
-	secret, err := client.Logical().Delete("sys/namespaces/" + namespacePath)
+	resp, err := client.Sys().DeleteNamespace(namespacePath)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error deleting namespace: %s", err))
 		return 2
 	}
 
-	if secret != nil {
-		// Likely, we have warnings
-		return OutputSecret(c.UI, secret)
+	if resp == nil || resp.Status == "" {
+		c.UI.Warn("Requested namespace does not exist")
+		return 0
 	}
 
 	if !strings.HasSuffix(namespacePath, "/") {
 		namespacePath = namespacePath + "/"
 	}
 
-	c.UI.Output(fmt.Sprintf("Success! Namespace deleted at: %s", namespacePath))
+	c.UI.Output(fmt.Sprintf("Success! Namespace deletion scheduled: %s", namespacePath))
 	return 0
 }

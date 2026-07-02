@@ -442,26 +442,31 @@ func (p *PostgreSQL) defaultDeleteUser(ctx context.Context, username string) err
 		revocationStmts = append(revocationStmts, fmt.Sprintf(
 			`REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %s FROM %s;`,
 			dbutil.QuoteIdentifier(schema),
-			dbutil.QuoteIdentifier(username)))
+			dbutil.QuoteIdentifier(username),
+		))
 
 		revocationStmts = append(revocationStmts, fmt.Sprintf(
 			`REVOKE USAGE ON SCHEMA %s FROM %s;`,
 			dbutil.QuoteIdentifier(schema),
-			dbutil.QuoteIdentifier(username)))
+			dbutil.QuoteIdentifier(username),
+		))
 	}
 
 	// for good measure, revoke all privileges and usage on schema public
 	revocationStmts = append(revocationStmts, fmt.Sprintf(
 		`REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM %s;`,
-		dbutil.QuoteIdentifier(username)))
+		dbutil.QuoteIdentifier(username),
+	))
 
 	revocationStmts = append(revocationStmts, fmt.Sprintf(
 		"REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM %s;",
-		dbutil.QuoteIdentifier(username)))
+		dbutil.QuoteIdentifier(username),
+	))
 
 	revocationStmts = append(revocationStmts, fmt.Sprintf(
 		"REVOKE USAGE ON SCHEMA public FROM %s;",
-		dbutil.QuoteIdentifier(username)))
+		dbutil.QuoteIdentifier(username),
+	))
 
 	// get the current database name so we can issue a REVOKE CONNECT for
 	// this username
@@ -474,7 +479,8 @@ func (p *PostgreSQL) defaultDeleteUser(ctx context.Context, username string) err
 		revocationStmts = append(revocationStmts, fmt.Sprintf(
 			`REVOKE CONNECT ON DATABASE %s FROM %s;`,
 			dbutil.QuoteIdentifier(dbname.String),
-			dbutil.QuoteIdentifier(username)))
+			dbutil.QuoteIdentifier(username),
+		))
 	}
 
 	// again, here, we do not stop on error, as we want to remove as
@@ -496,7 +502,8 @@ func (p *PostgreSQL) defaultDeleteUser(ctx context.Context, username string) err
 
 	// Drop this user
 	stmt, err = db.PrepareContext(ctx, fmt.Sprintf(
-		`DROP ROLE IF EXISTS %s;`, dbutil.QuoteIdentifier(username)))
+		`DROP ROLE IF EXISTS %s;`, dbutil.QuoteIdentifier(username),
+	))
 	if err != nil {
 		return err
 	}

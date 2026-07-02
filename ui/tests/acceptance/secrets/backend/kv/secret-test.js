@@ -1053,6 +1053,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     await logout.visit();
     await settled();
     await authPage.login(userToken);
+    await settled();
 
     await showPage.visit({ backend, id: 'secret' });
     assert.ok(showPage.noReadIsPresent, 'shows no read empty state');

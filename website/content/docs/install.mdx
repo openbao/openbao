@@ -20,7 +20,7 @@ There are several options to install OpenBao:
 
 ## Package manager
 
-### Homebrew - MacOS
+### Homebrew - macOS
 
 ```shell-session
 $ brew info openbao
@@ -76,7 +76,6 @@ to the following registries:
 
 For container images based on [RHEL UBI](https://www.redhat.com/en/blog/introducing-red-hat-universal-base-image),
 we push to the following registries:
-
 
  1. [`ghcr.io/openbao/openbao-ubi`](https://github.com/openbao/openbao/pkgs/container/openbao-ubi)
  1. [`quay.io/openbao/openbao-ubi`](https://quay.io/repository/openbao/openbao-ubi)
@@ -203,19 +202,21 @@ Download the release and checksum files:
 
 ```shell-session
 $ OS="freebsd"
-$ ARCH="x86_64"
-$ PLATFORM="$OS_$ARCH"
+$ ARCH="amd64"
+$ PLATFORM="${OS}_${ARCH}"
 $ VERSION=$(curl -s https://api.github.com/repos/openbao/openbao/releases | jq -r '.[0] .tag_name' | cut -d'v' -f2-)
-$ RELEASE="bao_$VERSION_$PLATFORM.tar.gz"
-$ wget https://github.com/openbao/openbao/releases/download/v$VERSION/bao_$VERSION_$PLATFORM.tar.gz
-$ wget https://github.com/openbao/openbao/releases/download/v$VERSION/checksums-$OS.txt
-$ wget https://github.com/openbao/openbao/releases/download/v$VERSION/checksums-$OS.txt.gpgsig
+$ RELEASE="openbao_${VERSION}_${PLATFORM}.tar.gz"
+$ wget "https://github.com/openbao/openbao/releases/download/v$VERSION/$RELEASE"
+$ wget "https://github.com/openbao/openbao/releases/download/v$VERSION/checksums.txt"
+$ wget "https://github.com/openbao/openbao/releases/download/v$VERSION/checksums.txt.gpgsig"
+$ wget "https://github.com/openbao/openbao/releases/download/v$VERSION/checksums.txt.sigstore.json"
 ```
 
 Verify the checksum using `sha256sum`:
 
 ```shell-session
-$ sha256sum --check checksums-$OS.txt 2>/dev/null
+$ sha256sum --ignore-missing --check checksums.txt
+bao_2.6.0_freebsd_amd64.tar.gz: OK
 ```
 
 ## Signature Verification
@@ -232,10 +233,11 @@ gpg: Total number processed: 1
 gpg:               imported: 1
 ```
 
-To verify GPG signed artifacts, use `gpg2` from the command line. For example, to verify `checksums-freebsd.txt` with the `checksums-freebsd.txt.gpgsig` stored locally:
+To verify GPG signed artifacts, use `gpg2` from the command line. For example,
+to verify `checksums.txt` with the `checksums.gpgsig` stored locally:
 
 ```shell-session
-$ gpg2 --verify checksums-freebsd.txt.gpgsig checksums-freebsd.txt
+$ gpg2 --verify checksums.txt.gpgsig checksums.txt
 gpg: Signature made Wed 17 Jul 2024 06:12:03 PM EDT
 gpg:                using RSA key E617DCD4065C2AFC0B2CF7A7BA8BC08C0F691F94
 gpg: Good signature from "OpenBao <openbao@lists.lfedge.org>" [unknown]
@@ -245,21 +247,59 @@ Primary key fingerprint: 66D1 5FDD 8728 7219 C8E1  5478 D200 CD70 2853 E6D0
      Subkey fingerprint: E617 DCD4 065C 2AFC 0B2C  F7A7 BA8B C08C 0F69 1F94
 ```
 
-### Cosign and Rekor
+### CoSign
 
-To verify Cosign signed artifacts, use `rekor-cli` or `curl` to [pull the entry from Rekor](https://edu.chainguard.dev/open-source/sigstore/rekor/how-to-verify-file-signatures-with-rekor-or-curl/).
-
-For example, to verify `checksums.txt` with the `checksums.txt.sig` stored locally:
+To verify CoSign signed artifacts, you can use the [CoSign
+CLI](https://docs.sigstore.dev/cosign/system_config/installation/). For example,
+to verify `checksums.txt` with the `checksums.sigstore.json` stored locally:
 
 ```shell-session
-$ SHASUM="$(openssl sha256 -r checksums.txt | awk '{print $1}')"
-bc53476e7e69c98650bf69690caf1aa32dc08c19735375819ae3b29bb9c2b733
-$ curl -X POST -H "Content-type: application/json" 'https://rekor.sigstore.dev/api/v1/index/retrieve' --data-raw "{\"hash\":\"sha256:$SHASUM\"}"
-24296fb24b8ad77aedcc1a0cea8b33a04926d6f3b8db35107a1e864c007bb4aa84416a5153cc0bca
-$ UUID=24296fb24b8ad77aedcc1a0cea8b33a04926d6f3b8db35107a1e864c007bb4aa84416a5153cc0bca
-$ curl -X GET "https://rekor.sigstore.dev/api/v1/log/entries/${UUID}" > response.json
-$ jq -r ".[\"$UUID\"].body" < response.json | base64 -d | jq -r '.spec.signature.publicKey.content' | base64 -d > certificate.pem
-$ base64 -d < checksums-freebsd.txt.sig > checksums-freebsd.txt.rawsig
-$ openssl pkeyutl -verify -certin -inkey certificate.pem -sigfile checksums-freebsd.txt.rawsig -in checksums-freebsd.txt -rawin
-Signature Verified Successfully
+$ cosign verify-blob --bundle checksums.txt.sigstore.json \
+                     --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+                     --certificate-identity-regexp='https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/(main|release/)' \
+                     checksums.txt
+Verified OK
 ```
+
+:::tip
+
+OpenBao will always publish releases from either the protected `main` branch
+or the protected `release/...` set of branches. This is reflected in the
+certificate identity checked by cosign.
+
+You can enforce that an artifact was signed by a workflow running on a
+particular branch by passing a fixed `--certificate-identity` instead of
+`--certificate-identity-regexp`:
+
+If published from the wrong branch, the output will look like this:
+
+```shell-session
+$ cosign verify-blob --bundle checksums.txt.sigstore.json \
+                     --certificate-identity='https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/release/2.6.x' \
+                     --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+                     checksums.txt
+Error: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected SAN value "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/release/2.6.x", got "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/bad-branch"
+error during command execution: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected SAN value "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/release/2.6.x", got "https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/bad-branch"
+```
+
+:::
+
+If the signature and the signed file don't match, you should see this instead:
+
+```shell-session
+$ cosign verify-blob --bundle checksums-linux.txt.sigstore.json \
+                     --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+                     --certificate-identity-regexp='https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/(main|release/)' \
+                     checksums-linux.txt
+Error: failed to verify signature: could not verify message: invalid signature when validating ASN.1 encoded signature
+error during command execution: failed to verify signature: could not verify message: invalid signature when validating ASN.1 encoded signature
+```
+
+### CoSign and Rekor
+
+Keyless verification has been integrated directly into the CoSign CLI, the Rekor
+CLI is no longer needed as `cosign` will fetch data from the Rekor API
+automatically.
+
+For verification instructions, see [the section above](#cosign) and please
+update your bookmarks.

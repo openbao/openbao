@@ -460,7 +460,8 @@ func TestTransit_Import(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to import ed25519 key: %v", err)
 			}
-		})
+		},
+	)
 
 	t.Run(
 		"import public key ecdsa",
@@ -492,7 +493,8 @@ func TestTransit_Import(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to import public key: %s", err)
 			}
-		})
+		},
+	)
 }
 
 func TestTransit_ImportVersion(t *testing.T) {

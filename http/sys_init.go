@@ -7,7 +7,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -45,7 +47,7 @@ func handleSysInitPut(core *vault.Core, w http.ResponseWriter, r *http.Request) 
 
 	// Parse the request
 	var req InitRequest
-	if err := parseJSONRequest(r, w, &req); err != nil {
+	if err := parseJSONRequest(r, &req); err != nil && !errors.Is(err, io.EOF) {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}

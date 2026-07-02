@@ -68,7 +68,7 @@ func (b *BoolPtr) Get() bool {
 func (b *BoolPtr) String() string {
 	var current bool
 	if b.v != nil {
-		current = *(b.v)
+		current = *b.v
 	}
 	return fmt.Sprintf("%v", current)
 }

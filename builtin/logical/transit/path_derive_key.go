@@ -137,9 +137,6 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 	if p == nil {
 		return logical.ErrorResponse("specified base key not found"), logical.ErrInvalidRequest
 	}
-	if !b.System().CachingDisabled() {
-		p.Lock(false)
-	}
 	defer p.Unlock()
 
 	if !p.Type.KeyAgreementSupported() {

@@ -55,7 +55,7 @@ func TestPluginCatalog_CRUD(t *testing.T) {
 	}
 	expectedBuiltin.BuiltinFactory, _ = builtinplugins.Registry.Get(pluginName, consts.PluginTypeDatabase)
 
-	if &(p.BuiltinFactory) == &(expectedBuiltin.BuiltinFactory) {
+	if &p.BuiltinFactory == &expectedBuiltin.BuiltinFactory {
 		t.Fatal("expected BuiltinFactory did not match actual")
 	}
 	expectedBuiltin.BuiltinFactory = nil
@@ -132,7 +132,7 @@ func TestPluginCatalog_CRUD(t *testing.T) {
 	}
 	expectedBuiltin.BuiltinFactory, _ = builtinplugins.Registry.Get(pluginName, consts.PluginTypeDatabase)
 
-	if &(p.BuiltinFactory) == &(expectedBuiltin.BuiltinFactory) {
+	if &p.BuiltinFactory == &expectedBuiltin.BuiltinFactory {
 		t.Fatal("expected BuiltinFactory did not match actual")
 	}
 	expectedBuiltin.BuiltinFactory = nil
@@ -229,75 +229,6 @@ func TestPluginCatalog_VersionedCRUD(t *testing.T) {
 	}
 	if plugin != nil {
 		t.Fatalf("expected no plugin with this version to be in the catalog, but found %+v", plugin)
-	}
-}
-
-func TestPluginCatalog_List(t *testing.T) {
-	core, _, _ := TestCoreUnsealed(t)
-	tempDir, err := filepath.EvalSymlinks(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	core.pluginCatalog.directory = tempDir
-
-	// Get builtin plugins and sort them
-	builtinKeys := builtinplugins.Registry.Keys(consts.PluginTypeDatabase)
-	sort.Strings(builtinKeys)
-
-	// List only builtin plugins
-	plugins, err := core.pluginCatalog.List(t.Context(), consts.PluginTypeDatabase)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	sort.Strings(plugins)
-
-	if len(plugins) != len(builtinKeys) {
-		t.Fatalf("unexpected length of plugin list, expected %d, got %d", len(builtinKeys), len(plugins))
-	}
-
-	if !reflect.DeepEqual(plugins, builtinKeys) {
-		t.Fatalf("expected did not match actual, got %#v\n expected %#v\n", plugins, builtinKeys)
-	}
-
-	// Set a plugin, test overwriting a builtin plugin
-	file, err := os.CreateTemp(tempDir, "temp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer file.Close()
-
-	command := filepath.Base(file.Name())
-	err = core.pluginCatalog.Set(t.Context(), "mysql-database-plugin", consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{}, []byte{'1'}, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Set another plugin
-	err = core.pluginCatalog.Set(t.Context(), "aaaaaaa", consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{}, []byte{'1'}, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// List the plugins
-	plugins, err = core.pluginCatalog.List(t.Context(), consts.PluginTypeDatabase)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	sort.Strings(plugins)
-
-	// plugins has a test-added plugin called "aaaaaaa" that is not built in
-	if len(plugins) != len(builtinKeys)+1 {
-		t.Fatalf("unexpected length of plugin list, expected %d, got %d", len(builtinKeys)+1, len(plugins))
-	}
-
-	// verify the first plugin is the one we just created.
-	if !reflect.DeepEqual(plugins[0], "aaaaaaa") {
-		t.Fatalf("expected did not match actual, got %#v\n expected %#v\n", plugins[0], "aaaaaaa")
-	}
-
-	// verify the builtin plugins are correct
-	if !reflect.DeepEqual(plugins[1:], builtinKeys) {
-		t.Fatalf("expected did not match actual, got %#v\n expected %#v\n", plugins[1:], builtinKeys)
 	}
 }
 

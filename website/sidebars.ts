@@ -74,7 +74,12 @@ const sidebars: SidebarsConfig = {
                         "concepts/integrated-storage/autopilot",
                     ],
                 },
-                "concepts/namespaces/index",
+                {
+                    "Namespaces": [
+                        "concepts/namespaces/index",
+                        "concepts/namespaces/sealable-namespaces",
+                    ]
+                },
                 "concepts/pgp-gpg-keybase",
                 "concepts/recovery-mode",
                 "concepts/resource-quotas",
@@ -85,6 +90,7 @@ const sidebars: SidebarsConfig = {
             ],
             Guides: [
                 "guides/migration",
+                "guides/sealable-namespaces",
                 {
                     Unsealing: [
                         {
@@ -118,6 +124,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/seal/ocikms",
                         "configuration/seal/pkcs11",
                         "configuration/seal/static",
+                        "configuration/seal/tcloudpublickms",
                         "configuration/seal/transit",
                     ],
                     service_registration: [
@@ -360,6 +367,7 @@ const sidebars: SidebarsConfig = {
                         "secrets/pki/setup",
                         "secrets/pki/quick-start-root-ca",
                         "secrets/pki/quick-start-intermediate-ca",
+                        "secrets/pki/quick-start-cel",
                         "secrets/pki/considerations",
                         "secrets/pki/troubleshooting-acme",
                         "secrets/pki/rotation-primitives",

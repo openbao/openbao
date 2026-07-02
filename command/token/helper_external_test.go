@@ -65,7 +65,8 @@ func helperPath(s ...string) string {
 	return fmt.Sprintf(
 		"%s %s",
 		os.Args[0],
-		strings.Join(cs, " "))
+		strings.Join(cs, " "),
+	)
 }
 
 func helperEnv() []string {

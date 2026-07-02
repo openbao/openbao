@@ -18,6 +18,68 @@ forum](https://github.com/orgs/openbao/discussions).
 Please refer to the [FAQ](faq.mdx) page for frequently asked questions
 concerning OpenBao feature deprecations.
 
+### HSM distribution
+
+> Announced **04/2026**, Deprecated in: **v2.6.0**, Removal: **v2.7.0**
+
+The HSM distribution will be deprecated and discontinued following the
+introduction of pluginized HSM/PKCS#11 support via KMS provider plugins. To
+prepare, modify your deployment to use the standard distribution of OpenBao
+and install the PKCS#11 KMS plugin, which provides drop-in support for existing
+PKCS#11 seal configuration.
+
+Also see:
+
+- [`seal` stanza](/docs/configuration/seal)
+- [`pkcs11` seal](/docs/configuration/seal/pkcs11)
+- [Plugin system](/docs/plugins)
+
+### Vendor-specific built-in Auto Unseal mechanisms
+
+> Announced **04/2026**, Deprecated in: **v2.6.0**, Removal: **v2.7.0**
+
+Following the introduction of plugin support for Auto Unseal mechanisms via KMS
+provider plugins, vendor-specific built-in mechanisms will be removed. These
+include:
+
+- [`alicloudkms`](/docs/configuration/seal/alicloudkms)
+- [`awskms`](/docs/configuration/seal/awskms)
+- [`azurekeyvault`](/docs/configuration/seal/azurekeyvault)
+- [`gcpckms`](/docs/configuration/seal/gcpckms)
+- [`ocikms`](/docs/configuration/seal/ocikms)
+
+All removed mechanisms remain supported via KMS plugins, which provide drop-in
+support for existing instances and their seal configuration.
+
+Also see:
+
+- [`seal` stanza](/docs/configuration/seal)
+- [Plugin system](/docs/plugins)
+
+### Built-in LDAP, Kerberos, and RADIUS plugins
+
+> Announced: [**04/2026**](https://github.com/openbao/openbao/issues/2808), Deprecated in: **v2.6.0**, Removal: **v2.7.0**
+
+The LDAP, Kerberos, and RADIUS auth and secret plugins are protocol-specific
+with dependencies on large, third-party libraries. We wish to reduce the size
+of the main binary and with OCI-based plugin distribution and declarative,
+configuration driven plugin registration, it becomes easier to consume
+externalized, community-maintained versions of these plugins from
+openbao-plugins.
+
+Please begin switching to plugin versions from openbao-plugins.
+
+### Unauthenticated generate root endpoints
+
+> Announced: **04/2026**, Deprecated in: **v2.5.3**, Removal: **unplanned**
+
+See [Deprecating Unauthenticated Generate Root Endpoints](./unauthed-generate-root.mdx)
+for details and reasoning.
+
+Also see:
+
+- [Listener configuration](/docs/configuration/listener)
+
 ### File storage backend
 
 > Announced: **04/2026**, Deprecated in: **v2.6.0**, Removal: **v2.7.0**

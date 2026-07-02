@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"io"
 	"net/http"
 
 	"github.com/openbao/openbao/helper/pgpkeys"
@@ -96,7 +97,7 @@ func handleSysRekeyInitGet(ctx context.Context, core *vault.Core, recovery bool,
 func handleSysRekeyInitPut(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
 	// Parse the request
 	var req RekeyRequest
-	if err := parseJSONRequest(r, w, &req); err != nil {
+	if err := parseJSONRequest(r, &req); err != nil && !errors.Is(err, io.EOF) {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -139,14 +140,15 @@ func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Parse the request
 		var req RekeyUpdateRequest
-		if err := parseJSONRequest(r, w, &req); err != nil {
+		if err := parseJSONRequest(r, &req); err != nil && !errors.Is(err, io.EOF) {
 			respondError(w, http.StatusBadRequest, err)
 			return
 		}
 		if req.Key == "" {
 			respondError(
 				w, http.StatusBadRequest,
-				errors.New("'key' must be specified in request body as JSON"))
+				errors.New("'key' must be specified in request body as JSON"),
+			)
 			return
 		}
 
@@ -161,7 +163,8 @@ func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 			if err != nil {
 				respondError(
 					w, http.StatusBadRequest,
-					errors.New("'key' must be a valid hex or base64 string"))
+					errors.New("'key' must be a valid hex or base64 string"),
+				)
 				return
 			}
 		}
@@ -274,14 +277,15 @@ func handleSysRekeyVerifyDelete(ctx context.Context, core *vault.Core, recovery 
 func handleSysRekeyVerifyPut(_ context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
 	// Parse the request
 	var req RekeyVerificationUpdateRequest
-	if err := parseJSONRequest(r, w, &req); err != nil {
+	if err := parseJSONRequest(r, &req); err != nil && !errors.Is(err, io.EOF) {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}
 	if req.Key == "" {
 		respondError(
 			w, http.StatusBadRequest,
-			errors.New("'key' must be specified in request body as JSON"))
+			errors.New("'key' must be specified in request body as JSON"),
+		)
 		return
 	}
 
@@ -296,7 +300,8 @@ func handleSysRekeyVerifyPut(_ context.Context, core *vault.Core, recovery bool,
 		if err != nil {
 			respondError(
 				w, http.StatusBadRequest,
-				errors.New("'key' must be a valid hex or base64 string"))
+				errors.New("'key' must be a valid hex or base64 string"),
+			)
 			return
 		}
 	}

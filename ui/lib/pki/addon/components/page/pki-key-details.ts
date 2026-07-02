@@ -15,7 +15,7 @@ interface Args {
 }
 
 export default class PkiKeyDetails extends Component<Args> {
-  @service declare readonly router: RouterService;
+  @service declare readonly 'host-router': RouterService;
   @service declare readonly flashMessages: FlashMessageService;
 
   @action
@@ -23,7 +23,7 @@ export default class PkiKeyDetails extends Component<Args> {
     try {
       await this.args.key.destroyRecord();
       this.flashMessages.success('Key deleted successfully.');
-      this.router.transitionTo('vault.cluster.secrets.backend.pki.keys.index');
+      this['host-router'].transitionTo('vault.cluster.secrets.backend.pki.keys.index');
     } catch (error) {
       if (!this.args.key.isDestroyed && !this.args.key.isDestroying) {
         this.args.key.rollbackAttributes();

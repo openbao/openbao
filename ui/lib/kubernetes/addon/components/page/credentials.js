@@ -23,7 +23,7 @@ import timestamp from 'vault/utils/timestamp';
  */
 export default class CredentialsPageComponent extends Component {
   @service store;
-  @service router;
+  @service 'host-router';
 
   @tracked ttl = '';
   @tracked clusterRoleBinding = false;
@@ -38,7 +38,7 @@ export default class CredentialsPageComponent extends Component {
 
   @action
   cancel() {
-    this.router.transitionTo('vault.cluster.secrets.backend.kubernetes.roles.role.details');
+    this['host-router'].transitionTo('vault.cluster.secrets.backend.kubernetes.roles.role.details');
   }
 
   @action

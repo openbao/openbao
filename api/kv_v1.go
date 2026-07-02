@@ -32,11 +32,11 @@ func (kv *KVv1) Get(ctx context.Context, secretPath string) (*KVSecret, error) {
 	}, nil
 }
 
-// Put inserts a key-value secret (e.g. {"password": "Hashi123"}) into the
+// Put inserts a key-value secret (e.g. {"password": "password123"}) into the
 // KV v1 secrets engine.
 //
 // If the secret already exists, it will be overwritten.
-func (kv *KVv1) Put(ctx context.Context, secretPath string, data map[string]interface{}) error {
+func (kv *KVv1) Put(ctx context.Context, secretPath string, data map[string]any) error {
 	pathToWriteTo := fmt.Sprintf("%s/%s", kv.mountPath, secretPath)
 
 	_, err := kv.c.Logical().WriteWithContext(ctx, pathToWriteTo, data)
@@ -57,4 +57,29 @@ func (kv *KVv1) Delete(ctx context.Context, secretPath string) error {
 	}
 
 	return nil
+}
+
+// List returns the list of available keys at the specified location.
+func (kv *KVv1) List(ctx context.Context, secretPath string) (*KVList, error) {
+	pathToList := fmt.Sprintf("%s/%s", kv.mountPath, secretPath)
+
+	resp, err := kv.c.Logical().ListWithContext(ctx, pathToList)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets at %s: %w", pathToList, err)
+	}
+
+	return extractKeyList(resp)
+}
+
+// Scan returns the list of available keys at the specified location, recursing
+// into sub-folders.
+func (kv *KVv1) Scan(ctx context.Context, secretPath string) (*KVList, error) {
+	pathToList := fmt.Sprintf("%s/%s", kv.mountPath, secretPath)
+
+	resp, err := kv.c.Logical().ScanWithContext(ctx, pathToList)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets at %s: %w", pathToList, err)
+	}
+
+	return extractKeyList(resp)
 }

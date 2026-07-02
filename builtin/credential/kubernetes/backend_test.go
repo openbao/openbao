@@ -423,9 +423,9 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.minHorizon > 0 {
-				defer (func() {
+				defer func() {
 					defaultMinHorizon = d
-				})()
+				}()
 				defaultMinHorizon = tt.minHorizon
 			}
 			b := &kubeAuthBackend{

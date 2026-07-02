@@ -333,7 +333,8 @@ func (c *SSHCommand) Run(args []string) int {
 	if c.flagRole == "" {
 		c.UI.Error(wrapAtLength(
 			"No -role specified. Use -role to tell OpenBao which " +
-				"ssh role to use for authentcation."))
+				"ssh role to use for authentcation.",
+		))
 		return 1
 	}
 
@@ -344,7 +345,8 @@ func (c *SSHCommand) Run(args []string) int {
 	if c.flagMode == "" {
 		c.UI.Error(wrapAtLength(
 			"WARNING: No -mode specified. Use -mode to tell OpenBao which ssh " +
-				"authentication mode to use."))
+				"authentication mode to use.",
+		))
 		return 1
 	}
 
@@ -484,7 +486,8 @@ func (c *SSHCommand) handleTypeCA(username, ip, port string, sshArgs []string) i
 	}
 
 	if userKnownHostsFile != "" {
-		args = append(args,
+		args = append(
+			args,
 			"-o UserKnownHostsFile="+userKnownHostsFile,
 		)
 	}
@@ -552,12 +555,14 @@ func (c *SSHCommand) handleTypeOTP(username, ip, port string, sshArgs []string) 
 		c.UI.Warn(wrapAtLength(
 			"OpenBao could not locate \"sshpass\". The OTP code for the session is " +
 				"displayed below. Enter this code in the SSH password prompt. If you " +
-				"install sshpass, OpenBao can automatically perform this step for you."))
+				"install sshpass, OpenBao can automatically perform this step for you.",
+		))
 		c.UI.Output("OTP for the session is: " + cred.Key)
 	} else {
 		// sshpass is available so lets use it instead
 		sshCmd = sshpassPath
-		args = append(args,
+		args = append(
+			args,
 			"-e", // Read password for SSHPASS environment variable
 			c.flagSSHExecutable,
 		)
@@ -566,7 +571,8 @@ func (c *SSHCommand) handleTypeOTP(username, ip, port string, sshArgs []string) 
 
 	// Only harcode the knownhostsfile path if it has been set
 	if c.flagUserKnownHostsFile != "" {
-		args = append(args,
+		args = append(
+			args,
 			"-o UserKnownHostsFile="+c.flagUserKnownHostsFile,
 		)
 	}
@@ -576,7 +582,8 @@ func (c *SSHCommand) handleTypeOTP(username, ip, port string, sshArgs []string) 
 		args = append(args, "-p", cred.Port)
 	}
 
-	args = append(args,
+	args = append(
+		args,
 		"-o StrictHostKeyChecking="+c.flagStrictHostKeyChecking,
 	)
 
@@ -654,7 +661,8 @@ func (c *SSHCommand) handleTypeDynamic(username, ip, port string, sshArgs []stri
 		args = append(args, "-p", cred.Port)
 	}
 
-	args = append(args,
+	args = append(
+		args,
 		"-i", keyPath,
 		"-o UserKnownHostsFile="+c.flagUserKnownHostsFile,
 		"-o StrictHostKeyChecking="+c.flagStrictHostKeyChecking,

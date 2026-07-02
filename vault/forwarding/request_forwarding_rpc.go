@@ -5,12 +5,17 @@ package forwarding
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"runtime/debug"
+	"slices"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	metrics "github.com/hashicorp/go-metrics/compat"
+	"github.com/hashicorp/go-multierror"
 	"github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -106,25 +111,76 @@ func (s *forwardedRequestRPCServer) Echo(ctx context.Context, in *EchoRequest) (
 	return reply, nil
 }
 
-type Client struct {
-	RequestForwardingClient
-	core        core
-	echoTicker  *time.Ticker
-	echoContext context.Context
+func (s *forwardedRequestRPCServer) AdvertiseNamespaceKeys(ctx context.Context, in *AdvertiseNamespaceKeysRequest) (*AdvertiseNamespaceKeysReply, error) {
+	missing := s.core.NamespacesMissingKeys()
+	ret := &AdvertiseNamespaceKeysReply{}
+	for _, uuid := range missing {
+		if slices.Contains(in.Namespaces, uuid) {
+			ret.Namespaces = append(ret.Namespaces, uuid)
+		}
+	}
+
+	return ret, nil
 }
 
-func NewClient(core core, requestForwardingClient RequestForwardingClient, echoTicker *time.Ticker, echoContext context.Context) *Client {
+func (s *forwardedRequestRPCServer) SendNamespaceKeys(ctx context.Context, in *SendNamespaceKeysRequest) (*SendNamespaceKeysReply, error) {
+	keys := make(map[string][]byte, len(in.Keys))
+
+	for _, key := range in.Keys {
+		keys[key.Uuid] = key.Key
+	}
+
+	if err := s.core.SetNamespaceKeys(ctx, keys); err != nil {
+		s.core.Logger().Error("failed to set namespace keys", "error", err)
+		return &SendNamespaceKeysReply{
+			Retry: true,
+		}, nil
+	}
+
+	return &SendNamespaceKeysReply{}, nil
+}
+
+func (s *forwardedRequestRPCServer) GetNamespaceKeys(ctx context.Context, in *GetNamespaceKeysRequest) (*GetNamespaceKeysReply, error) {
+	keys, err := s.core.NamespaceKeys(ctx, in.Namespaces)
+	if err != nil && len(keys) == 0 {
+		s.core.Logger().Error("call to get namespace keys failed", "error", err)
+		return &GetNamespaceKeysReply{}, nil
+	} else if err != nil {
+		s.core.Logger().Warn("call to get namespace keys failed, but continuing with keys", "error", err, "keys", len(keys))
+	}
+
+	resp := &GetNamespaceKeysReply{}
+	for uuid, rootKey := range keys {
+		resp.Keys = append(resp.Keys, &NamespaceKey{
+			Uuid: uuid,
+			Key:  rootKey,
+		})
+	}
+
+	return resp, nil
+}
+
+type Client struct {
+	RequestForwardingClient
+	core         core
+	taskContext  context.Context
+	echoTicker   *time.Ticker
+	nsSyncTicker *time.Ticker
+}
+
+func NewClient(core core, requestForwardingClient RequestForwardingClient, taskContext context.Context, echoTicker *time.Ticker, nsSyncTicker *time.Ticker) *Client {
 	return &Client{
 		RequestForwardingClient: requestForwardingClient,
 		core:                    core,
+		taskContext:             taskContext,
 		echoTicker:              echoTicker,
-		echoContext:             echoContext,
+		nsSyncTicker:            nsSyncTicker,
 	}
 }
 
 // NOTE: we also take advantage of gRPC's keepalive bits, but as we send data
 // with these requests it's useful to keep this as well
-func (c *Client) StartHeartbeat() {
+func (c *Client) Start() {
 	go func() {
 		clusterAddr := c.core.ClusterAddr()
 		hostname, _ := os.Hostname()
@@ -154,7 +210,7 @@ func (c *Client) StartHeartbeat() {
 			}
 			defer metrics.MeasureSinceWithLabels([]string{"ha", "rpc", "client", "echo"}, now, labels)
 
-			ctx, cancel := context.WithTimeout(c.echoContext, 2*time.Second)
+			ctx, cancel := context.WithTimeout(c.taskContext, 2*time.Second)
 			resp, err := c.Echo(ctx, req)
 			cancel()
 			if err != nil {
@@ -170,23 +226,137 @@ func (c *Client) StartHeartbeat() {
 				c.core.Logger().Debug("forwarding: unexpected echo response from active node", "message", resp.Message)
 				return
 			}
+
 			// Store the active node's replication state to display in
 			// sys/health calls
 			c.core.SetActiveNodeReplicationState(consts.ReplicationState(resp.ReplicationState))
 		}
 
+		// The ticker may fire several times before keys are synchronized,
+		// so ignore them.
+		var syncRunning atomic.Bool
+		syncKeys := func() {
+			if !syncRunning.CompareAndSwap(false, true) {
+				c.core.Logger().Warn("another namespace key synchronization is still running")
+				return
+			}
+			defer syncRunning.Store(false)
+
+			c.core.Logger().Trace("synchronizing namespace keys with active node")
+
+			// We don't want to hang forever waiting to synchronize namespace
+			// seal keys with the active node. Bind it to a reasonable length.
+			ctx, cancel := context.WithTimeout(c.taskContext, 2*time.Minute)
+			defer cancel()
+
+			c.SynchronizeKeys(ctx)
+		}
+
 		tick()
+		syncKeys()
 
 		for {
 			select {
-			case <-c.echoContext.Done():
+			case <-c.taskContext.Done():
 				c.echoTicker.Stop()
 				c.core.Logger().Debug("forwarding: stopping heartbeating")
 				c.core.SetActiveNodeReplicationState(consts.ReplicationUnknown)
 				return
 			case <-c.echoTicker.C:
 				tick()
+			case <-c.nsSyncTicker.C:
+				go syncKeys()
 			}
 		}
 	}()
+}
+
+func (c *Client) SynchronizeKeys(ctx context.Context) {
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		if err := c.shipKeys(ctx); err != nil {
+			c.core.Logger().Error("error sending namespace keys", "error", err)
+		}
+	})
+
+	wg.Go(func() {
+		if err := c.getKeys(ctx); err != nil {
+			c.core.Logger().Error("error receiving namespace keys", "error", err)
+		}
+	})
+
+	wg.Wait()
+}
+
+func (c *Client) shipKeys(ctx context.Context) error {
+	namespaces := c.core.NamespacesWithKeys()
+	if len(namespaces) == 0 {
+		// Nothing to do.
+		return nil
+	}
+
+	advertisement := &AdvertiseNamespaceKeysRequest{
+		Namespaces: namespaces,
+	}
+
+	response, err := c.AdvertiseNamespaceKeys(ctx, advertisement)
+	if err != nil {
+		return fmt.Errorf("failed to send unsealed namespace advertisement to active node: %v", err)
+	}
+
+	if len(response.Namespaces) == 0 {
+		return nil
+	}
+
+	// Even if we have errs, if we have a non-empty key set, we should still
+	// attempt to send them to the active node.
+	keys, errs := c.core.NamespaceKeys(ctx, response.Namespaces)
+	if len(keys) == 0 {
+		return errs
+	}
+
+	reply := &SendNamespaceKeysRequest{}
+	for uuid, key := range keys {
+		reply.Keys = append(reply.Keys, &NamespaceKey{
+			Uuid: uuid,
+			Key:  key,
+		})
+	}
+
+	_, err = c.SendNamespaceKeys(ctx, reply)
+	if err != nil {
+		return multierror.Append(errs, err)
+	}
+
+	return errs
+}
+
+func (c *Client) getKeys(ctx context.Context) error {
+	namespaces := c.core.NamespacesMissingKeys()
+	if len(namespaces) == 0 {
+		// No namespaces to update.
+		return nil
+	}
+
+	keys, err := c.GetNamespaceKeys(ctx, &GetNamespaceKeysRequest{
+		Namespaces: namespaces,
+	})
+	if err != nil {
+		return fmt.Errorf("failed getting namespace keys from active node: %w", err)
+	}
+
+	if keys == nil || len(keys.Keys) == 0 {
+		return nil
+	}
+
+	batch := make(map[string][]byte, len(keys.Keys))
+	for _, key := range keys.Keys {
+		batch[key.Uuid] = key.Key
+	}
+
+	if err := c.core.SetNamespaceKeys(ctx, batch); err != nil {
+		return fmt.Errorf("failed loading namespace keys: %w", err)
+	}
+
+	return nil
 }

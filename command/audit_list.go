@@ -127,7 +127,8 @@ func (c *AuditListCommand) simpleAudits(audits map[string]*api.Audit) []string {
 	columns := []string{"Path | Type | Description"}
 	for _, path := range paths {
 		audit := audits[path]
-		columns = append(columns, fmt.Sprintf("%s | %s | %s",
+		columns = append(columns, fmt.Sprintf(
+			"%s | %s | %s",
 			audit.Path,
 			audit.Type,
 			audit.Description,
@@ -158,7 +159,8 @@ func (c *AuditListCommand) detailedAudits(audits map[string]*api.Audit) []string
 			replication = "local"
 		}
 
-		columns = append(columns, fmt.Sprintf("%s | %s | %s | %s | %s",
+		columns = append(columns, fmt.Sprintf(
+			"%s | %s | %s | %s | %s",
 			path,
 			audit.Type,
 			audit.Description,

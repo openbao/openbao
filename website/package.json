@@ -25,21 +25,21 @@
     "@docusaurus/preset-classic": "^3.10.1",
     "@docusaurus/theme-common": "^3.10.1",
     "@docusaurus/theme-mermaid": "^3.10.1",
-    "@easyops-cn/docusaurus-search-local": "^0.55.1",
+    "@easyops-cn/docusaurus-search-local": "^0.55.2",
     "@hashicorp/remark-plugins": "^4.1.1",
     "@mdx-js/react": "^3.1.1",
     "clsx": "^2.1.1",
     "lodash": "^4.18.1",
-    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#ab2ccb85e2ee39a3756ce7a222eaa648aa1a3b20",
+    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#91e3d9c1402b35e2b41464eb58621b652d1df874",
     "prism-react-renderer": "^2.4.1",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.10.1",
     "@docusaurus/tsconfig": "^3.10.1",
     "@docusaurus/types": "^3.10.1",
-    "markdownlint": "^0.40.0",
+    "markdownlint": "^0.41.0",
     "markdownlint-cli2": "^0.22.1",
     "typescript": "^6.0.3"
   },

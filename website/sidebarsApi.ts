@@ -96,7 +96,7 @@ const sidebars: SidebarsConfig = {
         "system/init",
         "system/internal-counters",
         {
-          "sys/internal/inspect": [
+          "/sys/internal/inspect": [
             "system/inspect/index",
             "system/inspect/request",
             "system/inspect/router",
@@ -129,7 +129,7 @@ const sidebars: SidebarsConfig = {
         "system/rekey-recovery-key",
         "system/remount",
         {
-          "sys/rotate": [
+          "/sys/rotate": [
             "system/rotate/index",
             "system/rotate/keyring",
             "system/rotate/keyring-config",
@@ -144,7 +144,7 @@ const sidebars: SidebarsConfig = {
         "system/seal-status",
         "system/step-down",
         {
-          "sys/storage": [
+          "/sys/storage": [
             "system/storage/index",
             "system/storage/raft",
             "system/storage/raftautopilot",
@@ -154,6 +154,7 @@ const sidebars: SidebarsConfig = {
         "system/unseal",
         "system/user-lockout",
         "system/version-history",
+        "system/workflows",
         "system/wrapping-lookup",
         "system/wrapping-rewrap",
         "system/wrapping-unwrap",

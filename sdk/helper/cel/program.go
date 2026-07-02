@@ -121,7 +121,8 @@ func (e *EvalConfig) ToEnv() (*cel.Env, error) {
 	conditionalFunction, err := decls.NewFunction(operators.Conditional,
 		decls.FunctionDocs(
 			`The ternary operator tests a boolean predicate and returns the left-hand side `+
-				`(truthy) expression if true, or the right-hand side (falsy) expression if false`),
+				`(truthy) expression if true, or the right-hand side (falsy) expression if false`,
+		),
 		decls.Overload(overloads.Conditional,
 			[]*types.Type{types.BoolType, paramA, paramB}, // This signature is different
 			types.DynType, // This return type is different
@@ -129,7 +130,8 @@ func (e *EvalConfig) ToEnv() (*cel.Env, error) {
 			decls.OverloadExamples(
 				`'hello'.contains('lo') ? 'hi' : false // 'hi'`,
 				`'hello'.contains('lo') ? 'hi' : 'bye' // 'hi'`,
-				`32 % 3 == 0 ? 'divisible' : -1 // -1`)),
+				`32 % 3 == 0 ? 'divisible' : -1 // -1`,
+			)),
 		decls.SingletonFunctionBinding(func(args ...ref.Val) ref.Val {
 			return types.NoSuchOverloadErr()
 		}))

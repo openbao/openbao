@@ -123,7 +123,8 @@ func (r *ResponseError) Error() string {
 			ns+
 			"URL: %s %s\n"+
 			"Code: %d. %s:\n\n",
-		r.HTTPMethod, r.URL, r.StatusCode, errString))
+		r.HTTPMethod, r.URL, r.StatusCode, errString,
+	))
 
 	if r.RawError && len(r.Errors) == 1 {
 		errBody.WriteString(r.Errors[0])

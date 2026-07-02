@@ -161,7 +161,8 @@ func TestAuditFile_fileModeExecutable(t *testing.T) {
 			info, err := os.Stat(file)
 			require.NoError(t, err)
 
-			require.Equal(t, tt.want, info.Mode(),
+			require.Equal(
+				t, tt.want, info.Mode(),
 				"input: %s, have: %s, want: %s",
 				strconv.FormatUint(uint64(tt.mode), 8),
 				strconv.FormatUint(uint64(info.Mode()), 8),

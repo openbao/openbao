@@ -318,7 +318,19 @@ func TestCoreSeal(core *Core) error {
 }
 
 func TestNamespaceUnseal(core *Core, ns *namespace.Namespace, key []byte) (bool, error) {
-	return core.namespaceStore.unsealNamespace(namespace.ContextWithNamespace(context.Background(), ns), ns, TestKeyCopy(key))
+	ctx := namespace.RootContext(context.Background())
+
+	parentPath, _ := ns.ParentPath()
+	parent, err := core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
+	if err != nil {
+		return false, err
+	}
+
+	return core.namespaceStore.UnsealNamespace(
+		namespace.ContextWithNamespace(ctx, parent),
+		parent.TrimmedPath(ns.Path),
+		TestKeyCopy(key),
+	)
 }
 
 func TestCoreCreateNamespaces(t testing.T, core *Core, namespaces ...*namespace.Namespace) {
@@ -1832,7 +1844,8 @@ func (cluster *TestCluster) StartCore(t testing.T, idx int, opts *TestClusterOpt
 
 	cluster.setupClusterListener(
 		t, idx, newCore, tcc.CoreConfig,
-		opts, tcc.Listeners, tcc.Handler)
+		opts, tcc.Listeners, tcc.Handler,
+	)
 
 	tcc.Client = cluster.getAPIClient(t, opts, tcc.Listeners[0].Address.Port, tcc.tlsConfig)
 

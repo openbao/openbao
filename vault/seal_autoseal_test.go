@@ -179,7 +179,8 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 func TestAutoSeal_HealthCheck(t *testing.T) {
 	inmemSink := metrics.NewInmemSink(
 		1000000*time.Hour,
-		2000000*time.Hour)
+		2000000*time.Hour,
+	)
 
 	metricsConf := metrics.DefaultConfig("")
 	metricsConf.EnableHostname = false

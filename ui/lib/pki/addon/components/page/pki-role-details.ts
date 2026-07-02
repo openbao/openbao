@@ -17,7 +17,7 @@ interface Args {
 }
 
 export default class DetailsPage extends Component<Args> {
-  @service declare readonly router: RouterService;
+  @service declare readonly 'host-router': RouterService;
   @service declare readonly flashMessages: FlashMessageService;
   @service declare readonly secretMountPath: SecretMountPath;
 
@@ -39,7 +39,7 @@ export default class DetailsPage extends Component<Args> {
     try {
       await this.args.role.destroyRecord();
       this.flashMessages.success('Role deleted successfully');
-      this.router.transitionTo('vault.cluster.secrets.backend.pki.roles.index');
+      this['host-router'].transitionTo('vault.cluster.secrets.backend.pki.roles.index');
     } catch (error) {
       this.args.role.rollbackAttributes();
       this.flashMessages.danger(errorMessage(error));

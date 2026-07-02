@@ -52,7 +52,8 @@ func TestDatabaseErrorSanitizerMiddleware(t *testing.T) {
 		},
 		"multiple secrets": {
 			inputErr: errors.New("here is my password: iofsd9473tg"),
-			secretsFunc: secretFunc(t,
+			secretsFunc: secretFunc(
+				t,
 				"iofsd9473tg", "<redacted>",
 				"password", "<this was the word password>",
 			),

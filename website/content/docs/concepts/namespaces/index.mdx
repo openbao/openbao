@@ -1,5 +1,5 @@
 ---
-sidebar_label: Namespaces
+sidebar_label: Overview
 description: >-
   OpenBao Namespaces enable secure multi-tenancy and self-management of
   instances.
@@ -75,6 +75,30 @@ Children can inherit elements from their parent namespaces. For example,
 policies for a child namespace might reference entities or groups from the parent
 namespace. Parent namespaces can also **assert** policies on identities within
 a child namespace.
+
+### Cross-namespaces identities
+
+Entities or groups from any namespace are not enabled by default.
+
+:::warning
+
+The configuration setting `unsafe_cross_namespace_identity` gives compatibility with Vault Enterprise's cross-namespace group membership and should not be enabled.
+
+There are no mitigating controls on what identities or groups another namespace can reference and allows for unconfined permission sharing.
+
+:::
+
+Example:
+
+```hcl
+api_addr = "..."
+listener "tcp" {
+  ...
+}
+
+# Allow namespaces to reference other namespaces' entities or groups
+unsafe_cross_namespace_identity = true
+```
 
 ## Delegation and namespace administrators
 

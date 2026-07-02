@@ -380,7 +380,8 @@ func TestGauge_InterruptedStreaming(t *testing.T) {
 	// Long bucket time == low chance of crossing interval
 	inmemSink := metrics.NewInmemSink(
 		1000000*time.Hour,
-		2000000*time.Hour)
+		2000000*time.Hour,
+	)
 
 	sink := NewClusterMetricSink("test", inmemSink)
 	sink.MaxGaugeCardinality = 500
@@ -448,7 +449,8 @@ func TestGauge_MaximumMeasurements(t *testing.T) {
 	// Long bucket time == low chance of crossing interval
 	inmemSink := metrics.NewInmemSink(
 		1000000*time.Hour,
-		2000000*time.Hour)
+		2000000*time.Hour,
+	)
 
 	sink := NewClusterMetricSink("test", inmemSink)
 	sink.MaxGaugeCardinality = 100
@@ -523,7 +525,8 @@ func TestGauge_MeasurementError(t *testing.T) {
 	c := newSimulatedCollector()
 	inmemSink := metrics.NewInmemSink(
 		1000000*time.Hour,
-		2000000*time.Hour)
+		2000000*time.Hour,
+	)
 	sink := NewClusterMetricSink("test", inmemSink)
 	sink.MaxGaugeCardinality = 500
 	sink.GaugeInterval = 2 * time.Hour

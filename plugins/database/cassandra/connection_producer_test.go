@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"maps"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	dbtesting "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/testing"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/stretchr/testify/require"
+	"github.com/tsaarni/certyaml"
 )
 
 var insecureFileMounts = map[string]string{
@@ -26,14 +28,37 @@ var insecureFileMounts = map[string]string{
 }
 
 func TestSelfSignedCA(t *testing.T) {
-	copyFromTo := map[string]string{
-		"test-fixtures/with_tls/cassandra.yaml":    "/etc/cassandra/cassandra.yaml",
-		"test-fixtures/with_tls/cqlshrc":           "/etc/cassandra/cqlshrc",
-		"test-fixtures/with_tls/stores/truststore": "/etc/cassandra/truststore",
-		"test-fixtures/with_tls/stores/keystore":   "/etc/cassandra/keystore",
+	ca := certyaml.Certificate{
+		Subject: "cn=ca",
 	}
 
-	tlsConfig := loadServerCA(t, "test-fixtures/with_tls/ca.pem")
+	server := certyaml.Certificate{
+		Subject:         "cn=cassandra",
+		SubjectAltNames: []string{"DNS:cassandra"},
+		Issuer:          &ca,
+	}
+
+	badCA := certyaml.Certificate{
+		Subject: "cn=badca",
+	}
+
+	// Write PEM files that will be mounted into the container.
+	dir := t.TempDir()
+	serverPEM := filepath.Join(dir, "server.pem")
+	caPEM := filepath.Join(dir, "ca.pem")
+	require.NoError(t, os.WriteFile(serverPEM, append(server.KeyPEM(), server.CertPEM()...), 0o600))
+	require.NoError(t, os.WriteFile(caPEM, ca.CertPEM(), 0o644))
+
+	copyFromTo := map[string]string{
+		"test-fixtures/with_tls/cassandra.yaml": "/etc/cassandra/cassandra.yaml",
+		"test-fixtures/with_tls/cqlshrc":        "/etc/cassandra/cqlshrc",
+		serverPEM:                               "/etc/cassandra/server.pem",
+		caPEM:                                   "/etc/cassandra/ca.pem",
+	}
+
+	caPool := x509.NewCertPool()
+	caPool.AppendCertsFromPEM(ca.CertPEM())
+	tlsConfig := &tls.Config{RootCAs: caPool}
 	// Note about CI behavior: when running these tests locally, they seem to pass without issue. However, if the
 	// ServerName is not set, the tests fail within CI. It's not entirely clear to me why they are failing in CI
 	// however by manually setting the ServerName we can get around the hostname/DNS issue and get them passing.
@@ -44,7 +69,8 @@ func TestSelfSignedCA(t *testing.T) {
 		EnableHostVerification: true,
 	}
 
-	host, cleanup := cassandra.PrepareTestContainer(t,
+	host, cleanup := cassandra.PrepareTestContainer(
+		t,
 		cassandra.CopyFromTo(copyFromTo),
 		cassandra.SslOpts(sslOpts),
 	)
@@ -55,16 +81,13 @@ func TestSelfSignedCA(t *testing.T) {
 		expectErr bool
 	}
 
-	caPEM := loadFile(t, "test-fixtures/with_tls/ca.pem")
-	badCAPEM := loadFile(t, "test-fixtures/with_tls/bad_ca.pem")
-
 	tests := map[string]testCase{
 		// ///////////////////////
 		// pem_json tests
 		"pem_json/ca only": {
 			config: map[string]interface{}{
 				"pem_json": toJSON(t, certutil.CertBundle{
-					CAChain: []string{caPEM},
+					CAChain: []string{string(ca.CertPEM())},
 				}),
 			},
 			expectErr: false,
@@ -72,7 +95,7 @@ func TestSelfSignedCA(t *testing.T) {
 		"pem_json/bad ca": {
 			config: map[string]interface{}{
 				"pem_json": toJSON(t, certutil.CertBundle{
-					CAChain: []string{badCAPEM},
+					CAChain: []string{string(badCA.CertPEM())},
 				}),
 			},
 			expectErr: true,
@@ -88,13 +111,13 @@ func TestSelfSignedCA(t *testing.T) {
 		// pem_bundle tests
 		"pem_bundle/ca only": {
 			config: map[string]interface{}{
-				"pem_bundle": caPEM,
+				"pem_bundle": ca.CertPEM(),
 			},
 			expectErr: false,
 		},
 		"pem_bundle/unrecognized CA": {
 			config: map[string]interface{}{
-				"pem_bundle": badCAPEM,
+				"pem_bundle": badCA.CertPEM(),
 			},
 			expectErr: true,
 		},
@@ -195,29 +218,6 @@ func assertNewUser(t *testing.T, db *Cassandra, sslOpts *gocql.SslOptions) {
 	t.Logf("Username: %s", newUserResp.Username)
 
 	assertCreds(t, db.Hosts, db.Port, newUserResp.Username, newUserReq.Password, sslOpts, 5*time.Second)
-}
-
-func loadServerCA(t *testing.T, file string) *tls.Config {
-	t.Helper()
-
-	pemData, err := os.ReadFile(file)
-	require.NoError(t, err)
-
-	pool := x509.NewCertPool()
-	pool.AppendCertsFromPEM(pemData)
-
-	config := &tls.Config{
-		RootCAs: pool,
-	}
-	return config
-}
-
-func loadFile(t *testing.T, filename string) string {
-	t.Helper()
-
-	contents, err := os.ReadFile(filename)
-	require.NoError(t, err)
-	return string(contents)
 }
 
 func toJSON(t *testing.T, val interface{}) string {

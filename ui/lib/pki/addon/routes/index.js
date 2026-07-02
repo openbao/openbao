@@ -7,9 +7,9 @@ import Route from '@ember/routing/route';
 import { inject as service } from '@ember/service';
 
 export default class PkiRoute extends Route {
-  @service router;
+  @service 'host-router';
 
   redirect() {
-    this.router.transitionTo('vault.cluster.secrets.backend.pki.overview');
+    this['host-router'].transitionTo('vault.cluster.secrets.backend.pki.overview');
   }
 }

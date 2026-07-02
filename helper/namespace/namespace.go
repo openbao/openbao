@@ -42,6 +42,7 @@ type Namespace struct {
 	UUID           string            `json:"uuid" mapstructure:"uuid"`
 	Path           string            `json:"path" mapstructure:"path"`
 	Tainted        bool              `json:"tainted" mapstructure:"tainted"`
+	ManuallySealed bool              `json:"manually_sealed" mapstructure:"manually_sealed"`
 	Locked         bool              `json:"-"`
 	UnlockKey      string            `json:"unlock_key" mapstructure:"unlock_key"`
 	CustomMetadata map[string]string `json:"custom_metadata" mapstructure:"custom_metadata"`
@@ -101,6 +102,7 @@ var (
 		UUID:           RootNamespaceUUID,
 		Path:           "",
 		Tainted:        false,
+		ManuallySealed: false,
 		Locked:         false,
 		CustomMetadata: make(map[string]string),
 	}
@@ -152,6 +154,7 @@ func (n *Namespace) Clone(withUnlock bool) *Namespace {
 		UUID:           n.UUID,
 		Path:           n.Path,
 		Tainted:        n.Tainted,
+		ManuallySealed: n.ManuallySealed,
 		Locked:         n.Locked,
 		CustomMetadata: meta,
 	}
@@ -199,6 +202,13 @@ func (n *Namespace) ValidateUUID(candidate string) error {
 	}
 
 	return nil
+}
+
+// MatchesID returns true if the given accessor/lease ID matches the current
+// namespace.
+func (n *Namespace) MatchesID(id string) bool {
+	_, nsId := SplitIDFromString(id)
+	return nsId == n.ID || (nsId == "" && n.ID == RootNamespaceID)
 }
 
 // ContextWithNamespace adds the given namespace to the given context
@@ -263,7 +273,7 @@ func Canonicalize(nsPath string) string {
 	// Remove duplicate slashes and any ../ values if present.
 	nsPath = path.Clean(nsPath)
 
-	if nsPath == "." || nsPath == "root" {
+	if nsPath == "." {
 		return ""
 	}
 
@@ -273,6 +283,26 @@ func Canonicalize(nsPath string) string {
 	}
 
 	return nsPath
+}
+
+// ParseName ensures that input is a valid non-empty, non-root namespace name
+// (path segment) and returns its canonicalized form.
+func ParseName(input string) (string, error) {
+	name := Canonicalize(input)
+	if name == "" {
+		return "", errors.New("namespace name cannot be empty")
+	}
+
+	// Clip off the final slash added by canonicalization.
+	clipped := name[:len(name)-1]
+	switch {
+	case strings.Contains(clipped, "/"):
+		return "", errors.New("namespace name cannot contain /")
+	case slices.Contains(reservedNames, clipped):
+		return "", fmt.Errorf("%q is a reserved path and cannot be used as a namespace name", name)
+	}
+
+	return name, nil
 }
 
 func SplitIDFromString(input string) (string, string) {

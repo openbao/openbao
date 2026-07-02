@@ -521,7 +521,7 @@ SEALFAIL:
 	if err != nil {
 		//nolint:staticcheck // user-facing error
 		return diagnose.SpotError(ctx, "Check Cluster Address", fmt.Errorf("Cluster Address could not be determined or was invalid: %w.", err),
-			diagnose.Advice("Please check that the API and Cluster addresses are different, and that the API, Cluster and Redirect addresses have both a host and port."))
+			diagnose.Advice("Please check that the API and Cluster addresses are different and that the API, Cluster and Redirect addresses have both a host and port."))
 	}
 	diagnose.SpotOk(ctx, "Check Cluster Address", "Cluster address is logically valid and can be found.")
 
@@ -542,7 +542,8 @@ SEALFAIL:
 				return fmt.Errorf("Error initializing core: %s.", newCoreError)
 			}
 			diagnose.Warn(ctx, wrapAtLength(
-				"A non-fatal error occurred during initialization. Please check the logs for more information."))
+				"A non-fatal error occurred during initialization. Please check the logs for more information.",
+			))
 		} else {
 			vaultCore = core
 		}

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
+import { getOwner } from '@ember/owner';
 import fieldToAttrs, { expandAttributeMeta } from 'vault/utils/field-to-attrs';
 import Model from '@ember-data/model';
 
@@ -33,10 +34,10 @@ export function withFormFields(propertyNames, groupPropertyNames) {
         if (groupPropertyNames) {
           this.formFieldGroups = fieldToAttrs(this, groupPropertyNames);
         }
-        const allFields = [];
-        this.eachAttribute(function (key) {
-          allFields.push(key);
-        });
+
+        const schemas = getOwner(this).lookup('service:store').getSchemaDefinitionService();
+        const attrs = schemas.attributesDefinitionFor({ type: this.constructor.modelName });
+        const allFields = Object.keys(attrs);
         this.allFields = expandAttributeMeta(this, allFields);
       }
     };

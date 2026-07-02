@@ -26,7 +26,6 @@ func FuzzNamespaceName(f *testing.F) {
 	TestServerAuth(f, addr, token)
 
 	f.Add(".")
-	f.Add("..")
 	f.Add("/")
 	f.Add("foo/bar")
 	f.Add("sys")
@@ -51,7 +50,7 @@ func FuzzNamespaceName(f *testing.F) {
 		switch {
 		// exact values
 		case name == "..":
-			expect = http.StatusNotFound
+			return
 		case name == ".":
 			expect = http.StatusMethodNotAllowed
 		case name == "":

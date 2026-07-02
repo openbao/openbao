@@ -204,7 +204,7 @@ func (d dynamicSystemView) ResponseWrapData(ctx context.Context, data map[string
 		resp.WrapInfo.Format = "jwt"
 	}
 
-	_, err := d.core.wrapInCubbyhole(ctx, req, resp, nil)
+	_, err := d.core.wrapInCubbyhole(ctx, req, resp, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -420,7 +420,7 @@ func (d dynamicSystemView) retrievePasswordPolicy(ctx context.Context, policyNam
 		return nil, err
 	}
 
-	storage := NamespaceScopedView(d.core.barrier, ns).SubView(passwordPolicySubPath)
+	storage := d.core.NamespaceView(ns).SubView(passwordPolicySubPath)
 	entry, err := storage.Get(ctx, policyName)
 	if err != nil {
 		return nil, err

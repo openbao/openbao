@@ -10,11 +10,11 @@
 */
 import Model from '@ember-data/model';
 import Service from '@ember/service';
+import { inject as service } from '@ember/service';
 import { encodePath } from 'vault/utils/path-encoding-helpers';
 import { getOwner } from '@ember/application';
 import { assign } from '@ember/polyfills';
 import { expandOpenApiProps, combineAttributes } from 'vault/utils/openapi-to-attrs';
-import fieldToAttrs from 'vault/utils/field-to-attrs';
 import { resolve, reject } from 'rsvp';
 import { debug } from '@ember/debug';
 import { dasherize, capitalize } from '@ember/string';
@@ -31,6 +31,7 @@ export function sanitizePath(path) {
 export default Service.extend({
   attrs: null,
   dynamicApiPath: '',
+  store: service(),
   ajax(url, options = {}) {
     const appAdapter = getOwner(this).lookup(`adapter:application`);
     const { data } = options;
@@ -41,9 +42,8 @@ export default Service.extend({
 
   getNewModel(modelType, backend, apiPath, itemType) {
     const owner = getOwner(this);
-    const modelName = `model:${modelType}`;
 
-    const modelFactory = owner.factoryFor(modelName);
+    const modelFactory = owner.factoryFor(`model:${modelType}`);
     let newModel, helpUrl;
     // if we have a factory, we need to take the existing model into account
     if (modelFactory) {
@@ -55,17 +55,17 @@ export default Service.extend({
       }
 
       helpUrl = modelProto.getHelpUrl(backend);
-      return this.registerNewModelWithProps(helpUrl, backend, newModel, modelName);
+      return this.registerNewModelWithProps(helpUrl, backend, newModel, modelType);
     } else {
       debug(`Creating new Model for ${modelType}`);
-      newModel = Model.extend({});
+      newModel = class extends Model {};
     }
 
     // we don't have an apiPath for dynamic secrets
     // and we don't need paths for them yet
     if (!apiPath) {
       helpUrl = newModel.proto().getHelpUrl(backend);
-      return this.registerNewModelWithProps(helpUrl, backend, newModel, modelName);
+      return this.registerNewModelWithProps(helpUrl, backend, newModel, modelType);
     }
 
     // use paths to dynamically create our openapi help url
@@ -94,7 +94,7 @@ export default Service.extend({
         helpUrl = `/v1/${apiPath}${path.slice(1)}?help=true`;
         pathInfo.paths = paths;
         newModel = newModel.extend({ paths: pathInfo });
-        return this.registerNewModelWithProps(helpUrl, backend, newModel, modelName);
+        return this.registerNewModelWithProps(helpUrl, backend, newModel, modelType);
       })
       .catch((err) => {
         // TODO: we should handle the error better here
@@ -301,7 +301,14 @@ export default Service.extend({
 
   registerNewModelWithProps(helpUrl, backend, newModel, modelName) {
     return this.getProps(helpUrl, backend).then((props) => {
-      const { attrs, newFields } = combineAttributes(newModel.attributes, props);
+      const schemas = this.store.getSchemaDefinitionService();
+      let origAttrs;
+      if (schemas.doesTypeExist(modelName)) {
+        origAttrs = schemas.attributesDefinitionFor({ type: modelName });
+      } else {
+        origAttrs = {};
+      }
+      const { attrs, meta, newFields } = combineAttributes(origAttrs, props);
       const owner = getOwner(this);
       newModel = newModel.extend(attrs, { newFields });
       // if our newModel doesn't have fieldGroups already
@@ -311,7 +318,7 @@ export default Service.extend({
         let fieldGroups = newModel.proto().fieldGroups;
         if (!fieldGroups) {
           debug(`Constructing fieldGroups for ${backend}`);
-          fieldGroups = this.getFieldGroups(newModel);
+          fieldGroups = this.getFieldGroups(meta);
           newModel = newModel.extend({ fieldGroups });
           // Build and add validations on model
           // NOTE: For initial phase, initialize validations only for user pass auth
@@ -344,32 +351,39 @@ export default Service.extend({
         },
       });
       newModel.merged = true;
-      owner.unregister(modelName);
-      owner.register(modelName, newModel);
+      const regName = `model:${modelName}`;
+      owner.unregister(regName);
+      owner.register(regName, newModel);
+      delete schemas._attributesDefCache[modelName];
+      delete schemas._relationshipsDefCache[modelName];
+      delete this.store._modelFactoryCache[modelName];
     });
   },
-  getFieldGroups(newModel) {
+  getFieldGroups(meta) {
     const groups = {
       default: [],
     };
     const fieldGroups = [];
-    newModel.attributes.forEach((attr) => {
+    // TODO: get field groups from props
+    for (const name in meta) {
       // if the attr comes in with a fieldGroup from OpenAPI,
       // add it to that group
-      if (attr.options.fieldGroup) {
-        if (groups[attr.options.fieldGroup]) {
-          groups[attr.options.fieldGroup].push(attr.name);
+      const attr = meta[name];
+      const fieldGroup = attr.options.fieldGroup;
+      if (fieldGroup) {
+        if (groups[fieldGroup]) {
+          groups[fieldGroup].push(attr);
         } else {
-          groups[attr.options.fieldGroup] = [attr.name];
+          groups[fieldGroup] = [attr];
         }
       } else {
         // otherwise just add that attr to the default group
-        groups.default.push(attr.name);
+        groups.default.push(name);
       }
-    });
+    }
     for (const group in groups) {
       fieldGroups.push({ [group]: groups[group] });
     }
-    return fieldToAttrs(newModel, fieldGroups);
+    return fieldGroups;
   },
 });

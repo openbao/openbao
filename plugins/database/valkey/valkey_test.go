@@ -53,7 +53,8 @@ func prepareValkeyTestContainer(t *testing.T) (string, int) {
 	p, err := network.ParsePort("6379")
 	require.NoError(t, err)
 
-	_ = pool.RunT(t,
+	_ = pool.RunT(
+		t,
 		"docker.io/valkey/valkey",
 		dockertest.WithTag(redver),
 		dockertest.WithPortBindings(

@@ -26,6 +26,7 @@ const sidebars: SidebarsConfig = {
         {
             "Release Notes": [
                 "release-notes/index",
+                "release-notes/2-6-0",
                 "release-notes/2-5-0",
                 "release-notes/2-4-0",
                 "release-notes/2-3-0",
@@ -95,7 +96,9 @@ const sidebars: SidebarsConfig = {
                 "rfcs/config-plugins",
                 "rfcs/postgresql",
                 "rfcs/invalidation",
-                "rfcs/lightweight-ocsp-support"
+                "rfcs/lightweight-ocsp-support",
+                "rfcs/grpc-invalidation",
+                "rfcs/control-groups",
             ],
         },
         {

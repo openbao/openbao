@@ -317,7 +317,8 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 	oidcError := strings.ToLower(strings.TrimSpace(d.Get("error").(string)))
 	if oidcError != "" {
 		// strconv.Quote - for log-safe string output.
-		b.Logger().Warn("OIDC callback received error from provider",
+		b.Logger().Warn(
+			"OIDC callback received error from provider",
 			"error", strconv.Quote(oidcError),
 			"error_description", strconv.Quote(d.Get("error_description").(string)),
 			"error_uri", strconv.Quote(d.Get("error_uri").(string)),

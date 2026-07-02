@@ -14,7 +14,7 @@ func MockBarrier(t testing.TB, logger hclog.Logger) (physical.Backend, SecurityB
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	b := NewAESGCMBarrier(inm, "")
+	b := NewAESGCMBarrier(inm, nil)
 
 	// Initialize and unseal
 	key, _ := b.GenerateKey()

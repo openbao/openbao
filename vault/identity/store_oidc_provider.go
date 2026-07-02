@@ -1427,7 +1427,8 @@ func (i *IdentityStore) pathOIDCCreateUpdateProvider(ctx context.Context, req *l
 		if !valid {
 			return logical.ErrorResponse(
 				"invalid issuer, which must include only a scheme, host, " +
-					"and optional port (e.g. https://example.com:8200)"), nil
+					"and optional port (e.g. https://example.com:8200)",
+			), nil
 		}
 
 		resp.AddWarning(`If "issuer" is set explicitly, all tokens must be ` +

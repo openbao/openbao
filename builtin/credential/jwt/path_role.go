@@ -693,7 +693,8 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 
 	if role.RoleType == "oidc" && len(role.AllowedRedirectURIs) == 0 {
 		return logical.ErrorResponse(
-			"'allowed_redirect_uris' must be set if 'role_type' is 'oidc' or unspecified."), nil
+			"'allowed_redirect_uris' must be set if 'role_type' is 'oidc' or unspecified.",
+		), nil
 	}
 
 	// OIDC verification will enforce that the audience match the configured client_id.

@@ -935,7 +935,7 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 			}
 		}
 
-		go f.invalidateHook(keys...)
+		f.invalidateHook(keys...)
 	}
 
 	// If we advanced the latest value, update the in-memory representation too.

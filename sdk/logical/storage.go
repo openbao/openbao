@@ -33,12 +33,32 @@ const PBPWFClusterSentinel = "{{clusterId}}"
 const DefaultScanViewPageLimit = 2500
 
 // Storage is the way that logical backends are able read/write data.
+//
+// See TransactionalStorage for an interface building on top of Storage which
+// implements interactive transaction semantics.
 type Storage interface {
-	List(context.Context, string) ([]string, error)
-	ListPage(context.Context, string, string, int) ([]string, error)
-	Get(context.Context, string) (*StorageEntry, error)
-	Put(context.Context, *StorageEntry) error
-	Delete(context.Context, string) error
+	// List returns all entries under the given storage path prefix. When
+	// possible, most usages should be moved over to ListPage(...) to support
+	// pagination and reduce memory usage.
+	List(ctx context.Context, prefix string) (entries []string, err error)
+
+	// ListPage returns a subset of entries under a given storage path prefix,
+	// limited to at most the specified number of entries and returning
+	// entries which sort lexicographically past `after`. `after` need not
+	// exist in the entries on disk. When `limit` is a non-positive integer,
+	// this will return unlimited entries.
+	ListPage(ctx context.Context, prefix string, after string, limit int) (entries []string, err error)
+
+	// Get returns a single storage entry at the given path. When the entry
+	// does not exist, returns (nil, nil).
+	Get(ctx context.Context, path string) (entry *StorageEntry, err error)
+
+	// Put updates the value of a single storage entry.
+	Put(ctx context.Context, entry *StorageEntry) error
+
+	// Delete removes the storage entry at the given path, if it exists.
+	// No error is returned if the entry does not exist.
+	Delete(ctx context.Context, path string) error
 }
 
 // StorageEntry is the entry for an item in a Storage implementation.
@@ -66,10 +86,12 @@ func StorageEntryJSON(k string, v interface{}) (*StorageEntry, error) {
 	}, nil
 }
 
+// ClearableView is a subset of Storage which is necessary for a storage view
+// to implement to support entry removal.
 type ClearableView interface {
-	List(context.Context, string) ([]string, error)
-	ListPage(context.Context, string, string, int) ([]string, error)
-	Delete(context.Context, string) error
+	List(ctx context.Context, prefix string) (entries []string, err error)
+	ListPage(ctx context.Context, prefix string, after string, limit int) (entries []string, err error)
+	Delete(ctx context.Context, path string) error
 }
 
 var _ ClearableView = Storage(nil)

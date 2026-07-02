@@ -872,8 +872,8 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate-backup"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysRotateHelp["rotate-backup"][0]),
+			HelpDescription: strings.TrimSpace(sysRotateHelp["rotate-backup"][0]),
 		},
 
 		{
@@ -926,8 +926,8 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate-backup"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysRotateHelp["rotate-backup"][0]),
+			HelpDescription: strings.TrimSpace(sysRotateHelp["rotate-backup"][0]),
 		},
 		{
 			Pattern: "rekey/update",
@@ -1654,16 +1654,35 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 func (b *SystemBackend) sealPaths() []*framework.Path {
 	return []*framework.Path{
 		{
-			Pattern: "key-status$",
+			Pattern: "key-status",
 
 			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "encryption-key",
 				OperationVerb:   "status",
+				OperationSuffix: "encryption-key",
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
+					Summary:  "Provides information about the backend encryption key.",
 					Callback: b.handleKeyStatus,
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Fields: map[string]*framework.FieldSchema{
+								"term": {
+									Type:     framework.TypeInt,
+									Required: true,
+								},
+								"install_time": {
+									Type:     framework.TypeTime,
+									Required: true,
+								},
+								"encryptions": {
+									Type:     framework.TypeInt64,
+									Required: true,
+								},
+							},
+						}},
+					},
 				},
 			},
 
@@ -1872,6 +1891,15 @@ func (b *SystemBackend) pluginsCatalogListPaths() []*framework.Path {
 								"detailed": {
 									Type:     framework.TypeMap,
 									Required: false,
+								},
+								"auth": {
+									Type: framework.TypeStringSlice,
+								},
+								"database": {
+									Type: framework.TypeStringSlice,
+								},
+								"secret": {
+									Type: framework.TypeStringSlice,
 								},
 							},
 						}},
@@ -2653,7 +2681,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "(leases/)?renew" + framework.OptionalParamRegex("url_lease_id"),
+			Pattern: "leases/renew" + framework.OptionalParamRegex("url_lease_id"),
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "leases",
@@ -2693,7 +2721,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "(leases/)?revoke" + framework.OptionalParamRegex("url_lease_id"),
+			Pattern: "leases/revoke" + framework.OptionalParamRegex("url_lease_id"),
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "leases",
@@ -2734,7 +2762,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "(leases/)?revoke-force/(?P<prefix>.+)",
+			Pattern: "leases/revoke-force/(?P<prefix>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "leases",
@@ -2767,7 +2795,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "(leases/)?revoke-prefix/(?P<prefix>.+)",
+			Pattern: "leases/revoke-prefix/(?P<prefix>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "leases",
@@ -4157,6 +4185,68 @@ func (b *SystemBackend) wrappingPaths() []*framework.Path {
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["rewrap"][0]),
 			HelpDescription: strings.TrimSpace(sysHelp["rewrap"][1]),
+		},
+
+		{
+			Pattern: "control-group/authorize$",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationVerb: "authorize",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"accessor": {
+					Type:        framework.TypeString,
+					Description: "Accessor of the token to authorize (request body)",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.Core.handleControlGroupAuthorize,
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields:      controlGroupAuthorizeResponseSchema,
+							SchemaName:  "ControlGroupAuthorizeResponse",
+						}},
+					},
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(controlGroupAuthorizeHelp),
+			HelpDescription: strings.TrimSpace(controlGroupAuthorizeHelp),
+		},
+
+		{
+			Pattern: "control-group/request$",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationVerb: "read",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"accessor": {
+					Type:        framework.TypeString,
+					Description: "Accessor of the token describe",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.Core.handleControlGroupRequest,
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields:      controlGroupRequestResponseSchema,
+							SchemaName:  "ControlGroupRequestResponse",
+						}},
+					},
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(controlGroupRequestHelp),
+			HelpDescription: strings.TrimSpace(controlGroupRequestHelp),
 		},
 	}
 }

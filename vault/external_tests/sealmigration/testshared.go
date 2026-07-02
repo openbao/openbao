@@ -14,7 +14,6 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers"
@@ -23,7 +22,6 @@ import (
 	"github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/vault"
-	"github.com/openbao/openbao/vault/seal"
 )
 
 const (
@@ -270,7 +268,7 @@ func migrateFromTransitToShamir_Pre14(t *testing.T, logger hclog.Logger, storage
 	if err != nil {
 		t.Fatal(err)
 	}
-	verifyBarrierConfig(t, b, seal.WrapperTypeShamir.String(), keyShares, keyThreshold, 1)
+	verifyBarrierConfig(t, b, "shamir", keyShares, keyThreshold, 1)
 	if r != nil {
 		t.Fatalf("expected nil recovery config, got: %#v", r)
 	}
@@ -514,7 +512,6 @@ func unseal(t *testing.T, client *api.Client, keys [][]byte) {
 
 func attemptUnseal(client *api.Client, keys [][]byte) error {
 	for i, key := range keys {
-
 		resp, err := client.Sys().UnsealWithOptions(&api.UnsealOpts{
 			Key: base64.StdEncoding.EncodeToString(key),
 		})
@@ -541,7 +538,7 @@ func verifySealConfigShamir(t *testing.T, core *vault.TestClusterCore) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	verifyBarrierConfig(t, b, seal.WrapperTypeShamir.String(), keyShares, keyThreshold, 1)
+	verifyBarrierConfig(t, b, "shamir", keyShares, keyThreshold, 1)
 	if r != nil {
 		t.Fatal("should not have recovery config for shamir")
 	}
@@ -552,8 +549,8 @@ func verifySealConfigTransit(t *testing.T, core *vault.TestClusterCore) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	verifyBarrierConfig(t, b, wrapping.WrapperTypeTransit.String(), 1, 1, 1)
-	verifyBarrierConfig(t, r, seal.WrapperTypeShamir.String(), keyShares, keyThreshold, 0)
+	verifyBarrierConfig(t, b, "transit", 1, 1, 1)
+	verifyBarrierConfig(t, r, "shamir", keyShares, keyThreshold, 0)
 }
 
 // verifyBarrierConfig verifies that a barrier configuration is correct.

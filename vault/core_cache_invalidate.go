@@ -5,7 +5,6 @@ package vault
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -35,11 +34,15 @@ func (c *Core) Invalidate(key ...string) {
 	c.invalidations.Add(key...)
 }
 
-func (c *Core) invalidateSynchronous(key string) {
+func (c *Core) invalidateSynchronous(key string) error {
 	job, _ := c.invalidations.buildInvalidateJobForKey(make(chan struct{}), context.Background(), key)
+
 	if err := job.Execute(); err != nil {
 		job.OnFailure(err)
+		return err
 	}
+
+	return nil
 }
 
 // invalidationManager is a long-lived subset of Core which is used to handle
@@ -159,19 +162,21 @@ func (im *invalidationManager) processPendingQueue(quitCh chan struct{}, quitCon
 			case <-im.pendingNotify:
 			}
 
-			defer metrics.MeasureSince([]string{dispatcherName, "enqueue-pending"}, time.Now())
+			func() {
+				defer metrics.MeasureSince([]string{dispatcherName, "enqueue-pending"}, time.Now())
 
-			im.pendingLock.Lock()
-			pending := im.pending
-			im.pending = nil
-			im.pendingLock.Unlock()
+				im.pendingLock.Lock()
+				pending := im.pending
+				im.pending = nil
+				im.pendingLock.Unlock()
 
-			im.core.metricSink.SetGauge([]string{dispatcherName, "pending-dequeue-size"}, float32(len(pending)))
+				im.core.metricSink.SetGauge([]string{dispatcherName, "pending-dequeue-size"}, float32(len(pending)))
 
-			for _, key := range pending {
-				job, queue := im.buildInvalidateJobForKey(quitCh, quitContext, key)
-				im.dispatcher.AddJob(job, queue)
-			}
+				for _, key := range pending {
+					job, queue := im.buildInvalidateJobForKey(quitCh, quitContext, key)
+					im.dispatcher.AddJob(job, queue)
+				}
+			}()
 		}
 	}()
 }
@@ -195,11 +200,18 @@ func (im *invalidationManager) buildInvalidateJobForKey(quitCh chan struct{}, qu
 	ns, subkey := im.splitNamespaceFromKey(key)
 
 	queue := ns
-	if ns == namespace.RootNamespaceUUID {
-		if strings.HasPrefix(subkey, "core/") {
-			queue = key
-		}
-	} else if strings.HasPrefix(subkey, "core/") {
+
+	isCore := strings.HasPrefix(subkey, "core/")
+	isNamespaceStore := isCore && strings.HasPrefix(subkey, namespaceStoreSubPath)
+
+	switch {
+	case isNamespaceStore:
+		// Namespaces are laid out in a dense tree, so ordering is important.
+		// Send all namespace store updates to the same queue.
+		queue = "namespaces"
+	case queue == namespace.RootNamespaceUUID && isCore:
+		queue = key
+	case isCore:
 		queue += "-core"
 	}
 
@@ -255,6 +267,11 @@ func isMissedMountKey(key string) bool {
 	return strings.HasPrefix(key, barrier.CredentialBarrierPrefix) ||
 		strings.HasPrefix(key, backendBarrierPrefix) ||
 		strings.HasPrefix(key, auditBarrierPrefix)
+}
+
+func isLoginMFA(key string) bool {
+	return strings.HasPrefix(key, barrier.SystemBarrierPrefix+loginMFAConfigPrefix) ||
+		strings.HasPrefix(key, barrier.SystemBarrierPrefix+mfaLoginEnforcementPrefix)
 }
 
 func (ij *invalidationJob) Execute() error {
@@ -332,9 +349,10 @@ func (ij *invalidationJob) Execute() error {
 		ij.fatal = true
 		return fmt.Errorf("failed to load namespace %q from store: %w", ij.nsUUID, err)
 	}
-	if ns == nil {
-		// Namespace was deleted; this is safe to ignore, because it occurs in
-		// one of two scenarios:
+	if ns == nil || ns.Tainted {
+		// Namespace was deleted or created (or is in process of being
+		// deleted/created); this is safe to ignore, because it occurs in one of
+		// two scenarios:
 		//
 		// 1. The namespace was deleted already (invalidation on
 		//    core/namespaces/<uuid> was processed first) and we're getting an
@@ -349,6 +367,18 @@ func (ij *invalidationJob) Execute() error {
 		return nil
 	}
 
+	nsBarrier := ij.im.core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+	if nsBarrier.Namespace().UUID != namespace.RootNamespaceUUID && nsBarrier.Sealed() {
+		// When the parent namespace is sealed, ignore the request: this
+		// means we're unable to process the invalidation regardless of
+		// what the actual invalidated entry is. Only when this parent
+		// namespace becomes unsealed can we process changes to data within
+		// it. Notably, the namespace entry for a sealed namespace sits in
+		// the namespace above it, so it is not its own parent and thus will
+		// be correctly invalidated.
+		return nil
+	}
+
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 
 	// Lastly, create a short version of the context for plugin invalidations.
@@ -356,29 +386,28 @@ func (ij *invalidationJob) Execute() error {
 	defer shortCancel()
 
 	// Now handle the actual event.
-	key := ij.nsKey
 	switch {
-	case strings.HasPrefix(key, namespaceStoreSubPath):
+	case strings.HasPrefix(ij.nsKey, namespaceStoreSubPath):
 		ij.fatal = true
 		return ij.namespaceInvalidation(ctx)
-	case strings.HasPrefix(key, barrier.SystemBarrierPrefix+policy.ACLSubPath):
+	case strings.HasPrefix(ij.nsKey, barrier.SystemBarrierPrefix+policy.ACLSubPath):
 		// Policy invalidation is not fatal as it contains a LRU cache: we
 		// know removal is strict and it is only potentially preloading an
 		// entry which may err.
 		return ij.policyInvalidation(ctx)
-	case strings.HasPrefix(key, barrier.SystemBarrierPrefix+quotas.StoragePrefix):
+	case strings.HasPrefix(ij.nsKey, barrier.SystemBarrierPrefix+quotas.StoragePrefix):
 		ij.fatal = true
 		return ij.quotaInvalidation(ctx)
-	case key == coreAuditConfigPath || key == coreLocalAuditConfigPath:
+	case ij.nsKey == coreAuditConfigPath || ij.nsKey == coreLocalAuditConfigPath:
 		ij.fatal = true
 		return ij.auditInvalidation(ctx)
-	case isLegacyMountPath(key):
+	case isLegacyMountPath(ij.nsKey):
 		ij.fatal = true
 		return ij.legacyMountInvalidation(ctx)
-	case isTransactionalMountPath(key):
+	case isTransactionalMountPath(ij.nsKey):
 		ij.fatal = true
 		return ij.transactionalMountInvalidation(ctx)
-	case isKeyringPath(key):
+	case isKeyringPath(ij.nsKey):
 		// The HA subsystem handles keyring rotations via the
 		// periodicCheckKeyUpgrades(...) actor.
 	case strings.HasPrefix(ij.key, coreLeaderPrefix):
@@ -393,6 +422,9 @@ func (ij *invalidationJob) Execute() error {
 	case strings.HasPrefix(ij.key, "autopilot/") || ij.key == raftAutopilotConfigurationStoragePath:
 		// Raft context is reloaded when a standby becomes active, so it is
 		// safe to ignore changes to autopilot state.
+	case isLoginMFA(ij.nsKey):
+		ij.fatal = true
+		return ij.loginMFAInvalidation(ctx, ns)
 	case ij.im.core.router.Invalidate(shortCtx, ij.key):
 		// if router.Invalidate returns true, a matching plugin was found and
 		// the invalidation is therefore dispatched.
@@ -406,55 +438,34 @@ func (ij *invalidationJob) Execute() error {
 		//
 		// This is true in reverse for deletions.
 	default:
-		ij.im.dispacherLogger.Warn("no mechanism to invalidate cache for specified key", "key", key)
+		ij.im.dispacherLogger.Warn("no mechanism to invalidate cache for specified key", "key", ij.nsKey, "full_key", ij.key)
 	}
 
 	return nil
 }
 
 func (ij *invalidationJob) namespaceInvalidation(ctx context.Context) error {
-	ij.im.dispacherLogger.Trace("issuing namespace invalidation")
-
-	// The namespace name is the final path segment; ij.nsUUID contains the
+	// The namespace UUID is the final path segment; ij.nsUUID contains the
 	// parent namespace UUID.
-	namespaceUUID := strings.TrimPrefix(ij.nsKey, namespaceStoreSubPath)
+	childUUID := strings.TrimPrefix(ij.nsKey, namespaceStoreSubPath)
 
-	beforeNs, beforeErr := ij.im.core.namespaceStore.GetNamespace(ctx, namespaceUUID)
-
-	// First notify the namespace storage that our next lookup might be stale.
-	ij.im.core.namespaceStore.invalidate(ctx, ij.key)
-
-	afterNs, afterErr := ij.im.core.namespaceStore.GetNamespace(ctx, namespaceUUID)
-
-	// There are three happy paths for namespace invalidation:
-	//
-	// 1. Namespace deletion; before the namespace would be present but
-	//    afterwards it would be nil.
-	// 2. Namespace creation; before the namespace would be missing and
-	//    afterwards it will be present.
-	// 3. Namespace update; this exists in both places but we'd prefer the
-	//    updated version.
-	var preferredNs *namespace.Namespace
-	var deleted bool
+	// Reload the namespace entry:
+	child, deleted, err := ij.im.core.namespaceStore.Invalidate(ctx, ij.nsUUID, childUUID)
 	switch {
-	case beforeErr != nil && afterErr != nil:
-		return fmt.Errorf("failed loading invalidated namespace; before=%w; after=%v", beforeErr, afterErr)
-	case beforeNs == nil && afterNs == nil:
-		return errors.New("failed loading invalidated namespace: does not exist before or after")
-	case afterNs != nil && afterErr == nil:
-		preferredNs = afterNs
-	case beforeNs != nil && beforeErr == nil:
-		preferredNs = beforeNs
-		deleted = true
+	case err != nil:
+		return err
+	case child == nil, ij.im.core.NamespaceSealed(child):
+		// Nothing to do.
+		return nil
 	}
 
-	childCtx := namespace.ContextWithNamespace(ctx, preferredNs)
+	ctx = namespace.ContextWithNamespace(ctx, child)
 
 	// Invalidate all policies within the namespace.
-	ij.im.core.policyStore.InvalidateNamespace(childCtx, namespaceUUID)
+	ij.im.core.policyStore.InvalidateNamespace(ctx, childUUID)
 
 	// Now reload all mounts within the namespace.
-	if err := ij.im.core.reloadNamespaceMounts(childCtx, namespaceUUID, deleted); err != nil {
+	if err := ij.im.core.reloadNamespaceMounts(ctx, childUUID, deleted); err != nil {
 		return fmt.Errorf("unable to invalidate mounts in namespace %q: %w", ij.nsUUID, err)
 	}
 
@@ -468,7 +479,7 @@ func (ij *invalidationJob) policyInvalidation(ctx context.Context) error {
 
 func (ij *invalidationJob) quotaInvalidation(ctx context.Context) error {
 	quotaPath := strings.TrimPrefix(ij.nsKey, barrier.SystemBarrierPrefix+quotas.StoragePrefix)
-	return ij.im.core.quotaManager.Invalidate(quotaPath)
+	return ij.im.core.quotaManager.Invalidate(ctx, quotaPath)
 }
 
 func (ij *invalidationJob) auditInvalidation(ctx context.Context) error {
@@ -491,6 +502,14 @@ func (ij *invalidationJob) legacyMountInvalidation(ctx context.Context) error {
 func (ij *invalidationJob) transactionalMountInvalidation(ctx context.Context) error {
 	if err := ij.im.core.reloadMount(ctx, ij.nsKey); err != nil {
 		return fmt.Errorf("unable to invalidate mount for key %q in namespace %q: %w", ij.nsKey, ij.nsUUID, err)
+	}
+
+	return nil
+}
+
+func (ij *invalidationJob) loginMFAInvalidation(ctx context.Context, ns *namespace.Namespace) error {
+	if err := ij.im.core.loginMFABackend.invalidate(ctx, ns, ij.nsKey); err != nil {
+		return fmt.Errorf("unable to invalidate login MFA config for key %q in namespace %q: %w", ij.nsKey, ij.nsUUID, err)
 	}
 
 	return nil
@@ -546,7 +565,7 @@ func (im *invalidationManager) splitNamespaceFromKey(key string) (string, string
 	namespaceUUID := namespace.RootNamespaceUUID
 	namespacedKey := key
 
-	if keySuffix, ok := strings.CutPrefix(key, namespaceBarrierPrefix); ok {
+	if keySuffix, ok := strings.CutPrefix(key, barrier.NamespacePrefix); ok {
 		namespaceUUID, namespacedKey, _ = strings.Cut(keySuffix, "/")
 	}
 

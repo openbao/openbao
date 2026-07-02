@@ -18,7 +18,7 @@ import errorMessage from 'vault/utils/error-message';
  * @param {object} model - config model that contains kubernetes configuration
  */
 export default class ConfigurePageComponent extends Component {
-  @service router;
+  @service 'host-router';
   @service store;
 
   @tracked inferredState;
@@ -42,7 +42,7 @@ export default class ConfigurePageComponent extends Component {
   }
 
   leave(route) {
-    this.router.transitionTo(`vault.cluster.secrets.backend.kubernetes.${route}`);
+    this['host-router'].transitionTo(`vault.cluster.secrets.backend.kubernetes.${route}`);
   }
 
   @action

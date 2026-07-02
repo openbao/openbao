@@ -51,6 +51,7 @@ export const expandAttributeMeta = function (modelClass, attributeNames) {
     // populate cache if empty
     if (!modelAttrs[klass.modelName]) {
       modelAttrs[klass.modelName] = [];
+      // TODO: we can't use eachAttribute on the class itself
       klass.eachAttribute((name, meta) => {
         modelAttrs[klass.modelName].push(meta);
       });

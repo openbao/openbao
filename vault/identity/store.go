@@ -1127,6 +1127,8 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		}
 		txn.Commit()
 		return
+	default:
+		i.logger.Trace("unknown path to invalidate in identity engine", "key", key)
 	}
 }
 
@@ -1522,7 +1524,8 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 				metricsutil.NamespaceLabel(ns),
 				{Name: "auth_method", Value: newAlias.MountType},
 				{Name: "mount_point", Value: newAlias.MountPath},
-			})
+			},
+		)
 		entityCreated = true
 	}
 

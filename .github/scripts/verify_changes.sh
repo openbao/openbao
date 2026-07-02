@@ -1,5 +1,5 @@
-#!/bin/bash
-#  This script validates if the git diff contains only docs/ui changes
+#!/usr/bin/env bash
+# This script validates if the git diff contains only docs/ui changes
 
 event_type=$1 # GH event type (pull_request)
 ref_name=$2 # branch reference that triggered the workflow

@@ -6,6 +6,13 @@ description: >-
 
 # `/sys/rotate`
 
+:::info
+
+These endpoints are available in both the root namespace and sealable namespaces
+and operate on the respective set of keys.
+
+:::
+
 ### Encryption key rotation
 
 The `/sys/rotate/keyring` endpoint is used to rotate the encryption key. It is

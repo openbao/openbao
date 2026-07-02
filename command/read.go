@@ -87,7 +87,7 @@ func (c *ReadCommand) Run(args []string) int {
 	defer cancel()
 
 	// Pull our fake stdin if needed
-	stdin := (io.Reader)(os.Stdin)
+	stdin := io.Reader(os.Stdin)
 	if c.testStdin != nil {
 		stdin = c.testStdin
 	}

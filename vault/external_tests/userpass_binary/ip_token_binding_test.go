@@ -78,7 +78,8 @@ func Test_StrictIPBinding(t *testing.T) {
 	require.NoError(t, err)
 
 	// Login to userpass and attempt to use it via cURL.
-	up, err := userpass.NewUserpassAuth("testing",
+	up, err := userpass.NewUserpassAuth(
+		"testing",
 		&userpass.Password{
 			FromString: "password",
 		},

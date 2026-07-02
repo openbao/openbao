@@ -1,18 +1,18 @@
 ---
 description: |-
-  The `/sys/key-status` endpoint is used to query info about the current
-  encryption key of OpenBao.
+  The `/sys/key-status` endpoint is used to query info about the
+  encryption key of specific namespace barrier.
 ---
 
 # `/sys/key-status`
 
-The `/sys/key-status` endpoint is used to query info about the current
-encryption key of OpenBao.
+The `/sys/key-status` endpoint is used to query info about the
+active encryption key of specific namespace barrier.
 
 ## Get encryption key status
 
-This endpoint returns information about the current encryption key used by
-OpenBao.
+This endpoint returns information about the active encryption
+key of specific namespace barrier.
 
 | Method | Path              |
 | :----- | :---------------- |
@@ -23,6 +23,7 @@ OpenBao.
 ```shell-session
 $ curl \
     --header "X-Vault-Token: ..." \
+    --header "X-Vault-Namespace: ..." \
     --request GET \
     http://127.0.0.1:8200/v1/sys/key-status
 
@@ -44,6 +45,6 @@ number of encryptions made by the key including those on other cluster
 nodes. 
 
 Note that the estimated encryption count is aggregated from secondary
-OpenBao nodes to the primary but not in the other direction.  Thus the
+OpenBao nodes to the primary but not in the other direction. Thus the
 count only accurately reflects the cluster-wide estimate when queried
 on the primary.

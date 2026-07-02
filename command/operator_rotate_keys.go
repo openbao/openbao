@@ -317,7 +317,8 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 						"returned %s keys along with -backup to allow recovery "+
 						"of the encrypted keys in case of emergency. You can "+
 						"delete the backed up keys later using the -delete flag.",
-						strings.ToLower(keyTypeRequired))))
+						strings.ToLower(keyTypeRequired)),
+				))
 				c.UI.Output("")
 			}
 			if len(c.flagPGPKeys) > 0 && !c.flagBackup {
@@ -330,7 +331,8 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 						"re-initializing with -backup to allow recovery of the "+
 						"encrypted unseal keys in case of emergency. You can "+
 						"delete the backed up keys later using the -delete flag.",
-						strings.ToLower(keyTypeRequired))))
+						strings.ToLower(keyTypeRequired)),
+				))
 				c.UI.Output("")
 			}
 
@@ -366,7 +368,8 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 					"the returned %s keys along with -backup to allow recovery of the "+
 					"encrypted keys in case of emergency. You can delete the stored "+
 					"keys later using the -delete flag.",
-					strings.ToLower(keyTypeRequired))))
+					strings.ToLower(keyTypeRequired)),
+			))
 			c.UI.Output("")
 		}
 		if len(c.flagPGPKeys) > 0 && !c.flagBackup {
@@ -378,7 +381,8 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 					"canceling this operation and re-running with -backup to allow "+
 					"recovery of the encrypted unseal keys in case of emergency. You "+
 					"can delete the backed up keys later using the -delete flag.",
-					strings.ToLower(keyTypeRequired))))
+					strings.ToLower(keyTypeRequired)),
+			))
 			c.UI.Output("")
 		}
 	}
@@ -488,7 +492,8 @@ func (c *OperatorRotateKeysCommand) provide(client *api.Client, key string) int 
 	if !started {
 		c.UI.Error(wrapAtLength(
 			"No rotation is in progress. Start a rotation process by running " +
-				"\"bao operator rotate-keys -init\"."))
+				"\"bao operator rotate-keys -init\".",
+		))
 		return 1
 	}
 
@@ -497,7 +502,7 @@ func (c *OperatorRotateKeysCommand) provide(client *api.Client, key string) int 
 		nonce = c.flagNonce
 
 		// Pull our fake stdin if needed
-		stdin := (io.Reader)(os.Stdin)
+		stdin := io.Reader(os.Stdin)
 		if c.testStdin != nil {
 			stdin = c.testStdin
 		}
@@ -809,7 +814,8 @@ func (c *OperatorRotateKeysCommand) printWarnings(client *api.Client, status *ap
 					"of these keys to unseal it before it can start servicing requests.",
 				status.N,
 				status.T,
-				status.T)))
+				status.T,
+			)))
 			warningText = "unseal"
 		case "recovery", "hsm":
 			c.UI.Output(wrapAtLength(fmt.Sprintf(
@@ -817,7 +823,8 @@ func (c *OperatorRotateKeysCommand) printWarnings(client *api.Client, status *ap
 					"key threshold of %d. These will not be active until after verification is "+
 					"complete. Please securely distribute the key shares printed above.",
 				status.N,
-				status.T)))
+				status.T,
+			)))
 			warningText = "authenticate with"
 		}
 
@@ -827,7 +834,8 @@ func (c *OperatorRotateKeysCommand) printWarnings(client *api.Client, status *ap
 				"Do not lose or discard your current key shares until after verification "+
 				"is complete or you will be unable to %s OpenBao. If you cancel the "+
 				"rotation process or seal OpenBao before verification is complete the new "+
-				"shares will be discarded and the current shares will remain valid.", warningText)))
+				"shares will be discarded and the current shares will remain valid.", warningText,
+		)))
 		c.UI.Output("")
 		c.UI.Warn(wrapAtLength(
 			"The current verification status, including initial nonce, is shown below.",
@@ -847,13 +855,15 @@ func (c *OperatorRotateKeysCommand) printWarnings(client *api.Client, status *ap
 					"these keys to unseal it before it can start servicing requests.",
 				status.N,
 				status.T,
-				status.T)))
+				status.T,
+			)))
 		case "recovery", "hsm":
 			c.UI.Output(wrapAtLength(fmt.Sprintf(
 				"OpenBao recovery keys rotated to %d key shares and a key threshold of %d. "+
 					"Please securely distribute the key shares printed above.",
 				status.N,
-				status.T)))
+				status.T,
+			)))
 		}
 	}
 

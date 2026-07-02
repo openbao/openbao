@@ -126,8 +126,33 @@ func (a *Auth) GoString() string {
 }
 
 type PolicyResults struct {
-	Allowed          bool         `json:"allowed"`
-	GrantingPolicies []PolicyInfo `json:"granting_policies"`
+	Allowed          bool          `json:"allowed"`
+	GrantingPolicies []PolicyInfo  `json:"granting_policies"`
+	ControlGroup     *ControlGroup `json:"control_group"`
+}
+
+type ControlGroupFactor struct {
+	Name                   string                      `json:"name"`
+	ControlledCapabilities []Operation                 `json:"controlled_capabilities"`
+	Identity               ControlGroupIdentity        `json:"identity"`
+	Authorizations         []ControlGroupAuthorization `json:"authorizations"`
+}
+
+type ControlGroupIdentity struct {
+	GroupNames []string `json:"group_names"`
+	Approvals  int      `json:"approvals"`
+}
+
+type ControlGroup struct {
+	TTL                      time.Duration        `json:"ttl"`
+	Factors                  []ControlGroupFactor `json:"factors"`
+	SelfAuthorizationAllowed bool                 `json:"self_auth_allowed"`
+}
+
+type ControlGroupAuthorization struct {
+	Timestamp  time.Time `json:"timestamp"`
+	EntityID   string    `json:"entity_id"`
+	EntityName string    `json:"entity_name"`
 }
 
 type PolicyInfo struct {
@@ -135,4 +160,18 @@ type PolicyInfo struct {
 	NamespaceId   string `json:"namespace_id"`
 	NamespacePath string `json:"namespace_path"`
 	Type          string `json:"type"`
+}
+
+func (cg *ControlGroup) Authorizations() []*ControlGroupAuthorization {
+	authSet := map[string]interface{}{}
+	auths := []*ControlGroupAuthorization{}
+	for _, factor := range cg.Factors {
+		for _, approval := range factor.Authorizations {
+			if _, ok := authSet[approval.EntityID]; !ok {
+				auths = append(auths, &approval)
+				authSet[approval.EntityID] = true
+			}
+		}
+	}
+	return auths
 }

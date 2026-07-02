@@ -243,7 +243,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 
 			storage := new(mockStorage)
 			storage.On("Get", mock.Anything, mock.Anything).
-				Return((*logical.StorageEntry)(nil), (error)(nil)).Maybe()
+				Return((*logical.StorageEntry)(nil), error(nil)).Maybe()
 			storage.On("Put", mock.Anything, mock.Anything).
 				Return(test.putErr)
 			defer storage.AssertNumberOfCalls(t, "Put", test.putTimes)

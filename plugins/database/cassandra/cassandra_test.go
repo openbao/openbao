@@ -19,8 +19,8 @@ import (
 )
 
 func getCassandra(t *testing.T, protocolVersion interface{}) (*Cassandra, func()) {
-	host, cleanup := cassandra.PrepareTestContainer(t,
-		cassandra.Version("3.11"),
+	host, cleanup := cassandra.PrepareTestContainer(
+		t,
 		cassandra.CopyFromTo(insecureFileMounts),
 	)
 
@@ -141,8 +141,8 @@ func TestCreateUser(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			host, cleanup := cassandra.PrepareTestContainer(t,
-				cassandra.Version("3.11"),
+			host, cleanup := cassandra.PrepareTestContainer(
+				t,
 				cassandra.CopyFromTo(insecureFileMounts),
 			)
 			defer cleanup()
@@ -256,7 +256,8 @@ func assertCreds(t testing.TB, address string, port int, username, password stri
 	bo.MaxInterval = bo.InitialInterval
 	bo.RandomizationFactor = 0.0
 
-	if _, err := backoff.Retry(t.Context(), op,
+	if _, err := backoff.Retry(
+		t.Context(), op,
 		backoff.WithBackOff(bo),
 		backoff.WithMaxElapsedTime(timeout),
 	); err != nil {
@@ -296,7 +297,8 @@ func assertNoCreds(t testing.TB, address string, port int, username, password st
 	bo.MaxInterval = bo.InitialInterval
 	bo.RandomizationFactor = 0.0
 
-	if _, err := backoff.Retry(t.Context(), op,
+	if _, err := backoff.Retry(
+		t.Context(), op,
 		backoff.WithBackOff(bo),
 		backoff.WithMaxElapsedTime(timeout),
 	); err != nil {

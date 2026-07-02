@@ -163,7 +163,8 @@ func (c *LoginCommand) Run(args []string) int {
 
 	if c.flagNoStore && c.flagNoPrint {
 		c.UI.Error(wrapAtLength(
-			"-no-store and -no-print cannot be used together"))
+			"-no-store and -no-print cannot be used together",
+		))
 		return 1
 	}
 
@@ -187,12 +188,13 @@ func (c *LoginCommand) Run(args []string) int {
 			"Unknown auth method: %s. Use \"bao auth list\" to see the "+
 				"complete list of auth methods. Additionally, some "+
 				"auth methods are only available via the HTTP API.",
-			authMethod)))
+			authMethod,
+		)))
 		return 1
 	}
 
 	// Pull our fake stdin if needed
-	stdin := (io.Reader)(os.Stdin)
+	stdin := io.Reader(os.Stdin)
 	if c.testStdin != nil {
 		stdin = c.testStdin
 	}
@@ -291,7 +293,8 @@ func (c *LoginCommand) Run(args []string) int {
 		c.UI.Error(wrapAtLength(
 			"Vault returned a secret, but the secret has no authentication " +
 				"information attached. This should never happen and is likely a " +
-				"bug."))
+				"bug.",
+		))
 		return 2
 	}
 
@@ -306,7 +309,8 @@ func (c *LoginCommand) Run(args []string) int {
 			c.UI.Error(wrapAtLength(fmt.Sprintf(
 				"Error initializing token helper. Please verify that the token "+
 					"helper is available and properly configured for your system. The "+
-					"error was: %s", err)))
+					"error was: %s", err,
+			)))
 			return 1
 		}
 
@@ -315,7 +319,8 @@ func (c *LoginCommand) Run(args []string) int {
 			c.UI.Error(fmt.Sprintf("Error storing token: %s", err))
 			c.UI.Error(wrapAtLength(
 				"Authentication was successful, but the token was not persisted. The "+
-					"resulting token is shown below for your records.") + "\n")
+					"resulting token is shown below for your records.",
+			) + "\n")
 			OutputSecret(c.UI, secret)
 			return 2
 		}
@@ -326,7 +331,8 @@ func (c *LoginCommand) Run(args []string) int {
 		c.UI.Warn(wrapAtLength(
 			"The token was not stored in token helper. Set the BAO_TOKEN "+
 				"environment variable or pass the token below with each request to "+
-				"Vault.") + "\n")
+				"Vault.",
+		) + "\n")
 	}
 
 	if c.flagNoPrint {
@@ -345,7 +351,8 @@ func (c *LoginCommand) Run(args []string) int {
 			"Success! You are now authenticated. The token information displayed "+
 				"below is already stored in the token helper. You do NOT need to run "+
 				"\"bao login\" again. Future OpenBao requests will automatically use "+
-				"this token.") + "\n")
+				"this token.",
+		) + "\n")
 	}
 
 	return OutputSecret(c.UI, secret)

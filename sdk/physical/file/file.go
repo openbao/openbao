@@ -230,7 +230,8 @@ func (b *FileBackend) PutInternal(ctx context.Context, entry *physical.Entry) er
 	f, err := os.OpenFile(
 		tempPath,
 		os.O_CREATE|os.O_TRUNC|os.O_WRONLY,
-		0o600)
+		0o600,
+	)
 	if err != nil {
 		if f != nil {
 			f.Close()

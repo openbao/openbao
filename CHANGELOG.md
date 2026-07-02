@@ -1,3 +1,149 @@
+## 2.6.0-beta20260622
+## June 22, 2026
+
+FEATURES:
+
+* **Namespace Sealing**: Allow Shamir seal configuration on namespace creation. [[GH-3297](https://github.com/openbao/openbao/pull/3297)]
+  - Partitions tenant storage with distinct cryptographic key material.
+  - Allows tenants to revoke access to their namespace via seal operation without impacting other tenants.
+  - Uses global synchronization of namespace seal status, allowing easier management from multi-node deployments.
+* **Auto Unseal plugins**: Add a new `kms` plugin type that enables Auto Unseal mechanisms to be distributed as external binary plugins. [[GH-2586](https://github.com/openbao/openbao/pull/2586)]
+  - Declaratively register KMS plugins via `plugin "kms" "name" { }` stanzas in the server configuration, making `"name"` available as an Auto Unseal mechanism via `seal "name" { }`.
+  - KMS plugins automatically restart and recover from crashes, avoiding a full instance restart when a seal reaches a bad state (e.g., via a misbehaving PKCS#11 library).
+  - Pre-built plugins for many of the seals currently built into OpenBao are available at https://github.com/openbao/openbao-plugins. A plugin-based seal takes priority over a built-in seal if a matching plugin is installed. Note that several provider-specific built-in seals will be removed from OpenBao in v2.7.0 and remain available as external plugins only. Also see the deprecations section of these release notes.
+  - Develop custom Auto Unseal mechanisms tailored to your use case using the [SDK](https://github.com/openbao/go-kms-wrapping/tree/main/plugin).
+* **Workflows**: This adds new endpoints under `sys/workflows` to allow operators to create workflows and users to execute them.
+  - Workflows allow the creation of simplified or managed interfaces over OpenBao's standard API.
+  - Use of the `allow_unauthenticated_workflows` server configuration value enables unauthenticated execution of workflows; any dispatched requests still require authentication but this can be provided as a request parameter.
+  - Workflows are built on the common profile engine powering declarative self-initialization and use the same syntax. [[GH-2728](https://github.com/openbao/openbao/pull/2728)]
+* **Authenticated root generation**: New `/sys/generate-root-token` endpoints are available as replacements for the deprecated unauthenticated ones. [[GH-3041](https://github.com/openbao/openbao/pull/3041)]
+* **Distroless container images**: This is a new container image variant based on [distroless/static](https://github.com/GoogleContainerTools/distroless), available as `openbao-distroless`. The only executable contained in these images is OpenBao itself. [[GH-2592](https://github.com/openbao/openbao/pull/2592)]
+
+IMPROVEMENTS:
+
+* command: Allow overriding the location of `~/.vault-token` via the `BAO_TOKEN_PATH` environment variable. [[GH-2706](https://github.com/openbao/openbao/pull/2706)]
+* command/server: Error when unknown keys are present in the declarative self-initialization configuration. [[GH-2883](https://github.com/openbao/openbao/pull/2883)]
+* command/server: Add CEL support to self-initialization, allowing finer control over structuring requests. [[GH-2671](https://github.com/openbao/openbao/pull/2671)]
+* command/server: Add `text/template` support to self-initialization, allowing templating of values from other requests/responses. [[GH-2727](https://github.com/openbao/openbao/pull/2727)]
+* command/server: Allow conditional execution of self-initialization requests with `when` keyword. [[GH-2739](https://github.com/openbao/openbao/pull/2739)]
+* command/server: Allow self-initialization stanzas in development server mode. [[GH-2463](https://github.com/openbao/openbao/pull/2463)]
+* command/server: Allow setting headers on declarative self-initialization requests. [[GH-2737](https://github.com/openbao/openbao/pull/2737)]
+* command/agent: Add `uid` and `gid` configuration options for the `file` sink. [[GH-2851](https://github.com/openbao/openbao/pull/2851)]
+* command/agent: `SIGHUP` now reloads the client TLS configuration. [[GH-3038](https://github.com/openbao/openbao/pull/3038)]
+* command/login: Support Kubernetes service account token authentication via `-method=kubernetes` with both interactive and non-interactive modes. [[GH-1891](https://github.com/openbao/openbao/pull/1891)]
+* http: Always include full JSON parse and complexity errors in the response instead of hiding it behind a constant error message. [[GH-3240](https://github.com/openbao/openbao/pull/3240)]
+* http: Ensure that `passthrough_request_headers` can pass the `Host` header to plugins. [[GH-3325](https://github.com/openbao/openbao/pull/3325)]
+* core: The `sys/` backend is now a singleton shared across all namespaces, reducing idle memory usage of the OpenBao instance. [[GH-3007](https://github.com/openbao/openbao/pull/3007)]
+* core/leases: Lease lookup responses will now include `path`, `namespace_path` and `revoke_error`. [[GH-1906](https://github.com/openbao/openbao/pull/1906)]
+* core/listeners: Add a parameter to allow cross-origin requests to include credentials (`Access-Control-Allow-Credentials` header). [[GH-2262](https://github.com/openbao/openbao/pull/2262)]
+* seal/azurekeyvault: Support explicitly setting Azure authentication methods and add support for authenticating using Azure managed identities. [[GH-2519](https://github.com/openbao/openbao/pull/2519)]
+* seal/pkcs11: When using public/private key encryption, fall back to finding the public key via the private key's `CKA_ID` if both key halves did not share the same `CKA_LABEL`. [[GH-3231](https://github.com/openbao/openbao/pull/3231)]
+* physical/raft: Detect, log, and rollback transactions that have never been committed or rolled-back. If you see the message "transaction was leaked" in your logs, please open an issue. [[GH-2185](https://github.com/openbao/openbao/pull/2185)]
+* physical/raft: Improve snapshot duration while slightly increasing snapshot size. [[GH-3061](https://github.com/openbao/openbao/pull/3061)]
+* auth/cert: Add support for `X-Tls-Client-Cert`, to allow processing of a leaf certificate forwarded from a TLS-terminating reverse proxy. [[GH-2080](https://github.com/openbao/openbao/pull/2080)]
+* auth/jwt: Add new Kubernetes JWT provider that authenticates to the Kubernetes API using a pod's service account token. [[GH-2114](https://github.com/openbao/openbao/pull/2114)]
+* auth/kerberos: Add the `decode_pac` option in order to improve compatibility with Kerberos systems. [[GH-2211](https://github.com/openbao/openbao/pull/2211)]
+* auth/userpass: Add `password_hash` field to allow providing a pre-hashed bcrypt password instead of plaintext. [[GH-2702](https://github.com/openbao/openbao/pull/2702)]
+* secrets/pki: Add encode_json and decode_json CEL helpers. [[GH-1549](https://github.com/openbao/openbao/pull/1549)]
+* secrets/totp: Add `generated`, `expire_time`, and `period` fields to code generation response. [[GH-2585](https://github.com/openbao/openbao/pull/2585)]
+* secrets/ssh: Search for public and private key files if `-public-key-path` and `-private-key-path` flags aren't given, respectively. [[GH-2419](https://github.com/openbao/openbao/pull/2419)]
+* database/mysql: Add multi-host connection failover support. Connection URLs can now specify multiple hosts (e.g., `tcp(host1:3306,host2:3306)`) for automatic failover when a host becomes unavailable. [[GH-2312](https://github.com/openbao/openbao/pull/2312)]
+* api, sdk: Add additional constants for commonly used headers. [[GH-2323](https://github.com/openbao/openbao/pull/2323)]
+* api: Add `ClientCertBytes` and `ClientKeyBytes` as possible in-memory cert contents in `TLSConfig`. [[GH-2798](https://github.com/openbao/openbao/pull/2798)]
+* api: Add first-class support for `/sys/namespaces` APIs via `.Sys().CreateNamespace(...)` & co. [[GH-2955](https://github.com/openbao/openbao/pull/2955)]
+* api: Add methods to list and scan keys to the KVv1 and KVv2 client. [[GH-3220](https://github.com/openbao/openbao/pull/3220)]
+* api: Allow disabling automatic configuration from environment variables in the API client via a `DisableEnvironment` field on `Config` and a `NewConfig` constructor to create clean client configurations. [[GH-2834](https://github.com/openbao/openbao/pull/2834)]
+* sdk/helper/consts: Add `AllowedJWTSignatureAlgorithmsEAB`. [[GH-2464](https://github.com/openbao/openbao/pull/2464)]
+* ui: Add `lang="en"` attribute to `html` tag. [[GH-2580](https://github.com/openbao/openbao/pull/2580)]
+* ui: Update EmberJS to v4.12 LTS. [[GH-2653](https://github.com/openbao/openbao/pull/2653)]
+
+CHANGES:
+
+* command: Remove buffering and delayed release of logs during startup phase of `server`, `agent`, `proxy` & `debug` subcommands. This includes the removal of the undocumented and hidden `-disable-gated-logs` flag. [[GH-2620](https://github.com/openbao/openbao/pull/2620)]
+* command: `operator generate-root` now uses the authenticated `/sys/generate-root-token` endpoints instead of the deprecated `/sys/generate-root` endpoints. [[GH-3190](https://github.com/openbao/openbao/pull/3190)]
+* core: `net/http.ServeMux` in Go 1.26 now uses a 307 redirect instead of a 301 redirect when given a bare path which doesn't exist in the multiplexer but which a path with a trailing slash exists for. This causes some `POST`/`PUT` operations to fail with a 400 instead of 404, as OpenBao does not allow writes to paths ending in a slash. See also: https://go.dev/doc/go1.26. [[GH-3072](https://github.com/openbao/openbao/pull/3072)]
+* core/identity: Remove corrupt namespace identity groups created prior to v2.5.0 during unseal; affected groups must be recreated by an administrator. Check for `deleting corrupt group` in server startup logs. [[GH-2454](https://github.com/openbao/openbao/pull/2454)]
+* sys/init, sys/rekey/init: The `stored_shares` parameter was removed and will now be ignored. [[GH-2662](https://github.com/openbao/openbao/pull/2662)]
+* sys/seal-status: Renamed misleading `build_date` response field to `commit_date`. [[GH-2678](https://github.com/openbao/openbao/pull/2678)]
+* sys/version-history: Renamed misleading `build_date` response field to `commit_date`. [[GH-2678](https://github.com/openbao/openbao/pull/2678)]
+* api: Removed the `StoredShares` field from `InitRequest` and `RotateInitRequest` structs. [[GH-2662](https://github.com/openbao/openbao/pull/2662)]
+* api: `(*Sys).GenerateRoot*` methods now use the authenticated `/sys/generate-root-token` endpoints instead of the deprecated `/sys/generate-root` endpoints. [[GH-3190](https://github.com/openbao/openbao/pull/3190)]
+* packaging: Renamed misleading ldflags definition `BuildDate` to `CommitDate`. Build systems need to adjust their pipelines to reflect this change. [[GH-2678](https://github.com/openbao/openbao/pull/2678)]
+* packaging/container: Removed `name`, `maintainer`, `vendor`, `version`, `release`, `revision`, `summary`, and `description` labels from container images in favor of the already attached [OpenContainers labels](https://github.com/opencontainers/image-spec/blob/main/annotations.md). If you have tooling that relies on these labels, instruct it to use the OpenContainers labels instead. [[GH-2589](https://github.com/openbao/openbao/pull/2589)]
+* packaging/container: The openbao & openbao-hsm container images now run under the `openbao` user rather than the `root` user by default, matching the default behavior of openbao-ubi variants:
+  - Note that the container entrypoint will always drop down to the `openbao` user before starting OpenBao even if started as `root`. The additional capabilities are only used pre-startup to automatically fix up permissions of files accessed by OpenBao. [[GH-2589](https://github.com/openbao/openbao/pull/2589)]
+  - If you rely on the container initially running as `root` by default, you can revert to this behavior by manually specifying the user in your container engine.
+* packaging/ui: Switch from `yarn` to `pnpm`. [[GH-2791](https://github.com/openbao/openbao/pull/2791)]
+* releases: Artifacts on GitHub now follow consistent naming across archives, SBOMs and signatures. Most notably, "x86_64" or "amd64" is now always "amd64", and the operating system is always lowercased. [[GH-3209](https://github.com/openbao/openbao/pull/3209)]
+* releases: Checksums are now provided as a single, consolidated `checksums.txt` artifact as opposed to per-OS checksum files such as `checksums-linux.txt`. [[GH-3209](https://github.com/openbao/openbao/pull/3209)]
+
+BUG FIXES:
+
+* command: Fix `bao operator rotate-keys` and `bao operator rekey` warning about new key shares when rotating the barrier root key only. [[GH-2648](https://github.com/openbao/openbao/pull/2648)]
+* core/seal: Fix `/sys/rotate/root/update` returning a random, unused key share value when rotating the barrier root key using recovery keys. [[GH-2648](https://github.com/openbao/openbao/pull/2648)]
+* core/listeners: Close HTTP servers first before closing the underlying listener. [[GH-2703](https://github.com/openbao/openbao/pull/2703)]
+* core/namespaces: Fix PATCH on a namespace returning status 500 on missing or nonexistent namespace. [[GH-2955](https://github.com/openbao/openbao/pull/2955)]
+* core/auth: Ensure inline auth does not generate in-memory lease information. [[GH-3343](https://github.com/openbao/openbao/pull/3343)]
+* core/mfa: Handle invalidation for login MFA within namespaces, ensuring standby nodes respond appropriately on writes. [[GH-3283](https://github.com/openbao/openbao/pull/3283)]
+* seal/pkcs11: Fix "invalid key format" error when `key_id` is provided but `key_label` is not. [[GH-3231](https://github.com/openbao/openbao/pull/3231)]
+* seal/pkcs11: Properly strip hex prefix when setting `key_id` as hex value. [[GH-3231](https://github.com/openbao/openbao/pull/3231)]
+* physical/raft: Forward bootstrap challenge/answer requests to active node, fixing raft join failures via load balancer. [[GH-2976](https://github.com/openbao/openbao/pull/2976)]
+* sys/plugin: Fix plugin reload returning success for non-existent plugin. [[GH-2398](https://github.com/openbao/openbao/pull/2398)]
+* sys/quotas: Fix unintentional attempts to delete quotas on standby nodes when mount is removed. [[GH-3316](https://github.com/openbao/openbao/pull/3316)]
+* secrets/pki: Add missing migration for `not_after_bound` and `not_before_bound` role fields. [[GH-3031](https://github.com/openbao/openbao/pull/3031)]
+* secrets/pki: `/sign-verbatim` now preserves the original subject encoding from the CSR. Previously, UTF8String values were re-encoded as PrintableString when the subject contained only ASCII characters. [[GH-2861](https://github.com/openbao/openbao/pull/2861)]
+* openapi: Add support for reporting SCAN on endpoints. [[GH-2902](https://github.com/openbao/openbao/pull/2902)]
+
+DEPRECATIONS:
+
+* core/seal: Following the introduction of pluggable Auto Unseal support in this release, the built-in versions of the `alicloudkms`, `awskms`, `azurekeyvault`, `gcpckms`, `ocikms` and `pkcs11` Auto Unseal mechanisms will be removed in v2.7.0 and remain available as external plugins only. [[GH-2586](https://github.com/openbao/openbao/pull/2586)]
+* physical/file: Deprecate file storage backend for removal in v2.7.0. [[GH-2849](https://github.com/openbao/openbao/pull/2849)]
+* packaging, seal/pkcs11: Following the introduction of pluginized HSM/PKCS#11 Auto Unseal support in this release, the HSM distribution of OpenBao will be discontinued by v2.7.0. PKCS#11 support remains available via the PKCS#11 plugin which can be used together with the standard distribution of OpenBao. [[GH-2586](https://github.com/openbao/openbao/pull/2586)]
+* packaging: Drop builds for 32-bit ARM Windows as part of its [removal from Go 1.26](https://go.dev/doc/go1.26#windows). [[GH-3191](https://github.com/openbao/openbao/pull/3191)]
+* packaging/container: Architecture-specific container image tags such as `openbao/openbao:2.6.0-arm64` will not be published starting with this release. Refer to multi-arch container images instead (simply `openbao/openbao:2.6.0`). [[GH-3209](https://github.com/openbao/openbao/pull/3209)]
+
+## 2.5.5
+## June 17, 2026
+
+SECURITY:
+
+* auth/ldap: Prevent unlikely post-bind LDAP injection via bind DN to group resolution. GHSA-6mwx-4547-5vc9. [[GH-3306](https://github.com/openbao/openbao/pull/3306)]
+* secrets/ldap: Prevent potential LDAP injection with unsanitized DNs for service accounts. GHSA-6mwx-4547-5vc9. [[GH-3306](https://github.com/openbao/openbao/pull/3306)]
+* secrets/transit: Prevent server crash due to unlock of unlocked mutex for RSA keys created with `derived=true`. GHSA-8w8f-r2xv-4q4j. [[GH-3309](https://github.com/openbao/openbao/pull/3309)]
+* core/leases: Fix unauthorized cross-namespace lease revocation via leaked lease identifiers. GHSA-c36x-h252-g9x2. [[GH-3307]](https://github.com/openbao/openbao/pull/3307)
+* core/namespaces: Fix namespace path canonicalization of "root" enabling unauthorized operations on the parent namespace. GHSA-mwr2-wmgp-crj6. [[GH-3308]](https://github.com/openbao/openbao/pull/3308)
+
+BUG FIXES:
+
+* core/ha: Return to read-enabled standby mode instead of read-disabled standby mode after stepping down from active mode when standby reads are enabled. This also fixes SIGHUPs crashing standby nodes if they've previously stepped down from active. [[GH-3223](https://github.com/openbao/openbao/pull/3223)]
+* auth/mfa: Correctly forward two-phase MFA validations on standby nodes. [[GH-3246](https://github.com/openbao/openbao/pull/3246)]
+* sys/namespaces: Support clearing a namespace's `custom_metadata` by providing a patch that sets `custom_metadata` to `null` at the top-level. [[GH-3273](https://github.com/openbao/openbao/pull/3273)]
+* sys/plugins: Fix `/sys/plugins/catalog` and `/sys/plugins/catalog/<type>` not returning versioned plugins. [[GH-3186](https://github.com/openbao/openbao/pull/3186)]
+
+## 2.5.4
+## May 20, 2026
+
+SECURITY:
+
+* core/auth: Fix audit logs dropping custom headers when using inline auth. GHSA-q8cj-789h-vg24 / CVE-2026-46358. [[GH-3076](https://github.com/openbao/openbao/pull/3076)]
+* core: Prevent hidden default token issuance from auth plugin endpoints returning both a `logical.Auth{}` response object and an error. GHSA-7j6w-vvw2-5f9c / CVE-2026-46405. [[GH-3150](https://github.com/openbao/openbao/pull/3150)]
+* core: Remove legacy lease endpoints (`sys/revoke`, `sys/renew`, `sys/revoke-prefix`, and `sys/revoke-force`) due to cross-namespace lease modification. GHSA-v8v8-cm84-m686 / CVE-2026-45808. [[GH-3152](https://github.com/openbao/openbao/pull/3152)]
+
+IMPROVEMENTS:
+
+* storage/postgresql: Set constraint name to `table+"_pkey"` and `ha_table+"_pkey"` and index to `table+"_idx"` for uniqueness when reusing the same database partition for multiple OpenBao instances. [[GH-2876](https://github.com/openbao/openbao/pull/2876)]
+
+BUG FIXES:
+
+* auth/kerberos: Do not return `logical.Auth{}` response during initial negotiation at the same time as an error. [[GH-3150](https://github.com/openbao/openbao/pull/3150)]
+* core/mfa: Handle invalidation for login MFA, ensuring standby nodes respond appropriately on writes. [[GH-3083](https://github.com/openbao/openbao/pull/3083)]
+* core/policies: Fix `list_scan_response_keys_filter_path` incorrectly erring on empty list responses. [[GH-3063](https://github.com/openbao/openbao/pull/3063)]
+* core/quotas: Correctly handle default rate limit exempt paths on quota configuration invalidation. [[GH-2953](https://github.com/openbao/openbao/pull/2953)]
+* core: Disallow logical secret engines from creating authentication tokens. [[GH-3087](https://github.com/openbao/openbao/pull/3087)]
+* core: Forward generate-root, step-down and rekey requests to active node to resolve inconsistent standby behavior. [[GH-3006](https://github.com/openbao/openbao/pull/3006)]
+* storage/raft: Wait for autopilot shutdown to avoid panic when racing to retrieve known servers. [[GH-3054](https://github.com/openbao/openbao/pull/3054)]
+* storage/postgresql: Revert accidental rename of `ha_table` option to `haTable`. Both spellings are now supported to retain compatibility, though `ha_table` takes precedence. [[GH-2876](https://github.com/openbao/openbao/pull/2876)]
+
 ## 2.5.3
 ## April 20, 2026
 

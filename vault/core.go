@@ -35,13 +35,11 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	"github.com/openbao/go-kms-wrapping/wrappers/awskms/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/command/server"
 	fwd "github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/helper/identity"
-	"github.com/openbao/openbao/helper/identity/mfa"
 	"github.com/openbao/openbao/helper/locking"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -283,9 +281,9 @@ type Core struct {
 	sealed    atomic.Bool
 
 	standby          atomic.Bool
-	standbyDoneCh    chan struct{}
-	standbyStopCh    atomic.Value
-	standbyRestartCh atomic.Value
+	haLoopDoneCh     chan struct{}
+	haLoopStopCh     atomic.Value
+	haLoopRestartCh  atomic.Value
 	manualStepDownCh chan struct{}
 	heldHALock       physical.Lock
 
@@ -556,7 +554,8 @@ type Core struct {
 
 	quotaManager *quotas.Manager
 
-	clusterHeartbeatInterval time.Duration
+	clusterHeartbeatInterval     time.Duration
+	clusterNamespaceSyncInterval time.Duration
 
 	// activeTime is set on active nodes indicating the time at which this node
 	// became active.
@@ -752,7 +751,8 @@ type CoreConfig struct {
 
 	ClusterNetworkLayer cluster.NetworkLayer
 
-	ClusterHeartbeatInterval time.Duration
+	ClusterHeartbeatInterval     time.Duration
+	ClusterNamespaceSyncInterval time.Duration
 
 	// number of workers to use for lease revocation in the expiration manager
 	NumExpirationWorkers int
@@ -859,6 +859,15 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		clusterHeartbeatInterval = 5 * time.Second
 	}
 
+	clusterNamespaceSyncInterval := conf.ClusterNamespaceSyncInterval
+	if clusterNamespaceSyncInterval == 0 {
+		// We don't want namespaces to take forever to unseal, but we also
+		// want to avoid spamming the leader. This seems like a reasonable
+		// middle ground. By tying it to clusterHeartbeatInterval, tests
+		// can run faster automatically.
+		clusterNamespaceSyncInterval = 3 * clusterHeartbeatInterval
+	}
+
 	if conf.NumExpirationWorkers == 0 {
 		conf.NumExpirationWorkers = numExpirationWorkersDefault
 	}
@@ -926,6 +935,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		raftJoinDoneCh:                 make(chan struct{}),
 		pendingRaftPeerChallengeKey:    make([]byte, 32),
 		clusterHeartbeatInterval:       clusterHeartbeatInterval,
+		clusterNamespaceSyncInterval:   clusterNamespaceSyncInterval,
 		numExpirationWorkers:           conf.NumExpirationWorkers,
 		raftFollowerStates:             raft.NewFollowerStates(),
 		disableAutopilot:               conf.DisableAutopilot,
@@ -947,8 +957,8 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	c.standby.Store(true)
-	c.standbyStopCh.Store(make(chan struct{}, 1))
-	c.standbyRestartCh.Store(make(chan struct{}, 1))
+	c.haLoopStopCh.Store(make(chan struct{}, 1))
+	c.haLoopRestartCh.Store(make(chan struct{}, 1))
 	c.sealed.Store(true)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
 
@@ -1009,9 +1019,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	// Load seal information.
 	if c.seal == nil {
-		wrapper := vaultseal.NewShamirWrapper()
-		wrapper.SetConfig(context.Background(), awskms.WithLogger(c.logger.Named("shamir")))
-		c.seal = NewDefaultSeal(vaultseal.NewAccess(wrapper))
+		c.seal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 	}
 	c.seal.SetCore(c)
 
@@ -1062,7 +1070,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	// Construct a new AES-GCM barrier
-	c.barrier = barrier.NewAESGCMBarrier(c.physical, "")
+	c.barrier = barrier.NewAESGCMBarrier(c.physical, nil)
 	c.SetupSealManager()
 
 	// We create the funcs here, then populate the given config with it so that
@@ -1103,9 +1111,9 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	// MFA method
-	c.loginMFABackend = NewLoginMFABackend(c, conf.Logger)
-	if c.loginMFABackend.mfaLogger != nil {
-		c.AddLogger(c.loginMFABackend.mfaLogger)
+	c.loginMFABackend, err = NewLoginMFABackend(c, conf.Logger)
+	if err != nil {
+		return nil, err
 	}
 
 	// Logical backends
@@ -1795,31 +1803,25 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 		c.standby.Store(false)
 	} else {
 		// Go to standby mode, wait until we are active to unseal
-		c.standbyDoneCh = make(chan struct{})
+		c.haLoopDoneCh = make(chan struct{})
 		c.manualStepDownCh = make(chan struct{}, 1)
-		c.standbyStopCh.Store(make(chan struct{}, 1))
-		c.standbyRestartCh.Store(make(chan struct{}, 1))
-		go c.runStandby(c.standbyDoneCh, c.manualStepDownCh, c.standbyStopCh.Load().(chan struct{}), c.standbyRestartCh.Load().(chan struct{}))
+		c.haLoopStopCh.Store(make(chan struct{}, 1))
+		c.haLoopRestartCh.Store(make(chan struct{}, 1))
+		go c.runHALoop(c.haLoopDoneCh, c.manualStepDownCh, c.haLoopStopCh.Load().(chan struct{}), c.haLoopRestartCh.Load().(chan struct{}))
 	}
 
 	// Success!
 	c.sealed.Store(false)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
 
-	if c.logger.IsInfo() {
-		c.logger.Info("vault is unsealed")
-	}
+	c.logger.Info("vault is unsealed")
 
 	if c.serviceRegistration != nil {
 		if err := c.serviceRegistration.NotifySealedStateChange(false); err != nil {
-			if c.logger.IsWarn() {
-				c.logger.Warn("failed to notify unsealed status", "error", err)
-			}
+			c.logger.Warn("failed to notify unsealed status", "error", err)
 		}
 		if err := c.serviceRegistration.NotifyInitializedStateChange(true); err != nil {
-			if c.logger.IsWarn() {
-				c.logger.Warn("failed to notify initialized status", "error", err)
-			}
+			c.logger.Warn("failed to notify initialized status", "error", err)
 		}
 	}
 	return nil
@@ -2043,10 +2045,9 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 			}
 		}()
 
-		// Stop the standby before attempting to acquire the standby lock.
-		// This will prevent a race condition between runStandby and this
-		// method.
-		c.stopStandby()
+		// Stop the HA loop before attempting to acquire the state lock. This
+		// will prevent a race condition between runHALoop and this method.
+		c.stopHALoop()
 
 		// Acquire the state lock.
 		c.stateLock.Lock()
@@ -2077,18 +2078,17 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 		}
 
 		// If we are trying to acquire the lock, force it to return with nil so
-		// runStandby will exit
-		// If we are active, signal the standby goroutine to shut down and wait
-		// for completion. We have the state lock here so nothing else should
-		// be toggling standby status.
-		close(c.standbyStopCh.Load().(chan struct{}))
-		c.logger.Debug("finished triggering standbyStopCh for runStandby")
+		// runHALoop will exit. If we are active, signal the standby goroutine
+		// to shut down and wait for completion. We have the state lock here so
+		// nothing else should be toggling standby status.
+		close(c.haLoopStopCh.Load().(chan struct{}))
+		c.logger.Debug("finished triggering haLoopCh for runHALoop")
 
-		// Wait for runStandby to stop
-		<-c.standbyDoneCh
-		c.logger.Debug("runStandby done")
+		// Wait for runHALoop to stop.
+		<-c.haLoopDoneCh
+		c.logger.Debug("runHALoop done")
 
-		// Stop requests from processing
+		// Stop requests from processing.
 		activeCtxCancel()
 	}
 
@@ -2117,9 +2117,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 
 	if c.serviceRegistration != nil {
 		if err := c.serviceRegistration.NotifySealedStateChange(true); err != nil {
-			if c.logger.IsWarn() {
-				c.logger.Warn("failed to notify sealed status", "error", err)
-			}
+			c.logger.Warn("failed to notify sealed status", "error", err)
 		}
 	}
 
@@ -2276,7 +2274,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 		return err
 	}
 
-	c.setupWorkflowStore(ctx)
+	c.setupWorkflowStore()
 
 	return nil
 }
@@ -3078,27 +3076,32 @@ func (c *Core) isPrimary() bool {
 }
 
 func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {
-	eConfigs := make([]*mfa.MFAEnforcementConfig, 0)
-	allNamespaces, err := c.ListNamespaces(ctx)
+	namespaces, err := c.ListNamespaces(ctx)
 	if err != nil {
 		return err
 	}
 
-	for _, ns := range allNamespaces {
-		err := c.loginMFABackend.loadMFAMethodConfigs(ctx, ns)
-		if err != nil {
-			return fmt.Errorf("error loading MFA method Config, namespace %s, error: %w", ns.Path, err)
+	for _, ns := range namespaces {
+		if err := c.loadLoginMFAConfigsForNamespace(ctx, ns); err != nil {
+			return err
 		}
-
-		loadedConfigs, err := c.loginMFABackend.loadMFAEnforcementConfigs(ctx, ns)
-		if err != nil {
-			return fmt.Errorf("error loading MFA enforcement Config, namespace %s, error: %w", ns.Path, err)
-		}
-
-		eConfigs = append(eConfigs, loadedConfigs...)
 	}
 
-	for _, conf := range eConfigs {
+	return nil
+}
+
+func (c *Core) loadLoginMFAConfigsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+	err := c.loginMFABackend.loadMFAMethodConfigs(ctx, ns)
+	if err != nil {
+		return fmt.Errorf("error loading MFA method Config, namespace %s, error: %w", ns.Path, err)
+	}
+
+	loadedConfigs, err := c.loginMFABackend.loadMFAEnforcementConfigs(ctx, ns)
+	if err != nil {
+		return fmt.Errorf("error loading MFA enforcement Config, namespace %s, error: %w", ns.Path, err)
+	}
+
+	for _, conf := range loadedConfigs {
 		if err := c.loginMFABackend.loginMFAMethodExistenceCheck(conf); err != nil {
 			c.loginMFABackend.mfaLogger.Error("failed to find all MFA methods that exist in MFA enforcement configs", "configID", conf.ID, "namespaceID", conf.NamespaceID, "error", err.Error())
 		}
@@ -3208,9 +3211,9 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 
 // runLockedUserEntryUpdatesForNamespace runs updates for locked users storage entries
 // for a single namespace. If a forceDelete flag is passed all login entries are deleted.
-func (c *Core) runLockedUserEntryUpdatesForNamespace(ctx context.Context, namespace *namespace.Namespace, forceDelete bool) (int, error) {
+func (c *Core) runLockedUserEntryUpdatesForNamespace(ctx context.Context, ns *namespace.Namespace, forceDelete bool) (int, error) {
 	// get the list of mount accessors of locked users of a namespace
-	view := NamespaceScopedView(c.barrier, namespace).SubView(coreLockedUsersPath)
+	view := c.NamespaceView(ns).SubView(coreLockedUsersPath)
 	mountAccessors, err := view.List(ctx, "")
 	if err != nil {
 		return 0, err
@@ -3329,6 +3332,9 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, vi
 // PopMFAResponseAuthByID pops an item from the mfaResponseAuthQueue by ID
 // it returns the cached auth response or an error
 func (c *Core) PopMFAResponseAuthByID(reqID string) (*MFACachedAuthResponse, error) {
+	if c.standby.Load() {
+		return nil, logical.ErrReadOnly
+	}
 	c.mfaResponseAuthQueueLock.Lock()
 	defer c.mfaResponseAuthQueueLock.Unlock()
 	return c.mfaResponseAuthQueue.PopByKey(reqID)
@@ -3337,6 +3343,9 @@ func (c *Core) PopMFAResponseAuthByID(reqID string) (*MFACachedAuthResponse, err
 // SaveMFAResponseAuth pushes an MFACachedAuthResponse to the mfaResponseAuthQueue.
 // it returns an error in case of failure
 func (c *Core) SaveMFAResponseAuth(respAuth *MFACachedAuthResponse) error {
+	if c.standby.Load() {
+		return logical.ErrReadOnly
+	}
 	c.mfaResponseAuthQueueLock.Lock()
 	defer c.mfaResponseAuthQueueLock.Unlock()
 	return c.mfaResponseAuthQueue.Push(respAuth)
@@ -3865,10 +3874,11 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 	c.rpcForwardingClient = forwarding.NewClient(
 		c,
 		forwarding.NewRequestForwardingClient(c.rpcClientConn),
-		time.NewTicker(c.clusterHeartbeatInterval),
 		dctx,
+		time.NewTicker(c.clusterHeartbeatInterval),
+		time.NewTicker(c.clusterNamespaceSyncInterval),
 	)
-	c.rpcForwardingClient.StartHeartbeat()
+	c.rpcForwardingClient.Start()
 
 	return nil
 }

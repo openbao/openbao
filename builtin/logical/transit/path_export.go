@@ -112,9 +112,6 @@ func (b *backend) pathPolicyExportRead(ctx context.Context, req *logical.Request
 	if p == nil {
 		return nil, nil
 	}
-	if !b.System().CachingDisabled() {
-		p.Lock(false)
-	}
 	defer p.Unlock()
 
 	if !p.Exportable && exportType != exportTypePublicKey && exportType != exportTypeCertificateChain {
@@ -289,7 +286,8 @@ func getExportKey(policy *keysutil.Policy, key *keysutil.KeyEntry, exportType st
 				&pem.Block{
 					Type:  "CERTIFICATE",
 					Bytes: derCertificateBytes,
-				})))
+				},
+			)))
 			pemCertificates = append(pemCertificates, pemCert)
 		}
 		certificateChain := strings.Join(pemCertificates, "\n")

@@ -1008,7 +1008,7 @@ func TestPki_RolePatch(t *testing.T) {
 			switch typed := before.(type) {
 			case *bool:
 				before = *typed
-				afterRoleData[field] = *(afterRoleData[field].(*bool))
+				afterRoleData[field] = *afterRoleData[field].(*bool)
 			}
 
 			if field != testCase.Field {

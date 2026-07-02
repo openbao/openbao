@@ -467,6 +467,7 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 
 		genRoot, err := client.Sys().GenerateRootInit(otp, "")
 		require.NoError(t, err)
+		require.NotEmpty(t, genRoot.Nonce)
 
 		r, err := client.Sys().GenerateRootUpdate(recoveryKey, genRoot.Nonce)
 		require.NoError(t, err)

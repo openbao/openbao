@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-slim
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ github.head_ref }}
           ssh-key: ${{ secrets.DEPENDABOT_DEPLOY_KEY }}
@@ -24,6 +24,10 @@ jobs:
         uses: ./.github/actions/set-up-go
       - name: Run sync-deps
         run: make sync-deps
+      - name: Sync golangci-lint version to code-checker workflow
+        run: |
+          version=$(go list -modfile=tools/go.mod -m -f '{{ .Version }}' github.com/golangci/golangci-lint/v2)
+          sed -i "s/GOLANGCI_LINT_VERSION: v.*/GOLANGCI_LINT_VERSION: ${version}/" .github/workflows/code-checker.yml
       - name: Check for changes
         id: changes
         run: |

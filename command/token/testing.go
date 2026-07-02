@@ -57,7 +57,8 @@ func TestProcessPath(t *testing.T, s ...string) string {
 	return fmt.Sprintf(
 		"%s %s",
 		os.Args[0],
-		strings.Join(cs, " "))
+		strings.Join(cs, " "),
+	)
 }
 
 // TestExternalTokenHelperProcessCLI can be called to implement TestExternalTokenHelperProcess

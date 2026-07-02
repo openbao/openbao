@@ -29,14 +29,16 @@ func getGenerationParams(sc *storageContext, data *framework.FieldData) (exporte
 	case "kms":
 	default:
 		errorResp = logical.ErrorResponse(
-			`the "exported" path parameter must be "internal", "existing", exported" or "kms"`)
+			`the "exported" path parameter must be "internal", "existing", exported" or "kms"`,
+		)
 		return exported, format, role, errorResp
 	}
 
 	format = getFormat(data)
 	if format == "" {
 		errorResp = logical.ErrorResponse(
-			`the "format" path parameter must be "pem", "der", or "pem_bundle"`)
+			`the "format" path parameter must be "pem", "der", or "pem_bundle"`,
+		)
 		return exported, format, role, errorResp
 	}
 

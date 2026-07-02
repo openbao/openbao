@@ -17,7 +17,7 @@ import errorMessage from 'vault/utils/error-message';
  */
 
 export default class RoleDetailsPageComponent extends Component {
-  @service router;
+  @service 'host-router';
   @service flashMessages;
 
   get extraFields() {
@@ -35,7 +35,7 @@ export default class RoleDetailsPageComponent extends Component {
   async delete() {
     try {
       await this.args.model.destroyRecord();
-      this.router.transitionTo('vault.cluster.secrets.backend.kubernetes.roles');
+      this['host-router'].transitionTo('vault.cluster.secrets.backend.kubernetes.roles');
     } catch (error) {
       const message = errorMessage(error, 'Unable to delete role. Please try again or contact support');
       this.flashMessages.danger(message);

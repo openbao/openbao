@@ -2,12 +2,19 @@
 sidebar_label: GCP Cloud KMS
 description: >-
   The GCP Cloud KMS seal configures OpenBao to use GCP Cloud KMS as the seal
-  wrapping
-
-  mechanism.
+  wrapping mechanism.
 ---
 
 # `gcpckms` seal
+
+:::info
+
+This seal is available as an external KMS provider plugin in the
+[openbao-plugins](https://github.com/openbao/openbao-plugins) plugin
+collection. For more information on Auto Unseal plugins, see the [overview
+section](./index.mdx#plugins).
+
+:::
 
 The GCP Cloud KMS seal configures OpenBao to use GCP Cloud KMS as the seal
 wrapping mechanism. The GCP Cloud KMS seal is activated by one of the following:

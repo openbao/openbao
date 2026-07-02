@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"regexp"
 	"regexp/syntax"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -117,6 +118,7 @@ type OASPathItem struct {
 
 	Get    *OASOperation `json:"get,omitempty"`
 	Post   *OASOperation `json:"post,omitempty"`
+	Patch  *OASOperation `json:"patch,omitempty"`
 	Delete *OASOperation `json:"delete,omitempty"`
 }
 
@@ -324,8 +326,8 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 				}
 			}
 
-			// If both List and Read are defined, only process Read.
-			if opType == logical.ListOperation && operations[logical.ReadOperation] != nil {
+			// If both List or Scan and Read are defined, only process Read.
+			if slices.Contains([]logical.Operation{logical.ListOperation, logical.ScanOperation}, opType) && operations[logical.ReadOperation] != nil {
 				continue
 			}
 
@@ -345,8 +347,8 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 			op.Deprecated = props.Deprecated
 			op.OperationID = operationID
 
-			// Add any fields not present in the path as body parameters for POST.
-			if opType == logical.CreateOperation || opType == logical.UpdateOperation {
+			// Add any fields not present in the path as body parameters for POST or PATCH.
+			if opType == logical.CreateOperation || opType == logical.UpdateOperation || opType == logical.PatchOperation {
 				s := &OASSchema{
 					Type:       "object",
 					Properties: make(map[string]*OASSchema),
@@ -410,39 +412,68 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 
 			// LIST is represented as GET with a `list` query parameter.
 			if opType == logical.ListOperation {
-				// Only accepts List (due to the above skipping of ListOperations that also have ReadOperations)
+				// Only accepts List and maybe Scan (due to the above skipping of ListOperations that also have ReadOperations)
+				description := "Must be set to `true`"
+				if operations[logical.ScanOperation] != nil {
+					description = "Must be set to `true` or else `scan` must be set to `true`"
+
+					op.Parameters = append(op.Parameters, OASParameter{
+						Name:        "scan",
+						Description: "Must be set to `true` or else `list` must be set to `true`",
+						Required:    true,
+						In:          "query",
+						Schema:      &OASSchema{Type: "string", Enum: []interface{}{"true"}},
+					})
+				}
+
 				op.Parameters = append(op.Parameters, OASParameter{
 					Name:        "list",
-					Description: "Must be set to `true`",
+					Description: description,
 					Required:    true,
 					In:          "query",
 					Schema:      &OASSchema{Type: "string", Enum: []interface{}{"true"}},
 				})
 			} else if opType == logical.ScanOperation {
-				// Only accepts List (due to the above skipping of ListOperations that also have ReadOperations)
+				// Only accepts Scan and maybe List (due to the above skipping of ScanOperations that also have ReadOperations)
+				description := "Must be set to `true`"
+				if operations[logical.ListOperation] != nil {
+					description = "Must be set to `true` or else `list` must be set to `true`"
+
+					op.Parameters = append(op.Parameters, OASParameter{
+						Name:        "list",
+						Description: "Must be set to `true` or else `scan` must be set to `true`",
+						Required:    true,
+						In:          "query",
+						Schema:      &OASSchema{Type: "string", Enum: []interface{}{"true"}},
+					})
+				}
+
 				op.Parameters = append(op.Parameters, OASParameter{
 					Name:        "scan",
-					Description: "Must be set to `true`",
+					Description: description,
 					Required:    true,
 					In:          "query",
 					Schema:      &OASSchema{Type: "string", Enum: []interface{}{"true"}},
 				})
-			} else if opType == logical.ReadOperation && operations[logical.ListOperation] != nil {
-				// Accepts both Read and List
-				op.Parameters = append(op.Parameters, OASParameter{
-					Name:        "list",
-					Description: "Return a list if `true`",
-					In:          "query",
-					Schema:      &OASSchema{Type: "string"},
-				})
-			} else if opType == logical.ReadOperation && operations[logical.ScanOperation] != nil {
-				// Accepts both Read and List
-				op.Parameters = append(op.Parameters, OASParameter{
-					Name:        "scan",
-					Description: "Return a recursive list if `true`",
-					In:          "query",
-					Schema:      &OASSchema{Type: "string"},
-				})
+			} else if opType == logical.ReadOperation {
+				if operations[logical.ListOperation] != nil {
+					// Accepts both Read and List
+					op.Parameters = append(op.Parameters, OASParameter{
+						Name:        "list",
+						Description: "Return a list if `true`",
+						In:          "query",
+						Schema:      &OASSchema{Type: "string"},
+					})
+				}
+				if operations[logical.ScanOperation] != nil {
+					// Accepts both Read and List
+					op.Parameters = append(op.Parameters, OASParameter{
+						Name:        "scan",
+						Description: "Return a recursive list if `true`",
+						In:          "query",
+						Schema:      &OASSchema{Type: "string"},
+					})
+				}
 			}
 
 			// Add tags based on backend type
@@ -547,10 +578,12 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 			switch opType {
 			case logical.CreateOperation, logical.UpdateOperation:
 				pi.Post = op
-			case logical.ReadOperation, logical.ListOperation:
+			case logical.ReadOperation, logical.ListOperation, logical.ScanOperation:
 				pi.Get = op
 			case logical.DeleteOperation:
 				pi.Delete = op
+			case logical.PatchOperation:
+				pi.Patch = op
 			}
 		}
 
@@ -1099,7 +1132,7 @@ func (d *OASDocument) CreateOperationIDs(context string) {
 
 	for _, path := range paths {
 		pi := d.Paths[path]
-		for _, method := range []string{"get", "post", "delete"} {
+		for _, method := range []string{"get", "post", "delete", "patch"} {
 			var oasOperation *OASOperation
 			switch method {
 			case "get":
@@ -1108,6 +1141,8 @@ func (d *OASDocument) CreateOperationIDs(context string) {
 				oasOperation = pi.Post
 			case "delete":
 				oasOperation = pi.Delete
+			case "patch":
+				oasOperation = pi.Patch
 			}
 
 			if oasOperation == nil {

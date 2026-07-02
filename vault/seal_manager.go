@@ -9,10 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/armon/go-radix"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
@@ -33,13 +33,6 @@ func (e *ErrInvalidKey) Error() string {
 	return fmt.Sprintf("invalid key: %v", e.Reason)
 }
 
-// These variables hold the config and shares we have until we reach
-// enough to verify the appropriate root key.
-type rotationConfig struct {
-	rootConfig     *SealConfig
-	recoveryConfig *SealConfig
-}
-
 // These variables hold the unseal key parts to reconstruct the key and
 // operation nonce.
 type unlockInformation struct {
@@ -58,7 +51,7 @@ type SealManager struct {
 	sealByNamespace              map[string]Seal
 	unlockInformationByNamespace map[string]*unlockInformation
 	rotationConfigByNamespace    map[string]*rotationConfig
-	barrierByNamespace           *radix.Tree
+	barrierByNamespacePath       *radix.Tree
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
@@ -67,8 +60,13 @@ type SealManager struct {
 // NewSealManager creates a new seal manager with core reference and logger.
 func NewSealManager(core *Core, logger hclog.Logger) *SealManager {
 	return &SealManager{
-		core:                         core,
-		sealByNamespace:              make(map[string]Seal),
+		core: core,
+		barrierByNamespacePath: radix.NewFromMap(map[string]interface{}{
+			"": core.barrier,
+		}),
+		sealByNamespace: map[string]Seal{
+			namespace.RootNamespaceUUID: core.seal,
+		},
 		unlockInformationByNamespace: make(map[string]*unlockInformation),
 		rotationConfigByNamespace:    make(map[string]*rotationConfig),
 		logger:                       logger,
@@ -86,7 +84,7 @@ func (c *Core) SetupSealManager() {
 // sealAll seals barriers of all namespaces and resets seal manager state.
 func (sm *SealManager) sealAll() error {
 	var errs error
-	sm.barrierByNamespace.Walk(func(path string, b interface{}) bool {
+	sm.barrierByNamespacePath.Walk(func(path string, b interface{}) bool {
 		if b != nil {
 			errs = errors.Join(errs, b.(barrier.SecurityBarrier).Seal())
 		}
@@ -97,16 +95,8 @@ func (sm *SealManager) sealAll() error {
 	return errs
 }
 
-// Reset clears all internal state, leaving only the root namespace's seal.
+// Reset clears rotation and unlock internal states.
 func (sm *SealManager) Reset() {
-	sm.barrierByNamespace = radix.NewFromMap(map[string]interface{}{
-		"": sm.core.barrier,
-	})
-
-	sm.sealByNamespace = map[string]Seal{
-		namespace.RootNamespaceUUID: sm.core.seal,
-	}
-
 	sm.unlockInformationByNamespace = map[string]*unlockInformation{}
 	sm.rotationConfigByNamespace = map[string]*rotationConfig{}
 }
@@ -117,8 +107,8 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	// Check if we're already present; if so, don't set any seal information
-	// as we don't want to overwrite what we have.
+	// Check if we have the seal present; if so, don't set any seal
+	// information as we don't want to overwrite what we have.
 	if _, ok := sm.sealByNamespace[ns.UUID]; ok {
 		return nil
 	}
@@ -148,7 +138,8 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 		return fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	sm.barrierByNamespace.Insert(ns.Path, barrier.NewAESGCMBarrier(sm.core.physical, metaPrefix))
+	nsBarrier := barrier.NewAESGCMBarrier(sm.core.physical, ns)
+	sm.barrierByNamespacePath.Insert(ns.Path, nsBarrier)
 	sm.sealByNamespace[ns.UUID] = defaultSeal
 
 	if writeToStorage {
@@ -172,7 +163,7 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 	delete(sm.sealByNamespace, ns.UUID)
 	delete(sm.unlockInformationByNamespace, ns.UUID)
 	delete(sm.rotationConfigByNamespace, ns.UUID)
-	sm.barrierByNamespace.Delete(ns.Path)
+	sm.barrierByNamespacePath.Delete(ns.Path)
 }
 
 // NamespaceView returns the BarrierView that applies to the given namespace.
@@ -196,7 +187,7 @@ func (sm *SealManager) NamespaceBarrierByLongestPrefix(nsPath string) barrier.Se
 // namespaceBarrierByLongestPrefix returns the barrier of a namespace matching
 // the longest prefix of the provided path, going up to the root namespace.
 func (sm *SealManager) namespaceBarrierByLongestPrefix(nsPath string) barrier.SecurityBarrier {
-	_, v, exists := sm.barrierByNamespace.LongestPrefix(nsPath)
+	_, v, exists := sm.barrierByNamespacePath.LongestPrefix(nsPath)
 	if !exists {
 		return nil
 	}
@@ -214,7 +205,7 @@ func (sm *SealManager) NamespaceBarrier(nsPath string) barrier.SecurityBarrier {
 
 // namespaceBarrier returns a namespace's barrier by namespace path.
 func (sm *SealManager) namespaceBarrier(nsPath string) barrier.SecurityBarrier {
-	v, exists := sm.barrierByNamespace.Get(nsPath)
+	v, exists := sm.barrierByNamespacePath.Get(nsPath)
 	if !exists {
 		return nil
 	}
@@ -246,15 +237,6 @@ func (sm *SealManager) NamespaceUnlockInformation(nsUUID string) *unlockInformat
 	defer sm.lock.RUnlock()
 
 	return sm.unlockInformationByNamespace[nsUUID]
-}
-
-// NamespaceRotationConfig returns the rotation config of the namespace
-// with the given UUID.
-func (sm *SealManager) NamespaceRotationConfig(nsUUID string) *rotationConfig {
-	sm.lock.RLock()
-	defer sm.lock.RUnlock()
-
-	return sm.rotationConfigByNamespace[nsUUID]
 }
 
 // SealStatus returns the seal status of a namespace, including its unlock
@@ -627,39 +609,249 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	return sealKeyShares, nil
 }
 
-// RotateBarrierKey rotates the barrier key of the given namespace.
-// It will return an error if the given namespace is not a sealable namespace.
-func (sm *SealManager) RotateBarrierKey(ctx context.Context, ns *namespace.Namespace) error {
-	sm.lock.RLock()
-	defer sm.lock.RUnlock()
+// UnsealWithRootKey is used for standby<->active key sharing, passing root
+// keys via the request forwarding mechanism.
+func (sm *SealManager) UnsealWithRootKey(ctx context.Context, ns *namespace.Namespace, rootKey []byte) error {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
 
-	b := sm.namespaceBarrier(ns.Path)
-	if b == nil {
+	sm.logger.Debug("namespace root key supplied")
+
+	barrier := sm.namespaceBarrier(ns.Path)
+	if barrier == nil {
 		return ErrNotSealable
 	}
 
-	newTerm, err := b.Rotate(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create new encryption key: %w", err)
+	// Check if already unsealed
+	if !barrier.Sealed() {
+		return nil
 	}
-	sm.logger.Info("installed new encryption key")
 
-	// In HA mode, we need to an upgrade path for the standby instances
-	// we are using the same key rotate grace period for all namespaces for now.
-	if sm.core.ha != nil && sm.core.KeyRotateGracePeriod() > 0 {
-		// Create the upgrade path to the new term
-		if err := b.CreateUpgrade(ctx, newTerm); err != nil {
-			sm.logger.Error("failed to create new upgrade", "term", newTerm, "error", err, "namespace", ns.Path)
-		}
-
-		// Schedule the destroy of the upgrade path
-		time.AfterFunc(sm.core.KeyRotateGracePeriod(), func() {
-			sm.logger.Debug("cleaning up upgrade keys", "waited", sm.core.KeyRotateGracePeriod())
-			if err := b.DestroyUpgrade(sm.core.activeContext.Load(), newTerm); err != nil {
-				sm.logger.Error("failed to destroy upgrade", "term", newTerm, "error", err, "namespace", ns.Path)
-			}
-		})
+	if err := barrier.Unseal(ctx, rootKey); err != nil {
+		return err
 	}
+
+	sm.logger.Info("unsealed namespace", "namespace", ns.Path)
 
 	return nil
+}
+
+// NamespacesWithKeys is a list of namespace UUIDs which have been unsealed.
+func (sm *SealManager) NamespacesWithKeys() []string {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
+	var namespaces []string
+	sm.barrierByNamespacePath.Walk(func(_ string, b interface{}) bool {
+		if b == nil {
+			return false
+		}
+
+		nsBarrier := b.(barrier.SecurityBarrier)
+		ns := nsBarrier.Namespace()
+		if nsBarrier.Sealed() || ns.UUID == namespace.RootNamespaceUUID {
+			// Skip sealed or root namespaces
+			return false
+		}
+
+		namespaces = append(namespaces, ns.UUID)
+		return false
+	})
+
+	return namespaces
+}
+
+// NamespacesMissingKeys is a list of namespace UUIDs which are currently sealed.
+func (sm *SealManager) NamespacesMissingKeys() []string {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
+	var namespaces []string
+	sm.barrierByNamespacePath.Walk(func(_ string, b interface{}) bool {
+		if b == nil {
+			return false
+		}
+
+		nsBarrier := b.(barrier.SecurityBarrier)
+		ns := nsBarrier.Namespace()
+		if !nsBarrier.Sealed() || ns.UUID == namespace.RootNamespaceUUID {
+			// Skip unsealed or root namespaces.
+			return false
+		}
+
+		namespaces = append(namespaces, ns.UUID)
+		return false
+	})
+
+	return namespaces
+}
+
+// GetRootKey yields the underlying root key of the barrier for the given
+// namespace.
+func (sm *SealManager) GetRootKey(ctx context.Context, ns *namespace.Namespace) ([]byte, error) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	if ns.ID == namespace.RootNamespaceID {
+		return nil, errors.New("refusing to return root namespace's root key")
+	}
+
+	v, exists := sm.barrierByNamespacePath.Get(ns.Path)
+	if !exists {
+		return nil, ErrNotInit
+	}
+
+	b := v.(barrier.SecurityBarrier)
+	keyring, err := b.Keyring()
+	if err != nil {
+		return nil, err
+	}
+
+	return keyring.RootKey(), nil
+}
+
+// NamespacesWithKeys returns the list of namespaces with keys locally known
+// by this node and are thus unsealed. This ignores non-sealed namespaces.
+func (c *Core) NamespacesWithKeys() []string {
+	c.stateLock.RLock()
+	defer c.stateLock.RUnlock()
+
+	activeCtx := c.activeContext.Load()
+	if c.Sealed() || activeCtx.Err() != nil {
+		return nil
+	}
+
+	return c.sealManager.NamespacesWithKeys()
+}
+
+// NamespacesMissingKeys returns the list of namespaces which are currently
+// sealed and thus missing root keys.
+func (c *Core) NamespacesMissingKeys() []string {
+	c.stateLock.RLock()
+	defer c.stateLock.RUnlock()
+
+	activeCtx := c.activeContext.Load()
+	if c.Sealed() || activeCtx.Err() != nil {
+		return nil
+	}
+
+	return c.sealManager.NamespacesMissingKeys()
+}
+
+// namespaceUnsealKeyPath contain a formatting directive to allow binding the
+// actual namespace's UUID to the AAD of the encryption context. These paths
+// should not be used by actual system paths and are synthetically used by the
+// external encryption exposed by the barrier.
+const namespaceUnsealKeyPath = "[internal]core/namespace/forwarded-root-key/%v"
+
+// SetNamespaceKeys loads keys sent via GRPC from the other node, which may
+// be an active or standby node. Keys for namespaces which are already
+// unsealed are ignored, though we try to filter these out to prevent them
+// appearing on the wire.
+//
+// Most operations use the node's active context, but we check for rpc
+// cancellation and bail early if necessary.
+func (c *Core) SetNamespaceKeys(rpcCtx context.Context, keys map[string][]byte) error {
+	c.stateLock.RLock()
+	defer c.stateLock.RUnlock()
+
+	activeCtx := c.activeContext.Load()
+	if c.Sealed() || activeCtx.Err() != nil {
+		return errors.New("instance is sealed or context is not yet active")
+	}
+
+	// We don't want to continue past rpcCtx, but also need to be terminated
+	// by active context cancellation. Use the same trick as request
+	// handling.
+	ctx, cancel := context.WithCancel(activeCtx)
+	stop := context.AfterFunc(rpcCtx, cancel)
+	defer stop()
+
+	var errs error
+	for uuid, encRootKey := range keys {
+		rootKey, err := c.barrier.Decrypt(ctx, fmt.Sprintf(namespaceUnsealKeyPath, uuid), encRootKey)
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("for namespace %v: failed to decrypt root key: %w", uuid, err))
+			continue
+		}
+
+		ns, nsErr := c.namespaceStore.GetNamespace(ctx, uuid)
+		if nsErr != nil {
+			errs = multierror.Append(errs, fmt.Errorf("for namespace %v: %w", uuid, nsErr))
+			continue
+		}
+
+		if ns.ManuallySealed {
+			c.logger.Debug("skipping unsealing namespace which has been manually sealed", "path", ns.Path, "uuid", uuid)
+			continue
+		}
+
+		// Because we have a root key here, we can't call UnsealNamespace(...)
+		// as that expects a key share.
+		if err := c.sealManager.UnsealWithRootKey(ctx, ns, rootKey); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("for namespace %v: %w", uuid, err))
+			continue
+		}
+
+		go func() {
+			if err := c.namespaceStore.unsealNamespace(c.activeContext.Load(), ns); err != nil {
+				c.logger.Error("failed to load namespace after unseal", "error", err, "ns", uuid)
+			}
+		}()
+	}
+
+	return errs
+}
+
+// NamespaceKeys returns the root keys for the given namespaces, encrypted
+// with the barrier keyring. This ensures that, as long as the root barrier
+// keyring's integrity remains, even keys over a compromised GRPC connection
+// should remain secure, though we enforce TLS for GRPC everywhere.
+func (c *Core) NamespaceKeys(rpcCtx context.Context, namespaces []string) (map[string][]byte, error) {
+	c.stateLock.RLock()
+	defer c.stateLock.RUnlock()
+
+	activeCtx := c.activeContext.Load()
+	if c.Sealed() || activeCtx.Err() != nil {
+		return nil, errors.New("instance is sealed or context is not yet active")
+	}
+
+	// We don't want to continue past rpcCtx, but also need to be terminated
+	// by active context cancellation. Use the same trick as request
+	// handling.
+	ctx, cancel := context.WithCancel(activeCtx)
+	stop := context.AfterFunc(rpcCtx, cancel)
+	defer stop()
+
+	var errs error
+	rootKeys := make(map[string][]byte, len(namespaces))
+
+	for _, uuid := range namespaces {
+		ns, err := c.namespaceStore.GetNamespace(ctx, uuid)
+		switch {
+		case err != nil:
+			errs = multierror.Append(errs, fmt.Errorf("for namespace %v: %w", uuid, err))
+			continue
+		case ns == nil:
+			continue
+		}
+
+		rootKey, err := c.sealManager.GetRootKey(ctx, ns)
+		switch {
+		case errors.Is(err, barrier.ErrBarrierSealed):
+			continue
+		case err != nil:
+			errs = multierror.Append(errs, fmt.Errorf("for namespace %v: %w", uuid, err))
+			continue
+		}
+
+		encRootKey, err := c.barrier.Encrypt(ctx, fmt.Sprintf(namespaceUnsealKeyPath, uuid), rootKey)
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("for namespace %v: failed to encrypt root key: %w", uuid, err))
+		}
+
+		rootKeys[uuid] = encRootKey
+	}
+
+	return rootKeys, errs
 }

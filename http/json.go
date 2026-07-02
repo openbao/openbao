@@ -7,13 +7,48 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"net/http"
+
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 )
 
 var (
-	ErrJSONExceededMemory  = errors.New("input JSON exceeded maximum estimated memory limits")
-	ErrJSONExceededStrings = errors.New("input JSON exceeded maximum number of strings")
+	ErrJSONExceededMemory  = errors.New("exceeded maximum estimated memory limits")
+	ErrJSONExceededStrings = errors.New("exceeded maximum number of strings")
 )
+
+func parseJSONRequest(r *http.Request, out any) error {
+	ctx := r.Context()
+
+	// Enforce limits on JSON complexity.
+	if _, _, err := EnforceJSONComplexityLimits(ctx, r.Body); err != nil {
+		switch {
+		case errors.Is(err, ErrJSONExceededMemory), errors.Is(err, ErrJSONExceededStrings):
+			return fmt.Errorf("refused JSON input due to high complexity: %w", err)
+		default:
+			return fmt.Errorf("failed to decode JSON input: %w", err)
+		}
+	}
+
+	// Reset to the beginning.
+	if err := resetBody(r); err != nil {
+		return fmt.Errorf("failed to reset body: %w", err)
+	}
+
+	// Actually decode.
+	if err := jsonutil.DecodeJSONFromReader(r.Body, out); err != nil {
+		return fmt.Errorf("failed to decode JSON input: %w", err)
+	}
+
+	// Reset to the beginning again.
+	if err := resetBody(r); err != nil {
+		return fmt.Errorf("failed to reset body: %w", err)
+	}
+
+	return nil
+}
 
 type ctxKeyMaxRequestJsonMemory struct{}
 

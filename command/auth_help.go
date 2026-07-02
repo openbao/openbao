@@ -110,7 +110,8 @@ func (c *AuthHelpCommand) Run(args []string) int {
 		auth, ok := auths[authPath]
 		if !ok {
 			c.UI.Warn(fmt.Sprintf(
-				"No auth method available on the server at %q", authPath))
+				"No auth method available on the server at %q", authPath,
+			))
 			return 1
 		}
 
@@ -118,7 +119,8 @@ func (c *AuthHelpCommand) Run(args []string) int {
 		if !ok {
 			c.UI.Warn(wrapAtLength(fmt.Sprintf(
 				"No method-specific CLI handler available for auth method %q",
-				authType)))
+				authType,
+			)))
 			return 2
 		}
 	}

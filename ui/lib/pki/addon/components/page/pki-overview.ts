@@ -19,7 +19,7 @@ interface Args {
 }
 
 export default class PkiOverview extends Component<Args> {
-  @service declare readonly router: RouterService;
+  @service declare readonly 'host-router': RouterService;
   @service declare readonly store: Store;
 
   @tracked rolesValue = '';
@@ -28,19 +28,25 @@ export default class PkiOverview extends Component<Args> {
 
   @action
   transitionToViewCertificates() {
-    this.router.transitionTo(
+    this['host-router'].transitionTo(
       'vault.cluster.secrets.backend.pki.certificates.certificate.details',
       this.certificateValue
     );
   }
   @action
   transitionToIssueCertificates() {
-    this.router.transitionTo('vault.cluster.secrets.backend.pki.roles.role.generate', this.rolesValue);
+    this['host-router'].transitionTo(
+      'vault.cluster.secrets.backend.pki.roles.role.generate',
+      this.rolesValue
+    );
   }
 
   @action
   transitionToIssuerDetails() {
-    this.router.transitionTo('vault.cluster.secrets.backend.pki.issuers.issuer.details', this.issuerValue);
+    this['host-router'].transitionTo(
+      'vault.cluster.secrets.backend.pki.issuers.issuer.details',
+      this.issuerValue
+    );
   }
 
   @action

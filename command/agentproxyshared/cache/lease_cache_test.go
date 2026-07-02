@@ -684,7 +684,8 @@ func compareBeforeAndAfter(t *testing.T, before, after *LeaseCache, beforeLen, a
 		assert.NotEmpty(t, restoredItem.RenewCtxInfo.CancelFunc)
 		assert.NotZero(t, restoredItem.RenewCtxInfo.DoneCh)
 		require.NotEmpty(t, restoredItem.RenewCtxInfo.Ctx)
-		assert.Equal(t,
+		assert.Equal(
+			t,
 			cachedItem.RenewCtxInfo.Ctx.Value(contextIndexID),
 			restoredItem.RenewCtxInfo.Ctx.Value(contextIndexID),
 		)

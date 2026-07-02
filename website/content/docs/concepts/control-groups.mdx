@@ -1,0 +1,98 @@
+---
+description: Control-group policy factors for access to secrets
+---
+
+# Control groups
+
+## Overview
+
+In some deployments, it may be desirable to require a "second set of
+eyes" to approve access to a secret or to generate a
+certificate. Control groups implement second-party authorization by
+means of policy "factors" applied to a path.  When a control-group
+factor applies to a request, one or more members of the approving
+control group must assert authorization before the request is
+executed and secret is released.
+
+When a control-group factor applies to a path, the original request
+will receive a [`wrapped response`](response-wrapping.mdx) containing
+an access token and a wrapping token, as with normal response wrapping.
+
+The access token may be used to review the request and assert
+authorization. The wrapping token can be used to execute the original
+deferred request once the requisite approvals have been met.
+
+## Control-group response-wrapping tokens
+
+When a response is wrapped, the normal API response from OpenBao does not contain
+the original secret, but rather contains a set of information related to the
+response-wrapping token:
+
+- TTL: The TTL of the response-wrapping token itself, specified in the policy factor.
+- Token: The actual token value
+- Creation Time: The time that the response-wrapping token was created
+- Creation Path: The API path that was called in the original request
+- Wrapped Accessor: The token used for reviewing and approving the original request.
+
+## Control-group response-wrapping token operations
+
+Via the `sys/wrapping` and `sys/control-group` paths, several
+operations can be run against control-group wrapping tokens.
+
+- **Unwrap** (`sys/wrapping/unwrap`)**:** Unwrap the token, executing
+  the original request and returning a response, once approved. The
+  response that is returned will be an original wire-format response;
+  it can be used directly with API clients. It is only executed when
+  unwrapping is successful.
+- **Review** (`sys/control-group/request`)**:** Using the accessor token,
+  view information about the original request (entity, path, payload,
+  etc).
+- **Authorize** (`sys/control-group/authorize`)**:** Using the
+  accessor token, approve the request for deferred execution when unwrapped.
+
+## Control-group response-wrapping token creation
+
+Response wrapping is triggered by requesting a path having one or more
+applicable control group factors in the policy. At this time, the
+original request is stored for deferred execution upon unwrapping.
+
+If a client requests wrapping:
+
+1. The original HTTP response is serialized
+2. A new single-use token is generated with the TTL supplied by the factor
+3. Internally, the original serialized request is stored.
+4. A new response is generated, with the token ID, TTL, and path stored in the
+   new response's wrap information object
+5. The new response is returned to the caller
+
+Note that policies can control minimum/maximum wrapping TTLs; see the [policies
+concepts page](policies.mdx) for
+more information.
+
+## Control-group factors
+
+Control groups are declared in a control-group stanza of a policy.
+
+```
+path "pki/issue/*" {
+  capabilities = ["read", "update"]
+
+  control-group = {
+    factor "pki-approvers" {
+      controlled_capabilities = ["update"]
+      identity {
+		# Control groups that can authorize access
+		group_names = ["pki-approvers", "security-team"]
+		approvals = 1
+
+		# Max duration for which authorization is valid
+		ttl = "5d"
+
+		# Allow self-authorization when true
+		self_authorization = false
+	  }
+	}
+  }
+}
+```
+

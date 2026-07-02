@@ -3961,6 +3961,7 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 		"policy_identifiers":                 []interface{}{},
 		"require_cn":                         true,
 		"allowed_domains_template":           false,
+		"allow_wildcards_in_substitutions":   false,
 		"allow_token_displayname":            false,
 		"country":                            []interface{}{},
 		"not_before_bound":                   "permit",

@@ -113,20 +113,14 @@ func EncryptAES(key, plaintext, aad []byte) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 
-	// Never use more than 2^32 random nonces with a given key because of the risk of a repeat.
-	nonce := make([]byte, 12)
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, nil, err
-	}
-
-	aesgcm, err := cipher.NewGCM(block)
+	aesgcm, err := cipher.NewGCMWithRandomNonce(block)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	ciphertext := aesgcm.Seal(nil, nonce, plaintext, aad)
+	ciphertext := aesgcm.Seal(nil, nil, plaintext, aad)
 
-	return ciphertext, nonce, nil
+	return ciphertext[12:], ciphertext[0:12], nil
 }
 
 // Use AES256-GCM to decrypt some ciphertext with a provided key and nonce. The

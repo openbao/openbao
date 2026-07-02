@@ -1914,6 +1914,7 @@ func (p *Policy) SymmetricEncryptRaw(ver int, encKey, plaintext []byte, opts Sym
 	var aead cipher.AEAD
 	var err error
 	nonce := opts.Nonce
+	sealCreatesNonce := false
 
 	switch p.Type {
 	case KeyType_AES128_GCM96, KeyType_AES256_GCM96:
@@ -1923,13 +1924,24 @@ func (p *Policy) SymmetricEncryptRaw(ver int, encKey, plaintext []byte, opts Sym
 			return nil, errutil.InternalError{Err: err.Error()}
 		}
 
-		// Setup the GCM AEAD
-		gcm, err := cipher.NewGCM(aesCipher)
-		if err != nil {
-			return nil, errutil.InternalError{Err: err.Error()}
-		}
+		// Setup the GCM AEAD: use FIPS compatible by default but fall back
+		// for convergent encryption.
+		if opts.Convergent {
+			gcm, err := cipher.NewGCM(aesCipher)
+			if err != nil {
+				return nil, errutil.InternalError{Err: err.Error()}
+			}
 
-		aead = gcm
+			aead = gcm
+		} else {
+			gcm, err := cipher.NewGCMWithRandomNonce(aesCipher)
+			if err != nil {
+				return nil, errutil.InternalError{Err: err.Error()}
+			}
+
+			aead = gcm
+			sealCreatesNonce = true
+		}
 
 	case KeyType_ChaCha20_Poly1305:
 		cha, err := chacha20poly1305.New(encKey)
@@ -1965,7 +1977,7 @@ func (p *Policy) SymmetricEncryptRaw(ver int, encKey, plaintext []byte, opts Sym
 		default:
 			return nil, errutil.InternalError{Err: fmt.Sprintf("unhandled convergent version %d", convergentVersion)}
 		}
-	} else if len(nonce) == 0 {
+	} else if len(nonce) == 0 && !sealCreatesNonce {
 		// Compute random nonce
 		nonce, err = uuid.GenerateRandomBytes(aead.NonceSize())
 		if err != nil {
@@ -1979,7 +1991,7 @@ func (p *Policy) SymmetricEncryptRaw(ver int, encKey, plaintext []byte, opts Sym
 	ciphertext := aead.Seal(nil, nonce, plaintext, opts.AdditionalData)
 
 	// Place the encrypted data after the nonce
-	if !opts.Convergent || p.convergentVersion(ver) > 1 {
+	if (!opts.Convergent || p.convergentVersion(ver) > 1) && len(nonce) > 0 {
 		ciphertext = append(nonce, ciphertext...)
 	}
 	return ciphertext, nil

@@ -66,8 +66,8 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["server", "-dev", "-dev-no-store-token"]
 
 
-# This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}-ubi.
-FROM registry.access.redhat.com/ubi10-minimal:10.2 AS ubi
+# This is {docker.io,quay.io,ghcr.io}/openbao/openbao-ubi.
+FROM registry.access.redhat.com/ubi10-minimal:10.2@sha256:b217fa65d8c21058887b18f005f587e47a17dd1281a5196ac88d01724a273dbd AS ubi
 
 COPY LICENSE /licenses/mozilla.txt
 

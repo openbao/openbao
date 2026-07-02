@@ -290,6 +290,10 @@ func validateURISAN(b *backend, data *inputBundle, uri string) bool {
 					Mode:   identitytpl.ACLTemplating,
 				}
 
+				if !data.role.AllowWildcardsInSubstitutions {
+					input.BlockedSubstitutions = []string{"*", "+"}
+				}
+
 				_, allowed, err = identitytpl.PopulateString(input)
 				if err != nil {
 					continue
@@ -596,6 +600,10 @@ func validateNames(b *backend, data *inputBundle, names []string) string {
 							Entity: entity,
 							Groups: groups,
 							Mode:   identitytpl.ACLTemplating,
+						}
+
+						if !data.role.AllowWildcardsInSubstitutions {
+							input.BlockedSubstitutions = []string{"*", "+"}
 						}
 
 						_, currDomain, err = identitytpl.PopulateString(input)

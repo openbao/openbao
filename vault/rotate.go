@@ -119,15 +119,16 @@ func (sm *SealManager) RotateBarrierKey(ctx context.Context, ns *namespace.Names
 
 	// In HA mode, we need to an upgrade path for the standby instances
 	// we are using the same key rotate grace period for all namespaces for now.
-	if sm.core.ha != nil && sm.core.KeyRotateGracePeriod() > 0 {
+	gracePeriod := sm.core.KeyRotateGracePeriod()
+	if sm.core.ha != nil && gracePeriod > 0 {
 		// Create the upgrade path to the new term
 		if err := b.CreateUpgrade(ctx, newTerm); err != nil {
 			sm.logger.Error("failed to create new upgrade", "term", newTerm, "error", err, "namespace", ns.Path)
 		}
 
 		// Schedule the destroy of the upgrade path
-		time.AfterFunc(sm.core.KeyRotateGracePeriod(), func() {
-			sm.logger.Debug("cleaning up upgrade keys", "waited", sm.core.KeyRotateGracePeriod())
+		_ = time.AfterFunc(gracePeriod, func() {
+			sm.logger.Debug("cleaning up upgrade keys", "waited", gracePeriod)
 			if err := b.DestroyUpgrade(sm.core.activeContext.Load(), newTerm); err != nil {
 				sm.logger.Error("failed to destroy upgrade", "term", newTerm, "error", err, "namespace", ns.Path)
 			}

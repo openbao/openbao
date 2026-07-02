@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/crypto/ssh"
 )
@@ -164,20 +165,43 @@ func (b *backend) pathSignIssueCertificateHelper(sc *storageContext, req *logica
 }
 
 func (b *backend) renderPrincipal(principal string, req *logical.Request) (string, error) {
+	if req.EntityID == "" {
+		return principal, nil
+	}
+
 	// Look for templating markers {{ .* }}
 	matched := containsTemplateRegex.MatchString(principal)
-	if matched {
-		if req.EntityID != "" {
-			// Retrieve principal based on template + entityID from request.
-			renderedPrincipal, err := framework.PopulateIdentityTemplate(principal, req.EntityID, b.System())
-			if err != nil {
-				return "", fmt.Errorf("template '%s' could not be rendered -> %s", principal, err)
-			}
-			return renderedPrincipal, nil
-		}
+	if !matched {
+		// Static principal
+		return principal, nil
 	}
-	// Static principal
-	return principal, nil
+
+	// Retrieve principal based on template + entityID from request.
+	entity, err := b.System().EntityInfo(req.EntityID)
+	if err != nil {
+		return "", err
+	}
+	if entity == nil {
+		return "", errors.New("no entity found")
+	}
+
+	groups, err := b.System().GroupsForEntity(req.EntityID)
+	if err != nil {
+		return "", err
+	}
+
+	input := identitytpl.PopulateStringInput{
+		String: principal,
+		Entity: entity,
+		Groups: groups,
+		Mode:   identitytpl.ACLTemplating,
+	}
+	_, renderedPrincipal, err := identitytpl.PopulateString(input)
+	if err != nil {
+		return "", fmt.Errorf("template '%s' could not be rendered -> %s", principal, err)
+	}
+
+	return renderedPrincipal, nil
 }
 
 func (b *backend) calculateValidPrincipals(data *framework.FieldData, req *logical.Request, role *sshRole, defaultPrincipal, principalsAllowedByRole string, enableTemplating bool, validatePrincipal func([]string, string) bool) ([]string, error) {
@@ -321,7 +345,7 @@ func (b *backend) calculateCriticalOptions(data *framework.FieldData, role *sshR
 }
 
 func (b *backend) calculateExtensions(data *framework.FieldData, req *logical.Request, role *sshRole) (map[string]string, bool, error) {
-	unparsedExtensions := data.Get("extensions").(map[string]interface{})
+	unparsedExtensions := data.Get("extensions").(map[string]any)
 	extensions := make(map[string]string)
 
 	if len(unparsedExtensions) > 0 {
@@ -345,32 +369,58 @@ func (b *backend) calculateExtensions(data *framework.FieldData, req *logical.Re
 		return extensions, false, nil
 	}
 
-	haveMissingEntityInfoWithTemplatedExt := false
+	if !role.DefaultExtensionsTemplate {
+		return role.DefaultExtensions, false, nil
+	}
 
-	if role.DefaultExtensionsTemplate {
-		for extensionKey, extensionValue := range role.DefaultExtensions {
-			// Look for templating markers {{ .* }}
-			matched := containsTemplateRegex.MatchString(extensionValue)
-			if matched {
-				if req.EntityID != "" {
-					// Retrieve extension value based on template + entityID from request.
-					templateExtensionValue, err := framework.PopulateIdentityTemplate(extensionValue, req.EntityID, b.System())
-					if err == nil {
-						// Template returned an extension value that we can use
-						extensions[extensionKey] = templateExtensionValue
-					} else {
-						return nil, false, fmt.Errorf("template '%s' could not be rendered -> %s", extensionValue, err)
-					}
-				} else {
-					haveMissingEntityInfoWithTemplatedExt = true
-				}
-			} else {
-				// Static extension value or err template
-				extensions[extensionKey] = extensionValue
+	haveMissingEntityInfoWithTemplatedExt := false
+	var (
+		// entity and groups are lazy loaded
+		entity *logical.Entity
+		groups []*logical.Group
+		err    error
+	)
+
+	for extensionKey, extensionValue := range role.DefaultExtensions {
+		// Look for templating markers {{ .* }}
+		matched := containsTemplateRegex.MatchString(extensionValue)
+		if !matched {
+			// Static extension value or err template
+			extensions[extensionKey] = extensionValue
+			continue
+		}
+
+		if req.EntityID == "" {
+			haveMissingEntityInfoWithTemplatedExt = true
+			continue
+		}
+
+		// Retrieve extension value based on template + entityID from request.
+		if entity == nil {
+			entity, err = b.System().EntityInfo(req.EntityID)
+			if err != nil {
+				return nil, false, err
+			}
+			if entity == nil {
+				return nil, false, errors.New("no entity found")
+			}
+
+			groups, err = b.System().GroupsForEntity(req.EntityID)
+			if err != nil {
+				return nil, false, err
 			}
 		}
-	} else {
-		extensions = role.DefaultExtensions
+
+		input := identitytpl.PopulateStringInput{
+			String: extensionValue,
+			Entity: entity,
+			Groups: groups,
+			Mode:   identitytpl.ACLTemplating,
+		}
+		_, extensions[extensionKey], err = identitytpl.PopulateString(input)
+		if err != nil {
+			return nil, false, fmt.Errorf("template '%s' could not be rendered -> %s", extensionValue, err)
+		}
 	}
 
 	return extensions, haveMissingEntityInfoWithTemplatedExt, nil

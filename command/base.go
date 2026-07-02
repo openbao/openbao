@@ -62,6 +62,7 @@ type BaseCommand struct {
 	flagDetailed         bool
 	flagOutputCurlString bool
 	flagOutputPolicy     bool
+	flagOutputProfile    bool
 	flagNonInteractive   bool
 
 	flagMFA []string
@@ -100,6 +101,9 @@ func (c *BaseCommand) ClientWithoutToken() (*api.Client, error) {
 	}
 	if c.flagOutputPolicy {
 		config.OutputPolicy = c.flagOutputPolicy
+	}
+	if c.flagOutputProfile {
+		config.OutputProfile = c.flagOutputProfile
 	}
 
 	// If we need custom TLS configuration, then set it
@@ -488,6 +492,14 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 				Default: false,
 				Usage: "Instead of executing the request, print an example HCL " +
 					"policy that would be required to run this command and exit.",
+			})
+
+			f.BoolVar(&BoolVar{
+				Name:    "output-profile",
+				Target:  &c.flagOutputProfile,
+				Default: false,
+				Usage: "Instead of executing the request, print an example HCL " +
+					"profile that would be required to run this command and exit.",
 			})
 
 			f.StringVar(&StringVar{

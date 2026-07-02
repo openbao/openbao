@@ -149,7 +149,7 @@ func TestNamespaceUnsealCommand_Format(t *testing.T) {
 		Client: client,
 	}
 
-	args, format, _, _, _ := setupEnv([]string{"namespace", "unseal", "-format", "json", "ns"})
+	args, format, _, _, _, _ := setupEnv([]string{"namespace", "unseal", "-format", "json", "ns"})
 	require.Equal(t, "json", format)
 
 	// Unseal with one key

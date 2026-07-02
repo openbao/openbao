@@ -5,9 +5,11 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
@@ -38,7 +40,14 @@ func handleHelp(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	requestId, err := uuid.GenerateUUID()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, fmt.Errorf("failed to generate identifier for the request: %w", err))
+		return
+	}
+
 	req := &logical.Request{
+		ID:         requestId,
 		Operation:  logical.HelpOperation,
 		Path:       r.URL.Path[len("/v1/"):],
 		Connection: getConnection(r),

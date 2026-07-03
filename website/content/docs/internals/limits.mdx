@@ -34,60 +34,17 @@ performance, as even a small change may become a large
 read-modify-write cycle on the entire entry. Larger writes may also delay
 Raft heartbeats, leading to leadership instability.
 
-### Mount point limits
+### Mount and namespace limits
 
-All secret engine mount points, and all auth mount points, must each fit
-within a single storage entry. Each JSON object describing a mount
-takes about 500 bytes, but is stored in compressed form at a typical cost of
-about 75 bytes. Each of (1) auth mounts, (2) secret engine mount points,
-(3) local-only auth methods, and (4) local-only secret engine mounts are
-stored separately, so the limit applies to each independently.
+Since [OpenBao v2.1.0](/community/release-notes/2-1-0#features), the mount,
+auth, and namespace tables have been split into separate storage entries per
+mount, effectively removing the storage-related limits on the number of mounts
+and namespaces. These are now managed [with transactions](/community/rfcs/split-mount-tables)
+and are split by namespace.
 
-|                                              | Integrated Storage default (1 MiB) |
-| -------------------------------------------- | ---------------------------------- |
-| Maximum number of secret engine mount points | ~14000                             |
-| Maximum number of enabled auth methods       | ~14000                             |
-| Maximum mount point length                   | no enforced limit                  |
-
-Specifying distinct per-mount options, or using long mount point paths, can
-increase the space required per mount.
-
-The number of mount points can be monitored by reading the
-[`sys/auth`](/api-docs/system/auth) and
-[`sys/mounts`](/api-docs/system/mounts) endpoints from the root namespace and
-similar sub-paths for namespaces respectively, like: `namespace1/sys/auth`,
-`namespace1/sys/mounts`, etc.
-
-Alternatively, use the
-[`vault.core.mount_table.num_entries`](telemetry/metrics/core-system.mdx#vault-core-mount_table-num_entries)
-and
-[`vault.core.mount_table.size`](telemetry/metrics/core-system.mdx#vault-core-mount_table-size)
-telemetry metrics to monitor the number of mount points and size of each mount table.
-
-### Namespace limits
-
-The entire list of namespaces must fit in a single storage
-entry. However, the effective limit is generally much smaller because each
-namespace must have at least two secret engine mounts (for `sys` and `identity`),
-one local secret engine (`cubbyhole`) and one auth engine mount (`token`).
-
-|                                                                              | Integrated storage default (1 MiB) |
-| ---------------------------------------------------------------------------- | ---------------------------------- |
-| Maximum number of namespaces                                                 | ~7000                              |
-| Maximum number of namespaces with one additional secret engine per namespace | ~4600                              |
-| Maximum nesting depth for namespaces                                         | ~220                               |
-
-The maximum nesting depth calculation assumes a cost of 40 bytes per namespace
-path element. 160 nested paths = 160 namespaces ranging from 40 bytes to
-6400 bytes.
-
-The number of namespaces can be monitored by querying
-[`sys/namespaces`](/api-docs/system/namespaces).
-
-To estimate the number of namespaces that can be created, divide the mount
-point limit by the larger of the number of auth mounts per namespace
-(including `ns_token`) and the number of secret mounts per namespace
-(including `identity` and `sys`.)
+Testing has reached over [300k mounts](/community/rfcs/split-mount-tables/#proof-of-concept)
+and 20k namespaces. Benchmarking is provided in the [benchmark-openbao
+project](https://github.com/openbao/benchmark-openbao/tree/main/docs/examples/sys).
 
 ### Entity and group limits
 

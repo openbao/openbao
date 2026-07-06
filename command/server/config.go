@@ -1413,6 +1413,10 @@ func (c *Config) Sanitized() map[string]interface{} {
 
 		"unsafe_allow_api_audit_creation": c.UnsafeAllowAPIAuditCreation,
 		"allow_audit_log_prefixing":       c.AllowAuditLogPrefixing,
+
+		"disable_standby_reads":           c.DisableStandbyReads,
+		"allow_unauthenticated_workflows": c.AllowUnauthenticatedWorkflows,
+		"unsafe_relative_paths":           c.UnsafeRelativePaths,
 	}
 	maps.Copy(result, sharedResult)
 

@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/url"
 	"os"
 	"strconv"
@@ -357,6 +358,54 @@ type StartResult struct {
 	RealIP    string
 }
 
+func shouldPull(ctx context.Context, dockerAPI *client.Client, image string) bool {
+	// check if the image is present locally
+	imageInspect, err := dockerAPI.ImageInspect(ctx, image)
+	if err != nil {
+		if errdefs.IsNotFound(err) {
+			return true
+		}
+
+		log.Default().Printf("[WARNING] error while checking if image %q is present locally, assuming no: %v\n", image, err)
+		return true
+	}
+
+	// check if it has been built less than 24 hours ago
+	createdTime, err := time.Parse(time.RFC3339Nano, imageInspect.Created)
+	if err != nil {
+		log.Default().Printf("[WARNING] error while checking if %q is recent, assuming no: %v\n", image, err)
+		return true
+	}
+
+	if time.Since(createdTime) < 24*time.Hour {
+		return false
+	}
+
+	// check if it has been pull less than 24 hours ago
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	events := dockerAPI.Events(ctx, client.EventsListOptions{
+		Since:   "24h",
+		Until:   "0s",
+		Filters: make(client.Filters).Add("event", "pull").Add("image", image),
+	})
+
+	for {
+		select {
+		case err := <-events.Err:
+			if errors.Is(err, io.EOF) {
+				return true
+			}
+
+			log.Default().Printf("[WARNING] error while trying to check if image %q has been pulled already, assuming no: %v\n", image, err)
+			return true
+		case <-events.Messages:
+			return false
+		}
+	}
+}
+
 func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*StartResult, error) {
 	name := d.RunOptions.ContainerName
 	if addSuffix {
@@ -402,22 +451,24 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		}
 	}
 
-	// best-effort pull
-	var opts client.ImagePullOptions
-	if d.RunOptions.AuthUsername != "" && d.RunOptions.AuthPassword != "" {
-		var buf bytes.Buffer
-		auth := map[string]string{
-			"username": d.RunOptions.AuthUsername,
-			"password": d.RunOptions.AuthPassword,
+	if shouldPull(ctx, d.DockerAPI, cfg.Image) {
+		// best-effort pull
+		var opts client.ImagePullOptions
+		if d.RunOptions.AuthUsername != "" && d.RunOptions.AuthPassword != "" {
+			var buf bytes.Buffer
+			auth := map[string]string{
+				"username": d.RunOptions.AuthUsername,
+				"password": d.RunOptions.AuthPassword,
+			}
+			if err := json.NewEncoder(&buf).Encode(auth); err != nil {
+				return nil, err
+			}
+			opts.RegistryAuth = base64.URLEncoding.EncodeToString(buf.Bytes())
 		}
-		if err := json.NewEncoder(&buf).Encode(auth); err != nil {
-			return nil, err
+		resp, _ := d.DockerAPI.ImagePull(ctx, cfg.Image, opts)
+		if resp != nil {
+			_, _ = io.ReadAll(resp)
 		}
-		opts.RegistryAuth = base64.URLEncoding.EncodeToString(buf.Bytes())
-	}
-	resp, _ := d.DockerAPI.ImagePull(ctx, cfg.Image, opts)
-	if resp != nil {
-		_, _ = io.ReadAll(resp)
 	}
 
 	for vol, mtpt := range d.RunOptions.VolumeNameToMountPoint {

@@ -217,11 +217,15 @@ func handler(props *vault.HandlerProperties) http.Handler {
 
 		}
 
-		// Register metrics path without authentication if enabled
+		// Register metrics path; when unauthenticated access is enabled use the
+		// unauthenticated handler (which already bypasses the sealed check).
+		// Otherwise fall back to an handler that allows unauthenticated access
+		// when sealed so that monitoring systems can observe vault.core.unsealed
+		// before a valid token is available, analogous to sys/health.
 		if props.ListenerConfig != nil && props.ListenerConfig.Telemetry.UnauthenticatedMetricsAccess {
 			mux.Handle("/v1/sys/metrics", handleMetricsUnauthenticated(core))
 		} else {
-			mux.Handle("/v1/sys/metrics", handleLogicalNoForward(core))
+			mux.Handle("/v1/sys/metrics", handleMetricsUnauthenticatedOrSealed(core))
 		}
 
 		if props.ListenerConfig != nil && props.ListenerConfig.Profiling.UnauthenticatedPProfAccess {

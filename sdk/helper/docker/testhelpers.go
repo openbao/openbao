@@ -409,21 +409,19 @@ func shouldPull(ctx context.Context, dockerAPI *client.Client, image string) boo
 
 var (
 	pullLocks = locksutil.CreateLocks()
-	pullCache = map[string]error{}
+	pullCache = map[string]struct{}{}
 )
 
-func (d *Runner) pull(ctx context.Context, image string) (result error) {
+func (d *Runner) pull(ctx context.Context, image string, opts client.ImagePullOptions) {
 	lock := locksutil.LockForKey(pullLocks, image)
 	lock.Lock()
 	defer lock.Unlock()
 
 	// first we check if the current process has already pulled the image (or skipped pulling based on the second check)
-	if err, ok := pullCache[image]; ok {
-		return err
+	if _, ok := pullCache[image]; ok {
+		return
 	}
-	defer func() {
-		pullCache[image] = result
-	}()
+	pullCache[image] = struct{}{}
 
 	// second we check if the image is "reasonable recent"
 	if !shouldPull(ctx, d.DockerAPI, image) {
@@ -431,25 +429,10 @@ func (d *Runner) pull(ctx context.Context, image string) (result error) {
 	}
 
 	// best-effort pull
-	var opts client.ImagePullOptions
-	if d.RunOptions.AuthUsername != "" && d.RunOptions.AuthPassword != "" {
-		var buf bytes.Buffer
-		auth := map[string]string{
-			"username": d.RunOptions.AuthUsername,
-			"password": d.RunOptions.AuthPassword,
-		}
-		if err := json.NewEncoder(&buf).Encode(auth); err != nil {
-			result = err
-			return
-		}
-		opts.RegistryAuth = base64.URLEncoding.EncodeToString(buf.Bytes())
-	}
 	resp, _ := d.DockerAPI.ImagePull(ctx, image, opts)
 	if resp != nil {
 		_, _ = io.ReadAll(resp)
 	}
-
-	return
 }
 
 func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*StartResult, error) {
@@ -497,10 +480,19 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		}
 	}
 
-	err := d.pull(ctx, cfg.Image)
-	if err != nil {
-		return nil, err
+	var opts client.ImagePullOptions
+	if d.RunOptions.AuthUsername != "" && d.RunOptions.AuthPassword != "" {
+		var buf bytes.Buffer
+		auth := map[string]string{
+			"username": d.RunOptions.AuthUsername,
+			"password": d.RunOptions.AuthPassword,
+		}
+		if err := json.NewEncoder(&buf).Encode(auth); err != nil {
+			return nil, err
+		}
+		opts.RegistryAuth = base64.URLEncoding.EncodeToString(buf.Bytes())
 	}
+	d.pull(ctx, cfg.Image, opts)
 
 	for vol, mtpt := range d.RunOptions.VolumeNameToMountPoint {
 		hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{

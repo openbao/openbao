@@ -1,0 +1,73 @@
+# Cuts a sigilr distribution release.
+#
+# Triggered by pushing a tag of the form v<base>-sigilr.<n>, e.g.
+# v2.6.0-sigilr.1. Builds the UI, cross-compiles binaries, publishes the GitHub
+# release, and pushes multi-arch images to ghcr.io/<owner>/openbao.
+#
+# No signing / APT / RPM / S3 secrets required — only GITHUB_TOKEN (provided
+# automatically) with packages:write to push images to GHCR.
+name: release-sigilr
+
+on:
+  push:
+    tags:
+      - "v*-sigilr.*"
+
+permissions:
+  contents: write # create the GitHub release + upload assets
+  packages: write # push images to ghcr.io
+  id-token: write # reserved for future keyless signing
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_CLI_EXPERIMENTAL: "enabled"
+    steps:
+      - name: Free additional storage on runner
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0 # goreleaser needs full history + tags
+
+      - name: Node setup
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: ui/package.json
+
+      - name: PNPM setup
+        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+        with:
+          package_json_file: ui/package.json
+
+      - name: Build UI
+        run: make static-dist
+
+      - name: Golang setup
+        uses: ./.github/actions/set-up-go
+
+      - name: Qemu setup
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+
+      - name: Buildx setup
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Docker login (ghcr.io)
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
+        with:
+          install-only: true
+          version: v2.5.1
+
+      - name: GoReleaser release
+        run: goreleaser release --clean --timeout=60m --verbose -f goreleaser.sigilr.yaml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,3 @@
+```release-note:improvement
+build: add the sigilr distribution release pipeline — a secret-free, tag-triggered GoReleaser workflow that publishes cross-platform binaries and multi-arch `ghcr.io` images on `v*-sigilr.*` tags.
+```

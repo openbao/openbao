@@ -1,0 +1,137 @@
+# goreleaser config for the sigilr distribution.
+#
+# Slim, secret-free release: cross-platform binaries + multi-arch container
+# images published to ghcr.io/<owner>/openbao. No deb/rpm, no APT/YUM/S3, no
+# GPG/cosign signing, no quay.io/docker.io mirrors. See goreleaser.linux.yaml
+# for the full upstream pipeline if you ever need those.
+#
+# Invoked by .github/workflows/release-sigilr.yml on `v*-sigilr.*` tag pushes.
+# The UI must already be built into http/web_ui/ (the workflow runs
+# `make static-dist` first) because the build uses the `ui` tag.
+version: 2
+
+project_name: bao
+
+builds:
+  - id: sigilr
+    main: .
+    binary: bao
+    tags:
+      - ui
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -X github.com/openbao/openbao/version.fullVersion={{ .Version }} -X github.com/openbao/openbao/version.GitCommit={{ .Commit }} -X github.com/openbao/openbao/version.CommitDate={{ .Date }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      # Windows on arm64 isn't part of this distribution's matrix.
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - format: tar.gz
+    # Make OS/Arch match `uname` output; zip for Windows.
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+      - RELEASE_NOTES.md
+
+checksum:
+  name_template: "checksums.txt"
+
+dockers:
+  - id: sigilr-amd64
+    use: buildx
+    goos: linux
+    goarch: amd64
+    ids:
+      - sigilr
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--platform=linux/amd64"
+      - "--target=default"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.title=sigilr"
+      - "--label=org.opencontainers.image.description=sigilr — AppsCode distribution of OpenBao"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.source=https://github.com/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao"
+      - "--label=org.opencontainers.image.vendor=AppsCode"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64"
+    extra_files:
+      - ./LICENSE
+      - ./.release/docker/docker-entrypoint.sh
+      - ./CHANGELOG.md
+  - id: sigilr-arm64
+    use: buildx
+    goos: linux
+    goarch: arm64
+    ids:
+      - sigilr
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--platform=linux/arm64"
+      - "--target=default"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.title=sigilr"
+      - "--label=org.opencontainers.image.description=sigilr — AppsCode distribution of OpenBao"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.source=https://github.com/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao"
+      - "--label=org.opencontainers.image.vendor=AppsCode"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64"
+    extra_files:
+      - ./LICENSE
+      - ./.release/docker/docker-entrypoint.sh
+      - ./CHANGELOG.md
+
+docker_manifests:
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:latest
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+  github:
+    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
+    name: openbao
+  # sigilr tags carry a -sigilr.N suffix; treat them as full releases, not
+  # prereleases, and don't move :latest of the base repo automatically.
+  prerelease: false
+  draft: false
+  name_template: "sigilr {{ .Tag }}"

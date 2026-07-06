@@ -19,6 +19,7 @@ import (
 	logicalLDAP "github.com/openbao/openbao/builtin/logical/openldap"
 	logicalPki "github.com/openbao/openbao/builtin/logical/pki"
 	logicalRabbit "github.com/openbao/openbao/builtin/logical/rabbitmq"
+	logicalRelay "github.com/openbao/openbao/builtin/logical/relay"
 	logicalSsh "github.com/openbao/openbao/builtin/logical/ssh"
 	logicalTotp "github.com/openbao/openbao/builtin/logical/totp"
 	logicalTransit "github.com/openbao/openbao/builtin/logical/transit"
@@ -26,6 +27,7 @@ import (
 	dbInflux "github.com/openbao/openbao/plugins/database/influxdb"
 	dbMysql "github.com/openbao/openbao/plugins/database/mysql"
 	dbPostgres "github.com/openbao/openbao/plugins/database/postgresql"
+	dbRemote "github.com/openbao/openbao/plugins/database/remote-db-plugin"
 	dbValkey "github.com/openbao/openbao/plugins/database/valkey"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -83,6 +85,12 @@ func newRegistry() *registry {
 			"postgresql-database-plugin": {Factory: dbPostgres.New},
 			"redis-database-plugin":      {Factory: dbValkey.New},
 			"valkey-database-plugin":     {Factory: dbValkey.New},
+			"remote-cassandra-plugin":    {Factory: dbRemote.New("cassandra-database-plugin")},
+			"remote-influxdb-plugin":     {Factory: dbRemote.New("influxdb-database-plugin")},
+			"remote-mysql-plugin":        {Factory: dbRemote.New("mysql-database-plugin")},
+			"remote-postgres-plugin":     {Factory: dbRemote.New("postgresql-database-plugin")},
+			"remote-redis-plugin":        {Factory: dbRemote.New("redis-database-plugin")},
+			"remote-valkey-plugin":       {Factory: dbRemote.New("valkey-database-plugin")},
 		},
 		logicalBackends: map[string]logicalBackend{
 			"kubernetes": {Factory: logicalKube.Factory},
@@ -91,6 +99,7 @@ func newRegistry() *registry {
 			"ldap":       {Factory: logicalLDAP.Factory},
 			"pki":        {Factory: logicalPki.Factory},
 			"rabbitmq":   {Factory: logicalRabbit.Factory},
+			"relay":      {Factory: logicalRelay.Factory},
 			"ssh":        {Factory: logicalSsh.Factory},
 			"totp":       {Factory: logicalTotp.Factory},
 			"transit":    {Factory: logicalTransit.Factory},

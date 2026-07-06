@@ -1,0 +1,21 @@
+# Copyright (c) AppsCode Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+apiVersion: catalog.kubevault.com/v1alpha1
+kind: VaultServerVersion
+metadata:
+  name: openbao-proto-test
+spec:
+  version: "2.4.3"
+  vault:
+    image: rudro25/openbao:hub-proto-test
+    imagePullPolicy: Always
+  initContainer:
+    image: ghcr.io/openbao/openbao:2.4.3
+    imagePullPolicy: IfNotPresent
+  unsealer:
+    image: kubevault/vault-unsealer:v0.20.0
+    imagePullPolicy: IfNotPresent
+  exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    imagePullPolicy: IfNotPresent

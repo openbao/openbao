@@ -1,0 +1,32 @@
+# Copyright (c) AppsCode Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spoke-agent
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spoke-agent
+  template:
+    metadata:
+      labels:
+        app: spoke-agent
+    spec:
+      containers:
+      - name: spoke-agent
+        image: rudro25/spoke-agent:v1
+        imagePullPolicy: Always
+        args:
+        - "-server=10.2.0.88:30053"  # Hub node IP:NodePort
+        - "-name=spoke-1"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"

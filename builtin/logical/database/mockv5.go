@@ -45,8 +45,11 @@ func RunV6Multiplexed() error {
 }
 
 func (m MockDatabaseV5) Initialize(ctx context.Context, req v5.InitializeRequest) (v5.InitializeResponse, error) {
+	// Log only safe identifiers; req.Config can carry passwords / connection
+	// URLs and req.Password fields below carry the credential being set.
 	log.Default().Info("Initialize called",
-		"req", req)
+		"verify_connection", req.VerifyConnection,
+		"config_keys", configKeys(req.Config))
 
 	config := req.Config
 	config["from-plugin"] = "this value is from the plugin itself"
@@ -59,7 +62,10 @@ func (m MockDatabaseV5) Initialize(ctx context.Context, req v5.InitializeRequest
 
 func (m MockDatabaseV5) NewUser(ctx context.Context, req v5.NewUserRequest) (v5.NewUserResponse, error) {
 	log.Default().Info("NewUser called",
-		"req", req)
+		"display_name", req.UsernameConfig.DisplayName,
+		"role_name", req.UsernameConfig.RoleName,
+		"expiration", req.Expiration,
+		"statements", len(req.Statements.Commands))
 
 	now := time.Now()
 	user := fmt.Sprintf("mockv5_user_%s", now.Format(time.RFC3339))
@@ -71,14 +77,28 @@ func (m MockDatabaseV5) NewUser(ctx context.Context, req v5.NewUserRequest) (v5.
 
 func (m MockDatabaseV5) UpdateUser(ctx context.Context, req v5.UpdateUserRequest) (v5.UpdateUserResponse, error) {
 	log.Default().Info("UpdateUser called",
-		"req", req)
+		"username", req.Username,
+		"password_change", req.Password != nil,
+		"expiration_change", req.Expiration != nil)
 	return v5.UpdateUserResponse{}, nil
 }
 
 func (m MockDatabaseV5) DeleteUser(ctx context.Context, req v5.DeleteUserRequest) (v5.DeleteUserResponse, error) {
 	log.Default().Info("DeleteUser called",
-		"req", req)
+		"username", req.Username,
+		"statements", len(req.Statements.Commands))
 	return v5.DeleteUserResponse{}, nil
+}
+
+// configKeys returns the keys of cfg sorted for deterministic test output.
+// Used by Initialize logging instead of logging the whole map, which can
+// contain passwords or connection_urls.
+func configKeys(cfg map[string]interface{}) []string {
+	keys := make([]string, 0, len(cfg))
+	for k := range cfg {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func (m MockDatabaseV5) Type() (string, error) {

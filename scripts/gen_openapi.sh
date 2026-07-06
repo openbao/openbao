@@ -60,6 +60,7 @@ bao auth enable "radius"
 bao auth enable "userpass"
 
 # Enable secrets plugins
+bao secrets enable "relay"
 bao secrets enable "database"
 bao secrets enable "kubernetes"
 bao secrets enable -path="kv-v1/" -version=1 "kv"

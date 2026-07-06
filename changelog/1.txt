@@ -1,0 +1,6 @@
+```release-note:feature
+**Remote database plugin (hub-and-spoke)**: Adds a hub-and-spoke architecture for the database secrets engine. One OpenBao instance acts as the hub and proxies credential operations over mTLS gRPC to spokes running `bao agent run` (the same `bao` binary), which runs the actual built-in database plugins (postgres, mysql, valkey/redis, cassandra, influxdb) in-process against the local database. Trust is bootstrapped with `bao agent init` (kubeadm-style: bootstrap token + JWS-signed cluster-info + SPKI pin) and `bao agent join`. Spoke health is visible via `bao agent list`. Spoke certs auto-renew via the existing mTLS connection (`bao agent renew` for one-shot).
+```
+```release-note:improvement
+**Agent backend**: New `agent/` logical backend manages the spoke certificate authority, the hub TLS identity, and short-lived bootstrap tokens. Tokens are seal-wrapped; CA can be rotated (hub-cert-only by default, full CA with `bao agent ca rotate -full`).
+```

@@ -108,6 +108,18 @@ Usage: bao agent [options]
 
   For a full list of examples, please see the documentation.
 
+  Hub-and-spoke remote-db-plugin subcommands (this fork):
+
+      bao agent init       Initialize the spoke CA and hub TLS identity.
+      bao agent join       Exchange a bootstrap token for spoke credentials.
+      bao agent run        Run the spoke daemon (mTLS gRPC client of the hub).
+      bao agent list       Show spokes currently connected to the proxy port.
+      bao agent renew      Renew the spoke client cert before expiry.
+      bao agent ca         CA status / rotate.
+      bao agent token      Create / list / revoke bootstrap tokens.
+
+  Run 'bao agent <subcommand> -h' for help on any of the above.
+
 ` + c.Flags().Help()
 	return strings.TrimSpace(helpText)
 }

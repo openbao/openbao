@@ -199,6 +199,42 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"relay init": func() (cli.Command, error) {
+			return &RelayInitCommand{BaseCommand: getBaseCommand()}, nil
+		},
+		"relay join": func() (cli.Command, error) {
+			return &RelayJoinCommand{BaseCommand: getBaseCommand()}, nil
+		},
+		"relay list": func() (cli.Command, error) {
+			return &RelayListCommand{BaseCommand: getBaseCommand()}, nil
+		},
+		"relay run": func() (cli.Command, error) {
+			return &RelayRunCommand{BaseCommand: getBaseCommand()}, nil
+		},
+		"relay renew": func() (cli.Command, error) {
+			return &RelayRenewCommand{BaseCommand: getBaseCommand()}, nil
+		},
+		"relay ca": func() (cli.Command, error) {
+			return &RelayCACommand{BaseCommand: getBaseCommand()}, nil
+		},
+		"relay ca status": func() (cli.Command, error) {
+			return &RelayCAStatusCommand{BaseCommand: getBaseCommand()}, nil
+		},
+		"relay ca rotate": func() (cli.Command, error) {
+			return &RelayCARotateCommand{BaseCommand: getBaseCommand()}, nil
+		},
+		"relay token": func() (cli.Command, error) {
+			return &RelayTokenCommand{BaseCommand: getBaseCommand()}, nil
+		},
+		"relay token create": func() (cli.Command, error) {
+			return &RelayTokenCreateCommand{BaseCommand: getBaseCommand()}, nil
+		},
+		"relay token list": func() (cli.Command, error) {
+			return &RelayTokenListCommand{BaseCommand: getBaseCommand()}, nil
+		},
+		"relay token revoke": func() (cli.Command, error) {
+			return &RelayTokenRevokeCommand{BaseCommand: getBaseCommand()}, nil
+		},
 		"audit": func() (cli.Command, error) {
 			return &AuditCommand{
 				BaseCommand: getBaseCommand(),

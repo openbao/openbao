@@ -1,0 +1,17 @@
+# Copyright (c) AppsCode Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+FROM debian:stable-slim
+
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# The spoke daemon ships as a subcommand of the main bao binary now
+# (`bao relay run`); no separate spoke-agent-v2 / plugin-runner binaries.
+COPY bin/bao /usr/local/bin/bao
+
+RUN chmod +x /usr/local/bin/bao
+
+WORKDIR /app
+
+ENTRYPOINT ["/usr/local/bin/bao", "relay", "run"]
+CMD ["-server=hub:50053", "-credentials-dir=/etc/openbao-spoke"]

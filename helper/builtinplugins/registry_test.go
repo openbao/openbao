@@ -86,12 +86,12 @@ func Test_RegistryKeyCounts(t *testing.T) {
 		{
 			name:       "number of database plugins",
 			pluginType: consts.PluginTypeDatabase,
-			want:       9,
+			want:       15, // 9 base + 6 remote-*-plugin entries
 		},
 		{
 			name:       "number of secrets plugins",
 			pluginType: consts.PluginTypeSecrets,
-			want:       9,
+			want:       10, // 9 base + relay (hub-and-spoke trust bootstrap)
 		},
 	}
 	for _, tt := range tests {

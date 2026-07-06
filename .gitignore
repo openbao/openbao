@@ -36,6 +36,11 @@ example.hcl
 example.vault.d
 example.openbao.d
 
+# remote-db-plugin built binaries (build them in CI/Docker, don't commit)
+/plugins/database/remote-db-plugin/bin/
+/plugins/database/remote-db-plugin/cmd/plugin-runner/plugin-runner
+/plugins/database/remote-db-plugin/spoke-agent-v2/spoke-agent-v2
+
 # Without this, the *.[568vq] above ignores this folder.
 !**/graphrbac/1.6
 

@@ -54,6 +54,10 @@ docker-dev: prep
 docker-dev-ui: prep
 	$(DOCKER_CMD) build --build-arg VERSION=$(GO_VERSION_MIN) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -f scripts/docker/Dockerfile.ui -t openbao:dev-ui .
 
+push:
+	$(DOCKER_CMD) tag openbao:dev $(REGISTRY)/openbao:$(TAG)
+	$(DOCKER_CMD) push $(REGISTRY)/openbao:$(TAG)
+
 # test runs the unit tests and vets the code
 test: prep
 	@CGO_ENABLED=$(CGO_ENABLED) \
@@ -185,6 +189,10 @@ proto: bootstrap
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative vault/tokens/token.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative sdk/helper/pluginutil/*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative builtin/logical/pki/*.proto
+	# remote-db-plugin lays its generated stubs in proto/gen/ (not next to the .proto). Use -I + an explicit
+	# out-dir so paths=source_relative resolves to gen/agent.pb.go. The buf.gen.yaml in that directory
+	# stays as an alternative tool path; this line keeps `make proto` from leaving the stubs stale.
+	protoc -Iplugins/database/remote-db-plugin/proto --go_out=plugins/database/remote-db-plugin/proto/gen --go_opt=paths=source_relative --go-grpc_out=plugins/database/remote-db-plugin/proto/gen --go-grpc_opt=paths=source_relative plugins/database/remote-db-plugin/proto/agent.proto
 
 	# No additional sed expressions should be added to this list. Going forward
 	# we should just use the variable names chosen by protobuf. These are left

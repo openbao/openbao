@@ -1,0 +1,41 @@
+# Copyright (c) AppsCode Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+apiVersion: kubevault.com/v1alpha2
+kind: VaultServer
+metadata:
+  name: vault6
+  namespace: demo
+spec:
+  allowedSecretEngines:
+    namespaces:
+      from: All
+  version: openbao-hub-v1  # Use custom version
+  replicas: 1
+  backend:
+    raft:
+      storage:
+        resources:
+          requests:
+            storage: 500Mi
+  unsealer:
+    secretShares: 5
+    secretThreshold: 3
+    mode:
+      kubernetesSecret:
+        secretName: vault6-keys
+  serviceTemplates:
+  - alias: vault
+    spec:
+      type: NodePort
+      ports:
+      - name: http
+        port: 8200
+        nodePort: 30820
+      - name: internal
+        port: 8201
+        nodePort: 30821
+      - name: grpc-proxy
+        port: 50053
+        nodePort: 30053
+  terminationPolicy: WipeOut

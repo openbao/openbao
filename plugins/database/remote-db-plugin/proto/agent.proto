@@ -1,0 +1,49 @@
+// Copyright (c) AppsCode Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package agent;
+
+option go_package = "github.com/openbao/openbao/plugins/database/remote-db-plugin/proto/gen";
+
+service AgentService {
+  rpc Connect(stream AgentMessage) returns (stream AgentMessage);
+
+  // RenewCert exchanges a CSR for a fresh spoke client cert, authenticated
+  // by the caller's existing mTLS client cert. The new CSR's CN must match
+  // the peer cert's CN — renewal is for the same identity, not a rebind.
+  rpc RenewCert(RenewCertRequest) returns (RenewCertResponse);
+}
+
+message RenewCertRequest {
+  // PEM-encoded PKCS#10 CSR. The CN must equal the calling spoke's current
+  // identity (i.e. the CN on its mTLS client cert).
+  bytes csr_pem = 1;
+  // Requested validity. Hub may cap this; 0 means use the hub default.
+  int64 ttl_seconds = 2;
+}
+
+message RenewCertResponse {
+  bytes cert_pem = 1;
+  bytes ca_cert_pem = 2;
+}
+
+message AgentMessage {
+  string client_name = 1;
+  string target_name = 5;
+  string command = 2;
+  string output = 3;
+  bool is_response = 4;
+  // is_heartbeat marks a no-op liveness ping from the spoke. The hub uses it
+  // to update last-seen-at without dispatching the message as a response.
+  bool is_heartbeat = 6;
+  // request_id pairs a response with its request so the hub can have many
+  // in-flight calls per spoke. Empty for heartbeats and the initial
+  // registration handshake.
+  string request_id = 7;
+  // error carries a failure message back from the spoke. Empty on success.
+  // Lets the hub distinguish "spoke processed and returned this output" from
+  // "spoke could not process the request" without parsing the output string.
+  string error = 8;
+}

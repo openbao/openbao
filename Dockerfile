@@ -1,4 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
+
 # SPDX-License-Identifier: MPL-2.0
 
 # This is a helper stage that ensures the binary layer is always the same, no

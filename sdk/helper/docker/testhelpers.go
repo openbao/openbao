@@ -30,6 +30,7 @@ import (
 	"github.com/moby/moby/api/types/mount"
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
+	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 )
 
 type Runner struct {
@@ -406,6 +407,51 @@ func shouldPull(ctx context.Context, dockerAPI *client.Client, image string) boo
 	}
 }
 
+var (
+	pullLocks = locksutil.CreateLocks()
+	pullCache = map[string]error{}
+)
+
+func (d *Runner) pull(ctx context.Context, image string) (result error) {
+	lock := locksutil.LockForKey(pullLocks, image)
+	lock.Lock()
+	defer lock.Unlock()
+
+	// first we check if the current process has already pulled the image (or skipped pulling based on the second check)
+	if err, ok := pullCache[image]; ok {
+		return err
+	}
+	defer func() {
+		pullCache[image] = result
+	}()
+
+	// second we check if the image is "reasonable recent"
+	if !shouldPull(ctx, d.DockerAPI, image) {
+		return
+	}
+
+	// best-effort pull
+	var opts client.ImagePullOptions
+	if d.RunOptions.AuthUsername != "" && d.RunOptions.AuthPassword != "" {
+		var buf bytes.Buffer
+		auth := map[string]string{
+			"username": d.RunOptions.AuthUsername,
+			"password": d.RunOptions.AuthPassword,
+		}
+		if err := json.NewEncoder(&buf).Encode(auth); err != nil {
+			result = err
+			return
+		}
+		opts.RegistryAuth = base64.URLEncoding.EncodeToString(buf.Bytes())
+	}
+	resp, _ := d.DockerAPI.ImagePull(ctx, image, opts)
+	if resp != nil {
+		_, _ = io.ReadAll(resp)
+	}
+
+	return
+}
+
 func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*StartResult, error) {
 	name := d.RunOptions.ContainerName
 	if addSuffix {
@@ -451,24 +497,9 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		}
 	}
 
-	if shouldPull(ctx, d.DockerAPI, cfg.Image) {
-		// best-effort pull
-		var opts client.ImagePullOptions
-		if d.RunOptions.AuthUsername != "" && d.RunOptions.AuthPassword != "" {
-			var buf bytes.Buffer
-			auth := map[string]string{
-				"username": d.RunOptions.AuthUsername,
-				"password": d.RunOptions.AuthPassword,
-			}
-			if err := json.NewEncoder(&buf).Encode(auth); err != nil {
-				return nil, err
-			}
-			opts.RegistryAuth = base64.URLEncoding.EncodeToString(buf.Bytes())
-		}
-		resp, _ := d.DockerAPI.ImagePull(ctx, cfg.Image, opts)
-		if resp != nil {
-			_, _ = io.ReadAll(resp)
-		}
+	err := d.pull(ctx, cfg.Image)
+	if err != nil {
+		return nil, err
 	}
 
 	for vol, mtpt := range d.RunOptions.VolumeNameToMountPoint {

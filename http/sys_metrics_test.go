@@ -164,13 +164,13 @@ func TestSysMetricsSealed(t *testing.T) {
 		},
 	}
 	TestServerWithListenerAndProperties(t, ln, addr, core, props)
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	resp := testHttpGet(t, "", addr+"/v1/sys/metrics")
 	testResponseStatus(t, resp, 200)
 
 	// unauthenticated_metrics_access = true: sealed node must also serve metrics.
-	ln.Close()
+	ln.Close() //nolint:errcheck
 	ln, addr = TestListener(t)
 	props = &vault.HandlerProperties{
 		Core: core,
@@ -181,7 +181,7 @@ func TestSysMetricsSealed(t *testing.T) {
 		},
 	}
 	TestServerWithListenerAndProperties(t, ln, addr, core, props)
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	resp = testHttpGet(t, "", addr+"/v1/sys/metrics")
 	testResponseStatus(t, resp, 200)

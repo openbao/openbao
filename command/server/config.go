@@ -638,6 +638,21 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.AllowAuditLogPrefixing = c2.AllowAuditLogPrefixing
 	}
 
+	result.DisableStandbyReads = c.DisableStandbyReads
+	if c2.DisableStandbyReads {
+		result.DisableStandbyReads = c2.DisableStandbyReads
+	}
+
+	result.AllowUnauthenticatedWorkflows = c.AllowUnauthenticatedWorkflows
+	if c2.AllowUnauthenticatedWorkflows {
+		result.AllowUnauthenticatedWorkflows = c2.AllowUnauthenticatedWorkflows
+	}
+
+	result.UnsafeRelativePaths = c.UnsafeRelativePaths
+	if c2.UnsafeRelativePaths {
+		result.UnsafeRelativePaths = c2.UnsafeRelativePaths
+	}
+
 	// Use values from top-level configuration for storage if set
 	if storage := result.Storage; storage != nil {
 		if result.APIAddr != "" {

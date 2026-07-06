@@ -163,3 +163,7 @@ func TestLoadConfigFile_topLevel(t *testing.T) {
 func TestLoadConfigFile_json2(t *testing.T) {
 	testLoadConfigFile_json2(t)
 }
+
+func TestConfigMerge_PreservesFields(t *testing.T) {
+	testConfigMergePreservesFields(t)
+}

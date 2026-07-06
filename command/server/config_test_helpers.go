@@ -1175,3 +1175,18 @@ func testLoadConfigFileLeaseMetrics(t *testing.T) {
 		t.Fatal(diff)
 	}
 }
+
+func testConfigMergePreservesFields(t *testing.T) {
+	c1 := &Config{
+		SharedConfig:        &configutil.SharedConfig{},
+		DisableStandbyReads: true,
+	}
+	c2 := &Config{
+		SharedConfig:                  &configutil.SharedConfig{},
+		AllowUnauthenticatedWorkflows: true,
+	}
+
+	merged := c1.Merge(c2)
+	require.True(t, merged.DisableStandbyReads, "DisableStandbyReads should be preserved from c1")
+	require.True(t, merged.AllowUnauthenticatedWorkflows, "AllowUnauthenticatedWorkflows should be preserved from c2")
+}

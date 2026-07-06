@@ -343,7 +343,6 @@ func TestPredict_Plugins(t *testing.T) {
 			"good_path",
 			client,
 			[]string{
-				"agent",
 				"approle",
 				"cassandra-database-plugin",
 				"cert",
@@ -364,6 +363,7 @@ func TestPredict_Plugins(t *testing.T) {
 				"rabbitmq",
 				"radius",
 				"redis-database-plugin",
+				"relay",
 				"remote-cassandra-plugin",
 				"remote-influxdb-plugin",
 				"remote-mysql-plugin",

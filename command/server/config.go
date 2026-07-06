@@ -699,7 +699,7 @@ func (c *Config) Merge(c2 *Config) *Config {
 	}
 
 	result.PluginDownloadMaxSize = c.PluginDownloadMaxSize
-	if c2.PluginAutoDownloadRaw != nil {
+	if c2.PluginDownloadMaxSizeRaw != nil {
 		result.PluginDownloadMaxSize = c2.PluginDownloadMaxSize
 		result.PluginDownloadMaxSizeRaw = c2.PluginDownloadMaxSizeRaw
 	}

@@ -234,6 +234,14 @@ type Config struct {
 	// with the same client. Cloning a client will not clone this value.
 	OutputPolicy bool
 
+	// OutputProfile causes the actual request to return an error of type
+	// *OutputProfileError. Type asserting the error message will display
+	// an example of the required profile request description in HCL format.
+	//
+	// Note: It is not thread-safe to set this and make concurrent requests
+	// with the same client. Cloning a client will not clone this value.
+	OutputProfile bool
+
 	// curlCACert, curlCAPath, curlClientCert and curlClientKey are used to keep
 	// track of the name of the TLS certs and keys when OutputCurlString is set.
 	// Cloning a client will also not clone those values.
@@ -1055,6 +1063,24 @@ func (c *Client) SetOutputPolicy(isSet bool) {
 	c.config.OutputPolicy = isSet
 }
 
+func (c *Client) OutputProfile() bool {
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
+	c.config.modifyLock.RLock()
+	defer c.config.modifyLock.RUnlock()
+
+	return c.config.OutputProfile
+}
+
+func (c *Client) SetOutputProfile(isSet bool) {
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
+	c.config.modifyLock.Lock()
+	defer c.config.modifyLock.Unlock()
+
+	c.config.OutputProfile = isSet
+}
+
 // CurrentWrappingLookupFunc sets a lookup function that returns desired wrap TTLs
 // for a given operation and path.
 func (c *Client) CurrentWrappingLookupFunc() WrappingLookupFunc {
@@ -1423,6 +1449,7 @@ func (c *Client) rawRequestWithContext(ctx context.Context, r *Request) (*Respon
 	ns := c.headers.Get(NamespaceHeaderName)
 	outputCurlString := c.config.OutputCurlString
 	outputPolicy := c.config.OutputPolicy
+	outputProfile := c.config.OutputProfile
 	logger := c.config.Logger
 	disableRedirects := c.config.DisableRedirects
 	c.config.modifyLock.RUnlock()
@@ -1480,6 +1507,13 @@ START:
 			params: req.URL.Query(),
 		}
 		return nil, LastOutputPolicyError
+	}
+
+	if outputProfile {
+		LastOutputProfileError = &OutputProfileError{
+			Request: req,
+		}
+		return nil, LastOutputProfileError
 	}
 
 	req.Request = req.Request.WithContext(ctx)
@@ -1571,6 +1605,7 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 	httpClient := c.config.HttpClient
 	outputCurlString := c.config.OutputCurlString
 	outputPolicy := c.config.OutputPolicy
+	outputProfile := c.config.OutputProfile
 	disableRedirects := c.config.DisableRedirects
 
 	// add headers
@@ -1595,6 +1630,9 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 	}
 	if outputPolicy {
 		return nil, errors.New("output-policy is not implemented for this request")
+	}
+	if outputProfile {
+		return nil, errors.New("output-profile is not implemented for this request")
 	}
 
 	req.URL.User = r.URL.User

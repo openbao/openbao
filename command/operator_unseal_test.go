@@ -192,13 +192,13 @@ func TestOperatorUnsealCommand_Format(t *testing.T) {
 		Client: client,
 	}
 
-	args, format, _, _, _ := setupEnv([]string{"operator", "unseal", "-format", "json"})
-	if format != "json" {
-		t.Fatalf("expected %q, got %q", "json", format)
+	env := setupEnv([]string{"operator", "unseal", "-format", "json"})
+	if env.format != "json" {
+		t.Fatalf("expected %q, got %q", "json", env.format)
 	}
 
 	// Unseal with one key
-	code := RunCustom(append(args, []string{
+	code := RunCustom(append(env.args, []string{
 		keys[0],
 	}...), runOpts)
 	if exp := 0; code != exp {

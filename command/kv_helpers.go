@@ -60,6 +60,9 @@ func kvPreflightVersionRequest(client *api.Client, path string) (string, int, er
 	currentOutputPolicy := client.OutputPolicy()
 	client.SetOutputPolicy(false)
 	defer client.SetOutputPolicy(currentOutputPolicy)
+	currentOutputProfile := client.OutputProfile()
+	client.SetOutputProfile(false)
+	defer client.SetOutputProfile(currentOutputProfile)
 
 	resp, err := client.Logical().ReadRaw("sys/internal/ui/mounts/" + path)
 	if resp != nil {

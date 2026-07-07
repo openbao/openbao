@@ -247,7 +247,7 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			if err := sealConfigEntry.DecodeJSON(&sealConfig); err != nil {
 				return false, fmt.Errorf("failed to decode seal config entry for namespace %s: %w", namespace.ID, err)
 			}
-			return true, ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, false)
+			return true, ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, SetSealOptions{})
 		}
 
 		if err := ns.loadNamespacesRecursive(ctx, barrier, childView, callback); err != nil {
@@ -343,10 +343,12 @@ func (ns *NamespaceStore) Invalidate(ctx context.Context, parentUUID, childUUID 
 		if err := entry.DecodeJSON(&config); err != nil {
 			return nil, false, err
 		}
-		if err := ns.core.sealManager.SetSeal(ctx, &config, &child, false); err != nil {
+		if err := ns.core.sealManager.SetSeal(ctx, &config, &child, SetSealOptions{}); err != nil {
 			return nil, false, err
 		}
 	}
+
+	ns.core.router.SetNamespaceStorageView(&child, b)
 
 	if child.ManuallySealed {
 		// Ensure this namespace is sealed locally.
@@ -526,7 +528,9 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	var sealKeyShares [][]byte
 	if !exists {
 		if sealConfig != nil {
-			if err := ns.core.sealManager.SetSeal(ctx, sealConfig, entry, true); err != nil {
+			if err := ns.core.sealManager.SetSeal(ctx, sealConfig, entry, SetSealOptions{
+				WriteToStorage: true,
+			}); err != nil {
 				return nil, fmt.Errorf("failed to set namespace seal: %w", err)
 			}
 
@@ -761,6 +765,14 @@ func (ns *NamespaceStore) pushToMounts(entry *namespace.Namespace) error {
 		}
 
 		mount.Namespace = entry
+		// re, ok := ns.core.router.Get(mount.Path)
+		// if !ok {
+		// 	ns.logger.Warn("route entry not found for mount", "path", mount.Path, "namespace", entry)
+		// 	continue
+		// }
+
+		// re.StorageView = NamespaceScopedView(ns.core.sealManager.NamespaceBarrierByLongestPrefix(entry.Path), entry)
+		// ns.logger.Warn("Setting route entry storage view", "re", re, "namespace", entry)
 	}
 
 	for _, mount := range ns.core.mounts.Entries {
@@ -769,6 +781,15 @@ func (ns *NamespaceStore) pushToMounts(entry *namespace.Namespace) error {
 		}
 
 		mount.Namespace = entry
+
+		// re, ok := ns.core.router.Get(mount.Path)
+		// if !ok {
+		// 	ns.logger.Warn("route entry not found for mount", "path", mount.Path, "namespace", entry)
+		// 	continue
+		// }
+
+		// re.StorageView = NamespaceScopedView(ns.core.sealManager.NamespaceBarrierByLongestPrefix(entry.Path), entry)
+		// ns.logger.Warn("Setting route entry storage view", "re", re, "namespace", entry)
 	}
 
 	return nil
@@ -947,6 +968,7 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, opts ListNamespace
 		if !opts.IncludeSealed && ns.core.NamespaceSealed(entry) {
 			return false
 		}
+		// List all namespaces types unless IncludeTypes is set
 		if opts.IncludeTypes != 0 && opts.IncludeTypes&ns.core.NamespaceType(entry) == 0 {
 			return false
 		}
@@ -1260,6 +1282,30 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, parent, namespaceT
 
 	// Push the update to all mounts.
 	return ns.pushToMounts(namespaceToTaint.Clone(false))
+}
+
+func (ns *NamespaceStore) untaintNamespace(ctx context.Context, parent, namespaceToUntaint *namespace.Namespace) error {
+	// to be extra safe
+	if namespaceToUntaint.ID == namespace.RootNamespaceID {
+		return errors.New("cannot untaint root namespace")
+	}
+
+	ns.namespacesByUUID[namespaceToUntaint.UUID].Tainted = true
+	ns.namespacesByAccessor[namespaceToUntaint.ID].Tainted = true
+	namespaceToUntaint.Tainted = false
+
+	err := ns.namespacesByPath.Insert(namespaceToUntaint)
+	if err != nil {
+		return fmt.Errorf("failed to modify namespace tree: %w", err)
+	}
+
+	nsCopy := namespaceToUntaint.Clone(true /* preserve unlock */)
+	if err := ns.writeNamespace(ctx, ns.core.NamespaceView(parent), nsCopy); err != nil {
+		return fmt.Errorf("failed to persist namespace taint: %w", err)
+	}
+
+	// Push the update to all mounts.
+	return ns.pushToMounts(namespaceToUntaint.Clone(false))
 }
 
 // DeleteNamespace deletes an unsealed namespace.

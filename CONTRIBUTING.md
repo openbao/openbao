@@ -64,7 +64,7 @@ git commit --signoff -m"my commit"
 git commit --amend --signoff
 
 # Sign off every commit in your branch
-git rebase --signoff master
+git rebase --signoff main
 ```
 
 This will add a line similar to the following at the end of your commit:

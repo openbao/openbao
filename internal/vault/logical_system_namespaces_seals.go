@@ -10,12 +10,17 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
+	"time"
 
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
+	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 )
 
 func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
@@ -178,6 +183,7 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 			HelpSynopsis:    "Delete a sealed namespace.",
 			HelpDescription: "Physically deletes a sealed namespace by wiping its storage. Requires sudo privilege. Pass force=true to also delete child namespaces.",
 		},
+
 		{
 			Pattern: "namespaces/(?P<path>.+)/migrate-seal",
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -366,23 +372,272 @@ func (b *SystemBackend) handleNamespacesDeleteSealed() framework.OperationFunc {
 	}
 }
 
+func (b *SystemBackend) handleNamespacesMigrateSeal() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		// TODO:
+		// * create new barrier if necessary
+		// * start transaction on new barrier
+		// * read all relevant entries from old barrier
+		// * re-write using new barrier
+		// * re-write top-most namespace entry using parent barrier
+
+		start := time.Now()
+
+		path := namespace.Canonicalize(data.Get("path").(string))
+		// unlockKey, err := b.Core.namespaceStore.LockNamespace(ctx, path)
+		// if err != nil {
+		// 	return handleError(err)
+		// }
+		// defer b.Core.namespaceStore.UnlockNamespace(ctx, unlockKey, path)
+
+		sealRaw, ok := data.GetOk("seal")
+		var sealConfig *SealConfig
+		if ok {
+			var err error
+			sealString, ok := sealRaw.(string)
+			if !ok {
+				return nil, errors.New("seal config must be a HCL or JSON string")
+			}
+			kmses, err := configutil.ParseKMSes(sealString)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse seal config: %w", err)
+			}
+			if len(kmses) != 1 {
+				return nil, errors.New("seal config must contain exactly one seal stanza")
+			}
+			kms := kmses[0]
+			if kms.Type != "shamir" {
+				return nil, errors.New("namespaces currently only support shamir seals")
+			}
+
+			sealConfig = &SealConfig{
+				Type: kms.Type,
+			}
+
+			if val, ok := kms.Config["shares"]; ok {
+				shares, err := parseutil.ParseInt(val)
+				if err != nil {
+					return nil, errors.New("value of shares parameter must be integer")
+				}
+				sealConfig.SecretShares = int(shares)
+			}
+			if val, ok := kms.Config["threshold"]; ok {
+				threshold, err := parseutil.ParseInt(val)
+				if err != nil {
+					return nil, errors.New("value of shares parameter must be integer")
+				}
+				sealConfig.SecretThreshold = int(threshold)
+			}
+			if pgpkeys, ok := data.GetOk("pgp_keys"); ok {
+				sealConfig.PGPKeys = pgpkeys.([]string)
+			}
+
+			if err := sealConfig.Validate(); err != nil {
+				return logical.ErrorResponse("invalid seal config: %v", err), err
+			}
+		}
+
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		if err != nil {
+			return handleError(err)
+		}
+
+		parentNs, err := namespace.FromContext(ctx)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if err := b.Core.namespaceStore.taintNamespace(ctx, parentNs, ns); err != nil {
+			return handleError(err)
+		}
+		defer b.Core.namespaceStore.untaintNamespace(ctx, parentNs, ns)
+
+		parentBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(parentNs.Path)
+		oldBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+
+		var newBarrier barrier.SecurityBarrier
+		if sealConfig == nil {
+			newBarrier = parentBarrier
+		}
+
+		if newBarrier == nil {
+			metaPrefix := NamespaceStoragePathPrefix(ns)
+			defaultSeal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+			defaultSeal.SetCore(b.Core)
+			defaultSeal.SetMetaPrefix(metaPrefix)
+
+			defaultSeal.SetConfigAccess(parentBarrier)
+
+			ctx := namespace.ContextWithNamespace(ctx, ns)
+			if err := defaultSeal.Init(ctx); err != nil {
+				return handleError(err)
+			}
+
+			newBarrier = barrier.NewAESGCMBarrier(b.Core.physical, ns)
+		}
+
+		if newBarrier == oldBarrier {
+			// Nothing to do
+			return nil, nil
+		}
+
+		namespacesToMigrate, err := b.Core.namespaceStore.ListNamespaces(namespace.ContextWithNamespace(ctx, ns), ListNamespaceOpts{
+			IncludeSealed: false,
+			Recursive:     true,
+			IncludeTypes:  namespace.TypeNormal,
+		})
+		if err != nil {
+			return handleError(err)
+		}
+
+		slices.Reverse(namespacesToMigrate)
+		namespacesToMigrate = append(namespacesToMigrate, ns)
+
+		keyInfo, err := oldBarrier.ActiveKeyInfo()
+		if err != nil {
+			b.logger.Warn("error getting key info of old barrier", "err", err)
+		}
+		b.logger.Warn("key info", "term", keyInfo.Term)
+
+		// parentNsView := NamespaceScopedView(parentBarrier, parentNs)
+
+		dur := time.Now().Sub(start)
+		b.logger.Warn("preparation took time", "dur", dur)
+
+		start = time.Now()
+
+		err = logical.WithTransaction(ctx, newBarrier, func(s logical.Storage) error {
+			for _, ns := range namespacesToMigrate {
+				b.logger.Warn("migrating namespace", "ns", ns)
+				nsPrefix := NamespaceScopedView(s, ns).Prefix()
+				keys, err := recurseListKeys(ctx, oldBarrier, nsPrefix)
+				if err != nil {
+					return err
+				}
+
+				for _, key := range keys {
+					if slices.ContainsFunc(knownNamespaceCoreEntriesToCleanup, func(k string) bool {
+						return strings.HasSuffix(key, "/"+k)
+					}) {
+						err := s.Delete(ctx, key)
+						if err != nil {
+							return err
+						}
+						continue
+					}
+
+					b.logger.Warn("migrating", "key", key)
+					pe, err := b.Core.physical.Get(ctx, key)
+					if err != nil {
+						b.logger.Warn("error reading key from physical storage", "key", key, "error", err)
+						return err
+					}
+					se, err := oldBarrier.Get(ctx, key)
+					if err != nil {
+						b.logger.Warn("error reading key from old barrier", "key", key, "error", err, "pe", pe.Value)
+						continue
+					}
+
+					err = s.Put(ctx, se)
+					if err != nil {
+						b.logger.Warn("error writing key to new barrier", "key", key, "error", err)
+						return err
+					}
+					b.logger.Warn("done migrating", "key", key)
+				}
+			}
+
+			switch {
+			case newBarrier == parentBarrier:
+				b.Core.sealManager.RemoveNamespace(ns)
+			default:
+				err := b.Core.sealManager.SetSeal(ctx, sealConfig, ns, SetSealOptions{
+					WriteToStorage: true,
+					AllowOverride:  true,
+				})
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
+			b.logger.Warn("transaction returned error, rolling back changes")
+			return handleError(err)
+		}
+		dur = time.Now().Sub(start)
+		b.logger.Warn("transaction took time", "dur", dur)
+
+		start = time.Now()
+		var errs error
+		for _, ns := range namespacesToMigrate {
+			parentPath, ok := ns.ParentPath()
+			if !ok {
+				continue
+			}
+			parentNs, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
+			if err != nil {
+				errs = errors.Join(errs, err)
+			}
+			_, _, err = b.Core.namespaceStore.Invalidate(ctx, parentNs.UUID, ns.UUID)
+			if err != nil {
+				errs = errors.Join(errs, err)
+			}
+			//
+			// errs = errors.Join(errs, b.Core.namespaceStore.pushToMounts(ns))
+		}
+		dur = time.Now().Sub(start)
+		b.logger.Warn("invalidations took time", "dur", dur)
+		if errs != nil {
+			return handleError(errs)
+		}
+
+		return nil, nil
+	}
+}
+
+func recurseListKeys(ctx context.Context, s logical.Storage, prefix string) ([]string, error) {
+	keys, err := s.ListPage(ctx, prefix, "", -1)
+	if err != nil {
+		return nil, err
+	}
+
+	outKeys := make([]string, 0)
+
+	for _, key := range keys {
+		if strings.HasSuffix(key, "/") {
+			recKeys, err := recurseListKeys(ctx, s, prefix+key)
+			if err != nil {
+				return outKeys, err
+			}
+			outKeys = append(outKeys, recKeys...)
+			continue
+		}
+
+		outKeys = append(outKeys, prefix+key)
+	}
+
+	return outKeys, nil
+}
+
 var sysNamespacesSealsHelp = map[string][2]string{
 	"namespaces-seal": {
 		"Seal, unseal and delete sealable namespaces and check their seal status.",
 		`
-This path responds to the following HTTP methods.
-
-	POST /<path>/seal
-		Seal a namespace.
-
-	POST /<path>/unseal
-		Unseal a namespace.
-
-	GET /<path>/seal-status
-		Returns the seal status of the namespace.
-
-	DELETE /<path>/delete-sealed
-		Delete a sealed namespace by wiping its storage.
-		`,
+ This path responds to the following HTTP methods.
+ 
+ 	POST /<path>/seal
+ 		Seal a namespace.
+ 
+ 	POST /<path>/unseal
+ 		Unseal a namespace.
+ 
+ 	GET /<path>/seal-status
+ 		Returns the seal status of the namespace.
+ 
+ 	DELETE /<path>/delete-sealed
+ 		Delete a sealed namespace by wiping its storage.
+ 		`,
 	},
 }

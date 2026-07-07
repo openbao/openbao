@@ -4117,3 +4117,11 @@ func (c *Core) teardownPolicyStore() error {
 	c.policyStore = nil
 	return nil
 }
+
+// NamespaceType checks if the given namespace is normal or sealable.
+func (c *Core) NamespaceType(ns *namespace.Namespace) namespace.Type {
+	if s := c.sealManager.NamespaceSeal(ns.UUID); s != nil {
+		return namespace.TypeSealable
+	}
+	return namespace.TypeNormal
+}

@@ -45,9 +45,9 @@ Usage: bao operator validate-config
   Some problems like wrong cluster_addr (i.e. a missing DNS entry) won't be
   detected as this can only be detected at runtime.
   Some problems are deliberately not detected, e.g. that the raft path is writable.
-  This is to ensure that a configuration can be validated on a different machine
-  for example an operators laptop or during Pull Request validation.
-  To include this kind of tests use  "bao operator diagnose" instead.
+  This is to ensure that a configuration can be validated on a different machine,
+  for example an operator's laptop, or during Pull Request validation.
+  To include these kinds of tests use "bao operator diagnose" instead.
 
   Validate a configuration file:
 

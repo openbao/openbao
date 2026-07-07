@@ -20,15 +20,15 @@ complex and hard to input and store.
 
 The problems I'm looking for a scheme to solve are two fold:
 
+<!-- truncate -->
+
 1. Secure storage of Shamir shares are hard. It effectively relies on another,
    externally secure system (whether physical or digital) to safely store. In
    [emergency scenarios](/community/rfcs/emergency-seal/), this is fine, but
    if Shamir's is in regular use, this can be cumbersome depending on whether
    systems are air gapped or similar.
-2. We can't easily use declarative self-initialization as we required a
-   side-effect-less initialization.
-
-<!-- truncate -->
+2. We can't easily use [declarative self-initialization](/docs/configuration/self-init/)
+   as we required a side-effect-less initialization.
 
 ### On Shamir's
 
@@ -49,7 +49,7 @@ to recover, a quadratic, &c. This is because while `n+1` `(x, y)` points
 uniquely describe a `n`-degree polynomial, `n` shares leaks no information:
 nearly any possible constant term could fall out.
 
-This gives Shamir's secret sharing an useful property: _information theoretic
+This gives Shamir's secret sharing a useful property: _information theoretic
 security_.
 
 :::info
@@ -59,7 +59,7 @@ encoding secrets and the frequent implementation over finite fields rather
 than the real numbers. Make sure to always use cryptographically secure
 random number generators and do not roll your own crypto!
 
-OpenBao has moved [our Shamir's implementation to
+OpenBao has moved [its Shamir's implementation to
 `sdk/`](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2/helper/shamir)
 so that others may consume it.
 
@@ -95,10 +95,10 @@ about the following properties:
 _Aside_: Actual security depends on the details of this scheme and what
 definition of "isn't much more computationally expensive" is used. Certain
 variants provide more security (sum of weakest passwords) whereas others are
-faster to verify at the cost less security (strength of nth weakest password).
-Balancing that trade-off will probably depend on use cases; if you're
-interested, feel free to [reach out](https://github.com/openbao#contact) to
-us and mention the blog!
+faster to verify at the cost of less security (strength of nth weakest
+password). Balancing that trade-off will probably depend on use cases; if
+you're interested, feel free to [reach out](https://github.com/openbao#contact)
+to us and mention the blog!
 
 :::
 
@@ -130,8 +130,9 @@ to Shamir's seal mechanisms:
    Notably, neither of these two approaches would yield keys to the API
    callers which must be stored.
 
-Within namespace sealing, we would already have an authenticated rotation
-mechanism and be able to reuse that for initialization.
+Within [namespace sealing](/community/rfcs/namespace-sealing), we would
+already have an authenticated rotation mechanism and be able to reuse that
+for initialization.
 
 From an unseal perspective, this also makes it easier for air-gapped operators
 wanting to use Shamir's to type and unseal OpenBao.

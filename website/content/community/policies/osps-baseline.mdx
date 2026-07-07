@@ -17,7 +17,7 @@ This pages tracks the implementation status of [Open Source Project Security Bas
 | [OSPS-AC-03.01](#osps-ac-03-01) | ✅     |
 | [OSPS-AC-03.02](#osps-ac-03-02) | ✅     |
 | [OSPS-BR-01.01](#osps-br-01-01) |        |
-| [OSPS-BR-03.01](#osps-br-03-01) |        |
+| [OSPS-BR-03.01](#osps-br-03-01) | ✅     |
 | [OSPS-DO-01.01](#osps-do-01-01) | ✅     |
 | [OSPS-DO-02.01](#osps-do-02-01) | ✅     |
 | [OSPS-GV-02.01](#osps-gv-02-01) | ✅     |
@@ -68,6 +68,8 @@ OpenBao uses GitHub repository rulesets to protect all important project reposit
 ## OSPS-BR-03.01 {#osps-br-03-01}
 
 > **Requirement:** When the project lists a URI as an official project channel, that URI MUST be exclusively delivered using encrypted channels.
+
+OpenBao relies on GitHub for git and website hosting. GitHub repositories are only accessible via HTTPS and SSH. GitHub pages are delivered using HTTPS.
 
 ## OSPS-DO-01.01 {#osps-do-01-01}
 

@@ -38,7 +38,9 @@ func NewUIConfig(enabled bool, physicalStorage physical.Backend, barrierStorage 
 	defaultHeaders := http.Header{}
 	defaultHeaders.Set("Service-Worker-Allowed", "/")
 	defaultHeaders.Set("X-Content-Type-Options", "nosniff")
-	defaultHeaders.Set("Content-Security-Policy", "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'none'; font-src 'self'")
+	defaultHeaders.Set("Content-Security-Policy", "default-src 'none'; connect-src 'self'; img-src 'self' data: blob:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'none'; font-src 'self'")
+	// Allow the page to register unload handlers when needed (e.g., service workers)
+	defaultHeaders.Set("Permissions-Policy", "unload=(self)")
 
 	return &UIConfig{
 		physicalStorage: physicalStorage,

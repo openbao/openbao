@@ -20,7 +20,9 @@ import (
 	"net/textproto"
 	"net/url"
 	"os"
+	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -29,7 +31,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
-	gziphandler "github.com/klauspost/compress/gzhttp"
 	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/listenerutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -58,13 +59,15 @@ const (
 	RFC9440ClientChainHeader = "Client-Chain"
 )
 
+// uiAssets is the file system for UI assets. It is set by the build‑tagged
+// files (ui.go or stub_asset.go) to either the real embed.FS or nil.
+var uiAssets http.FileSystem
+
 var (
+
 	// canonicalMFAHeaderName is the MFA header value's format in the request
 	// headers. Do not alter the casing of this string.
 	canonicalMFAHeaderName = http.CanonicalHeaderKey(consts.MFAHeaderName)
-
-	// Set to false by stub_asset if the ui build tag isn't enabled
-	uiBuiltIn = true
 
 	alwaysRedirectPaths = pathmanager.New()
 
@@ -103,6 +106,8 @@ var (
 
 	oidcProtectedPathRegex = regexp.MustCompile(`^identity/oidc/provider/\w(([\w-.]+)?\w)?/userinfo$`)
 )
+
+var gzipAcceptEncodingRegex = regexp.MustCompile(`(?i)(?:^|[ \t,])gzip(?:$|[ \t,;])`)
 
 func init() {
 	alwaysRedirectPaths.AddPaths([]string{
@@ -206,15 +211,18 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/sys/", handleLogical(core))
 		mux.Handle("/v1/", handleLogical(core))
 		if core.UIEnabled() {
-			if uiBuiltIn {
-				mux.Handle("/ui/", http.StripPrefix("/ui/", gziphandler.GzipHandler(handleUIHeaders(core, handleUI(http.FileServer(&UIAssetWrapper{FileSystem: assetFS()}))))))
-				mux.Handle("/robots.txt", gziphandler.GzipHandler(handleUIHeaders(core, handleUI(http.FileServer(&UIAssetWrapper{FileSystem: assetFS()})))))
+			if uiAssets != nil {
+				uiHandler := precompressedUIHandler(
+					http.FileServer(&UIAssetWrapper{FileSystem: uiAssets}),
+					uiAssets,
+				)
+				mux.Handle("/ui/", http.StripPrefix("/ui/", handleUIHeaders(core, handleUI(uiHandler))))
+				mux.Handle("/robots.txt", handleUIHeaders(core, handleUI(uiHandler)))
 			} else {
 				mux.Handle("/ui/", handleUIHeaders(core, handleUIStub()))
 			}
 			mux.Handle("/ui", handleUIRedirect())
 			mux.Handle("/", handleUIRedirect())
-
 		}
 
 		// Register metrics path without authentication if enabled
@@ -715,6 +723,53 @@ func wrapClientCertificateHandler(h http.Handler, props *vault.HandlerProperties
 	})
 }
 
+// precompressedUIHandler wraps a FileServer and serves pre‑compressed .gz files
+// when they exist and the client accepts gzip. If fs is nil (UI not built),
+// it just passes through to the next handler.
+func precompressedUIHandler(next http.Handler, fs http.FileSystem) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Fast path: if no filesystem (UI stub), just serve what we have
+		if fs == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Only GET requests, and only when client explicitly accepts gzip.
+		// We intentionally match the gzip token rather than substring search to
+		// avoid false positives like pack200-gzip or gzip2.
+		if r.Method != http.MethodGet || !gzipAcceptEncodingRegex.MatchString(r.Header.Get("Accept-Encoding")) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Limit to compressible extensions (must match build‑time list)
+		ext := path.Ext(r.URL.Path)
+		if !slices.Contains([]string{".html", ".js", ".css", ".json", ".svg", ".xml", ".txt"}, ext) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Check if .gz version exists
+		gzPath := r.URL.Path + ".gz"
+		if f, err := fs.Open(gzPath); err == nil && f != nil {
+			if err := f.Close(); err != nil {
+				respondError(w, http.StatusInternalServerError,
+					fmt.Errorf("error closing precompressed file: %w", err))
+				return
+			}
+			r.URL.Path = gzPath
+			w.Header().Set("Content-Encoding", "gzip")
+			w.Header().Add("Vary", "Accept-Encoding")
+
+			// Ensure the correct MIME type is returned for precompressed files.
+			if mimeType := mime.TypeByExtension(ext); mimeType != "" {
+				w.Header().Set("Content-Type", mimeType)
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func handleUIHeaders(core *vault.Core, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		header := w.Header()
@@ -824,6 +879,15 @@ type UIAssetWrapper struct {
 }
 
 func (fsw *UIAssetWrapper) Open(name string) (http.File, error) {
+	if fsw == nil {
+		return nil, fs.ErrNotExist
+	}
+
+	// Protect against typed-nil filesystem implementations.
+	if fsw.FileSystem == nil {
+		return nil, fs.ErrNotExist
+	}
+
 	file, err := fsw.FileSystem.Open(name)
 	if err == nil {
 		return file, nil

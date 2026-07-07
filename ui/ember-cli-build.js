@@ -26,7 +26,15 @@ const appConfig = {
     sourceDirs: ['node_modules/@hashicorp/structure-icons/dist', 'public'],
     rootURL: '/ui/',
   },
+  gzip: {
+    enabled: isProd,
+    // tests need the non-gzipped assets to correctly load them
+    keepUncompressed: isTest,
+  },
   fingerprint: {
+    gzip: {
+      extensions: ['html', 'js', 'css', 'json', 'svg', 'xml', 'txt'],
+    },
     exclude: ['images/'],
   },
   assetLoader: {

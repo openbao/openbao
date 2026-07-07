@@ -229,6 +229,9 @@ importers:
       ember-cli-flash:
         specifier: 4.0.0
         version: 4.0.0(@babel/core@7.29.0)(@glint/template@1.7.7)(ember-source@4.12.0(@babel/core@7.29.0)(@glimmer/component@1.1.2(@babel/core@7.29.0))(@glint/template@1.7.7)(webpack@5.105.4))(webpack@5.105.4)
+      ember-cli-gzip:
+        specifier: ^1.2.0
+        version: 1.2.0
       ember-cli-htmlbars:
         specifier: ^6.3.0
         version: 6.3.0
@@ -3018,6 +3021,10 @@ packages:
     resolution: {integrity: sha512-ng4eIhPYiXqMw6SyGoxPHR3YAwEd2lr9FgBI1CyTbspl4txZovOsmzFkMkGAlu88xyvYXJqHiM2crfLa65T1BQ==}
     engines: {node: 10.* || >= 12.*}
 
+  broccoli-gzip@0.3.0:
+    resolution: {integrity: sha512-hm+CuegMz2hibgprGbdD2nczqR13hyQ4gNxem8zSscNoSER1eMrbFBybp2/hk3J/+BK2QQy1dokxsZIujda7JA==}
+    engines: {node: '>= 4'}
+
   broccoli-kitchen-sink-helpers@0.2.9:
     resolution: {integrity: sha512-C+oEqivDofZv/h80rgN4WJkbZkbfwkrIeu8vFn4bb4m4jPd3ICNNplhkXGl3ps439pzc2yjZ1qIwz0yy8uHcQg==}
 
@@ -4139,6 +4146,9 @@ packages:
 
   ember-cli-get-component-path-option@1.0.0:
     resolution: {integrity: sha512-k47TDwcJ2zPideBCZE8sCiShSxQSpebY2BHcX2DdipMmBox5gsfyVrbKJWIHeSTTKyEUgmBIvQkqTOozEziCZA==}
+
+  ember-cli-gzip@1.2.0:
+    resolution: {integrity: sha512-/yraJ+Fso1ghUNw+JawzJi5pCE5bOEi7bzs6lXCI3Aj7jQCiLdFkJzZCyY0Ius1jtQwmtt5eJ8X6wjVgXcXdfA==}
 
   ember-cli-htmlbars@4.5.0:
     resolution: {integrity: sha512-bYJpK1pqFu9AadDAGTw05g2LMNzY8xTCIqQm7dMJmKEoUpLRFbPf4SfHXrktzDh7Q5iggl6Skzf1M0bPlIxARw==}
@@ -12271,6 +12281,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  broccoli-gzip@0.3.0:
+    dependencies:
+      broccoli-filter: 1.3.0
+      broccoli-kitchen-sink-helpers: 0.3.1
+      rsvp: 3.6.2
+    transitivePeerDependencies:
+      - supports-color
+
   broccoli-kitchen-sink-helpers@0.2.9:
     dependencies:
       glob: 5.0.15
@@ -13819,6 +13837,12 @@ snapshots:
       - webpack
 
   ember-cli-get-component-path-option@1.0.0: {}
+
+  ember-cli-gzip@1.2.0:
+    dependencies:
+      broccoli-gzip: 0.3.0
+    transitivePeerDependencies:
+      - supports-color
 
   ember-cli-htmlbars@4.5.0:
     dependencies:

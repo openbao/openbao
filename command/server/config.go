@@ -638,6 +638,21 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.AllowAuditLogPrefixing = c2.AllowAuditLogPrefixing
 	}
 
+	result.DisableStandbyReads = c.DisableStandbyReads
+	if c2.DisableStandbyReads {
+		result.DisableStandbyReads = c2.DisableStandbyReads
+	}
+
+	result.AllowUnauthenticatedWorkflows = c.AllowUnauthenticatedWorkflows
+	if c2.AllowUnauthenticatedWorkflows {
+		result.AllowUnauthenticatedWorkflows = c2.AllowUnauthenticatedWorkflows
+	}
+
+	result.UnsafeRelativePaths = c.UnsafeRelativePaths
+	if c2.UnsafeRelativePaths {
+		result.UnsafeRelativePaths = c2.UnsafeRelativePaths
+	}
+
 	// Use values from top-level configuration for storage if set
 	if storage := result.Storage; storage != nil {
 		if result.APIAddr != "" {
@@ -1398,6 +1413,10 @@ func (c *Config) Sanitized() map[string]interface{} {
 
 		"unsafe_allow_api_audit_creation": c.UnsafeAllowAPIAuditCreation,
 		"allow_audit_log_prefixing":       c.AllowAuditLogPrefixing,
+
+		"disable_standby_reads":           c.DisableStandbyReads,
+		"allow_unauthenticated_workflows": c.AllowUnauthenticatedWorkflows,
+		"unsafe_relative_paths":           c.UnsafeRelativePaths,
 	}
 	maps.Copy(result, sharedResult)
 

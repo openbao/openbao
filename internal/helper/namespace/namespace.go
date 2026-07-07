@@ -37,6 +37,14 @@ type (
 	contextKeyHeader    struct{}
 )
 
+type Type uint8
+
+const (
+	TypeNormal Type = 1 << iota
+	TypeSealable
+	TypeAll Type = TypeNormal | TypeSealable
+)
+
 type Namespace struct {
 	ID             string            `json:"id" mapstructure:"id"`
 	UUID           string            `json:"uuid" mapstructure:"uuid"`

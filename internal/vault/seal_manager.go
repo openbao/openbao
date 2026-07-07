@@ -101,15 +101,20 @@ func (sm *SealManager) Reset() {
 	sm.rotationConfigByNamespace = map[string]*rotationConfig{}
 }
 
+type SetSealOptions struct {
+	WriteToStorage bool
+	AllowOverride  bool
+}
+
 // SetSeal creates a seal with provided config and sets it as provided namespace seal;
 // Initializes seal, creating security barrier and persisting seal config.
-func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
+func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, opts SetSealOptions) error {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
 	// Check if we have the seal present; if so, don't set any seal
 	// information as we don't want to overwrite what we have.
-	if _, ok := sm.sealByNamespace[ns.UUID]; ok {
+	if _, ok := sm.sealByNamespace[ns.UUID]; ok && !opts.AllowOverride {
 		return nil
 	}
 
@@ -142,7 +147,7 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	sm.barrierByNamespacePath.Insert(ns.Path, nsBarrier)
 	sm.sealByNamespace[ns.UUID] = defaultSeal
 
-	if writeToStorage {
+	if opts.WriteToStorage {
 		if err := defaultSeal.SetBarrierConfig(ctx, sealConfig); err != nil {
 			return fmt.Errorf("failed to set barrier config: %w", err)
 		}

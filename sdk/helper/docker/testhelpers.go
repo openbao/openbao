@@ -409,7 +409,7 @@ func shouldPull(ctx context.Context, dockerAPI *client.Client, image string) boo
 
 var (
 	pullLocks = locksutil.CreateLocks()
-	pullCache = map[string]struct{}{}
+	pullCache sync.Map
 )
 
 func (d *Runner) pull(ctx context.Context, image string, opts client.ImagePullOptions) {
@@ -418,10 +418,9 @@ func (d *Runner) pull(ctx context.Context, image string, opts client.ImagePullOp
 	defer lock.Unlock()
 
 	// first we check if the current process has already pulled the image (or skipped pulling based on the second check)
-	if _, ok := pullCache[image]; ok {
+	if _, ok := pullCache.LoadOrStore(image, nil); ok {
 		return
 	}
-	pullCache[image] = struct{}{}
 
 	// second we check if the image is "reasonable recent"
 	if !shouldPull(ctx, d.DockerAPI, image) {

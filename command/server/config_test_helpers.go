@@ -776,6 +776,9 @@ func testConfig_Sanitized(t *testing.T) {
 		"unsafe_cross_namespace_identity": false,
 		"unsafe_allow_api_audit_creation": false,
 		"allow_audit_log_prefixing":       false,
+		"disable_standby_reads":           false,
+		"allow_unauthenticated_workflows": false,
+		"unsafe_relative_paths":           false,
 	}
 
 	addExpectedEntSanitizedConfig(expected, []string{"http"})
@@ -1174,4 +1177,19 @@ func testLoadConfigFileLeaseMetrics(t *testing.T) {
 	if diff := deep.Equal(config, expected); diff != nil {
 		t.Fatal(diff)
 	}
+}
+
+func testConfigMergePreservesFields(t *testing.T) {
+	c1 := &Config{
+		SharedConfig:        &configutil.SharedConfig{},
+		DisableStandbyReads: true,
+	}
+	c2 := &Config{
+		SharedConfig:                  &configutil.SharedConfig{},
+		AllowUnauthenticatedWorkflows: true,
+	}
+
+	merged := c1.Merge(c2)
+	require.True(t, merged.DisableStandbyReads, "DisableStandbyReads should be preserved from c1")
+	require.True(t, merged.AllowUnauthenticatedWorkflows, "AllowUnauthenticatedWorkflows should be preserved from c2")
 }

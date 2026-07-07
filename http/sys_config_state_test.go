@@ -174,6 +174,9 @@ func TestSysConfigState_Sanitized(t *testing.T) {
 				"unsafe_cross_namespace_identity": false,
 				"unsafe_allow_api_audit_creation": false,
 				"allow_audit_log_prefixing":       false,
+				"disable_standby_reads":           false,
+				"allow_unauthenticated_workflows": false,
+				"unsafe_relative_paths":           false,
 			}
 
 			if tc.expectedHAStorageOutput != nil {

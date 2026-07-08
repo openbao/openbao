@@ -1730,8 +1730,8 @@ func (c *Core) defaultMountTable(ctx context.Context) *routing.MountTable {
 	return table
 }
 
-// requiredMountTable() creates a mount table with entries required
-// to be available
+// requiredMountTable creates a mount table with minimum required entries
+// for OpenBao namespace to work with.
 func (c *Core) requiredMountTable(ctx context.Context) (*routing.MountTable, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil && !errors.Is(err, namespace.ErrNoNamespace) {
@@ -1835,9 +1835,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*routing.MountTable, err
 		sysMount.Type = routing.MountTypeNSSystem
 	}
 
-	table.Entries = append(table.Entries, cubbyholeMount)
-	table.Entries = append(table.Entries, sysMount)
-	table.Entries = append(table.Entries, identityMount)
+	table.Entries = append(table.Entries, cubbyholeMount, sysMount, identityMount)
 
 	return table, nil
 }

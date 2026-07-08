@@ -572,6 +572,11 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	delete(ns.creationDeletionMap, entry.UUID)
 	failed = false
 
+	if !unlocked {
+		ns.lock.Unlock()
+		unlocked = true
+	}
+
 	// Lastly, push the change to all mounts.
 	return sealKeyShares, ns.pushToMounts(entry)
 }

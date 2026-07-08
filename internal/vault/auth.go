@@ -1226,8 +1226,6 @@ func (c *Core) setupCredential(ctx context.Context, entry *routing.MountEntry) (
 // backends to their unloaded state. This is reversed by loadCredentials.
 func (c *Core) teardownCredentials(ctx context.Context) error {
 	c.authLock.Lock()
-	defer c.authLock.Unlock()
-
 	if c.auth != nil {
 		authTable := c.auth.ShallowClone()
 		for _, e := range authTable.Entries {
@@ -1239,6 +1237,7 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 	}
 
 	c.auth = nil
+	c.authLock.Unlock()
 
 	if c.tokenStore != nil {
 		c.tokenStore.teardown()

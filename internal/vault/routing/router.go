@@ -64,11 +64,12 @@ func NewRouter(logger hclog.Logger) *Router {
 // RouteEntry is used to represent a mount point in the router
 type RouteEntry struct {
 	sync.RWMutex
-	tainted       bool
+
 	Backend       logical.Backend
 	MountEntry    *MountEntry
 	StorageView   logical.Storage
 	StoragePrefix string
+	tainted       atomic.Bool
 	rootPaths     atomic.Pointer[radix.Tree]
 	loginPaths    atomic.Pointer[loginPathsEntry]
 }
@@ -127,10 +128,8 @@ func (r *Router) GetRecords(tag string) ([]map[string]interface{}, error) {
 }
 
 func (entry *RouteEntry) Deserialize() map[string]interface{} {
-	entry.RLock()
-	defer entry.RUnlock()
 	ret := map[string]interface{}{
-		"tainted":        entry.tainted,
+		"tainted":        entry.tainted.Load(),
 		"storage_prefix": entry.StoragePrefix,
 	}
 	maps.Copy(ret, entry.MountEntry.Deserialize())
@@ -200,12 +199,12 @@ func (r *Router) Mount(backend logical.Backend, prefix string, mountEntry *Mount
 
 	// Create a mount entry
 	re := &RouteEntry{
-		tainted:       mountEntry.Tainted,
 		Backend:       backend,
 		MountEntry:    mountEntry,
 		StoragePrefix: storageView.Prefix(),
 		StorageView:   storageView,
 	}
+	re.tainted.Store(mountEntry.Tainted)
 	re.rootPaths.Store(PathsToRadix(paths.Root))
 	loginPathsEntry, err := ParseUnauthenticatedPaths(paths.Unauthenticated)
 	if err != nil {
@@ -251,9 +250,6 @@ func (r *Router) Unmount(ctx context.Context, prefix string) error {
 
 	// Call backend's Cleanup routine
 	re := raw.(*RouteEntry)
-	re.Lock()
-	defer re.Unlock()
-
 	if re.Backend != nil {
 		re.Backend.Cleanup(ctx)
 	}
@@ -308,13 +304,10 @@ func (r *Router) Taint(ctx context.Context, path string) error {
 	path = ns.Path + path
 
 	r.l.Lock()
-	defer r.l.Unlock()
 	_, raw, ok := r.root.LongestPrefix(path)
+	r.l.Unlock()
 	if ok {
-		re := raw.(*RouteEntry)
-		re.Lock()
-		re.tainted = true
-		re.Unlock()
+		raw.(*RouteEntry).tainted.Store(true)
 	}
 	return nil
 }
@@ -331,10 +324,7 @@ func (r *Router) Untaint(ctx context.Context, path string) error {
 	defer r.l.Unlock()
 	_, raw, ok := r.root.LongestPrefix(path)
 	if ok {
-		re := raw.(*RouteEntry)
-		re.Lock()
-		re.tainted = false
-		re.Unlock()
+		raw.(*RouteEntry).tainted.Store(false)
 	}
 	return nil
 }
@@ -548,11 +538,7 @@ func (r *Router) MatchingBackend(ctx context.Context, path string) logical.Backe
 		return nil
 	}
 
-	re := raw.(*RouteEntry)
-	re.RLock()
-	defer re.RUnlock()
-
-	return re.Backend
+	return raw.(*RouteEntry).Backend
 }
 
 // MatchingSystemView returns the SystemView used for a path
@@ -572,14 +558,11 @@ func (r *Router) MatchingSystemView(ctx context.Context, path string) logical.Sy
 	return raw.(*RouteEntry).Backend.System()
 }
 
-func (r *Router) MatchingMountByAPIPath(ctx context.Context, path string) string {
-	re, _ := r.matchingRouteEntryByPath(ctx, path, true)
+func (r *Router) MatchingMountByAPIPath(path string) string {
+	re, _ := r.matchingRouteEntryByPath(path, true)
 	if re == nil {
 		return ""
 	}
-
-	re.RLock()
-	defer re.RUnlock()
 
 	return re.MountEntry.Path
 }
@@ -592,26 +575,20 @@ func (r *Router) MatchingStoragePrefixByAPIPath(ctx context.Context, path string
 	}
 	path = ns.Path + path
 
-	re, found := r.matchingRouteEntryByPath(ctx, path, true)
+	re, found := r.matchingRouteEntryByPath(path, true)
 	if !found {
 		return "", false
 	}
-
-	re.RLock()
-	defer re.RUnlock()
 
 	return re.StoragePrefix, true
 }
 
 // MatchingAPIPrefixByStoragePath the api path information for the given storage path
-func (r *Router) MatchingAPIPrefixByStoragePath(ctx context.Context, path string) (*namespace.Namespace, string, string, bool) {
-	re, found := r.matchingRouteEntryByPath(ctx, path, false)
+func (r *Router) MatchingAPIPrefixByStoragePath(path string) (*namespace.Namespace, string, string, bool) {
+	re, found := r.matchingRouteEntryByPath(path, false)
 	if !found {
 		return nil, "", "", found
 	}
-
-	re.RLock()
-	defer re.RUnlock()
 
 	mountPath := re.MountEntry.Path
 	// Add back the prefix for credential backends
@@ -622,7 +599,7 @@ func (r *Router) MatchingAPIPrefixByStoragePath(ctx context.Context, path string
 	return re.MountEntry.Namespace, mountPath, re.StoragePrefix, found
 }
 
-func (r *Router) matchingRouteEntryByPath(ctx context.Context, path string, apiPath bool) (*RouteEntry, bool) {
+func (r *Router) matchingRouteEntryByPath(path string, apiPath bool) (*RouteEntry, bool) {
 	var raw interface{}
 	var ok bool
 	r.l.RLock()
@@ -637,8 +614,7 @@ func (r *Router) matchingRouteEntryByPath(ctx context.Context, path string, apiP
 	}
 
 	// Extract the mount path and storage prefix
-	re := raw.(*RouteEntry)
-	return re, true
+	return raw.(*RouteEntry), true
 }
 
 // Route is used to route a given request
@@ -699,7 +675,7 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 
 	// If the path or namespace is tainted, we reject any operation
 	// except for Rollback and Revoke
-	if re.tainted || ns.Tainted {
+	if re.tainted.Load() || ns.Tainted {
 		switch req.Operation {
 		case logical.RevokeOperation, logical.RollbackOperation:
 		default:
@@ -1159,10 +1135,8 @@ func filteredHeaders(origHeaders map[string][]string, candidateHeaders, deniedHe
 
 // Invalidate is used to route a cache invalidation request to the correct plugin
 func (r *Router) Invalidate(ctx context.Context, key string) bool {
-	re, ok := r.matchingRouteEntryByPath(ctx, key, false)
+	re, ok := r.matchingRouteEntryByPath(key, false)
 	if ok && strings.HasPrefix(key, re.StoragePrefix) {
-		re.RLock()
-		defer re.RUnlock()
 		re.Backend.InvalidateKey(ctx, strings.TrimPrefix(key, re.StoragePrefix))
 		return true
 	}

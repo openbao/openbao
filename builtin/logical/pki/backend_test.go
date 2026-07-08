@@ -3778,9 +3778,9 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 	_, err = client.Logical().WriteWithContext(t.Context(), "pki/issue/test", map[string]any{"uri_sans": "spiffe://domain/users/userpassname"})
 	require.ErrorContains(t, err, "URI Subject Alternative Names were provided via the API which are not valid for this role")
 
-	// Allow wildcards
+	// Allow Globs
 	_, err = client.Logical().JSONMergePatch(t.Context(), "pki/roles/test", map[string]any{
-		"allow_wildcards_in_substitutions": true,
+		"allow_globs_in_substitutions": true,
 	})
 	require.NoError(t, err)
 
@@ -3942,9 +3942,9 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 	_, err = client.Logical().WriteWithContext(t.Context(), "pki/issue/test", map[string]any{"common_name": "foo.example.com"})
 	require.ErrorContains(t, err, "common name foo.example.com not allowed by this role")
 
-	// Allow wildcards
+	// Allow Globs
 	_, err = client.Logical().JSONMergePatch(t.Context(), "pki/roles/test", map[string]any{
-		"allow_wildcards_in_substitutions": true,
+		"allow_globs_in_substitutions": true,
 	})
 	require.NoError(t, err)
 
@@ -4023,7 +4023,7 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 		"policy_identifiers":                 []interface{}{},
 		"require_cn":                         true,
 		"allowed_domains_template":           false,
-		"allow_wildcards_in_substitutions":   false,
+		"allow_globs_in_substitutions":       false,
 		"allow_token_displayname":            false,
 		"country":                            []interface{}{},
 		"not_before_bound":                   "permit",

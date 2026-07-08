@@ -3654,7 +3654,7 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 	// Write test policy for userpass auth method.
 	err := client.Sys().PutPolicy("test", `
    path "pki/*" {
-     capabilities = ["update"]
+     capabilities = ["update", "patch"]
    }`)
 	if err != nil {
 		t.Fatal(err)
@@ -3740,12 +3740,10 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 	// Issue certificate with non-matching identity template parameter
 	client.SetToken(userpassToken)
 	_, err = client.Logical().Write("pki/issue/test", map[string]interface{}{"uri_sans": "spiffe://domain/unknownuser"})
-	if err == nil {
-		t.Fatal(err)
-	}
+	require.ErrorContains(t, err, "URI Subject Alternative Names were provided via the API which are not valid for this role")
 
 	// Set allowed_uri_sans_template to false.
-	_, err = client.Logical().Write("pki/roles/test", map[string]interface{}{
+	_, err = client.Logical().JSONMergePatch(t.Context(), "pki/roles/test", map[string]interface{}{
 		"allowed_uri_sans_template": false,
 	})
 	if err != nil {
@@ -3754,9 +3752,7 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 
 	// Issue certificate with userpassToken.
 	_, err = client.Logical().Write("pki/issue/test", map[string]interface{}{"uri_sans": "spiffe://domain/users/userpassname"})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.ErrorContains(t, err, "URI Subject Alternative Names were provided via the API which are not valid for this role")
 }
 
 func TestBackend_AllowedDomainsTemplate(t *testing.T) {
@@ -3866,9 +3862,7 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 
 	// Issue certificate for unknown userpassname.
 	_, err = client.Logical().Write("pki/issue/test", map[string]interface{}{"common_name": "unknownuserpassname"})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.ErrorContains(t, err, "common name unknownuserpassname not allowed by this role")
 
 	// Issue certificate for foo.userpassname.domain.
 	_, err = client.Logical().Write("pki/issue/test", map[string]interface{}{"common_name": "foo.userpassname.example.com"})
@@ -3886,9 +3880,7 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 
 	// Issue certificate with userpassToken.
 	_, err = client.Logical().Write("pki/issue/test", map[string]interface{}{"common_name": "userpassname"})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.ErrorContains(t, err, "common name userpassname not allowed by this role")
 }
 
 func TestReadWriteDeleteRoles(t *testing.T) {

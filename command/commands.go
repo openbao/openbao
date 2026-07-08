@@ -199,6 +199,9 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"relay": func() (cli.Command, error) {
+			return &RelayCommand{BaseCommand: getBaseCommand()}, nil
+		},
 		"relay init": func() (cli.Command, error) {
 			return &RelayInitCommand{BaseCommand: getBaseCommand()}, nil
 		},

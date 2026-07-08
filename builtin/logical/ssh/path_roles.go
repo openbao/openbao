@@ -385,7 +385,7 @@ func pathRoles(b *backend) *framework.Path {
 				Description: `
 				If true and templating is enabled, the values substituted in for
 				allowed_users and allowed_domains template expressions might contain a
-				comma (','). As these values are comma separeted lists, this can enable
+				comma (','). As these values are comma separated lists, this can enable
 				injection attacks. Only use this, if the data used by the templates is
 				trusted.`,
 				Default: false,

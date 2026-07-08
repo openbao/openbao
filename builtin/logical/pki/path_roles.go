@@ -118,7 +118,7 @@ accepts a comma-separated string or list of domains.`,
 			Type:     framework.TypeBool,
 			Required: true,
 			Description: `If set and templating is enabled, the values substituted in
-				for allowed_uri_sans_template and allowed_domains template experession
+				for allowed_uri_sans_template and allowed_domains template expression
 				might contain a wildcard characters ('*' and '+'). This can enable
 				injection attacks. Only use this, if the data used by the templates
 				is trusted.`,
@@ -519,7 +519,7 @@ accepts a comma-separated string or list of domains.`,
 			"allow_wildcards_in_substitutions": {
 				Type: framework.TypeBool,
 				Description: `If set and templating is enabled, the values substituted in
-					for allowed_uri_sans_template and allowed_domains template experession
+					for allowed_uri_sans_template and allowed_domains template expression
 					might contain a wildcard characters ('*' and '+'). This can enable
 					injection attacks. Only use this, if the data used by the templates
 					is trusted.`,

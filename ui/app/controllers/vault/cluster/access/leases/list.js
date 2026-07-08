@@ -13,6 +13,7 @@ import commonPrefix from 'core/utils/common-prefix';
 export default Controller.extend({
   flashMessages: service(),
   store: service(),
+  router: service(),
   clusterController: controller('vault.cluster'),
 
   backendCrumb: computed('clusterController.model.name', function () {
@@ -100,7 +101,7 @@ export default Controller.extend({
       const fn = adapter[method];
       fn.call(adapter, prefix)
         .then(() => {
-          return this.transitionToRoute('vault.cluster.access.leases.list-root').then(() => {
+          return this.router.transitionTo('vault.cluster.access.leases.list-root').then(() => {
             this.flashMessages.success(`All of the leases under ${prefix} will be revoked.`);
           });
         })

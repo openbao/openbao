@@ -8,6 +8,7 @@ import Controller from '@ember/controller';
 
 export default Controller.extend({
   auth: service(),
+  router: service(),
 
   actions: {
     seal() {
@@ -17,7 +18,7 @@ export default Controller.extend({
         .then(() => {
           this.model.cluster.leaderNode.set('sealed', true);
           this.auth.deleteCurrentToken();
-          return this.transitionToRoute('vault.cluster.unseal');
+          return this.router.transitionTo('vault.cluster.unseal');
         });
     },
   },

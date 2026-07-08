@@ -16,6 +16,7 @@ export default Route.extend({
   store: service(),
   pathHelp: service('path-help'),
   wizard: service(),
+  router: service(),
 
   secretParam() {
     const { secret } = this.paramsFor(this.routeName);
@@ -83,9 +84,9 @@ export default Route.extend({
       const mode = this.routeName.split('.').pop();
       if (mode === 'edit' && utils.keyIsFolder(secret)) {
         if (parentKey) {
-          return this.transitionTo('vault.cluster.secrets.backend.list', encodePath(parentKey));
+          return this.router.transitionTo('vault.cluster.secrets.backend.list', encodePath(parentKey));
         } else {
-          return this.transitionTo('vault.cluster.secrets.backend.list-root');
+          return this.router.transitionTo('vault.cluster.secrets.backend.list-root');
         }
       }
     });

@@ -10,6 +10,7 @@ import removeRecord from 'vault/utils/remove-record';
 export default Controller.extend({
   namespaceService: service('namespace'),
   store: service(),
+  router: service(),
 
   cleanupModel() {
     const model = this.model;
@@ -35,7 +36,7 @@ export default Controller.extend({
       if (saveType === 'save') {
         // fetch new namespaces for the namespace picker
         this.namespaceService.findNamespacesForUser.perform();
-        return this.transitionToRoute('vault.cluster.access.namespaces.index');
+        return this.router.transitionTo('vault.cluster.access.namespaces.index');
       }
     },
   },

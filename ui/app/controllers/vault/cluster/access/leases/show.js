@@ -11,6 +11,7 @@ import removeRecord from 'vault/utils/remove-record';
 
 export default Controller.extend({
   store: service(),
+  router: service(),
   clusterController: controller('vault.cluster'),
 
   backendCrumb: computed('clusterController.model.name', function () {
@@ -46,7 +47,7 @@ export default Controller.extend({
   actions: {
     revokeLease(model) {
       return model.destroyRecord().then(() => {
-        return this.transitionToRoute('vault.cluster.access.leases.list-root');
+        return this.router.transitionTo('vault.cluster.access.leases.list-root');
       });
     },
 

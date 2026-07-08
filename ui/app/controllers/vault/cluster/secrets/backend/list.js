@@ -13,13 +13,14 @@ import escapeStringRegexp from 'escape-string-regexp';
 import commonPrefix from 'core/utils/common-prefix';
 
 export default Controller.extend({
+  router: service(),
   navToNearestAncestor: task(function* (key) {
     const ancestors = utils.ancestorKeysForKey(key);
     let errored = false;
     let nearest = ancestors.pop();
     while (nearest) {
       try {
-        const transition = this.transitionToRoute('vault.cluster.secrets.backend.list', nearest);
+        const transition = this.router.transitionTo('vault.cluster.secrets.backend.list', nearest);
         transition.data.isDeletion = true;
         yield transition.promise;
       } catch {
@@ -36,7 +37,9 @@ export default Controller.extend({
         errored = false;
       }
     }
-    yield this.transitionToRoute('vault.cluster.secrets.backend.list-root');
+    yield this.router.transitionTo('vault.cluster.secrets.backend.list-root').catch((error) => {
+      if (error?.name !== 'TransitionAborted') throw error;
+    });
   }),
 
   flashMessages: service(),

@@ -4,12 +4,14 @@
  */
 
 import Controller from '@ember/controller';
+import { inject as service } from '@ember/service';
 
 export default Controller.extend({
+  router: service(),
   actions: {
     transitionToCluster() {
       return this.model.reload().then(() => {
-        return this.transitionToRoute('vault.cluster', this.model.name);
+        return this.router.transitionTo('vault.cluster', this.model.name);
       });
     },
 

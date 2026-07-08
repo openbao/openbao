@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import Store from '@ember-data/store';
+import Store from 'ember-data/store';
 import { schedule } from '@ember/runloop';
 import { copy } from 'ember-copy';
 import { resolve, Promise } from 'rsvp';
@@ -205,7 +205,7 @@ export default Store.extend({
 
   unloadAll(modelName) {
     if (this.isDestroying || this.isDestroyed) {
-      return this._super(modelName);
+      return;
     }
 
     const hasMountConfig = ['auth-method', 'secret-engine'];
@@ -218,7 +218,7 @@ export default Store.extend({
 
   unloadRecord(record) {
     if (this.isDestroying || this.isDestroyed) {
-      return this._super(record);
+      return;
     }
 
     const hasMountConfig = ['auth-method', 'secret-engine'];

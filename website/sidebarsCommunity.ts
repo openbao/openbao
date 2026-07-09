@@ -99,6 +99,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/lightweight-ocsp-support",
                 "rfcs/grpc-invalidation",
                 "rfcs/control-groups",
+                "rfcs/pqc",
             ],
         },
         {

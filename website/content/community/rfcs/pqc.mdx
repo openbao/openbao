@@ -1,0 +1,158 @@
+---
+sidebar_label: PQC Migration
+description: |-
+  Roadmap for Post-Quantum Cryptography Migration and Cryptographic Inventory
+---
+
+# Post-Quantum Cryptography Migration Roadmap
+
+:::info
+
+This roadmap was published in [August 2024](https://github.com/openbao/openbao/issues/496)
+ahead of widespread PQC libraries. As Go 1.27 RC 1 has been shipped, now is a
+good time to refresh the RFC and start implementing PQC in OpenBao. Sub-RFCs will be
+required for various portions.
+
+:::
+
+## Summary
+
+In [August 2024](https://www.nist.gov/news-events/news/2024/08/nist-releases-first-3-finalized-post-quantum-encryption-standards), NIST published the results of its [Post-Quantum Cryptographic Standardization competition](https://csrc.nist.gov/Projects/post-quantum-cryptography/post-quantum-cryptography-standardization). This started the process for industry applications (and no longer just early adopters and cryptographic library authors) to begin migrating their applications to PQC now that presumably secure algorithms are finalized.
+
+While OpenBao's critical storage largely remains secure (depending on unseal mode: anything using purely symmetric ciphers like Shamir's will be fine), we have numerous places where a harvest-now-decrypt-later (HNDL) attack could impact us or places where more time is beneficial in quantum rotation.
+
+## Problem Statement
+
+OpenBao needs to be hardened against quantum adversaries: even if one doesn't materialize in a reasonable time frame, there is still risk to classical algorithms as both RSA and EC have been shown not to rely on as hard of problems as once thought. While in no means immediately breakable, we nonetheless wish to aid in organizations migrations to PQC.
+
+[Mosca's theorem](https://utimaco.com/service/knowledge-base/post-quantum-cryptography/what-mosca-theorem) attempts to allow organizations to quantity their time horizon for a quantum migration with the equation `(X+Y)>Z`:
+
+ - `X`, the time you need the encryption to be secure for,
+ - `Y`, the time the migration will take,
+ - `Z`, the time at which large-scale quantum adversaries (or, equivalently, attacks in classical algorithms) will be available.
+
+For an organization to remain secure, `(X+Y)` must be strictly less than `Z`. Since `Z` is unknown, it is important to aid organizations wishing to minimize the overall transition time (`Y`, the most direct variable they control). Thus, we should start considering our own quantum roadmap.
+
+## User-facing description
+
+Some changes will be immediately available to end-users: different encryption algorithms will be selectable as candidates in various points of the process. For instance, [Transit](https://openbao.org/docs/secrets/transit/#key-types) and [PKI](https://openbao.org/api-docs/secret/pki/#generate-root) might allow pure post-quantum algorithms or various hybrid constructions. Other changes might be strictly internal, like selection of [key type](https://github.com/openbao/openbao/blob/57669cff41f5b105bede654347f7038667eac7a1/vault/cluster.go#L211-L220) for cross-node identity in Seal HA.
+
+While careful thought for backwards compatibility within OpenBao will be needed, some of these may require more active interaction by the user: changing PKI CA key types, for instance, will likely require buy-in from the entire organization to rotate.
+
+## Technical Description
+
+To start a quantum migration, we need to take inventory of places where cryptography is used. We can then classify them along three axis: **impact**, **ease** of migration, and **risk** of a failure to migrate and the complexity of migration, prioritizing appropriately.
+
+Importantly, such migration can be done incrementally as each portion is largely independent of the others.
+
+
+### Cryptographic Inventory
+
+ - [External & cluster TLS listeners](https://openbao.org/docs/configuration/listener/tcp/).
+   - **Impact**: Prevent HNDL against all secrets.
+   - **Ease**: Swapping TLS libraries.
+   - **Risk**: Minimal; TLS does auto-negotiation of algorithms.
+ - [Plugin GRPC TLS listeners](https://github.com/openbao/openbao/blob/57669cff41f5b105bede654347f7038667eac7a1/sdk/plugin/serve.go#L25-L29)
+   - **Impact**: Prevent limited HNDL against `plugin<->core` communication.
+   - **Ease**: Swapping TLS libraries.
+   - **Risk**: Minimal; TLS does auto-negotiation of algorithms.
+ - Plugin internal TLS requests (such as AWS/... &c)
+   - **Impact**: Prevent limited HNDL against `plugin<->remote` service communication.
+   - **Ease**: Swapping TLS libraries.
+   - **Risk**: Minimal; TLS does auto-negotiation of algorithms.
+ - Plugin specific keys (such as [Kubernetes Auth](https://github.com/openbao/openbao/blob/57669cff41f5b105bede654347f7038667eac7a1/builtin/credential/kubernetes/path_config.go#L172-L177), [Database Secret](https://github.com/openbao/openbao/blob/57669cff41f5b105bede654347f7038667eac7a1/builtin/logical/database/credentials.go#L207-L237), ...)
+   - **Impact**: Plugin-dependent: Kubernetes is low as it requires an active, fast quantum adversary.
+   - **Ease**: Dependent on plugin type and ecosystem.
+   - **Risk**: Plugin and customer dependent.
+ - [Cluster identity](https://github.com/openbao/openbao/blob/57669cff41f5b105bede654347f7038667eac7a1/vault/cluster.go#L211-L220)
+   - **Impact**: Low: requires online cluster communication to exploit which requires a active, fast quantum adversary.
+   - **Ease**: Carefully swapping credential types with fallback.
+   - **Risk**: Minimal; entirely controlled by OpenBao as an implementation detail.
+ - [PKI CA & leaf keys](https://openbao.org/api-docs/secret/pki/#generate-root)
+   - **Impact**: Customer-specific.
+   - **Ease**: Customer takes on complicated CA migration.
+   - **Risk**: Substantial risk of failure or service interruptions.
+ - [Cert Auth CA & leaf keys](https://openbao.org/api-docs/secret/pki/#generate-root)
+   - **Impact**: Low: requires online cluster communication to exploit which requires a active, fast quantum adversary.
+   - **Ease**: Customer takes on complicated CA migration (either globally within their org or in limited scope for just certs used to talk to OpenBao).
+   - **Risk**: Risk of failure can be mitigated by having multiple CA types.
+ - [JWT auth issuer & token keys](https://openbao.org/docs/auth/jwt/#jwt-verification)
+   - **Impact**: Low: requires online cluster communication to exploit which requires a active, fast quantum adversary.
+   - **Ease**: Customer takes on complicated issuer & token migration (either globally within their org or in limited scope for just JWTs used to talk to OpenBao).
+   - **Risk**: Risk of failure can be mitigated by having multiple issuer types/roles.
+ - [Transit keys](https://openbao.org/docs/secrets/transit/#key-types)
+   - **Impact**: Customer-specific.
+   - **Ease**: Customer-dependent: some may fully rely on Transit, others may interoperate with other libraries. Will have to introduce additional primitive types (KEMs).
+   - **Risk**: Customer-dependent: those relying on Transit can swap key names, others may need to wait for ecosystem to update.
+ - [SSH CA & leaf keys](https://openbao.org/api-docs/secret/ssh/#generate-certificate-and-key)
+   - **Impact**: Customer-specific.
+   - **Ease**: Customer takes on complicated CA migration.
+   - **Risk**: Substantial risk of failure or service interruptions.
+ - [Auto-unseal](https://openbao.org/docs/configuration/seal/)
+   - **Impact**: Prevent HNDL against all of storage.
+   - **Ease**: Migration between seal mechanisms/configs.
+   - **Risk**: Seal only encrypts root key, so can potentially swap back if necessary.
+ - [PGP encryption of unseal keys](https://openbao.org/docs/concepts/pgp-gpg-keybase/#initializing-with-pgp)
+   - **Impact**: Prevent HNDL on Shamir seal keys.
+   - **Ease**: Requires rotating unseal/recovery keys.
+   - **Risk**: Similar risks with classical algorithms (requires support in clients, ...).
+ - [Identity JWT/OIDC](https://openbao.org/docs/secrets/identity/)
+   - **Impact**: Low: requires online cluster communication to exploit which requires a active, fast quantum adversary.
+   - **Ease**: Customer takes on complicated issuer & token migration (either globally within their org or in limited scope for just JWTs used to talk to OpenBao).
+   - **Risk**: Risk of failure can be mitigated by having multiple issuer types/roles.
+
+### Remaining Roadblocks
+
+The following roadblocks remain to full quantum adoption:
+
+ - [x] Selection of post-quantum algorithms by standards bodies
+ - [ ] Post-Quantum implementations are available ([CIRCL](https://github.com/cloudflare/circl) or [Go stdlib](https://github.com/golang/go/issues/64537))
+ - [ ] Standardization & interoperability work
+    - [x] X.509: [RFC 9881](https://datatracker.ietf.org/doc/rfc9881/), [RFC 9935](https://datatracker.ietf.org/doc/rfc9935/)
+    - [ ] TLS: [draft-ietf-tls-ecdhe-mlkem](https://datatracker.ietf.org/doc/draft-ietf-tls-ecdhe-mlkem/), [draft-ietf-uta-pqc-app](https://datatracker.ietf.org/doc/draft-ietf-uta-pqc-app/)
+    - [ ] SSH
+    - [ ] PGP
+    - [x] JWT: [RFC 9964](https://datatracker.ietf.org/doc/rfc9964/), [draft-ietf-jose-pqc-kem](https://datatracker.ietf.org/doc/draft-ietf-jose-pqc-kem/06/)
+ - [ ] Go-KMS-Wrapper SDK changes to support new algorithm types (KEM)
+ - [ ] Remote providers (AWS, databases, ...) supporting new algorithms
+
+Of these, the second item (suitable libraries) is blocking implementation in any location above.
+
+## Rationale and alternatives
+
+There is no alternative to quantum migration. Different approaches can be taken, but this will likely be ad-hoc as contributors get time and standards bodies finish particular specifications.
+
+An open question will be what is Go's roadmap for post-quantum: if sufficient algorithms are not present, we might rely on CIRCL for certain operations for wider interoperability, e.g., Transit or potentially PKI and SSH.
+
+## Downsides
+
+Quantum brings with it several challenges not well mitigated by industry. Often customers will need to make more explicit choices about key types in the future: where one could safely choose Ed25519 (especially with NIST's FIPS 185-5 revision to allow it in FIPS mode) and you'd get a secure, performant algorithm, post-quantum is often a choose two or three of four design problem: small key sizes, small signatures, fast signing/verification, or low memory usage.
+
+However, many of the risk areas identified above are in the users' control: no automatic migration will occur for the user, so they'll need to explicitly handle these interactions.
+
+This will also substantially increase the cryptography base of OpenBao, requiring more care for future changes. On the whole, such a comprehensive list as above is worthwhile to maintain anyways.
+
+## Security Implications
+
+This will align OpenBao with industry trends towards adopting quantum algorithms. We may take on risk if such algorithms are later found to be weak, but we can mitigate this by using algorithms adopted and vetted by Go's toolchain cryptography team. Introducing additional algorithms before standardization should be strictly avoided. Adopting additional algorithms which are standardized but not included in Go's toolchain should be carefully considered for impact, risk, and quality of implementation.
+
+## User/Developer Experience
+
+Ideally the extent of the impact on users/developers is the addition of specific new types mentioned above (new PKI and SSH certificates, JWT key types, ...) and the remaining impacts of internal changes (TLS algorithms, internal cluster identity changes, ...) minimal.
+
+## Unresolved Questions
+
+ - Which cryptographic libraries to use?
+ - What is the performance impact of switching to these algorithms for key places (tls, cluster identity, ...)
+
+## Related Issues
+
+Upstream:
+
+ - https://github.com/hashicorp/vault/issues/27239 with @sycured and @joeratzer
+
+## Proof of Concept
+
+n/a
+
+A simple demonstration for limited portions could be achieved by using [Cloudflare's Go toolchain](https://github.com/cloudflare/go?tab=readme-ov-file#cfgo) with post-quantum key agreement support in TLS. However, this likely wouldn't be worthwhile as we'd prefer to use the upstream Go toolchain for our release builds.

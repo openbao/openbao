@@ -131,6 +131,9 @@ func NewCertificateGetter(l *configutil.Listener, ui cli.Ui, logger hclog.Logger
 		Logger:                  zapLogger,
 		DisableHTTPChallenge:    l.TLSACMEDisableHttpChallenge,
 		DisableTLSALPNChallenge: l.TLSACMEDisableAlpnChallenge,
+		AltHTTPPort:             l.TLSACMEHttpChallengePort,
+		AltTLSALPNPort:          l.TLSACMEAlpnChallengePort,
+		ListenHost:              l.TLSACMEChallengeHost,
 	}
 
 	if l.TLSACMECARoot != "" {

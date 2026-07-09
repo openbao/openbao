@@ -12,7 +12,7 @@ import (
 func TestFileSourceBuilder_Success(t *testing.T) {
 	engine := &ProfileEngine{sourceBuilders: make(map[string]SourceBuilder)}
 	field := map[string]interface{}{"path": "dummy"}
-	src := FileSourceBuilder(engine, field)
+	src := FileSourceBuilder(engine, field, nil)
 
 	fs, ok := src.(*FileSource)
 	if !ok {

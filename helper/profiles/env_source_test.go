@@ -8,7 +8,7 @@ import (
 func TestEnvSourceBuilder_Success(t *testing.T) {
 	engine := &ProfileEngine{sourceBuilders: make(map[string]SourceBuilder)}
 	field := map[string]interface{}{"env_var": "TEST_VAR"}
-	src := EnvSourceBuilder(engine, field)
+	src := EnvSourceBuilder(engine, field, nil)
 	if src == nil {
 		t.Errorf("Expected non-nil source")
 	}

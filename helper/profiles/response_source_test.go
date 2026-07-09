@@ -9,7 +9,7 @@ func TestSourceBuilder_Success(t *testing.T) {
 	engine := &ProfileEngine{outerBlockName: "outer", sourceBuilders: make(map[string]SourceBuilder)}
 	field := map[string]interface{}{"response_name": "mount-userpass"}
 
-	src := ResponseSourceBuilder(engine, field)
+	src := ResponseSourceBuilder(engine, field, nil)
 	respSrc, ok := src.(*ResponseSource)
 	if !ok {
 		t.Fatalf("expected *ResponseSource, got %T", src)
@@ -30,7 +30,7 @@ func TestWithResponseSource(t *testing.T) {
 		t.Fatal("expected sourceBuilders['response'] to be set")
 	}
 
-	src := builder(engine, map[string]interface{}{"response_name": "x"})
+	src := builder(engine, map[string]interface{}{"response_name": "x"}, nil)
 	if src == nil {
 		t.Fatalf("builder returned nil")
 	}

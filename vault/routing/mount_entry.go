@@ -125,6 +125,8 @@ func (e *MountEntry) SyncCache() {
 	} else {
 		e.SynthesizedConfigCache.Store("allowed_response_headers", e.Config.AllowedResponseHeaders)
 	}
+
+	e.SynthesizedConfigCache.Store("expose_public_paths", e.Config.ExposePublicPaths)
 }
 
 func (entry *MountEntry) Deserialize() map[string]interface{} {

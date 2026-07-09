@@ -2235,11 +2235,12 @@ func TestSystemBackend_tuneAuth(t *testing.T) {
 	)
 
 	exp := map[string]interface{}{
-		"description":       "token based credentials",
-		"default_lease_ttl": int(2764800),
-		"max_lease_ttl":     int(2764800),
-		"force_no_cache":    false,
-		"token_type":        "default-service",
+		"description":         "token based credentials",
+		"default_lease_ttl":   int(2764800),
+		"max_lease_ttl":       int(2764800),
+		"force_no_cache":      false,
+		"token_type":          "default-service",
+		"expose_public_paths": false,
 	}
 
 	if diff := deep.Equal(resp.Data, exp); diff != nil {

@@ -859,6 +859,18 @@ func (c *TestCluster) start(t testing.T) {
 				c.Logger.Info("starting listener for test core", "core", i, "port", ln.Address.Port)
 				go core.Server.Serve(ln)
 			}
+
+			for _, ln := range core.PublicRouteListeners {
+				c.Logger.Info("starting public route listener for test core", "core", i, "port", ln.Address.Port)
+				core := core
+				ln := ln
+				go func() {
+					err := core.PublicRouteServer.Serve(ln)
+					if err != nil {
+						c.Logger.Error("Could not start public route listener for test core", "core", i, "port", ln.Address.Port, "Error:", err)
+					}
+				}()
+			}
 		}
 	}
 	if c.SetupFunc != nil {
@@ -1135,12 +1147,15 @@ type TestClusterCore struct {
 	*Core
 	CoreConfig           *CoreConfig
 	Client               *api.Client
+	PublicRouteClient    *api.Client
 	Handler              http.Handler
 	Address              *net.TCPAddr
 	Listeners            []*TestListener
+	PublicRouteListeners []*TestListener
 	ReloadFuncs          *map[string][]reloadutil.ReloadFunc
 	ReloadFuncsLock      *sync.RWMutex
 	Server               *http.Server
+	PublicRouteServer    *http.Server
 	ServerCert           *x509.Certificate
 	ServerCertBytes      []byte
 	ServerCertPEM        []byte
@@ -1247,6 +1262,9 @@ type TestClusterOptions struct {
 	ABCDLoggerNames bool
 
 	DisableStandbyReads bool
+
+	// Add a public route listener
+	PublicRouteListener bool
 }
 
 type TestPluginConfig struct {
@@ -1446,8 +1464,11 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 	//
 	addresses := []*net.TCPAddr{}
 	listeners := [][]*TestListener{}
+	publicRouteListeners := [][]*TestListener{}
 	servers := []*http.Server{}
+	publicRouteServers := []*http.Server{}
 	handlers := []http.Handler{}
+	publicRouteHandlers := []http.Handler{}
 	tlsConfigs := []*tls.Config{}
 	certGetters := []*reloadutil.CertificateGetter{}
 	for i := 0; i < numCores; i++ {
@@ -1509,6 +1530,38 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 			ErrorLog: testCluster.Logger.StandardLogger(nil),
 		}
 		servers = append(servers, server)
+
+		// Public route listener
+		if opts != nil && opts.PublicRouteListener {
+			publicRouteListenerAddr := &net.TCPAddr{
+				IP:   baseAddr.IP,
+				Port: 0,
+			}
+
+			publicRouteListener, err := net.ListenTCP("tcp", publicRouteListenerAddr)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			publicRouteTestListener := []*TestListener{
+				{
+					Listener: publicRouteListener,
+					Address:  publicRouteListener.Addr().(*net.TCPAddr),
+				},
+			}
+
+			publicRouteListeners = append(publicRouteListeners, publicRouteTestListener)
+			addresses = append(addresses, addr)
+
+			// Server that handles public routes
+			var publicRouteHandler http.Handler = http.NewServeMux()
+			publicRouteHandlers = append(publicRouteHandlers, publicRouteHandler)
+			publicRouteServer := &http.Server{
+				Handler:  publicRouteHandler,
+				ErrorLog: testCluster.Logger.StandardLogger(nil),
+			}
+			publicRouteServers = append(publicRouteServers, publicRouteServer)
+		}
 	}
 
 	// Create three cores with the same physical and different redirect/cluster
@@ -1686,6 +1739,20 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 			handlers[i] = handler
 			servers[i].Handler = handlers[i]
 		}
+
+		// Public route handler
+		if opts != nil && opts.PublicRouteListener && opts.HandlerFunc != nil {
+			// Create handler for public route listener
+			props := opts.DefaultHandlerProperties
+			props.ListenerConfig = &configutil.Listener{
+				OnlyPublicRoutes: true,
+			}
+			props.Core = c
+
+			publicRouteHandlers[i] = opts.HandlerFunc.Handler(&props)
+
+			publicRouteServers[i].Handler = publicRouteHandlers[i]
+		}
 	}
 
 	// Clustering setup
@@ -1714,6 +1781,11 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 			UnderlyingRawStorage: coreConfigs[i].Physical,
 			UnderlyingHAStorage:  coreConfigs[i].HAPhysical,
 		}
+		if opts != nil && opts.PublicRouteListener {
+			tcc.PublicRouteListeners = publicRouteListeners[i]
+			tcc.PublicRouteServer = publicRouteServers[i]
+		}
+
 		tcc.ReloadFuncs = &cores[i].reloadFuncs
 		tcc.ReloadFuncsLock = &cores[i].reloadFuncsLock
 		tcc.ReloadFuncsLock.Lock()
@@ -1732,6 +1804,10 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 	// Assign clients
 	for i := 0; i < numCores; i++ {
 		testCluster.Cores[i].Client = testCluster.getAPIClient(t, opts, listeners[i][0].Address.Port, tlsConfigs[i])
+
+		if opts != nil && opts.PublicRouteListener {
+			testCluster.Cores[i].PublicRouteClient = testCluster.getAPIClient(t, opts, publicRouteListeners[i][0].Address.Port, nil)
+		}
 	}
 
 	// Cleanup
@@ -2167,12 +2243,18 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 	}
 }
 
+// getApiClient
+// TLS is disabled if tlsConfig is set to nil
 func (testCluster *TestCluster) getAPIClient(
 	t testing.T, opts *TestClusterOptions,
 	port int, tlsConfig *tls.Config,
 ) *api.Client {
 	transport := cleanhttp.DefaultPooledTransport()
-	transport.TLSClientConfig = tlsConfig.Clone()
+
+	if tlsConfig != nil {
+		transport.TLSClientConfig = tlsConfig.Clone()
+	}
+
 	if err := http2.ConfigureTransport(transport); err != nil {
 		t.Fatal(err)
 	}
@@ -2187,7 +2269,11 @@ func (testCluster *TestCluster) getAPIClient(
 	if config.Error != nil {
 		t.Fatal(config.Error)
 	}
-	config.Address = fmt.Sprintf("https://127.0.0.1:%d", port)
+	if tlsConfig != nil {
+		config.Address = fmt.Sprintf("https://127.0.0.1:%d", port)
+	} else {
+		config.Address = fmt.Sprintf("http://127.0.0.1:%d", port)
+	}
 	config.HttpClient = client
 	config.MaxRetries = 0
 	apiClient, err := api.NewClient(config)

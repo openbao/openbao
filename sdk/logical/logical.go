@@ -156,6 +156,9 @@ type Paths struct {
 	// On standby nodes, like all storage write operations, this will trigger
 	// an ErrReadOnly return.
 	WriteForwardedStorage []string
+
+	// Paths that are allowed to be accessed via a public listener
+	AllowedPublicPaths []string
 }
 
 type Auditor interface {

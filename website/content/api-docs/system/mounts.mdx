@@ -366,6 +366,9 @@ This endpoint tunes configuration parameters for a given mount point.
 - `plugin_version` `(string: "")` – Specifies the semantic version of the plugin
   to use, e.g. "v1.0.0". Changes will not take effect until the mount is reloaded.
 
+- `expose_public_paths` `(bool: false)` - Specifies whether requests from a public listener should be
+  accepted for this mount's dedicated public paths.
+
 ### Sample payload
 
 ```json

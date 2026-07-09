@@ -525,6 +525,67 @@ func TestOcsp_ValidRequests(t *testing.T) {
 	}
 }
 
+// Test valid OCSP RFC5019 requests
+func TestOcsp_Rfc5019Requests(t *testing.T) {
+	t.Parallel()
+	cluster, issuerCert, certToRevoke := setupOcspRfc5019Test(t, true)
+
+	defer cluster.Cleanup()
+
+	publicRouteClient := cluster.Cores[0].PublicRouteClient
+
+	// Make sure that OCSP handler responds properly
+	ocspReq := generateRequest(t, crypto.SHA1, certToRevoke, issuerCert)
+	ocspPostReq := publicRouteClient.NewRequest(http.MethodPost, "/v1/pki/ocsp")
+	ocspPostReq.Headers.Set("Content-Type", "application/ocsp-request")
+	ocspPostReq.BodyBytes = ocspReq
+	rawResp, err := publicRouteClient.RawRequest(ocspPostReq)
+	require.NoError(t, err, "failed sending ocsp post request")
+
+	require.Equal(t, 200, rawResp.StatusCode)
+	require.Equal(t, ocspResponseContentType, rawResp.Header.Get("Content-Type"))
+	bodyReader := rawResp.Body
+	respDer, err := io.ReadAll(bodyReader)
+	require.NoError(t, err, "failed reading response body")
+	err = bodyReader.Close()
+	require.NoError(t, err, "failed to close response body")
+
+	ocspResp, err := ocsp.ParseResponse(respDer, issuerCert)
+	require.NoError(t, err, "parsing ocsp get response")
+
+	require.Equal(t, ocsp.Revoked, ocspResp.Status)
+	require.Equal(t, certToRevoke.SerialNumber, ocspResp.SerialNumber)
+
+	// Make sure that OCSP handler responds properly
+	ocspReq = generateOcspRfc5019Request(t, certToRevoke, issuerCert)
+
+	// Test OCSP Get request for ocsp
+	urlEncoded := base64.StdEncoding.EncodeToString(ocspReq)
+	if strings.Contains(urlEncoded, "//") {
+		// workaround known redirect bug that is difficult to fix
+		t.Skip("VAULT-13630 - Skipping GET OCSP test with encoded issuer cert containing // triggering redirection bug")
+	}
+
+	ocspGetReq := publicRouteClient.NewRequest(http.MethodGet, "/v1/pki/ocsp/"+urlEncoded)
+	ocspGetReq.Headers.Set("Content-Type", "application/ocsp-request")
+	rawResp, err = publicRouteClient.RawRequest(ocspGetReq)
+	require.NoError(t, err, "failed sending ocsp get request")
+
+	require.Equal(t, 200, rawResp.StatusCode)
+	require.Equal(t, ocspResponseContentType, rawResp.Header.Get("Content-Type"))
+	bodyReader = rawResp.Body
+	respDer, err = io.ReadAll(bodyReader)
+	require.NoError(t, err, "failed reading response body")
+	err = bodyReader.Close()
+	require.NoError(t, err, "failed to close response body")
+
+	ocspResp, err = ocsp.ParseResponse(respDer, issuerCert)
+	require.NoError(t, err, "parsing ocsp get response")
+
+	require.Equal(t, ocsp.Revoked, ocspResp.Status)
+	require.Equal(t, certToRevoke.SerialNumber, ocspResp.SerialNumber)
+}
+
 func runOcspRequestTest(t *testing.T, requestType string, caKeyType string,
 	caKeyBits int, caKeySigBits int, requestHash crypto.Hash, ocspExpiry time.Duration,
 ) {
@@ -740,4 +801,74 @@ func sendOcspPostRequest(ctx context.Context, b *backend, s logical.Storage, ocs
 	})
 
 	return resp, err
+}
+
+// Provisions cluster and resources for ocsp rfc5019 tests
+// Returns publicRouteClient, issuerCert, revokedCert
+func setupOcspRfc5019Test(t *testing.T, ocspRfc5019Mode bool) (*vault.TestCluster, *x509.Certificate, *x509.Certificate) {
+	coreConfig := &vault.CoreConfig{
+		LogicalBackends: map[string]logical.Factory{
+			"pki": Factory,
+		},
+	}
+
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc:         vaulthttp.Handler,
+		PublicRouteListener: true,
+		NumCores:            1,
+	})
+	cluster.Start()
+
+	client := cluster.Cores[0].Client
+
+	mountPKIEndpoint(t, client, "pki")
+
+	// Make the ocsp paths public
+	if ocspRfc5019Mode {
+		_, err := client.Logical().Write("/sys/mounts/pki/tune", map[string]interface{}{
+			"expose_public_paths": true,
+		})
+
+		require.NoError(t, err, "error generating root ca: %v", err)
+	}
+
+	// Generate root ca
+	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+		"key_type":    "ec",
+		"common_name": "root-ca.com",
+		"ttl":         "600h",
+	})
+
+	require.NoError(t, err, "error generating root ca: %v", err)
+	require.NotNil(t, resp, "expected ca info from root")
+
+	issuerCert := parseCert(t, resp.Data["certificate"].(string))
+
+	resp, err = client.Logical().Write("pki/roles/example", map[string]interface{}{
+		"allowed_domains":  "example.com",
+		"allow_subdomains": "true",
+		"no_store":         "false", // make sure we store this cert
+		"max_ttl":          "1h",
+		"key_type":         "ec",
+	})
+	require.NoError(t, err, "error setting up pki role: %v", err)
+	require.NotNil(t, resp, "got nil response from 'create role' request")
+
+	resp, err = client.Logical().Write("pki/issue/example", map[string]interface{}{
+		"common_name": "test.example.com",
+		"ttl":         "15m",
+	})
+	require.NoError(t, err, "error issuing certificate: %v", err)
+	require.NotNil(t, resp, "got nil response from issuing request")
+	certToRevoke := parseCert(t, resp.Data["certificate"].(string))
+	serialNum := resp.Data["serial_number"].(string)
+
+	// Revoke the certificate
+	resp, err = client.Logical().Write("pki/revoke", map[string]interface{}{
+		"serial_number": serialNum,
+	})
+	require.NoError(t, err, "error revoking certificate: %v", err)
+	require.NotNil(t, resp, "got nil response from revoke")
+
+	return cluster, issuerCert, certToRevoke
 }

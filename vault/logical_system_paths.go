@@ -3271,6 +3271,10 @@ func (b *SystemBackend) authPaths() []*framework.Path {
 					Type:        framework.TypeString,
 					Description: strings.TrimSpace(sysHelp["plugin-catalog_version"][0]),
 				},
+				"expose_public_paths": {
+					Type:        framework.TypeBool,
+					Description: strings.TrimSpace(sysHelp["tune_expose_public_paths"][0]),
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
@@ -3352,6 +3356,10 @@ func (b *SystemBackend) authPaths() []*framework.Path {
 								"plugin_version": {
 									Type:     framework.TypeString,
 									Required: false,
+								},
+								"expose_public_paths": {
+									Type:        framework.TypeBool,
+									Description: strings.TrimSpace(sysHelp["tune_expose_public_paths"][0]),
 								},
 							},
 						}},
@@ -4345,6 +4353,10 @@ func (b *SystemBackend) mountPaths() []*framework.Path {
 					Type:        framework.TypeMap,
 					Description: strings.TrimSpace(sysHelp["tune_user_lockout_config"][0]),
 				},
+				"expose_public_paths": {
+					Type:        framework.TypeBool,
+					Description: strings.TrimSpace(sysHelp["tune_expose_public_paths"][0]),
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -4433,6 +4445,10 @@ func (b *SystemBackend) mountPaths() []*framework.Path {
 									Type:     framework.TypeBool,
 									Required: false,
 								},
+								"expose_public_paths": {
+									Type:        framework.TypeBool,
+									Description: strings.TrimSpace(sysHelp["tune_expose_public_paths"][0]),
+								},
 							},
 						}},
 					},
@@ -4505,6 +4521,10 @@ func (b *SystemBackend) mountPaths() []*framework.Path {
 				"plugin_version": {
 					Type:        framework.TypeString,
 					Description: strings.TrimSpace(sysHelp["plugin-catalog_version"][0]),
+				},
+				"expose_public_paths": {
+					Type:        framework.TypeBool,
+					Description: strings.TrimSpace(sysHelp["tune_expose_public_paths"][0]),
 				},
 			},
 

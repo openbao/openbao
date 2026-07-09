@@ -221,6 +221,8 @@ type Request struct {
 	// resolution. Only valid when HasInlineAuth=true.
 	HasInlineAuth bool  `json:"has_inline_auth,omitempty" sentinel:""`
 	InlineAuth    *Auth `json:"-" sentinel:""`
+
+	PublicRoute bool `json:"public_route,omitempty"`
 }
 
 // Clone returns a deep copy of the request by using copystructure

@@ -250,6 +250,10 @@ default value in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-u
   there is no X-Forwarded-For header or it is empty, the client address will be
   used as-is, rather than the client connection rejected.
 
+- `only_public_routes` `(bool: false)` - If set to true, the listener is designated as a public route
+  listener. It accepts plain HTTP requests, but only for paths that a backend has explicitly designated
+  as public and that an operator has enabled access to.
+
 ### ACME parameters
 
 The following parameters replace direct certificate acquisition when

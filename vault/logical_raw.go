@@ -45,16 +45,19 @@ func NewRawBackend(core *Core) *RawBackend {
 	return r
 }
 
-func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAccess, error) {
+// storageByPath returns appriopriate StorageAccess wrapping over specific
+// namespace barrier depending on the requested path. Also returns if the
+// namespace with given path (uuid) doesn't exist.
+func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAccess, bool, error) {
 	ns, rest, err := b.core.NamespaceByStoragePath(ctx, path)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// check if we are trying to access protected path.
 	for _, p := range protectedPaths {
 		if strings.HasPrefix(rest, p) {
-			return nil, fmt.Errorf("cannot access %q", rest)
+			return nil, false, fmt.Errorf("cannot access %q", rest)
 		}
 	}
 
@@ -66,17 +69,17 @@ func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAcc
 	// seal manager.
 	if ns == nil || ns.ID == namespace.RootNamespaceID {
 		if specialPath {
-			return &directStorageAccess{physical: b.core.physical}, nil
+			return &directStorageAccess{physical: b.core.physical}, ns != nil, nil
 		} else {
-			return &secureStorageAccess{barrier: b.core.barrier}, nil
+			return &secureStorageAccess{barrier: b.core.barrier}, ns != nil, nil
 		}
 	}
 
 	if specialPath {
 		parent, _ := ns.ParentPath()
-		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(parent)}, nil
+		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(parent)}, ns != nil, nil
 	} else {
-		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)}, nil
+		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)}, ns != nil, nil
 	}
 }
 
@@ -99,16 +102,21 @@ func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, da
 		b.logger.Info("reading", "path", path)
 	}
 
-	barrier, err := b.storageByPath(ctx, path)
+	storage, _, err := b.storageByPath(ctx, path)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
 	}
 
-	valueBytes, err := barrier.Get(ctx, path)
-	if err != nil {
+	valueBytes, err := storage.Get(ctx, path)
+	switch {
+	// We match against an error coming from using wrong barrier to read;
+	// This happens when we are in a storage space of a namespace that
+	// has been discarded from memory due to sealing of its parent.
+	case err != nil && strings.HasSuffix(err.Error(), "cipher: message authentication failed"):
+		return nil, barrier.ErrNamespaceSealed
+	case err != nil:
 		return handleErrorNoReadOnlyForward(err)
-	}
-	if valueBytes == nil {
+	case valueBytes == nil:
 		return nil, nil
 	}
 
@@ -170,15 +178,19 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		}
 	}
 
-	barrier, err := b.storageByPath(ctx, path)
+	storage, allowWrites, err := b.storageByPath(ctx, path)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
+	}
+
+	if !allowWrites {
+		return nil, barrier.ErrNamespaceSealed
 	}
 
 	if req.Operation == logical.UpdateOperation {
 		// Check if this is an existing value with compression applied.
 		// If so, use the same compression (or no compression)
-		valueBytes, err := barrier.Get(ctx, path)
+		valueBytes, err := storage.Get(ctx, path)
 		if err != nil {
 			return handleErrorNoReadOnlyForward(err)
 		}
@@ -226,7 +238,7 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		}
 	}
 
-	if err := barrier.Put(ctx, path, value); err != nil {
+	if err := storage.Put(ctx, path, value); err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 	return nil, nil
@@ -240,7 +252,7 @@ func (b *RawBackend) handleRawDelete(ctx context.Context, req *logical.Request, 
 		b.logger.Info("deleting", "path", path)
 	}
 
-	barrier, err := b.storageByPath(ctx, path)
+	barrier, _, err := b.storageByPath(ctx, path)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
 	}
@@ -268,7 +280,7 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 		b.logger.Info("listing", "path", path)
 	}
 
-	barrier, err := b.storageByPath(ctx, path)
+	barrier, _, err := b.storageByPath(ctx, path)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
 	}
@@ -284,12 +296,16 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 func (b *RawBackend) existenceCheck(ctx context.Context, request *logical.Request, data *framework.FieldData) (bool, error) {
 	path := data.Get("path").(string)
 
-	barrier, err := b.storageByPath(ctx, path)
+	storage, allowWrites, err := b.storageByPath(ctx, path)
 	if err != nil {
 		return false, err
 	}
 
-	entry, err := barrier.Get(ctx, path)
+	if !allowWrites {
+		return false, barrier.ErrNamespaceSealed
+	}
+
+	entry, err := storage.Get(ctx, path)
 	if err != nil {
 		return false, err
 	}

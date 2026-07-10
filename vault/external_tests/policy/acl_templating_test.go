@@ -18,12 +18,14 @@ func TestPolicyTemplating(t *testing.T) {
 	goodPolicy1 := `
 path "secret/{{ identity.entity.name}}/*" {
 	capabilities = ["read", "create", "update"]
-
 }
 
 path "secret/{{ identity.entity.aliases.%s.name}}/*" {
 	capabilities = ["read", "create", "update"]
+}
 
+path "secret/{{ identity.entity.metadata.key}}/*" {
+	capabilities = ["read", "create", "update"]
 }
 `
 
@@ -66,6 +68,9 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 		"policies": []string{
 			"goodPolicy1",
 			"badPolicy1",
+		},
+		"metadata": map[string]string{
+			"key": "metadata",
 		},
 	})
 	if err != nil {
@@ -180,18 +185,25 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 			name: "bad group name",
 			path: "secret/foobar/foo",
 		},
+		{
+			name: "entity metadata",
+			path: "secret/metadata/test/foo",
+		},
 	}
 
-	runTests := func(failGroupName bool) {
+	runTests := func(failGroupName, failMetadata bool) {
 		for _, test := range tests {
 			resp, err := client.Logical().Write(test.path, map[string]interface{}{"zip": "zap"})
 			fail := test.fail
 			if test.name == "bad group name" {
 				fail = failGroupName
 			}
+			if test.name == "entity metadata" {
+				fail = failMetadata
+			}
 			if err != nil && !fail {
-				if resp.Data["error"].(string) != "permission denied" {
-					t.Fatalf("unexpected status %v", resp.Data["error"])
+				if resp != nil && resp.Data["error"].(string) != "permission denied" {
+					t.Fatalf("%s: unexpected status %v", test.name, resp.Data["error"])
 				}
 				t.Fatalf("%s: got unexpected error: %v", test.name, err)
 			}
@@ -203,7 +215,7 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 
 	rootToken := client.Token()
 	client.SetToken(clientToken)
-	runTests(true)
+	runTests(true, false)
 
 	client.SetToken(rootToken)
 	// Test that a policy with bad group membership doesn't kill the other paths
@@ -212,7 +224,7 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 		t.Fatal(err)
 	}
 	client.SetToken(clientToken)
-	runTests(true)
+	runTests(true, false)
 
 	// Test that adding group membership now allows access
 	client.SetToken(rootToken)
@@ -226,5 +238,34 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 		t.Fatal(err)
 	}
 	client.SetToken(clientToken)
-	runTests(false)
+	runTests(false, false)
+
+	// Test invalid metadata is rejected (wildcard characters and slashes)
+	client.SetToken(rootToken)
+	_, err = client.Logical().WriteWithContext(t.Context(), "identity/entity", map[string]any{
+		"name": "entity_name",
+		"metadata": map[string]string{
+			"key": "metadata/+",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client.SetToken(clientToken)
+	runTests(false, true)
+
+	// Test with explicitly allowed wildcards and slashes
+	client.SetToken(rootToken)
+	_, err = client.Logical().WriteWithContext(t.Context(), "sys/policy/goodPolicy1", map[string]any{
+		"policy":                           goodPolicy1,
+		"allow_wildcards_in_substitutions": true,
+		"allow_slashes_in_substitutions":   true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client.SetToken(clientToken)
+	runTests(false, false)
 }

@@ -62,6 +62,7 @@ type sshRole struct {
 	AllowSubdomains            bool              `mapstructure:"allow_subdomains" json:"allow_subdomains"`
 	AllowUserKeyIDs            bool              `mapstructure:"allow_user_key_ids" json:"allow_user_key_ids"`
 	AllowEmptyPrincipals       bool              `mapstructure:"allow_empty_principals" json:"allow_empty_principals"`
+	AllowCommasInSubstitutions bool              `mapstructure:"allow_commas_in_substitutions" json:"allow_commas_in_substitutions"`
 	KeyIDFormat                string            `mapstructure:"key_id_format" json:"key_id_format"`
 	OldAllowedUserKeyLengths   map[string]int    `mapstructure:"allowed_user_key_lengths" json:"allowed_user_key_lengths,omitempty"`
 	AllowedUserKeyTypesLengths map[string][]int  `mapstructure:"allowed_user_key_types_lengths" json:"allowed_user_key_types_lengths"`
@@ -379,6 +380,21 @@ func pathRoles(b *backend) *framework.Path {
 					Value: 30,
 				},
 			},
+			"allow_commas_in_substitutions": {
+				Type: framework.TypeBool,
+				Description: `
+				If true and templating is enabled, the values substituted in for
+				allowed_users and allowed_domains template expressions might contain a
+				comma (','). As these values are comma separated lists, this can enable
+				injection attacks. Only use this, if the data used by the templates is
+				trusted.`,
+				Default: false,
+				DisplayAttrs: &framework.DisplayAttributes{
+					Name:  "Allow Commas in Substitutions",
+					Value: false,
+				},
+			},
+
 			"allow_empty_principals": {
 				Type: framework.TypeBool,
 				Description: `
@@ -524,27 +540,28 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 	ttl := time.Duration(data.Get("ttl").(int)) * time.Second
 	maxTTL := time.Duration(data.Get("max_ttl").(int)) * time.Second
 	role := &sshRole{
-		AllowedCriticalOptions:    data.Get("allowed_critical_options").(string),
-		AllowedExtensions:         data.Get("allowed_extensions").(string),
-		AllowUserCertificates:     data.Get("allow_user_certificates").(bool),
-		AllowHostCertificates:     data.Get("allow_host_certificates").(bool),
-		AllowedUsers:              allowedUsers,
-		AllowedUsersTemplate:      data.Get("allowed_users_template").(bool),
-		AllowedDomains:            data.Get("allowed_domains").(string),
-		AllowedDomainsTemplate:    data.Get("allowed_domains_template").(bool),
-		DefaultUser:               defaultUser,
-		DefaultUserTemplate:       data.Get("default_user_template").(bool),
-		AllowBareDomains:          data.Get("allow_bare_domains").(bool),
-		AllowSubdomains:           data.Get("allow_subdomains").(bool),
-		AllowUserKeyIDs:           data.Get("allow_user_key_ids").(bool),
-		AllowEmptyPrincipals:      data.Get("allow_empty_principals").(bool),
-		DefaultExtensionsTemplate: data.Get("default_extensions_template").(bool),
-		KeyIDFormat:               data.Get("key_id_format").(string),
-		KeyType:                   KeyTypeCA,
-		AlgorithmSigner:           signer,
-		Version:                   roleEntryVersion,
-		NotBeforeDuration:         time.Duration(data.Get("not_before_duration").(int)) * time.Second,
-		Issuer:                    data.Get("issuer_ref").(string),
+		AllowedCriticalOptions:     data.Get("allowed_critical_options").(string),
+		AllowedExtensions:          data.Get("allowed_extensions").(string),
+		AllowUserCertificates:      data.Get("allow_user_certificates").(bool),
+		AllowHostCertificates:      data.Get("allow_host_certificates").(bool),
+		AllowedUsers:               allowedUsers,
+		AllowedUsersTemplate:       data.Get("allowed_users_template").(bool),
+		AllowedDomains:             data.Get("allowed_domains").(string),
+		AllowedDomainsTemplate:     data.Get("allowed_domains_template").(bool),
+		DefaultUser:                defaultUser,
+		DefaultUserTemplate:        data.Get("default_user_template").(bool),
+		AllowBareDomains:           data.Get("allow_bare_domains").(bool),
+		AllowSubdomains:            data.Get("allow_subdomains").(bool),
+		AllowUserKeyIDs:            data.Get("allow_user_key_ids").(bool),
+		AllowCommasInSubstitutions: data.Get("allow_commas_in_substitutions").(bool),
+		AllowEmptyPrincipals:       data.Get("allow_empty_principals").(bool),
+		DefaultExtensionsTemplate:  data.Get("default_extensions_template").(bool),
+		KeyIDFormat:                data.Get("key_id_format").(string),
+		KeyType:                    KeyTypeCA,
+		AlgorithmSigner:            signer,
+		Version:                    roleEntryVersion,
+		NotBeforeDuration:          time.Duration(data.Get("not_before_duration").(int)) * time.Second,
+		Issuer:                     data.Get("issuer_ref").(string),
 	}
 
 	if !role.AllowUserCertificates && !role.AllowHostCertificates {
@@ -728,31 +745,32 @@ func (b *backend) parseRole(role *sshRole) (map[string]interface{}, error) {
 		}
 
 		result = map[string]interface{}{
-			"allowed_users":               role.AllowedUsers,
-			"allowed_users_template":      role.AllowedUsersTemplate,
-			"allowed_domains":             role.AllowedDomains,
-			"allowed_domains_template":    role.AllowedDomainsTemplate,
-			"default_user":                role.DefaultUser,
-			"default_user_template":       role.DefaultUserTemplate,
-			"ttl":                         int64(ttl.Seconds()),
-			"max_ttl":                     int64(maxTTL.Seconds()),
-			"allowed_critical_options":    role.AllowedCriticalOptions,
-			"allowed_extensions":          role.AllowedExtensions,
-			"allow_user_certificates":     role.AllowUserCertificates,
-			"allow_host_certificates":     role.AllowHostCertificates,
-			"allow_bare_domains":          role.AllowBareDomains,
-			"allow_subdomains":            role.AllowSubdomains,
-			"allow_user_key_ids":          role.AllowUserKeyIDs,
-			"allow_empty_principals":      role.AllowEmptyPrincipals,
-			"key_id_format":               role.KeyIDFormat,
-			"key_type":                    role.KeyType,
-			"default_critical_options":    role.DefaultCriticalOptions,
-			"default_extensions":          role.DefaultExtensions,
-			"default_extensions_template": role.DefaultExtensionsTemplate,
-			"allowed_user_key_lengths":    role.AllowedUserKeyTypesLengths,
-			"algorithm_signer":            role.AlgorithmSigner,
-			"not_before_duration":         int64(role.NotBeforeDuration.Seconds()),
-			"issuer_ref":                  role.Issuer,
+			"allowed_users":                 role.AllowedUsers,
+			"allowed_users_template":        role.AllowedUsersTemplate,
+			"allowed_domains":               role.AllowedDomains,
+			"allowed_domains_template":      role.AllowedDomainsTemplate,
+			"default_user":                  role.DefaultUser,
+			"default_user_template":         role.DefaultUserTemplate,
+			"ttl":                           int64(ttl.Seconds()),
+			"max_ttl":                       int64(maxTTL.Seconds()),
+			"allowed_critical_options":      role.AllowedCriticalOptions,
+			"allowed_extensions":            role.AllowedExtensions,
+			"allow_user_certificates":       role.AllowUserCertificates,
+			"allow_host_certificates":       role.AllowHostCertificates,
+			"allow_bare_domains":            role.AllowBareDomains,
+			"allow_subdomains":              role.AllowSubdomains,
+			"allow_user_key_ids":            role.AllowUserKeyIDs,
+			"allow_commas_in_substitutions": role.AllowCommasInSubstitutions,
+			"allow_empty_principals":        role.AllowEmptyPrincipals,
+			"key_id_format":                 role.KeyIDFormat,
+			"key_type":                      role.KeyType,
+			"default_critical_options":      role.DefaultCriticalOptions,
+			"default_extensions":            role.DefaultExtensions,
+			"default_extensions_template":   role.DefaultExtensionsTemplate,
+			"allowed_user_key_lengths":      role.AllowedUserKeyTypesLengths,
+			"algorithm_signer":              role.AlgorithmSigner,
+			"not_before_duration":           int64(role.NotBeforeDuration.Seconds()),
+			"issuer_ref":                    role.Issuer,
 		}
 	case KeyTypeDynamic:
 		return nil, errors.New("dynamic key type roles are no longer supported")

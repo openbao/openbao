@@ -3653,9 +3653,12 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 
 	// Write test policy for userpass auth method.
 	err := client.Sys().PutPolicy("test", `
-   path "pki/*" {
-     capabilities = ["update"]
-   }`)
+	path "pki/*" {
+		capabilities = ["update", "patch"]
+	}
+	path "identity/entity" {
+		capabilities = ["update"]
+	}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3681,6 +3684,7 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 	userpassToken := secret.Auth.ClientToken
+	entityId := secret.Auth.EntityID
 
 	// Get auth accessor for identity template.
 	auths, err := client.Sys().ListAuth()
@@ -3740,12 +3744,10 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 	// Issue certificate with non-matching identity template parameter
 	client.SetToken(userpassToken)
 	_, err = client.Logical().Write("pki/issue/test", map[string]interface{}{"uri_sans": "spiffe://domain/unknownuser"})
-	if err == nil {
-		t.Fatal(err)
-	}
+	require.ErrorContains(t, err, "URI Subject Alternative Names were provided via the API which are not valid for this role")
 
 	// Set allowed_uri_sans_template to false.
-	_, err = client.Logical().Write("pki/roles/test", map[string]interface{}{
+	_, err = client.Logical().JSONMergePatch(t.Context(), "pki/roles/test", map[string]interface{}{
 		"allowed_uri_sans_template": false,
 	})
 	if err != nil {
@@ -3754,9 +3756,37 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 
 	// Issue certificate with userpassToken.
 	_, err = client.Logical().Write("pki/issue/test", map[string]interface{}{"uri_sans": "spiffe://domain/users/userpassname"})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.ErrorContains(t, err, "URI Subject Alternative Names were provided via the API which are not valid for this role")
+
+	// Add wildcard to entity metadata
+	_, err = client.Logical().WriteWithContext(t.Context(), "identity/entity", map[string]any{
+		"id": entityId,
+		"metadata": map[string]any{
+			"sans": "spiffe://domain/users/*",
+		},
+	})
+	require.NoError(t, err)
+
+	// Update Allowed URI SANs to include entity metadata
+	_, err = client.Logical().JSONMergePatch(t.Context(), "pki/roles/test", map[string]any{
+		"allowed_uri_sans":          []string{"{{identity.entity.metadata.sans}}"},
+		"allowed_uri_sans_template": true,
+	})
+	require.NoError(t, err)
+
+	// Expect failure (wildcards are prohibited by default)
+	_, err = client.Logical().WriteWithContext(t.Context(), "pki/issue/test", map[string]any{"uri_sans": "spiffe://domain/users/userpassname"})
+	require.ErrorContains(t, err, "URI Subject Alternative Names were provided via the API which are not valid for this role")
+
+	// Allow Globs
+	_, err = client.Logical().JSONMergePatch(t.Context(), "pki/roles/test", map[string]any{
+		"allow_globs_in_substitutions": true,
+	})
+	require.NoError(t, err)
+
+	// Expect successful issue
+	_, err = client.Logical().WriteWithContext(t.Context(), "pki/issue/test", map[string]any{"uri_sans": "spiffe://domain/users/userpassname"})
+	require.NoError(t, err)
 }
 
 func TestBackend_AllowedDomainsTemplate(t *testing.T) {
@@ -3778,9 +3808,12 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 
 	// Write test policy for userpass auth method.
 	err := client.Sys().PutPolicy("test", `
-   path "pki/*" {
-     capabilities = ["update"]
-   }`)
+	path "pki/*" {
+		capabilities = ["update", "patch"]
+	}
+	path "identity/entity" {
+		capabilities = ["update"]
+	}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3840,6 +3873,7 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 		},
 		"allowed_domains_template": true,
 		"allow_bare_domains":       true,
+		"allow_glob_domains":       true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -3853,6 +3887,8 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 	if err != nil || secret == nil {
 		t.Fatal(err)
 	}
+	entityId := secret.Auth.EntityID
+
 	_, err = client.Logical().Write("pki/issue/test", map[string]interface{}{"common_name": "userpassname"})
 	if err != nil {
 		t.Fatal(err)
@@ -3866,9 +3902,7 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 
 	// Issue certificate for unknown userpassname.
 	_, err = client.Logical().Write("pki/issue/test", map[string]interface{}{"common_name": "unknownuserpassname"})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.ErrorContains(t, err, "common name unknownuserpassname not allowed by this role")
 
 	// Issue certificate for foo.userpassname.domain.
 	_, err = client.Logical().Write("pki/issue/test", map[string]interface{}{"common_name": "foo.userpassname.example.com"})
@@ -3877,7 +3911,7 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 	}
 
 	// Set allowed_domains_template to false.
-	_, err = client.Logical().Write("pki/roles/test", map[string]interface{}{
+	_, err = client.Logical().JSONMergePatch(t.Context(), "pki/roles/test", map[string]any{
 		"allowed_domains_template": false,
 	})
 	if err != nil {
@@ -3886,9 +3920,37 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 
 	// Issue certificate with userpassToken.
 	_, err = client.Logical().Write("pki/issue/test", map[string]interface{}{"common_name": "userpassname"})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.ErrorContains(t, err, "common name userpassname not allowed by this role")
+
+	// Add wildcard to entity metadata
+	_, err = client.Logical().WriteWithContext(t.Context(), "identity/entity", map[string]any{
+		"id": entityId,
+		"metadata": map[string]any{
+			"domains": "*.example.com",
+		},
+	})
+	require.NoError(t, err)
+
+	// Update Allowed Domains to include entity metadata
+	_, err = client.Logical().JSONMergePatch(t.Context(), "pki/roles/test", map[string]any{
+		"allowed_domains":          []string{"{{identity.entity.metadata.domains}}"},
+		"allowed_domains_template": true,
+	})
+	require.NoError(t, err)
+
+	// Expect failure (wildcards are prohibited by default)
+	_, err = client.Logical().WriteWithContext(t.Context(), "pki/issue/test", map[string]any{"common_name": "foo.example.com"})
+	require.ErrorContains(t, err, "common name foo.example.com not allowed by this role")
+
+	// Allow Globs
+	_, err = client.Logical().JSONMergePatch(t.Context(), "pki/roles/test", map[string]any{
+		"allow_globs_in_substitutions": true,
+	})
+	require.NoError(t, err)
+
+	// Expect successful issue
+	_, err = client.Logical().WriteWithContext(t.Context(), "pki/issue/test", map[string]any{"common_name": "foo.example.com"})
+	require.NoError(t, err)
 }
 
 func TestReadWriteDeleteRoles(t *testing.T) {
@@ -3961,6 +4023,7 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 		"policy_identifiers":                 []interface{}{},
 		"require_cn":                         true,
 		"allowed_domains_template":           false,
+		"allow_globs_in_substitutions":       false,
 		"allow_token_displayname":            false,
 		"country":                            []interface{}{},
 		"not_before_bound":                   "permit",

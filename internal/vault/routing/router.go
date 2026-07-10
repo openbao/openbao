@@ -919,15 +919,11 @@ func (r *Router) RootPath(ctx context.Context, path string) bool {
 	}
 	re := raw.(*RouteEntry)
 
-	re.RLock()
-	defer re.RUnlock()
-
 	// Trim to get remaining path
 	remain := strings.TrimPrefix(adjustedPath, mount)
 
 	// Check the rootPaths of this backend
-	rootPaths := re.rootPaths.Load()
-	match, raw, ok := rootPaths.LongestPrefix(remain)
+	match, raw, ok := re.rootPaths.Load().LongestPrefix(remain)
 	if !ok {
 		return false
 	}
@@ -963,9 +959,6 @@ func (r *Router) LoginPath(ctx context.Context, path string) bool {
 	}
 
 	re := raw.(*RouteEntry)
-
-	re.RLock()
-	defer re.RUnlock()
 
 	// Trim to get remaining path
 	remain := strings.TrimPrefix(adjustedPath, mount)

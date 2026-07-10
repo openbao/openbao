@@ -400,8 +400,13 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		}
 	}
 
+	allNamespaces, err := c.ListNamespaces(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	oldCredential := c.auth
-	if err := c.loadCredentials(ctx, false); err != nil {
+	if err := c.loadCredentials(ctx, allNamespaces, false); err != nil {
 		t.Fatal(err)
 	}
 

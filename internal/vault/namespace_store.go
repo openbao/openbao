@@ -25,6 +25,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	"github.com/openbao/openbao/v2/internal/vault/policy"
+	"github.com/openbao/openbao/v2/internal/vault/routing"
 )
 
 // Namespace id length; upstream uses 5 characters so we use one more to
@@ -577,8 +578,14 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		unlocked = true
 	}
 
-	// Lastly, push the change to all mounts.
-	return sealKeyShares, ns.pushToMounts(entry)
+	// Push the change to mounts if we've updated the namespace.
+	if exists {
+		if err = ns.pushToMounts(entry); err != nil {
+			return nil, err
+		}
+	}
+
+	return sealKeyShares, nil
 }
 
 func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage barrier.View, entry *namespace.Namespace) error {
@@ -625,19 +632,11 @@ func (ns *NamespaceStore) initializeNamespace(ctx context.Context, entry *namesp
 	// while we'd like to, it has cache interaction semantics which makes
 	// it difficult to do correctly. This likely requires hooks such as
 	// https://github.com/openbao/openbao/issues/1988.
-	if err := ns.initializeNamespacePolicies(nsCtx); err != nil {
-		return err
+	if err := ns.core.policyStore.LoadDefaultPolicies(nsCtx); err != nil {
+		return fmt.Errorf("error creating default policies: %w", err)
 	}
 
 	return ns.createMounts(nsCtx, ns.core.NamespaceView(entry))
-}
-
-// initializeNamespacePolicies loads the default policies for the namespace store.
-func (ns *NamespaceStore) initializeNamespacePolicies(ctx context.Context) error {
-	if err := ns.core.policyStore.LoadDefaultPolicies(ctx); err != nil {
-		return fmt.Errorf("error creating default policies: %w", err)
-	}
-	return nil
 }
 
 // createMounts handles creation of sys/ and token/ mounts for this new
@@ -684,16 +683,12 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, storage logical.Stor
 
 	// Persist the mounts using the above storage transaction.
 	return logical.WithTransaction(ctx, storage, func(txn logical.Storage) error {
-		for _, mount := range mounts.Entries {
-			if err := ns.core.persistMounts(ctx, txn, ns.core.mounts, &mount.Local, mount.UUID); err != nil {
-				return fmt.Errorf("failed to persist secret mount (path=%v): %w", mount.Path, err)
-			}
+		if err := ns.core.persistNamespaceMounts(ctx, txn, routing.MountTableType); err != nil {
+			return fmt.Errorf("failed to persist secret mounts: %w", err)
 		}
 
-		for _, mount := range credentials.Entries {
-			if err := ns.core.persistAuth(ctx, txn, ns.core.auth, &mount.Local, mount.UUID); err != nil {
-				return fmt.Errorf("failed to persist auth mount (path=%v): %w", mount.Path, err)
-			}
+		if err := ns.core.persistNamespaceMounts(ctx, txn, routing.CredentialTableType); err != nil {
+			return fmt.Errorf("failed to persist auth mounts: %w", err)
 		}
 
 		return nil
@@ -754,12 +749,7 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 }
 
 func (ns *NamespaceStore) pushToMounts(entry *namespace.Namespace) error {
-	ns.core.mountsLock.Lock()
-	defer ns.core.mountsLock.Unlock()
-
 	ns.core.authLock.Lock()
-	defer ns.core.authLock.Unlock()
-
 	for _, mount := range ns.core.auth.Entries {
 		if mount.NamespaceID != entry.ID {
 			continue
@@ -767,7 +757,9 @@ func (ns *NamespaceStore) pushToMounts(entry *namespace.Namespace) error {
 
 		mount.Namespace = entry
 	}
+	ns.core.authLock.Unlock()
 
+	ns.core.mountsLock.Lock()
 	for _, mount := range ns.core.mounts.Entries {
 		if mount.NamespaceID != entry.ID {
 			continue
@@ -775,6 +767,7 @@ func (ns *NamespaceStore) pushToMounts(entry *namespace.Namespace) error {
 
 		mount.Namespace = entry
 	}
+	ns.core.mountsLock.Unlock()
 
 	return nil
 }
@@ -1026,7 +1019,7 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 	return ns.sealNamespaceLocked(ctx, namespaceToSeal)
 }
 
-// sealNamespaceLocked assumes the read lock is hold, and seals provided namespace,
+// sealNamespaceLocked assumes the write lock is held, and seals provided namespace,
 // cleaning up namespace resources.
 func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSeal *namespace.Namespace) error {
 	var errs error
@@ -1122,8 +1115,8 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 
 	// Unlock before calling unsealNamespace; we recurse back into the namespace
 	// store here.
-	unlock = false
 	ns.lock.Unlock()
+	unlock = false
 
 	return true, ns.unsealNamespace(ctx, namespaceToUnseal)
 }
@@ -1142,11 +1135,10 @@ func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal
 	var collected []*namespace.Namespace
 	collected = append(collected, namespaceToUnseal.Clone(false))
 
+	ns.lock.Lock()
+
 	// Recurse loading all new namespaces starting at this one.
 	if err := func() error {
-		ns.lock.Lock()
-		defer ns.lock.Unlock()
-
 		if err := ns.namespacesByPath.Insert(namespaceToUnseal); err != nil {
 			return err
 		}
@@ -1175,6 +1167,8 @@ func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal
 	}(); err != nil {
 		return err
 	}
+
+	ns.lock.Unlock()
 
 	for index, newNs := range collected {
 		ns.logger.Info("calling post-unseal for namespace", "ns_path", newNs.Path, "ns_uuid", newNs.UUID)

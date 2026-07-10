@@ -370,8 +370,13 @@ func TestCore_Mount_Local(t *testing.T) {
 		}
 	}
 
+	allNamespaces, err := c.ListNamespaces(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	oldMounts := c.mounts
-	if err := c.loadMounts(ctx, false); err != nil {
+	if err := c.loadMounts(ctx, allNamespaces, false); err != nil {
 		t.Fatal(err)
 	}
 	compEntries := c.mounts.Entries[:0]
@@ -985,14 +990,19 @@ func testCore_MountTable_UpgradeToTyped_Common(
 
 	var persistFunc func(context.Context, logical.Storage, *routing.MountTable, *bool, string) error
 
+	allNamespaces, err := c.ListNamespaces(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// It should load successfully and be upgraded and persisted
 	switch testType {
 	case "mounts":
-		err = c.loadMounts(ctx, false)
+		err = c.loadMounts(ctx, allNamespaces, false)
 		persistFunc = c.persistMounts
 		mt = c.mounts
 	case "credentials":
-		err = c.loadCredentials(ctx, false)
+		err = c.loadCredentials(ctx, allNamespaces, false)
 		persistFunc = c.persistAuth
 		mt = c.auth
 	case "audits":

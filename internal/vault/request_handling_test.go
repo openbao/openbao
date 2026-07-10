@@ -187,8 +187,12 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 
 func TestRequestHandling_LoginWrapping(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
+	allNamespaces, err := core.ListNamespaces(namespace.RootContext(t.Context()))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+	if err := core.loadMounts(namespace.RootContext(t.Context()), allNamespaces, false); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -269,8 +273,12 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 
 func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
+	allNamespaces, err := core.ListNamespaces(namespace.RootContext(t.Context()))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+	if err := core.loadMounts(namespace.RootContext(t.Context()), allNamespaces, false); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -466,8 +474,12 @@ func checkCounter(t *testing.T, inmemSink *metrics.InmemSink, keyPrefix string, 
 
 func TestRequestHandling_LoginMetric(t *testing.T) {
 	core, _, root, sink := TestCoreUnsealedWithMetrics(t)
+	allNamespaces, err := core.ListNamespaces(namespace.RootContext(t.Context()))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+	if err := core.loadMounts(namespace.RootContext(t.Context()), allNamespaces, false); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -598,8 +610,12 @@ func TestRequestHandling_ListFiltering(t *testing.T) {
 	t.Parallel()
 
 	core, _, root := TestCoreUnsealed(t)
+	allNamespaces, err := core.ListNamespaces(namespace.RootContext(t.Context()))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+	if err := core.loadMounts(namespace.RootContext(t.Context()), allNamespaces, false); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -901,8 +917,12 @@ func TestRequestHandling_DisallowLogicalTokenCreation(t *testing.T) {
 	t.Parallel()
 
 	core, _, _ := TestCoreUnsealed(t)
+	allNamespaces, err := core.ListNamespaces(namespace.RootContext(t.Context()))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+	if err := core.loadMounts(namespace.RootContext(t.Context()), allNamespaces, false); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -916,13 +936,12 @@ func TestRequestHandling_DisallowLogicalTokenCreation(t *testing.T) {
 	}
 
 	meUUID, _ := uuid.GenerateUUID()
-	err := core.mount(namespace.RootContext(t.Context()), &routing.MountEntry{
+	require.NoError(t, core.mount(namespace.RootContext(t.Context()), &routing.MountEntry{
 		Table: routing.MountTableType,
 		UUID:  meUUID,
 		Path:  "test",
 		Type:  "test",
-	})
-	require.NoError(t, err)
+	}))
 
 	req := &logical.Request{
 		Path:      "test/login",
@@ -939,8 +958,12 @@ func TestRequestHandling_DisallowAuthErrorTokenCreation(t *testing.T) {
 	t.Parallel()
 
 	core, _, root := TestCoreUnsealed(t)
+	allNamespaces, err := core.ListNamespaces(namespace.RootContext(t.Context()))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
+	if err := core.loadMounts(namespace.RootContext(t.Context()), allNamespaces, false); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 

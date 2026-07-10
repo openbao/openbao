@@ -1,0 +1,9 @@
+```release-note:bug
+core/workflows: Ensure logical.Request.Connection is set to allow certificate auth, login MFA to work.
+```
+```release-note:improvement
+core/profiles: Parse login MFA from request header information.
+```
+```release-note:improvement
+core/profiles: Canonicalize headers before evaluating request.
+```

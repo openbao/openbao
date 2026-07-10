@@ -374,6 +374,7 @@ func TestBackend_AllowedUsersTemplate(t *testing.T) {
 		testUserName, map[string]string{
 			"ssh_username": testUserName,
 		},
+		false,
 	)
 }
 
@@ -384,6 +385,7 @@ func TestBackend_MultipleAllowedUsersTemplate(t *testing.T) {
 		testUserName, map[string]string{
 			"ssh_username": testMultiUserName,
 		},
+		true,
 	)
 }
 
@@ -394,6 +396,7 @@ func TestBackend_AllowedUsersTemplate_WithStaticPrefix(t *testing.T) {
 		"ssh-"+testUserName, map[string]string{
 			"ssh_username": testUserName,
 		},
+		false,
 	)
 }
 
@@ -417,6 +420,56 @@ func TestBackend_DefaultUserTemplate_WithStaticPrefix(t *testing.T) {
 			"ssh_username": testUserName,
 		},
 	)
+}
+
+func TestBackend_ForbiddenCommaInTemplate(t *testing.T) {
+	cluster, userpassToken := getSshCaTestCluster(t, testUserName)
+	defer cluster.Cleanup()
+	client := cluster.Cores[0].Client
+
+	// set metadata "ssh_username" to userpass username
+	tokenLookupResponse, err := client.Logical().Write("/auth/token/lookup", map[string]interface{}{
+		"token": userpassToken,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	entityID := tokenLookupResponse.Data["entity_id"].(string)
+	_, err = client.Logical().Write("/identity/entity/id/"+entityID, map[string]interface{}{
+		"metadata": map[string]string{
+			"ssh_username": testMultiUserName,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.Logical().Write("ssh/roles/my-role", map[string]interface{}{
+		"key_type":                      testCaKeyType,
+		"allow_user_certificates":       true,
+		"default_user":                  "{{identity.entity.metadata.ssh_username}}",
+		"default_user_template":         true,
+		"allowed_users":                 "{{identity.entity.metadata.ssh_username}}",
+		"allowed_users_template":        true,
+		"allow_commas_in_substitutions": false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// sign SSH key as userpass user
+	client.SetToken(userpassToken)
+	_, err = client.Logical().Write("ssh/sign/my-role", map[string]interface{}{
+		"public_key": testCAPublicKey,
+	})
+	if err == nil {
+		t.Error("signing request should fail when default_user is not in the allowed_users list, because allowed_users_template is true and default_user_template is not")
+	}
+
+	expectedErrStr := `template '{{identity.entity.metadata.ssh_username}}' could not be rendered -> template substitution contains forbidden value ","`
+	if !strings.Contains(err.Error(), expectedErrStr) {
+		t.Errorf("expected error to include %q but it was: %q", expectedErrStr, err.Error())
+	}
 }
 
 func TestBackend_DefaultUserTemplateFalse_AllowedUsersTemplateTrue(t *testing.T) {
@@ -1959,15 +2012,17 @@ func testAllowedPrincipalsTemplate(t *testing.T, testAllowedDomainsTemplate stri
 
 func testAllowedUsersTemplate(t *testing.T, testAllowedUsersTemplate string,
 	expectedValidPrincipal string, testEntityMetadata map[string]string,
+	allowCommasInSubstitutions bool,
 ) {
 	testAllowedPrincipalsTemplate(
 		t, testAllowedUsersTemplate,
 		expectedValidPrincipal, testEntityMetadata,
 		map[string]interface{}{
-			"key_type":                testCaKeyType,
-			"allow_user_certificates": true,
-			"allowed_users":           testAllowedUsersTemplate,
-			"allowed_users_template":  true,
+			"key_type":                      testCaKeyType,
+			"allow_user_certificates":       true,
+			"allowed_users":                 testAllowedUsersTemplate,
+			"allowed_users_template":        true,
+			"allow_commas_in_substitutions": allowCommasInSubstitutions,
 		},
 		map[string]interface{}{
 			"public_key":       testCAPublicKey,

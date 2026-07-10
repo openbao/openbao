@@ -30,6 +30,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/ryanuber/go-glob"
 	"golang.org/x/crypto/cryptobyte"
@@ -272,11 +273,31 @@ func validateURISAN(b *backend, data *inputBundle, uri string) bool {
 		if data.role.AllowedURISANsTemplate {
 			isTemplate, _ := framework.ValidateIdentityTemplate(allowed)
 			if isTemplate && data.req.EntityID != "" {
-				tmpAllowed, err := framework.PopulateIdentityTemplate(allowed, data.req.EntityID, b.System())
+				entity, err := b.System().EntityInfo(data.req.EntityID)
+				if err != nil || entity == nil {
+					continue
+				}
+
+				groups, err := b.System().GroupsForEntity(data.req.EntityID)
 				if err != nil {
 					continue
 				}
-				allowed = tmpAllowed
+
+				input := identitytpl.PopulateStringInput{
+					String: allowed,
+					Entity: entity,
+					Groups: groups,
+					Mode:   identitytpl.ACLTemplating,
+				}
+
+				if !data.role.AllowGlobsInSubstitutions {
+					input.BlockedSubstitutions = []string{"*"}
+				}
+
+				_, allowed, err = identitytpl.PopulateString(input)
+				if err != nil {
+					continue
+				}
 			}
 		}
 		validURI := glob.Glob(allowed, uri)
@@ -564,12 +585,31 @@ func validateNames(b *backend, data *inputBundle, names []string) string {
 				if data.role.AllowedDomainsTemplate {
 					isTemplate, _ := framework.ValidateIdentityTemplate(currDomain)
 					if isTemplate && data.req.EntityID != "" {
-						tmpCurrDomain, err := framework.PopulateIdentityTemplate(currDomain, data.req.EntityID, b.System())
+						entity, err := b.System().EntityInfo(data.req.EntityID)
+						if err != nil || entity == nil {
+							continue
+						}
+
+						groups, err := b.System().GroupsForEntity(data.req.EntityID)
 						if err != nil {
 							continue
 						}
 
-						currDomain = tmpCurrDomain
+						input := identitytpl.PopulateStringInput{
+							String: currDomain,
+							Entity: entity,
+							Groups: groups,
+							Mode:   identitytpl.ACLTemplating,
+						}
+
+						if !data.role.AllowGlobsInSubstitutions {
+							input.BlockedSubstitutions = []string{"*"}
+						}
+
+						_, currDomain, err = identitytpl.PopulateString(input)
+						if err != nil {
+							continue
+						}
 					}
 				}
 

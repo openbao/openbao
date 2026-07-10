@@ -1867,6 +1867,10 @@ func (c *ServerCommand) doSelfInit(core *vault.Core, config *server.Config, root
 
 		// Hook the profile system directly up to our core request handler.
 		profiles.WithRequestHandler(func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
+			// Ensure Connection is not nil so login MFA works.
+			req.Connection = &logical.Connection{
+				RemoteAddr: "127.0.0.1",
+			}
 			return core.HandleRequest(ctx, req)
 		}),
 

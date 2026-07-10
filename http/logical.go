@@ -288,7 +288,7 @@ func buildLogicalRequest(core *vault.Core, w http.ResponseWriter, r *http.Reques
 		return nil, http.StatusBadRequest, fmt.Errorf("error parsing X-Vault-Wrap-TTL header: %w", err)
 	}
 
-	err = parseMFAHeader(req)
+	err = req.ParseMFAHeaders()
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to parse X-Vault-MFA header: %w", err)
 	}

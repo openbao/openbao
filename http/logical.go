@@ -4,6 +4,7 @@
 package http
 
 import (
+	"crypto/subtle"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -327,8 +328,10 @@ func handleLogicalRecovery(raw *vault.RawBackend, token *atomic.Value) http.Hand
 			respondError(w, statusCode, err)
 			return
 		}
+
 		reqToken := r.Header.Get(consts.AuthHeaderName)
-		if reqToken == "" || token.Load() == "" || reqToken != token.Load() {
+		rToken, rTokenOk := token.Load().(string)
+		if len(reqToken) == 0 || !rTokenOk || len(rToken) == 0 || subtle.ConstantTimeCompare([]byte(reqToken), []byte(rToken)) == 0 {
 			respondError(w, http.StatusForbidden, nil)
 			return
 		}

@@ -1,0 +1,3 @@
+```release-note:security
+core/recovery: Use constant-time token comparison in recovery mode. GHSA-34fc-gh42-pj53.
+```

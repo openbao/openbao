@@ -12,6 +12,22 @@ import (
 	"github.com/openbao/openbao/vault"
 )
 
+// handleMetricsUnauthenticatedOrSealed allows unauthenticated access to
+// sys/metrics when the core is sealed so that monitoring systems can observe
+// vault.core.unsealed before a valid token is available, analogous to
+// sys/health. When unsealed it requires authentication.
+func handleMetricsUnauthenticatedOrSealed(core *vault.Core) http.Handler {
+	unauthenticated := handleMetricsUnauthenticated(core)
+	authenticated := handleLogicalNoForward(core)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if core.Sealed() {
+			unauthenticated.ServeHTTP(w, r)
+			return
+		}
+		authenticated.ServeHTTP(w, r)
+	})
+}
+
 func handleMetricsUnauthenticated(core *vault.Core) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		req := &logical.Request{Headers: r.Header}

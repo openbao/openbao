@@ -167,6 +167,25 @@ func (c *Core) tokenGaugeTtlCollector(ctx context.Context) ([]metricsutil.GaugeL
 	return ts.gaugeCollectorByTtl(ctx)
 }
 
+// emitSealedMetrics refreshes vault.core.unsealed while the node is sealed so
+// that monitoring systems can observe the gauge before unseal completes. When
+// unsealed metricsLoop also writes this gauge; the c.Sealed() guard prevents
+// redundant writes.
+func (c *Core) emitSealedMetrics(shutdownCh <-chan struct{}) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-shutdownCh:
+			return
+		case <-ticker.C:
+			if c.Sealed() {
+				c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
+			}
+		}
+	}
+}
+
 // emitMetricsActiveNode is used to start all the periodic metrics; all of them should
 // be shut down when stopCh is closed. This code runs on the active node only.
 func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {

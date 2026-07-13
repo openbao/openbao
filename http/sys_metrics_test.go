@@ -138,6 +138,55 @@ func TestSysRekeyUnauthenticated(t *testing.T) {
 	testResponseStatus(t, resp, 200)
 }
 
+// TestSysMetricsSealed verifies that sys/metrics is accessible without a token
+// when the core is sealed, regardless of the unauthenticated_metrics_access
+// setting, so monitoring systems can observe vault.core.unsealed=0.
+func TestSysMetricsSealed(t *testing.T) {
+	inm := metrics.NewInmemSink(10*time.Second, time.Minute)
+	metrics.DefaultInmemSignal(inm)
+	conf := &vault.CoreConfig{
+		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
+		MetricsHelper:   metricsutil.NewMetricsHelper(inm, true),
+	}
+
+	// Uninitialized core starts sealed.
+	core := vault.TestCoreWithConfig(t, conf)
+
+	// Default listener (unauthenticated_metrics_access = false): sealed node
+	// must still serve metrics so monitoring systems can observe unseal status.
+	ln, addr := TestListener(t)
+	props := &vault.HandlerProperties{
+		Core: core,
+		ListenerConfig: &configutil.Listener{
+			Telemetry: configutil.ListenerTelemetry{
+				UnauthenticatedMetricsAccess: false,
+			},
+		},
+	}
+	TestServerWithListenerAndProperties(t, ln, addr, core, props)
+	defer ln.Close() //nolint:errcheck
+
+	resp := testHttpGet(t, "", addr+"/v1/sys/metrics")
+	testResponseStatus(t, resp, 200)
+
+	// unauthenticated_metrics_access = true: sealed node must also serve metrics.
+	ln.Close() //nolint:errcheck
+	ln, addr = TestListener(t)
+	props = &vault.HandlerProperties{
+		Core: core,
+		ListenerConfig: &configutil.Listener{
+			Telemetry: configutil.ListenerTelemetry{
+				UnauthenticatedMetricsAccess: true,
+			},
+		},
+	}
+	TestServerWithListenerAndProperties(t, ln, addr, core, props)
+	defer ln.Close() //nolint:errcheck
+
+	resp = testHttpGet(t, "", addr+"/v1/sys/metrics")
+	testResponseStatus(t, resp, 200)
+}
+
 func TestSysMetricsCustomPath(t *testing.T) {
 	inm := metrics.NewInmemSink(10*time.Second, time.Minute)
 	metrics.DefaultInmemSignal(inm)

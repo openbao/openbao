@@ -963,6 +963,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
 
 	c.shutdownDoneCh.Store(make(chan struct{}))
+	go c.emitSealedMetrics(c.shutdownDoneCh.Load().(chan struct{}))
 
 	c.allLoggers = append(c.allLoggers, c.logger, routerLogger)
 

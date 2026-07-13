@@ -487,6 +487,15 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 		}
 	}
 
+	// Canonicalize headers so Core can understand them.
+	req.CanonicalizeHeaders()
+
+	// Parse headers to MFA fields.
+	if err := req.ParseMFAHeaders(); err != nil {
+		err = fmt.Errorf("failed to evaluate MFA fields: %w", err)
+		return req, execute, allowFailure, err
+	}
+
 	return req, execute, allowFailure, err
 }
 

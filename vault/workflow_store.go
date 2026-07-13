@@ -369,20 +369,24 @@ func (ws *WorkflowStore) Execute(ctx context.Context, reqId string, path string,
 		// Execute our request handler here; here is where we validate that
 		// this policy can only access requests under its own namespace and
 		// forbid requests to parent namespaces.
-		profiles.WithRequestHandler(func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
+		profiles.WithRequestHandler(func(ctx context.Context, profileReq *logical.Request) (*logical.Response, error) {
 			// When a namespace header exists in the synthetic request, we have
 			// to inject it into the namespace header.
-			if values, ok := req.Headers[consts.NamespaceHeaderName]; ok {
+			if values, ok := profileReq.Headers[consts.NamespaceHeaderName]; ok {
 				if len(values) > 1 {
 					return nil, fmt.Errorf("have %q values for %q header; expected only 1", len(values), consts.NamespaceHeaderName)
 				}
 				ctx = namespace.ContextWithNamespaceHeader(ctx, values[0])
 			}
 
+			// Set our connection to match. This allows use of cert auth and
+			// login MFA from within profiles.
+			profileReq.Connection = req.Connection
+
 			// We guarantee we come in from the profile system, which means
 			// we're already executing a request; no need to re-grab the lock
 			// here.
-			return ws.core.switchedLockHandleRequest(ctx, req, false)
+			return ws.core.switchedLockHandleRequest(ctx, profileReq, false)
 		}),
 	)
 	if err != nil {

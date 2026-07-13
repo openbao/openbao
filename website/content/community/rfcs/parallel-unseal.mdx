@@ -189,7 +189,7 @@ With the above parallel unseal requirements, we do not need to modify the root k
 1. `barrierSealConfigPath` will be migrated to the per-seal location `core/seals/<name>/shamir-config` or `core/seals/<name>/recovery-config` depending on if the mechanism is an auto-unseal mechanism. This is a _raw_ (unencrypted, from Barrier's PoV) storage entry.
 2. `StoredBarrierKeysPath` will be migrated to the per-seal location `core/seals/<name>/encrypted-root`. This is a _raw_ (unencrypted, from Barrier's PoV) storage entry; however, this raw entry is encrypted with the seal mechanism's key information.
 3. `shamirKekPath` will be migrated to the per-seal location `core/seals/<name>/kek`, when applicable. This is a _barrier-encrypted_ storage entry.
-4. For auto-unseal mechanisms, a copy of the seal configuration will be placed inside barrier at `core/seals/<name>/autounseal-config`. This allows for retreival of the public keys of other seal mechanisms and determining if configuration has changed since the last startup. This is a _barrier-encrypted_ storage entry.
+4. For auto-unseal mechanisms, a copy of the seal configuration will be placed inside barrier at `core/seals/<name>/autounseal-config`. This allows for retrieval of the public keys of other seal mechanisms and determining if configuration has changed since the last startup. This is a _barrier-encrypted_ storage entry.
 5. For each auto-unseal mechanism, we'll store a copy of the barrier keyring encrypted with that seal's current root key at `core/seals/<name>/barrier-keyring`. (Allows you to decrypt the current latest root key.)
 6. For each auto-unseal mechanism, we'll store an encrypted copy of the seal's current root key at `core/seals/<name>/current-root`. This is a _barrier-encrypted_ storage entry. (Allows other nodes to rotate the barrier keyring keys.)
 7. For each auto-unseal mechanism, we'll store an encrypted copy of the system's global latest root key at `core/seals/<name>/latest-root`; this will be encrypted using the latest key in the per-seal barrier keyring copy (`core/seals/<name>/barrier-keyring`). This is a _barrier-encrypted_ storage entry. (Allows offline nodes to bootstrap from an old barrier keyring.)
@@ -267,7 +267,7 @@ Both `name` and `priority` must be individually unique when multiple config entr
 
 ### New Shamir's Configuration
 
-A new seal type, `shamir`, will be introduced. This allows for multiple parallel Shamir unseals for when any of multiple unseal information should be kept in a secure, secondary location(s). These have the same new parameters above (`name` and `priority`); threshhold and other information will be stored in storage based on the initialization.
+A new seal type, `shamir`, will be introduced. This allows for multiple parallel Shamir unseals for when any of multiple unseal information should be kept in a secure, secondary location(s). These have the same new parameters above (`name` and `priority`); threshold and other information will be stored in storage based on the initialization.
 
 ### New Unseal Process
 

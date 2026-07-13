@@ -161,7 +161,7 @@ func (eh *EvaluationHistory) getField(obj interface{}, rawFieldSelector []interf
 
 			val, present := mapBase[selector]
 			if !present {
-				return nil, fmt.Errorf("field %q at depth %v is missing:\n\tavailable keys: %v\n\tobj: %#v", selector, i, presentKeys(mapBase), mapBase)
+				return nil, fmt.Errorf("field %q at depth %v is missing:\n\tavailable keys: %v", selector, i, presentKeys(mapBase))
 			}
 
 			if i == len(rawFieldSelector)-1 {

@@ -2522,10 +2522,12 @@ func (b *SystemBackend) handlePoliciesRead(policyType policy.Type) framework.Ope
 
 func readPolicyResponse(policy *policy.Policy) map[string]interface{} {
 	data := map[string]interface{}{
-		"name":         policy.Name,
-		"version":      policy.DataVersion,
-		"cas_required": policy.CASRequired,
-		"policy":       policy.Raw,
+		"name":                             policy.Name,
+		"version":                          policy.DataVersion,
+		"cas_required":                     policy.CASRequired,
+		"policy":                           policy.Raw,
+		"allow_wildcards_in_substitutions": policy.AllowWildcardsInSubstitutions,
+		"allow_slashes_in_substitutions":   policy.AllowSlashesInSubstitutions,
 	}
 
 	if !policy.Expiration.IsZero() {
@@ -2615,6 +2617,9 @@ func (b *SystemBackend) handlePoliciesSet(policyType policy.Type) framework.Oper
 
 		casRequired := data.Get("cas_required").(bool)
 		pol.CASRequired = casRequired
+
+		pol.AllowWildcardsInSubstitutions = data.Get("allow_wildcards_in_substitutions").(bool)
+		pol.AllowSlashesInSubstitutions = data.Get("allow_slashes_in_substitutions").(bool)
 
 		// Update the policy
 		if err := b.Core.policyStore.SetPolicy(ctx, pol, cas); err != nil {

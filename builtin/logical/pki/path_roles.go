@@ -114,6 +114,15 @@ accepts a comma-separated string or list of domains.`,
 			Description: `If set, Allowed domains can be specified using identity template policies.
 				Non-templated domains are also permitted.`,
 		},
+		"allow_globs_in_substitutions": {
+			Type:     framework.TypeBool,
+			Required: true,
+			Description: `If set and templating is enabled, the values substituted in
+				for allowed_uri_sans_template and allowed_domains template expression
+				might contain a wildcard characters ('*' and '+'). This can enable
+				injection attacks. Only use this, if the data used by the templates
+				is trusted.`,
+		},
 		"allow_bare_domains": {
 			Type:     framework.TypeBool,
 			Required: true,
@@ -505,6 +514,15 @@ accepts a comma-separated string or list of domains.`,
 				Type: framework.TypeBool,
 				Description: `If set, Allowed domains can be specified using identity template policies.
 				Non-templated domains are also permitted.`,
+				Default: false,
+			},
+			"allow_globs_in_substitutions": {
+				Type: framework.TypeBool,
+				Description: `If set and templating is enabled, the values substituted in
+					for allowed_uri_sans_template and allowed_domains template expression
+					might contain a wildcard characters ('*' and '+'). This can enable
+					injection attacks. Only use this, if the data used by the templates
+					is trusted.`,
 				Default: false,
 			},
 			"allow_bare_domains": {
@@ -1142,6 +1160,7 @@ func (b *backend) pathRoleCreate(ctx context.Context, req *logical.Request, data
 		AllowLocalhost:                data.Get("allow_localhost").(bool),
 		AllowedDomains:                data.Get("allowed_domains").([]string),
 		AllowedDomainsTemplate:        data.Get("allowed_domains_template").(bool),
+		AllowGlobsInSubstitutions:     data.Get("allow_globs_in_substitutions").(bool),
 		AllowBareDomains:              data.Get("allow_bare_domains").(bool),
 		AllowSubdomains:               data.Get("allow_subdomains").(bool),
 		AllowGlobDomains:              data.Get("allow_glob_domains").(bool),
@@ -1395,6 +1414,7 @@ func (b *backend) pathRolePatch(ctx context.Context, req *logical.Request, data 
 		AllowLocalhost:                data.GetWithExplicitDefault("allow_localhost", oldEntry.AllowLocalhost).(bool),
 		AllowedDomains:                data.GetWithExplicitDefault("allowed_domains", oldEntry.AllowedDomains).([]string),
 		AllowedDomainsTemplate:        data.GetWithExplicitDefault("allowed_domains_template", oldEntry.AllowedDomainsTemplate).(bool),
+		AllowGlobsInSubstitutions:     data.GetWithExplicitDefault("allow_globs_in_substitutions", oldEntry.AllowGlobsInSubstitutions).(bool),
 		AllowBareDomains:              data.GetWithExplicitDefault("allow_bare_domains", oldEntry.AllowBareDomains).(bool),
 		AllowSubdomains:               data.GetWithExplicitDefault("allow_subdomains", oldEntry.AllowSubdomains).(bool),
 		AllowGlobDomains:              data.GetWithExplicitDefault("allow_glob_domains", oldEntry.AllowGlobDomains).(bool),
@@ -1635,6 +1655,7 @@ type roleEntry struct {
 	AllowedDomainsOld             string        `json:"allowed_domains,omitempty"`
 	AllowedDomains                []string      `json:"allowed_domains_list"`
 	AllowedDomainsTemplate        bool          `json:"allowed_domains_template"`
+	AllowGlobsInSubstitutions     bool          `json:"allow_globs_in_substitutions"`
 	AllowBaseDomain               bool          `json:"allow_base_domain"`
 	AllowBareDomains              bool          `json:"allow_bare_domains"`
 	AllowTokenDisplayName         bool          `json:"allow_token_displayname"`
@@ -1703,6 +1724,7 @@ func (r *roleEntry) ToResponseData() map[string]interface{} {
 		"allow_localhost":                    r.AllowLocalhost,
 		"allowed_domains":                    r.AllowedDomains,
 		"allowed_domains_template":           r.AllowedDomainsTemplate,
+		"allow_globs_in_substitutions":       r.AllowGlobsInSubstitutions,
 		"allow_bare_domains":                 r.AllowBareDomains,
 		"allow_token_displayname":            r.AllowTokenDisplayName,
 		"allow_subdomains":                   r.AllowSubdomains,

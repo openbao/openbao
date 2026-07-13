@@ -1,0 +1,12 @@
+```release-note:security
+core/policies: If the value of a template expression contains a `+` or `*` character it will now be rejected by default. Set `allow_wildcards_in_substitutions = true` to overwrite. GHSA-59w7-v8rr-pr4p.
+```
+```release-note:security
+core/policies: If the value of a template expression contains a `/` character it will now be rejected by default. Set `allow_slashes_in_substitutions = true` to overwrite. GHSA-59w7-v8rr-pr4p.
+```
+```release-note:security
+secret/pki: If the value of a template expression in `allowed_uri_sans_template` and `allowed_domains` contains a `*` character it will now be rejected by default. Set `allow_globs_in_substitutions = true` to overwrite. GHSA-59w7-v8rr-pr4p.
+```
+```release-note:security
+secret/ssh: If the value of a template expression in `allowed_users` or `allowed_domains` contains a `,` character it will now be rejected by default. Set `allow_commas_in_substitutions = true` to overwrite. GHSA-59w7-v8rr-pr4p.
+```

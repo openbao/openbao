@@ -676,7 +676,16 @@ func (ps *Store) ACL(ctx context.Context, entity *identity.Entity, policyNames m
 					groups = append(directGroups, inheritedGroups...)
 				}
 			}
-			p, err := ParseACLPolicyWithTemplating(pol.Namespace, pol.Raw, true, entity, groups)
+
+			blockedSubstitutions := make([]string, 0, 3)
+			if !pol.AllowSlashesInSubstitutions {
+				blockedSubstitutions = append(blockedSubstitutions, "/")
+			}
+			if !pol.AllowWildcardsInSubstitutions {
+				blockedSubstitutions = append(blockedSubstitutions, "*", "+")
+			}
+
+			p, err := ParseACLPolicyWithTemplating(pol.Namespace, pol.Raw, true, blockedSubstitutions, entity, groups)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing templated policy %q: %w", pol.Name, err)
 			}

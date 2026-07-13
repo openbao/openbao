@@ -59,10 +59,6 @@ const (
 )
 
 var (
-	// canonicalMFAHeaderName is the MFA header value's format in the request
-	// headers. Do not alter the casing of this string.
-	canonicalMFAHeaderName = http.CanonicalHeaderKey(consts.MFAHeaderName)
-
 	// Set to false by stub_asset if the ui build tag isn't enabled
 	uiBuiltIn = true
 
@@ -1108,52 +1104,6 @@ func requestWrapInfo(r *http.Request, req *logical.Request) (*logical.Request, e
 	}
 
 	return req, nil
-}
-
-// parseMFAHeader parses the MFAHeaderName in the request headers and organizes
-// them with MFA method name as the index.
-func parseMFAHeader(req *logical.Request) error {
-	if req == nil {
-		return errors.New("request is nil")
-	}
-
-	if req.Headers == nil {
-		return nil
-	}
-
-	// Reset and initialize the credentials in the request
-	req.MFACreds = make(map[string][]string)
-
-	for _, mfaHeaderValue := range req.Headers[canonicalMFAHeaderName] {
-		// Skip the header with no value in it
-		if mfaHeaderValue == "" {
-			continue
-		}
-
-		// Handle the case where only method name is mentioned and no value
-		// is supplied
-		if !strings.Contains(mfaHeaderValue, ":") {
-			// Mark the presence of method name, but set an empty set to it
-			// indicating that there were no values supplied for the method
-			if req.MFACreds[mfaHeaderValue] == nil {
-				req.MFACreds[mfaHeaderValue] = []string{}
-			}
-			continue
-		}
-
-		shardSplits := strings.SplitN(mfaHeaderValue, ":", 2)
-		if shardSplits[0] == "" {
-			return fmt.Errorf("invalid data in header %q; missing method name or ID", consts.MFAHeaderName)
-		}
-
-		if shardSplits[1] == "" {
-			return fmt.Errorf("invalid data in header %q; missing method value", consts.MFAHeaderName)
-		}
-
-		req.MFACreds[shardSplits[0]] = append(req.MFACreds[shardSplits[0]], shardSplits[1])
-	}
-
-	return nil
 }
 
 // isForm tries to determine whether the request should be

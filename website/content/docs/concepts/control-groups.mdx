@@ -56,14 +56,11 @@ Response wrapping is triggered by requesting a path having one or more
 applicable control group factors in the policy. At this time, the
 original request is stored for deferred execution upon unwrapping.
 
-If a client requests wrapping:
-
-1. The original HTTP response is serialized
+1. The original HTTP request is serialized and stored
 2. A new single-use token is generated with the TTL supplied by the factor
-3. Internally, the original serialized request is stored.
-4. A new response is generated, with the token ID, TTL, and path stored in the
-   new response's wrap information object
-5. The new response is returned to the caller
+3. A new response is generated, with the token ID, accessor, TTL, and
+   path stored in the new response's wrap information object
+4. The new response is returned to the caller
 
 Note that policies can control minimum/maximum wrapping TTLs; see the [policies
 concepts page](policies.mdx) for
@@ -73,7 +70,7 @@ more information.
 
 Control groups are declared in a control-group stanza of an ACL policy.
 
-```
+```hcl
 path "pki/issue/*" {
   capabilities = ["read", "update"]
 
@@ -120,7 +117,7 @@ Please see the following section for example ACL Policies.
 
 ### Sample ACL policies
 
-```
+```hcl
 path "secret/foo" {
     capabilities = ["read"]
     control_group = {
@@ -137,7 +134,7 @@ path "secret/foo" {
 The above policy grants `read` access to `secret/foo` only after one member of
 the "managers" group authorizes the request.
 
-```
+```hcl
 path "secret/foo" {
     capabilities = ["create", "update"]
     control_group = {
@@ -164,7 +161,7 @@ group authorizes the request. If an authorizer is a member of both the
 "managers" and "superusers" group, one authorization for both factors will be
 satisfied.
 
-```
+```hcl
 path "secret/foo" {
     capabilities = ["write","read"]
     control_group = {
@@ -179,11 +176,11 @@ path "secret/foo" {
 }
 ```
 
-The above policy grants `read` access to `secret/foo` for anyone that has a vault token
+The above policy grants `read` access to `secret/foo` for anyone that has a token
 with this policy. It grants `write` access to `secret/foo` only after one member from the
 admin group authorizes the request.
 
-```
+```hcl
 path "kv/*" {
     capabilities = ["create", "update","delete","list","sudo"]
     control_group = {
@@ -215,12 +212,12 @@ any token with this policy will be required to get 2 approvals from the `superus
 any operation against `kv/*`. In addition, by virtue of the `controlled_capabilities` field in the first
 path stanza, `delete`,`list`, and `sudo` operations will require an additional approval from the `admin` group.
 
-```
+```hcl
 path "kv/*" {
     capabilities = ["read", "list", "create"]
     control_group = {
-        controlled_capabilities = ["read"]
         factor "admin" {
+            controlled_capabilities = ["read"]
             identity {
                 group_names = ["admin"]
                 approvals = 1
@@ -237,13 +234,14 @@ path "kv/*" {
 }
 ```
 
-In this case, `read` will require one admin approval and `create` will require
-one superuser approval and one admin approval. `List` will require no extra approvals
-from any of the control group factors, and a token with this policy will not be required
-to go through the control group workflow in order to execute a read operation against `kv/*`.
+In this case, `read` will require one admin approval and `create` will
+require one superuser approval. `list` will require no approvals from
+any of the control group factors, and a token with this policy will
+not be required to go through the control group workflow in order to
+execute a list operation against `kv/*`.
 
 
 ## API
 
 Control Groups can be managed over the HTTP API. Please see
-[Control Groups API](/vault/api-docs/system/control-group) for more details.
+[Control Groups API](/api-docs/system/control-group) for more details.

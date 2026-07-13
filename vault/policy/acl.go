@@ -406,20 +406,25 @@ func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheck
 		}
 	}
 
-	// List and Scan operations need to check without the trailing slash first,
-	// because there could be other rules with trailing wildcards that will
-	// match the path.
-	if op == logical.ListOperation && strings.HasSuffix(path, "/") {
+	permissions = a.CheckAllowedFromNonExactPaths(path, false)
+	if permissions != nil {
+		capabilities = permissions.CapabilitiesBitmap
+		goto CHECK
+	}
+
+	// List and Scan operations need to check with the trailing slash first,
+	// as they will always be the most specific rule (according to the policy
+	// syntax docs, the most specific rule wins: a match which isn't present
+	// above but is here must be one which is shorter and thus is lower
+	// priority).
+	//
+	// See also: https://openbao.org/docs/concepts/policies/#policy-syntax
+	if (op == logical.ListOperation || op == logical.ScanOperation) && strings.HasSuffix(path, "/") {
 		permissions = a.CheckAllowedFromNonExactPaths(strings.TrimSuffix(path, "/"), false)
 		if permissions != nil {
 			capabilities = permissions.CapabilitiesBitmap
 			goto CHECK
 		}
-	}
-	permissions = a.CheckAllowedFromNonExactPaths(path, false)
-	if permissions != nil {
-		capabilities = permissions.CapabilitiesBitmap
-		goto CHECK
 	}
 
 	// No exact, prefix, or segment wildcard paths found, return without

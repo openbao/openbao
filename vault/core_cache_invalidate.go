@@ -251,7 +251,7 @@ func isTransactionalMountPath(key string) bool {
 		strings.HasPrefix(key, coreLocalAuthConfigPath+"/")
 }
 
-func isKeyringPath(key string) bool {
+func isCoreKeyPath(key string) bool {
 	return key == barrierSealConfigPath ||
 		key == barrier.KeyringPath ||
 		key == barrier.LegacyRootKeyPath ||
@@ -260,7 +260,7 @@ func isKeyringPath(key string) bool {
 		key == barrier.RootKeyPath ||
 		key == barrier.ShamirKekPath ||
 		key == StoredBarrierKeysPath ||
-		strings.HasPrefix(key, barrier.KeyringUpgradePrefix)
+		key == raftTLSStoragePath
 }
 
 func isMissedMountKey(key string) bool {
@@ -407,9 +407,13 @@ func (ij *invalidationJob) Execute() error {
 	case isTransactionalMountPath(ij.nsKey):
 		ij.fatal = true
 		return ij.transactionalMountInvalidation(ctx)
-	case isKeyringPath(ij.nsKey):
-		// The HA subsystem handles keyring rotations via the
-		// periodicCheckKeyUpgrades(...) actor.
+	case strings.HasPrefix(ij.nsKey, barrier.KeyringUpgradePrefix):
+		ij.fatal = true
+		// this is handled via periodicCheckKeyringUpgrades(...)
+		// for root namespace while run by read-disabled standby nodes.
+		return ij.keyringTermInvalidation(ctx, ns.Path)
+	case isCoreKeyPath(ij.nsKey):
+		// No need to invalidate these entries.
 	case strings.HasPrefix(ij.key, coreLeaderPrefix):
 		// The HA subsystem handles leadership changes.
 	case strings.HasPrefix(ij.key, pluginCatalogPath):
@@ -502,6 +506,19 @@ func (ij *invalidationJob) legacyMountInvalidation(ctx context.Context) error {
 func (ij *invalidationJob) transactionalMountInvalidation(ctx context.Context) error {
 	if err := ij.im.core.reloadMount(ctx, ij.nsKey); err != nil {
 		return fmt.Errorf("unable to invalidate mount for key %q in namespace %q: %w", ij.nsKey, ij.nsUUID, err)
+	}
+
+	return nil
+}
+
+func (ij *invalidationJob) keyringTermInvalidation(ctx context.Context, nsPath string) error {
+	b := ij.im.core.sealManager.NamespaceBarrier(nsPath)
+	if b == nil {
+		return fmt.Errorf("couldn't retrieve barrier for a namespace: %q", nsPath)
+	}
+
+	if err := ij.im.core.checkKeyringUpgrade(ctx, b); err != nil {
+		return fmt.Errorf("unable to invalidate keyring upgrade entry for key %q in namespace %q: %w", ij.nsKey, ij.nsUUID, err)
 	}
 
 	return nil

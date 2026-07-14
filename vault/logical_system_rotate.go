@@ -406,7 +406,7 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 	}
 }
 
-// handleRotate handles the GET `/sys/rotate` and `/sys/rotate/keyring`
+// handleRotate handles the POST `/sys/rotate` and `/sys/rotate/keyring`
 // endpoints used to trigger an encryption key rotation.
 func (b *SystemBackend) handleRotate() framework.OperationFunc {
 	return func(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {

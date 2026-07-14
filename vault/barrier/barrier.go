@@ -67,12 +67,12 @@ const (
 	// used to reload the keyring itself.
 	RootKeyPath = "core/root-key"
 
-	// LegacyRootKeyPath is the former value of rootKeyPath and is replaced
+	// LegacyRootKeyPath is the former value of RootKeyPath and is replaced
 	// on initialization or rotation.
 	LegacyRootKeyPath = "core/master"
 
 	// ShamirKekPath is used with Shamir in v1.3+ to store a copy of the
-	// unseal key behind the barrier. As with rootKeyPath this is primarily
+	// unseal key behind the barrier. As with RootKeyPath this is primarily
 	// used by standbys to handle rotations. It also comes into play when
 	// restoring raft snapshots.
 	ShamirKekPath = "core/shamir-kek"

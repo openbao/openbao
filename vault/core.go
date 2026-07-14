@@ -562,7 +562,7 @@ type Core struct {
 	// became active.
 	activeTime time.Time
 
-	// KeyRotateGracePeriod is how long we allow an upgrade path
+	// keyRotateGracePeriod is how long we allow an upgrade path
 	// for standby instances before we delete the upgrade keys
 	keyRotateGracePeriod atomic.Int64
 
@@ -976,7 +976,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceDisabled))
 	c.clusterAddr.Store(conf.ClusterAddr)
-	c.keyRotateGracePeriod.Store(int64(2 * time.Minute))
+	c.SetKeyRotateGracePeriod(2 * time.Minute)
 
 	// Create a random key for raft peer challenges.
 	_, err := io.ReadFull(rand.Reader, c.pendingRaftPeerChallengeKey)
@@ -3029,7 +3029,7 @@ func (c *Core) SetKeyRotateGracePeriod(t time.Duration) {
 	c.keyRotateGracePeriod.Store(int64(t))
 }
 
-// Periodically test whether to automatically rotate the barrier key
+// autoRotateBarrierLoop checks whether to automatically rotate the barrier key.
 func (c *Core) autoRotateBarrierLoop(ctx context.Context) {
 	t := time.NewTicker(barrier.AutoRotateCheckInterval)
 	for {
@@ -3047,10 +3047,6 @@ func (c *Core) checkBarrierAutoRotate(ctx context.Context) {
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
 
-	if !c.isPrimary() {
-		return
-	}
-
 	reason, err := c.barrier.CheckBarrierAutoRotate(ctx)
 	if err != nil {
 		lf := c.logger.Error
@@ -3062,20 +3058,13 @@ func (c *Core) checkBarrierAutoRotate(ctx context.Context) {
 	}
 
 	if reason != "" {
-		// Time to rotate. Invoke the rotation handler in order to both rotate and create
-		// the replication canary
 		c.logger.Info("automatic barrier key rotation triggered", "reason", reason)
-
-		if err := c.systemBackend.rotateBarrierKey(ctx); err != nil {
+		if err := c.sealManager.RotateBarrierKey(ctx, namespace.RootNamespace); err != nil {
 			c.logger.Error("error automatically rotating barrier key", "error", err)
 		} else {
 			metrics.IncrCounter(barrier.BarrierRotationsMetric, 1)
 		}
 	}
-}
-
-func (c *Core) isPrimary() bool {
-	return true
 }
 
 func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {

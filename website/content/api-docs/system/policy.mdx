@@ -62,8 +62,8 @@ $ curl \
   "modified": "2025-03-25T16:50:49.348095648-05:00",
   "version": "1",
   "cas_required": false,
-  "allow_slashes_in_substitutions": false,
-  "allow_wildcards_in_substitutions": false
+  "allow_slashes_in_identity_templates": false,
+  "allow_wildcards_in_identity_templates": false
 }
 ```
 
@@ -105,12 +105,12 @@ updated, it takes effect immediately to all associated users.
   subsequent operation for continued usage. When set to true, `cas` becomes
   a required parameter. Defaults to false.
 
-- `allow_slashes_in_substitutions` `(bool: <optional>)` - If set, the values
+- `allow_slashes_in_identity_templates` `(bool: <optional>)` - If set, the values
   substituted in for template expression in the policy definition might contain
   a slash ('/'). This can enable injection attacks. Only use this, if the data
   used by the templates is trusted. Defaults to false.
 
-- `allow_wildcards_in_substitutions` `(bool: <optional>)` - If set, the values
+- `allow_wildcards_in_identity_templates` `(bool: <optional>)` - If set, the values
   substituted in for template expression in the policy definition might contain
   a wildcard characters ('*' and '+'). This can enable injection attacks. Only
   use this, if the data used by the templates is trusted. Defaults to false.

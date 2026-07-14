@@ -290,7 +290,7 @@ func validateURISAN(b *backend, data *inputBundle, uri string) bool {
 					Mode:   identitytpl.ACLTemplating,
 				}
 
-				if !data.role.AllowGlobsInSubstitutions {
+				if !data.role.AllowGlobsInIdentityTemplates {
 					input.BlockedSubstitutions = []string{"*"}
 				}
 
@@ -602,7 +602,7 @@ func validateNames(b *backend, data *inputBundle, names []string) string {
 							Mode:   identitytpl.ACLTemplating,
 						}
 
-						if !data.role.AllowGlobsInSubstitutions {
+						if !data.role.AllowGlobsInIdentityTemplates {
 							input.BlockedSubstitutions = []string{"*"}
 						}
 

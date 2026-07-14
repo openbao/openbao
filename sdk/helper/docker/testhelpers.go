@@ -40,6 +40,7 @@ type RunOptions struct {
 	ImageRepo              string
 	ImageTag               string
 	ContainerName          string
+	User                   string
 	Cmd                    []string
 	Entrypoint             []string
 	Env                    []string
@@ -370,6 +371,7 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 	cfg := &container.Config{
 		Hostname: name,
 		Image:    fmt.Sprintf("%s:%s", d.RunOptions.ImageRepo, d.RunOptions.ImageTag),
+		User:     d.RunOptions.User,
 		Env:      d.RunOptions.Env,
 		Cmd:      d.RunOptions.Cmd,
 	}

@@ -94,34 +94,34 @@ var cap2Int = map[string]uint32{
 
 // Policy is used to represent the policy specified by an ACL configuration.
 type Policy struct {
-	Name                          string `hcl:"name"`
-	DataVersion                   int
-	CASRequired                   bool
-	Paths                         []*PathRules `hcl:"-"`
-	Raw                           string
-	Type                          Type
-	Templated                     bool
-	Expiration                    time.Time
-	Modified                      time.Time
-	Namespace                     *namespace.Namespace
-	AllowWildcardsInSubstitutions bool
-	AllowSlashesInSubstitutions   bool
+	Name                              string `hcl:"name"`
+	DataVersion                       int
+	CASRequired                       bool
+	Paths                             []*PathRules `hcl:"-"`
+	Raw                               string
+	Type                              Type
+	Templated                         bool
+	Expiration                        time.Time
+	Modified                          time.Time
+	Namespace                         *namespace.Namespace
+	AllowWildcardsInIdentityTemplates bool
+	AllowSlashesInIdentityTemplates   bool
 }
 
 // ShallowClone returns a shallow clone of the policy. This should not be used
 // if any of the reference-typed fields are going to be modified
 func (p *Policy) ShallowClone() *Policy {
 	return &Policy{
-		Name:                          p.Name,
-		DataVersion:                   p.DataVersion,
-		CASRequired:                   p.CASRequired,
-		Paths:                         p.Paths,
-		Raw:                           p.Raw,
-		Type:                          p.Type,
-		Templated:                     p.Templated,
-		Namespace:                     p.Namespace,
-		AllowWildcardsInSubstitutions: p.AllowWildcardsInSubstitutions,
-		AllowSlashesInSubstitutions:   p.AllowSlashesInSubstitutions,
+		Name:                              p.Name,
+		DataVersion:                       p.DataVersion,
+		CASRequired:                       p.CASRequired,
+		Paths:                             p.Paths,
+		Raw:                               p.Raw,
+		Type:                              p.Type,
+		Templated:                         p.Templated,
+		Namespace:                         p.Namespace,
+		AllowWildcardsInIdentityTemplates: p.AllowWildcardsInIdentityTemplates,
+		AllowSlashesInIdentityTemplates:   p.AllowSlashesInIdentityTemplates,
 	}
 }
 

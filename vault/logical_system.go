@@ -2522,12 +2522,12 @@ func (b *SystemBackend) handlePoliciesRead(policyType policy.Type) framework.Ope
 
 func readPolicyResponse(policy *policy.Policy) map[string]interface{} {
 	data := map[string]interface{}{
-		"name":                             policy.Name,
-		"version":                          policy.DataVersion,
-		"cas_required":                     policy.CASRequired,
-		"policy":                           policy.Raw,
-		"allow_wildcards_in_substitutions": policy.AllowWildcardsInSubstitutions,
-		"allow_slashes_in_substitutions":   policy.AllowSlashesInSubstitutions,
+		"name":                                  policy.Name,
+		"version":                               policy.DataVersion,
+		"cas_required":                          policy.CASRequired,
+		"policy":                                policy.Raw,
+		"allow_wildcards_in_identity_templates": policy.AllowWildcardsInIdentityTemplates,
+		"allow_slashes_in_identity_templates":   policy.AllowSlashesInIdentityTemplates,
 	}
 
 	if !policy.Expiration.IsZero() {
@@ -2618,8 +2618,8 @@ func (b *SystemBackend) handlePoliciesSet(policyType policy.Type) framework.Oper
 		casRequired := data.Get("cas_required").(bool)
 		pol.CASRequired = casRequired
 
-		pol.AllowWildcardsInSubstitutions = data.Get("allow_wildcards_in_substitutions").(bool)
-		pol.AllowSlashesInSubstitutions = data.Get("allow_slashes_in_substitutions").(bool)
+		pol.AllowWildcardsInIdentityTemplates = data.Get("allow_wildcards_in_identity_templates").(bool)
+		pol.AllowSlashesInIdentityTemplates = data.Get("allow_slashes_in_identity_templates").(bool)
 
 		// Update the policy
 		if err := b.Core.policyStore.SetPolicy(ctx, pol, cas); err != nil {

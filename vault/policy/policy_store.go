@@ -678,10 +678,10 @@ func (ps *Store) ACL(ctx context.Context, entity *identity.Entity, policyNames m
 			}
 
 			blockedSubstitutions := make([]string, 0, 3)
-			if !pol.AllowSlashesInSubstitutions {
+			if !pol.AllowSlashesInIdentityTemplates {
 				blockedSubstitutions = append(blockedSubstitutions, "/")
 			}
-			if !pol.AllowWildcardsInSubstitutions {
+			if !pol.AllowWildcardsInIdentityTemplates {
 				blockedSubstitutions = append(blockedSubstitutions, "*", "+")
 			}
 

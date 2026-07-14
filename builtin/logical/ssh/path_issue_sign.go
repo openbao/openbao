@@ -164,7 +164,7 @@ func (b *backend) pathSignIssueCertificateHelper(sc *storageContext, req *logica
 	return response, nil
 }
 
-func (b *backend) renderPrincipal(principal string, req *logical.Request, allowCommasInSubstitutions bool) (string, error) {
+func (b *backend) renderPrincipal(principal string, req *logical.Request, allowCommasInIdentityTemplates bool) (string, error) {
 	if req.EntityID == "" {
 		return principal, nil
 	}
@@ -196,7 +196,7 @@ func (b *backend) renderPrincipal(principal string, req *logical.Request, allowC
 		Groups: groups,
 		Mode:   identitytpl.ACLTemplating,
 	}
-	if !allowCommasInSubstitutions {
+	if !allowCommasInIdentityTemplates {
 		input.BlockedSubstitutions = []string{","}
 	}
 
@@ -221,7 +221,7 @@ func (b *backend) calculateValidPrincipals(data *framework.FieldData, req *logic
 	// Build list of allowed Principals from template and static principalsAllowedByRole
 	var allowedPrincipals []string
 	if enableTemplating {
-		rendered, err := b.renderPrincipal(principalsAllowedByRole, req, role.AllowCommasInSubstitutions)
+		rendered, err := b.renderPrincipal(principalsAllowedByRole, req, role.AllowCommasInIdentityTemplates)
 		if err != nil {
 			return nil, err
 		}

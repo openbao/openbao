@@ -1,5 +1,6 @@
 import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
+import type { EditUrlFunction } from "@docusaurus/plugin-content-docs";
 import type * as Preset from "@docusaurus/preset-classic";
 import { includeMarkdown } from "@hashicorp/remark-plugins";
 import * as path from "path";
@@ -15,6 +16,15 @@ function getDocVersions() {
     return {
       current: { label: "Development" },
     };
+  }
+}
+
+function getEditUrlFn(dir: string): EditUrlFunction {
+  return (editUrlParams) => {
+    let branch = editUrlParams.version === "current" ?
+      `main` :
+      `release/${editUrlParams.version}`;
+    return `https://github.com/openbao/openbao/blob/${branch}/website/content/${dir}/${editUrlParams.docPath}`;
   }
 }
 
@@ -91,7 +101,7 @@ const config: Config = {
           sidebarPath: "./sidebars.ts",
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl: "https://github.com/openbao/openbao/tree/main/website/",
+          editUrl: getEditUrlFn("docs"),
           beforeDefaultRemarkPlugins: [
             [
               includeMarkdown,
@@ -136,7 +146,7 @@ const config: Config = {
         path: "content/api-docs",
         routeBasePath: "api-docs",
         sidebarPath: "./sidebarsApi.ts",
-        editUrl: "https://github.com/openbao/openbao/tree/main/website/",
+        editUrl: getEditUrlFn("api-docs"),
         beforeDefaultRemarkPlugins: [
           [
             includeMarkdown,

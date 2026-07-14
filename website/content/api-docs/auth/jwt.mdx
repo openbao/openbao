@@ -512,8 +512,8 @@ calling the poll API again.
 When the callback or authorization has occurred, the response will include either a different `errors`
 message or successfully return an authorization token.
 
-| Method | Path                      |
-| :----- | :------------------------ |
+| Method | Path                  |
+| :----- | :-------------------- |
 | `GET`  | `/auth/jwt/oidc/poll` |
 
 ### Parameters
@@ -623,5 +623,256 @@ $ curl \
         "renewable":true
     },
     ...
+}
+```
+
+## List CEL roles
+
+This endpoint returns a list of available CEL roles. Only the role names are
+returned, not any values. It is useful to both operators and users.
+
+| Method | Path                  |
+| :----- | :-------------------- |
+| `LIST` | `/auth/jwt/cel/roles` |
+
+### Parameters
+
+ - `after` `(string: "")` - Optional entry to begin listing after for
+   pagination; not required to exist.
+
+ - `limit` `(int: 0)` - Optional number of entries to return; defaults
+   to all entries.
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request LIST \
+    http://127.0.0.1:8200/v1/auth/jwt/cel/roles
+```
+
+### Sample response
+
+```json
+{
+  "data": {"keys": ["testrole"]},
+  ...
+}
+```
+
+## Read CEL role
+
+This endpoint queries the CEL role definition. It is useful to both operators and
+users.
+
+| Method | Path                        |
+| :----- | :-------------------------- |
+| `GET`  | `/auth/jwt/cel/roles/:name` |
+
+### Parameters
+
+- `name` `(string: <required>)` - Specifies the name of the role to read. This
+  is part of the request URL.
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/auth/jwt/cel/roles/my-role
+```
+
+### Sample response
+
+```json
+{
+  "data": {
+    "name": "testrole"
+    "cel_program": {
+      "variables": [
+        {
+          "name": "example",
+          "expression": "..."
+        },
+        ...
+      ],
+      "expression": "...",
+    },
+    "message": "permission denied",
+    "clock_skew_leeway": 20,
+    "expiration_leeway": 10,
+    "not_before_leeway": 10,
+    "bound_audiences": ["openbao.example.org"]
+  },
+  ...
+}
+```
+
+## Create/Update CEL role {#create-update-cel-role}
+
+This endpoint creates or updates the CEL role definition.
+
+| Method  | Path                        |
+| :------ | :-------------------------- |
+| `POST`  | `/auth/jwt/cel/roles/:name` |
+| `PATCH` | `/auth/jwt/cel/roles/:name` |
+
+:::warning
+
+CEL is an advanced topic for operators. All validation is taken on by the CEL
+program created by the operator; **limited to no validation is performed by
+OpenBao above and beyond what the CEL program contains**. It is up to the
+operator to craft a CEL role which adequately perform validation for the
+provided JWT and all of its claims. Some CEL programs may cause high CPU
+usage; OpenBao will validate the requesting JWT is signed by a valid issuer
+but the CEL program author must take care not to design expensive programs.
+
+All claims on the JWT (including `aud`, `sub`, and any custom claims) should
+be validated and constrained before issuing an OpenBao token based on them.
+
+:::
+
+#### Parameters
+
+- `name` `(string: <required>)` - Specifies the name of the CEL role to
+  create. This is part of the request URL.
+- `cel_program` `(CelProgram: <required>)` - Specifies the CEL Variable list and main
+  CEL expression. Refer to [Quick Start - CEL in JWT](/docs/auth/jwt#cel) for more
+  information about how to construct the CEL program correctly.
+- `message` `(string: <optional>)` - Static error message if validation
+  failed.
+- `clock_skew_leeway` `(int or string: <optional>)` - The amount of leeway to
+  add to all claims to account for clock skew, in seconds. Defaults to `60`
+  seconds if set to `0` and can be disabled if set to `-1`. Accepts an integer
+  number of seconds, or a Go duration format string.
+- `expiration_leeway` `(int or string: <optional>)` - The amount of leeway to
+  add to expiration (`exp`) claims to account for clock skew, in seconds.
+  Defaults to `150` seconds if set to `0` and can be disabled if set to `-1`.
+  Accepts an integer number of seconds, or a Go duration format string. Only
+  applicable with "jwt" roles.
+- `not_before_leeway` `(int or string: <optional>)` - The amount of leeway to
+  add to not before (`nbf`) claims to account for clock skew, in seconds.
+  Defaults to `150` seconds if set to `0` and can be disabled if set to `-1`.
+  Accepts an integer number of seconds, or a Go duration format string. Only
+  applicable with "jwt" roles.
+- `bound_audiences` `(array: <optional>)` - Optional list of `aud` claims to
+  match against.
+
+  :::warning
+
+  Unlike in the standard role mechanism, CEL for JWT does not reject tokens
+  which do not provide an audience claim when `bound_audiences` is specified.
+  Likewise, it does not require the `bound_audiences` parameter to be
+  specified and this may be left blank by the operator; if so, the CEL program
+  is entirely responsible for validating this field.
+
+  :::
+
+### Sample payload
+
+```json
+{
+  "cel_program": {
+    "variables": [
+      {
+        "name": "example",
+        "expression": "..."
+      },
+      ...
+    ],
+    "expression": "...",
+  },
+  "message": "permission denied",
+  "clock_skew_leeway": 20,
+  "expiration_leeway": 10,
+  "not_before_leeway": 10,
+  "bound_audiences": ["openbao.example.org"]
+}
+```
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request POST \
+    --data @payload.json \
+    http://127.0.0.1:8200/v1/auth/jwt/cel/roles/my-role
+```
+
+## Delete CEL role
+
+This endpoint deletes the CEL role definition. Deleting a role **does not**
+revoke tokens issued by this role.
+
+| Method   | Path                        |
+| :------- | :-------------------------- |
+| `DELETE` | `/auth/jwt/cel/roles/:name` |
+
+### Parameters
+
+- `name` `(string: <required>)` - Specifies the name of the role to delete. This
+  is part of the request URL.
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request DELETE \
+    http://127.0.0.1:8200/v1/auth/jwt/cel/roles/my-role
+```
+
+## CEL JWT login
+
+Fetch a token given a JWT. This endpoint takes a signed JSON Web Token (JWT)
+and a CEL role name for some entity. It verifies the JWT signature to
+authenticate that entity and then authorizes the entity for the given role.
+
+| Method | Path                  |
+| :----- | :-------------------- |
+| `POST` | `/auth/jwt/cel/login` |
+
+### Parameters
+
+- `role` `(string: <optional>)` - Name of the CEL role against which the login
+  is being attempted.
+- `jwt` `(string: <required>)` - Signed [JSON Web Token](https://tools.ietf.org/html/rfc7519) (JWT).
+
+### Sample payload
+
+```json
+{
+  "role": "dev-role",
+  "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### Sample request
+
+```shell-session
+$ curl \
+    --request POST \
+    --data @payload.json \
+    https://127.0.0.1:8200/v1/auth/jwt/cel/login
+```
+
+### Sample response
+
+```json
+{
+  "auth": {
+    "client_token": "f33f8c72-924e-11f8-cb43-ac59d697597c",
+    "accessor": "0e9e354a-520f-df04-6867-ee81cae3d42d",
+    "policies": [
+      "default",
+      "dev",
+      "prod"
+    ],
+    "lease_duration": 2764800,
+    "renewable": true
+  },
+  ...
 }
 ```

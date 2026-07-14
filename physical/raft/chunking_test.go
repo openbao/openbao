@@ -29,10 +29,6 @@ func TestRaft_Chunking_Lifecycle(t *testing.T) {
 
 	b := GetRaft(t, true, false)
 
-	t.Log("applying configuration")
-
-	b.applyConfigSettings(raft.DefaultConfig())
-
 	t.Log("chunking")
 
 	buf := []byte("let's see how this goes, shall we?")
@@ -112,10 +108,6 @@ func TestFSM_Chunking_TermChange(t *testing.T) {
 	assert := assert.New(t)
 
 	b := GetRaft(t, true, false)
-
-	t.Log("applying configuration")
-
-	b.applyConfigSettings(raft.DefaultConfig())
 
 	t.Log("chunking")
 

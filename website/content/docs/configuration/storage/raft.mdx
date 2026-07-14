@@ -80,29 +80,29 @@ backend cannot be declared.
   production OpenBao servers. The maximum allowed value is 10.
 
 - `trailing_logs` `(integer: 10000)` - This controls how many log entries are
-  left in the log store on disk after a snapshot is made. This should only be
-  adjusted when followers cannot catch up to the leader due to a very large
-  snapshot size and high write throughput causing log truncation before a
-  snapshot can be fully installed. If you need to use this to recover a cluster,
+  left in the log store on disk after truncation. This should only be
+  adjusted when followers cannot catch up to the leader due to
+  high write throughput causing log truncation before a follower can replicate
+  the entries. If you need to use this to recover a cluster,
   consider reducing write throughput or the amount of data stored on OpenBao. The
   default value is 10000 which is suitable for all normal workloads. The
   `trailing_logs` metric is not the same as `max_trailing_logs`.
 
 - `snapshot_threshold` `(integer: 8192)` - This controls the minimum number of Raft
-  commit entries between snapshots that are saved to disk. This is a low-level
+  commit entries between log truncations. This is a low-level
   parameter that should rarely need to be changed. Very busy clusters
   experiencing excessive disk IO may increase this value to reduce disk IO and
-  minimize the chances of all servers taking snapshots at the same time.
+  minimize the chances of all servers truncating at the same time.
   Increasing this trades off disk IO for disk space since the log will grow much
   larger and the space in the `raft.db` file can't be reclaimed till the next
-  snapshot. Servers may take longer to recover from crashes or failover if this
+  truncation. Servers may take longer to recover from crashes or failover if this
   is increased significantly as more logs will need to be replayed.
 
 - `snapshot_interval` `(integer: 120 seconds)` - The snapshot interval
-   controls how often Raft checks whether a snapshot operation is
-   required. Raft randomly staggers snapshots between the configured
+   controls how often each node checks whether log truncation is
+   needed. Each node randomly staggers between the configured
    interval and twice the configured interval to keep the entire cluster
-   from performing a snapshot at once. The default snapshot interval is
+   from performing a truncation at once. The default snapshot interval is
    120 seconds.
 
 - `retry_join` `(list: [])` <a name="retry_join"></a> - A set of connection details for another node in the

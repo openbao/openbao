@@ -145,7 +145,7 @@ repository:
       primary: true
     - name: Jonas Köhnen
       email: jonas@satoqz.net
-      social: https://github.com/cipherboy
+      social: https://github.com/satoqz
       primary: true
   license:
     url: https://github.com/openbao/openbao/blob/main/LICENSE

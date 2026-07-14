@@ -31,12 +31,14 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	vaultseal "github.com/openbao/openbao/vault/seal"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
 )
 
 type RaftClusterOpts struct {
 	DisableFollowerJoins           bool
+	DisableStandbyReads            bool
 	InmemCluster                   bool
 	EnableAutopilot                bool
 	PhysicalFactoryConfig          map[string]interface{}
@@ -69,6 +71,7 @@ func raftCluster(t testing.TB, ropts *RaftClusterOpts) (*vault.TestCluster, *vau
 	opts.NumCores = ropts.NumCores
 	opts.VersionMap = ropts.VersionMap
 	opts.EffectiveSDKVersionMap = ropts.EffectiveSDKVersionMap
+	opts.DisableStandbyReads = ropts.DisableStandbyReads
 
 	teststorage.RaftBackendSetup(conf, &opts)
 
@@ -924,6 +927,87 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 					t.Fatal(data)
 				}
 			}
+		})
+	}
+}
+
+func TestRaft_RotateKeyring(t *testing.T) {
+	t.Parallel()
+
+	cluster, _ := raftCluster(t, &RaftClusterOpts{})
+	defer cluster.Cleanup()
+
+	leaderClient := cluster.Cores[0].Client
+	rootCtx := namespace.RootContext(t.Context())
+	output, err := leaderClient.Sys().CreateNamespaceWithContext(rootCtx, "test-ns", &api.CreateNamespaceInput{})
+	require.NoError(t, err)
+	ns := &namespace.Namespace{ID: output.ID, Path: output.Path, UUID: output.UUID}
+
+	tt := []struct {
+		name      string
+		namespace *namespace.Namespace
+	}{
+		{
+			name:      "root namespace",
+			namespace: namespace.RootNamespace,
+		},
+		{
+			name:      "other namespace",
+			namespace: ns,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := namespace.ContextWithNamespace(t.Context(), tc.namespace)
+
+			// Write a secret.
+			_, err := leaderClient.Logical().WriteWithContext(ctx, "secret/foo", map[string]interface{}{
+				"test": "data",
+			})
+			require.NoError(t, err)
+
+			verifyRead := func(path string) {
+				require.EventuallyWithT(t, func(collect *assert.CollectT) {
+					for _, c := range cluster.Cores {
+						res, err := c.Client.Logical().ReadWithContext(ctx, path)
+						require.NoError(collect, err)
+						require.NotEmpty(collect, res)
+						require.Equal(collect, "data", res.Data["test"].(string))
+					}
+				}, time.Second, 100*time.Millisecond)
+			}
+
+			// Verify written secret.
+			verifyRead("secret/foo")
+
+			status, err := leaderClient.Sys().KeyStatusWithContext(ctx)
+			require.NoError(t, err)
+			prevTerm := status.Term
+
+			// Rotate keyring.
+			require.NoError(t, leaderClient.Sys().RotateKeyringWithContext(ctx))
+
+			// Write secret after keyring rotation.
+			_, err = leaderClient.Logical().WriteWithContext(ctx, "secret/bar", map[string]interface{}{
+				"test": "data",
+			})
+			require.NoError(t, err)
+
+			// Verify standby nodes have upgraded their keyrings.
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				for _, c := range cluster.Cores {
+					status, err := c.Client.Sys().KeyStatusWithContext(ctx)
+					require.NoError(collect, err)
+					require.Equal(collect, prevTerm+1, status.Term)
+				}
+			}, 5*time.Second, 100*time.Millisecond)
+
+			// Verify we can read secret written with previous term keyring.
+			verifyRead("secret/foo")
+
+			// Verify we can read secret written with most recent keyring.
+			verifyRead("secret/bar")
 		})
 	}
 }

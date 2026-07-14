@@ -38,8 +38,8 @@ const (
 	// leaderCheckInterval is how often a standby checks for a new leader
 	leaderCheckInterval = 2500 * time.Millisecond
 
-	// keyRotateCheckInterval is how often a standby checks for a key
-	// rotation taking place.
+	// keyRotateCheckInterval is how often a read-disabled standby checks
+	// for a keyring upgrade taking place.
 	keyRotateCheckInterval = 10 * time.Second
 
 	// leaderPrefixCleanDelay is how long to wait between deletions
@@ -495,6 +495,7 @@ func (c *Core) runHALoop(doneCh chan<- struct{}, manualStepDownCh chan struct{},
 
 func (c *Core) runHALoopOnce(manualStepDownCh chan struct{}, stopCh, restartCh <-chan struct{}) bool {
 	restart := false
+	isReadEnabledStandby := c.StandbyReadsEnabled()
 
 	var g run.Group
 	{
@@ -510,15 +511,15 @@ func (c *Core) runHALoopOnce(manualStepDownCh chan struct{}, stopCh, restartCh <
 		}, func(error) {})
 	}
 	{
-		// Monitor for key rotations
+
 		keyRotateStop := make(chan struct{})
 
 		g.Add(func() error {
-			c.periodicCheckKeyUpgrades(context.Background(), keyRotateStop)
+			c.periodicCheckKeyringUpgrades(context.Background(), keyRotateStop, isReadEnabledStandby)
 			return nil
 		}, func(error) {
 			close(keyRotateStop)
-			c.logger.Debug("shutting down periodic key rotation checker")
+			c.logger.Debug("shutting down periodic keyring upgrade checker")
 		})
 	}
 	{
@@ -549,7 +550,7 @@ func (c *Core) runHALoopOnce(manualStepDownCh chan struct{}, stopCh, restartCh <
 		leaderStopCh := make(chan struct{})
 
 		g.Add(func() error {
-			c.waitForLeadership(manualStepDownCh, leaderStopCh)
+			c.waitForLeadership(manualStepDownCh, leaderStopCh, isReadEnabledStandby)
 			return nil
 		}, func(error) {
 			close(leaderStopCh)
@@ -570,7 +571,7 @@ func (c *Core) runHALoopOnce(manualStepDownCh chan struct{}, stopCh, restartCh <
 // waitForLeadership is a long running routine that is used when an HA backend
 // is enabled. It waits until we are leader and switches this Vault to
 // active.
-func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
+func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}, isReadEnabled bool) {
 	var manualStepDown bool
 	firstIteration := true
 
@@ -611,7 +612,7 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 
 		// If possible, unseal in read-only mode and start acting as a
 		// read-enabled standby.
-		if c.StandbyReadsEnabled() {
+		if isReadEnabled {
 			if stop := c.runReadEnabledStandby(standbyCtx, standbyCtxCancel, stopCh); stop {
 				return
 			}
@@ -1049,8 +1050,10 @@ func (c *Core) periodicLeaderRefresh(stopCh chan struct{}) {
 	}
 }
 
-// periodicCheckKeyUpgrade is used to watch for key rotation events as a standby
-func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{}) {
+// periodicCheckKeyringUpgrades is used to watch for root namespace keyring
+// rotation events as a read-disabled standby. Also watches for Raft TLS key
+// upgrades for both types of standby nodes.
+func (c *Core) periodicCheckKeyringUpgrades(ctx context.Context, stopCh chan struct{}, isReadEnabled bool) {
 	raftBackend := c.GetRaftBackend()
 	isRaft := raftBackend != nil
 
@@ -1072,8 +1075,12 @@ func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{
 					return
 				}
 
-				if err := c.checkKeyUpgrades(ctx); err != nil {
-					c.logger.Error("key rotation periodic upgrade check failed", "error", err)
+				// Monitor for keyring upgrades but only for read-disabled nodes.
+				// Otherwise read-enabled nodes are handled through invalidation manager.
+				if !isReadEnabled {
+					if err := c.checkKeyringUpgrade(ctx, c.barrier); err != nil {
+						c.logger.Error("root keyring rotation periodic upgrade check failed", "error", err)
+					}
 				}
 
 				if isRaft {
@@ -1098,28 +1105,19 @@ func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{
 	}
 }
 
-// checkKeyUpgrades is used to check if there have been any key rotations
-// and if there is a chain of upgrades available
-func (c *Core) checkKeyUpgrades(ctx context.Context) error {
+// checkKeyringUpgrade is used to rotate the keyring to the new term
+// if there have been any key rotations performed on a leader node.
+func (c *Core) checkKeyringUpgrade(ctx context.Context, b barrier.SecurityBarrier) error {
 	for {
-		// Check for an upgrade
-		didUpgrade, newTerm, err := c.barrier.CheckUpgrade(ctx)
+		didUpgrade, newTerm, err := b.CheckUpgrade(ctx)
 		if err != nil {
 			return err
 		}
 
-		// Nothing to do if no upgrade
 		if !didUpgrade {
 			break
 		}
 		c.logger.Info("upgraded to new key term", "term", newTerm)
-	}
-	return nil
-}
-
-func (c *Core) reloadRootKey(ctx context.Context) error {
-	if err := c.barrier.ReloadRootKey(ctx); err != nil {
-		return fmt.Errorf("error reloading root key: %w", err)
 	}
 	return nil
 }
@@ -1150,11 +1148,11 @@ func (c *Core) reloadShamirKey(ctx context.Context) error {
 }
 
 func (c *Core) performKeyUpgrades(ctx context.Context) error {
-	if err := c.checkKeyUpgrades(ctx); err != nil {
+	if err := c.checkKeyringUpgrade(ctx, c.barrier); err != nil {
 		return fmt.Errorf("error checking for key upgrades: %w", err)
 	}
 
-	if err := c.reloadRootKey(ctx); err != nil {
+	if err := c.barrier.ReloadRootKey(ctx); err != nil {
 		return fmt.Errorf("error reloading root key: %w", err)
 	}
 
@@ -1174,7 +1172,8 @@ func (c *Core) performKeyUpgrades(ctx context.Context) error {
 }
 
 // scheduleUpgradeCleanup is used to ensure that all the upgrade paths
-// are cleaned up in a timely manner if a leader failover takes place
+// are cleaned up in a timely manner if a leader failover takes place.
+// Unfortunately we have to this for all sealable namespaces also.
 func (c *Core) scheduleUpgradeCleanup(ctx context.Context) error {
 	// List the upgrades
 	upgrades, err := c.barrier.List(ctx, barrier.KeyringUpgradePrefix)

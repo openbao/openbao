@@ -14,39 +14,55 @@ The main CEL `Expression` in a `Celprogram` is typically one line of code. This 
 into multiple CEL expressions by using `CelVariable`'s. The following sections cover how to build
 a `CelProgram` in any part of OpenBao.
 
+:::warning
+
+CEL is an advanced topic for operators. All validation is taken on by the CEL
+program created by the operator; limited to no validation is performed by
+OpenBao above and beyond what the CEL program contains. It is up to the
+operator to craft CEL programs which adequately perform validation for the
+context.
+
+:::
+
 ---
 
 ## Table of contents
+
  - [Main expression](#main-expression)
- - [Variables in a CelProgram](#variables-in-a-celprogram)
- - [CelProgram](#celprogram)
+ - [Variables in a CEL Program](#variables-in-a-cel-program)
+ - [CEL Program](#cel-program)
  - [The Request Object](#the-request-object)
 
 ---
 
 ## Main expression
+
 - This is the main expression that determines whether a CEL program has accepted or rejected
 a request.
 
 - The main expression in the `CelProgram` should return the engine's
   specific output object on success, for instance:
+
     * PKI → `ValidationOutput`
     * JWT/OIDC → `pb.Auth`
 
 - A custom `string` error message or `bool` should be returned on
   failure. The error message can be constructed using a CEL expression.
   For instance:
+
   ```go
   require_cn ? 'request should have a common_name' : (validate_ttl ? 'request has invalid TTL' : "Request Rejected")
   ```
 
 - Use a ternary operator when writing a main expression for clarity
   and to guarantee a value is always produced:
+
   ```go
   cond ? SuccessObject : error string/bool
   ```
 
-## Variables in a CelProgram
+## Variables in a CEL Program
+
 - A variable is a named expression that can be referred later in other variables and expressions.
 
 - They are useful if an expression is too long or has reusable parts.
@@ -70,8 +86,9 @@ Expression: string
 },
 ```
 
-## CelProgram
-- A `CelProgram` is made of 2 parts:
+## CEL Program
+
+- A CEL role is made of 2 parts:
   - A list of `CelVariable`'s.
   The CEL variables are declared in the CEL env so that they can be accessed by other
   variables as well as the main expression.
@@ -79,6 +96,7 @@ Expression: string
   - A main expression which determines whether the CEL program succeeds or fails.
 
 ### Definition
+
 ```go
 // List of variables with explicit order (optional)
 Variables: []CelVariable
@@ -87,6 +105,7 @@ Expression: string
 ```
 
 ### Example
+
 ```go
 "cel_program": map[string]interface{}{
   "variables": []map[string]interface{}{
@@ -130,10 +149,11 @@ Expression: string
     },
   },
   "expression": "validate_cn ? output : err",
-},
+}
 ```
 
 ## The Request Object
+
 - Every key/value pair in the request body is copied verbatim to the CEL
 `request` map. The CEL program (not the endpoint) decides which
 of these parameters to honour, ignore, or override.

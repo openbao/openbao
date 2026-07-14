@@ -149,11 +149,11 @@ func TestNamespaceUnsealCommand_Format(t *testing.T) {
 		Client: client,
 	}
 
-	args, format, _, _, _ := setupEnv([]string{"namespace", "unseal", "-format", "json", "ns"})
-	require.Equal(t, "json", format)
+	env := setupEnv([]string{"namespace", "unseal", "-format", "json", "ns"})
+	require.Equal(t, "json", env.format)
 
 	// Unseal with one key
-	code := RunCustom(append(args, []string{unsealShares[0]}...), runOpts)
+	code := RunCustom(append(env.args, []string{unsealShares[0]}...), runOpts)
 	assert.Equalf(t, 0, code, "expected %d to be 0: %s", code, stderr.String())
 	assert.True(t, json.Valid(stdout.Bytes()), "expected output to be valid JSON")
 }

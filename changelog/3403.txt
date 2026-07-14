@@ -1,0 +1,3 @@
+```release-note:improvement
+command: Support `-output-profile` to display a profile request compatible with server-side workflows and self-initialization.
+```

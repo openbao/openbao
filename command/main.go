@@ -31,17 +31,30 @@ type VaultUI struct {
 const (
 	globalFlagOutputCurlString = "output-curl-string"
 	globalFlagOutputPolicy     = "output-policy"
+	globalFlagOutputProfile    = "output-profile"
 	globalFlagFormat           = "format"
 	globalFlagDetailed         = "detailed"
 )
 
 var globalFlags = []string{
-	globalFlagOutputCurlString, globalFlagOutputPolicy, globalFlagFormat, globalFlagDetailed,
+	globalFlagOutputCurlString,
+	globalFlagOutputPolicy,
+	globalFlagOutputProfile,
+	globalFlagFormat,
+	globalFlagDetailed,
 }
 
 // setupEnv parses args and may replace them and sets some env vars to known
 // values based on format options
-func setupEnv(args []string) (retArgs []string, format string, detailed bool, outputCurlString bool, outputPolicy bool) {
+func setupEnv(args []string) (ret struct {
+	args             []string
+	format           string
+	detailed         bool
+	outputCurlString bool
+	outputPolicy     bool
+	outputProfile    bool
+},
+) {
 	var err error
 	var nextArgFormat bool
 	var haveDetailed bool
@@ -49,7 +62,7 @@ func setupEnv(args []string) (retArgs []string, format string, detailed bool, ou
 	for _, arg := range args {
 		if nextArgFormat {
 			nextArgFormat = false
-			format = arg
+			ret.format = arg
 			continue
 		}
 
@@ -63,18 +76,23 @@ func setupEnv(args []string) (retArgs []string, format string, detailed bool, ou
 		}
 
 		if isGlobalFlag(arg, globalFlagOutputCurlString) {
-			outputCurlString = true
+			ret.outputCurlString = true
 			continue
 		}
 
 		if isGlobalFlag(arg, globalFlagOutputPolicy) {
-			outputPolicy = true
+			ret.outputPolicy = true
+			continue
+		}
+
+		if isGlobalFlag(arg, globalFlagOutputProfile) {
+			ret.outputProfile = true
 			continue
 		}
 
 		// Parse a given flag here, which overrides the env var
 		if isGlobalFlagWithValue(arg, globalFlagFormat) {
-			format = getGlobalFlagValue(arg)
+			ret.format = getGlobalFlagValue(arg)
 		}
 		// For backwards compat, it could be specified without an equal sign
 		if isGlobalFlag(arg, globalFlagFormat) {
@@ -83,41 +101,42 @@ func setupEnv(args []string) (retArgs []string, format string, detailed bool, ou
 
 		// Parse a given flag here, which overrides the env var
 		if isGlobalFlagWithValue(arg, globalFlagDetailed) {
-			detailed, err = strconv.ParseBool(getGlobalFlagValue(globalFlagDetailed))
+			ret.detailed, err = strconv.ParseBool(getGlobalFlagValue(globalFlagDetailed))
 			if err != nil {
-				detailed = false
+				ret.detailed = false
 			}
 			haveDetailed = true
 		}
 		// For backwards compat, it could be specified without an equal sign to enable
 		// detailed output.
 		if isGlobalFlag(arg, globalFlagDetailed) {
-			detailed = true
+			ret.detailed = true
 			haveDetailed = true
 		}
 	}
 
 	envVaultFormat := api.ReadBaoVariable(EnvVaultFormat)
 	// If we did not parse a value, fetch the env var
-	if format == "" && envVaultFormat != "" {
-		format = envVaultFormat
+	if ret.format == "" && envVaultFormat != "" {
+		ret.format = envVaultFormat
 	}
 	// Lowercase for consistency
-	format = strings.ToLower(format)
-	if format == "" {
-		format = "table"
+	ret.format = strings.ToLower(ret.format)
+	if ret.format == "" {
+		ret.format = "table"
 	}
 
 	envVaultDetailed := api.ReadBaoVariable(EnvVaultDetailed)
 	// If we did not parse a value, fetch the env var
 	if !haveDetailed && envVaultDetailed != "" {
-		detailed, err = strconv.ParseBool(envVaultDetailed)
+		ret.detailed, err = strconv.ParseBool(envVaultDetailed)
 		if err != nil {
-			detailed = false
+			ret.detailed = false
 		}
 	}
 
-	return args, format, detailed, outputCurlString, outputPolicy
+	ret.args = args
+	return ret
 }
 
 func isGlobalFlag(arg string, flag string) bool {
@@ -153,11 +172,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 		runOpts = &RunOptions{}
 	}
 
-	var format string
-	var detailed bool
-	var outputCurlString bool
-	var outputPolicy bool
-	args, format, detailed, outputCurlString, outputPolicy = setupEnv(args)
+	env := setupEnv(args)
 
 	// Don't use color if disabled
 	useColor := !color.NoColor && api.ReadBaoVariable(EnvVaultCLINoColor) == ""
@@ -170,7 +185,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	}
 
 	// Only use colored UI if stdout is a tty, and not disabled
-	if useColor && format == "table" {
+	if useColor && env.format == "table" {
 		if f, ok := runOpts.Stdout.(*os.File); ok {
 			runOpts.Stdout = colorable.NewColorable(f)
 		}
@@ -183,7 +198,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	}
 
 	uiErrWriter := runOpts.Stderr
-	if outputCurlString || outputPolicy {
+	if env.outputCurlString || env.outputPolicy || env.outputProfile {
 		uiErrWriter = &bytes.Buffer{}
 	}
 
@@ -197,8 +212,8 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 				ErrorWriter: uiErrWriter,
 			},
 		},
-		format:   format,
-		detailed: detailed,
+		format:   env.format,
+		detailed: env.detailed,
 	}
 
 	serverCmdUi := &VaultUI{
@@ -210,11 +225,11 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 				Writer: runOpts.Stdout,
 			},
 		},
-		format: format,
+		format: env.format,
 	}
 
-	if _, ok := Formatters[format]; !ok {
-		ui.Error(fmt.Sprintf("Invalid output format: %s", format))
+	if _, ok := Formatters[env.format]; !ok {
+		ui.Error(fmt.Sprintf("Invalid output format: %s", env.format))
 		return 1
 	}
 
@@ -224,7 +239,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 
 	cli := &cli.CLI{
 		Name:     "bao",
-		Args:     args,
+		Args:     env.args,
 		Commands: commands,
 		HelpFunc: groupedHelpFunc(
 			cli.BasicHelpFunc("bao"),
@@ -237,10 +252,12 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	}
 
 	exitCode, err := cli.Run()
-	if outputCurlString {
+	if env.outputCurlString {
 		return generateCurlString(exitCode, runOpts, uiErrWriter.(*bytes.Buffer))
-	} else if outputPolicy {
+	} else if env.outputPolicy {
 		return generatePolicy(exitCode, runOpts, uiErrWriter.(*bytes.Buffer))
+	} else if env.outputProfile {
+		return generateProfile(exitCode, runOpts, uiErrWriter.(*bytes.Buffer))
 	} else if err != nil {
 		_, _ = fmt.Fprintf(runOpts.Stderr, "Error executing CLI: %s\n", err.Error())
 		return 1
@@ -347,6 +364,32 @@ func generatePolicy(exitCode int, runOpts *RunOptions, preParsingErrBuf *bytes.B
 	hcl, err := api.LastOutputPolicyError.HCLString()
 	if err != nil {
 		_, _ = fmt.Fprintf(runOpts.Stderr, "Error assembling policy HCL: %s\n", err)
+		return 1
+	}
+
+	_, _ = fmt.Fprintf(runOpts.Stdout, "%s\n", hcl)
+	return 0
+}
+
+func generateProfile(exitCode int, runOpts *RunOptions, preParsingErrBuf *bytes.Buffer) int {
+	if exitCode == 0 {
+		_, _ = fmt.Fprint(runOpts.Stderr, "Could not generate profile")
+		return 1
+	}
+
+	if api.LastOutputProfileError == nil {
+		if exitCode == 127 {
+			// Usage, just pass it through
+			return exitCode
+		}
+		_, _ = runOpts.Stderr.Write(preParsingErrBuf.Bytes())
+		_, _ = fmt.Fprint(runOpts.Stderr, "Unable to generate profile from command\n")
+		return exitCode
+	}
+
+	hcl, err := api.LastOutputProfileError.HCLString()
+	if err != nil {
+		_, _ = fmt.Fprintf(runOpts.Stderr, "Error assembling profile HCL: %s\n", err)
 		return 1
 	}
 

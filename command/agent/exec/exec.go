@@ -192,6 +192,10 @@ func (s *Server) Run(ctx context.Context, incomingVaultToken chan string) error 
 			if err != nil {
 				return fmt.Errorf("template server failed to create: %w", err)
 			}
+
+			// prevent the templates from being rendered to stdout in "dry" mode
+			s.runner.SetOutStream(io.Discard)
+
 			go s.runner.Start()
 
 		case <-s.runner.TemplateRenderedCh():

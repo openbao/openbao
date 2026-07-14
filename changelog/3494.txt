@@ -1,0 +1,3 @@
+```release-note:security
+agent: Ensure previously rendered secrets do not appear in stdout on failures. GHSA-444v-8vxr-p36h.
+```

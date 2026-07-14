@@ -155,6 +155,8 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/sys/raw/", handleLogicalRecovery(raw, props.RecoveryToken))
 		mux.Handle("/v1/sys/generate-recovery-token/attempt", handleSysGenerateRootAttempt(core, strategy))
 		mux.Handle("/v1/sys/generate-recovery-token/update", handleSysGenerateRootUpdate(core, strategy))
+	case props.ListenerConfig != nil && props.ListenerConfig.OnlyPublicRoutes:
+		mux.Handle("/v1/", wrapPublicRoutesHandler(handleLogical(core), props))
 	default:
 		// Handle non-forwarded paths
 		mux.Handle("/v1/sys/config/state/", handleLogicalNoForward(core))

@@ -4,6 +4,7 @@
 package routing
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -500,6 +501,198 @@ func TestRouter_LoginPath(t *testing.T) {
 	}
 }
 
+func TestRouter_IsPublicPathWhenPublicPathsEnabled(t *testing.T) {
+	r := NewRouter(logger)
+	_, barr, _ := barrier.MockBarrier(t, logger)
+	view := barrier.NewView(barr, "auth/")
+
+	meUUID, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := &backend.Noop{
+		AllowedPublicPaths: []string{
+			"login",
+			"oauth/*",
+			"glob1*",
+			"+/wildcard/glob2*",
+			"end1/+",
+			"end2/+/",
+			"end3/+/*",
+			"middle1/+/bar",
+			"middle2/+/+/bar",
+			"+/begin",
+			"+/around/+/",
+		},
+	}
+
+	mountEntry := MountEntry{
+		UUID:        meUUID,
+		Accessor:    "authfooaccessor",
+		NamespaceID: namespace.RootNamespaceID,
+		Namespace:   namespace.RootNamespace,
+		Config: MountConfig{
+			ExposePublicPaths: true,
+		},
+	}
+
+	mountEntry.SyncCache()
+
+	err = r.Mount(
+		n,
+		"auth/foo/",
+		&mountEntry,
+		view,
+	)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	type tcase struct {
+		path   string
+		expect bool
+	}
+	tcases := []tcase{
+		{"random", false},
+		{"auth/foo/bar", false},
+		{"auth/foo/login", true},
+		{"auth/foo/login/", false},
+		{"auth/invalid/login", false},
+		{"auth/foo/oauth", false},
+		{"auth/foo/oauth/", true},
+		{"auth/foo/oauth/redirect", true},
+		{"auth/foo/oauth/redirect/", true},
+		{"auth/foo/oauth/redirect/bar", true},
+		{"auth/foo/glob1", true},
+		{"auth/foo/glob1/", true},
+		{"auth/foo/glob1/redirect", true},
+
+		// Wildcard cases
+
+		// "+/wildcard/glob2*"
+		{"auth/foo/bar/wildcard/glo", false},
+		{"auth/foo/bar/wildcard/glob2", true},
+		{"auth/foo/bar/wildcard/glob2222", true},
+		{"auth/foo/bar/wildcard/glob2/", true},
+		{"auth/foo/bar/wildcard/glob2/baz", true},
+
+		// "end1/+"
+		{"auth/foo/end1", false},
+		{"auth/foo/end1/", true},
+		{"auth/foo/end1/bar", true},
+		{"auth/foo/end1/bar/", false},
+		{"auth/foo/end1/bar/baz", false},
+		// "end2/+/"
+		{"auth/foo/end2", false},
+		{"auth/foo/end2/", false},
+		{"auth/foo/end2/bar", false},
+		{"auth/foo/end2/bar/", true},
+		{"auth/foo/end2/bar/baz", false},
+		// "end3/+/*"
+		{"auth/foo/end3", false},
+		{"auth/foo/end3/", false},
+		{"auth/foo/end3/bar", false},
+		{"auth/foo/end3/bar/", true},
+		{"auth/foo/end3/bar/baz", true},
+		{"auth/foo/end3/bar/baz/", true},
+		{"auth/foo/end3/bar/baz/qux", true},
+		{"auth/foo/end3/bar/baz/qux/qoo", true},
+		{"auth/foo/end3/bar/baz/qux/qoo/qaa", true},
+		// "middle1/+/bar",
+		{"auth/foo/middle1/bar", false},
+		{"auth/foo/middle1/bar/", false},
+		{"auth/foo/middle1/bar/qux", false},
+		{"auth/foo/middle1/bar/bar", true},
+		{"auth/foo/middle1/bar/bar/", false},
+		// "middle2/+/+/bar",
+		{"auth/foo/middle2/bar", false},
+		{"auth/foo/middle2/bar/", false},
+		{"auth/foo/middle2/bar/baz", false},
+		{"auth/foo/middle2/bar/baz/", false},
+		{"auth/foo/middle2/bar/baz/bar", true},
+		{"auth/foo/middle2/bar/baz/bar/", false},
+		// "+/begin"
+		{"auth/foo/bar/begin", true},
+		{"auth/foo/bar/begin/", false},
+		{"auth/foo/begin", false},
+		// "+/around/+/"
+		{"auth/foo/bar/around", false},
+		{"auth/foo/bar/around/", false},
+		{"auth/foo/bar/around/baz", false},
+		{"auth/foo/bar/around/baz/", true},
+		{"auth/foo/bar/around/baz/qux", false},
+	}
+
+	for _, tc := range tcases {
+		out := r.IsPublicPath(namespace.RootContext(context.TODO()), tc.path)
+		if out != tc.expect {
+			t.Fatalf("bad: path: %s expect: %v got %v", tc.path, tc.expect, out)
+		}
+	}
+}
+
+func TestRouter_IsPublicPathWhenPublicPathsDisabled(t *testing.T) {
+	r := NewRouter(logger)
+	_, barr, _ := barrier.MockBarrier(t, logger)
+	view := barrier.NewView(barr, "auth/")
+
+	meUUID, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := &backend.Noop{
+		AllowedPublicPaths: []string{
+			"login",
+			"oauth/*",
+			"glob1*",
+			"+/wildcard/glob2*",
+			"end1/+",
+			"end2/+/",
+			"end3/+/*",
+			"middle1/+/bar",
+			"middle2/+/+/bar",
+			"+/begin",
+			"+/around/+/",
+		},
+	}
+
+	mountEntry := MountEntry{
+		UUID:        meUUID,
+		Accessor:    "authfooaccessor",
+		NamespaceID: namespace.RootNamespaceID,
+		Namespace:   namespace.RootNamespace,
+		Config: MountConfig{
+			ExposePublicPaths: false,
+		},
+	}
+
+	mountEntry.SyncCache()
+
+	err = r.Mount(
+		n,
+		"auth/foo/",
+		&mountEntry,
+		view,
+	)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	paths := []string{
+		"random",
+		"auth/foo/login",
+		"auth/foo/oauth/",
+		"auth/foo/oauth/redirect/bar",
+	}
+
+	for _, path := range paths {
+		out := r.IsPublicPath(namespace.RootContext(context.TODO()), path)
+		if out != false {
+			t.Fatalf("Path: '%s' must not be considered to be a public path.", path)
+		}
+	}
+}
+
 func TestRouter_Taint(t *testing.T) {
 	r := NewRouter(nil)
 	_, barr, _ := barrier.MockBarrier(t, logger)
@@ -617,7 +810,7 @@ func TestParseUnauthenticatedPaths(t *testing.T) {
 	}
 	allPaths := append(paths, wildcardPaths...)
 
-	p, err := ParseUnauthenticatedPaths(allPaths)
+	p, err := ParseSpecialPaths(allPaths)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -628,7 +821,7 @@ func TestParseUnauthenticatedPaths(t *testing.T) {
 		{segments: []string{"+", "begin", ""}, isPrefix: true},
 		{segments: []string{"middle", "+", "bar"}, isPrefix: true},
 	}
-	expected := &loginPathsEntry{
+	expected := &specialPathsEntry{
 		paths:         PathsToRadix(paths),
 		wildcardPaths: wildcardPathsEntry,
 	}
@@ -675,7 +868,7 @@ func TestParseUnauthenticatedPaths_Error(t *testing.T) {
 	}
 
 	for _, tc := range tcases {
-		_, err := ParseUnauthenticatedPaths(tc.paths)
+		_, err := ParseSpecialPaths(tc.paths)
 		if err == nil || !strings.Contains(err.Error(), tc.err) {
 			t.Fatalf("bad: path: %s expect: %v got %v", tc.paths, tc.err, err)
 		}

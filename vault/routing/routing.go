@@ -59,6 +59,8 @@ type MountConfig struct {
 	TokenType                 logical.TokenType     `json:"token_type,omitempty" structs:"token_type" mapstructure:"token_type"`
 	UserLockoutConfig         *UserLockoutConfig    `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
 
+	ExposePublicPaths bool `json:"expose_public_paths,omitempty" mapstructure:"expose_public_paths"`
+
 	// PluginName is the name of the plugin registered in the catalog.
 	//
 	// Deprecated: MountEntry.Type should be used instead for Vault 1.0.0 and beyond.

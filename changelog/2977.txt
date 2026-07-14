@@ -1,0 +1,9 @@
+```release-note:feature
+core: Add support for public route listeners. A listener designated as a public route listener will
+only handle requests for paths that are designated as public by their backend, and only when the mount
+has been configured to expose those public paths.
+```
+```release-note:feature
+secret/pki: Expose the OCSP endpoints as public routes, enabling lightweight OCSP (RFC 5019) requests over
+plaintext HTTP.
+```

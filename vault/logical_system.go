@@ -1512,6 +1512,10 @@ func (b *SystemBackend) handleTuneReadCommon(ctx context.Context, path string) (
 		resp.Data["allowed_response_headers"] = rawVal.([]string)
 	}
 
+	if rawVal, ok := mountEntry.SynthesizedConfigCache.Load("expose_public_paths"); ok {
+		resp.Data["expose_public_paths"] = rawVal.(bool)
+	}
+
 	if mountEntry.Config.UserLockoutConfig != nil {
 		resp.Data["user_lockout_counter_reset_duration"] = int64(mountEntry.Config.UserLockoutConfig.LockoutCounterReset.Seconds())
 		resp.Data["user_lockout_threshold"] = mountEntry.Config.UserLockoutConfig.LockoutThreshold
@@ -1808,6 +1812,10 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 	if rawVal, ok := data.GetOk("allowed_response_headers"); ok {
 		defer rollback(&mountEntry.Config.AllowedResponseHeaders, rawVal.([]string), &success)()
+	}
+
+	if rawVal, ok := data.GetOk("expose_public_paths"); ok {
+		defer rollback(&mountEntry.Config.ExposePublicPaths, rawVal.(bool), &success)()
 	}
 
 	var kvUpgrade bool
@@ -5566,5 +5574,8 @@ This path responds to the following HTTP methods.
 	PUT /<path>
 		Execute a workflow.
 		`,
+	},
+	"tune_expose_public_paths": {
+		"Allow the backend's public paths to be accessed via a public listener (configured with `public_routes = true`)",
 	},
 }

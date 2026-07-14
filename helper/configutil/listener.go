@@ -174,6 +174,10 @@ type Listener struct {
 	// `disable_unauthed_generate_root_endpoints` value has to be set to false.
 	DisableUnauthedGenerateRootEndpoints    *bool       `hcl:"-"`
 	DisableUnauthedGenerateRootEndpointsRaw interface{} `hcl:"disable_unauthed_generate_root_endpoints"`
+
+	// Configures the listener to expose public routes only.
+	// Public routes can accept and server unencrypted (non-tls) endpoints
+	OnlyPublicRoutes bool `hcl:"only_public_routes"`
 }
 
 // AgentAPI allows users to select which parts of the Agent API they want enabled.

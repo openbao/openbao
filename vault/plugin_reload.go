@@ -235,11 +235,18 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 	paths := backend.SpecialPaths()
 	if paths != nil {
 		re.SetRootPaths(routing.PathsToRadix(paths.Root))
-		loginPathsEntry, err := routing.ParseUnauthenticatedPaths(paths.Unauthenticated)
+		loginPathsEntry, err := routing.ParseSpecialPaths(paths.Unauthenticated)
 		if err != nil {
 			return err
 		}
 		re.SetLoginPaths(loginPathsEntry)
+
+		// Allowed public paths
+		allowedPublicPathsEntry, err := routing.ParseSpecialPaths(paths.AllowedPublicPaths)
+		if err != nil {
+			return err
+		}
+		re.SetAllowedPublicPaths(allowedPublicPathsEntry)
 	}
 
 	return nil

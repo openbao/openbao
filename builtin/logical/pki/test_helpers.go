@@ -377,6 +377,15 @@ func generateRequest(t *testing.T, requestHash crypto.Hash, cert *x509.Certifica
 	return ocspRequestDer
 }
 
+func generateOcspRfc5019Request(t *testing.T, cert *x509.Certificate, issuer *x509.Certificate) []byte {
+	t.Helper()
+
+	opts := &ocsp.RequestOptions{Hash: crypto.SHA1}
+	ocspRequestDer, err := ocsp.CreateRequest(cert, issuer, opts)
+	require.NoError(t, err, "Failed generating OCSP request")
+	return ocspRequestDer
+}
+
 func requireOcspResponseSignedBy(t *testing.T, ocspResp *ocsp.Response, issuer *x509.Certificate) {
 	t.Helper()
 

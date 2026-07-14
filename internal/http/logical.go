@@ -1,0 +1,612 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package http
+
+import (
+	"crypto/subtle"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"mime"
+	"net"
+	"net/http"
+	"strconv"
+	"strings"
+	"sync/atomic"
+	"time"
+
+	"github.com/hashicorp/go-uuid"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/vault"
+)
+
+const MergePatchContentTypeHeader = "application/merge-patch+json"
+
+func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical.Request, int, error) {
+	path := r.URL.Path[len("/v1/"):]
+
+	var data map[string]interface{}
+	var passHTTPReq bool
+	var responseWriter http.ResponseWriter
+
+	// Determine the operation
+	var op logical.Operation
+	switch r.Method {
+	case "DELETE":
+		op = logical.DeleteOperation
+		data = parseQuery(r.URL.Query())
+	case "GET":
+		op = logical.ReadOperation
+		queryVals := r.URL.Query()
+
+		var list bool
+		var scan bool
+		var err error
+
+		listStr := queryVals.Get("list")
+		if listStr != "" {
+			list, err = strconv.ParseBool(listStr)
+			if err != nil {
+				return nil, http.StatusBadRequest, nil
+			}
+		}
+
+		scanStr := queryVals.Get("scan")
+		if scanStr != "" {
+			scan, err = strconv.ParseBool(scanStr)
+			if err != nil {
+				return nil, http.StatusBadRequest, nil
+			}
+		}
+
+		if list && scan {
+			return nil, http.StatusBadRequest, nil
+		}
+
+		if list {
+			queryVals.Del("list")
+			op = logical.ListOperation
+			if !strings.HasSuffix(path, "/") {
+				path += "/"
+			}
+		} else if scan {
+			queryVals.Del("scan")
+			op = logical.ScanOperation
+			if !strings.HasSuffix(path, "/") {
+				path += "/"
+			}
+		}
+
+		data = parseQuery(queryVals)
+
+		switch {
+		case strings.HasPrefix(path, "sys/pprof/"):
+			passHTTPReq = true
+			responseWriter = w
+		case path == "sys/storage/raft/snapshot":
+			responseWriter = w
+		case path == "sys/monitor":
+			passHTTPReq = true
+			responseWriter = w
+		}
+
+	case "POST", "PUT":
+		op = logical.UpdateOperation
+
+		// If we are uploading a snapshot or receiving an ocsp-request (which
+		// is der encoded) we don't want to parse it. Instead, we will simply
+		// add the HTTP request to the logical request object for later consumption.
+		contentType := r.Header.Get("Content-Type")
+		if path == "sys/storage/raft/snapshot" || path == "sys/storage/raft/snapshot-force" || isOcspRequest(contentType) {
+			// While snapshots are handled specially to size-limit the request,
+			// OCSP requests are still bound by the maximum content size.
+			passHTTPReq = true
+		} else {
+			// Sample the first bytes to determine whether this should be parsed as
+			// a form or as JSON. The amount to look ahead (512 bytes) is arbitrary
+			// but extremely tolerant (i.e. allowing 511 bytes of leading whitespace
+			// and an incorrect content-type).
+			head, err := io.ReadAll(io.LimitReader(r.Body, 512))
+			if err != nil && err != io.EOF {
+				status := http.StatusBadRequest
+				logical.AdjustErrorStatusCode(&status, err)
+				return nil, status, errors.New("error reading data")
+			}
+
+			// Seek back to the start.
+			if err := resetBody(r); err != nil {
+				status := http.StatusInternalServerError
+				return nil, status, fmt.Errorf("failed to reset body: %w", err)
+			}
+
+			if isForm(head, contentType) {
+				formData, err := parseFormRequest(r)
+				if err != nil {
+					status := http.StatusBadRequest
+					logical.AdjustErrorStatusCode(&status, err)
+					return nil, status, errors.New("error parsing form data")
+				}
+
+				data = formData
+			} else {
+				if err := parseJSONRequest(r, &data); err != nil && !errors.Is(err, io.EOF) {
+					return nil, http.StatusBadRequest, err
+				}
+			}
+		}
+
+	case "PATCH":
+		op = logical.PatchOperation
+
+		contentTypeHeader := r.Header.Get("Content-Type")
+		contentType, _, err := mime.ParseMediaType(contentTypeHeader)
+		if err != nil {
+			status := http.StatusBadRequest
+			logical.AdjustErrorStatusCode(&status, err)
+			return nil, status, err
+		}
+
+		if contentType != MergePatchContentTypeHeader {
+			return nil, http.StatusUnsupportedMediaType, fmt.Errorf("PATCH requires Content-Type of %s, provided %s", MergePatchContentTypeHeader, contentType)
+		}
+
+		if err := parseJSONRequest(r, &data); err != nil && !errors.Is(err, io.EOF) {
+			return nil, http.StatusBadRequest, err
+		}
+
+	case "LIST":
+		op = logical.ListOperation
+		if !strings.HasSuffix(path, "/") {
+			path += "/"
+		}
+
+		data = parseQuery(r.URL.Query())
+	case "SCAN":
+		op = logical.ScanOperation
+		if !strings.HasSuffix(path, "/") {
+			path += "/"
+		}
+
+		data = parseQuery(r.URL.Query())
+	case "HEAD":
+		op = logical.HeaderOperation
+		data = parseQuery(r.URL.Query())
+	case "OPTIONS":
+	default:
+		return nil, http.StatusMethodNotAllowed, nil
+	}
+
+	requestId, err := uuid.GenerateUUID()
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to generate identifier for the request: %w", err)
+	}
+
+	// The http package removes the Host header when deserializing
+	// the http request.  This adds it back in so it is available
+	// in the logical request.
+	reqHeader := r.Header.Clone()
+	reqHeader.Add("Host", r.Host)
+
+	req := &logical.Request{
+		ID:         requestId,
+		Operation:  op,
+		Path:       path,
+		Data:       data,
+		Connection: getConnection(r),
+		Headers:    reqHeader,
+	}
+
+	if passHTTPReq {
+		req.HTTPRequest = r
+	}
+	if responseWriter != nil {
+		req.ResponseWriter = logical.NewHTTPResponseWriter(responseWriter)
+	}
+
+	// Be a good citizen and reset our body back to the beginning.
+	if err := resetBody(r); err != nil {
+		respondError(w, http.StatusInternalServerError, err)
+	}
+
+	return req, 0, nil
+}
+
+func isOcspRequest(contentType string) bool {
+	contentType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return false
+	}
+
+	return contentType == "application/ocsp-request"
+}
+
+func buildLogicalPath(r *http.Request) (string, int, error) {
+	path := r.URL.Path[len("/v1/"):]
+
+	switch r.Method {
+	case "GET":
+		var (
+			list bool
+			scan bool
+			err  error
+		)
+
+		queryVals := r.URL.Query()
+
+		listStr := queryVals.Get("list")
+		if listStr != "" {
+			list, err = strconv.ParseBool(listStr)
+			if err != nil {
+				return "", http.StatusBadRequest, nil
+			}
+		}
+
+		scanStr := queryVals.Get("scan")
+		if scanStr != "" {
+			scan, err = strconv.ParseBool(scanStr)
+			if err != nil {
+				return "", http.StatusBadRequest, nil
+			}
+		}
+
+		if list && scan {
+			return "", http.StatusBadRequest, nil
+		}
+
+		if list || scan {
+			if !strings.HasSuffix(path, "/") {
+				path += "/"
+			}
+		}
+	case "LIST":
+		if !strings.HasSuffix(path, "/") {
+			path += "/"
+		}
+	case "SCAN":
+		if !strings.HasSuffix(path, "/") {
+			path += "/"
+		}
+	}
+
+	return path, 0, nil
+}
+
+func buildLogicalRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) (*logical.Request, int, error) {
+	req, status, err := buildLogicalRequestNoAuth(w, r)
+	if err != nil || status != 0 {
+		return nil, status, err
+	}
+
+	requestAuth(r, req)
+
+	req, err = requestWrapInfo(r, req)
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("error parsing X-Vault-Wrap-TTL header: %w", err)
+	}
+
+	err = req.ParseMFAHeaders()
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to parse X-Vault-MFA header: %w", err)
+	}
+
+	return req, 0, nil
+}
+
+// handleLogical returns a handler for processing logical requests. These requests
+// may or may not end up getting forwarded under certain scenarios if the node
+// is a performance standby. Some of these cases include:
+//   - Perf standby and token with limited use count.
+//   - Perf standby and token re-validation needed (e.g. due to invalid token).
+//   - Perf standby and control group error.
+func handleLogical(core *vault.Core) http.Handler {
+	return handleLogicalInternal(core, false, false)
+}
+
+// handleLogicalWithInjector returns a handler for processing logical requests
+// that also have their logical response data injected at the top-level payload.
+// All forwarding behavior remains the same as `handleLogical`.
+func handleLogicalWithInjector(core *vault.Core) http.Handler {
+	return handleLogicalInternal(core, true, false)
+}
+
+// handleLogicalNoForward returns a handler for processing logical local-only
+// requests. These types of requests are never forwarded, and return an
+// `vault.ErrCannotForwardLocalOnly` error if attempted to do so.
+func handleLogicalNoForward(core *vault.Core) http.Handler {
+	return handleLogicalInternal(core, false, true)
+}
+
+func handleLogicalRecovery(raw *vault.RawBackend, token *atomic.Value) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		req, statusCode, err := buildLogicalRequestNoAuth(w, r)
+		if err != nil || statusCode != 0 {
+			respondError(w, statusCode, err)
+			return
+		}
+
+		reqToken := r.Header.Get(consts.AuthHeaderName)
+		rToken, rTokenOk := token.Load().(string)
+		if len(reqToken) == 0 || !rTokenOk || len(rToken) == 0 || subtle.ConstantTimeCompare([]byte(reqToken), []byte(rToken)) == 0 {
+			respondError(w, http.StatusForbidden, nil)
+			return
+		}
+
+		resp, err := raw.HandleRequest(r.Context(), req)
+		if respondErrorCommon(w, req, resp, err) {
+			return
+		}
+
+		var httpResp *logical.HTTPResponse
+		if resp != nil {
+			httpResp = logical.LogicalResponseToHTTPResponse(resp)
+			httpResp.RequestID = req.ID
+		}
+		respondOk(w, httpResp)
+	})
+}
+
+// handleLogicalInternal is a common helper that returns a handler for
+// processing logical requests. The behavior depends on the various boolean
+// toggles. Refer to usage on functions for possible behaviors.
+func handleLogicalInternal(core *vault.Core, injectDataIntoTopLevel, noForward bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if core.HAEnabled() && core.Standby() && !core.StandbyReadsEnabled() {
+			forwardRequest(core, w, r)
+			return
+		}
+
+		req, statusCode, err := buildLogicalRequest(core, w, r)
+		if err != nil || statusCode != 0 {
+			respondError(w, statusCode, err)
+			return
+		}
+
+		// Make the internal request. We attach the connection info
+		// as well in case this is an authentication request that requires
+		// it. Vault core handles stripping this if we need to. This also
+		// handles all error cases; if we hit respondLogical, the request is a
+		// success.
+		resp, ok, needsForward := request(core, w, r, req)
+		switch {
+		case needsForward && noForward:
+			respondError(w, http.StatusBadRequest, vault.ErrCannotForwardLocalOnly)
+			return
+		case needsForward && !noForward:
+			forwardRequest(core, w, r)
+			return
+		case !ok:
+			// If not ok, we simply return. The call on request should have
+			// taken care of setting the appropriate response code and payload
+			// in this case.
+			return
+		default:
+			// Build and return the proper response if everything is fine.
+			respondLogical(core, w, r, req, resp, injectDataIntoTopLevel)
+			return
+		}
+	})
+}
+
+func respondLogical(core *vault.Core, w http.ResponseWriter, r *http.Request, req *logical.Request, resp *logical.Response, injectDataIntoTopLevel bool) {
+	var httpResp *logical.HTTPResponse
+	var ret interface{}
+
+	// If vault's core has already written to the response writer do not add any
+	// additional output. Headers have already been sent.
+	if req != nil && req.ResponseWriter != nil && req.ResponseWriter.Written() {
+		return
+	}
+
+	if resp != nil {
+		if resp.Redirect != "" {
+			// If we have a redirect, redirect! We use a 307 code
+			// because we don't actually know if its permanent.
+			http.Redirect(w, r, resp.Redirect, http.StatusTemporaryRedirect)
+			return
+		}
+
+		// Check if this is a raw response
+		if _, ok := resp.Data[logical.HTTPStatusCode]; ok {
+			respondRaw(w, resp)
+			return
+		}
+
+		if resp.WrapInfo != nil && resp.WrapInfo.Token != "" {
+			httpResp = &logical.HTTPResponse{
+				WrapInfo: &logical.HTTPWrapInfo{
+					Token:           resp.WrapInfo.Token,
+					Accessor:        resp.WrapInfo.Accessor,
+					TTL:             int(resp.WrapInfo.TTL.Seconds()),
+					CreationTime:    resp.WrapInfo.CreationTime.Format(time.RFC3339Nano),
+					CreationPath:    resp.WrapInfo.CreationPath,
+					WrappedAccessor: resp.WrapInfo.WrappedAccessor,
+				},
+			}
+		} else {
+			httpResp = logical.LogicalResponseToHTTPResponse(resp)
+			httpResp.RequestID = req.ID
+		}
+
+		ret = httpResp
+
+		if injectDataIntoTopLevel {
+			injector := logical.HTTPSysInjector{
+				Response: httpResp,
+			}
+			ret = injector
+		}
+	}
+
+	adjustResponse(core, w, req)
+
+	// Respond
+	respondOk(w, ret)
+}
+
+// respondRaw is used when the response is using HTTPContentType and HTTPRawBody
+// to change the default response handling. This is only used for specific things like
+// returning the CRL information on the PKI backends.
+func respondRaw(w http.ResponseWriter, resp *logical.Response) {
+	retErr := func(w http.ResponseWriter, err string) {
+		w.Header().Set(consts.RawErrorHeaderName, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(nil)
+	}
+
+	// Ensure this is never a secret or auth response
+	if resp.Secret != nil || resp.Auth != nil {
+		retErr(w, "raw responses cannot contain secrets or auth")
+		return
+	}
+
+	// Get the status code
+	statusRaw, ok := resp.Data[logical.HTTPStatusCode]
+	if !ok {
+		retErr(w, "no status code given")
+		return
+	}
+
+	var status int
+	switch st := statusRaw.(type) {
+	case int:
+		status = st
+	case float64:
+		status = int(st)
+	case json.Number:
+		s64, err := st.Float64()
+		if err != nil {
+			retErr(w, "cannot decode status code")
+			return
+		}
+		status = int(s64)
+	default:
+		retErr(w, "cannot decode status code")
+		return
+	}
+
+	nonEmpty := status != http.StatusNoContent
+
+	var contentType string
+	var body []byte
+
+	// Get the content type header; don't require it if the body is empty
+	contentTypeRaw, ok := resp.Data[logical.HTTPContentType]
+	if !ok && nonEmpty {
+		retErr(w, "no content type given")
+		return
+	}
+	if ok {
+		contentType, ok = contentTypeRaw.(string)
+		if !ok {
+			retErr(w, "cannot decode content type")
+			return
+		}
+	}
+
+	if nonEmpty {
+		// Get the body
+		bodyRaw, ok := resp.Data[logical.HTTPRawBody]
+		if !ok {
+			goto WRITE_RESPONSE
+		}
+
+		switch bod := bodyRaw.(type) {
+		case string:
+			// This is best effort. The value may already be base64-decoded so
+			// if it doesn't work we just use as-is
+			bodyDec, err := base64.StdEncoding.DecodeString(bod)
+			if err == nil {
+				body = bodyDec
+			} else {
+				body = []byte(bod)
+			}
+		case []byte:
+			body = bod
+		default:
+			retErr(w, "cannot decode body")
+			return
+		}
+	}
+
+WRITE_RESPONSE:
+	// Write the response
+	if contentType != "" {
+		w.Header().Set("Content-Type", contentType)
+	}
+
+	if cacheControl, ok := resp.Data[logical.HTTPCacheControlHeader].(string); ok {
+		w.Header().Set("Cache-Control", cacheControl)
+	}
+
+	if pragma, ok := resp.Data[logical.HTTPPragmaHeader].(string); ok {
+		w.Header().Set("Pragma", pragma)
+	}
+
+	if wwwAuthn, ok := resp.Data[logical.HTTPWWWAuthenticateHeader].(string); ok {
+		w.Header().Set("WWW-Authenticate", wwwAuthn)
+	}
+
+	w.WriteHeader(status)
+	w.Write(body)
+}
+
+// getConnection is used to format the connection information for
+// attaching to a logical request
+func getConnection(r *http.Request) (connection *logical.Connection) {
+	var remoteAddr string
+	var remotePort int
+
+	remoteAddr, port, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		remoteAddr = ""
+	} else {
+		remotePort, err = strconv.Atoi(port)
+		if err != nil {
+			remotePort = 0
+		}
+	}
+
+	connection = &logical.Connection{
+		RemoteAddr: remoteAddr,
+		RemotePort: remotePort,
+		ConnState:  r.TLS,
+	}
+
+	if r.TLS != nil {
+		connection.PeerCertificates = r.TLS.PeerCertificates
+	}
+
+	connection.ProxiedCertificates = handleForwardedCertHeaders(r)
+
+	return connection
+}
+
+// handleForwardedCertHeaders handles proxied/forwarded client certificates
+// from TLS terminated by an earlier reverse proxy.
+func handleForwardedCertHeaders(req *http.Request) []*x509.Certificate {
+	// We know we only set a single value.
+	headerValue := req.Header.Get(ProcessedForwardedClientCertHeader)
+	if len(headerValue) == 0 {
+		return nil
+	}
+
+	// Subsequent errors in this function should not occur:
+	// wrapClientCertificateHandler has previously validated this exact
+	// flow.
+	certDER, err := base64.StdEncoding.DecodeString(headerValue)
+	if err != nil {
+		return nil
+	}
+
+	x509ClientCert, err := x509.ParseCertificate(certDER)
+	if err != nil {
+		return nil
+	}
+
+	return []*x509.Certificate{x509ClientCert}
+}

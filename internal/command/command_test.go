@@ -1,0 +1,429 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package command
+
+import (
+	"context"
+	"encoding/base64"
+	"net"
+	"net/http"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/hashicorp/cli"
+	log "github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
+	"github.com/openbao/openbao/v2/internal/audit"
+	kv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
+	"github.com/openbao/openbao/v2/internal/builtin/logical/pki"
+	"github.com/openbao/openbao/v2/internal/builtin/logical/ssh"
+	"github.com/openbao/openbao/v2/internal/builtin/logical/transit"
+	"github.com/openbao/openbao/v2/internal/helper/benchhelpers"
+	"github.com/openbao/openbao/v2/internal/helper/builtinplugins"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
+	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/openbao/openbao/v2/internal/vault/seal"
+	"github.com/stretchr/testify/require"
+
+	auditFile "github.com/openbao/openbao/v2/internal/builtin/audit/file"
+	credUserpass "github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
+	vaulthttp "github.com/openbao/openbao/v2/internal/http"
+)
+
+var (
+	defaultVaultLogger = log.NewNullLogger()
+
+	defaultVaultCredentialBackends = map[string]logical.Factory{
+		"userpass": credUserpass.Factory,
+	}
+
+	defaultVaultAuditBackends = map[string]audit.Factory{
+		"file": auditFile.Factory,
+	}
+
+	defaultVaultLogicalBackends = map[string]logical.Factory{
+		"generic-leased": vault.LeasedPassthroughBackendFactory,
+		"pki":            pki.Factory,
+		"ssh":            ssh.Factory,
+		"transit":        transit.Factory,
+		"kv":             kv.Factory,
+	}
+)
+
+// assertNoTabs asserts the CLI help has no tab characters.
+func assertNoTabs(tb testing.TB, c cli.Command) {
+	tb.Helper()
+
+	if strings.ContainsRune(c.Help(), '\t') {
+		tb.Errorf("%#v help output contains tabs", c)
+	}
+}
+
+// testVaultServer creates a test vault cluster and returns a configured API
+// client and closer function.
+func testVaultServer(tb testing.TB) (*api.Client, func()) {
+	tb.Helper()
+
+	client, _, closer := testVaultServerUnseal(tb)
+	return client, closer
+}
+
+func testVaultServerWithSecrets(ctx context.Context, tb testing.TB) (*api.Client, func()) {
+	tb.Helper()
+
+	client, _, closer := testVaultServerUnseal(tb)
+
+	// enable kv-v1 backend
+	if err := client.Sys().Mount("kv-v1/", &api.MountInput{
+		Type: "kv-v1",
+	}); err != nil {
+		tb.Fatal(err)
+	}
+
+	// enable kv-v2 backend
+	if err := client.Sys().Mount("kv-v2/", &api.MountInput{
+		Type: "kv-v2",
+	}); err != nil {
+		tb.Fatal(err)
+	}
+
+	// populate dummy secrets
+	for _, path := range []string{
+		"foo",
+		"app-1/foo",
+		"app-1/bar",
+		"app-1/nested/baz",
+	} {
+		if err := client.KVv1("kv-v1").Put(ctx, path, map[string]interface{}{
+			"user":     "test",
+			"password": "Hashi123",
+		}); err != nil {
+			tb.Fatal(err)
+		}
+
+		if _, err := client.KVv2("kv-v2").Put(ctx, path, map[string]interface{}{
+			"user":     "test",
+			"password": "Hashi123",
+		}); err != nil {
+			tb.Fatal(err)
+		}
+	}
+
+	return client, closer
+}
+
+func testVaultServerWithKVVersion(tb testing.TB, kvVersion string) (*api.Client, func()) {
+	tb.Helper()
+
+	client, _, closer := testVaultServerUnsealWithKVVersionWithSeal(tb, kvVersion, nil)
+	return client, closer
+}
+
+func testVaultServerAllBackends(tb testing.TB) (*api.Client, func()) {
+	tb.Helper()
+
+	client, _, closer := testVaultServerCoreConfig(tb, &vault.CoreConfig{
+		DisableCache:       true,
+		Logger:             defaultVaultLogger,
+		CredentialBackends: credentialBackends,
+		AuditBackends:      auditBackends,
+		LogicalBackends:    logicalBackends,
+		BuiltinRegistry:    builtinplugins.Registry,
+	})
+	return client, closer
+}
+
+// testVaultServerAutoUnseal creates a test vault cluster and sets it up with auto unseal
+// the function returns a client, the recovery keys, and a closer function
+func testVaultServerAutoUnseal(tb testing.TB) (*api.Client, []string, func()) {
+	testSeal, _ := seal.NewTestSeal(nil)
+	autoSeal, err := vault.NewAutoSeal(testSeal)
+	if err != nil {
+		tb.Fatal("unable to create autoseal", err)
+	}
+	return testVaultServerUnsealWithKVVersionWithSeal(tb, "1", autoSeal)
+}
+
+// testVaultServerUnseal creates a test vault cluster and returns a configured
+// API client, list of unseal keys (as strings), and a closer function.
+func testVaultServerUnseal(tb testing.TB) (*api.Client, []string, func()) {
+	return testVaultServerUnsealWithKVVersionWithSeal(tb, "1", nil)
+}
+
+func testVaultServerUnsealWithKVVersionWithSeal(tb testing.TB, kvVersion string, seal vault.Seal) (*api.Client, []string, func()) {
+	tb.Helper()
+	logger := log.NewInterceptLogger(&log.LoggerOptions{
+		Output:     log.DefaultOutput,
+		Level:      log.Debug,
+		JSONFormat: logging.ParseEnvLogFormat() == logging.JSONFormat,
+	})
+
+	return testVaultServerCoreConfigWithOpts(tb, &vault.CoreConfig{
+		DisableCache:       true,
+		Logger:             logger,
+		CredentialBackends: defaultVaultCredentialBackends,
+		AuditBackends:      defaultVaultAuditBackends,
+		LogicalBackends:    defaultVaultLogicalBackends,
+		BuiltinRegistry:    builtinplugins.Registry,
+		Seal:               seal,
+	}, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		NumCores:    1,
+		KVVersion:   kvVersion,
+		DefaultHandlerProperties: vault.HandlerProperties{
+			ListenerConfig: &configutil.Listener{
+				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+			},
+		},
+	})
+}
+
+// testVaultServerUnseal creates a test vault cluster and returns a configured
+// API client, list of unseal keys (as strings), and a closer function
+// configured with the given plugin directory.
+func testVaultServerPluginDir(tb testing.TB, pluginDir string) (*api.Client, []string, func()) {
+	tb.Helper()
+
+	return testVaultServerCoreConfig(tb, &vault.CoreConfig{
+		DisableCache:       true,
+		Logger:             defaultVaultLogger,
+		CredentialBackends: defaultVaultCredentialBackends,
+		AuditBackends:      defaultVaultAuditBackends,
+		LogicalBackends:    defaultVaultLogicalBackends,
+		PluginDirectory:    pluginDir,
+		BuiltinRegistry:    builtinplugins.Registry,
+	})
+}
+
+func testVaultServerCoreConfig(tb testing.TB, coreConfig *vault.CoreConfig) (*api.Client, []string, func()) {
+	return testVaultServerCoreConfigWithOpts(tb, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		NumCores:    1, // Default is 3, but we don't need that many
+	})
+}
+
+func testVaultServerUnauthedEndpointsEnabledWithAutoseal(tb testing.TB) (*api.Client, []string, func()) {
+	testSeal, _ := seal.NewTestSeal(nil)
+	autoSeal, err := vault.NewAutoSeal(testSeal)
+	if err != nil {
+		tb.Fatal("unable to create autoseal", err)
+	}
+
+	return testVaultServerCoreConfigWithOpts(tb, &vault.CoreConfig{
+		DisableCache:       true,
+		Seal:               autoSeal,
+		CredentialBackends: defaultVaultCredentialBackends,
+		AuditBackends:      defaultVaultAuditBackends,
+		LogicalBackends:    defaultVaultLogicalBackends,
+	}, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		DefaultHandlerProperties: vault.HandlerProperties{
+			ListenerConfig: &configutil.Listener{
+				DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(false),
+				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+			},
+		},
+		NumCores: 1,
+	})
+}
+
+func testVaultServerUnauthedEndpointsEnabled(tb testing.TB) (*api.Client, []string, func()) {
+	return testVaultServerCoreConfigWithOpts(tb, &vault.CoreConfig{
+		DisableCache:       true,
+		CredentialBackends: defaultVaultCredentialBackends,
+		AuditBackends:      defaultVaultAuditBackends,
+		LogicalBackends:    defaultVaultLogicalBackends,
+	}, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		DefaultHandlerProperties: vault.HandlerProperties{
+			ListenerConfig: &configutil.Listener{
+				DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(false),
+				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+			},
+		},
+		NumCores: 1,
+	})
+}
+
+// testVaultServerCoreConfig creates a new vault cluster with the given core
+// configuration. This is a lower-level test helper. If the seal config supports recovery keys, then
+// recovery keys are returned. Otherwise, unseal keys are returned
+func testVaultServerCoreConfigWithOpts(tb testing.TB, coreConfig *vault.CoreConfig, opts *vault.TestClusterOptions) (*api.Client, []string, func()) {
+	tb.Helper()
+
+	cluster := vault.NewTestCluster(benchhelpers.TBtoT(tb), coreConfig, opts)
+	cluster.Start()
+
+	// Make it easy to get access to the active
+	core := cluster.Cores[0].Core
+	vault.TestWaitActive(benchhelpers.TBtoT(tb), core)
+
+	// Get the client already setup for us!
+	client := cluster.Cores[0].Client
+	client.SetToken(cluster.RootToken)
+
+	var keys [][]byte
+	if coreConfig.Seal != nil && coreConfig.Seal.RecoveryKeySupported() {
+		keys = cluster.RecoveryKeys
+	} else {
+		keys = cluster.BarrierKeys
+	}
+
+	return client, encodeKeys(keys), cluster.Cleanup
+}
+
+// Convert the unseal keys to base64 encoded, since these are how the user
+// will get them.
+func encodeKeys(rawKeys [][]byte) []string {
+	keys := make([]string, len(rawKeys))
+	for i := range rawKeys {
+		keys[i] = base64.StdEncoding.EncodeToString(rawKeys[i])
+	}
+	return keys
+}
+
+// testVaultServerUninit creates an uninitialized server.
+func testVaultServerUninit(tb testing.TB) (*api.Client, func()) {
+	tb.Helper()
+
+	inm, err := inmem.NewInmem(nil, defaultVaultLogger)
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	core, err := vault.NewCore(&vault.CoreConfig{
+		DisableCache:       true,
+		Logger:             defaultVaultLogger,
+		Physical:           inm,
+		CredentialBackends: defaultVaultCredentialBackends,
+		AuditBackends:      defaultVaultAuditBackends,
+		LogicalBackends:    defaultVaultLogicalBackends,
+		BuiltinRegistry:    builtinplugins.Registry,
+	})
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	ln, addr := vaulthttp.TestServer(tb, core)
+
+	client, err := api.NewClient(&api.Config{
+		Address: addr,
+	})
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	closer := func() {
+		core.Shutdown()
+		ln.Close()
+	}
+
+	return client, closer
+}
+
+// testVaultServerBad creates an http server that returns a 500 on each request
+// to simulate failures.
+func testVaultServerBad(tb testing.TB) (*api.Client, func()) {
+	tb.Helper()
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	server := &http.Server{
+		Addr: "127.0.0.1:0",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "500 internal server error", http.StatusInternalServerError)
+		}),
+		ReadTimeout:       1 * time.Second,
+		ReadHeaderTimeout: 1 * time.Second,
+		WriteTimeout:      1 * time.Second,
+		IdleTimeout:       1 * time.Second,
+	}
+
+	go func() {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+			tb.Fatal(err)
+		}
+	}()
+
+	client, err := api.NewClient(&api.Config{
+		Address: "http://" + listener.Addr().String(),
+	})
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	return client, func() {
+		ctx, done := context.WithTimeout(tb.Context(), 5*time.Second)
+		defer done()
+
+		server.Shutdown(ctx)
+	}
+}
+
+// testTokenAndAccessor creates a new authentication token capable of being renewed with
+// the default policy attached. It returns the token and it's accessor.
+func testTokenAndAccessor(tb testing.TB, client *api.Client) (string, string) {
+	tb.Helper()
+
+	secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
+		Policies: []string{"default"},
+		TTL:      "30m",
+	})
+	if err != nil {
+		tb.Fatal(err)
+	}
+	if secret == nil || secret.Auth == nil || secret.Auth.ClientToken == "" {
+		tb.Fatalf("missing auth data: %#v", secret)
+	}
+	return secret.Auth.ClientToken, secret.Auth.Accessor
+}
+
+// testVaultServerWithNamespace creates a test vault cluster (with an existing namespace
+// sealed or unsealed depending on the sealed flag provided to the function) and returns
+// a configured API client (with namespace header set), unseal keyshares and closer function.
+func testVaultServerWithNamespace(tb testing.TB, name string, sealed bool) (*api.Client, []string, func()) {
+	tb.Helper()
+
+	client, _, closer := testVaultServerUnseal(tb)
+	data := map[string]any{
+		"seal": `
+seal "shamir" {
+	shares = 3
+	threshold = 2
+}
+`,
+	}
+	resp, err := client.Logical().Write("/sys/namespaces/"+name, data)
+	require.NoError(tb, err)
+	keys, ok := resp.Data["key_shares"].([]any)
+	require.True(tb, ok)
+	keyShares := make([]string, 0, len(keys))
+	for _, share := range keys {
+		keyShares = append(keyShares, share.(string))
+	}
+	if sealed {
+		return client, keyShares, closer
+	}
+
+	for _, keyShare := range keyShares {
+		status, err := client.Sys().UnsealNamespace(&api.UnsealNamespaceInput{
+			Path: name,
+			Key:  keyShare,
+		})
+		require.NoError(tb, err)
+		if !status.Sealed {
+			break
+		}
+	}
+
+	return client, keyShares, closer
+}

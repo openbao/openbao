@@ -2479,12 +2479,12 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	delete(resp.Data, "modified")
 
 	exp := map[string]interface{}{
-		"name":                             "foo",
-		"rules":                            rules,
-		"cas_required":                     false,
-		"version":                          1,
-		"allow_slashes_in_substitutions":   false,
-		"allow_wildcards_in_substitutions": false,
+		"name":                                  "foo",
+		"rules":                                 rules,
+		"cas_required":                          false,
+		"version":                               1,
+		"allow_slashes_in_identity_templates":   false,
+		"allow_wildcards_in_identity_templates": false,
 	}
 	if !reflect.DeepEqual(resp.Data, exp) {
 		t.Fatalf("got: %#v expect: %#v", resp.Data, exp)
@@ -2503,12 +2503,12 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	delete(resp.Data, "modified")
 
 	exp = map[string]interface{}{
-		"name":                             "foo",
-		"rules":                            rules,
-		"cas_required":                     false,
-		"version":                          1,
-		"allow_slashes_in_substitutions":   false,
-		"allow_wildcards_in_substitutions": false,
+		"name":                                  "foo",
+		"rules":                                 rules,
+		"cas_required":                          false,
+		"version":                               1,
+		"allow_slashes_in_identity_templates":   false,
+		"allow_wildcards_in_identity_templates": false,
 	}
 	if !reflect.DeepEqual(resp.Data, exp) {
 		t.Fatalf("got: %#v expect: %#v", resp.Data, exp)

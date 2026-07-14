@@ -445,13 +445,13 @@ func TestBackend_ForbiddenCommaInTemplate(t *testing.T) {
 	}
 
 	_, err = client.Logical().Write("ssh/roles/my-role", map[string]interface{}{
-		"key_type":                      testCaKeyType,
-		"allow_user_certificates":       true,
-		"default_user":                  "{{identity.entity.metadata.ssh_username}}",
-		"default_user_template":         true,
-		"allowed_users":                 "{{identity.entity.metadata.ssh_username}}",
-		"allowed_users_template":        true,
-		"allow_commas_in_substitutions": false,
+		"key_type":                           testCaKeyType,
+		"allow_user_certificates":            true,
+		"default_user":                       "{{identity.entity.metadata.ssh_username}}",
+		"default_user_template":              true,
+		"allowed_users":                      "{{identity.entity.metadata.ssh_username}}",
+		"allowed_users_template":             true,
+		"allow_commas_in_identity_templates": false,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -2012,17 +2012,17 @@ func testAllowedPrincipalsTemplate(t *testing.T, testAllowedDomainsTemplate stri
 
 func testAllowedUsersTemplate(t *testing.T, testAllowedUsersTemplate string,
 	expectedValidPrincipal string, testEntityMetadata map[string]string,
-	allowCommasInSubstitutions bool,
+	allowCommasInIdentityTemplates bool,
 ) {
 	testAllowedPrincipalsTemplate(
 		t, testAllowedUsersTemplate,
 		expectedValidPrincipal, testEntityMetadata,
 		map[string]interface{}{
-			"key_type":                      testCaKeyType,
-			"allow_user_certificates":       true,
-			"allowed_users":                 testAllowedUsersTemplate,
-			"allowed_users_template":        true,
-			"allow_commas_in_substitutions": allowCommasInSubstitutions,
+			"key_type":                           testCaKeyType,
+			"allow_user_certificates":            true,
+			"allowed_users":                      testAllowedUsersTemplate,
+			"allowed_users_template":             true,
+			"allow_commas_in_identity_templates": allowCommasInIdentityTemplates,
 		},
 		map[string]interface{}{
 			"public_key":       testCAPublicKey,

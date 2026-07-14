@@ -7,11 +7,6 @@ header:
 project:
   name: OpenBao
   administrators:
-    - name: Nathan Phelps
-      affiliation: IBM
-      email: naphelps@us.ibm.com
-      social: https://github.com/naphelps
-      primary: false
     - name: James Butcher
       affiliation: IOTech Systems
       email: james@iotechsys.com
@@ -27,7 +22,7 @@ project:
       primary: false
     - name: Alex Scheel
       affiliation: GitLab
-      email: ascheel@gitlab.com
+      email: alexander.m.scheel@gmail.com
       social: https://github.com/cipherboy
       primary: true
     - name: Brad Corrion
@@ -41,10 +36,6 @@ project:
     - name: Andrii Fedorchuk
       affiliation: Adfinis
       email: andrii.fedorchuk@adfinis.com
-      primary: false
-    - name: Ken McDonald
-      affiliation: GitLab
-      email: kmcdonald@gitlab.com
       primary: false
 
   repositories:
@@ -148,12 +139,12 @@ repository:
       email: jan@martens.eu.org
       social: https://github.com/JanMa
       primary: false
-    - name: Nathan Phelps
-      email: naphelps@us.ibm.com
-      social: https://github.com/naphelps
-      primary: false
     - name: Alex Scheel
-      email: ascheel@gitlab.com
+      email: alexander.m.scheel@gmail.com
+      social: https://github.com/cipherboy
+      primary: true
+    - name: Jonas Köhnen
+      email: jonas@satoqz.net
       social: https://github.com/cipherboy
       primary: true
   license:

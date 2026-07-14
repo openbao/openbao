@@ -3620,11 +3620,11 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Type:        framework.TypeBool,
 					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
 				},
-				"allow_wildcards_in_substitutions": {
+				"allow_wildcards_in_identity_templates": {
 					Type:    framework.TypeBool,
 					Default: false,
 				},
-				"allow_slashes_in_substitutions": {
+				"allow_slashes_in_identity_templates": {
 					Type:    framework.TypeBool,
 					Default: false,
 				},
@@ -3665,11 +3665,11 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 									Type:     framework.TypeBool,
 									Required: true,
 								},
-								"allow_wildcards_in_substitutions": {
+								"allow_wildcards_in_identity_templates": {
 									Type:     framework.TypeBool,
 									Required: true,
 								},
-								"allow_slashes_in_substitutions": {
+								"allow_slashes_in_identity_templates": {
 									Type:     framework.TypeBool,
 									Required: true,
 								},
@@ -3786,11 +3786,11 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Type:        framework.TypeBool,
 					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
 				},
-				"allow_wildcards_in_substitutions": {
+				"allow_wildcards_in_identity_templates": {
 					Type:    framework.TypeBool,
 					Default: false,
 				},
-				"allow_slashes_in_substitutions": {
+				"allow_slashes_in_identity_templates": {
 					Type:    framework.TypeBool,
 					Default: false,
 				},
@@ -3831,11 +3831,11 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 									Type:     framework.TypeBool,
 									Required: true,
 								},
-								"allow_wildcards_in_substitutions": {
+								"allow_wildcards_in_identity_templates": {
 									Type:     framework.TypeBool,
 									Required: true,
 								},
-								"allow_slashes_in_substitutions": {
+								"allow_slashes_in_identity_templates": {
 									Type:     framework.TypeBool,
 									Required: true,
 								},

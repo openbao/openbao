@@ -258,9 +258,9 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 	// Test with explicitly allowed wildcards and slashes
 	client.SetToken(rootToken)
 	_, err = client.Logical().WriteWithContext(t.Context(), "sys/policy/goodPolicy1", map[string]any{
-		"policy":                           goodPolicy1,
-		"allow_wildcards_in_substitutions": true,
-		"allow_slashes_in_substitutions":   true,
+		"policy":                                goodPolicy1,
+		"allow_wildcards_in_identity_templates": true,
+		"allow_slashes_in_identity_templates":   true,
 	})
 	if err != nil {
 		t.Fatal(err)

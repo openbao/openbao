@@ -3780,7 +3780,7 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 
 	// Allow Globs
 	_, err = client.Logical().JSONMergePatch(t.Context(), "pki/roles/test", map[string]any{
-		"allow_globs_in_substitutions": true,
+		"allow_globs_in_identity_templates": true,
 	})
 	require.NoError(t, err)
 
@@ -3944,7 +3944,7 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 
 	// Allow Globs
 	_, err = client.Logical().JSONMergePatch(t.Context(), "pki/roles/test", map[string]any{
-		"allow_globs_in_substitutions": true,
+		"allow_globs_in_identity_templates": true,
 	})
 	require.NoError(t, err)
 
@@ -4023,7 +4023,7 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 		"policy_identifiers":                 []interface{}{},
 		"require_cn":                         true,
 		"allowed_domains_template":           false,
-		"allow_globs_in_substitutions":       false,
+		"allow_globs_in_identity_templates":  false,
 		"allow_token_displayname":            false,
 		"country":                            []interface{}{},
 		"not_before_bound":                   "permit",

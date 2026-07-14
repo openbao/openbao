@@ -35,10 +35,16 @@ const (
 	// termSize the number of bytes used for the key term.
 	termSize = 4
 
+	// AutoRotateCheckInterval is used as a timestep between
+	// automatic barrier key rotation checks.
 	AutoRotateCheckInterval = 5 * time.Minute
 	legacyRotateReason      = "legacy rotation"
+
 	// The keyring is persisted before the root key.
 	keyringTimeout = 1 * time.Second
+
+	// oneYear is the duration after which we deem keyring term 'legacy'.
+	oneYear = 24 * 365 * time.Hour
 )
 
 // Versions of the AESGCM storage methodology
@@ -112,6 +118,8 @@ type AESGCMBarrierTransaction struct {
 }
 
 func (b *AESGCMBarrier) RotationConfig() (kc KeyRotationConfig, err error) {
+	b.l.RLock()
+	defer b.l.RUnlock()
 	if b.keyring == nil {
 		return kc, errors.New("keyring not yet present")
 	}
@@ -124,7 +132,6 @@ func (b *AESGCMBarrier) SetRotationConfig(ctx context.Context, rotConfig KeyRota
 	rotConfig.Sanitize()
 	if !rotConfig.Equals(b.keyring.rotationConfig) {
 		b.keyring.rotationConfig = rotConfig
-
 		return b.persistKeyring(ctx, b.keyring)
 	}
 	return nil
@@ -1192,34 +1199,30 @@ func (b *AESGCMBarrier) TotalLocalEncryptions() int64 {
 }
 
 func (b *AESGCMBarrier) CheckBarrierAutoRotate(ctx context.Context) (string, error) {
-	const oneYear = 24 * 365 * time.Hour
 	reason, err := func() (string, error) {
 		b.l.RLock()
 		defer b.l.RUnlock()
-		if b.keyring != nil {
-			// Rotation Checks
-			var reason string
 
-			rc, err := b.RotationConfig()
-			if err != nil {
-				return "", err
-			}
-
-			if !rc.Disabled {
-				activeKey := b.keyring.ActiveKey()
-				ops := b.encryptions()
-				switch {
-				case activeKey.Encryptions == 0 && !activeKey.InstallTime.IsZero() && time.Since(activeKey.InstallTime) > oneYear:
-					reason = legacyRotateReason
-				case ops > rc.MaxOperations:
-					reason = "reached max operations"
-				case rc.Interval > 0 && time.Since(activeKey.InstallTime) > rc.Interval:
-					reason = "rotation interval reached"
-				}
-			}
-			return reason, nil
+		if b.keyring == nil {
+			return "", nil
 		}
-		return "", nil
+
+		rc := b.keyring.rotationConfig.Clone()
+		if rc.Disabled {
+			return "", nil
+		}
+
+		activeKey := b.keyring.ActiveKey()
+		switch {
+		case activeKey.Encryptions == 0 && !activeKey.InstallTime.IsZero() && time.Since(activeKey.InstallTime) > oneYear:
+			return legacyRotateReason, nil
+		case b.encryptions() > rc.MaxOperations:
+			return "reached max operations", nil
+		case rc.Interval > 0 && time.Since(activeKey.InstallTime) > rc.Interval:
+			return "rotation interval reached", nil
+		default:
+			return "", nil
+		}
 	}()
 	if err != nil {
 		return "", err
@@ -1228,14 +1231,14 @@ func (b *AESGCMBarrier) CheckBarrierAutoRotate(ctx context.Context) (string, err
 		return reason, nil
 	}
 
+	// either rotation is disabled or we do not fulfill
+	// any of the rotation conditions.
 	b.l.Lock()
 	defer b.l.Unlock()
 	if b.keyring != nil {
-		err := b.persistEncryptions(ctx)
-		if err != nil {
-			return "", err
-		}
+		return "", b.persistEncryptions(ctx)
 	}
+
 	return reason, nil
 }
 

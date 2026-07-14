@@ -410,6 +410,74 @@ func TestCore_Invalidate_Quota(t *testing.T) {
 	require.Equal(t, 1, resp.Data["interval"])
 }
 
+func TestCore_Upgrade_Keyring(t *testing.T) {
+	t.Parallel()
+	testCases := map[string]func(t *testing.T, c *Core) context.Context{
+		"global": func(t *testing.T, c *Core) context.Context {
+			return namespace.RootContext(t.Context())
+		},
+
+		"unsealed": func(t *testing.T, c *Core) context.Context {
+			ns := &namespace.Namespace{
+				ID:   "unsealed",
+				Path: "unsealed",
+			}
+			TestCoreCreateUnsealedNamespaces(t, c, ns)
+
+			return namespace.ContextWithNamespace(t.Context(), ns)
+		},
+	}
+
+	for name, init := range testCases {
+		t.Run(name, func(t *testing.T) {
+			c, root := testCore_Invalidate_TestCore(t, nil)
+			ctx := init(t, c)
+
+			ns, err := namespace.FromContext(ctx)
+			require.NoError(t, err)
+
+			// 1. Retrieve key status information.
+			req := logical.TestRequest(t, logical.ReadOperation, "sys/key-status")
+			req.ClientToken = root
+			resp := testCore_Invalidate_handleRequest(t, ctx, c, req)
+			require.NotNil(t, resp)
+			prevTerm := resp.Data["term"].(int)
+			require.Equal(t, 1, prevTerm)
+
+			// 2. Manipulate Storage.
+			b := c.sealManager.NamespaceBarrier(ns.Path)
+			require.NoError(t, err)
+
+			path := fmt.Sprintf("core/upgrade/%d", prevTerm)
+			keyring, err := b.Keyring()
+			require.NoError(t, err)
+
+			buf, err := keyring.TermKey(uint32(prevTerm)).Serialize()
+			require.NoError(t, err)
+			value, err := b.Encrypt(ctx, path, buf)
+			require.NoError(t, err)
+
+			newTerm, err := b.Rotate(ctx)
+			require.NoError(t, err)
+			require.Equal(t, uint32(prevTerm+1), newTerm)
+
+			testCore_Invalidate_sneakValueAroundCache(t, ctx, c, &logical.StorageEntry{
+				Key:   strings.TrimPrefix(path, c.NamespaceView(ns).Prefix()),
+				Value: value,
+			})
+
+			// 3. Invalidate path.
+			require.NoError(t, c.invalidateSynchronous(path))
+
+			// 4. Check cache was properly invalidated.
+			req = logical.TestRequest(t, logical.ReadOperation, "sys/key-status")
+			req.ClientToken = root
+			resp = testCore_Invalidate_handleRequest(t, ctx, c, req)
+			require.Equal(t, prevTerm+1, resp.Data["term"].(int))
+		})
+	}
+}
+
 func TestCore_Invalidate_LoginMFA(t *testing.T) {
 	t.Parallel()
 	testCases := map[string]func(t *testing.T, c *Core) context.Context{

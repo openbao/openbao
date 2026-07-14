@@ -720,7 +720,7 @@ func (c *Core) handleAuditLogSetup(ctx context.Context, standby bool) error {
 		}
 
 		c.logger.Info("disabling removed audit device", "path", auditMount.Path)
-		if existed, err := c.disableAudit(ctx, auditMount.Path, standby); existed && err != nil {
+		if existed, err := c.disableAudit(ctx, auditMount.Path, true); existed && err != nil {
 			return fmt.Errorf("failed to disable removed audit %v: %w", auditMount.Path, err)
 		}
 	}

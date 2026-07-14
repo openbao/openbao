@@ -1,4 +1,4 @@
-module github.com/openbao/openbao
+module github.com/openbao/openbao/v2
 
 // The go version directive value isn't consulted when building our production binaries,
 // and the vault module isn't intended to be imported into other projects.  As such the
@@ -21,7 +21,7 @@ replace github.com/openbao/openbao/api/auth/userpass/v2 => ./api/auth/userpass
 
 replace github.com/openbao/openbao/sdk/v2 => ./sdk
 
-replace github.com/boltdb/bolt => ./helper/stubbolt
+replace github.com/boltdb/bolt => ./internal/helper/stubbolt
 
 require (
 	cloud.google.com/go/monitoring v1.29.0
@@ -344,5 +344,3 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 )
-
-retract [v0.1.0, v1.17.0]

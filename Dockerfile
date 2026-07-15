@@ -92,7 +92,7 @@ LABEL name="OpenBao" \
       io.k8s.description="${LABEL_DESCRIPTION}" \
       io.k8s.display-name="OpenBao" \
       io.openshift.expose-services="8200/tcp:https" \
-      vcs-ref="${REVISION}" \
+      vcs-ref="${REVISION}"
 
 # Set up ca-certificates & base tooling.
 RUN microdnf install -y ca-certificates gnupg openssl libcap tzdata procps shadow-utils util-linux

@@ -1,0 +1,6 @@
+```release-note:bug
+core/policies: Fix persistence of new `allow_wildcards_in_identity_templates`, `allow_slashes_in_identity_templates` parameters in storage.
+```
+```release-note:feature
+core/policies: Introduce PATCH operation support for modifying the values of specific parameters.
+```

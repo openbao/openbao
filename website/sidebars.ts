@@ -122,10 +122,10 @@ const sidebars: SidebarsConfig = {
                         "configuration/seal/gcpckms",
                         "configuration/seal/kmip",
                         "configuration/seal/ocikms",
-                        "configuration/seal/ovhcloudkms",
+                        "configuration/seal/ovhcloud",
                         "configuration/seal/pkcs11",
                         "configuration/seal/static",
-                        "configuration/seal/tcloudpublickms",
+                        "configuration/seal/tcloudpublic",
                         "configuration/seal/transit",
                     ],
                     service_registration: [

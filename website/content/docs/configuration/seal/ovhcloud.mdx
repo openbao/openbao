@@ -4,7 +4,7 @@ description: |-
   The OVHcloud KMS seal configures OpenBao to use OVHcloud KMS as the seal wrapping mechanism.
 ---
 
-# `ovhcloudkms` seal
+# `ovhcloud` seal
 
 :::info
 
@@ -16,19 +16,19 @@ For more information on Auto Unseal plugins, see the [overview section](./index.
 
 The OVHcloud KMS seal configures OpenBao to use OVHcloud KMS as the seal wrapping mechanism.
 The OVHcloud KMS seal is activated by one of the following:
-- The presence of a `seal "ovhcloudkms"` block in OpenBao's configuration file.
-- The presence of the environment variable `BAO_SEAL_TYPE` set to `ovhcloudkms`.
+- The presence of a `seal "ovhcloud"` block in OpenBao's configuration file.
+- The presence of the environment variable `BAO_SEAL_TYPE` set to `ovhcloud`.
 If enabling via environment variable, all other required values specific to OVHcloud KMS must also be provided,
 as well as OVHcloud-related environment variables required for successful authentication.
 
-## `ovhcloudkms` example
+## `ovhcloud` example
 
 The OVHcloud KMS seal authenticates with either a bearer token or mutual TLS (mTLS).
 
 This example shows how to configure OVHcloud KMS using token authentication:
 
 ```hcl
-seal "ovhcloudkms" {
+seal "ovhcloud" {
   endpoint = "https://eu-west-rbx.okms.ovh.net"
   kms_id   = "kms-id" # for example: "734b9b45-8b1a-469c-b140-b10bd6540017"
   key_id   = "service-key-id" # for example: "1f1754e8-f2f8-60f0-9015-4c816b6f41b4"
@@ -39,7 +39,7 @@ seal "ovhcloudkms" {
 This example shows how to configure OVHcloud KMS using mTLS authentication:
 
 ```hcl
-seal "ovhcloudkms" {
+seal "ovhcloud" {
   endpoint       = "https://eu-west-rbx.okms.ovh.net"
   kms_id         = "kms-id" # for example: "734b9b45-8b1a-469c-b140-b10bd6540017"
   key_id         = "service-key-id" # for example: "1f1754e8-f2f8-60f0-9015-4c816b6f41b4"
@@ -48,7 +48,7 @@ seal "ovhcloudkms" {
 }
 ```
 
-## `ovhcloudkms` parameters
+## `ovhcloud` parameters
 
 These parameters apply to the `seal` stanza in the OpenBao configuration file.
 When a value is provided both in the configuration file and through an environment variable,
@@ -121,7 +121,7 @@ Optional authentication values:
 The configured service key must allow both the `encrypt` and `decrypt` operations.
 See the [OVHcloud KMS quick start](https://docs.ovhcloud.com/en/guides/manage-and-operate/kms/quick-start) for details on creating a service key and obtaining credentials.
 
-## `ovhcloudkms` environment variables
+## `ovhcloud` environment variables
 
 Alternatively, the OVHcloud KMS seal can be activated by providing the following environment variables.
 

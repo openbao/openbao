@@ -154,6 +154,7 @@ jobs:
         run: |
           echo "sha=$(git rev-parse "$VERSION")" >> "$GITHUB_OUTPUT"
           echo "epoch=$(git log -1 --format=%ct "$VERSION")" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
 
       - name: Build and push images
         id: build
@@ -165,11 +166,20 @@ jobs:
           target: ${{ matrix.distro.target }}
           platforms: ${{ join(matrix.distro.platforms, ',') }}
           outputs: type=registry,rewrite-timestamp=true
-          build-args: 
-            SOURCE_DATE_EPOCH=${{ steps.info.outputs.epoch }}
-            VERSION=${{ env.VERSION }}
-            REVISION=${{ steps.info.outputs.sha }}
+          build-args: SOURCE_DATE_EPOCH=${{ steps.info.outputs.epoch }}
           labels: |
+            # Legacy Core Metadata Labels
+            name=OpenBao
+            maintainer=OpenBao <openbao@lists.openssf.org>
+            vendor=OpenBao
+            version=${{ env.VERSION }}
+            release=${{ steps.info.outputs.epoch }}
+            build-date=${{ steps.info.outputs.date }}
+            summary=OpenBao is a tool for securely accessing secrets
+            description=OpenBao is a tool for securely accessing secrets. A secret is anything that you want to tightly control access to, such as API keys, passwords, certificates, and more. OpenBao provides a unified interface to any secret, while providing tight access control and recording a detailed audit log
+            url=https://openbao.org
+            vcs-ref=${{ steps.info.outputs.sha }}
+            # OCI Standard Labels
             org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>
             org.opencontainers.image.url=https://github.com/openbao/openbao
             org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md

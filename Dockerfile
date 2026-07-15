@@ -77,22 +77,12 @@ ARG LABEL_DESCRIPTION="OpenBao is a tool for securely accessing secrets. A secre
 
 # Overwrite base image labels
 # These labels are required by Red Hat
-LABEL name="OpenBao" \
-      maintainer="OpenBao <openbao@lists.openssf.org>" \
-      vendor="OpenBao" \
-      version="${VERSION}" \
-      release="${VERSION}" \
-      summary="OpenBao is a tool for securely accessing secrets" \
-      description="${LABEL_DESCRIPTION}" \
-      url="https://openbao.org" \
-      build-date="" \
-      com.redhat.component="" \
+LABEL com.redhat.component="" \
       com.redhat.license_terms="" \
       io.buildah.version="" \
       io.k8s.description="${LABEL_DESCRIPTION}" \
       io.k8s.display-name="OpenBao" \
-      io.openshift.expose-services="8200/tcp:https" \
-      vcs-ref="${REVISION}"
+      io.openshift.expose-services="8200/tcp:https"
 
 # Set up ca-certificates & base tooling.
 RUN microdnf install -y ca-certificates gnupg openssl libcap tzdata procps shadow-utils util-linux

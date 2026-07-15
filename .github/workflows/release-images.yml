@@ -154,7 +154,7 @@ jobs:
         run: |
           echo "sha=$(git rev-parse "$VERSION")" >> "$GITHUB_OUTPUT"
           echo "epoch=$(git log -1 --format=%ct "$VERSION")" >> "$GITHUB_OUTPUT"
-          echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+          echo "date=$(TZ=UTC git log -1 --format=%cd --date=iso-strict-local "$VERSION")" >> "$GITHUB_OUTPUT"
 
       - name: Build and push images
         id: build

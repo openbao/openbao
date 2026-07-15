@@ -165,7 +165,10 @@ jobs:
           target: ${{ matrix.distro.target }}
           platforms: ${{ join(matrix.distro.platforms, ',') }}
           outputs: type=registry,rewrite-timestamp=true
-          build-args: SOURCE_DATE_EPOCH=${{ steps.info.outputs.epoch }}
+          build-args: 
+            SOURCE_DATE_EPOCH=${{ steps.info.outputs.epoch }}
+            VERSION=${{ env.VERSION }}
+            REVISION=${{ steps.info.outputs.sha }}
           labels: |
             org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>
             org.opencontainers.image.url=https://github.com/openbao/openbao

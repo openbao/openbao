@@ -68,8 +68,31 @@ CMD ["server", "-dev", "-dev-no-store-token"]
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao-ubi.
 FROM registry.access.redhat.com/ubi10-minimal:10.2@sha256:b217fa65d8c21058887b18f005f587e47a17dd1281a5196ac88d01724a273dbd AS ubi
+ARG VERSION="0.0.0-dev"
+ARG REVISION="unknown"
 
 COPY LICENSE /licenses/mozilla.txt
+
+ARG LABEL_DESCRIPTION="OpenBao is a tool for securely accessing secrets. A secret is anything that you want to tightly control access to, such as API keys, passwords, certificates, and more. OpenBao provides a unified interface to any secret, while providing tight access control and recording a detailed audit log"
+
+# Overwrite base image labels
+# These labels are required by Red Hat
+LABEL name="OpenBao" \
+      maintainer="OpenBao <openbao@lists.openssf.org>" \
+      vendor="OpenBao" \
+      version="${VERSION}" \
+      release="${VERSION}" \
+      summary="OpenBao is a tool for securely accessing secrets" \
+      description="${LABEL_DESCRIPTION}" \
+      url="https://openbao.org" \
+      build-date="" \
+      com.redhat.component="" \
+      com.redhat.license_terms="" \
+      io.buildah.version="" \
+      io.k8s.description="${LABEL_DESCRIPTION}" \
+      io.k8s.display-name="OpenBao" \
+      io.openshift.expose-services="8200/tcp:https" \
+      vcs-ref:"${REVISION}" \
 
 # Set up ca-certificates & base tooling.
 RUN microdnf install -y ca-certificates gnupg openssl libcap tzdata procps shadow-utils util-linux

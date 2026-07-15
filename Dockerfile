@@ -73,10 +73,8 @@ COPY LICENSE /licenses/mozilla.txt
 
 # Overwrite base image labels
 # These labels are required by Red Hat
-LABEL com.redhat.component="" \
-      com.redhat.license_terms="" \
-      io.buildah.version="" \
-      io.k8s.description="${LABEL_DESCRIPTION}" \
+LABEL io.buildah.version="" \
+      io.k8s.description="OpenBao is a tool for securely accessing secrets" \
       io.k8s.display-name="OpenBao" \
       io.openshift.expose-services="8200/tcp:https"
 

@@ -71,10 +71,8 @@ FROM registry.access.redhat.com/ubi10-minimal:10.2@sha256:b217fa65d8c21058887b18
 
 COPY LICENSE /licenses/mozilla.txt
 
-# Overwrite base image labels
-# These labels are required by Red Hat
-LABEL io.buildah.version="" \
-      io.k8s.description="OpenBao is a tool for securely accessing secrets" \
+# Overwrite Red Hat-specific labels present on the UBI base image.
+LABEL io.k8s.description="OpenBao is a tool for securely accessing secrets" \
       io.k8s.display-name="OpenBao" \
       io.openshift.expose-services="8200/tcp:https"
 

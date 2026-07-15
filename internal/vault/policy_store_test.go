@@ -595,6 +595,18 @@ func TestPolicyStore_NamespaceAPI(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, rootResp.IsError())
 
+	// Patch a policy.
+	rootResp, err = core.HandleRequest(ctx, &logical.Request{
+		Operation: logical.PatchOperation,
+		Path:      policyPath,
+		Data: map[string]interface{}{
+			"allow_wildcards_in_identity_templates": true,
+		},
+		ClientToken: token,
+	})
+	require.NoError(t, err)
+	require.False(t, rootResp.IsError())
+
 	// Get namespace and create context
 	ns, err := core.namespaceStore.GetNamespaceByPath(ctx, nsPath)
 	require.NoError(t, err)
@@ -633,6 +645,7 @@ func TestPolicyStore_NamespaceAPI(t *testing.T) {
 
 	rootPolicy := rootReadResp.Data["policy"].(string)
 	nsPolicy := nsReadResp.Data["policy"].(string)
+	assert.True(t, rootReadResp.Data["allow_wildcards_in_identity_templates"].(bool))
 	assert.NotEqual(t, rootPolicy, nsPolicy, "policies should be different")
 	assert.Contains(t, nsPolicy, "list", "namespace policy missing list capability")
 	assert.NotContains(t, rootPolicy, "list", "root policy contains unexpected list capability")

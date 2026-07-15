@@ -72,11 +72,13 @@ $ curl \
 ## Create/Update ACL policy
 
 This endpoint adds a new or updates an existing ACL policy. Once a policy is
-updated, it takes effect immediately to all associated users.
+updated, it takes effect immediately to all associated users. New policies
+cannot be created via patch operation.
 
-| Method | Path                      |
-| :----- | :------------------------ |
-| `POST`  | `/sys/policies/acl/:name` |
+| Method  | Path                      | Scope                                 |
+| :------ | :------------------------ | :------------------------------------ |
+| `POST`  | `/sys/policies/acl/:name` | Unspecified fields reset to defaults. |
+| `PATCH` | `/sys/policies/acl/:name` | Unspecified field values preserved.   |
 
 ### Parameters
 
@@ -84,7 +86,7 @@ updated, it takes effect immediately to all associated users.
   This is specified as part of the request URL.
 
 - `policy` `(string: <required>)` - Specifies the policy document. This can be
-  base64-encoded to avoid string escaping.
+  base64-encoded to avoid string escaping. Optional on patch commands.
 
 - `expiration` `(time: <optional>)` - Specifies an expiration time after which
   the policy will no longer be valid and will be removed on next load. Cannot
@@ -107,6 +109,16 @@ updated, it takes effect immediately to all associated users.
   a create/update operation, this parameter needs to reset to true on every
   subsequent operation for continued usage. When set to true, `cas` becomes
   a required parameter. Defaults to false.
+
+- `allow_wildcards_in_identity_templates` `(bool: false)` - When true, allows
+  wildcards in the output of evaluated identity templates. This occurs when
+  entity or group metadata contains reserved wildcard or glob characters (`+`
+  or `*`) which increase the scope of a specified policy.
+
+- `allow_slashes_in_identity_templates` `(bool: false)` - When true, allows
+  slashes (path separators) in the output of evaluated identity templates.
+  This occurs when entity or group metadata contains the literal value `/`,
+  which can allow path traversal in the specified policy.
 
 ### Sample payload
 

@@ -1,0 +1,3 @@
+```release-note:bug
+packaging/container: Overwrite UBI base image labels with our own labels
+```

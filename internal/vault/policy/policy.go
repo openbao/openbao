@@ -94,16 +94,21 @@ var cap2Int = map[string]uint32{
 
 // Policy is used to represent the policy specified by an ACL configuration.
 type Policy struct {
-	Name                              string `hcl:"name"`
+	// Computed fields not present in storage.
+	Name      string               `hcl:"name" json:"-"`
+	Namespace *namespace.Namespace `json:"-"`
+	Paths     []*PathRules         `hcl:"-" json:"-"`
+
+	// These fields are persisted in storage. However, the original
+	// policy.Entry{} did not use `json` tags and so we elide them
+	// here as well.
 	DataVersion                       int
 	CASRequired                       bool
-	Paths                             []*PathRules `hcl:"-"`
 	Raw                               string
 	Type                              Type
 	Templated                         bool
 	Expiration                        time.Time
 	Modified                          time.Time
-	Namespace                         *namespace.Namespace
 	AllowWildcardsInIdentityTemplates bool
 	AllowSlashesInIdentityTemplates   bool
 }
@@ -123,6 +128,27 @@ func (p *Policy) ShallowClone() *Policy {
 		AllowWildcardsInIdentityTemplates: p.AllowWildcardsInIdentityTemplates,
 		AllowSlashesInIdentityTemplates:   p.AllowSlashesInIdentityTemplates,
 	}
+}
+
+func (p *Policy) Decode(name string, ns *namespace.Namespace) error {
+	p.Name = name
+	p.Namespace = ns
+
+	switch p.Type {
+	case TypeACL:
+		// Parse normally
+		parsed, err := ParseACLPolicy(ns, p.Raw)
+		if err != nil {
+			return fmt.Errorf("failed to parse policy: %w", err)
+		}
+
+		p.Paths = parsed.Paths
+		p.Templated = parsed.Templated
+	default:
+		return fmt.Errorf("unknown policy type %q", p.Type.String())
+	}
+
+	return nil
 }
 
 // PathRules represents a policy for a path in the namespace.

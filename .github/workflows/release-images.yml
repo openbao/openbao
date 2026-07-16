@@ -118,7 +118,7 @@ jobs:
           IMAGE_NAME: ${{ github.repository_owner }}/${{ matrix.distro.name }}${{ case(contains(env.VERSION, 'nightly'), '-nightly', '') }}
 
       - name: Log into ghcr.io
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         if: contains(fromJSON(steps.tags.outputs.registries), 'ghcr.io')
         with:
           registry: ghcr.io
@@ -126,7 +126,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log into docker.io
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         if: contains(fromJSON(steps.tags.outputs.registries), 'docker.io')
         with:
           registry: docker.io
@@ -134,7 +134,7 @@ jobs:
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Log into quay.io
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         if: contains(fromJSON(steps.tags.outputs.registries), 'quay.io')
         with:
           registry: quay.io

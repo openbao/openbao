@@ -40,7 +40,7 @@
     "@docusaurus/tsconfig": "^3.10.1",
     "@docusaurus/types": "^3.10.1",
     "markdownlint": "^0.41.0",
-    "markdownlint-cli2": "^0.22.1",
+    "markdownlint-cli2": "^0.23.0",
     "typescript": "^6.0.3"
   },
   "browserslist": {

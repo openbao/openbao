@@ -5,7 +5,7 @@ description: |-
   the seal wrapping mechanism.
 ---
 
-# `tcloudpublickms` seal
+# `tcloudpublic` seal
 
 :::info
 
@@ -20,28 +20,28 @@ The T Cloud Public KMS seal configures OpenBao to use T Cloud Public KMS as the
 seal wrapping mechanism. The T Cloud Public KMS seal is activated by one of the
 following:
 
-- The presence of a `seal "tcloudpublickms"` block in OpenBao's configuration
+- The presence of a `seal "tcloudpublic"` block in OpenBao's configuration
   file.
 - The presence of the environment variable `BAO_SEAL_TYPE` set to
-  `tcloudpublickms`. If enabling via environment variable, all other required
+  `tcloudpublic`. If enabling via environment variable, all other required
   values specific to T Cloud Public KMS (i.e. `TCLOUDPUBLIC_KMS_KEY_ID`, etc.)
   must also be supplied, as well as all other T Cloud Public-related
   environment variables required for successful authentication.
 
-## `tcloudpublickms` example
+## `tcloudpublic` example
 
 This example shows how to configure the T Cloud Public KMS seal through the
 OpenBao configuration file:
 
 ```hcl
-seal "tcloudpublickms" {
+seal "tcloudpublic" {
   key_id            = "00000000-0000-0000-0000-000000000000"
   access_key        = "access-key-example"
   secret_key        = "secret-key-example"
 }
 ```
 
-## `tcloudpublickms` parameters
+## `tcloudpublic` parameters
 
 These parameters apply to the `seal` stanza in the OpenBao configuration file.
 When a value is provided both in the configuration file and through an
@@ -107,7 +107,7 @@ OpenBao needs the following permission on the KMS key:
 This can be granted via IAM permissions at the project level or with Enterprise
 Project Service on the principal that OpenBao uses for T Cloud Public KMS.
 
-## `tcloudpublickms` environment variables
+## `tcloudpublic` environment variables
 
 Alternatively, the T Cloud Public KMS seal can be activated by providing the
 following environment variables.

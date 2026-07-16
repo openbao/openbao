@@ -182,8 +182,9 @@ jobs:
             description=OpenBao is a tool for securely accessing secrets. A secret is anything that you want to tightly control access to, such as API keys, passwords, certificates, and more. OpenBao provides a unified interface to any secret, while providing tight access control and recording a detailed audit log
             url=https://openbao.org
             vcs-ref=${{ steps.info.outputs.sha }}
+            vcs-type=git
             org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>
-            org.opencontainers.image.url=https://github.com/openbao/openbao
+            org.opencontainers.image.url=https://openbao.org
             org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md
             org.opencontainers.image.source=https://github.com/openbao/openbao
             org.opencontainers.image.version=${{ env.VERSION }}

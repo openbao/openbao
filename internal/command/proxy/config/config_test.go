@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 )
@@ -31,23 +30,23 @@ func TestLoadConfigFile_ProxyCache(t *testing.T) {
 					SocketMode:                           "configmode",
 					SocketUser:                           "configuser",
 					SocketGroup:                          "configgroup",
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 				{
 					Type:                                 "tcp",
 					Address:                              "127.0.0.1:8300",
 					TLSDisable:                           true,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 				{
 					Type:                                 "tcp",
 					Address:                              "127.0.0.1:3000",
 					Role:                                 "metrics_only",
 					TLSDisable:                           true,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 				{
 					Type:                                 "tcp",
@@ -55,8 +54,8 @@ func TestLoadConfigFile_ProxyCache(t *testing.T) {
 					Address:                              "127.0.0.1:8400",
 					TLSKeyFile:                           "/path/to/cakey.pem",
 					TLSCertFile:                          "/path/to/cacert.pem",
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 			},
 		},

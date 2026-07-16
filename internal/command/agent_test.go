@@ -25,7 +25,6 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	credAppRole "github.com/openbao/openbao/v2/internal/builtin/credential/approle"
 	vaultjwt "github.com/openbao/openbao/v2/internal/builtin/credential/jwt"
@@ -2288,7 +2287,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 		expectExitFromError       bool
 	}{
 		"true, no template error": {
-			exitOnRetryFailure:        pointerutil.BoolPtr(true),
+			exitOnRetryFailure:        new(true),
 			templateContents:          templateContents(0),
 			expectTemplateRender:      templateRendered(0),
 			templateErrorOnMissingKey: false,
@@ -2296,7 +2295,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 			expectExitFromError:       false,
 		},
 		"true, with non-existent secret": {
-			exitOnRetryFailure:        pointerutil.BoolPtr(true),
+			exitOnRetryFailure:        new(true),
 			templateContents:          badTemplateContent,
 			expectTemplateRender:      "",
 			templateErrorOnMissingKey: false,
@@ -2304,7 +2303,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 			expectExitFromError:       true,
 		},
 		"true, with missing key": {
-			exitOnRetryFailure:        pointerutil.BoolPtr(true),
+			exitOnRetryFailure:        new(true),
 			templateContents:          missingKeyTemplateContent,
 			expectTemplateRender:      missingKeyTemplateRender,
 			templateErrorOnMissingKey: false,
@@ -2312,7 +2311,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 			expectExitFromError:       false,
 		},
 		"true, with missing key, with error_on_missing_key": {
-			exitOnRetryFailure:        pointerutil.BoolPtr(true),
+			exitOnRetryFailure:        new(true),
 			templateContents:          missingKeyTemplateContent,
 			expectTemplateRender:      "",
 			templateErrorOnMissingKey: true,
@@ -2320,7 +2319,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 			expectExitFromError:       true,
 		},
 		"false, no template error": {
-			exitOnRetryFailure:        pointerutil.BoolPtr(false),
+			exitOnRetryFailure:        new(false),
 			templateContents:          templateContents(0),
 			expectTemplateRender:      templateRendered(0),
 			templateErrorOnMissingKey: false,
@@ -2328,7 +2327,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 			expectExitFromError:       false,
 		},
 		"false, with non-existent secret": {
-			exitOnRetryFailure:        pointerutil.BoolPtr(false),
+			exitOnRetryFailure:        new(false),
 			templateContents:          badTemplateContent,
 			expectTemplateRender:      "",
 			templateErrorOnMissingKey: false,
@@ -2336,7 +2335,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 			expectExitFromError:       false,
 		},
 		"false, with missing key": {
-			exitOnRetryFailure:        pointerutil.BoolPtr(false),
+			exitOnRetryFailure:        new(false),
 			templateContents:          missingKeyTemplateContent,
 			expectTemplateRender:      missingKeyTemplateRender,
 			templateErrorOnMissingKey: false,
@@ -2344,7 +2343,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 			expectExitFromError:       false,
 		},
 		"false, with missing key, with error_on_missing_key": {
-			exitOnRetryFailure:        pointerutil.BoolPtr(false),
+			exitOnRetryFailure:        new(false),
 			templateContents:          missingKeyTemplateContent,
 			expectTemplateRender:      missingKeyTemplateRender,
 			templateErrorOnMissingKey: true,

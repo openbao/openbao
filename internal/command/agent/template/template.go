@@ -22,7 +22,6 @@ import (
 	ctconfig "github.com/openbao/openbao-template/config"
 	"github.com/openbao/openbao-template/manager"
 
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/v2/internal/command/agent/config"
 	"github.com/openbao/openbao/v2/internal/command/agent/internal/ctmanager"
 	"github.com/openbao/openbao/v2/internal/helper/useragent"
@@ -215,7 +214,7 @@ func (ts *Server) Run(ctx context.Context, incoming chan string, templates []*ct
 				ctv := ctconfig.Config{
 					Vault: &ctconfig.VaultConfig{
 						Token:           latestToken,
-						ClientUserAgent: pointerutil.StringPtr(useragent.AgentTemplatingString()),
+						ClientUserAgent: new(useragent.AgentTemplatingString()),
 					},
 				}
 

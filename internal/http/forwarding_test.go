@@ -25,7 +25,6 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	credCert "github.com/openbao/openbao/v2/internal/builtin/credential/cert"
 	"github.com/openbao/openbao/v2/internal/builtin/logical/transit"
@@ -626,8 +625,8 @@ func TestHTTP_Forwarding_StandbySystemEndpoints(t *testing.T) {
 		HandlerFunc: Handler,
 		DefaultHandlerProperties: vault.HandlerProperties{
 			ListenerConfig: &configutil.Listener{
-				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
-				DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(false),
+				DisableUnauthedGenerateRootEndpoints: new(false),
+				DisableUnauthedRekeyEndpoints:        new(false),
 			},
 		},
 		NumCores: 2,

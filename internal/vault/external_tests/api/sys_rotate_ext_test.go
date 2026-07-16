@@ -12,7 +12,6 @@ import (
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
@@ -51,8 +50,8 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		HandlerFunc: vaulthttp.Handler,
 		DefaultHandlerProperties: vault.HandlerProperties{
 			ListenerConfig: &configutil.Listener{
-				DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(false),
-				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+				DisableUnauthedRekeyEndpoints:        new(false),
+				DisableUnauthedGenerateRootEndpoints: new(false),
 			},
 		},
 	}
@@ -320,7 +319,7 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 		HandlerFunc: vaulthttp.Handler,
 		DefaultHandlerProperties: vault.HandlerProperties{
 			ListenerConfig: &configutil.Listener{
-				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+				DisableUnauthedGenerateRootEndpoints: new(false),
 			},
 		},
 	}

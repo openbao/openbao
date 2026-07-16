@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	ctconfig "github.com/openbao/openbao-template/config"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/v2/internal/command/agent/config"
 	"github.com/openbao/openbao/v2/internal/command/agent/internal/ctmanager"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared"
@@ -247,7 +246,7 @@ func TestServerRun(t *testing.T) {
 			templateMap: map[string]*templateTest{
 				"render_01": {
 					template: &ctconfig.TemplateConfig{
-						Contents: pointerutil.StringPtr(templateContents),
+						Contents: new(templateContents),
 					},
 				},
 			},
@@ -258,37 +257,37 @@ func TestServerRun(t *testing.T) {
 			templateMap: map[string]*templateTest{
 				"render_01": {
 					template: &ctconfig.TemplateConfig{
-						Contents: pointerutil.StringPtr(templateContents),
+						Contents: new(templateContents),
 					},
 				},
 				"render_02": {
 					template: &ctconfig.TemplateConfig{
-						Contents: pointerutil.StringPtr(templateContents),
+						Contents: new(templateContents),
 					},
 				},
 				"render_03": {
 					template: &ctconfig.TemplateConfig{
-						Contents: pointerutil.StringPtr(templateContents),
+						Contents: new(templateContents),
 					},
 				},
 				"render_04": {
 					template: &ctconfig.TemplateConfig{
-						Contents: pointerutil.StringPtr(templateContents),
+						Contents: new(templateContents),
 					},
 				},
 				"render_05": {
 					template: &ctconfig.TemplateConfig{
-						Contents: pointerutil.StringPtr(templateContents),
+						Contents: new(templateContents),
 					},
 				},
 				"render_06": {
 					template: &ctconfig.TemplateConfig{
-						Contents: pointerutil.StringPtr(templateContents),
+						Contents: new(templateContents),
 					},
 				},
 				"render_07": {
 					template: &ctconfig.TemplateConfig{
-						Contents: pointerutil.StringPtr(templateContents),
+						Contents: new(templateContents),
 					},
 				},
 			},
@@ -299,7 +298,7 @@ func TestServerRun(t *testing.T) {
 			templateMap: map[string]*templateTest{
 				"render_01": {
 					template: &ctconfig.TemplateConfig{
-						Contents: pointerutil.StringPtr(templateContentsBad),
+						Contents: new(templateContentsBad),
 					},
 				},
 			},
@@ -310,8 +309,8 @@ func TestServerRun(t *testing.T) {
 			templateMap: map[string]*templateTest{
 				"render_01": {
 					template: &ctconfig.TemplateConfig{
-						Contents:      pointerutil.StringPtr(templateContentsMissingKey),
-						ErrMissingKey: pointerutil.BoolPtr(true),
+						Contents:      new(templateContentsMissingKey),
+						ErrMissingKey: new(true),
 					},
 				},
 			},
@@ -322,7 +321,7 @@ func TestServerRun(t *testing.T) {
 			templateMap: map[string]*templateTest{
 				"render_01": {
 					template: &ctconfig.TemplateConfig{
-						Contents: pointerutil.StringPtr(templateContentsPermDenied),
+						Contents: new(templateContentsPermDenied),
 					},
 				},
 			},
@@ -333,7 +332,7 @@ func TestServerRun(t *testing.T) {
 			templateMap: map[string]*templateTest{
 				"render_01": {
 					template: &ctconfig.TemplateConfig{
-						Contents: pointerutil.StringPtr(templateContentsWithSprigFunctions),
+						Contents: new(templateContentsWithSprigFunctions),
 					},
 				},
 			},
@@ -353,7 +352,7 @@ func TestServerRun(t *testing.T) {
 			var templatesToRender []*ctconfig.TemplateConfig
 			for fileName, templateTest := range tc.templateMap {
 				dstFile := fmt.Sprintf("%s/%s", tmpDir, fileName)
-				templateTest.template.Destination = pointerutil.StringPtr(dstFile)
+				templateTest.template.Destination = new(dstFile)
 				templatesToRender = append(templatesToRender, templateTest.template)
 			}
 
@@ -474,10 +473,10 @@ func TestNewServerLogLevels(t *testing.T) {
 			templateTokenCh := make(chan string, 1)
 
 			templateTest := &ctconfig.TemplateConfig{
-				Contents: pointerutil.StringPtr(templateContents),
+				Contents: new(templateContents),
 			}
 			dstFile := fmt.Sprintf("%s/%s", tmpDir, name)
-			templateTest.Destination = pointerutil.StringPtr(dstFile)
+			templateTest.Destination = new(dstFile)
 			templatesToRender := []*ctconfig.TemplateConfig{templateTest}
 
 			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)

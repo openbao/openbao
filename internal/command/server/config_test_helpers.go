@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/hashicorp/hcl/hcl/token"
 	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 )
 
@@ -45,8 +44,8 @@ func testConfigRaftRetryJoin(t *testing.T) {
 					Type:                                 "tcp",
 					Address:                              "127.0.0.1:8200",
 					CustomResponseHeaders:                DefaultCustomHeaders,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 			},
 		},
@@ -82,8 +81,8 @@ func testLoadConfigFile_topLevel(t *testing.T) {
 					Type:                                 "tcp",
 					Address:                              "127.0.0.1:443",
 					CustomResponseHeaders:                DefaultCustomHeaders,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 			},
 
@@ -194,15 +193,15 @@ func testLoadConfigFile_json2(t *testing.T) {
 					Type:                                 "tcp",
 					Address:                              "127.0.0.1:443",
 					CustomResponseHeaders:                DefaultCustomHeaders,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 				{
 					Type:                                 "tcp",
 					Address:                              "127.0.0.1:444",
 					CustomResponseHeaders:                DefaultCustomHeaders,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 			},
 
@@ -298,8 +297,8 @@ func testLoadConfigFileIntegerAndBooleanValuesCommon(t *testing.T, path string) 
 					Type:                                 "tcp",
 					Address:                              "127.0.0.1:8200",
 					CustomResponseHeaders:                DefaultCustomHeaders,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 			},
 		},
@@ -347,8 +346,8 @@ func testLoadConfigFile(t *testing.T) {
 					Type:                                 "tcp",
 					Address:                              "127.0.0.1:443",
 					CustomResponseHeaders:                DefaultCustomHeaders,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 			},
 
@@ -538,8 +537,8 @@ func testLoadConfigFile_json(t *testing.T) {
 					Type:                                 "tcp",
 					Address:                              "127.0.0.1:443",
 					CustomResponseHeaders:                DefaultCustomHeaders,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 			},
 
@@ -624,8 +623,8 @@ func testLoadConfigDir(t *testing.T) {
 					Type:                                 "tcp",
 					Address:                              "127.0.0.1:443",
 					CustomResponseHeaders:                DefaultCustomHeaders,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 			},
 
@@ -858,8 +857,8 @@ listener "tcp" {
 						EnableQuit: true,
 					},
 					CustomResponseHeaders:                DefaultCustomHeaders,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 			},
 		},
@@ -962,8 +961,8 @@ EOF
 					ClusterAddress:                       "127.0.0.1:8201",
 					TLSDisable:                           true,
 					CustomResponseHeaders:                DefaultCustomHeaders,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 			},
 		},
@@ -1041,8 +1040,8 @@ func testParseSeals(t *testing.T) {
 					Type:                                 "tcp",
 					Address:                              "127.0.0.1:443",
 					CustomResponseHeaders:                DefaultCustomHeaders,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 			},
 			Seals: []*configutil.KMS{
@@ -1101,8 +1100,8 @@ func testLoadConfigFileLeaseMetrics(t *testing.T) {
 					Type:                                 "tcp",
 					Address:                              "127.0.0.1:443",
 					CustomResponseHeaders:                DefaultCustomHeaders,
-					DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(true),
-					DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(true),
+					DisableUnauthedRekeyEndpoints:        new(true),
+					DisableUnauthedGenerateRootEndpoints: new(true),
 				},
 			},
 

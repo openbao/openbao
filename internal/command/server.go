@@ -36,7 +36,6 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -1312,8 +1311,8 @@ func (c *ServerCommand) Run(args []string) int {
 		// The cluster handler allows all endpoints to support forwarding.
 		// The decision to disable unauthed endpoints is made by external-facing listeners, so this is safe.
 		ListenerConfig: &configutil.Listener{
-			DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
-			DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(false),
+			DisableUnauthedGenerateRootEndpoints: new(false),
+			DisableUnauthedRekeyEndpoints:        new(false),
 		},
 	}))
 

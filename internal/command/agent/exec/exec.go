@@ -15,7 +15,6 @@ import (
 	"github.com/openbao/openbao-template/manager"
 	"golang.org/x/exp/slices"
 
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/v2/internal/command/agent/config"
 	"github.com/openbao/openbao/v2/internal/command/agent/internal/ctmanager"
 	"github.com/openbao/openbao/v2/internal/helper/useragent"
@@ -161,7 +160,7 @@ func (s *Server) Run(ctx context.Context, incomingVaultToken chan string) error 
 				newTokenConfig := ctconfig.Config{
 					Vault: &ctconfig.VaultConfig{
 						Token:           latestToken,
-						ClientUserAgent: pointerutil.StringPtr(useragent.AgentTemplatingString()),
+						ClientUserAgent: new(useragent.AgentTemplatingString()),
 					},
 				}
 

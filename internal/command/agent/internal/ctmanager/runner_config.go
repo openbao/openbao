@@ -9,7 +9,6 @@ import (
 	ctconfig "github.com/openbao/openbao-template/config"
 	ctlogging "github.com/openbao/openbao-template/logging"
 
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/v2/internal/command/agent/config"
 )
 
@@ -28,8 +27,8 @@ func NewConfig(mc ManagerConfig, templates ctconfig.TemplateConfigs) (*ctconfig.
 
 	// Setup the Vault config
 	// Always set these to ensure nothing is picked up from the environment
-	conf.Vault.RenewToken = pointerutil.BoolPtr(false)
-	conf.Vault.Token = pointerutil.StringPtr("")
+	conf.Vault.RenewToken = new(false)
+	conf.Vault.Token = new("")
 	conf.Vault.Address = &mc.AgentConfig.Vault.Address
 
 	if mc.Namespace != "" {
@@ -46,17 +45,17 @@ func NewConfig(mc ManagerConfig, templates ctconfig.TemplateConfigs) (*ctconfig.
 	}
 
 	if mc.AgentConfig.DisableKeepAlivesTemplating {
-		conf.Vault.Transport.DisableKeepAlives = pointerutil.BoolPtr(true)
+		conf.Vault.Transport.DisableKeepAlives = new(true)
 	}
 
 	conf.Vault.SSL = &ctconfig.SSLConfig{
-		Enabled:    pointerutil.BoolPtr(false),
-		Verify:     pointerutil.BoolPtr(false),
-		Cert:       pointerutil.StringPtr(""),
-		Key:        pointerutil.StringPtr(""),
-		CaCert:     pointerutil.StringPtr(""),
-		CaPath:     pointerutil.StringPtr(""),
-		ServerName: pointerutil.StringPtr(""),
+		Enabled:    new(false),
+		Verify:     new(false),
+		Cert:       new(""),
+		Key:        new(""),
+		CaCert:     new(""),
+		CaPath:     new(""),
+		ServerName: new(""),
 	}
 
 	// If Vault.Retry isn't specified, use the default of 12 retries.
@@ -78,12 +77,12 @@ func NewConfig(mc ManagerConfig, templates ctconfig.TemplateConfigs) (*ctconfig.
 		// The in-process dialer ignores the address passed in, but we're still
 		// setting it here to override the setting at the top of this function,
 		// and to prevent the vault/http client from defaulting to https.
-		conf.Vault.Address = pointerutil.StringPtr("http://127.0.0.1:8200")
+		conf.Vault.Address = new("http://127.0.0.1:8200")
 	} else if strings.HasPrefix(mc.AgentConfig.Vault.Address, "https") || mc.AgentConfig.Vault.CACert != "" {
 		skipVerify := mc.AgentConfig.Vault.TLSSkipVerify
 		verify := !skipVerify
 		conf.Vault.SSL = &ctconfig.SSLConfig{
-			Enabled:    pointerutil.BoolPtr(true),
+			Enabled:    new(true),
 			Verify:     &verify,
 			Cert:       &mc.AgentConfig.Vault.ClientCert,
 			Key:        &mc.AgentConfig.Vault.ClientKey,
@@ -145,5 +144,5 @@ func logLevelToStringPtr(level hclog.Level) *string {
 	default:
 		levelStr = "INFO"
 	}
-	return pointerutil.StringPtr(levelStr)
+	return new(levelStr)
 }

@@ -93,7 +93,7 @@ jobs:
       - name: Set up UI cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: http/web_ui/
+          path: internal/http/web_ui
           key: ${{ github.ref }}-ui
 
       - name: Build UI
@@ -147,7 +147,7 @@ jobs:
       - name: Set up UI cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: http/web_ui/
+          path: internal/http/web_ui
           key: ${{ github.ref }}-ui
 
       - name: Install Syft
@@ -233,7 +233,7 @@ jobs:
       - name: Set up UI cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: http/web_ui/
+          path: internal/http/web_ui
           key: ${{ github.ref }}-ui
 
       - name: Make LICENSE_NODE_MODULES.txt

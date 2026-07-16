@@ -28,8 +28,7 @@ _testmain.go
 /bin
 
 # Generated Web UI goes here
-/http/web_ui/*.*
-/http/web_ui/**/*.*
+/internal/http/web_ui
 
 # OpenBao-specific
 example.hcl
@@ -52,7 +51,7 @@ Vagrantfile
 .idea
 .vscode
 
-dist/*
+/dist
 
 # ignore ctags
 ./tags

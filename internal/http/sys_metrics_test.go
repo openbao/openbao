@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
 
 	metrics "github.com/hashicorp/go-metrics/compat"
@@ -123,7 +122,7 @@ func TestSysRekeyUnauthenticated(t *testing.T) {
 	props := &vault.HandlerProperties{
 		Core: core,
 		ListenerConfig: &configutil.Listener{
-			DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+			DisableUnauthedRekeyEndpoints: new(false),
 		},
 	}
 	TestServerWithListenerAndProperties(t, ln, addr, core, props)

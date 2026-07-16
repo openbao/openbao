@@ -20,7 +20,6 @@ import (
 	ctconfig "github.com/openbao/openbao-template/config"
 
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/v2/internal/command/agent/config"
 )
 
@@ -124,11 +123,11 @@ func TestExecServer_Run(t *testing.T) {
 		"ensure_environment_variables_are_injected": {
 			skip: true,
 			envTemplates: []*ctconfig.TemplateConfig{{
-				Contents:                 pointerutil.StringPtr(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
-				MapToEnvironmentVariable: pointerutil.StringPtr("MY_USER"),
+				Contents:                 new(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
+				MapToEnvironmentVariable: new("MY_USER"),
 			}, {
-				Contents:                 pointerutil.StringPtr(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.password }}{{ end }}`),
-				MapToEnvironmentVariable: pointerutil.StringPtr("MY_PASSWORD"),
+				Contents:                 new(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.password }}{{ end }}`),
+				MapToEnvironmentVariable: new("MY_PASSWORD"),
 			}},
 			testAppArgs:       []string{"--stop-after", "10s"},
 			testAppStopSignal: syscall.SIGTERM,
@@ -143,11 +142,11 @@ func TestExecServer_Run(t *testing.T) {
 
 		"password_changes_test_app_should_restart": {
 			envTemplates: []*ctconfig.TemplateConfig{{
-				Contents:                 pointerutil.StringPtr(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
-				MapToEnvironmentVariable: pointerutil.StringPtr("MY_USER"),
+				Contents:                 new(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
+				MapToEnvironmentVariable: new("MY_USER"),
 			}, {
-				Contents:                 pointerutil.StringPtr(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.password }}{{ end }}`),
-				MapToEnvironmentVariable: pointerutil.StringPtr("MY_PASSWORD"),
+				Contents:                 new(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.password }}{{ end }}`),
+				MapToEnvironmentVariable: new("MY_PASSWORD"),
 			}},
 			staticSecretRenderInterval: 5 * time.Second,
 			testAppArgs:                []string{"--stop-after", "15s", "--sleep-after-stop-signal", "0s"},
@@ -164,8 +163,8 @@ func TestExecServer_Run(t *testing.T) {
 		"test_app_exits_early": {
 			skip: true,
 			envTemplates: []*ctconfig.TemplateConfig{{
-				Contents:                 pointerutil.StringPtr(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
-				MapToEnvironmentVariable: pointerutil.StringPtr("MY_USER"),
+				Contents:                 new(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
+				MapToEnvironmentVariable: new("MY_USER"),
 			}},
 			testAppArgs:          []string{"--stop-after", "1s"},
 			testAppStopSignal:    syscall.SIGTERM,
@@ -177,8 +176,8 @@ func TestExecServer_Run(t *testing.T) {
 		"test_app_exits_early_non_zero": {
 			skip: true,
 			envTemplates: []*ctconfig.TemplateConfig{{
-				Contents:                 pointerutil.StringPtr(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
-				MapToEnvironmentVariable: pointerutil.StringPtr("MY_USER"),
+				Contents:                 new(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
+				MapToEnvironmentVariable: new("MY_USER"),
 			}},
 			testAppArgs:          []string{"--stop-after", "1s", "--exit-code", "5"},
 			testAppStopSignal:    syscall.SIGTERM,
@@ -190,8 +189,8 @@ func TestExecServer_Run(t *testing.T) {
 		"send_sigterm_expect_test_app_exit": {
 			skip: true,
 			envTemplates: []*ctconfig.TemplateConfig{{
-				Contents:                 pointerutil.StringPtr(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
-				MapToEnvironmentVariable: pointerutil.StringPtr("MY_USER"),
+				Contents:                 new(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
+				MapToEnvironmentVariable: new("MY_USER"),
 			}},
 			testAppArgs:                  []string{"--stop-after", "30s", "--sleep-after-stop-signal", "1s"},
 			testAppStopSignal:            syscall.SIGTERM,
@@ -205,8 +204,8 @@ func TestExecServer_Run(t *testing.T) {
 		"send_sigusr1_expect_test_app_exit": {
 			skip: true,
 			envTemplates: []*ctconfig.TemplateConfig{{
-				Contents:                 pointerutil.StringPtr(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
-				MapToEnvironmentVariable: pointerutil.StringPtr("MY_USER"),
+				Contents:                 new(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
+				MapToEnvironmentVariable: new("MY_USER"),
 			}},
 			testAppArgs:                  []string{"--stop-after", "30s", "--sleep-after-stop-signal", "1s", "--use-sigusr1"},
 			testAppStopSignal:            syscall.SIGUSR1,
@@ -221,8 +220,8 @@ func TestExecServer_Run(t *testing.T) {
 			skip:       true,
 			skipReason: "This test currently fails with 'go test -race' (see hashicorp/consul-template/issues/1753).",
 			envTemplates: []*ctconfig.TemplateConfig{{
-				Contents:                 pointerutil.StringPtr(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
-				MapToEnvironmentVariable: pointerutil.StringPtr("MY_USER"),
+				Contents:                 new(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
+				MapToEnvironmentVariable: new("MY_USER"),
 			}},
 			testAppArgs:                  []string{"--stop-after", "60s", "--sleep-after-stop-signal", "60s"},
 			testAppStopSignal:            syscall.SIGTERM,

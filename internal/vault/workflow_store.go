@@ -374,7 +374,7 @@ func (ws *WorkflowStore) Execute(ctx context.Context, reqId string, path string,
 			// to inject it into the namespace header.
 			if values, ok := profileReq.Headers[consts.NamespaceHeaderName]; ok {
 				if len(values) > 1 {
-					return nil, fmt.Errorf("have %q values for %q header; expected only 1", len(values), consts.NamespaceHeaderName)
+					return nil, fmt.Errorf("have %d values for %q header; expected only 1", len(values), consts.NamespaceHeaderName)
 				}
 				ctx = namespace.ContextWithNamespaceHeader(ctx, values[0])
 			}

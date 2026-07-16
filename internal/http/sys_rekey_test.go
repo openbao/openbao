@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/vault"
@@ -44,7 +43,7 @@ func TestSysRekey_Init_Status(t *testing.T) {
 			HandlerFunc: Handler,
 			DefaultHandlerProperties: vault.HandlerProperties{
 				ListenerConfig: &configutil.Listener{
-					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+					DisableUnauthedRekeyEndpoints: new(false),
 				},
 			},
 			RequestResponseCallback: schema.ResponseValidatingCallback(t),
@@ -83,7 +82,7 @@ func TestSysRekey_Init_Setup(t *testing.T) {
 			HandlerFunc: Handler,
 			DefaultHandlerProperties: vault.HandlerProperties{
 				ListenerConfig: &configutil.Listener{
-					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+					DisableUnauthedRekeyEndpoints: new(false),
 				},
 			},
 			RequestResponseCallback: schema.ResponseValidatingCallback(t),
@@ -157,7 +156,7 @@ func TestSysRekey_Init_Cancel(t *testing.T) {
 			HandlerFunc: Handler,
 			DefaultHandlerProperties: vault.HandlerProperties{
 				ListenerConfig: &configutil.Listener{
-					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+					DisableUnauthedRekeyEndpoints: new(false),
 				},
 			},
 			RequestResponseCallback: schema.ResponseValidatingCallback(t),
@@ -210,7 +209,7 @@ func TestSysRekey_badKey(t *testing.T) {
 		ListenerConfig: &configutil.Listener{
 			Address:                       addr,
 			MaxRequestSize:                1024,
-			DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+			DisableUnauthedRekeyEndpoints: new(false),
 		},
 	})
 	defer ln.Close()
@@ -231,7 +230,7 @@ func TestSysRekey_Update(t *testing.T) {
 			ListenerConfig: &configutil.Listener{
 				Address:                       addr,
 				MaxRequestSize:                1024,
-				DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+				DisableUnauthedRekeyEndpoints: new(false),
 			},
 		})
 		defer ln.Close()
@@ -308,7 +307,7 @@ func TestSysRekey_ReInitUpdate(t *testing.T) {
 		ListenerConfig: &configutil.Listener{
 			Address:                       addr,
 			MaxRequestSize:                1024,
-			DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+			DisableUnauthedRekeyEndpoints: new(false),
 		},
 	})
 	defer ln.Close()

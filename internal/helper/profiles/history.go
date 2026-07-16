@@ -172,7 +172,7 @@ func (eh *EvaluationHistory) getField(obj interface{}, rawFieldSelector []interf
 		case int:
 			listBase, ok := obj.([]interface{})
 			if !ok {
-				return nil, fmt.Errorf("object at depth %d (selector %q) was of wrong type: %T (expected []interface{})", i, selector, obj)
+				return nil, fmt.Errorf("object at depth %d (selector %d) was of wrong type: %T (expected []interface{})", i, selector, obj)
 			}
 
 			if selector >= len(listBase) || selector < 0 {

@@ -26,7 +26,7 @@ import (
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
+
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
@@ -1289,7 +1289,7 @@ func parseEnvTemplates(result *Config, list *ast.ObjectList) error {
 		// hcl parses this with extra quotes if quoted in config file
 		environmentVariableName := strings.Trim(item.Keys[0].Token.Text, `"`)
 
-		templateConfig.MapToEnvironmentVariable = pointerutil.StringPtr(environmentVariableName)
+		templateConfig.MapToEnvironmentVariable = new(environmentVariableName)
 
 		envTemplates = append(envTemplates, &templateConfig)
 	}

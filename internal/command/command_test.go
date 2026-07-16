@@ -16,7 +16,6 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/audit"
@@ -178,7 +177,7 @@ func testVaultServerUnsealWithKVVersionWithSeal(tb testing.TB, kvVersion string,
 		KVVersion:   kvVersion,
 		DefaultHandlerProperties: vault.HandlerProperties{
 			ListenerConfig: &configutil.Listener{
-				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+				DisableUnauthedGenerateRootEndpoints: new(false),
 			},
 		},
 	})
@@ -225,8 +224,8 @@ func testVaultServerUnauthedEndpointsEnabledWithAutoseal(tb testing.TB) (*api.Cl
 		HandlerFunc: vaulthttp.Handler,
 		DefaultHandlerProperties: vault.HandlerProperties{
 			ListenerConfig: &configutil.Listener{
-				DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(false),
-				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+				DisableUnauthedRekeyEndpoints:        new(false),
+				DisableUnauthedGenerateRootEndpoints: new(false),
 			},
 		},
 		NumCores: 1,
@@ -243,8 +242,8 @@ func testVaultServerUnauthedEndpointsEnabled(tb testing.TB) (*api.Client, []stri
 		HandlerFunc: vaulthttp.Handler,
 		DefaultHandlerProperties: vault.HandlerProperties{
 			ListenerConfig: &configutil.Listener{
-				DisableUnauthedRekeyEndpoints:        pointerutil.BoolPtr(false),
-				DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+				DisableUnauthedRekeyEndpoints:        new(false),
+				DisableUnauthedGenerateRootEndpoints: new(false),
 			},
 		},
 		NumCores: 1,

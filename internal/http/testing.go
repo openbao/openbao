@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/vault"
 )
@@ -55,7 +54,7 @@ func TestServerWithListener(tb testing.TB, ln net.Listener, addr string, core *v
 		// This is needed for testing custom response headers
 		ListenerConfig: &configutil.Listener{
 			Address:                              ip,
-			DisableUnauthedGenerateRootEndpoints: pointerutil.BoolPtr(false),
+			DisableUnauthedGenerateRootEndpoints: new(false),
 		},
 	}
 	TestServerWithListenerAndProperties(tb, ln, addr, core, props)

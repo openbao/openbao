@@ -625,9 +625,12 @@ CHECK:
 					if val > permissions.PaginationLimit {
 						return ret
 					}
-					// Also check if the value is 0 or negative, since downstream
-					// list handlers are treating zero or negative limit as unbounded.
-					if val <= 0 {
+					// Per PR discussion, deny negative limits
+					if val < 0 {
+						return ret
+					}
+					// And if the value is zero, we set it to the maximum allowed.
+					if val == 0 {
 						req.Data[limitParameterName] = strconv.Itoa(permissions.PaginationLimit)
 					}
 				}

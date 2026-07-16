@@ -31,7 +31,7 @@ func TestSealManager_Reset(t *testing.T) {
 	}
 
 	for i := range 10 {
-		err := c.sealManager.SetSeal(namespace.RootContext(t.Context()), sealConfig, &namespace.Namespace{UUID: strconv.Itoa(i), Path: fmt.Sprintf("test%d/", i)}, false)
+		err := c.sealManager.SetSeal(namespace.RootContext(t.Context()), sealConfig, &namespace.Namespace{UUID: strconv.Itoa(i), Path: fmt.Sprintf("test%d/", i)}, SetSealOptions{})
 		require.NoError(t, err)
 	}
 	require.Len(t, c.sealManager.barrierByNamespacePath.ToMap(), 11)
@@ -95,7 +95,7 @@ func TestSealManager_SetSeal(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := c.sealManager.SetSeal(ctx, tt.config, tt.ns, tt.writeToStorage)
+			err := c.sealManager.SetSeal(ctx, tt.config, tt.ns, SetSealOptions{WriteToStorage: tt.writeToStorage})
 			if err != nil {
 				require.Error(t, tt.wantErr, err.Error())
 				return
@@ -158,7 +158,7 @@ func TestSealManager_InitializeBarrier(t *testing.T) {
 		SecretThreshold: 2,
 	}
 	ns := &namespace.Namespace{UUID: "ns1", Path: "test/"}
-	err = c.sealManager.SetSeal(ctx, sealConfig, ns, true)
+	err = c.sealManager.SetSeal(ctx, sealConfig, ns, SetSealOptions{WriteToStorage: true})
 	require.NoError(t, err)
 
 	keyShares, err := c.sealManager.InitializeBarrier(ctx, ns)
@@ -199,7 +199,7 @@ func TestSealManager_SealStatus(t *testing.T) {
 	}
 	ns := &namespace.Namespace{UUID: "failure", Path: "ns1/"}
 
-	err = c.sealManager.SetSeal(ctx, sealConfig, ns, false)
+	err = c.sealManager.SetSeal(ctx, sealConfig, ns, SetSealOptions{})
 	require.NoError(t, err)
 
 	// barrier not yet initialized
@@ -214,7 +214,7 @@ func TestSealManager_SealStatus(t *testing.T) {
 	ns = &namespace.Namespace{UUID: "success", Path: "ns2/"}
 
 	// save seal config to storage
-	err = c.sealManager.SetSeal(ctx, sealConfig, ns, true)
+	err = c.sealManager.SetSeal(ctx, sealConfig, ns, SetSealOptions{WriteToStorage: true})
 	require.NoError(t, err)
 
 	keyShares, err := c.sealManager.InitializeBarrier(ctx, ns)
@@ -253,7 +253,7 @@ func TestSealManager_UnsealBarrier(t *testing.T) {
 	}
 
 	ns := &namespace.Namespace{UUID: "ns1", Path: "ns1/"}
-	err := c.sealManager.SetSeal(ctx, sealConfig, ns, true)
+	err := c.sealManager.SetSeal(ctx, sealConfig, ns, SetSealOptions{WriteToStorage: true})
 	require.NoError(t, err)
 
 	keyShares, err := c.sealManager.InitializeBarrier(ctx, ns)

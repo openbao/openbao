@@ -328,7 +328,7 @@ func (c *OperatorRekeyCommand) init(client *api.Client) int {
 		}
 		if len(c.flagPGPKeys) > 0 && !c.flagBackup {
 			c.UI.Warn(wrapAtLength(
-				fmt.Sprintf("WARNING! You are using PGP keys for encrypted the resulting %s "+
+				fmt.Sprintf("WARNING! You are using PGP keys to encrypt the resulting %s "+
 					"keys, but you did not enable the option to backup the keys to "+
 					"OpenBao's core. If you lose the encrypted keys after they are "+
 					"returned, you will not be able to recover them. Consider canceling "+

@@ -502,13 +502,14 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}()
 
 	coreConfig := &vault.CoreConfig{
-		Physical:     backend,
-		StorageType:  config.Storage.Type,
-		Seal:         seal,
-		LogLevel:     config.LogLevel,
-		Logger:       c.logger,
-		RecoveryMode: c.flagRecovery,
-		ClusterAddr:  config.ClusterAddr,
+		Physical:         backend,
+		StorageType:      config.Storage.Type,
+		Seal:             seal,
+		KMSPluginCatalog: kms,
+		LogLevel:         config.LogLevel,
+		Logger:           c.logger,
+		RecoveryMode:     c.flagRecovery,
+		ClusterAddr:      config.ClusterAddr,
 	}
 
 	core, newCoreError := vault.NewCore(coreConfig)
@@ -1124,7 +1125,7 @@ func (c *ServerCommand) Run(args []string) int {
 		return 1
 	}
 
-	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink)
+	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, kms, metricsHelper, metricSink)
 	if c.flagDevThreeNode {
 		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
 	}
@@ -2763,7 +2764,7 @@ func runUnseal(c *ServerCommand, core *vault.Core, sealShutdownCh chan<- struct{
 }
 
 func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.Backend, configSR sr.ServiceRegistration, barrierSeal, unwrapSeal vault.Seal,
-	metricsHelper *metricsutil.MetricsHelper, metricSink *metricsutil.ClusterMetricSink,
+	kmsPluginCatalog *kmsplugin.Catalog, metricsHelper *metricsutil.MetricsHelper, metricSink *metricsutil.ClusterMetricSink,
 ) vault.CoreConfig {
 	coreConfig := &vault.CoreConfig{
 		RawConfig:                      config,
@@ -2774,6 +2775,7 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		ServiceRegistration:            configSR,
 		Seal:                           barrierSeal,
 		UnwrapSeal:                     unwrapSeal,
+		KMSPluginCatalog:               kmsPluginCatalog,
 		AuditBackends:                  c.AuditBackends,
 		CredentialBackends:             c.CredentialBackends,
 		LogicalBackends:                c.LogicalBackends,

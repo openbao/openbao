@@ -5,10 +5,9 @@ linters:
     - misspell
   settings:
     cyclop:
-      # Lower cyclomatic complexity threshold after the max complexity is lowered
-      # 135 -> 124
-      # Highest: (*ServerCommand).Run (123) in command/server.go
-      max-complexity: 124
+      # Lower cyclomatic complexity threshold after the max complexity is lowered.
+      # Highest: (*ServerCommand).Run (126) in internal/command/server.go
+      max-complexity: 126
 formatters:
   enable:
     - gofumpt

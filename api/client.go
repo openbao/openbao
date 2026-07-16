@@ -1326,11 +1326,16 @@ func (c *Client) SetPolicyOverride(override bool) {
 // doesn't need to be called externally.
 func (c *Client) NewRequest(method, requestPath string) *Request {
 	c.modifyLock.RLock()
+	c.config.modifyLock.RLock()
+
 	addr := c.addr
 	token := c.token
 	mfaCreds := c.mfaCreds
 	wrappingLookupFunc := c.wrappingLookupFunc
 	policyOverride := c.policyOverride
+	disableEnvironment := c.config.DisableEnvironment
+
+	c.config.modifyLock.RUnlock()
 	c.modifyLock.RUnlock()
 
 	host := addr.Host
@@ -1371,6 +1376,8 @@ func (c *Client) NewRequest(method, requestPath string) *Request {
 
 	if wrappingLookupFunc != nil {
 		req.WrapTTL = wrappingLookupFunc(method, lookupPath)
+	} else if disableEnvironment {
+		req.WrapTTL = BaseWrappingLookupFunc(method, lookupPath)
 	} else {
 		req.WrapTTL = DefaultWrappingLookupFunc(method, lookupPath)
 	}

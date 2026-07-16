@@ -1,0 +1,3 @@
+```release-note:bug
+api: Don't read `BAO_WRAP_TTL` to determine a request's wrap TTL if `DisableEnvironment` is set.
+```

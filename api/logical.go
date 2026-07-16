@@ -23,14 +23,22 @@ var (
 	// changed
 	DefaultWrappingTTL = "5m"
 
-	// The default function used if no other function is set. It honors the env
-	// var to set the wrap TTL. The default wrap TTL will apply when when writing
-	// to `sys/wrapping/wrap` when the env var is not set.
+	// DefaultWrappingLookupFunc is the default function used if no other
+	// function is set and environment access isn't disabled, honoring the
+	// BAO_WRAP_TTL variable. The default wrap TTL will apply when when writing
+	// to `sys/wrapping/wrap` when the environment variable is not set.
 	DefaultWrappingLookupFunc = func(operation, path string) string {
-		if ReadBaoVariable(EnvVaultWrapTTL) != "" {
-			return ReadBaoVariable(EnvVaultWrapTTL)
+		if env := ReadBaoVariable(EnvVaultWrapTTL); env != "" {
+			return env
 		}
 
+		return BaseWrappingLookupFunc(operation, path)
+	}
+
+	// BaseWrappingLookupFunc is the default function used if no other function
+	// is set and env access is disabled. DefaultWrappingLookupFunc calls into
+	// this function if no environment variable was set.
+	BaseWrappingLookupFunc = func(operation, path string) string {
 		if (operation == http.MethodPut || operation == http.MethodPost) && path == "sys/wrapping/wrap" {
 			return DefaultWrappingTTL
 		}

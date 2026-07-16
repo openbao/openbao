@@ -1065,7 +1065,11 @@ func (b *AESGCMBarrier) decrypt(path string, gcm cipher.AEAD, cipher []byte) ([]
 	}
 
 	raw := cipher[5:]
-	var out []byte
+
+	// Pass a zero-length slice to gcm.Open to ensure that empty data decrypts
+	// to an empty slice opposed to a nil slice, which is consistent with other
+	// implementations of logical.Storage.
+	out := []byte{}
 
 	// Attempt to open
 	switch cipher[4] {

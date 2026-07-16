@@ -10,9 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -20,7 +18,6 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
-	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 )
 
 func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
@@ -381,8 +378,6 @@ func (b *SystemBackend) handleNamespacesMigrateSeal() framework.OperationFunc {
 		// * re-write using new barrier
 		// * re-write top-most namespace entry using parent barrier
 
-		start := time.Now()
-
 		path := namespace.Canonicalize(data.Get("path").(string))
 		// unlockKey, err := b.Core.namespaceStore.LockNamespace(ctx, path)
 		// if err != nil {
@@ -447,151 +442,9 @@ func (b *SystemBackend) handleNamespacesMigrateSeal() framework.OperationFunc {
 			return handleError(err)
 		}
 
-		if err := b.Core.namespaceStore.taintNamespace(ctx, parentNs, ns); err != nil {
-			return handleError(err)
-		}
-		defer b.Core.namespaceStore.untaintNamespace(ctx, parentNs, ns)
+		migrationJob := b.Core.namespaceStore.newNamespaceBarrierMigrationJob(parentNs, ns, sealConfig)
 
-		parentBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(parentNs.Path)
-		oldBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
-
-		var newBarrier barrier.SecurityBarrier
-		if sealConfig == nil {
-			newBarrier = parentBarrier
-		}
-
-		if newBarrier == nil {
-			metaPrefix := NamespaceStoragePathPrefix(ns)
-			defaultSeal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
-			defaultSeal.SetCore(b.Core)
-			defaultSeal.SetMetaPrefix(metaPrefix)
-
-			defaultSeal.SetConfigAccess(parentBarrier)
-
-			ctx := namespace.ContextWithNamespace(ctx, ns)
-			if err := defaultSeal.Init(ctx); err != nil {
-				return handleError(err)
-			}
-
-			newBarrier = barrier.NewAESGCMBarrier(b.Core.physical, ns)
-		}
-
-		if newBarrier == oldBarrier {
-			// Nothing to do
-			return nil, nil
-		}
-
-		namespacesToMigrate, err := b.Core.namespaceStore.ListNamespaces(namespace.ContextWithNamespace(ctx, ns), ListNamespaceOpts{
-			IncludeSealed: false,
-			Recursive:     true,
-			IncludeTypes:  namespace.TypeNormal,
-		})
-		if err != nil {
-			return handleError(err)
-		}
-
-		slices.Reverse(namespacesToMigrate)
-		namespacesToMigrate = append(namespacesToMigrate, ns)
-
-		keyInfo, err := oldBarrier.ActiveKeyInfo()
-		if err != nil {
-			b.logger.Warn("error getting key info of old barrier", "err", err)
-		}
-		b.logger.Warn("key info", "term", keyInfo.Term)
-
-		// parentNsView := NamespaceScopedView(parentBarrier, parentNs)
-
-		dur := time.Now().Sub(start)
-		b.logger.Warn("preparation took time", "dur", dur)
-
-		start = time.Now()
-
-		err = logical.WithTransaction(ctx, newBarrier, func(s logical.Storage) error {
-			for _, ns := range namespacesToMigrate {
-				b.logger.Warn("migrating namespace", "ns", ns)
-				nsPrefix := NamespaceScopedView(s, ns).Prefix()
-				keys, err := recurseListKeys(ctx, oldBarrier, nsPrefix)
-				if err != nil {
-					return err
-				}
-
-				for _, key := range keys {
-					if slices.ContainsFunc(knownNamespaceCoreEntriesToCleanup, func(k string) bool {
-						return strings.HasSuffix(key, "/"+k)
-					}) {
-						err := s.Delete(ctx, key)
-						if err != nil {
-							return err
-						}
-						continue
-					}
-
-					b.logger.Warn("migrating", "key", key)
-					pe, err := b.Core.physical.Get(ctx, key)
-					if err != nil {
-						b.logger.Warn("error reading key from physical storage", "key", key, "error", err)
-						return err
-					}
-					se, err := oldBarrier.Get(ctx, key)
-					if err != nil {
-						b.logger.Warn("error reading key from old barrier", "key", key, "error", err, "pe", pe.Value)
-						continue
-					}
-
-					err = s.Put(ctx, se)
-					if err != nil {
-						b.logger.Warn("error writing key to new barrier", "key", key, "error", err)
-						return err
-					}
-					b.logger.Warn("done migrating", "key", key)
-				}
-			}
-
-			switch {
-			case newBarrier == parentBarrier:
-				b.Core.sealManager.RemoveNamespace(ns)
-			default:
-				err := b.Core.sealManager.SetSeal(ctx, sealConfig, ns, SetSealOptions{
-					WriteToStorage: true,
-					AllowOverride:  true,
-				})
-				if err != nil {
-					return err
-				}
-			}
-
-			return nil
-		})
-		if err != nil {
-			b.logger.Warn("transaction returned error, rolling back changes")
-			return handleError(err)
-		}
-		dur = time.Now().Sub(start)
-		b.logger.Warn("transaction took time", "dur", dur)
-
-		start = time.Now()
-		var errs error
-		for _, ns := range namespacesToMigrate {
-			parentPath, ok := ns.ParentPath()
-			if !ok {
-				continue
-			}
-			parentNs, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
-			if err != nil {
-				errs = errors.Join(errs, err)
-			}
-			_, _, err = b.Core.namespaceStore.Invalidate(ctx, parentNs.UUID, ns.UUID)
-			if err != nil {
-				errs = errors.Join(errs, err)
-			}
-			//
-			// errs = errors.Join(errs, b.Core.namespaceStore.pushToMounts(ns))
-		}
-		dur = time.Now().Sub(start)
-		b.logger.Warn("invalidations took time", "dur", dur)
-		if errs != nil {
-			return handleError(errs)
-		}
+		b.Core.namespaceStore.deletionDispatcher.AddJob(migrationJob, ns.UUID)
 
 		return nil, nil
 	}

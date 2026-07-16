@@ -672,14 +672,16 @@ func TestNamespaceTree(t *testing.T) {
 	require.Equal(t, beforeSize-1, tree.size)
 
 	count := 0
-	require.NoError(t, tree.Walk("", false, func(n *namespace.Namespace) {
+	require.NoError(t, tree.Walk("", false, func(n *namespace.Namespace) bool {
 		count++
+		return true
 	}))
 	require.Equal(t, 2, count)
 
 	count = 0
-	require.NoError(t, tree.Walk("", true, func(n *namespace.Namespace) {
+	require.NoError(t, tree.Walk("", true, func(n *namespace.Namespace) bool {
 		count++
+		return true
 	}))
 	require.Equal(t, tree.size, count+1)
 

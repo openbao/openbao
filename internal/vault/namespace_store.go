@@ -25,6 +25,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	"github.com/openbao/openbao/v2/internal/vault/policy"
+	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 )
 
 // Namespace id length; upstream uses 5 characters so we use one more to
@@ -1932,5 +1933,154 @@ func (j *namespaceCreationFailureJob) Execute() error {
 }
 
 func (j *namespaceCreationFailureJob) OnFailure(err error) {
+	j.store.logger.Error("failed to handle namespace deletion following failed creation; job may be retried via deletion of tainted namespace", "namespace", j.target.Path, "ns_uuid", j.target.UUID, "error", err.Error())
+}
+
+type namespaceBarrierMigrationJob struct {
+	store      *NamespaceStore
+	core       *Core
+	sealConfig *SealConfig
+	parent     *namespace.Namespace
+	target     *namespace.Namespace
+}
+
+func (ns *NamespaceStore) newNamespaceBarrierMigrationJob(parent *namespace.Namespace, target *namespace.Namespace, sealConfig *SealConfig) fairshare.Job {
+	return &namespaceBarrierMigrationJob{
+		store:      ns,
+		core:       ns.core,
+		sealConfig: sealConfig,
+		parent:     parent,
+		target:     target,
+	}
+}
+
+func (j *namespaceBarrierMigrationJob) Execute() error {
+	ctx := namespace.ContextWithNamespace(j.store.creationDeletionJobContext, j.target)
+
+	if err := j.store.taintNamespace(ctx, j.parent, j.target); err != nil {
+		return err
+	}
+	defer j.store.untaintNamespace(ctx, j.parent, j.target)
+
+	parentBarrier := j.core.sealManager.NamespaceBarrierByLongestPrefix(j.parent.Path)
+	oldBarrier := j.core.sealManager.NamespaceBarrierByLongestPrefix(j.target.Path)
+
+	var newBarrier barrier.SecurityBarrier
+	if j.sealConfig == nil {
+		newBarrier = parentBarrier
+	}
+
+	if newBarrier == nil {
+		metaPrefix := NamespaceStoragePathPrefix(j.target)
+		defaultSeal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+		defaultSeal.SetCore(j.core)
+		defaultSeal.SetMetaPrefix(metaPrefix)
+
+		defaultSeal.SetConfigAccess(parentBarrier)
+
+		ctx := namespace.ContextWithNamespace(ctx, j.target)
+		if err := defaultSeal.Init(ctx); err != nil {
+			return err
+		}
+
+		newBarrier = barrier.NewAESGCMBarrier(j.core.physical, j.target)
+	}
+
+	if newBarrier == oldBarrier {
+		// Nothing to do
+		return nil
+	}
+
+	namespacesToMigrate, err := j.store.ListNamespaces(namespace.ContextWithNamespace(ctx, j.target), ListNamespaceOpts{
+		IncludeSealed: false,
+		Recursive:     true,
+		IncludeTypes:  namespace.TypeNormal,
+	})
+	if err != nil {
+		return err
+	}
+
+	slices.Reverse(namespacesToMigrate)
+	namespacesToMigrate = append(namespacesToMigrate, j.target)
+
+	var errs error
+	err = logical.WithTransaction(ctx, newBarrier, func(s logical.Storage) (err error) {
+		for _, ns := range namespacesToMigrate {
+			nsPrefix := NamespaceScopedView(s, ns).Prefix()
+			keys, err := recurseListKeys(ctx, oldBarrier, nsPrefix)
+			if err != nil {
+				return err
+			}
+
+			for _, key := range keys {
+				if slices.ContainsFunc(knownNamespaceCoreEntriesToCleanup, func(k string) bool {
+					return strings.HasSuffix(key, "/"+k)
+				}) {
+					err := s.Delete(ctx, key)
+					if err != nil {
+						return err
+					}
+					continue
+				}
+
+				se, err := oldBarrier.Get(ctx, key)
+				if err != nil {
+					return err
+				}
+
+				err = s.Put(ctx, se)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		switch {
+		case newBarrier == parentBarrier:
+			// in case of an error, this will be reverted by the namespace invalidation at the end
+			j.core.sealManager.RemoveNamespace(j.target)
+		default:
+			// in case of an error, this will be reverted by the namespace invalidation at the end
+			err := j.core.sealManager.SetSeal(ctx, j.sealConfig, j.target, SetSealOptions{
+				WriteToStorage: true,
+				AllowOverride:  true,
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		errs = errors.Join(errs, err)
+	}
+
+	slices.Reverse(namespacesToMigrate)
+
+	ctx = namespace.ContextWithNamespace(ctx, namespace.RootNamespace)
+	for _, ns := range namespacesToMigrate {
+		parentPath, ok := ns.ParentPath()
+		if !ok {
+			continue
+		}
+		parentNs, err := j.store.GetNamespaceByPath(ctx, parentPath)
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+		_, _, err = j.store.Invalidate(ctx, parentNs.UUID, ns.UUID)
+		if err != nil {
+			errs = errors.Join(errs, err)
+		}
+	}
+	if errs != nil {
+		return errs
+	}
+
+	return nil
+}
+
+func (j *namespaceBarrierMigrationJob) OnFailure(err error) {
 	j.store.logger.Error("failed to handle namespace deletion following failed creation; job may be retried via deletion of tainted namespace", "namespace", j.target.Path, "ns_uuid", j.target.UUID, "error", err.Error())
 }

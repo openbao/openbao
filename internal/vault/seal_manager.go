@@ -144,8 +144,7 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	}
 
 	nsBarrier := barrier.NewAESGCMBarrier(sm.core.physical, ns)
-	sm.barrierByNamespacePath.Insert(ns.Path, nsBarrier)
-	sm.sealByNamespace[ns.UUID] = defaultSeal
+	sm.addNamespace(ns, defaultSeal, nil, nil, nsBarrier)
 
 	if opts.WriteToStorage {
 		if err := defaultSeal.SetBarrierConfig(ctx, sealConfig); err != nil {
@@ -169,6 +168,17 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 	delete(sm.unlockInformationByNamespace, ns.UUID)
 	delete(sm.rotationConfigByNamespace, ns.UUID)
 	sm.barrierByNamespacePath.Delete(ns.Path)
+}
+
+func (sm *SealManager) addNamespace(ns *namespace.Namespace, seal Seal, unlockInformation *unlockInformation, rotationConfig *rotationConfig, barrier barrier.SecurityBarrier) {
+	sm.sealByNamespace[ns.UUID] = seal
+	if unlockInformation != nil {
+		sm.unlockInformationByNamespace[ns.UUID] = unlockInformation
+	}
+	if rotationConfig != nil {
+		sm.rotationConfigByNamespace[ns.UUID] = rotationConfig
+	}
+	sm.barrierByNamespacePath.Insert(ns.Path, barrier)
 }
 
 // NamespaceView returns the BarrierView that applies to the given namespace.

@@ -34,7 +34,6 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/v2/internal/helper/metricsutil"
@@ -1734,7 +1733,7 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 		lowestActiveIndex = b.fsm.fastTxnTracker.lowestActiveIndex()
 	}
 	lowestActiveIndex = min(b.raft.AppliedIndex(), lowestActiveIndex) // we need to cap the lowest active index, otherwise we might miss transaction started concurrently
-	command.LowestActiveIndex = pointerutil.Ptr(lowestActiveIndex)
+	command.LowestActiveIndex = new(lowestActiveIndex)
 
 	isTx := len(command.Operations) > 0 && command.Operations[0].OpType == beginTxOp
 	commandBytes, err := proto.Marshal(command)

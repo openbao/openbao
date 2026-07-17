@@ -13,7 +13,6 @@ import (
 	ctconfig "github.com/openbao/openbao-template/config"
 	"golang.org/x/exp/slices"
 
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 )
@@ -1100,7 +1099,7 @@ func TestLoadConfigFile_Template(t *testing.T) {
 				{
 					Backup:         new(true),
 					Command:        []string{"restart service foo"},
-					CommandTimeout: pointerutil.TimeDurationPtr("60s"),
+					CommandTimeout: new(time.Minute),
 					Contents:       new("{{ keyOrDefault \"service/redis/maxconns@east-aws\" \"5\" }}"),
 					CreateDestDirs: new(true),
 					Destination:    new("/path/on/disk/where/template/will/render.txt"),
@@ -1111,12 +1110,12 @@ func TestLoadConfigFile_Template(t *testing.T) {
 					SandboxPath:    new("/path/on/disk/where"),
 					Exec: &ctconfig.ExecConfig{
 						Command: []string{"foo"},
-						Timeout: pointerutil.TimeDurationPtr("10s"),
+						Timeout: new(10 * time.Second),
 					},
 
 					Wait: &ctconfig.WaitConfig{
-						Min: pointerutil.TimeDurationPtr("10s"),
-						Max: pointerutil.TimeDurationPtr("40s"),
+						Min: new(10 * time.Second),
+						Max: new(40 * time.Second),
 					},
 				},
 			},
@@ -1138,8 +1137,8 @@ func TestLoadConfigFile_Template(t *testing.T) {
 					Backup:      new(true),
 					Perms:       new(os.FileMode(0o755)),
 					Wait: &ctconfig.WaitConfig{
-						Min: pointerutil.TimeDurationPtr("2s"),
-						Max: pointerutil.TimeDurationPtr("10s"),
+						Min: new(2 * time.Second),
+						Max: new(10 * time.Second),
 					},
 				},
 			},
@@ -1210,7 +1209,7 @@ func TestLoadConfigFile_Template_NoSinks(t *testing.T) {
 				{
 					Backup:         new(true),
 					Command:        []string{"restart service foo"},
-					CommandTimeout: pointerutil.TimeDurationPtr("60s"),
+					CommandTimeout: new(time.Minute),
 					Contents:       new("{{ keyOrDefault \"service/redis/maxconns@east-aws\" \"5\" }}"),
 					CreateDestDirs: new(true),
 					Destination:    new("/path/on/disk/where/template/will/render.txt"),
@@ -1221,8 +1220,8 @@ func TestLoadConfigFile_Template_NoSinks(t *testing.T) {
 					SandboxPath:    new("/path/on/disk/where"),
 
 					Wait: &ctconfig.WaitConfig{
-						Min: pointerutil.TimeDurationPtr("10s"),
-						Max: pointerutil.TimeDurationPtr("40s"),
+						Min: new(10 * time.Second),
+						Max: new(40 * time.Second),
 					},
 				},
 			},
@@ -1244,8 +1243,8 @@ func TestLoadConfigFile_Template_NoSinks(t *testing.T) {
 					Backup:      new(true),
 					Perms:       new(os.FileMode(0o755)),
 					Wait: &ctconfig.WaitConfig{
-						Min: pointerutil.TimeDurationPtr("2s"),
-						Max: pointerutil.TimeDurationPtr("10s"),
+						Min: new(2 * time.Second),
+						Max: new(10 * time.Second),
 					},
 				},
 			},

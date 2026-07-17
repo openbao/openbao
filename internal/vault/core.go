@@ -48,6 +48,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/command/server"
 	fwd "github.com/openbao/openbao/v2/internal/helper/forwarding"
 	"github.com/openbao/openbao/v2/internal/helper/identity"
+	"github.com/openbao/openbao/v2/internal/helper/kmsplugin"
 	"github.com/openbao/openbao/v2/internal/helper/locking"
 	"github.com/openbao/openbao/v2/internal/helper/metricsutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
@@ -497,6 +498,9 @@ type Core struct {
 	// pluginCatalog is used to manage plugin configurations
 	pluginCatalog *PluginCatalog
 
+	// kmsPluginCatalog provides KMS plugin functionality
+	kmsPluginCatalog *kmsplugin.Catalog
+
 	// The userFailedLoginInfo map has user failed login information.
 	// It has user information (alias-name and mount accessor) as a key
 	// and login counter, last failed login time as value
@@ -682,6 +686,10 @@ type CoreConfig struct {
 	// Unwrap seal is the optional seal marked "disabled"; this is the old
 	// seal in migration scenarios.
 	UnwrapSeal Seal
+
+	// KMSPluginCatalog is used to create any root-level seals and is then
+	// passed on to Core to power External Keys and per-namespace Auto Seals.
+	KMSPluginCatalog *kmsplugin.Catalog
 
 	LogLevel string
 
@@ -929,6 +937,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		shutdownDoneCh:                 new(atomic.Value),
 		allLoggers:                     conf.AllLoggers,
 		builtinRegistry:                conf.BuiltinRegistry,
+		kmsPluginCatalog:               conf.KMSPluginCatalog,
 		metricsHelper:                  conf.MetricsHelper,
 		metricSink:                     conf.MetricSink,
 		recoveryMode:                   conf.RecoveryMode,

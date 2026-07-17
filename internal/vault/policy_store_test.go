@@ -1010,3 +1010,57 @@ func TestPolicyStore_CAS(t *testing.T) {
 	require.NotNil(t, p1)
 	require.Equal(t, p, p1)
 }
+
+func TestPolicyStore_MigrateFromEntry(t *testing.T) {
+	t.Run("root", func(t *testing.T) {
+		t.Parallel()
+
+		core, _, _ := TestCoreUnsealed(t)
+		ps := core.policyStore
+
+		// Write policy into the ACL view, ensuring we can upgrade from
+		// earlier versions of OpenBao. To reproduce:
+		//
+		// $ bao policy write testing /path/to/policy.hcl
+		// $ bao read sys/raw/sys/policy/testing | jq -r .data.value | jq
+		view := ps.GetACLView(namespace.RootNamespace)
+		modifiedTimestamp := "2026-07-16T17:00:19.167037139-05:00"
+		entry, err := logical.StorageEntryJSON("testing", map[string]any{
+			"Version":     2,
+			"DataVersion": 1,
+			"CASRequired": true,
+			"Raw":         "\npath \"*\" {\n\tcapabilities  = [\"create\", \"update\", \"delete\", \"read\", \"patch\", \"list\", \"scan\", \"sudo\"]\n}\n",
+			"Templated":   false,
+			"Type":        0,
+			"Expiration":  "0001-01-01T00:00:00Z",
+			"Modified":    modifiedTimestamp,
+		})
+		require.NoError(t, err)
+		err = view.Put(t.Context(), entry)
+		require.NoError(t, err)
+
+		// This policy is of ACL type.
+		ctx := namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace)
+		out, err := ps.ListPolicies(ctx, policy.TypeACL, true)
+		require.NoError(t, err)
+		require.Contains(t, out, "testing")
+
+		read, err := ps.GetPolicy(ctx, "testing", policy.TypeACL)
+		require.NoError(t, err)
+		require.NotNil(t, read)
+
+		require.Equal(t, read.DataVersion, 1)
+		require.Equal(t, read.CASRequired, true)
+		require.Equal(t, read.Type, policy.TypeACL)
+		require.True(t, read.Expiration.IsZero())
+
+		parsed, err := time.Parse(time.RFC3339, modifiedTimestamp)
+		require.NoError(t, err)
+		require.Equal(t, read.Modified, parsed)
+
+		require.Equal(t, 1, len(read.Paths))
+		require.Equal(t, "", read.Paths[0].Path)
+		require.True(t, read.Paths[0].IsPrefix)
+		require.Contains(t, read.Paths[0].Capabilities, "scan")
+	})
+}

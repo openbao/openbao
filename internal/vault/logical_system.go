@@ -2646,8 +2646,8 @@ func (b *SystemBackend) handlePoliciesPatch(policyType policy.Type) framework.Op
 		if name == "" {
 			return logical.ErrorResponse("policy name must be provided in the URL"), nil
 		}
-		if name != strings.ToLower(name) {
-			name = strings.ToLower(name)
+		if n := strings.ToLower(name); name != n {
+			name = n
 			resp.AddWarning(fmt.Sprintf("policy name was converted to %s", name))
 		}
 
@@ -2656,11 +2656,11 @@ func (b *SystemBackend) handlePoliciesPatch(policyType policy.Type) framework.Op
 			return handleError(err)
 		}
 		if oldPolicy == nil {
-			return logical.ErrorResponse("unable to fetch role entry to patch"), nil
+			return handleError(logical.CodedError(http.StatusNotFound, "policy not found"))
 		}
 
 		pol := &policy.Policy{
-			Name:      strings.ToLower(name),
+			Name:      name,
 			Type:      policyType,
 			Namespace: ns,
 

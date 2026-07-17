@@ -22,7 +22,6 @@ import (
 	"time"
 
 	metrics "github.com/hashicorp/go-metrics/compat"
-	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	bolt "go.etcd.io/bbolt"
 )
@@ -726,7 +725,7 @@ func (t *RaftTransaction) Commit(ctx context.Context) error {
 		// saves us from continually allocating in future appends.
 		Operations: make([]*LogOperation, 0, 2+len(t.reads)+len(t.lists)+len(t.updates)),
 
-		LowestActiveIndex: pointerutil.Ptr(t.b.fsm.fastTxnTracker.lowestActiveIndexAfterCommit(t.index)),
+		LowestActiveIndex: new(t.b.fsm.fastTxnTracker.lowestActiveIndexAfterCommit(t.index)),
 	}
 	log.Operations = append(log.Operations, &LogOperation{
 		OpType: beginTxOp,

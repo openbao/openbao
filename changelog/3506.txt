@@ -1,0 +1,9 @@
+```release-note:bug
+core/policies: Fix persistence of new `allow_wildcards_in_identity_templates`, `allow_slashes_in_identity_templates` parameters in storage.
+```
+```release-note:improvement
+core/policies: Introduce PATCH operation support for modifying the values of specific parameters.
+```
+```release-note:bug
+core/policies: Allow removal of `expiration` from policies on POST/PUT to `sys/policies/acl/<name>` by eliding the parameter; use PATCH to update policies without modifying unnecessary parameters.
+```

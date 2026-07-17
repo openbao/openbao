@@ -625,7 +625,7 @@ CHECK:
 					if val > permissions.PaginationLimit {
 						return ret
 					}
-					// Per PR discussion, deny negative limits
+					// deny negative limits
 					if val < 0 {
 						return ret
 					}

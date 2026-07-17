@@ -483,7 +483,7 @@ path "kv/metadata/" {
 		"list":  {"true"},
 		"limit": {"-1"},
 	})
-	require.Error(t, err, "expected failure to list with limit=-1")
+	require.ErrorContains(t, err, "permission denied", "expected failure to list with limit=-1")
 
 	// This endpoint has no limit.
 	resp, err = client.Logical().ReadWithData("kv/metadata/a", map[string][]string{

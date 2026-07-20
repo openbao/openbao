@@ -894,12 +894,8 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 			}
 		}
 
-		return err
-	})
-
-	// If we had no error, update our last applied log.
-	if err == nil {
-		err = f.db.Update(func(tx *bolt.Tx) error {
+		// If we had no error, update our last applied log.
+		if err == nil {
 			if len(logIndex) > 0 {
 				b := tx.Bucket(configBucketName)
 				err = b.Put(latestIndexKey, logIndex)
@@ -907,10 +903,10 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 					return err
 				}
 			}
+		}
 
-			return nil
-		})
-	}
+		return err
+	})
 
 	if err != nil {
 		f.logger.Error("failed to store data", "error", err)

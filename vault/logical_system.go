@@ -2589,6 +2589,8 @@ func (b *SystemBackend) handlePoliciesSet(policyType policy.Type) framework.Oper
 			pol.Expiration = expirationRaw.(time.Time)
 		} else if ttlOk {
 			pol.Expiration = time.Now().Add(time.Duration(ttlRaw.(int)) * time.Second)
+		} else {
+			pol.Expiration = time.Time{}
 		}
 
 		if !pol.Expiration.IsZero() && !time.Now().Before(pol.Expiration) {
@@ -2623,6 +2625,98 @@ func (b *SystemBackend) handlePoliciesSet(policyType policy.Type) framework.Oper
 
 		// Update the policy
 		if err := b.Core.policyStore.SetPolicy(ctx, pol, cas); err != nil {
+			return handleError(err)
+		}
+
+		return resp, nil
+	}
+}
+
+// handlePoliciesSet handles the "/sys/policies/<type>/<name>" endpoints to patch a policy
+func (b *SystemBackend) handlePoliciesPatch(policyType policy.Type) framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		resp := &logical.Response{}
+
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		name := data.Get("name").(string)
+		if name == "" {
+			return logical.ErrorResponse("policy name must be provided in the URL"), nil
+		}
+		if n := strings.ToLower(name); name != n {
+			name = n
+			resp.AddWarning(fmt.Sprintf("policy name was converted to %s", name))
+		}
+
+		oldPolicy, err := b.Core.policyStore.GetPolicy(ctx, name, policyType)
+		if err != nil {
+			return handleError(err)
+		}
+		if oldPolicy == nil {
+			return handleError(logical.CodedError(http.StatusNotFound, "policy not found"))
+		}
+
+		pol := &policy.Policy{
+			Name:      name,
+			Type:      policyType,
+			Namespace: ns,
+
+			Raw:                               data.GetWithExplicitDefault("policy", oldPolicy.Raw).(string),
+			CASRequired:                       data.GetWithExplicitDefault("cas_required", oldPolicy.CASRequired).(bool),
+			AllowWildcardsInIdentityTemplates: data.GetWithExplicitDefault("allow_wildcards_in_identity_templates", oldPolicy.AllowWildcardsInIdentityTemplates).(bool),
+			AllowSlashesInIdentityTemplates:   data.GetWithExplicitDefault("allow_slashes_in_identity_templates", oldPolicy.AllowSlashesInIdentityTemplates).(bool),
+		}
+
+		if pol.Raw == "" {
+			return logical.ErrorResponse("'policy' parameter not supplied or empty"), nil
+		}
+
+		if polBytes, err := base64.StdEncoding.DecodeString(pol.Raw); err == nil {
+			pol.Raw = string(polBytes)
+		}
+
+		expirationRaw, expirationOk := data.GetOk("expiration")
+		ttlRaw, ttlOk := data.GetOk("ttl")
+		if expirationOk && ttlOk {
+			return logical.ErrorResponse("cannot supply both 'expiration' and 'ttl' for policies"), nil
+		} else if expirationOk {
+			pol.Expiration = expirationRaw.(time.Time)
+		} else if ttlOk {
+			pol.Expiration = time.Now().Add(time.Duration(ttlRaw.(int)) * time.Second)
+		} else {
+			pol.Expiration = oldPolicy.Expiration
+		}
+
+		if !pol.Expiration.IsZero() && !time.Now().Before(pol.Expiration) {
+			return logical.ErrorResponse("refusing to update policy as expiration time has already elapsed"), nil
+		}
+
+		switch policyType {
+		case policy.TypeACL:
+			p, err := policy.ParseACLPolicy(ns, pol.Raw)
+			if err != nil {
+				return handleError(err)
+			}
+
+			pol.Paths = p.Paths
+			pol.Templated = p.Templated
+		default:
+			return logical.ErrorResponse("unknown policy type"), nil
+		}
+
+		// CAS avoids the need for a new method and/or transaction here as
+		// races will be handled nicely and Set can update DataVersion.
+		cas := oldPolicy.DataVersion
+		casRaw, casOk := data.GetOk("cas")
+		if casOk {
+			cas = casRaw.(int)
+		}
+
+		// Update the policy
+		if err := b.Core.policyStore.SetPolicy(ctx, pol, &cas); err != nil {
 			return handleError(err)
 		}
 
@@ -5168,7 +5262,7 @@ This path responds to the following HTTP methods.
 	},
 
 	"policy": {
-		`Read, Modify, or Delete an access control policy.`,
+		`Read, Modify, Patch, or Delete an access control policy.`,
 		`
 Read the rules of an existing policy, create or update the rules of a policy,
 or delete a policy.

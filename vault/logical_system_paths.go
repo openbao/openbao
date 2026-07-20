@@ -3871,6 +3871,17 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					},
 					Summary: "Add a new or update an existing ACL policy.",
 				},
+				logical.PatchOperation: &framework.PathOperation{
+					Callback: b.handlePoliciesPatch(policy.TypeACL),
+					Responses: map[int][]framework.Response{
+						http.StatusNoContent: {{
+							Description: "OK",
+							Fields:      map[string]*framework.FieldSchema{},
+						}},
+					},
+					Summary: "Patches an existing ACL policy.",
+				},
+
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handlePoliciesDelete(policy.TypeACL),
 					Responses: map[int][]framework.Response{

@@ -164,18 +164,6 @@ type Store struct {
 	logger log.Logger
 }
 
-// Entry is used to store a policy by name
-type Entry struct {
-	Version     int
-	DataVersion int
-	CASRequired bool
-	Raw         string
-	Templated   bool
-	Type        Type
-	Expiration  time.Time
-	Modified    time.Time
-}
-
 type core interface {
 	NamespaceByID(context.Context, string) (*namespace.Namespace, error)
 	IdentityStore() *vaultidentity.IdentityStore
@@ -298,7 +286,7 @@ func (ps *Store) setPolicyInternal(ctx context.Context, p *Policy, casVersion *i
 		return fmt.Errorf("unable to get existing policy for check-and-set: %w", err)
 	}
 
-	var existing Entry
+	var existing Policy
 	if existingEntry != nil {
 		if err := existingEntry.DecodeJSON(&existing); err != nil {
 			return fmt.Errorf("failed to decode existing policy: %w", err)
@@ -321,16 +309,7 @@ func (ps *Store) setPolicyInternal(ctx context.Context, p *Policy, casVersion *i
 
 	// Create the entry
 	p.DataVersion = existing.DataVersion + 1
-	entry, err := logical.StorageEntryJSON(p.Name, &Entry{
-		Version:     2,
-		DataVersion: p.DataVersion,
-		CASRequired: p.CASRequired,
-		Raw:         p.Raw,
-		Type:        p.Type,
-		Templated:   p.Templated,
-		Expiration:  p.Expiration,
-		Modified:    p.Modified,
-	})
+	entry, err := logical.StorageEntryJSON(p.Name, p)
 	if err != nil {
 		return fmt.Errorf("failed to create entry: %w", err)
 	}
@@ -483,15 +462,14 @@ func (ps *Store) switchedGetPolicy(ctx context.Context, name string, policyType 
 		return nil, nil
 	}
 
-	policyEntry := new(Entry)
 	pol := new(Policy)
-	err = out.DecodeJSON(policyEntry)
+	err = out.DecodeJSON(pol)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse policy: %w", err)
 	}
 
 	// Handle expiration, removing the entry if it is expired.
-	if !policyEntry.Expiration.IsZero() && time.Now().After(policyEntry.Expiration) {
+	if !pol.Expiration.IsZero() && time.Now().After(pol.Expiration) {
 		if err := view.Delete(ctx, name); err != nil {
 			return nil, fmt.Errorf("failed to remove expired policy: %w", err)
 		}
@@ -501,28 +479,8 @@ func (ps *Store) switchedGetPolicy(ctx context.Context, name string, policyType 
 
 	// Set these up here so that they're available for loading into
 	// Sentinel
-	pol.Name = name
-	pol.DataVersion = policyEntry.DataVersion
-	pol.CASRequired = policyEntry.CASRequired
-	pol.Raw = policyEntry.Raw
-	pol.Type = policyEntry.Type
-	pol.Templated = policyEntry.Templated
-	pol.Expiration = policyEntry.Expiration
-	pol.Modified = policyEntry.Modified
-	pol.Namespace = ns
-	switch policyEntry.Type {
-	case TypeACL:
-		// Parse normally
-		p, err := ParseACLPolicy(ns, policyEntry.Raw)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse policy: %w", err)
-		}
-		pol.Paths = p.Paths
-
-		// Reset this in case they set the name in the policy itself
-		pol.Name = name
-	default:
-		return nil, fmt.Errorf("unknown policy type %q", policyEntry.Type.String())
+	if err := pol.Decode(name, ns); err != nil {
+		return nil, fmt.Errorf("error decoding policy: %w", err)
 	}
 
 	if cache != nil {

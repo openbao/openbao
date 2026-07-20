@@ -82,19 +82,19 @@ func testPolicyRoot(t *testing.T, ps *policy.Store, ns *namespace.Namespace, exp
 func TestPolicyStore_CRUD(t *testing.T) {
 	t.Run("root-ns", func(t *testing.T) {
 		t.Run("cached", func(t *testing.T) {
-			core, shares, token, ps := mockPolicyWithCore(t, false)
-			testPolicyStoreCRUD(t, core, shares, token, ps, namespace.RootNamespace)
+			core, shares, token, _ := mockPolicyWithCore(t, false)
+			testPolicyStoreCRUD(t, core, shares, token, namespace.RootNamespace)
 		})
 
 		t.Run("no-cache", func(t *testing.T) {
-			core, shares, token, ps := mockPolicyWithCore(t, true)
-			testPolicyStoreCRUD(t, core, shares, token, ps, namespace.RootNamespace)
+			core, shares, token, _ := mockPolicyWithCore(t, true)
+			testPolicyStoreCRUD(t, core, shares, token, namespace.RootNamespace)
 		})
 	})
 }
 
-func testPolicyStoreCRUD(t *testing.T, core *Core, shares [][]byte, token string, ps *policy.Store, ns *namespace.Namespace) {
-	testPolicyStoreCRUDOneShot(t, ps, ns)
+func testPolicyStoreCRUD(t *testing.T, core *Core, shares [][]byte, token string, ns *namespace.Namespace) {
+	testPolicyStoreCRUDOneShot(t, core.policyStore, ns, false /* create */)
 
 	// Seal, unseal, and try again.
 	require.NoError(t, core.Seal(token), "failed to seal")
@@ -107,12 +107,40 @@ func testPolicyStoreCRUD(t *testing.T, core *Core, shares [][]byte, token string
 		require.NoError(t, err)
 	}
 
-	testPolicyStoreCRUDOneShot(t, ps, ns)
+	// Make sure we refresh our pointer to the policy store here: postUnseal
+	// sets up a new one so we can't use the old one anymore as caches will
+	// still be valid. Namespace is still safe to use as nothing compares by
+	// pointer value.
+	testPolicyStoreCRUDOneShot(t, core.policyStore, ns, true /* validate */)
 }
 
-func testPolicyStoreCRUDOneShot(t *testing.T, ps *policy.Store, ns *namespace.Namespace) {
-	// Get should return nothing
+func testPolicyStoreCRUDOneShot(t *testing.T, ps *policy.Store, ns *namespace.Namespace, postUnseal bool) {
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
+	persistedPolicy := &policy.Policy{
+		DataVersion:                       1,
+		CASRequired:                       true,
+		Raw:                               policytest.ACLPolicy,
+		Type:                              policy.TypeACL,
+		Templated:                         false,
+		AllowWildcardsInIdentityTemplates: true,
+		AllowSlashesInIdentityTemplates:   true,
+	}
+
+	err := persistedPolicy.Decode("persisted", namespace.RootNamespace)
+	require.NoError(t, err)
+
+	if postUnseal {
+		actual, err := ps.GetPolicy(ctx, "persisted", policy.TypeACL)
+		require.NoError(t, err)
+		require.False(t, actual.Modified.IsZero())
+		persistedPolicy.Modified = actual.Modified
+		require.Equal(t, actual, persistedPolicy)
+
+		err = ps.DeletePolicy(ctx, "persisted", policy.TypeACL)
+		require.NoError(t, err)
+	}
+
+	// Get should return nothing
 	p, err := ps.GetPolicy(ctx, "Dev", policy.TypeToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -196,6 +224,16 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *policy.Store, ns *namespace.Na
 	}
 	if p != nil {
 		t.Fatalf("bad: %v", p)
+	}
+
+	if !postUnseal {
+		cas := -1
+		err := ps.SetPolicy(ctx, persistedPolicy, &cas)
+		require.NoError(t, err)
+
+		actual, err := ps.GetPolicy(ctx, "persisted", policy.TypeACL)
+		require.NoError(t, err)
+		require.Equal(t, actual, persistedPolicy)
 	}
 }
 
@@ -557,6 +595,18 @@ func TestPolicyStore_NamespaceAPI(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, rootResp.IsError())
 
+	// Patch a policy.
+	rootResp, err = core.HandleRequest(ctx, &logical.Request{
+		Operation: logical.PatchOperation,
+		Path:      policyPath,
+		Data: map[string]interface{}{
+			"allow_wildcards_in_identity_templates": true,
+		},
+		ClientToken: token,
+	})
+	require.NoError(t, err)
+	require.False(t, rootResp.IsError())
+
 	// Get namespace and create context
 	ns, err := core.namespaceStore.GetNamespaceByPath(ctx, nsPath)
 	require.NoError(t, err)
@@ -595,6 +645,7 @@ func TestPolicyStore_NamespaceAPI(t *testing.T) {
 
 	rootPolicy := rootReadResp.Data["policy"].(string)
 	nsPolicy := nsReadResp.Data["policy"].(string)
+	assert.True(t, rootReadResp.Data["allow_wildcards_in_identity_templates"].(bool))
 	assert.NotEqual(t, rootPolicy, nsPolicy, "policies should be different")
 	assert.Contains(t, nsPolicy, "list", "namespace policy missing list capability")
 	assert.NotContains(t, rootPolicy, "list", "root policy contains unexpected list capability")
@@ -958,4 +1009,58 @@ func TestPolicyStore_CAS(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, p1)
 	require.Equal(t, p, p1)
+}
+
+func TestPolicyStore_MigrateFromEntry(t *testing.T) {
+	t.Run("root", func(t *testing.T) {
+		t.Parallel()
+
+		core, _, _ := TestCoreUnsealed(t)
+		ps := core.policyStore
+
+		// Write policy into the ACL view, ensuring we can upgrade from
+		// earlier versions of OpenBao. To reproduce:
+		//
+		// $ bao policy write testing /path/to/policy.hcl
+		// $ bao read sys/raw/sys/policy/testing | jq -r .data.value | jq
+		view := ps.GetACLView(namespace.RootNamespace)
+		modifiedTimestamp := "2026-07-16T17:00:19.167037139-05:00"
+		entry, err := logical.StorageEntryJSON("testing", map[string]any{
+			"Version":     2,
+			"DataVersion": 1,
+			"CASRequired": true,
+			"Raw":         "\npath \"*\" {\n\tcapabilities  = [\"create\", \"update\", \"delete\", \"read\", \"patch\", \"list\", \"scan\", \"sudo\"]\n}\n",
+			"Templated":   false,
+			"Type":        0,
+			"Expiration":  "0001-01-01T00:00:00Z",
+			"Modified":    modifiedTimestamp,
+		})
+		require.NoError(t, err)
+		err = view.Put(t.Context(), entry)
+		require.NoError(t, err)
+
+		// This policy is of ACL type.
+		ctx := namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace)
+		out, err := ps.ListPolicies(ctx, policy.TypeACL, true)
+		require.NoError(t, err)
+		require.Contains(t, out, "testing")
+
+		read, err := ps.GetPolicy(ctx, "testing", policy.TypeACL)
+		require.NoError(t, err)
+		require.NotNil(t, read)
+
+		require.Equal(t, read.DataVersion, 1)
+		require.Equal(t, read.CASRequired, true)
+		require.Equal(t, read.Type, policy.TypeACL)
+		require.True(t, read.Expiration.IsZero())
+
+		parsed, err := time.Parse(time.RFC3339, modifiedTimestamp)
+		require.NoError(t, err)
+		require.Equal(t, read.Modified, parsed)
+
+		require.Equal(t, 1, len(read.Paths))
+		require.Equal(t, "", read.Paths[0].Path)
+		require.True(t, read.Paths[0].IsPrefix)
+		require.Contains(t, read.Paths[0].Capabilities, "scan")
+	})
 }

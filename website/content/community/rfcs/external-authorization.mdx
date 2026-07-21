@@ -1,0 +1,155 @@
+---
+sidebar_label: External Authorization Checks
+description: |-
+  An RFC to discuss how to extend OpenBao policies with external authorization checks.
+---
+
+# RFC: Support for External Authorization Checks
+
+## Summary
+
+Currently, authorizations in OpenBao must be defined as [policies](https://openbao.org/docs/concepts/policies/), 
+which are maintained within OpenBao. However, customers may have central authorization services in place like 
+[Open Policy Agent](https://www.openpolicyagent.org/) or [OpenFGA](https://openfga.dev/), 
+which they may want to use for OpenBao, too. In this RFC, we propose a 
+[plugin]( https://openbao.org/docs/plugins/) interface which allows the integration of OpenBao with external 
+authorization services.
+
+## Problem Statement
+
+OpenBao policies provide some special functions which are not common to external authorization services, for example the 
+„deny“ and „sudo“ [capabilities](https://openbao.org/docs/concepts/policies/#capabilities) that do not map to http verbs. 
+Or [parameter constraints](https://openbao.org/docs/concepts/policies/#parameter-constraints).
+For this reason, we propose to add a new capability „ask“ (i.e. call an external authorization service) to the policy framework. 
+This addition would provide us with maximal flexibility for the configuration of external authorization checks. For example:
+
+- We may forward *all* authorization checks to the external authorization service.
+- We may check some paths with OpenBao policies and other paths with the external authorization service.
+  We may keep OpenBao specific security checks like "deny" or "parameter constraints".
+- We may define some policies with external authorization and others without. For example, for admin policies one may want to keep 
+  the authorization checks internal and maintain the permissions of end users in the external authorization service.
+
+## User-facing Description
+
+With the following policies we may configure the examples from above.
+
+- “externalPolicy.hcl”
+  ```
+  # Call external authorization service for all paths 
+  path "/*" { 
+      capabilities = ["ask”]
+  }
+  ```
+- "mixedPolicy.hcl"
+  ```
+  # Path /system shall be forbidden independent from external authorizations
+  path "/system/*" { 
+      capabilities = ["deny”]
+  }
+  # For other paths check external authorizations and restrict parameters
+  path "/*" { 
+      capabilities = ["ask”]
+      allowed_parameters = {
+          "param" = ["foo", "bar"]
+      }
+  }
+  ```
+- “adminPolicy.hcl”
+  ```
+  # admin authorizations are maintained internally
+  path "/*" { 
+      capabilities = ["read", "write”]
+  }
+  ```
+  “userPolicy.hcl”
+  ```
+  # user authorizations are maintained externally
+  path "/*" { 
+      capabilities = ["ask”]
+  }
+  ```
+
+## Technical Description
+
+The plugin API consists of four methods only:
+
+Method                                                      | Description
+----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------
+`hasAuthorization(ctx, path, entity, operation) bool`       | When processing "ask" capabilities, call plugin to check authorizations for one single request.
+`listChildren(ctx, parentPath, entity, operation) []string` | When showing list views on UIs, call plugin to return list of children (paths), which the user has authorizations for.
+`updatePath(ctx, path, operation) bool`                     | (Optional) After write operations to OpenBao, call plugin to update the DB of the external authorization service when a path changes, i.e. an entry gets created or deleted
+`syncSubtree(ctx, parentPath, subtree) []bool`              | (Optional) At initialization time, call plugin to sync the paths of an OpenBao subtree to the DB of the external authorization service.
+
+The updatePath and syncSubtree methods are optional, i.e. don't need to be implemented for all external authorization services.
+For example, some authorization services like [OpenFGA](https://openfga.dev/docs/getting-started/update-tuples) have their own database containing object relations, 
+which they use for authorization checks. This makes it important to sync the paths from OpenBao to the external authorization service.
+
+As user identities, we should pass [entities](https://openbao.org/docs/concepts/identity/) to the plugin.
+
+In the ACL processing of OpenBao, we must process the „ask“ capability and call the plugin method `hasAuthorization` from:
+[acl.AllowOperation(ctx, req, capCheckOnly) *ACLResults](https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L344).
+We may add `entity` to the `ACL` struct to be able the pass the user identity to the plugin.
+In addition, we may add attributes like "external user id" or "primary email address" to the 
+[metadata](https://github.com/openbao/openbao/blob/main/internal/helper/identity/types.proto#L97)
+of `entity`, because the external authorization service needs a way to identify the user to be checked.
+For example, if the user has logged on with OIDC, we may fill these attributes from token claims. With these 
+attributes we also might be able to automatically merge [aliases](https://openbao.org/docs/concepts/identity/) 
+into one common `entity` (depending on some configuration, i.e. opt-in).
+
+After calling the plugin, we fill the ACL results in the following way:
+
+```
+type ACLResults struct {
+	Allowed    bool // if ask: Allowed = plugin.hasAuthorization(…, read/write/…)
+	RootPrivs  bool // if ask: RootPrivs = plugin.hasAuthorization(…, sudo)
+	…
+}
+```
+
+We should allow one plugin per namespace, because different tenants may have different authorization services.
+The plugin configuration per namespace should be inheritable to child namespaces.
+
+## Rationale and Alternatives
+
+By adding external authorization checks to the existing policy framework, we gain maximal flexibility.
+Some authorization checks may be defined as OpenBao policies, while other checks can be passed to the external authorization service.
+
+By extending the current policy framework, we can keep existing security features like the „sudo“ capability or 
+[parameter constraints](https://openbao.org/docs/concepts/policies/#parameter-constraints). 
+
+Alternatively, we may add a global switch to enable external authorizations and disable all policy checks. 
+However, this would be less flexible than our proposal and we would loose specific features like "sudo" of parameter constraints.
+In addition, it would be an incompatible change when upgrading existing OpenBao installations,
+i.e. customers might need to replace *all* existing policies after switching to external authorization checks.
+
+## Downsides
+
+Even if you want to switch completely to external authorizations, then you will need to assign an „ask“ policy to all users. 
+On the other hand, this „ask“ policy might be easier to understand than a global switch, which might be hidden somewhere in the configuration.
+
+With this proposal we introduce a dependency to an external authorization service. On the other hand, customers may prefer running
+a central service for authorization management instead of assigning authorizations to users separately in each and every service.
+
+## Security Implications
+
+If the external authorization service is unavailable, the plugin *must* return "not authorized" to prevent exploits.
+Unique user identifiers must be created and passed to the external authorization service.
+
+## User-Facing Description
+
+For end users and developers, nothing will change. OpenBao administrators need to deploy and configure the plugin. 
+User administrators will get more flexibility for user and authorization administration.
+
+- OpenBao administrators must deploy the plugins (note that there might be different plugins in separate namespaces).
+  They must provide the plugin configuration including the path to the executable and credentials for the external authorization service.
+  They must ensure that unique user identifiers are passed whenever the plugin is invoked.
+
+- Authorization administrators must create OpenBao policies as described above. Whenever they want to forward authorization checks 
+  to the external authorization service, they must add the "ask" capability to the policy.
+
+- User administrators must assign OpenBao policies to users (OpenBao entities). In the external authorization service, they must assign 
+  OpenBao-related authorizations to the unique user identifiers mentioned above.
+
+## Related Issue
+
+https://github.com/openbao/openbao/issues/3545

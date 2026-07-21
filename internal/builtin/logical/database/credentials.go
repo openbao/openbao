@@ -34,7 +34,7 @@ type passwordGenerator struct {
 // newPasswordGenerator returns a new passwordGenerator using the given config.
 // Default values will be set on the returned passwordGenerator if not provided
 // in the config.
-func newPasswordGenerator(config map[string]interface{}) (passwordGenerator, error) {
+func newPasswordGenerator(config map[string]any) (passwordGenerator, error) {
 	var pg passwordGenerator
 	if err := mapstructure.WeakDecode(config, &pg); err != nil {
 		return pg, err
@@ -67,8 +67,8 @@ func (pg passwordGenerator) generate(ctx context.Context, b *databaseBackend, wr
 
 // configMap returns the configuration of the passwordGenerator
 // as a map from string to string.
-func (pg passwordGenerator) configMap() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (pg passwordGenerator) configMap() (map[string]any, error) {
+	config := make(map[string]any)
 	if err := mapstructure.WeakDecode(pg, &config); err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ type rsaKeyGenerator struct {
 // newRSAKeyGenerator returns a new rsaKeyGenerator using the given config.
 // Default values will be set on the returned rsaKeyGenerator if not provided
 // in the given config.
-func newRSAKeyGenerator(config map[string]interface{}) (rsaKeyGenerator, error) {
+func newRSAKeyGenerator(config map[string]any) (rsaKeyGenerator, error) {
 	var kg rsaKeyGenerator
 	if err := mapstructure.WeakDecode(config, &kg); err != nil {
 		return kg, err
@@ -169,8 +169,8 @@ func (kg *rsaKeyGenerator) generate(r io.Reader) ([]byte, []byte, error) {
 
 // configMap returns the configuration of the rsaKeyGenerator
 // as a map from string to string.
-func (kg rsaKeyGenerator) configMap() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (kg rsaKeyGenerator) configMap() (map[string]any, error) {
+	config := make(map[string]any)
 	if err := mapstructure.WeakDecode(kg, &config); err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ type ClientCertificateGenerator struct {
 // newClientCertificateGenerator returns a new ClientCertificateGenerator
 // using the given config. Default values will be set on the returned
 // ClientCertificateGenerator if not provided in the config.
-func newClientCertificateGenerator(config map[string]interface{}) (ClientCertificateGenerator, error) {
+func newClientCertificateGenerator(config map[string]any) (ClientCertificateGenerator, error) {
 	var cg ClientCertificateGenerator
 	if err := mapstructure.WeakDecode(config, &cg); err != nil {
 		return cg, err
@@ -383,8 +383,8 @@ func (cg *ClientCertificateGenerator) generate(r io.Reader, expiration time.Time
 
 // configMap returns the configuration of the ClientCertificateGenerator
 // as a map from string to string.
-func (cg ClientCertificateGenerator) configMap() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (cg ClientCertificateGenerator) configMap() (map[string]any, error) {
+	config := make(map[string]any)
 	if err := mapstructure.WeakDecode(cg, &config); err != nil {
 		return nil, err
 	}

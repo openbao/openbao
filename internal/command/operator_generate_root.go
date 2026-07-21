@@ -230,7 +230,7 @@ func (c *OperatorGenerateRootCommand) Run(args []string) int {
 			case "", "table":
 				return PrintRaw(c.UI, otp)
 			default:
-				status := map[string]interface{}{
+				status := map[string]any{
 					"otp":        otp,
 					"otp_length": len(otp),
 				}
@@ -341,7 +341,7 @@ func (c *OperatorGenerateRootCommand) decode(client *api.Client, encoded, otp st
 	case "", "table":
 		return PrintRaw(c.UI, token)
 	default:
-		tokenJSON := map[string]interface{}{
+		tokenJSON := map[string]any{
 			"token": token,
 		}
 		return OutputData(c.UI, tokenJSON)

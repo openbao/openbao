@@ -75,14 +75,14 @@ func TestLogin_ibmisam_fetchGroups(t *testing.T) {
 	b, storage := getBackend(t)
 	ctx := t.Context()
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"oidc_discovery_url":    aServer.server.URL,
 		"oidc_discovery_ca_pem": aCert,
 		"oidc_client_id":        "abc",
 		"oidc_client_secret":    "def",
 		"default_role":          "test",
 		"bound_issuer":          "http://vault.example.com/",
-		"provider_config": map[string]interface{}{
+		"provider_config": map[string]any{
 			"provider": "ibmisam",
 		},
 	}
@@ -101,7 +101,7 @@ func TestLogin_ibmisam_fetchGroups(t *testing.T) {
 	}
 
 	// set up test role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"user_claim":            "email",
 		"groups_claim":          "groups",
 		"allowed_redirect_uris": []string{"https://example.com"},
@@ -122,7 +122,7 @@ func TestLogin_ibmisam_fetchGroups(t *testing.T) {
 	role := &jwtRole{
 		GroupsClaim: "groups",
 	}
-	allClaims := map[string]interface{}{
+	allClaims := map[string]any{
 		"groups": "a-group another-group",
 	}
 
@@ -145,5 +145,5 @@ func TestLogin_ibmisam_fetchGroups(t *testing.T) {
 
 	groupsResp, ok := normalizeList(groupsRaw)
 	assert.True(t, ok)
-	assert.Equal(t, []interface{}{"a-group", "another-group"}, groupsResp)
+	assert.Equal(t, []any{"a-group", "another-group"}, groupsResp)
 }

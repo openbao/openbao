@@ -40,8 +40,8 @@ func (h *CAValidityPeriod) IsEnabled() bool {
 	return h.Enabled
 }
 
-func (h *CAValidityPeriod) DefaultConfig() map[string]interface{} {
-	return map[string]interface{}{
+func (h *CAValidityPeriod) DefaultConfig() map[string]any {
+	return map[string]any{
 		"root_expiry_critical":              "180d",
 		"intermediate_expiry_critical":      "30d",
 		"root_expiry_warning":               "365d",
@@ -51,7 +51,7 @@ func (h *CAValidityPeriod) DefaultConfig() map[string]interface{} {
 	}
 }
 
-func (h *CAValidityPeriod) LoadConfig(config map[string]interface{}) error {
+func (h *CAValidityPeriod) LoadConfig(config map[string]any) error {
 	parameters := []string{
 		"root_expiry_critical",
 		"intermediate_expiry_critical",

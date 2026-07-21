@@ -309,7 +309,7 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 			storagePath := "sys/policy/test-policy"
 			req := logical.TestRequest(t, logical.CreateOperation, storagePath)
 			req.ClientToken = root
-			req.Data = map[string]interface{}{
+			req.Data = map[string]any{
 				"policy": `
 					path "test/path/*" {
 						capabilities = ["read"]

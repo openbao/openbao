@@ -127,8 +127,8 @@ func (e *MountEntry) SyncCache() {
 	}
 }
 
-func (entry *MountEntry) Deserialize() map[string]interface{} {
-	return map[string]interface{}{
+func (entry *MountEntry) Deserialize() map[string]any {
+	return map[string]any{
 		"mount_path":      entry.Path,
 		"mount_namespace": entry.Namespace.Path,
 		"uuid":            entry.UUID,
@@ -139,5 +139,5 @@ func (entry *MountEntry) Deserialize() map[string]interface{} {
 
 type Deserializable interface {
 	// Converts a structure into a consummable map
-	Deserialize() map[string]interface{}
+	Deserialize() map[string]any
 }

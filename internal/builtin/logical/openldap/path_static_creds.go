@@ -50,7 +50,7 @@ func (b *backend) pathStaticCredsRead(ctx context.Context, req *logical.Request,
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"dn":                  role.StaticAccount.DN,
 			"username":            role.StaticAccount.Username,
 			"password":            role.StaticAccount.Password,

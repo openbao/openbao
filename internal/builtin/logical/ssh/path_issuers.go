@@ -219,7 +219,7 @@ func (b *backend) pathGetIssuerPublicKeyHandler(ctx context.Context, req *logica
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			logical.HTTPContentType: "text/plain",
 			logical.HTTPRawBody:     []byte(issuer.PublicKey),
 			logical.HTTPStatusCode:  http.StatusOK,
@@ -443,7 +443,7 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 
 func (b *backend) pathListIssuersHandler(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	var responseKeys []string
-	responseInfo := make(map[string]interface{})
+	responseInfo := make(map[string]any)
 
 	after := d.Get("after").(string)
 	limit := d.Get("limit").(int)
@@ -469,7 +469,7 @@ func (b *backend) pathListIssuersHandler(ctx context.Context, req *logical.Reque
 		}
 
 		responseKeys = append(responseKeys, string(identifier))
-		responseInfo[string(identifier)] = map[string]interface{}{
+		responseInfo[string(identifier)] = map[string]any{
 			"issuer_name": issuer.Name,
 			"is_default":  identifier == config.DefaultIssuerID,
 			"public_key":  issuer.PublicKey,
@@ -480,7 +480,7 @@ func (b *backend) pathListIssuersHandler(ctx context.Context, req *logical.Reque
 }
 
 func respondReadIssuer(issuer *issuerEntry) (*logical.Response, error) {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"issuer_id":   issuer.ID,
 		"issuer_name": issuer.Name,
 		"public_key":  issuer.PublicKey,

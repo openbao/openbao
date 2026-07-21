@@ -66,7 +66,7 @@ func TestCubbyholeBackend_Read(t *testing.T) {
 	}
 
 	expected := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"raw": "test",
 		},
 	}
@@ -192,7 +192,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	}
 
 	expected := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"raw": "test",
 		},
 	}
@@ -224,7 +224,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	}
 
 	expected = &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"raw": "baz",
 		},
 	}

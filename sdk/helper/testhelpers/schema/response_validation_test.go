@@ -13,7 +13,7 @@ import (
 func TestValidateResponse(t *testing.T) {
 	cases := map[string]struct {
 		schema        *framework.Response
-		response      map[string]interface{}
+		response      map[string]any
 		strict        bool
 		errorExpected bool
 	}{
@@ -33,7 +33,7 @@ func TestValidateResponse(t *testing.T) {
 
 		"nil schema, good response, strict": {
 			schema: nil,
-			response: map[string]interface{}{
+			response: map[string]any{
 				"foo": "bar",
 			},
 			strict:        true,
@@ -42,7 +42,7 @@ func TestValidateResponse(t *testing.T) {
 
 		"nil schema, good response, not strict": {
 			schema: nil,
-			response: map[string]interface{}{
+			response: map[string]any{
 				"foo": "bar",
 			},
 			strict:        true,
@@ -51,7 +51,7 @@ func TestValidateResponse(t *testing.T) {
 
 		"nil schema fields, good response, strict": {
 			schema: &framework.Response{},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"foo": "bar",
 			},
 			strict:        true,
@@ -60,7 +60,7 @@ func TestValidateResponse(t *testing.T) {
 
 		"nil schema fields, good response, not strict": {
 			schema: &framework.Response{},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"foo": "bar",
 			},
 			strict:        true,
@@ -75,7 +75,7 @@ func TestValidateResponse(t *testing.T) {
 					},
 				},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"foo": "bar",
 			},
 			strict:        true,
@@ -90,7 +90,7 @@ func TestValidateResponse(t *testing.T) {
 					},
 				},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"foo": "bar",
 			},
 			strict:        false,
@@ -106,7 +106,7 @@ func TestValidateResponse(t *testing.T) {
 					},
 				},
 			},
-			response:      map[string]interface{}{},
+			response:      map[string]any{},
 			strict:        true,
 			errorExpected: false,
 		},
@@ -120,7 +120,7 @@ func TestValidateResponse(t *testing.T) {
 					},
 				},
 			},
-			response:      map[string]interface{}{},
+			response:      map[string]any{},
 			strict:        true,
 			errorExpected: true,
 		},
@@ -134,7 +134,7 @@ func TestValidateResponse(t *testing.T) {
 					},
 				},
 			},
-			response:      map[string]interface{}{},
+			response:      map[string]any{},
 			strict:        false,
 			errorExpected: false,
 		},
@@ -171,7 +171,7 @@ func TestValidateResponse(t *testing.T) {
 			schema: &framework.Response{
 				Fields: map[string]*framework.FieldSchema{},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"foo": "bar",
 			},
 			strict:        true,
@@ -182,7 +182,7 @@ func TestValidateResponse(t *testing.T) {
 			schema: &framework.Response{
 				Fields: map[string]*framework.FieldSchema{},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"foo": "bar",
 			},
 			strict:        false,
@@ -198,7 +198,7 @@ func TestValidateResponse(t *testing.T) {
 					},
 				},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"time": "2024-12-11T09:08:07Z",
 			},
 			strict:        true,
@@ -214,7 +214,7 @@ func TestValidateResponse(t *testing.T) {
 					},
 				},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"time": "2024-12-11T09:08:07Z",
 			},
 			strict:        false,
@@ -230,7 +230,7 @@ func TestValidateResponse(t *testing.T) {
 					},
 				},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"time": time.Date(2024, 12, 11, 9, 8, 7, 0, time.UTC),
 			},
 			strict:        true,
@@ -246,7 +246,7 @@ func TestValidateResponse(t *testing.T) {
 					},
 				},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"time": time.Date(2024, 12, 11, 9, 8, 7, 0, time.UTC),
 			},
 			strict:        false,
@@ -257,7 +257,7 @@ func TestValidateResponse(t *testing.T) {
 			schema: &framework.Response{
 				Fields: map[string]*framework.FieldSchema{},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"http_raw_body": "foo",
 			},
 			strict:        true,
@@ -268,7 +268,7 @@ func TestValidateResponse(t *testing.T) {
 			schema: &framework.Response{
 				Fields: map[string]*framework.FieldSchema{},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"http_raw_body": "foo",
 			},
 			strict:        false,
@@ -283,7 +283,7 @@ func TestValidateResponse(t *testing.T) {
 					},
 				},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"http_status_code": 304,
 			},
 			strict:        true,
@@ -298,7 +298,7 @@ func TestValidateResponse(t *testing.T) {
 					},
 				},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"http_status_code": 304,
 			},
 			strict:        false,
@@ -314,7 +314,7 @@ func TestValidateResponse(t *testing.T) {
 					},
 				},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"http_raw_body": "foo",
 			},
 			strict:        true,
@@ -330,7 +330,7 @@ func TestValidateResponse(t *testing.T) {
 					},
 				},
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"http_raw_body": "foo",
 			},
 			strict:        false,

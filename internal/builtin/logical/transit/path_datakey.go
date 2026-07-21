@@ -135,7 +135,7 @@ func (b *backend) pathDatakeyWrite(ctx context.Context, req *logical.Request, d 
 		return nil, err
 	}
 
-	var factory interface{}
+	var factory any
 	associatedData := d.Get("associated_data").(string)
 	if len(associatedData) != 0 {
 		if !p.Type.AssociatedDataSupported() {
@@ -168,7 +168,7 @@ func (b *backend) pathDatakeyWrite(ctx context.Context, req *logical.Request, d 
 
 	// Generate the response
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"ciphertext":  ciphertext,
 			"key_version": keyVersion,
 		},

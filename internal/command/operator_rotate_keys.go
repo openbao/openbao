@@ -424,38 +424,38 @@ func (c *OperatorRotateKeysCommand) cancel(client *api.Client) int {
 // provide prompts the user for the seal key and posts it to the update root
 // endpoint. If this is the last unseal, this function outputs it.
 func (c *OperatorRotateKeysCommand) provide(client *api.Client, key string) int {
-	var statusFn func() (interface{}, error)
-	var updateFn func(string, string) (interface{}, error)
+	var statusFn func() (any, error)
+	var updateFn func(string, string) (any, error)
 	keyTypeRequired := keyTypeUnseal
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
-		statusFn = func() (interface{}, error) {
+		statusFn = func() (any, error) {
 			return client.Sys().RotateRootStatus()
 		}
-		updateFn = func(s1 string, s2 string) (interface{}, error) {
+		updateFn = func(s1 string, s2 string) (any, error) {
 			return client.Sys().RotateRootUpdate(s1, s2)
 		}
 		if c.flagVerify {
-			statusFn = func() (interface{}, error) {
+			statusFn = func() (any, error) {
 				return client.Sys().RotateRootVerificationStatus()
 			}
-			updateFn = func(s1 string, s2 string) (interface{}, error) {
+			updateFn = func(s1 string, s2 string) (any, error) {
 				return client.Sys().RotateRootVerificationUpdate(s1, s2)
 			}
 		}
 	case "recovery", "hsm":
 		keyTypeRequired = keyTypeRecovery
-		statusFn = func() (interface{}, error) {
+		statusFn = func() (any, error) {
 			return client.Sys().RotateRecoveryStatus()
 		}
-		updateFn = func(s1 string, s2 string) (interface{}, error) {
+		updateFn = func(s1 string, s2 string) (any, error) {
 			return client.Sys().RotateRecoveryUpdate(s1, s2)
 		}
 		if c.flagVerify {
-			statusFn = func() (interface{}, error) {
+			statusFn = func() (any, error) {
 				return client.Sys().RotateRecoveryVerificationStatus()
 			}
-			updateFn = func(s1 string, s2 string) (interface{}, error) {
+			updateFn = func(s1 string, s2 string) (any, error) {
 				return client.Sys().RotateRecoveryVerificationUpdate(s1, s2)
 			}
 		}
@@ -605,23 +605,23 @@ func (c *OperatorRotateKeysCommand) provide(client *api.Client, key string) int 
 // status is used just to fetch and dump the status.
 func (c *OperatorRotateKeysCommand) status(client *api.Client) int {
 	// Handle the different API requests
-	var fn func() (interface{}, error)
+	var fn func() (any, error)
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
-		fn = func() (interface{}, error) {
+		fn = func() (any, error) {
 			return client.Sys().RotateRootStatus()
 		}
 		if c.flagVerify {
-			fn = func() (interface{}, error) {
+			fn = func() (any, error) {
 				return client.Sys().RotateRootVerificationStatus()
 			}
 		}
 	case "recovery", "hsm":
-		fn = func() (interface{}, error) {
+		fn = func() (any, error) {
 			return client.Sys().RotateRecoveryStatus()
 		}
 		if c.flagVerify {
-			fn = func() (interface{}, error) {
+			fn = func() (any, error) {
 				return client.Sys().RotateRecoveryVerificationStatus()
 			}
 		}
@@ -693,7 +693,7 @@ func (c *OperatorRotateKeysCommand) backupDelete(client *api.Client) int {
 }
 
 // printRotationStatus dumps the rotation status to output.
-func printRotationStatus(ui cli.Ui, in interface{}) int {
+func printRotationStatus(ui cli.Ui, in any) int {
 	out := []string{}
 	out = append(out, "Key | Value")
 

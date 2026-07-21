@@ -31,7 +31,7 @@ func (t *testProviderConfig) SensitiveKeys() []string {
 func TestNewProviderConfig(t *testing.T) {
 	t.Run("normal case", func(t *testing.T) {
 		jc := &jwtConfig{
-			ProviderConfig: map[string]interface{}{
+			ProviderConfig: map[string]any{
 				"provider":          "test",
 				"initialized_value": "yes",
 			},
@@ -61,7 +61,7 @@ func TestNewProviderConfig(t *testing.T) {
 
 	t.Run("provider field not present in provider_config", func(t *testing.T) {
 		jc := &jwtConfig{
-			ProviderConfig: map[string]interface{}{
+			ProviderConfig: map[string]any{
 				"initialized_value": "yes",
 			},
 		}
@@ -76,7 +76,7 @@ func TestNewProviderConfig(t *testing.T) {
 
 	t.Run("unknown provider", func(t *testing.T) {
 		jc := &jwtConfig{
-			ProviderConfig: map[string]interface{}{
+			ProviderConfig: map[string]any{
 				"provider":          "test",
 				"initialized_value": "yes",
 			},
@@ -92,7 +92,7 @@ func TestNewProviderConfig(t *testing.T) {
 
 	t.Run("provider name not present in provider_config", func(t *testing.T) {
 		jc := &jwtConfig{
-			ProviderConfig: map[string]interface{}{
+			ProviderConfig: map[string]any{
 				"initialized_value": "yes",
 			},
 		}
@@ -107,7 +107,7 @@ func TestNewProviderConfig(t *testing.T) {
 
 	t.Run("error in Initialize", func(t *testing.T) {
 		jc := &jwtConfig{
-			ProviderConfig: map[string]interface{}{
+			ProviderConfig: map[string]any{
 				"provider":          "test",
 				"initialized_value": "yes",
 			},

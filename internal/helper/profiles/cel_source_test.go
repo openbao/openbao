@@ -13,7 +13,7 @@ func TestCelSourceBuilder_EvaluateAndClose(t *testing.T) {
 		"response": ResponseSourceBuilder,
 	}}
 
-	field := map[string]interface{}{"expression": "requests.test.value"}
+	field := map[string]any{"expression": "requests.test.value"}
 	src := CELSourceBuilder(engine, field)
 	require.NotNil(t, src)
 	require.IsType(t, &CELSource{}, src)
@@ -22,7 +22,7 @@ func TestCelSourceBuilder_EvaluateAndClose(t *testing.T) {
 	require.NoError(t, err, "failed to validate")
 
 	history := &EvaluationHistory{}
-	err = history.AddRequestData("", "test", map[string]interface{}{
+	err = history.AddRequestData("", "test", map[string]any{
 		"value": 123,
 	})
 	require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestCelSourceBuilder_RequestNotAllowed(t *testing.T) {
 		"response": ResponseSourceBuilder,
 	}}
 
-	field := map[string]interface{}{"expression": "requests.test.value"}
+	field := map[string]any{"expression": "requests.test.value"}
 	src := CELSourceBuilder(engine, field)
 	require.NotNil(t, src)
 
@@ -50,7 +50,7 @@ func TestCelSourceBuilder_RequestNotAllowed(t *testing.T) {
 func TestCelSourceBuilder_ResponseNotAllowed(t *testing.T) {
 	engine := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{}}
 
-	field := map[string]interface{}{"expression": "response.test.value"}
+	field := map[string]any{"expression": "response.test.value"}
 	src := CELSourceBuilder(engine, field)
 	require.NotNil(t, src)
 
@@ -61,7 +61,7 @@ func TestCelSourceBuilder_ResponseNotAllowed(t *testing.T) {
 func TestCelSourceBuilder_Constant(t *testing.T) {
 	engine := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{}}
 
-	field := map[string]interface{}{"expression": "123"}
+	field := map[string]any{"expression": "123"}
 	src := CELSourceBuilder(engine, field)
 	require.NotNil(t, src)
 

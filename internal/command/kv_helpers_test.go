@@ -119,13 +119,13 @@ func TestWalkSecretsTree(t *testing.T) {
 		"app-1/nested/x/y",
 		"app-1/nested/bar",
 	} {
-		if err := client.KVv1("kv-v1").Put(ctx, path, map[string]interface{}{
+		if err := client.KVv1("kv-v1").Put(ctx, path, map[string]any{
 			"password": "Hashi123",
 		}); err != nil {
 			t.Fatal(err)
 		}
 
-		if _, err := client.KVv2("kv-v2").Put(ctx, path, map[string]interface{}{
+		if _, err := client.KVv2("kv-v2").Put(ctx, path, map[string]any{
 			"password": "Hashi123",
 		}); err != nil {
 			t.Fatal(err)

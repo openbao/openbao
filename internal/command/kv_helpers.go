@@ -106,7 +106,7 @@ allow read access to that path in the format 'mount-path/data/foo', not just 'mo
 	if options == nil {
 		return mountPath, 1, nil
 	}
-	versionRaw := options.(map[string]interface{})["version"]
+	versionRaw := options.(map[string]any)["version"]
 	if versionRaw == nil {
 		return mountPath, 1, nil
 	}
@@ -157,7 +157,7 @@ func addPrefixToKVPath(path, mountPath, apiPrefix string, skipIfExists bool) str
 	return paths.Join(mountPath, apiPrefix, pathSuffix)
 }
 
-func getHeaderForMap(header string, data map[string]interface{}) string {
+func getHeaderForMap(header string, data map[string]any) string {
 	maxKey := 0
 	for k := range data {
 		if len(k) > maxKey {
@@ -223,7 +223,7 @@ func walkSecretsTree(ctx context.Context, client *api.Client, path string, visit
 		return fmt.Errorf("unexpected list response at %q", path)
 	}
 
-	keysRawSlice, ok := keysRaw.([]interface{})
+	keysRawSlice, ok := keysRaw.([]any)
 	if !ok {
 		return fmt.Errorf("unexpected list response type %T at %q", keysRaw, path)
 	}

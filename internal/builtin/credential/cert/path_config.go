@@ -99,7 +99,7 @@ func (b *backend) pathConfigRead(ctx context.Context, req *logical.Request, d *f
 		return nil, err
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"disable_binding":                cfg.DisableBinding,
 		"enable_identity_alias_metadata": cfg.EnableIdentityAliasMetadata,
 		"ocsp_cache_size":                cfg.OcspCacheSize,

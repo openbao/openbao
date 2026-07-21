@@ -14,7 +14,7 @@ func TestCreds(t *testing.T) {
 		b, storage := getBackend(t, false)
 		defer b.Cleanup(t.Context())
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn":      "tester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -33,7 +33,7 @@ func TestCreds(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		data = map[string]interface{}{
+		data = map[string]any{
 			"username":        "hashicorp",
 			"dn":              "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
 			"rotation_period": "60s",

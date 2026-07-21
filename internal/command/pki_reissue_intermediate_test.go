@@ -93,7 +93,7 @@ func createComplicatedIssuerSetUpWithReIssueIntermediate(t *testing.T, client *a
 		t.Fatalf("pki mount error: %#v", err)
 	}
 
-	resp, err := client.Logical().Write("pki-root/root/generate/internal", map[string]interface{}{
+	resp, err := client.Logical().Write("pki-root/root/generate/internal", map[string]any{
 		"key_type":    "ec",
 		"common_name": "Root X",
 		"ttl":         "3650d",
@@ -104,7 +104,7 @@ func createComplicatedIssuerSetUpWithReIssueIntermediate(t *testing.T, client *a
 		t.Fatalf("failed to prime CA: %v", err)
 	}
 
-	resp, err = client.Logical().Write("pki-root/root/generate/internal", map[string]interface{}{
+	resp, err = client.Logical().Write("pki-root/root/generate/internal", map[string]any{
 		"key_type":    "ec",
 		"common_name": "Root X",
 		"ttl":         "3650d",
@@ -114,7 +114,7 @@ func createComplicatedIssuerSetUpWithReIssueIntermediate(t *testing.T, client *a
 		t.Fatalf("failed to prime CA: %v", err)
 	}
 
-	if resp, err := client.Logical().Write("pki-newroot/root/generate/internal", map[string]interface{}{
+	if resp, err := client.Logical().Write("pki-newroot/root/generate/internal", map[string]any{
 		"key_type":    "ec",
 		"common_name": "Root X",
 		"ttl":         "3650d",
@@ -123,7 +123,7 @@ func createComplicatedIssuerSetUpWithReIssueIntermediate(t *testing.T, client *a
 		t.Fatalf("failed to prime CA: %v", err)
 	}
 
-	if resp, err := client.Logical().Write("pki-root/root/generate/existing", map[string]interface{}{
+	if resp, err := client.Logical().Write("pki-root/root/generate/existing", map[string]any{
 		"common_name": "Root X4",
 		"ttl":         "3650d",
 		"issuer_name": "rootX4",

@@ -101,7 +101,7 @@ type CreateNamespaceOutput struct {
 // CustomMetadata values can be string to add or modify a key, or nil to remove
 // a key.
 type PatchNamespaceInput struct {
-	CustomMetadata map[string]interface{} `json:"custom_metadata" mapstructure:"custom_metadata"`
+	CustomMetadata map[string]any `json:"custom_metadata" mapstructure:"custom_metadata"`
 }
 
 // PatchNamespaceOutput is returned by PatchNamespace.
@@ -210,7 +210,7 @@ func (c *Sys) PatchNamespaceWithContext(ctx context.Context, name string, i *Pat
 		return nil, errors.New("input must not be nil")
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := mapstructure.Decode(i, &data); err != nil {
 		return nil, errors.New("couldn't decode input")
 	}

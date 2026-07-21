@@ -262,7 +262,7 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 	// Policies from each group may overlap
 	policies = strutil.RemoveDuplicates(policies, true)
 	auth := &logical.Auth{
-		InternalData: map[string]interface{}{},
+		InternalData: map[string]any{},
 		Metadata: map[string]string{
 			"user":   identity.UserName(),
 			"domain": identity.Domain(),

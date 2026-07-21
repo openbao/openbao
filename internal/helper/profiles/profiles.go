@@ -135,7 +135,7 @@ func WithRequestIdentifierPrefix(prefix string) func(*ProfileEngine) {
 
 // SourceBuilder creates a new concrete source mapped to a particular
 // instance of a field.
-type SourceBuilder func(engine *ProfileEngine, field map[string]interface{}) Source
+type SourceBuilder func(engine *ProfileEngine, field map[string]any) Source
 
 // RequestHandler takes logical requests and executes them.
 type RequestHandlerFunc func(ctx context.Context, req *logical.Request) (*logical.Response, error)
@@ -144,7 +144,7 @@ type RequestHandlerFunc func(ctx context.Context, req *logical.Request) (*logica
 // once for each matching object and is alive throughout the history of the request.
 type Source interface {
 	Validate() (requestDeps, responseDeps []string, err error)
-	Evaluate(ctx context.Context, history *EvaluationHistory) (value interface{}, err error)
+	Evaluate(ctx context.Context, history *EvaluationHistory) (value any, err error)
 	Close(ctx context.Context) error
 }
 
@@ -320,10 +320,10 @@ func (p *ProfileEngine) EvaluateResponse(ctx context.Context) (*logical.Response
 	return p.evaluateOutput(ctx, history)
 }
 
-func (p *ProfileEngine) Debug(ctx context.Context) map[string]interface{} {
+func (p *ProfileEngine) Debug(ctx context.Context) map[string]any {
 	history, err := p.evaluateHistory(ctx)
 
-	debugInfo := map[string]interface{}{
+	debugInfo := map[string]any{
 		"history": history,
 		"error":   err,
 	}
@@ -503,21 +503,21 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 // output destination, using mapstructure.WeakDecode(...) to handle type
 // differences between input and output. This allows for e.g., a string
 // environment variable to be used as an integer.
-func (p *ProfileEngine) evaluateField(ctx context.Context, history *EvaluationHistory, _obj interface{}, destination interface{}) error {
+func (p *ProfileEngine) evaluateField(ctx context.Context, history *EvaluationHistory, _obj any, destination any) error {
 	var err error
-	var value interface{}
+	var value any
 
 	switch obj := _obj.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		value, err = p.maybeEvaluateTypedField(ctx, history, obj)
 		if err != nil {
 			return err
 		}
-	case []map[string]interface{}:
-		// HCL only ever yields a []map[string]interface{} when doing partial
-		// (IMHO, failed) conversion of objects. Collapse all items in the map
-		// down to a single item and re-evaluate.
-		collapsed := map[string]interface{}{}
+	case []map[string]any:
+		// HCL only ever yields a []map[string]any when doing partial (IMHO,
+		// failed) conversion of objects. Collapse all items in the map down to
+		// a single item and re-evaluate.
+		collapsed := map[string]any{}
 		for index, subobj := range obj {
 			for key, value := range subobj {
 				if existingValue, present := collapsed[key]; present && existingValue != value {
@@ -532,10 +532,10 @@ func (p *ProfileEngine) evaluateField(ctx context.Context, history *EvaluationHi
 		if err != nil {
 			return err
 		}
-	case []interface{}:
-		var results []interface{}
+	case []any:
+		var results []any
 		for index, orig := range obj {
-			var dest interface{}
+			var dest any
 			if err := p.evaluateField(ctx, history, orig, &dest); err != nil {
 				return fmt.Errorf("list.%d: %w", index, err)
 			}
@@ -564,7 +564,7 @@ func (p *ProfileEngine) evaluateField(ctx context.Context, history *EvaluationHi
 //
 // Notably, evaluation must be constants and pre-determined; we do not
 // support conditional evaluation types.
-func (p *ProfileEngine) maybeEvaluateTypedField(ctx context.Context, history *EvaluationHistory, obj map[string]interface{}) (interface{}, error) {
+func (p *ProfileEngine) maybeEvaluateTypedField(ctx context.Context, history *EvaluationHistory, obj map[string]any) (any, error) {
 	sourceRaw, sourcePresent := obj["eval_source"]
 	objTypeRaw, objPresent := obj["eval_type"]
 
@@ -575,9 +575,9 @@ func (p *ProfileEngine) maybeEvaluateTypedField(ctx context.Context, history *Ev
 
 	// Even if no resolution needs to happen at this level, a lower level
 	// might need to occur; recurse until we have primitive types.
-	resolved := map[string]interface{}{}
+	resolved := map[string]any{}
 	for key, value := range obj {
-		var result interface{}
+		var result any
 
 		// Parse the final value of this field.
 		if err := p.evaluateField(ctx, history, value, &result); err != nil {
@@ -608,7 +608,7 @@ func (p *ProfileEngine) maybeEvaluateTypedField(ctx context.Context, history *Ev
 
 // evaluateTypedField actually performs the source builder-backed evaluation
 // of fields from other data sources.
-func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *EvaluationHistory, obj map[string]interface{}, source string, objType string) (interface{}, error) {
+func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *EvaluationHistory, obj map[string]any, source string, objType string) (any, error) {
 	sourceBuilder, present := p.sourceBuilders[source]
 	if !present {
 		return nil, fmt.Errorf("unknown value for 'eval_source': %v", source)
@@ -644,7 +644,7 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 	return convertedVal, nil
 }
 
-func (p *ProfileEngine) convertToType(val interface{}, objType string) (interface{}, error) {
+func (p *ProfileEngine) convertToType(val any, objType string) (any, error) {
 	if objType == "" {
 		return val, nil
 	}
@@ -685,10 +685,10 @@ func (p *ProfileEngine) convertToType(val interface{}, objType string) (interfac
 		}
 		return result, nil
 
-	case "map", "map[string]interface{}":
-		var result map[string]interface{}
+	case "map", "map[string]any", "map[string]interface{}":
+		var result map[string]any
 		if err := mapstructure.WeakDecode(val, &result); err != nil {
-			return nil, fmt.Errorf("cannot convert to map[string]interface{}: %w", err)
+			return nil, fmt.Errorf("cannot convert to map[string]any: %w", err)
 		}
 		return result, nil
 

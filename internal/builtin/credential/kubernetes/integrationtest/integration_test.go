@@ -76,7 +76,7 @@ func createToken(t *testing.T, sa string, audiences []string) string {
 	return resp.Status.Token
 }
 
-func setupKubernetesAuth(t *testing.T, boundServiceAccountName string, mountConfigOverride map[string]interface{}, roleConfigOverride map[string]interface{}) (*api.Client, func()) {
+func setupKubernetesAuth(t *testing.T, boundServiceAccountName string, mountConfigOverride map[string]any, roleConfigOverride map[string]any) (*api.Client, func()) {
 	t.Helper()
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
 	client, err := api.NewClient(nil)
@@ -84,7 +84,7 @@ func setupKubernetesAuth(t *testing.T, boundServiceAccountName string, mountConf
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("sys/auth/kubernetes", map[string]interface{}{
+	_, err = client.Logical().Write("sys/auth/kubernetes", map[string]any{
 		"type": "kubernetes-dev",
 	})
 	if err != nil {
@@ -104,7 +104,7 @@ func setupKubernetesAuth(t *testing.T, boundServiceAccountName string, mountConf
 		}
 	}()
 
-	mountConfig := map[string]interface{}{
+	mountConfig := map[string]any{
 		"kubernetes_host": "https://kubernetes.default.svc.cluster.local",
 	}
 	if len(mountConfigOverride) != 0 {
@@ -116,7 +116,7 @@ func setupKubernetesAuth(t *testing.T, boundServiceAccountName string, mountConf
 		t.Fatal(err)
 	}
 
-	roleConfig := map[string]interface{}{
+	roleConfig := map[string]any{
 		"bound_service_account_names":      boundServiceAccountName,
 		"bound_service_account_namespaces": "test",
 	}
@@ -136,7 +136,7 @@ func TestSuccess(t *testing.T) {
 	client, cleanup := setupKubernetesAuth(t, "vault", nil, nil)
 	defer cleanup()
 
-	_, err := client.Logical().Write("auth/kubernetes/login", map[string]interface{}{
+	_, err := client.Logical().Write("auth/kubernetes/login", map[string]any{
 		"role": "test-role",
 		"jwt":  createToken(t, "vault", nil),
 	})
@@ -146,13 +146,13 @@ func TestSuccess(t *testing.T) {
 }
 
 func TestSuccessWithTokenReviewerJwt(t *testing.T) {
-	client, cleanup := setupKubernetesAuth(t, "vault", map[string]interface{}{
+	client, cleanup := setupKubernetesAuth(t, "vault", map[string]any{
 		"kubernetes_host":    "https://kubernetes.default.svc.cluster.local",
 		"token_reviewer_jwt": createToken(t, "test-token-reviewer-account", nil),
 	}, nil)
 	defer cleanup()
 
-	_, err := client.Logical().Write("auth/kubernetes/login", map[string]interface{}{
+	_, err := client.Logical().Write("auth/kubernetes/login", map[string]any{
 		"role": "test-role",
 		"jwt":  createToken(t, "vault", nil),
 	})
@@ -162,14 +162,14 @@ func TestSuccessWithTokenReviewerJwt(t *testing.T) {
 }
 
 func TestSuccessWithNamespaceLabels(t *testing.T) {
-	roleConfigOverride := map[string]interface{}{
+	roleConfigOverride := map[string]any{
 		"bound_service_account_names":              "vault",
 		"bound_service_account_namespace_selector": matchLabelsKeyValue,
 	}
 	client, cleanup := setupKubernetesAuth(t, "vault", nil, roleConfigOverride)
 	defer cleanup()
 
-	_, err := client.Logical().Write("auth/kubernetes/login", map[string]interface{}{
+	_, err := client.Logical().Write("auth/kubernetes/login", map[string]any{
 		"role": "test-role",
 		"jwt":  createToken(t, "vault", nil),
 	})
@@ -179,14 +179,14 @@ func TestSuccessWithNamespaceLabels(t *testing.T) {
 }
 
 func TestFailWithMismatchNamespaceLabels(t *testing.T) {
-	roleConfigOverride := map[string]interface{}{
+	roleConfigOverride := map[string]any{
 		"bound_service_account_names":              "vault",
 		"bound_service_account_namespace_selector": mismatchLabelsKeyValue,
 	}
 	client, cleanup := setupKubernetesAuth(t, "vault", nil, roleConfigOverride)
 	defer cleanup()
 
-	_, err := client.Logical().Write("auth/kubernetes/login", map[string]interface{}{
+	_, err := client.Logical().Write("auth/kubernetes/login", map[string]any{
 		"role": "test-role",
 		"jwt":  createToken(t, "vault", nil),
 	})
@@ -200,13 +200,13 @@ func TestFailWithMismatchNamespaceLabels(t *testing.T) {
 }
 
 func TestFailWithBadTokenReviewerJwt(t *testing.T) {
-	client, cleanup := setupKubernetesAuth(t, "vault", map[string]interface{}{
+	client, cleanup := setupKubernetesAuth(t, "vault", map[string]any{
 		"kubernetes_host":    "https://kubernetes.default.svc.cluster.local",
 		"token_reviewer_jwt": badTokenReviewerJwt,
 	}, nil)
 	defer cleanup()
 
-	_, err := client.Logical().Write("auth/kubernetes/login", map[string]interface{}{
+	_, err := client.Logical().Write("auth/kubernetes/login", map[string]any{
 		"role": "test-role",
 		"jwt":  createToken(t, "vault", nil),
 	})
@@ -223,7 +223,7 @@ func TestUnauthorizedServiceAccountErrorCode(t *testing.T) {
 	client, cleanup := setupKubernetesAuth(t, "badServiceAccount", nil, nil)
 	defer cleanup()
 
-	_, err := client.Logical().Write("auth/kubernetes/login", map[string]interface{}{
+	_, err := client.Logical().Write("auth/kubernetes/login", map[string]any{
 		"role": "test-role",
 		"jwt":  createToken(t, "vault", nil),
 	})
@@ -256,7 +256,7 @@ func TestAudienceValidation(t *testing.T) {
 		"config: unset, JWT: a":         {"", jwtWithAudA, true},
 	} {
 		t.Run(name, func(t *testing.T) {
-			roleConfig := map[string]interface{}{
+			roleConfig := map[string]any{
 				"bound_service_account_names":      "vault",
 				"bound_service_account_namespaces": "test",
 			}
@@ -267,7 +267,7 @@ func TestAudienceValidation(t *testing.T) {
 			defer cleanup()
 
 			login := func(jwt string) error {
-				_, err := client.Logical().Write("auth/kubernetes/login", map[string]interface{}{
+				_, err := client.Logical().Write("auth/kubernetes/login", map[string]any{
 					"role": "test-role",
 					"jwt":  jwt,
 				})

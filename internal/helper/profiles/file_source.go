@@ -9,7 +9,7 @@ import (
 )
 
 // FileSourceBuilder allows reading files from disk.
-func FileSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
+func FileSourceBuilder(engine *ProfileEngine, field map[string]any) Source {
 	return &FileSource{
 		field: field,
 	}
@@ -24,7 +24,7 @@ func WithFileSource() func(*ProfileEngine) {
 }
 
 type FileSource struct {
-	field map[string]interface{}
+	field map[string]any
 	file  *os.File
 	value []byte
 }
@@ -51,7 +51,7 @@ func (s *FileSource) Validate() ([]string, []string, error) {
 	return nil, nil, nil
 }
 
-func (s *FileSource) Evaluate(ctx context.Context, _ *EvaluationHistory) (interface{}, error) {
+func (s *FileSource) Evaluate(ctx context.Context, _ *EvaluationHistory) (any, error) {
 	if s.value != nil {
 		return s.value, nil
 	}

@@ -40,7 +40,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 		defer umount()
 
 		// create default config
-		_, err = client.Logical().Write(mountPath+"/config", map[string]interface{}{
+		_, err = client.Logical().Write(mountPath+"/config", map[string]any{
 			"service_account_jwt": os.Getenv("BROKEN_JWT"),
 		})
 		require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 		extraAnnotations := map[string]string{
 			"tested": "today",
 		}
-		roleConfig := map[string]interface{}{
+		roleConfig := map[string]any{
 			"allowed_kubernetes_namespaces": []string{"test"},
 			"extra_annotations":             extraAnnotations,
 			"extra_labels":                  extraLabels,
@@ -68,8 +68,8 @@ func TestCreds_wal_rollback(t *testing.T) {
 			"token_max_ttl":                 "24h",
 			"token_default_audiences":       []string{"foobar"},
 		}
-		expectedRoleResponse := map[string]interface{}{
-			"allowed_kubernetes_namespaces":         []interface{}{"test"},
+		expectedRoleResponse := map[string]any{
+			"allowed_kubernetes_namespaces":         []any{"test"},
 			"allowed_kubernetes_namespace_selector": "",
 			"extra_annotations":                     asMapInterface(extraAnnotations),
 			"extra_labels":                          asMapInterface(extraLabels),
@@ -81,7 +81,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 			"service_account_name":                  "",
 			"token_max_ttl":                         oneDay,
 			"token_default_ttl":                     oneHour,
-			"token_default_audiences":               []interface{}{"foobar"},
+			"token_default_audiences":               []any{"foobar"},
 		}
 
 		_, err := client.Logical().Write(mountPath+"/roles/walrole", roleConfig)
@@ -94,7 +94,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 		// This will fail because it can't create a ServiceAccount. Wait for the
 		// WALRollbackMinAge, then verify that the objects aren't around by
 		// using the additional metadata.labels that were passed in.
-		credsResponse, err := client.Logical().Write(mountPath+"/creds/walrole", map[string]interface{}{
+		credsResponse, err := client.Logical().Write(mountPath+"/creds/walrole", map[string]any{
 			"kubernetes_namespace": "test",
 			"cluster_role_binding": false,
 			"ttl":                  "2h",
@@ -118,7 +118,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 		defer umount()
 
 		// create default config
-		_, err = client.Logical().Write(mountPath+"/config", map[string]interface{}{
+		_, err = client.Logical().Write(mountPath+"/config", map[string]any{
 			"service_account_jwt": os.Getenv("BROKEN_JWT"),
 		})
 		require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 			"tested":  "tomorrow",
 			"checked": "again",
 		}
-		roleConfig := map[string]interface{}{
+		roleConfig := map[string]any{
 			"allowed_kubernetes_namespace_selector": `{"matchExpressions": [{"key": "target", "operator": "In", "values": ["integration-test"]}, {"key": "nonexistantlabel", "operator": "DoesNotExist", "values": []}]}`,
 			"extra_annotations":                     extraAnnotations,
 			"extra_labels":                          extraLabels,
@@ -142,8 +142,8 @@ func TestCreds_wal_rollback(t *testing.T) {
 			"token_max_ttl":                         "24h",
 			"token_default_audiences":               []string{"foobar"},
 		}
-		expectedRoleResponse := map[string]interface{}{
-			"allowed_kubernetes_namespaces":         interface{}(nil),
+		expectedRoleResponse := map[string]any{
+			"allowed_kubernetes_namespaces":         any(nil),
 			"allowed_kubernetes_namespace_selector": `{"matchExpressions": [{"key": "target", "operator": "In", "values": ["integration-test"]}, {"key": "nonexistantlabel", "operator": "DoesNotExist", "values": []}]}`,
 			"extra_annotations":                     asMapInterface(extraAnnotations),
 			"extra_labels":                          asMapInterface(extraLabels),
@@ -155,7 +155,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 			"service_account_name":                  "",
 			"token_max_ttl":                         oneDay,
 			"token_default_ttl":                     oneHour,
-			"token_default_audiences":               []interface{}{"foobar"},
+			"token_default_audiences":               []any{"foobar"},
 		}
 
 		_, err := client.Logical().Write(mountPath+"/roles/walrolebinding", roleConfig)
@@ -168,7 +168,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 		// This will fail because it can't create a ServiceAccount. Wait for the
 		// WALRollbackMinAge, then verify that the objects aren't around by
 		// using the additional metadata.labels that were passed in.
-		credsResponse, err := client.Logical().Write(mountPath+"/creds/walrolebinding", map[string]interface{}{
+		credsResponse, err := client.Logical().Write(mountPath+"/creds/walrolebinding", map[string]any{
 			"kubernetes_namespace": "test",
 			"cluster_role_binding": true,
 			"ttl":                  "2h",
@@ -187,7 +187,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 	})
 }
 
-func checkObjects(t *testing.T, roleConfig map[string]interface{}, isClusterBinding bool, shouldExist bool, maxWaitTime time.Duration) {
+func checkObjects(t *testing.T, roleConfig map[string]any, isClusterBinding bool, shouldExist bool, maxWaitTime time.Duration) {
 	t.Helper()
 
 	k8sClient := newK8sClient(t, os.Getenv("SUPER_JWT"))

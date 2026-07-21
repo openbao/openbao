@@ -236,7 +236,7 @@ func setupClusterAndAgentCommon(ctx context.Context, t *testing.T, coreConfig *v
 		t.Fatal(err)
 	}
 
-	_, err = activeClient.Logical().Write("auth/userpass/users/foo", map[string]interface{}{
+	_, err = activeClient.Logical().Write("auth/userpass/users/foo", map[string]any{
 		"password": "bar",
 		"policies": []string{"admin"},
 	})
@@ -316,7 +316,7 @@ func setupClusterAndAgentCommon(ctx context.Context, t *testing.T, coreConfig *v
 
 	// Login via userpass method to derive a managed token. Set that token as the
 	// testClient's token
-	resp, err := testClient.Logical().Write("auth/userpass/login/foo", map[string]interface{}{
+	resp, err := testClient.Logical().Write("auth/userpass/login/foo", map[string]any{
 		"password": "bar",
 	})
 	if err != nil {

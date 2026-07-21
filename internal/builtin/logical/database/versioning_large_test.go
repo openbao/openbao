@@ -44,7 +44,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 	type testCase struct {
 		dbName                string
 		dbType                string
-		configData            map[string]interface{}
+		configData            map[string]any
 		assertDynamicUsername stringAssertion
 		assertDynamicPassword stringAssertion
 	}
@@ -53,7 +53,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 		"v4": {
 			dbName: "mockv4",
 			dbType: "mock-v4-database-plugin",
-			configData: map[string]interface{}{
+			configData: map[string]any{
 				"name":              "mockv4",
 				"plugin_name":       "mock-v4-database-plugin",
 				"connection_url":    "sample_connection_url",
@@ -68,7 +68,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 		"v5": {
 			dbName: "mockv5",
 			dbType: "mock-v5-database-plugin",
-			configData: map[string]interface{}{
+			configData: map[string]any{
 				"connection_url":    "sample_connection_url",
 				"plugin_name":       "mock-v5-database-plugin",
 				"verify_connection": true,
@@ -137,7 +137,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("roles/%s", dynamicRoleName),
 				Storage:   config.StorageView,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"db_name":     test.dbName,
 					"default_ttl": "5s",
 					"max_ttl":     "1m",
@@ -183,7 +183,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 				Operation: logical.CreateOperation,
 				Path:      fmt.Sprintf("static-roles/%s", staticRoleName),
 				Storage:   config.StorageView,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"db_name":         test.dbName,
 					"username":        "static-username",
 					"rotation_period": "5",
@@ -247,7 +247,7 @@ func TestPlugin_VersionSelection(t *testing.T) {
 				Operation: logical.CreateOperation,
 				Path:      "config/db",
 				Storage:   config.StorageView,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"connection_url":    "sample_connection_url",
 					"plugin_name":       "mock-v5-database-plugin",
 					"plugin_version":    selectVersion,
@@ -350,8 +350,8 @@ func TestPlugin_VersionMustBeExplicitlyUpgraded(t *testing.T) {
 	}
 	defer b.Cleanup(t.Context())
 
-	configData := func(extraData ...string) map[string]interface{} {
-		data := map[string]interface{}{
+	configData := func(extraData ...string) map[string]any {
+		data := map[string]any{
 			"connection_url":    "sample_connection_url",
 			"plugin_name":       "mysql-database-plugin",
 			"verify_connection": false,

@@ -169,7 +169,7 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 
 	// Set required fields.
 	if len(auth.InternalData) == 0 {
-		auth.InternalData = make(map[string]interface{}, 2)
+		auth.InternalData = make(map[string]any, 2)
 	}
 	auth.InternalData["role"] = celRoleEntry.Name
 	auth.InternalData["role_type"] = "cel"
@@ -189,7 +189,7 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, operation logical.Op
 
 	// Initialize the evaluation context for CEL expressions with the claim
 	// data.
-	evaluationData := map[string]interface{}{
+	evaluationData := map[string]any{
 		"claims":    allClaims,
 		"now":       time.Now(),
 		"operation": string(operation),

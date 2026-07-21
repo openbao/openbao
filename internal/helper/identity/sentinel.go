@@ -5,7 +5,7 @@ package identity
 
 import "time"
 
-func (e *Entity) SentinelGet(key string) (interface{}, error) {
+func (e *Entity) SentinelGet(key string) (any, error) {
 	if e == nil {
 		return nil, nil
 	}
@@ -45,7 +45,7 @@ func (e *Entity) SentinelKeys() []string {
 	}
 }
 
-func (p *Alias) SentinelGet(key string) (interface{}, error) {
+func (p *Alias) SentinelGet(key string) (any, error) {
 	if p == nil {
 		return nil, nil
 	}
@@ -88,7 +88,7 @@ func (a *Alias) SentinelKeys() []string {
 	}
 }
 
-func (g *Group) SentinelGet(key string) (interface{}, error) {
+func (g *Group) SentinelGet(key string) (any, error) {
 	if g == nil {
 		return nil, nil
 	}

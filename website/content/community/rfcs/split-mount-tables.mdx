@@ -180,7 +180,7 @@ When attempting to use all of these mounts, I seem to be limited by storage spee
         wg.Add(1)
         go func(us int) {
             for i := us * (count / procs); i < (us+1)*(count/procs); i++ {
-                if _, err := client.Logical().Write(fmt.Sprintf("%v-%v/config/ca", mountType, i), map[string]interface{}{
+                if _, err := client.Logical().Write(fmt.Sprintf("%v-%v/config/ca", mountType, i), map[string]any{
                     "generate_signing_key": true,
                     "key_type":             "ssh-ed25519",
                 }); err != nil {

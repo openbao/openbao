@@ -114,7 +114,7 @@ func testClusterRoleBindingToken(t *testing.T, credsResponse *api.Secret) {
 	assert.False(t, canListDeployments)
 }
 
-func verifyRole(t *testing.T, roleConfig map[string]interface{}, credsResponse *api.Secret) {
+func verifyRole(t *testing.T, roleConfig map[string]any, credsResponse *api.Secret) {
 	t.Helper()
 
 	// All the created kubernetes objects have the same name, so the
@@ -123,8 +123,8 @@ func verifyRole(t *testing.T, roleConfig map[string]interface{}, credsResponse *
 	roleName := credsResponse.Data["service_account_name"].(string)
 	roleType := strings.ToLower(roleConfig["kubernetes_role_type"].(string))
 
-	expectedLabels := makeExpectedLabels(t, roleConfig["extra_labels"].(map[string]interface{}))
-	expectedAnnotations := asMapString(roleConfig["extra_annotations"].(map[string]interface{}))
+	expectedLabels := makeExpectedLabels(t, roleConfig["extra_labels"].(map[string]any))
+	expectedAnnotations := asMapString(roleConfig["extra_annotations"].(map[string]any))
 	expectedRules := makeRules(t, roleConfig["generated_role_rules"].(string))
 
 	var returnedLabels map[string]string
@@ -151,7 +151,7 @@ func verifyRole(t *testing.T, roleConfig map[string]interface{}, credsResponse *
 	assert.Equal(t, expectedRules, returnedRules)
 }
 
-func verifyBinding(t *testing.T, roleConfig map[string]interface{}, credsResponse *api.Secret, isClusterBinding bool) {
+func verifyBinding(t *testing.T, roleConfig map[string]any, credsResponse *api.Secret, isClusterBinding bool) {
 	t.Helper()
 
 	// All the created kubernetes objects have the same name, so the
@@ -159,8 +159,8 @@ func verifyBinding(t *testing.T, roleConfig map[string]interface{}, credsRespons
 	// or ClusterRole
 	objName := credsResponse.Data["service_account_name"].(string)
 
-	expectedLabels := makeExpectedLabels(t, roleConfig["extra_labels"].(map[string]interface{}))
-	expectedAnnotations := asMapString(roleConfig["extra_annotations"].(map[string]interface{}))
+	expectedLabels := makeExpectedLabels(t, roleConfig["extra_labels"].(map[string]any))
+	expectedAnnotations := asMapString(roleConfig["extra_annotations"].(map[string]any))
 	expectedSubjects := []rbacv1.Subject{
 		{
 			Kind:      "ServiceAccount",
@@ -192,7 +192,7 @@ func verifyBinding(t *testing.T, roleConfig map[string]interface{}, credsRespons
 	assert.Equal(t, expectedSubjects, returnedSubjects)
 }
 
-func verifyServiceAccount(t *testing.T, roleConfig map[string]interface{}, credsResponse *api.Secret) {
+func verifyServiceAccount(t *testing.T, roleConfig map[string]any, credsResponse *api.Secret) {
 	t.Helper()
 
 	// All the created kubernetes objects have the same name, so the
@@ -200,8 +200,8 @@ func verifyServiceAccount(t *testing.T, roleConfig map[string]interface{}, creds
 	// or ClusterRole
 	objName := credsResponse.Data["service_account_name"].(string)
 
-	expectedLabels := makeExpectedLabels(t, roleConfig["extra_labels"].(map[string]interface{}))
-	expectedAnnotations := asMapString(roleConfig["extra_annotations"].(map[string]interface{}))
+	expectedLabels := makeExpectedLabels(t, roleConfig["extra_labels"].(map[string]any))
+	expectedAnnotations := asMapString(roleConfig["extra_annotations"].(map[string]any))
 
 	k8sClient := newK8sClient(t, os.Getenv("SUPER_JWT"))
 	acct, err := k8sClient.CoreV1().ServiceAccounts("test").Get(context.Background(), objName, metav1.GetOptions{})
@@ -243,7 +243,7 @@ func tryListDeployments(t *testing.T, namespace, token string) (bool, error) {
 	return true, nil
 }
 
-func testRoleType(t *testing.T, client *api.Client, mountPath string, roleConfig, expectedRoleResponse map[string]interface{}) {
+func testRoleType(t *testing.T, client *api.Client, mountPath string, roleConfig, expectedRoleResponse map[string]any) {
 	t.Helper()
 
 	_, err := client.Logical().Write(mountPath+"/roles/testrole", roleConfig)
@@ -253,7 +253,7 @@ func testRoleType(t *testing.T, client *api.Client, mountPath string, roleConfig
 	assert.NoError(t, err)
 	assert.Equal(t, expectedRoleResponse, roleResult.Data)
 
-	result1, err := client.Logical().Write(mountPath+"/creds/testrole", map[string]interface{}{
+	result1, err := client.Logical().Write(mountPath+"/creds/testrole", map[string]any{
 		"kubernetes_namespace": "test",
 		"cluster_role_binding": false,
 		"ttl":                  "2h",
@@ -294,7 +294,7 @@ func testRoleType(t *testing.T, client *api.Client, mountPath string, roleConfig
 
 	// Test ClusterRoleBinding
 	// This should fail since k8s doesn't allow a ClusterRoleBinding with a Role
-	result2, err := client.Logical().Write(mountPath+"/creds/testrole", map[string]interface{}{
+	result2, err := client.Logical().Write(mountPath+"/creds/testrole", map[string]any{
 		"kubernetes_namespace": "test",
 		"cluster_role_binding": true,
 		"ttl":                  "2h",
@@ -311,7 +311,7 @@ func testRoleType(t *testing.T, client *api.Client, mountPath string, roleConfig
 	assert.Nil(t, result)
 }
 
-func testClusterRoleType(t *testing.T, client *api.Client, mountPath string, roleConfig, expectedRoleResponse map[string]interface{}) {
+func testClusterRoleType(t *testing.T, client *api.Client, mountPath string, roleConfig, expectedRoleResponse map[string]any) {
 	t.Helper()
 
 	_, err := client.Logical().Write(mountPath+"/roles/clusterrole", roleConfig)
@@ -322,7 +322,7 @@ func testClusterRoleType(t *testing.T, client *api.Client, mountPath string, rol
 	assert.Equal(t, expectedRoleResponse, roleResult.Data)
 
 	// Generate creds with a RoleBinding
-	result1, err := client.Logical().Write(mountPath+"/creds/clusterrole", map[string]interface{}{
+	result1, err := client.Logical().Write(mountPath+"/creds/clusterrole", map[string]any{
 		"kubernetes_namespace": "test",
 		"cluster_role_binding": false,
 		"ttl":                  "2h",
@@ -341,7 +341,7 @@ func testClusterRoleType(t *testing.T, client *api.Client, mountPath string, rol
 	testRoleBindingToken(t, result1)
 
 	// Generate creds with a ClusterRoleBinding
-	result2, err := client.Logical().Write(mountPath+"/creds/clusterrole", map[string]interface{}{
+	result2, err := client.Logical().Write(mountPath+"/creds/clusterrole", map[string]any{
 		"kubernetes_namespace": "test",
 		"cluster_role_binding": true,
 		"ttl":                  "2h",
@@ -385,7 +385,7 @@ func testClusterRoleType(t *testing.T, client *api.Client, mountPath string, rol
 func testK8sTokenTTL(t *testing.T, expectedSec int, token string) {
 	parsed, err := josejwt.ParseSigned(token, consts.AllowedJWTSignatureAlgorithmsK8s)
 	require.NoError(t, err)
-	claims := map[string]interface{}{}
+	claims := map[string]any{}
 	err = parsed.UnsafeClaimsWithoutVerification(&claims)
 	require.NoError(t, err)
 	iat := claims["iat"].(float64)
@@ -393,13 +393,13 @@ func testK8sTokenTTL(t *testing.T, expectedSec int, token string) {
 	assert.Equal(t, expectedSec, int(exp-iat))
 }
 
-func testK8sTokenAudiences(t *testing.T, expectedAudiences []interface{}, token string) {
+func testK8sTokenAudiences(t *testing.T, expectedAudiences []any, token string) {
 	parsed, err := josejwt.ParseSigned(token, consts.AllowedJWTSignatureAlgorithmsK8s)
 	require.NoError(t, err)
-	claims := map[string]interface{}{}
+	claims := map[string]any{}
 	err = parsed.UnsafeClaimsWithoutVerification(&claims)
 	require.NoError(t, err)
-	aud := claims["aud"].([]interface{})
+	aud := claims["aud"].([]any)
 	assert.ElementsMatch(t, expectedAudiences, aud)
 }
 
@@ -423,7 +423,7 @@ func makeRules(t *testing.T, rules string) []rbacv1.PolicyRule {
 	return policyRules.Rules
 }
 
-func makeExpectedLabels(t *testing.T, extraLabels map[string]interface{}) map[string]string {
+func makeExpectedLabels(t *testing.T, extraLabels map[string]any) map[string]string {
 	t.Helper()
 
 	var expectedLabels map[string]string
@@ -435,8 +435,8 @@ func makeExpectedLabels(t *testing.T, extraLabels map[string]interface{}) map[st
 	return expectedLabels
 }
 
-func asMapInterface(m map[string]string) map[string]interface{} {
-	result := map[string]interface{}{}
+func asMapInterface(m map[string]string) map[string]any {
+	result := map[string]any{}
 	for k, v := range m {
 		result[k] = v
 	}
@@ -444,7 +444,7 @@ func asMapInterface(m map[string]string) map[string]interface{} {
 	return result
 }
 
-func asMapString(m map[string]interface{}) map[string]string {
+func asMapString(m map[string]any) map[string]string {
 	result := map[string]string{}
 	for k, v := range m {
 		result[k] = v.(string)

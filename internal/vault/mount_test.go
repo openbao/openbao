@@ -544,7 +544,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 				TTL: time.Hour,
 			},
 		},
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"foo": "bar",
 		},
 	}
@@ -682,7 +682,7 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 				TTL: time.Hour,
 			},
 		},
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"foo": "bar",
 		},
 	}
@@ -1077,8 +1077,8 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	}
 
 	// Decode actual and expected and compare.
-	var expectedDecoded map[string]interface{}
-	var actualDecoded map[string]interface{}
+	var expectedDecoded map[string]any
+	var actualDecoded map[string]any
 
 	if err := json.Unmarshal(goodJson, &expectedDecoded); err != nil {
 		t.Fatal(err)

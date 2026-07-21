@@ -31,7 +31,7 @@ func WithInputSource(config *InputConfig, request *logical.Request, data *framew
 		p.request = request
 		p.data = data.CloneSchema()
 
-		p.sourceBuilders[inputSourceName] = func(engine *ProfileEngine, field map[string]interface{}) Source {
+		p.sourceBuilders[inputSourceName] = func(engine *ProfileEngine, field map[string]any) Source {
 			return &InputSource{
 				config:  config,
 				request: request,
@@ -52,7 +52,7 @@ type InputSource struct {
 	config  *InputConfig
 	request *logical.Request
 	data    *framework.FieldData
-	field   map[string]interface{}
+	field   map[string]any
 
 	fieldName string
 }
@@ -79,7 +79,7 @@ func (s *InputSource) Validate() ([]string, []string, error) {
 	return nil, nil, nil
 }
 
-func (s *InputSource) Evaluate(_ context.Context, eh *EvaluationHistory) (interface{}, error) {
+func (s *InputSource) Evaluate(_ context.Context, eh *EvaluationHistory) (any, error) {
 	return s.data.Get(s.fieldName), nil
 }
 

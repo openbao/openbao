@@ -3,7 +3,7 @@
 
 package mfa
 
-func (c *Config) SentinelGet(key string) (interface{}, error) {
+func (c *Config) SentinelGet(key string) (any, error) {
 	if c == nil {
 		return nil, nil
 	}

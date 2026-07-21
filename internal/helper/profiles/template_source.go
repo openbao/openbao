@@ -14,7 +14,7 @@ import (
 // Fields:
 //
 //   - template (string): template to evaluate
-//   - data (map[string]interface{}): additional context for the templating
+//   - data (map[string]any): additional context for the templating
 //     engine.
 //
 // When allowed as sources, this already includes:
@@ -24,7 +24,7 @@ import (
 //   - input
 //
 // but additional context may be added manually.
-func TemplateSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
+func TemplateSourceBuilder(engine *ProfileEngine, field map[string]any) Source {
 	return &TemplateSource{
 		engine: engine,
 		field:  field,
@@ -41,9 +41,9 @@ func WithTemplateSource() func(*ProfileEngine) {
 
 type TemplateSource struct {
 	engine *ProfileEngine
-	field  map[string]interface{}
+	field  map[string]any
 
-	data      map[string]interface{}
+	data      map[string]any
 	template  string
 	templator template.StringTemplate
 }
@@ -65,12 +65,12 @@ func (s *TemplateSource) Validate() ([]string, []string, error) {
 
 	rawData, present := s.field["data"]
 	if !present {
-		rawData = map[string]interface{}{}
+		rawData = map[string]any{}
 	}
 
-	data, ok := rawData.(map[string]interface{})
+	data, ok := rawData.(map[string]any)
 	if !ok {
-		return nil, nil, fmt.Errorf("field 'data' is of wrong type: expected 'map[string]interface{}' got '%T'", rawData)
+		return nil, nil, fmt.Errorf("field 'data' is of wrong type: expected 'map[string]any' got '%T'", rawData)
 	}
 
 	s.data = data
@@ -85,7 +85,7 @@ func (s *TemplateSource) Validate() ([]string, []string, error) {
 	return nil, nil, nil
 }
 
-func (s *TemplateSource) Evaluate(_ context.Context, eh *EvaluationHistory) (interface{}, error) {
+func (s *TemplateSource) Evaluate(_ context.Context, eh *EvaluationHistory) (any, error) {
 	// Inject request data if present as a source.
 	if HasRequestSource(s.engine) {
 		s.data["requests"] = eh.Requests

@@ -49,7 +49,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 	testCases := []struct {
 		methodName    string
 		invalidType   string
-		configData    map[string]interface{}
+		configData    map[string]any
 		keyToUpdate   string
 		valueToUpdate string
 		keyToCheck    string
@@ -58,7 +58,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 		{
 			"totp",
 			"duo",
-			map[string]interface{}{
+			map[string]any{
 				"issuer":                  "yCorp",
 				"period":                  10,
 				"algorithm":               "SHA1",
@@ -76,7 +76,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 		{
 			"duo",
 			"totp",
-			map[string]interface{}{
+			map[string]any{
 				"mount_accessor":  mountAccessor,
 				"secret_key":      "lol-secret",
 				"integration_key": "integration-key",
@@ -90,7 +90,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 		{
 			"okta",
 			"pingid",
-			map[string]interface{}{
+			map[string]any{
 				"mount_accessor": mountAccessor,
 				"base_url":       "example.com",
 				"org_name":       "my-org",
@@ -104,7 +104,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 		{
 			"pingid",
 			"okta",
-			map[string]interface{}{
+			map[string]any{
 				"mount_accessor":       mountAccessor,
 				"settings_file_base64": "I0F1dG8tR2VuZXJhdGVkIGZyb20gUGluZ09uZSwgZG93bmxvYWRlZCBieSBpZD1bU1NPXSBlbWFpbD1baGFtaWRAaGFzaGljb3JwLmNvbV0KI1dlZCBEZWMgMTUgMTM6MDg6NDQgTVNUIDIwMjEKdXNlX2Jhc2U2NF9rZXk9YlhrdGMyVmpjbVYwTFd0bGVRPT0KdXNlX3NpZ25hdHVyZT10cnVlCnRva2VuPWxvbC10b2tlbgppZHBfdXJsPWh0dHBzOi8vaWRweG55bDNtLnBpbmdpZGVudGl0eS5jb20vcGluZ2lkCm9yZ19hbGlhcz1sb2wtb3JnLWFsaWFzCmFkbWluX3VybD1odHRwczovL2lkcHhueWwzbS5waW5naWRlbnRpdHkuY29tL3BpbmdpZAphdXRoZW50aWNhdG9yX3VybD1odHRwczovL2F1dGhlbnRpY2F0b3IucGluZ29uZS5jb20vcGluZ2lkL3BwbQ==",
 			},
@@ -154,7 +154,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if resp.Data["keys"].([]interface{})[0] != methodId {
+			if resp.Data["keys"].([]any)[0] != methodId {
 				t.Fatalf("expected %q in the list of method ids but it wasn't there", methodId)
 			}
 
@@ -250,18 +250,18 @@ func TestLoginMFAMethodName(t *testing.T) {
 
 	testCases := []struct {
 		methodType string
-		configData map[string]interface{}
+		configData map[string]any
 	}{
 		{
 			"totp",
-			map[string]interface{}{
+			map[string]any{
 				"issuer":      "yCorp",
 				"method_name": "totp-method",
 			},
 		},
 		{
 			"duo",
-			map[string]interface{}{
+			map[string]any{
 				"mount_accessor":  mountAccessor,
 				"secret_key":      "lol-secret",
 				"integration_key": "integration-key",
@@ -271,7 +271,7 @@ func TestLoginMFAMethodName(t *testing.T) {
 		},
 		{
 			"okta",
-			map[string]interface{}{
+			map[string]any{
 				"mount_accessor": mountAccessor,
 				"base_url":       "example.com",
 				"org_name":       "my-org",
@@ -281,7 +281,7 @@ func TestLoginMFAMethodName(t *testing.T) {
 		},
 		{
 			"pingid",
-			map[string]interface{}{
+			map[string]any{
 				"mount_accessor":       mountAccessor,
 				"settings_file_base64": "I0F1dG8tR2VuZXJhdGVkIGZyb20gUGluZ09uZSwgZG93bmxvYWRlZCBieSBpZD1bU1NPXSBlbWFpbD1baGFtaWRAaGFzaGljb3JwLmNvbV0KI1dlZCBEZWMgMTUgMTM6MDg6NDQgTVNUIDIwMjEKdXNlX2Jhc2U2NF9rZXk9YlhrdGMyVmpjbVYwTFd0bGVRPT0KdXNlX3NpZ25hdHVyZT10cnVlCnRva2VuPWxvbC10b2tlbgppZHBfdXJsPWh0dHBzOi8vaWRweG55bDNtLnBpbmdpZGVudGl0eS5jb20vcGluZ2lkCm9yZ19hbGlhcz1sb2wtb3JnLWFsaWFzCmFkbWluX3VybD1odHRwczovL2lkcHhueWwzbS5waW5naWRlbnRpdHkuY29tL3BpbmdpZAphdXRoZW50aWNhdG9yX3VybD1odHRwczovL2F1dGhlbnRpY2F0b3IucGluZ29uZS5jb20vcGluZ2lkL3BwbQ==",
 				"method_name":          "pingid-method",
@@ -371,11 +371,11 @@ func TestLoginMFA_ListAllMFAConfigsGlobally(t *testing.T) {
 
 	mfaConfigs := []struct {
 		methodType string
-		configData map[string]interface{}
+		configData map[string]any
 	}{
 		{
 			"totp",
-			map[string]interface{}{
+			map[string]any{
 				"issuer":                  "yCorp",
 				"period":                  10,
 				"algorithm":               "SHA1",
@@ -388,7 +388,7 @@ func TestLoginMFA_ListAllMFAConfigsGlobally(t *testing.T) {
 		},
 		{
 			"duo",
-			map[string]interface{}{
+			map[string]any{
 				"mount_accessor":  mountAccessor,
 				"secret_key":      "lol-secret",
 				"integration_key": "integration-key",
@@ -397,7 +397,7 @@ func TestLoginMFA_ListAllMFAConfigsGlobally(t *testing.T) {
 		},
 		{
 			"okta",
-			map[string]interface{}{
+			map[string]any{
 				"mount_accessor": mountAccessor,
 				"base_url":       "example.com",
 				"org_name":       "my-org",
@@ -406,14 +406,14 @@ func TestLoginMFA_ListAllMFAConfigsGlobally(t *testing.T) {
 		},
 		{
 			"pingid",
-			map[string]interface{}{
+			map[string]any{
 				"mount_accessor":       mountAccessor,
 				"settings_file_base64": "I0F1dG8tR2VuZXJhdGVkIGZyb20gUGluZ09uZSwgZG93bmxvYWRlZCBieSBpZD1bU1NPXSBlbWFpbD1baGFtaWRAaGFzaGljb3JwLmNvbV0KI1dlZCBEZWMgMTUgMTM6MDg6NDQgTVNUIDIwMjEKdXNlX2Jhc2U2NF9rZXk9YlhrdGMyVmpjbVYwTFd0bGVRPT0KdXNlX3NpZ25hdHVyZT10cnVlCnRva2VuPWxvbC10b2tlbgppZHBfdXJsPWh0dHBzOi8vaWRweG55bDNtLnBpbmdpZGVudGl0eS5jb20vcGluZ2lkCm9yZ19hbGlhcz1sb2wtb3JnLWFsaWFzCmFkbWluX3VybD1odHRwczovL2lkcHhueWwzbS5waW5naWRlbnRpdHkuY29tL3BpbmdpZAphdXRoZW50aWNhdG9yX3VybD1odHRwczovL2F1dGhlbnRpY2F0b3IucGluZ29uZS5jb20vcGluZ2lkL3BwbQ==",
 			},
 		},
 	}
 
-	var methodIDs []interface{}
+	var methodIDs []any
 	for _, method := range mfaConfigs {
 		// create a new method config
 		myPath := fmt.Sprintf("identity/mfa/method/%s", method.methodType)
@@ -434,10 +434,10 @@ func TestLoginMFA_ListAllMFAConfigsGlobally(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(resp.Data["keys"].([]interface{})) != len(methodIDs) {
+	if len(resp.Data["keys"].([]any)) != len(methodIDs) {
 		t.Fatal("global list request did not return all MFA method IDs")
 	}
-	if len(resp.Data["key_info"].(map[string]interface{})) != len(methodIDs) {
+	if len(resp.Data["key_info"].(map[string]any)) != len(methodIDs) {
 		t.Fatal("global list request did not return all MFA method configurations")
 	}
 }
@@ -462,7 +462,7 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 	configIDs := make([]string, 0)
 
 	for i := range 2 {
-		resp, err := client.Logical().Write("identity/mfa/method/totp", map[string]interface{}{
+		resp, err := client.Logical().Write("identity/mfa/method/totp", map[string]any{
 			"issuer":    fmt.Sprintf("fooCorp%d", i),
 			"period":    10,
 			"algorithm": "SHA1",
@@ -497,20 +497,20 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 	}
 
 	// create a few entities
-	resp, err := client.Logical().Write("identity/entity", map[string]interface{}{"name": "bob"})
+	resp, err := client.Logical().Write("identity/entity", map[string]any{"name": "bob"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	bobId := resp.Data["id"].(string)
-	resp, err = client.Logical().Write("identity/entity", map[string]interface{}{"name": "alice"})
+	resp, err = client.Logical().Write("identity/entity", map[string]any{"name": "alice"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	aliceId := resp.Data["id"].(string)
 
 	// create a few groups
-	resp, err = client.Logical().Write("identity/group", map[string]interface{}{
-		"metadata":          map[string]interface{}{"rad": true},
+	resp, err = client.Logical().Write("identity/group", map[string]any{
+		"metadata":          map[string]any{"rad": true},
 		"member_entity_ids": []string{aliceId},
 	})
 	if err != nil {
@@ -518,8 +518,8 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 	}
 	radGroupId := resp.Data["id"].(string)
 
-	resp, err = client.Logical().Write("identity/group", map[string]interface{}{
-		"metadata":          map[string]interface{}{"sad": true},
+	resp, err = client.Logical().Write("identity/group", map[string]any{
+		"metadata":          map[string]any{"sad": true},
 		"member_entity_ids": []string{bobId},
 	})
 	if err != nil {
@@ -528,7 +528,7 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 	sadGroupId := resp.Data["id"].(string)
 
 	myPath := "identity/mfa/login-enforcement/foo"
-	data := map[string]interface{}{
+	data := map[string]any{
 		"mfa_method_ids":        []string{configIDs[0], configIDs[1]},
 		"auth_method_accessors": []string{mountAccessor},
 	}
@@ -545,11 +545,11 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	equal := strutil.EquivalentSlices(data["mfa_method_ids"].([]string), stringSliceFromInterfaceSlice(resp.Data["mfa_method_ids"].([]interface{})))
+	equal := strutil.EquivalentSlices(data["mfa_method_ids"].([]string), stringSliceFromInterfaceSlice(resp.Data["mfa_method_ids"].([]any)))
 	if !equal {
 		t.Fatal("expected input mfa method ids to equal output mfa method ids")
 	}
-	equal = strutil.EquivalentSlices(data["auth_method_accessors"].([]string), stringSliceFromInterfaceSlice(resp.Data["auth_method_accessors"].([]interface{})))
+	equal = strutil.EquivalentSlices(data["auth_method_accessors"].([]string), stringSliceFromInterfaceSlice(resp.Data["auth_method_accessors"].([]any)))
 	if !equal {
 		t.Fatal("expected input auth method accessors to equal output auth method accessors")
 	}
@@ -559,7 +559,7 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.Data["keys"].([]interface{})[0] != "foo" {
+	if resp.Data["keys"].([]any)[0] != "foo" {
 		t.Fatal("expected foo in the list of enforcement names but it wasn't there")
 	}
 
@@ -577,11 +577,11 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	equal = strutil.EquivalentSlices(data["identity_group_ids"].([]string), stringSliceFromInterfaceSlice(resp.Data["identity_group_ids"].([]interface{})))
+	equal = strutil.EquivalentSlices(data["identity_group_ids"].([]string), stringSliceFromInterfaceSlice(resp.Data["identity_group_ids"].([]any)))
 	if !equal {
 		t.Fatal("expected input identity group ids to equal output identity group ids")
 	}
-	equal = strutil.EquivalentSlices(data["identity_entity_ids"].([]string), stringSliceFromInterfaceSlice(resp.Data["identity_entity_ids"].([]interface{})))
+	equal = strutil.EquivalentSlices(data["identity_entity_ids"].([]string), stringSliceFromInterfaceSlice(resp.Data["identity_entity_ids"].([]any)))
 	if !equal {
 		t.Fatal("expected input identity entity ids to equal output identity entity ids")
 	}
@@ -614,7 +614,7 @@ func TestLoginMFA_LoginEnforcement_MethodIdsIsRequired(t *testing.T) {
 	client := cluster.Cores[0].Client
 
 	// create a login enforcement config, which should fail
-	_, err := client.Logical().Write("identity/mfa/login-enforcement/foo", map[string]interface{}{})
+	_, err := client.Logical().Write("identity/mfa/login-enforcement/foo", map[string]any{})
 	if err == nil {
 		t.Fatal("expected an error but didn't get one")
 	}
@@ -640,7 +640,7 @@ func TestLoginMFA_LoginEnforcement_RequiredParameters(t *testing.T) {
 	configIDs := make([]string, 0)
 
 	for i := range 2 {
-		resp, err := client.Logical().Write("identity/mfa/method/totp", map[string]interface{}{
+		resp, err := client.Logical().Write("identity/mfa/method/totp", map[string]any{
 			"issuer":    fmt.Sprintf("fooCorp%d", i),
 			"period":    10,
 			"algorithm": "SHA1",
@@ -657,7 +657,7 @@ func TestLoginMFA_LoginEnforcement_RequiredParameters(t *testing.T) {
 	}
 
 	// create a login enforcement config, which should fail
-	_, err := client.Logical().Write("identity/mfa/login-enforcement/foo", map[string]interface{}{
+	_, err := client.Logical().Write("identity/mfa/login-enforcement/foo", map[string]any{
 		"mfa_method_ids": []string{configIDs[0], configIDs[1]},
 	})
 	if err == nil {
@@ -679,7 +679,7 @@ func TestLoginMFA_UpdateNonExistentConfig(t *testing.T) {
 	vault.TestWaitActive(t, core)
 	client := cluster.Cores[0].Client
 
-	_, err := client.Logical().Write("mfa/method/totp/a51884c6-51f2-bdc3-f4c5-0da64fe4d061", map[string]interface{}{
+	_, err := client.Logical().Write("mfa/method/totp/a51884c6-51f2-bdc3-f4c5-0da64fe4d061", map[string]any{
 		"issuer":    "yCorp",
 		"period":    10,
 		"algorithm": "SHA1",
@@ -696,8 +696,8 @@ func TestLoginMFA_UpdateNonExistentConfig(t *testing.T) {
 	}
 }
 
-// This is for converting []interface{} that you know holds all strings into []string
-func stringSliceFromInterfaceSlice(input []interface{}) []string {
+// This is for converting []any that you know holds all strings into []string.
+func stringSliceFromInterfaceSlice(input []any) []string {
 	result := make([]string, 0, len(input))
 	for _, x := range input {
 		if val, ok := x.(string); ok {

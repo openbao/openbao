@@ -76,7 +76,7 @@ func TestSafeJSONReader(t *testing.T) {
 		require.Equal(t, actualStrings, newStrings)
 
 		// Parsing it to JSON should also work.
-		var out interface{}
+		var out any
 		body, err := buffer.NewSeekableReader(bytes.NewReader([]byte(test)))
 		require.NoError(t, err)
 
@@ -128,15 +128,15 @@ func TestSafeJSONReader(t *testing.T) {
 	}
 }
 
-func makeLongEmptyList(size int) interface{} {
-	var list []interface{}
+func makeLongEmptyList(size int) any {
+	var list []any
 	for range size {
-		list = append(list, map[string]interface{}{})
+		list = append(list, map[string]any{})
 	}
 	return list
 }
 
-func makeLongString(size int) interface{} {
+func makeLongString(size int) any {
 	var x strings.Builder
 	for i := range size {
 		x.WriteString(fmt.Sprintf("%d", i%10))
@@ -144,16 +144,16 @@ func makeLongString(size int) interface{} {
 	return x.String()
 }
 
-func makeLargeMap(size int) interface{} {
-	data := map[string]interface{}{}
+func makeLargeMap(size int) any {
+	data := map[string]any{}
 	for i := range size {
 		data[fmt.Sprintf("%d", i)] = i
 	}
 	return data
 }
 
-func makeRandomMap(size int) interface{} {
-	data := map[string]interface{}{}
+func makeRandomMap(size int) any {
+	data := map[string]any{}
 	for i := range size / 10 {
 		switch i % 3 {
 		case 0:
@@ -183,7 +183,7 @@ func fakeSizeOf(t *testing.T, input []byte) int64 {
 
 func fakeSizeOfInternal(t *testing.T, input []byte) int64 {
 	// See https://github.com/go-json-experiment/jsonbench/blob/a05b1d16f57185a257748aed79c08336adc2caa5/bench_test.go.
-	var obj interface{}
+	var obj any
 
 	// Run GC multiple times to fully clear any sync.Pools.
 	for range 10 {
@@ -217,11 +217,11 @@ func TestSafeJSONReaderValidateSizes(t *testing.T) {
 	// expected versus actual final allocation size.
 	tests := []*struct {
 		name  string
-		input interface{}
+		input any
 	}{
 		{"string", "string"},
 		{"int", 42},
-		{"simple map", map[string]interface{}{"a": "b"}},
+		{"simple map", map[string]any{"a": "b"}},
 		{"simple string list", []string{"a", "b"}},
 		{"simple int list", []int{1, 2, 3, 4}},
 		{"long empty list", makeLongEmptyList(10000)},

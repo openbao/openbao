@@ -265,8 +265,8 @@ Values may be of the following types:
     values are defined below.
   - `eval_type` `(string: <required>)` - the output type after evaluation;
     recognized Go types are `string`, `int`, `float64`, `bool`, `[]string`,
-    `map` (alias for `map[string]interface{}`), and `any` (alias for
-    `interface{}`). If the output of the source evaluation is not convertible
+    `map` (alias for `map[string]any`), and `interface{}` (alias for
+    `any`). If the output of the source evaluation is not convertible
     to the desired type, a runtime error will occur.
 
 Note that fields within a source evaluation statement may not be themselves
@@ -440,7 +440,7 @@ request "sum" {
 
 - `template` `(string: <required>)` - the [`template`](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2/helper/template#StringTemplate)
   expression to evaluate; errs if not present.
-- `data` `(map[string]interface{}: <optional>)`: additional context for the
+- `data` `(map[string]any: <optional>)`: additional context for the
   templating engine.
 
 Additionally, the following reserved values are injected into the

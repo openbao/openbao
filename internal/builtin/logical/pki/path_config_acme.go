@@ -167,7 +167,7 @@ func (b *backend) pathAcmeRead(ctx context.Context, req *logical.Request, _ *fra
 
 func genResponseFromAcmeConfig(config *acmeConfigEntry, warnings []string) *logical.Response {
 	response := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"allowed_roles":            config.AllowedRoles,
 			"allow_role_ext_key_usage": config.AllowRoleExtKeyUsage,
 			"allowed_issuers":          config.AllowedIssuers,

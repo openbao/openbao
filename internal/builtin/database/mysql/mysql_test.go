@@ -68,7 +68,7 @@ func testInitialize(t *testing.T, rootPassword string) {
 	tests := map[string]testCase{
 		"missing connection_url": {
 			initRequest: dbplugin.InitializeRequest{
-				Config:           map[string]interface{}{},
+				Config:           map[string]any{},
 				VerifyConnection: true,
 			},
 			expectedResp:      dbplugin.InitializeResponse{},
@@ -77,13 +77,13 @@ func testInitialize(t *testing.T, rootPassword string) {
 		},
 		"basic config": {
 			initRequest: dbplugin.InitializeRequest{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"connection_url": connURL,
 				},
 				VerifyConnection: true,
 			},
 			expectedResp: dbplugin.InitializeResponse{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"connection_url": connURL,
 				},
 			},
@@ -92,7 +92,7 @@ func testInitialize(t *testing.T, rootPassword string) {
 		},
 		"username and password replacement in connection_url": {
 			initRequest: dbplugin.InitializeRequest{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"connection_url": tmplConnURL,
 					"username":       rootUser,
 					"password":       rootPassword,
@@ -100,7 +100,7 @@ func testInitialize(t *testing.T, rootPassword string) {
 				VerifyConnection: true,
 			},
 			expectedResp: dbplugin.InitializeResponse{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"connection_url": tmplConnURL,
 					"username":       rootUser,
 					"password":       rootPassword,
@@ -111,7 +111,7 @@ func testInitialize(t *testing.T, rootPassword string) {
 		},
 		"invalid username template": {
 			initRequest: dbplugin.InitializeRequest{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"connection_url":    connURL,
 					"username_template": "{{.FieldThatDoesNotExist}}",
 				},
@@ -123,7 +123,7 @@ func testInitialize(t *testing.T, rootPassword string) {
 		},
 		"bad username template": {
 			initRequest: dbplugin.InitializeRequest{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"connection_url":    connURL,
 					"username_template": "{{ .DisplayName", // Explicitly bad template
 				},
@@ -135,14 +135,14 @@ func testInitialize(t *testing.T, rootPassword string) {
 		},
 		"custom username template": {
 			initRequest: dbplugin.InitializeRequest{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"connection_url":    connURL,
 					"username_template": "foo-{{random 10}}-{{.DisplayName}}",
 				},
 				VerifyConnection: true,
 			},
 			expectedResp: dbplugin.InitializeResponse{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"connection_url":    connURL,
 					"username_template": "foo-{{random 10}}-{{.DisplayName}}",
 				},
@@ -293,7 +293,7 @@ func TestMySQL_NewUser_nonLegacy(t *testing.T) {
 			cleanup, connURL := mysqlhelper.PrepareTestContainer(t, false, "secret")
 			defer cleanup()
 
-			connectionDetails := map[string]interface{}{
+			connectionDetails := map[string]any{
 				"connection_url":    connURL,
 				"username_template": test.usernameTemplate,
 			}
@@ -447,7 +447,7 @@ func TestMySQL_NewUser_legacy(t *testing.T) {
 			cleanup, connURL := mysqlhelper.PrepareTestContainer(t, false, "secret")
 			defer cleanup()
 
-			connectionDetails := map[string]interface{}{
+			connectionDetails := map[string]any{
 				"connection_url":    connURL,
 				"username_template": test.usernameTemplate,
 			}
@@ -502,7 +502,7 @@ func TestMySQL_RotateRootCredentials(t *testing.T) {
 			cleanup, connURL := mysqlhelper.PrepareTestContainer(t, false, "secret")
 			defer cleanup()
 
-			connectionDetails := map[string]interface{}{
+			connectionDetails := map[string]any{
 				"connection_url": connURL,
 				"username":       "root",
 				"password":       "secret",
@@ -587,7 +587,7 @@ func TestMySQL_DeleteUser(t *testing.T) {
 	cleanup, connURL := mysqlhelper.PrepareTestContainer(t, false, "secret")
 	defer cleanup()
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"connection_url": connURL,
 	}
 
@@ -702,7 +702,7 @@ func TestMySQL_UpdateUser(t *testing.T) {
 				t.Fatalf("Could not connect with credentials: %s", err)
 			}
 
-			connectionDetails := map[string]interface{}{
+			connectionDetails := map[string]any{
 				"connection_url": connURL,
 			}
 

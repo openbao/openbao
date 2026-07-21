@@ -15,13 +15,13 @@ type RoleAllowsLocalhost struct {
 
 	RoleListFetchIssue *PathFetch
 	RoleFetchIssues    map[string]*PathFetch
-	RoleEntryMap       map[string]map[string]interface{}
+	RoleEntryMap       map[string]map[string]any
 }
 
 func NewRoleAllowsLocalhostCheck() Check {
 	return &RoleAllowsLocalhost{
 		RoleFetchIssues: make(map[string]*PathFetch),
-		RoleEntryMap:    make(map[string]map[string]interface{}),
+		RoleEntryMap:    make(map[string]map[string]any),
 	}
 }
 
@@ -33,11 +33,11 @@ func (h *RoleAllowsLocalhost) IsEnabled() bool {
 	return h.Enabled
 }
 
-func (h *RoleAllowsLocalhost) DefaultConfig() map[string]interface{} {
-	return map[string]interface{}{}
+func (h *RoleAllowsLocalhost) DefaultConfig() map[string]any {
+	return map[string]any{}
 }
 
-func (h *RoleAllowsLocalhost) LoadConfig(config map[string]interface{}) error {
+func (h *RoleAllowsLocalhost) LoadConfig(config map[string]any) error {
 	enabled, err := parseutil.ParseBool(config["enabled"])
 	if err != nil {
 		return fmt.Errorf("error parsing %v.enabled: %w", h.Name(), err)
@@ -128,7 +128,7 @@ func (h *RoleAllowsLocalhost) Evaluate(e *Executor) (results []*Result, err erro
 			continue
 		}
 
-		rawAllowedDomains := entry["allowed_domains"].([]interface{})
+		rawAllowedDomains := entry["allowed_domains"].([]any)
 		var allowedDomains []string
 		for _, rawDomain := range rawAllowedDomains {
 			allowedDomains = append(allowedDomains, rawDomain.(string))

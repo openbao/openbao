@@ -44,7 +44,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 		Path:        "wraptest/foo",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"zip": "zap",
 		},
 	}
@@ -97,7 +97,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		Path:        "cg_test/foo",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"zip": "zap",
 		},
 	}
@@ -128,7 +128,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		Path:        "sys/policies/acl/cg_test",
 		Operation:   logical.UpdateOperation,
 		ClientToken: root,
-		Data:        map[string]interface{}{"policy": cgPolicy},
+		Data:        map[string]any{"policy": cgPolicy},
 	}
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
@@ -138,7 +138,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		Path:        "auth/token/create",
 		ClientToken: root,
 		Operation:   logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": []string{"cg_test"},
 			"ttl":      "5m",
 		},
@@ -172,7 +172,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		Path:        "auth/token/lookup-accessor",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"accessor": accessor,
 		},
 	}
@@ -199,7 +199,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 		Path:        "sys/auth/userpass",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "userpass",
 		},
 		Connection: &logical.Connection{},
@@ -213,7 +213,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 	}
 
 	req.Path = "auth/userpass/users/test"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"password": "foo",
 		"policies": "default",
 	}
@@ -228,7 +228,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 	req = &logical.Request{
 		Path:      "auth/userpass/login/test",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": "foo",
 		},
 		Connection: &logical.Connection{},
@@ -250,7 +250,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 		WrapInfo: &logical.RequestWrapInfo{
 			TTL: time.Duration(15 * time.Second),
 		},
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": "foo",
 		},
 		Connection: &logical.Connection{},
@@ -281,7 +281,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 		Path:        "sys/auth/approle",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "approle",
 		},
 		Connection: &logical.Connection{},
@@ -296,7 +296,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 
 	// Create role
 	req.Path = "auth/approle/role/role-period"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"period": "5s",
 	}
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -334,7 +334,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 	req = &logical.Request{
 		Path:      "auth/approle/login",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"role_id":   roleID,
 			"secret_id": secretID,
 		},
@@ -356,7 +356,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 		Path:        "auth/token/lookup",
 		Operation:   logical.UpdateOperation,
 		ClientToken: root,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"token": loginToken,
 		},
 		Connection: &logical.Connection{},
@@ -382,7 +382,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 		resp.Data["ttl"] = int64(5)
 	}
 
-	exp := map[string]interface{}{
+	exp := map[string]any{
 		"accessor":         accessor,
 		"creation_time":    resp.Data["creation_time"].(int64),
 		"creation_ttl":     int64(5),
@@ -478,7 +478,7 @@ func TestRequestHandling_LoginMetric(t *testing.T) {
 		Path:        "sys/auth/userpass",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "userpass",
 		},
 		Connection: &logical.Connection{},
@@ -493,7 +493,7 @@ func TestRequestHandling_LoginMetric(t *testing.T) {
 
 	// Create user
 	req.Path = "auth/userpass/users/test"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"password": "foo",
 		"policies": "default",
 	}
@@ -509,7 +509,7 @@ func TestRequestHandling_LoginMetric(t *testing.T) {
 	req = &logical.Request{
 		Path:      "auth/userpass/login/test",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": "foo",
 		},
 		WrapInfo: &logical.RequestWrapInfo{
@@ -613,7 +613,7 @@ func TestRequestHandling_ListFiltering(t *testing.T) {
 		Path:        "sys/auth/userpass",
 		Operation:   logical.UpdateOperation,
 		ClientToken: root,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "userpass",
 		},
 	}
@@ -624,7 +624,7 @@ func TestRequestHandling_ListFiltering(t *testing.T) {
 
 	// Add policy
 	req.Path = "sys/policies/acl/list-filtered"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"policy": `
 path "secret/metadata/by-data/*" {
 	capabilities = ["list", "scan"]
@@ -733,7 +733,7 @@ path "secret/metadata/by-metadata/subdir/both" {
 	require.False(t, resp.IsError())
 
 	req.Path = "auth/userpass/users/filtered"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"password":       "filtered",
 		"token_policies": "list-filtered",
 	}
@@ -770,8 +770,8 @@ path "secret/metadata/by-metadata/subdir/both" {
 		for _, name := range []string{"data-yes", "data-no", "metadata-yes", "metadata-no", "elided", "both"} {
 			req.Operation = logical.UpdateOperation
 			req.Path = fmt.Sprintf("secret/data/%v/%v", prefix, name)
-			req.Data = map[string]interface{}{
-				"data": map[string]interface{}{
+			req.Data = map[string]any{
+				"data": map[string]any{
 					"key-name": req.Path,
 				},
 			}
@@ -960,7 +960,7 @@ func TestRequestHandling_DisallowAuthErrorTokenCreation(t *testing.T) {
 		Path:        "sys/auth/test",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "test",
 		},
 	}

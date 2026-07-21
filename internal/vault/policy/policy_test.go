@@ -158,7 +158,7 @@ func TestPolicy_Parse(t *testing.T) {
 		want to update and uncomment this test.
 
 		t.Run("JSON", func(t *testing.T) {
-			var parsed map[string]interface{}
+			var parsed map[string]any{}
 			err := json.Unmarshal([]byte(rawPolicyJSON), &parsed)
 			if err != nil {
 				t.Fatalf("failed to parse JSON: %v", err)
@@ -252,10 +252,10 @@ func validatePolicy(t *testing.T, p *Policy) {
 				"create",
 				"sudo",
 			},
-			AllowedParametersHCL: map[string][]interface{}{"zip": {}, "zap": {}},
+			AllowedParametersHCL: map[string][]any{"zip": {}, "zap": {}},
 			Permissions: &ACLPermissions{
 				CapabilitiesBitmap: (CreateCapabilityInt | SudoCapabilityInt),
-				AllowedParameters:  map[string][]interface{}{"zip": {}, "zap": {}},
+				AllowedParameters:  map[string][]any{"zip": {}, "zap": {}},
 			},
 		},
 		{
@@ -264,10 +264,10 @@ func validatePolicy(t *testing.T, p *Policy) {
 				"create",
 				"sudo",
 			},
-			DeniedParametersHCL: map[string][]interface{}{"zip": {}, "zap": {}},
+			DeniedParametersHCL: map[string][]any{"zip": {}, "zap": {}},
 			Permissions: &ACLPermissions{
 				CapabilitiesBitmap: (CreateCapabilityInt | SudoCapabilityInt),
-				DeniedParameters:   map[string][]interface{}{"zip": {}, "zap": {}},
+				DeniedParameters:   map[string][]any{"zip": {}, "zap": {}},
 			},
 		},
 		{
@@ -276,12 +276,12 @@ func validatePolicy(t *testing.T, p *Policy) {
 				"create",
 				"sudo",
 			},
-			AllowedParametersHCL: map[string][]interface{}{"zim": {}, "zam": {}},
-			DeniedParametersHCL:  map[string][]interface{}{"zip": {}, "zap": {}},
+			AllowedParametersHCL: map[string][]any{"zim": {}, "zam": {}},
+			DeniedParametersHCL:  map[string][]any{"zip": {}, "zap": {}},
 			Permissions: &ACLPermissions{
 				CapabilitiesBitmap: (CreateCapabilityInt | SudoCapabilityInt),
-				AllowedParameters:  map[string][]interface{}{"zim": {}, "zam": {}},
-				DeniedParameters:   map[string][]interface{}{"zip": {}, "zap": {}},
+				AllowedParameters:  map[string][]any{"zim": {}, "zam": {}},
+				DeniedParameters:   map[string][]any{"zip": {}, "zap": {}},
 			},
 		},
 		{
@@ -291,12 +291,12 @@ func validatePolicy(t *testing.T, p *Policy) {
 				"create",
 				"sudo",
 			},
-			AllowedParametersHCL: map[string][]interface{}{"map": {map[string]interface{}{"good": "one"}}, "int": {1, 2}},
-			DeniedParametersHCL:  map[string][]interface{}{"string": {"test"}, "bool": {false}},
+			AllowedParametersHCL: map[string][]any{"map": {map[string]any{"good": "one"}}, "int": {1, 2}},
+			DeniedParametersHCL:  map[string][]any{"string": {"test"}, "bool": {false}},
 			Permissions: &ACLPermissions{
 				CapabilitiesBitmap: (CreateCapabilityInt | SudoCapabilityInt),
-				AllowedParameters:  map[string][]interface{}{"map": {map[string]interface{}{"good": "one"}}, "int": {1, 2}},
-				DeniedParameters:   map[string][]interface{}{"string": {"test"}, "bool": {false}},
+				AllowedParameters:  map[string][]any{"map": {map[string]any{"good": "one"}}, "int": {1, 2}},
+				DeniedParameters:   map[string][]any{"string": {"test"}, "bool": {false}},
 			},
 			IsPrefix: false,
 		},

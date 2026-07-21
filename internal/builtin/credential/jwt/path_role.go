@@ -256,23 +256,23 @@ type jwtRole struct {
 	ClockSkewLeeway time.Duration `json:"clock_skew_leeway"`
 
 	// Role binding properties
-	BoundAudiences              []string               `json:"bound_audiences"`
-	BoundSubject                string                 `json:"bound_subject"`
-	BoundClaimsType             string                 `json:"bound_claims_type"`
-	BoundClaims                 map[string]interface{} `json:"bound_claims"`
-	ClaimMappings               map[string]string      `json:"claim_mappings"`
-	Oauth2Metadata              []string               `json:"oauth2_metadata"`
-	UserClaim                   string                 `json:"user_claim"`
-	GroupsClaim                 string                 `json:"groups_claim"`
-	OIDCScopes                  []string               `json:"oidc_scopes"`
-	AllowedRedirectURIs         []string               `json:"allowed_redirect_uris"`
-	CallbackMode                string                 `json:"callback_mode"`
-	PollInterval                int                    `json:"poll_interval"`
-	VerboseOIDCLogging          bool                   `json:"verbose_oidc_logging"`
-	MaxAge                      time.Duration          `json:"max_age"`
-	UserClaimJSONPointer        bool                   `json:"user_claim_json_pointer"`
-	TokenPoliciesTemplateClaims bool                   `json:"token_policies_template_claims"`
-	OIDCDisableConfirmation     bool                   `json:"oidc_disable_confirmation"`
+	BoundAudiences              []string          `json:"bound_audiences"`
+	BoundSubject                string            `json:"bound_subject"`
+	BoundClaimsType             string            `json:"bound_claims_type"`
+	BoundClaims                 map[string]any    `json:"bound_claims"`
+	ClaimMappings               map[string]string `json:"claim_mappings"`
+	Oauth2Metadata              []string          `json:"oauth2_metadata"`
+	UserClaim                   string            `json:"user_claim"`
+	GroupsClaim                 string            `json:"groups_claim"`
+	OIDCScopes                  []string          `json:"oidc_scopes"`
+	AllowedRedirectURIs         []string          `json:"allowed_redirect_uris"`
+	CallbackMode                string            `json:"callback_mode"`
+	PollInterval                int               `json:"poll_interval"`
+	VerboseOIDCLogging          bool              `json:"verbose_oidc_logging"`
+	MaxAge                      time.Duration     `json:"max_age"`
+	UserClaimJSONPointer        bool              `json:"user_claim_json_pointer"`
+	TokenPoliciesTemplateClaims bool              `json:"token_policies_template_claims"`
+	OIDCDisableConfirmation     bool              `json:"oidc_disable_confirmation"`
 
 	// Deprecated by TokenParams
 	Policies   []string                      `json:"policies"`
@@ -330,7 +330,7 @@ func (b *jwtAuthBackend) role(ctx context.Context, s logical.Storage, name strin
 	return role, nil
 }
 
-func (role *jwtRole) maybeTemplatePolicies(auth *logical.Auth, allClaims map[string]interface{}) error {
+func (role *jwtRole) maybeTemplatePolicies(auth *logical.Auth, allClaims map[string]any) error {
 	if !role.TokenPoliciesTemplateClaims {
 		return nil
 	}
@@ -403,7 +403,7 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 	}
 
 	// Create a map of data to be returned
-	d := map[string]interface{}{
+	d := map[string]any{
 		"role_type":                      role.RoleType,
 		"expiration_leeway":              int64(role.ExpirationLeeway.Seconds()),
 		"not_before_leeway":              int64(role.NotBeforeLeeway.Seconds()),
@@ -602,7 +602,7 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 	}
 
 	if boundClaimsRaw, ok := data.GetOk("bound_claims"); ok {
-		role.BoundClaims = boundClaimsRaw.(map[string]interface{})
+		role.BoundClaims = boundClaimsRaw.(map[string]any)
 
 		if boundClaimsType == boundClaimsTypeGlob {
 			// Check that the claims are all strings

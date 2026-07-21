@@ -206,13 +206,13 @@ func (f *AuditFormatter) FormatResponse(ctx context.Context, w io.Writer, config
 
 	elideListResponseData := config.ElideListResponses && req.Operation == logical.ListOperation
 
-	var respData map[string]interface{}
+	var respData map[string]any
 	if config.Raw {
 		// In the non-raw case, elision of list response data occurs inside HashResponse, to avoid redundant deep
 		// copies and hashing of data only to elide it later. In the raw case, we need to do it here.
 		if elideListResponseData && resp.Data != nil {
 			// Copy the data map before making changes, but we only need to go one level deep in this case
-			respData = make(map[string]interface{}, len(resp.Data))
+			respData = make(map[string]any, len(resp.Data))
 			maps.Copy(respData, resp.Data)
 
 			doElideListResponseData(respData)
@@ -414,28 +414,28 @@ type AuditResponseEntry struct {
 }
 
 type AuditRequest struct {
-	ID                            string                 `json:"id,omitempty"`
-	ClientID                      string                 `json:"client_id,omitempty"`
-	ReplicationCluster            string                 `json:"replication_cluster,omitempty"`
-	Operation                     logical.Operation      `json:"operation,omitempty"`
-	MountPoint                    string                 `json:"mount_point,omitempty"`
-	MountType                     string                 `json:"mount_type,omitempty"`
-	MountAccessor                 string                 `json:"mount_accessor,omitempty"`
-	MountRunningVersion           string                 `json:"mount_running_version,omitempty"`
-	MountRunningSha256            string                 `json:"mount_running_sha256,omitempty"`
-	MountClass                    string                 `json:"mount_class,omitempty"`
-	MountIsExternalPlugin         bool                   `json:"mount_is_external_plugin,omitempty"`
-	ClientToken                   string                 `json:"client_token,omitempty"`
-	ClientTokenAccessor           string                 `json:"client_token_accessor,omitempty"`
-	Namespace                     *AuditNamespace        `json:"namespace,omitempty"`
-	Path                          string                 `json:"path,omitempty"`
-	Data                          map[string]interface{} `json:"data,omitempty"`
-	PolicyOverride                bool                   `json:"policy_override,omitempty"`
-	RemoteAddr                    string                 `json:"remote_address,omitempty"`
-	RemotePort                    int                    `json:"remote_port,omitempty"`
-	WrapTTL                       int                    `json:"wrap_ttl,omitempty"`
-	Headers                       map[string][]string    `json:"headers,omitempty"`
-	ClientCertificateSerialNumber string                 `json:"client_certificate_serial_number,omitempty"`
+	ID                            string              `json:"id,omitempty"`
+	ClientID                      string              `json:"client_id,omitempty"`
+	ReplicationCluster            string              `json:"replication_cluster,omitempty"`
+	Operation                     logical.Operation   `json:"operation,omitempty"`
+	MountPoint                    string              `json:"mount_point,omitempty"`
+	MountType                     string              `json:"mount_type,omitempty"`
+	MountAccessor                 string              `json:"mount_accessor,omitempty"`
+	MountRunningVersion           string              `json:"mount_running_version,omitempty"`
+	MountRunningSha256            string              `json:"mount_running_sha256,omitempty"`
+	MountClass                    string              `json:"mount_class,omitempty"`
+	MountIsExternalPlugin         bool                `json:"mount_is_external_plugin,omitempty"`
+	ClientToken                   string              `json:"client_token,omitempty"`
+	ClientTokenAccessor           string              `json:"client_token_accessor,omitempty"`
+	Namespace                     *AuditNamespace     `json:"namespace,omitempty"`
+	Path                          string              `json:"path,omitempty"`
+	Data                          map[string]any      `json:"data,omitempty"`
+	PolicyOverride                bool                `json:"policy_override,omitempty"`
+	RemoteAddr                    string              `json:"remote_address,omitempty"`
+	RemotePort                    int                 `json:"remote_port,omitempty"`
+	WrapTTL                       int                 `json:"wrap_ttl,omitempty"`
+	Headers                       map[string][]string `json:"headers,omitempty"`
+	ClientCertificateSerialNumber string              `json:"client_certificate_serial_number,omitempty"`
 }
 
 type AuditResponse struct {
@@ -448,7 +448,7 @@ type AuditResponse struct {
 	MountClass            string                 `json:"mount_class,omitempty"`
 	MountIsExternalPlugin bool                   `json:"mount_is_external_plugin,omitempty"`
 	Secret                *AuditSecret           `json:"secret,omitempty"`
-	Data                  map[string]interface{} `json:"data,omitempty"`
+	Data                  map[string]any         `json:"data,omitempty"`
 	Warnings              []string               `json:"warnings,omitempty"`
 	Redirect              string                 `json:"redirect,omitempty"`
 	WrapInfo              *AuditResponseWrapInfo `json:"wrap_info,omitempty"`
@@ -569,17 +569,17 @@ func NewTemporaryFormatter(format, prefix string) *AuditFormatter {
 // as only top-level keys are changed.
 //
 // See the documentation of the controlling option in FormatterConfig for more information on the purpose.
-func doElideListResponseData(data map[string]interface{}) {
+func doElideListResponseData(data map[string]any) {
 	for k, v := range data {
 		switch k {
 		case "keys":
-			if vSlice, ok := v.([]interface{}); ok {
+			if vSlice, ok := v.([]any); ok {
 				data[k] = len(vSlice)
 			} else if vSlice, ok := v.([]string); ok {
 				data[k] = len(vSlice)
 			}
 		case "key_info":
-			if vMap, ok := v.(map[string]interface{}); ok {
+			if vMap, ok := v.(map[string]any); ok {
 				data[k] = len(vMap)
 			}
 		}

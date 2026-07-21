@@ -36,8 +36,8 @@ func (c acmeContext) getAcmeState() *acmeState {
 
 type (
 	acmeOperation                func(acmeCtx *acmeContext, r *logical.Request, _ *framework.FieldData) (*logical.Response, error)
-	acmeParsedOperation          func(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]interface{}) (*logical.Response, error)
-	acmeAccountRequiredOperation func(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]interface{}, acct *acmeAccount) (*logical.Response, error)
+	acmeParsedOperation          func(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]any) (*logical.Response, error)
+	acmeAccountRequiredOperation func(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]any, acct *acmeAccount) (*logical.Response, error)
 )
 
 // acmeErrorWrapper the lowest level wrapper that will translate errors into proper ACME error responses
@@ -150,8 +150,8 @@ func (b *backend) acmeParsedWrapper(op acmeParsedOperation) framework.OperationF
 			// ACME-formatted responses, do the marshaling in one place.
 			if _, ok := resp.Data[logical.HTTPRawBody]; !ok {
 				ignored_values := map[string]bool{logical.HTTPContentType: true, logical.HTTPStatusCode: true}
-				fields := map[string]interface{}{}
-				body := map[string]interface{}{
+				fields := map[string]any{}
+				body := map[string]any{
 					logical.HTTPContentType: "application/json",
 					logical.HTTPStatusCode:  http.StatusOK,
 				}
@@ -183,7 +183,7 @@ func (b *backend) acmeParsedWrapper(op acmeParsedOperation) framework.OperationF
 // in a valid status. It passes to the operation a decoded form of the request
 // parameters as well as the ACME account the request is for.
 func (b *backend) acmeAccountRequiredWrapper(op acmeAccountRequiredOperation) framework.OperationFunc {
-	return b.acmeParsedWrapper(func(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, uc *jwsCtx, data map[string]interface{}) (*logical.Response, error) {
+	return b.acmeParsedWrapper(func(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, uc *jwsCtx, data map[string]any) (*logical.Response, error) {
 		if !uc.Existing {
 			return nil, fmt.Errorf("cannot process request without a 'kid': %w", ErrMalformed)
 		}

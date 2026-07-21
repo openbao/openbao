@@ -70,7 +70,7 @@ func IdentityDeclarations() []cel.EnvOption {
 // AddIdentity adds values for the identity system and is useful for secret
 // engines. IdentityDeclarations must be called to add these definitions to
 // to the environment first.
-func AddIdentity(view logical.SystemView, req *logical.Request, data map[string]interface{}) error {
+func AddIdentity(view logical.SystemView, req *logical.Request, data map[string]any) error {
 	data["client_token"] = req.ClientToken
 	data["entity_id"] = req.EntityID
 

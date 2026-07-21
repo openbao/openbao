@@ -17,7 +17,7 @@ func TestSysRenew(t *testing.T) {
 	TestServerAuth(t, addr, token)
 
 	// write secret
-	resp := testHttpPut(t, token, addr+"/v1/secret/foo", map[string]interface{}{
+	resp := testHttpPut(t, token, addr+"/v1/secret/foo", map[string]any{
 		"data":  "bar",
 		"lease": "1h",
 	})
@@ -33,8 +33,8 @@ func TestSysRenew(t *testing.T) {
 	}
 
 	var renewResult struct {
-		LeaseID string                 `json:"lease_id"`
-		Data    map[string]interface{} `json:"data"`
+		LeaseID string         `json:"lease_id"`
+		Data    map[string]any `json:"data"`
 	}
 
 	resp = testHttpPut(t, token, addr+"/v1/sys/leases/renew/"+result.LeaseID, nil)

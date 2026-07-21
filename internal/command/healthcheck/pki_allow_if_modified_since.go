@@ -14,7 +14,7 @@ type AllowIfModifiedSince struct {
 	Enabled            bool
 	UnsupportedVersion bool
 
-	TuneData map[string]interface{}
+	TuneData map[string]any
 	Fetcher  *PathFetch
 }
 
@@ -30,11 +30,11 @@ func (h *AllowIfModifiedSince) IsEnabled() bool {
 	return h.Enabled
 }
 
-func (h *AllowIfModifiedSince) DefaultConfig() map[string]interface{} {
-	return map[string]interface{}{}
+func (h *AllowIfModifiedSince) DefaultConfig() map[string]any {
+	return map[string]any{}
 }
 
-func (h *AllowIfModifiedSince) LoadConfig(config map[string]interface{}) error {
+func (h *AllowIfModifiedSince) LoadConfig(config map[string]any) error {
 	var err error
 
 	h.Enabled, err = parseutil.ParseBool(config["enabled"])

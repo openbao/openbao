@@ -20,7 +20,7 @@ func (c *Sys) AuditHashWithContext(ctx context.Context, path string, input strin
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"input": input,
 	}
 

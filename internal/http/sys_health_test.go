@@ -24,8 +24,8 @@ func TestSysHealth_get(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	var actual map[string]interface{}
-	expected := map[string]interface{}{
+	var actual map[string]any
+	expected := map[string]any{
 		"replication_performance_mode": consts.ReplicationUnknown.GetPerformanceString(),
 		"replication_dr_mode":          consts.ReplicationUnknown.GetDRString(),
 		"initialized":                  false,
@@ -56,8 +56,8 @@ func TestSysHealth_get(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	actual = map[string]interface{}{}
-	expected = map[string]interface{}{
+	actual = map[string]any{}
+	expected = map[string]any{
 		"replication_performance_mode": consts.ReplicationUnknown.GetPerformanceString(),
 		"replication_dr_mode":          consts.ReplicationUnknown.GetDRString(),
 		"initialized":                  true,
@@ -92,8 +92,8 @@ func TestSysHealth_get(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	actual = map[string]interface{}{}
-	expected = map[string]interface{}{
+	actual = map[string]any{}
+	expected = map[string]any{
 		"replication_performance_mode": consts.ReplicationPerformanceDisabled.GetPerformanceString(),
 		"replication_dr_mode":          consts.ReplicationDRDisabled.GetDRString(),
 		"initialized":                  true,
@@ -133,8 +133,8 @@ func TestSysHealth_customcodes(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	var actual map[string]interface{}
-	expected := map[string]interface{}{
+	var actual map[string]any
+	expected := map[string]any{
 		"replication_performance_mode": consts.ReplicationUnknown.GetPerformanceString(),
 		"replication_dr_mode":          consts.ReplicationUnknown.GetDRString(),
 		"initialized":                  false,
@@ -166,8 +166,8 @@ func TestSysHealth_customcodes(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	actual = map[string]interface{}{}
-	expected = map[string]interface{}{
+	actual = map[string]any{}
+	expected = map[string]any{
 		"replication_performance_mode": consts.ReplicationUnknown.GetPerformanceString(),
 		"replication_dr_mode":          consts.ReplicationUnknown.GetDRString(),
 		"initialized":                  true,
@@ -203,8 +203,8 @@ func TestSysHealth_customcodes(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	actual = map[string]interface{}{}
-	expected = map[string]interface{}{
+	actual = map[string]any{}
+	expected = map[string]any{
 		"replication_performance_mode": consts.ReplicationPerformanceDisabled.GetPerformanceString(),
 		"replication_dr_mode":          consts.ReplicationDRDisabled.GetDRString(),
 		"initialized":                  true,

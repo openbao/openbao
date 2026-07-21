@@ -24,7 +24,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type H map[string]interface{}
+type H map[string]any
 
 type testConfig struct {
 	oidc             bool
@@ -57,15 +57,15 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 		cfg.groupsClaim = "https://vault/groups"
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if cfg.oidc {
-		data = map[string]interface{}{
+		data = map[string]any{
 			"bound_issuer":       "https://team-vault.auth0.com/",
 			"oidc_discovery_url": "https://team-vault.auth0.com/",
 		}
 	} else {
 		if !cfg.jwks {
-			data = map[string]interface{}{
+			data = map[string]any{
 				"bound_issuer":           "https://team-vault.auth0.com/",
 				"jwt_validation_pubkeys": ecdsaPubKey,
 			}
@@ -78,7 +78,7 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 				t.Fatal(err)
 			}
 
-			data = map[string]interface{}{
+			data = map[string]any{
 				"jwks_url":    p.server.URL + "/certs",
 				"jwks_ca_pem": cert,
 			}
@@ -97,7 +97,7 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role_type":     "jwt",
 		"bound_subject": "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 		"user_claim":    "https://vault/user",
@@ -120,7 +120,7 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 		data["bound_audiences"] = []string{"https://vault.plugin.auth.jwt.test", "another_audience"}
 	}
 	if cfg.boundClaims {
-		data["bound_claims"] = map[string]interface{}{
+		data["bound_claims"] = map[string]any{
 			"color": "green",
 			"pnum":  json.Number("123"),
 		}
@@ -154,7 +154,7 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 	return cb, storage
 }
 
-func getTestJWT(t *testing.T, privKey string, cl sqjwt.Claims, privateCl interface{}) (string, *ecdsa.PrivateKey) {
+func getTestJWT(t *testing.T, privKey string, cl sqjwt.Claims, privateCl any) (string, *ecdsa.PrivateKey) {
 	t.Helper()
 	var key *ecdsa.PrivateKey
 	block, _ := pem.Decode([]byte(privKey))
@@ -243,7 +243,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role": "plugin-test",
 			"jwt":  jwtData,
 		}
@@ -298,7 +298,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role": "plugin-test",
 			"jwt":  jwtData,
 		}
@@ -353,7 +353,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role": "plugin-test",
 			"jwt":  jwtData,
 		}
@@ -424,7 +424,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 			jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-			data := map[string]interface{}{
+			data := map[string]any{
 				"role": "plugin-test",
 				"jwt":  jwtData,
 			}
@@ -518,7 +518,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role": "plugin-test",
 			"jwt":  jwtData,
 		}
@@ -561,7 +561,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 		jwtData, _ := getTestJWT(t, badPrivKey, cl, privateCl)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role": "plugin-test",
 			"jwt":  jwtData,
 		}
@@ -607,7 +607,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role": "plugin-test",
 			"jwt":  jwtData,
 		}
@@ -653,7 +653,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role": "plugin-test",
 			"jwt":  jwtData,
 		}
@@ -699,7 +699,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role": "plugin-test",
 			"jwt":  jwtData,
 		}
@@ -737,7 +737,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, struct{}{})
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role": "plugin-test",
 			"jwt":  jwtData,
 		}
@@ -788,7 +788,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role": "plugin-test",
 			"jwt":  jwtData,
 		}
@@ -816,7 +816,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 	{
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, sqjwt.Claims{}, struct{}{})
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role": "plugin-test-bad",
 			"jwt":  jwtData,
 		}
@@ -859,9 +859,9 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
 		}
 
-		privateCl := map[string]interface{}{
+		privateCl := map[string]any{
 			"custom_claim": "policy_for_custom_claim",
-			"nested_claim": map[string]interface{}{
+			"nested_claim": map[string]any{
 				"policy": "policy_for_nested_claim",
 			},
 			"unused":               "not_present",
@@ -871,7 +871,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role": "plugin-test",
 			"jwt":  jwtData,
 		}
@@ -1120,7 +1120,7 @@ func TestLogin_JWTSupportedAlgs(t *testing.T) {
 			b, storage := getBackend(t)
 
 			// Configure the backend with an ES256 public key
-			data := map[string]interface{}{
+			data := map[string]any{
 				"jwt_validation_pubkeys": ecdsaPubKey,
 				"jwt_supported_algs":     tt.jwtSupportedAlgs,
 			}
@@ -1135,7 +1135,7 @@ func TestLogin_JWTSupportedAlgs(t *testing.T) {
 			require.False(t, resp.IsError())
 
 			// Configure a JWT role
-			data = map[string]interface{}{
+			data = map[string]any{
 				"role_type":       "jwt",
 				"bound_audiences": []string{"https://vault.plugin.auth.jwt.test"},
 				"user_claim":      "email",
@@ -1165,7 +1165,7 @@ func TestLogin_JWTSupportedAlgs(t *testing.T) {
 			jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
 			// Authenticate using the signed JWT
-			data = map[string]interface{}{
+			data = map[string]any{
 				"role": "plugin-test",
 				"jwt":  jwtData,
 			}
@@ -1213,7 +1213,7 @@ func setupLogin(t *testing.T, iat, exp, nbf time.Time, b logical.Backend, storag
 
 	jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtData,
 	}
@@ -1241,7 +1241,7 @@ func TestLogin_OIDC(t *testing.T) {
 
 	jwtData := getTestOIDC(t)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtData,
 	}
@@ -1287,7 +1287,7 @@ func TestLogin_OIDC(t *testing.T) {
 func TestLogin_NestedGroups(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"bound_issuer":           "https://team-vault.auth0.com/",
 		"jwt_validation_pubkeys": ecdsaPubKey,
 		"jwt_supported_algs":     string(jose.ES256),
@@ -1305,7 +1305,7 @@ func TestLogin_NestedGroups(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role_type":       "jwt",
 		"bound_audiences": "https://vault.plugin.auth.jwt.test",
 		"bound_subject":   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
@@ -1357,7 +1357,7 @@ func TestLogin_NestedGroups(t *testing.T) {
 
 	jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtData,
 	}
@@ -1412,7 +1412,7 @@ func TestLogin_OIDC_StringGroupClaim(t *testing.T) {
 
 	jwtData := getTestOIDC(t)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtData,
 	}
@@ -1476,7 +1476,7 @@ func TestLogin_JWKS_Concurrent(t *testing.T) {
 
 	jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtData,
 	}
@@ -1522,7 +1522,7 @@ func TestResolveRole(t *testing.T) {
 	b, storage := setupBackend(t, cfg)
 	role := "testrole"
 
-	dummyRoleData := map[string]interface{}{
+	dummyRoleData := map[string]any{
 		"role_type":     "jwt",
 		"bound_subject": "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 		"user_claim":    "https://vault/user",
@@ -1545,7 +1545,7 @@ func TestResolveRole(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	loginData := map[string]interface{}{
+	loginData := map[string]any{
 		"role": role,
 	}
 	loginReq := &logical.Request{
@@ -1577,7 +1577,7 @@ func TestResolveRole_OIDC(t *testing.T) {
 	b, storage := setupBackend(t, cfg)
 	role := "testrole"
 
-	dummyRoleData := map[string]interface{}{
+	dummyRoleData := map[string]any{
 		"role_type":             "oidc",
 		"bound_subject":         "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 		"user_claim":            "https://vault/user",
@@ -1601,7 +1601,7 @@ func TestResolveRole_OIDC(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	loginData := map[string]interface{}{
+	loginData := map[string]any{
 		"role": role,
 	}
 	loginReq := &logical.Request{
@@ -1633,7 +1633,7 @@ func TestResolveRole_RoleDoesNotExist(t *testing.T) {
 	b, storage := setupBackend(t, cfg)
 	role := "testrole"
 
-	loginData := map[string]interface{}{
+	loginData := map[string]any{
 		"role": role,
 	}
 	loginReq := &logical.Request{

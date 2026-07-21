@@ -168,11 +168,11 @@ will be ignored. Any batch output will preserve the order of the batch input.`,
 	}
 }
 
-func decodeEncryptBatchRequestItems(src interface{}, dst *[]BatchRequestItem) error {
+func decodeEncryptBatchRequestItems(src any, dst *[]BatchRequestItem) error {
 	return decodeBatchRequestItems(src, true, false, dst)
 }
 
-func decodeDecryptBatchRequestItems(src interface{}, dst *[]BatchRequestItem) error {
+func decodeDecryptBatchRequestItems(src any, dst *[]BatchRequestItem) error {
 	return decodeBatchRequestItems(src, false, true, dst)
 }
 
@@ -180,12 +180,12 @@ func decodeDecryptBatchRequestItems(src interface{}, dst *[]BatchRequestItem) er
 // It aims to behave as closely possible to the original mapstructure.Decode and will return the same errors.
 // Note, however, that an error will also be returned if one of the required fields is missing.
 // https://github.com/openbao/openbao/pull/8775/files#r437709722
-func decodeBatchRequestItems(src interface{}, requirePlaintext bool, requireCiphertext bool, dst *[]BatchRequestItem) error {
+func decodeBatchRequestItems(src any, requirePlaintext bool, requireCiphertext bool, dst *[]BatchRequestItem) error {
 	if src == nil || dst == nil {
 		return nil
 	}
 
-	items, ok := src.([]interface{})
+	items, ok := src.([]any)
 	if !ok {
 		return fmt.Errorf("source data must be an array or slice, got %T", src)
 	}
@@ -202,7 +202,7 @@ func decodeBatchRequestItems(src interface{}, requirePlaintext bool, requireCiph
 	var errs []error
 
 	for i, iitem := range items {
-		item, ok := iitem.(map[string]interface{})
+		item, ok := iitem.(map[string]any)
 		if !ok {
 			return fmt.Errorf("[%d] expected a map, got '%T'", i, iitem)
 		}
@@ -430,7 +430,7 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 			continue
 		}
 
-		var factory interface{}
+		var factory any
 		if item.AssociatedData != "" {
 			if !p.Type.AssociatedDataSupported() {
 				batchResponseItems[i].Error = fmt.Sprintf("'[%d].associated_data' provided for non-AEAD cipher suite %v", i, p.Type.String())
@@ -474,7 +474,7 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 		for i := range batchInputItems {
 			batchResponseItems[i].Reference = batchInputItems[i].Reference
 		}
-		resp.Data = map[string]interface{}{
+		resp.Data = map[string]any{
 			"batch_results": batchResponseItems,
 		}
 	} else {
@@ -486,7 +486,7 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 			return logical.ErrorResponse(batchResponseItems[0].Error), logical.ErrInvalidRequest
 		}
 
-		resp.Data = map[string]interface{}{
+		resp.Data = map[string]any{
 			"ciphertext":  batchResponseItems[0].Ciphertext,
 			"key_version": batchResponseItems[0].KeyVersion,
 		}

@@ -315,7 +315,7 @@ func pathFetchListCertsDetailed(b *backend) *framework.Path {
 
 func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	var responseKeys []string
-	responseInfo := make(map[string]interface{})
+	responseInfo := make(map[string]any)
 
 	after := data.Get("after").(string)
 	limit := data.Get("limit").(int)
@@ -384,7 +384,7 @@ func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Re
 			keyType = "unknown"
 		}
 
-		responseInfo[string(entries[i])] = map[string]interface{}{
+		responseInfo[string(entries[i])] = map[string]any{
 			"common_name": certData.Subject.CommonName,
 			"issuer":      certData.Issuer.String(),
 			"key_type":    keyType,
@@ -411,7 +411,7 @@ func (b *backend) pathFetchRead(ctx context.Context, req *logical.Request, data 
 	var revocationTimeRfc3339 string
 
 	response = &logical.Response{
-		Data: map[string]interface{}{},
+		Data: map[string]any{},
 	}
 	sc := b.makeStorageContext(ctx, req.Storage)
 
@@ -596,7 +596,7 @@ reply:
 	switch {
 	case len(contentType) != 0:
 		response = &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				logical.HTTPContentType: contentType,
 				logical.HTTPRawBody:     certificate,
 			},

@@ -106,13 +106,13 @@ type mockBuiltinRegistry struct {
 	forTesting map[string]mockBackend
 }
 
-func toFunc(f logical.Factory) func() (interface{}, error) {
-	return func() (interface{}, error) {
+func toFunc(f logical.Factory) func() (any, error) {
+	return func() (any, error) {
 		return f, nil
 	}
 }
 
-func (m *mockBuiltinRegistry) Get(name string, pluginType consts.PluginType) (func() (interface{}, error), bool) {
+func (m *mockBuiltinRegistry) Get(name string, pluginType consts.PluginType) (func() (any, error), bool) {
 	testBackend, ok := m.forTesting[name]
 	if !ok {
 		return nil, false
@@ -373,13 +373,13 @@ func (n *NoopAudit) Invalidate(ctx context.Context) {
 	n.salt = nil
 }
 
-func (n *NoopAudit) GetDecodedRecord(index int) (map[string]interface{}, error) {
+func (n *NoopAudit) GetDecodedRecord(index int) (map[string]any, error) {
 	if index > len(n.records) {
 		return nil, fmt.Errorf("index %v exceeds current record length: %v", index, len(n.records))
 	}
 
 	record := n.records[index]
-	var ret map[string]interface{}
+	var ret map[string]any
 
 	if err := json.Unmarshal(record, &ret); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal record %d: %v\n\terr: %w", index, string(record), err)

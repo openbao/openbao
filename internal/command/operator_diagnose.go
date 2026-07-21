@@ -645,7 +645,7 @@ SEALFAIL:
 	return nil
 }
 
-func coalesce(values ...interface{}) interface{} {
+func coalesce(values ...any) any {
 	for _, val := range values {
 		if val != nil && val != "" {
 			return val

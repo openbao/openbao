@@ -43,7 +43,7 @@ type Executor struct {
 	Mount          string
 	DefaultEnabled bool
 
-	Config map[string]map[string]interface{}
+	Config map[string]map[string]any
 
 	Resources map[string]map[logical.Operation]*PathFetch
 
@@ -55,7 +55,7 @@ func NewExecutor(client *api.Client, mount string) *Executor {
 		Client:         client,
 		DefaultEnabled: true,
 		Mount:          mount,
-		Config:         make(map[string]map[string]interface{}),
+		Config:         make(map[string]map[string]any),
 		Resources:      make(map[string]map[logical.Operation]*PathFetch),
 	}
 }
@@ -64,7 +64,7 @@ func (e *Executor) AddCheck(c Check) {
 	e.Checkers = append(e.Checkers, c)
 }
 
-func (e *Executor) BuildConfig(external map[string]interface{}) error {
+func (e *Executor) BuildConfig(external map[string]any) error {
 	merged := e.Config
 
 	for index, checker := range e.Checkers {
@@ -86,7 +86,7 @@ func (e *Executor) BuildConfig(external map[string]interface{}) error {
 
 		// Now apply any external config for this check.
 		if econfig, present := external[name]; present {
-			for param, evalue := range econfig.(map[string]interface{}) {
+			for param, evalue := range econfig.(map[string]any) {
 				if _, ok := config[param]; !ok {
 					// Assumption: default configs have all possible
 					// configuration options. This external config has
@@ -162,7 +162,7 @@ func (e *Executor) FetchIfNotFetched(op logical.Operation, rawPath string) (*Pat
 	ret := &PathFetch{
 		Operation:   op,
 		Path:        path,
-		ParsedCache: make(map[string]interface{}),
+		ParsedCache: make(map[string]any),
 	}
 
 	data := map[string][]string{}
@@ -203,7 +203,7 @@ type PathFetch struct {
 	FetchError       error
 	Secret           *api.Secret
 	SecretParseError error
-	ParsedCache      map[string]interface{}
+	ParsedCache      map[string]any
 }
 
 func (p *PathFetch) IsOK() bool {
@@ -247,8 +247,8 @@ type Check interface {
 	Name() string
 	IsEnabled() bool
 
-	DefaultConfig() map[string]interface{}
-	LoadConfig(config map[string]interface{}) error
+	DefaultConfig() map[string]any
+	LoadConfig(config map[string]any) error
 
 	FetchResources(e *Executor) error
 

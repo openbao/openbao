@@ -649,16 +649,16 @@ func VerifyRaftPeers(t testing.T, client *api.Client, expected map[string]bool) 
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data)
 
-	config, ok := resp.Data["config"].(map[string]interface{})
+	config, ok := resp.Data["config"].(map[string]any)
 	require.True(t, ok, "missing config in response data")
 
-	servers, ok := config["servers"].([]interface{})
+	servers, ok := config["servers"].([]any)
 	require.True(t, ok, "missing servers in response data config")
 
 	// Iterate through the servers and remove the node found in the response
 	// from the expected collection
 	for _, s := range servers {
-		server := s.(map[string]interface{})
+		server := s.(map[string]any)
 		delete(expected, server["node_id"].(string))
 	}
 
@@ -711,8 +711,8 @@ type SysMetricsJSON struct {
 }
 
 type baseInfoJSON struct {
-	Name   string                 `json:"Name"`
-	Labels map[string]interface{} `json:"Labels"`
+	Name   string         `json:"Name"`
+	Labels map[string]any `json:"Labels"`
 }
 
 type gaugeJSON struct {
@@ -805,13 +805,13 @@ func CreateEntityAndAlias(t testing.T, client *api.Client, mountAccessor, entity
 	require.NoError(t, err, "failed to clone the client")
 	userClient.SetToken(client.Token())
 
-	resp, err := client.Logical().WriteWithContext(context.Background(), "identity/entity", map[string]interface{}{
+	resp, err := client.Logical().WriteWithContext(context.Background(), "identity/entity", map[string]any{
 		"name": entityName,
 	})
 	require.NoError(t, err, "failed to create an entity")
 	entityID := resp.Data["id"].(string)
 
-	aliasResp, err := client.Logical().WriteWithContext(context.Background(), "identity/entity-alias", map[string]interface{}{
+	aliasResp, err := client.Logical().WriteWithContext(context.Background(), "identity/entity-alias", map[string]any{
 		"name":           aliasName,
 		"canonical_id":   entityID,
 		"mount_accessor": mountAccessor,
@@ -819,7 +819,7 @@ func CreateEntityAndAlias(t testing.T, client *api.Client, mountAccessor, entity
 	require.NoError(t, err, "failed to create an entity alias")
 	aliasID := aliasResp.Data["id"].(string)
 	require.NotEmpty(t, aliasID, "Alias ID not present in response")
-	_, err = client.Logical().WriteWithContext(context.Background(), fmt.Sprintf("auth/userpass/users/%s", aliasName), map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(context.Background(), fmt.Sprintf("auth/userpass/users/%s", aliasName), map[string]any{
 		"password": "testpassword",
 	})
 	require.NoError(t, err, "failed to configure userpass backend")
@@ -840,7 +840,7 @@ func SetupTOTPMount(t testing.T, client *api.Client) {
 }
 
 // SetupTOTPMethod configures the TOTP secrets engine with a provided config map.
-func SetupTOTPMethod(t testing.T, client *api.Client, config map[string]interface{}) string {
+func SetupTOTPMethod(t testing.T, client *api.Client, config map[string]any) string {
 	t.Helper()
 
 	resp1, err := client.Logical().Write("identity/mfa/method/totp", config)
@@ -856,7 +856,7 @@ func SetupTOTPMethod(t testing.T, client *api.Client, config map[string]interfac
 
 // SetupMFALoginEnforcement configures a single enforcement method using the
 // provided config map. "name" field is required in the config map.
-func SetupMFALoginEnforcement(t testing.T, client *api.Client, config map[string]interface{}) {
+func SetupMFALoginEnforcement(t testing.T, client *api.Client, config map[string]any) {
 	t.Helper()
 	enfName, ok := config["name"]
 	require.True(t, ok, "couldn't find name in login-enforcement config")
@@ -888,19 +888,19 @@ func SetupUserpassMountAccessor(t testing.T, client *api.Client) string {
 func RegisterEntityInTOTPEngine(t testing.T, client *api.Client, entityID, methodID string) string {
 	t.Helper()
 	totpGenName := fmt.Sprintf("%s-%s", entityID, methodID)
-	secret, err := client.Logical().WriteWithContext(context.Background(), "identity/mfa/method/totp/admin-generate", map[string]interface{}{
+	secret, err := client.Logical().WriteWithContext(context.Background(), "identity/mfa/method/totp/admin-generate", map[string]any{
 		"entity_id": entityID,
 		"method_id": methodID,
 	})
 	require.NoError(t, err, "failed to generate a TOTP secret on an entity")
 	totpURL := secret.Data["url"].(string)
 	require.NotEmptyf(t, totpURL, "failed to get TOTP url in secret response: %+v", secret)
-	_, err = client.Logical().WriteWithContext(context.Background(), fmt.Sprintf("totp/keys/%s", totpGenName), map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(context.Background(), fmt.Sprintf("totp/keys/%s", totpGenName), map[string]any{
 		"url": totpURL,
 	})
 	require.NoError(t, err, "failed to register a TOTP URL")
 	enfPath := fmt.Sprintf("identity/mfa/login-enforcement/%s", methodID[0:4])
-	_, err = client.Logical().WriteWithContext(context.Background(), enfPath, map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(context.Background(), enfPath, map[string]any{
 		"name":                methodID[0:4],
 		"identity_entity_ids": []string{entityID},
 		"mfa_method_ids":      []string{methodID},
@@ -935,7 +935,7 @@ func SetupLoginMFATOTP(t testing.T, client *api.Client, methodName string, waitP
 	entityClient, entityID, _ := CreateEntityAndAlias(t, client, mountAccessor, "entity1", "testuser1")
 
 	// Configure a default TOTP method
-	totpConfig := map[string]interface{}{
+	totpConfig := map[string]any{
 		"issuer":                  "yCorp",
 		"period":                  waitPeriod,
 		"algorithm":               "SHA256",
@@ -949,7 +949,7 @@ func SetupLoginMFATOTP(t testing.T, client *api.Client, methodName string, waitP
 	methodID := SetupTOTPMethod(t, client, totpConfig)
 
 	// Configure a default login enforcement
-	enforcementConfig := map[string]interface{}{
+	enforcementConfig := map[string]any{
 		"auth_method_types": []string{"userpass"},
 		"name":              methodID[0:4],
 		"mfa_method_ids":    []string{methodID},

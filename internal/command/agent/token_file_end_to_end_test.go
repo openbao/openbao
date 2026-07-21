@@ -64,7 +64,7 @@ func TestTokenFileEndToEnd(t *testing.T) {
 
 	am, err := token_file.NewTokenFileAuthMethod(&auth.AuthConfig{
 		Logger: logger.Named("auth.method"),
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"token_file_path": tokenFileName,
 		},
 	})
@@ -100,7 +100,7 @@ func TestTokenFileEndToEnd(t *testing.T) {
 
 	config := &sink.SinkConfig{
 		Logger: logger.Named("sink.file"),
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"path": tokenSinkFileName,
 		},
 		WrapTTL: 10 * time.Second,

@@ -245,7 +245,7 @@ func (c *PKIHealthCheckCommand) Run(args []string) int {
 		if uiFormat != "json" {
 			c.UI.Output("Default health check config:")
 		}
-		config := map[string]map[string]interface{}{}
+		config := map[string]map[string]any{}
 		for _, checker := range executor.Checkers {
 			config[checker.Name()] = checker.DefaultConfig()
 		}
@@ -261,7 +261,7 @@ func (c *PKIHealthCheckCommand) Run(args []string) int {
 	}
 
 	// Handle config merging.
-	external_config := map[string]interface{}{}
+	external_config := map[string]any{}
 	if c.flagConfig != "" {
 		contents, err := os.Open(c.flagConfig)
 		if err != nil {
@@ -270,7 +270,7 @@ func (c *PKIHealthCheckCommand) Run(args []string) int {
 		}
 
 		decoder := json.NewDecoder(contents)
-		decoder.UseNumber() // Use json.Number instead of float64 values as we are decoding to an interface{}.
+		decoder.UseNumber() // Use json.Number instead of float64 values as we are decoding to any.
 
 		if err := decoder.Decode(&external_config); err != nil {
 			c.UI.Error(fmt.Sprintf("Failed to parse configuration file %v: %v", c.flagConfig, err))

@@ -987,7 +987,7 @@ func (p *Policy) Decrypt(context, nonce []byte, value string) (string, error) {
 	return p.DecryptWithFactory(context, nonce, value, nil)
 }
 
-func (p *Policy) DecryptWithFactory(context, nonce []byte, value string, factories ...interface{}) (string, error) {
+func (p *Policy) DecryptWithFactory(context, nonce []byte, value string, factories ...any) (string, error) {
 	if p.SoftDeleted {
 		return "", errutil.UserError{Err: ErrSoftDeleted}
 	}
@@ -2060,7 +2060,7 @@ func (p *Policy) SymmetricDecryptRaw(encKey, ciphertext []byte, opts SymmetricOp
 	return plain, nil
 }
 
-func (p *Policy) EncryptWithFactory(ver int, context []byte, nonce []byte, value string, factories ...interface{}) (string, error) {
+func (p *Policy) EncryptWithFactory(ver int, context []byte, nonce []byte, value string, factories ...any) (string, error) {
 	if p.SoftDeleted {
 		return "", errutil.UserError{Err: ErrSoftDeleted}
 	}
@@ -2384,7 +2384,7 @@ func (ke *KeyEntry) parseFromKey(PolKeyType KeyType, parsedKey any) error {
 	return nil
 }
 
-func (p *Policy) WrapKey(ver int, targetKey interface{}, targetKeyType KeyType, hash hash.Hash) (string, error) {
+func (p *Policy) WrapKey(ver int, targetKey any, targetKeyType KeyType, hash hash.Hash) (string, error) {
 	if p.SoftDeleted {
 		return "", errutil.UserError{Err: ErrSoftDeleted}
 	}
@@ -2412,7 +2412,7 @@ func (p *Policy) WrapKey(ver int, targetKey interface{}, targetKeyType KeyType, 
 	return keyEntry.WrapKey(targetKey, targetKeyType, hash)
 }
 
-func (ke *KeyEntry) WrapKey(targetKey interface{}, targetKeyType KeyType, hash hash.Hash) (string, error) {
+func (ke *KeyEntry) WrapKey(targetKey any, targetKeyType KeyType, hash hash.Hash) (string, error) {
 	// Presently this method implements a CKM_RSA_AES_KEY_WRAP-compatible
 	// wrapping interface and only works on RSA keyEntries as a result.
 	if ke.RSAPublicKey == nil && ke.RSAKey == nil {

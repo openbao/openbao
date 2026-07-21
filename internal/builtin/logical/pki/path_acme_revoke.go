@@ -40,7 +40,7 @@ func patternAcmeRevoke(b *backend, pattern string) *framework.Path {
 	}
 }
 
-func (b *backend) acmeRevocationHandler(acmeCtx *acmeContext, _ *logical.Request, _ *framework.FieldData, userCtx *jwsCtx, data map[string]interface{}) (*logical.Response, error) {
+func (b *backend) acmeRevocationHandler(acmeCtx *acmeContext, _ *logical.Request, _ *framework.FieldData, userCtx *jwsCtx, data map[string]any) (*logical.Response, error) {
 	var cert *x509.Certificate
 
 	rawCertificate, present := data["certificate"]

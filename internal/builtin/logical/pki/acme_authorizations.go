@@ -58,12 +58,12 @@ func (ai *ACMEIdentifier) MaybeParseWildcard() (bool, string, error) {
 	return true, reducedName, nil
 }
 
-func (ai *ACMEIdentifier) NetworkMarshal(useOriginalValue bool) map[string]interface{} {
+func (ai *ACMEIdentifier) NetworkMarshal(useOriginalValue bool) map[string]any {
 	value := ai.OriginalValue
 	if !useOriginalValue {
 		value = ai.Value
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		"type":  ai.Type,
 		"value": value,
 	}
@@ -111,12 +111,12 @@ type ACMEChallenge struct {
 	Type            ACMEChallengeType       `json:"type"`
 	Status          ACMEChallengeStatusType `json:"status"`
 	Validated       string                  `json:"validated,omitempty"`
-	Error           map[string]interface{}  `json:"error,omitempty"`
-	ChallengeFields map[string]interface{}  `json:"challenge_fields"`
+	Error           map[string]any          `json:"error,omitempty"`
+	ChallengeFields map[string]any          `json:"challenge_fields"`
 }
 
-func (ac *ACMEChallenge) NetworkMarshal(acmeCtx *acmeContext, authId string) map[string]interface{} {
-	resp := map[string]interface{}{
+func (ac *ACMEChallenge) NetworkMarshal(acmeCtx *acmeContext, authId string) map[string]any {
+	resp := map[string]any{
 		"type":   ac.Type,
 		"url":    buildChallengeUrl(acmeCtx, authId, string(ac.Type)),
 		"status": ac.Status,
@@ -164,8 +164,8 @@ func (aa *ACMEAuthorization) GetExpires() (time.Time, error) {
 	return time.Parse(time.RFC3339, aa.Expires)
 }
 
-func (aa *ACMEAuthorization) NetworkMarshal(acmeCtx *acmeContext) map[string]interface{} {
-	resp := map[string]interface{}{
+func (aa *ACMEAuthorization) NetworkMarshal(acmeCtx *acmeContext) map[string]any {
+	resp := map[string]any{
 		"identifier": aa.Identifier.NetworkMarshal( /* use value, not original value */ false),
 		"status":     aa.Status,
 		"wildcard":   aa.Wildcard,
@@ -176,7 +176,7 @@ func (aa *ACMEAuthorization) NetworkMarshal(acmeCtx *acmeContext) map[string]int
 	}
 
 	if len(aa.Challenges) > 0 {
-		challenges := []map[string]interface{}{}
+		challenges := []map[string]any{}
 		for _, challenge := range aa.Challenges {
 			challenges = append(challenges, challenge.NetworkMarshal(acmeCtx, aa.Id))
 		}

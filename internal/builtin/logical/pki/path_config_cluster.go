@@ -137,7 +137,7 @@ func (b *backend) pathReadCluster(ctx context.Context, req *logical.Request, _ *
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"path":     cfg.Path,
 			"aia_path": cfg.AIAPath,
 		},
@@ -177,7 +177,7 @@ func (b *backend) pathWriteCluster(ctx context.Context, req *logical.Request, da
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"path":     cfg.Path,
 			"aia_path": cfg.AIAPath,
 		},

@@ -35,8 +35,8 @@ func TestSysSealStatus(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	var actual map[string]interface{}
-	expected := map[string]interface{}{
+	var actual map[string]any
+	expected := map[string]any{
 		"sealed":        true,
 		"t":             json.Number("3"),
 		"n":             json.Number("3"),
@@ -116,12 +116,12 @@ func TestSysUnseal(t *testing.T) {
 	defer ln.Close()
 
 	for i, key := range keys {
-		resp := testHttpPut(t, "", addr+"/v1/sys/unseal", map[string]interface{}{
+		resp := testHttpPut(t, "", addr+"/v1/sys/unseal", map[string]any{
 			"key": hex.EncodeToString(key),
 		})
 
-		var actual map[string]interface{}
-		expected := map[string]interface{}{
+		var actual map[string]any
+		expected := map[string]any{
 			"sealed":        true,
 			"t":             json.Number("3"),
 			"n":             json.Number("3"),
@@ -238,7 +238,7 @@ func subtestBadSingleKey(t *testing.T, seal vault.Seal) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			resp := testHttpPut(t, "", addr+"/v1/sys/unseal", map[string]interface{}{
+			resp := testHttpPut(t, "", addr+"/v1/sys/unseal", map[string]any{
 				"key": tc.key,
 			})
 
@@ -300,7 +300,7 @@ func subtestBadMultiKey(t *testing.T, seal vault.Seal) {
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
 			for i, key := range tc.keys {
-				resp := testHttpPut(t, "", addr+"/v1/sys/unseal", map[string]interface{}{
+				resp := testHttpPut(t, "", addr+"/v1/sys/unseal", map[string]any{
 					"key": key,
 				})
 
@@ -339,29 +339,29 @@ func TestSysUnseal_Reset(t *testing.T) {
 	defer ln.Close()
 
 	thresh := 3
-	resp := testHttpPut(t, "", addr+"/v1/sys/init", map[string]interface{}{
+	resp := testHttpPut(t, "", addr+"/v1/sys/init", map[string]any{
 		"secret_shares":    5,
 		"secret_threshold": thresh,
 	})
 
-	var actual map[string]interface{}
+	var actual map[string]any
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
 	keysRaw, ok := actual["keys"]
 	if !ok {
 		t.Fatalf("no keys: %#v", actual)
 	}
-	for i, key := range keysRaw.([]interface{}) {
+	for i, key := range keysRaw.([]any) {
 		if i > thresh-2 {
 			break
 		}
 
-		resp := testHttpPut(t, "", addr+"/v1/sys/unseal", map[string]interface{}{
+		resp := testHttpPut(t, "", addr+"/v1/sys/unseal", map[string]any{
 			"key": key.(string),
 		})
 
-		var actual map[string]interface{}
-		expected := map[string]interface{}{
+		var actual map[string]any
+		expected := map[string]any{
 			"sealed":        true,
 			"t":             json.Number("3"),
 			"n":             json.Number("5"),
@@ -397,12 +397,12 @@ func TestSysUnseal_Reset(t *testing.T) {
 		}
 	}
 
-	resp = testHttpPut(t, "", addr+"/v1/sys/unseal", map[string]interface{}{
+	resp = testHttpPut(t, "", addr+"/v1/sys/unseal", map[string]any{
 		"reset": true,
 	})
 
-	actual = map[string]interface{}{}
-	expected := map[string]interface{}{
+	actual = map[string]any{}
+	expected := map[string]any{
 		"sealed":        true,
 		"t":             json.Number("3"),
 		"n":             json.Number("5"),
@@ -451,7 +451,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 	req := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "sys/policy/test",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"rules": `path "sys/seal" { capabilities = ["read"] }`,
 		},
 		ClientToken: root,
@@ -466,7 +466,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 
 	// Create a non-root token with access to that policy
 	req.Path = "auth/token/create"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"id":       "child",
 		"policies": []string{"test"},
 	}
@@ -489,7 +489,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "sys/policy/test",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"rules": `path "sys/seal" { capabilities = ["update"] }`,
 		},
 		ClientToken: root,
@@ -510,7 +510,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "sys/policy/test",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"rules": `path "sys/seal" { capabilities = ["sudo"] }`,
 		},
 		ClientToken: root,
@@ -531,7 +531,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "sys/policy/test",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"rules": `path "sys/seal" { capabilities = ["update", "sudo"] }`,
 		},
 		ClientToken: root,

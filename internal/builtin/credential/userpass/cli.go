@@ -48,7 +48,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 		data.Mount = h.DefaultMount
 	}
 
-	options := map[string]interface{}{
+	options := map[string]any{
 		"password": data.Password,
 	}
 

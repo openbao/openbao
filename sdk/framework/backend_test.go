@@ -53,7 +53,7 @@ func TestBackend_impl(t *testing.T) {
 func TestBackendHandleRequestFieldWarnings(t *testing.T) {
 	handler := func(ctx context.Context, req *logical.Request, data *FieldData) (*logical.Response, error) {
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"an_int":   data.Get("an_int"),
 				"a_string": data.Get("a_string"),
 				"name":     data.Get("name"),
@@ -80,7 +80,7 @@ func TestBackendHandleRequestFieldWarnings(t *testing.T) {
 	resp, err := backend.HandleRequest(ctx, &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "foo/bar/baz",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"an_int":        10,
 			"a_string":      "accepted",
 			"unrecognized1": "unrecognized",
@@ -99,14 +99,14 @@ func TestBackendHandleRequestFieldWarnings(t *testing.T) {
 func TestBackendHandleRequest(t *testing.T) {
 	callback := func(ctx context.Context, req *logical.Request, data *FieldData) (*logical.Response, error) {
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"value": data.Get("value"),
 			},
 		}, nil
 	}
 	handler := func(ctx context.Context, req *logical.Request, data *FieldData) (*logical.Response, error) {
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"amount": data.Get("amount"),
 			},
 		}, nil
@@ -156,7 +156,7 @@ func TestBackendHandleRequest(t *testing.T) {
 		resp, err := b.HandleRequest(t.Context(), &logical.Request{
 			Operation: logical.ReadOperation,
 			Path:      path,
-			Data:      map[string]interface{}{key: "42"},
+			Data:      map[string]any{key: "42"},
 		})
 		if err != nil {
 			t.Fatalf("err: %s", err)
@@ -271,7 +271,7 @@ func TestBackendHandleRequest_Forwarding(t *testing.T) {
 func TestBackendHandleRequest_badwrite(t *testing.T) {
 	callback := func(ctx context.Context, req *logical.Request, data *FieldData) (*logical.Response, error) {
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"value": data.Get("value").(bool),
 			},
 		}, nil
@@ -294,7 +294,7 @@ func TestBackendHandleRequest_badwrite(t *testing.T) {
 	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "foo/bar",
-		Data:      map[string]interface{}{"value": "3false3"},
+		Data:      map[string]any{"value": "3false3"},
 	})
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -308,7 +308,7 @@ func TestBackendHandleRequest_badwrite(t *testing.T) {
 func TestBackendHandleRequest_404(t *testing.T) {
 	callback := func(ctx context.Context, req *logical.Request, data *FieldData) (*logical.Response, error) {
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"value": data.Get("value"),
 			},
 		}, nil
@@ -331,7 +331,7 @@ func TestBackendHandleRequest_404(t *testing.T) {
 	_, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "foo/baz",
-		Data:      map[string]interface{}{"value": "84"},
+		Data:      map[string]any{"value": "84"},
 	})
 	if err != logical.ErrUnsupportedPath {
 		t.Fatalf("err: %s", err)
@@ -355,7 +355,7 @@ func TestBackendHandleRequest_help(t *testing.T) {
 	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.HelpOperation,
 		Path:      "foo/bar",
-		Data:      map[string]interface{}{"value": "42"},
+		Data:      map[string]any{"value": "42"},
 	})
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -464,7 +464,7 @@ func TestBackendHandleRequest_revoke(t *testing.T) {
 
 func TestBackendHandleRequest_rollback(t *testing.T) {
 	called := atomic.Uint32{}
-	callback := func(_ context.Context, req *logical.Request, kind string, data interface{}) error {
+	callback := func(_ context.Context, req *logical.Request, kind string, data any) error {
 		if data == "foo" {
 			called.Add(1)
 		}
@@ -498,7 +498,7 @@ func TestBackendHandleRequest_rollback(t *testing.T) {
 
 func TestBackendHandleRequest_rollbackMinAge(t *testing.T) {
 	called := atomic.Uint32{}
-	callback := func(_ context.Context, req *logical.Request, kind string, data interface{}) error {
+	callback := func(_ context.Context, req *logical.Request, kind string, data any) error {
 		if data == "foo" {
 			called.Add(1)
 		}
@@ -531,7 +531,7 @@ func TestBackendHandleRequest_rollbackMinAge(t *testing.T) {
 func TestBackendHandleRequest_unsupportedOperation(t *testing.T) {
 	callback := func(ctx context.Context, req *logical.Request, data *FieldData) (*logical.Response, error) {
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"value": data.Get("value"),
 			},
 		}, nil
@@ -554,7 +554,7 @@ func TestBackendHandleRequest_unsupportedOperation(t *testing.T) {
 	_, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "foo/bar",
-		Data:      map[string]interface{}{"value": "84"},
+		Data:      map[string]any{"value": "84"},
 	})
 	if err != logical.ErrUnsupportedOperation {
 		t.Fatalf("err: %s", err)
@@ -564,7 +564,7 @@ func TestBackendHandleRequest_unsupportedOperation(t *testing.T) {
 func TestBackendHandleRequest_urlPriority(t *testing.T) {
 	callback := func(ctx context.Context, req *logical.Request, data *FieldData) (*logical.Response, error) {
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"value": data.Get("value"),
 			},
 		}, nil
@@ -587,7 +587,7 @@ func TestBackendHandleRequest_urlPriority(t *testing.T) {
 	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "foo/42",
-		Data:      map[string]interface{}{"value": "84"},
+		Data:      map[string]any{"value": "84"},
 	})
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -694,7 +694,7 @@ func TestBackendSecret(t *testing.T) {
 func TestFieldSchemaDefaultOrZero(t *testing.T) {
 	cases := map[string]struct {
 		Schema *FieldSchema
-		Value  interface{}
+		Value  any
 	}{
 		"default set": {
 			&FieldSchema{Type: TypeString, Default: "foo"},

@@ -2876,7 +2876,7 @@ func (c *Core) setupHeaderHMACKey(ctx context.Context) error {
 
 // SanitizedConfig returns a sanitized version of the current config.
 // See server.Config.Sanitized for specific values omitted.
-func (c *Core) SanitizedConfig() map[string]interface{} {
+func (c *Core) SanitizedConfig() map[string]any {
 	conf := c.rawConfig.Load()
 	if conf == nil {
 		return nil
@@ -2911,7 +2911,7 @@ func (c *Core) MetricSink() *metricsutil.ClusterMetricSink {
 // also allows for mocking the registry easily.
 type BuiltinRegistry interface {
 	Contains(name string, pluginType consts.PluginType) bool
-	Get(name string, pluginType consts.PluginType) (func() (interface{}, error), bool)
+	Get(name string, pluginType consts.PluginType) (func() (any, error), bool)
 	Keys(pluginType consts.PluginType) []string
 	DeprecationStatus(name string, pluginType consts.PluginType) (consts.DeprecationStatus, bool)
 }
@@ -3384,7 +3384,7 @@ func (c *Core) FinalizeInFlightReqData(reqID string, statusCode int) {
 // in-flight requests
 func (c *Core) LoadInFlightReqData() map[string]InFlightReqData {
 	currentInFlightReqMap := make(map[string]InFlightReqData)
-	c.inFlightReqData.InFlightReqMap.Range(func(key, value interface{}) bool {
+	c.inFlightReqData.InFlightReqMap.Range(func(key, value any) bool {
 		// there is only one writer to this map, so skip checking for errors
 		v := value.(InFlightReqData)
 		currentInFlightReqMap[key.(string)] = v
@@ -3517,7 +3517,7 @@ func (c *Core) LoadNodeID() (string, error) {
 
 // DetermineRoleFromLoginRequest will determine the role that should be applied to a quota for a given
 // login request
-func (c *Core) DetermineRoleFromLoginRequest(ctx context.Context, mountPoint string, data map[string]interface{}) string {
+func (c *Core) DetermineRoleFromLoginRequest(ctx context.Context, mountPoint string, data map[string]any) string {
 	c.authLock.RLock()
 	defer c.authLock.RUnlock()
 	matchingBackend := c.router.MatchingBackend(ctx, mountPoint)
@@ -3541,7 +3541,7 @@ func (c *Core) DetermineRoleFromLoginRequestFromReader(ctx context.Context, moun
 		return ""
 	}
 
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	err := jsonutil.DecodeJSONFromReader(reader, &data)
 	if err != nil {
 		return ""
@@ -3551,7 +3551,7 @@ func (c *Core) DetermineRoleFromLoginRequestFromReader(ctx context.Context, moun
 
 // doResolveRoleLocked does a login and resolve role request on the matching
 // backend. Callers should have a read lock on c.authLock
-func (c *Core) doResolveRoleLocked(ctx context.Context, mountPoint string, matchingBackend logical.Backend, data map[string]interface{}) string {
+func (c *Core) doResolveRoleLocked(ctx context.Context, mountPoint string, matchingBackend logical.Backend, data map[string]any) string {
 	resp, err := matchingBackend.HandleRequest(ctx, &logical.Request{
 		MountPoint: mountPoint,
 		Path:       "login",

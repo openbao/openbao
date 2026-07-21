@@ -17,10 +17,10 @@ func Raft_Configuration_Test(t *testing.T, cluster testcluster.VaultCluster) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	servers := secret.Data["config"].(map[string]interface{})["servers"].([]interface{})
+	servers := secret.Data["config"].(map[string]any)["servers"].([]any)
 	found := make(map[string]struct{})
 	for _, s := range servers {
-		server := s.(map[string]interface{})
+		server := s.(map[string]any)
 		nodeID := server["node_id"].(string)
 		leader := server["leader"].(bool)
 		switch nodeID {

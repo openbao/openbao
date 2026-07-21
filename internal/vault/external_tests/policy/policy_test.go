@@ -57,7 +57,7 @@ func TestPolicy_NoDefaultPolicy(t *testing.T) {
 	cleanup, cfg := ldaphelper.PrepareTestContainer(t, "latest")
 	defer cleanup()
 
-	_, err = client.Logical().Write("auth/ldap/config", map[string]interface{}{
+	_, err = client.Logical().Write("auth/ldap/config", map[string]any{
 		"url":                     cfg.Url,
 		"userattr":                cfg.UserAttr,
 		"userdn":                  cfg.UserDN,
@@ -72,7 +72,7 @@ func TestPolicy_NoDefaultPolicy(t *testing.T) {
 	}
 
 	// Create a local user in LDAP
-	_, err = client.Logical().Write("auth/ldap/users/hermes conrad", map[string]interface{}{
+	_, err = client.Logical().Write("auth/ldap/users/hermes conrad", map[string]any{
 		"policies": "foo",
 	})
 	if err != nil {
@@ -80,7 +80,7 @@ func TestPolicy_NoDefaultPolicy(t *testing.T) {
 	}
 
 	// Login with LDAP and create a token
-	secret, err := client.Logical().Write("auth/ldap/login/hermes conrad", map[string]interface{}{
+	secret, err := client.Logical().Write("auth/ldap/login/hermes conrad", map[string]any{
 		"password": "hermes",
 	})
 	if err != nil {
@@ -94,7 +94,7 @@ func TestPolicy_NoDefaultPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if diff := deep.Equal(secret.Data["policies"], []interface{}{"foo"}); diff != nil {
+	if diff := deep.Equal(secret.Data["policies"], []any{"foo"}); diff != nil {
 		t.Fatal(diff)
 	}
 }
@@ -133,7 +133,7 @@ func TestPolicy_NoConfiguredPolicy(t *testing.T) {
 	cleanup, cfg := ldaphelper.PrepareTestContainer(t, "latest")
 	defer cleanup()
 
-	_, err = client.Logical().Write("auth/ldap/config", map[string]interface{}{
+	_, err = client.Logical().Write("auth/ldap/config", map[string]any{
 		"url":       cfg.Url,
 		"userattr":  cfg.UserAttr,
 		"userdn":    cfg.UserDN,
@@ -148,13 +148,13 @@ func TestPolicy_NoConfiguredPolicy(t *testing.T) {
 	}
 
 	// Create a local user in LDAP without any policies configured
-	_, err = client.Logical().Write("auth/ldap/users/hermes conrad", map[string]interface{}{})
+	_, err = client.Logical().Write("auth/ldap/users/hermes conrad", map[string]any{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Login with LDAP and create a token
-	secret, err := client.Logical().Write("auth/ldap/login/hermes conrad", map[string]interface{}{
+	secret, err := client.Logical().Write("auth/ldap/login/hermes conrad", map[string]any{
 		"password": "hermes",
 	})
 	if err != nil {
@@ -168,14 +168,14 @@ func TestPolicy_NoConfiguredPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if diff := deep.Equal(secret.Data["policies"], []interface{}{"default"}); diff != nil {
+	if diff := deep.Equal(secret.Data["policies"], []any{"default"}); diff != nil {
 		t.Fatal(diff)
 	}
 
 	// Renew the token with an increment of 2 hours to ensure that lease renewal
 	// occurred and can be checked against the default lease duration with a
 	// big enough delta.
-	secret, err = client.Logical().Write("auth/token/renew", map[string]interface{}{
+	secret, err = client.Logical().Write("auth/token/renew", map[string]any{
 		"token":     token,
 		"increment": "2h",
 	})
@@ -243,7 +243,7 @@ func TestPolicy_TokenRenewal(t *testing.T) {
 			}
 
 			// Add a user to userpass backend
-			data := map[string]interface{}{
+			data := map[string]any{
 				"password": "testpassword",
 			}
 			if len(tc.tokenPolicies) > 0 {
@@ -262,7 +262,7 @@ func TestPolicy_TokenRenewal(t *testing.T) {
 				}
 				userpassAccessor := auths["userpass/"].Accessor
 
-				resp, err := client.Logical().Write("identity/entity", map[string]interface{}{
+				resp, err := client.Logical().Write("identity/entity", map[string]any{
 					"name":     "test-entity",
 					"policies": tc.identityPolicies,
 				})
@@ -272,7 +272,7 @@ func TestPolicy_TokenRenewal(t *testing.T) {
 				entityID := resp.Data["id"].(string)
 
 				// Create an alias
-				_, err = client.Logical().Write("identity/entity-alias", map[string]interface{}{
+				_, err = client.Logical().Write("identity/entity-alias", map[string]any{
 					"name":           "testuser",
 					"mount_accessor": userpassAccessor,
 					"canonical_id":   entityID,
@@ -283,7 +283,7 @@ func TestPolicy_TokenRenewal(t *testing.T) {
 			}
 
 			// Authenticate
-			secret, err := client.Logical().Write("auth/userpass/login/testuser", map[string]interface{}{
+			secret, err := client.Logical().Write("auth/userpass/login/testuser", map[string]any{
 				"password": "testpassword",
 			})
 			if err != nil {
@@ -307,7 +307,7 @@ func TestPolicy_TokenRenewal(t *testing.T) {
 			}
 
 			// Renew token
-			secret, err = client.Logical().Write("auth/token/renew", map[string]interface{}{
+			secret, err = client.Logical().Write("auth/token/renew", map[string]any{
 				"token": clientToken,
 			})
 			if err != nil {
@@ -356,7 +356,7 @@ func TestPolicy_PaginationLimit(t *testing.T) {
 	require.NoError(t, err, "failed to enable userpass auth")
 
 	// Add a user to userpass backend
-	data := map[string]interface{}{
+	data := map[string]any{
 		"password":       "testpassword",
 		"token_policies": "testpolicy",
 	}
@@ -373,22 +373,22 @@ func TestPolicy_PaginationLimit(t *testing.T) {
 	require.NoError(t, err, "failed to mount kv")
 
 	for i := 1; i <= 100; i++ {
-		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("a/key-%v", i), map[string]interface{}{
+		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("a/key-%v", i), map[string]any{
 			"value": i,
 		})
 		require.NoError(t, err, "failed writing k/v key")
 
-		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("b/key-%v", i), map[string]interface{}{
+		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("b/key-%v", i), map[string]any{
 			"value": i,
 		})
 		require.NoError(t, err, "failed writing k/v key")
 
-		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("c/key-%v", i), map[string]interface{}{
+		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("c/key-%v", i), map[string]any{
 			"value": i,
 		})
 		require.NoError(t, err, "failed writing k/v key")
 
-		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("d/key-%v", i), map[string]interface{}{
+		_, err = client.KVv2("kv").Put(t.Context(), fmt.Sprintf("d/key-%v", i), map[string]any{
 			"value": i,
 		})
 		require.NoError(t, err, "failed writing k/v key")
@@ -429,7 +429,7 @@ path "kv/metadata/" {
 `)
 	require.NoError(t, err, "failed to write policy")
 
-	resp, err := client.Logical().Write("auth/userpass/login/testuser", map[string]interface{}{
+	resp, err := client.Logical().Write("auth/userpass/login/testuser", map[string]any{
 		"password": "testpassword",
 	})
 	require.NoError(t, err, "failed to auth")
@@ -456,7 +456,7 @@ path "kv/metadata/" {
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data)
 	// TODO - kv metadata scanning doesn't accept pagination
-	require.Equal(t, 400, len(resp.Data["keys"].([]interface{})))
+	require.Equal(t, 400, len(resp.Data["keys"].([]any)))
 
 	// Test 'max' value.
 	resp, err = client.Logical().ReadWithData("kv/metadata/d", map[string][]string{
@@ -466,7 +466,7 @@ path "kv/metadata/" {
 	require.NoError(t, err, "failed to list with max value")
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data)
-	require.Equal(t, 10, len(resp.Data["keys"].([]interface{})))
+	require.Equal(t, 10, len(resp.Data["keys"].([]any)))
 
 	// Test '0' value.
 	resp, err = client.Logical().ReadWithData("kv/metadata/d", map[string][]string{
@@ -493,7 +493,7 @@ path "kv/metadata/" {
 	require.NoError(t, err, "failed to list with max value")
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data)
-	require.Equal(t, 100, len(resp.Data["keys"].([]interface{})))
+	require.Equal(t, 100, len(resp.Data["keys"].([]any)))
 }
 
 func testPagination(t *testing.T, client *api.Client, path string, raw bool, limited bool) {
@@ -503,9 +503,9 @@ func testPagination(t *testing.T, client *api.Client, path string, raw bool, lim
 		require.NotNil(t, resp)
 		require.NotNil(t, resp.Data)
 		if limited {
-			require.LessOrEqual(t, len(resp.Data["keys"].([]interface{})), 10)
+			require.LessOrEqual(t, len(resp.Data["keys"].([]any)), 10)
 		} else {
-			require.Equal(t, 100, len(resp.Data["keys"].([]interface{})))
+			require.Equal(t, 100, len(resp.Data["keys"].([]any)))
 		}
 	} else {
 		require.Error(t, err, "expected failure to raw list on "+path)
@@ -518,14 +518,14 @@ func testPagination(t *testing.T, client *api.Client, path string, raw bool, lim
 		require.NoError(t, err, "failed to raw list on "+path)
 		require.NotNil(t, resp)
 		require.NotNil(t, resp.Data)
-		require.Equal(t, 75, len(resp.Data["keys"].([]interface{})))
+		require.Equal(t, 75, len(resp.Data["keys"].([]any)))
 	}
 
 	resp, err = client.Logical().ListPage("kv/metadata/"+path, "", 10)
 	require.NoError(t, err, "failed to raw list on "+path)
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data)
-	require.LessOrEqual(t, len(resp.Data["keys"].([]interface{})), 10)
+	require.LessOrEqual(t, len(resp.Data["keys"].([]any)), 10)
 }
 
 func TestPolicyStore_DisabledCacheInvalidation(t *testing.T) {

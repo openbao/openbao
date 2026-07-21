@@ -57,7 +57,7 @@ func testBackupRestore(t *testing.T, keyType, feature string) {
 		Path:      "keys/test",
 		Operation: logical.UpdateOperation,
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type":       keyType,
 			"exportable": true,
 		},
@@ -75,7 +75,7 @@ func testBackupRestore(t *testing.T, keyType, feature string) {
 		Path:      "keys/test/config",
 		Operation: logical.UpdateOperation,
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"deletion_allowed":       true,
 			"allow_plaintext_backup": true,
 		},
@@ -127,7 +127,7 @@ func testBackupRestore(t *testing.T, keyType, feature string) {
 		Path:      "restore",
 		Operation: logical.UpdateOperation,
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"backup": backup,
 		},
 	}
@@ -150,7 +150,7 @@ func testBackupRestore(t *testing.T, keyType, feature string) {
 			Path:      "encrypt/test",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"plaintext": plaintextB64,
 			},
 		}
@@ -165,7 +165,7 @@ func testBackupRestore(t *testing.T, keyType, feature string) {
 			Path:      "sign/test",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"input": plaintextB64,
 			},
 		}
@@ -180,7 +180,7 @@ func testBackupRestore(t *testing.T, keyType, feature string) {
 			Path:      "hmac/test",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"input": plaintextB64,
 			},
 		}
@@ -215,7 +215,7 @@ func testBackupRestore(t *testing.T, keyType, feature string) {
 				Path:      "decrypt/" + keyName,
 				Operation: logical.UpdateOperation,
 				Storage:   s,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": ciphertext,
 				},
 			}
@@ -232,7 +232,7 @@ func testBackupRestore(t *testing.T, keyType, feature string) {
 				Path:      "verify/" + keyName,
 				Operation: logical.UpdateOperation,
 				Storage:   s,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"signature": signature,
 					"input":     plaintextB64,
 				},
@@ -250,7 +250,7 @@ func testBackupRestore(t *testing.T, keyType, feature string) {
 				Path:      "verify/" + keyName,
 				Operation: logical.UpdateOperation,
 				Storage:   s,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"hmac":  hmac,
 					"input": plaintextB64,
 				},

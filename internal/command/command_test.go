@@ -99,14 +99,14 @@ func testVaultServerWithSecrets(ctx context.Context, tb testing.TB) (*api.Client
 		"app-1/bar",
 		"app-1/nested/baz",
 	} {
-		if err := client.KVv1("kv-v1").Put(ctx, path, map[string]interface{}{
+		if err := client.KVv1("kv-v1").Put(ctx, path, map[string]any{
 			"user":     "test",
 			"password": "Hashi123",
 		}); err != nil {
 			tb.Fatal(err)
 		}
 
-		if _, err := client.KVv2("kv-v2").Put(ctx, path, map[string]interface{}{
+		if _, err := client.KVv2("kv-v2").Put(ctx, path, map[string]any{
 			"user":     "test",
 			"password": "Hashi123",
 		}); err != nil {

@@ -25,7 +25,7 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	// Create a root CA
-	caData := map[string]interface{}{
+	caData := map[string]any{
 		"common_name": "root.com",
 		"ttl":         "30h",
 		"ip_sans":     "127.0.0.1",
@@ -59,15 +59,15 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 	}
 
 	// Modify our issuer to set custom AIAs
-	resp0, err := CBPatch(b, storage, "issuer/default", map[string]interface{}{
+	resp0, err := CBPatch(b, storage, "issuer/default", map[string]any{
 		"ocsp_servers": "http://localhost/c",
 	})
 	requireSuccessNonNilResponse(t, resp0, err, "failed setting up issuer")
 
 	// Create a CEL role
-	roleData := map[string]interface{}{
-		"cel_program": map[string]interface{}{
-			"variables": []map[string]interface{}{
+	roleData := map[string]any{
+		"cel_program": map[string]any{
+			"variables": []map[string]any{
 				{
 					"name":       "validate_cn",
 					"expression": `has(request.common_name) && request.common_name == "example.com"`,
@@ -139,7 +139,7 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 	}
 
 	// Issue a certificate using the CEL role
-	issueData := map[string]interface{}{
+	issueData := map[string]any{
 		"format":              "pem",
 		"common_name":         "example.com",
 		"ttl":                 "1h",
@@ -234,7 +234,7 @@ func TestCelRoleSign(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	// Create a root CA
-	caData := map[string]interface{}{
+	caData := map[string]any{
 		"common_name": "root.com",
 		"ttl":         "30h",
 		"ip_sans":     "127.0.0.1",
@@ -252,9 +252,9 @@ func TestCelRoleSign(t *testing.T) {
 	}
 
 	// Create a CEL role for signing
-	roleData := map[string]interface{}{
-		"cel_program": map[string]interface{}{
-			"variables": []map[string]interface{}{
+	roleData := map[string]any{
+		"cel_program": map[string]any{
+			"variables": []map[string]any{
 				{
 					"name":       "validate_cn",
 					"expression": `has(request.common_name) && request.common_name == "example2.com"`,
@@ -344,7 +344,7 @@ func TestCelRoleSign(t *testing.T) {
 	})
 
 	// Issue a certificate using the CEL role and CSR
-	signData := map[string]interface{}{
+	signData := map[string]any{
 		"csr":           csrPEM,
 		"common_name":   "example2.com",
 		"key_usage":     "certsign",
@@ -405,7 +405,7 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	// Create a root CA
-	caData := map[string]interface{}{
+	caData := map[string]any{
 		"common_name": "root.com",
 		"ttl":         "30h",
 		"locality":    "MiltonPark",
@@ -439,7 +439,7 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 	}
 
 	// Create a second root CA
-	caData2 := map[string]interface{}{
+	caData2 := map[string]any{
 		"common_name": "root2.com",
 		"ttl":         "30h",
 		"locality":    "MiltonPark",
@@ -473,9 +473,9 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 	}
 
 	// Create a CEL role
-	roleData := map[string]interface{}{
-		"cel_program": map[string]interface{}{
-			"variables": []map[string]interface{}{
+	roleData := map[string]any{
+		"cel_program": map[string]any{
+			"variables": []map[string]any{
 				{
 					"name":       "validate_cn",
 					"expression": `has(request.common_name) && request.common_name == "example2.com"`,
@@ -536,7 +536,7 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 	}
 
 	// Issue a certificate using the CEL role
-	issueData := map[string]interface{}{
+	issueData := map[string]any{
 		"format":      "pem",
 		"common_name": "example2.com",
 		"ttl":         "1h",
@@ -605,7 +605,7 @@ func TestCelParsedCsr(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	// Create a root CA
-	caData := map[string]interface{}{
+	caData := map[string]any{
 		"common_name": "root.com",
 		"ttl":         "30h",
 		"ip_sans":     "127.0.0.1",
@@ -623,9 +623,9 @@ func TestCelParsedCsr(t *testing.T) {
 	}
 
 	// Create a CEL role for signing
-	roleData := map[string]interface{}{
-		"cel_program": map[string]interface{}{
-			"variables": []map[string]interface{}{
+	roleData := map[string]any{
+		"cel_program": map[string]any{
+			"variables": []map[string]any{
 				{
 					"name":       "validate_cn",
 					"expression": `parsed_csr.Subject.CommonName == "example.com"`,
@@ -688,7 +688,7 @@ func TestCelParsedCsr(t *testing.T) {
 	})
 
 	// Issue a certificate using the CEL role and CSR
-	signData := map[string]interface{}{
+	signData := map[string]any{
 		"csr":         csrPEM,
 		"common_name": "example2.com",
 	}
@@ -734,7 +734,7 @@ func TestCelCustomFunction(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	// Create a root CA
-	caData := map[string]interface{}{
+	caData := map[string]any{
 		"common_name": "root.com",
 		"ttl":         "30h",
 		"ip_sans":     "127.0.0.1",
@@ -768,9 +768,9 @@ func TestCelCustomFunction(t *testing.T) {
 	}
 
 	// Create a CEL role
-	roleData := map[string]interface{}{
-		"cel_program": map[string]interface{}{
-			"variables": []map[string]interface{}{
+	roleData := map[string]any{
+		"cel_program": map[string]any{
+			"variables": []map[string]any{
 				{
 					"name":       "emails",
 					"expression": `decode_json(request.extensions["subject_alt_name"]).emails`,
@@ -824,11 +824,11 @@ func TestCelCustomFunction(t *testing.T) {
 	}
 
 	// Issue a certificate using the CEL role
-	issueData := map[string]interface{}{
+	issueData := map[string]any{
 		"common_name": "example.com",
 		"alt_names":   "example@gmail.com",
 		"ttl":         "4h",
-		"extensions": map[string]interface{}{
+		"extensions": map[string]any{
 			"subject_alt_name": `{
 				"dns":    ["example.com", "www.example.com"],
 				"emails": ["example@gmail.com"],
@@ -882,7 +882,7 @@ func TestNotAfter(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	// Create a root CA
-	caData := map[string]interface{}{
+	caData := map[string]any{
 		"common_name": "root.com",
 		"ttl":         "30h",
 		"ip_sans":     "127.0.0.1",
@@ -916,15 +916,15 @@ func TestNotAfter(t *testing.T) {
 	}
 
 	// Modify our issuer to set custom AIAs
-	resp0, err := CBPatch(b, storage, "issuer/default", map[string]interface{}{
+	resp0, err := CBPatch(b, storage, "issuer/default", map[string]any{
 		"ocsp_servers": "http://localhost/c",
 	})
 	requireSuccessNonNilResponse(t, resp0, err, "failed setting up issuer")
 
 	// Create a CEL role
-	roleData := map[string]interface{}{
-		"cel_program": map[string]interface{}{
-			"variables": []map[string]interface{}{
+	roleData := map[string]any{
+		"cel_program": map[string]any{
+			"variables": []map[string]any{
 				{
 					"name":       "after",
 					"expression": "timestamp(request.not_after)",
@@ -975,7 +975,7 @@ func TestNotAfter(t *testing.T) {
 	notAfter := time.Now().Add(time.Duration(time.Hour)).UTC().Format(time.RFC3339)
 
 	// Issue a certificate using the CEL role
-	issueData := map[string]interface{}{
+	issueData := map[string]any{
 		"common_name": "example.com",
 		"not_after":   notAfter,
 	}

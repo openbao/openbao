@@ -84,7 +84,7 @@ type VaultNodeConfig struct {
 	// 0.0.0.0:8200 listener. Currently only works for
 	// DockerClusterNode containers. Each slice item is a map
 	// of listener type -> listener configuration.
-	AdditionalListeners []interface{} `json:"listeners"`
+	AdditionalListeners []any `json:"listeners"`
 
 	// Enable a stdout audit log device through configuration.
 	AuditLogStdout bool `json:"-"`
@@ -123,6 +123,6 @@ type CA struct {
 type ClusterStorage interface {
 	Start(context.Context, *ClusterOptions) error
 	Cleanup() error
-	Opts() map[string]interface{}
+	Opts() map[string]any
 	Type() string
 }

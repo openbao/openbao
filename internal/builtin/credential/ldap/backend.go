@@ -147,7 +147,7 @@ func (b *backend) Login(ctx context.Context, req *logical.Request, username stri
 	b.Logger().Debug("groups fetched from server", "num_server_groups", len(ldapGroups), "server_groups", ldapGroups)
 
 	ldapResponse := &logical.Response{
-		Data: map[string]interface{}{},
+		Data: map[string]any{},
 	}
 	if len(ldapGroups) == 0 {
 		errString := fmt.Sprintf(

@@ -38,13 +38,14 @@ type Database interface {
 
 // ///////////////////////////////////////////////////////////////////////////
 // Database Request & Response Objects
-// These request and response objects are *not* protobuf types because gRPC does not
-// support all types that we need in a nice way. For instance, gRPC does not support
-// map[string]interface{}. It does have an `Any` type, but converting it to a map
-// requires extensive use of reflection and knowing what types to support ahead of
-// time. Instead these types are made as user-friendly as possible so the conversion
-// between protobuf types and request/response objects is handled by Vault developers
-// rather than needing to be handled by external plugin developers.
+// These request and response objects are *not* protobuf types because gRPC does
+// not support all types that we need in a nice way. For instance, gRPC does
+// not support map[string]any. It does have an `Any` type, but converting it to
+// a map requires extensive use of reflection and knowing what types to support
+// ahead of time. Instead these types are made as user-friendly as possible so
+// the conversion between protobuf types and request/response objects is handled
+// by Vault developers rather than needing to be handled by external plugin
+// developers.
 // ///////////////////////////////////////////////////////////////////////////
 
 // ///////////////////////////////////////////////////////
@@ -57,7 +58,7 @@ type InitializeRequest struct {
 	// a "root" username & password, etc. This will not include all configuration items specified
 	// when configuring the database. Some values will be stripped out by the database engine
 	// prior to being passed to the plugin.
-	Config map[string]interface{}
+	Config map[string]any
 
 	// VerifyConnection during initialization. If true, a connection should be made to the
 	// database to verify the connection can be made. If false, no connection should be made
@@ -71,7 +72,7 @@ type InitializeResponse struct {
 	// Config that should be saved in Vault. This may differ from the config in the request,
 	// but should contain everything required to Initialize the database.
 	// REQUIRED in order to save the configuration into Vault after initialization
-	Config map[string]interface{}
+	Config map[string]any
 }
 
 // SupportedCredentialTypesKey is used to get and set the supported
@@ -82,7 +83,7 @@ const SupportedCredentialTypesKey = "supported_credential_types"
 // supported by the database plugin. It can be used by database plugins
 // to communicate what CredentialType values it supports managing.
 func (ir InitializeResponse) SetSupportedCredentialTypes(credTypes []CredentialType) {
-	sct := make([]interface{}, 0, len(credTypes))
+	sct := make([]any, 0, len(credTypes))
 	for _, t := range credTypes {
 		sct = append(sct, t.String())
 	}

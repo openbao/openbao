@@ -44,8 +44,8 @@ while minimizing complexity and maintenance overhead.
 For example, take the following CEL program:
 ```go
 "name": "simple_policy",
-"cel_program": map[string]interface{}{
-  "variables": []map[string]interface{}{
+"cel_program": map[string]any{
+  "variables": []map[string]any{
     {
       "name":       "cn_value",
       "expression": "request.common_name",

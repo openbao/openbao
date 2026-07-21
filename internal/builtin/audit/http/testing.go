@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func GetTestAuditHandler(t *testing.T, lock *sync.Mutex, logs *[]map[string]interface{}, path string, requiredHeaders http.Header, badRequests *int) http.HandlerFunc {
+func GetTestAuditHandler(t *testing.T, lock *sync.Mutex, logs *[]map[string]any, path string, requiredHeaders http.Header, badRequests *int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		lock.Lock()
 		defer lock.Unlock()
@@ -52,7 +52,7 @@ func GetTestAuditHandler(t *testing.T, lock *sync.Mutex, logs *[]map[string]inte
 			}
 		}
 
-		var log map[string]interface{}
+		var log map[string]any
 		decoder := json.NewDecoder(r.Body)
 		if err := decoder.Decode(&log); err != nil {
 			t.Logf("failed to decode request: %v", err)

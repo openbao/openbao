@@ -85,7 +85,7 @@ func TestCRLFetch(t *testing.T) {
 	}
 
 	fd := &framework.FieldData{
-		Raw: map[string]interface{}{
+		Raw: map[string]any{
 			"name":        "test",
 			"certificate": tc.exampleCA.CertPEM(),
 			"policies":    "foo,bar",
@@ -99,7 +99,7 @@ func TestCRLFetch(t *testing.T) {
 	}
 
 	empty_login_fd := &framework.FieldData{
-		Raw:    map[string]interface{}{},
+		Raw:    map[string]any{},
 		Schema: pathLogin(b).Fields,
 	}
 	resp, err := b.pathLogin(t.Context(), req, empty_login_fd)
@@ -112,7 +112,7 @@ func TestCRLFetch(t *testing.T) {
 
 	// Set a bad CRL
 	fd = &framework.FieldData{
-		Raw: map[string]interface{}{
+		Raw: map[string]any{
 			"name": "testcrl",
 			"url":  "http://wrongserver.com",
 		},
@@ -128,7 +128,7 @@ func TestCRLFetch(t *testing.T) {
 
 	// Set good CRL
 	fd = &framework.FieldData{
-		Raw: map[string]interface{}{
+		Raw: map[string]any{
 			"name": "testcrl",
 			"url":  crlServer.URL,
 		},

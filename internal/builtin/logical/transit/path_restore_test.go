@@ -32,7 +32,7 @@ func TestTransit_Restore(t *testing.T) {
 		Path:      "keys/" + keyName,
 		Operation: logical.UpdateOperation,
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type":       keyType,
 			"exportable": true,
 		},
@@ -47,7 +47,7 @@ func TestTransit_Restore(t *testing.T) {
 		Path:      fmt.Sprintf("keys/%s/config", keyName),
 		Operation: logical.UpdateOperation,
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"deletion_allowed":       true,
 			"allow_plaintext_backup": true,
 		},
@@ -172,7 +172,7 @@ func TestTransit_Restore(t *testing.T) {
 					Path:      "restore",
 					Operation: logical.UpdateOperation,
 					Storage:   s,
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"backup": backupKey,
 					},
 				}
@@ -195,7 +195,7 @@ func TestTransit_Restore(t *testing.T) {
 				Path:      restorePath,
 				Operation: logical.UpdateOperation,
 				Storage:   s,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"backup": backupKey,
 				},
 			}

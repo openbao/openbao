@@ -102,18 +102,18 @@ func patternAcmeNewAccount(b *backend, pattern string) *framework.Path {
 	}
 }
 
-func (b *backend) acmeNewAccountHandler(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]interface{}) (*logical.Response, error) {
+func (b *backend) acmeNewAccountHandler(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]any) (*logical.Response, error) {
 	// Parameters
 	var ok bool
 	var onlyReturnExisting bool
 	var contacts []string
 	var termsOfServiceAgreed bool
 	var status string
-	var eabData map[string]interface{}
+	var eabData map[string]any
 
 	rawContact, present := data["contact"]
 	if present {
-		listContact, ok := rawContact.([]interface{})
+		listContact, ok := rawContact.([]any)
 		if !ok {
 			return nil, fmt.Errorf("invalid type (%T) for field 'contact': %w", rawContact, ErrMalformed)
 		}
@@ -154,7 +154,7 @@ func (b *backend) acmeNewAccountHandler(acmeCtx *acmeContext, r *logical.Request
 	}
 
 	if eabDataRaw, ok := data["externalAccountBinding"]; ok {
-		eabData, ok = eabDataRaw.(map[string]interface{})
+		eabData, ok = eabDataRaw.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("%w: externalAccountBinding field was unparseable", ErrMalformed)
 		}
@@ -174,7 +174,7 @@ func (b *backend) acmeNewAccountHandler(acmeCtx *acmeContext, r *logical.Request
 	return b.acmeNewAccountUpdateHandler(acmeCtx, userCtx, contacts, status, eabData)
 }
 
-func formatNewAccountResponse(acmeCtx *acmeContext, acct *acmeAccount, eabData map[string]interface{}) *logical.Response {
+func formatNewAccountResponse(acmeCtx *acmeContext, acct *acmeAccount, eabData map[string]any) *logical.Response {
 	resp := formatAccountResponse(acmeCtx, acct)
 
 	// Per RFC 8555 Section 7.1.2.  Account Objects
@@ -192,7 +192,7 @@ func formatAccountResponse(acmeCtx *acmeContext, acct *acmeAccount) *logical.Res
 	location := acmeCtx.baseUrl.String() + "account/" + acct.KeyId
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"status": acct.Status,
 			"orders": location + "/orders",
 		},
@@ -234,7 +234,7 @@ func (b *backend) acmeAccountSearchHandler(acmeCtx *acmeContext, userCtx *jwsCtx
 	return nil, fmt.Errorf("an account with this key does not exist: %w", ErrAccountDoesNotExist)
 }
 
-func (b *backend) acmeNewAccountCreateHandler(acmeCtx *acmeContext, userCtx *jwsCtx, contact []string, termsOfServiceAgreed bool, r *logical.Request, eabData map[string]interface{}) (*logical.Response, error) {
+func (b *backend) acmeNewAccountCreateHandler(acmeCtx *acmeContext, userCtx *jwsCtx, contact []string, termsOfServiceAgreed bool, r *logical.Request, eabData map[string]any) (*logical.Response, error) {
 	if userCtx.Existing {
 		return nil, fmt.Errorf("cannot submit to newAccount with 'kid': %w", ErrMalformed)
 	}
@@ -312,7 +312,7 @@ func (b *backend) acmeNewAccountCreateHandler(acmeCtx *acmeContext, userCtx *jws
 	return resp, nil
 }
 
-func (b *backend) acmeNewAccountUpdateHandler(acmeCtx *acmeContext, userCtx *jwsCtx, contact []string, status string, eabData map[string]interface{}) (*logical.Response, error) {
+func (b *backend) acmeNewAccountUpdateHandler(acmeCtx *acmeContext, userCtx *jwsCtx, contact []string, status string, eabData map[string]any) (*logical.Response, error) {
 	if !userCtx.Existing {
 		return nil, fmt.Errorf("cannot submit to account updates without a 'kid': %w", ErrMalformed)
 	}

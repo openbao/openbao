@@ -33,7 +33,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	client.SetToken(cluster.RootToken)
 
 	// Write a value that we will use with wrapping for lookup
-	_, err := client.Logical().Write("secret/foo", map[string]interface{}{
+	_, err := client.Logical().Write("secret/foo", map[string]any{
 		"zip": "zap",
 	})
 	if err != nil {
@@ -56,14 +56,14 @@ func TestHTTP_Wrapping(t *testing.T) {
 		t.Fatal("expected error")
 	}
 	// Not supplied
-	_, err = client.Logical().Write("sys/wrapping/lookup", map[string]interface{}{
+	_, err = client.Logical().Write("sys/wrapping/lookup", map[string]any{
 		"foo": "bar",
 	})
 	if err == nil {
 		t.Fatal("expected error")
 	}
 	// Nonexistent token isn't a wrapping token
-	_, err = client.Logical().Write("sys/wrapping/lookup", map[string]interface{}{
+	_, err = client.Logical().Write("sys/wrapping/lookup", map[string]any{
 		"token": "bar",
 	})
 	if err == nil {
@@ -82,14 +82,14 @@ func TestHTTP_Wrapping(t *testing.T) {
 		t.Fatal("expected error")
 	}
 	// Not supplied
-	_, err = client.Logical().Write("sys/wrapping/unwrap", map[string]interface{}{
+	_, err = client.Logical().Write("sys/wrapping/unwrap", map[string]any{
 		"foo": "bar",
 	})
 	if err == nil {
 		t.Fatal("expected error")
 	}
 	// Nonexistent token isn't a wrapping token
-	_, err = client.Logical().Write("sys/wrapping/unwrap", map[string]interface{}{
+	_, err = client.Logical().Write("sys/wrapping/unwrap", map[string]any{
 		"token": "bar",
 	})
 	if err == nil {
@@ -112,7 +112,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 
 	// Test this twice to ensure no ill effect to the wrapping token as a result of the lookup
 	for range 2 {
-		secret, err = client.Logical().Write("sys/wrapping/lookup", map[string]interface{}{
+		secret, err = client.Logical().Write("sys/wrapping/lookup", map[string]any{
 			"token": wrapInfo.Token,
 		})
 		if err != nil {
@@ -175,7 +175,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	wrapInfo = secret.WrapInfo
 
 	// Test as a separate token
-	secret, err = client.Logical().Write("sys/wrapping/unwrap", map[string]interface{}{
+	secret, err = client.Logical().Write("sys/wrapping/unwrap", map[string]any{
 		"token": wrapInfo.Token,
 	})
 	if err != nil {
@@ -183,7 +183,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	}
 	ret2 := secret
 	// Should be expired and fail
-	_, err = client.Logical().Write("sys/wrapping/unwrap", map[string]interface{}{
+	_, err = client.Logical().Write("sys/wrapping/unwrap", map[string]any{
 		"token": wrapInfo.Token,
 	})
 	if err == nil {
@@ -239,12 +239,12 @@ func TestHTTP_Wrapping(t *testing.T) {
 		t.Fatal("expected err")
 	}
 
-	if !reflect.DeepEqual(ret1.Data, map[string]interface{}{
+	if !reflect.DeepEqual(ret1.Data, map[string]any{
 		"zip": "zap",
 	}) {
 		t.Fatalf("ret1 data did not match expected: %#v", ret1.Data)
 	}
-	if !reflect.DeepEqual(ret2.Data, map[string]interface{}{
+	if !reflect.DeepEqual(ret2.Data, map[string]any{
 		"zip": "zap",
 	}) {
 		t.Fatalf("ret2 data did not match expected: %#v", ret2.Data)
@@ -254,12 +254,12 @@ func TestHTTP_Wrapping(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(ret3Secret.Data, map[string]interface{}{
+	if !reflect.DeepEqual(ret3Secret.Data, map[string]any{
 		"zip": "zap",
 	}) {
 		t.Fatalf("ret3 data did not match expected: %#v", ret3Secret.Data)
 	}
-	if !reflect.DeepEqual(ret4.Data, map[string]interface{}{
+	if !reflect.DeepEqual(ret4.Data, map[string]any{
 		"zip": "zap",
 	}) {
 		t.Fatalf("ret4 data did not match expected: %#v", ret4.Data)
@@ -270,7 +270,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	//
 
 	client.SetToken(cluster.RootToken)
-	data := map[string]interface{}{
+	data := map[string]any{
 		"zip":   "zap",
 		"three": json.Number("2"),
 	}
@@ -330,7 +330,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	}
 
 	// Test rewrapping
-	secret, err = client.Logical().Write("sys/wrapping/rewrap", map[string]interface{}{
+	secret, err = client.Logical().Write("sys/wrapping/rewrap", map[string]any{
 		"token": wrapInfo.Token,
 	})
 	if err != nil {
@@ -346,7 +346,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	}
 
 	// Should be expired and fail
-	_, err = client.Logical().Write("sys/wrapping/unwrap", map[string]interface{}{
+	_, err = client.Logical().Write("sys/wrapping/unwrap", map[string]any{
 		"token": wrapInfo.Token,
 	})
 	if err == nil {
@@ -365,7 +365,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 		t.Fatal("expected err")
 	}
 
-	if !reflect.DeepEqual(secret.Data, map[string]interface{}{
+	if !reflect.DeepEqual(secret.Data, map[string]any{
 		"zip": "zap",
 	}) {
 		t.Fatalf("secret data did not match expected: %#v", secret.Data)

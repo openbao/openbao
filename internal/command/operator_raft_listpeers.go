@@ -79,12 +79,12 @@ func (c *OperatorRaftListPeersCommand) Run(args []string) int {
 		return OutputSecret(c.UI, secret)
 	}
 
-	config := secret.Data["config"].(map[string]interface{})
+	config := secret.Data["config"].(map[string]any)
 
-	servers := config["servers"].([]interface{})
+	servers := config["servers"].([]any)
 	out := []string{"Node | Address | State | Voter"}
 	for _, serverRaw := range servers {
-		server := serverRaw.(map[string]interface{})
+		server := serverRaw.(map[string]any)
 		state := "follower"
 		if server["leader"].(bool) {
 			state = "leader"

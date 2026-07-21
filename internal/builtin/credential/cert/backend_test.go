@@ -232,7 +232,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 
 	// Set the cluster's certificate as the root CA in /pki
 	pemBundleRootCA := string(cluster.CACertPEM) + string(cluster.CAKeyPEM)
-	_, err = client.Logical().Write("pki/config/ca", map[string]interface{}{
+	_, err = client.Logical().Write("pki/config/ca", map[string]any{
 		"pem_bundle": pemBundleRootCA,
 	})
 	if err != nil {
@@ -259,7 +259,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	intermediateCSR := secret.Data["csr"].(string)
 
 	// Sign the intermediate CSR using /pki
-	secret, err = client.Logical().Write("pki/root/sign-intermediate", map[string]interface{}{
+	secret, err = client.Logical().Write("pki/root/sign-intermediate", map[string]any{
 		"permitted_dns_domains": ".example.com",
 		"csr":                   intermediateCSR,
 	})
@@ -269,7 +269,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	intermediateCertPEM := secret.Data["certificate"].(string)
 
 	// Configure the intermediate cert as the CA in /pki2
-	_, err = client.Logical().Write("pki2/intermediate/set-signed", map[string]interface{}{
+	_, err = client.Logical().Write("pki2/intermediate/set-signed", map[string]any{
 		"certificate": intermediateCertPEM,
 	})
 	if err != nil {
@@ -277,7 +277,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	}
 
 	// Create a role on the intermediate CA mount
-	_, err = client.Logical().Write("pki2/roles/openbao-cert", map[string]interface{}{
+	_, err = client.Logical().Write("pki2/roles/openbao-cert", map[string]any{
 		"allowed_domains":  "example.com",
 		"allow_subdomains": "true",
 		"max_ttl":          "5m",
@@ -287,7 +287,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	}
 
 	// Issue a leaf cert using the intermediate CA
-	secret, err = client.Logical().Write("pki2/issue/openbao-cert", map[string]interface{}{
+	secret, err = client.Logical().Write("pki2/issue/openbao-cert", map[string]any{
 		"common_name": "cert.example.com",
 		"format":      "pem",
 		"ip_sans":     "127.0.0.1",
@@ -307,7 +307,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	}
 
 	// Set the intermediate CA cert as a trusted certificate in the backend
-	_, err = client.Logical().Write("auth/cert/certs/openbao-cert", map[string]interface{}{
+	_, err = client.Logical().Write("auth/cert/certs/openbao-cert", map[string]any{
 		"display_name": "example.com",
 		"policies":     "default",
 		"certificate":  intermediateCertPEM,
@@ -369,7 +369,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	// Create a new api client with the desired TLS configuration
 	newClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig())
 
-	secret, err = newClient.Logical().Write("auth/cert/login", map[string]interface{}{
+	secret, err = newClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "openbao-cert",
 	})
 	if err != nil {
@@ -382,7 +382,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	// testing pathLoginRenew for cert auth
 	oldAccessor := secret.Auth.Accessor
 	newClient.SetToken(client.Token())
-	secret, err = newClient.Logical().Write("auth/token/renew-accessor", map[string]interface{}{
+	secret, err = newClient.Logical().Write("auth/token/renew-accessor", map[string]any{
 		"accessor":  secret.Auth.Accessor,
 		"increment": 3600,
 	})
@@ -443,7 +443,7 @@ func TestBackend_MetadataBasedACLPolicy(t *testing.T) {
 	}
 
 	// Enable metadata in aliases
-	_, err = client.Logical().Write("auth/cert/config", map[string]interface{}{
+	_, err = client.Logical().Write("auth/cert/config", map[string]any{
 		"enable_identity_alias_metadata": true,
 	})
 	if err != nil {
@@ -482,7 +482,7 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 	}
 
 	// Set the trusted certificate in the backend
-	_, err = client.Logical().Write("auth/cert/certs/test", map[string]interface{}{
+	_, err = client.Logical().Write("auth/cert/certs/test", map[string]any{
 		"display_name":                "test",
 		"policies":                    "metadata-based",
 		"certificate":                 string(tc.exampleCA.CertPEM()),
@@ -537,7 +537,7 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 
 	var secret *api.Secret
 
-	secret, err = newClient.Logical().Write("auth/cert/login", map[string]interface{}{
+	secret, err = newClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "test",
 	})
 	if err != nil {
@@ -597,7 +597,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 	}
 
 	// Register the Non-CA certificate of the client key pair
-	certData := map[string]interface{}{
+	certData := map[string]any{
 		"certificate":  issuedCert.CertPEM(),
 		"policies":     "abc",
 		"display_name": "cert1",
@@ -658,7 +658,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 	}
 
 	// Register the Non-CA certificate of the client key pair
-	certData := map[string]interface{}{
+	certData := map[string]any{
 		"certificate":  tc.clientCert.CertPEM(),
 		"policies":     "abc",
 		"display_name": "cert1",
@@ -703,7 +703,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 	}
 	issuedCRL, _ := crl.PEM()
 
-	crlData := map[string]interface{}{
+	crlData := map[string]any{
 		"crl": issuedCRL,
 	}
 	crlReq := &logical.Request{
@@ -722,7 +722,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 		Operation: logical.ListOperation,
 		Storage:   storage,
 		Path:      "crls",
-		Data:      map[string]interface{}{},
+		Data:      map[string]any{},
 	}
 	resp, err = b.HandleRequest(t.Context(), listReq)
 	if err != nil || (resp != nil && resp.IsError()) {
@@ -754,7 +754,7 @@ func TestBackend_CRLs(t *testing.T) {
 	}
 
 	// Register the CA certificate of the client key pair
-	certData := map[string]interface{}{
+	certData := map[string]any{
 		"certificate":  tc.clientCA.CertPEM(),
 		"policies":     "abc",
 		"display_name": "cert1",
@@ -815,7 +815,7 @@ func TestBackend_CRLs(t *testing.T) {
 	}
 	issuedCRL, _ := crl.PEM()
 
-	crlData := map[string]interface{}{
+	crlData := map[string]any{
 		"crl": issuedCRL,
 	}
 
@@ -1298,7 +1298,7 @@ func TestBackend_validCIDR(t *testing.T) {
 	addCertReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "certs/" + name,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"certificate":         tc.exampleCA.CertPEM(),
 			"policies":            "foo",
 			"display_name":        name,
@@ -1338,7 +1338,7 @@ func TestBackend_validCIDR(t *testing.T) {
 		Operation:       logical.UpdateOperation,
 		Path:            "login",
 		Unauthenticated: true,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": name,
 		},
 		Storage:    storage,
@@ -1375,7 +1375,7 @@ func TestBackend_invalidCIDR(t *testing.T) {
 	addCertReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "certs/" + name,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"certificate":         tc.exampleCA.CertPEM(),
 			"policies":            "foo",
 			"display_name":        name,
@@ -1397,7 +1397,7 @@ func TestBackend_invalidCIDR(t *testing.T) {
 		Operation:       logical.UpdateOperation,
 		Path:            "login",
 		Unauthenticated: true,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": name,
 		},
 		Storage:    storage,
@@ -1418,7 +1418,7 @@ func testAccStepAddCRL(t *testing.T, crl []byte, connState tls.ConnectionState) 
 		Operation: logical.UpdateOperation,
 		Path:      "crls/test",
 		ConnState: &connState,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"crl": crl,
 		},
 	}
@@ -1459,7 +1459,7 @@ func testAccStepSetConfig(t *testing.T, conf config, connState tls.ConnectionSta
 		Operation: logical.UpdateOperation,
 		Path:      "config",
 		ConnState: &connState,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"enable_identity_alias_metadata": conf.EnableIdentityAliasMetadata,
 		},
 	}
@@ -1512,7 +1512,7 @@ func testAccStepLoginWithName(t *testing.T, connState tls.ConnectionState, certN
 			fn := logicaltest.TestCheckAuth([]string{"default", "foo"})
 			return fn(resp)
 		},
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": certName,
 		},
 	}
@@ -1578,7 +1578,7 @@ func testAccStepLoginWithMetadata(t *testing.T, connState tls.ConnectionState, c
 			fn := logicaltest.TestCheckAuth([]string{"default", "foo"})
 			return fn(resp)
 		},
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"metadata": metadata,
 		},
 	}
@@ -1600,7 +1600,7 @@ func testAccStepLoginWithNameInvalid(t *testing.T, connState tls.ConnectionState
 			}
 			return nil
 		},
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": certName,
 		},
 		ErrorOk: true,
@@ -1621,7 +1621,7 @@ func testAccStepListCerts(
 				if resp.Data == nil {
 					return errors.New("nil data")
 				}
-				if resp.Data["keys"] == interface{}(nil) {
+				if resp.Data["keys"] == any(nil) {
 					return errors.New("nil keys")
 				}
 				keys := resp.Data["keys"].([]string)
@@ -1640,7 +1640,7 @@ func testAccStepListCerts(
 				if resp.Data == nil {
 					return errors.New("nil data")
 				}
-				if resp.Data["keys"] == interface{}(nil) {
+				if resp.Data["keys"] == any(nil) {
 					return errors.New("nil keys")
 				}
 				keys := resp.Data["keys"].([]string)
@@ -1669,8 +1669,8 @@ func testAccStepCert(t *testing.T, name string, cert []byte, policies string, te
 	return testAccStepCertWithExtraParams(t, name, cert, policies, testData, expectError, nil)
 }
 
-func testAccStepCertWithExtraParams(t *testing.T, name string, cert []byte, policies string, testData allowed, expectError bool, extraParams map[string]interface{}) logicaltest.TestStep {
-	data := map[string]interface{}{
+func testAccStepCertWithExtraParams(t *testing.T, name string, cert []byte, policies string, testData allowed, expectError bool, extraParams map[string]any) logicaltest.TestStep {
+	data := map[string]any{
 		"certificate":                  string(cert),
 		"policies":                     policies,
 		"display_name":                 name,
@@ -1699,7 +1699,7 @@ func testAccStepCertWithExtraParams(t *testing.T, name string, cert []byte, poli
 	}
 }
 
-func testAccStepReadCertPolicy(t *testing.T, name string, expectError bool, expected map[string]interface{}) logicaltest.TestStep {
+func testAccStepReadCertPolicy(t *testing.T, name string, expectError bool, expected map[string]any) logicaltest.TestStep {
 	return logicaltest.TestStep{
 		Operation: logical.ReadOperation,
 		Path:      "certs/" + name,
@@ -1726,7 +1726,7 @@ func testAccStepCertLease(
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "certs/" + name,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"certificate":  string(cert),
 			"policies":     policies,
 			"display_name": name,
@@ -1741,7 +1741,7 @@ func testAccStepCertTTL(
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "certs/" + name,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"certificate":  string(cert),
 			"policies":     policies,
 			"display_name": name,
@@ -1756,7 +1756,7 @@ func testAccStepCertMaxTTL(
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "certs/" + name,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"certificate":  string(cert),
 			"policies":     policies,
 			"display_name": name,
@@ -1772,7 +1772,7 @@ func testAccStepCertNoLease(
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "certs/" + name,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"certificate":  string(cert),
 			"policies":     policies,
 			"display_name": name,
@@ -1897,7 +1897,7 @@ func Test_Renew(t *testing.T) {
 	}
 
 	fd := &framework.FieldData{
-		Raw: map[string]interface{}{
+		Raw: map[string]any{
 			"name":        "test",
 			"certificate": tc.exampleCA.CertPEM(),
 			"policies":    "foo,bar",
@@ -1911,7 +1911,7 @@ func Test_Renew(t *testing.T) {
 	}
 
 	empty_login_fd := &framework.FieldData{
-		Raw:    map[string]interface{}{},
+		Raw:    map[string]any{},
 		Schema: pathLogin(b).Fields,
 	}
 	resp, err := b.pathLogin(t.Context(), req, empty_login_fd)
@@ -2097,7 +2097,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	}
 
 	// Set the first leaf cert as a trusted certificate in the backend
-	_, err = client.Logical().Write("auth/cert/certs/trusted-leaf", map[string]interface{}{
+	_, err = client.Logical().Write("auth/cert/certs/trusted-leaf", map[string]any{
 		"display_name": "trusted-cert",
 		"policies":     "default",
 		"certificate":  string(leafA.CertPEM()),
@@ -2200,7 +2200,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	// Create a new api client with the incorrect leaf; it should fail.
 	newBClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), leafBCertFile, leafBKeyFile)
 
-	secret, err := newBClient.Logical().Write("auth/cert/login", map[string]interface{}{
+	secret, err := newBClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "trusted-leaf",
 	})
 	if err == nil {
@@ -2213,7 +2213,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	// Create a new API client with the correct leaf; it should succeed.
 	newAClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), leafACertFile, leafAKeyFile)
 
-	secret, err = newAClient.Logical().Write("auth/cert/login", map[string]interface{}{
+	secret, err = newAClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "trusted-leaf",
 	})
 	if err != nil {
@@ -2229,7 +2229,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	newAClient.AddHeader(vaulthttp.ProcessedForwardedClientCertHeader, url.QueryEscape(base64.StdEncoding.EncodeToString(certBTampered)))
 	newAClient.AddHeader("X-Processed-Tls-Client-Certificate-Resp", url.QueryEscape(base64.StdEncoding.EncodeToString(certBTampered)))
 
-	secret, err = newAClient.Logical().Write("auth/cert/login", map[string]interface{}{
+	secret, err = newAClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "trusted-leaf",
 	})
 	require.NoError(t, err)
@@ -2240,7 +2240,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	// Create a new API client with the tampered leaves; it should fail.
 	tamperedAClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), tamperedACertFile, leafAKeyFile)
 
-	secret, err = tamperedAClient.Logical().Write("auth/cert/login", map[string]interface{}{
+	secret, err = tamperedAClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "trusted-leaf",
 	})
 	if err == nil {
@@ -2252,7 +2252,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 
 	tamperedBClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), tamperedBCertFile, leafBKeyFile)
 
-	secret, err = tamperedBClient.Logical().Write("auth/cert/login", map[string]interface{}{
+	secret, err = tamperedBClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "trusted-leaf",
 	})
 	if err == nil {
@@ -2291,7 +2291,7 @@ func TestBackend_IntegrationForwardedCerts(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set the first leaf cert as a trusted certificate in the backend
-	_, err = client.Logical().Write("auth/cert/certs/leaf", map[string]interface{}{
+	_, err = client.Logical().Write("auth/cert/certs/leaf", map[string]any{
 		"display_name": "trusted-cert",
 		"policies":     "default",
 		"certificate":  string(tc.exampleCert.CertPEM()),
@@ -2307,7 +2307,7 @@ func TestBackend_IntegrationForwardedCerts(t *testing.T) {
 	unauthedClient.AddHeader("Client-Cert", url.QueryEscape(base64.StdEncoding.EncodeToString(tc.exampleCert.GeneratedCert.Certificate[0])))
 
 	// Authentication should succeed with the forwarded header.
-	resp, err := unauthedClient.Logical().Write("auth/cert/login", map[string]interface{}{})
+	resp, err := unauthedClient.Logical().Write("auth/cert/login", map[string]any{})
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Auth)

@@ -155,7 +155,7 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 
 	// If there are no bound audiences for the role, then the existence of any audience
 	// in the audience claim should result in an error.
-	aud, ok := getClaim(b.Logger(), allClaims, "aud").([]interface{})
+	aud, ok := getClaim(b.Logger(), allClaims, "aud").([]any)
 	if ok && len(aud) > 0 && len(role.BoundAudiences) == 0 {
 		return logical.ErrorResponse("audience claim found in JWT but no audiences bound to the role"), nil
 	}
@@ -176,7 +176,7 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 		DisplayName:  alias.Name,
 		Alias:        alias,
 		GroupAliases: groupAliases,
-		InternalData: map[string]interface{}{
+		InternalData: map[string]any{
 			"role":      roleName,
 			"role_type": "native",
 		},
@@ -251,8 +251,8 @@ func (b *jwtAuthBackend) pathNativeLoginRenew(ctx context.Context, req *logical.
 
 // createIdentity creates an alias and set of groups aliases based on the role
 // definition and received claims.
-func (b *jwtAuthBackend) createIdentity(ctx context.Context, allClaims map[string]interface{}, roleName string, role *jwtRole, tokenSource oauth2.TokenSource) (*logical.Alias, []*logical.Alias, error) {
-	var userClaimRaw interface{}
+func (b *jwtAuthBackend) createIdentity(ctx context.Context, allClaims map[string]any, roleName string, role *jwtRole, tokenSource oauth2.TokenSource) (*logical.Alias, []*logical.Alias, error) {
+	var userClaimRaw any
 	if role.UserClaimJSONPointer {
 		userClaimRaw = getClaim(b.Logger(), allClaims, role.UserClaim)
 	} else {
@@ -321,7 +321,7 @@ func (b *jwtAuthBackend) createIdentity(ctx context.Context, allClaims map[strin
 }
 
 // Checks if there's a custom provider_config and calls FetchUserInfo() if implemented.
-func (b *jwtAuthBackend) fetchUserInfo(ctx context.Context, pConfig CustomProvider, allClaims map[string]interface{}, role *jwtRole) error {
+func (b *jwtAuthBackend) fetchUserInfo(ctx context.Context, pConfig CustomProvider, allClaims map[string]any, role *jwtRole) error {
 	// Fetch user info from custom provider if it's implemented
 	if pConfig != nil {
 		if uif, ok := pConfig.(UserInfoFetcher); ok {
@@ -333,7 +333,7 @@ func (b *jwtAuthBackend) fetchUserInfo(ctx context.Context, pConfig CustomProvid
 }
 
 // Checks if there's a custom provider_config and calls FetchGroups() if implemented
-func (b *jwtAuthBackend) fetchGroups(ctx context.Context, pConfig CustomProvider, allClaims map[string]interface{}, role *jwtRole, tokenSource oauth2.TokenSource) (interface{}, error) {
+func (b *jwtAuthBackend) fetchGroups(ctx context.Context, pConfig CustomProvider, allClaims map[string]any, role *jwtRole, tokenSource oauth2.TokenSource) (any, error) {
 	// If the custom provider implements interface GroupsFetcher, call it,
 	// otherwise fall through to the default method
 	if pConfig != nil {

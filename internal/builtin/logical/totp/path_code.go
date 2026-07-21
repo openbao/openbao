@@ -97,7 +97,7 @@ func (b *backend) pathReadCode(ctx context.Context, req *logical.Request, data *
 	// calculate time step
 	ts := time.Duration(tNow.Unix()/int64(key.Period)) * period
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"code":        totpToken,
 			"generated":   tNow.Unix(),
 			"expire_time": time.Unix(int64(ts.Seconds()), 0).Add(period).Unix(),
@@ -156,7 +156,7 @@ func (b *backend) pathValidateCode(ctx context.Context, req *logical.Request, da
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"valid": valid,
 		},
 	}, nil

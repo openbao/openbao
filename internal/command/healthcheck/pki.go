@@ -32,7 +32,7 @@ func pkiFetchIssuersList(e *Executor, versionError func()) (bool, *PathFetch, []
 
 	if len(issuersRet.ParsedCache) == 0 {
 		var issuers []string
-		for _, rawIssuerId := range issuersRet.Secret.Data["keys"].([]interface{}) {
+		for _, rawIssuerId := range issuersRet.Secret.Data["keys"].([]any) {
 			issuers = append(issuers, rawIssuerId.(string))
 		}
 		issuersRet.ParsedCache["issuers"] = issuers
@@ -104,7 +104,7 @@ func pkiFetchIssuer(e *Executor, issuer string, versionError func()) (bool, *Pat
 	return false, issuerRet, issuerRet.ParsedCache["certificate"].(*x509.Certificate), nil
 }
 
-func pkiFetchIssuerEntry(e *Executor, issuer string, versionError func()) (bool, *PathFetch, map[string]interface{}, error) {
+func pkiFetchIssuerEntry(e *Executor, issuer string, versionError func()) (bool, *PathFetch, map[string]any, error) {
 	issuerRet, err := e.FetchIfNotFetched(logical.ReadOperation, "/{{mount}}/issuer/"+issuer)
 	if err != nil {
 		return true, issuerRet, nil, err
@@ -126,7 +126,7 @@ func pkiFetchIssuerEntry(e *Executor, issuer string, versionError func()) (bool,
 		issuerRet.ParsedCache["certificate"] = cert
 	}
 
-	var data map[string]interface{} = nil
+	var data map[string]any = nil
 	if issuerRet.Secret != nil && len(issuerRet.Secret.Data) > 0 {
 		data = issuerRet.Secret.Data
 	}
@@ -165,7 +165,7 @@ func pkiFetchIssuerCRL(e *Executor, issuer string, delta bool, versionError func
 	return false, crlRet, crlRet.ParsedCache["crl"].(*x509.RevocationList), nil
 }
 
-func pkiFetchKeyEntry(e *Executor, key string, versionError func()) (bool, *PathFetch, map[string]interface{}, error) {
+func pkiFetchKeyEntry(e *Executor, key string, versionError func()) (bool, *PathFetch, map[string]any, error) {
 	keyRet, err := e.FetchIfNotFetched(logical.ReadOperation, "/{{mount}}/key/"+key)
 	if err != nil {
 		return true, keyRet, nil, err
@@ -178,7 +178,7 @@ func pkiFetchKeyEntry(e *Executor, key string, versionError func()) (bool, *Path
 		return true, keyRet, nil, nil
 	}
 
-	var data map[string]interface{} = nil
+	var data map[string]any = nil
 	if keyRet.Secret != nil && len(keyRet.Secret.Data) > 0 {
 		data = keyRet.Secret.Data
 	}
@@ -202,7 +202,7 @@ func pkiFetchLeavesList(e *Executor, versionError func()) (bool, *PathFetch, []s
 
 	if len(leavesRet.ParsedCache) == 0 {
 		var leaves []string
-		for _, rawSerial := range leavesRet.Secret.Data["keys"].([]interface{}) {
+		for _, rawSerial := range leavesRet.Secret.Data["keys"].([]any) {
 			leaves = append(leaves, rawSerial.(string))
 		}
 		leavesRet.ParsedCache["leaves"] = leaves
@@ -253,7 +253,7 @@ func pkiFetchRolesList(e *Executor, versionError func()) (bool, *PathFetch, []st
 
 	if len(rolesRet.ParsedCache) == 0 {
 		var roles []string
-		for _, roleName := range rolesRet.Secret.Data["keys"].([]interface{}) {
+		for _, roleName := range rolesRet.Secret.Data["keys"].([]any) {
 			roles = append(roles, roleName.(string))
 		}
 		rolesRet.ParsedCache["roles"] = roles
@@ -262,7 +262,7 @@ func pkiFetchRolesList(e *Executor, versionError func()) (bool, *PathFetch, []st
 	return false, rolesRet, rolesRet.ParsedCache["roles"].([]string), nil
 }
 
-func pkiFetchRole(e *Executor, name string, versionError func()) (bool, *PathFetch, map[string]interface{}, error) {
+func pkiFetchRole(e *Executor, name string, versionError func()) (bool, *PathFetch, map[string]any, error) {
 	roleRet, err := e.FetchIfNotFetched(logical.ReadOperation, "/{{mount}}/roles/"+name)
 	if err != nil {
 		return true, roleRet, nil, err
@@ -275,7 +275,7 @@ func pkiFetchRole(e *Executor, name string, versionError func()) (bool, *PathFet
 		return true, roleRet, nil, nil
 	}
 
-	var data map[string]interface{} = nil
+	var data map[string]any = nil
 	if roleRet.Secret != nil && len(roleRet.Secret.Data) > 0 {
 		data = roleRet.Secret.Data
 	}

@@ -79,7 +79,7 @@ func (c *OperatorRaftDemoteCommand) Run(args []string) int {
 		return 2
 	}
 
-	_, err = client.Logical().Write("sys/storage/raft/demote", map[string]interface{}{
+	_, err = client.Logical().Write("sys/storage/raft/demote", map[string]any{
 		"server_id": serverID,
 	})
 	if err != nil {

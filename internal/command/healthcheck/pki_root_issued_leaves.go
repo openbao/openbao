@@ -38,13 +38,13 @@ func (h *RootIssuedLeaves) IsEnabled() bool {
 	return h.Enabled
 }
 
-func (h *RootIssuedLeaves) DefaultConfig() map[string]interface{} {
-	return map[string]interface{}{
+func (h *RootIssuedLeaves) DefaultConfig() map[string]any {
+	return map[string]any{
 		"certs_to_fetch": 100,
 	}
 }
 
-func (h *RootIssuedLeaves) LoadConfig(config map[string]interface{}) error {
+func (h *RootIssuedLeaves) LoadConfig(config map[string]any) error {
 	count, err := parseutil.SafeParseIntRange(config["certs_to_fetch"], 1, 100000)
 	if err != nil {
 		return fmt.Errorf("error parsing %v.certs_to_fetch: %w", h.Name(), err)

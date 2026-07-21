@@ -44,13 +44,13 @@ func TestACME_ValidateIdentifiersAgainstRole(t *testing.T) {
 		},
 		{
 			name:        "disable-ip-sans-forbids-ip",
-			role:        buildTestRole(t, map[string]interface{}{"allow_ip_sans": false}),
+			role:        buildTestRole(t, map[string]any{"allow_ip_sans": false}),
 			identifiers: _buildACMEIdentifiers("192.168.0.1"),
 			expectErr:   true,
 		},
 		{
 			name: "role-no-wildcards-allowed-without",
-			role: buildTestRole(t, map[string]interface{}{
+			role: buildTestRole(t, map[string]any{
 				"allow_subdomains":            true,
 				"allow_bare_domains":          true,
 				"allowed_domains":             []string{"test.com"},
@@ -61,7 +61,7 @@ func TestACME_ValidateIdentifiersAgainstRole(t *testing.T) {
 		},
 		{
 			name: "role-no-wildcards-allowed-with-wildcard",
-			role: buildTestRole(t, map[string]interface{}{
+			role: buildTestRole(t, map[string]any{
 				"allow_subdomains":            true,
 				"allowed_domains":             []string{"test.com"},
 				"allow_wildcard_certificates": false,
@@ -71,7 +71,7 @@ func TestACME_ValidateIdentifiersAgainstRole(t *testing.T) {
 		},
 		{
 			name: "role-wildcards-allowed-with-wildcard",
-			role: buildTestRole(t, map[string]interface{}{
+			role: buildTestRole(t, map[string]any{
 				"allow_subdomains":            true,
 				"allowed_domains":             []string{"test.com"},
 				"allow_wildcard_certificates": true,
@@ -119,13 +119,13 @@ func _buildACMEIdentifier(val string) *ACMEIdentifier {
 // Easily allow tests to create valid roles with proper defaults, since we don't have an easy
 // way to generate roles with proper defaults, go through the createRole handler with the handlers
 // field data so we pickup all the defaults specified there.
-func buildTestRole(t *testing.T, config map[string]interface{}) *roleEntry {
+func buildTestRole(t *testing.T, config map[string]any) *roleEntry {
 	b, s := CreateBackendWithStorage(t)
 
 	path := pathRoles(b)
 	fields := path.Fields
 	if config == nil {
-		config = map[string]interface{}{}
+		config = map[string]any{}
 	}
 
 	if _, exists := config["name"]; !exists {

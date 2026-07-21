@@ -85,7 +85,7 @@ func (b *backend) pathCacheConfigWrite(ctx context.Context, req *logical.Request
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"size": cacheSize,
 		},
 	}, nil
@@ -118,7 +118,7 @@ func (b *backend) pathCacheConfigRead(ctx context.Context, req *logical.Request,
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"size": storedCacheSize,
 		},
 	}

@@ -10,8 +10,8 @@ import (
 
 func newHistory() *EvaluationHistory {
 	return &EvaluationHistory{
-		Requests:  make(map[string]map[string]map[string]interface{}),
-		Responses: make(map[string]map[string]map[string]interface{}),
+		Requests:  make(map[string]map[string]map[string]any),
+		Responses: make(map[string]map[string]map[string]any),
 	}
 }
 
@@ -22,7 +22,7 @@ func TestAddRequest_Success(t *testing.T) {
 		Operation:   logical.UpdateOperation,
 		Path:        "sys/auth/userpass",
 		ClientToken: "s.1234567890abcdef",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type":        "userpass",
 			"description": "Username/password",
 		},
@@ -37,7 +37,7 @@ func TestAddRequest_Success(t *testing.T) {
 		t.Fatalf("GetRequest failed: %v", err)
 	}
 
-	d, ok := got["map"].(map[string]interface{})
+	d, ok := got["map"].(map[string]any)
 	if !ok {
 		t.Fatalf("Expected payload under key 'map', got %T", got["map"])
 	}
@@ -61,7 +61,7 @@ func TestAddRequest_Success(t *testing.T) {
 func TestAddAndGetResponse_Success(t *testing.T) {
 	h := newHistory()
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"accessor":    "auth_userpass_abcd1234",
 			"type":        "userpass",
 			"description": "Username and password auth method",
@@ -78,7 +78,7 @@ func TestAddAndGetResponse_Success(t *testing.T) {
 		t.Fatalf("GetResponse failed: %v", err)
 	}
 
-	d, ok := got["data"].(map[string]interface{})
+	d, ok := got["data"].(map[string]any)
 	if !ok {
 		t.Fatalf("Expected data under key 'data', got %T", got["data"])
 	}
@@ -89,7 +89,7 @@ func TestAddAndGetResponse_Success(t *testing.T) {
 		t.Errorf("type mismatch: got %v", d["type"])
 	}
 
-	w, ok := got["warnings"].([]interface{})
+	w, ok := got["warnings"].([]any)
 	if !ok || len(w) != 1 {
 		t.Fatalf("warnings format error: got %v", got["warnings"])
 	}
@@ -98,10 +98,10 @@ func TestAddAndGetResponse_Success(t *testing.T) {
 func TestAddAndGetRequestData_Success(t *testing.T) {
 	history := newHistory()
 
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"operation": "update",
 		"path":      "sys/auth/userpass",
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"test": "test",
 		},
 	}
@@ -121,10 +121,10 @@ func TestAddAndGetRequestData_Success(t *testing.T) {
 func TestAddRequestData_Duplicate(t *testing.T) {
 	history := newHistory()
 
-	sample := map[string]interface{}{
+	sample := map[string]any{
 		"operation": "update",
 		"path":      "sys/policies/acl/admin",
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"test": "test",
 		},
 	}
@@ -150,7 +150,7 @@ func TestGetRequest_NotFound(t *testing.T) {
 
 func TestGetRequestField_SingleKey(t *testing.T) {
 	history := newHistory()
-	data := map[string]interface{}{
+	data := map[string]any{
 		"operation": "create",
 		"path":      "auth/token/create",
 		"token_ttl": float64(3600),
@@ -159,7 +159,7 @@ func TestGetRequestField_SingleKey(t *testing.T) {
 		t.Fatalf("AddRequestData: %v", err)
 	}
 
-	value, err := history.GetRequestField("tokenInit", "create-token", []interface{}{"token_ttl"})
+	value, err := history.GetRequestField("tokenInit", "create-token", []any{"token_ttl"})
 	if err != nil {
 		t.Fatalf("GetRequestField error: %v", err)
 	}
@@ -171,13 +171,13 @@ func TestGetRequestField_SingleKey(t *testing.T) {
 
 func TestGetRequestField_NestedKeyPath(t *testing.T) {
 	history := newHistory()
-	nestedData := map[string]interface{}{
+	nestedData := map[string]any{
 		"config_key": "example",
 	}
-	data := map[string]interface{}{
+	data := map[string]any{
 		"operation": "update",
 		"path":      "secret/data/app/config",
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"data": nestedData,
 		},
 	}
@@ -185,7 +185,7 @@ func TestGetRequestField_NestedKeyPath(t *testing.T) {
 		t.Fatalf("AddRequestData: %v", err)
 	}
 
-	selector := []interface{}{"data", "data", "config_key"}
+	selector := []any{"data", "data", "config_key"}
 	value, err := history.GetRequestField("secretInit", "write-config", selector)
 	if err != nil {
 		t.Fatalf("GetRequestField nested error: %v", err)
@@ -197,7 +197,7 @@ func TestGetRequestField_NestedKeyPath(t *testing.T) {
 
 func TestGetRequestField_MissingKey(t *testing.T) {
 	history := newHistory()
-	data := map[string]interface{}{
+	data := map[string]any{
 		"operation": "read",
 		"path":      "sys/health",
 	}
@@ -205,7 +205,7 @@ func TestGetRequestField_MissingKey(t *testing.T) {
 		t.Fatalf("AddRequestData: %v", err)
 	}
 
-	_, err := history.GetRequestField("healthInit", "check-health", []interface{}{"status"})
+	_, err := history.GetRequestField("healthInit", "check-health", []any{"status"})
 	if err == nil {
 		t.Fatal("expected error for missing field, got nil")
 	}
@@ -213,7 +213,7 @@ func TestGetRequestField_MissingKey(t *testing.T) {
 
 func TestAddAndGetResponseData_Success(t *testing.T) {
 	history := newHistory()
-	responsePayload := map[string]interface{}{
+	responsePayload := map[string]any{
 		"request_id":     "1234-5678-90ab-cdef",
 		"lease_duration": float64(0),
 		"warnings":       nil,
@@ -244,8 +244,8 @@ func TestGetResponse_NotFound(t *testing.T) {
 
 func TestGetResponseField_Success(t *testing.T) {
 	history := newHistory()
-	respData := map[string]interface{}{
-		"auth": map[string]interface{}{
+	respData := map[string]any{
+		"auth": map[string]any{
 			"client_token":   "s.xxxx",
 			"lease_duration": float64(3600),
 		},
@@ -254,7 +254,7 @@ func TestGetResponseField_Success(t *testing.T) {
 		t.Fatalf("AddResponseData: %v", err)
 	}
 
-	selector := []interface{}{"auth", "client_token"}
+	selector := []any{"auth", "client_token"}
 	value, err := history.GetResponseField("tokenInit", "create-token", selector)
 	if err != nil {
 		t.Fatalf("GetResponseField error: %v", err)
@@ -266,14 +266,14 @@ func TestGetResponseField_Success(t *testing.T) {
 
 func TestGetResponseField_InvalidSelectorType(t *testing.T) {
 	history := newHistory()
-	respData := map[string]interface{}{
-		"data": map[string]interface{}{"foo": "bar"},
+	respData := map[string]any{
+		"data": map[string]any{"foo": "bar"},
 	}
 	if err := history.AddResponseData("configInit", "read-config", respData); err != nil {
 		t.Fatalf("AddResponseData: %v", err)
 	}
 
-	_, err := history.GetResponseField("configInit", "read-config", []interface{}{42.00})
+	_, err := history.GetResponseField("configInit", "read-config", []any{42.00})
 	if err == nil {
 		t.Fatal("expected selector type error, got nil")
 	}
@@ -284,8 +284,8 @@ func TestGetResponseField_InvalidSelectorType(t *testing.T) {
 
 func TestHistory_EmptyEntries(t *testing.T) {
 	history := &EvaluationHistory{
-		Requests:  make(map[string]map[string]map[string]interface{}),
-		Responses: make(map[string]map[string]map[string]interface{}),
+		Requests:  make(map[string]map[string]map[string]any),
+		Responses: make(map[string]map[string]map[string]any),
 	}
 
 	if _, err := history.GetRequest("noInit", "noReq"); err == nil {

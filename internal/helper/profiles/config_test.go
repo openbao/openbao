@@ -64,17 +64,17 @@ initialize "auth" {
 	if !exists {
 		t.Fatalf("expected RawConfig to contain key 'data'")
 	}
-	var dataMap map[string]interface{}
+	var dataMap map[string]any
 	switch v := rawData.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		dataMap = v
-	case []map[string]interface{}:
+	case []map[string]any:
 		if len(v) == 0 {
 			t.Fatalf("expected non-empty slice for RawConfig['data'], got empty")
 		}
 		dataMap = v[0]
 	default:
-		t.Fatalf("expected RawConfig['data'] to be map or []map[string]interface{}, got %T", rawData)
+		t.Fatalf("expected RawConfig['data'] to be map or []map[string]any, got %T", rawData)
 	}
 
 	if pwd, ok := dataMap["password"].(string); !ok || pwd != "secret" {

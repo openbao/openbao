@@ -150,7 +150,7 @@ func (g *GSuiteProvider) SensitiveKeys() []string {
 }
 
 // FetchGroups fetches and returns groups from G Suite.
-func (g *GSuiteProvider) FetchGroups(ctx context.Context, b *jwtAuthBackend, allClaims map[string]interface{}, role *jwtRole, _ oauth2.TokenSource) (interface{}, error) {
+func (g *GSuiteProvider) FetchGroups(ctx context.Context, b *jwtAuthBackend, allClaims map[string]any, role *jwtRole, _ oauth2.TokenSource) (any, error) {
 	if !g.config.FetchGroups {
 		return nil, nil
 	}
@@ -167,7 +167,7 @@ func (g *GSuiteProvider) FetchGroups(ctx context.Context, b *jwtAuthBackend, all
 	}
 
 	// Convert set of groups to list
-	userGroups := make([]interface{}, 0, len(userGroupsMap))
+	userGroups := make([]any, 0, len(userGroupsMap))
 	for email := range userGroupsMap {
 		userGroups = append(userGroups, email)
 	}
@@ -211,7 +211,7 @@ func (g *GSuiteProvider) search(ctx context.Context, visited map[string]bool, us
 }
 
 // FetchUserInfo fetches additional user information from G Suite using custom schemas.
-func (g *GSuiteProvider) FetchUserInfo(ctx context.Context, b *jwtAuthBackend, allClaims map[string]interface{}, role *jwtRole) error {
+func (g *GSuiteProvider) FetchUserInfo(ctx context.Context, b *jwtAuthBackend, allClaims map[string]any, role *jwtRole) error {
 	if !g.config.FetchUserInfo || g.config.UserCustomSchemas == "" {
 		if g.config.UserCustomSchemas != "" {
 			b.Logger().Warn(fmt.Sprintf("must set 'fetch_user_info=true' to fetch 'user_custom_schemas': %s", g.config.UserCustomSchemas))
@@ -231,7 +231,7 @@ func (g *GSuiteProvider) FetchUserInfo(ctx context.Context, b *jwtAuthBackend, a
 // fillCustomSchemas fetches G Suite user information associated with the custom schemas
 // configured for this provider. It inserts the schema -> value pairs into the passed
 // allClaims so that the values can be used for claim mapping to token and identity metadata.
-func (g *GSuiteProvider) fillCustomSchemas(ctx context.Context, userName string, allClaims map[string]interface{}) error {
+func (g *GSuiteProvider) fillCustomSchemas(ctx context.Context, userName string, allClaims map[string]any) error {
 	userResponse, err := g.adminSvc.Users.Get(userName).Context(ctx).Projection("custom").
 		CustomFieldMask(g.config.UserCustomSchemas).Fields("customSchemas").Do()
 	if err != nil {
@@ -240,8 +240,8 @@ func (g *GSuiteProvider) fillCustomSchemas(ctx context.Context, userName string,
 
 	for schema, rawValue := range userResponse.CustomSchemas {
 		// note: metadata extraction via claim_mappings only supports strings
-		// as values, but filtering happens later so we must use interface{}
-		var value map[string]interface{}
+		// as values, but filtering happens later so we must use 'any'.
+		var value map[string]any
 		if err := json.Unmarshal(rawValue, &value); err != nil {
 			return err
 		}
@@ -254,7 +254,7 @@ func (g *GSuiteProvider) fillCustomSchemas(ctx context.Context, userName string,
 
 // getUserClaim returns the user claim value configured in the passed role.
 // If the user claim is not found or is not a string, an error is returned.
-func (g *GSuiteProvider) getUserClaim(b *jwtAuthBackend, allClaims map[string]interface{}, role *jwtRole) (string, error) {
+func (g *GSuiteProvider) getUserClaim(b *jwtAuthBackend, allClaims map[string]any, role *jwtRole) (string, error) {
 	userClaimRaw := getClaim(b.Logger(), allClaims, role.UserClaim)
 	if userClaimRaw == nil {
 		return "", fmt.Errorf("unable to locate %q in claims", role.UserClaim)

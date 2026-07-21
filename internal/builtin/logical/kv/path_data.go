@@ -132,9 +132,9 @@ func (b *versionedKVBackend) pathDataRead() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"data": nil,
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"version":         verNum,
 					"created_time":    ptypesTimestampToString(vm.CreatedTime),
 					"deletion_time":   ptypesTimestampToString(vm.DeletionTime),
@@ -179,7 +179,7 @@ func (b *versionedKVBackend) pathDataRead() framework.OperationFunc {
 			return nil, err
 		}
 
-		vData := map[string]interface{}{}
+		vData := map[string]any{}
 		if err := json.Unmarshal(version.Data, &vData); err != nil {
 			return nil, err
 		}
@@ -195,11 +195,11 @@ func (b *versionedKVBackend) pathDataRead() framework.OperationFunc {
 // config or the secret's key metadata. If provided, the cas value must match
 // the current version of the secret as denoted by its key metadata entry.
 func validateCheckAndSetOption(data *framework.FieldData, config *Configuration, meta *KeyMetadata) error {
-	var casRaw interface{}
+	var casRaw any
 	var casOk bool
 	optionsRaw, ok := data.GetOk("options")
 	if ok {
-		options := optionsRaw.(map[string]interface{})
+		options := optionsRaw.(map[string]any)
 
 		// Verify the CAS parameter is valid.
 		casRaw, casOk = options["cas"]
@@ -284,7 +284,7 @@ func (b *versionedKVBackend) pathDataWrite() framework.OperationFunc {
 			if !ok {
 				return logical.ErrorResponse("no data provided"), logical.ErrInvalidRequest
 			}
-			marshaledData, err = json.Marshal(dataRaw.(map[string]interface{}))
+			marshaledData, err = json.Marshal(dataRaw.(map[string]any))
 			if err != nil {
 				return nil, err
 			}
@@ -367,7 +367,7 @@ func (b *versionedKVBackend) pathDataWrite() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"version":         meta.CurrentVersion,
 				"created_time":    ptypesTimestampToString(vm.CreatedTime),
 				"deletion_time":   ptypesTimestampToString(vm.DeletionTime),
@@ -402,14 +402,14 @@ func (b *versionedKVBackend) pathDataWrite() framework.OperationFunc {
 // from the request data to the pathDataPatch handler since it also accepts an
 // options map.
 func dataPatchPreprocessor() framework.PatchPreprocessorFunc {
-	return func(input map[string]interface{}) (map[string]interface{}, error) {
+	return func(input map[string]any) (map[string]any, error) {
 		data, ok := input["data"]
 
 		if !ok {
 			return nil, errors.New("no data provided")
 		}
 
-		return data.(map[string]interface{}), nil
+		return data.(map[string]any), nil
 	}
 }
 
@@ -480,7 +480,7 @@ func (b *versionedKVBackend) pathDataPatch() framework.OperationFunc {
 		// to be used in a 404 response when the entry has either been deleted
 		// or destroyed
 		notFoundResp := &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"version":         currentVersion,
 				"created_time":    ptypesTimestampToString(versionMetadata.CreatedTime),
 				"deletion_time":   ptypesTimestampToString(versionMetadata.DeletionTime),
@@ -523,7 +523,7 @@ func (b *versionedKVBackend) pathDataPatch() framework.OperationFunc {
 			return nil, err
 		}
 
-		var versionData map[string]interface{}
+		var versionData map[string]any
 		if err := json.Unmarshal(existingVersion.Data, &versionData); err != nil {
 			return nil, err
 		}
@@ -579,7 +579,7 @@ func (b *versionedKVBackend) pathDataPatch() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"version":         meta.CurrentVersion,
 				"created_time":    ptypesTimestampToString(newVersionMetadata.CreatedTime),
 				"deletion_time":   ptypesTimestampToString(newVersionMetadata.DeletionTime),

@@ -60,7 +60,7 @@ func TestRecovery_Docker(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		fooVal := map[string]interface{}{"bar": 1.0}
+		fooVal := map[string]any{"bar": 1.0}
 		_, err := client.Logical().Write("secret/foo", fooVal)
 		if err != nil {
 			t.Fatal(err)
@@ -69,7 +69,7 @@ func TestRecovery_Docker(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if diff := deep.Equal(secret.Data["keys"], []interface{}{"foo"}); len(diff) > 0 {
+		if diff := deep.Equal(secret.Data["keys"], []any{"foo"}); len(diff) > 0 {
 			t.Fatalf("got=%v, want=%v, diff: %v", secret.Data["keys"], []string{"foo"}, diff)
 		}
 		mounts, err := client.Sys().ListMounts()
@@ -158,7 +158,7 @@ func TestRecovery_Docker(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if diff := deep.Equal(secret.Data["keys"], []interface{}{"foo"}); len(diff) > 0 {
+		if diff := deep.Equal(secret.Data["keys"], []any{"foo"}); len(diff) > 0 {
 			t.Fatalf("got=%v, want=%v, diff: %v", secret.Data, []string{"foo"}, diff)
 		}
 

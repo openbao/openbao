@@ -142,7 +142,7 @@ func getSubjectKeyIDFromBundle(data *CreationBundle) ([]byte, error) {
 	return GetSubjectKeyID(data.CSR.PublicKey)
 }
 
-func GetSubjectKeyID(pub interface{}) ([]byte, error) {
+func GetSubjectKeyID(pub any) ([]byte, error) {
 	var publicKeyBytes []byte
 	switch pub := pub.(type) {
 	case *rsa.PublicKey:
@@ -176,7 +176,7 @@ func GetSubjectKeyID(pub interface{}) ([]byte, error) {
 
 // ParsePKIMap takes a map (for instance, the Secret.Data
 // returned from the PKI backend) and returns a ParsedCertBundle.
-func ParsePKIMap(data map[string]interface{}) (*ParsedCertBundle, error) {
+func ParsePKIMap(data map[string]any) (*ParsedCertBundle, error) {
 	result := &CertBundle{}
 	err := mapstructure.Decode(data, result)
 	if err != nil {
@@ -223,7 +223,7 @@ func ParseDERKey(privateKeyBytes []byte) (signer crypto.Signer, format BlockType
 	}
 
 	var thirdError error
-	var rawKey interface{}
+	var rawKey any
 	if rawKey, thirdError = x509.ParsePKCS8PrivateKey(privateKeyBytes); thirdError == nil {
 		switch rawSigner := rawKey.(type) {
 		case *rsa.PrivateKey:
@@ -1045,11 +1045,11 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 	return result, nil
 }
 
-func CreateCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[string]interface{}, certTemplate x509.Certificate, randReader io.Reader) (*ParsedCertBundle, error) {
+func CreateCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[string]any, certTemplate x509.Certificate, randReader io.Reader) (*ParsedCertBundle, error) {
 	return createCertificateWithTemplate(caSign, evaluationData, certTemplate, randReader, generatePrivateKey)
 }
 
-func createCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[string]interface{}, certTemplate x509.Certificate, randReader io.Reader, privateKeyGenerator KeyGenerator) (*ParsedCertBundle, error) {
+func createCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[string]any, certTemplate x509.Certificate, randReader io.Reader, privateKeyGenerator KeyGenerator) (*ParsedCertBundle, error) {
 	var (
 		err           error
 		keyType       string
@@ -1474,11 +1474,11 @@ func signCertificate(data *CreationBundle, randReader io.Reader) (*ParsedCertBun
 	return result, nil
 }
 
-func SignCertificateWithTemplate(caSign *CAInfoBundle, csr *x509.CertificateRequest, evaluationData map[string]interface{}, certTemplate x509.Certificate) (*ParsedCertBundle, error) {
+func SignCertificateWithTemplate(caSign *CAInfoBundle, csr *x509.CertificateRequest, evaluationData map[string]any, certTemplate x509.Certificate) (*ParsedCertBundle, error) {
 	return signCertificateWithTemplate(caSign, csr, evaluationData, certTemplate, rand.Reader)
 }
 
-func signCertificateWithTemplate(caSign *CAInfoBundle, CSR *x509.CertificateRequest, evaluationData map[string]interface{}, certTemplate x509.Certificate, randReader io.Reader) (*ParsedCertBundle, error) {
+func signCertificateWithTemplate(caSign *CAInfoBundle, CSR *x509.CertificateRequest, evaluationData map[string]any, certTemplate x509.Certificate, randReader io.Reader) (*ParsedCertBundle, error) {
 	var (
 		usePSS        bool
 		signatureBits int

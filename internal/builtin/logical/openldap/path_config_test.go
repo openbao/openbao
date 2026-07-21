@@ -24,7 +24,7 @@ func TestConfig_Create(t *testing.T) {
 
 	tests := map[string]testCase{
 		"happy path with defaults": {
-			createData: fieldData(map[string]interface{}{
+			createData: fieldData(map[string]any{
 				"binddn":          "tester",
 				"bindpass":        "pa$$w0rd",
 				"url":             "ldap://138.91.247.105",
@@ -42,7 +42,7 @@ func TestConfig_Create(t *testing.T) {
 			},
 		},
 		"non-default userattr of uid": {
-			createData: fieldData(map[string]interface{}{
+			createData: fieldData(map[string]any{
 				"binddn":          "tester",
 				"bindpass":        "pa$$w0rd",
 				"url":             "ldap://138.91.247.105",
@@ -62,7 +62,7 @@ func TestConfig_Create(t *testing.T) {
 			},
 		},
 		"default userattr for openldap schema": {
-			createData: fieldData(map[string]interface{}{
+			createData: fieldData(map[string]any{
 				"binddn":          "tester",
 				"bindpass":        "pa$$w0rd",
 				"url":             "ldap://138.91.247.105",
@@ -83,7 +83,7 @@ func TestConfig_Create(t *testing.T) {
 			},
 		},
 		"default userattr for ad schema": {
-			createData: fieldData(map[string]interface{}{
+			createData: fieldData(map[string]any{
 				"binddn":          "tester",
 				"bindpass":        "pa$$w0rd",
 				"url":             "ldap://138.91.247.105",
@@ -104,7 +104,7 @@ func TestConfig_Create(t *testing.T) {
 			},
 		},
 		"default userattr for racf schema": {
-			createData: fieldData(map[string]interface{}{
+			createData: fieldData(map[string]any{
 				"binddn":          "tester",
 				"bindpass":        "pa$$w0rd",
 				"url":             "ldap://138.91.247.105",
@@ -125,7 +125,7 @@ func TestConfig_Create(t *testing.T) {
 			},
 		},
 		"minimum config": {
-			createData: fieldData(map[string]interface{}{
+			createData: fieldData(map[string]any{
 				"binddn":   "tester",
 				"bindpass": "pa$$w0rd",
 				"url":      "ldap://138.91.247.105",
@@ -140,7 +140,7 @@ func TestConfig_Create(t *testing.T) {
 			},
 		},
 		"missing binddn": {
-			createData: fieldData(map[string]interface{}{
+			createData: fieldData(map[string]any{
 				"bindpass": "pa$$w0rd",
 				"url":      "ldap://138.91.247.105",
 			}),
@@ -148,7 +148,7 @@ func TestConfig_Create(t *testing.T) {
 			expectedReadResp: nil,
 		},
 		"password policy": {
-			createData: fieldData(map[string]interface{}{
+			createData: fieldData(map[string]any{
 				"binddn":          "tester",
 				"bindpass":        "pa$$w0rd",
 				"url":             "ldap://138.91.247.105",
@@ -165,7 +165,7 @@ func TestConfig_Create(t *testing.T) {
 			},
 		},
 		"password length": {
-			createData: fieldData(map[string]interface{}{
+			createData: fieldData(map[string]any{
 				"binddn":   "tester",
 				"bindpass": "pa$$w0rd",
 				"url":      "ldap://138.91.247.105",
@@ -182,7 +182,7 @@ func TestConfig_Create(t *testing.T) {
 			},
 		},
 		"skip initial static rotation set": {
-			createData: fieldData(map[string]interface{}{
+			createData: fieldData(map[string]any{
 				"binddn":                           "tester",
 				"bindpass":                         "pa$$w0rd",
 				"url":                              "ldap://138.91.247.105",
@@ -199,7 +199,7 @@ func TestConfig_Create(t *testing.T) {
 			},
 		},
 		"both password policy and password length": {
-			createData: fieldData(map[string]interface{}{
+			createData: fieldData(map[string]any{
 				"binddn":          "tester",
 				"bindpass":        "pa$$w0rd",
 				"url":             "ldap://138.91.247.105",
@@ -253,7 +253,7 @@ func TestConfig_Update(t *testing.T) {
 		b, storage := getBackend(t, false)
 		defer b.Cleanup(t.Context())
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn":      "tester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -272,7 +272,7 @@ func TestConfig_Update(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		data = map[string]interface{}{
+		data = map[string]any{
 			"binddn":      "newtester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -312,7 +312,7 @@ func TestConfig_Update(t *testing.T) {
 		b, storage := getBackend(t, false)
 		defer b.Cleanup(t.Context())
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn": "tester",
 			"url":    "ldap://138.91.247.105",
 		}
@@ -337,7 +337,7 @@ func TestConfig_Update(t *testing.T) {
 		b, storage := getBackend(t, false)
 		defer b.Cleanup(t.Context())
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn":      "tester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -358,7 +358,7 @@ func TestConfig_Update(t *testing.T) {
 
 		// certificate is intentionally omitted for the update in order
 		// to test that it's value set at creation time is retained.
-		data = map[string]interface{}{
+		data = map[string]any{
 			"binddn":   "newtester",
 			"bindpass": "pa$$w0rd",
 			"url":      "ldap://138.91.247.105",
@@ -402,7 +402,7 @@ func TestConfig_Update(t *testing.T) {
 		initialSchema := "ad"
 		initialPasswordPolicy := "test_policy"
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn":          "tester",
 			"schema":          initialSchema,
 			"password_policy": initialPasswordPolicy,
@@ -425,7 +425,7 @@ func TestConfig_Update(t *testing.T) {
 
 		// schema and password_policy are intentionally omitted for the update in order
 		// to test that their values set at creation time is retained.
-		data = map[string]interface{}{
+		data = map[string]any{
 			"binddn":   "newtester",
 			"bindpass": "pa$$w0rd",
 			"url":      "ldap://138.91.247.105",
@@ -473,7 +473,7 @@ func TestConfig_Delete(t *testing.T) {
 		b, storage := getBackend(t, false)
 		defer b.Cleanup(t.Context())
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn":      "tester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -542,7 +542,7 @@ func Test_defaultUserAttr(t *testing.T) {
 	}
 }
 
-func fieldData(raw map[string]interface{}) *framework.FieldData {
+func fieldData(raw map[string]any) *framework.FieldData {
 	fields := ldaputil.ConfigFields()
 	fields["ttl"] = &framework.FieldSchema{
 		Type:        framework.TypeDurationSecond,
@@ -580,12 +580,12 @@ func fieldData(raw map[string]interface{}) *framework.FieldData {
 	}
 }
 
-func ldapResponseData(vals ...interface{}) map[string]interface{} {
+func ldapResponseData(vals ...any) map[string]any {
 	if len(vals)%2 != 0 {
 		panic("must specify values as a multiple of two: key and value")
 	}
 
-	m := map[string]interface{}{
+	m := map[string]any{
 		"anonymous_group_search":           false,
 		"binddn":                           "",
 		"case_sensitive_names":             false,

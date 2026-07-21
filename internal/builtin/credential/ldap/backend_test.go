@@ -43,7 +43,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 		Path:      "groups/testgroup",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": []string{"default"},
 		},
 	})
@@ -56,7 +56,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 		Path:      "groups/nested/testgroup",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": []string{"default"},
 		},
 	})
@@ -69,7 +69,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 		Path:      "users/testuser",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": []string{"default"},
 			"groups":   "testgroup,nested/testgroup",
 		},
@@ -83,7 +83,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 		Path:      "users/nested/testuser",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": []string{"default"},
 			"groups":   "testgroup,nested/testgroup",
 		},
@@ -137,7 +137,7 @@ func TestLdapAuthBackend_CaseSensitivity(t *testing.T) {
 		loginReq := &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "login/Hermes Conrad",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"password": "hermes",
 			},
 			Storage:    storage,
@@ -157,7 +157,7 @@ func TestLdapAuthBackend_CaseSensitivity(t *testing.T) {
 		loginReq = &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "login/Hermes Conrad ",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"password": "hermes",
 			},
 			Storage:    storage,
@@ -216,7 +216,7 @@ func TestLdapAuthBackend_CaseSensitivity(t *testing.T) {
 
 		groupReq := &logical.Request{
 			Operation: logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"policies": "grouppolicy",
 			},
 			Path:    "groups/EngineerS",
@@ -243,7 +243,7 @@ func TestLdapAuthBackend_CaseSensitivity(t *testing.T) {
 
 		userReq := &logical.Request{
 			Operation: logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"groups":   "EngineerS",
 				"policies": "userpolicy",
 			},
@@ -274,7 +274,7 @@ func TestLdapAuthBackend_CaseSensitivity(t *testing.T) {
 			// write again so it works
 			userReq = &logical.Request{
 				Operation: logical.UpdateOperation,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"groups":   "EngineerS",
 					"policies": "userpolicy",
 				},
@@ -314,7 +314,7 @@ func TestLdapAuthBackend_CaseSensitivity(t *testing.T) {
 	configReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"url":       cfg.Url,
 			"userattr":  cfg.UserAttr,
 			"userdn":    cfg.UserDN,
@@ -360,7 +360,7 @@ func TestLdapAuthBackend_UserPolicies(t *testing.T) {
 	configReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"url":          cfg.Url,
 			"userattr":     cfg.UserAttr,
 			"userdn":       cfg.UserDN,
@@ -378,7 +378,7 @@ func TestLdapAuthBackend_UserPolicies(t *testing.T) {
 
 	groupReq := &logical.Request{
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": "grouppolicy",
 		},
 		Path:       "groups/engineers",
@@ -392,7 +392,7 @@ func TestLdapAuthBackend_UserPolicies(t *testing.T) {
 
 	userReq := &logical.Request{
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"groups":   "engineers",
 			"policies": "userpolicy",
 		},
@@ -409,7 +409,7 @@ func TestLdapAuthBackend_UserPolicies(t *testing.T) {
 	loginReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "login/hermes conrad",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": "hermes",
 		},
 		Storage:    storage,
@@ -814,7 +814,7 @@ func TestBackend_configDefaultsAfterUpdate(t *testing.T) {
 			{
 				Operation: logical.UpdateOperation,
 				Path:      "config",
-				Data:      map[string]interface{}{},
+				Data:      map[string]any{},
 			},
 			{
 				Operation: logical.ReadOperation,
@@ -862,7 +862,7 @@ func testAccStepConfigUrl(t *testing.T, cfg *ldaputil.ConfigEntry) logicaltest.T
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "config",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"url":                  cfg.Url,
 			"userattr":             cfg.UserAttr,
 			"userdn":               cfg.UserDN,
@@ -884,7 +884,7 @@ func testAccStepConfigUrlWithAuthBind(t *testing.T, cfg *ldaputil.ConfigEntry) l
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "config",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			// In this test we also exercise multiple URL support
 			"url":                  "foobar://ldap.example.com," + cfg.Url,
 			"userattr":             cfg.UserAttr,
@@ -906,7 +906,7 @@ func testAccStepConfigUrlWithDiscover(t *testing.T, cfg *ldaputil.ConfigEntry) l
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "config",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"url":                  cfg.Url,
 			"userattr":             cfg.UserAttr,
 			"userdn":               cfg.UserDN,
@@ -927,7 +927,7 @@ func testAccStepConfigUrlNoGroupDN(t *testing.T, cfg *ldaputil.ConfigEntry) logi
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "config",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"url":                  cfg.Url,
 			"userattr":             cfg.UserAttr,
 			"userdn":               cfg.UserDN,
@@ -945,7 +945,7 @@ func testAccStepConfigUrlWarningCheck(t *testing.T, cfg *ldaputil.ConfigEntry, o
 	return logicaltest.TestStep{
 		Operation: operation,
 		Path:      "config",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"url":                  cfg.Url,
 			"userattr":             cfg.UserAttr,
 			"userdn":               cfg.UserDN,
@@ -977,7 +977,7 @@ func testAccStepGroup(t *testing.T, group string, policies string) logicaltest.T
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "groups/" + group,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": policies,
 		},
 	}
@@ -1036,7 +1036,7 @@ func testAccStepUser(t *testing.T, user string, groups string) logicaltest.TestS
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "users/" + user,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"groups": groups,
 		},
 	}
@@ -1081,7 +1081,7 @@ func testAccStepLogin(t *testing.T, user string, pass string) logicaltest.TestSt
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "login/" + user,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": pass,
 		},
 		Unauthenticated: true,
@@ -1095,7 +1095,7 @@ func testAccStepLoginReturnsSameEntity(t *testing.T, user string, pass string, e
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "login/" + user,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": pass,
 		},
 		Unauthenticated: true,
@@ -1109,7 +1109,7 @@ func testAccStepLoginNoAttachedPolicies(t *testing.T, user string, pass string) 
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "login/" + user,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": pass,
 		},
 		Unauthenticated: true,
@@ -1123,7 +1123,7 @@ func testAccStepLoginAliasMetadataName(t *testing.T, user string, pass string) l
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "login/" + user,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": pass,
 		},
 		Unauthenticated: true,
@@ -1136,7 +1136,7 @@ func testAccStepLoginFailure(t *testing.T, user string, pass string) logicaltest
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "login/" + user,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": pass,
 		},
 		Unauthenticated: true,
@@ -1149,7 +1149,7 @@ func testAccStepLoginNoGroupDN(t *testing.T, user string, pass string) logicalte
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "login/" + user,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": pass,
 		},
 		Unauthenticated: true,
@@ -1227,7 +1227,7 @@ func TestLdapAuthBackend_ConfigUpgrade(t *testing.T) {
 	configReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"url":                    cfg.Url,
 			"userattr":               cfg.UserAttr,
 			"userdn":                 cfg.UserDN,

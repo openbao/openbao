@@ -79,7 +79,7 @@ func (c *OperatorRaftRemovePeerCommand) Run(args []string) int {
 		return 2
 	}
 
-	_, err = client.Logical().Write("sys/storage/raft/remove-peer", map[string]interface{}{
+	_, err = client.Logical().Write("sys/storage/raft/remove-peer", map[string]any{
 		"server_id": serverID,
 	})
 	if err != nil {

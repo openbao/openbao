@@ -322,7 +322,7 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 
 	// Update the program field if provided.
 	if programRaw, ok := data.GetOk("cel_program"); ok {
-		programMap, ok := programRaw.(map[string]interface{})
+		programMap, ok := programRaw.(map[string]any)
 		if !ok {
 			return logical.ErrorResponse("'cel_program' must be a valid map"), nil
 		}
@@ -397,8 +397,8 @@ const (
 	pathCelRoleHelpDesc = `This path lets you manage the CEL roles that can be created with this backend.`
 )
 
-func (r *celRoleEntry) ToResponseData() map[string]interface{} {
-	return map[string]interface{}{
+func (r *celRoleEntry) ToResponseData() map[string]any {
+	return map[string]any{
 		"name":              r.Name,
 		"cel_program":       r.Program,
 		"message":           r.Message,

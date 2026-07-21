@@ -339,10 +339,10 @@ func (c *Core) handleControlGroupRequest(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
-	auths := []map[string]interface{}{}
+	auths := []map[string]any{}
 	if cg != nil {
 		for _, approval := range cg.Authorizations() {
-			auths = append(auths, map[string]interface{}{
+			auths = append(auths, map[string]any{
 				"entity_id":   approval.EntityID,
 				"entity_name": approval.EntityName,
 			})
@@ -351,7 +351,7 @@ func (c *Core) handleControlGroupRequest(ctx context.Context, req *logical.Reque
 
 	// Generate a response.
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"approved":          approved,
 			"request_operation": originalRequest.Operation,
 			"request_path":      originalRequest.Path,
@@ -411,7 +411,7 @@ func (c *Core) handleControlGroupAuthorize(ctx context.Context, req *logical.Req
 
 	// Prepare the field data required for a lookup call
 	d := &framework.FieldData{
-		Raw: map[string]interface{}{
+		Raw: map[string]any{
 			"accessor": accessor,
 		},
 		Schema: map[string]*framework.FieldSchema{
@@ -435,7 +435,7 @@ func (c *Core) handleControlGroupAuthorize(ctx context.Context, req *logical.Req
 
 	// Only return the "approved" information
 	resp := logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"approved": lookupResponse.Data["approved"],
 		},
 	}

@@ -213,7 +213,7 @@ func (c *KVMetadataPatchCommand) Run(args []string) int {
 
 	fullPath := addPrefixToKVPath(partialPath, mountPath, "metadata", false)
 
-	data := make(map[string]interface{}, 0)
+	data := make(map[string]any, 0)
 
 	if c.flagMaxVersions >= 0 {
 		data["max_versions"] = c.flagMaxVersions
@@ -227,7 +227,7 @@ func (c *KVMetadataPatchCommand) Run(args []string) int {
 		data["delete_version_after"] = c.flagDeleteVersionAfter.String()
 	}
 
-	customMetadata := make(map[string]interface{})
+	customMetadata := make(map[string]any)
 
 	for key, value := range c.flagCustomMetadata {
 		customMetadata[key] = value

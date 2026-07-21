@@ -126,11 +126,11 @@ func (b *backend) pathRoleRead(ctx context.Context, req *logical.Request, d *fra
 		return nil, nil
 	}
 
-	resp := map[string]interface{}{}
+	resp := map[string]any{}
 	resp["tags"] = role.Tags
-	respVHost := map[string]interface{}{}
+	respVHost := map[string]any{}
 	for key, value := range role.VHosts {
-		respVHost[key] = map[string]interface{}{
+		respVHost[key] = map[string]any{
 			"configure": value.Configure,
 			"write":     value.Write,
 			"read":      value.Read,
@@ -138,11 +138,11 @@ func (b *backend) pathRoleRead(ctx context.Context, req *logical.Request, d *fra
 	}
 	resp["vhosts"] = respVHost
 
-	respVHostTopics := map[string]interface{}{}
+	respVHostTopics := map[string]any{}
 	for key, topic := range role.VHostTopics {
-		respVHostTopic := map[string]interface{}{}
+		respVHostTopic := map[string]any{}
 		for topicKey, value := range topic {
-			respVHostTopic[topicKey] = map[string]interface{}{
+			respVHostTopic[topicKey] = map[string]any{
 				"write": value.Write,
 				"read":  value.Read,
 			}

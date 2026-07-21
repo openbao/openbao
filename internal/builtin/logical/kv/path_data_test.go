@@ -61,7 +61,7 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 }
 
 // getKeySet will produce a set of the keys that exist in m
-func getKeySet(m map[string]interface{}) map[string]struct{} {
+func getKeySet(m map[string]any) map[string]struct{} {
 	set := make(map[string]struct{})
 
 	for k := range m {
@@ -91,7 +91,7 @@ func TestVersionedKV_Data_Put(t *testing.T) {
 		"bar": "def",
 	}
 
-	metadata := map[string]interface{}{
+	metadata := map[string]any{
 		"custom_metadata": customMetadata,
 	}
 
@@ -107,8 +107,8 @@ func TestVersionedKV_Data_Put(t *testing.T) {
 		t.Fatalf("metadata CreateOperation request failed, err: %s, resp %#v", err, resp)
 	}
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
 	}
@@ -137,11 +137,11 @@ func TestVersionedKV_Data_Put(t *testing.T) {
 		t.Fatalf("custom_metadata map mismatch, diff: %#v", diff)
 	}
 
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"bar": "baz1",
 		},
-		"options": map[string]interface{}{
+		"options": map[string]any{
 			"cas": float64(1),
 		},
 	}
@@ -174,11 +174,11 @@ func TestVersionedKV_Data_Put(t *testing.T) {
 func TestVersionedKV_Data_Put_ZeroCas(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
-		"options": map[string]interface{}{
+		"options": map[string]any{
 			"cas": float64(0),
 		},
 	}
@@ -237,7 +237,7 @@ func TestVersionedKV_Data_Get(t *testing.T) {
 		"bar": "def",
 	}
 
-	metadata := map[string]interface{}{
+	metadata := map[string]any{
 		"custom_metadata": customMetadata,
 	}
 
@@ -253,8 +253,8 @@ func TestVersionedKV_Data_Get(t *testing.T) {
 		t.Fatalf("metadata CreateOperation request failed, err: %s, resp %#v", err, resp)
 	}
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
 	}
@@ -294,7 +294,7 @@ func TestVersionedKV_Data_Get(t *testing.T) {
 		t.Fatalf("data ReadOperation resp did not include metadata field, resp: %#v", resp)
 	}
 
-	respMetadata := resp.Data["metadata"].(map[string]interface{})
+	respMetadata := resp.Data["metadata"].(map[string]any)
 
 	if diff := deep.Equal(getKeySet(respMetadata), expectedMetadataKeys()); len(diff) > 0 {
 		t.Fatalf("metadata map keys mismatch, diff: %#v\n", diff)
@@ -321,8 +321,8 @@ func TestVersionedKV_Data_Get(t *testing.T) {
 func TestVersionedKV_Data_Delete(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
 	}
@@ -371,11 +371,11 @@ func TestVersionedKV_Data_Delete(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if uint64(httpResp.Data["metadata"].(map[string]interface{})["version"].(float64)) != uint64(1) {
+	if uint64(httpResp.Data["metadata"].(map[string]any)["version"].(float64)) != uint64(1) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	parsed, err := time.Parse(time.RFC3339Nano, httpResp.Data["metadata"].(map[string]interface{})["deletion_time"].(string))
+	parsed, err := time.Parse(time.RFC3339Nano, httpResp.Data["metadata"].(map[string]any)["deletion_time"].(string))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -390,8 +390,8 @@ func TestVersionedKV_Data_Put_CleanupOldVersions(t *testing.T) {
 
 	// Write 10 versions
 	for i := range 10 {
-		data := map[string]interface{}{
-			"data": map[string]interface{}{
+		data := map[string]any{
+			"data": map[string]any{
 				"bar": "baz",
 			},
 		}
@@ -415,7 +415,7 @@ func TestVersionedKV_Data_Put_CleanupOldVersions(t *testing.T) {
 	}
 
 	// lower max versions
-	data := map[string]interface{}{
+	data := map[string]any{
 		"max_versions": 2,
 	}
 
@@ -432,8 +432,8 @@ func TestVersionedKV_Data_Put_CleanupOldVersions(t *testing.T) {
 	}
 
 	// write another version
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
 	}
@@ -478,8 +478,8 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions(t *testing.T) {
 
 	// Write 10 versions
 	for i := range 10 {
-		data := map[string]interface{}{
-			"data": map[string]interface{}{
+		data := map[string]any{
+			"data": map[string]any{
 				"bar": "baz",
 			},
 		}
@@ -503,7 +503,7 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions(t *testing.T) {
 	}
 
 	// lower max versions
-	data := map[string]interface{}{
+	data := map[string]any{
 		"max_versions": 2,
 	}
 
@@ -520,8 +520,8 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions(t *testing.T) {
 	}
 
 	// write another version
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
 	}
@@ -564,8 +564,8 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions(t *testing.T) {
 func TestVersionedKV_Reload_Policy(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
 	}
@@ -621,8 +621,8 @@ func TestVersionedKV_Reload_Policy(t *testing.T) {
 func TestVersionedKV_Patch_NotFound(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
 	}
@@ -643,7 +643,7 @@ func TestVersionedKV_Patch_NotFound(t *testing.T) {
 		t.Fatalf("expected 404 response for PatchOperation: resp:%#v", resp)
 	}
 
-	metadata := map[string]interface{}{
+	metadata := map[string]any{
 		"max_versions": 5,
 	}
 
@@ -681,7 +681,7 @@ func TestVersionedKV_Patch_NotFound(t *testing.T) {
 func TestVersionedKV_Patch_CASValidation(t *testing.T) {
 	b, storage := getBackend(t)
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"cas_required": true,
 	}
 
@@ -697,11 +697,11 @@ func TestVersionedKV_Patch_CASValidation(t *testing.T) {
 		t.Fatalf("CreateOperation request for config failed - err:%s resp:%#v\n", err, resp)
 	}
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
-		"options": map[string]interface{}{
+		"options": map[string]any{
 			"cas": 0,
 		},
 	}
@@ -722,8 +722,8 @@ func TestVersionedKV_Patch_CASValidation(t *testing.T) {
 		t.Fatalf("Version 1 was not created - err:%s resp:%#v\n", err, resp)
 	}
 
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"bar": "baz1",
 		},
 	}
@@ -748,11 +748,11 @@ func TestVersionedKV_Patch_CASValidation(t *testing.T) {
 		t.Fatalf("expected check-and-set validation error, resp: %#v\n", resp)
 	}
 
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"bar": "baz1",
 		},
-		"options": map[string]interface{}{
+		"options": map[string]any{
 			"cas": float64(2),
 		},
 	}
@@ -780,8 +780,8 @@ func TestVersionedKV_Patch_CASValidation(t *testing.T) {
 
 func TestVersionedKV_Patch_NoData(t *testing.T) {
 	b, storage := getBackend(t)
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
 	}
@@ -830,7 +830,7 @@ func TestVersionedKV_Patch_Success(t *testing.T) {
 		"bar": "def",
 	}
 
-	metadata := map[string]interface{}{
+	metadata := map[string]any{
 		"custom_metadata": customMetadata,
 	}
 
@@ -846,10 +846,10 @@ func TestVersionedKV_Patch_Success(t *testing.T) {
 		t.Fatalf("metadata CreateOperation request failed, err: %s, resp %#v", err, resp)
 	}
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
-			"quux": map[string]interface{}{
+			"quux": map[string]any{
 				"quuz": []string{"1", "2", "3"},
 			},
 		},
@@ -875,15 +875,15 @@ func TestVersionedKV_Patch_Success(t *testing.T) {
 		t.Fatalf("expected version to be 1, resp: %#v", resp)
 	}
 
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"abc": float64(123),
-			"quux": map[string]interface{}{
+			"quux": map[string]any{
 				"def":  float64(456),
 				"quuz": []string{"1", "2", "3", "4"},
 			},
 		},
-		"options": map[string]interface{}{
+		"options": map[string]any{
 			"cas": float64(1),
 		},
 	}
@@ -921,12 +921,12 @@ func TestVersionedKV_Patch_Success(t *testing.T) {
 		t.Fatalf("data ReadOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
 
-	expectedData := map[string]interface{}{
+	expectedData := map[string]any{
 		"bar": "baz",
 		"abc": float64(123),
-		"quux": map[string]interface{}{
+		"quux": map[string]any{
 			"def":  float64(456),
-			"quuz": []interface{}{"1", "2", "3", "4"},
+			"quuz": []any{"1", "2", "3", "4"},
 		},
 	}
 
@@ -938,8 +938,8 @@ func TestVersionedKV_Patch_Success(t *testing.T) {
 func TestVersionedKV_Patch_CurrentVersionDeleted(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
 	}
@@ -981,7 +981,7 @@ func TestVersionedKV_Patch_CurrentVersionDeleted(t *testing.T) {
 
 	// Use of logical.RespondWithStatusCode in handler will
 	// serialize the JSON response body as a string
-	respBody := map[string]interface{}{}
+	respBody := map[string]any{}
 
 	if rawRespBody, ok := resp.Data[logical.HTTPRawBody]; ok {
 		err = json.Unmarshal([]byte(rawRespBody.(string)), &respBody)
@@ -995,14 +995,14 @@ func TestVersionedKV_Patch_CurrentVersionDeleted(t *testing.T) {
 		t.Fatalf("No data provided in response, resp: %#v\n", resp)
 	}
 
-	respData := respDataRaw.(map[string]interface{})
+	respData := respDataRaw.(map[string]any)
 
 	respMetadataRaw, ok := respData["metadata"]
 	if !ok {
 		t.Fatalf("No metadata provided in response, resp: %#v\n", resp)
 	}
 
-	respMetadata := respMetadataRaw.(map[string]interface{})
+	respMetadata := respMetadataRaw.(map[string]any)
 
 	if respMetadata["deletion_time"] == "" {
 		t.Fatalf("Expected deletion_time to be set, resp:%#v\n", resp)
@@ -1024,7 +1024,7 @@ func TestVersionedKV_Patch_CurrentVersionDeleted(t *testing.T) {
 
 	// Use of logical.RespondWithStatusCode in handler will
 	// serialize the JSON response body as a string
-	respBody = map[string]interface{}{}
+	respBody = map[string]any{}
 
 	if rawRespBody, ok := resp.Data[logical.HTTPRawBody]; ok {
 		err = json.Unmarshal([]byte(rawRespBody.(string)), &respBody)
@@ -1038,7 +1038,7 @@ func TestVersionedKV_Patch_CurrentVersionDeleted(t *testing.T) {
 		t.Fatalf("No data provided in response, resp: %#v\n", resp)
 	}
 
-	respData = respDataRaw.(map[string]interface{})
+	respData = respDataRaw.(map[string]any)
 
 	// Unlike the ReadOperation handler, the PatchOperation handler
 	// does not ever return secret data. Thus, the secret metadata is
@@ -1053,8 +1053,8 @@ func TestVersionedKV_Patch_CurrentVersionDeleted(t *testing.T) {
 func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
 	}
@@ -1071,7 +1071,7 @@ func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 		t.Fatalf("CreateOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
 
-	versionsToDestroy := map[string]interface{}{
+	versionsToDestroy := map[string]any{
 		"versions": []int{1},
 	}
 
@@ -1100,7 +1100,7 @@ func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 
 	// Use of logical.RespondWithStatusCode in handler will
 	// serialize the JSON response body as a string
-	respBody := map[string]interface{}{}
+	respBody := map[string]any{}
 
 	if rawRespBody, ok := resp.Data[logical.HTTPRawBody]; ok {
 		err = json.Unmarshal([]byte(rawRespBody.(string)), &respBody)
@@ -1114,14 +1114,14 @@ func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 		t.Fatalf("No data provided in response, resp: %#v\n", resp)
 	}
 
-	respData := respDataRaw.(map[string]interface{})
+	respData := respDataRaw.(map[string]any)
 
 	respMetadataRaw, ok := respData["metadata"]
 	if !ok {
 		t.Fatalf("No metadata provided in response, resp: %#v\n", resp)
 	}
 
-	respMetadata := respMetadataRaw.(map[string]interface{})
+	respMetadata := respMetadataRaw.(map[string]any)
 
 	if respMetadata["destroyed"] == nil || !respMetadata["destroyed"].(bool) {
 		t.Fatalf("Expected version to be destroyed, resp:%#v\n", resp)
@@ -1143,7 +1143,7 @@ func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 
 	// Use of logical.RespondWithStatusCode in handler will
 	// serialize the JSON response body as a string
-	respBody = map[string]interface{}{}
+	respBody = map[string]any{}
 
 	if rawRespBody, ok := resp.Data[logical.HTTPRawBody]; ok {
 		err = json.Unmarshal([]byte(rawRespBody.(string)), &respBody)
@@ -1157,7 +1157,7 @@ func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 		t.Fatalf("No data provided in response, resp: %#v\n", resp)
 	}
 
-	respData = respDataRaw.(map[string]interface{})
+	respData = respDataRaw.(map[string]any)
 
 	// Unlike the ReadOperation handler, the PatchOperation handler
 	// does not ever return secret data. Thus, the secret metadata is

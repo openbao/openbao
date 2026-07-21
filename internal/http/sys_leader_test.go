@@ -21,8 +21,8 @@ func TestSysLeader_get(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	var actual map[string]interface{}
-	expected := map[string]interface{}{
+	var actual map[string]any
+	expected := map[string]any{
 		"ha_enabled": false,
 	}
 	testResponseStatus(t, resp, 200)

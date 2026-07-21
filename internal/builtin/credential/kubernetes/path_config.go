@@ -117,7 +117,7 @@ func (b *kubeAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reque
 	} else {
 		// Create a map of data to be returned
 		resp := &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"kubernetes_host":        config.Host,
 				"kubernetes_ca_cert":     config.CACert,
 				"pem_keys":               config.PEMKeys,

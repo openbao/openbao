@@ -266,7 +266,7 @@ func (b *backend) pathUpdateResignCrlsHandler(ctx context.Context, request *logi
 
 	return &logical.Response{
 		Warnings: warnings,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"crl": body,
 		},
 	}, nil
@@ -306,12 +306,12 @@ func (b *backend) pathUpdateSignRevocationListHandler(ctx context.Context, reque
 		return logical.ErrorResponse(err.Error()), nil
 	}
 
-	revokedCerts, err := parseRevokedCertsParam(data.Get("revoked_certs").([]interface{}))
+	revokedCerts, err := parseRevokedCertsParam(data.Get("revoked_certs").([]any))
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
 
-	crlExtensions, err := parseExtensionsParam(data.Get("extensions").([]interface{}))
+	crlExtensions, err := parseExtensionsParam(data.Get("extensions").([]any))
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
@@ -348,17 +348,17 @@ func (b *backend) pathUpdateSignRevocationListHandler(ctx context.Context, reque
 	body := encodeResponse(crlBytes, format == "der")
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"crl": body,
 		},
 	}, nil
 }
 
-func parseRevokedCertsParam(revokedCerts []interface{}) ([]pkix.RevokedCertificate, error) {
+func parseRevokedCertsParam(revokedCerts []any) ([]pkix.RevokedCertificate, error) {
 	var parsedCerts []pkix.RevokedCertificate
 	seenSerials := make(map[*big.Int]int)
 	for i, entry := range revokedCerts {
-		if revokedCert, ok := entry.(map[string]interface{}); ok {
+		if revokedCert, ok := entry.(map[string]any); ok {
 			serialNum, err := parseSerialNum(revokedCert)
 			if err != nil {
 				return nil, fmt.Errorf("failed parsing serial_number from entry %d: %w", i, err)
@@ -392,14 +392,14 @@ func parseRevokedCertsParam(revokedCerts []interface{}) ([]pkix.RevokedCertifica
 	return parsedCerts, nil
 }
 
-func parseCertExtensions(cert map[string]interface{}) ([]pkix.Extension, error) {
+func parseCertExtensions(cert map[string]any) ([]pkix.Extension, error) {
 	extRaw, exists := cert["extensions"]
 	if !exists || extRaw == nil || extRaw == "" {
 		// We don't require extensions to be populated
 		return []pkix.Extension{}, nil
 	}
 
-	extListRaw, ok := extRaw.([]interface{})
+	extListRaw, ok := extRaw.([]any)
 	if !ok {
 		return nil, errors.New("'extensions' field did not contain a slice")
 	}
@@ -407,11 +407,11 @@ func parseCertExtensions(cert map[string]interface{}) ([]pkix.Extension, error) 
 	return parseExtensionsParam(extListRaw)
 }
 
-func parseExtensionsParam(extRawList []interface{}) ([]pkix.Extension, error) {
+func parseExtensionsParam(extRawList []any) ([]pkix.Extension, error) {
 	var extensions []pkix.Extension
 	seenOid := make(map[string]struct{})
 	for i, entryRaw := range extRawList {
-		entry, ok := entryRaw.(map[string]interface{})
+		entry, ok := entryRaw.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("extension entry %d not a map", i)
 		}
@@ -433,7 +433,7 @@ func parseExtensionsParam(extRawList []interface{}) ([]pkix.Extension, error) {
 	return extensions, nil
 }
 
-func parseExtension(entry map[string]interface{}) (pkix.Extension, error) {
+func parseExtension(entry map[string]any) (pkix.Extension, error) {
 	asnObjectId, err := parseExtAsn1ObjectId(entry)
 	if err != nil {
 		return pkix.Extension{}, err
@@ -468,7 +468,7 @@ func parseExtension(entry map[string]interface{}) (pkix.Extension, error) {
 	}, nil
 }
 
-func parseExtValue(entry map[string]interface{}) ([]byte, error) {
+func parseExtValue(entry map[string]any) ([]byte, error) {
 	valRaw, exists := entry["value"]
 	if !exists {
 		return nil, errors.New("missing 'value' field")
@@ -490,7 +490,7 @@ func parseExtValue(entry map[string]interface{}) ([]byte, error) {
 	return decodeString, nil
 }
 
-func parseExtCritical(entry map[string]interface{}) (bool, error) {
+func parseExtCritical(entry map[string]any) (bool, error) {
 	critRaw, exists := entry["critical"]
 	if !exists || critRaw == nil || critRaw == "" {
 		// Optional field, so just return as if they provided the value false.
@@ -505,7 +505,7 @@ func parseExtCritical(entry map[string]interface{}) (bool, error) {
 	return myBool, nil
 }
 
-func parseExtAsn1ObjectId(entry map[string]interface{}) (asn1.ObjectIdentifier, error) {
+func parseExtAsn1ObjectId(entry map[string]any) (asn1.ObjectIdentifier, error) {
 	idRaw, idExists := entry["id"]
 	if !idExists {
 		return asn1.ObjectIdentifier{}, errors.New("missing id field")
@@ -533,7 +533,7 @@ func parseExtAsn1ObjectId(entry map[string]interface{}) (asn1.ObjectIdentifier, 
 	return oid, nil
 }
 
-func parseRevocationTime(cert map[string]interface{}) (time.Time, error) {
+func parseRevocationTime(cert map[string]any) (time.Time, error) {
 	var revTime time.Time
 	revTimeRaw, exists := cert["revocation_time"]
 	if !exists {
@@ -546,7 +546,7 @@ func parseRevocationTime(cert map[string]interface{}) (time.Time, error) {
 	return revTime, nil
 }
 
-func parseSerialNum(cert map[string]interface{}) (*big.Int, error) {
+func parseSerialNum(cert map[string]any) (*big.Int, error) {
 	serialNumRaw, serialExists := cert["serial_number"]
 	if !serialExists {
 		return nil, errors.New("missing 'serial_number' field")

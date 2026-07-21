@@ -20,7 +20,7 @@ func Test_runCelProgram(t *testing.T) {
 	tests := []struct {
 		name           string
 		celRole        celRoleEntry
-		claims         map[string]interface{}
+		claims         map[string]any
 		auth           logical.Auth
 		validateResult func(t *testing.T, err error, role *pb.Auth)
 	}{
@@ -31,7 +31,7 @@ func Test_runCelProgram(t *testing.T) {
 					Expression: "1 == 2",
 				},
 			},
-			claims: map[string]interface{}{
+			claims: map[string]any{
 				"sub":    "test@example.com",
 				"groups": []string{"group1", "group2"},
 			},
@@ -48,7 +48,7 @@ func Test_runCelProgram(t *testing.T) {
 					Expression: "'something is amiss'",
 				},
 			},
-			claims: map[string]interface{}{
+			claims: map[string]any{
 				"sub":    "test@example.com",
 				"groups": []string{"group1", "group2"},
 			},
@@ -66,7 +66,7 @@ func Test_runCelProgram(t *testing.T) {
 					Expression: `pb.Auth{display_name: 'newAuth'}`,
 				},
 			},
-			claims: map[string]interface{}{
+			claims: map[string]any{
 				"sub":    "test@example.com",
 				"groups": []string{"group1", "group2"},
 			},
@@ -84,7 +84,7 @@ func Test_runCelProgram(t *testing.T) {
 					Expression: `pb.Auth{policies: ['policy1', 'policy2']}`,
 				},
 			},
-			claims: map[string]interface{}{
+			claims: map[string]any{
 				"sub":    "test@example.com",
 				"groups": []string{"group1", "group2"},
 			},
@@ -104,7 +104,7 @@ func Test_runCelProgram(t *testing.T) {
 					: false`,
 				},
 			},
-			claims: map[string]interface{}{
+			claims: map[string]any{
 				"sub":    "test@example.com",
 				"groups": []string{"group1", "group2"},
 			},
@@ -128,7 +128,7 @@ func Test_runCelProgram(t *testing.T) {
 					: false`,
 				},
 			},
-			claims: map[string]interface{}{
+			claims: map[string]any{
 				"sub":    "test@example.com",
 				"groups": []string{"group1", "group2"},
 			},
@@ -153,7 +153,7 @@ func Test_runCelProgram(t *testing.T) {
 					: false`,
 				},
 			},
-			claims: map[string]interface{}{
+			claims: map[string]any{
 				"sub":    "test@example.com",
 				"groups": []string{"group1", "group2"},
 			},
@@ -184,16 +184,16 @@ func Test_runCelProgram(t *testing.T) {
 func TestCelRoleAuth(t *testing.T) {
 	tests := []struct {
 		name          string
-		celRole       map[string]interface{}
+		celRole       map[string]any
 		jwtClaims     sqjwt.Claims
 		wantErr       bool
 		errorContains string
 	}{
 		{
 			name: "Subjects match, expect success",
-			celRole: map[string]interface{}{
+			celRole: map[string]any{
 				"name": "testrole",
-				"cel_program": map[string]interface{}{"expression": `claims.sub == 'joe.public@example.com' 
+				"cel_program": map[string]any{"expression": `claims.sub == 'joe.public@example.com' 
 					? pb.Auth{display_name: 'newAuth'} 
 					: false`},
 			},
@@ -207,9 +207,9 @@ func TestCelRoleAuth(t *testing.T) {
 		},
 		{
 			name: "Subject doesn't match, expect error",
-			celRole: map[string]interface{}{
+			celRole: map[string]any{
 				"name":        "testrole",
-				"cel_program": map[string]interface{}{"expression": "claims.sub == 'joe.public@example.com' ? pb.Auth{display_name: 'newAuth'} : false"},
+				"cel_program": map[string]any{"expression": "claims.sub == 'joe.public@example.com' ? pb.Auth{display_name: 'newAuth'} : false"},
 			},
 			jwtClaims: sqjwt.Claims{
 				Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
@@ -222,9 +222,9 @@ func TestCelRoleAuth(t *testing.T) {
 		},
 		{
 			name: "Audience match, expect success",
-			celRole: map[string]interface{}{
+			celRole: map[string]any{
 				"name":            "testrole",
-				"cel_program":     map[string]interface{}{"expression": "claims.sub == 'joe.public@example.com' ? pb.Auth{display_name: 'newAuth'} : false"},
+				"cel_program":     map[string]any{"expression": "claims.sub == 'joe.public@example.com' ? pb.Auth{display_name: 'newAuth'} : false"},
 				"bound_audiences": []string{"https://vault.plugin.auth.jwt.test"},
 			},
 			jwtClaims: sqjwt.Claims{
@@ -237,9 +237,9 @@ func TestCelRoleAuth(t *testing.T) {
 		},
 		{
 			name: "Audience mismatch, expect error",
-			celRole: map[string]interface{}{
+			celRole: map[string]any{
 				"name":            "testrole",
-				"cel_program":     map[string]interface{}{"expression": "claims.sub == 'joe.public@example.com'"},
+				"cel_program":     map[string]any{"expression": "claims.sub == 'joe.public@example.com'"},
 				"bound_audiences": []string{"https://vault.plugin.auth.jwt.test"},
 			},
 			jwtClaims: sqjwt.Claims{
@@ -289,7 +289,7 @@ func TestCelRoleAuth(t *testing.T) {
 			jwtData, _ := getTestJWT(t, ecdsaPrivKey, tt.jwtClaims, privateCl)
 
 			// Attempt login
-			loginData := map[string]interface{}{
+			loginData := map[string]any{
 				"role": "testrole",
 				"jwt":  jwtData,
 			}

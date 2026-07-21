@@ -61,7 +61,7 @@ type SealManager struct {
 func NewSealManager(core *Core, logger hclog.Logger) *SealManager {
 	return &SealManager{
 		core: core,
-		barrierByNamespacePath: radix.NewFromMap(map[string]interface{}{
+		barrierByNamespacePath: radix.NewFromMap(map[string]any{
 			"": core.barrier,
 		}),
 		sealByNamespace: map[string]Seal{
@@ -84,7 +84,7 @@ func (c *Core) SetupSealManager() {
 // sealAll seals barriers of all namespaces and resets seal manager state.
 func (sm *SealManager) sealAll() error {
 	var errs error
-	sm.barrierByNamespacePath.Walk(func(path string, b interface{}) bool {
+	sm.barrierByNamespacePath.Walk(func(path string, b any) bool {
 		if b != nil {
 			errs = errors.Join(errs, b.(barrier.SecurityBarrier).Seal())
 		}
@@ -642,7 +642,7 @@ func (sm *SealManager) NamespacesWithKeys() []string {
 	defer sm.lock.RUnlock()
 
 	var namespaces []string
-	sm.barrierByNamespacePath.Walk(func(_ string, b interface{}) bool {
+	sm.barrierByNamespacePath.Walk(func(_ string, b any) bool {
 		if b == nil {
 			return false
 		}
@@ -667,7 +667,7 @@ func (sm *SealManager) NamespacesMissingKeys() []string {
 	defer sm.lock.RUnlock()
 
 	var namespaces []string
-	sm.barrierByNamespacePath.Walk(func(_ string, b interface{}) bool {
+	sm.barrierByNamespacePath.Walk(func(_ string, b any) bool {
 		if b == nil {
 			return false
 		}

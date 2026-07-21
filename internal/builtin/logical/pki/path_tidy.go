@@ -1584,7 +1584,7 @@ func (b *backend) pathTidyStatusRead(_ context.Context, _ *logical.Request, _ *f
 	defer b.tidyStatusLock.RUnlock()
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"safety_buffer":                         nil,
 			"revoked_safety_buffer":                 nil,
 			"issuer_safety_buffer":                  nil,
@@ -2018,12 +2018,12 @@ Once enabled, a tidy operation will be kicked off automatically, as if it
 were executed with the posted configuration.
 `
 
-func getTidyConfigData(config tidyConfig) map[string]interface{} {
+func getTidyConfigData(config tidyConfig) map[string]any {
 	revokedSafetyBufferValue := int(config.SafetyBuffer / time.Second)
 	if config.RevokedSafetyBuffer != nil {
 		revokedSafetyBufferValue = int(*config.RevokedSafetyBuffer / time.Second)
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		// This map is in the same order as tidyConfig to ensure that all fields are accounted for
 		"enabled":                                  config.Enabled,
 		"interval_duration":                        int(config.Interval / time.Second),

@@ -70,7 +70,7 @@ func TestSysPprof_MaxRequestDuration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	httpResp := make(map[string]interface{})
+	httpResp := make(map[string]any)
 
 	// If we error here, it means that profiling likely happened, which is not
 	// what we're checking for in this case.
@@ -78,7 +78,7 @@ func TestSysPprof_MaxRequestDuration(t *testing.T) {
 		t.Fatalf("expected valid error response, got: %v", err)
 	}
 
-	errs, ok := httpResp["errors"].([]interface{})
+	errs, ok := httpResp["errors"].([]any)
 	if !ok {
 		t.Fatalf("expected error response, got: %v", httpResp)
 	}

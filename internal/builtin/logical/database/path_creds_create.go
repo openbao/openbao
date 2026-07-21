@@ -147,7 +147,7 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 			Expiration: expiration,
 		}
 
-		respData := make(map[string]interface{})
+		respData := make(map[string]any)
 
 		// Generate the credential based on the role's credential type
 		switch role.CredentialType {
@@ -229,7 +229,7 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 			respData["password"] = password
 		}
 
-		internal := map[string]interface{}{
+		internal := map[string]any{
 			"username":              newUserResp.Username,
 			"role":                  name,
 			"db_name":               role.DBName,
@@ -276,7 +276,7 @@ func (b *databaseBackend) pathStaticCredsRead() framework.OperationFunc {
 			return nil, fmt.Errorf("%q is not an allowed role", name)
 		}
 
-		respData := map[string]interface{}{
+		respData := map[string]any{
 			"username":            role.StaticAccount.Username,
 			"ttl":                 role.StaticAccount.CredentialTTL().Seconds(),
 			"rotation_period":     role.StaticAccount.RotationPeriod.Seconds(),

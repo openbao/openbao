@@ -272,7 +272,7 @@ func TestCache_TokenRevocations_RevokeOrphan(t *testing.T) {
 	}
 
 	// Create a secret in the backend
-	_, err = testClient.Logical().Write("kv/foo", map[string]interface{}{
+	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
@@ -370,7 +370,7 @@ func TestCache_TokenRevocations_LeafLevelToken(t *testing.T) {
 	}
 
 	// Create a secret in the backend
-	_, err = testClient.Logical().Write("kv/foo", map[string]interface{}{
+	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
@@ -467,7 +467,7 @@ func TestCache_TokenRevocations_IntermediateLevelToken(t *testing.T) {
 	}
 
 	// Create a secret in the backend
-	_, err = testClient.Logical().Write("kv/foo", map[string]interface{}{
+	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
@@ -562,7 +562,7 @@ func TestCache_TokenRevocations_TopLevelToken(t *testing.T) {
 	}
 
 	// Create a secret in the backend
-	_, err = testClient.Logical().Write("kv/foo", map[string]interface{}{
+	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
@@ -655,7 +655,7 @@ func TestCache_TokenRevocations_Shutdown(t *testing.T) {
 	}
 
 	// Create a secret in the backend
-	_, err = testClient.Logical().Write("kv/foo", map[string]interface{}{
+	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
@@ -741,7 +741,7 @@ func TestCache_TokenRevocations_BaseContextCancellation(t *testing.T) {
 	}
 
 	// Create a secret in the backend
-	_, err = testClient.Logical().Write("kv/foo", map[string]interface{}{
+	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
@@ -868,7 +868,7 @@ func TestCache_Caching_AuthResponse(t *testing.T) {
 	token := resp.Auth.ClientToken
 	testClient.SetToken(token)
 
-	authTokeCreateReq := func(t *testing.T, policies map[string]interface{}) *api.Secret {
+	authTokeCreateReq := func(t *testing.T, policies map[string]any) *api.Secret {
 		resp, err := testClient.Logical().Write("auth/token/create", policies)
 		if err != nil {
 			t.Fatal(err)
@@ -882,11 +882,11 @@ func TestCache_Caching_AuthResponse(t *testing.T) {
 
 	// Test on auth response by creating a child token
 	{
-		proxiedResp := authTokeCreateReq(t, map[string]interface{}{
+		proxiedResp := authTokeCreateReq(t, map[string]any{
 			"policies": "default",
 		})
 
-		cachedResp := authTokeCreateReq(t, map[string]interface{}{
+		cachedResp := authTokeCreateReq(t, map[string]any{
 			"policies": "default",
 		})
 
@@ -929,14 +929,14 @@ func TestCache_Caching_LeaseResponse(t *testing.T) {
 	// Test proxy by issuing two different requests
 	{
 		// Write data to the lease-kv backend
-		_, err := testClient.Logical().Write("kv/foo", map[string]interface{}{
+		_, err := testClient.Logical().Write("kv/foo", map[string]any{
 			"value": "bar",
 			"ttl":   "1h",
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = testClient.Logical().Write("kv/foobar", map[string]interface{}{
+		_, err = testClient.Logical().Write("kv/foobar", map[string]any{
 			"value": "bar",
 			"ttl":   "1h",
 		})
@@ -962,7 +962,7 @@ func TestCache_Caching_LeaseResponse(t *testing.T) {
 
 	// Test caching behavior by issue the same request twice
 	{
-		_, err := testClient.Logical().Write("kv/baz", map[string]interface{}{
+		_, err := testClient.Logical().Write("kv/baz", map[string]any{
 			"value": "foo",
 			"ttl":   "1h",
 		})
@@ -1028,7 +1028,7 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 	}
 
 	// Write data to the lease-kv backend
-	_, err = testClient.Logical().Write("kv/foo", map[string]interface{}{
+	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
@@ -1053,7 +1053,7 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 		t.Fatalf("expected cached entry, got: %v", idx)
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"type": clearType,
 	}
 

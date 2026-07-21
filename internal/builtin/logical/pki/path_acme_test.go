@@ -364,7 +364,7 @@ func TestAcmeBasicWorkflowWithEab(t *testing.T) {
 	defer cancel()
 
 	// Enable EAB
-	_, err := client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]interface{}{
+	_, err := client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]any{
 		"enabled":    true,
 		"eab_policy": "always-required",
 	})
@@ -435,10 +435,10 @@ func TestAcmeBasicWorkflowWithEab(t *testing.T) {
 			require.Len(t, resp.Data["keys"], 1)
 			require.Contains(t, resp.Data["keys"], kid)
 
-			keyInfo := resp.Data["key_info"].(map[string]interface{})
+			keyInfo := resp.Data["key_info"].(map[string]any)
 			require.Contains(t, keyInfo, kid)
 
-			infoForKid := keyInfo[kid].(map[string]interface{})
+			infoForKid := keyInfo[kid].(map[string]any)
 			require.Equal(t, "hs", infoForKid["key_type"])
 			require.Equal(t, tc.prefixUrl+"directory", infoForKid["acme_directory"])
 
@@ -542,7 +542,7 @@ func TestAcmeClusterPathNotConfigured(t *testing.T) {
 	// Go sneaky, sneaky and update the acme configuration through sys/raw to bypass config/cluster path checks
 	pkiMount := findStorageMountUuid(t, client, "pki")
 	rawPath := path.Join("/sys/raw/logical/", pkiMount, storageAcmeConfig)
-	_, err := client.Logical().WriteWithContext(t.Context(), rawPath, map[string]interface{}{
+	_, err := client.Logical().WriteWithContext(t.Context(), rawPath, map[string]any{
 		"value": "{\"enabled\": true, \"eab_policy_name\": \"not-required\"}",
 	})
 	require.NoError(t, err, "failed updating acme config through sys/raw")
@@ -576,7 +576,7 @@ func TestAcmeClusterPathNotConfigured(t *testing.T) {
 			require.NoError(t, err, "failed reading from directory response body")
 			_ = dirResp.Body.Close()
 
-			respType := map[string]interface{}{}
+			respType := map[string]any{}
 			err = json.Unmarshal(rawBodyBytes, &respType)
 			require.NoError(t, err, "failed unmarshalling ACME directory response body")
 
@@ -623,7 +623,7 @@ func TestAcmeEabCrossingDirectoryPath(t *testing.T) {
 	defer cluster.Cleanup()
 
 	// Enable EAB
-	_, err := client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]interface{}{
+	_, err := client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]any{
 		"enabled":    true,
 		"eab_policy": "always-required",
 	})
@@ -685,19 +685,19 @@ func TestAcmeConfigChecksPublicAcmeEnv(t *testing.T) {
 	cluster, client := setupTestPkiCluster(t)
 	defer cluster.Cleanup()
 
-	_, err := client.Logical().WriteWithContext(t.Context(), "pki/config/cluster", map[string]interface{}{
+	_, err := client.Logical().WriteWithContext(t.Context(), "pki/config/cluster", map[string]any{
 		"path": "https://dadgarcorp.com/v1/pki",
 	})
 	require.NoError(t, err)
 
-	_, err = client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]any{
 		"enabled":    true,
 		"eab_policy": string(eabPolicyAlwaysRequired),
 	})
 	require.NoError(t, err)
 
 	for _, policyName := range []EabPolicyName{eabPolicyNewAccountRequired, eabPolicyNotRequired} {
-		_, err = client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]interface{}{
+		_, err = client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]any{
 			"enabled":    true,
 			"eab_policy": string(policyName),
 		})
@@ -705,7 +705,7 @@ func TestAcmeConfigChecksPublicAcmeEnv(t *testing.T) {
 	}
 
 	// Make sure we can disable ACME and the eab policy is not checked
-	_, err = client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]any{
 		"enabled":    false,
 		"eab_policy": string(eabPolicyNotRequired),
 	})
@@ -726,7 +726,7 @@ func TestAcmeTruncatesToIssuerExpiry(t *testing.T) {
 
 	mount := "pki"
 	resp, err := client.Logical().WriteWithContext(t.Context(), mount+"/issuers/generate/intermediate/internal",
-		map[string]interface{}{
+		map[string]any{
 			"key_name":    "short-key",
 			"key_type":    "ec",
 			"common_name": "test.com",
@@ -735,7 +735,7 @@ func TestAcmeTruncatesToIssuerExpiry(t *testing.T) {
 	intermediateCSR := resp.Data["csr"].(string)
 
 	// Sign the intermediate CSR using /pki
-	resp, err = client.Logical().Write(mount+"/issuer/root-ca/sign-intermediate", map[string]interface{}{
+	resp, err = client.Logical().Write(mount+"/issuer/root-ca/sign-intermediate", map[string]any{
 		"csr":     intermediateCSR,
 		"ttl":     "10m",
 		"max_ttl": "1h",
@@ -746,15 +746,15 @@ func TestAcmeTruncatesToIssuerExpiry(t *testing.T) {
 	shortCa := parseCert(t, intermediateCertPEM)
 
 	// Configure the intermediate cert as the CA in /pki2
-	resp, err = client.Logical().Write(mount+"/issuers/import/cert", map[string]interface{}{
+	resp, err = client.Logical().Write(mount+"/issuers/import/cert", map[string]any{
 		"pem_bundle": intermediateCertPEM,
 	})
 	require.NoError(t, err, "failed importing intermediary cert")
-	importedIssuersRaw := resp.Data["imported_issuers"].([]interface{})
+	importedIssuersRaw := resp.Data["imported_issuers"].([]any)
 	require.Len(t, importedIssuersRaw, 1)
 	shortCaUuid := importedIssuersRaw[0].(string)
 
-	_, err = client.Logical().Write(mount+"/issuer/"+shortCaUuid, map[string]interface{}{
+	_, err = client.Logical().Write(mount+"/issuer/"+shortCaUuid, map[string]any{
 		"leaf_not_after_behavior": "err",
 		"issuer_name":             "short-ca",
 	})
@@ -816,7 +816,7 @@ func TestAcmeRoleExtKeyUsage(t *testing.T) {
 
 	roleName := "test-role"
 
-	roleOpt := map[string]interface{}{
+	roleOpt := map[string]any{
 		"ttl":                         "365h",
 		"max_ttl":                     "720h",
 		"key_type":                    "any",
@@ -876,7 +876,7 @@ func TestAcmeRoleExtKeyUsage(t *testing.T) {
 
 	// Now turn the ACME configuration allow_role_ext_key_usage and retest to make sure we get a certificate
 	// with them all
-	_, err = client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), "pki/config/acme", map[string]any{
 		"enabled":                  true,
 		"eab_policy":               "not-required",
 		"allow_role_ext_key_usage": true,
@@ -921,13 +921,13 @@ func TestIssuerRoleDirectoryAssociations(t *testing.T) {
 
 	dns := dnstest.SetupResolver(t, "dadgarcorp.com")
 	defer dns.Cleanup()
-	_, err := client.Logical().WriteWithContext(testCtx, "pki/config/acme", map[string]interface{}{
+	_, err := client.Logical().WriteWithContext(testCtx, "pki/config/acme", map[string]any{
 		"dns_resolver": dns.GetLocalAddr(),
 	})
 	require.NoError(t, err, "failed to specify dns resolver")
 
 	// 1. Use a forbidden role should fail.
-	resp, err := client.Logical().WriteWithContext(testCtx, "pki/config/acme", map[string]interface{}{
+	resp, err := client.Logical().WriteWithContext(testCtx, "pki/config/acme", map[string]any{
 		"enabled":       true,
 		"allowed_roles": []string{"acme"},
 	})
@@ -953,7 +953,7 @@ func TestIssuerRoleDirectoryAssociations(t *testing.T) {
 	require.NoError(t, err, "failed to allow usage of acme under root-ca issuer")
 
 	// 2. Use a forbidden issuer should fail.
-	resp, err = client.Logical().WriteWithContext(testCtx, "pki/config/acme", map[string]interface{}{
+	resp, err = client.Logical().WriteWithContext(testCtx, "pki/config/acme", map[string]any{
 		"allowed_roles":   []string{"acme"},
 		"allowed_issuers": []string{"int-ca"},
 	})
@@ -981,7 +981,7 @@ func TestIssuerRoleDirectoryAssociations(t *testing.T) {
 
 	// 3. Setting the default directory to be a sign-verbatim policy and
 	// using two different CAs should result in certs signed by each CA.
-	resp, err = client.Logical().WriteWithContext(testCtx, "pki/config/acme", map[string]interface{}{
+	resp, err = client.Logical().WriteWithContext(testCtx, "pki/config/acme", map[string]any{
 		"allowed_roles":            []string{"*"},
 		"allowed_issuers":          []string{"*"},
 		"default_directory_policy": "sign-verbatim",
@@ -1004,7 +1004,7 @@ func TestIssuerRoleDirectoryAssociations(t *testing.T) {
 
 	// 4. Using a role-based default directory should allow us to control leaf
 	// issuance on the base and issuer-specific directories.
-	resp, err = client.Logical().WriteWithContext(testCtx, "pki/config/acme", map[string]interface{}{
+	resp, err = client.Logical().WriteWithContext(testCtx, "pki/config/acme", map[string]any{
 		"allowed_roles":            []string{"*"},
 		"allowed_issuers":          []string{"*"},
 		"default_directory_policy": "role:acme",
@@ -1012,7 +1012,7 @@ func TestIssuerRoleDirectoryAssociations(t *testing.T) {
 	require.NoError(t, err, "failed to write config")
 	require.NotNil(t, resp)
 
-	resp, err = client.Logical().JSONMergePatch(testCtx, "pki/roles/acme", map[string]interface{}{
+	resp, err = client.Logical().JSONMergePatch(testCtx, "pki/roles/acme", map[string]any{
 		"ou":             "IT Security",
 		"organization":   []string{"Dadgar Corporation, Limited"},
 		"allow_any_name": true,
@@ -1057,7 +1057,7 @@ func TestACMESubjectFieldsAndExtensionsIgnored(t *testing.T) {
 
 	dns := dnstest.SetupResolver(t, "dadgarcorp.com")
 	defer dns.Cleanup()
-	_, err := client.Logical().WriteWithContext(testCtx, "pki/config/acme", map[string]interface{}{
+	_, err := client.Logical().WriteWithContext(testCtx, "pki/config/acme", map[string]any{
 		"dns_resolver": dns.GetLocalAddr(),
 	})
 	require.NoError(t, err, "failed to specify dns resolver")
@@ -1204,7 +1204,7 @@ func markAuthorizationSuccess(t *testing.T, client *api.Client, acmeClient *acme
 
 			encodeJSON, err := jsonutil.EncodeJSON(authz)
 			require.NoError(t, err, "failed encoding authz json")
-			_, err = baseClient.Logical().WriteWithContext(testCtx, rawPath, map[string]interface{}{
+			_, err = baseClient.Logical().WriteWithContext(testCtx, rawPath, map[string]any{
 				"value":    base64.StdEncoding.EncodeToString(encodeJSON),
 				"encoding": "base64",
 			})
@@ -1250,7 +1250,7 @@ func deleteCvEntries(t *testing.T, client *api.Client, pkiMount string) bool {
 
 	deletedEntries := false
 	if resp != nil {
-		cvEntries := resp.Data["keys"].([]interface{})
+		cvEntries := resp.Data["keys"].([]any)
 		for _, cvEntry := range cvEntries {
 			cvEntryPath := path.Join(cvPath, cvEntry.(string))
 			_, err = baseClient.Logical().DeleteWithContext(testCtx, cvEntryPath)
@@ -1293,27 +1293,27 @@ func setupAcmeBackendOnClusterAtPath(t *testing.T, cluster *vault.TestCluster, c
 	})
 	require.NoError(t, err, "failed updating mount lease times "+mount)
 
-	_, err = client.Logical().WriteWithContext(t.Context(), mount+"/config/cluster", map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), mount+"/config/cluster", map[string]any{
 		"path":     pathConfig,
 		"aia_path": "http://localhost:8200/cdn/" + mount,
 	})
 	require.NoError(t, err)
 
-	_, err = client.Logical().WriteWithContext(t.Context(), mount+"/config/acme", map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(t.Context(), mount+"/config/acme", map[string]any{
 		"enabled":    true,
 		"eab_policy": "not-required",
 	})
 	require.NoError(t, err)
 
 	// Allow certain headers to pass through for ACME support
-	_, err = client.WithNamespace(namespace).Logical().WriteWithContext(t.Context(), "sys/mounts/"+mountName+"/tune", map[string]interface{}{
+	_, err = client.WithNamespace(namespace).Logical().WriteWithContext(t.Context(), "sys/mounts/"+mountName+"/tune", map[string]any{
 		"allowed_response_headers": []string{"Last-Modified", "Replay-Nonce", "Link", "Location"},
 		"max_lease_ttl":            "920000h",
 	})
 	require.NoError(t, err, "failed tuning mount response headers")
 
 	resp, err := client.Logical().WriteWithContext(t.Context(), mount+"/issuers/generate/root/internal",
-		map[string]interface{}{
+		map[string]any{
 			"issuer_name": "root-ca",
 			"key_name":    "root-key",
 			"key_type":    "ec",
@@ -1325,7 +1325,7 @@ func setupAcmeBackendOnClusterAtPath(t *testing.T, cluster *vault.TestCluster, c
 	require.NotNil(t, resp)
 
 	resp, err = client.Logical().WriteWithContext(t.Context(), mount+"/issuers/generate/intermediate/internal",
-		map[string]interface{}{
+		map[string]any{
 			"key_name":    "int-key",
 			"key_type":    "ec",
 			"common_name": "Test Int X1 " + mount,
@@ -1334,7 +1334,7 @@ func setupAcmeBackendOnClusterAtPath(t *testing.T, cluster *vault.TestCluster, c
 	intermediateCSR := resp.Data["csr"].(string)
 
 	// Sign the intermediate CSR using /pki
-	resp, err = client.Logical().Write(mount+"/issuer/root-ca/sign-intermediate", map[string]interface{}{
+	resp, err = client.Logical().Write(mount+"/issuer/root-ca/sign-intermediate", map[string]any{
 		"csr":     intermediateCSR,
 		"ttl":     "7100h",
 		"max_ttl": "910000h",
@@ -1343,25 +1343,25 @@ func setupAcmeBackendOnClusterAtPath(t *testing.T, cluster *vault.TestCluster, c
 	intermediateCertPEM := resp.Data["certificate"].(string)
 
 	// Configure the intermediate cert as the CA in /pki2
-	resp, err = client.Logical().Write(mount+"/issuers/import/cert", map[string]interface{}{
+	resp, err = client.Logical().Write(mount+"/issuers/import/cert", map[string]any{
 		"pem_bundle": intermediateCertPEM,
 	})
 	require.NoError(t, err, "failed importing intermediary cert")
-	importedIssuersRaw := resp.Data["imported_issuers"].([]interface{})
+	importedIssuersRaw := resp.Data["imported_issuers"].([]any)
 	require.Len(t, importedIssuersRaw, 1)
 	intCaUuid := importedIssuersRaw[0].(string)
 
-	_, err = client.Logical().Write(mount+"/issuer/"+intCaUuid, map[string]interface{}{
+	_, err = client.Logical().Write(mount+"/issuer/"+intCaUuid, map[string]any{
 		"issuer_name": "int-ca",
 	})
 	require.NoError(t, err, "failed updating issuer name")
 
-	_, err = client.Logical().Write(mount+"/config/issuers", map[string]interface{}{
+	_, err = client.Logical().Write(mount+"/config/issuers", map[string]any{
 		"default": "int-ca",
 	})
 	require.NoError(t, err, "failed updating default issuer")
 
-	_, err = client.Logical().Write(mount+"/roles/test-role", map[string]interface{}{
+	_, err = client.Logical().Write(mount+"/roles/test-role", map[string]any{
 		"ttl":                         "168h",
 		"max_ttl":                     "168h",
 		"key_type":                    "any",
@@ -1371,7 +1371,7 @@ func setupAcmeBackendOnClusterAtPath(t *testing.T, cluster *vault.TestCluster, c
 	})
 	require.NoError(t, err, "failed creating role test-role")
 
-	_, err = client.Logical().Write(mount+"/roles/acme", map[string]interface{}{
+	_, err = client.Logical().Write(mount+"/roles/acme", map[string]any{
 		"ttl":      "3650h",
 		"max_ttl":  "7200h",
 		"key_type": "any",
@@ -1390,7 +1390,7 @@ func testAcmeCertSignedByCa(t *testing.T, client *api.Client, derCerts [][]byte,
 	resp, err := client.Logical().ReadWithContext(t.Context(), "pki/issuer/"+issuerRef)
 	require.NoError(t, err, "failed reading issuer with name %s", issuerRef)
 	issuerCert := parseCert(t, resp.Data["certificate"].(string))
-	issuerChainRaw := resp.Data["ca_chain"].([]interface{})
+	issuerChainRaw := resp.Data["ca_chain"].([]any)
 
 	err = acmeCert.CheckSignatureFrom(issuerCert)
 	require.NoError(t, err, "issuer %s did not sign provided cert", issuerRef)
@@ -1683,7 +1683,7 @@ func getAcmeClientForCluster(t *testing.T, cluster *vault.TestCluster, baseUrl s
 }
 
 func getEABKey(t *testing.T, client *api.Client, baseUrl string) (string, []byte) {
-	resp, err := client.Logical().WriteWithContext(t.Context(), path.Join("pki/", baseUrl, "/new-eab"), map[string]interface{}{})
+	resp, err := client.Logical().WriteWithContext(t.Context(), path.Join("pki/", baseUrl, "/new-eab"), map[string]any{})
 	require.NoError(t, err, "failed getting eab key")
 	require.NotNil(t, resp, "eab key returned nil response")
 	require.NotEmpty(t, resp.Data["id"], "eab key response missing id field")
@@ -1749,7 +1749,7 @@ func TestACMEClientRequestLimits(t *testing.T) {
 	testCtx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 
-	acmeConfig := map[string]interface{}{
+	acmeConfig := map[string]any{
 		"enabled":                  true,
 		"allowed_issuers":          "*",
 		"allowed_roles":            "*",

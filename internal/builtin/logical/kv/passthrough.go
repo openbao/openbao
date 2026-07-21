@@ -153,7 +153,7 @@ func (b *PassthroughBackend) handleRead() framework.OperationFunc {
 		}
 
 		// Decode the data
-		var rawData map[string]interface{}
+		var rawData map[string]any
 
 		if err := jsonutil.DecodeJSON(out.Value, &rawData); err != nil {
 			return nil, fmt.Errorf("json decoding failed: %v", err)

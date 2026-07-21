@@ -27,7 +27,7 @@ func TestSysRekey_Init_pgpKeysEntriesForRekey(t *testing.T) {
 	defer cluster.Cleanup()
 	cl := cluster.Cores[0].Client
 
-	_, err := cl.Logical().Write("sys/rekey/init", map[string]interface{}{
+	_, err := cl.Logical().Write("sys/rekey/init", map[string]any{
 		"secret_shares":    5,
 		"secret_threshold": 3,
 		"pgp_keys":         []string{"pgpkey1"},
@@ -58,13 +58,13 @@ func TestSysRekey_Init_Status(t *testing.T) {
 		}
 
 		actual := resp.Data
-		expected := map[string]interface{}{
+		expected := map[string]any{
 			"started":               false,
 			"t":                     json.Number("0"),
 			"n":                     json.Number("0"),
 			"progress":              json.Number("0"),
 			"required":              json.Number("3"),
-			"pgp_fingerprints":      interface{}(nil),
+			"pgp_fingerprints":      any(nil),
 			"backup":                false,
 			"nonce":                 "",
 			"verification_required": false,
@@ -92,7 +92,7 @@ func TestSysRekey_Init_Setup(t *testing.T) {
 		cl := cluster.Cores[0].Client
 
 		// Start rekey
-		resp, err := cl.Logical().Write("sys/rekey/init", map[string]interface{}{
+		resp, err := cl.Logical().Write("sys/rekey/init", map[string]any{
 			"secret_shares":    5,
 			"secret_threshold": 3,
 		})
@@ -101,13 +101,13 @@ func TestSysRekey_Init_Setup(t *testing.T) {
 		}
 
 		actual := resp.Data
-		expected := map[string]interface{}{
+		expected := map[string]any{
 			"started":               true,
 			"t":                     json.Number("3"),
 			"n":                     json.Number("5"),
 			"progress":              json.Number("0"),
 			"required":              json.Number("3"),
-			"pgp_fingerprints":      interface{}(nil),
+			"pgp_fingerprints":      any(nil),
 			"backup":                false,
 			"verification_required": false,
 		}
@@ -127,13 +127,13 @@ func TestSysRekey_Init_Setup(t *testing.T) {
 		}
 
 		actual = resp.Data
-		expected = map[string]interface{}{
+		expected = map[string]any{
 			"started":               true,
 			"t":                     json.Number("3"),
 			"n":                     json.Number("5"),
 			"progress":              json.Number("0"),
 			"required":              json.Number("3"),
-			"pgp_fingerprints":      interface{}(nil),
+			"pgp_fingerprints":      any(nil),
 			"backup":                false,
 			"verification_required": false,
 		}
@@ -165,7 +165,7 @@ func TestSysRekey_Init_Cancel(t *testing.T) {
 		defer cluster.Cleanup()
 		cl := cluster.Cores[0].Client
 
-		_, err := cl.Logical().Write("sys/rekey/init", map[string]interface{}{
+		_, err := cl.Logical().Write("sys/rekey/init", map[string]any{
 			"secret_shares":    5,
 			"secret_threshold": 3,
 		})
@@ -184,13 +184,13 @@ func TestSysRekey_Init_Cancel(t *testing.T) {
 		}
 
 		actual := resp.Data
-		expected := map[string]interface{}{
+		expected := map[string]any{
 			"started":               false,
 			"t":                     json.Number("0"),
 			"n":                     json.Number("0"),
 			"progress":              json.Number("0"),
 			"required":              json.Number("3"),
-			"pgp_fingerprints":      interface{}(nil),
+			"pgp_fingerprints":      any(nil),
 			"backup":                false,
 			"nonce":                 "",
 			"verification_required": false,
@@ -215,7 +215,7 @@ func TestSysRekey_badKey(t *testing.T) {
 	defer ln.Close()
 	TestServerAuth(t, addr, token)
 
-	resp := testHttpPut(t, token, addr+"/v1/sys/rekey/update", map[string]interface{}{
+	resp := testHttpPut(t, token, addr+"/v1/sys/rekey/update", map[string]any{
 		"key": "0123",
 	})
 	testResponseStatus(t, resp, 400)
@@ -236,29 +236,29 @@ func TestSysRekey_Update(t *testing.T) {
 		defer ln.Close()
 		TestServerAuth(t, addr, token)
 
-		resp := testHttpPut(t, token, addr+"/v1/sys/rekey/init", map[string]interface{}{
+		resp := testHttpPut(t, token, addr+"/v1/sys/rekey/init", map[string]any{
 			"secret_shares":    5,
 			"secret_threshold": 3,
 		})
-		var rekeyStatus map[string]interface{}
+		var rekeyStatus map[string]any
 		testResponseStatus(t, resp, 200)
 		testResponseBody(t, resp, &rekeyStatus)
 
-		var actual map[string]interface{}
-		var expected map[string]interface{}
+		var actual map[string]any
+		var expected map[string]any
 
 		for i, key := range keys {
-			resp = testHttpPut(t, token, addr+"/v1/sys/rekey/update", map[string]interface{}{
+			resp = testHttpPut(t, token, addr+"/v1/sys/rekey/update", map[string]any{
 				"nonce": rekeyStatus["nonce"].(string),
 				"key":   hex.EncodeToString(key),
 			})
 
-			actual = map[string]interface{}{}
-			expected = map[string]interface{}{
+			actual = map[string]any{}
+			expected = map[string]any{
 				"started":               true,
 				"nonce":                 rekeyStatus["nonce"].(string),
 				"backup":                false,
-				"pgp_fingerprints":      interface{}(nil),
+				"pgp_fingerprints":      any(nil),
 				"required":              json.Number("3"),
 				"t":                     json.Number("3"),
 				"n":                     json.Number("5"),
@@ -288,11 +288,11 @@ func TestSysRekey_Update(t *testing.T) {
 			}
 		}
 
-		retKeys := actual["keys"].([]interface{})
+		retKeys := actual["keys"].([]any)
 		if len(retKeys) != 5 {
 			t.Fatalf("bad: %#v", retKeys)
 		}
-		keysB64 := actual["keys_base64"].([]interface{})
+		keysB64 := actual["keys_base64"].([]any)
 		if len(keysB64) != 5 {
 			t.Fatalf("bad: %#v", keysB64)
 		}
@@ -313,7 +313,7 @@ func TestSysRekey_ReInitUpdate(t *testing.T) {
 	defer ln.Close()
 	TestServerAuth(t, addr, token)
 
-	resp := testHttpPut(t, token, addr+"/v1/sys/rekey/init", map[string]interface{}{
+	resp := testHttpPut(t, token, addr+"/v1/sys/rekey/init", map[string]any{
 		"secret_shares":    5,
 		"secret_threshold": 3,
 	})
@@ -322,13 +322,13 @@ func TestSysRekey_ReInitUpdate(t *testing.T) {
 	resp = testHttpDelete(t, token, addr+"/v1/sys/rekey/init")
 	testResponseStatus(t, resp, 204)
 
-	resp = testHttpPut(t, token, addr+"/v1/sys/rekey/init", map[string]interface{}{
+	resp = testHttpPut(t, token, addr+"/v1/sys/rekey/init", map[string]any{
 		"secret_shares":    5,
 		"secret_threshold": 3,
 	})
 	testResponseStatus(t, resp, 200)
 
-	resp = testHttpPut(t, token, addr+"/v1/sys/rekey/update", map[string]interface{}{
+	resp = testHttpPut(t, token, addr+"/v1/sys/rekey/update", map[string]any{
 		"key": hex.EncodeToString(keys[0]),
 	})
 

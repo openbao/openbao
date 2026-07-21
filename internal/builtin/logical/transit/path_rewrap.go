@@ -178,14 +178,14 @@ func (b *backend) pathRewrapWrite(ctx context.Context, req *logical.Request, d *
 		for i := range batchInputItems {
 			batchResponseItems[i].Reference = batchInputItems[i].Reference
 		}
-		resp.Data = map[string]interface{}{
+		resp.Data = map[string]any{
 			"batch_results": batchResponseItems,
 		}
 	} else {
 		if batchResponseItems[0].Error != "" {
 			return logical.ErrorResponse(batchResponseItems[0].Error), logical.ErrInvalidRequest
 		}
-		resp.Data = map[string]interface{}{
+		resp.Data = map[string]any{
 			"ciphertext":  batchResponseItems[0].Ciphertext,
 			"key_version": batchResponseItems[0].KeyVersion,
 		}

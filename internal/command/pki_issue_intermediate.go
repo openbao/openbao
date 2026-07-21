@@ -99,7 +99,7 @@ func (c *PKIIssueCACommand) Run(args []string) int {
 	return pkiIssue(c.BaseCommand, parentMountIssuer, intermediateMount, c.flagNewIssuerName, c.flagKeyStorageSource, data)
 }
 
-func pkiIssue(c *BaseCommand, parentMountIssuer string, intermediateMount string, flagNewIssuerName string, flagKeyStorageSource string, data map[string]interface{}) int {
+func pkiIssue(c *BaseCommand, parentMountIssuer string, intermediateMount string, flagNewIssuerName string, flagKeyStorageSource string, data map[string]any) int {
 	// Check We Have a Client
 	client, err := c.Client()
 	if err != nil {
@@ -172,7 +172,7 @@ func pkiIssue(c *BaseCommand, parentMountIssuer string, intermediateMount string
 	serialNumber := rootResp.Data["serial_number"].(string)
 	failureState.certSerialNumber = serialNumber
 
-	caChain := rootResp.Data["ca_chain"].([]interface{})
+	caChain := rootResp.Data["ca_chain"].([]any)
 	var caChainPemBundle strings.Builder
 	for _, cert := range caChain {
 		caChainPemBundle.WriteString(cert.(string) + "\n")
@@ -213,7 +213,7 @@ func pkiIssue(c *BaseCommand, parentMountIssuer string, intermediateMount string
 
 	// Finally Import CA_Chain (just in case there's more information)
 	if len(caChain) > 2 { // We've already imported parent cert and newly issued cert above
-		importData := map[string]interface{}{
+		importData := map[string]any{
 			"pem_bundle": caChainPemBundle.String(),
 		}
 		_, err := client.Logical().Write(intermediateMount+"/issuers/import/cert", importData)
@@ -243,14 +243,14 @@ func readAndOutputNewCertificate(client *api.Client, intermediateMount string, i
 }
 
 func importIssuerWithName(client *api.Client, mount string, bundle string, name string) (issuerUUID string, err error) {
-	importData := map[string]interface{}{
+	importData := map[string]any{
 		"pem_bundle": bundle,
 	}
 	writeResp, err := client.Logical().Write(mount+"/issuers/import/cert", importData)
 	if err != nil {
 		return "", err
 	}
-	mapping := writeResp.Data["mapping"].(map[string]interface{})
+	mapping := writeResp.Data["mapping"].(map[string]any)
 	if len(mapping) > 1 {
 		return "", fmt.Errorf("multiple issuers returned, while expected one, got %v", writeResp)
 	}
@@ -258,7 +258,7 @@ func importIssuerWithName(client *api.Client, mount string, bundle string, name 
 		issuerUUID = issuerId
 	}
 	if name != "" && name != "default" {
-		nameReq := map[string]interface{}{
+		nameReq := map[string]any{
 			"issuer_name": name,
 		}
 		ctx := context.Background()

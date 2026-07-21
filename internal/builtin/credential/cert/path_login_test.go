@@ -90,7 +90,7 @@ func testAccStepResolveRoleWithName(t *testing.T, connState tls.ConnectionState,
 			}
 			return nil
 		},
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": certName,
 		},
 	}
@@ -134,7 +134,7 @@ func testAccStepResolveRoleWithEmptyDataMap(t *testing.T, connState tls.Connecti
 			}
 			return nil
 		},
-		Data: map[string]interface{}{},
+		Data: map[string]any{},
 	}
 }
 
@@ -160,7 +160,7 @@ func testAccStepResolveRoleExpectRoleResolutionToFail(t *testing.T, connState tl
 			}
 			return nil
 		},
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": certName,
 		},
 	}
@@ -188,7 +188,7 @@ func testAccStepResolveRoleOCSPFail(t *testing.T, connState tls.ConnectionState,
 			}
 			return nil
 		},
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": certName,
 		},
 	}
@@ -295,8 +295,8 @@ func TestCert_RoleResolveOCSP(t *testing.T) {
 				CredentialBackend: b,
 				Steps: []logicaltest.TestStep{
 					testAccStepCertWithExtraParams(t, "web", ca.CertPEM(), "foo", allowed{dns: "example.com"}, false,
-						map[string]interface{}{"ocsp_enabled": true, "ocsp_fail_open": c.failOpen}),
-					testAccStepReadCertPolicy(t, "web", false, map[string]interface{}{"ocsp_enabled": true, "ocsp_fail_open": c.failOpen}),
+						map[string]any{"ocsp_enabled": true, "ocsp_fail_open": c.failOpen}),
+					testAccStepReadCertPolicy(t, "web", false, map[string]any{"ocsp_enabled": true, "ocsp_fail_open": c.failOpen}),
 					loginStep,
 					resolveStep,
 				},

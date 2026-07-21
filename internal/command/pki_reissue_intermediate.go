@@ -130,8 +130,8 @@ func (c *PKIReIssueCACommand) Run(args []string) int {
 	return pkiIssue(c.BaseCommand, parentIssuer, intermediateMount, c.flagNewIssuerName, c.flagKeyStorageSource, data)
 }
 
-func updateTemplateWithData(template map[string]interface{}, changes map[string]interface{}) map[string]interface{} {
-	data := map[string]interface{}{}
+func updateTemplateWithData(template map[string]any, changes map[string]any) map[string]any {
+	data := map[string]any{}
 
 	maps.Copy(data, template)
 
@@ -150,9 +150,9 @@ func updateTemplateWithData(template map[string]interface{}, changes map[string]
 	return data
 }
 
-func parseTemplateCertificate(certificate x509.Certificate, useExistingKey bool, keyRef string) (templateData map[string]interface{}, err error) {
+func parseTemplateCertificate(certificate x509.Certificate, useExistingKey bool, keyRef string) (templateData map[string]any, err error) {
 	// Generate Certificate Signing Parameters
-	templateData = map[string]interface{}{
+	templateData = map[string]any{
 		"common_name": certificate.Subject.CommonName,
 		"alt_names":   makeAltNamesCommaSeparatedString(certificate.DNSNames, certificate.EmailAddresses),
 		"ip_sans":     makeIpAddressCommaSeparatedString(certificate.IPAddresses),

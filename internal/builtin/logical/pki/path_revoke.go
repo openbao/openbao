@@ -579,7 +579,7 @@ func (b *backend) pathRotateCRLRead(ctx context.Context, req *logical.Request, _
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"success": true,
 		},
 	}
@@ -612,7 +612,7 @@ func (b *backend) pathRotateDeltaCRLRead(ctx context.Context, req *logical.Reque
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"success": true,
 		},
 	}

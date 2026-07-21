@@ -37,7 +37,7 @@ func TestPathLogin_TimingLeak(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "users/test",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": "password",
 			"policies": "foo",
 		},
@@ -51,7 +51,7 @@ func TestPathLogin_TimingLeak(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "login/test",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": "invalid-password",
 		},
 	}
@@ -67,7 +67,7 @@ func TestPathLogin_TimingLeak(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "login/non-existing",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": "invalid-password",
 		},
 	}

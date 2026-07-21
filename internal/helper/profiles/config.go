@@ -14,29 +14,29 @@ import (
 // sub-profiles while still allowing references across the entire space.
 type OuterConfig struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
-	RawConfig  map[string]interface{}
+	RawConfig  map[string]any
 
 	Type     string
 	Requests []*RequestConfig `hcl:"-"`
 
-	When interface{} `hcl:"when"`
+	When any `hcl:"when"`
 }
 
 // RequestConfig maps a single API request invocation.
 type RequestConfig struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
-	RawConfig  map[string]interface{}
+	RawConfig  map[string]any
 
 	Type string
 
-	Operation interface{} `hcl:"operation"`
-	Path      interface{} `hcl:"path"`
-	Token     interface{} `hcl:"token"`
-	Data      interface{} `hcl:"data"`
-	Headers   interface{} `hcl:"headers"`
+	Operation any `hcl:"operation"`
+	Path      any `hcl:"path"`
+	Token     any `hcl:"token"`
+	Data      any `hcl:"data"`
+	Headers   any `hcl:"headers"`
 
-	When         interface{} `hcl:"when"`
-	AllowFailure interface{} `hcl:"allow_failure"`
+	When         any `hcl:"when"`
+	AllowFailure any `hcl:"allow_failure"`
 }
 
 // InputConfig is an untyped configuration object that contains one or more
@@ -45,7 +45,7 @@ type RequestConfig struct {
 // usual field evaluation/expansion is not taken into account here.
 type InputConfig struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
-	RawConfig  map[string]interface{}
+	RawConfig  map[string]any
 
 	Fields []*FieldSchemaConfig `hcl:"-"`
 }
@@ -54,27 +54,27 @@ type InputConfig struct {
 // updates there should be reflected here.
 type FieldSchemaConfig struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
-	RawConfig  map[string]interface{}
+	RawConfig  map[string]any
 
 	Type          framework.FieldType `hcl:"-"`
 	TypeRaw       string              `hcl:"type"`
 	Name          string              `hcl:"name"`
-	Default       interface{}         `hcl:"default"`
+	Default       any                 `hcl:"default"`
 	Description   string              `hcl:"description"`
 	Required      bool                `hcl:"required"`
 	Deprecated    bool                `hcl:"deprecated"`
 	Query         bool                `hcl:"query"`
-	AllowedValues []interface{}       `hcl:"allowed_values"`
+	AllowedValues []any               `hcl:"allowed_values"`
 }
 
 // OutputConfig is an untyped configuration object that controls the output
 // format of the profile. Like requests, these can be fully dynamic.
 type OutputConfig struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
-	RawConfig  map[string]interface{}
+	RawConfig  map[string]any
 
-	Data    interface{}              `hcl:"data"`
-	Headers map[string][]interface{} `hcl:"headers"`
+	Data    any              `hcl:"data"`
+	Headers map[string][]any `hcl:"headers"`
 }
 
 // ParseOuterConfig is a helper for profile systems which support multiple
@@ -90,7 +90,7 @@ func ParseOuterConfig(outerBlockType string, list *ast.ObjectList) ([]*OuterConf
 			return result, fmt.Errorf("%v.%d: decoding into object failed with error: %w", outerBlockType, index, err)
 		}
 
-		var m map[string]interface{}
+		var m map[string]any
 		if err := hcl.DecodeObject(&m, item.Val); err != nil {
 			return result, fmt.Errorf("%v.%d: decoding into map failed with error: %w", outerBlockType, index, err)
 		}
@@ -156,7 +156,7 @@ func ParseRequestConfig(list *ast.ObjectList) ([]*RequestConfig, error) {
 			return result, fmt.Errorf("request.%d: decoding into object failed with error: %w", i, err)
 		}
 
-		var m map[string]interface{}
+		var m map[string]any
 		if err := hcl.DecodeObject(&m, item.Val); err != nil {
 			return result, fmt.Errorf("request.%d: decoding into map failed with error: %w", i, err)
 		}
@@ -194,7 +194,7 @@ func ParseInputConfig(list *ast.ObjectList) (*InputConfig, error) {
 		return nil, fmt.Errorf("input: decoding into object failed with error: %w", err)
 	}
 
-	var m map[string]interface{}
+	var m map[string]any
 	if err := hcl.DecodeObject(&m, item.Val); err != nil {
 		return nil, fmt.Errorf("input: decoding into map failed with error: %w", err)
 	}
@@ -245,7 +245,7 @@ func ParseFieldSchemaConfig(list *ast.ObjectList) ([]*FieldSchemaConfig, error) 
 			return result, fmt.Errorf("field.%d: decoding into object failed with error: %w", i, err)
 		}
 
-		var m map[string]interface{}
+		var m map[string]any
 		if err := hcl.DecodeObject(&m, item.Val); err != nil {
 			return result, fmt.Errorf("field.%d: decoding into map failed with error: %w", i, err)
 		}
@@ -307,7 +307,7 @@ func ParseOutputConfig(list *ast.ObjectList) (*OutputConfig, error) {
 		return nil, fmt.Errorf("output: %w", err)
 	}
 
-	var m map[string]interface{}
+	var m map[string]any
 	if err := hcl.DecodeObject(&m, item.Val); err != nil {
 		return nil, fmt.Errorf("output: %w", err)
 	}

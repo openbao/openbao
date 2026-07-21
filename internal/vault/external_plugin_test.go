@@ -392,7 +392,7 @@ func TestCore_EnableExternalPlugin_ShadowBuiltin(t *testing.T) {
 
 	verifyAuthListDeprecationStatus := func(authName string, checkExists bool) error {
 		req := logical.TestRequest(t, logical.ReadOperation, mountTable(consts.PluginTypeCredential))
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"type": authName,
 		}
 		resp, err := c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -489,10 +489,10 @@ func TestCore_EnableExternalKv_MultipleVersions(t *testing.T) {
 		t.Fatal("Expected to find v1.2.3 kv plugin but did not")
 	}
 	req = logical.TestRequest(t, logical.UpdateOperation, mountTable(consts.PluginTypeSecrets))
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"type": pluginName,
 	}
-	req.Data["config"] = map[string]interface{}{
+	req.Data["config"] = map[string]any{
 		"plugin_version": "v1.2.3",
 	}
 	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -542,10 +542,10 @@ func TestCore_EnableExternalNoop_MultipleVersions(t *testing.T) {
 		t.Fatal("Expected to find v1.2.3 noop plugin but did not")
 	}
 	req = logical.TestRequest(t, logical.UpdateOperation, mountTable(consts.PluginTypeCredential))
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"type": pluginName,
 	}
-	req.Data["config"] = map[string]interface{}{
+	req.Data["config"] = map[string]any{
 		"plugin_version": "v1.2.3",
 	}
 	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -620,9 +620,9 @@ func TestCore_EnableExternalCredentialPlugin_NoVersionOnRegister(t *testing.T) {
 			registerPlugin(t, c.systemBackend, plugins[0].Name, tc.pluginType.String(), "", plugins[0].Sha256, plugins[0].FileName)
 
 			req := logical.TestRequest(t, logical.UpdateOperation, mountTable(tc.pluginType))
-			req.Data = map[string]interface{}{
+			req.Data = map[string]any{
 				"type": plugins[0].Name,
-				"config": map[string]interface{}{
+				"config": map[string]any{
 					"plugin_version": "v1.0.0",
 				},
 			}
@@ -648,7 +648,7 @@ func TestCore_EnableExternalCredentialPlugin_InvalidName(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			c, plugins := testCoreWithPlugins(t, tc.pluginType, "")
 			d := &framework.FieldData{
-				Raw: map[string]interface{}{
+				Raw: map[string]any{
 					"name":    plugins[0].Name,
 					"sha256":  plugins[0].Sha256,
 					"version": "v1.0.0",
@@ -753,7 +753,7 @@ func TestExternalPlugin_CheckFilePermissions(t *testing.T) {
 
 			// Permissions will be checked once during registration.
 			req := logical.TestRequest(t, logical.UpdateOperation, fmt.Sprintf("plugins/catalog/%s/%s", tc.pluginType.String(), registeredPluginName))
-			req.Data = map[string]interface{}{
+			req.Data = map[string]any{
 				"command": plugins[0].FileName,
 				"sha256":  plugins[0].Sha256,
 				"version": tc.pluginVersion,
@@ -768,11 +768,11 @@ func TestExternalPlugin_CheckFilePermissions(t *testing.T) {
 
 			// Now attempt to mount the plugin, which should trigger checking the permissions again.
 			req = logical.TestRequest(t, logical.UpdateOperation, mountTable(tc.pluginType))
-			req.Data = map[string]interface{}{
+			req.Data = map[string]any{
 				"type": registeredPluginName,
 			}
 			if tc.pluginVersion != "" {
-				req.Data["config"] = map[string]interface{}{
+				req.Data["config"] = map[string]any{
 					"plugin_version": tc.pluginVersion,
 				}
 			}
@@ -899,7 +899,7 @@ func TestBackend_PluginMain_Multiplexed_Credential_v123(t *testing.T) {
 func registerPlugin(t *testing.T, sys *SystemBackend, pluginName, pluginType, version, sha, command string) {
 	t.Helper()
 	req := logical.TestRequest(t, logical.UpdateOperation, fmt.Sprintf("plugins/catalog/%s/%s", pluginType, pluginName))
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"command": command,
 		"sha256":  sha,
 		"version": version,
@@ -919,11 +919,11 @@ func mountPluginWithResponse(t *testing.T, sys *SystemBackend, pluginName string
 		mountPath = mountTableWithPath(consts.PluginTypeSecrets, path)
 	}
 	req := logical.TestRequest(t, logical.UpdateOperation, mountPath)
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"type": pluginName,
 	}
 	if version != "" {
-		req.Data["config"] = map[string]interface{}{
+		req.Data["config"] = map[string]any{
 			"plugin_version": version,
 		}
 	}
@@ -947,11 +947,11 @@ func unmountPlugin(t *testing.T, sys *SystemBackend, pluginName string, pluginTy
 		mountPath = mountTableWithPath(consts.PluginTypeSecrets, path)
 	}
 	req := logical.TestRequest(t, logical.DeleteOperation, mountPath)
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"type": pluginName,
 	}
 	if version != "" {
-		req.Data["config"] = map[string]interface{}{
+		req.Data["config"] = map[string]any{
 			"plugin_version": version,
 		}
 	}
@@ -964,7 +964,7 @@ func unmountPlugin(t *testing.T, sys *SystemBackend, pluginName string, pluginTy
 func deregisterPlugin(t *testing.T, sys *SystemBackend, pluginName, pluginType, version, sha, command string) {
 	t.Helper()
 	req := logical.TestRequest(t, logical.DeleteOperation, fmt.Sprintf("plugins/catalog/%s/%s", pluginType, pluginName))
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"command": command,
 		"sha256":  sha,
 		"version": version,

@@ -86,7 +86,7 @@ func HashRequest(salter *salt.Salt, in *logical.Request, HMACAccessor bool, nonH
 	return &req, nil
 }
 
-func hashMap(fn func(string) string, data map[string]interface{}, nonHMACDataKeys []string, elideListResponseData bool) error {
+func hashMap(fn func(string) string, data map[string]any, nonHMACDataKeys []string, elideListResponseData bool) error {
 	return HashStructure(data, fn, nonHMACDataKeys, elideListResponseData)
 }
 
@@ -161,12 +161,12 @@ func HashResponse(
 // This transformation inherently changes all structs to maps, which makes
 // each of the structs fields addressable through reflection in the copy,
 // (which is now a map).  This will allow us to write into all fields.
-func getUnmarshaledCopy(data interface{}) (map[string]interface{}, error) {
+func getUnmarshaledCopy(data any) (map[string]any, error) {
 	marshaledData, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}
-	unmarshaledCopy := map[string]interface{}{}
+	unmarshaledCopy := map[string]any{}
 	if err := json.Unmarshal(marshaledData, &unmarshaledCopy); err != nil {
 		return nil, err
 	}
@@ -201,7 +201,7 @@ func HashWrapInfo(salter *salt.Salt, in *wrapping.ResponseWrapInfo, HMACAccessor
 // The interface is walked with the reflectwalk.Walk() method below.
 //
 // For the HashCallback, see the built-in HashCallbacks below.
-func HashStructure(data interface{}, cb HashCallback, ignoredKeys []string, elideListResponseData bool) error {
+func HashStructure(data any, cb HashCallback, ignoredKeys []string, elideListResponseData bool) error {
 	walker := &hashWalker{
 		Callback:    cb,
 		IgnoredKeys: ignoredKeys,
@@ -339,7 +339,7 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 	// See if the current key is part of the ignored keys; notably, this may
 	// be some child ancestor of the current reference. Consider:
 	//
-	// map[string]interface{}{
+	// map[string]any{
 	//   "ignored": []string{ "<we-are-here>" },
 	// }
 	currentKey := w.key[len(w.key)-1]

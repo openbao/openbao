@@ -22,13 +22,13 @@ const (
 )
 
 // Parse is used to effectively convert the TypeMap
-// (map[string]interface{}) into a TypeKVPairs (map[string]string)
+// (map[string]any) into a TypeKVPairs (map[string]string)
 // which is how custom_metadata is stored. Defining custom_metadata
 // as a TypeKVPairs will convert nulls into empty strings. A null,
 // however, is essential for a PATCH operation in that it signals
 // the handler to remove the field. The filterNils flag should
 // only be used during a patch operation.
-func Parse(raw map[string]interface{}, filterNils bool) (map[string]string, error) {
+func Parse(raw map[string]any, filterNils bool) (map[string]string, error) {
 	customMetadata := map[string]string{}
 	for k, v := range raw {
 		if filterNils && v == nil {

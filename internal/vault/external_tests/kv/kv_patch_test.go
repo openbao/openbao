@@ -48,27 +48,27 @@ func TestKV_Patch_BadContentTypeHeader(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	kvData := map[string]interface{}{
-		"data": map[string]interface{}{
+	kvData := map[string]any{
+		"data": map[string]any{
 			"bar": "a",
 		},
 	}
 
-	secretRaw, err := kvRequestWithRetry(t, func() (interface{}, error) {
+	secretRaw, err := kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().Write("kv/data/foo", kvData)
 	})
 	if err != nil {
 		t.Fatalf("write failed - err :%#v, resp: %#v\n", err, secretRaw)
 	}
 
-	secretRaw, err = kvRequestWithRetry(t, func() (interface{}, error) {
+	secretRaw, err = kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().Read("kv/data/foo")
 	})
 	if err != nil {
 		t.Fatalf("read failed - err :%#v, resp: %#v\n", err, secretRaw)
 	}
 
-	apiRespRaw, err := kvRequestWithRetry(t, func() (interface{}, error) {
+	apiRespRaw, err := kvRequestWithRetry(t, func() (any, error) {
 		req := c.NewRequest("PATCH", "/v1/kv/data/foo")
 		req.Headers = http.Header{
 			"Content-Type": []string{"application/json"},
@@ -91,11 +91,11 @@ func TestKV_Patch_BadContentTypeHeader(t *testing.T) {
 	}
 }
 
-func kvRequestWithRetry(t *testing.T, req func() (interface{}, error)) (interface{}, error) {
+func kvRequestWithRetry(t *testing.T, req func() (any, error)) (any, error) {
 	t.Helper()
 
 	var err error
-	var resp interface{}
+	var resp any
 
 	// Loop until return message does not indicate upgrade, or timeout.
 	timeout := time.After(20 * time.Second)
@@ -164,26 +164,26 @@ func TestKV_Patch_Audit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	writeData := map[string]interface{}{
-		"data": map[string]interface{}{
+	writeData := map[string]any{
+		"data": map[string]any{
 			"bar": "a",
 		},
 	}
 
-	resp, err := kvRequestWithRetry(t, func() (interface{}, error) {
+	resp, err := kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().Write("kv/data/foo", writeData)
 	})
 	if err != nil {
 		t.Fatalf("write request failed, err: %#v, resp: %#v\n", err, resp)
 	}
 
-	patchData := map[string]interface{}{
-		"data": map[string]interface{}{
+	patchData := map[string]any{
+		"data": map[string]any{
 			"baz": "b",
 		},
 	}
 
-	resp, err = kvRequestWithRetry(t, func() (interface{}, error) {
+	resp, err = kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().JSONMergePatch(t.Context(), "kv/data/foo", patchData)
 	})
 	if err != nil {
@@ -194,12 +194,12 @@ func TestKV_Patch_Audit(t *testing.T) {
 	patchResponseLogCount := 0
 	decoder := json.NewDecoder(auditLogFile)
 
-	var auditRecord map[string]interface{}
+	var auditRecord map[string]any
 	for decoder.Decode(&auditRecord) == nil {
-		auditRequest := map[string]interface{}{}
+		auditRequest := map[string]any{}
 
 		if req, ok := auditRecord["request"]; ok {
-			auditRequest = req.(map[string]interface{})
+			auditRequest = req.(map[string]any)
 		}
 
 		if auditRequest["operation"] == "patch" && auditRecord["type"] == "request" {
@@ -246,9 +246,9 @@ func TestKV_Patch_RootToken(t *testing.T) {
 	}
 
 	// Write a kv value and patch it
-	_, err = kvRequestWithRetry(t, func() (interface{}, error) {
-		data := map[string]interface{}{
-			"data": map[string]interface{}{
+	_, err = kvRequestWithRetry(t, func() (any, error) {
+		data := map[string]any{
+			"data": map[string]any{
 				"bar": "baz",
 				"foo": "qux",
 			},
@@ -260,9 +260,9 @@ func TestKV_Patch_RootToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = kvRequestWithRetry(t, func() (interface{}, error) {
-		data := map[string]interface{}{
-			"data": map[string]interface{}{
+	_, err = kvRequestWithRetry(t, func() (any, error) {
+		data := map[string]any{
+			"data": map[string]any{
 				"bar": "quux",
 				"foo": nil,
 			},
@@ -273,7 +273,7 @@ func TestKV_Patch_RootToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretRaw, err := kvRequestWithRetry(t, func() (interface{}, error) {
+	secretRaw, err := kvRequestWithRetry(t, func() (any, error) {
 		return client.Logical().Read("kv/data/foo")
 	})
 	if err != nil {
@@ -285,12 +285,12 @@ func TestKV_Patch_RootToken(t *testing.T) {
 		t.Fatalf("response not an api.Secret, actual: %#v", secretRaw)
 	}
 
-	bar := secret.Data["data"].(map[string]interface{})["bar"]
+	bar := secret.Data["data"].(map[string]any)["bar"]
 	if bar != "quux" {
 		t.Fatalf("expected bar to be quux but it was %q", bar)
 	}
 
-	if _, ok := secret.Data["data"].(map[string]interface{})["foo"]; ok {
+	if _, ok := secret.Data["data"].(map[string]any)["foo"]; ok {
 		t.Fatal("expected data not to include foo")
 	}
 }

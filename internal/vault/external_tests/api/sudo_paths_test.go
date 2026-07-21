@@ -96,7 +96,7 @@ func getSudoPathsFromSpec(client *api.Client) (map[string]struct{}, error) {
 		defer resp.Body.Close() //nolint:errcheck
 	}
 
-	oasInfo := make(map[string]interface{})
+	oasInfo := make(map[string]any)
 	if err := jsonutil.DecodeJSONFromReader(resp.Body, &oasInfo); err != nil {
 		return nil, fmt.Errorf("unable to decode JSON from OpenAPI response: %v", err)
 	}
@@ -106,14 +106,14 @@ func getSudoPathsFromSpec(client *api.Client) (map[string]struct{}, error) {
 		return nil, errors.New("OpenAPI response did not include paths")
 	}
 
-	pathsMap, ok := paths.(map[string]interface{})
+	pathsMap, ok := paths.(map[string]any)
 	if !ok {
 		return nil, errors.New("OpenAPI response did not return valid paths")
 	}
 
 	sudoPaths := make(map[string]struct{})
 	for pathName, pathInfo := range pathsMap {
-		pathInfoMap, ok := pathInfo.(map[string]interface{})
+		pathInfoMap, ok := pathInfo.(map[string]any)
 		if !ok {
 			continue
 		}

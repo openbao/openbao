@@ -160,7 +160,7 @@ func addFieldsForACMEOrder(fields map[string]*framework.FieldSchema) {
 	}
 }
 
-func (b *backend) acmeFetchCertOrderHandler(ac *acmeContext, _ *logical.Request, fields *framework.FieldData, uc *jwsCtx, data map[string]interface{}, _ *acmeAccount) (*logical.Response, error) {
+func (b *backend) acmeFetchCertOrderHandler(ac *acmeContext, _ *logical.Request, fields *framework.FieldData, uc *jwsCtx, data map[string]any, _ *acmeAccount) (*logical.Response, error) {
 	orderId := fields.Get("order_id").(string)
 
 	order, err := b.acmeState.LoadOrder(ac, uc, orderId)
@@ -215,7 +215,7 @@ func (b *backend) acmeFetchCertOrderHandler(ac *acmeContext, _ *logical.Request,
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			logical.HTTPContentType: "application/pem-certificate-chain",
 			logical.HTTPStatusCode:  http.StatusOK,
 			logical.HTTPRawBody:     allPems,
@@ -223,7 +223,7 @@ func (b *backend) acmeFetchCertOrderHandler(ac *acmeContext, _ *logical.Request,
 	}, nil
 }
 
-func (b *backend) acmeFinalizeOrderHandler(ac *acmeContext, _ *logical.Request, fields *framework.FieldData, uc *jwsCtx, data map[string]interface{}, account *acmeAccount) (*logical.Response, error) {
+func (b *backend) acmeFinalizeOrderHandler(ac *acmeContext, _ *logical.Request, fields *framework.FieldData, uc *jwsCtx, data map[string]any, account *acmeAccount) (*logical.Response, error) {
 	orderId := fields.Get("order_id").(string)
 
 	csr, err := parseCsrFromFinalize(data)
@@ -512,7 +512,7 @@ func issueCertFromCsr(ac *acmeContext, csr *x509.CertificateRequest) (*certutil.
 	pemCsr := string(pem.EncodeToMemory(pemBlock))
 
 	data := &framework.FieldData{
-		Raw: map[string]interface{}{
+		Raw: map[string]any{
 			"csr": pemCsr,
 		},
 		Schema: getCsrSignVerbatimSchemaFields(),
@@ -594,7 +594,7 @@ func issueCertFromCsr(ac *acmeContext, csr *x509.CertificateRequest) (*certutil.
 	return parsedBundle, issuerId, err
 }
 
-func parseCsrFromFinalize(data map[string]interface{}) (*x509.CertificateRequest, error) {
+func parseCsrFromFinalize(data map[string]any) (*x509.CertificateRequest, error) {
 	csrInterface, present := data["csr"]
 	if !present {
 		return nil, fmt.Errorf("%w: missing csr in payload", ErrMalformed)
@@ -635,7 +635,7 @@ func parseCsrFromFinalize(data map[string]interface{}) (*x509.CertificateRequest
 	return csr, nil
 }
 
-func (b *backend) acmeGetOrderHandler(ac *acmeContext, _ *logical.Request, fields *framework.FieldData, uc *jwsCtx, _ map[string]interface{}, _ *acmeAccount) (*logical.Response, error) {
+func (b *backend) acmeGetOrderHandler(ac *acmeContext, _ *logical.Request, fields *framework.FieldData, uc *jwsCtx, _ map[string]any, _ *acmeAccount) (*logical.Response, error) {
 	orderId := fields.Get("order_id").(string)
 
 	order, err := b.acmeState.LoadOrder(ac, uc, orderId)
@@ -674,7 +674,7 @@ func (b *backend) acmeGetOrderHandler(ac *acmeContext, _ *logical.Request, field
 	return formatOrderResponse(ac, order), nil
 }
 
-func (b *backend) acmeListOrdersHandler(ac *acmeContext, _ *logical.Request, _ *framework.FieldData, uc *jwsCtx, _ map[string]interface{}, acct *acmeAccount) (*logical.Response, error) {
+func (b *backend) acmeListOrdersHandler(ac *acmeContext, _ *logical.Request, _ *framework.FieldData, uc *jwsCtx, _ map[string]any, acct *acmeAccount) (*logical.Response, error) {
 	orderIds, err := b.acmeState.ListOrderIds(ac.sc, acct.KeyId)
 	if err != nil {
 		return nil, err
@@ -698,7 +698,7 @@ func (b *backend) acmeListOrdersHandler(ac *acmeContext, _ *logical.Request, _ *
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"orders": orderUrls,
 		},
 	}
@@ -706,7 +706,7 @@ func (b *backend) acmeListOrdersHandler(ac *acmeContext, _ *logical.Request, _ *
 	return resp, nil
 }
 
-func (b *backend) acmeNewOrderHandler(ac *acmeContext, _ *logical.Request, _ *framework.FieldData, _ *jwsCtx, data map[string]interface{}, account *acmeAccount) (*logical.Response, error) {
+func (b *backend) acmeNewOrderHandler(ac *acmeContext, _ *logical.Request, _ *framework.FieldData, _ *jwsCtx, data map[string]any, account *acmeAccount) (*logical.Response, error) {
 	identifiers, err := parseOrderIdentifiers(data)
 	if err != nil {
 		return nil, err
@@ -812,13 +812,13 @@ func formatOrderResponse(acmeCtx *acmeContext, order *acmeOrder) *logical.Respon
 		authorizationUrls = append(authorizationUrls, buildAuthorizationUrl(acmeCtx, authId))
 	}
 
-	var identifiers []map[string]interface{}
+	var identifiers []map[string]any
 	for _, identifier := range order.Identifiers {
 		identifiers = append(identifiers, identifier.NetworkMarshal( /* use original value */ true))
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"status":         order.Status,
 			"expires":        order.Expires.Format(time.RFC3339),
 			"identifiers":    identifiers,
@@ -869,7 +869,7 @@ func generateAuthorization(acct *acmeAccount, identifier *ACMEIdentifier) (*ACME
 		challenge := &ACMEChallenge{
 			Type:   challengeType,
 			Status: ACMEChallengePending,
-			ChallengeFields: map[string]interface{}{
+			ChallengeFields: map[string]any{
 				"token": token,
 			},
 		}
@@ -888,7 +888,7 @@ func generateAuthorization(acct *acmeAccount, identifier *ACMEIdentifier) (*ACME
 	}, nil
 }
 
-func parseOptRFC3339Field(data map[string]interface{}, keyName string) (time.Time, error) {
+func parseOptRFC3339Field(data map[string]any, keyName string) (time.Time, error) {
 	var timeVal time.Time
 	var err error
 
@@ -911,20 +911,20 @@ func parseOptRFC3339Field(data map[string]interface{}, keyName string) (time.Tim
 	return timeVal, nil
 }
 
-func parseOrderIdentifiers(data map[string]interface{}) ([]*ACMEIdentifier, error) {
+func parseOrderIdentifiers(data map[string]any) ([]*ACMEIdentifier, error) {
 	rawIdentifiers, present := data["identifiers"]
 	if !present {
 		return nil, fmt.Errorf("missing required identifiers argument: %w", ErrMalformed)
 	}
 
-	listIdentifiers, ok := rawIdentifiers.([]interface{})
+	listIdentifiers, ok := rawIdentifiers.([]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid type (%T) for field 'identifiers': %w", rawIdentifiers, ErrMalformed)
 	}
 
 	var identifiers []*ACMEIdentifier
 	for _, rawIdentifier := range listIdentifiers {
-		mapIdentifier, ok := rawIdentifier.(map[string]interface{})
+		mapIdentifier, ok := rawIdentifier.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("invalid type (%T) for value in 'identifiers': %w", rawIdentifier, ErrMalformed)
 		}

@@ -19,7 +19,7 @@ import (
 // setClaim sets a claim value from allClaims given a provided claim string.
 // If this string is a valid JSONPointer, it will be interpreted as such to locate
 // the claim. Otherwise, the claim string will be used directly.
-func setClaim(logger log.Logger, allClaims map[string]interface{}, claim string, val interface{}) interface{} {
+func setClaim(logger log.Logger, allClaims map[string]any, claim string, val any) any {
 	var err error
 
 	if !strings.HasPrefix(claim, "/") {
@@ -38,8 +38,8 @@ func setClaim(logger log.Logger, allClaims map[string]interface{}, claim string,
 // getClaim returns a claim value from allClaims given a provided claim string.
 // If this string is a valid JSONPointer, it will be interpreted as such to locate
 // the claim. Otherwise, the claim string will be used directly.
-func getClaim(logger log.Logger, allClaims map[string]interface{}, claim string) interface{} {
-	var val interface{}
+func getClaim(logger log.Logger, allClaims map[string]any, claim string) any {
+	var val any
 	var err error
 
 	if !strings.HasPrefix(claim, "/") {
@@ -62,7 +62,7 @@ func getClaim(logger log.Logger, allClaims map[string]interface{}, claim string)
 		// Because other code expects audience to be a slice, update our
 		// copy if we only have a single value.
 		if singleVal, ok := val.(string); ok {
-			val = []interface{}{singleVal}
+			val = []any{singleVal}
 		}
 	}
 
@@ -88,7 +88,7 @@ func getClaim(logger log.Logger, allClaims map[string]interface{}, claim string)
 //	    "another_claim": "metadata_key2",
 //	     ...
 //	}
-func extractMetadata(logger log.Logger, allClaims map[string]interface{}, claimMappings map[string]string) (map[string]string, error) {
+func extractMetadata(logger log.Logger, allClaims map[string]any, claimMappings map[string]string) (map[string]string, error) {
 	metadata := make(map[string]string)
 	for source, target := range claimMappings {
 		if value := getClaim(logger, allClaims, source); value != nil {
@@ -125,7 +125,7 @@ func validateAudience(boundAudiences, audClaim []string, strict bool) error {
 
 // validateBoundClaims checks that all of the claim:value requirements in boundClaims are
 // met in allClaims.
-func validateBoundClaims(logger log.Logger, boundClaimsType string, boundClaims, allClaims map[string]interface{}) error {
+func validateBoundClaims(logger log.Logger, boundClaimsType string, boundClaims, allClaims map[string]any) error {
 	useGlobs := boundClaimsType == boundClaimsTypeGlob
 
 	for claim, expValue := range boundClaims {
@@ -155,7 +155,7 @@ func validateBoundClaims(logger log.Logger, boundClaimsType string, boundClaims,
 	return nil
 }
 
-func matchFound(expVals, actVals []interface{}, useGlobs bool) (bool, error) {
+func matchFound(expVals, actVals []any, useGlobs bool) (bool, error) {
 	for _, expVal := range expVals {
 		for _, actVal := range actVals {
 			if useGlobs {
@@ -185,14 +185,14 @@ func matchFound(expVals, actVals []interface{}, useGlobs bool) (bool, error) {
 // normalizeList takes a string, bool, json.Number or list and returns a list. This is useful when
 // providers are expected to return a list (typically of strings) but reduce it
 // to a string type when the list count is 1.
-func normalizeList(raw interface{}) ([]interface{}, bool) {
-	var normalized []interface{}
+func normalizeList(raw any) ([]any, bool) {
+	var normalized []any
 
 	switch v := raw.(type) {
-	case []interface{}:
+	case []any:
 		normalized = v
 	case string, bool, json.Number:
-		normalized = []interface{}{v}
+		normalized = []any{v}
 	default:
 		return nil, false
 	}

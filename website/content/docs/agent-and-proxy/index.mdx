@@ -46,7 +46,7 @@ func getSecretWithAppRole() (string, error) {
     secretID := unwrappedToken.Data["secret_id"]
     roleID := os.Getenv("APPROLE_ROLE_ID")
 
-    params := map[string]interface{}{
+    params := map[string]any{
         "role_id":   roleID,
         "secret_id": secretID,
     }
@@ -58,7 +58,7 @@ func getSecretWithAppRole() (string, error) {
         return "", fmt.Errorf("unable to read secret: %w", err)
     }
 
-    data := secret.Data["data"].(map[string]interface{})
+    data := secret.Data["data"].(map[string]any)
 
     ...snip...
 }

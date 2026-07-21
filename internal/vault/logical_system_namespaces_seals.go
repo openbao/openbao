@@ -205,7 +205,7 @@ func (b *SystemBackend) handleNamespaceSealStatus() framework.OperationFunc {
 		}
 
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"type":        status.Type,
 				"initialized": status.Initialized,
 				"sealed":      status.Sealed,
@@ -291,7 +291,7 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 		}
 
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"type":        status.Type,
 				"initialized": status.Initialized,
 				"sealed":      status.Sealed,

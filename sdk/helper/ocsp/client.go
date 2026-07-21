@@ -32,7 +32,7 @@ import (
 // set to ocspModeFailClosed for fail closed mode
 type FailOpenMode uint32
 
-type requestFunc func(method, urlStr string, body interface{}) (*retryablehttp.Request, error)
+type requestFunc func(method, urlStr string, body any) (*retryablehttp.Request, error)
 
 type clientInterface interface {
 	Do(req *retryablehttp.Request) (*http.Response, error)

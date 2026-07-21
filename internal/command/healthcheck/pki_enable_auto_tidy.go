@@ -36,8 +36,8 @@ func (h *EnableAutoTidy) IsEnabled() bool {
 	return h.Enabled
 }
 
-func (h *EnableAutoTidy) DefaultConfig() map[string]interface{} {
-	return map[string]interface{}{
+func (h *EnableAutoTidy) DefaultConfig() map[string]any {
+	return map[string]any{
 		"interval_duration_critical": "7d",
 		"interval_duration_warning":  "2d",
 		"pause_duration_critical":    "1s",
@@ -45,7 +45,7 @@ func (h *EnableAutoTidy) DefaultConfig() map[string]interface{} {
 	}
 }
 
-func (h *EnableAutoTidy) fromConfig(config map[string]interface{}, param string) (time.Duration, error) {
+func (h *EnableAutoTidy) fromConfig(config map[string]any, param string) (time.Duration, error) {
 	value, err := parseutil.ParseDurationSecond(config[param])
 	if err != nil {
 		return time.Duration(0), fmt.Errorf("failed to parse parameter %v.%v=%v: %w", h.Name(), param, config[param], err)
@@ -54,7 +54,7 @@ func (h *EnableAutoTidy) fromConfig(config map[string]interface{}, param string)
 	return value, nil
 }
 
-func (h *EnableAutoTidy) LoadConfig(config map[string]interface{}) error {
+func (h *EnableAutoTidy) LoadConfig(config map[string]any) error {
 	var err error
 
 	h.IntervalDurationCritical, err = h.fromConfig(config, "interval_duration_critical")

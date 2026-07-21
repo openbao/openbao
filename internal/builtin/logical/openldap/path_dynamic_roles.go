@@ -197,7 +197,7 @@ func validateDynamicRole(dRole *dynamicRole) error {
 }
 
 // convertToDuration all keys in the data map into time.Duration objects. Keys not found in the map will be ignored
-func convertToDuration(data map[string]interface{}, keys ...string) error {
+func convertToDuration(data map[string]any, keys ...string) error {
 	merr := new(multierror.Error)
 	for _, key := range keys {
 		val, exists := data[key]
@@ -274,7 +274,7 @@ func (b *backend) pathDynamicRoleRead(ctx context.Context, req *logical.Request,
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"creation_ldif":     dRole.CreationLDIF,
 			"deletion_ldif":     dRole.DeletionLDIF,
 			"rollback_ldif":     dRole.RollbackLDIF,

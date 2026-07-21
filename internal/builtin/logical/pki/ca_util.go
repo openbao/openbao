@@ -209,7 +209,7 @@ func existingKeyGeneratorFromBytes(key *keyEntry) certutil.KeyGenerator {
 
 func buildSignVerbatimRoleWithNoData(role *roleEntry) *roleEntry {
 	data := &framework.FieldData{
-		Raw:    map[string]interface{}{},
+		Raw:    map[string]any{},
 		Schema: addSignVerbatimRoleFields(map[string]*framework.FieldSchema{}),
 	}
 	return buildSignVerbatimRole(data, role)

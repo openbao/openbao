@@ -76,7 +76,7 @@ func (b *backend) pathListKeysHandler(ctx context.Context, req *logical.Request,
 	}
 
 	var responseKeys []string
-	responseInfo := make(map[string]interface{})
+	responseInfo := make(map[string]any)
 
 	after := data.Get("after").(string)
 	limit := data.Get("limit").(int)
@@ -99,7 +99,7 @@ func (b *backend) pathListKeysHandler(ctx context.Context, req *logical.Request,
 		}
 
 		responseKeys = append(responseKeys, string(identifier))
-		responseInfo[string(identifier)] = map[string]interface{}{
+		responseInfo[string(identifier)] = map[string]any{
 			keyNameParam: key.Name,
 			"is_default": identifier == config.DefaultKeyId,
 		}
@@ -250,7 +250,7 @@ func (b *backend) pathGetKeyHandler(ctx context.Context, req *logical.Request, d
 		return nil, err
 	}
 
-	respData := map[string]interface{}{
+	respData := map[string]any{
 		keyIdParam:   key.ID,
 		keyNameParam: key.Name,
 		keyTypeParam: string(key.PrivateKeyType),
@@ -314,7 +314,7 @@ func (b *backend) pathUpdateKeyHandler(ctx context.Context, req *logical.Request
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			keyIdParam:   key.ID,
 			keyNameParam: key.Name,
 			keyTypeParam: key.PrivateKeyType,

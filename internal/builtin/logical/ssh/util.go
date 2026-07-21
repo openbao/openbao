@@ -93,7 +93,7 @@ func parsePublicSSHKey(key string) (ssh.PublicKey, error) {
 	return ssh.ParsePublicKey([]byte(decodedKey))
 }
 
-func convertMapToStringValue(initial map[string]interface{}) map[string]string {
+func convertMapToStringValue(initial map[string]any) map[string]string {
 	result := map[string]string{}
 	for key, value := range initial {
 		result[key] = fmt.Sprintf("%v", value)
@@ -101,7 +101,7 @@ func convertMapToStringValue(initial map[string]interface{}) map[string]string {
 	return result
 }
 
-func convertMapToIntSlice(initial map[string]interface{}) (map[string][]int, error) {
+func convertMapToIntSlice(initial map[string]any) (map[string][]int, error) {
 	var err error
 	result := map[string][]int{}
 

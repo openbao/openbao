@@ -95,7 +95,7 @@ func TestSystemConfigCORS(t *testing.T) {
 	}
 
 	expected := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"enabled":           true,
 			"allow_credentials": false,
 			"allowed_origins":   []string{"http://www.example.com"},
@@ -160,7 +160,7 @@ func TestSystemConfigCORS(t *testing.T) {
 	}
 
 	expected = &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"enabled":           true,
 			"allowed_origins":   []string{"http://www.example.com"},
 			"allowed_headers":   append(StdAllowedHeaders, "X-Custom-Header"),
@@ -209,7 +209,7 @@ func TestSystemConfigCORS(t *testing.T) {
 	)
 
 	expected = &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"enabled": false,
 		},
 	}
@@ -229,16 +229,16 @@ func TestSystemBackend_mounts(t *testing.T) {
 
 	// We can't know the pointer address ahead of time so simply
 	// copy what's given
-	exp := map[string]interface{}{
-		"secret/": map[string]interface{}{
+	exp := map[string]any{
+		"secret/": map[string]any{
 			"type":                    "kv",
 			"external_entropy_access": false,
 			"description":             "key/value secret storage",
-			"accessor":                resp.Data["secret/"].(map[string]interface{})["accessor"],
-			"uuid":                    resp.Data["secret/"].(map[string]interface{})["uuid"],
-			"config": map[string]interface{}{
-				"default_lease_ttl": resp.Data["secret/"].(map[string]interface{})["config"].(map[string]interface{})["default_lease_ttl"].(int64),
-				"max_lease_ttl":     resp.Data["secret/"].(map[string]interface{})["config"].(map[string]interface{})["max_lease_ttl"].(int64),
+			"accessor":                resp.Data["secret/"].(map[string]any)["accessor"],
+			"uuid":                    resp.Data["secret/"].(map[string]any)["uuid"],
+			"config": map[string]any{
+				"default_lease_ttl": resp.Data["secret/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
+				"max_lease_ttl":     resp.Data["secret/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":    false,
 			},
 			"local":     false,
@@ -251,15 +251,15 @@ func TestSystemBackend_mounts(t *testing.T) {
 			"running_sha256":         "",
 			"deprecation_status":     "supported",
 		},
-		"sys/": map[string]interface{}{
+		"sys/": map[string]any{
 			"type":                    "system",
 			"external_entropy_access": false,
 			"description":             "system endpoints used for control, policy and debugging",
-			"accessor":                resp.Data["sys/"].(map[string]interface{})["accessor"],
-			"uuid":                    resp.Data["sys/"].(map[string]interface{})["uuid"],
-			"config": map[string]interface{}{
-				"default_lease_ttl":           resp.Data["sys/"].(map[string]interface{})["config"].(map[string]interface{})["default_lease_ttl"].(int64),
-				"max_lease_ttl":               resp.Data["sys/"].(map[string]interface{})["config"].(map[string]interface{})["max_lease_ttl"].(int64),
+			"accessor":                resp.Data["sys/"].(map[string]any)["accessor"],
+			"uuid":                    resp.Data["sys/"].(map[string]any)["uuid"],
+			"config": map[string]any{
+				"default_lease_ttl":           resp.Data["sys/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
+				"max_lease_ttl":               resp.Data["sys/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":              false,
 				"passthrough_request_headers": []string{"Accept"},
 			},
@@ -270,15 +270,15 @@ func TestSystemBackend_mounts(t *testing.T) {
 			"running_plugin_version": versions.DefaultBuiltinVersion,
 			"running_sha256":         "",
 		},
-		"cubbyhole/": map[string]interface{}{
+		"cubbyhole/": map[string]any{
 			"description":             "per-token private secret storage",
 			"type":                    "cubbyhole",
 			"external_entropy_access": false,
-			"accessor":                resp.Data["cubbyhole/"].(map[string]interface{})["accessor"],
-			"uuid":                    resp.Data["cubbyhole/"].(map[string]interface{})["uuid"],
-			"config": map[string]interface{}{
-				"default_lease_ttl": resp.Data["cubbyhole/"].(map[string]interface{})["config"].(map[string]interface{})["default_lease_ttl"].(int64),
-				"max_lease_ttl":     resp.Data["cubbyhole/"].(map[string]interface{})["config"].(map[string]interface{})["max_lease_ttl"].(int64),
+			"accessor":                resp.Data["cubbyhole/"].(map[string]any)["accessor"],
+			"uuid":                    resp.Data["cubbyhole/"].(map[string]any)["uuid"],
+			"config": map[string]any{
+				"default_lease_ttl": resp.Data["cubbyhole/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
+				"max_lease_ttl":     resp.Data["cubbyhole/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":    false,
 			},
 			"local":                  true,
@@ -288,15 +288,15 @@ func TestSystemBackend_mounts(t *testing.T) {
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
 			"running_sha256":         "",
 		},
-		"identity/": map[string]interface{}{
+		"identity/": map[string]any{
 			"description":             "identity store",
 			"type":                    "identity",
 			"external_entropy_access": false,
-			"accessor":                resp.Data["identity/"].(map[string]interface{})["accessor"],
-			"uuid":                    resp.Data["identity/"].(map[string]interface{})["uuid"],
-			"config": map[string]interface{}{
-				"default_lease_ttl":           resp.Data["identity/"].(map[string]interface{})["config"].(map[string]interface{})["default_lease_ttl"].(int64),
-				"max_lease_ttl":               resp.Data["identity/"].(map[string]interface{})["config"].(map[string]interface{})["max_lease_ttl"].(int64),
+			"accessor":                resp.Data["identity/"].(map[string]any)["accessor"],
+			"uuid":                    resp.Data["identity/"].(map[string]any)["uuid"],
+			"config": map[string]any{
+				"default_lease_ttl":           resp.Data["identity/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
+				"max_lease_ttl":               resp.Data["identity/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":              false,
 				"passthrough_request_headers": []string{"Authorization"},
 			},
@@ -337,7 +337,7 @@ func TestSystemBackend_mount(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "mounts/prod/secret/")
 	req.Data["type"] = "kv"
-	req.Data["config"] = map[string]interface{}{
+	req.Data["config"] = map[string]any{
 		"default_lease_ttl": "35m",
 		"max_lease_ttl":     "45m",
 	}
@@ -368,16 +368,16 @@ func TestSystemBackend_mount(t *testing.T) {
 
 	// We can't know the pointer address ahead of time so simply
 	// copy what's given
-	exp := map[string]interface{}{
-		"secret/": map[string]interface{}{
+	exp := map[string]any{
+		"secret/": map[string]any{
 			"type":                    "kv",
 			"external_entropy_access": false,
 			"description":             "key/value secret storage",
-			"accessor":                resp.Data["secret/"].(map[string]interface{})["accessor"],
-			"uuid":                    resp.Data["secret/"].(map[string]interface{})["uuid"],
-			"config": map[string]interface{}{
-				"default_lease_ttl": resp.Data["secret/"].(map[string]interface{})["config"].(map[string]interface{})["default_lease_ttl"].(int64),
-				"max_lease_ttl":     resp.Data["secret/"].(map[string]interface{})["config"].(map[string]interface{})["max_lease_ttl"].(int64),
+			"accessor":                resp.Data["secret/"].(map[string]any)["accessor"],
+			"uuid":                    resp.Data["secret/"].(map[string]any)["uuid"],
+			"config": map[string]any{
+				"default_lease_ttl": resp.Data["secret/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
+				"max_lease_ttl":     resp.Data["secret/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":    false,
 			},
 			"local":     false,
@@ -390,15 +390,15 @@ func TestSystemBackend_mount(t *testing.T) {
 			"running_sha256":         "",
 			"deprecation_status":     "supported",
 		},
-		"sys/": map[string]interface{}{
+		"sys/": map[string]any{
 			"type":                    "system",
 			"external_entropy_access": false,
 			"description":             "system endpoints used for control, policy and debugging",
-			"accessor":                resp.Data["sys/"].(map[string]interface{})["accessor"],
-			"uuid":                    resp.Data["sys/"].(map[string]interface{})["uuid"],
-			"config": map[string]interface{}{
-				"default_lease_ttl":           resp.Data["sys/"].(map[string]interface{})["config"].(map[string]interface{})["default_lease_ttl"].(int64),
-				"max_lease_ttl":               resp.Data["sys/"].(map[string]interface{})["config"].(map[string]interface{})["max_lease_ttl"].(int64),
+			"accessor":                resp.Data["sys/"].(map[string]any)["accessor"],
+			"uuid":                    resp.Data["sys/"].(map[string]any)["uuid"],
+			"config": map[string]any{
+				"default_lease_ttl":           resp.Data["sys/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
+				"max_lease_ttl":               resp.Data["sys/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":              false,
 				"passthrough_request_headers": []string{"Accept"},
 			},
@@ -409,15 +409,15 @@ func TestSystemBackend_mount(t *testing.T) {
 			"running_plugin_version": versions.DefaultBuiltinVersion,
 			"running_sha256":         "",
 		},
-		"cubbyhole/": map[string]interface{}{
+		"cubbyhole/": map[string]any{
 			"description":             "per-token private secret storage",
 			"type":                    "cubbyhole",
 			"external_entropy_access": false,
-			"accessor":                resp.Data["cubbyhole/"].(map[string]interface{})["accessor"],
-			"uuid":                    resp.Data["cubbyhole/"].(map[string]interface{})["uuid"],
-			"config": map[string]interface{}{
-				"default_lease_ttl": resp.Data["cubbyhole/"].(map[string]interface{})["config"].(map[string]interface{})["default_lease_ttl"].(int64),
-				"max_lease_ttl":     resp.Data["cubbyhole/"].(map[string]interface{})["config"].(map[string]interface{})["max_lease_ttl"].(int64),
+			"accessor":                resp.Data["cubbyhole/"].(map[string]any)["accessor"],
+			"uuid":                    resp.Data["cubbyhole/"].(map[string]any)["uuid"],
+			"config": map[string]any{
+				"default_lease_ttl": resp.Data["cubbyhole/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
+				"max_lease_ttl":     resp.Data["cubbyhole/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":    false,
 			},
 			"local":                  true,
@@ -427,15 +427,15 @@ func TestSystemBackend_mount(t *testing.T) {
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
 			"running_sha256":         "",
 		},
-		"identity/": map[string]interface{}{
+		"identity/": map[string]any{
 			"description":             "identity store",
 			"type":                    "identity",
 			"external_entropy_access": false,
-			"accessor":                resp.Data["identity/"].(map[string]interface{})["accessor"],
-			"uuid":                    resp.Data["identity/"].(map[string]interface{})["uuid"],
-			"config": map[string]interface{}{
-				"default_lease_ttl":           resp.Data["identity/"].(map[string]interface{})["config"].(map[string]interface{})["default_lease_ttl"].(int64),
-				"max_lease_ttl":               resp.Data["identity/"].(map[string]interface{})["config"].(map[string]interface{})["max_lease_ttl"].(int64),
+			"accessor":                resp.Data["identity/"].(map[string]any)["accessor"],
+			"uuid":                    resp.Data["identity/"].(map[string]any)["uuid"],
+			"config": map[string]any{
+				"default_lease_ttl":           resp.Data["identity/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
+				"max_lease_ttl":               resp.Data["identity/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":              false,
 				"passthrough_request_headers": []string{"Authorization"},
 			},
@@ -446,13 +446,13 @@ func TestSystemBackend_mount(t *testing.T) {
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "identity"),
 			"running_sha256":         "",
 		},
-		"prod/secret/": map[string]interface{}{
+		"prod/secret/": map[string]any{
 			"description":             "",
 			"type":                    "kv",
 			"external_entropy_access": false,
-			"accessor":                resp.Data["prod/secret/"].(map[string]interface{})["accessor"],
-			"uuid":                    resp.Data["prod/secret/"].(map[string]interface{})["uuid"],
-			"config": map[string]interface{}{
+			"accessor":                resp.Data["prod/secret/"].(map[string]any)["accessor"],
+			"uuid":                    resp.Data["prod/secret/"].(map[string]any)["uuid"],
+			"config": map[string]any{
 				"default_lease_ttl": int64(2100),
 				"max_lease_ttl":     int64(2700),
 				"force_no_cache":    false,
@@ -478,7 +478,7 @@ func TestSystemBackend_mount_force_no_cache(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "mounts/prod/secret/")
 	req.Data["type"] = "kv"
-	req.Data["config"] = map[string]interface{}{
+	req.Data["config"] = map[string]any{
 		"force_no_cache": true,
 	}
 
@@ -579,7 +579,7 @@ func TestSystemBackend_PathCapabilities(t *testing.T) {
 	req := &logical.Request{
 		Path:      "capabilities",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"paths": []string{path1, path2, path3, path4},
 			"token": rootToken,
 		},
@@ -601,7 +601,7 @@ func TestSystemBackend_PathCapabilities(t *testing.T) {
 		ClientToken: rootToken,
 		Path:        "capabilities-self",
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"paths": []string{path1, path2, path3, path4},
 		},
 	}
@@ -627,7 +627,7 @@ func TestSystemBackend_PathCapabilities(t *testing.T) {
 	req = &logical.Request{
 		Path:      "capabilities-accessor",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"paths":    []string{path1, path2, path3, path4},
 			"accessor": te.Accessor,
 		},
@@ -665,7 +665,7 @@ func TestSystemBackend_PathCapabilities(t *testing.T) {
 	req = &logical.Request{
 		Path:      "capabilities",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"paths": []string{path1, path2, path3, path4},
 			"token": "tokenid",
 		},
@@ -688,7 +688,7 @@ func TestSystemBackend_PathCapabilities(t *testing.T) {
 		ClientToken: "tokenid",
 		Path:        "capabilities-self",
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"paths": []string{path1, path2, path3, path4},
 		},
 	}
@@ -715,7 +715,7 @@ func TestSystemBackend_PathCapabilities(t *testing.T) {
 	req = &logical.Request{
 		Path:      "capabilities-accessor",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"paths":    []string{path1, path2, path3, path4},
 			"accessor": te.Accessor,
 		},
@@ -2040,14 +2040,14 @@ func TestSystemBackend_authTable(t *testing.T) {
 		true,
 	)
 
-	exp := map[string]interface{}{
-		"token/": map[string]interface{}{
+	exp := map[string]any{
+		"token/": map[string]any{
 			"type":                    "token",
 			"external_entropy_access": false,
 			"description":             "token based credentials",
-			"accessor":                resp.Data["token/"].(map[string]interface{})["accessor"],
-			"uuid":                    resp.Data["token/"].(map[string]interface{})["uuid"],
-			"config": map[string]interface{}{
+			"accessor":                resp.Data["token/"].(map[string]any)["accessor"],
+			"uuid":                    resp.Data["token/"].(map[string]any)["uuid"],
+			"config": map[string]any{
 				"default_lease_ttl": int64(0),
 				"max_lease_ttl":     int64(0),
 				"force_no_cache":    false,
@@ -2090,7 +2090,7 @@ func TestSystemBackend_enableAuth(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "auth/foo")
 	req.Data["type"] = "noop"
-	req.Data["config"] = map[string]interface{}{
+	req.Data["config"] = map[string]any{
 		"default_lease_ttl": "35m",
 		"max_lease_ttl":     "45m",
 	}
@@ -2126,14 +2126,14 @@ func TestSystemBackend_enableAuth(t *testing.T) {
 		true,
 	)
 
-	exp := map[string]interface{}{
-		"foo/": map[string]interface{}{
+	exp := map[string]any{
+		"foo/": map[string]any{
 			"type":                    "noop",
 			"external_entropy_access": false,
 			"description":             "",
-			"accessor":                resp.Data["foo/"].(map[string]interface{})["accessor"],
-			"uuid":                    resp.Data["foo/"].(map[string]interface{})["uuid"],
-			"config": map[string]interface{}{
+			"accessor":                resp.Data["foo/"].(map[string]any)["accessor"],
+			"uuid":                    resp.Data["foo/"].(map[string]any)["uuid"],
+			"config": map[string]any{
 				"default_lease_ttl": int64(2100),
 				"max_lease_ttl":     int64(2700),
 				"force_no_cache":    false,
@@ -2146,13 +2146,13 @@ func TestSystemBackend_enableAuth(t *testing.T) {
 			"running_plugin_version": versions.DefaultBuiltinVersion,
 			"running_sha256":         "",
 		},
-		"token/": map[string]interface{}{
+		"token/": map[string]any{
 			"type":                    "token",
 			"external_entropy_access": false,
 			"description":             "token based credentials",
-			"accessor":                resp.Data["token/"].(map[string]interface{})["accessor"],
-			"uuid":                    resp.Data["token/"].(map[string]interface{})["uuid"],
-			"config": map[string]interface{}{
+			"accessor":                resp.Data["token/"].(map[string]any)["accessor"],
+			"uuid":                    resp.Data["token/"].(map[string]any)["uuid"],
+			"config": map[string]any{
 				"default_lease_ttl": int64(0),
 				"max_lease_ttl":     int64(0),
 				"force_no_cache":    false,
@@ -2234,7 +2234,7 @@ func TestSystemBackend_tuneAuth(t *testing.T) {
 		true,
 	)
 
-	exp := map[string]interface{}{
+	exp := map[string]any{
 		"description":       "token based credentials",
 		"default_lease_ttl": int(2764800),
 		"max_lease_ttl":     int(2764800),
@@ -2371,16 +2371,16 @@ func TestSystemBackend_tuneSys(t *testing.T) {
 	recordType := record["type"].(string)
 	require.Equal(t, recordType, "response")
 	require.Contains(t, record, "response")
-	recordResp := record["response"].(map[string]interface{})
+	recordResp := record["response"].(map[string]any)
 	require.Contains(t, recordResp, "data")
-	recordData := recordResp["data"].(map[string]interface{})
+	recordData := recordResp["data"].(map[string]any)
 	require.Contains(t, recordData, "policy")
 	recordPolicy := recordData["policy"].(string)
 	require.NotContains(t, recordPolicy, "hmac-sha256:")
 
 	// Writing a new policy should also be un-HMAC'd.
 	req.Operation = logical.UpdateOperation
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"policy": `path "auth/token/lookup-self" {
     capabilities = ["read"]
 }
@@ -2399,9 +2399,9 @@ func TestSystemBackend_tuneSys(t *testing.T) {
 	recordType = record["type"].(string)
 	require.Equal(t, recordType, "request")
 	require.Contains(t, record, "request")
-	recordReq := record["request"].(map[string]interface{})
+	recordReq := record["request"].(map[string]any)
 	require.Contains(t, recordReq, "data")
-	recordData = recordReq["data"].(map[string]interface{})
+	recordData = recordReq["data"].(map[string]any)
 	require.Contains(t, recordData, "policy")
 	recordPolicy = recordData["policy"].(string)
 	require.NotContains(t, recordPolicy, "hmac-sha256:")
@@ -2424,7 +2424,7 @@ func TestSystemBackend_policyList(t *testing.T) {
 		true,
 	)
 
-	exp := map[string]interface{}{
+	exp := map[string]any{
 		"keys":     []string{"default", "root"},
 		"policies": []string{"default", "root"},
 	}
@@ -2478,7 +2478,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	require.True(t, modified.After(beforeWrite))
 	delete(resp.Data, "modified")
 
-	exp := map[string]interface{}{
+	exp := map[string]any{
 		"name":                                  "foo",
 		"rules":                                 rules,
 		"cas_required":                          false,
@@ -2502,7 +2502,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	require.Equal(t, resp.Data["modified"].(time.Time), modified)
 	delete(resp.Data, "modified")
 
-	exp = map[string]interface{}{
+	exp = map[string]any{
 		"name":                                  "foo",
 		"rules":                                 rules,
 		"cas_required":                          false,
@@ -2521,7 +2521,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	exp = map[string]interface{}{
+	exp = map[string]any{
 		"keys":     []string{"default", "foo", "root"},
 		"policies": []string{"default", "foo", "root"},
 	}
@@ -2564,7 +2564,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	exp = map[string]interface{}{
+	exp = map[string]any{
 		"keys":     []string{"default", "root"},
 		"policies": []string{"default", "root"},
 	}
@@ -2604,15 +2604,15 @@ func TestSystemBackend_PoliciesDetailedAcl(t *testing.T) {
 	require.Greater(t, len(policies), 0, "expected at least one policy, got: %v", policies)
 	require.Contains(t, policies, "test-policy")
 
-	detailedPolicies, ok := resp.Data["key_info"].(map[string]interface{})
-	require.True(t, ok, "expected policies to be map[string]interface{}, got: %T", resp.Data["policies"])
+	detailedPolicies, ok := resp.Data["key_info"].(map[string]any)
+	require.True(t, ok, "expected policies to be map[string]any, got: %T", resp.Data["policies"])
 	require.Greater(t, len(detailedPolicies), 0, "expected at least one detailed policy, got: %v", detailedPolicies)
 
 	// Test policy should exist in the detailed info.
 	entryRaw, ok := detailedPolicies["test-policy"]
 	require.True(t, ok, "expected detailed policies to contain test-policy: %v", detailedPolicies)
 
-	entry := entryRaw.(map[string]interface{})
+	entry := entryRaw.(map[string]any)
 	require.Contains(t, entry, "policy")
 	require.Equal(t, entry["policy"].(string), policy)
 	require.Contains(t, entry, "version")
@@ -2757,7 +2757,7 @@ func TestSystemBackend_auditTable(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "audit/foo")
 	req.Data["type"] = "noop"
 	req.Data["description"] = "testing"
-	req.Data["options"] = map[string]interface{}{
+	req.Data["options"] = map[string]any{
 		"foo": "bar",
 	}
 	req.Data["local"] = true
@@ -2770,8 +2770,8 @@ func TestSystemBackend_auditTable(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	exp := map[string]interface{}{
-		"foo/": map[string]interface{}{
+	exp := map[string]any{
+		"foo/": map[string]any{
 			"path":        "foo/",
 			"type":        "noop",
 			"description": "testing",
@@ -2832,7 +2832,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
 		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"encoding": "base64",
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -2853,7 +2853,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
 		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"encoding": "invalid_encoding",
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -2870,7 +2870,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
 		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"compressed": false,
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -2891,7 +2891,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
 		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"compressed": false,
 			"encoding":   "base64",
 		}
@@ -2913,7 +2913,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 	t.Run("uncompressed_entry_with_prefix_byte", func(t *testing.T) {
 		b := testSystemBackendRaw(t)
 		req := logical.TestRequest(t, logical.CreateOperation, "raw/test_raw")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"value": "G14c1e7f-0a9a-49e0-9fc4-61af329d0724",
 		}
 
@@ -2942,7 +2942,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		}
 
 		req = logical.TestRequest(t, logical.ReadOperation, "raw/test_raw")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"compressed": false,
 		}
 		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -3032,7 +3032,7 @@ func TestSystemBackend_rawReadWrite_base64(t *testing.T) {
 		_, b, _ := testCoreSystemBackendRaw(t)
 
 		req := logical.TestRequest(t, logical.CreateOperation, "raw/sys/policy/test")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"value":    base64.StdEncoding.EncodeToString([]byte(`path "secret/" { policy = "read"[ }`)),
 			"encoding": "base64",
 		}
@@ -3059,7 +3059,7 @@ func TestSystemBackend_rawReadWrite_base64(t *testing.T) {
 		_, b, _ := testCoreSystemBackendRaw(t)
 
 		req := logical.TestRequest(t, logical.CreateOperation, "raw/sys/policy/test")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"value":    "invalid base64",
 			"encoding": "base64",
 		}
@@ -3081,7 +3081,7 @@ func TestSystemBackend_rawReadWrite_base64(t *testing.T) {
 		_, b, _ := testCoreSystemBackendRaw(t)
 
 		req := logical.TestRequest(t, logical.CreateOperation, "raw/sys/policy/test")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"value":    "text",
 			"encoding": "invalid_encoding",
 		}
@@ -3112,7 +3112,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 
 		mounts := resp.Data["value"].(string)
 		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/audit")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"value":            mounts,
 			"compression_type": compressutil.CompressionTypeGzip,
 		}
@@ -3130,7 +3130,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 
 		// Read back and check gzip was applied by looking for prefix byte
 		req = logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"compressed": false,
 			"encoding":   "base64",
 		}
@@ -3160,7 +3160,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 
 		mounts := resp.Data["value"].(string)
 		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/audit")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"value": mounts,
 		}
 		_, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -3170,7 +3170,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 
 		// Read back and check gzip was applied by looking for prefix byte
 		req = logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"compressed": false,
 			"encoding":   "base64",
 		}
@@ -3199,7 +3199,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 
 		mounts := resp.Data["value"].(string)
 		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/audit")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"value":            mounts,
 			"compression_type": "",
 		}
@@ -3210,7 +3210,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 
 		// Read back and check gzip was not applied by looking for prefix byte
 		req = logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"compressed": false,
 			"encoding":   "base64",
 		}
@@ -3240,7 +3240,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 
 		mounts := resp.Data["value"].(string)
 		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/audit")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"value":            mounts,
 			"compression_type": "invalid_type",
 		}
@@ -3258,7 +3258,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
 		req := logical.TestRequest(t, logical.UpdateOperation, "raw/non_existent")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"value": "{}",
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -3275,7 +3275,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
 		req := logical.TestRequest(t, logical.CreateOperation, "raw/test")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"value": "{}",
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -3288,7 +3288,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 		}
 
 		req = logical.TestRequest(t, logical.UpdateOperation, "raw/test")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"value":            "{}",
 			"compression_type": compressutil.CompressionTypeGzip,
 		}
@@ -3306,7 +3306,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
 		req := logical.TestRequest(t, logical.CreateOperation, "raw/test")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"value":            "{}",
 			"compression_type": compressutil.CompressionTypeGzip,
 		}
@@ -3320,7 +3320,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 		}
 
 		req = logical.TestRequest(t, logical.UpdateOperation, "raw/test")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"value":            "{}",
 			"compression_type": compressutil.CompressionTypeSnappy,
 		}
@@ -3442,7 +3442,7 @@ func TestSystemBackend_deprecatedRotateConfig(t *testing.T) {
 		true,
 	)
 
-	exp := map[string]interface{}{
+	exp := map[string]any{
 		"max_operations": barrier.AbsoluteOperationMaximum,
 		"interval":       0,
 		"enabled":        true,
@@ -3477,7 +3477,7 @@ func TestSystemBackend_deprecatedRotateConfig(t *testing.T) {
 		true,
 	)
 
-	exp = map[string]interface{}{
+	exp = map[string]any{
 		"max_operations": int64(3221225472),
 		"interval":       "5432h0m0s",
 		"enabled":        false,
@@ -3501,7 +3501,7 @@ func TestSystemBackend_rotateConfig(t *testing.T) {
 		true,
 	)
 
-	exp := map[string]interface{}{
+	exp := map[string]any{
 		"max_operations": barrier.AbsoluteOperationMaximum,
 		"interval":       0,
 		"enabled":        true,
@@ -3530,7 +3530,7 @@ func TestSystemBackend_rotateConfig(t *testing.T) {
 		true,
 	)
 
-	exp = map[string]interface{}{
+	exp = map[string]any{
 		"max_operations": int64(3221225472),
 		"interval":       "5432h0m0s",
 		"enabled":        false,
@@ -3556,7 +3556,7 @@ func TestSystemBackend_deprecatedRotate(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	exp := map[string]interface{}{
+	exp := map[string]any{
 		"term": 2,
 	}
 	delete(resp.Data, "install_time")
@@ -3578,7 +3578,7 @@ func TestSystemBackend_rotate(t *testing.T) {
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
 
-	exp := map[string]interface{}{
+	exp := map[string]any{
 		"term": 2,
 	}
 	delete(resp.Data, "install_time")
@@ -3648,7 +3648,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	deprecationStatus, _ := c.builtinRegistry.DeprecationStatus("mysql-database-plugin", consts.PluginTypeDatabase)
 
 	actualRespData := resp.Data
-	expectedRespData := map[string]interface{}{
+	expectedRespData := map[string]any{
 		"name":               "mysql-database-plugin",
 		"command":            "",
 		"args":               []string(nil),
@@ -3704,7 +3704,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	}
 
 	actual := resp.Data
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"name":        "test-plugin",
 		"command":     filepath.Base(file.Name()),
 		"args":        []string{"--test"},
@@ -3756,7 +3756,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	}
 
 	actual = resp.Data
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"name":        "test-plugin",
 		"command":     filepath.Base(file.Name()),
 		"args":        []string{"--test"},
@@ -4020,7 +4020,7 @@ func TestSystemBackend_PluginCatalog_List(t *testing.T) {
 func TestSystemBackend_ToolsHash(t *testing.T) {
 	b := testSystemBackend(t)
 	req := logical.TestRequest(t, logical.UpdateOperation, "tools/hash")
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"input": "dGhlIHF1aWNrIGJyb3duIGZveA==",
 	}
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -4235,9 +4235,9 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 		true,
 	)
 
-	exp := map[string]interface{}{
-		"secret": map[string]interface{}{},
-		"auth":   map[string]interface{}{},
+	exp := map[string]any{
+		"secret": map[string]any{},
+		"auth":   map[string]any{},
 	}
 	if !reflect.DeepEqual(resp.Data, exp) {
 		t.Fatalf("got: %#v expect: %#v", resp.Data, exp)
@@ -4256,17 +4256,17 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 		true,
 	)
 
-	exp = map[string]interface{}{
-		"secret": map[string]interface{}{
-			"secret/": map[string]interface{}{
+	exp = map[string]any{
+		"secret": map[string]any{
+			"secret/": map[string]any{
 				"type":                    "kv",
 				"external_entropy_access": false,
 				"description":             "key/value secret storage",
-				"accessor":                resp.Data["secret"].(map[string]interface{})["secret/"].(map[string]interface{})["accessor"],
-				"uuid":                    resp.Data["secret"].(map[string]interface{})["secret/"].(map[string]interface{})["uuid"],
-				"config": map[string]interface{}{
-					"default_lease_ttl": resp.Data["secret"].(map[string]interface{})["secret/"].(map[string]interface{})["config"].(map[string]interface{})["default_lease_ttl"].(int64),
-					"max_lease_ttl":     resp.Data["secret"].(map[string]interface{})["secret/"].(map[string]interface{})["config"].(map[string]interface{})["max_lease_ttl"].(int64),
+				"accessor":                resp.Data["secret"].(map[string]any)["secret/"].(map[string]any)["accessor"],
+				"uuid":                    resp.Data["secret"].(map[string]any)["secret/"].(map[string]any)["uuid"],
+				"config": map[string]any{
+					"default_lease_ttl": resp.Data["secret"].(map[string]any)["secret/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
+					"max_lease_ttl":     resp.Data["secret"].(map[string]any)["secret/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 					"force_no_cache":    false,
 				},
 				"local":     false,
@@ -4279,15 +4279,15 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 				"running_sha256":         "",
 				"deprecation_status":     "supported",
 			},
-			"sys/": map[string]interface{}{
+			"sys/": map[string]any{
 				"type":                    "system",
 				"external_entropy_access": false,
 				"description":             "system endpoints used for control, policy and debugging",
-				"accessor":                resp.Data["secret"].(map[string]interface{})["sys/"].(map[string]interface{})["accessor"],
-				"uuid":                    resp.Data["secret"].(map[string]interface{})["sys/"].(map[string]interface{})["uuid"],
-				"config": map[string]interface{}{
-					"default_lease_ttl":           resp.Data["secret"].(map[string]interface{})["sys/"].(map[string]interface{})["config"].(map[string]interface{})["default_lease_ttl"].(int64),
-					"max_lease_ttl":               resp.Data["secret"].(map[string]interface{})["sys/"].(map[string]interface{})["config"].(map[string]interface{})["max_lease_ttl"].(int64),
+				"accessor":                resp.Data["secret"].(map[string]any)["sys/"].(map[string]any)["accessor"],
+				"uuid":                    resp.Data["secret"].(map[string]any)["sys/"].(map[string]any)["uuid"],
+				"config": map[string]any{
+					"default_lease_ttl":           resp.Data["secret"].(map[string]any)["sys/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
+					"max_lease_ttl":               resp.Data["secret"].(map[string]any)["sys/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 					"force_no_cache":              false,
 					"passthrough_request_headers": []string{"Accept"},
 				},
@@ -4298,15 +4298,15 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 				"running_plugin_version": versions.DefaultBuiltinVersion,
 				"running_sha256":         "",
 			},
-			"cubbyhole/": map[string]interface{}{
+			"cubbyhole/": map[string]any{
 				"description":             "per-token private secret storage",
 				"type":                    "cubbyhole",
 				"external_entropy_access": false,
-				"accessor":                resp.Data["secret"].(map[string]interface{})["cubbyhole/"].(map[string]interface{})["accessor"],
-				"uuid":                    resp.Data["secret"].(map[string]interface{})["cubbyhole/"].(map[string]interface{})["uuid"],
-				"config": map[string]interface{}{
-					"default_lease_ttl": resp.Data["secret"].(map[string]interface{})["cubbyhole/"].(map[string]interface{})["config"].(map[string]interface{})["default_lease_ttl"].(int64),
-					"max_lease_ttl":     resp.Data["secret"].(map[string]interface{})["cubbyhole/"].(map[string]interface{})["config"].(map[string]interface{})["max_lease_ttl"].(int64),
+				"accessor":                resp.Data["secret"].(map[string]any)["cubbyhole/"].(map[string]any)["accessor"],
+				"uuid":                    resp.Data["secret"].(map[string]any)["cubbyhole/"].(map[string]any)["uuid"],
+				"config": map[string]any{
+					"default_lease_ttl": resp.Data["secret"].(map[string]any)["cubbyhole/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
+					"max_lease_ttl":     resp.Data["secret"].(map[string]any)["cubbyhole/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 					"force_no_cache":    false,
 				},
 				"local":                  true,
@@ -4316,15 +4316,15 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
 				"running_sha256":         "",
 			},
-			"identity/": map[string]interface{}{
+			"identity/": map[string]any{
 				"description":             "identity store",
 				"type":                    "identity",
 				"external_entropy_access": false,
-				"accessor":                resp.Data["secret"].(map[string]interface{})["identity/"].(map[string]interface{})["accessor"],
-				"uuid":                    resp.Data["secret"].(map[string]interface{})["identity/"].(map[string]interface{})["uuid"],
-				"config": map[string]interface{}{
-					"default_lease_ttl":           resp.Data["secret"].(map[string]interface{})["identity/"].(map[string]interface{})["config"].(map[string]interface{})["default_lease_ttl"].(int64),
-					"max_lease_ttl":               resp.Data["secret"].(map[string]interface{})["identity/"].(map[string]interface{})["config"].(map[string]interface{})["max_lease_ttl"].(int64),
+				"accessor":                resp.Data["secret"].(map[string]any)["identity/"].(map[string]any)["accessor"],
+				"uuid":                    resp.Data["secret"].(map[string]any)["identity/"].(map[string]any)["uuid"],
+				"config": map[string]any{
+					"default_lease_ttl":           resp.Data["secret"].(map[string]any)["identity/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
+					"max_lease_ttl":               resp.Data["secret"].(map[string]any)["identity/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 					"force_no_cache":              false,
 					"passthrough_request_headers": []string{"Authorization"},
 				},
@@ -4336,10 +4336,10 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 				"running_sha256":         "",
 			},
 		},
-		"auth": map[string]interface{}{
-			"token/": map[string]interface{}{
+		"auth": map[string]any{
+			"token/": map[string]any{
 				"options": map[string]string(nil),
-				"config": map[string]interface{}{
+				"config": map[string]any{
 					"default_lease_ttl": int64(0),
 					"max_lease_ttl":     int64(0),
 					"force_no_cache":    false,
@@ -4348,8 +4348,8 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 				"type":                    "token",
 				"external_entropy_access": false,
 				"description":             "token based credentials",
-				"accessor":                resp.Data["auth"].(map[string]interface{})["token/"].(map[string]interface{})["accessor"],
-				"uuid":                    resp.Data["auth"].(map[string]interface{})["token/"].(map[string]interface{})["uuid"],
+				"accessor":                resp.Data["auth"].(map[string]any)["token/"].(map[string]any)["accessor"],
+				"uuid":                    resp.Data["auth"].(map[string]any)["token/"].(map[string]any)["uuid"],
 				"local":                   false,
 				"seal_wrap":               false,
 				"plugin_version":          "",
@@ -4359,7 +4359,7 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 		},
 	}
 	if diff := deep.Equal(resp.Data, exp); diff != nil {
-		t.Logf("resp.Data[secret][sys/] = %#v", resp.Data["secret"].(map[string]interface{})["sys/"])
+		t.Logf("resp.Data[secret][sys/] = %#v", resp.Data["secret"].(map[string]any)["sys/"])
 		t.Fatal(diff)
 	}
 
@@ -4399,16 +4399,16 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 		true,
 	)
 
-	exp = map[string]interface{}{
-		"secret": map[string]interface{}{
-			"secret/": map[string]interface{}{
+	exp = map[string]any{
+		"secret": map[string]any{
+			"secret/": map[string]any{
 				"type":        "kv",
 				"description": "key/value secret storage",
 				"options":     map[string]string{"version": "1"},
 			},
 		},
-		"auth": map[string]interface{}{
-			"token/": map[string]interface{}{
+		"auth": map[string]any{
+			"token/": map[string]any{
 				"type":        "token",
 				"description": "token based credentials",
 				"options":     map[string]string(nil),
@@ -4426,7 +4426,7 @@ func TestSystemBackend_InternalUIMount(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "policy/secret")
 	req.ClientToken = rootToken
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"rules": `path "secret/foo/*" {
     capabilities = ["create", "read", "update", "delete", "list"]
 }`,
@@ -4438,7 +4438,7 @@ func TestSystemBackend_InternalUIMount(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.UpdateOperation, "mounts/kv")
 	req.ClientToken = rootToken
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"type": "kv",
 	}
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -4523,25 +4523,25 @@ func TestSystemBackend_OpenAPI(t *testing.T) {
 		}
 
 		body := resp.Data["http_raw_body"].([]byte)
-		var oapi map[string]interface{}
+		var oapi map[string]any
 		err = jsonutil.DecodeJSON(body, &oapi)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
-		exp := map[string]interface{}{
+		exp := map[string]any{
 			"openapi": framework.OASVersion,
-			"info": map[string]interface{}{
+			"info": map[string]any{
 				"title":       "OpenBao API",
 				"description": "HTTP API that gives you full access to OpenBao. All API routes are prefixed with `/v1/`.",
 				"version":     version.GetVersion().Version,
-				"license": map[string]interface{}{
+				"license": map[string]any{
 					"name": "Mozilla Public License 2.0",
 					"url":  "https://www.mozilla.org/en-US/MPL/2.0",
 				},
 			},
-			"paths": map[string]interface{}{},
-			"components": map[string]interface{}{
-				"schemas": map[string]interface{}{},
+			"paths": map[string]any{},
+			"components": map[string]any{
+				"schemas": map[string]any{},
 			},
 		}
 
@@ -4563,7 +4563,7 @@ func TestSystemBackend_OpenAPI(t *testing.T) {
 		}
 
 		body := resp.Data["http_raw_body"].([]byte)
-		var oapi map[string]interface{}
+		var oapi map[string]any
 		err = jsonutil.DecodeJSON(body, &oapi)
 		if err != nil {
 			t.Fatalf("err: %v", err)
@@ -4738,7 +4738,7 @@ func TestHandlePoliciesPasswordSet(t *testing.T) {
 
 	tests := map[string]testCase{
 		"missing policy name": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{
+			inputData: passwordPoliciesFieldData(map[string]any{
 				"policy": `length = 20
 							rule "charset" {
 								charset="abcdefghij"
@@ -4752,7 +4752,7 @@ func TestHandlePoliciesPasswordSet(t *testing.T) {
 			expectedStore: map[string]*logical.StorageEntry{},
 		},
 		"missing policy": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{
+			inputData: passwordPoliciesFieldData(map[string]any{
 				"name": "testpolicy",
 			}),
 
@@ -4763,7 +4763,7 @@ func TestHandlePoliciesPasswordSet(t *testing.T) {
 			expectedStore: map[string]*logical.StorageEntry{},
 		},
 		"garbage policy": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{
+			inputData: passwordPoliciesFieldData(map[string]any{
 				"name":   "testpolicy",
 				"policy": "hasdukfhiuashdfoiasjdf",
 			}),
@@ -4775,7 +4775,7 @@ func TestHandlePoliciesPasswordSet(t *testing.T) {
 			expectedStore: map[string]*logical.StorageEntry{},
 		},
 		"storage failure": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{
+			inputData: passwordPoliciesFieldData(map[string]any{
 				"name": "testpolicy",
 				"policy": "length = 20\n" +
 					"rule \"charset\" {\n" +
@@ -4790,7 +4790,7 @@ func TestHandlePoliciesPasswordSet(t *testing.T) {
 			expectedStore: map[string]*logical.StorageEntry{},
 		},
 		"impossible policy": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{
+			inputData: passwordPoliciesFieldData(map[string]any{
 				"name": "testpolicy",
 				"policy": "length = 20\n" +
 					"rule \"charset\" {\n" +
@@ -4806,7 +4806,7 @@ func TestHandlePoliciesPasswordSet(t *testing.T) {
 			expectedStore: map[string]*logical.StorageEntry{},
 		},
 		"not base64 encoded": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{
+			inputData: passwordPoliciesFieldData(map[string]any{
 				"name": "testpolicy",
 				"policy": "length = 20\n" +
 					"rule \"charset\" {\n" +
@@ -4817,7 +4817,7 @@ func TestHandlePoliciesPasswordSet(t *testing.T) {
 			storage: new(logical.InmemStorage),
 
 			expectedResp: &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					logical.HTTPContentType: "application/json",
 					logical.HTTPStatusCode:  http.StatusNoContent,
 				},
@@ -4829,7 +4829,7 @@ func TestHandlePoliciesPasswordSet(t *testing.T) {
 				"}")),
 		},
 		"base64 encoded": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{
+			inputData: passwordPoliciesFieldData(map[string]any{
 				"name": "testpolicy",
 				"policy": base64Encode(
 					"length = 20\n" +
@@ -4842,7 +4842,7 @@ func TestHandlePoliciesPasswordSet(t *testing.T) {
 			storage: new(logical.InmemStorage),
 
 			expectedResp: &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					logical.HTTPContentType: "application/json",
 					logical.HTTPStatusCode:  http.StatusNoContent,
 				},
@@ -4899,7 +4899,7 @@ func TestHandlePoliciesPasswordGet(t *testing.T) {
 
 	tests := map[string]testCase{
 		"missing policy name": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{}),
+			inputData: passwordPoliciesFieldData(map[string]any{}),
 
 			storage: new(logical.InmemStorage),
 
@@ -4908,7 +4908,7 @@ func TestHandlePoliciesPasswordGet(t *testing.T) {
 			expectedStore: map[string]*logical.StorageEntry{},
 		},
 		"storage error": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{
+			inputData: passwordPoliciesFieldData(map[string]any{
 				"name": "testpolicy",
 			}),
 
@@ -4919,7 +4919,7 @@ func TestHandlePoliciesPasswordGet(t *testing.T) {
 			expectedStore: map[string]*logical.StorageEntry{},
 		},
 		"missing value": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{
+			inputData: passwordPoliciesFieldData(map[string]any{
 				"name": "testpolicy",
 			}),
 
@@ -4930,7 +4930,7 @@ func TestHandlePoliciesPasswordGet(t *testing.T) {
 			expectedStore: map[string]*logical.StorageEntry{},
 		},
 		"good value": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{
+			inputData: passwordPoliciesFieldData(map[string]any{
 				"name": "testpolicy",
 			}),
 
@@ -4941,7 +4941,7 @@ func TestHandlePoliciesPasswordGet(t *testing.T) {
 					"}")),
 
 			expectedResp: &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"policy": "length = 20\n" +
 						"rule \"charset\" {\n" +
 						"	charset=\"abcdefghij\"\n" +
@@ -5000,7 +5000,7 @@ func TestHandlePoliciesPasswordDelete(t *testing.T) {
 
 	tests := map[string]testCase{
 		"missing policy name": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{}),
+			inputData: passwordPoliciesFieldData(map[string]any{}),
 
 			storage: new(logical.InmemStorage),
 
@@ -5009,7 +5009,7 @@ func TestHandlePoliciesPasswordDelete(t *testing.T) {
 			expectedStore: map[string]*logical.StorageEntry{},
 		},
 		"storage failure": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{
+			inputData: passwordPoliciesFieldData(map[string]any{
 				"name": "testpolicy",
 			}),
 
@@ -5020,7 +5020,7 @@ func TestHandlePoliciesPasswordDelete(t *testing.T) {
 			expectedStore: map[string]*logical.StorageEntry{},
 		},
 		"successful delete": {
-			inputData: passwordPoliciesFieldData(map[string]interface{}{
+			inputData: passwordPoliciesFieldData(map[string]any{
 				"name": "testpolicy",
 			}),
 
@@ -5101,7 +5101,7 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 			storage: new(logical.InmemStorage),
 
 			expectedResp: &logical.Response{
-				Data: map[string]interface{}{},
+				Data: map[string]any{},
 			},
 		},
 		"one policy": {
@@ -5120,7 +5120,7 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 			),
 
 			expectedResp: &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"keys": []string{"testpolicy"},
 				},
 			},
@@ -5151,7 +5151,7 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 			),
 
 			expectedResp: &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"keys": []string{
 						"testpolicy",
 						"unrelated_policy",
@@ -5175,7 +5175,7 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 			),
 
 			expectedResp: &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"keys": []string{"testpolicy/testpolicy1"},
 				},
 			},
@@ -5196,7 +5196,7 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 			),
 
 			expectedResp: &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"keys": []string{"path/to/policy"},
 				},
 			},
@@ -5217,7 +5217,7 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 			),
 
 			expectedResp: &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"keys": []string{"path/to/policy/"},
 				},
 			},
@@ -5268,7 +5268,7 @@ func TestHandlePoliciesPasswordGenerate(t *testing.T) {
 
 		tests := map[string]testCase{
 			"missing policy name": {
-				inputData: passwordPoliciesFieldData(map[string]interface{}{}),
+				inputData: passwordPoliciesFieldData(map[string]any{}),
 
 				storage: new(logical.InmemStorage),
 
@@ -5276,7 +5276,7 @@ func TestHandlePoliciesPasswordGenerate(t *testing.T) {
 				expectErr:    true,
 			},
 			"storage failure": {
-				inputData: passwordPoliciesFieldData(map[string]interface{}{
+				inputData: passwordPoliciesFieldData(map[string]any{
 					"name": "testpolicy",
 				}),
 
@@ -5286,7 +5286,7 @@ func TestHandlePoliciesPasswordGenerate(t *testing.T) {
 				expectErr:    true,
 			},
 			"policy does not exist": {
-				inputData: passwordPoliciesFieldData(map[string]interface{}{
+				inputData: passwordPoliciesFieldData(map[string]any{
 					"name": "testpolicy",
 				}),
 
@@ -5296,7 +5296,7 @@ func TestHandlePoliciesPasswordGenerate(t *testing.T) {
 				expectErr:    true,
 			},
 			"policy improperly saved": {
-				inputData: passwordPoliciesFieldData(map[string]interface{}{
+				inputData: passwordPoliciesFieldData(map[string]any{
 					"name": "testpolicy",
 				}),
 
@@ -5307,7 +5307,7 @@ func TestHandlePoliciesPasswordGenerate(t *testing.T) {
 			},
 			"failed to generate": {
 				timeout: 0 * time.Second, // Timeout immediately
-				inputData: passwordPoliciesFieldData(map[string]interface{}{
+				inputData: passwordPoliciesFieldData(map[string]any{
 					"name": "testpolicy",
 				}),
 
@@ -5358,12 +5358,12 @@ func TestHandlePoliciesPasswordGenerate(t *testing.T) {
 				"}")
 		storage := makeStorage(t, policyEntry)
 
-		inputData := passwordPoliciesFieldData(map[string]interface{}{
+		inputData := passwordPoliciesFieldData(map[string]any{
 			"name": "testpolicy",
 		})
 
 		expectedResp := &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				// Doesn't include the password as that's pulled out and compared separately
 			},
 		}
@@ -5415,14 +5415,14 @@ func TestHandlePoliciesPasswordGenerate(t *testing.T) {
 	})
 }
 
-func assertTrue(t *testing.T, pass bool, f string, vals ...interface{}) {
+func assertTrue(t *testing.T, pass bool, f string, vals ...any) {
 	t.Helper()
 	if !pass {
 		t.Fatalf(f, vals...)
 	}
 }
 
-func assertHasKey(t *testing.T, m map[string]interface{}, key string, f string, vals ...interface{}) {
+func assertHasKey(t *testing.T, m map[string]any, key string, f string, vals ...any) {
 	t.Helper()
 	_, exists := m[key]
 	if !exists {
@@ -5430,7 +5430,7 @@ func assertHasKey(t *testing.T, m map[string]interface{}, key string, f string, 
 	}
 }
 
-func assertIsString(t *testing.T, val interface{}, f string, vals ...interface{}) {
+func assertIsString(t *testing.T, val any, f string, vals ...any) {
 	t.Helper()
 	_, ok := val.(string)
 	if !ok {
@@ -5438,7 +5438,7 @@ func assertIsString(t *testing.T, val interface{}, f string, vals ...interface{}
 	}
 }
 
-func passwordPoliciesFieldData(raw map[string]interface{}) *framework.FieldData {
+func passwordPoliciesFieldData(raw map[string]any) *framework.FieldData {
 	return &framework.FieldData{
 		Raw: raw,
 		Schema: map[string]*framework.FieldSchema{
@@ -5458,7 +5458,7 @@ func base64Encode(data string) string {
 	return base64.StdEncoding.EncodeToString([]byte(data))
 }
 
-func toJson(t *testing.T, val interface{}) []byte {
+func toJson(t *testing.T, val any) []byte {
 	t.Helper()
 
 	b, err := jsonutil.EncodeJSON(val)
@@ -5485,8 +5485,8 @@ func makeStorageMap(entries ...*logical.StorageEntry) map[string]*logical.Storag
 	return m
 }
 
-func dereferenceMap(store map[string]*logical.StorageEntry) map[string]interface{} {
-	m := map[string]interface{}{}
+func dereferenceMap(store map[string]*logical.StorageEntry) map[string]any {
+	m := map[string]any{}
 
 	for k, v := range store {
 		m[k] = map[string]string{
@@ -5667,7 +5667,7 @@ func makeStorage(t *testing.T, entries ...*logical.StorageEntry) *logical.InmemS
 }
 
 func leaseLimitFieldData(limit string) *framework.FieldData {
-	raw := make(map[string]interface{})
+	raw := make(map[string]any)
 	raw["limit"] = limit
 	return &framework.FieldData{
 		Raw: raw,
@@ -5858,7 +5858,7 @@ func TestSystemBackend_Loggers(t *testing.T) {
 			req = &logical.Request{
 				Path:      "loggers",
 				Operation: logical.UpdateOperation,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"level": tc.level,
 				},
 			}
@@ -6091,7 +6091,7 @@ func TestSystemBackend_LoggersByName(t *testing.T) {
 			req = &logical.Request{
 				Path:      fmt.Sprintf("loggers/%s", tc.logger),
 				Operation: logical.UpdateOperation,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"level": tc.level,
 				},
 			}
@@ -6343,7 +6343,7 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		{"kv", consts.PluginTypeSecrets, "mounts"},
 		{"approle", consts.PluginTypeCredential, "auth"},
 	}
-	readMountConfig := func(pluginName, mountTable string) map[string]interface{} {
+	readMountConfig := func(pluginName, mountTable string) map[string]any {
 		t.Helper()
 		req := logical.TestRequest(t, logical.ReadOperation, mountTable+"/"+pluginName)
 		resp, err := core.systemBackend.HandleRequest(ctx, req)
@@ -6357,7 +6357,7 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 	for _, tc := range testCases {
 		req := logical.TestRequest(t, logical.UpdateOperation, tc.mountTable+"/"+tc.pluginName)
 		req.Data["type"] = tc.pluginName
-		req.Data["config"] = map[string]interface{}{
+		req.Data["config"] = map[string]any{
 			"default_lease_ttl": "35m",
 			"max_lease_ttl":     "45m",
 			"plugin_version":    versions.GetBuiltinVersion(tc.pluginType, tc.pluginName),

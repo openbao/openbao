@@ -414,14 +414,14 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 
 	// Configure our mount to use auto-rotate, even though we don't have
 	// a periodic func.
-	resp, err := pki.CBWrite(b, s, "config/crl", map[string]interface{}{
+	resp, err := pki.CBWrite(b, s, "config/crl", map[string]any{
 		"auto_rebuild": true,
 		"enable_delta": true,
 	})
 	requireSuccessNonNilResponse(t, resp, err, "failed to configure certificate revocation list")
 
 	// Create a root and intermediate, setting the intermediate as default.
-	resp, err = pki.CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+	resp, err = pki.CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name":  "Root X1" + testSuffix,
 		"country":      "US",
 		"organization": "Dadgarcorp",
@@ -433,7 +433,7 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 	})
 	requireSuccessNonNilResponse(t, resp, err, "failed to create root cert")
 	rootCert := resp.Data["certificate"].(string)
-	resp, err = pki.CBWrite(b, s, "intermediate/generate/internal", map[string]interface{}{
+	resp, err = pki.CBWrite(b, s, "intermediate/generate/internal", map[string]any{
 		"common_name":  "Intermediate I1" + testSuffix,
 		"country":      "US",
 		"organization": "Dadgarcorp",
@@ -443,7 +443,7 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 		"use_pss":      caUsePSS,
 	})
 	requireSuccessNonNilResponse(t, resp, err, "failed to create intermediate csr")
-	resp, err = pki.CBWrite(b, s, "issuer/default/sign-intermediate", map[string]interface{}{
+	resp, err = pki.CBWrite(b, s, "issuer/default/sign-intermediate", map[string]any{
 		"common_name":  "Intermediate I1",
 		"country":      "US",
 		"organization": "Dadgarcorp",
@@ -453,17 +453,17 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 	})
 	requireSuccessNonNilResponse(t, resp, err, "failed to sign intermediate csr")
 	intCert := resp.Data["certificate"].(string)
-	resp, err = pki.CBWrite(b, s, "issuers/import/bundle", map[string]interface{}{
+	resp, err = pki.CBWrite(b, s, "issuers/import/bundle", map[string]any{
 		"pem_bundle": intCert,
 	})
 	requireSuccessNonNilResponse(t, resp, err, "failed to sign intermediate csr")
-	resp, err = pki.CBWrite(b, s, "config/issuers", map[string]interface{}{
+	resp, err = pki.CBWrite(b, s, "config/issuers", map[string]any{
 		"default": resp.Data["imported_issuers"].([]string)[0],
 	})
 	requireSuccessNonNilResponse(t, resp, err, "failed to configure issuer")
 
 	// Create a role+certificate valid for localhost only.
-	_, err = pki.CBWrite(b, s, "roles/testing", map[string]interface{}{
+	_, err = pki.CBWrite(b, s, "roles/testing", map[string]any{
 		"allow_any_name": true,
 		"key_type":       roleKeyType,
 		"key_bits":       roleKeyBits,
@@ -471,7 +471,7 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 		"ttl":            "60m",
 	})
 	require.NoError(t, err)
-	resp, err = pki.CBWrite(b, s, "issue/testing", map[string]interface{}{
+	resp, err = pki.CBWrite(b, s, "issue/testing", map[string]any{
 		"common_name": uniqueHostname,
 		"ip_sans":     "127.0.0.1,::1",
 		"sans":        uniqueHostname + ",localhost,localhost4,localhost6,localhost.localdomain",
@@ -486,7 +486,7 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 	}
 
 	// Issue a client leaf certificate.
-	resp, err = pki.CBWrite(b, s, "issue/testing", map[string]interface{}{
+	resp, err = pki.CBWrite(b, s, "issue/testing", map[string]any{
 		"common_name": "testing.client.dadgarcorp.com",
 	})
 	requireSuccessNonNilResponse(t, resp, err, "failed to create client leaf cert")
@@ -498,7 +498,7 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 
 	// Issue a client leaf cert and revoke it, placing it on the main CRL
 	// via rotation.
-	resp, err = pki.CBWrite(b, s, "issue/testing", map[string]interface{}{
+	resp, err = pki.CBWrite(b, s, "issue/testing", map[string]any{
 		"common_name": "revoked-crl.client.dadgarcorp.com",
 	})
 	requireSuccessNonNilResponse(t, resp, err, "failed to create revoked client leaf cert")
@@ -507,7 +507,7 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 	// revokedFullChain := revokedCert + "\n" + resp.Data["issuing_ca"].(string) + "\n"
 	// revokedTrustChain := resp.Data["issuing_ca"].(string) + "\n" + rootCert + "\n"
 	revokedCAChain := resp.Data["ca_chain"].([]string)
-	_, err = pki.CBWrite(b, s, "revoke", map[string]interface{}{
+	_, err = pki.CBWrite(b, s, "revoke", map[string]any{
 		"certificate": revokedCert,
 	})
 	require.NoError(t, err)
@@ -516,7 +516,7 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 
 	// Issue a client leaf cert and revoke it, placing it on the delta CRL
 	// via rotation.
-	/*resp, err = pki.CBWrite(b, s, "issue/testing", map[string]interface{}{
+	/*resp, err = pki.CBWrite(b, s, "issue/testing", map[string]any{
 	      "common_name": "revoked-delta-crl.client.dadgarcorp.com",
 	  })
 	  requireSuccessNonNilResponse(t, resp, err, "failed to create delta CRL revoked client leaf cert")
@@ -525,7 +525,7 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 	  //deltaFullChain := deltaCert + "\n" + resp.Data["issuing_ca"].(string) + "\n"
 	  //deltaTrustChain := resp.Data["issuing_ca"].(string) + "\n" + rootCert + "\n"
 	  deltaCAChain := resp.Data["ca_chain"].([]string)
-	  _, err = pki.CBWrite(b, s, "revoke", map[string]interface{}{
+	  _, err = pki.CBWrite(b, s, "revoke", map[string]any{
 	      "certificate": deltaCert,
 	  })
 	  require.NoError(t, err)
@@ -581,7 +581,7 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 	// Ensure OpenSSL will validate the delta CRL by revoking our server leaf
 	// and then using it with wget2. This will land on the intermediate's
 	// Delta CRL.
-	_, err = pki.CBWrite(b, s, "revoke", map[string]interface{}{
+	_, err = pki.CBWrite(b, s, "revoke", map[string]any{
 		"certificate": leafCert,
 	})
 	require.NoError(t, err)

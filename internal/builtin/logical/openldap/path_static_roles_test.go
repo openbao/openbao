@@ -20,7 +20,7 @@ func Test_backend_pathStaticRoleLifecycle(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      configPath,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"binddn":      "tester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -32,21 +32,21 @@ func Test_backend_pathStaticRoleLifecycle(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		createData    map[string]interface{}
-		updateData    map[string]interface{}
+		createData    map[string]any
+		updateData    map[string]any
 		wantCreateErr bool
 		wantUpdateErr bool
 	}{
 		{
 			name: "missing required username results in create error",
-			createData: map[string]interface{}{
+			createData: map[string]any{
 				"rotation_period": float64(5),
 			},
 			wantCreateErr: true,
 		},
 		{
 			name: "empty required username results in create error",
-			createData: map[string]interface{}{
+			createData: map[string]any{
 				"username":        "",
 				"rotation_period": float64(5),
 			},
@@ -54,7 +54,7 @@ func Test_backend_pathStaticRoleLifecycle(t *testing.T) {
 		},
 		{
 			name: "missing required rotation_period results in create error",
-			createData: map[string]interface{}{
+			createData: map[string]any{
 				"username": "bob",
 				"dn":       "uid=bob,ou=users,dc=hashicorp,dc=com",
 			},
@@ -62,7 +62,7 @@ func Test_backend_pathStaticRoleLifecycle(t *testing.T) {
 		},
 		{
 			name: "rotation_period less than 5 seconds results in create error",
-			createData: map[string]interface{}{
+			createData: map[string]any{
 				"username":        "bob",
 				"dn":              "uid=bob,ou=users,dc=hashicorp,dc=com",
 				"rotation_period": float64(2),
@@ -71,22 +71,22 @@ func Test_backend_pathStaticRoleLifecycle(t *testing.T) {
 		},
 		{
 			name: "modified username results in update error",
-			createData: map[string]interface{}{
+			createData: map[string]any{
 				"username":        "bob",
 				"rotation_period": float64(5),
 			},
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"username": "alice",
 			},
 			wantUpdateErr: true,
 		},
 		{
 			name: "including skip_import_rotation is an update error",
-			createData: map[string]interface{}{
+			createData: map[string]any{
 				"username":        "bob",
 				"rotation_period": float64(5),
 			},
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"username":             "bob",
 				"skip_import_rotation": false,
 			},
@@ -94,12 +94,12 @@ func Test_backend_pathStaticRoleLifecycle(t *testing.T) {
 		},
 		{
 			name: "modified dn results in update error",
-			createData: map[string]interface{}{
+			createData: map[string]any{
 				"username":        "bob",
 				"dn":              "uid=bob,ou=users,dc=hashicorp,dc=com",
 				"rotation_period": float64(5),
 			},
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"username": "bob",
 				"dn":       "uid=alice,ou=users,dc=hashicorp,dc=com",
 			},
@@ -107,46 +107,46 @@ func Test_backend_pathStaticRoleLifecycle(t *testing.T) {
 		},
 		{
 			name: "successful static role update with only username",
-			createData: map[string]interface{}{
+			createData: map[string]any{
 				"username":        "bob",
 				"rotation_period": float64(5),
 			},
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"username": "bob",
 			},
 		},
 		{
 			name: "successful static role update with missing dn",
-			createData: map[string]interface{}{
+			createData: map[string]any{
 				"username":        "bob",
 				"dn":              "uid=bob,ou=users,dc=hashicorp,dc=com",
 				"rotation_period": float64(5),
 			},
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"username":        "bob",
 				"rotation_period": float64(20),
 			},
 		},
 		{
 			name: "successful static role update with empty dn",
-			createData: map[string]interface{}{
+			createData: map[string]any{
 				"username":        "bob",
 				"dn":              "uid=bob,ou=users,dc=hashicorp,dc=com",
 				"rotation_period": float64(5),
 			},
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"username": "bob",
 				"dn":       "",
 			},
 		},
 		{
 			name: "successful static role update with new rotation_period",
-			createData: map[string]interface{}{
+			createData: map[string]any{
 				"username":        "bob",
 				"dn":              "uid=bob,ou=users,dc=hashicorp,dc=com",
 				"rotation_period": float64(5),
 			},
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"username":        "bob",
 				"dn":              "uid=bob,ou=users,dc=hashicorp,dc=com",
 				"rotation_period": float64(25),
@@ -236,7 +236,7 @@ func TestRoles(t *testing.T) {
 		b, storage := getBackend(t, false)
 		defer b.Cleanup(t.Context())
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn":      "tester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -255,7 +255,7 @@ func TestRoles(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		data = map[string]interface{}{
+		data = map[string]any{
 			"username":        "hashicorp",
 			"dn":              "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
 			"rotation_period": "5s",
@@ -305,7 +305,7 @@ func TestRoles(t *testing.T) {
 		b, storage := getBackend(t, false)
 		defer b.Cleanup(t.Context())
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn":      "tester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -325,7 +325,7 @@ func TestRoles(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		data = map[string]interface{}{
+		data = map[string]any{
 			"username":        "hashicorp",
 			"dn":              "",
 			"rotation_period": "5s",
@@ -376,7 +376,7 @@ func TestRoles(t *testing.T) {
 		b, storage := getBackend(t, false)
 		defer b.Cleanup(t.Context())
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn":      "tester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -395,7 +395,7 @@ func TestRoles(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		data = map[string]interface{}{
+		data = map[string]any{
 			"username":             "hashicorp",
 			"dn":                   "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
 			"rotation_period":      "10m",
@@ -447,7 +447,7 @@ func TestRoles(t *testing.T) {
 		b, storage := getBackend(t, false)
 		defer b.Cleanup(t.Context())
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn":      "tester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -466,7 +466,7 @@ func TestRoles(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		data = map[string]interface{}{
+		data = map[string]any{
 			"dn":              "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
 			"rotation_period": "5s",
 		}
@@ -491,7 +491,7 @@ func TestRoles(t *testing.T) {
 		b, storage := getBackend(t, false)
 		defer b.Cleanup(t.Context())
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn":      "tester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -510,7 +510,7 @@ func TestRoles(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		data = map[string]interface{}{
+		data = map[string]any{
 			"username": "hashicorp",
 			"dn":       "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
 		}
@@ -535,7 +535,7 @@ func TestRoles(t *testing.T) {
 		b, storage := getBackend(t, false)
 		defer b.Cleanup(t.Context())
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn":      "tester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -554,7 +554,7 @@ func TestRoles(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		data = map[string]interface{}{
+		data = map[string]any{
 			"username":        "hashicorp",
 			"dn":              "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
 			"rotation_period": "4s",
@@ -578,7 +578,7 @@ func TestRoles(t *testing.T) {
 		b, storage := getBackend(t, true)
 		defer b.Cleanup(t.Context())
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn":      "tester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -597,7 +597,7 @@ func TestRoles(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		data = map[string]interface{}{
+		data = map[string]any{
 			"username":        "hashicorp",
 			"dn":              "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
 			"rotation_period": "5s",
@@ -642,7 +642,7 @@ func TestListRoles(t *testing.T) {
 		b, storage := getBackend(t, false)
 		defer b.Cleanup(t.Context())
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"binddn":      "tester",
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
@@ -661,7 +661,7 @@ func TestListRoles(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		data = map[string]interface{}{
+		data = map[string]any{
 			"username":        "hashicorp",
 			"dn":              "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
 			"rotation_period": "5s",
@@ -679,7 +679,7 @@ func TestListRoles(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		data = map[string]interface{}{
+		data = map[string]any{
 			"username":        "vault",
 			"dn":              "uid=vault,ou=users,dc=hashicorp,dc=com",
 			"rotation_period": "5s",
@@ -730,7 +730,7 @@ func TestWALsStillTrackedAfterUpdate(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      staticRolePath + "hashicorp",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"username":        "hashicorp",
 			"dn":              "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
 			"rotation_period": "600s",
@@ -777,7 +777,7 @@ func TestWALsDeletedOnRoleCreationFailed(t *testing.T) {
 			Operation: logical.CreateOperation,
 			Path:      staticRolePath + "hashicorp",
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"username":        "hashicorp",
 				"dn":              "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
 				"rotation_period": "5s",
@@ -837,7 +837,7 @@ func configureOpenLDAPMount(t *testing.T, b *backend, storage logical.Storage) {
 func configureOpenLDAPMountWithPasswordPolicy(t *testing.T, b *backend, storage logical.Storage, policy string) {
 	t.Helper()
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"binddn":      "tester",
 		"bindpass":    "pa$$w0rd",
 		"url":         "ldap://138.91.247.105",
@@ -864,7 +864,7 @@ func createRole(t *testing.T, b *backend, storage logical.Storage, roleName stri
 		Operation: logical.CreateOperation,
 		Path:      "static-role/" + roleName,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"username":        roleName,
 			"dn":              "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
 			"rotation_period": "86400s",

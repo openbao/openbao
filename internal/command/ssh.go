@@ -381,7 +381,7 @@ func (c *SSHCommand) handleTypeCA(username, ip, port string, sshArgs []string) i
 	}
 
 	// Attempt to sign the public key
-	secret, err := sshClient.SignKey(c.flagRole, map[string]interface{}{
+	secret, err := sshClient.SignKey(c.flagRole, map[string]any{
 		// WARNING: publicKey is []byte, which is b64 encoded on JSON upload. We
 		// have to convert it to a string. SV lost many hours to this...
 		"public_key":       string(publicKey),
@@ -710,7 +710,7 @@ func (c *SSHCommand) generateCredential(username, ip string) (*api.Secret, *SSHC
 	sshClient := c.client.SSHWithMountPoint(c.flagMountPoint)
 
 	// Attempt to generate the credential.
-	secret, err := sshClient.Credential(c.flagRole, map[string]interface{}{
+	secret, err := sshClient.Credential(c.flagRole, map[string]any{
 		"username": username,
 		"ip":       ip,
 	})

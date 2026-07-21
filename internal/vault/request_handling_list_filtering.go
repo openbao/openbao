@@ -64,9 +64,9 @@ func (c *Core) filterListResponse(ctx context.Context, req *logical.Request, una
 		c.logger.Error("invalid type for parameter keys on filtered list response", "path", req.Path, "type", fmt.Sprintf("%T", keysRaw))
 		return ErrInternalError
 	}
-	var keyInfo map[string]interface{}
+	var keyInfo map[string]any
 	if keyInfoPresent {
-		keyInfo, ok = keyInfoRaw.(map[string]interface{})
+		keyInfo, ok = keyInfoRaw.(map[string]any)
 		if !ok {
 			c.logger.Error("invalid type for parameter key_info on filtered list response", "path", req.Path, "type", fmt.Sprintf("%T", keysRaw))
 			return ErrInternalError
@@ -99,7 +99,7 @@ func (c *Core) filterListResponse(ctx context.Context, req *logical.Request, una
 			Operation: op,
 			Path:      checkPath,
 			Headers:   req.Headers,
-			Data:      map[string]interface{}{},
+			Data:      map[string]any{},
 		}
 
 		rootPath := c.router.RootPath(ctx, checkPath)
@@ -125,7 +125,7 @@ func (c *Core) filterListResponse(ctx context.Context, req *logical.Request, una
 	resp.Data["keys"] = filteredKeys
 
 	if keyInfoPresent {
-		filteredInfo := make(map[string]interface{}, len(filteredKeys))
+		filteredInfo := make(map[string]any, len(filteredKeys))
 		for _, key := range filteredKeys {
 			if data, present := keyInfo[key]; present {
 				filteredInfo[key] = data

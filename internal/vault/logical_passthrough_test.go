@@ -54,10 +54,10 @@ func TestPassthroughBackend_Write(t *testing.T) {
 }
 
 func TestPassthroughBackend_Read(t *testing.T) {
-	test := func(b logical.Backend, ttlType string, ttl interface{}, leased bool) {
+	test := func(b logical.Backend, ttlType string, ttl any, leased bool) {
 		req := logical.TestRequest(t, logical.UpdateOperation, "foo")
 		req.Data["raw"] = "test"
-		var reqTTL interface{}
+		var reqTTL any
 		switch tt := ttl.(type) {
 		case int64:
 			reqTTL = tt
@@ -106,7 +106,7 @@ func TestPassthroughBackend_Read(t *testing.T) {
 					TTL:       expectedTTL,
 				},
 			},
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"raw":   "test",
 				ttlType: reqTTL,
 			},
@@ -183,7 +183,7 @@ func TestPassthroughBackend_List(t *testing.T) {
 		}
 
 		expected := &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"keys": []string{"foo"},
 			},
 		}
@@ -203,7 +203,7 @@ func TestPassthroughBackend_Revoke(t *testing.T) {
 		t.Helper()
 		req := logical.TestRequest(t, logical.RevokeOperation, "kv")
 		req.Secret = &logical.Secret{
-			InternalData: map[string]interface{}{
+			InternalData: map[string]any{
 				"secret_type": "kv",
 			},
 		}

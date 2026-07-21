@@ -178,7 +178,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, data *fra
 	maps.Copy(metadata, b.certificateExtensionsMetadata(clientCerts[0], matched))
 
 	auth := &logical.Auth{
-		InternalData: map[string]interface{}{
+		InternalData: map[string]any{
 			"certificate":      cert,
 			"subject_key_id":   skid,
 			"authority_key_id": akid,
@@ -238,7 +238,7 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 		// request data and bind the verification to the original
 		// certificate's role.
 		roleData := &framework.FieldData{
-			Raw: map[string]interface{}{
+			Raw: map[string]any{
 				"name": req.Auth.Metadata["cert_name"],
 			},
 			Schema: loginSchema,

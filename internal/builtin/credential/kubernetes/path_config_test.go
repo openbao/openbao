@@ -46,12 +46,12 @@ func setupLocalFiles(t *testing.T, b logical.Backend) func() {
 func TestConfig_Read(t *testing.T) {
 	tests := []struct {
 		name string
-		data map[string]interface{}
-		want map[string]interface{}
+		data map[string]any
+		want map[string]any
 	}{
 		{
 			name: "token-review-jwt-is-unset",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"pem_keys":               []string{testRSACert, testECCert},
 				"kubernetes_host":        "host",
 				"kubernetes_ca_cert":     testCACert,
@@ -59,7 +59,7 @@ func TestConfig_Read(t *testing.T) {
 				"disable_iss_validation": false,
 				"disable_local_ca_jwt":   false,
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"pem_keys":               []string{testRSACert, testECCert},
 				"kubernetes_host":        "host",
 				"kubernetes_ca_cert":     testCACert,
@@ -71,7 +71,7 @@ func TestConfig_Read(t *testing.T) {
 		},
 		{
 			name: "token-review-jwt-is-set",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"pem_keys":               []string{testRSACert, testECCert},
 				"kubernetes_host":        "host",
 				"kubernetes_ca_cert":     testCACert,
@@ -80,7 +80,7 @@ func TestConfig_Read(t *testing.T) {
 				"disable_local_ca_jwt":   false,
 				"token_reviewer_jwt":     "test-token-review-jwt",
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"pem_keys":               []string{testRSACert, testECCert},
 				"kubernetes_host":        "host",
 				"kubernetes_ca_cert":     testCACert,
@@ -136,7 +136,7 @@ func TestConfig(t *testing.T) {
 	defer cleanup()
 
 	// test no certificate
-	data := map[string]interface{}{
+	data := map[string]any{
 		"kubernetes_host": "host",
 	}
 
@@ -153,7 +153,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	// test no host
-	data = map[string]interface{}{
+	data = map[string]any{
 		"pem_keys": testRSACert,
 	}
 
@@ -173,7 +173,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	// test invalid cert
-	data = map[string]interface{}{
+	data = map[string]any{
 		"pem_keys":        "bad",
 		"kubernetes_host": "host",
 	}
@@ -194,7 +194,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	// Test success with no certs
-	data = map[string]interface{}{
+	data = map[string]any{
 		"kubernetes_host":    "host",
 		"kubernetes_ca_cert": testCACert,
 	}
@@ -231,7 +231,7 @@ func TestConfig(t *testing.T) {
 	jwtGoodDataToken := jwtGoodDataToken()
 
 	// Test success TokenReviewer
-	data = map[string]interface{}{
+	data = map[string]any{
 		"kubernetes_host":    "host",
 		"kubernetes_ca_cert": testCACert,
 		"token_reviewer_jwt": jwtGoodDataToken,
@@ -277,7 +277,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	// Test success with one cert
-	data = map[string]interface{}{
+	data = map[string]any{
 		"pem_keys":           testRSACert,
 		"kubernetes_host":    "host",
 		"kubernetes_ca_cert": testCACert,
@@ -319,7 +319,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	// Test success with two certs
-	data = map[string]interface{}{
+	data = map[string]any{
 		"pem_keys":           []string{testRSACert, testECCert},
 		"kubernetes_host":    "host",
 		"kubernetes_ca_cert": testCACert,
@@ -366,7 +366,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	// Test success with disabled iss validation
-	data = map[string]interface{}{
+	data = map[string]any{
 		"kubernetes_host":        "host",
 		"kubernetes_ca_cert":     testCACert,
 		"disable_iss_validation": true,
@@ -415,12 +415,12 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 	jwtGoodDataToken := jwtGoodDataToken()
 
 	testCases := map[string]struct {
-		config              map[string]interface{}
+		config              map[string]any
 		setupInClusterFiles bool
 		expected            *kubeConfig
 	}{
 		"no CA or JWT, default to local": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"kubernetes_host": "host",
 			},
 			setupInClusterFiles: true,
@@ -435,7 +435,7 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 			},
 		},
 		"CA set, default to local JWT": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"kubernetes_host":    "host",
 				"kubernetes_ca_cert": testCACert,
 			},
@@ -451,7 +451,7 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 			},
 		},
 		"JWT set, default to local CA": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"kubernetes_host":    "host",
 				"token_reviewer_jwt": jwtGoodDataToken,
 			},
@@ -467,7 +467,7 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 			},
 		},
 		"CA and disable local default": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"kubernetes_host":      "host",
 				"kubernetes_ca_cert":   testCACert,
 				"disable_local_ca_jwt": true,
@@ -546,7 +546,7 @@ func TestConfig_LocalJWTRenewal(t *testing.T) {
 		t.Error(err)
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"kubernetes_host": "host",
 	}
 	req := &logical.Request{

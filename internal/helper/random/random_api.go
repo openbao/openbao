@@ -86,7 +86,7 @@ func HandleRandomAPI(d *framework.FieldData) (*logical.Response, error) {
 
 	// Generate the response
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"random_bytes": retStr,
 		},
 	}

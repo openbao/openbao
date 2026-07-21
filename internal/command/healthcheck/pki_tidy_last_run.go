@@ -34,14 +34,14 @@ func (h *TidyLastRun) IsEnabled() bool {
 	return h.Enabled
 }
 
-func (h *TidyLastRun) DefaultConfig() map[string]interface{} {
-	return map[string]interface{}{
+func (h *TidyLastRun) DefaultConfig() map[string]any {
+	return map[string]any{
 		"last_run_critical": "7d",
 		"last_run_warning":  "2d",
 	}
 }
 
-func (h *TidyLastRun) LoadConfig(config map[string]interface{}) error {
+func (h *TidyLastRun) LoadConfig(config map[string]any) error {
 	var err error
 	h.LastRunCritical, err = parseutil.ParseDurationSecond(config["last_run_critical"])
 	if err != nil {

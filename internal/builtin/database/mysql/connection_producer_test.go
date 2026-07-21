@@ -70,7 +70,7 @@ ssl-key=/etc/mysql/certs/server-key.pem`
 	// Test
 	mysql := newMySQL(DefaultUserNameTemplate)
 
-	conf := map[string]interface{}{
+	conf := map[string]any{
 		"connection_url":      retURL,
 		"username":            username,
 		"tls_certificate_key": clientCert.CombinedPEM(),

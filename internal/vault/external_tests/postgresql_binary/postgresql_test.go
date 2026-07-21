@@ -10,12 +10,15 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
+	thpsql "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/physical"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -137,8 +140,6 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 }
 
 func TestPostgreSQL_ParallelInit(t *testing.T) {
-	t.Parallel()
-
 	binary := api.ReadBaoVariable("BAO_BINARY")
 	if binary == "" {
 		t.Skip("missing $BAO_BINARY")
@@ -204,8 +205,6 @@ func TestPostgreSQL_ParallelInit(t *testing.T) {
 }
 
 func TestPostgreSQL_FatalInit(t *testing.T) {
-	t.Parallel()
-
 	binary := api.ReadBaoVariable("BAO_BINARY")
 	if binary == "" {
 		t.Skip("missing $BAO_BINARY")
@@ -259,8 +258,6 @@ func TestPostgreSQL_FatalInit(t *testing.T) {
 }
 
 func TestPostgreSQL_Upgrade(t *testing.T) {
-	t.Parallel()
-
 	binary := api.ReadBaoVariable("BAO_BINARY")
 	if binary == "" {
 		t.Skip("missing $BAO_BINARY")
@@ -326,4 +323,228 @@ func TestPostgreSQL_Upgrade(t *testing.T) {
 	value, err := client.KVv2("kv").Get(t.Context(), "a/key")
 	require.NoError(t, err, "failed reading k/v key")
 	require.Equal(t, value.Data["value"], "known-value")
+}
+
+func TestPostgreSQL_Scalability(t *testing.T) {
+	binary := api.ReadBaoVariable("BAO_BINARY")
+	if binary == "" {
+		t.Skip("missing $BAO_BINARY")
+	}
+
+	pLogger := logging.NewVaultLogger(log.Trace).Named("postgresql-cluster")
+	cLogger := logging.NewVaultLogger(log.Trace).Named("openbao-cluster")
+
+	var returned atomic.Int32
+	var nodesOnPrimary int32 = 2
+
+	mapper := func(ctx context.Context, cluster *thpsql.Cluster) (string, error) {
+		index := returned.Add(1)
+		if index <= nodesOnPrimary {
+			return cluster.Primary.InternalURL(ctx)
+		}
+
+		if index == nodesOnPrimary+1 {
+			node, err := cluster.AddNode(ctx)
+			if err != nil {
+				return "", fmt.Errorf("failed to add replica: %w", err)
+			}
+
+			return node.InternalURL(ctx)
+		}
+
+		return cluster.Nodes[1].InternalURL(ctx)
+	}
+
+	pCluster, err := docker.NewPostgreSQLClusterStorage(t.Context(), pLogger, "scalability", "", mapper)
+	require.NoError(t, err)
+
+	defer func() { require.NoError(t, pCluster.Cleanup()) }()
+
+	opts := &docker.DockerClusterOptions{
+		ImageRepo:   "quay.io/openbao/openbao",
+		ImageTag:    "latest",
+		Storage:     pCluster,
+		VaultBinary: binary,
+		ClusterOptions: testcluster.ClusterOptions{
+			VaultNodeConfig: &testcluster.VaultNodeConfig{
+				// Audit logs help with debugging.
+				AuditLogStdout:      true,
+				LogLevel:            "TRACE",
+				DisableStandbyReads: false,
+			},
+			ClusterName: "psql-upgrade",
+			NumCores:    3,
+			Logger:      cLogger,
+		},
+	}
+
+	cluster := docker.NewTestDockerCluster(t, opts)
+	defer cluster.Cleanup()
+
+	nodes := cluster.Nodes()
+	client := nodes[0].APIClient()
+
+	t.Logf("token: %v vs %v", client.Token(), cluster.GetRootToken())
+
+	// Create some data to test persistence.
+	err = client.Sys().Mount("kv", &api.MountInput{
+		Type: "kv",
+		Options: map[string]string{
+			"version": "2",
+		},
+	})
+	require.NoError(t, err, "failed to mount kv")
+
+	_, err = client.KVv2("kv").Put(t.Context(), "a/key", map[string]any{
+		"value": "known-value",
+	})
+	require.NoError(t, err, "failed writing k/v key")
+
+	// Read the key; it should exist.
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		for index, node := range cluster.Nodes() {
+			nodeClientCfg := node.APIClient().CloneConfig()
+
+			// Do not allow redirects from standby->active; force local
+			// handling and/or GRPC transparent forwarding.
+			nodeClientCfg.DisableRedirects = true
+
+			nodeClient, err := api.NewClient(nodeClientCfg)
+			require.NoError(t, err, "failed to create client from config for node %v", index)
+
+			nodeClient.SetToken(node.APIClient().Token())
+
+			resp, err := nodeClient.KVv2("kv").Get(t.Context(), "a/key")
+			require.NoError(collect, err, "on node %v", index)
+			require.NotNil(collect, resp, "on node %v", index)
+			require.Equal(collect, resp.Data["value"], "known-value", "on node %v", index)
+		}
+	}, 15*time.Second, 100*time.Millisecond)
+
+	// Eventually we should be able to write to the primary but fail to see
+	// it immediately on the read-only tertiary.
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		primary := nodes[0].APIClient()
+		standby := nodes[2].APIClient()
+
+		value, err := uuid.GenerateUUID()
+		require.NoError(collect, err, "failed to generate UUID")
+
+		_, err = primary.KVv2("kv").Put(t.Context(), "a/key", map[string]any{
+			"value": value,
+		})
+		require.NoError(collect, err, "failed writing k/v key on primary")
+
+		resp, err := standby.KVv2("kv").Get(t.Context(), "a/key")
+		require.NoError(collect, err, "failed reading k/v key on tertiary")
+		require.NotNil(collect, resp, "failed reading k/v key on tertiary")
+		require.NotEqual(collect, resp.Data["value"], value)
+	}, 15*time.Second, 1*time.Millisecond)
+
+	// Sealing the primary should result in the secondary taking over.
+	err = nodes[0].APIClient().Sys().Seal()
+	require.NoError(t, err)
+
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		_, err = nodes[1].APIClient().KVv2("kv").Put(t.Context(), "a/key", map[string]any{
+			"value": "post-transfer-known-value",
+		})
+		require.NoError(collect, err, "failed writing k/v key")
+	}, 15*time.Second, 100*time.Millisecond)
+
+	// This should eventually be visible on the secondary node.
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		nodeClientCfg := nodes[2].APIClient().CloneConfig()
+
+		// Do not allow redirects from standby->active; force local
+		// handling and/or GRPC transparent forwarding.
+		nodeClientCfg.DisableRedirects = true
+
+		nodeClient, err := api.NewClient(nodeClientCfg)
+		require.NoError(t, err, "failed to create client from config for node 2")
+
+		nodeClient.SetToken(client.Token())
+
+		resp, err := nodeClient.KVv2("kv").Get(t.Context(), "a/key")
+		require.NoError(collect, err, "on node 2")
+		require.NotNil(collect, resp, "on node 2")
+		require.Equal(collect, resp.Data["value"], "post-transfer-known-value", "on node 2")
+	}, 15*time.Second, 100*time.Millisecond)
+
+	// Sealing the secondary should result in no requests being handled: the
+	// tertiary is on a read-only node.
+	err = nodes[1].APIClient().Sys().Seal()
+	require.NoError(t, err)
+
+	resp, err := nodes[2].APIClient().KVv2("kv").Get(t.Context(), "a/key")
+	require.Error(t, err)
+	require.Nil(t, resp)
+
+	// Unsealing should work.
+	err = testcluster.UnsealAllNodes(t.Context(), cluster)
+	require.NoError(t, err)
+
+	// All nodes should have the same data
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		for index, node := range cluster.Nodes() {
+			nodeClientCfg := node.APIClient().CloneConfig()
+
+			// Do not allow redirects from standby->active; force local
+			// handling and/or GRPC transparent forwarding.
+			nodeClientCfg.DisableRedirects = true
+
+			nodeClient, err := api.NewClient(nodeClientCfg)
+			require.NoError(t, err, "failed to create client from config for node %v", index)
+
+			nodeClient.SetToken(node.APIClient().Token())
+
+			resp, err := nodeClient.KVv2("kv").Get(t.Context(), "a/key")
+			require.NoError(collect, err, "on node %v", index)
+			require.NotNil(collect, resp, "on node %v", index)
+			require.Equal(collect, resp.Data["value"], "post-transfer-known-value", "on node %v", index)
+		}
+	}, 15*time.Second, 100*time.Millisecond)
+
+	// Taking down the primary PostgreSQL node should cause problems for all
+	// nodes talking to it.
+	require.NoError(t, pCluster.Cluster.RemovePrimary(t.Context()))
+	time.Sleep(2 * time.Second)
+
+	start := time.Now()
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		for index, node := range cluster.Nodes()[0:1] {
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+			defer cancel()
+
+			_, err = node.APIClient().KVv2("kv").Put(ctx, "a/key", map[string]any{
+				"value": "post-removal-known-value",
+			})
+			require.Error(collect, err, "on node %v / duration %v", index, time.Since(start))
+
+			resp, err := node.APIClient().KVv2("kv").Get(ctx, "a/key")
+			require.Error(collect, err, "on node %v / duration: %v", index, time.Since(start))
+			require.Nil(collect, resp, "on node %v / duration: %v", index, time.Since(start))
+		}
+	}, 30*time.Second, 100*time.Millisecond)
+
+	// We should be able to promote the replica and the tertiary should follow.
+	require.NoError(t, pCluster.Cluster.PromoteNode(t.Context(), 0))
+	time.Sleep(2 * time.Second)
+
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		for index, node := range cluster.Nodes()[2:] {
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+			defer cancel()
+
+			_, err = nodes[2].APIClient().KVv2("kv").Put(ctx, "a/key", map[string]any{
+				"value": "post-failover-known-value",
+			})
+			require.NoError(collect, err, "failed writing k/v key")
+
+			resp, err := node.APIClient().KVv2("kv").Get(ctx, "a/key")
+			require.NoError(collect, err, "on node %v", index)
+			require.NotNil(collect, resp, "on node %v", index)
+			require.Equal(collect, resp.Data["value"], "post-failover-known-value", "on node %v", index)
+		}
+	}, 30*time.Second, 100*time.Millisecond)
 }

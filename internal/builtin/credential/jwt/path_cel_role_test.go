@@ -119,3 +119,115 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 		})
 	}
 }
+
+func TestJwt_CelRoleCRUD(t *testing.T) {
+	b, storage := getBackend(t)
+	path := "cel/role/testrole"
+
+	type TestCase struct {
+		operation    logical.Operation
+		data         map[string]any
+		expectedRole map[string]any
+	}
+
+	cases := []TestCase{{
+		operation: logical.UpdateOperation,
+		data: map[string]any{
+			"cel_program": map[string]any{
+				"expression": "1 == 1",
+			},
+			"clock_skew_leeway": 10,
+			"expiration_leeway": 11,
+			"not_before_leeway": 12,
+		},
+		expectedRole: map[string]any{
+			"bound_audiences": []string{},
+			"cel_program": &celhelper.Program{
+				Expression: "1 == 1",
+			},
+			"clock_skew_leeway": int64(10),
+			"expiration_leeway": int64(11),
+			"message":           "",
+			"name":              "testrole",
+			"not_before_leeway": int64(12),
+		},
+	}, {
+		operation: logical.PatchOperation,
+		data: map[string]any{
+			"message":         "my-message",
+			"bound_audiences": "a,b,c",
+			"cel_program": map[string]any{
+				"variables": []map[string]any{{
+					"name":       "x",
+					"expression": "true",
+				}},
+			},
+			"clock_skew_leeway": 120,
+		},
+		// should keep previous fields + updates
+		expectedRole: map[string]any{
+			"bound_audiences": []string{"a", "b", "c"},
+			"cel_program": &celhelper.Program{
+				Expression: "1 == 1",
+				Variables:  []celhelper.Variable{{Name: "x", Expression: "true"}},
+			},
+			"clock_skew_leeway": int64(120),
+			"expiration_leeway": int64(11),
+			"message":           "my-message",
+			"name":              "testrole",
+			"not_before_leeway": int64(12),
+		},
+	}, {
+		operation: logical.UpdateOperation,
+		data: map[string]any{
+			"cel_program": map[string]any{
+				"expression": "2 == 2",
+			},
+		},
+		// this time we expect the defaults to be restored
+		expectedRole: map[string]any{
+			"bound_audiences": []string{},
+			"cel_program": &celhelper.Program{
+				Expression: "2 == 2",
+			},
+			"clock_skew_leeway": int64(60),
+			"expiration_leeway": int64(150),
+			"message":           "",
+			"name":              "testrole",
+			"not_before_leeway": int64(150),
+		},
+	}, {
+		operation:    logical.DeleteOperation,
+		data:         nil,
+		expectedRole: nil,
+	}}
+
+	for i, tc := range cases {
+		t.Logf("executing case %d: %s", i, tc.operation)
+		roleReq := &logical.Request{
+			Operation: tc.operation,
+			Path:      path,
+			Storage:   storage,
+			Data:      tc.data,
+		}
+		resp, err := b.HandleRequest(t.Context(), roleReq)
+		require.NoError(t, err)
+		if tc.expectedRole == nil {
+			require.Nil(t, resp)
+			continue
+		}
+		require.NotNil(t, resp)
+		require.NoError(t, resp.Error())
+
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      path,
+			Storage:   storage,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NoError(t, resp.Error())
+
+		require.Equal(t, resp.Data, tc.expectedRole)
+	}
+}

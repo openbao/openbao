@@ -25,8 +25,9 @@ var DefaultCustomHeaders = map[string]map[string]string{
 	},
 }
 
+//go:fix inline
 func boolPointer(x bool) *bool {
-	return &x
+	return new(x)
 }
 
 func testConfigRaftRetryJoin(t *testing.T) {

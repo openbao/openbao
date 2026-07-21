@@ -23,7 +23,7 @@ func TestMetricFilterConfigs(t *testing.T) {
 		},
 		{
 			"./test-fixtures/telemetry/filter_default_override.hcl",
-			boolPointer(false),
+			new(false),
 			[]string(nil),
 		},
 	}

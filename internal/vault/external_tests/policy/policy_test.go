@@ -468,6 +468,23 @@ path "kv/metadata/" {
 	require.NotNil(t, resp.Data)
 	require.Equal(t, 10, len(resp.Data["keys"].([]interface{})))
 
+	// Test '0' value.
+	resp, err = client.Logical().ReadWithData("kv/metadata/d", map[string][]string{
+		"list":  {"true"},
+		"limit": {"0"},
+	})
+	require.NoError(t, err, "failed to list with limit=0")
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Data)
+	require.Equal(t, 10, len(resp.Data["keys"].([]interface{})))
+
+	// Negative values are denied.
+	_, err = client.Logical().ReadWithData("kv/metadata/d", map[string][]string{
+		"list":  {"true"},
+		"limit": {"-1"},
+	})
+	require.ErrorContains(t, err, "permission denied", "expected failure to list with limit=-1")
+
 	// This endpoint has no limit.
 	resp, err = client.Logical().ReadWithData("kv/metadata/a", map[string][]string{
 		"list":  {"true"},

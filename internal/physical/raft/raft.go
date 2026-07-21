@@ -69,6 +69,7 @@ var (
 	_ physical.Transactional            = (*RaftBackend)(nil)
 	_ physical.HABackend                = (*RaftBackend)(nil)
 	_ physical.CacheInvalidationBackend = (*RaftBackend)(nil)
+	_ physical.ReplicationIndexBackend  = (*RaftBackend)(nil)
 	_ physical.Lock                     = (*RaftLock)(nil)
 )
 
@@ -1191,6 +1192,28 @@ func (b *RaftBackend) AppliedIndex() uint64 {
 	// raft.AppliedIndex() due to the async nature of the raft library.
 	indexState, _ := b.fsm.LatestState()
 	return indexState.Index
+}
+
+// AppliedReplicationIndex returns the last index applied to the FSM as
+// an opaque identifier.
+func (b *RaftBackend) AppliedReplicationIndex(_ context.Context) (string, error) {
+	return strconv.FormatUint(b.AppliedIndex(), 10), nil
+}
+
+// GreaterEqualReplicationIndex returns whether the left index is greater
+// than or equal to the right index.
+func (b *RaftBackend) GreaterEqualReplicationIndex(ctx context.Context, left string, right string) (bool, error) {
+	leftInt, err := strconv.ParseUint(left, 10, 64)
+	if err != nil {
+		return false, fmt.Errorf("error parsing left: %w", err)
+	}
+
+	rightInt, err := strconv.ParseUint(right, 10, 64)
+	if err != nil {
+		return false, fmt.Errorf("error parsing right: %w", err)
+	}
+
+	return leftInt >= rightInt, nil
 }
 
 // Term returns the raft term of this node.

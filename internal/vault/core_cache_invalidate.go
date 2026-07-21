@@ -52,13 +52,13 @@ type invalidationManager struct {
 
 	// Invalidate stages pending invalidations into this queue.
 	pendingLock   sync.Mutex
-	enabled       atomic.Bool
+	accepting     atomic.Bool
 	pending       []string
 	pendingNotify chan struct{}
 
 	// quitCh notifies that we should stop actively processing invalidations.
 	//
-	// We'll still keep appending to pending, though, assuming enabled=true
+	// We'll still keep appending to pending, though, assuming accepting=true
 	quitCh      chan struct{}
 	quitContext context.Context
 	doneCh      chan struct{}
@@ -81,13 +81,21 @@ func (core *Core) NewInvalidationManager() {
 }
 
 func (im *invalidationManager) Track() {
-	// Clear any leftover remaining items.
-	im.pendingLock.Lock()
-	im.pending = nil
-	im.pendingLock.Unlock()
+	if im.accepting.Load() {
+		return
+	}
 
-	// Start tracking new changes.
-	im.enabled.Store(true)
+	// Clear any leftover remaining items if we're changing state.
+	im.pendingLock.Lock()
+	defer im.pendingLock.Unlock()
+
+	// Revalidate that we should clear the queue, holding the lock.
+	if im.accepting.Load() {
+		return
+	}
+
+	im.pending = nil
+	im.accepting.Store(true)
 }
 
 func (im *invalidationManager) Start(ctx context.Context) {
@@ -103,12 +111,12 @@ func (im *invalidationManager) Start(ctx context.Context) {
 	go im.processPendingQueue(im.quitCh, im.quitContext, im.doneCh)
 }
 
-func (im *invalidationManager) Stop() error {
+func (im *invalidationManager) Stop() {
 	im.dispacherLogger.Debug("stop triggered")
 	defer im.dispacherLogger.Debug("finished stopping")
 
 	// Prevent enqueuing more items.
-	im.enabled.Store(false)
+	im.accepting.Store(false)
 
 	// Close the quit channel to cancel any yet-to-be-dispatched.
 	if im.quitCh != nil {
@@ -144,8 +152,6 @@ func (im *invalidationManager) Stop() error {
 	im.quitContext = nil
 	im.dispatcher = nil
 	im.doneCh = nil
-
-	return nil
 }
 
 func (im *invalidationManager) processPendingQueue(quitCh chan struct{}, quitContext context.Context, doneCh chan struct{}) {
@@ -544,12 +550,12 @@ func (ij *invalidationJob) OnFailure(err error) {
 
 	// This was a fatal failure; dispatch a restart.
 	ij.im.dispacherLogger.Error("fatal failure dispatching invalidation; restarting core", "key", ij.key, "err", err)
-	ij.im.core.restart()
+	ij.im.core.Restart()
 }
 
 func (im *invalidationManager) Add(key ...string) {
-	// Skip invalidations if we're not enabled yet.
-	if !im.enabled.Load() {
+	// Skip invalidations if we're not accepting invalidations yet.
+	if !im.accepting.Load() {
 		return
 	}
 

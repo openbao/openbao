@@ -616,6 +616,14 @@ CHECK:
 					if val > permissions.PaginationLimit {
 						return ret
 					}
+					// deny negative limits
+					if val < 0 {
+						return ret
+					}
+					// And if the value is zero, we set it to the maximum allowed.
+					if val == 0 {
+						req.Data[limitParameterName] = strconv.Itoa(permissions.PaginationLimit)
+					}
 				}
 			}
 		} else {

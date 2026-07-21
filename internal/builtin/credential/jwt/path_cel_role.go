@@ -315,9 +315,13 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 	}
 
 	entry := &celRoleEntry{
-		Name:    roleName,
-		Program: oldEntry.Program,
-		Message: data.GetWithExplicitDefault("message", oldEntry.Message).(string),
+		Name:             roleName,
+		Program:          oldEntry.Program,
+		Message:          data.GetWithExplicitDefault("message", oldEntry.Message).(string),
+		NotBeforeLeeway:  data.GetTimeWithExplicitDefault("not_before_leeway", oldEntry.NotBeforeLeeway),
+		ClockSkewLeeway:  data.GetTimeWithExplicitDefault("clock_skew_leeway", oldEntry.ClockSkewLeeway),
+		ExpirationLeeway: data.GetTimeWithExplicitDefault("expiration_leeway", oldEntry.ExpirationLeeway),
+		BoundAudiences:   data.GetWithExplicitDefault("bound_audiences", oldEntry.BoundAudiences).([]string),
 	}
 
 	// Update the program field if provided.

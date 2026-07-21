@@ -17,6 +17,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -798,4 +799,43 @@ func TestPostgreSQLBackend_ParallelTables(t *testing.T) {
 	logger.Info("Running basic backend tests")
 	physical.ExerciseBackend(t, b1)
 	physical.ExerciseBackend(t, b2)
+}
+
+func TestPostgreSQLBackend_Clustered(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.NewVaultLogger(log.Debug)
+
+	primary, secondary, cleanup := GetTestReplicatedPostgreSQLBackend(t, "clustered", logger)
+	defer cleanup()
+
+	logger.Info("Running basic backend tests")
+	physical.ExerciseBackend(t, primary)
+
+	logger.Info("Ensuring cross-node data visibility")
+	err := primary.Put(t.Context(), &physical.Entry{
+		Key:   "foo",
+		Value: []byte("testing"),
+	})
+	require.NoError(t, err)
+
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		contents, err := secondary.List(t.Context(), "")
+		require.NoError(collect, err)
+		require.Contains(collect, contents, "foo")
+
+		entry, err := secondary.Get(t.Context(), "foo")
+		require.NoError(collect, err)
+		require.Equal(collect, entry.Value, []byte("testing"))
+
+		primaryIndex, err := primary.(physical.ReplicationIndexBackend).AppliedReplicationIndex(t.Context())
+		require.NoError(collect, err)
+
+		secondaryIndex, err := secondary.(physical.ReplicationIndexBackend).AppliedReplicationIndex(t.Context())
+		require.NoError(collect, err)
+
+		require.Equal(collect, primaryIndex, secondaryIndex)
+	}, 10*time.Second, 100*time.Millisecond)
+
+	t.Logf("done")
 }

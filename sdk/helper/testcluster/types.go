@@ -123,6 +123,6 @@ type CA struct {
 type ClusterStorage interface {
 	Start(context.Context, *ClusterOptions) error
 	Cleanup() error
-	Opts() map[string]any
+	Opts(ctx context.Context) (map[string]any, error)
 	Type() string
 }

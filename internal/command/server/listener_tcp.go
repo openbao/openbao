@@ -74,6 +74,14 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 		ln = tls.NewListener(ln, tlsConfig)
 	}
 
+	if l.TLSAutoReload && l.TLSCertFile != "" && cg != nil {
+		paths := []string{l.TLSCertFile}
+		if l.TLSKeyFile != "" {
+			paths = append(paths, l.TLSKeyFile)
+		}
+		ln = listenerutil.NewTLSReloadListener(ln, paths, l.TLSAutoReloadInterval, cg.Reload, logger)
+	}
+
 	return ln, props, cg, nil
 }
 

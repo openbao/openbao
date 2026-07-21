@@ -75,8 +75,7 @@ func NewSealManager(core *Core, logger hclog.Logger) *SealManager {
 
 // SetupSealManager is called on core creation to initialize the seal manager.
 func (c *Core) SetupSealManager() {
-	sealLogger := c.baseLogger.Named("seals")
-	c.AddLogger(sealLogger)
+	sealLogger := c.namedLogger("seals")
 	c.sealManager = NewSealManager(c, sealLogger)
 	c.sealManager.Reset()
 }

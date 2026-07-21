@@ -2758,6 +2758,16 @@ func (c *Core) AddLogger(logger log.Logger) {
 	c.allLoggers = append(c.allLoggers, logger)
 }
 
+// namedLogger returns a sub-logger named name, derived from the base logger so
+// its prefix is preserved (see baseLogger), and registers it with the Core so
+// its level tracks dynamic log-level changes. It collapses the common
+// `logger := c.baseLogger.Named(name); c.AddLogger(logger)` idiom into one call.
+func (c *Core) namedLogger(name string) log.Logger {
+	logger := c.baseLogger.Named(name)
+	c.AddLogger(logger)
+	return logger
+}
+
 // SetLogLevel sets logging level for all tracked loggers to the level provided
 func (c *Core) SetLogLevel(level log.Level) {
 	c.allLoggersLock.RLock()
@@ -4015,8 +4025,7 @@ func (c *Core) setupPolicyStore(ctx context.Context) error {
 	// Create the policy store
 	var err error
 	sysView := &dynamicSystemView{core: c}
-	psLogger := c.baseLogger.Named("policy")
-	c.AddLogger(psLogger)
+	psLogger := c.namedLogger("policy")
 	c.policyStore, err = policy.NewStore(ctx, c, c.systemBarrierView, sysView, psLogger)
 	if err != nil {
 		return err

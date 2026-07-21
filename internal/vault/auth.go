@@ -1293,8 +1293,7 @@ func (c *Core) newCredentialBackend(ctx context.Context, entry *routing.MountEnt
 	conf["plugin_type"] = consts.PluginTypeCredential.String()
 	conf["plugin_version"] = entry.Version
 
-	authLogger := c.baseLogger.Named(fmt.Sprintf("auth.%s.%s", t, entry.Accessor))
-	c.AddLogger(authLogger)
+	authLogger := c.namedLogger(fmt.Sprintf("auth.%s.%s", t, entry.Accessor))
 
 	config := &logical.BackendConfig{
 		StorageView: view,

@@ -699,7 +699,7 @@ func (p *ParsedCertBundle) GetTLSConfig(usage TLSUsage) (*tls.Config, error) {
 }
 
 // IssueData is a structure that is suitable for marshaling into a request;
-// either via JSON, or into a map[string]interface{} via the structs package
+// either via JSON, or into a map[string]any via the structs package.
 type IssueData struct {
 	TTL        string `json:"ttl" structs:"ttl" mapstructure:"ttl"`
 	CommonName string `json:"common_name" structs:"common_name" mapstructure:"common_name"`

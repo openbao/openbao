@@ -148,15 +148,15 @@ func (eh *EvaluationHistory) getValue(block map[string]map[string]map[string]any
 
 // getField operates on the premise that the outer request object is always a
 // map; this is true even of list responses as they're contained in a regular
-// response map. However, inner items may be lists; in this case, a selector
-// of type []interface{} must be used to index arrays.
+// response map. However, inner items may be lists; in this case, a selector of
+// type []any must be used to index arrays.
 func (eh *EvaluationHistory) getField(obj any, rawFieldSelector []any) (any, error) {
 	for i, rawSelector := range rawFieldSelector {
 		switch selector := rawSelector.(type) {
 		case string:
 			mapBase, ok := obj.(map[string]any)
 			if !ok {
-				return nil, fmt.Errorf("object at depth %d (selector %q) was of wrong type: %T (expected map[string]interface{})", i, selector, obj)
+				return nil, fmt.Errorf("object at depth %d (selector %q) was of wrong type: %T (expected map[string]any)", i, selector, obj)
 			}
 
 			val, present := mapBase[selector]
@@ -172,7 +172,7 @@ func (eh *EvaluationHistory) getField(obj any, rawFieldSelector []any) (any, err
 		case int:
 			listBase, ok := obj.([]any)
 			if !ok {
-				return nil, fmt.Errorf("object at depth %d (selector %d) was of wrong type: %T (expected []interface{})", i, selector, obj)
+				return nil, fmt.Errorf("object at depth %d (selector %d) was of wrong type: %T (expected []any)", i, selector, obj)
 			}
 
 			if selector >= len(listBase) || selector < 0 {

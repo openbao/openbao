@@ -696,7 +696,7 @@ func TestLoginMFA_UpdateNonExistentConfig(t *testing.T) {
 	}
 }
 
-// This is for converting []interface{} that you know holds all strings into []string
+// This is for converting []any that you know holds all strings into []string.
 func stringSliceFromInterfaceSlice(input []any) []string {
 	result := make([]string, 0, len(input))
 	for _, x := range input {

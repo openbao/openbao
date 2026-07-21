@@ -159,7 +159,7 @@ func TestGSuiteProvider_FetchUserInfo(t *testing.T) {
 			expected: map[string]any{
 				// Fill in expected custom schema claims before running
 				// Example:
-				// "Preferences": map[string]interface{}{
+				// "Preferences": map[string]any{
 				// 	"shirt_size": "medium",
 				// },
 			},

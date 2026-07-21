@@ -74,7 +74,7 @@ initialize "auth" {
 		}
 		dataMap = v[0]
 	default:
-		t.Fatalf("expected RawConfig['data'] to be map or []map[string]interface{}, got %T", rawData)
+		t.Fatalf("expected RawConfig['data'] to be map or []map[string]any, got %T", rawData)
 	}
 
 	if pwd, ok := dataMap["password"].(string); !ok || pwd != "secret" {

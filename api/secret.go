@@ -338,7 +338,7 @@ func ParseSecret(r io.Reader) (*Secret, error) {
 		return nil, nil
 	}
 
-	// First decode the JSON into a map[string]interface{}
+	// First decode the JSON into a map[string]any.
 	var secret Secret
 	dec := json.NewDecoder(&buf)
 	dec.UseNumber()

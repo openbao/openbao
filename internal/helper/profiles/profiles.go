@@ -514,9 +514,9 @@ func (p *ProfileEngine) evaluateField(ctx context.Context, history *EvaluationHi
 			return err
 		}
 	case []map[string]any:
-		// HCL only ever yields a []map[string]interface{} when doing partial
-		// (IMHO, failed) conversion of objects. Collapse all items in the map
-		// down to a single item and re-evaluate.
+		// HCL only ever yields a []map[string]any when doing partial (IMHO,
+		// failed) conversion of objects. Collapse all items in the map down to
+		// a single item and re-evaluate.
 		collapsed := map[string]any{}
 		for index, subobj := range obj {
 			for key, value := range subobj {
@@ -685,10 +685,10 @@ func (p *ProfileEngine) convertToType(val any, objType string) (any, error) {
 		}
 		return result, nil
 
-	case "map", "map[string]interface{}":
+	case "map", "map[string]any", "map[string]interface{}":
 		var result map[string]any
 		if err := mapstructure.WeakDecode(val, &result); err != nil {
-			return nil, fmt.Errorf("cannot convert to map[string]interface{}: %w", err)
+			return nil, fmt.Errorf("cannot convert to map[string]any: %w", err)
 		}
 		return result, nil
 

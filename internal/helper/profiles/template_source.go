@@ -14,7 +14,7 @@ import (
 // Fields:
 //
 //   - template (string): template to evaluate
-//   - data (map[string]interface{}): additional context for the templating
+//   - data (map[string]any): additional context for the templating
 //     engine.
 //
 // When allowed as sources, this already includes:
@@ -70,7 +70,7 @@ func (s *TemplateSource) Validate() ([]string, []string, error) {
 
 	data, ok := rawData.(map[string]any)
 	if !ok {
-		return nil, nil, fmt.Errorf("field 'data' is of wrong type: expected 'map[string]interface{}' got '%T'", rawData)
+		return nil, nil, fmt.Errorf("field 'data' is of wrong type: expected 'map[string]any' got '%T'", rawData)
 	}
 
 	s.data = data

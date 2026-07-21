@@ -80,7 +80,7 @@ func TestTokenPolicies(t *testing.T) {
 		}
 	}
 
-	// Do it again but with an interface{} slice
+	// Do it again but with an any slice.
 	{
 		s.Auth = nil
 		policyList := make([]any, 0)
@@ -161,7 +161,7 @@ func TestTokenPolicies(t *testing.T) {
 		}
 	}
 
-	// Do it again but with an interface{} slice
+	// Do it again but with an any slice.
 	{
 		policyList := []any{"policy1", "policy2", "policy3"}
 		s.Data["policies"] = policyList[:1]

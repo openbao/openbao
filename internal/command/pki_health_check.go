@@ -270,7 +270,7 @@ func (c *PKIHealthCheckCommand) Run(args []string) int {
 		}
 
 		decoder := json.NewDecoder(contents)
-		decoder.UseNumber() // Use json.Number instead of float64 values as we are decoding to an interface{}.
+		decoder.UseNumber() // Use json.Number instead of float64 values as we are decoding to any.
 
 		if err := decoder.Decode(&external_config); err != nil {
 			c.UI.Error(fmt.Sprintf("Failed to parse configuration file %v: %v", c.flagConfig, err))

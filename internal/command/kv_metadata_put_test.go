@@ -118,7 +118,7 @@ func TestKvMetadataPutCommand_CustomMetadata(t *testing.T) {
 		t.Fatalf("Metadata read error: %#v", err)
 	}
 
-	// JSON output from read decoded into map[string]interface{}
+	// JSON output from read decoded into map[string]any.
 	expectedCustomMetadata := map[string]any{
 		"foo": "abc",
 		"bar": "123",

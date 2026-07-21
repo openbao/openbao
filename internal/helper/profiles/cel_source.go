@@ -93,14 +93,14 @@ func (s *CELSource) Validate() ([]string, []string, error) {
 
 	listVariables, ok := rawVariables.([]any)
 	if !ok {
-		return nil, nil, fmt.Errorf("field 'variables' is of wrong outer type: expected '[]interface{}' got '%T'", listVariables)
+		return nil, nil, fmt.Errorf("field 'variables' is of wrong outer type: expected '[]any' got '%T'", listVariables)
 	}
 
 	var variables []celHelper.Variable
 	for index, rawVariableMap := range listVariables {
 		variableMap, ok := rawVariableMap.(map[string]any)
 		if !ok {
-			return nil, nil, fmt.Errorf("field 'variables[%d]' is of wrong inner type: expected 'map[string]interface{}' got '%T'", index, listVariables)
+			return nil, nil, fmt.Errorf("field 'variables[%d]' is of wrong inner type: expected 'map[string]any' got '%T'", index, listVariables)
 		}
 
 		rawName, present := variableMap["name"]

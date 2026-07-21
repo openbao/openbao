@@ -100,9 +100,9 @@ func parseRules(registry Registry, rawRules []map[string]any) (rules []Rule, err
 	return rules, nil
 }
 
-// getMapSlice from the provided map. This will retrieve and type-assert a []map[string]interface{} from the map
-// This will not error if the key does not exist
-// This will return an error if the value at the provided key is not of type []map[string]interface{}
+// getMapSlice from the provided map. This will retrieve and type-assert a []map[string]any from the map.
+// This will not error if the key does not exist.
+// This will return an error if the value at the provided key is not of type []map[string]any.
 func getMapSlice(m map[string]any, key string) (mapSlice []map[string]any, err error) {
 	rawSlice, exists := m[key]
 	if !exists {

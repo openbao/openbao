@@ -56,7 +56,7 @@ func TestIdentityStore_ListGroupAlias(t *testing.T) {
 		t.Fatal("did not find github accessor")
 	}
 
-	resp, err := client.Logical().Write("identity/group", map[string]interface{}{
+	resp, err := client.Logical().Write("identity/group", map[string]any{
 		"type": "external",
 	})
 	if err != nil {
@@ -65,7 +65,7 @@ func TestIdentityStore_ListGroupAlias(t *testing.T) {
 
 	groupID := resp.Data["id"].(string)
 
-	resp, err = client.Logical().Write("identity/group-alias", map[string]interface{}{
+	resp, err = client.Logical().Write("identity/group-alias", map[string]any{
 		"name":           "groupalias",
 		"mount_accessor": githubAccessor,
 		"canonical_id":   groupID,
@@ -80,7 +80,7 @@ func TestIdentityStore_ListGroupAlias(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
-	keys := resp.Data["keys"].([]interface{})
+	keys := resp.Data["keys"].([]any)
 	if len(keys) != 1 {
 		t.Fatalf("bad: length of alias IDs listed; expected: 1, actual: %d", len(keys))
 	}
@@ -90,7 +90,7 @@ func TestIdentityStore_ListGroupAlias(t *testing.T) {
 	if !ok {
 		t.Fatal("expected key_info map in response")
 	}
-	aliasInfo := aliasInfoRaw.(map[string]interface{})
+	aliasInfo := aliasInfoRaw.(map[string]any)
 	if len(aliasInfo) != 1 {
 		t.Fatalf("bad: length of alias ID key info; expected: 1, actual: %d", len(aliasInfo))
 	}
@@ -99,7 +99,7 @@ func TestIdentityStore_ListGroupAlias(t *testing.T) {
 	if !ok {
 		t.Fatal("expected to find alias ID in key info map")
 	}
-	info := infoRaw.(map[string]interface{})
+	info := infoRaw.(map[string]any)
 	t.Logf("alias info: %#v", info)
 	switch {
 	case info["name"].(string) != "groupalias":
@@ -114,7 +114,7 @@ func TestIdentityStore_ListGroupAlias(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
-	keys = resp.Data["keys"].([]interface{})
+	keys = resp.Data["keys"].([]any)
 	if len(keys) != 1 {
 		t.Fatalf("bad: length of group IDs listed; expected: 1, actual: %d", len(keys))
 	}
@@ -127,7 +127,7 @@ func TestIdentityStore_ListGroupAlias(t *testing.T) {
 	// This is basically verifying that the group has the alias in key_info
 	// that we expect to be tied to it, plus tests a value further down in it
 	// for fun
-	groupInfo := groupInfoRaw.(map[string]interface{})
+	groupInfo := groupInfoRaw.(map[string]any)
 	if len(groupInfo) != 1 {
 		t.Fatalf("bad: length of group ID key info; expected: 1, actual: %d", len(groupInfo))
 	}
@@ -136,9 +136,9 @@ func TestIdentityStore_ListGroupAlias(t *testing.T) {
 	if !ok {
 		t.Fatal("expected key info")
 	}
-	info = infoRaw.(map[string]interface{})
+	info = infoRaw.(map[string]any)
 	t.Logf("group info: %#v", info)
-	alias := info["alias"].(map[string]interface{})
+	alias := info["alias"].(map[string]any)
 	switch {
 	case alias["id"].(string) != aliasID:
 		t.Fatalf("bad alias id: %v", alias["id"])

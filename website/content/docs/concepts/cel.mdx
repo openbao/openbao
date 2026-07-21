@@ -107,8 +107,8 @@ Expression: string
 ### Example
 
 ```go
-"cel_program": map[string]interface{}{
-  "variables": []map[string]interface{}{
+"cel_program": map[string]any{
+  "variables": []map[string]any{
     {
       "name":       "validate_cn",
       "expression": `has(request.common_name) && request.common_name == "example.com"`,

@@ -63,7 +63,7 @@ for upgrading to version 5.
    `dbplugin.Database` interface.
 3. Replace `Init` and `Initialize` with the new `Initialize` function definition. The fields that
    `Init` was taking (`config` and `verifyConnection`) are now wrapped into `InitializeRequest`.
-   The returned `map[string]interface{}` object is now wrapped into `InitializeResponse`.
+   The returned `map[string]any` object is now wrapped into `InitializeResponse`.
    Only `Initialize` is needed to adhere to the `Database` interface.
 4. Update `CreateUser` to `NewUser`. The `NewUserRequest` object contains the username and
    password of the user to be created. It also includes a list of statements for creating the

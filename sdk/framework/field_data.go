@@ -295,7 +295,7 @@ func (d *FieldData) getPrimitive(k string, schema *FieldSchema) (any, bool, erro
 	case TypeTime:
 		switch inp := raw.(type) {
 		case nil:
-			// Handle nil interface{} as a non-error case
+			// Handle nil value as a non-error case
 			return nil, false, nil
 		default:
 			time, err := parseutil.ParseAbsoluteTime(inp)
@@ -390,7 +390,7 @@ func (d *FieldData) getPrimitive(k string, schema *FieldSchema) (any, bool, erro
 
 			There are multiple ways a header could be provided:
 
-			1.	As a map[string]interface{} that resolves to a map[string]string or map[string][]string, or a mix of both
+			1.	As a map[string]any that resolves to a map[string]string or map[string][]string, or a mix of both
 				because that's permitted for headers.
 				This mainly comes from the API.
 

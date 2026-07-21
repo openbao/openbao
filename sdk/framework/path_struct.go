@@ -13,7 +13,7 @@ import (
 )
 
 // PathStruct can be used to generate a path that stores a struct
-// in the storage. This structure is a map[string]interface{} but the
+// in the storage. This structure is a map[string]any but the
 // types are set according to the schema in this structure.
 type PathStruct struct {
 	Name            string

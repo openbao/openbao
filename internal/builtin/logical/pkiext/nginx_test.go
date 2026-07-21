@@ -516,7 +516,7 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 
 	// Issue a client leaf cert and revoke it, placing it on the delta CRL
 	// via rotation.
-	/*resp, err = pki.CBWrite(b, s, "issue/testing", map[string]interface{}{
+	/*resp, err = pki.CBWrite(b, s, "issue/testing", map[string]any{
 	      "common_name": "revoked-delta-crl.client.dadgarcorp.com",
 	  })
 	  requireSuccessNonNilResponse(t, resp, err, "failed to create delta CRL revoked client leaf cert")
@@ -525,7 +525,7 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 	  //deltaFullChain := deltaCert + "\n" + resp.Data["issuing_ca"].(string) + "\n"
 	  //deltaTrustChain := resp.Data["issuing_ca"].(string) + "\n" + rootCert + "\n"
 	  deltaCAChain := resp.Data["ca_chain"].([]string)
-	  _, err = pki.CBWrite(b, s, "revoke", map[string]interface{}{
+	  _, err = pki.CBWrite(b, s, "revoke", map[string]any{
 	      "certificate": deltaCert,
 	  })
 	  require.NoError(t, err)

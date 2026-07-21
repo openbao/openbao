@@ -38,13 +38,14 @@ type Database interface {
 
 // ///////////////////////////////////////////////////////////////////////////
 // Database Request & Response Objects
-// These request and response objects are *not* protobuf types because gRPC does not
-// support all types that we need in a nice way. For instance, gRPC does not support
-// map[string]interface{}. It does have an `Any` type, but converting it to a map
-// requires extensive use of reflection and knowing what types to support ahead of
-// time. Instead these types are made as user-friendly as possible so the conversion
-// between protobuf types and request/response objects is handled by Vault developers
-// rather than needing to be handled by external plugin developers.
+// These request and response objects are *not* protobuf types because gRPC does
+// not support all types that we need in a nice way. For instance, gRPC does
+// not support map[string]any. It does have an `Any` type, but converting it to
+// a map requires extensive use of reflection and knowing what types to support
+// ahead of time. Instead these types are made as user-friendly as possible so
+// the conversion between protobuf types and request/response objects is handled
+// by Vault developers rather than needing to be handled by external plugin
+// developers.
 // ///////////////////////////////////////////////////////////////////////////
 
 // ///////////////////////////////////////////////////////

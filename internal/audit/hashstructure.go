@@ -339,7 +339,7 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 	// See if the current key is part of the ignored keys; notably, this may
 	// be some child ancestor of the current reference. Consider:
 	//
-	// map[string]interface{}{
+	// map[string]any{
 	//   "ignored": []string{ "<we-are-here>" },
 	// }
 	currentKey := w.key[len(w.key)-1]

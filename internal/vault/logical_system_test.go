@@ -2605,7 +2605,7 @@ func TestSystemBackend_PoliciesDetailedAcl(t *testing.T) {
 	require.Contains(t, policies, "test-policy")
 
 	detailedPolicies, ok := resp.Data["key_info"].(map[string]any)
-	require.True(t, ok, "expected policies to be map[string]interface{}, got: %T", resp.Data["policies"])
+	require.True(t, ok, "expected policies to be map[string]any, got: %T", resp.Data["policies"])
 	require.Greater(t, len(detailedPolicies), 0, "expected at least one detailed policy, got: %v", detailedPolicies)
 
 	// Test policy should exist in the detailed info.

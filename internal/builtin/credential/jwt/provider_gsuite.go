@@ -240,7 +240,7 @@ func (g *GSuiteProvider) fillCustomSchemas(ctx context.Context, userName string,
 
 	for schema, rawValue := range userResponse.CustomSchemas {
 		// note: metadata extraction via claim_mappings only supports strings
-		// as values, but filtering happens later so we must use interface{}
+		// as values, but filtering happens later so we must use 'any'.
 		var value map[string]any
 		if err := json.Unmarshal(rawValue, &value); err != nil {
 			return err

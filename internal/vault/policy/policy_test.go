@@ -158,7 +158,7 @@ func TestPolicy_Parse(t *testing.T) {
 		want to update and uncomment this test.
 
 		t.Run("JSON", func(t *testing.T) {
-			var parsed map[string]interface{}
+			var parsed map[string]any{}
 			err := json.Unmarshal([]byte(rawPolicyJSON), &parsed)
 			if err != nil {
 				t.Fatalf("failed to parse JSON: %v", err)

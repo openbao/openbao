@@ -201,7 +201,7 @@ func getParsedCrlFromBackend(t *testing.T, b *backend, s logical.Storage, path s
 // Direct storage backend helpers (b, s := createBackendWithStorage(t)) which
 // are mostly compatible with client.Logical() operations. The main difference
 // is that the JSON round-tripping hasn't occurred, so values are as the
-// backend returns them (e.g., []string instead of []interface{}).
+// backend returns them (e.g., []string instead of []any).
 func CBReq(b *backend, s logical.Storage, operation logical.Operation, path string, data map[string]any) (*logical.Response, error) {
 	resp, err := b.HandleRequest(context.Background(), &logical.Request{
 		Operation:  operation,

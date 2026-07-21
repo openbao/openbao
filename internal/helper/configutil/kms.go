@@ -44,7 +44,7 @@ func parseKMS(result *[]*KMS, list *ast.ObjectList, blockName string, maxKMS int
 			key = item.Keys[0].Token.Value().(string)
 		}
 
-		// We first decode into a map[string]interface{} because purpose isn't
+		// We first decode into a map[string]any because purpose isn't
 		// necessarily a string. Then we migrate everything else over to
 		// map[string]string and error if it doesn't work.
 		var m map[string]any

@@ -721,8 +721,8 @@ func TestConvertToType_Cases(t *testing.T) {
 
 		{"To []string pass", []any{"a", "b"}, "[]string", []string{"a", "b"}, false},
 
-		{"To map[string]interface{} pass", map[string]any{"x": 1}, "map[string]interface{}", map[string]any{"x": 1}, false},
-		{"To map[string]interface{} fail", "notamap", "map[string]interface{}", nil, true},
+		{"To map[string]any pass", map[string]any{"x": 1}, "map[string]any", map[string]any{"x": 1}, false},
+		{"To map[string]any fail", "notamap", "map[string]any", nil, true},
 
 		{"Any to interface{} pass", 123, "interface{}", 123, false},
 

@@ -1135,8 +1135,8 @@ func parseTemplates(result *Config, list *ast.ObjectList) error {
 			return errors.New("error converting config")
 		}
 
-		// flatten the wait or exec fields. The initial "wait" or "exec" value, if given, is a
-		// []map[string]interface{}, but we need it to be map[string]interface{}.
+		// flatten the wait or exec fields. The initial "wait" or "exec" value,
+		// if given, is a []map[string]any, but we need it to be map[string]any.
 		// Consul Template has a method flattenKeys that walks all of parsed and
 		// flattens every key. For Vault Agent, we only care about the wait input.
 		// Only one wait/exec stanza is supported, however Consul Template does not error

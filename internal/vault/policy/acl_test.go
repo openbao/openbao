@@ -667,7 +667,7 @@ func testACLValuePermissions(t *testing.T, ns *namespace.Namespace) {
 		{"fizz/buzz", []string{"allow_multi", "allow"}, []any{"good1", "good"}, true},
 		{"fizz/buzz", []string{"deny_multi"}, []any{"bad2"}, false},
 		{"fizz/buzz", []string{"deny_multi", "allow_multi"}, []any{"good", "good2"}, false},
-		//	{"test/types", []string{"array"}, []interface{}{[1]string{"good"}}, true},
+		//	{"test/types", []string{"array"}, []any{[1]string{"good"}}, true},
 		{"test/types", []string{"map"}, []any{map[string]any{"good": "one"}}, true},
 		{"test/types", []string{"map"}, []any{map[string]any{"bad": "one"}}, false},
 		{"test/types", []string{"int"}, []any{1}, true},

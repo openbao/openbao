@@ -22,7 +22,7 @@ const (
 )
 
 // Parse is used to effectively convert the TypeMap
-// (map[string]interface{}) into a TypeKVPairs (map[string]string)
+// (map[string]any) into a TypeKVPairs (map[string]string)
 // which is how custom_metadata is stored. Defining custom_metadata
 // as a TypeKVPairs will convert nulls into empty strings. A null,
 // however, is essential for a PATCH operation in that it signals

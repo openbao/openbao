@@ -43,7 +43,7 @@ func NewOASDocument(version string) *OASDocument {
 }
 
 // NewOASDocumentFromMap builds an OASDocument from an existing map version of a document.
-// If a document has been decoded from JSON or received from a plugin, it will be as a map[string]interface{}
+// If a document has been decoded from JSON or received from a plugin, it will be as a map[string]any
 // and needs special handling beyond the default mapstructure decoding.
 func NewOASDocumentFromMap(input map[string]any) (*OASDocument, error) {
 	// The Responses map uses integer keys (the response code), but once translated into JSON

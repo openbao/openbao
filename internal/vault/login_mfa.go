@@ -1448,7 +1448,7 @@ func (c *Core) validatePingID(ctx context.Context, mConfig *mfa.Config, username
 		// We're leaving this here because if we support other types we'll likely
 		// still need it, and if we get device ID selection working we'll want it.
 
-		req, err := createRequest("rest/4/startauthentication/do", map[string]interface{}{
+		req, err := createRequest("rest/4/startauthentication/do", map[string]any{
 			"spAlias":  "web",
 			"userName": username,
 		})

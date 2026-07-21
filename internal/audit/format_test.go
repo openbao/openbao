@@ -225,7 +225,7 @@ func TestElideListResponses(t *testing.T) {
 }
 
 func fixupInputData(inputData map[string]any) map[string]any {
-	// json marshalling/unmarshalling converts []string's into []interface{}
+	// json marshalling/unmarshalling converts []string's into []any
 	// this method returns a copy of the input data with that transformation
 	// so it can be checked against the results
 	newSlice := make([]any, len(inputData["keys"].([]string)))

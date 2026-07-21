@@ -158,3 +158,26 @@ func (t *MountTable) SortEntriesByPathDepth() *MountTable {
 	})
 	return t
 }
+
+// SplitByLocality splits the MountTable into two mount tables
+// based on 'local' property of MountEntry.
+func (t *MountTable) SplitByLocality() (*MountTable, *MountTable) {
+	global := &MountTable{
+		Type:    t.Type,
+		Entries: make([]*MountEntry, 0),
+	}
+
+	local := &MountTable{
+		Type:    t.Type,
+		Entries: make([]*MountEntry, 0),
+	}
+
+	for _, m := range t.Entries {
+		if m.Local {
+			local.Entries = append(local.Entries, m)
+		} else {
+			global.Entries = append(global.Entries, m)
+		}
+	}
+	return global, local
+}

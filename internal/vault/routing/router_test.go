@@ -79,7 +79,7 @@ func TestRouter_Mount(t *testing.T) {
 		t.Fatalf("failed to fetch mount entry using its ID; expected: %#v\n actual: %#v\n", mountEntry, mountEntryFetched)
 	}
 
-	_, mount, prefix, ok := r.MatchingAPIPrefixByStoragePath(namespace.RootContext(t.Context()), "logical/foo")
+	_, mount, prefix, ok := r.MatchingAPIPrefixByStoragePath("logical/foo")
 	if !ok {
 		t.Fatal("missing storage prefix")
 	}
@@ -186,7 +186,7 @@ func TestRouter_MountCredential(t *testing.T) {
 		t.Fatalf("failed to fetch mount entry using its ID; expected: %#v\n actual: %#v\n", mountEntry, mountEntryFetched)
 	}
 
-	_, mount, prefix, ok := r.MatchingAPIPrefixByStoragePath(namespace.RootContext(t.Context()), "auth/foo")
+	_, mount, prefix, ok := r.MatchingAPIPrefixByStoragePath("auth/foo")
 	if !ok {
 		t.Fatal("missing storage prefix")
 	}
@@ -239,7 +239,7 @@ func TestRouter_Unmount(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	if _, _, _, ok := r.MatchingAPIPrefixByStoragePath(namespace.RootContext(t.Context()), "logical/foo"); ok {
+	if _, _, _, ok := r.MatchingAPIPrefixByStoragePath("logical/foo"); ok {
 		t.Fatal("should not have matching storage prefix")
 	}
 }
@@ -293,7 +293,7 @@ func TestRouter_Remount(t *testing.T) {
 	}
 
 	// Check the resolve from storage still works
-	_, mount, prefix, _ := r.MatchingAPIPrefixByStoragePath(namespace.RootContext(t.Context()), "logical/foobar")
+	_, mount, prefix, _ := r.MatchingAPIPrefixByStoragePath("logical/foobar")
 	if mount != "stage/aws/" {
 		t.Fatalf("bad mount: %s", mount)
 	}

@@ -806,7 +806,7 @@ type TokenStore struct {
 	saltLock sync.RWMutex
 	salts    map[string]*salt.Salt
 
-	tidyLock sync.Mutex
+	tidyCh chan struct{}
 
 	quitContext context.Context
 
@@ -828,10 +828,12 @@ func NewTokenStore(ctx context.Context, logger log.Logger, core *Core, config *l
 		tokenLocks:            locksutil.CreateLocks(),
 		tokensPendingDeletion: &sync.Map{},
 		saltLock:              sync.RWMutex{},
-		tidyLock:              sync.Mutex{},
 		quitContext:           core.activeContext.Load(),
+		tidyCh:                make(chan struct{}, 1),
 		salts:                 make(map[string]*salt.Salt),
 	}
+
+	t.tidyCh <- struct{}{}
 
 	// Setup the framework endpoints
 	t.Backend = &framework.Backend{
@@ -873,7 +875,7 @@ func (ts *TokenStore) teardown() {
 	// Ensure that:
 	// - The current tidy operation (if any) has finished
 	// - No further tidy operations can be queued
-	ts.tidyLock.Lock()
+	<-ts.tidyCh
 }
 
 func (ts *TokenStore) baseView(ns *namespace.Namespace) barrier.View {
@@ -2388,7 +2390,9 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 // handleTidy handles the cleaning up of leaked accessor storage entries and
 // cleaning up of leases that are associated to tokens that are expired.
 func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	if !ts.tidyLock.TryLock() {
+	select {
+	case <-ts.tidyCh:
+	default:
 		resp := &logical.Response{}
 		resp.AddWarning("Tidy operation already in progress.")
 		return resp, nil
@@ -2396,11 +2400,12 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
+		ts.tidyCh <- struct{}{}
 		return nil, fmt.Errorf("failed to get namespace from context: %w", err)
 	}
 
 	go func() {
-		defer ts.tidyLock.Unlock()
+		defer func() { ts.tidyCh <- struct{}{} }()
 		logger := ts.logger.Named("tidy")
 
 		var tidyErrors *multierror.Error

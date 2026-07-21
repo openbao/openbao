@@ -20,7 +20,6 @@ import (
 	"github.com/openbao/openbao/v2/internal/builtin/plugin"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/versions"
-	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
 )
 
@@ -484,7 +483,7 @@ func (c *Core) taintCredEntry(ctx context.Context, nsID, path string, updateStor
 }
 
 // loadCredentials is invoked as part of postUnseal to load the auth table
-func (c *Core) loadCredentials(ctx context.Context, standby bool) error {
+func (c *Core) loadCredentials(ctx context.Context, allNamespaces []*namespace.Namespace, standby bool) error {
 	// Previously, this lock would be held after attempting to read the
 	// storage entries. While we could never read corrupted entries,
 	// we now need to ensure we can gracefully failover from legacy to
@@ -510,7 +509,7 @@ func (c *Core) loadCredentials(ctx context.Context, standby bool) error {
 	// to not) is not possible without manual reconstruction.
 	txnableBarrier, ok := c.barrier.(logical.TransactionalStorage)
 	if !ok {
-		_, err := c.loadLegacyCredentials(ctx, c.barrier, standby)
+		_, err := c.loadLegacyCredentials(ctx, c.barrier, allNamespaces, standby)
 		return err
 	}
 
@@ -526,7 +525,7 @@ func (c *Core) loadCredentials(ctx context.Context, standby bool) error {
 	// error.
 	defer txn.Rollback(ctx) //nolint:errcheck
 
-	legacy, err := c.loadLegacyCredentials(ctx, txn, standby)
+	legacy, err := c.loadLegacyCredentials(ctx, txn, allNamespaces, standby)
 	if err != nil {
 		return fmt.Errorf("failed to load legacy auth mounts in transaction: %w", err)
 	}
@@ -535,7 +534,7 @@ func (c *Core) loadCredentials(ctx context.Context, standby bool) error {
 	// we need to fetch the new auth mount table.
 	if !legacy {
 		c.logger.Info("reading transactional auth mount table")
-		if err := c.loadTransactionalCredentials(ctx, txn, standby); err != nil {
+		if err := c.loadTransactionalCredentials(ctx, txn, allNamespaces, standby); err != nil {
 			return fmt.Errorf("failed to load transactional auth mount table: %w", err)
 		}
 	}
@@ -563,19 +562,15 @@ func (c *Core) loadCredentialsForNamespace(ctx context.Context, ns *namespace.Na
 
 // loadTransactionalCredentials reads the transactional split auth (credential)
 // table, populates the storage if there are no existing entries.
-func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical.Storage, standby bool) error {
-	allNamespaces, err := c.ListNamespaces(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to list namespaces: %w", err)
-	}
-
+func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical.Storage, allNamespaces []*namespace.Namespace, standby bool) error {
 	for _, ns := range allNamespaces {
-		if err = c.loadTransactionalCredentialsForNamespace(ctx, ns); err != nil {
+		if err := c.loadTransactionalCredentialsForNamespace(ctx, ns); err != nil {
 			return err
 		}
 	}
 
 	var needPersist bool
+	var err error
 	// This happens only on the first initialization run of the Core.
 	// If there's only root namespace, and there are no auth entries in storage.
 	if len(allNamespaces) == 1 && len(c.auth.Entries) == 0 {
@@ -587,7 +582,7 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 		needPersist = true
 	}
 
-	if err = c.runCredentialUpdates(ctx, barrier, needPersist, standby); err != nil {
+	if err = c.runCredentialUpdates(ctx, barrier, allNamespaces, needPersist, standby); err != nil {
 		c.logger.Error("failed to run legacy auth mount table upgrades", "error", err)
 		return err
 	}
@@ -597,10 +592,6 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 
 // loadTransactionalCredentialsForNamespace loads the auth mounts of a single namespace.
 func (c *Core) loadTransactionalCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
-	if c.NamespaceSealed(ns) {
-		return barrier.ErrNamespaceSealed
-	}
-
 	if ns.Tainted {
 		c.logger.Info("skipping loading auth mounts for tainted namespace", "ns", ns.ID)
 		return nil
@@ -613,7 +604,7 @@ func (c *Core) loadTransactionalCredentialsForNamespace(ctx context.Context, ns 
 	}
 
 	for index, uuid := range globalEntries {
-		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreAuthConfigPath, uuid)
+		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, ns, coreAuthConfigPath, uuid)
 		if err != nil {
 			return fmt.Errorf("error loading auth mount table entry ([%v] %v/%v): %w", ns.ID, index, uuid, err)
 		}
@@ -624,7 +615,7 @@ func (c *Core) loadTransactionalCredentialsForNamespace(ctx context.Context, ns 
 	}
 
 	for index, uuid := range localEntries {
-		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalAuthConfigPath, uuid)
+		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, ns, coreLocalAuthConfigPath, uuid)
 		if err != nil {
 			return fmt.Errorf("error loading local auth mount table entry ([%v] %v/%v): %w", ns.ID, index, uuid, err)
 		}
@@ -656,13 +647,7 @@ func listTransactionalCredentialsForNamespace(ctx context.Context, barrier logic
 // loadLegacyCredentials reads the legacy, single-entry combined auth
 // mount table, returning true if it was used. This will let us know
 // (if we're inside a transaction) if we need to do an upgrade.
-func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storage, standby bool) (bool, error) {
-	// Load the existing mount table per namespace
-	allNamespaces, err := c.ListNamespaces(ctx)
-	if err != nil {
-		return false, fmt.Errorf("failed to list namespaces: %w", err)
-	}
-
+func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storage, allNamespaces []*namespace.Namespace, standby bool) (bool, error) {
 	if c.auth == nil {
 		// Create the auth mount table if it doesn't exist.
 		c.auth = &routing.MountTable{
@@ -671,12 +656,13 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 	}
 
 	for _, ns := range allNamespaces {
-		if err = c.loadLegacyCredentialsForNamespace(ctx, ns); err != nil {
+		if err := c.loadLegacyCredentialsForNamespace(ctx, ns); err != nil {
 			return false, err
 		}
 	}
 
 	var needPersist bool
+	var err error
 	if len(c.auth.Entries) == 0 {
 		// In the event we are inside a transaction, we do not yet know if
 		// we have a transactional mount table; exit early and load the new format.
@@ -704,7 +690,7 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 	//    backend.
 	// 2. We may have had a legacy auth mount table and need to upgrade into the
 	//    new format. runCredentialUpdates will handle this for us.
-	if err = c.runCredentialUpdates(ctx, barrier, needPersist, standby); err != nil {
+	if err = c.runCredentialUpdates(ctx, barrier, allNamespaces, needPersist, standby); err != nil {
 		c.logger.Error("failed to run legacy auth mount table upgrades", "error", err)
 		return false, err
 	}
@@ -717,10 +703,6 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 // loadLegacyCredentialsForNamespace reads the legacy, single-entry combined
 // auth mount table of a provided namespace and loads it to memory.
 func (c *Core) loadLegacyCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
-	if c.NamespaceSealed(ns) {
-		return barrier.ErrNamespaceSealed
-	}
-
 	if ns.Tainted {
 		c.logger.Info("skipping loading auth mounts for tainted namespace", "ns", ns.ID)
 		return nil
@@ -734,7 +716,7 @@ func (c *Core) loadLegacyCredentialsForNamespace(ctx context.Context, ns *namesp
 	}
 
 	if entry != nil {
-		mEntries, err := c.decodeMountEntries(ctx, entry)
+		mEntries, err := c.decodeMountEntries(entry, ns)
 		if err != nil {
 			c.logger.Error("failed to decompress and/or decode the legacy auth table", "error", err)
 			return err
@@ -743,7 +725,7 @@ func (c *Core) loadLegacyCredentialsForNamespace(ctx context.Context, ns *namesp
 	}
 
 	if localEntry != nil {
-		mEntries, err := c.decodeMountEntries(ctx, localEntry)
+		mEntries, err := c.decodeMountEntries(localEntry, ns)
 		if err != nil {
 			c.logger.Error("failed to decompress and/or decode the local legacy auth table", "error", err)
 			return err
@@ -772,7 +754,7 @@ func getLegacyCredentialsForNamespace(ctx context.Context, barrier logical.Stora
 
 // Note that this is only designed to work with singletons, as it checks by
 // type only.
-func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage, needPersist, standby bool) error {
+func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage, allNamespaces []*namespace.Namespace, needPersist, standby bool) error {
 	// Upgrade to typed auth table
 	if c.auth.Type == "" {
 		c.auth.Type = routing.CredentialTableType
@@ -812,14 +794,18 @@ func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage
 			entry.NamespaceID = namespace.RootNamespaceID
 			needPersist = true
 		}
-		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
-		if err != nil {
-			return err
-		}
-		if ns == nil {
+
+		idx := slices.IndexFunc(
+			allNamespaces, func(n *namespace.Namespace) bool {
+				return entry.NamespaceID == n.ID
+			},
+		)
+
+		if idx == -1 {
 			return namespace.ErrNoNamespace
+		} else {
+			entry.Namespace = allNamespaces[idx]
 		}
-		entry.Namespace = ns
 
 		// Sync values to the cache
 		entry.SyncCache()
@@ -1226,11 +1212,8 @@ func (c *Core) setupCredential(ctx context.Context, entry *routing.MountEntry) (
 // backends to their unloaded state. This is reversed by loadCredentials.
 func (c *Core) teardownCredentials(ctx context.Context) error {
 	c.authLock.Lock()
-	defer c.authLock.Unlock()
-
 	if c.auth != nil {
-		authTable := c.auth.ShallowClone()
-		for _, e := range authTable.Entries {
+		for _, e := range c.auth.ShallowClone().Entries {
 			backend := c.router.MatchingBackend(namespace.ContextWithNamespace(ctx, e.Namespace), routing.CredentialRoutePrefix+e.Path)
 			if backend != nil {
 				backend.Cleanup(ctx)
@@ -1239,6 +1222,7 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 	}
 
 	c.auth = nil
+	c.authLock.Unlock()
 
 	if c.tokenStore != nil {
 		c.tokenStore.teardown()

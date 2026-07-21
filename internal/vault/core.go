@@ -629,6 +629,15 @@ type Core struct {
 	// refreshing the Core-adjacent caches afterwards.
 	invalidations *invalidationManager
 
+	// When awaitInvalidateHook is set early on startup, this maintains a list
+	// of connected invalidation peers. When connections blip, we maintain an
+	// invalidation state.
+	connectedInvalidationPeers *invalidationPeers
+
+	// indexManager allows caching of indices from a physical.ReplicationIndexBackend,
+	// reducing the number of calls to the underlying database.
+	indexManager *indexManager
+
 	// Whether unauthenticated workflows are allowed by this OpenBao
 	// instance.
 	allowUnauthedWorkflows bool
@@ -1032,16 +1041,55 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	}
 	c.seal.SetCore(c)
 
-	// Create the invalidation manager.
+	// Create the invalidation manager and track connected peers for GRPC.
 	c.NewInvalidationManager()
+	c.NewInvalidationPeers()
+
+	if replicated, ok := c.underlyingPhysical.(physical.ReplicationIndexBackend); ok {
+		c.indexManager = NewIndexManager(replicated, 0)
+	}
 
 	return c, nil
 }
 
+func shouldUseGRPCInvalidation(phys physical.Backend) bool {
+	if _, ok := phys.(physical.CacheInvalidationBackend); ok {
+		return false
+	}
+
+	_, ok := phys.(physical.ReplicationIndexBackend)
+	return ok
+}
+
+func (c *Core) shouldHookInvalidate(phys physical.Backend) bool {
+	if !c.StandbyReadsEnabled() {
+		return false
+	}
+
+	_, ok := phys.(physical.CacheInvalidationBackend)
+	return ok
+}
+
 func coreInit(c *Core, conf *CoreConfig) error {
 	phys := conf.Physical
+	hookLayer := c.underlyingPhysical
+
+	haEnabled := conf.HAPhysical != nil && conf.HAPhysical.HAEnabled()
+
 	// Wrap the physical backend in a cache layer if enabled
 	cacheLogger := c.baseLogger.Named("storage.cache")
+
+	// Wrap physical for invalidation.
+	if haEnabled && shouldUseGRPCInvalidation(phys) {
+		c.logger.Info("enabling grpc-based invalidation on HA backend which doesn't natively support invalidation notifications")
+
+		grpcLogger := c.baseLogger.Named("storage.grpcinv")
+		c.allLoggers = append(c.allLoggers, grpcLogger)
+
+		phys = physical.NewWriteNotifier(phys, grpcLogger, c.SendInvalidationNotice)
+		hookLayer = phys
+	}
+
 	c.allLoggers = append(c.allLoggers, cacheLogger)
 	c.physical = physical.NewCache(phys, conf.CacheSize, cacheLogger, c.MetricSink().Sink)
 	c.physicalCache = c.physical.(physical.ToggleablePurgemonster)
@@ -1051,8 +1099,8 @@ func coreInit(c *Core, conf *CoreConfig) error {
 		c.physical = physical.NewStorageEncoding(c.physical)
 	}
 
-	if c.StandbyReadsEnabled() {
-		c.underlyingPhysical.(physical.CacheInvalidationBackend).HookInvalidate(c.Invalidate)
+	if haEnabled && c.shouldHookInvalidate(hookLayer) {
+		hookLayer.(physical.CacheInvalidationBackend).HookInvalidate(c.Invalidate)
 	}
 
 	return nil
@@ -2158,6 +2206,10 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	c.clearForwardingClients()
 	c.requestForwardingConnectionLock.Unlock()
 
+	if shouldUseGRPCInvalidation(c.underlyingPhysical) {
+		c.SetupInvalidationPeers()
+	}
+
 	// Mark the active time. We do this first so it can be correlated to the logs
 	// for the active startup.
 	c.activeTime = time.Now().UTC()
@@ -2427,10 +2479,9 @@ func (c *Core) preSeal() error {
 	c.stopForwarding()
 	c.stopRaftActiveNode()
 	c.cancelNamespaceDeletion()
+	c.CleanupInvalidationPeers()
+	c.invalidations.Stop()
 
-	if err := c.invalidations.Stop(); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error tearing down invalidations: %w", err))
-	}
 	if err := c.teardownAudits(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down audits: %w", err))
 	}
@@ -3878,12 +3929,19 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 	)
 	c.rpcForwardingClient.Start()
 
+	if _, ok := c.underlyingPhysical.(physical.CacheInvalidationBackend); !ok {
+		c.logger.Info("restarting standby as active node has changed; may enable grpc invalidation")
+		c.Restart()
+	}
+
 	return nil
 }
 
 func (c *Core) clearForwardingClients() {
 	c.logger.Debug("clearing forwarding clients")
 	defer c.logger.Debug("done clearing forwarding clients")
+
+	c.rpcForwardingClient.StopInvalidations()
 
 	if c.rpcClientConnCancelFunc != nil {
 		c.rpcClientConnCancelFunc()

@@ -28,48 +28,48 @@ unauthenticated rotation and audit device creation) still apply.
 
 1. **Profile Creation**
 
-A privileged operator designs the profile; this involves creating a
-configuration which describes what API endpoints to call. If this profile is
-executed from the API workflow system, it also involves defining input and
-output parameters.
+   A privileged operator designs the profile; this involves creating a
+   configuration which describes what API endpoints to call. If this profile is
+   executed from the API workflow system, it also involves defining input and
+   output parameters.
 
-This configuration either ends up in one or more files (if using declarative
-self-initialization) or in a profile under the `sys/profiles/manage/`
-endpoint.
+   This configuration either ends up in one or more files (if using declarative
+   self-initialization) or in a profile under the `sys/profiles/manage/`
+   endpoint.
 
 2. **Input Validation**
 
-During execution, before any OpenBao operation is attempted, the engine:
+   During execution, before any OpenBao operation is attempted, the engine:
 
-- Ensures every declared parameter is present and of the correct type,
-  e.g., string, int, bool.
-- Confirms that each referenced source (environment variable, file path,
-  earlier request, earlier response) is available.
-- Rejects a run immediately if required inputs are missing, preventing
-  half-configured states.
+   - Ensures every declared parameter is present and of the correct type,
+     e.g., string, int, bool.
+   - Confirms that each referenced source (environment variable, file path,
+     earlier request, earlier response) is available.
+   - Rejects a run immediately if required inputs are missing, preventing
+     half-configured states.
 
-Certain engines, like template or CEL cannot fully validate the execution
-environment and thus may err at runtime.
+   Certain engines, like template or CEL cannot fully validate the execution
+   environment and thus may err at runtime.
 
 3. **Synchronous Execution**
 
-Requests are executed exactly in the order they are listed. Within a single
-profile run, there is no parallelism, guaranteeing that any request or
-response references always point to data that already exists. Additionally,
-requests are fully synchronous and are not executed in the background.
+   Requests are executed exactly in the order they are listed. Within a single
+   profile run, there is no parallelism, guaranteeing that any request or
+   response references always point to data that already exists. Additionally,
+   requests are fully synchronous and are not executed in the background.
 
-If a request fails unexpectedly, the engine stops immediately and returns an
-error to the caller; nothing after that point is attempted.
+   If a request fails unexpectedly, the engine stops immediately and returns an
+   error to the caller; nothing after that point is attempted.
 
-History of all requests and responses are recorded, though, are not exposed
-to the caller by default.
+   History of all requests and responses are recorded, though, are not exposed
+   to the caller by default.
 
 4. **Output Generation**
 
-Depending on context, the profile system may output information back to the
-caller. In the case of self-initialization, this information is logged at the
-Trace level; this will contain privileged information and should not be
-exposed to arbitrary users.
+   Depending on context, the profile system may output information back to the
+   caller. In the case of self-initialization, this information is logged at the
+   Trace level; this will contain privileged information and should not be
+   exposed to arbitrary users.
 
 ## Request format
 
@@ -272,7 +272,7 @@ Values may be of the following types:
 Note that fields within a source evaluation statement may not be themselves
 be source evaluations.
 
-#### `env` source
+### `env` source
 
 :::info
 
@@ -305,7 +305,7 @@ request "userpass-add-admin" {
 }
 ```
 
-#### `file` source
+### `file` source
 
 :::info
 
@@ -334,7 +334,7 @@ request "provision-root-ca" {
 }
 ```
 
-#### `request` source
+### `request` source
 
 - `<outer-block>_name` `(string: <initialize_name|flow_name>)` - name of the
   outer block to reference. `<outer-block>` is the type of the outer
@@ -369,13 +369,13 @@ initialize "namespace-identity" {
 }
 ```
 
-#### `response` source
+### `response` source
 
 - `<outer-block>_name` `(string: <initialize_name|flow_name>)` - name of the
   outer block block to reference. `<outer-block>` is the type of the outer
   block; for self-init, this is `initialize_name`; for profiles, this is
   `flow_name`.
-- `request_name` `(string: <required>)` - name of the request block inside the
+- `response_name` `(string: <required>)` - name of the request block inside the
   initialize block, to reference the corresponding response of. Must have
   already been executed.
 - `field_selector` `(string or []string: <required>)` - field within the
@@ -402,7 +402,7 @@ initialize "example" {
 }
 ```
 
-#### `cel` source
+### `cel` source
 
 - `expression` `(string: <required>)` - the CEL expression to evaluate;
   errs if not present.
@@ -436,7 +436,7 @@ request "sum" {
 }
 ```
 
-#### `template` source
+### `template` source
 
 - `template` `(string: <required>)` - the [`template`](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2/helper/template#StringTemplate)
   expression to evaluate; errs if not present.
@@ -466,7 +466,7 @@ request "password" {
 }
 ```
 
-#### `input` source
+### `input` source
 
 :::info
 

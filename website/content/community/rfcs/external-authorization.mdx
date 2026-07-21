@@ -36,18 +36,18 @@ With the following policies we may configure the examples from above.
 - “externalPolicy.hcl”
   ```
   # Call external authorization service for all paths 
-  path "/*" { 
+  path "*" { 
       capabilities = ["ask”]
   }
   ```
 - "mixedPolicy.hcl"
   ```
-  # Path /system shall be forbidden independent from external authorizations
-  path "/system/*" { 
+  # Path internal shall be forbidden independent from external authorizations
+  path "internal/*" { 
       capabilities = ["deny”]
   }
   # For other paths check external authorizations and restrict parameters
-  path "/*" { 
+  path "*" { 
       capabilities = ["ask”]
       allowed_parameters = {
           "param" = ["foo", "bar"]
@@ -57,14 +57,14 @@ With the following policies we may configure the examples from above.
 - “adminPolicy.hcl”
   ```
   # admin authorizations are maintained internally
-  path "/*" { 
+  path "*" { 
       capabilities = ["read", "write”]
   }
   ```
   “userPolicy.hcl”
   ```
   # user authorizations are maintained externally
-  path "/*" { 
+  path "*" { 
       capabilities = ["ask”]
   }
   ```

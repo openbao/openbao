@@ -159,7 +159,7 @@ func (b *backend) pathConfigRead(ctx context.Context, req *logical.Request, d *f
 		return nil, nil
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"host":                       cfg.Host,
 		"port":                       cfg.Port,
 		"unregistered_user_policies": cfg.UnregisteredUserPolicies,

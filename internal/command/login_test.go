@@ -51,7 +51,7 @@ func TestCustomPath(t *testing.T) {
 	if err := client.Sys().EnableAuth("my-auth", "userpass", ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Logical().Write("auth/my-auth/users/test", map[string]interface{}{
+	if _, err := client.Logical().Write("auth/my-auth/users/test", map[string]any{
 		"password": "test",
 		"policies": "default",
 	}); err != nil {
@@ -191,7 +191,7 @@ func TestTokenOnly(t *testing.T) {
 	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Logical().Write("auth/userpass/users/test", map[string]interface{}{
+	if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 		"password": "test",
 		"policies": "default",
 	}); err != nil {
@@ -269,7 +269,7 @@ func TestWrapAutoUnwrap(t *testing.T) {
 	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Logical().Write("auth/userpass/users/test", map[string]interface{}{
+	if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 		"password": "test",
 		"policies": "default",
 	}); err != nil {
@@ -328,7 +328,7 @@ func TestWrapTokenOnly(t *testing.T) {
 	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Logical().Write("auth/userpass/users/test", map[string]interface{}{
+	if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 		"password": "test",
 		"policies": "default",
 	}); err != nil {
@@ -389,7 +389,7 @@ func TestWrapNoStore(t *testing.T) {
 	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Logical().Write("auth/userpass/users/test", map[string]interface{}{
+	if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 		"password": "test",
 		"policies": "default",
 	}); err != nil {
@@ -596,7 +596,7 @@ func TestLoginMFATwoPhaseNonInteractiveMethodName(t *testing.T) {
 		time.Sleep(time.Duration(waitPeriod) * time.Second)
 		totpPasscode1 := "passcode=" + testhelpers.GetTOTPCodeFromEngine(t, client, engineName)
 
-		secret, err := cmd.client.Logical().WriteWithContext(t.Context(), "sys/mfa/validate", map[string]interface{}{
+		secret, err := cmd.client.Logical().WriteWithContext(t.Context(), "sys/mfa/validate", map[string]any{
 			"mfa_request_id": mfaReqID,
 			"mfa_payload": map[string][]string{
 				methodIdentifier: {totpPasscode1},

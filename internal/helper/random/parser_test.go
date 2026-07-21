@@ -338,7 +338,7 @@ func TestParseRules(t *testing.T) {
 	type testCase struct {
 		registry map[string]ruleConstructor
 
-		rawRules      []map[string]interface{}
+		rawRules      []map[string]any
 		expectedRules []Rule
 		expectErr     bool
 	}
@@ -352,15 +352,15 @@ func TestParseRules(t *testing.T) {
 		},
 		"empty rule data": {
 			registry:      defaultRuleNameMapping,
-			rawRules:      []map[string]interface{}{},
+			rawRules:      []map[string]any{},
 			expectedRules: nil,
 			expectErr:     false,
 		},
 		"invalid rule data": {
 			registry: defaultRuleNameMapping,
-			rawRules: []map[string]interface{}{
+			rawRules: []map[string]any{
 				{
-					"testrule": map[string]interface{}{
+					"testrule": map[string]any{
 						"string": "teststring",
 					},
 				},
@@ -370,9 +370,9 @@ func TestParseRules(t *testing.T) {
 		},
 		"unrecognized rule data": {
 			registry: defaultRuleNameMapping,
-			rawRules: []map[string]interface{}{
+			rawRules: []map[string]any{
 				{
-					"testrule": []map[string]interface{}{
+					"testrule": []map[string]any{
 						{
 							"string": "teststring",
 							"int":    123,
@@ -387,9 +387,9 @@ func TestParseRules(t *testing.T) {
 			registry: map[string]ruleConstructor{
 				"testrule": newTestRule,
 			},
-			rawRules: []map[string]interface{}{
+			rawRules: []map[string]any{
 				{
-					"testrule": []map[string]interface{}{
+					"testrule": []map[string]any{
 						{
 							"string": "teststring",
 							"int":    123,
@@ -430,9 +430,9 @@ func TestParseRules(t *testing.T) {
 
 func TestGetMapSlice(t *testing.T) {
 	type testCase struct {
-		input         map[string]interface{}
+		input         map[string]any
 		key           string
-		expectedSlice []map[string]interface{}
+		expectedSlice []map[string]any
 		expectErr     bool
 	}
 
@@ -444,13 +444,13 @@ func TestGetMapSlice(t *testing.T) {
 			expectErr:     false,
 		},
 		"empty map": {
-			input:         map[string]interface{}{},
+			input:         map[string]any{},
 			key:           "testkey",
 			expectedSlice: nil,
 			expectErr:     false,
 		},
 		"ignored keys": {
-			input: map[string]interface{}{
+			input: map[string]any{
 				"foo": "bar",
 			},
 			key:           "testkey",
@@ -458,7 +458,7 @@ func TestGetMapSlice(t *testing.T) {
 			expectErr:     false,
 		},
 		"key has wrong type": {
-			input: map[string]interface{}{
+			input: map[string]any{
 				"foo": "bar",
 			},
 			key:           "foo",
@@ -466,15 +466,15 @@ func TestGetMapSlice(t *testing.T) {
 			expectErr:     true,
 		},
 		"good data": {
-			input: map[string]interface{}{
-				"foo": []map[string]interface{}{
+			input: map[string]any{
+				"foo": []map[string]any{
 					{
 						"sub-foo": "bar",
 					},
 				},
 			},
 			key: "foo",
-			expectedSlice: []map[string]interface{}{
+			expectedSlice: []map[string]any{
 				{
 					"sub-foo": "bar",
 				},
@@ -502,7 +502,7 @@ func TestGetMapSlice(t *testing.T) {
 
 func TestGetRuleInfo(t *testing.T) {
 	type testCase struct {
-		rule         map[string]interface{}
+		rule         map[string]any
 		expectedInfo ruleInfo
 		expectErr    bool
 	}
@@ -514,20 +514,20 @@ func TestGetRuleInfo(t *testing.T) {
 			expectErr:    true,
 		},
 		"empty rule": {
-			rule:         map[string]interface{}{},
+			rule:         map[string]any{},
 			expectedInfo: ruleInfo{},
 			expectErr:    true,
 		},
 		"rule with invalid type": {
-			rule: map[string]interface{}{
+			rule: map[string]any{
 				"TestRuleType": "wrong type",
 			},
 			expectedInfo: ruleInfo{},
 			expectErr:    true,
 		},
 		"rule with good data": {
-			rule: map[string]interface{}{
-				"TestRuleType": []map[string]interface{}{
+			rule: map[string]any{
+				"TestRuleType": []map[string]any{
 					{
 						"foo": "bar",
 					},
@@ -535,7 +535,7 @@ func TestGetRuleInfo(t *testing.T) {
 			},
 			expectedInfo: ruleInfo{
 				ruleType: "TestRuleType",
-				data: map[string]interface{}{
+				data: map[string]any{
 					"foo": "bar",
 				},
 			},
@@ -580,7 +580,7 @@ func BenchmarkParser_Parse(b *testing.B) {
 	}
 }
 
-func toJSON(t *testing.T, val interface{}) string {
+func toJSON(t *testing.T, val any) string {
 	t.Helper()
 	b, err := json.Marshal(val)
 	if err != nil {

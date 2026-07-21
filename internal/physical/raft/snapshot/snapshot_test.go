@@ -38,7 +38,7 @@ type MockSnapshot struct {
 }
 
 // See raft.FSM.
-func (m *MockFSM) Apply(log *raft.Log) interface{} {
+func (m *MockFSM) Apply(log *raft.Log) any {
 	m.Lock()
 	defer m.Unlock()
 	m.logs = append(m.logs, log.Data)

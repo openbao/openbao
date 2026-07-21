@@ -7,7 +7,7 @@ import (
 
 func TestSourceBuilder_Success(t *testing.T) {
 	engine := &ProfileEngine{outerBlockName: "outer", sourceBuilders: make(map[string]SourceBuilder)}
-	field := map[string]interface{}{"response_name": "mount-userpass"}
+	field := map[string]any{"response_name": "mount-userpass"}
 
 	src := ResponseSourceBuilder(engine, field)
 	respSrc, ok := src.(*ResponseSource)
@@ -30,7 +30,7 @@ func TestWithResponseSource(t *testing.T) {
 		t.Fatal("expected sourceBuilders['response'] to be set")
 	}
 
-	src := builder(engine, map[string]interface{}{"response_name": "x"})
+	src := builder(engine, map[string]any{"response_name": "x"})
 	if src == nil {
 		t.Fatalf("builder returned nil")
 	}
@@ -40,7 +40,7 @@ func TestWithResponseSource(t *testing.T) {
 }
 
 func TestValidate_MissingField(t *testing.T) {
-	source := &ResponseSource{field: map[string]interface{}{}}
+	source := &ResponseSource{field: map[string]any{}}
 	_, _, err := source.Validate()
 	if err == nil {
 		t.Fatal("expected error for missing 'response_name', got nil")
@@ -50,7 +50,7 @@ func TestValidate_MissingField(t *testing.T) {
 func TestValidate_MissingOuterNameField(t *testing.T) {
 	rs := &ResponseSource{
 		outer: "profile",
-		field: map[string]interface{}{
+		field: map[string]any{
 			"response_name": "r1",
 		},
 	}
@@ -62,7 +62,7 @@ func TestValidate_MissingOuterNameField(t *testing.T) {
 }
 
 func TestValidate_WrongType(t *testing.T) {
-	source := &ResponseSource{field: map[string]interface{}{"response_name": 1}}
+	source := &ResponseSource{field: map[string]any{"response_name": 1}}
 	_, _, err := source.Validate()
 	if err == nil {
 		t.Fatal("expected type error for 'response_name', got nil")
@@ -72,7 +72,7 @@ func TestValidate_WrongType(t *testing.T) {
 func TestValidate_OuterNameWrongType(t *testing.T) {
 	rs := &ResponseSource{
 		outer: "profile",
-		field: map[string]interface{}{
+		field: map[string]any{
 			"profile_name":  123,
 			"response_name": "r1",
 		},
@@ -87,7 +87,7 @@ func TestValidate_OuterNameWrongType(t *testing.T) {
 func TestEvaluate_WithFieldSelector_String(t *testing.T) {
 	ctx := t.Context()
 	source := &ResponseSource{
-		field: map[string]interface{}{"response_name": "mount-userpass", "field_selector": "status"},
+		field: map[string]any{"response_name": "mount-userpass", "field_selector": "status"},
 	}
 
 	if _, _, err := source.Validate(); err != nil {
@@ -95,7 +95,7 @@ func TestEvaluate_WithFieldSelector_String(t *testing.T) {
 	}
 
 	history := &EvaluationHistory{}
-	data := map[string]interface{}{
+	data := map[string]any{
 		"status": "active",
 	}
 	if err := history.AddResponseData("", "mount-userpass", data); err != nil {

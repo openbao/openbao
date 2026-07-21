@@ -48,7 +48,7 @@ func TestCopy_auth(t *testing.T) {
 func TestCopy_request(t *testing.T) {
 	// Make a non-pointer one so that it can't be modified directly
 	expected := logical.Request{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"foo": "bar",
 		},
 		WrapInfo: &logical.RequestWrapInfo{
@@ -73,7 +73,7 @@ func TestCopy_request(t *testing.T) {
 func TestCopy_response(t *testing.T) {
 	// Make a non-pointer one so that it can't be modified directly
 	expected := logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"foo": "bar",
 		},
 		WrapInfo: &wrapping.ResponseWrapInfo{
@@ -197,14 +197,14 @@ func TestHashRequest(t *testing.T) {
 	}{
 		{
 			&logical.Request{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"foo":              "bar",
 					"baz":              "foobar",
 					"private_key_type": certutil.PrivateKeyType("rsa"),
 				},
 			},
 			&logical.Request{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"foo":              "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
 					"baz":              "foobar",
 					"private_key_type": "hmac-sha256:995230dca56fffd310ff591aa404aab52b2abb41703c787cfa829eceb4595bf1",
@@ -258,7 +258,7 @@ func TestHashResponse(t *testing.T) {
 		// Confirm nested struct doesn't generate panic
 		{
 			&logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"foo": testTopicPermission{Write: "bar", Read: "baz"},
 				},
 				WrapInfo: &wrapping.ResponseWrapInfo{
@@ -270,8 +270,8 @@ func TestHashResponse(t *testing.T) {
 				},
 			},
 			&logical.Response{
-				Data: map[string]interface{}{
-					"foo": map[string]interface{}{
+				Data: map[string]any{
+					"foo": map[string]any{
 						"write_json": "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
 						"read_json":  "baz",
 					},
@@ -289,10 +289,10 @@ func TestHashResponse(t *testing.T) {
 		},
 		{
 			&logical.Response{
-				Data: map[string]interface{}{
-					"foo": map[string]interface{}{
+				Data: map[string]any{
+					"foo": map[string]any{
 						"first": testTopicPermission{Write: "bar", Read: "baz"},
-						"second": map[string]interface{}{
+						"second": map[string]any{
 							"nested": testTopicPermission{Write: "war", Read: "waz"},
 						},
 					},
@@ -306,14 +306,14 @@ func TestHashResponse(t *testing.T) {
 				},
 			},
 			&logical.Response{
-				Data: map[string]interface{}{
-					"foo": map[string]interface{}{
-						"first": map[string]interface{}{
+				Data: map[string]any{
+					"foo": map[string]any{
+						"first": map[string]any{
 							"write_json": "bar",
 							"read_json":  "hmac-sha256:57fe23dcea29b442ce536b9486b53999513079c8850b2c4ac83bb48529a00bfe",
 						},
-						"second": map[string]interface{}{
-							"nested": map[string]interface{}{
+						"second": map[string]any{
+							"nested": map[string]any{
 								"write_json": "war",
 								"read_json":  "hmac-sha256:5c69f2a46b323680e94d5a0f50b3347a5dfeb8382db7ff38dfaae1516f8a142c",
 							},
@@ -334,8 +334,8 @@ func TestHashResponse(t *testing.T) {
 		// Confirm int keys are converted to string keys
 		{
 			&logical.Response{
-				Data: map[string]interface{}{
-					"foo": map[int]interface{}{
+				Data: map[string]any{
+					"foo": map[int]any{
 						100: "bar",
 					},
 				},
@@ -348,8 +348,8 @@ func TestHashResponse(t *testing.T) {
 				},
 			},
 			&logical.Response{
-				Data: map[string]interface{}{
-					"foo": map[string]interface{}{
+				Data: map[string]any{
+					"foo": map[string]any{
 						"100": "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
 					},
 				},
@@ -366,7 +366,7 @@ func TestHashResponse(t *testing.T) {
 		},
 		{
 			&logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"foo": "bar",
 					"baz": "foobar",
 					// Responses can contain time values, so test that with
@@ -382,7 +382,7 @@ func TestHashResponse(t *testing.T) {
 				},
 			},
 			&logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"foo": "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
 					"baz": "foobar",
 					"bar": now.Format(time.RFC3339Nano),
@@ -400,13 +400,13 @@ func TestHashResponse(t *testing.T) {
 		},
 		{
 			&logical.Response{
-				Data: map[string]interface{}{
-					"key_info": map[string]interface{}{
-						"random_string": map[string]interface{}{
+				Data: map[string]any{
+					"key_info": map[string]any{
+						"random_string": map[string]any{
 							"name":                "test",
 							"num_member_entities": 0,
 							"num_parent_groups":   0,
-							"deeply_nested_map": map[string]interface{}{
+							"deeply_nested_map": map[string]any{
 								"random_array": []string{"item", "another_item"},
 							},
 						},
@@ -422,11 +422,11 @@ func TestHashResponse(t *testing.T) {
 				},
 			},
 			&logical.Response{
-				Data: map[string]interface{}{
-					"key_info": map[string]interface{}{
-						"random_string": map[string]interface{}{
-							"deeply_nested_map": map[string]interface{}{
-								"random_array": []interface{}{
+				Data: map[string]any{
+					"key_info": map[string]any{
+						"random_string": map[string]any{
+							"deeply_nested_map": map[string]any{
+								"random_array": []any{
 									"hmac-sha256:5a4325952fec282c8dbfd0242cca5d018a210bb629e9ebc9278f58b5f4d73db1",
 									"hmac-sha256:0176bac06c07b7ccb59bda70be3cf50f5560d25328bf8043796d24be71177d2d",
 								},
@@ -451,7 +451,7 @@ func TestHashResponse(t *testing.T) {
 		},
 		{
 			&logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					logical.HTTPRawBody: []byte("Response"),
 				},
 				WrapInfo: &wrapping.ResponseWrapInfo{
@@ -463,7 +463,7 @@ func TestHashResponse(t *testing.T) {
 				},
 			},
 			&logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					logical.HTTPRawBody: "hmac-sha256:cf0faf58d6106e1f46cdfaf93353ae0fe08b21948de64a402ae9b77dbd9b07d1",
 				},
 				WrapInfo: &wrapping.ResponseWrapInfo{
@@ -507,24 +507,24 @@ func TestHashWalker(t *testing.T) {
 	replaceText := "foo"
 
 	cases := []struct {
-		Input  map[string]interface{}
-		Output map[string]interface{}
+		Input  map[string]any
+		Output map[string]any
 	}{
 		{
-			map[string]interface{}{
+			map[string]any{
 				"hello": "foo",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"hello": replaceText,
 			},
 		},
 
 		{
-			map[string]interface{}{
-				"hello": []interface{}{"world"},
+			map[string]any{
+				"hello": []any{"world"},
 			},
-			map[string]interface{}{
-				"hello": []interface{}{replaceText},
+			map[string]any{
+				"hello": []any{replaceText},
 			},
 		},
 	}
@@ -548,25 +548,25 @@ func TestHashWalker_TimeStructs(t *testing.T) {
 
 	now := time.Now()
 	cases := []struct {
-		Input  map[string]interface{}
-		Output map[string]interface{}
+		Input  map[string]any
+		Output map[string]any
 	}{
 		// Should handle map values of type time.Time.
 		{
-			map[string]interface{}{
+			map[string]any{
 				"hello": now,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"hello": now.Format(time.RFC3339Nano),
 			},
 		},
 		// Should handle slice values of type time.Time.
 		{
-			map[string]interface{}{
-				"hello": []interface{}{"foo", now, "foo2"},
+			map[string]any{
+				"hello": []any{"foo", now, "foo2"},
 			},
-			map[string]interface{}{
-				"hello": []interface{}{"foobar", now.Format(time.RFC3339Nano), "foo2bar"},
+			map[string]any{
+				"hello": []any{"foobar", now.Format(time.RFC3339Nano), "foo2bar"},
 			},
 		},
 	}

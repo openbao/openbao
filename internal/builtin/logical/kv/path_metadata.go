@@ -219,7 +219,7 @@ func (b *versionedKVBackend) pathMetadataList() framework.OperationFunc {
 		}
 
 		// Read metadata of each entry and attach to the response.
-		keyInfos := map[string]interface{}{}
+		keyInfos := map[string]any{}
 
 		for index, subKey := range keys {
 			path := filepath.Join(key, subKey)
@@ -231,7 +231,7 @@ func (b *versionedKVBackend) pathMetadataList() framework.OperationFunc {
 
 			// No metadata for a directory or deleted entry.
 			if meta == nil {
-				keyInfos[subKey] = map[string]interface{}{}
+				keyInfos[subKey] = map[string]any{}
 				continue
 			}
 
@@ -276,7 +276,7 @@ func (b *versionedKVBackend) pathMetadataScan() framework.OperationFunc {
 		}
 
 		// Read metadata of each entry and attach to the response.
-		keyInfos := map[string]interface{}{}
+		keyInfos := map[string]any{}
 
 		for index, subKey := range keys {
 			path := filepath.Join(key, subKey)
@@ -298,10 +298,10 @@ func (b *versionedKVBackend) pathMetadataScan() framework.OperationFunc {
 	}
 }
 
-func (b *versionedKVBackend) metadataResponseData(meta *KeyMetadata) (map[string]interface{}, error) {
-	versions := make(map[string]interface{}, len(meta.Versions))
+func (b *versionedKVBackend) metadataResponseData(meta *KeyMetadata) (map[string]any, error) {
+	versions := make(map[string]any, len(meta.Versions))
 	for i, v := range meta.Versions {
-		versions[fmt.Sprintf("%d", i)] = map[string]interface{}{
+		versions[fmt.Sprintf("%d", i)] = map[string]any{
 			"created_time":  ptypesTimestampToString(v.CreatedTime),
 			"deletion_time": ptypesTimestampToString(v.DeletionTime),
 			"destroyed":     v.Destroyed,
@@ -316,7 +316,7 @@ func (b *versionedKVBackend) metadataResponseData(meta *KeyMetadata) (map[string
 		deleteVersionAfter = meta.GetDeleteVersionAfter().AsDuration()
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"versions":                 versions,
 		"current_version":          meta.CurrentVersion,
 		"current_metadata_version": meta.CurrentMetadataVersion,
@@ -437,7 +437,7 @@ func validateCustomMetadata(customMetadata map[string]string) error {
 // however, is essential for a PATCH operation in that it signals
 // the handler to remove the field. The filterNils flag should
 // only be used during a patch operation.
-func parseCustomMetadata(raw map[string]interface{}, filterNils bool) (map[string]string, error) {
+func parseCustomMetadata(raw map[string]any, filterNils bool) (map[string]string, error) {
 	customMetadata := map[string]string{}
 	for k, v := range raw {
 		if filterNils && v == nil {
@@ -482,7 +482,7 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 		customMetadataMap := map[string]string{}
 
 		if cmOk {
-			customMetadataMap, err = parseCustomMetadata(customMetadataRaw.(map[string]interface{}), false)
+			customMetadataMap, err = parseCustomMetadata(customMetadataRaw.(map[string]any), false)
 			if err != nil {
 				return logical.ErrorResponse("%s: %s", customMetadataValidationErrorPrefix, err.Error()), nil
 			}
@@ -604,8 +604,8 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 // framework.PatchPreprocessorFunc handles filtering out Vault-managed fields,
 // and ensuring appropriate handling of data types not supported directly by FieldType.
 func metadataPatchPreprocessor(patchableKeys []string) framework.PatchPreprocessorFunc {
-	return func(input map[string]interface{}) (map[string]interface{}, error) {
-		patchData := map[string]interface{}{}
+	return func(input map[string]any) (map[string]any, error) {
+		patchData := map[string]any{}
 
 		for _, k := range patchableKeys {
 			if v, ok := input[k]; ok {
@@ -646,7 +646,7 @@ func (b *versionedKVBackend) pathMetadataPatch() framework.OperationFunc {
 		}
 
 		if cmRaw, cmOk := data.GetOk("custom_metadata"); cmOk {
-			customMetadataMap, err := parseCustomMetadata(cmRaw.(map[string]interface{}), true)
+			customMetadataMap, err := parseCustomMetadata(cmRaw.(map[string]any), true)
 			if err != nil {
 				return logical.ErrorResponse("%s: %s", customMetadataValidationErrorPrefix, err.Error()), nil
 			}
@@ -726,7 +726,7 @@ func (b *versionedKVBackend) pathMetadataPatch() framework.OperationFunc {
 			return nil, err
 		}
 
-		var metaMap map[string]interface{}
+		var metaMap map[string]any
 		if err = json.Unmarshal(metadataJSON, &metaMap); err != nil {
 			return nil, err
 		}

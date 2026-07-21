@@ -358,7 +358,7 @@ func (b *backend) operationSetRead(ctx context.Context, req *logical.Request, fi
 		return nil, nil
 	}
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"service_account_names":        set.ServiceAccountNames,
 			"ttl":                          int64(set.TTL.Seconds()),
 			"max_ttl":                      int64(set.MaxTTL.Seconds()),

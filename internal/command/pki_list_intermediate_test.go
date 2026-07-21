@@ -204,7 +204,7 @@ func runPkiListIntermediateTests(t *testing.T, client *api.Client) {
 	}
 	for _, testCase := range cases {
 		var errString string
-		var results map[string]interface{}
+		var results map[string]any
 		var stdOut string
 
 		if testCase.jsonOut {

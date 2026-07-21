@@ -17,7 +17,7 @@ func TestNewTokenFileAuthMethodEmptyConfig(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Trace)
 	_, err := NewTokenFileAuthMethod(&auth.AuthConfig{
 		Logger: logger.Named("auth.method"),
-		Config: map[string]interface{}{},
+		Config: map[string]any{},
 	})
 	if err == nil {
 		t.Fatal("Expected error due to empty config")
@@ -28,7 +28,7 @@ func TestNewTokenFileEmptyFilePath(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Trace)
 	_, err := NewTokenFileAuthMethod(&auth.AuthConfig{
 		Logger: logger.Named("auth.method"),
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"token_file_path": "",
 		},
 	})
@@ -51,7 +51,7 @@ func TestNewTokenFileAuthenticate(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Trace)
 	am, err := NewTokenFileAuthMethod(&auth.AuthConfig{
 		Logger: logger.Named("auth.method"),
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"token_file_path": tokenFileName,
 		},
 	})

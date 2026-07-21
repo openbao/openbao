@@ -88,7 +88,7 @@ func (b *backend) writeConfigKeys(ctx context.Context, req *logical.Request, cfg
 
 func respondConfigKeys(cfg *keysConfig) *logical.Response {
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"disable_upsert": cfg.DisableUpsert,
 		},
 	}

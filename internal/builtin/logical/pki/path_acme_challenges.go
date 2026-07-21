@@ -53,7 +53,7 @@ func patternAcmeChallenge(b *backend, pattern string) *framework.Path {
 	}
 }
 
-func (b *backend) acmeChallengeHandler(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]interface{}, _ *acmeAccount) (*logical.Response, error) {
+func (b *backend) acmeChallengeHandler(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]any, _ *acmeAccount) (*logical.Response, error) {
 	authId := fields.Get("auth_id").(string)
 	challengeType := fields.Get("challenge_type").(string)
 
@@ -65,7 +65,7 @@ func (b *backend) acmeChallengeHandler(acmeCtx *acmeContext, r *logical.Request,
 	return b.acmeChallengeFetchHandler(acmeCtx, r, fields, userCtx, data, authz, challengeType)
 }
 
-func (b *backend) acmeChallengeFetchHandler(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]interface{}, authz *ACMEAuthorization, challengeType string) (*logical.Response, error) {
+func (b *backend) acmeChallengeFetchHandler(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]any, authz *ACMEAuthorization, challengeType string) (*logical.Response, error) {
 	var challenge *ACMEChallenge
 	for _, c := range authz.Challenges {
 		if string(c.Type) == challengeType {

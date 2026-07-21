@@ -20,7 +20,7 @@ import (
 func TestAuditHttp_Integration(t *testing.T) {
 	var lock sync.Mutex
 	var badRequests int
-	logs := []map[string]interface{}{}
+	logs := []map[string]any{}
 	logRoute := "/audit"
 
 	requiredHeaders := http.Header{}
@@ -80,7 +80,7 @@ func TestAuditHttp_Integration(t *testing.T) {
 	require.Equal(t, 1, len(logs))
 	require.Contains(t, logs[0], "request")
 
-	request := logs[0]["request"].(map[string]interface{})
+	request := logs[0]["request"].(map[string]any)
 	require.Contains(t, request, "path")
 	require.Equal(t, request["path"].(string), "/foo")
 }

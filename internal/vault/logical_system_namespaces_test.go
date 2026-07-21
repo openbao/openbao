@@ -426,7 +426,7 @@ func TestNamespaceBackend_List(t *testing.T) {
 		req := logical.TestRequest(t, logical.ListOperation, "namespaces")
 		res, err := b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
-		require.Equal(t, res.Data, map[string]interface{}{}, "list data has unexpected elements")
+		require.Equal(t, res.Data, map[string]any{}, "list data has unexpected elements")
 	})
 
 	t.Run("list includes non-root namespaces", func(t *testing.T) {
@@ -442,7 +442,7 @@ func TestNamespaceBackend_List(t *testing.T) {
 
 		keys, ok := res.Data["keys"].([]string)
 		require.True(t, ok, "keys is not a list")
-		keyInfo, ok := res.Data["key_info"].(map[string]interface{})
+		keyInfo, ok := res.Data["key_info"].(map[string]any)
 		require.True(t, ok, "key_info is not a map")
 
 		require.Equal(t, len(keys), 2, "expected two entries in keys")
@@ -476,7 +476,7 @@ func TestNamespaceBackend_List(t *testing.T) {
 
 		keys, ok := res.Data["keys"].([]string)
 		require.True(t, ok, "keys is not a list")
-		keyInfo, ok := res.Data["key_info"].(map[string]interface{})
+		keyInfo, ok := res.Data["key_info"].(map[string]any)
 		require.True(t, ok, "key_info is not a map")
 
 		require.Equal(t, 2, len(keys), "expected two entries in keys")
@@ -512,7 +512,7 @@ func TestNamespaceBackend_List(t *testing.T) {
 
 		keys, ok := res.Data["keys"].([]string)
 		require.True(t, ok, "keys is not a list")
-		keyInfo, ok := res.Data["key_info"].(map[string]interface{})
+		keyInfo, ok := res.Data["key_info"].(map[string]any)
 		require.True(t, ok, "key_info is not a map")
 
 		require.Equal(t, 2, len(keys), "expected two entries in keys")
@@ -541,7 +541,7 @@ func TestNamespaceBackend_Scan(t *testing.T) {
 		req := logical.TestRequest(t, logical.ScanOperation, "namespaces")
 		res, err := b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
-		require.Equal(t, res.Data, map[string]interface{}{}, "scan data has unexpected elements")
+		require.Equal(t, res.Data, map[string]any{}, "scan data has unexpected elements")
 	})
 
 	t.Run("scan includes non-root namespaces", func(t *testing.T) {
@@ -557,7 +557,7 @@ func TestNamespaceBackend_Scan(t *testing.T) {
 
 		keys, ok := res.Data["keys"].([]string)
 		require.True(t, ok, "keys is not a list")
-		keyInfo, ok := res.Data["key_info"].(map[string]interface{})
+		keyInfo, ok := res.Data["key_info"].(map[string]any)
 		require.True(t, ok, "key_info is not a map")
 
 		require.Equal(t, len(keys), 2, "expected two entries in keys")
@@ -591,7 +591,7 @@ func TestNamespaceBackend_Scan(t *testing.T) {
 
 		keys, ok := res.Data["keys"].([]string)
 		require.True(t, ok, "keys is not a list")
-		keyInfo, ok := res.Data["key_info"].(map[string]interface{})
+		keyInfo, ok := res.Data["key_info"].(map[string]any)
 		require.True(t, ok, "key_info is not a map")
 
 		require.Equal(t, 3, len(keys), "expected two entries in keys")
@@ -628,7 +628,7 @@ func TestNamespaceBackend_Scan(t *testing.T) {
 
 		keys, ok := res.Data["keys"].([]string)
 		require.True(t, ok, "keys is not a list")
-		keyInfo, ok := res.Data["key_info"].(map[string]interface{})
+		keyInfo, ok := res.Data["key_info"].(map[string]any)
 		require.True(t, ok, "key_info is not a map")
 
 		require.Equal(t, 2, len(keys), "expected two entries in keys: %v", keys)

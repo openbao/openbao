@@ -45,14 +45,14 @@ func patternAcmeDirectory(b *backend, pattern string) *framework.Path {
 }
 
 func (b *backend) acmeDirectoryHandler(acmeCtx *acmeContext, r *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	rawBody, err := json.Marshal(map[string]interface{}{
+	rawBody, err := json.Marshal(map[string]any{
 		"newNonce":   acmeCtx.baseUrl.JoinPath("new-nonce").String(),
 		"newAccount": acmeCtx.baseUrl.JoinPath("new-account").String(),
 		"newOrder":   acmeCtx.baseUrl.JoinPath("new-order").String(),
 		"revokeCert": acmeCtx.baseUrl.JoinPath("revoke-cert").String(),
 		"keyChange":  acmeCtx.baseUrl.JoinPath("key-change").String(),
 		// This is purposefully missing newAuthz as we don't support pre-authorization
-		"meta": map[string]interface{}{
+		"meta": map[string]any{
 			"externalAccountRequired": acmeCtx.eabPolicy.IsExternalAccountRequired(),
 		},
 	})
@@ -61,7 +61,7 @@ func (b *backend) acmeDirectoryHandler(acmeCtx *acmeContext, r *logical.Request,
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			logical.HTTPContentType: "application/json",
 			logical.HTTPStatusCode:  http.StatusOK,
 			logical.HTTPRawBody:     rawBody,

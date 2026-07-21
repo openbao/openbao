@@ -43,7 +43,7 @@ func TestTransit_ConfigSettings(t *testing.T) {
 		Storage:   storage,
 		Operation: logical.UpdateOperation,
 		Path:      "keys/aes256",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"derived": true,
 		},
 	}
@@ -146,7 +146,7 @@ func TestTransit_ConfigSettings(t *testing.T) {
 	req.Path = "keys/p521/config"
 	doReq(req)
 
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"plaintext": "abcd",
 		"input":     "abcd",
 		"context":   "abcd",
@@ -296,8 +296,8 @@ func TestTransit_ConfigSettings(t *testing.T) {
 
 func TestTransit_UpdateKeyConfigWithAutorotation(t *testing.T) {
 	tests := map[string]struct {
-		initialAutoRotatePeriod interface{}
-		newAutoRotatePeriod     interface{}
+		initialAutoRotatePeriod any
+		newAutoRotatePeriod     any
 		shouldError             bool
 		expectedValue           time.Duration
 	}{
@@ -365,13 +365,13 @@ func TestTransit_UpdateKeyConfigWithAutorotation(t *testing.T) {
 			}
 			keyName := hex.EncodeToString(keyNameBytes)
 
-			_, err = client.Logical().Write(fmt.Sprintf("transit/keys/%s", keyName), map[string]interface{}{
+			_, err = client.Logical().Write(fmt.Sprintf("transit/keys/%s", keyName), map[string]any{
 				"auto_rotate_period": test.initialAutoRotatePeriod,
 			})
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = client.Logical().Write(fmt.Sprintf("transit/keys/%s/config", keyName), map[string]interface{}{
+			_, err = client.Logical().Write(fmt.Sprintf("transit/keys/%s/config", keyName), map[string]any{
 				"auto_rotate_period": test.newAutoRotatePeriod,
 			})
 			switch {

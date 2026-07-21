@@ -853,7 +853,7 @@ func generateCert(sc *storageContext,
 
 // Generate a certificate evaluating params against CEL role
 func generateCELCert(
-	evaluationData map[string]interface{},
+	evaluationData map[string]any,
 	caSign *certutil.CAInfoBundle,
 	cert *x509.Certificate,
 	randomSource io.Reader,
@@ -867,7 +867,7 @@ func generateCELCert(
 
 // Generate a certificate evaluating params against CEL role
 func signCELCert(
-	evaluationData map[string]interface{},
+	evaluationData map[string]any,
 	caSign *certutil.CAInfoBundle,
 	cert *x509.Certificate,
 	csr *x509.CertificateRequest,

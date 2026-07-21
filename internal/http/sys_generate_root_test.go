@@ -37,8 +37,8 @@ func TestSysGenerateRootAttempt_Status(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	var actual map[string]interface{}
-	expected := map[string]interface{}{
+	var actual map[string]any
+	expected := map[string]any{
 		"started":            false,
 		"progress":           json.Number("0"),
 		"required":           json.Number("3"),
@@ -66,8 +66,8 @@ func TestSysGenerateRootAttempt_Setup_OTP(t *testing.T) {
 	resp := testHttpPut(t, token, addr+"/v1/sys/generate-root/attempt", nil)
 	testResponseStatus(t, resp, 200)
 
-	var actual map[string]interface{}
-	expected := map[string]interface{}{
+	var actual map[string]any
+	expected := map[string]any{
 		"started":            true,
 		"progress":           json.Number("0"),
 		"required":           json.Number("3"),
@@ -90,8 +90,8 @@ func TestSysGenerateRootAttempt_Setup_OTP(t *testing.T) {
 
 	resp = testHttpGet(t, token, addr+"/v1/sys/generate-root/attempt")
 
-	actual = map[string]interface{}{}
-	expected = map[string]interface{}{
+	actual = map[string]any{}
+	expected = map[string]any{
 		"started":            true,
 		"progress":           json.Number("0"),
 		"required":           json.Number("3"),
@@ -119,15 +119,15 @@ func TestSysGenerateRootAttempt_Setup_PGP(t *testing.T) {
 	defer ln.Close()
 	TestServerAuth(t, addr, token)
 
-	resp := testHttpPut(t, token, addr+"/v1/sys/generate-root/attempt", map[string]interface{}{
+	resp := testHttpPut(t, token, addr+"/v1/sys/generate-root/attempt", map[string]any{
 		"pgp_key": pgpkeys.TestPubKey1,
 	})
 	testResponseStatus(t, resp, 200)
 
 	resp = testHttpGet(t, token, addr+"/v1/sys/generate-root/attempt")
 
-	var actual map[string]interface{}
-	expected := map[string]interface{}{
+	var actual map[string]any
+	expected := map[string]any{
 		"started":            true,
 		"progress":           json.Number("0"),
 		"required":           json.Number("3"),
@@ -157,8 +157,8 @@ func TestSysGenerateRootAttempt_Cancel(t *testing.T) {
 
 	resp := testHttpPut(t, token, addr+"/v1/sys/generate-root/attempt", nil)
 
-	var actual map[string]interface{}
-	expected := map[string]interface{}{
+	var actual map[string]any
+	expected := map[string]any{
 		"started":            true,
 		"progress":           json.Number("0"),
 		"required":           json.Number("3"),
@@ -187,8 +187,8 @@ func TestSysGenerateRootAttempt_Cancel(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	actual = map[string]interface{}{}
-	expected = map[string]interface{}{
+	actual = map[string]any{}
+	expected = map[string]any{
 		"started":            false,
 		"progress":           json.Number("0"),
 		"required":           json.Number("3"),
@@ -213,7 +213,7 @@ func enableNoopAudit(t *testing.T, token string, core *vault.Core) {
 		Operation:   logical.UpdateOperation,
 		ClientToken: token,
 		Path:        "sys/audit/noop",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "noop",
 		},
 	}
@@ -246,7 +246,7 @@ func TestSysGenerateRoot_badKey(t *testing.T) {
 	ln, addr, token, _ := testServerWithAudit(t, &records)
 	defer ln.Close()
 
-	resp := testHttpPut(t, token, addr+"/v1/sys/generate-root/update", map[string]interface{}{
+	resp := testHttpPut(t, token, addr+"/v1/sys/generate-root/update", map[string]any{
 		"key": "0123",
 	})
 	testResponseStatus(t, resp, 400)
@@ -270,7 +270,7 @@ func TestSysGenerateRoot_ReAttemptUpdate(t *testing.T) {
 	resp = testHttpDelete(t, token, addr+"/v1/sys/generate-root/attempt")
 	testResponseStatus(t, resp, 204)
 
-	resp = testHttpPut(t, token, addr+"/v1/sys/generate-root/attempt", map[string]interface{}{
+	resp = testHttpPut(t, token, addr+"/v1/sys/generate-root/attempt", map[string]any{
 		"pgp_key": pgpkeys.TestPubKey1,
 	})
 
@@ -282,22 +282,22 @@ func TestSysGenerateRoot_Update_OTP(t *testing.T) {
 	ln, addr, token, keys := testServerWithAudit(t, &records)
 	defer ln.Close()
 
-	resp := testHttpPut(t, token, addr+"/v1/sys/generate-root/attempt", map[string]interface{}{})
-	var rootGenerationStatus map[string]interface{}
+	resp := testHttpPut(t, token, addr+"/v1/sys/generate-root/attempt", map[string]any{})
+	var rootGenerationStatus map[string]any
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &rootGenerationStatus)
 	otp := rootGenerationStatus["otp"].(string)
 
-	var actual map[string]interface{}
-	var expected map[string]interface{}
+	var actual map[string]any
+	var expected map[string]any
 	for i, key := range keys {
-		resp = testHttpPut(t, token, addr+"/v1/sys/generate-root/update", map[string]interface{}{
+		resp = testHttpPut(t, token, addr+"/v1/sys/generate-root/update", map[string]any{
 			"nonce": rootGenerationStatus["nonce"].(string),
 			"key":   hex.EncodeToString(key),
 		})
 
-		actual = map[string]interface{}{}
-		expected = map[string]interface{}{
+		actual = map[string]any{}
+		expected = map[string]any{
 			"complete":        false,
 			"nonce":           rootGenerationStatus["nonce"].(string),
 			"progress":        json.Number(fmt.Sprintf("%d", i+1)),
@@ -339,13 +339,13 @@ func TestSysGenerateRoot_Update_OTP(t *testing.T) {
 	}
 	newRootToken := string(tokenBytes)
 
-	actual = map[string]interface{}{}
-	expected = map[string]interface{}{
+	actual = map[string]any{}
+	expected = map[string]any{
 		"id":               newRootToken,
 		"display_name":     "root",
-		"meta":             interface{}(nil),
+		"meta":             any(nil),
 		"num_uses":         json.Number("0"),
-		"policies":         []interface{}{"root"},
+		"policies":         []any{"root"},
 		"orphan":           true,
 		"creation_ttl":     json.Number("0"),
 		"ttl":              json.Number("0"),
@@ -360,8 +360,8 @@ func TestSysGenerateRoot_Update_OTP(t *testing.T) {
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
 
-	expected["creation_time"] = actual["data"].(map[string]interface{})["creation_time"]
-	expected["accessor"] = actual["data"].(map[string]interface{})["accessor"]
+	expected["creation_time"] = actual["data"].(map[string]any)["creation_time"]
+	expected["accessor"] = actual["data"].(map[string]any)["accessor"]
 
 	if !reflect.DeepEqual(actual["data"], expected) {
 		t.Fatalf("\nexpected: %#v\nactual: %#v", expected, actual["data"])
@@ -378,7 +378,7 @@ func TestSysGenerateRoot_Update_PGP(t *testing.T) {
 	defer ln.Close()
 	TestServerAuth(t, addr, token)
 
-	resp := testHttpPut(t, token, addr+"/v1/sys/generate-root/attempt", map[string]interface{}{
+	resp := testHttpPut(t, token, addr+"/v1/sys/generate-root/attempt", map[string]any{
 		"pgp_key": pgpkeys.TestPubKey1,
 	})
 	testResponseStatus(t, resp, 200)
@@ -388,20 +388,20 @@ func TestSysGenerateRoot_Update_PGP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	var rootGenerationStatus map[string]interface{}
+	var rootGenerationStatus map[string]any
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &rootGenerationStatus)
 
-	var actual map[string]interface{}
-	var expected map[string]interface{}
+	var actual map[string]any
+	var expected map[string]any
 	for i, key := range keys {
-		resp = testHttpPut(t, token, addr+"/v1/sys/generate-root/update", map[string]interface{}{
+		resp = testHttpPut(t, token, addr+"/v1/sys/generate-root/update", map[string]any{
 			"nonce": rootGenerationStatus["nonce"].(string),
 			"key":   hex.EncodeToString(key),
 		})
 
-		actual = map[string]interface{}{}
-		expected = map[string]interface{}{
+		actual = map[string]any{}
+		expected = map[string]any{
 			"complete":        false,
 			"nonce":           rootGenerationStatus["nonce"].(string),
 			"progress":        json.Number(fmt.Sprintf("%d", i+1)),
@@ -442,13 +442,13 @@ func TestSysGenerateRoot_Update_PGP(t *testing.T) {
 
 	newRootToken := decodedTokenBuf.String()
 
-	actual = map[string]interface{}{}
-	expected = map[string]interface{}{
+	actual = map[string]any{}
+	expected = map[string]any{
 		"id":               newRootToken,
 		"display_name":     "root",
-		"meta":             interface{}(nil),
+		"meta":             any(nil),
 		"num_uses":         json.Number("0"),
-		"policies":         []interface{}{"root"},
+		"policies":         []any{"root"},
 		"orphan":           true,
 		"creation_ttl":     json.Number("0"),
 		"ttl":              json.Number("0"),
@@ -463,8 +463,8 @@ func TestSysGenerateRoot_Update_PGP(t *testing.T) {
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
 
-	expected["creation_time"] = actual["data"].(map[string]interface{})["creation_time"]
-	expected["accessor"] = actual["data"].(map[string]interface{})["accessor"]
+	expected["creation_time"] = actual["data"].(map[string]any)["creation_time"]
+	expected["accessor"] = actual["data"].(map[string]any)["accessor"]
 
 	if diff := deep.Equal(actual["data"], expected); diff != nil {
 		t.Fatal(diff)

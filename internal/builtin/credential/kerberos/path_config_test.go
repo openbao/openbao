@@ -36,7 +36,7 @@ func getTestBackend(t *testing.T) (logical.Backend, logical.Storage) {
 func TestConfig_ReadWrite(t *testing.T) {
 	b, storage := getTestBackend(t)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"keytab":               testValidKeytab,
 		"service_account":      "testuser",
 		"remove_instance_name": true,
@@ -77,27 +77,27 @@ func TestConfig_ReadWrite(t *testing.T) {
 func TestConfig_RejectsBadWrites(t *testing.T) {
 	b, storage := getTestBackend(t)
 
-	testConfigWriteError(t, b, storage, map[string]interface{}{
+	testConfigWriteError(t, b, storage, map[string]any{
 		"keytab": testValidKeytab,
 	}, "data does not contain service_account")
 
-	testConfigWriteError(t, b, storage, map[string]interface{}{
+	testConfigWriteError(t, b, storage, map[string]any{
 		"service_account": "testuser",
 	}, "data does not contain keytab")
 
-	testConfigWriteError(t, b, storage, map[string]interface{}{
+	testConfigWriteError(t, b, storage, map[string]any{
 		"service_account": "testuser",
 		"keytab":          testNotBase64Keytab,
 	}, "invalid keytab: illegal base64 data at input byte 3")
 
-	testConfigWriteError(t, b, storage, map[string]interface{}{
+	testConfigWriteError(t, b, storage, map[string]any{
 		"service_account": "testuser",
 		"keytab":          testInvalidKeytab,
 	}, "invalid keytab")
 }
 
 func testConfigWriteError(t *testing.T, b logical.Backend, storage logical.Storage,
-	data map[string]interface{}, e string,
+	data map[string]any, e string,
 ) {
 	req := &logical.Request{
 		Operation: logical.UpdateOperation,

@@ -114,12 +114,12 @@ type ErrorResponse struct {
 	Subproblems []*ErrorResponse `json:"subproblems,omitempty"`
 }
 
-func (e *ErrorResponse) MarshalForStorage() map[string]interface{} {
-	subProblems := []map[string]interface{}{}
+func (e *ErrorResponse) MarshalForStorage() map[string]any {
+	subProblems := []map[string]any{}
 	for _, subProblem := range e.Subproblems {
 		subProblems = append(subProblems, subProblem.MarshalForStorage())
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		"status":      e.StatusCode,
 		"type":        e.Type,
 		"detail":      e.Detail,
@@ -134,7 +134,7 @@ func (e *ErrorResponse) Marshal() (*logical.Response, error) {
 	}
 
 	var resp logical.Response
-	resp.Data = map[string]interface{}{
+	resp.Data = map[string]any{
 		logical.HTTPContentType: ErrorContentType,
 		logical.HTTPRawBody:     body,
 		logical.HTTPStatusCode:  e.StatusCode,

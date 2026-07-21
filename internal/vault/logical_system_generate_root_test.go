@@ -61,7 +61,7 @@ func testGenerateRoot_Failure(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	res, err = c.systemBackend.HandleRequest(ctx, req)
 	require.NoError(t, err)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"started":         true,
 		"complete":        false,
 		"progress":        1,
@@ -86,7 +86,7 @@ func TestGenerateRootAttempt(t *testing.T) {
 
 func testGenerateRootAttempt(t *testing.T, c *Core, ns *namespace.Namespace, pgp string, keys [][]byte) {
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"started":         true,
 		"complete":        false,
 		"progress":        0,
@@ -125,7 +125,7 @@ func testGenerateRootAttempt(t *testing.T, c *Core, ns *namespace.Namespace, pgp
 	res, err = c.systemBackend.HandleRequest(ctx, req)
 	require.NoError(t, err)
 
-	uninitExp := map[string]interface{}{
+	uninitExp := map[string]any{
 		"started":    false,
 		"complete":   false,
 		"progress":   0,
@@ -185,7 +185,7 @@ func testGenerateRootAttempt(t *testing.T, c *Core, ns *namespace.Namespace, pgp
 	}
 
 	var meta map[string]string
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"id":               newRootToken,
 		"display_name":     "root",
 		"meta":             meta,
@@ -245,7 +245,7 @@ func TestSystemBackend_decodeToken(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, tokenExpected, token.(string))
 
-	datas := []map[string]interface{}{
+	datas := []map[string]any{
 		nil,
 		{"encoded_token": encodedToken},
 		{"otp": otp},

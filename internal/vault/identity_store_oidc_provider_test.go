@@ -580,7 +580,7 @@ func TestOIDC_Path_OIDC_Token_Authorization_Code_Flow(t *testing.T) {
 			require.Equal(t, 3, len(parts))
 			payload, err := base64.RawURLEncoding.DecodeString(parts[1])
 			require.NoError(t, err)
-			claims := make(map[string]interface{})
+			claims := make(map[string]any)
 			require.NoError(t, json.Unmarshal(payload, &claims))
 
 			// Assert that reserved claims are present in the ID token.
@@ -690,7 +690,7 @@ func TestOIDC_Path_OIDC_Token_Client_Credentials_Flow(t *testing.T) {
 					Storage:   s,
 					Path:      "oidc/client/test-client",
 					Operation: logical.CreateOperation,
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"key":                "test-key",
 						"redirect_uris":      []string{"https://localhost:8251/callback"},
 						"assignments":        []string{"test-assignment"},
@@ -712,7 +712,7 @@ func TestOIDC_Path_OIDC_Token_Client_Credentials_Flow(t *testing.T) {
 					Storage:   s,
 					Path:      "oidc/client/test-client",
 					Operation: logical.CreateOperation,
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"key":                "test-key",
 						"redirect_uris":      []string{"https://localhost:8251/callback"},
 						"assignments":        []string{"test-assignment"},
@@ -822,7 +822,7 @@ func TestOIDC_Path_OIDC_Token_Client_Credentials_Flow(t *testing.T) {
 			require.Equal(t, 3, len(parts))
 			payload, err := base64.RawURLEncoding.DecodeString(parts[1])
 			require.NoError(t, err)
-			claims := make(map[string]interface{})
+			claims := make(map[string]any)
 			require.NoError(t, json.Unmarshal(payload, &claims))
 
 			// Assert that reserved claims are present in the ID token.
@@ -1332,7 +1332,7 @@ func TestOIDC_Path_OIDC_Authorize(t *testing.T) {
 					Storage:   s,
 					Path:      "oidc/client/test-client",
 					Operation: logical.CreateOperation,
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"key":                "test-key",
 						"redirect_uris":      []string{"https://localhost:8251/callback"},
 						"assignments":        []string{"test-assignment"},
@@ -1465,7 +1465,7 @@ func setupOIDCCommon(t *testing.T, c *Core, s logical.Storage) (string, string, 
 		Storage:   s,
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":                "test-key",
 			"redirect_uris":      []string{"https://localhost:8251/callback"},
 			"assignments":        []string{"test-assignment"},
@@ -1535,7 +1535,7 @@ func resetCommonOIDCConfig(t *testing.T, s logical.Storage, c *Core, entityID, g
 		Storage:   s,
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":              "test-key",
 			"redirect_uris":    []string{"https://localhost:8251/callback"},
 			"assignments":      []string{"test-assignment"},
@@ -1562,7 +1562,7 @@ func testAuthorizationCodeTokenReq(s logical.Storage, code, clientID, clientSecr
 		Headers: map[string][]string{
 			"Authorization": {basicAuthHeader(clientID, clientSecret)},
 		},
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			// The code is unknown until returned from the authorization endpoint
 			"code":               code,
 			"grant_type":         "authorization_code",
@@ -1581,7 +1581,7 @@ func testClientCredentialsTokenReq(s logical.Storage, scope, clientID, clientSec
 		Headers: map[string][]string{
 			"Authorization": {basicAuthHeader(clientID, clientSecret)},
 		},
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			// The code is unknown until returned from the authorization endpoint
 			"scope":              scope,
 			"grant_type":         "client_credentials",
@@ -1597,7 +1597,7 @@ func testAuthorizeReq(s logical.Storage, clientID string) *logical.Request {
 		Storage:   s,
 		Path:      "oidc/provider/test-provider/authorize",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"client_id":     clientID,
 			"scope":         "openid",
 			"redirect_uri":  "https://localhost:8251/callback",
@@ -1613,7 +1613,7 @@ func testAssignmentReq(s logical.Storage, entityID, groupID string) *logical.Req
 		Storage:   s,
 		Path:      "oidc/assignment/test-assignment",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"entity_ids": []string{entityID},
 			"group_ids":  []string{groupID},
 		},
@@ -1625,7 +1625,7 @@ func testClientClientcredentialFlowReq(s logical.Storage) *logical.Request {
 		Storage:   s,
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":                "test-key",
 			"redirect_uris":      []string{"https://localhost:8251/callback"},
 			"assignments":        []string{"test-assignment"},
@@ -1642,7 +1642,7 @@ func testClientReq(s logical.Storage) *logical.Request {
 		Storage:   s,
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":              "test-key",
 			"redirect_uris":    []string{"https://localhost:8251/callback"},
 			"assignments":      []string{"test-assignment"},
@@ -1657,7 +1657,7 @@ func testProviderReq(s logical.Storage, clientID string) *logical.Request {
 		Storage:   s,
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"allowed_client_ids": []string{clientID},
 			"scopes_supported":   []string{"test-scope", "conflict"},
 		},
@@ -1669,7 +1669,7 @@ func testEntityReq(s logical.Storage) *logical.Request {
 		Storage:   s,
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": "test-entity",
 			"metadata": map[string]string{
 				"email":        "test@hashicorp.com",
@@ -1684,7 +1684,7 @@ func testKeyReq(s logical.Storage, allowedClientIDs []string, alg string) *logic
 		Storage:   s,
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"allowed_client_ids": allowedClientIDs,
 			"algorithm":          alg,
 		},
@@ -1696,7 +1696,7 @@ func testGroupReq(s logical.Storage, name string, entityIDs, groupIDs []string) 
 		Storage:   s,
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":              name,
 			"member_entity_ids": entityIDs,
 			"member_group_ids":  groupIDs,
@@ -1709,7 +1709,7 @@ func testScopeReq(s logical.Storage, name, template string) *logical.Request {
 		Storage:   s,
 		Path:      fmt.Sprintf("oidc/scope/%s", name),
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"template": template,
 		},
 	}
@@ -1751,7 +1751,7 @@ func TestOIDC_Path_OIDC_ProviderReadPublicKey(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key-1",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": "2m",
 			"rotation_period":  "2m",
 		},
@@ -1763,7 +1763,7 @@ func TestOIDC_Path_OIDC_ProviderReadPublicKey(t *testing.T) {
 		Path:      "oidc/client/test-client-1",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":          "test-key-1",
 			"id_token_ttl": "1m",
 		},
@@ -1774,7 +1774,7 @@ func TestOIDC_Path_OIDC_ProviderReadPublicKey(t *testing.T) {
 		Path:      "oidc/client/test-client-2",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":          "test-key-1",
 			"id_token_ttl": "1m",
 		},
@@ -1793,7 +1793,7 @@ func TestOIDC_Path_OIDC_ProviderReadPublicKey(t *testing.T) {
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"issuer":             "https://example.com:8200",
 			"allowed_client_ids": []string{"*"},
 		},
@@ -1816,7 +1816,7 @@ func TestOIDC_Path_OIDC_ProviderReadPublicKey(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key-2",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": "2m",
 			"rotation_period":  "2m",
 		},
@@ -1828,7 +1828,7 @@ func TestOIDC_Path_OIDC_ProviderReadPublicKey(t *testing.T) {
 		Path:      "oidc/client/test-client-2",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":          "test-key-2",
 			"id_token_ttl": "1m",
 		},
@@ -1849,7 +1849,7 @@ func TestOIDC_Path_OIDC_ProviderReadPublicKey(t *testing.T) {
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"allowed_client_ids": []string{clientID},
 		},
 	})
@@ -1921,7 +1921,7 @@ func TestOIDC_Path_OIDC_Client_Type(t *testing.T) {
 				Path:      "oidc/client/test-client",
 				Operation: logical.CreateOperation,
 				Storage:   storage,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"key":         "test-key",
 					"client_type": tt.createClientType.String(),
 				},
@@ -1965,7 +1965,7 @@ func TestOIDC_Path_OIDC_Client_Type(t *testing.T) {
 				Path:      "oidc/client/test-client",
 				Operation: logical.UpdateOperation,
 				Storage:   storage,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"key":         "test-key",
 					"client_type": tt.updateClientType.String(),
 				},
@@ -2025,14 +2025,14 @@ func TestOIDC_Path_OIDC_ProviderClient_NilKeyEntry(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/client/test-client1",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 		},
 		Storage: storage,
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings := map[string]interface{}{
+	expectedStrings := map[string]any{
 		"key \"test-key\" does not exist": true,
 	}
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -2048,7 +2048,7 @@ func TestOIDC_Path_OIDC_ProviderClient_InvalidTokenTTL(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": int64(60),
 		},
 		Storage: storage,
@@ -2059,7 +2059,7 @@ func TestOIDC_Path_OIDC_ProviderClient_InvalidTokenTTL(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":          "test-key",
 			"id_token_ttl": int64(3600),
 		},
@@ -2067,7 +2067,7 @@ func TestOIDC_Path_OIDC_ProviderClient_InvalidTokenTTL(t *testing.T) {
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings := map[string]interface{}{
+	expectedStrings := map[string]any{
 		"a client's id_token_ttl cannot be greater than the verification_ttl of the key it references": true,
 	}
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -2096,7 +2096,7 @@ func TestOIDC_Path_OIDC_ProviderClient_UpdateKey(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key1",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": "2m",
 			"rotation_period":  "2m",
 		},
@@ -2107,7 +2107,7 @@ func TestOIDC_Path_OIDC_ProviderClient_UpdateKey(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key2",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": "2m",
 			"rotation_period":  "2m",
 		},
@@ -2119,7 +2119,7 @@ func TestOIDC_Path_OIDC_ProviderClient_UpdateKey(t *testing.T) {
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":          "test-key1",
 			"id_token_ttl": "1m",
 		},
@@ -2131,14 +2131,14 @@ func TestOIDC_Path_OIDC_ProviderClient_UpdateKey(t *testing.T) {
 		Path:      "oidc/client/test-client",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":          "test-key2",
 			"id_token_ttl": "1m",
 		},
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings := map[string]interface{}{
+	expectedStrings := map[string]any{
 		"key modification is not allowed": true,
 	}
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -2155,7 +2155,7 @@ func TestOIDC_Path_OIDC_ProviderClient_AssignmentDoesNotExist(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": "2m",
 			"rotation_period":  "2m",
 		},
@@ -2167,14 +2167,14 @@ func TestOIDC_Path_OIDC_ProviderClient_AssignmentDoesNotExist(t *testing.T) {
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":         "test-key",
 			"assignments": "my-assignment",
 		},
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings := map[string]interface{}{
+	expectedStrings := map[string]any{
 		"assignment \"my-assignment\" does not exist": true,
 	}
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -2190,7 +2190,7 @@ func TestOIDC_Path_OIDC_ProviderClient(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": "2m",
 			"rotation_period":  "2m",
 		},
@@ -2202,7 +2202,7 @@ func TestOIDC_Path_OIDC_ProviderClient(t *testing.T) {
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":          "test-key",
 			"id_token_ttl": "1m",
 		},
@@ -2216,7 +2216,7 @@ func TestOIDC_Path_OIDC_ProviderClient(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"redirect_uris":      []string{},
 		"assignments":        []string{},
 		"key":                "test-key",
@@ -2255,7 +2255,7 @@ func TestOIDC_Path_OIDC_ProviderClient(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/client/test-client",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"redirect_uris":      "http://localhost:3456/callback",
 			"assignments":        "my-assignment",
 			"key":                "test-key",
@@ -2275,7 +2275,7 @@ func TestOIDC_Path_OIDC_ProviderClient(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"redirect_uris":      []string{"http://localhost:3456/callback"},
 		"assignments":        []string{"my-assignment"},
 		"key":                "test-key",
@@ -2325,7 +2325,7 @@ func TestOIDC_Path_OIDC_ProviderClient_Deduplication(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": "2m",
 			"rotation_period":  "2m",
 		},
@@ -2344,7 +2344,7 @@ func TestOIDC_Path_OIDC_ProviderClient_Deduplication(t *testing.T) {
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":           "test-key",
 			"id_token_ttl":  "1m",
 			"assignments":   []string{"test-assignment1", "test-assignment1"},
@@ -2361,7 +2361,7 @@ func TestOIDC_Path_OIDC_ProviderClient_Deduplication(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"redirect_uris":      []string{"http://example.com", "http://notduplicate.com"},
 		"assignments":        []string{"test-assignment1"},
 		"key":                "test-key",
@@ -2387,7 +2387,7 @@ func TestOIDC_Path_OIDC_ProviderClient_Update(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": "2m",
 			"rotation_period":  "2m",
 		},
@@ -2407,7 +2407,7 @@ func TestOIDC_Path_OIDC_ProviderClient_Update(t *testing.T) {
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"redirect_uris":    "http://localhost:3456/callback",
 			"assignments":      "my-assignment",
 			"key":              "test-key",
@@ -2424,7 +2424,7 @@ func TestOIDC_Path_OIDC_ProviderClient_Update(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"redirect_uris":      []string{"http://localhost:3456/callback"},
 		"assignments":        []string{"my-assignment"},
 		"key":                "test-key",
@@ -2444,7 +2444,7 @@ func TestOIDC_Path_OIDC_ProviderClient_Update(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/client/test-client",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"redirect_uris":    "http://localhost:3456/callback2",
 			"id_token_ttl":     "30",
 			"access_token_ttl": "1m",
@@ -2460,7 +2460,7 @@ func TestOIDC_Path_OIDC_ProviderClient_Update(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"redirect_uris":      []string{"http://localhost:3456/callback2"},
 		"assignments":        []string{"my-assignment"},
 		"key":                "test-key",
@@ -2488,7 +2488,7 @@ func TestOIDC_Path_OIDC_ProviderClient_List(t *testing.T) {
 		Path:      "oidc/client/test-client1",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id_token_ttl": "1m",
 		},
 	})
@@ -2497,7 +2497,7 @@ func TestOIDC_Path_OIDC_ProviderClient_List(t *testing.T) {
 		Path:      "oidc/client/test-client2",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id_token_ttl": "1m",
 		},
 	})
@@ -2511,7 +2511,7 @@ func TestOIDC_Path_OIDC_ProviderClient_List(t *testing.T) {
 	expectSuccess(t, respListClients, listErr)
 
 	// validate list response
-	expectedStrings := map[string]interface{}{"test-client1": true, "test-client2": true}
+	expectedStrings := map[string]any{"test-client1": true, "test-client2": true}
 	expectStrings(t, respListClients.Data["keys"].([]string), expectedStrings)
 
 	// delete test-client2
@@ -2539,8 +2539,8 @@ func TestOIDC_Path_OIDC_Client_List_KeyInfo(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
 
 	// Create clients with different parameters
-	clients := map[string]interface{}{
-		"c1": map[string]interface{}{
+	clients := map[string]any{
+		"c1": map[string]any{
 			"id_token_ttl":     "5m",
 			"access_token_ttl": "10m",
 			"assignments":      []string{},
@@ -2548,7 +2548,7 @@ func TestOIDC_Path_OIDC_Client_List_KeyInfo(t *testing.T) {
 			"client_type":      "confidential",
 			"key":              "default",
 		},
-		"c2": map[string]interface{}{
+		"c2": map[string]any{
 			"id_token_ttl":     "24h",
 			"access_token_ttl": "5m",
 			"assignments":      []string{ident.AllowAllAssignmentName},
@@ -2558,7 +2558,7 @@ func TestOIDC_Path_OIDC_Client_List_KeyInfo(t *testing.T) {
 		},
 	}
 	for name, client := range clients {
-		input := client.(map[string]interface{})
+		input := client.(map[string]any)
 		resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 			Path:      "oidc/client/" + name,
 			Operation: logical.CreateOperation,
@@ -2573,21 +2573,21 @@ func TestOIDC_Path_OIDC_Client_List_KeyInfo(t *testing.T) {
 		Path:      "oidc/client",
 		Operation: logical.ListOperation,
 		Storage:   c.identityStore.View(ctx),
-		Data:      make(map[string]interface{}),
+		Data:      make(map[string]any),
 	}
 	resp, err := c.identityStore.HandleRequest(ctx, req)
 	expectSuccess(t, resp, err)
 	require.NotNil(t, resp.Data["key_info"])
 	require.NotNil(t, resp.Data["keys"])
 	keys := resp.Data["keys"].([]string)
-	keyInfo := resp.Data["key_info"].(map[string]interface{})
+	keyInfo := resp.Data["key_info"].(map[string]any)
 	require.Equal(t, len(keys), len(keyInfo))
 
 	// Assert the clients returned have additional key info
 	for name, details := range keyInfo {
-		actual, _ := details.(map[string]interface{})
+		actual, _ := details.(map[string]any)
 		require.NotNil(t, clients[name])
-		expected := clients[name].(map[string]interface{})
+		expected := clients[name].(map[string]any)
 		require.Contains(t, keys, name)
 
 		idTokenTTL, _ := parseutil.ParseDurationSecond(expected["id_token_ttl"].(string))
@@ -2618,7 +2618,7 @@ func TestOIDC_pathOIDCClientExistenceCheck(t *testing.T) {
 			Storage: storage,
 		},
 		&framework.FieldData{
-			Raw: map[string]interface{}{"name": clientName},
+			Raw: map[string]any{"name": clientName},
 			Schema: map[string]*framework.FieldSchema{
 				"name": {
 					Type: framework.TypeString,
@@ -2647,7 +2647,7 @@ func TestOIDC_pathOIDCClientExistenceCheck(t *testing.T) {
 			Storage: storage,
 		},
 		&framework.FieldData{
-			Raw: map[string]interface{}{"name": clientName},
+			Raw: map[string]any{"name": clientName},
 			Schema: map[string]*framework.FieldSchema{
 				"name": {
 					Type: framework.TypeString,
@@ -2678,7 +2678,7 @@ func TestOIDC_Path_OIDC_ProviderScope_ReservedName(t *testing.T) {
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings := map[string]interface{}{
+	expectedStrings := map[string]any{
 		"the \"openid\" scope name is reserved": true,
 	}
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -2739,7 +2739,7 @@ func TestOIDC_Path_OIDC_ProviderScope_TemplateValidation(t *testing.T) {
 			Path:      "oidc/scope/test-scope",
 			Operation: logical.CreateOperation,
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"template":    encodedTempl,
 				"description": "my-description",
 			},
@@ -2750,7 +2750,7 @@ func TestOIDC_Path_OIDC_ProviderScope_TemplateValidation(t *testing.T) {
 			tc.restrictedKey,
 		)
 		// validate error message
-		expectedStrings := map[string]interface{}{
+		expectedStrings := map[string]any{
 			errString: true,
 		}
 		expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -2778,7 +2778,7 @@ func TestOIDC_Path_OIDC_ProviderScope(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"template":    "",
 		"description": "",
 	}
@@ -2792,7 +2792,7 @@ func TestOIDC_Path_OIDC_ProviderScope(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/scope/test-scope",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"template":    encodedTempl,
 			"description": "my-description",
 		},
@@ -2807,7 +2807,7 @@ func TestOIDC_Path_OIDC_ProviderScope(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"template":    templ,
 		"description": "my-description",
 	}
@@ -2847,7 +2847,7 @@ func TestOIDC_Path_OIDC_ProviderScope_Update(t *testing.T) {
 		Path:      "oidc/scope/test-scope",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"template":    encodedTempl,
 			"description": "my-description",
 		},
@@ -2861,7 +2861,7 @@ func TestOIDC_Path_OIDC_ProviderScope_Update(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"template":    templ,
 		"description": "my-description",
 	}
@@ -2873,7 +2873,7 @@ func TestOIDC_Path_OIDC_ProviderScope_Update(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/scope/test-scope",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"template":    encodedTempl,
 			"description": "my-description-2",
 		},
@@ -2888,7 +2888,7 @@ func TestOIDC_Path_OIDC_ProviderScope_Update(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"template":    "{ \"groups\": {{identity.entity.groups.names}} }",
 		"description": "my-description-2",
 	}
@@ -2925,7 +2925,7 @@ func TestOIDC_Path_OIDC_ProviderScope_List(t *testing.T) {
 	expectSuccess(t, respListScopes, listErr)
 
 	// validate list response
-	expectedStrings := map[string]interface{}{"test-scope1": true, "test-scope2": true}
+	expectedStrings := map[string]any{"test-scope1": true, "test-scope2": true}
 	expectStrings(t, respListScopes.Data["keys"].([]string), expectedStrings)
 
 	// delete test-scope2
@@ -2963,7 +2963,7 @@ func TestOIDC_pathOIDCScopeExistenceCheck(t *testing.T) {
 			Storage: storage,
 		},
 		&framework.FieldData{
-			Raw: map[string]interface{}{"name": scopeName},
+			Raw: map[string]any{"name": scopeName},
 			Schema: map[string]*framework.FieldSchema{
 				"name": {
 					Type: framework.TypeString,
@@ -2992,7 +2992,7 @@ func TestOIDC_pathOIDCScopeExistenceCheck(t *testing.T) {
 			Storage: storage,
 		},
 		&framework.FieldData{
-			Raw: map[string]interface{}{"name": scopeName},
+			Raw: map[string]any{"name": scopeName},
 			Schema: map[string]*framework.FieldSchema{
 				"name": {
 					Type: framework.TypeString,
@@ -3019,7 +3019,7 @@ func TestOIDC_Path_OIDC_ProviderScope_DeleteWithExistingProvider(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/scope/test-scope",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"template":    `{"groups": "{{identity.entity.groups.names}}"}`,
 			"description": "my-description",
 		},
@@ -3031,7 +3031,7 @@ func TestOIDC_Path_OIDC_ProviderScope_DeleteWithExistingProvider(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"scopes_supported": []string{"test-scope"},
 		},
 		Storage: storage,
@@ -3046,7 +3046,7 @@ func TestOIDC_Path_OIDC_ProviderScope_DeleteWithExistingProvider(t *testing.T) {
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings := map[string]interface{}{
+	expectedStrings := map[string]any{
 		"unable to delete scope \"test-scope\" because it is currently referenced by these providers: test-provider": true,
 	}
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -3081,7 +3081,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"group_ids":  []string{},
 		"entity_ids": []string{},
 	}
@@ -3093,7 +3093,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/assignment/test-assignment",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"group_ids":  "my-group",
 			"entity_ids": "my-entity",
 		},
@@ -3108,7 +3108,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"group_ids":  []string{"my-group"},
 		"entity_ids": []string{"my-entity"},
 	}
@@ -3154,7 +3154,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment_DeleteWithExistingClient(t *testing.T
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": "2m",
 			"rotation_period":  "2m",
 		},
@@ -3166,7 +3166,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment_DeleteWithExistingClient(t *testing.T
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":          "test-key",
 			"assignments":  []string{"test-assignment"},
 			"id_token_ttl": "1m",
@@ -3182,7 +3182,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment_DeleteWithExistingClient(t *testing.T
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings := map[string]interface{}{
+	expectedStrings := map[string]any{
 		"unable to delete assignment \"test-assignment\" because it is currently referenced by these clients: test-client": true,
 	}
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -3194,7 +3194,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment_DeleteWithExistingClient(t *testing.T
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"group_ids":  []string{},
 		"entity_ids": []string{},
 	}
@@ -3214,7 +3214,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment_Update(t *testing.T) {
 		Path:      "oidc/assignment/test-assignment",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"group_ids":  "my-group",
 			"entity_ids": "my-entity",
 		},
@@ -3228,7 +3228,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment_Update(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"group_ids":  []string{"my-group"},
 		"entity_ids": []string{"my-entity"},
 	}
@@ -3240,7 +3240,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment_Update(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/assignment/test-assignment",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"group_ids": "my-group2",
 		},
 		Storage: storage,
@@ -3254,7 +3254,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment_Update(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"group_ids":  []string{"my-group2"},
 		"entity_ids": []string{"my-entity"},
 	}
@@ -3291,7 +3291,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment_List(t *testing.T) {
 	expectSuccess(t, respListAssignments, listErr)
 
 	// validate list response
-	expectedStrings := map[string]interface{}{"test-assignment1": true, "test-assignment2": true}
+	expectedStrings := map[string]any{"test-assignment1": true, "test-assignment2": true}
 	expectStrings(t, respListAssignments.Data["keys"].([]string), expectedStrings)
 
 	// delete test-assignment2
@@ -3329,7 +3329,7 @@ func TestOIDC_pathOIDCAssignmentExistenceCheck(t *testing.T) {
 			Storage: storage,
 		},
 		&framework.FieldData{
-			Raw: map[string]interface{}{"name": assignmentName},
+			Raw: map[string]any{"name": assignmentName},
 			Schema: map[string]*framework.FieldSchema{
 				"name": {
 					Type: framework.TypeString,
@@ -3358,7 +3358,7 @@ func TestOIDC_pathOIDCAssignmentExistenceCheck(t *testing.T) {
 			Storage: storage,
 		},
 		&framework.FieldData{
-			Raw: map[string]interface{}{"name": assignmentName},
+			Raw: map[string]any{"name": assignmentName},
 			Schema: map[string]*framework.FieldSchema{
 				"name": {
 					Type: framework.TypeString,
@@ -3389,14 +3389,14 @@ func TestOIDC_Path_OIDCProvider(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"scopes_supported": []string{"test-scope"},
 		},
 		Storage: storage,
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings := map[string]interface{}{
+	expectedStrings := map[string]any{
 		"scope \"test-scope\" does not exist": true,
 	}
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -3416,7 +3416,7 @@ func TestOIDC_Path_OIDCProvider(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"issuer":             redirectAddr + "/v1/identity/oidc/provider/test-provider",
 		"allowed_client_ids": []string{},
 		"scopes_supported":   []string{},
@@ -3429,7 +3429,7 @@ func TestOIDC_Path_OIDCProvider(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/scope/test-scope",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"template":    `{"groups": {{identity.entity.groups.names}} }`,
 			"description": "my-description",
 		},
@@ -3441,7 +3441,7 @@ func TestOIDC_Path_OIDCProvider(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"allowed_client_ids": []string{"test-client-id"},
 			"scopes_supported":   []string{"test-scope"},
 		},
@@ -3456,7 +3456,7 @@ func TestOIDC_Path_OIDCProvider(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"issuer":             redirectAddr + "/v1/identity/oidc/provider/test-provider",
 		"allowed_client_ids": []string{"test-client-id"},
 		"scopes_supported":   []string{"test-scope"},
@@ -3469,14 +3469,14 @@ func TestOIDC_Path_OIDCProvider(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"issuer": "test-issuer",
 		},
 		Storage: storage,
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings = map[string]interface{}{
+	expectedStrings = map[string]any{
 		"invalid issuer, which must include only a scheme, host, and optional port (e.g. https://example.com:8200)": true,
 	}
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -3485,7 +3485,7 @@ func TestOIDC_Path_OIDCProvider(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"issuer": "https://example.com:8200",
 		},
 		Storage: storage,
@@ -3499,7 +3499,7 @@ func TestOIDC_Path_OIDCProvider(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"issuer":             "https://example.com:8200/v1/identity/oidc/provider/test-provider",
 		"allowed_client_ids": []string{"test-client-id"},
 		"scopes_supported":   []string{"test-scope"},
@@ -3538,7 +3538,7 @@ func TestOIDC_Path_OIDCProvider_DuplicateTemplateKeys(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/scope/test-scope1",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"template":    `{"groups": {{identity.entity.groups.names}} }`,
 			"description": "desc1",
 		},
@@ -3550,7 +3550,7 @@ func TestOIDC_Path_OIDCProvider_DuplicateTemplateKeys(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/scope/test-scope2",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"template":    `{"groups": {{identity.entity.groups.names}} }`,
 			"description": "desc2",
 		},
@@ -3563,7 +3563,7 @@ func TestOIDC_Path_OIDCProvider_DuplicateTemplateKeys(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"scopes_supported": []string{"test-scope1", "test-scope2"},
 		},
 		Storage: storage,
@@ -3577,7 +3577,7 @@ func TestOIDC_Path_OIDCProvider_DuplicateTemplateKeys(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/scope/test-scope1",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"template": `{"roles": {{identity.entity.groups.names}} }`,
 		},
 		Storage: storage,
@@ -3588,7 +3588,7 @@ func TestOIDC_Path_OIDCProvider_DuplicateTemplateKeys(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"scopes_supported": []string{"test-scope1", "test-scope2"},
 		},
 		Storage: storage,
@@ -3612,7 +3612,7 @@ func TestOIDC_Path_OIDCProvider_Deduplication(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/scope/test-scope1",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"template":    `{"groups": {{identity.entity.groups.names}} }`,
 			"description": "desc1",
 		},
@@ -3624,7 +3624,7 @@ func TestOIDC_Path_OIDCProvider_Deduplication(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"scopes_supported":   []string{"test-scope1", "test-scope1"},
 			"allowed_client_ids": []string{"test-id1", "test-id2", "test-id1"},
 		},
@@ -3639,7 +3639,7 @@ func TestOIDC_Path_OIDCProvider_Deduplication(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"issuer":             redirectAddr + "/v1/identity/oidc/provider/test-provider",
 		"allowed_client_ids": []string{"test-id1", "test-id2"},
 		"scopes_supported":   []string{"test-scope1"},
@@ -3660,7 +3660,7 @@ func TestOIDC_Path_OIDCProvider_Update(t *testing.T) {
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"issuer":             "https://example.com:8200",
 			"allowed_client_ids": []string{"test-client-id"},
 		},
@@ -3674,7 +3674,7 @@ func TestOIDC_Path_OIDCProvider_Update(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"issuer":             "https://example.com:8200/v1/identity/oidc/provider/test-provider",
 		"allowed_client_ids": []string{"test-client-id"},
 		"scopes_supported":   []string{},
@@ -3687,7 +3687,7 @@ func TestOIDC_Path_OIDCProvider_Update(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"issuer": "https://changedurl.com",
 		},
 		Storage: storage,
@@ -3701,7 +3701,7 @@ func TestOIDC_Path_OIDCProvider_Update(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"issuer":             "https://changedurl.com/v1/identity/oidc/provider/test-provider",
 		"allowed_client_ids": []string{"test-client-id"},
 		"scopes_supported":   []string{},
@@ -3741,7 +3741,7 @@ func TestOIDC_Path_OIDC_Provider_List(t *testing.T) {
 	expectSuccess(t, respListProviders, listErr)
 
 	// validate list response
-	expectedStrings := map[string]interface{}{"default": true, "test-provider1": true, "test-provider2": true}
+	expectedStrings := map[string]any{"default": true, "test-provider1": true, "test-provider2": true}
 	expectStrings(t, respListProviders.Data["keys"].([]string), expectedStrings)
 
 	// delete test-provider2
@@ -3777,25 +3777,25 @@ func TestOIDC_Path_OIDC_Provider_List_KeyInfo(t *testing.T) {
 	expectSuccess(t, resp, err)
 
 	// Create providers with different parameters
-	providers := map[string]interface{}{
-		"default": map[string]interface{}{
+	providers := map[string]any{
+		"default": map[string]any{
 			"allowed_client_ids": []string{"*"},
 			"scopes_supported":   []string{},
 			"issuer":             "http://127.0.0.1:8200",
 		},
-		"p0": map[string]interface{}{
+		"p0": map[string]any{
 			"allowed_client_ids": []string{"abc", "def"},
 			"scopes_supported":   []string{},
 			"issuer":             "http://10.0.0.1:8200",
 		},
-		"p1": map[string]interface{}{
+		"p1": map[string]any{
 			"allowed_client_ids": []string{"xyz"},
 			"scopes_supported":   []string{"groups"},
 			"issuer":             "https://example.com:8200",
 		},
 	}
 	for name, p := range providers {
-		input := p.(map[string]interface{})
+		input := p.(map[string]any)
 		resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 			Path:      "oidc/provider/" + name,
 			Operation: logical.CreateOperation,
@@ -3810,20 +3810,20 @@ func TestOIDC_Path_OIDC_Provider_List_KeyInfo(t *testing.T) {
 		Path:      "oidc/provider",
 		Operation: logical.ListOperation,
 		Storage:   c.identityStore.View(ctx),
-		Data:      make(map[string]interface{}),
+		Data:      make(map[string]any),
 	})
 	expectSuccess(t, resp, err)
 	require.NotNil(t, resp.Data["key_info"])
 	require.NotNil(t, resp.Data["keys"])
 	keys := resp.Data["keys"].([]string)
-	keyInfo := resp.Data["key_info"].(map[string]interface{})
+	keyInfo := resp.Data["key_info"].(map[string]any)
 	require.Equal(t, len(keys), len(keyInfo))
 
 	// Assert the providers returned have additional key info
 	for name, details := range keyInfo {
-		actual, _ := details.(map[string]interface{})
+		actual, _ := details.(map[string]any)
 		require.NotNil(t, providers[name])
-		expected := providers[name].(map[string]interface{})
+		expected := providers[name].(map[string]any)
 		require.Contains(t, keys, name)
 
 		expectedIssuer := fmt.Sprintf("%s%s%s", expected["issuer"],
@@ -3855,7 +3855,7 @@ func TestOIDC_Path_OIDC_Provider_List_Filter(t *testing.T) {
 			Path:      "oidc/provider/" + p.name,
 			Operation: logical.CreateOperation,
 			Storage:   c.identityStore.View(ctx),
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"allowed_client_ids": p.allowedClientIDs,
 			},
 		})
@@ -3905,7 +3905,7 @@ func TestOIDC_Path_OIDC_Provider_List_Filter(t *testing.T) {
 				Path:      "oidc/provider",
 				Operation: logical.ListOperation,
 				Storage:   c.identityStore.View(ctx),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"allowed_client_id": tc.clientIDFilter,
 				},
 			})
@@ -3930,7 +3930,7 @@ func TestOIDC_Path_OpenIDProviderConfig(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/scope/test-scope-1",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"template":    `{"groups": "{{identity.entity.groups.names}}"}`,
 			"description": "my-description",
 		},
@@ -3942,7 +3942,7 @@ func TestOIDC_Path_OpenIDProviderConfig(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"scopes_supported": []string{"test-scope-1"},
 		},
 		Storage: storage,
@@ -3984,7 +3984,7 @@ func TestOIDC_Path_OpenIDProviderConfig(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/scope/test-scope-2",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"template":    `{"groups": "{{identity.entity.groups.names}}"}`,
 			"description": "my-description",
 		},
@@ -3998,7 +3998,7 @@ func TestOIDC_Path_OpenIDProviderConfig(t *testing.T) {
 		Path:      "oidc/provider/test-provider",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"issuer":           testIssuer,
 			"scopes_supported": []string{"test-scope-2"},
 		},

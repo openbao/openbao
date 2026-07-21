@@ -20,7 +20,7 @@ type MockDatabaseV5 struct{}
 var _ v5.Database = &MockDatabaseV5{}
 
 // New returns a new in-memory instance
-func New() (interface{}, error) {
+func New() (any, error) {
 	db := MockDatabaseV5{}
 	return db, nil
 }

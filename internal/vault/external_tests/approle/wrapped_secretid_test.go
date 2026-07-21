@@ -46,7 +46,7 @@ func TestApproleSecretId_Wrapped(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/approle/role/test-role-1", map[string]interface{}{
+	_, err = client.Logical().Write("auth/approle/role/test-role-1", map[string]any{
 		"name": "test-role-1",
 	})
 	require.NoError(t, err)
@@ -55,7 +55,7 @@ func TestApproleSecretId_Wrapped(t *testing.T) {
 		return "5m"
 	})
 
-	resp, err := client.Logical().Write("/auth/approle/role/test-role-1/secret-id", map[string]interface{}{})
+	resp, err := client.Logical().Write("/auth/approle/role/test-role-1/secret-id", map[string]any{})
 	require.NoError(t, err)
 
 	wrappedAccessor := resp.WrapInfo.WrappedAccessor
@@ -105,12 +105,12 @@ func TestApproleSecretId_NotWrapped(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/approle/role/test-role-1", map[string]interface{}{
+	_, err = client.Logical().Write("auth/approle/role/test-role-1", map[string]any{
 		"name": "test-role-1",
 	})
 	require.NoError(t, err)
 
-	resp, err := client.Logical().Write("/auth/approle/role/test-role-1/secret-id", map[string]interface{}{})
+	resp, err := client.Logical().Write("/auth/approle/role/test-role-1/secret-id", map[string]any{})
 	require.NoError(t, err)
 
 	if resp.WrapInfo != nil && resp.WrapInfo.WrappedAccessor != "" {

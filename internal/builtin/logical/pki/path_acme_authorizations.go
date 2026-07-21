@@ -46,7 +46,7 @@ func patternAcmeAuthorization(b *backend, pattern string) *framework.Path {
 	}
 }
 
-func (b *backend) acmeAuthorizationHandler(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]interface{}, _ *acmeAccount) (*logical.Response, error) {
+func (b *backend) acmeAuthorizationHandler(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]any, _ *acmeAccount) (*logical.Response, error) {
 	authId := fields.Get("auth_id").(string)
 	authz, err := b.acmeState.LoadAuthorization(acmeCtx, userCtx, authId)
 	if err != nil {
@@ -74,13 +74,13 @@ func (b *backend) acmeAuthorizationHandler(acmeCtx *acmeContext, r *logical.Requ
 	return nil, ErrMalformed
 }
 
-func (b *backend) acmeAuthorizationFetchHandler(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]interface{}, authz *ACMEAuthorization) (*logical.Response, error) {
+func (b *backend) acmeAuthorizationFetchHandler(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]any, authz *ACMEAuthorization) (*logical.Response, error) {
 	return &logical.Response{
 		Data: authz.NetworkMarshal(acmeCtx),
 	}, nil
 }
 
-func (b *backend) acmeAuthorizationDeactivateHandler(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]interface{}, authz *ACMEAuthorization) (*logical.Response, error) {
+func (b *backend) acmeAuthorizationDeactivateHandler(acmeCtx *acmeContext, r *logical.Request, fields *framework.FieldData, userCtx *jwsCtx, data map[string]any, authz *ACMEAuthorization) (*logical.Response, error) {
 	if authz.Status != ACMEAuthorizationPending && authz.Status != ACMEAuthorizationValid {
 		return nil, fmt.Errorf("unable to deactivate authorization in '%v' status: %w", authz.Status, ErrMalformed)
 	}

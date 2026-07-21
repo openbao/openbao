@@ -50,7 +50,7 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 	}
 
 	// Create role
-	_, err = client.Logical().Write("auth/approle/role/role-period", map[string]interface{}{
+	_, err = client.Logical().Write("auth/approle/role/role-period", map[string]any{
 		"period": "5s",
 	})
 	if err != nil {
@@ -68,7 +68,7 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 	roleID := resp.Data["role_id"]
 
 	// Get secret_id
-	resp, err = client.Logical().Write("auth/approle/role/role-period/secret-id", map[string]interface{}{})
+	resp, err = client.Logical().Write("auth/approle/role/role-period/secret-id", map[string]any{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 	secretID := resp.Data["secret_id"]
 
 	// Login
-	resp, err = client.Logical().Write("auth/approle/login", map[string]interface{}{
+	resp, err = client.Logical().Write("auth/approle/login", map[string]any{
 		"role_id":   roleID,
 		"secret_id": secretID,
 	})
@@ -100,7 +100,7 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	// Renew
-	resp, err = client.Logical().Write("auth/token/renew", map[string]interface{}{
+	resp, err = client.Logical().Write("auth/token/renew", map[string]any{
 		"token": roleToken,
 	})
 	if err != nil {
@@ -136,7 +136,7 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	// Do a second renewal to ensure that period can be renewed past sys/mount max_ttl
-	resp, err = client.Logical().Write("auth/token/renew", map[string]interface{}{
+	resp, err = client.Logical().Write("auth/token/renew", map[string]any{
 		"token": roleToken,
 	})
 	if err != nil {

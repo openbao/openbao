@@ -32,14 +32,14 @@ func (h *TooManyCerts) IsEnabled() bool {
 	return h.Enabled
 }
 
-func (h *TooManyCerts) DefaultConfig() map[string]interface{} {
-	return map[string]interface{}{
+func (h *TooManyCerts) DefaultConfig() map[string]any {
+	return map[string]any{
 		"count_critical": 250000,
 		"count_warning":  50000,
 	}
 }
 
-func (h *TooManyCerts) LoadConfig(config map[string]interface{}) error {
+func (h *TooManyCerts) LoadConfig(config map[string]any) error {
 	value, err := parseutil.SafeParseIntRange(config["count_critical"], 1, 15000000)
 	if err != nil {
 		return fmt.Errorf("error parsing %v.count_critical: %w", h.Name(), err)

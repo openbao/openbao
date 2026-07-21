@@ -25,7 +25,7 @@ func TestIdentityStore_CaseInsensitiveGroupAliasName(t *testing.T) {
 	resp, err := i.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "external",
 		},
 	})
@@ -40,7 +40,7 @@ func TestIdentityStore_CaseInsensitiveGroupAliasName(t *testing.T) {
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "group-alias",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"mount_accessor": accessor,
 			"canonical_id":   groupID,
 			"name":           testAliasName,
@@ -68,7 +68,7 @@ func TestIdentityStore_CaseInsensitiveGroupAliasName(t *testing.T) {
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "group-alias/id/" + aliasID,
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"mount_accessor": accessor,
 			"canonical_id":   groupID,
 			"name":           strings.ToLower(testAliasName),
@@ -135,7 +135,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "external",
 		},
 	})
@@ -148,7 +148,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group-alias",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":           "testgroupalias",
 			"mount_accessor": userpassMe.Accessor,
 			"canonical_id":   groupID,
@@ -175,7 +175,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group-alias",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":           "testgroupalias",
 			"mount_accessor": ldapMe.Accessor,
 			"canonical_id":   groupID,
@@ -221,7 +221,7 @@ func TestIdentityStore_GroupAliasDeletionOnGroupDeletion(t *testing.T) {
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "external",
 		},
 	})
@@ -233,7 +233,7 @@ func TestIdentityStore_GroupAliasDeletionOnGroupDeletion(t *testing.T) {
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "group-alias",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":           "testgroupalias",
 			"mount_accessor": accessor,
 			"canonical_id":   groupID,
@@ -273,7 +273,7 @@ func TestIdentityStore_GroupAliases_CRUD(t *testing.T) {
 	groupReq := &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "external",
 		},
 	}
@@ -286,7 +286,7 @@ func TestIdentityStore_GroupAliases_CRUD(t *testing.T) {
 	groupAliasReq := &logical.Request{
 		Path:      "group-alias",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":           "testgroupalias",
 			"mount_accessor": accessor,
 			"canonical_id":   groupID,
@@ -313,7 +313,7 @@ func TestIdentityStore_GroupAliases_CRUD(t *testing.T) {
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "group-alias/id/" + groupAliasID,
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":           "testupdatedgroupaliasname",
 			"mount_accessor": accessor,
 			"canonical_id":   groupID,
@@ -426,7 +426,7 @@ func TestIdentityStore_GroupAliases_AliasOnInternalGroup(t *testing.T) {
 	aliasReq := &logical.Request{
 		Path:      "group-alias",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":           "testname",
 			"mount_accessor": accessor,
 			"canonical_id":   groupID,
@@ -462,7 +462,7 @@ func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
 	resp, err := i.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "external",
 		},
 	})
@@ -474,7 +474,7 @@ func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "external",
 		},
 	})
@@ -487,7 +487,7 @@ func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "group-alias",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"mount_accessor": accessor1,
 			"canonical_id":   groupID1,
 			"name":           "testalias",
@@ -526,7 +526,7 @@ func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err:%v\nresp: %#v", err, resp)
 	}
-	aliasName = resp.Data["alias"].(map[string]interface{})["name"].(string)
+	aliasName = resp.Data["alias"].(map[string]any)["name"].(string)
 	if aliasName != "testalias" {
 		t.Fatalf("bad alias name; expected: testalias, actual: %q", aliasName)
 	}
@@ -535,7 +535,7 @@ func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "group-alias/id/" + aliasID,
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"mount_accessor": accessor2,
 			"canonical_id":   groupID2,
 			"name":           "testalias2",
@@ -573,7 +573,7 @@ func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err:%v\nresp: %#v", err, resp)
 	}
-	aliasName = resp.Data["alias"].(map[string]interface{})["name"].(string)
+	aliasName = resp.Data["alias"].(map[string]any)["name"].(string)
 	if aliasName != "testalias2" {
 		t.Fatalf("bad alias name; expected: testalias, actual: %q", aliasName)
 	}
@@ -585,7 +585,7 @@ func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: err:%v\nresp: %#v", err, resp)
 	}
-	aliasInfo := resp.Data["alias"].(map[string]interface{})
+	aliasInfo := resp.Data["alias"].(map[string]any)
 	if len(aliasInfo) > 0 {
 		t.Fatalf("still found alias with old group: %s", pretty.Sprint(resp.Data))
 	}

@@ -19,8 +19,8 @@ func TestKubernetesProviderWithOIDCDiscovery(t *testing.T) {
 
 	// Configure the backend with OIDC discovery URL and Kubernetes provider.
 	// The provider uses the service account token for authentication and the pod CA cert for server validation.
-	data := map[string]interface{}{
-		"provider_config": map[string]interface{}{
+	data := map[string]any{
+		"provider_config": map[string]any{
 			"provider": "kubernetes",
 		},
 	}
@@ -66,8 +66,8 @@ func TestKubernetesProviderWithJWKSURL(t *testing.T) {
 
 	// Configure the backend with JWKS URL and Kubernetes provider.
 	// The provider uses the service account token for authentication and the pod CA cert for server validation.
-	data := map[string]interface{}{
-		"provider_config": map[string]interface{}{
+	data := map[string]any{
+		"provider_config": map[string]any{
 			"provider": "kubernetes",
 		},
 	}
@@ -113,10 +113,10 @@ func TestKubernetesProviderWithInvalidConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure jwks_ca_pem with Kubernetes provider.
-	data := map[string]interface{}{
+	data := map[string]any{
 		"jwks_url":    "https://example.com/",
 		"jwks_ca_pem": caCertPath,
-		"provider_config": map[string]interface{}{
+		"provider_config": map[string]any{
 			"provider": "kubernetes",
 		},
 	}
@@ -131,10 +131,10 @@ func TestKubernetesProviderWithInvalidConfig(t *testing.T) {
 	require.True(t, resp.IsError())
 
 	// Configure oidc_discovery_ca_pem with Kubernetes provider.
-	data = map[string]interface{}{
+	data = map[string]any{
 		"oidc_discovery_url":    "https://example.com/",
 		"oidc_discovery_ca_pem": caCertPath,
-		"provider_config": map[string]interface{}{
+		"provider_config": map[string]any{
 			"provider": "kubernetes",
 		},
 	}
@@ -156,9 +156,9 @@ func TestKubernetesProviderWithInvalidTokenFile(t *testing.T) {
 	// Overwrite the global SA token path variable to point to a non-existing file.
 	localJWTPath = "/non/existing/token/file"
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"jwks_url": server.server.URL + "/certs",
-		"provider_config": map[string]interface{}{
+		"provider_config": map[string]any{
 			"provider": "kubernetes",
 		},
 	}
@@ -180,9 +180,9 @@ func TestKubernetesProviderWithInvalidCACertFile(t *testing.T) {
 	// Overwrite the global CA cert path variable to point to a non-existing file.
 	localCACertPath = "/non/existing/ca/cert/file"
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"jwks_url": server.server.URL + "/certs",
-		"provider_config": map[string]interface{}{
+		"provider_config": map[string]any{
 			"provider": "kubernetes",
 		},
 	}
@@ -235,7 +235,7 @@ func mockKubernetesAPIServer(t *testing.T) (*oidcProvider, string) {
 func createRole(t *testing.T, b logical.Backend, s logical.Storage) {
 	t.Helper()
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"role_type":       "jwt",
 		"user_claim":      "sub",
 		"bound_subject":   "system:serviceaccount:default:openbao-client",
@@ -259,7 +259,7 @@ func login(t *testing.T, b logical.Backend, s logical.Storage, jwt string) {
 		Operation: logical.UpdateOperation,
 		Path:      "login",
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"role": "my-role",
 			"jwt":  jwt,
 		},

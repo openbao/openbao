@@ -62,7 +62,7 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 			// 5 iterations is roughly 2.5 seconds with the 5ms sleep.
 			for range 500 {
 				// This should now fail since the fenced write will fail.
-				resp, err := client.Logical().Write("sys/policies/acl/custom", map[string]interface{}{
+				resp, err := client.Logical().Write("sys/policies/acl/custom", map[string]any{
 					"policy": `path "*" {
     capabilities = ["sudo"]
 }`,
@@ -127,7 +127,7 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	client = cluster.Nodes()[index].APIClient()
 
 	// Retrying the write should succeed.
-	resp, err = client.Logical().Write("sys/policies/acl/custom", map[string]interface{}{
+	resp, err = client.Logical().Write("sys/policies/acl/custom", map[string]any{
 		"policy": `path "*" {
     capabilities = ["sudo"]
 }`,
@@ -297,7 +297,7 @@ func TestPostgreSQL_Upgrade(t *testing.T) {
 	})
 	require.NoError(t, err, "failed to mount kv")
 
-	_, err = client.KVv2("kv").Put(t.Context(), "a/key", map[string]interface{}{
+	_, err = client.KVv2("kv").Put(t.Context(), "a/key", map[string]any{
 		"value": "known-value",
 	})
 	require.NoError(t, err, "failed writing k/v key")

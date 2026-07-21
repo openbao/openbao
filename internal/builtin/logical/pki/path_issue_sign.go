@@ -62,7 +62,7 @@ ed25519.`,
 		Description: `The type of key to use; defaults to the empty string
 to use whatever is specified by the role. "rsa", "ec", and "ed25519" are the
 only valid values outside of the empty string.`,
-		AllowedValues: []interface{}{"", "rsa", "ec", "ed25519"},
+		AllowedValues: []any{"", "rsa", "ec", "ed25519"},
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: "",
 		},
@@ -241,7 +241,7 @@ ed25519.`,
 		Description: `The type of key to use; defaults to the empty string
 to use whatever is specified by the role. "rsa","ec", and "ed25519" are the
 only valid values outside of the empty string.`,
-		AllowedValues: []interface{}{"", "rsa", "ec", "ed25519"},
+		AllowedValues: []any{"", "rsa", "ec", "ed25519"},
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: "",
 		},
@@ -680,7 +680,7 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 
 	caChainGen := newCaChainOutput(parsedBundle, data)
 
-	respData := map[string]interface{}{
+	respData := map[string]any{
 		"not_before":    int64(parsedBundle.Certificate.NotBefore.Unix()),
 		"expiration":    int64(parsedBundle.Certificate.NotAfter.Unix()),
 		"serial_number": cb.SerialNumber,
@@ -738,7 +738,7 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 	default:
 		resp = b.Secret(SecretCertsType).Response(
 			respData,
-			map[string]interface{}{
+			map[string]any{
 				"serial_number": cb.SerialNumber,
 			},
 		)
@@ -819,7 +819,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	// Initialize the evaluation context for CEL expressions with the raw request data.
 	// The "request" key allows CEL expressions to access and evaluate against input fields.
 	// Additional variables and evaluated results will be added dynamically during processing.
-	evaluationData := map[string]interface{}{
+	evaluationData := map[string]any{
 		"use_csr": useCSR,
 		"request": data.Raw,
 		"now":     time.Now(),
@@ -827,7 +827,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 	// Parse then add the CSR to the evaluationData
 	if useCSR {
-		var parsedCsr map[string]interface{}
+		var parsedCsr map[string]any
 		if useCSR {
 			csrPEM, ok := data.GetOk("csr")
 			if ok {
@@ -989,7 +989,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 	caChainGen := newCaChainOutput(parsedBundle, data)
 
-	respData := map[string]interface{}{
+	respData := map[string]any{
 		"certificate":      cb.Certificate,
 		"not_before":       int64(parsedBundle.Certificate.NotBefore.Unix()),
 		"expiration":       int64(parsedBundle.Certificate.NotAfter.Unix()),
@@ -1009,7 +1009,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		// Lease-Managed Certificate
 		resp = b.Secret(SecretCertsType).Response(
 			respData,
-			map[string]interface{}{
+			map[string]any{
 				"serial_number": cb.SerialNumber,
 			},
 		)
@@ -1138,7 +1138,7 @@ func (b *backend) fetchCaSigningBundle(ctx context.Context, req *logical.Request
 }
 
 // csrToMap parses the CSR and returns it as a map of its attributes
-func csrToMap(csrPEM string) (map[string]interface{}, error) {
+func csrToMap(csrPEM string) (map[string]any, error) {
 	block, _ := pem.Decode([]byte(csrPEM))
 	if block == nil || block.Type != "CERTIFICATE REQUEST" {
 		return nil, fmt.Errorf("invalid CSR format")
@@ -1150,7 +1150,7 @@ func csrToMap(csrPEM string) (map[string]interface{}, error) {
 	}
 
 	// Convert Extensions to a readable map
-	parsedExtensions := make(map[string]interface{})
+	parsedExtensions := make(map[string]any)
 	for _, ext := range csr.Extensions {
 		parsedExtensions[ext.Id.String()] = ext.Value
 	}
@@ -1173,7 +1173,7 @@ func csrToMap(csrPEM string) (map[string]interface{}, error) {
 	}
 
 	// Map CSR attributes
-	parsedCsr := map[string]interface{}{
+	parsedCsr := map[string]any{
 		"Raw":                      csr.Raw,
 		"RawTBSCertificateRequest": csr.RawTBSCertificateRequest,
 		"RawSubjectPublicKeyInfo":  csr.RawSubjectPublicKeyInfo,
@@ -1186,7 +1186,7 @@ func csrToMap(csrPEM string) (map[string]interface{}, error) {
 		"PublicKeyAlgorithm": csr.PublicKeyAlgorithm.String(),
 		"PublicKey":          csr.PublicKey,
 
-		"Subject": map[string]interface{}{
+		"Subject": map[string]any{
 			"CommonName":         csr.Subject.CommonName,
 			"Country":            csr.Subject.Country,
 			"Organization":       csr.Subject.Organization,

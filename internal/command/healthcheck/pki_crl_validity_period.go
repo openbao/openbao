@@ -43,14 +43,14 @@ func (h *CRLValidityPeriod) IsEnabled() bool {
 	return h.Enabled
 }
 
-func (h *CRLValidityPeriod) DefaultConfig() map[string]interface{} {
-	return map[string]interface{}{
+func (h *CRLValidityPeriod) DefaultConfig() map[string]any {
+	return map[string]any{
 		"crl_expiry_pct_critical":       "95",
 		"delta_crl_expiry_pct_critical": "95",
 	}
 }
 
-func (h *CRLValidityPeriod) LoadConfig(config map[string]interface{}) error {
+func (h *CRLValidityPeriod) LoadConfig(config map[string]any) error {
 	value, err := parseutil.SafeParseIntRange(config["crl_expiry_pct_critical"], 1, 99)
 	if err != nil {
 		return fmt.Errorf("error parsing %v.crl_expiry_pct_critical=%v: %w", h.Name(), config["crl_expiry_pct_critical"], err)

@@ -77,7 +77,7 @@ func TestSelfSignedCA(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	type testCase struct {
-		config    map[string]interface{}
+		config    map[string]any
 		expectErr bool
 	}
 
@@ -85,7 +85,7 @@ func TestSelfSignedCA(t *testing.T) {
 		// ///////////////////////
 		// pem_json tests
 		"pem_json/ca only": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"pem_json": toJSON(t, certutil.CertBundle{
 					CAChain: []string{string(ca.CertPEM())},
 				}),
@@ -93,7 +93,7 @@ func TestSelfSignedCA(t *testing.T) {
 			expectErr: false,
 		},
 		"pem_json/bad ca": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"pem_json": toJSON(t, certutil.CertBundle{
 					CAChain: []string{string(badCA.CertPEM())},
 				}),
@@ -101,7 +101,7 @@ func TestSelfSignedCA(t *testing.T) {
 			expectErr: true,
 		},
 		"pem_json/missing ca": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"pem_json": "",
 			},
 			expectErr: true,
@@ -110,19 +110,19 @@ func TestSelfSignedCA(t *testing.T) {
 		// ///////////////////////
 		// pem_bundle tests
 		"pem_bundle/ca only": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"pem_bundle": ca.CertPEM(),
 			},
 			expectErr: false,
 		},
 		"pem_bundle/unrecognized CA": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"pem_bundle": badCA.CertPEM(),
 			},
 			expectErr: true,
 		},
 		"pem_bundle/missing ca": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"pem_bundle": "",
 			},
 			expectErr: true,
@@ -131,19 +131,19 @@ func TestSelfSignedCA(t *testing.T) {
 		// ///////////////////////
 		// no cert data provided
 		"no cert data/tls=true": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"tls": "true",
 			},
 			expectErr: true,
 		},
 		"no cert data/tls=false": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"tls": "false",
 			},
 			expectErr: true,
 		},
 		"no cert data/insecure_tls": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"insecure_tls": "true",
 			},
 			expectErr: false,
@@ -153,7 +153,7 @@ func TestSelfSignedCA(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			// Set values that we don't know until the cassandra container is started
-			config := map[string]interface{}{
+			config := map[string]any{
 				"hosts":            host.Name,
 				"port":             host.Port,
 				"username":         "cassandra",
@@ -220,7 +220,7 @@ func assertNewUser(t *testing.T, db *Cassandra, sslOpts *gocql.SslOptions) {
 	assertCreds(t, db.Hosts, db.Port, newUserResp.Username, newUserReq.Password, sslOpts, 5*time.Second)
 }
 
-func toJSON(t *testing.T, val interface{}) string {
+func toJSON(t *testing.T, val any) string {
 	t.Helper()
 	b, err := json.Marshal(val)
 	require.NoError(t, err)

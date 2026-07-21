@@ -161,7 +161,7 @@ func (c *PKIListIntermediateCommand) Run(args []string) int {
 			return 1
 		}
 		for path, rawValueMap := range mountListRaw.Data {
-			valueMap := rawValueMap.(map[string]interface{})
+			valueMap := rawValueMap.(map[string]any)
 			if valueMap["type"].(string) == "pki" {
 				mountCaList, err := c.getIssuerListFromMount(client, sanitizePath(path))
 				if err != nil {
@@ -222,7 +222,7 @@ func (c *PKIListIntermediateCommand) getIssuerListFromMount(client *api.Client, 
 		return issuerList, nil
 	}
 	issuersMap := rawIssuersResp.Data["keys"]
-	certList := issuersMap.([]interface{})
+	certList := issuersMap.([]any)
 	for _, certId := range certList {
 		identifier := certId.(string)
 		if c.flagUseNames {

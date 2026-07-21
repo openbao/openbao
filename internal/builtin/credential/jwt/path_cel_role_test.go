@@ -51,7 +51,7 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 			var err error
 
 			// Data for creating the role
-			roleData := map[string]interface{}{
+			roleData := map[string]any{
 				"cel_program": tc.CelProgram,
 			}
 

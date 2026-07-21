@@ -137,14 +137,14 @@ func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, da
 		}
 	}
 
-	var value interface{} = string(valueBytes)
+	var value any = string(valueBytes)
 	// Golang docs (https://pkg.go.dev/encoding/json#Marshal), []byte encodes as a base64-encoded string
 	if encoding == "base64" {
 		value = valueBytes
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"value": value,
 		},
 	}, nil

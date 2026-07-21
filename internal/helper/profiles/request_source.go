@@ -8,7 +8,7 @@ import (
 const requestSourceName = "request"
 
 // RequestSourceBuilder allows reading inputs from past requests.
-func RequestSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
+func RequestSourceBuilder(engine *ProfileEngine, field map[string]any) Source {
 	return &RequestSource{
 		outer: engine.outerBlockName,
 		field: field,
@@ -30,11 +30,11 @@ func HasRequestSource(engine *ProfileEngine) bool {
 
 type RequestSource struct {
 	outer string
-	field map[string]interface{}
+	field map[string]any
 
 	outerName     string
 	requestName   string
-	fieldSelector []interface{}
+	fieldSelector []any
 }
 
 var _ Source = &RequestSource{}
@@ -75,7 +75,7 @@ func (s *RequestSource) Validate() ([]string, []string, error) {
 	if present {
 		switch fieldSelector := rawFieldSelector.(type) {
 		case int, string:
-			s.fieldSelector = []interface{}{fieldSelector}
+			s.fieldSelector = []any{fieldSelector}
 		case []int:
 			for _, item := range fieldSelector {
 				s.fieldSelector = append(s.fieldSelector, item)
@@ -84,7 +84,7 @@ func (s *RequestSource) Validate() ([]string, []string, error) {
 			for _, item := range fieldSelector {
 				s.fieldSelector = append(s.fieldSelector, item)
 			}
-		case []interface{}:
+		case []any:
 			s.fieldSelector = fieldSelector
 		default:
 			return nil, nil, fmt.Errorf("unknown type for request source field 'field_selector': %T; expected either string, []string, or []interface{}", rawFieldSelector)
@@ -94,7 +94,7 @@ func (s *RequestSource) Validate() ([]string, []string, error) {
 	return []string{requestName}, nil, nil
 }
 
-func (s *RequestSource) Evaluate(_ context.Context, eh *EvaluationHistory) (interface{}, error) {
+func (s *RequestSource) Evaluate(_ context.Context, eh *EvaluationHistory) (any, error) {
 	if s.fieldSelector == nil {
 		return eh.GetRequest(s.outerName, s.requestName)
 	}

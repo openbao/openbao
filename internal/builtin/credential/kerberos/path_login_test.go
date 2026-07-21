@@ -17,7 +17,7 @@ import (
 func setupTestBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	b, storage := getTestBackend(t)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"keytab":          testValidKeytab,
 		"service_account": "testuser",
 	}
@@ -45,7 +45,7 @@ func TestLogin(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      ldapConfPath,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"url": connURL,
 		},
 	}
@@ -55,7 +55,7 @@ func TestLogin(t *testing.T) {
 		t.Fatalf("err: %s resp: %#v\n", err, resp)
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"authorization": "",
 	}
 

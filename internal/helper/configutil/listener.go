@@ -24,110 +24,110 @@ import (
 type ListenerTelemetry struct {
 	UnusedKeys                      UnusedKeyMap `hcl:",unusedKeyPositions"`
 	UnauthenticatedMetricsAccess    bool         `hcl:"-"`
-	UnauthenticatedMetricsAccessRaw interface{}  `hcl:"unauthenticated_metrics_access,alias:UnauthenticatedMetricsAccess"`
+	UnauthenticatedMetricsAccessRaw any          `hcl:"unauthenticated_metrics_access,alias:UnauthenticatedMetricsAccess"`
 	DisallowMetrics                 bool         `hcl:"-"`
-	DisallowMetricsRaw              interface{}  `hcl:"disallow_metrics,alias:DisallowMetrics"`
+	DisallowMetricsRaw              any          `hcl:"disallow_metrics,alias:DisallowMetrics"`
 	MetricsOnly                     bool         `hcl:"-"`
-	MetricsOnlyRaw                  interface{}  `hcl:"metrics_only,alias:MetricsOnly"`
+	MetricsOnlyRaw                  any          `hcl:"metrics_only,alias:MetricsOnly"`
 	MetricsPath                     string       `hcl:"metrics_path,alias:MetricsPath"`
 }
 
 type ListenerProfiling struct {
 	UnusedKeys                    UnusedKeyMap `hcl:",unusedKeyPositions"`
 	UnauthenticatedPProfAccess    bool         `hcl:"-"`
-	UnauthenticatedPProfAccessRaw interface{}  `hcl:"unauthenticated_pprof_access,alias:UnauthenticatedPProfAccessRaw"`
+	UnauthenticatedPProfAccessRaw any          `hcl:"unauthenticated_pprof_access,alias:UnauthenticatedPProfAccessRaw"`
 }
 
 type ListenerInFlightRequestLogging struct {
 	UnusedKeys                       UnusedKeyMap `hcl:",unusedKeyPositions"`
 	UnauthenticatedInFlightAccess    bool         `hcl:"-"`
-	UnauthenticatedInFlightAccessRaw interface{}  `hcl:"unauthenticated_in_flight_requests_access,alias:unauthenticatedInFlightAccessRaw"`
+	UnauthenticatedInFlightAccessRaw any          `hcl:"unauthenticated_in_flight_requests_access,alias:unauthenticatedInFlightAccessRaw"`
 }
 
 // Listener is the listener configuration for the server.
 type Listener struct {
 	UnusedKeys UnusedKeyMap `hcl:",unusedKeyPositions"`
-	RawConfig  map[string]interface{}
+	RawConfig  map[string]any
 
 	Type       string
-	Purpose    []string    `hcl:"-"`
-	PurposeRaw interface{} `hcl:"purpose"`
-	Role       string      `hcl:"role"`
+	Purpose    []string `hcl:"-"`
+	PurposeRaw any      `hcl:"purpose"`
+	Role       string   `hcl:"role"`
 
 	Address                  string        `hcl:"address"`
 	ClusterAddress           string        `hcl:"cluster_address"`
 	MaxRequestSize           int64         `hcl:"-"`
-	MaxRequestSizeRaw        interface{}   `hcl:"max_request_size"`
+	MaxRequestSizeRaw        any           `hcl:"max_request_size"`
 	MaxRequestJsonMemory     int64         `hcl:"-"`
-	MaxRequestJsonMemoryRaw  interface{}   `hcl:"max_request_json_memory"`
+	MaxRequestJsonMemoryRaw  any           `hcl:"max_request_json_memory"`
 	MaxRequestJsonStrings    int64         `hcl:"-"`
-	MaxRequestJsonStringsRaw interface{}   `hcl:"max_request_json_strings"`
+	MaxRequestJsonStringsRaw any           `hcl:"max_request_json_strings"`
 	MaxRequestDuration       time.Duration `hcl:"-"`
-	MaxRequestDurationRaw    interface{}   `hcl:"max_request_duration"`
+	MaxRequestDurationRaw    any           `hcl:"max_request_duration"`
 	RequireRequestHeader     bool          `hcl:"-"`
-	RequireRequestHeaderRaw  interface{}   `hcl:"require_request_header"`
+	RequireRequestHeaderRaw  any           `hcl:"require_request_header"`
 
-	TLSDisable    bool        `hcl:"-"`
-	TLSDisableRaw interface{} `hcl:"tls_disable"`
-	TLSCertGetter interface{} `hcl:"-"`
+	TLSDisable    bool `hcl:"-"`
+	TLSDisableRaw any  `hcl:"tls_disable"`
+	TLSCertGetter any  `hcl:"-"`
 
-	TLSCertFile                      string      `hcl:"tls_cert_file"`
-	TLSKeyFile                       string      `hcl:"tls_key_file"`
-	TLSMinVersion                    string      `hcl:"tls_min_version"`
-	TLSMaxVersion                    string      `hcl:"tls_max_version"`
-	TLSCipherSuites                  []uint16    `hcl:"-"`
-	TLSCipherSuitesRaw               string      `hcl:"tls_cipher_suites"`
-	TLSRequireAndVerifyClientCert    bool        `hcl:"-"`
-	TLSRequireAndVerifyClientCertRaw interface{} `hcl:"tls_require_and_verify_client_cert"`
-	TLSClientCAFile                  string      `hcl:"tls_client_ca_file"`
-	TLSDisableClientCerts            bool        `hcl:"-"`
-	TLSDisableClientCertsRaw         interface{} `hcl:"tls_disable_client_certs"`
+	TLSCertFile                      string   `hcl:"tls_cert_file"`
+	TLSKeyFile                       string   `hcl:"tls_key_file"`
+	TLSMinVersion                    string   `hcl:"tls_min_version"`
+	TLSMaxVersion                    string   `hcl:"tls_max_version"`
+	TLSCipherSuites                  []uint16 `hcl:"-"`
+	TLSCipherSuitesRaw               string   `hcl:"tls_cipher_suites"`
+	TLSRequireAndVerifyClientCert    bool     `hcl:"-"`
+	TLSRequireAndVerifyClientCertRaw any      `hcl:"tls_require_and_verify_client_cert"`
+	TLSClientCAFile                  string   `hcl:"tls_client_ca_file"`
+	TLSDisableClientCerts            bool     `hcl:"-"`
+	TLSDisableClientCertsRaw         any      `hcl:"tls_disable_client_certs"`
 
-	TLSACMECachePath               string      `hcl:"tls_acme_cache_path"`
-	TLSACMECADirectory             string      `hcl:"tls_acme_ca_directory"`
-	TLSACMETestCADirectory         string      `hcl:"tls_acme_test_ca_directory"`
-	TLSACMECARoot                  string      `hcl:"tls_acme_ca_root"`
-	TLSACMEEABKeyId                string      `hcl:"tls_acme_eab_key_id"`
-	TLSACMEEABMacKey               string      `hcl:"tls_acme_eab_mac_key"`
-	TLSACMEKeyType                 string      `hcl:"tls_acme_key_type"`
-	TLSACMEEmail                   string      `hcl:"tls_acme_email"`
-	TLSACMEDomains                 []string    `hcl:"tls_acme_domains"`
-	TLSACMEDisableHttpChallenge    bool        `hcl:"-"`
-	TLSACMEDisableHttpChallengeRaw interface{} `hcl:"tls_acme_disable_http_challenge"`
-	TLSACMEDisableAlpnChallenge    bool        `hcl:"-"`
-	TLSACMEDisableAlpnChallengeRaw interface{} `hcl:"tls_acme_disable_alpn_challenge"`
+	TLSACMECachePath               string   `hcl:"tls_acme_cache_path"`
+	TLSACMECADirectory             string   `hcl:"tls_acme_ca_directory"`
+	TLSACMETestCADirectory         string   `hcl:"tls_acme_test_ca_directory"`
+	TLSACMECARoot                  string   `hcl:"tls_acme_ca_root"`
+	TLSACMEEABKeyId                string   `hcl:"tls_acme_eab_key_id"`
+	TLSACMEEABMacKey               string   `hcl:"tls_acme_eab_mac_key"`
+	TLSACMEKeyType                 string   `hcl:"tls_acme_key_type"`
+	TLSACMEEmail                   string   `hcl:"tls_acme_email"`
+	TLSACMEDomains                 []string `hcl:"tls_acme_domains"`
+	TLSACMEDisableHttpChallenge    bool     `hcl:"-"`
+	TLSACMEDisableHttpChallengeRaw any      `hcl:"tls_acme_disable_http_challenge"`
+	TLSACMEDisableAlpnChallenge    bool     `hcl:"-"`
+	TLSACMEDisableAlpnChallengeRaw any      `hcl:"tls_acme_disable_alpn_challenge"`
 
 	HTTPReadTimeout          time.Duration `hcl:"-"`
-	HTTPReadTimeoutRaw       interface{}   `hcl:"http_read_timeout"`
+	HTTPReadTimeoutRaw       any           `hcl:"http_read_timeout"`
 	HTTPReadHeaderTimeout    time.Duration `hcl:"-"`
-	HTTPReadHeaderTimeoutRaw interface{}   `hcl:"http_read_header_timeout"`
+	HTTPReadHeaderTimeoutRaw any           `hcl:"http_read_header_timeout"`
 	HTTPWriteTimeout         time.Duration `hcl:"-"`
-	HTTPWriteTimeoutRaw      interface{}   `hcl:"http_write_timeout"`
+	HTTPWriteTimeoutRaw      any           `hcl:"http_write_timeout"`
 	HTTPIdleTimeout          time.Duration `hcl:"-"`
-	HTTPIdleTimeoutRaw       interface{}   `hcl:"http_idle_timeout"`
+	HTTPIdleTimeoutRaw       any           `hcl:"http_idle_timeout"`
 
 	ProxyProtocolBehavior           string                        `hcl:"proxy_protocol_behavior"`
 	ProxyProtocolAuthorizedAddrs    []*sockaddr.SockAddrMarshaler `hcl:"-"`
-	ProxyProtocolAuthorizedAddrsRaw interface{}                   `hcl:"proxy_protocol_authorized_addrs,alias:ProxyProtocolAuthorizedAddrs"`
+	ProxyProtocolAuthorizedAddrsRaw any                           `hcl:"proxy_protocol_authorized_addrs,alias:ProxyProtocolAuthorizedAddrs"`
 
 	XForwardedForAuthorizedAddrs        []*sockaddr.SockAddrMarshaler `hcl:"-"`
-	XForwardedForAuthorizedAddrsRaw     interface{}                   `hcl:"x_forwarded_for_authorized_addrs,alias:XForwardedForAuthorizedAddrs"`
+	XForwardedForAuthorizedAddrsRaw     any                           `hcl:"x_forwarded_for_authorized_addrs,alias:XForwardedForAuthorizedAddrs"`
 	XForwardedForHopSkips               int64                         `hcl:"-"`
-	XForwardedForHopSkipsRaw            interface{}                   `hcl:"x_forwarded_for_hop_skips,alias:XForwardedForHopSkips"`
+	XForwardedForHopSkipsRaw            any                           `hcl:"x_forwarded_for_hop_skips,alias:XForwardedForHopSkips"`
 	XForwardedForRejectNotPresent       bool                          `hcl:"-"`
-	XForwardedForRejectNotPresentRaw    interface{}                   `hcl:"x_forwarded_for_reject_not_present,alias:XForwardedForRejectNotPresent"`
+	XForwardedForRejectNotPresentRaw    any                           `hcl:"x_forwarded_for_reject_not_present,alias:XForwardedForRejectNotPresent"`
 	XForwardedForRejectNotAuthorized    bool                          `hcl:"-"`
-	XForwardedForRejectNotAuthorizedRaw interface{}                   `hcl:"x_forwarded_for_reject_not_authorized,alias:XForwardedForRejectNotAuthorized"`
+	XForwardedForRejectNotAuthorizedRaw any                           `hcl:"x_forwarded_for_reject_not_authorized,alias:XForwardedForRejectNotAuthorized"`
 
 	// This is different from upstream by using array of strings to allow easier ordering of processing.
 	// Internally all certs are passed as headers that are base64 encoded DER.
 	// Available decoders: PEM, URL, RFC9440
-	XForwardedForClientCertHeader              string      `hcl:"x_forwarded_for_client_cert_header,alias:XForwardedForClientCertHeader"`
-	XForwardedForClientCertDecoders            []string    `hcl:"x_forwarded_for_client_cert_decoders,alias:XForwardedForClientCertificateProcessing"`
-	XForwardedForClientCertKeepNotForwarded    bool        `hcl:"-"`
-	XForwardedForClientCertKeepNotForwardedRaw interface{} `hcl:"x_forwarded_for_client_cert_keep_not_forwarded,alias:XForwardedForClientCertKeepNotForwarded"`
-	XForwardedForClientCertKeepUnauthorized    bool        `hcl:"-"`
-	XForwardedForClientCertKeepUnauthorizedRaw interface{} `hcl:"x_forwarded_for_client_cert_keep_unauthorized,alias:XForwardedForClientCertKeepUnauthorized"`
+	XForwardedForClientCertHeader              string   `hcl:"x_forwarded_for_client_cert_header,alias:XForwardedForClientCertHeader"`
+	XForwardedForClientCertDecoders            []string `hcl:"x_forwarded_for_client_cert_decoders,alias:XForwardedForClientCertificateProcessing"`
+	XForwardedForClientCertKeepNotForwarded    bool     `hcl:"-"`
+	XForwardedForClientCertKeepNotForwardedRaw any      `hcl:"x_forwarded_for_client_cert_keep_not_forwarded,alias:XForwardedForClientCertKeepNotForwarded"`
+	XForwardedForClientCertKeepUnauthorized    bool     `hcl:"-"`
+	XForwardedForClientCertKeepUnauthorizedRaw any      `hcl:"x_forwarded_for_client_cert_keep_unauthorized,alias:XForwardedForClientCertKeepUnauthorized"`
 
 	SocketMode  string `hcl:"socket_mode"`
 	SocketUser  string `hcl:"socket_user"`
@@ -144,17 +144,17 @@ type Listener struct {
 	// RandomPort is used only for some testing purposes
 	RandomPort bool `hcl:"-"`
 
-	CorsEnabledRaw          interface{} `hcl:"cors_enabled"`
-	CorsEnabled             bool        `hcl:"-"`
-	CorsAllowedOrigins      []string    `hcl:"cors_allowed_origins"`
-	CorsAllowedHeaders      []string    `hcl:"-"`
-	CorsAllowedHeadersRaw   []string    `hcl:"cors_allowed_headers,alias:cors_allowed_headers"`
-	CorsAllowCredentialsRaw interface{} `hcl:"cors_allow_credentials,alias:cors_allow_credentials"`
-	CorsAllowCredentials    bool        `hcl:"-"`
+	CorsEnabledRaw          any      `hcl:"cors_enabled"`
+	CorsEnabled             bool     `hcl:"-"`
+	CorsAllowedOrigins      []string `hcl:"cors_allowed_origins"`
+	CorsAllowedHeaders      []string `hcl:"-"`
+	CorsAllowedHeadersRaw   []string `hcl:"cors_allowed_headers,alias:cors_allowed_headers"`
+	CorsAllowCredentialsRaw any      `hcl:"cors_allow_credentials,alias:cors_allow_credentials"`
+	CorsAllowCredentials    bool     `hcl:"-"`
 
 	// Custom Http response headers
 	CustomResponseHeaders    map[string]map[string]string `hcl:"-"`
-	CustomResponseHeadersRaw interface{}                  `hcl:"custom_response_headers"`
+	CustomResponseHeadersRaw any                          `hcl:"custom_response_headers"`
 
 	// Whether to enable handling the unauthenticated rekey endpoints
 	// (via /sys/rekey/* and /sys/rekey-recovery-key/*) on this particular
@@ -163,8 +163,8 @@ type Listener struct {
 	// This defaults to true, i.e., requests are not served; in the future
 	// to enable handling the unauthenticated rekey endpoints the
 	// `disable_unauthed_rekey_endpoints` value has to be set to false.
-	DisableUnauthedRekeyEndpoints    *bool       `hcl:"-"`
-	DisableUnauthedRekeyEndpointsRaw interface{} `hcl:"disable_unauthed_rekey_endpoints"`
+	DisableUnauthedRekeyEndpoints    *bool `hcl:"-"`
+	DisableUnauthedRekeyEndpointsRaw any   `hcl:"disable_unauthed_rekey_endpoints"`
 
 	// Whether to enable handling the unauthenticated generate-root endpoints
 	// (via /sys/generate-root/*) on this particular listener.
@@ -172,8 +172,8 @@ type Listener struct {
 	// This defaults to true, i.e., requests are not served; to enable handling
 	// the unauthenticated generate-root endpoints the
 	// `disable_unauthed_generate_root_endpoints` value has to be set to false.
-	DisableUnauthedGenerateRootEndpoints    *bool       `hcl:"-"`
-	DisableUnauthedGenerateRootEndpointsRaw interface{} `hcl:"disable_unauthed_generate_root_endpoints"`
+	DisableUnauthedGenerateRootEndpoints    *bool `hcl:"-"`
+	DisableUnauthedGenerateRootEndpointsRaw any   `hcl:"disable_unauthed_generate_root_endpoints"`
 }
 
 // AgentAPI allows users to select which parts of the Agent API they want enabled.
@@ -215,7 +215,7 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 		}
 
 		// Hacky way, for now, to get the values we want for sanitizing
-		var m map[string]interface{}
+		var m map[string]any
 		if err := hcl.DecodeObject(&m, item.Val); err != nil {
 			return multierror.Prefix(err, fmt.Sprintf("listeners.%d:", i))
 		}

@@ -223,7 +223,7 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 	// ID received in the request object
 	requestHandler := func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"entity_id": req.EntityID,
 			},
 		}, nil
@@ -322,7 +322,7 @@ func testIdentityStoreCreateOrFetchEntity(t *testing.T, ctx context.Context, is 
 	registerReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "entity-alias",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":           "approleuser2",
 			"canonical_id":   entity.ID,
 			"mount_accessor": upAccessor,
@@ -388,7 +388,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
 	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
-	registerData := map[string]interface{}{
+	registerData := map[string]any{
 		"name":     "testentityname",
 		"metadata": []string{"someusefulkey=someusefulvalue"},
 		"policies": []string{"testpolicy1", "testpolicy2"},
@@ -414,7 +414,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 		t.Fatal("invalid entity id")
 	}
 
-	aliasData := map[string]interface{}{
+	aliasData := map[string]any{
 		"entity_id":      entityID,
 		"name":           "alias_name",
 		"mount_accessor": approleAccessor,
@@ -455,7 +455,7 @@ func TestIdentityStore_WrapInfoInheritance(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
 	core, is, ts, _ := testCoreWithIdentityTokenAppRole(ctx, t)
 
-	registerData := map[string]interface{}{
+	registerData := map[string]any{
 		"name":     "testentityname",
 		"metadata": []string{"someusefulkey=someusefulvalue"},
 		"policies": []string{"testpolicy1", "testpolicy2"},
@@ -496,7 +496,7 @@ func TestIdentityStore_WrapInfoInheritance(t *testing.T) {
 		Path:        "sys/wrapping/wrap",
 		ClientToken: te.ID,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"foo": "bar",
 		},
 		WrapInfo: &logical.RequestWrapInfo{
@@ -1345,7 +1345,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		aliasReq := &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "entity-alias",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"name":           "mismatch-user-2",
 				"canonical_id":   ns1Entity.ID, // Entity from ns1
 				"mount_accessor": ns2Accessor,  // Accessor from ns2
@@ -1437,7 +1437,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		mergeReq := &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "entity/merge",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"from_entity_ids": []string{ns1Entity.ID},
 				"to_entity_id":    rootEntity.ID,
 			},
@@ -1783,7 +1783,7 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 		rootGroupReq := &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "group",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"name":     "test-group-root",
 				"type":     "external",
 				"policies": []string{"default"},
@@ -1810,7 +1810,7 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 		ns1GroupReq := &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "group",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"name":     "test-group-ns1",
 				"type":     "external",
 				"policies": []string{"default"},
@@ -1837,7 +1837,7 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 		ns2GroupReq := &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "group",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"name":     "test-group-ns2",
 				"type":     "external",
 				"policies": []string{"default"},
@@ -1866,7 +1866,7 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 			aliasReq := &logical.Request{
 				Operation: logical.UpdateOperation,
 				Path:      "group-alias",
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"name":           commonAliasName,
 					"canonical_id":   group.id,
 					"mount_accessor": group.accessor,

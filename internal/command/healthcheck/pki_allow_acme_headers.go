@@ -17,7 +17,7 @@ type AllowAcmeHeaders struct {
 	UnsupportedVersion bool
 
 	TuneFetcher *PathFetch
-	TuneData    map[string]interface{}
+	TuneData    map[string]any
 
 	AcmeConfigFetcher *PathFetch
 }
@@ -34,11 +34,11 @@ func (h *AllowAcmeHeaders) IsEnabled() bool {
 	return h.Enabled
 }
 
-func (h *AllowAcmeHeaders) DefaultConfig() map[string]interface{} {
-	return map[string]interface{}{}
+func (h *AllowAcmeHeaders) DefaultConfig() map[string]any {
+	return map[string]any{}
 }
 
-func (h *AllowAcmeHeaders) LoadConfig(config map[string]interface{}) error {
+func (h *AllowAcmeHeaders) LoadConfig(config map[string]any) error {
 	enabled, err := parseutil.ParseBool(config["enabled"])
 	if err != nil {
 		return fmt.Errorf("error parsing %v.enabled: %w", h.Name(), err)

@@ -20,7 +20,7 @@ func BenchmarkTokenStore_HandleCreateCommon(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		req := logical.TestRequest(benchhelpers.TBtoT(b), logical.UpdateOperation, "create")
 		req.ClientToken = root
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"policies": []string{"default"},
 			"ttl":      "1h",
 		}

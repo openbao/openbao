@@ -344,13 +344,13 @@ func constructTemplatesFromSecret(ctx context.Context, client *api.Client, path,
 		return nil, errors.New("secret not found")
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if v2 {
 		internal, ok := resp.Data["data"]
 		if !ok {
 			return nil, errors.New("secret.Data not found")
 		}
-		data = internal.(map[string]interface{})
+		data = internal.(map[string]any)
 	} else {
 		data = resp.Data
 	}

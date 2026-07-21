@@ -46,7 +46,7 @@ func TestListCertificatesWithDetails(t *testing.T) {
 
 	// Generate a root certificate
 	RootCN := "Root"
-	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"ttl":         "40h",
 		"common_name": RootCN,
 		"key_type":    "rsa",
@@ -57,7 +57,7 @@ func TestListCertificatesWithDetails(t *testing.T) {
 	rootCert := parseCert(t, resp.Data["certificate"].(string))
 
 	// Set up a role for issuing certificates
-	_, err = client.Logical().Write("pki/roles/test-role", map[string]interface{}{
+	_, err = client.Logical().Write("pki/roles/test-role", map[string]any{
 		"allow_any_name":    true,
 		"enforce_hostnames": false,
 		"key_type":          "ec",
@@ -67,7 +67,7 @@ func TestListCertificatesWithDetails(t *testing.T) {
 	// Issue leaf certificate
 	leafCN := "example.com"
 	altLeafNames := []string{"example.com", "www.example.com", "www.example1.com", "example1.com", "www.example2.com"}
-	resp, err = client.Logical().Write("pki/issue/test-role", map[string]interface{}{
+	resp, err = client.Logical().Write("pki/issue/test-role", map[string]any{
 		"common_name": leafCN,
 		"ttl":         "10m",
 		// put > 5 names to check only 5 DNS names are detailed
@@ -79,7 +79,7 @@ func TestListCertificatesWithDetails(t *testing.T) {
 	leafCert := parseCert(t, resp.Data["certificate"].(string))
 
 	// Expected certificate details for Root and Leaf certificates
-	expectedRootCertDetails := map[string]interface{}{
+	expectedRootCertDetails := map[string]any{
 		"common_name": RootCN,
 		"issuer":      "CN=Root",
 		"key_type":    "rsa",
@@ -88,7 +88,7 @@ func TestListCertificatesWithDetails(t *testing.T) {
 		"not_before":  rootCert.NotBefore.Format(time.RFC3339),
 		"dns_names":   []string{RootCN},
 	}
-	expectedLeafCertDetails := map[string]interface{}{
+	expectedLeafCertDetails := map[string]any{
 		"common_name": leafCN,
 		"issuer":      "CN=Root",
 		"key_type":    "ec",
@@ -102,12 +102,12 @@ func TestListCertificatesWithDetails(t *testing.T) {
 	storageRespDetailed, err := client.Logical().List("pki/certs/detailed/")
 	require.NoError(t, err, "unable to retrieve storage contents")
 	require.NotNil(t, storageRespDetailed, "expected non-nil storage response, but got nil")
-	keyInfo, ok := storageRespDetailed.Data["key_info"].(map[string]interface{})
+	keyInfo, ok := storageRespDetailed.Data["key_info"].(map[string]any)
 	require.True(t, ok, "Expected 'key_info' to be a map")
 
 	// Assert certificate details for both root and leaf certificates
 	for _, certInfo := range keyInfo {
-		certData, ok := certInfo.(map[string]interface{})
+		certData, ok := certInfo.(map[string]any)
 		require.True(t, ok, "Expected cert info to be a map")
 
 		// Determine if the certificate is root or leaf based on the common name
@@ -123,8 +123,8 @@ func TestListCertificatesWithDetails(t *testing.T) {
 	}
 }
 
-func checkCertificateDetails(t *testing.T, certData, expectedDetails map[string]interface{}) {
-	actualDNSNames, ok := certData["dns_names"].([]interface{})
+func checkCertificateDetails(t *testing.T, certData, expectedDetails map[string]any) {
+	actualDNSNames, ok := certData["dns_names"].([]any)
 	require.True(t, ok, "Expected dns_names to be a list")
 
 	// Convert actual DNS names to a string slice for comparison

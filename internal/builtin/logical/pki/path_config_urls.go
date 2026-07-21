@@ -221,7 +221,7 @@ func (b *backend) pathReadURL(ctx context.Context, req *logical.Request, _ *fram
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"issuing_certificates":          entries.IssuingCertificates,
 			"crl_distribution_points":       entries.CRLDistributionPoints,
 			"delta_crl_distribution_points": entries.DeltaCRLDistributionPoints,
@@ -256,7 +256,7 @@ func (b *backend) pathWriteURL(ctx context.Context, req *logical.Request, data *
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"issuing_certificates":          entries.IssuingCertificates,
 			"crl_distribution_points":       entries.CRLDistributionPoints,
 			"delta_crl_distribution_points": entries.DeltaCRLDistributionPoints,

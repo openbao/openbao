@@ -69,11 +69,11 @@ func (m *mockPlugin) RevokeUser(_ context.Context, statements dbplugin.Statement
 	return nil
 }
 
-func (m *mockPlugin) RotateRootCredentials(_ context.Context, statements []string) (map[string]interface{}, error) {
+func (m *mockPlugin) RotateRootCredentials(_ context.Context, statements []string) (map[string]any, error) {
 	return nil, nil
 }
 
-func (m *mockPlugin) Init(_ context.Context, conf map[string]interface{}, _ bool) (map[string]interface{}, error) {
+func (m *mockPlugin) Init(_ context.Context, conf map[string]any, _ bool) (map[string]any, error) {
 	err := errors.New("err")
 	if len(conf) != 1 {
 		return nil, err
@@ -82,7 +82,7 @@ func (m *mockPlugin) Init(_ context.Context, conf map[string]interface{}, _ bool
 	return conf, nil
 }
 
-func (m *mockPlugin) Initialize(_ context.Context, conf map[string]interface{}, _ bool) error {
+func (m *mockPlugin) Initialize(_ context.Context, conf map[string]any, _ bool) error {
 	err := errors.New("err")
 	if len(conf) != 1 {
 		return err
@@ -146,7 +146,7 @@ func TestPlugin_Init(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"test": 1,
 	}
 
@@ -171,7 +171,7 @@ func TestPlugin_CreateUser(t *testing.T) {
 	}
 	defer db.Close()
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"test": 1,
 	}
 
@@ -212,7 +212,7 @@ func TestPlugin_RenewUser(t *testing.T) {
 	}
 	defer db.Close()
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"test": 1,
 	}
 	_, err = db.Init(t.Context(), connectionDetails, true)
@@ -244,7 +244,7 @@ func TestPlugin_RevokeUser(t *testing.T) {
 	}
 	defer db.Close()
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"test": 1,
 	}
 	_, err = db.Init(t.Context(), connectionDetails, true)

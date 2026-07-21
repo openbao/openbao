@@ -340,7 +340,7 @@ func (i *IdentityStore) handleAliasCreate(ctx context.Context, canonicalID, name
 
 	// Return ID of both alias and entity
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id":           alias.ID,
 			"canonical_id": entity.ID,
 		},
@@ -475,7 +475,7 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
 		}
 
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"id":           alias.ID,
 				"canonical_id": newEntity.ID,
 			},
@@ -492,7 +492,7 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
 
 	// Return ID of both alias and entity
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id":           alias.ID,
 			"canonical_id": newEntity.ID,
 		},
@@ -530,7 +530,7 @@ func (i *IdentityStore) handleAliasReadCommon(ctx context.Context, alias *identi
 		return logical.ErrorResponse("alias and request are in different namespaces"), logical.ErrPermissionDenied
 	}
 
-	respData := map[string]interface{}{}
+	respData := map[string]any{}
 	respData["id"] = alias.ID
 	respData["canonical_id"] = alias.CanonicalID
 	respData["mount_accessor"] = alias.MountAccessor

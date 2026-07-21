@@ -50,7 +50,7 @@ func (a *azureServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	case "/getMemberObjects":
 		groups := azureGroups{
-			Value: []interface{}{"group1", "group2"},
+			Value: []any{"group1", "group2"},
 		}
 		gBytes, _ := json.Marshal(groups)
 		_, err := w.Write(gBytes)
@@ -86,14 +86,14 @@ func TestLogin_fetchGroups(t *testing.T) {
 	b, storage := getBackend(t)
 	ctx := t.Context()
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"oidc_discovery_url":    aServer.server.URL,
 		"oidc_discovery_ca_pem": aCert,
 		"oidc_client_id":        "abc",
 		"oidc_client_secret":    "def",
 		"default_role":          "test",
 		"bound_issuer":          "http://vault.example.com/",
-		"provider_config": map[string]interface{}{
+		"provider_config": map[string]any{
 			"provider": "azure",
 		},
 	}
@@ -112,7 +112,7 @@ func TestLogin_fetchGroups(t *testing.T) {
 	}
 
 	// set up test role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"user_claim":            "email",
 		"groups_claim":          "groups",
 		"allowed_redirect_uris": []string{"https://example.com"},
@@ -133,7 +133,7 @@ func TestLogin_fetchGroups(t *testing.T) {
 	role := &jwtRole{
 		GroupsClaim: "groups",
 	}
-	allClaims := map[string]interface{}{
+	allClaims := map[string]any{
 		"_claim_names": H{
 			"groups": "src1",
 		},
@@ -160,7 +160,7 @@ func TestLogin_fetchGroups(t *testing.T) {
 	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test.access.token"})
 	groupsResp, err := b.(*jwtAuthBackend).fetchGroups(ctx, provider, allClaims, role, tokenSource)
 	assert.NoError(t, err)
-	assert.Equal(t, []interface{}{"group1", "group2"}, groupsResp)
+	assert.Equal(t, []any{"group1", "group2"}, groupsResp)
 }
 
 func Test_getClaimSources(t *testing.T) {

@@ -55,7 +55,7 @@ func verifyExportsCorrectVersion(t *testing.T, exportType, keyType string) {
 		Operation: logical.UpdateOperation,
 		Path:      "keys/foo",
 	}
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"exportable": true,
 		"type":       keyType,
 	}
@@ -148,7 +148,7 @@ func TestTransit_Export_ValidVersionsOnly(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "keys/foo",
 	}
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"exportable": true,
 	}
 	_, err := b.HandleRequest(t.Context(), req)
@@ -203,7 +203,7 @@ func TestTransit_Export_ValidVersionsOnly(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "keys/foo/config",
 	}
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_decryption_version": 3,
 	}
 	_, err = b.HandleRequest(t.Context(), req)
@@ -217,7 +217,7 @@ func TestTransit_Export_ValidVersionsOnly(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "keys/foo/config",
 	}
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_decryption_version": 2,
 	}
 	_, err = b.HandleRequest(t.Context(), req)
@@ -247,7 +247,7 @@ func TestTransit_Export_KeysNotMarkedExportable_ReturnsError(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "keys/foo",
 	}
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"exportable": false,
 	}
 	_, err := b.HandleRequest(t.Context(), req)
@@ -277,7 +277,7 @@ func TestTransit_Export_SigningDoesNotSupportSigning_ReturnsError(t *testing.T) 
 		Operation: logical.UpdateOperation,
 		Path:      "keys/foo",
 	}
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"exportable": true,
 		"type":       "aes256-gcm96",
 	}
@@ -312,7 +312,7 @@ func testTransit_Export_EncryptionDoesNotSupportEncryption_ReturnsError(t *testi
 		Operation: logical.UpdateOperation,
 		Path:      "keys/foo",
 	}
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"exportable": true,
 		"type":       keyType,
 	}
@@ -355,7 +355,7 @@ func TestTransit_Export_EncryptionKey_DoesNotExportHMACKey(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "keys/foo",
 	}
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"exportable": true,
 		"type":       "aes256-gcm96",
 	}
@@ -442,7 +442,7 @@ func verifyExportsCorrectFormat(t *testing.T, exportType, keyType string) {
 		Operation: logical.UpdateOperation,
 		Path:      "keys/foo",
 	}
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"exportable": true,
 		"type":       keyType,
 	}
@@ -461,7 +461,7 @@ func verifyExportsCorrectFormat(t *testing.T, exportType, keyType string) {
 			Storage:   storage,
 			Operation: logical.ReadOperation,
 			Path:      fmt.Sprintf("export/%s/foo", exportType),
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"format": formatRequest,
 			},
 		}
@@ -627,14 +627,14 @@ func testTransit_Export_CertificateChain(t *testing.T, apiClient *api.Client, ke
 	}))
 
 	// generate PKI root
-	_, err = apiClient.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	_, err = apiClient.Logical().Write("pki/root/generate/internal", map[string]any{
 		"issuer_name": issuerName,
 		"common_name": "PKI Root X1",
 	})
 	require.NoError(t, err)
 
 	// create role to be used in the certificate issuing
-	_, err = apiClient.Logical().Write("pki/roles/example-dot-com", map[string]interface{}{
+	_, err = apiClient.Logical().Write("pki/roles/example-dot-com", map[string]any{
 		"issuer_ref":                         issuerName,
 		"allowed_domains":                    "example.com",
 		"allow_bare_domains":                 true,
@@ -644,7 +644,7 @@ func testTransit_Export_CertificateChain(t *testing.T, apiClient *api.Client, ke
 	require.NoError(t, err)
 
 	// sign the CSR
-	resp, err := apiClient.Logical().Write("pki/sign/example-dot-com", map[string]interface{}{
+	resp, err := apiClient.Logical().Write("pki/sign/example-dot-com", map[string]any{
 		"issuer_ref": issuerName,
 		"csr":        pemCsr,
 		"ttl":        "10m",
@@ -668,13 +668,13 @@ func testTransit_Export_CertificateChain(t *testing.T, apiClient *api.Client, ke
 	blob := wrapTargetPKCS8ForImport(t, pubWrappingKey.(*rsa.PublicKey), privKeyBytes, "SHA256")
 
 	// import key
-	_, err = apiClient.Logical().Write(fmt.Sprintf("/transit/keys/%s/import", keyName), map[string]interface{}{
+	_, err = apiClient.Logical().Write(fmt.Sprintf("/transit/keys/%s/import", keyName), map[string]any{
 		"ciphertext": blob,
 		"type":       keyType,
 	})
 	require.NoError(t, err)
 
-	_, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]interface{}{
+	_, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]any{
 		"certificate_chain": leafCertPEM,
 	})
 	require.NoError(t, err)
@@ -684,7 +684,7 @@ func testTransit_Export_CertificateChain(t *testing.T, apiClient *api.Client, ke
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
-	exportedKeys := resp.Data["keys"].(map[string]interface{})
+	exportedKeys := resp.Data["keys"].(map[string]any)
 	exportedCertChainPEM := exportedKeys["1"].(string)
 
 	if exportedCertChainPEM != leafCertPEM {

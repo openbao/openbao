@@ -25,7 +25,7 @@ func createBackendWithStorage(t *testing.T) (*backend, logical.Storage) {
 func TestAppRole_RoleServiceToBatchNumUses(t *testing.T) {
 	b, s := createBackendWithStorage(t)
 
-	requestFunc := func(operation logical.Operation, data map[string]interface{}) {
+	requestFunc := func(operation logical.Operation, data map[string]any) {
 		resp, err := b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "role/testrole",
 			Operation: operation,
@@ -37,7 +37,7 @@ func TestAppRole_RoleServiceToBatchNumUses(t *testing.T) {
 		}
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"bind_secret_id":     true,
 		"secret_id_num_uses": 0,
 		"secret_id_ttl":      "10m",
@@ -76,7 +76,7 @@ func TestAppRole_RoleServiceToBatchNumUses(t *testing.T) {
 	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Path:      "login",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"role_id":   roleID,
 			"secret_id": secretID,
 		},
@@ -131,7 +131,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"role_id":   roleID,
 				"secret_id": secretID,
 			},
@@ -149,7 +149,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			Path:      "role/" + roleName + "/secret-id-accessor/destroy",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"secret_id_accessor": secretIDAccessor,
 			},
 		})
@@ -161,7 +161,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"role_id":   roleID,
 				"secret_id": secretID,
 			},
@@ -189,7 +189,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"role_id":   roleID,
 				"secret_id": secretID,
 			},
@@ -207,7 +207,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			Path:      "role/" + roleName + "/secret-id/destroy",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"secret_id": secretID,
 			},
 		})
@@ -219,7 +219,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"role_id":   roleID,
 				"secret_id": secretID,
 			},
@@ -247,7 +247,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"role_id":   roleID,
 				"secret_id": secretID,
 			},
@@ -265,7 +265,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			Path:      "role/" + strings.ToLower(roleName) + "/secret-id/destroy",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"secret_id": secretID,
 			},
 		})
@@ -277,7 +277,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"role_id":   roleID,
 				"secret_id": secretID,
 			},
@@ -305,7 +305,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"role_id":   roleID,
 				"secret_id": secretID,
 			},
@@ -323,7 +323,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			Path:      "role/" + strings.ToUpper(roleName) + "/secret-id/destroy",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"secret_id": secretID,
 			},
 		})
@@ -335,7 +335,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"role_id":   roleID,
 				"secret_id": secretID,
 			},
@@ -363,7 +363,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"role_id":   roleID,
 				"secret_id": secretID,
 			},
@@ -381,7 +381,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			Path:      "role/saMpleRolEnaMe/secret-id/destroy",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"secret_id": secretID,
 			},
 		})
@@ -393,7 +393,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 		resp, err = b.HandleRequest(t.Context(), &logical.Request{
 			Path:      "login",
 			Operation: logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"role_id":   roleID,
 				"secret_id": secretID,
 			},

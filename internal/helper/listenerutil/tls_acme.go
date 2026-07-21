@@ -250,7 +250,7 @@ func (z *zapHclCore) Check(entry zapcore.Entry, checked *zapcore.CheckedEntry) *
 }
 
 func (z *zapHclCore) Write(entry zapcore.Entry, fields []zapcore.Field) error {
-	var args []interface{}
+	var args []any
 	msg := entry.Message
 
 	logger := z.Logger.Named("listener-acme")

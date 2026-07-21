@@ -12,7 +12,7 @@ func TestVersionedKV_Config(t *testing.T) {
 	b, storage := getBackend(t)
 
 	d := 5 * time.Minute
-	data := map[string]interface{}{
+	data := map[string]any{
 		"max_versions":          4,
 		"cas_required":          true,
 		"metadata_cas_required": true,
@@ -106,7 +106,7 @@ func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 			}
 
 			// set first value
-			data := map[string]interface{}{
+			data := map[string]any{
 				"delete_version_after": tt.ds1,
 			}
 			req = &logical.Request{
@@ -134,7 +134,7 @@ func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 			}
 
 			// set second value
-			data = map[string]interface{}{
+			data = map[string]any{
 				"delete_version_after": tt.ds2,
 			}
 			req = &logical.Request{

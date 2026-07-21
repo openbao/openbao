@@ -171,7 +171,7 @@ func (b *backend) pathDecryptWrite(ctx context.Context, req *logical.Request, d 
 			continue
 		}
 
-		var factory interface{}
+		var factory any
 		if item.AssociatedData != "" {
 			if !p.Type.AssociatedDataSupported() {
 				batchResponseItems[i].Error = fmt.Sprintf("'[%d].associated_data' provided for non-AEAD cipher suite %v", i, p.Type.String())
@@ -202,7 +202,7 @@ func (b *backend) pathDecryptWrite(ctx context.Context, req *logical.Request, d 
 		for i := range batchInputItems {
 			batchResponseItems[i].Reference = batchInputItems[i].Reference
 		}
-		resp.Data = map[string]interface{}{
+		resp.Data = map[string]any{
 			"batch_results": batchResponseItems,
 		}
 	} else {
@@ -213,7 +213,7 @@ func (b *backend) pathDecryptWrite(ctx context.Context, req *logical.Request, d 
 
 			return logical.ErrorResponse(batchResponseItems[0].Error), logical.ErrInvalidRequest
 		}
-		resp.Data = map[string]interface{}{
+		resp.Data = map[string]any{
 			"plaintext": batchResponseItems[0].Plaintext,
 		}
 	}

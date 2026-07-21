@@ -262,7 +262,7 @@ func (b *SystemBackend) handleRaftConfigurationGet() framework.OperationFunc {
 		}
 
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"config": config,
 			},
 		}, nil
@@ -391,7 +391,7 @@ func (b *SystemBackend) handleRaftBootstrapChallengeWrite() framework.OperationF
 		}
 
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"challenge":   base64.StdEncoding.EncodeToString(protoBlob),
 				"seal_config": sealConfig,
 			},
@@ -480,7 +480,7 @@ func (b *SystemBackend) handleRaftBootstrapAnswerWrite() framework.OperationFunc
 		b.logger.Info("follower node answered the raft bootstrap challenge", "follower_server_id", serverID)
 
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"peers":       peers,
 				"tls_keyring": &keyring,
 			},
@@ -523,7 +523,7 @@ func (b *SystemBackend) handleStorageRaftAutopilotState() framework.OperationFun
 			return nil, nil
 		}
 
-		data := make(map[string]interface{})
+		data := make(map[string]any)
 		err = mapstructure.Decode(state, &data)
 		if err != nil {
 			return nil, err
@@ -548,7 +548,7 @@ func (b *SystemBackend) handleStorageRaftAutopilotConfigRead() framework.Operati
 		}
 
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"cleanup_dead_servers":               config.CleanupDeadServers,
 				"last_contact_threshold":             config.LastContactThreshold.String(),
 				"dead_server_last_contact_threshold": config.DeadServerLastContactThreshold.String(),

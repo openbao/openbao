@@ -79,7 +79,7 @@ func (b *backend) pathConfigRead(ctx context.Context, req *logical.Request, data
 		return nil, nil
 	} else {
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				// keytab is intentionally not returned here because it's sensitive
 				"service_account":      config.ServiceAccount,
 				"add_group_aliases":    config.AddGroupAliases,

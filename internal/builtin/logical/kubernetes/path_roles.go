@@ -45,8 +45,8 @@ func (r *roleEntry) HasSingleK8sNamespace() bool {
 		len(r.K8sNamespaces) == 1 && r.K8sNamespaces[0] != "" && r.K8sNamespaces[0] != "*"
 }
 
-func (r *roleEntry) toResponseData() (map[string]interface{}, error) {
-	respData := map[string]interface{}{}
+func (r *roleEntry) toResponseData() (map[string]any, error) {
+	respData := map[string]any{}
 	if err := mapstructure.Decode(r, &respData); err != nil {
 		return nil, err
 	}

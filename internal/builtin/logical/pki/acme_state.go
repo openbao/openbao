@@ -422,9 +422,9 @@ func saveAuthorizationAtPath(sc *storageContext, path string, authz *ACMEAuthori
 	return nil
 }
 
-func (a *acmeState) ParseRequestParams(ac *acmeContext, req *logical.Request, data *framework.FieldData) (*jwsCtx, map[string]interface{}, error) {
+func (a *acmeState) ParseRequestParams(ac *acmeContext, req *logical.Request, data *framework.FieldData) (*jwsCtx, map[string]any, error) {
 	var c jwsCtx
-	var m map[string]interface{}
+	var m map[string]any
 
 	// Parse the key out.
 	rawJWKBase64, ok := data.GetOk("protected")

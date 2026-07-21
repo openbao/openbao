@@ -216,7 +216,7 @@ func (b *backend) pathHMACWrite(ctx context.Context, req *logical.Request, d *fr
 		for i := range batchInputItems {
 			response[i].Reference = batchInputItems[i]["reference"]
 		}
-		resp.Data = map[string]interface{}{
+		resp.Data = map[string]any{
 			"batch_results": response,
 		}
 	} else {
@@ -227,7 +227,7 @@ func (b *backend) pathHMACWrite(ctx context.Context, req *logical.Request, d *fr
 				return nil, response[0].err
 			}
 		}
-		resp.Data = map[string]interface{}{
+		resp.Data = map[string]any{
 			"hmac": response[0].HMAC,
 		}
 	}
@@ -374,7 +374,7 @@ func (b *backend) pathHMACVerify(ctx context.Context, req *logical.Request, d *f
 		for i := range batchInputItems {
 			response[i].Reference = batchInputItems[i]["reference"]
 		}
-		resp.Data = map[string]interface{}{
+		resp.Data = map[string]any{
 			"batch_results": response,
 		}
 	} else {
@@ -385,7 +385,7 @@ func (b *backend) pathHMACVerify(ctx context.Context, req *logical.Request, d *f
 				return nil, response[0].err
 			}
 		}
-		resp.Data = map[string]interface{}{
+		resp.Data = map[string]any{
 			"valid": response[0].Valid,
 		}
 	}

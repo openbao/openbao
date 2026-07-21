@@ -223,7 +223,7 @@ func (vpc *VaultPkiCluster) CreateAcmeMount(mountName string) (*VaultPkiMount, e
 		return nil, fmt.Errorf("failed updating cluster config: %w", err)
 	}
 
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"eab_policy": "not-required",
 	}
 	if vpc.Dns != nil {
@@ -236,7 +236,7 @@ func (vpc *VaultPkiCluster) CreateAcmeMount(mountName string) (*VaultPkiMount, e
 	}
 
 	// Setup root+intermediate CA hierarchy within this mount.
-	resp, err := pki.GenerateRootInternal(map[string]interface{}{
+	resp, err := pki.GenerateRootInternal(map[string]any{
 		"common_name":  "Root X1",
 		"country":      "US",
 		"organization": "Dadgarcorp",
@@ -253,7 +253,7 @@ func (vpc *VaultPkiCluster) CreateAcmeMount(mountName string) (*VaultPkiMount, e
 		return nil, errors.New("failed generating root internal: nil or empty response but no error")
 	}
 
-	resp, err = pki.GenerateIntermediateInternal(map[string]interface{}{
+	resp, err = pki.GenerateIntermediateInternal(map[string]any{
 		"common_name":  "Intermediate I1",
 		"country":      "US",
 		"organization": "Dadgarcorp",
@@ -269,7 +269,7 @@ func (vpc *VaultPkiCluster) CreateAcmeMount(mountName string) (*VaultPkiMount, e
 		return nil, errors.New("failed generating int csr: nil or empty response but no error")
 	}
 
-	resp, err = pki.SignIntermediary("default", resp.Data["csr"], map[string]interface{}{
+	resp, err = pki.SignIntermediary("default", resp.Data["csr"], map[string]any{
 		"common_name":  "Intermediate I1",
 		"country":      "US",
 		"organization": "Dadgarcorp",
@@ -293,19 +293,19 @@ func (vpc *VaultPkiCluster) CreateAcmeMount(mountName string) (*VaultPkiMount, e
 		return nil, errors.New("failed importing signed cert: nil or empty response but no error")
 	}
 
-	err = pki.UpdateDefaultIssuer(resp.Data["imported_issuers"].([]interface{})[0].(string), nil)
+	err = pki.UpdateDefaultIssuer(resp.Data["imported_issuers"].([]any)[0].(string), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set intermediate as default: %w", err)
 	}
 
-	err = pki.UpdateIssuer("default", map[string]interface{}{
+	err = pki.UpdateIssuer("default", map[string]any{
 		"leaf_not_after_behavior": "truncate",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to update intermediate ttl behavior: %w", err)
 	}
 
-	err = pki.UpdateIssuer("root", map[string]interface{}{
+	err = pki.UpdateIssuer("root", map[string]any{
 		"leaf_not_after_behavior": "truncate",
 	})
 	if err != nil {

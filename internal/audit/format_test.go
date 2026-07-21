@@ -45,7 +45,7 @@ func (fw *testingFormatWriter) Salt(ctx context.Context) (*salt.Salt, error) {
 
 // hashExpectedValueForComparison replicates enough of the audit HMAC process on a piece of expected data in a test,
 // so that we can use assert.Equal to compare the expected and output values.
-func (fw *testingFormatWriter) hashExpectedValueForComparison(t *testing.T, input map[string]interface{}) map[string]interface{} {
+func (fw *testingFormatWriter) hashExpectedValueForComparison(t *testing.T, input map[string]any) map[string]any {
 	t.Helper()
 	// Copy input before modifying, since we may re-use the same data in another test
 	copiedAsMap, err := getUnmarshaledCopy(input)
@@ -109,8 +109,8 @@ func TestElideListResponses(t *testing.T) {
 
 	type test struct {
 		name         string
-		inputData    map[string]interface{}
-		expectedData map[string]interface{}
+		inputData    map[string]any
+		expectedData map[string]any
 	}
 
 	tests := []test{
@@ -121,55 +121,55 @@ func TestElideListResponses(t *testing.T) {
 		},
 		{
 			"Normal list (keys only)",
-			map[string]interface{}{
+			map[string]any{
 				"keys": []string{"foo", "bar", "baz"},
 			},
-			map[string]interface{}{
+			map[string]any{
 				"keys": 3,
 			},
 		},
 		{
 			"Enhanced list (has key_info)",
-			map[string]interface{}{
+			map[string]any{
 				"keys": []string{"foo", "bar", "baz", "quux"},
-				"key_info": map[string]interface{}{
+				"key_info": map[string]any{
 					"foo":  "alpha",
 					"bar":  "beta",
 					"baz":  "gamma",
 					"quux": "delta",
 				},
 			},
-			map[string]interface{}{
+			map[string]any{
 				"keys":     4,
 				"key_info": 4,
 			},
 		},
 		{
 			"Unconventional other values in a list response are not touched",
-			map[string]interface{}{
+			map[string]any{
 				"keys":           []string{"foo", "bar"},
 				"something_else": "baz",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"keys":           2,
 				"something_else": "baz",
 			},
 		},
 		{
 			"Conventional values in a list response are not elided if their data types are unconventional",
-			map[string]interface{}{
-				"keys": map[string]interface{}{
+			map[string]any{
+				"keys": map[string]any{
 					"You wouldn't expect keys to be a map": nil,
 				},
 				"key_info": []string{
 					"You wouldn't expect key_info to be a slice",
 				},
 			},
-			map[string]interface{}{
-				"keys": map[string]interface{}{
+			map[string]any{
+				"keys": map[string]any{
 					"You wouldn't expect keys to be a map": nil,
 				},
-				"key_info": []interface{}{
+				"key_info": []any{
 					"You wouldn't expect key_info to be a slice",
 				},
 			},
@@ -181,7 +181,7 @@ func TestElideListResponses(t *testing.T) {
 		t *testing.T,
 		config FormatterConfig,
 		operation logical.Operation,
-		inputData map[string]interface{},
+		inputData map[string]any,
 	) {
 		err := formatter.FormatResponse(ctx, io.Discard, config, &logical.LogInput{
 			Request:  &logical.Request{Operation: operation},
@@ -224,15 +224,15 @@ func TestElideListResponses(t *testing.T) {
 	})
 }
 
-func fixupInputData(inputData map[string]interface{}) map[string]interface{} {
+func fixupInputData(inputData map[string]any) map[string]any {
 	// json marshalling/unmarshalling converts []string's into []interface{}
 	// this method returns a copy of the input data with that transformation
 	// so it can be checked against the results
-	newSlice := make([]interface{}, len(inputData["keys"].([]string)))
+	newSlice := make([]any, len(inputData["keys"].([]string)))
 	for i, v := range inputData["keys"].([]string) {
 		newSlice[i] = v
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		"keys":     newSlice,
 		"key_info": inputData["key_info"],
 	}
@@ -245,7 +245,7 @@ func fixupInputData(inputData map[string]interface{}) map[string]interface{} {
 //
 // This func corrects the issue with tfw.hashExpectedValueForComparison(),
 // by converting the floats back to ints.
-func fixupElidedTestData(inputData map[string]interface{}) map[string]interface{} {
+func fixupElidedTestData(inputData map[string]any) map[string]any {
 	for k, v := range inputData {
 		if k == "keys" || k == "key_info" {
 			if f, ok := v.(float64); ok {

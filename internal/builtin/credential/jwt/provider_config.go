@@ -62,13 +62,13 @@ func NewProviderConfig(ctx context.Context, jc *jwtConfig, providerMap map[strin
 
 // UserInfoFetcher - Optional support for custom user info handling
 type UserInfoFetcher interface {
-	FetchUserInfo(context.Context, *jwtAuthBackend, map[string]interface{}, *jwtRole) error
+	FetchUserInfo(context.Context, *jwtAuthBackend, map[string]any, *jwtRole) error
 }
 
 // GroupsFetcher - Optional support for custom groups handling
 type GroupsFetcher interface {
 	// FetchGroups queries for groups claims during login
-	FetchGroups(context.Context, *jwtAuthBackend, map[string]interface{}, *jwtRole, oauth2.TokenSource) (interface{}, error)
+	FetchGroups(context.Context, *jwtAuthBackend, map[string]any, *jwtRole, oauth2.TokenSource) (any, error)
 }
 
 // KeySetDiscovery - Optional support for custom provider-specific discovery mechanism

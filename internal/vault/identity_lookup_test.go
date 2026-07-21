@@ -30,7 +30,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	aliasReq := &logical.Request{
 		Path:      "entity-alias",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":           "testaliasname",
 			"mount_accessor": accessor,
 			"entity_id":      entityID,
@@ -51,7 +51,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	lookupReq := &logical.Request{
 		Path:      "lookup/entity",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id": entityID,
 		},
 	}
@@ -64,7 +64,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 		t.Fatalf("bad: entity: %#v", resp.Data)
 	}
 
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"name": entity.Name,
 	}
 
@@ -77,7 +77,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 		t.Fatalf("bad: entity: %#v", resp.Data)
 	}
 
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"alias_id": aliasID,
 	}
 
@@ -90,7 +90,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 		t.Fatalf("bad: entity: %#v", resp.Data)
 	}
 
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"alias_name":           "testaliasname",
 		"alias_mount_accessor": accessor,
 	}
@@ -105,7 +105,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	}
 
 	// Supply 2 query criteria
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"id":   entityID,
 		"name": entity.Name,
 	}
@@ -119,7 +119,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	}
 
 	// Supply alias name and skip accessor
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"alias_name": "testaliasname",
 	}
 
@@ -132,7 +132,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	}
 
 	// Supply alias accessor and skip name
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"alias_mount_accessor": accessor,
 	}
 
@@ -163,7 +163,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 		t.Fatalf("bad: err: %#v\nresp: %v", err, resp)
 	}
 
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"alias_id": aliasID,
 	}
 
@@ -197,7 +197,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	lookupReq := &logical.Request{
 		Path:      "lookup/group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id": groupID,
 		},
 	}
@@ -210,7 +210,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 		t.Fatal("failed to lookup group")
 	}
 
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"name": groupName,
 	}
 
@@ -223,7 +223,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	}
 
 	// Query using an invalid alias_id
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"alias_id": "invalidaliasid",
 	}
 	resp, err = i.HandleRequest(ctx, lookupReq)
@@ -234,7 +234,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 		t.Fatal("expected a nil response")
 	}
 
-	groupReq.Data = map[string]interface{}{
+	groupReq.Data = map[string]any{
 		"type": "external",
 	}
 	resp, err = i.HandleRequest(ctx, groupReq)
@@ -246,7 +246,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	aliasReq := &logical.Request{
 		Path:      "group-alias",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"canonical_id":   groupID,
 			"name":           "testgroupalias",
 			"mount_accessor": accessor,
@@ -258,7 +258,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	}
 	aliasID := resp.Data["id"].(string)
 
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"alias_id": aliasID,
 	}
 
@@ -270,7 +270,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 		t.Fatal("failed to lookup group")
 	}
 
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"alias_name":           "testgroupalias",
 		"alias_mount_accessor": accessor,
 	}
@@ -284,7 +284,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	}
 
 	// Supply 2 query criteria
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"id":   groupID,
 		"name": groupName,
 	}
@@ -298,7 +298,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	}
 
 	// Supply alias name and skip accessor
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"alias_name": "testgroupalias",
 	}
 
@@ -311,7 +311,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	}
 
 	// Supply alias accessor and skip name
-	lookupReq.Data = map[string]interface{}{
+	lookupReq.Data = map[string]any{
 		"alias_mount_accessor": accessor,
 	}
 

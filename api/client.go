@@ -1741,7 +1741,7 @@ func InlineWithOperation(op string) InlineAuthOpts {
 // Operations which result in lease creation will not work.
 //
 // Refer to the OpenBao documentation for more information.
-func (c *Client) WithInlineAuth(path string, data map[string]interface{}, opts ...InlineAuthOpts) (*Client, error) {
+func (c *Client) WithInlineAuth(path string, data map[string]any, opts ...InlineAuthOpts) (*Client, error) {
 	client, err := c.Clone()
 	if err != nil {
 		return nil, fmt.Errorf("error cloning client: %w", err)
@@ -1765,7 +1765,7 @@ func (c *Client) WithInlineAuth(path string, data map[string]interface{}, opts .
 	}
 
 	for key, value := range data {
-		jEncoded, err := json.Marshal(map[string]interface{}{
+		jEncoded, err := json.Marshal(map[string]any{
 			"key":   key,
 			"value": value,
 		})

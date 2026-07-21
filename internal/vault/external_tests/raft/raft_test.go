@@ -41,7 +41,7 @@ type RaftClusterOpts struct {
 	DisableStandbyReads            bool
 	InmemCluster                   bool
 	EnableAutopilot                bool
-	PhysicalFactoryConfig          map[string]interface{}
+	PhysicalFactoryConfig          map[string]any
 	EnableResponseHeaderRaftNodeID bool
 	NumCores                       int
 	Seal                           vault.Seal
@@ -111,7 +111,7 @@ func TestRaft_BoltDBMetrics(t *testing.T) {
 
 	// Write a few keys
 	for i := range 50 {
-		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
+		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 			fmt.Sprintf("foo%d", i): fmt.Sprintf("bar%d", i),
 		})
 		if err != nil {
@@ -302,14 +302,14 @@ func TestRaft_Join(t *testing.T) {
 	joinFunc(cluster.Cores[1].Client, false)
 	joinFunc(cluster.Cores[2].Client, false)
 
-	_, err := cluster.Cores[0].Client.Logical().Write("sys/storage/raft/remove-peer", map[string]interface{}{
+	_, err := cluster.Cores[0].Client.Logical().Write("sys/storage/raft/remove-peer", map[string]any{
 		"server_id": "core-1",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = cluster.Cores[0].Client.Logical().Write("sys/storage/raft/remove-peer", map[string]interface{}{
+	_, err = cluster.Cores[0].Client.Logical().Write("sys/storage/raft/remove-peer", map[string]any{
 		"server_id": "core-2",
 	})
 	if err != nil {
@@ -342,7 +342,7 @@ func TestRaft_RemovePeer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("sys/storage/raft/remove-peer", map[string]interface{}{
+	_, err = client.Logical().Write("sys/storage/raft/remove-peer", map[string]any{
 		"server_id": "core-2",
 	})
 	if err != nil {
@@ -357,7 +357,7 @@ func TestRaft_RemovePeer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("sys/storage/raft/remove-peer", map[string]interface{}{
+	_, err = client.Logical().Write("sys/storage/raft/remove-peer", map[string]any{
 		"server_id": "core-1",
 	})
 	if err != nil {
@@ -457,7 +457,7 @@ func TestRaft_SnapshotAPI(t *testing.T) {
 
 	// Write a few keys
 	for i := range 10 {
-		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
+		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 			"test": "data",
 		})
 		if err != nil {
@@ -481,7 +481,7 @@ func TestRaft_SnapshotAPI(t *testing.T) {
 
 	// Write a few more keys
 	for i := 10; i < 20; i++ {
-		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
+		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 			"test": "data",
 		})
 		if err != nil {
@@ -500,7 +500,7 @@ func TestRaft_SnapshotAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(secret.Data["keys"].([]interface{})) != 10 {
+	if len(secret.Data["keys"].([]any)) != 10 {
 		t.Fatal("snapshot didn't apply correctly")
 	}
 }
@@ -526,7 +526,7 @@ func TestRaft_SnapshotAPI_MidstreamFailure(t *testing.T) {
 	// will never make it into the tar part, it'll fail merely when trying to
 	// decompress the stream.
 	for i := range 1000 {
-		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
+		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 			"test": "data",
 		})
 		if err != nil {
@@ -599,7 +599,7 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 
 			// Write a few keys
 			for i := range 10 {
-				_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
+				_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 					"test": "data",
 				})
 				if err != nil {
@@ -692,7 +692,7 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 
 			// Write some data so we can make sure we can read it later. This is testing
 			// that we correctly reload the keyring
-			_, err = leaderClient.Logical().Write("secret/foo", map[string]interface{}{
+			_, err = leaderClient.Logical().Write("secret/foo", map[string]any{
 				"test": "data",
 			})
 			if err != nil {
@@ -764,7 +764,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 
 			// Write a few keys
 			for i := range 10 {
-				_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
+				_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 					"test": "data",
 				})
 				if err != nil {
@@ -904,7 +904,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 
 				// Write some data so we can make sure we can read it later. This is testing
 				// that we correctly reload the keyring
-				_, err = leaderClient.Logical().Write("secret/foo", map[string]interface{}{
+				_, err = leaderClient.Logical().Write("secret/foo", map[string]any{
 					"test": "data",
 				})
 				if err != nil {
@@ -962,7 +962,7 @@ func TestRaft_RotateKeyring(t *testing.T) {
 			ctx := namespace.ContextWithNamespace(t.Context(), tc.namespace)
 
 			// Write a secret.
-			_, err := leaderClient.Logical().WriteWithContext(ctx, "secret/foo", map[string]interface{}{
+			_, err := leaderClient.Logical().WriteWithContext(ctx, "secret/foo", map[string]any{
 				"test": "data",
 			})
 			require.NoError(t, err)
@@ -989,7 +989,7 @@ func TestRaft_RotateKeyring(t *testing.T) {
 			require.NoError(t, leaderClient.Sys().RotateKeyringWithContext(ctx))
 
 			// Write secret after keyring rotation.
-			_, err = leaderClient.Logical().WriteWithContext(ctx, "secret/bar", map[string]interface{}{
+			_, err = leaderClient.Logical().WriteWithContext(ctx, "secret/bar", map[string]any{
 				"test": "data",
 			})
 			require.NoError(t, err)
@@ -1021,7 +1021,7 @@ func TestRaft_SnapshotAPI_DifferentCluster(t *testing.T) {
 
 	// Write a few keys
 	for i := range 10 {
-		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]interface{}{
+		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 			"test": "data",
 		})
 		if err != nil {
@@ -1123,7 +1123,7 @@ func BenchmarkRaft_SingleNode(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			key := fmt.Sprintf("secret/%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
-			_, err := leaderClient.Logical().Write(key, map[string]interface{}{
+			_, err := leaderClient.Logical().Write(key, map[string]any{
 				"test": data,
 			})
 			if err != nil {

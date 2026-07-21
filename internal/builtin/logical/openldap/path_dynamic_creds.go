@@ -113,12 +113,12 @@ func (b *backend) pathDynamicCredsRead(ctx context.Context, req *logical.Request
 		}
 		return nil, merr
 	}
-	respData := map[string]interface{}{
+	respData := map[string]any{
 		"username":            username,
 		"password":            password,
 		"distinguished_names": dns,
 	}
-	internal := map[string]interface{}{
+	internal := map[string]any{
 		"name": roleName,
 		// Including the deletion_ldif in the event that the role is deleted while
 		// leases are active otherwise leases will fail to revoke
@@ -232,7 +232,7 @@ func (b *backend) secretCredsRevoke() framework.OperationFunc {
 		switch td := rawTemplateData.(type) {
 		case dynamicTemplateData:
 			templateData = td
-		case map[string]interface{}:
+		case map[string]any:
 			err := mapstructure.WeakDecode(td, &templateData)
 			if err != nil {
 				return nil, fmt.Errorf("unable to decode internal data: %w", err)
@@ -303,7 +303,7 @@ func encodeUTF16LE(str string) (string, error) {
 	return enc.String(str)
 }
 
-func getString(m map[string]interface{}, key string) (string, error) {
+func getString(m map[string]any, key string) (string, error) {
 	if m == nil {
 		return "", errors.New("nil map")
 	}

@@ -324,7 +324,7 @@ func (b *SystemBackend) handleGenerateRootUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return &logical.Response{Data: map[string]interface{}{
+		return &logical.Response{Data: map[string]any{
 			"started":         true,
 			"complete":        result.Progress == result.Required,
 			"progress":        result.Progress,
@@ -360,7 +360,7 @@ func (b *SystemBackend) handleGenerateRootDecodeTokenUpdate(ctx context.Context,
 		return handleError(err)
 	}
 
-	return &logical.Response{Data: map[string]interface{}{"token": token}}, nil
+	return &logical.Response{Data: map[string]any{"token": token}}, nil
 }
 
 func (b *SystemBackend) generateRootStatus(ctx context.Context, otp string) (*logical.Response, error) {
@@ -418,7 +418,7 @@ func (b *SystemBackend) generateRootStatus(ctx context.Context, otp string) (*lo
 		otpLength = baseLength + TokenPrefixLength
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"started":    false,
 		"complete":   false,
 		"progress":   progress,

@@ -210,7 +210,7 @@ func testSelfInitCapturedRootToken(t *testing.T, core *vault.Core) string {
 	require.NotNil(t, resp)
 	require.False(t, resp.IsError(), resp.Error())
 
-	data, ok := resp.Data["data"].(map[string]interface{})
+	data, ok := resp.Data["data"].(map[string]any)
 	require.True(t, ok)
 	token, ok := data["token"].(string)
 	require.True(t, ok)

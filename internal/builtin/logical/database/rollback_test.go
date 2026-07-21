@@ -50,7 +50,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 	connURL = strings.ReplaceAll(connURL, "postgres:secret", "{{username}}:{{password}}")
 
 	// Configure a connection to the database
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url": connURL,
 		"plugin_name":    "postgresql-database-plugin",
 		"allowed_roles":  []string{"plugin-role-test"},
@@ -68,7 +68,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 	}
 
 	// Create a role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"db_name":             "plugin-test",
 		"creation_statements": testRole,
 		"max_ttl":             "10m",
@@ -88,7 +88,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "creds/plugin-role-test",
 		Storage:   config.StorageView,
-		Data:      make(map[string]interface{}),
+		Data:      make(map[string]any),
 	}
 	credResp, err := lb.HandleRequest(t.Context(), credReq)
 	if err != nil || (credResp != nil && credResp.IsError()) {
@@ -147,7 +147,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 		Operation: logical.RollbackOperation,
 		Path:      "",
 		Storage:   config.StorageView,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"immediate": true,
 		},
 	})
@@ -189,7 +189,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_1(t *testing.T) {
 	connURL = strings.ReplaceAll(connURL, "postgres:secret", "{{username}}:{{password}}")
 
 	// Configure a connection to the database
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url": connURL,
 		"plugin_name":    "postgresql-database-plugin",
 		"allowed_roles":  []string{"plugin-role-test"},
@@ -207,7 +207,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_1(t *testing.T) {
 	}
 
 	// Create a role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"db_name":             "plugin-test",
 		"creation_statements": testRole,
 		"max_ttl":             "10m",
@@ -227,7 +227,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_1(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "creds/plugin-role-test",
 		Storage:   config.StorageView,
-		Data:      make(map[string]interface{}),
+		Data:      make(map[string]any),
 	}
 	credResp, err := lb.HandleRequest(t.Context(), credReq)
 	if err != nil || (credResp != nil && credResp.IsError()) {
@@ -252,7 +252,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_1(t *testing.T) {
 		Operation: logical.RollbackOperation,
 		Path:      "",
 		Storage:   config.StorageView,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"immediate": true,
 		},
 	})
@@ -297,7 +297,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 	connURL = strings.ReplaceAll(connURL, "postgres:secret", "{{username}}:{{password}}")
 
 	// Configure a connection to the database
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url": connURL,
 		"plugin_name":    "postgresql-database-plugin",
 		"allowed_roles":  []string{"plugin-role-test"},
@@ -315,7 +315,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 	}
 
 	// Create a role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"db_name":             "plugin-test",
 		"creation_statements": testRole,
 		"max_ttl":             "10m",
@@ -335,7 +335,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "creds/plugin-role-test",
 		Storage:   config.StorageView,
-		Data:      make(map[string]interface{}),
+		Data:      make(map[string]any),
 	}
 	credResp, err := lb.HandleRequest(t.Context(), credReq)
 	if err != nil || (credResp != nil && credResp.IsError()) {
@@ -408,7 +408,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 		Operation: logical.RollbackOperation,
 		Path:      "",
 		Storage:   config.StorageView,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"immediate": true,
 		},
 	})

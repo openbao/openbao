@@ -25,7 +25,7 @@ import (
 //   - requests
 //   - responses
 //   - input
-func CELSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
+func CELSourceBuilder(engine *ProfileEngine, field map[string]any) Source {
 	var options []cel.EnvOption
 
 	if HasRequestSource(engine) {
@@ -58,7 +58,7 @@ func WithCELSource() func(*ProfileEngine) {
 
 type CELSource struct {
 	engine *ProfileEngine
-	field  map[string]interface{}
+	field  map[string]any
 
 	options []cel.EnvOption
 
@@ -88,17 +88,17 @@ func (s *CELSource) Validate() ([]string, []string, error) {
 
 	rawVariables, present := s.field["variables"]
 	if !present {
-		rawVariables = []interface{}{}
+		rawVariables = []any{}
 	}
 
-	listVariables, ok := rawVariables.([]interface{})
+	listVariables, ok := rawVariables.([]any)
 	if !ok {
 		return nil, nil, fmt.Errorf("field 'variables' is of wrong outer type: expected '[]interface{}' got '%T'", listVariables)
 	}
 
 	var variables []celHelper.Variable
 	for index, rawVariableMap := range listVariables {
-		variableMap, ok := rawVariableMap.(map[string]interface{})
+		variableMap, ok := rawVariableMap.(map[string]any)
 		if !ok {
 			return nil, nil, fmt.Errorf("field 'variables[%d]' is of wrong inner type: expected 'map[string]interface{}' got '%T'", index, listVariables)
 		}
@@ -149,8 +149,8 @@ func (s *CELSource) Validate() ([]string, []string, error) {
 	return nil, nil, nil
 }
 
-func (s *CELSource) Evaluate(ctx context.Context, eh *EvaluationHistory) (interface{}, error) {
-	data := map[string]interface{}{}
+func (s *CELSource) Evaluate(ctx context.Context, eh *EvaluationHistory) (any, error) {
+	data := map[string]any{}
 
 	if HasRequestSource(s.engine) {
 		data["requests"] = eh.Requests

@@ -227,7 +227,7 @@ func (b *backend) pathCAIssuersRead(ctx context.Context, req *logical.Request, _
 
 func (b *backend) formatCAIssuerConfigRead(config *issuerConfigEntry) *logical.Response {
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			defaultRef:                      config.DefaultIssuerId,
 			"default_follows_latest_issuer": config.DefaultFollowsLatestIssuer,
 		},
@@ -381,7 +381,7 @@ func (b *backend) pathKeyDefaultRead(ctx context.Context, req *logical.Request, 
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			defaultRef: config.DefaultKeyId,
 		},
 	}, nil
@@ -414,7 +414,7 @@ func (b *backend) pathKeyDefaultWrite(ctx context.Context, req *logical.Request,
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			defaultRef: parsedKey,
 		},
 	}, nil

@@ -307,7 +307,7 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		}
 		cw := newCopyResponseWriter(w)
 		h.ServeHTTP(cw, r)
-		data := make(map[string]interface{})
+		data := make(map[string]any)
 		// best effort, ignore error
 		_ = jsonutil.DecodeJSON(cw.body.Bytes(), &data)
 		httpResp := &logical.HTTPResponse{Data: data, Headers: cw.Header()}
@@ -832,8 +832,8 @@ func (fsw *UIAssetWrapper) Open(name string) (http.File, error) {
 	return nil, err
 }
 
-func parseQuery(values url.Values) map[string]interface{} {
-	data := map[string]interface{}{}
+func parseQuery(values url.Values) map[string]any {
+	data := map[string]any{}
 	for k, v := range values {
 		// Skip the help key as this is a reserved parameter
 		if k == "help" {
@@ -858,15 +858,15 @@ func parseQuery(values url.Values) map[string]interface{} {
 // parseFormRequest parses values from a form POST.
 //
 // A nil map will be returned if the format is empty or invalid.
-func parseFormRequest(r *http.Request) (map[string]interface{}, error) {
+func parseFormRequest(r *http.Request) (map[string]any, error) {
 	if err := r.ParseForm(); err != nil {
 		return nil, err
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 
 	if len(r.PostForm) != 0 {
-		data = make(map[string]interface{}, len(r.PostForm))
+		data = make(map[string]any, len(r.PostForm))
 		for k, v := range r.PostForm {
 			switch len(v) {
 			case 0:
@@ -1144,7 +1144,7 @@ func respondError(w http.ResponseWriter, status int, err error) {
 	logical.RespondError(w, status, err)
 }
 
-func respondErrorAndData(w http.ResponseWriter, status int, data interface{}, err error) {
+func respondErrorAndData(w http.ResponseWriter, status int, data any, err error) {
 	logical.RespondErrorAndData(w, status, data, err)
 }
 
@@ -1173,7 +1173,7 @@ func respondErrorCommon(w http.ResponseWriter, req *logical.Request, resp *logic
 	return true
 }
 
-func respondOk(w http.ResponseWriter, body interface{}) {
+func respondOk(w http.ResponseWriter, body any) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if body == nil {

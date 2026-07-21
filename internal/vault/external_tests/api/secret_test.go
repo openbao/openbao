@@ -48,7 +48,7 @@ func TestParseSecret(t *testing.T) {
 		LeaseID:       "foo",
 		Renewable:     true,
 		LeaseDuration: 10,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "value",
 		},
 		Warnings: []string{
@@ -121,7 +121,7 @@ func TestSecret_TokenID(t *testing.T) {
 		{
 			"empty_data",
 			&api.Secret{
-				Data: map[string]interface{}{},
+				Data: map[string]any{},
 			},
 			"",
 			false,
@@ -129,7 +129,7 @@ func TestSecret_TokenID(t *testing.T) {
 		{
 			"data_not_string",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"id": 123,
 				},
 			},
@@ -139,7 +139,7 @@ func TestSecret_TokenID(t *testing.T) {
 		{
 			"data_string",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"id": "my-token",
 				},
 			},
@@ -171,14 +171,14 @@ func TestSecret_TokenID(t *testing.T) {
 		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]interface{}{
+		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password": "test",
 			"policies": "default",
 		}); err != nil {
 			t.Fatal(err)
 		}
 
-		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]interface{}{
+		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",
 		})
 		if err != nil || secret == nil {
@@ -387,7 +387,7 @@ func TestSecret_TokenAccessor(t *testing.T) {
 		{
 			"empty_data",
 			&api.Secret{
-				Data: map[string]interface{}{},
+				Data: map[string]any{},
 			},
 			"",
 			false,
@@ -395,7 +395,7 @@ func TestSecret_TokenAccessor(t *testing.T) {
 		{
 			"data_not_string",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"accessor": 123,
 				},
 			},
@@ -405,7 +405,7 @@ func TestSecret_TokenAccessor(t *testing.T) {
 		{
 			"data_string",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"accessor": "my-accessor",
 				},
 			},
@@ -437,14 +437,14 @@ func TestSecret_TokenAccessor(t *testing.T) {
 		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]interface{}{
+		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password": "test",
 			"policies": "default",
 		}); err != nil {
 			t.Fatal(err)
 		}
 
-		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]interface{}{
+		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",
 		})
 		if err != nil || secret == nil {
@@ -622,14 +622,14 @@ func TestSecret_TokenRemainingUses(t *testing.T) {
 		{
 			"empty_data",
 			&api.Secret{
-				Data: map[string]interface{}{},
+				Data: map[string]any{},
 			},
 			-1,
 		},
 		{
 			"data_not_json_number",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"num_uses": 123,
 				},
 			},
@@ -638,7 +638,7 @@ func TestSecret_TokenRemainingUses(t *testing.T) {
 		{
 			"data_json_number",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"num_uses": json.Number("123"),
 				},
 			},
@@ -671,7 +671,7 @@ func TestSecret_TokenRemainingUses(t *testing.T) {
 		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]interface{}{
+		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password": "test",
 			"policies": "default",
 			"num_uses": uses,
@@ -679,7 +679,7 @@ func TestSecret_TokenRemainingUses(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]interface{}{
+		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",
 		})
 		if err != nil || secret == nil {
@@ -920,7 +920,7 @@ func TestSecret_TokenPolicies(t *testing.T) {
 		{
 			"empty_data",
 			&api.Secret{
-				Data: map[string]interface{}{},
+				Data: map[string]any{},
 			},
 			nil,
 			false,
@@ -928,7 +928,7 @@ func TestSecret_TokenPolicies(t *testing.T) {
 		{
 			"data_not_slice",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"policies": 123,
 				},
 			},
@@ -938,8 +938,8 @@ func TestSecret_TokenPolicies(t *testing.T) {
 		{
 			"data_slice",
 			&api.Secret{
-				Data: map[string]interface{}{
-					"policies": []interface{}{"foo"},
+				Data: map[string]any{
+					"policies": []any{"foo"},
 				},
 			},
 			[]string{"foo"},
@@ -972,14 +972,14 @@ func TestSecret_TokenPolicies(t *testing.T) {
 		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]interface{}{
+		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password": "test",
 			"policies": strings.Join(policies, ","),
 		}); err != nil {
 			t.Fatal(err)
 		}
 
-		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]interface{}{
+		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",
 		})
 		if err != nil || secret == nil {
@@ -1206,7 +1206,7 @@ func TestSecret_TokenMetadata(t *testing.T) {
 		{
 			"empty_data",
 			&api.Secret{
-				Data: map[string]interface{}{},
+				Data: map[string]any{},
 			},
 			nil,
 			false,
@@ -1214,7 +1214,7 @@ func TestSecret_TokenMetadata(t *testing.T) {
 		{
 			"data_not_map",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"metadata": 123,
 				},
 			},
@@ -1224,8 +1224,8 @@ func TestSecret_TokenMetadata(t *testing.T) {
 		{
 			"data_map",
 			&api.Secret{
-				Data: map[string]interface{}{
-					"metadata": map[string]interface{}{"foo": "bar"},
+				Data: map[string]any{
+					"metadata": map[string]any{"foo": "bar"},
 				},
 			},
 			map[string]string{"foo": "bar"},
@@ -1234,8 +1234,8 @@ func TestSecret_TokenMetadata(t *testing.T) {
 		{
 			"data_map_bad_type",
 			&api.Secret{
-				Data: map[string]interface{}{
-					"metadata": map[string]interface{}{"foo": 123},
+				Data: map[string]any{
+					"metadata": map[string]any{"foo": 123},
 				},
 			},
 			nil,
@@ -1268,14 +1268,14 @@ func TestSecret_TokenMetadata(t *testing.T) {
 		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]interface{}{
+		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password": "test",
 			"policies": "default",
 		}); err != nil {
 			t.Fatal(err)
 		}
 
-		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]interface{}{
+		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",
 		})
 		if err != nil || secret == nil {
@@ -1491,14 +1491,14 @@ func TestSecret_TokenIsRenewable(t *testing.T) {
 		{
 			"empty_data",
 			&api.Secret{
-				Data: map[string]interface{}{},
+				Data: map[string]any{},
 			},
 			false,
 		},
 		{
 			"data_not_bool",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"renewable": 123,
 				},
 			},
@@ -1507,7 +1507,7 @@ func TestSecret_TokenIsRenewable(t *testing.T) {
 		{
 			"data_bool_string",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"renewable": "true",
 				},
 			},
@@ -1516,7 +1516,7 @@ func TestSecret_TokenIsRenewable(t *testing.T) {
 		{
 			"data_bool_true",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"renewable": true,
 				},
 			},
@@ -1525,7 +1525,7 @@ func TestSecret_TokenIsRenewable(t *testing.T) {
 		{
 			"data_bool_false",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"renewable": true,
 				},
 			},
@@ -1558,14 +1558,14 @@ func TestSecret_TokenIsRenewable(t *testing.T) {
 		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]interface{}{
+		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password": "test",
 			"policies": "default",
 		}); err != nil {
 			t.Fatal(err)
 		}
 
-		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]interface{}{
+		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",
 		})
 		if err != nil || secret == nil {
@@ -1781,14 +1781,14 @@ func TestSecret_TokenTTL(t *testing.T) {
 		{
 			"empty_data",
 			&api.Secret{
-				Data: map[string]interface{}{},
+				Data: map[string]any{},
 			},
 			0,
 		},
 		{
 			"data_not_json_number",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ttl": 123,
 				},
 			},
@@ -1797,7 +1797,7 @@ func TestSecret_TokenTTL(t *testing.T) {
 		{
 			"data_json_number",
 			&api.Secret{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ttl": json.Number("3600"),
 				},
 			},
@@ -1830,7 +1830,7 @@ func TestSecret_TokenTTL(t *testing.T) {
 		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]interface{}{
+		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password":         "test",
 			"policies":         "default",
 			"ttl":              ttl.String(),
@@ -1839,7 +1839,7 @@ func TestSecret_TokenTTL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]interface{}{
+		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",
 		})
 		if err != nil || secret == nil {
@@ -2023,7 +2023,7 @@ func TestInlineAuth(t *testing.T) {
 	err := client.Sys().EnableAuth("userpass", "userpass", "")
 	require.NoError(t, err)
 
-	_, err = client.Logical().Write("auth/userpass/users/admin", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/admin", map[string]any{
 		"password":       "admin",
 		"token_policies": []string{"my-admin"},
 		"token_ttl":      "15s",
@@ -2045,7 +2045,7 @@ path "sys/mounts/pki" {
 	require.NoError(t, err)
 
 	// Try inline authentication.
-	inlineClient, err := client.WithInlineAuth("auth/userpass/login/admin", map[string]interface{}{
+	inlineClient, err := client.WithInlineAuth("auth/userpass/login/admin", map[string]any{
 		"password": "admin",
 	})
 	require.NoError(t, err)
@@ -2067,14 +2067,14 @@ path "sys/mounts/pki" {
 	time.Sleep(5 * time.Second)
 
 	// These operation perform writes, but should still work.
-	_, err = logical.Write("sys/mounts/pki", map[string]interface{}{
+	_, err = logical.Write("sys/mounts/pki", map[string]any{
 		"type": "pki",
 	})
 	require.NoError(t, err)
 
 	time.Sleep(5 * time.Second)
 
-	_, err = logical.Write("pki/root/generate/internal", map[string]interface{}{
+	_, err = logical.Write("pki/root/generate/internal", map[string]any{
 		"common_name": "Root R1",
 		"key_type":    "ec",
 	})
@@ -2082,7 +2082,7 @@ path "sys/mounts/pki" {
 
 	time.Sleep(5 * time.Second)
 
-	_, err = logical.Write("pki/roles/testing", map[string]interface{}{
+	_, err = logical.Write("pki/roles/testing", map[string]any{
 		"allow_any_name": true,
 		"generate_lease": true,
 		"ttl":            "1m",
@@ -2095,21 +2095,21 @@ path "sys/mounts/pki" {
 	time.Sleep(5 * time.Second)
 
 	// This operation should create a lease and thus fail.
-	resp, err = logical.Write("pki/issue/testing", map[string]interface{}{
+	resp, err = logical.Write("pki/issue/testing", map[string]any{
 		"common_name": "alex",
 	})
 	require.Error(t, err)
 	require.Nil(t, resp)
 
 	// Removing the lease option should succeed.
-	_, err = logical.Write("pki/roles/testing", map[string]interface{}{
+	_, err = logical.Write("pki/roles/testing", map[string]any{
 		"allow_any_name": true,
 		"generate_lease": false,
 		"ttl":            "1m",
 	})
 	require.NoError(t, err)
 
-	resp, err = logical.Write("pki/issue/testing", map[string]interface{}{
+	resp, err = logical.Write("pki/issue/testing", map[string]any{
 		"common_name": "alex",
 	})
 	require.NoError(t, err)

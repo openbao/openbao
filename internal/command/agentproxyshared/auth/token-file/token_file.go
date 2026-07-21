@@ -52,7 +52,7 @@ func NewTokenFileAuthMethod(conf *auth.AuthConfig) (auth.AuthMethod, error) {
 	return a, nil
 }
 
-func (a *tokenFileMethod) Authenticate(_ context.Context, client *api.Client) (string, http.Header, map[string]interface{}, error) {
+func (a *tokenFileMethod) Authenticate(_ context.Context, client *api.Client) (string, http.Header, map[string]any, error) {
 	token, err := os.ReadFile(a.tokenFilePath)
 	if err != nil {
 		if a.cachedToken == "" {
@@ -70,7 +70,7 @@ func (a *tokenFileMethod) Authenticate(_ context.Context, client *api.Client) (s
 	}
 
 	// i.e. auth/token/lookup-self
-	return fmt.Sprintf("%s/lookup-self", a.mountPath), nil, map[string]interface{}{
+	return fmt.Sprintf("%s/lookup-self", a.mountPath), nil, map[string]any{
 		"token": a.cachedToken,
 	}, nil
 }

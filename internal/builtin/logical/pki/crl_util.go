@@ -528,7 +528,7 @@ func revokeCert(sc *storageContext, config *crlConfig, cert *x509.Certificate) (
 	}
 	if curRevInfo != nil {
 		resp := &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"revocation_time": curRevInfo.RevocationTime,
 				"state":           "revoked",
 			},
@@ -575,7 +575,7 @@ func revokeCert(sc *storageContext, config *crlConfig, cert *x509.Certificate) (
 	// persistence issues might still err, but any other failure messages
 	// should be added as warnings to the revocation.
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"revocation_time":         revInfo.RevocationTime,
 			"revocation_time_rfc3339": revInfo.RevocationTimeUTC.Format(time.RFC3339Nano),
 			"state":                   "revoked",

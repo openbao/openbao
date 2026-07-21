@@ -51,15 +51,15 @@ func TestTLSListener_SelfHostedNonStandard(t *testing.T) {
 				LogLevel: "TRACE",
 				// We add two additional listeners: a HTTP-only listener and
 				// one with ACME TLS enabled.
-				AdditionalListeners: []interface{}{
-					map[string]interface{}{
-						"tcp": map[string]interface{}{
+				AdditionalListeners: []any{
+					map[string]any{
+						"tcp": map[string]any{
 							"address":     "0.0.0.0:8300",
 							"tls_disable": true,
 						},
 					},
-					map[string]interface{}{
-						"tcp": map[string]interface{}{
+					map[string]any{
+						"tcp": map[string]any{
 							"address":               "0.0.0.0:8400",
 							"tls_acme_cache_path":   "/tmp",
 							"tls_acme_ca_directory": "http://127.0.0.1:8300/v1/pki/acme/directory",
@@ -116,15 +116,15 @@ func TestTLSListener_SelfHostedPrivileged(t *testing.T) {
 				LogLevel: "TRACE",
 				// We add two additional listeners: a HTTP-only listener and
 				// one with ACME TLS enabled.
-				AdditionalListeners: []interface{}{
-					map[string]interface{}{
-						"tcp": map[string]interface{}{
+				AdditionalListeners: []any{
+					map[string]any{
+						"tcp": map[string]any{
 							"address":     "0.0.0.0:80",
 							"tls_disable": true,
 						},
 					},
-					map[string]interface{}{
-						"tcp": map[string]interface{}{
+					map[string]any{
+						"tcp": map[string]any{
 							"address":               "0.0.0.0:443",
 							"tls_acme_cache_path":   "/tmp",
 							"tls_acme_ca_directory": "http://127.0.0.1:80/v1/pki/acme/directory",
@@ -179,15 +179,15 @@ func TestTLSListener_ALPN(t *testing.T) {
 				LogLevel: "TRACE",
 				// We add two additional listeners: a HTTP-only listener and
 				// one with ACME TLS enabled.
-				AdditionalListeners: []interface{}{
-					map[string]interface{}{
-						"tcp": map[string]interface{}{
+				AdditionalListeners: []any{
+					map[string]any{
+						"tcp": map[string]any{
 							"address":     "0.0.0.0:80",
 							"tls_disable": true,
 						},
 					},
-					map[string]interface{}{
-						"tcp": map[string]interface{}{
+					map[string]any{
+						"tcp": map[string]any{
 							"address":                         "0.0.0.0:443",
 							"tls_acme_cache_path":             "/tmp",
 							"tls_acme_ca_directory":           "http://127.0.0.1:80/v1/pki/acme/directory",
@@ -224,7 +224,7 @@ func TestTLSListener_ALPN(t *testing.T) {
 	dns.AddRecord("invalid.dadgarcorp.com", "A", cluster.ClusterNodes[node].ContainerIPAddress)
 	dns.PushConfig()
 
-	client.Logical().Write("pki/config/acme", map[string]interface{}{
+	client.Logical().Write("pki/config/acme", map[string]any{
 		"enabled":      true,
 		"dns_resolver": dns.GetRemoteAddr(),
 	})
@@ -249,7 +249,7 @@ func setupPki(t *testing.T, client *api.Client, acmePort string) string {
 	require.NoError(t, err)
 
 	defaultPath := "http://127.0.0.1" + acmePort + "/v1/pki"
-	config := map[string]interface{}{
+	config := map[string]any{
 		"path":     defaultPath,
 		"aia_path": defaultPath,
 	}
@@ -257,12 +257,12 @@ func setupPki(t *testing.T, client *api.Client, acmePort string) string {
 	_, err = client.Logical().Write("pki/config/cluster", config)
 	require.NoError(t, err)
 
-	_, err = client.Logical().Write("pki/config/acme", map[string]interface{}{
+	_, err = client.Logical().Write("pki/config/acme", map[string]any{
 		"enabled": true,
 	})
 	require.NoError(t, err)
 
-	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"common_name": "Root R1",
 		"key_type":    "ec",
 		"issuer_name": "root",

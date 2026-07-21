@@ -45,11 +45,11 @@ func NewOASDocument(version string) *OASDocument {
 // NewOASDocumentFromMap builds an OASDocument from an existing map version of a document.
 // If a document has been decoded from JSON or received from a plugin, it will be as a map[string]interface{}
 // and needs special handling beyond the default mapstructure decoding.
-func NewOASDocumentFromMap(input map[string]interface{}) (*OASDocument, error) {
+func NewOASDocumentFromMap(input map[string]any) (*OASDocument, error) {
 	// The Responses map uses integer keys (the response code), but once translated into JSON
 	// (e.g. during the plugin transport) these become strings. mapstructure will not coerce these back
 	// to integers without a custom decode hook.
-	decodeHook := func(src reflect.Type, tgt reflect.Type, inputRaw interface{}) (interface{}, error) {
+	decodeHook := func(src reflect.Type, tgt reflect.Type, inputRaw any) (any, error) {
 		// Only alter data if:
 		//  1. going from string to int
 		//  2. string represent an int in status code range (100-599)
@@ -171,15 +171,15 @@ type OASSchema struct {
 	// approach than OASParameter (unfortunately), but is how JSONSchema handles 'required'.
 	Required []string `json:"required,omitempty"`
 
-	Items      *OASSchema    `json:"items,omitempty"`
-	Format     string        `json:"format,omitempty"`
-	Pattern    string        `json:"pattern,omitempty"`
-	Enum       []interface{} `json:"enum,omitempty"`
-	Default    interface{}   `json:"default,omitempty"`
-	Example    interface{}   `json:"example,omitempty"`
-	Deprecated bool          `json:"deprecated,omitempty"`
+	Items      *OASSchema `json:"items,omitempty"`
+	Format     string     `json:"format,omitempty"`
+	Pattern    string     `json:"pattern,omitempty"`
+	Enum       []any      `json:"enum,omitempty"`
+	Default    any        `json:"default,omitempty"`
+	Example    any        `json:"example,omitempty"`
+	Deprecated bool       `json:"deprecated,omitempty"`
 	// DisplayName      string             `json:"x-vault-displayName,omitempty" mapstructure:"x-vault-displayName,omitempty"`
-	DisplayValue     interface{}        `json:"x-vault-displayValue,omitempty" mapstructure:"x-vault-displayValue,omitempty"`
+	DisplayValue     any                `json:"x-vault-displayValue,omitempty" mapstructure:"x-vault-displayValue,omitempty"`
 	DisplaySensitive bool               `json:"x-vault-displaySensitive,omitempty" mapstructure:"x-vault-displaySensitive,omitempty"`
 	DisplayGroup     string             `json:"x-vault-displayGroup,omitempty" mapstructure:"x-vault-displayGroup,omitempty"`
 	DisplayAttrs     *DisplayAttributes `json:"x-vault-displayAttrs,omitempty" mapstructure:"x-vault-displayAttrs,omitempty"`
@@ -422,7 +422,7 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 						Description: "Must be set to `true` or else `list` must be set to `true`",
 						Required:    true,
 						In:          "query",
-						Schema:      &OASSchema{Type: "string", Enum: []interface{}{"true"}},
+						Schema:      &OASSchema{Type: "string", Enum: []any{"true"}},
 					})
 				}
 
@@ -431,7 +431,7 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 					Description: description,
 					Required:    true,
 					In:          "query",
-					Schema:      &OASSchema{Type: "string", Enum: []interface{}{"true"}},
+					Schema:      &OASSchema{Type: "string", Enum: []any{"true"}},
 				})
 			} else if opType == logical.ScanOperation {
 				// Only accepts Scan and maybe List (due to the above skipping of ScanOperations that also have ReadOperations)
@@ -444,7 +444,7 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 						Description: "Must be set to `true` or else `scan` must be set to `true`",
 						Required:    true,
 						In:          "query",
-						Schema:      &OASSchema{Type: "string", Enum: []interface{}{"true"}},
+						Schema:      &OASSchema{Type: "string", Enum: []any{"true"}},
 					})
 				}
 
@@ -453,7 +453,7 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 					Description: description,
 					Required:    true,
 					In:          "query",
-					Schema:      &OASSchema{Type: "string", Enum: []interface{}{"true"}},
+					Schema:      &OASSchema{Type: "string", Enum: []any{"true"}},
 				})
 			} else if opType == logical.ReadOperation {
 				if operations[logical.ListOperation] != nil {
@@ -1086,7 +1086,7 @@ func hyphenatedToTitleCase(in string) string {
 type cleanedResponse struct {
 	Secret   *logical.Secret            `json:"secret,omitempty"`
 	Auth     *logical.Auth              `json:"auth,omitempty"`
-	Data     map[string]interface{}     `json:"data,omitempty"`
+	Data     map[string]any             `json:"data,omitempty"`
 	Redirect string                     `json:"redirect,omitempty"`
 	Warnings []string                   `json:"warnings,omitempty"`
 	WrapInfo *wrapping.ResponseWrapInfo `json:"wrap_info,omitempty"`

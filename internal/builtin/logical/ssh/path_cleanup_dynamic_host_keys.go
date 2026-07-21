@@ -55,7 +55,7 @@ func (b *backend) handleCleanupKeys(ctx context.Context, req *logical.Request, d
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"message": fmt.Sprintf("Removed %v of %v host keys.", len(names), len(names)),
 		},
 	}, nil

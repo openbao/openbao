@@ -15,7 +15,7 @@ func TestGenerate(t *testing.T) {
 	type testCase struct {
 		template       string
 		additionalOpts []Opt
-		data           interface{}
+		data           any
 
 		expected  string
 		expectErr bool

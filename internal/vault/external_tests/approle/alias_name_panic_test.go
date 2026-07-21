@@ -43,8 +43,8 @@ func TestAppRole_AliasNameFromLoginRequest_Panic(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/approle/login", map[string]interface{}{
-		"role_id":   make(map[string]interface{}),
+	_, err = client.Logical().Write("auth/approle/login", map[string]any{
+		"role_id":   make(map[string]any),
 		"secret_id": "",
 	})
 	require.Error(t, err)

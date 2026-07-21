@@ -341,13 +341,13 @@ func testPlugin_CatalogRemoved(t *testing.T, btype logical.BackendType, testMoun
 				case logical.TypeLogical:
 					// Add plugin back to the catalog
 					vault.TestAddTestPlugin(t, core.Core, "mock-plugin", consts.PluginTypeSecrets, "", logicalVersionMap[tc.pluginVersion], []string{}, "")
-					_, err = core.Client.Logical().Write("sys/mounts/mock-0", map[string]interface{}{
+					_, err = core.Client.Logical().Write("sys/mounts/mock-0", map[string]any{
 						"type": "test",
 					})
 				case logical.TypeCredential:
 					// Add plugin back to the catalog
 					vault.TestAddTestPlugin(t, core.Core, "mock-plugin", consts.PluginTypeCredential, "", credentialVersionMap[tc.pluginVersion], []string{}, "")
-					_, err = core.Client.Logical().Write("sys/auth/mock-0", map[string]interface{}{
+					_, err = core.Client.Logical().Write("sys/auth/mock-0", map[string]any{
 						"type": "test",
 					})
 				}
@@ -469,33 +469,33 @@ func TestSystemBackend_Plugin_reload(t *testing.T) {
 	testCases := []struct {
 		name        string
 		backendType logical.BackendType
-		data        map[string]interface{}
+		data        map[string]any
 	}{
 		{
 			name:        "test plugin reload for type credential",
 			backendType: logical.TypeCredential,
-			data: map[string]interface{}{
+			data: map[string]any{
 				"plugin": "mock-plugin",
 			},
 		},
 		{
 			name:        "test mount reload for type credential",
 			backendType: logical.TypeCredential,
-			data: map[string]interface{}{
+			data: map[string]any{
 				"mounts": "sys/auth/mock-0/,auth/mock-1/",
 			},
 		},
 		{
 			name:        "test plugin reload for type secret",
 			backendType: logical.TypeLogical,
-			data: map[string]interface{}{
+			data: map[string]any{
 				"plugin": "mock-plugin",
 			},
 		},
 		{
 			name:        "test mount reload for type secret",
 			backendType: logical.TypeLogical,
-			data: map[string]interface{}{
+			data: map[string]any{
 				"mounts": "mock-0/,mock-1",
 			},
 		},
@@ -509,7 +509,7 @@ func TestSystemBackend_Plugin_reload(t *testing.T) {
 }
 
 // Helper func to test different reload methods on plugin reload endpoint
-func testSystemBackend_PluginReload(t *testing.T, reqData map[string]interface{}, backendType logical.BackendType) {
+func testSystemBackend_PluginReload(t *testing.T, reqData map[string]any, backendType logical.BackendType) {
 	testCases := []struct {
 		pluginVersion string
 	}{
@@ -538,7 +538,7 @@ func testSystemBackend_PluginReload(t *testing.T, reqData map[string]interface{}
 			}
 			for i := range 2 {
 				// Update internal value in the backend
-				resp, err := client.Logical().Write(fmt.Sprintf("%s%d/internal", pathPrefix, i), map[string]interface{}{
+				resp, err := client.Logical().Write(fmt.Sprintf("%s%d/internal", pathPrefix, i), map[string]any{
 					"value": "baz",
 				})
 				if err != nil {
@@ -615,7 +615,7 @@ func testSystemBackendMock(t *testing.T, numCores, numMounts int, backendType lo
 		vault.TestAddTestPlugin(t, core.Core, "mock-plugin", consts.PluginTypeSecrets, "", plugin, env, tempDir)
 		for i := range numMounts {
 			// Alternate input styles for plugin_name on every other mount
-			options := map[string]interface{}{
+			options := map[string]any{
 				"type": "mock-plugin",
 			}
 			resp, err := client.Logical().Write(fmt.Sprintf("sys/mounts/mock-%d", i), options)
@@ -631,7 +631,7 @@ func testSystemBackendMock(t *testing.T, numCores, numMounts int, backendType lo
 		vault.TestAddTestPlugin(t, core.Core, "mock-plugin", consts.PluginTypeCredential, "", plugin, env, tempDir)
 		for i := range numMounts {
 			// Alternate input styles for plugin_name on every other mount
-			options := map[string]interface{}{
+			options := map[string]any{
 				"type": "mock-plugin",
 			}
 			resp, err := client.Logical().Write(fmt.Sprintf("sys/auth/mock-%d", i), options)
@@ -679,7 +679,7 @@ func testSystemBackend_SingleCluster_Env(t *testing.T, env []string) *vault.Test
 
 	env = append([]string{pluginutil.PluginCACertPEMEnv + "=" + cluster.CACertPEMFile}, env...)
 	vault.TestAddTestPlugin(t, core.Core, "mock-plugin", consts.PluginTypeSecrets, "", "TestBackend_PluginMainEnv", env, tempDir)
-	options := map[string]interface{}{
+	options := map[string]any{
 		"type": "mock-plugin",
 	}
 

@@ -145,7 +145,7 @@ func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *fra
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"groups":   strings.Join(user.Groups, ","),
 			"policies": user.Policies,
 		},

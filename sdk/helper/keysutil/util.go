@@ -72,7 +72,7 @@ func isEd25519OID(oid asn1.ObjectIdentifier) bool {
 // More types might be supported in the future.
 //
 // This kind of key is commonly encoded in PEM blocks of type "PRIVATE KEY".
-func ParsePKCS8Ed25519PrivateKey(der []byte) (key interface{}, err error) {
+func ParsePKCS8Ed25519PrivateKey(der []byte) (key any, err error) {
 	var privKey pkcs8
 	var ed25519Key ecPrivateKey
 
@@ -129,7 +129,7 @@ func ParsePKCS8Ed25519PrivateKey(der []byte) (key interface{}, err error) {
 // More types might be supported in the future.
 //
 // This kind of key is commonly encoded in PEM blocks of type "PRIVATE KEY".
-func ParsePKCS8RSAPSSPrivateKey(der []byte) (key interface{}, err error) {
+func ParsePKCS8RSAPSSPrivateKey(der []byte) (key any, err error) {
 	var privKey pkcs8
 	if _, err := asn1.Unmarshal(der, &privKey); err == nil {
 		switch {

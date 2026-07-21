@@ -184,7 +184,7 @@ func init() {
 
 // patches in the Issued At time to be now
 func patchIat(input string) string {
-	m := map[string]interface{}{}
+	m := map[string]any{}
 	err := json.Unmarshal([]byte(input), &m)
 	if err != nil {
 		panic(err)
@@ -199,7 +199,7 @@ func patchIat(input string) string {
 
 // patches in the Expires time to be 10 years from now
 func patchExp(input string) string {
-	m := map[string]interface{}{}
+	m := map[string]any{}
 	err := json.Unmarshal([]byte(input), &m)
 	if err != nil {
 		panic(err)
@@ -256,7 +256,7 @@ func setupBackend(t *testing.T, config *testBackendConfig) (logical.Backend, log
 	b, storage := getBackend(t)
 
 	// test no certificate
-	data := map[string]interface{}{
+	data := map[string]any{
 		"pem_keys":           config.pems,
 		"kubernetes_host":    "host",
 		"kubernetes_ca_cert": testCACert,
@@ -274,7 +274,7 @@ func setupBackend(t *testing.T, config *testBackendConfig) (logical.Backend, log
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"bound_service_account_names":              config.saName,
 		"bound_service_account_namespaces":         config.saNamespace,
 		"bound_service_account_namespace_selector": config.saNamespaceSelector,
@@ -311,7 +311,7 @@ func TestLogin(t *testing.T) {
 	jwtBadSigningKeyToken := jwtBadSigningKeyToken()
 
 	// Test bad inputs
-	data := map[string]interface{}{
+	data := map[string]any{
 		"jwt": jwtGoodDataToken,
 	}
 
@@ -333,7 +333,7 @@ func TestLogin(t *testing.T) {
 		t.Fatalf("unexpected error: %s", resp.Error())
 	}
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 	}
 
@@ -356,7 +356,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	// test bad role name
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test-bad",
 		"jwt":  jwtGoodDataToken,
 	}
@@ -379,7 +379,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	// test bad jwt service account
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtBadServiceAccountToken,
 	}
@@ -403,7 +403,7 @@ func TestLogin(t *testing.T) {
 	requireErrorCode(t, err, http.StatusForbidden)
 
 	// test bad jwt key
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtBadSigningKeyToken,
 	}
@@ -425,7 +425,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	// test successful login
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtGoodDataToken,
 	}
@@ -450,7 +450,7 @@ func TestLogin(t *testing.T) {
 	config.saName = testGlobbedName
 	b, storage = setupBackend(t, config)
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtGoodDataToken,
 	}
@@ -475,7 +475,7 @@ func TestLogin(t *testing.T) {
 	config.saNamespace = testGlobbedNamespace
 	b, storage = setupBackend(t, config)
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtGoodDataToken,
 	}
@@ -499,7 +499,7 @@ func TestLogin(t *testing.T) {
 func TestLogin_ContextError(t *testing.T) {
 	b, storage := setupBackend(t, defaultTestBackendConfig())
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtGoodDataToken(),
 	}
@@ -528,7 +528,7 @@ func TestLogin_ECDSA_PEM(t *testing.T) {
 	b, storage := setupBackend(t, config)
 
 	// test no certificate
-	data := map[string]interface{}{
+	data := map[string]any{
 		"pem_keys":           testDefaultPEMs,
 		"kubernetes_host":    "host",
 		"kubernetes_ca_cert": testCACert,
@@ -547,7 +547,7 @@ func TestLogin_ECDSA_PEM(t *testing.T) {
 	}
 
 	// test successful login
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtGoodDataToken(),
 	}
@@ -573,7 +573,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 	b, storage := setupBackend(t, config)
 
 	// test bad jwt service account
-	data := map[string]interface{}{
+	data := map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtBadServiceAccountToken(),
 	}
@@ -597,7 +597,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 	requireErrorCode(t, err, http.StatusForbidden)
 
 	// test successful login
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtGoodDataToken(),
 	}
@@ -627,7 +627,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	jwtGoodDataToken := jwtGoodDataToken()
 
 	// Test bad inputs
-	data := map[string]interface{}{
+	data := map[string]any{
 		"jwt": jwtGoodDataToken,
 	}
 
@@ -646,7 +646,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		t.Fatalf("unexpected error: %s", resp.Error())
 	}
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 	}
 
@@ -666,7 +666,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	}
 
 	// test bad role name
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test-bad",
 		"jwt":  jwtGoodDataToken,
 	}
@@ -686,7 +686,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	}
 
 	// test bad jwt service account
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtBadServiceAccountToken(),
 	}
@@ -709,7 +709,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	}
 
 	// test bad jwt key
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtBadSigningKeyToken(),
 	}
@@ -731,7 +731,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	}
 
 	// test successful login
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtGoodDataToken,
 	}
@@ -756,7 +756,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	config.saName = testGlobbedName
 	b, storage = setupBackend(t, config)
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtGoodDataToken,
 	}
@@ -781,7 +781,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	config.saNamespace = testGlobbedNamespace
 	b, storage = setupBackend(t, config)
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtGoodDataToken,
 	}
@@ -826,7 +826,7 @@ func TestLoginSvcAcctNamespaceSelector(t *testing.T) {
 			config.saNamespaceSelector = tc.saNamespaceSelector
 			b, storage := setupBackend(t, config)
 
-			data := map[string]interface{}{
+			data := map[string]any{
 				"role": "plugin-test",
 				"jwt":  jwtGoodDataToken(),
 			}
@@ -939,7 +939,7 @@ func TestAliasLookAhead(t *testing.T) {
 				Operation: logical.AliasLookaheadOperation,
 				Path:      "login",
 				Storage:   storage,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"jwt":  tc.jwt,
 					"role": tc.role,
 				},
@@ -985,7 +985,7 @@ func TestLoginIssValidation(t *testing.T) {
 	jwtGoodDataToken := jwtGoodDataToken()
 
 	// test iss validation enabled with default "kubernetes/serviceaccount" issuer
-	data := map[string]interface{}{
+	data := map[string]any{
 		"kubernetes_host":        "host",
 		"kubernetes_ca_cert":     testCACert,
 		"disable_iss_validation": false,
@@ -1004,7 +1004,7 @@ func TestLoginIssValidation(t *testing.T) {
 	}
 
 	// test iss validation enabled with explicitly defined issuer
-	data = map[string]interface{}{
+	data = map[string]any{
 		"kubernetes_host":        "host",
 		"kubernetes_ca_cert":     testCACert,
 		"disable_iss_validation": false,
@@ -1025,7 +1025,7 @@ func TestLoginIssValidation(t *testing.T) {
 	}
 
 	// test successful login with explicitly defined issuer
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtGoodDataToken,
 	}
@@ -1046,7 +1046,7 @@ func TestLoginIssValidation(t *testing.T) {
 	}
 
 	// test iss validation enabled with custom issuer
-	data = map[string]interface{}{
+	data = map[string]any{
 		"kubernetes_host":        "host",
 		"kubernetes_ca_cert":     testCACert,
 		"disable_iss_validation": false,
@@ -1067,7 +1067,7 @@ func TestLoginIssValidation(t *testing.T) {
 	}
 
 	// test login fail with enabled iss validation and custom issuer
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtGoodDataToken,
 	}
@@ -1091,7 +1091,7 @@ func TestLoginIssValidation(t *testing.T) {
 	}
 
 	// test iss validation disabled with custom issuer
-	data = map[string]interface{}{
+	data = map[string]any{
 		"kubernetes_host":        "host",
 		"kubernetes_ca_cert":     testCACert,
 		"disable_iss_validation": true,
@@ -1112,7 +1112,7 @@ func TestLoginIssValidation(t *testing.T) {
 	}
 
 	// test login success with disabled iss validation and custom issuer
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role": "plugin-test",
 		"jwt":  jwtGoodDataToken,
 	}
@@ -1138,7 +1138,7 @@ func TestLoginProjectedToken(t *testing.T) {
 	b, storage := setupBackend(t, config)
 
 	// update backend to accept "default" bound account name
-	data := map[string]interface{}{
+	data := map[string]any{
 		"bound_service_account_names":      fmt.Sprintf("%s,default", testName),
 		"bound_service_account_namespaces": testNamespace,
 		"policies":                         "test",
@@ -1200,7 +1200,7 @@ func TestLoginProjectedToken(t *testing.T) {
 
 	for k, tc := range testCases {
 		t.Run(k, func(t *testing.T) {
-			data := map[string]interface{}{
+			data := map[string]any{
 				"role": tc.role,
 				"jwt":  tc.jwt,
 			}
@@ -1249,7 +1249,7 @@ func TestAliasLookAheadProjectedToken(t *testing.T) {
 	config.saName = "default"
 	b, storage := setupBackend(t, config)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"jwt":  jwtProjectedData(),
 		"role": "plugin-test",
 	}
@@ -1444,7 +1444,7 @@ func Test_kubeAuthBackend_getAliasName(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			claims := map[string]interface{}{}
+			claims := map[string]any{}
 			err = tok.UnsafeClaimsWithoutVerification(&claims)
 			if err != nil {
 				t.Fatal(err)
@@ -1494,7 +1494,7 @@ func (r *jwtSignTestRequest) getUID() string {
 }
 
 func signTestJWTRequest(req *jwtSignTestRequest) (string, error) {
-	var claims map[string]interface{}
+	var claims map[string]any
 	if req.projected {
 		claims = projectedJWTTestClaims(req)
 	} else {
@@ -1504,20 +1504,20 @@ func signTestJWTRequest(req *jwtSignTestRequest) (string, error) {
 	return signTestJWT(claims)
 }
 
-func jwtStandardTestClaims(req *jwtSignTestRequest) map[string]interface{} {
+func jwtStandardTestClaims(req *jwtSignTestRequest) map[string]any {
 	now := time.Now()
 	var horizon int64 = 86400
 	if req.expired {
 		horizon = horizon * -1
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		"iat": now.Unix(),
 		"exp": now.Unix() + horizon,
 		"iss": req.issuer,
 	}
 }
 
-func projectedJWTTestClaims(req *jwtSignTestRequest) map[string]interface{} {
+func projectedJWTTestClaims(req *jwtSignTestRequest) map[string]any {
 	type testToken struct {
 		Namespace      string         `json:"namespace"`
 		Pod            *v1.ObjectMeta `json:"pod"`
@@ -1541,7 +1541,7 @@ func projectedJWTTestClaims(req *jwtSignTestRequest) map[string]interface{} {
 	return claims
 }
 
-func defaultJWTTestClaims(req *jwtSignTestRequest) map[string]interface{} {
+func defaultJWTTestClaims(req *jwtSignTestRequest) map[string]any {
 	claims := jwtStandardTestClaims(req)
 	claims["kubernetes.io/serviceaccount/namespace"] = req.ns
 	claims["kubernetes.io/serviceaccount/service-account.name"] = req.sa
@@ -1549,7 +1549,7 @@ func defaultJWTTestClaims(req *jwtSignTestRequest) map[string]interface{} {
 	return claims
 }
 
-func signTestJWT(claims map[string]interface{}) (string, error) {
+func signTestJWT(claims map[string]any) (string, error) {
 	data, err := json.Marshal(claims)
 	if err != nil {
 		return "", err
@@ -1603,7 +1603,7 @@ func TestResolveRole(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	loginData := map[string]interface{}{
+	loginData := map[string]any{
 		"role": role,
 	}
 	loginReq := &logical.Request{
@@ -1630,7 +1630,7 @@ func TestResolveRole_RoleDoesNotExist(t *testing.T) {
 	b, storage := getBackend(t)
 	role := "testrole"
 
-	loginData := map[string]interface{}{
+	loginData := map[string]any{
 		"role": role,
 	}
 	loginReq := &logical.Request{

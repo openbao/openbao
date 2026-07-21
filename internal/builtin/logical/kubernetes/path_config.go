@@ -115,7 +115,7 @@ func (b *backend) pathConfigRead(ctx context.Context, req *logical.Request, data
 		// aren't set (see configWithDynamicValues() for those defaults). And
 		// the service account jwt is omitted as sensitive data.
 		resp := &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"disable_local_ca_jwt": config.DisableLocalCAJwt,
 				"kubernetes_ca_cert":   config.CACert,
 				"kubernetes_host":      config.Host,

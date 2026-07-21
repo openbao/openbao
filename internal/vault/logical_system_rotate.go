@@ -443,7 +443,7 @@ func (b *SystemBackend) handleKeyRotationConfigRead() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"max_operations": rotateConf.MaxOperations,
 				"enabled":        !rotateConf.Disabled,
 			},
@@ -572,7 +572,7 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"started":  false,
 				"t":        0,
 				"n":        0,
@@ -669,7 +669,7 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 				keysB64 = append(keysB64, base64.StdEncoding.EncodeToString(k))
 			}
 			return &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"complete":              true,
 					"t":                     secretThreshold,
 					"n":                     secretShares,
@@ -766,7 +766,7 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 				keysB64 = append(keysB64, base64.StdEncoding.EncodeToString(k))
 			}
 			return &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"complete":              true,
 					"nonce":                 reqNonce,
 					"backup":                result.Backup,
@@ -799,7 +799,7 @@ func (b *SystemBackend) handleRotateVerifyGet() framework.OperationFunc {
 		}
 
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"nonce":    rotConf.VerificationNonce,
 				"started":  len(rotConf.VerificationKey) > 0,
 				"t":        rotConf.SecretThreshold,
@@ -866,7 +866,7 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 
 		if result != nil {
 			return &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"complete": result.Complete,
 					"nonce":    result.Nonce,
 				},
@@ -929,7 +929,7 @@ func (b *SystemBackend) handleRotateBackupRetrieve() framework.OperationFunc {
 		}
 
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"nonce":       backup.Nonce,
 				"keys":        backup.Keys,
 				"keys_base64": keysB64,

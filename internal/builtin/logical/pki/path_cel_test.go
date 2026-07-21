@@ -153,8 +153,8 @@ func TestCRUDCelRoles(t *testing.T) {
 	require.True(t, found, "`require_ip_sans` variable not present after patch")
 
 	// Create a second CEL role
-	roleData2 := map[string]interface{}{
-		"cel_program": map[string]interface{}{
+	roleData2 := map[string]any{
+		"cel_program": map[string]any{
 			"variables": []map[string]any{
 				{
 					"name":       "require_cn",

@@ -48,7 +48,7 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 
 			var keys []string
 			switch k := keysRaw.(type) {
-			case []interface{}:
+			case []any:
 				keys = make([]string, len(k))
 				for i, el := range k {
 					s, ok := el.(string)
@@ -195,15 +195,15 @@ func RespondError(w http.ResponseWriter, status int, err error) {
 	enc.Encode(resp)
 }
 
-func RespondErrorAndData(w http.ResponseWriter, status int, data interface{}, err error) {
+func RespondErrorAndData(w http.ResponseWriter, status int, data any, err error) {
 	AdjustErrorStatusCode(&status, err)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
 	type ErrorAndDataResponse struct {
-		Errors []string    `json:"errors"`
-		Data   interface{} `json:"data"`
+		Errors []string `json:"errors"`
+		Data   any      `json:"data"`
 	}
 	resp := &ErrorAndDataResponse{Errors: make([]string, 0, 1)}
 	if err != nil {

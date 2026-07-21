@@ -255,7 +255,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 	{
 		// Attempt import but only provide one the cert; this should work.
 		{
-			_, err := client.Logical().Write(rootName+"config/ca", map[string]interface{}{
+			_, err := client.Logical().Write(rootName+"config/ca", map[string]any{
 				"pem_bundle": caCert,
 			})
 			if err != nil {
@@ -265,7 +265,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 
 		// Same but with only the key
 		{
-			_, err := client.Logical().Write(rootName+"config/ca", map[string]interface{}{
+			_, err := client.Logical().Write(rootName+"config/ca", map[string]any{
 				"pem_bundle": caKey,
 			})
 			if err != nil {
@@ -275,7 +275,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 
 		// Import entire CA bundle; this should work as well
 		{
-			_, err := client.Logical().Write(rootName+"config/ca", map[string]interface{}{
+			_, err := client.Logical().Write(rootName+"config/ca", map[string]any{
 				"pem_bundle": strings.Join([]string{caKey, caCert}, "\n"),
 			})
 			if err != nil {
@@ -374,7 +374,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 	{
 		// Set CRL config
 		{
-			_, err := client.Logical().Write(rootName+"config/crl", map[string]interface{}{
+			_, err := client.Logical().Write(rootName+"config/crl", map[string]any{
 				"expiry": "16h",
 			})
 			if err != nil {
@@ -414,7 +414,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 		var rootPEM, rootKey, rootPEMBundle string
 		// Test exported root generation
 		{
-			resp, err := client.Logical().Write(rootName+"root/generate/exported", map[string]interface{}{
+			resp, err := client.Logical().Write(rootName+"root/generate/exported", map[string]any{
 				"common_name": "Root Cert",
 				"ttl":         "180h",
 			})
@@ -436,7 +436,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 		var intPEM, intCSR, intKey string
 		// Test exported intermediate CSR generation
 		{
-			resp, err := client.Logical().Write(intName+"intermediate/generate/exported", map[string]interface{}{
+			resp, err := client.Logical().Write(intName+"intermediate/generate/exported", map[string]any{
 				"common_name": "intermediate.cert.com",
 				"ttl":         "180h",
 			})
@@ -456,7 +456,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 
 		// Test signing
 		{
-			resp, err := client.Logical().Write(rootName+"root/sign-intermediate", map[string]interface{}{
+			resp, err := client.Logical().Write(rootName+"root/sign-intermediate", map[string]any{
 				"common_name": "intermediate.cert.com",
 				"ttl":         "10s",
 				"csr":         intCSR,
@@ -473,7 +473,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 
 		// Test setting signed
 		{
-			resp, err := client.Logical().Write(intName+"intermediate/set-signed", map[string]interface{}{
+			resp, err := client.Logical().Write(intName+"intermediate/set-signed", map[string]any{
 				"certificate": intPEM,
 			})
 			if err != nil {
@@ -500,7 +500,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 
 		// Revoke the intermediate
 		{
-			resp, err := client.Logical().Write(rootName+"revoke", map[string]interface{}{
+			resp, err := client.Logical().Write(rootName+"revoke", map[string]any{
 				"serial_number": intSerialNumber,
 			})
 			if err != nil {
@@ -635,7 +635,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 	{
 		// Run with a high safety buffer, nothing should happen
 		{
-			resp, err := client.Logical().Write(rootName+"tidy", map[string]interface{}{
+			resp, err := client.Logical().Write(rootName+"tidy", map[string]any{
 				"safety_buffer":      "3h",
 				"tidy_cert_store":    true,
 				"tidy_revoked_certs": true,
@@ -658,7 +658,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 
 		// Run with both values set false, nothing should happen
 		{
-			resp, err := client.Logical().Write(rootName+"tidy", map[string]interface{}{
+			resp, err := client.Logical().Write(rootName+"tidy", map[string]any{
 				"safety_buffer":      "1s",
 				"tidy_cert_store":    false,
 				"tidy_revoked_certs": false,
@@ -681,7 +681,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 
 		// Run with a short safety buffer and both set to true, both should be cleared
 		{
-			resp, err := client.Logical().Write(rootName+"tidy", map[string]interface{}{
+			resp, err := client.Logical().Write(rootName+"tidy", map[string]any{
 				"safety_buffer":      "1s",
 				"tidy_cert_store":    true,
 				"tidy_revoked_certs": true,

@@ -180,7 +180,7 @@ func ImportKey(c *BaseCommand, operation string, pathFunc ImportKeyFunc, flags *
 		return 1
 	}
 	if data == nil {
-		data = make(map[string]interface{}, 1)
+		data = make(map[string]any, 1)
 	}
 
 	data["ciphertext"] = importCiphertext

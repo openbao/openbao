@@ -753,7 +753,7 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 	// Find all login request parameters. Usually we have at least two
 	// parameters: a token of some sort and a role. This becomes our request
 	// data.
-	loginParams := make(map[string]interface{}, 2)
+	loginParams := make(map[string]any, 2)
 	for header, values := range req.Headers {
 		if !strings.HasPrefix(header, consts.InlineAuthParameterHeaderPrefix) {
 			continue
@@ -768,7 +768,7 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 			return nil, fmt.Errorf("failed raw url-safe base64 decoding header value")
 		}
 
-		var paramInfo map[string]interface{}
+		var paramInfo map[string]any
 		if err := json.Unmarshal(encodedHeader, &paramInfo); err != nil {
 			return nil, errors.New("failed json decoding header value")
 		}

@@ -5,5 +5,5 @@ package vault
 
 type Inspectable interface {
 	// Returns a record view of a particular subsystem
-	GetRecords(tag string) ([]map[string]interface{}, error)
+	GetRecords(tag string) ([]map[string]any, error)
 }

@@ -232,7 +232,7 @@ func (rlq *RateLimitQuota) purgeBlockedClients() {
 	for {
 		select {
 		case t := <-ticker.C:
-			rlq.blockedClients.Range(func(key, value interface{}) bool {
+			rlq.blockedClients.Range(func(key, value any) bool {
 				blockedAt := value.(time.Time)
 				if t.Sub(blockedAt) >= rlq.BlockInterval {
 					rlq.blockedClients.Delete(key)
@@ -264,7 +264,7 @@ func (rlq *RateLimitQuota) numBlockedClients() int {
 	defer rlq.lock.RUnlock()
 
 	size := 0
-	rlq.blockedClients.Range(func(_, _ interface{}) bool {
+	rlq.blockedClients.Range(func(_, _ any) bool {
 		size++
 		return true
 	})

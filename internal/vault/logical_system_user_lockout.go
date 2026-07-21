@@ -55,7 +55,7 @@ func (b *SystemBackend) unlockUser(ctx context.Context, mountAccessor, aliasName
 
 // handleLockedUsersQuery returns the locked user metrics
 // by namespace in the decreasing order of locked users
-func (b *SystemBackend) handleLockedUsersQuery(ctx context.Context, mountAccessor string) (map[string]interface{}, error) {
+func (b *SystemBackend) handleLockedUsersQuery(ctx context.Context, mountAccessor string) (map[string]any, error) {
 	// Calculate the namespace response breakdowns of locked users for query namespace and child namespaces (if needed)
 	totalCount, byNamespaceResponse, err := b.getLockedUsersResponses(ctx, mountAccessor)
 	if err != nil {
@@ -63,7 +63,7 @@ func (b *SystemBackend) handleLockedUsersQuery(ctx context.Context, mountAccesso
 	}
 
 	// Now populate the response based on breakdowns.
-	responseData := make(map[string]interface{})
+	responseData := make(map[string]any)
 	responseData["by_namespace"] = byNamespaceResponse
 	responseData["total"] = totalCount
 	return responseData, nil

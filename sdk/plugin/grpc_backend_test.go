@@ -27,7 +27,7 @@ func TestGRPCBackendPlugin_HandleRequest(t *testing.T) {
 	resp, err := b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      "kv/foo",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"value": "bar",
 		},
 	})
@@ -83,7 +83,7 @@ func TestGRPCBackendPlugin_HandleExistenceCheck(t *testing.T) {
 	checkFound, exists, err := b.HandleExistenceCheck(t.Context(), &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      "kv/foo",
-		Data:      map[string]interface{}{"value": "bar"},
+		Data:      map[string]any{"value": "bar"},
 	})
 	if err != nil {
 		t.Fatal(err)

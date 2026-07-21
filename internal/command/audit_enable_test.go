@@ -172,7 +172,7 @@ func TestAuditEnableCommand_Run(t *testing.T) {
 
 		var lock sync.Mutex
 		var badRequests int
-		logs := []map[string]interface{}{}
+		logs := []map[string]any{}
 		logRoute := "/audit"
 
 		testServer := httptest.NewServer(httpAudit.GetTestAuditHandler(t, &lock, &logs, logRoute, nil, &badRequests))

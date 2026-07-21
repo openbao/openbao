@@ -34,7 +34,7 @@ func (b *backend) requestNoErr(t *testing.T, req *logical.Request) *logical.Resp
 func TestAppRole_LocalSecretIDsRead(t *testing.T) {
 	b, storage := createBackendWithStorage(t)
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"local_secret_ids": true,
 		"bind_secret_id":   true,
 	}
@@ -65,7 +65,7 @@ func TestAppRole_LocalNonLocalSecretIDs(t *testing.T) {
 		Path:      "role/testrole1",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies":         []string{"default", "role1policy"},
 			"bind_secret_id":   true,
 			"local_secret_ids": true,
@@ -77,7 +77,7 @@ func TestAppRole_LocalNonLocalSecretIDs(t *testing.T) {
 		Path:      "role/testrole2",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies":       []string{"default", "role1policy"},
 			"bind_secret_id": true,
 		},
@@ -170,7 +170,7 @@ func TestAppRole_LocalSecretIDImmutability(t *testing.T) {
 
 	b, storage := createBackendWithStorage(t)
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"policies":         []string{"default"},
 		"bind_secret_id":   true,
 		"bound_cidr_list":  []string{"127.0.0.1/18", "192.178.1.2/24"},
@@ -206,7 +206,7 @@ func TestAppRole_UpgradeBoundCIDRList(t *testing.T) {
 
 	b, storage := createBackendWithStorage(t)
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"policies":        []string{"default"},
 		"bind_secret_id":  true,
 		"bound_cidr_list": []string{"127.0.0.1/18", "192.178.1.2/24"},
@@ -266,7 +266,7 @@ func TestAppRole_UpgradeBoundCIDRList(t *testing.T) {
 		Path:      "role/testrole/secret-id",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"cidr_list": []string{"127.0.0.1/24"},
 		},
 	})
@@ -280,7 +280,7 @@ func TestAppRole_UpgradeBoundCIDRList(t *testing.T) {
 		Path:      "role/testrole/secret-id",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"cidr_list": "127.0.0.1/24",
 		},
 	})
@@ -325,7 +325,7 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 		Path:      "login",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"role_id":   roleID,
 			"secret_id": secretID,
 		},
@@ -342,7 +342,7 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 		Path:      "login",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"role_id":   roleID,
 			"secret_id": secretID,
 		},
@@ -367,7 +367,7 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 		Path:      "role/testRoleName",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"bind_secret_id": true,
 		},
 	})
@@ -394,7 +394,7 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 		Path:      "login",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"role_id":   roleID,
 			"secret_id": secretID,
 		},
@@ -405,7 +405,7 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 		Path:      "role/testrolename/secret-id/lookup",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"secret_id": secretID,
 		},
 	})
@@ -436,7 +436,7 @@ func TestAppRole_RoleReadSetIndex(t *testing.T) {
 		Path:      "role/testrole",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"bind_secret_id": true,
 		},
 	}
@@ -481,7 +481,7 @@ func TestAppRole_RoleReadSetIndex(t *testing.T) {
 	}
 
 	roleReq.Operation = logical.UpdateOperation
-	roleReq.Data = map[string]interface{}{
+	roleReq.Data = map[string]any{
 		"bind_secret_id": true,
 		"policies":       "default",
 	}
@@ -500,7 +500,7 @@ func TestAppRole_CIDRSubset(t *testing.T) {
 
 	b, storage := createBackendWithStorage(t)
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"role_id":         "role-id-123",
 		"policies":        "a,b",
 		"bound_cidr_list": "127.0.0.1/24",
@@ -515,7 +515,7 @@ func TestAppRole_CIDRSubset(t *testing.T) {
 
 	b.requestNoErr(t, roleReq)
 
-	secretIDData := map[string]interface{}{
+	secretIDData := map[string]any{
 		"cidr_list": "127.0.0.1/16",
 	}
 	secretIDReq := &logical.Request{
@@ -547,7 +547,7 @@ func TestAppRole_TokenBoundCIDRSubset32Mask(t *testing.T) {
 
 	b, storage := createBackendWithStorage(t)
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"role_id":           "role-id-123",
 		"policies":          "a,b",
 		"token_bound_cidrs": "127.0.0.1/32",
@@ -562,7 +562,7 @@ func TestAppRole_TokenBoundCIDRSubset32Mask(t *testing.T) {
 
 	b.requestNoErr(t, roleReq)
 
-	secretIDData := map[string]interface{}{
+	secretIDData := map[string]any{
 		"token_bound_cidrs": "127.0.0.1/32",
 	}
 	secretIDReq := &logical.Request{
@@ -574,7 +574,7 @@ func TestAppRole_TokenBoundCIDRSubset32Mask(t *testing.T) {
 
 	b.requestNoErr(t, secretIDReq)
 
-	secretIDData = map[string]interface{}{
+	secretIDData = map[string]any{
 		"token_bound_cidrs": "127.0.0.1/24",
 	}
 	secretIDReq = &logical.Request{
@@ -599,7 +599,7 @@ func TestAppRole_RoleConstraints(t *testing.T) {
 	var err error
 	b, storage := createBackendWithStorage(t)
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"role_id":  "role-id-123",
 		"policies": "a,b",
 	}
@@ -637,7 +637,7 @@ func TestAppRole_RoleIDUpdate(t *testing.T) {
 	var resp *logical.Response
 	b, storage := createBackendWithStorage(t)
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"role_id":            "role-id-123",
 		"policies":           "a,b",
 		"secret_id_num_uses": 10,
@@ -657,7 +657,7 @@ func TestAppRole_RoleIDUpdate(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "role/testrole1/role-id",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"role_id": "customroleid",
 		},
 	}
@@ -672,7 +672,7 @@ func TestAppRole_RoleIDUpdate(t *testing.T) {
 
 	secretID := resp.Data["secret_id"].(string)
 
-	loginData := map[string]interface{}{
+	loginData := map[string]any{
 		"role_id":   "customroleid",
 		"secret_id": secretID,
 	}
@@ -697,7 +697,7 @@ func TestAppRole_RoleIDUniqueness(t *testing.T) {
 	var err error
 	b, storage := createBackendWithStorage(t)
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"role_id":            "role-id-123",
 		"policies":           "a,b",
 		"secret_id_num_uses": 10,
@@ -737,7 +737,7 @@ func TestAppRole_RoleIDUniqueness(t *testing.T) {
 		t.Fatalf("expected an error: got resp:%#v", resp)
 	}
 
-	roleIDData := map[string]interface{}{
+	roleIDData := map[string]any{
 		"role_id": "role-id-456",
 	}
 	roleIDReq := &logical.Request{
@@ -828,7 +828,7 @@ func TestAppRole_RoleSecretIDReadDelete(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
 		Path:      "role/role1/secret-id/lookup",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"secret_id": secretID,
 		},
 	}
@@ -842,7 +842,7 @@ func TestAppRole_RoleSecretIDReadDelete(t *testing.T) {
 		Operation: logical.DeleteOperation,
 		Storage:   storage,
 		Path:      "role/role1/secret-id/destroy",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"secret_id": secretID,
 		},
 	}
@@ -882,7 +882,7 @@ func TestAppRole_RoleSecretIDAccessorReadDelete(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
 		Path:      "role/role1/secret-id-accessor/lookup",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"secret_id_accessor": hmacSecretID,
 		},
 	}
@@ -913,7 +913,7 @@ func TestAppRoleSecretIDLookup(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
 		Path:      "role/role1/secret-id-accessor/lookup",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"secret_id_accessor": "invalid",
 		},
 	}
@@ -922,7 +922,7 @@ func TestAppRoleSecretIDLookup(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	expected := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"http_content_type": "application/json",
 			"http_raw_body":     `{"request_id":"","lease_id":"","renewable":false,"lease_duration":0,"data":{"error":"failed to find accessor entry for secret_id_accessor: \"invalid\""},"wrap_info":null,"warnings":null,"auth":null}`,
 			"http_status_code":  404,
@@ -992,7 +992,7 @@ func TestAppRole_RoleSecretIDWithoutFields(t *testing.T) {
 	var resp *logical.Response
 	b, storage := createBackendWithStorage(t)
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"policies":           "p,q,r,s",
 		"secret_id_num_uses": 10,
 		"secret_id_ttl":      300,
@@ -1026,7 +1026,7 @@ func TestAppRole_RoleSecretIDWithoutFields(t *testing.T) {
 	}
 
 	roleSecretIDReq.Path = "role/role1/custom-secret-id"
-	roleCustomSecretIDData := map[string]interface{}{
+	roleCustomSecretIDData := map[string]any{
 		"secret_id": "abcd123",
 	}
 	roleSecretIDReq.Data = roleCustomSecretIDData
@@ -1046,13 +1046,13 @@ func TestAppRole_RoleSecretIDWithoutFields(t *testing.T) {
 func TestAppRole_RoleSecretIDWithValidFields(t *testing.T) {
 	type testCase struct {
 		name    string
-		payload map[string]interface{}
+		payload map[string]any
 	}
 
 	var resp *logical.Response
 	b, storage := createBackendWithStorage(t)
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"policies":           "p,q,r,s",
 		"secret_id_num_uses": 0,
 		"secret_id_ttl":      0,
@@ -1071,19 +1071,19 @@ func TestAppRole_RoleSecretIDWithValidFields(t *testing.T) {
 	testCases := []testCase{
 		{
 			name:    "finite num_uses ttl",
-			payload: map[string]interface{}{"secret_id": "finite", "ttl": 5, "num_uses": 5},
+			payload: map[string]any{"secret_id": "finite", "ttl": 5, "num_uses": 5},
 		},
 		{
 			name:    "infinite num_uses and ttl",
-			payload: map[string]interface{}{"secret_id": "infinite", "ttl": 0, "num_uses": 0},
+			payload: map[string]any{"secret_id": "infinite", "ttl": 0, "num_uses": 0},
 		},
 		{
 			name:    "finite num_uses and infinite ttl",
-			payload: map[string]interface{}{"secret_id": "mixed1", "ttl": 0, "num_uses": 5},
+			payload: map[string]any{"secret_id": "mixed1", "ttl": 0, "num_uses": 5},
 		},
 		{
 			name:    "infinite num_uses and finite ttl",
-			payload: map[string]interface{}{"secret_id": "mixed2", "ttl": 5, "num_uses": 0},
+			payload: map[string]any{"secret_id": "mixed2", "ttl": 5, "num_uses": 0},
 		},
 	}
 
@@ -1129,25 +1129,25 @@ func TestAppRole_RoleSecretIDWithValidFields(t *testing.T) {
 func TestAppRole_ErrorsRoleSecretIDWithInvalidFields(t *testing.T) {
 	type testCase struct {
 		name     string
-		payload  map[string]interface{}
+		payload  map[string]any
 		expected string
 	}
 
 	type roleTestCase struct {
 		name    string
-		options map[string]interface{}
+		options map[string]any
 		cases   []testCase
 	}
 
 	infiniteTestCases := []testCase{
 		{
 			name:     "infinite ttl",
-			payload:  map[string]interface{}{"secret_id": "abcd123", "num_uses": 1, "ttl": 0},
+			payload:  map[string]any{"secret_id": "abcd123", "num_uses": 1, "ttl": 0},
 			expected: "ttl cannot be longer than the role's secret_id_ttl",
 		},
 		{
 			name:     "infinite num_uses",
-			payload:  map[string]interface{}{"secret_id": "abcd123", "num_uses": 0, "ttl": 1},
+			payload:  map[string]any{"secret_id": "abcd123", "num_uses": 0, "ttl": 1},
 			expected: "num_uses cannot be higher than the role's secret_id_num_uses",
 		},
 	}
@@ -1155,7 +1155,7 @@ func TestAppRole_ErrorsRoleSecretIDWithInvalidFields(t *testing.T) {
 	negativeTestCases := []testCase{
 		{
 			name:     "negative num_uses",
-			payload:  map[string]interface{}{"secret_id": "abcd123", "num_uses": -1, "ttl": 0},
+			payload:  map[string]any{"secret_id": "abcd123", "num_uses": -1, "ttl": 0},
 			expected: "num_uses cannot be negative",
 		},
 	}
@@ -1163,35 +1163,35 @@ func TestAppRole_ErrorsRoleSecretIDWithInvalidFields(t *testing.T) {
 	roleTestCases := []roleTestCase{
 		{
 			name: "infinite role secret id ttl",
-			options: map[string]interface{}{
+			options: map[string]any{
 				"secret_id_num_uses": 1,
 				"secret_id_ttl":      0,
 			},
 			cases: []testCase{
 				{
 					name:     "higher num_uses",
-					payload:  map[string]interface{}{"secret_id": "abcd123", "ttl": 0, "num_uses": 2},
+					payload:  map[string]any{"secret_id": "abcd123", "ttl": 0, "num_uses": 2},
 					expected: "num_uses cannot be higher than the role's secret_id_num_uses",
 				},
 			},
 		},
 		{
 			name: "infinite role num_uses",
-			options: map[string]interface{}{
+			options: map[string]any{
 				"secret_id_num_uses": 0,
 				"secret_id_ttl":      1,
 			},
 			cases: []testCase{
 				{
 					name:     "longer ttl",
-					payload:  map[string]interface{}{"secret_id": "abcd123", "ttl": 2, "num_uses": 0},
+					payload:  map[string]any{"secret_id": "abcd123", "ttl": 2, "num_uses": 0},
 					expected: "ttl cannot be longer than the role's secret_id_ttl",
 				},
 			},
 		},
 		{
 			name: "finite role ttl and num_uses",
-			options: map[string]interface{}{
+			options: map[string]any{
 				"secret_id_num_uses": 2,
 				"secret_id_ttl":      2,
 			},
@@ -1199,7 +1199,7 @@ func TestAppRole_ErrorsRoleSecretIDWithInvalidFields(t *testing.T) {
 		},
 		{
 			name: "mixed role ttl and num_uses",
-			options: map[string]interface{}{
+			options: map[string]any{
 				"secret_id_num_uses": 400,
 				"secret_id_ttl":      500,
 			},
@@ -1212,7 +1212,7 @@ func TestAppRole_ErrorsRoleSecretIDWithInvalidFields(t *testing.T) {
 	b, storage := createBackendWithStorage(t)
 
 	for i, rc := range roleTestCases {
-		roleData := map[string]interface{}{
+		roleData := map[string]any{
 			"policies":      "p,q,r,s",
 			"token_ttl":     400,
 			"token_max_ttl": 500,
@@ -1263,7 +1263,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	var err error
 	b, storage := createBackendWithStorage(t)
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"policies":              "p,q,r,s",
 		"secret_id_num_uses":    10,
 		"secret_id_ttl":         300,
@@ -1284,7 +1284,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"bind_secret_id":        true,
 		"policies":              []string{"p", "q", "r", "s"},
 		"secret_id_num_uses":    10,
@@ -1314,7 +1314,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 		t.Fatal(diff)
 	}
 
-	roleData = map[string]interface{}{
+	roleData = map[string]any{
 		"role_id":            "test_role_id",
 		"policies":           "a,b,c,d",
 		"secret_id_num_uses": 100,
@@ -1330,7 +1330,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
 
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"policies":           []string{"a", "b", "c", "d"},
 		"secret_id_num_uses": 100,
 		"secret_id_ttl":      3000,
@@ -1360,7 +1360,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 		t.Fatalf("bad: role_id: expected:test_role_id actual:%s\n", resp.Data["role_id"].(string))
 	}
 
-	roleReq.Data = map[string]interface{}{"role_id": "custom_role_id"}
+	roleReq.Data = map[string]any{"role_id": "custom_role_id"}
 	roleReq.Operation = logical.UpdateOperation
 	b.requestNoErr(t, roleReq)
 
@@ -1376,7 +1376,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	roleReq.Operation = logical.ReadOperation
 	b.requestNoErr(t, roleReq)
 
-	roleReq.Data = map[string]interface{}{"bind_secret_id": false}
+	roleReq.Data = map[string]any{"bind_secret_id": false}
 	roleReq.Operation = logical.UpdateOperation
 	b.requestNoErr(t, roleReq)
 
@@ -1401,7 +1401,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	roleReq.Operation = logical.ReadOperation
 	b.requestNoErr(t, roleReq)
 
-	roleReq.Data = map[string]interface{}{"policies": "a1,b1,c1,d1"}
+	roleReq.Data = map[string]any{"policies": "a1,b1,c1,d1"}
 	roleReq.Operation = logical.UpdateOperation
 	b.requestNoErr(t, roleReq)
 
@@ -1431,7 +1431,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	roleReq.Operation = logical.ReadOperation
 	b.requestNoErr(t, roleReq)
 
-	roleReq.Data = map[string]interface{}{"secret_id_num_uses": 200}
+	roleReq.Data = map[string]any{"secret_id_num_uses": 200}
 	roleReq.Operation = logical.UpdateOperation
 	b.requestNoErr(t, roleReq)
 
@@ -1456,7 +1456,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	roleReq.Operation = logical.ReadOperation
 	b.requestNoErr(t, roleReq)
 
-	roleReq.Data = map[string]interface{}{"secret_id_ttl": 3001}
+	roleReq.Data = map[string]any{"secret_id_ttl": 3001}
 	roleReq.Operation = logical.UpdateOperation
 	b.requestNoErr(t, roleReq)
 
@@ -1485,7 +1485,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 		t.Fatalf("bad: token_num_uses: expected:600 actual:%d\n", resp.Data["token_num_uses"].(int))
 	}
 
-	roleReq.Data = map[string]interface{}{"token_num_uses": 60}
+	roleReq.Data = map[string]any{"token_num_uses": 60}
 	roleReq.Operation = logical.UpdateOperation
 	b.requestNoErr(t, roleReq)
 
@@ -1511,7 +1511,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	roleReq.Operation = logical.ReadOperation
 	b.requestNoErr(t, roleReq)
 
-	roleReq.Data = map[string]interface{}{"period": 9001}
+	roleReq.Data = map[string]any{"period": 9001}
 	roleReq.Operation = logical.UpdateOperation
 	b.requestNoErr(t, roleReq)
 
@@ -1536,7 +1536,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	roleReq.Operation = logical.ReadOperation
 	b.requestNoErr(t, roleReq)
 
-	roleReq.Data = map[string]interface{}{"token_ttl": 4001}
+	roleReq.Data = map[string]any{"token_ttl": 4001}
 	roleReq.Operation = logical.UpdateOperation
 	b.requestNoErr(t, roleReq)
 
@@ -1561,7 +1561,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	roleReq.Operation = logical.ReadOperation
 	b.requestNoErr(t, roleReq)
 
-	roleReq.Data = map[string]interface{}{"token_max_ttl": 5001}
+	roleReq.Data = map[string]any{"token_max_ttl": 5001}
 	roleReq.Operation = logical.UpdateOperation
 	b.requestNoErr(t, roleReq)
 
@@ -1602,7 +1602,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 	var err error
 	b, storage := createBackendWithStorage(t)
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"policies":              "p,q,r,s",
 		"secret_id_num_uses":    10,
 		"secret_id_ttl":         300,
@@ -1624,7 +1624,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"bind_secret_id":        true,
 		"policies":              []string{"p", "q", "r", "s"},
 		"secret_id_num_uses":    10,
@@ -1654,7 +1654,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 		t.Fatalf("bad:\nexpected:%#v\nactual:%#v\n", expectedStruct, actualStruct)
 	}
 
-	roleData = map[string]interface{}{
+	roleData = map[string]any{
 		"role_id":            "test_role_id",
 		"policies":           "a,b,c,d",
 		"secret_id_num_uses": 100,
@@ -1670,7 +1670,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
 
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"policies":           []string{"a", "b", "c", "d"},
 		"secret_id_num_uses": 100,
 		"secret_id_ttl":      3000,
@@ -1701,7 +1701,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 		t.Fatalf("bad: secret_id_bound_cidrs: expected:127.0.0.1/32,127.0.0.1/16 actual:%d\n", resp.Data["secret_id_bound_cidrs"].(int))
 	}
 
-	roleReq.Data = map[string]interface{}{"secret_id_bound_cidrs": []string{"127.0.0.1/20"}}
+	roleReq.Data = map[string]any{"secret_id_bound_cidrs": []string{"127.0.0.1/20"}}
 	roleReq.Operation = logical.UpdateOperation
 	b.requestNoErr(t, roleReq)
 
@@ -1736,7 +1736,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 		t.Fatalf("bad: token_bound_cidrs: expected:127.0.0.1/32,127.0.0.1/16 actual:%s\n", string(m))
 	}
 
-	roleReq.Data = map[string]interface{}{"token_bound_cidrs": []string{"127.0.0.1/20"}}
+	roleReq.Data = map[string]any{"token_bound_cidrs": []string{"127.0.0.1/20"}}
 	roleReq.Operation = logical.UpdateOperation
 	b.requestNoErr(t, roleReq)
 
@@ -1777,7 +1777,7 @@ func TestAppRole_RoleWithTokenTypeCRUD(t *testing.T) {
 	var err error
 	b, storage := createBackendWithStorage(t)
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"policies":           "p,q,r,s",
 		"secret_id_num_uses": 10,
 		"secret_id_ttl":      300,
@@ -1802,7 +1802,7 @@ func TestAppRole_RoleWithTokenTypeCRUD(t *testing.T) {
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"bind_secret_id":     true,
 		"policies":           []string{"p", "q", "r", "s"},
 		"secret_id_num_uses": 10,
@@ -1830,7 +1830,7 @@ func TestAppRole_RoleWithTokenTypeCRUD(t *testing.T) {
 		t.Fatalf("bad:\nexpected:%#v\nactual:%#v\n", expectedStruct, actualStruct)
 	}
 
-	roleData = map[string]interface{}{
+	roleData = map[string]any{
 		"role_id":            "test_role_id",
 		"policies":           "a,b,c,d",
 		"secret_id_num_uses": 100,
@@ -1851,7 +1851,7 @@ func TestAppRole_RoleWithTokenTypeCRUD(t *testing.T) {
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
 
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"policies":           []string{"a", "b", "c", "d"},
 		"secret_id_num_uses": 100,
 		"secret_id_ttl":      3000,
@@ -1889,7 +1889,7 @@ func TestAppRole_RoleWithTokenTypeCRUD(t *testing.T) {
 }
 
 func createRole(t *testing.T, b *backend, s logical.Storage, roleName, policies string) {
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"policies":           policies,
 		"secret_id_num_uses": 10,
 		"secret_id_ttl":      300,
@@ -2019,7 +2019,7 @@ func TestAppRole_SecretID_WithTTL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create role
-			roleData := map[string]interface{}{
+			roleData := map[string]any{
 				"policies":      "default",
 				"secret_id_ttl": tt.ttl,
 			}
@@ -2106,7 +2106,7 @@ func TestAppRole_RoleSecretIDAccessorCrossDelete(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
 		Path:      "role/role2/secret-id-accessor/lookup",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"secret_id_accessor": hmacSecretID,
 		},
 	})
@@ -2116,7 +2116,7 @@ func TestAppRole_RoleSecretIDAccessorCrossDelete(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
 		Path:      "role/role1/secret-id-accessor/destroy",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"secret_id_accessor": hmacSecretID,
 		},
 	})

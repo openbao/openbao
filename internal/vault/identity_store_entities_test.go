@@ -27,7 +27,7 @@ func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
 	resp, err := i.HandleRequest(namespace.RootContext(t.Context()), &logical.Request{
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": "testentity",
 		},
 	})
@@ -40,7 +40,7 @@ func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
 	resp, err = i.HandleRequest(namespace.RootContext(t.Context()), &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":              "testgroup",
 			"member_entity_ids": []string{entityID},
 		},
@@ -97,7 +97,7 @@ func TestIdentityStore_CaseInsensitiveEntityName(t *testing.T) {
 	resp, err := i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": testEntityName,
 		},
 	})
@@ -193,7 +193,7 @@ func TestIdentityStore_EntityByName(t *testing.T) {
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity/name/testentityname",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"metadata": entityMetadata,
 		},
 	})
@@ -296,7 +296,7 @@ func TestIdentityStore_EntityReadGroupIDs(t *testing.T) {
 	groupReq := &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"member_entity_ids": []string{
 				entityID,
 			},
@@ -312,7 +312,7 @@ func TestIdentityStore_EntityReadGroupIDs(t *testing.T) {
 
 	// Create another group with the above created group as its subgroup
 
-	groupReq.Data = map[string]interface{}{
+	groupReq.Data = map[string]any{
 		"member_group_ids": []string{groupID},
 	}
 	resp, err = i.HandleRequest(ctx, groupReq)
@@ -325,7 +325,7 @@ func TestIdentityStore_EntityReadGroupIDs(t *testing.T) {
 	lookupReq := &logical.Request{
 		Path:      "lookup/entity",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "id",
 			"id":   entityID,
 		},
@@ -362,7 +362,7 @@ func TestIdentityStore_EntityCreateUpdate(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
-	entityData := map[string]interface{}{
+	entityData := map[string]any{
 		"name":     "testentityname",
 		"metadata": []string{"someusefulkey=someusefulvalue"},
 		"policies": []string{"testpolicy1", "testpolicy2"},
@@ -381,7 +381,7 @@ func TestIdentityStore_EntityCreateUpdate(t *testing.T) {
 	}
 	entityID := resp.Data["id"].(string)
 
-	updateData := map[string]interface{}{
+	updateData := map[string]any{
 		// Set the entity ID here
 		"id":       entityID,
 		"name":     "updatedentityname",
@@ -418,7 +418,7 @@ func TestIdentityStore_BatchDelete(t *testing.T) {
 
 	ids := make([]string, 10000)
 	for i := range 10000 {
-		entityData := map[string]interface{}{
+		entityData := map[string]any{
 			"name": fmt.Sprintf("entity-%d", i),
 		}
 
@@ -439,7 +439,7 @@ func TestIdentityStore_BatchDelete(t *testing.T) {
 	deleteReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "entity/batch-delete",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"entity_ids": ids,
 		},
 	}
@@ -759,7 +759,7 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
-	registerData := map[string]interface{}{
+	registerData := map[string]any{
 		"name":     "testentityname",
 		"metadata": []string{"someusefulkey=someusefulvalue"},
 		"policies": []string{"testpolicy1", "testpolicy1", "testpolicy2", "testpolicy2"},
@@ -802,7 +802,7 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 		t.Fatal("bad: entity response")
 	}
 
-	updateData := map[string]interface{}{
+	updateData := map[string]any{
 		"name":     "updatedentityname",
 		"metadata": []string{"updatedkey=updatedvalue"},
 		"policies": []string{"updatedpolicy1", "updatedpolicy2"},
@@ -833,7 +833,7 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 	// For HCSEC-2025-13 / CVE-2025-5999, validate that we cannot set root
 	// policies with other casing.
 	for _, name := range []string{"rooT", "Root", "rOoT", "root", "root ", " root"} {
-		updateReq.Data = map[string]interface{}{
+		updateReq.Data = map[string]any{
 			"policies": []string{name},
 		}
 		resp, err = is.HandleRequest(ctx, updateReq)
@@ -882,23 +882,23 @@ func TestIdentityStore_MergeEntitiesByID_UnsafeShared(t *testing.T) {
 func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *ident.IdentityStore, approleAccessor string, upAccessor string) {
 	var err error
 	var resp *logical.Response
-	registerData := map[string]interface{}{
+	registerData := map[string]any{
 		"name":     "testentityname2",
 		"metadata": []string{"someusefulkey=someusefulvalue"},
 	}
 
-	registerData2 := map[string]interface{}{
+	registerData2 := map[string]any{
 		"name":     "testentityname",
 		"metadata": []string{"someusefulkey=someusefulvalue"},
 	}
 
-	aliasRegisterData1 := map[string]interface{}{
+	aliasRegisterData1 := map[string]any{
 		"name":           "testaliasname1",
 		"mount_accessor": approleAccessor,
 		"metadata":       []string{"organization=hashicorp", "team=vault"},
 	}
 
-	aliasRegisterData2 := map[string]interface{}{
+	aliasRegisterData2 := map[string]any{
 		"name":           "testaliasname2",
 		"mount_accessor": upAccessor,
 		"metadata":       []string{"organization=hashicorp", "team=vault"},
@@ -947,7 +947,7 @@ func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *i
 	entity1GroupReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "group",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"member_entity_ids": entityID1,
 		},
 	}
@@ -990,7 +990,7 @@ func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *i
 	entity2GroupReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "group",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"member_entity_ids": entityID2,
 		},
 	}
@@ -1000,7 +1000,7 @@ func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *i
 	}
 	entity2GroupID := resp.Data["id"].(string)
 
-	mergeData := map[string]interface{}{
+	mergeData := map[string]any{
 		"to_entity_id":    entityID1,
 		"from_entity_ids": []string{entityID2},
 	}
@@ -1033,14 +1033,14 @@ func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *i
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
-	entity1Aliases := resp.Data["aliases"].([]interface{})
+	entity1Aliases := resp.Data["aliases"].([]any)
 	if len(entity1Aliases) != 2 {
 		t.Fatalf("bad: number of aliases in entity; expected: 2, actual: %d", len(entity1Aliases))
 	}
 
 	approleAliases := 0
 	for _, aliasRaw := range entity1Aliases {
-		alias := aliasRaw.(map[string]interface{})
+		alias := aliasRaw.(map[string]any)
 		aliasLookedUp, err := is.MemDBAliasByID(ctx, alias["id"].(string), false, false)
 		if err != nil {
 			t.Fatal(err)
@@ -1091,7 +1091,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 	registerReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "entity",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":     "testentityname2",
 			"metadata": []string{"someusefulkey=someusefulvalue"},
 			"policies": []string{"testPolicy1", "testPolicy1", "testPolicy2"},
@@ -1112,7 +1112,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 	}
 
 	// Register another entity
-	registerReq.Data = map[string]interface{}{
+	registerReq.Data = map[string]any{
 		"name":     "testentityname",
 		"metadata": []string{"someusefulkey=someusefulvalue"},
 	}
@@ -1126,7 +1126,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 	aliasReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "alias",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":           "testaliasname1",
 			"mount_accessor": approleAccessor,
 			"metadata":       []string{"organization=hashicorp", "team=vault"},
@@ -1155,7 +1155,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 	mergeReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "entity/merge",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"to_entity_id":    entityID1,
 			"from_entity_ids": []string{entityID2, entityID2},
 		},
@@ -1208,7 +1208,7 @@ func TestIdentityStore_EntityUpdateRefusesRoot(t *testing.T) {
 	resp, err := i.HandleRequest(namespace.RootContext(t.Context()), &logical.Request{
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":     "testentity",
 			"policies": "testing",
 		},
@@ -1230,7 +1230,7 @@ func TestIdentityStore_EntityUpdateRefusesRoot(t *testing.T) {
 	resp, err = i.HandleRequest(namespace.RootContext(t.Context()), &logical.Request{
 		Path:      "entity/name/testentity",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": "default,root",
 		},
 	})

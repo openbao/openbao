@@ -34,24 +34,24 @@ type SharedConfig struct {
 
 	// mlock is no longer used by OpenBao, but this is kept as a config option for
 	// compatibility's sake and to give a warning for those expecting it.
-	DisableMlockRaw interface{} `hcl:"disable_mlock"`
+	DisableMlockRaw any `hcl:"disable_mlock"`
 
 	Telemetry *Telemetry `hcl:"-"`
 
 	DefaultMaxRequestDuration    time.Duration `hcl:"-"`
-	DefaultMaxRequestDurationRaw interface{}   `hcl:"default_max_request_duration"`
+	DefaultMaxRequestDurationRaw any           `hcl:"default_max_request_duration"`
 
 	// LogFormat specifies the log format. Valid values are "standard" and
 	// "json". The values are case-insenstive. If no log format is specified,
 	// then standard format will be used.
-	LogFile              string      `hcl:"log_file"`
-	LogFormat            string      `hcl:"log_format"`
-	LogLevel             string      `hcl:"log_level"`
-	LogRotateBytes       int         `hcl:"log_rotate_bytes"`
-	LogRotateBytesRaw    interface{} `hcl:"log_rotate_bytes"`
-	LogRotateDuration    string      `hcl:"log_rotate_duration"`
-	LogRotateMaxFiles    int         `hcl:"log_rotate_max_files"`
-	LogRotateMaxFilesRaw interface{} `hcl:"log_rotate_max_files"`
+	LogFile              string `hcl:"log_file"`
+	LogFormat            string `hcl:"log_format"`
+	LogLevel             string `hcl:"log_level"`
+	LogRotateBytes       int    `hcl:"log_rotate_bytes"`
+	LogRotateBytesRaw    any    `hcl:"log_rotate_bytes"`
+	LogRotateDuration    string `hcl:"log_rotate_duration"`
+	LogRotateMaxFiles    int    `hcl:"log_rotate_max_files"`
+	LogRotateMaxFilesRaw any    `hcl:"log_rotate_max_files"`
 
 	PidFile string `hcl:"pid_file"`
 
@@ -147,12 +147,12 @@ func ParseConfig(d string) (*SharedConfig, error) {
 // Specifically, the fields that this method strips are:
 // - KMS.Config
 // - Telemetry.CirconusAPIToken
-func (c *SharedConfig) Sanitized() map[string]interface{} {
+func (c *SharedConfig) Sanitized() map[string]any {
 	if c == nil {
 		return nil
 	}
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"default_max_request_duration": c.DefaultMaxRequestDuration,
 		"log_level":                    c.LogLevel,
 		"log_format":                   c.LogFormat,
@@ -176,9 +176,9 @@ func (c *SharedConfig) Sanitized() map[string]interface{} {
 
 	// Sanitize listeners
 	if len(c.Listeners) != 0 {
-		var sanitizedListeners []interface{}
+		var sanitizedListeners []any
 		for _, ln := range c.Listeners {
-			cleanLn := map[string]interface{}{
+			cleanLn := map[string]any{
 				"type":   ln.Type,
 				"config": ln.RawConfig,
 			}
@@ -189,9 +189,9 @@ func (c *SharedConfig) Sanitized() map[string]interface{} {
 
 	// Sanitize user lockout stanza
 	if len(c.UserLockouts) != 0 {
-		var sanitizedUserLockouts []interface{}
+		var sanitizedUserLockouts []any
 		for _, userlockout := range c.UserLockouts {
-			cleanUserLockout := map[string]interface{}{
+			cleanUserLockout := map[string]any{
 				"type":                  userlockout.Type,
 				"lockout_threshold":     userlockout.LockoutThreshold,
 				"lockout_duration":      userlockout.LockoutDuration,
@@ -205,9 +205,9 @@ func (c *SharedConfig) Sanitized() map[string]interface{} {
 
 	// Sanitize seals stanza
 	if len(c.Seals) != 0 {
-		var sanitizedSeals []interface{}
+		var sanitizedSeals []any
 		for _, s := range c.Seals {
-			cleanSeal := map[string]interface{}{
+			cleanSeal := map[string]any{
 				"type":     s.Type,
 				"disabled": s.Disabled,
 			}
@@ -218,7 +218,7 @@ func (c *SharedConfig) Sanitized() map[string]interface{} {
 
 	// Sanitize telemetry stanza
 	if c.Telemetry != nil {
-		sanitizedTelemetry := map[string]interface{}{
+		sanitizedTelemetry := map[string]any{
 			"statsite_address":                       c.Telemetry.StatsiteAddr,
 			"statsd_address":                         c.Telemetry.StatsdAddr,
 			"disable_hostname":                       c.Telemetry.DisableHostname,

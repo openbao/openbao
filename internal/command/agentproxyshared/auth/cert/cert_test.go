@@ -18,7 +18,7 @@ func TestCertAuthMethod_Authenticate(t *testing.T) {
 	config := &auth.AuthConfig{
 		Logger:    hclog.NewNullLogger(),
 		MountPath: "cert-test",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"name": "foo",
 		},
 	}
@@ -43,7 +43,7 @@ func TestCertAuthMethod_Authenticate(t *testing.T) {
 		t.Fatalf("mismatch on login path: got: %s, expected: %s", loginPath, expectedLoginPath)
 	}
 
-	expectedAuthMap := map[string]interface{}{
+	expectedAuthMap := map[string]any{
 		"name": config.Config["name"],
 	}
 	if !reflect.DeepEqual(authMap, expectedAuthMap) {
@@ -55,7 +55,7 @@ func TestCertAuthMethod_AuthClient_withoutCerts(t *testing.T) {
 	config := &auth.AuthConfig{
 		Logger:    hclog.NewNullLogger(),
 		MountPath: "cert-test",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"name": "without-certs",
 		},
 	}
@@ -96,7 +96,7 @@ func TestCertAuthMethod_AuthClient_withCerts(t *testing.T) {
 	config := &auth.AuthConfig{
 		Logger:    hclog.NewNullLogger(),
 		MountPath: "cert-test",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"name":        "with-certs",
 			"client_cert": clientCert.Name(),
 			"client_key":  clientKey.Name(),
@@ -151,7 +151,7 @@ func TestCertAuthMethod_AuthClient_withCertsReload(t *testing.T) {
 	config := &auth.AuthConfig{
 		Logger:    hclog.NewNullLogger(),
 		MountPath: "cert-test",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"name":        "with-certs-reloaded",
 			"client_cert": clientCert.Name(),
 			"client_key":  clientKey.Name(),

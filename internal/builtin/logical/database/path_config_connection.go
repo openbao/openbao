@@ -35,8 +35,8 @@ type DatabaseConfig struct {
 	PluginVersion string `json:"plugin_version" mapstructure:"plugin_version"`
 	// ConnectionDetails stores the database specific connection settings needed
 	// by each database type.
-	ConnectionDetails map[string]interface{} `json:"connection_details" mapstructure:"connection_details"`
-	AllowedRoles      []string               `json:"allowed_roles" mapstructure:"allowed_roles"`
+	ConnectionDetails map[string]any `json:"connection_details" mapstructure:"connection_details"`
+	AllowedRoles      []string       `json:"allowed_roles" mapstructure:"allowed_roles"`
 
 	RootCredentialsRotateStatements []string `json:"root_credentials_rotate_statements" mapstructure:"root_credentials_rotate_statements"`
 
@@ -44,7 +44,7 @@ type DatabaseConfig struct {
 }
 
 func (c *DatabaseConfig) SupportsCredentialType(credentialType v5.CredentialType) bool {
-	credTypes, ok := c.ConnectionDetails[v5.SupportedCredentialTypesKey].([]interface{})
+	credTypes, ok := c.ConnectionDetails[v5.SupportedCredentialTypesKey].([]any)
 	if !ok {
 		// Default to supporting CredentialTypePassword for database plugins that
 		// don't specify supported credential types in the initialization response
@@ -446,7 +446,7 @@ func (b *databaseBackend) connectionWriteHandler() framework.OperationFunc {
 			config.ConnectionDetails = data.Raw
 		} else {
 			if config.ConnectionDetails == nil {
-				config.ConnectionDetails = make(map[string]interface{})
+				config.ConnectionDetails = make(map[string]any)
 			}
 			maps.Copy(config.ConnectionDetails, data.Raw)
 		}

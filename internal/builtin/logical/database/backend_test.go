@@ -95,7 +95,7 @@ func TestBackend_config_connection(t *testing.T) {
 
 	// Test creation
 	{
-		configData := map[string]interface{}{
+		configData := map[string]any{
 			"connection_url":    "sample_connection_url",
 			"someotherdata":     "testing",
 			"plugin_name":       "postgresql-database-plugin",
@@ -122,9 +122,9 @@ func TestBackend_config_connection(t *testing.T) {
 		require.NoErrorf(t, err, "err:%v resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
-		expected := map[string]interface{}{
+		expected := map[string]any{
 			"plugin_name": "postgresql-database-plugin",
-			"connection_details": map[string]interface{}{
+			"connection_details": map[string]any{
 				"connection_url": "sample_connection_url",
 				"someotherdata":  "testing",
 			},
@@ -138,13 +138,13 @@ func TestBackend_config_connection(t *testing.T) {
 		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
-		delete(resp.Data["connection_details"].(map[string]interface{}), "name")
+		delete(resp.Data["connection_details"].(map[string]any), "name")
 		require.Equalf(t, expected, resp.Data, "bad: expected:%#v\nactual:%#v\n", expected, resp.Data)
 	}
 
 	// Test existence check and an update to a single connection detail parameter
 	{
-		configData := map[string]interface{}{
+		configData := map[string]any{
 			"connection_url":    "sample_convection_url",
 			"verify_connection": false,
 			"name":              "plugin-test",
@@ -168,9 +168,9 @@ func TestBackend_config_connection(t *testing.T) {
 		require.NoErrorf(t, err, "err:%v resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
-		expected := map[string]interface{}{
+		expected := map[string]any{
 			"plugin_name": "postgresql-database-plugin",
-			"connection_details": map[string]interface{}{
+			"connection_details": map[string]any{
 				"connection_url": "sample_convection_url",
 				"someotherdata":  "testing",
 			},
@@ -184,13 +184,13 @@ func TestBackend_config_connection(t *testing.T) {
 		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
-		delete(resp.Data["connection_details"].(map[string]interface{}), "name")
+		delete(resp.Data["connection_details"].(map[string]any), "name")
 		require.Equalf(t, expected, resp.Data, "bad: expected:%#v\nactual:%#v\n", expected, resp.Data)
 	}
 
 	// Test an update to a non-details value
 	{
-		configData := map[string]interface{}{
+		configData := map[string]any{
 			"verify_connection": false,
 			"allowed_roles":     []string{"flu", "barre"},
 			"name":              "plugin-test",
@@ -207,9 +207,9 @@ func TestBackend_config_connection(t *testing.T) {
 		require.NoErrorf(t, err, "err:%v resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
-		expected := map[string]interface{}{
+		expected := map[string]any{
 			"plugin_name": "postgresql-database-plugin",
-			"connection_details": map[string]interface{}{
+			"connection_details": map[string]any{
 				"connection_url": "sample_convection_url",
 				"someotherdata":  "testing",
 			},
@@ -223,7 +223,7 @@ func TestBackend_config_connection(t *testing.T) {
 		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
-		delete(resp.Data["connection_details"].(map[string]interface{}), "name")
+		delete(resp.Data["connection_details"].(map[string]any), "name")
 		require.Equal(t, expected, resp.Data, "bad: expected:%#v\nactual:%#v\n", expected, resp.Data)
 	}
 
@@ -265,7 +265,7 @@ func TestBackend_BadConnectionString(t *testing.T) {
 	}
 
 	// Configure a connection
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url": "postgresql://:pw@[localhost",
 		"plugin_name":    "postgresql-database-plugin",
 		"allowed_roles":  []string{"plugin-role-test"},
@@ -297,7 +297,7 @@ func TestBackend_basic(t *testing.T) {
 	defer cleanup()
 
 	// Configure a connection
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url": connURL,
 		"plugin_name":    "postgresql-database-plugin",
 		"allowed_roles":  []string{"plugin-role-test"},
@@ -313,7 +313,7 @@ func TestBackend_basic(t *testing.T) {
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Create a role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"db_name":             "plugin-test",
 		"creation_statements": testRole,
 		"max_ttl":             "10m",
@@ -328,7 +328,7 @@ func TestBackend_basic(t *testing.T) {
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 	// Get creds
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "creds/plugin-role-test",
@@ -339,7 +339,7 @@ func TestBackend_basic(t *testing.T) {
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
 	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 	// Update the role with no max ttl
-	data = map[string]interface{}{
+	data = map[string]any{
 		"db_name":             "plugin-test",
 		"creation_statements": testRole,
 		"default_ttl":         "5m",
@@ -355,7 +355,7 @@ func TestBackend_basic(t *testing.T) {
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 	// Get creds
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "creds/plugin-role-test",
@@ -368,7 +368,7 @@ func TestBackend_basic(t *testing.T) {
 	// Test for #3812
 	require.Equalf(t, credsResp.Secret.TTL, 5*time.Minute, "unexpected TTL of %d", credsResp.Secret.TTL)
 	// Update the role with a max ttl
-	data = map[string]interface{}{
+	data = map[string]any{
 		"db_name":             "plugin-test",
 		"creation_statements": testRole,
 		"default_ttl":         "5m",
@@ -386,7 +386,7 @@ func TestBackend_basic(t *testing.T) {
 
 	// Get creds and revoke when the role stays in existence
 	{
-		data = map[string]interface{}{}
+		data = map[string]any{}
 		req = &logical.Request{
 			Operation: logical.ReadOperation,
 			Path:      "creds/plugin-role-test",
@@ -405,7 +405,7 @@ func TestBackend_basic(t *testing.T) {
 			Operation: logical.RevokeOperation,
 			Storage:   config.StorageView,
 			Secret: &logical.Secret{
-				InternalData: map[string]interface{}{
+				InternalData: map[string]any{
 					"secret_type": "creds",
 					"username":    credsResp.Data["username"],
 					"role":        "plugin-role-test",
@@ -420,7 +420,7 @@ func TestBackend_basic(t *testing.T) {
 
 	// Get creds and revoke using embedded revocation data
 	{
-		data = map[string]interface{}{}
+		data = map[string]any{}
 		req = &logical.Request{
 			Operation: logical.ReadOperation,
 			Path:      "creds/plugin-role-test",
@@ -447,7 +447,7 @@ func TestBackend_basic(t *testing.T) {
 			Operation: logical.RevokeOperation,
 			Storage:   config.StorageView,
 			Secret: &logical.Secret{
-				InternalData: map[string]interface{}{
+				InternalData: map[string]any{
 					"secret_type":           "creds",
 					"username":              credsResp.Data["username"],
 					"role":                  "plugin-role-test",
@@ -479,7 +479,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 	defer cleanup()
 
 	// Configure a connection
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url":    "test",
 		"plugin_name":       "postgresql-database-plugin",
 		"verify_connection": false,
@@ -495,7 +495,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Create a role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"db_name":               "plugin-test",
 		"creation_statements":   testRole,
 		"revocation_statements": defaultRevocationSQL,
@@ -513,7 +513,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Update the connection
-	data = map[string]interface{}{
+	data = map[string]any{
 		"connection_url": connURL,
 		"plugin_name":    "postgresql-database-plugin",
 		"allowed_roles":  []string{"plugin-role-test"},
@@ -536,7 +536,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
-	returnedConnectionDetails := resp.Data["connection_details"].(map[string]interface{})
+	returnedConnectionDetails := resp.Data["connection_details"].(map[string]any)
 	require.NotContainsf(t, returnedConnectionDetails["connection_url"].(string), "secret", "password should not be found in the connection url")
 	// Covered by the filled out `expected` value below, but be explicit about this requirement.
 	require.NotContainsf(t, returnedConnectionDetails, "password", "password should NOT be found in the returned config")
@@ -551,9 +551,9 @@ func TestBackend_connectionCrud(t *testing.T) {
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Read connection
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"plugin_name": "postgresql-database-plugin",
-		"connection_details": map[string]interface{}{
+		"connection_details": map[string]any{
 			"username":       "postgres",
 			"connection_url": connURL,
 		},
@@ -567,11 +567,11 @@ func TestBackend_connectionCrud(t *testing.T) {
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
-	delete(resp.Data["connection_details"].(map[string]interface{}), "name")
+	delete(resp.Data["connection_details"].(map[string]any), "name")
 	require.Equal(t, resp.Data, expected)
 
 	// Reset Connection
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "reset/plugin-test",
@@ -583,7 +583,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Get creds
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "creds/plugin-role-test",
@@ -601,7 +601,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 	require.Truef(t, testCredsExist(t, credsResp, credCheckURL), "Creds should exist")
 
 	// Delete Connection
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.DeleteOperation,
 		Path:      "config/plugin-test",
@@ -640,7 +640,7 @@ func TestBackend_roleCrud(t *testing.T) {
 	defer cleanup()
 
 	// Configure a connection
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url": connURL,
 		"plugin_name":    "postgresql-database-plugin",
 	}
@@ -656,7 +656,7 @@ func TestBackend_roleCrud(t *testing.T) {
 
 	// Test role creation
 	{
-		data = map[string]interface{}{
+		data = map[string]any{
 			"db_name":               "plugin-test",
 			"creation_statements":   testRole,
 			"revocation_statements": defaultRevocationSQL,
@@ -674,7 +674,7 @@ func TestBackend_roleCrud(t *testing.T) {
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 		// Read the role
-		data = map[string]interface{}{}
+		data = map[string]any{}
 		req = &logical.Request{
 			Operation: logical.ReadOperation,
 			Path:      "roles/plugin-role-test",
@@ -707,7 +707,7 @@ func TestBackend_roleCrud(t *testing.T) {
 
 	// Test role modification of TTL
 	{
-		data = map[string]interface{}{
+		data = map[string]any{
 			"name":    "plugin-role-test",
 			"max_ttl": "7m",
 		}
@@ -722,7 +722,7 @@ func TestBackend_roleCrud(t *testing.T) {
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
 		// Read the role
-		data = map[string]interface{}{}
+		data = map[string]any{}
 		req = &logical.Request{
 			Operation: logical.ReadOperation,
 			Path:      "roles/plugin-role-test",
@@ -755,7 +755,7 @@ func TestBackend_roleCrud(t *testing.T) {
 
 	// Test role modification of statements
 	{
-		data = map[string]interface{}{
+		data = map[string]any{
 			"name":                  "plugin-role-test",
 			"creation_statements":   []string{testRole, testRole},
 			"revocation_statements": []string{defaultRevocationSQL, defaultRevocationSQL},
@@ -773,7 +773,7 @@ func TestBackend_roleCrud(t *testing.T) {
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
 		// Read the role
-		data = map[string]interface{}{}
+		data = map[string]any{}
 		req = &logical.Request{
 			Operation: logical.ReadOperation,
 			Path:      "roles/plugin-role-test",
@@ -804,7 +804,7 @@ func TestBackend_roleCrud(t *testing.T) {
 	}
 
 	// Delete the role
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.DeleteOperation,
 		Path:      "roles/plugin-role-test",
@@ -816,7 +816,7 @@ func TestBackend_roleCrud(t *testing.T) {
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Read the role
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "roles/plugin-role-test",
@@ -847,7 +847,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	defer cleanup()
 
 	// Configure a connection
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url": connURL,
 		"plugin_name":    "postgresql-database-plugin",
 	}
@@ -862,7 +862,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Create a denied and an allowed role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"db_name":             "plugin-test",
 		"creation_statements": testRole,
 		"default_ttl":         "5m",
@@ -878,7 +878,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"db_name":             "plugin-test",
 		"creation_statements": testRole,
 		"default_ttl":         "5m",
@@ -895,7 +895,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Get creds from denied role, should fail
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "creds/denied",
@@ -906,7 +906,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	require.Errorf(t, err, "expected error because role is denied")
 
 	// update connection with glob allowed roles connection
-	data = map[string]interface{}{
+	data = map[string]any{
 		"connection_url": connURL,
 		"plugin_name":    "postgresql-database-plugin",
 		"allowed_roles":  "allow*",
@@ -922,7 +922,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Get creds, should work.
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "creds/allowed",
@@ -936,7 +936,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	require.Truef(t, testCredsExist(t, credsResp, connURL), "Creds should exist")
 
 	// update connection with * allowed roles connection
-	data = map[string]interface{}{
+	data = map[string]any{
 		"connection_url": connURL,
 		"plugin_name":    "postgresql-database-plugin",
 		"allowed_roles":  "*",
@@ -952,7 +952,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Get creds, should work.
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "creds/allowed",
@@ -966,7 +966,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	require.Truef(t, testCredsExist(t, credsResp, connURL), "Creds should exist")
 
 	// update connection with allowed roles
-	data = map[string]interface{}{
+	data = map[string]any{
 		"connection_url": connURL,
 		"plugin_name":    "postgresql-database-plugin",
 		"allowed_roles":  "allow, allowed",
@@ -982,7 +982,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Get creds from denied role, should fail
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "creds/denied",
@@ -993,7 +993,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	require.Errorf(t, err, "expected error because role is denied")
 
 	// Get creds from allowed role, should work.
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "creds/allowed",
@@ -1025,7 +1025,7 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 	connURL = strings.ReplaceAll(connURL, "postgres:secret", "{{username}}:{{password}}")
 
 	// Configure a connection
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url": connURL,
 		"plugin_name":    "postgresql-database-plugin",
 		"allowed_roles":  []string{"plugin-role-test"},
@@ -1043,7 +1043,7 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Create a role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"db_name":             "plugin-test",
 		"creation_statements": testRole,
 		"max_ttl":             "10m",
@@ -1058,7 +1058,7 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 	// Get creds
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "creds/plugin-role-test",
@@ -1069,7 +1069,7 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
 	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "rotate-root/plugin-test",
@@ -1085,7 +1085,7 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 	require.NotEqualf(t, dbConfig.ConnectionDetails["password"].(string), "secret", "root credentials not rotated")
 
 	// Get creds to make sure it still works
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "creds/plugin-role-test",
@@ -1144,7 +1144,7 @@ func TestBackend_ConnectionURL_redacted(t *testing.T) {
 			require.Equalf(t, tt.password, actualPassword, "expected computed URL password %#v, actual %#v", tt.password, actualPassword)
 
 			// Configure a connection
-			data := map[string]interface{}{
+			data := map[string]any{
 				"connection_url": u,
 				"plugin_name":    "postgresql-database-plugin",
 				"allowed_roles":  []string{"plugin-role-test"},
@@ -1165,9 +1165,9 @@ func TestBackend_ConnectionURL_redacted(t *testing.T) {
 			}
 			resp := respCheck(readReq)
 
-			var connDetails map[string]interface{}
+			var connDetails map[string]any
 			if v, ok := resp.Data["connection_details"]; ok {
-				connDetails = v.(map[string]interface{})
+				connDetails = v.(map[string]any)
 			}
 
 			require.NotNilf(t, connDetails, "response data missing connection_details, resp: %#v", resp)
@@ -1240,7 +1240,7 @@ func TestBackend_AsyncClose(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure a connection
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url": "doesn't matter",
 		"plugin_name":    "hanging-plugin",
 		"allowed_roles":  []string{"plugin-role-test"},

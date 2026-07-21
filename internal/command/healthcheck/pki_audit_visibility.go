@@ -61,7 +61,7 @@ type AuditVisibility struct {
 	UnsupportedVersion bool
 
 	IgnoredParameters map[string]bool
-	TuneData          map[string]interface{}
+	TuneData          map[string]any
 	Fetcher           *PathFetch
 }
 
@@ -79,13 +79,13 @@ func (h *AuditVisibility) IsEnabled() bool {
 	return h.Enabled
 }
 
-func (h *AuditVisibility) DefaultConfig() map[string]interface{} {
-	return map[string]interface{}{
+func (h *AuditVisibility) DefaultConfig() map[string]any {
+	return map[string]any{
 		"ignored_parameters": []string{},
 	}
 }
 
-func (h *AuditVisibility) LoadConfig(config map[string]interface{}) error {
+func (h *AuditVisibility) LoadConfig(config map[string]any) error {
 	var err error
 
 	coerced, err := StringList(config["ignored_parameters"])

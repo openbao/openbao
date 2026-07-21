@@ -289,7 +289,7 @@ func (i *IdentityStore) pathEntityMergeID() framework.OperationFunc {
 			}
 			// Alias clash error, so include additional details
 			resp := &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"error": err.Error(),
 					"data":  aliases,
 				},
@@ -397,7 +397,7 @@ func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 		}
 
 		// Prepare the response
-		respData := map[string]interface{}{
+		respData := map[string]any{
 			"id":   entity.ID,
 			"name": entity.Name,
 		}
@@ -466,7 +466,7 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 		return nil, nil
 	}
 
-	respData := map[string]interface{}{}
+	respData := map[string]any{}
 	respData["id"] = entity.ID
 	respData["name"] = entity.Name
 	respData["metadata"] = entity.Metadata
@@ -480,9 +480,9 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 	respData["last_update_time"] = entity.LastUpdateTime.AsTime().Format(time.RFC3339Nano)
 
 	// Convert each alias into a map and replace the time format in each
-	aliasesToReturn := make([]interface{}, len(entity.Aliases))
+	aliasesToReturn := make([]any, len(entity.Aliases))
 	for aliasIdx, alias := range entity.Aliases {
-		aliasMap := map[string]interface{}{}
+		aliasMap := map[string]any{}
 		aliasMap["id"] = alias.ID
 		aliasMap["canonical_id"] = alias.CanonicalID
 		aliasMap["mount_accessor"] = alias.MountAccessor
@@ -767,7 +767,7 @@ func (i *IdentityStore) handlePathEntityListCommon(ctx context.Context, req *log
 	ws.Add(iter.WatchCh())
 
 	var keys []string
-	entityInfo := map[string]interface{}{}
+	entityInfo := map[string]any{}
 
 	type mountInfo struct {
 		MountType string
@@ -795,13 +795,13 @@ func (i *IdentityStore) handlePathEntityListCommon(ctx context.Context, req *log
 		} else {
 			keys = append(keys, entity.Name)
 		}
-		entityInfoEntry := map[string]interface{}{
+		entityInfoEntry := map[string]any{
 			"name": entity.Name,
 		}
 		if len(entity.Aliases) > 0 {
-			aliasList := make([]interface{}, 0, len(entity.Aliases))
+			aliasList := make([]any, 0, len(entity.Aliases))
 			for _, alias := range entity.Aliases {
-				entry := map[string]interface{}{
+				entry := map[string]any{
 					"id":             alias.ID,
 					"name":           alias.Name,
 					"mount_accessor": alias.MountAccessor,

@@ -76,7 +76,7 @@ func (a *KubernetesAuth) Login(ctx context.Context, client *api.Client) (*api.Se
 		ctx = context.Background()
 	}
 
-	loginData := map[string]interface{}{
+	loginData := map[string]any{
 		"jwt":  a.serviceAccountToken,
 		"role": a.roleName,
 	}

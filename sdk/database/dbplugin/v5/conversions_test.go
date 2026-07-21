@@ -20,8 +20,8 @@ import (
 func TestConversionsHaveAllFields(t *testing.T) {
 	t.Run("initReqToProto", func(t *testing.T) {
 		req := InitializeRequest{
-			Config: map[string]interface{}{
-				"foo": map[string]interface{}{
+			Config: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 				},
 			},
@@ -211,10 +211,10 @@ func TestConversionsHaveAllFields(t *testing.T) {
 
 type getter struct {
 	name  string
-	value interface{}
+	value any
 }
 
-func getAllGetterValues(value interface{}) (values []getter) {
+func getAllGetterValues(value any) (values []getter) {
 	typ := reflect.TypeOf(value)
 	val := reflect.ValueOf(value)
 	for i := 0; i < typ.NumMethod(); i++ {
@@ -237,7 +237,7 @@ func getAllGetterValues(value interface{}) (values []getter) {
 // Ensures the assertion works properly
 func TestAssertAllFieldsSet(t *testing.T) {
 	type testCase struct {
-		value     interface{}
+		value     any
 		expectErr bool
 	}
 
@@ -346,9 +346,9 @@ func TestAssertAllFieldsSet(t *testing.T) {
 			expectErr: true,
 		},
 		"nested map with empty string value": {
-			value: map[string]interface{}{
+			value: map[string]any{
 				"bar": "baz",
-				"foo": map[string]interface{}{
+				"foo": map[string]any{
 					"subfoo": "",
 				},
 			},
@@ -375,11 +375,11 @@ func TestAssertAllFieldsSet(t *testing.T) {
 			expectErr: true,
 		},
 		"empty structpb": {
-			value:     newStructPb(t, map[string]interface{}{}),
+			value:     newStructPb(t, map[string]any{}),
 			expectErr: true,
 		},
 		"filled structpb": {
-			value: newStructPb(t, map[string]interface{}{
+			value: newStructPb(t, map[string]any{
 				"foo": "bar",
 				"int": 42,
 			}),
@@ -425,7 +425,7 @@ func TestAssertAllFieldsSet(t *testing.T) {
 	}
 }
 
-func assertAllFieldsSet(name string, val interface{}) error {
+func assertAllFieldsSet(name string, val any) error {
 	if val == nil {
 		return errors.New("value is nil")
 	}
@@ -520,7 +520,7 @@ func strPtr(str string) *string {
 	return &str
 }
 
-func newStructPb(t *testing.T, m map[string]interface{}) *structpb.Struct {
+func newStructPb(t *testing.T, m map[string]any) *structpb.Struct {
 	t.Helper()
 
 	s, err := structpb.NewStruct(m)

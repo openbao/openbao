@@ -91,7 +91,7 @@ func SysPprof_Test(t *testing.T, cluster testcluster.VaultCluster) {
 			t.Fatal(err)
 		}
 
-		httpResp := make(map[string]interface{})
+		httpResp := make(map[string]any)
 
 		// Skip this error check since some endpoints return binary blobs, we
 		// only care about the ok check right after as an existence check.

@@ -74,7 +74,7 @@ func testWorkflowAcceptance(t *testing.T, client *api.Client) {
 	require.Nil(t, resp)
 
 	// Create a workflow.
-	_, err = client.Logical().Write("sys/workflows/manage/create-namespace", map[string]interface{}{
+	_, err = client.Logical().Write("sys/workflows/manage/create-namespace", map[string]any{
 		"workflow": createNamespaceWorkflow,
 	})
 	require.NoError(t, err)
@@ -86,7 +86,7 @@ func testWorkflowAcceptance(t *testing.T, client *api.Client) {
 	require.Contains(t, resp.Data["keys"], "create-namespace")
 
 	// Should be able to execute it.
-	workflowResp, err := client.Logical().Write("sys/workflows/execute/create-namespace", map[string]interface{}{
+	workflowResp, err := client.Logical().Write("sys/workflows/execute/create-namespace", map[string]any{
 		"namespace": "test",
 		"username":  "admin",
 		"password":  "Secret123",
@@ -104,8 +104,8 @@ func testWorkflowAcceptance(t *testing.T, client *api.Client) {
 	// The token should work.
 	testClient := client.WithNamespace("acceptance/test/")
 	testClient.SetToken(workflowResp.Data["token"].(string))
-	resp, err = testClient.Logical().Write("secret/data/test", map[string]interface{}{
-		"data": map[string]interface{}{
+	resp, err = testClient.Logical().Write("secret/data/test", map[string]any{
+		"data": map[string]any{
 			"a": "b",
 		},
 	})
@@ -139,7 +139,7 @@ func testWorkflowRecursion(t *testing.T, client *api.Client) {
 
 func testWorkflowLoginMFA(t *testing.T, client *api.Client) {
 	// Create workflow.
-	_, err := client.Logical().Write("sys/workflows/manage/setup-admin", map[string]interface{}{
+	_, err := client.Logical().Write("sys/workflows/manage/setup-admin", map[string]any{
 		"workflow": loginMFAWorkflow,
 	})
 	require.NoError(t, err)
@@ -151,7 +151,7 @@ func testWorkflowLoginMFA(t *testing.T, client *api.Client) {
 	require.Contains(t, resp.Data["keys"], "setup-admin")
 
 	// Should be able to execute it.
-	workflowResp, err := client.Logical().Write("sys/workflows/execute/setup-admin", map[string]interface{}{
+	workflowResp, err := client.Logical().Write("sys/workflows/execute/setup-admin", map[string]any{
 		"username": "admin",
 		"password": "Secret123",
 	})

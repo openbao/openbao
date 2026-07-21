@@ -9,7 +9,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-func StringList(source interface{}) ([]string, error) {
+func StringList(source any) ([]string, error) {
 	if source == nil {
 		return nil, nil
 	}
@@ -18,7 +18,7 @@ func StringList(source interface{}) ([]string, error) {
 		return value, nil
 	}
 
-	if rValues, ok := source.([]interface{}); ok {
+	if rValues, ok := source.([]any); ok {
 		var result []string
 		for index, rValue := range rValues {
 			value, ok := rValue.(string)
@@ -35,7 +35,7 @@ func StringList(source interface{}) ([]string, error) {
 	return nil, fmt.Errorf("unknown source type for []string coercion: %T", source)
 }
 
-func fetchMountTune(e *Executor, versionError func()) (bool, *PathFetch, map[string]interface{}, error) {
+func fetchMountTune(e *Executor, versionError func()) (bool, *PathFetch, map[string]any, error) {
 	tuneRet, err := e.FetchIfNotFetched(logical.ReadOperation, "/sys/mounts/{{mount}}/tune")
 	if err != nil {
 		return true, nil, nil, fmt.Errorf("failed to fetch mount tune information: %w", err)
@@ -49,7 +49,7 @@ func fetchMountTune(e *Executor, versionError func()) (bool, *PathFetch, map[str
 		return true, tuneRet, nil, nil
 	}
 
-	var data map[string]interface{} = nil
+	var data map[string]any = nil
 	if len(tuneRet.Secret.Data) > 0 {
 		data = tuneRet.Secret.Data
 	}

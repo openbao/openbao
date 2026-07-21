@@ -147,7 +147,7 @@ func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Req
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": srcP.Name,
 			"type": srcP.Type.String(),
 			"keys": retKeys,
@@ -166,7 +166,7 @@ func getBYOKExportKey(dstP *keysutil.Policy, srcP *keysutil.Policy, key *keysuti
 		return "", errors.New("nil policy provided")
 	}
 
-	var targetKey interface{}
+	var targetKey any
 	switch srcP.Type {
 	case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305, keysutil.KeyType_HMAC:
 		targetKey = key.Key

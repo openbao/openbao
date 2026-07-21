@@ -33,7 +33,7 @@ type RequestWrapInfo struct {
 	SealWrap bool `json:"seal_wrap" structs:"seal_wrap" mapstructure:"seal_wrap" sentinel:""`
 }
 
-func (r *RequestWrapInfo) SentinelGet(key string) (interface{}, error) {
+func (r *RequestWrapInfo) SentinelGet(key string) (any, error) {
 	if r == nil {
 		return nil, nil
 	}
@@ -85,7 +85,7 @@ type Request struct {
 	Path string `json:"path" structs:"path" mapstructure:"path" sentinel:""`
 
 	// Request data is an opaque map that must have string keys.
-	Data map[string]interface{} `json:"map" structs:"data" mapstructure:"data"`
+	Data map[string]any `json:"map" structs:"data" mapstructure:"data"`
 
 	// Storage can be used to durably store and retrieve state.
 	Storage Storage `json:"-" sentinel:""`
@@ -233,7 +233,7 @@ func (r *Request) Clone() (*Request, error) {
 }
 
 // Get returns a data field and guards for nil Data
-func (r *Request) Get(key string) interface{} {
+func (r *Request) Get(key string) any {
 	if r.Data == nil {
 		return nil
 	}
@@ -251,7 +251,7 @@ func (r *Request) GoString() string {
 	return fmt.Sprintf("*%#v", *r)
 }
 
-func (r *Request) SentinelGet(key string) (interface{}, error) {
+func (r *Request) SentinelGet(key string) (any, error) {
 	switch key {
 	case "path":
 		// Sanitize it here so that it's consistent in policies
@@ -318,7 +318,7 @@ func (r *Request) SetTokenEntry(te *TokenEntry) {
 }
 
 // RenewRequest creates the structure of the renew request.
-func RenewRequest(path string, secret *Secret, data map[string]interface{}) *Request {
+func RenewRequest(path string, secret *Secret, data map[string]any) *Request {
 	return &Request{
 		Operation: RenewOperation,
 		Path:      path,
@@ -328,7 +328,7 @@ func RenewRequest(path string, secret *Secret, data map[string]interface{}) *Req
 }
 
 // RenewAuthRequest creates the structure of the renew request for an auth.
-func RenewAuthRequest(path string, auth *Auth, data map[string]interface{}) *Request {
+func RenewAuthRequest(path string, auth *Auth, data map[string]any) *Request {
 	return &Request{
 		Operation: RenewOperation,
 		Path:      path,
@@ -338,7 +338,7 @@ func RenewAuthRequest(path string, auth *Auth, data map[string]interface{}) *Req
 }
 
 // RevokeRequest creates the structure of the revoke request.
-func RevokeRequest(path string, secret *Secret, data map[string]interface{}) *Request {
+func RevokeRequest(path string, secret *Secret, data map[string]any) *Request {
 	return &Request{
 		Operation: RevokeOperation,
 		Path:      path,
@@ -352,7 +352,7 @@ func RollbackRequest(path string) *Request {
 	return &Request{
 		Operation: RollbackOperation,
 		Path:      path,
-		Data:      make(map[string]interface{}),
+		Data:      make(map[string]any),
 	}
 }
 

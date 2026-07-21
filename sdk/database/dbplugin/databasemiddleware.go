@@ -58,7 +58,7 @@ func (mw *databaseTracingMiddleware) RevokeUser(ctx context.Context, statements 
 	return mw.next.RevokeUser(ctx, statements, username)
 }
 
-func (mw *databaseTracingMiddleware) RotateRootCredentials(ctx context.Context, statements []string) (conf map[string]interface{}, err error) {
+func (mw *databaseTracingMiddleware) RotateRootCredentials(ctx context.Context, statements []string) (conf map[string]any, err error) {
 	defer func(then time.Time) {
 		mw.logger.Trace("rotate root credentials", "status", "finished", "err", err, "took", time.Since(then))
 	}(time.Now())
@@ -67,12 +67,12 @@ func (mw *databaseTracingMiddleware) RotateRootCredentials(ctx context.Context, 
 	return mw.next.RotateRootCredentials(ctx, statements)
 }
 
-func (mw *databaseTracingMiddleware) Initialize(ctx context.Context, conf map[string]interface{}, verifyConnection bool) error {
+func (mw *databaseTracingMiddleware) Initialize(ctx context.Context, conf map[string]any, verifyConnection bool) error {
 	_, err := mw.Init(ctx, conf, verifyConnection)
 	return err
 }
 
-func (mw *databaseTracingMiddleware) Init(ctx context.Context, conf map[string]interface{}, verifyConnection bool) (saveConf map[string]interface{}, err error) {
+func (mw *databaseTracingMiddleware) Init(ctx context.Context, conf map[string]any, verifyConnection bool) (saveConf map[string]any, err error) {
 	defer func(then time.Time) {
 		mw.logger.Trace("initialize", "status", "finished", "verify", verifyConnection, "err", err, "took", time.Since(then))
 	}(time.Now())
@@ -170,7 +170,7 @@ func (mw *databaseMetricsMiddleware) RevokeUser(ctx context.Context, statements 
 	return mw.next.RevokeUser(ctx, statements, username)
 }
 
-func (mw *databaseMetricsMiddleware) RotateRootCredentials(ctx context.Context, statements []string) (conf map[string]interface{}, err error) {
+func (mw *databaseMetricsMiddleware) RotateRootCredentials(ctx context.Context, statements []string) (conf map[string]any, err error) {
 	defer func(now time.Time) {
 		metrics.MeasureSince([]string{"database", "RotateRootCredentials"}, now)
 		metrics.MeasureSince([]string{"database", mw.typeStr, "RotateRootCredentials"}, now)
@@ -186,12 +186,12 @@ func (mw *databaseMetricsMiddleware) RotateRootCredentials(ctx context.Context, 
 	return mw.next.RotateRootCredentials(ctx, statements)
 }
 
-func (mw *databaseMetricsMiddleware) Initialize(ctx context.Context, conf map[string]interface{}, verifyConnection bool) error {
+func (mw *databaseMetricsMiddleware) Initialize(ctx context.Context, conf map[string]any, verifyConnection bool) error {
 	_, err := mw.Init(ctx, conf, verifyConnection)
 	return err
 }
 
-func (mw *databaseMetricsMiddleware) Init(ctx context.Context, conf map[string]interface{}, verifyConnection bool) (saveConf map[string]interface{}, err error) {
+func (mw *databaseMetricsMiddleware) Init(ctx context.Context, conf map[string]any, verifyConnection bool) (saveConf map[string]any, err error) {
 	defer func(now time.Time) {
 		metrics.MeasureSince([]string{"database", "Initialize"}, now)
 		metrics.MeasureSince([]string{"database", mw.typeStr, "Initialize"}, now)
@@ -261,10 +261,10 @@ func (mw *databaseMetricsMiddleware) SetCredentials(ctx context.Context, stateme
 // sanitizes returned error messages
 type DatabaseErrorSanitizerMiddleware struct {
 	next      Database
-	secretsFn func() map[string]interface{}
+	secretsFn func() map[string]any
 }
 
-func NewDatabaseErrorSanitizerMiddleware(next Database, secretsFn func() map[string]interface{}) *DatabaseErrorSanitizerMiddleware {
+func NewDatabaseErrorSanitizerMiddleware(next Database, secretsFn func() map[string]any) *DatabaseErrorSanitizerMiddleware {
 	return &DatabaseErrorSanitizerMiddleware{
 		next:      next,
 		secretsFn: secretsFn,
@@ -289,17 +289,17 @@ func (mw *DatabaseErrorSanitizerMiddleware) RevokeUser(ctx context.Context, stat
 	return mw.sanitize(mw.next.RevokeUser(ctx, statements, username))
 }
 
-func (mw *DatabaseErrorSanitizerMiddleware) RotateRootCredentials(ctx context.Context, statements []string) (conf map[string]interface{}, err error) {
+func (mw *DatabaseErrorSanitizerMiddleware) RotateRootCredentials(ctx context.Context, statements []string) (conf map[string]any, err error) {
 	conf, err = mw.next.RotateRootCredentials(ctx, statements)
 	return conf, mw.sanitize(err)
 }
 
-func (mw *DatabaseErrorSanitizerMiddleware) Initialize(ctx context.Context, conf map[string]interface{}, verifyConnection bool) error {
+func (mw *DatabaseErrorSanitizerMiddleware) Initialize(ctx context.Context, conf map[string]any, verifyConnection bool) error {
 	_, err := mw.Init(ctx, conf, verifyConnection)
 	return err
 }
 
-func (mw *DatabaseErrorSanitizerMiddleware) Init(ctx context.Context, conf map[string]interface{}, verifyConnection bool) (saveConf map[string]interface{}, err error) {
+func (mw *DatabaseErrorSanitizerMiddleware) Init(ctx context.Context, conf map[string]any, verifyConnection bool) (saveConf map[string]any, err error) {
 	saveConf, err = mw.next.Init(ctx, conf, verifyConnection)
 	return saveConf, mw.sanitize(err)
 }

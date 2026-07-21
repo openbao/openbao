@@ -7,7 +7,7 @@ import (
 
 func TestEnvSourceBuilder_Success(t *testing.T) {
 	engine := &ProfileEngine{sourceBuilders: make(map[string]SourceBuilder)}
-	field := map[string]interface{}{"env_var": "TEST_VAR"}
+	field := map[string]any{"env_var": "TEST_VAR"}
 	src := EnvSourceBuilder(engine, field)
 	if src == nil {
 		t.Errorf("Expected non-nil source")
@@ -30,7 +30,7 @@ func TestEnvSource_Validate_SuccessRequired(t *testing.T) {
 			t.Fatalf("Unsetenv, error: %v", err)
 		}
 	}()
-	src := &EnvSource{field: map[string]interface{}{
+	src := &EnvSource{field: map[string]any{
 		"env_var":         name,
 		"require_present": true,
 	}}
@@ -51,7 +51,7 @@ func TestEnvSource_Validate_SuccessRequired(t *testing.T) {
 }
 
 func TestEnvSource_Validate_OptionalMissing(t *testing.T) {
-	src := &EnvSource{field: map[string]interface{}{
+	src := &EnvSource{field: map[string]any{
 		"env_var": "MISSING_VAR",
 	}}
 	deps, provides, err := src.Validate()
@@ -67,7 +67,7 @@ func TestEnvSource_Validate_OptionalMissing(t *testing.T) {
 }
 
 func TestEnvSource_Validate_ErrorMissingEnvVarField(t *testing.T) {
-	src := &EnvSource{field: map[string]interface{}{
+	src := &EnvSource{field: map[string]any{
 		"require_present": true,
 	}}
 	_, _, err := src.Validate()
@@ -79,15 +79,15 @@ func TestEnvSource_Validate_ErrorMissingEnvVarField(t *testing.T) {
 
 func TestEnvSource_Validate_ErrorWrongTypes(t *testing.T) {
 	cases := []struct {
-		field map[string]interface{}
+		field map[string]any
 		want  string
 	}{
 		{
-			field: map[string]interface{}{"env_var": 123},
+			field: map[string]any{"env_var": 123},
 			want:  "field 'env_var' is of wrong type: expected 'string' got 'int'",
 		},
 		{
-			field: map[string]interface{}{"env_var": "X", "require_present": "yes"},
+			field: map[string]any{"env_var": "X", "require_present": "yes"},
 			want:  "field 'require_present' is of wrong type: expecting 'bool' got 'string'",
 		},
 	}

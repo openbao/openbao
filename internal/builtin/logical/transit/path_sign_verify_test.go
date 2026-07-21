@@ -59,7 +59,7 @@ func testTransit_SignVerify_ECDSA(t *testing.T, bits int) {
 		Storage:   storage,
 		Operation: logical.UpdateOperation,
 		Path:      "keys/foo",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": fmt.Sprintf("ecdsa-p%d", bits),
 		},
 	}
@@ -157,7 +157,7 @@ func testTransit_SignVerify_ECDSA(t *testing.T, bits int) {
 	if err = p.Persist(t.Context(), storage); err != nil {
 		t.Fatal(err)
 	}
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"input": "dGhlIHF1aWNrIGJyb3duIGZveA==",
 	}
 	p.Unlock()
@@ -356,7 +356,7 @@ func validatePublicKey(t *testing.T, in string, sig string, pubKeyRaw []byte, ex
 	if err != nil {
 		t.Fatal(err)
 	}
-	val := keyReadResp.Data["keys"].(map[string]map[string]interface{})[strings.TrimPrefix(splitSig[1], "v")]
+	val := keyReadResp.Data["keys"].(map[string]map[string]any)[strings.TrimPrefix(splitSig[1], "v")]
 	var ak asymKey
 	if err := mapstructure.Decode(val, &ak); err != nil {
 		t.Fatal(err)
@@ -364,14 +364,14 @@ func validatePublicKey(t *testing.T, in string, sig string, pubKeyRaw []byte, ex
 	if ak.PublicKey != "" {
 		t.Fatal("got non-empty public key")
 	}
-	keyReadReq.Data = map[string]interface{}{
+	keyReadReq.Data = map[string]any{
 		"context": "abcd",
 	}
 	keyReadResp, err = b.HandleRequest(t.Context(), keyReadReq)
 	if err != nil {
 		t.Fatal(err)
 	}
-	val = keyReadResp.Data["keys"].(map[string]map[string]interface{})[strings.TrimPrefix(splitSig[1], "v")]
+	val = keyReadResp.Data["keys"].(map[string]map[string]any)[strings.TrimPrefix(splitSig[1], "v")]
 	if err := mapstructure.Decode(val, &ak); err != nil {
 		t.Fatal(err)
 	}
@@ -389,7 +389,7 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 		Storage:   storage,
 		Operation: logical.UpdateOperation,
 		Path:      "keys/foo",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "ed25519",
 		},
 	}
@@ -403,7 +403,7 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 		Storage:   storage,
 		Operation: logical.UpdateOperation,
 		Path:      "keys/bar",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type":    "ed25519",
 			"derived": true,
 		},
@@ -576,7 +576,7 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 		}
 	}
 
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"input":   "dGhlIHF1aWNrIGJyb3duIGZveA==",
 		"context": "abcd",
 	}
@@ -637,7 +637,7 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 	}
 	barP.Unlock()
 
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"input":   "dGhlIHF1aWNrIGJyb3duIGZveA==",
 		"context": "abcd",
 	}
@@ -660,7 +660,7 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 		{"context": "efgh", "input": "dGhlIHF1aWNrIGJyb3duIGZveA==", "reference": "dos"},
 	}
 
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"batch_input": batchInput,
 	}
 
@@ -701,7 +701,7 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 		{"input": "dGhlIHF1aWNrIGJyb3duIGZveA=="},
 	}
 
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"batch_input": batchInput,
 	}
 
@@ -717,7 +717,7 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 		{"context": "abca", "input": "dGhlIHF1aWNrIGJyb3duIGZveA=="},
 		{"context": "efga", "input": "dGhlIHF1aWNrIGJyb3duIGZveA=="},
 	}
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"batch_input": batchInput,
 	}
 
@@ -752,7 +752,7 @@ func testTransit_SignVerify_RSA_PSS(t *testing.T, bits int) {
 		Storage:   storage,
 		Operation: logical.UpdateOperation,
 		Path:      "keys/foo",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": fmt.Sprintf("rsa-%d", bits),
 		},
 	}
@@ -823,8 +823,8 @@ func testTransit_SignVerify_RSA_PSS(t *testing.T, bits int) {
 		delete(req.Data, "signature")
 	}
 
-	newReqData := func(hashAlgorithm string, marshalingName string) map[string]interface{} {
-		return map[string]interface{}{
+	newReqData := func(hashAlgorithm string, marshalingName string) map[string]any {
+		return map[string]any{
 			"input":                "dGhlIHF1aWNrIGJyb3duIGZveA==",
 			"signature_algorithm":  "pss",
 			"hash_algorithm":       hashAlgorithm,
@@ -1054,13 +1054,13 @@ func testTransit_NoDeadlock_SignVerify(t *testing.T, keyType string, cachingDisa
 	})
 	require.NoError(t, err)
 
-	_, err = client.Logical().Write("transit/keys/broken_transit_key", map[string]interface{}{
+	_, err = client.Logical().Write("transit/keys/broken_transit_key", map[string]any{
 		"type": keyType,
 	})
 	require.NoError(t, err)
 
 	// This error case triggered a leaked read lock.
-	_, err = client.Logical().Write("transit/sign/broken_transit_key", map[string]interface{}{
+	_, err = client.Logical().Write("transit/sign/broken_transit_key", map[string]any{
 		"input":          "aGVsbG8gd29ybGQuCg==",
 		"prehashed":      "false",
 		"hash_algorithm": "none",

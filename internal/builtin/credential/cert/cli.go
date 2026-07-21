@@ -27,7 +27,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 		data.Mount = "cert"
 	}
 
-	options := map[string]interface{}{
+	options := map[string]any{
 		"name": data.Name,
 	}
 	path := fmt.Sprintf("auth/%s/login", data.Mount)

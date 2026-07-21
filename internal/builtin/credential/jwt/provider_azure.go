@@ -49,7 +49,7 @@ func (a *AzureProvider) SensitiveKeys() []string {
 }
 
 // FetchGroups - custom groups fetching for azure - satisfying GroupsFetcher interface
-func (a *AzureProvider) FetchGroups(_ context.Context, b *jwtAuthBackend, allClaims map[string]interface{}, role *jwtRole, tokenSource oauth2.TokenSource) (interface{}, error) {
+func (a *AzureProvider) FetchGroups(_ context.Context, b *jwtAuthBackend, allClaims map[string]any, role *jwtRole, tokenSource oauth2.TokenSource) (any, error) {
 	groupsClaimRaw := getClaim(b.Logger(), allClaims, role.GroupsClaim)
 
 	if groupsClaimRaw == nil {
@@ -94,7 +94,7 @@ func (a *AzureProvider) FetchGroups(_ context.Context, b *jwtAuthBackend, allCla
 //	}
 //
 // For this to work, "profile" should be set in "oidc_scopes" in the vault oidc role.
-func (a *AzureProvider) getClaimSource(logger log.Logger, allClaims map[string]interface{}, role *jwtRole) (string, error) {
+func (a *AzureProvider) getClaimSource(logger log.Logger, allClaims map[string]any, role *jwtRole) (string, error) {
 	// Get the source key for the groups claim
 	name := fmt.Sprintf("/%s/%s", claimNamesField, role.GroupsClaim)
 	groupsClaimSource := getClaim(logger, allClaims, name)
@@ -133,7 +133,7 @@ func (a *AzureProvider) getClaimSource(logger log.Logger, allClaims map[string]i
 }
 
 // Fetch user groups from the Microsoft Graph API
-func (a *AzureProvider) getAzureGroups(groupsURL string, tokenSource oauth2.TokenSource) (interface{}, error) {
+func (a *AzureProvider) getAzureGroups(groupsURL string, tokenSource oauth2.TokenSource) (any, error) {
 	urlParsed, err := url.Parse(groupsURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse distributed groups source url %s: %s", groupsURL, err)
@@ -181,5 +181,5 @@ func (a *AzureProvider) getAzureGroups(groupsURL string, tokenSource oauth2.Toke
 }
 
 type azureGroups struct {
-	Value []interface{} `json:"value"`
+	Value []any `json:"value"`
 }

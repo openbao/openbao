@@ -105,7 +105,7 @@ func TestPki_MultipleOUs(t *testing.T) {
 
 	apiData := &framework.FieldData{
 		Schema: fields,
-		Raw: map[string]interface{}{
+		Raw: map[string]any{
 			"cn":  "example.com",
 			"ttl": 3600,
 		},
@@ -144,7 +144,7 @@ func TestPki_PermitFQDNs(t *testing.T) {
 			input: &inputBundle{
 				apiData: &framework.FieldData{
 					Schema: fields,
-					Raw: map[string]interface{}{
+					Raw: map[string]any{
 						"common_name": "example.com.",
 						"ttl":         3600,
 					},
@@ -162,7 +162,7 @@ func TestPki_PermitFQDNs(t *testing.T) {
 			input: &inputBundle{
 				apiData: &framework.FieldData{
 					Schema: fields,
-					Raw: map[string]interface{}{
+					Raw: map[string]any{
 						"common_name": "Example.Net",
 						"alt_names":   "eXaMPLe.COM",
 						"ttl":         3600,
@@ -181,7 +181,7 @@ func TestPki_PermitFQDNs(t *testing.T) {
 			input: &inputBundle{
 				apiData: &framework.FieldData{
 					Schema: fields,
-					Raw: map[string]interface{}{
+					Raw: map[string]any{
 						"common_name": "test@testemail.com",
 						"ttl":         3600,
 					},
@@ -199,7 +199,7 @@ func TestPki_PermitFQDNs(t *testing.T) {
 			input: &inputBundle{
 				apiData: &framework.FieldData{
 					Schema: fields,
-					Raw: map[string]interface{}{
+					Raw: map[string]any{
 						"common_name": "test@testemail.com",
 						"ttl":         3600,
 					},

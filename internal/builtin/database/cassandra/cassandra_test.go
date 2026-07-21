@@ -18,7 +18,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/cassandra"
 )
 
-func getCassandra(t *testing.T, protocolVersion interface{}) (*Cassandra, func()) {
+func getCassandra(t *testing.T, protocolVersion any) (*Cassandra, func()) {
 	host, cleanup := cassandra.PrepareTestContainer(
 		t,
 		cassandra.CopyFromTo(insecureFileMounts),
@@ -26,7 +26,7 @@ func getCassandra(t *testing.T, protocolVersion interface{}) (*Cassandra, func()
 
 	db := new()
 	initReq := dbplugin.InitializeRequest{
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"hosts":            host.ConnectionURL(),
 			"port":             host.Port,
 			"username":         "cassandra",
@@ -37,7 +37,7 @@ func getCassandra(t *testing.T, protocolVersion interface{}) (*Cassandra, func()
 		VerifyConnection: true,
 	}
 
-	expectedConfig := map[string]interface{}{
+	expectedConfig := map[string]any{
 		"hosts":            host.ConnectionURL(),
 		"port":             host.Port,
 		"username":         "cassandra",
@@ -84,7 +84,7 @@ func TestInitialize(t *testing.T) {
 func TestCreateUser(t *testing.T) {
 	type testCase struct {
 		// Config will have the hosts & port added to it during the test
-		config                map[string]interface{}
+		config                map[string]any
 		newUserReq            dbplugin.NewUserRequest
 		expectErr             bool
 		expectedUsernameRegex string
@@ -93,7 +93,7 @@ func TestCreateUser(t *testing.T) {
 
 	tests := map[string]testCase{
 		"default username_template": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"username":         "cassandra",
 				"password":         "cassandra",
 				"protocol_version": "4",
@@ -115,7 +115,7 @@ func TestCreateUser(t *testing.T) {
 			assertCreds:           assertCreds,
 		},
 		"custom username_template": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"username":          "cassandra",
 				"password":          "cassandra",
 				"protocol_version":  "4",

@@ -49,10 +49,10 @@ func pathSubkeys(b *versionedKVBackend) *framework.Path {
 // provide all subkeys with nesting fully intact. The modifications are made
 // to the input in-place. maxDepth will denote how deep to traverse. A maxDepth
 // of 0 is the equivalent of no limit.
-func removeValues(input map[string]interface{}, maxDepth int) {
-	var walk func(interface{}, int)
+func removeValues(input map[string]any, maxDepth int) {
+	var walk func(any, int)
 
-	walk = func(in interface{}, depth int) {
+	walk = func(in any, depth int) {
 		val := reflect.ValueOf(in)
 
 		if val.IsValid() && val.Kind() == reflect.Map {
@@ -60,10 +60,10 @@ func removeValues(input map[string]interface{}, maxDepth int) {
 				v := val.MapIndex(k)
 
 				if v.IsValid() {
-					m := in.(map[string]interface{})
+					m := in.(map[string]any)
 
 					switch t := v.Interface().(type) {
-					case map[string]interface{}:
+					case map[string]any:
 						// Only continue walking if we have not reached max depth
 						// and the underlying map has at least 1 key. The key is
 						// otherwise treated as a leaf node and thus set to nil.
@@ -132,9 +132,9 @@ func (b *versionedKVBackend) pathSubkeysRead() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"subkeys": nil,
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"version":         versionNum,
 					"created_time":    ptypesTimestampToString(versionMetadata.CreatedTime),
 					"deletion_time":   ptypesTimestampToString(versionMetadata.DeletionTime),
@@ -177,7 +177,7 @@ func (b *versionedKVBackend) pathSubkeysRead() framework.OperationFunc {
 			return nil, err
 		}
 
-		versionData := map[string]interface{}{}
+		versionData := map[string]any{}
 		if err := json.Unmarshal(version.Data, &versionData); err != nil {
 			return nil, err
 		}

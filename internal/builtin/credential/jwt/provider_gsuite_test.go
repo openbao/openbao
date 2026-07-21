@@ -54,14 +54,14 @@ func TestGSuiteProvider_FetchGroups(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     args
-		expected []interface{}
+		expected []any
 	}{
 		{
 			name: "fetch groups from gsuite with default recursion max depth 0",
 			args: args{
 				userName: "fill_in_user_before_running",
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"provider":                 "gsuite",
 						"gsuite_service_account":   creds,
 						"gsuite_admin_impersonate": adminEmail,
@@ -69,7 +69,7 @@ func TestGSuiteProvider_FetchGroups(t *testing.T) {
 					},
 				},
 			},
-			expected: []interface{}{
+			expected: []any{
 				// Fill in expected groups before running
 				// Example: "group1", "group2",
 			},
@@ -79,7 +79,7 @@ func TestGSuiteProvider_FetchGroups(t *testing.T) {
 			args: args{
 				userName: "fill_in_user_before_running",
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"provider":                 "gsuite",
 						"gsuite_service_account":   creds,
 						"gsuite_admin_impersonate": adminEmail,
@@ -88,7 +88,7 @@ func TestGSuiteProvider_FetchGroups(t *testing.T) {
 					},
 				},
 			},
-			expected: []interface{}{
+			expected: []any{
 				// Fill in expected groups before running
 				// Example: "group1", "group2",
 			},
@@ -106,7 +106,7 @@ func TestGSuiteProvider_FetchGroups(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Fetch groups from G Suite
-			allClaims := map[string]interface{}{
+			allClaims := map[string]any{
 				"sub": tt.args.userName,
 			}
 			role := &jwtRole{
@@ -140,14 +140,14 @@ func TestGSuiteProvider_FetchUserInfo(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     args
-		expected map[string]interface{}
+		expected map[string]any
 	}{
 		{
 			name: "fetch user info from custom schemas in gsuite",
 			args: args{
 				userName: "fill_in_user_before_running",
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"provider":                 "gsuite",
 						"gsuite_service_account":   creds,
 						"gsuite_admin_impersonate": adminEmail,
@@ -156,7 +156,7 @@ func TestGSuiteProvider_FetchUserInfo(t *testing.T) {
 					},
 				},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				// Fill in expected custom schema claims before running
 				// Example:
 				// "Preferences": map[string]interface{}{
@@ -177,7 +177,7 @@ func TestGSuiteProvider_FetchUserInfo(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Fetch user info from G Suite
-			allClaims := map[string]interface{}{
+			allClaims := map[string]any{
 				"sub": tt.args.userName,
 			}
 			role := &jwtRole{
@@ -247,7 +247,7 @@ func TestGSuiteProvider_search(t *testing.T) {
 			args: args{
 				user: "noGroupUser",
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"gsuite_service_account":   `{"type": "service_account"}`,
 						"gsuite_admin_impersonate": "test@example.com",
 						"fetch_groups":             true,
@@ -261,7 +261,7 @@ func TestGSuiteProvider_search(t *testing.T) {
 			args: args{
 				user: "group3@group.com",
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"gsuite_service_account":   `{"type": "service_account"}`,
 						"gsuite_admin_impersonate": "test@example.com",
 						"fetch_groups":             true,
@@ -275,7 +275,7 @@ func TestGSuiteProvider_search(t *testing.T) {
 			args: args{
 				user: "user1",
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"gsuite_service_account":   `{"type": "service_account"}`,
 						"gsuite_admin_impersonate": "test@example.com",
 						"fetch_groups":             true,
@@ -291,7 +291,7 @@ func TestGSuiteProvider_search(t *testing.T) {
 			args: args{
 				user: "user1",
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"gsuite_service_account":   `{"type": "service_account"}`,
 						"gsuite_admin_impersonate": "test@example.com",
 						"fetch_groups":             true,
@@ -309,7 +309,7 @@ func TestGSuiteProvider_search(t *testing.T) {
 			args: args{
 				user: "user1",
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"gsuite_service_account":   `{"type": "service_account"}`,
 						"gsuite_admin_impersonate": "test@example.com",
 						"fetch_groups":             true,
@@ -328,7 +328,7 @@ func TestGSuiteProvider_search(t *testing.T) {
 			args: args{
 				user: "group1@group.com",
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"gsuite_service_account":   `{"type": "service_account"}`,
 						"gsuite_admin_impersonate": "test@example.com",
 						"fetch_groups":             true,
@@ -344,7 +344,7 @@ func TestGSuiteProvider_search(t *testing.T) {
 			args: args{
 				user: "group1@group.com",
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"gsuite_service_account":   `{"type": "service_account"}`,
 						"gsuite_admin_impersonate": "test@example.com",
 						"fetch_groups":             true,
@@ -362,7 +362,7 @@ func TestGSuiteProvider_search(t *testing.T) {
 			args: args{
 				user: "group1@group.com",
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"gsuite_service_account":   `{"type": "service_account"}`,
 						"gsuite_admin_impersonate": "test@example.com",
 						"fetch_groups":             true,
@@ -414,7 +414,7 @@ func TestGSuiteProvider_Initialize(t *testing.T) {
 			name: "invalid config: recurse max depth negative number",
 			args: args{
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"gsuite_service_account":   `{"type": "service_account"}`,
 						"gsuite_admin_impersonate": "test@example.com",
 						"groups_recurse_max_depth": -1,
@@ -428,7 +428,7 @@ func TestGSuiteProvider_Initialize(t *testing.T) {
 			name: "valid config: all options",
 			args: args{
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"gsuite_service_account":   `{"type": "service_account"}`,
 						"gsuite_admin_impersonate": "test@example.com",
 						"groups_recurse_max_depth": 5,
@@ -443,7 +443,7 @@ func TestGSuiteProvider_Initialize(t *testing.T) {
 			name: "valid config: no custom schemas",
 			args: args{
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"gsuite_service_account":   `{"type": "service_account"}`,
 						"gsuite_admin_impersonate": "test@example.com",
 						"groups_recurse_max_depth": 5,
@@ -456,7 +456,7 @@ func TestGSuiteProvider_Initialize(t *testing.T) {
 			name: "valid config: no recurse max depth",
 			args: args{
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"gsuite_service_account":   `{"type": "service_account"}`,
 						"gsuite_admin_impersonate": "test@example.com",
 						"user_custom_schemas":      "Custom",
@@ -469,7 +469,7 @@ func TestGSuiteProvider_Initialize(t *testing.T) {
 			name: "valid config: fetch groups and user info",
 			args: args{
 				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
+					ProviderConfig: map[string]any{
 						"gsuite_service_account":   `{"type": "service_account"}`,
 						"gsuite_admin_impersonate": "test@example.com",
 						"user_custom_schemas":      "Custom",
@@ -525,7 +525,7 @@ func TestGSuiteProvider_validateBoundClaims(t *testing.T) {
 	defer gServer.Close()
 
 	// Set up claims
-	allClaims := map[string]interface{}{
+	allClaims := map[string]any{
 		"email": "user1@example.com",
 	}
 
@@ -535,7 +535,7 @@ func TestGSuiteProvider_validateBoundClaims(t *testing.T) {
 		AllowedRedirectURIs: []string{"http://example.com"},
 		UserClaim:           "email",
 		GroupsClaim:         "groups",
-		BoundClaims: map[string]interface{}{
+		BoundClaims: map[string]any{
 			"groups":                  "group1@example.com",
 			"/Preferences/shirt_size": "medium",
 		},
@@ -543,7 +543,7 @@ func TestGSuiteProvider_validateBoundClaims(t *testing.T) {
 
 	// Configure the provider
 	config := &jwtConfig{
-		ProviderConfig: map[string]interface{}{
+		ProviderConfig: map[string]any{
 			"gsuite_service_account":   `{"type": "service_account"}`,
 			"gsuite_admin_impersonate": "admin@example.com",
 			"fetch_groups":             true,
@@ -601,7 +601,7 @@ func TestGSuiteProvider_domain(t *testing.T) {
 	}
 
 	config := &jwtConfig{
-		ProviderConfig: map[string]interface{}{
+		ProviderConfig: map[string]any{
 			"gsuite_service_account":   `{"type": "service_account"}`,
 			"gsuite_admin_impersonate": "admin@example.com",
 			"fetch_groups":             true,
@@ -620,7 +620,7 @@ func TestGSuiteProvider_domain(t *testing.T) {
 	provider.adminSvc.BasePath = gServer.URL
 
 	// Fetch the groups
-	claims := map[string]interface{}{"email": "user1@example.com"}
+	claims := map[string]any{"email": "user1@example.com"}
 	_, err = b.(*jwtAuthBackend).fetchGroups(ctx, provider, claims, jwtRole, nil)
 	assert.NoError(t, err)
 }

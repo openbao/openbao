@@ -27,7 +27,7 @@ func (a *IBMISAMProvider) SensitiveKeys() []string {
 // FetchGroups - custom groups fetching for ibmisam - satisfying GroupsFetcher interface
 // IBMISAM by default will return groups not as a json list but as a list of space separated strings
 // We need to convert this to a json list
-func (a *IBMISAMProvider) FetchGroups(_ context.Context, b *jwtAuthBackend, allClaims map[string]interface{}, role *jwtRole, _ oauth2.TokenSource) (interface{}, error) {
+func (a *IBMISAMProvider) FetchGroups(_ context.Context, b *jwtAuthBackend, allClaims map[string]any, role *jwtRole, _ oauth2.TokenSource) (any, error) {
 	groupsClaimRaw := getClaim(b.Logger(), allClaims, role.GroupsClaim)
 
 	if groupsClaimRaw != nil {
@@ -35,7 +35,7 @@ func (a *IBMISAMProvider) FetchGroups(_ context.Context, b *jwtAuthBackend, allC
 		if groupsstr, ok := groupsClaimRaw.(string); ok {
 			rawibmisamGroups := strings.Split(groupsstr, " ")
 
-			ibmisamGroups := make([]interface{}, 0, len(rawibmisamGroups))
+			ibmisamGroups := make([]any, 0, len(rawibmisamGroups))
 			for group := range rawibmisamGroups {
 				ibmisamGroups = append(ibmisamGroups, rawibmisamGroups[group])
 			}

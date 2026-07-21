@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func requireSuccessNonNilResponse(t *testing.T, resp *logical.Response, err error, msgAndArgs ...interface{}) {
+func requireSuccessNonNilResponse(t *testing.T, resp *logical.Response, err error, msgAndArgs ...any) {
 	require.NoError(t, err, msgAndArgs...)
 	if resp.IsError() {
 		errContext := fmt.Sprintf("Expected successful response but got error: %v", resp.Error())

@@ -98,11 +98,11 @@ func (b *backend) operationSetCheckOut(ctx context.Context, req *logical.Request
 		if err != nil {
 			return nil, err
 		}
-		respData := map[string]interface{}{
+		respData := map[string]any{
 			"service_account_name": serviceAccountName,
 			"password":             password,
 		}
-		internalData := map[string]interface{}{
+		internalData := map[string]any{
 			"service_account_name": serviceAccountName,
 			"set_name":             setName,
 		}
@@ -319,7 +319,7 @@ func (b *backend) operationCheckIn(overrideCheckInEnforcement bool) framework.Op
 			}
 		}
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"check_ins": toCheckIn,
 			},
 		}, nil
@@ -365,7 +365,7 @@ func (b *backend) operationSetStatus(ctx context.Context, req *logical.Request, 
 	if set == nil {
 		return logical.ErrorResponse(`%q doesn't exist`, setName), nil
 	}
-	respData := make(map[string]interface{})
+	respData := make(map[string]any)
 
 	for _, serviceAccountName := range set.ServiceAccountNames {
 		checkOut, err := b.LoadCheckOut(ctx, req.Storage, serviceAccountName)
@@ -373,7 +373,7 @@ func (b *backend) operationSetStatus(ctx context.Context, req *logical.Request, 
 			return nil, err
 		}
 
-		status := map[string]interface{}{
+		status := map[string]any{
 			"available": checkOut.IsAvailable,
 		}
 		if checkOut.IsAvailable {

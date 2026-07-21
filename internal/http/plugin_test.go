@@ -103,7 +103,7 @@ func TestPlugin_MockList(t *testing.T) {
 	cluster, core := getPluginClusterAndCore(t, logger)
 	defer cluster.Cleanup()
 
-	_, err := core.Client.Logical().Write("mock/kv/foo", map[string]interface{}{
+	_, err := core.Client.Logical().Write("mock/kv/foo", map[string]any{
 		"value": "baz",
 	})
 	if err != nil {
@@ -114,11 +114,11 @@ func TestPlugin_MockList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if keys.Data["keys"].([]interface{})[0].(string) != "foo" {
+	if keys.Data["keys"].([]any)[0].(string) != "foo" {
 		t.Fatal(keys)
 	}
 
-	_, err = core.Client.Logical().Write("mock/kv/zoo", map[string]interface{}{
+	_, err = core.Client.Logical().Write("mock/kv/zoo", map[string]any{
 		"value": "baz",
 	})
 	if err != nil {
@@ -129,7 +129,7 @@ func TestPlugin_MockList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if keys.Data["keys"].([]interface{})[0].(string) != "foo" || keys.Data["keys"].([]interface{})[1].(string) != "zoo" {
+	if keys.Data["keys"].([]any)[0].(string) != "foo" || keys.Data["keys"].([]any)[1].(string) != "zoo" {
 		t.Fatal(keys)
 	}
 }
@@ -166,7 +166,7 @@ func TestPlugin_GetParams(t *testing.T) {
 	cluster, core := getPluginClusterAndCore(t, logger)
 	defer cluster.Cleanup()
 
-	_, err := core.Client.Logical().Write("mock/kv/foo", map[string]interface{}{
+	_, err := core.Client.Logical().Write("mock/kv/foo", map[string]any{
 		"value": "baz",
 	})
 	if err != nil {
@@ -185,7 +185,7 @@ func TestPlugin_GetParams(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"value":   "baz",
 		"version": json.Number("12"),
 	}

@@ -1782,7 +1782,7 @@ func (b *backend) pathRoleRead(ctx context.Context, req *logical.Request, data *
 		return nil, nil
 	}
 
-	respData := map[string]interface{}{
+	respData := map[string]any{
 		"bind_secret_id":        role.BindSecretID,
 		"secret_id_bound_cidrs": role.SecretIDBoundCIDRs,
 		"secret_id_num_uses":    role.SecretIDNumUses,
@@ -1981,8 +1981,8 @@ func (b *backend) pathRoleSecretIDLookupUpdate(ctx context.Context, req *logical
 	}, nil
 }
 
-func (entry *secretIDStorageEntry) ToResponseData() map[string]interface{} {
-	ret := map[string]interface{}{
+func (entry *secretIDStorageEntry) ToResponseData() map[string]any {
+	ret := map[string]any{
 		"secret_id_accessor": entry.SecretIDAccessor,
 		"secret_id_num_uses": entry.SecretIDNumUses,
 		"secret_id_ttl":      entry.SecretIDTTL / time.Second,
@@ -2324,19 +2324,19 @@ func (b *backend) pathRoleFieldRead(ctx context.Context, req *logical.Request, d
 		switch fieldName {
 		case "secret_id_bound_cidrs":
 			return &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"secret_id_bound_cidrs": role.SecretIDBoundCIDRs,
 				},
 			}, nil
 		case "token_bound_cidrs":
 			return &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"token_bound_cidrs": role.TokenBoundCIDRs,
 				},
 			}, nil
 		case "bound_cidr_list":
 			resp := &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"bound_cidr_list": role.BoundCIDRList,
 				},
 			}
@@ -2462,7 +2462,7 @@ func (b *backend) pathRoleBindSecretIDRead(ctx context.Context, req *logical.Req
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"bind_secret_id": role.BindSecretID,
 		},
 	}, nil
@@ -2527,7 +2527,7 @@ func (b *backend) pathRoleLocalSecretIDsRead(ctx context.Context, req *logical.R
 	localSecretIDs := role.SecretIDPrefix == secretIDLocalPrefix
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"local_secret_ids": localSecretIDs,
 		},
 	}, nil
@@ -2609,7 +2609,7 @@ func (b *backend) pathRolePoliciesRead(ctx context.Context, req *logical.Request
 	if p == nil {
 		p = []string{}
 	}
-	d := map[string]interface{}{
+	d := map[string]any{
 		"token_policies": p,
 	}
 
@@ -2764,7 +2764,7 @@ func (b *backend) pathRoleRoleIDRead(ctx context.Context, req *logical.Request, 
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"role_id": role.RoleID,
 		},
 	}, nil
@@ -2789,7 +2789,7 @@ func (b *backend) pathRoleSecretIDNumUsesRead(ctx context.Context, req *logical.
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"secret_id_num_uses": role.SecretIDNumUses,
 		},
 	}, nil
@@ -2892,7 +2892,7 @@ func (b *backend) pathRoleSecretIDTTLRead(ctx context.Context, req *logical.Requ
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"secret_id_ttl": role.SecretIDTTL / time.Second,
 		},
 	}, nil
@@ -3011,7 +3011,7 @@ func (b *backend) pathRolePeriodRead(ctx context.Context, req *logical.Request, 
 		return nil, nil
 	}
 
-	d := map[string]interface{}{
+	d := map[string]any{
 		"token_period": role.TokenPeriod / time.Second,
 	}
 
@@ -3121,7 +3121,7 @@ func (b *backend) pathRoleTokenNumUsesRead(ctx context.Context, req *logical.Req
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"token_num_uses": role.TokenNumUses,
 		},
 	}, nil
@@ -3212,7 +3212,7 @@ func (b *backend) pathRoleTokenTTLRead(ctx context.Context, req *logical.Request
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"token_ttl": role.TokenTTL / time.Second,
 		},
 	}, nil
@@ -3317,7 +3317,7 @@ func (b *backend) pathRoleTokenMaxTTLRead(ctx context.Context, req *logical.Requ
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"token_max_ttl": role.TokenMaxTTL / time.Second,
 		},
 	}, nil
@@ -3486,7 +3486,7 @@ func (b *backend) handleRoleSecretIDCommon(ctx context.Context, req *logical.Req
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"secret_id":          secretID,
 			"secret_id_accessor": secretIDStorage.SecretIDAccessor,
 			"secret_id_ttl":      int64(b.deriveSecretIDTTL(secretIDStorage.SecretIDTTL).Seconds()),

@@ -13,7 +13,7 @@ func TestTemplateSourceBuilder_EvaluateAndClose(t *testing.T) {
 		"response": ResponseSourceBuilder,
 	}}
 
-	field := map[string]interface{}{"template": "{{ .requests.test.value }}"}
+	field := map[string]any{"template": "{{ .requests.test.value }}"}
 	src := TemplateSourceBuilder(engine, field)
 	require.NotNil(t, src)
 	require.IsType(t, &TemplateSource{}, src)
@@ -22,7 +22,7 @@ func TestTemplateSourceBuilder_EvaluateAndClose(t *testing.T) {
 	require.NoError(t, err, "failed to validate")
 
 	history := &EvaluationHistory{}
-	err = history.AddRequestData("", "test", map[string]interface{}{
+	err = history.AddRequestData("", "test", map[string]any{
 		"value": 123,
 	})
 	require.NoError(t, err)
@@ -40,7 +40,7 @@ func TestTemplateSourceBuilder_RequestNotAllowed(t *testing.T) {
 		"response": ResponseSourceBuilder,
 	}}
 
-	field := map[string]interface{}{"template": "{{ .requests.test.value }}"}
+	field := map[string]any{"template": "{{ .requests.test.value }}"}
 	src := TemplateSourceBuilder(engine, field)
 	require.NotNil(t, src)
 
@@ -55,7 +55,7 @@ func TestTemplateSourceBuilder_ResponseNotAllowed(t *testing.T) {
 	ctx := t.Context()
 	engine := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{}}
 
-	field := map[string]interface{}{"template": "{{ .response.test.value }}"}
+	field := map[string]any{"template": "{{ .response.test.value }}"}
 	src := TemplateSourceBuilder(engine, field)
 	require.NotNil(t, src)
 
@@ -70,7 +70,7 @@ func TestTemplateSourceBuilder_Constant(t *testing.T) {
 	ctx := t.Context()
 	engine := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{}}
 
-	field := map[string]interface{}{"template": "123"}
+	field := map[string]any{"template": "123"}
 	src := TemplateSourceBuilder(engine, field)
 	require.NotNil(t, src)
 
@@ -88,9 +88,9 @@ func TestTemplateSourceBuilder_EvaluateAdditionalData(t *testing.T) {
 		"response": ResponseSourceBuilder,
 	}}
 
-	field := map[string]interface{}{
+	field := map[string]any{
 		"template": "{{ .alex }}",
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"alex": "test",
 		},
 	}

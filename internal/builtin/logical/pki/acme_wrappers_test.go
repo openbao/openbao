@@ -18,44 +18,44 @@ import (
 func TestACMEIssuerRoleLoading(t *testing.T) {
 	b, s := CreateBackendWithStorage(t)
 
-	_, err := CBWrite(b, s, "config/cluster", map[string]interface{}{
+	_, err := CBWrite(b, s, "config/cluster", map[string]any{
 		"path":     "http://localhost:8200/v1/pki",
 		"aia_path": "http://localhost:8200/cdn/pki",
 	})
 	require.NoError(t, err)
 
-	_, err = CBWrite(b, s, "config/acme", map[string]interface{}{
+	_, err = CBWrite(b, s, "config/acme", map[string]any{
 		"enabled": true,
 	})
 	require.NoError(t, err)
 
-	_, err = CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+	_, err = CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name": "myvault1.com",
 		"issuer_name": "issuer-1",
 		"key_type":    "ec",
 	})
 	require.NoError(t, err, "failed creating issuer issuer-1")
 
-	_, err = CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+	_, err = CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name": "myvault2.com",
 		"issuer_name": "issuer-2",
 		"key_type":    "ec",
 	})
 	require.NoError(t, err, "failed creating issuer issuer-2")
 
-	_, err = CBWrite(b, s, "roles/role-bad-issuer", map[string]interface{}{
+	_, err = CBWrite(b, s, "roles/role-bad-issuer", map[string]any{
 		issuerRefParam: "non-existent",
 		"no_store":     "false",
 	})
 	require.NoError(t, err, "failed creating role role-bad-issuer")
 
-	_, err = CBWrite(b, s, "roles/role-no-store-enabled", map[string]interface{}{
+	_, err = CBWrite(b, s, "roles/role-no-store-enabled", map[string]any{
 		issuerRefParam: "issuer-2",
 		"no_store":     "true",
 	})
 	require.NoError(t, err, "failed creating role role-no-store-enabled")
 
-	_, err = CBWrite(b, s, "roles/role-issuer-2", map[string]interface{}{
+	_, err = CBWrite(b, s, "roles/role-issuer-2", map[string]any{
 		issuerRefParam: "issuer-2",
 		"no_store":     "false",
 	})
@@ -93,7 +93,7 @@ func TestACMEIssuerRoleLoading(t *testing.T) {
 			})
 
 			var acmePath string
-			fieldRaw := map[string]interface{}{}
+			fieldRaw := map[string]any{}
 			if tt.issuerName != "" {
 				fieldRaw[issuerRefParam] = tt.issuerName
 				acmePath = "issuer/" + tt.issuerName + "/"

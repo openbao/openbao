@@ -31,7 +31,7 @@ func TestIntegration_RotateRootUsesNext(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "root/rotate/internal",
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"common_name": "test.com",
 		},
 		MountPoint: "pki/",
@@ -51,7 +51,7 @@ func TestIntegration_RotateRootUsesNext(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "root/rotate/internal",
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"common_name": "test.com",
 		},
 		MountPoint: "pki/",
@@ -72,7 +72,7 @@ func TestIntegration_RotateRootUsesNext(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "root/rotate/internal",
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"common_name": "test.com",
 			"issuer_name": "next-cert",
 		},
@@ -103,7 +103,7 @@ func TestIntegration_ReplaceRootNormal(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "root/replace",
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"default": issuerId2.String(),
 		},
 		MountPoint: "pki/",
@@ -142,7 +142,7 @@ func TestIntegration_ReplaceRootDefaultsToNext(t *testing.T) {
 		Operation:  logical.UpdateOperation,
 		Path:       "root/replace",
 		Storage:    s,
-		Data:       map[string]interface{}{},
+		Data:       map[string]any{},
 		MountPoint: "pki/",
 	})
 	require.NoError(t, err, "failed replacing root")
@@ -178,7 +178,7 @@ func TestIntegration_ReplaceRootBadIssuer(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "root/replace",
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"default": "a-bad-issuer-id",
 		},
 		MountPoint: "pki/",
@@ -192,7 +192,7 @@ func TestIntegration_ReplaceRootBadIssuer(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "root/replace",
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"default": "default",
 		},
 		MountPoint: "pki/",
@@ -206,7 +206,7 @@ func TestIntegration_ReplaceRootBadIssuer(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "root/replace",
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"default": "",
 		},
 		MountPoint: "pki/",
@@ -226,7 +226,7 @@ func TestIntegration_SetSignedWithBackwardsPemBundles(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "issuers/generate/root/internal",
 		Storage:   rootStorage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"common_name": "test.com",
 		},
 		MountPoint: "pki/",
@@ -243,7 +243,7 @@ func TestIntegration_SetSignedWithBackwardsPemBundles(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "issuers/generate/intermediate/internal",
 		Storage:   intStorage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"common_name": "test.com",
 		},
 		MountPoint: "pki-int/",
@@ -258,7 +258,7 @@ func TestIntegration_SetSignedWithBackwardsPemBundles(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "root/sign-intermediate",
 		Storage:   rootStorage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"csr":    intCsr,
 			"format": "pem_bundle",
 		},
@@ -275,7 +275,7 @@ func TestIntegration_SetSignedWithBackwardsPemBundles(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "intermediate/set-signed",
 		Storage:   intStorage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"certificate": rootCert + "\n" + intCert + "\n",
 		},
 		MountPoint: "pki-int/",
@@ -289,7 +289,7 @@ func TestIntegration_SetSignedWithBackwardsPemBundles(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "roles/example",
 		Storage:   intStorage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"allowed_domains":  "example.com",
 			"allow_subdomains": "true",
 			"max_ttl":          "1h",
@@ -306,7 +306,7 @@ func TestIntegration_SetSignedWithBackwardsPemBundles(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "issue/example",
 		Storage:   intStorage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"common_name": "test.example.com",
 			"ttl":         "5m",
 		},
@@ -349,7 +349,7 @@ func TestIntegration_CSRGeneration(t *testing.T) {
 		}
 		testName := fmt.Sprintf("%s-%d-%d", keyTypeName, tc.keyBits, tc.sigBits)
 		t.Run(testName, func(t *testing.T) {
-			resp, err := CBWrite(b, s, "intermediate/generate/internal", map[string]interface{}{
+			resp, err := CBWrite(b, s, "intermediate/generate/internal", map[string]any{
 				"common_name":    "myint.com",
 				"key_type":       tc.keyType,
 				"key_bits":       tc.keyBits,
@@ -381,7 +381,7 @@ func TestIntegration_AutoIssuer(t *testing.T) {
 	// take over as default. Deleting the first and re-importing it will make
 	// it default again, and then disabling the option and removing and
 	// reimporting the second and creating a new root won't affect it again.
-	resp, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+	resp, err := CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name": "Root X1",
 		"issuer_name": "root-1",
 		"key_type":    "ec",
@@ -400,7 +400,7 @@ func TestIntegration_AutoIssuer(t *testing.T) {
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("config/issuers"), logical.ReadOperation), resp, true)
 
 	// Enable the new config option.
-	resp, err = CBWrite(b, s, "config/issuers", map[string]interface{}{
+	resp, err = CBWrite(b, s, "config/issuers", map[string]any{
 		"default":                       issuerIdOne,
 		"default_follows_latest_issuer": true,
 	})
@@ -408,7 +408,7 @@ func TestIntegration_AutoIssuer(t *testing.T) {
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("config/issuers"), logical.UpdateOperation), resp, true)
 
 	// Now generate the second root; it should become default.
-	resp, err = CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+	resp, err = CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name": "Root X2",
 		"issuer_name": "root-2",
 		"key_type":    "ec",
@@ -431,7 +431,7 @@ func TestIntegration_AutoIssuer(t *testing.T) {
 	require.Equal(t, issuerIdTwo, resp.Data["default"])
 
 	// But reimporting it should update it to the new issuer's value.
-	resp, err = CBWrite(b, s, "issuers/import/bundle", map[string]interface{}{
+	resp, err = CBWrite(b, s, "issuers/import/bundle", map[string]any{
 		"pem_bundle": certOne,
 	})
 	requireSuccessNonNilResponse(t, resp, err)
@@ -442,14 +442,14 @@ func TestIntegration_AutoIssuer(t *testing.T) {
 	require.Equal(t, issuerIdOneReimported, resp.Data["default"])
 
 	// Now update the config to disable this option again.
-	_, err = CBWrite(b, s, "config/issuers", map[string]interface{}{
+	_, err = CBWrite(b, s, "config/issuers", map[string]any{
 		"default":                       issuerIdOneReimported,
 		"default_follows_latest_issuer": false,
 	})
 	require.NoError(t, err)
 
 	// Generating a new root shouldn't update the default.
-	resp, err = CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+	resp, err = CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name": "Root X3",
 		"issuer_name": "root-3",
 		"key_type":    "ec",
@@ -469,7 +469,7 @@ func TestIntegration_AutoIssuer(t *testing.T) {
 	requireSuccessNonNilResponse(t, resp, err)
 	require.Equal(t, issuerIdOneReimported, resp.Data["default"])
 
-	resp, err = CBWrite(b, s, "issuers/import/bundle", map[string]interface{}{
+	resp, err = CBWrite(b, s, "issuers/import/bundle", map[string]any{
 		"pem_bundle": certTwo,
 	})
 	requireSuccessNonNilResponse(t, resp, err)
@@ -506,7 +506,7 @@ func TestIntegrationOCSPClientWithPKI(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"ttl":         "40h",
 		"common_name": "Root R1",
 		"key_type":    "ec",
@@ -518,13 +518,13 @@ func TestIntegrationOCSPClientWithPKI(t *testing.T) {
 	rootIssuerId := resp.Data["issuer_id"].(string)
 
 	// Set URLs pointing to the issuer.
-	_, err = client.Logical().Write("pki/config/cluster", map[string]interface{}{
+	_, err = client.Logical().Write("pki/config/cluster", map[string]any{
 		"path":     client.Address() + "/v1/pki",
 		"aia_path": client.Address() + "/v1/pki",
 	})
 	require.NoError(t, err)
 
-	_, err = client.Logical().Write("pki/config/urls", map[string]interface{}{
+	_, err = client.Logical().Write("pki/config/urls", map[string]any{
 		"enable_templating":             true,
 		"crl_distribution_points":       "{{cluster_aia_path}}/issuer/{{issuer_id}}/crl/der",
 		"issuing_certificates":          "{{cluster_aia_path}}/issuer/{{issuer_id}}/der",
@@ -534,7 +534,7 @@ func TestIntegrationOCSPClientWithPKI(t *testing.T) {
 	require.NoError(t, err)
 
 	// Build an intermediate CA
-	resp, err = client.Logical().Write("pki/intermediate/generate/internal", map[string]interface{}{
+	resp, err = client.Logical().Write("pki/intermediate/generate/internal", map[string]any{
 		"common_name": "Int X1",
 		"key_type":    "ec",
 	})
@@ -544,7 +544,7 @@ func TestIntegrationOCSPClientWithPKI(t *testing.T) {
 	require.NotEmpty(t, resp.Data["csr"])
 	intermediateCSR := resp.Data["csr"].(string)
 
-	resp, err = client.Logical().Write("pki/root/sign-intermediate", map[string]interface{}{
+	resp, err = client.Logical().Write("pki/root/sign-intermediate", map[string]any{
 		"csr": intermediateCSR,
 		"ttl": "20h",
 	})
@@ -554,26 +554,26 @@ func TestIntegrationOCSPClientWithPKI(t *testing.T) {
 	require.NotEmpty(t, resp.Data["certificate"])
 	intermediateCert := resp.Data["certificate"]
 
-	resp, err = client.Logical().Write("pki/intermediate/set-signed", map[string]interface{}{
+	resp, err = client.Logical().Write("pki/intermediate/set-signed", map[string]any{
 		"certificate": intermediateCert,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data)
 	require.NotEmpty(t, resp.Data["imported_issuers"])
-	rawImportedIssuers := resp.Data["imported_issuers"].([]interface{})
+	rawImportedIssuers := resp.Data["imported_issuers"].([]any)
 	require.Equal(t, len(rawImportedIssuers), 1)
 	importedIssuer := rawImportedIssuers[0].(string)
 	require.NotEmpty(t, importedIssuer)
 
 	// Set intermediate as default.
-	_, err = client.Logical().Write("pki/config/issuers", map[string]interface{}{
+	_, err = client.Logical().Write("pki/config/issuers", map[string]any{
 		"default": importedIssuer,
 	})
 	require.NoError(t, err)
 
 	// Setup roles for root, intermediate.
-	_, err = client.Logical().Write("pki/roles/example-root", map[string]interface{}{
+	_, err = client.Logical().Write("pki/roles/example-root", map[string]any{
 		"allowed_domains":  "example.com",
 		"allow_subdomains": "true",
 		"max_ttl":          "1h",
@@ -582,7 +582,7 @@ func TestIntegrationOCSPClientWithPKI(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = client.Logical().Write("pki/roles/example-int", map[string]interface{}{
+	_, err = client.Logical().Write("pki/roles/example-int", map[string]any{
 		"allowed_domains":  "example.com",
 		"allow_subdomains": "true",
 		"max_ttl":          "1h",
@@ -593,7 +593,7 @@ func TestIntegrationOCSPClientWithPKI(t *testing.T) {
 	// Issue certs and validate them against OCSP.
 	for _, path := range []string{"pki/issue/example-int", "pki/issue/example-root"} {
 		t.Logf("Validating against path: %v", path)
-		resp, err = client.Logical().Write(path, map[string]interface{}{
+		resp, err = client.Logical().Write(path, map[string]any{
 			"common_name": "test.example.com",
 			"ttl":         "5m",
 		})
@@ -633,7 +633,7 @@ func TestIntegrationOCSPClientWithPKI(t *testing.T) {
 		err = ocspClient.VerifyLeafCertificate(t.Context(), cert, issuer, conf)
 		require.NoError(t, err)
 
-		_, err = client.Logical().Write("pki/revoke", map[string]interface{}{
+		_, err = client.Logical().Write("pki/revoke", map[string]any{
 			"serial_number": serialNumber,
 		})
 		require.NoError(t, err)
@@ -648,7 +648,7 @@ func genTestRootCa(t *testing.T, b *backend, s logical.Storage) (issuerID, keyID
 }
 
 func genTestRootCaWithIssuerName(t *testing.T, b *backend, s logical.Storage, issuerName string) (issuerID, keyID) {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"common_name": "test.com",
 	}
 	if len(issuerName) > 0 {

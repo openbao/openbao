@@ -224,7 +224,7 @@ type DisplayAttributes struct {
 	// Value is a sample value to display for this field. This may be used
 	// to indicate a default value, but it is for display only and completely separate
 	// from any Default member handling.
-	Value interface{} `json:"value,omitempty"`
+	Value any `json:"value,omitempty"`
 
 	// Sensitive indicates that the value should be masked by default in the UI.
 	Sensitive bool `json:"sensitive,omitempty"`
@@ -270,8 +270,8 @@ type DisplayAttributes struct {
 
 // RequestExample is example of request data.
 type RequestExample struct {
-	Description string                 // optional description of the request
-	Data        map[string]interface{} // map version of sample JSON request data
+	Description string         // optional description of the request
+	Data        map[string]any // map version of sample JSON request data
 
 	// Optional example response to the sample request. This approach is considered
 	// provisional for now, and this field may be changed or removed.

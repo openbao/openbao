@@ -19,8 +19,8 @@ func TestSysConfigState_Sanitized(t *testing.T) {
 		name                    string
 		storageConfig           *server.Storage
 		haStorageConfig         *server.Storage
-		expectedStorageOutput   map[string]interface{}
-		expectedHAStorageOutput map[string]interface{}
+		expectedStorageOutput   map[string]any
+		expectedHAStorageOutput map[string]any
 	}{
 		{
 			name: "raft storage",
@@ -36,12 +36,12 @@ func TestSysConfigState_Sanitized(t *testing.T) {
 				},
 			},
 			haStorageConfig: nil,
-			expectedStorageOutput: map[string]interface{}{
+			expectedStorageOutput: map[string]any{
 				"type":               "raft",
 				"redirect_addr":      "http://127.0.0.1:8200",
 				"cluster_addr":       "http://127.0.0.1:8201",
 				"disable_clustering": false,
-				"raft": map[string]interface{}{
+				"raft": map[string]any{
 					"max_entry_size": "2097152",
 				},
 			},
@@ -56,7 +56,7 @@ func TestSysConfigState_Sanitized(t *testing.T) {
 				DisableClustering: false,
 			},
 			haStorageConfig: nil,
-			expectedStorageOutput: map[string]interface{}{
+			expectedStorageOutput: map[string]any{
 				"type":               "inmem",
 				"redirect_addr":      "http://127.0.0.1:8200",
 				"cluster_addr":       "http://127.0.0.1:8201",
@@ -83,18 +83,18 @@ func TestSysConfigState_Sanitized(t *testing.T) {
 					"max_entry_size": "2097152",
 				},
 			},
-			expectedStorageOutput: map[string]interface{}{
+			expectedStorageOutput: map[string]any{
 				"type":               "inmem",
 				"redirect_addr":      "http://127.0.0.1:8200",
 				"cluster_addr":       "http://127.0.0.1:8201",
 				"disable_clustering": false,
 			},
-			expectedHAStorageOutput: map[string]interface{}{
+			expectedHAStorageOutput: map[string]any{
 				"type":               "raft",
 				"redirect_addr":      "http://127.0.0.1:8200",
 				"cluster_addr":       "http://127.0.0.1:8201",
 				"disable_clustering": false,
-				"raft": map[string]interface{}{
+				"raft": map[string]any{
 					"max_entry_size": "2097152",
 				},
 			},
@@ -131,10 +131,10 @@ func TestSysConfigState_Sanitized(t *testing.T) {
 			resp = testHttpGet(t, token, addr+"/v1/sys/config/state/sanitized")
 			testResponseStatus(t, resp, 200)
 
-			var actual map[string]interface{}
-			var expected map[string]interface{}
+			var actual map[string]any
+			var expected map[string]any
 
-			configResp := map[string]interface{}{
+			configResp := map[string]any{
 				"api_addr":                            "",
 				"cache_size":                          json.Number("0"),
 				"cluster_addr":                        "",
@@ -163,8 +163,8 @@ func TestSysConfigState_Sanitized(t *testing.T) {
 				"enable_response_header_hostname":     false,
 				"enable_response_header_raft_node_id": false,
 				"log_requests_level":                  "",
-				"listeners": []interface{}{
-					map[string]interface{}{
+				"listeners": []any{
+					map[string]any{
 						"config": nil,
 						"type":   "tcp",
 					},
@@ -183,7 +183,7 @@ func TestSysConfigState_Sanitized(t *testing.T) {
 				configResp["ha_storage"] = tc.expectedHAStorageOutput
 			}
 
-			expected = map[string]interface{}{
+			expected = map[string]any{
 				"lease_id":       "",
 				"renewable":      false,
 				"lease_duration": json.Number("0"),

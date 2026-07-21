@@ -21,12 +21,12 @@ type EvaluationHistory struct {
 	//  - Name of request block
 	//  - Actual data (usually map string->interface)
 
-	Requests  map[string]map[string]map[string]interface{} `json:"requests"`
-	Responses map[string]map[string]map[string]interface{} `json:"responses"`
+	Requests  map[string]map[string]map[string]any `json:"requests"`
+	Responses map[string]map[string]map[string]any `json:"responses"`
 }
 
 func (eh *EvaluationHistory) AddRequest(outerBlock string, requestBlock string, request *logical.Request) error {
-	var data map[string]interface{}
+	var data map[string]any
 	encoded, err := json.Marshal(request)
 	if err != nil {
 		return err
@@ -39,16 +39,16 @@ func (eh *EvaluationHistory) AddRequest(outerBlock string, requestBlock string, 
 	return eh.AddRequestData(outerBlock, requestBlock, data)
 }
 
-func (eh *EvaluationHistory) AddRequestData(outerBlock string, requestBlock string, request map[string]interface{}) error {
+func (eh *EvaluationHistory) AddRequestData(outerBlock string, requestBlock string, request map[string]any) error {
 	if eh.Requests == nil {
-		eh.Requests = make(map[string]map[string]map[string]interface{})
+		eh.Requests = make(map[string]map[string]map[string]any)
 	}
 
 	return eh.addValue(eh.Requests, outerBlock, requestBlock, request)
 }
 
 func (eh *EvaluationHistory) AddResponse(outerBlock string, requestBlock string, response *logical.Response) error {
-	var data map[string]interface{}
+	var data map[string]any
 	encoded, err := json.Marshal(response)
 	if err != nil {
 		return err
@@ -61,17 +61,17 @@ func (eh *EvaluationHistory) AddResponse(outerBlock string, requestBlock string,
 	return eh.AddResponseData(outerBlock, requestBlock, data)
 }
 
-func (eh *EvaluationHistory) AddResponseData(outerBlock string, requestBlock string, request map[string]interface{}) error {
+func (eh *EvaluationHistory) AddResponseData(outerBlock string, requestBlock string, request map[string]any) error {
 	if eh.Responses == nil {
-		eh.Responses = make(map[string]map[string]map[string]interface{})
+		eh.Responses = make(map[string]map[string]map[string]any)
 	}
 
 	return eh.addValue(eh.Responses, outerBlock, requestBlock, request)
 }
 
-func (eh *EvaluationHistory) addValue(block map[string]map[string]map[string]interface{}, outerBlock string, requestBlock string, value map[string]interface{}) error {
+func (eh *EvaluationHistory) addValue(block map[string]map[string]map[string]any, outerBlock string, requestBlock string, value map[string]any) error {
 	if block[outerBlock] == nil {
-		block[outerBlock] = make(map[string]map[string]interface{})
+		block[outerBlock] = make(map[string]map[string]any)
 	}
 
 	if block[outerBlock][requestBlock] != nil {
@@ -87,15 +87,15 @@ func (eh *EvaluationHistory) addValue(block map[string]map[string]map[string]int
 	return nil
 }
 
-func (eh *EvaluationHistory) GetRequest(outerBlock string, requestBlock string) (map[string]interface{}, error) {
+func (eh *EvaluationHistory) GetRequest(outerBlock string, requestBlock string) (map[string]any, error) {
 	return eh.getValue(eh.Requests, outerBlock, requestBlock)
 }
 
-func (eh *EvaluationHistory) GetResponse(outerBlock string, requestBlock string) (map[string]interface{}, error) {
+func (eh *EvaluationHistory) GetResponse(outerBlock string, requestBlock string) (map[string]any, error) {
 	return eh.getValue(eh.Responses, outerBlock, requestBlock)
 }
 
-func (eh *EvaluationHistory) GetRequestField(outerBlock string, requestBlock string, fieldSelector []interface{}) (interface{}, error) {
+func (eh *EvaluationHistory) GetRequestField(outerBlock string, requestBlock string, fieldSelector []any) (any, error) {
 	values, err := eh.getValue(eh.Requests, outerBlock, requestBlock)
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (eh *EvaluationHistory) GetRequestField(outerBlock string, requestBlock str
 	return val, nil
 }
 
-func (eh *EvaluationHistory) GetResponseField(outerBlock string, requestBlock string, fieldSelector []interface{}) (interface{}, error) {
+func (eh *EvaluationHistory) GetResponseField(outerBlock string, requestBlock string, fieldSelector []any) (any, error) {
 	values, err := eh.getValue(eh.Responses, outerBlock, requestBlock)
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func (eh *EvaluationHistory) GetResponseField(outerBlock string, requestBlock st
 	return val, nil
 }
 
-func (eh *EvaluationHistory) getValue(block map[string]map[string]map[string]interface{}, outerBlock string, requestBlock string) (map[string]interface{}, error) {
+func (eh *EvaluationHistory) getValue(block map[string]map[string]map[string]any, outerBlock string, requestBlock string) (map[string]any, error) {
 	if block == nil {
 		return nil, fmt.Errorf("no values written")
 	}
@@ -150,11 +150,11 @@ func (eh *EvaluationHistory) getValue(block map[string]map[string]map[string]int
 // map; this is true even of list responses as they're contained in a regular
 // response map. However, inner items may be lists; in this case, a selector
 // of type []interface{} must be used to index arrays.
-func (eh *EvaluationHistory) getField(obj interface{}, rawFieldSelector []interface{}) (interface{}, error) {
+func (eh *EvaluationHistory) getField(obj any, rawFieldSelector []any) (any, error) {
 	for i, rawSelector := range rawFieldSelector {
 		switch selector := rawSelector.(type) {
 		case string:
-			mapBase, ok := obj.(map[string]interface{})
+			mapBase, ok := obj.(map[string]any)
 			if !ok {
 				return nil, fmt.Errorf("object at depth %d (selector %q) was of wrong type: %T (expected map[string]interface{})", i, selector, obj)
 			}
@@ -170,7 +170,7 @@ func (eh *EvaluationHistory) getField(obj interface{}, rawFieldSelector []interf
 
 			obj = val
 		case int:
-			listBase, ok := obj.([]interface{})
+			listBase, ok := obj.([]any)
 			if !ok {
 				return nil, fmt.Errorf("object at depth %d (selector %d) was of wrong type: %T (expected []interface{})", i, selector, obj)
 			}
@@ -194,7 +194,7 @@ func (eh *EvaluationHistory) getField(obj interface{}, rawFieldSelector []interf
 	return nil, errors.New("selector had zero length")
 }
 
-func presentKeys(obj map[string]interface{}) []string {
+func presentKeys(obj map[string]any) []string {
 	keys := make([]string, 0, len(obj))
 	for key := range obj {
 		keys = append(keys, key)

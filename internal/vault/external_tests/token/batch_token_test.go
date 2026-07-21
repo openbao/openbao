@@ -45,7 +45,7 @@ func TestBatchTokens(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("kv/foo", map[string]interface{}{
+	_, err = client.Logical().Write("kv/foo", map[string]any{
 		"foo": "bar",
 		"ttl": "5m",
 	})
@@ -79,7 +79,7 @@ path "kv/*" {
 	}
 
 	// Create role
-	resp, err := client.Logical().Write("auth/approle/role/test", map[string]interface{}{
+	resp, err := client.Logical().Write("auth/approle/role/test", map[string]any{
 		"policies": "test",
 	})
 	if err != nil {
@@ -97,7 +97,7 @@ path "kv/*" {
 	roleID := resp.Data["role_id"]
 
 	// Get secret_id
-	resp, err = client.Logical().Write("auth/approle/role/test/secret-id", map[string]interface{}{})
+	resp, err = client.Logical().Write("auth/approle/role/test/secret-id", map[string]any{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,14 +114,14 @@ path "kv/*" {
 		}); err != nil {
 			t.Fatal(err)
 		}
-		_, err = client.Logical().Write("auth/approle/role/test", map[string]interface{}{
+		_, err = client.Logical().Write("auth/approle/role/test", map[string]any{
 			"token_type": roleType,
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		resp, err = client.Logical().Write("auth/approle/login", map[string]interface{}{
+		resp, err = client.Logical().Write("auth/approle/login", map[string]any{
 			"role_id":   roleID,
 			"secret_id": secretID,
 		})
@@ -194,7 +194,7 @@ path "kv/*" {
 
 	client.SetToken(rootToken)
 	time.Sleep(2 * time.Second)
-	resp, err = client.Logical().Write("sys/leases/lookup", map[string]interface{}{
+	resp, err = client.Logical().Write("sys/leases/lookup", map[string]any{
 		"lease_id": leaseID,
 	})
 	if err == nil {
@@ -231,7 +231,7 @@ func TestBatchToken_ParentLeaseRevoke(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("kv/foo", map[string]interface{}{
+	_, err = client.Logical().Write("kv/foo", map[string]any{
 		"foo": "bar",
 		"ttl": "5m",
 	})
@@ -290,7 +290,7 @@ path "kv/*" {
 	leaseID := resp.LeaseID
 
 	// Check the lease
-	_, err = client.Logical().Write("sys/leases/lookup", map[string]interface{}{
+	_, err = client.Logical().Write("sys/leases/lookup", map[string]any{
 		"lease_id": leaseID,
 	})
 	if err != nil {
@@ -314,7 +314,7 @@ path "kv/*" {
 	}
 
 	// Verify the lease has been revoked
-	_, err = client.Logical().Write("sys/leases/lookup", map[string]interface{}{
+	_, err = client.Logical().Write("sys/leases/lookup", map[string]any{
 		"lease_id": leaseID,
 	})
 	if err == nil {
@@ -339,7 +339,7 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 
 	// Test service
 	{
-		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]interface{}{
+		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]any{
 			"bound_cidrs": []string{},
 			"token_type":  "service",
 		})
@@ -366,14 +366,14 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 	// Test batch
 	{
 		client.SetToken(rootToken)
-		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]interface{}{
+		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]any{
 			"token_type": "batch",
 		})
 		// Orphan not set so we should error
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]interface{}{
+		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]any{
 			"token_type": "batch",
 			"orphan":     true,
 		})
@@ -381,7 +381,7 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]interface{}{
+		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]any{
 			"token_type": "batch",
 			"orphan":     true,
 			"renewable":  false,
@@ -409,7 +409,7 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 	// Test default-service
 	{
 		client.SetToken(rootToken)
-		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]interface{}{
+		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]any{
 			"token_type": "default-service",
 		})
 		if err != nil {
@@ -469,7 +469,7 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 	// Test default-batch
 	{
 		client.SetToken(rootToken)
-		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]interface{}{
+		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]any{
 			"token_type": "default-batch",
 		})
 		if err != nil {

@@ -37,13 +37,13 @@ func (h *HardwareBackedRoot) IsEnabled() bool {
 	return h.Enabled
 }
 
-func (h *HardwareBackedRoot) DefaultConfig() map[string]interface{} {
-	return map[string]interface{}{
+func (h *HardwareBackedRoot) DefaultConfig() map[string]any {
+	return map[string]any{
 		"enabled": false,
 	}
 }
 
-func (h *HardwareBackedRoot) LoadConfig(config map[string]interface{}) error {
+func (h *HardwareBackedRoot) LoadConfig(config map[string]any) error {
 	enabled, err := parseutil.ParseBool(config["enabled"])
 	if err != nil {
 		return fmt.Errorf("error parsing %v.enabled: %w", h.Name(), err)

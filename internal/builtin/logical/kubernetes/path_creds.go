@@ -313,11 +313,11 @@ func (b *backend) createCreds(ctx context.Context, req *logical.Request, role *r
 		return nil, errors.New("one of service_account_name, kubernetes_role_name, or generated_role_rules must be set")
 	}
 
-	resp := b.Secret(kubeTokenType).Response(map[string]interface{}{
+	resp := b.Secret(kubeTokenType).Response(map[string]any{
 		"service_account_namespace": reqPayload.Namespace,
 		"service_account_name":      serviceAccountName,
 		"service_account_token":     token,
-	}, map[string]interface{}{
+	}, map[string]any{
 		// the internal data is whatever we need to cleanup on revoke
 		// (service_account_name, role, role_binding).
 		"role":                      reqPayload.RoleName,
@@ -451,7 +451,7 @@ func getTokenTTL(token string) (time.Duration, error) {
 	if err != nil {
 		return 0, err
 	}
-	claims := map[string]interface{}{}
+	claims := map[string]any{}
 	err = parsed.UnsafeClaimsWithoutVerification(&claims)
 	if err != nil {
 		return 0, err

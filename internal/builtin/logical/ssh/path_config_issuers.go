@@ -80,7 +80,7 @@ func (b *backend) pathReadDefaultIssuerHandler(ctx context.Context, req *logical
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			defaultRef: config.DefaultIssuerID,
 		},
 	}, nil
@@ -133,7 +133,7 @@ func (b *backend) pathWriteDefaultIssuerHandler(ctx context.Context, req *logica
 		return nil, err
 	}
 
-	response.Data = map[string]interface{}{
+	response.Data = map[string]any{
 		defaultRef: config.DefaultIssuerID,
 	}
 

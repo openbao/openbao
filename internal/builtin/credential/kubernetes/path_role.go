@@ -197,7 +197,7 @@ func (b *kubeAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request
 	}
 
 	// Create a map of data to be returned
-	d := map[string]interface{}{
+	d := map[string]any{
 		"bound_service_account_names":              role.ServiceAccountNames,
 		"bound_service_account_namespaces":         role.ServiceAccountNamespaces,
 		"bound_service_account_namespace_selector": role.ServiceAccountNamespaceSelector,

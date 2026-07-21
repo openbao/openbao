@@ -78,41 +78,41 @@ func TestTransit_Trim(t *testing.T) {
 	// Min available version should not be set when min_encryption_version is not
 	// set
 	req.Path = "keys/aes/trim"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_available_version": 1,
 	}
 	doErrReq(t, req)
 
 	// Set min_encryption_version to 0
 	req.Path = "keys/aes/config"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_encryption_version": 0,
 	}
 	doReq(t, req)
 
 	// Min available version should not be converted to 0 for nil values
 	req.Path = "keys/aes/trim"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_available_version": nil,
 	}
 	doErrReq(t, req)
 
 	// Set min_encryption_version to 4
 	req.Path = "keys/aes/config"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_encryption_version": 4,
 	}
 	doReq(t, req)
 
 	// Set min_decryption_version to 3
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_decryption_version": 3,
 	}
 	doReq(t, req)
 
 	// Min available version cannot be greater than min encryption version
 	req.Path = "keys/aes/trim"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_available_version": 5,
 	}
 	doErrReq(t, req)
@@ -145,13 +145,13 @@ func TestTransit_Trim(t *testing.T) {
 
 	// Min decryption version should not be less than min available version
 	req.Path = "keys/aes/config"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_decryption_version": 1,
 	}
 	doErrReq(t, req)
 
 	// Min encryption version should not be less than min available version
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_encryption_version": 2,
 	}
 	doErrReq(t, req)
@@ -175,20 +175,20 @@ func TestTransit_Trim(t *testing.T) {
 	}
 
 	// Set min encryption version to 7
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_encryption_version": 7,
 	}
 	doReq(t, req)
 
 	// Set min decryption version to 7
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_decryption_version": 7,
 	}
 	doReq(t, req)
 
 	// Trim all versions before 7
 	req.Path = "keys/aes/trim"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_available_version": 7,
 	}
 	doReq(t, req)
@@ -217,7 +217,7 @@ func TestTransit_Trim(t *testing.T) {
 	// Set min encryption version to 10
 	req.Path = "keys/aes/config"
 	req.Operation = logical.UpdateOperation
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_encryption_version": 10,
 	}
 	doReq(t, req)
@@ -226,7 +226,7 @@ func TestTransit_Trim(t *testing.T) {
 	}
 
 	// Set min decryption version to 9
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_decryption_version": 9,
 	}
 	doReq(t, req)
@@ -235,7 +235,7 @@ func TestTransit_Trim(t *testing.T) {
 	}
 
 	// Reduce the min decryption version to 8
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_decryption_version": 8,
 	}
 	doReq(t, req)
@@ -244,7 +244,7 @@ func TestTransit_Trim(t *testing.T) {
 	}
 
 	// Reduce the min encryption version to 8
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"min_encryption_version": 8,
 	}
 	doReq(t, req)

@@ -8,7 +8,7 @@ import (
 )
 
 // EnvSourceBuilder allows reading environment variables from the system.
-func EnvSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
+func EnvSourceBuilder(engine *ProfileEngine, field map[string]any) Source {
 	return &EnvSource{
 		field: field,
 	}
@@ -23,7 +23,7 @@ func WithEnvSource() func(*ProfileEngine) {
 }
 
 type EnvSource struct {
-	field map[string]interface{}
+	field map[string]any
 	value string
 }
 
@@ -59,7 +59,7 @@ func (s *EnvSource) Validate() ([]string, []string, error) {
 	return nil, nil, nil
 }
 
-func (s *EnvSource) Evaluate(_ context.Context, _ *EvaluationHistory) (interface{}, error) {
+func (s *EnvSource) Evaluate(_ context.Context, _ *EvaluationHistory) (any, error) {
 	return s.value, nil
 }
 

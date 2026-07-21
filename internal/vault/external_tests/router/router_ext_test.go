@@ -89,13 +89,13 @@ func TestRouter_UnmountRollbackIsntFatal(t *testing.T) {
 		t.Fatalf("failed to mount PKI: %v", err)
 	}
 
-	if _, err := client.Logical().Write("sys/plugins/reload/backend", map[string]interface{}{
+	if _, err := client.Logical().Write("sys/plugins/reload/backend", map[string]any{
 		"mounts": "noop",
 	}); err != nil {
 		t.Fatalf("expected reload of noop with broken periodic func to succeed; got err=%v", err)
 	}
 
-	if _, err := client.Logical().Write("sys/remount", map[string]interface{}{
+	if _, err := client.Logical().Write("sys/remount", map[string]any{
 		"from": "noop",
 		"to":   "noop-to",
 	}); err != nil {

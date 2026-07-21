@@ -67,7 +67,7 @@ func TestLoadConfigFile_AgentCache(t *testing.T) {
 			Method: &Method{
 				Type:      "aws",
 				MountPath: "auth/aws",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -77,7 +77,7 @@ func TestLoadConfigFile_AgentCache(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -103,7 +103,7 @@ func TestLoadConfigFile_AgentCache(t *testing.T) {
 			Address:          "http://127.0.0.1:1111",
 			CACert:           "config_ca_cert",
 			CAPath:           "config_ca_path",
-			TLSSkipVerifyRaw: interface{}("true"),
+			TLSSkipVerifyRaw: any("true"),
 			TLSSkipVerify:    true,
 			ClientCert:       "config_client_cert",
 			ClientKey:        "config_client_key",
@@ -122,7 +122,7 @@ func TestLoadConfigFile_AgentCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected.Vault.TLSSkipVerifyRaw = interface{}(true)
+	expected.Vault.TLSSkipVerifyRaw = any(true)
 
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -180,7 +180,7 @@ func TestLoadConfigDir_AgentCache(t *testing.T) {
 			Method: &Method{
 				Type:      "aws",
 				MountPath: "auth/aws",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -190,7 +190,7 @@ func TestLoadConfigDir_AgentCache(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -216,7 +216,7 @@ func TestLoadConfigDir_AgentCache(t *testing.T) {
 			Address:          "http://127.0.0.1:1111",
 			CACert:           "config_ca_cert",
 			CAPath:           "config_ca_path",
-			TLSSkipVerifyRaw: interface{}("true"),
+			TLSSkipVerifyRaw: any("true"),
 			TLSSkipVerify:    true,
 			ClientCert:       "config_client_cert",
 			ClientKey:        "config_client_key",
@@ -271,7 +271,7 @@ func TestLoadConfigDir_AutoAuthAndListener(t *testing.T) {
 			Method: &Method{
 				Type:      "aws",
 				MountPath: "auth/aws",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -281,7 +281,7 @@ func TestLoadConfigDir_AutoAuthAndListener(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -325,7 +325,7 @@ func TestLoadConfigDir_VaultBlock(t *testing.T) {
 			Address:          "http://127.0.0.1:1111",
 			CACert:           "config_ca_cert",
 			CAPath:           "config_ca_path",
-			TLSSkipVerifyRaw: interface{}("true"),
+			TLSSkipVerifyRaw: any("true"),
 			TLSSkipVerify:    true,
 			ClientCert:       "config_client_cert",
 			ClientKey:        "config_client_key",
@@ -337,7 +337,7 @@ func TestLoadConfigDir_VaultBlock(t *testing.T) {
 			Method: &Method{
 				Type:      "aws",
 				MountPath: "auth/aws",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -347,7 +347,7 @@ func TestLoadConfigDir_VaultBlock(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -391,7 +391,7 @@ func TestLoadConfigFile_AgentCache_NoListeners(t *testing.T) {
 			Method: &Method{
 				Type:      "aws",
 				MountPath: "auth/aws",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -401,7 +401,7 @@ func TestLoadConfigFile_AgentCache_NoListeners(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -427,7 +427,7 @@ func TestLoadConfigFile_AgentCache_NoListeners(t *testing.T) {
 			Address:          "http://127.0.0.1:1111",
 			CACert:           "config_ca_cert",
 			CAPath:           "config_ca_path",
-			TLSSkipVerifyRaw: interface{}("true"),
+			TLSSkipVerifyRaw: any("true"),
 			TLSSkipVerify:    true,
 			ClientCert:       "config_client_cert",
 			ClientKey:        "config_client_key",
@@ -474,7 +474,7 @@ func TestLoadConfigFile(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 				MaxBackoff: 0,
@@ -485,7 +485,7 @@ func TestLoadConfigFile(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -496,7 +496,7 @@ func TestLoadConfigFile(t *testing.T) {
 					DHPath:    "/tmp/file-foo-dhpath2",
 					AAD:       "aad",
 					DeriveKey: true,
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-bar",
 					},
 				},
@@ -537,14 +537,14 @@ func TestLoadConfigFile_Method_Wrapping(t *testing.T) {
 				ExitOnError: false,
 				WrapTTL:     5 * time.Minute,
 				MaxBackoff:  2 * time.Minute,
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
 			Sinks: []*Sink{
 				{
 					Type: "file",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -576,14 +576,14 @@ func TestLoadConfigFile_Method_InitialBackoff(t *testing.T) {
 				WrapTTL:     5 * time.Minute,
 				MinBackoff:  5 * time.Second,
 				MaxBackoff:  2 * time.Minute,
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
 			Sinks: []*Sink{
 				{
 					Type: "file",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -615,14 +615,14 @@ func TestLoadConfigFile_Method_ExitOnErr(t *testing.T) {
 				WrapTTL:     5 * time.Minute,
 				MinBackoff:  5 * time.Second,
 				MaxBackoff:  2 * time.Minute,
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
 			Sinks: []*Sink{
 				{
 					Type: "file",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -778,7 +778,7 @@ func TestLoadConfigFile_AgentCache_AutoAuth_NoSink(t *testing.T) {
 			Method: &Method{
 				Type:      "aws",
 				MountPath: "auth/aws",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -823,7 +823,7 @@ func TestLoadConfigFile_AgentCache_AutoAuth_Force(t *testing.T) {
 			Method: &Method{
 				Type:      "aws",
 				MountPath: "auth/aws",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -868,7 +868,7 @@ func TestLoadConfigFile_AgentCache_AutoAuth_True(t *testing.T) {
 			Method: &Method{
 				Type:      "aws",
 				MountPath: "auth/aws",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -913,7 +913,7 @@ func TestLoadConfigFile_Agent_AutoAuth_APIProxyAllConfig(t *testing.T) {
 			Method: &Method{
 				Type:      "aws",
 				MountPath: "auth/aws",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -954,7 +954,7 @@ func TestLoadConfigFile_AgentCache_AutoAuth_False(t *testing.T) {
 			Method: &Method{
 				Type:      "aws",
 				MountPath: "auth/aws",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -964,7 +964,7 @@ func TestLoadConfigFile_AgentCache_AutoAuth_False(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1161,7 +1161,7 @@ func TestLoadConfigFile_Template(t *testing.T) {
 						Type:      "aws",
 						MountPath: "auth/aws",
 						Namespace: "my-namespace/",
-						Config: map[string]interface{}{
+						Config: map[string]any{
 							"role": "foobar",
 						},
 					},
@@ -1171,7 +1171,7 @@ func TestLoadConfigFile_Template(t *testing.T) {
 							DHType: "curve25519",
 							DHPath: "/tmp/file-foo-dhpath",
 							AAD:    "foobar",
-							Config: map[string]interface{}{
+							Config: map[string]any{
 								"path": "/tmp/file-foo",
 							},
 						},
@@ -1267,7 +1267,7 @@ func TestLoadConfigFile_Template_NoSinks(t *testing.T) {
 						Type:      "aws",
 						MountPath: "auth/aws",
 						Namespace: "my-namespace/",
-						Config: map[string]interface{}{
+						Config: map[string]any{
 							"role": "foobar",
 						},
 					},
@@ -1301,7 +1301,7 @@ func TestLoadConfigFile_Template_WithCache(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1336,7 +1336,7 @@ func TestLoadConfigFile_Vault_Retry(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1346,7 +1346,7 @@ func TestLoadConfigFile_Vault_Retry(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1381,7 +1381,7 @@ func TestLoadConfigFile_Vault_Retry_Empty(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1391,7 +1391,7 @@ func TestLoadConfigFile_Vault_Retry_Empty(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1430,7 +1430,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_All(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1440,7 +1440,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_All(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1479,7 +1479,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Auto_Auth(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1489,7 +1489,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Auto_Auth(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1528,7 +1528,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Templating(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1538,7 +1538,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Templating(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1577,7 +1577,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Caching(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1587,7 +1587,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Caching(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1626,7 +1626,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Proxying(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1636,7 +1636,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Proxying(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1675,7 +1675,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Empty(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1685,7 +1685,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Empty(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1730,7 +1730,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Env(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1740,7 +1740,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Env(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1786,7 +1786,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_All(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1796,7 +1796,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_All(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1835,7 +1835,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Auto_Auth(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1845,7 +1845,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Auto_Auth(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1884,7 +1884,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Templating(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1894,7 +1894,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Templating(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1933,7 +1933,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Caching(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1943,7 +1943,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Caching(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -1982,7 +1982,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Proxying(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -1992,7 +1992,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Proxying(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -2031,7 +2031,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Empty(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -2041,7 +2041,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Empty(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -2086,7 +2086,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Env(t *testing.T) {
 				Type:      "aws",
 				MountPath: "auth/aws",
 				Namespace: "my-namespace/",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -2096,7 +2096,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Env(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},

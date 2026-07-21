@@ -38,7 +38,7 @@ func TestDeletionTimeCalc(t *testing.T) {
 	}
 }
 
-func getTime(t *testing.T, k string, d map[string]interface{}) time.Time {
+func getTime(t *testing.T, k string, d map[string]any) time.Time {
 	t.Helper()
 	ts, ok := d[k].(string)
 	if !ok {
@@ -76,12 +76,12 @@ func wantResponse(t *testing.T, resp *logical.Response, err error) {
 	}
 }
 
-func untilDeletion(t *testing.T, ut time.Time, d map[string]interface{}) time.Duration {
+func untilDeletion(t *testing.T, ut time.Time, d map[string]any) time.Duration {
 	t.Helper()
 	return getTime(t, "deletion_time", d).Sub(ut)
 }
 
-func lifetime(t *testing.T, d map[string]interface{}) time.Duration {
+func lifetime(t *testing.T, d map[string]any) time.Duration {
 	t.Helper()
 	ct := getTime(t, "created_time", d)
 	return untilDeletion(t, ct, d)
@@ -109,7 +109,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 
 			b, storage := getBackend(t)
 
-			data := map[string]interface{}{
+			data := map[string]any{
 				"delete_version_after": tt.mount.String(),
 			}
 			req := &logical.Request{
@@ -133,7 +133,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 				t.Fatalf("want delete_version_after: %v, got %v", want, got)
 			}
 
-			data = map[string]interface{}{
+			data = map[string]any{
 				"max_versions":         2,
 				"delete_version_after": tt.meta.String(),
 			}
@@ -158,8 +158,8 @@ func TestDeleteVersionAfter(t *testing.T) {
 				t.Fatalf("want delete_version_after: %v, got %v", want, got)
 			}
 
-			data = map[string]interface{}{
-				"data": map[string]interface{}{
+			data = map[string]any{
+				"data": map[string]any{
 					"bar": "baz1",
 				},
 			}
@@ -190,7 +190,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 			}
 			resp, err = b.HandleRequest(t.Context(), req)
 			wantResponse(t, resp, err)
-			meta := resp.Data["metadata"].(map[string]interface{})
+			meta := resp.Data["metadata"].(map[string]any)
 			if !tt.wantDeletionTime {
 				if dtv := meta["deletion_time"].(string); dtv != "" {
 					t.Logf("meta: %#v", meta)
@@ -203,7 +203,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 				}
 			}
 
-			data = map[string]interface{}{
+			data = map[string]any{
 				"versions": "1",
 			}
 			req = &logical.Request{
@@ -215,7 +215,7 @@ func TestDeleteVersionAfter(t *testing.T) {
 			resp, err = b.HandleRequest(t.Context(), req)
 			wantNoResponse(t, resp, err)
 
-			data = map[string]interface{}{
+			data = map[string]any{
 				"versions": "1",
 			}
 			req = &logical.Request{
@@ -239,12 +239,12 @@ func TestDeleteVersionAfter(t *testing.T) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 			if !tt.wantDeletionTime {
-				if dtv := resp.Data["versions"].(map[string]interface{})["1"].(map[string]interface{})["deletion_time"].(string); dtv != "" {
+				if dtv := resp.Data["versions"].(map[string]any)["1"].(map[string]any)["deletion_time"].(string); dtv != "" {
 					t.Logf("resp: %#v", resp)
 					t.Fatalf("after undelete, deletion_time %#v, want no deletion_time", dtv)
 				}
 			} else {
-				got := untilDeletion(t, undeleteTime, resp.Data["versions"].(map[string]interface{})["1"].(map[string]interface{}))
+				got := untilDeletion(t, undeleteTime, resp.Data["versions"].(map[string]any)["1"].(map[string]any))
 				want := tt.want + 5*time.Second
 				if got > want {
 					t.Fatalf("diff between deletion_time and undelete time %v, want %v < 5 sec", got, want)

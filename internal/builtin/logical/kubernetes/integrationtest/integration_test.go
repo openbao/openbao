@@ -102,7 +102,7 @@ func TestConfig(t *testing.T) {
 	defer delNamespace()
 
 	// create
-	_, err = client.Logical().Write(path+"/config", map[string]interface{}{
+	_, err = client.Logical().Write(path+"/config", map[string]any{
 		"disable_local_ca_jwt": true,
 		"kubernetes_ca_cert":   "cert",
 		"kubernetes_host":      "host",
@@ -112,21 +112,21 @@ func TestConfig(t *testing.T) {
 
 	result, err := client.Logical().Read(path + "/config")
 	assert.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{
+	assert.Equal(t, map[string]any{
 		"disable_local_ca_jwt": true,
 		"kubernetes_ca_cert":   "cert",
 		"kubernetes_host":      "host",
 	}, result.Data)
 
 	// update
-	_, err = client.Logical().Write(path+"/config", map[string]interface{}{
+	_, err = client.Logical().Write(path+"/config", map[string]any{
 		"kubernetes_host": "another-host",
 	})
 	assert.NoError(t, err)
 
 	result, err = client.Logical().Read(path + "/config")
 	assert.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{
+	assert.Equal(t, map[string]any{
 		"disable_local_ca_jwt": true,
 		"kubernetes_ca_cert":   "cert",
 		"kubernetes_host":      "another-host",
@@ -154,10 +154,10 @@ func TestRole(t *testing.T) {
 	defer delNamespace()
 
 	// create default config
-	_, err = client.Logical().Write(path+"/config", map[string]interface{}{})
+	_, err = client.Logical().Write(path+"/config", map[string]any{})
 	require.NoError(t, err)
 
-	_, err = client.Logical().Write(path+"/roles/testrole", map[string]interface{}{
+	_, err = client.Logical().Write(path+"/roles/testrole", map[string]any{
 		"allowed_kubernetes_namespaces": []string{"*"},
 		"generated_role_rules":          sampleRules,
 		"token_default_ttl":             "1h",
@@ -168,8 +168,8 @@ func TestRole(t *testing.T) {
 
 	result, err := client.Logical().Read(path + "/roles/testrole")
 	assert.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{
-		"allowed_kubernetes_namespaces":         []interface{}{"*"},
+	assert.Equal(t, map[string]any{
+		"allowed_kubernetes_namespaces":         []any{"*"},
 		"allowed_kubernetes_namespace_selector": "",
 		"extra_annotations":                     nil,
 		"extra_labels":                          nil,
@@ -181,11 +181,11 @@ func TestRole(t *testing.T) {
 		"service_account_name":                  "",
 		"token_max_ttl":                         oneDay,
 		"token_default_ttl":                     oneHour,
-		"token_default_audiences":               []interface{}{"foobar"},
+		"token_default_audiences":               []any{"foobar"},
 	}, result.Data)
 
 	// update
-	result, err = client.Logical().Write(path+"/roles/testrole", map[string]interface{}{
+	result, err = client.Logical().Write(path+"/roles/testrole", map[string]any{
 		"allowed_kubernetes_namespaces": []string{"app1", "app2"},
 		"extra_annotations":             sampleExtraAnnotations,
 		"extra_labels":                  sampleExtraLabels,
@@ -197,8 +197,8 @@ func TestRole(t *testing.T) {
 
 	result, err = client.Logical().Read(path + "/roles/testrole")
 	assert.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{
-		"allowed_kubernetes_namespaces":         []interface{}{"app1", "app2"},
+	assert.Equal(t, map[string]any{
+		"allowed_kubernetes_namespaces":         []any{"app1", "app2"},
 		"allowed_kubernetes_namespace_selector": "",
 		"extra_annotations":                     asMapInterface(sampleExtraAnnotations),
 		"extra_labels":                          asMapInterface(sampleExtraLabels),
@@ -210,11 +210,11 @@ func TestRole(t *testing.T) {
 		"service_account_name":                  "",
 		"token_max_ttl":                         oneDay,
 		"token_default_ttl":                     thirtyMinutes,
-		"token_default_audiences":               []interface{}{"bar"},
+		"token_default_audiences":               []any{"bar"},
 	}, result.Data)
 
 	// update again
-	_, err = client.Logical().Write(path+"/roles/testrole", map[string]interface{}{
+	_, err = client.Logical().Write(path+"/roles/testrole", map[string]any{
 		"allowed_kubernetes_namespaces":         []string{},
 		"allowed_kubernetes_namespace_selector": sampleSelector,
 	})
@@ -222,8 +222,8 @@ func TestRole(t *testing.T) {
 
 	result, err = client.Logical().Read(path + "/roles/testrole")
 	assert.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{
-		"allowed_kubernetes_namespaces":         []interface{}{},
+	assert.Equal(t, map[string]any{
+		"allowed_kubernetes_namespaces":         []any{},
 		"allowed_kubernetes_namespace_selector": sampleSelector,
 		"extra_annotations":                     asMapInterface(sampleExtraAnnotations),
 		"extra_labels":                          asMapInterface(sampleExtraLabels),
@@ -235,12 +235,12 @@ func TestRole(t *testing.T) {
 		"service_account_name":                  "",
 		"token_max_ttl":                         oneDay,
 		"token_default_ttl":                     thirtyMinutes,
-		"token_default_audiences":               []interface{}{"bar"},
+		"token_default_audiences":               []any{"bar"},
 	}, result.Data)
 
 	result, err = client.Logical().List(path + "/roles")
 	assert.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{"keys": []interface{}{"testrole"}}, result.Data)
+	assert.Equal(t, map[string]any{"keys": []any{"testrole"}}, result.Data)
 
 	_, err = client.Logical().Delete(path + "/roles/testrole")
 	assert.NoError(t, err)
@@ -282,7 +282,7 @@ func mountHelper(t *testing.T, client *api.Client) (string, func()) {
 
 	path := randomWithPrefix("kubernetes")
 	fullPath := fmt.Sprintf("sys/mounts/%s", path)
-	_, err := client.Logical().Write(fullPath, map[string]interface{}{
+	_, err := client.Logical().Write(fullPath, map[string]any{
 		"type": "kubernetes-dev",
 	})
 	if err != nil {

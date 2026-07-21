@@ -50,7 +50,7 @@ func (b *backend) pathCheckRead(_ context.Context, _ *logical.Request, _ *framew
 
 	if len(missing) == 0 {
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				logical.HTTPStatusCode: http.StatusNoContent,
 			},
 		}, nil

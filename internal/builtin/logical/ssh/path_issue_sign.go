@@ -146,7 +146,7 @@ func (b *backend) pathSignIssueCertificateHelper(sc *storageContext, req *logica
 	}
 
 	response := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"serial_number": strconv.FormatUint(certificate.Serial, 16),
 			"signed_key":    string(signedSSHCertificate),
 			"issuer_id":     issuerId,
@@ -323,7 +323,7 @@ func (b *backend) calculateKeyID(data *framework.FieldData, req *logical.Request
 }
 
 func (b *backend) calculateCriticalOptions(data *framework.FieldData, role *sshRole) (map[string]string, error) {
-	unparsedCriticalOptions := data.Get("critical_options").(map[string]interface{})
+	unparsedCriticalOptions := data.Get("critical_options").(map[string]any)
 	if len(unparsedCriticalOptions) == 0 {
 		return role.DefaultCriticalOptions, nil
 	}

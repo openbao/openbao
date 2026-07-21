@@ -32,7 +32,7 @@ func OutputSecret(ui cli.Ui, secret *api.Secret) int {
 	return outputWithFormat(ui, secret, secret)
 }
 
-func OutputList(ui cli.Ui, data interface{}) int {
+func OutputList(ui cli.Ui, data any) int {
 	switch data := data.(type) {
 	case *api.Secret:
 		secret := data
@@ -42,11 +42,11 @@ func OutputList(ui cli.Ui, data interface{}) int {
 	}
 }
 
-func OutputData(ui cli.Ui, data interface{}) int {
+func OutputData(ui cli.Ui, data any) int {
 	return outputWithFormat(ui, nil, data)
 }
 
-func outputWithFormat(ui cli.Ui, secret *api.Secret, data interface{}) int {
+func outputWithFormat(ui cli.Ui, secret *api.Secret, data any) int {
 	format := Format(ui)
 	formatter, ok := Formatters[format]
 	if !ok {
@@ -62,8 +62,8 @@ func outputWithFormat(ui cli.Ui, secret *api.Secret, data interface{}) int {
 }
 
 type Formatter interface {
-	Output(ui cli.Ui, secret *api.Secret, data interface{}) error
-	Format(data interface{}) ([]byte, error)
+	Output(ui cli.Ui, secret *api.Secret, data any) error
+	Format(data any) ([]byte, error)
 }
 
 var Formatters = map[string]Formatter{
@@ -101,11 +101,11 @@ func Detailed(ui cli.Ui) bool {
 // An output formatter for json output of an object
 type JsonFormatter struct{}
 
-func (j JsonFormatter) Format(data interface{}) ([]byte, error) {
+func (j JsonFormatter) Format(data any) ([]byte, error) {
 	return json.MarshalIndent(data, "", "  ")
 }
 
-func (j JsonFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{}) error {
+func (j JsonFormatter) Output(ui cli.Ui, secret *api.Secret, data any) error {
 	b, err := j.Format(data)
 	if err != nil {
 		return err
@@ -131,7 +131,7 @@ func (j JsonFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{}) e
 // An output formatter for raw output of the original request object
 type RawFormatter struct{}
 
-func (r RawFormatter) Format(data interface{}) ([]byte, error) {
+func (r RawFormatter) Format(data any) ([]byte, error) {
 	byte_data, ok := data.([]byte)
 	if !ok {
 		return nil, errors.New("This command does not support the -format=raw option; only `vault read` does.") //nolint:staticcheck // user-facing error
@@ -140,7 +140,7 @@ func (r RawFormatter) Format(data interface{}) ([]byte, error) {
 	return byte_data, nil
 }
 
-func (r RawFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{}) error {
+func (r RawFormatter) Output(ui cli.Ui, secret *api.Secret, data any) error {
 	b, err := r.Format(data)
 	if err != nil {
 		return err
@@ -152,11 +152,11 @@ func (r RawFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{}) er
 // An output formatter for yaml output format of an object
 type YamlFormatter struct{}
 
-func (y YamlFormatter) Format(data interface{}) ([]byte, error) {
+func (y YamlFormatter) Format(data any) ([]byte, error) {
 	return yaml.Marshal(data)
 }
 
-func (y YamlFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{}) error {
+func (y YamlFormatter) Output(ui cli.Ui, secret *api.Secret, data any) error {
 	b, err := y.Format(data)
 	if err == nil {
 		ui.Output(strings.TrimSpace(string(b)))
@@ -166,11 +166,11 @@ func (y YamlFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{}) e
 
 type PrettyFormatter struct{}
 
-func (p PrettyFormatter) Format(data interface{}) ([]byte, error) {
+func (p PrettyFormatter) Format(data any) ([]byte, error) {
 	return nil, nil
 }
 
-func (p PrettyFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{}) error {
+func (p PrettyFormatter) Output(ui cli.Ui, secret *api.Secret, data any) error {
 	switch data.(type) {
 	case *api.AutopilotState:
 		p.OutputAutopilotState(ui, data)
@@ -215,7 +215,7 @@ func formatServer(srv *api.AutopilotServer) string {
 	return buffer.String()
 }
 
-func (p PrettyFormatter) OutputAutopilotState(ui cli.Ui, data interface{}) {
+func (p PrettyFormatter) OutputAutopilotState(ui cli.Ui, data any) {
 	state := data.(*api.AutopilotState)
 
 	var buffer bytes.Buffer
@@ -266,19 +266,19 @@ type TableFormatter struct{}
 
 // We don't use this due to the TableFormatter introducing a bug when the -field flag is supplied:
 // https://github.com/openbao/openbao/commit/b24cf9a8af2190e96c614205b8cdf06d8c4b6718 .
-func (t TableFormatter) Format(data interface{}) ([]byte, error) {
+func (t TableFormatter) Format(data any) ([]byte, error) {
 	return nil, nil
 }
 
-func (t TableFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{}) error {
+func (t TableFormatter) Output(ui cli.Ui, secret *api.Secret, data any) error {
 	switch data := data.(type) {
 	case *api.Secret:
 		return t.OutputSecret(ui, secret)
-	case []interface{}:
+	case []any:
 		return t.OutputList(ui, secret, data)
 	case []string:
 		return t.OutputList(ui, nil, data)
-	case map[string]interface{}:
+	case map[string]any:
 		return t.OutputMap(ui, data)
 	case api.SealStatusResponse, SealStatusOutput:
 		return t.OutputSealStatusStruct(ui, data)
@@ -311,7 +311,7 @@ func (t TableFormatter) formatSealStatusStruct(status api.SealStatusResponse) []
 	return out
 }
 
-func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, data interface{}) error {
+func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, data any) error {
 	status, ok := data.(SealStatusOutput)
 	if !ok {
 		ui.Output(tableOutput(t.formatSealStatusStruct(data.(api.SealStatusResponse)), &columnize.Config{
@@ -378,20 +378,20 @@ func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, data interface{}) erro
 	return nil
 }
 
-func (t TableFormatter) OutputList(ui cli.Ui, secret *api.Secret, data interface{}) error {
+func (t TableFormatter) OutputList(ui cli.Ui, secret *api.Secret, data any) error {
 	t.printWarnings(ui, secret)
 
 	// Determine if we have additional information from a ListResponseWithInfo endpoint.
-	var additionalInfo map[string]interface{}
+	var additionalInfo map[string]any
 	if secret != nil {
 		shouldListWithInfo := Detailed(ui)
-		if additional, ok := secret.Data["key_info"]; shouldListWithInfo && ok && len(additional.(map[string]interface{})) > 0 {
-			additionalInfo = additional.(map[string]interface{})
+		if additional, ok := secret.Data["key_info"]; shouldListWithInfo && ok && len(additional.(map[string]any)) > 0 {
+			additionalInfo = additional.(map[string]any)
 		}
 	}
 
 	switch data := data.(type) {
-	case []interface{}:
+	case []any:
 	case []string:
 		ui.Output(tableOutput(data, nil))
 		return nil
@@ -399,7 +399,7 @@ func (t TableFormatter) OutputList(ui cli.Ui, secret *api.Secret, data interface
 		return errors.New("error: table formatter cannot output list for this data type")
 	}
 
-	list := data.([]interface{})
+	list := data.([]any)
 
 	if len(list) > 0 {
 		keys := make([]string, len(list))
@@ -432,7 +432,7 @@ func (t TableFormatter) OutputList(ui cli.Ui, secret *api.Secret, data interface
 					continue
 				}
 
-				values := rawValues.(map[string]interface{})
+				values := rawValues.(map[string]any)
 				for key := range values {
 					seenHeaders[key] = true
 				}
@@ -454,7 +454,7 @@ func (t TableFormatter) OutputList(ui cli.Ui, secret *api.Secret, data interface
 			for index, row := range rows {
 				formatted := []string{row}
 				if rawValues, ok := additionalInfo[row]; ok {
-					values := rawValues.(map[string]interface{})
+					values := rawValues.(map[string]any)
 					for _, header := range headers {
 						if rawValue, ok := values[header]; ok {
 							if looksLikeDuration(header) {
@@ -593,7 +593,7 @@ func (t TableFormatter) OutputSecret(ui cli.Ui, secret *api.Secret) error {
 	return nil
 }
 
-func (t TableFormatter) OutputMap(ui cli.Ui, data map[string]interface{}) error {
+func (t TableFormatter) OutputMap(ui cli.Ui, data map[string]any) error {
 	out := make([]string, 0, len(data)+1)
 	if len(data) > 0 {
 		keys := make([]string, 0, len(data))

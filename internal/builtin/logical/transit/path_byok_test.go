@@ -43,7 +43,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 		Path:      "keys/test-source",
 		Operation: logical.UpdateOperation,
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type":       keyType,
 			"exportable": true,
 		},
@@ -72,7 +72,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 		Path:      "keys/wrapper/import",
 		Operation: logical.UpdateOperation,
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"public_key": resp.Data["public_key"],
 			"type":       "rsa-4096",
 		},
@@ -99,7 +99,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 		Path:      "keys/test/import",
 		Operation: logical.UpdateOperation,
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"ciphertext": keys["1"],
 			"type":       keyType,
 		},
@@ -119,7 +119,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 			Path:      "encrypt/test-source",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"plaintext": plaintextB64,
 			},
 		}
@@ -134,7 +134,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 			Path:      "sign/test-source",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"input": plaintextB64,
 			},
 		}
@@ -149,7 +149,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 			Path:      "hmac/test-source",
 			Operation: logical.UpdateOperation,
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"input": plaintextB64,
 			},
 		}
@@ -171,7 +171,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 				Path:      "decrypt/" + keyName,
 				Operation: logical.UpdateOperation,
 				Storage:   s,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": ciphertext,
 				},
 			}
@@ -188,7 +188,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 				Path:      "verify/" + keyName,
 				Operation: logical.UpdateOperation,
 				Storage:   s,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"signature": signature,
 					"input":     plaintextB64,
 				},
@@ -206,7 +206,7 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 				Path:      "verify/" + keyName,
 				Operation: logical.UpdateOperation,
 				Storage:   s,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"hmac":  hmac,
 					"input": plaintextB64,
 				},

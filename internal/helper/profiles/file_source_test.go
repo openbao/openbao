@@ -11,7 +11,7 @@ import (
 
 func TestFileSourceBuilder_Success(t *testing.T) {
 	engine := &ProfileEngine{sourceBuilders: make(map[string]SourceBuilder)}
-	field := map[string]interface{}{"path": "dummy"}
+	field := map[string]any{"path": "dummy"}
 	src := FileSourceBuilder(engine, field)
 
 	fs, ok := src.(*FileSource)
@@ -43,7 +43,7 @@ func TestFileSource_Validate_Success(t *testing.T) {
 		t.Fatalf("failed to write temp file: %v", err)
 	}
 
-	src := &FileSource{field: map[string]interface{}{"path": fname}}
+	src := &FileSource{field: map[string]any{"path": fname}}
 	deps, provides, err := src.Validate()
 	if err != nil {
 		t.Fatalf("Validate, error: %v", err)
@@ -60,7 +60,7 @@ func TestFileSource_Validate_Success(t *testing.T) {
 }
 
 func TestFileSource_Validate_MissingPath(t *testing.T) {
-	src := &FileSource{field: map[string]interface{}{}}
+	src := &FileSource{field: map[string]any{}}
 	_, _, err := src.Validate()
 	if err == nil || err.Error() != "file source is missing required field 'path'" {
 		t.Fatalf("expected missing-path error, got %v", err)
@@ -68,7 +68,7 @@ func TestFileSource_Validate_MissingPath(t *testing.T) {
 }
 
 func TestFileSource_Validate_WrongType(t *testing.T) {
-	src := &FileSource{field: map[string]interface{}{"path": 123}}
+	src := &FileSource{field: map[string]any{"path": 123}}
 	_, _, err := src.Validate()
 	wantPrefix := "field 'path' is of wrong type"
 	if err == nil || err.Error()[:len(wantPrefix)] != wantPrefix {
@@ -77,7 +77,7 @@ func TestFileSource_Validate_WrongType(t *testing.T) {
 }
 
 func TestFileSource_Validate_OpenError(t *testing.T) {
-	src := &FileSource{field: map[string]interface{}{"path": "/nonexistent/file"}}
+	src := &FileSource{field: map[string]any{"path": "/nonexistent/file"}}
 	_, _, err := src.Validate()
 	if err == nil {
 		t.Fatal("expected error opening non-existent file, got nil")
@@ -95,7 +95,7 @@ func TestFileSource_Evaluate_Read(t *testing.T) {
 		t.Fatalf("write file error: %v", err)
 	}
 
-	src := &FileSource{field: map[string]interface{}{"path": fname}}
+	src := &FileSource{field: map[string]any{"path": fname}}
 	if _, _, err := src.Validate(); err != nil {
 		t.Fatalf("Validate returned %v", err)
 	}

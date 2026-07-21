@@ -20,7 +20,7 @@ const (
 // Eventually expire the WAL if for some reason the rollback operation consistently fails
 var maxWALAge = 24 * time.Hour
 
-func (b *backend) walRollback(ctx context.Context, req *logical.Request, kind string, data interface{}) error {
+func (b *backend) walRollback(ctx context.Context, req *logical.Request, kind string, data any) error {
 	switch kind {
 	case walRoleKind:
 		return b.rollbackRoleWAL(ctx, req, data)
@@ -42,7 +42,7 @@ type walRole struct {
 // from Kubernetes. We're relying on Kubernetes garbage collection to delete the
 // other related objects (RoleBinding/ClusterRoleBinding and ServiceAccount)
 // since they should have an owner reference to the Role/ClusterRole
-func (b *backend) rollbackRoleWAL(ctx context.Context, req *logical.Request, data interface{}) error {
+func (b *backend) rollbackRoleWAL(ctx context.Context, req *logical.Request, data any) error {
 	// Decode the WAL data
 	var entry walRole
 	d, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
@@ -91,7 +91,7 @@ type walRoleBinding struct {
 // Role/ClusterRole from Kubernetes. We're relying on Kubernetes garbage
 // collection to delete the related ServiceAccount since it should have an owner
 // reference to the RoleBinding/ClusterRoleBinding
-func (b *backend) rollbackRoleBindingWAL(ctx context.Context, req *logical.Request, data interface{}) error {
+func (b *backend) rollbackRoleBindingWAL(ctx context.Context, req *logical.Request, data any) error {
 	// Decode the WAL data
 	var entry walRoleBinding
 	d, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{

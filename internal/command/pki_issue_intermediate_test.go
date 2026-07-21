@@ -91,7 +91,7 @@ func createComplicatedIssuerSetUpWithIssueIntermediate(t *testing.T, client *api
 		t.Fatalf("pki mount error: %#v", err)
 	}
 
-	resp, err := client.Logical().Write("pki-root/root/generate/internal", map[string]interface{}{
+	resp, err := client.Logical().Write("pki-root/root/generate/internal", map[string]any{
 		"key_type":    "ec",
 		"common_name": "Root X",
 		"ttl":         "3650d",
@@ -102,7 +102,7 @@ func createComplicatedIssuerSetUpWithIssueIntermediate(t *testing.T, client *api
 		t.Fatalf("failed to prime CA: %v", err)
 	}
 
-	resp, err = client.Logical().Write("pki-root/root/generate/internal", map[string]interface{}{
+	resp, err = client.Logical().Write("pki-root/root/generate/internal", map[string]any{
 		"key_type":    "ec",
 		"common_name": "Root X",
 		"ttl":         "3650d",
@@ -112,7 +112,7 @@ func createComplicatedIssuerSetUpWithIssueIntermediate(t *testing.T, client *api
 		t.Fatalf("failed to prime CA: %v", err)
 	}
 
-	if resp, err := client.Logical().Write("pki-newroot/root/generate/internal", map[string]interface{}{
+	if resp, err := client.Logical().Write("pki-newroot/root/generate/internal", map[string]any{
 		"key_type":    "ec",
 		"common_name": "Root X",
 		"ttl":         "3650d",
@@ -121,7 +121,7 @@ func createComplicatedIssuerSetUpWithIssueIntermediate(t *testing.T, client *api
 		t.Fatalf("failed to prime CA: %v", err)
 	}
 
-	if resp, err := client.Logical().Write("pki-root/root/generate/existing", map[string]interface{}{
+	if resp, err := client.Logical().Write("pki-root/root/generate/existing", map[string]any{
 		"common_name": "Root X4",
 		"ttl":         "3650d",
 		"issuer_name": "rootX4",
@@ -188,9 +188,9 @@ func createComplicatedIssuerSetUpWithIssueIntermediate(t *testing.T, client *api
 	if codeOut != 0 {
 		t.Fatalf("error issuing intermediate X3, code: %d \n stdout: %v \n stderr: %v", codeOut, stdout, stderr)
 	}
-	var intX3Resp map[string]interface{}
+	var intX3Resp map[string]any
 	json.Unmarshal(stdout.Bytes(), &intX3Resp)
-	intX3Data := intX3Resp["data"].(map[string]interface{})
+	intX3Data := intX3Resp["data"].(map[string]any)
 	keyId := intX3Data["key_id"].(string)
 
 	intX3AdaptedCallArgs := []string{

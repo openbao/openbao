@@ -144,7 +144,7 @@ type MFABackend interface {
 
 	// Login Enforcement Configs CRUD
 	PutMFALoginEnforcementConfig(context.Context, *mfa.MFAEnforcementConfig, *namespace.Namespace) error
-	ReadMFALoginEnforcementConfigByNameAndNamespace(string, *namespace.Namespace) (map[string]interface{}, error)
+	ReadMFALoginEnforcementConfigByNameAndNamespace(string, *namespace.Namespace) (map[string]any, error)
 	DeleteMFALoginEnforcementConfigByNameAndNamespace(context.Context, string, *namespace.Namespace) error
 	MfaLoginEnforcementList(context.Context) (map[string]any, error)
 
@@ -274,7 +274,7 @@ func (i *IdentityStore) handleMFAMethodUpdateCommon(ctx context.Context, req *lo
 
 	if methodID == "" {
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"method_id": mConfig.ID,
 			},
 		}, nil

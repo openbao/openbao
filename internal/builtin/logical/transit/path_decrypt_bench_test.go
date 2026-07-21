@@ -41,15 +41,15 @@ func BTransit_BatchDecryption(b *testing.B, bsize int) {
 
 	backend, s := createBackendWithStorage(b)
 
-	batchEncryptionInput := make([]interface{}, 0, bsize)
+	batchEncryptionInput := make([]any, 0, bsize)
 	for range bsize {
 		batchEncryptionInput = append(
 			batchEncryptionInput,
-			map[string]interface{}{"plaintext": "dGhlIHF1aWNrIGJyb3duIGZveA=="},
+			map[string]any{"plaintext": "dGhlIHF1aWNrIGJyb3duIGZveA=="},
 		)
 	}
 
-	batchEncryptionData := map[string]interface{}{
+	batchEncryptionData := map[string]any{
 		"batch_input": batchEncryptionInput,
 	}
 
@@ -65,11 +65,11 @@ func BTransit_BatchDecryption(b *testing.B, bsize int) {
 	}
 
 	batchResponseItems := resp.Data["batch_results"].([]EncryptBatchResponseItem)
-	batchDecryptionInput := make([]interface{}, len(batchResponseItems))
+	batchDecryptionInput := make([]any, len(batchResponseItems))
 	for i, item := range batchResponseItems {
-		batchDecryptionInput[i] = map[string]interface{}{"ciphertext": item.Ciphertext}
+		batchDecryptionInput[i] = map[string]any{"ciphertext": item.Ciphertext}
 	}
-	batchDecryptionData := map[string]interface{}{
+	batchDecryptionData := map[string]any{
 		"batch_input": batchDecryptionInput,
 	}
 

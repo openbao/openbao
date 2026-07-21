@@ -205,7 +205,7 @@ func (b *backend) pathAcmeListEab(ctx context.Context, r *logical.Request, data 
 
 	var warnings []string
 	var keyIds []string
-	keyInfos := map[string]interface{}{}
+	keyInfos := map[string]any{}
 
 	for _, eabKey := range eabIds {
 		eab, err := b.acmeState.LoadEab(sc, eabKey)
@@ -215,7 +215,7 @@ func (b *backend) pathAcmeListEab(ctx context.Context, r *logical.Request, data 
 		}
 
 		keyIds = append(keyIds, eab.KeyID)
-		keyInfos[eab.KeyID] = map[string]interface{}{
+		keyInfos[eab.KeyID] = map[string]any{
 			"key_type":       eab.KeyType,
 			"acme_directory": path.Join(eab.AcmeDirectory, "directory"),
 			"created_on":     eab.CreatedOn.Format(time.RFC3339),
@@ -259,7 +259,7 @@ func (b *backend) pathAcmeCreateEab(ctx context.Context, r *logical.Request, dat
 	encodedKey := base64.RawURLEncoding.EncodeToString(eab.PrivateBytes)
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id":             eab.KeyID,
 			"key_type":       eab.KeyType,
 			"key":            encodedKey,

@@ -16,13 +16,13 @@ type RoleAllowsGlobWildcards struct {
 
 	RoleListFetchIssue *PathFetch
 	RoleFetchIssues    map[string]*PathFetch
-	RoleEntryMap       map[string]map[string]interface{}
+	RoleEntryMap       map[string]map[string]any
 }
 
 func NewRoleAllowsGlobWildcardsCheck() Check {
 	return &RoleAllowsGlobWildcards{
 		RoleFetchIssues: make(map[string]*PathFetch),
-		RoleEntryMap:    make(map[string]map[string]interface{}),
+		RoleEntryMap:    make(map[string]map[string]any),
 	}
 }
 
@@ -34,11 +34,11 @@ func (h *RoleAllowsGlobWildcards) IsEnabled() bool {
 	return h.Enabled
 }
 
-func (h *RoleAllowsGlobWildcards) DefaultConfig() map[string]interface{} {
-	return map[string]interface{}{}
+func (h *RoleAllowsGlobWildcards) DefaultConfig() map[string]any {
+	return map[string]any{}
 }
 
-func (h *RoleAllowsGlobWildcards) LoadConfig(config map[string]interface{}) error {
+func (h *RoleAllowsGlobWildcards) LoadConfig(config map[string]any) error {
 	enabled, err := parseutil.ParseBool(config["enabled"])
 	if err != nil {
 		return fmt.Errorf("error parsing %v.enabled: %w", h.Name(), err)
@@ -141,7 +141,7 @@ func (h *RoleAllowsGlobWildcards) Evaluate(e *Executor) (results []*Result, err 
 			continue
 		}
 
-		rawAllowedDomains := entry["allowed_domains"].([]interface{})
+		rawAllowedDomains := entry["allowed_domains"].([]any)
 		var allowedDomains []string
 		for _, rawDomain := range rawAllowedDomains {
 			allowedDomains = append(allowedDomains, rawDomain.(string))

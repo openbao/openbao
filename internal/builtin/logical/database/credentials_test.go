@@ -20,7 +20,7 @@ import (
 // Test_newClientCertificateGenerator tests the ClientCertificateGenerator struct based on the config
 func Test_newClientCertificateGenerator(t *testing.T) {
 	type args struct {
-		config map[string]interface{}
+		config map[string]any
 	}
 	tests := []struct {
 		name    string
@@ -45,7 +45,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with zero value key_type",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_type": "",
 				},
 			},
@@ -56,7 +56,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with rsa value key_type",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_type": "rsa",
 				},
 			},
@@ -69,7 +69,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with ec value key_type",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_type": "ec",
 				},
 			},
@@ -82,7 +82,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with ed25519 value key_type",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_type": "ed25519",
 				},
 			},
@@ -94,7 +94,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with invalid key_type",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_type": "ece",
 				},
 			},
@@ -103,7 +103,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with zero value key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "0",
 				},
 			},
@@ -114,7 +114,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with 2048 value key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "2048",
 				},
 			},
@@ -125,7 +125,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with 3072 value key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "3072",
 				},
 			},
@@ -136,7 +136,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with 4096 value key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "4096",
 				},
 			},
@@ -147,7 +147,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with 224 value key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "224",
 				},
 			},
@@ -158,7 +158,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with 256 value key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "256",
 				},
 			},
@@ -169,7 +169,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with 384 value key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "384",
 				},
 			},
@@ -180,7 +180,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with 521 value key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "521",
 				},
 			},
@@ -191,7 +191,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with invalid key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "4097",
 				},
 			},
@@ -200,7 +200,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with zero value signature_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"signature_bits": "0",
 				},
 			},
@@ -211,7 +211,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with 256 value signature_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"signature_bits": "256",
 				},
 			},
@@ -222,7 +222,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with 384 value signature_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"signature_bits": "384",
 				},
 			},
@@ -233,7 +233,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with 512 value signature_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"signature_bits": "512",
 				},
 			},
@@ -244,7 +244,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 		{
 			name: "newClientCertificateGenerator with invalid signature_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"signature_bits": "612",
 				},
 			},
@@ -265,7 +265,7 @@ func Test_newClientCertificateGenerator(t *testing.T) {
 
 func Test_newPasswordGenerator(t *testing.T) {
 	type args struct {
-		config map[string]interface{}
+		config map[string]any
 	}
 	tests := []struct {
 		name    string
@@ -285,7 +285,7 @@ func Test_newPasswordGenerator(t *testing.T) {
 		{
 			name: "newPasswordGenerator without password_policy",
 			args: args{
-				config: map[string]interface{}{},
+				config: map[string]any{},
 			},
 			want: passwordGenerator{
 				PasswordPolicy: "",
@@ -294,7 +294,7 @@ func Test_newPasswordGenerator(t *testing.T) {
 		{
 			name: "newPasswordGenerator with password_policy",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"password_policy": "test-policy",
 				},
 			},
@@ -317,7 +317,7 @@ func Test_newPasswordGenerator(t *testing.T) {
 
 func Test_newRSAKeyGenerator(t *testing.T) {
 	type args struct {
-		config map[string]interface{}
+		config map[string]any
 	}
 	tests := []struct {
 		name    string
@@ -338,7 +338,7 @@ func Test_newRSAKeyGenerator(t *testing.T) {
 		{
 			name: "newRSAKeyGenerator with empty config",
 			args: args{
-				config: map[string]interface{}{},
+				config: map[string]any{},
 			},
 			want: rsaKeyGenerator{
 				Format:  "pkcs8",
@@ -348,7 +348,7 @@ func Test_newRSAKeyGenerator(t *testing.T) {
 		{
 			name: "newRSAKeyGenerator with zero value format",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"format": "",
 				},
 			},
@@ -360,7 +360,7 @@ func Test_newRSAKeyGenerator(t *testing.T) {
 		{
 			name: "newRSAKeyGenerator with zero value key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "0",
 				},
 			},
@@ -372,7 +372,7 @@ func Test_newRSAKeyGenerator(t *testing.T) {
 		{
 			name: "newRSAKeyGenerator with format",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"format": "pkcs8",
 				},
 			},
@@ -384,7 +384,7 @@ func Test_newRSAKeyGenerator(t *testing.T) {
 		{
 			name: "newRSAKeyGenerator with format case insensitive",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"format": "PKCS8",
 				},
 			},
@@ -396,7 +396,7 @@ func Test_newRSAKeyGenerator(t *testing.T) {
 		{
 			name: "newRSAKeyGenerator with 3072 key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "3072",
 				},
 			},
@@ -408,7 +408,7 @@ func Test_newRSAKeyGenerator(t *testing.T) {
 		{
 			name: "newRSAKeyGenerator with 4096 key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "4096",
 				},
 			},
@@ -420,7 +420,7 @@ func Test_newRSAKeyGenerator(t *testing.T) {
 		{
 			name: "newRSAKeyGenerator with invalid key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "4097",
 				},
 			},
@@ -429,7 +429,7 @@ func Test_newRSAKeyGenerator(t *testing.T) {
 		{
 			name: "newRSAKeyGenerator with invalid format",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"format": "pkcs1",
 				},
 			},
@@ -455,8 +455,8 @@ func Test_passwordGenerator_generate(t *testing.T) {
 	require.NoError(t, err)
 
 	type args struct {
-		config  map[string]interface{}
-		mock    func() interface{}
+		config  map[string]any
+		mock    func() any
 		passGen logical.PasswordGenerator
 	}
 	tests := []struct {
@@ -468,7 +468,7 @@ func Test_passwordGenerator_generate(t *testing.T) {
 		{
 			name: "wrapper missing v4 and v5 interface",
 			args: args{
-				mock: func() interface{} {
+				mock: func() any {
 					return nil
 				},
 			},
@@ -477,7 +477,7 @@ func Test_passwordGenerator_generate(t *testing.T) {
 		{
 			name: "v4: generate password using GenerateCredentials",
 			args: args{
-				mock: func() interface{} {
+				mock: func() any {
 					v4Mock := new(mockLegacyDatabase)
 					v4Mock.On("GenerateCredentials", mock.Anything).
 						Return("v4-generated-password", nil).
@@ -490,7 +490,7 @@ func Test_passwordGenerator_generate(t *testing.T) {
 		{
 			name: "v5: generate password without policy",
 			args: args{
-				mock: func() interface{} {
+				mock: func() any {
 					return new(mockNewDatabase)
 				},
 			},
@@ -499,10 +499,10 @@ func Test_passwordGenerator_generate(t *testing.T) {
 		{
 			name: "v5: generate password with non-existing policy",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"password_policy": "not-created",
 				},
-				mock: func() interface{} {
+				mock: func() any {
 					return new(mockNewDatabase)
 				},
 			},
@@ -511,10 +511,10 @@ func Test_passwordGenerator_generate(t *testing.T) {
 		{
 			name: "v5: generate password with existing policy",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"password_policy": "test-policy",
 				},
-				mock: func() interface{} {
+				mock: func() any {
 					return new(mockNewDatabase)
 				},
 				passGen: func() (string, error) {
@@ -526,10 +526,10 @@ func Test_passwordGenerator_generate(t *testing.T) {
 		{
 			name: "v5: generate password with existing policy static",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"password_policy": "test-policy",
 				},
-				mock: func() interface{} {
+				mock: func() any {
 					return new(mockNewDatabase)
 				},
 				passGen: func() (string, error) {
@@ -579,35 +579,35 @@ func Test_passwordGenerator_generate(t *testing.T) {
 
 func Test_passwordGenerator_configMap(t *testing.T) {
 	type args struct {
-		config map[string]interface{}
+		config map[string]any
 	}
 	tests := []struct {
 		name string
 		args args
-		want map[string]interface{}
+		want map[string]any
 	}{
 		{
 			name: "nil config results in empty map",
 			args: args{
 				config: nil,
 			},
-			want: map[string]interface{}{},
+			want: map[string]any{},
 		},
 		{
 			name: "empty config results in empty map",
 			args: args{
-				config: map[string]interface{}{},
+				config: map[string]any{},
 			},
-			want: map[string]interface{}{},
+			want: map[string]any{},
 		},
 		{
 			name: "input config is equal to output config",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"password_policy": "test-policy",
 				},
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"password_policy": "test-policy",
 			},
 		},
@@ -625,7 +625,7 @@ func Test_passwordGenerator_configMap(t *testing.T) {
 
 func Test_rsaKeyGenerator_generate(t *testing.T) {
 	type args struct {
-		config map[string]interface{}
+		config map[string]any
 	}
 	tests := []struct {
 		name string
@@ -640,13 +640,13 @@ func Test_rsaKeyGenerator_generate(t *testing.T) {
 		{
 			name: "generate RSA key with empty default config",
 			args: args{
-				config: map[string]interface{}{},
+				config: map[string]any{},
 			},
 		},
 		{
 			name: "generate RSA key with 2048 key_bits and format",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "2048",
 					"format":   "pkcs8",
 				},
@@ -655,7 +655,7 @@ func Test_rsaKeyGenerator_generate(t *testing.T) {
 		{
 			name: "generate RSA key with 2048 key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "2048",
 				},
 			},
@@ -663,7 +663,7 @@ func Test_rsaKeyGenerator_generate(t *testing.T) {
 		{
 			name: "generate RSA key with 3072 key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "3072",
 				},
 			},
@@ -671,7 +671,7 @@ func Test_rsaKeyGenerator_generate(t *testing.T) {
 		{
 			name: "generate RSA key with 4096 key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": "4096",
 				},
 			},
@@ -721,19 +721,19 @@ func Test_rsaKeyGenerator_generate(t *testing.T) {
 
 func Test_rsaKeyGenerator_configMap(t *testing.T) {
 	type args struct {
-		config map[string]interface{}
+		config map[string]any
 	}
 	tests := []struct {
 		name string
 		args args
-		want map[string]interface{}
+		want map[string]any
 	}{
 		{
 			name: "nil config results in defaults",
 			args: args{
 				config: nil,
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"format":   "pkcs8",
 				"key_bits": 2048,
 			},
@@ -741,9 +741,9 @@ func Test_rsaKeyGenerator_configMap(t *testing.T) {
 		{
 			name: "empty config results in defaults",
 			args: args{
-				config: map[string]interface{}{},
+				config: map[string]any{},
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"format":   "pkcs8",
 				"key_bits": 2048,
 			},
@@ -751,11 +751,11 @@ func Test_rsaKeyGenerator_configMap(t *testing.T) {
 		{
 			name: "config with format",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"format": "pkcs8",
 				},
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"format":   "pkcs8",
 				"key_bits": 2048,
 			},
@@ -763,11 +763,11 @@ func Test_rsaKeyGenerator_configMap(t *testing.T) {
 		{
 			name: "config with key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"key_bits": 4096,
 				},
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"format":   "pkcs8",
 				"key_bits": 4096,
 			},
@@ -775,12 +775,12 @@ func Test_rsaKeyGenerator_configMap(t *testing.T) {
 		{
 			name: "config with format and key_bits",
 			args: args{
-				config: map[string]interface{}{
+				config: map[string]any{
 					"format":   "pkcs8",
 					"key_bits": 3072,
 				},
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"format":   "pkcs8",
 				"key_bits": 3072,
 			},

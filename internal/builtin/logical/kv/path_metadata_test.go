@@ -20,7 +20,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		"bar": "123",
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"max_versions":          2,
 		"cas_required":          true,
 		"metadata_cas_required": true,
@@ -73,8 +73,8 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		t.Fatal(diff)
 	}
 
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"bar": "baz1",
 		},
 	}
@@ -92,11 +92,11 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		t.Fatalf("expected error, %#v", resp)
 	}
 
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"bar": "baz1",
 		},
-		"options": map[string]interface{}{
+		"options": map[string]any{
 			"cas": 0,
 		},
 	}
@@ -117,11 +117,11 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"bar": "baz1",
 		},
-		"options": map[string]interface{}{
+		"options": map[string]any{
 			"cas": 1,
 		},
 	}
@@ -142,11 +142,11 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"bar": "baz1",
 		},
-		"options": map[string]interface{}{
+		"options": map[string]any{
 			"cas": 2,
 		},
 	}
@@ -191,16 +191,16 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		t.Fatalf("Expected current_metadata_version to still be 1, got: %v", resp.Data["current_metadata_version"])
 	}
 
-	if _, ok := resp.Data["versions"].(map[string]interface{})["2"]; !ok {
+	if _, ok := resp.Data["versions"].(map[string]any)["2"]; !ok {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	if _, ok := resp.Data["versions"].(map[string]interface{})["3"]; !ok {
+	if _, ok := resp.Data["versions"].(map[string]any)["3"]; !ok {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
 	// First, attempt to update the metadata without passing metadata_cas which we expect to fail.
-	data = map[string]interface{}{
+	data = map[string]any{
 		"max_versions": 1,
 		"cas_required": false,
 	}
@@ -224,7 +224,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 	// Next, attempt to update the metadata while also passing the correct metadata_cas value.
 	// Update the metadata settings, remove the cas requirement and lower the
 	// max versions.
-	data = map[string]interface{}{
+	data = map[string]any{
 		"max_versions": 1,
 		"cas_required": false,
 		"metadata_cas": 1,
@@ -242,8 +242,8 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"bar": "baz1",
 		},
 	}
@@ -289,11 +289,11 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	if _, ok := resp.Data["versions"].(map[string]interface{})["4"]; !ok {
+	if _, ok := resp.Data["versions"].(map[string]any)["4"]; !ok {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	if len(resp.Data["versions"].(map[string]interface{})) != 1 {
+	if len(resp.Data["versions"].(map[string]any)) != 1 {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
@@ -314,14 +314,14 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		t.Fatalf("expected one key (foo) - resp: %#v", listResp)
 	}
 
-	actual := listResp.Data["key_info"].(map[string]interface{})["foo"]
+	actual := listResp.Data["key_info"].(map[string]any)["foo"]
 	expected := resp.Data
 	if diff := deep.Equal(actual, expected); len(diff) > 0 {
 		t.Fatalf("expected detailed-metadata/ listing to have same contents as read on foo/\ndiff: %#v", diff)
 	}
 
 	// Next, attempt to update the metadata while passing an incorrect metadata_cas value which we expect to fail
-	data = map[string]interface{}{
+	data = map[string]any{
 		"metadata_cas_required": false,
 		// This will not match the current metadata version which is 2
 		"metadata_cas": 1,
@@ -344,7 +344,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 	}
 
 	// Correctly update the metadata and disable metadata cas check
-	data = map[string]interface{}{
+	data = map[string]any{
 		"metadata_cas_required": false,
 		// This will match the current metadata version
 		"metadata_cas": 2,
@@ -382,7 +382,7 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 	}
 
 	// Given metadata_cas_required has been disabled, confirm that we can update metadata even if metadata_cas is not passed
-	data = map[string]interface{}{
+	data = map[string]any{
 		"metadata_cas_required": true,
 	}
 
@@ -404,8 +404,8 @@ func TestVersionedKV_Metadata_Delete(t *testing.T) {
 
 	// Create a few versions
 	for i := 0; i <= 5; i++ {
-		data := map[string]interface{}{
-			"data": map[string]interface{}{
+		data := map[string]any{
+			"data": map[string]any{
 				"bar": fmt.Sprintf("baz%d", i),
 			},
 		}
@@ -502,7 +502,7 @@ func TestVersionedKV_Metadata_Put_Bad_CustomMetadata(t *testing.T) {
 	unprintableString := "unprint\u200bable"
 	unprintableValueKey := "unprintable"
 
-	customMetadata := map[string]interface{}{
+	customMetadata := map[string]any{
 		longValueKey:        strings.Repeat(stringToRepeat, longValueLength),
 		longKey:             "abc123",
 		"":                  "abc123",
@@ -511,7 +511,7 @@ func TestVersionedKV_Metadata_Put_Bad_CustomMetadata(t *testing.T) {
 		unprintableValueKey: unprintableString,
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"custom_metadata": customMetadata,
 	}
 
@@ -582,9 +582,9 @@ func TestVersionedKV_Metadata_Put_Bad_CustomMetadata(t *testing.T) {
 		t.Fatalf("Expected empty read due to validation errors, resp: %#v", resp)
 	}
 
-	data = map[string]interface{}{
-		"custom_metadata": map[string]interface{}{
-			"foo": map[string]interface{}{
+	data = map[string]any{
+		"custom_metadata": map[string]any{
+			"foo": map[string]any{
 				"bar": "baz",
 			},
 		},
@@ -627,7 +627,7 @@ func TestVersionedKv_Metadata_Put_Too_Many_CustomMetadata_Keys(t *testing.T) {
 		customMetadata[k] = k
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"custom_metadata": customMetadata,
 	}
 
@@ -681,7 +681,7 @@ func TestVersionedKV_Metadata_Put_Empty_CustomMetadata(t *testing.T) {
 
 	metadataPath := "metadata/foo"
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"custom_metadata": map[string]string{},
 	}
 
@@ -723,7 +723,7 @@ func TestVersionedKV_Metadata_Put_Merge_Behavior(t *testing.T) {
 	expectedMaxVersions := uint32(5)
 	expectedCasRequired := true
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"max_versions": expectedMaxVersions,
 		"cas_required": expectedCasRequired,
 	}
@@ -778,7 +778,7 @@ func TestVersionedKV_Metadata_Put_Merge_Behavior(t *testing.T) {
 		"bar": "123",
 	}
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"cas_required":    expectedCasRequired,
 		"custom_metadata": expectedCustomMetadata,
 	}
@@ -833,7 +833,7 @@ func TestVersionedKV_Metadata_Put_Merge_Behavior(t *testing.T) {
 		"baz": "abc123",
 	}
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"custom_metadata": expectedCustomMetadata,
 	}
 
@@ -883,7 +883,7 @@ func TestVersionedKV_Metadata_Put_Merge_Behavior(t *testing.T) {
 
 	expectedMaxVersions = 20
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"max_versions": expectedMaxVersions,
 	}
 
@@ -925,7 +925,7 @@ func TestVersionedKV_Metadata_Patch_MissingPath(t *testing.T) {
 		Operation: logical.PatchOperation,
 		Path:      "metadata/",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"cas_required": true,
 		},
 	}
@@ -955,19 +955,19 @@ func TestVersionedKV_Metadata_Patch_Validation(t *testing.T) {
 
 	cases := []struct {
 		name     string
-		metadata map[string]interface{}
+		metadata map[string]any
 		output   string
 	}{
 		{
 			"field_conversion_error",
-			map[string]interface{}{
+			map[string]any{
 				"max_versions": []int{1, 2, 3},
 			},
 			"Field validation failed: error converting input",
 		},
 		{
 			"custom_metadata_empty_key",
-			map[string]interface{}{
+			map[string]any{
 				"custom_metadata": map[string]string{
 					"": "foo",
 				},
@@ -976,7 +976,7 @@ func TestVersionedKV_Metadata_Patch_Validation(t *testing.T) {
 		},
 		{
 			"custom_metadata_unprintable_key",
-			map[string]interface{}{
+			map[string]any{
 				"custom_metadata": map[string]string{
 					unprintableString: "foo",
 				},
@@ -985,7 +985,7 @@ func TestVersionedKV_Metadata_Patch_Validation(t *testing.T) {
 		},
 		{
 			"custom_metadata_unprintable_value",
-			map[string]interface{}{
+			map[string]any{
 				"custom_metadata": map[string]string{
 					"foo": unprintableString,
 				},
@@ -994,7 +994,7 @@ func TestVersionedKV_Metadata_Patch_Validation(t *testing.T) {
 		},
 		{
 			"custom_metadata_key_too_long",
-			map[string]interface{}{
+			map[string]any{
 				"custom_metadata": map[string]string{
 					longKey: "foo",
 				},
@@ -1003,7 +1003,7 @@ func TestVersionedKV_Metadata_Patch_Validation(t *testing.T) {
 		},
 		{
 			"custom_metadata_value_too_long",
-			map[string]interface{}{
+			map[string]any{
 				"custom_metadata": map[string]string{
 					"foo": longValue,
 				},
@@ -1012,9 +1012,9 @@ func TestVersionedKV_Metadata_Patch_Validation(t *testing.T) {
 		},
 		{
 			"custom_metadata_invalid_type",
-			map[string]interface{}{
-				"custom_metadata": map[string]interface{}{
-					"foo": map[string]interface{}{
+			map[string]any{
+				"custom_metadata": map[string]any{
+					"foo": map[string]any{
 						"bar": "baz",
 					},
 				},
@@ -1032,7 +1032,7 @@ func TestVersionedKV_Metadata_Patch_Validation(t *testing.T) {
 				Operation: logical.CreateOperation,
 				Path:      path,
 				Storage:   storage,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"cas_required": true,
 				},
 			}
@@ -1075,7 +1075,7 @@ func TestVersionedKV_Metadata_Patch_NotFound(t *testing.T) {
 		Operation: logical.PatchOperation,
 		Path:      "metadata/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"cas_required": true,
 		},
 	}
@@ -1098,7 +1098,7 @@ func TestVersionedKV_Metadata_Patch_CasRequiredWarning(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "config",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"cas_required": true,
 		},
 	}
@@ -1113,7 +1113,7 @@ func TestVersionedKV_Metadata_Patch_CasRequiredWarning(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "metadata/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"max_versions": 5,
 		},
 	}
@@ -1128,7 +1128,7 @@ func TestVersionedKV_Metadata_Patch_CasRequiredWarning(t *testing.T) {
 		Operation: logical.PatchOperation,
 		Path:      "metadata/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"cas_required": false,
 		},
 	}
@@ -1171,7 +1171,7 @@ func TestVersionedKV_Metadata_Patch_MetadataCasRequiredWarning(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "config",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"metadata_cas_required": true,
 		},
 	}
@@ -1186,7 +1186,7 @@ func TestVersionedKV_Metadata_Patch_MetadataCasRequiredWarning(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "metadata/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"max_versions": 5,
 		},
 	}
@@ -1205,7 +1205,7 @@ func TestVersionedKV_Metadata_Patch_MetadataCasRequiredWarning(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "metadata/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"max_versions": 5,
 			"metadata_cas": 0,
 		},
@@ -1221,7 +1221,7 @@ func TestVersionedKV_Metadata_Patch_MetadataCasRequiredWarning(t *testing.T) {
 		Operation: logical.PatchOperation,
 		Path:      "metadata/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"metadata_cas_required": false,
 			"metadata_cas":          1,
 		},
@@ -1249,7 +1249,7 @@ func TestVersionedKV_Metadata_Create_InvalidMetadataCasError(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "metadata/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"max_versions": 5,
 			"metadata_cas": 1,
 		},
@@ -1269,7 +1269,7 @@ func TestVersionedKV_Metadata_Create_InvalidMetadataCasError(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "metadata/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"max_versions": 5,
 			"metadata_cas": 0,
 		},
@@ -1291,12 +1291,12 @@ func TestVersionedKV_Metadata_Patch_CustomMetadata(t *testing.T) {
 
 	cases := []struct {
 		name   string
-		input  map[string]interface{}
+		input  map[string]any
 		output map[string]string
 	}{
 		{
 			"empty_object",
-			map[string]interface{}{},
+			map[string]any{},
 			map[string]string{
 				"foo": "abc",
 				"bar": "def",
@@ -1304,7 +1304,7 @@ func TestVersionedKV_Metadata_Patch_CustomMetadata(t *testing.T) {
 		},
 		{
 			"add_a_key",
-			map[string]interface{}{
+			map[string]any{
 				"baz": "ghi",
 			},
 			map[string]string{
@@ -1315,7 +1315,7 @@ func TestVersionedKV_Metadata_Patch_CustomMetadata(t *testing.T) {
 		},
 		{
 			"remove_a_key",
-			map[string]interface{}{
+			map[string]any{
 				"foo": nil,
 			},
 			map[string]string{
@@ -1324,7 +1324,7 @@ func TestVersionedKV_Metadata_Patch_CustomMetadata(t *testing.T) {
 		},
 		{
 			"replace_a_key",
-			map[string]interface{}{
+			map[string]any{
 				"foo": "ghi",
 			},
 			map[string]string{
@@ -1334,7 +1334,7 @@ func TestVersionedKV_Metadata_Patch_CustomMetadata(t *testing.T) {
 		},
 		{
 			"mixed",
-			map[string]interface{}{
+			map[string]any{
 				"foo": "def",
 				"bar": nil,
 				"baz": "ghi",
@@ -1355,7 +1355,7 @@ func TestVersionedKV_Metadata_Patch_CustomMetadata(t *testing.T) {
 				Operation: logical.CreateOperation,
 				Path:      path,
 				Storage:   storage,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"custom_metadata": initialCustomMetadata,
 				},
 			}
@@ -1370,7 +1370,7 @@ func TestVersionedKV_Metadata_Patch_CustomMetadata(t *testing.T) {
 				Operation: logical.PatchOperation,
 				Path:      path,
 				Storage:   storage,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"custom_metadata": tc.input,
 				},
 			}
@@ -1413,12 +1413,12 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 	ignoreVal := "ignore_me"
 	cases := []struct {
 		name            string
-		input           map[string]interface{}
+		input           map[string]any
 		expectedChanges int
 	}{
 		{
 			"ignored_fields",
-			map[string]interface{}{
+			map[string]any{
 				"foo":                      ignoreVal,
 				"created_time":             ignoreVal,
 				"current_version":          ignoreVal,
@@ -1430,12 +1430,12 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 		},
 		{
 			"no_fields_modified",
-			map[string]interface{}{},
+			map[string]any{},
 			0,
 		},
 		{
 			"top_level_fields_replaced",
-			map[string]interface{}{
+			map[string]any{
 				"cas_required": true,
 				"max_versions": uint32(5),
 			},
@@ -1443,7 +1443,7 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 		},
 		{
 			"top_level_mixed",
-			map[string]interface{}{
+			map[string]any{
 				"cas_required":         true,
 				"max_versions":         uint32(15),
 				"delete_version_after": nil,
@@ -1462,7 +1462,7 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 				Operation: logical.CreateOperation,
 				Path:      path,
 				Storage:   storage,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"max_versions": uint32(10),
 				},
 			}
@@ -1529,7 +1529,7 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 					continue
 				}
 
-				var expectedVal interface{}
+				var expectedVal any
 
 				if inputVal, ok := tc.input[k]; ok && inputVal != nil && inputVal != ignoreVal {
 					expectedVal = inputVal
@@ -1557,7 +1557,7 @@ func TestVersionedKV_Metadata_Patch_NilsUnset(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      path,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"max_versions": uint32(10),
 		},
 	}
@@ -1588,7 +1588,7 @@ func TestVersionedKV_Metadata_Patch_NilsUnset(t *testing.T) {
 		Operation: logical.PatchOperation,
 		Path:      path,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"max_versions": nil,
 		},
 	}
@@ -1626,8 +1626,8 @@ func TestVersionedKV_ListDetailedMetadata(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "data/subdir/entry",
 		Storage:   storage,
-		Data: map[string]interface{}{
-			"data": map[string]interface{}{
+		Data: map[string]any{
+			"data": map[string]any{
 				"value": 10,
 			},
 		},
@@ -1653,9 +1653,9 @@ func TestVersionedKV_ListDetailedMetadata(t *testing.T) {
 		t.Fatalf("expected one key (foo) - resp: %#v", listResp)
 	}
 
-	value := listResp.Data["key_info"].(map[string]interface{})["subdir"]
+	value := listResp.Data["key_info"].(map[string]any)["subdir"]
 
-	if value != nil && len(value.(map[string]interface{})) != 0 {
+	if value != nil && len(value.(map[string]any)) != 0 {
 		t.Fatalf("unexpected info about directory in detailed list response: %v", listResp.Data)
 	}
 }

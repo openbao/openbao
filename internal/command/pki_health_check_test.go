@@ -37,7 +37,7 @@ func TestPKIHC_AllGood(t *testing.T) {
 		t.Fatalf("pki mount error: %#v", err)
 	}
 
-	if resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	if resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"key_type":    "ec",
 		"common_name": "Root X1",
 		"ttl":         "3650d",
@@ -49,21 +49,21 @@ func TestPKIHC_AllGood(t *testing.T) {
 		t.Fatalf("failed to rotate CRLs: %v", err)
 	}
 
-	if _, err := client.Logical().Write("pki/roles/testing", map[string]interface{}{
+	if _, err := client.Logical().Write("pki/roles/testing", map[string]any{
 		"allow_any_name": true,
 		"no_store":       true,
 	}); err != nil {
 		t.Fatalf("failed to write role: %v", err)
 	}
 
-	if _, err := client.Logical().Write("pki/config/auto-tidy", map[string]interface{}{
+	if _, err := client.Logical().Write("pki/config/auto-tidy", map[string]any{
 		"enabled":         true,
 		"tidy_cert_store": true,
 	}); err != nil {
 		t.Fatalf("failed to write auto-tidy config: %v", err)
 	}
 
-	if _, err := client.Logical().Write("pki/tidy", map[string]interface{}{
+	if _, err := client.Logical().Write("pki/tidy", map[string]any{
 		"tidy_cert_store": true,
 	}); err != nil {
 		t.Fatalf("failed to run tidy: %v", err)
@@ -72,13 +72,13 @@ func TestPKIHC_AllGood(t *testing.T) {
 	path, err := url.Parse(client.Address())
 	require.NoError(t, err, "failed parsing client address")
 
-	if _, err := client.Logical().Write("pki/config/cluster", map[string]interface{}{
+	if _, err := client.Logical().Write("pki/config/cluster", map[string]any{
 		"path": path.JoinPath("/v1/", "pki/").String(),
 	}); err != nil {
 		t.Fatalf("failed to update local cluster: %v", err)
 	}
 
-	if _, err := client.Logical().Write("pki/config/acme", map[string]interface{}{
+	if _, err := client.Logical().Write("pki/config/acme", map[string]any{
 		"enabled": "true",
 	}); err != nil {
 		t.Fatalf("failed to update acme config: %v", err)
@@ -101,7 +101,7 @@ func TestPKIHC_AllBad(t *testing.T) {
 		t.Fatalf("pki mount error: %#v", err)
 	}
 
-	if resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	if resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"key_type":    "ec",
 		"common_name": "Root X1",
 		"ttl":         "35d",
@@ -109,7 +109,7 @@ func TestPKIHC_AllBad(t *testing.T) {
 		t.Fatalf("failed to prime CA: %v", err)
 	}
 
-	if _, err := client.Logical().Write("pki/config/crl", map[string]interface{}{
+	if _, err := client.Logical().Write("pki/config/crl", map[string]any{
 		"expiry": "5s",
 	}); err != nil {
 		t.Fatalf("failed to issue leaf cert: %v", err)
@@ -121,7 +121,7 @@ func TestPKIHC_AllBad(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
-	if _, err := client.Logical().Write("pki/roles/testing", map[string]interface{}{
+	if _, err := client.Logical().Write("pki/roles/testing", map[string]any{
 		"allow_localhost":             true,
 		"allowed_domains":             "*.example.com",
 		"allow_glob_domains":          true,
@@ -133,13 +133,13 @@ func TestPKIHC_AllBad(t *testing.T) {
 		t.Fatalf("failed to write role: %v", err)
 	}
 
-	if _, err := client.Logical().Write("pki/issue/testing", map[string]interface{}{
+	if _, err := client.Logical().Write("pki/issue/testing", map[string]any{
 		"common_name": "something.example.com",
 	}); err != nil {
 		t.Fatalf("failed to issue leaf cert: %v", err)
 	}
 
-	if _, err := client.Logical().Write("pki/config/auto-tidy", map[string]interface{}{
+	if _, err := client.Logical().Write("pki/config/auto-tidy", map[string]any{
 		"enabled":         false,
 		"tidy_cert_store": false,
 	}); err != nil {
@@ -163,7 +163,7 @@ func TestPKIHC_OnlyIssuer(t *testing.T) {
 		t.Fatalf("pki mount error: %#v", err)
 	}
 
-	if resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	if resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"key_type":    "ec",
 		"common_name": "Root X1",
 		"ttl":         "35d",
@@ -225,7 +225,7 @@ func TestPKIHC_NoPerm(t *testing.T) {
 		t.Fatalf("pki mount error: %#v", err)
 	}
 
-	if resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	if resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"key_type":    "ec",
 		"common_name": "Root X1",
 		"ttl":         "35d",
@@ -233,7 +233,7 @@ func TestPKIHC_NoPerm(t *testing.T) {
 		t.Fatalf("failed to prime CA: %v", err)
 	}
 
-	if _, err := client.Logical().Write("pki/config/crl", map[string]interface{}{
+	if _, err := client.Logical().Write("pki/config/crl", map[string]any{
 		"expiry": "5s",
 	}); err != nil {
 		t.Fatalf("failed to issue leaf cert: %v", err)
@@ -245,7 +245,7 @@ func TestPKIHC_NoPerm(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
-	if _, err := client.Logical().Write("pki/roles/testing", map[string]interface{}{
+	if _, err := client.Logical().Write("pki/roles/testing", map[string]any{
 		"allow_localhost":             true,
 		"allowed_domains":             "*.example.com",
 		"allow_glob_domains":          true,
@@ -257,13 +257,13 @@ func TestPKIHC_NoPerm(t *testing.T) {
 		t.Fatalf("failed to write role: %v", err)
 	}
 
-	if _, err := client.Logical().Write("pki/issue/testing", map[string]interface{}{
+	if _, err := client.Logical().Write("pki/issue/testing", map[string]any{
 		"common_name": "something.example.com",
 	}); err != nil {
 		t.Fatalf("failed to issue leaf cert: %v", err)
 	}
 
-	if _, err := client.Logical().Write("pki/config/auto-tidy", map[string]interface{}{
+	if _, err := client.Logical().Write("pki/config/auto-tidy", map[string]any{
 		"enabled":         false,
 		"tidy_cert_store": false,
 	}); err != nil {
@@ -306,7 +306,7 @@ func TestPKIHC_InvalidMounts(t *testing.T) {
 	}
 }
 
-func execPKIHC(t *testing.T, client *api.Client, path string, ok bool) (int, string, map[string][]map[string]interface{}) {
+func execPKIHC(t *testing.T, client *api.Client, path string, ok bool) (int, string, map[string][]map[string]any) {
 	t.Helper()
 
 	stdout := bytes.NewBuffer(nil)
@@ -320,7 +320,7 @@ func execPKIHC(t *testing.T, client *api.Client, path string, ok bool) (int, str
 	code := RunCustom([]string{"pki", "health-check", "-format=json", path}, runOpts)
 	combined := stdout.String() + stderr.String()
 
-	var results map[string][]map[string]interface{}
+	var results map[string][]map[string]any
 	if err := json.Unmarshal([]byte(combined), &results); err != nil {
 		if ok {
 			t.Fatalf("failed to decode json (ret %v): %v\njson:\n%v", code, err, combined)
@@ -332,7 +332,7 @@ func execPKIHC(t *testing.T, client *api.Client, path string, ok bool) (int, str
 	return code, combined, results
 }
 
-func validateExpectedPKIHC(t *testing.T, expected, results map[string][]map[string]interface{}) {
+func validateExpectedPKIHC(t *testing.T, expected, results map[string][]map[string]any) {
 	t.Helper()
 
 	for test, subtest := range expected {
@@ -364,7 +364,7 @@ func validateExpectedPKIHC(t *testing.T, expected, results map[string][]map[stri
 	}
 }
 
-var expectedAllGood = map[string][]map[string]interface{}{
+var expectedAllGood = map[string][]map[string]any{
 	"ca_validity_period": {
 		{
 			"status": "ok",
@@ -435,7 +435,7 @@ var expectedAllGood = map[string][]map[string]interface{}{
 	},
 }
 
-var expectedAllBad = map[string][]map[string]interface{}{
+var expectedAllBad = map[string][]map[string]any{
 	"ca_validity_period": {
 		{
 			"status": "critical",
@@ -593,7 +593,7 @@ var expectedAllBad = map[string][]map[string]interface{}{
 	},
 }
 
-var expectedEmptyWithIssuer = map[string][]map[string]interface{}{
+var expectedEmptyWithIssuer = map[string][]map[string]any{
 	"ca_validity_period": {
 		{
 			"status": "critical",
@@ -644,7 +644,7 @@ var expectedEmptyWithIssuer = map[string][]map[string]interface{}{
 	},
 }
 
-var expectedNoPerm = map[string][]map[string]interface{}{
+var expectedNoPerm = map[string][]map[string]any{
 	"ca_validity_period": {
 		{
 			"status": "critical",

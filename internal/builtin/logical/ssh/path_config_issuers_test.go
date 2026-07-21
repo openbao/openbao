@@ -25,7 +25,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "config/ca",
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"generate_signing_key": true,
 		},
 	})
@@ -64,7 +64,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/issuers",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"default": issuerName,
 		},
 		Storage: s,
@@ -87,7 +87,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/issuers",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"default": testIssuerId,
 		},
 		Storage: s,
@@ -101,7 +101,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/issuers",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"default": "default",
 		},
 		Storage: s,
@@ -113,7 +113,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/issuers",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"default": "",
 		},
 		Storage: s,

@@ -280,7 +280,7 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 		}
 
 		var keys []string
-		keyInfo := make(map[string]interface{})
+		keyInfo := make(map[string]any)
 		for _, entry := range entries {
 			p := parent.TrimmedPath(entry.Path)
 			keys = append(keys, p)
@@ -307,7 +307,7 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 		}
 
 		var keys []string
-		keyInfo := make(map[string]interface{})
+		keyInfo := make(map[string]any)
 		for _, entry := range entries {
 			p := parent.TrimmedPath(entry.Path)
 			keys = append(keys, p)
@@ -351,7 +351,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		var metadata map[string]string
 		if ok {
 			metadata = make(map[string]string)
-			for k, v := range imetadata.(map[string]interface{}) {
+			for k, v := range imetadata.(map[string]any) {
 				if metadata[k], ok = v.(string); !ok {
 					return logical.ErrorResponse("custom_metadata values must be strings"), logical.ErrInvalidRequest
 				}
@@ -506,7 +506,7 @@ func (b *SystemBackend) handleNamespacesLock() framework.OperationFunc {
 		}
 
 		if unlockKey != "" {
-			return &logical.Response{Data: map[string]interface{}{
+			return &logical.Response{Data: map[string]any{
 				"unlock_key": unlockKey,
 			}}, nil
 		}
@@ -561,7 +561,7 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 		}
 
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"status": status,
 			},
 		}, nil

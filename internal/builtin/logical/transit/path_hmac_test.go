@@ -61,7 +61,7 @@ func TestTransit_HMAC(t *testing.T) {
 		p.Unlock()
 
 		req.Path = "hmac/" + c.name
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"input": "dGhlIHF1aWNrIGJyb3duIGZveA==",
 		}
 
@@ -267,7 +267,7 @@ func TestTransit_batchHMAC(t *testing.T) {
 		{Error: "missing input for HMAC"},
 	}
 
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"batch_input": batchInput,
 	}
 
@@ -303,7 +303,7 @@ func TestTransit_batchHMAC(t *testing.T) {
 		{"input": "dGhlIHF1aWNrIGJyb3duIGZveA==", "hmac": good_hmac},
 	}
 
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"batch_input": verifyBatch,
 	}
 

@@ -65,7 +65,7 @@ func testTransit_Certificates_CreateCSR(t *testing.T, keyType string, pemTemplat
 		Operation: logical.UpdateOperation,
 		Path:      fmt.Sprintf("keys/%s", keyName),
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": keyType,
 		},
 	}
@@ -80,7 +80,7 @@ func testTransit_Certificates_CreateCSR(t *testing.T, keyType string, pemTemplat
 		Operation: logical.UpdateOperation,
 		Path:      fmt.Sprintf("keys/%s/csr", keyName),
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"csr": pemTemplateCSR,
 		},
 	}
@@ -180,7 +180,7 @@ func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Clien
 	issuerName := fmt.Sprintf("%s-issuer", keyType)
 
 	// create transit key
-	_, err := apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s", keyName), map[string]interface{}{
+	_, err := apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s", keyName), map[string]any{
 		"type": keyType,
 	})
 	require.NoError(t, err)
@@ -201,7 +201,7 @@ func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Clien
 	t.Logf("csr: %v", string(pemTemplateCsr))
 
 	// create CSR from template CSR fields and key in transit
-	resp, err := apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/csr", keyName), map[string]interface{}{
+	resp, err := apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/csr", keyName), map[string]any{
 		"csr": string(pemTemplateCsr),
 	})
 	require.NoError(t, err)
@@ -209,7 +209,7 @@ func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Clien
 	pemCsr := resp.Data["csr"].(string)
 
 	// generate PKI root
-	resp, err = apiClient.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	resp, err = apiClient.Logical().Write("pki/root/generate/internal", map[string]any{
 		"issuer_name": issuerName,
 		"common_name": "PKI Root X1",
 	})
@@ -224,7 +224,7 @@ func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Clien
 	require.NoError(t, err)
 
 	// create role to be used in the certificate issuing
-	_, err = apiClient.Logical().Write("pki/roles/example-dot-com", map[string]interface{}{
+	_, err = apiClient.Logical().Write("pki/roles/example-dot-com", map[string]any{
 		"issuer_ref":                         issuerName,
 		"allowed_domains":                    "example.com",
 		"allow_bare_domains":                 true,
@@ -234,7 +234,7 @@ func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Clien
 	require.NoError(t, err)
 
 	// sign the CSR
-	resp, err = apiClient.Logical().Write("pki/sign/example-dot-com", map[string]interface{}{
+	resp, err = apiClient.Logical().Write("pki/sign/example-dot-com", map[string]any{
 		"issuer_ref": issuerName,
 		"csr":        pemCsr,
 		"ttl":        "10m",
@@ -256,21 +256,21 @@ func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Clien
 	certificateChain := strings.Join([]string{leafCertPEM, rootCertPEM}, "\n")
 
 	// Import root as leaf; this should fail.
-	resp, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]interface{}{
+	resp, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]any{
 		"certificate_chain": rootCertPEM,
 	})
 	require.Error(t, err)
 	require.Nil(t, resp)
 
 	// Import root->leaf; this should fail.
-	resp, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]interface{}{
+	resp, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]any{
 		"certificate_chain": strings.Join([]string{rootCertPEM, leafCertPEM}, "\n"),
 	})
 	require.Error(t, err)
 	require.Nil(t, resp)
 
 	// import certificate chain to transit key version
-	resp, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]interface{}{
+	resp, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]any{
 		"certificate_chain": certificateChain,
 	})
 	require.NoError(t, err)
@@ -279,11 +279,11 @@ func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Clien
 	resp, err = apiClient.Logical().Read(fmt.Sprintf("transit/keys/%s", keyName))
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	keys, ok := resp.Data["keys"].(map[string]interface{})
+	keys, ok := resp.Data["keys"].(map[string]any)
 	if !ok {
 		t.Fatal("could not cast Keys value")
 	}
-	keyData, ok := keys["1"].(map[string]interface{})
+	keyData, ok := keys["1"].(map[string]any)
 	if !ok {
 		t.Fatal("could not cast key version 1 from keys")
 	}

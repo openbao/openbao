@@ -35,7 +35,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 	tests := map[string]testCase{
 		"bad default_ttl": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"default_ttl":   "foo",
 				"creation_ldif": ldifCreationTemplate,
@@ -49,7 +49,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"bad max_ttl": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"max_ttl":       "foo",
 				"creation_ldif": ldifCreationTemplate,
@@ -63,7 +63,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"missing creation_ldif": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"deletion_ldif": ldifDeleteTemplate,
 			}),
@@ -75,7 +75,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"missing deletion_ldif": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"creation_ldif": ldifCreationTemplate,
 			}),
@@ -87,7 +87,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"creation_ldif bad template syntax": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"creation_ldif": `dn: cn={{.Username,ou=users,dc=learn,dc=example`,
 				"deletion_ldif": ldifDeleteTemplate,
@@ -100,7 +100,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"creation_ldif bad LDIF syntax": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"creation_ldif": `foo bar`,
 				"deletion_ldif": ldifDeleteTemplate,
@@ -113,7 +113,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"deletion_ldif bad template syntax": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"creation_ldif": ldifCreationTemplate,
 				"deletion_ldif": "dn: cn={{.Username,ou=users,dc=learn,dc=example\nchangetype: delete",
@@ -126,7 +126,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"deletion_ldif bad LDIF syntax": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"creation_ldif": ldifCreationTemplate,
 				"deletion_ldif": `foo bar`,
@@ -139,7 +139,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"rollback_ldif bad template syntax": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"creation_ldif": ldifCreationTemplate,
 				"deletion_ldif": ldifDeleteTemplate,
@@ -153,7 +153,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"rollback_ldif bad LDIF syntax": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"creation_ldif": ldifCreationTemplate,
 				"deletion_ldif": ldifDeleteTemplate,
@@ -167,7 +167,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"multiple LDIF entries": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"creation_ldif": ldifCreateAndModifyTemplate,
 				"deletion_ldif": ldifDeleteTemplate,
@@ -180,7 +180,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"storage error": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"creation_ldif": ldifCreationTemplate,
 				"deletion_ldif": ldifDeleteTemplate,
@@ -193,7 +193,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"happy path": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"creation_ldif": ldifCreationTemplate,
 				"deletion_ldif": ldifDeleteTemplate,
@@ -206,7 +206,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"base64 encoded templates": {
 			operation: logical.CreateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"creation_ldif": base64Encode(ldifCreationTemplate),
 				"rollback_ldif": base64Encode(ldifRollbackTemplate),
@@ -220,7 +220,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 		},
 		"update operation with missing role": {
 			operation: logical.UpdateOperation,
-			createData: dynamicRoleFieldData(map[string]interface{}{
+			createData: dynamicRoleFieldData(map[string]any{
 				"name":          roleName,
 				"creation_ldif": base64Encode(ldifCreationTemplate),
 				"rollback_ldif": base64Encode(ldifRollbackTemplate),
@@ -270,10 +270,10 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 
 func TestDynamicRole_partialUpdate(t *testing.T) {
 	type testCase struct {
-		initialData map[string]interface{}
+		initialData map[string]any
 		initialRole *dynamicRole
 
-		updateData map[string]interface{}
+		updateData map[string]any
 		updateRole *dynamicRole
 		expectErr  bool
 	}
@@ -282,7 +282,7 @@ func TestDynamicRole_partialUpdate(t *testing.T) {
 
 	tests := map[string]testCase{
 		"new default_ttl": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -301,7 +301,7 @@ func TestDynamicRole_partialUpdate(t *testing.T) {
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name":        roleName,
 				"default_ttl": "30s",
 			},
@@ -317,7 +317,7 @@ func TestDynamicRole_partialUpdate(t *testing.T) {
 			expectErr: false,
 		},
 		"new max_ttl": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -336,7 +336,7 @@ func TestDynamicRole_partialUpdate(t *testing.T) {
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name":    roleName,
 				"max_ttl": "2m",
 			},
@@ -352,7 +352,7 @@ func TestDynamicRole_partialUpdate(t *testing.T) {
 			expectErr: false,
 		},
 		"new creation_ldif": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -371,7 +371,7 @@ func TestDynamicRole_partialUpdate(t *testing.T) {
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name": roleName,
 				"creation_ldif": `dn: cn={{.Username}},ou=users,dc=hashicorp,dc=com
 objectClass: person2
@@ -399,7 +399,7 @@ userPassword: {{.Password}}`,
 			expectErr: false,
 		},
 		"new deletion_ldif": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -418,7 +418,7 @@ userPassword: {{.Password}}`,
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name": roleName,
 				"deletion_ldif": `dn: cn={{.Username | lowercase}},ou=users,dc=learn,dc=example
 changetype: delete`,
@@ -436,7 +436,7 @@ changetype: delete`,
 			expectErr: false,
 		},
 		"new rollback_ldif": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -455,7 +455,7 @@ changetype: delete`,
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name": roleName,
 				"rollback_ldif": `dn: cn={{.Username | lowercase}},ou=users,dc=learn,dc=example
 changetype: delete`,
@@ -473,7 +473,7 @@ changetype: delete`,
 			expectErr: false,
 		},
 		"new username_template": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -492,7 +492,7 @@ changetype: delete`,
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name":              roleName,
 				"username_template": "v.{{.RoleName | lowercase}}.{{rand 10}}",
 			},
@@ -508,7 +508,7 @@ changetype: delete`,
 			expectErr: false,
 		},
 		"removed creation_ldif": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -527,7 +527,7 @@ changetype: delete`,
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name":          roleName,
 				"creation_ldif": "",
 			},
@@ -543,7 +543,7 @@ changetype: delete`,
 			expectErr: true,
 		},
 		"removed deletion_ldif": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -562,7 +562,7 @@ changetype: delete`,
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name":          roleName,
 				"deletion_ldif": "",
 			},
@@ -578,7 +578,7 @@ changetype: delete`,
 			expectErr: true,
 		},
 		"removed rollback_ldif": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -597,7 +597,7 @@ changetype: delete`,
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name":          roleName,
 				"rollback_ldif": "", // This field is optional, so deleting it is okay
 			},
@@ -613,7 +613,7 @@ changetype: delete`,
 			expectErr: false,
 		},
 		"removed username_template": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -632,7 +632,7 @@ changetype: delete`,
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name":              roleName,
 				"username_template": "",
 			},
@@ -648,7 +648,7 @@ changetype: delete`,
 			expectErr: false,
 		},
 		"removed default_ttl (empty string)": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -667,7 +667,7 @@ changetype: delete`,
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name":        roleName,
 				"default_ttl": "",
 			},
@@ -683,7 +683,7 @@ changetype: delete`,
 			expectErr: false,
 		},
 		"removed default_ttl (zero)": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -702,7 +702,7 @@ changetype: delete`,
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name":        roleName,
 				"default_ttl": "0",
 			},
@@ -718,7 +718,7 @@ changetype: delete`,
 			expectErr: false,
 		},
 		"removed max_ttl (empty string)": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -737,7 +737,7 @@ changetype: delete`,
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name":    roleName,
 				"max_ttl": "",
 			},
@@ -753,7 +753,7 @@ changetype: delete`,
 			expectErr: false,
 		},
 		"removed max_ttl (zero)": {
-			initialData: map[string]interface{}{
+			initialData: map[string]any{
 				"name":              roleName,
 				"creation_ldif":     ldifCreationTemplate,
 				"deletion_ldif":     ldifDeleteTemplate,
@@ -772,7 +772,7 @@ changetype: delete`,
 				MaxTTL:           1 * time.Minute,
 			},
 
-			updateData: map[string]interface{}{
+			updateData: map[string]any{
 				"name":    roleName,
 				"max_ttl": "0",
 			},
@@ -892,7 +892,7 @@ func TestDynamicRoleRead(t *testing.T) {
 			},
 			storageErr: nil,
 			expectedResp: &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"creation_ldif":     ldifCreationTemplate,
 					"rollback_ldif":     ldifRollbackTemplate,
 					"deletion_ldif":     ldifDeleteTemplate,
@@ -920,7 +920,7 @@ func TestDynamicRoleRead(t *testing.T) {
 			req := &logical.Request{
 				Storage: storage,
 			}
-			data := dynamicRoleFieldData(map[string]interface{}{
+			data := dynamicRoleFieldData(map[string]any{
 				"name": roleName,
 			})
 			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
@@ -964,7 +964,7 @@ func TestDynamicRoleList(t *testing.T) {
 			},
 			storageErr: nil,
 			expectedResp: &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"keys": []string{
 						"foo",
 						"bar",
@@ -991,7 +991,7 @@ func TestDynamicRoleList(t *testing.T) {
 			req := &logical.Request{
 				Storage: storage,
 			}
-			data := dynamicRoleFieldData(map[string]interface{}{})
+			data := dynamicRoleFieldData(map[string]any{})
 			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 			defer cancel()
 
@@ -1071,7 +1071,7 @@ userPassword: {{.Password}}`,
 			req := &logical.Request{
 				Storage: storage,
 			}
-			data := dynamicRoleFieldData(map[string]interface{}{
+			data := dynamicRoleFieldData(map[string]any{
 				"name": roleName,
 			})
 			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
@@ -1097,100 +1097,100 @@ userPassword: {{.Password}}`,
 
 func TestConvertToDuration(t *testing.T) {
 	type testCase struct {
-		input         map[string]interface{}
+		input         map[string]any
 		keysToConvert []string
 
-		expectedOutput map[string]interface{}
+		expectedOutput map[string]any
 		expectErr      bool
 	}
 
 	tests := map[string]testCase{
 		"missing key": {
-			input: map[string]interface{}{
+			input: map[string]any{
 				"foo": "1h",
 			},
 			keysToConvert: []string{
 				"bar",
 			},
-			expectedOutput: map[string]interface{}{
+			expectedOutput: map[string]any{
 				"foo": "1h",
 			},
 			expectErr: false,
 		},
 		"time.Duration": {
-			input: map[string]interface{}{
+			input: map[string]any{
 				"foo": 1 * time.Hour,
 			},
 			keysToConvert: []string{
 				"foo",
 			},
-			expectedOutput: map[string]interface{}{
+			expectedOutput: map[string]any{
 				"foo": 1 * time.Hour,
 			},
 			expectErr: false,
 		},
 		"int": {
-			input: map[string]interface{}{
+			input: map[string]any{
 				"foo": int(1),
 			},
 			keysToConvert: []string{
 				"foo",
 			},
-			expectedOutput: map[string]interface{}{
+			expectedOutput: map[string]any{
 				"foo": 1 * time.Second,
 			},
 			expectErr: false,
 		},
 		"int32": {
-			input: map[string]interface{}{
+			input: map[string]any{
 				"foo": int32(123),
 			},
 			keysToConvert: []string{
 				"foo",
 			},
-			expectedOutput: map[string]interface{}{
+			expectedOutput: map[string]any{
 				"foo": 123 * time.Second,
 			},
 			expectErr: false,
 		},
 		"int64": {
-			input: map[string]interface{}{
+			input: map[string]any{
 				"foo": int64(321),
 			},
 			keysToConvert: []string{
 				"foo",
 			},
-			expectedOutput: map[string]interface{}{
+			expectedOutput: map[string]any{
 				"foo": 321 * time.Second,
 			},
 			expectErr: false,
 		},
 		"string": {
-			input: map[string]interface{}{
+			input: map[string]any{
 				"foo": "1h",
 			},
 			keysToConvert: []string{
 				"foo",
 			},
-			expectedOutput: map[string]interface{}{
+			expectedOutput: map[string]any{
 				"foo": 1 * time.Hour,
 			},
 			expectErr: false,
 		},
 		"bad string": {
-			input: map[string]interface{}{
+			input: map[string]any{
 				"foo": "foo",
 			},
 			keysToConvert: []string{
 				"foo",
 			},
-			expectedOutput: map[string]interface{}{
+			expectedOutput: map[string]any{
 				"foo": "foo",
 			},
 			expectErr: true,
 		},
 		"unsupported type": {
-			input: map[string]interface{}{
+			input: map[string]any{
 				"foo": struct {
 					Dur string
 				}{
@@ -1200,7 +1200,7 @@ func TestConvertToDuration(t *testing.T) {
 			keysToConvert: []string{
 				"foo",
 			},
-			expectedOutput: map[string]interface{}{
+			expectedOutput: map[string]any{
 				"foo": struct {
 					Dur string
 				}{
@@ -1229,7 +1229,7 @@ func TestConvertToDuration(t *testing.T) {
 	}
 }
 
-func dynamicRoleFieldData(data map[string]interface{}) *framework.FieldData {
+func dynamicRoleFieldData(data map[string]any) *framework.FieldData {
 	schema := map[string]*framework.FieldSchema{
 		"name": {
 			Type:        framework.TypeLowerCaseString,
@@ -1265,7 +1265,7 @@ func base64Encode(str string) string {
 	return base64.StdEncoding.EncodeToString([]byte(str))
 }
 
-func jsonEncode(t *testing.T, value interface{}) []byte {
+func jsonEncode(t *testing.T, value any) []byte {
 	t.Helper()
 
 	b, err := json.Marshal(value)

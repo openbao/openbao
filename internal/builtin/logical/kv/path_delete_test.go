@@ -10,8 +10,8 @@ import (
 func TestVersionedKV_Delete_Put(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
 	}
@@ -32,11 +32,11 @@ func TestVersionedKV_Delete_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"bar": "baz1",
 		},
-		"options": map[string]interface{}{
+		"options": map[string]any{
 			"cas": float64(1),
 		},
 	}
@@ -57,7 +57,7 @@ func TestVersionedKV_Delete_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"versions": "1,2",
 	}
 
@@ -85,7 +85,7 @@ func TestVersionedKV_Delete_Put(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	parsed, err := time.Parse(time.RFC3339Nano, resp.Data["versions"].(map[string]interface{})["1"].(map[string]interface{})["deletion_time"].(string))
+	parsed, err := time.Parse(time.RFC3339Nano, resp.Data["versions"].(map[string]any)["1"].(map[string]any)["deletion_time"].(string))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestVersionedKV_Delete_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	parsed, err = time.Parse(time.RFC3339Nano, resp.Data["versions"].(map[string]interface{})["2"].(map[string]interface{})["deletion_time"].(string))
+	parsed, err = time.Parse(time.RFC3339Nano, resp.Data["versions"].(map[string]any)["2"].(map[string]any)["deletion_time"].(string))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,8 +107,8 @@ func TestVersionedKV_Delete_Put(t *testing.T) {
 func TestVersionedKV_Undelete_Put(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
 	}
@@ -129,11 +129,11 @@ func TestVersionedKV_Undelete_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"bar": "baz1",
 		},
-		"options": map[string]interface{}{
+		"options": map[string]any{
 			"cas": float64(1),
 		},
 	}
@@ -154,7 +154,7 @@ func TestVersionedKV_Undelete_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"versions": "1,2",
 	}
 
@@ -170,7 +170,7 @@ func TestVersionedKV_Undelete_Put(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"versions": "1,2",
 	}
 
@@ -198,10 +198,10 @@ func TestVersionedKV_Undelete_Put(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	if resp.Data["versions"].(map[string]interface{})["1"].(map[string]interface{})["deletion_time"].(string) != "" {
+	if resp.Data["versions"].(map[string]any)["1"].(map[string]any)["deletion_time"].(string) != "" {
 		t.Fatalf("Bad response: %#v", resp)
 	}
-	if resp.Data["versions"].(map[string]interface{})["2"].(map[string]interface{})["deletion_time"].(string) != "" {
+	if resp.Data["versions"].(map[string]any)["2"].(map[string]any)["deletion_time"].(string) != "" {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 }

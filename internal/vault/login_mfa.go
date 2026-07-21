@@ -451,7 +451,7 @@ func (c *Core) teardownLoginMFA() error {
 
 // LoginMFACreateToken creates a token after the login MFA is validated.
 // It also applies the lease quotas on the original login request path.
-func (c *Core) LoginMFACreateToken(ctx context.Context, reqPath string, cachedAuth *logical.Auth, loginRequestData map[string]interface{}, isInlineAuth bool, userLockoutInfo *FailedLoginUser) (*logical.Response, error) {
+func (c *Core) LoginMFACreateToken(ctx context.Context, reqPath string, cachedAuth *logical.Auth, loginRequestData map[string]any, isInlineAuth bool, userLockoutInfo *FailedLoginUser) (*logical.Response, error) {
 	auth := cachedAuth
 	resp := &logical.Response{
 		Auth: auth,
@@ -630,14 +630,14 @@ func (b *MFABackend) HandleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"url":     totpURL,
 			"barcode": totpB64Barcode,
 		},
 	}, nil
 }
 
-func (b *LoginMFABackend) ReadMFAConfigByMethodID(id string) (map[string]interface{}, error) {
+func (b *LoginMFABackend) ReadMFAConfigByMethodID(id string) (map[string]any, error) {
 	mConfig, err := b.MemDBMFAConfigByID(id)
 	if err != nil {
 		return nil, err
@@ -649,7 +649,7 @@ func (b *LoginMFABackend) ReadMFAConfigByMethodID(id string) (map[string]interfa
 	return b.mfaConfigToMap(mConfig)
 }
 
-func (b *LoginMFABackend) MfaMethodList(ctx context.Context, methodType string) (map[string]interface{}, error) {
+func (b *LoginMFABackend) MfaMethodList(ctx context.Context, methodType string) (map[string]any, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -675,7 +675,7 @@ func (b *LoginMFABackend) MfaMethodList(ctx context.Context, methodType string) 
 	}
 
 	ws.Add(iter.WatchCh())
-	configInfo := map[string]interface{}{}
+	configInfo := map[string]any{}
 
 	for {
 		// check for timeouts
@@ -712,7 +712,7 @@ func (b *LoginMFABackend) MfaMethodList(ctx context.Context, methodType string) 
 	return configInfo, nil
 }
 
-func (b *LoginMFABackend) MfaLoginEnforcementList(ctx context.Context) (map[string]interface{}, error) {
+func (b *LoginMFABackend) MfaLoginEnforcementList(ctx context.Context) (map[string]any, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -728,7 +728,7 @@ func (b *LoginMFABackend) MfaLoginEnforcementList(ctx context.Context) (map[stri
 	}
 
 	ws.Add(iter.WatchCh())
-	enforcementInfo := map[string]interface{}{}
+	enforcementInfo := map[string]any{}
 
 	for {
 		// check for timeouts
@@ -749,7 +749,7 @@ func (b *LoginMFABackend) MfaLoginEnforcementList(ctx context.Context) (map[stri
 	return enforcementInfo, nil
 }
 
-func (b *LoginMFABackend) ReadMFALoginEnforcementConfigByNameAndNamespace(name string, ns *namespace.Namespace) (map[string]interface{}, error) {
+func (b *LoginMFABackend) ReadMFALoginEnforcementConfigByNameAndNamespace(name string, ns *namespace.Namespace) (map[string]any, error) {
 	eConfig, err := b.MemDBMFALoginEnforcementConfigByNameAndNamespace(name, ns.ID)
 	if err != nil || eConfig == nil {
 		return nil, err
@@ -758,8 +758,8 @@ func (b *LoginMFABackend) ReadMFALoginEnforcementConfigByNameAndNamespace(name s
 	return b.mfaLoginEnforcementConfigToMap(eConfig, ns), nil
 }
 
-func (b *LoginMFABackend) mfaLoginEnforcementConfigToMap(eConfig *mfa.MFAEnforcementConfig, ns *namespace.Namespace) map[string]interface{} {
-	return map[string]interface{}{
+func (b *LoginMFABackend) mfaLoginEnforcementConfigToMap(eConfig *mfa.MFAEnforcementConfig, ns *namespace.Namespace) map[string]any {
+	return map[string]any{
 		"id":                    eConfig.ID,
 		"name":                  eConfig.Name,
 		"namespace_path":        ns.Path,
@@ -772,8 +772,8 @@ func (b *LoginMFABackend) mfaLoginEnforcementConfigToMap(eConfig *mfa.MFAEnforce
 	}
 }
 
-func (b *MFABackend) mfaConfigToMap(mConfig *mfa.Config) (map[string]interface{}, error) {
-	respData := make(map[string]interface{})
+func (b *MFABackend) mfaConfigToMap(mConfig *mfa.Config) (map[string]any, error) {
+	respData := make(map[string]any)
 
 	switch mConfig.Config.(type) {
 	case *mfa.Config_TOTPConfig:
@@ -1319,17 +1319,17 @@ func (c *Core) validatePingID(ctx context.Context, mConfig *mfa.Config, username
 
 	client := cleanhttp.DefaultClient()
 
-	createRequest := func(reqPath string, reqBody map[string]interface{}) (*http.Request, error) {
+	createRequest := func(reqPath string, reqBody map[string]any) (*http.Request, error) {
 		// Construct the token
 		token := &jwt.Token{
 			Method: jwt.SigningMethodHS256,
-			Header: map[string]interface{}{
+			Header: map[string]any{
 				"alg":       "HS256",
 				"org_alias": pingConfig.OrgAlias,
 				"token":     pingConfig.Token,
 			},
 			Claims: jwt.MapClaims{
-				"reqHeader": map[string]interface{}{
+				"reqHeader": map[string]any{
 					"locale":    "en",
 					"orgAlias":  pingConfig.OrgAlias,
 					"secretKey": pingConfig.Token,
@@ -1388,7 +1388,7 @@ func (c *Core) validatePingID(ctx context.Context, mConfig *mfa.Config, username
 
 		// Parse the body, which is a JWT. Ensure that it's using HMAC signing
 		// and return the signing key in the func for validation
-		token, err := jwt.Parse(bodyBytes.String(), func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.Parse(bodyBytes.String(), func(token *jwt.Token) (any, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method %q from pingid response", token.Header["alg"])
 			}
@@ -1490,7 +1490,7 @@ func (c *Core) validatePingID(ctx context.Context, mConfig *mfa.Config, username
 			}
 		}
 	*/
-	req, err := createRequest("rest/4/authonline/do", map[string]interface{}{
+	req, err := createRequest("rest/4/authonline/do", map[string]any{
 		"spAlias":  "web",
 		"userName": username,
 		"authType": "CONFIRM",

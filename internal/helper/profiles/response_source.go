@@ -8,7 +8,7 @@ import (
 const responseSourceName = "response"
 
 // ResponseSourceBuilder allows reading inputs from past responses.
-func ResponseSourceBuilder(engine *ProfileEngine, field map[string]interface{}) Source {
+func ResponseSourceBuilder(engine *ProfileEngine, field map[string]any) Source {
 	return &ResponseSource{
 		outer: engine.outerBlockName,
 		field: field,
@@ -30,11 +30,11 @@ func HasResponseSource(engine *ProfileEngine) bool {
 
 type ResponseSource struct {
 	outer string
-	field map[string]interface{}
+	field map[string]any
 
 	outerName     string
 	responseName  string
-	fieldSelector []interface{}
+	fieldSelector []any
 }
 
 var _ Source = &ResponseSource{}
@@ -75,7 +75,7 @@ func (s *ResponseSource) Validate() ([]string, []string, error) {
 	if present {
 		switch fieldSelector := rawFieldSelector.(type) {
 		case int, string:
-			s.fieldSelector = []interface{}{fieldSelector}
+			s.fieldSelector = []any{fieldSelector}
 		case []int:
 			for _, item := range fieldSelector {
 				s.fieldSelector = append(s.fieldSelector, item)
@@ -84,7 +84,7 @@ func (s *ResponseSource) Validate() ([]string, []string, error) {
 			for _, item := range fieldSelector {
 				s.fieldSelector = append(s.fieldSelector, item)
 			}
-		case []interface{}:
+		case []any:
 			s.fieldSelector = fieldSelector
 		default:
 			return nil, nil, fmt.Errorf("unknown type for response source field 'field_selector': %T; expected either string, []string, []interface{}", rawFieldSelector)
@@ -94,7 +94,7 @@ func (s *ResponseSource) Validate() ([]string, []string, error) {
 	return []string{responseName}, nil, nil
 }
 
-func (s *ResponseSource) Evaluate(_ context.Context, eh *EvaluationHistory) (interface{}, error) {
+func (s *ResponseSource) Evaluate(_ context.Context, eh *EvaluationHistory) (any, error) {
 	if s.fieldSelector == nil {
 		return eh.GetResponse(s.outerName, s.responseName)
 	}

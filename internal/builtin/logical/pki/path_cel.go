@@ -231,7 +231,7 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 
 	// Update the fields only if provided
 	if programRaw, ok := data.GetOk("cel_program"); ok {
-		programMap, ok := programRaw.(map[string]interface{})
+		programMap, ok := programRaw.(map[string]any)
 		if !ok {
 			return logical.ErrorResponse("'cel_program' must be a valid map"), nil
 		}
@@ -295,8 +295,8 @@ const (
 	pathCelRoleHelpDesc = `This path lets you manage the cel roles that can be created with this backend.`
 )
 
-func (r *CELRoleEntry) ToResponseData() map[string]interface{} {
-	return map[string]interface{}{
+func (r *CELRoleEntry) ToResponseData() map[string]any {
+	return map[string]any{
 		"name":        r.Name,
 		"cel_program": r.Program,
 	}

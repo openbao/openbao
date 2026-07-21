@@ -576,15 +576,15 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 			})
 		}
 	}
-	vaultCfg := map[string]interface{}{}
+	vaultCfg := map[string]any{}
 	ports := []string{"8200/tcp", "8201/tcp"}
-	listeners := []interface{}{
-		map[string]interface{}{
-			"tcp": map[string]interface{}{
+	listeners := []any{
+		map[string]any{
+			"tcp": map[string]any{
 				"address":       fmt.Sprintf("%s:%d", "0.0.0.0", 8200),
 				"tls_cert_file": "/openbao/config/cert.pem",
 				"tls_key_file":  "/openbao/config/key.pem",
-				"telemetry": map[string]interface{}{
+				"telemetry": map[string]any{
 					"unauthenticated_metrics_access": true,
 				},
 			},
@@ -594,13 +594,13 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		lsCfg := opts.VaultNodeConfig.AdditionalListeners
 		listeners = append(listeners, lsCfg...)
 		for _, lCfgRaw := range lsCfg {
-			lCfg := lCfgRaw.(map[string]interface{})
+			lCfg := lCfgRaw.(map[string]any)
 			for lType, lValueRaw := range lCfg {
 				if lType == "unix" {
 					continue
 				}
 
-				lValue := lValueRaw.(map[string]interface{})
+				lValue := lValueRaw.(map[string]any)
 				address, ok := lValue["address"].(string)
 				if !ok {
 					continue
@@ -619,7 +619,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	}
 	vaultCfg["listener"] = listeners
 
-	vaultCfg["telemetry"] = map[string]interface{}{
+	vaultCfg["telemetry"] = map[string]any{
 		"disable_hostname": true,
 	}
 
@@ -640,7 +640,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 
 	// Setup storage. Default is raft.
 	storageType := "raft"
-	storageOpts := map[string]interface{}{
+	storageOpts := map[string]any{
 		// TODO add options from vnc
 		"path":    "/openbao/file",
 		"node_id": n.NodeID,
@@ -658,7 +658,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 			}
 		}
 	}
-	vaultCfg["storage"] = map[string]interface{}{
+	vaultCfg["storage"] = map[string]any{
 		storageType: storageOpts,
 	}
 
@@ -1354,8 +1354,8 @@ func (p *PostgreSQLStorage) Cleanup() error {
 	return nil
 }
 
-func (p *PostgreSQLStorage) Opts() map[string]interface{} {
-	return map[string]interface{}{
+func (p *PostgreSQLStorage) Opts() map[string]any {
+	return map[string]any{
 		"connection_url":       p.InternalUrl,
 		"ha_enabled":           true,
 		"max_parallel":         5,

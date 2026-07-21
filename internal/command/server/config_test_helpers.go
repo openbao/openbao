@@ -25,11 +25,6 @@ var DefaultCustomHeaders = map[string]map[string]string{
 	},
 }
 
-//go:fix inline
-func boolPointer(x bool) *bool {
-	return new(x)
-}
-
 func testConfigRaftRetryJoin(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/raft_retry_join.hcl", nil)
 	if err != nil {

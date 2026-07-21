@@ -3,6 +3,7 @@ linters:
   enable:
     - cyclop
     - misspell
+    - modernize
   settings:
     cyclop:
       # Lower cyclomatic complexity threshold after the max complexity is lowered.

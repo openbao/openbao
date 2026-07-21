@@ -86,6 +86,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/efficient-search-components",
                 "rfcs/parallel-unseal",
                 "rfcs/emergency-seal",
+                "rfcs/external-authorization",
                 {
                     "UI/UX": ["rfcs/web-ui-modernization"],
                 },

@@ -5,6 +5,7 @@ package token
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"reflect"
 	"sort"
 	"strings"
@@ -20,6 +21,8 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/ldap"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTokenStore_CreateOrphanResponse(t *testing.T) {
@@ -678,4 +681,72 @@ func TestTokenStore_RevocationOnStartup(t *testing.T) {
 	if tokensLeft != expectedTokens {
 		t.Fatalf("found %d tokens left, expected %d", tokensLeft, expectedTokens)
 	}
+}
+
+func TestTokenStore_StandbyInvalidation(t *testing.T) {
+	coreConfig := &vault.CoreConfig{
+		CredentialBackends: map[string]logical.Factory{
+			"userpass": credUserpass.Factory,
+		},
+	}
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		NumCores:    2,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	core := cluster.Cores[0].Core
+	vault.TestWaitActive(t, core)
+	client := cluster.Cores[0].Client
+
+	standbyClient := cluster.Cores[1].Client
+
+	resp, err := client.Logical().Write("auth/token/create-orphan", map[string]any{
+		"policies":  "default",
+		"renewable": true,
+		"ttl":       "24h",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Auth)
+	require.NotEmpty(t, resp.Auth.ClientToken)
+
+	// Require that the token exists.
+	standbyClient.SetToken(resp.Auth.ClientToken)
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		data, err := standbyClient.Logical().Read("auth/token/lookup-self")
+		require.NoError(collect, err)
+		require.NotNil(collect, data)
+		require.Contains(collect, data.Data, "renewable")
+		require.True(collect, data.Data["renewable"].(bool))
+
+		ttlRaw := data.Data["ttl"].(json.Number)
+		ttl, err := ttlRaw.Int64()
+		require.NoError(t, err)
+		cutoff := 36 * time.Hour / time.Second
+		require.LessOrEqual(collect, int(ttl), int(cutoff), "ttl: %v (%T)", data.Data["ttl"], data.Data["ttl"])
+	}, 10*time.Second, 100*time.Millisecond)
+
+	// Renew the token and see if it propagates.
+	_, err = client.Logical().Write("auth/token/renew", map[string]any{
+		"token":     resp.Auth.ClientToken,
+		"increment": "128h",
+	})
+	require.NoError(t, err)
+
+	// Require that the token exists.
+	standbyClient.SetToken(resp.Auth.ClientToken)
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		data, err := standbyClient.Logical().Read("auth/token/lookup-self")
+		require.NoError(collect, err)
+		require.NotNil(collect, data)
+		require.Contains(collect, data.Data, "ttl")
+
+		ttlRaw := data.Data["ttl"].(json.Number)
+		ttl, err := ttlRaw.Int64()
+		require.NoError(t, err)
+		cutoff := 36 * time.Hour / time.Second
+		require.GreaterOrEqual(collect, int(ttl), int(cutoff), "ttl: %v (%T)", data.Data["ttl"], data.Data["ttl"])
+	}, 10*time.Second, 100*time.Millisecond)
 }

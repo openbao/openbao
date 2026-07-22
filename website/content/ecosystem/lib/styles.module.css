@@ -6,3 +6,12 @@
     display: flex;
     justify-content: space-between;
 }
+
+.centered {
+    text-align: center;
+    margin: 0 auto;
+}
+
+.logoOnly {
+    height: 6cap;
+}

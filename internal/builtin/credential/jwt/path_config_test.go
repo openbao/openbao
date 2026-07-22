@@ -169,6 +169,31 @@ func TestConfig_JWT_Write(t *testing.T) {
 	if !reflect.DeepEqual(expected, conf) {
 		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
 	}
+
+	t.Run("with trailing slash fails", func(t *testing.T) {
+		b, storage := getBackend(t)
+		s := newOIDCProvider(t)
+		defer s.server.Close()
+
+		cert, err := s.getTLSCert()
+		require.NoError(t, err)
+
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data: map[string]any{
+				"oidc_discovery_url":    s.server.URL + "/",
+				"oidc_discovery_ca_pem": cert,
+			},
+		}
+
+		resp, err := b.HandleRequest(t.Context(), req)
+		require.NoError(t, err)
+		require.True(t, resp.IsError())
+		require.EqualError(t, resp.Error(), "error checking oidc discovery URL: "+
+			"issuer did not match the returned issuer, expected \""+s.server.URL+"/\" got \""+s.server.URL+"\"")
+	})
 }
 
 func TestConfig_JWKS_Update(t *testing.T) {

@@ -229,10 +229,15 @@ type invalidationJob struct {
 	quitCh      chan struct{}
 	quitContext context.Context
 
-	im     *invalidationManager
+	im *invalidationManager
+
+	// key is the full path of the entry being updated, including
+	// `namespace/<uuid>/` prefix if applicable.
 	key    string
 	nsUUID string
-	nsKey  string
+
+	// nsKey is the path within the namespace.
+	nsKey string
 
 	fatal bool
 }
@@ -429,6 +434,23 @@ func (ij *invalidationJob) Execute() error {
 	case isLoginMFA(ij.nsKey):
 		ij.fatal = true
 		return ij.loginMFAInvalidation(ctx, ns)
+	case strings.HasPrefix(ij.nsKey, barrier.SystemBarrierPrefix+expirationSubPath):
+		// Expiration manager on standby nodes does not cache entries.
+	case strings.HasPrefix(ij.nsKey, barrier.SystemBarrierPrefix+tokenSubPath):
+		// Token store has salt invalidation, but assumes we're relative to
+		// sys/.
+		subpath := strings.TrimPrefix(ij.nsKey, barrier.SystemBarrierPrefix)
+		ij.im.core.tokenStore.Invalidate(ctx, subpath)
+	case strings.HasPrefix(ij.nsKey, mfaTOTPKeysPrefix):
+		// MFA TOTP entries are not cached.
+	case strings.HasPrefix(ij.nsKey, passwordPolicySubPath):
+		// Password policies are not cached.
+	case strings.HasPrefix(ij.nsKey, "sys/"):
+		// System keys need to be invalidated explicitly because it has no
+		// global invalidation router. If we have not handled such a key
+		// before it gets to the invalidation trigger below, treat it as
+		// fatal and restart.
+		ij.im.dispacherLogger.Error("no mechanism to invalidate system cache for specified key", "key", ij.nsKey, "full_key", ij.key)
 	case ij.im.core.router.Invalidate(shortCtx, ij.key):
 		// if router.Invalidate returns true, a matching plugin was found and
 		// the invalidation is therefore dispatched.

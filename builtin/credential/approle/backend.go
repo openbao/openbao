@@ -5,6 +5,7 @@ package approle
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -33,9 +34,6 @@ type backend struct {
 	// by this backend.
 	salt      *salt.Salt
 	saltMutex sync.RWMutex
-
-	// The view to use when creating the salt
-	view logical.Storage
 
 	// Guard to clean-up the expired SecretID entries
 	tidySecretIDCASGuard atomic.Bool
@@ -76,7 +74,6 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 
 func Backend(conf *logical.BackendConfig) *backend {
 	b := &backend{
-		view: conf.StorageView,
 		// Create locks to modify the registered roles
 		roleLocks: locksutil.CreateLocks(),
 		// Create locks to modify the generated RoleIDs
@@ -112,11 +109,25 @@ func Backend(conf *logical.BackendConfig) *backend {
 		Invalidate:     b.invalidate,
 		BackendType:    logical.TypeCredential,
 		RunningVersion: ReportedVersion,
+		InitializeFunc: b.Initialize,
 	}
 	return b
 }
 
-func (b *backend) Salt(ctx context.Context) (*salt.Salt, error) {
+func (b *backend) Initialize(ctx context.Context, req *logical.InitializationRequest) error {
+	if b.System().ReplicationState().HasState(consts.ReplicationDRSecondary|consts.ReplicationPerformanceStandby) ||
+		(!b.System().LocalMount() && b.System().ReplicationState().HasState(consts.ReplicationPerformanceSecondary)) {
+		return nil
+	}
+
+	if _, err := b.Salt(ctx, req.Storage); err != nil {
+		return fmt.Errorf("error creating initial salt: %w", err)
+	}
+
+	return nil
+}
+
+func (b *backend) Salt(ctx context.Context, storage logical.Storage) (*salt.Salt, error) {
 	b.saltMutex.RLock()
 	if b.salt != nil {
 		defer b.saltMutex.RUnlock()
@@ -128,7 +139,7 @@ func (b *backend) Salt(ctx context.Context) (*salt.Salt, error) {
 	if b.salt != nil {
 		return b.salt, nil
 	}
-	salt, err := salt.NewSalt(ctx, b.view, &salt.Config{
+	salt, err := salt.NewSalt(ctx, storage, &salt.Config{
 		HashFunc: salt.SHA256Hash,
 		Location: salt.DefaultLocation,
 	})

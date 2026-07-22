@@ -126,11 +126,14 @@ func (c *Catalog) getClientLocked(name string) (*client, bool, error) {
 		HandshakeConfig:  gkwplugin.HandshakeConfig,
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		AutoMTLS:         true,
-		Logger:           c.logger.Named(name),
 		SecureConfig: &plugin.SecureConfig{
 			Checksum: checksum,
 			Hash:     sha256.New(),
 		},
+		// go-plugin will create a sub-logger with the plugin executable's name,
+		// so avoid duplicating that here and pass the catalog's logger without
+		// modification.
+		Logger: c.logger,
 	})
 
 	proto, err := process.Client()

@@ -605,10 +605,10 @@ github.com/onsi/ginkgo/v2 v2.27.2 h1:LzwLj0b89qtIy6SSASkzlNvX6WktqurSHwkk2ipF/Ns
 github.com/onsi/ginkgo/v2 v2.27.2/go.mod h1:ArE1D/XhNXBXCBkKOLkbsb2c81dQHCRcF5zwn/ykDRo=
 github.com/onsi/gomega v1.38.2 h1:eZCjf2xjZAqe+LeWvKb5weQ+NcPwX84kqJ0cZNxok2A=
 github.com/onsi/gomega v1.38.2/go.mod h1:W2MJcYxRGV63b418Ai34Ud0hEdTVXq9NW9+Sx6uXf3k=
-github.com/openbao/go-kms-wrapping/kms/transit/v2 v2.0.0-20260626131931-998c8a6f17f4 h1:LDxQjQsELH6tiqZBl77u/GYIZRt2qqKj1IKCdFc2i+U=
-github.com/openbao/go-kms-wrapping/kms/transit/v2 v2.0.0-20260626131931-998c8a6f17f4/go.mod h1:6YvCS2DdKEIf1s6ZGWaIeFOyXg9yGQH1jYKRBBDCXmI=
-github.com/openbao/go-kms-wrapping/plugin/v2 v2.3.1-0.20260626131931-998c8a6f17f4 h1:CfrD/C7qk3ulknCQt/tVcL2cIqqI7fZI+S6M4gvOkgM=
-github.com/openbao/go-kms-wrapping/plugin/v2 v2.3.1-0.20260626131931-998c8a6f17f4/go.mod h1:4GW0HdXEvYJN4gkNU9uZWHIX+fBSc0cPLiRj+vLanw8=
+github.com/openbao/go-kms-wrapping/kms/transit/v2 v2.0.0-20260722171919-2a8eddf5719b h1:XJECcZxACjOWcK6h9xhXyJV2kKTH4JaXrC8PrKJ+uzc=
+github.com/openbao/go-kms-wrapping/kms/transit/v2 v2.0.0-20260722171919-2a8eddf5719b/go.mod h1:kjzj4k1lFR+TqwVNgu4aPjwZDaTpcphn5uU9XiyYSPc=
+github.com/openbao/go-kms-wrapping/plugin/v2 v2.3.1-0.20260722171919-2a8eddf5719b h1:T08vjBpshje5Uxri+PoTPedh1L+QopAPDF31P1wuhx8=
+github.com/openbao/go-kms-wrapping/plugin/v2 v2.3.1-0.20260722171919-2a8eddf5719b/go.mod h1:4GW0HdXEvYJN4gkNU9uZWHIX+fBSc0cPLiRj+vLanw8=
 github.com/openbao/go-kms-wrapping/v2 v2.8.1-0.20260626131931-998c8a6f17f4 h1:SfN6JMUOfRHMt2dyYHumvIWEiTshQiTOYXGLyNgikz0=
 github.com/openbao/go-kms-wrapping/v2 v2.8.1-0.20260626131931-998c8a6f17f4/go.mod h1:KyL1nfZM8SzLgMchvFU2F5jS/XlauD3TRCjmILLErh4=
 github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.2.0 h1:7aw+PZT0FDYdDwFgY1DYwfYQM/AGeeVuR8rZiMRDVW0=

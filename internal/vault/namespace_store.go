@@ -96,10 +96,10 @@ type NamespaceStore struct {
 	// A namespace may not be marked tainted (in memory) if it is in this
 	// list, so results need to be combined when namespaces are externally
 	// exposed.
-	creationDeletionMap           map[string]bool
-	deletionDispatcher            *fairshare.JobManager
-	creationDeletionJobContext    context.Context
-	creationDeletionJobCancelFunc context.CancelFunc
+	creationDeletionMap map[string]bool
+	jobDispatcher       *fairshare.JobManager
+	asyncJobContext     context.Context
+	asyncJobCancelFunc  context.CancelFunc
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
@@ -118,9 +118,9 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 		creationDeletionMap:  make(map[string]bool),
 	}
 
-	ns.creationDeletionJobContext, ns.creationDeletionJobCancelFunc = context.WithCancel(core.activeContext.Load())
-	ns.deletionDispatcher = fairshare.NewJobManager(nsDispatcherName, nsMaxWorkers, ns.logger, core.metricSink)
-	ns.deletionDispatcher.Start()
+	ns.asyncJobContext, ns.asyncJobCancelFunc = context.WithCancel(core.activeContext.Load())
+	ns.jobDispatcher = fairshare.NewJobManager(nsDispatcherName, nsMaxWorkers, ns.logger, core.metricSink)
+	ns.jobDispatcher.Start()
 
 	// Add namespaces from storage to our table. We can do this without
 	// holding a lock as we've not returned ns to anyone yet.
@@ -145,21 +145,21 @@ func NamespaceStoragePathPrefix(ns *namespace.Namespace) string {
 	return path.Join(barrier.NamespacePrefix, ns.UUID) + "/"
 }
 
-// cancelNamespaceDeletion cancels goroutine that runs namespace deletion.
-func (c *Core) cancelNamespaceDeletion() {
+// cancelAsyncNamespaceOperations cancels goroutine that run async namespace operations, such as deletions and barrier migrations.
+func (c *Core) cancelAsyncNamespaceOperations() {
 	if c.namespaceStore == nil {
 		return
 	}
 
-	c.namespaceStore.CancelNamespaceDeletion()
+	c.namespaceStore.CancelAsyncNamespaceOperations()
 }
 
-func (ns *NamespaceStore) CancelNamespaceDeletion() {
+func (ns *NamespaceStore) CancelAsyncNamespaceOperations() {
 	// Cancel pending operations.
-	ns.creationDeletionJobCancelFunc()
+	ns.asyncJobCancelFunc()
 
 	// Stop jobs.
-	ns.deletionDispatcher.Stop()
+	ns.jobDispatcher.Stop()
 }
 
 // loadNamespaces loads all stored namespaces from disk. It assumes the lock
@@ -502,7 +502,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 
 		// Queue partially created namespace deletion for the background
 		// workers rather than doing it synchronously.
-		ns.deletionDispatcher.AddJob(ns.newNamespaceCreationFailureJob(parent, entry), parent.UUID)
+		ns.jobDispatcher.AddJob(ns.newNamespaceCreationFailureJob(parent, entry), parent.UUID)
 	}
 
 	defer cleanupFailed()
@@ -1356,7 +1356,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 	}
 
 	ns.creationDeletionMap[namespaceToDelete.UUID] = true
-	ns.deletionDispatcher.AddJob(&namespaceDeletionJob{
+	ns.jobDispatcher.AddJob(&namespaceDeletionJob{
 		store:  ns,
 		parent: parent,
 		target: namespaceToDelete,
@@ -1425,7 +1425,7 @@ func (ns *NamespaceStore) DeleteSealedNamespace(ctx context.Context, path string
 	}
 
 	ns.creationDeletionMap[namespaceToDelete.UUID] = true
-	ns.deletionDispatcher.AddJob(&namespaceDeletionJob{
+	ns.jobDispatcher.AddJob(&namespaceDeletionJob{
 		store:  ns,
 		parent: parent,
 		target: namespaceToDelete,
@@ -1830,7 +1830,7 @@ type namespaceDeletionJob struct {
 
 func (j *namespaceDeletionJob) Execute() error {
 	// Clearing needs to happen without holding the namespace lock.
-	ctx := namespace.ContextWithNamespace(j.store.creationDeletionJobContext, j.target)
+	ctx := namespace.ContextWithNamespace(j.store.asyncJobContext, j.target)
 	err := j.cleanup(ctx)
 
 	j.store.lock.Lock()
@@ -1884,7 +1884,7 @@ func (ns *NamespaceStore) newNamespaceCreationFailureJob(parent *namespace.Names
 func (j *namespaceCreationFailureJob) Execute() error {
 	// Handle in-memory mount table entries that we should also clean
 	// up.
-	nsCtx := namespace.ContextWithNamespace(j.store.creationDeletionJobContext, j.target)
+	nsCtx := namespace.ContextWithNamespace(j.store.asyncJobContext, j.target)
 	cleanupSuccess := j.store.undoCreateMounts(nsCtx, j.target)
 
 	var retErr error
@@ -1892,7 +1892,7 @@ func (j *namespaceCreationFailureJob) Execute() error {
 	// Clear the view corresponding with the namespace for
 	// completeness.
 	view := NamespaceScopedView(j.store.core.barrier, j.target)
-	if err := logical.ClearViewWithLogging(j.store.creationDeletionJobContext, view, j.store.logger); err != nil {
+	if err := logical.ClearViewWithLogging(j.store.asyncJobContext, view, j.store.logger); err != nil {
 		retErr = fmt.Errorf("failed to remove remaining namespace storage: %w", err)
 		cleanupSuccess = false
 	}
@@ -1955,7 +1955,7 @@ func (ns *NamespaceStore) newNamespaceBarrierMigrationJob(parent *namespace.Name
 }
 
 func (j *namespaceBarrierMigrationJob) Execute() error {
-	ctx := namespace.ContextWithNamespace(j.store.creationDeletionJobContext, j.target)
+	ctx := namespace.ContextWithNamespace(j.store.asyncJobContext, j.target)
 
 	if err := j.store.taintNamespace(ctx, j.parent, j.target); err != nil {
 		return err
@@ -2035,8 +2035,8 @@ func (j *namespaceBarrierMigrationJob) Execute() error {
 			}
 		}
 
-		switch {
-		case newBarrier == parentBarrier:
+		switch newBarrier {
+		case parentBarrier:
 			// in case of an error, this will be reverted by the namespace invalidation at the end
 			j.core.sealManager.RemoveNamespace(j.target)
 		default:

@@ -57,6 +57,7 @@ import (
 	sr "github.com/openbao/openbao/v2/internal/serviceregistration"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	"github.com/openbao/openbao/v2/internal/vault/cluster"
+	ek "github.com/openbao/openbao/v2/internal/vault/external_keys"
 	"github.com/openbao/openbao/v2/internal/vault/forwarding"
 	ident "github.com/openbao/openbao/v2/internal/vault/identity"
 	"github.com/openbao/openbao/v2/internal/vault/policy"
@@ -498,8 +499,11 @@ type Core struct {
 	// pluginCatalog is used to manage plugin configurations
 	pluginCatalog *PluginCatalog
 
-	// kmsPluginCatalog provides KMS plugin functionality
+	// kmsPluginCatalog provides KMS plugin functionality.
 	kmsPluginCatalog *kmsplugin.Catalog
+
+	// externalKeys manages external key storage & caches.
+	externalKeys *ek.Registry
 
 	// The userFailedLoginInfo map has user failed login information.
 	// It has user information (alias-name and mount accessor) as a key
@@ -860,6 +864,16 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	// Instantiate a non-nil raw config if none is provided
 	if conf.RawConfig == nil {
 		conf.RawConfig = new(server.Config)
+	}
+
+	// Instantiate a KMS plugin catalog if none is provided. This is primarily a
+	// fallback for tests that don't run command/server.go startup code.
+	if conf.KMSPluginCatalog == nil {
+		catalog, err := kmsplugin.NewCatalog(conf.Logger, conf.RawConfig)
+		if err != nil {
+			return nil, err
+		}
+		conf.KMSPluginCatalog = catalog
 	}
 
 	clusterHeartbeatInterval := conf.ClusterHeartbeatInterval
@@ -2228,6 +2242,13 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
+
+	{
+		logger := c.baseLogger.Named("external-keys")
+		c.AddLogger(logger)
+		c.externalKeys = ek.NewRegistry(c.kmsPluginCatalog, logger)
+	}
+
 	if err := c.loadMounts(ctx, standby); err != nil {
 		return err
 	}
@@ -2454,6 +2475,11 @@ func (c *Core) preSeal() error {
 	}
 	if err := c.teardownNamespaceStore(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down namespace store: %w", err))
+	}
+
+	if c.externalKeys != nil {
+		c.externalKeys.Stop(context.Background())
+		c.externalKeys = nil
 	}
 
 	if c.autoRotateCancel != nil {

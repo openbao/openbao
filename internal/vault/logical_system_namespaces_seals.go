@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
+	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 )
 
 func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
@@ -442,11 +443,65 @@ func (b *SystemBackend) handleNamespacesMigrateSeal() framework.OperationFunc {
 			return handleError(err)
 		}
 
-		migrationJob := b.Core.namespaceStore.newNamespaceBarrierMigrationJob(parentNs, ns, sealConfig)
+		if err := b.Core.namespaceStore.taintNamespace(ctx, parentNs, ns); err != nil {
+			return handleError(err)
+		}
+		defer b.Core.namespaceStore.untaintNamespace(ctx, parentNs, ns)
+
+		parentBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(parentNs.Path)
+		oldBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+
+		var newBarrier barrier.SecurityBarrier
+		if sealConfig == nil {
+			newBarrier = parentBarrier
+		}
+
+		var seal Seal
+
+		var keyShares [][]byte
+		if newBarrier == nil {
+			metaPrefix := NamespaceStoragePathPrefix(ns)
+			seal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+			seal.SetCore(b.Core)
+			seal.SetMetaPrefix(metaPrefix)
+
+			seal.SetConfigAccess(parentBarrier)
+
+			ctx := namespace.ContextWithNamespace(ctx, ns)
+			if err := seal.Init(ctx); err != nil {
+				return handleError(err)
+			}
+
+			newBarrier = barrier.NewAESGCMBarrier(b.Core.physical, ns)
+			keyShares, err = b.Core.sealManager.initializeBarrier(ctx, newBarrier, seal, sealConfig)
+			if err != nil {
+				return handleError(err)
+			}
+		}
+
+		if newBarrier == oldBarrier {
+			// Nothing to do
+			return nil, nil
+		}
+
+		migrationJob := b.Core.namespaceStore.newNamespaceBarrierMigrationJob(parentBarrier, oldBarrier, newBarrier, ns, seal, sealConfig)
 
 		b.Core.namespaceStore.jobDispatcher.AddJob(migrationJob, ns.UUID)
 
-		return nil, nil
+		resp := &logical.Response{
+			Data: map[string]any{"status": "in-progress"},
+		}
+
+		if len(keyShares) != 0 {
+			encoded := make([]string, 0, len(keyShares))
+			for _, share := range keyShares {
+				encoded = append(encoded, hex.EncodeToString(share))
+			}
+			resp.Data["key_shares"] = encoded
+			resp.Data["key_threshold"] = sealConfig.SecretThreshold
+		}
+
+		return resp, nil
 	}
 }
 

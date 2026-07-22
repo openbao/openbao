@@ -226,7 +226,7 @@ Self-initialization has three design limitations:
    attacker can't later modify the configuration and grant themselves
    privileged access.
 2. Only a single node should be started to do self-initialization; parallel
-   self-initialization is not supported and may fail or lead to slit-brained
+   self-initialization is not supported and may fail or lead to split-brained
    Raft clusters.
 3. Operators need to be running auto-unseal so that initial startup is fully
    automatic.

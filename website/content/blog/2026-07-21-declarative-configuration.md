@@ -17,7 +17,7 @@ operator experience for initial configuration. We focus on one question:
 
 :::tip[Question]
 
-**How can we make OpenBao deployment easier and more reproducible?**
+**How can we make initial OpenBao deployment easier and more reproducible?**
 
 :::
 

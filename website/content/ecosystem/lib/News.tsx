@@ -26,8 +26,7 @@ export function News({ title, memberName, children }) {
 }
 
 export function NewsBlurb({ title, memberName, link, children }) {
-    let url = URL.parse(link);
-    let domain = url.hostname;
+    const domain = URL.parse(link).hostname;
 
     return (
         <News title={title} memberName={memberName}>

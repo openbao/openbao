@@ -12,9 +12,6 @@ rules:
     severity: ERROR
     paths:
       exclude:
-        - "*_test.go"
-        - "tools/*.go"
-        - "cmd/*.go"
-        - "cmd/**/*.go"
-        - sdk/database/dbplugin/server.go # effectively a cmd
-        - sdk/database/dbplugin/v5/plugin_server.go # effectively a cmd
+        - "/**/*_test.go"
+        - /sdk/database/dbplugin/server.go # effectively a cmd
+        - /sdk/database/dbplugin/v5/plugin_server.go # effectively a cmd

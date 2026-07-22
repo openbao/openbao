@@ -2499,7 +2499,7 @@ func (c *Core) preSeal() error {
 
 	c.stopForwarding()
 	c.stopRaftActiveNode()
-	c.cancelNamespaceDeletion()
+	c.cancelAsyncNamespaceOperations()
 	c.CleanupInvalidationPeers()
 	c.invalidations.Stop()
 

@@ -193,11 +193,8 @@ func (ps *Store) lockWithUnlock(ctx context.Context) func() {
 		ns = namespace.RootNamespace
 	}
 
-	lock := locksutil.LockForKey(ps.modifyLocks, ns.UUID)
-
 	ps.logger.Trace("acquiring lock for", "namespace", ns.UUID)
-	lock.Lock()
-	return lock.Unlock
+	return locksutil.LockWithUnlock(ps.modifyLocks, ns.UUID)
 }
 
 func (ps *Store) rLockWithUnlock(ctx context.Context) func() {
@@ -206,11 +203,8 @@ func (ps *Store) rLockWithUnlock(ctx context.Context) func() {
 		ns = namespace.RootNamespace
 	}
 
-	lock := locksutil.LockForKey(ps.modifyLocks, ns.UUID)
-
 	ps.logger.Trace("acquiring lock for", "namespace", ns.UUID)
-	lock.RLock()
-	return lock.RUnlock
+	return locksutil.RLockWithUnlock(ps.modifyLocks, ns.UUID)
 }
 
 func (ps *Store) InvalidateNamespace(ctx context.Context, uuid string) {

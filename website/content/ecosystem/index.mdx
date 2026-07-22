@@ -19,7 +19,7 @@ categorize our ecosystem into the following categories:
 - [**Vendors:**](./vendors) Organizations which provide value-add services for
   OpenBao. For example, professional services, consulting or managed OpenBao
   instances.
-- [**News:**](./news) OpenBao in the news, whehter mentions at conferences,
+- [**News:**](./news) OpenBao in the news, whether mentions at conferences,
   press releases, or similar.
 
 These categories are not mutually exclusive. For example, most Supporters will
@@ -28,3 +28,30 @@ also be Integrators, Adopters, or Vendors.
 If you or your organization are missing, please [suggest the
 addition](https://github.com/openbao/openbao/issues/new?template=docs_ecosystem.yaml)
 or file a [pull request](https://github.com/openbao/openbao/pulls).
+
+---
+
+import Adopters from './contents/_adopters.mdx';
+import Integrators from './contents/_integrators.mdx';
+import Supporters from './contents/_supporters.mdx';
+import Vendors from './contents/_vendors.mdx';
+import RandomizeOne from './lib/RandomizeOne.tsx';
+
+<RandomizeOne>
+  <div>
+    <h2>Adopters</h2>
+    <Adopters />
+  </div>
+  <div>
+    <h2>Integrators</h2>
+    <Integrators />
+  </div>
+  <div>
+    <h2>Supporters</h2>
+    <Supporters />
+  </div>
+  <div>
+    <h2>Vendors</h2>
+    <Vendors />
+  </div>
+</RandomizeOne>

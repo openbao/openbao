@@ -25,6 +25,27 @@ type keyedCancelLockEntry struct {
 	refs int
 }
 
+// keyedCancelLockPool is used to pool allocations of [CancelLock]s for
+// [KeyedCancelLock].
+var keyedCancelLockPool sync.Pool
+
+// resetKeyedCancelLockPool initializes the above. This is made reusable as a
+// function only such that the pool can be reset between synctest bubbles, which
+// otherwise breaks tests due to channels escaping from bubbles.
+func resetKeyedCancelLockPool() {
+	keyedCancelLockPool = sync.Pool{
+		New: func() any {
+			return &keyedCancelLockEntry{
+				NewCancelLock(), 0,
+			}
+		},
+	}
+}
+
+func init() {
+	resetKeyedCancelLockPool()
+}
+
 // NewKeyedCancelLock returns a new [KeyedCancelLock].
 func NewKeyedCancelLock[K comparable]() *KeyedCancelLock[K] {
 	return &KeyedCancelLock[K]{
@@ -39,11 +60,11 @@ func (l *KeyedCancelLock[K]) Lock(ctx context.Context, key K) error {
 
 	entry, ok := l.locks[key]
 	if !ok {
-		entry = &keyedCancelLockEntry{NewCancelLock(), 1}
+		entry = keyedCancelLockPool.Get().(*keyedCancelLockEntry)
 		l.locks[key] = entry
-	} else {
-		entry.refs++
 	}
+
+	entry.refs++
 
 	l.mu.Unlock()
 
@@ -71,10 +92,14 @@ func (l *KeyedCancelLock[K]) Unlock(key K) {
 
 func (l *KeyedCancelLock[K]) unref(key K, entry *keyedCancelLockEntry) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 
 	entry.refs--
 	if entry.refs == 0 {
 		delete(l.locks, key)
+		defer keyedCancelLockPool.Put(entry)
 	}
+
+	// Don't use a defer for this unlock so the deferred pool put above runs
+	// outside of the critical section.
+	l.mu.Unlock()
 }

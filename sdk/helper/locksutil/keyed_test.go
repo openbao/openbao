@@ -51,6 +51,7 @@ func TestKeyedCancelLock(t *testing.T) {
 
 	t.Run("Cancel", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
+			resetKeyedCancelLockPool()
 			ctx := context.Background()
 
 			l := NewKeyedCancelLock[int]()
@@ -77,6 +78,7 @@ func TestKeyedCancelLock(t *testing.T) {
 
 	t.Run("LockWhileUnlock", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
+			resetKeyedCancelLockPool()
 			ctx := context.Background()
 
 			l := NewKeyedCancelLock[int]()

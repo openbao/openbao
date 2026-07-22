@@ -9,6 +9,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/openbao/go-kms-wrapping/v2/kms"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
@@ -92,6 +93,16 @@ type SystemView interface {
 	// write forwarding (WriteForwardedPaths). This value will be templated
 	// in for the {{cluterId}} sentinel.
 	ClusterID(ctx context.Context) (id string, err error)
+
+	// GetExternalKey acquires an External Key by reference.
+	//
+	// A key reference follows the "<config name>:<key name>" scheme, uniquely
+	// identifying a key configured under /sys/external-keys.
+	//
+	// Note that it is up to the caller to close the returned key, and to do so
+	// as soon as possible. Keys should be re-fetched on a per-request basis to
+	// account for potential configuration updates made in the key registry.
+	GetExternalKey(ctx context.Context, ref string) (kms.Key, error)
 }
 
 type PasswordPolicy interface {
@@ -127,6 +138,7 @@ type StaticSystemView struct {
 	VersionString                string
 	ClusterUUID                  string
 	APILockShouldBlockRequestVal bool
+	ExternalKeys                 map[string]kms.Key
 }
 
 type noopAuditor struct{}
@@ -251,4 +263,12 @@ func (d StaticSystemView) ClusterID(ctx context.Context) (string, error) {
 
 func (d StaticSystemView) APILockShouldBlockRequest() (bool, error) {
 	return d.APILockShouldBlockRequestVal, nil
+}
+
+func (d StaticSystemView) GetExternalKey(ctx context.Context, ref string) (kms.Key, error) {
+	key, ok := d.ExternalKeys[ref]
+	if !ok {
+		return nil, errors.New("external key not found")
+	}
+	return key, nil
 }

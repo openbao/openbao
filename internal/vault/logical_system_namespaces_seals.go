@@ -444,7 +444,7 @@ func (b *SystemBackend) handleNamespacesMigrateSeal() framework.OperationFunc {
 
 		migrationJob := b.Core.namespaceStore.newNamespaceBarrierMigrationJob(parentNs, ns, sealConfig)
 
-		b.Core.namespaceStore.deletionDispatcher.AddJob(migrationJob, ns.UUID)
+		b.Core.namespaceStore.jobDispatcher.AddJob(migrationJob, ns.UUID)
 
 		return nil, nil
 	}

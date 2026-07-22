@@ -73,12 +73,12 @@ With the following policies we may configure the examples from above.
 
 The plugin API consists of four methods only:
 
-Method                                                      | Description
------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------
-`hasAuthorization(ctx, path, entity, operation) bool`       | When processing "ask" capabilities, call plugin to check authorizations for one single request.
-`listChildren(ctx, parentPath, entity, operation) []string` | When showing list views on UIs, call plugin to return list of children (paths), which the user has authorizations for.
-`updatePath(ctx, path, operation) bool`                     | (Optional) After write operations to OpenBao, call plugin to update the DB of the external authorization service when a path changes, i.e. an entry gets created or deleted
-`syncSubtree(ctx, parentPath, subtree) []bool`              | (Optional) At initialization time, call plugin to sync the paths of an OpenBao subtree to the DB of the external authorization service.
+Method                                                           | Description
+---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------
+`hasAuthorization(ctx, path, entity, []operations) []operations` | When processing "ask" capabilities, call plugin to check authorizations for one or multiple operations. Return list of allowed operations.
+`filterPaths(ctx, []paths, entity, operation) []paths`           | Pass list of paths to check for one operation, return list of allowed paths. Needed for example to filter entries on UIs.
+`updatePath(ctx, path, operation) bool`                          | (Optional) After write operations to OpenBao, call plugin to update the DB of the external authorization service when a path changes, i.e. an entry gets created or deleted
+`syncSubtree(ctx, parentPath, subtree) []bool`                   | (Optional) At initialization time, call plugin to sync the paths of an OpenBao subtree to the DB of the external authorization service.
 
 The updatePath and syncSubtree methods are optional, i.e. don't need to be implemented for all external authorization services.
 For example, some authorization services like [OpenFGA](https://openfga.dev/docs/getting-started/update-tuples) have their own database containing object relations, 

@@ -19,6 +19,7 @@ func createBackendWithStorage(t *testing.T) (*backend, logical.Storage) {
 
 	b := Backend(config)
 	require.NoError(t, b.Setup(t.Context(), config))
+	require.NoError(t, b.Initialize(t.Context(), &logical.InitializationRequest{Storage: config.StorageView}))
 	return b, config.StorageView
 }
 

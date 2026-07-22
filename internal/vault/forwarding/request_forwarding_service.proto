@@ -52,6 +52,24 @@ message ClientKey {
 	bytes d = 4;
 }
 
+message StartInvalidationRequest {
+	string uuid = 1;
+}
+
+message StartInvalidationResponse {
+	string index = 1;
+	string err = 2;
+}
+
+message CheckInvalidationRequest {}
+
+message CheckInvalidationResponse {
+	string index = 1;
+	repeated string keys = 2;
+	bool restart = 3;
+	string uuid = 4;
+}
+
 message NamespaceKey {
 	string uuid = 1;
 	bytes key = 2;
@@ -88,23 +106,27 @@ message GetNamespaceKeysReply {
 //
 // See also: https://medium.com/@hoangxuantoank13/grpc-non-breaking-changes-breaking-changes-and-versioning-solution-1dcb989beb16
 service RequestForwarding {
-    // Service health.
+	// Service health.
 
 	rpc Echo(EchoRequest) returns (EchoReply) {}
 
-    // Request forwarding.
+	// Request forwarding.
 
 	rpc ForwardRequest(forwarding.Request) returns (forwarding.Response) {}
 
 	// Namespace key sharing.
 
 	// standby->active key sharing; used when the standby has knowledge of
-    // namespace keys that a new active node does not. This is a two-step
+	// namespace keys that a new active node does not. This is a two-step
 	// process to avoid sending keys which the active node already knows
-    // about over the wire.
+	// about over the wire.
 	rpc AdvertiseNamespaceKeys(AdvertiseNamespaceKeysRequest) returns (AdvertiseNamespaceKeysReply) {};
 	rpc SendNamespaceKeys(SendNamespaceKeysRequest) returns (SendNamespaceKeysReply) {};
 
 	// active->standby key sharing; used by the standby to refresh keys.
 	rpc GetNamespaceKeys(GetNamespaceKeysRequest) returns (GetNamespaceKeysReply) {};
+
+	// GRPC-backed invalidation
+	rpc StartInvalidations(StartInvalidationRequest) returns (StartInvalidationResponse)  {}
+	rpc CheckInvalidations(CheckInvalidationRequest) returns (stream CheckInvalidationResponse) {}
 }

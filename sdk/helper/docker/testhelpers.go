@@ -61,6 +61,11 @@ type RunOptions struct {
 	LogStderr              io.Writer
 	LogStdout              io.Writer
 	VolumeNameToMountPoint map[string]string
+
+	// WriteInto is provided instead of Runner.CopyTo(...) so that it executes
+	// before the container starts, providing an opportunity to provision
+	// initial data. Map of destination -> contents.
+	WriteInto map[string]BuildContext
 }
 
 func NewDockerAPI() (*client.Client, error) {
@@ -221,7 +226,7 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 			}
 		}
 	}
-	result, err := d.Start(context.Background(), addSuffix, forceLocalAddr)
+	result, err := d.Start(ctx, addSuffix, forceLocalAddr)
 	if err != nil {
 		return nil, "", err
 	}
@@ -318,7 +323,7 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 	op := func() (ServiceConfig, error) {
 		container, err := d.DockerAPI.ContainerInspect(ctx, result.Container.ID, client.ContainerInspectOptions{})
 		if err != nil || !container.Container.State.Running {
-			return nil, backoff.Permanent(fmt.Errorf("failed inspect or container %q not running: %w", result.Container.ID, err))
+			return nil, backoff.Permanent(fmt.Errorf("failed inspect or container %q not running (%v): %w", result.Container.ID, container.Container.State.Status, err))
 		}
 
 		c, err := connect(ctx, pieces[0], portInt)
@@ -519,6 +524,23 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		if err := copyToContainer(ctx, d.DockerAPI, c.ID, from, to); err != nil {
 			_, _ = d.DockerAPI.ContainerRemove(ctx, c.ID, client.ContainerRemoveOptions{})
 			return nil, err
+		}
+	}
+
+	for destination, contents := range d.RunOptions.WriteInto {
+		// Convert our provided contents to a tarball to ship up.
+		tar, err := contents.ToTarball()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build contents for directory %q into tarball: %w", destination, err)
+		}
+
+		// ,_ err := d.DockerAPI.CopyToContainer(context.Background(), c, destination, tar, cfg)
+		_, err = d.DockerAPI.CopyToContainer(context.Background(), c.ID, client.CopyToContainerOptions{
+			DestinationPath: destination,
+			Content:         tar,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to copy contents for directory %q into container: %w", destination, err)
 		}
 	}
 

@@ -115,7 +115,7 @@ func testCoreRestart(t *testing.T, core int) {
 	c.Cores[core].stateLock.RUnlock()
 
 	// trigger the restart
-	c.Cores[core].restart()
+	c.Cores[core].Restart()
 
 	// wait until the active context is cancelled
 	select {

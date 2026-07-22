@@ -85,3 +85,28 @@ func GetTestPostgreSQLBackend(t *testing.T, logger log.Logger) (physical.Backend
 
 	return pg, cleanup
 }
+
+func GetTestReplicatedPostgreSQLBackend(t *testing.T, name string, logger log.Logger) (physical.Backend, physical.Backend, func()) {
+	cfg := thpsql.DefaultClusterConfig(name)
+	cluster, err := cfg.NewCluster(t.Context())
+	require.NoError(t, err)
+
+	replica, err := cluster.AddNode(t.Context())
+	require.NoError(t, err)
+
+	primaryBackend, err := NewPostgreSQLBackend(map[string]string{
+		"connection_url": cluster.Primary.ConnectionURL,
+		"ha_enable":      "true",
+	}, logger)
+	require.NoError(t, err, "failed initializing postgres database")
+
+	SetupDatabaseObjects(t, primaryBackend.(*PostgreSQLBackend))
+
+	replicaBackend, err := NewPostgreSQLBackend(map[string]string{
+		"connection_url": replica.ConnectionURL,
+		"ha_enable":      "true",
+	}, logger)
+	require.NoError(t, err, "failed initializing postgres database")
+
+	return primaryBackend, replicaBackend, cluster.Cleanup
+}

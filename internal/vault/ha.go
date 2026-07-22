@@ -168,7 +168,7 @@ func (c *Core) LeaderLocked() (isLeader bool, leaderAddr, clusterAddr string, er
 		return false, localRedirectAddr, localClusterAddr, nil
 	}
 
-	c.logger.Trace("found new active node information, refreshing")
+	c.logger.Trace("found new active node information, refreshing", "old_uuid", localLeaderUUID, "old_cluster_addr", localClusterAddr, "new_uuid", leaderUUID)
 
 	c.leaderParamsLock.Lock()
 	defer c.leaderParamsLock.Unlock()
@@ -386,7 +386,7 @@ func (c *Core) stopHALoop() {
 	}
 }
 
-func (c *Core) restart() {
+func (c *Core) Restart() {
 	restartCh := c.haLoopRestartCh.Load()
 	if restartCh == nil {
 		return
@@ -911,10 +911,78 @@ func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.Canc
 
 	c.drainPendingRestarts()
 
+	// Before unseal, check if we need to do GRPC based invalidation;
+	// if so, start streaming invalidations.
+	if shouldUseGRPCInvalidation(c.underlyingPhysical) {
+		c.logger.Debug("setting up GRPC-backed streaming of invalidations")
+
+		if ok := func() bool {
+			// Potentially refresh replication information before we get
+			// too far. This ensures we do not attempt to contact a stale
+			// leader.
+			if _, _, _, err := c.LeaderLocked(); err != nil {
+				c.logger.Error("skipping invalidation streaming as unable to read leader information", "err", err)
+				return false
+			}
+
+			c.requestForwardingConnectionLock.RLock()
+			defer c.requestForwardingConnectionLock.RUnlock()
+
+			if c.rpcForwardingClient == nil {
+				// When the active node has not indicated a cluster address
+				// or there's a problem connecting, we may not have a
+				// forwarding client. This renders us unable to perform any
+				// invalidations so we're unable to start-up in read-enabled
+				// mode.
+				c.logger.Error("skipping invalidation streaming as no RPC client is present")
+				return false
+			}
+
+			// Start tracking any invalidations; we won't begin processing
+			// them until after unseal is complete. This is necessary because
+			// we'll immediately start receiving events but our underlying data
+			// store might be late to arrive. Since we'll only wait to the
+			// awaited index, any events that come in for a later index than our
+			// awaited one before readOnlyUnseal starts the invalidation subsystem
+			// will be silently ignored otherwise. This ensures that they're not
+			// dropped and that we'll re-trigger them once both the index has been
+			// reached and the startup is complete.
+			c.invalidations.Track()
+
+			// Start the dispatch manager on the standby nodes.
+			c.LocalGRPCDispatching()
+
+			// Start streaming invalidation events from the primary.
+			if err := c.rpcForwardingClient.StreamInvalidations(ctx); err != nil {
+				c.logger.Error("failed to begin streaming invalidations", "err", err)
+				return false
+			}
+
+			return true
+		}(); !ok {
+			// Do not consider this a stoppage.
+			return false
+		}
+
+		// Wait for our initial invalidation checkpoint.
+		if err := c.AwaitReplication(ctx); err != nil {
+			// Clear any events we might have received.
+			c.CleanupInvalidationPeers()
+			c.invalidations.Stop()
+
+			c.logger.Error("failed to await replication", "err", err)
+			return false
+		}
+	}
+
 	// Unseal, holding the state lock.
 	c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceStandby))
 	if err := c.postUnseal(ctx, ctxCancel, readonlyUnsealStrategy{}); err != nil {
 		c.logger.Error("read-only post-unseal setup failed", "error", err)
+
+		// Clear any events we might have received and quit tracking new ones.
+		c.CleanupInvalidationPeers()
+		c.invalidations.Stop()
 	}
 
 	return false
@@ -1304,7 +1372,11 @@ func (c *Core) clearLeader(uuid string) error {
 // StandbyReadsEnabled returns true iff standby read are enabled and supported
 // by the physical backend
 func (c *Core) StandbyReadsEnabled() bool {
-	if _, ok := c.underlyingPhysical.(physical.CacheInvalidationBackend); !ok {
+	if shouldUseGRPCInvalidation(c.underlyingPhysical) {
+		if c.rpcForwardingClient == nil {
+			return false
+		}
+	} else if _, ok := c.underlyingPhysical.(physical.CacheInvalidationBackend); !ok {
 		return false
 	}
 

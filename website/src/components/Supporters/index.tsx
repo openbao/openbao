@@ -46,6 +46,10 @@ const SupportList: SupportItem[] = [
         title: "Liquid Reply",
         description: "Development; open-source community efforts",
     },
+    {
+        title: "ControlPlane",
+        description: "Development; open-source community efforts",
+    },
 ];
 
 function Supporter({ title, description }: SupportItem) {

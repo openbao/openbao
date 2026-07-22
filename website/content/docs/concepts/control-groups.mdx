@@ -14,46 +14,25 @@ factor applies to a request, one or more members of the approving
 control group must assert authorization before the request can be
 executed and secret is released.
 
-When a control-group factor applies to a path, the original request
-will receive a [`wrapped response`](response-wrapping.mdx) containing
-an access token and a wrapping token, as with normal response wrapping.
+## The workflow
 
-The access token may be used to review the request and assert
-authorization. The wrapping token can be used to execute the original
-deferred request once the requisite approvals have been met.
+The general flow for using control groups is as follows:
+1. A "control_group" stanza is declared in the policy for a path. 
+2. When a request for a path triggers the control group factor, the
+   response will be [`wrapped`](response-wrapping.mdx).
+3. The wrapped response will contain a "token" and an "accessor". The
+   requester needs to forward the accessor to a member of the
+   approving group and request authorization. **Please note: the approvers are not
+   notified that they have a pending request.**
+4. The approvers can use the accessor to review the request, view the
+   authorization state, and add their authorization.
+5. Once approved, the wrapping response token can "unwrap" the request
+   (which executes the original request).
 
-## Control-group response-wrapping tokens
-
-When a response is wrapped, the normal API response from OpenBao does not contain
-the original secret, but rather contains a set of information related to the
-response-wrapping token:
-
-- TTL: The TTL of the response-wrapping token itself, specified in the policy factor.
-- Token: The actual token value
-- Creation Time: The time that the response-wrapping token was created
-- Creation Path: The API path that was called in the original request
-- Wrapped Accessor: The token used for reviewing and approving the original request.
-
-## Control-group response-wrapping token operations
-
-Via the `sys/wrapping` and `sys/control-group` paths, several
-operations can be run against control-group wrapping tokens.
-
-- **Unwrap** (`sys/wrapping/unwrap`)**:** Unwrap the token, executing
-  the original request and returning a response, once approved. The
-  response that is returned will be an original wire-format response;
-  it can be used directly with API clients. It is only executed when
-  unwrapping is successful.
-- **Review** (`sys/control-group/request`)**:** Using the accessor token,
-  view information about the original request (entity, path, payload,
-  etc).
-- **Authorize** (`sys/control-group/authorize`)**:** Using the
-  accessor token, approve the request for deferred execution when unwrapped.
-
-## Control-group response-wrapping token creation
+## Control-group response-wrapping
 
 Response wrapping is triggered by requesting a path having one or more
-applicable control group factors in the policy. At this time, the
+applicable control group factors in the policy. The
 original request is stored for deferred execution upon unwrapping.
 
 1. The original HTTP request is serialized and stored
@@ -65,6 +44,30 @@ original request is stored for deferred execution upon unwrapping.
 Note that policies can control minimum/maximum wrapping TTLs; see the [policies
 concepts page](policies.mdx) for
 more information.
+
+The wrapped response contains these fields:
+
+- TTL: The TTL of the response-wrapping token itself, specified in the policy factor.
+- Token: The actual token value
+- Wrapped Accessor: The token used for reviewing and approving the original request.
+- Creation Time: The time that the response-wrapping token was created
+- Creation Path: The API path that was called in the original request
+
+## Control-group operations
+
+Via the `sys/wrapping` and `sys/control-group` paths, several
+operations can be run against control-group wrapping tokens.
+
+- **Unwrap** (`sys/wrapping/unwrap`)**:** Unwrap the token, executing
+  the original request and returning a response, once approved. The
+  response that is returned will be an original wire-format response;
+  it can be used directly with API clients. Note that the original
+  request is processed only when unwrapping an approved request.
+- **Review** (`sys/control-group/request`)**:** Using the accessor token,
+  view information about the original request (entity, path, payload,
+  etc).
+- **Authorize** (`sys/control-group/authorize`)**:** Using the
+  accessor token, approve the request for deferred execution when unwrapped.
 
 ## Control-group factors in ACL policies
 

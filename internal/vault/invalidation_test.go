@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
+	ek "github.com/openbao/openbao/v2/internal/vault/external_keys"
 	"github.com/openbao/openbao/v2/internal/vault/policy"
 	"github.com/openbao/openbao/v2/internal/vault/quotas"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
@@ -1497,4 +1498,66 @@ func TestCore_Invalidate_SealedNamespaces(t *testing.T) {
 			require.NoError(t, c.invalidateSynchronous(childNsPath))
 		})
 	}
+}
+
+func TestCore_Invalidate_ExternalKeys(t *testing.T) {
+	t.Parallel()
+	c, root := testCore_Invalidate_TestCore(t, nil)
+	ctx := namespace.RootContext(t.Context())
+
+	// Create a config + key + grant.
+	testCore_Invalidate_handleRequest(t, ctx, c, &logical.Request{
+		Path:        "sys/external-keys/configs/test",
+		Operation:   logical.UpdateOperation,
+		ClientToken: root,
+		Data: map[string]any{
+			"plugin": "transit",
+			"token":  "dummy",
+		},
+	})
+	testCore_Invalidate_handleRequest(t, ctx, c, &logical.Request{
+		Path:        "sys/external-keys/configs/test/keys/test",
+		Operation:   logical.UpdateOperation,
+		ClientToken: root,
+		Data: map[string]any{
+			"name": "test",
+		},
+	})
+	testCore_Invalidate_handleRequest(t, ctx, c, &logical.Request{
+		Path:        "sys/external-keys/configs/test/keys/test/grants/sys",
+		Operation:   logical.UpdateOperation,
+		ClientToken: root,
+	})
+
+	// Since we granted the key on the sys/ mount, fetch its mount entry and
+	// construct its SystemView.
+	sysMount, err := c.mounts.FindByPath(ctx, "sys/")
+	require.NoError(t, err)
+
+	sv := dynamicSystemView{
+		core:       c,
+		mountEntry: sysMount,
+	}
+
+	// Assert that we have a working config that is able to yield a key via the
+	// SystemView.
+	key, err := sv.GetExternalKey(ctx, "test:test")
+	require.NoError(t, err)
+	require.NoError(t, key.Close(ctx))
+
+	// Create a broken storage entry.
+	entry, err := logical.StorageEntryJSON(
+		path.Join(barrier.SystemBarrierPrefix, ek.ConfigStoragePrefix, "test"),
+		ek.ConfigEntry{Plugin: "bogus"},
+	)
+	require.NoError(t, err)
+
+	// Write it and invalidate.
+	testCore_Invalidate_sneakValueAroundCache(t, ctx, c, entry)
+	require.NoError(t, c.invalidateSynchronous(entry.Key))
+
+	// The SystemView should now fail and not fall back to a cached Transit
+	// client.
+	_, err = sv.GetExternalKey(ctx, "test:test")
+	require.Error(t, err)
 }

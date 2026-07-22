@@ -26,13 +26,16 @@ export function News({ title, memberName, children }) {
 }
 
 export function NewsBlurb({ title, memberName, link, children }) {
+    let url = URL.parse(link);
+    let domain = url.hostname;
+
     return (
         <News title={title} memberName={memberName}>
             { children }
 
 
             <a href={link} target="_blank">
-                <i>Continue reading.</i>
+                <i>Continue reading on {domain}.</i>
             </a>
         </News>
     );

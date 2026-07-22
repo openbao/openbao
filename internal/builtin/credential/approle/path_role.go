@@ -3515,7 +3515,7 @@ func (b *backend) setRoleIDEntry(ctx context.Context, s logical.Storage, roleID 
 	lock.Lock()
 	defer lock.Unlock()
 
-	salt, err := b.Salt(ctx)
+	salt, err := b.Salt(ctx, s)
 	if err != nil {
 		return err
 	}
@@ -3543,7 +3543,7 @@ func (b *backend) roleIDEntry(ctx context.Context, s logical.Storage, roleID str
 
 	var result roleIDStorageEntry
 
-	salt, err := b.Salt(ctx)
+	salt, err := b.Salt(ctx, s)
 	if err != nil {
 		return nil, err
 	}
@@ -3571,7 +3571,7 @@ func (b *backend) roleIDEntryDelete(ctx context.Context, s logical.Storage, role
 	lock.Lock()
 	defer lock.Unlock()
 
-	salt, err := b.Salt(ctx)
+	salt, err := b.Salt(ctx, s)
 	if err != nil {
 		return err
 	}

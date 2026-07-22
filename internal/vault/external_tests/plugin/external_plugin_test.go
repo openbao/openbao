@@ -126,6 +126,11 @@ func TestExternalPlugin_RollbackAndReload(t *testing.T) {
 
 func testRegisterAndEnable(t *testing.T, client *api.Client, plugin pluginhelpers.TestPlugin) {
 	t.Helper()
+	testRegisterPlugin(t, client, plugin)
+	testEnablePlugin(t, client, plugin)
+}
+
+func testRegisterPlugin(t *testing.T, client *api.Client, plugin pluginhelpers.TestPlugin) {
 	if err := client.Sys().RegisterPlugin(&api.RegisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
@@ -135,7 +140,9 @@ func testRegisterAndEnable(t *testing.T, client *api.Client, plugin pluginhelper
 	}); err != nil {
 		t.Fatal(err)
 	}
+}
 
+func testEnablePlugin(t *testing.T, client *api.Client, plugin pluginhelpers.TestPlugin) {
 	switch plugin.Typ {
 	case consts.PluginTypeSecrets:
 		if err := client.Sys().Mount(plugin.Name, &api.MountInput{
@@ -225,36 +232,25 @@ func testExternalPlugin_ContinueOnError(t *testing.T, mismatch bool, pluginType 
 		}
 	}
 
-	// Seal the cluster
+	// Seal and unseal the cluster
 	cluster.EnsureCoresSealed(t)
+	cluster.UnsealCores(t)
 
-	// Unseal the cluster
-	barrierKeys := cluster.BarrierKeys
-	for _, core := range cluster.Cores {
-		for _, key := range barrierKeys {
-			_, err := core.Unseal(vault.TestKeyCopy(key))
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
-		if core.Sealed() {
-			t.Fatal("should not be sealed")
-		}
-	}
-
-	// Wait for active so post-unseal takes place
-	// If it fails, it means unseal process failed
-	vault.TestWaitActive(t, core.Core)
-
-	// unmount
+	// unmount -- this invokes the plugin, though we don't really care if it
+	// passes or fails. It will fail if the plugin has written any data but
+	// succeed vacuously if the plugin has not done anything during
+	// initialization.
+	unmountFailed := false
 	switch pluginType {
 	case consts.PluginTypeSecrets:
 		if err := client.Sys().Unmount(plugin.Name); err != nil {
-			t.Fatal(err)
+			t.Logf("got (non-fatal) error unmounting: %v", err)
+			unmountFailed = true
 		}
 	case consts.PluginTypeCredential:
 		if err := client.Sys().DisableAuth(plugin.Name); err != nil {
-			t.Fatal(err)
+			t.Logf("got (non-fatal) error unmounting: %v", err)
+			unmountFailed = true
 		}
 	}
 
@@ -264,7 +260,27 @@ func testExternalPlugin_ContinueOnError(t *testing.T, mismatch bool, pluginType 
 	cluster.Plugins = plugins
 
 	// Re-add the plugin to the catalog
-	testRegisterAndEnable(t, client, plugin)
+	testRegisterPlugin(t, client, plugin)
+
+	// Clean up our old one should now succeed after a restart.
+	if unmountFailed {
+		// Seal and unseal the cluster
+		cluster.EnsureCoresSealed(t)
+		cluster.UnsealCores(t)
+
+		switch pluginType {
+		case consts.PluginTypeSecrets:
+			if err := client.Sys().Unmount(plugin.Name); err != nil {
+				t.Fatalf("failed to unmount after re-loading plugin: %v", err)
+			}
+		case consts.PluginTypeCredential:
+			if err := client.Sys().DisableAuth(plugin.Name); err != nil {
+				t.Fatalf("failed to unmount after re-loading plugin: %v", err)
+			}
+		}
+	}
+
+	testEnablePlugin(t, client, plugin)
 
 	// Reload the plugin
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/plugins/reload/backend")

@@ -1,3 +1,28 @@
+## 2.6.1
+## July 22, 2026
+
+CHANGES:
+
+* packaging/container: Revert removal of legacy, non-opencontainers image labels for maximum compatibility. [[GH-3504](https://github.com/openbao/openbao/pull/3504)]
+
+IMPROVEMENTS:
+
+* core: Warn on `sys/` key with no explicit invalidation handler; please report if you see a log line with `no mechanism to invalidate cache`. [[GH-3555](https://github.com/openbao/openbao/pull/3555)]
+* core/policies: Introduce PATCH operation support for modifying the values of specific parameters. [[GH-3506](https://github.com/openbao/openbao/pull/3506)]
+
+BUG FIXES:
+
+* core/expiration: Ensure leases are not inadvertently cached on standby nodes. [[GH-3555](https://github.com/openbao/openbao/pull/3555)]
+* core/policies: Allow removal of `expiration` from policies on POST/PUT to `sys/policies/acl/<name>` by eliding the parameter; use PATCH to update policies without modifying unnecessary parameters. [[GH-3506](https://github.com/openbao/openbao/pull/3506)]
+* core/policies: Fix `limit=0` and negative limits bypassing the `pagination_limit` ACL option. [[GH-3518](https://github.com/openbao/openbao/pull/3518)]
+* core/policies: Fix persistence of new `allow_wildcards_in_identity_templates`, `allow_slashes_in_identity_templates` parameters in storage. [[GH-3506](https://github.com/openbao/openbao/pull/3506)]
+* auth/approle: Ensure initial salt is created without transaction to avoid deadlocks. [[GH-3556](https://github.com/openbao/openbao/pull/3556)]
+* auth/jwt: Fix patch operation of CEL roles losing existing data (`bound_audiences` `not_before_leeway`, `clock_skew_leeway` and `expiration_leeway`). [[GH-3551](https://github.com/openbao/openbao/pull/3551)]
+* auth/token: Ensure salt cache is invalidated properly on standby nodes. [[GH-3555](https://github.com/openbao/openbao/pull/3555)]
+* sdk/plugin: Ensure all log messages are visible under `plugin.ServeMultiplex(...)` by default to align with `plugin.Serve(...)`. [[GH-3536](https://github.com/openbao/openbao/pull/3536)]
+* sdk: Better support non-usr-merged distributions in containerized testing. [[GH-3554](https://github.com/openbao/openbao/pull/3554)]
+* packaging/container: Ensure that labels on UBI-based images comply with Red Hat's certification requirements. [[GH-3504](https://github.com/openbao/openbao/pull/3504)]
+
 ## 2.6.0
 ## July 14, 2026
 

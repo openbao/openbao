@@ -88,7 +88,7 @@ including any declarative self-initialization requests that we'll see below.
 Going hand-in-hand with configuration-driven audit devices is [declarative
 self-initialization](/docs/configuration/self-init/).
 
-Here, operators define requests that they want executed on startup:
+Here, operators define requests that they want executed when OpenBao first starts up:
 
 ```hcl
 initialize "authentication" {

@@ -51,7 +51,7 @@ func servedCertName(addr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	return conn.ConnectionState().PeerCertificates[0].Subject.CommonName, nil
 }
 

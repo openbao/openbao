@@ -84,7 +84,7 @@ that lacks a sign-off to this agreement will not be accepted by the OpenBao proj
 | James Butcher    | james@iotechsys.com          |                                            | Brad Corrion (brad@iotechsys.com)               | IOTech Systems       | Member       |
 | Julian Cassignol | jcassignol@wallix.com        |                                            | Dan Ghita (dghita@wallix.com)                   | Wallix               | Member       |
 | Michael Hofer    | michael.hofer@adfinis.com    | [@karras](https://github.com/karras)       | Andrii Fedorchuk (andrii.fedorchuk@adfinis.com) | Adfinis              | Chair        |
-| Maw Wildpaner    | maw@gitlab.com               |                                            | Mark Mishaev (mmishaev@gitlab.com)              | GitLab               | Member       |
+| Fabien Catteau   | fcatteau@gitlab.com          | [@fact](https://github.com/fcat)           | Mark Mishaev (mmishaev@gitlab.com)              | GitLab               | Member       |
 | Klaus Kiefer     | klaus.kiefer@sap.com         | [@klaus-sap](https://github.com/klaus-sap) | Jonas Köhnen (j.koehnen@reply.de)               | SAP                  | Member       |
 | Alex Scheel      | alex.scheel@control-plane.io | [@cipherboy](https://github.com/cipherboy) | Eugene Davis (eugene.davis@control-plane.io)    | ControlPlane         | Member       |
 

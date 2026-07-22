@@ -1255,7 +1255,7 @@ func (dc *DockerCluster) setupImage(ctx context.Context, opts *DockerClusterOpti
 
 	containerFile := fmt.Sprintf(`
 FROM %s:%s
-COPY bao /bin/bao
+COPY bao /usr/bin/bao
 `, opts.ImageRepo, sourceTag)
 
 	if len(opts.Entrypoint) > 0 {
@@ -1267,7 +1267,7 @@ COPY bao /bin/bao
 		dockhelper.BuildPullParent(true),
 		dockhelper.BuildTags([]string{opts.ImageRepo + ":" + tag}))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to build image: %w", err)
 	}
 	dc.builtTags[tag] = struct{}{}
 	return tag, nil

@@ -1453,6 +1453,9 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, entry *
 		return fmt.Errorf("failed to cleanup mfa login configs: %w", err)
 	}
 
+	// clear external key clients
+	ns.core.externalKeys.CleanupNamespace(nsCtx, entry)
+
 	if updateStorage {
 		// clear quotas
 		if err := ns.core.quotaManager.HandleNamespaceDeletion(nsCtx, entry.Path); err != nil {

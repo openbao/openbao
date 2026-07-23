@@ -476,7 +476,7 @@ func (c *ProxyCommand) Run(args []string) int {
 			}
 			ln = inProcListener
 		} else {
-			lnBundle, err := cache.StartListener(lnConfig)
+			lnBundle, err := cache.StartListener(lnConfig, c.logger)
 			if err != nil {
 				c.UI.Error(fmt.Sprintf("Error starting listener: %v", err))
 				return 1

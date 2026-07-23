@@ -9,6 +9,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/openbao/openbao/v2/internal/command/server"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
@@ -22,7 +23,7 @@ type ListenerBundle struct {
 	TLSReloadFunc reloadutil.ReloadFunc
 }
 
-func StartListener(lnConfig *configutil.Listener) (*ListenerBundle, error) {
+func StartListener(lnConfig *configutil.Listener, logger hclog.Logger) (*ListenerBundle, error) {
 	addr := lnConfig.Address
 
 	var ln net.Listener
@@ -73,6 +74,14 @@ func StartListener(lnConfig *configutil.Listener) (*ListenerBundle, error) {
 	}
 	if tlsConf != nil {
 		ln = tls.NewListener(ln, tlsConf)
+	}
+
+	if lnConfig.TLSAutoReload && lnConfig.TLSCertFile != "" && cg != nil {
+		paths := []string{lnConfig.TLSCertFile}
+		if lnConfig.TLSKeyFile != "" {
+			paths = append(paths, lnConfig.TLSKeyFile)
+		}
+		ln = listenerutil.NewTLSReloadListener(ln, paths, lnConfig.TLSAutoReloadInterval, cg.Reload, logger)
 	}
 
 	cfg := &ListenerBundle{

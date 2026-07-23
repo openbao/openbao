@@ -71,17 +71,21 @@ type Listener struct {
 	TLSDisableRaw any  `hcl:"tls_disable"`
 	TLSCertGetter any  `hcl:"-"`
 
-	TLSCertFile                      string   `hcl:"tls_cert_file"`
-	TLSKeyFile                       string   `hcl:"tls_key_file"`
-	TLSMinVersion                    string   `hcl:"tls_min_version"`
-	TLSMaxVersion                    string   `hcl:"tls_max_version"`
-	TLSCipherSuites                  []uint16 `hcl:"-"`
-	TLSCipherSuitesRaw               string   `hcl:"tls_cipher_suites"`
-	TLSRequireAndVerifyClientCert    bool     `hcl:"-"`
-	TLSRequireAndVerifyClientCertRaw any      `hcl:"tls_require_and_verify_client_cert"`
-	TLSClientCAFile                  string   `hcl:"tls_client_ca_file"`
-	TLSDisableClientCerts            bool     `hcl:"-"`
-	TLSDisableClientCertsRaw         any      `hcl:"tls_disable_client_certs"`
+	TLSCertFile                      string        `hcl:"tls_cert_file"`
+	TLSKeyFile                       string        `hcl:"tls_key_file"`
+	TLSMinVersion                    string        `hcl:"tls_min_version"`
+	TLSMaxVersion                    string        `hcl:"tls_max_version"`
+	TLSCipherSuites                  []uint16      `hcl:"-"`
+	TLSCipherSuitesRaw               string        `hcl:"tls_cipher_suites"`
+	TLSRequireAndVerifyClientCert    bool          `hcl:"-"`
+	TLSRequireAndVerifyClientCertRaw any           `hcl:"tls_require_and_verify_client_cert"`
+	TLSClientCAFile                  string        `hcl:"tls_client_ca_file"`
+	TLSDisableClientCerts            bool          `hcl:"-"`
+	TLSDisableClientCertsRaw         any           `hcl:"tls_disable_client_certs"`
+	TLSAutoReload                    bool          `hcl:"-"`
+	TLSAutoReloadRaw                 any           `hcl:"tls_auto_reload"`
+	TLSAutoReloadInterval            time.Duration `hcl:"-"`
+	TLSAutoReloadIntervalRaw         any           `hcl:"tls_auto_reload_interval"`
 
 	TLSACMECachePath               string   `hcl:"tls_acme_cache_path"`
 	TLSACMECADirectory             string   `hcl:"tls_acme_ca_directory"`
@@ -334,6 +338,32 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 				}
 
 				l.TLSDisableClientCertsRaw = nil
+			}
+
+			if l.TLSAutoReloadRaw != nil {
+				if l.TLSAutoReload, err = parseutil.ParseBool(l.TLSAutoReloadRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("invalid value for tls_auto_reload: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.TLSAutoReloadRaw = nil
+			}
+
+			if l.TLSAutoReloadIntervalRaw != nil {
+				if l.TLSAutoReloadInterval, err = parseutil.ParseDurationSecond(l.TLSAutoReloadIntervalRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("error parsing tls_auto_reload_interval: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				if l.TLSAutoReloadInterval < 5*time.Second {
+					return multierror.Prefix(fmt.Errorf("tls_auto_reload_interval must be at least 5s"), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.TLSAutoReloadIntervalRaw = nil
+			} else if l.TLSAutoReload {
+				l.TLSAutoReloadInterval = 30 * time.Second
+			}
+
+			if l.TLSAutoReload && l.TLSCertFile == "" {
+				return multierror.Prefix(fmt.Errorf("tls_auto_reload requires tls_cert_file"), fmt.Sprintf("listeners.%d", i))
 			}
 		}
 

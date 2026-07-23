@@ -159,7 +159,18 @@ default value in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-u
   startup_ will be used for reloading the certificate; modifying this value
   while OpenBao is running will have no effect for `SIGHUP`s.
 
-- `tls_min_version` `(string: "tls12")` – Specifies the minimum supported
+- `tls_auto_reload` `(bool: false)`: When enabled, OpenBao periodically checks
+  the `tls_cert_file` and `tls_key_file` paths and automatically reloads the
+  certificate and key when their contents change, without requiring a `SIGHUP`.
+  Requires `tls_cert_file` to be set. This is useful when certificates are
+  rotated by an external tool such as cert-manager.
+
+- `tls_auto_reload_interval` `(string: "30s")`: Specifies how often OpenBao
+  polls the certificate files for changes when `tls_auto_reload` is enabled.
+  Accepts a Go duration string (e.g. `"1m"`) or an integer number of seconds.
+  The minimum accepted value is `5s`.
+
+- `tls_min_version` `(string: "tls12")` Specifies the minimum supported
   version of TLS. Accepted values are "tls10", "tls11", "tls12" or "tls13".
 
   :::warning

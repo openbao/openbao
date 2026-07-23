@@ -20,6 +20,10 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 5
+    groups:
+      codeql:
+        patterns:
+          - github/codeql-action/*
     labels:
       - dependencies
       - pr/no-changelog

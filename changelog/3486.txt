@@ -1,0 +1,3 @@
+```release-note:bug
+core: Allow unmounting auth/secrets mounts even if the backing plugin is unavailable.
+```

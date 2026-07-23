@@ -1498,13 +1498,14 @@ func (c *Core) setupMount(ctx context.Context, entry *routing.MountEntry) (func(
 		return nil, err
 	}
 
+	isSingleton := slices.Contains(singletonMounts, entry.Type)
 	origReadOnlyErr := view.GetReadOnlyErr()
 
 	// Mark the view as read-only until the mounting is complete and
 	// ensure that it is reset after. This ensures that there will be no
 	// writes during the construction of the backend.
 	view.SetReadOnlyErr(logical.ErrSetupReadOnly)
-	if slices.Contains(singletonMounts, entry.Type) {
+	if isSingleton {
 		defer view.SetReadOnlyErr(origReadOnlyErr)
 	}
 
@@ -1563,13 +1564,14 @@ func (c *Core) setupMount(ctx context.Context, entry *routing.MountEntry) (func(
 	// Bind locally as mount entry might be mutated in-between.
 	localEntry := entry
 	postUnsealFunc := func() {
+		if !isSingleton {
+			view.SetReadOnlyErr(origReadOnlyErr)
+		}
+
 		postUnsealLogger := c.logger.With("type", localEntry.Type, "version", localEntry.RunningVersion, "path", localEntry.Path)
 		if backend == nil {
 			postUnsealLogger.Error("skipping initialization for nil backend", "path", localEntry.Path)
 			return
-		}
-		if !slices.Contains(singletonMounts, localEntry.Type) {
-			view.SetReadOnlyErr(origReadOnlyErr)
 		}
 
 		err := backend.Initialize(ctx, &logical.InitializationRequest{Storage: view})

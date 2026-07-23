@@ -39,6 +39,7 @@
     "@docusaurus/module-type-aliases": "^3.10.2",
     "@docusaurus/tsconfig": "^3.10.2",
     "@docusaurus/types": "^3.10.2",
+    "@types/webpack-env": "^1.18.8",
     "markdownlint": "^0.41.1",
     "markdownlint-cli2": "^0.23.0",
     "typescript": "^6.0.3"

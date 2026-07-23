@@ -1,0 +1,61 @@
+---
+sidebar_label: Plugin Installation
+description: Learn how to install external plugins.
+---
+
+# External plugin installation
+
+This guide explains how to install an external plugin, which involves downloading the plugin binary.
+Once it has been installed/downloaded, you need to [register](index.mdx#plugin-registration) the plugin.
+
+## Step 1: Define the download directory
+
+You need a directory where plugin binaries downloaded to, stored, and executed from.
+
+Edit the [config file](../configuration/index.mdx) to tell OpenBao where to this directory is located:
+
+```hcl
+plugin_directory = "/opt/openbao/plugins"
+```
+
+Depending on how you installed OpenBao, you may need to create this directory,
+change the owner/group to `openbao:openbao`, or mount it as a volume to the OpenBao container.
+
+If you enable plugin auto-download (see below), the main OpenBao binary needs write access to the plugin directory.
+
+:::warning
+
+It is important to lock down the file system permissions of the plugin directory.
+Anyone with write access to this directory can put arbitrary plugins here
+that OpenBao may load and execute (depending their other access and how OpenBao is configured).
+
+:::
+
+## Step 2: Obtain the checksum
+
+Obtain the SHA-256 checksum for your plugin binary, for example, from the
+[openbao-plugins](https://github.com/openbao/openbao-plugins/releases) releases page
+or by running `sha256sum`.
+
+You will need this checksum later when you register the plugin with OpenBao.
+This allows OpenBao to check the integrity of the plugin before executing it.
+
+## Step 3: Download plugin binary
+
+There are two mechanisms to download external plugin binaries:
+
+1. **Manual:** 
+   Manually download the plugin binary and place it into the plugin directory.
+
+2. **OCI:**
+   OpenBao can download plugins from OCI registries and place them into the plugin directory.
+   To use this, define a [`plugin` stanza](../configuration/plugins.mdx) with an `image` field.
+   This is only supported for declarative plugins, not for API-driven plugins.
+
+   To trigger the download of the OCI-based plugin, run [`bao plugin init`](../commands/plugin/init.mdx).
+   Alternatively, OpenBao can download them automatically if you have enable this in the server config:
+
+   ```hcl
+   plugin_auto_download = true
+   ```
+

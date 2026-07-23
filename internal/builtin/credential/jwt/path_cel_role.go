@@ -220,34 +220,14 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 		return logical.ErrorResponse(err.Error()), nil
 	}
 
-	expirationLeeway := time.Duration(claimDefaultLeeway) * time.Second
-	if tokenExpLeewayRaw, ok := data.GetOk("expiration_leeway"); ok {
-		expirationLeeway = time.Duration(tokenExpLeewayRaw.(int)) * time.Second
-	}
-
-	notBeforeLeeway := time.Duration(claimDefaultLeeway) * time.Second
-	if tokenNotBeforeLeewayRaw, ok := data.GetOk("not_before_leeway"); ok {
-		notBeforeLeeway = time.Duration(tokenNotBeforeLeewayRaw.(int)) * time.Second
-	}
-
-	clockSkewLeeway := jwt.DefaultLeeway
-	if tokenClockSkewLeeway, ok := data.GetOk("clock_skew_leeway"); ok {
-		clockSkewLeeway = time.Duration(tokenClockSkewLeeway.(int)) * time.Second
-	}
-
-	boundAudiences := []string{}
-	if tokenBoundAudiences, ok := data.GetOk("bound_audiences"); ok {
-		boundAudiences = tokenBoundAudiences.([]string)
-	}
-
 	entry := &celRoleEntry{
 		Name:             name,
 		Program:          celProgram,
 		Message:          data.Get("message").(string),
-		BoundAudiences:   boundAudiences,
-		ExpirationLeeway: expirationLeeway,
-		NotBeforeLeeway:  notBeforeLeeway,
-		ClockSkewLeeway:  clockSkewLeeway,
+		BoundAudiences:   data.GetWithExplicitDefault("bound_audiences", []string{}).([]string),
+		ExpirationLeeway: data.GetTimeWithExplicitDefault("expiration_leeway", time.Duration(claimDefaultLeeway)*time.Second),
+		NotBeforeLeeway:  data.GetTimeWithExplicitDefault("not_before_leeway", time.Duration(claimDefaultLeeway)*time.Second),
+		ClockSkewLeeway:  data.GetTimeWithExplicitDefault("clock_skew_leeway", jwt.DefaultLeeway),
 	}
 
 	if err := entry.Program.Validate(b.celEvalConfig()); err != nil {

@@ -17,6 +17,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/fairshare"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
+	ek "github.com/openbao/openbao/v2/internal/vault/external_keys"
 	"github.com/openbao/openbao/v2/internal/vault/policy"
 	"github.com/openbao/openbao/v2/internal/vault/quotas"
 )
@@ -403,6 +404,11 @@ func (ij *invalidationJob) Execute() error {
 	case strings.HasPrefix(ij.nsKey, barrier.SystemBarrierPrefix+quotas.StoragePrefix):
 		ij.fatal = true
 		return ij.quotaInvalidation(ctx)
+	case strings.HasPrefix(ij.nsKey, barrier.SystemBarrierPrefix+ek.KeyStoragePrefix):
+		// Nothing to do.
+	case strings.HasPrefix(ij.nsKey, barrier.SystemBarrierPrefix+ek.ConfigStoragePrefix):
+		ij.fatal = true
+		return ij.externalKeyInvalidation(ctx)
 	case ij.nsKey == coreAuditConfigPath || ij.nsKey == coreLocalAuditConfigPath:
 		ij.fatal = true
 		return ij.auditInvalidation(ctx)
@@ -506,6 +512,11 @@ func (ij *invalidationJob) policyInvalidation(ctx context.Context) error {
 func (ij *invalidationJob) quotaInvalidation(ctx context.Context) error {
 	quotaPath := strings.TrimPrefix(ij.nsKey, barrier.SystemBarrierPrefix+quotas.StoragePrefix)
 	return ij.im.core.quotaManager.Invalidate(ctx, quotaPath)
+}
+
+func (ij *invalidationJob) externalKeyInvalidation(ctx context.Context) error {
+	name := strings.TrimPrefix(ij.nsKey, barrier.SystemBarrierPrefix+ek.ConfigStoragePrefix)
+	return ij.im.core.externalKeys.InvalidateConfig(ctx, name)
 }
 
 func (ij *invalidationJob) auditInvalidation(ctx context.Context) error {

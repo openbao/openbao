@@ -32,7 +32,7 @@ func (c *Catalog) OpenKMS(ctx context.Context, name string, opts *kms.OpenOption
 		if builtin, ok := builtinKMSes[name]; ok {
 			s = builtin()
 		} else {
-			return nil, fmt.Errorf("unknown KMS: %s", name)
+			return nil, fmt.Errorf("unknown plugin: %s", name)
 		}
 
 	default:

@@ -124,11 +124,8 @@ func (ws *WorkflowStore) lockWithUnlock(ctx context.Context) func() {
 		ns = namespace.RootNamespace
 	}
 
-	lock := locksutil.LockForKey(ws.modifyLocks, ns.UUID)
-
 	ws.logger.Trace("acquiring lock for", "namespace", ns.UUID)
-	lock.Lock()
-	return lock.Unlock
+	return locksutil.LockWithUnlock(ws.modifyLocks, ns.UUID)
 }
 
 func (ws *WorkflowStore) rLockWithUnlock(ctx context.Context) func() {
@@ -137,11 +134,8 @@ func (ws *WorkflowStore) rLockWithUnlock(ctx context.Context) func() {
 		ns = namespace.RootNamespace
 	}
 
-	lock := locksutil.LockForKey(ws.modifyLocks, ns.UUID)
-
 	ws.logger.Trace("acquiring lock for", "namespace", ns.UUID)
-	lock.RLock()
-	return lock.RUnlock
+	return locksutil.RLockWithUnlock(ws.modifyLocks, ns.UUID)
 }
 
 // getView returns the storage view for the given namespace

@@ -136,6 +136,12 @@ key.`,
 				Default:     0,
 				Description: fmt.Sprintf("The key size in bytes for the algorithm.  Only applies to HMAC and must be no fewer than %d bytes and no more than %d", keysutil.HmacMinKeySize, keysutil.HmacMaxKeySize),
 			},
+			"external_key_name": {
+				Type: framework.TypeString,
+				Description: `Reference to the external key to use. This follows
+the format <config name>:<key name>, uniquely identifying the key configured
+under sys/external-keys/configs/<config name>/keys/<key name>.`,
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -246,6 +252,7 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 	keyType := d.Get("type").(string)
 	keySize := d.Get("key_size").(int)
 	exportable := d.Get("exportable").(bool)
+	externalKeyName := d.Get("external_key_name").(string)
 	allowPlaintextBackup := d.Get("allow_plaintext_backup").(bool)
 	autoRotatePeriod := time.Second * time.Duration(d.Get("auto_rotate_period").(int))
 
@@ -266,6 +273,7 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 		Exportable:           exportable,
 		AllowPlaintextBackup: allowPlaintextBackup,
 		AutoRotatePeriod:     autoRotatePeriod,
+		ExternalKeyName:      externalKeyName,
 	}
 
 	switch keyType {
@@ -293,11 +301,13 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 		polReq.KeyType = keysutil.KeyType_RSA4096
 	case "hmac":
 		polReq.KeyType = keysutil.KeyType_HMAC
+	case "external_key":
+		polReq.KeyType = keysutil.KeyType_ExternalKey
 	default:
 		return logical.ErrorResponse("unknown key type %v", keyType), logical.ErrInvalidRequest
 	}
 	if keySize != 0 {
-		if polReq.KeyType != keysutil.KeyType_HMAC {
+		if polReq.KeyType != keysutil.KeyType_HMAC && polReq.KeyType != keysutil.KeyType_ExternalKey {
 			return logical.ErrorResponse("key_size is not valid for algorithm %v", polReq.KeyType), logical.ErrInvalidRequest
 		}
 		if keySize < keysutil.HmacMinKeySize || keySize > keysutil.HmacMaxKeySize {
@@ -416,6 +426,10 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 		if p.ConvergentEncryption {
 			resp.Data["convergent_encryption_version"] = p.ConvergentVersion
 		}
+	}
+
+	if p.ExternalKeyName != "" {
+		resp.Data["external_key_name"] = p.ExternalKeyName
 	}
 
 	switch p.Type {

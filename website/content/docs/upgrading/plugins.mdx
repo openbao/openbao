@@ -5,19 +5,22 @@ description: These are general upgrade instructions for OpenBao plugins.
 
 # Upgrading OpenBao plugins
 
-## Plugin upgrade procedure
-
 The following procedures detail steps for upgrading a plugin that has been mounted
-at a path on a running server. The steps are the same whether the plugin being
-upgraded is built-in or external.
+at a path on a running server.
 
-### Upgrading auth and secrets plugins
+:::info
+This guide only applies to external plugins (which are distributed as separate binaries).
+Built-in plugins do **not** need to be upgraded separately (because they are compiled
+into the main OpenBao binary).
+:::
+
+## Upgrading auth and secrets plugins
 
 The process is nearly identical for auth and secret plugins. If you are upgrading
 an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
 
 1. [Register][plugin_registration] the first version of your plugin to the catalog.
-   Skip this step if your initial plugin is built-in or already registered.
+   Skip this step if your initial plugin is already registered.
 
     ```shell-session
     $ bao plugin register \
@@ -34,8 +37,7 @@ an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
     ```
 
 1. Register a second version of your plugin. You **must** use the same plugin
-   type and name (the last two arguments) as the plugin being upgraded. This is
-   true regardless of whether the plugin being upgraded is built-in or external.
+   type and name (the last two arguments) as the plugin being upgraded.
 
     ```shell-session
     $ bao plugin register \
@@ -82,10 +84,10 @@ by setting the 'scope' parameter of the reload to 'global'.
 
 :::
 
-### Upgrading database plugins
+## Upgrading database plugins
 
 1. [Register][plugin_registration] the first version of your plugin to the catalog.
-   Skip this step if your initial plugin is built-in or already registered.
+   Skip this step if your initial plugin is already registered.
 
     ```shell-session
     $ bao plugin register
@@ -105,8 +107,7 @@ by setting the 'scope' parameter of the reload to 'global'.
     ```
 
 1. Register a second version of your plugin. You **must** use the same plugin
-   type and name (the last two arguments) as the plugin being upgraded. This is
-   true regardless of whether the plugin being upgraded is built-in or external.
+   type and name (the last two arguments) as the plugin being upgraded.
 
     ```shell-session
     $ bao plugin register \
@@ -130,7 +131,7 @@ Until the last step, the mount will still run the first version of `my-db-plugin
 the reload is triggered, OpenBao will kill `my-db-plugin`’s process and start the
 new plugin process for `my-db-plugin` version 1.0.1.
 
-### Downgrading plugins
+## Downgrading plugins
 
 Plugin downgrades follow the same procedure as upgrades. You can use the OpenBao
 plugin list command to check what plugin versions are available to downgrade to:
@@ -152,7 +153,7 @@ totp                v1.12.0+builtin.bao
 transit             v1.12.0+builtin.bao
 ```
 
-### Additional upgrade notes
+## Additional upgrade notes
 
 * As mentioned earlier, disabling existing mounts will wipe the existing data.
 * Overwriting an existing version in the catalog will affect all uses of that

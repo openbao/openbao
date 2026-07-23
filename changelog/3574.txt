@@ -1,0 +1,3 @@
+```release-note:improvement
+auth/oidc: Return `oidc_discovery_url` validation errors (like bad issuer) from the underlying library.
+```

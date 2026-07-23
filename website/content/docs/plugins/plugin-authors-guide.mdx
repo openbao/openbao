@@ -1,20 +1,21 @@
 ---
-sidebar_label: Plugin Author Guide
+sidebar_label: Plugin Development Patterns
 description: OpenBao's plugin authors guide.
 ---
 
-# Plugin Author Guide
+# Plugin Development Patterns
 
-This page is a guide for developers interested in creating, managing, and enhancing
-plugins for OpenBao.
+:::warning
 
-## Table of contents
+Advanced topic! Plugin development is a highly advanced topic in OpenBao, and
+is not required knowledge for day-to-day usage. If you don't plan on writing any
+plugins, we recommend not reading this section of the documentation.
 
-- [List pagination](#list-pagination)
-- [Listing Detailed Endpoints](#listing-detailed-endpoints)
-- [Revoke Operations Should Ignore "Not Found" Errors](#revoke-operations-should-ignore-not-found-errors)
-- [Docker-based Tests](#docker-based-tests)
-- [Dangers of Custom Auto Unseal Mechanisms](#dangers-of-custom-auto-unseal-mechanisms)
+:::
+
+This page contains some common patterns/practices/tips for plugin developers.
+This guide assumes that you are already familiar with the
+[basics of plugin development](./plugin-development.mdx).
 
 ## List pagination
 

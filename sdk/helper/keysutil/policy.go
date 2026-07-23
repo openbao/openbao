@@ -38,6 +38,7 @@ import (
 	"golang.org/x/crypto/hkdf"
 
 	"github.com/hashicorp/go-uuid"
+	"github.com/openbao/go-kms-wrapping/v2/kms"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -71,6 +72,7 @@ const (
 	KeyType_RSA3072
 	KeyType_HMAC
 	KeyType_XChaCha20_Poly1305
+	KeyType_ExternalKey
 )
 
 const (
@@ -86,12 +88,12 @@ const (
 	DefaultVersionTemplate = "vault:v{{version}}:"
 )
 
-type AEADFactory interface {
-	GetAEAD(iv []byte) (cipher.AEAD, error)
-}
-
 type AssociatedDataFactory interface {
 	GetAssociatedData() ([]byte, error)
+}
+
+type ExternalKeyFactory interface {
+	GetExternalKey(ref string) (context.Context, kms.Key, error)
 }
 
 type RestoreInfo struct {
@@ -124,7 +126,7 @@ type KeyType int
 
 func (kt KeyType) EncryptionSupported() bool {
 	switch kt {
-	case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
+	case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096, KeyType_ExternalKey:
 		return true
 	}
 	return false
@@ -132,7 +134,7 @@ func (kt KeyType) EncryptionSupported() bool {
 
 func (kt KeyType) DecryptionSupported() bool {
 	switch kt {
-	case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
+	case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096, KeyType_ExternalKey:
 		return true
 	}
 	return false
@@ -140,7 +142,7 @@ func (kt KeyType) DecryptionSupported() bool {
 
 func (kt KeyType) SigningSupported() bool {
 	switch kt {
-	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521, KeyType_ED25519, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
+	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521, KeyType_ED25519, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096, KeyType_ExternalKey:
 		return true
 	}
 	return false
@@ -148,7 +150,7 @@ func (kt KeyType) SigningSupported() bool {
 
 func (kt KeyType) HashSignatureInput() bool {
 	switch kt {
-	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
+	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096, KeyType_ExternalKey:
 		return true
 	}
 	return false
@@ -172,7 +174,7 @@ func (kt KeyType) KeyAgreementSupported() bool {
 
 func (kt KeyType) AssociatedDataSupported() bool {
 	switch kt {
-	case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305:
+	case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305, KeyType_ExternalKey:
 		return true
 	}
 	return false
@@ -212,6 +214,8 @@ func (kt KeyType) String() string {
 		return "rsa-4096"
 	case KeyType_HMAC:
 		return "hmac"
+	case KeyType_ExternalKey:
+		return "external_key"
 	}
 
 	return "[unknown]"
@@ -447,6 +451,9 @@ type Policy struct {
 
 	// Whether the key has been soft deleted.
 	SoftDeleted bool `json:"soft_deleted"`
+
+	// Reference to the named external key.
+	ExternalKeyName string `json:"external_key_ref"`
 }
 
 func (p *Policy) Lock(exclusive bool) {
@@ -1068,8 +1075,6 @@ func (p *Policy) DecryptWithFactory(context, nonce []byte, value string, factori
 				continue
 			}
 			switch factory := rawFactory.(type) {
-			case AEADFactory:
-				symopts.AEADFactory = factory
 			case AssociatedDataFactory:
 				symopts.AdditionalData, err = factory.GetAssociatedData()
 				if err != nil {
@@ -1097,6 +1102,7 @@ func (p *Policy) DecryptWithFactory(context, nonce []byte, value string, factori
 		if err != nil {
 			return "", errutil.InternalError{Err: fmt.Sprintf("failed to RSA decrypt the ciphertext: %v", err)}
 		}
+	case KeyType_ExternalKey:
 
 	default:
 		return "", errutil.InternalError{Err: fmt.Sprintf("unsupported key type %v", p.Type)}
@@ -1901,8 +1907,6 @@ type SymmetricOpts struct {
 	AdditionalData []byte
 	// The HMAC key, for generating IVs in convergent encryption
 	HMACKey []byte
-	// Allows an external provider of the AEAD, for e.g. managed keys
-	AEADFactory AEADFactory
 }
 
 // Symmetrically encrypt a plaintext given the convergence configuration and appropriate keys
@@ -2060,7 +2064,7 @@ func (p *Policy) SymmetricDecryptRaw(encKey, ciphertext []byte, opts SymmetricOp
 	return plain, nil
 }
 
-func (p *Policy) EncryptWithFactory(ver int, context []byte, nonce []byte, value string, factories ...any) (string, error) {
+func (p *Policy) EncryptWithFactory(ver int, derivationContext []byte, nonce []byte, value string, factories ...any) (string, error) {
 	if p.SoftDeleted {
 		return "", errutil.UserError{Err: ErrSoftDeleted}
 	}
@@ -2090,7 +2094,7 @@ func (p *Policy) EncryptWithFactory(ver int, context []byte, nonce []byte, value
 
 	switch p.Type {
 	case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305:
-		hmacKey := context
+		hmacKey := derivationContext
 
 		var encKey []byte
 		var deriveHMAC bool
@@ -2111,7 +2115,7 @@ func (p *Policy) EncryptWithFactory(ver int, context []byte, nonce []byte, value
 			encBytes = 16
 		}
 
-		key, err := p.GetKey(context, ver, encBytes+hmacBytes)
+		key, err := p.GetKey(derivationContext, ver, encBytes+hmacBytes)
 		if err != nil {
 			return "", err
 		}
@@ -2141,8 +2145,6 @@ func (p *Policy) EncryptWithFactory(ver int, context []byte, nonce []byte, value
 				continue
 			}
 			switch factory := rawFactory.(type) {
-			case AEADFactory:
-				symopts.AEADFactory = factory
 			case AssociatedDataFactory:
 				symopts.AdditionalData, err = factory.GetAssociatedData()
 				if err != nil {
@@ -2172,7 +2174,41 @@ func (p *Policy) EncryptWithFactory(ver int, context []byte, nonce []byte, value
 		if err != nil {
 			return "", errutil.InternalError{Err: fmt.Sprintf("failed to RSA encrypt the plaintext: %v", err)}
 		}
+	case KeyType_ExternalKey:
+		var ctx context.Context
+		var key kms.Key
+		for _, factory := range factories {
+			if factory == nil {
+				continue
+			}
 
+			switch typed := factory.(type) {
+			case ExternalKeyFactory:
+				ctx, key, err = typed.GetExternalKey(p.ExternalKeyName)
+				if err != nil {
+					return "", fmt.Errorf("failed to fetch external key: %w", err)
+				} else if key == nil {
+					return "", fmt.Errorf("factory returned nil key with no error; key not found")
+				}
+			}
+		}
+
+		if key == nil {
+			return "", fmt.Errorf("external key not found or no factory provided to request it")
+		}
+
+		opts := &kms.CipherOptions{
+			Data: plaintext,
+		}
+
+		ciphertext, err = key.Encrypt(ctx, opts)
+		if err != nil {
+			return "", fmt.Errorf("call to kms.Encrypt failed: %w", err)
+		}
+
+		if len(opts.Nonce) > 0 {
+			ciphertext = append(opts.Nonce, ciphertext...)
+		}
 	default:
 		return "", errutil.InternalError{Err: fmt.Sprintf("unsupported key type %v", p.Type)}
 	}

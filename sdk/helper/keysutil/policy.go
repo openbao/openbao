@@ -2205,10 +2205,6 @@ func (p *Policy) EncryptWithFactory(ver int, derivationContext []byte, nonce []b
 		if err != nil {
 			return "", fmt.Errorf("call to kms.Encrypt failed: %w", err)
 		}
-
-		if len(opts.Nonce) > 0 {
-			ciphertext = append(opts.Nonce, ciphertext...)
-		}
 	default:
 		return "", errutil.InternalError{Err: fmt.Sprintf("unsupported key type %v", p.Type)}
 	}

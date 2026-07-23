@@ -1,0 +1,179 @@
+---
+description: The `/sys/external-keys` endpoint is used to configure external keys in OpenBao.
+---
+
+# `/sys/external-keys`
+
+The `/sys/external-keys` endpoint is used to configure external keys in OpenBao.
+
+## Manage configs
+
+### List configs
+
+| Method | Path                         |
+| :----- | :--------------------------- |
+| `LIST` | `/sys/external-keys/configs` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X LIST --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs
+```
+
+#### Sample response
+
+```json
+{
+  "keys": ["foo"]
+}
+```
+
+### Create/Update/Patch config
+
+| Method                 | Path                               |
+| :--------------------- | :--------------------------------- |
+| `POST`, `PUT`, `PATCH` | `/sys/external-keys/configs/:name` |
+
+#### Parameters
+
+- `name` `(string: <required>)` -
+
+- `plugin` `(string: <required>)` -
+
+- `verify` `(bool: true)` -
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X POST --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/foo
+```
+
+### Delete config
+
+| Method   | Path                               |
+| :------- | :--------------------------------- |
+| `DELETE` | `/sys/external-keys/configs/:name` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X DELETE --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/foo
+```
+
+## Manage keys
+
+### List keys
+
+| Method | Path                                           |
+| :----- | :--------------------------------------------- |
+| `LIST` | `/sys/external-keys/configs/:config-name/keys` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X LIST --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/foo/keys
+```
+
+#### Sample response
+
+```json
+{
+  "keys": ["bar", "baz"]
+}
+```
+
+### Create/Update/Patch key
+
+| Method                 | Path                                                     |
+| :--------------------- | :------------------------------------------------------- |
+| `POST`, `PUT`, `PATCH` | `/sys/external-keys/configs/:config-name/keys/:key-name` |
+
+#### Parameters
+
+- `config-name` `(string: <required>)` -
+
+- `key-name` `(string: <required>)` -
+
+- `verify` `(bool: true)` -
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X POST --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/foo/keys/bar
+```
+
+### Delete key
+
+| Method   | Path                                                     |
+| :------- | :------------------------------------------------------- |
+| `DELETE` | `/sys/external-keys/configs/:config-name/keys/:key-name` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X DELETE --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/foo/keys/bar
+```
+
+## Manage grants
+
+### List grants
+
+| Method | Path                                                            |
+| :----- | :-------------------------------------------------------------- |
+| `LIST` | `/sys/external-keys/configs/:config-name/keys/:key-name/grants` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X LIST --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/foo/keys/bar/grants
+```
+
+#### Sample response
+
+```json
+{
+  "keys": ["pki/"]
+}
+```
+
+### Create grant
+
+| Method        | Path                                                                        |
+| :------------ | :-------------------------------------------------------------------------- |
+| `POST`, `PUT` | `/sys/external-keys/configs/:config-name/keys/:key-name/grants/:mount-path` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X POST --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/foo/keys/bar/grants/pki
+```
+
+### Delete grant
+
+| Method   | Path                                                                        |
+| :------- | :-------------------------------------------------------------------------- |
+| `DELETE` | `/sys/external-keys/configs/:config-name/keys/:key-name/grants/:mount-path` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X DELETE --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/foo/keys/bar/grants/pki
+```

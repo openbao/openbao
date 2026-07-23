@@ -15,7 +15,10 @@ const sidebars: SidebarsConfig = {
         "what-is-openbao",
         "use-cases",
         {
-            "Getting Started": ["get-started/developer-qs"],
+            "Getting Started": [
+                "get-started/operator-qs",
+                "get-started/developer-qs"
+            ],
         },
         "browser-support",
         "install",

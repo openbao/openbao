@@ -1,3 +1,3 @@
 ```release-note:improvement
-auth/oidc: error message for oidc_discovery_url now came from the underlying library so we have more details on what's wrong (bad issuer).
+auth/oidc: Return error messages for `oidc_discovery_url` validation errors (like bad issuer) from the underlying library .
 ```

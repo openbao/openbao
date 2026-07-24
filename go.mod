@@ -98,9 +98,9 @@ require (
 	github.com/moby/moby/client v0.5.0
 	github.com/oklog/run v1.2.0
 	github.com/okta/okta-sdk-golang/v2 v2.20.0
-	github.com/openbao/go-kms-wrapping/kms/transit/v2 v2.0.0-20260722171919-2a8eddf5719b
-	github.com/openbao/go-kms-wrapping/plugin/v2 v2.3.1-0.20260722171919-2a8eddf5719b
-	github.com/openbao/go-kms-wrapping/v2 v2.8.1-0.20260626131931-998c8a6f17f4
+	github.com/openbao/go-kms-wrapping/kms/transit/v2 v2.0.0-20260724155952-15b39a439e9a
+	github.com/openbao/go-kms-wrapping/plugin/v2 v2.3.1-0.20260724155952-15b39a439e9a
+	github.com/openbao/go-kms-wrapping/v2 v2.8.1-0.20260724155952-15b39a439e9a
 	github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/static/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.8.0
@@ -108,7 +108,7 @@ require (
 	github.com/openbao/openbao/api/auth/approle/v2 v2.0.0
 	github.com/openbao/openbao/api/auth/userpass/v2 v2.0.0
 	github.com/openbao/openbao/api/v2 v2.6.0
-	github.com/openbao/openbao/sdk/v2 v2.6.1
+	github.com/openbao/openbao/sdk/v2 v2.6.2
 	github.com/ory/dockertest/v4 v4.0.0
 	github.com/pires/go-proxyproto v0.14.0
 	github.com/posener/complete v1.2.3

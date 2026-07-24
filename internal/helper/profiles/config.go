@@ -19,8 +19,8 @@ type OuterConfig struct {
 	Type     string
 	Requests []*RequestConfig `hcl:"-"`
 
-	When    any `hcl:"when"`
-	ForEach any `hcl:"for"`
+	When any `hcl:"when"`
+	For  any `hcl:"for"`
 }
 
 func (o *OuterConfig) CloneWithIter(suffix string) *OuterConfig {
@@ -45,7 +45,7 @@ type RequestConfig struct {
 	Headers   any `hcl:"headers"`
 
 	When         any `hcl:"when"`
-	ForEach      any `hcl:"for"`
+	For          any `hcl:"for"`
 	AllowFailure any `hcl:"allow_failure"`
 }
 

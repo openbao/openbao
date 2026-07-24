@@ -69,7 +69,7 @@ func TestCelSourceBuilder_Constant(t *testing.T) {
 	require.NoError(t, err, "failure to validate")
 }
 
-func TestCelSourceBuilder_ForEach(t *testing.T) {
+func TestCelSourceBuilder_For(t *testing.T) {
 	testCases := []struct {
 		ic         *IterContext
 		expression string

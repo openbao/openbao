@@ -384,7 +384,7 @@ func (b *jwtAuthBackend) celEvalConfig() *celhelper.EvalConfig {
 		WithEmail:  true,
 		WithJSON:   true,
 		CustomOptions: []cel.EnvOption{
-			cel.Variable("claims", types.NewMapType(types.StringType, types.DynType)),
+			celhelper.MapVariable("claims"),
 			cel.Variable("now", types.TimestampType),
 			cel.Variable("operation", types.StringType),
 			cel.Types(

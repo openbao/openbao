@@ -92,18 +92,12 @@ func (s *TemplateSource) Evaluate(_ context.Context, eh *EvaluationHistory) (any
 
 	// Inject request data if present as a source.
 	if HasRequestSource(s.engine) {
-		s.data["requests"] = eh.Requests
-		if s.engine.outerBlockName == "" {
-			s.data["requests"] = eh.Requests[""]
-		}
+		eh.RequestsIntoMap(s.data)
 	}
 
 	// Inject response data if present as a source.
 	if HasResponseSource(s.engine) {
-		s.data["responses"] = eh.Responses
-		if s.engine.outerBlockName == "" {
-			s.data["responses"] = eh.Responses[""]
-		}
+		eh.ResponsesIntoMap(s.data)
 	}
 
 	// Inject input data if present as a source.

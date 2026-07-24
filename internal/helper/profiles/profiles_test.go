@@ -435,7 +435,7 @@ func Test_Evaluate_OuterWhen(t *testing.T) {
 	}
 }
 
-func Test_Evaluate_ForEach(t *testing.T) {
+func Test_Evaluate_For(t *testing.T) {
 	ctx := t.Context()
 
 	var counter atomic.Int32
@@ -448,7 +448,7 @@ func Test_Evaluate_ForEach(t *testing.T) {
 						Type:      "test-request-skipped",
 						Operation: "read",
 						Path:      "sys/health",
-						ForEach:   []any{1, 2, 3, 4},
+						For:       []any{1, 2, 3, 4},
 					},
 				},
 			},

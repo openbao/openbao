@@ -281,7 +281,7 @@ func (p *ProfileEngine) validateRequestNameUniqueness() error {
 	return nil
 }
 
-// 3. All names conform exclude some special characters (.[](){}_ /-) or we limit to a-zA-Z0-9
+// 3. All names conform to [a-zA-Z0-9_-] (excluding leading prefixes).
 func validateNameConvention(kind, name string) error {
 	validName := regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_-]*$`)
 	if !validName.MatchString(name) {
@@ -320,6 +320,8 @@ func (p *ProfileEngine) EvaluateResponse(ctx context.Context) (*logical.Response
 	return p.evaluateOutput(ctx, history)
 }
 
+// Debug is a privileged, unsafe evaluation call as it yields full
+// intermediate results which may not be visible in every scenario.
 func (p *ProfileEngine) Debug(ctx context.Context) map[string]any {
 	history, err := p.evaluateHistory(ctx)
 
@@ -342,40 +344,8 @@ func (p *ProfileEngine) Debug(ctx context.Context) map[string]any {
 func (p *ProfileEngine) evaluateHistory(ctx context.Context) (*EvaluationHistory, error) {
 	var history EvaluationHistory
 	for outerIndex, outerBlock := range p.profile {
-		if err := func() error {
-			// Evaluate for each.
-			if err := p.DoForEach(ctx, &history, nil /* no this yet */, outerBlock.ForEach, func(this *IterContext) error {
-				outerBlock = this.MaybeCloneOuter(outerBlock)
-
-				// Check if our outer block needs to be skipped.
-				if outerBlock.When != nil {
-					var execute bool
-					if err := p.evaluateField(ctx, &history, this, outerBlock.When, &execute); err != nil {
-						return fmt.Errorf("failed to evaluate when: %w", err)
-					}
-
-					if !execute {
-						return nil
-					}
-				}
-
-				for requestIndex, requestBlock := range outerBlock.Requests {
-					if err := func() error {
-						return p.evaluateRequest(ctx, &history, outerIndex, outerBlock, this, requestIndex, requestBlock)
-					}(); err != nil {
-						return fmt.Errorf("request.[%v (%d)]: %w", requestBlock.Type, requestIndex, err)
-					}
-				}
-
-				return nil
-			}); err != nil {
-				// foreach
-				return err
-			}
-
-			return nil
-		}(); err != nil {
-			// closure
+		// Evaluate for each item.
+		if err := p.DoFor(ctx, &history, nil /* no this yet */, outerBlock.For, p.evaluateOuterBlock(ctx, &history, outerIndex, outerBlock)); err != nil {
 			if p.outerBlockName != "" {
 				return &history, fmt.Errorf("%v.[%v (%d)]: %w", p.outerBlockName, outerBlock.Type, outerIndex, err)
 			}
@@ -387,9 +357,36 @@ func (p *ProfileEngine) evaluateHistory(ctx context.Context) (*EvaluationHistory
 	return &history, nil
 }
 
+// evaluateOuterBlock evaluates a single outer block within the broader profile.
+func (p *ProfileEngine) evaluateOuterBlock(ctx context.Context, history *EvaluationHistory, outerIndex int, outerBlock *OuterConfig) func(this *IterContext) error {
+	return func(this *IterContext) error {
+		outerBlock = this.MaybeCloneOuter(outerBlock)
+
+		// Check if our outer block needs to be skipped.
+		if outerBlock.When != nil {
+			var execute bool
+			if err := p.evaluateField(ctx, history, this, outerBlock.When, &execute); err != nil {
+				return fmt.Errorf("failed to evaluate when: %w", err)
+			}
+
+			if !execute {
+				return nil
+			}
+		}
+
+		for requestIndex, requestBlock := range outerBlock.Requests {
+			if err := p.evaluateRequest(ctx, history, outerIndex, outerBlock, this, requestIndex, requestBlock); err != nil {
+				return fmt.Errorf("request.[%v (%d)]: %w", requestBlock.Type, requestIndex, err)
+			}
+		}
+
+		return nil
+	}
+}
+
 // evaluateRequest evaluates a single request within the broader profile.
 func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *EvaluationHistory, outerIndex int, outerBlock *OuterConfig, this *IterContext, requestIndex int, requestBlock *RequestConfig) error {
-	return p.DoForEach(ctx, history, this, requestBlock.ForEach, func(this *IterContext) error {
+	return p.DoFor(ctx, history, this, requestBlock.For, func(this *IterContext) error {
 		requestBlock = this.MaybeCloneRequest(requestBlock)
 		return p.evaluateOneRequest(ctx, history, this, outerIndex, outerBlock, requestIndex, requestBlock)
 	})
@@ -425,15 +422,15 @@ func (p *ProfileEngine) evaluateOneRequest(ctx context.Context, history *Evaluat
 		if err != nil {
 			return fmt.Errorf("failed to evaluate request: %w", err)
 		}
+
 		// Fallback in case IsError() is true but Error() returned nil.
 		return errors.New("failed to evaluate request: request failed")
 	}
 
-	// 5. Stash response for future use.
-	if !isFailure {
-		if err := history.AddResponse(outerBlock.Type, requestBlock.Type, resp); err != nil {
-			return fmt.Errorf("failed to save response: %w", err)
-		}
+	// 5. Stash response for future use. It is safe to store empty responses
+	// here if the request failed.
+	if err := history.AddResponse(outerBlock.Type, requestBlock.Type, resp); err != nil {
+		return fmt.Errorf("failed to save response: %w", err)
 	}
 
 	return nil
@@ -583,8 +580,15 @@ func (p *ProfileEngine) evaluateField(ctx context.Context, history *EvaluationHi
 // Notably, evaluation must be constants and pre-determined; we do not
 // support conditional evaluation types.
 func (p *ProfileEngine) maybeEvaluateTypedField(ctx context.Context, history *EvaluationHistory, this *IterContext, obj map[string]any) (any, error) {
-	sourceRaw, sourcePresent := obj["eval_source"]
-	objTypeRaw, objPresent := obj["eval_type"]
+	source, sourcePresent, err := StringField(obj, "eval_source")
+	if err != nil {
+		return nil, fmt.Errorf("malformed object: %w", err)
+	}
+
+	objType, objPresent, err := StringField(obj, "eval_type")
+	if err != nil {
+		return nil, fmt.Errorf("malformed object: %w", err)
+	}
 
 	// If we have one or the other, but not both, this is a fatal fault.
 	if (sourcePresent || objPresent) && (!sourcePresent || !objPresent) {
@@ -608,17 +612,6 @@ func (p *ProfileEngine) maybeEvaluateTypedField(ctx context.Context, history *Ev
 	// No evaluation needs to occur; return.
 	if !sourcePresent && !objPresent {
 		return resolved, nil
-	}
-
-	// Finally, dispatch the right source method.
-	source, ok := sourceRaw.(string)
-	if !ok {
-		return nil, fmt.Errorf("malformed object; 'eval_source' was of wrong type; expected 'string' got '%T'", sourceRaw)
-	}
-
-	objType, ok := objTypeRaw.(string)
-	if !ok {
-		return nil, fmt.Errorf("malformed object; 'eval_type' was of wrong type; expected 'string' got '%T'", sourceRaw)
 	}
 
 	return p.evaluateTypedField(ctx, history, this, resolved, source, objType)

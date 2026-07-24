@@ -2,7 +2,6 @@ package profiles
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/google/cel-go/cel"
@@ -33,15 +32,15 @@ func CELSourceBuilder(engine *ProfileEngine, field map[string]any, this *IterCon
 	var options []cel.EnvOption
 
 	if HasRequestSource(engine) {
-		options = append(options, cel.Variable("requests", types.NewMapType(types.StringType, types.DynType)))
+		options = append(options, celHelper.MapVariable("requests"))
 	}
 
 	if HasResponseSource(engine) {
-		options = append(options, cel.Variable("responses", types.NewMapType(types.StringType, types.DynType)))
+		options = append(options, celHelper.MapVariable("responses"))
 	}
 
 	if HasInputSource(engine) {
-		options = append(options, cel.Variable("input", types.NewMapType(types.StringType, types.DynType)))
+		options = append(options, celHelper.MapVariable("input"))
 	}
 
 	if this != nil {
@@ -91,24 +90,14 @@ func (s *CELSource) getConfig() *celHelper.EvalConfig {
 }
 
 func (s *CELSource) Validate() ([]string, []string, error) {
-	rawExpr, present := s.field["expression"]
-	if !present {
-		return nil, nil, errors.New("cel source is missing required field 'expression'")
+	expr, err := RequiredStringField(s.field, "expression")
+	if err != nil {
+		return nil, nil, fmt.Errorf("cel source: %w", err)
 	}
 
-	expr, ok := rawExpr.(string)
-	if !ok {
-		return nil, nil, fmt.Errorf("field 'expression' is of wrong type: expected 'string' got '%T'", rawExpr)
-	}
-
-	rawVariables, present := s.field["variables"]
-	if !present {
-		rawVariables = []any{}
-	}
-
-	listVariables, ok := rawVariables.([]any)
-	if !ok {
-		return nil, nil, fmt.Errorf("field 'variables' is of wrong outer type: expected '[]any' got '%T'", listVariables)
+	listVariables, _, err := ListField(s.field, "variables")
+	if err != nil {
+		return nil, nil, fmt.Errorf("cel source: %w", err)
 	}
 
 	var variables []celHelper.Variable
@@ -118,30 +107,20 @@ func (s *CELSource) Validate() ([]string, []string, error) {
 			return nil, nil, fmt.Errorf("field 'variables[%d]' is of wrong inner type: expected 'map[string]any' got '%T'", index, listVariables)
 		}
 
-		rawName, present := variableMap["name"]
-		if !present {
-			return nil, nil, fmt.Errorf("field 'variables[%d].name' is missing", index)
+		name, err := RequiredStringField(variableMap, "name")
+		if err != nil {
+			return nil, nil, fmt.Errorf("cel source: field 'variables[%d].name': %w", index, err)
 		}
 		delete(variableMap, "name")
 
-		name, ok := rawName.(string)
-		if !ok {
-			return nil, nil, fmt.Errorf("field 'variables[%d].name' is of wrong type: expected 'string' got '%T'", index, rawName)
-		}
-
-		rawExpression, present := variableMap["expression"]
-		if !present {
-			return nil, nil, fmt.Errorf("field 'variables[%d].expression' is missing", index)
+		expression, err := RequiredStringField(variableMap, "expression")
+		if err != nil {
+			return nil, nil, fmt.Errorf("cel source: field 'variables[%d].name': %w", index, err)
 		}
 		delete(variableMap, "expression")
 
-		expression, ok := rawExpression.(string)
-		if !ok {
-			return nil, nil, fmt.Errorf("field 'variables[%d].expression' is of wrong type: expected 'string' got '%T'", index, rawExpression)
-		}
-
 		if len(variableMap) > 0 {
-			return nil, nil, fmt.Errorf("field 'variables[%d].name' has extraneous elements besides 'name' and 'expression'", index)
+			return nil, nil, fmt.Errorf("cel source: field 'variables[%d].name' has extraneous elements besides 'name' and 'expression'", index)
 		}
 
 		variables = append(variables, celHelper.Variable{
@@ -169,17 +148,11 @@ func (s *CELSource) Evaluate(ctx context.Context, eh *EvaluationHistory) (any, e
 	s.this.IntoMap(data)
 
 	if HasRequestSource(s.engine) {
-		data["requests"] = eh.Requests
-		if s.engine.outerBlockName == "" {
-			data["requests"] = eh.Requests[""]
-		}
+		eh.RequestsIntoMap(data)
 	}
 
 	if HasResponseSource(s.engine) {
-		data["responses"] = eh.Responses
-		if s.engine.outerBlockName == "" {
-			data["responses"] = eh.Responses[""]
-		}
+		eh.ResponsesIntoMap(data)
 	}
 
 	if HasInputSource(s.engine) {

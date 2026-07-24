@@ -70,8 +70,8 @@ func (ic *IterContext) MaybeCloneRequest(req *RequestConfig) *RequestConfig {
 	return req.CloneWithIter(fmt.Sprintf("%v", ic.This.Key))
 }
 
-func (p *ProfileEngine) DoForEach(ctx context.Context, history *EvaluationHistory, ic *IterContext, forEach any, do func(this *IterContext) error) error {
-	ics, err := p.evaluateForEach(ctx, history, ic, forEach)
+func (p *ProfileEngine) DoFor(ctx context.Context, history *EvaluationHistory, ic *IterContext, forEach any, do func(this *IterContext) error) error {
+	ics, err := p.evaluateFor(ctx, history, ic, forEach)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func generalizeIter(value any) (any, error) {
 	return nil, fmt.Errorf("error decoding as list: [%v] / error decoding as map: [%w]", listErr, mapErr)
 }
 
-func (p *ProfileEngine) evaluateForEach(ctx context.Context, history *EvaluationHistory, ic *IterContext, forEach any) ([]*IterContext, error) {
+func (p *ProfileEngine) evaluateFor(ctx context.Context, history *EvaluationHistory, ic *IterContext, forEach any) ([]*IterContext, error) {
 	var value any
 
 	if err := p.evaluateField(ctx, history, ic, forEach, &value); err != nil {

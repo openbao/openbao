@@ -1,3 +1,3 @@
 ```release-note:bug
-core/metrics: expose sys/metrics unauthenticated when sealed so monitoring systems can observe vault.core.unsealed before unseal completes
+core/metrics: Report `vault.core.unsealed=0` when OpenBao is sealed via dedicated metrics loop.
 ```

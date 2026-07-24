@@ -9,7 +9,9 @@
   <span>
     <ExternalLink @href={{changelog-url-for this.auth.activeCluster.leaderNode.version}} class="link has-text-grey">
       OpenBao
-      {{this.auth.activeCluster.leaderNode.version}}
+      {{#if this.auth.currentToken}}
+        {{this.auth.activeCluster.leaderNode.version}}
+      {{/if}}
     </ExternalLink>
   </span>
   <span>

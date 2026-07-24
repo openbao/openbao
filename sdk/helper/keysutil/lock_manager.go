@@ -60,8 +60,8 @@ type PolicyRequest struct {
 	// Indicates whether a private or public key is imported/upserted
 	IsPrivateKey bool
 
-	// The UUID of the managed key, if using one
-	ManagedKeyUUID string
+	// The reference to the external key, if using one.
+	ExternalKeyName string
 }
 
 type LockManager struct {
@@ -390,6 +390,11 @@ func (lm *LockManager) GetPolicyWithLockType(ctx context.Context, req PolicyRequ
 				return nil, false, fmt.Errorf("key derivation and convergent encryption not supported for keys of type %v", req.KeyType)
 			}
 
+		case KeyType_ExternalKey:
+			if req.Derived || req.Convergent {
+				return nil, false, fmt.Errorf("key derivation and convergent encryption not supported for keys of type %v", req.KeyType)
+			}
+
 		default:
 			return nil, false, fmt.Errorf("unsupported key type %v", req.KeyType)
 		}
@@ -403,6 +408,7 @@ func (lm *LockManager) GetPolicyWithLockType(ctx context.Context, req PolicyRequ
 			AllowPlaintextBackup: req.AllowPlaintextBackup,
 			AutoRotatePeriod:     req.AutoRotatePeriod,
 			KeySize:              req.KeySize,
+			ExternalKeyName:      req.ExternalKeyName,
 		}
 
 		if req.Derived {

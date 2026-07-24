@@ -433,10 +433,10 @@ const sidebars: SidebarsConfig = {
             ],
             Plugins: [
                 "plugins/index",
+                "plugins/plugin-installation",
                 "plugins/plugin-architecture",
                 "plugins/plugin-development",
                 "plugins/plugin-authors-guide",
-                "plugins/plugin-management",
             ],
             Platforms: [
                 "platform/index",

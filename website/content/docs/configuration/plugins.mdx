@@ -8,6 +8,20 @@ import TabItem from '@theme/TabItem';
 
 # Declarative plugins
 
+[External plugins](../plugins/index.mdx) can be declared with the `plugin` stanza.
+This is primarily intended for:
+
+1. **Simple plugin deployment:**
+   The combination of OCI-based plugin distribution, auto-download, and auto-registration
+   is recommended plugin deployment flow.
+2. **`kms` plugin deployment:**
+   `kms` plugin cannot be registered via the API (since they must be available in a sealed state).
+   The declarative method is the only way to define `kms` plugins.
+
+The `plugin` stanza allows the declaration of both OCI images and manually downloaded plugins.
+
+## OCI-based plugin distribution
+
 OpenBao supports the distribution of plugins in Open Container Initiative (OCI)
 images. Operators can define the desired plugins for their OpenBao cluster
 directly in the server configuration files. On startup, OpenBao will check for
@@ -32,16 +46,9 @@ managing the plugin binaries:
     allows operators to make use of the registries security features like
     authentication, vulnerability scanning and immutable storage.
 
-:::info
-
-Even if plugins are not distributed via OCI images, manually downloaded plugins
-can also be registered.
-
-:::
-
 ## `plugin`
 
-A `plugin` block defines an OCI-based plugin to download.
+A `plugin` block defines an OCI-based plugin to download:
 
 ```hcl
 plugin "type" "name" {
@@ -52,9 +59,11 @@ plugin "type" "name" {
 }
 ```
 
-or it specifies a plugin to automatically register that was manually downloaded.
+Or it specifies a plugin to automatically register that was manually downloaded:
 
 ```hcl
+plugin_auto_register = true
+
 plugin "type" "name" {
   command     = "plugin-binary-name"
   version     = "v0.0.0"
@@ -69,8 +78,8 @@ are specified in the configuration file(s). Blocks may share the same `type` and
 `name` but must have different a `version`. This allows for seamless upgrades of
 plugin versions.
 
-(`type` must be one of the pre-defined plugin types available in OpenBao, see
-[plugin system](../plugins/index.mdx) for more information.)
+`type` must be one of the pre-defined plugin types available in OpenBao, see
+[plugin system](../plugins/index.mdx) for more information.
 
 ### Parameters
 

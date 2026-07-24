@@ -5,59 +5,120 @@ description: Learn about OpenBao's plugin system.
 
 # Plugin system
 
-OpenBao supports 4 types of plugins; auth methods, secret engines, database
+OpenBao supports 4 types of plugins: auth methods, secret engines, database
 providers, and Key Management Service (KMS) providers. This concept allows both
-built-in and external plugins to be treated like building blocks. Auth method
-and secrets engine plugin can exist at multiple different mount paths. Different
-versions of a plugin may be at each location, with each version differing from
-OpenBao's version.
+built-in and external plugins to be treated like building blocks and to keep the
+OpenBao core small.
 
 A plugin is uniquely identified by its type (one of `secret`, `auth`,
 `database`, or `kms`), name (e.g. `kv`), and version (e.g `v1.0.0`). An empty
 version implies either the built-in plugin or the single unversioned plugin that
 can be registered.
+Auth method and secrets engine plugin can exist at multiple different mount paths.
+Different versions of a plugin may be at each location, with each version differing from OpenBao's version.
 
-See [Plugin Upgrade Procedure](../upgrading/plugins.mdx#plugin-upgrade-procedure)
-for details on how to upgrade a built-in plugin in-place.
+To use a plugin, an operator needs to:
 
-## Plugin distribution methods
+1. Install the plugin.
+1. Register the plugin with OpenBao.
+1. Mount/enable the plugin.
+1. Configure the plugin.
 
-### Built-In plugins
+## Plugin installation
 
-Built-in plugins are shipped with OpenBao, often for commonly used integrations,
-and can be used without any prerequisite steps.
+### Built-in plugins
+
+Built-in plugins are compiled into the `bao` binary and can be used directly.
+No installation or upgrade is needed.
+Built-in plugins cover commonly used integrations, such as the `kv` secrets engine.
 
 ### External plugins
 
-External plugins are not shipped with OpenBao and require additional operator
-steps to be installed, configured, and registered with OpenBao before they can be
-used.
+External plugins are completely separate, standalone binaries
+that OpenBao executes and communicates with over gRPC.
+They are not shipped in the main OpenBao binary and must be downloaded separately.
 
-OpenBao's external plugins are completely separate, standalone applications
-that OpenBao executes and communicates with over gRPC. To run an external
-plugin, a binary of the plugin is required. Plugin binaries can be obtained
-from the [openbao-plugins](https://github.com/openbao/openbao-plugins)
-repository or they can be [built from
-source](plugin-development.mdx#building-a-plugin-from-source).
+External plugins maintained by the OpenBao project are available from the
+[openbao-plugins](https://github.com/openbao/openbao-plugins) repository.
+To learn how to create your own plugins, visit the [developer guide](plugin-development.mdx).
+
+See the [plugin installation guide](plugin-installation.mdx) for how to install external plugins.
+
+## Plugin upgrade
+
+Built-in plugins don't need to be upgraded separatedly (because they are part of the OpenBao binary).
+See the [plugin upgrade guide](../upgrading/plugins.mdx) for how to upgrade external plugins.
+
+## Plugin registration
+
+Plugins need to be "registered" so that OpenBao knows about them.
+Built-in plugins are registered by default.
+
+The metadata of registered plugins is persisted in OpenBao's storage backend in the plugin catalog.
+This means that OpenBao must be unsealed before these plugins can be used.
+`kms` plugins cannot be (and need not be) registered since they must be available in a sealed state.
 
 External plugins can be registered with OpenBao in up to two ways, depending on
 the plugin type:
 
-1. [Declarative plugins](../configuration/plugins.mdx) can be used to register
-   all types of available plugins statically via OpenBao's server configuration
-   file. This is the preferred, modern approach to plugin registration.
-   Additionally, declarative plugins can automatically download plugin binaries
-   from an OCI registry if configured to do so. Plugin types supported by the
-   plugin catalog API registered via declarative plugins are reconciled against
-   the plugin catalog and will show up in API responses as well (see more on the
-   API-driven plugin catalog below).
+1. **Declarative:**
+   All plugin types can be statically declared via OpenBao's server configuration file.
+   This is the **preferred,** modern approach.
+   To declare a plugin, edit your config file as follows:
 
-2. The [API-driven plugin catalog](./plugin-management.mdx) can be used to
-   manage plugins already present on the file system via the API given OpenBao
-   is unsealed. Naturally, these endpoints do not support plugins of type
-   `kms`, which provide Auto-Unseal functionality immediately required at server
-   startup. To manage plugins of this type, use declarative plugins as described
-   above.
+   1. Add a [`plugin` stanza](../configuration/plugins.mdx)
+   1. Add `plugin_auto_register = true`
+   1. If you are using an OCI-distributed plugin: Add `plugin_auto_download  = true`
+
+   When configured like this, OpenBao automatically downloads and/or registers the plugins
+   when the server starts or when a SIGHUP is received.
+
+1. **API-driven:**
+   Plugin types `auth`, `database`, `secret` can alternatively be registered by calling the API.
+   This requires OpenBao to be unsealed and a token with sufficient permission be available.
+
+   ```shell-session
+   $ bao plugin register -sha256=<hex of plugin binary> secret passthrough-plugin
+
+   Success! Registered plugin: passthrough-plugin
+   ```
+
+The [`plugin list`](../commands/plugin/list.mdx) command lists all available plugins.
+
+## Plugin mounting
+
+After the plugin is registered, it can be mounted by specifying the registered
+plugin name:
+
+```shell-session
+$ bao secrets enable -path=my-secrets passthrough-plugin
+Success! Enabled the passthrough-plugin secrets engine at: my-secrets/
+```
+
+Listing secrets engines will display secrets engines that are mounted as
+plugins:
+
+```shell-session
+$ bao secrets list
+Path         Type       Accessor            Plugin              Default TTL  Max TTL  Force No Cache  Replication Behavior  Description
+my-secrets/  plugin     plugin_deb84140     passthrough-plugin  system       system   false           replicated
+```
+
+Disabling an external plugins is identical to disabling a built-in plugin:
+
+```shell-session
+$ bao secrets disable my-secrets
+```
+
+## Plugin configuration
+
+How a plugin is configured varies by its type.
+See their respective documentation for details:
+
+- [`auth`](../auth/index.mdx)
+- [`database`](../secrets/databases/index.mdx)
+- [`kms`](../configuration/seal/index.mdx)
+- [`secret`](../secrets/index.mdx)
 
 ## Plugin versioning
 
@@ -82,7 +143,7 @@ OpenBao will report a version for built-in plugins to indicate what version of t
 plugin code got built into OpenBao as a dependency. For example:
 
 ```shell-session
-$ bao plugin list secret
+$ bao plugin list
 Name                Version
 ----                -------
 approle                         auth        v2.0.0+builtin.bao

@@ -39,6 +39,7 @@ export default class PkiCertificateBaseModel extends Model {
   @attr parsedCertificate;
 
   @attr('string') commonName;
+  @attr('string') notAfter;
   @attr({
     label: 'Not valid after',
     detailsLabel: 'Issued certificates expire after',

@@ -63,6 +63,7 @@ const sidebars: SidebarsConfig = {
                 "concepts/oidc-provider",
                 "concepts/profiles",
                 "concepts/response-wrapping",
+                "concepts/control-groups",
                 "concepts/policies",
                 "concepts/password-policies",
                 "concepts/username-templating",

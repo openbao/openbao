@@ -88,9 +88,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		Path:  "cg_test",
 		Type:  "kv",
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create a secret
 	req := &logical.Request{
@@ -102,20 +100,16 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		},
 	}
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if resp != nil {
-		t.Fatalf("bad: %#v", resp)
-	}
+	require.NoError(t, err)
+	require.Nil(t, resp)
 
 	// Create a ControlGroup policy governing secret path
 	cgPolicy := `path "cg_test/foo" {
-		capabilities = ["create", "list", "read"]
+		capabilities = ["create", "update", "list", "read"]
 		control_group = {
 			ttl = "15s"
 			factor "admin-approval" {
-				controlled_capabilities = ["read"]
+				controlled_capabilities = ["create", "read", "update"]
 				identity = {
 					group_names = ["admin"]
 					approvals = 1
@@ -151,22 +145,23 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 	req = &logical.Request{
 		Path:        "cg_test/foo",
 		ClientToken: nonRootToken,
-		Operation:   logical.ReadOperation,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]any{
+			"zip": "stopped",
+		},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if resp == nil {
-		t.Fatalf("bad: %v", resp)
-	}
+	require.NoError(t, err)
+	require.NotNil(t, resp)
 
 	// Expect it to be wrapped
-	if resp.WrapInfo == nil || resp.WrapInfo.TTL != time.Duration(15*time.Second) {
-		t.Fatalf("bad wrap_info: %#v", resp)
-	}
+	require.NotNil(t, resp.WrapInfo)
 
-	// Fetch token with accessor
+	wrapTTL := resp.WrapInfo.TTL
+	wrapToken := resp.WrapInfo.Token
+	require.Equal(t, wrapTTL, 15*time.Second)
+
+	// Lookup accessor information
 	accessor := resp.WrapInfo.Accessor
 	req = &logical.Request{
 		Path:        "auth/token/lookup-accessor",
@@ -177,12 +172,39 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "accessor")
+	require.Equal(t, resp.Data["accessor"], accessor)
+	require.LessOrEqual(t, resp.Data["ttl"], int64(wrapTTL/time.Second))
+
+	// Use of the token should not work yet as it was not approved.
+	req = &logical.Request{
+		Path:        "sys/wrapping/unwrap",
+		ClientToken: wrapToken,
+		Operation:   logical.UpdateOperation,
 	}
-	if resp == nil {
-		t.Fatalf("bad: %v", resp)
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.Error(t, err)
+	require.Nil(t, resp)
+
+	// Check the request status.
+	req = &logical.Request{
+		Path:        "sys/control-group/request",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]any{
+			"accessor": accessor,
+		},
 	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "request_entity")
+	require.Contains(t, resp.Data, "request_path")
+	require.Contains(t, resp.Data, "request_data")
+	require.Contains(t, resp.Data["request_data"], "zip")
+	require.Equal(t, resp.Data["approved"], false)
 }
 
 func TestRequestHandling_LoginWrapping(t *testing.T) {

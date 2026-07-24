@@ -57,9 +57,9 @@ func TestExternalKeysBackend(t *testing.T) {
 				{path: "configs/foo", op: logical.UpdateOperation, input: empty, err: true},
 				{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"plugin": "transit"}, err: true},
 				{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"plugin": "transit", "token": "dummy"}},
-				{path: "configs/foo", op: logical.ReadOperation, output: map[string]any{"plugin": "transit", "token": "dummy"}},
+				{path: "configs/foo", op: logical.ReadOperation, output: map[string]any{"plugin": "transit", "token": "***"}},
 				{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"plugin": "transit", "token": "dummy", "namespace": "empire/"}},
-				{path: "configs/foo", op: logical.ReadOperation, output: map[string]any{"plugin": "transit", "token": "dummy", "namespace": "empire/"}},
+				{path: "configs/foo", op: logical.ReadOperation, output: map[string]any{"plugin": "transit", "token": "***", "namespace": "empire/"}},
 				{path: "configs", op: logical.ListOperation, output: map[string]any{"keys": []string{"foo"}}},
 			})
 		})
@@ -69,8 +69,8 @@ func TestExternalKeysBackend(t *testing.T) {
 				{path: "configs", op: logical.ListOperation, output: empty},
 				{path: "configs/foo", op: logical.ReadOperation, err: true},
 				{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"verify": false}, err: true},
-				{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"plugin": "bogus", "verify": false}},
-				{path: "configs/foo", op: logical.ReadOperation, output: map[string]any{"plugin": "bogus"}},
+				{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"plugin": "transit", "verify": false}},
+				{path: "configs/foo", op: logical.ReadOperation, output: map[string]any{"plugin": "transit"}},
 				{path: "configs", op: logical.ListOperation, output: map[string]any{"keys": []string{"foo"}}},
 			})
 		})
@@ -83,18 +83,18 @@ func TestExternalKeysBackend(t *testing.T) {
 				{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"plugin": "transit", "token": "dummy"}},
 				{path: "configs/foo", op: logical.PatchOperation, input: map[string]any{"token": nil}, err: true},
 				{path: "configs/foo", op: logical.PatchOperation, input: map[string]any{"mount_path": "somewhere/"}},
-				{path: "configs/foo", op: logical.ReadOperation, output: map[string]any{"plugin": "transit", "token": "dummy", "mount_path": "somewhere/"}},
+				{path: "configs/foo", op: logical.ReadOperation, output: map[string]any{"plugin": "transit", "token": "***", "mount_path": "somewhere/"}},
 				{path: "configs/foo", op: logical.PatchOperation, input: map[string]any{"mount_path": nil}},
-				{path: "configs/foo", op: logical.ReadOperation, output: map[string]any{"plugin": "transit", "token": "dummy"}},
+				{path: "configs/foo", op: logical.ReadOperation, output: map[string]any{"plugin": "transit", "token": "***"}},
 			})
 		})
 
 		t.Run("verify=false", func(t *testing.T) {
 			runTests(t, []test{
-				{path: "configs/foo", op: logical.PatchOperation, input: map[string]any{"plugin": "bogus", "verify": false}, err: true},
-				{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"plugin": "bogus", "verify": false}},
+				{path: "configs/foo", op: logical.PatchOperation, input: map[string]any{"plugin": "transit", "verify": false}, err: true},
+				{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"plugin": "transit", "verify": false}},
 				{path: "configs/foo", op: logical.PatchOperation, input: map[string]any{"foo": "bar", "verify": false}},
-				{path: "configs/foo", op: logical.ReadOperation, output: map[string]any{"plugin": "bogus", "foo": "bar"}},
+				{path: "configs/foo", op: logical.ReadOperation, output: map[string]any{"plugin": "transit", "foo": "bar"}},
 			})
 		})
 	})

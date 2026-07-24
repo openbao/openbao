@@ -157,6 +157,28 @@ func (r *Registry) ReadConfig(ctx context.Context, s logical.Storage, name strin
 	return &ce, nil
 }
 
+// ReadRedactedConfig reads a config entry from the passed storage and redacts
+// any sensitive configuration fields in the returned entry.
+func (r *Registry) ReadRedactedConfig(ctx context.Context, s logical.Storage, name string) (*ConfigEntry, error) {
+	ce, err := r.ReadConfig(ctx, s, name)
+	if ce == nil || ce.Values == nil || err != nil {
+		return ce, err
+	}
+
+	meta, err := r.plugins.GetMetadata(ctx, ce.Plugin)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read metadata for plugin %q: %w", ce.Plugin, err)
+	}
+
+	for _, field := range meta.SensitiveKMSFields {
+		if _, ok := ce.Values[field]; ok {
+			ce.Values[field] = "***"
+		}
+	}
+
+	return ce, nil
+}
+
 // ModifyConfig reads and writes back a config entry, optionally instantiating
 // it against the respective plugin to ensure it is working.
 func (r *Registry) ModifyConfig(ctx context.Context, s logical.Storage, name string, verify bool, f func(ce *ConfigEntry, exists bool) error) error {
@@ -332,6 +354,33 @@ func (r *Registry) ReadKey(ctx context.Context, s logical.Storage, configName, k
 	}
 
 	return &ke, nil
+}
+
+// ReadRedactedKey reads a key entry from the passed storage and redacts any
+// sensitive configuration fields in the returned entry.
+func (r *Registry) ReadRedactedKey(ctx context.Context, s logical.Storage, configName, keyName string) (*KeyEntry, error) {
+	ce, err := r.ReadConfig(ctx, s, configName)
+	if ce == nil || err != nil {
+		return nil, err
+	}
+
+	ke, err := r.ReadKey(ctx, s, configName, keyName)
+	if ke == nil || ke.Values == nil || err != nil {
+		return ke, err
+	}
+
+	meta, err := r.plugins.GetMetadata(ctx, ce.Plugin)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read metadata for plugin %q: %w", ce.Plugin, err)
+	}
+
+	for _, field := range meta.SensitiveKeyFields {
+		if _, ok := ke.Values[field]; ok {
+			ke.Values[field] = "***"
+		}
+	}
+
+	return ke, nil
 }
 
 // ModifyKey reads and writes back a key entry, optionally instantiating it

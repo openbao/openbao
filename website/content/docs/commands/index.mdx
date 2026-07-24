@@ -260,10 +260,16 @@ automatically query the OpenBao server and return helpful argument suggestions.
 
 ## Token helper
 
+To authenticate, use the [`login` command](login.mdx):
+
+```shell-session
+$ bao login
+```
+
 By default, the OpenBao CLI uses a "token helper" to cache the token after
 authentication. This is conceptually similar to how a website securely stores
 your session information as a cookie in the browser. Token helpers are
-customizable, and you can even build your own.
+customizable, and you can even [build your own](token-helper.mdx).
 
 The default token helper stores the token in `~/.vault-token`. You can delete
 this file at any time to "logout" of OpenBao. You can override this location

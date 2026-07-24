@@ -51,6 +51,26 @@ This will have one of the following behaviors:
    will be held until the operator configured timeout has been met and then
    will be either forwarded or rejected depending on operator preference.
 
+The `X-Vault-Inconsistent` header can also be specified twice: `await-state`
+with an additional value of `fail` or `forward-active-node` bypasses the
+operator configuration value of default behavior.
+
+### Configuration parameters
+
+Operators can define two new consistency on a per-listener bases:
+
+ - `consistency_missing_header_forward` `(bool: false)` - which by default
+   handles requests to standby nodes locally which lack the `X-Vault-Inconsistent`
+   headers, but allows defaulting to forwarding requests with missing headers
+   to the active node for strict consistency guarantees on legacy clients.
+ - `consistency_fallback_behavior` `(string: "forward-active-node")` - which
+   takes a second value for `X-Vault-Inconsistent` if only `await-stae` is
+   specified. The value `fail` rejects the request with an HTTP 412 status
+   code.
+
+Note that `consistency_missing_header_forward` only applies based on the one
+header: if `X-Vault-Index` is not specified on the request.
+
 ## Technical Description
 
 With [GRPC invalidation](./grpc-invalidation.mdx), all storage backends will
@@ -76,7 +96,8 @@ that applies fairly early in the stack.
 
 While nominally Vault Enterprise only returns the `X-Vault-Index` response
 header on operations which incurred a write, we'll opt to always return the
-index for ease of use.
+index for ease of use and avoiding the need to track which operations actually
+involved a write.
 
 ## Rationale and Alternatives
 

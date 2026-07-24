@@ -1,0 +1,3 @@
+```release-note:fix
+Corrected link in `ui/app/templates/components/database-connection.hbs` from `/api/secret/databases` to `/api-docs/secret/databases` to send to the correct documentation page [https://openbao.org/api-docs/secret/databases](https://openbao.org/api-docs/secret/databases)
+```

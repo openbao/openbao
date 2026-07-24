@@ -71,6 +71,22 @@ type CacheInvalidationBackend interface {
 
 type InvalidateFunc func(key ...string)
 
+// ReplicationIndexBackend is an extension to the standard physical backend
+// to support checking the current applied replication index. In the case of
+// a backend utilizing a WAL, such as Raft or PostgreSQL, this would be the
+// last applied WAL index. Note that references are opaque strings and may not
+// make any sense to the end-consumer.
+type ReplicationIndexBackend interface {
+	// AppliedReplicationIndex returns the last applied replication index as
+	// an opaque identifier.
+	AppliedReplicationIndex(ctx context.Context) (string, error)
+
+	// GreaterEqualReplicationIndex returns whether the left index is greater
+	// than or equal to the right index. Context is passed so that online
+	// comparisons which require a round-trip to the remote can be performed.
+	GreaterEqualReplicationIndex(ctx context.Context, left string, right string) (bool, error)
+}
+
 // HABackend is an extensions to the standard physical
 // backend to support high-availability. Vault only expects to
 // use mutual exclusion to allow multiple instances to act as a

@@ -381,6 +381,206 @@ func (x *ClientKey) GetD() []byte {
 	return nil
 }
 
+type StartInvalidationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Uuid          string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartInvalidationRequest) Reset() {
+	*x = StartInvalidationRequest{}
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartInvalidationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartInvalidationRequest) ProtoMessage() {}
+
+func (x *StartInvalidationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartInvalidationRequest.ProtoReflect.Descriptor instead.
+func (*StartInvalidationRequest) Descriptor() ([]byte, []int) {
+	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *StartInvalidationRequest) GetUuid() string {
+	if x != nil {
+		return x.Uuid
+	}
+	return ""
+}
+
+type StartInvalidationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Index         string                 `protobuf:"bytes,1,opt,name=index,proto3" json:"index,omitempty"`
+	Err           string                 `protobuf:"bytes,2,opt,name=err,proto3" json:"err,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartInvalidationResponse) Reset() {
+	*x = StartInvalidationResponse{}
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartInvalidationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartInvalidationResponse) ProtoMessage() {}
+
+func (x *StartInvalidationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartInvalidationResponse.ProtoReflect.Descriptor instead.
+func (*StartInvalidationResponse) Descriptor() ([]byte, []int) {
+	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *StartInvalidationResponse) GetIndex() string {
+	if x != nil {
+		return x.Index
+	}
+	return ""
+}
+
+func (x *StartInvalidationResponse) GetErr() string {
+	if x != nil {
+		return x.Err
+	}
+	return ""
+}
+
+type CheckInvalidationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckInvalidationRequest) Reset() {
+	*x = CheckInvalidationRequest{}
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckInvalidationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckInvalidationRequest) ProtoMessage() {}
+
+func (x *CheckInvalidationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckInvalidationRequest.ProtoReflect.Descriptor instead.
+func (*CheckInvalidationRequest) Descriptor() ([]byte, []int) {
+	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{6}
+}
+
+type CheckInvalidationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Index         string                 `protobuf:"bytes,1,opt,name=index,proto3" json:"index,omitempty"`
+	Keys          []string               `protobuf:"bytes,2,rep,name=keys,proto3" json:"keys,omitempty"`
+	Restart       bool                   `protobuf:"varint,3,opt,name=restart,proto3" json:"restart,omitempty"`
+	Uuid          string                 `protobuf:"bytes,4,opt,name=uuid,proto3" json:"uuid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckInvalidationResponse) Reset() {
+	*x = CheckInvalidationResponse{}
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckInvalidationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckInvalidationResponse) ProtoMessage() {}
+
+func (x *CheckInvalidationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckInvalidationResponse.ProtoReflect.Descriptor instead.
+func (*CheckInvalidationResponse) Descriptor() ([]byte, []int) {
+	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *CheckInvalidationResponse) GetIndex() string {
+	if x != nil {
+		return x.Index
+	}
+	return ""
+}
+
+func (x *CheckInvalidationResponse) GetKeys() []string {
+	if x != nil {
+		return x.Keys
+	}
+	return nil
+}
+
+func (x *CheckInvalidationResponse) GetRestart() bool {
+	if x != nil {
+		return x.Restart
+	}
+	return false
+}
+
+func (x *CheckInvalidationResponse) GetUuid() string {
+	if x != nil {
+		return x.Uuid
+	}
+	return ""
+}
+
 type NamespaceKey struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Uuid          string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
@@ -391,7 +591,7 @@ type NamespaceKey struct {
 
 func (x *NamespaceKey) Reset() {
 	*x = NamespaceKey{}
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[4]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -403,7 +603,7 @@ func (x *NamespaceKey) String() string {
 func (*NamespaceKey) ProtoMessage() {}
 
 func (x *NamespaceKey) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[4]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -416,7 +616,7 @@ func (x *NamespaceKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NamespaceKey.ProtoReflect.Descriptor instead.
 func (*NamespaceKey) Descriptor() ([]byte, []int) {
-	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{4}
+	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *NamespaceKey) GetUuid() string {
@@ -442,7 +642,7 @@ type AdvertiseNamespaceKeysRequest struct {
 
 func (x *AdvertiseNamespaceKeysRequest) Reset() {
 	*x = AdvertiseNamespaceKeysRequest{}
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[5]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -454,7 +654,7 @@ func (x *AdvertiseNamespaceKeysRequest) String() string {
 func (*AdvertiseNamespaceKeysRequest) ProtoMessage() {}
 
 func (x *AdvertiseNamespaceKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[5]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -467,7 +667,7 @@ func (x *AdvertiseNamespaceKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdvertiseNamespaceKeysRequest.ProtoReflect.Descriptor instead.
 func (*AdvertiseNamespaceKeysRequest) Descriptor() ([]byte, []int) {
-	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{5}
+	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *AdvertiseNamespaceKeysRequest) GetNamespaces() []string {
@@ -487,7 +687,7 @@ type AdvertiseNamespaceKeysReply struct {
 
 func (x *AdvertiseNamespaceKeysReply) Reset() {
 	*x = AdvertiseNamespaceKeysReply{}
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[6]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -499,7 +699,7 @@ func (x *AdvertiseNamespaceKeysReply) String() string {
 func (*AdvertiseNamespaceKeysReply) ProtoMessage() {}
 
 func (x *AdvertiseNamespaceKeysReply) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[6]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -512,7 +712,7 @@ func (x *AdvertiseNamespaceKeysReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdvertiseNamespaceKeysReply.ProtoReflect.Descriptor instead.
 func (*AdvertiseNamespaceKeysReply) Descriptor() ([]byte, []int) {
-	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{6}
+	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AdvertiseNamespaceKeysReply) GetNamespaces() []string {
@@ -538,7 +738,7 @@ type SendNamespaceKeysRequest struct {
 
 func (x *SendNamespaceKeysRequest) Reset() {
 	*x = SendNamespaceKeysRequest{}
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[7]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -550,7 +750,7 @@ func (x *SendNamespaceKeysRequest) String() string {
 func (*SendNamespaceKeysRequest) ProtoMessage() {}
 
 func (x *SendNamespaceKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[7]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -563,7 +763,7 @@ func (x *SendNamespaceKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendNamespaceKeysRequest.ProtoReflect.Descriptor instead.
 func (*SendNamespaceKeysRequest) Descriptor() ([]byte, []int) {
-	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{7}
+	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SendNamespaceKeysRequest) GetKeys() []*NamespaceKey {
@@ -582,7 +782,7 @@ type SendNamespaceKeysReply struct {
 
 func (x *SendNamespaceKeysReply) Reset() {
 	*x = SendNamespaceKeysReply{}
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[8]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -594,7 +794,7 @@ func (x *SendNamespaceKeysReply) String() string {
 func (*SendNamespaceKeysReply) ProtoMessage() {}
 
 func (x *SendNamespaceKeysReply) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[8]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -607,7 +807,7 @@ func (x *SendNamespaceKeysReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendNamespaceKeysReply.ProtoReflect.Descriptor instead.
 func (*SendNamespaceKeysReply) Descriptor() ([]byte, []int) {
-	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{8}
+	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SendNamespaceKeysReply) GetRetry() bool {
@@ -626,7 +826,7 @@ type GetNamespaceKeysRequest struct {
 
 func (x *GetNamespaceKeysRequest) Reset() {
 	*x = GetNamespaceKeysRequest{}
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[9]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -638,7 +838,7 @@ func (x *GetNamespaceKeysRequest) String() string {
 func (*GetNamespaceKeysRequest) ProtoMessage() {}
 
 func (x *GetNamespaceKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[9]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -651,7 +851,7 @@ func (x *GetNamespaceKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNamespaceKeysRequest.ProtoReflect.Descriptor instead.
 func (*GetNamespaceKeysRequest) Descriptor() ([]byte, []int) {
-	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{9}
+	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetNamespaceKeysRequest) GetNamespaces() []string {
@@ -670,7 +870,7 @@ type GetNamespaceKeysReply struct {
 
 func (x *GetNamespaceKeysReply) Reset() {
 	*x = GetNamespaceKeysReply{}
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[10]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -682,7 +882,7 @@ func (x *GetNamespaceKeysReply) String() string {
 func (*GetNamespaceKeysReply) ProtoMessage() {}
 
 func (x *GetNamespaceKeysReply) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[10]
+	mi := &file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -695,7 +895,7 @@ func (x *GetNamespaceKeysReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNamespaceKeysReply.ProtoReflect.Descriptor instead.
 func (*GetNamespaceKeysReply) Descriptor() ([]byte, []int) {
-	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{10}
+	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetNamespaceKeysReply) GetKeys() []*NamespaceKey {
@@ -743,7 +943,18 @@ const file_internal_vault_forwarding_request_forwarding_service_proto_rawDesc = 
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\f\n" +
 	"\x01x\x18\x02 \x01(\fR\x01x\x12\f\n" +
 	"\x01y\x18\x03 \x01(\fR\x01y\x12\f\n" +
-	"\x01d\x18\x04 \x01(\fR\x01d\"4\n" +
+	"\x01d\x18\x04 \x01(\fR\x01d\".\n" +
+	"\x18StartInvalidationRequest\x12\x12\n" +
+	"\x04uuid\x18\x01 \x01(\tR\x04uuid\"C\n" +
+	"\x19StartInvalidationResponse\x12\x14\n" +
+	"\x05index\x18\x01 \x01(\tR\x05index\x12\x10\n" +
+	"\x03err\x18\x02 \x01(\tR\x03err\"\x1a\n" +
+	"\x18CheckInvalidationRequest\"s\n" +
+	"\x19CheckInvalidationResponse\x12\x14\n" +
+	"\x05index\x18\x01 \x01(\tR\x05index\x12\x12\n" +
+	"\x04keys\x18\x02 \x03(\tR\x04keys\x12\x18\n" +
+	"\arestart\x18\x03 \x01(\bR\arestart\x12\x12\n" +
+	"\x04uuid\x18\x04 \x01(\tR\x04uuid\"4\n" +
 	"\fNamespaceKey\x12\x12\n" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\fR\x03key\"?\n" +
@@ -765,13 +976,15 @@ const file_internal_vault_forwarding_request_forwarding_service_proto_rawDesc = 
 	"namespaces\x18\x01 \x03(\tR\n" +
 	"namespaces\"E\n" +
 	"\x15GetNamespaceKeysReply\x12,\n" +
-	"\x04keys\x18\x01 \x03(\v2\x18.forwarding.NamespaceKeyR\x04keys2\xbb\x03\n" +
+	"\x04keys\x18\x01 \x03(\v2\x18.forwarding.NamespaceKeyR\x04keys2\x87\x05\n" +
 	"\x11RequestForwarding\x128\n" +
 	"\x04Echo\x12\x17.forwarding.EchoRequest\x1a\x15.forwarding.EchoReply\"\x00\x12=\n" +
 	"\x0eForwardRequest\x12\x13.forwarding.Request\x1a\x14.forwarding.Response\"\x00\x12n\n" +
 	"\x16AdvertiseNamespaceKeys\x12).forwarding.AdvertiseNamespaceKeysRequest\x1a'.forwarding.AdvertiseNamespaceKeysReply\"\x00\x12_\n" +
 	"\x11SendNamespaceKeys\x12$.forwarding.SendNamespaceKeysRequest\x1a\".forwarding.SendNamespaceKeysReply\"\x00\x12\\\n" +
-	"\x10GetNamespaceKeys\x12#.forwarding.GetNamespaceKeysRequest\x1a!.forwarding.GetNamespaceKeysReply\"\x00B9Z7github.com/openbao/openbao/v2/internal/vault/forwardingb\x06proto3"
+	"\x10GetNamespaceKeys\x12#.forwarding.GetNamespaceKeysRequest\x1a!.forwarding.GetNamespaceKeysReply\"\x00\x12c\n" +
+	"\x12StartInvalidations\x12$.forwarding.StartInvalidationRequest\x1a%.forwarding.StartInvalidationResponse\"\x00\x12e\n" +
+	"\x12CheckInvalidations\x12$.forwarding.CheckInvalidationRequest\x1a%.forwarding.CheckInvalidationResponse\"\x000\x01B9Z7github.com/openbao/openbao/v2/internal/vault/forwardingb\x06proto3"
 
 var (
 	file_internal_vault_forwarding_request_forwarding_service_proto_rawDescOnce sync.Once
@@ -785,39 +998,47 @@ func file_internal_vault_forwarding_request_forwarding_service_proto_rawDescGZIP
 	return file_internal_vault_forwarding_request_forwarding_service_proto_rawDescData
 }
 
-var file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_internal_vault_forwarding_request_forwarding_service_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_internal_vault_forwarding_request_forwarding_service_proto_goTypes = []any{
 	(*EchoRequest)(nil),                   // 0: forwarding.EchoRequest
 	(*EchoReply)(nil),                     // 1: forwarding.EchoReply
 	(*NodeInformation)(nil),               // 2: forwarding.NodeInformation
 	(*ClientKey)(nil),                     // 3: forwarding.ClientKey
-	(*NamespaceKey)(nil),                  // 4: forwarding.NamespaceKey
-	(*AdvertiseNamespaceKeysRequest)(nil), // 5: forwarding.AdvertiseNamespaceKeysRequest
-	(*AdvertiseNamespaceKeysReply)(nil),   // 6: forwarding.AdvertiseNamespaceKeysReply
-	(*SendNamespaceKeysRequest)(nil),      // 7: forwarding.SendNamespaceKeysRequest
-	(*SendNamespaceKeysReply)(nil),        // 8: forwarding.SendNamespaceKeysReply
-	(*GetNamespaceKeysRequest)(nil),       // 9: forwarding.GetNamespaceKeysRequest
-	(*GetNamespaceKeysReply)(nil),         // 10: forwarding.GetNamespaceKeysReply
-	(*forwarding.Request)(nil),            // 11: forwarding.Request
-	(*forwarding.Response)(nil),           // 12: forwarding.Response
+	(*StartInvalidationRequest)(nil),      // 4: forwarding.StartInvalidationRequest
+	(*StartInvalidationResponse)(nil),     // 5: forwarding.StartInvalidationResponse
+	(*CheckInvalidationRequest)(nil),      // 6: forwarding.CheckInvalidationRequest
+	(*CheckInvalidationResponse)(nil),     // 7: forwarding.CheckInvalidationResponse
+	(*NamespaceKey)(nil),                  // 8: forwarding.NamespaceKey
+	(*AdvertiseNamespaceKeysRequest)(nil), // 9: forwarding.AdvertiseNamespaceKeysRequest
+	(*AdvertiseNamespaceKeysReply)(nil),   // 10: forwarding.AdvertiseNamespaceKeysReply
+	(*SendNamespaceKeysRequest)(nil),      // 11: forwarding.SendNamespaceKeysRequest
+	(*SendNamespaceKeysReply)(nil),        // 12: forwarding.SendNamespaceKeysReply
+	(*GetNamespaceKeysRequest)(nil),       // 13: forwarding.GetNamespaceKeysRequest
+	(*GetNamespaceKeysReply)(nil),         // 14: forwarding.GetNamespaceKeysReply
+	(*forwarding.Request)(nil),            // 15: forwarding.Request
+	(*forwarding.Response)(nil),           // 16: forwarding.Response
 }
 var file_internal_vault_forwarding_request_forwarding_service_proto_depIDxs = []int32{
 	2,  // 0: forwarding.EchoRequest.node_info:type_name -> forwarding.NodeInformation
 	2,  // 1: forwarding.EchoReply.node_info:type_name -> forwarding.NodeInformation
-	4,  // 2: forwarding.SendNamespaceKeysRequest.keys:type_name -> forwarding.NamespaceKey
-	4,  // 3: forwarding.GetNamespaceKeysReply.keys:type_name -> forwarding.NamespaceKey
+	8,  // 2: forwarding.SendNamespaceKeysRequest.keys:type_name -> forwarding.NamespaceKey
+	8,  // 3: forwarding.GetNamespaceKeysReply.keys:type_name -> forwarding.NamespaceKey
 	0,  // 4: forwarding.RequestForwarding.Echo:input_type -> forwarding.EchoRequest
-	11, // 5: forwarding.RequestForwarding.ForwardRequest:input_type -> forwarding.Request
-	5,  // 6: forwarding.RequestForwarding.AdvertiseNamespaceKeys:input_type -> forwarding.AdvertiseNamespaceKeysRequest
-	7,  // 7: forwarding.RequestForwarding.SendNamespaceKeys:input_type -> forwarding.SendNamespaceKeysRequest
-	9,  // 8: forwarding.RequestForwarding.GetNamespaceKeys:input_type -> forwarding.GetNamespaceKeysRequest
-	1,  // 9: forwarding.RequestForwarding.Echo:output_type -> forwarding.EchoReply
-	12, // 10: forwarding.RequestForwarding.ForwardRequest:output_type -> forwarding.Response
-	6,  // 11: forwarding.RequestForwarding.AdvertiseNamespaceKeys:output_type -> forwarding.AdvertiseNamespaceKeysReply
-	8,  // 12: forwarding.RequestForwarding.SendNamespaceKeys:output_type -> forwarding.SendNamespaceKeysReply
-	10, // 13: forwarding.RequestForwarding.GetNamespaceKeys:output_type -> forwarding.GetNamespaceKeysReply
-	9,  // [9:14] is the sub-list for method output_type
-	4,  // [4:9] is the sub-list for method input_type
+	15, // 5: forwarding.RequestForwarding.ForwardRequest:input_type -> forwarding.Request
+	9,  // 6: forwarding.RequestForwarding.AdvertiseNamespaceKeys:input_type -> forwarding.AdvertiseNamespaceKeysRequest
+	11, // 7: forwarding.RequestForwarding.SendNamespaceKeys:input_type -> forwarding.SendNamespaceKeysRequest
+	13, // 8: forwarding.RequestForwarding.GetNamespaceKeys:input_type -> forwarding.GetNamespaceKeysRequest
+	4,  // 9: forwarding.RequestForwarding.StartInvalidations:input_type -> forwarding.StartInvalidationRequest
+	6,  // 10: forwarding.RequestForwarding.CheckInvalidations:input_type -> forwarding.CheckInvalidationRequest
+	1,  // 11: forwarding.RequestForwarding.Echo:output_type -> forwarding.EchoReply
+	16, // 12: forwarding.RequestForwarding.ForwardRequest:output_type -> forwarding.Response
+	10, // 13: forwarding.RequestForwarding.AdvertiseNamespaceKeys:output_type -> forwarding.AdvertiseNamespaceKeysReply
+	12, // 14: forwarding.RequestForwarding.SendNamespaceKeys:output_type -> forwarding.SendNamespaceKeysReply
+	14, // 15: forwarding.RequestForwarding.GetNamespaceKeys:output_type -> forwarding.GetNamespaceKeysReply
+	5,  // 16: forwarding.RequestForwarding.StartInvalidations:output_type -> forwarding.StartInvalidationResponse
+	7,  // 17: forwarding.RequestForwarding.CheckInvalidations:output_type -> forwarding.CheckInvalidationResponse
+	11, // [11:18] is the sub-list for method output_type
+	4,  // [4:11] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name
@@ -834,7 +1055,7 @@ func file_internal_vault_forwarding_request_forwarding_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_vault_forwarding_request_forwarding_service_proto_rawDesc), len(file_internal_vault_forwarding_request_forwarding_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

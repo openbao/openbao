@@ -1,3 +1,12 @@
+## 2.7.0
+
+FEATURES:
+
+* **Control Groups**: Adds support for a new ACL stanza, `control_group`, which specifies when a second party must approve a request for a path. [[GH-2241](https://github.com/openbao/openbao/pull/2241)]
+  - Approvers must belong to one or more groups specified in the control group `factor`.
+  - Uses existing `response_wrapping` workflow, with additional `sys/control-group` endpoints for review and approval.
+  - Self authorization is not allowed by default, but can be enabled per control group.
+
 ## 2.6.0-beta20260622
 ## June 22, 2026
 

@@ -70,7 +70,11 @@ export default Component.extend({
     const { model } = this;
     if (!model) return;
     if ((model.isDirty && !model.isDestroyed) || !model.isDestroying) {
-      model.rollbackAttributes();
+      try {
+        model.rollbackAttributes();
+      } catch {
+        // model's internal graph may already be torn down during destruction
+      }
     }
   },
 });

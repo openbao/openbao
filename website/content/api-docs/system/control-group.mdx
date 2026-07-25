@@ -78,7 +78,12 @@ $ curl \
 {
   "data": {
     "approved": false,
-    "request_path": "secret/foo",
+    "request_operation": "update",
+    "request_path": "pki/issue",
+    "request_data": {
+        "common_name": "www.example.com",
+        "ttl": "24h"
+    },
     "request_entity": {
       "id": "c8b6e404-de4b-50a4-2917-715ff8beec8e",
       "name": "Bob"

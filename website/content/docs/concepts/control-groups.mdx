@@ -17,10 +17,10 @@ executed and secret is released.
 ## The workflow
 
 The general flow for using control groups is as follows:
-1. A "control_group" stanza is declared in the policy for a path. 
+1. A `control_group` stanza is declared in the policy for a path.
 2. When a request for a path triggers the control group factor, the
    response will be [`wrapped`](response-wrapping.mdx).
-3. The wrapped response will contain a "token" and an "accessor". The
+3. The wrapped response will contain a `token` and an `accessor`. The
    requester needs to forward the accessor to a member of the
    approving group and request authorization. **Please note: the approvers are not
    notified that they have a pending request.**
@@ -166,10 +166,10 @@ satisfied.
 
 ```hcl
 path "secret/foo" {
-    capabilities = ["write","read"]
+    capabilities = ["create","update","read"]
     control_group = {
         factor "admin" {
-            controlled_capabilities = ["write"]
+            controlled_capabilities = ["update"]
             identity {
                 group_names = ["admin"]
                 approvals = 1
@@ -179,13 +179,13 @@ path "secret/foo" {
 }
 ```
 
-The above policy grants `read` access to `secret/foo` for anyone that has a token
-with this policy. It grants `write` access to `secret/foo` only after one member from the
+The above policy grants `create` and `read` access to `secret/foo` for anyone that has a token
+with this policy. It grants `update` access to `secret/foo` only after one member from the
 admin group authorizes the request.
 
 ```hcl
 path "kv/*" {
-    capabilities = ["create", "update","delete","list","sudo"]
+    capabilities = ["create","update","delete","list","sudo"]
     control_group = {
         factor "admin" {
             controlled_capabilities = ["delete","list","sudo"]
@@ -217,7 +217,7 @@ path stanza, `delete`,`list`, and `sudo` operations will require an additional a
 
 ```hcl
 path "kv/*" {
-    capabilities = ["read", "list", "create"]
+    capabilities = ["read","list","create"]
     control_group = {
         factor "admin" {
             controlled_capabilities = ["read"]

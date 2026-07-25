@@ -1238,7 +1238,12 @@ func (c *Core) needsApproval(ctx context.Context, req *logical.Request, auth *lo
 	if auth.PolicyResults != nil &&
 		auth.PolicyResults.ControlGroup != nil &&
 		req.ForwardedFrom != forwardedFromDeferral {
-		return true
+		for _, factor := range auth.PolicyResults.ControlGroup.Factors {
+			if len(factor.ControlledCapabilities) == 0 ||
+				slices.Contains(factor.ControlledCapabilities, req.Operation) {
+				return true
+			}
+		}
 	}
 	return false
 }

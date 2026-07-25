@@ -111,11 +111,11 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 
 	// Create a ControlGroup policy governing secret path
 	cgPolicy := `path "cg_test/foo" {
-		capabilities = ["create", "list", "read"]
+		capabilities = ["create", "update", "list", "read"]
 		control_group = {
 			ttl = "15s"
 			factor "admin-approval" {
-				controlled_capabilities = ["read"]
+				controlled_capabilities = ["update"]
 				identity = {
 					group_names = ["admin"]
 					approvals = 1
@@ -147,7 +147,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 	require.NoError(t, err)
 	nonRootToken := resp.Auth.ClientToken
 
-	// Request protected resource
+	// Request protected resource with read (allowed)
 	req = &logical.Request{
 		Path:        "cg_test/foo",
 		ClientToken: nonRootToken,
@@ -160,8 +160,28 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("bad: %v", resp)
 	}
+	// Excpect unwrapped response
+	if resp.WrapInfo != nil {
+		t.Fatalf("unexpected response wrapping: %v", resp)
+	}
 
-	// Expect it to be wrapped
+	// Request protected resource with update (controlled)
+	req = &logical.Request{
+		Path:        "cg_test/foo",
+		ClientToken: nonRootToken,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"data": "none",
+		},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("bad: %v", resp)
+	}
+	// Expect wrapped response
 	if resp.WrapInfo == nil || resp.WrapInfo.TTL != time.Duration(15*time.Second) {
 		t.Fatalf("bad wrap_info: %#v", resp)
 	}

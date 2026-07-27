@@ -170,7 +170,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		Path:        "cg_test/foo",
 		ClientToken: nonRootToken,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"data": "none",
 		},
 	}

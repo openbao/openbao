@@ -472,7 +472,9 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	if err != nil {
 		t.Fatal(err)
 	}
-	// approverGroupID := resp.Data["id"]
+	if resp.Data["id"] == nil {
+		t.Fatal("new group should have id")
+	}
 
 	// Enable userpass auth
 	err = client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
@@ -547,7 +549,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	}
 	bobToken := authResponse.Auth.ClientToken
 
-	//Create a secret protected by control group policy by path
+	// Create a secret protected by control group policy by path
 	_, err = client.Logical().Write("secret/foo", map[string]any{
 		"foo": "bar",
 	})

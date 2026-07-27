@@ -593,15 +593,16 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 
 	// Authorize it
 	client.SetToken(bobToken)
-	approverResponse, err := client.Logical().ReadWithData("sys/control-group/request", map[string][]string{
-		"accessor": []string{wrapInfo.Accessor},
-	})
+	params := make(map[string][]string)
+	params["accessor"] = []string{wrapInfo.Accessor}
+	approverResponse, err := client.Logical().ReadWithData("sys/control-group/request", params)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if approverResponse.Data["approved"] == nil {
 		t.Fatal("unexpected request data")
 	}
+
 	approverResponse, err = client.Logical().Write("sys/control-group/authorize", map[string]any{
 		"accessor": wrapInfo.Accessor,
 	})

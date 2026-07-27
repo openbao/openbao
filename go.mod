@@ -11,6 +11,8 @@ module github.com/openbao/openbao/v2
 
 go 1.26.0
 
+toolchain go1.26.5
+
 replace github.com/openbao/openbao/api/v2 => ./api
 
 replace github.com/openbao/openbao/api/auth/approle/v2 => ./api/auth/approle

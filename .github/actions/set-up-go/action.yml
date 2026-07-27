@@ -15,19 +15,13 @@ outputs:
   cache-path:
     description: "The GOMODCACHE path"
     value: ${{ steps.metadata.outputs.cache-path }}
-  go-version:
-    description: "The version of Go in the .go-version file"
-    value: ${{ steps.go-version.outputs.go-version }}
 
 runs:
   using: composite
   steps:
-    - id: go-version
-      shell: bash
-      run: echo "go-version=$(cat ./.go-version)" >> "$GITHUB_OUTPUT"
     - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
-        go-version: ${{ steps.go-version.outputs.go-version }}
+        go-version-file: go.mod
         cache: false # We use our own caching strategy
     - id: metadata
       shell: bash

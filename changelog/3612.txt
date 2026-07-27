@@ -1,0 +1,3 @@
+```release-note:change
+packaging: Pin the recommended Go version via [`toolchain`](https://go.dev/ref/mod#go-mod-file-toolchain) directive instead of `.go-version` file. If this causes problems in your downstream build pipeline, ensure you've set `GOTOOLCHAIN=local`.
+```

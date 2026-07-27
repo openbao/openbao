@@ -23,9 +23,8 @@ a better release process going forward.
       - [ ] GitHub milestones
       - [ ] Helm chart team
  - [ ] Ensure relevant features and bug fixes are present in the release.
- - [ ] Update Go version pinning in `/.go-release` and in the the `toolchain`
-       directive in `go.mod`; go-releaser uses this version via a custom
-       (in-repo) `set-up-go` action.
+ - [ ] Update Go version pinning in the `toolchain` directive in `go.mod`;
+       goreleaser uses this version via a custom (in-repo) `set-up-go` action.
  - [ ] Update external dependencies with vulnerabilities. Major changes should
        be done earlier in the release cycle to give the community time to find
        any breaking issues.

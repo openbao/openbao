@@ -9,7 +9,6 @@
 # Core team ownership
 /api/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 /CHANGELOG.md @openbao/openbao-org-maintainers @openbao/openbao-core-committers
-/.go-version @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 /go.mod @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 /go.sum @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 /internal/audit/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers

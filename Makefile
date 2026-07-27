@@ -11,7 +11,6 @@ INTEG_TEST_TIMEOUT=120m
 GO_MODS?=$$(find . -name go.mod -not -path ./tools/go.mod | xargs -L 1 dirname)
 SED?=$(shell command -v gsed || command -v sed)
 
-GO_VERSION_MIN=$$(cat $(CURDIR)/.go-version)
 PROTOC_VERSION=34.0
 CGO_ENABLED?=0
 
@@ -45,14 +44,6 @@ dev-dynamic-mem: dev-dynamic
 
 dev-tlsdebug: BUILD_TAGS+=tlsdebug
 dev-tlsdebug: dev
-
-# Creates a Docker image by adding the compiled linux/amd64 binary found in ./bin.
-# The resulting image is tagged "openbao:dev".
-docker-dev: prep
-	$(DOCKER_CMD) build --build-arg VERSION=$(GO_VERSION_MIN) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -f scripts/docker/Dockerfile -t openbao:dev .
-
-docker-dev-ui: prep
-	$(DOCKER_CMD) build --build-arg VERSION=$(GO_VERSION_MIN) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -f scripts/docker/Dockerfile.ui -t openbao:dev-ui .
 
 # test runs the unit tests and vets the code
 test: prep

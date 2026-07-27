@@ -83,11 +83,11 @@ Documentation is available on the [OpenBao website](https://openbao.org/docs/).
 > [`CONTRIBUTING.md`](./CONTRIBUTING.md). A failure to do so will likely result
 > in your pull request being rejected.
 
-If you wish to work on OpenBao itself or any of its built-in systems,
-you'll first need [Go](https://www.golang.org) installed on your
-machine. The Go toolchain version used in CI and releases is pinned at
-[`.go-version`](./.go-version), but using the latest toolchain available for
-local development is typically fine.
+If you wish to work on OpenBao itself or any of its built-in systems, you'll
+first need [Go](https://www.golang.org) installed on your machine. The Go
+toolchain version used in CI and releases is pinned in [`go.mod`](./go.mod) via
+the `toolchain` directive, but using the latest toolchain available for local
+development is typically fine.
 
 OpenBao uses [Go Modules](https://github.com/golang/go/wiki/Modules), so it is
 recommended that you clone the repository ***outside*** of the GOPATH.

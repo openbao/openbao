@@ -130,6 +130,7 @@ lint:
 # dependency.
 prep:
 	@if [ -d .git/hooks ]; then cp .hooks/* .git/hooks/; fi
+	@if [ -f .git-blame-ignore-revs ]; then git config blame.ignoreRevsFile .git-blame-ignore-revs; fi
 
 # bootstrap the build by downloading additional tools that may be used by devs
 #

@@ -17,7 +17,6 @@ const sidebars: SidebarsConfig = {
         {
             "Getting Started": ["get-started/developer-qs"],
         },
-        "browser-support",
         "install",
         {
             Internals: [
@@ -506,6 +505,7 @@ const sidebars: SidebarsConfig = {
                 "upgrading/plugins",
             ],
         },
+        "browser-support",
         "glossary",
     ],
 };

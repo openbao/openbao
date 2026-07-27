@@ -11,10 +11,10 @@ import TabItem from '@theme/TabItem';
 # Declarative Audit Devices
 
 The `audit` stanza allows definition of [audit devices](../audit/index.mdx) from the
-OpenBao server configuration file. These audit devices are created and removed
+OpenBao server configuration file. These audit devices are enabled and disabled
 on the active node during restarts and `SIGHUP` events. Audit devices cannot
 be modified and cannot duplicate existing API-created devices. Removal of the
-configuration stanza will result in the audit device being removed; it is
+configuration stanza will result in the audit device being removed (disabled); it is
 important to have the same configuration across all servers.
 
 # `audit` stanza

@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/api/v2"
-	"github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	"github.com/openbao/openbao/v2/internal/vault"
 )
 
@@ -434,7 +434,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	client := cores[0].Client
 	client.SetToken(cluster.RootToken)
 
-	resp, err := client.Logical().Write("identity/entity", map[string]interface{}{
+	resp, err := client.Logical().Write("identity/entity", map[string]any{
 		"name": "alice",
 		"policies": []string{
 			"secretPolicy",
@@ -448,7 +448,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	}
 	aliceID := resp.Data["id"].(string)
 
-	resp, err = client.Logical().Write("identity/entity", map[string]interface{}{
+	resp, err = client.Logical().Write("identity/entity", map[string]any{
 		"name":     "bob",
 		"policies": []string{},
 		"metadata": map[string]string{
@@ -460,7 +460,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	}
 	bobID := resp.Data["id"].(string)
 
-	resp, err = client.Logical().Write("identity/group", map[string]interface{}{
+	resp, err = client.Logical().Write("identity/group", map[string]any{
 		"policies": []string{
 			"approverPolicy",
 		},
@@ -489,7 +489,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	userpassAccessor := auths["userpass/"].Accessor
 
 	// Create aliases
-	resp, err = client.Logical().Write("identity/entity-alias", map[string]interface{}{
+	resp, err = client.Logical().Write("identity/entity-alias", map[string]any{
 		"name":           "alice",
 		"mount_accessor": userpassAccessor,
 		"canonical_id":   aliceID,
@@ -497,7 +497,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	if err != nil {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
-	resp, err = client.Logical().Write("identity/entity-alias", map[string]interface{}{
+	resp, err = client.Logical().Write("identity/entity-alias", map[string]any{
 		"name":           "bob",
 		"mount_accessor": userpassAccessor,
 		"canonical_id":   bobID,
@@ -507,13 +507,13 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	}
 
 	// Add users to userpass backend
-	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]any{
 		"password": "alicepw",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]any{
 		"password": "bobpw",
 	})
 	if err != nil {
@@ -531,7 +531,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	}
 
 	// Authenticate
-	authResponse, err := client.Logical().Write("auth/userpass/login/alice", map[string]interface{}{
+	authResponse, err := client.Logical().Write("auth/userpass/login/alice", map[string]any{
 		"password": "alicepw",
 	})
 	if err != nil {
@@ -539,7 +539,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	}
 	aliceToken := authResponse.Auth.ClientToken
 
-	authResponse, err = client.Logical().Write("auth/userpass/login/bob", map[string]interface{}{
+	authResponse, err = client.Logical().Write("auth/userpass/login/bob", map[string]any{
 		"password": "bobpw",
 	})
 	if err != nil {
@@ -548,7 +548,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	bobToken := authResponse.Auth.ClientToken
 
 	//Create a secret protected by control group policy by path
-	_, err = client.Logical().Write("secret/foo", map[string]interface{}{
+	_, err = client.Logical().Write("secret/foo", map[string]any{
 		"foo": "bar",
 	})
 	if err != nil {
@@ -561,7 +561,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 
 	// Get the wrapped response with wrapping token and accessor
 	client.SetToken(aliceToken)
-	secretResponse, err := client.Logical().Write("secret/foo", map[string]interface{}{
+	secretResponse, err := client.Logical().Write("secret/foo", map[string]any{
 		"foo": "baz",
 	})
 	if err != nil {
@@ -574,7 +574,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 
 	// Attempt unwrap via the client token (should be error now)
 	client.SetToken(wrapInfo.Token)
-	secretResponse, err = client.Logical().Write("sys/wrapping/unwrap", nil)
+	_, err = client.Logical().Write("sys/wrapping/unwrap", nil)
 	if err == nil {
 		t.Fatal(err)
 	}
@@ -582,6 +582,9 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	// Validate the update is deferred
 	client.SetToken(aliceToken)
 	secretResponse, err = client.Logical().Read("secret/foo")
+	if err != nil {
+		t.Fatal("unexpected error reading secret")
+	}
 	if secretResponse.Data["foo"] != "bar" {
 		t.Fatal("secret updated but should not have")
 	}
@@ -597,7 +600,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	if approverResponse.Data["approved"] == nil {
 		t.Fatal("unexpected request data")
 	}
-	approverResponse, err = client.Logical().Write("sys/control-group/authorize", map[string]interface{}{
+	approverResponse, err = client.Logical().Write("sys/control-group/authorize", map[string]any{
 		"accessor": wrapInfo.Accessor,
 	})
 	if err != nil {
@@ -609,7 +612,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 
 	// Unwrap via the wrapping token (should execute the secret update)
 	client.SetToken(wrapInfo.Token)
-	secretResponse, err = client.Logical().Write("sys/wrapping/unwrap", nil)
+	_, err = client.Logical().Write("sys/wrapping/unwrap", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

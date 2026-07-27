@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/vault"
 )
 
@@ -385,5 +387,240 @@ func TestHTTP_Wrapping(t *testing.T) {
 	var respError *api.ResponseError
 	if errors.As(err, &respError); respError.StatusCode != 403 {
 		t.Fatalf("expected 403 response, actual: %d", respError.StatusCode)
+	}
+}
+
+// Test wrapping functionality with Control Group
+func TestHTTP_ControlGroupWrapping(t *testing.T) {
+	secetPolicy := `
+path "secret/foo" {
+  capabilities = ["read", "update"]
+  control_group = {
+    ttl = "5m"
+    factor "security-approval" {
+      controlled_capabilities = ["update"]
+      identity = {
+	group_names = ["security-approvers"]
+	approvals   = 1
+      }
+    }
+  }
+}
+`
+
+	approverPolicy := `
+path "sys/control-group/authorize" { capabilities = ["update"] }
+path "sys/control-group/request"   { capabilities = ["read"] }
+`
+
+	coreConfig := &vault.CoreConfig{
+		CredentialBackends: map[string]logical.Factory{
+			"userpass": userpass.Factory,
+		},
+	}
+
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	cores := cluster.Cores
+
+	// make it easy to get access to the active
+	core := cores[0].Core
+	vault.TestWaitActive(t, core)
+
+	client := cores[0].Client
+	client.SetToken(cluster.RootToken)
+
+	resp, err := client.Logical().Write("identity/entity", map[string]interface{}{
+		"name": "alice",
+		"policies": []string{
+			"secretPolicy",
+		},
+		"metadata": map[string]string{
+			"key": "metadata",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliceID := resp.Data["id"].(string)
+
+	resp, err = client.Logical().Write("identity/entity", map[string]interface{}{
+		"name":     "bob",
+		"policies": []string{},
+		"metadata": map[string]string{
+			"key": "metadata",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bobID := resp.Data["id"].(string)
+
+	resp, err = client.Logical().Write("identity/group", map[string]interface{}{
+		"policies": []string{
+			"approverPolicy",
+		},
+		"member_entity_ids": []string{
+			bobID,
+		},
+		"name": "security-approvers",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// approverGroupID := resp.Data["id"]
+
+	// Enable userpass auth
+	err = client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
+		Type: "userpass",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	auths, err := client.Sys().ListAuth()
+	if err != nil {
+		t.Fatal(err)
+	}
+	userpassAccessor := auths["userpass/"].Accessor
+
+	// Create aliases
+	resp, err = client.Logical().Write("identity/entity-alias", map[string]interface{}{
+		"name":           "alice",
+		"mount_accessor": userpassAccessor,
+		"canonical_id":   aliceID,
+	})
+	if err != nil {
+		t.Fatalf("err:%v resp:%#v", err, resp)
+	}
+	resp, err = client.Logical().Write("identity/entity-alias", map[string]interface{}{
+		"name":           "bob",
+		"mount_accessor": userpassAccessor,
+		"canonical_id":   bobID,
+	})
+	if err != nil {
+		t.Fatalf("err:%v resp:%#v", err, resp)
+	}
+
+	// Add users to userpass backend
+	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]interface{}{
+		"password": "alicepw",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]interface{}{
+		"password": "bobpw",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Write policies
+	err = client.Sys().PutPolicy("secretPolicy", secetPolicy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = client.Sys().PutPolicy("approverPolicy", approverPolicy)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Authenticate
+	authResponse, err := client.Logical().Write("auth/userpass/login/alice", map[string]interface{}{
+		"password": "alicepw",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliceToken := authResponse.Auth.ClientToken
+
+	authResponse, err = client.Logical().Write("auth/userpass/login/bob", map[string]interface{}{
+		"password": "bobpw",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bobToken := authResponse.Auth.ClientToken
+
+	//Create a secret protected by control group policy by path
+	_, err = client.Logical().Write("secret/foo", map[string]interface{}{
+		"foo": "bar",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	//
+	// Test lookup
+	//
+
+	// Get the wrapped response with wrapping token and accessor
+	client.SetToken(aliceToken)
+	secretResponse, err := client.Logical().Write("secret/foo", map[string]interface{}{
+		"foo": "baz",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secretResponse == nil || secretResponse.WrapInfo == nil {
+		t.Fatal("wrap info is nil")
+	}
+	wrapInfo := secretResponse.WrapInfo
+
+	// Attempt unwrap via the client token (should be error now)
+	client.SetToken(wrapInfo.Token)
+	secretResponse, err = client.Logical().Write("sys/wrapping/unwrap", nil)
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	// Validate the update is deferred
+	client.SetToken(aliceToken)
+	secretResponse, err = client.Logical().Read("secret/foo")
+	if secretResponse.Data["foo"] != "bar" {
+		t.Fatal("secret updated but should not have")
+	}
+
+	// Authorize it
+	client.SetToken(bobToken)
+	approverResponse, err := client.Logical().ReadWithData("sys/control-group/request", map[string][]string{
+		"accessor": []string{wrapInfo.Accessor},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if approverResponse.Data["approved"] == nil {
+		t.Fatal("unexpected request data")
+	}
+	approverResponse, err = client.Logical().Write("sys/control-group/authorize", map[string]interface{}{
+		"accessor": wrapInfo.Accessor,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if approverResponse.Data["approved"] == nil {
+		t.Fatal("unexpected request data")
+	}
+
+	// Unwrap via the wrapping token (should execute the secret update)
+	client.SetToken(wrapInfo.Token)
+	secretResponse, err = client.Logical().Write("sys/wrapping/unwrap", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Validate the update has executed
+	client.SetToken(aliceToken)
+	secretResponse, err = client.Logical().Read("secret/foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secretResponse.Data["foo"] != "baz" {
+		t.Fatal("secret did not update")
 	}
 }

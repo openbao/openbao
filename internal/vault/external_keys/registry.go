@@ -5,6 +5,7 @@ package ek
 
 import (
 	"context"
+	"crypto"
 	"errors"
 	"fmt"
 	"path"
@@ -452,7 +453,12 @@ func (r *Registry) GetExternalKey(ctx context.Context, s logical.Storage, ns *na
 		return nil, err
 	}
 
-	return client.GetKey(ctx, &kms.KeyOptions{ConfigMap: ke.Values})
+	key, err := client.GetKey(ctx, &kms.KeyOptions{ConfigMap: ke.Values})
+	if err != nil {
+		return nil, err
+	}
+
+	return nilCheckingKey{key}, nil
 }
 
 var (
@@ -563,4 +569,67 @@ func (r *Registry) Stop(ctx context.Context) {
 	}
 
 	wg.Wait()
+}
+
+// nilCheckingKey is defense-in-depth against consumers of the external keys
+// SystemView passing nil values to key APIs. All keys returned by the registry
+// are wrapped in this.
+type nilCheckingKey struct {
+	// Note: Don't embed kms.UnimplementedKey here so we're forced to update
+	// this whenever the interface changes.
+	key kms.Key
+}
+
+func (n nilCheckingKey) Encrypt(ctx context.Context, opts *kms.CipherOptions) ([]byte, error) {
+	switch {
+	case opts == nil:
+		return nil, errors.New("cannot encrypt with nil opts")
+	case opts.Data == nil:
+		return nil, errors.New("cannot encrypt with nil opts.Data")
+	}
+	return n.key.Encrypt(ctx, opts)
+}
+
+func (n nilCheckingKey) Decrypt(ctx context.Context, opts *kms.CipherOptions) ([]byte, error) {
+	switch {
+	case opts == nil:
+		return nil, errors.New("cannot decrypt with nil opts")
+	case opts.Data == nil:
+		return nil, errors.New("cannot decrypt with nil opts.Data")
+	}
+	return n.key.Decrypt(ctx, opts)
+}
+
+func (n nilCheckingKey) Sign(ctx context.Context, opts *kms.SignOptions) ([]byte, error) {
+	switch {
+	case opts == nil:
+		return nil, errors.New("cannot sign with nil opts")
+	case opts.Data == nil:
+		return nil, errors.New("cannot sign with nil opts.Data")
+	case opts.SignerOpts == nil:
+		return nil, errors.New("cannot sign with nil opts.SignerOpts")
+	}
+	return n.key.Sign(ctx, opts)
+}
+
+func (n nilCheckingKey) Verify(ctx context.Context, opts *kms.VerifyOptions) error {
+	switch {
+	case opts == nil:
+		return errors.New("cannot verify with nil opts")
+	case opts.Data == nil:
+		return errors.New("cannot verify with nil opts.Data")
+	case opts.Signature == nil:
+		return errors.New("cannot verify with nil opts.Signature")
+	case opts.SignerOpts == nil:
+		return errors.New("cannot verify with nil opts.SignerOpts")
+	}
+	return n.key.Verify(ctx, opts)
+}
+
+func (n nilCheckingKey) ExportPublic(ctx context.Context) (crypto.PublicKey, error) {
+	return n.key.ExportPublic(ctx)
+}
+
+func (n nilCheckingKey) Close(ctx context.Context) error {
+	return n.key.Close(ctx)
 }

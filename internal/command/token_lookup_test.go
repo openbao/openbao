@@ -48,6 +48,18 @@ func TestTokenLookupCommand_Run(t *testing.T) {
 			"Too many arguments",
 			1,
 		},
+		{
+			"field",
+			[]string{"-field", "type"},
+			"service",
+			0,
+		},
+		{
+			"field_not_found",
+			[]string{"-field", "not-a-real-field"},
+			"not present in secret",
+			1,
+		},
 	}
 
 	t.Run("validations", func(t *testing.T) {

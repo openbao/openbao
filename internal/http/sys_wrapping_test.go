@@ -481,14 +481,14 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	userpassAccessor := auths["userpass/"].Accessor
 
 	// Create aliases
-	resp, err = client.Logical().Write("identity/entity-alias", map[string]any{
+	_, err = client.Logical().Write("identity/entity-alias", map[string]any{
 		"name":           "alice",
 		"mount_accessor": userpassAccessor,
 		"canonical_id":   aliceID,
 	})
 	require.NoError(t, err)
 
-	resp, err = client.Logical().Write("identity/entity-alias", map[string]any{
+	_, err = client.Logical().Write("identity/entity-alias", map[string]any{
 		"name":           "bob",
 		"mount_accessor": userpassAccessor,
 		"canonical_id":   bobID,

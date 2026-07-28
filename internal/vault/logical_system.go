@@ -4348,8 +4348,16 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 		return nil, err
 	}
 
+	v := version.Version
+	if req.ClientToken == "" {
+		listener := configutil.GetListenerConfigToContext(ctx)
+		if listener != nil && listener.DisableUnauthedMetadata {
+			v = "(version redacted)"
+		}
+	}
+
 	// Set up target document
-	doc := framework.NewOASDocument(version.Version)
+	doc := framework.NewOASDocument(v)
 
 	// Generic mount paths will primarily be used for code generation purposes.
 	// This will result in parameterized mount paths being returned instead of

@@ -1,0 +1,17 @@
+# Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
+# SPDX-License-Identifier: MPL-2.0
+
+rules:
+  - id: use-testify-for-error-checks
+    
+    metadata: 
+      category: best-practice
+    languages:
+     - go
+    severity: ERROR
+    message: "use github.com/stretchr/testify for test assertions"
+
+    patterns:
+      - pattern: 'if $ERR != nil { $T.Fatal(err) }'
+
+    fix: require.NoError($T, $ERR)

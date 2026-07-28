@@ -103,7 +103,7 @@ func TestExternalKeysBackend(t *testing.T) {
 		runTests(t, []test{
 			{path: "configs/foo", op: logical.DeleteOperation},
 			{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"plugin": "transit", "token": "dummy"}},
-			{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"name": "bar"}},
+			{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"name": "bar", "version": "1"}},
 			{path: "configs/foo", op: logical.DeleteOperation},
 			{path: "configs", op: logical.ListOperation, output: empty},
 			{path: "configs/foo", op: logical.ReadOperation, err: true},
@@ -120,10 +120,10 @@ func TestExternalKeysBackend(t *testing.T) {
 				{path: "configs/foo/keys", op: logical.ListOperation, output: empty},
 				{path: "configs/foo/keys/bar", op: logical.ReadOperation, err: true},
 				{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: empty, err: true},
-				{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"name": "bar"}},
-				{path: "configs/foo/keys/bar", op: logical.ReadOperation, output: map[string]any{"name": "bar"}},
-				{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"name": "bar", "disable_prehashing": true}},
-				{path: "configs/foo/keys/bar", op: logical.ReadOperation, output: map[string]any{"name": "bar", "disable_prehashing": true}},
+				{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"name": "bar", "version": "1"}},
+				{path: "configs/foo/keys/bar", op: logical.ReadOperation, output: map[string]any{"name": "bar", "version": "1"}},
+				{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"name": "bar", "disable_prehashing": true, "version": "1"}},
+				{path: "configs/foo/keys/bar", op: logical.ReadOperation, output: map[string]any{"name": "bar", "disable_prehashing": true, "version": "1"}},
 			})
 		})
 
@@ -134,8 +134,8 @@ func TestExternalKeysBackend(t *testing.T) {
 				{path: "configs/foo/keys/bar", op: logical.ReadOperation, err: true},
 				{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"verify": false}},
 				{path: "configs/foo/keys/bar", op: logical.ReadOperation, output: empty},
-				{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"abc": "def", "verify": false}},
-				{path: "configs/foo/keys/bar", op: logical.ReadOperation, output: map[string]any{"abc": "def"}},
+				{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"abc": "def", "verify": false, "version": "1"}},
+				{path: "configs/foo/keys/bar", op: logical.ReadOperation, output: map[string]any{"abc": "def", "version": "1"}},
 			})
 		})
 	})
@@ -144,23 +144,23 @@ func TestExternalKeysBackend(t *testing.T) {
 		t.Run("verify=true", func(t *testing.T) {
 			runTests(t, []test{
 				{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"plugin": "transit", "token": "dummy"}},
-				{path: "configs/foo/keys/bar", op: logical.PatchOperation, input: map[string]any{"name": "bar"}, err: true},
-				{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"name": "bar"}},
+				{path: "configs/foo/keys/bar", op: logical.PatchOperation, input: map[string]any{"name": "bar", "version": "1"}, err: true},
+				{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"name": "bar", "version": "1"}},
 				{path: "configs/foo/keys/bar", op: logical.PatchOperation, input: map[string]any{"name": nil}, err: true},
 				{path: "configs/foo/keys/bar", op: logical.PatchOperation, input: map[string]any{"disable_prehashing": true}},
-				{path: "configs/foo/keys/bar", op: logical.ReadOperation, output: map[string]any{"name": "bar", "disable_prehashing": true}},
+				{path: "configs/foo/keys/bar", op: logical.ReadOperation, output: map[string]any{"name": "bar", "disable_prehashing": true, "version": "1"}},
 				{path: "configs/foo/keys/bar", op: logical.PatchOperation, input: map[string]any{"disable_prehashing": nil}},
-				{path: "configs/foo/keys/bar", op: logical.ReadOperation, output: map[string]any{"name": "bar"}},
+				{path: "configs/foo/keys/bar", op: logical.ReadOperation, output: map[string]any{"name": "bar", "version": "1"}},
 			})
 		})
 
 		t.Run("verify=false", func(t *testing.T) {
 			runTests(t, []test{
 				{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"plugin": "transit", "token": "dummy"}},
-				{path: "configs/foo/keys/bar", op: logical.PatchOperation, input: map[string]any{"abc": "def", "verify": false}, err: true},
-				{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"abc": "def", "verify": false}},
-				{path: "configs/foo/keys/bar", op: logical.PatchOperation, input: map[string]any{"abc": nil, "def": "abc", "verify": false}},
-				{path: "configs/foo/keys/bar", op: logical.ReadOperation, output: map[string]any{"def": "abc"}},
+				{path: "configs/foo/keys/bar", op: logical.PatchOperation, input: map[string]any{"abc": "def", "verify": false, "version": "1"}, err: true},
+				{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"abc": "def", "verify": false, "version": "1"}},
+				{path: "configs/foo/keys/bar", op: logical.PatchOperation, input: map[string]any{"abc": nil, "def": "abc", "verify": false, "version": "1"}},
+				{path: "configs/foo/keys/bar", op: logical.ReadOperation, output: map[string]any{"def": "abc", "version": "1"}},
 			})
 		})
 	})
@@ -169,7 +169,7 @@ func TestExternalKeysBackend(t *testing.T) {
 		runTests(t, []test{
 			{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"plugin": "transit", "token": "dummy"}},
 			{path: "configs/foo/keys/bar", op: logical.DeleteOperation},
-			{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"name": "bar"}},
+			{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"name": "bar", "version": "1"}},
 			{path: "configs/foo/keys/bar", op: logical.DeleteOperation},
 			{path: "configs/foo/keys/bar", op: logical.ReadOperation, err: true},
 			{path: "configs/foo/keys/bar", op: logical.DeleteOperation},
@@ -179,7 +179,7 @@ func TestExternalKeysBackend(t *testing.T) {
 	t.Run("update grants", func(t *testing.T) {
 		runTests(t, []test{
 			{path: "configs/foo", op: logical.UpdateOperation, input: map[string]any{"plugin": "transit", "token": "dummy"}},
-			{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"name": "bar"}},
+			{path: "configs/foo/keys/bar", op: logical.UpdateOperation, input: map[string]any{"name": "bar", "version": "1"}},
 			{path: "configs/foo/keys/bar/grants/pki/", op: logical.UpdateOperation},
 			{path: "configs/foo/keys/bar/grants", op: logical.ListOperation, output: map[string]any{"keys": []string{"pki/"}}},
 			{path: "configs/foo/keys/bar/grants/transit", op: logical.UpdateOperation},

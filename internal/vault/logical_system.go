@@ -4629,6 +4629,15 @@ func (b *SystemBackend) handleSealStatus(ctx context.Context, req *logical.Reque
 	if err != nil {
 		return nil, err
 	}
+
+	if req.ClientToken == "" {
+		listener := configutil.GetListenerConfigToContext(ctx)
+		if listener != nil && listener.DisableUnauthedMetadata {
+			status.Version = "(version redacted)"
+			status.CommitDate = "(date redacted)"
+		}
+	}
+
 	buf, err := json.Marshal(status)
 	if err != nil {
 		return nil, err

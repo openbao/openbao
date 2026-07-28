@@ -1520,7 +1520,8 @@ func TestCore_Invalidate_ExternalKeys(t *testing.T) {
 		Operation:   logical.UpdateOperation,
 		ClientToken: root,
 		Data: map[string]any{
-			"name": "test",
+			"name":    "test",
+			"version": 1,
 		},
 	})
 	testCore_Invalidate_handleRequest(t, ctx, c, &logical.Request{

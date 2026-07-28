@@ -335,7 +335,7 @@ export default Service.extend({
                         validator: (model) => {
                           return !!(model[key] || model[otherKey]);
                         },
-                        message: `Either ${v.name} or the alternate value must be provided.`,
+                        message: `Either ${v.name} or ${otherKey} value must be provided.`,
                       },
                       {
                         validator: (model) => {

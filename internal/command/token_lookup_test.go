@@ -50,8 +50,8 @@ func TestTokenLookupCommand_Run(t *testing.T) {
 		},
 		{
 			"field",
-			[]string{"-field", "accessor"},
-			"false",
+			[]string{"-field", "type"},
+			"service",
 			0,
 		},
 		{

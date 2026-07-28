@@ -35,9 +35,9 @@ the API: `description` and other parameters are defined at the top level and
     {
       "file": {
         "to-stdout": {
-          "description": "This audit device should never fail.",
+          "description": "Write audit information to standard output.",
           "options": {
-            "file_path": "/dev/stdout",
+            "file_path": "stdout",
             "log_raw": "true"
           }
         }
@@ -52,9 +52,9 @@ the API: `description` and other parameters are defined at the top level and
 
 ```hcl
 audit "file" "to-stdout" {
-  description = "This audit device should never fail."
+  description = "Write audit information to standard output."
   options {
-    file_path = "/dev/stdout"
+    file_path = "stdout"
     log_raw = "true"
   }
 }

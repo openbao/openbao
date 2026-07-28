@@ -65,8 +65,8 @@ through configuration files, reloading them on `SIGHUP`. These look like
 the following:
 
 ```hcl
-audit "file" "my-device" {
-    description = "This audit device writes to stdout which never fails."
+audit "file" "to-stdout" {
+    description = "Write audit information to standard output."
     options {
         file_path = "stdout"
     }

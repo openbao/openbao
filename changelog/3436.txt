@@ -1,4 +1,3 @@
-changelog/3436.txt:
 ```release-note:feature
 **Control Groups**: Adds support for a new ACL stanza, `control_group`, which specifies when a second party must approve a request for a path. [[GH-2241](https://github.com/openbao/openbao/pull/2241)]
 ```

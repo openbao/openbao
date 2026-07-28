@@ -38,9 +38,7 @@ original request is stored for deferred execution upon unwrapping.
 
 1. OpenBao makes a copy of the original API request, and stores it
 2. A new single-use token is generated with the TTL supplied by the factor
-3. A new response is generated, with the token ID, accessor, TTL, and
-   path stored in the new response's wrap information object
-4. The new response is returned to the caller
+3. OpenBao responds to the original request. Instead of performing the request directly and providing a response for the original request, the response from OpenBao is a _wrap information object_ that includes the token ID, accessor, a time to live (TTL) value for the token, and the original path.
 
 Note that policies can control minimum/maximum wrapping TTLs; see the [policies
 concepts page](policies.mdx) for

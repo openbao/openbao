@@ -178,6 +178,9 @@ type Listener struct {
 	// `disable_unauthed_generate_root_endpoints` value has to be set to false.
 	DisableUnauthedGenerateRootEndpoints    *bool `hcl:"-"`
 	DisableUnauthedGenerateRootEndpointsRaw any   `hcl:"disable_unauthed_generate_root_endpoints"`
+
+	DisableUnauthedMetadata    bool `hcl:"-"`
+	DisableUnauthedMetadataRaw any  `hcl:"disable_unauthed_metadata"`
 }
 
 // AgentAPI allows users to select which parts of the Agent API they want enabled.
@@ -615,6 +618,16 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 		} else {
 			disabled := true
 			l.DisableUnauthedGenerateRootEndpoints = &disabled
+		}
+
+		// Unauthed Metadata
+		if l.DisableUnauthedMetadataRaw != nil {
+			l.DisableUnauthedMetadata, err = parseutil.ParseBool(l.DisableUnauthedMetadataRaw)
+			if err != nil {
+				return multierror.Prefix(fmt.Errorf("invalid value for disable_unauthed_metadata: %w", err), fmt.Sprintf("listeners.%d", i))
+			}
+		} else {
+			l.DisableUnauthedMetadata = false
 		}
 
 		// Validate forwarded certificate decoders. This list must be kept

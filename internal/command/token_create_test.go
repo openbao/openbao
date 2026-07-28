@@ -68,7 +68,7 @@ func TestTokenCreateCommand_Run(t *testing.T) {
 			[]string{
 				"-field", "not-a-real-field",
 			},
-			"not present in token",
+			"not present in secret",
 			1,
 		},
 		{

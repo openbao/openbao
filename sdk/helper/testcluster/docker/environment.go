@@ -75,7 +75,7 @@ type DockerCluster struct {
 	Logger    log.Logger
 	builtTags map[string]struct{}
 
-	storage testcluster.ClusterStorage
+	storage testcluster.Storage
 
 	// Whether HA mode is disabled
 	HADisabled bool
@@ -145,6 +145,12 @@ func (dc *DockerCluster) cleanup() error {
 	var result *multierror.Error
 	for _, node := range dc.ClusterNodes {
 		if err := node.cleanup(); err != nil {
+			result = multierror.Append(result, err)
+		}
+	}
+
+	if dc.storage != nil {
+		if err := dc.storage.Cleanup(); err != nil {
 			result = multierror.Append(result, err)
 		}
 	}
@@ -431,7 +437,6 @@ func NewDockerCluster(ctx context.Context, opts *DockerClusterOptions) (*DockerC
 		Logger:      opts.Logger,
 		builtTags:   map[string]struct{}{},
 		CA:          opts.CA,
-		storage:     opts.Storage,
 		HADisabled:  opts.HADisabled,
 	}
 
@@ -475,6 +480,7 @@ type DockerClusterNode struct {
 	ImageTag             string
 	DataVolumeName       string
 	cleanupVolume        func()
+	Storage              testcluster.NodeStorage
 }
 
 func (n *DockerClusterNode) TLSConfig() *tls.Config {
@@ -556,6 +562,11 @@ func (n *DockerClusterNode) cleanup() error {
 	}
 	n.cleanupContainer()
 	n.cleanupVolume()
+	if n.Storage != nil {
+		if err := n.Storage.Cleanup(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -642,13 +653,9 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		"node_id": n.NodeID,
 	}
 
-	if opts.Storage != nil {
-		var err error
-		storageType = opts.Storage.Type()
-		storageOpts, err = opts.Storage.Opts(ctx)
-		if err != nil {
-			return err
-		}
+	if n.Storage != nil {
+		storageType = n.Storage.Type()
+		storageOpts = n.Storage.Opts()
 	}
 
 	if opts != nil && opts.VaultNodeConfig != nil {
@@ -1009,7 +1016,7 @@ type DockerClusterOptions struct {
 	Args        []string
 	CopyFromTo  map[string]string
 	StartProbe  func(*api.Client) error
-	Storage     testcluster.ClusterStorage
+	Storage     testcluster.Storage // either testcluster.ClusterStorage or testcluster.NodeStorage
 	StorageType string
 	Root        bool
 	Entrypoint  string
@@ -1053,6 +1060,52 @@ func ensureLeaderMatches(ctx context.Context, client *api.Client, ready func(res
 
 const DefaultNumCores = 3
 
+// resolveStorage returns a NodeStorage object, having already started it.
+// This handles various causes for us of reusing the same storage object &c.,
+// though we still assume we only ever call this once per index.
+func (dc *DockerCluster) resolveStorage(ctx context.Context, opts *DockerClusterOptions, index int) (testcluster.NodeStorage, error) {
+	storage := opts.Storage
+	if opts.Storage == nil && dc.storage != nil {
+		storage = dc.storage
+	}
+
+	if storage == nil {
+		return nil, nil
+	}
+
+	switch typed := storage.(type) {
+	case testcluster.ClusterStorage:
+		if dc.storage == nil {
+			dc.storage = typed
+		}
+
+		node, err := typed.ForNode(ctx, index)
+		if err != nil {
+			return nil, fmt.Errorf("error getting storage for node %d: %w", index, err)
+		}
+
+		if err := node.Start(ctx, &opts.ClusterOptions); err != nil {
+			return nil, fmt.Errorf("error starting storage for node %d: %w", index, err)
+		}
+
+		return node, nil
+	case testcluster.NodeStorage:
+		if (dc.storage != nil && opts.Storage != dc.storage) || dc.storage == nil {
+			if err := typed.Start(ctx, &opts.ClusterOptions); err != nil {
+				return nil, fmt.Errorf("error starting storage for node %d: %w", index, err)
+			}
+		}
+
+		if dc.storage == nil {
+			dc.storage = typed
+		}
+
+		return typed, nil
+	default:
+		return nil, fmt.Errorf("unknown type of storage; expected either testcluster.ClusterStorage or testcluster.NodeStorage; got %T", typed)
+	}
+}
+
 // creates a managed docker container running Vault
 func (dc *DockerCluster) setupDockerCluster(ctx context.Context, opts *DockerClusterOptions) error {
 	if opts.TmpDir != "" {
@@ -1092,12 +1145,6 @@ func (dc *DockerCluster) setupDockerCluster(ctx context.Context, opts *DockerClu
 	}
 	dc.RootCAs = x509.NewCertPool()
 	dc.RootCAs.AddCert(dc.CACert)
-
-	if dc.storage != nil {
-		if err := dc.storage.Start(ctx, &opts.ClusterOptions); err != nil {
-			return err
-		}
-	}
 
 	for i := 0; i < numCores; i++ {
 		if err := dc.addNode(ctx, opts); err != nil {
@@ -1148,6 +1195,12 @@ func (dc *DockerCluster) addNode(ctx context.Context, opts *DockerClusterOptions
 		ImageRepo: opts.ImageRepo,
 		ImageTag:  tag,
 	}
+
+	node.Storage, err = dc.resolveStorage(ctx, opts, i)
+	if err != nil {
+		return err
+	}
+
 	dc.ClusterNodes = append(dc.ClusterNodes, node)
 	if err := os.MkdirAll(node.WorkDir, 0o755); err != nil {
 		return err
@@ -1159,17 +1212,18 @@ func (dc *DockerCluster) addNode(ctx context.Context, opts *DockerClusterOptions
 }
 
 func (dc *DockerCluster) joinNode(ctx context.Context, nodeIdx int, leaderIdx int) error {
-	if dc.storage != nil && dc.storage.Type() != "raft" {
+	if nodeIdx >= len(dc.ClusterNodes) {
+		return fmt.Errorf("invalid node %d", nodeIdx)
+	}
+
+	node := dc.ClusterNodes[nodeIdx]
+	leader := dc.ClusterNodes[leaderIdx]
+
+	if node.Storage != nil && node.Storage.Type() != "raft" {
 		// Storage is not raft so nothing to do but unseal.
 		return testcluster.UnsealNode(ctx, dc, nodeIdx)
 	}
 
-	leader := dc.ClusterNodes[leaderIdx]
-
-	if nodeIdx >= len(dc.ClusterNodes) {
-		return fmt.Errorf("invalid node %d", nodeIdx)
-	}
-	node := dc.ClusterNodes[nodeIdx]
 	client := node.APIClient()
 
 	var resp *api.RaftJoinResponse

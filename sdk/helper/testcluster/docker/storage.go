@@ -27,12 +27,12 @@ type InmemStorage struct{}
 
 func (InmemStorage) Start(context.Context, *testcluster.ClusterOptions) error { return nil }
 func (InmemStorage) Cleanup() error                                           { return nil }
-func (InmemStorage) Opts(_ context.Context) (map[string]any, error) {
-	return make(map[string]any), nil
+func (InmemStorage) Opts() map[string]any {
+	return make(map[string]any)
 }
 func (InmemStorage) Type() string { return "inmem" }
 
-var _ testcluster.ClusterStorage = InmemStorage{}
+var _ testcluster.NodeStorage = InmemStorage{}
 
 type PostgreSQLStorage struct {
 	cleanup     func()
@@ -43,7 +43,7 @@ type PostgreSQLStorage struct {
 	Id          string
 }
 
-var _ testcluster.ClusterStorage = &PostgreSQLStorage{}
+var _ testcluster.NodeStorage = &PostgreSQLStorage{}
 
 // NewPostgreSQLStorage starts the underlying PSQL container and saves its
 // connection URL.
@@ -87,6 +87,16 @@ func NewPostgreSQLStorage(t *testing.T, network string) *PostgreSQLStorage {
 	}
 }
 
+// NewStaticPostgreSQLStorage returns a new PostgreSQLStorage based on static
+// connection information without caring where it came from.
+func NewStaticPostgreSQLStorage(extConnUrl string, intConnUrl string) *PostgreSQLStorage {
+	return &PostgreSQLStorage{
+		cleanup:     nil,
+		ExternalUrl: extConnUrl,
+		InternalUrl: intConnUrl,
+	}
+}
+
 func (p *PostgreSQLStorage) Start(context.Context, *testcluster.ClusterOptions) error {
 	// Initialization already occurred when creating this object.
 	return nil
@@ -99,14 +109,14 @@ func (p *PostgreSQLStorage) Cleanup() error {
 	return nil
 }
 
-func (p *PostgreSQLStorage) Opts(_ context.Context) (map[string]any, error) {
+func (p *PostgreSQLStorage) Opts() map[string]any {
 	return map[string]any{
 		"connection_url":       p.InternalUrl,
 		"ha_enabled":           true,
 		"max_parallel":         5,
 		"max_idle_connections": 3,
 		"max_connect_retries":  30,
-	}, nil
+	}
 }
 
 func (p *PostgreSQLStorage) Type() string {
@@ -126,12 +136,14 @@ func (p *PostgreSQLStorage) Client(ctx context.Context) (*sql.DB, error) {
 	return db, nil
 }
 
+type PostgreSQLClusterMapper func(ctx context.Context, cluster *thpsql.Cluster, index int) (*thpsql.Node, error)
+
 type PostgreSQLClusterStorage struct {
 	Cluster *thpsql.Cluster
 	mapper  PostgreSQLClusterMapper
 }
 
-type PostgreSQLClusterMapper func(ctx context.Context, cluster *thpsql.Cluster) (string, error)
+var _ testcluster.ClusterStorage = &PostgreSQLClusterStorage{}
 
 func NewPostgreSQLClusterStorage(ctx context.Context, logger log.Logger, name string, network string, mapper PostgreSQLClusterMapper) (*PostgreSQLClusterStorage, error) {
 	cfg := thpsql.DefaultClusterConfig(name)
@@ -150,31 +162,26 @@ func NewPostgreSQLClusterStorage(ctx context.Context, logger log.Logger, name st
 	}, nil
 }
 
-func (p *PostgreSQLClusterStorage) Start(context.Context, *testcluster.ClusterOptions) error {
-	// Initialization already occurred when creating this object.
-	return nil
-}
-
 func (p *PostgreSQLClusterStorage) Cleanup() error {
 	p.Cluster.Cleanup()
 	return nil
 }
 
-func (p *PostgreSQLClusterStorage) Opts(ctx context.Context) (map[string]any, error) {
-	url, err := p.mapper(ctx, p.Cluster)
-	if err != nil {
-		return nil, fmt.Errorf("failed mapping to connection url: %w", err)
-	}
-
-	return map[string]any{
-		"connection_url":       url,
-		"ha_enabled":           true,
-		"max_parallel":         5,
-		"max_idle_connections": 3,
-		"max_connect_retries":  30,
-	}, nil
-}
-
 func (p *PostgreSQLClusterStorage) Type() string {
 	return "postgresql"
+}
+
+func (p *PostgreSQLClusterStorage) ForNode(ctx context.Context, index int) (testcluster.NodeStorage, error) {
+	pNode, err := p.mapper(ctx, p.Cluster, index)
+	if err != nil {
+		return nil, fmt.Errorf("error invoking mapper(ctx, cluster, %d): %w", index, err)
+	}
+
+	extUrl := pNode.ConnectionURL
+	intUrl, err := pNode.InternalURL(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting internal URL for node %d->%v: %w", index, pNode.ContainerID, err)
+	}
+
+	return NewStaticPostgreSQLStorage(extUrl, intUrl), nil
 }

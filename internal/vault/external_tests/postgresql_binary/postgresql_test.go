@@ -337,25 +337,22 @@ func TestPostgreSQL_Scalability(t *testing.T) {
 	pLogger := logger.Named("postgresql-cluster")
 	cLogger := logger.Named("openbao-cluster")
 
-	var returned atomic.Int32
-	var nodesOnPrimary int32 = 2
-
-	mapper := func(ctx context.Context, cluster *thpsql.Cluster) (string, error) {
-		index := returned.Add(1)
-		if index <= nodesOnPrimary {
-			return cluster.Primary.InternalURL(ctx)
+	nodesOnPrimary := 2
+	mapper := func(ctx context.Context, cluster *thpsql.Cluster, index int) (*thpsql.Node, error) {
+		if index < nodesOnPrimary {
+			return cluster.Primary, nil
 		}
 
-		if index == nodesOnPrimary+1 {
+		if index == nodesOnPrimary {
 			node, err := cluster.AddNode(ctx)
 			if err != nil {
-				return "", fmt.Errorf("failed to add replica: %w", err)
+				return nil, fmt.Errorf("failed to add replica: %w", err)
 			}
 
-			return node.InternalURL(ctx)
+			return node, nil
 		}
 
-		return cluster.Nodes[1].InternalURL(ctx)
+		return cluster.Nodes[1], nil
 	}
 
 	pCluster, err := docker.NewPostgreSQLClusterStorage(t.Context(), pLogger, "scalability", "", mapper)

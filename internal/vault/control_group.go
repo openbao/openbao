@@ -49,6 +49,11 @@ var controlGroupRequestResponseSchema = map[string]*framework.FieldSchema{
 		Description: "The original request path",
 		Required:    true,
 	},
+	"request_data": {
+		Type:        framework.TypeMap,
+		Description: "The original request data",
+		Required:    true,
+	},
 	"request_entity": {
 		Type:        framework.TypeMap,
 		Description: "The original requesting entity",
@@ -355,6 +360,7 @@ func (c *Core) handleControlGroupRequest(ctx context.Context, req *logical.Reque
 			"approved":          approved,
 			"request_operation": originalRequest.Operation,
 			"request_path":      originalRequest.Path,
+			"request_data":      originalRequest.Data,
 			"request_entity":    originalEntity,
 			"authorizations":    auths,
 		},

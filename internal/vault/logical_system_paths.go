@@ -4276,7 +4276,7 @@ func (b *SystemBackend) wrappingPaths() []*framework.Path {
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ReadOperation: &framework.PathOperation{
+				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.Core.handleControlGroupRequest,
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{

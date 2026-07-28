@@ -26,7 +26,7 @@ import (
 func TestPostgreSQL_FencedWrites(t *testing.T) {
 	binary := api.ReadBaoVariable("BAO_BINARY")
 	if binary == "" {
-		t.Skip("only running docker test when $VAULT_BINARY present")
+		t.Skip("only running docker test when $BAO_BINARY present")
 	}
 
 	psql := docker.NewPostgreSQLStorage(t, "")

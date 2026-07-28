@@ -35,9 +35,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 		Path:  "wraptest",
 		Type:  "kv",
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// No duration specified
 	req := &logical.Request{
@@ -88,9 +86,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		Path:  "cg_test",
 		Type:  "kv",
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create a secret
 	req := &logical.Request{
@@ -102,12 +98,8 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		},
 	}
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if resp != nil {
-		t.Fatalf("bad: %#v", resp)
-	}
+	require.NoError(t, err)
+	require.Nil(t, resp)
 
 	// Create a ControlGroup policy governing secret path
 	cgPolicy := `path "cg_test/foo" {
@@ -154,16 +146,9 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		Operation:   logical.ReadOperation,
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if resp == nil {
-		t.Fatalf("bad: %v", resp)
-	}
-	// Excpect unwrapped response
-	if resp.WrapInfo != nil {
-		t.Fatalf("unexpected response wrapping: %v", resp)
-	}
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Nil(t, resp.WrapInfo, "unexpected response wrapping: %v", resp)
 
 	// Request protected resource with update (controlled)
 	req = &logical.Request{
@@ -175,12 +160,8 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if resp == nil {
-		t.Fatalf("bad: %v", resp)
-	}
+	require.NoError(t, err)
+	require.NotNil(t, resp)
 	// Expect wrapped response
 	if resp.WrapInfo == nil || resp.WrapInfo.TTL != time.Duration(15*time.Second) {
 		t.Fatalf("bad wrap_info: %#v", resp)
@@ -197,12 +178,8 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if resp == nil {
-		t.Fatalf("bad: %v", resp)
-	}
+	require.NoError(t, err)
+	require.NotNil(t, resp)
 }
 
 func TestRequestHandling_LoginWrapping(t *testing.T) {

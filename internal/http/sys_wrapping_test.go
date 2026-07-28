@@ -15,6 +15,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 // Test wrapping functionality
@@ -443,9 +444,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 			"key": "metadata",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	aliceID := resp.Data["id"].(string)
 
 	resp, err = client.Logical().Write("identity/entity", map[string]any{
@@ -455,9 +454,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 			"key": "metadata",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	bobID := resp.Data["id"].(string)
 
 	resp, err = client.Logical().Write("identity/group", map[string]any{
@@ -469,9 +466,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 		},
 		"name": "security-approvers",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Data["id"] == nil {
 		t.Fatal("new group should have id")
 	}
@@ -480,14 +475,9 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	err = client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	require.NoError(t, err)
 	auths, err := client.Sys().ListAuth()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	userpassAccessor := auths["userpass/"].Accessor
 
 	// Create aliases
@@ -496,66 +486,51 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 		"mount_accessor": userpassAccessor,
 		"canonical_id":   aliceID,
 	})
-	if err != nil {
-		t.Fatalf("err:%v resp:%#v", err, resp)
-	}
+	require.NoError(t, err)
+
 	resp, err = client.Logical().Write("identity/entity-alias", map[string]any{
 		"name":           "bob",
 		"mount_accessor": userpassAccessor,
 		"canonical_id":   bobID,
 	})
-	if err != nil {
-		t.Fatalf("err:%v resp:%#v", err, resp)
-	}
+	require.NoError(t, err)
 
 	// Add users to userpass backend
 	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]any{
 		"password": "alicepw",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]any{
 		"password": "bobpw",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write policies
 	err = client.Sys().PutPolicy("secretPolicy", secetPolicy)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	err = client.Sys().PutPolicy("approverPolicy", approverPolicy)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Authenticate
 	authResponse, err := client.Logical().Write("auth/userpass/login/alice", map[string]any{
 		"password": "alicepw",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	aliceToken := authResponse.Auth.ClientToken
 
 	authResponse, err = client.Logical().Write("auth/userpass/login/bob", map[string]any{
 		"password": "bobpw",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	bobToken := authResponse.Auth.ClientToken
 
 	// Create a secret protected by control group policy by path
 	_, err = client.Logical().Write("secret/foo", map[string]any{
 		"foo": "bar",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	//
 	// Test lookup
@@ -566,9 +541,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	secretResponse, err := client.Logical().Write("secret/foo", map[string]any{
 		"foo": "baz",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secretResponse == nil || secretResponse.WrapInfo == nil {
 		t.Fatal("wrap info is nil")
 	}
@@ -577,16 +550,12 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	// Attempt unwrap via the client token (should be error now)
 	client.SetToken(wrapInfo.Token)
 	_, err = client.Logical().Write("sys/wrapping/unwrap", nil)
-	if err == nil {
-		t.Fatal(err)
-	}
+	require.Error(t, err)
 
 	// Validate the update is deferred
 	client.SetToken(aliceToken)
 	secretResponse, err = client.Logical().Read("secret/foo")
-	if err != nil {
-		t.Fatal("unexpected error reading secret")
-	}
+	require.NoError(t, err)
 	if secretResponse.Data["foo"] != "bar" {
 		t.Fatal("secret updated but should not have")
 	}
@@ -596,9 +565,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	params := make(map[string][]string)
 	params["accessor"] = []string{wrapInfo.Accessor}
 	approverResponse, err := client.Logical().ReadWithData("sys/control-group/request", params)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if approverResponse.Data["approved"] == nil {
 		t.Fatal("unexpected request data")
 	}
@@ -606,9 +573,7 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	approverResponse, err = client.Logical().Write("sys/control-group/authorize", map[string]any{
 		"accessor": wrapInfo.Accessor,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if approverResponse.Data["approved"] == nil {
 		t.Fatal("unexpected request data")
 	}
@@ -616,16 +581,12 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 	// Unwrap via the wrapping token (should execute the secret update)
 	client.SetToken(wrapInfo.Token)
 	_, err = client.Logical().Write("sys/wrapping/unwrap", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Validate the update has executed
 	client.SetToken(aliceToken)
 	secretResponse, err = client.Logical().Read("secret/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secretResponse.Data["foo"] != "baz" {
 		t.Fatal("secret did not update")
 	}

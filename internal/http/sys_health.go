@@ -73,5 +73,5 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *vault.HealthResponse
 
 	ctx := namespace.RootContext(r.Context())
 
-	return core.GetSysHealth(ctx, fd, false)
+	return core.GetSysHealth(ctx, fd, false, false)
 }

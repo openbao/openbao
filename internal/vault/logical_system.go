@@ -38,6 +38,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/hostutil"
 	"github.com/openbao/openbao/v2/internal/helper/identity"
 	"github.com/openbao/openbao/v2/internal/helper/logging"
@@ -4684,7 +4685,7 @@ type HealthResponse struct {
 	ClusterID                  string `json:"cluster_id,omitempty"`
 }
 
-func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData, viaRouter bool) (int, *HealthResponse, error) {
+func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData, viaRouter bool, isAuthenticated bool) (int, *HealthResponse, error) {
 	// Check system status
 	sealed := core.Sealed()
 	standby := core.Standby()
@@ -4726,6 +4727,13 @@ func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData, via
 		Version:                    version.GetVersion().VersionNumber(),
 	}
 
+	if !isAuthenticated {
+		listener := configutil.GetListenerConfigToContext(ctx)
+		if listener != nil && listener.DisableUnauthedMetadata {
+			hr.Version = "(version redacted)"
+		}
+	}
+
 	// Fetch the local cluster name and identifier
 	if !sealed {
 		cluster, err := core.Cluster(ctx)
@@ -4741,7 +4749,7 @@ func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData, via
 }
 
 func (b *SystemBackend) handleHealth(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	code, body, err := b.Core.GetSysHealth(ctx, d, true)
+	code, body, err := b.Core.GetSysHealth(ctx, d, true, req.ClientToken != "")
 	if err != nil {
 		return nil, err
 	}

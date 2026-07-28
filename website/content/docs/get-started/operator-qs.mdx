@@ -28,7 +28,30 @@ When using HTTPS, use your preferred CA/PKI to obtain a private key and certific
 OpenBao [supports ACME](../configuration/listener/tcp.mdx#acme-parameters)
 to automatically request certificates from services such as Let's Encrypt.
 
-## Step 4: Check status
+## Step 4: Enable audit device
+
+[Audit devices](../audit/index.mdx) keep a log of all requests to OpenBao.
+The OpenBao project strongly recommends that you enable at least one audit device.
+For example, in container environments, it is common to log to stdout:
+
+```hcl
+audit "file" "to-stdout" {
+  description = "Write audit information to standard output."
+  options {
+    file_path = "stdout"
+    log_raw = "true"
+  }
+}
+```
+
+:::warning
+
+Make sure that you have an appropriate log collection solution to durably store
+the audit logs and to protect them from tampering.
+
+:::
+
+## Step 5: Check status
 
 Check OpenBao's status, to verify that the instance is running and that you can connect to the API.
 
@@ -49,7 +72,7 @@ Sealed                   true
 Alternatively, you can visit the UI at https://localhost:8200.
 This may trigger a TLS warning if you are using a private CA.
 
-## Step 5: Initialize OpenBao
+## Step 6: Initialize OpenBao
 
 The [`operator` command](../commands/operator/index.mdx) of the [OpenBao CLI](../commands/index.mdx)
 is the main interaction point for operators with their OpenBao instance.
@@ -88,29 +111,6 @@ It is needed to authenticate to the OpenBao API, through which you will perform 
 These values are highly sensitive and grant access to your OpenBao instance!
 It is highly recommended to only use the root token for the initial configuration
 (to set up additional auth methods and scoped policies, see below) and discard it afterwards.
-
-:::
-
-## Step 6: Enable audit device
-
-[Audit devices](../audit/index.mdx) keep a log of all requests to OpenBao.
-The OpenBao project strongly recommends that you enable at least one audit device.
-For example, in container environments, it is common to log to stdout:
-
-```hcl
-audit "file" "to-stdout" {
-  description = "Write audit information to standard output."
-  options {
-    file_path = "/dev/stdout"
-    log_raw = "true"
-  }
-}
-```
-
-:::warning
-
-Make sure that you have an appropriate log collection solution to durably store
-the audit logs and to protect them from tampering.
 
 :::
 

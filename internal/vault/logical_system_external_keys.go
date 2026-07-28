@@ -374,7 +374,7 @@ func (b *SystemBackend) handleExternalKeyConfigList(ctx context.Context, req *lo
 
 func (b *SystemBackend) handleExternalKeyConfigRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := d.Get("config").(string)
-	ce, err := b.Core.externalKeys.ReadConfig(ctx, req.Storage, name)
+	ce, err := b.Core.externalKeys.ReadRedactedConfig(ctx, req.Storage, name)
 	switch {
 	case err != nil:
 		return handleError(err)
@@ -501,7 +501,7 @@ func (b *SystemBackend) handleExternalKeyList(ctx context.Context, req *logical.
 
 func (b *SystemBackend) handleExternalKeyRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := d.Get("key").(string)
-	ke, err := b.Core.externalKeys.ReadKey(ctx, req.Storage, d.Get("config").(string), name)
+	ke, err := b.Core.externalKeys.ReadRedactedKey(ctx, req.Storage, d.Get("config").(string), name)
 	switch {
 	case err != nil:
 		return handleError(err)

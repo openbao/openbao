@@ -38,39 +38,40 @@ original request is stored for deferred execution upon unwrapping.
 
 1. OpenBao makes a copy of the original API request, and stores it
 2. A new single-use token is generated with the TTL supplied by the factor
-3. OpenBao responds to the original request. Instead of performing the request directly and providing a response for the original request, the response from OpenBao is a _wrap information object_ that includes the token ID, accessor, a time to live (TTL) value for the token, and the original path.
+3. OpenBao responds to the original request. Instead of performing the
+   request directly and providing a response for the original request,
+   the response from OpenBao is a _wrap information object_ that
+   includes:
+   a. the token for executing the deferred response once approved
+   b. an accessor for reviewing and approving the request
+   c. a time to live (TTL) value for the token
+   d. creation time of the original request
+   e. creation path of the original request
 
 Note that policies can control minimum/maximum wrapping TTLs; see the [policies
 concepts page](policies.mdx) for
 more information.
-
-The wrapped response contains these fields:
-
-- TTL: The TTL of the response-wrapping token itself, specified in the policy factor.
-- Token: The actual token value
-- Wrapped Accessor: The token used for reviewing and approving the original request.
-- Creation Time: The time that the response-wrapping token was created
-- Creation Path: The API path that was called in the original request
 
 ## Control-group operations
 
 Via the `sys/wrapping` and `sys/control-group` paths, several
 operations can be run against control-group wrapping tokens.
 
+- **Authorize** (`sys/control-group/authorize`)**:** Using the
+  accessor token, approve the request for deferred execution when unwrapped.
+- **Review** (`sys/control-group/request`)**:** Using the accessor token,
+  view information about the original request (entity, path, payload,
+  etc).
 - **Unwrap** (`sys/wrapping/unwrap`)**:** Unwrap the token, executing
   the original request and returning a response, once approved. The
   response that is returned will be an original wire-format response;
   it can be used directly with API clients. Note that the original
   request is processed only when unwrapping an approved request.
-- **Review** (`sys/control-group/request`)**:** Using the accessor token,
-  view information about the original request (entity, path, payload,
-  etc).
-- **Authorize** (`sys/control-group/authorize`)**:** Using the
-  accessor token, approve the request for deferred execution when unwrapped.
 
 ## Control-group factors in ACL policies
 
-Control groups are declared in a control-group stanza of an ACL policy.
+Control groups are declared in a control-group stanza of an access
+control list (ACL) policy.
 
 ```hcl
 path "pki/issue/*" {
@@ -97,27 +98,30 @@ path "pki/issue/*" {
 
 Control Groups can verify the following factors:
 
-- `Identity Groups` - Require an authorizer to be in a specific set of
+- _Identity Groups_ - Require an authorizer to be in a specific set of
   identity groups. The `self_authorization` property indicates
   whether the original requester can self-authorize if they belong to
   the control group (default is false).
 
 ### Controlled capabilities
 
-Control group factors can be configured to trigger the control group workflow
-on specific capabilities. This is done with the `controlled_capabilities` field.
-Not specifying the `controlled_capabilities` field will necessitate the factor to be
-checked for all operations to the specified policy path. The `controlled_capabilities`
-field can differ per factor, so that different factors can be required for different
-operations.
+Control group factors can be configured to trigger the control group
+workflow on specific capabilities. This is done with the
+`controlled_capabilities` field.  Not specifying the
+`controlled_capabilities` field will necessitate the factor to be
+checked for all operations to the specified policy path. The
+`controlled_capabilities` field can differ per factor, so that
+different factors can be required for different operations.
 
-Finally, the capabilities in the `controlled_capabilities` stanza must be a subset of the
-`capabilities` specified in the policy itself. For example, a policy giving only `read` access to
-the path `secret/foo` cannot specify a control group factor with `list` as a controlled capability.
+Finally, the capabilities in the `controlled_capabilities` stanza must
+be a subset of the `capabilities` specified in the policy itself. For
+example, a policy giving only `read` access to the path `secret/foo`
+cannot specify a control group factor with `list` as a controlled
+capability.
 
 Please see the following section for example ACL Policies.
 
-### Sample ACL policies
+### Sample policies
 
 ```hcl
 path "secret/foo" {
@@ -157,11 +161,15 @@ path "secret/foo" {
 }
 ```
 
-The above policy grants `create` and `update` access to `secret/foo` only after
-two member of the "managers" or "leads" group and one member of the "superusers"
-group authorizes the request. If an authorizer is a member of both the
-"managers" and "superusers" group, one authorization for both factors will be
-satisfied.
+The above policy grants `create` and `update` access to `secret/foo`
+only after several conditions are met. The required conditions are
+that:
+1. Two different users, who can be in either the "managers" or "leads"
+group (or both) have approved the request;
+2. One member of the "superusers" group has approved the request.
+
+If an authorizer is a member of both the "managers" or "leads" and the
+"superusers" group, one approval for both factors will be recorded.
 
 ```hcl
 path "secret/foo" {
@@ -178,9 +186,10 @@ path "secret/foo" {
 }
 ```
 
-The above policy grants `create` and `read` access to `secret/foo` for anyone that has a token
-with this policy. It grants `update` access to `secret/foo` only after one member from the
-admin group authorizes the request.
+The above policy grants `create` and `read` access to `secret/foo` for
+anyone that has a token with this policy. It grants `update` access to
+`secret/foo` only after one member from the admin group authorizes the
+request.
 
 ```hcl
 path "kv/*" {
@@ -209,10 +218,13 @@ path "kv/*" {
 
 ```
 
-Because the second path stanza has a control group factor with no `controlled_capabilities` field,
-any token with this policy will be required to get 2 approvals from the `superuser` group before executing
-any operation against `kv/*`. In addition, by virtue of the `controlled_capabilities` field in the first
-path stanza, `delete`,`list`, and `sudo` operations will require an additional approval from the `admin` group.
+Because the second path stanza has a control group factor with no
+`controlled_capabilities` field, any token with this policy will be
+required to get 2 approvals from the `superuser` group before
+executing any operation against `kv/*`. In addition, by virtue of the
+`controlled_capabilities` field in the first path stanza,
+`delete`,`list`, and `sudo` operations will require an additional
+approval from the `admin` group.
 
 ```hcl
 path "kv/*" {

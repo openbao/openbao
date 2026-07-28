@@ -550,7 +550,7 @@ func (c *Core) runHALoopOnce(manualStepDownCh chan struct{}, stopCh, restartCh <
 		leaderStopCh := make(chan struct{})
 
 		g.Add(func() error {
-			c.waitForLeadership(manualStepDownCh, leaderStopCh, isReadEnabledStandby)
+			c.leadershipLoop(manualStepDownCh, leaderStopCh, isReadEnabledStandby)
 			return nil
 		}, func(error) {
 			close(leaderStopCh)
@@ -568,25 +568,13 @@ func (c *Core) runHALoopOnce(manualStepDownCh chan struct{}, stopCh, restartCh <
 	return restart
 }
 
-// waitForLeadership is a long running routine that is used when an HA backend
-// is enabled. It waits until we are leader and switches this Vault to
-// active.
-func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}, isReadEnabled bool) {
+// leadershipLoop is a long-running routine that is used when an HA backend is
+// enabled. It waits until we are the leader and switches this node to active.
+func (c *Core) leadershipLoop(manualStepDownCh, stopCh <-chan struct{}, isReadEnabled bool) {
 	var manualStepDown bool
-	firstIteration := true
-
-	// We pin the current standby or active context to this out-of-loop variable
-	// to ensure it gets a deferred cancel if the loop exits due to an error.
-	// This method really needs a refactor :)
-	ctxCancel := context.CancelFunc(func() {})
-	defer func() {
-		ctxCancel()
-	}()
+	iteration := 0
 
 	for {
-		// Cancel any old context from the previous iteration.
-		ctxCancel()
-
 		// Check for a shutdown
 		select {
 		case <-stopCh:
@@ -595,303 +583,343 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}, isRea
 		default:
 		}
 
-		if !firstIteration && !manualStepDown {
-			// If we restarted the for loop due to an error, wait a second
-			// so that we don't busy loop if the error persists.
-			time.Sleep(1 * time.Second)
-		}
-
-		firstIteration = false
-
-		c.logger.Info("entering standby mode")
-
-		// Create the standby context (this becomes activeCtx on core, oh well).
-		standbyCtx, standbyCtxCancel := context.WithCancel(namespace.RootContext(context.Background()))
-		// Cancel if we exit the loop without transitioning to active.
-		ctxCancel = standbyCtxCancel
-
-		// If possible, unseal in read-only mode and start acting as a
-		// read-enabled standby.
-		if isReadEnabled {
-			stop, retry := c.runReadEnabledStandby(standbyCtx, standbyCtxCancel, stopCh)
-			if stop {
-				return
-			} else if retry {
-				continue
-			}
-		}
-
-		// If we've just stepped down, we could instantly grab the lock
-		// again. Give the other nodes a chance.
-		if manualStepDown {
-			time.Sleep(manualStepDownSleepPeriod)
-			manualStepDown = false
-		}
-
-		// Create a lock
-		uuid, err := uuid.GenerateUUID()
-		if err != nil {
-			c.logger.Error("failed to generate uuid", "error", err)
-			continue
-		}
-		lock, err := c.ha.LockWith(CoreLockPath, uuid)
-		if err != nil {
-			c.logger.Error("failed to create lock", "error", err)
-			continue
-		}
-
-		// Attempt the acquisition
-		leaderLostCh := c.acquireLock(lock, stopCh)
-
-		// Bail if we are being shutdown
-		if leaderLostCh == nil {
+		stop := c.waitForLeadership(iteration, &manualStepDown, manualStepDownCh, stopCh, isReadEnabled)
+		if stop {
 			return
 		}
 
-		// If the backend is a FencingHABackend, register the lock with it so it can
-		// correctly fence all writes from now on  (i.e. assert that we still hold
-		// the lock atomically with each write).
-		if fba, ok := c.ha.(physical.FencingHABackend); ok {
-			err := fba.RegisterActiveNodeLock(lock)
-			if err != nil {
-				// Can't register lock, bail out
-				c.heldHALock = nil
-				lock.Unlock()
-				c.logger.Error("failed registering lock with fencing backend, giving up active state")
-				continue
-			}
+		iteration += 1
+	}
+}
+
+// waitForLeadership handles a single loop of leadershipLoop, trying to
+// become leader and potentially running a read-enabled standby in the
+// interim.
+func (c *Core) waitForLeadership(iteration int, manualStepDown *bool, manualStepDownCh, stopCh <-chan struct{}, isReadEnabled bool) (stop bool) {
+	if iteration == 0 && !*manualStepDown {
+		// If we restarted the for loop due to an error, wait a second
+		// so that we don't busy loop if the error persists.
+		time.Sleep(1 * time.Second)
+	}
+
+	c.logger.Info("entering standby mode")
+
+	// Create the standby context (this becomes activeCtx on core, oh well).
+	standbyCtx, standbyCtxCancel := context.WithCancel(namespace.RootContext(context.Background()))
+	// Cancel if we exit the loop without transitioning to active.
+	defer standbyCtxCancel()
+
+	failedLeaderAcquisition := make(chan struct{})
+	acquiredLeadership := make(chan struct{})
+
+	// If possible, unseal in read-only mode and start acting as a
+	// read-enabled standby.
+	if isReadEnabled {
+		stop, retry, tryActive := c.runReadEnabledStandby(standbyCtx, standbyCtxCancel, stopCh)
+		if stop {
+			return true
+		} else if retry && !tryActive && iteration < 5 {
+			// When iteration count reaches too high, it suggests we've
+			// perhaps all failed to unseal. See if attempting to become
+			// leader will help us to make progress.
+			return false
+		} else if retry {
+			go func() {
+				// If we've been told to stop, give up.
+				select {
+				case <-stopCh:
+					return
+				case <-failedLeaderAcquisition:
+					return
+				case <-acquiredLeadership:
+					return
+				case <-time.After(1 * time.Minute):
+				}
+
+				// Restart.
+				c.logger.Info("ha: re-attempting failed standby setup as not yet active")
+				c.Restart()
+			}()
+		}
+	}
+
+	// If we've just stepped down, we could instantly grab the lock
+	// again. Give the other nodes a chance.
+	if *manualStepDown {
+		time.Sleep(manualStepDownSleepPeriod)
+		*manualStepDown = false
+	}
+
+	// Create a lock
+	uuid, err := uuid.GenerateUUID()
+	if err != nil {
+		c.logger.Error("failed to generate uuid", "error", err)
+		close(failedLeaderAcquisition)
+		return false
+	}
+	lock, err := c.ha.LockWith(CoreLockPath, uuid)
+	if err != nil {
+		c.logger.Error("failed to create lock", "error", err)
+		close(failedLeaderAcquisition)
+		return false
+	}
+
+	// Attempt the acquisition
+	leaderLostCh := c.acquireLock(lock, stopCh)
+
+	// Bail if we are being shutdown
+	if leaderLostCh == nil {
+		close(failedLeaderAcquisition)
+		return true
+	}
+
+	// If the backend is a FencingHABackend, register the lock with it so it can
+	// correctly fence all writes from now on  (i.e. assert that we still hold
+	// the lock atomically with each write).
+	if fba, ok := c.ha.(physical.FencingHABackend); ok {
+		err := fba.RegisterActiveNodeLock(lock)
+		if err != nil {
+			// Can't register lock, bail out
+			c.heldHALock = nil
+			lock.Unlock()
+			c.logger.Error("failed registering lock with fencing backend, giving up active state")
+			return false
+		}
+	}
+
+	c.logger.Info("acquired lock, enabling active operation")
+	close(acquiredLeadership)
+
+	// This is used later to log a metrics event; this can be helpful to
+	// detect flapping
+	activeTime := time.Now()
+
+	// We're transitioning to active, so cancel the standby context.
+	// Spawn this in a goroutine so we can cancel the context and unblock
+	// any inflight requests that are holding the state lock.
+	go func() {
+		timer := time.NewTimer(DefaultMaxRequestDuration)
+		select {
+		case <-standbyCtx.Done():
+			timer.Stop()
+		case <-timer.C:
+			// Attempt to drain any inflight requests.
+			standbyCtxCancel()
+		}
+	}()
+
+	// Grab the statelock or stop
+	l := newLockGrabber(c.stateLock.Lock, c.stateLock.Unlock, stopCh)
+	go l.grab()
+	if stopped := l.lockOrStop(); stopped {
+		lock.Unlock()
+		metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
+		return true
+	}
+
+	if c.Sealed() {
+		c.logger.Warn("grabbed HA lock but already sealed, exiting")
+		lock.Unlock()
+		c.stateLock.Unlock()
+		metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
+		return true
+	}
+
+	// Cancel the standby context if it hasn't already been.
+	standbyCtxCancel()
+
+	// Clear pending standby restarts, not that it matters too much.
+	c.drainPendingRestarts()
+
+	// Store the lock so that we can manually clear it later if needed
+	c.heldHALock = lock
+
+	// Create the active context
+	activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(context.Background()))
+	c.activeContext.Store(NewAtomicContext(activeCtx, activeCtxCancel))
+
+	// Ensure it gets cancelled eventually.
+	defer activeCtxCancel()
+
+	// Mark storage as readable again.
+	c.barrier.SetReadOnly(false)
+
+	// Perform seal migration
+	if err := c.migrateSeal(activeCtx); err != nil {
+		c.logger.Error("root seal migration error", "error", err)
+		// nothing we can do about it here
+		_ = c.sealManager.sealAll()
+		c.logger.Warn("OpenBao is sealed")
+		c.heldHALock = nil
+		lock.Unlock()
+		c.stateLock.Unlock()
+		return true
+	}
+
+	// This block is used to wipe barrier/seal state and verify that
+	// everything is sane. If we have no sanity in the barrier, we actually
+	// seal, as there's little we can do.
+	{
+		c.seal.SetBarrierConfig(activeCtx, nil)
+		if c.seal.RecoveryKeySupported() {
+			c.seal.SetRecoveryConfig(activeCtx, nil)
 		}
 
-		c.logger.Info("acquired lock, enabling active operation")
+		if err := c.performKeyUpgrades(activeCtx); err != nil {
+			c.logger.Error("error performing key upgrades", "error", err)
 
-		// This is used later to log a metrics event; this can be helpful to
-		// detect flapping
-		activeTime := time.Now()
+			// If we fail due to anything other than a context canceled
+			// error we should shutdown as we may have the incorrect Keys.
+			if !strings.Contains(err.Error(), context.Canceled.Error()) {
+				// We call this in a goroutine so that we can give up the
+				// statelock and have this shut us down; sealInternal has a
+				// workflow where it watches for the stopCh to close so we want
+				// to return from here
+				go c.Shutdown()
+			}
 
-		// We're transitioning to active, so cancel the standby context.
-		// Spawn this in a goroutine so we can cancel the context and unblock
-		// any inflight requests that are holding the state lock.
+			c.heldHALock = nil
+			lock.Unlock()
+			c.stateLock.Unlock()
+			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
+
+			// If we are shutting down we should return from this function,
+			// otherwise continue
+			if !strings.Contains(err.Error(), context.Canceled.Error()) {
+				return false
+			} else {
+				return true
+			}
+		}
+	}
+
+	{
+		// Clear previous local cluster cert info so we generate new. Since the
+		// UUID will have changed, standbys will know to look for new info
+		c.localClusterParsedCert.Store(nil)
+		c.localClusterCert.Store(nil)
+		c.localClusterPrivateKey.Store(nil)
+
+		if err := c.setupCluster(activeCtx); err != nil {
+			c.heldHALock = nil
+			lock.Unlock()
+			c.stateLock.Unlock()
+			c.logger.Error("cluster setup failed", "error", err)
+			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
+			return false
+		}
+
+	}
+	// Advertise as leader
+	if err := c.advertiseLeader(activeCtx, uuid, leaderLostCh); err != nil {
+		c.heldHALock = nil
+		lock.Unlock()
+		c.stateLock.Unlock()
+		c.logger.Error("leader advertisement setup failed", "error", err)
+		metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
+		return false
+	}
+
+	// wipe any existing mount tables before stepping up as leader
+	if err := c.preSeal(); err != nil {
+		c.logger.Error("pre-seal teardown failed", "error", err)
+	}
+
+	// Attempt the post-unseal process
+	c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformancePrimary))
+	err = c.postUnseal(activeCtx, activeCtxCancel, standardUnsealStrategy{})
+	if err == nil {
+		c.standby.Store(false)
+		c.leaderUUID = uuid
+		c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 1, nil)
+	}
+
+	c.stateLock.Unlock()
+
+	// Handle a failure to unseal
+	if err != nil {
+		c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceStandby))
+		c.standby.Store(true)
+		c.logger.Error("post-unseal setup failed", "error", err)
+		lock.Unlock()
+		metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
+		return false
+	}
+
+	// Monitor a loss of leadership
+	select {
+	case <-leaderLostCh:
+		c.logger.Warn("leadership lost, stopping active operation")
+	case <-stopCh:
+	case <-manualStepDownCh:
+		*manualStepDown = true
+		c.logger.Warn("stepping down from active operation to standby")
+	}
+
+	// Stop Active Duty
+	{
+		// Spawn this in a goroutine so we can cancel the context and
+		// unblock any inflight requests that are holding the state lock.
 		go func() {
 			timer := time.NewTimer(DefaultMaxRequestDuration)
 			select {
-			case <-standbyCtx.Done():
+			case <-activeCtx.Done():
 				timer.Stop()
 			case <-timer.C:
 				// Attempt to drain any inflight requests.
-				standbyCtxCancel()
+				activeCtxCancel()
 			}
 		}()
 
-		// Grab the statelock or stop
+		// Grab lock if we are not stopped
 		l := newLockGrabber(c.stateLock.Lock, c.stateLock.Unlock, stopCh)
 		go l.grab()
-		if stopped := l.lockOrStop(); stopped {
-			lock.Unlock()
-			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
-			return
-		}
+		stopped := l.lockOrStop()
 
-		if c.Sealed() {
-			c.logger.Warn("grabbed HA lock but already sealed, exiting")
-			lock.Unlock()
-			c.stateLock.Unlock()
-			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
-			return
-		}
+		// Cancel the context incase the above go routine hasn't done it
+		// yet
+		activeCtxCancel()
+		metrics.MeasureSince([]string{"core", "leadership_lost"}, activeTime)
 
-		// Cancel the standby context if it hasn't already been.
-		standbyCtxCancel()
+		// Mark as standby
+		c.standby.Store(true)
+		c.leaderUUID = ""
+		c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 0, nil)
 
-		// Clear pending standby restarts, not that it matters too much.
-		c.drainPendingRestarts()
-
-		// Store the lock so that we can manually clear it later if needed
-		c.heldHALock = lock
-
-		// Create the active context
-		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(context.Background()))
-		c.activeContext.Store(NewAtomicContext(activeCtx, activeCtxCancel))
-
-		// Ensure it gets cancelled eventually.
-		ctxCancel = activeCtxCancel
-
-		// Mark storage as readable again.
-		c.barrier.SetReadOnly(false)
-
-		// Perform seal migration
-		if err := c.migrateSeal(activeCtx); err != nil {
-			c.logger.Error("root seal migration error", "error", err)
-			// nothing we can do about it here
-			_ = c.sealManager.sealAll()
-			c.logger.Warn("OpenBao is sealed")
-			c.heldHALock = nil
-			lock.Unlock()
-			c.stateLock.Unlock()
-			return
-		}
-
-		// This block is used to wipe barrier/seal state and verify that
-		// everything is sane. If we have no sanity in the barrier, we actually
-		// seal, as there's little we can do.
-		{
-			c.seal.SetBarrierConfig(activeCtx, nil)
-			if c.seal.RecoveryKeySupported() {
-				c.seal.SetRecoveryConfig(activeCtx, nil)
-			}
-
-			if err := c.performKeyUpgrades(activeCtx); err != nil {
-				c.logger.Error("error performing key upgrades", "error", err)
-
-				// If we fail due to anything other than a context canceled
-				// error we should shutdown as we may have the incorrect Keys.
-				if !strings.Contains(err.Error(), context.Canceled.Error()) {
-					// We call this in a goroutine so that we can give up the
-					// statelock and have this shut us down; sealInternal has a
-					// workflow where it watches for the stopCh to close so we want
-					// to return from here
-					go c.Shutdown()
-				}
-
-				c.heldHALock = nil
-				lock.Unlock()
-				c.stateLock.Unlock()
-				metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
-
-				// If we are shutting down we should return from this function,
-				// otherwise continue
-				if !strings.Contains(err.Error(), context.Canceled.Error()) {
-					continue
-				} else {
-					return
-				}
+		// Seal if this was a regular leadership change or stepdown. We
+		// do not seal when the stop channel is acquired, as
+		// sealInternal(...) handles that for us.
+		if !stopped {
+			if err := c.preSeal(); err != nil {
+				c.logger.Error("pre-seal teardown failed", "error", err)
 			}
 		}
 
-		{
-			// Clear previous local cluster cert info so we generate new. Since the
-			// UUID will have changed, standbys will know to look for new info
-			c.localClusterParsedCert.Store(nil)
-			c.localClusterCert.Store(nil)
-			c.localClusterPrivateKey.Store(nil)
+		if err := c.clearLeader(uuid); err != nil {
+			c.logger.Error("clearing leader advertisement failed", "error", err)
+		}
 
-			if err := c.setupCluster(activeCtx); err != nil {
-				c.heldHALock = nil
-				lock.Unlock()
-				c.stateLock.Unlock()
-				c.logger.Error("cluster setup failed", "error", err)
-				metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
-				continue
+		if err := c.heldHALock.Unlock(); err != nil {
+			c.logger.Error("unlocking HA lock failed", "error", err)
+		}
+		c.heldHALock = nil
+
+		// Advertise ourselves as a standby.
+		if c.serviceRegistration != nil {
+			if err := c.serviceRegistration.NotifyActiveStateChange(false); err != nil {
+				c.logger.Warn("failed to notify standby status", "error", err)
 			}
-
-		}
-		// Advertise as leader
-		if err := c.advertiseLeader(activeCtx, uuid, leaderLostCh); err != nil {
-			c.heldHALock = nil
-			lock.Unlock()
-			c.stateLock.Unlock()
-			c.logger.Error("leader advertisement setup failed", "error", err)
-			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
-			continue
 		}
 
-		// wipe any existing mount tables before stepping up as leader
-		if err := c.preSeal(); err != nil {
-			c.logger.Error("pre-seal teardown failed", "error", err)
+		// If we are stopped return, otherwise unlock the statelock
+		if stopped {
+			return true
 		}
-
-		// Attempt the post-unseal process
-		c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformancePrimary))
-		err = c.postUnseal(activeCtx, activeCtxCancel, standardUnsealStrategy{})
-		if err == nil {
-			c.standby.Store(false)
-			c.leaderUUID = uuid
-			c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 1, nil)
-		}
-
 		c.stateLock.Unlock()
-
-		// Handle a failure to unseal
-		if err != nil {
-			c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceStandby))
-			c.standby.Store(true)
-			c.logger.Error("post-unseal setup failed", "error", err)
-			lock.Unlock()
-			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
-			continue
-		}
-
-		// Monitor a loss of leadership
-		select {
-		case <-leaderLostCh:
-			c.logger.Warn("leadership lost, stopping active operation")
-		case <-stopCh:
-		case <-manualStepDownCh:
-			manualStepDown = true
-			c.logger.Warn("stepping down from active operation to standby")
-		}
-
-		// Stop Active Duty
-		{
-			// Spawn this in a goroutine so we can cancel the context and
-			// unblock any inflight requests that are holding the state lock.
-			go func() {
-				timer := time.NewTimer(DefaultMaxRequestDuration)
-				select {
-				case <-activeCtx.Done():
-					timer.Stop()
-				case <-timer.C:
-					// Attempt to drain any inflight requests.
-					activeCtxCancel()
-				}
-			}()
-
-			// Grab lock if we are not stopped
-			l := newLockGrabber(c.stateLock.Lock, c.stateLock.Unlock, stopCh)
-			go l.grab()
-			stopped := l.lockOrStop()
-
-			// Cancel the context incase the above go routine hasn't done it
-			// yet
-			activeCtxCancel()
-			metrics.MeasureSince([]string{"core", "leadership_lost"}, activeTime)
-
-			// Mark as standby
-			c.standby.Store(true)
-			c.leaderUUID = ""
-			c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 0, nil)
-
-			// Seal if this was a regular leadership change or stepdown. We
-			// do not seal when the stop channel is acquired, as
-			// sealInternal(...) handles that for us.
-			if !stopped {
-				if err := c.preSeal(); err != nil {
-					c.logger.Error("pre-seal teardown failed", "error", err)
-				}
-			}
-
-			if err := c.clearLeader(uuid); err != nil {
-				c.logger.Error("clearing leader advertisement failed", "error", err)
-			}
-
-			if err := c.heldHALock.Unlock(); err != nil {
-				c.logger.Error("unlocking HA lock failed", "error", err)
-			}
-			c.heldHALock = nil
-
-			// Advertise ourselves as a standby.
-			if c.serviceRegistration != nil {
-				if err := c.serviceRegistration.NotifyActiveStateChange(false); err != nil {
-					c.logger.Warn("failed to notify standby status", "error", err)
-				}
-			}
-
-			// If we are stopped return, otherwise unlock the statelock
-			if stopped {
-				return
-			}
-			c.stateLock.Unlock()
-		}
 	}
+
+	// Try again
+	return false
 }
 
 func (c *Core) setupGRPCStandbyInvalidations(ctx context.Context) bool {
@@ -941,15 +969,17 @@ func (c *Core) setupGRPCStandbyInvalidations(ctx context.Context) bool {
 
 // runReadEnabledStandby grabs the state lock and unseals in read-only mode. It
 // returns two booleans:
-// - stop: true if state lock acquisition stopped or timed out
-// - retry: if the operation should be retried.
-func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.CancelFunc, stopCh <-chan struct{}) (stop bool, retry bool) {
+//   - stop: true if state lock acquisition stopped or timed out
+//   - retry: if the operation should be retried.
+//   - attempt active: if retry is also true, if we should retry after a
+//     period of time if we don't become the active in the interim.
+func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.CancelFunc, stopCh <-chan struct{}) (stop bool, retry bool, activeAttempt bool) {
 	c.logger.Info("enabling horizontal scalability (reads)")
 	c.barrier.SetReadOnly(true)
 
 	if err := c.runStandbyGrabStateLock(stopCh); err != nil {
 		c.logger.Error("unable to grab state lock for standby", "err", err)
-		return true, false
+		return true, false, false
 	}
 
 	defer c.stateLock.Unlock()
@@ -971,8 +1001,8 @@ func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.Canc
 			c.CleanupInvalidationPeers()
 			c.invalidations.Stop()
 
-			// Try this again.
-			return false, true
+			// Try this again, but allow attempting to become active.
+			return false, true, true
 		}
 
 		// Wait for our initial invalidation checkpoint.
@@ -982,7 +1012,7 @@ func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.Canc
 			c.invalidations.Stop()
 
 			c.logger.Error("failed to await replication", "err", err)
-			return false, true
+			return false, true, true
 		}
 	}
 
@@ -997,11 +1027,11 @@ func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.Canc
 
 		// We shouldn't attempt to keep grabbing the HA lock if we failed to
 		// unseal.
-		return false, true
+		return false, true, false
 	}
 
 	// All good.
-	return false, false
+	return false, false, false
 }
 
 // grabLockOrStop returns stopped=false if the lock is acquired. Returns

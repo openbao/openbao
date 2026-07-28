@@ -4,6 +4,7 @@
 package configutil
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/textproto"
@@ -182,6 +183,23 @@ type Listener struct {
 	DisableUnauthedMetadata    bool `hcl:"-"`
 	DisableUnauthedMetadataRaw any  `hcl:"disable_unauthed_metadata"`
 }
+
+func AddListenerConfigToContext(ctx context.Context, listener *Listener) context.Context {
+	if listener == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, ctxKeyListenerConfig{}, listener)
+}
+
+func GetListenerConfigToContext(ctx context.Context) *Listener {
+	listener, ok := ctx.Value(ctxKeyListenerConfig{}).(*Listener)
+	if ok {
+		return listener
+	}
+	return nil
+}
+
+type ctxKeyListenerConfig struct{}
 
 // AgentAPI allows users to select which parts of the Agent API they want enabled.
 type AgentAPI struct {

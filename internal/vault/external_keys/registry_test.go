@@ -132,7 +132,7 @@ func TestGrants(t *testing.T) {
 
 	// Create a key with no grants:
 	require.NoError(t, r.ModifyKey(ctx, storage, "test", "test", false, func(ke *KeyEntry, exists bool) error {
-		ke.Values = map[string]any{"name": "test"}
+		ke.Values = map[string]any{"name": "test", "version": "1"}
 		return nil
 	}))
 

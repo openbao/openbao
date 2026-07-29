@@ -120,9 +120,35 @@ type CA struct {
 	CAKeyPEM      []byte
 }
 
-type ClusterStorage interface {
-	Start(context.Context, *ClusterOptions) error
-	Cleanup() error
-	Opts() map[string]any
+// Storage is a common base type for use in docker.DockerClusterOptions
+// to abstract between ClusterStorage and NodeStorage. The former is
+// generally preferred as it gives more control over multi-node storage
+// via a factory pattern. It should never be directly implemented; the
+// Docker test cluster architecture requires either child interface.
+type Storage interface {
 	Type() string
+
+	// Cleanup may be called multiple times or not at all.
+	Cleanup() error
+}
+
+// ClusterStorage yields a new NodeStorage for the requested node.
+type ClusterStorage interface {
+	Storage
+	ForNode(ctx context.Context, index int) (NodeStorage, error)
+}
+
+// NodeStorage is an instance of a storage backend for a single OpenBao node.
+// This was previously named ClusterStorage and gave the impression that all
+// decisions needed to be made up front (as Opts() is more or less static);
+//
+// We've now renamed this to make it more clear and added a new factory
+// pattern.
+type NodeStorage interface {
+	Storage
+
+	// A best effort is made to call Start exactly once, but be prepared to
+	// ignore it if called multiple times.
+	Start(context.Context, *ClusterOptions) error
+	Opts() map[string]any
 }

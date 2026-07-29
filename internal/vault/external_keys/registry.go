@@ -5,6 +5,7 @@ package ek
 
 import (
 	"context"
+	"crypto"
 	"errors"
 	"fmt"
 	"path"
@@ -155,6 +156,28 @@ func (r *Registry) ReadConfig(ctx context.Context, s logical.Storage, name strin
 	}
 
 	return &ce, nil
+}
+
+// ReadRedactedConfig reads a config entry from the passed storage and redacts
+// any sensitive configuration fields in the returned entry.
+func (r *Registry) ReadRedactedConfig(ctx context.Context, s logical.Storage, name string) (*ConfigEntry, error) {
+	ce, err := r.ReadConfig(ctx, s, name)
+	if ce == nil || ce.Values == nil || err != nil {
+		return ce, err
+	}
+
+	meta, err := r.plugins.GetMetadata(ctx, ce.Plugin)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read metadata for plugin %q: %w", ce.Plugin, err)
+	}
+
+	for _, field := range meta.SensitiveKMSFields {
+		if _, ok := ce.Values[field]; ok {
+			ce.Values[field] = "(redacted)"
+		}
+	}
+
+	return ce, nil
 }
 
 // ModifyConfig reads and writes back a config entry, optionally instantiating
@@ -334,6 +357,33 @@ func (r *Registry) ReadKey(ctx context.Context, s logical.Storage, configName, k
 	return &ke, nil
 }
 
+// ReadRedactedKey reads a key entry from the passed storage and redacts any
+// sensitive configuration fields in the returned entry.
+func (r *Registry) ReadRedactedKey(ctx context.Context, s logical.Storage, configName, keyName string) (*KeyEntry, error) {
+	ce, err := r.ReadConfig(ctx, s, configName)
+	if ce == nil || err != nil {
+		return nil, err
+	}
+
+	ke, err := r.ReadKey(ctx, s, configName, keyName)
+	if ke == nil || ke.Values == nil || err != nil {
+		return ke, err
+	}
+
+	meta, err := r.plugins.GetMetadata(ctx, ce.Plugin)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read metadata for plugin %q: %w", ce.Plugin, err)
+	}
+
+	for _, field := range meta.SensitiveKeyFields {
+		if _, ok := ke.Values[field]; ok {
+			ke.Values[field] = "(redacted)"
+		}
+	}
+
+	return ke, nil
+}
+
 // ModifyKey reads and writes back a key entry, optionally instantiating it
 // against the respective plugin to ensure it is working.
 func (r *Registry) ModifyKey(ctx context.Context, s logical.Storage, configName, keyName string, verify bool, f func(ke *KeyEntry, exists bool) error) error {
@@ -452,7 +502,12 @@ func (r *Registry) GetExternalKey(ctx context.Context, s logical.Storage, ns *na
 		return nil, err
 	}
 
-	return client.GetKey(ctx, &kms.KeyOptions{ConfigMap: ke.Values})
+	key, err := client.GetKey(ctx, &kms.KeyOptions{ConfigMap: ke.Values})
+	if err != nil {
+		return nil, err
+	}
+
+	return nilCheckingKey{key}, nil
 }
 
 var (
@@ -563,4 +618,67 @@ func (r *Registry) Stop(ctx context.Context) {
 	}
 
 	wg.Wait()
+}
+
+// nilCheckingKey is defense-in-depth against consumers of the external keys
+// SystemView passing nil values to key APIs. All keys returned by the registry
+// are wrapped in this.
+type nilCheckingKey struct {
+	// Note: Don't embed kms.UnimplementedKey here so we're forced to update
+	// this whenever the interface changes.
+	key kms.Key
+}
+
+func (n nilCheckingKey) Encrypt(ctx context.Context, opts *kms.CipherOptions) ([]byte, error) {
+	switch {
+	case opts == nil:
+		return nil, errors.New("cannot encrypt with nil opts")
+	case opts.Data == nil:
+		return nil, errors.New("cannot encrypt with nil opts.Data")
+	}
+	return n.key.Encrypt(ctx, opts)
+}
+
+func (n nilCheckingKey) Decrypt(ctx context.Context, opts *kms.CipherOptions) ([]byte, error) {
+	switch {
+	case opts == nil:
+		return nil, errors.New("cannot decrypt with nil opts")
+	case opts.Data == nil:
+		return nil, errors.New("cannot decrypt with nil opts.Data")
+	}
+	return n.key.Decrypt(ctx, opts)
+}
+
+func (n nilCheckingKey) Sign(ctx context.Context, opts *kms.SignOptions) ([]byte, error) {
+	switch {
+	case opts == nil:
+		return nil, errors.New("cannot sign with nil opts")
+	case opts.Data == nil:
+		return nil, errors.New("cannot sign with nil opts.Data")
+	case opts.SignerOpts == nil:
+		return nil, errors.New("cannot sign with nil opts.SignerOpts")
+	}
+	return n.key.Sign(ctx, opts)
+}
+
+func (n nilCheckingKey) Verify(ctx context.Context, opts *kms.VerifyOptions) error {
+	switch {
+	case opts == nil:
+		return errors.New("cannot verify with nil opts")
+	case opts.Data == nil:
+		return errors.New("cannot verify with nil opts.Data")
+	case opts.Signature == nil:
+		return errors.New("cannot verify with nil opts.Signature")
+	case opts.SignerOpts == nil:
+		return errors.New("cannot verify with nil opts.SignerOpts")
+	}
+	return n.key.Verify(ctx, opts)
+}
+
+func (n nilCheckingKey) ExportPublic(ctx context.Context) (crypto.PublicKey, error) {
+	return n.key.ExportPublic(ctx)
+}
+
+func (n nilCheckingKey) Close(ctx context.Context) error {
+	return n.key.Close(ctx)
 }

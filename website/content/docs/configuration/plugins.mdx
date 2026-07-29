@@ -9,10 +9,10 @@ import TabItem from '@theme/TabItem';
 # Declarative plugins
 
 OpenBao supports the distribution of plugins in Open Container Initiative (OCI)
-images. Operators can define the desired plugins for their OpenBao cluster
+artifacts. Operators can define the desired plugins for their OpenBao cluster
 directly in the server configuration files. On startup, OpenBao will check for
 locally cached binaries, verify their integrity, and only download and extract
-new or updated plugin binaries from the specified OCI images if necessary. This
+new or updated plugin binaries from the specified OCI artifacts if necessary. This
 approach uses existing container ecosystem tooling and infrastructure for
 robust, secure, and efficient plugin management.
 
@@ -22,9 +22,6 @@ managing the plugin binaries:
   * **Automated Discovery and Installation:** Operators can define the used
     plugins in code and OpenBao will automatically download and extract them
     during startup.
-  * **Integrity Verification:**  When extracting plugin binaries from OCI images
-    OpenBao ensures the SHA256 sum of the extracted binary is the same as in the
-    configuration files.
   * **Version Management:** Distributing new a new version of a plugin just
     requires an update of the configuration file instead of manually placing the
     binary on every node.
@@ -74,7 +71,7 @@ plugin versions.
 
 ### Parameters
 
-- `image` `(string: required)` - OCI image URL including registry and repository. Conflicts with the `command` value. One of `image` or `command` is required.
+- `image` `(string: required)` - OCI artifact/image URL including registry and repository. Conflicts with the `command` value. One of `image` or `command` is required.
 
 - `command` `(string: required)` - Command name of the plugin that has been manually downloaded. Conflicts with the `image` value. One of `image` or `command` is required.
 
@@ -82,7 +79,7 @@ plugin versions.
 
 - `binary_name` `(string: required)` - Name of the plugin binary file within the OCI image.
 
-- `sha256sum` `(string: required)` - Expected SHA256 checksum of the plugin binary. Must be a 64-character hexadecimal string.
+- `sha256sum` `(string: required)` - Expected SHA-256 digest of the plugin binary. Must be a 64-character hexadecimal string.
 
 - `args` `([]string: optional)` - Any arguments to pass to the running plugin. Only used if `plugin_auto_register=true` is set at the global level.
 

@@ -90,7 +90,7 @@ func TestKMS(t *testing.T) {
 
 	t.Run("Encrypt+Decrypt", func(t *testing.T) {
 		key, err := s.GetKey(ctx, &kms.KeyOptions{
-			ConfigMap: kms.ConfigMap{"name": "aes256-gcm96"},
+			ConfigMap: kms.ConfigMap{"name": "aes256-gcm96", "version": "1"},
 		})
 		require.NoError(t, err)
 
@@ -103,9 +103,8 @@ func TestKMS(t *testing.T) {
 		require.NoError(t, err)
 
 		plaintext, err := key.Decrypt(ctx, &kms.CipherOptions{
-			Data:       ciphertext,
-			Nonce:      opts.Nonce,
-			KeyVersion: opts.KeyVersion,
+			Data:  ciphertext,
+			Nonce: opts.Nonce,
 		})
 		require.NoError(t, err)
 		require.Equal(t, input, plaintext)
@@ -113,7 +112,7 @@ func TestKMS(t *testing.T) {
 
 	t.Run("Sign+Verify", func(t *testing.T) {
 		key, err := s.GetKey(ctx, &kms.KeyOptions{
-			ConfigMap: kms.ConfigMap{"name": "ed25519"},
+			ConfigMap: kms.ConfigMap{"name": "ed25519", "version": "1"},
 		})
 		require.NoError(t, err)
 
@@ -126,15 +125,14 @@ func TestKMS(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NoError(t, key.Verify(ctx, &kms.VerifyOptions{
-			Data:       input,
-			Signature:  sig,
-			KeyVersion: opts.KeyVersion,
+			Data:      input,
+			Signature: sig,
 		}))
 	})
 
 	t.Run("ExportPublic", func(t *testing.T) {
 		key, err := s.GetKey(ctx, &kms.KeyOptions{
-			ConfigMap: kms.ConfigMap{"name": "ed25519"},
+			ConfigMap: kms.ConfigMap{"name": "ed25519", "version": "1"},
 		})
 		require.NoError(t, err)
 
@@ -159,11 +157,11 @@ func TestKMS(t *testing.T) {
 
 		// Acquire a key from each instance.
 		k1, err := s1.GetKey(ctx, &kms.KeyOptions{
-			ConfigMap: kms.ConfigMap{"name": "ed25519"},
+			ConfigMap: kms.ConfigMap{"name": "ed25519", "version": "1"},
 		})
 		require.NoError(t, err)
 		k2, err := s2.GetKey(ctx, &kms.KeyOptions{
-			ConfigMap: kms.ConfigMap{"name": "ed25519"},
+			ConfigMap: kms.ConfigMap{"name": "ed25519", "version": "1"},
 		})
 		require.NoError(t, err)
 
@@ -183,7 +181,7 @@ func TestKMS(t *testing.T) {
 
 		// KMS-level request, this should reload the KMS but no keys.
 		k3, err := s1.GetKey(ctx, &kms.KeyOptions{
-			ConfigMap: kms.ConfigMap{"name": "ed25519"},
+			ConfigMap: kms.ConfigMap{"name": "ed25519", "version": "1"},
 		})
 		require.NoError(t, err)
 

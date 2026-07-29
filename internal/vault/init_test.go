@@ -4,12 +4,16 @@
 package vault
 
 import (
+	"context"
+	"sync"
 	"testing"
+	"time"
 
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/seal"
@@ -136,4 +140,77 @@ func testCoreInitCommon(t *testing.T, s Seal, barrierConf, recoveryConf *SealCon
 		require.NoError(t, err)
 		require.Equal(t, recoveryConf, outConf)
 	}
+}
+
+func TestCore_InitParallelRequests(t *testing.T) {
+	logger := logging.NewVaultLogger(log.Trace)
+
+	inm, err := inmem.NewInmemHA(nil, logger)
+	require.NoError(t, err)
+
+	inmha, err := inmem.NewInmemHA(nil, logger)
+	require.NoError(t, err)
+
+	redirectOriginal := "http://127.0.0.1:8200"
+	conf := &CoreConfig{
+		Physical:   inm,
+		HAPhysical: inmha.(physical.HABackend),
+		LogicalBackends: map[string]logical.Factory{
+			"kv": LeasedPassthroughBackendFactory,
+		},
+		RedirectAddr: redirectOriginal,
+		DisableCache: true,
+		Seal:         nil,
+	}
+	c, err := NewCore(conf)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		c.Shutdown() //nolint:errcheck
+	})
+
+	ctx := namespace.RootContext(t.Context())
+	init, err := c.Initialized(ctx)
+	require.NoError(t, err)
+	require.False(t, init)
+
+	var wg sync.WaitGroup
+	spamCtx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	for range 32 {
+		wg.Go(func() {
+			for {
+				if spamCtx.Err() != nil {
+					return
+				}
+
+				// We don't actually care about anything here.
+				c.HandleRequest(ctx, &logical.Request{ //nolint:errcheck
+					Path:      "sys/mounts/kv",
+					Operation: logical.CreateOperation,
+					Data: map[string]any{
+						"type": "kv",
+					},
+				})
+			}
+		})
+	}
+
+	time.Sleep(150 * time.Millisecond)
+
+	resp, err := c.Initialize(ctx, &InitParams{
+		BarrierConfig: &SealConfig{SecretShares: 5, SecretThreshold: 3},
+	})
+	require.NoError(t, err)
+
+	for _, key := range resp.SecretShares {
+		_, err := TestCoreUnseal(c, key)
+		require.NoError(t, err)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	cancel()
+	wg.Wait()
 }

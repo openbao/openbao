@@ -906,7 +906,7 @@ path "sys/control-group/authorize" {
 }
 
 path "sys/control-group/request" {
-  capabilities = ["read"]
+  capabilities = ["update"]
 }
 `
 	pol, err := policy.ParseACLPolicy(namespace.RootNamespace, policyHCL)
@@ -1056,7 +1056,7 @@ path "sys/control-group/request" {
 	require.Len(t, cgFetched.Factors[2].Authorizations, 1)
 
 	// verify the original request state
-	viewReq := logical.TestRequest(t, logical.ReadOperation, "sys/control-group/request")
+	viewReq := logical.TestRequest(t, logical.UpdateOperation, "sys/control-group/request")
 	viewReq.ClientToken = "approver-token"
 	viewReq.Data = map[string]any{
 		"accessor": wrapped.Accessor,

@@ -92,7 +92,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 	req := &logical.Request{
 		Path:        "cg_test/foo",
 		ClientToken: root,
-		Operation:   logical.UpdateOperation,
+		Operation:   logical.CreateOperation,
 		Data: map[string]any{
 			"zip": "zap",
 		},
@@ -156,7 +156,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		ClientToken: nonRootToken,
 		Operation:   logical.UpdateOperation,
 		Data: map[string]any{
-			"data": "none",
+			"zip": "newzap",
 		},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -167,7 +167,11 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		t.Fatalf("bad wrap_info: %#v", resp)
 	}
 
-	// Fetch token with accessor
+	wrapTTL := resp.WrapInfo.TTL
+	wrapToken := resp.WrapInfo.Token
+	require.Equal(t, wrapTTL, 15*time.Second)
+
+	// Lookup accessor information
 	accessor := resp.WrapInfo.Accessor
 	req = &logical.Request{
 		Path:        "auth/token/lookup-accessor",
@@ -180,6 +184,38 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "accessor")
+	require.Equal(t, resp.Data["accessor"], accessor)
+	require.LessOrEqual(t, resp.Data["ttl"], int64(wrapTTL/time.Second))
+
+	// Use of the token should not work yet as it was not approved.
+	req = &logical.Request{
+		Path:        "sys/wrapping/unwrap",
+		ClientToken: wrapToken,
+		Operation:   logical.UpdateOperation,
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.Error(t, err)
+	require.Nil(t, resp)
+
+	// Check the request status.
+	req = &logical.Request{
+		Path:        "sys/control-group/request",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]any{
+			"accessor": accessor,
+		},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "request_entity")
+	require.Contains(t, resp.Data, "request_path")
+	require.Contains(t, resp.Data, "request_data")
+	require.Contains(t, resp.Data["request_data"], "zip")
+	require.Equal(t, resp.Data["request_data"].(map[string]any)["zip"], "newzap")
+	require.Equal(t, resp.Data["approved"], false)
 }
 
 func TestRequestHandling_LoginWrapping(t *testing.T) {

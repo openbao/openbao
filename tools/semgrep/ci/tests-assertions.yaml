@@ -1,9 +1,7 @@
 # Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
 # SPDX-License-Identifier: MPL-2.0
 
-rules:
-  - id: use-testify-for-error-checks
-    
+__metadata: &metadata
     metadata: 
       category: best-practice
     languages:
@@ -11,7 +9,38 @@ rules:
     severity: ERROR
     message: "use github.com/stretchr/testify for test assertions"
 
+rules:
+  - id: use-testify-for-error-checks
+    <<: *metadata
+
     patterns:
-      - pattern: 'if $ERR != nil { $T.Fatal(err) }'
+      - pattern-not: &with-generic-init |
+          if $INIT; $ERR != nil {
+            ($T: *testing.T).Fatal($ERR)
+          }
+      - pattern: |
+          if $ERR != nil {
+            ($T: *testing.T).Fatal($ERR)
+          }
 
     fix: require.NoError($T, $ERR)
+
+  - id: use-testify-for-error-checks-with-simple-init
+    <<: *metadata
+
+    patterns:
+      - pattern: &with-simple-init |
+          if $ERR = $X($...ARGS); $ERR != nil {
+            ($T: *testing.T).Fatal($ERR)
+          }
+
+    fix: require.NoError($T, $X($...ARGS))
+
+  - id: use-testify-for-error-checks-with-generic-init
+    <<: *metadata
+
+    patterns:
+      - pattern: *with-generic-init
+      - pattern-not: *with-simple-init
+
+    fix: "$INIT\n\trequire.NoError($T, $ERR)"

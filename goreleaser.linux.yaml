@@ -107,25 +107,3 @@ sboms:
     artifacts: archive
   - id: package
     artifacts: package
-
-signs:
-  - id: cosign
-    artifacts: all
-    cmd: cosign
-    signature: "${artifact}.sigstore.json"
-    args:
-      - "sign-blob"
-      - "--bundle=${signature}" # needed on cosign 3.0.0+
-      - "${artifact}"
-      - "--yes" # needed on cosign 2.0.0+
-  - id: gpg
-    artifacts: all
-    signature: "${artifact}.gpgsig"
-    cmd: gpg
-    stdin: "{{ .Env.GPG_PASSWORD }}"
-    args:
-      - "--batch"
-      - "--default-key={{ .Env.GPG_FINGERPRINT }}"
-      - "--output=${signature}"
-      - "--detach-sign"
-      - "${artifact}"

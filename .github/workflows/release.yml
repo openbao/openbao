@@ -186,17 +186,19 @@ jobs:
           TARGET_OS: ${{ matrix.target.os }}
           TARGET_ARM: ${{ matrix.target.arm }}
           TARGET_ARCH: ${{ matrix.target.arch }}
-          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-          GPG_FINGERPRINT: ${{ steps.gpg-import.outputs.fingerprint }}
-          GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
           NFPM_DEFAULT_PASSPHRASE: ${{ secrets.GPG_PASSWORD }}
 
       - name: Remove GPG key from disk
         if: always()
         run: rm -f "$GPG_KEY_FILE"
 
-      - name: Upload build artifacts
+      - name: Sign artifacts
+        run: ./scripts/release/sign-artifacts.sh
+        env:
+          GPG_FINGERPRINT: ${{ steps.gpg-import.outputs.fingerprint }}
+          GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dist-${{ matrix.target.os }}-${{ matrix.target.arch }}${{ matrix.target.arm }}

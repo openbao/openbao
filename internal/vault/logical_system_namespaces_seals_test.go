@@ -7,6 +7,8 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/pgpkeys"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
+	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -793,4 +796,128 @@ func TestNamespaceBackend_MigrateSeal_Cluster(t *testing.T) {
 	// check that data is still readable after migration
 	got := readNamespaceSecret(t, active.Core, nsCtx, "my_secrets", "abc")
 	require.Equal(t, "cluster-before", got.Data["test_key"])
+}
+
+// failingBarrier wraps a SecurityBarrier and fails Get/ListPage after a
+// configurable number of successful calls. This lets us test that the migration
+// transaction is aborted and the namespace is left in a consistent state.
+type failingBarrier struct {
+	barrier.SecurityBarrier
+	failAfter int32
+	calls     atomic.Int32
+}
+
+func newFailingBarrier(b barrier.SecurityBarrier, failAfter int32) *failingBarrier {
+	return &failingBarrier{
+		SecurityBarrier: b,
+		failAfter:       failAfter,
+	}
+}
+
+var errInjectedFailure = errors.New("injected storage failure")
+
+func (f *failingBarrier) Get(ctx context.Context, key string) (*logical.StorageEntry, error) {
+	if f.calls.Add(1) > f.failAfter {
+		return nil, errInjectedFailure
+	}
+	return f.SecurityBarrier.Get(ctx, key)
+}
+
+func (f *failingBarrier) ListPage(ctx context.Context, prefix, after string, limit int) ([]string, error) {
+	if f.calls.Add(1) > f.failAfter {
+		return nil, errInjectedFailure
+	}
+	return f.SecurityBarrier.ListPage(ctx, prefix, after, limit)
+}
+
+// TestNamespaceBackend_MigrateSeal_FailureRecovery verifies that when a
+// namespace barrier migration fails, the transaction is aborted and any other
+// changes made are rolled back.
+func TestNamespaceBackend_MigrateSeal_FailureRecovery(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := TestCoreUnsealed(t)
+	b := c.systemBackend
+	rootCtx := namespace.RootContext(context.Background())
+
+	// create normal namespace
+	ns := testCreateNamespace(t, rootCtx, b, "fail-migrate", nil)
+	nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+	writeNamespaceSecret(t, c, b, nsCtx, "my_secrets", "abc", "before-failure")
+	require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns))
+
+	oldBarrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+	oldView := barrier.NewView(oldBarrier, NamespaceStoragePathPrefix(ns))
+
+	keysBeforeMigration, err := recurseListKeys(rootCtx, oldView, "")
+	require.NoError(t, err)
+
+	// taint the namespace manually
+	parentNs, err := namespace.FromContext(rootCtx)
+	require.NoError(t, err)
+	require.NoError(t, c.namespaceStore.taintNamespace(rootCtx, parentNs, ns))
+
+	// create new barrier
+	sealConfig := &SealConfig{
+		Type:            "shamir",
+		SecretShares:    3,
+		SecretThreshold: 2,
+	}
+	metaPrefix := NamespaceStoragePathPrefix(ns)
+	seal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+	seal.SetCore(c)
+	seal.SetMetaPrefix(metaPrefix)
+	seal.SetConfigAccess(oldBarrier)
+
+	nsSealCtx := namespace.ContextWithNamespace(rootCtx, ns)
+	require.NoError(t, seal.Init(nsSealCtx))
+
+	newBarrier := barrier.NewAESGCMBarrier(c.physical, ns)
+	_, err = c.sealManager.initializeBarrier(nsSealCtx, newBarrier, seal, sealConfig)
+	require.NoError(t, err)
+
+	// create migration job with a failing old barrier that errors after the
+	// first Get/ListPage call
+	failingOld := newFailingBarrier(oldBarrier, 3)
+
+	job := c.namespaceStore.newNamespaceBarrierMigrationJob(
+		oldBarrier, failingOld, newBarrier, parentNs, ns, seal, sealConfig,
+	)
+
+	err = job.Execute()
+	require.Error(t, err, "migration job should fail when old barrier returns an error")
+
+	// old barrier checks
+	activeNs, err := c.namespaceStore.GetNamespaceByPath(rootCtx, "fail-migrate")
+	require.NoError(t, err)
+	require.False(t, activeNs.Tainted, "namespace should not remain tainted after a failed migration")
+
+	require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns), "namespace type should not have changed")
+
+	oldKeys, err := recurseListKeys(rootCtx, oldView, "")
+	require.NoError(t, err)
+	assert.NotEmpty(t, oldKeys, "data should still be accessible through the old barrier after a failed migration")
+	assert.Equal(t, keysBeforeMigration, oldKeys, "there should be no new keys or keys deleted compared to before the migration attempt")
+	for _, key := range knownNamespaceCoreEntriesToCleanup {
+		assert.NotContains(t, oldKeys, key, "%q should have been deleted after failed migration", key)
+	}
+	for _, key := range oldKeys {
+		_, err = oldView.Get(rootCtx, key)
+		assert.NoError(t, err, "reading %q through old barrier should still be possible after transaction rollback", key)
+	}
+
+	// new barrier checks
+	newView := barrier.NewView(newBarrier, NamespaceStoragePathPrefix(ns))
+	for _, key := range oldKeys {
+		_, err := newView.Get(rootCtx, key)
+		assert.Error(t, err, "reading %q through new barrier should fail after transaction rollback", key)
+	}
+
+	// untaint namespace
+	require.NoError(t, c.namespaceStore.untaintNamespace(rootCtx, parentNs, ns))
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		got := readNamespaceSecret(t, c, nsCtx, "my_secrets", "abc")
+		assert.Equal(ct, "before-failure", got.Data["test_key"])
+	}, 10*time.Second, 10*time.Millisecond)
 }

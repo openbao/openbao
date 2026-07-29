@@ -5,11 +5,6 @@ description: |-
 
 # Packaging guide
 
-The ultimate reference for packaging is our
-[`.goreleaser-template.yaml`](https://github.com/openbao/openbao/blob/main/.goreleaser-template.yaml).
-
-This document serves as a reference to some options available there.
-
 :::warning
 
 The scripts in the `Makefile` are for development only. They do not constitute
@@ -18,17 +13,6 @@ assumptions true in development environments (such as having a full Git tree
 available) that may not be true in release build environments.
 
 If you use those interfaces for release builds, you do so at your own risk.
-
-:::
-
-:::info
-
-While `goreleaser` is used for our upstream release binaries, it may not be a
-suitable tool for your builds. This document does not contain instructions on
-invoking `goreleaser` as performed upstream, but serves as a reference for
-building a stable downstream release build process for packaging environments.
-
-It may not be complete; feel free to extend it via GitHub pull request.
 
 :::
 

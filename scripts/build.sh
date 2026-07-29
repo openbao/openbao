@@ -6,8 +6,7 @@
 # This script builds the application from source for multiple platforms.
 #
 # This script should not be used for external release processes; instead,
-# invoke `go build` directly; see /.goreleaser-template.yaml for more
-# information.
+# invoke `go build` directly.
 set -e
 
 GO_CMD=${GO_CMD:-go}

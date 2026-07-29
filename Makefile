@@ -250,12 +250,6 @@ release-changelog: $(wildcard changelog/*.txt)
 	@:$(if $(THIS_RELEASE),,$(error please set the THIS_RELEASE environment variable for changelog generation))
 	go tool -modfile=tools/go.mod changelog-build -changelog-template changelog/changelog.tmpl -entries-dir changelog -git-dir . -note-template changelog/note.tmpl -last-release $(LAST_RELEASE) -this-release $(THIS_RELEASE)
 
-.PHONY: goreleaser-check
-goreleaser-check:
-	goreleaser check -f goreleaser.hsm.yaml
-	goreleaser check -f goreleaser.linux.yaml
-	goreleaser check -f goreleaser.other.yaml
-
 .PHONY: sync-deps
 sync-deps:
 	sh -c "'$(CURDIR)/scripts/sync-deps.sh'"

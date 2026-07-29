@@ -9,10 +9,10 @@ import TabItem from '@theme/TabItem';
 # Declarative plugins
 
 OpenBao supports the distribution of plugins in Open Container Initiative (OCI)
-images. Operators can define the desired plugins for their OpenBao cluster
+artifacts. Operators can define the desired plugins for their OpenBao cluster
 directly in the server configuration files. On startup, OpenBao will check for
 locally cached binaries, verify their integrity, and only download and extract
-new or updated plugin binaries from the specified OCI images if necessary. This
+new or updated plugin binaries from the specified OCI artifacts if necessary. This
 approach uses existing container ecosystem tooling and infrastructure for
 robust, secure, and efficient plugin management.
 
@@ -22,7 +22,7 @@ managing the plugin binaries:
   * **Automated Discovery and Installation:** Operators can define the used
     plugins in code and OpenBao will automatically download and extract them
     during startup.
-  * **Integrity Verification:**  When extracting plugin binaries from OCI images
+  * **Integrity Verification:**  When extracting plugin binaries from OCI artifacts
     OpenBao ensures the SHA-256 digest of the extracted binary is the same as in the
     configuration files.
   * **Version Management:** Distributing new a new version of a plugin just
@@ -74,7 +74,7 @@ plugin versions.
 
 ### Parameters
 
-- `image` `(string: required)` - OCI image URL including registry and repository. Conflicts with the `command` value. One of `image` or `command` is required.
+- `image` `(string: required)` - OCI artifact/image URL including registry and repository. Conflicts with the `command` value. One of `image` or `command` is required.
 
 - `command` `(string: required)` - Command name of the plugin that has been manually downloaded. Conflicts with the `image` value. One of `image` or `command` is required.
 

@@ -18,6 +18,13 @@ and the native Linux packages (DEB/RPM) place it at `/etc/openbao/openbao.hcl`.
 If you are running OpenBao using a container, you typically provide a full configuration at `/openbao/config/openbao.hcl`
 (for example, using a Docker volume mount or a Kubernetes ConfigMap).
 
+:::info
+
+If you edit the config file while OpenBao is already running, you need to restart
+OpenBao or send a SIGHUP signal to cause OpenBao to reload the config file.
+
+:::
+
 ## Step 3: Configure listener
 
 Configure where OpenBao should listen (Unix socket, TCP HTTP/HTTPS) using the
@@ -53,7 +60,8 @@ the audit logs and to protect them from tampering.
 
 ## Step 5: Check status
 
-Check OpenBao's status, to verify that the instance is running and that you can connect to the API.
+Start OpenBao (or restart it if it was already running).
+Then check OpenBao's status, to verify that the instance is up and that you can connect to the API.
 
 From the command line, you can use the [`bao` tool](../commands/index.mdx) to
 interact with the API and query the status:

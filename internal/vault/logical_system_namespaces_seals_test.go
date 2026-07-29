@@ -6,10 +6,15 @@ package vault
 import (
 	"context"
 	"encoding/base64"
+	"encoding/hex"
 	"testing"
+	"time"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
+	"github.com/openbao/openbao/v2/internal/helper/pgpkeys"
+	"github.com/openbao/openbao/v2/internal/vault/barrier"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -272,4 +277,372 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res.Data["my_approle/"])
 	})
+}
+
+func waitForMigrationToFinish(t *testing.T, c *Core, ns *namespace.Namespace, expectedType namespace.Type) {
+	t.Helper()
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		got := c.NamespaceType(ns)
+		assert.Equal(ct, expectedType, got)
+	}, 10*time.Second, 10*time.Millisecond)
+}
+
+func parentBarrierOf(c *Core, ns *namespace.Namespace) barrier.SecurityBarrier {
+	parentPath, ok := ns.ParentPath()
+	if !ok {
+		return nil
+	}
+	return c.sealManager.NamespaceBarrierByLongestPrefix(parentPath)
+}
+
+func writeNamespaceSecret(t *testing.T, c *Core, b logical.Backend, nsCtx context.Context, mountPath, subPath, value string) {
+	t.Helper()
+
+	req := logical.TestRequest(t, logical.ReadOperation, "mounts")
+	res, err := b.HandleRequest(nsCtx, req)
+	require.NoError(t, err)
+	if res == nil || res.Data == nil || res.Data[mountPath+"/"] == nil {
+		req = logical.TestRequest(t, logical.UpdateOperation, "mounts/"+mountPath)
+		req.Data["type"] = "kv"
+		_, err = b.HandleRequest(nsCtx, req)
+		require.NoError(t, err)
+	}
+
+	req = logical.TestRequest(t, logical.UpdateOperation, mountPath+"/"+subPath)
+	req.Data["test_key"] = value
+	_, err = c.router.Route(nsCtx, req)
+	require.NoError(t, err)
+}
+
+func readNamespaceSecret(t *testing.T, c *Core, nsCtx context.Context, mountPath, subPath string) *logical.Response {
+	t.Helper()
+	req := logical.TestRequest(t, logical.ReadOperation, mountPath+"/"+subPath)
+	res, err := c.router.Route(nsCtx, req)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	return res
+}
+
+func unsealNamespace(t *testing.T, b logical.Backend, rootCtx context.Context, nsPath string, keyShares []string, threshold int) {
+	t.Helper()
+	for i := range threshold {
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/"+nsPath+"/unseal")
+		req.Data["key"] = keyShares[i]
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		if i+1 == threshold {
+			require.Equal(t, false, res.Data["sealed"], "namespace should be unsealed after threshold shares")
+		} else {
+			require.Equal(t, true, res.Data["sealed"], "namespace should still be sealed before threshold")
+		}
+	}
+}
+
+func TestNamespaceBackend_MigrateSeal(t *testing.T) {
+	t.Parallel()
+
+	t.Run("normal to sealable migration returns key shares and preserves data", func(t *testing.T) {
+		t.Parallel()
+		c, _, _ := TestCoreUnsealed(t)
+		b := c.systemBackend
+		rootCtx := namespace.RootContext(context.Background())
+
+		// create normal namespace
+		ns := testCreateNamespace(t, rootCtx, b, "migrate", nil)
+		nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+
+		// write some data
+		writeNamespaceSecret(t, c, b, nsCtx, "my_secrets", "abc", "before-migration")
+		require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns))
+
+		// check namespace uses parent barrier
+		oldBarrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+		require.Same(t, parentBarrierOf(c, ns), oldBarrier, "normal namespace should share parent's barrier")
+
+		// migrate to sealable namespace
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/migrate/migrate-seal")
+		req.Data["seal"] = `seal "shamir" {
+    shares = 3
+    threshold = 2
+}`
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, "in-progress", res.Data["status"])
+
+		keyShares, ok := res.Data["key_shares"].([]string)
+		require.True(t, ok, "expected key_shares in response, got %T", res.Data["key_shares"])
+		require.Len(t, keyShares, 3)
+		require.Equal(t, 2, res.Data["key_threshold"])
+
+		waitForMigrationToFinish(t, c, ns, namespace.TypeSealable)
+
+		newBarrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+		require.NotSame(t, oldBarrier, newBarrier, "sealable namespace should be backed by a new barrier after migration")
+		require.NotSame(t, parentBarrierOf(c, ns), newBarrier, "sealable namespace should not share parent's barrier")
+
+		require.False(t, c.NamespaceSealed(ns), "namespace should be unsealed after migration to sealable")
+		got := readNamespaceSecret(t, c, nsCtx, "my_secrets", "abc")
+		require.Equal(t, "before-migration", got.Data["test_key"])
+	})
+
+	t.Run("sealable to normal migration collapses into parent barrier and preserves data", func(t *testing.T) {
+		t.Parallel()
+		c, _, _ := TestCoreUnsealed(t)
+		b := c.systemBackend
+		rootCtx := namespace.RootContext(context.Background())
+
+		// create sealable namespace and unseal
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/collapse")
+		req.Data["seal"] = `seal "shamir" {
+    shares = 3
+    threshold = 2
+}`
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		hexKeyShares := res.Data["key_shares"].([]string)
+		require.Len(t, hexKeyShares, 3)
+
+		ns, err := c.namespaceStore.GetNamespaceByPath(rootCtx, "collapse")
+		require.NoError(t, err)
+		require.Equal(t, namespace.TypeSealable, c.NamespaceType(ns))
+
+		// make sure namespace barrier is not parent barrier
+		sealableBarrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+		require.NotSame(t, parentBarrierOf(c, ns), sealableBarrier, "sealable namespace should not share parent's barrier")
+
+		unsealNamespace(t, b, rootCtx, "collapse", hexKeyShares, 2)
+		nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+
+		// write some data
+		writeNamespaceSecret(t, c, b, nsCtx, "my_secrets", "abc", "before-collapse")
+
+		// migrate to normal namespace
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/collapse/migrate-seal")
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, "in-progress", res.Data["status"])
+		require.Nil(t, res.Data["key_shares"], "no key shares expected when collapsing to normal")
+
+		waitForMigrationToFinish(t, c, ns, namespace.TypeNormal)
+
+		collapsedBarrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+		require.NotSame(t, sealableBarrier, collapsedBarrier, "collapsed namespace should not keep its old sealable barrier")
+		require.Same(t, parentBarrierOf(c, ns), collapsedBarrier, "normal namespace should share parent's barrier after collapse")
+
+		require.False(t, c.NamespaceSealed(ns), "normal namespace should not be sealed")
+		got := readNamespaceSecret(t, c, nsCtx, "my_secrets", "abc")
+		require.Equal(t, "before-collapse", got.Data["test_key"])
+	})
+
+	t.Run("migrating to the same barrier type is a no-op", func(t *testing.T) {
+		t.Parallel()
+		c, _, _ := TestCoreUnsealed(t)
+		b := c.systemBackend
+		rootCtx := namespace.RootContext(context.Background())
+
+		ns := testCreateNamespace(t, rootCtx, b, "noop", nil)
+		require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns))
+
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/noop/migrate-seal")
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Nil(t, res, "expected nil response when migrating to the same barrier")
+		require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns))
+	})
+
+	t.Run("pgp keys encrypt the returned key shares", func(t *testing.T) {
+		t.Parallel()
+		c, _, _ := TestCoreUnsealed(t)
+		b := c.systemBackend
+		rootCtx := namespace.RootContext(context.Background())
+
+		// create normal namespace
+		ns := testCreateNamespace(t, rootCtx, b, "pgp", nil)
+		require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns))
+
+		pgpKeys := []string{pgpkeys.TestPubKey1, pgpkeys.TestPubKey2, pgpkeys.TestPubKey3}
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/pgp/migrate-seal")
+		req.Data["seal"] = `seal "shamir" {
+    shares = 3
+    threshold = 2
+}`
+		req.Data["pgp_keys"] = pgpKeys
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, "in-progress", res.Data["status"])
+
+		keyShares, ok := res.Data["key_shares"].([]string)
+		require.True(t, ok, "expected key_shares in response, got %T", res.Data["key_shares"])
+		require.Len(t, keyShares, 3)
+		require.Equal(t, 2, res.Data["key_threshold"])
+
+		for i, share := range keyShares {
+			raw, err := hex.DecodeString(share)
+			require.NoError(t, err)
+			decrypted, err := pgpkeys.DecryptBytes(base64.StdEncoding.EncodeToString(raw), testPrivKey(t, i))
+			require.NoError(t, err, "failed to decrypt share %d", i)
+			_, err = hex.DecodeString(decrypted.String())
+			require.NoError(t, err)
+		}
+
+		waitForMigrationToFinish(t, c, ns, namespace.TypeSealable)
+	})
+
+	t.Run("invalid seal config is rejected", func(t *testing.T) {
+		t.Parallel()
+		c, _, _ := TestCoreUnsealed(t)
+		b := c.systemBackend
+		rootCtx := namespace.RootContext(context.Background())
+
+		ns := testCreateNamespace(t, rootCtx, b, "badconfig", nil)
+
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/badconfig/migrate-seal")
+		req.Data["seal"] = `seal "pkcs11" {}`
+		_, err := b.HandleRequest(rootCtx, req)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "namespaces currently only support shamir seals")
+
+		require.False(t, ns.Tainted, "namespace should not be tainted after a failed migration")
+		require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns))
+	})
+
+	t.Run("pgp keys count must match shares", func(t *testing.T) {
+		t.Parallel()
+		c, _, _ := TestCoreUnsealed(t)
+		b := c.systemBackend
+		rootCtx := namespace.RootContext(context.Background())
+
+		ns := testCreateNamespace(t, rootCtx, b, "pgpmismatch", nil)
+
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/pgpmismatch/migrate-seal")
+		req.Data["seal"] = `seal "shamir" {
+    shares = 3
+    threshold = 2
+}`
+		req.Data["pgp_keys"] = []string{pgpkeys.TestPubKey1, pgpkeys.TestPubKey2}
+		_, err := b.HandleRequest(rootCtx, req)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "count mismatch between number of provided PGP keys and number of shares")
+
+		require.False(t, ns.Tainted, "namespace should not be tainted after a failed migration")
+		require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns))
+	})
+
+	t.Run("round-trip normal to sealable to normal preserves data and barrier identity", func(t *testing.T) {
+		t.Parallel()
+		c, _, _ := TestCoreUnsealed(t)
+		b := c.systemBackend
+		rootCtx := namespace.RootContext(context.Background())
+
+		ns := testCreateNamespace(t, rootCtx, b, "roundtrip-normal", nil)
+		nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+		writeNamespaceSecret(t, c, b, nsCtx, "my_secrets", "abc", "round-trip-value")
+
+		originalBarrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+		require.Same(t, parentBarrierOf(c, ns), originalBarrier, "normal namespace should share parent's barrier")
+
+		// normal -> sealable
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/roundtrip-normal/migrate-seal")
+		req.Data["seal"] = `seal "shamir" {
+    shares = 3
+    threshold = 2
+}`
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		hexKeyShares := res.Data["key_shares"].([]string)
+		require.Len(t, hexKeyShares, 3)
+		waitForMigrationToFinish(t, c, ns, namespace.TypeSealable)
+
+		sealableBarrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+		require.NotSame(t, originalBarrier, sealableBarrier, "sealable namespace should be backed by a new barrier")
+		require.False(t, c.NamespaceSealed(ns), "namespace should be unsealed after migration to sealable")
+		require.Equal(t, "round-trip-value", readNamespaceSecret(t, c, nsCtx, "my_secrets", "abc").Data["test_key"])
+
+		// sealable -> normal
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/roundtrip-normal/migrate-seal")
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Nil(t, res.Data["key_shares"], "no key shares expected when collapsing to normal")
+		waitForMigrationToFinish(t, c, ns, namespace.TypeNormal)
+
+		finalBarrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+		require.NotSame(t, sealableBarrier, finalBarrier, "collapsed namespace should not keep its old sealable barrier")
+		require.Same(t, originalBarrier, finalBarrier, "collapsed namespace should be backed by the original parent barrier again")
+		require.False(t, c.NamespaceSealed(ns), "normal namespace should not be sealed")
+		require.Equal(t, "round-trip-value", readNamespaceSecret(t, c, nsCtx, "my_secrets", "abc").Data["test_key"])
+	})
+
+	t.Run("round-trip sealable to normal to sealable preserves data and creates a fresh barrier", func(t *testing.T) {
+		t.Parallel()
+		c, _, _ := TestCoreUnsealed(t)
+		b := c.systemBackend
+		rootCtx := namespace.RootContext(context.Background())
+
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/roundtrip-sealable")
+		req.Data["seal"] = `seal "shamir" {
+    shares = 3
+    threshold = 2
+}`
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		firstHexKeyShares := res.Data["key_shares"].([]string)
+		require.Len(t, firstHexKeyShares, 3)
+
+		ns, err := c.namespaceStore.GetNamespaceByPath(rootCtx, "roundtrip-sealable")
+		require.NoError(t, err)
+		require.Equal(t, namespace.TypeSealable, c.NamespaceType(ns))
+
+		firstSealableBarrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+		require.NotSame(t, parentBarrierOf(c, ns), firstSealableBarrier, "sealable namespace should not share parent's barrier")
+
+		unsealNamespace(t, b, rootCtx, "roundtrip-sealable", firstHexKeyShares, 2)
+		nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+		writeNamespaceSecret(t, c, b, nsCtx, "my_secrets", "abc", "sealable-round-trip-value")
+
+		// sealable -> normal
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/roundtrip-sealable/migrate-seal")
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Nil(t, res.Data["key_shares"], "no key shares expected when collapsing to normal")
+		waitForMigrationToFinish(t, c, ns, namespace.TypeNormal)
+
+		normalBarrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+		require.NotSame(t, firstSealableBarrier, normalBarrier, "collapsed namespace should not keep its old sealable barrier")
+		require.Same(t, parentBarrierOf(c, ns), normalBarrier, "normal namespace should share parent's barrier")
+		require.False(t, c.NamespaceSealed(ns), "normal namespace should not be sealed")
+		require.Equal(t, "sealable-round-trip-value", readNamespaceSecret(t, c, nsCtx, "my_secrets", "abc").Data["test_key"])
+
+		// normal -> sealable
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/roundtrip-sealable/migrate-seal")
+		req.Data["seal"] = `seal "shamir" {
+    shares = 3
+    threshold = 2
+}`
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		secondHexKeyShares := res.Data["key_shares"].([]string)
+		require.Len(t, secondHexKeyShares, 3)
+		waitForMigrationToFinish(t, c, ns, namespace.TypeSealable)
+
+		secondSealableBarrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+		require.NotSame(t, normalBarrier, secondSealableBarrier, "re-sealed namespace should be backed by a new barrier")
+		require.NotSame(t, firstSealableBarrier, secondSealableBarrier, "re-sealed namespace must not reuse the original sealable barrier")
+		require.False(t, c.NamespaceSealed(ns), "namespace should be unsealed after migration to sealable")
+		require.Equal(t, "sealable-round-trip-value", readNamespaceSecret(t, c, nsCtx, "my_secrets", "abc").Data["test_key"])
+	})
+}
+
+func testPrivKey(t *testing.T, i int) string {
+	t.Helper()
+	switch i {
+	case 0:
+		return pgpkeys.TestPrivKey1
+	case 1:
+		return pgpkeys.TestPrivKey2
+	case 2:
+		return pgpkeys.TestPrivKey3
+	default:
+		t.Fatalf("no test private key for index %d", i)
+		return ""
+	}
 }

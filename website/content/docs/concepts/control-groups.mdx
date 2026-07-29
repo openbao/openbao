@@ -22,7 +22,6 @@ The general flow for using control groups is as follows:
    response will be [`wrapped`](response-wrapping.mdx).
 3. The wrapped response will contain a `token` and an `accessor`. The
    requester needs to forward the accessor to a member of the
-   approving group and request authorization. **Please note: the approvers are not
    approving group and request authorization. **Please note: OpenBao does not send
    any notification to the approvers to tell them that they have a pending request.**
 4. The approvers can use the accessor to review the request, view the

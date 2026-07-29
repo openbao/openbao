@@ -22,6 +22,9 @@ rules:
           if $ERR != nil {
             ($T: *testing.T).Fatal($ERR)
           }
+      - metavariable-regex: &err-regex
+          metavariable: $ERR
+          regex: (err|.*Err)$
 
     fix: require.NoError($T, $ERR)
 
@@ -33,6 +36,7 @@ rules:
           if $ERR = $X($...ARGS); $ERR != nil {
             ($T: *testing.T).Fatal($ERR)
           }
+      - metavariable-regex: *err-regex
 
     fix: require.NoError($T, $X($...ARGS))
 
@@ -42,5 +46,6 @@ rules:
     patterns:
       - pattern: *with-generic-init
       - pattern-not: *with-simple-init
+      - metavariable-regex: *err-regex
 
     fix: "$INIT\n\trequire.NoError($T, $ERR)"

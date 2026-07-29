@@ -2069,16 +2069,20 @@ func (j *namespaceBarrierMigrationJob) Execute() (err error) {
 
 		return nil
 	})
-	if err != nil {
-		errs = errors.Join(errs, err)
-	}
+	errs = errors.Join(errs, err)
 
-	switch j.newBarrier {
-	case j.parentBarrier:
-		// in case of an error, this will be reverted by the namespace invalidation at the end
+	// invalidate outer most namespace first
+	slices.Reverse(namespacesToMigrate)
+
+	switch {
+	case errs != nil && j.newBarrier != j.parentBarrier:
+		view := NamespaceScopedView(j.oldBarrier, namespacesToMigrate[0])
+		for _, key := range knownNamespaceCoreEntriesToCleanup {
+			errs = errors.Join(errs, view.Delete(ctx, key))
+		}
+	case j.newBarrier == j.parentBarrier:
 		j.core.sealManager.RemoveNamespace(j.target)
 	default:
-		// in case of an error, this will be reverted by the namespace invalidation at the end
 		err = j.core.sealManager.SetSeal(ctx, j.sealConfig, j.target, SetSealOptions{
 			WriteToStorage: true,
 			AllowOverride:  true,
@@ -2089,9 +2093,6 @@ func (j *namespaceBarrierMigrationJob) Execute() (err error) {
 			return err
 		}
 	}
-
-	// invalidate outer most namespace first
-	slices.Reverse(namespacesToMigrate)
 
 	ctx = namespace.ContextWithNamespace(ctx, namespace.RootNamespace)
 	for _, ns := range namespacesToMigrate {

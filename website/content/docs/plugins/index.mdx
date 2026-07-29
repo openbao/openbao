@@ -21,8 +21,7 @@ To use a plugin, an operator needs to:
 
 1. Install the plugin.
 1. Register the plugin with OpenBao.
-1. Mount/enable the plugin.
-1. Configure the plugin.
+1. Use the plugin.
 
 ## Plugin installation
 
@@ -85,42 +84,9 @@ the plugin type:
 
 The [`plugin list`](../commands/plugin/list.mdx) command lists all available plugins.
 
-## Plugin mounting
+## Plugin usage
 
-After the plugin is registered, some plugin types need to be _mounted/enabled_
-before they can be used.
-
-| Plugin type | Needs mounting |
-|---|---|
-| `auth`, `secret` | Yes |
-| `database`| Not the plugin itself. But the `database` secrets engine needs to be mounted. |
-| `kms` | No |
-
-You can mount plugins by specifying the registered plugin name:
-
-```shell-session
-$ bao secrets enable -path=my-secrets passthrough-plugin
-Success! Enabled the passthrough-plugin secrets engine at: my-secrets/
-```
-
-Listing secrets engines will display secrets engines that are mounted as
-plugins:
-
-```shell-session
-$ bao secrets list
-Path         Type       Accessor            Plugin              Default TTL  Max TTL  Force No Cache  Replication Behavior  Description
-my-secrets/  plugin     plugin_deb84140     passthrough-plugin  system       system   false           replicated
-```
-
-Disabling an external plugins is identical to disabling a built-in plugin:
-
-```shell-session
-$ bao secrets disable my-secrets
-```
-
-## Plugin configuration
-
-How a plugin is configured varies by its type.
+How a plugin is used varies by its type.
 See their respective documentation for details:
 
 - [`auth`](../auth/index.mdx)

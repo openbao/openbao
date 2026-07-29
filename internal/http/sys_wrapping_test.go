@@ -411,7 +411,7 @@ path "secret/foo" {
 
 	approverPolicy := `
 path "sys/control-group/authorize" { capabilities = ["update"] }
-path "sys/control-group/request"   { capabilities = ["read"] }
+path "sys/control-group/request"   { capabilities = ["update"] }
 `
 
 	coreConfig := &vault.CoreConfig{
@@ -562,9 +562,9 @@ path "sys/control-group/request"   { capabilities = ["read"] }
 
 	// Authorize it
 	client.SetToken(bobToken)
-	params := make(map[string][]string)
-	params["accessor"] = []string{wrapInfo.Accessor}
-	approverResponse, err := client.Logical().ReadWithData("sys/control-group/request", params)
+	approverResponse, err := client.Logical().Write("sys/control-group/request", map[string]any{
+		"accessor": wrapInfo.Accessor,
+	})
 	require.NoError(t, err)
 	if approverResponse.Data["approved"] == nil {
 		t.Fatal("unexpected request data")

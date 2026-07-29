@@ -442,7 +442,6 @@ func (b *SystemBackend) handleNamespacesMigrateSeal() framework.OperationFunc {
 		if err := b.Core.namespaceStore.taintNamespace(ctx, parentNs, ns); err != nil {
 			return handleError(err)
 		}
-		defer b.Core.namespaceStore.untaintNamespace(ctx, parentNs, ns)
 
 		parentBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(parentNs.Path)
 		oldBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
@@ -476,11 +475,15 @@ func (b *SystemBackend) handleNamespacesMigrateSeal() framework.OperationFunc {
 		}
 
 		if newBarrier == oldBarrier {
-			// Nothing to do
+			// Nothing to do; untaint the namespace we tainted above. In the
+			// normal case, it will be untainted at the end of the migration job
+			if err := b.Core.namespaceStore.untaintNamespace(ctx, parentNs, ns); err != nil {
+				return handleError(err)
+			}
 			return nil, nil
 		}
 
-		migrationJob := b.Core.namespaceStore.newNamespaceBarrierMigrationJob(parentBarrier, oldBarrier, newBarrier, ns, seal, sealConfig)
+		migrationJob := b.Core.namespaceStore.newNamespaceBarrierMigrationJob(parentBarrier, oldBarrier, newBarrier, parentNs, ns, seal, sealConfig)
 
 		b.Core.namespaceStore.jobDispatcher.AddJob(migrationJob, ns.UUID)
 

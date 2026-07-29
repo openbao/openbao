@@ -1291,8 +1291,8 @@ func (ns *NamespaceStore) untaintNamespace(ctx context.Context, parent, namespac
 		return errors.New("cannot untaint root namespace")
 	}
 
-	ns.namespacesByUUID[namespaceToUntaint.UUID].Tainted = true
-	ns.namespacesByAccessor[namespaceToUntaint.ID].Tainted = true
+	ns.namespacesByUUID[namespaceToUntaint.UUID].Tainted = false
+	ns.namespacesByAccessor[namespaceToUntaint.ID].Tainted = false
 	namespaceToUntaint.Tainted = false
 
 	err := ns.namespacesByPath.Insert(namespaceToUntaint)
@@ -1939,6 +1939,7 @@ func (j *namespaceCreationFailureJob) OnFailure(err error) {
 type namespaceBarrierMigrationJob struct {
 	store         *NamespaceStore
 	core          *Core
+	parent        *namespace.Namespace
 	seal          Seal
 	sealConfig    *SealConfig
 	oldBarrier    barrier.SecurityBarrier
@@ -1947,10 +1948,11 @@ type namespaceBarrierMigrationJob struct {
 	target        *namespace.Namespace
 }
 
-func (ns *NamespaceStore) newNamespaceBarrierMigrationJob(parentBarrier, oldBarrier, newBarrier barrier.SecurityBarrier, target *namespace.Namespace, seal Seal, sealConfig *SealConfig) fairshare.Job {
+func (ns *NamespaceStore) newNamespaceBarrierMigrationJob(parentBarrier, oldBarrier, newBarrier barrier.SecurityBarrier, parent, target *namespace.Namespace, seal Seal, sealConfig *SealConfig) fairshare.Job {
 	return &namespaceBarrierMigrationJob{
 		store:         ns,
 		core:          ns.core,
+		parent:        parent,
 		seal:          seal,
 		sealConfig:    sealConfig,
 		target:        target,
@@ -1960,8 +1962,14 @@ func (ns *NamespaceStore) newNamespaceBarrierMigrationJob(parentBarrier, oldBarr
 	}
 }
 
-func (j *namespaceBarrierMigrationJob) Execute() error {
+func (j *namespaceBarrierMigrationJob) Execute() (err error) {
 	ctx := j.store.asyncJobContext
+
+	defer func() {
+		if untaintErr := j.store.untaintNamespace(ctx, j.parent, j.target); untaintErr != nil {
+			err = errors.Join(err, fmt.Errorf("failed to untaint namespace after migration: %w", untaintErr))
+		}
+	}()
 
 	namespacesToMigrate, err := j.store.ListNamespaces(namespace.ContextWithNamespace(ctx, j.target), ListNamespaceOpts{
 		IncludeSealed: false,
@@ -1972,6 +1980,7 @@ func (j *namespaceBarrierMigrationJob) Execute() error {
 		return err
 	}
 
+	// migrate innermost namespace first
 	slices.Reverse(namespacesToMigrate)
 	namespacesToMigrate = append(namespacesToMigrate, j.target)
 
@@ -2032,6 +2041,7 @@ func (j *namespaceBarrierMigrationJob) Execute() error {
 		}
 	}
 
+	// invalidate outer most namespace first
 	slices.Reverse(namespacesToMigrate)
 
 	ctx = namespace.ContextWithNamespace(ctx, namespace.RootNamespace)
@@ -2050,11 +2060,8 @@ func (j *namespaceBarrierMigrationJob) Execute() error {
 			errs = errors.Join(errs, err)
 		}
 	}
-	if errs != nil {
-		return errs
-	}
 
-	return nil
+	return errs
 }
 
 func (j *namespaceBarrierMigrationJob) OnFailure(err error) {

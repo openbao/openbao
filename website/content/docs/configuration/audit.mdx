@@ -37,8 +37,7 @@ the API: `description` and other parameters are defined at the top level and
         "to-stdout": {
           "description": "Write audit information to standard output.",
           "options": {
-            "file_path": "stdout",
-            "log_raw": "true"
+            "file_path": "stdout"
           }
         }
       }
@@ -55,7 +54,6 @@ audit "file" "to-stdout" {
   description = "Write audit information to standard output."
   options {
     file_path = "stdout"
-    log_raw = "true"
   }
 }
 ```

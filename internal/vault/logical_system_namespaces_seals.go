@@ -378,6 +378,10 @@ func (b *SystemBackend) handleNamespacesMigrateSeal() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))
 
+		if !b.System().(extendedSystemView).SudoPrivilege(ctx, req.MountPoint+req.Path, req.ClientToken) {
+			return nil, logical.ErrPermissionDenied
+		}
+
 		sealRaw, ok := data.GetOk("seal")
 		var sealConfig *SealConfig
 		if ok {

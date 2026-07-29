@@ -343,7 +343,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 	t.Run("normal to sealable migration returns key shares and preserves data", func(t *testing.T) {
 		t.Parallel()
-		c, _, _ := TestCoreUnsealed(t)
+		c, _, root := TestCoreUnsealed(t)
 		b := c.systemBackend
 		rootCtx := namespace.RootContext(context.Background())
 
@@ -361,6 +361,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 		// migrate to sealable namespace
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/migrate/migrate-seal")
+		req.ClientToken = root
 		req.Data["seal"] = `seal "shamir" {
     shares = 3
     threshold = 2
@@ -387,7 +388,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 	t.Run("sealable to normal migration collapses into parent barrier and preserves data", func(t *testing.T) {
 		t.Parallel()
-		c, _, _ := TestCoreUnsealed(t)
+		c, _, root := TestCoreUnsealed(t)
 		b := c.systemBackend
 		rootCtx := namespace.RootContext(context.Background())
 
@@ -418,6 +419,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 		// migrate to normal namespace
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/collapse/migrate-seal")
+		req.ClientToken = root
 		res, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
 		require.Equal(t, "in-progress", res.Data["status"])
@@ -436,7 +438,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 	t.Run("migrating to the same barrier type is a no-op", func(t *testing.T) {
 		t.Parallel()
-		c, _, _ := TestCoreUnsealed(t)
+		c, _, root := TestCoreUnsealed(t)
 		b := c.systemBackend
 		rootCtx := namespace.RootContext(context.Background())
 
@@ -444,6 +446,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 		require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns))
 
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/noop/migrate-seal")
+		req.ClientToken = root
 		res, err := b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
 		require.Nil(t, res, "expected nil response when migrating to the same barrier")
@@ -452,7 +455,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 	t.Run("pgp keys encrypt the returned key shares", func(t *testing.T) {
 		t.Parallel()
-		c, _, _ := TestCoreUnsealed(t)
+		c, _, root := TestCoreUnsealed(t)
 		b := c.systemBackend
 		rootCtx := namespace.RootContext(context.Background())
 
@@ -462,6 +465,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 		pgpKeys := []string{pgpkeys.TestPubKey1, pgpkeys.TestPubKey2, pgpkeys.TestPubKey3}
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/pgp/migrate-seal")
+		req.ClientToken = root
 		req.Data["seal"] = `seal "shamir" {
     shares = 3
     threshold = 2
@@ -490,13 +494,14 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 	t.Run("invalid seal config is rejected", func(t *testing.T) {
 		t.Parallel()
-		c, _, _ := TestCoreUnsealed(t)
+		c, _, root := TestCoreUnsealed(t)
 		b := c.systemBackend
 		rootCtx := namespace.RootContext(context.Background())
 
 		ns := testCreateNamespace(t, rootCtx, b, "badconfig", nil)
 
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/badconfig/migrate-seal")
+		req.ClientToken = root
 		req.Data["seal"] = `seal "pkcs11" {}`
 		_, err := b.HandleRequest(rootCtx, req)
 		require.Error(t, err)
@@ -508,13 +513,14 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 	t.Run("pgp keys count must match shares", func(t *testing.T) {
 		t.Parallel()
-		c, _, _ := TestCoreUnsealed(t)
+		c, _, root := TestCoreUnsealed(t)
 		b := c.systemBackend
 		rootCtx := namespace.RootContext(context.Background())
 
 		ns := testCreateNamespace(t, rootCtx, b, "pgpmismatch", nil)
 
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/pgpmismatch/migrate-seal")
+		req.ClientToken = root
 		req.Data["seal"] = `seal "shamir" {
     shares = 3
     threshold = 2
@@ -530,7 +536,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 	t.Run("round-trip normal to sealable to normal preserves data and barrier identity", func(t *testing.T) {
 		t.Parallel()
-		c, _, _ := TestCoreUnsealed(t)
+		c, _, root := TestCoreUnsealed(t)
 		b := c.systemBackend
 		rootCtx := namespace.RootContext(context.Background())
 
@@ -543,6 +549,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 		// normal -> sealable
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/roundtrip-normal/migrate-seal")
+		req.ClientToken = root
 		req.Data["seal"] = `seal "shamir" {
     shares = 3
     threshold = 2
@@ -560,6 +567,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 		// sealable -> normal
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/roundtrip-normal/migrate-seal")
+		req.ClientToken = root
 		res, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
 		require.Nil(t, res.Data["key_shares"], "no key shares expected when collapsing to normal")
@@ -574,7 +582,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 	t.Run("round-trip sealable to normal to sealable preserves data and creates a fresh barrier", func(t *testing.T) {
 		t.Parallel()
-		c, _, _ := TestCoreUnsealed(t)
+		c, _, root := TestCoreUnsealed(t)
 		b := c.systemBackend
 		rootCtx := namespace.RootContext(context.Background())
 
@@ -601,6 +609,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 		// sealable -> normal
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/roundtrip-sealable/migrate-seal")
+		req.ClientToken = root
 		res, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
 		require.Nil(t, res.Data["key_shares"], "no key shares expected when collapsing to normal")
@@ -614,6 +623,7 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 
 		// normal -> sealable
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/roundtrip-sealable/migrate-seal")
+		req.ClientToken = root
 		req.Data["seal"] = `seal "shamir" {
     shares = 3
     threshold = 2
@@ -629,6 +639,43 @@ func TestNamespaceBackend_MigrateSeal(t *testing.T) {
 		require.NotSame(t, firstSealableBarrier, secondSealableBarrier, "re-sealed namespace must not reuse the original sealable barrier")
 		require.False(t, c.NamespaceSealed(ns), "namespace should be unsealed after migration to sealable")
 		require.Equal(t, "sealable-round-trip-value", readNamespaceSecret(t, c, nsCtx, "my_secrets", "abc").Data["test_key"])
+	})
+
+	t.Run("migration requires sudo privileges", func(t *testing.T) {
+		t.Parallel()
+		c, _, _ := TestCoreUnsealed(t)
+		b := c.systemBackend
+		rootCtx := namespace.RootContext(context.Background())
+
+		ns := testCreateNamespace(t, rootCtx, b, "sudo", nil)
+		require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns))
+
+		// no token request
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/sudo/migrate-seal")
+		req.Data["seal"] = `seal "shamir" {
+    shares = 3
+    threshold = 2
+}`
+		res, err := b.HandleRequest(rootCtx, req)
+		require.Error(t, err)
+		require.ErrorIs(t, err, logical.ErrPermissionDenied)
+		require.Nil(t, res, "no response expected on permission denial")
+
+		require.False(t, ns.Tainted, "namespace should not be tainted after a denied migration")
+		require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns))
+
+		// invalid token
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/sudo/migrate-seal")
+		req.ClientToken = "invalid-token"
+		req.Data["seal"] = `seal "shamir" {
+    shares = 3
+    threshold = 2
+}`
+		res, err = b.HandleRequest(rootCtx, req)
+		require.Error(t, err)
+		require.ErrorIs(t, err, logical.ErrPermissionDenied)
+		require.Nil(t, res, "no response expected on permission denial")
+		require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns))
 	})
 }
 

@@ -52,7 +52,7 @@ jobs:
     name: Semgrep
     runs-on: ubuntu-latest
     container:
-      image: docker.io/semgrep/semgrep@sha256:296fc4912420833abfcf5090ec49a81bf1330bb61fc193cd09255f88b8267ba9 # 1.171.0
+      image: docker.io/semgrep/semgrep:1.171.0@sha256:bdf7013b2c3634a487671158da77c554f531742326b543a9464d2adf6c433ac8
     # Skip any PR created by dependabot and any check triggered by merge group
     if: (github.actor != 'dependabot[bot]') && (github.event != 'merge_group')
     steps:

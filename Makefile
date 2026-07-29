@@ -206,11 +206,13 @@ semgrep:
 semgrep-ci:
 	semgrep --error --include '*.go' -f tools/semgrep/ci .
 
+SEMGREP_IMGE=$(shell grep -o '[^ ]*/semgrep@sha256:[a-f0-9]*' .github/workflows/code-checker.yml | head -n1)
+
 docker-semgrep:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --include '*.go' -a -f tools/semgrep .
+	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" $(SEMGREP_IMGE) semgrep --include '*.go' -a -f tools/semgrep .
 
 docker-semgrep-ci:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --error --include '*.go' -a -f tools/semgrep/ci .
+	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" $(SEMGREP_IMGE) semgrep --error --include '*.go' -a -f tools/semgrep/ci .
 
 assetcheck:
 	@echo "==> Checking compiled UI assets..."

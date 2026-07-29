@@ -51,7 +51,7 @@ See the [plugin upgrade guide](../upgrading/plugins.mdx) for how to upgrade exte
 
 ## Plugin registration
 
-Plugins need to be "registered" so that OpenBao knows about them.
+Plugins need to be _registered_ so that OpenBao knows about them.
 Built-in plugins are registered by default.
 
 The metadata of registered plugins is persisted in OpenBao's storage backend in the plugin catalog.
@@ -78,7 +78,7 @@ the plugin type:
    This requires OpenBao to be unsealed and a token with sufficient permission be available.
 
    ```shell-session
-   $ bao plugin register -sha256=<hex of plugin binary> secret passthrough-plugin
+   $ bao plugin register -sha256=<hex digest of plugin binary> secret passthrough-plugin
 
    Success! Registered plugin: passthrough-plugin
    ```
@@ -87,8 +87,16 @@ The [`plugin list`](../commands/plugin/list.mdx) command lists all available plu
 
 ## Plugin mounting
 
-After the plugin is registered, it can be mounted by specifying the registered
-plugin name:
+After the plugin is registered, some plugin types need to be _mounted/enabled_
+before they can be used.
+
+| Plugin type | Needs mounting |
+|---|---|
+| `auth`, `secret` | Yes |
+| `database`| Not the plugin itself. But the `database` secrets engine needs to be mounted. |
+| `kms` | No |
+
+You can mount plugins by specifying the registered plugin name:
 
 ```shell-session
 $ bao secrets enable -path=my-secrets passthrough-plugin

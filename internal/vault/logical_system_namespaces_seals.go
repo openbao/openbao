@@ -194,6 +194,10 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 					Type:        framework.TypeString,
 					Description: "User provided seal config.",
 				},
+				"pgp_keys": {
+					Type:        framework.TypeStringSlice,
+					Description: "Specifies an array of PGP public keys used to encrypt the output unseal keys.",
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -372,19 +376,7 @@ func (b *SystemBackend) handleNamespacesDeleteSealed() framework.OperationFunc {
 
 func (b *SystemBackend) handleNamespacesMigrateSeal() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		// TODO:
-		// * create new barrier if necessary
-		// * start transaction on new barrier
-		// * read all relevant entries from old barrier
-		// * re-write using new barrier
-		// * re-write top-most namespace entry using parent barrier
-
 		path := namespace.Canonicalize(data.Get("path").(string))
-		// unlockKey, err := b.Core.namespaceStore.LockNamespace(ctx, path)
-		// if err != nil {
-		// 	return handleError(err)
-		// }
-		// defer b.Core.namespaceStore.UnlockNamespace(ctx, unlockKey, path)
 
 		sealRaw, ok := data.GetOk("seal")
 		var sealConfig *SealConfig

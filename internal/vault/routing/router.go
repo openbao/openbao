@@ -1170,6 +1170,9 @@ func (r *Router) Invalidate(ctx context.Context, key string) bool {
 }
 
 func (r *Router) SetNamespaceStorageView(ns *namespace.Namespace, b barrier.SecurityBarrier) {
+	r.l.Lock()
+	defer r.l.Unlock()
+
 	r.root.WalkPrefix("", func(s string, v any) bool {
 		re := v.(*RouteEntry)
 
@@ -1177,7 +1180,9 @@ func (r *Router) SetNamespaceStorageView(ns *namespace.Namespace, b barrier.Secu
 			return false
 		}
 
+		re.Lock()
 		re.StorageView = barrier.NewView(b, re.StoragePrefix)
+		re.Unlock()
 
 		return false
 	})

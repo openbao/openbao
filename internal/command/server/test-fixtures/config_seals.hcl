@@ -33,5 +33,8 @@ seal "pkcs11" {
   hmac_key_label = "vault-hsm-hmac-key"
   default_hmac_key_label = "vault-hsm-hmac-key"
   generate_key = "true"
+  health_check_enabled = false
+  health_check_timeout = "2m"
+  health_check_interval = "30s"
+  health_check_interval_unhealthy = "15s"
 }
-

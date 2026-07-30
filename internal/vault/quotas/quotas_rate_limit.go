@@ -30,10 +30,6 @@ const (
 
 	// DefaultRateLimitStaleAge defines the default stale age of a client limiter.
 	DefaultRateLimitStaleAge = 3 * time.Minute
-
-	// EnvVaultEnableRateLimitAuditLogging is used to enable audit logging of
-	// requests that get rejected due to rate limit quota violations.
-	EnvVaultEnableRateLimitAuditLogging = "VAULT_ENABLE_RATE_LIMIT_AUDIT_LOGGING"
 )
 
 // Ensure that RateLimitQuota implements the Quota interface

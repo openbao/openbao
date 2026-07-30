@@ -134,7 +134,7 @@ type RawFormatter struct{}
 func (r RawFormatter) Format(data any) ([]byte, error) {
 	byte_data, ok := data.([]byte)
 	if !ok {
-		return nil, errors.New("This command does not support the -format=raw option; only `vault read` does.") //nolint:staticcheck // user-facing error
+		return nil, errors.New("This command does not support the -format=raw option; only `bao read` does.") //nolint:staticcheck // user-facing error
 	}
 
 	return byte_data, nil
@@ -487,7 +487,7 @@ func (t TableFormatter) OutputList(ui cli.Ui, secret *api.Secret, data any) erro
 // printWarnings prints any warnings in the secret.
 func (t TableFormatter) printWarnings(ui cli.Ui, secret *api.Secret) {
 	if secret != nil && len(secret.Warnings) > 0 {
-		ui.Warn("WARNING! The following warnings were returned from Vault:\n")
+		ui.Warn("WARNING! The following warnings were returned from OpenBao:\n")
 		for _, warning := range secret.Warnings {
 			ui.Warn(wrapAtLengthWithPadding(fmt.Sprintf("* %s", warning), 2))
 			ui.Warn("")
@@ -668,7 +668,7 @@ func looksLikeDuration(k string) bool {
 }
 
 // This struct is responsible for capturing all the fields to be output by a
-// vault status command, including fields that do not come from the status API.
+// bao status command, including fields that do not come from the status API.
 // Currently we are adding the fields from api.LeaderResponse
 type SealStatusOutput struct {
 	api.SealStatusResponse

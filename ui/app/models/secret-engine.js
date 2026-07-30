@@ -14,7 +14,7 @@ const LINKED_BACKENDS = supportedSecretBackends();
 
 // identity will be managed separately and the inclusion
 // of the system backend is an implementation detail
-const LIST_EXCLUDED_BACKENDS = ['system', 'identity'];
+const LIST_EXCLUDED_BACKENDS = ['system', 'identity', 'cubbyhole'];
 
 const validations = {
   path: [

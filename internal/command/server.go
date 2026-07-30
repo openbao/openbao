@@ -483,7 +483,13 @@ func (c *ServerCommand) runRecoveryMode() int {
 			return 1
 		}
 
-		seal, err = vault.NewAutoSeal(vaultseal.NewAccess(wrapper))
+		seal, err = vault.NewAutoSealWithHealthCheck(
+			vaultseal.NewAccess(wrapper),
+			configSeal.HealthCheckEnabled,
+			configSeal.HealthCheckTimeout,
+			configSeal.HealthCheckInterval,
+			configSeal.HealthCheckIntervalUnhealthy,
+		)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error creating auto seal: %s", err))
 			return 1
@@ -2540,7 +2546,13 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 				return nil, nil, nil, nil, nil, fmt.Errorf("Error configuring seal %q: %w", configSeal.Type, err)
 			}
 
-			seal, err = vault.NewAutoSeal(vaultseal.NewAccess(wrapper))
+			seal, err = vault.NewAutoSealWithHealthCheck(
+				vaultseal.NewAccess(wrapper),
+				configSeal.HealthCheckEnabled,
+				configSeal.HealthCheckTimeout,
+				configSeal.HealthCheckInterval,
+				configSeal.HealthCheckIntervalUnhealthy,
+			)
 			if err != nil {
 				//nolint:staticcheck // User-facing error.
 				return nil, nil, nil, nil, nil, fmt.Errorf("Error creating auto seal: %w", err)

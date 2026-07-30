@@ -87,3 +87,27 @@ When using a plugin, the name to use in the `seal` stanza must match the name
 used in the `plugin` stanza, which is an arbitrary name. If a KMS provider is
 both built into OpenBao and installed as a plugin, the plugin will shadow the
 builtin and take priority.
+
+## Health Checks
+
+When using an Auto Seal, OpenBao periodically performs a seal health check,
+encrypting and decrypting a small, randomized payload via the seal mechanism.
+When the health check fails, OpenBao emits warnings to the server logs,
+notifying operators of a broken Auto Seal early before it is next required to
+unseal the instance again.
+
+The following `seal` stanza options allow tweaking the health check. This is
+primarily useful when the chosen plugin does not play well with the defaults.
+
+- `health_check_enabled` `(bool: true)` - Enable/disable the periodic health
+  check.
+- `health_check_timeout` `(duration: "1m")` - The timeout that a single health
+  check operation is constrained to.
+- `health_check_interval` `(duration: "10m")` - The interval that health checks
+  run at under normal circumstances.
+- `health_check_interval_unhealthy` `(duration: "1m")` - The interval that
+  health checks start running at after a failed health check. On the next
+  successful health check, the interval resets back to `health_check_interval`.
+
+The above options use [duration format strings](../../concepts/duration-format)
+to configure durations.

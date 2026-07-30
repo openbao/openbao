@@ -24,14 +24,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/vault/seal"
 )
 
-var (
-	autoSealUnavailableDuration = []string{"seal", "unreachable", "time"}
-
-	// vars for unit testings
-	sealHealthTestIntervalNominal   = 10 * time.Minute
-	sealHealthTestIntervalUnhealthy = 1 * time.Minute
-	sealHealthTestTimeout           = 1 * time.Minute
-)
+var autoSealUnavailableDuration = []string{"seal", "unreachable", "time"}
 
 // autoSeal is a Seal implementation that contains logic for encrypting and
 // decrypting stored keys via an underlying AutoSealAccess implementation, as
@@ -48,7 +41,12 @@ type autoSeal struct {
 	recoveryConfig atomic.Pointer[SealConfig]
 	configAccess   StorageAccess
 
-	hcLock          sync.Mutex
+	healthCheckEnabled           bool
+	healthCheckTimeout           time.Duration
+	healthCheckInterval          time.Duration
+	healthCheckIntervalUnhealthy time.Duration
+
+	healthCheckLock sync.Mutex
 	healthCheckStop chan struct{}
 }
 
@@ -69,6 +67,24 @@ func NewAutoSeal(lowLevel seal.Access) (*autoSeal, error) {
 	}
 
 	return ret, nil
+}
+
+func NewAutoSealWithHealthCheck(
+	lowLevel seal.Access,
+	enabled bool,
+	timeout, interval, intervalUnhealthy time.Duration,
+) (*autoSeal, error) {
+	d, err := NewAutoSeal(lowLevel)
+	if err != nil {
+		return nil, err
+	}
+
+	d.healthCheckEnabled = enabled
+	d.healthCheckTimeout = timeout
+	d.healthCheckInterval = interval
+	d.healthCheckIntervalUnhealthy = intervalUnhealthy
+
+	return d, nil
 }
 
 func (d *autoSeal) GetAccess() seal.Access {
@@ -464,14 +480,20 @@ func (d *autoSeal) upgradeRecoveryKey(ctx context.Context) error {
 	return nil
 }
 
-// StartHealthCheck starts a goroutine that tests the health of the auto-unseal backend once every 10 minutes.
-// If unhealthy, logs a warning on the condition and begins testing every one minute until healthy again.
+// StartHealthCheck starts a goroutine that tests the health of the auto-unseal
+// backend at a configured interval. If unhealthy, logs a warning on the
+// condition and begins testing at a separately configurable interval until
+// healthy again.
 func (d *autoSeal) StartHealthCheck() {
-	d.StopHealthCheck()
-	d.hcLock.Lock()
-	defer d.hcLock.Unlock()
+	if !d.healthCheckEnabled {
+		return
+	}
 
-	healthCheck := time.NewTicker(sealHealthTestIntervalNominal)
+	d.StopHealthCheck()
+	d.healthCheckLock.Lock()
+	defer d.healthCheckLock.Unlock()
+
+	healthCheck := time.NewTicker(d.healthCheckInterval)
 	d.healthCheckStop = make(chan struct{})
 	healthCheckStop := d.healthCheckStop
 	ctx := d.core.activeContext.Load()
@@ -483,7 +505,7 @@ func (d *autoSeal) StartHealthCheck() {
 		fail := func(msg string, args ...any) {
 			d.logger.Warn(msg, args...)
 			if lastTestOk {
-				healthCheck.Reset(sealHealthTestIntervalUnhealthy)
+				healthCheck.Reset(d.healthCheckIntervalUnhealthy)
 			}
 			lastTestOk = false
 			d.core.MetricSink().SetGauge(autoSealUnavailableDuration, float32(time.Since(lastSeenOk).Milliseconds()))
@@ -498,7 +520,7 @@ func (d *autoSeal) StartHealthCheck() {
 				return
 			case t := <-healthCheck.C:
 				func() {
-					ctx, cancel := context.WithTimeout(ctx, sealHealthTestTimeout)
+					ctx, cancel := context.WithTimeout(ctx, d.healthCheckTimeout)
 					defer cancel()
 
 					testVal := fmt.Sprintf("Heartbeat %d", mathrand.Intn(1000))
@@ -508,7 +530,7 @@ func (d *autoSeal) StartHealthCheck() {
 						fail("failed to encrypt seal health test value, seal backend may be unreachable", "error", err)
 					} else {
 						func() {
-							ctx, cancel := context.WithTimeout(ctx, sealHealthTestTimeout)
+							ctx, cancel := context.WithTimeout(ctx, d.healthCheckTimeout)
 							defer cancel()
 							plaintext, err := d.Decrypt(ctx, ciphertext, nil)
 							if err != nil {
@@ -520,7 +542,7 @@ func (d *autoSeal) StartHealthCheck() {
 								d.logger.Debug("seal health test passed")
 								if !lastTestOk {
 									d.logger.Info("seal backend is now healthy again", "downtime", t.Sub(lastSeenOk).String())
-									healthCheck.Reset(sealHealthTestIntervalNominal)
+									healthCheck.Reset(d.healthCheckInterval)
 								}
 								lastTestOk = true
 								lastSeenOk = t
@@ -535,8 +557,8 @@ func (d *autoSeal) StartHealthCheck() {
 }
 
 func (d *autoSeal) StopHealthCheck() {
-	d.hcLock.Lock()
-	defer d.hcLock.Unlock()
+	d.healthCheckLock.Lock()
+	defer d.healthCheckLock.Unlock()
 	if d.healthCheckStop != nil {
 		close(d.healthCheckStop)
 		d.healthCheckStop = nil

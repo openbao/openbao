@@ -487,7 +487,7 @@ func (t TableFormatter) OutputList(ui cli.Ui, secret *api.Secret, data any) erro
 // printWarnings prints any warnings in the secret.
 func (t TableFormatter) printWarnings(ui cli.Ui, secret *api.Secret) {
 	if secret != nil && len(secret.Warnings) > 0 {
-		ui.Warn("WARNING! The following warnings were returned from Vault:\n")
+		ui.Warn("WARNING! The following warnings were returned from OpenBao:\n")
 		for _, warning := range secret.Warnings {
 			ui.Warn(wrapAtLengthWithPadding(fmt.Sprintf("* %s", warning), 2))
 			ui.Warn("")

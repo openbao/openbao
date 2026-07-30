@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -392,6 +393,111 @@ func (c *Core) kvSecretGaugeCollector(ctx context.Context) ([]metricsutil.GaugeL
 
 		c.walkKvMountSecrets(ctx, m)
 		results[i].Value = float32(m.NumSecrets)
+	}
+
+	return results, nil
+}
+
+type transitMount struct {
+	Namespace  *namespace.Namespace
+	MountPoint string
+}
+
+func (c *Core) findTransitMounts() []*transitMount {
+	mounts := make([]*transitMount, 0)
+
+	c.mountsLock.RLock()
+	defer c.mountsLock.RUnlock()
+
+	// we don't grab the statelock, so this code might run during or after the seal process.
+	// Therefore, we need to check if c.mounts is nil. If we do not, this will panic when
+	// run after seal.
+	if c.mounts == nil {
+		return mounts
+	}
+
+	for _, entry := range c.mounts.Entries {
+		if entry.Type != "transit" {
+			continue
+		}
+
+		mounts = append(mounts, &transitMount{
+			Namespace:  entry.Namespace,
+			MountPoint: entry.Path,
+		})
+	}
+	return mounts
+}
+
+func (c *Core) transitKeysCollectionErrorCount() {
+	c.MetricSink().IncrCounterWithLabels(
+		[]string{"metrics", "collection", "error"},
+		1,
+		[]metrics.Label{{Name: "gauge", Value: "transit_keys_by_mountpoint"}},
+	)
+}
+
+func (c *Core) transitKeyGaugeCollector(ctx context.Context) ([]metricsutil.GaugeLabelValues, error) {
+	mounts := c.findTransitMounts()
+	results := make([]metricsutil.GaugeLabelValues, len(mounts))
+
+	// Use a root namespace, so include namespace path
+	// in any queries.
+	ctx = namespace.RootContext(ctx)
+
+	// Route list requests to all the identified mounts.
+	// (All of these will show up as activity in the vault.route metric.)
+	// Then we have to explore each subdirectory.
+	for i, m := range mounts {
+		// Check for cancellation, return empty array
+		select {
+		case <-ctx.Done():
+			return []metricsutil.GaugeLabelValues{}, nil
+		default:
+		}
+
+		results[i].Labels = []metrics.Label{
+			metricsutil.NamespaceLabel(m.Namespace),
+			{Name: "mount_point", Value: m.MountPoint},
+		}
+
+		listRequest := &logical.Request{
+			Operation: logical.ListOperation,
+			Path:      m.Namespace.Path + m.MountPoint + "keys",
+		}
+
+		resp, err := c.router.Route(ctx, listRequest)
+		if err != nil {
+			if errors.Is(err, logical.ErrUnsupportedPath) {
+				// ErrUnsupportedPath probably means that the mount is not there
+				// any more, don't log those cases.
+				continue
+			}
+			c.logger.Error("failed to perform internal transit key list", "mount_point", m.MountPoint, "error", err)
+			c.transitKeysCollectionErrorCount()
+			continue
+		}
+
+		if resp == nil {
+			c.logger.Error("failed to perform internal transit key list: got nil response", "mount_point", m.MountPoint)
+			c.transitKeysCollectionErrorCount()
+			continue
+		}
+
+		keysAny, ok := resp.Data["keys"]
+		if !ok {
+			results[i].Value = 0 // keys is only present, if at least one keys is there
+			continue
+		}
+
+		keys, ok := keysAny.([]string)
+		if !ok {
+			c.logger.Error("failed to perform internal transit key list: expected keys to be of type []string", "mount_point", m.MountPoint, "keys_type", fmt.Sprintf("%T", keys))
+			c.transitKeysCollectionErrorCount()
+			continue
+		}
+
+		results[i].Value = float32(len(keys))
 	}
 
 	return results, nil

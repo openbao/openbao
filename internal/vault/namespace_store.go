@@ -1819,6 +1819,53 @@ func (c *Core) NamespaceByStoragePath(ctx context.Context, path string) (*namesp
 	return ns, rest, nil
 }
 
+// NamespaceTaintedInStorage re-reads the namespace entry for the given UUID
+// directly from storage, bypassing the in-memory cache. It returns the taint
+// state as persisted in storage.
+//
+// This is used during invalidation handling to detect namespaces that are
+// mid-migration (tainted in storage) even when the local in-memory state has
+// not yet been updated by the taint invalidation.
+// If the namespace is unknown in memory (so we cannot resolve its parent), or
+// the parent barrier is sealed, or the entry is absent, this returns false to
+// fall back to the existing in-memory check.
+func (ns *NamespaceStore) NamespaceTaintedInStorage(ctx context.Context, uuid string) bool {
+	ns.lock.RLock()
+	child, ok := ns.namespacesByUUID[uuid]
+	ns.lock.RUnlock()
+	if !ok || child == nil {
+		return false
+	}
+
+	parentPath, ok := child.ParentPath()
+	if !ok {
+		return false
+	}
+
+	ns.lock.RLock()
+	parent := ns.namespacesByPath.Get(parentPath)
+	ns.lock.RUnlock()
+	if parent == nil {
+		return false
+	}
+
+	b := ns.core.sealManager.NamespaceBarrierByLongestPrefix(parent.Path)
+	if b == nil || b.Sealed() {
+		return false
+	}
+
+	entry, err := NamespaceScopedView(b, parent).Get(ctx, namespaceStoreSubPath+uuid)
+	if err != nil || entry == nil {
+		return false
+	}
+
+	var stored namespace.Namespace
+	if err := entry.DecodeJSON(&stored); err != nil {
+		return false
+	}
+	return stored.Tainted
+}
+
 // namespaceDeletionJob is used with NamespaceStore.deletionDispatcher to
 // gradually remove items from the namespace store.
 type namespaceDeletionJob struct {
@@ -1966,9 +2013,11 @@ func (j *namespaceBarrierMigrationJob) Execute() (err error) {
 	ctx := j.store.asyncJobContext
 
 	defer func() {
+		j.store.lock.Lock()
 		if untaintErr := j.store.untaintNamespace(ctx, j.parent, j.target); untaintErr != nil {
 			err = errors.Join(err, fmt.Errorf("failed to untaint namespace after migration: %w", untaintErr))
 		}
+		j.store.lock.Unlock()
 	}()
 
 	namespacesToMigrate, err := j.store.ListNamespaces(namespace.ContextWithNamespace(ctx, j.target), ListNamespaceOpts{

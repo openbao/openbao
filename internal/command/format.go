@@ -134,7 +134,7 @@ type RawFormatter struct{}
 func (r RawFormatter) Format(data any) ([]byte, error) {
 	byte_data, ok := data.([]byte)
 	if !ok {
-		return nil, errors.New("This command does not support the -format=raw option; only `vault read` does.") //nolint:staticcheck // user-facing error
+		return nil, errors.New("This command does not support the -format=raw option; only `bao read` does.") //nolint:staticcheck // user-facing error
 	}
 
 	return byte_data, nil
@@ -633,10 +633,10 @@ func (t TableFormatter) OutputMap(ui cli.Ui, data map[string]any) error {
 func OutputSealStatus(ui cli.Ui, client *api.Client, status *api.SealStatusResponse) int {
 	sealStatusOutput := SealStatusOutput{SealStatusResponse: *status}
 
-	// Mask the 'Vault is sealed' error, since this means HA is enabled, but that
+	// Mask the 'OpenBao is sealed' error, since this means HA is enabled, but that
 	// we cannot query for the leader since we are sealed.
 	leaderStatus, err := client.Sys().Leader()
-	if err != nil && strings.Contains(err.Error(), "Vault is sealed") {
+	if err != nil && strings.Contains(err.Error(), "OpenBao is sealed") {
 		leaderStatus = &api.LeaderResponse{HAEnabled: true}
 		err = nil
 	}
@@ -668,7 +668,7 @@ func looksLikeDuration(k string) bool {
 }
 
 // This struct is responsible for capturing all the fields to be output by a
-// vault status command, including fields that do not come from the status API.
+// bao status command, including fields that do not come from the status API.
 // Currently we are adding the fields from api.LeaderResponse
 type SealStatusOutput struct {
 	api.SealStatusResponse

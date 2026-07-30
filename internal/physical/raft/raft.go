@@ -350,6 +350,12 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 		path = pathFromConfig
 	}
 
+	// Ensure the top-level raft path exists so operators don't need to manually
+	// create it.
+	if err := EnsurePath(path, true); err != nil {
+		return nil, err
+	}
+
 	var localID string
 	{
 		// Determine the local node ID from the environment.

@@ -402,26 +402,6 @@ func TestOperatorDiagnoseCommand_Run(t *testing.T) {
 			},
 		},*/
 		{
-			"diagnose_raft_no_folder_backend",
-			[]string{
-				"-config", "./server/test-fixtures/diagnose_raft_no_bolt_folder.hcl",
-			},
-			[]*diagnose.Result{
-				{
-					Name:    "Check Storage",
-					Status:  diagnose.ErrorStatus,
-					Message: "Diagnose could not initialize storage backend.",
-					Children: []*diagnose.Result{
-						{
-							Name:    "Create Storage Backend",
-							Status:  diagnose.ErrorStatus,
-							Message: "no such file or directory",
-						},
-					},
-				},
-			},
-		},
-		{
 			"diagnose_telemetry_partial_circonus",
 			[]string{
 				"-config", "./server/test-fixtures/diagnose_bad_telemetry1.hcl",

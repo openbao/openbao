@@ -1,0 +1,3 @@
+```release-note:improvement
+ui: hide the cubbyhole secrets engine from the Secrets Engines list, consistent with system and identity
+```

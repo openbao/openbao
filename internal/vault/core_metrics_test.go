@@ -15,18 +15,13 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	logicalKv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
-	be "github.com/openbao/openbao/v2/internal/vault/backend"
 	ident "github.com/openbao/openbao/v2/internal/vault/identity"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
 )
 
 func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 	// Use the real KV implementation instead of Passthrough
-	AddTestLogicalBackend("kv", logicalKv.Factory)
-	// Clean up for the next test-- is there a better way?
-	defer func() {
-		delete(be.TestLogicalBackends, "kv")
-	}()
+	AddTestLogicalBackend(t, "kv", logicalKv.Factory)
 	core, _, root := TestCoreUnsealed(t)
 
 	testMounts := []struct {
@@ -156,11 +151,7 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 
 func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 	// Use the real KV implementation instead of Passthrough
-	AddTestLogicalBackend("kv", logicalKv.Factory)
-	// Clean up for the next test.
-	defer func() {
-		delete(be.TestLogicalBackends, "kv")
-	}()
+	AddTestLogicalBackend(t, "kv", logicalKv.Factory)
 	core, _, _ := TestCoreUnsealed(t)
 
 	me := &routing.MountEntry{

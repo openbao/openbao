@@ -136,8 +136,11 @@ path "secret/foo" {
 }
 ```
 
-The above policy grants `read` access to `secret/foo` only after one member of
-the "managers" group authorizes the request.
+The above policy grants `read` access to `secret/foo` only after one
+member of the "managers" group authorizes the request. "managers"
+group authorizes the request. If someone is a manager themselves, a
+different manager must approve it (because `self_auth_allowed`
+defaults to false).
 
 ```hcl
 path "secret/foo" {

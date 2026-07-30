@@ -439,7 +439,10 @@ func (b *SystemBackend) handleNamespacesMigrateSeal() framework.OperationFunc {
 			return handleError(err)
 		}
 
-		if err := b.Core.namespaceStore.taintNamespace(ctx, parentNs, ns); err != nil {
+		b.Core.namespaceStore.lock.Lock()
+		err = b.Core.namespaceStore.taintNamespace(ctx, parentNs, ns)
+		b.Core.namespaceStore.lock.Unlock()
+		if err != nil {
 			return handleError(err)
 		}
 
@@ -477,7 +480,10 @@ func (b *SystemBackend) handleNamespacesMigrateSeal() framework.OperationFunc {
 		if newBarrier == oldBarrier {
 			// Nothing to do; untaint the namespace we tainted above. In the
 			// normal case, it will be untainted at the end of the migration job
-			if err := b.Core.namespaceStore.untaintNamespace(ctx, parentNs, ns); err != nil {
+			b.Core.namespaceStore.lock.Lock()
+			err = b.Core.namespaceStore.untaintNamespace(ctx, parentNs, ns)
+			b.Core.namespaceStore.lock.Unlock()
+			if err != nil {
 				return handleError(err)
 			}
 			return nil, nil

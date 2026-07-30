@@ -35,9 +35,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 		Path:  "wraptest",
 		Type:  "kv",
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// No duration specified
 	req := &logical.Request{
@@ -94,7 +92,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 	req := &logical.Request{
 		Path:        "cg_test/foo",
 		ClientToken: root,
-		Operation:   logical.UpdateOperation,
+		Operation:   logical.CreateOperation,
 		Data: map[string]any{
 			"zip": "zap",
 		},
@@ -109,7 +107,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		control_group = {
 			ttl = "15s"
 			factor "admin-approval" {
-				controlled_capabilities = ["create", "read", "update"]
+				controlled_capabilities = ["update"]
 				identity = {
 					group_names = ["admin"]
 					approvals = 1
@@ -141,21 +139,33 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 	require.NoError(t, err)
 	nonRootToken := resp.Auth.ClientToken
 
-	// Request protected resource
+	// Request protected resource with read (allowed)
+	req = &logical.Request{
+		Path:        "cg_test/foo",
+		ClientToken: nonRootToken,
+		Operation:   logical.ReadOperation,
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Nil(t, resp.WrapInfo, "unexpected response wrapping: %v", resp)
+
+	// Request protected resource with update (controlled)
 	req = &logical.Request{
 		Path:        "cg_test/foo",
 		ClientToken: nonRootToken,
 		Operation:   logical.UpdateOperation,
 		Data: map[string]any{
-			"zip": "stopped",
+			"zip": "newzap",
 		},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-
-	// Expect it to be wrapped
-	require.NotNil(t, resp.WrapInfo)
+	// Expect wrapped response
+	if resp.WrapInfo == nil || resp.WrapInfo.TTL != time.Duration(15*time.Second) {
+		t.Fatalf("bad wrap_info: %#v", resp)
+	}
 
 	wrapTTL := resp.WrapInfo.TTL
 	wrapToken := resp.WrapInfo.Token
@@ -204,6 +214,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 	require.Contains(t, resp.Data, "request_path")
 	require.Contains(t, resp.Data, "request_data")
 	require.Contains(t, resp.Data["request_data"], "zip")
+	require.Equal(t, resp.Data["request_data"].(map[string]any)["zip"], "newzap")
 	require.Equal(t, resp.Data["approved"], false)
 }
 

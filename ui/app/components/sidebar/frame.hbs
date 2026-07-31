@@ -6,7 +6,7 @@
           <:logo>
             <Sidebar::Header::HomeLink
               @icon="openbao"
-              @route="vault.cluster"
+              @route={{if this.currentCluster.cluster.name "vault.cluster"}}
               @model={{this.currentCluster.cluster.name}}
               @ariaLabel="home link"
               data-test-sidebar-logo

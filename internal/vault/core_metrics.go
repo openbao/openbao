@@ -43,9 +43,9 @@ func (c *Core) metricsLoop(stopCh chan struct{}) {
 
 	// This loop covers
 	// vault.expire.num_leases
-	// vault.core.unsealed
 	// vault.identity.num_entities
 	// and the non-telemetry request counters shown in the UI.
+	// vault.core.unsealed is handled by emitUnsealedStatusMetric instead.
 	for {
 		select {
 		case <-emitTimer:
@@ -60,13 +60,6 @@ func (c *Core) metricsLoop(stopCh chan struct{}) {
 					c.expiration.emitMetrics()
 				}
 				c.metricsMutex.Unlock()
-			}
-
-			// Refresh the sealed gauge, on all nodes
-			if c.Sealed() {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
-			} else {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
 			}
 
 			// Refresh the standby gauge, on all nodes
@@ -165,6 +158,26 @@ func (c *Core) tokenGaugeTtlCollector(ctx context.Context) ([]metricsutil.GaugeL
 		return []metricsutil.GaugeLabelValues{}, errors.New("nil token store")
 	}
 	return ts.gaugeCollectorByTtl(ctx)
+}
+
+// emitUnsealedStatusMetric refreshes vault.core.unsealed every second for the
+// lifetime of the process so that monitoring systems always observe a current
+// value regardless of seal state.
+func (c *Core) emitUnsealedStatusMetric(shutdownCh <-chan struct{}) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-shutdownCh:
+			return
+		case <-ticker.C:
+			if c.Sealed() {
+				c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
+			} else {
+				c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
+			}
+		}
+	}
 }
 
 // emitMetricsActiveNode is used to start all the periodic metrics; all of them should

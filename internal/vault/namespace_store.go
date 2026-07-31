@@ -2012,6 +2012,11 @@ func (ns *NamespaceStore) newNamespaceBarrierMigrationJob(parentBarrier, oldBarr
 func (j *namespaceBarrierMigrationJob) Execute() (err error) {
 	ctx := j.store.asyncJobContext
 
+	start := time.Now()
+	defer func() {
+		j.core.logger.Info("finished migration", "duration", time.Since(start))
+	}()
+
 	defer func() {
 		j.store.lock.Lock()
 		if untaintErr := j.store.untaintNamespace(ctx, j.parent, j.target); untaintErr != nil {

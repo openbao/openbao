@@ -183,10 +183,10 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "namespaces/(?P<path>.+)/migrate-seal",
+			Pattern: "namespaces/(?P<path>.+)/migrate-barrier",
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
-				OperationVerb:   "migrate-seal",
+				OperationVerb:   "migrate-barrier",
 			},
 			Fields: map[string]*framework.FieldSchema{
 				"path": namespacePathSchema,
@@ -202,8 +202,8 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Summary:  "Migrate a namespace seal.",
-					Callback: b.handleNamespacesMigrateSeal(),
+					Summary:  "Migrate a namespace barrier.",
+					Callback: b.handleNamespacesMigrateBarrier(),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),
@@ -374,7 +374,7 @@ func (b *SystemBackend) handleNamespacesDeleteSealed() framework.OperationFunc {
 	}
 }
 
-func (b *SystemBackend) handleNamespacesMigrateSeal() framework.OperationFunc {
+func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))
 

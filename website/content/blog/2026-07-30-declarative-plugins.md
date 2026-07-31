@@ -44,7 +44,7 @@ Nearly everything within OpenBao is pluggable. OpenBao supports several types of
 | **Auth**        | Allow bringing sources of identity--JWTs, certificates, passwords--and exchanging them for OpenBao tokens.                                                                    |
 | **Secret**      | Allow generating credentials (whether passwords for databases, PKI certificates, static secrets, and more) and protected through OpenBao's tokens and authorization policies. |
 | **Database**    | Implement database-specific logic for updating and managing access for use with the `database` dynamic secret engine.                                                         |
-| **KMS**         | Implement a specialized interfaces for using HSM and KMS devices (such as YubiHSM or GCP CloudKMS) for auto-unseal (and external keys in v2.6.0).                             |
+| **KMS**         | Implement specialized interfaces for using HSM and KMS devices (such as YubiHSM or GCP CloudKMS) for auto-unseal (and external keys in the upcoming v2.7.0).                  |
 
 Plugins have two primary classifications:
 

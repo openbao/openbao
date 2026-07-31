@@ -436,10 +436,11 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 		}
 
 		sig, err := p.SignWithOptions(ver, context, input, &keysutil.SigningOptions{
-			HashAlgorithm: hashAlgorithm,
-			Marshaling:    marshaling,
-			SaltLength:    saltLength,
-			SigAlgorithm:  sigAlgorithm,
+			HashAlgorithm:      hashAlgorithm,
+			Marshaling:         marshaling,
+			SaltLength:         saltLength,
+			SigAlgorithm:       sigAlgorithm,
+			ExternalKeyFactory: b.ExternalKeyFactory(ctx),
 		})
 		if err != nil {
 			if batchInputRaw != nil {
@@ -656,10 +657,11 @@ func (b *backend) pathVerifyWrite(ctx context.Context, req *logical.Request, d *
 		}
 
 		signingOptions := &keysutil.SigningOptions{
-			HashAlgorithm: hashAlgorithm,
-			Marshaling:    marshaling,
-			SaltLength:    saltLength,
-			SigAlgorithm:  sigAlgorithm,
+			HashAlgorithm:      hashAlgorithm,
+			Marshaling:         marshaling,
+			SaltLength:         saltLength,
+			SigAlgorithm:       sigAlgorithm,
+			ExternalKeyFactory: b.ExternalKeyFactory(ctx),
 		}
 
 		valid, err := p.VerifySignatureWithOptions(context, input, sig, signingOptions)

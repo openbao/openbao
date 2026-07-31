@@ -447,6 +447,10 @@ func (r *Registry) ModifyKey(ctx context.Context, s logical.Storage, configName,
 			return err
 		}
 
+		if key == nil {
+			return errMissingKey
+		}
+
 		// Unlike KMS clients, keys aren't cached so just close it again.
 		if err := key.Close(ctx); err != nil {
 			r.logger.Error("failed to close key", "error", err.Error(), "config", configName, "key", keyName, "namespace", ns.Path)
@@ -507,6 +511,11 @@ func (r *Registry) GetExternalKey(ctx context.Context, s logical.Storage, ns *na
 		return nil, err
 	}
 
+	// Better to err than pass along or wrap a nil key.
+	if key == nil {
+		return nil, errMissingKey
+	}
+
 	return nilCheckingKey{key}, nil
 }
 
@@ -516,6 +525,7 @@ var (
 	// against names passed in by a plugin via the system view.
 	namePattern   = regexp.MustCompile("^" + framework.GenericNameRegex("name") + "$")
 	errInvalidRef = errors.New(`invalid key reference: must be "<config name>:<key name>"`)
+	errMissingKey = errors.New(`plugin returned nil key; report to OpenBao authors`)
 )
 
 // ParseRef parses a key reference into config name and key name.

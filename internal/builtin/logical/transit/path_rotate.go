@@ -5,6 +5,7 @@ package transit
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
@@ -25,6 +26,12 @@ func (b *backend) pathRotate() *framework.Path {
 			"name": {
 				Type:        framework.TypeString,
 				Description: "Name of the key",
+			},
+			"external_key_ref": {
+				Type: framework.TypeString,
+				Description: `Reference to the external key to use. This follows
+the format <config name>:<key name>, uniquely identifying the key configured
+under sys/external-keys/configs/<config name>/keys/<key name>.`,
 			},
 		},
 
@@ -60,6 +67,26 @@ func (b *backend) pathRotateWrite(ctx context.Context, req *logical.Request, d *
 		return logical.ErrorResponse("key not found"), logical.ErrInvalidRequest
 	}
 	defer p.Unlock()
+
+	externalKeyRef := d.Get("external_key_ref").(string)
+	if p.Type == keysutil.KeyType_ExternalKey {
+		if externalKeyRef == "" {
+			return logical.ErrorResponse("must provide external_key_ref to rotate policy of type external-key"), logical.ErrInvalidRequest
+		}
+
+		key, err := b.System().GetExternalKey(ctx, externalKeyRef)
+		if err != nil {
+			return logical.ErrorResponse("unknown external key reference: %v", externalKeyRef), logical.ErrInvalidRequest
+		}
+
+		if err := key.Close(ctx); err != nil {
+			return nil, fmt.Errorf("unable to close external key: %w", err)
+		}
+
+		p.ExternalKeyRef = externalKeyRef
+	} else if externalKeyRef != "" {
+		return logical.ErrorResponse("cannot use external_key_ref on key of type %v", p.Type.String()), logical.ErrInvalidRequest
+	}
 
 	// Rotate the policy
 	err = p.Rotate(ctx, req.Storage, b.GetRandomReader())

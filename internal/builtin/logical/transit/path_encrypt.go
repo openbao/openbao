@@ -430,17 +430,21 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 			continue
 		}
 
-		var factory any
+		var factories []any
 		if item.AssociatedData != "" {
 			if !p.Type.AssociatedDataSupported() {
 				batchResponseItems[i].Error = fmt.Sprintf("'[%d].associated_data' provided for non-AEAD cipher suite %v", i, p.Type.String())
 				continue
 			}
 
-			factory = AssocDataFactory{item.AssociatedData}
+			factories = append(factories, AssocDataFactory{item.AssociatedData})
 		}
 
-		ciphertext, err := p.EncryptWithFactory(item.KeyVersion, item.DecodedContext, nil, item.Plaintext, factory)
+		if p.Type == keysutil.KeyType_ExternalKey {
+			factories = append(factories, b.ExternalKeyFactory(ctx))
+		}
+
+		ciphertext, err := p.EncryptWithFactory(item.KeyVersion, item.DecodedContext, nil, item.Plaintext, factories...)
 		if err != nil {
 			switch err.(type) {
 			case errutil.InternalError:

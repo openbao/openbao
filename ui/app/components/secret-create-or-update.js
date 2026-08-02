@@ -129,6 +129,12 @@ export default class SecretCreateOrUpdate extends Component {
     const changed = secret.changedAttributes();
     const changedKeys = Object.keys(changed);
 
+    // ember-data 4.12 requires created records to have a client id; KV1
+    // secrets are only identified by their (path) id, so set it up front
+    if (!isV2 && secretData && secretData.isNew && !secretData.id && key) {
+      secretData.set('id', key);
+    }
+
     return secretData
       .save()
       .then(() => {

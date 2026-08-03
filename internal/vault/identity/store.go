@@ -445,6 +445,31 @@ func mfaPaths(i *IdentityStore) []*framework.Path {
 			},
 		},
 		{
+			Pattern: "mfa/method/totp/confirm-self-enroll$",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "mfa",
+				OperationVerb:   "confirm-self-enroll",
+			},
+			Fields: map[string]*framework.FieldSchema{
+				"request_id": {
+					Type:        framework.TypeString,
+					Description: `The unique identifier for this self enrollment process.`,
+					Required:    true,
+				},
+				"totp_code": {
+					Type:        framework.TypeString,
+					Description: `A valid TOTP code to confirm creation.`,
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: i.handleMFAMethodTOTPSelfEnrollmentConfirmation,
+					Summary:  "Confirm the self enrollment process.",
+				},
+			},
+		},
+		{
 			Pattern: "mfa/method/totp/generate$",
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "mfa",

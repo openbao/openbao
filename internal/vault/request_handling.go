@@ -1983,15 +1983,27 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 				}
 
 				if methodConfig != nil {
-					generateTOTPKeyAndQR(methodConfig.GetTOTPConfig(), auth.EntityID, methodConfig.Name)
+					secret, totpURL, _, err := generateTOTPKeyAndQR(methodConfig.GetTOTPConfig(), auth.EntityID, methodConfig.Name)
+					if err != nil {
+						return nil, nil, err
+					}
+
+					selfEnrollment := &MFASelfEnrollment{
+						RequestID:     mfaRequestID,
+						EntityID:      auth.EntityID,
+						TOTPSecret:    secret.Secret(),
+						TimeOfStorage: time.Now(),
+					}
+					if err := c.SaveMFASelfEnroll(selfEnrollment); err != nil {
+						return nil, nil, err
+					}
+
 					resp.Auth = &logical.Auth{
 						MFASelfEnroll: &logical.MFASelfEnroll{
-							EntityID:     auth.EntityID,
 							MFARequestID: mfaRequestID,
-							MFAMethod:    methodConfig.ID,
+							TOTPURL:      totpURL,
 						},
 					}
-					// mfa self enrollment queue?
 					resp.AddWarning("TOTP self-enrollment is required before MFA validation can complete.")
 					return resp, nil, nil
 				}

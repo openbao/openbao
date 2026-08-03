@@ -1954,6 +1954,9 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 				var enrollConfig *mfa.MFAEnforcementConfig
 				for _, eConfig := range matchedMfaEnforcementList {
 					for _, methodID := range eConfig.MFAMethodIDs {
+						if _, ok := entity.MFASecrets[methodID]; ok {
+							continue
+						}
 						mConfig, err := c.loginMFABackend.MemDBMFAConfigByID(methodID)
 						if err != nil {
 							return nil, nil, err

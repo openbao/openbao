@@ -98,6 +98,10 @@ const (
 	// MfaAuthResponse when the value is not specified in the server config
 	defaultMFAAuthResponseTTL = 300 * time.Second
 
+	// defaultMFASelfEnrollmentTTL is the default duration that OpenBao will
+	// allow the self enrollment to be verified
+	defaultMFASelfEnrollmentTTL = 300 * time.Second
+
 	// ForwardSSCTokenToActive is the value that must be set in the
 	// forwardToActive to trigger forwarding if a perf standby encounters
 	// an SSC Token that it does not have the WAL state for.
@@ -388,6 +392,10 @@ type Core struct {
 	// mfaResponseAuthQueue is used to cache the auth response per request ID
 	mfaResponseAuthQueue     *LoginMFAPriorityQueue
 	mfaResponseAuthQueueLock sync.Mutex
+
+	// mfaSelfEnrollmentQueue is used to cache the auth response per request ID
+	mfaSelfEnrollmentQueue     *MFASelfEnrollmentQueue
+	mfaSelfEnrollmentQueueLock sync.Mutex
 
 	// metricSink is the destination for all metrics that have
 	// a cluster label.
@@ -2349,6 +2357,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	}
 
 	c.setupCachedMFAResponseAuth()
+	c.setupMFASelfEnrollment()
 	if err := c.loadLoginMFAConfigs(ctx); err != nil {
 		return err
 	}
@@ -3196,6 +3205,13 @@ type MFACachedAuthResponse struct {
 	RequestID             string
 }
 
+type MFASelfEnrollment struct {
+	RequestID     string
+	EntityID      string
+	TOTPSecret    string
+	TimeOfStorage time.Time
+}
+
 func (c *Core) setupCachedMFAResponseAuth() {
 	c.mfaResponseAuthQueueLock.Lock()
 	c.mfaResponseAuthQueue = NewLoginMFAPriorityQueue()
@@ -3214,6 +3230,30 @@ func (c *Core) setupCachedMFAResponseAuth() {
 				err := mfaQueue.RemoveExpiredMfaAuthResponse(defaultMFAAuthResponseTTL, time.Now())
 				if err != nil {
 					c.Logger().Error("failed to remove stale MFA auth response", "error", err)
+				}
+			}
+		}
+	}()
+}
+
+func (c *Core) setupMFASelfEnrollment() {
+	c.mfaSelfEnrollmentQueueLock.Lock()
+	c.mfaSelfEnrollmentQueue = NewMFASelfEnrollmentQueue()
+	mfaSelfEnrollQueue := c.mfaSelfEnrollmentQueue
+	c.mfaSelfEnrollmentQueueLock.Unlock()
+
+	ctx := c.activeContext.Load()
+
+	go func() {
+		ticker := time.Tick(5 * time.Second)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker:
+				err := mfaSelfEnrollQueue.RemoveExpiredMfaSelfEnrollment(defaultMFASelfEnrollmentTTL, time.Now())
+				if err != nil {
+					c.Logger().Error("failed to remove stale MFA self enrollment", "error", err)
 				}
 			}
 		}
@@ -3425,6 +3465,28 @@ func (c *Core) SaveMFAResponseAuth(respAuth *MFACachedAuthResponse) error {
 	c.mfaResponseAuthQueueLock.Lock()
 	defer c.mfaResponseAuthQueueLock.Unlock()
 	return c.mfaResponseAuthQueue.Push(respAuth)
+}
+
+// PopMFASelfEnrollByID pops an item from the mfaSelfEnrollmentQueueLock by ID
+// it returns the self enrollment or an error
+func (c *Core) PopMFASelfEnrollByID(reqID string) (*MFASelfEnrollment, error) {
+	if c.standby.Load() {
+		return nil, logical.ErrReadOnly
+	}
+	c.mfaSelfEnrollmentQueueLock.Lock()
+	defer c.mfaSelfEnrollmentQueueLock.Unlock()
+	return c.mfaSelfEnrollmentQueue.PopByKey(reqID)
+}
+
+// SaveMFASelfEnroll pushes an MFASelfEnrollment to the mfaSelfEnrollmentQueue.
+// it returns an error in case of failure
+func (c *Core) SaveMFASelfEnroll(respAuth *MFASelfEnrollment) error {
+	if c.standby.Load() {
+		return logical.ErrReadOnly
+	}
+	c.mfaSelfEnrollmentQueueLock.Lock()
+	defer c.mfaSelfEnrollmentQueueLock.Unlock()
+	return c.mfaSelfEnrollmentQueue.Push(respAuth)
 }
 
 type InFlightRequests struct {

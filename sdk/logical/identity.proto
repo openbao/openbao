@@ -95,7 +95,6 @@ message MFARequirement {
 }
 
 message MFASelfEnroll {
-	string entity_id = 1;
-	string mfa_request_id = 2;
-	string mfa_method = 3;
+	string mfa_request_id = 1;
+	string totp_url = 2;
 }

@@ -445,6 +445,11 @@ func (c *Core) teardownLoginMFA() error {
 	c.mfaResponseAuthQueue = nil
 	c.mfaResponseAuthQueueLock.Unlock()
 
+	// Clear any mfa self enrollments
+	c.mfaSelfEnrollmentQueueLock.Lock()
+	c.mfaSelfEnrollmentQueue = nil
+	c.mfaResponseAuthQueueLock.Unlock()
+
 	c.loginMFABackend.usedCodes = nil
 	return c.loginMFABackend.ResetLoginMFAMemDB()
 }
@@ -2130,5 +2135,17 @@ func (b *LoginMFABackend) CleanupNamespace(ctx context.Context, ns *namespace.Na
 	}
 
 	txn.Commit()
+	return nil
+}
+
+func (b *LoginMFABackend) ConfirmMFASelfEnroll(reqID string, totpCode string) error {
+	mfaSelfEnroll, err := b.Core.PopMFASelfEnrollByID(reqID)
+	if err != nil {
+		return err
+	}
+	ok := totplib.Validate(totpCode, mfaSelfEnroll.TOTPSecret)
+	if !ok {
+		return ErrBadMFACredentials
+	}
 	return nil
 }

@@ -103,7 +103,7 @@ backend cannot be declared.
    needed. Each node randomly staggers between the configured
    interval and twice the configured interval to keep the entire cluster
    from performing a truncation at once. The default snapshot interval is
-   120 seconds.
+   120 seconds and the minimum value is 5ms.
 
 - `retry_join` `(list: [])` <a name="retry_join"></a> - A set of connection details for another node in the
   cluster, which is used to help nodes locate a leader in order to join a cluster.

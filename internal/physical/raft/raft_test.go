@@ -730,7 +730,7 @@ func TestRaft_LogTruncation(t *testing.T) {
 	// 4. Write enough entries so the log exceeds the truncation trigger.
 	writeEntries(3)
 	require.Greater(t, logEntryCount(), uint64(snapshotThreshold+trailingLogs),
-		"entries exceed snapshot threshold, snapshot should fire")
+		"entries exceed snapshot threshold, truncation should trigger")
 
 	// 5. Snapshot should delete log entries from raft.db, leaving only trailing logs.
 	last, err := rb.logStore.LastIndex()

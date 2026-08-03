@@ -19,6 +19,9 @@ export default Controller.extend({
           this.model.cluster.leaderNode.set('sealed', true);
           this.auth.deleteCurrentToken();
           return this.router.transitionTo('vault.cluster.unseal');
+        })
+        .catch((error) => {
+          if (error?.name !== 'TransitionAborted') throw error;
         });
     },
   },

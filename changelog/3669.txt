@@ -1,0 +1,3 @@
+```release-note:bug
+core: Keep the HTTP server running when PROXY protocol rejects unauthorized connections instead of shutting down.
+```

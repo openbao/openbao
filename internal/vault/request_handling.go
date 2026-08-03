@@ -1951,9 +1951,9 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 					return nil, nil, err
 				}
 
-				methodID := ""
+				var methodConfig *mfa.Config
 				for _, eConfig := range matchedMfaEnforcementList {
-					if methodID != "" {
+					if methodConfig != nil {
 						break
 					}
 					for _, mID := range eConfig.MFAMethodIDs {
@@ -1977,17 +1977,18 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 							continue
 						}
 
-						methodID = mID
+						methodConfig = mConfig
 						break
 					}
 				}
 
-				if methodID != "" {
+				if methodConfig != nil {
+					generateTOTPKeyAndQR(methodConfig.GetTOTPConfig(), auth.EntityID, methodConfig.Name)
 					resp.Auth = &logical.Auth{
 						MFASelfEnroll: &logical.MFASelfEnroll{
 							EntityID:     auth.EntityID,
 							MFARequestID: mfaRequestID,
-							MFAMethod:    methodID,
+							MFAMethod:    methodConfig.ID,
 						},
 					}
 					// mfa self enrollment queue?

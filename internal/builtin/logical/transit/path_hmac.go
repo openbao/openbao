@@ -237,12 +237,17 @@ func (b *backend) pathHMACWrite(ctx context.Context, req *logical.Request, d *fr
 
 func (b *backend) pathHMACVerify(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := d.Get("name").(string)
-	algorithm := d.Get("urlalgorithm").(string)
-	if algorithm == "" {
-		algorithm = d.Get("algorithm").(string)
+	hashAlgorithmStr := d.Get("urlalgorithm").(string)
+	if hashAlgorithmStr == "" {
+		hashAlgorithmStr = d.Get("hash_algorithm").(string)
+		if hashAlgorithmStr == "" {
+			hashAlgorithmStr = d.Get("algorithm").(string)
+			if hashAlgorithmStr == "" {
+				hashAlgorithmStr = defaultHashAlgorithm
+			}
+		}
 	}
 
-	// Get the policy
 	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
 		Storage: req.Storage,
 		Name:    name,
@@ -255,12 +260,12 @@ func (b *backend) pathHMACVerify(ctx context.Context, req *logical.Request, d *f
 	}
 	defer p.Unlock()
 
-	hashAlgorithm, ok := keysutil.HashTypeMap[algorithm]
+	hashAlgorithmType, ok := keysutil.HashTypeMap[hashAlgorithmStr]
 	if !ok {
-		return logical.ErrorResponse("unsupported algorithm %q", hashAlgorithm), nil
+		return logical.ErrorResponse("invalid hash algorithm %q", hashAlgorithmStr), logical.ErrInvalidRequest
 	}
 
-	hashAlg := keysutil.HashFuncMap[hashAlgorithm]
+	hashAlg := keysutil.HashFuncMap[hashAlgorithmType]
 
 	batchInputRaw := d.Raw["batch_input"]
 	var batchInputItems []batchRequestHMACItem

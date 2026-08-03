@@ -93,3 +93,9 @@ message MFARequirement {
 	string mfa_request_id = 1;
 	map<string, MFAConstraintAny> mfa_constraints = 2;
 }
+
+message MFASelfEnroll {
+	string entity_id = 1;
+	string mfa_request_id = 2;
+	string mfa_method = 3;
+}

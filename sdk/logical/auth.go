@@ -112,6 +112,9 @@ type Auth struct {
 	// MFARequirement
 	MFARequirement *MFARequirement `json:"mfa_requirement"`
 
+	// MFASelfEnroll
+	MFASelfEnroll *MFASelfEnroll `json:"mfa_self_enroll"`
+
 	// EntityCreated is set to true if an entity is created as part of a login request
 	EntityCreated bool `json:"entity_created"`
 

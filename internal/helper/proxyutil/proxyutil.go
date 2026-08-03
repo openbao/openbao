@@ -72,7 +72,11 @@ func WrapInProxyProto(listener net.Listener, config *ProxyProtoConfig) (net.List
 					return proxyproto.IGNORE, nil
 				}
 
-				return proxyproto.REJECT, errors.New(`upstream connection not trusted proxy_protocol_behavior is "deny_unauthorized"`)
+				// Return ErrInvalidUpstream so that go-proxyproto closes the
+				// unauthorized connection and keeps the listener running,
+				// instead of propagating an error from Accept() that would
+				// shut down the HTTP server.
+				return proxyproto.REJECT, proxyproto.ErrInvalidUpstream
 			},
 		}
 	default:

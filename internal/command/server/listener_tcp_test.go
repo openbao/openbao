@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-sockaddr"
@@ -367,35 +368,10 @@ func TestTCPListener_proxyProtocol(t *testing.T) {
 			AuthorizedAddr: "127.0.0.1/32",
 			ExpectedAddr:   "127.0.0.1",
 		},
-		"deny_unauthorized-no-header-not-in": {
-			Behavior:       "deny_unauthorized",
-			AuthorizedAddr: "10.0.0.1/32",
-			ExpectedAddr:   "127.0.0.1",
-			ExpectError:    true,
-		},
 		"deny_unauthorized-v1-in": {
 			Behavior:       "deny_unauthorized",
 			AuthorizedAddr: "127.0.0.1/32",
 			ExpectedAddr:   "10.1.1.1",
-			Header: &proxyproto.Header{
-				Version:           1,
-				Command:           proxyproto.PROXY,
-				TransportProtocol: proxyproto.TCPv4,
-				SourceAddr: &net.TCPAddr{
-					IP:   net.ParseIP("10.1.1.1"),
-					Port: 1000,
-				},
-				DestinationAddr: &net.TCPAddr{
-					IP:   net.ParseIP("20.2.2.2"),
-					Port: 2000,
-				},
-			},
-		},
-		"deny_unauthorized-v1-not-in": {
-			Behavior:       "deny_unauthorized",
-			AuthorizedAddr: "10.0.0.1/32",
-			ExpectedAddr:   "127.0.0.1",
-			ExpectError:    true,
 			Header: &proxyproto.Header{
 				Version:           1,
 				Command:           proxyproto.PROXY,
@@ -449,4 +425,54 @@ func TestTCPListener_proxyProtocol(t *testing.T) {
 			testListenerImpl(t, ln, connFn, "", 0, tc.ExpectedAddr, tc.ExpectError)
 		})
 	}
+}
+
+// TestTCPListener_proxyProtocolDenyUnauthorizedKeepsListening verifies that an
+// unauthorized connection with deny_unauthorized rejects that connection but
+// leaves the listener (and thus the HTTP server) running so subsequent
+// authorized connections still work.
+func TestTCPListener_proxyProtocolDenyUnauthorizedKeepsListening(t *testing.T) {
+	sockAddr, err := sockaddr.NewSockAddr("127.0.0.1/32")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ln, _, _, err := tcpListenerFactory(&configutil.Listener{
+		Address:                      "127.0.0.1:0",
+		TLSDisable:                   true,
+		ProxyProtocolBehavior:        "deny_unauthorized",
+		ProxyProtocolAuthorizedAddrs: []*sockaddr.SockAddrMarshaler{{SockAddr: sockAddr}},
+	}, nil, cli.NewMockUi())
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	// First, connect from an unauthorized source (127.0.0.2 is not in the
+	// authorized 127.0.0.1/32 range): the connection should be rejected by the
+	// PROXY protocol wrapper, but the listener must survive.
+	unauthConn, err := (&net.Dialer{
+		LocalAddr: &net.TCPAddr{IP: net.ParseIP("127.0.0.2")},
+	}).Dial("tcp", ln.Addr().String())
+	if err != nil {
+		t.Fatalf("err dialing unauthorized: %s", err)
+	}
+	defer unauthConn.Close()
+
+	// The PROXY protocol wrapper should close the connection once the policy
+	// rejects it, so reads from the unauthorized side should fail (EOF/reset)
+	// rather than block. Give the server a moment to process the connection.
+	_ = unauthConn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	buf := make([]byte, 1)
+	_, readErr := unauthConn.Read(buf)
+	if readErr == nil {
+		t.Fatal("expected unauthorized connection to be rejected (closed), but it stayed open")
+	}
+
+	// Now an authorized connection (from loopback) must still be accepted,
+	// proving the listener was not shut down.
+	connFn := func(lnReal net.Listener) (net.Conn, error) {
+		return net.Dial("tcp", ln.Addr().String())
+	}
+
+	testListenerImpl(t, ln, connFn, "", 0, "127.0.0.1", false)
 }

@@ -1996,13 +1996,16 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 					return nil, nil, err
 				}
 
-				var enrollConfig *mfa.MFAEnforcementConfig
+				methodID := ""
 				for _, eConfig := range matchedMfaEnforcementList {
-					for _, methodID := range eConfig.MFAMethodIDs {
-						if _, ok := entity.MFASecrets[methodID]; ok {
+					if methodID != "" {
+						break
+					}
+					for _, mID := range eConfig.MFAMethodIDs {
+						if _, ok := entity.MFASecrets[mID]; ok {
 							continue
 						}
-						mConfig, err := c.loginMFABackend.MemDBMFAConfigByID(methodID)
+						mConfig, err := c.loginMFABackend.MemDBMFAConfigByID(mID)
 						if err != nil {
 							return nil, nil, err
 						}
@@ -2019,17 +2022,17 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 							continue
 						}
 
-						enrollConfig = eConfig
+						methodID = mID
 						break
 					}
 				}
 
-				if enrollConfig != nil {
+				if methodID != "" {
 					resp.Auth = &logical.Auth{
 						MFASelfEnroll: &logical.MFASelfEnroll{
 							EntityID:     auth.EntityID,
 							MFARequestID: mfaRequestID,
-							MFAMethod:    enrollConfig.MFAMethodIDs[0],
+							MFAMethod:    methodID,
 						},
 					}
 					// mfa self enrollment queue?

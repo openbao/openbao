@@ -98,14 +98,10 @@ func TestKMS(t *testing.T) {
 			require.NoError(t, key.Close(ctx))
 		}()
 
-		opts := &kms.CipherOptions{Data: input}
-		ciphertext, err := key.Encrypt(ctx, opts)
+		ciphertext, err := key.Encrypt(ctx, &kms.CipherOptions{Data: input})
 		require.NoError(t, err)
 
-		plaintext, err := key.Decrypt(ctx, &kms.CipherOptions{
-			Data:  ciphertext,
-			Nonce: opts.Nonce,
-		})
+		plaintext, err := key.Decrypt(ctx, &kms.CipherOptions{Data: ciphertext})
 		require.NoError(t, err)
 		require.Equal(t, input, plaintext)
 	})

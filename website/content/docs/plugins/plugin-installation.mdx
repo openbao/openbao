@@ -43,19 +43,33 @@ This allows OpenBao to check the integrity of the plugin before executing it.
 
 ## Step 3: Download plugin binary
 
-There are two mechanisms to download external plugin binaries:
+There are two distribution/packaging mechanisms for external plugins: _raw binaries_ and _OCI artifacts_.
+Depending on which mechanism you choose, the installation process differs.
 
-1. **Manual:** 
-   Manually download the plugin binary and place it into the plugin directory.
+### Raw binaries
 
-2. **OCI:**
-   OpenBao can download plugins from OCI registries and place them into the plugin directory.
-   To use this, define a [`plugin` stanza](../configuration/plugins.mdx) with an `image` field.
-   This is only supported for declarative plugins, not for API-driven plugins.
+External plugins can be distributed as raw binaries.
+You download them yourself and place them into the plugin directory.
 
-   To trigger the download of the OCI-based plugin, run [`bao plugin init`](../commands/plugin/init.mdx).
-   Alternatively, OpenBao can download them automatically if you have enable this in the server config:
+Steps to install the plugin:
 
-   ```hcl
-   plugin_auto_download = true
-   ```
+1. Obtain the plugin binary, for example, by downloading it from its publisher's
+   release artifacts or by building it from source.
+1. Place the binary in the plugin directory.
+
+### OCI artifacts
+
+External plugins can also be distributed as OCI artifacts.
+OpenBao downloads them on your behalf from an OCI registry and stores them in the plugin directory.
+The download happens either automatically (if you enable auto-download) or manually when you trigger it.
+
+Steps to install the plugin:
+
+1. Define a [`plugin` stanza](../configuration/plugins.mdx) with an `image` field.
+1. Trigger OpenBao to download the artifact. You have two options:
+   1. Run [`bao plugin init`](../commands/plugin/init.mdx), or
+   1. Enable auto-download in the config file. Then restart OpenBao or send a SIGHUP.
+
+      ```hcl
+      plugin_auto_download = true
+      ```

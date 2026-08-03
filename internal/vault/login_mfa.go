@@ -537,6 +537,39 @@ func (c *Core) fetchTOTPKey(ctx context.Context, methodID, entityID string) (str
 	return ks.Key, nil
 }
 
+func generateTOTPKeyAndQR(totpConfig *mfa.TOTPConfig, entityID, methodName string) (*otplib.Key, string, string, error) {
+	keyObject, err := totplib.Generate(totplib.GenerateOpts{
+		Issuer:      totpConfig.Issuer,
+		AccountName: entityID,
+		Period:      uint(totpConfig.Period),
+		Digits:      otplib.Digits(totpConfig.Digits),
+		Algorithm:   otplib.Algorithm(totpConfig.Algorithm),
+		SecretSize:  uint(totpConfig.KeySize),
+	})
+	if err != nil {
+		return nil, "", "", fmt.Errorf("failed to generate TOTP key for method name %q: %w", methodName, err)
+	}
+	if keyObject == nil {
+		return nil, "", "", fmt.Errorf("failed to generate TOTP key for method name %q", methodName)
+	}
+
+	totpURL := keyObject.String()
+
+	totpB64Barcode := ""
+	if totpConfig.QRSize != 0 {
+		barcode, err := keyObject.Image(int(totpConfig.QRSize), int(totpConfig.QRSize))
+		if err != nil {
+			return nil, "", "", fmt.Errorf("failed to generate QR code image: %w", err)
+		}
+
+		var buff bytes.Buffer
+		png.Encode(&buff, barcode)
+		totpB64Barcode = base64.StdEncoding.EncodeToString(buff.Bytes())
+	}
+
+	return keyObject, totpURL, totpB64Barcode, nil
+}
+
 func (b *MFABackend) HandleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Config, entityID string) (*logical.Response, error) {
 	var err error
 	var totpConfig *mfa.TOTPConfig
@@ -576,33 +609,9 @@ func (b *MFABackend) HandleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 		}
 	}
 
-	keyObject, err := totplib.Generate(totplib.GenerateOpts{
-		Issuer:      totpConfig.Issuer,
-		AccountName: entity.ID,
-		Period:      uint(totpConfig.Period),
-		Digits:      otplib.Digits(totpConfig.Digits),
-		Algorithm:   otplib.Algorithm(totpConfig.Algorithm),
-		SecretSize:  uint(totpConfig.KeySize),
-	})
+	keyObject, totpURL, totpB64Barcode, err := generateTOTPKeyAndQR(totpConfig, entity.ID, mConfig.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate TOTP key for method name %q: %w", mConfig.Name, err)
-	}
-	if keyObject == nil {
-		return nil, fmt.Errorf("failed to generate TOTP key for method name %q", mConfig.Name)
-	}
-
-	totpURL := keyObject.String()
-
-	totpB64Barcode := ""
-	if totpConfig.QRSize != 0 {
-		barcode, err := keyObject.Image(int(totpConfig.QRSize), int(totpConfig.QRSize))
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate QR code image: %w", err)
-		}
-
-		var buff bytes.Buffer
-		png.Encode(&buff, barcode)
-		totpB64Barcode = base64.StdEncoding.EncodeToString(buff.Bytes())
+		return nil, err
 	}
 
 	if err := b.Core.PersistTOTPKey(ctx, mConfig.ID, entity.ID, keyObject.Secret()); err != nil {

@@ -32,18 +32,26 @@
           <button type="button" class="icon-button" {{on "click" (fn (mut this.mfaAuthData) null)}}>
             <Icon @name="arrow-left" @size="24" aria-label="Back to login" class="icon-blue" />
           </button>
+        {{else if this.mfaSelfEnroll}}
+          <button type="button" class="icon-button" {{on "click" (fn (mut this.mfaSelfEnroll) null)}}>
+            <Icon @name="arrow-left" @size="24" aria-label="Back to login" class="icon-blue" />
+          </button>
         {{else if this.waitingForOktaNumberChallenge}}
           <button type="button" class="icon-button" {{on "click" (action "cancelAuthentication")}}>
             <Icon @name="arrow-left" @size="24" aria-label="Back to login" class="icon-blue" />
           </button>
         {{/if}}
         <h1 class="title is-3">
-          {{if (or this.mfaAuthData this.waitingForOktaNumberChallenge) "Authenticate" "Sign in to OpenBao"}}
+          {{if
+            (or this.mfaAuthData this.mfaSelfEnroll this.waitingForOktaNumberChallenge)
+            "Authenticate"
+            "Sign in to OpenBao"
+          }}
         </h1>
       </div>
     {{/if}}
   </Page.header>
-  {{#unless this.mfaAuthData}}
+  {{#unless (or this.mfaAuthData this.mfaSelfEnroll)}}
     <Page.sub-header>
       <Toolbar class="toolbar-namespace-picker">
         <div class="field is-horizontal" data-test-namespace-toolbar>
@@ -80,6 +88,13 @@
         @authData={{this.mfaAuthData}}
         @onSuccess={{action "onMfaSuccess"}}
         @onError={{fn (mut this.mfaErrors)}}
+      />
+    {{else if this.mfaSelfEnroll}}
+      <Mfa::MfaSelfEnroll
+        @clusterId={{this.model.id}}
+        @selfEnrollData={{this.mfaSelfEnroll}}
+        @onSuccess={{action "onSelfEnrollSuccess"}}
+        @onError={{fn (mut this.selfEnrollErrors)}}
       />
     {{else}}
       <AuthForm

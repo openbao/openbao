@@ -1978,8 +1978,13 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 
 				if enrollConfig != nil {
 					resp.Auth = &logical.Auth{
-						// send self enrollment enrollConfig.MFAMethodIDs[0]
+						MFASelfEnroll: &logical.MFASelfEnroll{
+							EntityID:     auth.EntityID,
+							MFARequestID: mfaRequestID,
+							MFAMethod:    enrollConfig.MFAMethodIDs[0],
+						},
 					}
+					// mfa self enrollment queue?
 					resp.AddWarning("TOTP self-enrollment is required before MFA validation can complete.")
 					return resp, nil, nil
 				}

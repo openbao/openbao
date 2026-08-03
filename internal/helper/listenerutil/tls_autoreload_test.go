@@ -24,7 +24,7 @@ func TestPollTLSCertificateChanges(t *testing.T) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 
-	go pollTLSCertificateChanges([]string{cert, key}, 10*time.Millisecond, func() error {
+	go pollTLSCertificateChanges([]string{cert, key}, hash([]string{cert, key}, hclog.NewNullLogger()), 10*time.Millisecond, func() error {
 		reloaded <- struct{}{}
 		return nil
 	}, stopCh, hclog.NewNullLogger())

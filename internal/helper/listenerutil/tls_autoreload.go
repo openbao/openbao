@@ -17,8 +17,9 @@ import (
 func NewTLSReloadListener(ln net.Listener, paths []string, interval time.Duration, reload func() error, logger hclog.Logger) net.Listener {
 	wg := &sync.WaitGroup{}
 	stop := make(chan struct{})
+	currentHash := hash(paths, logger)
 	wg.Go(func() {
-		pollTLSCertificateChanges(paths, interval, reload, stop, logger)
+		pollTLSCertificateChanges(paths, currentHash, interval, reload, stop, logger)
 	})
 	return &tlsReloadListener{Listener: ln, wg: wg, stop: stop}
 }
@@ -35,21 +36,7 @@ func (l *tlsReloadListener) Close() error {
 	return l.Listener.Close()
 }
 
-func pollTLSCertificateChanges(paths []string, interval time.Duration, reload func() error, stopCh <-chan struct{}, logger hclog.Logger) {
-	hash := func() []byte {
-		h := sha256.New()
-		for _, p := range paths {
-			data, err := os.ReadFile(p)
-			if err != nil {
-				logger.Warn("tls auto-reload: cannot read file", "path", p, "error", err)
-				continue
-			}
-			h.Write(data)
-		}
-		return h.Sum(nil)
-	}
-
-	last := hash()
+func pollTLSCertificateChanges(paths []string, last []byte, interval time.Duration, reload func() error, stopCh <-chan struct{}, logger hclog.Logger) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -58,7 +45,7 @@ func pollTLSCertificateChanges(paths []string, interval time.Duration, reload fu
 		case <-stopCh:
 			return
 		case <-ticker.C:
-			current := hash()
+			current := hash(paths, logger)
 			if bytes.Equal(current, last) {
 				continue
 			}
@@ -72,4 +59,17 @@ func pollTLSCertificateChanges(paths []string, interval time.Duration, reload fu
 			logger.Info("tls auto-reload: reloaded TLS certificate", "paths", paths)
 		}
 	}
+}
+
+func hash(paths []string, logger hclog.Logger) []byte {
+	h := sha256.New()
+	for _, p := range paths {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			logger.Warn("tls auto-reload: cannot read file", "path", p, "error", err)
+			continue
+		}
+		h.Write(data)
+	}
+	return h.Sum(nil)
 }

@@ -202,7 +202,7 @@ export default Route.extend({
 
   handleSecretModelError(capabilities, secretId, modelType, error) {
     // can't read the path and don't have update capability, so re-throw
-    if (!capabilities.canUpdate && modelType === 'secret') {
+    if (capabilities && !capabilities.canUpdate && modelType === 'secret') {
       throw error;
     }
     // don't have access to the metadata for v2 or the secret for v1,

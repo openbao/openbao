@@ -57,7 +57,12 @@ export default {
       // responded, so waiting for the log to grow also waits for the response
       // to render (which `settled()` no longer covers after the ember-data
       // upgrade).
-      await waitUntil(() => this.logOutputItems.length > priorOutputItems, { timeout: 10000 });
+      if (command === 'clear') {
+        // the clear command clears the log instead of growing it
+        await waitUntil(() => this.logOutputItems.length === 0, { timeout: 10000 });
+      } else {
+        await waitUntil(() => this.logOutputItems.length > priorOutputItems, { timeout: 10000 });
+      }
     }
   },
 };

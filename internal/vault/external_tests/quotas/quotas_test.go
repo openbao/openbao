@@ -4,6 +4,10 @@
 package quotas
 
 import (
+	"encoding/json"
+	"os"
+	"path"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -13,10 +17,13 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 
+	"github.com/openbao/openbao/v2/internal/audit"
+	auditFile "github.com/openbao/openbao/v2/internal/builtin/audit/file"
 	"github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	"github.com/openbao/openbao/v2/internal/builtin/logical/pki"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/teststorage"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/openbao/openbao/v2/internal/vault/quotas"
 )
 
 var coreConfig = &vault.CoreConfig{
@@ -25,6 +32,9 @@ var coreConfig = &vault.CoreConfig{
 	},
 	CredentialBackends: map[string]logical.Factory{
 		"userpass": userpass.Factory,
+	},
+	AuditBackends: map[string]audit.Factory{
+		"file": auditFile.Factory,
 	},
 }
 
@@ -269,6 +279,64 @@ func TestQuotas_RateLimitQuota_DefaultExemptPaths(t *testing.T) {
 	// If the response is nil, then we are being rate limited
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data)
+}
+
+func TestQuotas_RateLimitQuota_AuditLogging(t *testing.T) {
+	conf, opts := teststorage.ClusterSetup(coreConfig, nil, nil)
+	opts.NoDefaultQuotas = true
+	opts.RequestResponseCallback = schema.ResponseValidatingCallback(t)
+	cluster := vault.NewTestCluster(t, conf, opts)
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	core := cluster.Cores[0].Core
+	client := cluster.Cores[0].Client
+	vault.TestWaitActive(t, core)
+
+	// Enable Audit Logging
+	_, err := client.Logical().WriteWithContext(t.Context(), "sys/quotas/config", map[string]any{
+		"enable_rate_limit_audit_logging": true,
+	})
+	require.NoError(t, err)
+
+	// Create temporary audit log file
+	auditLogFile, err := os.Create(path.Join(t.TempDir(), "audit.json"))
+	require.NoError(t, err)
+
+	require.NoError(t, client.Sys().EnableAuditWithOptions("file", &api.EnableAuditOptions{
+		Type: "file",
+		Options: map[string]string{
+			"file_path": auditLogFile.Name(),
+		},
+	}))
+
+	// Set limit to 1
+	_, err = client.Logical().WriteWithContext(t.Context(), "sys/quotas/rate-limit/rlq", map[string]any{
+		"rate": 1,
+	})
+	require.NoError(t, err)
+
+	// First requests should pass
+	_, err = client.Sys().ListNamespacesWithContext(t.Context())
+	require.NoError(t, err)
+
+	// Second request should fail
+	_, err = client.Sys().ListNamespacesWithContext(t.Context())
+	require.ErrorContains(t, err, "429") // HTTP 429 => "Too Many Requests"
+
+	// Count matching audit log entries
+	decoder := json.NewDecoder(auditLogFile)
+	var auditRecord map[string]any
+	var rateLimitAuditLogCount int
+	for decoder.Decode(&auditRecord) == nil {
+		if auditRecord["type"] == "request" {
+			if error, ok := auditRecord["error"]; ok && strings.HasSuffix(error.(string), quotas.ErrRateLimitQuotaExceeded.Error()) {
+				rateLimitAuditLogCount++
+			}
+		}
+	}
+
+	require.Equal(t, 1, rateLimitAuditLogCount, "expected exactly one rate limit exceeded audit log entry")
 }
 
 func TestQuotas_RateLimitQuota_Mount(t *testing.T) {

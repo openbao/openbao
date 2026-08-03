@@ -379,7 +379,7 @@ func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, data any) error {
 }
 
 func (t TableFormatter) OutputList(ui cli.Ui, secret *api.Secret, data any) error {
-	t.printWarnings(ui, secret)
+	printWarnings(ui, secret)
 
 	// Determine if we have additional information from a ListResponseWithInfo endpoint.
 	var additionalInfo map[string]any
@@ -485,7 +485,7 @@ func (t TableFormatter) OutputList(ui cli.Ui, secret *api.Secret, data any) erro
 }
 
 // printWarnings prints any warnings in the secret.
-func (t TableFormatter) printWarnings(ui cli.Ui, secret *api.Secret) {
+func printWarnings(ui cli.Ui, secret *api.Secret) {
 	if secret != nil && len(secret.Warnings) > 0 {
 		ui.Warn("WARNING! The following warnings were returned from OpenBao:\n")
 		for _, warning := range secret.Warnings {
@@ -500,7 +500,7 @@ func (t TableFormatter) OutputSecret(ui cli.Ui, secret *api.Secret) error {
 		return nil
 	}
 
-	t.printWarnings(ui, secret)
+	printWarnings(ui, secret)
 
 	out := make([]string, 0, 8)
 	if secret.LeaseDuration > 0 {

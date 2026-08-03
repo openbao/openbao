@@ -397,6 +397,11 @@ func mfaPaths(i *IdentityStore) []*framework.Path {
 					Default:     1,
 					Description: `The number of delay periods that are allowed when validating a TOTP token. This value can either be 0 or 1.`,
 				},
+				"enable_self_enrollment": {
+					Type:        framework.TypeBool,
+					Default:     false,
+					Description: "Allow users to setup TOTP for their account during login, if they do not already have one.",
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{

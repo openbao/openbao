@@ -105,6 +105,14 @@ func PrintRawField(ui cli.Ui, data any, field string) int {
 		ui.Error(fmt.Sprintf("Field %q not present in secret", field))
 		return 1
 	}
+	// Really similar to the warning used in openbao/internal/command/format.go. The PrintRawField function was simply missing the warnings check.
+	if secret, ok := data.(*api.Secret); ok && secret != nil && len(secret.Warnings) > 0{
+		ui.Warn("WARNING! The following warnings were returned from OpenBao\n")
+		for _, warning := range secret.Warnings{
+			ui.Warn(wrapAtLengthWithPadding(fmt.Sprintf("* %s", warning), 2))
+			ui.Warn("")
+		}
+	}
 
 	format := Format(ui)
 	if format == "" || format == "table" || format == "raw" {

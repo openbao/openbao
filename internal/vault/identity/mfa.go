@@ -723,6 +723,8 @@ func parseTOTPConfig(mConfig *mfa.Config, d *framework.FieldData) error {
 		maxValidationAttempt = defaultMaxTOTPValidateAttempts
 	}
 
+	enableSelfEnrollment := d.Get("enable_self_enrollment").(bool)
+
 	config := &mfa.TOTPConfig{
 		Issuer:                issuer,
 		Period:                uint32(period),
@@ -732,6 +734,7 @@ func parseTOTPConfig(mConfig *mfa.Config, d *framework.FieldData) error {
 		KeySize:               uint32(keySize),
 		QRSize:                int32(d.Get("qr_size").(int)),
 		MaxValidationAttempts: uint32(maxValidationAttempt),
+		EnableSelfEnrollment:  enableSelfEnrollment,
 	}
 	mConfig.Config = &mfa.Config_TOTPConfig{
 		TOTPConfig: config,

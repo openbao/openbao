@@ -1950,6 +1950,40 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 				if err != nil {
 					return nil, nil, err
 				}
+
+				var enrollConfig *mfa.MFAEnforcementConfig
+				for _, eConfig := range matchedMfaEnforcementList {
+					for _, methodID := range eConfig.MFAMethodIDs {
+						mConfig, err := c.loginMFABackend.MemDBMFAConfigByID(methodID)
+						if err != nil {
+							return nil, nil, err
+						}
+						if mConfig == nil || mConfig.Type != ident.MfaMethodTypeTOTP {
+							continue
+						}
+
+						totpConfig := mConfig.GetTOTPConfig()
+						if !totpConfig.GetEnableSelfEnrollment() {
+							continue
+						}
+
+						if entity.MFASecrets != nil && entity.MFASecrets[mConfig.ID] != nil {
+							continue
+						}
+
+						enrollConfig = eConfig
+						break
+					}
+				}
+
+				if enrollConfig != nil {
+					resp.Auth = &logical.Auth{
+						// send self enrollment enrollConfig.MFAMethodIDs[0]
+					}
+					resp.AddWarning("TOTP self-enrollment is required before MFA validation can complete.")
+					return resp, nil, nil
+				}
+
 				// sending back the MFARequirement config
 				mfaRequirement := &logical.MFARequirement{
 					MFARequestID:   mfaRequestID,

@@ -205,6 +205,7 @@ type TOTPConfig struct {
 	KeySize               uint32                 `protobuf:"varint,6,opt,name=key_size,json=keySize,proto3" json:"key_size,omitempty"`
 	QRSize                int32                  `protobuf:"varint,7,opt,name=qr_size,json=qrSize,proto3" json:"qr_size,omitempty"`
 	MaxValidationAttempts uint32                 `protobuf:"varint,8,opt,name=max_validation_attempts,json=maxValidationAttempts,proto3" json:"max_validation_attempts,omitempty"`
+	EnableSelfEnrollment  bool                   `protobuf:"varint,9,opt,name=enable_self_enrollment,json=enableSelfEnrollment,proto3" json:"enable_self_enrollment,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -293,6 +294,13 @@ func (x *TOTPConfig) GetMaxValidationAttempts() uint32 {
 		return x.MaxValidationAttempts
 	}
 	return 0
+}
+
+func (x *TOTPConfig) GetEnableSelfEnrollment() bool {
+	if x != nil {
+		return x.EnableSelfEnrollment
+	}
+	return false
 }
 
 // DuoConfig represents the configuration information required to perform
@@ -846,7 +854,7 @@ const file_internal_helper_identity_mfa_types_proto_rawDesc = "" +
 	"\rpingid_config\x18\t \x01(\v2\x11.mfa.PingIDConfigH\x00R\fpingidConfig\x12!\n" +
 	"\fnamespace_id\x18\n" +
 	" \x01(\tR\vnamespaceIDB\b\n" +
-	"\x06config\"\xf2\x01\n" +
+	"\x06config\"\xa8\x02\n" +
 	"\n" +
 	"TOTPConfig\x12\x16\n" +
 	"\x06issuer\x18\x01 \x01(\tR\x06issuer\x12\x16\n" +
@@ -856,7 +864,8 @@ const file_internal_helper_identity_mfa_types_proto_rawDesc = "" +
 	"\x04skew\x18\x05 \x01(\rR\x04skew\x12\x19\n" +
 	"\bkey_size\x18\x06 \x01(\rR\akeySize\x12\x17\n" +
 	"\aqr_size\x18\a \x01(\x05R\x06qrSize\x126\n" +
-	"\x17max_validation_attempts\x18\b \x01(\rR\x15maxValidationAttempts\"\xb6\x01\n" +
+	"\x17max_validation_attempts\x18\b \x01(\rR\x15maxValidationAttempts\x124\n" +
+	"\x16enable_self_enrollment\x18\t \x01(\bR\x14enableSelfEnrollment\"\xb6\x01\n" +
 	"\tDuoConfig\x12'\n" +
 	"\x0fintegration_key\x18\x01 \x01(\tR\x0eintegrationKey\x12\x1d\n" +
 	"\n" +

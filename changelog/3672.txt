@@ -1,0 +1,2 @@
+```release-note:bug
+cli: Fix `-field=` flag discarding API warnings (e.g. unrecognized parameters) instead of printing them to stderr

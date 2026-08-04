@@ -437,11 +437,15 @@ alphabetic order by name.
 
 @include 'telemetry-metrics/vault/runtime/total_gc_runs.mdx'
 
-@include 'telemetry-metrics/vault/secret/kv/count.mdx'
+import VaultSecretKvCount from "@site/content/partials/telemetry-metrics/vault/secret/kv/count.mdx";
+
+<VaultSecretKvCount/>
 
 @include 'telemetry-metrics/vault/secret/lease/creation.mdx'
 
-@include 'telemetry-metrics/vault/secret/transit/key/count.mdx'
+import VaultSecretTransitKeyCount from "@site/content/partials/telemetry-metrics/vault/secret/transit/key/count.mdx";
+
+<VaultSecretTransitKeyCount/>
 
 @include 'telemetry-metrics/vault/token/count.mdx'
 

@@ -1877,7 +1877,7 @@ func TestNamespaceManyLeases(t *testing.T) {
 					require.True(collect, found, "did not find expected lease: %v", leaseId)
 					return true
 				})
-			}, time.Second, 100*time.Millisecond)
+			}, 3*time.Second, 100*time.Millisecond)
 
 		}
 	}

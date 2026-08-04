@@ -68,6 +68,18 @@ func (pq *MFASelfEnrollmentQueue) PopByKey(reqID string) (*MFASelfEnrollment, er
 	return item.Value.(*MFASelfEnrollment), nil
 }
 
+func (pq *MFASelfEnrollmentQueue) PeekMFASelfEnrollByID(reqID string) (*MFASelfEnrollment, error) {
+	pq.l.RLock()
+	defer pq.l.RUnlock()
+
+	item, err := pq.wrapped.PeekByKey(reqID)
+	if err != nil || item == nil {
+		return nil, err
+	}
+
+	return item.Value.(*MFASelfEnrollment), nil
+}
+
 // RemoveExpiredMfaSelfEnrollment pops elements of the queue and check
 // if the entry has expired or not. If the entry has not expired, it pushes
 // back the entry to the queue. It returns false if there is no expired element
@@ -85,7 +97,7 @@ func (pq *MFASelfEnrollmentQueue) RemoveExpiredMfaSelfEnrollment(expiryTime time
 		return nil
 	}
 
-	mfaResp := item.Value.(*MFACachedAuthResponse)
+	mfaResp := item.Value.(*MFASelfEnrollment)
 
 	storageTime := mfaResp.TimeOfStorage
 	if cutoffTime.Before(storageTime.Add(expiryTime)) {

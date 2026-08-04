@@ -186,6 +186,55 @@ func TestPriorityQueue_PopByKey(t *testing.T) {
 	testValidateInternalData(t, pq, len(tc)-len(popKeys)-1, true)
 }
 
+func TestPriorityQueue_PeekByKey(t *testing.T) {
+	pq := New()
+
+	tc := testCases()
+	for _, i := range tc {
+		if err := pq.Push(i); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	item, err := pq.PeekByKey("item-3")
+	if err != nil {
+		t.Fatalf("failed to peek item-3: %s", err)
+	}
+	if item == nil {
+		t.Fatal("expected item-3 to be returned, got nil")
+	}
+	if item.Key != tc[3].Key || item.Priority != tc[3].Priority || item.Value != tc[3].Value {
+		t.Fatalf("expected peeked item to match stored item, got %#v and %#v", item, tc[3])
+	}
+
+	item.Key = "changed-key"
+	item.Priority++
+	item.Value = 42
+
+	again, err := pq.PeekByKey("item-3")
+	if err != nil {
+		t.Fatalf("failed to peek item-3 a second time: %s", err)
+	}
+	if again == nil {
+		t.Fatal("expected item-3 to still be present after peek, got nil")
+	}
+	if again.Key != tc[3].Key || again.Priority != tc[3].Priority || again.Value != tc[3].Value {
+		t.Fatalf("expected peek to return an unchanged copy, got %#v and %#v", again, tc[3])
+	}
+
+	if pq.Len() != len(tc) {
+		t.Fatalf("expected peek to leave queue size unchanged, got %d", pq.Len())
+	}
+
+	nilItem, err := pq.PeekByKey("missing")
+	if err != nil {
+		t.Fatalf("expected nil error for PeekByKey of missing key, got: %s", err)
+	}
+	if nilItem != nil {
+		t.Fatalf("expected nil item for missing key, got %#v", nilItem)
+	}
+}
+
 // testValidateInternalData checks the internal data structure of the PriorityQueue
 // and verifies that items are in-sync. Use drain only at the end of a test,
 // because it will mutate the input queue

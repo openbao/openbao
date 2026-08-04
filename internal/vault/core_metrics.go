@@ -179,54 +179,54 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 		MetadataLabel []metrics.Label
 		CollectorFunc metricsutil.GaugeCollector
 		DisableEnvVar string
+		EnableEnvVar  string
 	}{
 		{
-			[]string{"token", "count"},
-			[]metrics.Label{{Name: "gauge", Value: "token_by_namespace"}},
-			c.tokenGaugeCollector,
-			"",
+			MetricName:    []string{"token", "count"},
+			MetadataLabel: []metrics.Label{{Name: "gauge", Value: "token_by_namespace"}},
+			CollectorFunc: c.tokenGaugeCollector,
 		},
 		{
-			[]string{"token", "count", "by_policy"},
-			[]metrics.Label{{Name: "gauge", Value: "token_by_policy"}},
-			c.tokenGaugePolicyCollector,
-			"",
+			MetricName:    []string{"token", "count", "by_policy"},
+			MetadataLabel: []metrics.Label{{Name: "gauge", Value: "token_by_policy"}},
+			CollectorFunc: c.tokenGaugePolicyCollector,
 		},
 		{
-			[]string{"expire", "leases", "by_expiration"},
-			[]metrics.Label{{Name: "gauge", Value: "leases_by_expiration"}},
-			c.leaseExpiryGaugeCollector,
-			"",
+			MetricName:    []string{"expire", "leases", "by_expiration"},
+			MetadataLabel: []metrics.Label{{Name: "gauge", Value: "leases_by_expiration"}},
+			CollectorFunc: c.leaseExpiryGaugeCollector,
 		},
 		{
-			[]string{"token", "count", "by_auth"},
-			[]metrics.Label{{Name: "gauge", Value: "token_by_auth"}},
-			c.tokenGaugeMethodCollector,
-			"",
+			MetricName:    []string{"token", "count", "by_auth"},
+			MetadataLabel: []metrics.Label{{Name: "gauge", Value: "token_by_auth"}},
+			CollectorFunc: c.tokenGaugeMethodCollector,
 		},
 		{
-			[]string{"token", "count", "by_ttl"},
-			[]metrics.Label{{Name: "gauge", Value: "token_by_ttl"}},
-			c.tokenGaugeTtlCollector,
-			"",
+			MetricName:    []string{"token", "count", "by_ttl"},
+			MetadataLabel: []metrics.Label{{Name: "gauge", Value: "token_by_ttl"}},
+			CollectorFunc: c.tokenGaugeTtlCollector,
 		},
 		{
-			[]string{"secret", "kv", "count"},
-			[]metrics.Label{{Name: "gauge", Value: "kv_secrets_by_mountpoint"}},
-			c.kvSecretGaugeCollector,
-			"BAO_DISABLE_KV_GAUGE",
+			MetricName:    []string{"secret", "kv", "count"},
+			MetadataLabel: []metrics.Label{{Name: "gauge", Value: "kv_secrets_by_mountpoint"}},
+			CollectorFunc: c.kvSecretGaugeCollector,
+			DisableEnvVar: "BAO_DISABLE_KV_GAUGE",
 		},
 		{
-			[]string{"identity", "entity", "count"},
-			[]metrics.Label{{Name: "gauge", Value: "identity_by_namespace"}},
-			c.entityGaugeCollector,
-			"",
+			MetricName:    []string{"secret", "transit", "key", "count"},
+			MetadataLabel: []metrics.Label{{Name: "gauge", Value: "transit_keys_by_mountpoint"}},
+			CollectorFunc: c.transitKeyGaugeCollector,
+			EnableEnvVar:  "BAO_ENABLE_TRANSIT_GAUGE",
 		},
 		{
-			[]string{"identity", "entity", "alias", "count"},
-			[]metrics.Label{{Name: "gauge", Value: "identity_by_mountpoint"}},
-			c.entityGaugeCollectorByMount,
-			"",
+			MetricName:    []string{"identity", "entity", "count"},
+			MetadataLabel: []metrics.Label{{Name: "gauge", Value: "identity_by_namespace"}},
+			CollectorFunc: c.entityGaugeCollector,
+		},
+		{
+			MetricName:    []string{"identity", "entity", "alias", "count"},
+			MetadataLabel: []metrics.Label{{Name: "gauge", Value: "identity_by_mountpoint"}},
+			CollectorFunc: c.entityGaugeCollectorByMount,
 		},
 	}
 
@@ -241,6 +241,13 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 						"metric", init.MetricName)
 					continue
 				}
+			}
+			if init.EnableEnvVar != "" {
+				if api.ReadBaoVariable(init.EnableEnvVar) == "" {
+					continue
+				}
+				c.logger.Info("usage gauge collection is enabled for",
+					"metric", init.MetricName)
 			}
 
 			proc, err := c.MetricSink().NewGaugeCollectionProcess(

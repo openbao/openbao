@@ -105,8 +105,12 @@ func PrintRawField(ui cli.Ui, data any, field string) int {
 		ui.Error(fmt.Sprintf("Field %q not present in secret", field))
 		return 1
 	}
-
 	format := Format(ui)
+
+	if secret, ok := data.(*api.Secret); ok && format == "table" {
+		printWarnings(ui, secret)
+	}
+
 	if format == "" || format == "table" || format == "raw" {
 		return PrintRaw(ui, fmt.Sprintf("%v", val))
 	}

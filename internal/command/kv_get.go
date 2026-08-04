@@ -210,10 +210,7 @@ func (c *KVGetCommand) Run(args []string) int {
 		return OutputSecret(c.UI, secret)
 	}
 
-	if len(secret.Warnings) > 0 {
-		tf := TableFormatter{}
-		tf.printWarnings(c.UI, secret)
-	}
+	printWarnings(c.UI, secret)
 
 	if v2 {
 		outputPath(c.UI, fullPath, "Secret Path")

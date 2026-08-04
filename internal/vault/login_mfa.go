@@ -448,7 +448,7 @@ func (c *Core) teardownLoginMFA() error {
 	// Clear any mfa self enrollments
 	c.mfaSelfEnrollmentQueueLock.Lock()
 	c.mfaSelfEnrollmentQueue = nil
-	c.mfaResponseAuthQueueLock.Unlock()
+	c.mfaSelfEnrollmentQueueLock.Unlock()
 
 	c.loginMFABackend.usedCodes = nil
 	return c.loginMFABackend.ResetLoginMFAMemDB()

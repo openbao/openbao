@@ -74,6 +74,72 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 	}
 }
 
+func TestRequestHandling_WrappingTokenRevocation(t *testing.T) {
+	core, _, root := TestCoreUnsealed(t)
+
+	core.logicalBackends["kv"] = PassthroughBackendFactory
+
+	meUUID, _ := uuid.GenerateUUID()
+	err := core.mount(namespace.RootContext(t.Context()), &routing.MountEntry{
+		Table: routing.MountTableType,
+		UUID:  meUUID,
+		Path:  "wraptest",
+		Type:  "kv",
+	})
+	require.NoError(t, err)
+
+	// No duration specified
+	req := &logical.Request{
+		Path:        "wraptest/foo",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]any{
+			"zip": "zap",
+		},
+	}
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	req = &logical.Request{
+		Path:        "wraptest/foo",
+		ClientToken: root,
+		Operation:   logical.ReadOperation,
+		WrapInfo: &logical.RequestWrapInfo{
+			TTL: time.Duration(15 * time.Second),
+		},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("bad: %v", resp)
+	}
+	if resp.WrapInfo == nil || resp.WrapInfo.TTL != time.Duration(15*time.Second) {
+		t.Fatalf("bad: %#v", resp)
+	}
+	wrappingToken := resp.WrapInfo.Token
+
+	// check revocation
+	req = &logical.Request{
+		Path:        "auth/token/revoke-self",
+		ClientToken: wrappingToken,
+		Operation:   logical.UpdateOperation,
+		WrapInfo: &logical.RequestWrapInfo{
+			TTL: time.Duration(15 * time.Second),
+		},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+}
+
 func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
 

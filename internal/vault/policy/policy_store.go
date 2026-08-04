@@ -49,6 +49,10 @@ path "cubbyhole/response" {
 path "sys/wrapping/unwrap" {
     capabilities = ["update"]
 }
+
+path "auth/token/revoke-self" {
+    capabilities = ["update"]
+}
 `
 	// DefaultPolicy is the "default" policy
 	DefaultPolicy = `

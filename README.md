@@ -128,7 +128,7 @@ Some additional notes on development:
 
 ### Importing OpenBao
 
-This repository publishes two libraries that may be imported by other projects:
+This repository publishes two libraries that may be imported_key by other projects:
 `github.com/openbao/openbao/api/v2` and `github.com/openbao/openbao/sdk/v2`.
 
 Note that this repository also contains OpenBao (the application), and as

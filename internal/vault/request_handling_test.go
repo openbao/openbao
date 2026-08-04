@@ -130,9 +130,6 @@ func TestRequestHandling_WrappingTokenRevocation(t *testing.T) {
 		Path:        "auth/token/revoke-self",
 		ClientToken: wrappingToken,
 		Operation:   logical.UpdateOperation,
-		WrapInfo: &logical.RequestWrapInfo{
-			TTL: time.Duration(15 * time.Second),
-		},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {

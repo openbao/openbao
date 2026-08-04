@@ -14,10 +14,15 @@ import commonPrefix from 'core/utils/common-prefix';
 
 export default Controller.extend({
   router: service(),
+  store: service(),
   navToNearestAncestor: task(function* (key) {
     const ancestors = utils.ancestorKeysForKey(key);
     let errored = false;
     let nearest = ancestors.pop();
+    // force a refetch of the current folder when navigating to the same
+    // route/params after a deletion, otherwise the stale cached listing
+    // would make a 404-folder seem like it still contains the deleted key
+    this.store.clearAllDatasets();
     while (nearest) {
       try {
         const transition = this.router.transitionTo('vault.cluster.secrets.backend.list', nearest);
@@ -132,9 +137,10 @@ export default Controller.extend({
         .destroyRecord()
         .then(() => {
           this.flashMessages.success(`${name} was successfully deleted.`);
-          this.send('reload');
           if (type === 'secret') {
             this.navToNearestAncestor.perform(name);
+          } else {
+            this.send('reload');
           }
         })
         .catch((e) => {

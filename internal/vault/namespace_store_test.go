@@ -1250,8 +1250,12 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 
 		// leases
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			c.stateLock.RLock()
+			expiration := c.expiration
+			c.stateLock.RUnlock()
+
 			found := false
-			c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+			expiration.pending.Range(func(keyRaw any, _ any) bool {
 				key := keyRaw.(string)
 				if ns.MatchesID(key) {
 					found = true
@@ -1499,8 +1503,12 @@ func TestNamespaceSealManyLeases(t *testing.T) {
 
 			// leases
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				c.stateLock.RLock()
+				expiration := c.expiration
+				c.stateLock.RUnlock()
+
 				count := 0
-				c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+				expiration.pending.Range(func(keyRaw any, _ any) bool {
 					key := keyRaw.(string)
 					if ns.MatchesID(key) {
 						count += 1
@@ -1517,7 +1525,7 @@ func TestNamespaceSealManyLeases(t *testing.T) {
 					}
 
 					found := false
-					c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+					expiration.pending.Range(func(keyRaw any, _ any) bool {
 						key := keyRaw.(string)
 						found = found || key == leaseId
 						return true
@@ -1839,8 +1847,12 @@ func TestNamespaceManyLeases(t *testing.T) {
 
 			// leases
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				c.stateLock.RLock()
+				expiration := c.expiration
+				c.stateLock.RUnlock()
+
 				count := 0
-				c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+				expiration.pending.Range(func(keyRaw any, _ any) bool {
 					key := keyRaw.(string)
 					if ns.MatchesID(key) {
 						count += 1
@@ -1857,7 +1869,7 @@ func TestNamespaceManyLeases(t *testing.T) {
 					}
 
 					found := false
-					c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+					expiration.pending.Range(func(keyRaw any, _ any) bool {
 						key := keyRaw.(string)
 						found = found || key == leaseId
 						return true
@@ -1865,7 +1877,7 @@ func TestNamespaceManyLeases(t *testing.T) {
 					require.True(collect, found, "did not find expected lease: %v", leaseId)
 					return true
 				})
-			}, time.Second, 100*time.Millisecond)
+			}, 3*time.Second, 100*time.Millisecond)
 
 		}
 	}

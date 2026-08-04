@@ -209,10 +209,10 @@ semgrep-ci:
 SEMGREP_IMAGE=$(shell grep -o '[^ ]*/semgrep:[^ ]*@sha256:[^ ]*' .github/workflows/code-checker.yml | head -n1)
 
 docker-semgrep:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" $(SEMGREP_IMAGE) semgrep --include '*.go' -a -f tools/semgrep .
+	$(DOCKER_CMD) run --rm --volume "$(PWD):/src" $(SEMGREP_IMAGE) semgrep --include '*.go' -a -f tools/semgrep .
 
 docker-semgrep-ci:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" $(SEMGREP_IMAGE) semgrep --error --include '*.go' -a -f tools/semgrep/ci .
+	$(DOCKER_CMD) run --rm --volume "$(PWD):/src" $(SEMGREP_IMAGE) semgrep --error --include '*.go' -a -f tools/semgrep/ci .
 
 assetcheck:
 	@echo "==> Checking compiled UI assets..."

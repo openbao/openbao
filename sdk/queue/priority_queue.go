@@ -153,6 +153,24 @@ func (pq *PriorityQueue) PopByKey(key string) (*Item, error) {
 	return nil, nil
 }
 
+// PeekByKey gets a copy of an item by the given key without remvoing it
+func (pq *PriorityQueue) PeekByKey(key string) (*Item, error) {
+	pq.lock.RLock()
+	defer pq.lock.RUnlock()
+
+	item, ok := pq.dataMap[key]
+	if !ok {
+		return nil, nil
+	}
+
+	clone, err := copystructure.Copy(item)
+	if err != nil {
+		return nil, err
+	}
+
+	return clone.(*Item), nil
+}
+
 // Len returns the number of items in the queue data structure. Do not use this
 // method directly on the queue, use PriorityQueue.Len() instead.
 func (q queue) Len() int { return len(q) }

@@ -2139,13 +2139,18 @@ func (b *LoginMFABackend) CleanupNamespace(ctx context.Context, ns *namespace.Na
 }
 
 func (b *LoginMFABackend) ConfirmMFASelfEnroll(reqID string, totpCode string) error {
-	mfaSelfEnroll, err := b.Core.PopMFASelfEnrollByID(reqID)
+	mfaSelfEnroll, err := b.Core.mfaSelfEnrollmentQueue.PeekMFASelfEnrollByID(reqID)
 	if err != nil {
 		return err
 	}
-	ok := totplib.Validate(totpCode, mfaSelfEnroll.TOTPSecret)
-	if !ok {
+	if mfaSelfEnroll == nil {
 		return ErrBadMFACredentials
 	}
-	return nil
+
+	if !totplib.Validate(totpCode, mfaSelfEnroll.TOTPSecret) {
+		return ErrBadMFACredentials
+	}
+
+	_, err = b.Core.PopMFASelfEnrollByID(reqID)
+	return err
 }

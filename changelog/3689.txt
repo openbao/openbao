@@ -1,0 +1,3 @@
+```release-note:bug
+website: Add missing "baoNamespace" parameter to OpenBao CSI Provider documentation.
+```

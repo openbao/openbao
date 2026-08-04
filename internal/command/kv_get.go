@@ -209,9 +209,9 @@ func (c *KVGetCommand) Run(args []string) int {
 	if secret.WrapInfo != nil || c.flagFormat != "table" {
 		return OutputSecret(c.UI, secret)
 	}
-	
+
 	printWarnings(c.UI, secret)
-	
+
 	if v2 {
 		outputPath(c.UI, fullPath, "Secret Path")
 	}

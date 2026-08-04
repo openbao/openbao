@@ -11,6 +11,7 @@ import utils from 'vault/lib/key-utils';
 import { task } from 'ember-concurrency';
 import escapeStringRegexp from 'escape-string-regexp';
 import commonPrefix from 'core/utils/common-prefix';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default Controller.extend({
   router: service(),
@@ -19,10 +20,18 @@ export default Controller.extend({
     const ancestors = utils.ancestorKeysForKey(key);
     let errored = false;
     let nearest = ancestors.pop();
-    // force a refetch of the current folder when navigating to the same
-    // route/params after a deletion, otherwise the stale cached listing
-    // would make a 404-folder seem like it still contains the deleted key
-    this.store.clearAllDatasets();
+    // Force a refetch of the current folder when navigating to the same
+    // route/params after a deletion: ember-data 4.12 keeps deleted records
+    // in an already-cached lazy page, so a 404-folder would still appear to
+    // contain the deleted key. Only KV listings are cleared here; non-KV
+    // engines list under a different cache key, so clear everything (transit
+    // keys can contain '/', so same-route ancestor transitions do happen).
+    if (['kv', 'generic', 'cubbyhole'].includes(this.backendType)) {
+      this.store.clearDataset('secret');
+      this.store.clearDataset('secret-v2');
+    } else {
+      this.store.clearAllDatasets();
+    }
     while (nearest) {
       try {
         const transition = this.router.transitionTo('vault.cluster.secrets.backend.list', nearest);
@@ -42,9 +51,7 @@ export default Controller.extend({
         errored = false;
       }
     }
-    yield this.router.transitionTo('vault.cluster.secrets.backend.list-root').catch((error) => {
-      if (error?.name !== 'TransitionAborted') throw error;
-    });
+    yield transitionToSafe(this.router, 'vault.cluster.secrets.backend.list-root');
   }),
 
   flashMessages: service(),

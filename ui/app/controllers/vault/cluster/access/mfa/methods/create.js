@@ -9,6 +9,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { capitalize } from '@ember/string';
 import { task } from 'ember-concurrency';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default class MfaMethodCreateController extends Controller {
   @service store;
@@ -80,7 +81,7 @@ export default class MfaMethodCreateController extends Controller {
     this.method = null;
     this.enforcement = null;
     this.enforcementPreference = null;
-    this.router.transitionTo('vault.cluster.access.mfa.methods');
+    transitionToSafe(this.router, 'vault.cluster.access.mfa.methods');
   }
   @task
   *save() {
@@ -104,7 +105,7 @@ export default class MfaMethodCreateController extends Controller {
             );
           }
         }
-        this.router.transitionTo('vault.cluster.access.mfa.methods.method', this.method.id);
+        transitionToSafe(this.router, 'vault.cluster.access.mfa.methods.method', this.method.id);
       } catch (error) {
         this.handleError(error, 'Error saving method');
       }

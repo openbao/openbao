@@ -5,19 +5,15 @@
 
 import Controller from '@ember/controller';
 import { inject as service } from '@ember/service';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default Controller.extend({
   router: service(),
   actions: {
     transitionToCluster() {
-      return this.model
-        .reload()
-        .then(() => {
-          return this.router.transitionTo('vault.cluster', this.model.name);
-        })
-        .catch((error) => {
-          if (error?.name !== 'TransitionAborted') throw error;
-        });
+      return this.model.reload().then(() => {
+        return transitionToSafe(this.router, 'vault.cluster', this.model.name);
+      });
     },
 
     isUnsealed(data) {

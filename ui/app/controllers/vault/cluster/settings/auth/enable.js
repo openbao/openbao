@@ -5,13 +5,13 @@
 
 import Controller from '@ember/controller';
 import { inject as service } from '@ember/service';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default Controller.extend({
   router: service(),
   actions: {
     onMountSuccess: function (type, path) {
-      const transition = this.router.transitionTo('vault.cluster.settings.auth.configure', path);
-      return transition.followRedirects();
+      return transitionToSafe(this.router, 'vault.cluster.settings.auth.configure', path);
     },
   },
 });

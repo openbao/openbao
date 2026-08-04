@@ -7,6 +7,7 @@ import Controller from '@ember/controller';
 import { task } from 'ember-concurrency';
 import { inject as service } from '@ember/service';
 import removeRecord from 'vault/utils/remove-record';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default Controller.extend({
   store: service(),
@@ -24,15 +25,11 @@ export default Controller.extend({
     };
     const routeName = listRoutes[type];
     if (!isDelete) {
-      yield this.router.transitionTo(this.showRoute, model.id, this.showTab).catch((error) => {
-        if (error?.name !== 'TransitionAborted') throw error;
-      });
+      yield transitionToSafe(this.router, this.showRoute, model.id, this.showTab);
       return;
     }
 
-    yield this.router.transitionTo(routeName).catch((error) => {
-      if (error?.name !== 'TransitionAborted') throw error;
-    });
+    yield transitionToSafe(this.router, routeName);
   }),
 
   cleanupModel() {

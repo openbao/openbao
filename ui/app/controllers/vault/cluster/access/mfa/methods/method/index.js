@@ -5,6 +5,7 @@
 
 import Controller from '@ember/controller';
 import { inject as service } from '@ember/service';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 import { action } from '@ember/object';
 
 export default class MfaMethodController extends Controller {
@@ -19,7 +20,7 @@ export default class MfaMethodController extends Controller {
     try {
       await this.model.method.destroyRecord();
       this.flashMessages.success('MFA method deleted successfully.');
-      this.router.transitionTo('vault.cluster.access.mfa.methods');
+      transitionToSafe(this.router, 'vault.cluster.access.mfa.methods');
     } catch {
       this.flashMessages.danger(`There was an error deleting this MFA method.`);
     }

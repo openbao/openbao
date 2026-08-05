@@ -197,7 +197,7 @@ up on the missing requirements.
 
 ### Backports
 
-For original PRs slated for backport, ask or apply for the following labels:
+For original PRs slated for backport, ask for or apply the following labels:
 
 - `backport-<version>` targeting the desired backport branch; and
 - `needs-backport`, to indicate the backport has not yet been performed.
@@ -218,27 +218,90 @@ target the oldest series's milestone.
 
 ### Changelog Entries
 
-Please include a file within your PR named `changelog/#.txt`, where `#` is your
-pull request ID.  There are many examples under [changelog](changelog/), but
-the general format is
+If your PR contains changes that will be visible to users downstream, please
+include a file named `changelog/#.txt`, where `#` is your pull request ID. If
+no changelog entry is needed, we'll add the `pr/no-changelog` label to your PR
+which will make the changelog CI check pass.
+
+Types of PRs that commonly require a changelog entry are:
+
+- New features
+- Bug & security fixes
+- Breaking changes
+- Other user-visible changes that modify behavior but might not qualify as
+  features or bug fixes.
+
+Types of PRs that do **not** require a changelog entry are:
+
+- Updates to documentation
+- Updates to tests
+- Refactors
+- Incremental PRs that build up a larger feature; prefer adding a final,
+  consolidated changelog entry around release time instead (see more on this
+  towards the end of this section).
+- Changes or bug fixes for a feature not yet in a release.
+
+There are many examples under [`changelog/`](changelog/), but the general format
+is:
 
 ````markdown
 ```release-note:CATEGORY
-COMPONENT: summary of change
+COMPONENT: Full sentence summary of change.
 ```
 ````
 
-CATEGORY is one of `security`, `change`, `feature`, `improvement`, or `bug`.
-Your PR is almost certain to be one of `bug` or `improvement`, but don't
-worry too much about getting it exactly right, we'll tell you if a change is
+CATEGORY is one of:
+
+- `bug` - Any sort of non-security defect fix.
+- `feature` - Large topical additions for a major release. These are rarely in
+  minor releases. Formatting for `feature` entries differs from normal changelog
+  formatting - see the [new features instructions](#new-features).
+- `change` - A change in the product that may require action or review by
+  the operator/user. Examples would be any kind of API change (as opposed to
+  backwards compatible addition), a notable behavior change, or anything that
+  might require attention before updating.
+- `improvement` - Most updates to the product that aren’t `bug`s, but aren't
+  big enough to be a `feature`, will be an `improvement`.
+- `deprecation` - Announcement of a planned future removal of a feature. When
+  adding an entry of this type, make sure to additionally update [the website's
+  deprecation notices](website/content/community/deprecation/index.mdx).
+
+To determine the COMPONENT, consult [`CHANGELOG.md`](CHANGELOG.md) and pick
+whichever one you see that seems the closest match. Don't worry too much about
+getting the category and component exactly right, we'll tell you if a change is
 needed.
 
-To determine the relevant component, consult [CHANGELOG](CHANGELOG.md) and pick
-whichever one you see that seems the closest match.
+The change summary is a full English sentence. As such, it starts with a capital
+letter and typically ends in a dot (note that "Fix foo breaking when it does
+bar." is a valid sentence). You do not need to include the link at the end of
+the summary that appears in [`CHANGELOG.md`](CHANGELOG.md), those are generated
+automatically by the changelog-building process.
 
-You do not need to include the link at the end of the summary that appears in
-CHANGELOG.md, those are generated automatically by the changelog-building
-process.
+In some cases, changes introduced in a PR are best split into several changelog
+entries. For example, if your PR fixes a bug but also makes an improvement that
+is worth calling out separately, use the following syntax:
+
+````markdown
+```release-note:bug
+secrets/foo: Fix x breaking when y happens.
+```
+```release-note:improvement
+secrets/foo: Make x better by doing z.
+```
+````
+
+#### New Features
+
+For features we are introducing in a new major or minor release, we prefer
+a single changelog entry representing that feature. This way, it is clear
+to readers what feature is being introduced. The formatting for features is
+slightly different - your changelog file should look like:
+
+````markdown
+```release-note:feature
+**Feature Name**: Summary of feature.
+```
+````
 
 ### Merge Policy
 

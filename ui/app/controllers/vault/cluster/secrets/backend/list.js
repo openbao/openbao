@@ -51,7 +51,16 @@ export default Controller.extend({
         errored = false;
       }
     }
-    yield transitionToSafe(this.router, 'vault.cluster.secrets.backend.list-root');
+    // A root-level key has no ancestor to navigate to. If we're deleting it
+    // while already on the list page, transitioning to list-root is a
+    // same-route no-op that won't refetch, leaving the stale entry in the
+    // (possibly non-KV, e.g. ssh/transit/aws) listing. Force a reload instead,
+    // which clears every dataset and re-runs the model hook.
+    if (this.router.currentRouteName === 'vault.cluster.secrets.backend.list-root') {
+      this.send('reload');
+    } else {
+      yield transitionToSafe(this.router, 'vault.cluster.secrets.backend.list-root');
+    }
   }),
 
   flashMessages: service(),

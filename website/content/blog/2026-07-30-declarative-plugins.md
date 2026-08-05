@@ -3,7 +3,7 @@ title: "OpenBao Features - Declarative Plugins"
 description: "Blog series describing OpenBao's features. This episode focuses on declarative plugin distribution and registration in OpenBao."
 slug: features-declarative-plugins
 authors: cipherboy
-tags: [features, storage, technical]
+tags: [features, plugins, technical]
 ---
 
 This is the fourth part of a [multi-part series on OpenBao's features](/blog/tags/features).

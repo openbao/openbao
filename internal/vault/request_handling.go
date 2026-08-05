@@ -2030,6 +2030,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 				if methodConfig != nil {
 					secret, totpURL, _, err := generateTOTPKeyAndQR(methodConfig.GetTOTPConfig(), auth.EntityID, methodConfig.Name)
 					if err != nil {
+						// we shouldnt expose errors for free
 						return nil, nil, err
 					}
 

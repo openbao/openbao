@@ -88,19 +88,8 @@ func TestRequestHandling_WrappingTokenRevocation(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// No duration specified
+	// create a wrapped response secret
 	req := &logical.Request{
-		Path:        "wraptest/foo",
-		ClientToken: root,
-		Operation:   logical.UpdateOperation,
-		Data: map[string]any{
-			"zip": "zap",
-		},
-	}
-	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	require.NoError(t, err)
-
-	req = &logical.Request{
 		Path:        "wraptest/foo",
 		ClientToken: root,
 		Operation:   logical.ReadOperation,
@@ -108,7 +97,7 @@ func TestRequestHandling_WrappingTokenRevocation(t *testing.T) {
 			TTL: time.Duration(15 * time.Second),
 		},
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	if resp.WrapInfo == nil || resp.WrapInfo.TTL != time.Duration(15*time.Second) {
@@ -117,6 +106,7 @@ func TestRequestHandling_WrappingTokenRevocation(t *testing.T) {
 	wrappingToken := resp.WrapInfo.Token
 	accessor := resp.WrapInfo.Accessor
 
+	// view wrapping token with accessor
 	req = &logical.Request{
 		Path:        "auth/token/lookup-accessor",
 		ClientToken: root,
@@ -127,13 +117,13 @@ func TestRequestHandling_WrappingTokenRevocation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
-	// check revocation
+	// revoke-self with the wrapping token
 	req = &logical.Request{
 		Path:        "auth/token/revoke-self",
 		ClientToken: wrappingToken,
 		Operation:   logical.UpdateOperation,
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
 
 	// token should be removed
@@ -143,7 +133,7 @@ func TestRequestHandling_WrappingTokenRevocation(t *testing.T) {
 		Operation:   logical.UpdateOperation,
 		Data:        map[string]any{"accessor": accessor},
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.Error(t, err)
 
 	// cannot now unwrap
@@ -152,7 +142,7 @@ func TestRequestHandling_WrappingTokenRevocation(t *testing.T) {
 		ClientToken: wrappingToken,
 		Operation:   logical.UpdateOperation,
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.Error(t, err)
 }
 

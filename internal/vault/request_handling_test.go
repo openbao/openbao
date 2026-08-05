@@ -98,12 +98,7 @@ func TestRequestHandling_WrappingTokenRevocation(t *testing.T) {
 		},
 	}
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if resp != nil {
-		t.Fatalf("bad: %#v", resp)
-	}
+	require.NoError(t, err)
 
 	req = &logical.Request{
 		Path:        "wraptest/foo",
@@ -114,16 +109,23 @@ func TestRequestHandling_WrappingTokenRevocation(t *testing.T) {
 		},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if resp == nil {
-		t.Fatalf("bad: %v", resp)
-	}
+	require.NoError(t, err)
+	require.NotNil(t, resp)
 	if resp.WrapInfo == nil || resp.WrapInfo.TTL != time.Duration(15*time.Second) {
 		t.Fatalf("bad: %#v", resp)
 	}
 	wrappingToken := resp.WrapInfo.Token
+	accessor := resp.WrapInfo.Accessor
+
+	req = &logical.Request{
+		Path:        "auth/token/lookup-accessor",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data:        map[string]any{"accessor": accessor},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
 
 	// check revocation
 	req = &logical.Request{
@@ -132,9 +134,26 @@ func TestRequestHandling_WrappingTokenRevocation(t *testing.T) {
 		Operation:   logical.UpdateOperation,
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
+	require.NoError(t, err)
+
+	// token should be removed
+	req = &logical.Request{
+		Path:        "auth/token/lookup-accessor",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data:        map[string]any{"accessor": accessor},
 	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.Error(t, err)
+
+	// cannot now unwrap
+	req = &logical.Request{
+		Path:        "sys/wrapping/unwrap",
+		ClientToken: wrappingToken,
+		Operation:   logical.UpdateOperation,
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.Error(t, err)
 }
 
 func TestRequestHandling_ControlGroupWrapping(t *testing.T) {

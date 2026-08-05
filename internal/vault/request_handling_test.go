@@ -88,8 +88,20 @@ func TestRequestHandling_WrappingTokenRevocation(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// create a wrapped response secret
+	// create a secret
 	req := &logical.Request{
+		Path:        "wraptest/foo",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]any{
+			"zip": "zap",
+		},
+	}
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+
+	// create wrapping
+	req = &logical.Request{
 		Path:        "wraptest/foo",
 		ClientToken: root,
 		Operation:   logical.ReadOperation,

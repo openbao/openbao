@@ -52,7 +52,7 @@ require (
 	github.com/hashicorp/go-discover v1.3.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-memdb v1.3.5
-	github.com/hashicorp/go-metrics v0.6.0
+	github.com/hashicorp/go-metrics v0.6.1
 	github.com/hashicorp/go-msgpack v0.5.5
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-plugin v1.8.0
@@ -113,7 +113,7 @@ require (
 	github.com/pires/go-proxyproto v0.14.0
 	github.com/posener/complete v1.2.3
 	github.com/pquerna/otp v1.5.0
-	github.com/prometheus/client_golang v1.24.0
+	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.70.1
 	github.com/rboyer/safeio v0.2.3
 	github.com/ryanuber/columnize v2.1.2+incompatible

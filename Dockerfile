@@ -41,14 +41,6 @@ RUN mkdir -p /openbao/logs && \
     mkdir -p /openbao/config && \
     chown -R openbao:openbao /openbao
 
-# Expose the logs directory as a volume since there's potentially long-running
-# state in there
-VOLUME /openbao/logs
-
-# Expose the file directory as a volume since there's potentially long-running
-# state in there
-VOLUME /openbao/file
-
 # 8200/tcp is the primary interface that applications use to interact with
 # OpenBao.
 EXPOSE 8200
@@ -101,14 +93,6 @@ RUN mkdir -p /openbao/logs && \
     chown -R openbao /openbao && chown -R openbao $HOME && \
     chgrp -R 0 $HOME && chmod -R g+rwX $HOME && \
     chgrp -R 0 /openbao && chmod -R g+rwX /openbao
-
-# Expose the logs directory as a volume since there's potentially long-running
-# state in there
-VOLUME /openbao/logs
-
-# Expose the file directory as a volume since there's potentially long-running
-# state in there
-VOLUME /openbao/file
 
 # 8200/tcp is the primary interface that applications use to interact with
 # OpenBao.

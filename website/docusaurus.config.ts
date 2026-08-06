@@ -301,7 +301,8 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
-      additionalLanguages: ["hcl"],
+      // https://prismjs.com/#supported-languages
+      additionalLanguages: ["bash", "docker", "hcl"],
     },
     metadata: [
       {

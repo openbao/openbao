@@ -103,6 +103,7 @@ const sidebars: SidebarsConfig = {
                         },
                     ],
                 },
+                "guides/containers",
             ],
             Configuration: [
                 "configuration/index",

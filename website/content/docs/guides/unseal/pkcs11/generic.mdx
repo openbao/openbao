@@ -43,6 +43,7 @@ For network HSMs, this often involves creating a new user/partition/tenant.
 Install and configure your vendor's PKCS#11 module on the same machine as OpenBao.
 If you deploy OpenBao in a container (Docker, Podman, Kubernetes, ...), you need to
 mount the relevant files into the container (`.so` and vendor-specific config files).
+See the [containers guide](../../containers.mdx) for advice.
 Make sure that the files are readable by the container user ([uid:gid 100:1000](https://github.com/openbao/openbao/blob/v2.6.0/Dockerfile#L78)).
 
 Please contact your PKCS#11 token vendor for instructions.

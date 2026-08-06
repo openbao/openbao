@@ -6,6 +6,7 @@ import { includeMarkdown } from "@hashicorp/remark-plugins";
 import * as path from "path";
 import * as fs from "fs";
 import pluginSidebarJson from "./src/docusaurus-plugin-sidebar-json";
+import { redirects } from "./redirects";
 
 function getDocVersions() {
   if (process.env.VERSIONED_DOCS == "true") {
@@ -199,12 +200,7 @@ const config: Config = {
     [
       "@docusaurus/plugin-client-redirects",
       {
-        redirects: [
-          {
-            from: "/api-docs/system/rotate-config",
-            to: "/api-docs/system/rotate/keyring-config",
-          },
-        ],
+        redirects: redirects,
         createRedirects(existingPath) {
           if (existingPath.includes('/community/') && existingPath !== '/community/') {
             return [

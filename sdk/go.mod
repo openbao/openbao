@@ -43,7 +43,7 @@ require (
 	github.com/mitchellh/go-testing-interface v1.14.2-0.20210821155943-2d9075ca8770
 	github.com/moby/go-archive v0.2.0
 	github.com/moby/moby/api v1.55.0
-	github.com/moby/moby/client v0.5.0
+	github.com/moby/moby/client v0.5.1
 	github.com/openbao/go-kms-wrapping/v2 v2.8.1-0.20260803125813-a9cf2f8f6a11
 	github.com/openbao/openbao/api/v2 v2.6.0
 	github.com/ryanuber/go-glob v1.0.0

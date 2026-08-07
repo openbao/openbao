@@ -8,7 +8,7 @@ description: |-
 
 ### Summary
 
-With the compatibility of OpenBao comes to option of using the Hashicorp Vault OpenTofu/Terraform provider. While this prvider still works for most tasks, there has been increased friction with using it to configure a OpenBao instance. This shows in issues like [#339](https://github.com/openbao/openbao/issues/339), [hashicorp/terraform-provider-vault#2869](https://github.com/hashicorp/terraform-provider-vault/issues/2869) and discussions like [#637](https://github.com/orgs/openbao/discussions/637).
+With the compatibility of OpenBao comes the option of using the Hashicorp Vault OpenTofu/Terraform provider. While this provider still works for most tasks, there has been increased friction with using it to configure a OpenBao instance. This is shown in issues like [#339](https://github.com/openbao/openbao/issues/339), [hashicorp/terraform-provider-vault#2869](https://github.com/hashicorp/terraform-provider-vault/issues/2869) and discussions like [#637](https://github.com/orgs/openbao/discussions/637).
 
 This RFC aims to define a path to creating a dedicated provider for OpenBao.
 
@@ -24,7 +24,7 @@ OpenBao will provide a dedicated OpenTofu/Terraform provider as a soft-fork of t
 ### Technical Description
 
 Partially taken from [this comment by dc-tec](https://github.com/openbao/openbao/issues/339#issuecomment-4881822035), the provider should be a low-divergence soft fork from the Vault provider. The focus would be on providing a compatible provider that has a simple migration path from the Vault provider, while providing the missing features and fixes.
-The comparability of upstream changes will be verified by acceptance tests against the current OpenBao release.
+The compatibility of upstream changes will be verified by acceptance tests against the current OpenBao release.
 Where applicable fixes for non-OpenBao specific issues should be send to the upstream provider.
 
 ### Rationale and alternatives

@@ -90,18 +90,8 @@ const sidebars: SidebarsConfig = {
             Guides: [
                 "guides/migration",
                 "guides/sealable-namespaces",
-                {
-                    Unsealing: [
-                        {
-                            "PKCS#11": [
-                                "guides/unseal/pkcs11/securosys",
-                                "guides/unseal/pkcs11/utimaco",
-                                "guides/unseal/pkcs11/duokey",
-                                "guides/unseal/pkcs11/nitrokey",
-                            ],
-                        },
-                    ],
-                },
+                "guides/unseal_pkcs11",
+                "guides/containers",
             ],
             Configuration: [
                 "configuration/index",

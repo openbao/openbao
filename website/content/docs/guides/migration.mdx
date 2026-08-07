@@ -74,9 +74,9 @@ $ vault secrets list
 $ vault auth list
 ```
 
-Any mount whose type OpenBao does not ship is skipped when OpenBao reads the mount
-table. This is easy to miss, because startup logs an error, a warning and
-`successfully mounted` for the same path:
+Any mount whose backing plugin OpenBao does not include as a built-in is mounted
+but not initialized (skipped) at startup, leaving a stubbed backend that does
+not serve any paths. Server logs will reflect this:
 
 ```
 [ERROR] core: failed to create mount entry: path=aws/ error="plugin not found in the catalog: aws"

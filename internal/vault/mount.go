@@ -341,7 +341,9 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *routing.MountEn
 	// Initialize() if necessary
 	view.SetReadOnlyErr(origReadOnlyErr)
 
-	if err := backend.Initialize(ctx, &logical.InitializationRequest{Storage: view}); err != nil {
+	// Initialize, using the core's active context.
+	activeCtx := namespace.ContextWithNamespace(c.activeContext.Load(), ns)
+	if err := backend.Initialize(activeCtx, &logical.InitializationRequest{Storage: view}); err != nil {
 		return err
 	}
 

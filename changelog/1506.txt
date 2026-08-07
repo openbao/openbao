@@ -9,5 +9,5 @@
   instance.
 ```
 ```release-note:bug
-storage/postgresql: more graceful handling of parallel table creation
+storage/postgresql: More graceful handling of parallel table creation.
 ```

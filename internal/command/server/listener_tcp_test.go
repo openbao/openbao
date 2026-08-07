@@ -252,12 +252,13 @@ func TestTCPListener_proxyProtocol(t *testing.T) {
 			},
 		},
 
-		// use_always makes it possible to send the PROXY header but does not
-		// require it
+		// as of >v0.15.0 proxyproto doesn't allow headerless connections.
+		// this is configurable with proxyproto.DefaultPolicy property set to proxyproto.USE.
 		"use_always-no-header": {
 			Behavior:     "use_always",
 			ExpectedAddr: "127.0.0.1",
 			Header:       nil,
+			ExpectError:  true,
 		},
 
 		"use_always-header-v1": {

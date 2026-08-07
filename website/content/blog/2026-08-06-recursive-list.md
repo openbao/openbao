@@ -1,6 +1,6 @@
 ---
 title: "OpenBao Features - Recursive Lists (SCAN) & Filtering"
-description: "Blog series describing OpenBao's features. This episode focuses on recurisve list support via the new SCAN keyword."
+description: "Blog series describing OpenBao's features. This episode focuses on recursive list support via the new SCAN keyword."
 slug: features-recursive-list
 authors: cipherboy
 tags: [features, list, technical]
@@ -10,8 +10,8 @@ This is the fifth part of a [multi-part series on OpenBao's features](/blog/tags
 
 [Last time](./2026-07-30-declarative-plugins.md) we talked about declarative
 plugin configuration and how it made deploying and adopting plugins much
-easier. With OCI-based distribution (and a caching proxy!) operators can deploy
-plugins with just a few configuration snippets, mirroring OpenTofu's approach.
+easier. With OCI-based distribution operators can deploy plugins with just a
+few configuration snippets, mirroring OpenTofu's approach.
 
 We hinted at addressing two of the [most-requested features](https://github.com/hashicorp/vault/issues?q=is%3Aissue%20sort%3Areactions-desc)
 in HashiCorp Vault: [recursive list support](https://github.com/hashicorp/vault/issues/5275)
@@ -110,17 +110,24 @@ This ties into another [commonly requested feature in HashiCorp
 Vault](https://github.com/hashicorp/vault/issues/5362): restricting [list (and
 now scans!)](/community/rfcs/filtering-list/) to entries which the user can view.
 
-In OpenBao, we [implemented a path keyword](/docs/concepts/policies/#filtering-list-or-scan-results),
+In OpenBao, we [implemented a policy keyword](/docs/concepts/policies/#filtering-list-or-scan-results),
 `list_scan_response_keys_filter_path`, which takes a
 [`text/template`](https://pkg.go.dev/text/template) expression for limiting
-visible results.
+visible results. Visible results are entries which (when templating is applied
+according to the filter path) have list access for entries ending in a `/` or
+read access otherwise. This means the policy author must know the
+corresponding type of the plugin and where to map list entries to. For
+example in KVv2, one could either map entries in a list or scan to the data
+(`<mount>/data/<entry>`) or metadata (`<mount>/metadata/<entry>`) paths.
 
 Consider an ACL policy like:
 
 ```hcl
-# Allow listing secrets broadly but limit to visible results:
+# Allow listing secrets broadly but limit to visible results (read or list):
 path "secrets/metadata/*" {
     capabilities = ["list", "scan"]
+
+    # See also: https://openbao.org/docs/concepts/policies/#filtering-list-or-scan-results
     list_scan_response_keys_filter_path = "{{ .path }}{{ .key }}"
 }
 

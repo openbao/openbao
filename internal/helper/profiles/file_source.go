@@ -9,7 +9,7 @@ import (
 )
 
 // FileSourceBuilder allows reading files from disk.
-func FileSourceBuilder(engine *ProfileEngine, field map[string]any) Source {
+func FileSourceBuilder(engine *ProfileEngine, field map[string]any, this *IterContext) Source {
 	return &FileSource{
 		field: field,
 	}

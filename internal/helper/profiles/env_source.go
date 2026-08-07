@@ -8,7 +8,7 @@ import (
 )
 
 // EnvSourceBuilder allows reading environment variables from the system.
-func EnvSourceBuilder(engine *ProfileEngine, field map[string]any) Source {
+func EnvSourceBuilder(engine *ProfileEngine, field map[string]any, this *IterContext) Source {
 	return &EnvSource{
 		field: field,
 	}

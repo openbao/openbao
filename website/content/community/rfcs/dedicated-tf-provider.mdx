@@ -1,0 +1,46 @@
+---
+sidebar_label: Dedicated OpenBao OpenTofu/Terraform Provider
+description: |-
+  An OpenBao RFC for the creation of a dedicated OpenBao OpenTofu/Terraform provider.
+---
+
+# RFC: Dedicated OpenBao OpenTofu/Terraform Provider
+
+### Summary
+
+With the compatibility of OpenBao comes the option of using the Hashicorp Vault OpenTofu/Terraform provider. While this provider still works for most tasks, there has been increased friction with using it to configure a OpenBao instance. This is shown in issues like [#339](https://github.com/openbao/openbao/issues/339), [hashicorp/terraform-provider-vault#2869](https://github.com/hashicorp/terraform-provider-vault/issues/2869) and discussions like [#637](https://github.com/orgs/openbao/discussions/637).
+
+This RFC aims to define a path to creating a dedicated provider for OpenBao.
+
+### Problem Statement
+
+With the divergence in features, fixes and settings of OpenBao from Vault, the Hashicorp maintained Vault provider is starting to show this incompatibility as well. The profile/workflows system has no resources or datasources, the `auth_login_aws` isn't working ([#339 (comment)](https://github.com/openbao/openbao/issues/339#issuecomment-4112645562)) and fixes ([hashicorp/terraform-provider-vault#2870](https://github.com/hashicorp/terraform-provider-vault/pull/2870)) for similar issues ([hashicorp/terraform-provider-vault#2869](https://github.com/hashicorp/terraform-provider-vault/issues/2869)) don't get merged.
+This forces the user to adopt workarounds that lead to unwanted complexity and instability.
+
+### User-facing description
+
+OpenBao will provide a dedicated OpenTofu/Terraform provider as a soft-fork of the Vault provider that implements OpenBao specific features and fixes, as well as upstream fixes that have not been merged yet.
+
+### Technical Description
+
+Partially taken from [this comment by dc-tec](https://github.com/openbao/openbao/issues/339#issuecomment-4881822035), the provider should be a low-divergence soft fork from the Vault provider. The focus would be on providing a compatible provider that has a simple migration path from the Vault provider, while providing the missing features and fixes.
+The compatibility of upstream changes will be verified by acceptance tests against the current OpenBao release.
+Where applicable fixes for non-OpenBao specific issues should be send to the upstream provider.
+
+### Rationale and alternatives
+
+The main rationale is to create a viable alternative to the Vault provider for configuring a OpenBao instance via OpenTofu/Terraform. Especially with keeping a simple migration path, this would improve the experience of people switching from the Vault provider to the dedicated provider.
+
+Alternatives would be to stay with the status quo of having no dedicated TF provider
+
+### Downsides
+
+- Additional component that needs maintenance
+
+### Unresolved Questions
+
+Should we stay with the idea of a low-divergence soft fork?
+
+### Related Issues
+
+[#339](https://github.com/openbao/openbao/issues/339) & [#637](https://github.com/orgs/openbao/discussions/637)  

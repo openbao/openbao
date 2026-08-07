@@ -204,6 +204,18 @@ const config: Config = {
             from: "/api-docs/system/rotate-config",
             to: "/api-docs/system/rotate/keyring-config",
           },
+          {
+            from: "/docs/upgrading/",
+            to: "/docs/guides/upgrade/",
+          },
+          {
+            from: "/docs/upgrading/ha-upgrade",
+            to: "/docs/guides/upgrade/ha",
+          },
+          {
+            from: "/docs/upgrading/plugins-upgrade",
+            to: "/docs/guides/upgrade/plugins",
+          },
         ],
         createRedirects(existingPath) {
           if (existingPath.includes('/community/') && existingPath !== '/community/') {

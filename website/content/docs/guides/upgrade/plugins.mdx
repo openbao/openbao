@@ -1,5 +1,5 @@
 ---
-sidebar_label: Upgrade plugins
+sidebar_label: Plugin Upgrade Guide
 description: These are general upgrade instructions for OpenBao plugins.
 ---
 
@@ -166,11 +166,11 @@ transit             v1.12.0+builtin.bao
   to manage schema upgrades and downgrades. Check the plugin release notes for
   any unsupported upgrade or downgrade transitions, especially before moving to
   a new major version or downgrading.
-* Existing OpenBao [leases](../concepts/lease.mdx) and [tokens](../concepts/tokens.mdx)
+* Existing OpenBao [leases](../../concepts/lease.mdx) and [tokens](../../concepts/tokens.mdx)
   are generally unaffected by plugin upgrades and reloads. This is because the lifecycle
   of leases and tokens is handled by core systems within OpenBao. The plugin itself only
   handles renewal and revocation of them when it’s requested by those core systems.
 
-[plugin_reload_command]: ../commands/plugin/reload.mdx
-[plugin_registration]: ../plugins/plugin-architecture.mdx#plugin-registration
-[plugin_management]: ../plugins/index.mdx#plugin-mounting
+[plugin_reload_command]: ../../commands/plugin/reload.mdx
+[plugin_registration]: ../../plugins/plugin-architecture.mdx#plugin-registration
+[plugin_management]: ../../plugins/index.mdx#plugin-mounting

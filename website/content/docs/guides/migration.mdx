@@ -40,7 +40,13 @@ If your Vault version is lower than 1.14.1, upgrade to v1.14.1.
 
 :::warning
 
-This guide will not work on Vault versions 1.15.0 and newer; use at your own risk.
+This guide was only tested against Vault 1.14.1. Newer versions are untested and
+unsupported: OpenBao makes no guarantees about storage compatibility with Vault.
+Use at your own risk.
+
+Whether an in-place swap works at all depends less on the Vault version than on what
+your store contains, in particular on mounts whose plugin OpenBao does not ship. See
+[Plugins](#plugins) below before you start.
 
 :::
 
@@ -58,6 +64,33 @@ This guide is based on a fairly simple setup, ymmv.
 OpenBao comes [without many plugins](https://github.com/orgs/openbao/discussions/64) by default.
 If your plugin isn't included, you may need to resort to some [workarounds](https://github.com/openbao/openbao/issues/257#issuecomment-3228461262).
 This guide assumes no external plugins (external to Bao) are used.
+
+:::
+
+Take inventory before you stop Vault:
+
+```
+$ vault secrets list
+$ vault auth list
+```
+
+Any mount whose backing plugin OpenBao does not include as a built-in is mounted
+but not initialized (skipped) at startup, leaving a stubbed backend that does
+not serve any paths. Server logs will reflect this:
+
+```
+[ERROR] core: failed to create mount entry: path=aws/ error="plugin not found in the catalog: aws"
+[WARN]  core: skipping plugin-based mount entry: path=aws/
+[INFO]  core: successfully mounted: type=aws version="v2.0.3+builtin.vault" path=aws/
+```
+
+Afterwards the path is still listed by `bao secrets list`, but reading it returns
+`No value found`, the same answer an unused path gives. Clean it up with
+`bao secrets disable <path>` or `bao auth disable <path>` once you have taken care of
+whatever it held.
+
+Vault v2.0 and later enable an `agent-registry/` mount by default, so a
+migration from a current Vault yields at least one such entry.
 
 ## Known issues
 

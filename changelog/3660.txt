@@ -1,0 +1,4 @@
+```release-note:feature
+**Namespaces**: Namespaces can now be converted between normal and sealable
+namespaces using the new `/sys/namespaces/<path>/migrate-barrier` endpoint.
+```

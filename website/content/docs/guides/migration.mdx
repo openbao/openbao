@@ -89,8 +89,8 @@ Afterwards the path is still listed by `bao secrets list`, but reading it return
 `bao secrets disable <path>` or `bao auth disable <path>` once you have taken care of
 whatever it held.
 
-Vault 2.0 and newer create an `agent-registry/` mount on their own, so a store coming
-from a current Vault has at least one such entry even if you never enabled one.
+Vault v2.0 and later enable an `agent-registry/` mount by default, so a
+migration from a current Vault yields at least one such entry.
 
 ## Known issues
 

@@ -1,4 +1,4 @@
 ```release-note:change
-serviceregistration/kubernetes: labels use `openbao` as prefix instead of `vault`.
+serviceregistration/kubernetes: Labels use `openbao` as prefix instead of `vault`.
 ```
 

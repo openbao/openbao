@@ -472,7 +472,8 @@ func (x *MFARequirement) GetMFAConstraints() map[string]*MFAConstraintAny {
 type MFASelfEnroll struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MFARequestID  string                 `protobuf:"bytes,1,opt,name=mfa_request_id,json=mfaRequestId,proto3" json:"mfa_request_id,omitempty"`
-	TOTPURL       string                 `protobuf:"bytes,2,opt,name=totp_url,json=totpUrl,proto3" json:"totp_url,omitempty"`
+	TOTPSecret    string                 `protobuf:"bytes,2,opt,name=totp_secret,json=totpSecret,proto3" json:"totp_secret,omitempty"`
+	TOTPURL       string                 `protobuf:"bytes,3,opt,name=totp_url,json=totpUrl,proto3" json:"totp_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -510,6 +511,13 @@ func (*MFASelfEnroll) Descriptor() ([]byte, []int) {
 func (x *MFASelfEnroll) GetMFARequestID() string {
 	if x != nil {
 		return x.MFARequestID
+	}
+	return ""
+}
+
+func (x *MFASelfEnroll) GetTOTPSecret() string {
+	if x != nil {
+		return x.TOTPSecret
 	}
 	return ""
 }
@@ -572,10 +580,12 @@ const file_sdk_logical_identity_proto_rawDesc = "" +
 	"\x0fmfa_constraints\x18\x02 \x03(\v2+.logical.MFARequirement.MFAConstraintsEntryR\x0emfaConstraints\x1a\\\n" +
 	"\x13MFAConstraintsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
-	"\x05value\x18\x02 \x01(\v2\x19.logical.MFAConstraintAnyR\x05value:\x028\x01\"P\n" +
+	"\x05value\x18\x02 \x01(\v2\x19.logical.MFAConstraintAnyR\x05value:\x028\x01\"q\n" +
 	"\rMFASelfEnroll\x12$\n" +
-	"\x0emfa_request_id\x18\x01 \x01(\tR\fmfaRequestID\x12\x19\n" +
-	"\btotp_url\x18\x02 \x01(\tR\atotpURLB+Z)github.com/openbao/openbao/sdk/v2/logicalb\x06proto3"
+	"\x0emfa_request_id\x18\x01 \x01(\tR\fmfaRequestID\x12\x1f\n" +
+	"\vtotp_secret\x18\x02 \x01(\tR\n" +
+	"totpSecret\x12\x19\n" +
+	"\btotp_url\x18\x03 \x01(\tR\atotpURLB+Z)github.com/openbao/openbao/sdk/v2/logicalb\x06proto3"
 
 var (
 	file_sdk_logical_identity_proto_rawDescOnce sync.Once

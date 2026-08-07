@@ -1,0 +1,66 @@
+<div class="auth-form" data-test-totp-self-enroll>
+  <div class="box is-marginless is-shadowless">
+    <h2 class="title is-5">Set up TOTP authentication</h2>
+    <p class="has-text-grey">
+      Scan the QR code with your authenticator app (e.g. Google Authenticator, Authy). If you cannot scan the code, you can
+      manually enter the secret.
+    </p>
+
+    {{#if this.error}}
+      <MessageError @errorMessage={{this.error}} class="has-top-margin-s" />
+    {{/if}}
+
+    {{#if this.success}}
+      <AlertBanner @type="success" @message="TOTP setup verified successfully!" class="has-top-margin-s" />
+    {{/if}}
+
+    <div class="field has-top-margin-l">
+      <div class="has-text-centered">
+        {{#if this.qrCodeDataUrl}}
+          <img src={{this.qrCodeDataUrl}} alt="QR code for TOTP setup" class="qr-code-image" />
+        {{else}}
+          <p class="has-text-grey">Generating QR code…</p>
+        {{/if}}
+      </div>
+
+      <div class="field">
+        <label for="secret" class="is-label">Secret key</label>
+        <div class="control">
+          <div class="secret-display">
+            {{this.totpSecret}}
+          </div>
+        </div>
+      </div>
+
+      <form {{on "submit" this.submit}}>
+        <div class="field">
+          <label for="token" class="is-label">Authentication code</label>
+          <div class="control">
+            <Input
+              id="token"
+              class="input"
+              @type="text"
+              @value={{this.totp_token}}
+              placeholder="Enter totp code"
+              autocomplete="off"
+              spellcheck="false"
+              disabled={{this.isVerifying}}
+              data-test-token-input
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <button
+            type="submit"
+            class="button is-primary {{if this.isVerifying 'is-loading'}}"
+            disabled={{this.isVerifying}}
+            data-test-verify-button
+          >
+            Verify
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

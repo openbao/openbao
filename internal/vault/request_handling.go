@@ -2047,6 +2047,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 					resp.Auth = &logical.Auth{
 						MFASelfEnroll: &logical.MFASelfEnroll{
 							MFARequestID: mfaRequestID,
+							TOTPSecret:   secret.Secret(),
 							TOTPURL:      totpURL,
 						},
 					}

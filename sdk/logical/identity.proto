@@ -96,5 +96,6 @@ message MFARequirement {
 
 message MFASelfEnroll {
 	string mfa_request_id = 1;
-	string totp_url = 2;
+	string totp_secret = 2;
+	string totp_url = 3;
 }

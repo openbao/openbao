@@ -81,7 +81,7 @@ plugin_auto_download = true
 // plugin catalog. This is allows operators to immediately use the plugin
 // without having to manually register it using API commands:
 //
-// https://openbao.org/api-docs/system/plugins-catalog/
+// https://openbao.org/docs/api/system/plugins-catalog/
 plugin_auto_register = true
 ```
 

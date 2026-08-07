@@ -37,9 +37,9 @@ make it very hard to do so.
 
 However, the API model of Vault made this difficult originally:
 
-1. Operators would call [`sys/init`](/api-docs/system/init/) to create seal
+1. Operators would call [`sys/init`](/docs/api/system/init/) to create seal
    information and return a root token.
-2. Operators would then have to call [`sys/audit`](/api-docs/system/audit/) to
+2. Operators would then have to call [`sys/audit`](/docs/api/system/audit/) to
    create an audit device.
 
 In the meantime, they'd want to be configuring OpenBao: creating auth mounts,

@@ -86,6 +86,7 @@ const sidebars: SidebarsConfig = {
         "system/config-cors",
         "system/config-state",
         "system/config-ui",
+        "system/control-group",
         "system/decode-token",
         "system/external-keys",
         "system/generate-recovery-token",

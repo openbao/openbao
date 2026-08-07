@@ -340,9 +340,10 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *routing.MountEn
 	// restore the original readOnlyErr, so we can write to the view in
 	// Initialize() if necessary
 	view.SetReadOnlyErr(origReadOnlyErr)
-	// initialize, using the core's active context.
-	err = backend.Initialize(c.activeContext.Load(), &logical.InitializationRequest{Storage: view})
-	if err != nil {
+
+	// Initialize, using the core's active context.
+	activeCtx := namespace.ContextWithNamespace(c.activeContext.Load(), ns)
+	if err := backend.Initialize(activeCtx, &logical.InitializationRequest{Storage: view}); err != nil {
 		return err
 	}
 
@@ -1572,8 +1573,7 @@ func (c *Core) setupMount(ctx context.Context, entry *routing.MountEntry) (func(
 			view.SetReadOnlyErr(origReadOnlyErr)
 		}
 
-		err := backend.Initialize(ctx, &logical.InitializationRequest{Storage: view})
-		if err != nil {
+		if err := backend.Initialize(namespace.ContextWithNamespace(ctx, localEntry.Namespace), &logical.InitializationRequest{Storage: view}); err != nil {
 			postUnsealLogger.Error("failed to initialize mount backend", "error", err)
 		}
 	}

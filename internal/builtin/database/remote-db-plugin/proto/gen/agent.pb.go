@@ -1045,7 +1045,7 @@ const file_agent_proto_rawDesc = "" +
 	"RunCommand\x12\x1d.agent.RelayRunCommandRequest\x1a\x1e.agent.RelayRunCommandResponse\x12G\n" +
 	"\fSignSpokeCSR\x12\x1a.agent.RelaySignCSRRequest\x1a\x1b.agent.RelaySignCSRResponse\x12K\n" +
 	"\n" +
-	"ListSpokes\x12\x1d.agent.RelayListSpokesRequest\x1a\x1e.agent.RelayListSpokesResponseBHZFgithub.com/openbao/openbao/plugins/database/remote-db-plugin/proto/genb\x06proto3"
+	"ListSpokes\x12\x1d.agent.RelayListSpokesRequest\x1a\x1e.agent.RelayListSpokesResponseBTZRgithub.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin/proto/genb\x06proto3"
 
 var (
 	file_agent_proto_rawDescOnce sync.Once

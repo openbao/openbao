@@ -20,9 +20,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openbao/openbao/v2/plugins/database/remote-db-plugin/bootstrap"
-	agentproto "github.com/openbao/openbao/v2/plugins/database/remote-db-plugin/proto/gen"
 	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin/bootstrap"
+	agentproto "github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin/proto/gen"
 	"github.com/openbao/openbao/v2/internal/vault/relayfwd"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"

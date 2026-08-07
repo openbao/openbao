@@ -124,7 +124,7 @@ Operators only install one binary everywhere.
 ## File structure
 
 ```
-plugins/database/remote-db-plugin/
+internal/builtin/database/remote-db-plugin/
 ├── proxy.go               # Hub-side proxy plugin (PluginProxy) + proxy gRPC server
 ├── bootstrap/             # Trust-bootstrap primitives
 │   ├── token.go           #   <id>.<secret> format + detached JWS-HS256
@@ -143,7 +143,7 @@ plugins/database/remote-db-plugin/
 ```
 
 The CLI lives under `command/relay_*.go` and the `relay/` logical backend
-lives under `builtin/logical/relay/`.
+lives under `internal/builtin/logical/relay/`.
 
 ## Security
 

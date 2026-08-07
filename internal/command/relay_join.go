@@ -21,7 +21,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
-	"github.com/openbao/openbao/v2/plugins/database/remote-db-plugin/bootstrap"
+	"github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin/bootstrap"
 	"github.com/posener/complete"
 )
 

@@ -6,8 +6,6 @@ package builtinplugins
 import (
 	"slices"
 
-	logicalRelay "github.com/openbao/openbao/v2/builtin/logical/relay"
-	dbRemote "github.com/openbao/openbao/v2/plugins/database/remote-db-plugin"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	credAppRole "github.com/openbao/openbao/v2/internal/builtin/credential/approle"
@@ -22,12 +20,14 @@ import (
 	dbInflux "github.com/openbao/openbao/v2/internal/builtin/database/influxdb"
 	dbMysql "github.com/openbao/openbao/v2/internal/builtin/database/mysql"
 	dbPostgres "github.com/openbao/openbao/v2/internal/builtin/database/postgresql"
+	dbRemote "github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin"
 	dbValkey "github.com/openbao/openbao/v2/internal/builtin/database/valkey"
 	logicalKube "github.com/openbao/openbao/v2/internal/builtin/logical/kubernetes"
 	logicalKv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
 	logicalLDAP "github.com/openbao/openbao/v2/internal/builtin/logical/openldap"
 	logicalPki "github.com/openbao/openbao/v2/internal/builtin/logical/pki"
 	logicalRabbit "github.com/openbao/openbao/v2/internal/builtin/logical/rabbitmq"
+	logicalRelay "github.com/openbao/openbao/v2/internal/builtin/logical/relay"
 	logicalSsh "github.com/openbao/openbao/v2/internal/builtin/logical/ssh"
 	logicalTotp "github.com/openbao/openbao/v2/internal/builtin/logical/totp"
 	logicalTransit "github.com/openbao/openbao/v2/internal/builtin/logical/transit"

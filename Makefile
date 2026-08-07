@@ -191,7 +191,7 @@ proto: bootstrap
 	# remote-db-plugin lays its generated stubs in proto/gen/ (not next to the .proto). Use -I + an explicit
 	# out-dir so paths=source_relative resolves to gen/agent.pb.go. The buf.gen.yaml in that directory
 	# stays as an alternative tool path; this line keeps `make proto` from leaving the stubs stale.
-	protoc -Iplugins/database/remote-db-plugin/proto --go_out=plugins/database/remote-db-plugin/proto/gen --go_opt=paths=source_relative --go-grpc_out=plugins/database/remote-db-plugin/proto/gen --go-grpc_opt=paths=source_relative plugins/database/remote-db-plugin/proto/agent.proto
+	protoc -Iinternal/builtin/database/remote-db-plugin/proto --go_out=internal/builtin/database/remote-db-plugin/proto/gen --go_opt=paths=source_relative --go-grpc_out=internal/builtin/database/remote-db-plugin/proto/gen --go-grpc_opt=paths=source_relative internal/builtin/database/remote-db-plugin/proto/agent.proto
 
 	# No additional sed expressions should be added to this list. Going forward
 	# we should just use the variable names chosen by protobuf. These are left

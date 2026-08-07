@@ -33,7 +33,7 @@ var _ relayfwd.Node = (*relayNode)(nil)
 
 // RelayNode returns this Core's relayfwd.Node view. The relay backend reaches
 // it by asserting the extended system view against
-// `interface{ RelayNode() relayfwd.Node }`, which keeps builtin/logical/relay
+// `interface{ RelayNode() relayfwd.Node }`, which keeps internal/builtin/logical/relay
 // from importing vault internals directly.
 func (e extendedSystemViewImpl) RelayNode() relayfwd.Node {
 	return &relayNode{core: e.core}

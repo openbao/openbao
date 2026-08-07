@@ -59,18 +59,18 @@ primitives and protocol logic.
 
 ```bash
 # Bootstrap primitives: token format, JWS-HS256, SPKI pin, CA + CSR signing.
-go test -race -count=1 ./plugins/database/remote-db-plugin/bootstrap/...
+go test -race -count=1 ./internal/builtin/database/remote-db-plugin/bootstrap/...
 
 # Runner cache discipline: slot/handler refcount, single-flighted cold-miss,
 # Close-while-handler-in-flight, idle eviction, failed-Initialize cleanup,
 # Shutdown closes every cached plugin. Uses a stubDB injected via the
 # loadPluginFunc seam, so no real DB binary is required.
-go test -race -count=1 ./plugins/database/remote-db-plugin/runner/...
+go test -race -count=1 ./internal/builtin/database/remote-db-plugin/runner/...
 
 # Proxy stream primitives: request_id register/deliver/cancel, failAll
 # unblocks every waiter, touch/lastSeenAt freshness, concurrent
 # register/deliver under the race detector.
-go test -race -count=1 ./plugins/database/remote-db-plugin/...
+go test -race -count=1 ./internal/builtin/database/remote-db-plugin/...
 
 # Registry / wiring sanity. Exercises the plugin catalog so all six
 # remote-*-plugin names resolve.
@@ -84,8 +84,8 @@ Optional: lint the plugin tree:
 
 ```bash
 go tool -modfile=tools/go.mod golangci-lint run \
-    ./plugins/database/remote-db-plugin/... \
-    ./builtin/logical/relay/...             \
+    ./internal/builtin/database/remote-db-plugin/... \
+    ./internal/builtin/logical/relay/...             \
     ./command/...
 ```
 
@@ -774,7 +774,7 @@ A condensed view for the PR description's checklist:
 | --- | --- | --- |
 | Unit — bootstrap | `go test -race ./.../bootstrap/...` | green |
 | Unit — runner | `go test -race ./.../runner/...` | green (stubDB-backed cache discipline tests) |
-| Unit — proxy primitives | `go test -race ./plugins/database/remote-db-plugin/...` | green |
+| Unit — proxy primitives | `go test -race ./internal/builtin/database/remote-db-plugin/...` | green |
 | Unit — wiring | `go test -race ./helper/builtinplugins/... ./vault/... ./command/...` | green |
 | Smoke E2E | init → join → run → list → enable database → creds | spoke healthy; cred returned |
 | Token secrecy | `bao relay token create` | stderr warning before token |

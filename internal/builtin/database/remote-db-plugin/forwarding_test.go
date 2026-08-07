@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	agentproto "github.com/openbao/openbao/v2/plugins/database/remote-db-plugin/proto/gen"
+	agentproto "github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin/proto/gen"
 	"github.com/openbao/openbao/v2/internal/vault/relayfwd"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

@@ -55,7 +55,7 @@ hub and the spokes.
 | `registry.go` | Active-node registry of `spoke -> owning node`, built from peer announcements (HA). Derived state, never persisted. |
 | `forwarding.go` | `RelayForwarding` gRPC service (HA): `AnnounceSpokes` (peer -> active), `RunCommand` (active -> owner), `SignSpokeCSR` (owner -> active). |
 | `../../vault/relayfwd/` | Cluster-listener plumbing for `RelayForwardingALPN` (handler, client, dialer) plus the narrow `Core` interface the relay needs: `IsActive()`, `LeaderClusterAddr()`, `ClusterAddr()`. Mirrors `vault/forwarding`; keeps `plugins/...` from importing `vault/` internals. |
-| `../../builtin/logical/relay/{backend,paths}.go` | The `relay/` logical backend. Operators interact with it via `bao relay ...`. |
+| `../../logical/relay/{backend,paths}.go` | The `relay/` logical backend. Operators interact with it via `bao relay ...`. |
 | `../../command/relay_{init,join,list,run,ca,token}.go` | The `bao relay ...` CLI subcommands. |
 | `TEST.md` | Step-by-step manual test plan (smoke, token security, CSR validation, renewal, CA rotation, failure modes, concurrency, HA failover). |
 

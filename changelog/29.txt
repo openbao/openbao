@@ -1,0 +1,3 @@
+```release-note:change
+builtin: moved `plugins/database/remote-db-plugin/` to `internal/builtin/database/remote-db-plugin/` and `builtin/logical/relay/` to `internal/builtin/logical/relay/`, matching upstream's convention (openbao/openbao#3210) of keeping builtin plugins under `internal/builtin/`. Pure package move; no behavioral change.
+```

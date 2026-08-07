@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/cli"
-	"github.com/openbao/openbao/v2/plugins/database/remote-db-plugin/bootstrap"
-	proto "github.com/openbao/openbao/v2/plugins/database/remote-db-plugin/proto/gen"
+	"github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin/bootstrap"
+	proto "github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin/proto/gen"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"

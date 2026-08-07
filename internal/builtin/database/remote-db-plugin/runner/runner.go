@@ -27,12 +27,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	dbCassandra "github.com/openbao/openbao/v2/internal/builtin/database/cassandra"
 	dbInflux "github.com/openbao/openbao/v2/internal/builtin/database/influxdb"
 	dbMySQL "github.com/openbao/openbao/v2/internal/builtin/database/mysql"
 	dbPostgres "github.com/openbao/openbao/v2/internal/builtin/database/postgresql"
 	dbValkey "github.com/openbao/openbao/v2/internal/builtin/database/valkey"
-	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 )
 
 // PluginRunner holds the cache of long-lived plugin instances. Safe for

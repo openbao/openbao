@@ -20,8 +20,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 
-	remotedb "github.com/openbao/openbao/v2/plugins/database/remote-db-plugin"
-	agentproto "github.com/openbao/openbao/v2/plugins/database/remote-db-plugin/proto/gen"
+	remotedb "github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin"
+	agentproto "github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin/proto/gen"
 )
 
 // relayForwardingHandler serves the RelayForwarding gRPC service over the hub

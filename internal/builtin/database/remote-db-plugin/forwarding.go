@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openbao/openbao/v2/plugins/database/remote-db-plugin/bootstrap"
-	agentproto "github.com/openbao/openbao/v2/plugins/database/remote-db-plugin/proto/gen"
+	"github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin/bootstrap"
+	agentproto "github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin/proto/gen"
 	"github.com/openbao/openbao/v2/internal/vault/relayfwd"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

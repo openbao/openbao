@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/cli"
-	remotedb "github.com/openbao/openbao/v2/plugins/database/remote-db-plugin"
-	proto "github.com/openbao/openbao/v2/plugins/database/remote-db-plugin/proto/gen"
+	remotedb "github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin"
+	proto "github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin/proto/gen"
 	"github.com/posener/complete"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"

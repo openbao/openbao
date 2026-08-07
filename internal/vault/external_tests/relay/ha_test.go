@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
+	remotedb "github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/teststorage"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
-	remotedb "github.com/openbao/openbao/v2/plugins/database/remote-db-plugin"
 	"github.com/openbao/openbao/v2/internal/vault"
 )
 

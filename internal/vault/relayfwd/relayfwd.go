@@ -8,7 +8,7 @@
 // Core-backed implementation of Node, and the relay code consumes only this
 // interface.
 //
-// See plugins/database/remote-db-plugin/DESIGN.md, section "HA: standby nodes
+// See internal/builtin/database/remote-db-plugin/DESIGN.md, section "HA: standby nodes
 // and spoke stream ownership", for how this plumbing is used.
 package relayfwd
 

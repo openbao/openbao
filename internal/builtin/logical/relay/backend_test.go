@@ -8,8 +8,8 @@ import (
 	"net"
 	"testing"
 
-	remotedb "github.com/openbao/openbao/v2/plugins/database/remote-db-plugin"
-	"github.com/openbao/openbao/v2/plugins/database/remote-db-plugin/bootstrap"
+	remotedb "github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin"
+	"github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin/bootstrap"
 	"github.com/openbao/openbao/v2/internal/vault/relayfwd"
 	"google.golang.org/grpc"
 )

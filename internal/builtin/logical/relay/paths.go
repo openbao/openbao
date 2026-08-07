@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	remotedb "github.com/openbao/openbao/v2/plugins/database/remote-db-plugin"
-	"github.com/openbao/openbao/v2/plugins/database/remote-db-plugin/bootstrap"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	remotedb "github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin"
+	"github.com/openbao/openbao/v2/internal/builtin/database/remote-db-plugin/bootstrap"
 )
 
 // --- ca/init -----------------------------------------------------------------

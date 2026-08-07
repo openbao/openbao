@@ -167,7 +167,7 @@ resp=<nil>
 
 which will persist on all operations until an operator manually creates an
 [association between the generated issuer and the
-`default`](/api-docs/secret/pki/#set-issuers-configuration). Similar issues
+`default`](/docs/api/secret/pki/#set-issuers-configuration). Similar issues
 could occur whenever an issuer is rotated; the key could be persisted but the
 signing certificate could be dropped from the backup.
 

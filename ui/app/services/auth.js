@@ -431,7 +431,7 @@ export default Service.extend({
 
     if (resp.auth?.mfa_self_enroll) {
       return {
-        mfa_self_enroll: resp.auth?.mfa_self_enroll,
+        totp_self_enroll: resp.auth?.mfa_self_enroll,
       };
     }
 
@@ -441,6 +441,11 @@ export default Service.extend({
   async totpValidate({ mfa_requirement, ...options }) {
     const resp = await this.clusterAdapter().mfaValidate(mfa_requirement);
     return this.authSuccess(options, resp.auth || resp.data);
+  },
+
+  async totpVerifySelfEnroll(mfa_request_id, totp_code) {
+    const resp = await this.clusterAdapter().totpVerifySelfEnroll(mfa_request_id, totp_code);
+    return resp;
   },
 
   async authSuccess(options, response) {

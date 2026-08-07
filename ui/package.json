@@ -168,6 +168,7 @@
     "prettier": "3.5.3",
     "prettier-eslint-cli": "^8.0.1",
     "pvutils": "^1.0.17",
+    "qrcode": "^1.5.4",
     "qunit": "^2.24.1",
     "qunit-dom": "^3.4.0",
     "rollup": "^1.20.0",

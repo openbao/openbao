@@ -1,0 +1,345 @@
+---
+sidebar_label: Per-Namespace Auto Seals
+description: |-
+  An RFC proposing Auto Seal (HSM/KMS) support for sealable namespaces,
+  credential and key update endpoints, seal type migration, and the
+  authorization and cluster coordination model required to operate namespace
+  seals safely.
+---
+
+# Per-Namespace Auto Seals
+
+## Summary
+
+Per-namespace sealing, introduced in OpenBao v2.6, allows individual namespaces
+to maintain their own barrier protected by a dedicated seal. This RFC extends
+that feature to support Auto Seal backends (HSMs and KMSes) at namespace
+creation, defines a dedicated endpoint for credential and key updates, specifies
+the seal type migration path, and establishes the authorization and cluster
+coordination model required to operate namespace seals safely.
+
+## Problem Statement
+
+The namespace creation endpoint rejects non-Shamir seal types
+(`logical_system_namespaces.go`, `handleNamespacesSet`). No endpoint exists for
+updating seal credentials or migrating seal types on an existing sealable
+namespace (`logical_system_namespaces_seals.go`, `namespaceSealPaths`). The
+`sys/namespaces` path is not listed in `PathsSpecial.Root` (`logical_system.go`),
+so any token with `update` capability can modify namespace properties including
+seal configuration. The invalidation framework (`invalidation.go`,
+`isCoreKeyPath`) does not cover namespace seal configuration changes, leaving
+standby nodes with stale wrappers after a credential update.
+
+## User-Facing Description
+
+### Creating a Sealable Namespace with an Auto Seal
+
+The `seal` parameter on `POST /v1/sys/namespaces/<path>` already accepts an HCL
+or JSON seal configuration string. This RFC removes the Shamir-only restriction,
+allowing any seal type supported at the global level. See the
+[API documentation](/docs/api/system/namespaces) for the exact request format.
+
+### Updating Seal Credentials and Keys
+
+| Method | Path                                    |
+| ------ | --------------------------------------- |
+| `PUT`  | `/v1/sys/namespaces/<path>/config/seal` |
+
+This endpoint requires sudo privilege. It accepts the same seal configuration
+string format as namespace creation. The server compares `KeyId()` between the
+existing and proposed wrappers to determine the operation:
+
+- **Same key** (credential update): the new wrapper must successfully decrypt
+  the existing root key (`GetStoredKeys`) before the old wrapper is finalized.
+  If verification fails, the update is rejected and the existing configuration
+  is kept.
+- **Different key** (key migration): the root key is decrypted under the old
+  wrapper and re-encrypted under the new one before the old wrapper is finalized.
+
+Both operations are synchronous. The namespace remains accessible throughout.(the purpose is to rewrap)
+
+### Reading Seal Configuration
+
+| Method | Path                                    |
+| ------ | --------------------------------------- |
+| `GET`  | `/v1/sys/namespaces/<path>/config/seal` |
+
+Returns the `WrapperConfig` output produced by `Wrapper.SetConfig()`, which
+provides provider-supplied configuration metadata. Sensitive fields (credentials,
+tokens, passwords) are omitted by the plugin; non-sensitive fields (provider
+type, endpoint, key identifier) are returned. This is the same mechanism used
+to log root seal configuration at startup.
+
+This endpoint is distinct from `seal-status`, which reports runtime
+sealed/unsealed state. The response intentionally omits credentials and key
+material; the full seal configuration is never returned.
+
+### Seal Type Migration
+
+| Method | Path                                     |
+| ------ | ---------------------------------------- |
+| `POST` | `/v1/sys/namespaces/<path>/migrate-seal` |
+
+This endpoint requires sudo privilege. It handles seal type changes between
+Auto Seal and Shamir within a sealable namespace. The operator provides the
+new seal configuration in the request body.
+
+- **Auto Seal to Shamir**: new key shares are returned in the response.
+- **Shamir to Auto Seal**: existing key shares must be provided in the request;
+  after reconstruction the combined key becomes the recovery key on the new
+  Auto Seal via `SetRecoveryKey`.
+
+The root key is re-encrypted under the new seal. No storage copying is required.
+The namespace remains accessible throughout. The operation is synchronous.
+
+Normal-to-sealable and sealable-to-normal conversions are out of scope and
+tracked in https://github.com/openbao/openbao/issues/3333.
+
+### Failure Conditions
+
+If the KMS provider is unreachable, the namespace remains sealed until
+connectivity is restored. ~Retry is triggered by calling the namespace unseal
+endpoint again. The [Emergency Seal](emergency-seal.mdx) and
+
+#### [Parallel Unseal](parallel-unseal.mdx) RFCs address persistent failure recovery.~
+
+
+
+## Technical Description
+
+### Credential and Key Updates (PUT /config/seal)
+
+`SealManager.SetSeal` in `seal_manager.go` already initializes seal wrappers
+and stores them by namespace UUID. This RFC extends it to cover two update
+cases that the current implementation explicitly defers.
+
+Sealing a parent namespace implicitly makes all descendant namespaces
+inaccessible, regardless of their individual seal configuration. This is
+existing behavior introduced in v2.6 and is not modified by this RFC; no
+background job is added for cascade seal or unseal.
+
+A `Wrapper` (from `go-kms-wrapping`) represents a key ring: even after the
+active key changes, the wrapper retains the ability to decrypt blobs encrypted
+under previous key versions. `KeyId()` returns the identifier of the currently
+active key. After initializing the proposed wrapper, `SetSeal` compares
+`KeyId()` between the existing and proposed instances:
+
+- If the identifier is unchanged, the update is a credential rotation.
+  `GetStoredKeys` is called on the new wrapper to verify it can decrypt the
+  existing root key before the old wrapper is finalized. This is the
+  test-before-swap guard already present in the PoC branch
+  (`ef-namespace-kms-seal-v2`).
+- If the identifier differs, the update is a key migration. The stored barrier
+  keys are read from the old seal via `GetStoredKeys` and written to the new
+  seal via `SetStoredKeys`. Only the stored root key entry is rewritten; the
+  barrier keyring and namespace storage are untouched. Both paths leave the
+  namespace accessible throughout; neither requires taint.
+
+```go
+oldKeyID, _ := prevSeal.GetAccess().Wrapper.KeyId(ctx)
+newKeyID, _ := nsSeal.GetAccess().Wrapper.KeyId(ctx)
+if oldKeyID == newKeyID {
+    if _, err := nsSeal.GetStoredKeys(ctx); err != nil {
+        _ = nsSeal.Finalize(ctx)
+        return fmt.Errorf("new seal cannot read existing root key: %w", err)
+    }
+} else {
+    barrierKeys, err := prevSeal.GetStoredKeys(ctx)
+    if err != nil {
+        _ = nsSeal.Finalize(ctx)
+        return err
+    }
+    if err := nsSeal.SetStoredKeys(ctx, barrierKeys); err != nil {
+        _ = nsSeal.Finalize(ctx)
+        return err
+    }
+}
+_ = prevSeal.Finalize(ctx)
+sm.sealByNamespace[ns.UUID] = nsSeal
+```
+
+### Configuration Metadata (GET /config/seal)
+
+`Wrapper.SetConfig()` returns a `wrapping.WrapperConfig` whose fields are
+chosen by the plugin author to exclude sensitive material. OpenBao already
+uses this output to log root seal configuration at startup (`seal_manager.go`).
+The GET endpoint returns the same struct, requiring no additional redaction
+logic in core and no changes to `go-kms-wrapping`.
+
+### Seal Type Migration (POST /migrate-seal)
+
+Changing the seal type -- including between two different Auto Seal backends --
+requires exchanging key shares and therefore warrants a separate endpoint.
+`SealManager.MigrateBarrierKey` is the new entry point, registered in
+`namespaceSealPaths` in `logical_system_namespaces_seals.go`.
+
+The operation mirrors `migrateSeal` in `core.go`, applied at namespace scope.
+Only the stored root key entry (`StoredBarrierKeysPath` equivalent for the
+namespace) is rewritten; the barrier keyring and all namespace storage remain
+untouched. Three cases are handled:
+
+**Auto Seal to Auto Seal**: the recovery key and stored barrier keys are read
+from the old seal and written to the new seal via `GetStoredKeys` /
+`SetStoredKeys` / `SetRecoveryKey`. No key shares are exchanged.
+
+**Auto Seal to Shamir**: the recovery key from the old seal becomes the Shamir
+KEK. The caller receives the resulting key shares in the response. The stored
+barrier keys are re-encrypted under the new Shamir wrapper via `SetStoredKeys`.
+
+**Shamir to Auto Seal**: the caller provides existing key shares in the request;
+these authorize the operation and become the recovery key on the new Auto Seal
+via `SetRecoveryKey`. A new root key is generated, written via `RotateRootKey`,
+and stored under the new seal via `SetStoredKeys`.
+
+The operation is synchronous. The amount of data written is constant: at most
+three storage entries regardless of namespace size. A migration flag written
+before finalizing the old seal allows crash recovery on restart.
+
+```go
+func (sm *SealManager) MigrateBarrierKey(
+    ctx context.Context,
+    ns *namespace.Namespace,
+    oldSeal Seal,
+    newSeal Seal,
+    combinedKey []byte, // nil for Auto-to-Auto and Auto-to-Shamir
+) error {
+    switch {
+    case oldSeal.RecoveryKeySupported() && newSeal.RecoveryKeySupported():
+        // Auto to Auto
+        recoveryKey, err := oldSeal.RecoveryKey(ctx)
+        if err != nil {
+            return err
+        }
+        if err := newSeal.SetRecoveryKey(ctx, recoveryKey); err != nil {
+            return err
+        }
+        barrierKeys, err := oldSeal.GetStoredKeys(ctx)
+        if err != nil {
+            return err
+        }
+        return newSeal.SetStoredKeys(ctx, barrierKeys)
+
+    case oldSeal.RecoveryKeySupported():
+        // Auto to Shamir
+        recoveryKey, err := oldSeal.RecoveryKey(ctx)
+        if err != nil {
+            return err
+        }
+        shamirWrapper, err := newSeal.GetShamirWrapper()
+        if err != nil {
+            return err
+        }
+        if err := shamirWrapper.SetAesGcmKeyBytes(recoveryKey); err != nil {
+            return err
+        }
+        barrierKeys, err := oldSeal.GetStoredKeys(ctx)
+        if err != nil {
+            return err
+        }
+        return newSeal.SetStoredKeys(ctx, barrierKeys)
+
+    case newSeal.RecoveryKeySupported():
+        // Shamir to Auto
+        if err := newSeal.SetRecoveryKey(ctx, combinedKey); err != nil {
+            return err
+        }
+        newRootKey, err := sm.NamespaceBarrier(ns.Path).GenerateKey()
+        if err != nil {
+            return err
+        }
+        if err := sm.NamespaceBarrier(ns.Path).RotateRootKey(ctx, newRootKey); err != nil {
+            return err
+        }
+        return newSeal.SetStoredKeys(ctx, [][]byte{newRootKey})
+    }
+    return errors.New("unhandled migration case")
+}
+```
+
+### Authorization
+
+All three routes are registered in `namespaceSealPaths`
+(`logical_system_namespaces_seals.go`). `PUT /config/seal` and
+`POST /migrate-seal` require `update` capability on the namespace path.
+These operations act on the namespace's own root key, not on the global seal
+or any parent namespace's seal; no elevated privilege beyond namespace
+`update` is required.
+
+### Cluster Behavior
+
+All seal lifecycle operations are initiated on the active node, consistent
+with general write behavior. After a credential or key update, standby nodes
+hold stale wrappers in memory until invalidated. The existing framework in
+`invalidation.go` is extended in `buildInvalidateJobForKey` to detect writes
+to namespace seal configuration paths and call `sealManager.ReloadSealConfig`
+on each node. The resulting invalidation window is the same as for root-level
+seal credential updates; no additional mechanism is required.
+
+```go
+case strings.HasPrefix(key, "sys/namespaces/") &&
+    strings.HasSuffix(key, "/config/seal"):
+    ns := c.extractNamespaceFromKey(key)
+    c.sealManager.ReloadSealConfig(ctx, ns)
+```
+
+Seal key updates are written to storage and propagated to standby nodes via
+the existing invalidation broadcast; no additional mechanism is required.
+
+### Audit
+
+Standard OpenBao request/response audit logging covers all operations.
+Credentials and key material are HMAC'd by default unless `log_raw` is enabled.
+
+## Rationale and Alternatives
+
+`PUT /config/seal` covers both credential updates and key changes because the
+server cannot distinguish the two until the new wrapper is initialized and
+`KeyId()` is compared. A separate endpoint for key changes would require the
+operator to declare intent without additional safety benefit.
+
+Seal type migration is kept in a separate endpoint (`POST /migrate-seal`) because
+it requires key shares (Shamir) and changes the fundamental cryptographic
+mechanism protecting the namespace, warranting explicit operator intent.
+
+`WrapperConfig` from `Wrapper.SetConfig()` is preferred for the GET metadata
+response over the external-key mechanism in
+https://github.com/openbao/openbao/pull/3605 because it requires no changes to
+`go-kms-wrapping` and reuses an output already present in root seal log output.
+The tradeoff is that metadata completeness depends on plugin authors; a
+misconfigured plugin could expose sensitive fields.
+
+## Downsides
+
+The following are operational notes rather than design downsides:
+
+Key migration via `PUT /config/seal` and seal type migration via
+`POST /migrate-seal` are synchronous. Both operations re-encrypt only the
+stored namespace root key entry; the barrier keyring and all namespace storage
+are untouched. The amount of data written is constant regardless of namespace
+size, so asynchronous execution is unnecessary. Both operations do introduce a
+window during which both the old and new seal must remain reachable; the old
+seal must not be decommissioned until the migration flag is cleared.
+
+Each seal configuration change triggers invalidation across all cluster nodes
+(`buildInvalidateJobForKey` in `invalidation.go`). This is consistent with
+how other configuration changes are handled in a clustered deployment.
+
+## Unresolved Questions
+
+**Unseal retry scheduling.** After a failed namespace unseal attempt (KMS
+temporarily unreachable), how is the retry scheduled? Manual retry via the
+unseal endpoint is always possible, but an automatic retry with backoff may be
+preferable.
+
+**Recovery key retrieval.** When an Auto Seal-protected namespace is initialized,
+recovery keys are generated and must be distributed to key holders, as they are
+the only mechanism to recover access if the KMS becomes permanently unavailable.
+
+## Related Issues
+
+- https://github.com/openbao/openbao/issues/3333
+- https://github.com/openbao/openbao/pull/3660
+
+## Proof of Concept
+
+None.

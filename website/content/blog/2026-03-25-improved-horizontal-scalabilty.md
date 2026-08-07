@@ -258,6 +258,6 @@ is idle (as we have seen before).
 [disable_standby_reads]: /docs/configuration
 [dynamic-secrets]: /docs/secrets/databases/#usage
 [Key types matter]: /docs/secrets/pki/considerations/#key-types-matter
-[no_store]: /api-docs/secret/pki/#create-update-role
-[use-csr]: /api-docs/secret/pki/#sign-certificate
+[no_store]: /docs/api/secret/pki/#create-update-role
+[use-csr]: /docs/api/secret/pki/#sign-certificate
 [`benchmark-openbao`]: https://github.com/openbao/benchmark-openbao

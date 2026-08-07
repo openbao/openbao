@@ -322,7 +322,6 @@ func (c *Core) removeCredEntry(ctx context.Context, path string, updateStorage b
 }
 
 func (c *Core) removeCredEntryWithLock(ctx context.Context, path string, updateStorage bool) error {
-	// Taint the entry from the auth table
 	newTable := c.auth.ShallowClone()
 	entry, err := newTable.Remove(ctx, path)
 	if err != nil {
@@ -345,7 +344,7 @@ func (c *Core) removeCredEntryWithLock(ctx context.Context, path string, updateS
 	return nil
 }
 
-func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPathDetails, updateStorage bool) error {
+func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPathDetails) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
@@ -385,7 +384,7 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 	}
 
 	// Mark the entry as tainted
-	if err := c.taintCredEntry(ctx, src.Namespace.ID, src.MountPath, updateStorage); err != nil {
+	if err := c.taintCredEntry(ctx, src.Namespace.ID, src.MountPath, true); err != nil {
 		return err
 	}
 
@@ -408,18 +407,16 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 		return fmt.Errorf("path in use at %q", match)
 	}
 
-	mountEntry.Tainted = false
 	mountEntry.NamespaceID = dst.Namespace.ID
 	mountEntry.Namespace = dst.Namespace
 	srcPath := mountEntry.Path
 	mountEntry.Path = strings.TrimPrefix(dst.MountPath, routing.CredentialRoutePrefix)
 
-	// Update the mount table
+	// Update the auth table
 	if err := c.persistAuth(ctx, c.NamespaceView(mountEntry.Namespace), c.auth, &mountEntry.Local, mountEntry.UUID); err != nil {
 		mountEntry.Namespace = src.Namespace
 		mountEntry.NamespaceID = src.Namespace.ID
 		mountEntry.Path = srcPath
-		mountEntry.Tainted = true
 		c.authLock.Unlock()
 		return fmt.Errorf("failed to update auth table with error %w", err)
 	}
@@ -450,12 +447,13 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 	}
 	c.authLock.Unlock()
 
-	// Un-taint the new path in the router
-	if err := c.router.Untaint(ctx, dstRelativePath); err != nil {
+	// Mark the entry as untainted.
+	if err := c.untaintCredEntry(ctx, dst.Namespace.ID, dst.MountPath, true); err != nil {
 		return err
 	}
 
-	return nil
+	// Un-taint the new path in the router.
+	return c.router.Untaint(ctx, dstRelativePath)
 }
 
 // taintCredEntry is used to mark an entry in the auth table as tainted
@@ -463,20 +461,39 @@ func (c *Core) taintCredEntry(ctx context.Context, nsID, path string, updateStor
 	c.authLock.Lock()
 	defer c.authLock.Unlock()
 
-	// Taint the entry from the auth table
-	// We do this on the original since setting the taint operates
-	// on the entries which a shallow clone shares anyways
-	entry := c.auth.SetTaint(nsID, strings.TrimPrefix(path, routing.CredentialRoutePrefix))
-
-	// Ensure there was a match
+	// As modifying the taint of an entry affects shallow clones,
+	// we simply use the original.
+	entry := c.auth.Taint(nsID, strings.TrimPrefix(path, routing.CredentialRoutePrefix))
 	if entry == nil {
-		return fmt.Errorf("no matching backend for path %q namespaceID %q", path, nsID)
+		return logical.CodedError(500, "failed to taint entry in auth table")
 	}
 
 	if updateStorage {
-		// Update the auth table
 		if err := c.persistAuth(ctx, c.NamespaceView(entry.Namespace), c.auth, &entry.Local, entry.UUID); err != nil {
-			return fmt.Errorf("failed to update auth table: %w", err)
+			return logical.CodedError(500, "failed to taint entry in auth table: %v", err)
+		}
+	}
+
+	return nil
+}
+
+// untaintCredEntry is used to mark an entry in the auth table as untainted.
+func (c *Core) untaintCredEntry(ctx context.Context, nsID, path string, updateStorage bool) error {
+	c.authLock.Lock()
+	defer c.authLock.Unlock()
+
+	// As modifying the taint of an entry affects shallow clones,
+	// we simply use the original
+	entry := c.auth.Untaint(nsID, strings.TrimPrefix(path, routing.CredentialRoutePrefix))
+	if entry == nil {
+		c.logger.Error("nil entry found untainting entry in auth table", "path", path)
+		return logical.CodedError(500, "failed to untaint entry in auth table")
+	}
+
+	if updateStorage {
+		if err := c.persistAuth(ctx, c.NamespaceView(entry.Namespace), c.auth, &entry.Local, entry.UUID); err != nil {
+			c.logger.Error("failed to untaint entry in auth table", "error", err)
+			return logical.CodedError(500, "failed to untaint entry in auth table: %v", err)
 		}
 	}
 

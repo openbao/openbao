@@ -213,7 +213,7 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 					return
 				}
 
-				err = core.AuditLogger().AuditRequest(r.Context(), &logical.LogInput{
+				err = core.AuditLogger().AuditRequest(ctx, &logical.LogInput{
 					Request:  req,
 					OuterErr: quotaErr,
 				})

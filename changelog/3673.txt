@@ -1,0 +1,3 @@
+```release-note:bug
+sys/quotas: Fix broken `enable_rate_limit_audit_logging` option.
+```

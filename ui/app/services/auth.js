@@ -429,6 +429,12 @@ export default Service.extend({
       return this._parseMfaResponse(resp.auth?.mfa_requirement);
     }
 
+    if (resp.auth?.mfa_self_enroll) {
+      return {
+        mfa_self_enroll: resp.auth?.mfa_self_enroll,
+      };
+    }
+
     return this.authSuccess(options, resp.auth || resp.data);
   },
 

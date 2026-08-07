@@ -1,0 +1,422 @@
+---
+sidebar_label: Namespace Seal Lifecycle
+description: |-
+  An RFC to discuss the full lifecycle of auto-seal configuration for sealable namespaces,
+  covering creation, credential rotation, migration, deletion, and operational concerns
+  in clustered deployments.
+---
+
+# RFC: Namespace Auto-Seal Lifecycle
+
+## Summary
+
+OpenBao v2.6 introduced sealable namespaces, which allow individual namespaces to maintain
+their own barrier protected by a dedicated seal. The namespace creation endpoint accepts a
+seal parameter, and a migration path between normal and sealable namespaces is being
+developed (see issue #3333). However, a formal definition of the full lifecycle of a
+namespace seal does not yet exist, particularly when the seal is an auto-seal type backed
+by an external KMS provider such as Transit, AWS KMS, or Azure Key Vault.
+
+This RFC proposes a taxonomy of namespace seal lifecycle operations, identifies what is
+already implemented or planned, surfaces the areas that warrant community discussion,
+and suggests a consistent API surface for managing auto-seal configuration on namespaces.
+
+## Scope
+
+The following areas are worth defining clearly before further implementation proceeds.
+
+There is currently no API to configure an auto-seal type for a namespace at creation time
+or afterwards. The namespace creation endpoint accepts a seal parameter but limits it to
+Shamir. Operators who want to use Transit or a cloud KMS for namespace auto-unseal would
+benefit from a supported path for this.
+
+The operation of changing the seal configuration of an existing namespace is not yet
+formally defined. A distinction between rotating credentials, migrating to a different
+key, and migrating to a different seal type would clarify the expected behavior and the
+guarantees each operation provides.
+
+The behavior of a namespace seal under operational conditions such as temporary provider
+unavailability, credential expiry, or key decommissioning deserves explicit documentation
+and a structured recovery path.
+
+All of the above becomes more nuanced in a clustered deployment where the active node and
+standby nodes may hold different views of the seal configuration in memory. This RFC
+proposes that cluster behavior be treated as a cross-cutting concern that applies to every
+operation in the taxonomy.
+
+## A Note on Code Sketches
+
+Each section below includes a short Go sketch to make the proposed behavior
+concrete for reviewers. These are illustrative only and are not intended as
+implementation proposals. Error handling and locking are omitted for brevity.
+
+## Lifecycle Taxonomy
+
+### Create
+
+The simplest case is creating a new sealable namespace with an auto-seal configuration
+provided at creation time. This is partially implemented in a pending pull request that
+extends the seal parameter on the namespace creation endpoint to accept auto-seal types.
+
+A second subcase worth discussing is adding a seal to an existing namespace that was
+created without one. Because the barrier may already contain data, this case is closer
+to a migration than a creation and may warrant a distinct operation.
+
+| Subcase | Description | Status | Related Code |
+|---------|-------------|--------|--------------|
+| 2a | New namespace with auto-seal at creation time | Rejected in upstream; pending merge | logical_system_namespaces.go:378 |
+| 2b | Add auto-seal to existing namespace without seal | Not defined; likely a migration subcase | -- |
+
+```go
+// logical_system_namespaces.go -- remove the shamir-only guard, add KMS path
+if kms.Type != "shamir" {
+    wrapper, _, err := core.kmsPluginCatalog.ConfigureWrapper(ctx, kms.Type,
+        wrapping.WithConfigMap(kms.Config),
+        wrapping.WithDisallowEnvVars(true))
+    if err != nil {
+        return nil, fmt.Errorf("failed to configure %q seal: %w", kms.Type, err)
+    }
+    sealConfig = &SealConfig{Type: kms.Type, KMSConfig: kms.Config}
+    nsSeal, err = NewAutoSeal(vaultseal.NewAccess(wrapper))
+}
+```
+
+### Update -- Credential Rotation
+
+Credential rotation covers the cases where the underlying cryptographic key does not
+change, but the credentials or configuration used to reach the KMS provider do. Because
+the barrier remains decipherable throughout, these operations are less disruptive than
+migrations and lend themselves to a test-before-swap guard: before committing the new
+configuration, OpenBao attempts to decrypt the existing barrier key using the new wrapper,
+and rejects the change if this fails.
+
+The first subcase is rotating credentials for the same provider, for example replacing an
+expired IAM token or a service principal. The second is switching to a different provider
+that exposes a compatible API but wraps the same underlying key material, which is
+realistic in hybrid cloud scenarios or when a cloud-compatible on-premises KMS is used.
+The third is a key rotation performed internally by the KMS provider: providers such as
+Transit and AWS KMS retain old key versions for decryption while using the new version
+for new encryptions, so OpenBao does not need to re-encrypt the barrier key.
+
+| Subcase | Description | Status | Related Code |
+|---------|-------------|--------|--------------|
+| 3a | Same provider, changed credentials, same key | test-before-swap in pending PR; no update path in upstream | seal_manager.go:112 (early return if seal exists); seal_autoseal.go:147 (GetStoredKeys) |
+| 3b | Different compatible provider, same key | Covered by same guard as 3a | seal_autoseal.go:115 (Init), seal_autoseal.go:147 (GetStoredKeys) |
+| 3c | KMS-internal key rotation with version retention | Handled transparently by provider; no action needed from OpenBao | -- |
+
+```go
+// seal_manager.go -- test-before-swap guard in SetSeal update path
+if prevSeal != nil && nsSeal.BarrierType() != vaultseal.WrapperTypeShamir {
+    if _, err := nsSeal.GetStoredKeys(ctx); err != nil {
+        _ = nsSeal.Finalize(ctx)
+        return fmt.Errorf("new seal cannot read existing stored keys: "+
+            "only credential rotation is supported, not key replacement: %w", err)
+    }
+}
+_ = prevSeal.Finalize(ctx)
+sm.sealByNamespace[ns.UUID] = nsSeal
+```
+
+### Update -- Migration
+
+Migration covers the cases where the cryptographic key changes and the barrier key must
+be re-encrypted: decrypted under the old key and re-encrypted under the new one. This is
+a substantially more involved operation than rotation and raises questions about atomicity,
+cluster coordination, and failure recovery that this RFC invites the community to discuss.
+
+The first two subcases involve changing the key while keeping the same provider, or moving
+to a different provider entirely. Both require re-encryption of the barrier key and must
+handle the possibility of a node failure mid-operation.
+
+The remaining subcases involve changing the seal type. Moving from auto-seal to Shamir
+changes the operational model from automatic to manual unseal, and the operator must
+receive Shamir key shares as part of the migration response. Moving from Shamir to
+auto-seal requires the operator to supply the existing key shares to authorize the change.
+
+Issue #3333 tracks a related but narrower migration: converting a normal namespace to a
+sealable one and back. The shadow-copy approach proposed there uses taint and lock steps
+and an explicit rollback path. The work is planned but not yet merged upstream.
+The implementation currently in development covers the normal-to-sealable and
+sealable-to-normal cases but still limits the seal type to Shamir. Whether KMS key
+migration should reuse the shadow-copy mechanism or use a different in-place re-encryption
+approach is a question worth raising with the community.
+
+A key design question for all migration subcases is atomicity. A two-phase model where
+both old and new keys remain active during a migration window (similar to how root seal
+migration is handled using a flag in storage) is more resilient to node failures but
+requires more bookkeeping. An atomic model with a rollback guarantee is simpler to reason
+about but harder to implement safely in a distributed setting. Community input on which
+model is preferred, or whether both should be supported for different subcases, is welcome.
+
+| Subcase | Description | Status | Related Code |
+|---------|-------------|--------|--------------|
+| 4a | Same provider, different key | Not implemented; requires re-encryption | seal_manager.go:550 (InitializeBarrier, reference only) |
+| 4b | Different provider, different key | Not implemented; requires re-encryption | -- |
+| 4c | From auto-seal to Shamir | Not implemented; operator receives key shares | seal_manager.go:575 (Shamir path in InitializeBarrier) |
+| 4d | From Shamir to auto-seal | Not implemented; operator supplies key shares to authorize | seal_manager.go:301 (UnsealNamespace, reference only) |
+
+```go
+// seal_manager.go -- MigrateBarrierKey sketch (4a/4b: different key, same or different provider)
+func (sm *SealManager) MigrateBarrierKey(ctx context.Context, ns *namespace.Namespace, newSeal Seal) error {
+    rootKey, err := sm.GetRootKey(ctx, ns) // decrypt with old seal
+    if err != nil {
+        return err
+    }
+    if err := newSeal.Init(ctx); err != nil {
+        return err
+    }
+    return sm.NamespaceBarrier(ns.Path).Rekey(ctx, rootKey, newSeal) // re-encrypt
+}
+
+// 4c: from auto-seal to Shamir -- response includes key shares
+resp.Data["key_shares"] = encodeShares(shares)
+resp.Data["key_threshold"] = sealConfig.SecretThreshold
+
+// 4d: from Shamir to auto-seal -- operator must authenticate first
+if err := sm.AuthenticateRootKey(ctx, ns, combinedKey); err != nil {
+    return nil, logical.ErrPermissionDenied
+}
+```
+
+### Delete
+
+The semantics of removing a namespace seal are not yet defined and represent an area that
+warrants explicit community discussion before any implementation begins. Three
+interpretations are reasonable, each with different implications for operators.
+
+If deleting the seal triggers an implicit migration to Shamir, the namespace continues to
+function with a manual unseal, and the operator receives key shares. This is the safest
+interpretation for data continuity but the most complex to implement.
+
+If removing the seal renders the namespace inaccessible, the barrier key remains in
+storage but cannot be decrypted without the original KMS access. The namespace is
+effectively suspended until KMS access is restored or the seal is reconfigured. This may
+be an acceptable behavior in some operational contexts.
+
+If deleting a seal is not allowed as a standalone operation, an operator who wants to
+change or remove the seal must perform an explicit migration first. This is the most
+conservative design and avoids a class of accidental situations.
+
+This RFC does not propose a specific answer and asks the community which semantics best
+match operator expectations.
+
+| Subcase | Description | Status | Related Code |
+|---------|-------------|--------|--------------|
+| 5a | Delete triggers implicit migration to Shamir | Not defined; requires discussion | -- |
+| 5b | Delete renders namespace inaccessible | Not defined; requires discussion | logical_system_namespaces_seals.go:144 (delete-sealed wipes storage, adjacent concept) |
+| 5c | Delete is forbidden without prior migration | Not defined; requires discussion | -- |
+
+```go
+// three possible implementations of DELETE /config/seal -- for discussion
+
+// Option A: implicit migration to Shamir
+func handleSealConfigDelete(ctx, req, data) (*logical.Response, error) {
+    return b.handleMigrateBarrier(ctx, req, shamirConfig)
+}
+// Option B: suspend namespace (inaccessible until KMS restored)
+func handleSealConfigDelete(ctx, req, data) (*logical.Response, error) {
+    return sm.SuspendNamespaceSeal(ctx, ns)
+}
+// Option C: reject -- require explicit migration first
+func handleSealConfigDelete(ctx, req, data) (*logical.Response, error) {
+    return nil, errors.New("seal cannot be removed; perform a migration first")
+}
+```
+
+### Audit
+
+Because seal configuration is not readable via the API, the audit log is the only place
+where the history of seal changes can be reconstructed. Seal lifecycle events therefore
+deserve explicit instrumentation in the audit framework rather than relying on generic
+API call logging.
+
+Events that would be meaningful to log include creation, credential rotation, migration
+start, migration completion or rollback, and any deletion or suspension. The content of
+each event should include the provider type and key identifier but must never include
+credentials or key material.
+
+| Subcase | Description | Status | Related Code |
+|---------|-------------|--------|--------------|
+| 6a | Events to log: create, rotate, migrate, delete, failures | Not yet instrumented explicitly | -- |
+| 6b | Log content: provider type, key identifier, timestamp, outcome | Not yet defined | seal.go (SealConfig struct, KMSConfig field) |
+
+```go
+// audit event for seal lifecycle operations
+core.auditBroker.LogRequest(ctx, &logical.LogInput{
+    Auth:    auth,
+    Request: &logical.Request{
+        Operation: logical.UpdateOperation,
+        Path:      "sys/namespaces/" + ns.Path + "/config/seal",
+        Data: map[string]interface{}{
+            "provider": sealConfig.Type,
+            "key_id":   sealConfig.KMSConfig["key_name"], // no credentials logged
+            "action":   "rotation", // or "migration", "create"
+        },
+    },
+})
+```
+
+### Authorization
+
+All operations on the namespace seal configuration should require sudo or root privilege.
+Changing the seal of a namespace has the same operational impact as changing the seal of
+the entire cluster, and a policy granting update capability on sys/namespaces should not
+be sufficient. The proposed endpoint, PUT and GET on /v1/sys/namespaces/path/config/seal,
+should be listed in PathsSpecial.Root.
+
+A dedicated privileged endpoint also addresses a known gap in the current authorization
+model: sys/namespaces is not currently in the root paths, which means that seal-adjacent
+namespace properties are reachable by tokens with update capability on that path. A
+separate, explicitly privileged endpoint for seal configuration resolves this without
+changing the authorization requirements for other namespace operations.
+
+| Subcase | Description | Status | Related Code |
+|---------|-------------|--------|--------------|
+| 7a | sudo or root required for all /config/seal operations | Not yet implemented; endpoint does not exist | logical_system.go:67 (PathsSpecial.Root, namespaces/* absent) |
+| 7b | sys/namespaces/* ACL gap for seal-adjacent properties | Known; resolved by dedicated endpoint | logical_system_namespaces_seals.go:316 (SudoPrivilege pattern, reference) |
+
+```go
+// logical_system.go -- add /config/seal to PathsSpecial.Root
+Root: []string{
+    "auth/*",
+    // ... existing entries ...
+    "namespaces/+/config/seal", // requires sudo or root token
+},
+```
+
+### Error States and Recovery
+
+Three failure conditions are worth distinguishing, as they require different recovery paths.
+
+If the KMS provider is temporarily unreachable, the namespace remains sealed and unseal
+attempts fail until provider connectivity is restored. No operator action is required
+beyond restoring access.
+
+If credentials expire, the situation is similar at the surface but the recovery path goes
+through the credential rotation endpoint. This means the rotation endpoint must remain
+accessible even when the namespace is sealed, which has implications for routing and
+authorization.
+
+If the KMS key is deleted at the provider, the barrier key is permanently undecipherable
+and recovery requires either a backup of the barrier key material or a previously
+completed migration to a different key. This case suggests that documenting and
+encouraging proactive migration before decommissioning a KMS key would be valuable
+operational guidance.
+
+A fourth condition arises during migration: a partial failure leaves the namespace in a
+state where neither the old nor the new key is reliably authoritative. Operators would
+benefit from a way to query this state and either resume or roll back the migration.
+
+| Subcase | Description | Status | Related Code |
+|---------|-------------|--------|--------------|
+| 8a | KMS temporarily unreachable | Surfaces as unseal error; recovery is automatic | seal_autoseal.go:115 (Init propagates provider error) |
+| 8b | Credentials expired | Requires rotation endpoint to be reachable while sealed | seal_autoseal.go:147 (GetStoredKeys propagates auth error) |
+| 8c | Key deleted at provider | Equivalent to data loss; requires prior migration or backup | -- |
+| 8d | Partial migration failure | No observable state or recovery path defined yet | -- |
+
+```go
+// structured sentinel errors allow callers to distinguish recovery paths
+var (
+    ErrSealProviderUnreachable = errors.New("KMS provider temporarily unreachable")
+    ErrSealCredentialsExpired  = errors.New("KMS credentials expired; rotation required")
+    ErrSealKeyDeleted          = errors.New("KMS key no longer exists; migration required")
+)
+// example: operator-facing message differs by error type
+if errors.Is(err, ErrSealCredentialsExpired) {
+    return logical.ErrorResponse("update credentials via PUT /config/seal"), err
+}
+```
+
+### Cluster Behavior
+
+Cluster behavior is a cross-cutting concern that applies to every operation in this
+taxonomy. Only the active node can write to storage, so all seal lifecycle operations
+must be initiated there, which is consistent with the general behavior of write operations
+in OpenBao.
+
+The more nuanced question is credential freshness on standby nodes. After a credential
+rotation, standby nodes may hold the old credentials in memory and be unable to unseal
+the namespace until they restart or receive an explicit invalidation signal. Whether the
+existing invalidation framework covers seal configuration changes, and whether it needs
+to be extended, is worth verifying.
+
+For migrations, the two-phase model requires a coordination flag in storage that all
+nodes read to determine which key to use at any given point. The shadow-copy approach
+from issue #3333 handles this differently by allowing old and new barriers to coexist
+physically until the migration is complete. Whether this is sufficient for KMS migrations,
+where the barrier key itself must be re-encrypted rather than storage copied, is an area
+that warrants further discussion.
+
+| Subcase | Description | Status | Related Code |
+|---------|-------------|--------|--------------|
+| 9a | Write coordination: active node only | Consistent with existing behavior | seal_manager.go:106 (SetSeal acquires lock) |
+| 9b | Standby credential freshness after rotation | Invalidation path not verified for seal config | internal/vault/invalidation.go (invalidation framework, to be extended) |
+| 9c | Migration state visibility across nodes | Not defined for namespace seals | -- |
+| 9d | Seal deletion coordination across nodes | Not defined | -- |
+
+```go
+// invalidation.go -- extend invalidation to cover seal config changes
+func (c *Core) invalidate(ctx context.Context, key string) {
+    switch {
+    // ... existing cases ...
+    case strings.HasPrefix(key, "sys/namespaces/") &&
+        strings.HasSuffix(key, "/config/seal"):
+        ns := c.extractNamespaceFromKey(key)
+        // reload credentials from storage on all nodes
+        c.sealManager.ReloadSealConfig(ctx, ns)
+    }
+}
+```
+
+## Proposed API Surface
+
+The following endpoint is proposed as the primary API for namespace seal lifecycle
+operations. It does not yet exist in the codebase.
+
+PUT /v1/sys/namespaces/path/config/seal accepts a seal configuration and applies the
+appropriate operation based on the current state of the namespace seal: create if no seal
+exists, rotation if the key is unchanged, or migration if the key changes. Sudo privilege
+is required.
+
+GET /v1/sys/namespaces/path/config/seal is explicitly not proposed. Seal configuration
+is declarative and not readable via the API, consistent with the treatment of sensitive
+configuration in other parts of OpenBao.
+
+The endpoint name follows the pattern established by issue #3333 and is distinct from the
+existing /seal endpoint, which triggers the seal operation, and from /seal-status, which
+reports the current sealed state.
+
+## Rationale and Alternatives
+
+Grouping all seal configuration operations under a single dedicated endpoint keeps the
+authorization model simple: one path, one privilege level, one audit trail. Distributing
+seal configuration changes across multiple existing endpoints (POST /sys/namespaces/path,
+PATCH, or others) would make it harder to apply consistent authorization requirements and
+would conflate administrative namespace management with security-critical seal operations.
+
+The decision not to expose seal configuration via GET follows from the declarative model:
+an operator declares the desired state, and the system applies it. Exposing the stored
+configuration would require careful handling of sensitive values such as key identifiers
+and provider-specific parameters that could assist an attacker in reconstructing the
+encryption topology.
+
+## Open Questions
+
+What should the semantics of deleting a namespace seal be? Should it trigger a migration
+to Shamir, render the namespace inaccessible, or require a prior explicit migration?
+
+Should migration between auto-seal types reuse the shadow-copy mechanism from issue #3333,
+or should it use a different in-place re-encryption approach?
+
+Should there be a status endpoint or field for ongoing migrations?
+
+How should standby nodes be notified of seal credential rotations, and what is an
+acceptable window during which a standby may use stale credentials?
+
+Should the rotation and migration subcases be exposed as a single endpoint that detects
+the appropriate operation, or as separate endpoints with distinct semantics?
+
+## Related Work
+
+Issue openbao/openbao#3333 -- Normal Namespace to Sealable Namespace migration, open,
+no milestone.

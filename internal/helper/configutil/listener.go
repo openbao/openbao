@@ -4,6 +4,7 @@
 package configutil
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/textproto"
@@ -178,7 +179,27 @@ type Listener struct {
 	// `disable_unauthed_generate_root_endpoints` value has to be set to false.
 	DisableUnauthedGenerateRootEndpoints    *bool `hcl:"-"`
 	DisableUnauthedGenerateRootEndpointsRaw any   `hcl:"disable_unauthed_generate_root_endpoints"`
+
+	DisableUnauthedMetadata    bool `hcl:"-"`
+	DisableUnauthedMetadataRaw any  `hcl:"disable_unauthed_metadata"`
 }
+
+func AddListenerConfigToContext(ctx context.Context, listener *Listener) context.Context {
+	if listener == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, ctxKeyListenerConfig{}, listener)
+}
+
+func GetListenerConfigToContext(ctx context.Context) *Listener {
+	listener, ok := ctx.Value(ctxKeyListenerConfig{}).(*Listener)
+	if ok {
+		return listener
+	}
+	return nil
+}
+
+type ctxKeyListenerConfig struct{}
 
 // AgentAPI allows users to select which parts of the Agent API they want enabled.
 type AgentAPI struct {
@@ -615,6 +636,16 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 		} else {
 			disabled := true
 			l.DisableUnauthedGenerateRootEndpoints = &disabled
+		}
+
+		// Unauthed Metadata
+		if l.DisableUnauthedMetadataRaw != nil {
+			l.DisableUnauthedMetadata, err = parseutil.ParseBool(l.DisableUnauthedMetadataRaw)
+			if err != nil {
+				return multierror.Prefix(fmt.Errorf("invalid value for disable_unauthed_metadata: %w", err), fmt.Sprintf("listeners.%d", i))
+			}
+		} else {
+			l.DisableUnauthedMetadata = false
 		}
 
 		// Validate forwarded certificate decoders. This list must be kept

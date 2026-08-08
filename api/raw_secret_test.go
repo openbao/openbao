@@ -111,6 +111,91 @@ func TestParseRawSecretNonStringTypes(t *testing.T) {
 	}
 }
 
+func TestParseRawSecretEscapes(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{
+			name: "simple escapes",
+			body: `{"data":{"v":"-----BEGIN\nline\ttab\r\n\"quoted\"\\slash"}}`,
+			want: "-----BEGIN\nline\ttab\r\n\"quoted\"\\slash",
+		},
+		{
+			name: "solidus and control escapes",
+			body: `{"data":{"v":"a\/b\bc\fd"}}`,
+			want: "a/b\bc\fd",
+		},
+		{
+			name: "unicode escape",
+			body: `{"data":{"v":"café €"}}`,
+			want: "café €",
+		},
+		{
+			name: "surrogate pair",
+			body: `{"data":{"v":"🔐"}}`,
+			want: "\U0001f510",
+		},
+		{
+			name: "unpaired surrogate becomes replacement char",
+			body: `{"data":{"v":"\ud83d"}}`,
+			want: "�",
+		},
+		{
+			name: "raw utf8 passes through",
+			body: `{"data":{"v":"schlüssel"}}`,
+			want: "schlüssel",
+		},
+		{
+			name: "empty string",
+			body: `{"data":{"v":""}}`,
+			want: "",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			secret, err := ParseRawSecret(strings.NewReader(tc.body))
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			got, ok := secret.Data["v"].([]byte)
+			if !ok {
+				t.Fatalf("v is %T, want []byte", secret.Data["v"])
+			}
+			if !bytes.Equal(got, []byte(tc.want)) {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// Invalid UTF-8 is replaced the same way encoding/json does it.
+func TestParseRawSecretInvalidUTF8(t *testing.T) {
+	// A lone continuation byte is valid JSON but invalid UTF-8.
+	body := "{\"data\":{\"v\":\"a\x80b\"}}"
+
+	plain, err := ParseSecret(strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("ParseSecret: %v", err)
+	}
+	raw, err := ParseRawSecret(strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("ParseRawSecret: %v", err)
+	}
+
+	want, ok := plain.Data["v"].(string)
+	if !ok {
+		t.Fatalf("ParseSecret returned %T for v", plain.Data["v"])
+	}
+	got, ok := raw.Data["v"].([]byte)
+	if !ok {
+		t.Fatalf("v is %T, want []byte", raw.Data["v"])
+	}
+	if !bytes.Equal(got, []byte(want)) {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 // RawSecret must have the same shape as Secret, with strings as []byte.
 func TestParseRawSecretMatchesParseSecret(t *testing.T) {
 	body := `{"request_id":"req-1","lease_id":"lease-1","lease_duration":3600,` +

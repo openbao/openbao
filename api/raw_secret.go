@@ -12,6 +12,8 @@ import (
 	"io"
 	"reflect"
 	"strings"
+	"unicode/utf16"
+	"unicode/utf8"
 )
 
 // RawSecret is a Secret whose string values are returned as []byte, so that
@@ -258,11 +260,136 @@ func unquoteJSONString(raw []byte) ([]byte, error) {
 	if len(raw) < 2 || raw[0] != '"' || raw[len(raw)-1] != '"' {
 		return nil, errors.New("malformed JSON string")
 	}
+	return unescape(raw[1 : len(raw)-1])
+}
 
-	raw = raw[1 : len(raw)-1]
-	if bytes.IndexByte(raw, '\\') >= 0 {
-		return nil, errors.New("escape sequences in strings are not supported")
+// unescape resolves JSON string escapes per RFC 8259 section 7, matching what
+// encoding/json does, including replacing invalid UTF-8 with utf8.RuneError.
+// encoding/json only exposes this through a string, and the equivalent
+// jsontext.AppendUnquote is behind GOEXPERIMENT=jsonv2.
+func unescape(raw []byte) ([]byte, error) {
+	valid := utf8.Valid(raw)
+
+	// Escapes only ever shorten the input, so its length is enough unless
+	// bytes get replaced by utf8.RuneError, which encodes to three bytes.
+	size := len(raw)
+	if !valid {
+		size *= 3
 	}
 
-	return append(make([]byte, 0, len(raw)), raw...), nil
+	out := make([]byte, 0, size)
+	if valid && bytes.IndexByte(raw, '\\') < 0 {
+		return append(out, raw...), nil
+	}
+
+	for i := 0; i < len(raw); {
+		if raw[i] != '\\' {
+			if raw[i] < utf8.RuneSelf {
+				out = append(out, raw[i])
+				i++
+				continue
+			}
+			r, width := utf8.DecodeRune(raw[i:])
+			if r == utf8.RuneError && width == 1 {
+				out = utf8.AppendRune(out, utf8.RuneError)
+				i++
+				continue
+			}
+			out = append(out, raw[i:i+width]...)
+			i += width
+			continue
+		}
+
+		i++
+		if i >= len(raw) {
+			return nil, errors.New("truncated escape sequence")
+		}
+
+		switch raw[i] {
+		case '"':
+			out = append(out, '"')
+			i++
+		case '\\':
+			out = append(out, '\\')
+			i++
+		case '/':
+			out = append(out, '/')
+			i++
+		case 'b':
+			out = append(out, '\b')
+			i++
+		case 'f':
+			out = append(out, '\f')
+			i++
+		case 'n':
+			out = append(out, '\n')
+			i++
+		case 'r':
+			out = append(out, '\r')
+			i++
+		case 't':
+			out = append(out, '\t')
+			i++
+		case 'u':
+			r, width, err := decodeUnicodeEscape(raw[i-1:])
+			if err != nil {
+				return nil, err
+			}
+			out = utf8.AppendRune(out, r)
+			i += width - 1
+		default:
+			return nil, fmt.Errorf("invalid escape character %q", raw[i])
+		}
+	}
+
+	return out, nil
+}
+
+// decodeUnicodeEscape decodes a \uXXXX escape at the start of raw, combining a
+// surrogate pair if one follows, and returns the bytes consumed. Unpaired
+// surrogates decode to utf8.RuneError.
+func decodeUnicodeEscape(raw []byte) (rune, int, error) {
+	r, ok := decodeHex4(raw)
+	if !ok {
+		return 0, 0, errors.New("invalid \\u escape sequence")
+	}
+
+	if !utf16.IsSurrogate(r) {
+		return r, 6, nil
+	}
+
+	if len(raw) >= 12 && raw[6] == '\\' && raw[7] == 'u' {
+		if r2, ok := decodeHex4(raw[6:]); ok {
+			if combined := utf16.DecodeRune(r, r2); combined != utf8.RuneError {
+				return combined, 12, nil
+			}
+		}
+	}
+
+	return utf8.RuneError, 6, nil
+}
+
+// decodeHex4 reads the four hex digits of a \uXXXX escape at the start of raw.
+func decodeHex4(raw []byte) (rune, bool) {
+	if len(raw) < 6 {
+		return 0, false
+	}
+
+	var r rune
+	for _, c := range raw[2:6] {
+		var digit rune
+		switch {
+		case c >= '0' && c <= '9':
+			digit = rune(c - '0')
+		case c >= 'a' && c <= 'f':
+			digit = rune(c-'a') + 10
+		case c >= 'A' && c <= 'F':
+			digit = rune(c-'A') + 10
+		default:
+			return 0, false
+		}
+		r = r*16 + digit
+	}
+
+	return r, true
 }

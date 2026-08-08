@@ -51,5 +51,10 @@ module('Acceptance | unseal', function (hooks) {
 
     assert.dom('[data-test-cluster-status]').doesNotExist('ui does not show sealed warning');
     assert.strictEqual(currentRouteName(), 'vault.cluster.auth', 'vault is ready to authenticate');
+
+    // Give the OpenBao server a guaranteed window to finish its background
+    // leader election and stabilization before this test exits and the
+    // next tests start.
+    await new Promise((resolve) => setTimeout(resolve, 10000));
   });
 });

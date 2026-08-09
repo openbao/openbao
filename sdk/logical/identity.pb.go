@@ -469,7 +469,7 @@ func (x *MFARequirement) GetMFAConstraints() map[string]*MFAConstraintAny {
 	return nil
 }
 
-type MFASelfEnroll struct {
+type TOTPSelfEnroll struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MFARequestID  string                 `protobuf:"bytes,1,opt,name=mfa_request_id,json=mfaRequestId,proto3" json:"mfa_request_id,omitempty"`
 	TOTPSecret    string                 `protobuf:"bytes,2,opt,name=totp_secret,json=totpSecret,proto3" json:"totp_secret,omitempty"`
@@ -478,20 +478,20 @@ type MFASelfEnroll struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *MFASelfEnroll) Reset() {
-	*x = MFASelfEnroll{}
+func (x *TOTPSelfEnroll) Reset() {
+	*x = TOTPSelfEnroll{}
 	mi := &file_sdk_logical_identity_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *MFASelfEnroll) String() string {
+func (x *TOTPSelfEnroll) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*MFASelfEnroll) ProtoMessage() {}
+func (*TOTPSelfEnroll) ProtoMessage() {}
 
-func (x *MFASelfEnroll) ProtoReflect() protoreflect.Message {
+func (x *TOTPSelfEnroll) ProtoReflect() protoreflect.Message {
 	mi := &file_sdk_logical_identity_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -503,26 +503,26 @@ func (x *MFASelfEnroll) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use MFASelfEnroll.ProtoReflect.Descriptor instead.
-func (*MFASelfEnroll) Descriptor() ([]byte, []int) {
+// Deprecated: Use TOTPSelfEnroll.ProtoReflect.Descriptor instead.
+func (*TOTPSelfEnroll) Descriptor() ([]byte, []int) {
 	return file_sdk_logical_identity_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *MFASelfEnroll) GetMFARequestID() string {
+func (x *TOTPSelfEnroll) GetMFARequestID() string {
 	if x != nil {
 		return x.MFARequestID
 	}
 	return ""
 }
 
-func (x *MFASelfEnroll) GetTOTPSecret() string {
+func (x *TOTPSelfEnroll) GetTOTPSecret() string {
 	if x != nil {
 		return x.TOTPSecret
 	}
 	return ""
 }
 
-func (x *MFASelfEnroll) GetTOTPURL() string {
+func (x *TOTPSelfEnroll) GetTOTPURL() string {
 	if x != nil {
 		return x.TOTPURL
 	}
@@ -580,8 +580,8 @@ const file_sdk_logical_identity_proto_rawDesc = "" +
 	"\x0fmfa_constraints\x18\x02 \x03(\v2+.logical.MFARequirement.MFAConstraintsEntryR\x0emfaConstraints\x1a\\\n" +
 	"\x13MFAConstraintsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
-	"\x05value\x18\x02 \x01(\v2\x19.logical.MFAConstraintAnyR\x05value:\x028\x01\"q\n" +
-	"\rMFASelfEnroll\x12$\n" +
+	"\x05value\x18\x02 \x01(\v2\x19.logical.MFAConstraintAnyR\x05value:\x028\x01\"r\n" +
+	"\x0eTOTPSelfEnroll\x12$\n" +
 	"\x0emfa_request_id\x18\x01 \x01(\tR\fmfaRequestID\x12\x1f\n" +
 	"\vtotp_secret\x18\x02 \x01(\tR\n" +
 	"totpSecret\x12\x19\n" +
@@ -607,7 +607,7 @@ var file_sdk_logical_identity_proto_goTypes = []any{
 	(*MFAMethodID)(nil),      // 3: logical.MFAMethodID
 	(*MFAConstraintAny)(nil), // 4: logical.MFAConstraintAny
 	(*MFARequirement)(nil),   // 5: logical.MFARequirement
-	(*MFASelfEnroll)(nil),    // 6: logical.MFASelfEnroll
+	(*TOTPSelfEnroll)(nil),   // 6: logical.TOTPSelfEnroll
 	nil,                      // 7: logical.Entity.MetadataEntry
 	nil,                      // 8: logical.Alias.MetadataEntry
 	nil,                      // 9: logical.Alias.CustomMetadataEntry

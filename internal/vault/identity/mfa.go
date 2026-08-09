@@ -155,8 +155,8 @@ type MFABackend interface {
 	MemDBMFALoginEnforcementConfigByNameAndNamespace(string, string) (*mfa.MFAEnforcementConfig, error)
 	MemDBUpsertMFALoginEnforcementConfig(context.Context, *mfa.MFAEnforcementConfig) error
 
-	// MFASelfEnrollment methods
-	ConfirmMFASelfEnroll(string, string) error
+	// TOTPSelfEnrollment methods
+	ConfirmTOTPSelfEnroll(context.Context, string, string) error
 }
 
 func (i *IdentityStore) handleMFAMethodUpdateCommon(ctx context.Context, req *logical.Request, d *framework.FieldData, methodType string) (*logical.Response, error) {
@@ -468,25 +468,6 @@ func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, re
 	}
 
 	//nolint:nilnil
-	return nil, nil
-}
-
-func (i *IdentityStore) handleMFAMethodTOTPSelfEnrollmentConfirmation(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	requestID := d.Get("request_id")
-	if requestID == "" {
-		return logical.ErrorResponse("missing request ID"), nil
-	}
-
-	totpCode := d.Get("totp_code")
-	if totpCode == "" {
-		return logical.ErrorResponse("missing totp code"), nil
-	}
-
-	err := i.mfaBackend.ConfirmMFASelfEnroll(requestID.(string), totpCode.(string))
-	if err != nil {
-		return nil, err
-	}
-
 	return nil, nil
 }
 

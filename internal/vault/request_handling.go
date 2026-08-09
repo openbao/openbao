@@ -1989,18 +1989,19 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 						return nil, nil, err
 					}
 
-					selfEnrollment := &MFASelfEnrollment{
+					selfEnrollment := &TOTPSelfEnrollment{
 						RequestID:     mfaRequestID,
 						EntityID:      auth.EntityID,
 						TOTPSecret:    secret.Secret(),
+						TOTPMethodID:  methodConfig.ID,
 						TimeOfStorage: time.Now(),
 					}
-					if err := c.SaveMFASelfEnroll(selfEnrollment); err != nil {
+					if err := c.SaveTOTPSelfEnroll(selfEnrollment); err != nil {
 						return nil, nil, err
 					}
 
 					resp.Auth = &logical.Auth{
-						MFASelfEnroll: &logical.MFASelfEnroll{
+						TOTPSelfEnroll: &logical.TOTPSelfEnroll{
 							MFARequestID: mfaRequestID,
 							TOTPSecret:   secret.Secret(),
 							TOTPURL:      totpURL,

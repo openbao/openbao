@@ -43,7 +43,7 @@ func LogicalResponseToHTTPResponse(input *Response) *HTTPResponse {
 			TokenType:        input.Auth.TokenType.String(),
 			Orphan:           input.Auth.Orphan,
 			MFARequirement:   input.Auth.MFARequirement,
-			MFASelfEnroll:    input.Auth.MFASelfEnroll,
+			TOTPSelfEnroll:   input.Auth.TOTPSelfEnroll,
 			NumUses:          input.Auth.NumUses,
 		}
 	}
@@ -115,7 +115,7 @@ type HTTPAuth struct {
 	TokenType        string            `json:"token_type"`
 	Orphan           bool              `json:"orphan"`
 	MFARequirement   *MFARequirement   `json:"mfa_requirement"`
-	MFASelfEnroll    *MFASelfEnroll    `json:"mfa_self_enroll"`
+	TOTPSelfEnroll   *TOTPSelfEnroll   `json:"mfa_self_enroll"`
 	NumUses          int               `json:"num_uses"`
 }
 

@@ -7,17 +7,17 @@ import (
 	"github.com/openbao/openbao/sdk/v2/queue"
 )
 
-// NewMFASelfEnrollmentQueue initializes the internal data structures and returns a new
+// NewtotpSelfEnrollmentQueue initializes the internal data structures and returns a new
 // PriorityQueue
-func NewMFASelfEnrollmentQueue() *MFASelfEnrollmentQueue {
+func NewtotpSelfEnrollmentQueue() *totpSelfEnrollmentQueue {
 	pq := queue.New()
-	loginPQ := &MFASelfEnrollmentQueue{
+	loginPQ := &totpSelfEnrollmentQueue{
 		wrapped: pq,
 	}
 	return loginPQ
 }
 
-type MFASelfEnrollmentQueue struct {
+type totpSelfEnrollmentQueue struct {
 	wrapped *queue.PriorityQueue
 
 	// Here is a scenarios in which the lock is needed. For example, suppose
@@ -30,7 +30,7 @@ type MFASelfEnrollmentQueue struct {
 }
 
 // Len returns the count of items in the Priority Queue
-func (pq *MFASelfEnrollmentQueue) Len() int {
+func (pq *totpSelfEnrollmentQueue) Len() int {
 	pq.l.Lock()
 	defer pq.l.Unlock()
 	return pq.wrapped.Len()
@@ -41,7 +41,7 @@ func (pq *MFASelfEnrollmentQueue) Len() int {
 // functions directly. Items must have unique Keys, and Items in the queue
 // cannot be updated. To modify an Item, users must first remove it and re-push
 // it after modifications
-func (pq *MFASelfEnrollmentQueue) Push(resp *MFASelfEnrollment) error {
+func (pq *totpSelfEnrollmentQueue) Push(resp *TOTPSelfEnrollment) error {
 	pq.l.Lock()
 	defer pq.l.Unlock()
 
@@ -56,7 +56,7 @@ func (pq *MFASelfEnrollmentQueue) Push(resp *MFASelfEnrollment) error {
 
 // PopByKey searches the queue for an item with the given key and removes it
 // from the queue if found. Returns nil if not found.
-func (pq *MFASelfEnrollmentQueue) PopByKey(reqID string) (*MFASelfEnrollment, error) {
+func (pq *totpSelfEnrollmentQueue) PopByKey(reqID string) (*TOTPSelfEnrollment, error) {
 	pq.l.Lock()
 	defer pq.l.Unlock()
 
@@ -65,27 +65,15 @@ func (pq *MFASelfEnrollmentQueue) PopByKey(reqID string) (*MFASelfEnrollment, er
 		return nil, err
 	}
 
-	return item.Value.(*MFASelfEnrollment), nil
+	return item.Value.(*TOTPSelfEnrollment), nil
 }
 
-func (pq *MFASelfEnrollmentQueue) PeekMFASelfEnrollByID(reqID string) (*MFASelfEnrollment, error) {
-	pq.l.RLock()
-	defer pq.l.RUnlock()
-
-	item, err := pq.wrapped.PeekByKey(reqID)
-	if err != nil || item == nil {
-		return nil, err
-	}
-
-	return item.Value.(*MFASelfEnrollment), nil
-}
-
-// RemoveExpiredMfaSelfEnrollment pops elements of the queue and check
+// RemoveExpiredTOTPSelfEnrollment pops elements of the queue and check
 // if the entry has expired or not. If the entry has not expired, it pushes
 // back the entry to the queue. It returns false if there is no expired element
 // left to be removed, true otherwise.
 // cutoffTime should normally be time.Now() except for tests.
-func (pq *MFASelfEnrollmentQueue) RemoveExpiredMfaSelfEnrollment(expiryTime time.Duration, cutoffTime time.Time) error {
+func (pq *totpSelfEnrollmentQueue) RemoveExpiredTOTPSelfEnrollment(expiryTime time.Duration, cutoffTime time.Time) error {
 	pq.l.Lock()
 	defer pq.l.Unlock()
 
@@ -97,7 +85,7 @@ func (pq *MFASelfEnrollmentQueue) RemoveExpiredMfaSelfEnrollment(expiryTime time
 		return nil
 	}
 
-	mfaResp := item.Value.(*MFASelfEnrollment)
+	mfaResp := item.Value.(*TOTPSelfEnrollment)
 
 	storageTime := mfaResp.TimeOfStorage
 	if cutoffTime.Before(storageTime.Add(expiryTime)) {

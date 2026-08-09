@@ -94,7 +94,7 @@ message MFARequirement {
 	map<string, MFAConstraintAny> mfa_constraints = 2;
 }
 
-message MFASelfEnroll {
+message TOTPSelfEnroll {
 	string mfa_request_id = 1;
 	string totp_secret = 2;
 	string totp_url = 3;

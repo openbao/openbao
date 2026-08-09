@@ -98,9 +98,9 @@ const (
 	// MfaAuthResponse when the value is not specified in the server config
 	defaultMFAAuthResponseTTL = 300 * time.Second
 
-	// defaultMFASelfEnrollmentTTL is the default duration that OpenBao will
+	// defaultTOTPSelfEnrollmentTTL is the default duration that OpenBao will
 	// allow the self enrollment to be verified
-	defaultMFASelfEnrollmentTTL = 300 * time.Second
+	defaultTOTPSelfEnrollmentTTL = 300 * time.Second
 
 	// ForwardSSCTokenToActive is the value that must be set in the
 	// forwardToActive to trigger forwarding if a perf standby encounters
@@ -393,9 +393,9 @@ type Core struct {
 	mfaResponseAuthQueue     *LoginMFAPriorityQueue
 	mfaResponseAuthQueueLock sync.Mutex
 
-	// mfaSelfEnrollmentQueue is used to cache the auth response per request ID
-	mfaSelfEnrollmentQueue     *MFASelfEnrollmentQueue
-	mfaSelfEnrollmentQueueLock sync.Mutex
+	// totpSelfEnrollmentQueue is used to cache the auth response per request ID
+	totpSelfEnrollmentQueue     *totpSelfEnrollmentQueue
+	totpSelfEnrollmentQueueLock sync.Mutex
 
 	// metricSink is the destination for all metrics that have
 	// a cluster label.
@@ -2357,7 +2357,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	}
 
 	c.setupCachedMFAResponseAuth()
-	c.setupMFASelfEnrollment()
+	c.setupTOTPSelfEnrollment()
 	if err := c.loadLoginMFAConfigs(ctx); err != nil {
 		return err
 	}
@@ -3205,10 +3205,11 @@ type MFACachedAuthResponse struct {
 	RequestID             string
 }
 
-type MFASelfEnrollment struct {
+type TOTPSelfEnrollment struct {
 	RequestID     string
 	EntityID      string
 	TOTPSecret    string
+	TOTPMethodID  string
 	TimeOfStorage time.Time
 }
 
@@ -3236,11 +3237,11 @@ func (c *Core) setupCachedMFAResponseAuth() {
 	}()
 }
 
-func (c *Core) setupMFASelfEnrollment() {
-	c.mfaSelfEnrollmentQueueLock.Lock()
-	c.mfaSelfEnrollmentQueue = NewMFASelfEnrollmentQueue()
-	mfaSelfEnrollQueue := c.mfaSelfEnrollmentQueue
-	c.mfaSelfEnrollmentQueueLock.Unlock()
+func (c *Core) setupTOTPSelfEnrollment() {
+	c.totpSelfEnrollmentQueueLock.Lock()
+	c.totpSelfEnrollmentQueue = NewtotpSelfEnrollmentQueue()
+	totpSelfEnrollQueue := c.totpSelfEnrollmentQueue
+	c.totpSelfEnrollmentQueueLock.Unlock()
 
 	ctx := c.activeContext.Load()
 
@@ -3251,7 +3252,7 @@ func (c *Core) setupMFASelfEnrollment() {
 			case <-ctx.Done():
 				return
 			case <-ticker:
-				err := mfaSelfEnrollQueue.RemoveExpiredMfaSelfEnrollment(defaultMFASelfEnrollmentTTL, time.Now())
+				err := totpSelfEnrollQueue.RemoveExpiredTOTPSelfEnrollment(defaultTOTPSelfEnrollmentTTL, time.Now())
 				if err != nil {
 					c.Logger().Error("failed to remove stale MFA self enrollment", "error", err)
 				}
@@ -3467,26 +3468,26 @@ func (c *Core) SaveMFAResponseAuth(respAuth *MFACachedAuthResponse) error {
 	return c.mfaResponseAuthQueue.Push(respAuth)
 }
 
-// PopMFASelfEnrollByID pops an item from the mfaSelfEnrollmentQueueLock by ID
+// PopTOTPSelfEnrollByID pops an item from the totpSelfEnrollmentQueueLock by ID
 // it returns the self enrollment or an error
-func (c *Core) PopMFASelfEnrollByID(reqID string) (*MFASelfEnrollment, error) {
+func (c *Core) PopTOTPSelfEnrollByID(reqID string) (*TOTPSelfEnrollment, error) {
 	if c.standby.Load() {
 		return nil, logical.ErrReadOnly
 	}
-	c.mfaSelfEnrollmentQueueLock.Lock()
-	defer c.mfaSelfEnrollmentQueueLock.Unlock()
-	return c.mfaSelfEnrollmentQueue.PopByKey(reqID)
+	c.totpSelfEnrollmentQueueLock.Lock()
+	defer c.totpSelfEnrollmentQueueLock.Unlock()
+	return c.totpSelfEnrollmentQueue.PopByKey(reqID)
 }
 
-// SaveMFASelfEnroll pushes an MFASelfEnrollment to the mfaSelfEnrollmentQueue.
+// SaveTOTPSelfEnroll pushes an TOTPSelfEnrollment to the totpSelfEnrollmentQueue.
 // it returns an error in case of failure
-func (c *Core) SaveMFASelfEnroll(respAuth *MFASelfEnrollment) error {
+func (c *Core) SaveTOTPSelfEnroll(respAuth *TOTPSelfEnrollment) error {
 	if c.standby.Load() {
 		return logical.ErrReadOnly
 	}
-	c.mfaSelfEnrollmentQueueLock.Lock()
-	defer c.mfaSelfEnrollmentQueueLock.Unlock()
-	return c.mfaSelfEnrollmentQueue.Push(respAuth)
+	c.totpSelfEnrollmentQueueLock.Lock()
+	defer c.totpSelfEnrollmentQueueLock.Unlock()
+	return c.totpSelfEnrollmentQueue.Push(respAuth)
 }
 
 type InFlightRequests struct {

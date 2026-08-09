@@ -126,7 +126,7 @@ export default ApplicationAdapter.extend({
         totp_code: totp_code,
       },
     };
-    return this.ajax('/v1/mfa/method/totp/confirm-self-enroll', 'POST', options);
+    return this.ajax('/v1/sys/mfa/self-enroll/totp', 'POST', options);
   },
 
   urlFor(endpoint) {

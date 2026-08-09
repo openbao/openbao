@@ -356,39 +356,9 @@ must use the `openbao-hsm-ubi` instead of the Alpine-based `openbao-hsm` image.
 
 :::
 
-## Configuring the PKCS#11 Seal
+## Configure OpenBao
 
-Below is an exemplary PKCS#11 seal configuration stanza to be placed in the
-OpenBao server configuration. Replace the `lib` value with the path that you
-placed the PKCS#11 library at in the previous step, and set `slot`, `pin` and
-`key_label` based on the values you chose during slot initialization and key
-material generation.
+Continue with the [generic PKCS#11 guide](generic.mdx) to learn how to configure
+OpenBao to use the PKCS#11 token you just set up.
 
-```hcl
-seal "pkcs11" {
-  lib       = "/usr/local/lib/libcs_pkcs11_R3.so"
-  slot      = 1
-  pin       = "1234"
-  key_label = "bao-root-key-aes"
-}
-```
-
-See [PKCS#11 Seal](../../../configuration/seal/pkcs11.mdx) for complete documentation
-on all available options, or how to set the above values via environment
-variables instead.
-
-## Initializing OpenBao
-
-With the key material, environment variables, dynamic library and
-server configuration all in place, start the OpenBao server. Unless
-[Self-initialization](../../../configuration/self-init.mdx) is used or a [Seal
-Migration](../../../concepts/seal.mdx#seal-migration) is performed, the final step is
-to manually initialize OpenBao:
-
-```shell-session
-$ bao operator init
-```
-
-If all is configured correctly, the server should unseal automatically following
-the initialization. If this is not the case, check the server logs for error
-messages.
+- PKCS#11 module path: `/usr/local/lib/libcs_pkcs11_R3.so`

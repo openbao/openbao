@@ -154,25 +154,6 @@ When working with containers then use the glibc version for the
 
 :::
 
-### Configuring the PKCS#11 Seal
-
-Below is an exemplary PKCS#11 seal configuration section to be placed in the
-OpenBao server configuration.
-Replace the `lib` value with the path, at which you installed the PKCS#11
-library in the previous step.
-
-```hcl
-seal "pkcs11" {
-  lib       = "/usr/lib/nitrokey/libnethsm_pkcs11.so"
-  slot      = "0"
-  key_label = "bao-root-rsa"
-  pin       = "OperatorOperator"
-}
-```
-
-Refer to [PKCS#11 Seal](../../../configuration/seal/pkcs11.mdx) for complete
-documentation on all available options.
-
 ### Configuring the NetHSM PKCS#11 library
 
 A configuration file is used to make nethsm-pkcs11 to connect to the NetHSM.
@@ -196,21 +177,6 @@ actual domain of the NetHSM.
 For a comprehensive documentation on nethsm-pkcs11 configuration refer to
 [the official documentation](https://docs.nitrokey.com/nethsm/pkcs11-setup#configuration).
 
-## Initializing OpenBao
-
-Unless
-[Self-initialization](../../../configuration/self-init.mdx) is used or a [Seal
-Migration](../../../concepts/seal.mdx#seal-migration) is performed, the final step is
-to manually initialize OpenBao:
-
-```sh
-$ bao operator init
-```
-
-If everything is configured correctly, the server should auto-unseal following
-the initialization. If this is not the case, check the server logs for error
-messages.
-
 :::note
 
 The NetHSM has to be in operational state when OpenBao attempts auto-unseal.
@@ -231,3 +197,10 @@ and
 functionality for information on NetHSM disaster recovery and redundancy.
 
 :::
+
+## Configure OpenBao
+
+Continue with the [generic PKCS#11 guide](generic.mdx) to learn how to configure
+OpenBao to use the PKCS#11 token you just set up.
+
+- PKCS#11 module path: `/usr/lib/nitrokey/libnethsm_pkcs11.so`

@@ -7,9 +7,9 @@ import (
 	"github.com/openbao/openbao/sdk/v2/queue"
 )
 
-// NewtotpSelfEnrollmentQueue initializes the internal data structures and returns a new
+// NewTOTPSelfEnrollmentQueue initializes the internal data structures and returns a new
 // PriorityQueue
-func NewtotpSelfEnrollmentQueue() *totpSelfEnrollmentQueue {
+func NewTOTPSelfEnrollmentQueue() *totpSelfEnrollmentQueue {
 	pq := queue.New()
 	loginPQ := &totpSelfEnrollmentQueue{
 		wrapped: pq,

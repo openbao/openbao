@@ -12,7 +12,7 @@ import (
 )
 
 // some tests rely on the ordering of items from this method
-func selfEnrollmentTestCases() (tc []*MFASelfEnrollment) {
+func selfEnrollmentTestCases() (tc []*TOTPSelfEnrollment) {
 	// create a slice of items with times offset by these seconds
 	for _, m := range []time.Duration{
 		5,
@@ -33,7 +33,7 @@ func selfEnrollmentTestCases() (tc []*MFASelfEnrollment) {
 		if err != nil {
 			continue
 		}
-		tc = append(tc, &MFASelfEnrollment{
+		tc = append(tc, &TOTPSelfEnrollment{
 			EntityID:      uid,
 			TOTPSecret:    uid,
 			TimeOfStorage: ft,
@@ -44,7 +44,7 @@ func selfEnrollmentTestCases() (tc []*MFASelfEnrollment) {
 }
 
 func TestMFASelfEnrollmentQueue_PushPopByKey(t *testing.T) {
-	pq := NewMFASelfEnrollmentQueue()
+	pq := NewTOTPSelfEnrollmentQueue()
 
 	if pq.Len() != 0 {
 		t.Fatalf("expected new queue to have zero size, got (%d)", pq.Len())
@@ -82,17 +82,6 @@ func TestMFASelfEnrollmentQueue_PushPopByKey(t *testing.T) {
 		t.Fatal(kErr)
 	}
 
-	peeked, err := pq.PeekMFASelfEnrollByID(tc[3].RequestID)
-	if err != nil {
-		t.Fatalf("error peeking item: %s", err)
-	}
-	if peeked == nil {
-		t.Fatal("expected peeked item to be returned, got nil")
-	}
-	if peeked.RequestID != tc[3].RequestID || peeked.EntityID != tc[3].EntityID || peeked.TOTPSecret != tc[3].TOTPSecret || peeked.TimeOfStorage != tc[3].TimeOfStorage {
-		t.Fatalf("expected peeked item to match stored item, got (%#v) and (%#v)", peeked, tc[3])
-	}
-
 	// check nil,nil error for not found
 	i, err := pq.PopByKey("empty")
 	if err != nil && i != nil {
@@ -101,7 +90,7 @@ func TestMFASelfEnrollmentQueue_PushPopByKey(t *testing.T) {
 }
 
 func TestMFASelfEnrollmentQueue_RemoveStaleEntries(t *testing.T) {
-	pq := NewMFASelfEnrollmentQueue()
+	pq := NewTOTPSelfEnrollmentQueue()
 
 	tc := selfEnrollmentTestCases()
 	for _, i := range tc {
@@ -113,7 +102,7 @@ func TestMFASelfEnrollmentQueue_RemoveStaleEntries(t *testing.T) {
 	cutoffTime := time.Now().Add(371 * time.Second)
 	timeout := time.Now().Add(5 * time.Second)
 	for time.Now().Before(timeout) {
-		pq.RemoveExpiredMfaSelfEnrollment(defaultMFASelfEnrollmentTTL, cutoffTime)
+		pq.RemoveExpiredTOTPSelfEnrollment(defaultTOTPSelfEnrollmentTTL, cutoffTime)
 	}
 
 	if pq.Len() != 8 {

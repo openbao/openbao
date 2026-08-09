@@ -3239,7 +3239,7 @@ func (c *Core) setupCachedMFAResponseAuth() {
 
 func (c *Core) setupTOTPSelfEnrollment() {
 	c.totpSelfEnrollmentQueueLock.Lock()
-	c.totpSelfEnrollmentQueue = NewtotpSelfEnrollmentQueue()
+	c.totpSelfEnrollmentQueue = NewTOTPSelfEnrollmentQueue()
 	totpSelfEnrollQueue := c.totpSelfEnrollmentQueue
 	c.totpSelfEnrollmentQueueLock.Unlock()
 

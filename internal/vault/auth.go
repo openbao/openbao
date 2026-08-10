@@ -152,7 +152,7 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *rout
 	var backend logical.Backend
 	// Create the new backend
 	sysView := c.mountEntrySysView(entry)
-	backend, entry.RunningSha256, err = c.newCredentialBackend(ctx, entry, sysView, view)
+	backend, err = c.newCredentialBackend(ctx, entry, sysView, view)
 	if err != nil {
 		return err
 	}
@@ -169,14 +169,6 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *rout
 	backendType := backend.Type()
 	if backendType != logical.TypeCredential {
 		return fmt.Errorf("cannot mount %q of type %q as an auth backend", entry.Type, backendType)
-	}
-	// update the entry running version with the configured version, which was verified during registration.
-	entry.RunningVersion = entry.Version
-	if entry.RunningVersion == "" {
-		// don't set the running version to a builtin if it is running as an external plugin
-		if entry.RunningSha256 == "" {
-			entry.RunningVersion = versions.GetBuiltinVersion(consts.PluginTypeCredential, entry.Type)
-		}
 	}
 
 	// Update the auth table
@@ -1129,7 +1121,7 @@ func (c *Core) setupCredential(ctx context.Context, entry *routing.MountEntry) (
 	// Initialize the backend
 	var backend logical.Backend
 	sysView := c.mountEntrySysView(entry)
-	backend, entry.RunningSha256, err = c.newCredentialBackend(ctx, entry, sysView, view)
+	backend, err = c.newCredentialBackend(ctx, entry, sysView, view)
 	if err != nil {
 		c.logger.Error("failed to create credential entry", "path", entry.Path, "error", err)
 		if !c.isMountable(ctx, entry, consts.PluginTypeCredential) {
@@ -1138,14 +1130,6 @@ func (c *Core) setupCredential(ctx context.Context, entry *routing.MountEntry) (
 
 		c.logger.Warn("skipping plugin-based auth entry", "path", entry.Path)
 	} else {
-		// update the entry running version with the configured
-		// version, which was verified during registration.
-		entry.RunningVersion = entry.Version
-		if entry.RunningVersion == "" && entry.RunningSha256 == "" {
-			// don't set the running version to a builtin if it is running as an external plugin
-			entry.RunningVersion = versions.GetBuiltinVersion(consts.PluginTypeCredential, entry.Type)
-		}
-
 		// Do not start up deprecated builtin plugins. If this is a major
 		// upgrade, stop unsealing and shutdown. If we've already mounted this
 		// plugin, skip backend initialization and mount the data for posterity.
@@ -1250,35 +1234,39 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 
 // newCredentialBackend is used to create and configure a new credential backend by name.
 // It also returns the SHA256 of the plugin, if available.
-func (c *Core) newCredentialBackend(ctx context.Context, entry *routing.MountEntry, sysView logical.SystemView, view logical.Storage) (logical.Backend, string, error) {
+func (c *Core) newCredentialBackend(ctx context.Context, entry *routing.MountEntry, sysView logical.SystemView, view logical.Storage) (logical.Backend, error) {
 	t := entry.Type
 	if alias, ok := credentialAliases[t]; ok {
 		t = alias
 	}
 
-	var runningSha string
+	var runningSha, runningVersion string
+
 	f, ok := c.credentialBackends[t]
 	if !ok {
 		plug, err := c.pluginCatalog.Get(ctx, t, consts.PluginTypeCredential, entry.Version)
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 		if plug == nil {
 			errContext := t
 			if entry.Version != "" {
 				errContext += fmt.Sprintf(", version=%s", entry.Version)
 			}
-			return nil, "", fmt.Errorf("%w: %s", ErrPluginNotFound, errContext)
+			return nil, fmt.Errorf("%w: %s", ErrPluginNotFound, errContext)
 		}
-		if len(plug.Sha256) > 0 {
-			runningSha = hex.EncodeToString(plug.Sha256)
-		}
+
+		runningSha = hex.EncodeToString(plug.Sha256)
+		runningVersion = plug.Version
 
 		f = plugin.Factory
 		if !plug.Builtin {
 			f = wrapFactoryCheckPerms(c, plugin.Factory)
 		}
+	} else {
+		runningVersion = versions.GetBuiltinVersion(consts.PluginTypeCredential, t)
 	}
+
 	// Set up conf to pass in plugin_name
 	conf := make(map[string]string)
 	maps.Copy(conf, entry.Options)
@@ -1306,13 +1294,16 @@ func (c *Core) newCredentialBackend(ctx context.Context, entry *routing.MountEnt
 
 	b, err := f(ctx, config)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	if b == nil {
-		return nil, "", fmt.Errorf("nil backend of type %q returned from factory", t)
+		return nil, fmt.Errorf("nil backend of type %q returned from factory", t)
 	}
 
-	return b, runningSha, nil
+	entry.RunningSha256 = runningSha
+	entry.RunningVersion = runningVersion
+
+	return b, nil
 }
 
 // defaultAuthTable creates a default auth table

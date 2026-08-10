@@ -75,7 +75,6 @@ For example, to use the `pkcs11` seal, you must install the `pkcs11` KMS plugin:
 ```hcl
 plugin "kms" "pkcs11" {
   command = "openbao-plugin-kms-pkcs11"
-  sha256sum = "..."
 }
 
 seal "pkcs11" {

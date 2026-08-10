@@ -502,6 +502,10 @@ func (b *SystemBackend) handlePluginCatalogUpdate(ctx context.Context, _ *logica
 		return logical.ErrorResponse("Could not decode SHA-256 value from Hex"), err
 	}
 
+	if len(sha256Bytes) != 32 {
+		return logical.ErrorResponse("Decoded SHA-256 value is not 32 bytes"), nil
+	}
+
 	err = b.Core.pluginCatalog.Set(ctx, pluginName, pluginType, pluginVersion, parts[0], args, env, sha256Bytes, oci)
 	if err != nil {
 		if errors.Is(err, ErrPluginNotFound) || strings.HasPrefix(err.Error(), "plugin version mismatch") {

@@ -3207,6 +3207,8 @@ type MFACachedAuthResponse struct {
 
 type TOTPSelfEnrollment struct {
 	RequestID     string
+	RequestNSID   string
+	RequestNSPath string
 	EntityID      string
 	TOTPSecret    string
 	TOTPMethodID  string

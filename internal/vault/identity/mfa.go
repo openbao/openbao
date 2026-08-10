@@ -154,9 +154,6 @@ type MFABackend interface {
 	MemDBMFAConfigByName(context.Context, string) (*mfa.Config, error)
 	MemDBMFALoginEnforcementConfigByNameAndNamespace(string, string) (*mfa.MFAEnforcementConfig, error)
 	MemDBUpsertMFALoginEnforcementConfig(context.Context, *mfa.MFAEnforcementConfig) error
-
-	// TOTPSelfEnrollment methods
-	ConfirmTOTPSelfEnroll(context.Context, string, string) error
 }
 
 func (i *IdentityStore) handleMFAMethodUpdateCommon(ctx context.Context, req *logical.Request, d *framework.FieldData, methodType string) (*logical.Response, error) {

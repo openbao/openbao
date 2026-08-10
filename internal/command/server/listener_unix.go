@@ -19,9 +19,8 @@ func unixListenerFactory(l *configutil.Listener, _ hclog.Logger, ui cli.Ui) (net
 	}
 
 	var cfg *listenerutil.UnixSocketsConfig
-	if l.SocketMode != "" &&
-		l.SocketUser != "" &&
-		l.SocketGroup != "" {
+	// Any of mode/user/group may be set independently (e.g. mode-only).
+	if l.SocketMode != "" || l.SocketUser != "" || l.SocketGroup != "" {
 		cfg = &listenerutil.UnixSocketsConfig{
 			Mode:  l.SocketMode,
 			User:  l.SocketUser,

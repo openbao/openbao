@@ -6,6 +6,7 @@ package listenerutil
 import (
 	"os"
 	osuser "os/user"
+	"path/filepath"
 	"strconv"
 	"testing"
 )
@@ -84,6 +85,28 @@ func TestUnixSocketListener(t *testing.T) {
 		}
 		if fi.Mode().Perm() != os.FileMode(mode) {
 			t.Fatal("failed to set permissions on the socket file")
+		}
+	})
+	t.Run("mode only", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "mode-only.sock")
+		l, err := UnixSocketListener(path, &UnixSocketsConfig{
+			Mode: "660",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer l.Close()
+
+		fi, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		mode, err := strconv.ParseUint("660", 8, 32)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if fi.Mode().Perm() != os.FileMode(mode) {
+			t.Fatalf("mode-only: got permissions %o, want %o", fi.Mode().Perm(), os.FileMode(mode))
 		}
 	})
 }

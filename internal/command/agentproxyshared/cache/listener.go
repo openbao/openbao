@@ -49,9 +49,8 @@ func StartListener(lnConfig *configutil.Listener, logger hclog.Logger) (*Listene
 
 	case "unix":
 		var uConfig *listenerutil.UnixSocketsConfig
-		if lnConfig.SocketMode != "" &&
-			lnConfig.SocketUser != "" &&
-			lnConfig.SocketGroup != "" {
+		// Any of mode/user/group may be set independently (e.g. mode-only).
+		if lnConfig.SocketMode != "" || lnConfig.SocketUser != "" || lnConfig.SocketGroup != "" {
 			uConfig = &listenerutil.UnixSocketsConfig{
 				Mode:  lnConfig.SocketMode,
 				User:  lnConfig.SocketUser,

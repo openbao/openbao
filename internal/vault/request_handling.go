@@ -1675,6 +1675,30 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	return resp, auth, retErr
 }
 
+func (c *Core) findSelfEnrollableTOTPMethod(eConfig *mfa.MFAEnforcementConfig, entity *identity.Entity) (*mfa.Config, error) {
+	// Check if the enforced MFA methods are already configured
+	for _, mID := range eConfig.MFAMethodIDs {
+		if _, ok := entity.MFASecrets[mID]; ok {
+			return nil, nil
+		}
+	}
+
+	for _, mID := range eConfig.MFAMethodIDs {
+		mConfig, err := c.loginMFABackend.MemDBMFAConfigByID(mID)
+		if err != nil {
+			return nil, err
+		}
+		if mConfig == nil || mConfig.Type != ident.MfaMethodTypeTOTP {
+			continue
+		}
+		if !mConfig.GetTOTPConfig().GetEnableSelfEnrollment() {
+			continue
+		}
+		return mConfig, nil
+	}
+	return nil, nil
+}
+
 // handleLoginRequest is used to handle a login request, which is an
 // unauthenticated request to the backend.
 func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (retResp *logical.Response, retAuth *logical.Auth, retErr error) {
@@ -1998,31 +2022,11 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 
 				var methodConfig *mfa.Config
 				for _, eConfig := range matchedMfaEnforcementList {
-					if methodConfig != nil {
-						break
+					methodConfig, err = c.findSelfEnrollableTOTPMethod(eConfig, entity)
+					if err != nil {
+						return nil, nil, err
 					}
-					for _, mID := range eConfig.MFAMethodIDs {
-						if _, ok := entity.MFASecrets[mID]; ok {
-							continue
-						}
-						mConfig, err := c.loginMFABackend.MemDBMFAConfigByID(mID)
-						if err != nil {
-							return nil, nil, err
-						}
-						if mConfig == nil || mConfig.Type != ident.MfaMethodTypeTOTP {
-							continue
-						}
-
-						totpConfig := mConfig.GetTOTPConfig()
-						if !totpConfig.GetEnableSelfEnrollment() {
-							continue
-						}
-
-						if entity.MFASecrets != nil && entity.MFASecrets[mConfig.ID] != nil {
-							continue
-						}
-
-						methodConfig = mConfig
+					if methodConfig != nil {
 						break
 					}
 				}

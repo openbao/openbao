@@ -145,7 +145,7 @@ func TestPki_PermitFQDNs(t *testing.T) {
 				apiData: &framework.FieldData{
 					Schema: fields,
 					Raw: map[string]any{
-						"common_name": "example.com.",
+						"common_name": "example.com",
 						"ttl":         3600,
 					},
 				},
@@ -155,7 +155,7 @@ func TestPki_PermitFQDNs(t *testing.T) {
 					EnforceHostnames: true,
 				},
 			},
-			expectedDnsNames: []string{"example.com."},
+			expectedDnsNames: []string{"example.com"},
 			expectedEmails:   []string{},
 		},
 		"case insensitivity validation": {

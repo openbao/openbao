@@ -105,6 +105,11 @@ const sidebars: SidebarsConfig = {
                             ],
                         },
                     ],
+                    Upgrading: [
+                        "guides/upgrade/index",
+                        "guides/upgrade/ha",
+                        "guides/upgrade/plugins",
+                    ],
                 },
             ],
             Configuration: [
@@ -502,11 +507,6 @@ const sidebars: SidebarsConfig = {
                         },
                     ],
                 },
-            ],
-            "Upgrade Guides": [
-                "upgrading/index",
-                "upgrading/ha-upgrade",
-                "upgrading/plugins",
             ],
         },
         "browser-support",

@@ -17,8 +17,11 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/builtin/credential/approle"
 	credUserpass "github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
+	"github.com/openbao/openbao/v2/internal/helper/identity"
+	"github.com/openbao/openbao/v2/internal/helper/identity/mfa"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	backendTest "github.com/openbao/openbao/v2/internal/vault/backend"
+	ident "github.com/openbao/openbao/v2/internal/vault/identity"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
 	"github.com/stretchr/testify/require"
 )
@@ -1292,4 +1295,84 @@ func TestRequestHandling_CrossNamespaceRouting(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestRequestHandling_FindSelfEnrollableTOTPMethod(t *testing.T) {
+	ctx := t.Context()
+
+	t.Run("no enrolled methods offers self-enrollment", func(t *testing.T) {
+		c, _, _ := TestCoreUnsealed(t)
+
+		mConfig := &mfa.Config{
+			ID:          "totp-id",
+			Name:        "totp mfa",
+			NamespaceID: namespace.RootNamespaceID,
+			Type:        ident.MfaMethodTypeTOTP,
+			Config: &mfa.Config_TOTPConfig{
+				TOTPConfig: &mfa.TOTPConfig{EnableSelfEnrollment: true},
+			},
+		}
+		require.NoError(t, c.loginMFABackend.MemDBUpsertMFAConfig(ctx, mConfig))
+
+		eConfig := &mfa.MFAEnforcementConfig{MFAMethodIDs: []string{"totp-id"}}
+		entity := &identity.Entity{}
+
+		enrollableTOTP, err := c.findSelfEnrollableTOTPMethod(eConfig, entity)
+		require.NoError(t, err)
+		require.NotNil(t, enrollableTOTP)
+		require.Equal(t, "totp-id", enrollableTOTP.ID)
+	})
+
+	t.Run("EnableSelfEnrollment disabled is not offered", func(t *testing.T) {
+		c, _, _ := TestCoreUnsealed(t)
+
+		mConfig := &mfa.Config{
+			ID:          "totp-id",
+			Name:        "totp mfa",
+			NamespaceID: namespace.RootNamespaceID,
+			Type:        ident.MfaMethodTypeTOTP,
+			Config: &mfa.Config_TOTPConfig{
+				TOTPConfig: &mfa.TOTPConfig{EnableSelfEnrollment: false},
+			},
+		}
+		require.NoError(t, c.loginMFABackend.MemDBUpsertMFAConfig(ctx, mConfig))
+
+		eConfig := &mfa.MFAEnforcementConfig{MFAMethodIDs: []string{"totp-id"}}
+		entity := &identity.Entity{}
+
+		enrollableTOTP, err := c.findSelfEnrollableTOTPMethod(eConfig, entity)
+		require.NoError(t, err)
+		require.Nil(t, enrollableTOTP)
+	})
+
+	t.Run("non-TOTP methods in the constraint are skipped", func(t *testing.T) {
+		c, _, _ := TestCoreUnsealed(t)
+
+		oktaConfig := &mfa.Config{
+			ID:          "okta-id",
+			Name:        "okta mfa",
+			Type:        "okta",
+			NamespaceID: namespace.RootNamespaceID,
+		}
+		require.NoError(t, c.loginMFABackend.MemDBUpsertMFAConfig(ctx, oktaConfig))
+
+		totpConfig := &mfa.Config{
+			ID:          "totp-id",
+			Name:        "totp mfa",
+			NamespaceID: namespace.RootNamespaceID,
+			Type:        ident.MfaMethodTypeTOTP,
+			Config: &mfa.Config_TOTPConfig{
+				TOTPConfig: &mfa.TOTPConfig{EnableSelfEnrollment: true},
+			},
+		}
+		require.NoError(t, c.loginMFABackend.MemDBUpsertMFAConfig(ctx, totpConfig))
+
+		eConfig := &mfa.MFAEnforcementConfig{MFAMethodIDs: []string{"okta-id", "totp-id"}}
+		entity := &identity.Entity{}
+
+		enrollableTOTP, err := c.findSelfEnrollableTOTPMethod(eConfig, entity)
+		require.NoError(t, err)
+		require.NotNil(t, enrollableTOTP)
+		require.Equal(t, "totp-id", enrollableTOTP.ID)
+	})
 }

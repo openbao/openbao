@@ -46,6 +46,24 @@ func TestStatusCommand_Run(t *testing.T) {
 			2,
 		},
 		{
+			"field",
+			[]string{
+				"-field", "Sealed",
+			},
+			true,
+			"true",
+			2,
+		},
+		{
+			"field_not_found",
+			[]string{
+				"-field", "not-a-real-field",
+			},
+			true,
+			"not present in secret",
+			2,
+		},
+		{
 			"args",
 			[]string{"foo"},
 			false,

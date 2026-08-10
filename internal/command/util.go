@@ -22,9 +22,9 @@ func DefaultTokenHelper(vaultAddr string) (token.TokenHelper, error) {
 	return config.DefaultTokenHelper(vaultAddr)
 }
 
-// RawField extracts the raw field from the given data and returns it as a
+// RawSecretField extracts the raw field from the given secret data and returns it as a
 // string for printing purposes.
-func RawField(secret *api.Secret, field string) any {
+func RawSecretField(secret *api.Secret, field string) any {
 	var val any
 	switch {
 	case secret.Auth != nil:
@@ -91,12 +91,68 @@ func RawField(secret *api.Secret, field string) any {
 	return val
 }
 
+func RawSealStatusField(status *SealStatusOutput, field string) any {
+	var val any
+	switch field {
+	case "Seal Type":
+		val = status.Type
+	case "Recovery Seal Type":
+		val = status.RecoverySealType
+	case "Initialized":
+		val = status.Initialized
+	case "Sealed":
+		val = status.Sealed
+	case "Total Recovery Shares", "Total Shares":
+		val = status.N
+	case "Threshold":
+		val = status.T
+	case "Unseal Progress":
+		val = fmt.Sprintf("%d/%d", status.Progress, status.T)
+	case "Unseal Nonce":
+		val = status.Nonce
+	case "Seal Migration in Progress":
+		val = status.Migration
+	case "Version":
+		val = status.Version
+	case "Commit Date":
+		val = status.CommitDate
+	case "Storage Type":
+		val = status.StorageType
+	case "Cluster Name":
+		val = status.ClusterName
+	case "Cluster ID":
+		val = status.ClusterID
+	case "HA Enabled":
+		val = status.HAEnabled
+	case "HA Cluster":
+		val = status.LeaderClusterAddress
+	case "HA Mode":
+		mode := "standby"
+		if status.IsSelf {
+			mode = "active"
+		}
+		val = mode
+	case "Active Since":
+		val = status.ActiveTime.Format(time.RFC3339Nano)
+	case "Active Node Address":
+		val = status.LeaderAddress
+	case "Raft Committed Index":
+		val = status.RaftCommittedIndex
+	case "Raft Applied Index":
+		val = status.RaftAppliedIndex
+	}
+
+	return val
+}
+
 // PrintRawField prints raw field from the secret.
 func PrintRawField(ui cli.Ui, data any, field string) int {
 	var val any
 	switch data := data.(type) {
 	case *api.Secret:
-		val = RawField(data, field)
+		val = RawSecretField(data, field)
+	case *SealStatusOutput:
+		val = RawSealStatusField(data, field)
 	case map[string]any:
 		val = data[field]
 	}

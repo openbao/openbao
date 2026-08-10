@@ -5,9 +5,6 @@ description: |-
   Yubico's YubiHSM 2 via PKCS#11.
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-
 # YubiHSM
 
 This guide describes the Auto-Unsealing configuration using [Yubico YubiHSM](https://www.yubico.com/ch/product/yubihsm-2) by using the PKCS#11 interface.
@@ -124,7 +121,7 @@ seal "pkcs11" {
   key_id        = "0x00ff"
   key_label = "bao-seal-key-rsa"
   mechanism     = "0x0009" # CKM_RSA_PKCS_OAEP
-  rsa_oaep_hash = "sha1"
+  rsa_oaep_hash = "sha256"
 }
 ```
 

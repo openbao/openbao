@@ -2036,6 +2036,8 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 
 					selfEnrollment := &TOTPSelfEnrollment{
 						RequestID:     mfaRequestID,
+						RequestNSID:   ns.ID,
+						RequestNSPath: ns.Path,
 						EntityID:      auth.EntityID,
 						TOTPSecret:    secret.Secret(),
 						TOTPMethodID:  methodConfig.ID,

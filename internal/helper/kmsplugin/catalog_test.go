@@ -157,16 +157,6 @@ func TestBadClientConfig(t *testing.T) {
 			PluginDirectory: t.TempDir(),
 			Plugins:         []*server.PluginConfig{StaticPluginConfig},
 		},
-		"NoChecksum": {
-			PluginDirectory: filepath.Dir(os.Args[0]),
-			Plugins: []*server.PluginConfig{{
-				Type:    StaticPluginConfig.Type,
-				Name:    StaticPluginConfig.Name,
-				Command: StaticPluginConfig.Command,
-				Args:    StaticPluginConfig.Args,
-				Env:     StaticPluginConfig.Env,
-			}},
-		},
 		"BadChecksum": {
 			PluginDirectory: filepath.Dir(os.Args[0]),
 			Plugins: []*server.PluginConfig{{

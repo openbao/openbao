@@ -96,9 +96,13 @@ func (rc runConfig) makeConfig(ctx context.Context) (*plugin.ClientConfig, error
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", api.UpstreamVariableName(PluginUnwrapTokenEnv), wrapToken))
 	}
 
-	secureConfig := &plugin.SecureConfig{
-		Checksum: rc.sha256,
-		Hash:     sha256.New(),
+	// Supply a SecureConfig if a sha256 checksum is configured.
+	var secureConfig *plugin.SecureConfig
+	if len(rc.sha256) > 0 {
+		secureConfig = &plugin.SecureConfig{
+			Checksum: rc.sha256,
+			Hash:     sha256.New(),
+		}
 	}
 
 	clientConfig := &plugin.ClientConfig{

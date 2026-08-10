@@ -145,9 +145,17 @@ func (c *Catalog) getClientLocked(name string) (*client, bool, error) {
 		return nil, true, err
 	}
 
-	checksum, err := hex.DecodeString(config.SHA256Sum)
-	if err != nil {
-		return nil, true, fmt.Errorf("invalid plugin sha256: %w", err)
+	// Supply a SecureConfig if a sha256 checksum is configured.
+	var secureConfig *plugin.SecureConfig
+	if len(config.SHA256Sum) > 0 {
+		checksum, err := hex.DecodeString(config.SHA256Sum)
+		if err != nil {
+			return nil, true, fmt.Errorf("invalid plugin sha256: %w", err)
+		}
+		secureConfig = &plugin.SecureConfig{
+			Checksum: checksum,
+			Hash:     sha256.New(),
+		}
 	}
 
 	// Spawn a new plugin process.
@@ -161,10 +169,7 @@ func (c *Catalog) getClientLocked(name string) (*client, bool, error) {
 		HandshakeConfig:  gkwplugin.HandshakeConfig,
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		AutoMTLS:         true,
-		SecureConfig: &plugin.SecureConfig{
-			Checksum: checksum,
-			Hash:     sha256.New(),
-		},
+		SecureConfig:     secureConfig,
 		// go-plugin will create a sub-logger with the plugin executable's name,
 		// so avoid duplicating that here and pass the catalog's logger without
 		// modification.

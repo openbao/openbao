@@ -68,15 +68,15 @@ const config: Config = {
         indexDocs: true,
         indexBlog: true,
         indexPages: true,
-        docsRouteBasePath: ["docs", "api-docs"],
-        docsDir: ["content/docs", "content/api-docs"],
+        docsRouteBasePath: ["docs"],
+        docsDir: ["content/docs"],
         blogDir: "content/blog",
         removeDefaultStemmer: true,
         removeDefaultStopWordFilter: true,
         explicitSearchResultPath: true,
         searchContextByPaths: [
           { label: "Docs", path: "docs" },
-          { label: "API Reference", path: "api-docs" },
+          { label: "API Reference", path: "docs/api" },
           { label: "Blog", path: "blog" },
         ],
         useAllContextsWithNoSearchContext: true,
@@ -132,26 +132,6 @@ const config: Config = {
     [
       "@docusaurus/plugin-content-docs",
       {
-        id: "api-docs",
-        path: "content/api-docs",
-        routeBasePath: "api-docs",
-        sidebarPath: "./sidebarsApi.ts",
-        editUrl: "https://github.com/openbao/openbao/tree/main/website/",
-        beforeDefaultRemarkPlugins: [
-          [
-            includeMarkdown,
-            {
-              resolveMdx: true,
-              resolveFrom: path.join(process.cwd(), "content", "partials"),
-            },
-          ],
-        ],
-        versions: getDocVersions(),
-      },
-    ],
-    [
-      "@docusaurus/plugin-content-docs",
-      {
         id: "ecosystem",
         path: "content/ecosystem",
         routeBasePath: "ecosystem",
@@ -192,7 +172,7 @@ const config: Config = {
         redirects: [
           {
             from: "/api-docs/system/rotate-config",
-            to: "/api-docs/system/rotate/keyring-config",
+            to: "/docs/api/system/rotate/keyring-config",
           },
         ],
         createRedirects(existingPath) {
@@ -203,6 +183,25 @@ const config: Config = {
               existingPath.replace('/community/', '/docs/2.5.x/'),
               existingPath.replace('/community/', '/docs/2.4.x/'),
               existingPath.replace('/community/', '/docs/2.3.x/'),
+            ];
+          }
+
+          if (existingPath.includes('/docs/api/')) {
+            return [
+              existingPath.replace('/docs/api/', '/api-docs/'),
+            ];
+          }
+
+          if (existingPath.includes('/docs/api/secret/')) {
+            return [
+              existingPath.replace('/docs/api/secret/', '/docs/api/secrets/'),
+              existingPath.replace('/docs/api/secret/', '/api-docs/secrets/'),
+            ];
+          }
+
+          if (existingPath.includes('/docs/secrets/')) {
+            return [
+              existingPath.replace('/docs/secrets/', '/docs/secret/'),
             ];
           }
 
@@ -238,7 +237,7 @@ const config: Config = {
           label: "Docs",
           position: "left",
         },
-        { to: "/api-docs/", label: "API", position: "left" },
+        { to: "/docs/api/", label: "API", position: "left" },
         {
           to: "/downloads",
           label: "Downloads",
@@ -252,12 +251,6 @@ const config: Config = {
         {
           type: "docsVersionDropdown",
           versions: getDocVersions(),
-          position: "right",
-        },
-        {
-          type: "docsVersionDropdown",
-          versions: getDocVersions(),
-          docsPluginId: "api-docs",
           position: "right",
         },
         {

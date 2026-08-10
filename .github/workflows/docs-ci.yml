@@ -22,9 +22,6 @@ jobs:
           echo "Checking for absolute links in website/content/docs/..."
           grep -rn -P "(\(|: |openbao.org)/docs/[^)]+" website/content/docs > grep_output.txt || true
 
-          echo "Checking for absolute links in website/content/api-docs/..."
-          grep -rn -P "(\(|: |openbao.org)/api-docs/[^)]+" website/content/api-docs >> grep_output.txt || true
-
           # Check if any absolute links were found
           if [ -s grep_output.txt ]; then
             echo "::error::Found absolute links that should be relative. See annotations for details."

@@ -40,11 +40,11 @@ What other places need recursive list support?
 
 OpenBao has always supported a custom HTTP verb, `LIST`, for listing entries
 under a path. This is also supported via the `?list=true` [query
-parameter](/api-docs/#api-operations) on a regular `GET`-verb request, for use
+parameter](/docs/api/#api-operations) on a regular `GET`-verb request, for use
 when clients cannot support custom verbs.
 
 In designing [recursive listing](/community/rfcs/scan-operation), we realized
-many endpoints (like [KVv2's list entries](/api-docs/secret/kv/kv-v2/#list-secrets))
+many endpoints (like [KVv2's list entries](/docs/api/secret/kv/kv-v2/#list-secrets))
 made sense as both `LIST` and `SCAN` operations. Rather than forcing authors
 to implement a new endpoint design--for example, moving from a layout like
 `LIST /secrets/metadata/:path` to `LIST /secrets/metadata-recursive/:path`--we

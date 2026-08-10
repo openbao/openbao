@@ -1,0 +1,165 @@
+---
+sidebar_label: Deploying in Containers
+---
+
+# Deploying in Containers
+
+This guide contains tips for running OpenBao in container environments, such as Kubernetes.
+
+## Extending the OpenBao image
+
+Sometimes, it is necessary to extend the [OpenBao image](../install.mdx#container-registries) to add additional software.
+A common use case is [PKCS#11 auto-unsealing](./unseal/pkcs11/generic.mdx),
+where you need to include a vendor's `libpkcs11.so` and/or `p11_config.yml` (or similar).
+
+### Option 1: Create a custom container image
+
+You can build a custom container image based on the `openbao-ubi` image (on any other image).
+
+1.  Create a `Dockerfile`:
+
+    ```Dockerfile
+    ARG BAO_VERSION
+    FROM ghcr.io/openbao/openbao-ubi:$BAO_VERSION
+
+    COPY libpkcs11.so /usr/local/lib/libpkcs11.so
+    ```
+
+1.  Build and push the container image:
+
+    ```sh
+    export VERSION=x.x.x
+
+    docker build --build-arg BAO_VERSION="${VERSION}" -t openbao-ubi-custom:${VERSION} .
+
+    docker push openbao-ubi-custom:${VERSION} docker://registry.example.com/openbao-ubi-custom:${VERSION}
+    ```
+
+1. Deploy the image to your container environment.
+
+This method has the advantage that all necessary executable and library files are baked into a single image.
+The disadvantage is that you need to rebuild your custom image whenever OpenBao is updated.
+
+### Option 2: Inject with an init container
+
+Alternatively, you can use _init containers_ to copy the necessary files into a volume during service startup.
+Init containers are supported by both [Kubernetes](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/)
+and [Docker Compose](https://docs.docker.com/compose/how-tos/init-containers/).
+
+You build an independent image, instead of an image based on the OpenBao image.
+You then deploy this image as the init container.
+
+1.  Create a `Dockerfile`:
+
+    ```Dockerfile
+    FROM alpine:latest
+
+    ARG ARCH=x86_64
+    ARG VERSION
+
+    # Vendor files, downloaded beforehand.
+    COPY PrimusAPI_PKCS11-X-${VERSION}-rhel8-${ARCH}.tar.gz /primus.tar.gz
+
+    # This must run at container start time, so that it writes to the volume mount.
+    CMD tar -x -C /usr/local -f /primus.tar.gz
+    ```
+
+1.  Build and push the container image:
+
+    ```sh
+    export VERSION=x.x.x
+
+    docker build --build-arg VERSION="${VERSION}" --build-arg ARCH="x86_64" -t primus-library:${VERSION} .
+
+    docker push primus-library:${VERSION} docker://registry.example.com/primus-library:${VERSION}
+    ```
+
+1. For PKCS#11 auto-unseal, you often have vendor-specific config files and the PKCS#11 PIN.
+   Add these as Kubernetes secrets:
+
+    ```sh
+    kubectl create secret generic hsm-secrets \
+      --from-literal=secrets.cfg="$(cat .secrets.cfg)" \
+      --from-literal=pkcs11pin="4321"
+
+    kubectl create configmap hsm-config --from-file=primus.cfg=primus.cfg
+    ```
+
+1. Deploy the init container with Kubernetes:
+
+    ```yaml
+    server:
+      image:
+        registry: "ghcr.io"
+        repository: "openbao-ubi"
+        tag: "x.x.x"
+
+      extraSecretEnvironmentVars:
+        - envName: BAO_HSM_PIN
+          secretName: hsm-secrets
+          secretKey: pkcs11pin
+
+      volumes:
+        - name: hsm-config
+          configMap:
+            name: hsm-config
+        - name: hsm-secrets
+          secret:
+            secretName: hsm-secrets
+        - name: primus-library
+          emptyDir: {}
+
+      volumeMounts:
+        - name: hsm-config
+          mountPath: "/etc/primus/primus.cfg"
+          subPath: primus.cfg
+          readOnly: true
+        - name: hsm-secrets
+          mountPath: "/etc/primus/.secrets.cfg"
+          subPath: secrets.cfg
+          readOnly: true
+        - name: primus-library
+          mountPath: "/usr/local/primus"
+          readOnly: true
+
+      extraInitContainers:
+        - name: init-primus-library
+          image: "registry.example.com/primus-library:x.x.x"
+          volumeMounts:
+            - name: primus-library
+              mountPath: "/usr/local/primus"
+    ```
+
+    Alternatively, with Docker Compose:
+
+    ```yaml
+    services:
+      openbao:
+        image: ghcr.io/openbao/openbao-ubi:x.x.x
+        volumes:
+          - primus-library:/usr/local/primus
+          - ./primus.cfg:/etc/primus/primus.cfg:ro
+          - ./.secrets.cfg:/etc/primus/.secrets.cfg:ro
+        pre_start:
+          - image: registry.example.com/primus-library:x.x.x
+
+    volumes:
+      primus-library:
+    ```
+
+This approach work as follows:
+
+- The init container (`pre_start`/`extraInitContainers`) executes once at service/pod startup.
+- The volume persists and shares the files in `/usr/local/primus/`.
+  Kubernetes uses an [`emptyDir` volume](https://kubernetes.io/docs/concepts/storage/volumes/?emptydir#emptydir) for this.
+- The `CMD` in the init container image fills the `/usr/local/primus/`.
+  (It only makes meaningful changes if the volume is empty or if you update the
+  init container image with a new PKCS#11 provider version.)
+- The `primus.cfg` and `.secrets.cfg` are mounted from the manually created files.
+  They can be read-only, because the application doesn't need to modify them.
+
+This example uses the PKCS#11 files for Securosys Primus HSM; it should be similar for other vendors.
+
+This method has the advantage that you can use the upstream OpenBao image as-is.
+The disadvantage is that you need a volume to persist your vendor's PKCS#11 library,
+and you still need to build a custom image.

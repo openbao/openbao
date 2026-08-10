@@ -1,0 +1,237 @@
+---
+sidebar_label: Generic
+---
+
+# Auto-Unsealing with PKCS#11
+
+This guide describes how to configure OpenBao auto-unsealing with a PKCS#11-compliant hardware token.
+The instructions are generic and should work with any PKCS#11-compliant token.
+
+This guide shows the easiest way to install the PKCS#11 plugin (plugin type `kms`).
+Please see the [plugin system](../../../plugins/index.mdx) documentation for more details
+and other ways to install plugins.
+
+## Tested PKCS#11 tokens
+
+The community has tested the following PKCS#11 tokens to work with OpenBao:
+
+{/* Please keep the list sorted alphabetically */}
+
+| Vendor | Models | libc | Guides |
+| --- | --- | --- | --- |
+| [DuoKey](https://duokey.com/) | DuoKey SD-HSM | ? | [Installation Guide](duokey.mdx) |
+| [Nitrokey](https://www.nitrokey.com/) | NetHSM | [glibc or musl](https://github.com/Nitrokey/nethsm-pkcs11/releases) | [Installation Guide](nitrokey.mdx) |
+| [Securosys](https://www.securosys.com/) | Primus HSM, CloudHSM | glibc |[Installation Guide](https://docs.securosys.com/pkcs/quickstart) |
+| [Utimaco](https://utimaco.com/) | CryptoServer CP5, u.trust GP HSM | glibc | [Installation Guide](utimaco.mdx) |
+
+## Running in containers
+
+Some PKCS#11 libraries require glibc and do not work on systems based on musl libc, such as Alpine Linux.
+Please see the table above or contact your vendor.
+If your PKCS#11 library requires glibc, you need to use the `openbao-ubi` instead of the Alpine-based `openbao` image.
+
+Historically, OpenBao has provided `openbao-hsm-ubi` and `openbao-hsm` images.
+These included OpenBao compiled with cgo, which is necessary to load PKCS#11 libraries.
+These images are no longer required if you use the `kms-pkcs11` plugin (as described by this guide).
+This external plugin is compiled with cgo, meaning that the main `bao` binary can be compiled with pure Go.
+
+## Step 1: Install the PKCS#11 library
+
+Initialize and prepare your PKCS#11 token.
+For network HSMs, this often involves creating a new user/partition/tenant.
+
+Install and configure your vendor's PKCS#11 module on the same machine as OpenBao.
+If you deploy OpenBao in a container (Docker, Podman, Kubernetes, ...), you need to
+mount the relevant files into the container (`.so` and vendor-specific config files).
+See the [containers guide](../../containers.mdx) for advice.
+Make sure that the files are readable by the container user ([uid:gid 100:1000](https://github.com/openbao/openbao/blob/v2.6.0/Dockerfile#L78)).
+
+Please contact your PKCS#11 token vendor for instructions.
+For your convenience, links for various vendors are provided in the table above.
+
+You should now have the following pieces of information ready (examples in brackets):
+
+- PKCS#11 module path (`/path/to/libpkcs11.so`)
+- Token label (`MY_TOKEN`) and/or slot ID (`0`)
+- User PIN (`4321`)
+
+The exact details vary by token vendor and operating system.
+
+### Quirks
+
+The following known pitfalls exist when integrating OpenBao with specific vendors:
+
+- **Nitrokey NetHSM:**
+  Currently does not support AES-GCM. Therefore, you need to create an RSA key and use RSA-OAEP.
+
+## Step 2: Create a key on the PKCS#11 token
+
+OpenBao does not automatically generate a key on the PKCS#11 token.
+Instead, you need to manually create an unseal key.
+The example below shows how to do that with `pkcs11-tool`, but you are free to use any other tool.
+
+```sh
+$ pkcs11-tool --module "/path/to/libpkcs11.so" \
+  --token-label "MY_TOKEN" \
+  --slot 0 \
+  --pin "4321" \
+  --keygen \
+  --key-type aes:32 \
+  --label "bao-root-key-1" \
+  --sensitive \
+  --undestroyable
+```
+
+| Argument | Description |
+|---|---|
+| `--module` | Path to the PKCS#11 module. |
+| `--token-label "MY_TOKEN"` | Label of your token. Either the token label or the slot ID is required. |
+| `--slot 0` | Slot ID of your token. Either the token label or the slot ID is required. |
+| `--pin "4321"` | User PIN to log into your token. |
+| `--keygen` | Command to generate a key. |
+| `--key-type aes:32` | Specifies an AES-256 key (recommended). To use RSA, specify `rsa:4096` and swap `--keygen` for `--keypairgen`. |
+| `--label "bao-root-key-1"` | Sets the label of the key on the token. |
+| `--sensitive` | Sets the `CKA_SENSITIVE` attribute, preventing the key from being revealed in plaintext. |
+| `--undestroyable` | Unsets the `CKA_DESTROYABLE` attribute, preventing the key from being deleted. |
+
+:::info
+
+The key must either be an AES key (for use with AES-GCM) or an RSA key (for use with RSA-OAEP).
+OpenBao does not support other key or other algorithm types.
+See the [supported mechanisms](../../../configuration/seal/pkcs11.mdx##pkcs11-parameters).
+
+:::
+
+:::danger
+
+If you lose this key, you will **not** be able to unseal your OpenBao instance, and will thus **lose your OpenBao data**.
+
+The command above sets `destroyable=false`, which prevents the key from being deleted from the PKCS#11 token.
+If set, for most PKCS#11 token vendors the only way to delete the key is to factory-reset/re-initialize/delete the token/partition.
+
+:::
+
+## Step 3: Configure the `pkcs11` plugin
+
+Install the `kms-pkcs11` plugin.
+This is a vendor-agnostic plugin maintained by the OpenBao community.
+
+The simplest installation option is to declare the following in your `openbao.hcl`.
+This causes OpenBao to automatically download the plugin when OpenBao (re)starts.
+The releases and their SHA-256 digests can be found in the
+[`openbao-plugin` repository](https://github.com/openbao/openbao-plugins/releases).
+
+Make sure that the `plugin_directory` exists on your machine.
+When using containers, make sure this directory is persisted as a volume mount.
+
+```hcl
+plugin_directory = "/opt/openbao/plugins"
+plugin_auto_register = true
+plugin_auto_download = true
+
+plugin "kms" "pkcs11" {
+  image       = "ghcr.io/openbao/openbao-plugin-kms-pkcs11"
+  version     = "v0.1.0"
+  binary_name = "openbao-plugin-kms-pkcs11"
+  sha256sum   = "55245882727535579e710672f0eae1bcdddc846006db857baaa6e09e33d40faf"
+}
+```
+
+See the [OpenBao plugin system](../../../plugins/index.mdx)
+and the [`plugin` stanza](../../../configuration/plugins.mdx)
+documentation for more information about plugin installation.
+
+## Step 3: Configure the `pkcs11` seal
+
+Define the [PKCS#11 seal](../../../configuration/seal/pkcs11.mdx) in the OpenBao configuration:
+
+```hcl
+seal "pkcs11" {
+  lib         = "/path/to/libpkcs11.so"
+  token_label = "MY_TOKEN"
+  slot        = 0
+  key_label   = "bao-root-key-aes"
+  mechanism   = "CKM_AES_GCM" # CKM_RSA_PKCS_OAEP
+  # pin       = "4321"
+}
+```
+
+To avoid hard-coding the PKCS#11 PIN in the configuration file,
+you can set it via the `BAO_HSM_PIN` environment variable.
+
+## Step 4: Initialize OpenBao
+
+Finally, (re-)start OpenBao so that it picks up the configuration changes.
+
+Then initialize OpenBao to create the seal:
+
+```sh
+bao operator init
+```
+
+This returns:
+
+```text
+Recovery Key 1: mQA3ASf8P/9S...
+Recovery Key 2: Q9pYb3Ge+9a6...
+Recovery Key 3: vRt0uHy1ms0e...
+Recovery Key 4: IBL3zUtDe+kj...
+Recovery Key 5: UK9GSdqpzXEy...
+
+Initial Root Token: s.dCmfe4zmwxmsEE...
+
+Success! Vault is initialized
+
+Recovery key initialized with 5 key shares and a key threshold of 3. Please
+securely distribute the key shares printed above.
+```
+
+:::warning
+
+Securely note down the recovery keys and the root token!
+
+:::
+
+If your instance is already initialized with another seal, follow the
+[seal migration guide](../../../concepts/seal.mdx#seal-migration) to migrate to the PKCS#11 seal.
+
+## Confirm Working Auto-Unsealing
+
+To test that auto-unseal is working, restart OpenBao.
+In the OpenBao logs, you should see the following, indicating a successful auto-unseal ("stored unseal key"):
+
+```log
+systemd[1]: Started openbao.service - "OpenBao - A tool for managing secrets".
+bao[154960]: 2026-07-31T10:59:30.458+0200 [INFO]  core: stored unseal keys supported, attempting fetch
+bao[154960]: 2026-07-31T10:59:30.597+0200 [INFO]  core.cluster-listener.tcp: starting listener: listener_address=0.0.0.0:8201
+bao[154960]: 2026-07-31T10:59:30.599+0200 [INFO]  core.cluster-listener: serving cluster requests: cluster_listen_address=[::]:8201
+bao[154960]: 2026-07-31T10:59:30.600+0200 [INFO]  core: post-unseal setup starting
+bao[154960]: 2026-07-31T10:59:30.606+0200 [INFO]  core: loaded wrapping token key
+bao[154960]: 2026-07-31T10:59:30.606+0200 [INFO]  core: upgrading plugin information: plugins=[]
+bao[154960]: 2026-07-31T10:59:30.606+0200 [INFO]  core: successfully setup plugin catalog: plugin-directory=/opt/openbao/plugins
+bao[154960]: 2026-07-31T10:59:30.606+0200 [INFO]  core.plugins: starting declarative plugin registration
+bao[154960]: 2026-07-31T10:59:30.610+0200 [INFO]  core.plugins: declarative plugin registration completed
+bao[154960]: 2026-07-31T10:59:30.816+0200 [INFO]  core: post-unseal setup complete
+bao[154960]: 2026-07-31T10:59:30.816+0200 [INFO]  core: vault is unsealed
+bao[154960]: 2026-07-31T10:59:30.816+0200 [INFO]  core: unsealed with stored key
+```
+
+Additionally, [`bao status`](../../../commands/status.mdx) should show:
+
+```sh
+$ bao status
+Key                      Value
+---                      -----
+Seal Type                pkcs11
+Recovery Seal Type       shamir
+Initialized              true
+Sealed                   false
+Total Recovery Shares    5
+Threshold                3
+Version                  2.6.1
+Commit Date              2026-07-22T14:22:20Z
+Storage Type             file
+Cluster Name             vault-cluster-38522aac
+Cluster ID               cee4e2e1-c4ba-616b-88f7-4d12ac69e6a8
+HA Enabled               false
+```

@@ -212,6 +212,10 @@ const config: Config = {
           if (existingPath.includes('/docs/api/')) {
             return [
               existingPath.replace('/docs/api/', '/api-docs/'),
+              existingPath.replace('/docs/next/api/', '/api-docs/next/'),
+              existingPath.replace('/docs/2.6.x/api/', '/api-docs/2.6.x/'),
+              existingPath.replace('/docs/2.5.x/api/', '/api-docs/2.5.x/'),
+              existingPath.replace('/docs/2.4.x/api/', '/api-docs/2.4.x/'),
             ];
           }
 

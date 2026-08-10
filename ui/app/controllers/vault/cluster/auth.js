@@ -72,9 +72,16 @@ export default Controller.extend({
     onSelfEnrollSuccess() {
       this.setProperties({
         totpSelfEnroll: null,
-        selfEnrollErrors: null,
       });
-      this.transitionToRoute('vault.auth');
+      this.transitionToRoute('vault.cluster.auth');
+      this.flashMessages.success('TOTP self enrollment was successful! Please log in again.');
+    },
+    onSelfEnrollCanceled() {
+      this.setProperties({
+        totpSelfEnroll: null,
+      });
+      this.transitionToRoute('vault.cluster.auth');
+      this.flashMessages.info('TOTP self enrollment was successfully canceled.');
     },
     cancelAuthentication() {
       this.set('cancelAuth', true);

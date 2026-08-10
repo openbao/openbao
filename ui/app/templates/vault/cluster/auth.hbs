@@ -94,7 +94,7 @@
         @clusterId={{this.model.id}}
         @selfEnrollData={{this.totpSelfEnroll}}
         @onSuccess={{action "onSelfEnrollSuccess"}}
-        @onError={{fn (mut this.selfEnrollErrors)}}
+        @onCancel={{action "onSelfEnrollCanceled"}}
       />
     {{else}}
       <AuthForm

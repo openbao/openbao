@@ -3,7 +3,7 @@ title: "OpenBao Features - Declarative Configuration"
 description: "Blog series describing OpenBao's features. This episode focuses on declarative configuration of OpenBao."
 slug: features-declarative-configuration
 authors: cipherboy
-tags: [features, storage, technical]
+tags: [features, configuration, technical]
 ---
 
 This is the third part of a [multi-part series on OpenBao's features](/blog/tags/features).

@@ -2222,6 +2222,21 @@ func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentConfirmation(ctx cont
 		return nil, fmt.Errorf("unknown MFA config type %q", mConfig.Type)
 	}
 
+	passcodeTTL := time.Duration(int64(time.Second)*int64(totpConfig.Period) + int64(2*totpConfig.Skew))
+
+	rateLimitID := fmt.Sprintf("%s_%s_selfenroll", mConfig.ID, totpSelfEnroll.EntityID)
+
+	_ = b.rateLimits.AddWithExpire(rateLimitID, 0, passcodeTTL)
+	numAttempts, ok := b.rateLimits.Modify(rateLimitID, func(n uint32) uint32 { return n + 1 })
+
+	if !ok {
+		return nil, errors.New("failed to increment the TOTP code counter for self enroll")
+	}
+
+	if numAttempts > totpConfig.MaxValidationAttempts {
+		return nil, fmt.Errorf("maximum self enroll TOTP validation attempts %d exceeded the allowed attempts %d. Please try again in %v seconds", numAttempts, totpConfig.MaxValidationAttempts, passcodeTTL)
+	}
+
 	valid, err := totplib.ValidateCustom(totpCode.(string), totpSelfEnroll.TOTPSecret, time.Now(), totplib.ValidateOpts{
 		Period:    uint(totpConfig.Period),
 		Skew:      uint(totpConfig.Skew),

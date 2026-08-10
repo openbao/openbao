@@ -83,25 +83,6 @@ const config: Config = {
     [
       "@docusaurus/plugin-content-docs",
       {
-        id: "api-docs",
-        path: "content/api-docs",
-        routeBasePath: "api-docs",
-        sidebarPath: "./sidebarsApi.ts",
-        editUrl: "https://github.com/openbao/openbao/tree/main/website/",
-        beforeDefaultRemarkPlugins: [
-          [
-            includeMarkdown,
-            {
-              resolveMdx: true,
-              resolveFrom: path.join(process.cwd(), "content", "partials"),
-            },
-          ],
-        ],
-      },
-    ],
-    [
-      "@docusaurus/plugin-content-docs",
-      {
         id: "community",
         path: "content/community",
         routeBasePath: "community",
@@ -124,7 +105,7 @@ const config: Config = {
         redirects: [
           {
             from: "/api-docs/system/rotate-config",
-            to: "/api-docs/system/rotate/keyring-config",
+            to: "/docs/api/system/rotate/keyring-config",
           },
         ],
         createRedirects(existingPath) {
@@ -135,6 +116,25 @@ const config: Config = {
               existingPath.replace('/community/', '/docs/2.5.x/'),
               existingPath.replace('/community/', '/docs/2.4.x/'),
               existingPath.replace('/community/', '/docs/2.3.x/'),
+            ];
+          }
+
+          if (existingPath.includes('/docs/api/')) {
+            return [
+              existingPath.replace('/docs/api/', '/api-docs/'),
+            ];
+          }
+
+          if (existingPath.includes('/docs/api/secret/')) {
+            return [
+              existingPath.replace('/docs/api/secret/', '/docs/api/secrets/'),
+              existingPath.replace('/docs/api/secret/', '/api-docs/secrets/'),
+            ];
+          }
+
+          if (existingPath.includes('/docs/secrets/')) {
+            return [
+              existingPath.replace('/docs/secrets/', '/docs/secret/'),
             ];
           }
 
@@ -164,7 +164,7 @@ const config: Config = {
           label: "Docs",
           position: "left",
         },
-        { to: "/api-docs/", label: "API", position: "left" },
+        { to: "/docs/api/", label: "API", position: "left" },
         {
           to: "/downloads",
           label: "Downloads",

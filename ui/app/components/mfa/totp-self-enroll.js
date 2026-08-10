@@ -11,11 +11,11 @@ import QRCode from 'qrcode';
  *
  * @example
  * ```js
- * <Mfa::TotpSelfEnroll @selfEnrollData={{this.model}} @onSuccess={{this.handleSuccess}} @onError={{this.handleError}} />
+ * <Mfa::TotpSelfEnroll @selfEnrollData={{this.model}} @onSuccess={{this.handleSuccess}} @onCancel={{transition-to "vault.cluster.auth"}} />
  * ```
  * @param {object} selfEnrollData - contains all needed information to create the qr code
  * @param {function} onSuccess - called after successful verification
- * @param {function} onError - called when an error happens
+ * @param {function} onCancel - called when the self enrollment was canceled
  */
 
 export default class TotpSelfEnroll extends Component {
@@ -61,7 +61,7 @@ export default class TotpSelfEnroll extends Component {
       });
   }
 
-  @task *verifyToken() {
+  @task *confirmSelfEnroll() {
     if (!this.totpToken) {
       this.error = 'Please enter a valid totp code code.';
       return;
@@ -79,15 +79,32 @@ export default class TotpSelfEnroll extends Component {
         this.args.onSuccess();
       }
     } catch (err) {
-      this.error = err.message || 'An unexpected error occurred.';
+      this.error = err ? this.auth.handleError(err) : 'An unexpected error occurred.';
     } finally {
       this.isVerifying = false;
+    }
+  }
+
+  @task *revokeSelfEnroll() {
+    try {
+      yield this.auth.totpRevokeSelfEnroll(this.requestID);
+
+      if (this.args.onCancel) {
+        this.args.onCancel();
+      }
+    } catch (err) {
+      this.error = err ? this.auth.handleError(err) : 'An unexpected error occurred.';
     }
   }
 
   @action
   submit(event) {
     event.preventDefault();
-    this.verifyToken.perform();
+    this.confirmSelfEnroll.perform();
+  }
+
+  @action
+  cancel() {
+    this.revokeSelfEnroll.perform();
   }
 }

@@ -448,6 +448,11 @@ export default Service.extend({
     return resp;
   },
 
+  async totpRevokeSelfEnroll(mfa_request_id) {
+    const resp = await this.clusterAdapter().totpRevokeSelfEnroll(mfa_request_id);
+    return resp;
+  },
+
   async authSuccess(options, response) {
     // persist selectedAuth to localStorage to rehydrate auth form on logout
     localStorage.setItem('selectedAuth', options.selectedAuth);

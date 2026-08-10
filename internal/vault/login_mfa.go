@@ -2163,6 +2163,10 @@ func (b *SystemBackend) totpSelfEnrollPaths() []*framework.Path {
 					Callback: b.Core.loginMFABackend.handleMFAMethodTOTPSelfEnrollmentConfirmation,
 					Summary:  "Confirm the self enrollment process.",
 				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.Core.loginMFABackend.handleMFAMethodTOTPSelfEnrollmentDeletion,
+					Summary:  "Invalidate a self enrollment process.",
+				},
 			},
 		},
 	}
@@ -2234,7 +2238,7 @@ func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentConfirmation(ctx cont
 	}
 
 	if numAttempts > totpConfig.MaxValidationAttempts {
-		return nil, fmt.Errorf("maximum self enroll TOTP validation attempts %d exceeded the allowed attempts %d. Please try again in %v seconds", numAttempts, totpConfig.MaxValidationAttempts, passcodeTTL)
+		return nil, fmt.Errorf("maximum self enroll TOTP validation attempts %d exceeded the allowed attempts %d: %w", numAttempts, totpConfig.MaxValidationAttempts, logical.ErrRateLimitQuotaExceeded)
 	}
 
 	valid, err := totplib.ValidateCustom(totpCode.(string), totpSelfEnroll.TOTPSecret, time.Now(), totplib.ValidateOpts{
@@ -2243,10 +2247,7 @@ func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentConfirmation(ctx cont
 		Digits:    otplib.Digits(totpConfig.Digits),
 		Algorithm: otplib.Algorithm(totpConfig.Algorithm),
 	})
-	if err != nil {
-		return nil, fmt.Errorf("couldn't validate totp code. error: %v", err)
-	}
-	if !valid {
+	if err != nil || !valid {
 		return nil, errors.New("invalid totp code provided for self-enrollment")
 	}
 
@@ -2296,9 +2297,18 @@ func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentConfirmation(ctx cont
 		return nil, fmt.Errorf("failed to persist MFA secret in entity: %w", err)
 	}
 
-	return &logical.Response{
-		Data: map[string]any{
-			"success": true,
-		},
-	}, nil
+	return &logical.Response{}, nil
+}
+
+func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentDeletion(ctx context.Context, req *logical.Request, d *framework.FieldData) (retResp *logical.Response, retErr error) {
+	requestID := d.Get("request_id")
+	if requestID == "" {
+		return logical.ErrorResponse("missing request ID"), nil
+	}
+
+	totpSelfEnroll, err := b.Core.PopTOTPSelfEnrollByID(requestID.(string))
+	if err != nil || totpSelfEnroll == nil {
+		return logical.ErrorResponse("invalid request ID"), nil
+	}
+	return &logical.Response{}, nil
 }

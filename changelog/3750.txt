@@ -1,0 +1,3 @@
+```release-note:improvement
+command/status: Add support for the `-field` argument
+```

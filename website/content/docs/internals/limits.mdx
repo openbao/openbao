@@ -53,8 +53,8 @@ Specifying distinct per-mount options, or using long mount point paths, can
 increase the space required per mount.
 
 The number of mount points can be monitored by reading the
-[`sys/auth`](/api-docs/system/auth) and
-[`sys/mounts`](/api-docs/system/mounts) endpoints from the root namespace and
+[`sys/auth`](../api/system/auth.mdx) and
+[`sys/mounts`](../api/system/mounts.mdx) endpoints from the root namespace and
 similar sub-paths for namespaces respectively, like: `namespace1/sys/auth`,
 `namespace1/sys/mounts`, etc.
 
@@ -82,7 +82,7 @@ path element. 160 nested paths = 160 namespaces ranging from 40 bytes to
 6400 bytes.
 
 The number of namespaces can be monitored by querying
-[`sys/namespaces`](/api-docs/system/namespaces).
+[`sys/namespaces`](../api/system/namespaces.mdx).
 
 To estimate the number of namespaces that can be created, divide the mount
 point limit by the larger of the number of auth mounts per namespace

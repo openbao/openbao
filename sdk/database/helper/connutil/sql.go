@@ -5,6 +5,7 @@ package connutil
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin"
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 )
@@ -23,13 +26,14 @@ var _ ConnectionProducer = &SQLConnectionProducer{}
 
 // SQLConnectionProducer implements ConnectionProducer and provides a generic producer for most sql databases
 type SQLConnectionProducer struct {
-	ConnectionURL            string `json:"connection_url" mapstructure:"connection_url" structs:"connection_url"`
-	MaxOpenConnections       int    `json:"max_open_connections" mapstructure:"max_open_connections" structs:"max_open_connections"`
-	MaxIdleConnections       int    `json:"max_idle_connections" mapstructure:"max_idle_connections" structs:"max_idle_connections"`
-	MaxConnectionLifetimeRaw any    `json:"max_connection_lifetime" mapstructure:"max_connection_lifetime" structs:"max_connection_lifetime"`
-	Username                 string `json:"username" mapstructure:"username" structs:"username"`
-	Password                 string `json:"password" mapstructure:"password" structs:"password"`
-	DisableEscaping          bool   `json:"disable_escaping" mapstructure:"disable_escaping" structs:"disable_escaping"`
+	ConnectionURL            string      `json:"connection_url" mapstructure:"connection_url" structs:"connection_url"`
+	MaxOpenConnections       int         `json:"max_open_connections" mapstructure:"max_open_connections" structs:"max_open_connections"`
+	MaxIdleConnections       int         `json:"max_idle_connections" mapstructure:"max_idle_connections" structs:"max_idle_connections"`
+	MaxConnectionLifetimeRaw any         `json:"max_connection_lifetime" mapstructure:"max_connection_lifetime" structs:"max_connection_lifetime"`
+	Username                 string      `json:"username" mapstructure:"username" structs:"username"`
+	Password                 string      `json:"password" mapstructure:"password" structs:"password"`
+	DisableEscaping          bool        `json:"disable_escaping" mapstructure:"disable_escaping" structs:"disable_escaping"`
+	TLSConfig                *tls.Config `json:"-" mapstructure:"-" structs:"-"`
 
 	Type                  string
 	RawConfig             map[string]any
@@ -158,10 +162,24 @@ func (c *SQLConnectionProducer) Connection(ctx context.Context) (any, error) {
 		}
 	}
 
-	var err error
-	c.db, err = sql.Open(dbType, conn)
-	if err != nil {
-		return nil, err
+	if dbType == "pgx" && c.TLSConfig != nil {
+		config, err := pgx.ParseConfig(conn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse config: %w", err)
+		}
+		config.TLSConfig = mergeTLSConfig(config.TLSConfig, c.TLSConfig)
+
+		for _, fallback := range config.Fallbacks {
+			fallback.TLSConfig = mergeTLSConfig(fallback.TLSConfig, c.TLSConfig)
+		}
+
+		c.db = stdlib.OpenDB(*config)
+	} else {
+		var err error
+		c.db, err = sql.Open(dbType, conn)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Set some connection pool settings. We don't need much of this,
@@ -171,6 +189,22 @@ func (c *SQLConnectionProducer) Connection(ctx context.Context) (any, error) {
 	c.db.SetConnMaxLifetime(c.maxConnectionLifetime)
 
 	return c.db, nil
+}
+
+// mergeTLSConfig adds inline trust and client identity material while
+// preserving pgx-derived settings such as the TLS server name for each host.
+func mergeTLSConfig(base, inline *tls.Config) *tls.Config {
+	if base == nil {
+		base = &tls.Config{}
+	} else {
+		base = base.Clone()
+	}
+	base.RootCAs = inline.RootCAs
+	base.Certificates = inline.Certificates
+	if inline.MinVersion > base.MinVersion {
+		base.MinVersion = inline.MinVersion
+	}
+	return base
 }
 
 func (c *SQLConnectionProducer) SecretValues() map[string]any {

@@ -19,6 +19,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
+	"github.com/openbao/openbao/v2/internal/helper/testhelpers/certhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,6 +65,95 @@ func TestPostgreSQL_InitializeWithStringVals(t *testing.T) {
 
 	if err := db.Close(); err != nil {
 		t.Fatalf("err: %s", err)
+	}
+}
+
+func TestPostgreSQL_InitializeWithInlineTLS(t *testing.T) {
+	caCert := certhelpers.NewCert(
+		t,
+		certhelpers.CommonName("test certificate authority"),
+		certhelpers.IsCA(true),
+		certhelpers.SelfSign(),
+	)
+	clientCert := certhelpers.NewCert(
+		t,
+		certhelpers.CommonName("postgresql client"),
+		certhelpers.Parent(caCert),
+	)
+
+	db := new()
+	resp, err := db.Initialize(t.Context(), dbplugin.InitializeRequest{
+		Config: map[string]any{
+			"connection_url":  "postgres://{{username}}:{{password}}@postgres.example.com:5432/postgres?sslmode=verify-full",
+			"username":        "postgres",
+			"password":        "password",
+			"tls_ca":          string(caCert.Pem),
+			"tls_certificate": string(clientCert.Pem),
+			"private_key":     string(clientCert.PrivateKeyPEM()),
+		},
+		VerifyConnection: false,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, db.TLSConfig)
+	require.NotEmpty(t, db.TLSConfig.RootCAs.Subjects())
+	require.Len(t, db.TLSConfig.Certificates, 1)
+	require.Equal(t, string(caCert.Pem), resp.Config["tls_ca"])
+	require.Equal(t, "[private_key]", db.secretValues()[string(clientCert.PrivateKeyPEM())])
+}
+
+func TestPostgreSQL_InitializeInlineTLSErrors(t *testing.T) {
+	caCert := certhelpers.NewCert(
+		t,
+		certhelpers.CommonName("test certificate authority"),
+		certhelpers.IsCA(true),
+		certhelpers.SelfSign(),
+	)
+	clientCert := certhelpers.NewCert(
+		t,
+		certhelpers.CommonName("postgresql client"),
+		certhelpers.Parent(caCert),
+	)
+
+	tests := map[string]struct {
+		config      map[string]any
+		errContains string
+	}{
+		"invalid CA": {
+			config:      map[string]any{"tls_ca": "not PEM"},
+			errContains: "unable to add tls_ca to certificate pool",
+		},
+		"certificate without key": {
+			config:      map[string]any{"tls_certificate": string(clientCert.Pem)},
+			errContains: "both tls_certificate and private_key are required",
+		},
+		"key without certificate": {
+			config:      map[string]any{"private_key": string(clientCert.PrivateKeyPEM())},
+			errContains: "both tls_certificate and private_key are required",
+		},
+		"invalid certificate and key": {
+			config: map[string]any{
+				"tls_certificate": string(clientCert.Pem),
+				"private_key":     "not PEM",
+			},
+			errContains: "unable to load tls_certificate and private_key",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			config := map[string]any{
+				"connection_url": "postgres://{{username}}:{{password}}@postgres.example.com:5432/postgres?sslmode=verify-full",
+				"username":       "postgres",
+				"password":       "password",
+			}
+			maps.Copy(config, test.config)
+
+			_, err := new().Initialize(t.Context(), dbplugin.InitializeRequest{
+				Config:           config,
+				VerifyConnection: false,
+			})
+			require.ErrorContains(t, err, test.errContains)
+		})
 	}
 }
 

@@ -4,6 +4,8 @@
 package connutil
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"net/url"
 	"strings"
 	"testing"
@@ -56,6 +58,25 @@ func TestSQLPasswordChars(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestMergeTLSConfigPreservesDerivedServerName(t *testing.T) {
+	base := &tls.Config{ServerName: "postgres.example.com"}
+	rootCAs := x509.NewCertPool()
+	inline := &tls.Config{
+		RootCAs:      rootCAs,
+		Certificates: []tls.Certificate{{}},
+		MinVersion:   tls.VersionTLS12,
+	}
+
+	merged := mergeTLSConfig(base, inline)
+
+	assert.Equal(t, "postgres.example.com", merged.ServerName)
+	assert.Same(t, rootCAs, merged.RootCAs)
+	assert.Len(t, merged.Certificates, 1)
+	assert.Equal(t, uint16(tls.VersionTLS12), merged.MinVersion)
+	assert.NotSame(t, base, merged)
+	assert.Nil(t, base.RootCAs)
 }
 
 func TestSQLDisableEscaping(t *testing.T) {

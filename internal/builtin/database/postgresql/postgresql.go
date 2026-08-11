@@ -5,6 +5,8 @@ package postgresql
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -82,9 +84,53 @@ type PostgreSQL struct {
 
 	usernameProducer       template.StringTemplate
 	passwordAuthentication passwordAuthentication
+	tlsPrivateKey          string
 }
 
 func (p *PostgreSQL) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
+	certificate, err := strutil.GetString(req.Config, "tls_certificate")
+	if err != nil {
+		return dbplugin.InitializeResponse{}, fmt.Errorf("failed to retrieve tls_certificate: %w", err)
+	}
+	privateKey, err := strutil.GetString(req.Config, "private_key")
+	if err != nil {
+		return dbplugin.InitializeResponse{}, fmt.Errorf("failed to retrieve private_key: %w", err)
+	}
+	p.tlsPrivateKey = privateKey
+	ca, err := strutil.GetString(req.Config, "tls_ca")
+	if err != nil {
+		return dbplugin.InitializeResponse{}, fmt.Errorf("failed to retrieve tls_ca: %w", err)
+	}
+
+	useTLS := false
+	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
+	if ca != "" {
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM([]byte(ca)) {
+			return dbplugin.InitializeResponse{}, errors.New("unable to add tls_ca to certificate pool")
+		}
+		tlsConfig.RootCAs = caCertPool
+		useTLS = true
+	}
+
+	if (certificate == "") != (privateKey == "") {
+		return dbplugin.InitializeResponse{}, errors.New("both tls_certificate and private_key are required")
+	}
+	if certificate != "" {
+		clientCertificate, err := tls.X509KeyPair([]byte(certificate), []byte(privateKey))
+		if err != nil {
+			return dbplugin.InitializeResponse{}, fmt.Errorf("unable to load tls_certificate and private_key: %w", err)
+		}
+		tlsConfig.Certificates = []tls.Certificate{clientCertificate}
+		useTLS = true
+	}
+
+	if useTLS {
+		p.TLSConfig = tlsConfig
+	} else {
+		p.TLSConfig = nil
+	}
+
 	newConf, err := p.Init(ctx, req.Config, req.VerifyConnection)
 	if err != nil {
 		return dbplugin.InitializeResponse{}, err
@@ -517,7 +563,8 @@ func (p *PostgreSQL) defaultDeleteUser(ctx context.Context, username string) err
 
 func (p *PostgreSQL) secretValues() map[string]string {
 	return map[string]string{
-		p.Password: "[password]",
+		p.Password:      "[password]",
+		p.tlsPrivateKey: "[private_key]",
 	}
 }
 

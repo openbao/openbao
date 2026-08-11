@@ -389,13 +389,6 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 		}
 	}
 
-	// Validate binary_name is not empty
-	if p.BinaryName == "" && p.Image != "" {
-		results = append(results, configutil.ConfigError{
-			Problem: fmt.Sprintf("plugin %q: binary_name cannot be empty when image specified", p.Slug()),
-		})
-	}
-
 	if typ != consts.PluginTypeKMS || p.Image != "" {
 		// Validate version is not empty. KMS plugins do not require or enforce
 		// that a version is set. OCI-based plugins however require a version be

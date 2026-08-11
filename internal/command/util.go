@@ -12,6 +12,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/v2/internal/command/config"
 	"github.com/openbao/openbao/v2/internal/command/token"
 )
@@ -94,52 +95,18 @@ func RawSecretField(secret *api.Secret, field string) any {
 func RawSealStatusField(status *SealStatusOutput, field string) any {
 	var val any
 	switch field {
-	case "Seal Type":
-		val = status.Type
-	case "Recovery Seal Type":
-		val = status.RecoverySealType
-	case "Initialized":
-		val = status.Initialized
-	case "Sealed":
-		val = status.Sealed
-	case "Total Recovery Shares", "Total Shares":
-		val = status.N
-	case "Threshold":
-		val = status.T
-	case "Unseal Progress":
+	case "unseal_progress":
 		val = fmt.Sprintf("%d/%d", status.Progress, status.T)
-	case "Unseal Nonce":
-		val = status.Nonce
-	case "Seal Migration in Progress":
-		val = status.Migration
-	case "Version":
-		val = status.Version
-	case "Commit Date":
-		val = status.CommitDate
-	case "Storage Type":
-		val = status.StorageType
-	case "Cluster Name":
-		val = status.ClusterName
-	case "Cluster ID":
-		val = status.ClusterID
-	case "HA Enabled":
-		val = status.HAEnabled
-	case "HA Cluster":
-		val = status.LeaderClusterAddress
-	case "HA Mode":
+	case "ha_mode":
 		mode := "standby"
 		if status.IsSelf {
 			mode = "active"
 		}
 		val = mode
-	case "Active Since":
+	case "active_since":
 		val = status.ActiveTime.Format(time.RFC3339Nano)
-	case "Active Node Address":
-		val = status.LeaderAddress
-	case "Raft Committed Index":
-		val = status.RaftCommittedIndex
-	case "Raft Applied Index":
-		val = status.RaftAppliedIndex
+	default:
+		val = structtomap.Map(status)[field]
 	}
 
 	return val

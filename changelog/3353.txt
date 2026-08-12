@@ -1,0 +1,3 @@
+```release-note:bug
+core/namespaces: gracefully skip partially-created namespaces during unseal instead of panicking
+```

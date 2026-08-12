@@ -1,0 +1,3 @@
+```release-note:bug
+sdk/plugin: Ensure all log messages are visible under `plugin.ServeMultiplex(...)` by default to align with `plugin.Serve(...)`.
+```

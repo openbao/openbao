@@ -226,7 +226,7 @@ func TestGetSubjectKeyID(t *testing.T) {
 
 	testCases := []struct {
 		desc       string
-		inputKey   interface{}
+		inputKey   any
 		wantSkid   []byte
 		wantErr    bool
 		wantErrMsg string
@@ -303,19 +303,19 @@ func TestParsePKIMap(t *testing.T) {
 
 	testCases := []struct {
 		desc      string
-		inputData map[string]interface{}
+		inputData map[string]any
 		wantErr   bool
 	}{
 		{
 			desc: "Valid data bundle",
-			inputData: map[string]interface{}{
+			inputData: map[string]any{
 				"certificate": validCertPEM,
 			},
 			wantErr: false,
 		},
 		{
 			desc: "Invalid data type",
-			inputData: map[string]interface{}{
+			inputData: map[string]any{
 				"certificate": 123456,
 			},
 			wantErr: true,

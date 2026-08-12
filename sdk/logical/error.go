@@ -71,7 +71,7 @@ type HTTPCodedError interface {
 	Code() int
 }
 
-func CodedError(status int, msg string, vargs ...interface{}) HTTPCodedError {
+func CodedError(status int, msg string, vargs ...any) HTTPCodedError {
 	if len(vargs) > 0 {
 		msg = fmt.Sprintf(msg, vargs...)
 	}

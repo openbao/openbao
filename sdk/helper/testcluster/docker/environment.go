@@ -13,7 +13,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -25,7 +24,6 @@ import (
 	mathrand "math/rand"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,8 +43,6 @@ import (
 	dockhelper "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
-	thpsql "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
-	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
 )
 
@@ -79,7 +75,7 @@ type DockerCluster struct {
 	Logger    log.Logger
 	builtTags map[string]struct{}
 
-	storage testcluster.ClusterStorage
+	storage testcluster.Storage
 
 	// Whether HA mode is disabled
 	HADisabled bool
@@ -149,6 +145,12 @@ func (dc *DockerCluster) cleanup() error {
 	var result *multierror.Error
 	for _, node := range dc.ClusterNodes {
 		if err := node.cleanup(); err != nil {
+			result = multierror.Append(result, err)
+		}
+	}
+
+	if dc.storage != nil {
+		if err := dc.storage.Cleanup(); err != nil {
 			result = multierror.Append(result, err)
 		}
 	}
@@ -435,7 +437,6 @@ func NewDockerCluster(ctx context.Context, opts *DockerClusterOptions) (*DockerC
 		Logger:      opts.Logger,
 		builtTags:   map[string]struct{}{},
 		CA:          opts.CA,
-		storage:     opts.Storage,
 		HADisabled:  opts.HADisabled,
 	}
 
@@ -479,6 +480,7 @@ type DockerClusterNode struct {
 	ImageTag             string
 	DataVolumeName       string
 	cleanupVolume        func()
+	Storage              testcluster.NodeStorage
 }
 
 func (n *DockerClusterNode) TLSConfig() *tls.Config {
@@ -560,6 +562,11 @@ func (n *DockerClusterNode) cleanup() error {
 	}
 	n.cleanupContainer()
 	n.cleanupVolume()
+	if n.Storage != nil {
+		if err := n.Storage.Cleanup(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -576,15 +583,15 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 			})
 		}
 	}
-	vaultCfg := map[string]interface{}{}
+	vaultCfg := map[string]any{}
 	ports := []string{"8200/tcp", "8201/tcp"}
-	listeners := []interface{}{
-		map[string]interface{}{
-			"tcp": map[string]interface{}{
+	listeners := []any{
+		map[string]any{
+			"tcp": map[string]any{
 				"address":       fmt.Sprintf("%s:%d", "0.0.0.0", 8200),
 				"tls_cert_file": "/openbao/config/cert.pem",
 				"tls_key_file":  "/openbao/config/key.pem",
-				"telemetry": map[string]interface{}{
+				"telemetry": map[string]any{
 					"unauthenticated_metrics_access": true,
 				},
 			},
@@ -594,13 +601,13 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		lsCfg := opts.VaultNodeConfig.AdditionalListeners
 		listeners = append(listeners, lsCfg...)
 		for _, lCfgRaw := range lsCfg {
-			lCfg := lCfgRaw.(map[string]interface{})
+			lCfg := lCfgRaw.(map[string]any)
 			for lType, lValueRaw := range lCfg {
 				if lType == "unix" {
 					continue
 				}
 
-				lValue := lValueRaw.(map[string]interface{})
+				lValue := lValueRaw.(map[string]any)
 				address, ok := lValue["address"].(string)
 				if !ok {
 					continue
@@ -619,7 +626,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	}
 	vaultCfg["listener"] = listeners
 
-	vaultCfg["telemetry"] = map[string]interface{}{
+	vaultCfg["telemetry"] = map[string]any{
 		"disable_hostname": true,
 	}
 
@@ -640,15 +647,15 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 
 	// Setup storage. Default is raft.
 	storageType := "raft"
-	storageOpts := map[string]interface{}{
+	storageOpts := map[string]any{
 		// TODO add options from vnc
 		"path":    "/openbao/file",
 		"node_id": n.NodeID,
 	}
 
-	if opts.Storage != nil {
-		storageType = opts.Storage.Type()
-		storageOpts = opts.Storage.Opts()
+	if n.Storage != nil {
+		storageType = n.Storage.Type()
+		storageOpts = n.Storage.Opts()
 	}
 
 	if opts != nil && opts.VaultNodeConfig != nil {
@@ -658,7 +665,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 			}
 		}
 	}
-	vaultCfg["storage"] = map[string]interface{}{
+	vaultCfg["storage"] = map[string]any{
 		storageType: storageOpts,
 	}
 
@@ -740,6 +747,11 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	r, err := dockhelper.NewServiceRunner(dockhelper.RunOptions{
 		ImageRepo: n.ImageRepo,
 		ImageTag:  n.ImageTag,
+		// The alpine build has changed in v2.6.0 to now run as non-root by
+		// default, aligning with UBI images. However, we don't write
+		// /openbao/config with proper permissions, which means we'll attempt
+		// to invoke chown as openbao which will fail.
+		User: "root",
 		// We don't need to run update-ca-certificates in the container, because
 		// we're providing the CA in the raft join call, and otherwise Vault
 		// servers don't talk to one another on the API port.
@@ -1004,7 +1016,7 @@ type DockerClusterOptions struct {
 	Args        []string
 	CopyFromTo  map[string]string
 	StartProbe  func(*api.Client) error
-	Storage     testcluster.ClusterStorage
+	Storage     testcluster.Storage // either testcluster.ClusterStorage or testcluster.NodeStorage
 	StorageType string
 	Root        bool
 	Entrypoint  string
@@ -1048,6 +1060,52 @@ func ensureLeaderMatches(ctx context.Context, client *api.Client, ready func(res
 
 const DefaultNumCores = 3
 
+// resolveStorage returns a NodeStorage object, having already started it.
+// This handles various causes for us of reusing the same storage object &c.,
+// though we still assume we only ever call this once per index.
+func (dc *DockerCluster) resolveStorage(ctx context.Context, opts *DockerClusterOptions, index int) (testcluster.NodeStorage, error) {
+	storage := opts.Storage
+	if opts.Storage == nil && dc.storage != nil {
+		storage = dc.storage
+	}
+
+	if storage == nil {
+		return nil, nil
+	}
+
+	switch typed := storage.(type) {
+	case testcluster.ClusterStorage:
+		if dc.storage == nil {
+			dc.storage = typed
+		}
+
+		node, err := typed.ForNode(ctx, index)
+		if err != nil {
+			return nil, fmt.Errorf("error getting storage for node %d: %w", index, err)
+		}
+
+		if err := node.Start(ctx, &opts.ClusterOptions); err != nil {
+			return nil, fmt.Errorf("error starting storage for node %d: %w", index, err)
+		}
+
+		return node, nil
+	case testcluster.NodeStorage:
+		if (dc.storage != nil && opts.Storage != dc.storage) || dc.storage == nil {
+			if err := typed.Start(ctx, &opts.ClusterOptions); err != nil {
+				return nil, fmt.Errorf("error starting storage for node %d: %w", index, err)
+			}
+		}
+
+		if dc.storage == nil {
+			dc.storage = typed
+		}
+
+		return typed, nil
+	default:
+		return nil, fmt.Errorf("unknown type of storage; expected either testcluster.ClusterStorage or testcluster.NodeStorage; got %T", typed)
+	}
+}
+
 // creates a managed docker container running Vault
 func (dc *DockerCluster) setupDockerCluster(ctx context.Context, opts *DockerClusterOptions) error {
 	if opts.TmpDir != "" {
@@ -1087,12 +1145,6 @@ func (dc *DockerCluster) setupDockerCluster(ctx context.Context, opts *DockerClu
 	}
 	dc.RootCAs = x509.NewCertPool()
 	dc.RootCAs.AddCert(dc.CACert)
-
-	if dc.storage != nil {
-		if err := dc.storage.Start(ctx, &opts.ClusterOptions); err != nil {
-			return err
-		}
-	}
 
 	for i := 0; i < numCores; i++ {
 		if err := dc.addNode(ctx, opts); err != nil {
@@ -1143,6 +1195,12 @@ func (dc *DockerCluster) addNode(ctx context.Context, opts *DockerClusterOptions
 		ImageRepo: opts.ImageRepo,
 		ImageTag:  tag,
 	}
+
+	node.Storage, err = dc.resolveStorage(ctx, opts, i)
+	if err != nil {
+		return err
+	}
+
 	dc.ClusterNodes = append(dc.ClusterNodes, node)
 	if err := os.MkdirAll(node.WorkDir, 0o755); err != nil {
 		return err
@@ -1154,17 +1212,18 @@ func (dc *DockerCluster) addNode(ctx context.Context, opts *DockerClusterOptions
 }
 
 func (dc *DockerCluster) joinNode(ctx context.Context, nodeIdx int, leaderIdx int) error {
-	if dc.storage != nil && dc.storage.Type() != "raft" {
+	if nodeIdx >= len(dc.ClusterNodes) {
+		return fmt.Errorf("invalid node %d", nodeIdx)
+	}
+
+	node := dc.ClusterNodes[nodeIdx]
+	leader := dc.ClusterNodes[leaderIdx]
+
+	if node.Storage != nil && node.Storage.Type() != "raft" {
 		// Storage is not raft so nothing to do but unseal.
 		return testcluster.UnsealNode(ctx, dc, nodeIdx)
 	}
 
-	leader := dc.ClusterNodes[leaderIdx]
-
-	if nodeIdx >= len(dc.ClusterNodes) {
-		return fmt.Errorf("invalid node %d", nodeIdx)
-	}
-	node := dc.ClusterNodes[nodeIdx]
 	client := node.APIClient()
 
 	var resp *api.RaftJoinResponse
@@ -1250,12 +1309,9 @@ func (dc *DockerCluster) setupImage(ctx context.Context, opts *DockerClusterOpti
 
 	containerFile := fmt.Sprintf(`
 FROM %s:%s
-COPY bao /bin/bao
+COPY bao /usr/bin/bao
 `, opts.ImageRepo, sourceTag)
 
-	if opts.Root {
-		containerFile += "USER root\n"
-	}
 	if len(opts.Entrypoint) > 0 {
 		containerFile += "COPY entrypoint /usr/local/bin/docker-entrypoint.sh\n"
 	}
@@ -1265,103 +1321,10 @@ COPY bao /bin/bao
 		dockhelper.BuildPullParent(true),
 		dockhelper.BuildTags([]string{opts.ImageRepo + ":" + tag}))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to build image: %w", err)
 	}
 	dc.builtTags[tag] = struct{}{}
 	return tag, nil
-}
-
-type PostgreSQLStorage struct {
-	cleanup     func()
-	ExternalUrl string
-	InternalUrl string
-	Runner      *dockhelper.Runner
-	Service     *dockhelper.Service
-	Id          string
-}
-
-var _ testcluster.ClusterStorage = &PostgreSQLStorage{}
-
-// NewPostgreSQLStorage starts the underlying PSQL container and saves its
-// connection URL.
-func NewPostgreSQLStorage(t *testing.T, network string) *PostgreSQLStorage {
-	env := []string{
-		"POSTGRES_PASSWORD=secret",
-		"POSTGRES_DB=database",
-	}
-
-	runner, svc, cleanup, externalUrl, containerID := thpsql.PrepareTestContainerRaw(t, "postgres", "docker.mirror.hashicorp.services/postgres", "latest", "secret", true, false, false, env, false /* don't wait */, network)
-
-	u, err := url.Parse(externalUrl)
-	require.NoError(t, err, "failed to parse returned external URL")
-
-	var host string
-	if network != "" {
-		host = svc.Container.NetworkSettings.Networks[network].IPAddress.String()
-	} else {
-		for name, info := range svc.Container.NetworkSettings.Networks {
-			network = name
-			host = info.IPAddress.String()
-
-			t.Logf("found network [%v]: %v", network, info)
-		}
-
-		if len(svc.Container.NetworkSettings.Networks) != 1 {
-			t.Fatalf("expected only one network if no network name given: %v", network)
-		}
-	}
-	u.Host = fmt.Sprintf("%v:5432", host)
-
-	internalUrl := u.String()
-
-	return &PostgreSQLStorage{
-		cleanup:     cleanup,
-		ExternalUrl: externalUrl,
-		InternalUrl: internalUrl,
-		Runner:      runner,
-		Service:     svc,
-		Id:          containerID,
-	}
-}
-
-func (p *PostgreSQLStorage) Start(context.Context, *testcluster.ClusterOptions) error {
-	// Initialization already occurred when creating this object.
-	return nil
-}
-
-func (p *PostgreSQLStorage) Cleanup() error {
-	if p.cleanup != nil {
-		p.cleanup()
-		p.cleanup = nil
-	}
-	return nil
-}
-
-func (p *PostgreSQLStorage) Opts() map[string]interface{} {
-	return map[string]interface{}{
-		"connection_url":       p.InternalUrl,
-		"ha_enabled":           true,
-		"max_parallel":         5,
-		"max_idle_connections": 3,
-		"max_connect_retries":  30,
-	}
-}
-
-func (p *PostgreSQLStorage) Type() string {
-	return "postgresql"
-}
-
-func (p *PostgreSQLStorage) Client(ctx context.Context) (*sql.DB, error) {
-	db, err := sql.Open("pgx", p.ExternalUrl)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = db.PingContext(ctx); err != nil {
-		return nil, err
-	}
-
-	return db, nil
 }
 
 /* Notes on testing the non-bridge network case:

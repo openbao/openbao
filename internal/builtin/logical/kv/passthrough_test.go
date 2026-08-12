@@ -1,0 +1,285 @@
+package kv
+
+import (
+	"context"
+	"encoding/json"
+	"reflect"
+	"testing"
+	"time"
+
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+)
+
+func testPassthroughBackendWithStorage(ctx context.Context) (logical.Backend, logical.Storage) {
+	storage := &logical.InmemStorage{}
+	b, _ := PassthroughBackendFactory(ctx, &logical.BackendConfig{
+		Logger: nil,
+		System: logical.StaticSystemView{
+			DefaultLeaseTTLVal: time.Hour * 24,
+			MaxLeaseTTLVal:     time.Hour * 24 * 32,
+		},
+		StorageView: storage,
+	})
+
+	return b, storage
+}
+
+func TestPassthroughBackend_RootPaths(t *testing.T) {
+	b := testPassthroughBackend(t.Context())
+	test := func(b logical.Backend) {
+		root := b.SpecialPaths()
+		if len(root.Root) != 0 {
+			t.Fatalf("unexpected: %v", root)
+		}
+	}
+	test(b)
+	b = testPassthroughLeasedBackend(t.Context())
+	test(b)
+}
+
+func TestPassthroughBackend_Write(t *testing.T) {
+	test := func(b logical.Backend) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "foo")
+		req.Data["raw"] = "test"
+
+		resp, err := b.HandleRequest(t.Context(), req)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if resp != nil {
+			t.Fatalf("bad: %v", resp)
+		}
+
+		out, err := req.Storage.Get(t.Context(), "foo")
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if out == nil {
+			t.Fatal("failed to write to view")
+		}
+	}
+	b := testPassthroughBackend(t.Context())
+	test(b)
+	b = testPassthroughLeasedBackend(t.Context())
+	test(b)
+}
+
+func TestPassthroughBackend_Read(t *testing.T) {
+	test := func(b logical.Backend, ttlType string, ttl any, leased bool) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "foo")
+		req.Data["raw"] = "test"
+		var reqTTL any
+		switch tt := ttl.(type) {
+		case int64:
+			reqTTL = tt
+		case string:
+			reqTTL = tt
+		default:
+			t.Fatal("unknown ttl type")
+		}
+		req.Data[ttlType] = reqTTL
+		storage := req.Storage
+
+		if _, err := b.HandleRequest(t.Context(), req); err != nil {
+			t.Fatalf("err: %v", err)
+		}
+
+		req = logical.TestRequest(t, logical.ReadOperation, "foo")
+		req.Storage = storage
+
+		resp, err := b.HandleRequest(t.Context(), req)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+
+		expectedTTL, err := parseutil.ParseDurationSecond(ttl)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// What comes back if an int is passed in is a json.Number which is
+		// actually aliased as a string so to make the deep equal happy if it's
+		// actually a number we set it to an int64
+		respTTL := resp.Data[ttlType]
+		_, ok := respTTL.(json.Number)
+		if ok {
+			respTTL, err = respTTL.(json.Number).Int64()
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp.Data[ttlType] = respTTL
+		}
+
+		expected := &logical.Response{
+			Secret: &logical.Secret{
+				LeaseOptions: logical.LeaseOptions{
+					Renewable: true,
+					TTL:       expectedTTL,
+				},
+			},
+			Data: map[string]any{
+				"raw":   "test",
+				ttlType: reqTTL,
+			},
+		}
+
+		if !leased {
+			expected.Secret.Renewable = false
+		}
+		resp.Secret.InternalData = nil
+		resp.Secret.LeaseID = ""
+		if !reflect.DeepEqual(resp, expected) {
+			t.Fatalf("bad response.\n\nexpected:\n%#v\n\nGot:\n%#v", expected, resp)
+		}
+	}
+	b := testPassthroughLeasedBackend(t.Context())
+	test(b, "lease", "1h", true)
+	test(b, "ttl", "5", true)
+	b = testPassthroughBackend(t.Context())
+	test(b, "lease", int64(10), false)
+	test(b, "ttl", "40s", false)
+}
+
+func TestPassthroughBackend_Delete(t *testing.T) {
+	test := func(b logical.Backend) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "foo")
+		req.Data["raw"] = "test"
+		storage := req.Storage
+
+		if _, err := b.HandleRequest(t.Context(), req); err != nil {
+			t.Fatalf("err: %v", err)
+		}
+
+		req = logical.TestRequest(t, logical.DeleteOperation, "foo")
+		req.Storage = storage
+		resp, err := b.HandleRequest(t.Context(), req)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if resp != nil {
+			t.Fatalf("bad: %v", resp)
+		}
+
+		req = logical.TestRequest(t, logical.ReadOperation, "foo")
+		req.Storage = storage
+		resp, err = b.HandleRequest(t.Context(), req)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if resp != nil {
+			t.Fatalf("bad: %v", resp)
+		}
+	}
+	b := testPassthroughBackend(t.Context())
+	test(b)
+	b = testPassthroughLeasedBackend(t.Context())
+	test(b)
+}
+
+func TestPassthroughBackend_List(t *testing.T) {
+	test := func(b logical.Backend) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "foo")
+		req.Data["raw"] = "test"
+		storage := req.Storage
+
+		if _, err := b.HandleRequest(t.Context(), req); err != nil {
+			t.Fatalf("err: %v", err)
+		}
+
+		req = logical.TestRequest(t, logical.ListOperation, "")
+		req.Storage = storage
+		resp, err := b.HandleRequest(t.Context(), req)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+
+		expected := &logical.Response{
+			Data: map[string]any{
+				"keys": []string{"foo"},
+			},
+		}
+
+		if !reflect.DeepEqual(resp, expected) {
+			t.Fatalf("bad response.\n\nexpected: %#v\n\nGot: %#v", expected, resp)
+		}
+	}
+	b := testPassthroughBackend(t.Context())
+	test(b)
+	b = testPassthroughLeasedBackend(t.Context())
+	test(b)
+}
+
+func TestPassthroughBackend_Scan(t *testing.T) {
+	test := func(b logical.Backend) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "foo")
+		req.Data["raw"] = "test"
+		storage := req.Storage
+
+		if _, err := b.HandleRequest(t.Context(), req); err != nil {
+			t.Fatalf("err: %v", err)
+		}
+
+		req = logical.TestRequest(t, logical.ScanOperation, "")
+		req.Storage = storage
+		resp, err := b.HandleRequest(t.Context(), req)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+
+		expected := &logical.Response{
+			Data: map[string]any{
+				"keys": []string{"foo"},
+			},
+		}
+
+		if !reflect.DeepEqual(resp, expected) {
+			t.Fatalf("bad response.\n\nexpected: %#v\n\nGot: %#v", expected, resp)
+		}
+	}
+	b := testPassthroughBackend(t.Context())
+	test(b)
+	b = testPassthroughLeasedBackend(t.Context())
+	test(b)
+}
+
+func TestPassthroughBackend_Revoke(t *testing.T) {
+	test := func(b logical.Backend) {
+		req := logical.TestRequest(t, logical.RevokeOperation, "kv")
+		req.Secret = &logical.Secret{
+			InternalData: map[string]any{
+				"secret_type": "kv",
+			},
+		}
+
+		if _, err := b.HandleRequest(t.Context(), req); err != nil {
+			t.Fatalf("err: %v", err)
+		}
+	}
+	b := testPassthroughBackend(t.Context())
+	test(b)
+	b = testPassthroughLeasedBackend(t.Context())
+	test(b)
+}
+
+func testPassthroughBackend(ctx context.Context) logical.Backend {
+	b, _ := PassthroughBackendFactory(ctx, &logical.BackendConfig{
+		Logger: nil,
+		System: logical.StaticSystemView{
+			DefaultLeaseTTLVal: time.Hour * 24,
+			MaxLeaseTTLVal:     time.Hour * 24 * 32,
+		},
+	})
+	return b
+}
+
+func testPassthroughLeasedBackend(ctx context.Context) logical.Backend {
+	b, _ := LeasedPassthroughBackendFactory(ctx, &logical.BackendConfig{
+		Logger: nil,
+		System: logical.StaticSystemView{
+			DefaultLeaseTTLVal: time.Hour * 24,
+			MaxLeaseTTLVal:     time.Hour * 24 * 32,
+		},
+	})
+	return b
+}

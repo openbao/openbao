@@ -217,7 +217,7 @@ const Asset = ({ urls }) => {
   );
 };
 
-const DebRepo = ({ gpgKeyName }) => {
+const DebRepo = ({ version, gpgKeyName }) => {
   const [gpgKey, setGPGKey] = useState("");
   useEffect(() => {
     try {
@@ -242,7 +242,7 @@ const DebRepo = ({ gpgKeyName }) => {
       >
         {`Types: deb
 URIs: https://pkgs.openbao.org/deb/
-Suites: stable
+Suites: ${version.includes("-") ? "testing" : "stable"}
 Components: main
 Signed-By:
 ` + gpgKey.replaceAll(/^(?!$)/gm, " ")}
@@ -255,7 +255,7 @@ Signed-By:
   );
 };
 
-const RpmRepo = ({ gpgKeyName }) => {
+const RpmRepo = ({ version, gpgKeyName }) => {
   return (
     <>
       <h4>Installation via official Package Repository</h4>
@@ -269,7 +269,7 @@ const RpmRepo = ({ gpgKeyName }) => {
       >
         {`[openbao]
 name=openbao
-baseurl=https://pkgs.openbao.org/rpm/$basearch
+baseurl=https://pkgs.openbao.org/${version.includes("-") ? "rpm-testing" : "rpm"}/$basearch
 repo_gpgcheck=0
 gpgcheck=1
 enabled=1
@@ -286,13 +286,13 @@ metadata_expire=300`}
   );
 };
 
-const PackageRepo = ({ type }) => {
-  var gpgKeyName = "openbao-gpg-pub-20240618.asc";
+const PackageRepo = ({ type, version }) => {
+  const gpgKeyName = "openbao-gpg-pub-20240618.asc";
 
   return (
     <>
-      {type === "deb" && <DebRepo gpgKeyName={gpgKeyName} />}
-      {type === "rpm" && <RpmRepo gpgKeyName={gpgKeyName} />}
+      {type === "deb" && <DebRepo version={version} gpgKeyName={gpgKeyName} />}
+      {type === "rpm" && <RpmRepo version={version} gpgKeyName={gpgKeyName} />}
     </>
   );
 };
@@ -306,9 +306,13 @@ const DockerList = ({ version, registry }) => {
 
   const dockerDistros = {
     "Alpine Image Distribution": "openbao/openbao",
-    "Alpine Image Distribution with HSM Support": "openbao/openbao-hsm",
     "Red Hat Universal Base Image (UBI) Distribution": "openbao/openbao-ubi",
-    "Red Hat Universal Base Image (UBI) Distribution with HSM support": "openbao/openbao-hsm-ubi",
+    // *-hsm images are available only up to v2.6.
+    ...(major >= 2 && minor <= 6 ? {
+      "Alpine Image Distribution with HSM Support": "openbao/openbao-hsm",
+      "Red Hat Universal Base Image (UBI) Distribution with HSM support": "openbao/openbao-hsm-ubi",
+    } : {}),
+    // openbao-distroless is available starting with v2.6.
     ...(major >= 2 && minor >= 6 ? {
       "Distroless Distribution": "openbao/openbao-distroless",
     } : {}),
@@ -336,60 +340,6 @@ const Docker = ({ version, name }) => {
           <DockerList version={version} registry={item} />
         </TabItem>
       ))}
-    </Tabs>
-  );
-};
-
-const LinuxPackage = ({ version, name }) => {
-  const { options } = useOptions();
-  return (
-    <Tabs>
-      <TabItem value="deb" label="DEB">
-        <PackageRepo type={"deb"} />
-        <nav className="pagination-nav">
-          {version &&
-            Object(options)[version]["assets"][name] &&
-            Object(options)[version]["assets"][name]["deb"] &&
-            ArchPackageMapApply(
-              Object(options)[version]["assets"][name]["deb"],
-              (props, idx) => <Asset key={idx} urls={props} />,
-            )}
-        </nav>
-      </TabItem>
-      <TabItem value="rpm" label="RPM">
-        <PackageRepo type={"rpm"} />
-        <nav className="pagination-nav">
-          {version &&
-            Object(options)[version]["assets"][name] &&
-            Object(options)[version]["assets"][name]["rpm"] &&
-            ArchPackageMapApply(
-              Object(options)[version]["assets"][name]["rpm"],
-              (props, idx) => <Asset key={idx} urls={props} />,
-            )}
-        </nav>
-      </TabItem>
-      <TabItem value="pkg" label="PKG">
-        <nav className="pagination-nav">
-          {version &&
-            Object(options)[version]["assets"][name] &&
-            Object(options)[version]["assets"][name]["pkg"] &&
-            ArchPackageMapApply(
-              Object(options)[version]["assets"][name]["pkg"],
-              (props, idx) => <Asset key={idx} urls={props} />,
-            )}
-        </nav>
-      </TabItem>
-      <TabItem value="binary" label="Binary">
-        <nav className="pagination-nav">
-          {version &&
-            Object(options)[version]["assets"][name] &&
-            Object(options)[version]["assets"][name]["binary"] &&
-            ArchPackageMapApply(
-              Object(options)[version]["assets"][name]["binary"],
-              (props, idx) => <Asset key={idx} urls={props} />,
-            )}
-        </nav>
-      </TabItem>
     </Tabs>
   );
 };
@@ -427,7 +377,7 @@ const OS = ({ name }) => {
 
     return (
       <>
-        <PackageRepo type={tab.type} />
+        <PackageRepo type={tab.type} version={version} />
         {tab.header && <h4>{tab.header}</h4>}
         {hasAssets && (
           <nav className="pagination-nav">

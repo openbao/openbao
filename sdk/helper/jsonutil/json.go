@@ -15,7 +15,7 @@ import (
 )
 
 // Encodes/Marshals the given object into JSON
-func EncodeJSON(in interface{}) ([]byte, error) {
+func EncodeJSON(in any) ([]byte, error) {
 	if in == nil {
 		return nil, errors.New("input for encoding is nil")
 	}
@@ -31,7 +31,7 @@ func EncodeJSON(in interface{}) ([]byte, error) {
 // encoded value (using Gzip format BestCompression level, by default). A
 // canary byte is placed at the beginning of the returned bytes for the logic
 // in decompression method to identify compressed input.
-func EncodeJSONAndCompress(in interface{}, config *compressutil.CompressionConfig) ([]byte, error) {
+func EncodeJSONAndCompress(in any, config *compressutil.CompressionConfig) ([]byte, error) {
 	if in == nil {
 		return nil, errors.New("input for encoding is nil")
 	}
@@ -57,7 +57,7 @@ func EncodeJSONAndCompress(in interface{}, config *compressutil.CompressionConfi
 // a canary byte before the compressed data. If the data is not compressed, it
 // is JSON decoded directly. Otherwise the decompressed data will be JSON
 // decoded.
-func DecodeJSON(data []byte, out interface{}) error {
+func DecodeJSON(data []byte, out any) error {
 	if len(data) == 0 {
 		return errors.New("'data' being decoded is nil")
 	}
@@ -85,7 +85,7 @@ func DecodeJSON(data []byte, out interface{}) error {
 }
 
 // Decodes/Unmarshals the given io.Reader pointing to a JSON, into a desired object
-func DecodeJSONFromReader(r io.Reader, out interface{}) error {
+func DecodeJSONFromReader(r io.Reader, out any) error {
 	if r == nil {
 		return errors.New("'io.Reader' being decoded is nil")
 	}

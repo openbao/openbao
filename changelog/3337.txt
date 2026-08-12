@@ -1,0 +1,9 @@
+```release-note:change
+releases: Discontinue the HSM distribution of OpenBao, as announced with the v2.6.0 release. PKCS#11 functionality remains available via the PKCS#11 KMS plugin.
+- This release's artifacts do not include `*-hsm` binary or package variants.
+- The `openbao-hsm` and `openbao-hsm-ubi` container images see no updates with this release.
+- The `hsm` build tag no longer has any effect.
+```
+```release-note:change
+core/seal: The `pkcs11`, `alicloudkms`, `awskms`, `azurekeyvault`, `gcpckms` and `ocikms` seals are no longer built-in and must be installed as external plugins, as announced with the v2.6.0 release.
+```

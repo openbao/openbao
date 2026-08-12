@@ -1,0 +1,3 @@
+```release-note:bug
+core/policies: Fix `limit=0` and negative limits bypassing the `pagination_limit` ACL option.
+```

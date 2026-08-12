@@ -60,8 +60,8 @@ type PolicyRequest struct {
 	// Indicates whether a private or public key is imported/upserted
 	IsPrivateKey bool
 
-	// The UUID of the managed key, if using one
-	ManagedKeyUUID string
+	// The reference to the external key, if using one.
+	ExternalKeyRef string
 }
 
 type LockManager struct {
@@ -158,7 +158,7 @@ func (lm *LockManager) RestorePolicy(ctx context.Context, storage logical.Storag
 	defer lock.Unlock()
 
 	var ok bool
-	var pRaw interface{}
+	var pRaw any
 
 	// If the policy is in cache and 'force' is not specified, error out. Anywhere
 	// that would put it in the cache will also be protected by the mutex above,
@@ -244,7 +244,7 @@ func (lm *LockManager) BackupPolicy(ctx context.Context, storage logical.Storage
 	defer lock.Unlock()
 
 	var ok bool
-	var pRaw interface{}
+	var pRaw any
 
 	if lm.useCache {
 		pRaw, ok = lm.cache.Load(name)
@@ -295,7 +295,7 @@ func (lm *LockManager) GetPolicyWithLockType(ctx context.Context, req PolicyRequ
 	var p *Policy
 	var err error
 	var ok bool
-	var pRaw interface{}
+	var pRaw any
 
 	// Check if it's in our cache. If so, return right away.
 	if lm.useCache {
@@ -390,6 +390,15 @@ func (lm *LockManager) GetPolicyWithLockType(ctx context.Context, req PolicyRequ
 				return nil, false, fmt.Errorf("key derivation and convergent encryption not supported for keys of type %v", req.KeyType)
 			}
 
+		case KeyType_ExternalKey:
+			if req.Derived || req.Convergent {
+				return nil, false, fmt.Errorf("key derivation and convergent encryption not supported for keys of type %v", req.KeyType)
+			}
+
+			if req.AutoRotatePeriod != 0 {
+				return nil, false, fmt.Errorf("auto-rotation is not supported for keys of type %v", req.KeyType)
+			}
+
 		default:
 			return nil, false, fmt.Errorf("unsupported key type %v", req.KeyType)
 		}
@@ -403,6 +412,7 @@ func (lm *LockManager) GetPolicyWithLockType(ctx context.Context, req PolicyRequ
 			AllowPlaintextBackup: req.AllowPlaintextBackup,
 			AutoRotatePeriod:     req.AutoRotatePeriod,
 			KeySize:              req.KeySize,
+			ExternalKeyRef:       req.ExternalKeyRef,
 		}
 
 		if req.Derived {
@@ -458,7 +468,7 @@ func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key 
 	var p *Policy
 	var err error
 	var ok bool
-	var pRaw interface{}
+	var pRaw any
 
 	// Check if it's in our cache
 	if lm.useCache {
@@ -514,7 +524,7 @@ func (lm *LockManager) DeletePolicy(ctx context.Context, storage logical.Storage
 	var p *Policy
 	var err error
 	var ok bool
-	var pRaw interface{}
+	var pRaw any
 
 	// We may be writing to disk, so grab an exclusive lock. This prevents bad
 	// behavior when the cache is turned off. We also lock the shared policy

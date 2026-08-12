@@ -9,6 +9,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/openbao/go-kms-wrapping/v2/kms"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
@@ -48,23 +49,23 @@ type SystemView interface {
 
 	// ResponseWrapData wraps the given data in a cubbyhole and returns the
 	// token used to unwrap.
-	ResponseWrapData(ctx context.Context, data map[string]interface{}, ttl time.Duration, jwt bool) (*wrapping.ResponseWrapInfo, error)
+	ResponseWrapData(ctx context.Context, data map[string]any, ttl time.Duration, jwt bool) (info *wrapping.ResponseWrapInfo, err error)
 
 	// LookupPlugin looks into the plugin catalog for a plugin with the given
 	// name. Returns a PluginRunner or an error if a plugin can not be found.
-	LookupPlugin(ctx context.Context, pluginName string, pluginType consts.PluginType) (*pluginutil.PluginRunner, error)
+	LookupPlugin(ctx context.Context, pluginName string, pluginType consts.PluginType) (runner *pluginutil.PluginRunner, err error)
 
 	// LookupPluginVersion looks into the plugin catalog for a plugin with the given
 	// name and version. Returns a PluginRunner or an error if a plugin can not be found.
-	LookupPluginVersion(ctx context.Context, pluginName string, pluginType consts.PluginType, version string) (*pluginutil.PluginRunner, error)
+	LookupPluginVersion(ctx context.Context, pluginName string, pluginType consts.PluginType, version string) (runner *pluginutil.PluginRunner, err error)
 
 	// ListVersionedPlugins returns information about all plugins of a certain
 	// type in the catalog, including any versioning information stored for them.
-	ListVersionedPlugins(ctx context.Context, pluginType consts.PluginType) ([]pluginutil.VersionedPlugin, error)
+	ListVersionedPlugins(ctx context.Context, pluginType consts.PluginType) (plugins []pluginutil.VersionedPlugin, err error)
 
 	// NewPluginClient returns a client for managing the lifecycle of plugin
 	// processes
-	NewPluginClient(ctx context.Context, config pluginutil.PluginClientConfig) (pluginutil.PluginClient, error)
+	NewPluginClient(ctx context.Context, config pluginutil.PluginClientConfig) (client pluginutil.PluginClient, err error)
 
 	// MlockEnabled returns the configuration setting for enabling mlock on
 	// plugins.
@@ -72,17 +73,17 @@ type SystemView interface {
 
 	// EntityInfo returns a subset of information related to the identity entity
 	// for the given entity id
-	EntityInfo(entityID string) (*Entity, error)
+	EntityInfo(entityID string) (entity *Entity, err error)
 
 	// GroupsForEntity returns the group membership information for the provided
 	// entity id
-	GroupsForEntity(entityID string) ([]*Group, error)
+	GroupsForEntity(entityID string) (groups []*Group, err error)
 
 	// PluginEnv returns Vault environment information used by plugins
-	PluginEnv(context.Context) (*PluginEnvironment, error)
+	PluginEnv(context.Context) (env *PluginEnvironment, err error)
 
 	// VaultVersion returns the version string for the currently running Vault.
-	VaultVersion(context.Context) (string, error)
+	VaultVersion(context.Context) (version string, err error)
 
 	// GeneratePasswordFromPolicy generates a password from the policy referenced.
 	// If the policy does not exist, this will return an error.
@@ -91,21 +92,31 @@ type SystemView interface {
 	// ClusterID returns the replication ClusterID, for use with path-based
 	// write forwarding (WriteForwardedPaths). This value will be templated
 	// in for the {{cluterId}} sentinel.
-	ClusterID(ctx context.Context) (string, error)
+	ClusterID(ctx context.Context) (id string, err error)
+
+	// GetExternalKey acquires an External Key by reference.
+	//
+	// A key reference follows the "<config name>:<key name>" scheme, uniquely
+	// identifying a key configured under /sys/external-keys.
+	//
+	// Note that it is up to the caller to close the returned key, and to do so
+	// as soon as possible. Keys should be re-fetched on a per-request basis to
+	// account for potential configuration updates made in the key registry.
+	GetExternalKey(ctx context.Context, ref string) (kms.Key, error)
 }
 
 type PasswordPolicy interface {
 	// Generate a random password
-	Generate(context.Context, io.Reader) (string, error)
+	Generate(ctx context.Context, reader io.Reader) (password string, err error)
 }
 
 type ExtendedSystemView interface {
 	Auditor() Auditor
-	ForwardGenericRequest(context.Context, *Request) (*Response, error)
+	ForwardGenericRequest(ctx context.Context, req *Request) (resp *Response, err error)
 
 	// APILockShouldBlockRequest returns whether a namespace for the requested
 	// mount is locked and should be blocked
-	APILockShouldBlockRequest() (bool, error)
+	APILockShouldBlockRequest() (locked bool, err error)
 }
 
 type PasswordGenerator func() (password string, err error)
@@ -127,6 +138,7 @@ type StaticSystemView struct {
 	VersionString                string
 	ClusterUUID                  string
 	APILockShouldBlockRequestVal bool
+	ExternalKeys                 map[string]kms.Key
 }
 
 type noopAuditor struct{}
@@ -179,7 +191,7 @@ func (d StaticSystemView) NewPluginClient(ctx context.Context, config pluginutil
 	return nil, errors.New("NewPluginClient is not implemented in StaticSystemView")
 }
 
-func (d StaticSystemView) ResponseWrapData(_ context.Context, data map[string]interface{}, ttl time.Duration, jwt bool) (*wrapping.ResponseWrapInfo, error) {
+func (d StaticSystemView) ResponseWrapData(_ context.Context, data map[string]any, ttl time.Duration, jwt bool) (*wrapping.ResponseWrapInfo, error) {
 	return nil, errors.New("ResponseWrapData is not implemented in StaticSystemView")
 }
 
@@ -251,4 +263,12 @@ func (d StaticSystemView) ClusterID(ctx context.Context) (string, error) {
 
 func (d StaticSystemView) APILockShouldBlockRequest() (bool, error) {
 	return d.APILockShouldBlockRequestVal, nil
+}
+
+func (d StaticSystemView) GetExternalKey(ctx context.Context, ref string) (kms.Key, error) {
+	key, ok := d.ExternalKeys[ref]
+	if !ok {
+		return nil, errors.New("external key not found")
+	}
+	return key, nil
 }

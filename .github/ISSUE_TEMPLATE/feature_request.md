@@ -7,6 +7,14 @@ assignees: ''
 
 ---
 
+<!--
+
+Make sure you read our contributing guide section on filing issues:
+
+https://github.com/openbao/openbao/blob/main/CONTRIBUTING.md#issues
+
+-->
+
 **Is your feature request related to a problem? Please describe.**
 A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
 

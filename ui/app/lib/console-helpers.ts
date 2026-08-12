@@ -8,7 +8,7 @@ import AdapterError from '@ember-data/adapter/error';
 import { parse } from 'shell-quote';
 
 import argTokenizer from './arg-tokenizer';
-import { StringMap } from 'vault/vault/app-types';
+import type { StringMap } from 'vault/vault/app-types';
 
 // Add new commands to `log-help` component for visibility
 const supportedCommands = ['read', 'write', 'list', 'delete', 'kv-get'];

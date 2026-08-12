@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func sortaEqualSlice(t testing.TB, expected []string, actual []string, msg string, args ...interface{}) {
+func sortaEqualSlice(t testing.TB, expected []string, actual []string, msg string, args ...any) {
 	if len(expected) == 0 {
 		require.Equal(t, len(expected), len(actual), msg, args)
 	} else {

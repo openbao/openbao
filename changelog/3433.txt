@@ -1,0 +1,6 @@
+```release-note:bug
+command/server: Fix boolean config fields being dropped when multiple `-config` paths are used
+```
+```release-note:improvement
+command/server: Include `disable_standby_reads`, `allow_unauthenticated_workflows`, and `unsafe_relative_paths` in sanitized config output
+```

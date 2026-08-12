@@ -56,6 +56,30 @@ Also see:
 - [`seal` stanza](/docs/configuration/seal)
 - [Plugin system](/docs/plugins)
 
+### Built-in LDAP, Kerberos, and RADIUS plugins
+
+> Announced: [**04/2026**](https://github.com/openbao/openbao/issues/2808), Deprecated in: **v2.6.0**, Removal: **v2.7.0**
+
+The LDAP, Kerberos, and RADIUS auth and secret plugins are protocol-specific
+with dependencies on large, third-party libraries. We wish to reduce the size
+of the main binary and with OCI-based plugin distribution and declarative,
+configuration driven plugin registration, it becomes easier to consume
+externalized, community-maintained versions of these plugins from
+openbao-plugins.
+
+Please begin switching to plugin versions from openbao-plugins.
+
+### Unauthenticated generate root endpoints
+
+> Announced: **04/2026**, Deprecated in: **v2.5.3**, Removal: **unplanned**
+
+See [Deprecating Unauthenticated Generate Root Endpoints](./unauthed-generate-root.mdx)
+for details and reasoning.
+
+Also see:
+
+- [Listener configuration](/docs/configuration/listener)
+
 ### File storage backend
 
 > Announced: **04/2026**, Deprecated in: **v2.6.0**, Removal: **v2.7.0**

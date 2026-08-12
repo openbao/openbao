@@ -76,9 +76,9 @@ As of v2.6.0, OpenBao has two plugin catalogs:
 1. The "core" plugin catalog that persists plugin registrations to OpenBao's
    barrier. This handles plugins of type `auth`, `secrets` and `database`.
    Both [Declarative plugin configuration](../configuration/plugins.mdx) and
-   [API-driven plugin management](./plugin-management.mdx) can be used in tandem
+   [API-driven plugin management](./index.mdx#plugin-registration) can be used in tandem
    to work with this catalog. For additional information on this catalog, also
-   see the [Plugin Catalog API docs](/api-docs/system/plugins-catalog).
+   see the [Plugin Catalog API docs](../api/system/plugins-catalog.mdx).
 
 2. The "static" plugin catalog that is driven by [Declarative plugin
    configuration](../configuration/plugins.mdx) only. This currently only
@@ -124,7 +124,7 @@ the catalog.
 
 External plugins may be updated by registering and reloading them. More
 details on the upgrade procedure can be found in [Upgrading OpenBao
-Plugins](../upgrading/plugins.mdx).
+Plugins](../guides/upgrade/plugins.mdx).
 
 ## Plugin multiplexing
 

@@ -9,7 +9,7 @@ description: |-
 
 # operator diagnose
 
-The operator diagnose command should be used primarily when OpenBao is down or
+The `operator diagnose` command should be used primarily when OpenBao is down or
 partially inoperational. The command can be used safely regardless of the state
 OpenBao is in, but may return meaningless results for some of the test cases if the
 OpenBao server is already running.
@@ -33,7 +33,7 @@ flags](../index.mdx) included on all commands.
 #### Output layout
 
 The operator diagnose command will output a set of lines in the CLI.
-Each line will begin with a prefix in parenthesis. These are:.
+Each line will begin with a prefix in parenthesis. These are:
 
 - `[ success ]` - Denotes that the check was successful.
 - `[ warning ]` - Denotes that the check has passed, but that there may be potential
@@ -52,7 +52,7 @@ the Storage check fails, the `[ failure ]` prefix will bubble up to the Storage 
 
 ### Command options
 
-- `-config` `(string; "")` - The paths to the OpenBao configuration files used by
+- `-config` `(string: "")` - The paths to the OpenBao configuration files used by
 the OpenBao server on startup. See the [server `-config` option](../../server#command-options) for more details.
 
 ### Diagnose checks

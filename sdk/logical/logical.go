@@ -42,11 +42,11 @@ func (b BackendType) String() string {
 // acting like a logical backend and being mounted.
 type Backend interface {
 	// Initialize is used to initialize a plugin after it has been mounted.
-	Initialize(context.Context, *InitializationRequest) error
+	Initialize(ctx context.Context, initReq *InitializationRequest) error
 
 	// HandleRequest is used to handle a request and generate a response.
 	// The backends must check the operation type and handle appropriately.
-	HandleRequest(context.Context, *Request) (*Response, error)
+	HandleRequest(ctx context.Context, req *Request) (resp *Response, err error)
 
 	// SpecialPaths is a list of paths that are special in some way.
 	// See PathType for the types of special paths. The key is the type
@@ -71,20 +71,20 @@ type Backend interface {
 	// ACL applied. The first bool indicates whether an existence check
 	// function was found for the backend; the second indicates whether, if an
 	// existence check function was found, the item exists or not.
-	HandleExistenceCheck(context.Context, *Request) (bool, bool, error)
+	HandleExistenceCheck(ctx context.Context, req *Request) (handlerFound bool, itemExists bool, err error)
 
 	// Cleanup is invoked during an unmount of a backend to allow it to
 	// handle any cleanup like connection closing or releasing of file handles.
-	Cleanup(context.Context)
+	Cleanup(ctx context.Context)
 
 	// InvalidateKey may be invoked when an object is modified that belongs
 	// to the backend. The backend can use this to clear any caches or reset
 	// internal state as needed.
-	InvalidateKey(context.Context, string)
+	InvalidateKey(ctx context.Context, key string)
 
 	// Setup is used to set up the backend based on the provided backend
 	// configuration.
-	Setup(context.Context, *BackendConfig) error
+	Setup(ctx context.Context, config *BackendConfig) error
 
 	// Type returns the BackendType for the particular backend
 	Type() BackendType

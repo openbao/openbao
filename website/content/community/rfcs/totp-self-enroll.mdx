@@ -1,0 +1,150 @@
+---
+sidebar_label: TOTP Self-Enrollment
+description: |-
+  An OpenBao RFC for allowing users to enroll a TOTP MFA method on their own
+---
+
+# TOTP Self-Enrollment
+
+## Summary
+
+Allow a user to setup TOTP as their second factor natively in OpenBao. This should be interactive and require no additional administrative work.
+
+## Problem Statement
+
+When using TOTP as a mandatory second factor, a chicken-egg problem arises. The user can't log in because they can't provide a TOTP code and they can't enroll a TOTP second factor, because they can't log in.
+
+This leads to unnecessary overhead when wanting to enforce TOTP as a second factor with minimal administrative work.
+
+## User-facing description
+
+Current sequence for a user in the UI:
+1. Log in
+2. If a self-enrollable TOTP MFA method is enforced and not yet configured, redirection to the self-enrollemnt page
+3. Show a QR code as well as the TOTP secret to allow easy setup
+4. Confirm the setup with inputting a TOTP code
+5. Log in again, now with the TOTP MFA method configured
+
+## Technical Description
+
+### Configuration of self-enrollment
+
+The `TOTPConfig` controls if a TOTP MFA method allows self-enrollment via a `enable_self_enrollment` boolean option, configurable through the current api.
+This config option is also configurable through the UI, when creating a TOTP MFA method.
+
+### Detecting when to move into self-enrollment
+
+MFA enforcement is evaluated in `internal/vault/request_handling.go`.
+This is where the function `findSelfEnrollableTOTPMethod` checks if the MFA enforcement and its enforced methods can and should be self enrolled.
+
+
+1. If the entity already has an `MFASecrets` entry for *any* method ID in
+   the enforcement config, self-enrollment is skipped entirely, as the enforcement is satisfied.
+2. Otherwise, it returns the first method ID that is both a TOTP method and
+   has `enable_self_enrollment` enabled. Non-TOTP methods in the same constraint are skipped,
+   since there isn't self-enrollment for these methods.
+
+If a self-enrollable method is found, a TOTP key and key url are generated.
+For this `generateTOTPKeyAndQR` (`internal/vault/login_mfa.go`) was extracted out of the existing `HandleMFAGenerateTOTP` enrollment path so both share the same functionality and way of generation.
+This generated TOTP information is not persisted to the user yet, but returned including a mfa request (uu)id through a new response `TOTPSelfEnroll` to be confirmed on the user's end.
+
+### Pending-enrollment queue
+
+The previously generated secret has to survive during the confirmation period on the users end, without getting saved in a more persistent manner.
+This is solved through a new `TOTPSelfEnrollmentQueue` (`internal/vault/mfa_self_enrollment_queue.go`), which uses the already existing priority queue that is also used in `mfaResponseAuthQueue`.
+Entries include the request id, the requesting namespace, entity id, the generated secret, targeted method id and when it was stored.
+
+A background goroutine evicts the oldest entry once it exceeds `defaultTOTPSelfEnrollmentTTL` (currently 5 minutes), limiting how long an unconfirmed enrollment request stays usable.
+This is again similar to `mfaResponseAuthQueue`.
+
+This means queued self-enrollments don't survive an active-node change.
+
+### Confirmation and cancellation endpoints
+
+Two new unauthenticated system paths are added to `SystemBackend` (`internal/vault/login_mfa.go`):
+
+- `POST /v1/sys/mfa/self-enroll/totp` (`request_id`, `totp_code`) -
+  pops the pending entry by ID, verifies the confirming request is in the
+  same namespace it was issued in and rate-limits validation attempts using the same `rateLimits` cache the
+  standard MFA validation path uses (keyed as `<methodID>_<entityID>_selfenroll` to not conflict with it,
+  capped at `MaxValidationAttempts` from the MFA method).
+  On a valid code, it acquires the identity store lock, re-reads the entity,
+  persists the key via the same `Core.PersistTOTPKey` storage path normal
+  TOTP enrollment uses, and writes the `mfa.Secret` into `entity.MFASecrets`.
+  If confirmation fails at any point after popping the
+  entry, it's pushed back onto the queue so the user can retry within the
+  remaining TTL rather than having to restart self-enrollment. This mimics the `mfaResponseAuthQueue` as well
+- `DELETE /v1/sys/mfa/self-enroll/totp` (`request_id`) -
+  pops and discards the pending entry, invalidating it without persisting anything.
+  Used when the user cancels enrollment client-side.
+
+### Finalize the self-enrollment
+
+After self-enrollment is finalized by the user, the server does not hand out a valid token.
+The user is expected to authenticate again afterwards, at which point `findSelfEnrollableTOTPMethod` will see the now-available TOTP method and allow normal MFA authentification.
+
+### Audit logging
+
+`TOTPSelfEnroll.TOTPSecret` and `TOTPSelfEnroll.TOTPURL` are hashed to not be revealed through the audit logs.
+As the confirmation and cancellation are requests the client has to send, these are audited that way.
+
+### UI flow
+
+The auth controller (`ui/app/controllers/vault/cluster/auth.js`, which handles the login) checks for the new `mfa_self_enroll` response field and routes to a new `Mfa::TotpSelfEnroll` component.
+The component renders a QR code client-side (via the `qrcode` package, from the returned `totp_url`) and the raw secret as a fallback, and submits the confirmation or cancellation calls through two new `cluster` adapter methods that wrap the endpoints mentioned above.
+On success, the user is bounced back to the login form with a message asking them to log in again. When cancelled, the success of that is also sent to the user through that way.
+
+## Rationale and alternatives
+
+### One-time token to generate a TOTP secret vs the self-enrollment system
+
+The self-enrollment system is the barrier of entry, when a second factor is required. While OpenBao could just generate a one-time-usage token for the `/identity/mfa/method/totp/generate` endpoint, this would require equally as much work, while also creating a valid token that leaves more surface area to be attacked.
+
+### Completing login vs log in again after enrollment
+
+TOTP self-enrollment currently forces you to sign again. This was partially to quicken the creation of a PoC and on the other hand being sure that the person who finished the self-enrollment wasn't just faster in submitting a TOTP code.
+
+### In-memory queue vs storage-backed record
+
+The self-enrollment requests are currently only saved in memory via the queue.
+This leads to loss of state on failover between nodes, which is intended, as these unfinished MFA secrets shouldn't have persistence above memory.
+
+## Downsides
+
+- The self-enrollment queue silently doesn't survive active node changes or restarts
+- Re-login is a worse experience for the user
+- Confirmation but especially the invalidation of a self-enrollment attempt hinge on the request uuid
+- Loss of admin driven MFA enrollment for TOTP
+
+## Security Implications
+
+### Primary auth leads to full trust
+
+The self-enrollment only requires a username and password. This sounds obvious, but because there are no email notifications or similar to a user, a wrong enrollment by a bad actor won't per-se be noticed.
+While this already requires a valid username and password, this should still be noted.
+
+### Plaintext TOTP secret
+
+The TOTP secret as well as init url (which also includes the secret) are send to the user in a HTTP request as well as stored in memory as plaintext.
+
+### Self-Enrollment confirmation endpoint is unauthenticated
+
+Out of necessity the endpoint to confirm TOTP self-enrollment is unauthenticated and only protected through the request id.
+
+## User/Developer Experience
+
+For developers of OpenBao clients, the new self-enrollment now adds to the steps that have to be checked and completed before login can be done.
+
+## Unresolved Questions
+
+Should TOTP self-enrollment be allowed via the CLI?
+
+Should the user be logged in after self-enrolling?
+
+## Related Issues
+
+- https://github.com/openbao/openbao/issues/3576
+
+## Proof of Concept
+
+

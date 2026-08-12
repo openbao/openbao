@@ -1,0 +1,240 @@
+{
+  "targets": [
+    {
+      "key": "darwin/amd64",
+      "goos": "darwin",
+      "goarch": "amd64",
+      "build_tags": "ui",
+      "runner": "macos-15-intel",
+      "mandatory": true,
+      "testable": true,
+      "binary_tests": false,
+      "build_mode": "native"
+    },
+    {
+      "key": "darwin/arm64",
+      "goos": "darwin",
+      "goarch": "arm64",
+      "build_tags": "ui",
+      "runner": "macos-15",
+      "mandatory": true,
+      "testable": true,
+      "binary_tests": false,
+      "build_mode": "native"
+    },
+    {
+      "key": "freebsd/amd64",
+      "goos": "freebsd",
+      "goarch": "amd64",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "cross"
+    },
+    {
+      "key": "freebsd/arm/v6",
+      "goos": "freebsd",
+      "goarch": "arm",
+      "goarm": "6",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "cross"
+    },
+    {
+      "key": "freebsd/arm64",
+      "goos": "freebsd",
+      "goarch": "arm64",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "cross"
+    },
+    {
+      "key": "freebsd/riscv64",
+      "goos": "freebsd",
+      "goarch": "riscv64",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "cross"
+    },
+    {
+      "key": "linux/amd64",
+      "goos": "linux",
+      "goarch": "amd64",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": true,
+      "testable": true,
+      "binary_tests": true,
+      "build_mode": "native"
+    },
+    {
+      "key": "linux/arm/v6",
+      "goos": "linux",
+      "goarch": "arm",
+      "goarm": "6",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "cross"
+    },
+    {
+      "key": "linux/arm64",
+      "goos": "linux",
+      "goarch": "arm64",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04-arm",
+      "mandatory": true,
+      "testable": true,
+      "binary_tests": true,
+      "build_mode": "native"
+    },
+    {
+      "key": "linux/ppc64le",
+      "goos": "linux",
+      "goarch": "ppc64le",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "buildx"
+    },
+    {
+      "key": "linux/riscv64",
+      "goos": "linux",
+      "goarch": "riscv64",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "buildx"
+    },
+    {
+      "key": "linux/s390x",
+      "goos": "linux",
+      "goarch": "s390x",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "buildx"
+    },
+    {
+      "key": "netbsd/amd64",
+      "goos": "netbsd",
+      "goarch": "amd64",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "cross"
+    },
+    {
+      "key": "netbsd/arm/v6",
+      "goos": "netbsd",
+      "goarch": "arm",
+      "goarm": "6",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "cross"
+    },
+    {
+      "key": "netbsd/arm64",
+      "goos": "netbsd",
+      "goarch": "arm64",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "cross"
+    },
+    {
+      "key": "openbsd/amd64",
+      "goos": "openbsd",
+      "goarch": "amd64",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "cross"
+    },
+    {
+      "key": "openbsd/arm/v6",
+      "goos": "openbsd",
+      "goarch": "arm",
+      "goarm": "6",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "cross"
+    },
+    {
+      "key": "openbsd/arm64",
+      "goos": "openbsd",
+      "goarch": "arm64",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "cross"
+    },
+    {
+      "key": "windows/amd64",
+      "goos": "windows",
+      "goarch": "amd64",
+      "build_tags": "ui",
+      "runner": "windows-2025",
+      "mandatory": true,
+      "testable": true,
+      "binary_tests": true,
+      "build_mode": "native"
+    },
+    {
+      "key": "windows/arm/v6",
+      "goos": "windows",
+      "goarch": "arm",
+      "goarm": "6",
+      "build_tags": "ui",
+      "runner": "ubuntu-24.04",
+      "mandatory": false,
+      "testable": false,
+      "binary_tests": false,
+      "build_mode": "cross"
+    },
+    {
+      "key": "windows/arm64",
+      "goos": "windows",
+      "goarch": "arm64",
+      "build_tags": "ui",
+      "runner": "windows-11-arm",
+      "mandatory": true,
+      "testable": true,
+      "binary_tests": false,
+      "build_mode": "native"
+    }
+  ]
+}

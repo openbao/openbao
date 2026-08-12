@@ -596,7 +596,7 @@ func (c *Core) leadershipLoop(manualStepDownCh, stopCh <-chan struct{}, isReadEn
 // become leader and potentially running a read-enabled standby in the
 // interim.
 func (c *Core) waitForLeadership(iteration int, manualStepDown *bool, manualStepDownCh, stopCh <-chan struct{}, isReadEnabled bool) (stop bool) {
-	if iteration == 0 && !*manualStepDown {
+	if iteration > 0 && !*manualStepDown {
 		// If we restarted the for loop due to an error, wait a second
 		// so that we don't busy loop if the error persists.
 		time.Sleep(1 * time.Second)

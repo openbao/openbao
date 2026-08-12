@@ -14,11 +14,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/errwrap"
-	metrics "github.com/hashicorp/go-metrics/compat"
-	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-uuid"
-	"github.com/oklog/run"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -28,6 +23,13 @@ import (
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	"github.com/openbao/openbao/v2/internal/vault/policy"
 	"github.com/openbao/openbao/v2/internal/vault/seal"
+
+	"github.com/cenkalti/backoff/v5"
+	"github.com/hashicorp/errwrap"
+	metrics "github.com/hashicorp/go-metrics/compat"
+	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-uuid"
+	"github.com/oklog/run"
 )
 
 const (
@@ -1318,6 +1320,12 @@ func (c *Core) scheduleUpgradeCleanup(ctx context.Context) error {
 
 // acquireLock blocks until the lock is acquired, returning the leaderLostCh
 func (c *Core) acquireLock(lock physical.Lock, stopCh <-chan struct{}) <-chan struct{} {
+	// Use an exponential backoff on errors during lock acquisition. This
+	// ensures transitive failures don't result in 10-second backoffs, at
+	// the expense of more burst-y database traffic.
+	b := backoff.NewExponentialBackOff()
+	b.InitialInterval = 15 * time.Millisecond
+	b.MaxInterval = lockRetryInterval
 	for {
 		// Attempt lock acquisition
 		leaderLostCh, err := lock.Lock(stopCh)
@@ -1327,7 +1335,7 @@ func (c *Core) acquireLock(lock physical.Lock, stopCh <-chan struct{}) <-chan st
 
 		// Retry the acquisition
 		c.logger.Error("failed to acquire lock", "error", err)
-		timer := time.NewTimer(lockRetryInterval)
+		timer := time.NewTimer(b.NextBackOff())
 		select {
 		case <-timer.C:
 		case <-stopCh:

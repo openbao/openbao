@@ -394,7 +394,7 @@ type Core struct {
 	mfaResponseAuthQueueLock sync.Mutex
 
 	// totpSelfEnrollmentQueue is used to cache the auth response per request ID
-	totpSelfEnrollmentQueue     *totpSelfEnrollmentQueue
+	totpSelfEnrollmentQueue     *TOTPSelfEnrollmentQueue
 	totpSelfEnrollmentQueueLock sync.Mutex
 
 	// metricSink is the destination for all metrics that have

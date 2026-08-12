@@ -131,6 +131,26 @@ Until the last step, the mount will still run the first version of `my-db-plugin
 the reload is triggered, OpenBao will kill `my-db-plugin`’s process and start the
 new plugin process for `my-db-plugin` version 1.0.1.
 
+## Upgrading KMS plugins
+
+1. Edit the [`plugin` stanza](../../configuration/plugins.mdx) of your `kms` plugin
+   and change the `version` and `sha256sum` fields to the new values.
+
+1. Download the new plugin binary.
+
+   - For plugins distributed as raw binaries: Place the new binary into the `plugin_directory`.
+   - For plugins distributed as OCI artifacts with `plugin_auto_download = true`:
+     OpenBao will automatically download it at the config reload step.
+   - For plugins distributed as OCI artifacts with `plugin_auto_download = false`:
+     Run [`plugin init`](../../commands/plugin/init.mdx) to trigger the download.
+
+      ```shell-session
+      $ bao plugin init -config=/etc/openbao/openbao.hcl
+      ```
+
+1. Restart OpenBao or send a SIGHUP to reload the config.
+   OpenBao should now use the new `kms` plugin version.
+
 ## Downgrading plugins
 
 Plugin downgrades follow the same procedure as upgrades. You can use the OpenBao

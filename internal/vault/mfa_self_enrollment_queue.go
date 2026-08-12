@@ -11,21 +11,16 @@ import (
 // PriorityQueue
 func NewTOTPSelfEnrollmentQueue() *TOTPSelfEnrollmentQueue {
 	pq := queue.New()
-	loginPQ := &TOTPSelfEnrollmentQueue{
+	totpPQ := &TOTPSelfEnrollmentQueue{
 		wrapped: pq,
 	}
-	return loginPQ
+	return totpPQ
 }
 
 type TOTPSelfEnrollmentQueue struct {
 	wrapped *queue.PriorityQueue
 
-	// Here is a scenarios in which the lock is needed. For example, suppose
-	// RemoveExpiredMfaAuthResponse function pops an item to check if the item
-	// has been expired or not and assume that the item is still valid. Then,
-	// if in the meantime, an MFA validation request comes in for the same
-	// item, the /sys/mfa/validate endpoint will return invalid request ID
-	// which is not true.
+	// Here is a scenarios in which the lock is needed.
 	l sync.RWMutex
 }
 

@@ -9,15 +9,15 @@ import (
 
 // NewTOTPSelfEnrollmentQueue initializes the internal data structures and returns a new
 // PriorityQueue
-func NewTOTPSelfEnrollmentQueue() *totpSelfEnrollmentQueue {
+func NewTOTPSelfEnrollmentQueue() *TOTPSelfEnrollmentQueue {
 	pq := queue.New()
-	loginPQ := &totpSelfEnrollmentQueue{
+	loginPQ := &TOTPSelfEnrollmentQueue{
 		wrapped: pq,
 	}
 	return loginPQ
 }
 
-type totpSelfEnrollmentQueue struct {
+type TOTPSelfEnrollmentQueue struct {
 	wrapped *queue.PriorityQueue
 
 	// Here is a scenarios in which the lock is needed. For example, suppose
@@ -30,7 +30,7 @@ type totpSelfEnrollmentQueue struct {
 }
 
 // Len returns the count of items in the Priority Queue
-func (pq *totpSelfEnrollmentQueue) Len() int {
+func (pq *TOTPSelfEnrollmentQueue) Len() int {
 	pq.l.Lock()
 	defer pq.l.Unlock()
 	return pq.wrapped.Len()
@@ -41,7 +41,7 @@ func (pq *totpSelfEnrollmentQueue) Len() int {
 // functions directly. Items must have unique Keys, and Items in the queue
 // cannot be updated. To modify an Item, users must first remove it and re-push
 // it after modifications
-func (pq *totpSelfEnrollmentQueue) Push(resp *TOTPSelfEnrollment) error {
+func (pq *TOTPSelfEnrollmentQueue) Push(resp *TOTPSelfEnrollment) error {
 	pq.l.Lock()
 	defer pq.l.Unlock()
 
@@ -56,7 +56,7 @@ func (pq *totpSelfEnrollmentQueue) Push(resp *TOTPSelfEnrollment) error {
 
 // PopByKey searches the queue for an item with the given key and removes it
 // from the queue if found. Returns nil if not found.
-func (pq *totpSelfEnrollmentQueue) PopByKey(reqID string) (*TOTPSelfEnrollment, error) {
+func (pq *TOTPSelfEnrollmentQueue) PopByKey(reqID string) (*TOTPSelfEnrollment, error) {
 	pq.l.Lock()
 	defer pq.l.Unlock()
 
@@ -73,7 +73,7 @@ func (pq *totpSelfEnrollmentQueue) PopByKey(reqID string) (*TOTPSelfEnrollment, 
 // back the entry to the queue. It returns false if there is no expired element
 // left to be removed, true otherwise.
 // cutoffTime should normally be time.Now() except for tests.
-func (pq *totpSelfEnrollmentQueue) RemoveExpiredTOTPSelfEnrollment(expiryTime time.Duration, cutoffTime time.Time) error {
+func (pq *TOTPSelfEnrollmentQueue) RemoveExpiredTOTPSelfEnrollment(expiryTime time.Duration, cutoffTime time.Time) error {
 	pq.l.Lock()
 	defer pq.l.Unlock()
 

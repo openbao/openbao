@@ -1,0 +1,7 @@
+```release-note:bug
+sys/leases: Propagate renew, revoke and revoke-prefix requests to active node by default. 
+```
+
+```release-note:bug
+sys/raw: Propagate delete and write requests to active node.
+```

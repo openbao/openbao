@@ -82,7 +82,7 @@ func (d *PluginDownloader) ReconcilePlugins(ctx context.Context) error {
 			}
 		}
 
-		pluginLogger.Debug("processing plugin", "url", pluginConfig.URL(), "binary_name", pluginConfig.BinaryName)
+		pluginLogger.Debug("processing plugin", "url", pluginConfig.URL())
 
 		// Fast path: check if plugin already exists and matches expected SHA256
 		if d.IsPluginCacheValid(pluginConfig) {
@@ -204,13 +204,39 @@ func (d *PluginDownloader) DownloadPlugin(ctx context.Context, config *server.Pl
 		return fmt.Errorf("failed to download OCI image: %w", err)
 	}
 
+	binaryName := config.BinaryName
+	if binaryName == "" {
+		cf, err := img.ConfigFile()
+		if err != nil {
+			return fmt.Errorf("failed to get OCI image config: %w", err)
+		}
+		switch {
+		case len(cf.Config.Entrypoint) > 0:
+			binaryName = cf.Config.Entrypoint[0]
+			logger.Debug("picked binary name from entrypoint", "binary_name", binaryName)
+		case len(cf.Config.Cmd) > 0:
+			binaryName = cf.Config.Cmd[0]
+			logger.Debug("picked binary name from cmd", "binary_name", binaryName)
+		default:
+			return errors.New("failed to determine binary name within OCI image, either add entrypoint to image or explicitly set binary name")
+		}
+	}
+
+	// Normalize the binary name:
+	binaryName = strings.TrimPrefix(filepath.Clean(binaryName), "/")
+
+	// Protect against traversal:
+	if !filepath.IsLocal(binaryName) {
+		return fmt.Errorf("invalid binary name: %q", binaryName)
+	}
+
 	// Extract the plugin binary from the image using hidden cache path
 	// Format: <plugin_directory>/.oci-cache/<plugin_slug>/<sha256_prefix>/<binary_name>
 	sha256Prefix := config.SHA256Sum[:8]
 	cacheDir := filepath.Join(d.pluginDirectory, PluginCacheDir, config.Slug(), sha256Prefix)
-	cachedPluginPath := filepath.Join(cacheDir, config.BinaryName)
+	cachedPluginPath := filepath.Join(cacheDir, binaryName)
 
-	if err := d.ExtractPluginFromImage(img, cachedPluginPath, config.BinaryName, logger); err != nil {
+	if err := d.ExtractPluginFromImage(img, cachedPluginPath, binaryName, logger); err != nil {
 		return fmt.Errorf("failed to extract plugin from OCI image: %w", err)
 	}
 

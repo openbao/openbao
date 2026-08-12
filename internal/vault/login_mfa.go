@@ -568,7 +568,9 @@ func generateTOTPKeyAndQR(totpConfig *mfa.TOTPConfig, entityID, methodName strin
 		}
 
 		var buff bytes.Buffer
-		png.Encode(&buff, barcode)
+		if err := png.Encode(&buff, barcode); err != nil {
+			return nil, "", "", fmt.Errorf("failed to encode QR code image: %w", err)
+		}
 		totpB64Barcode = base64.StdEncoding.EncodeToString(buff.Bytes())
 	}
 

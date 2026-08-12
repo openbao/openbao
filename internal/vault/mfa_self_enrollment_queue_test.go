@@ -102,7 +102,9 @@ func TestMFASelfEnrollmentQueue_RemoveStaleEntries(t *testing.T) {
 	cutoffTime := time.Now().Add(371 * time.Second)
 	timeout := time.Now().Add(5 * time.Second)
 	for time.Now().Before(timeout) {
-		pq.RemoveExpiredTOTPSelfEnrollment(defaultTOTPSelfEnrollmentTTL, cutoffTime)
+		if err := pq.RemoveExpiredTOTPSelfEnrollment(defaultTOTPSelfEnrollmentTTL, cutoffTime); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	if pq.Len() != 8 {

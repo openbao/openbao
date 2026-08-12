@@ -58,3 +58,21 @@ karras:
   socials:
     github: https://github.com/karras
     linkedin: https://www.linkedin.com/in/secretz/
+
+matheuscscp:
+  name: Matheus Pimenta
+  image_url: https://avatars.githubusercontent.com/matheuscscp
+  socials:
+    github: https://github.com/matheuscscp
+
+datosh:
+  name: Fabian Kammel
+  image_url: https://avatars.githubusercontent.com/datosh
+  socials:
+    github: https://github.com/datosh
+
+stealthybox:
+  name: Leigh Capili
+  image_url: https://avatars.githubusercontent.com/stealthybox
+  socials:
+    github: https://github.com/stealthybox

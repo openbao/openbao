@@ -61,7 +61,7 @@ func (d *PluginDownloader) ReconcilePlugins(ctx context.Context) error {
 
 	for _, pluginConfig := range plugins {
 		// Skip plugins which are manually downloaded but defined declaratively.
-		if pluginConfig.Image == "" {
+		if pluginConfig.Image == nil {
 			continue
 		}
 
@@ -81,8 +81,6 @@ func (d *PluginDownloader) ReconcilePlugins(ctx context.Context) error {
 				continue
 			}
 		}
-
-		pluginLogger.Debug("processing plugin", "url", pluginConfig.URL())
 
 		// Fast path: check if plugin already exists and matches expected SHA256
 		if d.IsPluginCacheValid(pluginConfig) {
@@ -123,66 +121,70 @@ func (d *PluginDownloader) maxPluginSize() int64 {
 	return PluginMaxSizeBytes
 }
 
-// IsPluginCacheValid checks if the plugin already exists in the plugin directory
-// and matches the expected SHA256 hash (fast path)
+// IsPluginCacheValid checks if the plugin already exists in the plugin
+// directory.
 func (d *PluginDownloader) IsPluginCacheValid(config *server.PluginConfig) bool {
 	if d.pluginDirectory == "" {
 		return false
 	}
 
-	// Check if the symlink exists in the plugin directory
-	symlinkPath := filepath.Join(d.pluginDirectory, config.FullName())
+	// Check if the symlink exists in the plugin directory.
+	pluginPath := filepath.Join(d.pluginDirectory, config.FullName())
 
-	// Check if symlink exists and is a symlink
-	linkInfo, err := os.Lstat(symlinkPath)
+	// Check if symlink exists and is a symlink.
+	linkInfo, err := os.Lstat(pluginPath)
 	if err != nil {
 		return false
 	}
 
-	if linkInfo.Mode()&os.ModeSymlink == 0 {
-		// If it's not a symlink, it might be a regular file from manual installation
-		// Let's validate it directly
-		actualHash, err := osutil.FileSha256Sum(symlinkPath)
+	if linkInfo.Mode()&os.ModeSymlink != 0 {
+		// Follow the symlink to get the actual cached file.
+		cachedFilePath, err := os.Readlink(pluginPath)
 		if err != nil {
 			return false
 		}
-		return strings.EqualFold(actualHash, config.SHA256Sum)
+
+		// Make sure it's an absolute path.
+		if !filepath.IsAbs(cachedFilePath) {
+			cachedFilePath = filepath.Join(d.pluginDirectory, cachedFilePath)
+		}
+
+		// Check if the cached file exists.
+		if _, err := os.Stat(cachedFilePath); os.IsNotExist(err) {
+			return false
+		}
+
+		pluginPath = cachedFilePath
 	}
 
-	// Follow the symlink to get the actual cached file
-	cachedFilePath, err := os.Readlink(symlinkPath)
-	if err != nil {
-		return false
+	// Conservatively default to false and enforce that one of the below checks
+	// must run such that true can be returned.
+	var valid bool
+
+	// Validate the file name of the cache entry if we have a digest reference.
+	if digest, ok := config.Image.(name.Digest); ok {
+		if valid = filepath.Base(pluginPath) == digest.Identifier(); !valid {
+			return false
+		}
 	}
 
-	// Make sure it's an absolute path
-	if !filepath.IsAbs(cachedFilePath) {
-		cachedFilePath = filepath.Join(d.pluginDirectory, cachedFilePath)
+	// Validate the SHA-256 digest of the plugin binary if one is specified.
+	if len(config.SHA256Sum) > 0 {
+		actualHash, err := osutil.FileSha256Sum(pluginPath)
+		if err != nil {
+			return false
+		}
+		if valid = strings.EqualFold(actualHash, config.SHA256Sum); !valid {
+			return false
+		}
 	}
 
-	// Check if the cached file exists
-	if _, err := os.Stat(cachedFilePath); os.IsNotExist(err) {
-		return false
-	}
-
-	// Validate SHA256 of the cached file
-	actualHash, err := osutil.FileSha256Sum(cachedFilePath)
-	if err != nil {
-		d.logger.Debug("failed to calculate plugin hash", "plugin", config.Slug(), "error", err)
-		return false
-	}
-
-	return strings.EqualFold(actualHash, config.SHA256Sum)
+	return valid
 }
 
 // DownloadPlugin downloads a plugin from an OCI registry
 func (d *PluginDownloader) DownloadPlugin(ctx context.Context, config *server.PluginConfig, logger hclog.Logger) error {
-	if d.pluginDirectory == "" {
-		return errors.New("plugin directory is not configured")
-	}
-
-	logger.Info("downloading plugin from OCI registry",
-		"url", config.URL())
+	logger.Info("downloading plugin from OCI registry", "reference", config.Image.String())
 
 	// Detect local platform to download correct image variant
 	localSpec := platforms.DefaultString()
@@ -192,16 +194,18 @@ func (d *PluginDownloader) DownloadPlugin(ctx context.Context, config *server.Pl
 	}
 	logger.Debug("local platform", "platform", platform.String())
 
-	// Parse the OCI reference
-	ref, err := name.ParseReference(config.URL())
+	// Look up the descriptor instead of directly calling Image(), this lets us
+	// record the first manifest digest that we encounter (such as multi-arch
+	// index manifests) instead of the final image manifest digest only.
+	desc, err := remote.Get(config.Image, remote.WithContext(ctx), remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithPlatform(*platform))
 	if err != nil {
-		return fmt.Errorf("invalid OCI reference %q: %w", config.URL(), err)
+		return fmt.Errorf("failed to fetch OCI descriptor: %w", err)
 	}
 
-	// Download the image
-	img, err := remote.Image(ref, remote.WithContext(ctx), remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithPlatform(*platform))
+	// Then step down to the image.
+	img, err := desc.Image()
 	if err != nil {
-		return fmt.Errorf("failed to download OCI image: %w", err)
+		return fmt.Errorf("failed to fetch OCI image: %w", err)
 	}
 
 	binaryName := config.BinaryName
@@ -230,36 +234,36 @@ func (d *PluginDownloader) DownloadPlugin(ctx context.Context, config *server.Pl
 		return fmt.Errorf("invalid binary name: %q", binaryName)
 	}
 
-	// Extract the plugin binary from the image using hidden cache path
-	// Format: <plugin_directory>/.oci-cache/<plugin_slug>/<sha256_prefix>/<binary_name>
-	sha256Prefix := config.SHA256Sum[:8]
-	cacheDir := filepath.Join(d.pluginDirectory, PluginCacheDir, config.Slug(), sha256Prefix)
-	cachedPluginPath := filepath.Join(cacheDir, binaryName)
+	// Extract the plugin binary from the image using hidden cache path.
+	// Format: <plugin_directory>/.oci-cache/<digest>
+	cachedPluginPath := filepath.Join(d.pluginDirectory, PluginCacheDir, desc.Digest.String())
 
 	if err := d.ExtractPluginFromImage(img, cachedPluginPath, binaryName, logger); err != nil {
 		return fmt.Errorf("failed to extract plugin from OCI image: %w", err)
 	}
 
-	// Verify the SHA256 hash of the cached file
-	actualHash, err := osutil.FileSha256Sum(cachedPluginPath)
-	if err != nil {
-		// Clean up the cached file if hash verification fails
-		removeErr := os.Remove(cachedPluginPath)
-		if removeErr != nil {
-			return errors.Join(fmt.Errorf("failed to calculate plugin hash: %w", err),
-				fmt.Errorf("failed to remove cached file: %w", removeErr))
+	if len(config.SHA256Sum) > 0 {
+		// Verify the SHA256 hash of the cached file
+		actualHash, err := osutil.FileSha256Sum(cachedPluginPath)
+		if err != nil {
+			// Clean up the cached file if hash verification fails
+			removeErr := os.Remove(cachedPluginPath)
+			if removeErr != nil {
+				return errors.Join(fmt.Errorf("failed to calculate plugin hash: %w", err),
+					fmt.Errorf("failed to remove cached file: %w", removeErr))
+			}
+			return fmt.Errorf("failed to calculate plugin hash: %w", err)
 		}
-		return fmt.Errorf("failed to calculate plugin hash: %w", err)
-	}
 
-	if !strings.EqualFold(actualHash, config.SHA256Sum) {
-		// Clean up the cached file if hash doesn't match
-		removeErr := os.Remove(cachedPluginPath)
-		if removeErr != nil {
-			return errors.Join(fmt.Errorf("plugin hash mismatch: expected %s, got %s", config.SHA256Sum, actualHash),
-				fmt.Errorf("failed to remove cached file: %w", removeErr))
+		if !strings.EqualFold(actualHash, config.SHA256Sum) {
+			// Clean up the cached file if hash doesn't match
+			removeErr := os.Remove(cachedPluginPath)
+			if removeErr != nil {
+				return errors.Join(fmt.Errorf("plugin hash mismatch: expected %s, got %s", config.SHA256Sum, actualHash),
+					fmt.Errorf("failed to remove cached file: %w", removeErr))
+			}
+			return fmt.Errorf("plugin hash mismatch: expected %s, got %s", config.SHA256Sum, actualHash)
 		}
-		return fmt.Errorf("plugin hash mismatch: expected %s, got %s", config.SHA256Sum, actualHash)
 	}
 
 	// Create symlink in the plugin directory pointing to the cached file
@@ -283,10 +287,7 @@ func (d *PluginDownloader) DownloadPlugin(ctx context.Context, config *server.Pl
 		return fmt.Errorf("failed to create plugin symlink: %w", err)
 	}
 
-	logger.Info("successfully downloaded and validated plugin",
-		"cached_path", cachedPluginPath,
-		"symlink_path", symlinkPath,
-		"hash", actualHash)
+	logger.Info("downloaded plugin", "cached_path", cachedPluginPath, "symlink_path", symlinkPath)
 
 	return nil
 }

@@ -6,6 +6,9 @@ package server
 import (
 	"strings"
 	"testing"
+
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPluginConfigParsing(t *testing.T) {
@@ -29,55 +32,64 @@ plugin "secret" "aws" {
 plugin "auth" "gcp" {
   image = "ghcr.io/openbao/openbao-plugin-auth-gcp"
   version = "v0.21.0"
-  binary_name = "openbao-plugin-auth-gcp"
   sha256sum = "f586717376b20763b3ecef0412cdd6cbb4f8295b9679da4bfa4e1f75b8e00a63"
+}
+
+plugin "kms" "pkcs11" {
+  image = "ghcr.io/openbao/openbao-plugin-kms-pkcs11@sha256:ba3229ef91ab1040122d1389f9d015f3f211076835cf6914977c09d3697b4697"
+  version = "v0.1.0"
+}
+
+plugin "kms" "ovhcloud" {
+  image = "ghcr.io/openbao/openbao-plugin-kms-ovhcloud:v0.0.1@sha256:0ac993bbd5589845ef0b60f9b106ebadf82903de8bccaafce8abb04d7094d9ed"
 }
 
 plugin_download_behavior = "fail"
 `
 
 	config, err := ParseConfig(configData, "test")
-	if err != nil {
-		t.Fatalf("Error parsing config: %v", err)
+	require.NoError(t, err)
+
+	require.Equal(t, "/opt/openbao/plugins", config.PluginDirectory)
+	require.Equal(t, config.PluginDownloadBehavior, "fail")
+
+	for _, c := range config.Plugins {
+		c.RawImage = ""
 	}
 
-	// Test plugin directory
-	if config.PluginDirectory != "/opt/openbao/plugins" {
-		t.Errorf("Expected plugin directory '/opt/openbao/plugins', got '%s'", config.PluginDirectory)
-	}
+	require.Equal(t, config.Plugins, []*PluginConfig{
+		{
+			Type:       "secret",
+			Name:       "aws",
+			Version:    "v0.0.1",
+			BinaryName: "openbao-plugin-secrets-aws",
+			SHA256Sum:  "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c",
+			Image:      name.MustParseReference("ghcr.io/openbao/openbao-plugin-secrets-aws", name.WithDefaultTag("v0.0.1")),
+		},
+		{
+			Type:      "auth",
+			Name:      "gcp",
+			Version:   "v0.21.0",
+			SHA256Sum: "f586717376b20763b3ecef0412cdd6cbb4f8295b9679da4bfa4e1f75b8e00a63",
+			Image:     name.MustParseReference("ghcr.io/openbao/openbao-plugin-auth-gcp", name.WithDefaultTag("v0.21.0")),
+		},
+		{
+			Type:    "kms",
+			Name:    "pkcs11",
+			Version: "v0.1.0",
+			Image:   name.MustParseReference("ghcr.io/openbao/openbao-plugin-kms-pkcs11@sha256:ba3229ef91ab1040122d1389f9d015f3f211076835cf6914977c09d3697b4697"),
+		},
+		{
+			Type:    "kms",
+			Name:    "ovhcloud",
+			Version: "v0.0.1",
+			Image:   name.MustParseReference("ghcr.io/openbao/openbao-plugin-kms-ovhcloud:v0.0.1@sha256:0ac993bbd5589845ef0b60f9b106ebadf82903de8bccaafce8abb04d7094d9ed"),
+		},
+	})
 
-	// Test plugin download behavior
-	if config.PluginDownloadBehavior != "fail" {
-		t.Errorf("Expected plugin download behavior 'fail', got '%s'", config.PluginDownloadBehavior)
-	}
-
-	// Test plugins
-	if len(config.Plugins) != 2 {
-		t.Fatalf("Expected 2 plugins, got %d", len(config.Plugins))
-	}
-
-	awsPlugin := config.Plugins[0]
-	if awsPlugin.Slug() != "secret-aws" {
-		t.Fatal("secret-aws plugin not found")
-	}
-
-	if awsPlugin.URL() != "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1" {
-		t.Errorf("Expected AWS plugin URL 'ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1', got '%s'", awsPlugin.URL())
-	}
-	if awsPlugin.BinaryName != "openbao-plugin-secrets-aws" {
-		t.Errorf("Expected AWS plugin binary 'openbao-plugin-secrets-aws', got '%s'", awsPlugin.BinaryName)
-	}
-	if awsPlugin.SHA256Sum != "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c" {
-		t.Errorf("Expected AWS plugin SHA256 '9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c', got '%s'", awsPlugin.SHA256Sum)
-	}
-
-	// Test validation
 	errors := config.Validate("test")
-	if len(errors) > 0 {
-		t.Errorf("Validation failed with errors:")
-		for _, err := range errors {
-			t.Errorf("  %s", err.String())
-		}
+	for _, err := range errors {
+		require.NoError(t, err)
 	}
 }
 
@@ -89,7 +101,7 @@ func TestPluginConfigValidation(t *testing.T) {
 		errorMsg    string
 	}{
 		{
-			name: "valid config",
+			name: "valid config with sha256sum",
 			configData: `
 storage "inmem" {}
 listener "tcp" { 
@@ -105,12 +117,26 @@ plugin "secret" "aws" {
 			expectError: false,
 		},
 		{
+			name: "valid config with manifest digest",
+			configData: `
+storage "inmem" {}
+listener "tcp" {
+  address = "127.0.0.1:8200"
+  tls_disable = true
+}
+plugin "secret" "aws" {
+  image = "ghcr.io/openbao/openbao-plugin-secrets-aws@sha256:9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
+  version = "v0.0.1"
+}`,
+			expectError: false,
+		},
+		{
 			name: "missing url",
 			configData: `
 storage "inmem" {}
-listener "tcp" { 
+listener "tcp" {
   address = "127.0.0.1:8200"
-  tls_disable = true 
+  tls_disable = true
 }
 plugin "secret" "aws" {
   version = "v0.0.1"
@@ -121,7 +147,7 @@ plugin "secret" "aws" {
 			errorMsg:    "image and command cannot both be empty",
 		},
 		{
-			name: "invalid url",
+			name: "missing sha256sum or manifest digest",
 			configData: `
 storage "inmem" {}
 listener "tcp" {
@@ -130,20 +156,18 @@ listener "tcp" {
 }
 plugin "secret" "aws" {
   image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
-  version = "v0.0.1:v0.0.1"
-  binary_name = "openbao-plugin-secrets-aws"
-  sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
+  version = "v0.0.1"
 }`,
 			expectError: true,
-			errorMsg:    "image and version do not form a valid image reference",
+			errorMsg:    "sha256sum must be set if image is not pinned by digest",
 		},
 		{
 			name: "invalid sha256sum length",
 			configData: `
 storage "inmem" {}
-listener "tcp" { 
+listener "tcp" {
   address = "127.0.0.1:8200"
-  tls_disable = true 
+  tls_disable = true
 }
 plugin "secret" "aws" {
   image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
@@ -158,9 +182,9 @@ plugin "secret" "aws" {
 			name: "invalid sha256sum characters",
 			configData: `
 storage "inmem" {}
-listener "tcp" { 
+listener "tcp" {
   address = "127.0.0.1:8200"
-  tls_disable = true 
+  tls_disable = true
 }
 plugin "secret" "aws" {
   image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
@@ -175,9 +199,9 @@ plugin "secret" "aws" {
 			name: "invalid download behavior",
 			configData: `
 storage "inmem" {}
-listener "tcp" { 
+listener "tcp" {
   address = "127.0.0.1:8200"
-  tls_disable = true 
+  tls_disable = true
 }
 plugin_download_behavior = "invalid_value"`,
 			expectError: true,

@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -175,7 +176,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 			{
 				Type:       "secret",
 				Name:       "nomad",
-				Image:      "ghcr.io/openbao/openbao-plugin-secrets-nomad",
+				Image:      name.MustParseReference("ghcr.io/openbao/openbao-plugin-secrets-nomad:v0.1.4"),
 				Version:    "v0.1.4",
 				BinaryName: "openbao-plugin-secrets-nomad",
 				SHA256Sum:  nomadPluginSHA256,
@@ -219,8 +220,8 @@ func TestReconcileOCIPlugins(t *testing.T) {
 		t.Fatalf("Failed to read symlink: %v", err)
 	}
 
-	// Should point to .oci-cache/secret-nomad/{sha256_prefix}/openbao-plugin-secrets-nomad
-	expectedPrefix := ".oci-cache/secret-nomad/"
+	// Should point to .oci-cache/
+	expectedPrefix := ".oci-cache/"
 	if !strings.HasPrefix(target, expectedPrefix) {
 		t.Errorf("Symlink target should start with %q, got %q", expectedPrefix, target)
 	}
@@ -281,14 +282,14 @@ func TestReconcileOCIPlugins(t *testing.T) {
 			{
 				Type:      "secret",
 				Name:      "nomad",
-				Image:     "ghcr.io/openbao/openbao-plugin-secrets-nomad",
+				Image:     name.MustParseReference("ghcr.io/openbao/openbao-plugin-secrets-nomad:v0.1.4"),
 				Version:   "v0.1.4",
 				SHA256Sum: nomadPluginSHA256,
 			},
 			{
 				Type:      "secret",
 				Name:      "aws",
-				Image:     "ghcr.io/openbao/openbao-plugin-secrets-aws",
+				Image:     name.MustParseReference("ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1"),
 				Version:   "v0.0.1",
 				SHA256Sum: awsPluginSHA256,
 			},
@@ -368,7 +369,7 @@ func TestPluginCacheStructure(t *testing.T) {
 
 	// Test plugin configuration
 	pluginConfig := &server.PluginConfig{
-		Image:      "docker.io/test/plugin",
+		Image:      name.MustParseReference("docker.io/test/plugin:latest"),
 		Version:    "latest",
 		Type:       "test",
 		Name:       "plugin",

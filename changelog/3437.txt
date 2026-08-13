@@ -1,0 +1,3 @@
+```release-note:bug
+command/server: Correct merge condition for `plugin_download_max_size` in `Config.Merge()`
+```

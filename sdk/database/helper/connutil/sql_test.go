@@ -27,7 +27,7 @@ func TestSQLPasswordChars(t *testing.T) {
 
 		sql := &SQLConnectionProducer{}
 		ctx := t.Context()
-		conf := map[string]interface{}{
+		conf := map[string]any{
 			"connection_url":   "postgres://{{username}}:{{password}}@localhost:5432/mydb",
 			"username":         tc.Username,
 			"password":         tc.Password,
@@ -76,7 +76,7 @@ func TestSQLDisableEscaping(t *testing.T) {
 
 		sql := &SQLConnectionProducer{}
 		ctx := t.Context()
-		conf := map[string]interface{}{
+		conf := map[string]any{
 			"connection_url":   "server=localhost;port=1433;user id={{username}};password={{password}};database=mydb;",
 			"username":         tc.Username,
 			"password":         tc.Password,
@@ -119,7 +119,7 @@ func TestSQLDisallowTemplates(t *testing.T) {
 
 			sql := &SQLConnectionProducer{}
 			ctx := t.Context()
-			conf := map[string]interface{}{
+			conf := map[string]any{
 				"connection_url":   "server=localhost;port=1433;user id={{username}};password={{password}};database=mydb;",
 				"username":         tc.Username,
 				"password":         tc.Password,

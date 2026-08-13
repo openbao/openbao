@@ -1,0 +1,3 @@
+```release-note:bug
+core/audit: Ensure config-driven audit mounts are removed from storage when removed from configuration.
+```

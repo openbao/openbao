@@ -1,0 +1,3 @@
+```release-note:bug
+audit/http: Fix error wrapping in header parsing so the underlying cause is not lost.
+```

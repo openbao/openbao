@@ -63,7 +63,7 @@ func (l *LoggerServer) SetLevel(args int, _ *struct{}) error {
 	return nil
 }
 
-func (l *LoggerServer) IsTrace(args interface{}, reply *LoggerReply) error {
+func (l *LoggerServer) IsTrace(args any, reply *LoggerReply) error {
 	result := l.logger.IsTrace()
 	*reply = LoggerReply{
 		IsTrue: result,
@@ -71,7 +71,7 @@ func (l *LoggerServer) IsTrace(args interface{}, reply *LoggerReply) error {
 	return nil
 }
 
-func (l *LoggerServer) IsDebug(args interface{}, reply *LoggerReply) error {
+func (l *LoggerServer) IsDebug(args any, reply *LoggerReply) error {
 	result := l.logger.IsDebug()
 	*reply = LoggerReply{
 		IsTrue: result,
@@ -79,7 +79,7 @@ func (l *LoggerServer) IsDebug(args interface{}, reply *LoggerReply) error {
 	return nil
 }
 
-func (l *LoggerServer) IsInfo(args interface{}, reply *LoggerReply) error {
+func (l *LoggerServer) IsInfo(args any, reply *LoggerReply) error {
 	result := l.logger.IsInfo()
 	*reply = LoggerReply{
 		IsTrue: result,
@@ -87,7 +87,7 @@ func (l *LoggerServer) IsInfo(args interface{}, reply *LoggerReply) error {
 	return nil
 }
 
-func (l *LoggerServer) IsWarn(args interface{}, reply *LoggerReply) error {
+func (l *LoggerServer) IsWarn(args any, reply *LoggerReply) error {
 	result := l.logger.IsWarn()
 	*reply = LoggerReply{
 		IsTrue: result,
@@ -98,7 +98,7 @@ func (l *LoggerServer) IsWarn(args interface{}, reply *LoggerReply) error {
 type LoggerArgs struct {
 	Level int
 	Msg   string
-	Args  []interface{}
+	Args  []any
 }
 
 // LoggerReply contains the RPC reply. Not all fields may be used

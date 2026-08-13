@@ -19,7 +19,7 @@ type Auth struct {
 	// InternalData is JSON-encodable data that is stored with the auth struct.
 	// This will be sent back during a Renew/Revoke for storing internal data
 	// used for those operations.
-	InternalData map[string]interface{} `json:"internal_data" mapstructure:"internal_data" structs:"internal_data"`
+	InternalData map[string]any `json:"internal_data" mapstructure:"internal_data" structs:"internal_data"`
 
 	// DisplayName is a non-security sensitive identifier that is
 	// applicable to this Auth. It is used for logging and prefixing
@@ -163,7 +163,7 @@ type PolicyInfo struct {
 }
 
 func (cg *ControlGroup) Authorizations() []*ControlGroupAuthorization {
-	authSet := map[string]interface{}{}
+	authSet := map[string]any{}
 	auths := []*ControlGroupAuthorization{}
 	for _, factor := range cg.Factors {
 		for _, approval := range factor.Authorizations {

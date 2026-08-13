@@ -1,32 +1,27 @@
-# .github/workflows/go-dependency-submission.yml
 name: Go Dependency Submission
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     branches: [ "main" ]
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# Environment variables to configure Go and Go modules. Customize as necessary
 env:
   GOPROXY: '' # A Go Proxy server to be used
   GOPRIVATE: '' # A list of modules are considered private and not requested from GOPROXY
 
-# The API requires write permission on the repository to submit dependencies
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   go-dependency-submission:
-    # The type of runner that the job will run on
     runs-on: ubuntu-slim
-
+    permissions:
+      contents: write
+    
     steps:
       - name: 'Repository Checkout'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: 'Setup Golang'
         uses: ./.github/actions/set-up-go

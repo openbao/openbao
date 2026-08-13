@@ -1,0 +1,3 @@
+```release-note:bug
+core: Propagate keyring upgrades of sealable namespaces to read-enabled standby nodes.
+```

@@ -16,8 +16,8 @@ var ErrNotInitialized = errors.New("connection has not been initialized")
 // connections and is used in all the builtin database types.
 type ConnectionProducer interface {
 	Close() error
-	Init(context.Context, map[string]interface{}, bool) (map[string]interface{}, error)
-	Connection(context.Context) (interface{}, error)
+	Init(context.Context, map[string]any, bool) (map[string]any, error)
+	Connection(context.Context) (any, error)
 
 	sync.Locker
 }

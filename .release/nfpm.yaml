@@ -1,0 +1,55 @@
+arch: ${GOARCH}
+platform: ${GOOS}
+version: ${VERSION}
+vendor: OpenBao
+name: openbao
+homepage: https://openbao.org
+maintainer: OpenBao <openbao@lists.openssf.org>
+description: |
+  OpenBao exists to provide a software solution to manage, store, and distribute
+  sensitive data including secrets, certificates, and keys.
+license: MPL-2.0
+provides:
+ - openbao
+conflicts:
+ - bao
+ - bao-hsm
+replaces:
+ - bao
+depends:
+ - openssl
+section: default
+contents:
+  - src: ./bin/bao
+    dst: /usr/bin/bao
+    file_info:
+      mode: 0755
+  - src: ./LICENSE
+    dst: /usr/share/doc/openbao/copyright
+    file_info:
+      mode: 0644
+  - src: ./.release/linux/package/etc/openbao/openbao.env
+    dst: /etc/openbao/openbao.env
+    type: config|noreplace
+    file_info:
+      mode: 0644
+  - src: ./.release/linux/package/etc/openbao/openbao.hcl
+    dst: /etc/openbao/openbao.hcl
+    type: config|noreplace
+    file_info:
+      mode: 0644
+  - src: ./.release/linux/package/usr/lib/systemd/system/openbao.service
+    dst: /usr/lib/systemd/system/openbao.service
+    type: config|noreplace
+    file_info:
+      mode: 0644
+scripts:
+  preinstall: ./.release/linux/preinst
+  postinstall: ./.release/linux/postinst
+  postremove: ./.release/linux/postrm
+deb:
+  signature:
+    key_file: ${GPG_KEY_FILE}
+rpm:
+  signature:
+    key_file: ${GPG_KEY_FILE}

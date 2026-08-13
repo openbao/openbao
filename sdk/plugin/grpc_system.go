@@ -9,6 +9,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/openbao/go-kms-wrapping/v2/kms"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
@@ -78,7 +79,7 @@ func (s *gRPCSystemViewClient) ReplicationState() consts.ReplicationState {
 	return consts.ReplicationState(reply.State)
 }
 
-func (s *gRPCSystemViewClient) ResponseWrapData(ctx context.Context, data map[string]interface{}, ttl time.Duration, jwt bool) (*wrapping.ResponseWrapInfo, error) {
+func (s *gRPCSystemViewClient) ResponseWrapData(ctx context.Context, data map[string]any, ttl time.Duration, jwt bool) (*wrapping.ResponseWrapInfo, error) {
 	buf, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
@@ -204,6 +205,10 @@ func (s gRPCSystemViewClient) ClusterID(ctx context.Context) (string, error) {
 	return reply.ClusterID, nil
 }
 
+func (s gRPCSystemViewClient) GetExternalKey(ctx context.Context, ref string) (kms.Key, error) {
+	return nil, errors.New("cannot call GetExternalKey from a plugin backend")
+}
+
 type gRPCSystemViewServer struct {
 	pb.UnimplementedSystemViewServer
 
@@ -264,7 +269,7 @@ func (s *gRPCSystemViewServer) ResponseWrapData(ctx context.Context, args *pb.Re
 	if s.impl == nil {
 		return nil, errMissingSystemView
 	}
-	data := map[string]interface{}{}
+	data := map[string]any{}
 	err := json.Unmarshal([]byte(args.Data), &data)
 	if err != nil {
 		return &pb.ResponseWrapDataReply{}, err

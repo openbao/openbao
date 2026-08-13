@@ -87,7 +87,8 @@ While most strings are hashed, OpenBao does make some exceptions, such as auth a
 ## Enabling/Disabling audit devices
 
 When an OpenBao server is first initialized, no auditing is enabled. Audit
-devices must be enabled by a root user using `bao audit enable`.
+devices must be enabled by a root user using [`bao audit enable`](../commands/audit/index.mdx)
+or using the [`audit` stanza](../configuration/audit.mdx).
 
 When enabling an audit device, options can be passed to it to configure it.
 For example, the command below enables the file audit device:
@@ -150,7 +151,7 @@ In other words, OpenBao will not complete any requests until the blocked audit d
 ## API
 
 Audit devices also have a full HTTP API. Please see the [Audit device API
-docs](/api-docs/system/audit) for more details.
+docs](../api/system/audit.mdx) for more details.
 
 ## Common configuration options
 

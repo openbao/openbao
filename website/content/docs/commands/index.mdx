@@ -9,7 +9,7 @@ description: |-
 
 # OpenBao commands (CLI)
 
-In addition to a verbose [HTTP API](/api-docs), OpenBao features a command-line
+In addition to a verbose [HTTP API](../api/index.mdx), OpenBao features a command-line
 interface (CLI) that wraps common functionality and formats output. The OpenBao
 CLI is a single static binary. It is a thin wrapper around the HTTP API. Every
 CLI command maps directly to the HTTP API internally.
@@ -45,7 +45,7 @@ and arguments.
 The following `write` command creates a new user (`bob`) in the userpass auth
 method. It passes the `-address` flag to specify the OpenBao server address which
 precedes the path (`auth/userpass/users/bob`) and its
-[argument](/api-docs/auth/userpass#createupdate-user)
+[argument](../api/auth/userpass.mdx#createupdate-user)
 (`password="long-password"`) at last.
 
 ```shell-session
@@ -53,7 +53,7 @@ $ bao write -address="http://127.0.0.1:8200" auth/userpass/users/bob password="l
 ```
 
 If multiple options (`-address` and `-namespace`) and
-[arguments](/api-docs/auth/userpass#createupdate-user) (`password` and
+[arguments](../api/auth/userpass.mdx#createupdate-user) (`password` and
 `policies`) are specified, the command would look like:
 
 ```shell-session
@@ -134,7 +134,7 @@ The `path-help` retrieves API help on any API paths. OpenBao API paths provide
 built-in help in markdown format. This includes system paths, secret engines,
 and auth methods.
 
-**Example:** API help on the [`sys/mounts/`](/api-docs/system/mounts) path.
+**Example:** API help on the [`sys/mounts/`](../api/system/mounts.mdx) path.
 
 ```shell-session
 $ bao path-help sys/mounts
@@ -260,10 +260,12 @@ automatically query the OpenBao server and return helpful argument suggestions.
 
 ## Token helper
 
+To authenticate, use the [`login` command](login.mdx).
+
 By default, the OpenBao CLI uses a "token helper" to cache the token after
 authentication. This is conceptually similar to how a website securely stores
 your session information as a cookie in the browser. Token helpers are
-customizable, and you can even build your own.
+customizable, and you can even [build your own](token-helper.mdx).
 
 The default token helper stores the token in `~/.vault-token`. You can delete
 this file at any time to "logout" of OpenBao. You can override this location
@@ -373,7 +375,7 @@ limiting is off by default.
 _Note:_ The rate is limited for each invocation of the `bao` CLI. Since
 each invocation of the `bao` CLI typically only makes a few requests,
 this environment variable is most useful when using the Go
-[OpenBao client API](/api-docs/libraries#go).
+[OpenBao client API](../api/libraries.mdx#go).
 
 ### `BAO_NAMESPACE`
 

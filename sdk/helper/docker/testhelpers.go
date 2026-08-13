@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/url"
 	"os"
 	"strconv"
@@ -29,6 +30,7 @@ import (
 	"github.com/moby/moby/api/types/mount"
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
+	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 )
 
 type Runner struct {
@@ -40,6 +42,7 @@ type RunOptions struct {
 	ImageRepo              string
 	ImageTag               string
 	ContainerName          string
+	User                   string
 	Cmd                    []string
 	Entrypoint             []string
 	Env                    []string
@@ -58,6 +61,11 @@ type RunOptions struct {
 	LogStderr              io.Writer
 	LogStdout              io.Writer
 	VolumeNameToMountPoint map[string]string
+
+	// WriteInto is provided instead of Runner.CopyTo(...) so that it executes
+	// before the container starts, providing an opportunity to provision
+	// initial data. Map of destination -> contents.
+	WriteInto map[string]BuildContext
 }
 
 func NewDockerAPI() (*client.Client, error) {
@@ -218,7 +226,7 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 			}
 		}
 	}
-	result, err := d.Start(context.Background(), addSuffix, forceLocalAddr)
+	result, err := d.Start(ctx, addSuffix, forceLocalAddr)
 	if err != nil {
 		return nil, "", err
 	}
@@ -315,7 +323,7 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 	op := func() (ServiceConfig, error) {
 		container, err := d.DockerAPI.ContainerInspect(ctx, result.Container.ID, client.ContainerInspectOptions{})
 		if err != nil || !container.Container.State.Running {
-			return nil, backoff.Permanent(fmt.Errorf("failed inspect or container %q not running: %w", result.Container.ID, err))
+			return nil, backoff.Permanent(fmt.Errorf("failed inspect or container %q not running (%v): %w", result.Container.ID, container.Container.State.Status, err))
 		}
 
 		c, err := connect(ctx, pieces[0], portInt)
@@ -357,6 +365,81 @@ type StartResult struct {
 	RealIP    string
 }
 
+func shouldPull(ctx context.Context, dockerAPI *client.Client, image string) bool {
+	// check if the image is present locally
+	imageInspect, err := dockerAPI.ImageInspect(ctx, image)
+	if err != nil {
+		if errdefs.IsNotFound(err) {
+			return true
+		}
+
+		log.Default().Printf("[WARNING] error while checking if image %q is present locally, assuming no: %v\n", image, err)
+		return true
+	}
+
+	// check if it has been built less than 24 hours ago
+	createdTime, err := time.Parse(time.RFC3339Nano, imageInspect.Created)
+	if err != nil {
+		log.Default().Printf("[WARNING] error while checking if %q is recent, assuming no: %v\n", image, err)
+		return true
+	}
+
+	if time.Since(createdTime) < 24*time.Hour {
+		return false
+	}
+
+	// check if it has been pull less than 24 hours ago
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	events := dockerAPI.Events(ctx, client.EventsListOptions{
+		Since:   "24h",
+		Until:   "0s",
+		Filters: make(client.Filters).Add("event", "pull").Add("image", image),
+	})
+
+	for {
+		select {
+		case err := <-events.Err:
+			if errors.Is(err, io.EOF) {
+				return true
+			}
+
+			log.Default().Printf("[WARNING] error while trying to check if image %q has been pulled already, assuming no: %v\n", image, err)
+			return true
+		case <-events.Messages:
+			return false
+		}
+	}
+}
+
+var (
+	pullLocks = locksutil.CreateLocks()
+	pullCache sync.Map
+)
+
+func (d *Runner) pull(ctx context.Context, image string, opts client.ImagePullOptions) {
+	lock := locksutil.LockForKey(pullLocks, image)
+	lock.Lock()
+	defer lock.Unlock()
+
+	// first we check if the current process has already pulled the image (or skipped pulling based on the second check)
+	if _, ok := pullCache.LoadOrStore(image, nil); ok {
+		return
+	}
+
+	// second we check if the image is "reasonable recent"
+	if !shouldPull(ctx, d.DockerAPI, image) {
+		return
+	}
+
+	// best-effort pull
+	resp, _ := d.DockerAPI.ImagePull(ctx, image, opts)
+	if resp != nil {
+		_, _ = io.ReadAll(resp)
+	}
+}
+
 func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*StartResult, error) {
 	name := d.RunOptions.ContainerName
 	if addSuffix {
@@ -370,6 +453,7 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 	cfg := &container.Config{
 		Hostname: name,
 		Image:    fmt.Sprintf("%s:%s", d.RunOptions.ImageRepo, d.RunOptions.ImageTag),
+		User:     d.RunOptions.User,
 		Env:      d.RunOptions.Env,
 		Cmd:      d.RunOptions.Cmd,
 	}
@@ -402,7 +486,6 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		}
 	}
 
-	// best-effort pull
 	var opts client.ImagePullOptions
 	if d.RunOptions.AuthUsername != "" && d.RunOptions.AuthPassword != "" {
 		var buf bytes.Buffer
@@ -415,10 +498,7 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		}
 		opts.RegistryAuth = base64.URLEncoding.EncodeToString(buf.Bytes())
 	}
-	resp, _ := d.DockerAPI.ImagePull(ctx, cfg.Image, opts)
-	if resp != nil {
-		_, _ = io.ReadAll(resp)
-	}
+	d.pull(ctx, cfg.Image, opts)
 
 	for vol, mtpt := range d.RunOptions.VolumeNameToMountPoint {
 		hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
@@ -444,6 +524,22 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		if err := copyToContainer(ctx, d.DockerAPI, c.ID, from, to); err != nil {
 			_, _ = d.DockerAPI.ContainerRemove(ctx, c.ID, client.ContainerRemoveOptions{})
 			return nil, err
+		}
+	}
+
+	for destination, contents := range d.RunOptions.WriteInto {
+		// Convert our provided contents to a tarball to ship up.
+		tar, err := contents.ToTarball()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build contents for directory %q into tarball: %w", destination, err)
+		}
+
+		_, err = d.DockerAPI.CopyToContainer(ctx, c.ID, client.CopyToContainerOptions{
+			DestinationPath: destination,
+			Content:         tar,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to copy contents for directory %q into container: %w", destination, err)
 		}
 	}
 
@@ -882,12 +978,44 @@ func BuildImage(ctx context.Context, api *client.Client, containerfile string, c
 		return nil, fmt.Errorf("failed to build image: %v", err)
 	}
 
-	output, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read image build output: %w", err)
+	var output bytes.Buffer
+	tee := io.TeeReader(resp.Body, &output)
+
+	var buildError error
+	var messages []string
+
+	dec := json.NewDecoder(tee)
+	for {
+		var message map[string]any
+		if err := dec.Decode(&message); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			return nil, fmt.Errorf("error decoding output from image build: %w", err)
+		}
+
+		if stream, ok := message["stream"]; ok {
+			messages = append(messages, strings.TrimSpace(stream.(string)))
+		}
+
+		if detail, ok := message["errorDetail"]; ok {
+			contents := fmt.Sprintf("[ERROR]: %v", detail)
+			message, ok := detail.(map[string]any)["message"]
+			if ok {
+				contents = fmt.Sprintf("[ERROR]: %v", message.(string))
+			}
+
+			messages = append(messages, contents)
+			buildError = errors.New(contents)
+		}
 	}
 
-	return output, nil
+	if buildError != nil {
+		return nil, fmt.Errorf("error during container image build: %w\n\nbuild messages:\n\t%v\n\n", buildError, strings.Join(messages, "\n\t"))
+	}
+
+	return output.Bytes(), nil
 }
 
 func (d *Runner) CopyTo(c string, destination string, contents BuildContext) error {

@@ -1,0 +1,3 @@
+```release-note:bug
+sdk: Better support non-usr-merged distributions in containerized testing.
+```

@@ -1,0 +1,3 @@
+```release-note:change
+sdk: Drop the `helper/pointerutil` package. Its functionality is natively available in Go as of 1.26 via new syntax around the `new` builtin.
+```

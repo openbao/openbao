@@ -25,9 +25,9 @@ advertise the correct address to other nodes.
 OpenBao supports defining custom HTTP response headers for the root path (`/`) and also on API endpoints (`/v1/*`).
 The headers are defined based on the returned status code. For example, a user can define a list of
 custom response headers for the `200` status code, and another list of custom response headers for
-the `307` status code. There is a `"/sys/config/ui"` [API endpoint](/api-docs/system/config-ui) which allows users
+the `307` status code. There is a `"/sys/config/ui"` [API endpoint](../../api/system/config-ui.mdx) which allows users
 to set `UI` specific custom headers. If a header is configured in a configuration file, it is not allowed
-to be reconfigured through the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-ui). In cases where a
+to be reconfigured through the `"/sys/config/ui"` [API endpoint](../../api/system/config-ui.mdx). In cases where a
 custom header value needs to be modified or the custom header needs to be removed, the OpenBao's configuration file
 needs to be modified accordingly, and a `SIGHUP` signal needs to be sent to the OpenBao process.
 
@@ -39,11 +39,11 @@ upon start up indicating the header with `X-Vault-` prefix is not accepted.
 ### Order of precedence
 
 If the same header is configured in both the configuration file and
-in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-ui), the header in the configuration file takes precedence.
+in the `"/sys/config/ui"` [API endpoint](../../api/system/config-ui.mdx), the header in the configuration file takes precedence.
 For example, the `"Content-Security-Policy"` header is defined by default in the
-`"/sys/config/ui"` [API endpoint](/api-docs/system/config-ui). If that header is also defined in the configuration file,
+`"/sys/config/ui"` [API endpoint](../../api/system/config-ui.mdx). If that header is also defined in the configuration file,
 the value in the configuration file is set in the response headers instead of the
-default value in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-ui).
+default value in the `"/sys/config/ui"` [API endpoint](../../api/system/config-ui.mdx).
 
 ## `tcp` listener parameters
 
@@ -159,7 +159,18 @@ default value in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-u
   startup_ will be used for reloading the certificate; modifying this value
   while OpenBao is running will have no effect for `SIGHUP`s.
 
-- `tls_min_version` `(string: "tls12")` – Specifies the minimum supported
+- `tls_auto_reload` `(bool: false)`: When enabled, OpenBao periodically checks
+  the `tls_cert_file` and `tls_key_file` paths and automatically reloads the
+  certificate and key when their contents change, without requiring a `SIGHUP`.
+  Requires `tls_cert_file` to be set. This is useful when certificates are
+  rotated by an external tool such as cert-manager.
+
+- `tls_auto_reload_interval` `(string: "30s")`: Specifies how often OpenBao
+  polls the certificate files for changes when `tls_auto_reload` is enabled.
+  Accepts a Go duration string (e.g. `"1m"`) or an integer number of seconds.
+  The minimum accepted value is `5s`.
+
+- `tls_min_version` `(string: "tls12")` Specifies the minimum supported
   version of TLS. Accepted values are "tls10", "tls11", "tls12" or "tls13".
 
   :::warning

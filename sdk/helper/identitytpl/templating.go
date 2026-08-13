@@ -20,6 +20,7 @@ var (
 	ErrNoEntityAttachedToToken       = errors.New("string contains entity template directives but no entity was provided")
 	ErrNoGroupsAttachedToToken       = errors.New("string contains groups template directives but no groups were provided")
 	ErrTemplateValueNotFound         = errors.New("no value could be found for one of the template directives")
+	ErrTemplateWildcard              = `template substitution contains forbidden value %q`
 )
 
 const (
@@ -28,13 +29,14 @@ const (
 )
 
 type PopulateStringInput struct {
-	String            string
-	ValidityCheckOnly bool
-	Entity            *logical.Entity
-	Groups            []*logical.Group
-	NamespaceID       string
-	Mode              int       // processing mode, ACLTemplate or JSONTemplating
-	Now               time.Time // optional, defaults to current time
+	String               string
+	ValidityCheckOnly    bool
+	Entity               *logical.Entity
+	Groups               []*logical.Group
+	NamespaceID          string
+	Mode                 int       // processing mode, ACLTemplate or JSONTemplating
+	Now                  time.Time // optional, defaults to current time
+	BlockedSubstitutions []string  // optional, defaults to ["*", "+"] if (.Mode == ACLTemplate) and [] otherwise
 
 	templateHandler templateHandlerFunc
 	groupIDs        []string
@@ -46,11 +48,11 @@ type PopulateStringInput struct {
 // are emitted verbatim, but they're wrapped in double quotes for JSON mode. And
 // some structures, like slices, might be rendered in one mode but prohibited in
 // another.
-type templateHandlerFunc func(interface{}, ...string) (string, error)
+type templateHandlerFunc func(any, ...string) (string, error)
 
 // aclTemplateHandler processes known parameter data types when operating
 // in ACL mode.
-func aclTemplateHandler(v interface{}, keys ...string) (string, error) {
+func aclTemplateHandler(v any, keys ...string) (string, error) {
 	switch t := v.(type) {
 	case string:
 		if t == "" {
@@ -74,8 +76,8 @@ func aclTemplateHandler(v interface{}, keys ...string) (string, error) {
 
 // jsonTemplateHandler processes known parameter data types when operating
 // in JSON mode.
-func jsonTemplateHandler(v interface{}, keys ...string) (string, error) {
-	jsonMarshaller := func(v interface{}) (string, error) {
+func jsonTemplateHandler(v any, keys ...string) (string, error) {
+	jsonMarshaller := func(v any) (string, error) {
 		enc, err := json.Marshal(v)
 		if err != nil {
 			return "", err
@@ -154,6 +156,11 @@ func PopulateString(p PopulateStringInput) (bool, string, error) {
 				tmplStr, err := performTemplating(strings.TrimSpace(splitPiece[0]), &p)
 				if err != nil {
 					return false, "", err
+				}
+				for _, blocked := range p.BlockedSubstitutions {
+					if strings.Contains(tmplStr, blocked) {
+						return false, "", fmt.Errorf(ErrTemplateWildcard, blocked)
+					}
 				}
 				b.WriteString(tmplStr)
 				b.WriteString(splitPiece[1])

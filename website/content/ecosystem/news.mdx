@@ -5,14 +5,31 @@ sidebar_position: 6
 
 # News
 
+OpenBao in the news, whether mentions at conferences, press releases, or similar.
+
 import Randomize from './lib/Randomize.tsx';
 import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
 
 <div className="container">
+  <h2>July 2026</h2>
+  <div className="row">
+    <Randomize>
+      <NewsBlurb title="OpenBao - Leadership from the Ground Up" memberName="controlplane" link="https://control-plane.io/posts/openbao-foundational-leadership/">
+        Securing the widespread adoption of AI, supporting the imminent
+        post-quantum cryptographic migrations, and increasingly sophisticated
+        supply chain attacks are keeping industry leaders up at night. Secrets
+        management, cryptographic inventory, and identity platforms are
+        critical areas of investment in 2026: these are the foundational
+        components platform teams utilize to meet the accelerating business
+        demands.
+      </NewsBlurb>
+    </Randomize>
+  </div>
+
   <h2>June 2026</h2>
   <div className="row">
     <Randomize>
-      <YouTubeTalk title="Shifting Secrets Left with ControlPlane Enterprise for OpenBao - PlatformCon 2026" vid="p1QD6AzG7g4" memberName="controlplane" >
+      <YouTubeTalk title="Shifting Secrets Left with ControlPlane Enterprise for OpenBao - PlatformCon 2026" vid="p1QD6AzG7g4" memberName="controlplane">
         Alex Scheel's PlatformCon 2026 talk, describing the governance capabilities of the server-side workflow feature of OpenBao.
       </YouTubeTalk>
 
@@ -27,19 +44,71 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
         fork of HashiCorp's Vault secrets management software, according to
         recently released documentation.
       </NewsBlurb>
+
+      <NewsBlurb title="OpenBao Achieves SUSE Ready for Rancher Certification" memberName="adfinis" link="https://www.adfinis.com/en/news/openbao-certification-suse-ready-for-rancher">
+        Adfinis announces that OpenBao, the community-driven secrets management
+        solution, has officially achieved the SUSE Ready for Rancher
+        certification.
+      </NewsBlurb>
+
+      <NewsBlurb title="Adfinis and Crypto4A Announce Partnership to Advance Sustainable, Sovereign Secrets Management" memberName="c4a" link="https://crypto4a.com/resources/newsroom/2026-06-25-crypto4a-and-adfinis-partnership-announcement">
+        Crypto4A and Adfinis combine QxVault™ and Secretz Enterprise to empower
+        organizations to achieve quantum-safe and sovereign secrets management
+        in a sustainable manner.
+      </NewsBlurb>
+
+      <YouTubeTalk title="OpenBao: Sovereign Secrets Management" vid="aDteKelLhik" lowres="true" memberName="adfinis">
+        Coen Hamers', Robert de Bock's, and Roel de Cort's webinar, outlining
+        how to achieve sovereign secrets management in light of proprietary
+        solutions and regulations such as NIS2.
+      </YouTubeTalk>
     </Randomize>
   </div>
 
   <h2>May 2026</h2>
   <div className="row">
     <Randomize>
-      <YouTubeTalk title="OpenBao: Horizontally Scaling Secrets Management - OSSNA 2026" vid="vNsEAmNPwH0" memberName="controlplane" >
+      <YouTubeTalk title="OpenBao: Horizontally Scaling Secrets Management - OSSNA 2026" vid="vNsEAmNPwH0" memberName="controlplane">
         Alex Scheel's [Open Source Summit NA 2026 talk](https://openbao.org/blog/cipherboy-ossna-26-talk/), describing the horizontal scalability features of OpenBao.
       </YouTubeTalk>
 
-      <YouTubeTalk title="Sustainable Secrets Management with OpenBao - OSS @ Siemens 2026" vid="hPBT-kSS-68" lowres="true" memberName="adfinis" >
-        Michael Hofer's OSS @ Siemens 2026 talk, diving into OpenBao's origins and why it is the sustainable choice.
+      <YouTubeTalk title="Sustainable Secrets Management with OpenBao - OSS @ Siemens 2026" vid="hPBT-kSS-68" lowres="true" memberName="adfinis">
+        Michael Hofer's Open Source @ Siemens 2026 talk, diving into OpenBao's origins and why it is the sustainable choice.
       </YouTubeTalk>
+
+      <NewsBlurb title="QxVault™ - Simplifying Secrets Management" memberName="c4a" link="https://crypto4a.com/resources/newsroom/2026-05-04-what-is-qx-vault">
+        What is QxVault™? Quantum-Safe Secrets Management with Built-in HSM Protection.
+      </NewsBlurb>
+    </Randomize>
+  </div>
+
+  <h2>April 2026</h2>
+  <div className="row">
+    <Randomize>
+      <NewsBlurb title="OpenBao Basics: What Is Secrets Management?" memberName="adfinis" link="https://www.adfinis.com/en/news/openbao-basics-what-is-secrets-management">
+        Everyone – from early-stage startups to large enterprises, open source
+        projects, and heavily regulated industries – relies on secrets. API
+        tokens, private keys, database credentials, cloud access keys, and
+        signing keys are all examples of secrets. Modern systems simply can't
+        function without them.
+      </NewsBlurb>
+
+      <NewsBlurb title="Secrets Management With OpenBao" memberName="adfinis" link="https://www.adfinis.com/en/news/secrets-management-with-openbao">
+        A vault or bank safe is protected by solid walls or thick doors with
+        high-security locks. Often, it takes several keys and several people to
+        open such a lock. The open source software OpenBao brings a comparable
+        level of security for digital secrets – such as credentials, tokens, or
+        SSH access to enterprise IT.
+      </NewsBlurb>
+
+      <NewsBlurb title="The Vercel Breach: When Roblox Cheats, AI Tools, and Poor Secrets Management Collide" memberName="controlplane" link="https://control-plane.io/posts/vercel-breach-roblox-secrets-management/">
+        The recent breach at Vercel is a textbook example of how many modern
+        supply-chain compromises unfold. It didn’t start with a sophisticated
+        zero-day attack against Vercel’s core infrastructure. Instead, the
+        breach began months earlier, when an employee at Context.ai, a
+        third-party AI tool vendor, downloaded a Roblox auto-farm cheat script
+        onto a corporate laptop. Bundled inside was the Lumma infostealer.
+      </NewsBlurb>
     </Randomize>
   </div>
 
@@ -51,15 +120,206 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
         an open source secrets management platform, as organisations reassess
         their options following IBM's acquisition of HashiCorp.
       </NewsBlurb>
+
+      <NewsBlurb title="Introducing Kubermatic SecureGuard: Open, Kubernetes-Native Secrets Management" memberName="kubermatic" link="https://www.kubermatic.com/blog/introducing-secureguard/">
+        Today, we are excited to introduce a new open-source secrets management
+        platform for Kubernetes and cloud-native environments: Kubermatic
+        SecureGuard (KubeSG).
+      </NewsBlurb>
+
+      <NewsBlurb title="ControlPlane Enterprise for OpenBao - Meet the Team" memberName="controlplane" link="https://control-plane.io/posts/openbao-meet-the-team/">
+        As we launch ControlPlane Enterprise for OpenBao, we’re bringing our
+        trademark capabilities and Cloud Native expertise to the forefront of
+        secrets management. Today, we’re pulling back the curtain to introduce
+        the experts driving this offering forward.
+      </NewsBlurb>
+
+      <NewsBlurb title="ControlPlane Launches Enterprise Support For OpenBao To Strengthen Secrets Security" memberName="controlplane" link="https://control-plane.io/posts/controlplane-enterprise-for-openbao-launch/">
+        ControlPlane, a specialist AI Security and DevSecOps consultancy,
+        today announced the launch of ControlPlane Enterprise for OpenBao,
+        a new offering designed to help organizations securely adopt and
+        operate the OpenBao secrets management platform.
+      </NewsBlurb>
+    </Randomize>
+  </div>
+
+  <h2>February 2026</h2>
+  <div className="row">
+    <Randomize>
+      <NewsBlurb title="Adfinis unveils flat-fee OpenBao-based secrets service" memberName="adfinis" link="https://itbrief.co.uk/story/adfinis-unveils-flat-fee-openbao-based-secrets-service">
+        Adfinis has launched Secretz Enterprise, a subscription product based on
+        the OpenBao open source project. It targets organisations that want
+        predictable pricing for secrets management and 24/7 support.
+      </NewsBlurb>
+
+      <NewsBlurb title="OpenBao: When to Choose the Open Source Vault Alternative" memberName="bespinian" link="https://bespinian.io/en/blog/openbao-os-vault-alternative/">
+        In 2023, HashiCorp changed Vault's license from Mozilla Public License
+        (MPL) to Business Source License (BSL) 1.1. Shortly after, the
+        community forked Vault's last MPL version, creating OpenBao — Open
+        Source project under MPL 2.0 licensing. Let's explore the actual
+        differences and features.
+      </NewsBlurb>
+
+      <NewsBlurb title="The Guide to OpenBao" link="https://blog.stderr.at/openshift-platform/security/secrets-management/openbao/">
+        A series of engineering articles by Thomas Jungbauer about OpenBao, a
+        HashiCorp Vault fork, and how to get started.
+      </NewsBlurb>
+    </Randomize>
+  </div>
+
+  <h2>December 2025</h2>
+  <div className="row">
+    <Randomize>
+      <NewsBlurb title="Adfinis unveils OpenBao services for secure secrets" memberName="adfinis" link="https://securitybrief.co.uk/story/adfinis-unveils-openbao-services-for-secure-secrets">
+        Adfinis has launched a suite of open source services built around
+        OpenBao, as the systems integrator moves to formalise its role in the
+        emerging secrets management project.
+      </NewsBlurb>
+
+      <NewsBlurb title="Interview: Adfinis CTO discusses Secrets Management and OpenBao with IT-Administrator" memberName="adfinis" link="https://www.adfinis.com/en/news/interview-secrets-management">
+        In an interview with IT-Administrator, Adfinis CTO Michael Hofer
+        discusses the growing problem of "secrets sprawl", and how unencrypted
+        credentials, fragmented access, and a lack of visibility remain critical
+        challenges for many organizations.
+      </NewsBlurb>
+
+      <NewsBlurb title="Percona Server for MongoDB 8.0.16-5 (2025-12-02)" memberName="percona" link="https://docs.percona.com/percona-server-for-mongodb/8.0/release_notes/8.0.16-5.html">
+        Percona Server for MongoDB 8.0.16-5 is an enhanced, source-available,
+        and highly-scalable database that is a fully-compatible, drop-in
+        replacement for MongoDB Community Edition.
+
+        To give you more flexibility for enterprise-grade data encryption,
+        Percona Server for MongoDB now supports OpenBao in addition to
+        HashiCorp Vault. OpenBao is the open-source fork of Vault, providing
+        the same powerful security while helping you avoid vendor lock-in.
+      </NewsBlurb>
+    </Randomize>
+  </div>
+
+  <h2>November 2025</h2>
+  <div className="row">
+    <Randomize>
+      <YouTubeTalk title="OpenBao on RISC-V DeepComputing" vid="TtqX43iAXPw" >
+        Luca Berton, Pascal Reeb, and Toni Tauro showcase how to run OpenBao on RISC-V DeepComputing, open secrets management on open hardware.
+      </YouTubeTalk>
+    </Randomize>
+
+    <NewsBlurb title="Crypto4A Unveils QxVault™: Secrets. Simplified." memberName="c4a" link="https://crypto4a.com/resources/newsroom/2025-11-26-crypto4a-unvails-qxvault">
+      Crypto4A Technologies Inc., a leader in quantum-safe cybersecurity
+      solutions, today announced the launch of QxVault™, a groundbreaking
+      secrets management platform that integrates a FIPS 140-3 Level 3
+      compliant Hardware Security Module (HSM) for robust management of
+      secrets.
+    </NewsBlurb>
+  </div>
+
+  <h2>October 2025</h2>
+  <div className="row">
+    <Randomize>
+      <YouTubeTalk title="Sustainable Secrets Management with OpenBao - Securosys User & Developer Conference 2025" memberName="adfinis" vid="llyw5zFJjKI">
+        Pascal Reeb's and Toni Tauro's Securosys User & Developer Conference 2025 talk, describing how to achieve sustainable, sovereign secrets management with OpenBao and Securosys HSMs.
+      </YouTubeTalk>
+
+      <NewsBlurb title="OpenBao Basics: How Namespaces Became a Reality" memberName="adfinis" link="https://www.adfinis.com/en/news/openbao-basics-namespaces">
+        As an organization scales, so does the need for greater granularity
+        over data access controls and compartmentalization across different
+        domains.
+      </NewsBlurb>
+    </Randomize>
+  </div>
+
+  <h2>July 2025</h2>
+  <div className="row">
+    <Randomize>
+      <NewsBlurb title="OpenBao: Securing the Future of Open Source Secrets Management" memberName="liquidreply" link="https://liquidreply.net/en/news/openbao-securing-the-future-of-open-source-secrets-management">
+        In today's complex technology landscape, managing secrets such as API
+        keys, passwords, certificates, and other sensitive data has become one
+        of the biggest challenges for businesses. That's why Liquid Reply
+        supports OpenBao, an open-source system for managing secrets and
+        encryption based on identity, to secure data management in the cloud
+        era.
+      </NewsBlurb>
     </Randomize>
   </div>
 
   <h2>February 2025</h2>
   <div className="row">
     <Randomize>
-      <YouTubeTalk title="OpenBao @ GitLab - FOSDEM 2025" vid="V50hdX2d8IA" >
+      <YouTubeTalk title="OpenBao @ GitLab - FOSDEM 2025" vid="V50hdX2d8IA">
         Alex Scheel's [FOSDEM 2025 talk](https://openbao.org/blog/cipherboy-fosdem-25-talk/), describing the usage of OpenBao at GitLab.
       </YouTubeTalk>
+
+      <YouTubeTalk title="Namespace Request Routing - OpenBao Live Coding with Alex (cipherboy) and Andrii (driif)" vid="Gm15qRTtiUY">
+        Live Coding Session - February 21st, 2025
+
+        Watch as Alex (cipherboy) and Andrii (driif) live code support for
+        request routing in the context of the upcoming Namespaces feature.
+      </YouTubeTalk>
+
+      <YouTubeTalk title="Namespace Required Mounts - OpenBao Live Coding with Alex (cipherboy) and Jonas (satoqz)" vid="1LhxJkonkkE">
+        Live Coding Session - February 25th, 2025
+
+        Watch as Alex (cipherboy) and Jonas (satoqz) live code support for
+        request routing in the context of the upcoming Namespaces feature.
+      </YouTubeTalk>
+    </Randomize>
+  </div>
+
+  <h2>January 2025</h2>
+  <div className="row">
+    <Randomize>
+      <YouTubeTalk title="Tune non-HMAC parameters on sys/ - OpenBao Live Coding with Alex (cipherboy) and Jakub (jficz)" vid="lr7_YmEIOro">
+        Live Coding Session - January 20th, 2025
+
+        Watch as Alex (cipherboy) and Jakub (jficz) live code support for
+        tuning non-HMAC parameters on sys/ and other protected endpoints.
+      </YouTubeTalk>
+    </Randomize>
+  </div>
+
+  <h2>September 2024</h2>
+  <div className="row">
+    <Randomize>
+      <NewsBlurb title="FreshPorts - openbao - New port: open source, community-driven fork of Vault" link="https://www.freshports.org/security/openbao/">
+        OpenBao exists to provide a software solution to manage, store, and
+        distribute sensitive data including secrets, certificates, and keys.
+        The OpenBao community intends to provide this software under an
+        OSI-approved open-source license, led by a community run under open
+        governance principles.
+      </NewsBlurb>
+    </Randomize>
+  </div>
+
+  <h2>December 2023</h2>
+  <div className="row">
+    <Randomize>
+      <NewsBlurb title="Meet OpenBao, an Open Source Fork of HashiCorp Vault" link="https://thenewstack.io/meet-openbao-an-open-source-fork-of-hashicorp-vault/">
+        First Terraform, and now Vault: More open source code abandoned by
+        HashiCorp is a finding a home with potential competitors.
+
+        In September, HashiCorp rivals forked Infrastructure as Code (IaC)
+        software Terraform to create OpenTofu, after HashiCorp moved much
+        of its core enterprise software from an open source to a Business
+        Source License. Now the OpenBAO project has set out to maintain the
+        open source version of HashiCorp’s widely used Vault security
+        software.
+      </NewsBlurb>
+
+      <NewsBlurb title="Open source forkers stick an OpenBao in the oven" link="https://www.theregister.com/on-prem/2023/12/08/open-source-forkers-stick-an-openbao-in-the-oven/1020932">
+        The rebellion against HashiCorp for adopting a competition-limiting
+        license for its Terraform software expanded this week, with word that
+        The Linux Foundation aims to help hatch an open source alternative to
+        Vault, the company's secrets management project.
+      </NewsBlurb>
+    </Randomize>
+  </div>
+
+  <h2>October 2023</h2>
+  <div className="row">
+    <Randomize>
+      <NewsBlurb title="Hashicorp Vault Replacement Feature Design Candidate" link="https://lf-edge.atlassian.net/wiki/spaces/OH/pages/15210437/Hashicorp+Vault+Replacement+Feature+Design+Candidate">
+        The start of OpenBao under LF Edge's OpenHorizon project!
+      </NewsBlurb>
     </Randomize>
   </div>
 </div>

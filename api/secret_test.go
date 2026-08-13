@@ -47,7 +47,7 @@ func TestTokenPolicies(t *testing.T) {
 	}
 
 	s.Auth = nil
-	s.Data = make(map[string]interface{})
+	s.Data = make(map[string]any)
 
 	if policies, err := s.TokenPolicies(); policies != nil {
 		t.Errorf("policies was not nil, got %v", policies)
@@ -80,10 +80,10 @@ func TestTokenPolicies(t *testing.T) {
 		}
 	}
 
-	// Do it again but with an interface{} slice
+	// Do it again but with an any slice.
 	{
 		s.Auth = nil
-		policyList := make([]interface{}, 0)
+		policyList := make([]any, 0)
 		s.Data["policies"] = policyList
 
 		if policies, err := s.TokenPolicies(); len(policies) != len(policyList) {
@@ -94,7 +94,7 @@ func TestTokenPolicies(t *testing.T) {
 			t.Error("Auth field is still nil")
 		}
 
-		policyItems := make([]interface{}, 2)
+		policyItems := make([]any, 2)
 		policyItems[0] = "policy1"
 		policyItems[1] = "policy2"
 
@@ -161,9 +161,9 @@ func TestTokenPolicies(t *testing.T) {
 		}
 	}
 
-	// Do it again but with an interface{} slice
+	// Do it again but with an any slice.
 	{
-		policyList := []interface{}{"policy1", "policy2", "policy3"}
+		policyList := []any{"policy1", "policy2", "policy3"}
 		s.Data["policies"] = policyList[:1]
 		s.Data["identity_policies"] = "not_a_slice"
 		s.Auth = nil

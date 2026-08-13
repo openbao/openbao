@@ -51,3 +51,28 @@ phil9909:
   socials:
     github: https://github.com/phil9909
     linkedin: https://www.linkedin.com/in/phil9909/
+
+karras:
+  name: Michael Hofer
+  image_url: https://www.secretz.io/hofi.jpg
+  socials:
+    github: https://github.com/karras
+    linkedin: https://www.linkedin.com/in/secretz/
+
+matheuscscp:
+  name: Matheus Pimenta
+  image_url: https://avatars.githubusercontent.com/matheuscscp
+  socials:
+    github: https://github.com/matheuscscp
+
+datosh:
+  name: Fabian Kammel
+  image_url: https://avatars.githubusercontent.com/datosh
+  socials:
+    github: https://github.com/datosh
+
+stealthybox:
+  name: Leigh Capili
+  image_url: https://avatars.githubusercontent.com/stealthybox
+  socials:
+    github: https://github.com/stealthybox

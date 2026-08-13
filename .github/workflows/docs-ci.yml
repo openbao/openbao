@@ -10,6 +10,9 @@ on:
       - "website/**"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   check-links:
     name: Check Absolute Links
@@ -31,6 +34,8 @@ jobs:
   test-docs:
     name: Test Docs
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10

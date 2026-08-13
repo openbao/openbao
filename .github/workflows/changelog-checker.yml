@@ -11,6 +11,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   # checks that a changelog entry is present for a PR
   changelog-check:

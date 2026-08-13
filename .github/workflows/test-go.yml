@@ -56,6 +56,9 @@ on:
 
 env: ${{ fromJSON(inputs.env-vars) }}
 
+permissions:
+  contents: read
+
 jobs:
   test-matrix:
     runs-on: ubuntu-latest
@@ -121,6 +124,8 @@ jobs:
   test-go:
     needs: test-matrix
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     strategy:
       fail-fast: false
       matrix:
@@ -273,6 +278,8 @@ jobs:
     if: ${{ ! cancelled() }}
     needs: [test-go, test-matrix]
     runs-on: ubuntu-slim
+    permissions:
+      actions: write
     steps:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

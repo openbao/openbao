@@ -10,6 +10,9 @@ on:
       - release/**
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.head_ref || github.run_id }}-lint
   cancel-in-progress: true

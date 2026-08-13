@@ -5,11 +5,16 @@ on:
     types: [opened, synchronize]
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   verify_commits:
     name: Verify Commit Signatures
     runs-on: ubuntu-slim
-
+    permissions:
+      pull-requests: read
+    
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check commit signatures
@@ -35,7 +40,7 @@ jobs:
              # check if there are unsigned commits
              if (. | length) != 0 then
               # return error
-              ("Pr contains unsigned maintainer commits!\n" | halt_error(1))
+              ("PR contains unsigned maintainer commits!\n" | halt_error(1))
              else
               # return success
               "All maintainer commits are signed"

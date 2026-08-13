@@ -6,6 +6,7 @@ package kmsplugin
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -33,12 +34,54 @@ type Catalog struct {
 
 	mu      sync.Mutex
 	plugins map[string]*server.PluginConfig
-	clients map[string]*client
+	clients map[clientKey]*client
 
 	// Derived from server configuration.
 	pluginDirectory       string
 	pluginFileUid         int
 	pluginFilePermissions int
+}
+
+// clientKey is a hashable representation of [server.PluginConfig].
+type clientKey struct {
+	name    string
+	version string
+	command string
+	env     string
+	args    string
+	sha256  string
+}
+
+// newClientKey converts a [server.PluginConfig] to a [clientKey].
+func newClientKey(p *server.PluginConfig) clientKey {
+	env, _ := json.Marshal(p.Env)
+	args, _ := json.Marshal(p.Args)
+	return clientKey{
+		name:    p.Name,
+		version: p.Version,
+		command: p.CommandPath(),
+		env:     string(env),
+		args:    string(args),
+		sha256:  p.SHA256Sum,
+	}
+}
+
+// buildConfigLookup builds a lookup map of plugin configs by name and ensures
+// there are no naming or versioning conflicts.
+func buildConfigLookup(plugins []*server.PluginConfig) (map[string]*server.PluginConfig, error) {
+	index := make(map[string]*server.PluginConfig)
+	for _, plugin := range plugins {
+		// Ignore plugins that aren't type KMS.
+		if typ, _ := consts.ParsePluginType(plugin.Type); typ != consts.PluginTypeKMS {
+			continue
+		}
+		// KMS plugins only support one version at a time.
+		if _, ok := index[plugin.Name]; ok {
+			return nil, fmt.Errorf("cannot register several versions of plugin %q", plugin.Name)
+		}
+		index[plugin.Name] = plugin
+	}
+	return index, nil
 }
 
 // NewCatalog returns a new KMS plugin catalog.
@@ -56,25 +99,15 @@ func NewCatalog(logger hclog.Logger, config *server.Config) (*Catalog, error) {
 		}
 	}
 
-	// Index plugin configs by name for easy lookup and to ensure there are no
-	// naming conflicts.
-	plugins := make(map[string]*server.PluginConfig)
-	for _, plugin := range config.Plugins {
-		// Ignore plugins that aren't type KMS.
-		if typ, _ := consts.ParsePluginType(plugin.Type); typ != consts.PluginTypeKMS {
-			continue
-		}
-		// For now, KMS plugins only support one version at a time.
-		if _, ok := plugins[plugin.Name]; ok {
-			return nil, fmt.Errorf("cannot register several versions of plugin %q", plugin.Name)
-		}
-		plugins[plugin.Name] = plugin
+	plugins, err := buildConfigLookup(config.Plugins)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Catalog{
 		logger:                logger.Named("kms"),
 		plugins:               plugins,
-		clients:               make(map[string]*client, len(plugins)),
+		clients:               make(map[clientKey]*client, len(plugins)),
 		pluginDirectory:       pluginDirectory,
 		pluginFileUid:         config.PluginFileUid,
 		pluginFilePermissions: config.PluginFilePermissions,
@@ -89,16 +122,18 @@ func (c *Catalog) getClient(name string) (*client, bool, error) {
 }
 
 func (c *Catalog) getClientLocked(name string) (*client, bool, error) {
-	// Try to reuse an existing client.
-	if cl, ok := c.clients[name]; ok {
-		cl.refs++
-		return cl, true, nil
-	}
-
 	// Check for plugin configuration.
 	config, ok := c.plugins[name]
 	if !ok {
 		return nil, false, nil
+	}
+
+	key := newClientKey(config)
+
+	// Try to reuse an existing client.
+	if cl, ok := c.clients[key]; ok {
+		cl.refs++
+		return cl, true, nil
 	}
 
 	// Don't continue with external plugins if no plugin directory is set.
@@ -144,12 +179,12 @@ func (c *Catalog) getClientLocked(name string) (*client, bool, error) {
 
 	cl := &client{
 		catalog:        c,
-		name:           name,
+		key:            key,
 		refs:           1,
 		process:        process,
 		ClientProtocol: proto,
 	}
-	c.clients[name] = cl
+	c.clients[key] = cl
 	return cl, true, nil
 }
 
@@ -157,12 +192,12 @@ func (c *Catalog) reloadClient(prev *client) (*client, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	client, ok, err := c.getClientLocked(prev.name)
+	client, ok, err := c.getClientLocked(prev.key.name)
 	switch {
 	case err != nil:
 		return nil, err
 	case !ok:
-		return nil, fmt.Errorf("unknown plugin: %s", prev.name)
+		return nil, fmt.Errorf("unknown plugin: %s", prev.key.name)
 	}
 
 	if client != prev {
@@ -175,13 +210,13 @@ func (c *Catalog) reloadClient(prev *client) (*client, error) {
 	prev.process.Kill()
 
 	// Force a client recreation.
-	delete(c.clients, prev.name)
-	client, ok, err = c.getClientLocked(prev.name)
+	delete(c.clients, prev.key)
+	client, ok, err = c.getClientLocked(prev.key.name)
 	switch {
 	case err != nil:
 		return nil, err
 	case !ok:
-		return nil, fmt.Errorf("unknown plugin: %s", prev.name)
+		return nil, fmt.Errorf("unknown plugin: %s", prev.key.name)
 	}
 
 	return client, nil
@@ -224,11 +259,48 @@ func (c *Catalog) checkFilePath(plugin *server.PluginConfig) error {
 	return nil
 }
 
+// ReloadConfig supplies the catalog with an updated server config and refreshes
+// plugin clients as needed.
+func (c *Catalog) ReloadConfig(config *server.Config) error {
+	plugins, err := buildConfigLookup(config.Plugins)
+	if err != nil {
+		return err
+	}
+
+	// Build a set of client keys so all existing clients no longer present in
+	// it can be evicted.
+	clients := make(map[clientKey]struct{})
+	for _, plugin := range plugins {
+		clients[newClientKey(plugin)] = struct{}{}
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.plugins = plugins
+
+	for key, client := range c.clients {
+		if _, ok := clients[key]; ok {
+			continue // Unchanged.
+		}
+
+		c.logger.Info("config updated, killing old plugin client", "name", key.name)
+
+		// This causes future calls to existing plugin-derived objects to
+		// refresh their client and roll over to the updated config (if a plugin
+		// with the same name still exists, that is).
+		client.process.Kill()
+		delete(c.clients, key)
+	}
+
+	return nil
+}
+
 type client struct {
 	catalog *Catalog
 
-	name string // Name of the plugin.
-	refs int    // Reference count.
+	key  clientKey
+	refs int // Reference count.
 
 	process *plugin.Client
 	plugin.ClientProtocol
@@ -254,7 +326,7 @@ func (c *client) close() {
 	c.process.Kill()
 
 	// Remove from lookup if this is still the most recent client.
-	if stored, ok := c.catalog.clients[c.name]; ok && stored == c {
-		delete(c.catalog.clients, c.name)
+	if stored, ok := c.catalog.clients[c.key]; ok && stored == c {
+		delete(c.catalog.clients, c.key)
 	}
 }

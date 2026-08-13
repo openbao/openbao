@@ -1531,6 +1531,9 @@ func (c *ServerCommand) Run(args []string) int {
 			} else {
 				// Update plugins as necessary.
 				core.ReloadPlugins()
+				if err := kms.ReloadConfig(config); err != nil {
+					c.logger.Error("failed to reload KMS plugins", "error", err.Error())
+				}
 			}
 
 			// Reload log level for loggers

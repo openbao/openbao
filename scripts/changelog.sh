@@ -21,21 +21,21 @@ function validate() {
 
   category="$(sed 's/^```release-note://g' <<< "$preamble")"
   found=false
-  for allowed in ${allowed_types[@]}; do
-    if [ "$category" == "$allowed" ]; then
+  for allowed in "${allowed_types[@]}"; do
+    if [[ "$category" == "$allowed" ]]; then
       found=true
       break
     fi
   done
 
-  if [ "$found" != true ]; then
+  if [[ "$found" != true ]]; then
     echo "Expected category (\"$category\") to be one of the following types:"
     echo "${allowed_types[@]}"
     return 1
   fi
 
   lines="$(wc -l <<< "$content\n")"
-  if (( lines > 1 )) && [ "$category" != "feature" ] && [ "$category" != "deprecation" ] && [ "$category" != "change" ]; then
+  if (( lines > 1 )) && [[ "$category" != "feature" ]] && [[ "$category" != "deprecation" ]] && [[ "$category" != "change" ]]; then
     echo "Expected only a single-line changelog for entry of this category (\"$category\")."
     echo "Do not word-wrap entries."
     echo ""
@@ -50,7 +50,7 @@ function validate() {
       if (( index == 1 )); then
         component="$(grep -o '^[^:]*:' <<< "$content")"
 
-        if [ "$category" != "feature" ] && [ "$category" != "deprecation" ]; then
+        if [[ "$category" != "feature" ]] && [[ "$category" != "deprecation" ]]; then
           # Component has to match [a-z/]*.
           if ! grep -q '^[a-z][a-z0-9/-]*\(, [a-z][a-z0-9/-]*\)*:' <<< "$component"; then
             echo 'Expected changelog component(s) of the form [a-z]+(/[a-z]*)'
@@ -86,9 +86,9 @@ function validate() {
     # require bold for features but allow it for deprecations.
     component="$(grep -o '^[^:]*:' <<< "$content")"
 
-    if [ -z "$component" ]; then
+    if [[ -z "$component" ]]; then
       echo 'Missing component on changelog entry!'
-      if [ "$category" != "feature" ]; then
+      if [[ "$category" != "feature" ]]; then
         echo 'Component should be of the form [a-z0-9-]+(/[a-z0-9-]*) and end with a colon.'
       else
         echo 'Component should be a bolded (enclosed in "**") name and end with a colon.'
@@ -96,7 +96,7 @@ function validate() {
       return 1
     fi
 
-    if [ "$category" != "feature" ] && [ "$category" != "deprecation" ]; then
+    if [[ "$category" != "feature" ]] && [[ "$category" != "deprecation" ]]; then
       # Component has to match [a-z/]*.
       if ! grep -q '^[a-z][a-z0-9/-]*\(, [a-z][a-z0-9/-]*\)*:' <<< "$component"; then
         echo 'Expected changelog component(s) of the form [a-z]+(/[a-z]*)'
@@ -106,7 +106,7 @@ function validate() {
 
       # Description has to be a sentence.
       description="$(sed 's$^'"$component"'[[:space:]]*$$g' <<< "$content")"
-      if [ -z "$description" ]; then
+      if [[ -z "$description" ]]; then
         echo 'Expected non-empty description.'
         echo "Component: $component"
         return 1
@@ -119,7 +119,7 @@ function validate() {
       fi
     fi
 
-    if [ "$category" == "feature" ]; then
+    if [[ "$category" == "feature" ]]; then
       if ! grep -q "^\*\*.*\*\*:" <<< "$component"; then
         echo 'Expected changelog component of the form \*\*.*\*\*'
         echo 'Features should be a bolded name.'
@@ -129,7 +129,7 @@ function validate() {
     fi
   fi
 
-  if [ "$category" == "security" ]; then
+  if [[ "$category" == "security" ]]; then
     if ! grep -q '\(HCSEC-\|CVE-\|GHSA-\)' <<< "$content"; then
       echo 'Expected HCSEC, CVE, or GHSA reference for security issue.'
       return 1
@@ -145,7 +145,7 @@ function validate() {
 
 function main() {
   file="$1"
-  if [ -z "$file" ]; then
+  if [[ -z "$file" ]]; then
     echo "Usage: $0 /path/to/changelog/file" 1>&2
     exit 1
   fi
@@ -155,11 +155,11 @@ function main() {
   postscript=""
 
   while IFS= read -r line; do
-    if [ -z "$line" ]; then
+    if [[ -z "$line" ]]; then
       continue
     fi
 
-    if [ -z "$preamble" ]; then
+    if [[ -z "$preamble" ]]; then
       preamble="$line"
     elif grep -q '^```' <<< "$line"; then
       postscript="$line"
@@ -175,7 +175,7 @@ function main() {
       content=""
       postscript=""
     else
-      if [ -z "$content" ]; then
+      if [[ -z "$content" ]]; then
         content="$line"
       else
         content="$content

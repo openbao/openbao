@@ -171,6 +171,10 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 		b.Paths = append(b.Paths, b.raftStoragePaths()...)
 	}
 
+	if core.allowUnauthedWorkflows {
+		b.Backend.PathsSpecial.Unauthenticated = append(b.Backend.PathsSpecial.Unauthenticated, "workflows/unauthed-execute/+")
+	}
+
 	return b
 }
 

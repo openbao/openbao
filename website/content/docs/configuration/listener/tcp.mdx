@@ -206,10 +206,9 @@ default value in the `"/sys/config/ui"` [API endpoint](../../api/system/config-u
 
   :::
 
-- `tls_curve_preferences` `([]string: nil)` - Specifies the list of supported
+- `tls_key_exchange_preferences` `([]string: nil)` - Specifies the list of supported
   key exchange mechanisms. Up to TLS 1.2 this value only specified elliptic curves.
-  In TLS 1.3 it was extended and named to NamedGroup. We keep the legacy field name
-  to align with the Go naming conventions.
+  In TLS 1.3 it was extended and named to NamedGroup.
 
   Accepted values are: "CurveP256", "CurveP384", "CurveP521", "SecP256r1MLKEM768",
   "SecP384r1MLKEM1024", "X25519", and "X25519MLKEM768". They follow the Go standard
@@ -400,7 +399,7 @@ To enforce PQC KEM server-side, use the following configuration.
 listener "tcp" {
   tls_min_version = "tls13"
   tls_max_version = "tls13"
-  tls_curve_preferences = ["X25519MLKEM768", "SecP256r1MLKEM768", "SecP384r1MLKEM10242"]
+  tls_key_exchange_preferences = ["X25519MLKEM768", "SecP256r1MLKEM768", "SecP384r1MLKEM10242"]
 }
 ```
 

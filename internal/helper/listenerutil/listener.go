@@ -51,6 +51,8 @@ func (l *rmListener) Close() error {
 	return os.Remove(l.Path)
 }
 
+// curveIDByName translates the valid config parameters to golang
+// standard library CurveIDs.
 var curveIDByName = map[string]tls.CurveID{
 	tls.CurveP256.String():          tls.CurveP256,
 	tls.CurveP384.String():          tls.CurveP384,
@@ -61,7 +63,7 @@ var curveIDByName = map[string]tls.CurveID{
 	tls.SecP384r1MLKEM1024.String(): tls.SecP384r1MLKEM1024,
 }
 
-var allCurveNames = slices.Sorted(maps.Keys(curveIDByName))
+var allKexNames = slices.Sorted(maps.Keys(curveIDByName))
 
 func UnixSocketListener(path string, unixSocketsConfig *UnixSocketsConfig) (net.Listener, error) {
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
@@ -107,10 +109,10 @@ func TLSConfig(
 	l.TLSCertGetter = cg
 
 	curvePreferences := []tls.CurveID{}
-	for _, curvePreference := range l.TLSCurvePreferences {
-		curveID, ok := curveIDByName[curvePreference]
+	for _, kexPreference := range l.TLSKeyExchangePreferences {
+		curveID, ok := curveIDByName[kexPreference]
 		if !ok {
-			return nil, nil, fmt.Errorf("'tls_curve_preferences' value %q not supported, please select from %v", curvePreference, allCurveNames)
+			return nil, nil, fmt.Errorf("'tls_key_exchange_preferences' value %q not supported, please select from %v", kexPreference, allKexNames)
 		}
 		curvePreferences = append(curvePreferences, curveID)
 	}

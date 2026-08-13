@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-func TestCurveToCurveIDMatchesGoStdLib(t *testing.T) {
+func TestCurveIDsMatchGoStdLib(t *testing.T) {
 	for i := range math.MaxUint16 + 1 {
 		id := tls.CurveID(i)
 		name := id.String()

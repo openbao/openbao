@@ -42,7 +42,7 @@
     "@types/webpack-env": "^1.18.8",
     "markdownlint": "^0.41.1",
     "markdownlint-cli2": "^0.23.2",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "browserslist": {
     "production": [

@@ -1,8 +1,18 @@
 ```release-note:change
 auth/userpass: Drop support for Vault v0.2 password entries with no hash.
+```
+```release-note:change
 sys/initialize: Drop support for pre Vault 1.3 stored Shamir share unseal.
+```
+```release-note:change
 command/ssh: Drop support for pre Vault 1.1 auto-SSH role detection.
+```
+```release-note:change
 plugins: Drop support for pre Vault 0.9.4 non-GRPC communication protocols.
+```
+```release-note:change
 core: Drop support for pre Vault 1.10 batch tokens.
+```
+```release-note:change
 core: Drop support for pre Vault 1.0 namespaces.
 ```

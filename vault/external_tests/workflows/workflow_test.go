@@ -18,7 +18,8 @@ import (
 
 func TestWorkflow(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
-		DisableCache: true,
+		DisableCache:                  true,
+		AllowUnauthenticatedWorkflows: true,
 		CredentialBackends: map[string]logical.Factory{
 			"userpass": userpass.Factory,
 		},
@@ -64,6 +65,14 @@ func TestWorkflow(t *testing.T) {
 
 		client := client.WithNamespace("mfa")
 		testWorkflowLoginMFA(t, client)
+	})
+
+	t.Run("unauthenticated", func(t *testing.T) {
+		_, err := client.Logical().Write("sys/namespaces/unauthenticated", map[string]any{})
+		require.NoError(t, err)
+
+		client := client.WithNamespace("unauthenticated")
+		testWorkflowUnauthenticatedExecute(t, client)
 	})
 }
 
@@ -169,6 +178,41 @@ func testWorkflowLoginMFA(t *testing.T, client *api.Client) {
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 }
+
+func testWorkflowUnauthenticatedExecute(t *testing.T, client *api.Client) {
+	// Create a unauthed workflow
+	_, err := client.Logical().Write("sys/workflows/manage/unauthed-check", map[string]any{
+		"workflow":              sealStatusWorkflow,
+		"allow_unauthenticated": true,
+	})
+	require.NoError(t, err)
+
+	// Create a normal, authed workflow
+	_, err = client.Logical().Write("sys/workflows/manage/authed-check", map[string]any{
+		"workflow":              sealStatusWorkflow,
+		"allow_unauthenticated": false,
+	})
+	require.NoError(t, err)
+
+	unauthClient, err := client.CloneWithHeaders()
+	require.NoError(t, err)
+	unauthClient.ClearToken()
+
+	_, err = unauthClient.Logical().Write("sys/workflows/unauthed-execute/authed-check", nil)
+	require.Error(t, err)
+
+	_, err = unauthClient.Logical().Write("sys/workflows/unauthed-execute/unauthed-check", nil)
+	require.NoError(t, err)
+}
+
+const sealStatusWorkflow = `
+flow "check" {
+  request "status" {
+    operation = "read"
+    path = "sys/seal-status"
+  }
+}
+`
 
 const createNamespaceWorkflow = `
 input {

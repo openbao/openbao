@@ -251,15 +251,15 @@ func TestTLSListener_NonPrivileged(t *testing.T) {
 			NumCores: 1,
 			VaultNodeConfig: &testcluster.VaultNodeConfig{
 				LogLevel: "TRACE",
-				AdditionalListeners: []interface{}{
-					map[string]interface{}{
-						"tcp": map[string]interface{}{
+				AdditionalListeners: []any{
+					map[string]any{
+						"tcp": map[string]any{
 							"address":     "127.0.0.1:8300", // TCP listener that acts as ACME server.
 							"tls_disable": true,
 						},
 					},
-					map[string]interface{}{
-						"tcp": map[string]interface{}{
+					map[string]any{
+						"tcp": map[string]any{
 							"address":                         "0.0.0.0:8443", // Non-privileged TCP listener that receives ACME challenge.
 							"tls_acme_cache_path":             "/tmp",
 							"tls_acme_ca_directory":           "http://127.0.0.1:8300/v1/pki/acme/directory",
@@ -299,7 +299,7 @@ func TestTLSListener_NonPrivileged(t *testing.T) {
 	dns.AddRecord("openbao.dadgarcorp.com", "A", cluster.ClusterNodes[node].ContainerGatewayIP)
 	dns.PushConfig()
 
-	_, err = client.Logical().Write("pki/config/acme", map[string]interface{}{
+	_, err = client.Logical().Write("pki/config/acme", map[string]any{
 		"enabled":      true,
 		"dns_resolver": dns.GetRemoteAddr(),
 	})

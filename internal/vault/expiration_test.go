@@ -2106,7 +2106,9 @@ func TestExpiration_Renew_FinalSecond(t *testing.T) {
 		},
 	}
 
-	time.Sleep(1000 * time.Millisecond)
+	// Follow CalculateTTL truncation to predictably land in final second bucket
+	finalBucket := le.IssueTime.Truncate(time.Second).Add(time.Second)
+	time.Sleep(time.Until(finalBucket))
 	_, err = exp.Renew(ctx, id, 0)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -2168,7 +2170,9 @@ func TestExpiration_Renew_FinalSecond_Lease(t *testing.T) {
 	}
 	exp.persistEntry(ctx, le)
 
-	time.Sleep(1000 * time.Millisecond)
+	// Follow CalculateTTL truncation to predictably land in final second bucket
+	finalBucket := le.IssueTime.Truncate(time.Second).Add(time.Second)
+	time.Sleep(time.Until(finalBucket))
 	_, err = exp.Renew(ctx, id, 0)
 	if err != nil {
 		t.Fatalf("err: %v", err)

@@ -15,10 +15,18 @@ export default class VaultClusterSecretsBackendController extends Controller {
   @tracked secretEngineOptions = [];
   @tracked selectedEngineType = null;
   @tracked selectedEngineName = null;
+  @tracked showInternalEngines = false;
 
-  #displayableBackendsCache = createCache(() => this.model.filter((be) => be.shouldIncludeInList));
+  #displayableBackendsCache = createCache(() =>
+    this.model.filter((be) => be.shouldIncludeInList && (this.showInternalEngines || !be.isInternal))
+  );
   get displayableBackends() {
     return getValue(this.#displayableBackendsCache);
+  }
+
+  @action
+  toggleShowInternalEngines(checked) {
+    this.showInternalEngines = checked;
   }
 
   get sortedDisplayableBackends() {

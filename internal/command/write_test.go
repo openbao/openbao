@@ -89,7 +89,7 @@ func TestWriteCommand_Run(t *testing.T) {
 				"-field", "not-a-real-field",
 				"auth/token/create", "display_name=foo",
 			},
-			"not present in secret",
+			"not present",
 			1,
 		},
 	}

@@ -53,7 +53,7 @@ func TestNamespaceSealStatusCommand_Run(t *testing.T) {
 		{
 			name: "field_not_found",
 			args: []string{"-field", "not-a-real-field", nsName},
-			out:  "not present in secret",
+			out:  "not present",
 			code: 1,
 		},
 	}

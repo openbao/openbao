@@ -112,20 +112,27 @@ func RawSealStatusField(status *SealStatusOutput, field string) any {
 	return val
 }
 
-// PrintRawField prints raw field from the secret.
+// PrintRawField prints a raw field from a data structure.
 func PrintRawField(ui cli.Ui, data any, field string) int {
 	var val any
+	var typeName string
 	switch data := data.(type) {
 	case *api.Secret:
+		typeName = "secret"
 		val = RawSecretField(data, field)
 	case *SealStatusOutput:
+		typeName = "seal status"
 		val = RawSealStatusField(data, field)
 	case map[string]any:
+		typeName = "map"
 		val = data[field]
+	default:
+		ui.Error(fmt.Sprintf("%T is not supported by PrintRawField", data))
+		return 1
 	}
 
 	if val == nil {
-		ui.Error(fmt.Sprintf("Field %q not present in secret", field))
+		ui.Error(fmt.Sprintf("Field %q not present in %s", field, typeName))
 		return 1
 	}
 	format := Format(ui)

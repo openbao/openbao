@@ -60,7 +60,7 @@ func TestStatusCommand_Run(t *testing.T) {
 				"-field", "not-a-real-field",
 			},
 			true,
-			"not present in secret",
+			"not present",
 			2,
 		},
 		{

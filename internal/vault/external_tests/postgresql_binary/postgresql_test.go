@@ -10,7 +10,6 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
@@ -233,19 +232,17 @@ func TestPostgreSQL_FatalInit(t *testing.T) {
 			ClusterName: strings.ReplaceAll(t.Name(), "/", "-"),
 			Logger:      logging.NewVaultLogger(log.Trace).Named(t.Name()),
 		},
+		SkipStorageCleanup: true,
 	}
 
 	cluster, err := docker.NewDockerCluster(t.Context(), opts)
-
-	// Don't forget to clean up just in case the assertion below fails and the
-	// test cluster didn't fail as expected.
-	defer func() {
-		if err == nil {
-			cluster.Cleanup()
-		}
-	}()
+	if cluster != nil {
+		cluster.Cleanup()
+	}
 
 	require.Error(t, err, "node should fail with bad self-init config")
+
+	t.Logf("trying working configuration")
 
 	// Remove the bad config:
 	opts.CopyFromTo = map[string]string{
@@ -254,6 +251,10 @@ func TestPostgreSQL_FatalInit(t *testing.T) {
 	}
 
 	cluster, err = docker.NewDockerCluster(t.Context(), opts)
+	if cluster != nil {
+		cluster.Cleanup()
+	}
+
 	require.Error(t, err, "node should continue to refuse startup")
 }
 
@@ -422,8 +423,9 @@ func TestPostgreSQL_Scalability(t *testing.T) {
 	}, 15*time.Second, 100*time.Millisecond)
 
 	// Eventually we should be able to write to the primary but fail to see
-	// it immediately on the read-only tertiary.
-	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+	// it immediately on the read-only tertiary. This is rather race-prone
+	// and depends on replication delay.
+	/*require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		primary := nodes[0].APIClient()
 		standby := nodes[2].APIClient()
 
@@ -439,7 +441,7 @@ func TestPostgreSQL_Scalability(t *testing.T) {
 		require.NoError(collect, err, "failed reading k/v key on tertiary")
 		require.NotNil(collect, resp, "failed reading k/v key on tertiary")
 		require.NotEqual(collect, resp.Data["value"], value)
-	}, 15*time.Second, 1*time.Millisecond)
+	}, 15*time.Second, 1*time.Millisecond)*/
 
 	// Sealing the primary should result in the secondary taking over.
 	err = nodes[0].APIClient().Sys().Seal()

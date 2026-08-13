@@ -79,6 +79,9 @@ type DockerCluster struct {
 
 	// Whether HA mode is disabled
 	HADisabled bool
+
+	// Whether or not to clean up storage
+	SkipStorageCleanup bool
 }
 
 func (dc *DockerCluster) NamedLogger(s string) log.Logger {
@@ -149,7 +152,7 @@ func (dc *DockerCluster) cleanup() error {
 		}
 	}
 
-	if dc.storage != nil {
+	if !dc.SkipStorageCleanup && dc.storage != nil {
 		if err := dc.storage.Cleanup(); err != nil {
 			result = multierror.Append(result, err)
 		}
@@ -432,12 +435,13 @@ func NewDockerCluster(ctx context.Context, opts *DockerClusterOptions) (*DockerC
 	}
 
 	dc := &DockerCluster{
-		DockerAPI:   api,
-		ClusterName: opts.ClusterName,
-		Logger:      opts.Logger,
-		builtTags:   map[string]struct{}{},
-		CA:          opts.CA,
-		HADisabled:  opts.HADisabled,
+		DockerAPI:          api,
+		ClusterName:        opts.ClusterName,
+		Logger:             opts.Logger,
+		builtTags:          map[string]struct{}{},
+		CA:                 opts.CA,
+		HADisabled:         opts.HADisabled,
+		SkipStorageCleanup: opts.SkipStorageCleanup,
 	}
 
 	if dc.HADisabled && opts.NumCores > 1 {
@@ -481,6 +485,7 @@ type DockerClusterNode struct {
 	DataVolumeName       string
 	cleanupVolume        func()
 	Storage              testcluster.NodeStorage
+	SkipStorageCleanup   bool
 }
 
 func (n *DockerClusterNode) TLSConfig() *tls.Config {
@@ -562,7 +567,7 @@ func (n *DockerClusterNode) cleanup() error {
 	}
 	n.cleanupContainer()
 	n.cleanupVolume()
-	if n.Storage != nil {
+	if !n.SkipStorageCleanup && n.Storage != nil {
 		if err := n.Storage.Cleanup(); err != nil {
 			return err
 		}
@@ -726,6 +731,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		// 2. We don't cause a race condition on the file system where OpenBao
 		//    will see either no cert or a mismatched cert/key.
 		if seenLogs.CompareAndSwap(false, true) {
+			n.Logger.Info("saw logs from process")
 			wg.Done()
 		}
 		n.Logger.Trace(s)
@@ -773,6 +779,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 			}
 
 			// If we signal Vault before it installs its sighup handler, it'll die.
+			n.Logger.Trace("awaiting poststart", "containerID", containerID, "IP", realIP)
 			wg.Wait()
 			n.Logger.Trace("running poststart", "containerID", containerID, "IP", realIP)
 			return n.Runner.RefreshFiles(ctx, containerID)
@@ -1006,21 +1013,22 @@ func (l LogConsumerWriter) Write(p []byte) (n int, err error) {
 // DockerClusterOptions has options for setting up the docker cluster
 type DockerClusterOptions struct {
 	testcluster.ClusterOptions
-	CAKey       *ecdsa.PrivateKey
-	NetworkName string
-	ImageRepo   string
-	ImageTag    string
-	TagSuffix   string
-	CA          *testcluster.CA
-	VaultBinary string
-	Args        []string
-	CopyFromTo  map[string]string
-	StartProbe  func(*api.Client) error
-	Storage     testcluster.Storage // either testcluster.ClusterStorage or testcluster.NodeStorage
-	StorageType string
-	Root        bool
-	Entrypoint  string
-	HADisabled  bool
+	CAKey              *ecdsa.PrivateKey
+	NetworkName        string
+	ImageRepo          string
+	ImageTag           string
+	TagSuffix          string
+	CA                 *testcluster.CA
+	VaultBinary        string
+	Args               []string
+	CopyFromTo         map[string]string
+	StartProbe         func(*api.Client) error
+	Storage            testcluster.Storage // either testcluster.ClusterStorage or testcluster.NodeStorage
+	StorageType        string
+	Root               bool
+	Entrypoint         string
+	HADisabled         bool
+	SkipStorageCleanup bool
 }
 
 func DefaultOptions(t *testing.T) *DockerClusterOptions {
@@ -1187,13 +1195,14 @@ func (dc *DockerCluster) addNode(ctx context.Context, opts *DockerClusterOptions
 	i := len(dc.ClusterNodes)
 	nodeID := fmt.Sprintf("core-%d", i)
 	node := &DockerClusterNode{
-		DockerAPI: dc.DockerAPI,
-		NodeID:    nodeID,
-		Cluster:   dc,
-		WorkDir:   filepath.Join(dc.tmpDir, nodeID),
-		Logger:    dc.Logger.Named(nodeID),
-		ImageRepo: opts.ImageRepo,
-		ImageTag:  tag,
+		DockerAPI:          dc.DockerAPI,
+		NodeID:             nodeID,
+		Cluster:            dc,
+		WorkDir:            filepath.Join(dc.tmpDir, nodeID),
+		Logger:             dc.Logger.Named(nodeID),
+		ImageRepo:          opts.ImageRepo,
+		ImageTag:           tag,
+		SkipStorageCleanup: opts.SkipStorageCleanup,
 	}
 
 	node.Storage, err = dc.resolveStorage(ctx, opts, i)

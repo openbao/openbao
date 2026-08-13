@@ -103,7 +103,7 @@ func RawSealStatusField(status *SealStatusOutput, field string) any {
 			mode = "active"
 		}
 		val = mode
-	case "active_since":
+	case "active_time":
 		val = status.ActiveTime.Format(time.RFC3339Nano)
 	default:
 		val = structtomap.Map(status)[field]

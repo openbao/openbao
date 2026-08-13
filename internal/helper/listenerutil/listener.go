@@ -63,14 +63,6 @@ var curveIDByName = map[string]tls.CurveID{
 
 var allCurveNames = slices.Sorted(maps.Keys(curveIDByName))
 
-func CurveToCurveID(curve string) (tls.CurveID, error) {
-	id, ok := curveIDByName[curve]
-	if !ok {
-		return 0, fmt.Errorf("%s is an unknown curve", curve)
-	}
-	return id, nil
-}
-
 func UnixSocketListener(path string, unixSocketsConfig *UnixSocketsConfig) (net.Listener, error) {
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("failed to remove socket file: %v", err)
@@ -116,8 +108,8 @@ func TLSConfig(
 
 	curvePreferences := []tls.CurveID{}
 	for _, curvePreference := range l.TLSCurvePreferences {
-		curveID, err := CurveToCurveID(curvePreference)
-		if err != nil {
+		curveID, ok := curveIDByName[curvePreference]
+		if !ok {
 			return nil, nil, fmt.Errorf("'tls_curve_preferences' value %q not supported, please select from %v", curvePreference, allCurveNames)
 		}
 		curvePreferences = append(curvePreferences, curveID)

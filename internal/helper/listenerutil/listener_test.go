@@ -20,14 +20,14 @@ func TestCurveToCurveIDMatchesGoStdLib(t *testing.T) {
 
 		supportedCurveID := !strings.HasPrefix(name, "CurveID(")
 
-		got, err := CurveToCurveID(name)
+		got, ok := curveIDByName[name]
 		switch {
 		// Tripwire in case new Go versions add more CurveIDs we need to support
-		case supportedCurveID && err != nil:
+		case supportedCurveID && !ok:
 			t.Errorf("missing mapping in CurveToCurveID, please add new %s (0x%04x)", name, i)
 		case supportedCurveID && got != id:
 			t.Errorf("CurveToCurveID(%q) = 0x%04x, want 0x%04x", name, got, id)
-		case !supportedCurveID && err == nil:
+		case !supportedCurveID && ok:
 			t.Errorf("CurveToCurveID(%q) accepts an ID crypto/tls does not define", name)
 		}
 	}

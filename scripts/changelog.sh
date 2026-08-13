@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Adjust this and CONTRIBUTING.md when adding new types
 allowed_types=("bug" "feature" "change" "improvement" "deprecation" "security")

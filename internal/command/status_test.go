@@ -48,7 +48,7 @@ func TestStatusCommand_Run(t *testing.T) {
 		{
 			"field",
 			[]string{
-				"-field", "Sealed",
+				"-field", "sealed",
 			},
 			true,
 			"true",

@@ -51,7 +51,7 @@ function validate() {
         component="$(grep -o '^[^:]*:' <<< "$content")"
 
         if [ "$category" != "feature" ] && [ "$category" != "deprecation" ]; then
-      # Component has to match [a-z/]*.
+          # Component has to match [a-z/]*.
           if ! grep -q '^[a-z][a-z0-9/-]*\(, [a-z][a-z0-9/-]*\)*:' <<< "$component"; then
             echo 'Expected changelog component(s) of the form [a-z]+(/[a-z]*)'
             echo "Component: $component"

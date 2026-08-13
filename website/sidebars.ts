@@ -587,7 +587,7 @@ const sidebars: SidebarsConfig = {
                 "api/system/config-cors",
                 "api/system/config-state",
                 "api/system/config-ui",
-		"api/system/control-group",
+                "api/system/control-group",
                 "api/system/decode-token",
                 "api/system/external-keys",
                 "api/system/generate-recovery-token",

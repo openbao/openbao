@@ -183,3 +183,15 @@ another backend, we'd love your contributions. Adding HA support requires
 implementing the
 [`physical.HABackend`](https://pkg.go.dev/github.com/openbao/openbao/sdk/physical#HABackend)
 interface for the storage backend.
+
+## Horizontal scalability
+
+Since OpenBao v2.5.0, the [Raft backend](../configuration/storage/raft.mdx)
+has supported horizontal scalability for read requests. Any operation which
+does not result in a storage write can be handled by a standby node. Support
+for horizontal scalability was added in OpenBao v2.7.0 for the [PostgreSQL
+backend](../configuration/storage/postgresql.mdx).
+
+This is similar to the Performance Standby node types in Vault Enterprise.
+
+To disable, set [`disable_standby_reads=true`](../configuration/index.mdx#parameters).

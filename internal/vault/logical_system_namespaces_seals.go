@@ -374,6 +374,13 @@ func (b *SystemBackend) handleNamespacesDeleteSealed() framework.OperationFunc {
 	}
 }
 
+type BarrierMigrationState struct {
+	SealConfig                *SealConfig
+	UnsealShares              [][]byte
+	LastMigratedNamespacePath string
+	LastMigratedKey           string
+}
+
 func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))
@@ -384,6 +391,7 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 
 		sealRaw, ok := data.GetOk("seal")
 		var sealConfig *SealConfig
+		var continueInterrupted bool
 		if ok {
 			var err error
 			sealString, ok := sealRaw.(string)
@@ -434,6 +442,27 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 			return handleError(err)
 		}
 
+		if ns == nil {
+			return nil, fmt.Errorf("namespace %q doesn't exist", path)
+		}
+
+		oldBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+		var keyShares [][]byte
+
+		se, err := NamespaceScopedView(oldBarrier, ns).Get(ctx, barrierMigrationStatePath)
+		if err != nil {
+			b.logger.Info("error trying to read stored migration config", "error", err)
+		}
+		var state BarrierMigrationState
+		state.SealConfig = sealConfig
+		if se != nil {
+			if err := se.DecodeJSON(&state); err != nil {
+				return handleError(err)
+			}
+			sealConfig = state.SealConfig
+			keyShares = state.UnsealShares
+			continueInterrupted = true
+		}
 		parentNs, err := namespace.FromContext(ctx)
 		if err != nil {
 			return handleError(err)
@@ -447,7 +476,6 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 		}
 
 		parentBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(parentNs.Path)
-		oldBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
 
 		var newBarrier barrier.SecurityBarrier
 		if sealConfig == nil {
@@ -455,13 +483,14 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 		}
 
 		var seal Seal
-
-		var keyShares [][]byte
 		if newBarrier == nil {
 			metaPrefix := NamespaceStoragePathPrefix(ns)
 			seal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 			seal.SetCore(b.Core)
 			seal.SetMetaPrefix(metaPrefix)
+			if err := seal.SetBarrierConfig(ctx, sealConfig); err != nil {
+				return handleError(err)
+			}
 
 			seal.SetConfigAccess(parentBarrier)
 
@@ -471,9 +500,29 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 			}
 
 			newBarrier = barrier.NewAESGCMBarrier(b.Core.physical, ns)
-			keyShares, err = b.Core.sealManager.initializeBarrier(ctx, newBarrier, seal, sealConfig)
-			if err != nil {
-				return handleError(err)
+			if continueInterrupted {
+				if err := b.Core.sealManager.SetSeal(ctx, sealConfig, ns, SetSealOptions{
+					Seal:    seal,
+					Barrier: newBarrier,
+				}); err != nil {
+					return handleError(err)
+				}
+				b.logger.Warn("namespace seal set", "namespace", ns)
+				for _, share := range keyShares {
+					ok, err := b.Core.sealManager.UnsealNamespace(ctx, ns, share)
+					if ok {
+						break
+					}
+					if err != nil {
+						return handleError(err)
+					}
+				}
+				b.logger.Warn("unsealed namespace barrier", "namespace", ns)
+			} else {
+				keyShares, err = b.Core.sealManager.initializeBarrier(ctx, newBarrier, seal, sealConfig)
+				if err != nil {
+					return handleError(err)
+				}
 			}
 		}
 
@@ -489,7 +538,14 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 			return nil, nil
 		}
 
-		migrationJob := b.Core.namespaceStore.newNamespaceBarrierMigrationJob(parentBarrier, oldBarrier, newBarrier, parentNs, ns, seal, sealConfig)
+		if !continueInterrupted {
+			state = BarrierMigrationState{
+				SealConfig:   sealConfig,
+				UnsealShares: keyShares,
+			}
+		}
+
+		migrationJob := b.Core.namespaceStore.newNamespaceBarrierMigrationJob(parentBarrier, oldBarrier, newBarrier, parentNs, ns, seal, &state)
 
 		b.Core.namespaceStore.jobDispatcher.AddJob(migrationJob, ns.UUID)
 
@@ -508,30 +564,6 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 
 		return resp, nil
 	}
-}
-
-func recurseListKeys(ctx context.Context, s logical.Storage, prefix string) ([]string, error) {
-	keys, err := s.ListPage(ctx, prefix, "", -1)
-	if err != nil {
-		return nil, err
-	}
-
-	outKeys := make([]string, 0)
-
-	for _, key := range keys {
-		if strings.HasSuffix(key, "/") {
-			recKeys, err := recurseListKeys(ctx, s, prefix+key)
-			if err != nil {
-				return outKeys, err
-			}
-			outKeys = append(outKeys, recKeys...)
-			continue
-		}
-
-		outKeys = append(outKeys, prefix+key)
-	}
-
-	return outKeys, nil
 }
 
 var sysNamespacesSealsHelp = map[string][2]string{

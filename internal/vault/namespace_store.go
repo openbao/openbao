@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"crypto/subtle"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -64,6 +65,7 @@ var knownNamespaceCoreEntriesToCleanup = []string{
 	barrier.RootKeyPath,
 	barrier.ShamirKekPath,
 	barrierSealConfigPath,
+	barrierMigrationStatePath,
 	recoverySealConfigPath,
 	recoveryKeyPath,
 	StoredBarrierKeysPath,
@@ -1986,6 +1988,7 @@ func (j *namespaceCreationFailureJob) OnFailure(err error) {
 type namespaceBarrierMigrationJob struct {
 	store         *NamespaceStore
 	core          *Core
+	state         *BarrierMigrationState
 	parent        *namespace.Namespace
 	seal          Seal
 	sealConfig    *SealConfig
@@ -1995,13 +1998,14 @@ type namespaceBarrierMigrationJob struct {
 	target        *namespace.Namespace
 }
 
-func (ns *NamespaceStore) newNamespaceBarrierMigrationJob(parentBarrier, oldBarrier, newBarrier barrier.SecurityBarrier, parent, target *namespace.Namespace, seal Seal, sealConfig *SealConfig) fairshare.Job {
+func (ns *NamespaceStore) newNamespaceBarrierMigrationJob(parentBarrier, oldBarrier, newBarrier barrier.SecurityBarrier, parent, target *namespace.Namespace, seal Seal, state *BarrierMigrationState) fairshare.Job {
 	return &namespaceBarrierMigrationJob{
 		store:         ns,
 		core:          ns.core,
+		state:         state,
 		parent:        parent,
 		seal:          seal,
-		sealConfig:    sealConfig,
+		sealConfig:    state.SealConfig,
 		target:        target,
 		oldBarrier:    oldBarrier,
 		newBarrier:    newBarrier,
@@ -2014,15 +2018,7 @@ func (j *namespaceBarrierMigrationJob) Execute() (err error) {
 
 	start := time.Now()
 	defer func() {
-		j.core.logger.Info("finished migration", "duration", time.Since(start))
-	}()
-
-	defer func() {
-		j.store.lock.Lock()
-		if untaintErr := j.store.untaintNamespace(ctx, j.parent, j.target); untaintErr != nil {
-			err = errors.Join(err, fmt.Errorf("failed to untaint namespace after migration: %w", untaintErr))
-		}
-		j.store.lock.Unlock()
+		j.store.logger.Info("finished namespace migration", "duration", time.Since(start))
 	}()
 
 	namespacesToMigrate, err := j.store.ListNamespaces(namespace.ContextWithNamespace(ctx, j.target), ListNamespaceOpts{
@@ -2038,54 +2034,74 @@ func (j *namespaceBarrierMigrationJob) Execute() (err error) {
 	slices.Reverse(namespacesToMigrate)
 	namespacesToMigrate = append(namespacesToMigrate, j.target)
 
-	var errs error
-	err = logical.WithTransaction(ctx, j.newBarrier, func(s logical.Storage) (err error) {
-		for _, ns := range namespacesToMigrate {
-			nsPrefix := NamespaceScopedView(s, ns).Prefix()
-			keys, err := recurseListKeys(ctx, j.oldBarrier, nsPrefix)
-			if err != nil {
-				return err
-			}
+	lastMigratedNamespacePath := j.state.LastMigratedNamespacePath
+	lastMigratedKey := j.state.LastMigratedKey
 
-			for _, key := range keys {
-				if slices.ContainsFunc(knownNamespaceCoreEntriesToCleanup, func(k string) bool {
-					return strings.HasSuffix(key, "/"+k)
-				}) {
-					if j.newBarrier == j.parentBarrier {
-						err := s.Delete(ctx, key)
-						if err != nil {
-							return err
-						}
-					}
-					continue
-				}
+	lastNsIdx := slices.IndexFunc(namespacesToMigrate, func(n *namespace.Namespace) bool {
+		return n.Path == lastMigratedNamespacePath
+	})
 
-				se, err := j.oldBarrier.Get(ctx, key)
-				if err != nil {
-					return err
-				}
+	var foundLastMigrated bool
 
-				err = s.Put(ctx, se)
-				if err != nil {
-					return err
-				}
-			}
+	for i, ns := range namespacesToMigrate {
+		logger := j.store.logger.With("namespace", ns)
+		if lastMigratedNamespacePath != "" && i < lastNsIdx {
+			logger.Trace("skipping already migrated namespace", "namespace", ns)
+			continue
 		}
 
-		return nil
-	})
-	errs = errors.Join(errs, err)
+		oldView := NamespaceScopedView(j.oldBarrier, ns)
+		newView := NamespaceScopedView(j.newBarrier, ns)
+		err := logical.ScanViewPaginated(ctx, oldView, j.store.logger, logical.DefaultScanViewPageLimit, func(page, index int, key string) (cont bool, err error) {
+			logger := logger.With("key", key)
+			if !foundLastMigrated && lastMigratedKey != "" {
+				logger.Trace("skipping already migrated key", "key", key, "namespace", ns)
+
+				if lastMigratedNamespacePath == ns.Path && key == lastMigratedKey {
+					foundLastMigrated = true
+				}
+				return true, nil
+			}
+			if slices.Contains(knownNamespaceCoreEntriesToCleanup, key) {
+				if j.newBarrier == j.parentBarrier && key != barrierMigrationStatePath {
+					logger.Trace("deleting key", "key", key, "namespace", ns)
+					err := newView.Delete(ctx, key)
+					if err != nil {
+						return false, fmt.Errorf("failed to delete key %q: %w", key, err)
+					}
+				}
+				logger.Trace("skipping migration of key", "key", key, "namespace", ns)
+				return true, nil
+			}
+
+			logger.Trace("migrating key", "key", key, "namespace", ns)
+
+			se, err := oldView.Get(ctx, key)
+			if err != nil {
+				return false, fmt.Errorf("failed to read key %q: %w", key, err)
+			}
+
+			err = newView.Put(ctx, se)
+			if err != nil {
+				return false, fmt.Errorf("failed to write key %q: %w", key, err)
+			}
+
+			j.state.LastMigratedNamespacePath = ns.Path
+			j.state.LastMigratedKey = key
+
+			return true, nil
+		})
+		if err != nil {
+			return err
+		}
+	}
 
 	// invalidate outer most namespace first
 	slices.Reverse(namespacesToMigrate)
 
-	switch {
-	case errs != nil && j.newBarrier != j.parentBarrier:
-		view := NamespaceScopedView(j.oldBarrier, namespacesToMigrate[0])
-		for _, key := range knownNamespaceCoreEntriesToCleanup {
-			errs = errors.Join(errs, view.Delete(ctx, key))
-		}
-	case j.newBarrier == j.parentBarrier:
+	var errs error
+	switch j.newBarrier {
+	case j.parentBarrier:
 		j.core.sealManager.RemoveNamespace(j.target)
 	default:
 		err = j.core.sealManager.SetSeal(ctx, j.sealConfig, j.target, SetSealOptions{
@@ -2116,9 +2132,29 @@ func (j *namespaceBarrierMigrationJob) Execute() (err error) {
 		}
 	}
 
-	return errs
+	if errs != nil {
+		return errs
+	}
+
+	if err := NamespaceScopedView(j.oldBarrier, j.target).Delete(ctx, barrierMigrationStatePath); err != nil {
+		return err
+	}
+
+	if untaintErr := j.store.untaintNamespace(ctx, j.parent, j.target); untaintErr != nil {
+		return fmt.Errorf("failed to untaint namespace after migration: %w", untaintErr)
+	}
+
+	return nil
 }
 
 func (j *namespaceBarrierMigrationJob) OnFailure(err error) {
-	j.store.logger.Error("failed to handle namespace barrier migration", "namespace", j.target.Path, "ns_uuid", j.target.UUID, "error", err.Error())
+	j.store.logger.Error("failed to handle namespace barrier migration", "namespace", j.target.Path, "ns_uuid", j.target.UUID, "error", err.Error(), "last_migrated_namespace", j.state.LastMigratedNamespacePath, "last_migrated_key", j.state.LastMigratedKey)
+	state, _ := json.Marshal(j.state)
+	err = NamespaceScopedView(j.oldBarrier, j.target).Put(context.Background(), &logical.StorageEntry{
+		Key:   barrierMigrationStatePath,
+		Value: state,
+	})
+	if err != nil {
+		j.store.logger.Error("failed to write migration state", "namespace", j.target.Path, "ns_uuid", j.target.UUID, "error", err.Error(), "last_migrated_namespace", j.state.LastMigratedNamespacePath, "last_migrated_key", j.state.LastMigratedKey)
+	}
 }

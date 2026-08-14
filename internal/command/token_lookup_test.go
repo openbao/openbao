@@ -57,7 +57,7 @@ func TestTokenLookupCommand_Run(t *testing.T) {
 		{
 			"field_not_found",
 			[]string{"-field", "not-a-real-field"},
-			"not present in secret",
+			"not present",
 			1,
 		},
 	}

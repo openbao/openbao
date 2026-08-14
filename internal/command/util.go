@@ -12,6 +12,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/v2/internal/command/config"
 	"github.com/openbao/openbao/v2/internal/command/token"
 )
@@ -22,9 +23,9 @@ func DefaultTokenHelper(vaultAddr string) (token.TokenHelper, error) {
 	return config.DefaultTokenHelper(vaultAddr)
 }
 
-// RawField extracts the raw field from the given data and returns it as a
+// RawSecretField extracts the raw field from the given secret data and returns it as a
 // string for printing purposes.
-func RawField(secret *api.Secret, field string) any {
+func RawSecretField(secret *api.Secret, field string) any {
 	var val any
 	switch {
 	case secret.Auth != nil:
@@ -91,18 +92,45 @@ func RawField(secret *api.Secret, field string) any {
 	return val
 }
 
-// PrintRawField prints raw field from the secret.
+func RawSealStatusField(status *SealStatusOutput, field string) any {
+	var val any
+	switch field {
+	case "ha_mode":
+		mode := "standby"
+		if status.IsSelf {
+			mode = "active"
+		}
+		val = mode
+	case "active_time":
+		val = status.ActiveTime.Format(time.RFC3339Nano)
+	default:
+		val = structtomap.Map(status)[field]
+	}
+
+	return val
+}
+
+// PrintRawField prints a raw field from a data structure.
 func PrintRawField(ui cli.Ui, data any, field string) int {
 	var val any
+	var typeName string
 	switch data := data.(type) {
 	case *api.Secret:
-		val = RawField(data, field)
+		typeName = "secret"
+		val = RawSecretField(data, field)
+	case *SealStatusOutput:
+		typeName = "seal status"
+		val = RawSealStatusField(data, field)
 	case map[string]any:
+		typeName = "map"
 		val = data[field]
+	default:
+		ui.Error(fmt.Sprintf("%T is not supported by PrintRawField", data))
+		return 1
 	}
 
 	if val == nil {
-		ui.Error(fmt.Sprintf("Field %q not present in secret", field))
+		ui.Error(fmt.Sprintf("Field %q not present in %s", field, typeName))
 		return 1
 	}
 	format := Format(ui)

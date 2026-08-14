@@ -629,8 +629,7 @@ func (t TableFormatter) OutputMap(ui cli.Ui, data map[string]any) error {
 	return nil
 }
 
-// OutputSealStatus will print *api.SealStatusResponse in the CLI according to the format provided
-func OutputSealStatus(ui cli.Ui, client *api.Client, status *api.SealStatusResponse) int {
+func buildSealStatusOutput(client *api.Client, status *api.SealStatusResponse) (*SealStatusOutput, error) {
 	sealStatusOutput := SealStatusOutput{SealStatusResponse: *status}
 
 	// Mask the 'Vault is sealed' error, since this means HA is enabled, but that
@@ -641,8 +640,7 @@ func OutputSealStatus(ui cli.Ui, client *api.Client, status *api.SealStatusRespo
 		err = nil
 	}
 	if err != nil {
-		ui.Error(fmt.Sprintf("Error checking leader status: %s", err))
-		return 1
+		return nil, fmt.Errorf("Error checking leader status: %s", err)
 	}
 
 	// copy leaderStatus fields into sealStatusOutput for display later
@@ -653,7 +651,19 @@ func OutputSealStatus(ui cli.Ui, client *api.Client, status *api.SealStatusRespo
 	sealStatusOutput.LeaderClusterAddress = leaderStatus.LeaderClusterAddress
 	sealStatusOutput.RaftCommittedIndex = leaderStatus.RaftCommittedIndex
 	sealStatusOutput.RaftAppliedIndex = leaderStatus.RaftAppliedIndex
-	OutputData(ui, sealStatusOutput)
+
+	return &sealStatusOutput, nil
+}
+
+// OutputSealStatus will print *api.SealStatusResponse in the CLI according to the format provided
+func OutputSealStatus(ui cli.Ui, client *api.Client, status *api.SealStatusResponse) int {
+	sealStatusOutput, err := buildSealStatusOutput(client, status)
+	if err != nil {
+		ui.Error(err.Error())
+		return 1
+	}
+
+	OutputData(ui, *sealStatusOutput)
 	return 0
 }
 

@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -831,8 +832,7 @@ func (f *failingBarrier) ListPage(ctx context.Context, prefix, after string, lim
 }
 
 // TestNamespaceBackend_MigrateBarrier_FailureRecovery verifies that when a
-// namespace barrier migration fails, the transaction is aborted and any other
-// changes made are rolled back.
+// namespace barrier migration fails, the migration can be retried to complete.
 func TestNamespaceBackend_MigrateBarrier_FailureRecovery(t *testing.T) {
 	t.Parallel()
 
@@ -849,7 +849,10 @@ func TestNamespaceBackend_MigrateBarrier_FailureRecovery(t *testing.T) {
 	oldBarrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
 	oldView := barrier.NewView(oldBarrier, NamespaceStoragePathPrefix(ns))
 
-	keysBeforeMigration, err := recurseListKeys(rootCtx, oldView, "")
+	var keysBeforeMigration []string
+	err := logical.ScanView(rootCtx, oldView, func(path string) {
+		keysBeforeMigration = append(keysBeforeMigration, path)
+	})
 	require.NoError(t, err)
 
 	// taint the namespace manually
@@ -873,51 +876,97 @@ func TestNamespaceBackend_MigrateBarrier_FailureRecovery(t *testing.T) {
 	require.NoError(t, seal.Init(nsSealCtx))
 
 	newBarrier := barrier.NewAESGCMBarrier(c.physical, ns)
-	_, err = c.sealManager.initializeBarrier(nsSealCtx, newBarrier, seal, sealConfig)
+	unsealShares, err := c.sealManager.initializeBarrier(nsSealCtx, newBarrier, seal, sealConfig)
 	require.NoError(t, err)
+	init, err := newBarrier.Initialized(rootCtx)
+	require.NoError(t, err)
+	require.True(t, init)
 
-	// create migration job with a failing old barrier that errors after the
-	// first Get/ListPage call
-	failingOld := newFailingBarrier(oldBarrier, 3)
+	// create migration job with a failing old barrier that errors after some
+	// Get/ListPage calls
+	failingOld := newFailingBarrier(oldBarrier, 6)
 
 	job := c.namespaceStore.newNamespaceBarrierMigrationJob(
-		oldBarrier, failingOld, newBarrier, parentNs, ns, seal, sealConfig,
+		oldBarrier, failingOld, newBarrier, parentNs, ns, seal, &BarrierMigrationState{
+			SealConfig:   sealConfig,
+			UnsealShares: unsealShares,
+		},
 	)
 
 	err = job.Execute()
 	require.Error(t, err, "migration job should fail when old barrier returns an error")
+	job.OnFailure(err)
 
 	// old barrier checks
 	activeNs, err := c.namespaceStore.GetNamespaceByPath(rootCtx, "fail-migrate")
 	require.NoError(t, err)
-	require.False(t, activeNs.Tainted, "namespace should not remain tainted after a failed migration")
+	assert.True(t, activeNs.Tainted, "namespace should not remain tainted after a failed migration")
 
-	require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns), "namespace type should not have changed")
+	assert.Equal(t, namespace.TypeNormal, c.NamespaceType(ns), "namespace type should not have changed")
 
-	oldKeys, err := recurseListKeys(rootCtx, oldView, "")
+	var oldKeys []string
+	err = logical.ScanView(rootCtx, oldView, func(path string) {
+		oldKeys = append(oldKeys, path)
+	})
 	require.NoError(t, err)
-	assert.NotEmpty(t, oldKeys, "data should still be accessible through the old barrier after a failed migration")
-	assert.Equal(t, keysBeforeMigration, oldKeys, "there should be no new keys or keys deleted compared to before the migration attempt")
-	for _, key := range knownNamespaceCoreEntriesToCleanup {
-		assert.NotContains(t, oldKeys, key, "%q should have been deleted after failed migration", key)
-	}
-	for _, key := range oldKeys {
-		_, err = oldView.Get(rootCtx, key)
-		assert.NoError(t, err, "reading %q through old barrier should still be possible after transaction rollback", key)
-	}
+	assert.NotEmpty(t, oldKeys, "data should still be listable through the old barrier after a failed migration")
+	assert.Contains(t, oldKeys, barrierMigrationStatePath)
+	se, err := oldView.Get(rootCtx, barrierMigrationStatePath)
+	assert.NoError(t, err, "reading %q through old barrier should be possible after a failed migration", barrierMigrationStatePath)
+	require.NotNil(t, se)
+	var ms BarrierMigrationState
+	err = se.DecodeJSON(&ms)
+	assert.NoError(t, err, "migration state should decode without error")
+
+	assert.Equal(t, "sys/policy/default", ms.LastMigratedKey)
+
+	_, err = oldView.Get(rootCtx, ms.LastMigratedKey)
+	assert.Error(t, err, "reading %q through old barrier should not be possible", ms.LastMigratedKey)
 
 	// new barrier checks
 	newView := barrier.NewView(newBarrier, NamespaceStoragePathPrefix(ns))
-	for _, key := range oldKeys {
-		_, err := newView.Get(rootCtx, key)
-		assert.Error(t, err, "reading %q through new barrier should fail after transaction rollback", key)
-	}
+	_, err = newView.Get(rootCtx, ms.LastMigratedKey)
+	assert.NoError(t, err, "reading %q through new barrier should be possible", ms.LastMigratedKey)
 
-	// untaint namespace
-	require.NoError(t, c.namespaceStore.untaintNamespace(rootCtx, parentNs, ns))
+	// finish migration
+	job = c.namespaceStore.newNamespaceBarrierMigrationJob(
+		oldBarrier, oldBarrier, newBarrier, parentNs, ns, seal, &ms,
+	)
+
+	err = job.Execute()
+	require.NoError(t, err, "migration job succeed with working barrier")
+
+	activeNs, err = c.namespaceStore.GetNamespaceByPath(rootCtx, "fail-migrate")
+	require.NoError(t, err)
+	assert.False(t, activeNs.Tainted, "namespace should not remain tainted after a successful migration")
+	assert.Equal(t, namespace.TypeSealable, c.NamespaceType(ns), "namespace type should have changed")
+
+	var newKeys []string
+	err = logical.ScanView(rootCtx, newView, func(path string) {
+		newKeys = append(newKeys, path)
+	})
+	require.NoError(t, err)
+
+	se, err = newView.Get(rootCtx, barrierMigrationStatePath)
+	assert.NoError(t, err, "reading %q through new barrier should return no error", barrierMigrationStatePath)
+	require.Nil(t, se)
 
 	require.EventuallyWithT(t, func(ct *assert.CollectT) {
 		got := readNamespaceSecret(t, c, nsCtx, "my_secrets", "abc")
 		assert.Equal(ct, "before-failure", got.Data["test_key"])
 	}, 10*time.Second, 10*time.Millisecond)
+
+	skipPaths := []string{barrierSealConfigPath, recoverySealConfigPath, barrier.KeyringPath, StoredBarrierKeysPath}
+	for _, path := range newKeys {
+		if slices.Contains(skipPaths, path) {
+			continue
+		}
+		se, err = newView.Get(rootCtx, path)
+		assert.NoError(t, err, "reading %q through new barrier should return no error", path)
+		assert.NotNil(t, se, "reading %q through new barrier should return a value", path)
+
+		se, err = oldView.Get(rootCtx, path)
+		assert.Error(t, err, "reading %q through old barrier should return an error", path)
+		assert.Nil(t, se, "reading %q through old barrier should return no value", path)
+	}
 }

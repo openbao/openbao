@@ -7,6 +7,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateOperation(t *testing.T) {
@@ -45,6 +46,20 @@ func TestValidateOperation(t *testing.T) {
 				assert.NoError(t, err, "expected no error for ValidateOperation")
 			}
 		})
+	}
+}
+
+func TestRequest_CategorizeOperations(t *testing.T) {
+	for _, op := range AllOperations {
+		valid := ValidateOperation(op)
+		require.NoError(t, valid)
+		isExternal := ValidateExternalOperation(op) == nil
+		isInternal := ValidateInternalOperation(op) == nil
+		require.NotEqual(t, isExternal, isInternal)
+		isLogin := ValidateLoginOperation(op) == nil
+		if ValidateInternalOperation(op) == nil {
+			require.False(t, isLogin, "unexpected login operation (%v): %v", isLogin, op)
+		}
 	}
 }
 

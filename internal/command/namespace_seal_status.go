@@ -47,7 +47,7 @@ Usage: bao namespace seal-status [options] PATH
 }
 
 func (c *NamespaceSealStatusCommand) Flags() *FlagSets {
-	return c.flagSet(FlagSetHTTP | FlagSetOutputField)
+	return c.flagSet(FlagSetHTTP | FlagSetOutputField | FlagSetOutputFormat)
 }
 
 func (c *NamespaceSealStatusCommand) AutocompleteArgs() complete.Predictor {

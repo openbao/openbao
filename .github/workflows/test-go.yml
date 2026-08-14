@@ -125,6 +125,7 @@ jobs:
     needs: test-matrix
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       actions: write
     strategy:
       fail-fast: false
@@ -279,6 +280,7 @@ jobs:
     needs: [test-go, test-matrix]
     runs-on: ubuntu-slim
     permissions:
+      contents: read
       actions: write
     steps:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

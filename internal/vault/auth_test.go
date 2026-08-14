@@ -565,8 +565,8 @@ func TestCore_DisableCredential_Cleanup(t *testing.T) {
 		},
 	}
 	r := &logical.Request{
-		Operation: logical.ReadOperation,
 		Path:      "auth/foo/login",
+		Operation: logical.UpdateOperation,
 	}
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), r)
 	if err != nil {
@@ -800,7 +800,7 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 		},
 	}
 	r := &logical.Request{
-		Operation: logical.ReadOperation,
+		Operation: logical.UpdateOperation,
 		Path:      "auth/foo/login",
 	}
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), r)

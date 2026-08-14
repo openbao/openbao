@@ -95,8 +95,6 @@ func RawSecretField(secret *api.Secret, field string) any {
 func RawSealStatusField(status *SealStatusOutput, field string) any {
 	var val any
 	switch field {
-	case "unseal_progress":
-		val = fmt.Sprintf("%d/%d", status.Progress, status.T)
 	case "ha_mode":
 		mode := "standby"
 		if status.IsSelf {

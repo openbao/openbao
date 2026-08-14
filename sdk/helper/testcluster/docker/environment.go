@@ -51,7 +51,12 @@ var (
 	_ testcluster.VaultClusterNode = &DockerClusterNode{}
 )
 
-const MaxClusterNameLength = 52
+const (
+	MaxClusterNameLength = 52
+
+	IMG_REPO = "quay.io/openbao/openbao"
+	IMG_TAG  = "latest"
+)
 
 // DockerCluster is used to managing the lifecycle of the test Vault cluster
 type DockerCluster struct {
@@ -1044,6 +1049,31 @@ func DefaultOptions(t *testing.T) *DockerClusterOptions {
 			},
 		},
 	}
+}
+
+func DraftClusterOptions(executable string, storage testcluster.ClusterStorage, cLogger log.Logger) *DockerClusterOptions {
+	nodeOptions := &testcluster.VaultNodeConfig{
+		AuditLogStdout:      true,
+		LogLevel:            "TRACE",
+		DisableStandbyReads: false,
+	}
+
+	clusterOptions := testcluster.ClusterOptions{
+		VaultNodeConfig: nodeOptions,
+		ClusterName:     "test-cluster",
+		NumCores:        3,
+		Logger:          cLogger,
+	}
+
+	options := &DockerClusterOptions{
+		ImageRepo:      IMG_REPO,
+		ImageTag:       IMG_TAG,
+		Storage:        storage,
+		VaultBinary:    executable,
+		ClusterOptions: clusterOptions,
+	}
+
+	return options
 }
 
 func ensureLeaderMatches(ctx context.Context, client *api.Client, ready func(response *api.LeaderResponse) error) error {

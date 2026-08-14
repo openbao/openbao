@@ -1560,6 +1560,10 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 			coreConfig.BuiltinRegistry = base.BuiltinRegistry
 		}
 
+		if base.KMSPluginCatalog != nil {
+			coreConfig.KMSPluginCatalog = base.KMSPluginCatalog
+		}
+
 		if base.Physical != nil {
 			coreConfig.Physical = base.Physical
 		}

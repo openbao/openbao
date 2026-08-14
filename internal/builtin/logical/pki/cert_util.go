@@ -137,7 +137,7 @@ func (sc *storageContext) fetchCAInfoByIssuerId(issuerId issuerID, usage issuerU
 		return nil, errutil.InternalError{Err: fmt.Sprintf("error while attempting to use issuer %v: %v", issuerId, err)}
 	}
 
-	parsedBundle, err := bundle.ToParsedCertBundle()
+	parsedBundle, err := bundle.ToParsedCertBundleWithExtractor(certutil.OptionalExternalKeyExtractor(sc.externalKeyExtractor))
 	if err != nil {
 		return nil, errutil.InternalError{Err: err.Error()}
 	}

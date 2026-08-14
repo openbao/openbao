@@ -99,6 +99,11 @@ func buildPathGenerateRoot(b *backend, pattern string, displayAttrs *framework.D
 								Description: `The private key if exported was specified.`,
 								Required:    false,
 							},
+							externalKeyRefParam: {
+								Type:        framework.TypeString,
+								Description: externalKeyRefDesc,
+								Required:    false,
+							},
 						},
 					}},
 				},
@@ -172,6 +177,11 @@ func buildPathGenerateIntermediate(b *backend, pattern string, displayAttrs *fra
 							"private_key_type": {
 								Type:        framework.TypeString,
 								Description: `Specifies the format used for marshaling the private key.`,
+								Required:    false,
+							},
+							externalKeyRefParam: {
+								Type:        framework.TypeString,
+								Description: externalKeyRefDesc,
 								Required:    false,
 							},
 						},

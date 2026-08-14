@@ -476,7 +476,7 @@ func fetchIssuerMapForRevocationChecking(sc *storageContext) (map[issuerID]*x509
 			return nil, fmt.Errorf("faulty reference: %v - CA info not found", issuer)
 		}
 
-		parsedBundle, err := bundle.ToParsedCertBundle()
+		parsedBundle, err := bundle.ToParsedCertBundleWithExtractor(certutil.OptionalExternalKeyExtractor(sc.externalKeyExtractor))
 		if err != nil {
 			return nil, errutil.InternalError{Err: err.Error()}
 		}

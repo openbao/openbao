@@ -10,14 +10,20 @@ import (
 )
 
 const (
-	issuerRefParam = "issuer_ref"
-	keyNameParam   = "key_name"
-	keyRefParam    = "key_ref"
-	keyIdParam     = "key_id"
-	keyTypeParam   = "key_type"
-	keyBitsParam   = "key_bits"
-	skidParam      = "subject_key_id"
+	issuerRefParam      = "issuer_ref"
+	keyNameParam        = "key_name"
+	keyRefParam         = "key_ref"
+	keyIdParam          = "key_id"
+	keyTypeParam        = "key_type"
+	keyBitsParam        = "key_bits"
+	externalKeyRefParam = "external_key_ref"
+	skidParam           = "subject_key_id"
 )
+
+const externalKeyRefDesc = `Reference to the external key to use. This follows
+the format <config name>:<key name>, uniquely identifying the key configured
+under sys/external-keys/configs/<config name>/keys/<key name>. Must be an
+asymmetric key.`
 
 // addIssueAndSignCommonFields adds fields common to both CA and non-CA issuing
 // and signing
@@ -358,6 +364,11 @@ RSA key-type issuer. Defaults to false.`,
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: "rsa",
 		},
+	}
+
+	fields[externalKeyRefParam] = &framework.FieldSchema{
+		Type:        framework.TypeString,
+		Description: externalKeyRefDesc,
 	}
 
 	fields = addKeyRefNameFields(fields)

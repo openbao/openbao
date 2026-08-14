@@ -10,14 +10,13 @@ on:
       - "publiccode.yml"
       - ".github/workflows/publiccodeyml-check.yml"
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   validate:
     name: publiccode.yml validation
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

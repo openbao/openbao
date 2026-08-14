@@ -63,8 +63,6 @@ var curveIDByName = map[string]tls.CurveID{
 	tls.SecP384r1MLKEM1024.String(): tls.SecP384r1MLKEM1024,
 }
 
-var allKexNames = slices.Sorted(maps.Keys(curveIDByName))
-
 func UnixSocketListener(path string, unixSocketsConfig *UnixSocketsConfig) (net.Listener, error) {
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("failed to remove socket file: %v", err)
@@ -112,6 +110,7 @@ func TLSConfig(
 	for _, kexPreference := range l.TLSKeyExchangePreferences {
 		curveID, ok := curveIDByName[kexPreference]
 		if !ok {
+			allKexNames := slices.Sorted(maps.Keys(curveIDByName))
 			return nil, nil, fmt.Errorf("'tls_key_exchange_preferences' value %q not supported, please select from %v", kexPreference, allKexNames)
 		}
 		curvePreferences = append(curvePreferences, curveID)

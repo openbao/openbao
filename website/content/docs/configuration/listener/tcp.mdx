@@ -206,6 +206,14 @@ default value in the `"/sys/config/ui"` [API endpoint](../../api/system/config-u
 
   :::
 
+- `tls_key_exchange_preferences` `([]string: nil)` - Specifies the list of supported
+  key exchange mechanisms. Up to TLS 1.2 this value only specified elliptic curves.
+  In TLS 1.3 it was extended and named to NamedGroup.
+
+  Accepted values are: "CurveP256", "CurveP384", "CurveP521", "SecP256r1MLKEM768",
+  "SecP384r1MLKEM1024", "X25519", and "X25519MLKEM768". They follow the Go standard
+  library [CurveIDs][curve-id].
+
 - `tls_prefer_server_cipher_suites` `(string: "false")` – Specifies to prefer the
   server's ciphersuite over the client ciphersuites.
 
@@ -382,6 +390,19 @@ listener "tcp" {
 }
 ```
 
+### Enforce PQC Key Exchange Mechanisms (KEM)
+
+Go will prefer post-quantum cryptography (PQC) key exchange mechanisms (KEM) when both server and client support them.
+To enforce PQC KEM server-side, use the following configuration.
+
+```hcl
+listener "tcp" {
+  tls_min_version = "tls13"
+  tls_max_version = "tls13"
+  tls_key_exchange_preferences = ["X25519MLKEM768", "SecP256r1MLKEM768", "SecP384r1MLKEM10242"]
+}
+```
+
 ### Listening on multiple interfaces
 
 This example shows OpenBao listening on a private interface, as well as localhost.
@@ -534,3 +555,4 @@ cluster_addr = "https://[2001:1c04:90d:1c00:a00:27ff:fefa:58ec]:8201"
 [api-addr]: ../index.mdx#api_addr
 [cluster-addr]: ../index.mdx#cluster_addr
 [go-tls-blog]: https://go.dev/blog/tls-cipher-suites
+[curve-id]: https://pkg.go.dev/crypto/tls#CurveID

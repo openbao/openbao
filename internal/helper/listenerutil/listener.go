@@ -8,9 +8,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"os"
 	osuser "os/user"
+	"slices"
 	"strconv"
 
 	"github.com/hashicorp/cli"
@@ -47,6 +49,18 @@ func (l *rmListener) Close() error {
 
 	// Remove the file
 	return os.Remove(l.Path)
+}
+
+// curveIDByName translates the valid config parameters to golang
+// standard library CurveIDs.
+var curveIDByName = map[string]tls.CurveID{
+	tls.CurveP256.String():          tls.CurveP256,
+	tls.CurveP384.String():          tls.CurveP384,
+	tls.CurveP521.String():          tls.CurveP521,
+	tls.X25519.String():             tls.X25519,
+	tls.X25519MLKEM768.String():     tls.X25519MLKEM768,
+	tls.SecP256r1MLKEM768.String():  tls.SecP256r1MLKEM768,
+	tls.SecP384r1MLKEM1024.String(): tls.SecP384r1MLKEM1024,
 }
 
 func UnixSocketListener(path string, unixSocketsConfig *UnixSocketsConfig) (net.Listener, error) {
@@ -92,10 +106,21 @@ func TLSConfig(
 	}
 	l.TLSCertGetter = cg
 
+	curvePreferences := []tls.CurveID{}
+	for _, kexPreference := range l.TLSKeyExchangePreferences {
+		curveID, ok := curveIDByName[kexPreference]
+		if !ok {
+			allKexNames := slices.Sorted(maps.Keys(curveIDByName))
+			return nil, nil, fmt.Errorf("'tls_key_exchange_preferences' value %q not supported, please select from %v", kexPreference, allKexNames)
+		}
+		curvePreferences = append(curvePreferences, curveID)
+	}
+
 	tlsConf := &tls.Config{
-		GetCertificate: cg.GetCertificate,
-		NextProtos:     []string{"h2", "http/1.1"},
-		ClientAuth:     tls.RequestClientCert,
+		GetCertificate:   cg.GetCertificate,
+		NextProtos:       []string{"h2", "http/1.1"},
+		ClientAuth:       tls.RequestClientCert,
+		CurvePreferences: curvePreferences,
 	}
 
 	if acg, ok := cg.(*ACMECertGetter); ok {

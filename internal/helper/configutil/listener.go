@@ -77,6 +77,7 @@ type Listener struct {
 	TLSMaxVersion                    string        `hcl:"tls_max_version"`
 	TLSCipherSuites                  []uint16      `hcl:"-"`
 	TLSCipherSuitesRaw               string        `hcl:"tls_cipher_suites"`
+	TLSKeyExchangePreferences        []string      `hcl:"tls_key_exchange_preferences"`
 	TLSRequireAndVerifyClientCert    bool          `hcl:"-"`
 	TLSRequireAndVerifyClientCertRaw any           `hcl:"tls_require_and_verify_client_cert"`
 	TLSClientCAFile                  string        `hcl:"tls_client_ca_file"`

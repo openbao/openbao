@@ -730,6 +730,13 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 	}
 	authReq.Operation = logical.Operation(authOperation[0])
 
+	// Only Create, Update, and Read operations are allowed. Certain
+	// third-party plugins support login via GET, so we cannot force
+	// an update operation here.
+	if logical.ValidateLoginOperation(authReq.Operation) != nil {
+		return nil, fmt.Errorf("expected a valid login operation in %v", consts.InlineAuthOperationHeaderName)
+	}
+
 	// Find the optional namespace header; this defaults to X-Vault-Namespace
 	// if missing.
 	authNamespace, present := req.Headers[consts.InlineAuthNamespaceHeaderName]

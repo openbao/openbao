@@ -17,13 +17,13 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 
+	"github.com/openbao/openbao/audit"
+	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	"github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/builtin/logical/pki"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"
-	"github.com/openbao/openbao/internal/audit"
-	auditFile "github.com/openbao/openbao/internal/builtin/audit/file"
-	"github.com/openbao/openbao/internal/vault/quotas"
 	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/quotas"
 )
 
 var coreConfig = &vault.CoreConfig{

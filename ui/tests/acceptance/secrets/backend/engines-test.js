@@ -65,7 +65,7 @@ module('Acceptance | secret-engine list view', function (hooks) {
     await settled();
     // filter by type
     await clickTrigger('#filter-by-engine-type');
-    await searchSelect.options[1].click();
+    await searchSelect.options[0].click();
 
     const rows = document.querySelectorAll('[data-test-auth-backend-link]');
     const rowsAws = Array.from(rows).filter((row) => row.innerText.includes('database'));

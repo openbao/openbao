@@ -854,6 +854,12 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		return logical.ErrorResponse("cannot write to a path ending in '/'"), nil
 	}
 
+	// Validate that we're only executing external operation types; do not
+	// allow routing internal operation types through this mechanism.
+	if logical.ValidateExternalOperation(req.Operation) != nil {
+		return logical.ErrorResponse("cannot handle internal-only request operation"), nil
+	}
+
 	// MountPoint will not always be set at this point, so we ensure the req contains it
 	// as it is depended on by some functionality (e.g. quotas)
 	req.MountPoint = c.router.MatchingMount(ctx, req.Path)
@@ -1258,6 +1264,12 @@ func (c *Core) needsApproval(ctx context.Context, req *logical.Request, auth *lo
 func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp *logical.Response, retAuth *logical.Auth, retErr error) {
 	defer metrics.MeasureSince([]string{"core", "handle_request"}, time.Now())
 
+	// Validate that we're only executing external operation types; do not
+	// allow routing internal operation types through this mechanism.
+	if logical.ValidateExternalOperation(req.Operation) != nil {
+		return logical.ErrorResponse("cannot handle internal-only request operation"), nil, nil
+	}
+
 	var nonHMACReqDataKeys []string
 	entry := c.router.MatchingMountEntry(ctx, req.Path)
 	if entry != nil {
@@ -1653,6 +1665,12 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (retResp *logical.Response, retAuth *logical.Auth, retErr error) {
 	defer metrics.MeasureSince([]string{"core", "handle_login_request"}, time.Now())
 
+	// Validate that we're only executing external operation types; do not
+	// allow routing internal operation types through this mechanism.
+	if logical.ValidateExternalOperation(req.Operation) != nil {
+		return logical.ErrorResponse("cannot handle internal-only request operation"), nil, nil
+	}
+
 	req.Unauthenticated = true
 
 	var nonHMACReqDataKeys []string
@@ -1847,6 +1865,11 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 			return nil, nil, retErr
 		}
 
+		if logical.ValidateLoginOperation(req.Operation) != nil {
+			c.logger.Warn("skipping token creation on non-login operation", "request_path", req.Path, "operation", req.Operation)
+			goto LOGIN_DONE
+		}
+
 		// Check for request role in context to role based quotas
 		var role string
 		reqRole := ctx.Value(logical.CtxKeyRequestRole{})
@@ -2038,6 +2061,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 		}
 	}
 
+LOGIN_DONE:
 	// if we were already going to return some error from this login, do that.
 	// if not, we will then check if the API is locked for the requesting
 	// namespace, to avoid leaking locked namespaces to unauthenticated clients.

@@ -17,6 +17,7 @@
               class="sidebar-button"
               @icon="terminal-screen"
               @ariaLabel="Console toggle"
+              title="Console"
               data-test-console-toggle
               {{on "click" (fn (mut this.console.isOpen) (not this.console.isOpen))}}
             />

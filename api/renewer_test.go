@@ -7,6 +7,7 @@ import (
 	"errors"
 	"math/rand"
 	"reflect"
+	"sync/atomic"
 	"testing"
 	"testing/quick"
 	"time"
@@ -280,5 +281,63 @@ func TestCalcSleepPeriod(t *testing.T) {
 		return lw.calculateSleepDuration(remainingLeaseDuration, priorDuration) < remainingLeaseDuration
 	}, &c); err != nil {
 		t.Error(err)
+	}
+}
+
+// TestLifetimeWatcher_RenewErrorsBackOff guards against a busy-loop regression:
+// when renew keeps failing (e.g. the cached token was revoked but is still
+// marked renewable), the watcher must honor the error backoff between attempts
+// instead of retrying with a zero sleep. Before the fix, the errorBackoff branch
+// evaluated NextBackOff() only to compare against Stop and discarded the
+// returned interval, leaving sleepDuration at 0 — so the loop hammered
+// renew-self as fast as the CPU allowed. Here we assert the number of renew
+// attempts in a short window stays small (a few backed-off retries), not the
+// thousands a tight loop would produce. See openbao/openbao#3747.
+func TestLifetimeWatcher_RenewErrorsBackOff(t *testing.T) {
+	t.Parallel()
+
+	client, err := NewClient(DefaultConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var attempts int64
+	renew := func(_ string, _ int) (*Secret, error) {
+		atomic.AddInt64(&attempts, 1)
+		return nil, errors.New("renew failure: token revoked")
+	}
+
+	v, err := client.NewLifetimeWatcher(&LifetimeWatcherInput{
+		Secret:    &Secret{LeaseDuration: 60},
+		Increment: 60,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	doneCh := make(chan error, 1)
+	go func() {
+		// initialRetryInterval of 100ms: with backoff honored, a 1s window
+		// permits only a handful of attempts (100ms, 200ms, 400ms, ...). A
+		// zero-sleep busy loop would rack up thousands.
+		doneCh <- v.doRenewWithOptions(false, false, 60, "myleaseID", renew, 100*time.Millisecond)
+	}()
+
+	time.Sleep(time.Second)
+	v.Stop()
+	select {
+	case <-doneCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("watcher did not stop")
+	}
+
+	n := atomic.LoadInt64(&attempts)
+	if n == 0 {
+		t.Fatal("expected at least one renew attempt")
+	}
+	// Generously bounded: exponential backoff from 100ms over ~1s yields well
+	// under 50 attempts; a busy loop would be in the thousands/millions.
+	if n > 50 {
+		t.Fatalf("renew was retried %d times in ~1s — backoff is not being honored (busy loop)", n)
 	}
 }

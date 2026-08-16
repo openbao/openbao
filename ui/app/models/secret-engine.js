@@ -134,7 +134,7 @@ export default class SecretEngineModel extends Model {
   }
 
   get isInternal() {
-    return this.engineType === 'cubbyhole';
+    return this.path === 'cubbyhole/';
   }
 
   get isSupportedBackend() {

@@ -86,7 +86,7 @@ const config: Config = {
         explicitSearchResultPath: true,
         searchContextByPaths: [
           { label: "Docs", path: "docs" },
-          { label: "API Reference", path: "docs/api" },
+          { label: "Community", path: "community" },
           { label: "Blog", path: "blog" },
         ],
         useAllContextsWithNoSearchContext: true,

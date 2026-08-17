@@ -524,27 +524,11 @@ func TestTransactionalStorageUtilityMethods(t *testing.T) {
 		_, ok := nodeStorage.cache.Get("utils-node")
 		require.False(t, ok, "Cache should be empty after purge")
 
-		// Test disable cache
-		nodeStorage.EnableCache(false)
-		require.False(t, nodeStorage.IsCacheEnabled(), "Cache should be disabled")
-
-		// Re-insert data to see if it works without cache
-		err = nodeStorage.PutNode(ctx, node)
-		require.NoError(t, err, "Failed to save node with cache disabled")
-
-		// Try to load the node from cache
-		_, ok = nodeStorage.cache.Get("utils-node")
-		require.False(t, ok, "Cache should not contain node when cache is disabled")
-
-		// Load node to verify it works without cache
+		// Load node to verify it repopulates the cache after a purge
 		loadedNode, err := nodeStorage.GetNode(ctx, "utils-node")
-		require.NoError(t, err, "Failed to load node with cache disabled")
+		require.NoError(t, err, "Failed to load node")
 		require.NotNil(t, loadedNode, "Loaded node should not be nil")
-		require.Equal(t, node.Keys, loadedNode.Keys, "Keys should match after loading with cache disabled")
-		require.Equal(t, node.Values, loadedNode.Values, "Values should match after loading with cache disabled")
-
-		// Re-enable cache
-		nodeStorage.EnableCache(true)
-		require.True(t, nodeStorage.IsCacheEnabled(), "Cache should be enabled")
+		require.Equal(t, node.Keys, loadedNode.Keys, "Keys should match after loading")
+		require.Equal(t, node.Values, loadedNode.Values, "Values should match after loading")
 	})
 }

@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"sync"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/openbao/openbao/sdk/v2/lru"
 )
 
 var (
@@ -55,7 +55,9 @@ type NodeStorage struct {
 
 	// Built-in caching layer
 	cachingEnabled bool // Whether to skip cache operations
-	cache          *lru.LRU[string, *Node]
+	cacheSize      int
+	// TODO (gabrielopesantos): Check other cache parameters
+	cache *lru.TwoQueueCache[string, *Node]
 
 	// Built-in write buffering
 	bufferingEnabled bool          // Whether write buffering is enabled
@@ -107,10 +109,10 @@ func newNodeStorageFromConfig(
 		return nil, fmt.Errorf("storage config cannot be nil")
 	}
 
-	var cache *lru.LRU[string, *Node]
+	var cache *lru.TwoQueueCache[string, *Node]
 	if config.CachingEnabled {
 		var err error
-		cache, err = lru.NewLRU[string, *Node](config.CacheSize)
+		cache, err = lru.New2Q[string, *Node](config.CacheSize)
 		if err != nil {
 			return nil, err
 		}
@@ -126,6 +128,7 @@ func newNodeStorageFromConfig(
 		isTransaction:    false,
 		serializer:       config.NodeSerializer,
 		cachingEnabled:   config.CachingEnabled,
+		cacheSize:        config.CacheSize,
 		cache:            cache,
 		bufferingEnabled: config.BufferingEnabled,
 		dirtyTracker:     dirtyTracker,

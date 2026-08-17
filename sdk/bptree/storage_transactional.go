@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"sync"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/openbao/openbao/sdk/v2/lru"
 )
 
 type Transactional interface {
@@ -57,14 +57,10 @@ func (s *TransactionalNodeStorage) BeginReadOnlyTx(ctx context.Context) (Transac
 		return nil, err
 	}
 
-	var txCache *lru.LRU[string, *Node]
+	var txCache *lru.TwoQueueCache[string, *Node]
 	if s.cachingEnabled {
 		// Create transaction-local cache for isolation (inherit parent's cache size)
-		cacheSize := defaultCacheSize
-		if s.cache != nil {
-			cacheSize = s.cache.Size()
-		}
-		txCache, err = lru.NewLRU[string, *Node](cacheSize)
+		txCache, err = lru.New2Q[string, *Node](s.cacheSize)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create transaction cache: %w", err)
 		}
@@ -82,6 +78,7 @@ func (s *TransactionalNodeStorage) BeginReadOnlyTx(ctx context.Context) (Transac
 			isTransaction:  true, // Explicit transaction flag
 			serializer:     s.serializer,
 			cachingEnabled: s.cachingEnabled, // Inherit caching setting from parent
+			cacheSize:      s.cacheSize,      // Inherit cache size from parent
 			cache:          txCache,          // Transaction-local cache
 			// New mutex instance for the transaction
 			lock:             sync.RWMutex{},
@@ -98,14 +95,10 @@ func (s *TransactionalNodeStorage) BeginTx(ctx context.Context) (Transaction, er
 		return nil, err
 	}
 
-	var txCache *lru.LRU[string, *Node]
+	var txCache *lru.TwoQueueCache[string, *Node]
 	if s.cachingEnabled {
 		// Create transaction-local cache for isolation (inherit parent's cache size)
-		cacheSize := defaultCacheSize
-		if s.cache != nil {
-			cacheSize = s.cache.Size()
-		}
-		txCache, err = lru.NewLRU[string, *Node](cacheSize)
+		txCache, err = lru.New2Q[string, *Node](s.cacheSize)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create transaction cache: %w", err)
 		}
@@ -123,6 +116,7 @@ func (s *TransactionalNodeStorage) BeginTx(ctx context.Context) (Transaction, er
 			isTransaction:  true, // Explicit transaction flag
 			serializer:     s.serializer,
 			cachingEnabled: s.cachingEnabled, // Inherit caching setting from parent
+			cacheSize:      s.cacheSize,      // Inherit cache size from parent
 			cache:          txCache,          // Transaction-local cache
 			// New mutex instance for the transaction
 			lock:             sync.RWMutex{},
@@ -249,10 +243,10 @@ func NewNodeStorageFromTransaction(
 	}
 
 	// Create transaction-local cache (isolated, won't be merged)
-	var cache *lru.LRU[string, *Node]
+	var cache *lru.TwoQueueCache[string, *Node]
 	if config.CachingEnabled {
 		var err error
-		cache, err = lru.NewLRU[string, *Node](config.CacheSize)
+		cache, err = lru.New2Q[string, *Node](config.CacheSize)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create transaction-local cache: %w", err)
 		}
@@ -269,6 +263,7 @@ func NewNodeStorageFromTransaction(
 		isTransaction:    true, // Mark as transaction
 		serializer:       config.NodeSerializer,
 		cachingEnabled:   config.CachingEnabled,
+		cacheSize:        config.CacheSize,
 		cache:            cache, // Transaction-local cache (isolated)
 		bufferingEnabled: config.BufferingEnabled,
 		dirtyTracker:     dirtyTracker, // Transaction-local buffer
@@ -293,7 +288,7 @@ func WithExistingTransaction(
 	parentConfig := &StorageConfig{
 		NodeSerializer:   parentStorage.serializer,
 		CachingEnabled:   parentStorage.cachingEnabled,
-		CacheSize:        parentStorage.cache.Size(),
+		CacheSize:        parentStorage.cacheSize,
 		BufferingEnabled: parentStorage.bufferingEnabled,
 	}
 

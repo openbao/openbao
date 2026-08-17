@@ -5,13 +5,6 @@ package bptree
 
 import "context"
 
-// EnableCache enables or disables cache operations
-func (s *NodeStorage) EnableCache(enabled bool) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	s.cachingEnabled = enabled
-}
-
 // IsCacheEnabled returns whether cache operations are enabled
 func (s *NodeStorage) IsCacheEnabled() bool {
 	return s.cachingEnabled
@@ -48,6 +41,6 @@ func (s *NodeStorage) addToCache(ctx context.Context, node *Node) {
 // removeFromCache removes a node from cache
 func (s *NodeStorage) removeFromCache(ctx context.Context, nodeID string) {
 	if s.cachingEnabled && s.cache != nil {
-		s.cache.Delete(cacheKey(ctx, nodeID))
+		s.cache.Remove(cacheKey(ctx, nodeID))
 	}
 }

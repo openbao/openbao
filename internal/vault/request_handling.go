@@ -1051,6 +1051,16 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		if c.standby.Load() && !c.StandbyReadsEnabled() {
 			return nil, ErrCannotForwardLocalOnly
 		}
+
+	// Request wrapping incurs storage (cubbyhole) writes, if the request
+	// is handled on standby node, it doesn't fail and response is not empty
+	// it will ultimately fail to save the wrapping token, and we'd still
+	// have to forward the request.
+	// Preemptively forward the requests with wrapping info provided.
+	case req.WrapInfo != nil && req.WrapInfo.TTL != 0:
+		if c.Standby() {
+			return nil, logical.ErrPerfStandbyPleaseForward
+		}
 	}
 
 	var auth *logical.Auth
@@ -1219,22 +1229,19 @@ func (c *Core) doRouting(ctx context.Context, req *logical.Request) (*logical.Re
 
 // doRoutingIfApproved will check if the request needs approval before routing
 func (c *Core) doRoutingIfApproved(ctx context.Context, req *logical.Request, auth *logical.Auth) (*logical.Response, error) {
-	var routeErr error
-	var resp *logical.Response
-	if !c.needsApproval(ctx, req, auth) {
-		resp, routeErr = c.doRouting(ctx, req)
+	if !c.needsApproval(req, auth) {
+		return c.doRouting(ctx, req)
 	} else {
-		resp = &logical.Response{}
+		return &logical.Response{}, nil
 	}
-	return resp, routeErr
 }
 
 func (c *Core) isLoginRequest(ctx context.Context, req *logical.Request) bool {
 	return c.router.LoginPath(ctx, req.Path)
 }
 
-// needsApproval will assess if a ControlGroup policy is applicable, so that request is deferred until unwrap
-func (c *Core) needsApproval(ctx context.Context, req *logical.Request, auth *logical.Auth) bool {
+// needsApproval will assess if a ControlGroup policy is applicable, so that request is deferred until unwrap.
+func (c *Core) needsApproval(req *logical.Request, auth *logical.Auth) bool {
 	if auth.PolicyResults != nil &&
 		auth.PolicyResults.ControlGroup != nil &&
 		req.ForwardedFrom != forwardedFromDeferral {
@@ -1418,7 +1425,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 		}
 
 		// Set wrapTTL from ControlGroup.TTL if present
-		if c.needsApproval(ctx, req, auth) {
+		if c.needsApproval(req, auth) {
 			cgTTL := auth.PolicyResults.ControlGroup.TTL
 			if cgTTL > 0 {
 				wrapTTL = cgTTL

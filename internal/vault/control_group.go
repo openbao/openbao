@@ -393,7 +393,11 @@ func (c *Core) handleControlGroupAuthorize(ctx context.Context, req *logical.Req
 	if authorizerToken == nil {
 		return nil, &logical.StatusBadRequest{Err: "missing auth"}
 	}
-	authorizerGroups, err := c.identityStore.MemDBGroupsByMemberEntityID(ctx, authorizerToken.EntityID, false, false)
+	authorizerGroups, authorizerAncestorGroups, err := c.identityStore.GroupsByEntityID(ctx, authorizerToken.EntityID)
+	if err != nil {
+		return nil, err
+	}
+	authorizerGroups = append(authorizerGroups, authorizerAncestorGroups...)
 	if err != nil {
 		return nil, err
 	}

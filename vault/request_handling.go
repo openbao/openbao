@@ -1006,6 +1006,16 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		if c.standby.Load() && !c.StandbyReadsEnabled() {
 			return nil, ErrCannotForwardLocalOnly
 		}
+
+	// Request wrapping incurs storage (cubbyhole) writes, if the request
+	// is handled on standby node, it doesn't fail and response is not empty
+	// it will ultimately fail to save the wrapping token, and we'd still
+	// have to forward the request.
+	// Preemptively forward the requests with wrapping info provided.
+	case req.WrapInfo != nil && req.WrapInfo.TTL != 0:
+		if c.Standby() {
+			return nil, logical.ErrPerfStandbyPleaseForward
+		}
 	}
 
 	var auth *logical.Auth

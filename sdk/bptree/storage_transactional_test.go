@@ -89,12 +89,9 @@ func TestTransactionalStorageReadOnly(t *testing.T) {
 	err := node.InsertKeyValue("key1", "value1")
 	require.NoError(t, err, "failed to insert key-value pair into node")
 
-	// Save the node using auto-flush to ensure it's persisted immediately
-	WithAutoFlush(ctx, storage, func(storage Storage) error {
-		err = storage.PutNode(ctx, node)
-		require.NoError(t, err, "failed to save initial node")
-		return err
-	})
+	// Save the node
+	err = storage.PutNode(ctx, node)
+	require.NoError(t, err, "failed to save initial node")
 
 	t.Run("ReadOnlyTransactionCanRead", func(t *testing.T) {
 		txn, err := storage.BeginReadOnlyTx(ctx)
@@ -131,22 +128,16 @@ func TestTransactionalStorageReadOnly(t *testing.T) {
 		newNode.Values = [][]string{{"value2"}}
 
 		// Should not be able to save node in read-only transaction
-		// However, this call will not fail as the error is deferred until commit
 		err = txn.PutNode(ctx, newNode)
-		// require.Error(t, err, "Should not be able to save node in read-only transaction")
-		require.NoError(t, err, "PutNode should not error immediately in read-only transaction")
+		require.Error(t, err, "Should not be able to save node in read-only transaction")
 
 		// Should not be able to delete node in read-only transaction
 		err = txn.DeleteNode(ctx, "test-node")
-		require.NoError(t, err, "DeleteNode should not error immediately in read-only transaction")
+		require.Error(t, err, "Should not be able to delete node in read-only transaction")
 
 		// Should not be able to set root ID in read-only transaction
 		err = txn.PutRootID(ctx, "new-root")
 		require.Error(t, err, "Should not be able to set root ID in read-only transaction")
-
-		// Commit should fail due to prior write attempts
-		err = txn.Commit(ctx)
-		require.Error(t, err, "Expected commit to fail due to write attempts in read-only transaction")
 	})
 }
 

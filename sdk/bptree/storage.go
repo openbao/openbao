@@ -32,6 +32,7 @@ type Storage interface {
 	PutNode(ctx context.Context, node *Node) error
 	// DeleteNode deletes a node from storage
 	DeleteNode(ctx context.Context, id string) error
+	// TODO (gabrielopesantos): Implement or delete?
 	// PurgeNodes clears all nodes from storage starting with the prefix
 	// PurgeNodes(ctx context.Context) error
 
@@ -44,7 +45,6 @@ type Storage interface {
 var _ Storage = &NodeStorage{}
 
 // NodeStorage adapts the logical.Storage interface to the bptree.Storage interface
-// with built-in write buffering for optimal performance
 type NodeStorage struct {
 	storage       logical.Storage
 	isTransaction bool // Explicit flag to track transaction state
@@ -58,10 +58,6 @@ type NodeStorage struct {
 	cacheSize      int
 	// TODO (gabrielopesantos): Check other cache parameters
 	cache *lru.TwoQueueCache[string, *Node]
-
-	// Built-in write buffering
-	bufferingEnabled bool          // Whether write buffering is enabled
-	dirtyTracker     *DirtyTracker // Tracks dirty nodes for batching writes
 }
 
 // NewNodeStorage creates a new adapter for logical.Storage with default configuration
@@ -118,20 +114,13 @@ func newNodeStorageFromConfig(
 		}
 	}
 
-	var dirtyTracker *DirtyTracker
-	if config.BufferingEnabled {
-		dirtyTracker = NewDirtyTracker()
-	}
-
 	return &NodeStorage{
-		storage:          storage,
-		isTransaction:    false,
-		serializer:       config.NodeSerializer,
-		cachingEnabled:   config.CachingEnabled,
-		cacheSize:        config.CacheSize,
-		cache:            cache,
-		bufferingEnabled: config.BufferingEnabled,
-		dirtyTracker:     dirtyTracker,
+		storage:        storage,
+		isTransaction:  false,
+		serializer:     config.NodeSerializer,
+		cachingEnabled: config.CachingEnabled,
+		cacheSize:      config.CacheSize,
+		cache:          cache,
 	}, nil
 }
 
@@ -169,19 +158,12 @@ func (s *NodeStorage) PutRootID(ctx context.Context, id string) error {
 	return nil
 }
 
-// GetNode loads a node from storage, checking dirty tracker first
+// GetNode loads a node from storage
 func (s *NodeStorage) GetNode(ctx context.Context, id string) (*Node, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	// First check if we have a dirty (buffered) version
-	if s.bufferingEnabled && s.dirtyTracker != nil {
-		if node, isDirty := s.dirtyTracker.GetDirty(id); isDirty {
-			return node, nil
-		}
-	}
-
-	// Try to get from cache second (unless cache is disabled)
+	// Try to get from cache first (unless cache is disabled)
 	if node := s.getFromCache(ctx, id); node != nil {
 		return node, nil
 	}
@@ -207,7 +189,7 @@ func (s *NodeStorage) GetNode(ctx context.Context, id string) (*Node, error) {
 	return node, nil
 }
 
-// PutNode saves a node to storage with built-in buffering
+// PutNode saves a node to storage
 func (s *NodeStorage) PutNode(ctx context.Context, node *Node) error {
 	// Check if the node is nil
 	if node == nil {
@@ -218,20 +200,6 @@ func (s *NodeStorage) PutNode(ctx context.Context, node *Node) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// If buffering is enabled, buffer the write instead of immediate save
-	if s.bufferingEnabled {
-		s.dirtyTracker.MarkDirty(node.ID, node)
-		// Also update cache immediately for read consistency within the operation
-		s.addToCache(ctx, node)
-		return nil
-	}
-
-	// Fallback to immediate save (if buffering disabled)
-	return s.putNodeImmediate(ctx, node)
-}
-
-// putNodeImmediate performs the actual storage write without buffering
-func (s *NodeStorage) putNodeImmediate(ctx context.Context, node *Node) error {
 	data, err := s.serializer.Serialize(node)
 	if err != nil {
 		return fmt.Errorf("failed to serialize node %s: %w", node.ID, err)
@@ -252,26 +220,12 @@ func (s *NodeStorage) putNodeImmediate(ctx context.Context, node *Node) error {
 	return nil
 }
 
-// DeleteNode deletes a node from storage with built-in buffering
+// DeleteNode deletes a node from storage
 func (s *NodeStorage) DeleteNode(ctx context.Context, id string) error {
 	// Lock the nodes for writing
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// If buffering is enabled, buffer the delete instead of immediate delete
-	if s.bufferingEnabled {
-		s.dirtyTracker.MarkDeleted(id)
-		// Also remove from cache immediately for consistency within the operation
-		s.removeFromCache(ctx, id)
-		return nil
-	}
-
-	// Fallback to immediate delete (if buffering disabled)
-	return s.deleteNodeImmediate(ctx, id)
-}
-
-// deleteNodeImmediate performs the actual storage delete without buffering
-func (s *NodeStorage) deleteNodeImmediate(ctx context.Context, id string) error {
 	if err := s.storage.Delete(ctx, nodeKey(ctx, id)); err != nil {
 		return fmt.Errorf("failed to delete node %s: %w", id, err)
 	}

@@ -43,18 +43,14 @@ type StorageConfig struct {
 	CachingEnabled bool
 	// Cache size for node caching (if caching is enabled)
 	CacheSize int
-
-	// Enable or disable built-in write buffering at the storage layer
-	BufferingEnabled bool
 }
 
 // NewDefaultStorageConfig creates a default storage config for non transactional storage.
 func NewDefaultStorageConfig() *StorageConfig {
 	return &StorageConfig{
-		NodeSerializer:   &JSONSerializer{}, // Default to JSON serializer
-		CachingEnabled:   true,              // Enable caching by default
-		CacheSize:        defaultCacheSize,  // Default cache size
-		BufferingEnabled: false,             // Enable buffering by default
+		NodeSerializer: &JSONSerializer{}, // Default to JSON serializer
+		CachingEnabled: true,              // Enable caching by default
+		CacheSize:      defaultCacheSize,  // Default cache size
 	}
 }
 
@@ -77,10 +73,9 @@ func NewStorageConfig(opts ...StorageOption) (*StorageConfig, error) {
 // NewDefaultTransactionalStorageConfig creates a default storage config for transactional storage.
 func NewDefaultTransactionalStorageConfig() *StorageConfig {
 	return &StorageConfig{
-		NodeSerializer:   &JSONSerializer{}, // Default to JSON serializer
-		CachingEnabled:   true,              // Enable caching by default
-		CacheSize:        defaultCacheSize,  // Default cache size
-		BufferingEnabled: true,              // Enable buffering by default
+		NodeSerializer: &JSONSerializer{}, // Default to JSON serializer
+		CachingEnabled: true,              // Enable caching by default
+		CacheSize:      defaultCacheSize,  // Default cache size
 	}
 }
 
@@ -121,13 +116,6 @@ func WithCachingEnabled(enabled bool) StorageOption {
 func WithCacheSize(size int) StorageOption {
 	return func(cfg *StorageConfig) {
 		cfg.CacheSize = size
-	}
-}
-
-// WithBufferingEnabled enables or disables built-in write buffering
-func WithBufferingEnabled(enabled bool) StorageOption {
-	return func(cfg *StorageConfig) {
-		cfg.BufferingEnabled = enabled
 	}
 }
 

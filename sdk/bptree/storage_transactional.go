@@ -47,10 +47,9 @@ type NodeTransaction struct {
 
 var _ Transaction = &NodeTransaction{}
 
-// NOTE (gabrielopesantos): Should it be possible for cache size, buffering, etc to be overridden per transaction?
+// TODO (gabrielopesantos): Should it be possible for cache size, etc to be overridden per transaction?
 // BeginReadOnlyTx starts a read-only transaction and inherits all configuration from the parent storage.
-// It creates a transaction-local cache, that is then merged with the parent's, and buffer that are completely
-// isolated
+// It creates a transaction-local cache that is completely isolated
 func (s *TransactionalNodeStorage) BeginReadOnlyTx(ctx context.Context) (Transaction, error) {
 	tx, err := s.storage.(logical.TransactionalStorage).BeginReadOnlyTx(ctx)
 	if err != nil {
@@ -66,12 +65,6 @@ func (s *TransactionalNodeStorage) BeginReadOnlyTx(ctx context.Context) (Transac
 		}
 	}
 
-	var dirtyTracker *DirtyTracker
-	if s.bufferingEnabled {
-		// Create transaction-local dirty tracker
-		dirtyTracker = NewDirtyTracker()
-	}
-
 	return &NodeTransaction{
 		NodeStorage: &NodeStorage{
 			storage:        tx,
@@ -80,10 +73,7 @@ func (s *TransactionalNodeStorage) BeginReadOnlyTx(ctx context.Context) (Transac
 			cachingEnabled: s.cachingEnabled, // Inherit caching setting from parent
 			cacheSize:      s.cacheSize,      // Inherit cache size from parent
 			cache:          txCache,          // Transaction-local cache
-			// New mutex instance for the transaction
-			lock:             sync.RWMutex{},
-			bufferingEnabled: s.bufferingEnabled, // Inherit buffering setting from parent
-			dirtyTracker:     dirtyTracker,       // Each transaction gets its own buffer
+			lock:           sync.RWMutex{},   // Mutex instance for the transaction
 		},
 		parentStorage: s, // Keep reference to parent for cache merging
 	}, nil
@@ -104,12 +94,6 @@ func (s *TransactionalNodeStorage) BeginTx(ctx context.Context) (Transaction, er
 		}
 	}
 
-	var dirtyTracker *DirtyTracker
-	if s.bufferingEnabled {
-		// Create transaction-local dirty tracker
-		dirtyTracker = NewDirtyTracker()
-	}
-
 	return &NodeTransaction{
 		NodeStorage: &NodeStorage{
 			storage:        tx,
@@ -118,22 +102,14 @@ func (s *TransactionalNodeStorage) BeginTx(ctx context.Context) (Transaction, er
 			cachingEnabled: s.cachingEnabled, // Inherit caching setting from parent
 			cacheSize:      s.cacheSize,      // Inherit cache size from parent
 			cache:          txCache,          // Transaction-local cache
-			// New mutex instance for the transaction
-			lock:             sync.RWMutex{},
-			bufferingEnabled: s.bufferingEnabled, // Inherit buffering setting from parent
-			dirtyTracker:     dirtyTracker,       // Each transaction gets its own buffer
+			lock:           sync.RWMutex{},   // New mutex instance for the transaction
 		},
 		parentStorage: s, // Keep reference to parent for cache merging
 	}, nil
 }
 
 func (s *NodeTransaction) Commit(ctx context.Context) error {
-	// First flush any buffered operations to the transaction
-	if err := s.FlushBuffer(ctx); err != nil {
-		return fmt.Errorf("failed to flush buffer before commit: %w", err)
-	}
-
-	// Then commit the underlying transaction
+	// Commit the underlying transaction
 	if err := s.storage.(logical.Transaction).Commit(ctx); err != nil {
 		return err
 	}
@@ -145,9 +121,6 @@ func (s *NodeTransaction) Commit(ctx context.Context) error {
 }
 
 func (s *NodeTransaction) Rollback(ctx context.Context) error {
-	// Clear buffered operations (don't flush them)
-	s.ClearBuffer()
-
 	// Rollback the underlying transaction
 	// Transaction-local cache is automatically discarded (no merging)
 	return s.storage.(logical.Transaction).Rollback(ctx)
@@ -226,7 +199,6 @@ func WithTransaction(ctx context.Context, originalStorage Storage, callback func
 
 // NewNodeStorageFromTransaction creates a NodeStorage that works within an existing external transaction.
 // This creates a completely isolated transaction-local cache that will NOT be merged back to the parent.
-// Buffering is enabled with its own DirtyTracker.
 //
 // Use this when you have an external transaction that you manage yourself and want to use
 // NodeStorage functionality within it, but don't want cache pollution in the parent storage.
@@ -252,32 +224,24 @@ func NewNodeStorageFromTransaction(
 		}
 	}
 
-	// Create transaction-local dirty tracker
-	var dirtyTracker *DirtyTracker
-	if config.BufferingEnabled {
-		dirtyTracker = NewDirtyTracker()
-	}
-
 	return &NodeStorage{
-		storage:          tx,
-		isTransaction:    true, // Mark as transaction
-		serializer:       config.NodeSerializer,
-		cachingEnabled:   config.CachingEnabled,
-		cacheSize:        config.CacheSize,
-		cache:            cache, // Transaction-local cache (isolated)
-		bufferingEnabled: config.BufferingEnabled,
-		dirtyTracker:     dirtyTracker, // Transaction-local buffer
-		lock:             sync.RWMutex{},
+		storage:        tx,
+		isTransaction:  true, // Mark as transaction
+		serializer:     config.NodeSerializer,
+		cachingEnabled: config.CachingEnabled,
+		cacheSize:      config.CacheSize,
+		cache:          cache, // Transaction-local cache (isolated)
+		lock:           sync.RWMutex{},
 	}, nil
 }
 
 // WithExistingTransaction creates a NodeStorage wrapper that participates in an existing external transaction.
-// This creates a transaction-local cache and buffer that are completely isolated and will NOT be merged
+// This creates a transaction-local cache that is completely isolated and will NOT be merged
 // back to the parent storage. This is the recommended approach for external transaction management.
 //
 // The returned NodeStorage should NOT have Commit/Rollback called on it - the original transaction
 // should handle that. When the external transaction commits/rolls back, the transaction-local cache
-// and buffer are automatically discarded.
+// is automatically discarded.
 func WithExistingTransaction(
 	ctx context.Context,
 	tx logical.Transaction,
@@ -286,10 +250,9 @@ func WithExistingTransaction(
 ) (Storage, error) {
 	// Create transaction config by inheriting from parent and applying overrides
 	parentConfig := &StorageConfig{
-		NodeSerializer:   parentStorage.serializer,
-		CachingEnabled:   parentStorage.cachingEnabled,
-		CacheSize:        parentStorage.cacheSize,
-		BufferingEnabled: parentStorage.bufferingEnabled,
+		NodeSerializer: parentStorage.serializer,
+		CachingEnabled: parentStorage.cachingEnabled,
+		CacheSize:      parentStorage.cacheSize,
 	}
 
 	// Apply overrides

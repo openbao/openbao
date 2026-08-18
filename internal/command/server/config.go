@@ -737,6 +737,12 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.PluginDownloadMaxSizeRaw = c2.PluginDownloadMaxSizeRaw
 	}
 
+	result.DisableSSCTokens = c.DisableSSCTokens
+	if c2.DisableSSCTokensRaw != nil {
+		result.DisableSSCTokens = c2.DisableSSCTokens
+		result.DisableSSCTokensRaw = c2.DisableSSCTokensRaw
+	}
+
 	return result
 }
 
@@ -1437,7 +1443,13 @@ func (c *Config) Sanitized() map[string]any {
 		"disable_standby_reads":           c.DisableStandbyReads,
 		"allow_unauthenticated_workflows": c.AllowUnauthenticatedWorkflows,
 		"unsafe_relative_paths":           c.UnsafeRelativePaths,
+
+		"disable_ssct_tokens": c.DisableSSCTokens,
 	}
+	if c.DisableSSCTokens == nil {
+		result["disable_ssct_tokens"] = true
+	}
+
 	maps.Copy(result, sharedResult)
 
 	// Sanitize storage stanza

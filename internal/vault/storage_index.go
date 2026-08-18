@@ -49,6 +49,19 @@ func (i *indexManager) Latest(ctx context.Context) (string, error) {
 	return i.getIndexLocked(ctx)
 }
 
+func (core *Core) MaybeGetLatestStorageIndex(ctx context.Context) string {
+	if core.indexManager == nil {
+		return ""
+	}
+
+	idx, err := core.indexManager.Latest(ctx)
+	if err != nil {
+		return ""
+	}
+
+	return idx
+}
+
 // Get returns the latest index if it is within freshness thresholds.
 func (i *indexManager) Get(ctx context.Context) (string, error) {
 	if index := func() string {
@@ -68,6 +81,19 @@ func (i *indexManager) Get(ctx context.Context) (string, error) {
 	defer i.l.Unlock()
 
 	return i.getIndexLocked(ctx)
+}
+
+func (core *Core) HaveSeenStorageIndex(ctx context.Context, index string) (bool, error) {
+	if core.indexManager == nil {
+		return true, nil
+	}
+
+	current, err := core.indexManager.Get(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return core.indexManager.backend.GreaterEqualReplicationIndex(ctx, current, index)
 }
 
 func (i *indexManager) Await(ctx context.Context, index string) error {
@@ -110,6 +136,14 @@ func (i *indexManager) Await(ctx context.Context, index string) error {
 
 	_, err := backoff.Retry(timeBoxed, op, backoff.WithBackOff(b))
 	return err
+}
+
+func (core *Core) AwaitStorageIndex(ctx context.Context, index string) bool {
+	if core.indexManager == nil {
+		return true
+	}
+
+	return core.indexManager.Await(ctx, index) == nil
 }
 
 func (i *indexManager) getIndexLocked(ctx context.Context) (string, error) {

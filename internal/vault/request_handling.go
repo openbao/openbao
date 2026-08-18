@@ -2762,5 +2762,16 @@ func (c *Core) checkSSCTokenInternal(ctx context.Context, token string) (string,
 		return plainToken.Random, nil
 	}
 
+	if plainToken.LocalIndex != "" {
+		seen, err := c.HaveSeenStorageIndex(ctx, plainToken.LocalIndex)
+		if err != nil {
+			return "", err
+		}
+
+		if !seen {
+			return "", logical.CodedError(http.StatusPreconditionFailed, "SSCT token referenced a newer index than present locally")
+		}
+	}
+
 	return plainToken.Random, nil
 }

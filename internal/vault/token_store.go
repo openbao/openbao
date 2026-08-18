@@ -1349,7 +1349,7 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry, per
 
 		entry.ExternalID = entry.ID
 		if !userSelectedID && !ts.core.DisableSSCTokens() {
-			entry.ExternalID = ts.GenerateSSCTokenID(entry.ID, entry)
+			entry.ExternalID = ts.GenerateSSCTokenID(ctx, entry.ID, entry)
 		}
 		return nil
 
@@ -1463,7 +1463,7 @@ func (ts *TokenStore) UpdateSSCTokensGenerationCounter(ctx context.Context) erro
 // minted service tokens. This function is meant to be robust so as to allow vault
 // to continue operating even in the case where IDs can't be generated. Thus it logs
 // errors as opposed to throwing them.
-func (ts *TokenStore) GenerateSSCTokenID(innerToken string, te *logical.TokenEntry) string {
+func (ts *TokenStore) GenerateSSCTokenID(ctx context.Context, innerToken string, te *logical.TokenEntry) string {
 	// Set up the prefix prepending function. This should really only be used in
 	// the token ID generation code itself.
 	prependServicePrefix := func(externalToken string) string {
@@ -1492,7 +1492,9 @@ func (ts *TokenStore) GenerateSSCTokenID(innerToken string, te *logical.TokenEnt
 
 	tokenGenerationCounter := uint32(ts.GetSSCTokensGenerationCounter())
 
-	t := tokens.Token{Random: innerToken, LocalIndex: 0, IndexEpoch: tokenGenerationCounter}
+	idx := ts.core.MaybeGetLatestStorageIndex(ctx)
+
+	t := tokens.Token{Random: innerToken, LocalIndex: idx, IndexEpoch: tokenGenerationCounter}
 	marshalledToken, err := proto.Marshal(&t)
 	if err != nil {
 		ts.logger.Error("unable to marshal token", "error", err)

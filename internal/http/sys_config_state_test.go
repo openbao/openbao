@@ -177,6 +177,7 @@ func TestSysConfigState_Sanitized(t *testing.T) {
 				"disable_standby_reads":           false,
 				"allow_unauthenticated_workflows": false,
 				"unsafe_relative_paths":           false,
+				"disable_ssct_tokens":             true,
 			}
 
 			if tc.expectedHAStorageOutput != nil {

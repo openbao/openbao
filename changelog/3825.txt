@@ -1,0 +1,3 @@
+```release-note:improvement
+auth/jwt: Add `jwks_pairs` support so a single JWT auth mount can validate tokens against multiple JWKS endpoints in configured order.
+```

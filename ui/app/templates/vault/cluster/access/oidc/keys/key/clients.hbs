@@ -7,7 +7,7 @@
     @title="No applications allowed"
     @message="Access to this key has been limited, and no applications are allowed to use it. Edit the key to allow access."
   >
-    <LinkTo @route="vault.cluster.access.oidc.keys.key.edit">
+    <LinkTo @route="vault.cluster.access.oidc.keys.key.edit" @model={{this.keyName}}>
       Edit key
     </LinkTo>
   </EmptyState>

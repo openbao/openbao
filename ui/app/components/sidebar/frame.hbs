@@ -1,12 +1,12 @@
 <Hds::AppFrame @hasSidebar={{@showSidebar}} @hasHeader={{false}} @hasFooter={{false}} as |Frame|>
   <Frame.Sidebar data-test-sidebar-nav>
-    <Hds::SideNav @isResponsive={{true}} @hasA11yRefocus={{true}} @a11yRefocusSkipTo="app-main-content">
+    <Hds::SideNav @isResponsive={{true}} @hasA11yRefocus={{@showSidebar}} @a11yRefocusSkipTo="app-main-content">
       <:header>
         <Hds::SideNav::Header>
           <:logo>
             <Sidebar::Header::HomeLink
               @icon="openbao"
-              @route="vault.cluster"
+              @route={{if this.currentCluster.cluster.name "vault.cluster"}}
               @model={{this.currentCluster.cluster.name}}
               @ariaLabel="home link"
               data-test-sidebar-logo

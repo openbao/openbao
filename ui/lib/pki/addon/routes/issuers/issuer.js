@@ -22,8 +22,12 @@ export default class PkiIssuerIndexRoute extends Route {
     super.setupController(controller, resolvedModel);
     controller.breadcrumbs = [
       { label: 'secrets', route: 'secrets', linkExternal: true },
-      { label: this.secretMountPath.currentPath, route: 'overview' },
-      { label: 'issuers', route: 'issuers.index' },
+      {
+        label: this.secretMountPath.currentPath,
+        route: 'overview',
+        models: [this.secretMountPath.currentPath],
+      },
+      { label: 'issuers', route: 'issuers.index', models: [this.secretMountPath.currentPath] },
     ];
   }
 }

@@ -8,6 +8,7 @@ import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
 import { task } from 'ember-concurrency';
 import { waitFor } from '@ember/test-waiters';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default class OidcKeyDetailsController extends Controller {
   @service store;
@@ -32,7 +33,7 @@ export default class OidcKeyDetailsController extends Controller {
     try {
       await this.model.destroyRecord();
       this.flashMessages.success('Key deleted successfully');
-      this.router.transitionTo('vault.cluster.access.oidc.keys');
+      transitionToSafe(this.router, 'vault.cluster.access.oidc.keys');
     } catch (error) {
       this.model.rollbackAttributes();
       const message = error.errors ? error.errors.join('. ') : error.message;

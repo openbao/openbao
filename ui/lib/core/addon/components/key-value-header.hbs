@@ -4,10 +4,10 @@
     {{#each this.secretPath as |path index|}}
       <li class={{if (is-active-route path.path path.model isExact=true) "is-active"}}>
         <span class="sep">&#x0002f;</span>
-        {{#if (and this.linkToPaths (not @isEngine))}}
+        {{#if (and this.linkToPaths (not @isEngine) path.models.length)}}
           <LinkTo
             @route={{path.path}}
-            @model={{path.model}}
+            @models={{path.models}}
             data-test-secret-root-link={{if (eq index 0) true false}}
             data-test-secret-breadcrumb={{path.text}}
           >

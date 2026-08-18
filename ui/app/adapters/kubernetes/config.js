@@ -34,8 +34,15 @@ export default class KubernetesConfigAdapter extends ApplicationAdapter {
   }
   _saveRecord(store, { modelName }, snapshot) {
     const data = store.serializerFor(modelName).serialize(snapshot);
-    const url = this.getURL(snapshot.attr('backend'));
-    return this.ajax(url, 'POST', { data }).then(() => data);
+    const id = snapshot.id || snapshot.attr('backend');
+    const url = this.getURL(id);
+    return this.ajax(url, 'POST', { data }).then(() => {
+      return {
+        ...data,
+        backend: id,
+        id,
+      };
+    });
   }
   checkConfigVars(backend) {
     return this.ajax(`${this.getURL(backend, 'check')}`, 'GET');

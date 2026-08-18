@@ -27,6 +27,12 @@ module('Integration | Component | auth-config-form options', function (hooks) {
           followRedirects() {
             return resolve();
           },
+          then() {
+            return resolve();
+          },
+          catch() {
+            return resolve();
+          },
         };
       },
       replaceWith() {

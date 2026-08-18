@@ -33,17 +33,9 @@
     "openbao:cluster": "BAO_REDIRECT_ADDR=http://127.0.0.1:8202 bao server -log-level=error -dev -dev-root-token-id=root -dev-listen-address=127.0.0.1:8202 -dev-ha"
   },
   "lint-staged": {
-    "*.js": [
-      "prettier --config .prettierrc.js --write",
-      "eslint --quiet"
-    ],
-    "*.hbs": [
-      "prettier --config .prettierrc.js --write",
-      "ember-template-lint --quiet"
-    ],
-    "*.scss": [
-      "prettier --write"
-    ]
+    "*.js": ["prettier --config .prettierrc.js --write", "eslint --quiet"],
+    "*.hbs": ["prettier --config .prettierrc.js --write", "ember-template-lint --quiet"],
+    "*.scss": ["prettier --write"]
   },
   "devDependencies": {
     "@babel/eslint-parser": "7.27.0",
@@ -55,6 +47,7 @@
     "@ember/string": "^3.0.1",
     "@ember/test-helpers": "2.9.3",
     "@ember/test-waiters": "^3.0.0",
+    "@ember-data/legacy-compat": "4.12.8",
     "@eslint/js": "^9.24.0",
     "@glimmer/component": "^1.1.2",
     "@glimmer/tracking": "^1.1.2",
@@ -120,7 +113,7 @@
     "ember-composable-helpers": "5.0.0",
     "ember-concurrency": "2.3.4",
     "ember-copy": "2.0.1",
-    "ember-data": "4.11.3",
+    "ember-data": "4.12.8",
     "ember-engines": "^0.9.0",
     "ember-fetch": "^8.1.2",
     "ember-inflector": "4.0.2",

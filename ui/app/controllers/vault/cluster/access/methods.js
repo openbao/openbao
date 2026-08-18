@@ -45,7 +45,7 @@ export default class VaultClusterAccessMethodsController extends Controller {
   get authMethodArrayByType() {
     const arrayOfAllAuthTypes = this.authMethodList.map((modelObject) => modelObject.type);
     // filter out repeated auth types (e.g. [userpass, userpass] => [userpass])
-    const arrayOfUniqueAuthTypes = [...new Set(arrayOfAllAuthTypes)];
+    const arrayOfUniqueAuthTypes = [...new Set(arrayOfAllAuthTypes)].sort();
 
     return arrayOfUniqueAuthTypes.map((authType) => ({
       name: authType,

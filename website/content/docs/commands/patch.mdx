@@ -54,11 +54,11 @@ $ tee request_payload.json -<<EOF
 }
 EOF
 
-$ curl --header "X-Vault-Token: $VAULT_TOKEN" \
+$ curl --header "X-Vault-Token: $BAO_TOKEN" \
     --request PATCH \
     --header 'Content-Type: application/merge-patch+json'
     --data @request_payload.json \
-    $VAULT_ADDR/v1/pki/roles/example
+    $BAO_ADDR/v1/pki/roles/example
 ```
 
 The `bao patch` command simplifies the API call.

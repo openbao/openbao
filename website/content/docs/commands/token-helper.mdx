@@ -35,15 +35,15 @@ If your program succeeds, it should exit with status code 0. If it encounters an
 
 ### Example token helper
 
-This is an example token helper written in Ruby that stores and retrieves tokens in a json file called `~/.openbao_tokens`. The key is the environment variable \$VAULT_ADDR, this allows the OpenBao user to easily store and retrieve tokens from a number of different OpenBao servers.
+This is an example token helper written in Ruby that stores and retrieves tokens in a json file called `~/.openbao_tokens`. The key is the environment variable `BAO_ADDR`, this allows the OpenBao user to easily store and retrieve tokens from a number of different OpenBao servers.
 
 ```ruby
 #!/usr/bin/env ruby
 
 require 'json'
 
-unless ENV['VAULT_ADDR']
-  STDERR.puts "No VAULT_ADDR environment variable set. Set it and run me again!"
+unless ENV['BAO_ADDR']
+  STDERR.puts "No BAO_ADDR environment variable set. Set it and run me again!"
   exit 100
 end
 
@@ -56,12 +56,12 @@ end
 
 case ARGV.first
 when 'get'
-  print tokens[ENV['VAULT_ADDR']] if tokens[ENV['VAULT_ADDR']]
+  print tokens[ENV['BAO_ADDR']] if tokens[ENV['BAO_ADDR']]
   exit 0
 when 'store'
-  tokens[ENV['VAULT_ADDR']] = STDIN.read
+  tokens[ENV['BAO_ADDR']] = STDIN.read
 when 'erase'
-  tokens.delete!(ENV['VAULT_ADDR'])
+  tokens.delete!(ENV['BAO_ADDR'])
 end
 
 File.open("#{ENV['HOME']}/.openbao_tokens", 'w') { |file| file.write(tokens.to_json) }

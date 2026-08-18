@@ -130,6 +130,31 @@ const (
 	// dash) is ignored. Any repeated header keys result in request failure.
 	InlineAuthParameterHeaderPrefix = "X-Vault-Inline-Auth-Parameter-"
 
+	// When sent as a request header, this denotes the minimum index value
+	// the client thinks is required to process this request. Exact OpenBao
+	// server behavior depends on configuration and the X-Vault-Inconsistent
+	// header. Invalid index headers are usually processed locally.
+	//
+	// Sent as a response header by OpenBao when a write occurs, to indicate
+	// the current state.
+	IndexHeaderName = "X-Vault-Index"
+
+	// When sent as a request header, this specifies a behavior for index
+	// processing. When "await-state" is specified as the first value, this
+	// takes another value as fallback. Defaults to "fail" on empty value.
+	IndexInconsistentHeaderName = "X-Vault-Inconsistent"
+
+	// A 429 is sent on stale index, indicating the client needs to try again
+	// after a back-off period.
+	IndexInconsistentFail = "fail"
+
+	// The request will be forwarded to the active node on stale index header.
+	IndexInconsistentForward = "forward-active-node"
+
+	// The request will be awaited on the server before a fallback behavior is
+	// performed (either fail or forwarding).
+	IndexInconsistentAwait = "await-state"
+
 	TLSErrorString = "This error usually means that the server is running with TLS disabled\n" +
 		"but the client is configured to use TLS. Please either enable TLS\n" +
 		"on the server or run the client with -address set to an address\n" +
@@ -263,6 +288,14 @@ type Config struct {
 	// DisableEnvironment, when set to true, will skip automatic configuration
 	// based on well-known environment variables when the client is constructed.
 	DisableEnvironment bool
+
+	// DefaultStrongConsistency, when set to true, at initial client creation
+	// time, will configure the client with the current default best practices
+	// for being transparently replication aware and highly consistent.
+	//
+	// The behavior of this option may shift over time as different semantics
+	// are introduced.
+	DefaultStrongConsistency bool
 
 	clientTLSConfig *tls.Config
 }
@@ -707,6 +740,14 @@ type Client struct {
 	policyOverride     bool
 	requestCallbacks   []RequestCallback
 	responseCallbacks  []ResponseCallback
+
+	// Policy to use for X-Vault-Inconsistent; exact behavior of OpenBao
+	// depends on listener configuration and the value of this option.
+	inconsistent []string
+
+	// state is an index manager shared across all client implementations;
+	// it holds the latest seen index from a given cluster.
+	state IndexManager
 }
 
 // NewClient returns a new client for the given configuration.
@@ -783,6 +824,11 @@ func NewClient(c *Config) (*Client, error) {
 		if namespace := ReadBaoVariable(EnvVaultNamespace); namespace != "" {
 			client.setNamespace(namespace)
 		}
+	}
+
+	if c.DefaultStrongConsistency {
+		client.setInconsistent([]string{IndexInconsistentAwait, IndexInconsistentForward})
+		client.setIndexManager(NewSimpleIndexManager())
 	}
 
 	return client, nil
@@ -1309,6 +1355,9 @@ func (c *Client) clone(cloneHeaders bool) (*Client, error) {
 		client.SetToken(c.token)
 	}
 
+	client.SetInconsistent(c.inconsistent)
+	client.SetIndexManager(c.state)
+
 	return client, nil
 }
 
@@ -1334,6 +1383,13 @@ func (c *Client) NewRequest(method, requestPath string) *Request {
 	wrappingLookupFunc := c.wrappingLookupFunc
 	policyOverride := c.policyOverride
 	disableEnvironment := c.config.DisableEnvironment
+	inconsistent := c.inconsistent
+	ns := c.headers.Get(NamespaceHeaderName)
+
+	var index string
+	if c.state != nil {
+		index = c.state.Get(addr.String(), ns)
+	}
 
 	c.config.modifyLock.RUnlock()
 	c.modifyLock.RUnlock()
@@ -1384,6 +1440,20 @@ func (c *Client) NewRequest(method, requestPath string) *Request {
 
 	req.Headers = c.Headers()
 	req.PolicyOverride = policyOverride
+
+	if index != "" || len(inconsistent) > 0 {
+		if req.Headers == nil {
+			req.Headers = http.Header{}
+		}
+
+		if index != "" {
+			req.Headers.Set(IndexHeaderName, index)
+		}
+
+		for _, value := range inconsistent {
+			req.Headers.Add(IndexInconsistentHeaderName, value)
+		}
+	}
 
 	return req
 }
@@ -1552,6 +1622,9 @@ START:
 		for _, cb := range c.responseCallbacks {
 			cb(result)
 		}
+
+		// Check for index headers.
+		c.setIndexFromResult(r, result)
 	}
 	if err := result.Error(); err != nil {
 		return result, err

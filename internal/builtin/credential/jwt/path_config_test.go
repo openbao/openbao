@@ -43,9 +43,8 @@ func TestConfig_JWT_Read(t *testing.T) {
 		"default_role":                  "",
 		"jwt_validation_pubkeys":        []string{testJWTPubKey},
 		"jwt_supported_algs":            []string{},
-		"jwks_url":                      "",
+		"jwks_url":                      []string{},
 		"jwks_ca_pem":                   "",
-		"jwks_pairs":                    []map[string]any{},
 		"bound_issuer":                  "http://vault.example.com/",
 		"provider_config":               map[string]any{},
 		"namespace_in_state":            false,
@@ -155,6 +154,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 		ParsedJWTPubKeys:           []crypto.PublicKey{pubkey},
 		JWTValidationPubKeys:       []string{testJWTPubKey},
 		JWTSupportedAlgs:           []string{},
+		JWKSURL:                    []string{},
 		OIDCResponseTypes:          []string{},
 		OverrideAllowedServerNames: []string{},
 		BoundIssuer:                "http://vault.example.com/",
@@ -208,10 +208,10 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// The old single-string form of jwks_url must still be accepted.
 	data := map[string]any{
 		"jwks_url":                      s.server.URL + "/certs",
 		"jwks_ca_pem":                   cert,
-		"jwks_pairs":                    []map[string]any{},
 		"oidc_discovery_url":            "",
 		"oidc_discovery_ca_pem":         "",
 		"oidc_client_id":                "",
@@ -239,6 +239,14 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
+	conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(conf.JWKSURL, []string{s.server.URL + "/certs"}) {
+		t.Fatalf("expected single-string jwks_url to be stored as a list, got: %#v", conf.JWKSURL)
+	}
+
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      configPath,
@@ -251,6 +259,8 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
+	// Reads return the new list format regardless of the input form.
+	data["jwks_url"] = []string{s.server.URL + "/certs"}
 	if diff := deep.Equal(resp.Data, data); diff != nil {
 		t.Fatalf("Expected did not equal actual: %v", diff)
 	}
@@ -394,6 +404,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 	expected := &jwtConfig{
 		JWTValidationPubKeys:       []string{},
 		JWTSupportedAlgs:           []string{},
+		JWKSURL:                    []string{},
 		OIDCResponseTypes:          []string{},
 		OverrideAllowedServerNames: []string{},
 		OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
@@ -501,6 +512,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 		expected := &jwtConfig{
 			JWTValidationPubKeys:       []string{},
 			JWTSupportedAlgs:           []string{},
+			JWKSURL:                    []string{},
 			OIDCResponseTypes:          []string{},
 			OverrideAllowedServerNames: []string{},
 			OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
@@ -562,6 +574,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 		expected := &jwtConfig{
 			JWTValidationPubKeys:       []string{},
 			JWTSupportedAlgs:           []string{},
+			JWKSURL:                    []string{},
 			OIDCResponseTypes:          []string{},
 			OverrideAllowedServerNames: []string{},
 			OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
@@ -596,6 +609,7 @@ func TestConfig_OIDC_Create_Namespace(t *testing.T) {
 				OIDCResponseTypes:          []string{},
 				OverrideAllowedServerNames: []string{},
 				JWTSupportedAlgs:           []string{},
+				JWKSURL:                    []string{},
 				JWTValidationPubKeys:       []string{},
 				ProviderConfig:             map[string]any{},
 			},
@@ -611,6 +625,7 @@ func TestConfig_OIDC_Create_Namespace(t *testing.T) {
 				OIDCResponseTypes:          []string{},
 				OverrideAllowedServerNames: []string{},
 				JWTSupportedAlgs:           []string{},
+				JWKSURL:                    []string{},
 				JWTValidationPubKeys:       []string{},
 				ProviderConfig:             map[string]any{},
 			},
@@ -626,6 +641,7 @@ func TestConfig_OIDC_Create_Namespace(t *testing.T) {
 				OIDCResponseTypes:          []string{},
 				OverrideAllowedServerNames: []string{},
 				JWTSupportedAlgs:           []string{},
+				JWKSURL:                    []string{},
 				JWTValidationPubKeys:       []string{},
 				ProviderConfig:             map[string]any{},
 			},
@@ -674,6 +690,7 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 				NamespaceInState:           true,
 				OIDCResponseTypes:          []string{},
 				JWTSupportedAlgs:           []string{},
+				JWKSURL:                    []string{},
 				OverrideAllowedServerNames: []string{},
 				JWTValidationPubKeys:       []string{},
 				ProviderConfig:             map[string]any{},
@@ -695,6 +712,7 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 				OIDCResponseTypes:          []string{},
 				OverrideAllowedServerNames: []string{},
 				JWTSupportedAlgs:           []string{},
+				JWKSURL:                    []string{},
 				JWTValidationPubKeys:       []string{},
 				ProviderConfig:             map[string]any{},
 			},
@@ -714,6 +732,7 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 				OIDCResponseTypes:          []string{},
 				OverrideAllowedServerNames: []string{},
 				JWTSupportedAlgs:           []string{},
+				JWKSURL:                    []string{},
 				JWTValidationPubKeys:       []string{},
 				ProviderConfig:             map[string]any{},
 			},
@@ -734,6 +753,7 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 				OIDCResponseTypes:          []string{},
 				OverrideAllowedServerNames: []string{},
 				JWTSupportedAlgs:           []string{},
+				JWKSURL:                    []string{},
 				JWTValidationPubKeys:       []string{},
 				ProviderConfig:             map[string]any{},
 			},
@@ -1009,7 +1029,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, caPEM *bytes.Bu
 	return serverTLSConf, caPEM, err
 }
 
-func TestConfig_JWKSPairs_WriteRead(t *testing.T) {
+func TestConfig_JWKS_MultiURL_WriteRead(t *testing.T) {
 	b, storage := getBackend(t)
 
 	s := newOIDCProvider(t)
@@ -1021,16 +1041,8 @@ func TestConfig_JWKSPairs_WriteRead(t *testing.T) {
 	}
 
 	data := map[string]any{
-		"jwks_pairs": []map[string]any{
-			{
-				"jwks_url":    s.server.URL + "/certs_wrong",
-				"jwks_ca_pem": cert,
-			},
-			{
-				"jwks_url":    s.server.URL + "/certs",
-				"jwks_ca_pem": cert,
-			},
-		},
+		"jwks_url":                      []string{s.server.URL + "/certs_wrong", s.server.URL + "/certs"},
+		"jwks_ca_pem":                   cert,
 		"oidc_discovery_url":            "",
 		"oidc_discovery_ca_pem":         "",
 		"oidc_client_id":                "",
@@ -1040,8 +1052,6 @@ func TestConfig_JWKSPairs_WriteRead(t *testing.T) {
 		"default_role":                  "",
 		"jwt_validation_pubkeys":        []string{},
 		"jwt_supported_algs":            []string{},
-		"jwks_url":                      "",
-		"jwks_ca_pem":                   "",
 		"bound_issuer":                  "",
 		"provider_config":               map[string]any{},
 		"namespace_in_state":            false,
@@ -1081,15 +1091,13 @@ func TestConfig_JWKSPairs_WriteRead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(conf.JWKSPairs) != 2 {
-		t.Fatalf("expected 2 pairs, got %d", len(conf.JWKSPairs))
-	}
-	if conf.JWKSPairs[0]["jwks_url"] != s.server.URL+"/certs_wrong" || conf.JWKSPairs[1]["jwks_url"] != s.server.URL+"/certs" {
-		t.Fatalf("pair order not preserved: %#v", conf.JWKSPairs)
+	expectedURLs := []string{s.server.URL + "/certs_wrong", s.server.URL + "/certs"}
+	if !reflect.DeepEqual(conf.JWKSURL, expectedURLs) {
+		t.Fatalf("URL order not preserved: %#v", conf.JWKSURL)
 	}
 }
 
-func TestConfig_JWKSPairs_MutuallyExclusive(t *testing.T) {
+func TestConfig_JWKS_MultiURL_SkipValidation(t *testing.T) {
 	b, storage := getBackend(t)
 
 	s := newOIDCProvider(t)
@@ -1098,141 +1106,6 @@ func TestConfig_JWKSPairs_MutuallyExclusive(t *testing.T) {
 	cert, err := s.getTLSCert()
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	pairs := []map[string]any{
-		{"jwks_url": s.server.URL + "/certs", "jwks_ca_pem": cert},
-	}
-
-	tests := []struct {
-		name    string
-		data    map[string]any
-		errText string
-	}{
-		{
-			"with jwks_url",
-			map[string]any{
-				"jwks_url":   s.server.URL + "/certs",
-				"jwks_pairs": pairs,
-			},
-			"exactly one of",
-		},
-		{
-			"with jwks_ca_pem",
-			map[string]any{
-				"jwks_ca_pem": cert,
-				"jwks_pairs":  pairs,
-			},
-			"'jwks_ca_pem' cannot be used with 'jwks_pairs'",
-		},
-		{
-			"with bound_issuer",
-			map[string]any{
-				"bound_issuer": "https://team-vault.auth0.com/",
-				"jwks_pairs":   pairs,
-			},
-			"'bound_issuer' cannot be used with 'jwks_pairs'",
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			req := &logical.Request{
-				Operation: logical.UpdateOperation,
-				Path:      configPath,
-				Storage:   storage,
-				Data:      test.data,
-			}
-
-			resp, err := b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if resp == nil || !resp.IsError() {
-				t.Fatal("expected error")
-			}
-			if !strings.Contains(resp.Error().Error(), test.errText) {
-				t.Fatalf("got unexpected error: %v", resp.Error())
-			}
-		})
-	}
-}
-
-func TestConfig_JWKSPairs_Malformed(t *testing.T) {
-	b, storage := getBackend(t)
-
-	tests := []struct {
-		name string
-		data map[string]any
-	}{
-		{
-			"element not an object",
-			map[string]any{
-				"jwks_pairs": []any{"not-an-object"},
-			},
-		},
-		{
-			"missing jwks_url",
-			map[string]any{
-				"jwks_pairs": []any{
-					map[string]any{"jwks_ca_pem": "abc"},
-				},
-			},
-		},
-		{
-			"empty jwks_url",
-			map[string]any{
-				"jwks_pairs": []any{
-					map[string]any{"jwks_url": "", "jwks_ca_pem": "abc"},
-				},
-			},
-		},
-		{
-			"non-string jwks_ca_pem",
-			map[string]any{
-				"jwks_pairs": []any{
-					map[string]any{"jwks_url": "https://example.com/certs", "jwks_ca_pem": 123},
-				},
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			req := &logical.Request{
-				Operation: logical.UpdateOperation,
-				Path:      configPath,
-				Storage:   storage,
-				Data:      test.data,
-			}
-
-			resp, err := b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if resp == nil || !resp.IsError() {
-				t.Fatal("expected error")
-			}
-			if !strings.Contains(resp.Error().Error(), "invalid jwks_pairs[0]") {
-				t.Fatalf("got unexpected error: %v", resp.Error())
-			}
-		})
-	}
-}
-
-func TestConfig_JWKSPairs_SkipValidation(t *testing.T) {
-	b, storage := getBackend(t)
-
-	s := newOIDCProvider(t)
-	defer s.server.Close()
-
-	cert, err := s.getTLSCert()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	pairs := []map[string]any{
-		{"jwks_url": s.server.URL + "/certs_missing", "jwks_ca_pem": cert},
 	}
 
 	t.Run("skip false fails", func(t *testing.T) {
@@ -1241,7 +1114,8 @@ func TestConfig_JWKSPairs_SkipValidation(t *testing.T) {
 			Path:      configPath,
 			Storage:   storage,
 			Data: map[string]any{
-				"jwks_pairs": pairs,
+				"jwks_url":    []string{s.server.URL + "/certs_missing", s.server.URL + "/certs"},
+				"jwks_ca_pem": cert,
 			},
 		}
 
@@ -1263,7 +1137,8 @@ func TestConfig_JWKSPairs_SkipValidation(t *testing.T) {
 			Path:      configPath,
 			Storage:   storage,
 			Data: map[string]any{
-				"jwks_pairs":           pairs,
+				"jwks_url":             []string{s.server.URL + "/certs_missing", s.server.URL + "/certs"},
+				"jwks_ca_pem":          cert,
 				"skip_jwks_validation": true,
 			},
 		}
@@ -1278,18 +1153,115 @@ func TestConfig_JWKSPairs_SkipValidation(t *testing.T) {
 		if len(resp.Warnings) == 0 {
 			t.Fatal("expected at least one verification warning")
 		}
-		if !strings.Contains(resp.Warnings[0], "jwks_pairs[0]") {
-			t.Fatalf("expected warning to reference jwks_pairs[0], got: %v", resp.Warnings)
+		if !strings.Contains(resp.Warnings[0], "jwks_url[0]") {
+			t.Fatalf("expected warning to reference jwks_url[0], got: %v", resp.Warnings)
 		}
 
 		conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(conf.JWKSPairs) != 1 {
-			t.Fatalf("expected 1 pair to be saved, got %d", len(conf.JWKSPairs))
+		if len(conf.JWKSURL) != 2 {
+			t.Fatalf("expected 2 URLs to be saved, got %d", len(conf.JWKSURL))
 		}
 	})
+}
+
+func TestConfig_JWKSURL_LegacyStringStorage(t *testing.T) {
+	b, storage := getBackend(t)
+
+	// A legacy config stored "jwks_url" as a single string; it must still decode.
+	entry := &logical.StorageEntry{
+		Key: configPath,
+		Value: []byte(`{
+			"oidc_discovery_url": "",
+			"jwks_url": "https://example.com/certs",
+			"jwks_ca_pem": ""
+		}`),
+	}
+	if err := storage.Put(t.Context(), entry); err != nil {
+		t.Fatal(err)
+	}
+
+	conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(conf.JWKSURL, []string{"https://example.com/certs"}) {
+		t.Fatalf("expected legacy single-string jwks_url to decode as a list, got: %#v", conf.JWKSURL)
+	}
+
+	req := &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      nil,
+	}
+	resp, err := b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+	if got := resp.Data["jwks_url"]; !reflect.DeepEqual(got, []string{"https://example.com/certs"}) {
+		t.Fatalf("expected read to return jwks_url list, got: %#v", got)
+	}
+}
+
+func TestConfig_JWKSURL_LegacyEmptyStorage(t *testing.T) {
+	// A legacy config could store an empty "jwks_url" string, which must not
+	// be treated as a JWKS configuration after upgrade.
+	tests := map[string]string{
+		"legacy empty string": `{
+			"oidc_discovery_url": "https://team-vault.auth0.com/",
+			"oidc_discovery_ca_pem": "",
+			"oidc_client_id": "",
+			"oidc_client_secret": "",
+			"jwks_url": "",
+			"jwks_ca_pem": ""
+		}`,
+		"null": `{
+			"oidc_discovery_url": "https://team-vault.auth0.com/",
+			"oidc_discovery_ca_pem": "",
+			"oidc_client_id": "",
+			"oidc_client_secret": "",
+			"jwks_url": null,
+			"jwks_ca_pem": ""
+		}`,
+		"missing field": `{
+			"oidc_discovery_url": "https://team-vault.auth0.com/",
+			"oidc_discovery_ca_pem": "",
+			"oidc_client_id": "",
+			"oidc_client_secret": "",
+			"jwks_ca_pem": ""
+		}`,
+	}
+
+	for name, raw := range tests {
+		t.Run(name, func(t *testing.T) {
+			b, storage := getBackend(t)
+
+			entry := &logical.StorageEntry{
+				Key:   configPath,
+				Value: []byte(raw),
+			}
+			if err := storage.Put(t.Context(), entry); err != nil {
+				t.Fatal(err)
+			}
+
+			conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(conf.JWKSURL) != 0 {
+				t.Fatalf("expected zero-length JWKSURL, got: %#v", conf.JWKSURL)
+			}
+			if conf.authType() == JWKS {
+				t.Fatal("expected config not to be classified as JWKS")
+			}
+			if conf.authType() != OIDCDiscovery {
+				t.Fatalf("expected OIDCDiscovery auth type, got: %d", conf.authType())
+			}
+		})
+	}
 }
 
 const (

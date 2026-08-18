@@ -154,15 +154,9 @@ func (b *jwtAuthBackend) jwtValidator(config *jwtConfig) (*jwt.Validator, error)
 	// Configure the key sets for the validator
 	switch config.authType() {
 	case JWKS:
-		var keySet jwt.KeySet
-		keySet, err = jwt.NewJSONWebKeySet(b.providerCtx, config.JWKSURL, config.JWKSCAPEM)
-		keySets = append(keySets, keySet)
-	case JWKSPairs:
-		for _, pair := range config.JWKSPairs {
-			jwksURL, _ := pair["jwks_url"].(string)
-			jwksCAPEM, _ := pair["jwks_ca_pem"].(string)
+		for _, jwksURL := range config.JWKSURL {
 			var keySet jwt.KeySet
-			keySet, err = jwt.NewJSONWebKeySet(b.providerCtx, jwksURL, jwksCAPEM)
+			keySet, err = jwt.NewJSONWebKeySet(b.providerCtx, jwksURL, config.JWKSCAPEM)
 			if err != nil {
 				break
 			}

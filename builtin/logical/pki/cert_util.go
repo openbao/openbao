@@ -1410,46 +1410,34 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	// Get and verify any IP SANs
 	ipAddresses := []net.IP{}
 	{
+		ipSource := "the API"
 		if csr != nil && data.role.UseCSRSANs {
-			if len(csr.IPAddresses) > 0 {
-				if !data.role.AllowIPSANs {
-					return nil, nil, errutil.UserError{Err: "IP Subject Alternative Names are not allowed in this role, but was provided some via CSR"}
-				}
-				ipAddresses = csr.IPAddresses
-			}
+			ipAddresses = csr.IPAddresses
+			ipSource = "CSR"
 		} else {
 			ipAlt := data.apiData.Get("ip_sans").([]string)
-			if len(ipAlt) > 0 {
-				if !data.role.AllowIPSANs {
-					return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-						"IP Subject Alternative Names are not allowed in this role, but was provided %s", ipAlt,
-					)}
+
+			for _, v := range ipAlt {
+				parsedIP := net.ParseIP(v)
+				if parsedIP == nil {
+					return nil, nil, errutil.UserError{Err: fmt.Sprintf("the value %q is not a valid IP address", v)}
 				}
-				for _, v := range ipAlt {
-					parsedIP := net.ParseIP(v)
-					if parsedIP == nil {
-						return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-							"the value %q is not a valid IP address", v,
-						)}
-					}
-					if len(data.role.AllowedIPSANsCIDR) > 0 {
-						valid := false
-						for _, allowedNetwork := range data.role.AllowedIPSANsCIDR {
-							if allowedNetwork.Contains(parsedIP) {
-								valid = true
-								break
-							}
-						}
 
-						if !valid {
-							return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-								"the IP address %q is not allowed in this role", v,
-							)}
-						}
+				ipAddresses = append(ipAddresses, parsedIP)
+			}
+		}
 
-						ipAddresses = append(ipAddresses, parsedIP)
-					} else {
-						ipAddresses = append(ipAddresses, parsedIP)
+		if len(ipAddresses) > 0 {
+			if !data.role.AllowIPSANs {
+				return nil, nil, errutil.UserError{Err: fmt.Sprintf("IP Subject Alternative Names are not allowed in this role, but was provided via %v", ipSource)}
+			}
+
+			if len(data.role.AllowedIPSANsCIDR) > 0 {
+				for _, parsedIP := range ipAddresses {
+					if !slices.ContainsFunc(data.role.AllowedIPSANsCIDR, func(allowedNetwork net.IPNet) bool {
+						return allowedNetwork.Contains(parsedIP)
+					}) {
+						return nil, nil, errutil.UserError{Err: fmt.Sprintf("the IP address %q is not allowed in this role", parsedIP.String())}
 					}
 				}
 			}

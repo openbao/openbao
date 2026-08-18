@@ -10,8 +10,50 @@ OpenBao in the news, whether mentions at conferences, press releases, or similar
 import Randomize from './lib/Randomize.tsx';
 import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
 
+## 2026
+
+### August 2026
+
 <div className="container">
-  <h2>July 2026</h2>
+  <div className="row">
+    <Randomize>
+      <NewsBlurb title="CNPG Recipe 27 - Running OpenBao on Kubernetes with a CloudNativePG PostgreSQL backend" link="https://www.gabrielebartolini.it/articles/2026/08/cnpg-recipe-27-running-openbao-on-kubernetes-with-a-cloudnativepg-postgresql-backend/">
+        A walkthrough of running OpenBao on Kubernetes with CloudNativePG as
+        its PostgreSQL storage backend. Every layer of this stack is open
+        source, with no vendor lock-in: Kubernetes and CloudNativePG are both
+        CNCF projects, authenticated entirely over TLS client certificates via
+        the 1.30 DatabaseRole CRD, with no passwords anywhere in the stack.
+        Co-authored with Rob Kenefeck from ControlPlane.
+      </NewsBlurb>
+
+      <NewsBlurb title="Securing Agent Identity: Hardening SPIRE with OpenBao" memberName="controlplane" link="https://control-plane.io/posts/securing-agent-identity-openbao-spire/">
+        Organizations are rapidly deploying autonomous AI agents that execute
+        complex toolchains, call external APIs, and read corporate data stores
+        on behalf of real users. As the surface area of non-human identity
+        (NHI) explodes, securing the identities powering these agents has
+        become a primary security hurdle.
+      </NewsBlurb>
+
+      <NewsBlurb title="HashiCorp Vault - The Exit Guide Conversation" memberName="controlplane" link="https://control-plane.io/posts/vault-exit-guide/">
+        Many of the alternatives to IBM’s HashiCorp Vault require retooling:
+        CyberArk, Akeyless, cloud providers' secrets managers, but one product
+        doesn't: ControlPlane Enterprise for OpenBao. A continuation of Vault
+        Community Edition, governed under the Linux Foundation's OpenSSF.
+      </NewsBlurb>
+
+      <NewsBlurb title="Sovereign Signing: A Self-Hosted Supply Chain with OpenBao, Cosign, and Flux CD" memberName="controlplane" link="https://control-plane.io/posts/sovereign-signing-openbao-cosign-flux/">
+        If you run a regulated platform, the last three years have shifted the
+        assumptions under your secrets management strategy. In August 2023,
+        HashiCorp relicensed Vault from the open source MPL 2.0 to the Business
+        Source License (BSL 1.1).
+      </NewsBlurb>
+    </Randomize>
+  </div>
+</div>
+
+### July 2026
+
+<div className="container">
   <div className="row">
     <Randomize>
       <NewsBlurb title="OpenBao - Leadership from the Ground Up" memberName="controlplane" link="https://control-plane.io/posts/openbao-foundational-leadership/">
@@ -23,10 +65,20 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
         components platform teams utilize to meet the accelerating business
         demands.
       </NewsBlurb>
+
+      <NewsBlurb title="Flux and OpenBao: Secrets and Signatures" link="https://fluxcd.io/blog/2026/07/flux-openbao-secrets-signatures">
+        GitOps helps us declare our desired workloads, but how do we deal with
+        and manage secrets? Additionally, as our fleet grows, we also blend
+        artifacts and configuration from many different sources. How do we
+        trust what we are running?
+      </NewsBlurb>
     </Randomize>
   </div>
+</div>
 
-  <h2>June 2026</h2>
+### June 2026
+
+<div className="container">
   <div className="row">
     <Randomize>
       <YouTubeTalk title="Shifting Secrets Left with ControlPlane Enterprise for OpenBao - PlatformCon 2026" vid="p1QD6AzG7g4" memberName="controlplane">
@@ -64,8 +116,11 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
       </YouTubeTalk>
     </Randomize>
   </div>
+</div>
 
-  <h2>May 2026</h2>
+### May 2026
+
+<div className="container">
   <div className="row">
     <Randomize>
       <YouTubeTalk title="OpenBao: Horizontally Scaling Secrets Management - OSSNA 2026" vid="vNsEAmNPwH0" memberName="controlplane">
@@ -81,8 +136,11 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
       </NewsBlurb>
     </Randomize>
   </div>
+</div>
 
-  <h2>April 2026</h2>
+### April 2026
+
+<div className="container">
   <div className="row">
     <Randomize>
       <NewsBlurb title="OpenBao Basics: What Is Secrets Management?" memberName="adfinis" link="https://www.adfinis.com/en/news/openbao-basics-what-is-secrets-management">
@@ -111,8 +169,11 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
       </NewsBlurb>
     </Randomize>
   </div>
+</div>
 
-  <h2>March 2026</h2>
+### March 2026
+
+<div className="container">
   <div className="row">
     <Randomize>
       <NewsBlurb title="ControlPlane unveils enterprise support for OpenBao" memberName="controlplane" link="https://channellife.com.au/story/controlplane-unveils-enterprise-support-for-openbao">
@@ -142,8 +203,11 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
       </NewsBlurb>
     </Randomize>
   </div>
+</div>
 
-  <h2>February 2026</h2>
+### February 2026
+
+<div className="container">
   <div className="row">
     <Randomize>
       <NewsBlurb title="Adfinis unveils flat-fee OpenBao-based secrets service" memberName="adfinis" link="https://itbrief.co.uk/story/adfinis-unveils-flat-fee-openbao-based-secrets-service">
@@ -166,8 +230,13 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
       </NewsBlurb>
     </Randomize>
   </div>
+</div>
 
-  <h2>December 2025</h2>
+## 2025
+
+### December 2025
+
+<div className="container">
   <div className="row">
     <Randomize>
       <NewsBlurb title="Adfinis unveils OpenBao services for secure secrets" memberName="adfinis" link="https://securitybrief.co.uk/story/adfinis-unveils-openbao-services-for-secure-secrets">
@@ -195,8 +264,11 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
       </NewsBlurb>
     </Randomize>
   </div>
+</div>
 
-  <h2>November 2025</h2>
+### November 2025
+
+<div className="container">
   <div className="row">
     <Randomize>
       <YouTubeTalk title="OpenBao on RISC-V DeepComputing" vid="TtqX43iAXPw" >
@@ -212,8 +284,11 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
       secrets.
     </NewsBlurb>
   </div>
+</div>
 
-  <h2>October 2025</h2>
+### October 2025
+
+<div className="container">
   <div className="row">
     <Randomize>
       <YouTubeTalk title="Sustainable Secrets Management with OpenBao - Securosys User & Developer Conference 2025" memberName="adfinis" vid="llyw5zFJjKI">
@@ -227,8 +302,11 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
       </NewsBlurb>
     </Randomize>
   </div>
+</div>
 
-  <h2>July 2025</h2>
+### July 2025
+
+<div className="container">
   <div className="row">
     <Randomize>
       <NewsBlurb title="OpenBao: Securing the Future of Open Source Secrets Management" memberName="liquidreply" link="https://liquidreply.net/en/news/openbao-securing-the-future-of-open-source-secrets-management">
@@ -241,8 +319,11 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
       </NewsBlurb>
     </Randomize>
   </div>
+</div>
 
-  <h2>February 2025</h2>
+### February 2025
+
+<div className="container">
   <div className="row">
     <Randomize>
       <YouTubeTalk title="OpenBao @ GitLab - FOSDEM 2025" vid="V50hdX2d8IA">
@@ -264,8 +345,11 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
       </YouTubeTalk>
     </Randomize>
   </div>
+</div>
 
-  <h2>January 2025</h2>
+### January 2025
+
+<div className="container">
   <div className="row">
     <Randomize>
       <YouTubeTalk title="Tune non-HMAC parameters on sys/ - OpenBao Live Coding with Alex (cipherboy) and Jakub (jficz)" vid="lr7_YmEIOro">
@@ -276,8 +360,13 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
       </YouTubeTalk>
     </Randomize>
   </div>
+</div>
 
-  <h2>September 2024</h2>
+## 2024
+
+### September 2024
+
+<div className="container">
   <div className="row">
     <Randomize>
       <NewsBlurb title="FreshPorts - openbao - New port: open source, community-driven fork of Vault" link="https://www.freshports.org/security/openbao/">
@@ -289,8 +378,35 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
       </NewsBlurb>
     </Randomize>
   </div>
+</div>
 
-  <h2>December 2023</h2>
+### June 2024
+
+<div className="container">
+  <div className="row">
+    <Randomize>
+      <NewsBlurb title="2024-06-13 OpenBao TSC Meeting - Charter Ratified" link="https://lf-edge.atlassian.net/wiki/spaces/OP/pages/15211981/2024-06-13+OpenBao+TSC+Meeting">
+        <b>TSC Voting to Approve: OpenBao Technical Charter</b><br />
+        Motion: Nathan Phelps <br />
+        Second: Michael Maxey <br /><br />
+
+        | Voting Member    | Member Company | Y/N/A |
+        | :--------------- | :------------- | :---- |
+        | Nathan Phelps    | IBM            | Y     |
+        | James Butcher    | IOTech Systems | Y     |
+        | Dan Ghita        | Viaccess-Orca  | Y     |
+        | Julien Cassignol | Wallix         | Y     |
+        | Michael Maxey    | Zededa         | Y     |
+      </NewsBlurb>
+    </Randomize>
+  </div>
+</div>
+
+## 2023
+
+### December 2023
+
+<div className="container">
   <div className="row">
     <Randomize>
       <NewsBlurb title="Meet OpenBao, an Open Source Fork of HashiCorp Vault" link="https://thenewstack.io/meet-openbao-an-open-source-fork-of-hashicorp-vault/">
@@ -313,8 +429,11 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
       </NewsBlurb>
     </Randomize>
   </div>
+</div>
 
-  <h2>October 2023</h2>
+### October 2023
+
+<div className="container">
   <div className="row">
     <Randomize>
       <NewsBlurb title="Hashicorp Vault Replacement Feature Design Candidate" link="https://lf-edge.atlassian.net/wiki/spaces/OH/pages/15210437/Hashicorp+Vault+Replacement+Feature+Design+Candidate">

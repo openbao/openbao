@@ -18,7 +18,7 @@ at any location, please update your API calls accordingly.
 ## Configure
 
 Configures the validation information to be used globally across all roles. One
-(and only one) of `oidc_discovery_url`, `jwks_url`, and `jwt_validation_pubkeys` must be
+(and only one) of `oidc_discovery_url`, `jwks_url`, `jwks_pairs`, and `jwt_validation_pubkeys` must be
 set.
 
 | Method | Path               |
@@ -34,16 +34,17 @@ set.
 - `oidc_response_mode` `(string: <optional>)` <a name="oidc_response_mode"></a> - The response mode to be used in the OAuth2 request. Allowed values are "query" and "form_post". Defaults to "query".
 - `oidc_response_types` `(comma-separated string, or array of strings: <optional>)` - The response types to request. Allowed values are "code" and "id_token". Defaults to "code".
   Note: "id_token" may only be used if "oidc_response_mode" is set to "form_post".
-- `jwks_url` `(string: <optional>)` - JWKS URL to use to authenticate signatures. Cannot be used with "oidc_discovery_url" or "jwt_validation_pubkeys".
-- `jwks_ca_pem` `(string: <optional>)` - The contents of a CA certificate or chain of certificates, in PEM format, to use to validate connections to the JWKS URL. If not set, system certificates are used.
+- `jwks_url` `(string: <optional>)` - JWKS URL to use to authenticate signatures. Cannot be used with "oidc_discovery_url", "jwks_pairs", or "jwt_validation_pubkeys".
+- `jwks_ca_pem` `(string: <optional>)` - The contents of a CA certificate or chain of certificates, in PEM format, to use to validate connections to the JWKS URL. If not set, system certificates are used. Cannot be used with "jwks_pairs".
+- `jwks_pairs` `(list of JSON object: <optional>)` - List of JWKS URL and optional CA certificate pairs. CA certificates must be in PEM format. Must be a list of JSON objects with format `[{"jwks_url": "", "jwks_ca_pem": ""}]`. During login, the JWT signature is verified against each JWKS in the order configured until a match is found. Cannot be used with "jwks_url" or "jwks_ca_pem".
 - `jwt_validation_pubkeys` `(comma-separated string, or array of strings: <optional>)` - A list of PEM-encoded public keys to use to authenticate signatures locally. Cannot be used with "jwks_url" or "oidc_discovery_url".
-- `bound_issuer` `(string: <optional>)` - The value against which to match the `iss` claim in a JWT.
+- `bound_issuer` `(string: <optional>)` - The value against which to match the `iss` claim in a JWT. Cannot be configured when `jwks_pairs` is set.
 - `jwt_supported_algs` `(comma-separated string, or array of strings: <optional>)` - A list of supported signing algorithms. Defaults to [RS256] for OIDC roles. Defaults to all [available algorithms](https://github.com/hashicorp/cap/blob/main/jwt/algs.go) for JWT roles.
 - `default_role` `(string: <optional>)` - The default role to use if none is provided during login.
 - `provider_config` `(map: <optional>)` - Configuration options for provider-specific handling. Providers with specific handling include: Azure, Google, SecureAuth, IBM ISAM. The options are described in each provider's section in [OIDC Provider Setup](../../auth/jwt/oidc-providers/index.mdx).
 - `override_allowed_server_names` `(comma-separated string, or array of strings: <optional>)` - A list of hostnames to accept when performing TLS validation, which applies both to OIDC and JWKS. This overrides default checks that expect the TLS subject to match the hostname specified in the connection URL.
 - `namespace_in_state` `(bool: true)` - Pass namespace in the OIDC state parameter instead of as a separate query parameter. With this setting, the allowed redirect URL(s) in OpenBao and on the provider side should not contain a namespace query parameter. This means only one redirect URL entry needs to be maintained on the provider side for all vault namespaces that will be authenticating against it. Defaults to true for new configs.
-- `skip_jwks_validation` `(bool: false)` - When `true` and `oidc_discovery_url` or `jwks_url` are specified, if the connection fails to load, a warning will be issued and status can be checked later by reading the config endpoint. When `false`, configuration save will fail if issuer validation cannot complete successfully.
+- `skip_jwks_validation` `(bool: false)` - When `true` and `oidc_discovery_url`, `jwks_url`, or `jwks_pairs` are specified, if the connection fails to load, a warning will be issued and status can be checked later by reading the config endpoint. When `false`, configuration save will fail if issuer validation cannot complete successfully.
 
 ### Sample payload
 

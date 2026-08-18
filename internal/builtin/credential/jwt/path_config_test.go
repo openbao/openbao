@@ -45,6 +45,7 @@ func TestConfig_JWT_Read(t *testing.T) {
 		"jwt_supported_algs":            []string{},
 		"jwks_url":                      "",
 		"jwks_ca_pem":                   "",
+		"jwks_pairs":                    []map[string]any{},
 		"bound_issuer":                  "http://vault.example.com/",
 		"provider_config":               map[string]any{},
 		"namespace_in_state":            false,
@@ -210,6 +211,7 @@ func TestConfig_JWKS_Update(t *testing.T) {
 	data := map[string]any{
 		"jwks_url":                      s.server.URL + "/certs",
 		"jwks_ca_pem":                   cert,
+		"jwks_pairs":                    []map[string]any{},
 		"oidc_discovery_url":            "",
 		"oidc_discovery_ca_pem":         "",
 		"oidc_client_id":                "",
@@ -1005,6 +1007,289 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, caPEM *bytes.Bu
 	}
 
 	return serverTLSConf, caPEM, err
+}
+
+func TestConfig_JWKSPairs_WriteRead(t *testing.T) {
+	b, storage := getBackend(t)
+
+	s := newOIDCProvider(t)
+	defer s.server.Close()
+
+	cert, err := s.getTLSCert()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data := map[string]any{
+		"jwks_pairs": []map[string]any{
+			{
+				"jwks_url":    s.server.URL + "/certs_wrong",
+				"jwks_ca_pem": cert,
+			},
+			{
+				"jwks_url":    s.server.URL + "/certs",
+				"jwks_ca_pem": cert,
+			},
+		},
+		"oidc_discovery_url":            "",
+		"oidc_discovery_ca_pem":         "",
+		"oidc_client_id":                "",
+		"oidc_response_mode":            "",
+		"oidc_response_types":           []string{},
+		"override_allowed_server_names": []string{},
+		"default_role":                  "",
+		"jwt_validation_pubkeys":        []string{},
+		"jwt_supported_algs":            []string{},
+		"jwks_url":                      "",
+		"jwks_ca_pem":                   "",
+		"bound_issuer":                  "",
+		"provider_config":               map[string]any{},
+		"namespace_in_state":            false,
+		"status":                        "valid",
+	}
+
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err := b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	req = &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      nil,
+	}
+
+	resp, err = b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	if diff := deep.Equal(resp.Data, data); diff != nil {
+		t.Fatalf("Expected did not equal actual: %v", diff)
+	}
+
+	// Order must be preserved across a write/read round trip.
+	conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(conf.JWKSPairs) != 2 {
+		t.Fatalf("expected 2 pairs, got %d", len(conf.JWKSPairs))
+	}
+	if conf.JWKSPairs[0]["jwks_url"] != s.server.URL+"/certs_wrong" || conf.JWKSPairs[1]["jwks_url"] != s.server.URL+"/certs" {
+		t.Fatalf("pair order not preserved: %#v", conf.JWKSPairs)
+	}
+}
+
+func TestConfig_JWKSPairs_MutuallyExclusive(t *testing.T) {
+	b, storage := getBackend(t)
+
+	s := newOIDCProvider(t)
+	defer s.server.Close()
+
+	cert, err := s.getTLSCert()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pairs := []map[string]any{
+		{"jwks_url": s.server.URL + "/certs", "jwks_ca_pem": cert},
+	}
+
+	tests := []struct {
+		name    string
+		data    map[string]any
+		errText string
+	}{
+		{
+			"with jwks_url",
+			map[string]any{
+				"jwks_url":   s.server.URL + "/certs",
+				"jwks_pairs": pairs,
+			},
+			"exactly one of",
+		},
+		{
+			"with jwks_ca_pem",
+			map[string]any{
+				"jwks_ca_pem": cert,
+				"jwks_pairs":  pairs,
+			},
+			"'jwks_ca_pem' cannot be used with 'jwks_pairs'",
+		},
+		{
+			"with bound_issuer",
+			map[string]any{
+				"bound_issuer": "https://team-vault.auth0.com/",
+				"jwks_pairs":   pairs,
+			},
+			"'bound_issuer' cannot be used with 'jwks_pairs'",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      configPath,
+				Storage:   storage,
+				Data:      test.data,
+			}
+
+			resp, err := b.HandleRequest(t.Context(), req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp == nil || !resp.IsError() {
+				t.Fatal("expected error")
+			}
+			if !strings.Contains(resp.Error().Error(), test.errText) {
+				t.Fatalf("got unexpected error: %v", resp.Error())
+			}
+		})
+	}
+}
+
+func TestConfig_JWKSPairs_Malformed(t *testing.T) {
+	b, storage := getBackend(t)
+
+	tests := []struct {
+		name string
+		data map[string]any
+	}{
+		{
+			"element not an object",
+			map[string]any{
+				"jwks_pairs": []any{"not-an-object"},
+			},
+		},
+		{
+			"missing jwks_url",
+			map[string]any{
+				"jwks_pairs": []any{
+					map[string]any{"jwks_ca_pem": "abc"},
+				},
+			},
+		},
+		{
+			"empty jwks_url",
+			map[string]any{
+				"jwks_pairs": []any{
+					map[string]any{"jwks_url": "", "jwks_ca_pem": "abc"},
+				},
+			},
+		},
+		{
+			"non-string jwks_ca_pem",
+			map[string]any{
+				"jwks_pairs": []any{
+					map[string]any{"jwks_url": "https://example.com/certs", "jwks_ca_pem": 123},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      configPath,
+				Storage:   storage,
+				Data:      test.data,
+			}
+
+			resp, err := b.HandleRequest(t.Context(), req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp == nil || !resp.IsError() {
+				t.Fatal("expected error")
+			}
+			if !strings.Contains(resp.Error().Error(), "invalid jwks_pairs[0]") {
+				t.Fatalf("got unexpected error: %v", resp.Error())
+			}
+		})
+	}
+}
+
+func TestConfig_JWKSPairs_SkipValidation(t *testing.T) {
+	b, storage := getBackend(t)
+
+	s := newOIDCProvider(t)
+	defer s.server.Close()
+
+	cert, err := s.getTLSCert()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pairs := []map[string]any{
+		{"jwks_url": s.server.URL + "/certs_missing", "jwks_ca_pem": cert},
+	}
+
+	t.Run("skip false fails", func(t *testing.T) {
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data: map[string]any{
+				"jwks_pairs": pairs,
+			},
+		}
+
+		resp, err := b.HandleRequest(t.Context(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp == nil || !resp.IsError() {
+			t.Fatal("expected error")
+		}
+		if !strings.Contains(resp.Error().Error(), "error checking jwks URL") {
+			t.Fatalf("got unexpected error: %v", resp.Error())
+		}
+	})
+
+	t.Run("skip true warns and saves", func(t *testing.T) {
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data: map[string]any{
+				"jwks_pairs":           pairs,
+				"skip_jwks_validation": true,
+			},
+		}
+
+		resp, err := b.HandleRequest(t.Context(), req)
+		if err != nil {
+			t.Fatalf("unexpected error; expected warning: %v", err)
+		}
+		if resp.IsError() {
+			t.Fatalf("unexpected error; expected warning: %#v", resp)
+		}
+		if len(resp.Warnings) == 0 {
+			t.Fatal("expected at least one verification warning")
+		}
+		if !strings.Contains(resp.Warnings[0], "jwks_pairs[0]") {
+			t.Fatalf("expected warning to reference jwks_pairs[0], got: %v", resp.Warnings)
+		}
+
+		conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(conf.JWKSPairs) != 1 {
+			t.Fatalf("expected 1 pair to be saved, got %d", len(conf.JWKSPairs))
+		}
+	})
 }
 
 const (

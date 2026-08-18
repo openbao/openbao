@@ -67,10 +67,14 @@ type Listener struct {
 	RequireRequestHeader     bool          `hcl:"-"`
 	RequireRequestHeaderRaw  any           `hcl:"require_request_header"`
 
-	TLSDisable    bool `hcl:"-"`
-	TLSDisableRaw any  `hcl:"tls_disable"`
-	TLSCertGetter any  `hcl:"-"`
+	ConsistencyFallbackBehavior     string        `hcl:"consistency_fallback_behavior"`
+	ConsistencyMissingHeaderForward bool          `hcl:"consistency_missing_header_forward"`
+	ConsistencyMaxIndexWait         time.Duration `hcl:"-"`
+	ConsistencyMaxIndexWaitRaw      any           `hcl:"consistency_max_index_wait"`
 
+	TLSDisable                       bool          `hcl:"-"`
+	TLSDisableRaw                    any           `hcl:"tls_disable"`
+	TLSCertGetter                    any           `hcl:"-"`
 	TLSCertFile                      string        `hcl:"tls_cert_file"`
 	TLSKeyFile                       string        `hcl:"tls_key_file"`
 	TLSMinVersion                    string        `hcl:"tls_min_version"`
@@ -315,6 +319,18 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 
 				l.MaxRequestJsonStringsRaw = nil
 			}
+
+			if l.ConsistencyMaxIndexWaitRaw != nil {
+				if l.ConsistencyMaxIndexWait, err = parseutil.ParseDurationSecond(l.ConsistencyMaxIndexWaitRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("error parsing consistency_max_index_wait: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+				if l.ConsistencyMaxIndexWait < 0 {
+					return multierror.Prefix(errors.New("consistency_max_index_wait cannot be negative"), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.ConsistencyMaxIndexWaitRaw = nil
+			}
+
 		}
 
 		// TLS Parameters

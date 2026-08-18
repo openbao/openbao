@@ -8080,6 +8080,56 @@ func TestTimestampNotAfterBound(t *testing.T) {
 	require.Equal(t, fmt.Sprintf("not_after_bound is set to %s. Cannot statisfy request as that would result in notAfter of %s that is beyond the maximum timestamp of %s", maxTimestamp, not_after, maxTimestamp), err.Error())
 }
 
+func TestBackend_AllowedIPSANs(t *testing.T) {
+	t.Parallel()
+
+	// create the backend
+	b, s := CreateBackendWithStorage(t)
+
+	// generate root
+	_, err := CBWrite(b, s, "root/generate/internal", map[string]any{
+		"ttl":         "40h",
+		"common_name": "example.com",
+		"key_type":    "ec",
+	})
+	require.NoError(t, err, "failed generating internal root cert")
+
+	_, err = CBWrite(b, s, "roles/test", map[string]any{
+		"allow_any_name":         true,
+		"allowed_serial_numbers": []string{"MySerialNumber"},
+		"key_type":               "any",
+		"key_bits":               "2048",
+		"signature_bits":         "256",
+		"use_csr_sans":           true,
+		"allowed_ip_sans_cidr":   "8.8.8.8/32",
+	})
+	require.NoError(t, err, "failed creating role with ip sans restrictions")
+
+	_, csrPem := generateTestCsr(t, certutil.ECPrivateKey, 256)
+	_, err = CBWrite(b, s, "sign/test", map[string]any{
+		"csr": csrPem,
+	})
+	require.ErrorContains(t, err, "the IP address")
+	require.ErrorContains(t, err, "is not allowed")
+
+	_, err = CBWrite(b, s, "roles/test", map[string]any{
+		"allow_any_name":         true,
+		"allowed_serial_numbers": []string{"MySerialNumber"},
+		"key_type":               "any",
+		"key_bits":               "2048",
+		"signature_bits":         "256",
+		"use_csr_sans":           false,
+		"allowed_ip_sans_cidr":   "8.8.8.8/32",
+	})
+	require.NoError(t, err, "failed creating role with ip sans restrictions")
+
+	data, err := CBWrite(b, s, "sign/test", map[string]any{
+		"csr": csrPem,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, data)
+}
+
 var (
 	initTest  sync.Once
 	rsaCAKey  string

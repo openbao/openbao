@@ -1693,7 +1693,7 @@ func (m *ExpirationManager) RegisterAuth(ctx context.Context, te *logical.TokenE
 	m.updatePending(&le)
 	if strings.HasPrefix(auth.ClientToken, consts.ServiceTokenPrefix) {
 		generatedTokenEntry := logical.TokenEntry{Policies: auth.Policies}
-		tok := m.tokenStore.GenerateSSCTokenID(auth.ClientToken, &generatedTokenEntry)
+		tok := m.tokenStore.GenerateSSCTokenID(ctx, auth.ClientToken, &generatedTokenEntry)
 		te.ExternalID = tok
 	}
 

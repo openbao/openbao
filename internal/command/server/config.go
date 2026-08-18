@@ -123,7 +123,8 @@ type Config struct {
 	EnableResponseHeaderRaftNodeID    bool `hcl:"-"`
 	EnableResponseHeaderRaftNodeIDRaw any  `hcl:"enable_response_header_raft_node_id"`
 
-	DisableSSCTokens *bool `hcl:"-"`
+	DisableSSCTokens    *bool `hcl:"-"`
+	DisableSSCTokensRaw any   `hcl:"disable_ssct_tokens"`
 
 	UnsafeCrossNamespaceIdentity bool `hcl:"unsafe_cross_namespace_identity"`
 
@@ -957,6 +958,14 @@ func ParseConfig(d, source string) (*Config, error) {
 		if result.EnableResponseHeaderRaftNodeID, err = parseutil.ParseBool(result.EnableResponseHeaderRaftNodeIDRaw); err != nil {
 			return nil, err
 		}
+	}
+
+	if result.DisableSSCTokensRaw != nil {
+		disabled, err := parseutil.ParseBool(result.DisableSSCTokensRaw)
+		if err != nil {
+			return nil, err
+		}
+		result.DisableSSCTokens = &disabled
 	}
 
 	// We default to disabling SSCTs if it is not enabled in the

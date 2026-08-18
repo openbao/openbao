@@ -452,9 +452,7 @@ path "auth/token/create" {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+
 	client.SetToken(childSecret.Auth.ClientToken)
 	childInfo, err := client.Auth().Token().LookupSelf()
 	if err != nil {

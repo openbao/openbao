@@ -391,13 +391,7 @@ func Test(tt TestT, c TestCase) {
 	if c.CredentialFactory != nil || c.CredentialBackend != nil {
 		rollbackPath = "auth/" + rollbackPath
 	}
-	req := logical.RollbackRequest(rollbackPath)
-	req.Data["immediate"] = true
-	req.ClientToken = client.Token()
-	resp, err := core.HandleRequest(ctx, req)
-	if err == nil && resp.IsError() {
-		err = fmt.Errorf("erroneous response:\n\n%#v", resp)
-	}
+	err = core.DoRollback(ctx, rollbackPath)
 	if err != nil {
 		if !errwrap.Contains(err, logical.ErrUnsupportedOperation.Error()) {
 			tt.Error(fmt.Sprintf("[ERR] Rollback error: %s", err))

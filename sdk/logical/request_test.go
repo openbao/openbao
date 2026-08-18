@@ -6,7 +6,62 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestValidateOperation(t *testing.T) {
+	testCases := []struct {
+		title   string
+		input   []Operation
+		wantErr bool
+	}{
+		{
+			title:   "Single matching operation",
+			input:   []Operation{ReadOperation},
+			wantErr: false,
+		},
+		{
+			title:   "Multiple matching operations",
+			input:   []Operation{ReadOperation, PatchOperation},
+			wantErr: false,
+		},
+		{
+			title:   "Single non-matching operation",
+			input:   []Operation{Operation("not-match")},
+			wantErr: true,
+		},
+		{
+			title:   "Multiple non-matching operations",
+			input:   []Operation{ReadOperation, Operation("not-match")},
+			wantErr: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.title, func(t *testing.T) {
+			err := ValidateOperation(tc.input...)
+			if tc.wantErr {
+				assert.Error(t, err, "expected error for ValidateOperation")
+			} else {
+				assert.NoError(t, err, "expected no error for ValidateOperation")
+			}
+		})
+	}
+}
+
+func TestRequest_CategorizeOperations(t *testing.T) {
+	for _, op := range AllOperations {
+		valid := ValidateOperation(op)
+		require.NoError(t, valid)
+		isExternal := ValidateExternalOperation(op) == nil
+		isInternal := ValidateInternalOperation(op) == nil
+		require.NotEqual(t, isExternal, isInternal)
+		isLogin := ValidateLoginOperation(op) == nil
+		if ValidateInternalOperation(op) == nil {
+			require.False(t, isLogin, "unexpected login operation (%v): %v", isLogin, op)
+		}
+	}
+}
 
 func TestRequest_ParseMFAHandlers(t *testing.T) {
 	var err error

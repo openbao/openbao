@@ -1,5 +1,5 @@
 ---
-sidebar_label: Shared Listener Config
+sidebar_label: Shared
 description: |-
   Shared config options for every listener type.
 ---
@@ -7,6 +7,28 @@ description: |-
 # Shared listener parameters
 
 There is config that is common between all listeners.
+
+## Consistency behavior
+
+For more information on consistency, refer to the [concepts section](../../concepts/consistency.mdx)
+of the documentation.
+
+- `consistency_fallback_behavior` `(string: "fail")` - specifies the default
+  behavior when a client does not specify a second value for the
+  `X-Vault-Inconsistent` header but does specify `X-Vault-Inconsistent: await-state`.
+  This defines whether the client should receive an error and retry (`fail` or
+  elided) or whether the request should be forwarded to the active node
+  (`forward-active-node`).
+- `consistency_missing_header_forward` `(bool: false)` - when set to true, any
+  requests from a client without `X-Vault-Index` or `X-Vault-Inconsistent` will
+  be forwarded to the active node. This makes an otherwise read-enabled standby
+  node function like one with `disable_standby_reads=true` set, but only for
+  clients which are not aware of eventual consistency.
+- `consistency_max_index_wait` `(time.Duration: 0s)` - maximum time the standby
+  will hold requests to catch up to the specified `X-Vault-Index`, before
+  applying the fallback behavior. This requires `X-Vault-Inconsistent: await-state`
+  be set on the request. `25ms` is the minimum and will be added to the value
+  in this configuration parameter.
 
 ## Client certificate header parameters
 

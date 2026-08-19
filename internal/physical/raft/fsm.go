@@ -897,8 +897,7 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 		// If we had no error, update our last applied log.
 		if err == nil {
 			if len(logIndex) > 0 {
-				b := tx.Bucket(configBucketName)
-				err = b.Put(latestIndexKey, logIndex)
+				err = configB.Put(latestIndexKey, logIndex)
 				if err != nil {
 					return err
 				}

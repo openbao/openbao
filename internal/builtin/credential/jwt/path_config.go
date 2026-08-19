@@ -86,7 +86,7 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 			},
 			"jwks_ca_pem": {
 				Type:        framework.TypeString,
-				Description: "The CA certificate or chain of certificates, in PEM format, to use to validate connections to the JWKS URLs. If not set, system certificates are used.",
+				Description: "The CA certificate or chain of certificates, in PEM format, to use to validate connections to the JWKS URLs. May contain multiple concatenated CA certificates. The same CA certificates are used for all jwks_url values. If not set, system certificates are used.",
 			},
 			"default_role": {
 				Type:        framework.TypeLowerCaseString,
@@ -434,7 +434,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 
 			if !strings.Contains(err.Error(), "failed to verify id token signature") {
 				if !skipJwksValidation {
-					b.Logger().Error("error checking jwks URL", "error", err, "jwks_url_index", i)
+					b.Logger().Error("error checking jwks URL", "jwks_url_index", i)
 					return logical.ErrorResponse(fmt.Sprintf("error checking jwks URL for jwks_url[%d]", i)), nil
 				}
 

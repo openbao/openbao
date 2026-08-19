@@ -35,7 +35,7 @@ set.
 - `oidc_response_types` `(comma-separated string, or array of strings: <optional>)` - The response types to request. Allowed values are "code" and "id_token". Defaults to "code".
   Note: "id_token" may only be used if "oidc_response_mode" is set to "form_post".
 - `jwks_url` `(comma-separated string, or array of strings: <optional>)` - JWKS URLs to use to authenticate signatures. During login, the JWT signature is verified against each JWKS in the order configured until a match is found. Cannot be used with "oidc_discovery_url" or "jwt_validation_pubkeys".
-- `jwks_ca_pem` `(string: <optional>)` - The contents of a CA certificate or chain of certificates, in PEM format, to use to validate connections to the JWKS URLs. The same CA trust material is used for all configured `jwks_url` values. If not set, system certificates are used.
+- `jwks_ca_pem` `(string: <optional>)` - The contents of a CA certificate or chain of certificates, in PEM format, to use to validate connections to the JWKS URLs. May contain multiple concatenated CA certificates, which are shared across all `jwks_url` values. If not set, system certificates are used.
 - `jwt_validation_pubkeys` `(comma-separated string, or array of strings: <optional>)` - A list of PEM-encoded public keys to use to authenticate signatures locally. Cannot be used with "jwks_url" or "oidc_discovery_url".
 - `bound_issuer` `(string: <optional>)` - The value against which to match the `iss` claim in a JWT.
 - `jwt_supported_algs` `(comma-separated string, or array of strings: <optional>)` - A list of supported signing algorithms. Defaults to [RS256] for OIDC roles. Defaults to all [available algorithms](https://github.com/hashicorp/cap/blob/main/jwt/algs.go) for JWT roles.

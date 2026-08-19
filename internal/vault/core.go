@@ -1061,7 +1061,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	c.NewInvalidationPeers()
 
 	if replicated, ok := c.underlyingPhysical.(physical.ReplicationIndexBackend); ok {
-		c.indexManager = NewIndexManager(replicated, 0)
+		c.indexManager = NewIndexManager(replicated, c.invalidations, 0)
 	}
 
 	return c, nil

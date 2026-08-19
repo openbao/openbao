@@ -94,10 +94,6 @@ func TestKMS(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		defer func() {
-			require.NoError(t, key.Close(ctx))
-		}()
-
 		ciphertext, err := key.Encrypt(ctx, &kms.CipherOptions{Data: input})
 		require.NoError(t, err)
 
@@ -111,10 +107,6 @@ func TestKMS(t *testing.T) {
 			ConfigMap: kms.ConfigMap{"name": "ed25519", "version": "1"},
 		})
 		require.NoError(t, err)
-
-		defer func() {
-			require.NoError(t, key.Close(ctx))
-		}()
 
 		opts := &kms.SignOptions{Data: input}
 		sig, err := key.Sign(ctx, opts)
@@ -131,10 +123,6 @@ func TestKMS(t *testing.T) {
 			ConfigMap: kms.ConfigMap{"name": "ed25519", "version": "1"},
 		})
 		require.NoError(t, err)
-
-		defer func() {
-			require.NoError(t, key.Close(ctx))
-		}()
 
 		pub, err := key.ExportPublic(ctx)
 		require.NoError(t, err)
@@ -176,7 +164,7 @@ func TestKMS(t *testing.T) {
 		s1.(*remoteKMS).client.process.Kill()
 
 		// KMS-level request, this should reload the KMS but no keys.
-		k3, err := s1.GetKey(ctx, &kms.KeyOptions{
+		_, err = s1.GetKey(ctx, &kms.KeyOptions{
 			ConfigMap: kms.ConfigMap{"name": "ed25519", "version": "1"},
 		})
 		require.NoError(t, err)
@@ -195,9 +183,6 @@ func TestKMS(t *testing.T) {
 		require.True(t, innerKMS == inner.kms.kms)
 
 		// Close everything.
-		require.NoError(t, k1.Close(ctx))
-		require.NoError(t, k2.Close(ctx))
-		require.NoError(t, k3.Close(ctx))
 		require.NoError(t, s1.Close(ctx))
 		require.NoError(t, s2.Close(ctx))
 	})

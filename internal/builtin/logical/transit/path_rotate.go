@@ -5,7 +5,6 @@ package transit
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
@@ -74,13 +73,8 @@ func (b *backend) pathRotateWrite(ctx context.Context, req *logical.Request, d *
 			return logical.ErrorResponse("must provide external_key_ref to rotate policy of type external-key"), logical.ErrInvalidRequest
 		}
 
-		key, err := b.System().GetExternalKey(ctx, externalKeyRef)
-		if err != nil {
-			return logical.ErrorResponse("unknown external key reference: %v", externalKeyRef), logical.ErrInvalidRequest
-		}
-
-		if err := key.Close(ctx); err != nil {
-			return nil, fmt.Errorf("unable to close external key: %w", err)
+		if _, err := b.System().GetExternalKey(ctx, externalKeyRef); err != nil {
+			return logical.ErrorResponse("failed to fetch external key: %s", err), logical.ErrInvalidRequest
 		}
 
 		p.ExternalKeyRef = externalKeyRef

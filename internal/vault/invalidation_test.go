@@ -1542,9 +1542,8 @@ func TestCore_Invalidate_ExternalKeys(t *testing.T) {
 
 	// Assert that we have a working config that is able to yield a key via the
 	// SystemView.
-	key, err := sv.GetExternalKey(ctx, "test:test")
+	_, err = sv.GetExternalKey(ctx, "test:test")
 	require.NoError(t, err)
-	require.NoError(t, key.Close(ctx))
 
 	// Create a broken storage entry.
 	entry, err := logical.StorageEntryJSON(

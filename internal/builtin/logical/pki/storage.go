@@ -1541,7 +1541,7 @@ func (sc *storageContext) getExternalKey(ref string) (kms.Key, error) {
 func (sc *storageContext) getExternalSigner(ref string) (crypto.Signer, error) {
 	key, err := sc.getExternalKey(strings.TrimSpace(ref))
 	if err != nil {
-		return nil, fmt.Errorf("error getting external key (%q): %w", ref, err)
+		return nil, err
 	}
 
 	signer, err := kms.NewSigner(sc.Context, key)
@@ -1555,7 +1555,7 @@ func (sc *storageContext) getExternalSigner(ref string) (crypto.Signer, error) {
 func (sc *storageContext) getExternalPublicKey(ref string) (crypto.PublicKey, error) {
 	signer, err := sc.getExternalSigner(ref)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get external key signer: %w", err)
 	}
 
 	return signer.Public(), nil

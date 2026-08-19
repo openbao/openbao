@@ -164,7 +164,7 @@ func manageTokenLifecycle(client *openbao.Client, token *openbao.Secret) error {
 
 	watcher, err := client.NewLifetimeWatcher(&openbao.LifetimeWatcherInput{
 		Secret:    token,
-		Increment: 3600, // Learn more about this optional value in https://www.vaultproject.io/docs/concepts/lease#lease-durations-and-renewal
+		Increment: 3600, // Keep the lease valid for an hour post renewal.
 	})
 	if err != nil {
 		return fmt.Errorf("unable to initialize new lifetime watcher for renewing auth token: %w", err)

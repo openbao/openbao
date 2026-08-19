@@ -175,9 +175,9 @@ $ bao list pki-int/certs # (should have a few certs)
 Finally, the new address can be used:
 
 ```
-$ export VAULT_ADDR=https://localhost:8200
-$ export VAULT_CACERT=root.pem
+$ export BAO_ADDR=https://localhost:8200
+$ export BAO_CACERT=root.pem
 $ bao list pki-int/certs # (should have more certs)
 ```
 
-Note that changing `VAULT_ADDR` to equivalent ones will also work (e.g., `localhost.localdomain`, `127.0.0.1`, &c): the initial connection will be slower but subsequent ones will be fast.
+Note that changing `BAO_ADDR` to equivalent ones will also work (e.g., `localhost.localdomain`, `127.0.0.1`, &c): the initial connection will be slower but subsequent ones will be fast.

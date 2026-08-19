@@ -65,9 +65,9 @@ sends the response back to the requesting client.
 
 ## Request forwarding
 
-If request forwarding is enabled (turned on by default in 0.6.2), clients can
-still force the older/fallback redirection behavior (see below) if desired by
-setting the `X-Vault-No-Request-Forwarding` header to any non-empty value.
+If request forwarding is enabled (turned on by default), clients can still force
+the older/fallback redirection behavior (see below) if desired by setting the
+`X-Vault-No-Request-Forwarding` header to any non-empty value.
 
 Successful cluster setup requires a few configuration parameters, although some
 can be automatically determined.
@@ -85,7 +85,7 @@ always required for all HA setups.
 Some HA data store drivers can autodetect the redirect address, but it is often
 necessary to configure it manually via a top-level value in the configuration
 file. The key for this value is [`api_addr`](../configuration/index.mdx#api_addr) and
-the value can also be specified by the `VAULT_API_ADDR` environment variable,
+the value can also be specified by the `BAO_API_ADDR` environment variable,
 which takes precedence.
 
 What the [`api_addr`](../configuration/index.mdx#api_addr) value should be set to
@@ -160,7 +160,7 @@ use to reach one of that node's
 this will always be forced to `https` since only TLS connections are used
 between servers.)
 
-This value can also be specified by the `VAULT_CLUSTER_ADDR` environment
+This value can also be specified by the `BAO_CLUSTER_ADDR` environment
 variable, which takes precedence.
 
 ## Storage support

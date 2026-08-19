@@ -259,7 +259,7 @@ The user lockout feature is enabled by default. The default values for "lockout 
 "lockout duration" is 15 minutes, "lockout counter reset" is 15 minutes.
 
 The user lockout feature can be disabled as follows:
-- It can be disabled globally using environment variable `VAULT_DISABLE_USER_LOCKOUT`.
+- It can be disabled globally using environment variable `BAO_DISABLE_USER_LOCKOUT`.
 - It can be disabled for all supported auth methods (ldap, userpass and approle) or a specific supported auth method using the `disable_lockout`
   parameter within `user_lockout` stanza in configuration file.
   Please see [user lockout configuration](../configuration/user-lockout.mdx#user_lockout-stanza) for more details.
@@ -280,8 +280,8 @@ details.
 
 ## Code example
 
-The following example demonstrates AppRole authentication with response
-wrapping.
+The following example demonstrates AppRole authentication with [response
+wrapping](../concepts/response-wrapping.mdx).
 
 <Tabs>
 <TabItem value="Go" heading="Go">
@@ -318,7 +318,7 @@ func getSecretWithAppRole() (string, error) {
 
 	// The Secret ID is a value that needs to be protected, so instead of the
 	// app having knowledge of the secret ID directly, we have a trusted orchestrator (https://learn.hashicorp.com/tutorials/vault/secure-introduction?in=vault/app-integration#trusted-orchestrator)
-	// give the app access to a short-lived response-wrapping token (https://www.vaultproject.io/docs/concepts/response-wrapping).
+	// give the app access to a short-lived response-wrapping token.
 	// Read more at: https://learn.hashicorp.com/tutorials/vault/approle-best-practices?in=vault/auth-methods#secretid-delivery-best-practices
 
 	secretID := &auth.SecretID{FromFile: "path/to/wrapping-token"}

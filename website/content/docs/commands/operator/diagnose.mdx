@@ -168,13 +168,13 @@ The only difference is that the checks here will be run on whatever is specified
 
 #### Determine redirect address
 
-Ensures that one of the `VAULT_API_ADDR`, `VAULT_REDIRECT_ADDR`, or `VAULT_ADVERTISE_ADDR`
+Ensures that one of the `BAO_API_ADDR`, `BAO_REDIRECT_ADDR`, or `BAO_ADVERTISE_ADDR`
 environment variables are set, or that the redirect address is specified in the OpenBao
 configuration.
 
 #### Check cluster address
 
-Parses the cluster address from the `VAULT_CLUSTER_ADDR` environment variable, or from the
+Parses the cluster address from the `BAO_CLUSTER_ADDR` environment variable, or from the
 redirect address or cluster address specified in the OpenBao configuration, and checks that
 the address is of the form `host:port`.
 

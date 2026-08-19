@@ -74,7 +74,7 @@ func (b *backend) pathRotateWrite(ctx context.Context, req *logical.Request, d *
 		}
 
 		if _, err := b.System().GetExternalKey(ctx, externalKeyRef); err != nil {
-			return logical.ErrorResponse("unknown external key reference: %v", externalKeyRef), logical.ErrInvalidRequest
+			return logical.ErrorResponse("failed to fetch external key: %s", err), logical.ErrInvalidRequest
 		}
 
 		p.ExternalKeyRef = externalKeyRef

@@ -325,7 +325,7 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 		}
 
 		if _, err := b.System().GetExternalKey(ctx, polReq.ExternalKeyRef); err != nil {
-			return logical.ErrorResponse("unknown external key reference: %v", polReq.ExternalKeyRef), logical.ErrInvalidRequest
+			return logical.ErrorResponse("failed to fetch external key: %s", err), logical.ErrInvalidRequest
 		}
 	} else if polReq.ExternalKeyRef != "" {
 		return logical.ErrorResponse("must provide type=external-key to use external_key_ref"), logical.ErrInvalidRequest

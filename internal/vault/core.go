@@ -1344,16 +1344,16 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 		identityLogger := logger.Named("identity")
 		c.AddLogger(identityLogger)
 		identityStoreConfig := &ident.IdentityStoreConfig{
-			Logger:        c.Logger(),
-			Router:        c.router,
-			RedirectAddr:  c.redirectAddr,
-			LocalNode:     c,
-			Namespacer:    c,
-			MetricsSink:   c.metricSink,
-			TOTPPersister: c,
-			TokenStorer:   c,
-			MFABackend:    c.loginMFABackend,
-			LoggerAdder:   c,
+			LocalNode:                    c,
+			Namespacer:                   c,
+			TOTPPersister:                c,
+			TokenStorer:                  c,
+			LoggerAdder:                  c,
+			Router:                       c.router,
+			MetricsSink:                  c.metricSink,
+			RedirectAddr:                 c.redirectAddr,
+			MFABackend:                   c.loginMFABackend,
+			UnsafeCrossNamespaceIdentity: c.unsafeCrossNamespaceIdentity,
 		}
 		return ident.NewIdentityStore(ctx, identityStoreConfig, config, identityLogger)
 	}
@@ -1364,7 +1364,7 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 				return nil, err
 			}
 
-			if err := c.identityStore.AddNamespaceView(c, ns, config.StorageView); err != nil {
+			if err := c.identityStore.AddNamespaceView(c, ns, config.StorageView, c.unsafeCrossNamespaceIdentity); err != nil {
 				return nil, fmt.Errorf("failed to register namespace to identity store: %w", err)
 			}
 			return c.identityStore, nil

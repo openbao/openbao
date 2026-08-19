@@ -397,7 +397,7 @@ func (a *awaitInvalidationJob) Execute() error {
 		return fmt.Errorf("unable to await invalidation at index %v: %w", a.index, err)
 	}
 
-	a.core.Invalidate(a.keys...)
+	a.core.Invalidate(a.index, a.keys...)
 	return nil
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	memdb "github.com/hashicorp/go-memdb"
 	metrics "github.com/hashicorp/go-metrics/compat"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -2403,19 +2404,58 @@ func (i *IdentityStore) handleAliasListCommon(ctx context.Context, groupAlias bo
 // CountEntities returns the sum of all entities across all namespaces.
 func (i *IdentityStore) CountEntities(ctx context.Context) (int, error) {
 	var count int
-	var outErr error
+	err := i.iterateEntities(ctx, func(uuid string, entity *identity.Entity) error {
+		count++
+		return nil
+	})
+	if err != nil {
+		return -1, err
+	}
 
+	return count, nil
+}
+
+// Sum up the number of entities belonging to each namespace (keyed by ID).
+func (i *IdentityStore) CountEntitiesByNamespace(ctx context.Context) (map[string]int, error) {
+	byNamespace := make(map[string]int)
+	err := i.iterateEntities(ctx, func(uuid string, entity *identity.Entity) error {
+		byNamespace[entity.NamespaceID]++
+		return nil
+	})
+
+	return byNamespace, err
+}
+
+// Sum up the number of entities belonging to each mount point (keyed by accessor).
+func (i *IdentityStore) CountEntitiesByMountAccessor(ctx context.Context) (map[string]int, error) {
+	byMountAccessor := make(map[string]int)
+	err := i.iterateEntities(ctx, func(_ string, entity *identity.Entity) error {
+		for _, alias := range entity.Aliases {
+			byMountAccessor[alias.MountAccessor] = byMountAccessor[alias.MountAccessor] + 1
+		}
+		return nil
+	})
+
+	return byMountAccessor, err
+}
+
+// iterateEntities traverses through views and invokes callback for each entity.
+func (i *IdentityStore) iterateEntities(ctx context.Context, cb func(uuid string, entity *identity.Entity) error) error {
 	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)
 	if !ok || rootViewRaw == nil {
-		return -1, fmt.Errorf("failed to load root namespace")
+		return fmt.Errorf("failed to load root namespace")
 	}
 	rootView := rootViewRaw.(*identityStoreNamespaceView)
 
+	var merr *multierror.Error
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
 		db := views.db
 		if db == nil {
+			if i.unsafeCrossNamespaceIdentity() {
+				return true
+			}
 			db = rootView.db
 		}
 
@@ -2423,131 +2463,27 @@ func (i *IdentityStore) CountEntities(ctx context.Context) (int, error) {
 
 		iter, err := txn.Get(entitiesTable, "id")
 		if err != nil {
-			outErr = fmt.Errorf("failed to get entities table for namespace %v: %w", uuid, err)
+			merr = multierror.Append(merr, fmt.Errorf("failed to get entities table for namespace %v: %w", uuid, err))
 			return false
 		}
 
-		val := iter.Next()
-		for val != nil {
-			count++
-			val = iter.Next()
-		}
-
-		return true
-	})
-
-	if outErr != nil {
-		return -1, outErr
-	}
-
-	return count, nil
-}
-
-// Sum up the number of entities belonging to each namespace (keyed by ID)
-func (i *IdentityStore) CountEntitiesByNamespace(ctx context.Context) (map[string]int, error) {
-	byNamespace := make(map[string]int)
-
-	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)
-	if !ok || rootViewRaw == nil {
-		return nil, fmt.Errorf("failed to load root namespace")
-	}
-	rootView := rootViewRaw.(*identityStoreNamespaceView)
-
-	var err error
-	i.views.Range(func(uuidRaw, viewsRaw any) bool {
-		uuid := uuidRaw.(string)
-		views := viewsRaw.(*identityStoreNamespaceView)
-		db := views.db
-		if db == nil {
-			db = rootView.db
-		}
-
-		txn := db.Txn(false)
-
-		var iter memdb.ResultIterator
-		iter, err = txn.Get(entitiesTable, "id")
-		if err != nil {
-			return false
-		}
-
-		val := iter.Next()
-		for val != nil {
-			// Check if runtime exceeded.
+		for val := iter.Next(); val != nil; val = iter.Next() {
 			select {
 			case <-ctx.Done():
-				err = fmt.Errorf("context cancelled during namespace %v", uuid)
+				merr = multierror.Append(merr, fmt.Errorf("context cancelled during namespace %v", uuid))
 				return false
 			default:
 			}
 
-			// Count in the namespace attached to the entity.
 			entity := val.(*identity.Entity)
-			byNamespace[entity.NamespaceID] = byNamespace[entity.NamespaceID] + 1
-			val = iter.Next()
-		}
-
-		return true
-	})
-
-	if err == nil || strings.Contains(err.Error(), "context cancelled") {
-		return byNamespace, err
-	}
-
-	return nil, err
-}
-
-// Sum up the number of entities belonging to each mount point (keyed by accessor)
-func (i *IdentityStore) CountEntitiesByMountAccessor(ctx context.Context) (map[string]int, error) {
-	byMountAccessor := make(map[string]int)
-
-	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)
-	if !ok || rootViewRaw == nil {
-		return nil, fmt.Errorf("failed to load root namespace")
-	}
-	rootView := rootViewRaw.(*identityStoreNamespaceView)
-
-	var err error
-	i.views.Range(func(uuidRaw, viewsRaw any) bool {
-		uuid := uuidRaw.(string)
-		views := viewsRaw.(*identityStoreNamespaceView)
-		db := views.db
-		if db == nil {
-			db = rootView.db
-		}
-
-		txn := db.Txn(false)
-
-		var iter memdb.ResultIterator
-		iter, err = txn.Get(entitiesTable, "id")
-		if err != nil {
-			return false
-		}
-
-		val := iter.Next()
-		for val != nil {
-			// Check if runtime exceeded.
-			select {
-			case <-ctx.Done():
-				err = fmt.Errorf("context cancelled during namespace %v", uuid)
+			if err := cb(uuid, entity); err != nil {
+				merr = multierror.Append(merr, err)
 				return false
-			default:
 			}
-
-			// Count each alias separately; will translate to mount point and type
-			// in the caller.
-			entity := val.(*identity.Entity)
-			for _, alias := range entity.Aliases {
-				byMountAccessor[alias.MountAccessor] = byMountAccessor[alias.MountAccessor] + 1
-			}
-			val = iter.Next()
 		}
 
 		return true
 	})
 
-	if err == nil || strings.Contains(err.Error(), "context cancelled") {
-		return byMountAccessor, err
-	}
-
-	return nil, err
+	return merr.ErrorOrNil()
 }

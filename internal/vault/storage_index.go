@@ -195,7 +195,8 @@ func (i *indexManager) AwaitInvalidated(ctx context.Context, index string) error
 		return none, nil
 	}
 
-	return backoff.Retry(timeBoxed, op, backoff.WithBackOff(b))
+	_, err := backoff.Retry(timeBoxed, op, backoff.WithBackOff(b))
+	return err
 }
 
 func (core *Core) AwaitStorageIndex(ctx context.Context, index string) bool {

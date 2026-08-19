@@ -479,7 +479,9 @@ func (ij *invalidationJob) Execute() error {
 		// mechanism. It is also handled by the HA mechanism and so is safe
 		// to ignore.
 	case ij.key == coreLocalClusterInfoPath:
-		return ij.im.core.setupCluster(ctx)
+		ij.fatal = true
+		_, err := ij.im.core.Cluster(ctx)
+		return err
 	case strings.HasPrefix(ij.key, "autopilot/") || ij.key == raftAutopilotConfigurationStoragePath:
 		// Raft context is reloaded when a standby becomes active, so it is
 		// safe to ignore changes to autopilot state.

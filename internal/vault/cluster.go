@@ -81,6 +81,11 @@ func (c *Core) Cluster(ctx context.Context) (*Cluster, error) {
 		cluster.Name = c.clusterName
 	}
 
+	// Set cluster ID as well.
+	if cluster.ID != "" {
+		c.clusterID.CompareAndSwap(nil, cluster.ID)
+	}
+
 	return &cluster, nil
 }
 

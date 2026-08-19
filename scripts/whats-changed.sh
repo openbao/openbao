@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 ##
 ## Usage: echo ...github-autogen-whats-changed... | ./whats-changed.sh

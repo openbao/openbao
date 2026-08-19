@@ -157,9 +157,8 @@ func TestGrants(t *testing.T) {
 	require.Error(t, err)
 
 	// But "foo/" should:
-	key, err := r.GetExternalKey(ctx, storage, namespace.RootNamespace, "foo/", "test:test")
+	_, err = r.GetExternalKey(ctx, storage, namespace.RootNamespace, "foo/", "test:test")
 	require.NoError(t, err)
-	require.NoError(t, key.Close(ctx))
 }
 
 // TestParseRef tests that key references are parsed correctly.

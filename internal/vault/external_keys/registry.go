@@ -450,11 +450,6 @@ func (r *Registry) ModifyKey(ctx context.Context, s logical.Storage, configName,
 		if key == nil {
 			return errMissingKey
 		}
-
-		// Unlike KMS clients, keys aren't cached so just close it again.
-		if err := key.Close(ctx); err != nil {
-			r.logger.Error("failed to close key", "error", err.Error(), "config", configName, "key", keyName, "namespace", ns.Path)
-		}
 	}
 
 	// Persist the key entry.
@@ -687,8 +682,4 @@ func (n nilCheckingKey) Verify(ctx context.Context, opts *kms.VerifyOptions) err
 
 func (n nilCheckingKey) ExportPublic(ctx context.Context) (crypto.PublicKey, error) {
 	return n.key.ExportPublic(ctx)
-}
-
-func (n nilCheckingKey) Close(ctx context.Context) error {
-	return n.key.Close(ctx)
 }

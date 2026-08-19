@@ -1134,8 +1134,6 @@ func (p *Policy) DecryptWithFactory(derivationContext, nonce []byte, value strin
 				} else if key == nil {
 					return "", fmt.Errorf("factory[%d] returned nil key with no error; key not found", index)
 				}
-
-				defer key.Close(ctx) //nolint:errcheck
 			case AssociatedDataFactory:
 				aad, err = typed.GetAssociatedData()
 				if err != nil {
@@ -1383,12 +1381,9 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 		if err != nil {
 			return nil, fmt.Errorf("factory failed to fetch external key: %w", err)
 		}
-
 		if key == nil {
 			return nil, errors.New("factory returned nil key with no error; key not found")
 		}
-
-		defer key.Close(ctx) //nolint:errcheck
 
 		algo, ok := CryptoHashMap[hashAlgorithm]
 		if !ok {
@@ -1613,12 +1608,9 @@ func (p *Policy) VerifySignatureWithOptions(derivationContext, input []byte, sig
 		if err != nil {
 			return false, fmt.Errorf("factory failed to fetch external key: %w", err)
 		}
-
 		if key == nil {
 			return false, errors.New("factory returned nil key with no error; key not found")
 		}
-
-		defer key.Close(ctx) //nolint:errcheck
 
 		algo, ok := CryptoHashMap[hashAlgorithm]
 		if !ok {
@@ -2346,8 +2338,6 @@ func (p *Policy) EncryptWithFactory(ver int, derivationContext []byte, nonce []b
 				} else if key == nil {
 					return "", fmt.Errorf("factory[%d] returned nil key with no error; key not found", index)
 				}
-
-				defer key.Close(ctx) //nolint:errcheck
 			case AssociatedDataFactory:
 				aad, err = typed.GetAssociatedData()
 				if err != nil {

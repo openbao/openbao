@@ -59,10 +59,11 @@ type PrivateKeyType string
 
 // Well-known PrivateKeyTypes
 const (
-	UnknownPrivateKey PrivateKeyType = ""
-	RSAPrivateKey     PrivateKeyType = "rsa"
-	ECPrivateKey      PrivateKeyType = "ec"
-	Ed25519PrivateKey PrivateKeyType = "ed25519"
+	UnknownPrivateKey  PrivateKeyType = ""
+	RSAPrivateKey      PrivateKeyType = "rsa"
+	ECPrivateKey       PrivateKeyType = "ec"
+	Ed25519PrivateKey  PrivateKeyType = "ed25519"
+	ExternalPrivateKey PrivateKeyType = "external-key"
 )
 
 // TLSUsage controls whether the intended usage of a *tls.Config
@@ -258,6 +259,16 @@ func (c *CertBundle) ToParsedCertBundleWithExtractor(privateKeyExtractor Private
 	return result, nil
 }
 
+func OptionalExternalKeyExtractor(externalKeyExtractor PrivateKeyExtractor) PrivateKeyExtractor {
+	return func(c *CertBundle, parsedBundle *ParsedCertBundle) error {
+		if c.PrivateKeyType == ExternalPrivateKey {
+			return externalKeyExtractor(c, parsedBundle)
+		}
+
+		return extractAndSetPrivateKey(c, parsedBundle)
+	}
+}
+
 func extractAndSetPrivateKey(c *CertBundle, parsedBundle *ParsedCertBundle) error {
 	if len(c.PrivateKey) == 0 {
 		return nil
@@ -343,7 +354,11 @@ func (p *ParsedCertBundle) ToCertBundle() (*CertBundle, error) {
 			}
 		}
 
-		result.PrivateKey = strings.TrimSpace(string(pem.EncodeToMemory(&block)))
+		if result.PrivateKeyType != ExternalPrivateKey {
+			result.PrivateKey = strings.TrimSpace(string(pem.EncodeToMemory(&block)))
+		} else {
+			result.PrivateKey = strings.TrimSpace(string(p.PrivateKeyBytes))
+		}
 	}
 
 	return result, nil

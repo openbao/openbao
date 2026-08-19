@@ -34,6 +34,19 @@ func getGenerationParams(sc *storageContext, data *framework.FieldData) (exporte
 		return exported, format, role, errorResp
 	}
 
+	if exportedStr == "kms" && getExternalKeyRef(data) == "" {
+		errorResp = logical.ErrorResponse(
+			`must specify "external_key_ref" on "kms"-typed generation requests`,
+		)
+		return exported, format, role, errorResp
+	} else if exportedStr != "kms" && getExternalKeyRef(data) != "" {
+		errorResp = logical.ErrorResponse(
+			`cannot specify "external_key_ref" on %q-typed generation requests`,
+			exportedStr,
+		)
+		return exported, format, role, errorResp
+	}
+
 	format = getFormat(data)
 	if format == "" {
 		errorResp = logical.ErrorResponse(
@@ -83,6 +96,8 @@ func getGenerationParams(sc *storageContext, data *framework.FieldData) (exporte
 }
 
 func generateCABundle(sc *storageContext, input *inputBundle, data *certutil.CreationBundle, randomSource io.Reader) (*certutil.ParsedCertBundle, error) {
+	var generator certutil.KeyGenerator
+
 	if existingKeyRequested(input) {
 		keyRef, err := getKeyRefWithErr(input.apiData)
 		if err != nil {
@@ -94,10 +109,33 @@ func generateCABundle(sc *storageContext, input *inputBundle, data *certutil.Cre
 			return nil, err
 		}
 
-		return certutil.CreateCertificateWithKeyGenerator(data, randomSource, existingKeyGeneratorFromBytes(keyEntry))
+		generator = existingKeyGeneratorFromBytes(keyEntry)
 	}
 
-	return certutil.CreateCertificateWithRandomSource(data, randomSource)
+	if externalKeyRequested(input) {
+		keyRef, err := getExternalKeyRefWithErr(input.apiData)
+		if err != nil {
+			return nil, err
+		}
+
+		signer, err := sc.getExternalSigner(keyRef)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get external key: %w", err)
+		}
+
+		pubType := certutil.GetPrivateKeyTypeFromSigner(signer)
+
+		generator = func(keyType string, keyBits int, container certutil.ParsedPrivateKeyContainer, entropyReader io.Reader) error {
+			if keyType != string(pubType) && keyType != "" && keyType != "external-key" {
+				return fmt.Errorf("external key of type %v does not match generation expectations %v", pubType, keyType)
+			}
+
+			container.SetParsedPrivateKey(signer, certutil.ExternalPrivateKey, []byte(keyRef))
+			return nil
+		}
+	}
+
+	return certutil.CreateCertificateWithKeyGenerator(data, randomSource, generator)
 }
 
 func generateCSRBundle(sc *storageContext, input *inputBundle, data *certutil.CreationBundle, addBasicConstraints bool, randomSource io.Reader) (*certutil.ParsedCSRBundle, error) {
@@ -147,6 +185,19 @@ func (sc *storageContext) getKeyTypeAndBitsForRole(data *framework.FieldData) (s
 			return "", 0, errors.New("failed to lookup public key from existing key: " + err.Error())
 		}
 		pubKey = existingPubKey
+	}
+	if externalKeyRequestedFromFieldData(data) {
+		keyRef, err := getExternalKeyRefWithErr(data)
+		if err != nil {
+			return "", 0, err
+		}
+
+		signer, err := sc.getExternalSigner(keyRef)
+		if err != nil {
+			return "", 0, fmt.Errorf("failed to get external key: %w", err)
+		}
+
+		pubKey = signer.Public()
 	}
 
 	privateKeyType, keyBits, err := getKeyTypeAndBitsFromPublicKeyForRole(pubKey)

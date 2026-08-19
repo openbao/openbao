@@ -17,9 +17,7 @@ const (
 	BuiltinMetadata = "builtin"
 )
 
-var (
-	DefaultBuiltinVersion = fmt.Sprintf("v%s+%s.bao", version.GetVersion().Version, BuiltinMetadata)
-)
+var DefaultBuiltinVersion = fmt.Sprintf("v%s+%s.bao", version.GetVersion().Version, BuiltinMetadata)
 
 func GetBuiltinVersion(pluginType consts.PluginType, pluginName string) string {
 	// pluginType and pluginName are ignored as of now.

@@ -137,7 +137,7 @@ prep:
 # Grep for tools that include a "." to select only those defined in tools/go.mod
 # and exclude standard ones.
 bootstrap:
-	@for tool in $$(go tool -modfile=tools/go.mod | grep \\.); do \
+	@for tool in $$(go mod edit -modfile=./tools/go.mod  -json | jq -r '.Tool[] | .Path'); do \
 		go install -modfile=tools/go.mod "$$tool"; \
 	done
 

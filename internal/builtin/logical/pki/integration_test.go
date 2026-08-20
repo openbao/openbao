@@ -332,9 +332,8 @@ func TestIntegration_CSRGeneration(t *testing.T) {
 	}{
 		{"rsa", false, 2048, 0, &rsa.PublicKey{}, x509.SHA256WithRSA},
 		{"rsa", false, 2048, 384, &rsa.PublicKey{}, x509.SHA384WithRSA},
-		// Add back once https://github.com/golang/go/issues/45990 is fixed.
-		// {"rsa", true, 2048, 0, &rsa.PublicKey{}, x509.SHA256WithRSAPSS},
-		// {"rsa", true, 2048, 512, &rsa.PublicKey{}, x509.SHA512WithRSAPSS},
+		{"rsa", true, 2048, 0, &rsa.PublicKey{}, x509.SHA256WithRSAPSS},
+		{"rsa", true, 2048, 512, &rsa.PublicKey{}, x509.SHA512WithRSAPSS},
 		{"ec", false, 224, 0, &ecdsa.PublicKey{}, x509.ECDSAWithSHA256},
 		{"ec", false, 256, 0, &ecdsa.PublicKey{}, x509.ECDSAWithSHA256},
 		{"ec", false, 384, 0, &ecdsa.PublicKey{}, x509.ECDSAWithSHA384},

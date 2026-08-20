@@ -1341,7 +1341,7 @@ func validateRole(b *backend, entry *roleEntry, ctx context.Context, s logical.S
 		), nil
 	}
 
-	if entry.KeyBits, entry.SignatureBits, err = certutil.ValidateDefaultOrValueKeyTypeSignatureLength(entry.KeyType, entry.KeyBits, entry.SignatureBits); err != nil {
+	if entry.KeyBits, err = certutil.ValidateDefaultOrValueKeyTypeLength(entry.KeyType, entry.KeyBits); err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
 

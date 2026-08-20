@@ -4015,7 +4015,7 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 		"client_flag":                        true,
 		"allowed_serial_numbers":             []any{},
 		"generate_lease":                     false,
-		"signature_bits":                     json.Number("256"),
+		"signature_bits":                     json.Number("0"),
 		"use_pss":                            false,
 		"allowed_domains":                    []any{},
 		"allowed_uri_sans_template":          false,
@@ -5393,9 +5393,9 @@ func TestBackend_Roles_KeySizeRegression(t *testing.T) {
 		/* 11 */ {"rsa", []int{3072}, []int{0, 256, 384, 512}, false, []string{"rsa"}, []int{2048}, true},
 
 		// We should be able to sign with PSS with any CA key type.
-		/* 12 */ {"rsa", []int{0}, []int{0, 256, 384, 512}, true, []string{"rsa"}, []int{2048}, false},
-		/* 13 */ {"ec", []int{0}, []int{0}, true, []string{"ec"}, []int{256}, false},
-		/* 14 */ {"ed25519", []int{0}, []int{0}, true, []string{"ed25519"}, []int{0}, false},
+		/* 12 */ {"any", []int{0}, []int{0, 256, 384, 512}, true, []string{"rsa"}, []int{2048}, false},
+		/* 13 */ {"any", []int{0}, []int{0}, true, []string{"ec"}, []int{256}, false},
+		/* 14 */ {"any", []int{0}, []int{0}, true, []string{"ed25519"}, []int{0}, false},
 	}
 
 	if len(testCases) != 15 {

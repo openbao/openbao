@@ -571,7 +571,7 @@ func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *fra
 		// Perform validation of the new role parameters, updating an explicit
 		// zero-valued KeyBits to a useful value.
 		var err error
-		role.KeyBits, role.SignatureBits, err = certutil.ValidateDefaultOrValueKeyTypeSignatureLength(role.KeyType, role.KeyBits, role.SignatureBits)
+		role.KeyBits, err = certutil.ValidateDefaultOrValueKeyTypeLength(role.KeyType, role.KeyBits)
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate role: %w", err)
 		}
@@ -917,7 +917,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 		keyBits := int(validationOutput.KeyBits)
 
-		keyBits, signatureBits, err = certutil.ValidateDefaultOrValueKeyTypeSignatureLength(keyType, keyBits, signatureBits)
+		keyBits, err = certutil.ValidateDefaultOrValueKeyTypeLength(keyType, keyBits)
 		if err != nil {
 			return nil, fmt.Errorf("invalid cel response for key type, key bits, or signature bits: %w", err)
 		}
@@ -928,15 +928,6 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		evaluationData["use_pss"] = usePSS
 	} else {
 		signingKeyType := string(signingBundle.PrivateKeyType)
-		signingKeyBits, err := signingBundle.GetKeyBits()
-		if err != nil {
-			return nil, fmt.Errorf("unable to get signing key information: %w", err)
-		}
-
-		if signatureBits, err = certutil.DefaultOrValueHashBits(signingKeyType, signingKeyBits, signatureBits); err != nil {
-			return nil, err
-		}
-
 		if err := certutil.ValidateSignatureLength(signingKeyType, signatureBits); err != nil {
 			return nil, err
 		}

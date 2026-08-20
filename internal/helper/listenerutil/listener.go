@@ -61,6 +61,7 @@ var curveIDByName = map[string]tls.CurveID{
 	tls.X25519MLKEM768.String():     tls.X25519MLKEM768,
 	tls.SecP256r1MLKEM768.String():  tls.SecP256r1MLKEM768,
 	tls.SecP384r1MLKEM1024.String(): tls.SecP384r1MLKEM1024,
+	tls.MLKEM1024.String():          tls.MLKEM1024,
 }
 
 func UnixSocketListener(path string, unixSocketsConfig *UnixSocketsConfig) (net.Listener, error) {

@@ -207,10 +207,6 @@ workaround in some compatibility scenarios
 with Active Directory Certificate Services.`,
 	}
 
-	// At this time Go does not support signing CSRs using PSS signatures, see
-	// https://github.com/golang/go/issues/45990
-	delete(ret.Fields, "use_pss")
-
 	return ret
 }
 

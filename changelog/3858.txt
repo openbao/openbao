@@ -1,0 +1,6 @@
+```release-note:bug
+secrets/pki: Fix `use_pss=true` + `signature_bits=0` on a role incorrectly resulting in certificates signed via PKCS#1 v1.5 instead of correctly using PSS.
+```
+```release-note:bug
+secrets/pki: Don't pick a default value for `signature_bits` based on the key type of the certificate being issued as it applies to the issuer's key, not the certificate's key.
+```

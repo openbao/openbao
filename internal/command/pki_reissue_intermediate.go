@@ -283,6 +283,8 @@ func getKeyType(goKeyType string) string {
 		return "ec"
 	case "Ed25519":
 		return "ed25519"
+	case "ML-DSA":
+		return "mldsa"
 	default:
 		return ""
 	}

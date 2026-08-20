@@ -7,6 +7,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/mldsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -982,6 +983,25 @@ func signCert(b *backend,
 
 		actualKeyType = "ed25519"
 		actualKeyBits = 0
+	case "mldsa":
+		if csr.PublicKeyAlgorithm != x509.MLDSA {
+			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
+				"role requires keys of type %s",
+				data.role.KeyType,
+			)}
+		}
+
+		pubkey, ok := csr.PublicKey.(*mldsa.PublicKey)
+		if !ok {
+			return nil, nil, errutil.UserError{Err: "could not parse CSR's public key"}
+		}
+
+		actualKeyType = "mldsa"
+		label := certutil.GetMLDSAParameterSetLabel(pubkey)
+		if label == -1 {
+			return nil, nil, errutil.UserError{Err: fmt.Sprintf("Unknown key size for ML-DSA: %v", pubkey.Parameters().String())}
+		}
+		actualKeyBits = label
 	case "any":
 		// We need to compute the actual key type and key bits, to correctly
 		// validate minimums and SignatureBits below.
@@ -1013,6 +1033,18 @@ func signCert(b *backend,
 
 			actualKeyType = "ed25519"
 			actualKeyBits = 0
+		case x509.MLDSA:
+			pubkey, ok := csr.PublicKey.(*mldsa.PublicKey)
+			if !ok {
+				return nil, nil, errutil.UserError{Err: "could not parse CSR's public key"}
+			}
+
+			actualKeyType = "mldsa"
+			label := certutil.GetMLDSAParameterSetLabel(pubkey)
+			if label == -1 {
+				return nil, nil, errutil.UserError{Err: fmt.Sprintf("Unknown key size for ML-DSA: %v", pubkey.Parameters().String())}
+			}
+			actualKeyBits = label
 		default:
 			return nil, nil, errutil.UserError{Err: "Unknown key type in CSR: " + csr.PublicKeyAlgorithm.String()}
 		}
@@ -1080,6 +1112,7 @@ func signCert(b *backend,
 				actualKeyBits,
 			)}
 		}
+		// TODO: How do we want to handle mldsa here? Do we require exact parameter set match?
 	}
 
 	creation, warnings, err := generateCreationBundle(b, data, caSign, csr)
@@ -1880,7 +1913,7 @@ func convertRespToPKCS8(resp *logical.Response) error {
 		signer, err = x509.ParsePKCS1PrivateKey(keyData)
 	case certutil.ECPrivateKey:
 		signer, err = x509.ParseECPrivateKey(keyData)
-	case certutil.Ed25519PrivateKey:
+	case certutil.Ed25519PrivateKey, certutil.MLDSAPrivateKey:
 		k, err := x509.ParsePKCS8PrivateKey(keyData)
 		if err != nil {
 			return fmt.Errorf("error converting response to pkcs8: error parsing previous key: %w", err)

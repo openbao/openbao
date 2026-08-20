@@ -58,7 +58,7 @@ ssl-key=/etc/mysql/certs/server-key.pem`
 
 	// //////////////////////////////////////////////////////
 	// Start MySQL container
-	retURL := startMySQLWithTLS(t, "8.0", confDir)
+	retURL := startMySQLWithTLS(t, "9.0", confDir)
 
 	// //////////////////////////////////////////////////////
 	// Set up x509 user

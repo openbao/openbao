@@ -85,8 +85,8 @@ func (c *AuthMoveCommand) Run(args []string) int {
 	}
 
 	// Grab the source and destination
-	source := ensureTrailingSlash(args[0])
-	destination := ensureTrailingSlash(args[1])
+	source := fmt.Sprintf("auth/%s", ensureTrailingSlash(args[0]))
+	destination := fmt.Sprintf("auth/%s", ensureTrailingSlash(args[1]))
 
 	client, err := c.Client()
 	if err != nil {

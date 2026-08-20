@@ -6,7 +6,7 @@ package transit
 import (
 	"testing"
 
-	"github.com/openbao/openbao/helper/testhelpers/certhelpers"
+	"github.com/openbao/openbao/v2/internal/helper/testhelpers/certhelpers"
 	kmiplib "github.com/ovh/kmip-go"
 	"github.com/ovh/kmip-go/kmipclient"
 	"github.com/stretchr/testify/require"

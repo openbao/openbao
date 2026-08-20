@@ -8,9 +8,9 @@ import (
 	"crypto/rsa"
 	"testing"
 
-	"github.com/openbao/openbao/builtin/logical/transit/kmip"
-	"github.com/openbao/openbao/helper/testhelpers/certhelpers"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/builtin/logical/transit/kmip"
+	"github.com/openbao/openbao/v2/internal/helper/testhelpers/certhelpers"
 	kmiplib "github.com/ovh/kmip-go"
 	"github.com/ovh/kmip-go/kmipclient"
 	"github.com/stretchr/testify/require"
@@ -18,7 +18,6 @@ import (
 
 func testKmip(t *testing.T, closure func(c *kmipclient.Client)) {
 	t.Helper()
-	t.Parallel()
 
 	c, _, _ := startKmip(t)
 	seedKmipFixtures(t, c)

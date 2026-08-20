@@ -6,8 +6,8 @@ package transit
 import (
 	"context"
 
-	"github.com/openbao/openbao/builtin/logical/transit/kmip"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/builtin/logical/transit/kmip"
 )
 
 // getKmipConfig retrieves the KMIP server configuration from storage

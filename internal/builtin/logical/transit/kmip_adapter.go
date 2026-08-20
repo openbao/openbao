@@ -12,9 +12,9 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
-	"github.com/openbao/openbao/builtin/logical/transit/kmip"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/builtin/logical/transit/kmip"
 
 	kmiplib "github.com/ovh/kmip-go"
 	"github.com/ovh/kmip-go/kmipserver"

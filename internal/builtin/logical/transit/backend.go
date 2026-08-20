@@ -14,11 +14,11 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/openbao/go-kms-wrapping/v2/kms"
-	"github.com/openbao/openbao/internal/builtin/logical/transit/kmip"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/builtin/logical/transit/kmip"
 )
 
 const (

@@ -96,6 +96,9 @@ as rule sets. To keep the principle of least privilege and reduce dependency
 on a single organization, no one organization should hold a majority of seats
 and most individuals should instead be maintainers.
 
+This role does not preclude or imply administrative access to any other
+non-GitHub tool on behalf of OpenBao, such as PCC.
+
 #### Eligibility
 
 The following groups of people are eligible to become administrators:
@@ -113,13 +116,13 @@ Eligibility requirements may be waived by unanimous TSC vote.
 
 #### Applications
 
-Applications to become organization-level maintainers will be sent to the
+Applications to become organization-level administrators will be sent to the
 [OpenBao mailing list](https://lists.openssf.org/g/openbao) and should contain
 motivation and confirmation of eligibility.
 
 #### Elections
 
-Organization-level maintainers are to be approved by unanimous vote of the
+Organization-level administrators are to be approved by unanimous vote of the
 TSC and existing organization-level administrators, allowing abstentions, at
 2/3rds quorum.
 
@@ -127,9 +130,9 @@ TSC and existing organization-level administrators, allowing abstentions, at
 
 Organization-level administrators will forfeit with 2/3rd majority vote their
 access after 30 days of inactivity without prior notice to any member of the
-TSC or other organization-level administrators. If a maintainer comes back and
-demonstrates renewed contributions, a simple majority vote of either body should
-be sufficient to reinstate them.
+TSC or other organization-level administrators. If an administrator comes back
+and demonstrates renewed contributions, a simple majority vote of either body
+should be sufficient to reinstate them.
 
 ### Organization-Level Maintainers
 

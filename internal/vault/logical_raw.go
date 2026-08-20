@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
@@ -25,6 +26,15 @@ var protectedPaths = []string{
 	barrier.KeyringPath,
 	// Changing the cluster info path can change the cluster ID which can be disruptive
 	coreLocalClusterInfoPath,
+}
+
+// These paths use the "upper" barrier, which is the direct physical layer
+// for the root namespace.
+var specialPaths = []string{
+	barrierSealConfigPath,
+	recoverySealConfigPath,
+	coreBarrierUnsealKeysBackupPath,
+	coreRecoveryUnsealKeysBackupPath,
 }
 
 type RawBackend struct {
@@ -61,9 +71,7 @@ func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAcc
 		}
 	}
 
-	// These paths use the "upper" barrier, which is the direct physical layer
-	// for the root namespace.
-	specialPath := rest == barrierSealConfigPath || rest == recoverySealConfigPath
+	specialPath := slices.Contains(specialPaths, rest)
 
 	// Fast-path root or deleted namespaces; we do not need a lookup into the
 	// seal manager.

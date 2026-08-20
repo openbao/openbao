@@ -383,7 +383,9 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 							},
 						}},
 					},
-					Summary: "Return the backup copy of PGP-encrypted unseal keys.",
+					Summary:                     "Return the backup copy of PGP-encrypted unseal keys.",
+					ForwardPerformanceSecondary: true,
+					ForwardPerformanceStandby:   true,
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleRotateBackupDelete(),
@@ -904,7 +906,7 @@ func (b *SystemBackend) handleRotateBackupRetrieve() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		backup, err := b.Core.sealManager.RetrieveRotationBackup(ctx, ns.Path, recovery)
+		backup, err := b.Core.sealManager.RetrieveRotationBackup(ctx, ns, recovery)
 		if err != nil {
 			return handleError(fmt.Errorf("unable to look up backed-up keys: %w", err))
 		}

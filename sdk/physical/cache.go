@@ -111,10 +111,7 @@ var (
 // NewCache returns a physical cache of the given size.
 // If no size is provided, the default size is used.
 func NewCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricSink) Cache {
-	if logger.IsDebug() {
-		logger.Debug("creating LRU cache", "size", size)
-	}
-
+	logger.Debug("creating LRU cache", "size", size)
 	return newCache(b, size, logger, metricSink)
 }
 

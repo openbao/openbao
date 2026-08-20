@@ -1,0 +1,3 @@
+```release-note:bug
+auth/approle: Ensure initial salt is created without transaction to avoid deadlocks.
+```

@@ -209,7 +209,7 @@ func (c *Sys) RotateRootUpdateWithContext(ctx context.Context, shard, nonce stri
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"key":   shard,
 		"nonce": nonce,
 	}
@@ -240,7 +240,7 @@ func (c *Sys) RotateRecoveryUpdateWithContext(ctx context.Context, shard, nonce 
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"key":   shard,
 		"nonce": nonce,
 	}
@@ -413,7 +413,7 @@ func (c *Sys) RotateRootVerificationUpdateWithContext(ctx context.Context, shard
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"key":   shard,
 		"nonce": nonce,
 	}
@@ -444,7 +444,7 @@ func (c *Sys) RotateRecoveryVerificationUpdateWithContext(ctx context.Context, s
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"key":   shard,
 		"nonce": nonce,
 	}

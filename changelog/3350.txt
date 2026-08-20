@@ -1,0 +1,3 @@
+```release-note:bug
+physical/raft: Added existence verification of the raft node before attempting to promote or demote.
+```

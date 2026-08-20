@@ -5,7 +5,7 @@
 
 import { text, triggerable, clickable, collection, fillable, value, isPresent } from 'ember-cli-page-object';
 import { getter } from 'ember-cli-page-object/macros';
-import { settled } from '@ember/test-helpers';
+import { settled, waitUntil } from '@ember/test-helpers';
 
 import keys from 'vault/lib/keycodes';
 
@@ -49,9 +49,20 @@ export default {
   runCommands: async function (commands) {
     const toExecute = Array.isArray(commands) ? commands : [commands];
     for (const command of toExecute) {
+      const priorOutputItems = this.logOutputItems.length;
       await this.consoleInput(command);
       await this.enter();
       await settled();
+      // The console only logs the command and its output once the request has
+      // responded, so waiting for the log to grow also waits for the response
+      // to render (which `settled()` no longer covers after the ember-data
+      // upgrade).
+      if (command === 'clear') {
+        // the clear command clears the log instead of growing it
+        await waitUntil(() => this.logOutputItems.length === 0, { timeout: 10000 });
+      } else {
+        await waitUntil(() => this.logOutputItems.length > priorOutputItems, { timeout: 10000 });
+      }
     }
   },
 };

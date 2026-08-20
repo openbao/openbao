@@ -1,0 +1,89 @@
+---
+description: >-
+  Learn about OpenBao's advanced Namespace isolation
+---
+
+# Sealable Namespaces
+
+:::info
+
+This page describes the concept of sealable namespaces. For a getting started
+guide, see the [Sealable Namespace Guide](../../guides/sealable-namespaces.mdx).
+
+:::
+
+## Overview
+
+Sealable namespaces extend OpenBao's multi-tenancy model by giving tenants
+cryptographic control over their own namespace. When a namespace is created with
+sealing enabled, it gets its own encryption keys, separate from the global
+OpenBao seal. A tenant can independently seal and unseal their namespace without
+affecting any other tenants and without involving the platform operator.
+
+This is distinct from the existing namespace lock/unlock mechanism. Sealing is a
+cryptographic operation: a sealed namespace discards its in-memory keys, making
+the data physically inaccessible until the namespace is explicitly unsealed
+again. Locking only blocks requests at the API layer.
+
+Child-namespaces of sealable namespaces can either be normal namespaces (which
+are encrypted with the nearest sealable parent namespace's keys) or sealable
+namespaces (which again get their own encryption keys). There is no multi-layer
+encryption: data from a namespace is encrypted exactly once, so there is no
+additional performance penalty to using sealable namespaces.
+
+## Use Cases
+
+Sealable namespaces are useful when:
+
+- **Tenant data sovereignty is required**. Each sealable namespace has its own
+  encryption keys. The platform operator's root key cannot decrypt a sealed
+  namespace's data. Tenants control their own keys entirely.
+- **Independent availability control is needed**. A tenant can seal their
+  namespace to make it inaccessible without affecting other tenants. If a
+  namespace's keys are suspected to be compromised, that namespace can be sealed
+  and rekeyed in isolation.
+- **Breach containment**. If a namespace's encryption key is leaked, only that
+  namespace is affected. Other tenants' data remains protected by their own
+  keys.
+
+Sealable namespaces are an optional feature. A namespace that is not itself
+sealable, and has no sealable ancestor in its namespace hierarchy, behaves
+exactly as all pre-v2.6 namespaces: it is protected by the global OpenBao seal.
+
+## How Sealable Namespaces Work
+
+A sealable namespace has its own keyring and root key that are used to encrypt
+data. This means:
+
+- The global operator cannot read namespace data without the tenant's key
+- Even if the global root key is available, a sealed namespace's data remains
+  inaccessible
+- In a single-node cluster: A server restart seals all namespaces; each must be unsealed independently
+  after OpenBao is unsealed. Parent namespaces must be unsealed before child
+  namespaces can be unsealed.
+- In a multi-node cluster: Seal status of all namespaces is maintained across
+  the active cluster when a single node is restarted. After restarting and
+  completing the main unseal procedure, the node will try to unseal namespaces
+  through syncing with the other nodes.
+
+:::warning
+
+**Important**: OpenBao must be globally unsealed before any namespace can be
+unsealed.
+
+:::
+
+### Comparison With Namespace Locking
+
+|                            | Namespace Lock | Namespace Seal |
+| ---------------------------| -------------- | -------------- |
+| Blocks API requests        | Yes            | Yes            |
+| Discards in-memory keys    | No             | Yes            |
+| Per-tenant encryption keys | No             | Yes            |
+
+Both features can be used together. To temporarily block API requests to a namespace, use namespace locking. Use sealable namespaces if you need a stronger tenant data sovereignty.
+
+## Seal Methods
+
+Sealable namespaces currently only support Shamir seals. Auto-unsealing support is
+planned, but not yet implemented. Contributions towards this are welcome.

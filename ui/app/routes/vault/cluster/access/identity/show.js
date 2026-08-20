@@ -13,6 +13,7 @@ import { inject as service } from '@ember/service';
 
 export default Route.extend({
   store: service(),
+  router: service(),
 
   model(params) {
     const { section } = params;
@@ -58,7 +59,7 @@ export default Route.extend({
   afterModel(resolvedModel) {
     const { section, model } = resolvedModel;
     if (model.identityType === 'group' && model.type === 'internal' && section === 'aliases') {
-      return this.transitionTo('vault.cluster.access.identity.show', model.id, 'details');
+      return this.router.transitionTo('vault.cluster.access.identity.show', model.id, 'details');
     }
   },
 

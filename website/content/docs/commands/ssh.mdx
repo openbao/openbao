@@ -73,19 +73,19 @@ flags](index.mdx) included on all commands.
 
 - `-strict-host-key-checking` `(string: "")` - Value to use for the SSH
   configuration option "StrictHostKeyChecking". The default is ask. This can
-  also be specified via the `VAULT_SSH_STRICT_HOST_KEY_CHECKING` environment
+  also be specified via the `BAO_SSH_STRICT_HOST_KEY_CHECKING` environment
   variable.
 
 - `-user-known-hosts-file` `(string: "~/.ssh/known_hosts")` - Value to use for
   the SSH configuration option "UserKnownHostsFile". This can also be specified
-  via the `VAULT_SSH_USER_KNOWN_HOSTS_FILE` environment variable.
+  via the `BAO_SSH_USER_KNOWN_HOSTS_FILE` environment variable.
 
 ### CA mode options
 
 - `-host-key-hostnames` `(string: "*")` - List of hostnames to delegate for the
   CA. The default value allows all domains and IPs. This is specified as a
   comma-separated list of values. This can also be specified via the
-  `VAULT_SSH_HOST_KEY_HOSTNAMES` environment variable.
+  `BAO_SSH_HOST_KEY_HOSTNAMES` environment variable.
 
 - `-host-key-mount-point` `(string: "")` - Mount point to the SSH
   secrets engine where host keys are signed. When given a value, OpenBao will
@@ -94,7 +94,7 @@ flags](index.mdx) included on all commands.
   By default, host keys are validated against the user's local "known_hosts"
   file. This flag forces strict key host checking and ignores a custom user
   known hosts file. This can also be specified via the
-  `VAULT_SSH_HOST_KEY_MOUNT_POINT` environment variable.
+  `BAO_SSH_HOST_KEY_MOUNT_POINT` environment variable.
 
 - `-private-key-path` `(string: "~/.ssh/id_rsa")` - Path to the SSH private key
   to use for authentication. This must be the corresponding private key to

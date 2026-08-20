@@ -6,7 +6,7 @@
           <span class="sep">
             /
           </span>
-          <LinkTo @route="vault.cluster.access.method.item.list" @model={{this.itemType}}>
+          <LinkTo @route="vault.cluster.access.method.item.list" @models={{array @methodModelId this.itemType}}>
             {{pluralize this.itemType}}
           </LinkTo>
         </li>
@@ -45,7 +45,7 @@
       <div class="toolbar-separator"></div>
       <ToolbarLink
         @route="vault.cluster.access.method.item.edit"
-        @models={{array this.itemType this.model.id}}
+        @models={{array @methodModelId this.itemType this.model.id}}
         data-test-configure-link="true"
       >
         Edit
@@ -79,13 +79,18 @@
           Save
         </button>
         {{#if (eq this.mode "create")}}
-          <LinkTo @route="vault.cluster.access.method.item.list" class="button" data-test-cancel-link={{true}}>
+          <LinkTo
+            @route="vault.cluster.access.method.item.list"
+            @models={{array @methodModelId this.itemType}}
+            class="button"
+            data-test-cancel-link={{true}}
+          >
             Cancel
           </LinkTo>
         {{else}}
           <LinkTo
             @route="vault.cluster.access.method.item.show"
-            @model={{this.model.id}}
+            @models={{array @methodModelId this.itemType this.model.id}}
             class="button"
             data-test-cancel-link={{true}}
           >

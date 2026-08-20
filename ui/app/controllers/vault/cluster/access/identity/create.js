@@ -7,9 +7,11 @@ import Controller from '@ember/controller';
 import { task } from 'ember-concurrency';
 import { inject as service } from '@ember/service';
 import removeRecord from 'vault/utils/remove-record';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default Controller.extend({
   store: service(),
+  router: service(),
   showRoute: 'vault.cluster.access.identity.show',
   showTab: 'details',
   navAfterSave: task(function* ({ saveType, model }) {
@@ -23,10 +25,11 @@ export default Controller.extend({
     };
     const routeName = listRoutes[type];
     if (!isDelete) {
-      yield this.transitionToRoute(this.showRoute, model.id, this.showTab);
+      yield transitionToSafe(this.router, this.showRoute, model.id, this.showTab);
       return;
     }
-    yield this.transitionToRoute(routeName);
+
+    yield transitionToSafe(this.router, routeName);
   }),
 
   cleanupModel() {
@@ -38,6 +41,11 @@ export default Controller.extend({
 
     if (model.isSaving || model.isDestroyed || model.isDestroying) {
       return;
+    }
+
+    // Rollback any dirty attributes before unloading to avoid memory leaks
+    if (model.hasDirtyAttributes && typeof model.rollbackAttributes === 'function') {
+      model.rollbackAttributes();
     }
 
     // controllers are singletons — always unset

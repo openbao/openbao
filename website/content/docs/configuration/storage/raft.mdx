@@ -20,7 +20,8 @@ Algorithm][raft].
 
 :::tip
 
-**High Availability** – the Integrated Storage (Raft) backend supports High Availability.
+**High Availability** – the Integrated Storage (Raft) backend supports High
+Availability and Horizontal Scalability (as of OpenBao v2.5.0).
 
 :::
 
@@ -59,10 +60,10 @@ backend cannot be declared.
 
 - `path` `(string: "")` <a name="path"></a> – The file system path where all the OpenBao data gets
   stored.
-  This value can be overridden by setting the `VAULT_RAFT_PATH` environment variable.
+  This value can be overridden by setting the `BAO_RAFT_PATH` environment variable.
 
 - `node_id` `(string: "")` - The identifier for the node in the Raft cluster.
-  This value can be overridden by setting the `VAULT_RAFT_NODE_ID` environment variable.
+  This value can be overridden by setting the `BAO_RAFT_NODE_ID` environment variable.
 
 - `performance_multiplier` `(integer: 0)` - An integer multiplier used by
   servers to scale key Raft timing parameters. Tuning this affects the time it
@@ -125,7 +126,7 @@ backend cannot be declared.
   [`-non-voter`](../../commands/operator/raft.mdx#_non_voter) flag for the
   `bao operator raft join` command, but only affects voting status when joining
   via `retry_join` config. This setting can be overridden to true by setting the
-  `VAULT_RAFT_RETRY_JOIN_AS_NON_VOTER` environment variable to any non-empty value.
+  `BAO_RAFT_RETRY_JOIN_AS_NON_VOTER` environment variable to any non-empty value.
   Only valid if there is at least one `retry_join` stanza.
 
 - `max_entry_size` `(integer: 1048576)` <a name="max_entry_size"></a> - This configures the maximum number of

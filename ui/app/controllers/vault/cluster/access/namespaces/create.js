@@ -6,10 +6,12 @@
 import { inject as service } from '@ember/service';
 import Controller from '@ember/controller';
 import removeRecord from 'vault/utils/remove-record';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default Controller.extend({
   namespaceService: service('namespace'),
   store: service(),
+  router: service(),
 
   cleanupModel() {
     const model = this.model;
@@ -35,7 +37,7 @@ export default Controller.extend({
       if (saveType === 'save') {
         // fetch new namespaces for the namespace picker
         this.namespaceService.findNamespacesForUser.perform();
-        return this.transitionToRoute('vault.cluster.access.namespaces.index');
+        return transitionToSafe(this.router, 'vault.cluster.access.namespaces.index');
       }
     },
   },

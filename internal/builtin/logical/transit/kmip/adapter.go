@@ -1,0 +1,58 @@
+// Copyright (c) The OpenBao Contributors
+// SPDX-License-Identifier: MPL-2.0
+
+package kmip
+
+import (
+	"context"
+
+	"github.com/hashicorp/go-hclog"
+	kmiplib "github.com/ovh/kmip-go"
+)
+
+// Adapter is an interface that OpenBao engine must implement to expose key management via KMIP.
+type Adapter interface {
+	// AuthenticateCert resolves a TLS client certificate Subject DN to a set of allowed operations.
+	// empty allow list == "nothing allowed", nil slices == "all allowed"
+	AuthenticateCert(ctx context.Context, subjectDN string) (allowedOps []string, err error)
+
+	// CreateKey creates new key. KMIP algorithm and bit length come directly from the request, adapter converts to specific type.
+	CreateKey(ctx context.Context, name string, alg kmiplib.CryptographicAlgorithm, bitlen int32) (string, error)
+
+	// ImportKey imports raw key material:
+	//   - symmetric: raw bytes
+	//   - asymmetric: PKCS8 DER
+	// If name is empty, the server assigns a UniqueIdentifier; otherwise the
+	// client-supplied Name attribute is used and reused as the identifier.
+	ImportKey(ctx context.Context, name string, alg kmiplib.CryptographicAlgorithm, bitlen int32, keyMaterial []byte) (string, error)
+
+	// GetKey retrieves key material for a given unique id.
+	GetKey(ctx context.Context, id string) (kmiplib.Object, error)
+
+	// GetAttributes returns KMIP attributes for a key. Returns all attributes if names is empty.
+	GetAttributes(ctx context.Context, id string, names []kmiplib.AttributeName) ([]kmiplib.Attribute, error)
+
+	// LocateKeys returns a []IDs of keys matching attrs.
+	// Returns only non-revoked keys, empty []attr means return all active keys.
+	LocateKeys(ctx context.Context, attrs []kmiplib.Attribute) ([]string, error)
+
+	// ActivateKey activates a key.
+	ActivateKey(ctx context.Context, id string) error
+
+	// RevokeKey marks a key as revoked.
+	RevokeKey(ctx context.Context, id string) error
+
+	// DestroyKey destroys a key permanently.
+	DestroyKey(ctx context.Context, id string) error
+
+	// Logger returns the logger for the backend.
+	Logger() hclog.Logger
+}
+
+// CryptoAdapter supports cryptographic operations. Server register Encrypt/Decrypt/Sign/Verify handlers.
+type CryptoAdapter interface {
+	Encrypt(ctx context.Context, id string, plaintext []byte) ([]byte, error)
+	Decrypt(ctx context.Context, id string, ciphertext []byte) ([]byte, error)
+	Sign(ctx context.Context, id string, data []byte) ([]byte, error)
+	Verify(ctx context.Context, id string, data, signature []byte) (bool, error)
+}

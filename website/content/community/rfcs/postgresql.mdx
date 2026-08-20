@@ -225,7 +225,7 @@ enforce a new minimum. Whether this will have `ha_enabled=true` by
 default will be up for discussion then.
 
 We should document that we do not intend to add the PostgreSQL equivalent of the
-[`sys/storage/raft/snapshot`](/api-docs/system/storage/raft/#take-a-snapshot-of-the-raft-cluster)
+[`sys/storage/raft/snapshot`](/docs/api/system/storage/raft/#take-a-snapshot-of-the-raft-cluster)
 endpoint, and instead should rely on native, database-level [backup and restore
 procedures](https://www.postgresql.org/docs/current/backup.html). This will be
 possible and durable especially after the remaining work of [using transactions

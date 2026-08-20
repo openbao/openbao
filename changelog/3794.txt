@@ -1,0 +1,3 @@
+```release-note:improvement
+ui/secrets: Add 'Show internal engines' button to, by default, hide the `cubbyhole` secret engine.
+```

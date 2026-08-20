@@ -1,0 +1,3 @@
+```release-note:improvement
+command/server: Add `tls_key_exchange_preferences` configuration option to support enforcing PQC KEM.
+```

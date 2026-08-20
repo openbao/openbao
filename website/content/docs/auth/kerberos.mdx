@@ -178,7 +178,7 @@ your debugging efforts in the most useful direction.
    `krb5.conf`. Do this with both OpenBao's `keytab`, and any client `keytab` being
    used for logging in. This ensures your Kerberos network is working.
 3. While logged into your client machine, verify you can reach OpenBao
-   through the following command: `$ curl $VAULT_ADDR/v1/sys/health`.
+   through the following command: `$ curl $BAO_ADDR/v1/sys/health`.
 
 ### Build clear steps to reproduce the problem
 
@@ -220,5 +220,5 @@ client.
 ## API
 
 The Kerberos auth method has a full HTTP API. Please see the
-[Kerberos auth method API](/api-docs/auth/kerberos) for more
+[Kerberos auth method API](../api/auth/kerberos.mdx) for more
 details.

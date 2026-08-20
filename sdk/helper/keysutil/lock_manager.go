@@ -60,8 +60,8 @@ type PolicyRequest struct {
 	// Indicates whether a private or public key is imported/upserted
 	IsPrivateKey bool
 
-	// The UUID of the managed key, if using one
-	ManagedKeyUUID string
+	// The reference to the external key, if using one.
+	ExternalKeyRef string
 }
 
 type LockManager struct {
@@ -158,7 +158,7 @@ func (lm *LockManager) RestorePolicy(ctx context.Context, storage logical.Storag
 	defer lock.Unlock()
 
 	var ok bool
-	var pRaw interface{}
+	var pRaw any
 
 	// If the policy is in cache and 'force' is not specified, error out. Anywhere
 	// that would put it in the cache will also be protected by the mutex above,
@@ -244,7 +244,7 @@ func (lm *LockManager) BackupPolicy(ctx context.Context, storage logical.Storage
 	defer lock.Unlock()
 
 	var ok bool
-	var pRaw interface{}
+	var pRaw any
 
 	if lm.useCache {
 		pRaw, ok = lm.cache.Load(name)
@@ -276,13 +276,26 @@ func (lm *LockManager) BackupPolicy(ctx context.Context, storage logical.Storage
 	return backup, nil
 }
 
-// When the function returns, if caching was disabled, the Policy's lock must
-// be unlocked when the caller is done (and it should not be re-locked).
+// The Policy's lock must be unlocked when the caller is done (and it should
+// not be re-locked). This will usually be a read lock but may be exclusive
+// in certain circumstances, such as when upserted.
 func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io.Reader) (retP *Policy, retUpserted bool, retErr error) {
+	return lm.GetPolicyWithLockType(ctx, req, rand, false /* not exclusive */)
+}
+
+// The Policy's lock must be unlocked when the caller is done (and it should
+// not be re-locked). This will definitely be an exclusive lock.
+func (lm *LockManager) GetPolicyExclusive(ctx context.Context, req PolicyRequest, rand io.Reader) (retP *Policy, retUpserted bool, retErr error) {
+	return lm.GetPolicyWithLockType(ctx, req, rand, true /* exclusive */)
+}
+
+// The Policy must be unlocked when done. See note about GetPolicy for when
+// exclusive=false.
+func (lm *LockManager) GetPolicyWithLockType(ctx context.Context, req PolicyRequest, rand io.Reader, exclusive bool) (retP *Policy, retUpserted bool, retErr error) {
 	var p *Policy
 	var err error
 	var ok bool
-	var pRaw interface{}
+	var pRaw any
 
 	// Check if it's in our cache. If so, return right away.
 	if lm.useCache {
@@ -293,6 +306,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 		if p.deleted.Load() {
 			return nil, false, nil
 		}
+		p.Lock(exclusive)
 		return p, false, nil
 	}
 
@@ -304,20 +318,19 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 
 	// If we are using the cache, defer the lock unlock; otherwise we will
 	// return from here with the lock still held.
-	cleanup := func() {
+	defer func() {
 		switch {
-		// If using the cache we always unlock, the caller locks the policy
-		// themselves
-		case lm.useCache:
-			lock.Unlock()
-
-		// If not using the cache, if we aren't returning a policy the caller
-		// doesn't have a lock, so we must unlock
 		case retP == nil:
+			// If not using the cache and if we aren't returning a policy, the
+			// caller doesn't have a lock reference, so we must unlock.
+			lock.Unlock()
+		case lm.useCache:
+			// If using the cache, we always unlock the global lock, but before
+			// doing so, we acquire a lock on the policy itself.
+			retP.Lock(exclusive)
 			lock.Unlock()
 		}
-	}
-	defer cleanup()
+	}()
 
 	// Check the cache again
 	if lm.useCache {
@@ -370,12 +383,20 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 
 		case KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
 			if req.Derived || req.Convergent {
-				cleanup()
 				return nil, false, fmt.Errorf("key derivation and convergent encryption not supported for keys of type %v", req.KeyType)
 			}
 		case KeyType_HMAC:
 			if req.Derived || req.Convergent {
 				return nil, false, fmt.Errorf("key derivation and convergent encryption not supported for keys of type %v", req.KeyType)
+			}
+
+		case KeyType_ExternalKey:
+			if req.Derived || req.Convergent {
+				return nil, false, fmt.Errorf("key derivation and convergent encryption not supported for keys of type %v", req.KeyType)
+			}
+
+			if req.AutoRotatePeriod != 0 {
+				return nil, false, fmt.Errorf("auto-rotation is not supported for keys of type %v", req.KeyType)
 			}
 
 		default:
@@ -391,6 +412,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 			AllowPlaintextBackup: req.AllowPlaintextBackup,
 			AutoRotatePeriod:     req.AutoRotatePeriod,
 			KeySize:              req.KeySize,
+			ExternalKeyRef:       req.ExternalKeyRef,
 		}
 
 		if req.Derived {
@@ -446,7 +468,7 @@ func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key 
 	var p *Policy
 	var err error
 	var ok bool
-	var pRaw interface{}
+	var pRaw any
 
 	// Check if it's in our cache
 	if lm.useCache {
@@ -502,7 +524,7 @@ func (lm *LockManager) DeletePolicy(ctx context.Context, storage logical.Storage
 	var p *Policy
 	var err error
 	var ok bool
-	var pRaw interface{}
+	var pRaw any
 
 	// We may be writing to disk, so grab an exclusive lock. This prevents bad
 	// behavior when the cache is turned off. We also lock the shared policy

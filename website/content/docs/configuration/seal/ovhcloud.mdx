@@ -1,0 +1,131 @@
+---
+sidebar_label: OVHcloud KMS
+description: |-
+  The OVHcloud KMS seal configures OpenBao to use OVHcloud KMS as the seal wrapping mechanism.
+---
+
+# `ovhcloud` seal
+
+:::info
+
+This seal is available as an external KMS provider plugin in the
+[openbao-plugins](https://github.com/openbao/openbao-plugins) plugin collection.
+For more information on Auto Unseal plugins, see the [overview section](./index.mdx#plugins).
+
+:::
+
+The OVHcloud KMS seal configures OpenBao to use OVHcloud KMS as the seal wrapping mechanism.
+The OVHcloud KMS seal is activated by one of the following:
+- The presence of a `seal "ovhcloud"` block in OpenBao's configuration file.
+- The presence of the environment variable `BAO_SEAL_TYPE` set to `ovhcloud`.
+If enabling via environment variable, all other required values specific to OVHcloud KMS must also be provided,
+as well as OVHcloud-related environment variables required for successful authentication.
+
+## `ovhcloud` example
+
+The OVHcloud KMS seal authenticates with either a bearer token or mutual TLS (mTLS).
+
+This example shows how to configure OVHcloud KMS using token authentication:
+
+```hcl
+seal "ovhcloud" {
+  endpoint = "https://eu-west-rbx.okms.ovh.net"
+  kms_id   = "kms-id" # for example: "734b9b45-8b1a-469c-b140-b10bd6540017"
+  key_id   = "service-key-id" # for example: "1f1754e8-f2f8-60f0-9015-4c816b6f41b4"
+  token    = "your-token"
+}
+```
+
+This example shows how to configure OVHcloud KMS using mTLS authentication:
+
+```hcl
+seal "ovhcloud" {
+  endpoint       = "https://eu-west-rbx.okms.ovh.net"
+  kms_id         = "kms-id" # for example: "734b9b45-8b1a-469c-b140-b10bd6540017"
+  key_id         = "service-key-id" # for example: "1f1754e8-f2f8-60f0-9015-4c816b6f41b4"
+  client_cert    = "/path/to/domain/cert.pem"
+  client_key     = "/path/to/domain/key.pem"
+}
+```
+
+## `ovhcloud` parameters
+
+These parameters apply to the `seal` stanza in the OpenBao configuration file.
+When a value is provided both in the configuration file and through an environment variable,
+the environment variable takes precedence.
+
+- `endpoint` `(string: <required>)`: The OVHcloud KMS REST API endpoint to use, for example `https://eu-west-rbx.okms.ovh.net`.
+May also be specified by the `OVHCLOUDKMS_ENDPOINT` environment variable.
+
+- `kms_id` `(string: <required>)`: The OVHcloud KMS ID that the key belongs to.
+May also be specified by the `OVHCLOUDKMS_ID` environment variable.
+
+- `key_id` `(string: <required>)`: The OVHcloud KMS service key ID to use for encryption and decryption.
+May also be specified by the `OVHCLOUDKMS_KEY_ID` environment variable.
+
+- `token` `(string: "")`: The bearer token to use for authentication. Required when using token authentication.
+May also be specified by the `OVHCLOUDKMS_TOKEN` environment variable.
+
+- `client_cert` `(string: "")`: Path to the client certificate file to use for authentication. Required when using mTLS authentication.
+May also be specified by the `OVHCLOUDKMS_CLIENT_CERT` environment variable.
+
+- `client_key` `(string: "")`: Path to the client private key file to use for authentication. Required when using mTLS authentication.
+May also be specified by the `OVHCLOUDKMS_CLIENT_KEY` environment variable.
+
+- `ca_cert` `(string: "")`: Path to the CA file used to validate the OVHcloud KMS endpoint's certificate.
+Optional for both authentication methods. By default, the system's default root CAs are used.
+May also be specified by the `OVHCLOUDKMS_CA_CERT` environment variable.
+
+- `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
+
+Refer to the [Seal Migration](../../concepts/seal.mdx#seal-migration) documentation for more information about the seal migration process.
+
+## Authentication
+
+Authentication-related values must be provided, either as environment variables or as configuration parameters.
+OpenBao authenticates to OVHcloud KMS using one of the following methods:
+
+- **Token:** you have to provide `token`.
+See [how to configure a Personal Access Token (PAT)](https://docs.ovhcloud.com/en/guides/manage-and-operate/iam/configure-personal-access-token-pat).
+- **mTLS:** you have to provide both `client_cert` and `client_key`.
+See [how to create the certificates](https://docs.ovhcloud.com/en/guides/manage-and-operate/kms/okms-certificate-management).
+
+With either method you may optionally provide `ca_cert`.
+
+:::warning
+
+**Note:** Although the configuration file allows you to pass in the `token`, `client_cert` and `client_key` as part of the seal's parameters,
+it is _strongly_ recommended to set these values via environment variables.
+
+:::
+
+OVHcloud KMS authentication values:
+
+- `OVHCLOUDKMS_ENDPOINT`
+- `OVHCLOUDKMS_ID`
+- `OVHCLOUDKMS_KEY_ID`
+
+Token authentication values:
+
+- `OVHCLOUDKMS_TOKEN`
+
+mTLS authentication values:
+
+- `OVHCLOUDKMS_CLIENT_CERT`
+- `OVHCLOUDKMS_CLIENT_KEY`
+
+Optional authentication values:
+
+- `OVHCLOUDKMS_CA_CERT`
+
+The configured service key must allow both the `encrypt` and `decrypt` operations.
+See the [OVHcloud KMS quick start](https://docs.ovhcloud.com/en/guides/manage-and-operate/kms/quick-start) for details on creating a service key and obtaining credentials.
+
+## `ovhcloud` environment variables
+
+Alternatively, the OVHcloud KMS seal can be activated by providing the following environment variables.
+
+OpenBao Seal specific values:
+- `BAO_SEAL_TYPE`
+
+Provider-specific environment variables are documented with their corresponding configuration parameters above.

@@ -8,6 +8,7 @@ import Controller from '@ember/controller';
 import { supportedSecretBackends } from 'vault/helpers/supported-secret-backends';
 import { allEngines } from 'vault/helpers/mountable-secret-engines';
 import { action } from '@ember/object';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 const SUPPORTED_BACKENDS = supportedSecretBackends();
 
@@ -16,21 +17,20 @@ export default class MountSecretBackendController extends Controller {
 
   @action
   onMountSuccess(type, path) {
-    let transition;
+    let route;
     if (SUPPORTED_BACKENDS.includes(type)) {
       const engineInfo = allEngines().find((x) => x.type === type);
       if (engineInfo?.engineRoute) {
-        transition = this.router.transitionTo(
-          `vault.cluster.secrets.backend.${engineInfo.engineRoute}`,
-          path
-        );
+        route = [`vault.cluster.secrets.backend.${engineInfo.engineRoute}`, path];
       } else {
         const queryParams = engineInfo?.routeQueryParams || {};
-        transition = this.router.transitionTo('vault.cluster.secrets.backend.index', path, { queryParams });
+        route = ['vault.cluster.secrets.backend.index', path, { queryParams }];
       }
     } else {
-      transition = this.router.transitionTo('vault.cluster.secrets.backends');
+      route = ['vault.cluster.secrets.backends'];
     }
-    return transition.followRedirects();
+    // transitionToSafe resolves on the redirect abort, before the target
+    // route's model loads; the caller has no side effects after that
+    return transitionToSafe(this.router, ...route);
   }
 }

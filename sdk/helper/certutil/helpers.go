@@ -142,7 +142,7 @@ func getSubjectKeyIDFromBundle(data *CreationBundle) ([]byte, error) {
 	return GetSubjectKeyID(data.CSR.PublicKey)
 }
 
-func GetSubjectKeyID(pub interface{}) ([]byte, error) {
+func GetSubjectKeyID(pub any) ([]byte, error) {
 	var publicKeyBytes []byte
 	switch pub := pub.(type) {
 	case *rsa.PublicKey:
@@ -176,7 +176,7 @@ func GetSubjectKeyID(pub interface{}) ([]byte, error) {
 
 // ParsePKIMap takes a map (for instance, the Secret.Data
 // returned from the PKI backend) and returns a ParsedCertBundle.
-func ParsePKIMap(data map[string]interface{}) (*ParsedCertBundle, error) {
+func ParsePKIMap(data map[string]any) (*ParsedCertBundle, error) {
 	result := &CertBundle{}
 	err := mapstructure.Decode(data, result)
 	if err != nil {
@@ -223,7 +223,7 @@ func ParseDERKey(privateKeyBytes []byte) (signer crypto.Signer, format BlockType
 	}
 
 	var thirdError error
-	var rawKey interface{}
+	var rawKey any
 	if rawKey, thirdError = x509.ParsePKCS8PrivateKey(privateKeyBytes); thirdError == nil {
 		switch rawSigner := rawKey.(type) {
 		case *rsa.PrivateKey:
@@ -787,7 +787,7 @@ func ValidateKeyTypeLength(keyType string, keyBits int) error {
 		if !present {
 			return fmt.Errorf("unsupported bit length for EC key: %d", keyBits)
 		}
-	case "any", "ed25519":
+	case "any", "ed25519", "external-key":
 	default:
 		return fmt.Errorf("unknown key type %s", keyType)
 	}
@@ -798,13 +798,13 @@ func ValidateKeyTypeLength(keyType string, keyBits int) error {
 // CreateCertificate uses CreationBundle and the default rand.Reader to
 // generate a cert/keypair.
 func CreateCertificate(data *CreationBundle) (*ParsedCertBundle, error) {
-	return createCertificate(data, rand.Reader, generatePrivateKey)
+	return createCertificate(data, rand.Reader, nil)
 }
 
 // CreateCertificateWithRandomSource uses CreationBundle and a custom
 // io.Reader for randomness to generate a cert/keypair.
 func CreateCertificateWithRandomSource(data *CreationBundle, randReader io.Reader) (*ParsedCertBundle, error) {
-	return createCertificate(data, randReader, generatePrivateKey)
+	return createCertificate(data, randReader, nil)
 }
 
 // KeyGenerator Allow us to override how/what generates the private key
@@ -886,6 +886,10 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 	serialNumber, err := GenerateSerialNumber()
 	if err != nil {
 		return nil, err
+	}
+
+	if privateKeyGenerator == nil {
+		privateKeyGenerator = generatePrivateKey
 	}
 
 	if err := privateKeyGenerator(data.Params.KeyType,
@@ -1045,11 +1049,11 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 	return result, nil
 }
 
-func CreateCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[string]interface{}, certTemplate x509.Certificate, randReader io.Reader) (*ParsedCertBundle, error) {
-	return createCertificateWithTemplate(caSign, evaluationData, certTemplate, randReader, generatePrivateKey)
+func CreateCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[string]any, certTemplate x509.Certificate, randReader io.Reader) (*ParsedCertBundle, error) {
+	return createCertificateWithTemplate(caSign, evaluationData, certTemplate, randReader, nil)
 }
 
-func createCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[string]interface{}, certTemplate x509.Certificate, randReader io.Reader, privateKeyGenerator KeyGenerator) (*ParsedCertBundle, error) {
+func createCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[string]any, certTemplate x509.Certificate, randReader io.Reader, privateKeyGenerator KeyGenerator) (*ParsedCertBundle, error) {
 	var (
 		err           error
 		keyType       string
@@ -1075,6 +1079,10 @@ func createCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[stri
 	}
 	if v, ok := evaluationData["signature_bits"].(int); ok {
 		signatureBits = v
+	}
+
+	if privateKeyGenerator == nil {
+		privateKeyGenerator = generatePrivateKey
 	}
 
 	result := &ParsedCertBundle{}
@@ -1234,13 +1242,13 @@ var (
 // generate a cert/keypair. This is currently only meant
 // for use when generating an intermediate certificate.
 func CreateCSR(data *CreationBundle, addBasicConstraints bool) (*ParsedCSRBundle, error) {
-	return createCSR(data, addBasicConstraints, rand.Reader, generatePrivateKey)
+	return createCSR(data, addBasicConstraints, rand.Reader, nil)
 }
 
 // CreateCSRWithRandomSource creates a CSR with a custom io.Reader
 // for randomness to generate a cert/keypair.
 func CreateCSRWithRandomSource(data *CreationBundle, addBasicConstraints bool, randReader io.Reader) (*ParsedCSRBundle, error) {
-	return createCSR(data, addBasicConstraints, randReader, generatePrivateKey)
+	return createCSR(data, addBasicConstraints, randReader, nil)
 }
 
 // CreateCSRWithKeyGenerator creates a CSR with a custom io.Reader
@@ -1252,6 +1260,10 @@ func CreateCSRWithKeyGenerator(data *CreationBundle, addBasicConstraints bool, r
 func createCSR(data *CreationBundle, addBasicConstraints bool, randReader io.Reader, keyGenerator KeyGenerator) (*ParsedCSRBundle, error) {
 	var err error
 	result := &ParsedCSRBundle{}
+
+	if keyGenerator == nil {
+		keyGenerator = generatePrivateKey
+	}
 
 	if err := keyGenerator(data.Params.KeyType,
 		data.Params.KeyBits,
@@ -1474,11 +1486,11 @@ func signCertificate(data *CreationBundle, randReader io.Reader) (*ParsedCertBun
 	return result, nil
 }
 
-func SignCertificateWithTemplate(caSign *CAInfoBundle, csr *x509.CertificateRequest, evaluationData map[string]interface{}, certTemplate x509.Certificate) (*ParsedCertBundle, error) {
+func SignCertificateWithTemplate(caSign *CAInfoBundle, csr *x509.CertificateRequest, evaluationData map[string]any, certTemplate x509.Certificate) (*ParsedCertBundle, error) {
 	return signCertificateWithTemplate(caSign, csr, evaluationData, certTemplate, rand.Reader)
 }
 
-func signCertificateWithTemplate(caSign *CAInfoBundle, CSR *x509.CertificateRequest, evaluationData map[string]interface{}, certTemplate x509.Certificate, randReader io.Reader) (*ParsedCertBundle, error) {
+func signCertificateWithTemplate(caSign *CAInfoBundle, CSR *x509.CertificateRequest, evaluationData map[string]any, certTemplate x509.Certificate, randReader io.Reader) (*ParsedCertBundle, error) {
 	var (
 		usePSS        bool
 		signatureBits int
@@ -1645,16 +1657,36 @@ func GetPublicKeySize(key crypto.PublicKey) int {
 	return -1
 }
 
+// GetPublicKeyType yields the corresponding PrivateKeyType for this
+// crypto.PublicKey instance; useful for decoding the type of an external
+// key.
+func GetPublicKeyType(pub crypto.PublicKey) PrivateKeyType {
+	switch pub.(type) {
+	case *rsa.PublicKey:
+		return RSAPrivateKey
+	case *ecdsa.PublicKey:
+		return ECPrivateKey
+	case ed25519.PublicKey:
+		return Ed25519PrivateKey
+	default:
+		return UnknownPrivateKey
+	}
+}
+
 // CreateKeyBundle create a KeyBundle struct object which includes a generated key
 // of keyType with keyBits leveraging the randomness from randReader.
 func CreateKeyBundle(keyType string, keyBits int, randReader io.Reader) (KeyBundle, error) {
-	return CreateKeyBundleWithKeyGenerator(keyType, keyBits, randReader, generatePrivateKey)
+	return CreateKeyBundleWithKeyGenerator(keyType, keyBits, randReader, nil)
 }
 
 // CreateKeyBundleWithKeyGenerator create a KeyBundle struct object which includes
 // a generated key of keyType with keyBits leveraging the randomness from randReader and
 // delegates the actual key generation to keyGenerator
 func CreateKeyBundleWithKeyGenerator(keyType string, keyBits int, randReader io.Reader, keyGenerator KeyGenerator) (KeyBundle, error) {
+	if keyGenerator == nil {
+		keyGenerator = generatePrivateKey
+	}
+
 	result := KeyBundle{}
 	if err := keyGenerator(keyType, keyBits, &result, randReader); err != nil {
 		return result, err

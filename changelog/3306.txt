@@ -1,0 +1,6 @@
+```release-note:security
+auth/ldap: Prevent unlikely post-bind LDAP injection via bind DN to group resolution. GHSA-6mwx-4547-5vc9.
+```
+```release-note:security
+secret/ldap: Prevent potential LDAP injection with unsanitized DNs for service accounts. GHSA-6mwx-4547-5vc9.
+```

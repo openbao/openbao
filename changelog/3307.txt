@@ -1,0 +1,3 @@
+```release-note:security
+core/leases: Fix unauthorized cross-namespace lease revocation via leaked lease identifiers. GHSA-c36x-h252-g9x2.
+```

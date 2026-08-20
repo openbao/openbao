@@ -1,0 +1,3 @@
+```release-note:improvement
+core: Switch to cipher.NewGCMWithRandomNonce for fewer nonce generation calls.
+```

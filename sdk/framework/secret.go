@@ -46,9 +46,9 @@ func (s *Secret) Renewable() bool {
 }
 
 func (s *Secret) Response(
-	data, internal map[string]interface{},
+	data, internal map[string]any,
 ) *logical.Response {
-	internalData := make(map[string]interface{})
+	internalData := make(map[string]any)
 	maps.Copy(internalData, internal)
 	internalData["secret_type"] = s.Type
 

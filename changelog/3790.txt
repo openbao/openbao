@@ -1,0 +1,3 @@
+```release-note:bug
+core: Propagate requests with provided wrap info to mitigate 'read-only storage' error on standby nodes. 
+```

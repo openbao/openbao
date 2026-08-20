@@ -9,6 +9,7 @@ import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { task } from 'ember-concurrency';
 import { waitFor } from '@ember/test-waiters';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 /**
  * @module KeymgmtProviderEdit
@@ -53,7 +54,7 @@ export default class KeymgmtProviderEdit extends Component {
     const { model } = this.args;
     try {
       yield model.save();
-      this.router.transitionTo('vault.cluster.secrets.backend.show', model.id, {
+      transitionToSafe(this.router, 'vault.cluster.secrets.backend.show', model.id, {
         queryParams: { itemType: 'provider' },
       });
     } catch (error) {
@@ -86,7 +87,7 @@ export default class KeymgmtProviderEdit extends Component {
     try {
       const { model, root } = this.args;
       await model.destroyRecord();
-      this.router.transitionTo(root.path, root.model, { queryParams: { tab: 'provider' } });
+      transitionToSafe(this.router, root.path, root.model, { queryParams: { tab: 'provider' } });
     } catch (error) {
       this.flashMessages.danger(error.errors.join('. '));
     }

@@ -1,0 +1,3 @@
+```release-note:bug
+sys/quotas: Fix unintentional attempts to delete quotas on standby nodes when mount is removed.
+```

@@ -18,5 +18,5 @@ type MarshalOptions struct {
 }
 
 type OptMarshaler interface {
-	MarshalJSONWithOptions(*MarshalOptions) ([]byte, error)
+	MarshalJSONWithOptions(options *MarshalOptions) (data []byte, err error)
 }

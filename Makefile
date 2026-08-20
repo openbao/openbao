@@ -130,6 +130,7 @@ lint:
 # dependency.
 prep:
 	@if [ -d .git/hooks ]; then cp .hooks/* .git/hooks/; fi
+	@if [ -f .git-blame-ignore-revs ]; then git config blame.ignoreRevsFile .git-blame-ignore-revs; fi
 
 # bootstrap the build by downloading additional tools that may be used by devs
 #
@@ -141,7 +142,7 @@ bootstrap:
 	done
 
 static-assets-dir:
-	@mkdir -p ./http/web_ui
+	@mkdir -p ./internal/http/web_ui
 
 install-ui-dependencies:
 	@echo "--> Installing JavaScript assets"
@@ -170,27 +171,26 @@ static-dist-dev: ember-dist-dev
 
 proto: bootstrap
 	@sh -c "'$(CURDIR)/scripts/protocversioncheck.sh' '$(PROTOC_VERSION)'"
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative builtin/logical/kv/*.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative builtin/logical/pki/*.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative vault/forwarding/*.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative helper/storagepacker/types.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative helper/forwarding/types.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative sdk/logical/*.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative physical/raft/types.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative helper/identity/mfa/types.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative helper/identity/types.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative sdk/plugin/pb/*.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative sdk/helper/pluginutil/*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative sdk/database/dbplugin/*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative sdk/database/dbplugin/v5/proto/*.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative sdk/plugin/pb/*.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative vault/tokens/token.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative sdk/helper/pluginutil/*.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative builtin/logical/pki/*.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/vault/tokens/token.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/vault/forwarding/*.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/physical/raft/types.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/builtin/logical/kv/*.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/builtin/logical/pki/*.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/helper/identity/mfa/types.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/helper/identity/types.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/helper/forwarding/types.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/helper/storagepacker/types.proto
 
 	# No additional sed expressions should be added to this list. Going forward
 	# we should just use the variable names chosen by protobuf. These are left
 	# here for backwards compatibility, namely for SDK compilation.
-	$(SED) -i -e 's/Id/ID/' -e 's/SPDX-License-IDentifier/SPDX-License-Identifier/' vault/forwarding/request_forwarding_service.pb.go
-	$(SED) -i -e 's/Idp/IDP/' -e 's/Url/URL/' -e 's/Id/ID/' -e 's/IDentity/Identity/' -e 's/EntityId/EntityID/' -e 's/Api/API/' -e 's/Qr/QR/' -e 's/Totp/TOTP/' -e 's/Mfa/MFA/' -e 's/Pingid/PingID/' -e 's/namespaceId/namespaceID/' -e 's/Ttl/TTL/' -e 's/BoundCidrs/BoundCIDRs/' -e 's/SPDX-License-IDentifier/SPDX-License-Identifier/' helper/identity/types.pb.go helper/identity/mfa/types.pb.go helper/storagepacker/types.pb.go sdk/plugin/pb/backend.pb.go sdk/logical/identity.pb.go
+	$(SED) -i -e 's/Id/ID/' -e 's/SPDX-License-IDentifier/SPDX-License-Identifier/' internal/vault/forwarding/request_forwarding_service.pb.go
+	$(SED) -i -e 's/Idp/IDP/' -e 's/Url/URL/' -e 's/Id/ID/' -e 's/IDentity/Identity/' -e 's/EntityId/EntityID/' -e 's/Api/API/' -e 's/Qr/QR/' -e 's/Totp/TOTP/' -e 's/Mfa/MFA/' -e 's/Pingid/PingID/' -e 's/namespaceId/namespaceID/' -e 's/Ttl/TTL/' -e 's/BoundCidrs/BoundCIDRs/' -e 's/SPDX-License-IDentifier/SPDX-License-Identifier/' internal/helper/identity/types.pb.go internal/helper/identity/mfa/types.pb.go internal/helper/storagepacker/types.pb.go sdk/plugin/pb/backend.pb.go sdk/logical/identity.pb.go
 
 .PHONY: fmtcheck
 fmtcheck:
@@ -206,11 +206,13 @@ semgrep:
 semgrep-ci:
 	semgrep --error --include '*.go' -f tools/semgrep/ci .
 
+SEMGREP_IMAGE=$(shell grep -o '[^ ]*/semgrep:[^ ]*@sha256:[^ ]*' .github/workflows/code-checker.yml | head -n1)
+
 docker-semgrep:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --include '*.go' -a -f tools/semgrep .
+	$(DOCKER_CMD) run --rm --volume "$(PWD):/src" $(SEMGREP_IMAGE) semgrep --include '*.go' -a -f tools/semgrep .
 
 docker-semgrep-ci:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --error --include '*.go' -a -f tools/semgrep/ci .
+	$(DOCKER_CMD) run --rm --volume "$(PWD):/src" $(SEMGREP_IMAGE) semgrep --error --include '*.go' -a -f tools/semgrep/ci .
 
 assetcheck:
 	@echo "==> Checking compiled UI assets..."
@@ -220,22 +222,7 @@ spellcheck:
 	@echo "==> Spell checking website..."
 	go tool -modfile=tools/go.mod misspell -w -source=text website/content
 
-mysql-database-plugin:
-	@CGO_ENABLED=0 go build -o bin/mysql-database-plugin ./plugins/database/mysql/mysql-database-plugin
-
-mysql-legacy-database-plugin:
-	@CGO_ENABLED=0 go build -o bin/mysql-legacy-database-plugin ./plugins/database/mysql/mysql-legacy-database-plugin
-
-cassandra-database-plugin:
-	@CGO_ENABLED=0 go build -o bin/cassandra-database-plugin ./plugins/database/cassandra/cassandra-database-plugin
-
-influxdb-database-plugin:
-	@CGO_ENABLED=0 go build -o bin/influxdb-database-plugin ./plugins/database/influxdb/influxdb-database-plugin
-
-postgresql-database-plugin:
-	@CGO_ENABLED=0 go build -o bin/postgresql-database-plugin ./plugins/database/postgresql/postgresql-database-plugin
-
-.PHONY: bin default prep test vet bootstrap fmt fmtcheck mysql-database-plugin mysql-legacy-database-plugin cassandra-database-plugin influxdb-database-plugin postgresql-database-plugin ember-dist ember-dist-dev static-dist static-dist-dev assetcheck check-openbao-in-path packages build build-ci semgrep semgrep-ci vet-godoctests ci-vet-godoctests
+.PHONY: bin default prep test vet bootstrap fmt fmtcheck ember-dist ember-dist-dev static-dist static-dist-dev assetcheck check-openbao-in-path packages build build-ci semgrep semgrep-ci vet-godoctests ci-vet-godoctests
 
 .NOTPARALLEL: ember-dist ember-dist-dev
 
@@ -264,12 +251,6 @@ release-changelog: $(wildcard changelog/*.txt)
 	@:$(if $(LAST_RELEASE),,$(error please set the LAST_RELEASE environment variable for changelog generation))
 	@:$(if $(THIS_RELEASE),,$(error please set the THIS_RELEASE environment variable for changelog generation))
 	go tool -modfile=tools/go.mod changelog-build -changelog-template changelog/changelog.tmpl -entries-dir changelog -git-dir . -note-template changelog/note.tmpl -last-release $(LAST_RELEASE) -this-release $(THIS_RELEASE)
-
-.PHONY: goreleaser-check
-goreleaser-check:
-	goreleaser check -f goreleaser.hsm.yaml
-	goreleaser check -f goreleaser.linux.yaml
-	goreleaser check -f goreleaser.other.yaml
 
 .PHONY: sync-deps
 sync-deps:

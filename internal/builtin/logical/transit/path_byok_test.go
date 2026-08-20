@@ -1,0 +1,229 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package transit
+
+import (
+	"testing"
+
+	"github.com/openbao/openbao/sdk/v2/logical"
+)
+
+func TestTransit_BYOKExportImport(t *testing.T) {
+	// Test encryption/decryption after a restore for supported keys
+	testBYOKExportImport(t, "aes128-gcm96", "encrypt-decrypt")
+	testBYOKExportImport(t, "aes256-gcm96", "encrypt-decrypt")
+	testBYOKExportImport(t, "chacha20-poly1305", "encrypt-decrypt")
+	testBYOKExportImport(t, "xchacha20-poly1305", "encrypt-decrypt")
+	testBYOKExportImport(t, "rsa-2048", "encrypt-decrypt")
+	testBYOKExportImport(t, "rsa-3072", "encrypt-decrypt")
+	testBYOKExportImport(t, "rsa-4096", "encrypt-decrypt")
+
+	// Test signing/verification after a restore for supported keys
+	testBYOKExportImport(t, "ecdsa-p256", "sign-verify")
+	testBYOKExportImport(t, "ecdsa-p384", "sign-verify")
+	testBYOKExportImport(t, "ecdsa-p521", "sign-verify")
+	testBYOKExportImport(t, "ed25519", "sign-verify")
+	testBYOKExportImport(t, "rsa-2048", "sign-verify")
+	testBYOKExportImport(t, "rsa-3072", "sign-verify")
+	testBYOKExportImport(t, "rsa-4096", "sign-verify")
+
+	// Test HMAC sign/verify after a restore for supported keys.
+	testBYOKExportImport(t, "hmac", "hmac-verify")
+}
+
+func testBYOKExportImport(t *testing.T, keyType, feature string) {
+	var resp *logical.Response
+	var err error
+
+	b, s := createBackendWithStorage(t)
+
+	// Create a key
+	keyReq := &logical.Request{
+		Path:      "keys/test-source",
+		Operation: logical.UpdateOperation,
+		Storage:   s,
+		Data: map[string]any{
+			"type":       keyType,
+			"exportable": true,
+		},
+	}
+	if keyType == "hmac" {
+		keyReq.Data["key_size"] = 32
+	}
+	resp, err = b.HandleRequest(t.Context(), keyReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("resp: %#v\nerr: %v", resp, err)
+	}
+
+	// Read the wrapping key.
+	wrapKeyReq := &logical.Request{
+		Path:      "wrapping_key",
+		Operation: logical.ReadOperation,
+		Storage:   s,
+	}
+	resp, err = b.HandleRequest(t.Context(), wrapKeyReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("resp: %#v\nerr: %v", resp, err)
+	}
+
+	// Import the wrapping key.
+	wrapKeyImportReq := &logical.Request{
+		Path:      "keys/wrapper/import",
+		Operation: logical.UpdateOperation,
+		Storage:   s,
+		Data: map[string]any{
+			"public_key": resp.Data["public_key"],
+			"type":       "rsa-4096",
+		},
+	}
+	resp, err = b.HandleRequest(t.Context(), wrapKeyImportReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("resp: %#v\nerr: %v", resp, err)
+	}
+
+	// Export the key
+	backupReq := &logical.Request{
+		Path:      "byok-export/wrapper/test-source",
+		Operation: logical.ReadOperation,
+		Storage:   s,
+	}
+	resp, err = b.HandleRequest(t.Context(), backupReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("resp: %#v\nerr: %v", resp, err)
+	}
+	keys := resp.Data["keys"].(map[string]string)
+
+	// Import the key to a new name.
+	restoreReq := &logical.Request{
+		Path:      "keys/test/import",
+		Operation: logical.UpdateOperation,
+		Storage:   s,
+		Data: map[string]any{
+			"ciphertext": keys["1"],
+			"type":       keyType,
+		},
+	}
+	resp, err = b.HandleRequest(t.Context(), restoreReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("resp: %#v\nerr: %v", resp, err)
+	}
+
+	plaintextB64 := "dGhlIHF1aWNrIGJyb3duIGZveA==" // "the quick brown fox"
+	// Perform encryption, signing or hmac-ing based on the set 'feature'
+	var encryptReq, signReq, hmacReq *logical.Request
+	var ciphertext, signature, hmac string
+	switch feature {
+	case "encrypt-decrypt":
+		encryptReq = &logical.Request{
+			Path:      "encrypt/test-source",
+			Operation: logical.UpdateOperation,
+			Storage:   s,
+			Data: map[string]any{
+				"plaintext": plaintextB64,
+			},
+		}
+		resp, err = b.HandleRequest(t.Context(), encryptReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("resp: %#v\nerr: %v", resp, err)
+		}
+		ciphertext = resp.Data["ciphertext"].(string)
+
+	case "sign-verify":
+		signReq = &logical.Request{
+			Path:      "sign/test-source",
+			Operation: logical.UpdateOperation,
+			Storage:   s,
+			Data: map[string]any{
+				"input": plaintextB64,
+			},
+		}
+		resp, err = b.HandleRequest(t.Context(), signReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("resp: %#v\nerr: %v", resp, err)
+		}
+		signature = resp.Data["signature"].(string)
+
+	case "hmac-verify":
+		hmacReq = &logical.Request{
+			Path:      "hmac/test-source",
+			Operation: logical.UpdateOperation,
+			Storage:   s,
+			Data: map[string]any{
+				"input": plaintextB64,
+			},
+		}
+		resp, err = b.HandleRequest(t.Context(), hmacReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("resp: %#v\nerr: %v", resp, err)
+		}
+		hmac = resp.Data["hmac"].(string)
+	}
+
+	// validationFunc verifies the ciphertext, signature or hmac based on the
+	// set 'feature'
+	validationFunc := func(keyName string) {
+		var decryptReq *logical.Request
+		var verifyReq *logical.Request
+		switch feature {
+		case "encrypt-decrypt":
+			decryptReq = &logical.Request{
+				Path:      "decrypt/" + keyName,
+				Operation: logical.UpdateOperation,
+				Storage:   s,
+				Data: map[string]any{
+					"ciphertext": ciphertext,
+				},
+			}
+			resp, err = b.HandleRequest(t.Context(), decryptReq)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("resp: %#v\nerr: %v", resp, err)
+			}
+
+			if resp.Data["plaintext"].(string) != plaintextB64 {
+				t.Fatalf("bad: plaintext; expected: %q, actual: %q", plaintextB64, resp.Data["plaintext"].(string))
+			}
+		case "sign-verify":
+			verifyReq = &logical.Request{
+				Path:      "verify/" + keyName,
+				Operation: logical.UpdateOperation,
+				Storage:   s,
+				Data: map[string]any{
+					"signature": signature,
+					"input":     plaintextB64,
+				},
+			}
+			resp, err = b.HandleRequest(t.Context(), verifyReq)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("resp: %#v\nerr: %v", resp, err)
+			}
+			if resp.Data["valid"].(bool) != true {
+				t.Fatalf("bad: signature verification failed for key type %q", keyType)
+			}
+
+		case "hmac-verify":
+			verifyReq = &logical.Request{
+				Path:      "verify/" + keyName,
+				Operation: logical.UpdateOperation,
+				Storage:   s,
+				Data: map[string]any{
+					"hmac":  hmac,
+					"input": plaintextB64,
+				},
+			}
+			resp, err = b.HandleRequest(t.Context(), verifyReq)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("resp: %#v\nerr: %v", resp, err)
+			}
+			if resp.Data["valid"].(bool) != true {
+				t.Fatalf("bad: HMAC verification failed for key type %q", keyType)
+			}
+		}
+	}
+
+	// Ensure that the restored key is functional
+	validationFunc("test")
+
+	// Ensure the original key is functional
+	validationFunc("test-source")
+}

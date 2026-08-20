@@ -8,7 +8,7 @@ const logos = require.context(
 import { useColorMode } from '@docusaurus/theme-common';
 
 
-function getLogo(title: string, logoName: string) {
+export function getLogo(title: string, logoName: string) {
     const key = logoName != null? logoName :title.trim().toLowerCase();
 
     const { colorMode } = useColorMode();
@@ -28,7 +28,7 @@ function getLogo(title: string, logoName: string) {
         return logos(`${lightLogoPng}`).default ?? logos(`${lightLogoPng}`);
     } else if (logos.keys().includes(`./${key}.png`)) {
         return logos(`./${key}.png`).default ?? logos(`./${key}.png`);
-    } else {
+    } else if (logos.keys().includes(`./${key}.svg`)) {
         return logos(`./${key}.svg`).default ?? logos(`./${key}.svg`);
     }
 }

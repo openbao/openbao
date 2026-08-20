@@ -6,6 +6,7 @@ package pki
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/mldsa"
 	"crypto/rsa"
 	"errors"
 	"fmt"
@@ -232,6 +233,8 @@ func getKeyTypeAndBitsFromPublicKeyForRole(pubKey crypto.PublicKey) (certutil.Pr
 		keyType = certutil.ECPrivateKey
 	case ed25519.PublicKey:
 		keyType = certutil.Ed25519PrivateKey
+	case *mldsa.PublicKey:
+		keyType = certutil.MLDSAPrivateKey
 	default:
 		return certutil.UnknownPrivateKey, 0, fmt.Errorf("unsupported public key: %#v", pubKey)
 	}

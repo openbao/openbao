@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -341,6 +342,51 @@ func TestParsePKIMap(t *testing.T) {
 				assert.Equal(t, parsedCertBundle.Certificate.Subject.CommonName, validCommonName)
 			}
 		})
+	}
+}
+
+func TestGetMLDSAParameterSetLabel(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		desc      string
+		params    mldsa.Parameters
+		wantLabel int
+		wantErr   bool
+	}{
+		{
+			desc:      "ML-DSA-44",
+			params:    mldsa.MLDSA44(),
+			wantLabel: 44,
+			wantErr:   false,
+		},
+		{
+			desc:      "ML-DSA-65",
+			params:    mldsa.MLDSA65(),
+			wantLabel: 65,
+			wantErr:   false,
+		},
+		{
+			desc:      "ML-DSA-87",
+			params:    mldsa.MLDSA87(),
+			wantLabel: 87,
+			wantErr:   false,
+		},
+		{
+			desc:    "Unknown params",
+			params:  mldsa.Parameters{},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		privKey, err := mldsa.GenerateKey(tc.params)
+		if tc.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+			assert.Equal(t, tc.wantLabel, GetMLDSAParameterSetLabel(privKey.PublicKey()))
+		}
 	}
 }
 

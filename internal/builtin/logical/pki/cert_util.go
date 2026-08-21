@@ -7,6 +7,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/mldsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -982,6 +983,25 @@ func signCert(b *backend,
 
 		actualKeyType = "ed25519"
 		actualKeyBits = 0
+	case "mldsa":
+		if csr.PublicKeyAlgorithm != x509.MLDSA {
+			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
+				"role requires keys of type %s",
+				data.role.KeyType,
+			)}
+		}
+
+		pubkey, ok := csr.PublicKey.(*mldsa.PublicKey)
+		if !ok {
+			return nil, nil, errutil.UserError{Err: "could not parse CSR's public key"}
+		}
+
+		actualKeyType = "mldsa"
+		label := certutil.GetMLDSAParameterSetLabel(pubkey)
+		if label == -1 {
+			return nil, nil, errutil.UserError{Err: fmt.Sprintf("Unknown key size for ML-DSA: %v", pubkey.Parameters().String())}
+		}
+		actualKeyBits = label
 	case "any":
 		// We need to compute the actual key type and key bits, to correctly
 		// validate minimums and SignatureBits below.
@@ -1013,6 +1033,18 @@ func signCert(b *backend,
 
 			actualKeyType = "ed25519"
 			actualKeyBits = 0
+		case x509.MLDSA:
+			pubkey, ok := csr.PublicKey.(*mldsa.PublicKey)
+			if !ok {
+				return nil, nil, errutil.UserError{Err: "could not parse CSR's public key"}
+			}
+
+			actualKeyType = "mldsa"
+			label := certutil.GetMLDSAParameterSetLabel(pubkey)
+			if label == -1 {
+				return nil, nil, errutil.UserError{Err: fmt.Sprintf("Unknown key size for ML-DSA: %v", pubkey.Parameters().String())}
+			}
+			actualKeyBits = label
 		default:
 			return nil, nil, errutil.UserError{Err: "Unknown key type in CSR: " + csr.PublicKeyAlgorithm.String()}
 		}
@@ -1040,12 +1072,16 @@ func signCert(b *backend,
 			return nil, nil, errutil.InternalError{Err: fmt.Sprintf("unknown internal error updating default values: %v", err)}
 		}
 
+		switch actualKeyType {
 		// We're using the KeyBits field as a minimum value below, and P-224 is safe
 		// and a previously allowed value. However, the above call defaults
 		// to P-256 as that's a saner default than P-224 (w.r.t. generation), so
 		// override it here to allow 224 as the smallest size we permit.
-		if actualKeyType == "ec" {
+		case "ec":
 			data.role.KeyBits = 224
+		// same reasoning as above for "ec": we allow 44 instead of 65 parameter set
+		case "mldsa":
+			data.role.KeyBits = 44
 		}
 	}
 
@@ -1072,7 +1108,7 @@ func signCert(b *backend,
 				actualKeyBits,
 			)}
 		}
-	case "ec":
+	case "ec", "mldsa":
 		if actualKeyBits < data.role.KeyBits {
 			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
 				"role requires a minimum of a %d-bit key, but CSR's key is %d bits",
@@ -1880,7 +1916,7 @@ func convertRespToPKCS8(resp *logical.Response) error {
 		signer, err = x509.ParsePKCS1PrivateKey(keyData)
 	case certutil.ECPrivateKey:
 		signer, err = x509.ParseECPrivateKey(keyData)
-	case certutil.Ed25519PrivateKey:
+	case certutil.Ed25519PrivateKey, certutil.MLDSAPrivateKey:
 		k, err := x509.ParsePKCS8PrivateKey(keyData)
 		if err != nil {
 			return fmt.Errorf("error converting response to pkcs8: error parsing previous key: %w", err)

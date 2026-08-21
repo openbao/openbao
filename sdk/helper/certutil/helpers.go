@@ -10,6 +10,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -38,8 +39,9 @@ const rsaMinimumSecureKeySize = 2048
 
 // Mapping of key types to default key lengths
 var defaultAlgorithmKeyBits = map[string]int{
-	"rsa": 2048,
-	"ec":  256,
+	"rsa":   2048,
+	"ec":    256,
+	"mldsa": 65,
 }
 
 // Mapping of NIST P-Curve's key length to expected signature bits.
@@ -63,6 +65,9 @@ var SignatureAlgorithmNames = map[string]x509.SignatureAlgorithm{
 	"sha512withrsapss": x509.SHA512WithRSAPSS,
 	"pureed25519":      x509.PureEd25519,
 	"ed25519":          x509.PureEd25519, // Duplicated for clarity; most won't expect the "Pure" prefix.
+	"mldsa44":          x509.MLDSA44,
+	"mldsa65":          x509.MLDSA65,
+	"mldsa87":          x509.MLDSA87,
 }
 
 // Mapping of constant values<->constant names for SignatureAlgorithm
@@ -77,6 +82,9 @@ var InvSignatureAlgorithmNames = map[x509.SignatureAlgorithm]string{
 	x509.SHA384WithRSAPSS: "SHA384WithRSAPSS",
 	x509.SHA512WithRSAPSS: "SHA512WithRSAPSS",
 	x509.PureEd25519:      "Ed25519",
+	x509.MLDSA44:          "MLDSA44",
+	x509.MLDSA65:          "MLDSA65",
+	x509.MLDSA87:          "MLDSA87",
 }
 
 // OID for RFC 5280 CRL Number extension.
@@ -167,6 +175,8 @@ func GetSubjectKeyID(pub any) ([]byte, error) {
 		}
 	case ed25519.PublicKey:
 		publicKeyBytes = pub
+	case *mldsa.PublicKey:
+		publicKeyBytes = pub.Bytes()
 	default:
 		return nil, errutil.InternalError{Err: fmt.Sprintf("unsupported public key type: %T", pub)}
 	}
@@ -231,6 +241,8 @@ func ParseDERKey(privateKeyBytes []byte) (signer crypto.Signer, format BlockType
 		case *ecdsa.PrivateKey:
 			signer = rawSigner
 		case ed25519.PrivateKey:
+			signer = rawSigner
+		case *mldsa.PrivateKey:
 			signer = rawSigner
 		default:
 			return nil, UnknownBlock, errutil.InternalError{Err: "unknown type for parsed PKCS8 Private Key"}
@@ -387,6 +399,27 @@ func generatePrivateKey(keyType string, keyBits int, container ParsedPrivateKeyC
 		if err != nil {
 			return errutil.InternalError{Err: fmt.Sprintf("error marshalling Ed25519 private key: %v", err)}
 		}
+	case "mldsa":
+		privateKeyType = MLDSAPrivateKey
+		var params mldsa.Parameters
+		switch keyBits {
+		case 44:
+			params = mldsa.MLDSA44()
+		case 65:
+			params = mldsa.MLDSA65()
+		case 87:
+			params = mldsa.MLDSA87()
+		default:
+			return errutil.UserError{Err: fmt.Sprintf("unsupported bit length for mldsa key: %d", keyBits)}
+		}
+		privateKey, err = mldsa.GenerateKey(params)
+		if err != nil {
+			return errutil.InternalError{Err: fmt.Sprintf("error generating mldsa private key: %v", err)}
+		}
+		privateKeyBytes, err = x509.MarshalPKCS8PrivateKey(privateKey)
+		if err != nil {
+			return errutil.InternalError{Err: fmt.Sprintf("error marshalling mldsa private key: %v", err)}
+		}
 	default:
 		return errutil.UserError{Err: fmt.Sprintf("unknown key type: %s", keyType)}
 	}
@@ -474,6 +507,13 @@ func ComparePublicKeys(key1Iface, key2Iface crypto.PublicKey) (bool, error) {
 			return false, nil
 		}
 		return true, nil
+	case *mldsa.PublicKey:
+		key1 := key1Iface.(*mldsa.PublicKey)
+		key2, ok := key2Iface.(*mldsa.PublicKey)
+		if !ok {
+			return false, fmt.Errorf("key types do not match: %T and %T", key1Iface, key2Iface)
+		}
+		return key1.Equal(key2), nil
 	default:
 		return false, fmt.Errorf("cannot compare key with type %T", key1Iface)
 	}
@@ -502,6 +542,8 @@ func ParsePublicKeyPEM(data []byte) (crypto.PublicKey, error) {
 		case *ecdsa.PublicKey:
 			return key, nil
 		case ed25519.PublicKey:
+			return key, nil
+		case *mldsa.PublicKey:
 			return key, nil
 		}
 	}
@@ -691,8 +733,8 @@ func DefaultOrValueHashBits(keyType string, keyBits int, hashBits int) (int, err
 		// To match previous behavior (and ignoring NIST's recommendations for
 		// hash size to align with RSA key sizes), default to SHA-2-256.
 		hashBits = 256
-	} else if keyType == "ed25519" || keyType == "ed448" || keyType == "any" {
-		// No-op; ed25519 and ed448 internally specify their own hash and
+	} else if keyType == "ed25519" || keyType == "ed448" || keyType == "mldsa" || keyType == "any" {
+		// No-op; ed25519, ed448 and mldsa internally specify their own hash and
 		// we do not need to select one. Double hashing isn't supported in
 		// certificate signing. Additionally, the any key type can't know
 		// what hash algorithm to use yet, so default to zero.
@@ -734,7 +776,7 @@ func ValidateDefaultOrValueKeyTypeSignatureLength(keyType string, keyBits int, h
 // Validates that the length of the hash (in bits) used in the signature
 // calculation is a known, approved value.
 func ValidateSignatureLength(keyType string, hashBits int) error {
-	if keyType == "any" || keyType == "ec" || keyType == "ed25519" || keyType == "ed448" {
+	if keyType == "any" || keyType == "ec" || keyType == "ed25519" || keyType == "ed448" || keyType == "mldsa" {
 		// ed25519 and ed448 include built-in hashing and is not externally
 		// configurable. There are three modes for each of these schemes:
 		//
@@ -788,6 +830,14 @@ func ValidateKeyTypeLength(keyType string, keyBits int) error {
 			return fmt.Errorf("unsupported bit length for EC key: %d", keyBits)
 		}
 	case "any", "ed25519", "external-key":
+	case "mldsa":
+		switch keyBits {
+		case 44:
+		case 65:
+		case 87:
+		default:
+			return fmt.Errorf("unsupported bit length for ML-DSA key: %d", keyBits)
+		}
 	default:
 		return fmt.Errorf("unknown key type %s", keyType)
 	}
@@ -984,6 +1034,8 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 			certTemplate.SignatureAlgorithm = x509.PureEd25519
 		case ECPrivateKey:
 			certTemplate.SignatureAlgorithm = selectSignatureAlgorithmForECDSA(data.SigningBundle.PrivateKey.Public(), data.Params.SignatureBits)
+		case MLDSAPrivateKey:
+			certTemplate.SignatureAlgorithm = selectSignatureAlgorithmForMLDSA(data.SigningBundle.PrivateKey.Public())
 		}
 
 		caCert := data.SigningBundle.Certificate
@@ -1006,6 +1058,8 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 			certTemplate.SignatureAlgorithm = x509.PureEd25519
 		case "ec":
 			certTemplate.SignatureAlgorithm = selectSignatureAlgorithmForECDSA(result.PrivateKey.Public(), data.Params.SignatureBits)
+		case "mldsa":
+			certTemplate.SignatureAlgorithm = selectSignatureAlgorithmForMLDSA(result.PrivateKey.Public())
 		}
 
 		certTemplate.AuthorityKeyId = subjKeyID
@@ -1120,6 +1174,8 @@ func createCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[stri
 			certTemplate.SignatureAlgorithm = x509.PureEd25519
 		case ECPrivateKey:
 			certTemplate.SignatureAlgorithm = selectSignatureAlgorithmForECDSA(caSign.PrivateKey.Public(), signatureBits)
+		case MLDSAPrivateKey:
+			certTemplate.SignatureAlgorithm = selectSignatureAlgorithmForMLDSA(caSign.PrivateKey.Public())
 		}
 
 		caCert := caSign.Certificate
@@ -1157,6 +1213,8 @@ func createCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[stri
 			certTemplate.SignatureAlgorithm = x509.PureEd25519
 		case "ec":
 			certTemplate.SignatureAlgorithm = selectSignatureAlgorithmForECDSA(result.PrivateKey.Public(), signatureBits)
+		case "mldsa":
+			certTemplate.SignatureAlgorithm = selectSignatureAlgorithmForMLDSA(result.PrivateKey.Public())
 		}
 
 		certTemplate.AuthorityKeyId = subjKeyID
@@ -1195,6 +1253,23 @@ func createCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[stri
 	}
 
 	return result, nil
+}
+
+func selectSignatureAlgorithmForMLDSA(pub crypto.PublicKey) x509.SignatureAlgorithm {
+	pubkey, ok := pub.(*mldsa.PublicKey)
+	if !ok {
+		return 0
+	}
+	switch pubkey.Parameters() {
+	case mldsa.MLDSA44():
+		return x509.MLDSA44
+	case mldsa.MLDSA65():
+		return x509.MLDSA65
+	case mldsa.MLDSA87():
+		return x509.MLDSA87
+	default:
+		return 0
+	}
 }
 
 func selectSignatureAlgorithmForECDSA(pub crypto.PublicKey, signatureBits int) x509.SignatureAlgorithm {
@@ -1309,6 +1384,8 @@ func createCSR(data *CreationBundle, addBasicConstraints bool, randReader io.Rea
 		csrTemplate.SignatureAlgorithm = selectSignatureAlgorithmForECDSA(result.PrivateKey.Public(), data.Params.SignatureBits)
 	case "ed25519":
 		csrTemplate.SignatureAlgorithm = x509.PureEd25519
+	case "mldsa":
+		csrTemplate.SignatureAlgorithm = selectSignatureAlgorithmForMLDSA(result.PrivateKey.Public())
 	}
 
 	csr, err := x509.CreateCertificateRequest(randReader, csrTemplate, result.PrivateKey)
@@ -1653,6 +1730,9 @@ func GetPublicKeySize(key crypto.PublicKey) int {
 	if key, ok := key.(dsa.PublicKey); ok {
 		return key.Y.BitLen()
 	}
+	if key, ok := key.(*mldsa.PublicKey); ok {
+		return GetMLDSAParameterSetLabel(key)
+	}
 
 	return -1
 }
@@ -1668,8 +1748,25 @@ func GetPublicKeyType(pub crypto.PublicKey) PrivateKeyType {
 		return ECPrivateKey
 	case ed25519.PublicKey:
 		return Ed25519PrivateKey
+	case *mldsa.PublicKey:
+		return MLDSAPrivateKey
 	default:
 		return UnknownPrivateKey
+	}
+}
+
+// GetMLDSAParameterSetLabel returns the integer label suffix defined in FIPS 204. The
+// only valid return values are 44, 65, 87, or -1 (for unknown parameter set label).
+func GetMLDSAParameterSetLabel(k *mldsa.PublicKey) int {
+	switch k.Parameters() {
+	case mldsa.MLDSA44():
+		return 44
+	case mldsa.MLDSA65():
+		return 65
+	case mldsa.MLDSA87():
+		return 87
+	default:
+		return -1
 	}
 }
 

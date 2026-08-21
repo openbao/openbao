@@ -50,7 +50,7 @@ func pathCelIssue(b *backend) *framework.Path {
 		Description: `The number of bits to use. Allowed values are
 0 (universal default); with rsa key_type: 2048 (default), 3072, or
 4096; with ec key_type: 224, 256 (default), 384, or 521; ignored with
-ed25519.`,
+ed25519; with mldsa key_type: 44, 65 (default), or 87.`,
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: 0,
 		},
@@ -60,9 +60,9 @@ ed25519.`,
 		Type:    framework.TypeString,
 		Default: "",
 		Description: `The type of key to use; defaults to the empty string
-to use whatever is specified by the role. "rsa", "ec", and "ed25519" are the
-only valid values outside of the empty string.`,
-		AllowedValues: []any{"", "rsa", "ec", "ed25519"},
+to use whatever is specified by the role. "rsa", "ec", "ed25519", and "mldsa"
+are the only valid values outside of the empty string.`,
+		AllowedValues: []any{"", "rsa", "ec", "ed25519", "mldsa"},
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: "",
 		},
@@ -229,7 +229,7 @@ func buildPathIssue(b *backend, pattern string, displayAttrs *framework.DisplayA
 		Description: `The number of bits to use. Allowed values are
 0 (universal default); with rsa key_type: 2048 (default), 3072, or
 4096; with ec key_type: 224, 256 (default), 384, or 521; ignored with
-ed25519.`,
+ed25519; with mldsa key_type: 44, 65 (default), or 87.`,
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: 0,
 		},
@@ -239,9 +239,9 @@ ed25519.`,
 		Type:    framework.TypeString,
 		Default: "",
 		Description: `The type of key to use; defaults to the empty string
-to use whatever is specified by the role. "rsa","ec", and "ed25519" are the
-only valid values outside of the empty string.`,
-		AllowedValues: []any{"", "rsa", "ec", "ed25519"},
+to use whatever is specified by the role. "rsa","ec", "ed25519", and "mldsa"
+are the only valid values outside of the empty string.`,
+		AllowedValues: []any{"", "rsa", "ec", "ed25519", "mldsa"},
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: "",
 		},

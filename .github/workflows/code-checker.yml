@@ -22,7 +22,7 @@ jobs:
     name: Code checks
     runs-on: ubuntu-latest
     env:
-      GOLANGCI_LINT_VERSION: v2.12.2
+      GOLANGCI_LINT_VERSION: v2.13.1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -78,9 +78,14 @@ jobs:
         run: make ci-sync-deps
 
   el8gobuild:
+    # TODO(ascheel): We are disabling EL8 checker while we merge Go 1.27 until
+    # it supports it. We'll maintain v2.6.x patches for anyone building on a
+    # non-Go 1.27 platform (though, without releases).
+    if: false
+
     # make sure that bao can still be built with the golang version on el8
     # unless there is a `no-el8gobuild` label
-    if: "!contains(github.event.pull_request.labels.*.name, 'no-el8gobuild')"
+    # if: "!contains(github.event.pull_request.labels.*.name, 'no-el8gobuild')"
     name: EL8 Go build checks
     runs-on: ubuntu-latest
     container: ghcr.io/almalinux/8-base

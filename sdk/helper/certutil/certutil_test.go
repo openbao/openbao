@@ -523,7 +523,6 @@ func TestGetPublicKeySize(t *testing.T) {
 	if GetPublicKeySize(ed25519) != 256 {
 		t.Fatal("unexpected ed25519 key size")
 	}
-	// Skipping DSA as too slow
 	mldsakey, err := mldsa.GenerateKey(mldsa.MLDSA65())
 	if err != nil {
 		t.Fatal(err)

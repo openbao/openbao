@@ -1748,6 +1748,8 @@ func GetPublicKeyType(pub crypto.PublicKey) PrivateKeyType {
 		return ECPrivateKey
 	case ed25519.PublicKey:
 		return Ed25519PrivateKey
+	case *mldsa.PublicKey:
+		return MLDSAPrivateKey
 	default:
 		return UnknownPrivateKey
 	}

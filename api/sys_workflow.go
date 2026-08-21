@@ -83,3 +83,20 @@ func (c *Sys) GetWorkflowWithContext(ctx context.Context, path string) (*GetWork
 	}
 	return result.Data, err
 }
+
+func (c *Sys) DeleteWorkflow(path string) error {
+	return c.DeleteWorkflowWithContext(context.Background(), path)
+}
+
+func (c *Sys) DeleteWorkflowWithContext(ctx context.Context, path string) error {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodDelete, fmt.Sprintf("/v1/sys/workflows/manage/%s", path))
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err == nil {
+		defer resp.Body.Close() //nolint:errcheck
+	}
+	return err
+}

@@ -121,6 +121,25 @@ func (c *WorkflowCallCommand) Run(args []string) int {
 		return 2
 	}
 
-	secret, err := client.Logical().Write(path, data)
-	return handleWriteSecretOutput(c.BaseCommand, path, secret, err)
+	secret, err := client.Sys().CallWorkflow(path, data)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error calling workflow at path %s: %s", path, err))
+		if secret != nil {
+			OutputSecret(c.UI, secret)
+		}
+		return 2
+	}
+	if secret == nil {
+		// Don't output anything unless using the "table" format
+		if Format(c.UI) == "table" {
+			c.UI.Info(fmt.Sprintf("Success! Called workflow: %s", path))
+		}
+		return 0
+	}
+
+	if c.flagField != "" {
+		return PrintRawField(c.UI, secret, c.flagField)
+	}
+
+	return OutputSecret(c.UI, secret)
 }

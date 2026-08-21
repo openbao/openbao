@@ -100,3 +100,30 @@ func (c *Sys) DeleteWorkflowWithContext(ctx context.Context, path string) error 
 	}
 	return err
 }
+
+func (c *Sys) CallWorkflow(path string, data map[string]any) (*Secret, error) {
+	return c.CallWorkflowWithContext(context.Background(), path, data)
+}
+
+func (c *Sys) CallWorkflowWithContext(ctx context.Context, path string, data map[string]any) (*Secret, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodPost, fmt.Sprintf("/v1/sys/workflows/execute/%s", path))
+	if err := r.SetJSONBody(data); err != nil {
+		return nil, err
+	}
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	secret, err := ParseSecret(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return secret, nil
+}

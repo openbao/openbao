@@ -87,9 +87,9 @@ func (x *SignedToken) GetToken() []byte {
 
 type Token struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Random        string                 `protobuf:"bytes,1,opt,name=random,proto3" json:"random,omitempty"`                            // unencoded equiv of former $randbase62
-	LocalIndex    uint64                 `protobuf:"varint,2,opt,name=local_index,json=localIndex,proto3" json:"local_index,omitempty"` // required storage state to have this token
-	IndexEpoch    uint32                 `protobuf:"varint,3,opt,name=index_epoch,json=indexEpoch,proto3" json:"index_epoch,omitempty"`
+	Random        string                 `protobuf:"bytes,1,opt,name=random,proto3" json:"random,omitempty"` // unencoded equiv of former $randbase62
+	IndexEpoch    uint32                 `protobuf:"varint,4,opt,name=index_epoch,json=indexEpoch,proto3" json:"index_epoch,omitempty"`
+	LocalIndex    string                 `protobuf:"bytes,50,opt,name=local_index,json=localIndex,proto3" json:"local_index,omitempty"` // required storage state to have this token
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -131,18 +131,18 @@ func (x *Token) GetRandom() string {
 	return ""
 }
 
-func (x *Token) GetLocalIndex() uint64 {
-	if x != nil {
-		return x.LocalIndex
-	}
-	return 0
-}
-
 func (x *Token) GetIndexEpoch() uint32 {
 	if x != nil {
 		return x.IndexEpoch
 	}
 	return 0
+}
+
+func (x *Token) GetLocalIndex() string {
+	if x != nil {
+		return x.LocalIndex
+	}
+	return ""
 }
 
 var File_internal_vault_tokens_token_proto protoreflect.FileDescriptor
@@ -156,10 +156,10 @@ const file_internal_vault_tokens_token_proto_rawDesc = "" +
 	"\x05token\x18\x03 \x01(\fR\x05token\"a\n" +
 	"\x05Token\x12\x16\n" +
 	"\x06random\x18\x01 \x01(\tR\x06random\x12\x1f\n" +
-	"\vlocal_index\x18\x02 \x01(\x04R\n" +
-	"localIndex\x12\x1f\n" +
-	"\vindex_epoch\x18\x03 \x01(\rR\n" +
-	"indexEpochB5Z3github.com/openbao/openbao/v2/internal/vault/tokensb\x06proto3"
+	"\vindex_epoch\x18\x04 \x01(\rR\n" +
+	"indexEpoch\x12\x1f\n" +
+	"\vlocal_index\x182 \x01(\tR\n" +
+	"localIndexB5Z3github.com/openbao/openbao/v2/internal/vault/tokensb\x06proto3"
 
 var (
 	file_internal_vault_tokens_token_proto_rawDescOnce sync.Once

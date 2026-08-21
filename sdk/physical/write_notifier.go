@@ -9,10 +9,12 @@ import (
 	log "github.com/hashicorp/go-hclog"
 )
 
+type WriteNotificationFunc func(key ...string)
+
 type writeNotifier struct {
 	backend     Backend
 	logger      log.Logger
-	notifyWrite InvalidateFunc
+	notifyWrite WriteNotificationFunc
 }
 
 type transactionalWriteNotifier struct {
@@ -26,7 +28,7 @@ type writeNotifierTransaction struct {
 	writes    map[string]struct{}
 }
 
-func NewWriteNotifier(b Backend, logger log.Logger, notifyWrite InvalidateFunc) Backend {
+func NewWriteNotifier(b Backend, logger log.Logger, notifyWrite WriteNotificationFunc) Backend {
 	w := &writeNotifier{
 		backend:     b,
 		logger:      logger,

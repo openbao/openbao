@@ -1,0 +1,18 @@
+```release-note:feature
+**Strong Consistency Control**: Support `X-Vault-Index` and `X-Vault-Inconsistent` headers to ensure client/server consistency.
+  - `X-Vault-Index` is now sent when a write is performed.
+  - `X-Vault-Inconsistent` can take the following behaviors to control fallback behavior when the node is out of date:
+      - fail`, to respond with 429 Too Many Requests and a `Retry-After` value,
+      - `forward-active-node` to forward the request to the active node, or
+	  - `await-state` to hold the request locally to attempt to catch up, optionally falling back to one of the above behaviors (if also specified) or the server default.
+  - On listeners, three new configuration parameters are now respected:
+	  - `consistency_fallback_behavior` to set the default fallback for `await-state`,
+	  - `consistency_missing_header_forward` to automatically forward requests which do not have any consistency control headers, and
+	  - `consistency_max_index_wait` to indicate the maximum amount of time `await-state` should pause before forwarding the request.
+```
+```release-note:improvement
+core/server: Support storage-indicated index values in Server Side Consistent Tokens (SSCTs), improving their utility. Previously these tokens always had an index value of `0`.
+```
+```release-note:bug
+core/server: Add missing `disable_ssct_token` parameter to support enabling SSCTs.
+```

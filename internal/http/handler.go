@@ -242,7 +242,8 @@ func handler(props *vault.HandlerProperties) http.Handler {
 	}
 
 	// Wrap the handler in another handler to trigger all help paths.
-	helpWrappedHandler := wrapHelpHandler(mux, core)
+	indexForwardHandler := wrapIndexForwardHandler(mux, core, props)
+	helpWrappedHandler := wrapHelpHandler(indexForwardHandler, core)
 	clientCertHandler := wrapClientCertificateHandler(helpWrappedHandler, props)
 	corsWrappedHandler := wrapCORSHandler(clientCertHandler, core)
 	quotaWrappedHandler := rateLimitQuotaWrapping(corsWrappedHandler, core)

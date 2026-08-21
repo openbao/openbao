@@ -31,7 +31,7 @@ func WithInputSource(config *InputConfig, request *logical.Request, data *framew
 		p.request = request
 		p.data = data.CloneSchema()
 
-		p.sourceBuilders[inputSourceName] = func(engine *ProfileEngine, field map[string]any) Source {
+		p.sourceBuilders[inputSourceName] = func(engine *ProfileEngine, field map[string]any, this *IterContext) Source {
 			return &InputSource{
 				config:  config,
 				request: request,

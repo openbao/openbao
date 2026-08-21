@@ -429,12 +429,28 @@ export default Service.extend({
       return this._parseMfaResponse(resp.auth?.mfa_requirement);
     }
 
+    if (resp.auth?.mfa_self_enroll) {
+      return {
+        totp_self_enroll: resp.auth?.mfa_self_enroll,
+      };
+    }
+
     return this.authSuccess(options, resp.auth || resp.data);
   },
 
   async totpValidate({ mfa_requirement, ...options }) {
     const resp = await this.clusterAdapter().mfaValidate(mfa_requirement);
     return this.authSuccess(options, resp.auth || resp.data);
+  },
+
+  async totpVerifySelfEnroll(mfa_request_id, totp_code) {
+    const resp = await this.clusterAdapter().totpVerifySelfEnroll(mfa_request_id, totp_code);
+    return resp;
+  },
+
+  async totpRevokeSelfEnroll(mfa_request_id) {
+    const resp = await this.clusterAdapter().totpRevokeSelfEnroll(mfa_request_id);
+    return resp;
   },
 
   async authSuccess(options, response) {

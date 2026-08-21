@@ -1667,6 +1667,30 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	return resp, auth, retErr
 }
 
+func (c *Core) findSelfEnrollableTOTPMethod(eConfig *mfa.MFAEnforcementConfig, entity *identity.Entity) (*mfa.Config, error) {
+	// Check if the enforced MFA methods are already configured
+	for _, mID := range eConfig.MFAMethodIDs {
+		if _, ok := entity.MFASecrets[mID]; ok {
+			return nil, nil
+		}
+	}
+
+	for _, mID := range eConfig.MFAMethodIDs {
+		mConfig, err := c.loginMFABackend.MemDBMFAConfigByID(mID)
+		if err != nil {
+			return nil, err
+		}
+		if mConfig == nil || mConfig.Type != ident.MfaMethodTypeTOTP {
+			continue
+		}
+		if !mConfig.GetTOTPConfig().GetEnableSelfEnrollment() {
+			continue
+		}
+		return mConfig, nil
+	}
+	return nil, nil
+}
+
 // handleLoginRequest is used to handle a login request, which is an
 // unauthenticated request to the backend.
 func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (retResp *logical.Response, retAuth *logical.Auth, retErr error) {
@@ -1987,6 +2011,48 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 				if err != nil {
 					return nil, nil, err
 				}
+
+				var methodConfig *mfa.Config
+				for _, eConfig := range matchedMfaEnforcementList {
+					methodConfig, err = c.findSelfEnrollableTOTPMethod(eConfig, entity)
+					if err != nil {
+						return nil, nil, err
+					}
+					if methodConfig != nil {
+						break
+					}
+				}
+
+				if methodConfig != nil {
+					secret, totpURL, _, err := generateTOTPKeyAndQR(methodConfig.GetTOTPConfig(), auth.EntityID, methodConfig.Name)
+					if err != nil {
+						return nil, nil, err
+					}
+
+					selfEnrollment := &TOTPSelfEnrollment{
+						RequestID:     mfaRequestID,
+						RequestNSID:   ns.ID,
+						RequestNSPath: ns.Path,
+						EntityID:      auth.EntityID,
+						TOTPSecret:    secret.Secret(),
+						TOTPMethodID:  methodConfig.ID,
+						TimeOfStorage: time.Now(),
+					}
+					if err := c.SaveTOTPSelfEnroll(selfEnrollment); err != nil {
+						return nil, nil, err
+					}
+
+					resp.Auth = &logical.Auth{
+						TOTPSelfEnroll: &logical.TOTPSelfEnroll{
+							MFARequestID: mfaRequestID,
+							TOTPSecret:   secret.Secret(),
+							TOTPURL:      totpURL,
+						},
+					}
+					resp.AddWarning("TOTP self-enrollment is required before MFA validation can complete.")
+					return resp, nil, nil
+				}
+
 				// sending back the MFARequirement config
 				mfaRequirement := &logical.MFARequirement{
 					MFARequestID:   mfaRequestID,

@@ -445,6 +445,11 @@ func (c *Core) teardownLoginMFA() error {
 	c.mfaResponseAuthQueue = nil
 	c.mfaResponseAuthQueueLock.Unlock()
 
+	// Clear any mfa self enrollments
+	c.totpSelfEnrollmentQueueLock.Lock()
+	c.totpSelfEnrollmentQueue = nil
+	c.totpSelfEnrollmentQueueLock.Unlock()
+
 	c.loginMFABackend.usedCodes = nil
 	return c.loginMFABackend.ResetLoginMFAMemDB()
 }
@@ -537,6 +542,41 @@ func (c *Core) fetchTOTPKey(ctx context.Context, methodID, entityID string) (str
 	return ks.Key, nil
 }
 
+func generateTOTPKeyAndQR(totpConfig *mfa.TOTPConfig, entityID, methodName string) (*otplib.Key, string, string, error) {
+	keyObject, err := totplib.Generate(totplib.GenerateOpts{
+		Issuer:      totpConfig.Issuer,
+		AccountName: entityID,
+		Period:      uint(totpConfig.Period),
+		Digits:      otplib.Digits(totpConfig.Digits),
+		Algorithm:   otplib.Algorithm(totpConfig.Algorithm),
+		SecretSize:  uint(totpConfig.KeySize),
+	})
+	if err != nil {
+		return nil, "", "", fmt.Errorf("failed to generate TOTP key for method name %q: %w", methodName, err)
+	}
+	if keyObject == nil {
+		return nil, "", "", fmt.Errorf("failed to generate TOTP key for method name %q", methodName)
+	}
+
+	totpURL := keyObject.String()
+
+	totpB64Barcode := ""
+	if totpConfig.QRSize != 0 {
+		barcode, err := keyObject.Image(int(totpConfig.QRSize), int(totpConfig.QRSize))
+		if err != nil {
+			return nil, "", "", fmt.Errorf("failed to generate QR code image: %w", err)
+		}
+
+		var buff bytes.Buffer
+		if err := png.Encode(&buff, barcode); err != nil {
+			return nil, "", "", fmt.Errorf("failed to encode QR code image: %w", err)
+		}
+		totpB64Barcode = base64.StdEncoding.EncodeToString(buff.Bytes())
+	}
+
+	return keyObject, totpURL, totpB64Barcode, nil
+}
+
 func (b *MFABackend) HandleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Config, entityID string) (*logical.Response, error) {
 	var err error
 	var totpConfig *mfa.TOTPConfig
@@ -576,33 +616,9 @@ func (b *MFABackend) HandleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 		}
 	}
 
-	keyObject, err := totplib.Generate(totplib.GenerateOpts{
-		Issuer:      totpConfig.Issuer,
-		AccountName: entity.ID,
-		Period:      uint(totpConfig.Period),
-		Digits:      otplib.Digits(totpConfig.Digits),
-		Algorithm:   otplib.Algorithm(totpConfig.Algorithm),
-		SecretSize:  uint(totpConfig.KeySize),
-	})
+	keyObject, totpURL, totpB64Barcode, err := generateTOTPKeyAndQR(totpConfig, entity.ID, mConfig.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate TOTP key for method name %q: %w", mConfig.Name, err)
-	}
-	if keyObject == nil {
-		return nil, fmt.Errorf("failed to generate TOTP key for method name %q", mConfig.Name)
-	}
-
-	totpURL := keyObject.String()
-
-	totpB64Barcode := ""
-	if totpConfig.QRSize != 0 {
-		barcode, err := keyObject.Image(int(totpConfig.QRSize), int(totpConfig.QRSize))
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate QR code image: %w", err)
-		}
-
-		var buff bytes.Buffer
-		png.Encode(&buff, barcode)
-		totpB64Barcode = base64.StdEncoding.EncodeToString(buff.Bytes())
+		return nil, err
 	}
 
 	if err := b.Core.PersistTOTPKey(ctx, mConfig.ID, entity.ID, keyObject.Secret()); err != nil {
@@ -2122,4 +2138,179 @@ func (b *LoginMFABackend) CleanupNamespace(ctx context.Context, ns *namespace.Na
 
 	txn.Commit()
 	return nil
+}
+
+func (b *SystemBackend) totpSelfEnrollPaths() []*framework.Path {
+	return []*framework.Path{
+		{
+			Pattern: "mfa/self-enroll/totp",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "mfa",
+				OperationVerb:   "confirm-self-enroll",
+			},
+			Fields: map[string]*framework.FieldSchema{
+				"request_id": {
+					Type:        framework.TypeString,
+					Description: `The unique identifier for this self enrollment process.`,
+					Required:    true,
+				},
+				"totp_code": {
+					Type:        framework.TypeString,
+					Description: `A valid TOTP code to confirm creation.`,
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.Core.loginMFABackend.handleMFAMethodTOTPSelfEnrollmentConfirmation,
+					Summary:  "Confirm the self enrollment process.",
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.Core.loginMFABackend.handleMFAMethodTOTPSelfEnrollmentDeletion,
+					Summary:  "Invalidate a self enrollment process.",
+				},
+			},
+		},
+	}
+}
+
+func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentConfirmation(ctx context.Context, req *logical.Request, d *framework.FieldData) (retResp *logical.Response, retErr error) {
+	requestID := d.Get("request_id")
+	if requestID == "" {
+		return logical.ErrorResponse("missing request ID"), nil
+	}
+
+	totpCode := d.Get("totp_code")
+	if totpCode == "" {
+		return logical.ErrorResponse("missing totp code"), nil
+	}
+
+	totpSelfEnroll, err := b.Core.PopTOTPSelfEnrollByID(requestID.(string))
+	if err != nil || totpSelfEnroll == nil {
+		return logical.ErrorResponse("invalid request ID"), nil
+	}
+	defer func() {
+		// Only if returnErr is NOT nil, then push back the valid entry
+		if retErr == nil {
+			return
+		}
+		pushErr := b.Core.SaveTOTPSelfEnroll(totpSelfEnroll)
+		if pushErr != nil {
+			retErr = multierror.Append(retErr, pushErr)
+		}
+	}()
+
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("TOTP enrollment failed. Namespace not found. error: %v", err)
+	}
+
+	if ns.ID != totpSelfEnroll.RequestNSID {
+		return nil, fmt.Errorf("original totp request was issued in a different namespace %v, current namespace is %v", totpSelfEnroll.RequestNSPath, ns.Path)
+	}
+
+	mConfig, err := b.MemDBMFAConfigByID(totpSelfEnroll.TOTPMethodID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find MFA config. error: %v", err)
+	}
+	if mConfig == nil {
+		return nil, fmt.Errorf("configuration for method ID %q does not exist", totpSelfEnroll.TOTPMethodID)
+	}
+	if mConfig.ID == "" {
+		return nil, fmt.Errorf("configuration for method ID %q does not contain an identifier", totpSelfEnroll.TOTPMethodID)
+	}
+
+	var totpConfig *mfa.TOTPConfig
+	switch mConfig.Config.(type) {
+	case *mfa.Config_TOTPConfig:
+		totpConfig = mConfig.Config.(*mfa.Config_TOTPConfig).TOTPConfig
+	default:
+		return nil, fmt.Errorf("unknown MFA config type %q", mConfig.Type)
+	}
+
+	passcodeTTL := time.Duration(int64(time.Second)*int64(totpConfig.Period) + int64(2*totpConfig.Skew))
+
+	rateLimitID := fmt.Sprintf("%s_%s_selfenroll", mConfig.ID, totpSelfEnroll.EntityID)
+
+	_ = b.rateLimits.AddWithExpire(rateLimitID, 0, passcodeTTL)
+	numAttempts, ok := b.rateLimits.Modify(rateLimitID, func(n uint32) uint32 { return n + 1 })
+
+	if !ok {
+		return nil, errors.New("failed to increment the TOTP code counter for self enroll")
+	}
+
+	if numAttempts > totpConfig.MaxValidationAttempts {
+		return nil, fmt.Errorf("maximum self enroll TOTP validation attempts %d exceeded the allowed attempts %d: %w", numAttempts, totpConfig.MaxValidationAttempts, logical.ErrRateLimitQuotaExceeded)
+	}
+
+	valid, err := totplib.ValidateCustom(totpCode.(string), totpSelfEnroll.TOTPSecret, time.Now(), totplib.ValidateOpts{
+		Period:    uint(totpConfig.Period),
+		Skew:      uint(totpConfig.Skew),
+		Digits:    otplib.Digits(totpConfig.Digits),
+		Algorithm: otplib.Algorithm(totpConfig.Algorithm),
+	})
+	if err != nil || !valid {
+		return nil, errors.New("invalid totp code provided for self-enrollment")
+	}
+
+	b.Core.identityStore.Lock()
+	defer b.Core.identityStore.Unlock()
+
+	// Read the entity after acquiring the lock
+	entity, err := b.Core.identityStore.MemDBEntityByID(ctx, totpSelfEnroll.EntityID, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find entity with ID %q: %w", totpSelfEnroll.EntityID, err)
+	}
+
+	if entity == nil {
+		return nil, errors.New("invalid entity ID")
+	}
+
+	if entity.MFASecrets == nil {
+		entity.MFASecrets = make(map[string]*mfa.Secret)
+	} else {
+		_, ok := entity.MFASecrets[mConfig.ID]
+		if ok {
+			return nil, fmt.Errorf("entity already has a secret for MFA method %q", mConfig.Name)
+		}
+	}
+
+	if err := b.Core.PersistTOTPKey(ctx, mConfig.ID, totpSelfEnroll.EntityID, totpSelfEnroll.TOTPSecret); err != nil {
+		return nil, fmt.Errorf("failed to persist totp key: %w", err)
+	}
+
+	entity.MFASecrets[mConfig.ID] = &mfa.Secret{
+		MethodName: mConfig.Name,
+		Value: &mfa.Secret_TOTPSecret{
+			TOTPSecret: &mfa.TOTPSecret{
+				Issuer:      totpConfig.Issuer,
+				AccountName: entity.ID,
+				Period:      uint32(totpConfig.Period),
+				Algorithm:   int32(totpConfig.Algorithm),
+				Digits:      int32(totpConfig.Digits),
+				Skew:        uint32(totpConfig.Skew),
+				KeySize:     uint32(totpConfig.KeySize),
+			},
+		},
+	}
+
+	err = b.Core.identityStore.UpsertEntity(ctx, entity, nil, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to persist MFA secret in entity: %w", err)
+	}
+
+	return &logical.Response{}, nil
+}
+
+func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentDeletion(ctx context.Context, req *logical.Request, d *framework.FieldData) (retResp *logical.Response, retErr error) {
+	requestID := d.Get("request_id")
+	if requestID == "" {
+		return logical.ErrorResponse("missing request ID"), nil
+	}
+
+	totpSelfEnroll, err := b.Core.PopTOTPSelfEnrollByID(requestID.(string))
+	if err != nil || totpSelfEnroll == nil {
+		return logical.ErrorResponse("invalid request ID"), nil
+	}
+	return &logical.Response{}, nil
 }

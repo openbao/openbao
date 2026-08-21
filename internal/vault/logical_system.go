@@ -104,6 +104,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"health",
 				"decode-token",
 				"mfa/validate",
+				"mfa/self-enroll/totp",
 
 				// These endpoints are unauthenticated only with the
 				// "disable_unauthed_rekey_endpoints" listener property explicitly
@@ -160,6 +161,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Paths = append(b.Paths, b.hostInfoPath())
 	b.Paths = append(b.Paths, b.quotasPaths()...)
 	b.Paths = append(b.Paths, b.loginMFAPaths()...)
+	b.Paths = append(b.Paths, b.totpSelfEnrollPaths()...)
 	b.Paths = append(b.Paths, b.introspectionPaths()...)
 	b.Paths = append(b.Paths, b.workflowPaths()...)
 	b.Paths = append(b.Paths, b.externalKeysPaths()...)

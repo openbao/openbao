@@ -119,6 +119,23 @@ export default ApplicationAdapter.extend({
     return this.ajax('/v1/sys/mfa/validate', 'POST', options);
   },
 
+  totpVerifySelfEnroll(mfa_request_id, totp_code) {
+    const options = {
+      data: {
+        request_id: mfa_request_id,
+        totp_code: totp_code,
+      },
+    };
+    return this.ajax('/v1/sys/mfa/self-enroll/totp', 'POST', options);
+  },
+
+  totpRevokeSelfEnroll(mfa_request_id) {
+    return this.ajax(
+      `/v1/sys/mfa/self-enroll/totp?request_id=${encodeURIComponent(mfa_request_id)}`,
+      'DELETE'
+    );
+  },
+
   urlFor(endpoint) {
     if (!ENDPOINTS.includes(endpoint)) {
       throw new Error(

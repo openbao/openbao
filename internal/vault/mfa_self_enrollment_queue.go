@@ -1,0 +1,95 @@
+package vault
+
+import (
+	"sync"
+	"time"
+
+	"github.com/openbao/openbao/sdk/v2/queue"
+)
+
+// NewTOTPSelfEnrollmentQueue initializes the internal data structures and returns a new
+// PriorityQueue
+func NewTOTPSelfEnrollmentQueue() *TOTPSelfEnrollmentQueue {
+	pq := queue.New()
+	totpPQ := &TOTPSelfEnrollmentQueue{
+		wrapped: pq,
+	}
+	return totpPQ
+}
+
+type TOTPSelfEnrollmentQueue struct {
+	wrapped *queue.PriorityQueue
+
+	// Here is a scenarios in which the lock is needed.
+	l sync.RWMutex
+}
+
+// Len returns the count of items in the Priority Queue
+func (pq *TOTPSelfEnrollmentQueue) Len() int {
+	pq.l.Lock()
+	defer pq.l.Unlock()
+	return pq.wrapped.Len()
+}
+
+// Push pushes an item on to the queue. This is a wrapper/convenience
+// method that calls heap.Push, so consumers do not need to invoke heap
+// functions directly. Items must have unique Keys, and Items in the queue
+// cannot be updated. To modify an Item, users must first remove it and re-push
+// it after modifications
+func (pq *TOTPSelfEnrollmentQueue) Push(resp *TOTPSelfEnrollment) error {
+	pq.l.Lock()
+	defer pq.l.Unlock()
+
+	item := &queue.Item{
+		Key:      resp.RequestID,
+		Value:    resp,
+		Priority: resp.TimeOfStorage.Unix(),
+	}
+
+	return pq.wrapped.Push(item)
+}
+
+// PopByKey searches the queue for an item with the given key and removes it
+// from the queue if found. Returns nil if not found.
+func (pq *TOTPSelfEnrollmentQueue) PopByKey(reqID string) (*TOTPSelfEnrollment, error) {
+	pq.l.Lock()
+	defer pq.l.Unlock()
+
+	item, err := pq.wrapped.PopByKey(reqID)
+	if err != nil || item == nil {
+		return nil, err
+	}
+
+	return item.Value.(*TOTPSelfEnrollment), nil
+}
+
+// RemoveExpiredTOTPSelfEnrollment pops elements of the queue and check
+// if the entry has expired or not. If the entry has not expired, it pushes
+// back the entry to the queue. It returns false if there is no expired element
+// left to be removed, true otherwise.
+// cutoffTime should normally be time.Now() except for tests.
+func (pq *TOTPSelfEnrollmentQueue) RemoveExpiredTOTPSelfEnrollment(expiryTime time.Duration, cutoffTime time.Time) error {
+	pq.l.Lock()
+	defer pq.l.Unlock()
+
+	item, err := pq.wrapped.Pop()
+	if err != nil && err != queue.ErrEmpty {
+		return err
+	}
+	if err == queue.ErrEmpty {
+		return nil
+	}
+
+	mfaResp := item.Value.(*TOTPSelfEnrollment)
+
+	storageTime := mfaResp.TimeOfStorage
+	if cutoffTime.Before(storageTime.Add(expiryTime)) {
+		// the highest priority entry has not been expired yet, pushing it
+		// back and return
+		err := pq.wrapped.Push(item)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

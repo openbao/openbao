@@ -77,6 +77,10 @@ func (c *WorkflowListCommand) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("Error reading workflows: %s", err))
 		return 2
 	}
+	if len(workflows) == 0 {
+		c.UI.Error("No workflows found")
+		return 2
+	}
 
 	switch Format(c.UI) {
 	case "table":

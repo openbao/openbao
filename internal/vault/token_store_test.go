@@ -1031,14 +1031,6 @@ path "sys/control-group/request" {
 	err = c.setControlGroupInTokenEntry(ctx, wrapped, &cg)
 	require.Nil(t, err)
 
-	// addAuthorzation
-	var groups []*logical.Alias
-	groups = append(groups, &logical.Alias{
-		Name: "secops",
-	})
-	req.Auth = &logical.Auth{
-		GroupAliases: groups,
-	}
 	resp, err = c.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -1071,6 +1063,287 @@ path "sys/control-group/request" {
 	auths := resp.Data["authorizations"].([]map[string]any)
 	require.NotEmpty(t, auths)
 	require.Equal(t, approverEntityID, auths[0]["entity_id"])
+}
+
+// Test the approval of control group accessors when approvers are indirectly
+// members of the approval group.
+func TestTokenStore_HandleRequest_ApproveAccessorIndirectGroups(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ts := c.tokenStore
+	is := c.identityStore
+	ctx := namespace.RootContext(context.Background())
+
+	// Control group approver policy
+	policyHCL := `
+path "sys/control-group/authorize" {
+  capabilities = ["update"]
+}
+
+path "sys/control-group/request" {
+  capabilities = ["update"]
+}
+`
+	pol, err := policy.ParseACLPolicy(namespace.RootNamespace, policyHCL)
+	require.NoError(t, err)
+	pol.Name = "control-group-approver"
+	err = c.policyStore.SetPolicy(ctx, pol, nil)
+	require.NoError(t, err)
+
+	// Alice is the requesting entity
+	requestingEntity := identity.Entity{
+		ID:          "alice-entity-id",
+		Name:        "alice",
+		NamespaceID: namespace.RootNamespaceID,
+		BucketKey:   is.EntityPacker(ctx).BucketKey("alice-entity-id"),
+	}
+
+	// Jane is a valid control group approver. She is an indirect member of
+	// "admin1", as she is a member of "admin2".
+	approverEntity := identity.Entity{
+		ID:          "jane-entity-id",
+		Name:        "jane",
+		NamespaceID: namespace.RootNamespaceID,
+		BucketKey:   is.EntityPacker(ctx).BucketKey("jane-entity-id"),
+	}
+
+	admin1Group := identity.Group{
+		ID:          "admin1-id",
+		Name:        "admin1",
+		NamespaceID: namespace.RootNamespaceID,
+		BucketKey:   is.EntityPacker(ctx).BucketKey("admin1-id"),
+	}
+
+	admin2Group := identity.Group{
+		ID:              "admin2-id",
+		Name:            "admin2",
+		NamespaceID:     namespace.RootNamespaceID,
+		MemberEntityIDs: []string{"jane-entity-id"},
+		ParentGroupIDs:  []string{"admin1-id"},
+		BucketKey:       is.EntityPacker(ctx).BucketKey("admin2-id"),
+	}
+
+	txn := is.Txn(ctx, true)
+	require.NoError(t, is.MemDBUpsertEntityInTxn(txn, &requestingEntity))
+	require.NoError(t, is.MemDBUpsertEntityInTxn(txn, &approverEntity))
+	require.NoError(t, is.MemDBUpsertGroupInTxn(txn, &admin1Group))
+	require.NoError(t, is.MemDBUpsertGroupInTxn(txn, &admin2Group))
+	txn.Commit()
+
+	// Alice tries to access a control-group gated KV path in the root namespace,
+	// and receives a wrapped token, and a wrapping accessor.
+
+	// The following constructs the wrapping accessor.
+
+	// Encode the `request`
+	req := logical.TestRequest(t, logical.ReadOperation, "kv/data/secret")
+	reqPb, err := pb.LogicalRequestToProtoRequest(req)
+	require.Nil(t, err)
+	reqPbBytes, err := proto.Marshal(reqPb)
+	require.Nil(t, err)
+	reqPbBytesEncoded := base64.StdEncoding.EncodeToString(reqPbBytes)
+
+	// Encode the `request_entity`
+	reqEntity, err := jsonutil.EncodeJSON(&requestingEntity)
+	require.Nil(t, err)
+
+	// Control Group
+	cg := logical.ControlGroup{
+		TTL: time.Second * 600,
+		Factors: []logical.ControlGroupFactor{
+			{
+				Name: "approvers",
+				Identity: logical.ControlGroupIdentity{
+					GroupNames: []string{"admin1"},
+					Approvals:  1,
+				},
+			},
+		},
+	}
+
+	cgEncoded, err := jsonutil.EncodeJSON(cg)
+	require.Nil(t, err)
+
+	te := logical.TokenEntry{
+		TTL:         time.Hour,
+		NamespaceID: namespace.RootNamespaceID,
+		InternalMeta: map[string]string{
+			"control_group":  string(cgEncoded),
+			"request":        reqPbBytesEncoded,
+			"request_entity": string(reqEntity),
+		},
+	}
+
+	testMakeTokenDirectly(t, ctx, ts, &te)
+	accessor, err := ts.Lookup(ctx, te.ID)
+	require.Nil(t, err)
+
+	// Jane attempts to authorize the wrapping accessor.
+	tjane := logical.TokenEntry{
+		EntityID: "jane-entity-id",
+		Policies: []string{"control-group-approver"},
+		TTL:      time.Minute,
+	}
+	testMakeTokenDirectly(t, ctx, ts, &tjane)
+	approverJane, err := ts.Lookup(ctx, tjane.ID)
+	require.Nil(t, err)
+
+	// Jane makes a request to authorize the control group request
+	req = logical.TestRequest(t, logical.UpdateOperation, "sys/control-group/authorize")
+	req.Data = map[string]any{
+		"accessor": accessor.Accessor,
+	}
+	req.ClientToken = approverJane.ID
+	resp, err := c.HandleRequest(ctx, req)
+	require.Nil(t, err)
+
+	require.Equal(t, true, resp.Data["approved"])
+}
+
+// Test the behaviour of control group accessor approvals across namespaces.
+func TestTokenStore_HandleRequest_ApproveAccessorCrossNamespace(t *testing.T) {
+	c := TestCoreWithConfig(t, &CoreConfig{
+		UnsafeCrossNamespaceIdentity: true,
+	})
+	c, _, _ = testCoreUnsealed(t, c)
+	ts := c.tokenStore
+	is := c.identityStore
+	ctx := namespace.RootContext(context.Background())
+
+	policyHCL := `
+path "sys/control-group/authorize" {
+  capabilities = ["update"]
+}
+
+path "sys/control-group/request" {
+  capabilities = ["update"]
+}
+`
+	pol, err := policy.ParseACLPolicy(namespace.RootNamespace, policyHCL)
+	require.NoError(t, err)
+	pol.Name = "control-group-approver"
+	err = c.policyStore.SetPolicy(ctx, pol, nil)
+	require.NoError(t, err)
+
+	// Create a namespace.
+	TestCoreCreateNamespaces(t, c, &namespace.Namespace{Path: "abc"})
+	childNamespace, err := c.namespaceStore.GetNamespaceByPath(ctx, "abc/")
+	require.Nil(t, err)
+
+	// Alice is the requesting entity
+	requestingEntity := identity.Entity{
+		ID:          "alice-entity-id",
+		Name:        "alice",
+		NamespaceID: namespace.RootNamespaceID,
+		BucketKey:   is.EntityPacker(ctx).BucketKey("alice-entity-id"),
+	}
+
+	// Bob is an invalid approver. He is in a group called "admin1", however this group
+	// is in the namespace "abc" - not the root namespace, where the control
+	// group policy is defined.
+	invalidApproverEntity := identity.Entity{
+		ID:          "bob-entity-id",
+		Name:        "bob",
+		NamespaceID: namespace.RootNamespaceID,
+		BucketKey:   is.EntityPacker(ctx).BucketKey("bob-entity-id"),
+	}
+
+	namespaceAdminGroup := identity.Group{
+		ID:              "abc-admin1-id",
+		Name:            "admin1",
+		NamespaceID:     childNamespace.ID,
+		MemberEntityIDs: []string{"bob-entity-id"},
+		BucketKey:       is.EntityPacker(ctx).BucketKey("abc-admin1-id"),
+	}
+
+	// This is a root-level group called "admin1". It will be the control group factor.
+	rootAdminGroup := identity.Group{
+		ID:              "admin1-id",
+		Name:            "admin1",
+		NamespaceID:     namespace.RootNamespaceID,
+		MemberEntityIDs: []string{},
+		BucketKey:       is.EntityPacker(ctx).BucketKey("admin1-id"),
+	}
+
+	txn := is.Txn(ctx, true)
+	require.NoError(t, is.MemDBUpsertEntityInTxn(txn, &requestingEntity))
+	require.NoError(t, is.MemDBUpsertEntityInTxn(txn, &invalidApproverEntity))
+	require.NoError(t, is.MemDBUpsertGroupInTxn(txn, &rootAdminGroup))
+	require.NoError(t, is.MemDBUpsertGroupInTxn(txn, &namespaceAdminGroup))
+	txn.Commit()
+
+	// Alice tries to access a control-group gated KV path in the root namespace,
+	// and receives a wrapped token, and a wrapping accessor.
+
+	// The following constructs the wrapping accessor.
+
+	// Encode the `request`
+	req := logical.TestRequest(t, logical.ReadOperation, "kv/data/secret")
+	reqPb, err := pb.LogicalRequestToProtoRequest(req)
+	require.Nil(t, err)
+	reqPbBytes, err := proto.Marshal(reqPb)
+	require.Nil(t, err)
+	reqPbBytesEncoded := base64.StdEncoding.EncodeToString(reqPbBytes)
+
+	// Encode the `request_entity`
+	reqEntity, err := jsonutil.EncodeJSON(&requestingEntity)
+	require.Nil(t, err)
+
+	// Control Group
+	cg := logical.ControlGroup{
+		TTL: time.Second * 600,
+		Factors: []logical.ControlGroupFactor{
+			{
+				Name: "approvers",
+				Identity: logical.ControlGroupIdentity{
+					GroupNames: []string{"admin1"},
+					Approvals:  1,
+				},
+			},
+		},
+	}
+
+	cgEncoded, err := jsonutil.EncodeJSON(cg)
+	require.Nil(t, err)
+
+	te := logical.TokenEntry{
+		TTL:         time.Hour,
+		NamespaceID: namespace.RootNamespaceID,
+		InternalMeta: map[string]string{
+			"control_group":  string(cgEncoded),
+			"request":        reqPbBytesEncoded,
+			"request_entity": string(reqEntity),
+		},
+	}
+
+	testMakeTokenDirectly(t, ctx, ts, &te)
+
+	accessor, err := ts.Lookup(ctx, te.ID)
+	require.Nil(t, err)
+
+	// Attempt to authorize the wrapping accessor.
+
+	// Bob generates a token
+	tbob := logical.TokenEntry{
+		EntityID: "bob-entity-id",
+		Policies: []string{"control-group-approver"},
+		TTL:      time.Minute,
+	}
+	testMakeTokenDirectly(t, ctx, ts, &tbob)
+	approverBob, err := ts.Lookup(ctx, tbob.ID)
+	require.Nil(t, err)
+
+	// Bob makes a request to authorize the control group request
+	req = logical.TestRequest(t, logical.UpdateOperation, "sys/control-group/authorize")
+	req.Data = map[string]any{
+		"accessor": accessor.Accessor,
+	}
+	req.ClientToken = approverBob.ID
+
+	// Bob is not considered an approver for the "admin1" group in the root namespace.
+	resp, err := c.HandleRequest(ctx, req)
+	require.Nil(t, err)
+
+	require.Equal(t, false, resp.Data["approved"])
 }
 
 func TestTokenStore_HandleRequest_ListAccessors(t *testing.T) {

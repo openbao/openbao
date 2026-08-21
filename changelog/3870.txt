@@ -1,0 +1,3 @@
+```release-note:bug
+sys/workflows: Fix `cas` variable getting discarded.
+```

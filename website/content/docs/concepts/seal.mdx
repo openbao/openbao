@@ -148,9 +148,12 @@ keys for this purpose, rather than the barrier unseal keys, is automatic.
 
 :::info
 
-Recovery key generation using auto-unseal can be delayed until after
-initialization and thus requires a root or policy with `sudo` access. Just
-don't forget to generate them well before you need them!
+Recovery key generation using auto-unseal [can be delayed](../api/system/init.mdx)
+until after initialization by setting `recovery_shares=0` on the call to
+`sys/init`. Generating them later requires a root or policy with `sudo` access
+to the [`sys/rotate/recovery` endpoints](../api/system/rotate/init.mdx).
+
+**Just don't forget to generate them well before you need them!**
 
 :::
 

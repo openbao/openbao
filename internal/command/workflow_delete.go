@@ -81,6 +81,6 @@ func (c *WorkflowDeleteCommand) Run(args []string) int {
 		return 2
 	}
 
-	c.UI.Output(fmt.Sprintf("Success! Deleted workflow at path: %s", path))
+	c.UI.Output(fmt.Sprintf("Success! Deleted workflow: %s", path))
 	return 0
 }

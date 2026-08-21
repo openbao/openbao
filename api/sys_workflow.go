@@ -84,6 +84,43 @@ func (c *Sys) GetWorkflowWithContext(ctx context.Context, path string) (*GetWork
 	return result.Data, err
 }
 
+type PutWorkflowInput struct {
+	Workflow             string `json:"workflow"`
+	Description          string `json:"description,omitempty"`
+	AllowUnauthenticated bool   `json:"allow_unauthenticated,omitempty"`
+	CASRequired          bool   `json:"cas_required,omitempty"`
+	CAS                  *int   `json:"cas,omitempty"`
+}
+
+func (c *Sys) PutWorkflow(path string, input PutWorkflowInput) (*GetWorkflowResponse, error) {
+	return c.PutWorkflowWithContext(context.Background(), path, input)
+}
+
+func (c *Sys) PutWorkflowWithContext(ctx context.Context, path string, input PutWorkflowInput) (*GetWorkflowResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodPost, fmt.Sprintf("/v1/sys/workflows/manage/%s", path))
+	if err := r.SetJSONBody(input); err != nil {
+		return nil, err
+	}
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	var result struct {
+		Data *GetWorkflowResponse
+	}
+	err = resp.DecodeJSON(&result)
+	if err != nil {
+		return nil, err
+	}
+	return result.Data, err
+}
+
 func (c *Sys) DeleteWorkflow(path string) error {
 	return c.DeleteWorkflowWithContext(context.Background(), path)
 }

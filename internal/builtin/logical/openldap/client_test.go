@@ -110,3 +110,49 @@ func Test_UpdateDNPassword_AD_DN(t *testing.T) {
 	err = c.UpdateDNPassword(config, "CN=Bob,CN=Users,DC=example,DC=net", newPassword)
 	assert.NoError(t, err)
 }
+
+// UpdateDNPassword with an explicit DN while the UserAttr is "userPrincipalName"
+// (the AD schema default). The explicit DN must be used directly with a
+// base-object search instead of being discarded in favor of UPN re-resolution.
+func Test_UpdateDNPassword_AD_UserPrincipalName_ExplicitDN(t *testing.T) {
+	newPassword := "newpassword"
+	conn := &ldapifc.FakeLDAPConnection{
+		ModifyRequestToExpect: &ldap.ModifyRequest{
+			DN: "CN=svc-example,OU=Users,DC=example,DC=net",
+		},
+		SearchRequestToExpect: &ldap.SearchRequest{
+			BaseDN: "CN=svc-example,OU=Users,DC=example,DC=net",
+			Scope:  ldap.ScopeBaseObject,
+			Filter: "(objectClass=*)",
+		},
+		SearchResultToReturn: &ldap.SearchResult{
+			Entries: []*ldap.Entry{
+				{
+					DN: "CN=svc-example,OU=Users,DC=example,DC=net",
+				},
+			},
+		},
+	}
+
+	c := GetTestClient(conn)
+	config := &client.Config{
+		ConfigEntry: &ldaputil.ConfigEntry{
+			Url:          "ldaps://ldap:386",
+			UserDN:       "cn=users",
+			UPNDomain:    "example.net",
+			BindDN:       "username",
+			BindPassword: "password",
+		},
+		Schema: client.SchemaAD,
+	}
+
+	// depending on the schema, the password may be formatted, so we leverage this helper function
+	fields, err := client.GetSchemaFieldRegistry(config.Schema, newPassword)
+	assert.NoError(t, err)
+	for k, v := range fields {
+		conn.ModifyRequestToExpect.Replace(k.String(), v)
+	}
+
+	err = c.UpdateDNPassword(config, "CN=svc-example,OU=Users,DC=example,DC=net", newPassword)
+	assert.NoError(t, err)
+}

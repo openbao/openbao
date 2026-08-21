@@ -48,10 +48,17 @@ func (c *Client) UpdateDNPassword(conf *client.Config, dn string, newPassword st
 	}
 
 	if field == client.FieldRegistry.UserPrincipalName {
-		scope = ldap.ScopeWholeSubtree
-		bindUser := fmt.Sprintf("%s@%s", ldap.EscapeFilter(dn), conf.UPNDomain)
-		filters[field] = []string{bindUser}
-		dn = conf.UserDN
+		// If the provided dn is a fully-qualified LDAP DN (e.g. an explicitly
+		// configured static-role DN), operate on that object directly with a
+		// base-object search instead of re-resolving it via the userPrincipalName
+		// attribute. Re-resolution would construct a malformed UPN from the DN and
+		// discard the caller-provided DN, causing a "No Such Object" failure.
+		if _, parseErr := ldap.ParseDN(dn); parseErr != nil {
+			scope = ldap.ScopeWholeSubtree
+			bindUser := fmt.Sprintf("%s@%s", ldap.EscapeFilter(dn), conf.UPNDomain)
+			filters[field] = []string{bindUser}
+			dn = conf.UserDN
+		}
 	}
 
 	newValues, err := client.GetSchemaFieldRegistry(conf.Schema, newPassword)

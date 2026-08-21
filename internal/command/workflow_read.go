@@ -77,7 +77,7 @@ func (c *WorkflowReadCommand) Run(args []string) int {
 		return 2
 	}
 
-	path := strings.ToLower(strings.TrimSpace(args[0]))
+	path := strings.TrimSpace(strings.ToLower(sanitizePath(args[0])))
 	workflowResp, err := client.Sys().GetWorkflow(path)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error reading workflow under path %s: %s", path, err))

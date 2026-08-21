@@ -75,7 +75,7 @@ func (c *WorkflowDeleteCommand) Run(args []string) int {
 		return 2
 	}
 
-	path := strings.TrimSpace(strings.ToLower(args[0]))
+	path := strings.TrimSpace(strings.ToLower(sanitizePath(args[0])))
 	if err := client.Sys().DeleteWorkflow(path); err != nil {
 		c.UI.Error(fmt.Sprintf("Error deleting workflow at path %s: %s", path, err))
 		return 2

@@ -904,7 +904,7 @@ func (b *SystemBackend) handleRotateBackupRetrieve() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		backup, err := b.Core.sealManager.RetrieveRotationBackup(ctx, ns.Path, recovery)
+		backup, err := b.Core.sealManager.RetrieveRotationBackup(ctx, ns, recovery)
 		if err != nil {
 			return handleError(fmt.Errorf("unable to look up backed-up keys: %w", err))
 		}

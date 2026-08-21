@@ -2,6 +2,13 @@
 
 See the information about community membership roles to learn about the role of the maintainers and the process to become one.
 
+## Organization-Level Admins
+
+| Name          | Email                        | GitHub                                     |
+|---------------|------------------------------|--------------------------------------------|
+| Alex Scheel   | alexander.m.scheel@gmail.com | [@cipherboy](https://github.com/cipherboy) |
+| Jan Martens   | jan@martens.eu.org           | [@JanMa](https://github.com/JanMa)         |
+
 ## Organization-Level Maintainers
 
 | Name         | Email                        | GitHub                                     |
@@ -66,21 +73,70 @@ reflect this.
 
 ## Overview
 
-OpenBao adheres to a three-tiered community role structure:
+OpenBao adheres to a four-tiered community role structure:
 
- 1. The TSC-appointed organization-level maintainers, and
- 2. Repository-level committers.
- 3. Organization-level moderators.
+ 1. The TSC-appointed organization-level admins,
+ 2. A jointly governed body of organization maintainers,
+ 2. A self-governing body of repository-level committers, and
+ 3. A self-governing body of organization-level moderators.
 
 The [core OpenBao repository](https://github.com/openbao/openbao) is excluded
-from repository-level committers.
+from repository-level committers as a whole but is divided up into smaller
+portions.
 
 The `CODEOWNERS` and `MAINTAINERS.md` file of each repository will reflect the
 maintenance requirements of both the organization and the repository.
 
+### Organization-Level Administrators
+
+Organization-level administrators will have admin access to all projects under
+the OpenBao GitHub organization and will have limited organization-wide
+administrative powers to maintain permissions delegated by OpenSSF staff such
+as rule sets. To keep the principle of least privilege and reduce dependency
+on a single organization, no one organization should hold a majority of seats
+and most individuals should instead be maintainers.
+
+This role does not preclude or imply administrative access to any other
+non-GitHub tool on behalf of OpenBao, such as PCC.
+
+#### Eligibility
+
+The following groups of people are eligible to become administrators:
+
+1. Current employees of active TSC member companies who have been
+   organization-level maintainers for at least 6 months,
+2. Current organization-level maintainers who have actively participated
+   in reviews for the last year, and
+3. Past organization-level administrators.
+
+Significant contributions to the broader OpenBao community are required, such
+as contributing to leadership and governance the project.
+
+Eligibility requirements may be waived by unanimous TSC vote.
+
+#### Applications
+
+Applications to become organization-level administrators will be sent to the
+[OpenBao mailing list](https://lists.openssf.org/g/openbao) and should contain
+motivation and confirmation of eligibility.
+
+#### Elections
+
+Organization-level administrators are to be approved by unanimous vote of the
+TSC and existing organization-level administrators, allowing abstentions, at
+2/3rds quorum.
+
+#### Recall
+
+Organization-level administrators will forfeit with 2/3rd majority vote their
+access after 30 days of inactivity without prior notice to any member of the
+TSC or other organization-level administrators. If an administrator comes back
+and demonstrates renewed contributions, a simple majority vote of either body
+should be sufficient to reinstate them.
+
 ### Organization-Level Maintainers
 
-Organization-level maintainers will have admin purview over all projects under
+Organization-level maintainers will have maintain access to all projects under
 the OpenBao GitHub organization. They will be ultimately responsible for
 administration of repository, including configuration of the repository,
 managing GitHub secrets, and ensuring compliance with Linux Foundation and
@@ -124,8 +180,9 @@ TSC and existing organization-level maintainers, allowing abstentions, at
 Organization-level maintainers will forfeit with 2/3rd majority vote their
 access after 30 days of inactivity without prior notice to any member of the
 TSC or other organization-level maintainers. If a maintainer comes back and
-demonstrates renewed contributions, a simple majority vote of any body should
-be sufficient to reinstate them.
+demonstrates renewed contributions, a simple majority vote of either voting
+body (TSC members or organization-level maintainers) should be sufficient to
+reinstate them.
 
 ### Repository-Level Committers
 

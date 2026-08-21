@@ -629,6 +629,8 @@ func (i issuerEntry) CanMaybeSignWithAlgo(algo x509.SignatureAlgorithm) error {
 			if algo == x509.MLDSA87 {
 				return nil
 			}
+		default:
+			return fmt.Errorf("unable to use issuer of type %v to sign with %v key type", pubk.Parameters().String(), algo.String())
 		}
 	}
 

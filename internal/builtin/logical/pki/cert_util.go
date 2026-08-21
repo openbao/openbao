@@ -1072,12 +1072,16 @@ func signCert(b *backend,
 			return nil, nil, errutil.InternalError{Err: fmt.Sprintf("unknown internal error updating default values: %v", err)}
 		}
 
+		switch actualKeyType {
 		// We're using the KeyBits field as a minimum value below, and P-224 is safe
 		// and a previously allowed value. However, the above call defaults
 		// to P-256 as that's a saner default than P-224 (w.r.t. generation), so
 		// override it here to allow 224 as the smallest size we permit.
-		if actualKeyType == "ec" {
+		case "ec":
 			data.role.KeyBits = 224
+		// same reasoning as above for "ec": we allow 44 instead of 65 parameter set
+		case "mldsa":
+			data.role.KeyBits = 44
 		}
 	}
 
@@ -1104,7 +1108,7 @@ func signCert(b *backend,
 				actualKeyBits,
 			)}
 		}
-	case "ec":
+	case "ec", "mldsa":
 		if actualKeyBits < data.role.KeyBits {
 			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
 				"role requires a minimum of a %d-bit key, but CSR's key is %d bits",
@@ -1112,7 +1116,6 @@ func signCert(b *backend,
 				actualKeyBits,
 			)}
 		}
-		// TODO: How do we want to handle mldsa here? Do we require exact parameter set match?
 	}
 
 	creation, warnings, err := generateCreationBundle(b, data, caSign, csr)

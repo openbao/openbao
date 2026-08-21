@@ -5399,7 +5399,7 @@ func TestBackend_Roles_KeySizeRegression(t *testing.T) {
 		// Any key type should reject insecure RSA key sizes.
 		/*  9 */ {"any", []int{0}, []int{0, 256, 384, 512}, false, []string{"rsa"}, []int{1024}, true},
 		// But work for everything else.
-		/* 10 */ {"any", []int{0}, []int{0, 256, 384, 512}, false, []string{"rsa", "rsa", "ec", "ec", "ec", "ec", "ed25519", "mldsa"}, []int{2048, 3072, 224, 256, 384, 521, 0, 65}, false},
+		/* 10 */ {"any", []int{0}, []int{0, 256, 384, 512}, false, []string{"rsa", "rsa", "ec", "ec", "ec", "ec", "ed25519", "mldsa", "mldsa"}, []int{2048, 3072, 224, 256, 384, 521, 0, 44, 65}, false},
 
 		// RSA with larger than default key size should reject smaller ones.
 		/* 11 */ {"rsa", []int{3072}, []int{0, 256, 384, 512}, false, []string{"rsa"}, []int{2048}, true},
@@ -5409,12 +5409,15 @@ func TestBackend_Roles_KeySizeRegression(t *testing.T) {
 		/* 13 */ {"ec", []int{0}, []int{0}, true, []string{"ec"}, []int{256}, false},
 		/* 14 */ {"ed25519", []int{0}, []int{0}, true, []string{"ed25519"}, []int{0}, false},
 
-		/* 15 */ {"mldsa", []int{0, 44, 65, 87}, []int{0}, false, []string{"mldsa"}, []int{65}, false},
-		// ML-DSA should reject RSA, EC, and Ed25519 keys
-		/* 16 */ {"mldsa", []int{0}, []int{0}, false, []string{"rsa", "ec", "ed25519"}, []int{2048, 256, 0}, true},
+		// ML-DSA should accept same or larger parameters
+		/* 15 */ {"mldsa", []int{44}, []int{0}, false, []string{"mldsa", "mldsa", "mldsa"}, []int{44, 65, 87}, false},
+		/* 16 */ {"mldsa", []int{0, 65}, []int{0}, false, []string{"mldsa", "mldsa"}, []int{65, 87}, false},
+		/* 17 */ {"mldsa", []int{87}, []int{0}, false, []string{"mldsa"}, []int{87}, false},
+		// ML-DSA 65 should reject RSA, EC, Ed25519, and ML-DSA 44 keys
+		/* 18 */ {"mldsa", []int{0}, []int{0}, false, []string{"rsa", "ec", "ed25519", "mldsa"}, []int{2048, 256, 0, 44}, true},
 	}
 
-	if len(testCases) != 17 {
+	if len(testCases) != 19 {
 		t.Fatalf("misnumbered test case entries will make it hard to find bugs: %v", len(testCases))
 	}
 

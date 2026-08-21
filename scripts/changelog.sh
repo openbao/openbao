@@ -67,7 +67,7 @@ function validate() {
         fi
       fi
 
-      if (( index > 1 )) && ! grep -q '^  ' <<< "$line"; then
+      if (( index > 1 )) && ! grep -q '^[[:space:]]' <<< "$line"; then
         echo "Expected subsequent lines in multi-line changelog entry to be indented."
         echo "Line $index ($line) was not."
         echo ""

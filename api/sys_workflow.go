@@ -66,7 +66,7 @@ func (c *Sys) GetWorkflowWithContext(ctx context.Context, path string) (*GetWork
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	r := c.c.NewRequest(http.MethodGet, fmt.Sprintf("/v1/sys/policies/acl/%s", path))
+	r := c.c.NewRequest(http.MethodGet, fmt.Sprintf("/v1/sys/workflows/manage/%s", path))
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err != nil {

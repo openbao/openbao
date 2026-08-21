@@ -27,7 +27,7 @@ func (c *WorkflowReadCommand) Synopsis() string {
 
 func (c *WorkflowReadCommand) Help() string {
 	helpText := `
-Usage: bao workflow read [options] [PATH]
+Usage: bao workflow read [options] PATH
 
   Prints the content and metadata of a OpenBao workflow under the given path.
   If the policy does not exist, an error is returned.

@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	_ cli.Command             = (*NamespaceSealCommand)(nil)
-	_ cli.CommandAutocomplete = (*NamespaceSealCommand)(nil)
+	_ cli.Command             = (*WorkflowListCommand)(nil)
+	_ cli.CommandAutocomplete = (*WorkflowListCommand)(nil)
 )
 
 type WorkflowListCommand struct {

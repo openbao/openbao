@@ -59,7 +59,7 @@ OpenBao uses GitHub repository rulesets to protect all important project reposit
 
 > **Requirement:** When an attempt is made to delete the project's primary branch, the version control system MUST treat this as a sensitive activity and require explicit confirmation of intent.
 
-OpenBao uses GitHub repository rulesets to protect all important project repositories. The rulesets in place do not allow force pushes to the default as well as `release/*` branches. In addition, the GitHub UI does not allow deleting the default branch.
+OpenBao uses GitHub repository rulesets to protect all important project repositories. The rulesets in place do not allow force pushes to the default as well as `release/*` branches. In addition, GitHub does not allow deleting the default branch.
 
 ## OSPS-BR-01.01 {#osps-br-01-01}
 
@@ -121,7 +121,7 @@ The OpenBao license is stored in the repository's [LICENSE file](https://github.
 
 > **Requirement:** While active, the license for the released software assets MUST be included in the released source code, or in a LICENSE file, COPYING file, or LICENSE/ directory alongside the corresponding release assets.
 
-Every [OpenBao release on GitHub](https://github.com/openbao/openbao/releases) contains a source code ZIP file archive. This archive contains a snapshot of the source code at release time and therefore the corresponding LICENSE file.
+Every [OpenBao release on GitHub](https://github.com/openbao/openbao/releases) contains a source code ZIP file archive. This archive contains a snapshot of the source code at release time and therefore the corresponding LICENSE file. Binary release artifact tarballs include the license, too.
 
 ## OSPS-QA-01.01 {#osps-qa-01-01}
 

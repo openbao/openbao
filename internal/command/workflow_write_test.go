@@ -258,6 +258,12 @@ func TestWorkflowWriteCommand_Run(t *testing.T) {
 		if exp := 0; code != exp {
 			t.Errorf("expected %d to be %d", code, exp)
 		}
+
+		expected = "Success! Wrote workflow: my-workflow"
+		combined = ui.OutputWriter.String() + ui.ErrorWriter.String()
+		if !strings.Contains(combined, expected) {
+			t.Errorf("expected %q to contain %q", combined, expected)
+		}
 	})
 
 	t.Run("communication_failure", func(t *testing.T) {

@@ -101,6 +101,9 @@ type Listener struct {
 	TLSACMEDisableHttpChallengeRaw any      `hcl:"tls_acme_disable_http_challenge"`
 	TLSACMEDisableAlpnChallenge    bool     `hcl:"-"`
 	TLSACMEDisableAlpnChallengeRaw any      `hcl:"tls_acme_disable_alpn_challenge"`
+	TLSACMEHttpChallengePort       int      `hcl:"tls_acme_http_challenge_port"`
+	TLSACMEAlpnChallengePort       int      `hcl:"tls_acme_alpn_challenge_port"`
+	TLSACMEChallengeHost           string   `hcl:"tls_acme_challenge_host"`
 
 	HTTPReadTimeout          time.Duration `hcl:"-"`
 	HTTPReadTimeoutRaw       any           `hcl:"http_read_timeout"`
@@ -217,6 +220,11 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 			return multierror.Prefix(err, fmt.Sprintf("listeners.%d:", i))
 		} else {
 			l.ClusterAddress = rendered
+		}
+		if rendered, err := ParseSingleIPTemplate(l.TLSACMEChallengeHost); err != nil {
+			return multierror.Prefix(err, fmt.Sprintf("listeners.%d:", i))
+		} else {
+			l.TLSACMEChallengeHost = rendered
 		}
 
 		// Hacky way, for now, to get the values we want for sanitizing

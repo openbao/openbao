@@ -1,0 +1,3 @@
+```release-note:improvement
+auth/jwt: The `jwks_url` config option now accepts multiple JWKS URLs, which are tried in order during login.
+```

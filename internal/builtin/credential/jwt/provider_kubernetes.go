@@ -45,7 +45,7 @@ func (k *KubernetesProvider) Initialize(_ context.Context, jc *jwtConfig) error 
 		return errors.New("oidc_discovery_ca_pem must not be set when using the kubernetes provider")
 	}
 
-	if jc.JWKSURL != "" {
+	if len(jc.JWKSURL) != 0 {
 		return errors.New("jwks_url must not be set when using the kubernetes provider")
 	}
 

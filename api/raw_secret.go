@@ -126,26 +126,20 @@ func parseAndCloseResponse(resp *Response, err error) (*RawSecret, error) {
 // ParseRawSecret parses the JSON body of a response into a RawSecret.
 // Requirement: Strings remain as []byte so they can be securely erased later.
 func ParseRawSecret(r io.Reader) (*RawSecret, error) {
-	// We might need to read the body twice:
-	// 1. First attempt: Parse as rawSecretWire.
-	// 2. If that fails: Parse as raw JSON (e.g., for error messages).
-	// We use TeeReader to copy the body into a buffer for the second attempt.
-	var bodyBuffer, teeBuffer bytes.Buffer
-	teeReader := io.TeeReader(r, &teeBuffer)
-	if _, err := bodyBuffer.ReadFrom(teeReader); err != nil {
+	body, err := io.ReadAll(r)
+	if err != nil {
 		return nil, err
 	}
+	body = bytes.TrimSpace(body)
 
 	// Nothing to parse because body is empty.
-	if bodyBuffer.Len() == 0 {
+	if len(body) == 0 {
 		return nil, nil
 	}
 
 	// First, try to parse the response as rawSecretWire.
 	var wire rawSecretWire
-	decoder := json.NewDecoder(&bodyBuffer)
-	decoder.UseNumber() // Parse numbers as json.Number, not float64.
-	if err := decoder.Decode(&wire); err != nil {
+	if err := json.Unmarshal(body, &wire); err != nil {
 		return nil, err
 	}
 
@@ -173,7 +167,7 @@ func ParseRawSecret(r io.Reader) (*RawSecret, error) {
 	// (e.g., error messages). This happens when the backend doesn’t return the
 	// expected structure.
 	if reflect.DeepEqual(wire, rawSecretWire{}) {
-		return handleRawJSONResponse(&teeBuffer, secret)
+		return handleRawJSONResponse(body, secret)
 	}
 
 	return secret, nil
@@ -182,13 +176,11 @@ func ParseRawSecret(r io.Reader) (*RawSecret, error) {
 // handleRawJSONResponse handles responses that are not in the expected
 // rawSecretWire format. Happens with raw JSON (e.g., error messages).
 func handleRawJSONResponse(
-	body *bytes.Buffer,
+	body []byte,
 	secret *RawSecret,
 ) (*RawSecret, error) {
 	var rawData map[string]json.RawMessage
-	decoder := json.NewDecoder(body)
-	decoder.UseNumber()
-	if err := decoder.Decode(&rawData); err != nil {
+	if err := json.Unmarshal(body, &rawData); err != nil {
 		return nil, err
 	}
 

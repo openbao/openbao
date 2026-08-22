@@ -22,6 +22,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	EVAR_BINARY = "BAO_BINARY"
+)
+
 func TestPostgreSQL_FencedWrites(t *testing.T) {
 	binary := api.ReadBaoVariable("BAO_BINARY")
 	if binary == "" {
@@ -328,67 +332,71 @@ func TestPostgreSQL_Upgrade(t *testing.T) {
 	require.Equal(t, value.Data["value"], "known-value")
 }
 
-func TestPostgreSQL_Scalability(t *testing.T) {
-	binary := api.ReadBaoVariable("BAO_BINARY")
+func clusterMapper(ctx context.Context, cluster *thpsql.Cluster, index int) (*thpsql.Node, error) {
+	nodesOnPrimary := 2
+	if index < nodesOnPrimary {
+		return cluster.Primary, nil
+	}
+
+	if index == nodesOnPrimary {
+		node, err := cluster.AddNode(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to add replica: %w", err)
+		}
+
+		return node, nil
+	}
+
+	return cluster.Nodes[1], nil
+}
+
+type Container struct {
+	Storage *docker.PostgreSQLClusterStorage
+	Cluster *docker.DockerCluster
+}
+
+func erectCluster(t *testing.T) *Container {
+	// Read e-var that identifies the Openbao executable.
+	binary := api.ReadBaoVariable(EVAR_BINARY)
 	if binary == "" {
 		t.Skip("missing $BAO_BINARY")
 	}
 
+	// Setup logging
 	logger := logging.NewVaultLogger(log.Trace).Named(t.Name())
 	pLogger := logger.Named("postgresql-cluster")
 	cLogger := logger.Named("openbao-cluster")
 
-	nodesOnPrimary := 2
-	mapper := func(ctx context.Context, cluster *thpsql.Cluster, index int) (*thpsql.Node, error) {
-		if index < nodesOnPrimary {
-			return cluster.Primary, nil
-		}
-
-		if index == nodesOnPrimary {
-			node, err := cluster.AddNode(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to add replica: %w", err)
-			}
-
-			return node, nil
-		}
-
-		return cluster.Nodes[1], nil
-	}
-
-	pCluster, err := docker.NewPostgreSQLClusterStorage(t.Context(), pLogger, "scalability", "", mapper)
+	// Setup & teardown storage.
+	cStorage, err := docker.NewPostgreSQLClusterStorage(t.Context(), pLogger, "scalability", "", clusterMapper)
 	require.NoError(t, err)
+	t.Cleanup(cStorage.Cluster.Cleanup)
 
-	defer func() { require.NoError(t, pCluster.Cleanup()) }()
+	// Setup & teardown cluster.
+	options := docker.DraftClusterOptions(binary, cStorage, cLogger)
+	options.ClusterOptions.ClusterName = "psql-upgrade"
+	cluster := docker.NewTestDockerCluster(t, options)
+	t.Cleanup(cluster.Cleanup)
 
-	opts := &docker.DockerClusterOptions{
-		ImageRepo:   "quay.io/openbao/openbao",
-		ImageTag:    "latest",
-		Storage:     pCluster,
-		VaultBinary: binary,
-		ClusterOptions: testcluster.ClusterOptions{
-			VaultNodeConfig: &testcluster.VaultNodeConfig{
-				// Audit logs help with debugging.
-				AuditLogStdout:      true,
-				LogLevel:            "TRACE",
-				DisableStandbyReads: false,
-			},
-			ClusterName: "psql-upgrade",
-			NumCores:    3,
-			Logger:      cLogger,
-		},
+	return &Container{
+		Storage: cStorage,
+		Cluster: cluster,
 	}
+}
 
-	cluster := docker.NewTestDockerCluster(t, opts)
-	defer cluster.Cleanup()
+func TestPostgreSQL_Scalability(t *testing.T) {
+	// Erect a docker cluster with storage.
+	virtCluster := erectCluster(t)
+	cluster := virtCluster.Cluster
+	storage := virtCluster.Storage
 
+	// Access the nodes of the cluster with a client.
 	nodes := cluster.Nodes()
 	client := nodes[0].APIClient()
-
 	t.Logf("token: %v vs %v", client.Token(), cluster.GetRootToken())
 
 	// Create some data to test persistence.
-	err = client.Sys().Mount("kv", &api.MountInput{
+	err := client.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 		Options: map[string]string{
 			"version": "2",
@@ -403,7 +411,7 @@ func TestPostgreSQL_Scalability(t *testing.T) {
 
 	// Read the key; it should exist.
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
-		for index, node := range cluster.Nodes() {
+		for index, node := range nodes {
 			nodeClientCfg := node.APIClient().CloneConfig()
 
 			// Do not allow redirects from standby->active; force local
@@ -488,7 +496,7 @@ func TestPostgreSQL_Scalability(t *testing.T) {
 
 	// All nodes should have the same data
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
-		for index, node := range cluster.Nodes() {
+		for index, node := range nodes {
 			nodeClientCfg := node.APIClient().CloneConfig()
 
 			// Do not allow redirects from standby->active; force local
@@ -509,12 +517,12 @@ func TestPostgreSQL_Scalability(t *testing.T) {
 
 	// Taking down the primary PostgreSQL node should cause problems for all
 	// nodes talking to it.
-	require.NoError(t, pCluster.Cluster.RemovePrimary(t.Context()))
+	require.NoError(t, storage.Cluster.RemovePrimary(t.Context()))
 	time.Sleep(2 * time.Second)
 
 	start := time.Now()
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
-		for index, node := range cluster.Nodes()[0:1] {
+		for index, node := range nodes[0:1] {
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
 
@@ -530,11 +538,11 @@ func TestPostgreSQL_Scalability(t *testing.T) {
 	}, 30*time.Second, 100*time.Millisecond)
 
 	// We should be able to promote the replica and the tertiary should follow.
-	require.NoError(t, pCluster.Cluster.PromoteNode(t.Context(), 0))
+	require.NoError(t, storage.Cluster.PromoteNode(t.Context(), 0))
 	time.Sleep(2 * time.Second)
 
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
-		for index, node := range cluster.Nodes()[2:] {
+		for index, node := range nodes[2:] {
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
 

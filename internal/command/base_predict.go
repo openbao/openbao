@@ -166,6 +166,11 @@ func (b *BaseCommand) PredictVaultPolicies() complete.Predictor {
 	return NewPredict().VaultPolicies()
 }
 
+// PredictVaultWorkflows returns a predictor for workflows.
+func (b *BaseCommand) PredictVaultWorkflows() complete.Predictor {
+	return NewPredict().VaultWorkflows()
+}
+
 func (b *BaseCommand) PredictVaultDebugTargets() complete.Predictor {
 	return complete.PredictSet(
 		"config",
@@ -233,6 +238,13 @@ func (p *Predict) VaultPlugins(pluginTypes ...api.PluginType) complete.Predictor
 // instead.
 func (p *Predict) VaultPolicies() complete.Predictor {
 	return p.filterFunc(p.policies)
+}
+
+// VaultWorkflows returns a predictor for workflows. This is a public
+// API for consumers, but you probably want BaseCommand.PredictVaultPolicies
+// instead.
+func (p *Predict) VaultWorkflows() complete.Predictor {
+	return p.filterFunc(p.workflows)
 }
 
 // vaultPaths parses the CLI options and returns the "best" list of possible
@@ -506,6 +518,33 @@ func (p *Predict) namespaces() []string {
 	list := make([]string, 0, len(namespaces))
 	for _, n := range namespaces {
 		s, ok := n.(string)
+		if !ok {
+			continue
+		}
+		list = append(list, s)
+	}
+	sort.Strings(list)
+	return list
+}
+
+func (p *Predict) workflows() []string {
+	client := p.Client()
+	if client == nil {
+		return nil
+	}
+
+	secret, err := client.Logical().List("sys/workflows/manage")
+	if err != nil {
+		return nil
+	}
+	workflows, ok := extractListData(secret)
+	if !ok {
+		return nil
+	}
+
+	list := make([]string, 0, len(workflows))
+	for _, w := range workflows {
+		s, ok := w.(string)
 		if !ok {
 			continue
 		}

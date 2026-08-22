@@ -753,6 +753,41 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"workflow": func() (cli.Command, error) {
+			return &WorkflowCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"workflow call": func() (cli.Command, error) {
+			return &WorkflowCallCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"workflow delete": func() (cli.Command, error) {
+			return &WorkflowDeleteCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"workflow edit": func() (cli.Command, error) {
+			return &WorkflowEditCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"workflow list": func() (cli.Command, error) {
+			return &WorkflowListCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"workflow read": func() (cli.Command, error) {
+			return &WorkflowReadCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"workflow write": func() (cli.Command, error) {
+			return &WorkflowWriteCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"write": func() (cli.Command, error) {
 			return &WriteCommand{
 				BaseCommand: getBaseCommand(),

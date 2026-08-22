@@ -120,7 +120,7 @@ func (c *WorkflowEditCommand) Run(args []string) (retcode int) {
 		c.UI.Error(fmt.Sprintf("Error creating temporary workflow file: %s", err))
 		return 2
 	}
-	defer os.Remove(tmpFile.Name())
+	defer os.Remove(tmpFile.Name()) //nolint:errcheck
 
 	if err := os.Chmod(tmpFile.Name(), 0o640); err != nil {
 		c.UI.Error(fmt.Sprintf("Error setting temporary workflow file permissions: %s", err))

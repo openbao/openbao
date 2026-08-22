@@ -101,15 +101,22 @@ func (sm *SealManager) Reset() {
 	sm.rotationConfigByNamespace = map[string]*rotationConfig{}
 }
 
+type SetSealOptions struct {
+	WriteToStorage bool
+	AllowOverride  bool
+	Seal           Seal
+	Barrier        barrier.SecurityBarrier
+}
+
 // SetSeal creates a seal with provided config and sets it as provided namespace seal;
 // Initializes seal, creating security barrier and persisting seal config.
-func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
+func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, opts SetSealOptions) error {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
 	// Check if we have the seal present; if so, don't set any seal
 	// information as we don't want to overwrite what we have.
-	if _, ok := sm.sealByNamespace[ns.UUID]; ok {
+	if _, ok := sm.sealByNamespace[ns.UUID]; ok && !opts.AllowOverride {
 		return nil
 	}
 
@@ -119,30 +126,37 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 
 	metaPrefix := NamespaceStoragePathPrefix(ns)
 
-	// Seal type would depend on the provided arguments
-	defaultSeal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
-	defaultSeal.SetCore(sm.core)
-	defaultSeal.SetMetaPrefix(metaPrefix)
+	var defaultSeal Seal
+	if opts.Seal != nil {
+		defaultSeal = opts.Seal
+	} else {
+		// Seal type would depend on the provided arguments
+		defaultSeal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+		defaultSeal.SetCore(sm.core)
+		defaultSeal.SetMetaPrefix(metaPrefix)
 
-	// The configuration access should always at least use the parent's seal
-	// configuration information.
-	parent, ok := ns.ParentPath()
-	if !ok {
-		return fmt.Errorf("cannot seal the root namespace via this approach")
+		// The configuration access should always at least use the parent's seal
+		// configuration information.
+		parent, ok := ns.ParentPath()
+		if !ok {
+			return fmt.Errorf("cannot seal the root namespace via this approach")
+		}
+		parentBarrier := sm.namespaceBarrierByLongestPrefix(parent)
+		defaultSeal.SetConfigAccess(parentBarrier)
+
+		ctx = namespace.ContextWithNamespace(ctx, ns)
+		if err := defaultSeal.Init(ctx); err != nil {
+			return fmt.Errorf("error initializing seal: %w", err)
+		}
 	}
-	parentBarrier := sm.namespaceBarrierByLongestPrefix(parent)
-	defaultSeal.SetConfigAccess(parentBarrier)
 
-	ctx = namespace.ContextWithNamespace(ctx, ns)
-	if err := defaultSeal.Init(ctx); err != nil {
-		return fmt.Errorf("error initializing seal: %w", err)
+	nsBarrier := opts.Barrier
+	if nsBarrier == nil {
+		nsBarrier = barrier.NewAESGCMBarrier(sm.core.physical, ns)
 	}
+	sm.addNamespace(ns, defaultSeal, nil, nil, nsBarrier)
 
-	nsBarrier := barrier.NewAESGCMBarrier(sm.core.physical, ns)
-	sm.barrierByNamespacePath.Insert(ns.Path, nsBarrier)
-	sm.sealByNamespace[ns.UUID] = defaultSeal
-
-	if writeToStorage {
+	if opts.WriteToStorage {
 		if err := defaultSeal.SetBarrierConfig(ctx, sealConfig); err != nil {
 			return fmt.Errorf("failed to set barrier config: %w", err)
 		}
@@ -164,6 +178,17 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 	delete(sm.unlockInformationByNamespace, ns.UUID)
 	delete(sm.rotationConfigByNamespace, ns.UUID)
 	sm.barrierByNamespacePath.Delete(ns.Path)
+}
+
+func (sm *SealManager) addNamespace(ns *namespace.Namespace, seal Seal, unlockInformation *unlockInformation, rotationConfig *rotationConfig, barrier barrier.SecurityBarrier) {
+	sm.sealByNamespace[ns.UUID] = seal
+	if unlockInformation != nil {
+		sm.unlockInformationByNamespace[ns.UUID] = unlockInformation
+	}
+	if rotationConfig != nil {
+		sm.rotationConfigByNamespace[ns.UUID] = rotationConfig
+	}
+	sm.barrierByNamespacePath.Insert(ns.Path, barrier)
 }
 
 // NamespaceView returns the BarrierView that applies to the given namespace.
@@ -569,8 +594,13 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		return nil, errors.New("namespace barrier reports initialized but no seal configuration found")
 	}
 
+	return sm.initializeBarrier(ctx, b, seal, sealConfig)
+}
+
+func (sm *SealManager) initializeBarrier(ctx context.Context, b barrier.SecurityBarrier, seal Seal, sealConfig *SealConfig) ([][]byte, error) {
 	var sealKey []byte
 	var sealKeyShares [][]byte
+	var err error
 
 	if seal.BarrierType() == vaultseal.WrapperTypeShamir {
 		sealKey, sealKeyShares, err = sm.core.generateShares(sealConfig)

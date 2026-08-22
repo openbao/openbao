@@ -64,7 +64,6 @@ plugin_auto_register = true
 plugin "type" "name" {
   command     = "plugin-binary-name"
   version     = "v0.0.0"
-  sha256sum   = "sha256-checksum"
   env         = ["MY_ENV=value"]
   args        = ["-some-argument"]
 }
@@ -80,17 +79,30 @@ plugin versions.
 
 ### Parameters
 
-- `image` `(string: required)` - OCI artifact/image URL including registry and repository. Conflicts with the `command` value. One of `image` or `command` is required.
+- `image` `(string: required)` - OCI artifact/image URL including registry and
+  repository. Conflicts with the `command` value. One of `image` or `command` is
+  required.
 
-- `command` `(string: required)` - Command name of the plugin that has been manually downloaded. Conflicts with the `image` value. One of `image` or `command` is required.
+- `command` `(string: required)` - Command name of the plugin that has been
+  manually downloaded. Conflicts with the `image` value. One of `image` or
+  `command` is required.
 
-- `version` `(string: required)` - The image version or tag.
+- `version` `(string: required)` - The (semantic) version of the plugin. When
+  `image` is set, this doubles as the image tag on the registry.
 
-- `sha256sum` `(string: required)` - Expected SHA-256 digest of the plugin binary. Must be a 64-character hexadecimal string.
+- `sha256sum` `(string: optional)` - Expected SHA-256 digest of the plugin
+  binary. Must be a 64-character hexadecimal string. This is **required**
+  when `image` is set, but **optional** otherwise. When set, OpenBao will
+  revalidate the digest of the plugin binary on disk against what was configured
+  before executing the plugin, though note that the check is subject to a
+  [TOCTOU](https://en.wikipedia.org/wiki/Time-of-check_to_time-of-use) problem.
 
-- `args` `([]string: optional)` - Any arguments to pass to the running plugin. Only used if `plugin_auto_register=true` is set at the global level.
+- `args` `([]string: optional)` - Any arguments to pass to the running plugin.
+  Only used if `plugin_auto_register=true` is set at the global level.
 
-- `env` `([]string: optional)` - Any environment variables to pass to the running plugin. Only used if `plugin_auto_register=true` is set at the global level.
+- `env` `([]string: optional)` - Any environment variables to pass to the
+  running plugin. Only used if `plugin_auto_register=true` is set at the global
+  level.
 
 - `binary_name` `(string: optional)` - Name of the plugin binary file
   within the OCI image. Only applies when `image` is set. If unset, OpenBao

@@ -48,6 +48,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var fakeSHA256 = strings.Repeat("0", 64)
+
 func TestSystemBackend_RootPaths(t *testing.T) {
 	expected := []string{
 		"auth/*",
@@ -3674,7 +3676,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	command := fmt.Sprintf("%s --test", filepath.Base(file.Name()))
 	req = logical.TestRequest(t, logical.UpdateOperation, "plugins/catalog/database/test-plugin")
 	req.Data["args"] = []string{"--foo"}
-	req.Data["sha_256"] = hex.EncodeToString([]byte{'1'})
+	req.Data["sha_256"] = fakeSHA256
 	req.Data["command"] = command
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
@@ -3708,7 +3710,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 		"name":        "test-plugin",
 		"command":     filepath.Base(file.Name()),
 		"args":        []string{"--test"},
-		"sha256":      "31",
+		"sha256":      fakeSHA256,
 		"builtin":     false,
 		"version":     "",
 		"oci":         false,
@@ -3741,7 +3743,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	// Add a versioned plugin, and check we get the version back in the right form when we read.
 	req = logical.TestRequest(t, logical.UpdateOperation, "plugins/catalog/database/test-plugin")
 	req.Data["version"] = "v0.1.0"
-	req.Data["sha_256"] = hex.EncodeToString([]byte{'1'})
+	req.Data["sha_256"] = fakeSHA256
 	req.Data["command"] = command
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil || resp.Error() != nil {
@@ -3760,7 +3762,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 		"name":        "test-plugin",
 		"command":     filepath.Base(file.Name()),
 		"args":        []string{"--test"},
-		"sha256":      "31",
+		"sha256":      fakeSHA256,
 		"builtin":     false,
 		"version":     "v0.1.0",
 		"oci":         false,
@@ -3860,7 +3862,7 @@ func TestSystemBackend_PluginCatalog_List(t *testing.T) {
 
 	// Set a plugin
 	req := logical.TestRequest(t, logical.UpdateOperation, "plugins/catalog/database/test-plugin")
-	req.Data["sha256"] = hex.EncodeToString([]byte{'1'})
+	req.Data["sha256"] = fakeSHA256
 	req.Data["command"] = "foo"
 	req.Data["version"] = "v1.2.3"
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -3977,7 +3979,7 @@ func TestSystemBackend_PluginCatalog_List(t *testing.T) {
 				"type":               "database",
 				"version":            "v2.0.0+builtin.bao",
 			}, {
-				"sha256":  "31",
+				"sha256":  fakeSHA256,
 				"builtin": false,
 				"name":    "test-plugin",
 				"type":    "database",

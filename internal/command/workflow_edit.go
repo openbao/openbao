@@ -6,7 +6,6 @@ package command
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -26,8 +25,6 @@ type WorkflowEditCommand struct {
 	*BaseCommand
 
 	flagEditor string
-
-	testStdin io.Reader // for tests
 }
 
 func (c *WorkflowEditCommand) Synopsis() string {

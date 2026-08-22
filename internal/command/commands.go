@@ -768,6 +768,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"workflow edit": func() (cli.Command, error) {
+			return &WorkflowEditCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"workflow list": func() (cli.Command, error) {
 			return &WorkflowListCommand{
 				BaseCommand: getBaseCommand(),

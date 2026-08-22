@@ -74,6 +74,90 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 	}
 }
 
+func TestRequestHandling_WrappingTokenRevocation(t *testing.T) {
+	core, _, root := TestCoreUnsealed(t)
+
+	core.logicalBackends["kv"] = PassthroughBackendFactory
+
+	meUUID, _ := uuid.GenerateUUID()
+	err := core.mount(namespace.RootContext(t.Context()), &routing.MountEntry{
+		Table: routing.MountTableType,
+		UUID:  meUUID,
+		Path:  "wraptest",
+		Type:  "kv",
+	})
+	require.NoError(t, err)
+
+	// create a secret
+	req := &logical.Request{
+		Path:        "wraptest/foo",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]any{
+			"zip": "zap",
+		},
+	}
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+
+	// create wrapping
+	req = &logical.Request{
+		Path:        "wraptest/foo",
+		ClientToken: root,
+		Operation:   logical.ReadOperation,
+		WrapInfo: &logical.RequestWrapInfo{
+			TTL: time.Duration(15 * time.Second),
+		},
+	}
+	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	if resp.WrapInfo == nil || resp.WrapInfo.TTL != time.Duration(15*time.Second) {
+		t.Fatalf("bad: %#v", resp)
+	}
+	wrappingToken := resp.WrapInfo.Token
+	accessor := resp.WrapInfo.Accessor
+
+	// view wrapping token with accessor
+	req = &logical.Request{
+		Path:        "auth/token/lookup-accessor",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data:        map[string]any{"accessor": accessor},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	// revoke-self with the wrapping token
+	req = &logical.Request{
+		Path:        "auth/token/revoke-self",
+		ClientToken: wrappingToken,
+		Operation:   logical.UpdateOperation,
+	}
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+
+	// token should be removed
+	req = &logical.Request{
+		Path:        "auth/token/lookup-accessor",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data:        map[string]any{"accessor": accessor},
+	}
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.Error(t, err)
+
+	// cannot now unwrap
+	req = &logical.Request{
+		Path:        "sys/wrapping/unwrap",
+		ClientToken: wrappingToken,
+		Operation:   logical.UpdateOperation,
+	}
+	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.Error(t, err)
+}
+
 func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
 

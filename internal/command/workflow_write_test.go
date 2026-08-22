@@ -106,7 +106,7 @@ func TestWorkflowWriteCommand_Run(t *testing.T) {
 		if err := f.Close(); err != nil {
 			t.Fatal(err)
 		}
-		defer os.Remove(f.Name())
+		defer os.Remove(f.Name()) //nolint:errcheck
 
 		client, closer := testVaultServer(t)
 		defer closer()
@@ -148,8 +148,8 @@ func TestWorkflowWriteCommand_Run(t *testing.T) {
 		stdinR, stdinW := io.Pipe()
 		go func() {
 			workflow := testWorkflowContents(t)
-			stdinW.Write(workflow)
-			stdinW.Close()
+			stdinW.Write(workflow) //nolint:errcheck
+			stdinW.Close()         //nolint:errcheck
 		}()
 
 		client, closer := testVaultServer(t)
@@ -187,7 +187,7 @@ func TestWorkflowWriteCommand_Run(t *testing.T) {
 		if err := f.Close(); err != nil {
 			t.Fatal(err)
 		}
-		defer os.Remove(f.Name())
+		defer os.Remove(f.Name()) //nolint:errcheck
 
 		client, closer := testVaultServer(t)
 		defer closer()

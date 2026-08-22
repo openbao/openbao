@@ -39,7 +39,7 @@ func (c *WorkflowEditCommand) Help() string {
 Usage: bao workflow edit [options] PATH
 
   Edit a existing workflow under the given PATH. The used editor
-  can be defined via a flag or the EDITOR enviorment variable.
+  can be defined via a flag or the EDITOR environment variable.
 
   Edit a workflow:
 

@@ -117,7 +117,8 @@ func startMySQLWithTLS(t *testing.T, version, confDir string) string {
 		return os.Getenv("MYSQL_URL")
 	}
 
-	pool := dockertest.NewPoolT(t, "", dockertest.WithMaxWait(30*time.Second))
+	timeout := 60 * time.Second
+	pool := dockertest.NewPoolT(t, "", dockertest.WithMaxWait(timeout))
 	username := "root"
 	password := "x509test"
 
@@ -139,8 +140,7 @@ func startMySQLWithTLS(t *testing.T, version, confDir string) string {
 		"username": username,
 		"password": password,
 	})
-	// exponential backoff-retry
-	err := pool.Retry(t.Context(), 15*time.Second, func() error {
+	err := pool.Retry(t.Context(), timeout, func() error {
 		db, err := sql.Open("mysql", url)
 		if err != nil {
 			t.Logf("err: %s", err)

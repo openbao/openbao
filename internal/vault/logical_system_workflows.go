@@ -345,7 +345,7 @@ func (b *SystemBackend) handleWorkflowsUpdate() framework.OperationFunc {
 		var cas *int
 		casRaw, ok := data.GetOk("cas")
 		if ok {
-			cas := new(int)
+			cas = new(int)
 			*cas = casRaw.(int)
 		}
 

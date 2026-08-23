@@ -75,15 +75,17 @@ func NewCertificateGetter(l *configutil.Listener, ui cli.Ui, logger hclog.Logger
 	if logger == nil {
 		zapLogger = zap.NewNop()
 	}
-	certmagic.Default.Logger = zapLogger
 
 	acg := &ACMECertGetter{
 		Listener: l,
-		Magic:    certmagic.NewDefault(),
 	}
 
-	acg.Magic.OnDemand = new(certmagic.OnDemandConfig)
-	acg.Magic.OnDemand.DecisionFunc = func(ctx context.Context, name string) error {
+	magicCfg := certmagic.Config{
+		Logger: zapLogger,
+	}
+
+	onDemand := new(certmagic.OnDemandConfig)
+	onDemand.DecisionFunc = func(ctx context.Context, name string) error {
 		if len(l.TLSACMEDomains) == 0 {
 			return nil
 		}
@@ -103,11 +105,13 @@ func NewCertificateGetter(l *configutil.Listener, ui cli.Ui, logger hclog.Logger
 		return nil
 	}
 
+	magicCfg.OnDemand = onDemand
+
 	if err := adjustCachePath(l); err != nil {
 		return nil, err
 	}
 
-	acg.Magic.Storage = &certmagic.FileStorage{
+	magicCfg.Storage = &certmagic.FileStorage{
 		Path: l.TLSACMECachePath,
 	}
 
@@ -118,12 +122,12 @@ func NewCertificateGetter(l *configutil.Listener, ui cli.Ui, logger hclog.Logger
 			return nil, fmt.Errorf("unknown value for tls_acme_key_type (`%v`); allowed values are `%v`, `%v`, `%v`, `%v`, `%v`, `%v`", l.TLSACMEKeyType, certmagic.ED25519, certmagic.P256, certmagic.P384, certmagic.RSA2048, certmagic.RSA4096, certmagic.RSA8192)
 		}
 
-		acg.Magic.KeySource = certmagic.StandardKeyGenerator{
+		magicCfg.KeySource = certmagic.StandardKeyGenerator{
 			KeyType: certmagic.KeyType(l.TLSACMEKeyType),
 		}
 	}
 
-	template := certmagic.ACMEIssuer{
+	issuerTemplate := certmagic.ACMEIssuer{
 		CA:                      l.TLSACMECADirectory,
 		TestCA:                  l.TLSACMETestCADirectory,
 		Email:                   l.TLSACMEEmail,
@@ -145,17 +149,29 @@ func NewCertificateGetter(l *configutil.Listener, ui cli.Ui, logger hclog.Logger
 			return nil, fmt.Errorf("failed to parse ACME CA certificate")
 		}
 
-		template.TrustedRoots = caPool
+		issuerTemplate.TrustedRoots = caPool
 	}
 
 	if l.TLSACMEEABKeyId != "" {
-		template.ExternalAccount = &acme.EAB{
+		issuerTemplate.ExternalAccount = &acme.EAB{
 			KeyID:  l.TLSACMEEABKeyId,
 			MACKey: l.TLSACMEEABMacKey,
 		}
 	}
 
-	acg.ACME = certmagic.NewACMEIssuer(acg.Magic, template)
+	cache := certmagic.NewCache(certmagic.CacheOptions{
+		GetConfigForCert: func(certmagic.Certificate) (*certmagic.Config, error) {
+			if acg.Magic == nil {
+				return nil, errors.New("ACME certificate config isn't initialized yet")
+			}
+			return acg.Magic, nil
+		},
+		Logger: zapLogger,
+	})
+
+	acg.Magic = certmagic.New(cache, magicCfg)
+
+	acg.ACME = certmagic.NewACMEIssuer(acg.Magic, issuerTemplate)
 	acg.Magic.Issuers = []certmagic.Issuer{acg.ACME}
 
 	return acg, nil

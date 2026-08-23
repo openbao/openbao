@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/caddyserver/certmagic"
@@ -40,6 +41,18 @@ type ACMECertGetter struct {
 
 	Magic *certmagic.Config
 	ACME  *certmagic.ACMEIssuer
+
+	certCache *certmagic.Cache
+	closeOnce sync.Once
+}
+
+func (cg *ACMECertGetter) Close() error {
+	cg.closeOnce.Do(func() {
+		if cg.certCache != nil {
+			cg.certCache.Stop()
+		}
+	})
+	return nil
 }
 
 func NewCertificateGetter(l *configutil.Listener, ui cli.Ui, logger hclog.Logger) (ReloadableCertGetter, error) {
@@ -168,6 +181,7 @@ func NewCertificateGetter(l *configutil.Listener, ui cli.Ui, logger hclog.Logger
 		},
 		Logger: zapLogger,
 	})
+	acg.certCache = cache
 
 	acg.Magic = certmagic.New(cache, magicCfg)
 

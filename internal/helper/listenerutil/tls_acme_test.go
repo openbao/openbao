@@ -24,6 +24,9 @@ func TestACMECertGetter(t *testing.T) {
 
 		acg, ok := cg.(*ACMECertGetter)
 		require.True(t, ok, "expected *ACMECertGetter, got %T", cg)
+		t.Cleanup(func() {
+			acg.Close() //nolint:errcheck
+		})
 		return acg
 	}
 

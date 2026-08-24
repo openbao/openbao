@@ -1,0 +1,7 @@
+```release-note:improvement
+sys/raw: Allow reading backed up unseal or recovery shares.
+```
+
+```release-note:bug
+sys/rotate: Fix existing unseal/recovery share backups going unreadable after upgrading to v2.6.x from an earlier version.
+```

@@ -10,7 +10,6 @@ go 1.27.0
 replace github.com/openbao/openbao/api/v2 => ../api
 
 require (
-	github.com/armon/go-radix v1.0.0
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/cockroachdb/pebble v1.1.5
 	github.com/containerd/errdefs v1.0.0

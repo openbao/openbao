@@ -7,16 +7,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
-	"strconv"
-	"strings"
-	"sync"
 	"sync/atomic"
 
-	"github.com/armon/go-radix"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/sdk/v2/physical/pebbledb"
 )
 
 // Verify interfaces are satisfied
@@ -37,16 +33,14 @@ var (
 // for testing and development situations where the data is not
 // expected to be durable.
 type InmemBackend struct {
-	sync.RWMutex
-	root         *radix.Tree
-	permitPool   *physical.PermitPool
-	logger       log.Logger
-	failGet      atomic.Bool
-	failPut      atomic.Bool
-	failDelete   atomic.Bool
-	failList     atomic.Bool
-	logOps       bool
-	maxValueSize int
+	parent     physical.Backend
+	permitPool *physical.PermitPool
+	logger     log.Logger
+	failGet    atomic.Bool
+	failPut    atomic.Bool
+	failDelete atomic.Bool
+	failList   atomic.Bool
+	logOps     bool
 }
 
 var _ physical.Backend = &InmemBackend{}
@@ -114,34 +108,40 @@ type InmemOp struct {
 
 type InmemBackendTransaction struct {
 	InmemBackend
-
-	txLock     sync.Mutex
-	writable   bool
-	written    bool
-	finishedTx bool
-	operations []*InmemOp
-	parent     *TransactionalInmemBackend
+	parent    *TransactionalInmemBackend
+	committed atomic.Bool
 }
 
 var _ physical.Transaction = &InmemBackendTransaction{}
 
 func NewDirectInmem(conf map[string]string, logger log.Logger) (physical.Backend, error) {
-	maxValueSize := 0
-	maxValueSizeStr, ok := conf["max_value_size"]
-	if ok {
-		var err error
-		maxValueSize, err = strconv.Atoi(maxValueSizeStr)
-		if err != nil {
-			return nil, err
+	if len(conf) == 0 {
+		conf = map[string]string{}
+	}
+
+	conf["directory"] = ":memory:"
+	backend, err := pebbledb.NewBackend(conf, logger)
+	if err != nil {
+		return nil, fmt.Errorf("error creating underlying implementation: %w", err)
+	}
+
+	doLog := api.ReadBaoVariable("BAO_INMEM_LOG_ALL_OPS") != ""
+	if logger == nil {
+		if !doLog {
+			logger = log.NewNullLogger()
+		} else {
+			logger = log.New(log.DefaultOptions)
+			logger.SetLevel(log.Trace)
 		}
 	}
 
+	logger = logger.Named("inmem")
+
 	return &InmemBackend{
-		root:         radix.New(),
-		permitPool:   physical.NewPermitPool(physical.DefaultParallelOperations),
-		logger:       logger,
-		logOps:       api.ReadBaoVariable("BAO_INMEM_LOG_ALL_OPS") != "",
-		maxValueSize: maxValueSize,
+		parent:     backend,
+		permitPool: physical.NewPermitPool(physical.DefaultParallelOperations),
+		logger:     logger,
+		logOps:     doLog,
 	}, nil
 }
 
@@ -167,32 +167,16 @@ func (i *InmemBackend) Put(ctx context.Context, entry *physical.Entry) error {
 	i.permitPool.Acquire()
 	defer i.permitPool.Release()
 
-	i.Lock()
-	defer i.Unlock()
-
-	return i.PutInternal(ctx, entry)
-}
-
-func (i *InmemBackend) PutInternal(ctx context.Context, entry *physical.Entry) error {
 	if i.logOps {
 		i.logger.Trace("put", "key", entry.Key)
 	}
+
 	if i.failPut.Load() {
 		return ErrPutDisabled
 	}
 
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-
-	if i.maxValueSize > 0 && len(entry.Value) > i.maxValueSize {
-		return fmt.Errorf("%s", physical.ErrValueTooLarge)
-	}
-
-	i.root.Insert(entry.Key, entry.Value)
-	return nil
+	err := i.parent.Put(ctx, entry)
+	return err
 }
 
 func (i *InmemBackend) FailPut(fail bool) {
@@ -204,37 +188,16 @@ func (i *InmemBackend) Get(ctx context.Context, key string) (*physical.Entry, er
 	i.permitPool.Acquire()
 	defer i.permitPool.Release()
 
-	i.RLock()
-	defer i.RUnlock()
-
-	return i.GetInternal(ctx, key)
-}
-
-func (i *InmemBackend) GetInternal(ctx context.Context, key string) (*physical.Entry, error) {
 	if i.logOps {
 		i.logger.Trace("get", "key", key)
 	}
+
 	if i.failGet.Load() {
 		return nil, ErrGetDisabled
 	}
 
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-	}
-
-	return i.getInternal(ctx, key)
-}
-
-func (i *InmemBackend) getInternal(ctx context.Context, key string) (*physical.Entry, error) {
-	if raw, ok := i.root.Get(key); ok {
-		return &physical.Entry{
-			Key:   key,
-			Value: raw.([]byte),
-		}, nil
-	}
-	return nil, nil
+	entry, err := i.parent.Get(ctx, key)
+	return entry, err
 }
 
 func (i *InmemBackend) FailGet(fail bool) {
@@ -246,27 +209,16 @@ func (i *InmemBackend) Delete(ctx context.Context, key string) error {
 	i.permitPool.Acquire()
 	defer i.permitPool.Release()
 
-	i.Lock()
-	defer i.Unlock()
-
-	return i.DeleteInternal(ctx, key)
-}
-
-func (i *InmemBackend) DeleteInternal(ctx context.Context, key string) error {
 	if i.logOps {
 		i.logger.Trace("delete", "key", key)
 	}
+
 	if i.failDelete.Load() {
 		return ErrDeleteDisabled
 	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
 
-	i.root.Delete(key)
-	return nil
+	err := i.parent.Delete(ctx, key)
+	return err
 }
 
 func (i *InmemBackend) FailDelete(fail bool) {
@@ -276,13 +228,7 @@ func (i *InmemBackend) FailDelete(fail bool) {
 // List is used to list all the keys under a given
 // prefix, up to the next prefix.
 func (i *InmemBackend) List(ctx context.Context, prefix string) ([]string, error) {
-	i.permitPool.Acquire()
-	defer i.permitPool.Release()
-
-	i.RLock()
-	defer i.RUnlock()
-
-	return i.ListInternal(ctx, prefix)
+	return i.ListPage(ctx, prefix, "", -1)
 }
 
 // ListPage is used to list all the keys under a given
@@ -292,73 +238,16 @@ func (i *InmemBackend) ListPage(ctx context.Context, prefix string, after string
 	i.permitPool.Acquire()
 	defer i.permitPool.Release()
 
-	i.RLock()
-	defer i.RUnlock()
-
-	return i.ListPaginatedInternal(ctx, prefix, after, limit)
-}
-
-func (i *InmemBackend) ListInternal(ctx context.Context, prefix string) ([]string, error) {
-	return i.ListPaginatedInternal(ctx, prefix, "", -1)
-}
-
-func (i *InmemBackend) ListPaginatedInternal(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	if i.logOps {
-		i.logger.Trace("list", "prefix", prefix)
+		i.logger.Trace("list", "prefix", prefix, "after", after, "limit", limit)
 	}
+
 	if i.failList.Load() {
 		return nil, ErrListDisabled
 	}
 
-	return i.listPaginatedInternal(ctx, prefix, after, limit)
-}
-
-func (i *InmemBackend) listPaginatedInternal(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
-	var out []string
-	seen := make(map[string]any)
-	walkFn := func(s string, v any) bool {
-		if limit > 0 && len(out) >= limit {
-			// We've seen enough entries; exit early.
-			return true
-		}
-
-		// Note that we push the comparison with trimmed down until
-		// after we add in the directory suffix, if necessary.
-		trimmed := strings.TrimPrefix(s, prefix)
-		sep := strings.Index(trimmed, "/")
-		if sep == -1 {
-			if after != "" && trimmed <= after {
-				// Still prior to our cut-off point, so retry.
-				return false
-			}
-
-			out = append(out, trimmed)
-		} else {
-			// Include the directory suffix to distinguish keys from
-			// subtrees.
-			trimmed = trimmed[:sep+1]
-			if after != "" && trimmed <= after {
-				// Still prior to our cut-off point, so retry.
-				return false
-			}
-
-			if _, ok := seen[trimmed]; !ok {
-				out = append(out, trimmed)
-				seen[trimmed] = struct{}{}
-			}
-		}
-
-		return false
-	}
-	i.root.WalkPrefix(prefix, walkFn)
-
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-	}
-
-	return out, nil
+	results, err := i.parent.ListPage(ctx, prefix, after, limit)
+	return results, err
 }
 
 func (i *InmemBackend) FailList(fail bool) {
@@ -366,35 +255,35 @@ func (i *InmemBackend) FailList(fail bool) {
 }
 
 func (i *TransactionalInmemBackend) BeginReadOnlyTx(ctx context.Context) (physical.Transaction, error) {
-	tx, err := i.BeginTx(ctx)
+	txn, err := i.parent.(physical.TransactionalBackend).BeginReadOnlyTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error beginning underlying transaction: %w", err)
 	}
 
-	itx := tx.(*InmemBackendTransaction)
-	itx.writable = false
-
-	return tx, nil
+	return i.beginTxn(ctx, txn)
 }
 
 func (i *TransactionalInmemBackend) BeginTx(ctx context.Context) (physical.Transaction, error) {
-	i.Lock()
-	defer i.Unlock()
+	txn, err := i.parent.(physical.TransactionalBackend).BeginTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error beginning underlying transaction: %w", err)
+	}
 
+	return i.beginTxn(ctx, txn)
+}
+
+func (i *TransactionalInmemBackend) beginTxn(ctx context.Context, parent physical.Transaction) (physical.Transaction, error) {
 	// Grab a transaction pool instance.
 	i.txnPermitPool.Acquire()
 
 	tx := &InmemBackendTransaction{
 		InmemBackend: InmemBackend{
-			root:         radix.NewFromMap(i.root.ToMap()),
-			permitPool:   physical.NewPermitPool(physical.DefaultParallelOperations),
-			logger:       i.logger,
-			logOps:       i.logOps,
-			maxValueSize: i.maxValueSize,
+			parent:     parent,
+			permitPool: physical.NewPermitPool(physical.DefaultParallelOperations),
+			logger:     i.logger,
+			logOps:     i.logOps,
 		},
-		writable: true,
-		written:  false,
-		parent:   i,
+		parent: i,
 	}
 
 	tx.failGet.Store(i.failGet.Load())
@@ -405,252 +294,22 @@ func (i *TransactionalInmemBackend) BeginTx(ctx context.Context) (physical.Trans
 	return tx, nil
 }
 
-func (i *InmemBackendTransaction) Put(ctx context.Context, entry *physical.Entry) error {
-	i.txLock.Lock()
-	defer i.txLock.Unlock()
-
-	if !i.writable {
-		return physical.ErrTransactionReadOnly
-	}
-
-	if i.finishedTx {
-		return physical.ErrTransactionAlreadyCommitted
-	}
-
-	currEntry, err := i.getInternal(ctx, entry.Key)
-	if err != nil {
-		return err
-	}
-	err = i.InmemBackend.Put(ctx, entry)
-	if err == nil {
-		op := &InmemOp{
-			OpType: PutInMemOp,
-			ArgKey: entry.Key,
-			ArgEntry: &physical.Entry{
-				Key:   entry.Key,
-				Value: make([]byte, len(entry.Value)),
-			},
-		}
-		copy(op.ArgEntry.Value, entry.Value)
-		if currEntry != nil {
-			op.CurrEntry = &physical.Entry{
-				Key:   currEntry.Key,
-				Value: make([]byte, len(currEntry.Value)),
-			}
-			copy(op.CurrEntry.Value, currEntry.Value)
-		}
-		i.operations = append(i.operations, op)
-		i.written = true
-	}
-	return err
-}
-
-func (i *InmemBackendTransaction) Delete(ctx context.Context, key string) error {
-	i.txLock.Lock()
-	defer i.txLock.Unlock()
-
-	if !i.writable {
-		return physical.ErrTransactionReadOnly
-	}
-
-	if i.finishedTx {
-		return physical.ErrTransactionAlreadyCommitted
-	}
-
-	entry, err := i.getInternal(ctx, key)
-	if err != nil {
-		return err
-	}
-	err = i.InmemBackend.Delete(ctx, key)
-	if err == nil {
-		op := &InmemOp{
-			OpType: DeleteInMemOp,
-			ArgKey: key,
-		}
-		if entry != nil {
-			op.CurrEntry = &physical.Entry{
-				Key:   entry.Key,
-				Value: make([]byte, len(entry.Value)),
-			}
-			copy(op.CurrEntry.Value, entry.Value)
-		}
-		i.operations = append(i.operations, op)
-		i.written = true
-	}
-	return err
-}
-
-func (i *InmemBackendTransaction) Get(ctx context.Context, key string) (*physical.Entry, error) {
-	i.txLock.Lock()
-	defer i.txLock.Unlock()
-
-	if i.finishedTx {
-		return nil, physical.ErrTransactionAlreadyCommitted
-	}
-
-	entry, err := i.InmemBackend.Get(ctx, key)
-	if err == nil {
-		op := &InmemOp{
-			OpType: GetInMemOp,
-			ArgKey: key,
-		}
-		if entry != nil {
-			op.RetEntry = &physical.Entry{
-				Key:   entry.Key,
-				Value: make([]byte, len(entry.Value)),
-			}
-			copy(op.RetEntry.Value, entry.Value)
-		}
-		i.operations = append(i.operations, op)
-	}
-
-	return entry, err
-}
-
-func (i *InmemBackendTransaction) List(ctx context.Context, prefix string) ([]string, error) {
-	i.txLock.Lock()
-	defer i.txLock.Unlock()
-
-	if i.finishedTx {
-		return nil, physical.ErrTransactionAlreadyCommitted
-	}
-
-	entries, err := i.InmemBackend.List(ctx, prefix)
-	if err == nil {
-		op := &InmemOp{
-			OpType: ListInMemOp,
-			ArgKey: prefix,
-		}
-		if entries != nil {
-			op.RetList = make([]string, len(entries))
-			copy(op.RetList, entries)
-		}
-		i.operations = append(i.operations, op)
-	}
-	return entries, err
-}
-
-func (i *InmemBackendTransaction) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
-	i.txLock.Lock()
-	defer i.txLock.Unlock()
-
-	if i.finishedTx {
-		return nil, physical.ErrTransactionAlreadyCommitted
-	}
-
-	entries, err := i.InmemBackend.ListPage(ctx, prefix, after, limit)
-	if err == nil {
-		op := &InmemOp{
-			OpType:   ListPageInMemOp,
-			ArgKey:   prefix,
-			ArgAfter: after,
-			ArgLimit: limit,
-		}
-		if entries != nil {
-			op.RetList = make([]string, len(entries))
-			copy(op.RetList, entries)
-		}
-		i.operations = append(i.operations, op)
-	}
-	return entries, err
-}
-
 func (i *InmemBackendTransaction) Commit(ctx context.Context) error {
-	i.txLock.Lock()
-	defer i.txLock.Unlock()
-
-	if i.finishedTx {
-		return physical.ErrTransactionAlreadyCommitted
-	}
-
-	// At this point, we mark the transaction as finished either way.
-	i.finishedTx = true
-	i.parent.txnPermitPool.Release()
-
-	if !i.writable || !i.written {
-		// Nothing to do.
-		return nil
-	}
-
-	// The following operations update parent's tree, so we'll want
-	// to recreate it.
-	i.parent.Lock()
-	defer i.parent.Unlock()
-
-	// We don't have a way of creating a transaction on the radix tree
-	// natively, so we take a copy and restore it on any failure.
-	parentCopy := i.parent.root.ToMap()
-
-	retErr := func() error {
-		// Replay all operations back on the parent backend.
-		for index, op := range i.operations {
-			switch op.OpType {
-			case GetInMemOp:
-				entry, err := i.parent.getInternal(ctx, op.ArgKey)
-				if err != nil {
-					return fmt.Errorf("get failed: %v: %w", err, physical.ErrTransactionCommitFailure)
-				}
-
-				if !reflect.DeepEqual(entry, op.RetEntry) {
-					return fmt.Errorf("[%d] gets had different structure: %v vs %v: %w\n%#v", index, entry, op.RetEntry, physical.ErrTransactionCommitFailure, i.operations)
-				}
-			case ListInMemOp, ListPageInMemOp:
-				entries, err := i.parent.listPaginatedInternal(ctx, op.ArgKey, op.ArgAfter, op.ArgLimit)
-				if err != nil {
-					return fmt.Errorf("list failed: %v: %w", err, physical.ErrTransactionCommitFailure)
-				}
-
-				if !reflect.DeepEqual(entries, op.RetList) {
-					return fmt.Errorf("[%d] lists had different structure: %v vs %v: %w\n%#v", index, entries, op.RetList, physical.ErrTransactionCommitFailure, i.operations)
-				}
-			case PutInMemOp:
-				entry, err := i.parent.getInternal(ctx, op.ArgKey)
-				if err != nil {
-					return fmt.Errorf("verify failed: %v: %w", err, physical.ErrTransactionCommitFailure)
-				}
-
-				if !reflect.DeepEqual(entry, op.CurrEntry) {
-					return fmt.Errorf("[%d] contents changed before put: %v vs %v: %w: %#v", index, entry, op.CurrEntry, physical.ErrTransactionCommitFailure, i.operations)
-				}
-
-				i.parent.root.Insert(op.ArgEntry.Key, op.ArgEntry.Value)
-			case DeleteInMemOp:
-				entry, err := i.parent.getInternal(ctx, op.ArgKey)
-				if err != nil {
-					return fmt.Errorf("verify failed: %v: %w", err, physical.ErrTransactionCommitFailure)
-				}
-
-				if !reflect.DeepEqual(entry, op.CurrEntry) {
-					return fmt.Errorf("[%d] contents changed before delete: %v vs %v: %w: %#v", index, entry, op.CurrEntry, physical.ErrTransactionCommitFailure, i.operations)
-				}
-
-				i.parent.root.Delete(op.ArgKey)
-			default:
-				return fmt.Errorf("unknown operation: %v", op.OpType)
-			}
+	defer func() {
+		if i.committed.CompareAndSwap(false, true) {
+			i.parent.txnPermitPool.Release()
 		}
-
-		return nil
 	}()
-	if retErr != nil {
-		i.parent.root = radix.NewFromMap(parentCopy)
-		return retErr
-	}
 
-	// All good. Parent is now up-to-date with the latest state.
-	return nil
+	return i.InmemBackend.parent.(physical.Transaction).Commit(ctx)
 }
 
 func (i *InmemBackendTransaction) Rollback(ctx context.Context) error {
-	i.txLock.Lock()
-	defer i.txLock.Unlock()
+	defer func() {
+		if i.committed.CompareAndSwap(false, true) {
+			i.parent.txnPermitPool.Release()
+		}
+	}()
 
-	if i.finishedTx {
-		return physical.ErrTransactionAlreadyCommitted
-	}
-
-	i.finishedTx = true
-	i.parent.txnPermitPool.Release()
-
-	return nil
+	return i.InmemBackend.parent.(physical.Transaction).Rollback(ctx)
 }

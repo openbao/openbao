@@ -1,0 +1,3 @@
+```release-note:feature
+**Control Groups**: Add support for a new ACL policy stanza, `control_group`, which specifies when a second party must approve a request for a path.
+```

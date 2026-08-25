@@ -4,19 +4,17 @@
 package raft
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha512"
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"hash"
+	"iter"
 	"maps"
 	"math"
-	"path/filepath"
 	"runtime"
 	"slices"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -468,158 +466,68 @@ func listShouldIncludeEntry(prefix string, after string, key string) (string, bo
 }
 
 func (t *RaftTransaction) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
-	// List differs from Get in that the latter is a single entry: if an
-	// put or delete has occurred in the transaction, it supersedes the
-	// value we would've gotten from the underlying data store. Here however,
-	// we always want to execute the list and remove entries if there have
-	// been writes that affect it.
-	//
-	// This is complex to do efficiently. We might have deleted an entire
-	// subtree that might show up in a list. We could've also added more
-	// entries, such that the list is unnecessary.
-	//
-	// We do this in two steps: perform the underlying list, ignoring results
-	// that have been deleted and merging any new writes that occur prior to
-	// a given iteration's entry.. Finally after the loop, we merge in results
-	// that have been added after the last key in the pending list, trimming
-	// it down to size.
 	t.l.Lock()
 	defer t.l.Unlock()
+
 	if t.haveFinishedTx {
 		return nil, physical.ErrTransactionAlreadyCommitted
 	}
 
-	prefixBytes := []byte(prefix)
-	fullAfter := filepath.Join(prefix, after)
-	seekPrefix := []byte(fullAfter)
-	if after == "" {
-		seekPrefix = prefixBytes
+	lister := &physical.Lister{
+		Prefix: prefix,
+		After:  after,
+		Limit:  limit,
 	}
 
-	// Assume the bucket exists and has keys.
-	c := t.tx.Bucket(dataBucketName).Cursor()
+	var key []byte
+	cursor := t.tx.Bucket(dataBucketName).Cursor()
 
-	// Build a map of updates and deletions (in the prefix!) for fast lookup.
-	deletions := map[string]struct{}{}
-	updates := map[string]struct{}{}
-	for key := range t.updates {
-		// Modified key is not in the correct path prefix.
-		if !strings.HasPrefix(key, prefix) {
-			continue
-		}
-
-		// Check whether we should visit this entry.
-		entry, _, visit := listShouldIncludeEntry(prefix, after, key)
-		if !visit {
-			continue
-		}
-
-		// If we'd keep this entry, track it appropriately.
-		if t.updates[key].Contents == nil {
-			deletions[key] = struct{}{}
-		} else {
-			updates[entry] = struct{}{}
-		}
+	lister.Start = func() error {
+		_, seekPrefix := lister.SeekPrefix()
+		key, _ = cursor.Seek(seekPrefix)
+		return nil
 	}
 
-	// We do verifications off of the contents actually in the underlying
-	// storage, not from pre-commit writes. This means we need two entries:
-	//
-	// 1. Things we've seen in the course of this list.
-	// 2. The immediate next list entry, if any.
-	var presentKeys []string
-	var nextPresentEntry string
+	lister.Next = func() error {
+		key, _ = cursor.Next()
+		return nil
+	}
 
-	// Iterate through the results of list and see if the underlying data
-	// store already had entries for this list operation. Merge in any
-	// updated keys in the process.
-	var keys []string
-	for k, _ := c.Seek(seekPrefix); k != nil && bytes.HasPrefix(k, prefixBytes); k, _ = c.Next() {
-		key := string(k)
-		entry, isFolder, shouldVisit := listShouldIncludeEntry(prefix, after, key)
+	lister.Key = func() (string, bool, error) {
+		return string(key), key != nil, nil
+	}
 
-		if limit > 0 && len(keys) >= limit {
-			// We've seen enough entries; exit.
-			nextPresentEntry = entry
-			break
+	lister.Deleted = func(path string) bool {
+		entry, present := t.updates[path]
+		if !present {
+			return false
 		}
 
-		if _, deleted := deletions[key]; deleted {
-			// This key was deleted; we don't need to include it in our list,
-			// but because it was deleted, it will show up in our underlying
-			// list.
-			presentKeys = append(presentKeys, key)
-			continue
-		}
+		return entry.Contents == nil
+	}
 
-		if !shouldVisit {
-			// Skip this entry.
-			continue
-		}
+	lister.Inserted = func() iter.Seq[string] {
+		return func(yield func(K string) bool) {
+			for key, entry := range t.updates {
+				if entry.Contents == nil {
+					// Skip deletes.
+					continue
+				}
 
-		// Before we add this entry, see if there's any updates to add instead.
-		lastKey := ""
-		if len(keys) > 0 {
-			lastKey = keys[len(keys)-1]
-		}
-		var mergedEntries []string
-		for updateEntry := range updates {
-			if updateEntry < entry && updateEntry > lastKey {
-				mergedEntries = append(mergedEntries, updateEntry)
-				delete(updates, updateEntry)
+				if !yield(key) {
+					return
+				}
 			}
 		}
-		sort.Strings(mergedEntries)
-		keys = append(keys, mergedEntries...)
-		if len(keys) > 0 {
-			lastKey = keys[len(keys)-1]
-		}
-
-		if isFolder && len(keys) > 0 && lastKey == entry {
-			// This folder was already seen; don't revisit it.
-			if len(presentKeys) > 0 && presentKeys[len(presentKeys)-1] != key {
-				presentKeys = append(presentKeys, key)
-			}
-			continue
-		}
-
-		// Otherwise, include the entry.
-		keys = append(keys, entry)
-		presentKeys = append(presentKeys, entry)
-		delete(updates, entry)
 	}
 
-	// Finally, attempt to merge newly added entries one more time. This
-	// handles the case when there were no on-disk entries, or when there
-	// were too few and subsequent entries were added here.
-	lastKey := ""
-	if len(keys) > 0 {
-		lastKey = keys[len(keys)-1]
-	}
-	var mergedEntries []string
-	for updateEntry := range updates {
-		if updateEntry > lastKey {
-			mergedEntries = append(mergedEntries, updateEntry)
-			delete(updates, updateEntry)
-		}
-	}
-	sort.Strings(mergedEntries)
-	keys = append(keys, mergedEntries...)
-
-	// We may end up with extra keys as a result of adding all locally
-	// updated ones; if we have too many, trim it down.
-	if limit > 0 && len(keys) > limit {
-		keys = keys[:limit]
+	keys, presentKeys, err := lister.ListPage(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	// Now that we have the results, create a fake version for verification:
-	// we append the next key (in storage) to the iterated list for iteration,
-	// to ensure we didn't miss any entries. This is guaranteed to be at most
-	// one more than the requested entries, if no writes occurred within this
-	// transaction.
-	if nextPresentEntry != "" {
-		presentKeys = append(presentKeys, nextPresentEntry)
-	}
+	// Now that we have the results, create a fake version for verification
+	// using all read entries (presentKeys) from above.
 	verifyLimit := len(presentKeys)
 	listParams, contentsHash, err := createListVerificationEntry(prefix, after, verifyLimit, presentKeys)
 	if err != nil {

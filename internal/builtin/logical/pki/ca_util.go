@@ -89,7 +89,7 @@ func getGenerationParams(sc *storageContext, data *framework.FieldData) (exporte
 	}
 	*role.AllowWildcardCertificates = true
 
-	if role.KeyBits, role.SignatureBits, err = certutil.ValidateDefaultOrValueKeyTypeSignatureLength(role.KeyType, role.KeyBits, role.SignatureBits); err != nil {
+	if role.KeyBits, err = certutil.ValidateDefaultOrValueKeyTypeSignatureLength(role.KeyType, role.KeyBits, role.SignatureBits); err != nil {
 		errorResp = logical.ErrorResponse(err.Error())
 	}
 

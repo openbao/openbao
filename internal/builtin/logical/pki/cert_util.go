@@ -1052,13 +1052,12 @@ func signCert(b *backend,
 		return nil, nil, errutil.InternalError{Err: fmt.Sprintf("unsupported key type value: %s", data.role.KeyType)}
 	}
 
-	// Before validating key lengths, update our KeyBits/SignatureBits based
-	// on the actual CSR key type.
+	// Before validating key lengths, update our KeyBits based on the actual CSR
+	// key type.
 	if data.role.KeyType == "any" {
-		// We update the value of KeyBits and SignatureBits here (from the
-		// role), using the specified key type. This allows us to convert
-		// the default value (0) for SignatureBits and KeyBits to a
-		// meaningful value.
+		// We update the value of KeyBits (from the role), using the specified
+		// key type. This allows us to convert the default value (0) for KeyBits
+		// to a meaningful value.
 		//
 		// We ignore the role's original KeyBits value if the KeyType is any
 		// as legacy (pre-1.10) roles had default values that made sense only
@@ -1066,9 +1065,7 @@ func signCert(b *backend,
 		// set for KeyBits when KeyType was set to any. This also enforces the
 		// docs saying when key_type=any, we only enforce our specified minimums
 		// for signing operations
-		if data.role.KeyBits, data.role.SignatureBits, err = certutil.ValidateDefaultOrValueKeyTypeSignatureLength(
-			actualKeyType, 0, data.role.SignatureBits,
-		); err != nil {
+		if data.role.KeyBits, err = certutil.ValidateDefaultOrValueKeyTypeLength(actualKeyType, 0); err != nil {
 			return nil, nil, errutil.InternalError{Err: fmt.Sprintf("unknown internal error updating default values: %v", err)}
 		}
 
@@ -1085,11 +1082,10 @@ func signCert(b *backend,
 		}
 	}
 
-	// At this point, data.role.KeyBits and data.role.SignatureBits should both
-	// be non-zero, for RSA and ECDSA keys. Validate the actualKeyBits based on
-	// the role's values. If the KeyType was any, and KeyBits was set to 0,
-	// KeyBits should be updated to 2048 unless some other value was chosen
-	// explicitly.
+	// At this point, data.role.KeyBits should be non-zero, for RSA and ECDSA
+	// keys. Validate the actualKeyBits based on the role's values. If the
+	// KeyType was any, and KeyBits was set to 0, KeyBits should be updated to
+	// 2048 unless some other value was chosen explicitly.
 	//
 	// This validation needs to occur regardless of the role's key type, so
 	// that we always validate both RSA and ECDSA key sizes.

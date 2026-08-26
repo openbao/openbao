@@ -4,6 +4,7 @@
 package command
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -78,7 +79,7 @@ func TestWorkflowDeleteCommand_Run(t *testing.T) {
 		defer closer()
 
 		workflow := string(testWorkflowContents(t))
-		if _, err := client.Sys().PutWorkflow("my-workflow", api.PutWorkflowInput{
+		if _, err := client.Sys().PutWorkflow(context.Background(), "my-workflow", api.PutWorkflowInput{
 			Workflow: workflow,
 		}); err != nil {
 			t.Fatal(err)
@@ -100,7 +101,7 @@ func TestWorkflowDeleteCommand_Run(t *testing.T) {
 			t.Errorf("expected %q to contain %q", combined, expected)
 		}
 
-		workflows, err := client.Sys().ListWorkflows()
+		workflows, err := client.Sys().ListWorkflows(context.Background())
 		if err != nil {
 			t.Fatal(err)
 		}

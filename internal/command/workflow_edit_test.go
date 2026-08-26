@@ -4,6 +4,7 @@
 package command
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -91,7 +92,7 @@ func TestWorkflowEditCommand_Run(t *testing.T) {
 		defer closer()
 
 		workflow := string(testWorkflowContents(t))
-		if _, err := client.Sys().PutWorkflow("my-workflow", api.PutWorkflowInput{
+		if _, err := client.Sys().PutWorkflow(context.Background(), "my-workflow", api.PutWorkflowInput{
 			Workflow: workflow,
 		}); err != nil {
 			t.Fatal(err)

@@ -4,6 +4,7 @@
 package command
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -84,7 +85,7 @@ func TestWorkflowReadCommand_Run(t *testing.T) {
 		defer closer()
 
 		workflow := string(testWorkflowContents(t))
-		if _, err := client.Sys().PutWorkflow("my-workflow", api.PutWorkflowInput{
+		if _, err := client.Sys().PutWorkflow(context.Background(), "my-workflow", api.PutWorkflowInput{
 			Workflow:    workflow,
 			Description: "my description",
 		}); err != nil {

@@ -5,6 +5,7 @@ package command
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -121,7 +122,7 @@ func (c *WorkflowCallCommand) Run(args []string) int {
 		return 2
 	}
 
-	secret, err := client.Sys().CallWorkflow(path, data)
+	secret, err := client.Sys().CallWorkflow(context.Background(), path, data)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error calling workflow at path %s: %s", path, err))
 		if secret != nil {

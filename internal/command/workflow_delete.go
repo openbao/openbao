@@ -4,6 +4,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -76,7 +77,7 @@ func (c *WorkflowDeleteCommand) Run(args []string) int {
 	}
 
 	path := strings.TrimSpace(strings.ToLower(sanitizePath(args[0])))
-	if err := client.Sys().DeleteWorkflow(path); err != nil {
+	if err := client.Sys().DeleteWorkflow(context.Background(), path); err != nil {
 		c.UI.Error(fmt.Sprintf("Error deleting workflow at path %s: %s", path, err))
 		return 2
 	}

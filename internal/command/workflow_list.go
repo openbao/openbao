@@ -4,6 +4,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -72,7 +73,7 @@ func (c *WorkflowListCommand) Run(args []string) int {
 		return 2
 	}
 
-	workflows, err := client.Sys().ListWorkflows()
+	workflows, err := client.Sys().ListWorkflows(context.Background())
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error reading workflows: %s", err))
 		return 2

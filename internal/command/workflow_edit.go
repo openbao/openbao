@@ -5,6 +5,7 @@ package command
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -105,7 +106,7 @@ func (c *WorkflowEditCommand) Run(args []string) (retcode int) {
 		return 2
 	}
 
-	workflowResp, err := client.Sys().GetWorkflow(path)
+	workflowResp, err := client.Sys().GetWorkflow(context.Background(), path)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error finding workflow to edit under path %s: %s", path, err))
 		return 2
@@ -172,7 +173,7 @@ func (c *WorkflowEditCommand) Run(args []string) (retcode int) {
 	if workflowResp.CasRequired {
 		workflowInput.CAS = &workflowResp.Version
 	}
-	if _, err := client.Sys().PutWorkflow(path, workflowInput); err != nil {
+	if _, err := client.Sys().PutWorkflow(context.Background(), path, workflowInput); err != nil {
 		c.UI.Error(fmt.Sprintf("Error putting workflow under path %s: %s", path, err))
 		return 2
 	}

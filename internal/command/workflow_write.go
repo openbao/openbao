@@ -5,6 +5,7 @@ package command
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -175,7 +176,7 @@ func (c *WorkflowWriteCommand) Run(args []string) (retcode int) {
 		CAS:                  cas,
 	}
 
-	workflowResp, err := client.Sys().PutWorkflow(path, input)
+	workflowResp, err := client.Sys().PutWorkflow(context.Background(), path, input)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error writing workflow at path %s: %s", path, err))
 		return 2

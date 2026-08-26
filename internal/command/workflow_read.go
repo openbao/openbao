@@ -4,6 +4,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -78,7 +79,7 @@ func (c *WorkflowReadCommand) Run(args []string) int {
 	}
 
 	path := strings.TrimSpace(strings.ToLower(sanitizePath(args[0])))
-	workflowResp, err := client.Sys().GetWorkflow(path)
+	workflowResp, err := client.Sys().GetWorkflow(context.Background(), path)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error reading workflow under path %s: %s", path, err))
 		return 2

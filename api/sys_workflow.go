@@ -11,11 +11,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 )
 
-func (c *Sys) ListWorkflows() ([]string, error) {
-	return c.ListWorkflowsWithContext(context.Background())
-}
-
-func (c *Sys) ListWorkflowsWithContext(ctx context.Context) ([]string, error) {
+func (c *Sys) ListWorkflows(ctx context.Context) ([]string, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -58,11 +54,7 @@ type GetWorkflowResponse struct {
 	Version              int    `json:"version"`
 }
 
-func (c *Sys) GetWorkflow(path string) (*GetWorkflowResponse, error) {
-	return c.GetWorkflowWithContext(context.Background(), path)
-}
-
-func (c *Sys) GetWorkflowWithContext(ctx context.Context, path string) (*GetWorkflowResponse, error) {
+func (c *Sys) GetWorkflow(ctx context.Context, path string) (*GetWorkflowResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -92,11 +84,7 @@ type PutWorkflowInput struct {
 	CAS                  *int   `json:"cas,omitempty"`
 }
 
-func (c *Sys) PutWorkflow(path string, input PutWorkflowInput) (*GetWorkflowResponse, error) {
-	return c.PutWorkflowWithContext(context.Background(), path, input)
-}
-
-func (c *Sys) PutWorkflowWithContext(ctx context.Context, path string, input PutWorkflowInput) (*GetWorkflowResponse, error) {
+func (c *Sys) PutWorkflow(ctx context.Context, path string, input PutWorkflowInput) (*GetWorkflowResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -121,11 +109,7 @@ func (c *Sys) PutWorkflowWithContext(ctx context.Context, path string, input Put
 	return result.Data, err
 }
 
-func (c *Sys) DeleteWorkflow(path string) error {
-	return c.DeleteWorkflowWithContext(context.Background(), path)
-}
-
-func (c *Sys) DeleteWorkflowWithContext(ctx context.Context, path string) error {
+func (c *Sys) DeleteWorkflow(ctx context.Context, path string) error {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -138,11 +122,7 @@ func (c *Sys) DeleteWorkflowWithContext(ctx context.Context, path string) error 
 	return err
 }
 
-func (c *Sys) CallWorkflow(path string, data map[string]any) (*Secret, error) {
-	return c.CallWorkflowWithContext(context.Background(), path, data)
-}
-
-func (c *Sys) CallWorkflowWithContext(ctx context.Context, path string, data map[string]any) (*Secret, error) {
+func (c *Sys) CallWorkflow(ctx context.Context, path string, data map[string]any) (*Secret, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 

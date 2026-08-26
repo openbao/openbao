@@ -5,6 +5,7 @@ package command
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os"
 	"strings"
@@ -127,7 +128,7 @@ func TestWorkflowWriteCommand_Run(t *testing.T) {
 			t.Errorf("expected %q to contain %q", combined, expected)
 		}
 
-		resp, err := client.Sys().GetWorkflow("my-workflow")
+		resp, err := client.Sys().GetWorkflow(context.Background(), "my-workflow")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -207,7 +208,7 @@ func TestWorkflowWriteCommand_Run(t *testing.T) {
 			t.Fatalf("expected %d to be %d: %s", code, exp, combined)
 		}
 
-		resp, err := client.Sys().GetWorkflow("my-workflow")
+		resp, err := client.Sys().GetWorkflow(context.Background(), "my-workflow")
 		if err != nil {
 			t.Fatal(err)
 		}

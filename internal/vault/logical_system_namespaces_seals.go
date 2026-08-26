@@ -389,8 +389,9 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 			return nil, logical.ErrPermissionDenied
 		}
 
+		var state BarrierMigrationState
+
 		sealRaw, ok := data.GetOk("seal")
-		var sealConfig *SealConfig
 		var continueInterrupted bool
 		if ok {
 			var err error
@@ -410,7 +411,7 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 				return nil, errors.New("namespaces currently only support shamir seals")
 			}
 
-			sealConfig = &SealConfig{
+			state.SealConfig = &SealConfig{
 				Type: kms.Type,
 			}
 
@@ -419,20 +420,20 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 				if err != nil {
 					return nil, errors.New("value of shares parameter must be integer")
 				}
-				sealConfig.SecretShares = int(shares)
+				state.SealConfig.SecretShares = int(shares)
 			}
 			if val, ok := kms.Config["threshold"]; ok {
 				threshold, err := parseutil.ParseInt(val)
 				if err != nil {
 					return nil, errors.New("value of shares parameter must be integer")
 				}
-				sealConfig.SecretThreshold = int(threshold)
+				state.SealConfig.SecretThreshold = int(threshold)
 			}
 			if pgpkeys, ok := data.GetOk("pgp_keys"); ok {
-				sealConfig.PGPKeys = pgpkeys.([]string)
+				state.SealConfig.PGPKeys = pgpkeys.([]string)
 			}
 
-			if err := sealConfig.Validate(); err != nil {
+			if err := state.SealConfig.Validate(); err != nil {
 				return logical.ErrorResponse("invalid seal config: %v", err), err
 			}
 		}
@@ -447,20 +448,15 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 		}
 
 		oldBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
-		var keyShares [][]byte
 
 		se, err := NamespaceScopedView(oldBarrier, ns).Get(ctx, barrierMigrationStatePath)
 		if err != nil {
 			b.logger.Info("error trying to read stored migration config", "error", err)
 		}
-		var state BarrierMigrationState
-		state.SealConfig = sealConfig
 		if se != nil {
 			if err := se.DecodeJSON(&state); err != nil {
 				return handleError(err)
 			}
-			sealConfig = state.SealConfig
-			keyShares = state.UnsealShares
 			continueInterrupted = true
 		}
 		parentNs, err := namespace.FromContext(ctx)
@@ -478,7 +474,7 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 		parentBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(parentNs.Path)
 
 		var newBarrier barrier.SecurityBarrier
-		if sealConfig == nil {
+		if state.SealConfig == nil {
 			newBarrier = parentBarrier
 		}
 
@@ -488,7 +484,7 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 			seal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 			seal.SetCore(b.Core)
 			seal.SetMetaPrefix(metaPrefix)
-			if err := seal.SetBarrierConfig(ctx, sealConfig); err != nil {
+			if err := seal.SetBarrierConfig(ctx, state.SealConfig); err != nil {
 				return handleError(err)
 			}
 
@@ -501,14 +497,14 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 
 			newBarrier = barrier.NewAESGCMBarrier(b.Core.physical, ns)
 			if continueInterrupted {
-				if err := b.Core.sealManager.SetSeal(ctx, sealConfig, ns, SetSealOptions{
+				if err := b.Core.sealManager.SetSeal(ctx, state.SealConfig, ns, SetSealOptions{
 					Seal:    seal,
 					Barrier: newBarrier,
 				}); err != nil {
 					return handleError(err)
 				}
 				b.logger.Warn("namespace seal set", "namespace", ns)
-				for _, share := range keyShares {
+				for _, share := range state.UnsealShares {
 					ok, err := b.Core.sealManager.UnsealNamespace(ctx, ns, share)
 					if ok {
 						break
@@ -519,7 +515,7 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 				}
 				b.logger.Warn("unsealed namespace barrier", "namespace", ns)
 			} else {
-				keyShares, err = b.Core.sealManager.initializeBarrier(ctx, newBarrier, seal, sealConfig)
+				state.UnsealShares, err = b.Core.sealManager.initializeBarrier(ctx, newBarrier, seal, state.SealConfig)
 				if err != nil {
 					return handleError(err)
 				}
@@ -538,13 +534,6 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 			return nil, nil
 		}
 
-		if !continueInterrupted {
-			state = BarrierMigrationState{
-				SealConfig:   sealConfig,
-				UnsealShares: keyShares,
-			}
-		}
-
 		migrationJob := b.Core.namespaceStore.newNamespaceBarrierMigrationJob(parentBarrier, oldBarrier, newBarrier, parentNs, ns, seal, &state)
 
 		b.Core.namespaceStore.jobDispatcher.AddJob(migrationJob, ns.UUID)
@@ -553,13 +542,13 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 			Data: map[string]any{"status": "in-progress"},
 		}
 
-		if len(keyShares) != 0 {
-			encoded := make([]string, 0, len(keyShares))
-			for _, share := range keyShares {
+		if len(state.UnsealShares) != 0 {
+			encoded := make([]string, 0, len(state.UnsealShares))
+			for _, share := range state.UnsealShares {
 				encoded = append(encoded, hex.EncodeToString(share))
 			}
 			resp.Data["key_shares"] = encoded
-			resp.Data["key_threshold"] = sealConfig.SecretThreshold
+			resp.Data["key_threshold"] = state.SealConfig.SecretThreshold
 		}
 
 		return resp, nil

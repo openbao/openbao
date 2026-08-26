@@ -184,7 +184,7 @@ Allowed IP ranges can be further restricted using allowed_ip_sans_cidr.`,
 			Type:     framework.TypeCommaStringSlice,
 			Required: true,
 			Description: `Specifies the IP CIDRs this role is allowed
-to issue certificates for. This is used with the allow_ip_sans to 
+to issue certificates for. This is used with the allow_ip_sans to
 determine matches for the common name, and IP-typed SAN entries of
 certificates. See the documentation for more information. This parameter
 accepts a comma-separated string or list of CIDR notated IPs.
@@ -252,8 +252,8 @@ protection use. Defaults to false. See also RFC 5280 Section 4.2.1.12.`,
 		"key_type": {
 			Type:     framework.TypeString,
 			Required: true,
-			Description: `The type of key to use; defaults to RSA. "rsa"
-"ec", "ed25519" and "any" are the only valid values.`,
+			Description: `The type of key to use; defaults to RSA. "rsa",
+"ec", "ed25519", "mldsa" and "any" are the only valid values.`,
 		},
 
 		"key_bits": {
@@ -262,7 +262,7 @@ protection use. Defaults to false. See also RFC 5280 Section 4.2.1.12.`,
 			Description: `The number of bits to use. Allowed values are
 0 (universal default); with rsa key_type: 2048 (default), 3072, or
 4096; with ec key_type: 224, 256 (default), 384, or 521; ignored with
-ed25519.`,
+ed25519; with mldsa key_type: 44, 65 (default), or 87.`,
 		},
 		"signature_bits": {
 			Type:     framework.TypeInt,
@@ -384,7 +384,7 @@ leases adversely affect the startup time of OpenBao.`,
 			Type: framework.TypeBool,
 			Description: `
 If set, certificates issued/signed against this role will not be stored in the
-storage backend. This can improve performance when issuing large numbers of 
+storage backend. This can improve performance when issuing large numbers of
 certificates. However, certificates issued in this way cannot be enumerated
 or revoked, so this option is recommended only for certificates that are
 non-sensitive, or extremely short-lived. This option implies a value of "false"
@@ -410,7 +410,7 @@ non-Hostname, non-Email address CNs.`,
 		"policy_identifiers": {
 			Type: framework.TypeCommaStringSlice,
 			Description: `A comma-separated string or list of policy OIDs, or a JSON list of qualified policy
-information, which must include an oid, and may include a notice and/or cps url, using the form 
+information, which must include an oid, and may include a notice and/or cps url, using the form
 [{"oid"="1.3.6.1.4.1.7.8","notice"="I am a user Notice"}, {"oid"="1.3.6.1.4.1.32473.1.2.4 ","cps"="https://example.com"}].`,
 		},
 
@@ -588,7 +588,7 @@ Allowed IP ranges can be further restricted using allowed_ip_sans_cidr.`,
 			"allowed_ip_sans_cidr": {
 				Type: framework.TypeCommaStringSlice,
 				Description: `Specifies the IP CIDRs this role is allowed
-to issue certificates for. This is used with the allow_ip_sans to 
+to issue certificates for. This is used with the allow_ip_sans to
 determine matches for the common name, and IP-typed SAN entries of
 certificates. See the documentation for more information. This parameter
 accepts a comma-separated string or list of CIDR notated IPs.`,
@@ -664,8 +664,8 @@ protection use. Defaults to false. See also RFC 5280 Section 4.2.1.12.`,
 				Type:    framework.TypeString,
 				Default: "rsa",
 				Description: `The type of key to use; defaults to RSA. "rsa"
-"ec", "ed25519" and "any" are the only valid values.`,
-				AllowedValues: []any{"rsa", "ec", "ed25519", "any"},
+"ec", "ed25519", "mldsa" and "any" are the only valid values.`,
+				AllowedValues: []any{"rsa", "ec", "ed25519", "mldsa", "any"},
 			},
 
 			"key_bits": {
@@ -674,7 +674,7 @@ protection use. Defaults to false. See also RFC 5280 Section 4.2.1.12.`,
 				Description: `The number of bits to use. Allowed values are
 0 (universal default); with rsa key_type: 2048 (default), 3072, or
 4096; with ec key_type: 224, 256 (default), 384, or 521; ignored with
-ed25519.`,
+ed25519; with mldsa key_type: 44, 65 (default), or 87.`,
 			},
 
 			"signature_bits": {
@@ -824,7 +824,7 @@ leases adversely affect the startup time of OpenBao.`,
 				Type: framework.TypeBool,
 				Description: `
 If set, certificates issued/signed against this role will not be stored in the
-storage backend. This can improve performance when issuing large numbers of 
+storage backend. This can improve performance when issuing large numbers of
 certificates. However, certificates issued in this way cannot be enumerated
 or revoked, so this option is recommended only for certificates that are
 non-sensitive, or extremely short-lived. This option implies a value of "false"
@@ -858,7 +858,7 @@ non-Hostname, non-Email address CNs.`,
 			"policy_identifiers": {
 				Type: framework.TypeCommaStringSlice,
 				Description: `A comma-separated string or list of policy OIDs, or a JSON list of qualified policy
-information, which must include an oid, and may include a notice and/or cps url, using the form 
+information, which must include an oid, and may include a notice and/or cps url, using the form
 [{"oid"="1.3.6.1.4.1.7.8","notice"="I am a user Notice"}, {"oid"="1.3.6.1.4.1.32473.1.2.4 ","cps"="https://example.com"}].`,
 			},
 

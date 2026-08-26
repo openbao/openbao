@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto"
+	"crypto/mldsa"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -609,6 +610,27 @@ func (i issuerEntry) CanMaybeSignWithAlgo(algo x509.SignatureAlgorithm) error {
 		switch algo {
 		case x509.PureEd25519:
 			return nil
+		}
+	case x509.MLDSA:
+		pubk, ok := cert.PublicKey.(*mldsa.PublicKey)
+		if !ok {
+			return fmt.Errorf("unable to parse ML-DSA public key")
+		}
+		switch pubk.Parameters() {
+		case mldsa.MLDSA44():
+			if algo == x509.MLDSA44 {
+				return nil
+			}
+		case mldsa.MLDSA65():
+			if algo == x509.MLDSA65 {
+				return nil
+			}
+		case mldsa.MLDSA87():
+			if algo == x509.MLDSA87 {
+				return nil
+			}
+		default:
+			return fmt.Errorf("unable to use issuer of type %v to sign with %v key type", pubk.Parameters().String(), algo.String())
 		}
 	}
 

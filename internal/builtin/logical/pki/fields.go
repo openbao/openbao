@@ -330,7 +330,7 @@ the private key!`,
 		Description: `The number of bits to use. Allowed values are
 0 (universal default); with rsa key_type: 2048 (default), 3072, or
 4096; with ec key_type: 224, 256 (default), 384, or 521; ignored with
-ed25519.`,
+ed25519; with mldsa key_type: 44, 65 (default), or 87.`,
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: 0,
 		},
@@ -358,9 +358,9 @@ RSA key-type issuer. Defaults to false.`,
 	fields["key_type"] = &framework.FieldSchema{
 		Type:    framework.TypeString,
 		Default: "rsa",
-		Description: `The type of key to use; defaults to RSA. "rsa"
-"ec" and "ed25519" are the only valid values.`,
-		AllowedValues: []any{"rsa", "ec", "ed25519"},
+		Description: `The type of key to use; defaults to RSA. "rsa",
+"ec", "ed25519", and "mldsa" are the only valid values.`,
+		AllowedValues: []any{"rsa", "ec", "ed25519", "mldsa"},
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: "rsa",
 		},
@@ -509,16 +509,16 @@ in most operational scenarios).`,
 	fields["tidy_acme"] = &framework.FieldSchema{
 		Type: framework.TypeBool,
 		Description: `Set to true to enable tidying ACME accounts,
-orders and authorizations.  ACME orders are tidied (deleted) 
+orders and authorizations.  ACME orders are tidied (deleted)
 safety_buffer after the certificate associated with them expires,
-or after the order and relevant authorizations have expired if no 
-certificate was produced.  Authorizations are tidied with the 
+or after the order and relevant authorizations have expired if no
+certificate was produced.  Authorizations are tidied with the
 corresponding order.
 
 When a valid ACME Account is at least acme_account_safety_buffer
 old, and has no remaining orders associated with it, the account is
-marked as revoked.  After another acme_account_safety_buffer has 
-passed from the revocation or deactivation date, a revoked or 
+marked as revoked.  After another acme_account_safety_buffer has
+passed from the revocation or deactivation date, a revoked or
 deactivated ACME account is deleted.`,
 		Default: false,
 	}
@@ -560,10 +560,10 @@ after being marked revoked or deactivated.`,
 
 	fields["page_size"] = &framework.FieldSchema{
 		Type: framework.TypeInt,
-		Description: `The number of certificates to process per page during list 
+		Description: `The number of certificates to process per page during list
 pagination. This setting enables tidy to handle certificates in smaller increments,
-rather than loading the entire set into memory at once. 
-Defaults to 1000 certificates, with a minimum of 5 certificates per page. To 
+rather than loading the entire set into memory at once.
+Defaults to 1000 certificates, with a minimum of 5 certificates per page. To
 revert to the old behavior, set page size to any value less than zero.`,
 		Default: int(defaultTidyConfig.PageSize),
 	}

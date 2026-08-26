@@ -996,81 +996,99 @@ func TestACLGrantingPolicies(t *testing.T) {
 	}
 }
 
-func TestACL_ListScanWildcardDeny(t *testing.T) {
+func TestACL_ListScanDeny(t *testing.T) {
 	ns := namespace.RootNamespace
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 
-	tests := []struct {
-		path    string
-		allowed bool
-	}{
-		{
-			path:    "foo",
-			allowed: false,
-		},
-		{
-			path:    "foo/metadata",
-			allowed: true,
-		},
-		{
-			path:    "foo/metadata/test",
-			allowed: true,
-		},
-		{
-			path:    "foo/metadata/private",
-			allowed: false,
-		},
-		{
-			path:    "foo/metadata/private/internal",
-			allowed: false,
-		},
-		{
-			path:    "foo/metadata/private/granted",
-			allowed: true,
-		},
-		{
-			path:    "foo/metadata/private/granted/test",
-			allowed: true,
-		},
+	policies := map[string]string{
+		"wildcard":          listScanDenyWildcardPolicy,
+		"internal_wildcard": listScanDenyInternalWildcardPolicy,
+		"glob":              listScanDenyGlobPolicy,
+		"explicit":          listScanDenyExplicitPolicy,
 	}
 
-	for i, pt := range tests {
-		policy, err := ParseACLPolicy(ns, listScanDenyPolicy)
-		require.NoError(t, err)
-		require.NotNil(t, policy)
+	for name, policy := range policies {
+		t.Run(name, func(t *testing.T) {
+			tests := []struct {
+				path    string
+				allowed bool
+			}{
+				{
+					path:    "foo",
+					allowed: false,
+				},
+				{
+					path:    "foo/metadata",
+					allowed: true,
+				},
+				{
+					path:    "foo/metadata/test",
+					allowed: true,
+				},
+				{
+					path:    "foo/metadata/private",
+					allowed: false,
+				},
+				{
+					path:    "foo/metadata/private/internal",
+					allowed: false,
+				},
+				{
+					path:    "foo/metadata/private/internal/elsewhere",
+					allowed: false,
+				},
 
-		acl, err := NewACL(ctx, []*Policy{policy})
-		require.NoError(t, err)
-		require.NotNil(t, acl)
+				{
+					path:    "foo/metadata/private/granted",
+					allowed: true,
+				},
+				{
+					path:    "foo/metadata/private/granted/test",
+					allowed: true,
+				},
+			}
 
-		for _, operation := range []logical.Operation{
-			logical.ScanOperation,
-			logical.ListOperation,
-		} {
-			request := new(logical.Request)
-			request.Path = pt.path
-			request.Operation = operation
+			for i, pt := range tests {
+				t.Run(strings.ReplaceAll(pt.path, "/", "_"), func(t *testing.T) {
+					policy, err := ParseACLPolicy(ns, policy)
+					require.NoError(t, err)
+					require.NotNil(t, policy)
 
-			require.False(t, strings.HasSuffix(request.Path, "/"))
-			request.Path += "/"
+					acl, err := NewACL(ctx, []*Policy{policy})
+					require.NoError(t, err)
+					require.NotNil(t, acl)
 
-			authResults := acl.AllowOperation(ctx, request, false)
-			require.Equal(
-				t,
-				pt.allowed,
-				authResults.Allowed,
-				"bad:\n"+
-					"case %d\n"+
-					"\t%#v\n"+
-					"operation: %v\n"+
-					"engine: %v != expected: %v",
-				i,
-				pt,
-				operation,
-				authResults.Allowed,
-				pt.allowed,
-			)
-		}
+					for _, operation := range []logical.Operation{
+						logical.ScanOperation,
+						logical.ListOperation,
+					} {
+						request := new(logical.Request)
+						request.Path = pt.path
+						request.Operation = operation
+
+						require.False(t, strings.HasSuffix(request.Path, "/"))
+						request.Path += "/"
+
+						authResults := acl.AllowOperation(ctx, request, false)
+						require.Equal(
+							t,
+							pt.allowed,
+							authResults.Allowed,
+							"bad:\n"+
+								"case %d\n"+
+								"\t%#v\n"+
+								"operation: %v\n"+
+								"engine: %v != expected: %v",
+							i,
+							pt,
+							operation,
+							authResults.Allowed,
+							pt.allowed,
+						)
+					}
+				})
+			}
+		})
 	}
 }
 
@@ -1481,8 +1499,34 @@ path "test/star" {
 }
 `
 
-var listScanDenyPolicy = `
+var listScanDenyGlobPolicy = `
 path "foo/metadata/*" { capabilities = ["list","scan"] }
 path "foo/metadata/private/*" { capabilities = ["deny"] }
 path "foo/metadata/private/granted/*" { capabilities = ["list","scan"] }
+`
+
+var listScanDenyWildcardPolicy = `
+path "foo/metadata/*" { capabilities = ["list","scan"] }
+path "foo/metadata/private/+" { capabilities = ["deny"] }
+path "foo/metadata/private/internal/+" { capabilities = ["deny"] }
+// While tricky, note that + only matches a single segment. So +/ is
+// necessary to forbid a LIST, as the LIST operation is not on + but
+// on +/ and that's a different path from +.
+path "foo/metadata/private/internal/+/" { capabilities = ["deny"] }
+path "foo/metadata/private/granted/*" { capabilities = ["list","scan"] }
+`
+
+var listScanDenyInternalWildcardPolicy = `
+path "foo/metadata/*" { capabilities = ["list","scan"] }
+path "foo/metadata/private/" { capabilities = ["deny"] }
+path "foo/metadata/+/internal/" { capabilities = ["deny"] }
+path "foo/metadata/+/internal/+/" { capabilities = ["deny"] }
+path "foo/metadata/pr+vate/granted/*" { capabilities = ["list","scan"] }
+`
+
+var listScanDenyExplicitPolicy = `
+path "foo/metadata/*" { capabilities = ["list","scan"] }
+path "foo/metadata/private/" { capabilities = ["deny"] }
+path "foo/metadata/private/internal/" { capabilities = ["deny"] }
+path "foo/metadata/private/internal/elsewhere/" { capabilities = ["deny"] }
 `

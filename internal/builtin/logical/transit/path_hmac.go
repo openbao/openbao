@@ -158,7 +158,10 @@ func (b *backend) pathHMACWrite(ctx context.Context, req *logical.Request, d *fr
 		return logical.ErrorResponse("unsupported algorithm %q", hashAlgorithm), nil
 	}
 
-	hashAlg := keysutil.HashFuncMap[hashAlgorithm]
+	hf := keysutil.HashFuncMap[hashAlgorithm]
+	if hf == nil {
+		return logical.ErrorResponse("algorithm cannot be none"), nil
+	}
 
 	batchInputRaw := d.Raw["batch_input"]
 	var batchInputItems []batchRequestHMACItem
@@ -200,7 +203,7 @@ func (b *backend) pathHMACWrite(ctx context.Context, req *logical.Request, d *fr
 			continue
 		}
 
-		hf := hmac.New(hashAlg, key)
+		hf := hmac.New(hf, key)
 		hf.Write(input)
 		retBytes := hf.Sum(nil)
 
@@ -237,15 +240,12 @@ func (b *backend) pathHMACWrite(ctx context.Context, req *logical.Request, d *fr
 
 func (b *backend) pathHMACVerify(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := d.Get("name").(string)
-	hashAlgorithmStr := d.Get("urlalgorithm").(string)
-	if hashAlgorithmStr == "" {
-		hashAlgorithmStr = d.Get("hash_algorithm").(string)
-		if hashAlgorithmStr == "" {
-			hashAlgorithmStr = d.Get("algorithm").(string)
-			if hashAlgorithmStr == "" {
-				hashAlgorithmStr = defaultHashAlgorithm
-			}
-		}
+
+	// Even if not using an HMAC-typed key, fall back to the default hash
+	// algorithm of the HMAC key type.
+	hashAlgorithm, err := getHashAlgorithm(d, keysutil.KeyType_HMAC)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
 	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
@@ -260,12 +260,10 @@ func (b *backend) pathHMACVerify(ctx context.Context, req *logical.Request, d *f
 	}
 	defer p.Unlock()
 
-	hashAlgorithmType, ok := keysutil.HashTypeMap[hashAlgorithmStr]
-	if !ok {
-		return logical.ErrorResponse("invalid hash algorithm %q", hashAlgorithmStr), logical.ErrInvalidRequest
+	hf := keysutil.HashFuncMap[hashAlgorithm]
+	if hf == nil {
+		return logical.ErrorResponse("algorithm cannot be none"), nil
 	}
-
-	hashAlg := keysutil.HashFuncMap[hashAlgorithmType]
 
 	batchInputRaw := d.Raw["batch_input"]
 	var batchInputItems []batchRequestHMACItem
@@ -366,7 +364,7 @@ func (b *backend) pathHMACVerify(ctx context.Context, req *logical.Request, d *f
 			continue
 		}
 
-		hf := hmac.New(hashAlg, key)
+		hf := hmac.New(hf, key)
 		hf.Write(input)
 		retBytes := hf.Sum(nil)
 		response[i].Valid = hmac.Equal(retBytes, verBytes)

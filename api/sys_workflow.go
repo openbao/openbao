@@ -46,8 +46,8 @@ func (c *Sys) ListWorkflows(ctx context.Context) ([]string, error) {
 }
 
 type GetWorkflowResponse struct {
-	AllowUnauthenticated bool   `json:"allow_unauthenticated"`
-	CasRequired          bool   `json:"cas_required"`
+	AllowUnauthenticated bool   `json:"allow_unauthenticated" mapstructure:"allow_unauthenticated"`
+	CasRequired          bool   `json:"cas_required" mapstructure:"cas_required"`
 	Description          string `json:"description"`
 	Path                 string `json:"path"`
 	Workflow             string `json:"workflow"`
@@ -66,14 +66,19 @@ func (c *Sys) GetWorkflow(ctx context.Context, path string) (*GetWorkflowRespons
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
-	var result struct {
-		Data *GetWorkflowResponse
-	}
-	err = resp.DecodeJSON(&result)
+	secret, err := ParseSecret(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	return result.Data, err
+	if secret == nil || secret.Data == nil {
+		return nil, nil
+	}
+
+	var result GetWorkflowResponse
+	if err := mapstructure.Decode(secret.Data, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 type PutWorkflowInput struct {
@@ -99,14 +104,19 @@ func (c *Sys) PutWorkflow(ctx context.Context, path string, input PutWorkflowInp
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
-	var result struct {
-		Data *GetWorkflowResponse
-	}
-	err = resp.DecodeJSON(&result)
+	secret, err := ParseSecret(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	return result.Data, err
+	if secret == nil || secret.Data == nil {
+		return nil, nil
+	}
+
+	var result GetWorkflowResponse
+	if err := mapstructure.Decode(secret.Data, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (c *Sys) DeleteWorkflow(ctx context.Context, path string) error {

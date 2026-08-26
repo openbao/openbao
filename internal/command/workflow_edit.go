@@ -58,9 +58,9 @@ func (c *WorkflowEditCommand) Flags() *FlagSets {
 	f.StringVar(&StringVar{
 		Name:    "editor",
 		Target:  &c.flagEditor,
-		Default: "editor",
+		Default: "vi",
 		EnvVar:  "EDITOR",
-		Usage:   "The editor you want to use. Defaults to 'editor'",
+		Usage:   "The editor you want to use. Defaults to '$EDITOR' and then falls back to 'vi'",
 	})
 
 	return set

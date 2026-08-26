@@ -159,8 +159,8 @@ func (c *WorkflowEditCommand) Run(args []string) (retcode int) {
 		return 2
 	}
 
-	if bytes.Equal(currentWorkflowBytes, tmpFileContent) {
-		c.UI.Info("Edit unchanged, aborting.")
+	if bytes.Equal(currentWorkflowBytes, tmpFileContent) || len(tmpFileContent) == 0 {
+		c.UI.Info("Edit unchanged or empty, aborting.")
 		return 0
 	}
 
@@ -169,9 +169,7 @@ func (c *WorkflowEditCommand) Run(args []string) (retcode int) {
 		Description:          workflowResp.Description,
 		AllowUnauthenticated: workflowResp.AllowUnauthenticated,
 		CASRequired:          workflowResp.CasRequired,
-	}
-	if workflowResp.CasRequired {
-		workflowInput.CAS = &workflowResp.Version
+		CAS:                  &workflowResp.Version,
 	}
 	if _, err := client.Sys().PutWorkflow(context.Background(), path, workflowInput); err != nil {
 		c.UI.Error(fmt.Sprintf("Error putting workflow under path %s: %s", path, err))

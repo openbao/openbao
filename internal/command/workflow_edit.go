@@ -123,12 +123,12 @@ func (c *WorkflowEditCommand) Run(args []string) (retcode int) {
 	}
 	defer os.Remove(tmpFile.Name()) //nolint:errcheck
 
-	if err := os.Chmod(tmpFile.Name(), 0o640); err != nil {
+	if err := os.Chmod(tmpFile.Name(), 0o600); err != nil {
 		c.UI.Error(fmt.Sprintf("Error setting temporary workflow file permissions: %s", err))
 		return 2
 	}
 	currentWorkflowBytes := []byte(workflowResp.Workflow)
-	if err := os.WriteFile(tmpFile.Name(), currentWorkflowBytes, 0o640); err != nil {
+	if err := os.WriteFile(tmpFile.Name(), currentWorkflowBytes, 0o600); err != nil {
 		c.UI.Error(fmt.Sprintf("Error writing temporary workflow file permissions: %s", err))
 		return 2
 	}

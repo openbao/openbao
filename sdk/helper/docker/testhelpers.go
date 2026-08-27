@@ -65,7 +65,8 @@ type RunOptions struct {
 	// WriteInto is provided instead of Runner.CopyTo(...) so that it executes
 	// before the container starts, providing an opportunity to provision
 	// initial data. Map of destination -> contents.
-	WriteInto map[string]BuildContext
+	WriteInto    map[string]BuildContext
+	PublishPorts map[uint16]uint16
 }
 
 func NewDockerAPI() (*client.Client, error) {
@@ -477,6 +478,13 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 	}
 	if len(d.RunOptions.Capabilities) > 0 {
 		hostConfig.CapAdd = d.RunOptions.Capabilities
+	}
+	if len(d.RunOptions.PublishPorts) > 0 {
+		hostConfig.PortBindings = make(network.PortMap)
+		for hostPort, containerPort := range d.RunOptions.PublishPorts {
+			port, _ := network.PortFrom(containerPort, network.TCP)
+			hostConfig.PortBindings[port] = []network.PortBinding{{HostPort: strconv.Itoa(int(hostPort))}}
+		}
 	}
 
 	netConfig := &network.NetworkingConfig{}

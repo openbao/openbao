@@ -26,8 +26,8 @@ server:
         cluster_address = "[::]:8201"
       }
 
-      storage "file" {
-        path = "/openbao/data"
+      storage "pebbledb" {
+        directory = "/openbao/data"
       }
 
   service:

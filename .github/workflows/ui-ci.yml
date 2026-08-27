@@ -39,7 +39,7 @@ jobs:
           cache: true
           cache_dependency_path: ui/pnpm-lock.yaml
       - id: install-browser
-        uses: browser-actions/setup-chrome@2e1d749697dd1612b833dba4a722266286fbefcd # v2.1.2
+        uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
       - id: ui-dependencies
         name: ui-dependencies
         working-directory: ./ui

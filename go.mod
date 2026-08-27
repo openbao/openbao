@@ -111,6 +111,7 @@ require (
 	github.com/openbao/openbao/sdk/v2 v2.6.2
 	github.com/ory/dockertest/v4 v4.0.0
 	github.com/pires/go-proxyproto v0.14.0
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/posener/complete v1.2.3
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.24.1

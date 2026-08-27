@@ -118,49 +118,49 @@ The remaining code is for the OpenBao CLI, server, and a few built-in plugins.
 
 At a high level, these directories are:
 
- - [`audit/`](https://github.com/openbao/openbao/tree/main/audit/) contains
+ - [`internal/audit/`](https://github.com/openbao/openbao/tree/main/internal/audit/) contains
    interface definitions for auditing requests and responses.
- - [`builtin/`](https://github.com/openbao/openbao/tree/main/builtin/) contains
+ - [`internal/builtin/`](https://github.com/openbao/openbao/tree/main/internal/builtin/) contains
    the builtin plugins:
-   - [`builtin/audit/`](https://github.com/openbao/openbao/tree/main/builtin/audit)
+   - [`internal/builtin/audit/`](https://github.com/openbao/openbao/tree/main/internal/builtin/audit)
      contains the built-in audit backends such as [file](/docs/audit/file) or
      [syslog](/docs/audit/syslog).
-   - [`builtin/credential/`](https://github.com/openbao/openbao/tree/main/builtin/credential)
+   - [`internal/builtin/credential/`](https://github.com/openbao/openbao/tree/main/internal/builtin/credential)
      contains the built-in authentication plugins such as
      [AppRole](/docs/auth/approle) or [cert](/docs/auth/cert).
-   - [`builtin/logical/`](https://github.com/openbao/openbao/tree/main/builtin/logical)
+   - [`internal/builtin/logical/`](https://github.com/openbao/openbao/tree/main/internal/builtin/logical)
      contains the built-in secret engines such as
      [PKI](/docs/secrets/pki) or [kv](/docs/secrets/kv).
-   - [`builtin/plugin/`](https://github.com/openbao/openbao/tree/main/builtin/plugin)
+   - [`internal/builtin/plugin/`](https://github.com/openbao/openbao/tree/main/internal/builtin/plugin)
      contains a source-agnostic plugin wrapper (either using the builtin
      plugin or handling the GRPC connection to an external plugin).
- - [`command/`](https://github.com/openbao/openbao/tree/main/command/) contains
+ - [`internal/command/`](https://github.com/openbao/openbao/tree/main/internal/command/) contains
    the CLI interface definitions: each command is in a separate file connected
-   through [`command/commands.go`](https://github.com/openbao/openbao/blob/main/command/commands.go).
+   through [`internal/command/commands.go`](https://github.com/openbao/openbao/blob/main/internal/command/commands.go).
    Many plugins reuse the same generic `read`, `write`, `list`, ... commands,
    but a few (like K/V or PKI) have plugin-specific commands. This also
    includes Agent, Proxy, and Server configuration parsing and startup code,
    though much of the functionality for the latter is elsewhere.
- - [`helper/`](https://github.com/openbao/openbao/tree/main/helper/) includes
+ - [`internal/helper/`](https://github.com/openbao/openbao/tree/main/internal/helper/) includes
    various internal libraries useful only in the context of OpenBao.
- - [`http/`](https://github.com/openbao/openbao/tree/main/http/) contains
+ - [`internal/http/`](https://github.com/openbao/openbao/tree/main/internal/http/) contains
    the main server code [creating](https://github.com/openbao/openbao/blob/42e77de61c145aa768ada9c1883f570e76e8708e/http/handler.go#L130-L132)
    the [http.ServeMux](https://pkg.go.dev/net/http#ServeMux).
- - [`physical/`](https://github.com/openbao/openbao/tree/main/physical/)
+ - [`internal/physical/`](https://github.com/openbao/openbao/tree/main/internal/physical/)
    contains production quality physical storage backend implementations.
    This currently only includes Raft.
- - [`plugins/database/`](https://github.com/openbao/openbao/tree/main/plugins/database/)
+ - [`internal/plugins/database/`](https://github.com/openbao/openbao/tree/main/internal/plugins/database/)
    contains the plugins for the database secrets engine to support creating
    short-lived dynamic credentials for these database types.
- - [`serviceregistration/`](https://github.com/openbao/openbao/tree/main/serviceregistration/)
+ - [`internal/serviceregistration/`](https://github.com/openbao/openbao/tree/main/internal/serviceregistration/)
    contains helpers for supporting service registration against various
    providers. This is only utilized by OpenBao Server.
- - [`vault/`](https://github.com/openbao/openbao/tree/main/vault/)
-   contains the [Core](https://github.com/openbao/openbao/blob/main/vault/core.go)
+ - [`internal/vault/`](https://github.com/openbao/openbao/tree/main/internal/vault/)
+   contains the [Core](https://github.com/openbao/openbao/blob/main/internal/vault/core.go)
    of the server: this implements
-   [barrier encryption](https://github.com/openbao/openbao/blob/main/vault/barrier.go),
-   [identity storage](https://github.com/openbao/openbao/blob/main/vault/identity_store.go),
-   [token storage](https://github.com/openbao/openbao/blob/main/vault/token_store.go),
+   [barrier encryption](https://github.com/openbao/openbao/blob/main/internal/vault/barrier.go),
+   [identity storage](https://github.com/openbao/openbao/blob/main/internal/vault/identity_store.go),
+   [token storage](https://github.com/openbao/openbao/blob/main/internal/vault/token_store.go),
    and many `sys/` endpoint implementations.
 
 Key dependencies of the server code are:

@@ -301,7 +301,7 @@ func (ps *Store) setPolicyInternal(ctx context.Context, p *Policy, casVersion *i
 		}
 
 		if *casVersion != -1 && *casVersion != existing.DataVersion {
-			return fmt.Errorf("check-and-set parameter did not match the current version")
+			return fmt.Errorf("check-and-set parameter %v did not match the current version %v", *casVersion, existing.DataVersion)
 		}
 	}
 
@@ -667,6 +667,9 @@ func (ps *Store) LoadACLPolicy(ctx context.Context, policyName, policyText strin
 		return err
 	}
 
+	// Assume we're creating the policy.
+	cas := -1
+
 	// Check if the pol already exists
 	pol, err := ps.GetPolicy(ctx, policyName, TypeACL)
 	if err != nil {
@@ -676,6 +679,9 @@ func (ps *Store) LoadACLPolicy(ctx context.Context, policyName, policyText strin
 		if !slices.Contains(immutablePolicies, policyName) || policyText == pol.Raw {
 			return nil
 		}
+
+		// Policy exists; record its CAS value.
+		cas = pol.DataVersion
 	}
 
 	pol, err = ParseACLPolicy(ns, policyText)
@@ -687,10 +693,9 @@ func (ps *Store) LoadACLPolicy(ctx context.Context, policyName, policyText strin
 		return fmt.Errorf("parsing %q policy resulted in nil policy", policyName)
 	}
 
-	cas := &pol.DataVersion
 	pol.Name = policyName
 	pol.Type = TypeACL
-	return ps.setPolicyInternal(ctx, pol, cas)
+	return ps.setPolicyInternal(ctx, pol, &cas)
 }
 
 func (ps *Store) sanitizeName(name string) string {

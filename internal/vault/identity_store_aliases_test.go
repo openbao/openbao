@@ -657,18 +657,18 @@ func TestIdentityStore_AliasMove_DuplicateAccessor(t *testing.T) {
 // the entity already has an alias
 func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
+	c := testIdentityStoreCore(t, false)
 
-	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
-
-	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, is, approleAccessor, upAccessor)
+	approleAccessor, upAccessor := testEnableAppRoleUserpassAuthMounts(t, ctx, c)
+	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, c.identityStore, approleAccessor, upAccessor)
 }
 
 func TestIdentityStore_AliasUpdate_DuplicateAccessor_UnsafeShared(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
+	c := testIdentityStoreCore(t, true)
 
-	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
-
-	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, is, approleAccessor, upAccessor)
+	approleAccessor, upAccessor := testEnableAppRoleUserpassAuthMounts(t, ctx, c)
+	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, c.identityStore, approleAccessor, upAccessor)
 }
 
 func testIdentityStoreAliasUpdateDuplicateAccessor(t *testing.T, ctx context.Context, is *ident.IdentityStore, approleAccessor string, upAccessor string) {

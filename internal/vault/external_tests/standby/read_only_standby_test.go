@@ -11,9 +11,11 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	logicalKv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
 	logicalPki "github.com/openbao/openbao/v2/internal/builtin/logical/pki"
+	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/teststorage"
 
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
@@ -82,4 +84,62 @@ func TestReadOnlyStandby(t *testing.T) {
 	require.NoError(t, primaryClient.Auth().Token().RevokeTreeWithContext(t.Context(), token.Auth.ClientToken))
 	_, err = standbyClient.KVv2("kv").Get(t.Context(), "foo")
 	require.ErrorContains(t, err, "permission denied", "token was revoked on the primary, should be declined by secondaries")
+}
+
+func TestReadOnlyStandbysForwardingWrapping(t *testing.T) {
+	coreConfig := &vault.CoreConfig{
+		LogicalBackends: map[string]logical.Factory{
+			"kv-v2": vault.PassthroughBackendFactory,
+		},
+	}
+
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+	})
+
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	cores := cluster.Cores
+	leader := cores[0].Core
+	vault.TestWaitActive(t, leader)
+	client := cores[0].Client
+	client.SetToken(cluster.RootToken)
+
+	require.NoError(t, client.Sys().Mount("wraptest", &api.MountInput{Type: "kv-v2"}))
+
+	req := &logical.Request{
+		Path:        "wraptest/secret",
+		ClientToken: cluster.RootToken,
+		Operation:   logical.CreateOperation,
+		Data: map[string]any{
+			"foo": "bar",
+		},
+	}
+
+	resp, err := leader.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	require.Nil(t, resp)
+
+	// Standby nodes also handle the wrapping request (standby by forwarding)
+	for _, core := range cores {
+		req = &logical.Request{
+			Path:        "wraptest/secret",
+			ClientToken: cluster.RootToken,
+			Operation:   logical.ReadOperation,
+			WrapInfo: &logical.RequestWrapInfo{
+				TTL: time.Duration(15 * time.Second),
+			},
+		}
+
+		resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
+		if core.HAState() == consts.Active {
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.Equal(t, time.Duration(15*time.Second), resp.WrapInfo.TTL)
+		} else {
+			require.Error(t, err)
+			require.True(t, logical.ShouldForward(err))
+		}
+	}
 }

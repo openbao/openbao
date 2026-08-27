@@ -7,6 +7,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/mldsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -332,15 +333,17 @@ func TestIntegration_CSRGeneration(t *testing.T) {
 	}{
 		{"rsa", false, 2048, 0, &rsa.PublicKey{}, x509.SHA256WithRSA},
 		{"rsa", false, 2048, 384, &rsa.PublicKey{}, x509.SHA384WithRSA},
-		// Add back once https://github.com/golang/go/issues/45990 is fixed.
-		// {"rsa", true, 2048, 0, &rsa.PublicKey{}, x509.SHA256WithRSAPSS},
-		// {"rsa", true, 2048, 512, &rsa.PublicKey{}, x509.SHA512WithRSAPSS},
+		{"rsa", true, 2048, 0, &rsa.PublicKey{}, x509.SHA256WithRSAPSS},
+		{"rsa", true, 2048, 512, &rsa.PublicKey{}, x509.SHA512WithRSAPSS},
 		{"ec", false, 224, 0, &ecdsa.PublicKey{}, x509.ECDSAWithSHA256},
 		{"ec", false, 256, 0, &ecdsa.PublicKey{}, x509.ECDSAWithSHA256},
 		{"ec", false, 384, 0, &ecdsa.PublicKey{}, x509.ECDSAWithSHA384},
 		{"ec", false, 521, 0, &ecdsa.PublicKey{}, x509.ECDSAWithSHA512},
 		{"ec", false, 521, 224, &ecdsa.PublicKey{}, x509.ECDSAWithSHA512}, // We ignore signature_bits for ec
 		{"ed25519", false, 0, 0, ed25519.PublicKey{}, x509.PureEd25519},   // We ignore both fields for ed25519
+		{"mldsa", false, 44, 0, &mldsa.PublicKey{}, x509.MLDSA44},
+		{"mldsa", false, 65, 0, &mldsa.PublicKey{}, x509.MLDSA65},
+		{"mldsa", false, 87, 0, &mldsa.PublicKey{}, x509.MLDSA87},
 	}
 	for _, tc := range testCases {
 		keyTypeName := tc.keyType

@@ -9,6 +9,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -724,6 +725,17 @@ func generateCSR(t *testing.T, csrTemplate *x509.CertificateRequest, keyType str
 		}
 	case "ed25519":
 		_, priv, err = ed25519.GenerateKey(rand.Reader)
+	case "mldsa":
+		switch keyBits {
+		case 44:
+			priv, err = mldsa.GenerateKey(mldsa.MLDSA44())
+		case 65:
+			priv, err = mldsa.GenerateKey(mldsa.MLDSA65())
+		case 87:
+			priv, err = mldsa.GenerateKey(mldsa.MLDSA87())
+		default:
+			t.Fatalf("Got unknown ML-DSA size: %v", keyBits)
+		}
 	}
 
 	if err != nil {
@@ -4015,7 +4027,7 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 		"client_flag":                        true,
 		"allowed_serial_numbers":             []any{},
 		"generate_lease":                     false,
-		"signature_bits":                     json.Number("256"),
+		"signature_bits":                     json.Number("0"),
 		"use_pss":                            false,
 		"allowed_domains":                    []any{},
 		"allowed_uri_sans_template":          false,
@@ -5276,7 +5288,7 @@ type KeySizeRegression struct {
 
 func (k KeySizeRegression) KeyTypeValues() []string {
 	if k.RoleKeyType == "any" {
-		return []string{"rsa", "ec", "ed25519"}
+		return []string{"rsa", "ec", "ed25519", "mldsa"}
 	}
 
 	return []string{k.RoleKeyType}
@@ -5363,14 +5375,14 @@ func TestBackend_Roles_KeySizeRegression(t *testing.T) {
 	// Regression testing of role's issuance policy.
 	testCases := []KeySizeRegression{
 		// RSA with default parameters should fail to issue smaller RSA keys
-		// and any size ECDSA/Ed25519 keys.
-		/*  0 */ {"rsa", []int{0, 2048}, []int{0, 256, 384, 512}, false, []string{"rsa", "ec", "ec", "ec", "ec", "ed25519"}, []int{1024, 224, 256, 384, 521, 0}, true},
+		// and any size ECDSA/Ed25519/MLDSA keys.
+		/*  0 */ {"rsa", []int{0, 2048}, []int{0, 256, 384, 512}, false, []string{"rsa", "ec", "ec", "ec", "ec", "ed25519", "mldsa"}, []int{1024, 224, 256, 384, 521, 0, 65}, true},
 		// But it should work to issue larger RSA keys.
 		/*  1 */ {"rsa", []int{0, 2048}, []int{0, 256, 384, 512}, false, []string{"rsa", "rsa"}, []int{2048, 3072}, false},
 
 		// EC with default parameters should fail to issue smaller EC keys
-		// and any size RSA/Ed25519 keys.
-		/*  2 */ {"ec", []int{0}, []int{0}, false, []string{"rsa", "ec", "ed25519"}, []int{2048, 224, 0}, true},
+		// and any size RSA/Ed25519/MLDSA keys.
+		/*  2 */ {"ec", []int{0}, []int{0}, false, []string{"rsa", "ec", "ed25519", "mldsa"}, []int{2048, 224, 0, 65}, true},
 		// But it should work to issue larger EC keys. Note that we should be
 		// independent of signature bits as that's computed from the issuer
 		// type (for EC based issuers).
@@ -5379,26 +5391,33 @@ func TestBackend_Roles_KeySizeRegression(t *testing.T) {
 		/*  5 */ {"ec", []int{384}, []int{0, 256, 384, 521}, false, []string{"ec", "ec"}, []int{384, 521}, false},
 		/*  6 */ {"ec", []int{521}, []int{0, 256, 384, 512}, false, []string{"ec"}, []int{521}, false},
 
-		// Ed25519 should reject RSA and EC keys.
-		/*  7 */ {"ed25519", []int{0}, []int{0}, false, []string{"rsa", "ec", "ec"}, []int{2048, 256, 521}, true},
+		// Ed25519 should reject RSA, EC, and MLDSA keys.
+		/*  7 */ {"ed25519", []int{0}, []int{0}, false, []string{"rsa", "ec", "ec", "mldsa"}, []int{2048, 256, 521, 65}, true},
 		// But it should work to issue Ed25519 keys.
 		/*  8 */ {"ed25519", []int{0}, []int{0}, false, []string{"ed25519"}, []int{0}, false},
 
 		// Any key type should reject insecure RSA key sizes.
 		/*  9 */ {"any", []int{0}, []int{0, 256, 384, 512}, false, []string{"rsa"}, []int{1024}, true},
 		// But work for everything else.
-		/* 10 */ {"any", []int{0}, []int{0, 256, 384, 512}, false, []string{"rsa", "rsa", "ec", "ec", "ec", "ec", "ed25519"}, []int{2048, 3072, 224, 256, 384, 521, 0}, false},
+		/* 10 */ {"any", []int{0}, []int{0, 256, 384, 512}, false, []string{"rsa", "rsa", "ec", "ec", "ec", "ec", "ed25519", "mldsa", "mldsa"}, []int{2048, 3072, 224, 256, 384, 521, 0, 44, 65}, false},
 
 		// RSA with larger than default key size should reject smaller ones.
 		/* 11 */ {"rsa", []int{3072}, []int{0, 256, 384, 512}, false, []string{"rsa"}, []int{2048}, true},
 
 		// We should be able to sign with PSS with any CA key type.
-		/* 12 */ {"rsa", []int{0}, []int{0, 256, 384, 512}, true, []string{"rsa"}, []int{2048}, false},
-		/* 13 */ {"ec", []int{0}, []int{0}, true, []string{"ec"}, []int{256}, false},
-		/* 14 */ {"ed25519", []int{0}, []int{0}, true, []string{"ed25519"}, []int{0}, false},
+		/* 12 */ {"any", []int{0}, []int{0, 256, 384, 512}, true, []string{"rsa"}, []int{2048}, false},
+		/* 13 */ {"any", []int{0}, []int{0}, true, []string{"ec"}, []int{256}, false},
+		/* 14 */ {"any", []int{0}, []int{0}, true, []string{"ed25519"}, []int{0}, false},
+
+		// ML-DSA should accept same or larger parameters.
+		/* 15 */ {"mldsa", []int{44}, []int{0}, false, []string{"mldsa", "mldsa", "mldsa"}, []int{44, 65, 87}, false},
+		/* 16 */ {"mldsa", []int{0, 65}, []int{0}, false, []string{"mldsa", "mldsa"}, []int{65, 87}, false},
+		/* 17 */ {"mldsa", []int{87}, []int{0}, false, []string{"mldsa"}, []int{87}, false},
+		// ML-DSA 65 should reject RSA, EC, Ed25519, and ML-DSA 44 keys
+		/* 18 */ {"mldsa", []int{0}, []int{0}, false, []string{"rsa", "ec", "ed25519", "mldsa"}, []int{2048, 256, 0, 44}, true},
 	}
 
-	if len(testCases) != 15 {
+	if len(testCases) != 19 {
 		t.Fatalf("misnumbered test case entries will make it hard to find bugs: %v", len(testCases))
 	}
 
@@ -7819,6 +7838,7 @@ func TestPKI_IssueKeyTypeAny(t *testing.T) {
 		"rsa":     {0, 2048, 3072, 4096},
 		"ec":      {0, 256, 384, 521},
 		"ed25519": {0},
+		"mldsa":   {0, 44, 65, 87},
 	}
 
 	resp, err := CBWrite(b, s, "root/generate/internal", map[string]any{
@@ -8078,6 +8098,56 @@ func TestTimestampNotAfterBound(t *testing.T) {
 	require.Error(t, err)
 	require.True(t, resp.IsError())
 	require.Equal(t, fmt.Sprintf("not_after_bound is set to %s. Cannot statisfy request as that would result in notAfter of %s that is beyond the maximum timestamp of %s", maxTimestamp, not_after, maxTimestamp), err.Error())
+}
+
+func TestBackend_AllowedIPSANs(t *testing.T) {
+	t.Parallel()
+
+	// create the backend
+	b, s := CreateBackendWithStorage(t)
+
+	// generate root
+	_, err := CBWrite(b, s, "root/generate/internal", map[string]any{
+		"ttl":         "40h",
+		"common_name": "example.com",
+		"key_type":    "ec",
+	})
+	require.NoError(t, err, "failed generating internal root cert")
+
+	_, err = CBWrite(b, s, "roles/test", map[string]any{
+		"allow_any_name":         true,
+		"allowed_serial_numbers": []string{"MySerialNumber"},
+		"key_type":               "any",
+		"key_bits":               "2048",
+		"signature_bits":         "256",
+		"use_csr_sans":           true,
+		"allowed_ip_sans_cidr":   "8.8.8.8/32",
+	})
+	require.NoError(t, err, "failed creating role with ip sans restrictions")
+
+	_, csrPem := generateTestCsr(t, certutil.ECPrivateKey, 256)
+	_, err = CBWrite(b, s, "sign/test", map[string]any{
+		"csr": csrPem,
+	})
+	require.ErrorContains(t, err, "the IP address")
+	require.ErrorContains(t, err, "is not allowed")
+
+	_, err = CBWrite(b, s, "roles/test", map[string]any{
+		"allow_any_name":         true,
+		"allowed_serial_numbers": []string{"MySerialNumber"},
+		"key_type":               "any",
+		"key_bits":               "2048",
+		"signature_bits":         "256",
+		"use_csr_sans":           false,
+		"allowed_ip_sans_cidr":   "8.8.8.8/32",
+	})
+	require.NoError(t, err, "failed creating role with ip sans restrictions")
+
+	data, err := CBWrite(b, s, "sign/test", map[string]any{
+		"csr": csrPem,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, data)
 }
 
 var (

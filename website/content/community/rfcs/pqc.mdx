@@ -35,7 +35,7 @@ For an organization to remain secure, `(X+Y)` must be strictly less than `Z`. Si
 
 ## User-facing description
 
-Some changes will be immediately available to end-users: different encryption algorithms will be selectable as candidates in various points of the process. For instance, [Transit](https://openbao.org/docs/secrets/transit/#key-types) and [PKI](https://openbao.org/api-docs/secret/pki/#generate-root) might allow pure post-quantum algorithms or various hybrid constructions. Other changes might be strictly internal, like selection of [key type](https://github.com/openbao/openbao/blob/57669cff41f5b105bede654347f7038667eac7a1/vault/cluster.go#L211-L220) for cross-node identity in Seal HA.
+Some changes will be immediately available to end-users: different encryption algorithms will be selectable as candidates in various points of the process. For instance, [Transit](https://openbao.org/docs/secrets/transit/#key-types) and [PKI](https://openbao.org/docs/api/secret/pki/#generate-root) might allow pure post-quantum algorithms or various hybrid constructions. Other changes might be strictly internal, like selection of [key type](https://github.com/openbao/openbao/blob/57669cff41f5b105bede654347f7038667eac7a1/vault/cluster.go#L211-L220) for cross-node identity in Seal HA.
 
 While careful thought for backwards compatibility within OpenBao will be needed, some of these may require more active interaction by the user: changing PKI CA key types, for instance, will likely require buy-in from the entire organization to rotate.
 
@@ -68,11 +68,11 @@ Importantly, such migration can be done incrementally as each portion is largely
    - **Impact**: Low: requires online cluster communication to exploit which requires a active, fast quantum adversary.
    - **Ease**: Carefully swapping credential types with fallback.
    - **Risk**: Minimal; entirely controlled by OpenBao as an implementation detail.
- - [PKI CA & leaf keys](https://openbao.org/api-docs/secret/pki/#generate-root)
+ - [PKI CA & leaf keys](https://openbao.org/docs/api/secret/pki/#generate-root)
    - **Impact**: Customer-specific.
    - **Ease**: Customer takes on complicated CA migration.
    - **Risk**: Substantial risk of failure or service interruptions.
- - [Cert Auth CA & leaf keys](https://openbao.org/api-docs/secret/pki/#generate-root)
+ - [Cert Auth CA & leaf keys](https://openbao.org/docs/api/secret/pki/#generate-root)
    - **Impact**: Low: requires online cluster communication to exploit which requires a active, fast quantum adversary.
    - **Ease**: Customer takes on complicated CA migration (either globally within their org or in limited scope for just certs used to talk to OpenBao).
    - **Risk**: Risk of failure can be mitigated by having multiple CA types.
@@ -84,7 +84,7 @@ Importantly, such migration can be done incrementally as each portion is largely
    - **Impact**: Customer-specific.
    - **Ease**: Customer-dependent: some may fully rely on Transit, others may interoperate with other libraries. Will have to introduce additional primitive types (KEMs).
    - **Risk**: Customer-dependent: those relying on Transit can swap key names, others may need to wait for ecosystem to update.
- - [SSH CA & leaf keys](https://openbao.org/api-docs/secret/ssh/#generate-certificate-and-key)
+ - [SSH CA & leaf keys](https://openbao.org/docs/api/secret/ssh/#generate-certificate-and-key)
    - **Impact**: Customer-specific.
    - **Ease**: Customer takes on complicated CA migration.
    - **Risk**: Substantial risk of failure or service interruptions.

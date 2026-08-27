@@ -345,7 +345,7 @@ Probes are essential for detecting failures, rescheduling and using pods in
 Kubernetes. The helm chart offers configurable readiness and liveliness probes
 which can be customized for a variety of use cases.
 
-OpenBao's [/sys/health`](/api-docs/system/health) endpoint can be customized to
+OpenBao's [/sys/health`](../../../api/system/health.mdx) endpoint can be customized to
 change the behavior of the health check. For example, we can change the OpenBao
 readiness probe to show the OpenBao pods are ready even if they're still uninitialized
 and sealed using the following probe:
@@ -363,9 +363,9 @@ pod is ready for additional setup.
 ### Upgrading OpenBao on kubernetes
 
 To upgrade OpenBao on Kubernetes, we follow the same pattern as
-[generally upgrading OpenBao](../../../upgrading/index.mdx), except we can use
+[generally upgrading OpenBao](../../../guides/upgrade/index.mdx), except we can use
 the Helm chart to update the OpenBao server StatefulSet. It is important to understand
-how to [generally upgrade OpenBao](../../../upgrading/index.mdx) before reading this
+how to [generally upgrade OpenBao](../../../guides/upgrade/index.mdx) before reading this
 section.
 
 The OpenBao StatefulSet uses `OnDelete` update strategy. It is critical to use `OnDelete` instead

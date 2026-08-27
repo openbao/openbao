@@ -50,7 +50,7 @@ func pathCelIssue(b *backend) *framework.Path {
 		Description: `The number of bits to use. Allowed values are
 0 (universal default); with rsa key_type: 2048 (default), 3072, or
 4096; with ec key_type: 224, 256 (default), 384, or 521; ignored with
-ed25519.`,
+ed25519; with mldsa key_type: 44, 65 (default), or 87.`,
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: 0,
 		},
@@ -60,9 +60,9 @@ ed25519.`,
 		Type:    framework.TypeString,
 		Default: "",
 		Description: `The type of key to use; defaults to the empty string
-to use whatever is specified by the role. "rsa", "ec", and "ed25519" are the
-only valid values outside of the empty string.`,
-		AllowedValues: []any{"", "rsa", "ec", "ed25519"},
+to use whatever is specified by the role. "rsa", "ec", "ed25519", and "mldsa"
+are the only valid values outside of the empty string.`,
+		AllowedValues: []any{"", "rsa", "ec", "ed25519", "mldsa"},
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: "",
 		},
@@ -229,7 +229,7 @@ func buildPathIssue(b *backend, pattern string, displayAttrs *framework.DisplayA
 		Description: `The number of bits to use. Allowed values are
 0 (universal default); with rsa key_type: 2048 (default), 3072, or
 4096; with ec key_type: 224, 256 (default), 384, or 521; ignored with
-ed25519.`,
+ed25519; with mldsa key_type: 44, 65 (default), or 87.`,
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: 0,
 		},
@@ -239,9 +239,9 @@ ed25519.`,
 		Type:    framework.TypeString,
 		Default: "",
 		Description: `The type of key to use; defaults to the empty string
-to use whatever is specified by the role. "rsa","ec", and "ed25519" are the
-only valid values outside of the empty string.`,
-		AllowedValues: []any{"", "rsa", "ec", "ed25519"},
+to use whatever is specified by the role. "rsa","ec", "ed25519", and "mldsa"
+are the only valid values outside of the empty string.`,
+		AllowedValues: []any{"", "rsa", "ec", "ed25519", "mldsa"},
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: "",
 		},
@@ -571,7 +571,7 @@ func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *fra
 		// Perform validation of the new role parameters, updating an explicit
 		// zero-valued KeyBits to a useful value.
 		var err error
-		role.KeyBits, role.SignatureBits, err = certutil.ValidateDefaultOrValueKeyTypeSignatureLength(role.KeyType, role.KeyBits, role.SignatureBits)
+		role.KeyBits, err = certutil.ValidateDefaultOrValueKeyTypeLength(role.KeyType, role.KeyBits)
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate role: %w", err)
 		}
@@ -917,7 +917,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 		keyBits := int(validationOutput.KeyBits)
 
-		keyBits, signatureBits, err = certutil.ValidateDefaultOrValueKeyTypeSignatureLength(keyType, keyBits, signatureBits)
+		keyBits, err = certutil.ValidateDefaultOrValueKeyTypeLength(keyType, keyBits)
 		if err != nil {
 			return nil, fmt.Errorf("invalid cel response for key type, key bits, or signature bits: %w", err)
 		}
@@ -928,15 +928,6 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		evaluationData["use_pss"] = usePSS
 	} else {
 		signingKeyType := string(signingBundle.PrivateKeyType)
-		signingKeyBits, err := signingBundle.GetKeyBits()
-		if err != nil {
-			return nil, fmt.Errorf("unable to get signing key information: %w", err)
-		}
-
-		if signatureBits, err = certutil.DefaultOrValueHashBits(signingKeyType, signingKeyBits, signatureBits); err != nil {
-			return nil, err
-		}
-
 		if err := certutil.ValidateSignatureLength(signingKeyType, signatureBits); err != nil {
 			return nil, err
 		}

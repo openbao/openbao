@@ -1,0 +1,12 @@
+```release-note:change
+secret/ldap: The built-in LDAP secret plugin has been removed from the main OpenBao binary distribution. It will be included in [openbao-plugins](https://github.com/openbao/openbao-plugins) going forward.
+```
+```release-note:change
+auth/ldap: The built-in LDAP auth plugin has been removed from the main OpenBao binary distribution. It will be included in [openbao-plugins](https://github.com/openbao/openbao-plugins) going forward.
+```
+```release-note:change
+auth/kerberos: The built-in Kerberos auth plugin has been removed from the main OpenBao binary distribution. It will be included in [openbao-plugins](https://github.com/openbao/openbao-plugins) going forward.
+```
+```release-note:change
+auth/radius: The built-in RADIUS auth plugin has been removed from the main OpenBao binary distribution. It will be included in [openbao-plugins](https://github.com/openbao/openbao-plugins) going forward.
+```

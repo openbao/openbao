@@ -7,6 +7,15 @@ description: |-
 
 # RADIUS auth method
 
+:::info
+
+This auth plugin is available as an external auth plugin in the
+[openbao-plugins](https://github.com/openbao/openbao-plugins) plugin
+collection. For more information on plugins, see the [overview
+section](../plugins/index.mdx).
+
+:::
+
 The `radius` auth method allows users to authenticate with OpenBao using an
 existing RADIUS server that accepts the PAP authentication scheme.
 
@@ -77,5 +86,5 @@ The response will contain a token at `auth.client_token`:
 ## API
 
 The RADIUS auth method has a full HTTP API. Please see the
-[RADIUS Auth API](/api-docs/auth/radius) for more
+[RADIUS Auth API](../api/auth/radius.mdx) for more
 details.

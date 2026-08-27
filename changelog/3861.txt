@@ -1,0 +1,3 @@
+```release-note:improvement
+secrets/pki: Support `use_pss` in `issuers/generate/intermediate/:type` calls, allowing for CSRs with PSS signatures from RSA-typed intermediates.
+```

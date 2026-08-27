@@ -99,9 +99,8 @@ type SystemView interface {
 	// A key reference follows the "<config name>:<key name>" scheme, uniquely
 	// identifying a key configured under /sys/external-keys.
 	//
-	// Note that it is up to the caller to close the returned key, and to do so
-	// as soon as possible. Keys should be re-fetched on a per-request basis to
-	// account for potential configuration updates made in the key registry.
+	// Keys should be re-fetched on a per-request basis to account for potential
+	// configuration updates made in the key registry.
 	GetExternalKey(ctx context.Context, ref string) (kms.Key, error)
 }
 

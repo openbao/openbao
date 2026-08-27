@@ -1551,12 +1551,17 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		coreConfig.MetricSink = base.MetricSink
 		coreConfig.DisableSentinelTrace = base.DisableSentinelTrace
 		coreConfig.ClusterName = base.ClusterName
+		coreConfig.AllowUnauthenticatedWorkflows = base.AllowUnauthenticatedWorkflows
 		coreConfig.DisableAutopilot = base.DisableAutopilot
 		coreConfig.ServiceRegistration = base.ServiceRegistration
 		coreConfig.ImpreciseLeaseRoleTracking = base.ImpreciseLeaseRoleTracking
 
 		if base.BuiltinRegistry != nil {
 			coreConfig.BuiltinRegistry = base.BuiltinRegistry
+		}
+
+		if base.KMSPluginCatalog != nil {
+			coreConfig.KMSPluginCatalog = base.KMSPluginCatalog
 		}
 
 		if base.Physical != nil {

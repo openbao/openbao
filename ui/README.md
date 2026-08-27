@@ -106,7 +106,7 @@ This can be done by running these commands from the root directory run:
 
 This will result in an OpenBao binary that has the UI built-in - though in a
 non-dev setup it will still need to be enabled via the `ui` config or setting
-`VAULT_UI` environment variable.
+`BAO_UI` environment variable.
 
 ## Further Reading / Useful Links
 

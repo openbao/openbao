@@ -171,6 +171,10 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 		b.Paths = append(b.Paths, b.raftStoragePaths()...)
 	}
 
+	if core.allowUnauthedWorkflows {
+		b.PathsSpecial.Unauthenticated = append(b.PathsSpecial.Unauthenticated, "workflows/unauthed-execute/*")
+	}
+
 	return b
 }
 
@@ -1195,22 +1199,6 @@ func handleError(
 	}
 }
 
-// Performs a similar function to handleError, but upon seeing a ReadOnlyError
-// will actually strip it out to prevent forwarding
-func handleErrorNoReadOnlyForward(
-	err error,
-) (*logical.Response, error) {
-	if logical.ShouldForward(err) {
-		return nil, errors.New("operation could not be completed as storage is read-only")
-	}
-	switch err.(type) {
-	case logical.HTTPCodedError:
-		return logical.ErrorResponse(err.Error()), err
-	default:
-		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-	}
-}
-
 // handleUnmount is used to unmount a path
 func (b *SystemBackend) handleUnmount(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	path := data.Get("path").(string)
@@ -2008,10 +1996,11 @@ func (b *SystemBackend) handleLeaseLookupList(ctx context.Context, req *logical.
 	if err != nil {
 		return nil, err
 	}
+
 	keys, err := b.Core.expiration.leaseView(ns).List(ctx, prefix)
 	if err != nil {
 		b.Backend.Logger().Error("error listing leases", "prefix", prefix, "error", err)
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 	return logical.ListResponse(keys), nil
 }
@@ -2036,7 +2025,7 @@ func (b *SystemBackend) handleRenew(ctx context.Context, req *logical.Request, d
 	resp, err := b.Core.expiration.Renew(ctx, leaseID, increment)
 	if err != nil {
 		b.Backend.Logger().Error("lease renewal failed", "lease_id", leaseID, "error", err)
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 	return resp, err
 }
@@ -2062,7 +2051,7 @@ func (b *SystemBackend) handleRevoke(ctx context.Context, req *logical.Request, 
 		// Invoke the expiration manager directly
 		if err := b.Core.expiration.Revoke(revokeCtx, leaseID); err != nil {
 			b.Backend.Logger().Error("lease revocation failed", "lease_id", leaseID, "error", err)
-			return handleErrorNoReadOnlyForward(err)
+			return handleError(err)
 		}
 
 		return nil, nil
@@ -2070,7 +2059,7 @@ func (b *SystemBackend) handleRevoke(ctx context.Context, req *logical.Request, 
 
 	if err := b.Core.expiration.LazyRevoke(revokeCtx, leaseID); err != nil {
 		b.Backend.Logger().Error("lease revocation failed", "lease_id", leaseID, "error", err)
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 
 	return logical.RespondWithStatusCode(nil, nil, http.StatusAccepted)
@@ -2107,7 +2096,7 @@ func (b *SystemBackend) handleRevokePrefixCommon(ctx context.Context,
 	}
 	if err != nil {
 		b.Backend.Logger().Error("revoke prefix failed", "prefix", prefix, "error", err)
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 
 	if sync {

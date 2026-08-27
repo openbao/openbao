@@ -264,9 +264,20 @@ func (c *Core) addAuthorization(ctx context.Context, token string, approver *log
 
 	addingAuthorization := false
 	for i, factor := range cg.Factors {
-		identityGroups := factor.Identity.GroupNames
+		// For each group listed in the control group factor identity, get its ID
+		identityGroupIDs := []string{}
+		for _, name := range factor.Identity.GroupNames {
+			group, err := c.identityStore.MemDBGroupByName(ctx, name, false)
+			if err != nil {
+				return err
+			}
+			if group != nil {
+				identityGroupIDs = append(identityGroupIDs, group.ID)
+			}
+		}
+
 		for _, group := range approver.GroupAliases {
-			if slices.Contains(identityGroups, group.Name) {
+			if slices.Contains(identityGroupIDs, group.ID) {
 				// make sure token doesn't have same identity as approver
 				if !cg.SelfAuthorizationAllowed && originalEntity.ID == approver.EntityID {
 					return fmt.Errorf("token owner cannot be approver")
@@ -393,16 +404,20 @@ func (c *Core) handleControlGroupAuthorize(ctx context.Context, req *logical.Req
 	if authorizerToken == nil {
 		return nil, &logical.StatusBadRequest{Err: "missing auth"}
 	}
-	authorizerGroups, err := c.identityStore.MemDBGroupsByMemberEntityID(ctx, authorizerToken.EntityID, false, false)
+
+	groups, inheritedGroups, err := c.identityStore.GroupsByEntityID(ctx, authorizerToken.EntityID)
 	if err != nil {
 		return nil, err
 	}
+	authorizerGroups := append(groups, inheritedGroups...)
+
 	authorizerGroupAliases := []*logical.Alias{}
 	for _, group := range authorizerGroups {
 		authorizerGroupAliases = append(authorizerGroupAliases, &logical.Alias{
-			Name: group.Name,
+			ID: group.ID,
 		})
 	}
+
 	authorizerAuth := logical.Auth{
 		EntityID:     authorizerIdentity.GetID(),
 		DisplayName:  authorizerToken.DisplayName,

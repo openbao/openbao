@@ -3,6 +3,7 @@ import { inject as service } from '@ember/service';
 import { later } from '@ember/runloop';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default class SidebarUserMenuComponent extends Component {
   @service auth;
@@ -22,7 +23,7 @@ export default class SidebarUserMenuComponent extends Component {
   }
 
   transitionToRoute() {
-    this.router.transitionTo(...arguments);
+    return transitionToSafe(this.router, ...arguments);
   }
 
   @action

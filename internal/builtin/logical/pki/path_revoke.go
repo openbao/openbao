@@ -8,6 +8,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/mldsa"
 	"crypto/rsa"
 	"crypto/subtle"
 	"crypto/x509"
@@ -453,6 +454,14 @@ func validatePublicKeyMatchesCert(verifier crypto.PublicKey, certReference *x509
 			return errutil.UserError{Err: "provided private key type does not match certificate's public key type"}
 		}
 		if subtle.ConstantTimeCompare(privPub, certPub) == 0 {
+			return errutil.UserError{Err: "provided private key does not match certificate's public key"}
+		}
+	case *mldsa.PublicKey:
+		privPub, ok := verifier.(*mldsa.PublicKey)
+		if !ok {
+			return errutil.UserError{Err: "provided private key type does not match certificate's public key type"}
+		}
+		if !privPub.Equal(certPub) {
 			return errutil.UserError{Err: "provided private key does not match certificate's public key"}
 		}
 	default:

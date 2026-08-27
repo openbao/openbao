@@ -138,22 +138,6 @@ plugin "secret" "aws" {
 			errorMsg:    "image and version do not form a valid image reference",
 		},
 		{
-			name: "missing binary_name",
-			configData: `
-storage "inmem" {}
-listener "tcp" { 
-  address = "127.0.0.1:8200"
-  tls_disable = true 
-}
-plugin "secret" "aws" {
-  image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
-  version = "v0.0.1"
-  sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
-}`,
-			expectError: true,
-			errorMsg:    "binary_name cannot be empty",
-		},
-		{
 			name: "invalid sha256sum length",
 			configData: `
 storage "inmem" {}

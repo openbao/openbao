@@ -1,0 +1,6 @@
+```release-note:bug
+core/identity: Start writing OIDC 'default' keys per-namespace storage.
+```
+```release-note:bug
+core/namespaces: Fix fatal failures writing 'default' OIDC keys on standby nodes during namespace creation.
+```

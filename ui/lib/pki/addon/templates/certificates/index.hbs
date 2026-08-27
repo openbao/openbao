@@ -42,7 +42,10 @@
                 <nav class="menu">
                   <ul class="menu-list">
                     <li>
-                      <LinkTo @route="certificates.certificate.details" @model={{pkiCertificate.id}}>
+                      <LinkTo
+                        @route="certificates.certificate.details"
+                        @models={{array (current-mount-path) pkiCertificate.id}}
+                      >
                         Details
                       </LinkTo>
                     </li>
@@ -60,7 +63,7 @@
       <div>
         <p>When created, certificates will be listed here. Select a role to start generating certificates.</p>
         <div class="has-top-margin-m">
-          <LinkTo @route="roles.index">
+          <LinkTo @route="roles.index" @model={{(current-mount-path)}}>
             View roles
           </LinkTo>
         </div>
@@ -69,7 +72,7 @@
   {{/if}}
 {{else}}
   <EmptyState @title="PKI not configured" @message={{this.notConfiguredMessage}}>
-    <LinkTo @route="configuration.create">
+    <LinkTo @route="configuration.create" @model={{(current-mount-path)}}>
       Configure PKI
     </LinkTo>
   </EmptyState>

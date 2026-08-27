@@ -121,7 +121,7 @@ func PopulateString(p PopulateStringInput) (bool, string, error) {
 	case JSONTemplating:
 		p.templateHandler = jsonTemplateHandler
 	default:
-		return false, "", fmt.Errorf("unknown mode %q", p.Mode)
+		return false, "", fmt.Errorf("unknown mode %v", p.Mode)
 	}
 
 	var subst bool

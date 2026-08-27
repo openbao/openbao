@@ -2057,6 +2057,24 @@ path "sys/mounts/pki" {
 	require.NotNil(t, resp)
 	require.Contains(t, resp.Data, "policy")
 
+	// Ensure the request does not work with alias lookahead.
+	inlineClient, err = client.WithInlineAuth("auth/userpass/login/admin", map[string]any{
+		"password": "admin",
+	}, api.InlineWithOperation("alias-lookahead"))
+	require.NoError(t, err)
+	logical = inlineClient.Logical()
+
+	resp, err = logical.Read("sys/policies/acl/my-admin")
+	require.ErrorContains(t, err, "expected a valid login operation")
+	require.Nil(t, resp)
+
+	// Reset our client.
+	inlineClient, err = client.WithInlineAuth("auth/userpass/login/admin", map[string]any{
+		"password": "admin",
+	})
+	require.NoError(t, err)
+	logical = inlineClient.Logical()
+
 	// Performing a read on a different policy should fail; our inline token does not have permissions.
 	resp, err = logical.Read("sys/policies/acl/default")
 	t.Logf("resp=%#v / err=%#v", resp, err)

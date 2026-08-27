@@ -75,15 +75,12 @@ are blocked until they are _committed_ and _applied_.
 #### Compacting logs
 
 It would be undesirable to allow a replicated log to grow in an unbounded
-fashion. Raft provides a mechanism by which the current state is saved to
-snapshots and its related logs are compacted. Because of the FSM abstraction,
-restoring the state of the FSM must result in the same state as a replay of old
-logs. This allows Raft to capture the FSM state at a point in time and then remove
-all the logs that were used to reach that state. This is performed automatically
+fashion. OpenBao periodically truncates old log entries that have already been
+applied to the FSM. Since the data is already persisted to disk in
+BoltDB, old log entries can simply be deleted. This is performed automatically
 without user intervention and prevents unbounded disk usage while also minimizing
-the time spent replaying logs. One of the advantages of using BoltDB is that it
-allows OpenBao's snapshots to be very light weight. Since OpenBao's data is already
-persisted to disk in BoltDB, the snapshot process just needs to truncate the raft logs.
+the time spent replaying logs. BoltDB does not shrink files on disk when data is
+deleted; it marks the space as free for reuse by future writes.
 
 #### Quorum
 
@@ -136,10 +133,10 @@ will be encrypted by OpenBao's barrier.
 #### Autopilot
 
 An [Autopilot feature](../concepts/integrated-storage/autopilot.mdx)
-is available in HashiCorp Vault 1.7.x & later versions that includes configurable parameters
-for when a node is treated as healthy before it's considered an eligible voter in the
-quorum list. Other features which may be enabled include the ability to remove nodes
-considered as dead from the quorum list after a certain period.
+provides configurable parameters for when a node is treated as healthy before
+it's considered an eligible voter in the quorum list. Other features which
+may be enabled include the ability to remove nodes considered as dead from
+the quorum list after a certain period.
 
 Autopilot is enabled by default and the default configuration values
 should work well for most OpenBao deployments, but they can be changed if needed.
@@ -153,7 +150,7 @@ counted as voters before they are capable of voting.
 
 A dead server cleanup capability is available. With this feature
 enabled, unhealthy nodes are automatically removed from the Raft cluster without
-manual operator intervention. This is enabled via the [Autopilot API](/api-docs/system/storage/raftautopilot).
+manual operator intervention. This is enabled via the [Autopilot API](../api/system/storage/raftautopilot.mdx).
 If you wish to decommission a node manually, this can be done with the
 `remove peer` [command](../commands/operator/raft.mdx#remove-peer).
 

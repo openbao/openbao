@@ -4,6 +4,8 @@
 package vault
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
@@ -11,9 +13,11 @@ import (
 
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
+	"github.com/openbao/openbao/v2/internal/helper/pgpkeys"
 	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 )
 
@@ -490,4 +494,117 @@ func testRotateBarrierRootKey(t *testing.T, c *Core, ns *namespace.Namespace, un
 		require.NoError(t, c.UnsealWithStoredKeys(ctx))
 	}
 	require.False(t, c.NamespaceSealed(ns))
+}
+
+func TestRotationBackedUpKeys(t *testing.T) {
+	config := &SealConfig{
+		SecretShares:    3,
+		SecretThreshold: 2,
+	}
+
+	t.Run("root namespace barrier keys", func(t *testing.T) {
+		c, barrierKeys, _, _ := TestCoreUnsealedWithConfigs(t, config, nil)
+		testRotationBackedUpKeys(t, c, namespace.RootNamespace, barrierKeys, false)
+	})
+
+	t.Run("root namespace recovery keys", func(t *testing.T) {
+		c, _, recoveryKeys, _ := TestCoreUnsealedWithConfigs(t, config, config)
+		testRotationBackedUpKeys(t, c, namespace.RootNamespace, recoveryKeys, true)
+	})
+
+	t.Run("child namespace barrier keys", func(t *testing.T) {
+		c, _, _, _ := TestCoreUnsealedWithConfigs(t, config, nil)
+		ns := &namespace.Namespace{Path: "ns1/"}
+		keys := TestCoreCreateUnsealedNamespaces(t, c, ns)
+		testRotationBackedUpKeys(t, c, ns, keys["ns1/"], false)
+	})
+}
+
+func testRotationBackedUpKeys(t *testing.T, c *Core, ns *namespace.Namespace, keys [][]byte, recovery bool) {
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
+	seal := c.sealManager.NamespaceSeal(ns.UUID)
+	require.NotNil(t, seal)
+
+	var expType string
+	if recovery {
+		expType = seal.RecoveryType()
+	} else {
+		expType = seal.BarrierType().String()
+	}
+
+	newConf := &SealConfig{
+		Type:            expType,
+		SecretThreshold: 1,
+		SecretShares:    1,
+		Backup:          true,
+		PGPKeys:         []string{pgpkeys.TestPubKey1},
+	}
+	rotationResult, err := c.sealManager.InitRotation(ctx, ns, newConf, recovery)
+	require.NoError(t, err)
+	require.Empty(t, rotationResult)
+
+	// Fetch new config with generated nonce
+	rotConfig := c.sealManager.RotationConfig(ns.UUID, recovery)
+	require.NotNil(t, rotConfig)
+
+	// Provide the root/recovery keys
+	var result *RekeyResult
+	for _, key := range keys {
+		result, err = c.sealManager.UpdateRotation(ctx, ns, key, rotConfig.Nonce, recovery)
+		require.NoError(t, err)
+		if result != nil {
+			break
+		}
+	}
+	require.NotNil(t, result)
+
+	// Should be no config
+	require.Nil(t, c.sealManager.RotationConfig(ns.UUID, recovery))
+
+	// SealConfig should update
+	var sealConf *SealConfig
+	if recovery {
+		sealConf, err = seal.RecoveryConfig(ctx)
+	} else {
+		sealConf, err = seal.BarrierConfig(ctx)
+	}
+	require.NoError(t, err)
+	require.NotNil(t, sealConf)
+	require.Equal(t, sealConf, newConf)
+
+	// Verify we can read backed up keys.
+	backedKeys, err := c.sealManager.RetrieveRotationBackup(ctx, ns, recovery)
+	require.NoError(t, err)
+
+	decodedKey, err := hex.DecodeString(backedKeys.Keys[result.PGPFingerprints[0]][0])
+	require.NoError(t, err)
+	require.Equal(t, result.SecretShares[0], decodedKey)
+
+	// Verify fallback path.
+	barrier := c.sealManager.NamespaceBarrier(ns.Path)
+	eKey := coreBarrierUnsealKeysBackupPath
+	if recovery {
+		eKey = coreRecoveryUnsealKeysBackupPath
+	}
+
+	buf, err := json.Marshal(backedKeys)
+	require.NoError(t, err)
+
+	require.NoError(t, barrier.Put(ctx, &logical.StorageEntry{
+		Key:   eKey,
+		Value: buf,
+	}))
+
+	backedKeys, err = c.sealManager.RetrieveRotationBackup(ctx, ns, recovery)
+	require.NoError(t, err)
+
+	decodedKey, err = hex.DecodeString(backedKeys.Keys[result.PGPFingerprints[0]][0])
+	require.NoError(t, err)
+	require.Equal(t, result.SecretShares[0], decodedKey)
+
+	// Verify deletion works as intended.
+	require.NoError(t, c.sealManager.DeleteRotationBackup(ctx, ns.Path, recovery))
+	backedKeys, err = c.sealManager.RetrieveRotationBackup(ctx, ns, recovery)
+	require.NoError(t, err)
+	require.Nil(t, backedKeys)
 }

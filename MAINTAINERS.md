@@ -17,7 +17,7 @@ See the information about community membership roles to learn about the role of 
 | ---------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | Andrii Fedorchuk | [@driif](https://github.com/driif)                     | [`vault/`], and [openbao-plugins `secrets/consul/`]                                               |
 | Christoph Voigt  | [@voigt](https://github.com/voigt)                     | [`vault/`]                                                                                        |
-| Dave Dykstra     | [@DrDaveD](https://github.com/DrDaveD)                 | [`auth/jwt` and `auth/oidc`](https://github.com/openbao/openbao/tree/main/builtin/credential/jwt) |
+| Dave Dykstra     | [@DrDaveD](https://github.com/DrDaveD)                 | [`auth/jwt` and `auth/oidc`](https://github.com/openbao/openbao/tree/main/internal/builtin/credential/jwt) |
 | Geoffrey Wilson  | [@suprjinx](https://github.com/suprjinx)               | [`vault/`]                                                                                        |
 | Pascal Reeb      | [@pree](https://github.com/pree)                       | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
 | Philipp Stehle   | [@phil9909](https://github.com/phil9909)               | [`vault/`], and [openbao-plugins]                                                                 |
@@ -28,7 +28,7 @@ See the information about community membership roles to learn about the role of 
 | Wojciech Slabosz | [@wslabosz-reply](https://github.com/wslabosz-reply)   | [`vault/`]                                                                                        |
 | Yannis           | [@Nerkho](https://github.com/Nerkho)                   | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
 
-[`vault/`]: https://github.com/openbao/openbao/tree/main/vault
+[`vault/`]: https://github.com/openbao/openbao/tree/main/internal/vault
 [openbao-plugins]: https://github.com/openbao/openbao-plugins
 [openbao-plugins `secrets/consul/`]: https://github.com/openbao/openbao-plugins/tree/main/secrets/consul
 [helm]: https://github.com/openbao/openbao-helm

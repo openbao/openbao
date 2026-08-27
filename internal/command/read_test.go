@@ -69,7 +69,7 @@ func TestReadCommand_Run(t *testing.T) {
 				"-field", "not-a-real-field",
 				"secret/read/foo",
 			},
-			"not present in secret",
+			"not present",
 			1,
 		},
 	}

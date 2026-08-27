@@ -10,9 +10,9 @@ This quick start explores how to use OpenBao client libraries inside your applic
 
 :::warning
 
-**Warning**: This guide explains how to practice fetching and using secrets, but the explanation relies on a in-memory _dev_ server.
+**Warning**: This guide explains how to practice fetching and using secrets, but the explanation relies on an in-memory _dev_ server.
 
-The _dev_ server configuration is useful for practicing with OpenBao locally while you learn, but is insecure and the data aren't durable. You should **never** use a _dev_ OpenBao instance to protect real secrets, or in any production context.
+The _dev_ server configuration is useful for practicing with OpenBao locally while you learn, but is insecure and the data isn't durable. You should **never** use a _dev_ OpenBao instance to protect real secrets, or in any production context.
 
 :::
 
@@ -51,7 +51,7 @@ OpenBao is now listening over HTTP on port **8200**. With the initial setup out 
 
 The `bao` program is more than the server; it's also a command line tool that you can use to access OpenBao. Imagine for a moment that you are doing IT operations work and you want to interact with an existing OpenBao cluster.
 
-A variety of [authentication methods](../auth/index.mdx) can be used to prove your application's identity to the OpenBao server.  To keep things simple for the example, just use the (insecure) root token created in **Step 1**.
+A variety of [authentication methods](../auth/index.mdx) can be used to prove your application's identity to the OpenBao server. To keep things simple for the example, just use the (insecure) root token created in **Step 1**.
 
 ```shell-session
 $ export BAO_ADDR=http://127.0.0.1:8200/
@@ -63,24 +63,21 @@ You'll be prompted for the token. Enter the root token (again, this isn't good p
 
 You're now able to identify yourself to the local development OpenBao server, as an identity that is authorized to do any action.
 
-If you're using the shell (bash) route through this tutorial, that's it for now. However if you're writing Go client code,
+If you're using the shell (bash) route through this tutorial, that's it for now. However, if you're writing Go client code,
 you also need to write the code for programmatic authentication.
 
 <Tabs>
 <TabItem value="Go" heading="Go">
 
- Paste the
-following code to initialize a new OpenBao client that will use token-based
+Paste the following code to initialize a new OpenBao client that will use token-based
 authentication for all its requests:
-
 
 ```go
 package main
 
 import (
-    "fmt"
     "log"
-     openbao "github.com/openbao/openbao/api/v2"
+    openbao "github.com/openbao/openbao/api/v2"
 )
 
 func main() {
@@ -104,7 +101,7 @@ func main() {
 Check that this compiles and runs OK, without printing any errors.
 
 </TabItem>
-<TabItem value="Bash" group="bash" heading="Bash" group="bash">
+<TabItem value="Bash" group="bash" heading="Bash">
 
 _There's nothing to do here; you already stored a token._
 
@@ -135,7 +132,7 @@ Next, write a secret to OpenBao:
 <Tabs>
 <TabItem value="Go" heading="Go">
 
-Add this code to the end of the `main()` function:
+Add this code to the end of the `main()` function, ensure you have 'context' and 'fmt' (used below) added to imports:
 
 ```go
   // an example secret.
@@ -147,7 +144,7 @@ Add this code to the end of the `main()` function:
 
   mountPoint := "secret" // default path of the KVv2 mount enabled within dev server
   nameOfSecret := "developer-quickstart"
-  _, err = client.KVv2(mountPoint).Put(context.Background(), "nameOfSecret", secretData)
+  _, err = client.KVv2(mountPoint).Put(context.Background(), nameOfSecret, secretData)
   if err != nil {
       log.Fatalf("unable to write secret %s: %v", nameOfSecret, err)
   }
@@ -158,9 +155,9 @@ Add this code to the end of the `main()` function:
 …and run that program.
 
 </TabItem>
-<TabItem value="Bash" group="bash" heading="Bash" group="bash">
+<TabItem value="Bash" group="bash" heading="Bash">
 
-Even if you're using a shell script, the best way to write to OpenBao is using the `bao` command line tool. You already
+Even if you're using a shell script, the best way to write to OpenBao is using the `bao` command line tool. You're already
 logged in, so the command is:
 
 ```shell-session
@@ -193,8 +190,7 @@ version            1
 
 A common way of storing secrets is as key-value pairs using the [KV secrets engine (v2)](../secrets/kv/kv-v2.mdx). In the code you just added, `password` is the key in the key-value pair, and `OpenBao123` is the value.
 
-The code also provided the path to our secret in OpenBao. You will reference this path in a moment when you practice fetching the secret. The path includes the secret name, `developer-quickstart`.
-we learn how to retrieve our secret.
+The code also provided the path to your secret in OpenBao. You will reference this path in a moment when you practice fetching the secret. The path includes the secret name, `developer-quickstart`.
 
 Run the code now, and you should see `Secret written successfully`. If not, check that you've used the correct value for the root token and OpenBao server address.
 
@@ -251,9 +247,11 @@ Remove all the existing code, and replace it with:
 package main
 
 import (
+    "context"
     "fmt"
     "log"
-     openbao "github.com/openbao/openbao/api/v2"
+    "os"
+    openbao "github.com/openbao/openbao/api/v2"
 )
 
 func main() {
@@ -276,7 +274,7 @@ func main() {
   nameOfSecret := "developer-quickstart"
   secret, err := client.KVv2(mountPoint).Get(context.Background(), nameOfSecret)
   if err != nil {
-      errorMessage = fmt.Errorf("Unable to read secret '%s': %w", nameOfSecret, err)
+      errorMessage := fmt.Errorf("Unable to read secret '%s': %w", nameOfSecret, err)
       fmt.Fprintf(os.Stderr, "%s\n", errorMessage)
       fmt.Fprintf(os.Stderr, "%s\n", "Check that the secret exists and that you have access to read it")
       os.Exit(1)
@@ -285,8 +283,7 @@ func main() {
   value, ok := secret.Data["password"].(string)
   if ok {
       fmt.Fprintf(os.Stdout, "Fetched the secret password: %s\n", value)
-  }
-  else {
+  } else {
       log.Fatalf("value type assertion failed: %T %#v", secret.Data["password"], secret.Data["password"])
   }
 }
@@ -295,7 +292,7 @@ func main() {
 …and run the updated program.
 
 </TabItem>
-<TabItem value="Bash" group="bash" heading="Bash" group="bash">
+<TabItem value="Bash" group="bash" heading="Bash">
 
 ```shell-session
 $ curl \

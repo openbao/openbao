@@ -6,7 +6,10 @@ package pki
 import (
 	"bytes"
 	"context"
+	"crypto"
+	"crypto/mldsa"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"sort"
@@ -14,6 +17,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-uuid"
+	"github.com/openbao/go-kms-wrapping/v2/kms"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -75,6 +79,14 @@ type keyEntry struct {
 	Name           string                  `json:"name"`
 	PrivateKeyType certutil.PrivateKeyType `json:"private_key_type"`
 	PrivateKey     string                  `json:"private_key"`
+	PublicKey      string                  `json:"public_key"`
+
+	// ExternalKeyRef is the reference to use for this key when PrivateKeyType
+	// is ExternalPrivateKey. This is not stored in PrivateKey as a defense
+	// against accidentally returning the PrivateKey field on non-external key
+	// types.
+	ExternalKeyRef  string                  `json:"external_key_ref"`
+	ExternalKeyType certutil.PrivateKeyType `json:"external_key_type"`
 }
 
 type issuerUsage uint
@@ -349,18 +361,17 @@ func (sc *storageContext) deleteKey(id keyID) (bool, error) {
 	return wasDefault, sc.Storage.Delete(sc.Context, keyPrefix+id.String())
 }
 
+// importKey imports the specified PEM-format key (from keyValue) into
+// the new PKI storage format. The first return field is a reference to
+// the new key; the second is whether or not the key already existed
+// during import (in which case, *key points to the existing key reference
+// and identifier); the last return field is whether or not an error
+// occurred.
 func (sc *storageContext) importKey(keyValue string, keyName string, keyType certutil.PrivateKeyType) (*keyEntry, bool, error) {
-	// importKey imports the specified PEM-format key (from keyValue) into
-	// the new PKI storage format. The first return field is a reference to
-	// the new key; the second is whether or not the key already existed
-	// during import (in which case, *key points to the existing key reference
-	// and identifier); the last return field is whether or not an error
-	// occurred.
-	//
 	// Normalize whitespace before beginning.  See note in importIssuer as to
 	// why we do this.
 	keyValue = strings.TrimSpace(keyValue) + "\n"
-	//
+
 	// Before we can import a known key, we first need to know if the key
 	// exists in storage already. This means iterating through all known
 	// keys and comparing their private value against this value.
@@ -370,9 +381,18 @@ func (sc *storageContext) importKey(keyValue string, keyName string, keyType cer
 	}
 
 	// Get our public key from the current inbound key, to compare against all the other keys.
-	pkForImportingKey, err := getPublicKeyFromBytes([]byte(keyValue))
+	var pkForImportingKey crypto.PublicKey
+	if keyType != certutil.ExternalPrivateKey {
+		pkForImportingKey, err = getPublicKeyFromBytes([]byte(keyValue))
+	} else {
+		pkForImportingKey, err = sc.getExternalPublicKey(keyValue)
+	}
 	if err != nil {
 		return nil, false, err
+	}
+
+	if certutil.GetPublicKeyType(pkForImportingKey) == certutil.UnknownPrivateKey {
+		return nil, false, fmt.Errorf("unknown type for public key: %T", pkForImportingKey)
 	}
 
 	foundExistingKeyWithName := false
@@ -387,6 +407,10 @@ func (sc *storageContext) importKey(keyValue string, keyName string, keyType cer
 		}
 
 		if areEqual {
+			if existingKey.PrivateKeyType != keyType {
+				return nil, false, fmt.Errorf("cannot import existing key with different type, e.g., as external key")
+			}
+
 			// Here, we don't need to stitch together the issuer entries,
 			// because the last run should've done that for us (or, when
 			// importing an issuer).
@@ -410,6 +434,28 @@ func (sc *storageContext) importKey(keyValue string, keyName string, keyType cer
 	result.Name = keyName
 	result.PrivateKey = keyValue
 	result.PrivateKeyType = keyType
+
+	if keyType == certutil.ExternalPrivateKey {
+		// Marshal public key.
+		derBytes, err := x509.MarshalPKIXPublicKey(pkForImportingKey)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to encode exported public counterpart of external key: %w", err)
+		}
+
+		pemBlock := &pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: derBytes,
+		}
+		pemBytes := pem.EncodeToMemory(pemBlock)
+		if len(pemBytes) == 0 {
+			return nil, false, errors.New("error PEM-encoding public key")
+		}
+
+		result.PrivateKey = ""
+		result.ExternalKeyRef = keyValue
+		result.PublicKey = string(pemBytes)
+		result.ExternalKeyType = certutil.GetPublicKeyType(pkForImportingKey)
+	}
 
 	// Finally, we can write the key to storage.
 	if err := sc.writeKey(result); err != nil {
@@ -564,6 +610,27 @@ func (i issuerEntry) CanMaybeSignWithAlgo(algo x509.SignatureAlgorithm) error {
 		switch algo {
 		case x509.PureEd25519:
 			return nil
+		}
+	case x509.MLDSA:
+		pubk, ok := cert.PublicKey.(*mldsa.PublicKey)
+		if !ok {
+			return fmt.Errorf("unable to parse ML-DSA public key")
+		}
+		switch pubk.Parameters() {
+		case mldsa.MLDSA44():
+			if algo == x509.MLDSA44 {
+				return nil
+			}
+		case mldsa.MLDSA65():
+			if algo == x509.MLDSA65 {
+				return nil
+			}
+		case mldsa.MLDSA87():
+			if algo == x509.MLDSA87 {
+				return nil
+			}
+		default:
+			return fmt.Errorf("unable to use issuer of type %v to sign with %v key type", pubk.Parameters().String(), algo.String())
 		}
 	}
 
@@ -1225,6 +1292,10 @@ func (sc *storageContext) fetchCertBundleByIssuerId(id issuerID, loadKey bool) (
 
 		bundle.PrivateKeyType = key.PrivateKeyType
 		bundle.PrivateKey = key.PrivateKey
+
+		if key.PrivateKeyType == certutil.ExternalPrivateKey {
+			bundle.PrivateKey = key.ExternalKeyRef
+		}
 	}
 
 	return issuer, &bundle, nil
@@ -1233,7 +1304,7 @@ func (sc *storageContext) fetchCertBundleByIssuerId(id issuerID, loadKey bool) (
 func (sc *storageContext) writeCaBundle(caBundle *certutil.CertBundle, issuerName string, keyName string) (*issuerEntry, *keyEntry, error) {
 	myKey, _, err := sc.importKey(caBundle.PrivateKey, keyName, caBundle.PrivateKeyType)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("error importing key: %w", err)
 	}
 
 	// We may have existing mounts that only contained a key with no certificate yet as a signed CSR
@@ -1482,4 +1553,48 @@ func (sc *storageContext) fetchRevocationInfo(serial string) (*revocationInfo, e
 	}
 
 	return revInfo, nil
+}
+
+func (sc *storageContext) getExternalKey(ref string) (kms.Key, error) {
+	// We embed a newline here due to storage in importKey. Trim it.
+	return sc.Backend.System().GetExternalKey(sc.Context, strings.TrimSpace(ref))
+}
+
+func (sc *storageContext) getExternalSigner(ref string) (crypto.Signer, error) {
+	key, err := sc.getExternalKey(strings.TrimSpace(ref))
+	if err != nil {
+		return nil, err
+	}
+
+	signer, err := kms.NewSigner(sc.Context, key)
+	if err != nil {
+		return nil, fmt.Errorf("error building signer: %w", err)
+	}
+
+	return signer, nil
+}
+
+func (sc *storageContext) getExternalPublicKey(ref string) (crypto.PublicKey, error) {
+	signer, err := sc.getExternalSigner(ref)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get external key signer: %w", err)
+	}
+
+	return signer.Public(), nil
+}
+
+func (sc *storageContext) externalKeyExtractor(c *certutil.CertBundle, parsedBundle *certutil.ParsedCertBundle) error {
+	if len(c.PrivateKey) == 0 {
+		return nil
+	}
+
+	signer, err := sc.getExternalSigner(c.PrivateKey)
+	if err != nil {
+		return fmt.Errorf("failed to get external key signer: %w", err)
+	}
+
+	parsedBundle.PrivateKey = signer
+	parsedBundle.PrivateKeyType = certutil.GetPrivateKeyTypeFromSigner(signer)
+
+	return nil
 }

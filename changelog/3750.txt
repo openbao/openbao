@@ -1,0 +1,6 @@
+```release-note:improvement
+command/status: Add support for `-field` argument to `bao status`.
+```
+```release-note:improvement
+command/namespace/seal-status: Add support for `-field` and `-format` argument to `bao namespace seal-status`.
+```

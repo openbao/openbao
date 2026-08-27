@@ -5,7 +5,7 @@
 
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
-import { click, currentRouteName, fillIn, visit, settled } from '@ember/test-helpers';
+import { click, currentRouteName, fillIn, visit, settled, waitUntil, findAll } from '@ember/test-helpers';
 import authPage from 'vault/tests/pages/auth';
 import { setupMirage } from 'ember-cli-mirage/test-support';
 import ENV from 'vault/config/environment';
@@ -110,6 +110,7 @@ module('Acceptance | mfa-login-enforcement', function (hooks) {
     await visit('/vault/access/mfa/enforcements');
     const enforcement = this.server.db.mfaLoginEnforcements.where({})[0];
     await click(`[data-test-list-item="${enforcement.name}"]`);
+    await waitUntil(() => findAll('[data-test-target]').length >= 4);
     // heading
     assert.dom('h1').includesText(enforcement.name, 'Name renders in title');
     assert.dom('h1 svg').hasClass('flight-icon-lock', 'Lock icon renders in title');
@@ -210,6 +211,8 @@ module('Acceptance | mfa-login-enforcement', function (hooks) {
     await click('[data-test-mlef-remove-target="Group"]');
     await click('[data-test-mlef-remove-target="Authentication method"]');
     await click('[data-test-mlef-save]');
+
+    await waitUntil(() => findAll('[data-test-target]').length >= 1);
 
     assert.strictEqual(
       currentRouteName(),

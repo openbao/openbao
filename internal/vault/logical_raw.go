@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
@@ -25,6 +26,15 @@ var protectedPaths = []string{
 	barrier.KeyringPath,
 	// Changing the cluster info path can change the cluster ID which can be disruptive
 	coreLocalClusterInfoPath,
+}
+
+// These paths use the "upper" barrier, which is the direct physical layer
+// for the root namespace.
+var specialPaths = []string{
+	barrierSealConfigPath,
+	recoverySealConfigPath,
+	coreBarrierUnsealKeysBackupPath,
+	coreRecoveryUnsealKeysBackupPath,
 }
 
 type RawBackend struct {
@@ -61,9 +71,7 @@ func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAcc
 		}
 	}
 
-	// These paths use the "upper" barrier, which is the direct physical layer
-	// for the root namespace.
-	specialPath := rest == barrierSealConfigPath || rest == recoverySealConfigPath
+	specialPath := slices.Contains(specialPaths, rest)
 
 	// Fast-path root or deleted namespaces; we do not need a lookup into the
 	// seal manager.
@@ -104,7 +112,7 @@ func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, da
 
 	storage, _, err := b.storageByPath(ctx, path)
 	if err != nil {
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 
 	valueBytes, err := storage.Get(ctx, path)
@@ -115,7 +123,7 @@ func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, da
 	case err != nil && strings.HasSuffix(err.Error(), "cipher: message authentication failed"):
 		return nil, barrier.ErrNamespaceSealed
 	case err != nil:
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	case valueBytes == nil:
 		return nil, nil
 	}
@@ -127,7 +135,7 @@ func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, da
 		// will be nil.
 		decompData, _, err := compressutil.Decompress(valueBytes)
 		if err != nil {
-			return handleErrorNoReadOnlyForward(err)
+			return handleError(err)
 		}
 
 		// `decompData` is nil if the input is uncompressed.
@@ -180,7 +188,7 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 
 	storage, allowWrites, err := b.storageByPath(ctx, path)
 	if err != nil {
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 
 	if !allowWrites {
@@ -192,7 +200,7 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		// If so, use the same compression (or no compression)
 		valueBytes, err := storage.Get(ctx, path)
 		if err != nil {
-			return handleErrorNoReadOnlyForward(err)
+			return handleError(err)
 		}
 		if valueBytes == nil {
 			err := "cannot figure out compression type because entry does not exist"
@@ -254,11 +262,11 @@ func (b *RawBackend) handleRawDelete(ctx context.Context, req *logical.Request, 
 
 	barrier, _, err := b.storageByPath(ctx, path)
 	if err != nil {
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 
 	if err := barrier.Delete(ctx, path); err != nil {
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 	return nil, nil
 }
@@ -282,12 +290,12 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 
 	barrier, _, err := b.storageByPath(ctx, path)
 	if err != nil {
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 
 	keys, err := barrier.ListPage(ctx, path, after, limit)
 	if err != nil {
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 	return logical.ListResponse(keys), nil
 }

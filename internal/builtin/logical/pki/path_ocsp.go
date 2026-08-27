@@ -379,7 +379,7 @@ func getOcspIssuerParsedBundle(sc *storageContext, issuerId issuerID) (*certutil
 		return nil, nil, ErrIssuerHasNoKey
 	}
 
-	caBundle, err := bundle.ToParsedCertBundle()
+	caBundle, err := bundle.ToParsedCertBundleWithExtractor(certutil.OptionalExternalKeyExtractor(sc.externalKeyExtractor))
 	if err != nil {
 		return nil, nil, err
 	}

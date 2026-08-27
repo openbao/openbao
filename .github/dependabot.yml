@@ -50,6 +50,9 @@ updates:
       google-golang:
         patterns:
           - "google.golang.org/*"
+      otel:
+        patterns:
+          - "go.opentelemetry.io/*"
     ignore:
       # armon/go-metrics was moved to hashicorp/go-metrics, but we cannot
       # drop the indirect dependency on it just yet. This causes errors in

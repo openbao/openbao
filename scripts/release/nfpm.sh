@@ -28,6 +28,13 @@ case "${NFPM_PACKAGER}" in
         exit 1
 esac
 
+# nFPM mostly takes GOOS/GOARCH as-is but has no GOARM equivalent, which must
+# effectively be appended to GOARCH. Note that nFPM will *happily* take a plain
+# GOARCH=arm and produce complete nonsense that no downstream tool can work
+# with, so removing this line won't break here but later.
+# Also see: https://nfpm.goreleaser.com/docs/arch-mapping
+export GOARCH="${GOARCH}${GOARM}"
+
 nfpm package \
     --config ./.release/nfpm.yaml \
     --packager "$NFPM_PACKAGER" \

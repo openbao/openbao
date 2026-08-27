@@ -8,9 +8,11 @@ import { inject as service } from '@ember/service';
 import { computed } from '@ember/object';
 import Controller, { inject as controller } from '@ember/controller';
 import removeRecord from 'vault/utils/remove-record';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default Controller.extend({
   store: service(),
+  router: service(),
   clusterController: controller('vault.cluster'),
 
   backendCrumb: computed('clusterController.model.name', function () {
@@ -46,7 +48,7 @@ export default Controller.extend({
   actions: {
     revokeLease(model) {
       return model.destroyRecord().then(() => {
-        return this.transitionToRoute('vault.cluster.access.leases.list-root');
+        return transitionToSafe(this.router, 'vault.cluster.access.leases.list-root');
       });
     },
 

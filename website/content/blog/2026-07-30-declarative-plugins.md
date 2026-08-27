@@ -3,7 +3,7 @@ title: "OpenBao Features - Declarative Plugins"
 description: "Blog series describing OpenBao's features. This episode focuses on declarative plugin distribution and registration in OpenBao."
 slug: features-declarative-plugins
 authors: cipherboy
-tags: [features, storage, technical]
+tags: [features, plugins, technical]
 ---
 
 This is the fourth part of a [multi-part series on OpenBao's features](/blog/tags/features).
@@ -81,7 +81,7 @@ plugin_auto_download = true
 // plugin catalog. This is allows operators to immediately use the plugin
 // without having to manually register it using API commands:
 //
-// https://openbao.org/api-docs/system/plugins-catalog/
+// https://openbao.org/docs/api/system/plugins-catalog/
 plugin_auto_register = true
 ```
 
@@ -201,7 +201,6 @@ seal "pkcs11" {
     token_label = "OpenBao"
     pin = "4321"
     key_label = "bao-root-key-rsa"
-    rsa_oaep_hash = "sha1"
 }
 ```
 

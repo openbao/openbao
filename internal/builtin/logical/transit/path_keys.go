@@ -324,13 +324,8 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 			return logical.ErrorResponse("cannot enable auto-rotation with external keys"), nil
 		}
 
-		key, err := b.System().GetExternalKey(ctx, polReq.ExternalKeyRef)
-		if err != nil {
-			return logical.ErrorResponse("unknown external key reference: %v", polReq.ExternalKeyRef), logical.ErrInvalidRequest
-		}
-
-		if err := key.Close(ctx); err != nil {
-			return nil, fmt.Errorf("unable to close external key: %w", err)
+		if _, err := b.System().GetExternalKey(ctx, polReq.ExternalKeyRef); err != nil {
+			return logical.ErrorResponse("failed to fetch external key: %s", err), logical.ErrInvalidRequest
 		}
 	} else if polReq.ExternalKeyRef != "" {
 		return logical.ErrorResponse("must provide type=external-key to use external_key_ref"), logical.ErrInvalidRequest

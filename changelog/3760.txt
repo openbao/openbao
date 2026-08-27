@@ -1,0 +1,3 @@
+```release-note:improvement
+core/plugins: Automatically determine `binary_name` for OCI plugins based on the image's `ENTRYPOINT` or `CMD` if unset in configuration.
+```

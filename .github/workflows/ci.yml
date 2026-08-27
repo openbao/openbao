@@ -17,6 +17,9 @@ on:
       - release/**
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.head_ref || github.run_id }}-ci
   cancel-in-progress: true
@@ -50,6 +53,9 @@ jobs:
     needs:
       - setup
     uses: ./.github/workflows/test-go.yml
+    permissions:
+      contents: read
+      actions: write
     with:
       # The regular Go tests use an extra runner to execute the
       # binary-dependent tests. We isolate them there so that the
@@ -70,6 +76,9 @@ jobs:
     if: |
       github.event.pull_request.draft == false
     uses: ./.github/workflows/test-go.yml
+    permissions:
+      contents: read
+      actions: write
     with:
       total-runners: 16
       extra-flags: "-race"

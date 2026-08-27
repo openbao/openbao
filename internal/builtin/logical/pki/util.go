@@ -76,6 +76,28 @@ func getKeyRefWithErr(data *framework.FieldData) (string, error) {
 	return keyRef, nil
 }
 
+func externalKeyRequested(input *inputBundle) bool {
+	return externalKeyRequestedFromFieldData(input.apiData)
+}
+
+func externalKeyRequestedFromFieldData(data *framework.FieldData) bool {
+	exportedStr, ok := data.GetOk("exported")
+	if !ok {
+		return false
+	}
+	return exportedStr.(string) == "kms"
+}
+
+func getExternalKeyRefWithErr(data *framework.FieldData) (string, error) {
+	keyRef := getExternalKeyRef(data)
+
+	if len(keyRef) == 0 {
+		return "", errutil.UserError{Err: "missing argument external_key_ref for external type"}
+	}
+
+	return keyRef, nil
+}
+
 func getIssuerName(sc *storageContext, data *framework.FieldData) (string, error) {
 	issuerName := ""
 	issuerNameIface, ok := data.GetOk("issuer_name")
@@ -133,6 +155,10 @@ func getIssuerRef(data *framework.FieldData) string {
 
 func getKeyRef(data *framework.FieldData) string {
 	return extractRef(data, keyRefParam)
+}
+
+func getExternalKeyRef(data *framework.FieldData) string {
+	return extractRef(data, externalKeyRefParam)
 }
 
 func extractRef(data *framework.FieldData, paramName string) string {

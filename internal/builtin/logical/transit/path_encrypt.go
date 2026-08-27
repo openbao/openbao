@@ -296,18 +296,11 @@ func (b *backend) pathEncryptExistenceCheck(ctx context.Context, req *logical.Re
 }
 
 func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	txRollback, err := logical.StartTxStorage(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer txRollback()
-
 	name := d.Get("name").(string)
 	batchInputRaw := d.Raw["batch_input"]
 	var batchInputItems []BatchRequestItem
 	if batchInputRaw != nil {
-		err = decodeEncryptBatchRequestItems(batchInputRaw, &batchInputItems)
-		if err != nil {
+		if err := decodeEncryptBatchRequestItems(batchInputRaw, &batchInputItems); err != nil {
 			return nil, fmt.Errorf("failed to parse batch input: %w", err)
 		}
 
@@ -376,6 +369,12 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 			return logical.ErrorResponse("convergent encryption requires derivation to be enabled, so context is required"), nil
 		}
 
+		txRollback, err := logical.StartTxStorage(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		defer txRollback()
+
 		cfg, err := b.readConfigKeys(ctx, req)
 		if err != nil {
 			return nil, err
@@ -411,7 +410,7 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 		}
 	}
 
-	p, upserted, err = b.GetPolicy(ctx, polReq, b.GetRandomReader())
+	p, upserted, err := b.GetPolicy(ctx, polReq, b.GetRandomReader())
 	if err != nil {
 		return nil, err
 	}
@@ -419,6 +418,10 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 		return logical.ErrorResponse("encryption key not found"), logical.ErrInvalidRequest
 	}
 	defer p.Unlock()
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
 
 	// Process batch request items. If encryption of any request
 	// item fails, respectively mark the error in the response
@@ -498,10 +501,6 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 
 	if req.Operation == logical.CreateOperation && !upserted {
 		resp.AddWarning("Attempted creation of the key during the encrypt operation, but it was created beforehand")
-	}
-
-	if err := logical.EndTxStorage(ctx, req); err != nil {
-		return nil, err
 	}
 
 	return batchRequestResponse(d, resp, req, successesInBatch, userErrorInBatch, internalErrorInBatch)

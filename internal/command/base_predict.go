@@ -84,10 +84,10 @@ func (b *BaseCommand) PredictVaultAvailableMounts() complete.Predictor {
 	// This list does not contain deprecated backends. At present, there is no
 	// API that lists all available secret backends, so this is hard-coded :(.
 	return complete.PredictSet(
-		"aws",
-		"consul",
 		"database",
-		"generic",
+		"kubernetes",
+		"kv",
+		"kv-v2",
 		"pki",
 		"plugin",
 		"rabbitmq",
@@ -103,16 +103,11 @@ func (b *BaseCommand) PredictVaultAvailableMounts() complete.Predictor {
 // hard-coded.
 func (b *BaseCommand) PredictVaultAvailableAuths() complete.Predictor {
 	return complete.PredictSet(
-		"app-id",
 		"approle",
-		"aws",
 		"cert",
-		"gcp",
-		"github",
-		"ldap",
-		"okta",
+		"jwt",
+		"kubernetes",
 		"plugin",
-		"radius",
 		"userpass",
 	)
 }

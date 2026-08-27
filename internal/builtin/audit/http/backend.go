@@ -84,7 +84,7 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 			for _, value := range values {
 				modified, err := parseutil.ParsePath(value, parseutil.WithNoTrimSpaces(true), parseutil.WithErrorOnMissingEnv(true))
 				if err != nil {
-					return nil, fmt.Errorf("failed to parse header %v: %w", header, nil)
+					return nil, fmt.Errorf("failed to parse header %v: %w", header, err)
 				}
 
 				headers.Add(header, modified)

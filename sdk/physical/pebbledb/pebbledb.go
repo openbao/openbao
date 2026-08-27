@@ -158,43 +158,54 @@ func (b *Backend) List(ctx context.Context, prefix string) ([]string, error) {
 	return b.ListPage(ctx, prefix, "", 0)
 }
 
-func (b *Backend) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+func newLister(view pebble.Reader, prefix string, after string, limit int) (*pebble.Iterator, *physical.Lister, error) {
+	var cursor *pebble.Iterator
+	var err error
+
 	lister := &physical.Lister{
 		Prefix: prefix,
 		After:  after,
 		Limit:  limit,
+		Start: func(_ []byte) error {
+			cursor.First()
+			return cursor.Error()
+		},
+		Next: func() error {
+			cursor.Next()
+			return cursor.Error()
+		},
+		Key: func() (string, bool, error) {
+			if !cursor.Valid() {
+				return "", false, cursor.Error()
+			}
+
+			key := cursor.Key()
+			return string(key), true, nil
+		},
 	}
 
-	_, seekPrefix := lister.SeekPrefix()
 	opts := &pebble.IterOptions{
-		LowerBound: seekPrefix,
+		LowerBound: lister.SeekPrefix(),
 	}
 
-	cursor, err := b.db.NewIter(opts)
+	cursor, err = view.NewIter(opts)
 	if err != nil {
-		return nil, fmt.Errorf("error creating iterator: %w", err)
+		return nil, nil, fmt.Errorf("error creating iterator: %w", err)
 	}
 
-	defer cursor.Close() //nolint:errcheck // nothing we can do here
+	return cursor, lister, nil
+}
 
-	lister.Start = func() error {
-		cursor.First()
-		return cursor.Error()
+func (b *Backend) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	cursor, lister, err := newLister(b.db, prefix, after, limit)
+	if err != nil {
+		return nil, err
 	}
-
-	lister.Next = func() error {
-		cursor.Next()
-		return cursor.Error()
-	}
-
-	lister.Key = func() (string, bool, error) {
-		if !cursor.Valid() {
-			return "", false, cursor.Error()
+	defer func() {
+		if cursor != nil {
+			cursor.Close() //nolint:errcheck // nothing we can do here.
 		}
-
-		key := cursor.Key()
-		return string(key), true, nil
-	}
+	}()
 
 	results, _, err := lister.ListPage(ctx)
 	return results, err
@@ -347,42 +358,15 @@ func (t *Transaction) ListPage(ctx context.Context, prefix string, after string,
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	lister := &physical.Lister{
-		Prefix: prefix,
-		After:  after,
-		Limit:  limit,
-	}
-
-	_, seekPrefix := lister.SeekPrefix()
-	opts := &pebble.IterOptions{
-		LowerBound: seekPrefix,
-	}
-
-	cursor, err := t.snapshot.NewIter(opts)
+	cursor, lister, err := newLister(t.snapshot, prefix, after, limit)
 	if err != nil {
-		return nil, fmt.Errorf("error creating iterator: %w", err)
+		return nil, err
 	}
-
-	defer cursor.Close() //nolint:errcheck // nothing we can do here
-
-	lister.Start = func() error {
-		cursor.First()
-		return cursor.Error()
-	}
-
-	lister.Next = func() error {
-		cursor.Next()
-		return cursor.Error()
-	}
-
-	lister.Key = func() (string, bool, error) {
-		if !cursor.Valid() {
-			return "", false, cursor.Error()
+	defer func() {
+		if cursor != nil {
+			cursor.Close() //nolint:errcheck // nothing we can do here.
 		}
-
-		key := cursor.Key()
-		return string(key), true, nil
-	}
+	}()
 
 	lister.Deleted = func(path string) bool {
 		entry, present := t.updates[path]

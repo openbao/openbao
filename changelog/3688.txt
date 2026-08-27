@@ -1,0 +1,3 @@
+```release-note:improvement
+core: Add support for revoke-self with wrapping tokens.
+```

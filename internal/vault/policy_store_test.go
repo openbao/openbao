@@ -380,6 +380,42 @@ func TestDefaultPolicy(t *testing.T) {
 	}
 }
 
+func TestResponseWrappingPolicy(t *testing.T) {
+	ctx := namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace)
+
+	pol, err := policy.ParseACLPolicy(namespace.RootNamespace, policy.ResponseWrappingPolicy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	acl, err := policy.NewACL(ctx, []*policy.Policy{pol})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for name, tc := range map[string]struct {
+		op            logical.Operation
+		path          string
+		expectAllowed bool
+	}{
+		"unwrap":      {logical.UpdateOperation, "sys/wrapping/unwrap", true},
+		"revoke self": {logical.UpdateOperation, "auth/token/revoke-self", true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			request := new(logical.Request)
+			request.Operation = tc.op
+			request.Path = tc.path
+
+			result := acl.AllowOperation(ctx, request, false)
+			if result.RootPrivs {
+				t.Fatal("unexpected root")
+			}
+			if tc.expectAllowed != result.Allowed {
+				t.Fatalf("Expected %v, got %v", tc.expectAllowed, result.Allowed)
+			}
+		})
+	}
+}
+
 // TestPolicyStore_GetNonEGPPolicyType has two test cases:
 //   - happy-acl: we store a policy in the policy type map and
 //     then look up its type successfully.

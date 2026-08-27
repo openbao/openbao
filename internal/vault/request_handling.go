@@ -1340,7 +1340,15 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 				nsActiveCtx := namespace.ContextWithNamespace(c.activeContext.Load(), ns)
 				leaseID, err := c.expiration.CreateOrFetchRevocationLeaseByToken(nsActiveCtx, te)
 				if err == nil {
-					err = c.expiration.LazyRevoke(ctx, leaseID)
+					if req.Path == "auth/token/revoke-self" {
+						// UseToken() above will make the revoke-self handler
+						// not see the token and skip revocation silently. To be
+						// consistent with revoke-self's behavior, don't lazily
+						// revoke here.
+						err = c.expiration.Revoke(ctx, leaseID)
+					} else {
+						err = c.expiration.LazyRevoke(ctx, leaseID)
+					}
 				}
 				if err != nil {
 					c.logger.Error("failed to revoke token", "error", err)

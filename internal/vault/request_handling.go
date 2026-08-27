@@ -1319,13 +1319,9 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	// in the case of an error (assuming we can successfully look up; if we
 	// need to forward, we exit before now)
 	if te != nil {
-		// Attempt to use the token (decrement NumUses) unless this a revoke-self request,
-		// in which case we want to allow the request to go through and then revoke the
-		// token after the request is processed.
+		// Attempt to use the token (decrement NumUses)
 		var err error
-		if req.Path != "auth/token/revoke-self" {
-			te, err = c.tokenStore.UseToken(ctx, te)
-		}
+		te, err = c.tokenStore.UseToken(ctx, te)
 		if err != nil {
 			c.logger.Error("failed to use token", "error", err)
 			retErr = multierror.Append(retErr, ErrInternalError)
@@ -1344,7 +1340,15 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 				nsActiveCtx := namespace.ContextWithNamespace(c.activeContext.Load(), ns)
 				leaseID, err := c.expiration.CreateOrFetchRevocationLeaseByToken(nsActiveCtx, te)
 				if err == nil {
-					err = c.expiration.LazyRevoke(ctx, leaseID)
+					if req.Path == "auth/token/revoke-self" {
+						// UseToken() above will make the revoke-self handler
+						// not see the token and skip revocation silently. To be
+						// consistent with revoke-self's behavior, don't lazily
+						// revoke here.
+						err = c.expiration.Revoke(ctx, leaseID)
+					} else {
+						err = c.expiration.LazyRevoke(ctx, leaseID)
+					}
 				}
 				if err != nil {
 					c.logger.Error("failed to revoke token", "error", err)

@@ -581,58 +581,32 @@ func (f *FSM) ListPage(ctx context.Context, prefix string, after string, limit i
 }
 
 func listPageInner(ctx context.Context, tx *bolt.Tx, prefix string, after string, limit int) ([]string, error) {
-	var keys []string
-
-	prefixBytes := []byte(prefix)
-	seekPrefix := []byte(filepath.Join(prefix, after))
-	if after == "" {
-		seekPrefix = prefixBytes
-	} else if !bytes.HasPrefix(seekPrefix, prefixBytes) {
-		// filepath.Join has the very unfortunate behavior of trimming the
-		// trailing slash when after=".". When e.g., prefix=foo/, this gives
-		// us seekPrefix=foo, which fails the initial HasPrefix check,
-		// skipping all results.
-		seekPrefix = prefixBytes
+	lister := &physical.Lister{
+		Prefix: prefix,
+		After:  after,
+		Limit:  limit,
 	}
 
-	// Assume bucket exists and has keys
-	c := tx.Bucket(dataBucketName).Cursor()
+	var key []byte
+	cursor := tx.Bucket(dataBucketName).Cursor()
 
-	// By seeking relative to the after location, we can save looking
-	// at unnecessary entries before our expected entry.
-	for k, _ := c.Seek(seekPrefix); k != nil && bytes.HasPrefix(k, prefixBytes); k, _ = c.Next() {
-		if limit > 0 && len(keys) >= limit {
-			// We've seen enough entries; exit early.
-			return keys, nil
-		}
-
-		// Note that we push the comparison of 'key' with 'after'
-		// until we add in the directory suffix, if necessary.
-		key := string(k)
-		key = strings.TrimPrefix(key, prefix)
-		if i := strings.Index(key, "/"); i == -1 {
-			if after != "" && key <= after {
-				// Still prior to our cut-off point, so retry.
-				continue
-			}
-
-			// Add objects only from the current 'folder'
-			keys = append(keys, key)
-		} else {
-			// Add truncated 'folder' paths
-			if len(keys) == 0 || keys[len(keys)-1] != key[:i+1] {
-				folder := string(key[:i+1])
-				if after != "" && folder <= after {
-					// Still prior to our cut-off point, so retry.
-					continue
-				}
-
-				keys = append(keys, folder)
-			}
-		}
+	lister.Start = func() error {
+		_, seekPrefix := lister.SeekPrefix()
+		key, _ = cursor.Seek(seekPrefix)
+		return nil
 	}
 
-	return keys, nil
+	lister.Next = func() error {
+		key, _ = cursor.Next()
+		return nil
+	}
+
+	lister.Key = func() (string, bool, error) {
+		return string(key), key != nil, nil
+	}
+
+	results, _, err := lister.ListPage(ctx)
+	return results, err
 }
 
 // Within ApplyBatch, applies non-transactional operations.
@@ -906,7 +880,6 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []any {
 
 		return err
 	})
-
 	if err != nil {
 		f.logger.Error("failed to store data", "error", err)
 		panic("failed to store data")

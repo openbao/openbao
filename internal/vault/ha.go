@@ -1025,10 +1025,7 @@ func (c *Core) setupGRPCStandbyInvalidations(ctx context.Context) bool {
 		return false
 	}
 
-	c.requestForwardingConnectionLock.RLock()
-	defer c.requestForwardingConnectionLock.RUnlock()
-
-	if c.rpcForwardingClient == nil {
+	if c.rpcForwardingClient.Load() == nil {
 		// When the active node has not indicated a cluster address
 		// or there's a problem connecting, we may not have a
 		// forwarding client. This renders us unable to perform any
@@ -1053,7 +1050,13 @@ func (c *Core) setupGRPCStandbyInvalidations(ctx context.Context) bool {
 	c.LocalGRPCDispatching()
 
 	// Start streaming invalidation events from the primary.
-	if err := c.rpcForwardingClient.StreamInvalidations(ctx); err != nil {
+	client := c.rpcForwardingClient.Load()
+	if client == nil {
+		c.logger.Error("unexpectedly nil replication forwarding client")
+		return false
+	}
+
+	if err := client.StreamInvalidations(ctx); err != nil {
 		c.logger.Error("failed to begin streaming invalidations", "err", err)
 		return false
 	}
@@ -1544,7 +1547,7 @@ func (c *Core) clearLeader(uuid string) error {
 // client is not connected, we return false here.
 func (c *Core) StandbyReadsEnabled() bool {
 	if shouldUseGRPCInvalidation(c.underlyingPhysical) {
-		if c.rpcForwardingClient == nil {
+		if c.rpcForwardingClient.Load() == nil {
 			return false
 		}
 	} else if _, ok := c.underlyingPhysical.(physical.CacheInvalidationBackend); !ok {

@@ -134,9 +134,9 @@ At a high level, these directories are:
    - [`internal/builtin/plugin/`](https://github.com/openbao/openbao/tree/main/internal/builtin/plugin)
      contains a source-agnostic plugin wrapper (either using the builtin
      plugin or handling the GRPC connection to an external plugin).
- - [`internal/command/`](https://github.com/openbao/openbao/tree/main/command/) contains
+ - [`internal/command/`](https://github.com/openbao/openbao/tree/main/internal/command/) contains
    the CLI interface definitions: each command is in a separate file connected
-   through [`command/commands.go`](https://github.com/openbao/openbao/blob/main/internal/command/commands.go).
+   through [`internal/command/commands.go`](https://github.com/openbao/openbao/blob/main/internal/command/commands.go).
    Many plugins reuse the same generic `read`, `write`, `list`, ... commands,
    but a few (like K/V or PKI) have plugin-specific commands. This also
    includes Agent, Proxy, and Server configuration parsing and startup code,

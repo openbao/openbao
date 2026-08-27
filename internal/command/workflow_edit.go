@@ -126,7 +126,7 @@ func (c *WorkflowEditCommand) Run(args []string) (retcode int) {
 		return 2
 	}
 	defer func() {
-		tmpFile.Close()
+		tmpFile.Close() //nolint:errcheck
 		if retcode == 0 {
 			os.Remove(tmpFile.Name()) //nolint:errcheck
 		}

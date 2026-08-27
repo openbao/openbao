@@ -27,6 +27,21 @@ Partially taken from [this comment by dc-tec](https://github.com/openbao/openbao
 The compatibility of upstream changes will be verified by acceptance tests against the current OpenBao release.
 Where applicable fixes for non-OpenBao specific issues should be send to the upstream provider.
 
+The soft fork will be maintained as follows:
+
+1. Clone the upstream `terraform-provider-vault` repository into the `openbao/` GitHub organization.
+2. After each upstream release, review and cherry-pick relevant patches into the fork. This process will start out manual and could be supported by automatic testing.
+
+#### Migration Path
+
+As long as the fork stays low-divergence and keeps existing resource and data source names, migrating from the Vault provider requires no changes to individual resources in state:
+
+1. Update `required_providers` to point at the new provider source and version constraint.
+2. Run `terraform init -upgrade`.
+3. Run `terraform state replace-provider registry.terraform.io/hashicorp/vault registry.terraform.io/openbao/vault` (illustrative address, exact registry namespace TBD) to rewrite the provider reference recorded in state, without touching the resources themselves.
+
+This simple migration path only holds while the fork stays low-divergence. If a feature or fix eventually forces the fork to diverge in resource names or schemas, a migration path from `hashicorp/vault` to `openbao/vault` v1 (without the divergence and the simple migration) to `openbao/vault` v2 (with the divergence and more in depth migration) will need to be defined at that point, likely using `moved` blocks or `terraform state mv` for any resource addresses that change.
+
 ### Rationale and alternatives
 
 The main rationale is to create a viable alternative to the Vault provider for configuring a OpenBao instance via OpenTofu/Terraform. Especially with keeping a simple migration path, this would improve the experience of people switching from the Vault provider to the dedicated provider.

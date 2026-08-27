@@ -262,7 +262,7 @@ protection use. Defaults to false. See also RFC 5280 Section 4.2.1.12.`,
 			Description: `The number of bits to use. Allowed values are
 0 (universal default); with rsa key_type: 2048 (default), 3072, or
 4096; with ec key_type: 224, 256 (default), 384, or 521; ignored with
-ed25519; with mldsa key_type: 44, 65 (default), or 87.`,
+ed25519; with mldsa key_type: 44 (default), 65, or 87.`,
 		},
 		"signature_bits": {
 			Type:     framework.TypeInt,
@@ -674,7 +674,7 @@ protection use. Defaults to false. See also RFC 5280 Section 4.2.1.12.`,
 				Description: `The number of bits to use. Allowed values are
 0 (universal default); with rsa key_type: 2048 (default), 3072, or
 4096; with ec key_type: 224, 256 (default), 384, or 521; ignored with
-ed25519; with mldsa key_type: 44, 65 (default), or 87.`,
+ed25519; with mldsa key_type: 44 (default), 65, or 87.`,
 			},
 
 			"signature_bits": {

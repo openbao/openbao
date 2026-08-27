@@ -330,7 +330,7 @@ the private key!`,
 		Description: `The number of bits to use. Allowed values are
 0 (universal default); with rsa key_type: 2048 (default), 3072, or
 4096; with ec key_type: 224, 256 (default), 384, or 521; ignored with
-ed25519; with mldsa key_type: 44, 65 (default), or 87.`,
+ed25519; with mldsa key_type: 44 (default), 65, or 87.`,
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: 0,
 		},

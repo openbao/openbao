@@ -1062,24 +1062,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	return c, nil
 }
 
-func shouldUseGRPCInvalidation(phys physical.Backend) bool {
-	if _, ok := phys.(physical.CacheInvalidationBackend); ok {
-		return false
-	}
-
-	_, ok := phys.(physical.ReplicationIndexBackend)
-	return ok
-}
-
-func (c *Core) shouldHookInvalidate(phys physical.Backend) bool {
-	if !c.StandbyReadsEnabled() {
-		return false
-	}
-
-	_, ok := phys.(physical.CacheInvalidationBackend)
-	return ok
-}
-
 func coreInit(c *Core, conf *CoreConfig) error {
 	phys := conf.Physical
 	hookLayer := c.underlyingPhysical

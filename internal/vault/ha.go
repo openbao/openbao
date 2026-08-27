@@ -1540,25 +1540,44 @@ func (c *Core) clearLeader(uuid string) error {
 	return c.barrier.Delete(context.Background(), key)
 }
 
+func isCacheInvalidationBackend(phys physical.Backend) bool {
+	_, ok := phys.(physical.CacheInvalidationBackend)
+	return ok
+}
+
+func isReplicationIndexBackend(phys physical.Backend) bool {
+	_, ok := phys.(physical.ReplicationIndexBackend)
+	return ok
+}
+
+func shouldUseGRPCInvalidation(phys physical.Backend) bool {
+	return !isCacheInvalidationBackend(phys) && isReplicationIndexBackend(phys)
+}
+
+func (c *Core) standbyReadsAllowed() bool {
+	if conf := c.rawConfig.Load(); conf != nil {
+		return !conf.DisableStandbyReads
+	}
+	return false
+}
+
+func (c *Core) haveForwardingClient() bool {
+	return c.rpcForwardingClient.Load() != nil
+}
+
+func (c *Core) shouldHookInvalidate(phys physical.Backend) bool {
+	return c.standbyReadsAllowed() && isCacheInvalidationBackend(c.underlyingPhysical)
+}
+
 // StandbyReadsEnabled returns true iff standby read are enabled, supported,
 // and likely immediately usable by the physical backend.
-// /
+//
 // Notably, when GRPC-based invalidation is in use and the underlying GRPC
 // client is not connected, we return false here.
 func (c *Core) StandbyReadsEnabled() bool {
-	if shouldUseGRPCInvalidation(c.underlyingPhysical) {
-		if c.rpcForwardingClient.Load() == nil {
-			return false
-		}
-	} else if _, ok := c.underlyingPhysical.(physical.CacheInvalidationBackend); !ok {
-		return false
-	}
-
-	conf := c.rawConfig.Load()
-	if conf == nil {
-		return false
-	}
-	return !conf.DisableStandbyReads
+	return c.standbyReadsAllowed() &&
+		(isCacheInvalidationBackend(c.underlyingPhysical) ||
+			(isReplicationIndexBackend(c.underlyingPhysical) && c.haveForwardingClient()))
 }
 
 // MaybeStandbyReadsEnabled is like StandbyReadsEnabled but returns true in
@@ -1569,5 +1588,7 @@ func (c *Core) StandbyReadsEnabled() bool {
 // forwarding client is not connected because it will opportunistically
 // attempt to set it up if its missing and we need it.
 func (c *Core) MaybeStandbyReadsEnabled() bool {
-	return c.StandbyReadsEnabled() || shouldUseGRPCInvalidation(c.underlyingPhysical)
+	return c.standbyReadsAllowed() &&
+		(isCacheInvalidationBackend(c.underlyingPhysical) ||
+			isReplicationIndexBackend(c.underlyingPhysical))
 }

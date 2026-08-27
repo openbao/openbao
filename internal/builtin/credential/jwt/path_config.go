@@ -4,7 +4,6 @@
 package jwtauth
 
 import (
-	"bytes"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
@@ -55,7 +54,7 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 		Fields: map[string]*framework.FieldSchema{
 			"oidc_discovery_url": {
 				Type:        framework.TypeString,
-				Description: `The base URL of the OIDC Discovery URL without ".well-known/openid-configuration" component. Cannot be used with "jwks_url" or "jwt_validation_pubkeys".`,
+				Description: `The base URL of the OIDC Discovery URL without ".well-known/openid-configuration" component. Cannot be used with "jwks_url", "jwks_urls", or "jwt_validation_pubkeys".`,
 			},
 			"oidc_discovery_ca_pem": {
 				Type:        framework.TypeString,
@@ -81,12 +80,17 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 				Description: "The response types to request. Allowed values are 'code' and 'id_token'. Defaults to 'code'.",
 			},
 			"jwks_url": {
+				Type:        framework.TypeString,
+				Description: `Deprecated: Please use "jwks_urls" instead. The single JWKS URL to use to authenticate signatures. Cannot be used with "oidc_discovery_url" or "jwt_validation_pubkeys".`,
+				Deprecated:  true,
+			},
+			"jwks_urls": {
 				Type:        framework.TypeCommaStringSlice,
-				Description: `JWKS URLs to use to authenticate signatures. A single URL may be specified as a string, or multiple URLs may be specified as a list. Cannot be used with "oidc_discovery_url" or "jwt_validation_pubkeys".`,
+				Description: `JWKS URLs to use to authenticate signatures. During login, the JWT signature is verified against each JWKS in the order configured until a match is found. Cannot be used with "oidc_discovery_url" or "jwt_validation_pubkeys".`,
 			},
 			"jwks_ca_pem": {
 				Type:        framework.TypeString,
-				Description: "The CA certificate or chain of certificates, in PEM format, to use to validate connections to the JWKS URLs. May contain multiple concatenated CA certificates. The same CA certificates are used for all jwks_url values. If not set, system certificates are used.",
+				Description: "The CA certificate or chain of certificates, in PEM format, to use to validate connections to the JWKS URLs. May contain multiple concatenated CA certificates. The same CA certificates are used for all jwks_urls values. If not set, system certificates are used.",
 			},
 			"default_role": {
 				Type:        framework.TypeLowerCaseString,
@@ -94,7 +98,7 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 			},
 			"jwt_validation_pubkeys": {
 				Type:        framework.TypeCommaStringSlice,
-				Description: `A list of PEM-encoded public keys to use to authenticate signatures locally. Cannot be used with "jwks_url" or "oidc_discovery_url".`,
+				Description: `A list of PEM-encoded public keys to use to authenticate signatures locally. Cannot be used with "jwks_url", "jwks_urls", or "oidc_discovery_url".`,
 			},
 			"jwt_supported_algs": {
 				Type:        framework.TypeCommaStringSlice,
@@ -125,7 +129,7 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 			},
 			"skip_jwks_validation": {
 				Type:        framework.TypeBool,
-				Description: "When true and oidc_discovery_url or jwks_url are specified, if the connection fails to load, a warning will be issued and status can be checked later by reading the config endpoint.",
+				Description: "When true and oidc_discovery_url, jwks_url, or jwks_urls are specified, if the connection fails to load, a warning will be issued and status can be checked later by reading the config endpoint.",
 			},
 		},
 
@@ -172,6 +176,15 @@ func (b *jwtAuthBackend) config(ctx context.Context, s logical.Storage) (*jwtCon
 	config := &jwtConfig{}
 	if err := entry.DecodeJSON(config); err != nil {
 		return nil, err
+	}
+
+	// Migrate the legacy single URL in memory. The next config write stores the
+	// canonical jwks_urls field; reads do not write back to storage.
+	if config.DeprecatedJWKSURL != "" {
+		if len(config.JWKSURLs) == 0 {
+			config.JWKSURLs = []string{config.DeprecatedJWKSURL}
+		}
+		config.DeprecatedJWKSURL = ""
 	}
 
 	for _, v := range config.JWTValidationPubKeys {
@@ -293,7 +306,7 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 		}
 	}
 
-	jwksURLs := config.JWKSURL
+	jwksURLs := config.JWKSURLs
 	if jwksURLs == nil {
 		jwksURLs = []string{}
 	}
@@ -308,7 +321,7 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 			"default_role":                  config.DefaultRole,
 			"jwt_validation_pubkeys":        config.JWTValidationPubKeys,
 			"jwt_supported_algs":            config.JWTSupportedAlgs,
-			"jwks_url":                      jwksURLs,
+			"jwks_urls":                     jwksURLs,
 			"jwks_ca_pem":                   config.JWKSCAPEM,
 			"bound_issuer":                  config.BoundIssuer,
 			"provider_config":               providerConfig,
@@ -337,14 +350,24 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		OIDCClientSecret:           d.Get("oidc_client_secret").(string),
 		OIDCResponseMode:           d.Get("oidc_response_mode").(string),
 		OIDCResponseTypes:          d.Get("oidc_response_types").([]string),
-		JWKSURL:                    d.Get("jwks_url").([]string),
 		JWKSCAPEM:                  d.Get("jwks_ca_pem").(string),
+		JWKSURLs:                   []string{},
 		DefaultRole:                d.Get("default_role").(string),
 		JWTValidationPubKeys:       d.Get("jwt_validation_pubkeys").([]string),
 		JWTSupportedAlgs:           d.Get("jwt_supported_algs").([]string),
 		BoundIssuer:                d.Get("bound_issuer").(string),
 		ProviderConfig:             d.Get("provider_config").(map[string]any),
 		OverrideAllowedServerNames: d.Get("override_allowed_server_names").([]string),
+	}
+	if jwksURLs, ok := d.GetFirst("jwks_urls", "jwks_url"); ok {
+		switch value := jwksURLs.(type) {
+		case []string:
+			config.JWKSURLs = value
+		case string:
+			if value != "" {
+				config.JWKSURLs = []string{value}
+			}
+		}
 	}
 
 	skipJwksValidation := d.Get("skip_jwks_validation").(bool)
@@ -380,7 +403,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	if len(config.JWTValidationPubKeys) != 0 {
 		methodCount++
 	}
-	if len(config.JWKSURL) != 0 {
+	if len(config.JWKSURLs) != 0 {
 		methodCount++
 	}
 	if config.hasCustomProviderDiscovery() {
@@ -390,7 +413,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	resp := &logical.Response{}
 	switch {
 	case methodCount != 1:
-		return logical.ErrorResponse("exactly one of 'jwt_validation_pubkeys', 'jwks_url', 'oidc_discovery_url', or 'provider_config' must be set"), nil
+		return logical.ErrorResponse("exactly one of 'jwt_validation_pubkeys', 'jwks_url', 'jwks_urls', 'oidc_discovery_url', or 'provider_config' must be set"), nil
 
 	case config.OIDCClientID != "" && config.OIDCClientSecret == "",
 		config.OIDCClientID == "" && config.OIDCClientSecret != "":
@@ -417,12 +440,12 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	case config.OIDCClientID != "" && config.OIDCDiscoveryURL == "":
 		return logical.ErrorResponse("'oidc_discovery_url' must be set for OIDC"), nil
 
-	case len(config.JWKSURL) != 0:
-		for i, jwksURL := range config.JWKSURL {
+	case len(config.JWKSURLs) != 0:
+		for i, jwksURL := range config.JWKSURLs {
 			keyset, err := jwt.NewJSONWebKeySet(ctx, jwksURL, config.JWKSCAPEM)
 			if err != nil {
 				b.Logger().Error("error checking jwks_ca_pem", "error", err, "jwks_url_index", i)
-				return logical.ErrorResponse(fmt.Sprintf("error checking jwks_ca_pem for jwks_url[%d]", i)), nil
+				return logical.ErrorResponse(fmt.Sprintf("error checking jwks_ca_pem for jwks_urls[%d]", i)), nil
 			}
 
 			// Try to verify a correctly formatted JWT. The signature will fail to match, but other
@@ -435,10 +458,10 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 			if !strings.Contains(err.Error(), "failed to verify id token signature") {
 				if !skipJwksValidation {
 					b.Logger().Error("error checking jwks URL", "jwks_url_index", i)
-					return logical.ErrorResponse(fmt.Sprintf("error checking jwks URL for jwks_url[%d]", i)), nil
+					return logical.ErrorResponse(fmt.Sprintf("error checking jwks URL for jwks_urls[%d]", i)), nil
 				}
 
-				resp.AddWarning(fmt.Sprintf("error checking jwks URL for jwks_url[%d]", i))
+				resp.AddWarning(fmt.Sprintf("error checking jwks URL for jwks_urls[%d]", i))
 			}
 		}
 
@@ -630,7 +653,8 @@ type jwtConfig struct {
 	OIDCClientSecret           string         `json:"oidc_client_secret"`
 	OIDCResponseMode           string         `json:"oidc_response_mode"`
 	OIDCResponseTypes          []string       `json:"oidc_response_types"`
-	JWKSURL                    []string       `json:"jwks_url"`
+	DeprecatedJWKSURL          string         `json:"jwks_url"`
+	JWKSURLs                   []string       `json:"jwks_urls"`
 	JWKSCAPEM                  string         `json:"jwks_ca_pem"`
 	JWTValidationPubKeys       []string       `json:"jwt_validation_pubkeys"`
 	JWTSupportedAlgs           []string       `json:"jwt_supported_algs"`
@@ -644,44 +668,6 @@ type jwtConfig struct {
 	// These are looked up from OIDCDiscoveryURL when needed
 	OIDCDeviceAuthURL string `json:"-"`
 	OIDCTokenURL      string `json:"-"`
-}
-
-// UnmarshalJSON decodes a stored jwtConfig, accepting the legacy string form
-// of "jwks_url" for backwards compatibility.
-func (c *jwtConfig) UnmarshalJSON(data []byte) error {
-	type alias jwtConfig
-	aux := &struct {
-		JWKSURL json.RawMessage `json:"jwks_url"`
-		*alias
-	}{
-		alias: (*alias)(c),
-	}
-
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.UseNumber()
-	if err := dec.Decode(aux); err != nil {
-		return err
-	}
-
-	if len(aux.JWKSURL) == 0 {
-		return nil
-	}
-
-	var urls []string
-	if err := json.Unmarshal(aux.JWKSURL, &urls); err != nil {
-		var single string
-		if err := json.Unmarshal(aux.JWKSURL, &single); err != nil {
-			return fmt.Errorf("invalid 'jwks_url' value: %w", err)
-		}
-		if single != "" {
-			urls = []string{single}
-		} else {
-			urls = []string{}
-		}
-	}
-	c.JWKSURL = urls
-
-	return nil
 }
 
 const (
@@ -698,7 +684,7 @@ func (c jwtConfig) authType() int {
 	switch {
 	case len(c.ParsedJWTPubKeys) > 0:
 		return StaticKeys
-	case len(c.JWKSURL) > 0:
+	case len(c.JWKSURLs) > 0:
 		return JWKS
 	case c.OIDCDiscoveryURL != "":
 		if c.OIDCClientID != "" && c.OIDCClientSecret != "" {

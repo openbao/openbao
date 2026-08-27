@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/pgpkeys"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
@@ -656,8 +657,20 @@ func (sm *SealManager) pgpEncryptShares(ctx context.Context, ns *namespace.Names
 			entry.Key = coreRecoveryUnsealKeysBackupPath
 		}
 
-		barrier := sm.namespaceBarrier(ns.Path)
-		if err = barrier.Put(ctx, entry); err != nil {
+		parentPath, hasParent := ns.ParentPath()
+		if !hasParent {
+			// If we don't have a parent - meaning we are in root namespace
+			// write the backed up keys through physical.
+			err = sm.core.physical.Put(ctx, &physical.Entry{
+				Key:   entry.Key,
+				Value: buf,
+			})
+		} else {
+			barrier := sm.namespaceBarrierByLongestPrefix(parentPath)
+			err = barrier.Put(ctx, entry)
+		}
+
+		if err != nil {
 			sm.logger.Error("failed to save unseal key backup", "error", err)
 			return nil, fmt.Errorf("failed to save unseal key backup: %w", err)
 		}
@@ -802,7 +815,7 @@ func (sm *SealManager) RestartRotationVerification(nsUUID string, recovery bool)
 
 // RetrieveRotationBackup is used to retrieve any backed-up PGP-encrypted
 // unseal keys.
-func (sm *SealManager) RetrieveRotationBackup(ctx context.Context, nsPath string, recovery bool) (*RekeyBackup, error) {
+func (sm *SealManager) RetrieveRotationBackup(ctx context.Context, ns *namespace.Namespace, recovery bool) (*RekeyBackup, error) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
@@ -811,17 +824,57 @@ func (sm *SealManager) RetrieveRotationBackup(ctx context.Context, nsPath string
 		path = coreRecoveryUnsealKeysBackupPath
 	}
 
-	barrier := sm.namespaceBarrier(nsPath)
-	entry, err := barrier.Get(ctx, path)
+	overwriteKeys := func(sa StorageAccess, path string, value []byte) {
+		if err := sa.Put(ctx, path, value); err != nil {
+			sm.logger.Error("Failed to overwrite backed up keys, please rotate the keys immediately after.")
+		}
+		sm.logger.Info("Overwritten backed up keys.")
+	}
+
+	parentPath, hasParent := ns.ParentPath()
+	var value []byte
+	var err error
+	if !hasParent {
+		storage := secureStorageAccess{sm.core.barrier}
+		// Try to read backed up keys through barrier.
+		value, err = storage.Get(ctx, path)
+		switch {
+		case err != nil:
+			// Fallback to reading through physical if barrier read errors.
+			dirStorage := directStorageAccess{sm.core.physical}
+			value, err = dirStorage.Get(ctx, path)
+			if value != nil && err == nil {
+				defer overwriteKeys(&dirStorage, path, value)
+			}
+		case value == nil:
+			return nil, nil
+		}
+	} else {
+		pBarrier := secureStorageAccess{sm.namespaceBarrierByLongestPrefix(parentPath)}
+		value, err = pBarrier.Get(ctx, path)
+		// Try to read backed up keys through namespace parent's barrier.
+		switch {
+		case err != nil:
+			// Fallback to reading through namespace owned barrier if parent barrier read errors.
+			barrier := secureStorageAccess{sm.namespaceBarrierByLongestPrefix(ns.Path)}
+			value, err = barrier.Get(ctx, path)
+			if value != nil && err == nil {
+				defer overwriteKeys(&barrier, path, value)
+			}
+		case value == nil:
+			return nil, nil
+		}
+	}
+
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError, "error getting keys from backup: %w", err)
 	}
-	if entry == nil {
+	if value == nil {
 		return nil, nil
 	}
 
 	ret := &RekeyBackup{}
-	if err = jsonutil.DecodeJSON(entry.Value, ret); err != nil {
+	if err = jsonutil.DecodeJSON(value, ret); err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError, "error decoding backup keys: %w", err)
 	}
 

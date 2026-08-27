@@ -869,14 +869,18 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 
 func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
-	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
-	testIdentityStoreMergeEntitiesById(t, ctx, is, approleAccessor, upAccessor)
+	c := testIdentityStoreCore(t, false)
+
+	approleAccessor, upAccessor := testEnableAppRoleUserpassAuthMounts(t, ctx, c)
+	testIdentityStoreMergeEntitiesById(t, ctx, c.identityStore, approleAccessor, upAccessor)
 }
 
 func TestIdentityStore_MergeEntitiesByID_UnsafeShared(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
-	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
-	testIdentityStoreMergeEntitiesById(t, ctx, is, approleAccessor, upAccessor)
+	c := testIdentityStoreCore(t, true)
+
+	approleAccessor, upAccessor := testEnableAppRoleUserpassAuthMounts(t, ctx, c)
+	testIdentityStoreMergeEntitiesById(t, ctx, c.identityStore, approleAccessor, upAccessor)
 }
 
 func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *ident.IdentityStore, approleAccessor string, upAccessor string) {

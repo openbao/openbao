@@ -6,7 +6,6 @@ package vault
 import (
 	"context"
 	"errors"
-	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -16,8 +15,8 @@ import (
 	logicalKv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	be "github.com/openbao/openbao/v2/internal/vault/backend"
-	ident "github.com/openbao/openbao/v2/internal/vault/identity"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCoreMetrics_KvSecretGauge(t *testing.T) {
@@ -248,50 +247,48 @@ func TestCoreMetrics_KvSecretGaugeError(t *testing.T) {
 	}
 }
 
-func metricLabelsMatch(t *testing.T, actual []metrics.Label, expected map[string]string) {
-	t.Helper()
-
-	if len(actual) != len(expected) {
-		t.Errorf("Expected %v labels, got %v: %v", len(expected), len(actual), actual)
-	}
-
-	for _, l := range actual {
-		if v, ok := expected[l.Name]; ok {
-			if v != l.Value {
-				t.Errorf("Mismatched value %v=%v, expected %v", l.Name, l.Value, v)
-			}
-		} else {
-			t.Errorf("Unexpected label %v", l.Name)
-		}
-	}
-}
-
 func TestCoreMetrics_EntityGauges(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
-	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
+	c := testIdentityStoreCore(t, false)
+	ns := &namespace.Namespace{Path: "ns/"}
+	TestCoreCreateNamespaces(t, c, ns)
 
-	testCoreMetricsEntityGauges(t, ctx, is, approleAccessor, upAccessor, core)
+	approleAccessor, upAccessor := testEnableAppRoleUserpassAuthMounts(t, ctx, c)
+	testCoreCreateEntities(t, ctx, c, approleAccessor, upAccessor)
+
+	approleAccessorNS, upAccessorNS := testEnableAppRoleUserpassAuthMounts(t, namespace.ContextWithNamespace(ctx, ns), c)
+	testCoreCreateEntities(t, namespace.ContextWithNamespace(ctx, ns), c, approleAccessorNS, upAccessorNS)
+
+	testCoreMetricsEntityGauges(t, c)
 }
 
+// This test verifies that we aren't duplicating the amount of reported entities
+// when running with `UnsafeCrossNamespaceIdentity` set to true.
+// See more: https://github.com/openbao/openbao/issues/3840
 func TestCoreMetrics_EntityGaugesUnsafeSharedIdentity(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
-	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
+	c := testIdentityStoreCore(t, true)
+	ns := &namespace.Namespace{Path: "ns/"}
+	TestCoreCreateNamespaces(t, c, ns)
 
-	testCoreMetricsEntityGauges(t, ctx, is, approleAccessor, upAccessor, core)
+	approleAccessor, upAccessor := testEnableAppRoleUserpassAuthMounts(t, ctx, c)
+	testCoreCreateEntities(t, ctx, c, approleAccessor, upAccessor)
+
+	approleAccessorNS, upAccessorNS := testEnableAppRoleUserpassAuthMounts(t, namespace.ContextWithNamespace(ctx, ns), c)
+	testCoreCreateEntities(t, namespace.ContextWithNamespace(ctx, ns), c, approleAccessorNS, upAccessorNS)
+
+	testCoreMetricsEntityGauges(t, c)
 }
 
-func testCoreMetricsEntityGauges(t *testing.T, ctx context.Context, is *ident.IdentityStore, approleAccessor string, upAccessor string, core *Core) {
-	// Create an entity
-	alias1 := &logical.Alias{
+func testCoreCreateEntities(t *testing.T, ctx context.Context, core *Core, approleAccessor, upAccessor string) {
+	alias := &logical.Alias{
 		MountType:     "approle",
 		MountAccessor: approleAccessor,
 		Name:          "approleuser",
 	}
 
-	entity, _, err := is.CreateOrFetchEntity(ctx, alias1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	entity, _, err := core.identityStore.CreateOrFetchEntity(ctx, alias)
+	require.NoError(t, err)
 
 	// Create a second alias for the same entity
 	registerReq := &logical.Request{
@@ -303,66 +300,35 @@ func testCoreMetricsEntityGauges(t *testing.T, ctx context.Context, is *ident.Id
 			"mount_accessor": upAccessor,
 		},
 	}
-	resp, err := is.HandleRequest(ctx, registerReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%v resp:%#v", err, resp)
+	resp, err := core.identityStore.HandleRequest(ctx, registerReq)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+}
+
+func testCoreMetricsEntityGauges(t *testing.T, core *Core) {
+	glv, err := core.entityGaugeCollector(t.Context())
+	require.NoError(t, err)
+
+	require.Len(t, glv, 2)
+	for _, metric := range glv {
+		require.Equal(t, float32(1.0), metric.Value)
+		require.Len(t, metric.Labels, 1)
+		require.Equal(t, "namespace", metric.Labels[0].Name)
+		require.Contains(t, []string{"root", "ns"}, metric.Labels[0].Value)
 	}
 
-	glv, err := core.entityGaugeCollector(ctx)
-	if err != nil {
-		t.Fatalf("err: %v", err)
+	glv, err = core.entityGaugeCollectorByMount(t.Context())
+	require.NoError(t, err)
+
+	require.Len(t, glv, 4)
+	for _, metric := range glv {
+		require.Equal(t, float32(1.0), metric.Value)
+		require.Len(t, metric.Labels, 3)
+		require.Equal(t, "namespace", metric.Labels[0].Name)
+		require.Contains(t, []string{"root", "ns"}, metric.Labels[0].Value)
+		require.Equal(t, "auth_method", metric.Labels[1].Name)
+		require.Contains(t, []string{"userpass", "approle"}, metric.Labels[1].Value)
+		require.Equal(t, "mount_point", metric.Labels[2].Name)
+		require.Contains(t, []string{"auth/userpass/", "auth/approle/"}, metric.Labels[2].Value)
 	}
-
-	if len(glv) != 1 {
-		t.Fatalf("Wrong number of gauges %v, expected %v", len(glv), 1)
-	}
-
-	if glv[0].Value != 1.0 {
-		t.Errorf("Entity count %v, expected %v", glv[0].Value, 1.0)
-	}
-
-	metricLabelsMatch(t, glv[0].Labels,
-		map[string]string{
-			"namespace": "root",
-		})
-
-	glv, err = core.entityGaugeCollectorByMount(ctx)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	if len(glv) != 2 {
-		t.Fatalf("Wrong number of gauges %v, expected %v", len(glv), 1)
-	}
-
-	if glv[0].Value != 1.0 {
-		t.Errorf("Alias count %v, expected %v", glv[0].Value, 1.0)
-	}
-
-	if glv[1].Value != 1.0 {
-		t.Errorf("Alias count %v, expected %v", glv[0].Value, 1.0)
-	}
-
-	// Sort both metrics.Label slices by Name, causing the Label
-	// with Name auth_method to be first in both arrays
-	sort.Slice(glv[0].Labels, func(i, j int) bool { return glv[0].Labels[i].Name < glv[0].Labels[j].Name })
-	sort.Slice(glv[1].Labels, func(i, j int) bool { return glv[1].Labels[i].Name < glv[1].Labels[j].Name })
-
-	// Sort the GaugeLabelValues slice by the Value of the first metric,
-	// in this case auth_method, in each metrics.Label slice
-	sort.Slice(glv, func(i, j int) bool { return glv[i].Labels[0].Value < glv[j].Labels[0].Value })
-
-	metricLabelsMatch(t, glv[0].Labels,
-		map[string]string{
-			"namespace":   "root",
-			"auth_method": "approle",
-			"mount_point": "auth/approle/",
-		})
-
-	metricLabelsMatch(t, glv[1].Labels,
-		map[string]string{
-			"namespace":   "root",
-			"auth_method": "userpass",
-			"mount_point": "auth/userpass/",
-		})
 }

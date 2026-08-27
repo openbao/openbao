@@ -6,8 +6,6 @@ package token
 import (
 	"encoding/base64"
 	"encoding/json"
-	"reflect"
-	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -16,9 +14,7 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	credLdap "github.com/openbao/openbao/v2/internal/builtin/credential/ldap"
 	credUserpass "github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
-	"github.com/openbao/openbao/v2/internal/helper/testhelpers/ldap"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
 	"github.com/stretchr/testify/assert"
@@ -109,6 +105,8 @@ func TestTokenStore_TokenInvalidEntityID(t *testing.T) {
 	}
 }
 
+/*
+// TODO: rewrite test to not rely on LDAP plugin
 func TestTokenStore_IdentityPolicies(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
 		CredentialBackends: map[string]logical.Factory{
@@ -374,6 +372,7 @@ func TestTokenStore_IdentityPolicies(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+*/
 
 func TestTokenStore_CIDRBlocks(t *testing.T) {
 	testPolicy := `

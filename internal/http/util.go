@@ -303,9 +303,10 @@ func envoyDecodeHeader(headerValue string) (string, error) {
 	// Example:
 	// x-forwarded-client-cert: Hash=<hash>;Cert="<PEM>";Subject="CN=client,O=example",<other elements from other proxies>
 
-	headerValue += "," // Ensures that also single-element header is terminated by ','.
-	inQuotes := false  // State variable to track if we are currently within quotes.
-	pairStart := 0     // Index of the currently processed key-value pair.
+	headerValue += ","                 // Ensures that also single-element header is terminated by ','.
+	inQuotes := false                  // State variable to track if we are currently within quotes.
+	pairStart := 0                     // Index of the currently processed key-value pair.
+	results := make(map[string]string) // Map to store the extracted key-value pairs.
 
 LOOP:
 	for i := 0; i < len(headerValue); i++ {
@@ -329,13 +330,24 @@ LOOP:
 			key, value, found := strings.Cut(headerValue[pairStart:i], "=")
 			if found && (strings.EqualFold(key, "Cert") || strings.EqualFold(key, "Chain")) {
 				value = strings.Trim(value, `"`)
-				return url.QueryUnescape(value)
+				decoded, err := url.QueryUnescape(value)
+				if err != nil {
+					return "", err
+				}
+				results[key] = decoded
 			}
 			if c == ',' {
 				break LOOP // Stop parsing after the first XFCC element.
 			}
 			pairStart = i + 1 // Move to the next key-value pair.
 		}
+	}
+
+	if cert, ok := results["Chain"]; ok {
+		return cert, nil
+	}
+	if cert, ok := results["Cert"]; ok {
+		return cert, nil
 	}
 
 	return "", errors.New("neither Cert nor Chain key found in XFCC header")

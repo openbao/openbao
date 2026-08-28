@@ -67,6 +67,13 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 	clientCertBase64 := base64.StdEncoding.EncodeToString(testCert.GeneratedCert.Certificate[0])
 	clientCertPemText := string(testCert.CertPEM())
 
+	otherCert := &certyaml.Certificate{
+		Subject: "cn=other.example.com",
+	}
+	require.NoError(t, otherCert.Generate())
+
+	otherCertPemText := string(otherCert.CertPEM())
+
 	invalidBase64Values := []struct {
 		name  string
 		value string
@@ -591,6 +598,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		{"valid_envoy_xfcc_multiple_elements", "Hash=abc123;Cert=\"" + url.QueryEscape(clientCertPemText) + "\",Hash=def456;Cert=\"" + url.QueryEscape(clientCertPemText) + "\""},
 		{"valid_envoy_xfcc_subject_with_quoted_delimiters", "Subject=\"CN=client,O=example\";Cert=\"" + url.QueryEscape(clientCertPemText) + "\""},
 		{"valid_envoy_xfcc_subject_with_escaped_quote", "Subject=\"CN=John \\\"Jack\\\" Doe\";Cert=\"" + url.QueryEscape(clientCertPemText) + "\""},
+		{"valid_envoy_xfcc_cert_and_chain", "Hash=abc123;Cert=\"" + url.QueryEscape(otherCertPemText) + "\";Chain=\"" + url.QueryEscape(clientCertPemText+"\n"+clientCertPemText) + "\""}, // Test that Chain is preferred over Cert when both are present.
 	}
 
 	for _, testItem := range validXfccValues {

@@ -60,12 +60,13 @@ type PrivateKeyType string
 
 // Well-known PrivateKeyTypes
 const (
-	UnknownPrivateKey  PrivateKeyType = ""
-	RSAPrivateKey      PrivateKeyType = "rsa"
-	ECPrivateKey       PrivateKeyType = "ec"
-	Ed25519PrivateKey  PrivateKeyType = "ed25519"
+	UnknownPrivateKey PrivateKeyType = ""
+	RSAPrivateKey     PrivateKeyType = "rsa"
+	ECPrivateKey      PrivateKeyType = "ec"
+	Ed25519PrivateKey PrivateKeyType = "ed25519"
+	MLDSAPrivateKey   PrivateKeyType = "mldsa"
+
 	ExternalPrivateKey PrivateKeyType = "external-key"
-	MLDSAPrivateKey    PrivateKeyType = "mldsa"
 )
 
 // TLSUsage controls whether the intended usage of a *tls.Config

@@ -5,9 +5,7 @@ package command
 
 import (
 	"bytes"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rsa"
+	"crypto"
 	"crypto/x509"
 	"encoding/hex"
 	"errors"
@@ -20,6 +18,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/posener/complete"
 )
 
@@ -237,25 +236,8 @@ func findBitLength(publicKey any) int {
 	if publicKey == nil {
 		return 0
 	}
-	switch pub := publicKey.(type) {
-	case *rsa.PublicKey:
-		return pub.N.BitLen()
-	case *ecdsa.PublicKey:
-		switch pub.Curve {
-		case elliptic.P224():
-			return 224
-		case elliptic.P256():
-			return 256
-		case elliptic.P384():
-			return 384
-		case elliptic.P521():
-			return 521
-		default:
-			return 0
-		}
-	default:
-		return 0
-	}
+
+	return certutil.GetPublicKeySize(publicKey.(crypto.PublicKey))
 }
 
 func findSignatureBits(algo x509.SignatureAlgorithm) int {
@@ -268,7 +250,7 @@ func findSignatureBits(algo x509.SignatureAlgorithm) int {
 		return 384
 	case x509.SHA512WithRSA, x509.SHA512WithRSAPSS, x509.ECDSAWithSHA512:
 		return 512
-	case x509.PureEd25519:
+	case x509.PureEd25519, x509.MLDSA44, x509.MLDSA65, x509.MLDSA87:
 		return 0
 	default:
 		return -1

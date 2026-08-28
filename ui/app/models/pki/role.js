@@ -174,7 +174,7 @@ export default class PkiRoleModel extends Model {
   /* Overriding OpenApi Key parameters options */
   @attr('string', {
     label: 'Key type',
-    possibleValues: ['rsa', 'ec', 'ed25519', 'any'],
+    possibleValues: ['rsa', 'ec', 'ed25519', 'mldsa', 'any'],
     defaultValue: 'rsa',
   })
   keyType;

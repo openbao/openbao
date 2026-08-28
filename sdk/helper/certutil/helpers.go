@@ -41,7 +41,7 @@ const rsaMinimumSecureKeySize = 2048
 var defaultAlgorithmKeyBits = map[string]int{
 	"rsa":   2048,
 	"ec":    256,
-	"mldsa": 65,
+	"mldsa": 44,
 }
 
 // Mapping of NIST P-Curve's key length to expected signature bits.

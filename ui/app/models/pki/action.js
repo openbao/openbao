@@ -126,7 +126,7 @@ export default class PkiActionModel extends Model {
 
   @attr('string', {
     defaultValue: 'rsa',
-    possibleValues: ['rsa', 'ed25519', 'ec'],
+    possibleValues: ['rsa', 'ed25519', 'ec', 'mldsa'],
   })
   keyType;
 

@@ -5413,8 +5413,8 @@ func TestBackend_Roles_KeySizeRegression(t *testing.T) {
 		/* 15 */ {"mldsa", []int{44}, []int{0}, false, []string{"mldsa", "mldsa", "mldsa"}, []int{44, 65, 87}, false},
 		/* 16 */ {"mldsa", []int{0, 65}, []int{0}, false, []string{"mldsa", "mldsa"}, []int{65, 87}, false},
 		/* 17 */ {"mldsa", []int{87}, []int{0}, false, []string{"mldsa"}, []int{87}, false},
-		// ML-DSA 65 should reject RSA, EC, Ed25519, and ML-DSA 44 keys
-		/* 18 */ {"mldsa", []int{0}, []int{0}, false, []string{"rsa", "ec", "ed25519", "mldsa"}, []int{2048, 256, 0, 44}, true},
+		// ML-DSA 44 should reject RSA, EC, Ed25519
+		/* 18 */ {"mldsa", []int{0}, []int{0}, false, []string{"rsa", "ec", "ed25519"}, []int{2048, 256, 0}, true},
 	}
 
 	if len(testCases) != 19 {

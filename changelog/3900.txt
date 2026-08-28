@@ -1,0 +1,3 @@
+```release-note:bug
+core/ha: Fix broken cross-version request forwarding during rolling upgrades to v2.6.x from an earlier minor version.
+```

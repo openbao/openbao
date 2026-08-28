@@ -456,7 +456,7 @@ func TestPostgreSQL_Scalability(t *testing.T) {
 		require.NoError(collect, err, "failed writing k/v key")
 	}, 15*time.Second, 100*time.Millisecond)
 
-	// This should eventually be visible on the secondary node.
+	// This should eventually be visible on the third node.
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		nodeClientCfg := nodes[2].APIClient().CloneConfig()
 
@@ -480,9 +480,11 @@ func TestPostgreSQL_Scalability(t *testing.T) {
 	err = nodes[1].APIClient().Sys().Seal()
 	require.NoError(t, err)
 
-	resp, err := nodes[2].APIClient().KVv2("kv").Get(t.Context(), "a/key")
-	require.Error(t, err)
-	require.Nil(t, resp)
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		resp, err := nodes[2].APIClient().KVv2("kv").Get(t.Context(), "a/key")
+		require.ErrorContains(collect, err, "local node not active but active cluster node not found")
+		require.Nil(collect, resp)
+	}, 15*time.Second, 100*time.Millisecond)
 
 	// Unsealing should work.
 	err = testcluster.UnsealAllNodes(t.Context(), cluster)
@@ -509,6 +511,12 @@ func TestPostgreSQL_Scalability(t *testing.T) {
 		}
 	}, 15*time.Second, 100*time.Millisecond)
 
+	// Write one last value before shutting down.
+	_, err = nodes[0].APIClient().KVv2("kv").Put(t.Context(), "a/key", map[string]any{
+		"value": "one-last-value",
+	})
+	require.NoError(t, err, "failed writing k/v key")
+
 	// Taking down the primary PostgreSQL node should cause problems for all
 	// nodes talking to it.
 	require.NoError(t, pCluster.Cluster.RemovePrimary(t.Context()))
@@ -530,6 +538,18 @@ func TestPostgreSQL_Scalability(t *testing.T) {
 			require.Nil(collect, resp, "on node %v / duration: %v", index, time.Since(start))
 		}
 	}, 30*time.Second, 100*time.Millisecond)
+
+	// After a great period of time, the tertiary should be able to read
+	// because it will know that there is no primary.
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+		defer cancel()
+
+		resp, err := nodes[2].APIClient().KVv2("kv").Get(ctx, "a/key")
+		require.NoError(collect, err)
+		require.NotNil(collect, resp)
+		require.Equal(collect, resp.Data["value"], "one-last-value")
+	}, 60*time.Second, 100*time.Millisecond)
 
 	// We should be able to promote the replica and the tertiary should follow.
 	require.NoError(t, pCluster.Cluster.PromoteNode(t.Context(), 0))

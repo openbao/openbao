@@ -3907,7 +3907,9 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 		grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(math.MaxInt32),
 			grpc.MaxCallSendMsgSize(math.MaxInt32),
-		))
+		),
+		grpc.WithUnaryInterceptor(forwarding.LegacyPackageFallback),
+	)
 	if err != nil {
 		cancelFunc()
 		c.logger.Error("err setting up forwarding rpc client", "error", err)

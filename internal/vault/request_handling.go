@@ -2050,7 +2050,35 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 						return nil, nil, err
 					}
 
+					tokenEntry := logical.TokenEntry{
+						Path:           req.Path,
+						EntityID:       auth.EntityID,
+						NamespaceID:    ns.ID,
+						CreationTime:   time.Now().Unix(),
+						TTL:            defaultTOTPSelfEnrollmentTTL,
+						ExplicitMaxTTL: defaultTOTPSelfEnrollmentTTL,
+						InlinePolicy: `
+					path "sys/mfa/self-enroll/totp" {
+						capabilities = ["create", "update", "delete"]
+					}`,
+						InternalMeta: map[string]string{"request_id": mfaRequestID},
+					}
+					if err := c.CreateToken(ctx, &tokenEntry, true); err != nil {
+						return nil, nil, err
+					}
+
+					registerAuth := &logical.Auth{
+						ClientToken: tokenEntry.ID,
+						TTL:         tokenEntry.TTL,
+						Renewable:   false,
+					}
+					if err := c.expiration.RegisterAuth(ctx, &tokenEntry, registerAuth, "", true); err != nil {
+						c.tokenStore.revokeOrphan(ctx, tokenEntry.ID)
+						return nil, nil, err
+					}
+
 					resp.Auth = &logical.Auth{
+						ClientToken: tokenEntry.ExternalID,
 						TOTPSelfEnroll: &logical.TOTPSelfEnroll{
 							MFARequestID: mfaRequestID,
 							TOTPSecret:   secret.Secret(),

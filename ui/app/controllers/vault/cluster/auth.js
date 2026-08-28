@@ -53,12 +53,12 @@ export default Controller.extend({
 
   actions: {
     onAuthResponse(authResponse, backend, data) {
-      const { mfa_requirement, totp_self_enroll } = authResponse;
+      const { mfa_requirement, totp_self_enroll, client_token } = authResponse;
       // if an mfa requirement exists further action is required
       if (mfa_requirement) {
         this.set('mfaAuthData', { mfa_requirement, backend, data });
       } else if (totp_self_enroll) {
-        this.set('totpSelfEnroll', { totp_self_enroll, backend, data });
+        this.set('totpSelfEnroll', { totp_self_enroll, client_token, backend, data });
       } else {
         this.authSuccess(authResponse);
       }

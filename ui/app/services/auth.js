@@ -432,6 +432,7 @@ export default Service.extend({
     if (resp.auth?.mfa_self_enroll) {
       return {
         totp_self_enroll: resp.auth?.mfa_self_enroll,
+        client_token: resp.auth?.client_token,
       };
     }
 
@@ -443,13 +444,13 @@ export default Service.extend({
     return this.authSuccess(options, resp.auth || resp.data);
   },
 
-  async totpVerifySelfEnroll(mfa_request_id, totp_code) {
-    const resp = await this.clusterAdapter().totpVerifySelfEnroll(mfa_request_id, totp_code);
+  async totpVerifySelfEnroll(mfa_request_id, totp_code, client_token) {
+    const resp = await this.clusterAdapter().totpVerifySelfEnroll(mfa_request_id, totp_code, client_token);
     return resp;
   },
 
-  async totpRevokeSelfEnroll(mfa_request_id) {
-    const resp = await this.clusterAdapter().totpRevokeSelfEnroll(mfa_request_id);
+  async totpRevokeSelfEnroll(mfa_request_id, client_token) {
+    const resp = await this.clusterAdapter().totpRevokeSelfEnroll(mfa_request_id, client_token);
     return resp;
   },
 

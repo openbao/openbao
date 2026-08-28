@@ -44,6 +44,9 @@ export default class TotpSelfEnroll extends Component {
   get requestID() {
     return this.args.selfEnrollData.totp_self_enroll.mfa_request_id;
   }
+  get clientToken() {
+    return this.args.selfEnrollData.client_token;
+  }
 
   @task generateQrCode(totpURL) {
     QRCode.toDataURL(totpURL, {
@@ -72,7 +75,7 @@ export default class TotpSelfEnroll extends Component {
     this.success = false;
 
     try {
-      yield this.auth.totpVerifySelfEnroll(this.requestID, this.totpToken);
+      yield this.auth.totpVerifySelfEnroll(this.requestID, this.totpToken, this.clientToken);
 
       this.success = true;
       if (this.args.onSuccess) {
@@ -87,7 +90,7 @@ export default class TotpSelfEnroll extends Component {
 
   @task *revokeSelfEnroll() {
     try {
-      yield this.auth.totpRevokeSelfEnroll(this.requestID);
+      yield this.auth.totpRevokeSelfEnroll(this.requestID, this.clientToken);
 
       if (this.args.onCancel) {
         this.args.onCancel();

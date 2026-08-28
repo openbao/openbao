@@ -2175,17 +2175,25 @@ func (b *SystemBackend) totpSelfEnrollPaths() []*framework.Path {
 }
 
 func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentConfirmation(ctx context.Context, req *logical.Request, d *framework.FieldData) (retResp *logical.Response, retErr error) {
-	requestID := d.Get("request_id")
-	if requestID == "" {
+	requestID, ok := d.Get("request_id").(string)
+	if !ok || requestID == "" {
 		return logical.ErrorResponse("missing request ID"), nil
 	}
 
-	totpCode := d.Get("totp_code")
-	if totpCode == "" {
+	totpCode, ok := d.Get("totp_code").(string)
+	if !ok || totpCode == "" {
 		return logical.ErrorResponse("missing totp code"), nil
 	}
 
-	totpSelfEnroll, err := b.Core.PopTOTPSelfEnrollByID(requestID.(string))
+	tokenEntry, err := b.Core.tokenStore.Lookup(ctx, req.ClientToken)
+	if err != nil || tokenEntry == nil {
+		return logical.ErrorResponse("token lookup failed"), nil
+	}
+	if tokenEntry.InternalMeta["request_id"] != requestID {
+		return logical.ErrorResponse("invalid request ID"), nil
+	}
+
+	totpSelfEnroll, err := b.Core.PopTOTPSelfEnrollByID(requestID)
 	if err != nil || totpSelfEnroll == nil {
 		return logical.ErrorResponse("invalid request ID"), nil
 	}
@@ -2243,7 +2251,7 @@ func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentConfirmation(ctx cont
 		return nil, fmt.Errorf("maximum self enroll TOTP validation attempts %d exceeded the allowed attempts %d: %w", numAttempts, totpConfig.MaxValidationAttempts, logical.ErrRateLimitQuotaExceeded)
 	}
 
-	valid, err := totplib.ValidateCustom(totpCode.(string), totpSelfEnroll.TOTPSecret, time.Now(), totplib.ValidateOpts{
+	valid, err := totplib.ValidateCustom(totpCode, totpSelfEnroll.TOTPSecret, time.Now(), totplib.ValidateOpts{
 		Period:    uint(totpConfig.Period),
 		Skew:      uint(totpConfig.Skew),
 		Digits:    otplib.Digits(totpConfig.Digits),
@@ -2299,18 +2307,35 @@ func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentConfirmation(ctx cont
 		return nil, fmt.Errorf("failed to persist MFA secret in entity: %w", err)
 	}
 
+	if err := b.Core.tokenStore.revokeOrphan(ctx, req.ClientToken); err != nil {
+		b.Core.logger.Warn("failed to revoke self-enrollment token after successful enrollment", "error", err)
+	}
+
 	return &logical.Response{}, nil
 }
 
 func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentDeletion(ctx context.Context, req *logical.Request, d *framework.FieldData) (retResp *logical.Response, retErr error) {
-	requestID := d.Get("request_id")
-	if requestID == "" {
+	requestID, ok := d.Get("request_id").(string)
+	if !ok || requestID == "" {
 		return logical.ErrorResponse("missing request ID"), nil
 	}
 
-	totpSelfEnroll, err := b.Core.PopTOTPSelfEnrollByID(requestID.(string))
+	tokenEntry, err := b.Core.tokenStore.Lookup(ctx, req.ClientToken)
+	if err != nil || tokenEntry == nil {
+		return logical.ErrorResponse("token lookup failed"), nil
+	}
+	if tokenEntry.InternalMeta["request_id"] != requestID {
+		return logical.ErrorResponse("invalid request ID"), nil
+	}
+
+	totpSelfEnroll, err := b.Core.PopTOTPSelfEnrollByID(requestID)
 	if err != nil || totpSelfEnroll == nil {
 		return logical.ErrorResponse("invalid request ID"), nil
 	}
+
+	if err := b.Core.tokenStore.revokeOrphan(ctx, req.ClientToken); err != nil {
+		b.Core.logger.Warn("failed to revoke self-enrollment token after cancelling enrollment", "error", err)
+	}
+
 	return &logical.Response{}, nil
 }

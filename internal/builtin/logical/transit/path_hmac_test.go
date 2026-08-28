@@ -21,6 +21,10 @@ func TestTransit_HMAC(t *testing.T) {
 		Storage:   storage,
 		Operation: logical.UpdateOperation,
 		Path:      "keys/" + keyName,
+		Data: map[string]any{
+			"type":     "hmac",
+			"key_size": 32,
+		},
 	}
 	_, err := b.HandleRequest(t.Context(), req)
 	require.NoError(t, err)
@@ -35,7 +39,6 @@ func TestTransit_HMAC(t *testing.T) {
 	// We don't care as we're the only one using this
 	latestVersion := strconv.Itoa(p.LatestVersion)
 	keyEntry := p.Keys[latestVersion]
-	keyEntry.HMACKey = []byte("01234567890123456789012345678901")
 	keyEntry.Key = []byte("01234567890123456789012345678901")
 	p.Keys[latestVersion] = keyEntry
 	require.NoError(t, p.Persist(t.Context(), storage))
@@ -134,7 +137,7 @@ func TestTransit_HMAC(t *testing.T) {
 	require.NoError(t, p.Rotate(t.Context(), storage, b.GetRandomReader()))
 	keyEntry = p.Keys["2"]
 	// Set to another value we control
-	keyEntry.HMACKey = []byte("12345678901234567890123456789012")
+	keyEntry.Key = []byte("12345678901234567890123456789012")
 	p.Keys["2"] = keyEntry
 	require.NoError(t, p.Persist(t.Context(), storage))
 

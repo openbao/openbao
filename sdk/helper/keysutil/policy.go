@@ -110,6 +110,7 @@ type BackupInfo struct {
 
 type SigningOptions struct {
 	HashAlgorithm      HashType
+	Prehashed          bool
 	Marshaling         MarshalingType
 	SaltLength         int
 	SigAlgorithm       string
@@ -153,7 +154,7 @@ func (kt KeyType) SigningSupported() bool {
 
 func (kt KeyType) HashSignatureInput() bool {
 	switch kt {
-	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096, KeyType_ExternalKey:
+	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
 		return true
 	}
 	return false
@@ -189,6 +190,19 @@ func (kt KeyType) ImportPublicKeySupported() bool {
 		return true
 	}
 	return false
+}
+
+func (kt KeyType) DefaultHashAlgorithm() HashType {
+	switch kt {
+	case KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
+		return HashTypeSHA2256
+	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521:
+		return HashTypeSHA2256
+	case KeyType_HMAC:
+		return HashTypeSHA2256
+	default:
+		return HashTypeNone
+	}
 }
 
 func (kt KeyType) String() string {
@@ -1155,7 +1169,7 @@ func (p *Policy) DecryptWithFactory(derivationContext, nonce []byte, value strin
 
 		plain, err = key.Decrypt(ctx, opts)
 		if err != nil {
-			return "", fmt.Errorf("call to Decrypt with external key failed: %w", err)
+			return "", fmt.Errorf("failed to decrypt with external key: %w", err)
 		}
 
 	default:
@@ -1391,14 +1405,26 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 		}
 
 		opts := &kms.SignOptions{
-			Data:       input,
-			SignerOpts: algo,
-			Prehashed:  true,
+			Data:      input,
+			Prehashed: options.Prehashed,
+		}
+
+		if sigAlgorithm == "" {
+			sigAlgorithm = "pss"
+		}
+
+		if sigAlgorithm == "pss" {
+			opts.SignerOpts = &rsa.PSSOptions{
+				Hash:       algo,
+				SaltLength: saltLength,
+			}
+		} else {
+			opts.SignerOpts = algo
 		}
 
 		sig, err = key.Sign(ctx, opts)
 		if err != nil {
-			return nil, fmt.Errorf("call to Sign with external key failed: %w", err)
+			return nil, fmt.Errorf("failed to sign with external key: %w", err)
 		}
 
 	default:
@@ -1618,15 +1644,27 @@ func (p *Policy) VerifySignatureWithOptions(derivationContext, input []byte, sig
 		}
 
 		opts := &kms.VerifyOptions{
-			Data:       input,
-			Signature:  sigBytes,
-			SignerOpts: algo,
-			Prehashed:  true,
+			Data:      input,
+			Signature: sigBytes,
+			Prehashed: options.Prehashed,
+		}
+
+		if sigAlgorithm == "" {
+			sigAlgorithm = "pss"
+		}
+
+		if sigAlgorithm == "pss" {
+			opts.SignerOpts = &rsa.PSSOptions{
+				Hash:       algo,
+				SaltLength: saltLength,
+			}
+		} else {
+			opts.SignerOpts = algo
 		}
 
 		err = key.Verify(ctx, opts)
 		if err != nil {
-			return false, fmt.Errorf("call to Verify with external key failed: %w", err)
+			return false, fmt.Errorf("failed to verify with external key: %w", err)
 		}
 
 		return err == nil, nil
@@ -2359,7 +2397,7 @@ func (p *Policy) EncryptWithFactory(ver int, derivationContext []byte, nonce []b
 
 		ciphertext, err = key.Encrypt(ctx, opts)
 		if err != nil {
-			return "", fmt.Errorf("call to Encrypt with external key failed: %w", err)
+			return "", fmt.Errorf("failed to encrypt with external key: %w", err)
 		}
 	default:
 		return "", errutil.InternalError{Err: fmt.Sprintf("unsupported key type %v", p.Type)}

@@ -59,11 +59,26 @@ This is again similar to `mfaResponseAuthQueue`.
 
 This means queued self-enrollments don't survive an active-node change.
 
+### Authorizing confirmation and cancellation
+
+A valid request id alone does not authorize a call to the confirmation or cancellation endpoints.
+When `findSelfEnrollableTOTPMethod` decides to self-enroll the user, `internal/vault/request_handling.go` also mints a token specifically for self enrollment.
+This token:
+
+- carries an inline policy scoped to only `sys/mfa/self-enroll/totp` (`create`, `update`, `delete`) and nothing else
+- is bound to this specific enrollment attempt via `InternalMeta["request_id"]`
+- shares the same TTL and `ExplicitMaxTTL` as the queue entry (`defaultTOTPSelfEnrollmentTTL`)
+
+It is returned to the client as `client_token` alongside the QR code/secret payload, and must be presented on both the confirmation and cancellation calls.
+The token is not single-use: a wrong TOTP code does not consume it, so retries stay bounded by the token's TTL and the rate-limiting than by exhausting the token.
+
 ### Confirmation and cancellation endpoints
 
-Two new unauthenticated system paths are added to `SystemBackend` (`internal/vault/login_mfa.go`):
+Two new system paths are added to `SystemBackend` (`internal/vault/login_mfa.go`), both requiring the token described above:
 
 - `POST /v1/sys/mfa/self-enroll/totp` (`request_id`, `totp_code`) -
+  looks up the presented token and rejects the request if its bound
+  `InternalMeta["request_id"]` does not match the supplied `request_id`, then
   pops the pending entry by ID, verifies the confirming request is in the
   same namespace it was issued in and rate-limits validation attempts using the same `rateLimits` cache the
   standard MFA validation path uses (keyed as `<methodID>_<entityID>_selfenroll` to not conflict with it,
@@ -73,10 +88,14 @@ Two new unauthenticated system paths are added to `SystemBackend` (`internal/vau
   TOTP enrollment uses, and writes the `mfa.Secret` into `entity.MFASecrets`.
   If confirmation fails at any point after popping the
   entry, it's pushed back onto the queue so the user can retry within the
-  remaining TTL rather than having to restart self-enrollment. This mimics the `mfaResponseAuthQueue` as well
+  remaining TTL rather than having to restart self-enrollment. This mimics the `mfaResponseAuthQueue` as well.
+  On success the server revokes the token itself.
 - `DELETE /v1/sys/mfa/self-enroll/totp` (`request_id`) -
-  pops and discards the pending entry, invalidating it without persisting anything.
+  same token and request id check, then pops and discards the pending entry,
+  invalidating it without persisting anything, and revokes the token itself.
   Used when the user cancels enrollment client-side.
+
+Revocation happens server-side in both cases rather than relying on the client to separately call `auth/token/revoke-self`.
 
 ### Finalize the self-enrollment
 
@@ -92,13 +111,16 @@ As the confirmation and cancellation are requests the client has to send, these 
 
 The auth controller (`ui/app/controllers/vault/cluster/auth.js`, which handles the login) checks for the new `mfa_self_enroll` response field and routes to a new `Mfa::TotpSelfEnroll` component.
 The component renders a QR code client-side (via the `qrcode` package, from the returned `totp_url`) and the raw secret as a fallback, and submits the confirmation or cancellation calls through two new `cluster` adapter methods that wrap the endpoints mentioned above.
+The `client_token` returned alongside the enrollment data is threaded through the auth controller and component down to those adapter methods, which use it to authenticate against the endpoints.
 On success, the user is bounced back to the login form with a message asking them to log in again. When cancelled, the success of that is also sent to the user through that way.
 
 ## Rationale and alternatives
 
-### One-time token to generate a TOTP secret vs the self-enrollment system
+### Single use token vs reusable token
 
-The self-enrollment system is the barrier of entry, when a second factor is required. While OpenBao could just generate a one-time-usage token for the `/identity/mfa/method/totp/generate` endpoint, this would require equally as much work, while also creating a valid token that leaves more surface area to be attacked.
+The current minted token is not single use and in effect allows for multiple attempts at self enrollment. While this sounds insecure, the token is scoped, timed and gets forcefully revoked by the server when its purpose has been fulfilled.
+
+While a single use token would theoretically be more secure, the UX impact as well as the actual security gain would need to be weighed against each other.
 
 ### Completing login vs log in again after enrollment
 
@@ -113,7 +135,7 @@ This leads to loss of state on failover between nodes, which is intended, as the
 
 - The self-enrollment queue silently doesn't survive active node changes or restarts
 - Re-login is a worse experience for the user
-- Confirmation but especially the invalidation of a self-enrollment attempt hinge on the request uuid
+- Confirmation and cancellation hinge on possession of the request-scoped token, not on re-proving the enrolling identity - anyone holding both the token and the request id can complete or cancel the enrollment
 - Loss of admin driven MFA enrollment for TOTP
 
 ## Security Implications
@@ -127,9 +149,15 @@ While this already requires a valid username and password, this should still be 
 
 The TOTP secret as well as init url (which also includes the secret) are send to the user in a HTTP request as well as stored in memory as plaintext.
 
-### Self-Enrollment confirmation endpoint is unauthenticated
+### Confirmation and cancellation are authorized by a token minted without a second factor
 
-Out of necessity the endpoint to confirm TOTP self-enrollment is unauthenticated and only protected through the request id.
+The token that authorizes the confirmation and cancellation endpoints (see "Authorizing confirmation and cancellation" above) is itself issued right after first-factor auth, before any second factor is proven - the same trust boundary noted in "Primary auth leads to full trust" applies to it.
+Its possible impact is kept deliberately small:
+
+- it can only call the two self-enrollment paths
+- it is bound to a single request id
+- it lives no longer than the enrollment window
+- the server revokes it as soon as the enrollment is confirmed or cancelled.
 
 ## User/Developer Experience
 

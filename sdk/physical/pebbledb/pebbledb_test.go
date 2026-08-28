@@ -14,7 +14,7 @@ func TestPebbleDBBackend(t *testing.T) {
 	t.Parallel()
 
 	opts := map[string]string{
-		"directory": ":memory:",
+		"path": ":memory:",
 	}
 
 	logger := logging.NewVaultLogger(log.Debug)

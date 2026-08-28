@@ -34,7 +34,6 @@ var (
 // expected to be durable.
 type InmemBackend struct {
 	parent     physical.Backend
-	permitPool *physical.PermitPool
 	logger     log.Logger
 	failGet    atomic.Bool
 	failPut    atomic.Bool
@@ -45,10 +44,10 @@ type InmemBackend struct {
 
 var _ physical.Backend = &InmemBackend{}
 
+// TransactionalInmemBackend is only separate right now as logical.Storage is
+// separate and backends may want to test non-transactional storage devices.
 type TransactionalInmemBackend struct {
 	InmemBackend
-
-	txnPermitPool *physical.PermitPool
 }
 
 var _ physical.TransactionalBackend = &TransactionalInmemBackend{}
@@ -119,7 +118,7 @@ func NewDirectInmem(conf map[string]string, logger log.Logger) (physical.Backend
 		conf = map[string]string{}
 	}
 
-	conf["directory"] = ":memory:"
+	conf["path"] = ":memory:"
 	backend, err := pebbledb.NewBackend(conf, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error creating underlying implementation: %w", err)
@@ -138,10 +137,9 @@ func NewDirectInmem(conf map[string]string, logger log.Logger) (physical.Backend
 	logger = logger.Named("inmem")
 
 	return &InmemBackend{
-		parent:     backend,
-		permitPool: physical.NewPermitPool(physical.DefaultParallelOperations),
-		logger:     logger,
-		logOps:     doLog,
+		parent: backend,
+		logger: logger,
+		logOps: doLog,
 	}, nil
 }
 
@@ -158,15 +156,11 @@ func NewInmem(conf map[string]string, logger log.Logger) (physical.Backend, erro
 
 	return &TransactionalInmemBackend{
 		*b.(*InmemBackend),
-		physical.NewPermitPool(physical.DefaultParallelOperations),
 	}, nil
 }
 
 // Put is used to insert or update an entry
 func (i *InmemBackend) Put(ctx context.Context, entry *physical.Entry) error {
-	i.permitPool.Acquire()
-	defer i.permitPool.Release()
-
 	if i.logOps {
 		i.logger.Trace("put", "key", entry.Key)
 	}
@@ -175,8 +169,7 @@ func (i *InmemBackend) Put(ctx context.Context, entry *physical.Entry) error {
 		return ErrPutDisabled
 	}
 
-	err := i.parent.Put(ctx, entry)
-	return err
+	return i.parent.Put(ctx, entry)
 }
 
 func (i *InmemBackend) FailPut(fail bool) {
@@ -185,9 +178,6 @@ func (i *InmemBackend) FailPut(fail bool) {
 
 // Get is used to fetch an entry
 func (i *InmemBackend) Get(ctx context.Context, key string) (*physical.Entry, error) {
-	i.permitPool.Acquire()
-	defer i.permitPool.Release()
-
 	if i.logOps {
 		i.logger.Trace("get", "key", key)
 	}
@@ -196,8 +186,7 @@ func (i *InmemBackend) Get(ctx context.Context, key string) (*physical.Entry, er
 		return nil, ErrGetDisabled
 	}
 
-	entry, err := i.parent.Get(ctx, key)
-	return entry, err
+	return i.parent.Get(ctx, key)
 }
 
 func (i *InmemBackend) FailGet(fail bool) {
@@ -206,9 +195,6 @@ func (i *InmemBackend) FailGet(fail bool) {
 
 // Delete is used to permanently delete an entry
 func (i *InmemBackend) Delete(ctx context.Context, key string) error {
-	i.permitPool.Acquire()
-	defer i.permitPool.Release()
-
 	if i.logOps {
 		i.logger.Trace("delete", "key", key)
 	}
@@ -217,8 +203,7 @@ func (i *InmemBackend) Delete(ctx context.Context, key string) error {
 		return ErrDeleteDisabled
 	}
 
-	err := i.parent.Delete(ctx, key)
-	return err
+	return i.parent.Delete(ctx, key)
 }
 
 func (i *InmemBackend) FailDelete(fail bool) {
@@ -235,9 +220,6 @@ func (i *InmemBackend) List(ctx context.Context, prefix string) ([]string, error
 // prefix, up to the next prefix, but limiting to a
 // specified number of keys after a given entry.
 func (i *InmemBackend) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
-	i.permitPool.Acquire()
-	defer i.permitPool.Release()
-
 	if i.logOps {
 		i.logger.Trace("list", "prefix", prefix, "after", after, "limit", limit)
 	}
@@ -246,8 +228,7 @@ func (i *InmemBackend) ListPage(ctx context.Context, prefix string, after string
 		return nil, ErrListDisabled
 	}
 
-	results, err := i.parent.ListPage(ctx, prefix, after, limit)
-	return results, err
+	return i.parent.ListPage(ctx, prefix, after, limit)
 }
 
 func (i *InmemBackend) FailList(fail bool) {
@@ -274,14 +255,11 @@ func (i *TransactionalInmemBackend) BeginTx(ctx context.Context) (physical.Trans
 
 func (i *TransactionalInmemBackend) beginTxn(ctx context.Context, parent physical.Transaction) (physical.Transaction, error) {
 	// Grab a transaction pool instance.
-	i.txnPermitPool.Acquire()
-
 	tx := &InmemBackendTransaction{
 		InmemBackend: InmemBackend{
-			parent:     parent,
-			permitPool: physical.NewPermitPool(physical.DefaultParallelOperations),
-			logger:     i.logger,
-			logOps:     i.logOps,
+			parent: parent,
+			logger: i.logger,
+			logOps: i.logOps,
 		},
 		parent: i,
 	}
@@ -295,21 +273,9 @@ func (i *TransactionalInmemBackend) beginTxn(ctx context.Context, parent physica
 }
 
 func (i *InmemBackendTransaction) Commit(ctx context.Context) error {
-	defer func() {
-		if i.committed.CompareAndSwap(false, true) {
-			i.parent.txnPermitPool.Release()
-		}
-	}()
-
 	return i.InmemBackend.parent.(physical.Transaction).Commit(ctx)
 }
 
 func (i *InmemBackendTransaction) Rollback(ctx context.Context) error {
-	defer func() {
-		if i.committed.CompareAndSwap(false, true) {
-			i.parent.txnPermitPool.Release()
-		}
-	}()
-
 	return i.InmemBackend.parent.(physical.Transaction).Rollback(ctx)
 }

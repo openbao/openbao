@@ -614,10 +614,10 @@ func ExerciseTransactionalBackend(t testing.TB, b TransactionalBackend) {
 	require.NoError(t, err, "failed to list entries")
 	require.Equal(t, entries, []string{"foo"}, "expected one entry in testing/ storage")
 	err = txn.Delete(context.Background(), "testing/foo")
-	require.NoError(t, err, "failed to write entry")
+	require.NoError(t, err, "failed to delete entry")
 	entry, err = txn.Get(context.Background(), "foo")
 	require.NoError(t, err, "failed to read entry")
-	require.Nil(t, entry, "expected to get a non-empty entry")
+	require.Nil(t, entry, "expected to get nil entry")
 	entries, err = txn.List(context.Background(), "")
 	require.NoError(t, err, "failed to list entries")
 	require.Empty(t, entries, "expected no entries in root storage")
@@ -900,10 +900,10 @@ func testTransactionalMixedWriters(t testing.TB, b TransactionalBackend) {
 	var wgWriters sync.WaitGroup
 	var wgReaders sync.WaitGroup
 	var done atomic.Bool
-	numFiles := 2
-	numWriters := 2
-	numWrites := 2
-	numReaders := 2
+	numFiles := 25
+	numWriters := 100
+	numWrites := 25
+	numReaders := 25
 	readBreak := 5
 	var numErrors atomic.Int32
 	for i := 1; i <= numWriters; i++ {

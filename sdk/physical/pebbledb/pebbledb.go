@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"os"
 	"path"
 	"runtime"
 	"slices"
@@ -46,8 +47,7 @@ this would necessitate holding and grabbing a global write lock for this.
 type Backend struct {
 	logger log.Logger
 
-	db   *pebble.DB
-	sync bool
+	db *pebble.DB
 
 	lock sync.RWMutex
 	txns map[string]weak.Pointer[Transaction]
@@ -59,13 +59,13 @@ var (
 )
 
 // NewBackend constructs a PebbleDB backend using the given
-// API client, server address, credentials, and database.
+// path. Optionally it can be marked read-only.
 func NewBackend(conf map[string]string, logger log.Logger) (physical.Backend, error) {
 	var err error
 
-	dir, ok := conf["directory"]
-	if !ok || dir == "" {
-		return nil, errors.New("missing or empty parameter 'directory'")
+	path, ok := conf["path"]
+	if !ok || path == "" {
+		return nil, errors.New("missing or empty parameter 'path'")
 	}
 
 	readOnly := false
@@ -78,12 +78,16 @@ func NewBackend(conf map[string]string, logger log.Logger) (physical.Backend, er
 	}
 
 	var fs vfs.FS
-	if dir == ":memory:" {
-		dir = ""
+	if path == ":memory:" {
+		path = ""
 		fs = vfs.NewMem()
+	} else {
+		if err := os.MkdirAll(path, 0o700); err != nil {
+			return nil, fmt.Errorf("failed to create 'path': %w", err)
+		}
 	}
 
-	db, err := pebble.Open(dir, &pebble.Options{
+	db, err := pebble.Open(path, &pebble.Options{
 		ReadOnly: readOnly,
 		FS:       fs,
 	})
@@ -146,7 +150,7 @@ func (b *Backend) putInternal(ctx context.Context, view pebble.Writer, entry *ph
 	}
 
 	if err := view.Set([]byte(entry.Key), entry.Value, &pebble.WriteOptions{
-		Sync: b.sync,
+		Sync: true,
 	}); err != nil {
 		return err
 	}
@@ -228,7 +232,7 @@ func (b *Backend) deleteInternal(ctx context.Context, view pebble.Writer, key st
 	}
 
 	if err := view.Delete([]byte(key), &pebble.WriteOptions{
-		Sync: b.sync,
+		Sync: true,
 	}); err != nil {
 		return err
 	}
@@ -525,7 +529,7 @@ func (t *Transaction) Commit(ctx context.Context) error {
 	}
 
 	if err := batch.Commit(&pebble.WriteOptions{
-		Sync: t.parent.sync,
+		Sync: true,
 	}); err != nil {
 		return fmt.Errorf("error during commit: %w", err)
 	}

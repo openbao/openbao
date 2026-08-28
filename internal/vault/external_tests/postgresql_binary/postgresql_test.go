@@ -396,10 +396,12 @@ func TestPostgreSQL_Scalability(t *testing.T) {
 	})
 	require.NoError(t, err, "failed to mount kv")
 
-	_, err = client.KVv2("kv").Put(t.Context(), "a/key", map[string]any{
-		"value": "known-value",
-	})
-	require.NoError(t, err, "failed writing k/v key")
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		_, err = client.KVv2("kv").Put(t.Context(), "a/key", map[string]any{
+			"value": "known-value",
+		})
+		require.NoError(collect, err, "failed writing k/v key")
+	}, 10*time.Second, 100*time.Millisecond)
 
 	// Read the key; it should exist.
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {

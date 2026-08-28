@@ -297,10 +297,12 @@ func (core *Core) AwaitInvalidation(ctx context.Context, cleanup func(), index s
 // started tracking invalidations, any invalidations which we get will be
 // queued locally.
 func (core *Core) AwaitReplication(ctx context.Context) error {
-	core.requestForwardingConnectionLock.RLock()
-	activeIndex, err := core.rpcForwardingClient.CheckReplicationIndex(ctx)
-	core.requestForwardingConnectionLock.RUnlock()
+	client := core.rpcForwardingClient.Load()
+	if client == nil {
+		return errors.New("no replication forwarding client")
+	}
 
+	activeIndex, err := client.CheckReplicationIndex(ctx)
 	if err != nil {
 		return err
 	}

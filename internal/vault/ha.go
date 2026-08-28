@@ -1025,10 +1025,7 @@ func (c *Core) setupGRPCStandbyInvalidations(ctx context.Context) bool {
 		return false
 	}
 
-	c.requestForwardingConnectionLock.RLock()
-	defer c.requestForwardingConnectionLock.RUnlock()
-
-	if c.rpcForwardingClient == nil {
+	if c.rpcForwardingClient.Load() == nil {
 		// When the active node has not indicated a cluster address
 		// or there's a problem connecting, we may not have a
 		// forwarding client. This renders us unable to perform any
@@ -1053,7 +1050,13 @@ func (c *Core) setupGRPCStandbyInvalidations(ctx context.Context) bool {
 	c.LocalGRPCDispatching()
 
 	// Start streaming invalidation events from the primary.
-	if err := c.rpcForwardingClient.StreamInvalidations(ctx); err != nil {
+	client := c.rpcForwardingClient.Load()
+	if client == nil {
+		c.logger.Error("unexpectedly nil replication forwarding client")
+		return false
+	}
+
+	if err := client.StreamInvalidations(ctx); err != nil {
 		c.logger.Error("failed to begin streaming invalidations", "err", err)
 		return false
 	}
@@ -1537,25 +1540,44 @@ func (c *Core) clearLeader(uuid string) error {
 	return c.barrier.Delete(context.Background(), key)
 }
 
+func isCacheInvalidationBackend(phys physical.Backend) bool {
+	_, ok := phys.(physical.CacheInvalidationBackend)
+	return ok
+}
+
+func isReplicationIndexBackend(phys physical.Backend) bool {
+	_, ok := phys.(physical.ReplicationIndexBackend)
+	return ok
+}
+
+func shouldUseGRPCInvalidation(phys physical.Backend) bool {
+	return !isCacheInvalidationBackend(phys) && isReplicationIndexBackend(phys)
+}
+
+func (c *Core) standbyReadsAllowed() bool {
+	if conf := c.rawConfig.Load(); conf != nil {
+		return !conf.DisableStandbyReads
+	}
+	return false
+}
+
+func (c *Core) haveForwardingClient() bool {
+	return c.rpcForwardingClient.Load() != nil
+}
+
+func (c *Core) shouldHookInvalidate(phys physical.Backend) bool {
+	return c.standbyReadsAllowed() && isCacheInvalidationBackend(c.underlyingPhysical)
+}
+
 // StandbyReadsEnabled returns true iff standby read are enabled, supported,
 // and likely immediately usable by the physical backend.
-// /
+//
 // Notably, when GRPC-based invalidation is in use and the underlying GRPC
 // client is not connected, we return false here.
 func (c *Core) StandbyReadsEnabled() bool {
-	if shouldUseGRPCInvalidation(c.underlyingPhysical) {
-		if c.rpcForwardingClient == nil {
-			return false
-		}
-	} else if _, ok := c.underlyingPhysical.(physical.CacheInvalidationBackend); !ok {
-		return false
-	}
-
-	conf := c.rawConfig.Load()
-	if conf == nil {
-		return false
-	}
-	return !conf.DisableStandbyReads
+	return c.standbyReadsAllowed() &&
+		(isCacheInvalidationBackend(c.underlyingPhysical) ||
+			(isReplicationIndexBackend(c.underlyingPhysical) && c.haveForwardingClient()))
 }
 
 // MaybeStandbyReadsEnabled is like StandbyReadsEnabled but returns true in
@@ -1566,5 +1588,7 @@ func (c *Core) StandbyReadsEnabled() bool {
 // forwarding client is not connected because it will opportunistically
 // attempt to set it up if its missing and we need it.
 func (c *Core) MaybeStandbyReadsEnabled() bool {
-	return c.StandbyReadsEnabled() || shouldUseGRPCInvalidation(c.underlyingPhysical)
+	return c.standbyReadsAllowed() &&
+		(isCacheInvalidationBackend(c.underlyingPhysical) ||
+			isReplicationIndexBackend(c.underlyingPhysical))
 }

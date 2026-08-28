@@ -448,9 +448,6 @@ type Core struct {
 	clusterListenerAddrs []*net.TCPAddr
 	// The handler to use for request forwarding
 	clusterHandler http.Handler
-	// Write lock used to ensure that we don't have multiple connections adjust
-	// this value at the same time
-	requestForwardingConnectionLock sync.RWMutex
 	// Lock for the leader values, ensuring we don't run the parts of Leader()
 	// that change things concurrently
 	leaderParamsLock sync.RWMutex
@@ -458,16 +455,14 @@ type Core struct {
 	clusterLeaderParams atomic.Pointer[ClusterLeaderParams]
 	// Info on cluster members
 	clusterPeerClusterAddrsCache *zcache.Cache[string, forwarding.NodeHAConnectionInfo]
-	// The context for the client
-	rpcClientConnContext context.Context
-	// The function for canceling the client connection
-	rpcClientConnCancelFunc context.CancelFunc
-	// The grpc ClientConn for RPC calls
-	rpcClientConn *grpc.ClientConn
-	// The grpc forwarding client
-	rpcForwardingClient *forwarding.Client
 	// The UUID used to hold the leader lock. Only set on active node
 	leaderUUID string
+
+	// Request forwarding information
+	// The context for the client
+	rpcClientConnContext atomic.Pointer[atomicContext]
+	// The grpc forwarding client
+	rpcForwardingClient atomic.Pointer[forwarding.Client]
 
 	// CORS Information
 	corsConfig *CORSConfig
@@ -1065,24 +1060,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	return c, nil
-}
-
-func shouldUseGRPCInvalidation(phys physical.Backend) bool {
-	if _, ok := phys.(physical.CacheInvalidationBackend); ok {
-		return false
-	}
-
-	_, ok := phys.(physical.ReplicationIndexBackend)
-	return ok
-}
-
-func (c *Core) shouldHookInvalidate(phys physical.Backend) bool {
-	if !c.StandbyReadsEnabled() {
-		return false
-	}
-
-	_, ok := phys.(physical.CacheInvalidationBackend)
-	return ok
 }
 
 func coreInit(c *Core, conf *CoreConfig) error {
@@ -2101,9 +2078,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 	c.logger.Info("marked as sealed")
 
 	// Clear forwarding clients
-	c.requestForwardingConnectionLock.Lock()
 	c.clearForwardingClients()
-	c.requestForwardingConnectionLock.Unlock()
 
 	activeCtxCancel := c.activeContext.Load().Canceler()
 	cancelCtxAndLock := func() {
@@ -2217,9 +2192,7 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	c.logger.Debug("standard unseal starting")
 
 	// Clear forwarding clients; we're active
-	c.requestForwardingConnectionLock.Lock()
 	c.clearForwardingClients()
-	c.requestForwardingConnectionLock.Unlock()
 
 	if shouldUseGRPCInvalidation(c.underlyingPhysical) {
 		c.SetupInvalidationPeers()
@@ -2308,7 +2281,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupMounts(ctx); err != nil {
 		return err
 	}
-	if err := c.setupPolicyStore(ctx); err != nil {
+	if err := c.setupPolicyStore(ctx, standby); err != nil {
 		return err
 	}
 	if err := c.loadCORSConfig(ctx); err != nil {
@@ -3850,9 +3823,7 @@ func (c *Core) startForwarding(ctx context.Context) error {
 	defer c.logger.Debug("leaving request forwarding setup function")
 
 	// Clean up in case we have transitioned from a client to a server
-	c.requestForwardingConnectionLock.Lock()
 	c.clearForwardingClients()
-	c.requestForwardingConnectionLock.Unlock()
 
 	clusterListener := c.getClusterListener()
 	if c.ha == nil || clusterListener == nil {
@@ -3892,9 +3863,6 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 	c.logger.Debug("refreshing forwarding connection", "clusterAddr", clusterAddr)
 	defer c.logger.Debug("done refreshing forwarding connection", "clusterAddr", clusterAddr)
 
-	c.requestForwardingConnectionLock.Lock()
-	defer c.requestForwardingConnectionLock.Unlock()
-
 	// Clean things up first
 	c.clearForwardingClients()
 
@@ -3928,7 +3896,7 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 	// ALPN header right. It's just "insecure" because GRPC isn't managing
 	// the TLS state.
 	dctx, cancelFunc := context.WithCancel(ctx)
-	c.rpcClientConn, err = grpc.NewClient(fmt.Sprintf("passthrough:///%s", clusterURL.Host),
+	rpcClientConn, err := grpc.NewClient(fmt.Sprintf("passthrough:///%s", clusterURL.Host),
 		grpc.WithContextDialer(clusterListener.GetContextDialerFunc(ctx, consts.RequestForwardingALPN)),
 		grpc.WithTransportCredentials(
 			insecure.NewCredentials(), // it's not, we handle it in the dialer
@@ -3945,16 +3913,20 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 		c.logger.Error("err setting up forwarding rpc client", "error", err)
 		return err
 	}
-	c.rpcClientConnContext = dctx
-	c.rpcClientConnCancelFunc = cancelFunc
-	c.rpcForwardingClient = forwarding.NewClient(
+
+	client := forwarding.NewClient(
 		c,
-		forwarding.NewRequestForwardingClient(c.rpcClientConn),
+		rpcClientConn,
 		dctx,
 		time.NewTicker(c.clusterHeartbeatInterval),
 		time.NewTicker(c.clusterNamespaceSyncInterval),
 	)
-	c.rpcForwardingClient.Start()
+	client.Start()
+
+	oldCtx := c.rpcClientConnContext.Swap(NewAtomicContext(dctx, cancelFunc))
+	oldCtx.Cancel()
+
+	c.rpcForwardingClient.Store(client)
 
 	if _, ok := c.underlyingPhysical.(physical.CacheInvalidationBackend); !ok {
 		c.logger.Info("restarting standby as active node has changed; may enable grpc invalidation")
@@ -3968,21 +3940,14 @@ func (c *Core) clearForwardingClients() {
 	c.logger.Debug("clearing forwarding clients")
 	defer c.logger.Debug("done clearing forwarding clients")
 
-	c.rpcForwardingClient.StopInvalidations()
+	c.rpcClientConnContext.Load().Cancel()
 
-	if c.rpcClientConnCancelFunc != nil {
-		c.rpcClientConnCancelFunc()
-		c.rpcClientConnCancelFunc = nil
-	}
-	if c.rpcClientConn != nil {
-		if err := c.rpcClientConn.Close(); err != nil {
+	client := c.rpcForwardingClient.Swap(nil)
+	if client != nil {
+		if err := client.Stop(); err != nil {
 			c.logger.Warn("error closing rpc client connection", "error", err)
 		}
-		c.rpcClientConn = nil
 	}
-
-	c.rpcClientConnContext = nil
-	c.rpcForwardingClient = nil
 
 	clusterListener := c.getClusterListener()
 	if clusterListener != nil {
@@ -3994,10 +3959,8 @@ func (c *Core) clearForwardingClients() {
 // ForwardRequest forwards a given request to the active node and returns the
 // response.
 func (c *Core) ForwardRequest(req *http.Request) (int, http.Header, []byte, error) {
-	c.requestForwardingConnectionLock.RLock()
-	defer c.requestForwardingConnectionLock.RUnlock()
-
-	if c.rpcForwardingClient == nil {
+	client := c.rpcForwardingClient.Load()
+	if client == nil {
 		return 0, nil, nil, ErrCannotForward
 	}
 
@@ -4023,7 +3986,8 @@ func (c *Core) ForwardRequest(req *http.Request) (int, http.Header, []byte, erro
 		c.logger.Error("got nil forwarding RPC request")
 		return 0, nil, nil, errors.New("got nil forwarding RPC request")
 	}
-	resp, err := c.rpcForwardingClient.ForwardRequest(req.Context(), freq)
+
+	resp, err := client.ForwardRequest(req.Context(), freq)
 	if err != nil {
 		metrics.IncrCounter([]string{"ha", "rpc", "client", "forward", "errors"}, 1)
 		c.logger.Error("error during forwarded RPC request", "error", err)
@@ -4096,7 +4060,7 @@ func (c *Core) performPolicyChecks(ctx context.Context, acl *policy.ACL, te *log
 
 // setupPolicyStore is used to initialize the policy store
 // when the vault is being unsealed.
-func (c *Core) setupPolicyStore(ctx context.Context) error {
+func (c *Core) setupPolicyStore(ctx context.Context, standby bool) error {
 	// Create the policy store
 	var err error
 	sysView := &dynamicSystemView{core: c}
@@ -4107,7 +4071,12 @@ func (c *Core) setupPolicyStore(ctx context.Context) error {
 		return err
 	}
 
-	// Ensure that the default policy exists, and if not, create it
+	if standby {
+		return nil
+	}
+
+	// Ensure that the default policy exists, and if not, create it. Do not do
+	// this on standby nodes as it writes to storage.
 	return c.policyStore.LoadDefaultPolicies(ctx)
 }
 

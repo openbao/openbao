@@ -198,7 +198,9 @@ func (s *forwardedRequestRPCServer) GetNamespaceKeys(ctx context.Context, in *Ge
 
 type Client struct {
 	RequestForwardingClient
+
 	core         core
+	conn         *grpc.ClientConn
 	taskContext  context.Context
 	echoTicker   *time.Ticker
 	nsSyncTicker *time.Ticker
@@ -208,9 +210,10 @@ type Client struct {
 	peerUUID                   atomic.Pointer[string]
 }
 
-func NewClient(core core, requestForwardingClient RequestForwardingClient, taskContext context.Context, echoTicker *time.Ticker, nsSyncTicker *time.Ticker) *Client {
+func NewClient(core core, rpcConn *grpc.ClientConn, taskContext context.Context, echoTicker *time.Ticker, nsSyncTicker *time.Ticker) *Client {
 	return &Client{
-		RequestForwardingClient: requestForwardingClient,
+		conn:                    rpcConn,
+		RequestForwardingClient: NewRequestForwardingClient(rpcConn),
 		core:                    core,
 		taskContext:             taskContext,
 		echoTicker:              echoTicker,
@@ -517,8 +520,17 @@ func (c *Client) StreamInvalidations(ctx context.Context) error {
 	return nil
 }
 
+func (c *Client) Stop() error {
+	if c == nil {
+		return nil
+	}
+
+	c.StopInvalidations()
+	return c.conn.Close()
+}
+
 func (c *Client) StopInvalidations() {
-	if c == nil || c.invalidationsContextCancel == nil {
+	if c.invalidationsContextCancel == nil {
 		return
 	}
 

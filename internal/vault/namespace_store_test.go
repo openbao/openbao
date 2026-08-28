@@ -1027,7 +1027,6 @@ func TestNamespaceStorage(t *testing.T) {
 }
 
 func TestNamespaceDeletionSealingInteraction(t *testing.T) {
-
 	t.Run("cannot seal tainted namespace", func(t *testing.T) {
 		t.Parallel()
 

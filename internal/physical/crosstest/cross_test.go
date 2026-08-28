@@ -46,7 +46,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/file"
-	"github.com/openbao/openbao/sdk/v2/physical/inmem"
+	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/physical/postgresql"
 	"github.com/openbao/openbao/v2/internal/physical/raft"
 )

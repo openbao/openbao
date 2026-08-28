@@ -18,11 +18,11 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
-	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/sdk/v2/plugin"
 	"github.com/openbao/openbao/sdk/v2/plugin/mock"
 	bplugin "github.com/openbao/openbao/v2/internal/builtin/plugin"
 	"github.com/openbao/openbao/v2/internal/helper/benchhelpers"
+	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/vault"
 )
 

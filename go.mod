@@ -29,6 +29,7 @@ require (
 	github.com/armon/go-radix v1.0.0
 	github.com/caddyserver/certmagic v0.25.4
 	github.com/cenkalti/backoff/v5 v5.0.3
+	github.com/cockroachdb/pebble v1.1.5
 	github.com/containerd/platforms v0.2.1
 	github.com/coreos/go-systemd/v22 v22.6.0
 	github.com/duosecurity/duo_api_golang v0.2.0
@@ -198,7 +199,6 @@ require (
 	github.com/cockroachdb/errors v1.11.3 // indirect
 	github.com/cockroachdb/fifo v0.0.0-20240606204812-0bbfbd93a7ce // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
-	github.com/cockroachdb/pebble v1.1.5 // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect

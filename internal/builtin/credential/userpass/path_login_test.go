@@ -12,8 +12,8 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
-	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
+	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/stretchr/testify/require"
 )
 

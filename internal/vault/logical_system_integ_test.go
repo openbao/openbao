@@ -13,9 +13,9 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
-	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
+	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/vault"
 	"github.com/openbao/openbao/v2/internal/version"
 )

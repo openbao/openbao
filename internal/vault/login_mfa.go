@@ -802,6 +802,7 @@ func (b *MFABackend) mfaConfigToMap(mConfig *mfa.Config) (map[string]any, error)
 		respData["qr_size"] = totpConfig.QRSize
 		respData["algorithm"] = otplib.Algorithm(totpConfig.Algorithm).String()
 		respData["max_validation_attempts"] = totpConfig.MaxValidationAttempts
+		respData["enable_self_enrollment"] = totpConfig.EnableSelfEnrollment
 	case *mfa.Config_OktaConfig:
 		oktaConfig := mConfig.GetOktaConfig()
 		respData["org_name"] = oktaConfig.OrgName

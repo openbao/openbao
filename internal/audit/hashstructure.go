@@ -35,11 +35,16 @@ func HashAuth(salter *salt.Salt, in *logical.Auth, HMACAccessor bool) (*logical.
 	if auth.ClientToken != "" {
 		auth.ClientToken = fn(auth.ClientToken)
 	}
-	if auth.TOTPSelfEnroll != nil && auth.TOTPSelfEnroll.TOTPSecret != "" {
-		auth.TOTPSelfEnroll.TOTPSecret = fn(auth.TOTPSelfEnroll.TOTPSecret)
+	if auth.TOTPSelfEnroll != nil {
+		auth.TOTPSelfEnroll = &logical.TOTPSelfEnroll{
+			MFARequestID: auth.TOTPSelfEnroll.MFARequestID,
+			TOTPSecret:   fn(auth.TOTPSelfEnroll.TOTPSecret),
+			TOTPURL:      fn(auth.TOTPSelfEnroll.TOTPURL),
+		}
 	}
-	if auth.TOTPSelfEnroll != nil && auth.TOTPSelfEnroll.TOTPURL != "" {
-		auth.TOTPSelfEnroll.TOTPURL = fn(auth.TOTPSelfEnroll.TOTPURL)
+
+	if auth.TOTPSelfEnrollToken != "" {
+		auth.TOTPSelfEnrollToken = fn(auth.TOTPSelfEnrollToken)
 	}
 	if HMACAccessor && auth.Accessor != "" {
 		auth.Accessor = fn(auth.Accessor)

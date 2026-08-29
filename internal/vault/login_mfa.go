@@ -2199,8 +2199,8 @@ func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentConfirmation(ctx cont
 		return logical.ErrorResponse("invalid request ID"), nil
 	}
 	defer func() {
-		// Only if returnErr is NOT nil, then push back the valid entry
-		if retErr == nil {
+		// Only if returnErr is NOT nil and the response is NOT an error, then push back the valid entry
+		if retErr == nil && !retResp.IsError() {
 			return
 		}
 		pushErr := b.Core.SaveTOTPSelfEnroll(totpSelfEnroll)
@@ -2259,7 +2259,7 @@ func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentConfirmation(ctx cont
 		Algorithm: otplib.Algorithm(totpConfig.Algorithm),
 	})
 	if err != nil || !valid {
-		return nil, errors.New("invalid totp code provided for self-enrollment")
+		return logical.ErrorResponse("invalid totp code provided for self-enrollment"), nil
 	}
 
 	b.Core.identityStore.Lock()
@@ -2280,7 +2280,7 @@ func (b *LoginMFABackend) handleMFAMethodTOTPSelfEnrollmentConfirmation(ctx cont
 	} else {
 		_, ok := entity.MFASecrets[mConfig.ID]
 		if ok {
-			return nil, fmt.Errorf("entity already has a secret for MFA method %q", mConfig.Name)
+			return logical.ErrorResponse("entity already has a secret for MFA method %q", mConfig.Name), nil
 		}
 	}
 

@@ -31,20 +31,21 @@ func LogicalResponseToHTTPResponse(input *Response) *HTTPResponse {
 	// set up the result structure.
 	if input.Auth != nil {
 		httpResp.Auth = &HTTPAuth{
-			ClientToken:      input.Auth.ClientToken,
-			Accessor:         input.Auth.Accessor,
-			Policies:         input.Auth.Policies,
-			TokenPolicies:    input.Auth.TokenPolicies,
-			IdentityPolicies: input.Auth.IdentityPolicies,
-			Metadata:         input.Auth.Metadata,
-			LeaseDuration:    int(input.Auth.TTL.Seconds()),
-			Renewable:        input.Auth.Renewable,
-			EntityID:         input.Auth.EntityID,
-			TokenType:        input.Auth.TokenType.String(),
-			Orphan:           input.Auth.Orphan,
-			MFARequirement:   input.Auth.MFARequirement,
-			TOTPSelfEnroll:   input.Auth.TOTPSelfEnroll,
-			NumUses:          input.Auth.NumUses,
+			ClientToken:         input.Auth.ClientToken,
+			Accessor:            input.Auth.Accessor,
+			Policies:            input.Auth.Policies,
+			TokenPolicies:       input.Auth.TokenPolicies,
+			IdentityPolicies:    input.Auth.IdentityPolicies,
+			Metadata:            input.Auth.Metadata,
+			LeaseDuration:       int(input.Auth.TTL.Seconds()),
+			Renewable:           input.Auth.Renewable,
+			EntityID:            input.Auth.EntityID,
+			TokenType:           input.Auth.TokenType.String(),
+			Orphan:              input.Auth.Orphan,
+			MFARequirement:      input.Auth.MFARequirement,
+			TOTPSelfEnroll:      input.Auth.TOTPSelfEnroll,
+			TOTPSelfEnrollToken: input.Auth.TOTPSelfEnrollToken,
+			NumUses:             input.Auth.NumUses,
 		}
 	}
 
@@ -103,20 +104,21 @@ type HTTPResponse struct {
 }
 
 type HTTPAuth struct {
-	ClientToken      string            `json:"client_token"`
-	Accessor         string            `json:"accessor"`
-	Policies         []string          `json:"policies"`
-	TokenPolicies    []string          `json:"token_policies,omitempty"`
-	IdentityPolicies []string          `json:"identity_policies,omitempty"`
-	Metadata         map[string]string `json:"metadata"`
-	LeaseDuration    int               `json:"lease_duration"`
-	Renewable        bool              `json:"renewable"`
-	EntityID         string            `json:"entity_id"`
-	TokenType        string            `json:"token_type"`
-	Orphan           bool              `json:"orphan"`
-	MFARequirement   *MFARequirement   `json:"mfa_requirement"`
-	TOTPSelfEnroll   *TOTPSelfEnroll   `json:"mfa_self_enroll"`
-	NumUses          int               `json:"num_uses"`
+	ClientToken         string            `json:"client_token"`
+	Accessor            string            `json:"accessor"`
+	Policies            []string          `json:"policies"`
+	TokenPolicies       []string          `json:"token_policies,omitempty"`
+	IdentityPolicies    []string          `json:"identity_policies,omitempty"`
+	Metadata            map[string]string `json:"metadata"`
+	LeaseDuration       int               `json:"lease_duration"`
+	Renewable           bool              `json:"renewable"`
+	EntityID            string            `json:"entity_id"`
+	TokenType           string            `json:"token_type"`
+	Orphan              bool              `json:"orphan"`
+	MFARequirement      *MFARequirement   `json:"mfa_requirement"`
+	TOTPSelfEnroll      *TOTPSelfEnroll   `json:"mfa_self_enroll"`
+	TOTPSelfEnrollToken string            `json:"totp_self_enroll_token"`
+	NumUses             int               `json:"num_uses"`
 }
 
 type HTTPWrapInfo struct {

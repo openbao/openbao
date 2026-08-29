@@ -2079,7 +2079,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 					}
 
 					resp.Auth = &logical.Auth{
-						ClientToken: tokenEntry.ExternalID,
+						TOTPSelfEnrollToken: tokenEntry.ExternalID,
 						TOTPSelfEnroll: &logical.TOTPSelfEnroll{
 							MFARequestID: mfaRequestID,
 							TOTPSecret:   secret.Secret(),

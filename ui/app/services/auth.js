@@ -432,7 +432,7 @@ export default Service.extend({
     if (resp.auth?.mfa_self_enroll) {
       return {
         totp_self_enroll: resp.auth?.mfa_self_enroll,
-        client_token: resp.auth?.client_token,
+        client_token: resp.auth?.totp_self_enroll_token,
       };
     }
 

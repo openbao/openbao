@@ -2051,12 +2051,13 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 					}
 
 					tokenEntry := logical.TokenEntry{
-						Path:           req.Path,
-						EntityID:       auth.EntityID,
-						NamespaceID:    ns.ID,
-						CreationTime:   time.Now().Unix(),
-						TTL:            defaultTOTPSelfEnrollmentTTL,
-						ExplicitMaxTTL: defaultTOTPSelfEnrollmentTTL,
+						Path:               req.Path,
+						EntityID:           auth.EntityID,
+						NoIdentityPolicies: true,
+						NamespaceID:        ns.ID,
+						CreationTime:       time.Now().Unix(),
+						TTL:                defaultTOTPSelfEnrollmentTTL,
+						ExplicitMaxTTL:     defaultTOTPSelfEnrollmentTTL,
 						InlinePolicy: `
 					path "sys/mfa/self-enroll/totp" {
 						capabilities = ["create", "update", "delete"]

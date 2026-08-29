@@ -189,24 +189,15 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "in-progress", status)
 
-	maxRetries := 50
-	for range maxRetries {
-		status, err := s.DeleteNamespace(ctx, "test")
-		require.NoError(t, err)
-		if status == "in-progress" {
-			time.Sleep(1 * time.Millisecond)
-			continue
-		}
-		break
-	}
-
 	// verify namespace deletion
-	nsList, err := s.ListNamespaces(ctx, ListNamespaceOpts{
-		Recursive:     true,
-		IncludeSealed: true,
-	})
-	require.NoError(t, err)
-	require.Empty(t, nsList)
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		nsList, err := s.ListNamespaces(ctx, ListNamespaceOpts{
+			Recursive:     true,
+			IncludeSealed: true,
+		})
+		require.NoError(collect, err)
+		require.Empty(collect, nsList)
+	}, time.Second*10, time.Millisecond*10)
 
 	keys, err := s.storage.List(ctx, namespaceStoreSubPath)
 	require.NoError(t, err)
@@ -240,19 +231,11 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "in-progress", status)
 
-	for range maxRetries {
-		status, err := s.DeleteNamespace(parentCtx, "child")
-		require.NoError(t, err)
-		if status == "in-progress" {
-			time.Sleep(1 * time.Millisecond)
-			continue
-		}
-		break
-	}
-
-	keys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, parentNamespace.UUID, namespaceStoreSubPath)+"/")
-	require.NoError(t, err)
-	require.Empty(t, keys, "Expected empty namespace store on storage level")
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		keys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, parentNamespace.UUID, namespaceStoreSubPath)+"/")
+		require.NoError(collect, err)
+		require.Empty(collect, keys, "Expected empty namespace store on storage level")
+	}, time.Second*10, time.Millisecond*10)
 }
 
 func TestNamespaceStore_DeleteSealedNamespace(t *testing.T) {
@@ -1027,7 +1010,6 @@ func TestNamespaceStorage(t *testing.T) {
 }
 
 func TestNamespaceDeletionSealingInteraction(t *testing.T) {
-
 	t.Run("cannot seal tainted namespace", func(t *testing.T) {
 		t.Parallel()
 

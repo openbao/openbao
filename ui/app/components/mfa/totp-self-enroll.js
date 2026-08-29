@@ -48,25 +48,23 @@ export default class TotpSelfEnroll extends Component {
     return this.args.selfEnrollData.client_token;
   }
 
-  @task generateQrCode(totpURL) {
-    QRCode.toDataURL(totpURL, {
-      errorCorrectionLevel: 'H',
-      margin: 2,
-      width: 200,
-    })
-      .then((url) => {
-        this.qrCodeDataUrl = url;
-      })
-      .catch((err) => {
-        this.error = 'Failed to generate QR code. Please try again.';
-        // eslint-disable-next-line no-console
-        console.error(err);
+  @task *generateQrCode(totpURL) {
+    try {
+      this.qrCodeDataUrl = yield QRCode.toDataURL(totpURL, {
+        errorCorrectionLevel: 'H',
+        margin: 2,
+        width: 200,
       });
+    } catch (err) {
+      this.error = ['Failed to generate QR code. Please try again.'];
+      // eslint-disable-next-line no-console
+      console.error(err);
+    }
   }
 
   @task *confirmSelfEnroll() {
     if (!this.totpToken) {
-      this.error = 'Please enter a valid totp code code.';
+      this.error = ['Please enter a valid TOTP code.'];
       return;
     }
 
@@ -82,7 +80,7 @@ export default class TotpSelfEnroll extends Component {
         this.args.onSuccess();
       }
     } catch (err) {
-      this.error = err ? this.auth.handleError(err) : 'An unexpected error occurred.';
+      this.error = err ? this.auth.handleError(err) : ['An unexpected error occurred.'];
     } finally {
       this.isVerifying = false;
     }

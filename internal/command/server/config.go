@@ -380,7 +380,9 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 		})
 	}
 
-	if p.Image != "" {
+	isOCI := p.Image != ""
+
+	if isOCI {
 		// Ensure Image:Version is a valid image reference
 		if _, err := name.ParseReference(p.URL()); err != nil {
 			results = append(results, configutil.ConfigError{
@@ -389,7 +391,7 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 		}
 	}
 
-	if typ != consts.PluginTypeKMS || p.Image != "" {
+	if isOCI || typ != consts.PluginTypeKMS {
 		// Validate version is not empty. KMS plugins do not require or enforce
 		// that a version is set. OCI-based plugins however require a version be
 		// set at all times.
@@ -400,12 +402,16 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 		}
 	}
 
-	// Validate sha256sum is exactly 64 hex characters
-	if len(p.SHA256Sum) != 64 {
+	switch {
+	case len(p.SHA256Sum) == 0 && !isOCI:
+		// sha256sum may be omitted unless OCI images are used, where they are
+		// required as cache sentinels.
+	case len(p.SHA256Sum) != 64:
+		// Unless omitted, validate sha256sum is exactly 64 hex characters.
 		results = append(results, configutil.ConfigError{
 			Problem: fmt.Sprintf("plugin %q: sha256sum must be exactly 64 characters, got %d", p.Slug(), len(p.SHA256Sum)),
 		})
-	} else {
+	default:
 		// Check if it's valid hex
 		_, err := hex.DecodeString(p.SHA256Sum)
 		if err != nil {

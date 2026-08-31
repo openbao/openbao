@@ -1,0 +1,3 @@
+```release-note:change
+core/plugins: Declarative plugin registration (`plugin` stanza) no longer requires setting a `sha256sum` for manually installed plugin binaries.
+```

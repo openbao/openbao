@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
-	"github.com/openbao/openbao/v2/internal/helper/versions"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
 
 	"github.com/hashicorp/go-multierror"
@@ -181,39 +180,25 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 
 	var backend logical.Backend
 	var err error
-	oldSha := entry.RunningSha256
+	oldSha, oldVersion := entry.RunningSha256, entry.RunningVersion
 	if !isAuth {
 		// Dispense a new backend
-		backend, entry.RunningSha256, err = c.newLogicalBackend(ctx, entry, sysView, view)
+		backend, err = c.newLogicalBackend(ctx, entry, sysView, view)
 	} else {
-		backend, entry.RunningSha256, err = c.newCredentialBackend(ctx, entry, sysView, view)
+		backend, err = c.newCredentialBackend(ctx, entry, sysView, view)
 	}
 	if err != nil {
 		return err
 	}
 
-	// update the entry running version with the configured version, which was verified during registration.
-	entry.RunningVersion = entry.Version
-	if entry.RunningVersion == "" {
-		// don't set the running version to a builtin if it is running as an external plugin
-		if entry.RunningSha256 == "" {
-			if isAuth {
-				entry.RunningVersion = versions.GetBuiltinVersion(consts.PluginTypeCredential, entry.Type)
-			} else {
-				entry.RunningVersion = versions.GetBuiltinVersion(consts.PluginTypeSecrets, entry.Type)
-			}
-		}
-	}
-
-	// update the mount table since we changed the runningSha
-	if oldSha != entry.RunningSha256 {
+	// Update the mount table since we changed the runningSha or runningVersion.
+	if oldSha != entry.RunningSha256 || oldVersion != entry.RunningVersion {
 		barrier := c.NamespaceView(entry.Namespace)
 		if isAuth {
 			err = c.persistAuth(ctx, barrier, c.auth, &entry.Local, entry.UUID)
 		} else {
 			err = c.persistMounts(ctx, barrier, c.mounts, &entry.Local, entry.UUID)
 		}
-
 		if err != nil {
 			return err
 		}

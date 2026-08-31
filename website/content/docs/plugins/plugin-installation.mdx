@@ -32,16 +32,7 @@ that OpenBao may load and execute (depending on their other access and how OpenB
 
 :::
 
-## Step 2: Obtain the checksum
-
-Obtain the SHA-256 digest for your plugin binary, for example, from the
-[openbao-plugins](https://github.com/openbao/openbao-plugins/releases) releases page
-or by running `sha256sum`.
-
-You will need this checksum later when you register the plugin with OpenBao.
-This allows OpenBao to check the integrity of the plugin before executing it.
-
-## Step 3: Download plugin binary
+## Step 2: Download plugin binary
 
 There are two distribution/packaging mechanisms for external plugins: _raw binaries_ and _OCI artifacts_.
 Depending on which mechanism you choose, the installation process differs.
@@ -65,7 +56,11 @@ The download happens either automatically (if you enable auto-download) or manua
 
 Steps to install the plugin:
 
-1. Define a [`plugin` stanza](../configuration/plugins.mdx) with an `image` field.
+1. Obtain the SHA-256 digest for your plugin binary, for example, from the
+  [openbao-plugins](https://github.com/openbao/openbao-plugins/releases)
+  releases page.
+1. Define a [`plugin` stanza](../configuration/plugins.mdx) with `image` and
+   `sha256sum` fields.
 1. Trigger OpenBao to download the artifact. You have two options:
    1. Run [`bao plugin init`](../commands/plugin/init.mdx), or
    1. Enable auto-download in the config file. Then restart OpenBao or send a SIGHUP.

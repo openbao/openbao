@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"cmp"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -101,12 +102,13 @@ func TestCore_EnableExternalPlugin(t *testing.T) {
 
 func TestCore_EnableExternalPlugin_MultipleVersions(t *testing.T) {
 	for name, tc := range map[string]struct {
-		pluginType       consts.PluginType
-		registerVersions []string
-		mountVersion     string
-		expectedVersion  string
-		routerPath       string
-		expectedMatch    string
+		pluginType             consts.PluginType
+		registerVersions       []string
+		mountVersion           string
+		expectedVersion        string
+		expectedRunningVersion string
+		routerPath             string
+		expectedMatch          string
 	}{
 		"enable external credential plugin, multiple versions available": {
 			pluginType:       consts.PluginTypeCredential,
@@ -156,6 +158,24 @@ func TestCore_EnableExternalPlugin_MultipleVersions(t *testing.T) {
 			routerPath:       "foo/bar",
 			expectedMatch:    "foo/",
 		},
+		"enable external credential plugin, selects moving latest when version is latest": {
+			pluginType:             consts.PluginTypeCredential,
+			registerVersions:       []string{"v1.0.0", "v1.0.1"},
+			mountVersion:           "latest",
+			expectedVersion:        "latest",
+			expectedRunningVersion: "v1.0.1",
+			routerPath:             "auth/foo/bar",
+			expectedMatch:          "auth/foo/",
+		},
+		"enable external secrets plugin, selects moving latest when version is latest": {
+			pluginType:             consts.PluginTypeSecrets,
+			registerVersions:       []string{"v1.0.0", "v1.0.1"},
+			mountVersion:           "latest",
+			expectedVersion:        "latest",
+			expectedRunningVersion: "v1.0.1",
+			routerPath:             "foo/bar",
+			expectedMatch:          "foo/",
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			c, plugins := testCoreWithPlugins(t, tc.pluginType, "")
@@ -175,7 +195,7 @@ func TestCore_EnableExternalPlugin_MultipleVersions(t *testing.T) {
 				t.Errorf("Expected mount to be version %s but got %s", tc.expectedVersion, re.MountEntry.Version)
 			}
 
-			if re.MountEntry.RunningVersion != tc.expectedVersion {
+			if re.MountEntry.RunningVersion != cmp.Or(tc.expectedRunningVersion, tc.expectedVersion) {
 				t.Errorf("Expected mount running version to be %s but got %s", tc.expectedVersion, re.MountEntry.RunningVersion)
 			}
 

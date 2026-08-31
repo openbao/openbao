@@ -1733,11 +1733,13 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 	if rawVal, ok := data.GetOk("plugin_version"); ok {
 		version := rawVal.(string)
-		semanticVersion, err := semver.NewVersion(version)
-		if err != nil {
-			return logical.ErrorResponse("version %q is not a valid semantic version: %s", version, err), nil
+		if version != versionLatest {
+			semanticVersion, err := semver.NewVersion(version)
+			if err != nil {
+				return logical.ErrorResponse("version %q is not a valid semantic version: %s", version, err), nil
+			}
+			version = "v" + semanticVersion.String()
 		}
-		version = "v" + semanticVersion.String()
 
 		pluginType := consts.PluginTypeSecrets
 		if isAuth {
@@ -1745,7 +1747,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 
 		// Lookup the version to ensure it exists in the catalog before committing.
-		if _, err = b.System().LookupPluginVersion(ctx, mountEntry.Type, pluginType, version); err != nil {
+		if _, err := b.System().LookupPluginVersion(ctx, mountEntry.Type, pluginType, version); err != nil {
 			return handleError(err)
 		}
 
@@ -2366,6 +2368,11 @@ func (b *SystemBackend) validateVersion(ctx context.Context, version string, plu
 		if version != "" {
 			b.logger.Debug("pinning plugin version", "plugin type", pluginType.String(), "plugin name", pluginName, "plugin version", version)
 		}
+	case versionLatest:
+		// If set to "latest", we derive the latest plugin version dynamically
+		// when setting up the backend. This is distinct from the above case
+		// (empty string) where we derive the latest version on the spot and
+		// then pin it.
 	default:
 		semanticVersion, err := semver.NewVersion(version)
 		if err != nil {
@@ -5477,7 +5484,7 @@ Each entry is of the form "key=value".`,
 		"",
 	},
 	"plugin-catalog_version": {
-		"The semantic version of the plugin to use.",
+		`The semantic version of the plugin to use, or "latest".`,
 		"",
 	},
 	"leases": {

@@ -154,9 +154,10 @@ flags](../index.mdx) included on all commands.
 - `-token-type` `(string: "")` - Specifies the type of tokens that should be
   returned by the auth method.
 
-- `-plugin-version` `(string: "")` - Configures the semantic version of the plugin
-  to use. The new version will not start running until the mount is
-  [reloaded](../plugin/reload.mdx).
+- `-plugin-version` `(string: "")` - Configures the semantic version of the
+  plugin to use. The new version will not start running until the mount is
+  [reloaded](../plugin/reload.mdx). Can also be set to "latest" to automatically
+  pick the latest available plugin version on reload.
 
 - `-user-lockout-threshold` `(string: "")` - Specifies the number of failed login attempts
   after which the user is locked out.

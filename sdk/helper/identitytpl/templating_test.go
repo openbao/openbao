@@ -397,7 +397,7 @@ func TestPopulate_Basic(t *testing.T) {
 			input:                `path "bad" {{identity.entity.metadata.x}}`,
 			blockedSubstitutions: []string{"*", "+"},
 			metadata:             map[string]string{"x": "this * is not ok"},
-			err:                  errors.New(`template substitution contains forbidden value "*"`),
+			err:                  errors.New(`template substitution contains forbidden value: "*"`),
 		},
 		{
 			mode:                 ACLTemplating,
@@ -429,7 +429,7 @@ func TestPopulate_Basic(t *testing.T) {
 			input:                `{ "test/bad": {{identity.entity.metadata.x}} }`,
 			blockedSubstitutions: []string{"that", "this", "other"},
 			metadata:             map[string]string{"x": `+ and * are ok, but "this" is not`},
-			err:                  errors.New(`template substitution contains forbidden value "this"`),
+			err:                  errors.New(`template substitution contains forbidden value: "this"`),
 		},
 	}
 

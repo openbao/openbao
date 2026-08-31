@@ -6,6 +6,7 @@ package policy
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -349,6 +350,31 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, bl
 				BlockedSubstitutions: blockedSubstitutions,
 			})
 			if err != nil {
+				// Neither choice is the greatest here: if we err, we
+				// potentially allow a denial of service by malicious
+				// actor with control over metadata, if they can create a
+				// metadata value that breaks templating. However, errors
+				// are rather common as not every token has an identity and
+				// the default policy contains identity templating rules.
+				//
+				// If we don't err and simply skip this rule, we potentially
+				// miss a valid denial (again, because a malicious actor
+				// put a wildcard or other error here).
+				//
+				// We choose to error and propagate that upwards only when
+				// templating failed with a wildcard templating error rather
+				// than silently allowing that error to go unchecked: a root
+				// token is sufficient to allow recovery here.
+				//
+				// The net result thus is a fatal request error on attempting
+				// to use an identity with invalid metadata rather than a
+				// silently incorrect ACL evaluation. This is, itself, a
+				// denial of service, but one that's hopefully scoped and
+				// recoverable. Only policies with both templating and metadata
+				// are affected, so this makes it a reasonable failure mode.
+				if errors.Is(err, identitytpl.ErrTemplateWildcard) {
+					return logical.CodedError(http.StatusForbidden, err.Error())
+				}
 				continue
 			}
 			key = templated

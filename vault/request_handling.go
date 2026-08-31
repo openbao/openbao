@@ -378,7 +378,16 @@ func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Req
 	acl, err := c.policyStore.ACL(tokenCtx, entity, policyNames, policies...)
 	if err != nil {
 		c.logger.Error("failed to construct ACL", "error", err)
-		return nil, nil, nil, nil, ErrInternalError
+		retErr := ErrInternalError
+
+		// If we have a coded error, prefer its generic text over the
+		// incorrect "internal error" text. We don't want to share err's
+		// message verbatim, though.
+		if coded := logical.HTTPCodedError(nil); errors.As(err, &coded) {
+			retErr = logical.CodedError(coded.Code(), http.StatusText(coded.Code()))
+		}
+
+		return nil, nil, nil, nil, retErr
 	}
 
 	return acl, te, entity, identityPolicies, nil

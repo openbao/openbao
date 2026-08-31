@@ -119,7 +119,7 @@ No storage copying is required. When moving from auto-seal to Shamir, the
 operator receives key shares in the response. When moving from Shamir to
 auto-seal, the operator supplies existing key shares to authorize the change.
 
-**Normal ↔ sealable conversion**: the namespace changes type, gaining or losing
+**Normal &lt;=&gt; sealable conversion**: the namespace changes type, gaining or losing
 a dedicated barrier. All storage must be migrated under a different barrier. This
 operation is out of scope for this RFC and is tracked in
 https://github.com/openbao/openbao/issues/3333.

@@ -1056,6 +1056,8 @@ func ParseConfig(d, source string) (*Config, error) {
 			return nil, err
 		}
 		result.PluginAutoRegister = autoRegister
+	} else {
+		result.PluginAutoRegister = true
 	}
 
 	if result.PluginDownloadMaxSizeRaw != nil {

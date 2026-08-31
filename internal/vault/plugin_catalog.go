@@ -232,8 +232,8 @@ func (c *Core) registerDeclarativePlugins(ctx context.Context, standby bool) err
 
 	logger := c.logger.Named("plugins")
 
-	logger.Info("starting declarative plugin registration")
-	defer logger.Info("declarative plugin registration completed")
+	logger.Debug("starting declarative plugin registration")
+	defer logger.Debug("declarative plugin registration completed")
 
 	c.pluginCatalog.lock.Lock()
 	defer c.pluginCatalog.lock.Unlock()

@@ -1,0 +1,3 @@
+```release-note:change
+core/plugins: Default the `plugin_auto_register` server configuration option to `true`.
+```

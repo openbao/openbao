@@ -55,7 +55,8 @@ func testConfigRaftRetryJoin(t *testing.T) {
 			},
 		},
 
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -180,7 +181,8 @@ func testLoadConfigFile_topLevel(t *testing.T) {
 		APIAddr:     "top_level_api_addr",
 		ClusterAddr: "top_level_cluster_addr",
 
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 	addExpectedEntConfig(expected, []string{})
 
@@ -276,7 +278,8 @@ func testLoadConfigFile_json2(t *testing.T) {
 		DisableSealWrap:    true,
 		DisableSealWrapRaw: true,
 
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 	addExpectedEntConfig(expected, []string{"http"})
 
@@ -334,7 +337,8 @@ func testLoadConfigFileIntegerAndBooleanValuesCommon(t *testing.T, path string) 
 		EnableUI:        true,
 		EnableUIRaw:     true,
 
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 
 	config.Prune()
@@ -433,7 +437,8 @@ func testLoadConfigFile(t *testing.T) {
 		EnableResponseHeaderRaftNodeID:    true,
 		EnableResponseHeaderRaftNodeIDRaw: true,
 
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 
 	addExpectedEntConfig(expected, []string{})
@@ -612,6 +617,7 @@ func testLoadConfigFile_json(t *testing.T) {
 		DisableSealWrap:      true,
 		DisableSealWrapRaw:   true,
 		DisableSSCTokens:     &disableSSCTs,
+		PluginAutoRegister:   true,
 	}
 
 	addExpectedEntConfig(expected, []string{})
@@ -978,7 +984,8 @@ EOF
 				},
 			},
 		},
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -1023,8 +1030,9 @@ ha_storage "consul" {
 				"max_parallel":    "128",
 			},
 		},
-		SharedConfig:     &configutil.SharedConfig{},
-		DisableSSCTokens: &disableSSCTs,
+		SharedConfig:       &configutil.SharedConfig{},
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -1098,7 +1106,8 @@ func testParseSeals(t *testing.T) {
 				},
 			},
 		},
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 	addExpectedDefaultEntConfig(expected)
 	config.Prune()
@@ -1188,6 +1197,7 @@ func testLoadConfigFileLeaseMetrics(t *testing.T) {
 		DefaultLeaseTTL:    10 * time.Hour,
 		DefaultLeaseTTLRaw: "10h",
 		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 
 	addExpectedEntConfig(expected, []string{})

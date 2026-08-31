@@ -59,8 +59,6 @@ plugin "type" "name" {
 Or it specifies a plugin to automatically register that was manually downloaded:
 
 ```hcl
-plugin_auto_register = true
-
 plugin "type" "name" {
   command     = "plugin-binary-name"
   version     = "v0.0.0"
@@ -88,9 +86,9 @@ plugin versions.
 
 - `sha256sum` `(string: required)` - Expected SHA-256 digest of the plugin binary. Must be a 64-character hexadecimal string.
 
-- `args` `([]string: optional)` - Any arguments to pass to the running plugin. Only used if `plugin_auto_register=true` is set at the global level.
+- `args` `([]string: optional)` - Any arguments to pass to the running plugin.
 
-- `env` `([]string: optional)` - Any environment variables to pass to the running plugin. Only used if `plugin_auto_register=true` is set at the global level.
+- `env` `([]string: optional)` - Any environment variables to pass to the running plugin.
 
 - `binary_name` `(string: optional)` - Name of the plugin binary file
   within the OCI image. Only applies when `image` is set. If unset, OpenBao
@@ -158,7 +156,7 @@ plugin_auto_download = true
 ### Values
 
 - `true` - server startup and `SIGHUP` triggers downloading of plugins; can still be manually downloaded with `bao plugin init`.
-- `false` - only `bao plugin init` will manually download plugins.
+- `false` (default) - only `bao plugin init` will manually download plugins.
 
 ## `plugin_auto_register`
 
@@ -170,7 +168,7 @@ plugin_auto_register = true
 
 ### Values
 
-- `true` - server startup and `SIGHUP` triggers registering of plugins; can still be manually registered with `bao plugin register`.
+- `true` (default) - server startup and `SIGHUP` triggers registering of plugins; can still be manually registered with `bao plugin register`.
 - `false` - only `bao plugin register` will manually register plugins.
 
 ## `plugin_download_max_size`

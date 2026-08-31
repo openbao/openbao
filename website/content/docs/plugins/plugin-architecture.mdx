@@ -94,8 +94,6 @@ but becomes visible to the relevant subsystems and will be executed on-demand.
 An example of declarative plugin registration via the configuration file:
 
 ```hcl
-plugin_auto_register = true
-
 plugin "database" "myplugin" {
     command = "myplugin-database-plugin"    
     version = "v0.0.0"

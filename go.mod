@@ -95,9 +95,9 @@ require (
 	github.com/moby/moby/client v0.5.1
 	github.com/oklog/run v1.2.0
 	github.com/okta/okta-sdk-golang/v2 v2.20.0
-	github.com/openbao/go-kms-wrapping/kms/transit/v2 v2.0.0-20260818160046-4c1f51a032ba
-	github.com/openbao/go-kms-wrapping/plugin/v2 v2.3.1-0.20260818160046-4c1f51a032ba
-	github.com/openbao/go-kms-wrapping/v2 v2.8.1-0.20260818160046-4c1f51a032ba
+	github.com/openbao/go-kms-wrapping/kms/transit/v2 v2.0.0-20260831192550-97c565d2b791
+	github.com/openbao/go-kms-wrapping/plugin/v2 v2.3.1-0.20260831192550-97c565d2b791
+	github.com/openbao/go-kms-wrapping/v2 v2.8.1-0.20260831192550-97c565d2b791
 	github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/static/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.8.0

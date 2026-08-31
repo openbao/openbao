@@ -111,6 +111,9 @@ func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Req
 	switch version {
 	case "":
 		for k, v := range srcP.Keys {
+			if v.IsPrivateKeyMissing() {
+				continue
+			}
 			exportKey, err := getBYOKExportKey(dstP, srcP, &v, hash)
 			if err != nil {
 				return nil, err
@@ -136,6 +139,10 @@ func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Req
 		key, ok := srcP.Keys[strconv.Itoa(versionValue)]
 		if !ok {
 			return logical.ErrorResponse("version does not exist or cannot be found"), logical.ErrInvalidRequest
+		}
+
+		if key.IsPrivateKeyMissing() {
+			return logical.ErrorResponse("version has no private key part"), logical.ErrInvalidRequest
 		}
 
 		exportKey, err := getBYOKExportKey(dstP, srcP, &key, hash)
@@ -193,6 +200,12 @@ func getBYOKExportKey(dstP *keysutil.Policy, srcP *keysutil.Policy, key *keysuti
 		}
 	case keysutil.KeyType_ED25519:
 		targetKey = ed25519.PrivateKey(key.Key)
+	case keysutil.KeyType_MLDSA44, keysutil.KeyType_MLDSA65, keysutil.KeyType_MLDSA87:
+		var err error
+		targetKey, err = key.MLDSAKey()
+		if err != nil {
+			return "", err
+		}
 	default:
 		return "", fmt.Errorf("unable to export to unknown key type: %v", srcP.Type)
 	}

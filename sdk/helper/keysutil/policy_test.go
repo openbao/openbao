@@ -1079,6 +1079,31 @@ func TestKeyType_CapabilitiesAndString(t *testing.T) {
 			wantKeyAgree: false, wantAssoc: false, wantImp: true,
 			wantStr: "rsa-4096",
 		},
+		// --- ML-DSA ---
+		{
+			kt:      KeyType_MLDSA44,
+			wantEnc: false, wantDec: false,
+			wantSign:    true,
+			wantHashSig: false, wantDeriv: false,
+			wantKeyAgree: false, wantAssoc: false, wantImp: true,
+			wantStr: "mldsa-44",
+		},
+		{
+			kt:      KeyType_MLDSA65,
+			wantEnc: false, wantDec: false,
+			wantSign:    true,
+			wantHashSig: false, wantDeriv: false,
+			wantKeyAgree: false, wantAssoc: false, wantImp: true,
+			wantStr: "mldsa-65",
+		},
+		{
+			kt:      KeyType_MLDSA87,
+			wantEnc: false, wantDec: false,
+			wantSign:    true,
+			wantHashSig: false, wantDeriv: false,
+			wantKeyAgree: false, wantAssoc: false, wantImp: true,
+			wantStr: "mldsa-87",
+		},
 		// --- HMAC ---
 		{
 			kt:      KeyType_HMAC,

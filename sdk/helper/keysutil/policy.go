@@ -12,6 +12,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/hmac"
+	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -72,6 +73,9 @@ const (
 	KeyType_RSA3072
 	KeyType_HMAC
 	KeyType_XChaCha20_Poly1305
+	KeyType_MLDSA44
+	KeyType_MLDSA65
+	KeyType_MLDSA87
 
 	// External keys is a meta-type.
 	KeyType_ExternalKey = 10000
@@ -130,7 +134,10 @@ type KeyType int
 
 func (kt KeyType) EncryptionSupported() bool {
 	switch kt {
-	case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096, KeyType_ExternalKey:
+	case KeyType_AES128_GCM96, KeyType_AES256_GCM96,
+		KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305,
+		KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096,
+		KeyType_ExternalKey:
 		return true
 	}
 	return false
@@ -138,7 +145,10 @@ func (kt KeyType) EncryptionSupported() bool {
 
 func (kt KeyType) DecryptionSupported() bool {
 	switch kt {
-	case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096, KeyType_ExternalKey:
+	case KeyType_AES128_GCM96, KeyType_AES256_GCM96,
+		KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305,
+		KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096,
+		KeyType_ExternalKey:
 		return true
 	}
 	return false
@@ -146,7 +156,10 @@ func (kt KeyType) DecryptionSupported() bool {
 
 func (kt KeyType) SigningSupported() bool {
 	switch kt {
-	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521, KeyType_ED25519, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096, KeyType_ExternalKey:
+	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521, KeyType_ED25519,
+		KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096,
+		KeyType_MLDSA44, KeyType_MLDSA65, KeyType_MLDSA87,
+		KeyType_ExternalKey:
 		return true
 	}
 	return false
@@ -154,7 +167,8 @@ func (kt KeyType) SigningSupported() bool {
 
 func (kt KeyType) HashSignatureInput() bool {
 	switch kt {
-	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
+	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521,
+		KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
 		return true
 	}
 	return false
@@ -162,7 +176,9 @@ func (kt KeyType) HashSignatureInput() bool {
 
 func (kt KeyType) DerivationSupported() bool {
 	switch kt {
-	case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305, KeyType_ED25519:
+	case KeyType_AES128_GCM96, KeyType_AES256_GCM96,
+		KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305,
+		KeyType_ED25519:
 		return true
 	}
 	return false
@@ -178,7 +194,9 @@ func (kt KeyType) KeyAgreementSupported() bool {
 
 func (kt KeyType) AssociatedDataSupported() bool {
 	switch kt {
-	case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305, KeyType_ExternalKey:
+	case KeyType_AES128_GCM96, KeyType_AES256_GCM96,
+		KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305,
+		KeyType_ExternalKey:
 		return true
 	}
 	return false
@@ -186,7 +204,9 @@ func (kt KeyType) AssociatedDataSupported() bool {
 
 func (kt KeyType) ImportPublicKeySupported() bool {
 	switch kt {
-	case KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096, KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521, KeyType_ED25519:
+	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521, KeyType_ED25519,
+		KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096,
+		KeyType_MLDSA44, KeyType_MLDSA65, KeyType_MLDSA87:
 		return true
 	}
 	return false
@@ -231,11 +251,30 @@ func (kt KeyType) String() string {
 		return "rsa-4096"
 	case KeyType_HMAC:
 		return "hmac"
+	case KeyType_MLDSA44:
+		return "mldsa-44"
+	case KeyType_MLDSA65:
+		return "mldsa-65"
+	case KeyType_MLDSA87:
+		return "mldsa-87"
 	case KeyType_ExternalKey:
 		return "external-key"
 	}
 
 	return "[unknown]"
+}
+
+func (kt KeyType) MLDSAParams() mldsa.Parameters {
+	switch kt {
+	case KeyType_MLDSA44:
+		return mldsa.MLDSA44()
+	case KeyType_MLDSA65:
+		return mldsa.MLDSA65()
+	case KeyType_MLDSA87:
+		return mldsa.MLDSA87()
+	default:
+		panic("keysutil: MLDSAParams called on bad key type")
+	}
 }
 
 type KeyData struct {
@@ -245,7 +284,7 @@ type KeyData struct {
 
 // KeyEntry stores the key and metadata
 type KeyEntry struct {
-	// AES or some other kind that is a pure byte slice like ED25519
+	// AES or some other kind that is a pure byte slice like ED25519, or an ML-DSA seed.
 	Key []byte `json:"key"`
 
 	// Key used for HMAC functions
@@ -260,6 +299,13 @@ type KeyEntry struct {
 
 	RSAKey       *rsa.PrivateKey `json:"rsa_key"`
 	RSAPublicKey *rsa.PublicKey  `json:"rsa_public_key"`
+
+	// crypto/mldsa does not expose any way to store a private key beyond
+	// exporting the 32-byte seed, which we store in Key. While we don't want to
+	// eagerly expand the private key of each key version on load, this returns
+	// the (potentially lazy) memoized result of that expansion so it can be
+	// shared across calls when caching is enabled.
+	MLDSAKey func() (*mldsa.PrivateKey, error) `json:"-"`
 
 	// The public key in an appropriate format for the type of key
 	FormattedPublicKey string `json:"public_key"`
@@ -359,15 +405,29 @@ func LoadPolicy(ctx context.Context, s logical.Storage, path string) (*Policy, e
 		return nil, err
 	}
 
+	switch policy.Type {
 	// Migrate RSA private keys to include their private counterpart. This lets
 	// us reference RSAPublicKey whenever we need to, without necessarily
 	// needing the private key handy, synchronizing the behavior with EC and
 	// Ed25519 key pairs.
-	switch policy.Type {
 	case KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
-		for _, entry := range policy.Keys {
+		for version, entry := range policy.Keys {
 			if entry.RSAPublicKey == nil && entry.RSAKey != nil {
 				entry.RSAPublicKey = entry.RSAKey.Public().(*rsa.PublicKey)
+				// Ensure we write back to the map; entry is a copy.
+				policy.Keys[version] = entry
+			}
+		}
+	// Set ML-DSA private keys up to lazily expand their seed into the full
+	// private key representation.
+	case KeyType_MLDSA44, KeyType_MLDSA65, KeyType_MLDSA87:
+		for version, entry := range policy.Keys {
+			if len(entry.Key) > 0 {
+				entry.MLDSAKey = sync.OnceValues(func() (*mldsa.PrivateKey, error) {
+					return mldsa.NewPrivateKey(policy.Type.MLDSAParams(), entry.Key)
+				})
+				// Ensure we write back to the map; entry is a copy.
+				policy.Keys[version] = entry
 			}
 		}
 	}
@@ -1381,17 +1441,23 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 		default:
 			return nil, errutil.InternalError{Err: fmt.Sprintf("unsupported rsa signature algorithm %s", sigAlgorithm)}
 		}
-	case KeyType_ExternalKey:
-		keyEntry, err := p.safeGetKeyEntry(ver)
+
+	case KeyType_MLDSA44, KeyType_MLDSA65, KeyType_MLDSA87:
+		key, err := keyParams.MLDSAKey()
+		if err != nil {
+			return nil, err
+		}
+		sig, err = key.Sign(rand.Reader, input, crypto.Hash(0))
 		if err != nil {
 			return nil, err
 		}
 
+	case KeyType_ExternalKey:
 		if options.ExternalKeyFactory == nil {
 			return nil, fmt.Errorf("external key not found or no factory provided to request it")
 		}
 
-		ctx, key, err := options.ExternalKeyFactory.GetExternalKey(keyEntry.ExternalKeyRef)
+		ctx, key, err := options.ExternalKeyFactory.GetExternalKey(keyParams.ExternalKeyRef)
 		if err != nil {
 			return nil, fmt.Errorf("factory failed to fetch external key: %w", err)
 		}
@@ -1620,6 +1686,21 @@ func (p *Policy) VerifySignatureWithOptions(derivationContext, input []byte, sig
 
 		return err == nil, nil
 
+	case KeyType_MLDSA44, KeyType_MLDSA65, KeyType_MLDSA87:
+		keyEntry, err := p.safeGetKeyEntry(ver)
+		if err != nil {
+			return false, err
+		}
+		encoding, err := base64.StdEncoding.DecodeString(keyEntry.FormattedPublicKey)
+		if err != nil {
+			return false, err
+		}
+		pub, err := mldsa.NewPublicKey(p.Type.MLDSAParams(), encoding)
+		if err != nil {
+			return false, err
+		}
+		return mldsa.Verify(pub, input, sigBytes, nil) == nil, nil
+
 	case KeyType_ExternalKey:
 		if options.ExternalKeyFactory == nil {
 			return false, fmt.Errorf("external key not found or no factory provided to request it")
@@ -1663,11 +1744,14 @@ func (p *Policy) VerifySignatureWithOptions(derivationContext, input []byte, sig
 		}
 
 		err = key.Verify(ctx, opts)
-		if err != nil {
+		switch {
+		case err == nil:
+			return true, nil
+		case errors.Is(err, kms.ErrInvalidSignature):
+			return false, nil
+		default:
 			return false, fmt.Errorf("failed to verify with external key: %w", err)
 		}
-
-		return err == nil, nil
 	default:
 		return false, errutil.InternalError{Err: fmt.Sprintf("unsupported key type %v", p.Type)}
 	}
@@ -1931,6 +2015,7 @@ func (p *Policy) RotateInMemory(randReader io.Reader) (retErr error) {
 		}
 		entry.Key = pri
 		entry.FormattedPublicKey = base64.StdEncoding.EncodeToString(pub)
+
 	case KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
 		bitSize := 2048
 		if p.Type == KeyType_RSA3072 {
@@ -1944,6 +2029,15 @@ func (p *Policy) RotateInMemory(randReader io.Reader) (retErr error) {
 		if err != nil {
 			return err
 		}
+
+	case KeyType_MLDSA44, KeyType_MLDSA65, KeyType_MLDSA87:
+		key, err := mldsa.GenerateKey(p.Type.MLDSAParams())
+		if err != nil {
+			return err
+		}
+		entry.Key = key.Bytes()
+		entry.MLDSAKey = func() (*mldsa.PrivateKey, error) { return key, nil }
+		entry.FormattedPublicKey = base64.StdEncoding.EncodeToString(key.PublicKey().Bytes())
 	}
 
 	if p.ConvergentEncryption {
@@ -2480,7 +2574,7 @@ func (p *Policy) ImportPrivateKeyForVersion(ctx context.Context, storage logical
 		}
 		publicKey, err := x509.ParsePKIXPublicKey(pemBlock.Bytes)
 		if err != nil || publicKey == nil {
-			return fmt.Errorf("failed to parse key entry public key: %v", err)
+			return fmt.Errorf("failed to parse key entry public key: %w", err)
 		}
 		if !publicKey.(*ecdsa.PublicKey).Equal(&ppk.PublicKey) {
 			return errors.New("cannot import key, key pair does not match")
@@ -2492,9 +2586,26 @@ func (p *Policy) ImportPrivateKeyForVersion(ctx context.Context, storage logical
 	case ed25519.PrivateKey:
 		publicKey, err := base64.StdEncoding.DecodeString(keyEntry.FormattedPublicKey)
 		if err != nil {
-			return fmt.Errorf("failed to parse key entry public key: %v", err)
+			return fmt.Errorf("failed to parse key entry public key: %w", err)
 		}
 		if !ed25519.PublicKey(publicKey).Equal(ppk.Public()) {
+			return errors.New("cannot import key, key pair does not match")
+		}
+	case *mldsa.PrivateKey:
+		switch p.Type {
+		case KeyType_MLDSA44, KeyType_MLDSA65, KeyType_MLDSA87:
+		default:
+			return fmt.Errorf("invalid key type: expected %s", p.Type)
+		}
+		raw, err := base64.StdEncoding.DecodeString(keyEntry.FormattedPublicKey)
+		if err != nil {
+			return fmt.Errorf("failed to parse key entry public key: %w", err)
+		}
+		publicKey, err := mldsa.NewPublicKey(p.Type.MLDSAParams(), raw)
+		if err != nil {
+			return fmt.Errorf("failed to parse key entry public key: %w", err)
+		}
+		if !publicKey.Equal(ppk.Public()) {
 			return errors.New("cannot import key, key pair does not match")
 		}
 	}
@@ -2607,6 +2718,37 @@ func (ke *KeyEntry) parseFromKey(PolKeyType KeyType, parsedKey any) error {
 			}
 			ke.RSAPublicKey = rsaKey
 		}
+	case *mldsa.PrivateKey, *mldsa.PublicKey:
+		var pub *mldsa.PublicKey
+		prv, ok := parsedKey.(*mldsa.PrivateKey)
+		if ok {
+			pub = prv.PublicKey()
+		} else {
+			pub = parsedKey.(*mldsa.PublicKey)
+		}
+
+		var have KeyType
+		switch pub.Parameters() {
+		case mldsa.MLDSA44():
+			have = KeyType_MLDSA44
+		case mldsa.MLDSA65():
+			have = KeyType_MLDSA65
+		case mldsa.MLDSA87():
+			have = KeyType_MLDSA87
+		default:
+			return fmt.Errorf("invalid ML-DSA parameters: %q", pub.Parameters())
+		}
+
+		if want := PolKeyType; have != want {
+			return fmt.Errorf("invalid key type: expected %s, got %s", want, have)
+		}
+
+		if ok {
+			ke.Key = prv.Bytes()
+			ke.MLDSAKey = func() (*mldsa.PrivateKey, error) { return prv, nil }
+		}
+		ke.FormattedPublicKey = base64.StdEncoding.EncodeToString(pub.Bytes())
+
 	default:
 		return fmt.Errorf("invalid key type: expected %s, got %T", PolKeyType, parsedKey)
 	}
@@ -2764,6 +2906,8 @@ func (p *Policy) getPrivateKey(keyEntry *KeyEntry) (crypto.Signer, error) {
 		return ed25519.PrivateKey(keyEntry.Key), nil
 	case KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
 		return keyEntry.RSAKey, nil
+	case KeyType_MLDSA44, KeyType_MLDSA65, KeyType_MLDSA87:
+		return keyEntry.MLDSAKey()
 	default:
 		return nil, errutil.InternalError{Err: fmt.Sprintf("selected key type '%s' does not support signing", p.Type.String())}
 	}
@@ -2858,6 +3002,10 @@ func (p *Policy) validateKeyVersionCertificateKeyMatch(keyEntry KeyEntry, certif
 		if certificatePublicKeyAlgorithm == x509.RSA {
 			keyTypeMatches = true
 		}
+	case KeyType_MLDSA44, KeyType_MLDSA65, KeyType_MLDSA87:
+		if certificatePublicKeyAlgorithm == x509.MLDSA {
+			keyTypeMatches = true
+		}
 	}
 	if !keyTypeMatches {
 		return false, errutil.UserError{Err: fmt.Sprintf("provided leaf certificate public key algorithm '%s' does not match the transit key type '%s'", certificatePublicKeyAlgorithm, p.Type)}
@@ -2865,7 +3013,10 @@ func (p *Policy) validateKeyVersionCertificateKeyMatch(keyEntry KeyEntry, certif
 
 	switch certificatePublicKeyAlgorithm {
 	case x509.ECDSA:
-		certificatePublicKey := certificatePublicKey.(*ecdsa.PublicKey)
+		certificatePublicKey, ok := certificatePublicKey.(*ecdsa.PublicKey)
+		if !ok {
+			return false, nil
+		}
 		keyCurve, _ := p.getECDSAKeyCurve()
 		publicKey := &ecdsa.PublicKey{
 			Curve: keyCurve,
@@ -2878,7 +3029,10 @@ func (p *Policy) validateKeyVersionCertificateKeyMatch(keyEntry KeyEntry, certif
 		if p.Derived {
 			return false, errutil.UserError{Err: "operation not supported on keys with derivation enabled"}
 		}
-		certificatePublicKey := certificatePublicKey.(ed25519.PublicKey)
+		certificatePublicKey, ok := certificatePublicKey.(ed25519.PublicKey)
+		if !ok {
+			return false, nil
+		}
 
 		publicKeyRaw, err := base64.StdEncoding.DecodeString(keyEntry.FormattedPublicKey)
 		if err != nil {
@@ -2888,8 +3042,27 @@ func (p *Policy) validateKeyVersionCertificateKeyMatch(keyEntry KeyEntry, certif
 
 		return publicKey.Equal(certificatePublicKey), nil
 	case x509.RSA:
-		certificatePublicKey := certificatePublicKey.(*rsa.PublicKey)
+		certificatePublicKey, ok := certificatePublicKey.(*rsa.PublicKey)
+		if !ok {
+			return false, nil
+		}
 		publicKey := keyEntry.RSAKey.PublicKey
+
+		return publicKey.Equal(certificatePublicKey), nil
+	case x509.MLDSA:
+		certificatePublicKey, ok := certificatePublicKey.(*mldsa.PublicKey)
+		if !ok {
+			return false, nil
+		}
+
+		publicKeyRaw, err := base64.StdEncoding.DecodeString(keyEntry.FormattedPublicKey)
+		if err != nil {
+			return false, err
+		}
+		publicKey, err := mldsa.NewPublicKey(p.Type.MLDSAParams(), publicKeyRaw)
+		if err != nil {
+			return false, err
+		}
 
 		return publicKey.Equal(certificatePublicKey), nil
 	case x509.UnknownPublicKeyAlgorithm:

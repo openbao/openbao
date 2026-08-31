@@ -27,6 +27,9 @@ func TestTransit_BYOKExportImport(t *testing.T) {
 	testBYOKExportImport(t, "rsa-2048", "sign-verify")
 	testBYOKExportImport(t, "rsa-3072", "sign-verify")
 	testBYOKExportImport(t, "rsa-4096", "sign-verify")
+	testBYOKExportImport(t, "mldsa-44", "sign-verify")
+	testBYOKExportImport(t, "mldsa-65", "sign-verify")
+	testBYOKExportImport(t, "mldsa-87", "sign-verify")
 
 	// Test HMAC sign/verify after a restore for supported keys.
 	testBYOKExportImport(t, "hmac", "hmac-verify")

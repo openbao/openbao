@@ -994,6 +994,83 @@ func testTransit_SignVerify_RSA_PSS(t *testing.T, bits int) {
 	}
 }
 
+func TestTransit_SignVerify_MLDSA(t *testing.T) {
+	t.Run("44", func(t *testing.T) {
+		testTransit_SignVerify_MLDSA(t, 44)
+	})
+	t.Run("65", func(t *testing.T) {
+		testTransit_SignVerify_MLDSA(t, 65)
+	})
+	t.Run("87", func(t *testing.T) {
+		testTransit_SignVerify_MLDSA(t, 87)
+	})
+}
+
+func testTransit_SignVerify_MLDSA(t *testing.T, params int) {
+	ctx := t.Context()
+	b, storage := createBackendWithSysView(t)
+
+	// Create a key:
+	_, err := b.HandleRequest(ctx, &logical.Request{
+		Storage:   storage,
+		Operation: logical.UpdateOperation,
+		Path:      "keys/test",
+		Data: map[string]any{
+			"type": fmt.Sprintf("mldsa-%d", params),
+		},
+	})
+	require.NoError(t, err)
+
+	input := base64.StdEncoding.EncodeToString([]byte("Hello, World!"))
+
+	// Sign a payload:
+	resp, err := b.HandleRequest(ctx, &logical.Request{
+		Storage:   storage,
+		Operation: logical.UpdateOperation,
+		Path:      "sign/test",
+		Data: map[string]any{
+			"input": input,
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, resp.Error())
+
+	signature := resp.Data["signature"].(string)
+	require.NotEmpty(t, signature)
+
+	// Verify it:
+	resp, err = b.HandleRequest(ctx, &logical.Request{
+		Storage:   storage,
+		Operation: logical.UpdateOperation,
+		Path:      "verify/test",
+		Data: map[string]any{
+			"input":     input,
+			"signature": signature,
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, resp.Error())
+
+	valid := resp.Data["valid"].(bool)
+	require.True(t, valid)
+
+	// Verify a bad signature:
+	resp, err = b.HandleRequest(ctx, &logical.Request{
+		Storage:   storage,
+		Operation: logical.UpdateOperation,
+		Path:      "verify/test",
+		Data: map[string]any{
+			"input":     input,
+			"signature": "vault:v1:" + input,
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, resp.Error())
+
+	valid = resp.Data["valid"].(bool)
+	require.False(t, valid)
+}
+
 func TestTransit_NoDeadlock_SignVerify(t *testing.T) {
 	t.Parallel()
 

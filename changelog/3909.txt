@@ -1,0 +1,5 @@
+```release-note:feature
+**ML-DSA Support in Transit**: Introduces support for the ML-DSA (NIST's FIPS 204) signature algorithm.
+  - Generate, import and export keys of type `mldsa-44`, `mldsa-65` and `mldsa-87`.
+  - Create and verify pure ML-DSA signatures.
+```

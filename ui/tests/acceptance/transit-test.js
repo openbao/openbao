@@ -94,6 +94,21 @@ const keyTypes = [
     supportsEncryption: true,
     autoRotate: true,
   },
+  {
+    name: (ts) => `mldsa-44-${ts}`,
+    type: 'mldsa-44',
+    supportsSigning: true,
+  },
+  {
+    name: (ts) => `mldsa-65-${ts}`,
+    type: 'mldsa-65',
+    supportsSigning: true,
+  },
+  {
+    name: (ts) => `mldsa-87-${ts}`,
+    type: 'mldsa-87',
+    supportsSigning: true,
+  },
 ];
 
 const generateTransitKey = async function (key, now) {

@@ -18,9 +18,9 @@ authorization services.
 ## Problem Statement
 
 OpenBao policies provide some special functions which are not common to external authorization services, for example the 
-„deny“ and „sudo“ [capabilities](https://openbao.org/docs/concepts/policies/#capabilities) that do not map to http verbs. 
+"deny" and "sudo" [capabilities](https://openbao.org/docs/concepts/policies/#capabilities) that do not map to http verbs. 
 Or [parameter constraints](https://openbao.org/docs/concepts/policies/#parameter-constraints).
-For this reason, we propose to add a new capability „ask“ (i.e. call an external authorization service) to the policy framework. 
+For this reason, we propose to add a new capability "ask" (i.e. call an external authorization service) to the policy framework. 
 This addition would provide us with maximal flexibility for the configuration of external authorization checks. For example:
 
 - We may forward *all* authorization checks to the external authorization service.
@@ -33,39 +33,39 @@ This addition would provide us with maximal flexibility for the configuration of
 
 With the following policies we may configure the examples from above.
 
-- “externalPolicy.hcl”
+- "externalPolicy.hcl"
   ```
   # Call external authorization service for all paths 
   path "*" { 
-      capabilities = ["ask”]
+      capabilities = ["ask"]
   }
   ```
 - "mixedPolicy.hcl"
   ```
   # Path internal shall be forbidden independent from external authorizations
   path "internal/*" { 
-      capabilities = ["deny”]
+      capabilities = ["deny"]
   }
   # For other paths check external authorizations and restrict parameters
   path "*" { 
-      capabilities = ["ask”]
+      capabilities = ["ask"]
       allowed_parameters = {
           "param" = ["foo", "bar"]
       }
   }
   ```
-- “adminPolicy.hcl”
+- "adminPolicy.hcl"
   ```
   # admin authorizations are maintained internally
   path "*" { 
-      capabilities = ["read", "write”]
+      capabilities = ["read", "write"]
   }
   ```
-  “userPolicy.hcl”
+  "userPolicy.hcl"
   ```
   # user authorizations are maintained externally
   path "*" { 
-      capabilities = ["ask”]
+      capabilities = ["ask"]
   }
   ```
 
@@ -86,7 +86,7 @@ which they use for authorization checks. This makes it important to sync the pat
 
 As user identities, we should pass [entities](https://openbao.org/docs/concepts/identity/) to the plugin.
 
-In the ACL processing of OpenBao, we must process the „ask“ capability and call the plugin method `hasAuthorization` from:
+In the ACL processing of OpenBao, we must process the "ask" capability and call the plugin method `hasAuthorization` from:
 [acl.AllowOperation(ctx, req, capCheckOnly) *ACLResults](https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L344).
 We may add `entity` to the `ACL` struct to be able the pass the user identity to the plugin.
 In addition, we may add attributes like "external user id" or "primary email address" to the 
@@ -114,7 +114,7 @@ The plugin configuration per namespace should be inheritable to child namespaces
 By adding external authorization checks to the existing policy framework, we gain maximal flexibility.
 Some authorization checks may be defined as OpenBao policies, while other checks can be passed to the external authorization service.
 
-By extending the current policy framework, we can keep existing security features like the „sudo“ capability or 
+By extending the current policy framework, we can keep existing security features like the "sudo" capability or 
 [parameter constraints](https://openbao.org/docs/concepts/policies/#parameter-constraints). 
 
 Alternatively, we may add a global switch to enable external authorizations and disable all policy checks. 
@@ -124,8 +124,8 @@ i.e. customers might need to replace *all* existing policies after switching to 
 
 ## Downsides
 
-Even if you want to switch completely to external authorizations, then you will need to assign an „ask“ policy to all users. 
-On the other hand, this „ask“ policy might be easier to understand than a global switch, which might be hidden somewhere in the configuration.
+Even if you want to switch completely to external authorizations, then you will need to assign an "ask" policy to all users. 
+On the other hand, this "ask" policy might be easier to understand than a global switch, which might be hidden somewhere in the configuration.
 
 With this proposal we introduce a dependency to an external authorization service. On the other hand, customers may prefer running
 a central service for authorization management instead of assigning authorizations to users separately in each and every service.

@@ -15,10 +15,11 @@ to maintain their own barrier protected by a dedicated seal. Operators who
 already manage an HSM or KMS for root auto-unseal expect to use the same
 infrastructure for namespace seals. Requiring per-namespace Shamir key management
 alongside an existing KMS setup adds operational overhead with no security
-benefit. Currently, only Shamir seals are accepted at namespace creation.
-This RFC proposes extending namespace seal support to auto-seal types, introduces
-a dedicated API for seal credential updates, and addresses the authorization and
-cluster coordination gaps in the current implementation.
+benefit. Currently, only Shamir seals are accepted at namespace creation; auto-seal
+support for per-namespace barriers does not yet exist. This RFC defines how
+per-namespace auto-seals should work: seal types accepted at creation, a
+dedicated API for credential updates, and the authorization and cluster
+coordination model required to operate them safely.
 
 ## Problem Statement
 

@@ -191,15 +191,15 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 		},
 	}
 
-	runTests := func(failGroupName, failMetadata bool) {
+	runTests := func(failGroupName, failBadTemplating bool) {
 		for _, test := range tests {
 			resp, err := client.Logical().Write(test.path, map[string]interface{}{"zip": "zap"})
 			fail := test.fail
 			if test.name == "bad group name" {
 				fail = failGroupName
 			}
-			if test.name == "entity metadata" {
-				fail = failMetadata
+			if failBadTemplating {
+				fail = true
 			}
 			if err != nil && !fail {
 				if resp != nil && resp.Data["error"].(string) != "permission denied" {

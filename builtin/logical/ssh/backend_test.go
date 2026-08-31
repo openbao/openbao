@@ -466,7 +466,7 @@ func TestBackend_ForbiddenCommaInTemplate(t *testing.T) {
 		t.Error("signing request should fail when default_user is not in the allowed_users list, because allowed_users_template is true and default_user_template is not")
 	}
 
-	expectedErrStr := `template '{{identity.entity.metadata.ssh_username}}' could not be rendered -> template substitution contains forbidden value ","`
+	expectedErrStr := `template '{{identity.entity.metadata.ssh_username}}' could not be rendered -> template substitution contains forbidden value: ","`
 	if !strings.Contains(err.Error(), expectedErrStr) {
 		t.Errorf("expected error to include %q but it was: %q", expectedErrStr, err.Error())
 	}

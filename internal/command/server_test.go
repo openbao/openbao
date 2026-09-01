@@ -16,7 +16,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/sdk/v2/physical"
-	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
+	physInmem "github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/stretchr/testify/require"
 )
 

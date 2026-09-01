@@ -1,0 +1,52 @@
+---
+sidebar_label: PebbleDB
+description: |-
+  The PebbleDB storage backend stores OpenBao's data using PebbleDB, a
+  KV data store similar to BBolt. It can be used for durable single server
+  situations or to develop locally where durability is not critical.
+---
+
+# PebbleDB storage backend
+
+The PebbleDB storage backend stores OpenBao's data using
+[PebbleDB](https://github.com/cockroachdb/pebble), an embedded KV data store similar
+to BBolt used by Integrated Storage (Raft). It can be used for durable single server
+situations, or to develop locally where durability is not critical.
+
+:::warning
+
+**No High Availability** – the PebbleDB backend does not support high
+availability. Do not share one PebbleDB data store between multiple OpenBao nodes.
+
+:::
+
+
+```hcl
+storage "pebbledb" {
+  path = "/mnt/openbao/data"
+}
+```
+
+Even though OpenBao's data is encrypted at rest, you should still take appropriate
+measures to secure access to the filesystem.
+
+## `pebbledb` parameters
+
+- `path` `(string: <required>)` – The absolute path on disk to the
+  directory where the data will be stored. When this takes the value
+  `:memory:`, OpenBao will create an in-memory ephemeral database and values
+  will not be persisted.
+- `read_only` `(bool: false)` - When set to `true`, this loads the PebbleDB
+  instance as read-only, preventing updates. This is likely not useful in
+  most scenarios.
+
+## `pebbledb` examples
+
+This example shows the PebbleDB storage backend being mounted at
+`/mnt/openbao/data`.
+
+```hcl
+storage "pebbledb" {
+  path = "/mnt/openbao/data"
+}
+```

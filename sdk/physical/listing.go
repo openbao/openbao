@@ -24,7 +24,7 @@ type Lister struct {
 
 	// Start is a function which begins iteration, setting the initial value
 	// returned by Key(...).
-	Start func() error
+	Start func(seekPrefix []byte) error
 
 	// Next is a function which continues iteration, updating the next value
 	// returned by Key(...).
@@ -50,7 +50,7 @@ type Lister struct {
 // SeekPrefix returns the joined prefix of the first element, assuming a strict
 // greater-than seek logic. Lister handles both greater-than and
 // greater-than-equal seek logic.
-func (l *Lister) SeekPrefix() (string, []byte) {
+func (l *Lister) SeekPrefix() []byte {
 	slash := "/"
 
 	// This is a quirk of how listing works not exercised by our test suite:
@@ -66,7 +66,7 @@ func (l *Lister) SeekPrefix() (string, []byte) {
 	}
 
 	result := l.Prefix + slash + l.After
-	return result, []byte(result)
+	return []byte(result)
 }
 
 func (l *Lister) validate() error {
@@ -87,9 +87,9 @@ func (l *Lister) validate() error {
 }
 
 func (l *Lister) while(ctx context.Context, listerErr *error, key *string, start *bool, keys []string) bool {
-	if ctx.Err() != nil {
+	if err := ctx.Err(); err != nil {
 		// Context cancelled.
-		*listerErr = ctx.Err()
+		*listerErr = err
 		return false
 	}
 
@@ -99,15 +99,18 @@ func (l *Lister) while(ctx context.Context, listerErr *error, key *string, start
 	}
 
 	// Progress through the loop.
-	increment := l.Next
 	if !*start {
-		increment = l.Start
 		*start = true
-	}
 
-	if err := increment(); err != nil {
-		*listerErr = err
-		return false
+		if err := l.Start(l.SeekPrefix()); err != nil {
+			*listerErr = err
+			return false
+		}
+	} else {
+		if err := l.Next(); err != nil {
+			*listerErr = err
+			return false
+		}
 	}
 
 	var ok bool

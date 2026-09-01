@@ -5627,6 +5627,10 @@ func TestWalkLogicalStorage(t *testing.T) {
 	}
 
 	for name, test := range tests {
+		for _, entry := range test.entries {
+			entry.Value = []byte(entry.Key)
+		}
+
 		t.Run(name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()

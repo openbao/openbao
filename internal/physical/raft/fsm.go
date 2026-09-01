@@ -580,32 +580,29 @@ func (f *FSM) ListPage(ctx context.Context, prefix string, after string, limit i
 	return keys, err
 }
 
-func listPageInner(ctx context.Context, tx *bolt.Tx, prefix string, after string, limit int) ([]string, error) {
-	lister := &physical.Lister{
+func newLister(cursor *bolt.Cursor, prefix string, after string, limit int) *physical.Lister {
+	var key []byte
+	return &physical.Lister{
 		Prefix: prefix,
 		After:  after,
 		Limit:  limit,
+		Start: func(seekPrefix []byte) error {
+			key, _ = cursor.Seek(seekPrefix)
+			return nil
+		},
+		Next: func() error {
+			key, _ = cursor.Next()
+			return nil
+		},
+		Key: func() (string, bool, error) {
+			return string(key), key != nil, nil
+		},
 	}
+}
 
-	var key []byte
+func listPageInner(ctx context.Context, tx *bolt.Tx, prefix string, after string, limit int) ([]string, error) {
 	cursor := tx.Bucket(dataBucketName).Cursor()
-
-	lister.Start = func() error {
-		_, seekPrefix := lister.SeekPrefix()
-		key, _ = cursor.Seek(seekPrefix)
-		return nil
-	}
-
-	lister.Next = func() error {
-		key, _ = cursor.Next()
-		return nil
-	}
-
-	lister.Key = func() (string, bool, error) {
-		return string(key), key != nil, nil
-	}
-
-	results, _, err := lister.ListPage(ctx)
+	results, _, err := newLister(cursor, prefix, after, limit).ListPage(ctx)
 	return results, err
 }
 

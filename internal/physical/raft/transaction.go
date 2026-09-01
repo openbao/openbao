@@ -473,30 +473,9 @@ func (t *RaftTransaction) ListPage(ctx context.Context, prefix string, after str
 		return nil, physical.ErrTransactionAlreadyCommitted
 	}
 
-	lister := &physical.Lister{
-		Prefix: prefix,
-		After:  after,
-		Limit:  limit,
-	}
-
-	var key []byte
 	cursor := t.tx.Bucket(dataBucketName).Cursor()
 
-	lister.Start = func() error {
-		_, seekPrefix := lister.SeekPrefix()
-		key, _ = cursor.Seek(seekPrefix)
-		return nil
-	}
-
-	lister.Next = func() error {
-		key, _ = cursor.Next()
-		return nil
-	}
-
-	lister.Key = func() (string, bool, error) {
-		return string(key), key != nil, nil
-	}
-
+	lister := newLister(cursor, prefix, after, limit)
 	lister.Deleted = func(path string) bool {
 		entry, present := t.updates[path]
 		if !present {
@@ -505,7 +484,6 @@ func (t *RaftTransaction) ListPage(ctx context.Context, prefix string, after str
 
 		return entry.Contents == nil
 	}
-
 	lister.Inserted = func() iter.Seq[string] {
 		return func(yield func(K string) bool) {
 			for key, entry := range t.updates {

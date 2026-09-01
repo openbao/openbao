@@ -100,10 +100,10 @@ observing runtime state.
 
 ### Removing a Seal Configuration
 
-An active seal configuration cannot be deleted directly. Operators must first
-migrate to a different seal or to a normal unsealable namespace, then
-decommission the old seal stanza. This is consistent with the treatment of
-active seal stanzas at the global level.
+The active seal configuration cannot be deleted directly. Once a namespace has
+been migrated to a different seal, the previous seal stanza can be removed.
+This is consistent with the treatment of active seal stanzas at the global
+level.
 
 ### Migration
 
@@ -125,8 +125,18 @@ a dedicated barrier. All storage must be migrated under a different barrier. Thi
 operation is out of scope for this RFC and is tracked in
 https://github.com/openbao/openbao/issues/3333.
 
-The endpoints for the in-scope cases are not yet defined; see Unresolved
-Questions.
+| Method | Path |
+|--------|------|
+| `POST` | `/v1/sys/namespaces/<path>/config/seal/migrate` |
+
+This endpoint requires sudo privilege. The request body follows the same seal
+configuration format as namespace creation. For Shamir to auto-seal migration,
+existing key shares must be supplied to authorize the operation. For auto-seal
+to Shamir migration, the new key shares are returned in the response.
+
+Whether this endpoint should be unified with the namespace conversion endpoint
+from https://github.com/openbao/openbao/issues/3333 is an open question; see
+Unresolved Questions.
 
 ### Failure Conditions
 
@@ -144,8 +154,11 @@ RFCs address recovery paths for persistent KMS failures.
 
 ### Test-Before-Swap Guard
 
-The credential update endpoint verifies the new configuration before committing
-it. After initializing the new seal wrapper, OpenBao calls `GetStoredKeys` to
+The `PUT /config/seal` endpoint calls `SetSeal` in `seal_manager.go`, which
+already handles seal initialization and credential management but is not yet
+exposed via API. The test-before-swap guard is added within that function.
+
+After initializing the new seal wrapper, OpenBao calls `GetStoredKeys` to
 confirm that the new credentials can decrypt the existing root key. If this call
 fails, the new wrapper is finalized and the existing configuration is kept.
 
@@ -162,6 +175,11 @@ sm.sealByNamespace[ns.UUID] = nsSeal
 ```
 
 ### Migration -- Root Key Re-encryption
+
+`SetSeal` in `seal_manager.go` explicitly reserves seal type changes for a
+future migration path. This RFC defines that path. The new entry point is
+`MigrateBarrierKey`, called from the `POST /config/seal/migrate` handler
+registered in `namespaceSealPaths` in `logical_system_namespaces_seals.go`.
 
 Two in-scope migration cases share the same mechanism: the root key is decrypted
 under the old seal and re-encrypted under the new one. Recovery keys, if supported
@@ -212,7 +230,9 @@ and is tracked in https://github.com/openbao/openbao/issues/3333.
 ### Authorization
 
 All operations on `/v1/sys/namespaces/<path>/config/seal` require sudo privilege.
-The path must be added to `PathsSpecial.Root` in `logical_system.go`. This
+The new routes are registered in `namespaceSealPaths` in
+`logical_system_namespaces_seals.go`. The path must be added to
+`PathsSpecial.Root` in `logical_system.go`. This
 closes the existing gap: `sys/namespaces` is not currently in the root paths,
 allowing tokens with `update` capability to reach seal-adjacent namespace
 properties.
@@ -232,8 +252,8 @@ All seal lifecycle operations must be initiated on the active node. This is
 consistent with the general behavior of writes in OpenBao.
 
 After a credential update, standby nodes may hold stale seal wrappers and be
-unable to unseal the namespace. The existing invalidation framework in
-`internal/vault/invalidation.go` will be extended to cover seal configuration
+unable to unseal the namespace. The existing invalidation framework will be extended in
+`buildInvalidateJobForKey` in `invalidation.go` to cover seal configuration
 changes. On detecting an update to a namespace seal configuration in storage,
 all nodes reload the seal wrapper for that namespace.
 
@@ -247,13 +267,9 @@ case strings.HasPrefix(key, "sys/namespaces/") &&
 
 ### Audit
 
-Standard OpenBao request/response audit logging covers all API-level seal
-lifecycle events, including creation, credential updates, and migration requests.
-Credentials and key material are HMAC'd by default unless `log_raw` is enabled.
-
-Asynchronous migration transitions (start, completion, rollback) are not
-API-initiated. These must emit explicit audit events to allow the full migration
-history to be reconstructed without requiring `log_raw`.
+Standard OpenBao request/response audit logging is sufficient for all seal
+lifecycle operations covered by this RFC. Credentials and key material are
+HMAC'd by default unless `log_raw` is enabled.
 
 ## Rationale and Alternatives
 
@@ -287,21 +303,18 @@ GET endpoint returns only non-sensitive fields.
 
 ## Unresolved Questions
 
-**Migration endpoint.** Where should the KMS key change and seal type change
-endpoints live? Should they be unified with the normal-to-sealable namespace
-conversion from https://github.com/openbao/openbao/issues/3333, or kept
-separate given that the mechanisms differ (root key re-encryption vs. full
-storage migration)?
+**Migration endpoint unification.** Should `POST /config/seal/migrate` be
+unified with the endpoint that https://github.com/openbao/openbao/issues/3333
+will define for normal-to-sealable namespace conversion, given that the
+underlying mechanisms differ (root key re-encryption vs. full storage
+migration)?
 
 **Migration status.** Should there be a status endpoint for in-progress
-migrations? What is the operator recovery path for a partial failure?
+migrations?
 
-**Single vs separate endpoints.** Should credential update and migration use
-separate endpoints with distinct semantics, or a single endpoint that detects the
-appropriate operation based on whether the cryptographic key changes?
-
-**Invalidation window.** What is an acceptable window during which a standby node
-may use stale seal credentials after a rotation completes on the active node?
+**Invalidation window.** What is an acceptable window during which a standby
+node may use stale seal credentials after a rotation completes on the active
+node?
 
 ## Related Issues
 
@@ -310,4 +323,6 @@ may use stale seal credentials after a rotation completes on the active node?
 ## Proof of Concept
 
 A partial proof of concept implementing auto-seal support at namespace creation
-is available at https://github.com/Ki-Reply-GmbH/openbao/pull/82.
+is available at https://github.com/Ki-Reply-GmbH/openbao/pull/82. This is a
+work in progress on a Ki-Reply fork of OpenBao and is not a pending upstream
+pull request.

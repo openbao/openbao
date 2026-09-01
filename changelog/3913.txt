@@ -1,0 +1,3 @@
+```release-note:bug
+physical/postgresql: Set transaction limit to one less than max_parallel, ensuring HA lock renewal and non-transaction operations can always proceed.
+```

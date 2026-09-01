@@ -12,17 +12,9 @@ Steering Committee.
 
 ## Accepted
 
- - [Per-Namespace Sealing](namespace-sealing.mdx), to add per-tenant
-   encryption key separation.
  - [External Key Configuration for KMS and HSM Access](external-keys.mdx),
    to add support for secure key material storage and interaction from
    secrets engines like PKI, Transit, and SSH.
- - [Web UI Modernization](web-ui-modernization.mdx), for rewriting OpenBao’s web UI from EmberJS to React
-   to create a modern, secure, and extensible interface.
- - [Control Groups](control-groups.mdx), for allow/deny access
-   to a path by a second-party control group
- - [Switch to OpenTelemetry](opentelemetry.mdx), to replace the current
-   metrics based on `go-metrics` with OpenTelemetry based metrics.
  - [Components for efficient search over encrypted data](efficient-search-components.mdx), adds the
    necessary constructs to build indexes on data efficiently allowing for faster search operations.
  - [Emergency Seal](emergency-seal.mdx), for adding a secondary Shamir's
@@ -30,9 +22,6 @@ Steering Committee.
  - [Parallel Unseal](parallel-unseal.mdx), for adding additional unseal
    mechanisms for improved availability when one or more auto-unseal devices
    are offline.
- - [GRPC-Based Invalidation](grpc-invalidation.mdx), for providing read
-   scalability on non-Raft HA storage backends which expose an underlying
-   index consistent between different nodes.
  - [Index Headers for Consistency](index-headers.mdx), allowing clients to
    ensure strict consistency in horizontal scalability's eventual consistency
    environment even when talking to a standby node.
@@ -107,6 +96,13 @@ Steering Committee.
  - [Implementation of Invalidation for Raft](invalidation.mdx), for
    read-enabled standby nodes. This was part of the horizontal scalability
    implementation.
+ - [Per-Namespace Sealing](namespace-sealing.mdx), to add per-tenant
+   encryption key separation.
+ - [GRPC-Based Invalidation](grpc-invalidation.mdx), for providing read
+   scalability on non-Raft HA storage backends which expose an underlying
+   index consistent between different nodes.
+ - [Control Groups](control-groups.mdx), for allow/deny access
+   to a path by a second-party control group
 
 ## Strategic
 
@@ -119,3 +115,10 @@ Steering Committee.
  - [Post-Quantum Cryptography Migration Roadmap](pqc.mdx), for mapping out
    what needs to happen to make OpenBao adopt PQC and what our cryptographic
    inventory looks like.
+
+## Archived
+
+ - [Web UI Modernization](web-ui-modernization.mdx), for rewriting OpenBao’s web UI from EmberJS to React
+   to create a modern, secure, and extensible interface.
+ - [Switch to OpenTelemetry](opentelemetry.mdx), to replace the current
+   metrics based on `go-metrics` with OpenTelemetry based metrics.

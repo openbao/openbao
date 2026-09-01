@@ -1,0 +1,3 @@
+```release-note:bug
+listener/tcp: Set ACME cache path according to `tls_acme_cache_path`.
+```

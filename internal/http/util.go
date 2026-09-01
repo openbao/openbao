@@ -334,7 +334,7 @@ LOOP:
 				if err != nil {
 					return "", err
 				}
-				results[key] = decoded
+				results[strings.ToLower(key)] = decoded
 			}
 			if c == ',' {
 				break LOOP // Stop parsing after the first XFCC element.
@@ -343,10 +343,10 @@ LOOP:
 		}
 	}
 
-	if cert, ok := results["Chain"]; ok {
+	if cert, ok := results["chain"]; ok {
 		return cert, nil
 	}
-	if cert, ok := results["Cert"]; ok {
+	if cert, ok := results["cert"]; ok {
 		return cert, nil
 	}
 

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"iter"
 	"os"
-	"path"
 	"runtime"
 	"slices"
 	"strings"
@@ -27,7 +26,7 @@ import (
 
 /*
 
-The PebbleDB backend does not implement full read/write interactive
+The pebble package alone does not implement full read/write interactive
 transactions, so we need to build our own transactions similar to the Raft
 model, using Snapshots (read-only interactive transactions).
 
@@ -124,12 +123,9 @@ func (b *Backend) getInternal(ctx context.Context, view pebble.Reader, key strin
 
 	defer closer.Close() //nolint:errcheck // nothing we can do here
 
-	cloned := make([]byte, len(data))
-	copy(cloned, data)
-
 	return &physical.Entry{
 		Key:   key,
-		Value: cloned,
+		Value: slices.Clone(data),
 	}, nil
 }
 
@@ -406,7 +402,7 @@ func (t *Transaction) ListPage(ctx context.Context, prefix string, after string,
 	afterMap, present := t.lists[lister.Prefix]
 	if !present {
 		afterMap = map[string]map[int][]string{}
-		t.lists[prefix] = afterMap
+		t.lists[lister.Prefix] = afterMap
 	}
 	limitMap, present := afterMap[after]
 	if !present {
@@ -441,8 +437,6 @@ func (t *Transaction) Delete(ctx context.Context, key string) error {
 	if !t.writable {
 		return physical.ErrTransactionReadOnly
 	}
-
-	key = path.Clean(key)
 
 	t.lock.Lock()
 	defer t.lock.Unlock()
@@ -570,7 +564,7 @@ func (t *Transaction) Rollback(ctx context.Context) error {
 	return nil
 }
 
-// notifyWrite must be called while holding at least a read lock. It all
+// notifyWrite must be called while holding at least a read lock. It notifies all
 // outstanding transactions that a write (update or delete) on the given entry
 // has occurred.
 func (b *Backend) notifyWrite(key string, deleted bool) error {
@@ -671,13 +665,14 @@ func (t *Transaction) notifyWriteWithLock(written string, deleted bool) {
 	// would've included this entry. We can't use path.Base(...) because
 	// we don't want to implicitly call path.Clean(...) and deal with its
 	// semantics.
-	parts := strings.Split(written, "/")
-
-	var base string
-	suffix := parts[len(parts)-1]
-	if len(parts) > 1 {
-		base = strings.Join(parts[0:len(parts)-1], "/")
+	base, suffix, found := strings.CutLast(written, "/")
+	if !found {
+		suffix = written
 	}
+
+	// Ensure we have a trailing slash on base as CutLast will have removed
+	// it and compliant list calls will have it.
+	base += "/"
 
 	afterMap, present := t.lists[base]
 	if !present {

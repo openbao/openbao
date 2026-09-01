@@ -107,8 +107,7 @@ type InmemOp struct {
 
 type InmemBackendTransaction struct {
 	InmemBackend
-	parent    *TransactionalInmemBackend
-	committed atomic.Bool
+	parent *TransactionalInmemBackend
 }
 
 var _ physical.Transaction = &InmemBackendTransaction{}

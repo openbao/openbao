@@ -8,6 +8,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -35,6 +36,9 @@ var keyTypes = []string{
 	"rsa-2048",
 	"rsa-3072",
 	"rsa-4096",
+	"mldsa-44",
+	"mldsa-65",
+	"mldsa-87",
 	"hmac",
 }
 
@@ -1034,6 +1038,12 @@ func generateKey(keyType string) (any, error) {
 		return rsa.GenerateKey(rand.Reader, 3072)
 	case "rsa-4096":
 		return rsa.GenerateKey(rand.Reader, 4096)
+	case "mldsa-44":
+		return mldsa.GenerateKey(mldsa.MLDSA44())
+	case "mldsa-65":
+		return mldsa.GenerateKey(mldsa.MLDSA65())
+	case "mldsa-87":
+		return mldsa.GenerateKey(mldsa.MLDSA87())
 	default:
 		return nil, fmt.Errorf("failed to generate unsupported key type: %s", keyType)
 	}
@@ -1049,6 +1059,8 @@ func getPublicKey(privateKey crypto.PrivateKey, keyType string) ([]byte, error) 
 		publicKey = privateKey.(*ecdsa.PrivateKey).Public()
 	case "ed25519":
 		publicKey = privateKey.(ed25519.PrivateKey).Public()
+	case "mldsa-44", "mldsa-65", "mldsa-87":
+		publicKey = privateKey.(*mldsa.PrivateKey).Public()
 	default:
 		return publicKeyBytes, fmt.Errorf("failed to get public key from %s key", keyType)
 	}

@@ -30,6 +30,9 @@ func TestTransit_BackupRestore(t *testing.T) {
 	testBackupRestore(t, "rsa-2048", "sign-verify")
 	testBackupRestore(t, "rsa-3072", "sign-verify")
 	testBackupRestore(t, "rsa-4096", "sign-verify")
+	testBackupRestore(t, "mldsa-44", "sign-verify")
+	testBackupRestore(t, "mldsa-65", "sign-verify")
+	testBackupRestore(t, "mldsa-87", "sign-verify")
 
 	// Test HMAC/verification after a restore for all key types
 	testBackupRestore(t, "aes128-gcm96", "hmac-verify")
@@ -43,6 +46,9 @@ func TestTransit_BackupRestore(t *testing.T) {
 	testBackupRestore(t, "rsa-2048", "hmac-verify")
 	testBackupRestore(t, "rsa-3072", "hmac-verify")
 	testBackupRestore(t, "rsa-4096", "hmac-verify")
+	testBackupRestore(t, "mldsa-44", "hmac-verify")
+	testBackupRestore(t, "mldsa-65", "hmac-verify")
+	testBackupRestore(t, "mldsa-87", "hmac-verify")
 	testBackupRestore(t, "hmac", "hmac-verify")
 }
 

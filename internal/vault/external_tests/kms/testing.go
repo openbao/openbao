@@ -63,6 +63,18 @@ func knownTransitKeyTypes() []transitKeyType {
 			SignVerify: true,
 		},
 		{
+			Type:       "mldsa-44",
+			SignVerify: true,
+		},
+		{
+			Type:       "mldsa-65",
+			SignVerify: true,
+		},
+		{
+			Type:       "mldsa-87",
+			SignVerify: true,
+		},
+		{
 			Type:           "rsa-2048",
 			EncryptDecrypt: true,
 			SignVerify:     true,

@@ -78,9 +78,9 @@
         <CopyButton
           class="button is-compact is-transparent level-right"
           data-test-button="modal-copy"
-          @clipboardText={{@ciphertext}}
+          @text={{@ciphertext}}
           @buttonType="button"
-          @success={{action (set-flash-message "Ciphertext copied!")}}
+          @onSuccess={{action (set-flash-message "Ciphertext copied!")}}
         >
           <Icon @name="clipboard-copy" aria-label="Copy" />
         </CopyButton>
@@ -91,9 +91,9 @@
     <CopyButton
       class="button is-primary copy-close"
       data-test-button="modal-copy-close"
-      @clipboardText={{@ciphertext}}
+      @text={{@ciphertext}}
       @buttonType="button"
-      @success={{action @toggleModal "Ciphertext copied!"}}
+      @onSuccess={{action @toggleModal "Ciphertext copied!"}}
     >
       Copy &amp; Close
     </CopyButton>

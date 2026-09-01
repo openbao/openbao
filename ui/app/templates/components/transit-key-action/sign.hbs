@@ -129,9 +129,9 @@
         <CopyButton
           class="button is-compact is-transparent level-right"
           data-test-button="modal-copy"
-          @clipboardText={{@signature}}
+          @text={{@signature}}
           @buttonType="button"
-          @success={{action (set-flash-message "Signature copied!")}}
+          @onSuccess={{action (set-flash-message "Signature copied!")}}
         >
           <Icon @name="clipboard-copy" aria-label="Copy" />
         </CopyButton>
@@ -142,9 +142,9 @@
     <CopyButton
       class="button is-primary copy-close"
       data-test-button="modal-copy-close"
-      @clipboardText={{@signature}}
+      @text={{@signature}}
       @buttonType="button"
-      @success={{action @toggleModal "Signature copied!"}}
+      @onSuccess={{action @toggleModal "Signature copied!"}}
     >
       Copy &amp; Close
     </CopyButton>

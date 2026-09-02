@@ -101,22 +101,22 @@ func (sm *SealManager) Reset() {
 	sm.rotationConfigByNamespace = map[string]*rotationConfig{}
 }
 
-type SetSealOptions struct {
-	WriteToStorage bool
-	AllowOverride  bool
-	Seal           Seal
-	Barrier        barrier.SecurityBarrier
+type setSealOptions struct {
+	writeToStorage bool
+	allowOverride  bool
+	seal           Seal
+	barrier        barrier.SecurityBarrier
 }
 
 // SetSeal creates a seal with provided config and sets it as provided namespace seal;
 // Initializes seal, creating security barrier and persisting seal config.
-func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, opts SetSealOptions) error {
+func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, opts setSealOptions) error {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
 	// Check if we have the seal present; if so, don't set any seal
 	// information as we don't want to overwrite what we have.
-	if _, ok := sm.sealByNamespace[ns.UUID]; ok && !opts.AllowOverride {
+	if _, ok := sm.sealByNamespace[ns.UUID]; ok && !opts.allowOverride {
 		return nil
 	}
 
@@ -127,8 +127,8 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	metaPrefix := NamespaceStoragePathPrefix(ns)
 
 	var defaultSeal Seal
-	if opts.Seal != nil {
-		defaultSeal = opts.Seal
+	if opts.seal != nil {
+		defaultSeal = opts.seal
 	} else {
 		// Seal type would depend on the provided arguments
 		defaultSeal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
@@ -150,13 +150,14 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 		}
 	}
 
-	nsBarrier := opts.Barrier
+	nsBarrier := opts.barrier
 	if nsBarrier == nil {
 		nsBarrier = barrier.NewAESGCMBarrier(sm.core.physical, ns)
 	}
-	sm.addNamespace(ns, defaultSeal, nil, nil, nsBarrier)
+	sm.sealByNamespace[ns.UUID] = defaultSeal
+	sm.barrierByNamespacePath.Insert(ns.Path, nsBarrier)
 
-	if opts.WriteToStorage {
+	if opts.writeToStorage {
 		if err := defaultSeal.SetBarrierConfig(ctx, sealConfig); err != nil {
 			return fmt.Errorf("failed to set barrier config: %w", err)
 		}
@@ -178,17 +179,6 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 	delete(sm.unlockInformationByNamespace, ns.UUID)
 	delete(sm.rotationConfigByNamespace, ns.UUID)
 	sm.barrierByNamespacePath.Delete(ns.Path)
-}
-
-func (sm *SealManager) addNamespace(ns *namespace.Namespace, seal Seal, unlockInformation *unlockInformation, rotationConfig *rotationConfig, barrier barrier.SecurityBarrier) {
-	sm.sealByNamespace[ns.UUID] = seal
-	if unlockInformation != nil {
-		sm.unlockInformationByNamespace[ns.UUID] = unlockInformation
-	}
-	if rotationConfig != nil {
-		sm.rotationConfigByNamespace[ns.UUID] = rotationConfig
-	}
-	sm.barrierByNamespacePath.Insert(ns.Path, barrier)
 }
 
 // NamespaceView returns the BarrierView that applies to the given namespace.

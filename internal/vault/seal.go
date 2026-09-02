@@ -34,7 +34,7 @@ const (
 
 	// barrierMigrationStatePath is the path used to store the temporary barrier
 	// migration state while a migration is running. This value is encrypted
-	// with the old barrier.
+	// by the barrier we are migrating from.
 	barrierMigrationStatePath = "core/barrier-migration"
 
 	// recoverySealConfigPath is the path to the recovery key seal configuration.

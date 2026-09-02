@@ -1747,6 +1747,13 @@ func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (strin
 // NamespaceByStoragePath parses an absolute storage path and returns the
 // matching namespace that the path belongs to.
 func (c *Core) NamespaceByStoragePath(ctx context.Context, path string) (*namespace.Namespace, string, error) {
+	if c.recoveryMode {
+		// In recovery mode, we do not have a namespace store so treat
+		// everything as relative to the root namespace. This means that
+		// sealed namespaces will not function.
+		return namespace.RootNamespace, path, nil
+	}
+
 	rest, ok := strings.CutPrefix(path, barrier.NamespacePrefix)
 	if !ok || rest == "" {
 		return namespace.RootNamespace, path, nil

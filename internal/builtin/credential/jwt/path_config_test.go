@@ -43,7 +43,7 @@ func TestConfig_JWT_Read(t *testing.T) {
 		"default_role":                  "",
 		"jwt_validation_pubkeys":        []string{testJWTPubKey},
 		"jwt_supported_algs":            []string{},
-		"jwks_urls":                     []string{},
+		"jwks_url":                      []string{},
 		"jwks_ca_pem":                   "",
 		"bound_issuer":                  "http://vault.example.com/",
 		"provider_config":               map[string]any{},
@@ -259,15 +259,14 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	// Reads return the new list format regardless of the input form.
-	delete(data, "jwks_url")
-	data["jwks_urls"] = []string{s.server.URL + "/certs"}
+	// Reads return the list format regardless of the input form.
+	data["jwks_url"] = []string{s.server.URL + "/certs"}
 	if diff := deep.Equal(resp.Data, data); diff != nil {
 		t.Fatalf("Expected did not equal actual: %v", diff)
 	}
 }
 
-func TestConfig_JWKS_NewFieldTakesPrecedence(t *testing.T) {
+func TestConfig_JWKS_CommaSeparatedURLs(t *testing.T) {
 	b, storage := getBackend(t)
 
 	s := newOIDCProvider(t)
@@ -278,10 +277,8 @@ func TestConfig_JWKS_NewFieldTakesPrecedence(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// When both names are supplied, the replacement field is authoritative.
 	data := map[string]any{
-		"jwks_url":             s.server.URL + "/certs_missing",
-		"jwks_urls":            []string{s.server.URL + "/certs"},
+		"jwks_url":             s.server.URL + "/certs_wrong," + s.server.URL + "/certs",
 		"jwks_ca_pem":          cert,
 		"skip_jwks_validation": false,
 	}
@@ -302,8 +299,9 @@ func TestConfig_JWKS_NewFieldTakesPrecedence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(conf.JWKSURLs, []string{s.server.URL + "/certs"}) {
-		t.Fatalf("expected jwks_urls to take precedence, got: %#v", conf.JWKSURLs)
+	expectedURLs := []string{s.server.URL + "/certs_wrong", s.server.URL + "/certs"}
+	if !reflect.DeepEqual(conf.JWKSURLs, expectedURLs) {
+		t.Fatalf("expected comma-separated jwks_url to be stored as a list, got: %#v", conf.JWKSURLs)
 	}
 }
 
@@ -1082,7 +1080,7 @@ func TestConfig_JWKS_MultiURL_WriteRead(t *testing.T) {
 	}
 
 	data := map[string]any{
-		"jwks_urls":                     []string{s.server.URL + "/certs_wrong", s.server.URL + "/certs"},
+		"jwks_url":                      []string{s.server.URL + "/certs_wrong", s.server.URL + "/certs"},
 		"jwks_ca_pem":                   cert,
 		"oidc_discovery_url":            "",
 		"oidc_discovery_ca_pem":         "",
@@ -1155,7 +1153,7 @@ func TestConfig_JWKS_MultiURL_SkipValidation(t *testing.T) {
 			Path:      configPath,
 			Storage:   storage,
 			Data: map[string]any{
-				"jwks_urls":   []string{s.server.URL + "/certs_missing", s.server.URL + "/certs"},
+				"jwks_url":    []string{s.server.URL + "/certs_missing", s.server.URL + "/certs"},
 				"jwks_ca_pem": cert,
 			},
 		}
@@ -1178,7 +1176,7 @@ func TestConfig_JWKS_MultiURL_SkipValidation(t *testing.T) {
 			Path:      configPath,
 			Storage:   storage,
 			Data: map[string]any{
-				"jwks_urls":            []string{s.server.URL + "/certs_missing", s.server.URL + "/certs"},
+				"jwks_url":             []string{s.server.URL + "/certs_missing", s.server.URL + "/certs"},
 				"jwks_ca_pem":          cert,
 				"skip_jwks_validation": true,
 			},
@@ -1194,8 +1192,8 @@ func TestConfig_JWKS_MultiURL_SkipValidation(t *testing.T) {
 		if len(resp.Warnings) == 0 {
 			t.Fatal("expected at least one verification warning")
 		}
-		if !strings.Contains(resp.Warnings[0], "jwks_urls[0]") {
-			t.Fatalf("expected warning to reference jwks_urls[0], got: %v", resp.Warnings)
+		if !strings.Contains(resp.Warnings[0], "jwks_url[0]") {
+			t.Fatalf("expected warning to reference jwks_url[0], got: %v", resp.Warnings)
 		}
 
 		conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
@@ -1245,11 +1243,8 @@ func TestConfig_JWKSURLs_LegacyStringStorage(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
-	if got := resp.Data["jwks_urls"]; !reflect.DeepEqual(got, []string{"https://example.com/certs"}) {
-		t.Fatalf("expected read to return jwks_urls list, got: %#v", got)
-	}
-	if _, ok := resp.Data["jwks_url"]; ok {
-		t.Fatal("expected read not to return deprecated jwks_url")
+	if got := resp.Data["jwks_url"]; !reflect.DeepEqual(got, []string{"https://example.com/certs"}) {
+		t.Fatalf("expected read to return jwks_url list, got: %#v", got)
 	}
 }
 

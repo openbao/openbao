@@ -18,9 +18,9 @@ at any location, please update your API calls accordingly.
 ## Configure
 
 Configures the validation information to be used globally across all roles. One
-(and only one) of `oidc_discovery_url`, `jwks_urls`, and `jwt_validation_pubkeys` must be
-set. The deprecated `jwks_url` parameter is accepted as a single-URL alias for
-`jwks_urls`.
+(and only one) of `oidc_discovery_url`, `jwks_url`, and `jwt_validation_pubkeys` must be
+set. The `jwks_url` parameter accepts a single URL, a comma-separated string of
+URLs, or an array of strings.
 
 | Method | Path               |
 | :----- | :----------------- |
@@ -28,24 +28,28 @@ set. The deprecated `jwks_url` parameter is accepted as a single-URL alias for
 
 ### Parameters
 
-- `oidc_discovery_url` `(string: <optional>)` - The base URL of the OIDC Discovery URL without ".well-known/openid-configuration" component. Cannot be used with "jwks_url", "jwks_urls", or "jwt_validation_pubkeys".
+- `oidc_discovery_url` `(string: <optional>)` - The base URL of the OIDC Discovery URL without ".well-known/openid-configuration" component. Cannot be used with "jwks_url" or "jwt_validation_pubkeys".
 - `oidc_discovery_ca_pem` `(string: <optional>)` - The contents of a CA certificate or chain of certificates, in PEM format, to use to validate connections to the OIDC Discovery URL. If not set, system certificates are used.
 - `oidc_client_id` `(string: <optional>)` - The OAuth Client ID from the provider for OIDC roles.
 - `oidc_client_secret` `(string: <optional>)` - The OAuth Client Secret from the provider for OIDC roles.
 - `oidc_response_mode` `(string: <optional>)` <a name="oidc_response_mode"></a> - The response mode to be used in the OAuth2 request. Allowed values are "query" and "form_post". Defaults to "query".
 - `oidc_response_types` `(comma-separated string, or array of strings: <optional>)` - The response types to request. Allowed values are "code" and "id_token". Defaults to "code".
   Note: "id_token" may only be used if "oidc_response_mode" is set to "form_post".
-- `jwks_url` `(string: <optional>)` - Deprecated alias for `jwks_urls` that accepts a single JWKS URL. Cannot be used with "oidc_discovery_url" or "jwt_validation_pubkeys".
-- `jwks_urls` `(comma-separated string, or array of strings: <optional>)` - JWKS URLs to use to authenticate signatures. During login, the JWT signature is verified against each JWKS in the order configured until a match is found. Cannot be used with "oidc_discovery_url" or "jwt_validation_pubkeys".
-- `jwks_ca_pem` `(string: <optional>)` - The contents of a CA certificate or chain of certificates, in PEM format, to use to validate connections to the JWKS URLs. May contain multiple concatenated CA certificates, which are shared across all `jwks_urls` values. If not set, system certificates are used.
-- `jwt_validation_pubkeys` `(comma-separated string, or array of strings: <optional>)` - A list of PEM-encoded public keys to use to authenticate signatures locally. Cannot be used with "jwks_url", "jwks_urls", or "oidc_discovery_url".
+- `jwks_url` `(string, comma-separated string, or array of strings: <optional>)` - A JWKS URL or list of JWKS URLs to use to authenticate signatures. During login, the JWT signature is verified against each JWKS in the order configured until a match is found. Cannot be used with "oidc_discovery_url" or "jwt_validation_pubkeys". GET requests return the configured URLs as an array.
+- `jwks_ca_pem` `(string: <optional>)` - The contents of a CA certificate or chain of certificates, in PEM format, to use to validate connections to the JWKS URLs. May contain multiple concatenated CA certificates, which are shared across all `jwks_url` values. If not set, system certificates are used.
+- `jwt_validation_pubkeys` `(comma-separated string, or array of strings: <optional>)` - A list of PEM-encoded public keys to use to authenticate signatures locally. Cannot be used with "jwks_url" or "oidc_discovery_url".
 - `bound_issuer` `(string: <optional>)` - The value against which to match the `iss` claim in a JWT.
 - `jwt_supported_algs` `(comma-separated string, or array of strings: <optional>)` - A list of supported signing algorithms. Defaults to [RS256] for OIDC roles. Defaults to all [available algorithms](https://github.com/hashicorp/cap/blob/main/jwt/algs.go) for JWT roles.
 - `default_role` `(string: <optional>)` - The default role to use if none is provided during login.
 - `provider_config` `(map: <optional>)` - Configuration options for provider-specific handling. Providers with specific handling include: Azure, Google, SecureAuth, IBM ISAM. The options are described in each provider's section in [OIDC Provider Setup](../../auth/jwt/oidc-providers/index.mdx).
 - `override_allowed_server_names` `(comma-separated string, or array of strings: <optional>)` - A list of hostnames to accept when performing TLS validation, which applies both to OIDC and JWKS. This overrides default checks that expect the TLS subject to match the hostname specified in the connection URL.
 - `namespace_in_state` `(bool: true)` - Pass namespace in the OIDC state parameter instead of as a separate query parameter. With this setting, the allowed redirect URL(s) in OpenBao and on the provider side should not contain a namespace query parameter. This means only one redirect URL entry needs to be maintained on the provider side for all vault namespaces that will be authenticating against it. Defaults to true for new configs.
-- `skip_jwks_validation` `(bool: false)` - When `true` and `oidc_discovery_url`, `jwks_url`, or `jwks_urls` are specified, if the connection fails to load, a warning will be issued and status can be checked later by reading the config endpoint. When `false`, configuration save will fail if issuer validation cannot complete successfully.
+- `skip_jwks_validation` `(bool: false)` - When `true` and `oidc_discovery_url` or `jwks_url` is specified, if the connection fails to load, a warning will be issued and status can be checked later by reading the config endpoint. When `false`, configuration save will fail if issuer validation cannot complete successfully.
+
+The multi-value `jwks_url` form supports the same migration use case as Vault's
+`jwks_pairs` feature: trusting multiple JWKS endpoints from one JWT auth mount.
+OpenBao continues to use one shared `jwks_ca_pem` bundle for all configured
+endpoints rather than configuring a separate CA pair for each endpoint.
 
 ### Sample payload
 

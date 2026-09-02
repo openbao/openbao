@@ -1748,7 +1748,7 @@ func TestLogin_MultiJWKSURL(t *testing.T) {
 		// The first JWKS endpoint serves a valid but wrong key; the second
 		// serves the key that matches the signing key.
 		data := map[string]any{
-			"jwks_urls":   []string{p.server.URL + "/certs_wrong", p.server.URL + "/certs"},
+			"jwks_url":    []string{p.server.URL + "/certs_wrong", p.server.URL + "/certs"},
 			"jwks_ca_pem": cert,
 		}
 
@@ -1779,7 +1779,7 @@ func TestLogin_MultiJWKSURL(t *testing.T) {
 		b, storage, p, cert := newBackend(t)
 
 		data := map[string]any{
-			"jwks_urls":   []string{p.server.URL + "/certs_wrong"},
+			"jwks_url":    []string{p.server.URL + "/certs_wrong"},
 			"jwks_ca_pem": cert,
 		}
 

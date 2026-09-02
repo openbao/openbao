@@ -1,3 +1,3 @@
 ```release-note:improvement
-auth/jwt: Add `jwks_urls` for multiple JWKS URLs while retaining `jwks_url` as a deprecated single-URL alias.
+auth/jwt: Allow `jwks_url` to configure multiple JWKS URLs while retaining support for single-string values.
 ```

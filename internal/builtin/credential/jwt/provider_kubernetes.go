@@ -46,7 +46,7 @@ func (k *KubernetesProvider) Initialize(_ context.Context, jc *jwtConfig) error 
 	}
 
 	if len(jc.JWKSURLs) != 0 {
-		return errors.New("jwks_urls must not be set when using the kubernetes provider")
+		return errors.New("jwks_url must not be set when using the kubernetes provider")
 	}
 
 	if jc.JWKSCAPEM != "" {

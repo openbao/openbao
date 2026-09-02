@@ -452,9 +452,10 @@ func TestNamespaceBackend_MigrateBackend(t *testing.T) {
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/noop/migrate-barrier")
 		req.ClientToken = root
 		res, err := b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-		require.Nil(t, res, "expected nil response when migrating to the same barrier")
-		require.Equal(t, namespace.TypeNormal, c.NamespaceType(ns))
+		assert.NoError(t, err)
+		require.NotNil(t, res, "expected non-nil response when migrating to the same barrier")
+		assert.Equal(t, "skipped", res.Data["status"])
+		assert.Equal(t, namespace.TypeNormal, c.NamespaceType(ns))
 	})
 
 	t.Run("pgp keys encrypt the returned key shares", func(t *testing.T) {

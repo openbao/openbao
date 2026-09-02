@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	_ cli.Command             = (*NamespaceCreateCommand)(nil)
-	_ cli.CommandAutocomplete = (*NamespaceCreateCommand)(nil)
+	_ cli.Command             = (*NamespaceMigrateBarrierCommand)(nil)
+	_ cli.CommandAutocomplete = (*NamespaceMigrateBarrierCommand)(nil)
 )
 
 type NamespaceMigrateBarrierCommand struct {
@@ -58,7 +58,7 @@ func (c *NamespaceMigrateBarrierCommand) Flags() *FlagSets {
 		Name:       "seal",
 		Target:     &c.flagSealConfigPath,
 		Completion: complete.PredictFilesSet([]string{"*.hcl", "*.json"}),
-		Usage:      "Path to a HCL file with exactly one seal stanza.",
+		Usage:      "Path to a HCL or JSON file with exactly one seal stanza.",
 	})
 
 	f.IntVar(&IntVar{

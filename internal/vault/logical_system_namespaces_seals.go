@@ -18,7 +18,6 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
-	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 )
 
 func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
@@ -383,7 +382,10 @@ type BarrierMigrationState struct {
 
 func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
+		}
 
 		if !b.System().(extendedSystemView).SudoPrivilege(ctx, req.MountPoint+req.Path, req.ClientToken) {
 			return nil, logical.ErrPermissionDenied
@@ -392,7 +394,6 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 		var state BarrierMigrationState
 
 		sealRaw, ok := data.GetOk("seal")
-		var continueInterrupted bool
 		if ok {
 			var err error
 			sealString, ok := sealRaw.(string)
@@ -444,99 +445,19 @@ func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc
 		}
 
 		if ns == nil {
-			return nil, fmt.Errorf("namespace %q doesn't exist", path)
+			return handleError(fmt.Errorf("namespace %q doesn't exist", path))
 		}
 
-		oldBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+		if b.Core.NamespaceType(ns) == namespace.TypeNormal && state.SealConfig == nil {
+			// normal -> normal: NOOP
+			return &logical.Response{
+				Data: map[string]any{"status": "skipped"},
+			}, nil
+		}
 
-		se, err := NamespaceScopedView(oldBarrier, ns).Get(ctx, barrierMigrationStatePath)
-		if err != nil {
-			b.logger.Info("error trying to read stored migration config", "error", err)
-		}
-		if se != nil {
-			if err := se.DecodeJSON(&state); err != nil {
-				return handleError(err)
-			}
-			continueInterrupted = true
-		}
-		parentNs, err := namespace.FromContext(ctx)
-		if err != nil {
+		if err := b.Core.namespaceStore.startNamespaceBarrierMigration(ctx, ns, &state); err != nil {
 			return handleError(err)
 		}
-
-		b.Core.namespaceStore.lock.Lock()
-		err = b.Core.namespaceStore.taintNamespace(ctx, parentNs, ns)
-		b.Core.namespaceStore.lock.Unlock()
-		if err != nil {
-			return handleError(err)
-		}
-
-		parentBarrier := b.Core.sealManager.NamespaceBarrierByLongestPrefix(parentNs.Path)
-
-		var newBarrier barrier.SecurityBarrier
-		if state.SealConfig == nil {
-			newBarrier = parentBarrier
-		}
-
-		var seal Seal
-		if newBarrier == nil {
-			metaPrefix := NamespaceStoragePathPrefix(ns)
-			seal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
-			seal.SetCore(b.Core)
-			seal.SetMetaPrefix(metaPrefix)
-			if err := seal.SetBarrierConfig(ctx, state.SealConfig); err != nil {
-				return handleError(err)
-			}
-
-			seal.SetConfigAccess(parentBarrier)
-
-			ctx := namespace.ContextWithNamespace(ctx, ns)
-			if err := seal.Init(ctx); err != nil {
-				return handleError(err)
-			}
-
-			newBarrier = barrier.NewAESGCMBarrier(b.Core.physical, ns)
-			if continueInterrupted {
-				if err := b.Core.sealManager.SetSeal(ctx, state.SealConfig, ns, SetSealOptions{
-					Seal:    seal,
-					Barrier: newBarrier,
-				}); err != nil {
-					return handleError(err)
-				}
-				b.logger.Warn("namespace seal set", "namespace", ns)
-				for _, share := range state.UnsealShares {
-					ok, err := b.Core.sealManager.UnsealNamespace(ctx, ns, share)
-					if ok {
-						break
-					}
-					if err != nil {
-						return handleError(err)
-					}
-				}
-				b.logger.Warn("unsealed namespace barrier", "namespace", ns)
-			} else {
-				state.UnsealShares, err = b.Core.sealManager.initializeBarrier(ctx, newBarrier, seal, state.SealConfig)
-				if err != nil {
-					return handleError(err)
-				}
-			}
-		}
-
-		if newBarrier == oldBarrier {
-			// Nothing to do; untaint the namespace we tainted above. In the
-			// normal case, it will be untainted at the end of the migration job
-			b.Core.namespaceStore.lock.Lock()
-			err = b.Core.namespaceStore.untaintNamespace(ctx, parentNs, ns)
-			b.Core.namespaceStore.lock.Unlock()
-			if err != nil {
-				return handleError(err)
-			}
-			return nil, nil
-		}
-
-		migrationJob := b.Core.namespaceStore.newNamespaceBarrierMigrationJob(parentBarrier, oldBarrier, newBarrier, parentNs, ns, seal, &state)
-
-		b.Core.namespaceStore.jobDispatcher.AddJob(migrationJob, ns.UUID)
 
 		resp := &logical.Response{
 			Data: map[string]any{"status": "in-progress"},

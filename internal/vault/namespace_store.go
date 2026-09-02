@@ -26,6 +26,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	"github.com/openbao/openbao/v2/internal/vault/policy"
+	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 )
 
 // Namespace id length; upstream uses 5 characters so we use one more to
@@ -249,7 +250,7 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			if err := sealConfigEntry.DecodeJSON(&sealConfig); err != nil {
 				return false, fmt.Errorf("failed to decode seal config entry for namespace %s: %w", namespace.ID, err)
 			}
-			return true, ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, SetSealOptions{})
+			return true, ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, setSealOptions{})
 		}
 
 		if err := ns.loadNamespacesRecursive(ctx, barrier, childView, callback); err != nil {
@@ -345,7 +346,7 @@ func (ns *NamespaceStore) Invalidate(ctx context.Context, parentUUID, childUUID 
 		if err := entry.DecodeJSON(&config); err != nil {
 			return nil, false, err
 		}
-		if err := ns.core.sealManager.SetSeal(ctx, &config, &child, SetSealOptions{}); err != nil {
+		if err := ns.core.sealManager.SetSeal(ctx, &config, &child, setSealOptions{}); err != nil {
 			return nil, false, err
 		}
 	}
@@ -531,8 +532,8 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	var sealKeyShares [][]byte
 	if !exists {
 		if sealConfig != nil {
-			if err := ns.core.sealManager.SetSeal(ctx, sealConfig, entry, SetSealOptions{
-				WriteToStorage: true,
+			if err := ns.core.sealManager.SetSeal(ctx, sealConfig, entry, setSealOptions{
+				writeToStorage: true,
 			}); err != nil {
 				return nil, fmt.Errorf("failed to set namespace seal: %w", err)
 			}
@@ -1304,7 +1305,7 @@ func (ns *NamespaceStore) untaintNamespace(ctx context.Context, parent, namespac
 
 	nsCopy := namespaceToUntaint.Clone(true /* preserve unlock */)
 	if err := ns.writeNamespace(ctx, ns.core.NamespaceView(parent), nsCopy); err != nil {
-		return fmt.Errorf("failed to persist namespace taint: %w", err)
+		return fmt.Errorf("failed to persist untainted namespace: %w", err)
 	}
 
 	// Push the update to all mounts.
@@ -1985,9 +1986,99 @@ func (j *namespaceCreationFailureJob) OnFailure(err error) {
 	j.store.logger.Error("failed to handle namespace deletion following failed creation; job may be retried via deletion of tainted namespace", "namespace", j.target.Path, "ns_uuid", j.target.UUID, "error", err.Error())
 }
 
+func (store *NamespaceStore) startNamespaceBarrierMigration(ctx context.Context, ns *namespace.Namespace, state *BarrierMigrationState) error {
+	oldBarrier := store.core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+
+	var continuingAfterInterruption bool
+
+	se, err := NamespaceScopedView(oldBarrier, ns).Get(ctx, barrierMigrationStatePath)
+	if err != nil {
+		return fmt.Errorf("error while trying to read stored migration config: %w", err)
+	}
+	if se != nil {
+		if err := se.DecodeJSON(&state); err != nil {
+			return err
+		}
+		continuingAfterInterruption = true
+	}
+	parentNs, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	store.lock.Lock()
+	err = store.taintNamespace(ctx, parentNs, ns)
+	store.lock.Unlock()
+	if err != nil {
+		return err
+	}
+
+	parentBarrier := store.core.sealManager.NamespaceBarrierByLongestPrefix(parentNs.Path)
+
+	var newBarrier barrier.SecurityBarrier
+	if state.SealConfig == nil {
+		newBarrier = parentBarrier
+	}
+
+	var seal Seal
+	if newBarrier == nil {
+		metaPrefix := NamespaceStoragePathPrefix(ns)
+		seal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+		seal.SetCore(store.core)
+		seal.SetMetaPrefix(metaPrefix)
+		if err := seal.SetBarrierConfig(ctx, state.SealConfig); err != nil {
+			return err
+		}
+
+		seal.SetConfigAccess(parentBarrier)
+
+		ctx := namespace.ContextWithNamespace(ctx, ns)
+		if err := seal.Init(ctx); err != nil {
+			return err
+		}
+
+		newBarrier = barrier.NewAESGCMBarrier(store.core.physical, ns)
+		if continuingAfterInterruption {
+			if err := store.core.sealManager.SetSeal(ctx, state.SealConfig, ns, setSealOptions{
+				seal:    seal,
+				barrier: newBarrier,
+			}); err != nil {
+				return err
+			}
+			for _, share := range state.UnsealShares {
+				ok, err := store.core.sealManager.UnsealNamespace(ctx, ns, share)
+				if ok {
+					break
+				}
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			state.UnsealShares, err = store.core.sealManager.initializeBarrier(ctx, newBarrier, seal, state.SealConfig)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if newBarrier == oldBarrier {
+		// should never happen, we're checking for a normal -> normal migration in
+		// handleNamespacesMigrateBarrier; sealable -> sealable should produce a
+		// different new barrier
+		return errors.New("new barrier and old barrier are the same")
+	}
+
+	migrationJob := store.newNamespaceBarrierMigrationJob(parentBarrier, oldBarrier, newBarrier, parentNs, ns, seal, state)
+
+	store.jobDispatcher.AddJob(migrationJob, ns.UUID)
+
+	return nil
+}
+
 type namespaceBarrierMigrationJob struct {
 	store         *NamespaceStore
-	core          *Core
+	sealManager   *SealManager
 	state         *BarrierMigrationState
 	parent        *namespace.Namespace
 	seal          Seal
@@ -2001,7 +2092,7 @@ type namespaceBarrierMigrationJob struct {
 func (ns *NamespaceStore) newNamespaceBarrierMigrationJob(parentBarrier, oldBarrier, newBarrier barrier.SecurityBarrier, parent, target *namespace.Namespace, seal Seal, state *BarrierMigrationState) fairshare.Job {
 	return &namespaceBarrierMigrationJob{
 		store:         ns,
-		core:          ns.core,
+		sealManager:   ns.core.sealManager,
 		state:         state,
 		parent:        parent,
 		seal:          seal,
@@ -2018,7 +2109,7 @@ func (j *namespaceBarrierMigrationJob) Execute() (err error) {
 
 	start := time.Now()
 	defer func() {
-		j.store.logger.Info("finished namespace migration", "duration", time.Since(start))
+		j.store.logger.Info("finished namespace migration", "duration", time.Since(start), "success", err == nil)
 	}()
 
 	namespacesToMigrate, err := j.store.ListNamespaces(namespace.ContextWithNamespace(ctx, j.target), ListNamespaceOpts{
@@ -2063,7 +2154,8 @@ func (j *namespaceBarrierMigrationJob) Execute() (err error) {
 				return true, nil
 			}
 			if slices.Contains(knownNamespaceCoreEntriesToCleanup, key) {
-				if j.newBarrier == j.parentBarrier && key != barrierMigrationStatePath {
+				if j.state.SealConfig == nil && key != barrierMigrationStatePath {
+					// new namespace is a normal namespace; delete keyring etc
 					logger.Trace("deleting key", "key", key, "namespace", ns)
 					err := newView.Delete(ctx, key)
 					if err != nil {
@@ -2096,26 +2188,25 @@ func (j *namespaceBarrierMigrationJob) Execute() (err error) {
 		}
 	}
 
-	// invalidate outer most namespace first
-	slices.Reverse(namespacesToMigrate)
-
-	var errs error
-	switch j.newBarrier {
-	case j.parentBarrier:
-		j.core.sealManager.RemoveNamespace(j.target)
-	default:
-		err = j.core.sealManager.SetSeal(ctx, j.sealConfig, j.target, SetSealOptions{
-			WriteToStorage: true,
-			AllowOverride:  true,
-			Seal:           j.seal,
-			Barrier:        j.newBarrier,
+	if j.newBarrier == j.parentBarrier {
+		j.sealManager.RemoveNamespace(j.target)
+	} else {
+		err := j.sealManager.SetSeal(ctx, j.sealConfig, j.target, setSealOptions{
+			writeToStorage: true,
+			allowOverride:  true,
+			seal:           j.seal,
+			barrier:        j.newBarrier,
 		})
 		if err != nil {
 			return err
 		}
 	}
 
+	// invalidate outer most namespace first
+	slices.Reverse(namespacesToMigrate)
+
 	ctx = namespace.ContextWithNamespace(ctx, namespace.RootNamespace)
+	var errs error
 	for _, ns := range namespacesToMigrate {
 		parentPath, ok := ns.ParentPath()
 		if !ok {
@@ -2140,6 +2231,8 @@ func (j *namespaceBarrierMigrationJob) Execute() (err error) {
 		return err
 	}
 
+	j.store.lock.Lock()
+	defer j.store.lock.Unlock()
 	if untaintErr := j.store.untaintNamespace(ctx, j.parent, j.target); untaintErr != nil {
 		return fmt.Errorf("failed to untaint namespace after migration: %w", untaintErr)
 	}

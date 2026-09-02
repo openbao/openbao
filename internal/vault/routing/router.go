@@ -1173,7 +1173,7 @@ func (r *Router) SetNamespaceStorageView(ns *namespace.Namespace, b barrier.Secu
 	r.l.Lock()
 	defer r.l.Unlock()
 
-	r.root.WalkPrefix("", func(s string, v any) bool {
+	r.root.WalkPrefix(ns.Path, func(s string, v any) bool {
 		re := v.(*RouteEntry)
 
 		if re.MountEntry.Namespace.ID != ns.ID {

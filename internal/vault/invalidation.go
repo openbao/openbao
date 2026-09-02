@@ -496,10 +496,11 @@ func (ij *invalidationJob) namespaceInvalidation(ctx context.Context) error {
 		// Nothing to do.
 		return nil
 	case !deleted && ij.skipTaintedNamespace(ctx, childUUID):
-		// The namespace is mid-migration. Its barrier may be in the process of
-		// changing on the active node, so reloading mounts now could attempt to
-		// decrypt data written to a different barrier, causing decryption to
-		// fail. On namespace untaint, the namespace will be invalidated again.
+		// The namespace is in the middle of barrier migration. Its barrier may
+		// be in the process of changing on the active node, so reloading mounts
+		// now could attempt to decrypt data written with a different barrier,
+		// causing decryption to fail. On namespace untaint, the namespace will
+		// be invalidated again.
 		return nil
 	}
 

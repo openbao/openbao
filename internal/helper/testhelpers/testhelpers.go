@@ -22,7 +22,7 @@ import (
 	"github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
-	"github.com/openbao/openbao/sdk/v2/helper/xor"
+	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
 	"github.com/openbao/openbao/v2/internal/helper/metricsutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/physical/raft"
@@ -100,15 +100,26 @@ func GenerateRootWithError(t testing.T, cluster *vault.TestCluster, kind Generat
 		return "", fmt.Errorf("generate root operation did not end successfully: %d / %d", status.Progress, status.Required)
 	}
 
-	tokenBytes, err := base64.RawStdEncoding.DecodeString(status.EncodedToken)
+	encoded := status.EncodedToken
+
+	// The CLI (`bao operator generate-root`) calls status before decoding the
+	// token to know the length.
+	switch kind {
+	case GenerateRootRegular:
+		status, err = client.Sys().GenerateRootStatus()
+	case GenerateRecovery:
+		status, err = client.Sys().GenerateRecoveryOperationTokenStatus()
+	}
 	if err != nil {
 		return "", err
 	}
-	tokenBytes, err = xor.XORBytes(tokenBytes, []byte(otp))
+
+	token, err := roottoken.DecodeToken(encoded, otp, status.OTPLength)
 	if err != nil {
 		return "", err
 	}
-	return string(tokenBytes), nil
+
+	return token, nil
 }
 
 // RandomWithPrefix is used to generate a unique name with a prefix, for

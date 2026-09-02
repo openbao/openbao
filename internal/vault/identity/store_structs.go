@@ -95,6 +95,10 @@ type IdentityStore struct {
 	// operated case insensitively
 	disableLowerCasedNames bool
 
+	// unsafeCrossNamespaceIdentity returns back current value of the `unsafe_cross_namespace_identity`
+	// flag indicating whether we use a single global memdb instance for identity
+	unsafeCrossNamespaceIdentity func() bool
+
 	router        *routing.Router
 	redirectAddr  string
 	localNode     LocalNode
@@ -132,4 +136,9 @@ type TOTPPersister interface {
 type TokenStorer interface {
 	LookupToken(context.Context, string) (*logical.TokenEntry, error)
 	CreateToken(context.Context, *logical.TokenEntry, bool) error
+}
+
+type LoggerAdder interface {
+	AddLogger(log.Logger)
+	UnsafeCrossNamespaceIdentity() bool
 }

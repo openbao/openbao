@@ -13,6 +13,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 	metrics "github.com/hashicorp/go-metrics/compat"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -39,27 +40,28 @@ var (
 )
 
 func (i *IdentityStore) ResetDB(ctx context.Context) error {
-	var err error
+	var merr *multierror.Error
 
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
 
+		// If we are running unsafeCrossNamespaceIdentity and it's not root namespace, skip.
+		if i.unsafeCrossNamespaceIdentity() && uuidRaw != namespace.RootNamespaceUUID {
+			return false
+		}
+
+		var err error
 		views.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
 		if err != nil {
-			err = fmt.Errorf("error resetting database for namespace %v: %w", uuid, err)
+			merr = multierror.Append(merr, fmt.Errorf("error resetting database for namespace %v: %w", uuid, err))
 			return false
 		}
 
 		return true
 	})
 
-	return err
-}
-
-type LoggerAdder interface {
-	AddLogger(log.Logger)
-	UnsafeCrossNamespaceIdentity() bool
+	return merr.ErrorOrNil()
 }
 
 type IdentityStoreConfig struct {
@@ -77,15 +79,16 @@ type IdentityStoreConfig struct {
 
 func NewIdentityStore(ctx context.Context, identityStoreConfig *IdentityStoreConfig, config *logical.BackendConfig, logger log.Logger) (*IdentityStore, error) {
 	iStore := &IdentityStore{
-		logger:        identityStoreConfig.Logger,
-		router:        identityStoreConfig.Router,
-		redirectAddr:  identityStoreConfig.RedirectAddr,
-		localNode:     identityStoreConfig.LocalNode,
-		namespacer:    identityStoreConfig.Namespacer,
-		metrics:       identityStoreConfig.MetricsSink,
-		totpPersister: identityStoreConfig.TOTPPersister,
-		tokenStorer:   identityStoreConfig.TokenStorer,
-		mfaBackend:    identityStoreConfig.MFABackend,
+		logger:                       identityStoreConfig.Logger,
+		router:                       identityStoreConfig.Router,
+		redirectAddr:                 identityStoreConfig.RedirectAddr,
+		localNode:                    identityStoreConfig.LocalNode,
+		namespacer:                   identityStoreConfig.Namespacer,
+		metrics:                      identityStoreConfig.MetricsSink,
+		totpPersister:                identityStoreConfig.TOTPPersister,
+		tokenStorer:                  identityStoreConfig.TokenStorer,
+		mfaBackend:                   identityStoreConfig.MFABackend,
+		unsafeCrossNamespaceIdentity: identityStoreConfig.LoggerAdder.UnsafeCrossNamespaceIdentity,
 	}
 
 	if err := iStore.AddNamespaceView(identityStoreConfig.LoggerAdder, namespace.RootNamespace, config.StorageView); err != nil {

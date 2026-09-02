@@ -1,0 +1,3 @@
+```release-note:bug
+core/recovery: Avoid panic during listing of namespace contents due to uninitialized namespace store.
+```

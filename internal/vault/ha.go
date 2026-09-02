@@ -1187,7 +1187,7 @@ func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.Canc
 		return false, true
 	}
 
-	c.logger.Trace("attempting enabling horizontal scalability (reads)")
+	c.logger.Trace("attempting state lock acquisition before read-enabled standby setup")
 
 	if err := c.runStandbyGrabStateLock(stopCh); err != nil {
 		c.logger.Error("unable to grab state lock for standby", "err", err)
@@ -1677,10 +1677,6 @@ func (c *Core) standbyReadsAllowed() bool {
 		return !conf.DisableStandbyReads
 	}
 	return false
-}
-
-func (c *Core) haveForwardingClient() bool {
-	return c.rpcForwardingClient.Load() != nil
 }
 
 func (c *Core) shouldHookInvalidate(phys physical.Backend) bool {

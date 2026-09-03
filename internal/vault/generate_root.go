@@ -100,10 +100,6 @@ func (c *Core) lockRootGeneration() (func(), error) {
 		c.stateLock.RUnlock()
 		return nil, consts.ErrStandby
 	}
-	if !c.barrier.Sealed() && c.recoveryMode {
-		c.stateLock.RUnlock()
-		return nil, errors.New("attempted to generate recovery operation token when already unsealed")
-	}
 
 	return c.stateLock.RUnlock, nil
 }
@@ -175,6 +171,10 @@ func (c *Core) GenerateRootInit(ctx context.Context, otp, pgpKey string, strateg
 		return err
 	}
 	defer unlock()
+
+	if !c.barrier.Sealed() && c.recoveryMode {
+		return errors.New("attempted to generate recovery operation token when already unsealed")
+	}
 
 	return c.lockedGenerateRootInit(ctx, otp, pgpKey, strategy)
 }
@@ -265,6 +265,10 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		return nil, err
 	}
 	defer unlock()
+
+	if !c.barrier.Sealed() && c.recoveryMode {
+		return nil, errors.New("attempted to generate recovery operation token when already unsealed")
+	}
 
 	return c.lockedGenerateRootUpdate(ctx, key, nonce, strategy)
 }

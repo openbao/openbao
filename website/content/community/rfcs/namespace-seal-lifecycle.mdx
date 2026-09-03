@@ -127,16 +127,21 @@ https://github.com/openbao/openbao/issues/3333.
 
 | Method | Path |
 |--------|------|
-| `POST` | `/v1/sys/namespaces/<path>/config/seal/migrate` |
+| `POST` | `/v1/sys/namespaces/<path>/reseal` |
+
+The endpoint name is provisional and may be revised during implementation to
+avoid conflicts with existing OpenBao conventions.
 
 This endpoint requires sudo privilege. The request body follows the same seal
 configuration format as namespace creation. For Shamir to auto-seal migration,
 existing key shares must be supplied to authorize the operation. For auto-seal
 to Shamir migration, the new key shares are returned in the response.
 
-Whether this endpoint should be unified with the namespace conversion endpoint
-from https://github.com/openbao/openbao/issues/3333 is an open question; see
-Unresolved Questions.
+Migration is asynchronous. Root key re-encryption may take significant time,
+particularly under high load or with large keyrings. The endpoint returns
+immediately; completion is tracked via a crash-recovery journal in storage
+(see Technical Description). The journal is cleared on successful completion;
+its presence indicates a migration is in progress or was interrupted.
 
 ### Failure Conditions
 
@@ -178,8 +183,16 @@ sm.sealByNamespace[ns.UUID] = nsSeal
 
 `SetSeal` in `seal_manager.go` explicitly reserves seal type changes for a
 future migration path. This RFC defines that path. The new entry point is
-`MigrateBarrierKey`, called from the `POST /config/seal/migrate` handler
+`MigrateBarrierKey`, called from the `POST /reseal` handler
 registered in `namespaceSealPaths` in `logical_system_namespaces_seals.go`.
+
+Migration is asynchronous. The handler returns immediately and queues the
+re-encryption job via the `jobDispatcher` in `namespace_store.go`, following
+the same pattern used by https://github.com/openbao/openbao/pull/3660 for
+namespace barrier migration. A `BarrierMigrationState` entry is written to
+storage at the start and cleared on successful completion, serving as a
+crash-recovery journal: if the node restarts mid-migration, the journal
+allows the operation to be detected and resumed.
 
 Two in-scope migration cases share the same mechanism: the root key is decrypted
 under the old seal and re-encrypted under the new one. Recovery keys, if supported
@@ -285,6 +298,16 @@ need to verify that a credential rotation was applied correctly. Returning only
 non-sensitive fields (provider type, endpoint, key identifier) provides this
 without exposing credentials.
 
+The migration endpoint for in-scope cases (`POST /reseal`) is kept
+separate from the normal-to-sealable conversion endpoint being implemented in
+https://github.com/openbao/openbao/pull/3660. The two operations differ
+fundamentally: root key re-encryption leaves the namespace online throughout,
+while storage migration taints the namespace and makes it inaccessible during
+the operation. A unified endpoint would require the server to infer operator
+intent from namespace state, introducing the risk of accidentally triggering a
+taint on a production namespace when a credential rotation was intended. Separate
+endpoints make intent explicit.
+
 Extending the `seal` parameter at namespace creation to accept auto-seal types is
 backwards compatible for operators. Existing namespaces and Shamir-only
 configurations are not affected. No previously-accepted input changes its
@@ -301,16 +324,37 @@ locking the namespace. The sudo requirement on `/config/seal` ensures that seal
 configuration changes require the same privilege as global seal operations. The
 GET endpoint returns only non-sensitive fields.
 
+## Downsides
+
+The sudo requirement on `/config/seal` (enforced via `PathsSpecial.Root` in
+`logical_system.go`) separates seal credential management from general namespace
+management. An operator with `update` capability on `sys/namespaces` today will
+not be able to rotate seal credentials without additional privilege. Operations
+teams may need elevated access paths they did not previously require.
+
+Migration introduces a window during which both the old and new seal must remain
+reachable, a consequence of the two-phase commit described in the Technical
+Description. Decommissioning the old KMS key before the migration flag is
+cleared makes the namespace root key unrecoverable. Operators must not treat the
+old seal as decommissioned until migration completes.
+
+Each seal configuration change triggers `buildInvalidateJobForKey` in
+`invalidation.go` across all cluster nodes, adding coordination overhead per
+credential update.
+
+## User/Developer Experience
+
+Existing Shamir-based namespace deployments are unaffected. No previously
+accepted input changes behavior.
+
+Operators rotating KMS credentials will use the new `PUT /config/seal` endpoint.
+The test-before-swap guard rejects the update if the new credentials cannot
+decrypt the existing root key. No silent partial update is possible.
+
+The migration endpoint (`POST /reseal`) is a new asynchronous
+operation. Operators must confirm completion before decommissioning the old seal.
+
 ## Unresolved Questions
-
-**Migration endpoint unification.** Should `POST /config/seal/migrate` be
-unified with the endpoint that https://github.com/openbao/openbao/issues/3333
-will define for normal-to-sealable namespace conversion, given that the
-underlying mechanisms differ (root key re-encryption vs. full storage
-migration)?
-
-**Migration status.** Should there be a status endpoint for in-progress
-migrations?
 
 **Invalidation window.** What is an acceptable window during which a standby
 node may use stale seal credentials after a rotation completes on the active
@@ -319,6 +363,7 @@ node?
 ## Related Issues
 
 - https://github.com/openbao/openbao/issues/3333
+- https://github.com/openbao/openbao/pull/3660
 
 ## Proof of Concept
 

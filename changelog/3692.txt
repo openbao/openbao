@@ -1,0 +1,3 @@
+```release-note:improvement
+api: Add RawSecret and ParseRawSecret, plus Logical.ReadBytesWithContext and ReadBytesWithDataWithContext, returning secret data with string values as []byte so callers can erase them after use
+```

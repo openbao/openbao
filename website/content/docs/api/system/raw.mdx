@@ -64,9 +64,12 @@ mount system.
 - `value` `(string: <required>)` – Specifies the value of the key.
 
 - `compression_type` `(string: "")` - Create/update using the compressed form
-  of `value`. Supported `compression_type` values are `gzip`, `snappy`, or `""`.
-  `""` means no compression is used. If omitted and key already exists, update
-  uses the same compression (or no compression) as the existing value.
+  of `value`. Supported `compression_type` values are `gzip`, `snappy`, `""`,
+  or `none`. `""` means no compression is used but the existing entry is
+  checked to ensure types align. `none` is used for no compression without
+  checking an existing entry (required for creating an entry with no
+  compression). If omitted and the key already exists, update uses the same
+  compression (or no compression) as the existing value.
 
 - `encoding` `(string: "")` - Specifies the encoding of `value`. Defaults to no
   encoding. Use "base64" if `value` is encoded in base64.

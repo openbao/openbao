@@ -439,6 +439,19 @@ func sortVersionedPlugins(versionedPlugins []pluginutil.VersionedPlugin) {
 	})
 }
 
+func handleRootNamespaceOnly(f framework.OperationFunc) framework.OperationFunc {
+	return func(ctx context.Context, r *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+		ns, err := namespace.FromContext(ctx)
+		switch {
+		case err != nil:
+			return handleError(err)
+		case ns.ID != namespace.RootNamespaceID:
+			return nil, logical.ErrUnsupportedPath
+		}
+		return f(ctx, r, d)
+	}
+}
+
 func (b *SystemBackend) handlePluginCatalogUpdate(ctx context.Context, _ *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	pluginName := d.Get("name").(string)
 	if pluginName == "" {

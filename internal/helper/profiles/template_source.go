@@ -24,10 +24,11 @@ import (
 //   - input
 //
 // but additional context may be added manually.
-func TemplateSourceBuilder(engine *ProfileEngine, field map[string]any) Source {
+func TemplateSourceBuilder(engine *ProfileEngine, field map[string]any, this *IterContext) Source {
 	return &TemplateSource{
 		engine: engine,
 		field:  field,
+		this:   this,
 	}
 }
 
@@ -42,6 +43,7 @@ func WithTemplateSource() func(*ProfileEngine) {
 type TemplateSource struct {
 	engine *ProfileEngine
 	field  map[string]any
+	this   *IterContext
 
 	data      map[string]any
 	template  string
@@ -86,20 +88,16 @@ func (s *TemplateSource) Validate() ([]string, []string, error) {
 }
 
 func (s *TemplateSource) Evaluate(_ context.Context, eh *EvaluationHistory) (any, error) {
+	s.this.IntoMap(s.data)
+
 	// Inject request data if present as a source.
 	if HasRequestSource(s.engine) {
-		s.data["requests"] = eh.Requests
-		if s.engine.outerBlockName == "" {
-			s.data["requests"] = eh.Requests[""]
-		}
+		eh.RequestsIntoMap(s.data)
 	}
 
 	// Inject response data if present as a source.
 	if HasResponseSource(s.engine) {
-		s.data["responses"] = eh.Responses
-		if s.engine.outerBlockName == "" {
-			s.data["responses"] = eh.Responses[""]
-		}
+		eh.ResponsesIntoMap(s.data)
 	}
 
 	// Inject input data if present as a source.

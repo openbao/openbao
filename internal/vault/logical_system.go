@@ -4523,7 +4523,7 @@ func (c *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatusRes
 
 type LeaderResponse struct {
 	HAEnabled            bool      `json:"ha_enabled"`
-	IsSelf               bool      `json:"is_self,omitempty"`
+	IsSelf               *bool     `json:"is_self,omitempty"`
 	ActiveTime           time.Time `json:"active_time,omitzero"`
 	LeaderAddress        string    `json:"leader_address,omitempty"`
 	LeaderClusterAddress string    `json:"leader_cluster_address,omitempty"`
@@ -4553,7 +4553,7 @@ func (core *Core) GetLeaderStatusLocked() (*LeaderResponse, error) {
 
 	resp := &LeaderResponse{
 		HAEnabled:            true,
-		IsSelf:               isLeader,
+		IsSelf:               &isLeader,
 		LeaderAddress:        address,
 		LeaderClusterAddress: clusterAddr,
 		ActiveTime:           core.activeTime,

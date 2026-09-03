@@ -27,6 +27,7 @@ func TestRecovery(t *testing.T) {
 
 	var keys [][]byte
 	var secretUUID string
+	var nsUUID string
 	var rootToken string
 	{
 		conf := vault.CoreConfig{
@@ -65,6 +66,12 @@ func TestRecovery(t *testing.T) {
 			t.Fatalf("secret mount not found, mounts: %v", mounts)
 		}
 		secretUUID = secretMount.UUID
+
+		// Create a namespace.
+		nsOutput, err := cluster.Cores[0].Client.Sys().CreateNamespace("ns1", nil)
+		require.NoError(t, err)
+		nsUUID = nsOutput.UUID
+
 		cluster.EnsureCoresSealed(t)
 		keys = cluster.BarrierKeys
 	}
@@ -126,6 +133,13 @@ func TestRecovery(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		// Check our namespace entry.
+		values, err := client.Logical().List(path.Join("sys/raw/namespaces/", nsUUID))
+		require.NoError(t, err)
+		require.Contains(t, values.Data, "keys")
+		require.Contains(t, values.Data["keys"], "core/")
+
 		cluster.EnsureCoresSealed(t)
 	}
 

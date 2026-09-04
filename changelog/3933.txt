@@ -1,0 +1,3 @@
+```release-note:bug
+sys/raw: Allow creating new entries via sys/raw; when doing so without compression, `compression_type="none"` must be specified.
+```

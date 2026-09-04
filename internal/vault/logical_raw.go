@@ -202,23 +202,29 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		if err != nil {
 			return handleError(err)
 		}
-		if valueBytes == nil {
+		if valueBytes == nil && compressionType == "" {
 			err := "cannot figure out compression type because entry does not exist"
 			return logical.ErrorResponse(err), logical.ErrInvalidRequest
 		}
 
-		// For cases where DecompressWithCanary errored, treat entry as non-compressed data.
-		_, existingCompressionType, _, _ := compressutil.DecompressWithCanary(valueBytes)
-
-		// Ensure compression_type matches existing entries' compression
-		// except allow writing non-compressed data over compressed data
-		if existingCompressionType != compressionType && compressionType != "" {
-			err := "the entry uses a different compression scheme then compression_type"
-			return logical.ErrorResponse(err), logical.ErrInvalidRequest
+		if compressionType == "none" {
+			compressionType = ""
 		}
 
-		if !compressionTypeOk {
-			compressionType = existingCompressionType
+		if valueBytes != nil {
+			// For cases where DecompressWithCanary errored, treat entry as non-compressed data.
+			_, existingCompressionType, _, _ := compressutil.DecompressWithCanary(valueBytes)
+
+			// Ensure compression_type matches existing entries' compression
+			// except allow writing non-compressed data over compressed data
+			if existingCompressionType != compressionType && compressionType != "" {
+				err := "the entry uses a different compression scheme then compression_type"
+				return logical.ErrorResponse(err), logical.ErrInvalidRequest
+			}
+
+			if !compressionTypeOk {
+				compressionType = existingCompressionType
+			}
 		}
 	}
 

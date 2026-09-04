@@ -67,7 +67,7 @@ type RouteEntry struct {
 	tainted       bool
 	Backend       logical.Backend
 	MountEntry    *MountEntry
-	StorageView   logical.Storage
+	StorageView   barrier.View
 	StoragePrefix string
 	rootPaths     atomic.Pointer[radix.Tree]
 	loginPaths    atomic.Pointer[loginPathsEntry]

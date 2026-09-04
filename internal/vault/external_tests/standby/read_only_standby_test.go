@@ -24,6 +24,11 @@ import (
 )
 
 func TestReadOnlyStandby(t *testing.T) {
+	const (
+		timeout = 10 * time.Second
+		tick    = 100 * time.Millisecond
+	)
+
 	conf := vault.CoreConfig{
 		LogicalBackends: map[string]logical.Factory{
 			"pki": logicalPki.Factory,
@@ -38,7 +43,7 @@ func TestReadOnlyStandby(t *testing.T) {
 	cluster := vault.NewTestCluster(t, &conf, &opts)
 
 	cluster.Start()
-	defer cluster.Cleanup()
+	t.Cleanup(cluster.Cleanup)
 
 	testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
 	require.False(t, cluster.Cores[0].Standby())
@@ -63,27 +68,30 @@ func TestReadOnlyStandby(t *testing.T) {
 				"bar": expectedValue,
 			})
 			require.NoError(collect, err)
-		}, 10*time.Second, 100*time.Millisecond)
+		}, timeout, tick)
 
 		t.Logf("validating expected value on primary %d", i)
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			data, err := primaryClient.KVv2("kv").Get(t.Context(), "foo")
 			require.NoError(collect, err)
 			require.Equal(collect, expectedValue, data.Data["bar"])
-		}, 10*time.Second, 100*time.Millisecond)
+		}, timeout, tick)
 
 		t.Logf("validating expected value on standby %d", i)
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			data, err := standbyClient.KVv2("kv").Get(t.Context(), "foo")
 			require.NoError(collect, err)
 			require.Equal(collect, expectedValue, data.Data["bar"])
-		}, 10*time.Second, 100*time.Millisecond)
+		}, timeout, tick)
 	}
 
 	t.Log("revoking token")
-	require.NoError(t, primaryClient.Auth().Token().RevokeTreeWithContext(t.Context(), token.Auth.ClientToken))
-	_, err = standbyClient.KVv2("kv").Get(t.Context(), "foo")
-	require.ErrorContains(t, err, "permission denied", "token was revoked on the primary, should be declined by secondaries")
+	errRevoke := primaryClient.Auth().Token().RevokeTreeWithContext(t.Context(), token.Auth.ClientToken)
+	require.NoError(t, errRevoke)
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		_, err = standbyClient.KVv2("kv").Get(t.Context(), "foo")
+		require.ErrorContains(collect, err, "permission denied", "token was revoked on the primary, should be declined by secondaries")
+	}, timeout, tick)
 }
 
 func TestReadOnlyStandbysForwardingWrapping(t *testing.T) {

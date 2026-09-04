@@ -1006,8 +1006,10 @@ func (c *PluginCatalog) get(ctx context.Context, name string, pluginType consts.
 				return nil, nil
 			}
 
-			// prepend the plugin directory to the command
-			entry.Command = filepath.Join(c.directory, entry.Command)
+			entry.Command, err = c.checkCommandDirectory(entry.Name, pluginType, entry.Command, entry.Sha256, entry.Oci)
+			if err != nil {
+				return nil, err
+			}
 
 			return entry, nil
 		}
@@ -1147,35 +1149,44 @@ func (c *PluginCatalog) Set(ctx context.Context, name string, pluginType consts.
 	return err
 }
 
-func (c *PluginCatalog) setInternal(ctx context.Context, name string, pluginType consts.PluginType, version string, command string, args []string, env []string, sha256 []byte, isOci bool, declarative bool) (*pluginutil.PluginRunner, error) {
+func (c *PluginCatalog) checkCommandDirectory(name string, pluginType consts.PluginType, command string, sha256 []byte, isOci bool) (string, error) {
 	// Best effort check to make sure the command isn't breaking out of the
 	// configured plugin directory.
 	commandFull := filepath.Join(c.directory, command)
 	sym, err := filepath.EvalSymlinks(commandFull)
 	if err != nil {
-		return nil, fmt.Errorf("error while validating the command path: %w", err)
+		return "", fmt.Errorf("error while validating the command path: %w", err)
 	}
 	symAbs, err := filepath.Abs(filepath.Dir(sym))
 	if err != nil {
-		return nil, fmt.Errorf("error while validating the command path: %w", err)
+		return "", fmt.Errorf("error while validating the command path: %w", err)
 	}
 
 	switch isOci {
 	case true:
 		if len(sha256) < 8 {
-			return nil, errors.New("valid sha256 must be provided when registering OCI plugins")
+			return "", errors.New("valid sha256 must be provided when registering OCI plugins")
 		}
 
 		// Format: <plugin_directory>/.oci-cache/<plugin_slug>/<sha256_prefix>
 		shaPrefix := hex.EncodeToString(sha256)[:8]
 		ociCachePath := filepath.Join(c.directory, oci.PluginCacheDir, fmt.Sprintf("%s-%s", pluginType.String(), name), shaPrefix)
 		if symAbs != ociCachePath {
-			return nil, errors.New("cannot execute files outside of configured plugin directory")
+			return "", errors.New("cannot execute files outside of configured plugin directory")
 		}
 	case false:
 		if symAbs != c.directory {
-			return nil, errors.New("cannot execute files outside of configured plugin directory")
+			return "", errors.New("cannot execute files outside of configured plugin directory")
 		}
+	}
+
+	return commandFull, nil
+}
+
+func (c *PluginCatalog) setInternal(ctx context.Context, name string, pluginType consts.PluginType, version string, command string, args []string, env []string, sha256 []byte, isOci bool, declarative bool) (*pluginutil.PluginRunner, error) {
+	commandFull, err := c.checkCommandDirectory(name, pluginType, command, sha256, isOci)
+	if err != nil {
+		return nil, err
 	}
 
 	// entryTmp should only be used for the below type and version checks, it uses the

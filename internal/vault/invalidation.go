@@ -495,6 +495,13 @@ func (ij *invalidationJob) namespaceInvalidation(ctx context.Context) error {
 	case child == nil, ij.im.core.NamespaceSealed(child):
 		// Nothing to do.
 		return nil
+	case !deleted && ij.skipTaintedNamespace(ctx, childUUID):
+		// The namespace is in the middle of barrier migration. Its barrier may
+		// be in the process of changing on the active node, so reloading mounts
+		// now could attempt to decrypt data written with a different barrier,
+		// causing decryption to fail. On namespace untaint, the namespace will
+		// be invalidated again.
+		return nil
 	}
 
 	ctx = namespace.ContextWithNamespace(ctx, child)
@@ -535,6 +542,9 @@ func (ij *invalidationJob) auditInvalidation(ctx context.Context) error {
 }
 
 func (ij *invalidationJob) legacyMountInvalidation(ctx context.Context) error {
+	if ij.skipTaintedNamespace(ctx, ij.nsUUID) {
+		return nil
+	}
 	if err := ij.im.core.reloadLegacyMounts(ctx, ij.nsKey); err != nil {
 		return fmt.Errorf("unable to invalidate legacy mount for key %q in namespace %q: %w", ij.nsKey, ij.nsUUID, err)
 	}
@@ -543,11 +553,26 @@ func (ij *invalidationJob) legacyMountInvalidation(ctx context.Context) error {
 }
 
 func (ij *invalidationJob) transactionalMountInvalidation(ctx context.Context) error {
+	if ij.skipTaintedNamespace(ctx, ij.nsUUID) {
+		return nil
+	}
 	if err := ij.im.core.reloadMount(ctx, ij.nsKey); err != nil {
 		return fmt.Errorf("unable to invalidate mount for key %q in namespace %q: %w", ij.nsKey, ij.nsUUID, err)
 	}
 
 	return nil
+}
+
+func (ij *invalidationJob) skipTaintedNamespace(ctx context.Context, nsUUID string) bool {
+	ns, err := ij.im.core.namespaceStore.GetNamespace(ctx, nsUUID)
+	if err != nil || ns == nil {
+		return true
+	}
+	if ns.Tainted || ij.im.core.NamespaceSealed(ns) || ij.im.core.namespaceStore.NamespaceTaintedInStorage(ctx, ij.nsUUID) {
+		return true
+	}
+
+	return false
 }
 
 func (ij *invalidationJob) keyringTermInvalidation(ctx context.Context, nsPath string) error {

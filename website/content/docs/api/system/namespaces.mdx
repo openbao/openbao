@@ -285,3 +285,40 @@ $ curl \
     --request PUT \
     http://127.0.0.1:8200/v1/sys/namespaces/ns1/seal
 ```
+
+## Migrate a namespace barrier
+
+This endpoint allows migration of a namespace between a normal (unsealable) and sealable namespace by creating or removing a namespace barrier.
+
+| Method | Path                    |
+| :----- | :---------------------- |
+| `POST`  | `/sys/namespaces/:path/migrate-barrier` |
+
+### Sample payload
+
+```json
+{
+  "seal": "seal \"shamir\" {\n    shares = 5\n    threshold = 3\n}",
+  "pgp_keys": ["...", "...", "...", "...", "..."]
+}
+```
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request POST \
+    --data @payload.json \
+    http://127.0.0.1:8200/v1/sys/namespaces/ns1/migrate-barrier
+```
+
+### Sample response
+
+```json
+{
+  "key_shares": ["...", "...", "...", "...", "..."],
+  "key_threshold": 3,
+  "status": "in-progress"
+}
+```

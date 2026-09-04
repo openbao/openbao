@@ -57,3 +57,15 @@ func TestDeleteNamespaceValidation(t *testing.T) {
 		t.Error("expected error for empty path, got nil")
 	}
 }
+
+func TestMigrateNamespaceBarrierValidation(t *testing.T) {
+	cfg := DefaultConfig()
+	client, err := NewClient(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := client.Sys().MigrateNamespaceBarrier("", nil); err == nil {
+		t.Error("expected error for empty path, got nil")
+	}
+}

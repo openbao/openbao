@@ -6,6 +6,8 @@ package vault
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -31,12 +33,12 @@ const (
 	maxDispatchers          = 128
 )
 
-func (c *Core) Invalidate(key ...string) {
-	c.invalidations.Add(key...)
+func (c *Core) Invalidate(index string, key ...string) {
+	c.invalidations.Add(index, key...)
 }
 
 func (c *Core) invalidateSynchronous(key string) error {
-	job, _ := c.invalidations.buildInvalidateJobForKey(make(chan struct{}), context.Background(), key)
+	job, _ := c.invalidations.buildInvalidateJobForKey(make(chan struct{}), context.Background(), "", key)
 
 	if err := job.Execute(); err != nil {
 		job.OnFailure(err)
@@ -44,6 +46,11 @@ func (c *Core) invalidateSynchronous(key string) error {
 	}
 
 	return nil
+}
+
+type pendingEntry struct {
+	index string
+	key   string
 }
 
 // invalidationManager is a long-lived subset of Core which is used to handle
@@ -54,7 +61,8 @@ type invalidationManager struct {
 	// Invalidate stages pending invalidations into this queue.
 	pendingLock   sync.Mutex
 	accepting     atomic.Bool
-	pending       []string
+	pending       []pendingEntry
+	outstanding   map[string]map[string]struct{}
 	pendingNotify chan struct{}
 
 	// quitCh notifies that we should stop actively processing invalidations.
@@ -78,6 +86,7 @@ func (core *Core) NewInvalidationManager() {
 		dispacherLogger: core.logger.Named(dispatcherName),
 
 		pendingNotify: make(chan struct{}),
+		outstanding:   map[string]map[string]struct{}{},
 	}
 }
 
@@ -96,6 +105,7 @@ func (im *invalidationManager) Track() {
 	}
 
 	im.pending = nil
+	im.outstanding = map[string]map[string]struct{}{}
 	im.accepting.Store(true)
 }
 
@@ -146,6 +156,7 @@ func (im *invalidationManager) Stop() {
 	// Clear any remaining items.
 	im.pendingLock.Lock()
 	im.pending = nil
+	im.outstanding = map[string]map[string]struct{}{}
 	im.pendingLock.Unlock()
 
 	// Clear any start-specific state.
@@ -179,8 +190,8 @@ func (im *invalidationManager) processPendingQueue(quitCh chan struct{}, quitCon
 
 				im.core.metricSink.SetGauge([]string{dispatcherName, "pending-dequeue-size"}, float32(len(pending)))
 
-				for _, key := range pending {
-					job, queue := im.buildInvalidateJobForKey(quitCh, quitContext, key)
+				for _, item := range pending {
+					job, queue := im.buildInvalidateJobForKey(quitCh, quitContext, item.index, item.key)
 					im.dispatcher.AddJob(job, queue)
 				}
 			}()
@@ -188,7 +199,7 @@ func (im *invalidationManager) processPendingQueue(quitCh chan struct{}, quitCon
 	}()
 }
 
-func (im *invalidationManager) buildInvalidateJobForKey(quitCh chan struct{}, quitContext context.Context, key string) (fairshare.Job, string) {
+func (im *invalidationManager) buildInvalidateJobForKey(quitCh chan struct{}, quitContext context.Context, index string, key string) (fairshare.Job, string) {
 	// Fairshare ensures we don't starve other queues too long. We need to
 	// balance some things here:
 	//
@@ -226,6 +237,7 @@ func (im *invalidationManager) buildInvalidateJobForKey(quitCh chan struct{}, qu
 		quitCh:      quitCh,
 		quitContext: quitContext,
 		im:          im,
+		index:       index,
 		key:         key,
 		nsUUID:      ns,
 		nsKey:       subkey,
@@ -237,6 +249,8 @@ type invalidationJob struct {
 	quitContext context.Context
 
 	im *invalidationManager
+
+	index string
 
 	// key is the full path of the entry being updated, including
 	// `namespace/<uuid>/` prefix if applicable.
@@ -287,8 +301,8 @@ func isLoginMFA(key string) bool {
 }
 
 func (ij *invalidationJob) Execute() error {
-	ij.im.dispacherLogger.Trace("processing invalidation", "key", ij.key)
-	defer ij.im.dispacherLogger.Trace("concluding processing of invalidation", "key", ij.key)
+	ij.im.dispacherLogger.Trace("processing invalidation", "key", ij.key, "index", ij.index)
+	defer ij.im.dispacherLogger.Trace("concluding processing of invalidation", "key", ij.key, "index", ij.index)
 
 	defer metrics.MeasureSince([]string{dispatcherName, "execute-invalidate"}, time.Now())
 	ij.im.core.metricSink.IncrCounterWithLabels([]string{dispatcherName, "pending-dequeue-size"}, 1.0, nil)
@@ -302,6 +316,30 @@ func (ij *invalidationJob) Execute() error {
 		ij.im.dispacherLogger.Debug("core context canceled, skipping job", "key", ij.key)
 		return nil
 	default:
+	}
+
+	// Remove this job from the outstanding list.
+	if ij.index != "" {
+		defer func() {
+			go func() {
+				ij.im.pendingLock.Lock()
+				defer ij.im.pendingLock.Unlock()
+
+				indexMap, ok := ij.im.outstanding[ij.index]
+				if !ok {
+					return
+				}
+
+				if _, present := indexMap[ij.key]; !present {
+					return
+				}
+
+				delete(indexMap, ij.key)
+				if len(indexMap) == 0 {
+					delete(ij.im.outstanding, ij.index)
+				}
+			}()
+		}()
 	}
 
 	if ij.im.core.Sealed() {
@@ -440,6 +478,8 @@ func (ij *invalidationJob) Execute() error {
 		// file written by some backends which lack an out-of-storage locking
 		// mechanism. It is also handled by the HA mechanism and so is safe
 		// to ignore.
+	case ij.key == coreLocalClusterInfoPath:
+		return ij.im.core.setupCluster(ctx)
 	case strings.HasPrefix(ij.key, "autopilot/") || ij.key == raftAutopilotConfigurationStoragePath:
 		// Raft context is reloaded when a standby becomes active, so it is
 		// safe to ignore changes to autopilot state.
@@ -586,7 +626,7 @@ func (ij *invalidationJob) OnFailure(err error) {
 	ij.im.core.Restart()
 }
 
-func (im *invalidationManager) Add(key ...string) {
+func (im *invalidationManager) Add(index string, keys ...string) {
 	// Skip invalidations if we're not accepting invalidations yet.
 	if !im.accepting.Load() {
 		return
@@ -607,7 +647,22 @@ func (im *invalidationManager) Add(key ...string) {
 
 	// Add the keys.
 	im.pendingLock.Lock()
-	im.pending = append(im.pending, key...)
+	slices.Grow(im.pending, len(keys))
+	for _, key := range keys {
+		im.pending = append(im.pending, pendingEntry{
+			index: index,
+			key:   key,
+		})
+
+		if index != "" {
+			indexMap, ok := im.outstanding[index]
+			if !ok {
+				indexMap = make(map[string]struct{}, len(keys))
+				im.outstanding[index] = indexMap
+			}
+			indexMap[key] = struct{}{}
+		}
+	}
 	im.pendingLock.Unlock()
 
 	// Notify the processor.
@@ -626,4 +681,21 @@ func (im *invalidationManager) splitNamespaceFromKey(key string) (string, string
 	}
 
 	return namespaceUUID, namespacedKey
+}
+
+// hasOutstandingInvalidations returns the list of outstanding invalidations.
+func (im *invalidationManager) OutstandingInvalidationIndices() []string {
+	im.pendingLock.Lock()
+
+	// Create a clone of all outstanding, not-yet-invalidated index values
+	// we know about.
+	iter := maps.Keys(im.outstanding)
+	indices := make([]string, 0, len(im.outstanding))
+	for item := range iter {
+		indices = append(indices, item)
+	}
+
+	im.pendingLock.Unlock()
+
+	return indices
 }

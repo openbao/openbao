@@ -16,6 +16,13 @@ message SignedToken {
 
 message Token {
     string random = 1;       // unencoded equiv of former $randbase62
-    uint64 local_index = 2; // required storage state to have this token
-    uint32 index_epoch = 3;
+
+    // Fields 2 was present from Vault and was empty (0) for all OpenBao
+    // releases, making it safe to ignore.
+
+    uint32 index_epoch = 4;
+
+    // OpenBao specific fields.
+
+    string local_index = 50; // required storage state to have this token
 }

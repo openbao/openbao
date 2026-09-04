@@ -262,6 +262,12 @@ can have a negative effect on performance due to the tracking of each lock attem
 - `allow_unauthenticated_workflows` `(bool: false)` - Whether to allow execution
   of unauthenticated workflows.
 
+- `disable_ssct_tokens` `(bool: true)` - Whether to disable SSCT token
+  generation. This is disabled by default as they have limited utility: while
+  they enforce that the token is present locally on the standby node (returning
+  a 412 Precondition Failed otherwise), they do not help with subsequent
+  requests. Use of index headers should be preferred.
+
 ### High Availability parameters
 
 The following parameters are used on backends that support [High Availability][high-availability].

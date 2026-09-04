@@ -1105,6 +1105,13 @@ func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.Canc
 
 	c.drainPendingRestarts()
 
+	// Check if we're missing a cluster identifier; if so, unseal.
+	if c.ClusterID() == "" {
+		if err := c.setupCluster(ctx); err != nil {
+			c.logger.Error("failed to set up cluster information", "error", err)
+		}
+	}
+
 	// Before unseal, check if we need to do GRPC based invalidation;
 	// if so, start streaming invalidations.
 	if shouldUseGRPCInvalidation(c.underlyingPhysical) {

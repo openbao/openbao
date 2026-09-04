@@ -372,7 +372,12 @@ func (c *Core) SetClusterHandler(handler http.Handler) {
 }
 
 func (c *Core) ClusterID() string {
-	return c.clusterID.Load().(string)
+	idRaw := c.clusterID.Load()
+	id, ok := idRaw.(string)
+	if !ok {
+		id = ""
+	}
+	return id
 }
 
 type contextKeyOriginalRequestPath struct{}

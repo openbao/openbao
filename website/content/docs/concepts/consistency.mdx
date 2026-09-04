@@ -1,0 +1,186 @@
+---
+sidebar_label: Eventual consistency
+description: OpenBao Consistency Model
+---
+
+# Eventual consistency
+
+When running in a cluster, OpenBao has an eventual consistency model when not
+using `disable_standby_reads=true`.
+
+Only one node (the leader) can write to OpenBao's storage. Users generally expect
+read-after-write consistency: in other words, after writing `foo=1`, a
+subsequent read of foo should return 1. Depending on the OpenBao configuration
+this isn't always the case. When `disable_standby_reads=false` (the default)
+is used with standby read-enabled HA storage engine such as Integrated Storage
+or PostgreSQL, there are some sequences of operations that don't always yield
+read-after-write consistency.
+
+Refer to the [storage documentation](../configuration/storage/index.mdx) for
+information on which storage backends are standby read-enabled HA engines.
+
+## Read-enabled standby nodes
+
+When using the Integrated Storage or PostgreSQL backend with
+`disable_standby_reads=true` or a non-HA backend (such as in `-dev` mode),
+only a single OpenBao node (the active node) handles requests. Requests sent
+to regular standbys are handled by forwarding them to the active node.
+
+When using a standby read-enabled HA storage backend with the default
+`disable_standby_reads=false` value, both the active node and standby nodes
+can handle requests. If a standby handles a request which issues a write
+operation, the standby will issue a GRPC forwarding operation and fallback to
+an API-level forward to the active node to handle the request.
+
+On all standby read-enabled HA storage backends, all writes occur on the
+active node, which updates the local storage on every other node through the
+storage engine's replication mechanism. This mechanism includes write
+notifications allowing cache invalidation to occur.  Between when the active
+node writes the data to its local disk, and when those invalidations are
+handled on the other nodes, those nodes present a stale view of the data.
+
+As a result, even if you're always talking to the same read-enabled standby
+node, you may not get read-after-write semantics. The write gets sent to the
+active node, and if the subsequent read request occurs before the new data
+gets sent to the node handling the read request, the read request won't be
+able to take the write into account because the new data isn't present on
+that node yet.
+
+As of OpenBao v2.7, all requests that modify storage now return a new HTTP
+response header:
+
+```
+X-Vault-Index: <opaque>
+```
+
+The following sections describe how to use the returned `X-Vault-Index`
+as a client.
+
+### Conditional forwarding
+
+To ensure that the state resulting from that write request is visible to a
+subsequent request, add these headers to that second request:
+
+```
+X-Vault-Index: <opaque value taken from previous response>
+X-Vault-Inconsistent: forward-active-node
+```
+
+The effect will be that the node handling the request will look at the state
+it has locally, and if it doesn't contain the state described by the
+`X-Vault-Index` header, the node will forward the request to the active node.
+
+The drawback here is that when requests are forwarded to the active node,
+read-enabled standbys provide less value. If this happens often enough
+the active node can become a bottleneck, limiting the horizontal read
+scalability standbys are intended to provide.
+
+### Client initiated retry
+
+To ensure that the state resulting from that write request is visible to a
+subsequent request, add this headers to that second request:
+
+```
+X-Vault-Index: <opaque value taken from previous response>
+```
+
+Optionally, also specify the header:
+
+```
+X-Vault-Inconsistent: fail
+```
+
+(this is the default value).
+
+When the desired state isn't present, OpenBao will return a failure response
+with HTTP status code 429. This tells the client that it should retry the
+request based on the value in the `Retry-After` header.
+
+The advantage over the [Conditional forwarding solution above](#conditional-forwarding)
+is that there's no additional load on the active node as long as the standby
+catches up.
+
+The OpenBao Go API will automatically retry 412s and 429s, and provides
+convenience methods for propagating the `X-Vault-Index` response header into
+the request header of subsequent requests. Those not using the OpenBao Go API
+will want to build equivalent functionality into their client library.
+
+### Server-held requests
+
+Operators can additionally alleviate load by letting the standby spool the
+request until the standby has caught up, up to the maximum duration specified
+in the `consistency_max_index_wait` parameter on the specified listener.
+
+To ensure that the state resulting from that write request is visible to a
+subsequent request, add these headers to that second request:
+
+```
+X-Vault-Index: <opaque value taken from previous response>
+X-Vault-Inconsistent: await-state
+```
+
+The standby node will hold the request until it has caught up or the timeout
+has been reached. When this the case, one of two actions will be taken:
+
+1. If `consistency_fallback_behavior` is not specified or takes the value
+   `fail`, it will behave as described in the [client initiated retry section](#client-initiated-retry).
+2. If `consistency_fallback_behavior` takes the value `forward-active-node`,
+   it will behave as described in the [conditional forwarding section](#conditional-forwarding).
+
+Clients can choose which fallback behavior they get by setting a second value
+for the `X-Vault-Inconsistent` header:
+
+```
+X-Vault-Index: <opaque value taken from previous response>
+X-Vault-Inconsistent: await-state
+X-Vault-Inconsistent: forward-active-node
+```
+
+This second value will be used regardless of server configuration.
+
+### Legacy client consistency
+
+On legacy clients that do not support `X-Vault-Index` or `X-Vault-Inconsistent`
+headers, the `consistency_missing_header_forward` listener configuration option
+can be set to make read-enabled standby nodes behave like read-disabled standby
+nodes, always forwarding the request to the active. This may impact cluster
+capacity so plan accordingly.
+
+Clients which send either header will have their requests processed locally on
+the read-enabled standby.
+
+## Server Side Consistent Tokens
+
+Like in Vault, OpenBao v2.7 allows reintroducing the Server-Side Consistent Token
+(SSCTs) format by setting `disable_ssct_tokens=false` in the global server
+configuration.
+
+This option allows strict consistency (when using a read-enabled HA backend)
+between token creation and its subsequent use. Any further write operations
+are not guaranteed to be consistent. Thus, this option remains disabled by
+default as it serves limited utility.
+
+## Client API helpers
+
+There are some new helpers in the `api` package to work with the new headers.
+`SetInconsistent(...)`, `FailInconsistent(...)`, `ForwardInconsistent(...)`,
+and `AwaitInconsistent(...)` can be used to control the `X-Vault-Inconsistent`
+header. `SetIndexManager(...)` and `WithIndexManager(...)` can be used to
+provide a tracker of server-sent index values. A default simple implementation
+can be created via `NewSimpleIndexManager(...)`.
+
+A new configuration option, `DefaultStrongConsistency`, can be set to opt-into
+the current set of best-practices regarding strong consistency.
+
+For example:
+
+```go
+cfg := api.DefaultConfig()
+cfg.DefaultStrongConsistency = true
+client := api.NewClient(api.DefaultConfig())
+
+_, err := client.Logical().Write(path, data)
+secret, err := client.Logical().Read(path)
+```
+
+This will retry the `Read` until the data stored by the `Write` is present.

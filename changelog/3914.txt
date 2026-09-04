@@ -1,0 +1,3 @@
+```release-note:improvement
+core/plugins: Allow auth & secret mounts to automatically request the latest installed version of the underlying external plugin via `plugin_version=latest`.
+```

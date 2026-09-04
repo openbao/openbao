@@ -54,6 +54,15 @@ an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
    $ bao secrets tune -plugin-version=v1.0.1 my-secret-plugin
    ```
 
+   Alternatively, opt into the special "latest" plugin version such that future
+   upgrades automatically pick the latest installed plugin version. This lets
+   you skip this step in the future, assuming a simple upgrade to the latest
+   installed plugin version is desired.
+
+   ```shell-session
+   $ bao secrets tune -plugin-version=latest my-secret-plugin
+   ```
+
 1. If you wish, you can check the updated configuration. Notice the "Version" is
    now different from the "Running Version".
 

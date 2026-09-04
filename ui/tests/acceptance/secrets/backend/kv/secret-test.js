@@ -736,9 +736,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
       'edit route does not include version query param'
     );
     // Update key
-    await editPage.secretKey('newKey');
-    await editPage.secretValue('some-value');
-    await editPage.save();
+    editPage.editSecret('newKey', 'some-value');
     assert.dom('[data-test-value-div="newKey"]').exists('Info row table exists at newKey');
 
     // check metadata tab

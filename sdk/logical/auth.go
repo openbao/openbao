@@ -112,6 +112,12 @@ type Auth struct {
 	// MFARequirement
 	MFARequirement *MFARequirement `json:"mfa_requirement"`
 
+	// TOTPSelfEnroll
+	TOTPSelfEnroll *TOTPSelfEnroll `json:"mfa_self_enroll"`
+
+	// TOTPSelfEnrollToken is the client token for TOTP self enrollment
+	TOTPSelfEnrollToken string `json:"totp_self_enroll_token,omitempty"`
+
 	// EntityCreated is set to true if an entity is created as part of a login request
 	EntityCreated bool `json:"entity_created"`
 

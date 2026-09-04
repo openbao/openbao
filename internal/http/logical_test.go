@@ -238,6 +238,7 @@ func TestLogical_CreateToken(t *testing.T) {
 			"token_type":      "service",
 			"orphan":          false,
 			"mfa_requirement": nil,
+			"mfa_self_enroll": nil,
 			"num_uses":        json.Number("0"),
 		},
 	}

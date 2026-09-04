@@ -158,7 +158,7 @@ Edit:
 
 	Retry:
 		for {
-			workflowInput := api.PutWorkflowInput{
+			workflowInput := api.WorkflowInput{
 				Workflow:             string(tmpFileContent),
 				Description:          workflowResp.Description,
 				AllowUnauthenticated: workflowResp.AllowUnauthenticated,

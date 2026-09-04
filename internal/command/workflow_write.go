@@ -168,7 +168,7 @@ func (c *WorkflowWriteCommand) Run(args []string) (retcode int) {
 		return 2
 	}
 
-	input := api.PutWorkflowInput{
+	input := api.WorkflowInput{
 		Workflow:             buf.String(),
 		Description:          c.flagDescription,
 		AllowUnauthenticated: c.flagAllowUnauthenticated,

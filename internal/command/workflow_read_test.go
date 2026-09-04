@@ -85,7 +85,7 @@ func TestWorkflowReadCommand_Run(t *testing.T) {
 		defer closer()
 
 		workflow := string(testWorkflowContents(t))
-		if _, err := client.Sys().PutWorkflow(context.Background(), "my-workflow", api.PutWorkflowInput{
+		if _, err := client.Sys().PutWorkflow(context.Background(), "my-workflow", api.WorkflowInput{
 			Workflow:    workflow,
 			Description: "my description",
 		}); err != nil {

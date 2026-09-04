@@ -21,6 +21,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	physFile "github.com/openbao/openbao/sdk/v2/physical/file"
 	"github.com/openbao/openbao/v2/internal/command/server"
 	"github.com/openbao/openbao/v2/internal/vault"
 	"github.com/stretchr/testify/require"
@@ -32,7 +33,7 @@ func TestMigration(t *testing.T) {
 	t.Run("Default", func(t *testing.T) {
 		data := generateData()
 
-		fromFactory := physicalBackends["file"]
+		fromFactory := physFile.NewFileBackend
 
 		folder := t.TempDir()
 
@@ -69,7 +70,7 @@ func TestMigration(t *testing.T) {
 	t.Run("Concurrent migration", func(t *testing.T) {
 		data := generateData()
 
-		fromFactory := physicalBackends["file"]
+		fromFactory := physFile.NewFileBackend
 
 		folder := t.TempDir()
 
@@ -117,7 +118,7 @@ func TestMigration(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		toFactory := physicalBackends["file"]
+		toFactory := physFile.NewFileBackend
 		folder := t.TempDir()
 		confTo := map[string]string{
 			"path": folder,
@@ -156,7 +157,7 @@ func TestMigration(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		toFactory := physicalBackends["file"]
+		toFactory := physFile.NewFileBackend
 		folder := t.TempDir()
 		confTo := map[string]string{
 			"path": folder,

@@ -22,6 +22,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	physFile "github.com/openbao/openbao/sdk/v2/physical/file"
 	"github.com/openbao/openbao/v2/internal/command/server"
 	"github.com/openbao/openbao/v2/internal/physical/raft"
 	"github.com/openbao/openbao/v2/internal/vault"
@@ -164,6 +165,8 @@ func (c *OperatorMigrateCommand) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("Error loading configuration from %s: %s", c.flagConfig, err))
 		return 1
 	}
+
+	c.PhysicalBackends["file"] = physFile.NewFileBackend
 
 	if err := c.migrate(config); err != nil {
 		if err == errAbort {

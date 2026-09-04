@@ -457,6 +457,9 @@ type Core struct {
 	clusterPeerClusterAddrsCache *zcache.Cache[string, forwarding.NodeHAConnectionInfo]
 	// The UUID used to hold the leader lock. Only set on active node
 	leaderUUID string
+	// When the first time a GRPC invalidation node discovered it did not have
+	// any active leader.
+	firstMissingLeader time.Time
 
 	// Request forwarding information
 	// The context for the client
@@ -649,7 +652,7 @@ type Core struct {
 func (c *Core) HAState() consts.HAState {
 	switch {
 	case c.standby.Load():
-		if c.StandbyReadsEnabled() {
+		if !c.activeContext.Load().IsNil() {
 			return consts.PerfStandby
 		}
 
@@ -1948,7 +1951,7 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 	// validation and the operation should be performed. But for now, just
 	// returning with an error and recommending a vault restart, which
 	// essentially does the same thing.
-	if c.standby.Load() && !c.StandbyReadsEnabled() {
+	if c.standby.Load() && c.activeContext.Load().IsNil() {
 		c.logger.Error("vault cannot seal when in standby mode; please restart instead")
 		return errors.New("vault cannot seal when in standby mode; please restart instead")
 	}
@@ -2241,8 +2244,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 type readonlyUnsealStrategy struct{}
 
 func (s readonlyUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c *Core) error {
-	c.logger.Debug("read-only unseal starting")
-
 	// Start tracking invalidations.
 	c.invalidations.Track()
 

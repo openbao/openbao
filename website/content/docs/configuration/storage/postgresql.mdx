@@ -148,9 +148,18 @@ scalability. This requires an active cluster GRPC connection; ensure
 log messages like:
 
 > [DEBUG] setting up GRPC-backed streaming of invalidations
-> [DEBUG] read-only unseal starting
+> [INFO] entering read-enabled standby mode
 
 will be visible on standby nodes.
+
+:::warning
+
+Use of horizontal (read) scalability requires physical replication. If using
+logical replication, you **must** set `disable_standby_reads` in the storage
+configuration as LSN Index values differ across PostgreSQL nodes and OpenBao
+will not be able to use them for tracking invalidations.
+
+:::
 
 [golang_setmaxidleconns]: https://golang.org/pkg/database/sql/#DB.SetMaxIdleConns
 [postgresql]: https://www.postgresql.org/

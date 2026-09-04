@@ -153,6 +153,12 @@ func (c *Core) LeaderLocked() (isLeader bool, leaderAddr, clusterAddr string, er
 		return false, "", "", err
 	}
 	if !held {
+		// Since we don't have a lock, no point keeping around a stale
+		// forwarding connection.
+		if c.rpcForwardingClient.Load() != nil {
+			c.clearForwardingClients()
+		}
+
 		return false, "", "", nil
 	}
 
@@ -656,7 +662,7 @@ func (c *Core) runReadStandby(stopCh <-chan struct{}, sharedStandbyCtx *atomic.P
 		return false, true
 	}
 
-	c.logger.Info("entering read-enabled standby mode")
+	c.logger.Trace("starting read-enabled standby loop iteration")
 	defer c.logger.Trace("done with read-enabled standby loop iteration")
 
 	// Create the standby context (this becomes activeCtx on core, oh well).
@@ -1016,23 +1022,133 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 	return false, false
 }
 
-func (c *Core) setupGRPCStandbyInvalidations(ctx context.Context) bool {
+func (c *Core) maybeBypassGRPCRequirement(ctx context.Context) bool {
+	// We can enter read-only mode without having an active GRPC forwarding
+	// because we have (mostly) synchronized storage. When the underlying lock
+	// is not held with an active reservation, it means there is no active
+	// leader and other nodes may be competing for that value. When one wins,
+	// we'll restart and wait for the active lock requirement again.
+	lock, err := c.ha.LockWith(CoreLockPath, "read")
+	if err != nil {
+		c.firstMissingLeader = time.Time{}
+		c.logger.Debug("unable to create ha lock to validate leadership status", "error", err)
+		return false
+	}
+
+	held, _, err := lock.Value()
+	if err != nil {
+		c.firstMissingLeader = time.Time{}
+		c.logger.Debug("unable to check ha lock to validate leadership status", "error", err)
+		return false
+	}
+
+	if held {
+		c.firstMissingLeader = time.Time{}
+		// This means that we are unable to connect to the leader, but (per
+		// storage) they definitely exist.
+		return false
+	}
+
+	if c.firstMissingLeader.IsZero() {
+		// This is our first time missing a leader; wait until two lock
+		// retry intervals have passed so we don't prematurely enter read-only
+		// mode if a new leader has been found.
+		c.firstMissingLeader = time.Now()
+		return false
+	}
+
+	if time.Since(c.firstMissingLeader) < 2*lockRetryInterval {
+		// We've not yet found a leader but our time hasn't elapsed.
+		return false
+	}
+
+	// We're good to start as read-only, given we haven't found a leader. If we
+	// get restarted though, make sure we start from scratch.
+	c.firstMissingLeader = time.Time{}
+
+	// Periodically check this lock. If we error or find a leader, we exit and
+	// restart the core.
+	go func() {
+		c.logger.Trace("starting polling to ensure lock remains unheld")
+		defer c.logger.Trace("done polling to ensure lock remains unheld")
+
+		restart := true
+		defer func() {
+			if restart {
+				c.logger.Info("restarting due to discovered active node")
+				c.Restart()
+			}
+		}()
+
+		for {
+			select {
+			case <-ctx.Done():
+				// Do not restart the core because of a cancelled context;
+				// we're likely already restarting or have experienced a
+				// state change.
+				restart = false
+				return
+			case <-time.After(lockRetryInterval):
+			}
+
+			held, _, err := lock.Value()
+			if err != nil {
+				c.logger.Debug("unable to check ha lock to validate missing leadership status", "error", err)
+				return
+			}
+
+			if held {
+				return
+			}
+		}
+	}()
+
+	return true
+}
+
+// setupGRPCStandbyInvalidations returns (bypass, isOk):
+//
+//   - bypass means that GRPC invalidation was bypassed and we still want to
+//     stand up as read-enabled,
+//   - isOk means a fatal error occurred
+func (c *Core) setupGRPCStandbyInvalidations(ctx context.Context) (bool, bool) {
 	// Potentially refresh replication information before we get
 	// too far. This ensures we do not attempt to contact a stale
 	// leader.
 	if _, _, _, err := c.LeaderLocked(); err != nil {
 		c.logger.Error("skipping invalidation streaming as unable to read leader information", "err", err)
-		return false
+		return false, false
 	}
 
-	if c.rpcForwardingClient.Load() == nil {
+	client := c.rpcForwardingClient.Load()
+	if client == nil {
 		// When the active node has not indicated a cluster address
 		// or there's a problem connecting, we may not have a
 		// forwarding client. This renders us unable to perform any
 		// invalidations so we're unable to start-up in read-enabled
 		// mode.
-		c.logger.Error("skipping invalidation streaming as no RPC client is present")
-		return false
+		//
+		// Treat this as an error most of the time.
+		//
+		// However, we bypass this error if we can prove that there is no
+		// leader.
+		wasZero := c.firstMissingLeader.IsZero()
+		bypass := c.maybeBypassGRPCRequirement(ctx)
+		isNoLongerZero := !c.firstMissingLeader.IsZero()
+
+		if !bypass && wasZero && isNoLongerZero {
+			// Reduce the number of errors we spew.
+			c.logger.Error("skipping invalidation streaming as no GRPC client is present; this is required for read-only standby node operation; ensure valid cluster_addr and connectivity")
+		} else if bypass {
+			c.logger.Info("bypassing GRPC leader requirements as no leader lock found")
+		}
+
+		// Callers expect (bypass, ok): when we don't want to bypass, we
+		// aren't ok and so want the parent to treat this as an error and
+		// stop setup accordingly. However, when we do want to bypass
+		// GRPC invalidation and start as a read-enabled standby anyways,
+		// we want to continue on, so ok == bypass.
+		return bypass, bypass
 	}
 
 	// Start tracking any invalidations; we won't begin processing
@@ -1050,18 +1166,12 @@ func (c *Core) setupGRPCStandbyInvalidations(ctx context.Context) bool {
 	c.LocalGRPCDispatching()
 
 	// Start streaming invalidation events from the primary.
-	client := c.rpcForwardingClient.Load()
-	if client == nil {
-		c.logger.Error("unexpectedly nil replication forwarding client")
-		return false
-	}
-
 	if err := client.StreamInvalidations(ctx); err != nil {
 		c.logger.Error("failed to begin streaming invalidations", "err", err)
-		return false
+		return false, false
 	}
 
-	return true
+	return false, true
 }
 
 // runReadEnabledStandby grabs the state lock and unseals in read-only mode. It
@@ -1077,7 +1187,7 @@ func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.Canc
 		return false, true
 	}
 
-	c.logger.Info("enabling horizontal scalability (reads)")
+	c.logger.Trace("attempting state lock acquisition before read-enabled standby setup")
 
 	if err := c.runStandbyGrabStateLock(stopCh); err != nil {
 		c.logger.Error("unable to grab state lock for standby", "err", err)
@@ -1098,19 +1208,15 @@ func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.Canc
 	// ensures we don't conflict with waitForLeadership(...).
 	c.barrier.SetReadOnly(true)
 
-	// Wipe any existing state.
-	if err := c.preSeal(); err != nil {
-		c.logger.Error("pre-seal teardown failed", "error", err)
-	}
-
-	c.drainPendingRestarts()
-
-	// Before unseal, check if we need to do GRPC based invalidation;
-	// if so, start streaming invalidations.
+	// Before preSeal, check if we need to do GRPC based invalidation;
+	// if so, start streaming invalidations. While it is overkill to do so
+	// before preSeal, this ensures we get fewer log messages if we end up
+	// not being able to start up.
 	if shouldUseGRPCInvalidation(c.underlyingPhysical) {
 		c.logger.Debug("setting up GRPC-backed streaming of invalidations")
 
-		if ok := c.setupGRPCStandbyInvalidations(ctx); !ok {
+		bypass, ok := c.setupGRPCStandbyInvalidations(ctx)
+		if !ok {
 			// Clear any events we might have received.
 			c.CleanupInvalidationPeers()
 			c.invalidations.Stop()
@@ -1119,16 +1225,25 @@ func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.Canc
 			return false, true
 		}
 
-		// Wait for our initial invalidation checkpoint.
-		if err := c.AwaitReplication(ctx); err != nil {
-			// Clear any events we might have received.
-			c.CleanupInvalidationPeers()
-			c.invalidations.Stop()
+		if !bypass {
+			// Wait for our initial invalidation checkpoint.
+			if err := c.AwaitReplication(ctx); err != nil {
+				// Clear any events we might have received.
+				c.CleanupInvalidationPeers()
+				c.invalidations.Stop()
 
-			c.logger.Error("failed to await replication", "err", err)
-			return false, true
+				c.logger.Error("failed to await replication", "err", err)
+				return false, true
+			}
 		}
 	}
+
+	// Wipe any existing state.
+	if err := c.preSeal(); err != nil {
+		c.logger.Error("pre-seal teardown failed", "error", err)
+	}
+
+	c.drainPendingRestarts()
 
 	// Bail if we're told we should cancel.
 	if ctx.Err() != nil || !runStandby.Load() {
@@ -1136,6 +1251,9 @@ func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.Canc
 		// We want to retry eventually.
 		return false, true
 	}
+
+	// Notify that we're most likely to be successful
+	c.logger.Info("entering read-enabled standby mode")
 
 	// Unseal, holding the state lock.
 	c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceStandby))
@@ -1561,28 +1679,21 @@ func (c *Core) standbyReadsAllowed() bool {
 	return false
 }
 
-func (c *Core) haveForwardingClient() bool {
-	return c.rpcForwardingClient.Load() != nil
-}
-
 func (c *Core) shouldHookInvalidate(phys physical.Backend) bool {
 	return c.standbyReadsAllowed() && isCacheInvalidationBackend(c.underlyingPhysical)
 }
 
 // StandbyReadsEnabled returns true iff standby read are enabled, supported,
 // and likely immediately usable by the physical backend.
-//
-// Notably, when GRPC-based invalidation is in use and the underlying GRPC
-// client is not connected, we return false here.
 func (c *Core) StandbyReadsEnabled() bool {
-	return c.standbyReadsAllowed() &&
+	return c.standbyReadsAllowed() && !c.activeContext.Load().IsNil() &&
 		(isCacheInvalidationBackend(c.underlyingPhysical) ||
-			(isReplicationIndexBackend(c.underlyingPhysical) && c.haveForwardingClient()))
+			isReplicationIndexBackend(c.underlyingPhysical))
 }
 
 // MaybeStandbyReadsEnabled is like StandbyReadsEnabled but returns true in
 // the case of a disconnected GRPC forwarding client when GRPC invalidations
-// are in use.
+// are in use or when read-request handling is not yet set up.
 //
 // In the context of runHALoop, we want runReadStandby to execute if the GRPC
 // forwarding client is not connected because it will opportunistically

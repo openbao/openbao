@@ -50,9 +50,7 @@ A `plugin` block defines an OCI-based plugin to download:
 
 ```hcl
 plugin "type" "name" {
-  image       = "registry.example.com/org/plugin"
-  version     = "v0.0.0"
-  sha256sum   = "sha256-checksum"
+  image = "registry.example.com/org/plugin:v0.0.0@sha256:digest"
 }
 ```
 
@@ -60,10 +58,8 @@ Or it specifies a plugin to automatically register that was manually downloaded:
 
 ```hcl
 plugin "type" "name" {
-  command     = "plugin-binary-name"
-  version     = "v0.0.0"
-  env         = ["MY_ENV=value"]
-  args        = ["-some-argument"]
+  command = "plugin-binary-name"
+  version = "v0.0.0"
 }
 ```
 
@@ -78,26 +74,32 @@ plugin versions.
 ### Parameters
 
 - `image` `(string: required)` - OCI artifact/image URL including registry and
-  repository. Conflicts with the `command` value. One of `image` or `command` is
-  required.
+  repository. Conflicts with the `command` value. One of `image` or `command`
+  is required. `image` may be pinned by digest and directly specify the plugin
+  version via its tag. See notes on `version` and several examples below.
 
 - `command` `(string: required)` - Command name of the plugin that has been
   manually downloaded. Conflicts with the `image` value. One of `image` or
   `command` is required.
 
 - `version` `(string: required)` - The (semantic) version of the plugin. When
-  `image` is set, this doubles as the image tag on the registry.
-
-- `sha256sum` `(string: optional)` - Expected SHA-256 digest of the plugin
-  binary. Must be a 64-character hexadecimal string. This is **required**
-  when `image` is set, but **optional** otherwise. When set, OpenBao will
-  revalidate the digest of the plugin binary on disk against what was configured
-  before executing the plugin, though note that the check is subject to a
-  [TOCTOU](https://en.wikipedia.org/wiki/Time-of-check_to_time-of-use) problem.
+  `image` is set and does not contain a tag, this doubles as the image tag on
+  the registry. When `image` is set and contains a tag but `version` is unset,
+  the image's tag doubles as the version. Unless image tag and the plugin's
+  embedded version differ, prefer leaving this field unset and embed the version
+  within `image` instead.
 
 - `args` `([]string: optional)` - Any arguments to pass to the running plugin.
 
 - `env` `([]string: optional)` - Any environment variables to pass to the running plugin.
+
+- `sha256sum` `(string: optional)` - Expected SHA-256 digest of the plugin
+  binary (read: not an OCI image digest). Must be a 64-character hexadecimal
+  string if set. This is only required when `image` is set but not pinned by
+  image digest, and **optional** otherwise. When set, OpenBao will revalidate
+  the digest of the plugin binary on disk against what was configured
+  before executing the plugin, though note that the check is subject to a
+  [TOCTOU](https://en.wikipedia.org/wiki/Time-of-check_to_time-of-use) problem.
 
 - `binary_name` `(string: optional)` - Name of the plugin binary file
   within the OCI image. Only applies when `image` is set. If unset, OpenBao
@@ -117,9 +119,7 @@ plugin versions.
     {
       "secret": {
         "aws": {
-          "image": "ghcr.io/openbao/openbao-plugin-secrets-aws",
-          "version": "v1.0.0",
-          "sha256sum": "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
+          "image": "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.1.0@sha256:ffff79125690e9a1f4cfd3e6d851657386a97c2e96e8d66a82adddb53e0b7359"
         }
       }
     }
@@ -132,9 +132,7 @@ plugin versions.
 
 ```hcl
 plugin "secret" "aws" {
-  image       = "ghcr.io/openbao/openbao-plugin-secrets-aws"
-  version     = "v1.0.0"
-  sha256sum   = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
+  image = "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.1.0@sha256:ffff79125690e9a1f4cfd3e6d851657386a97c2e96e8d66a82adddb53e0b7359"
 }
 ```
 
@@ -217,9 +215,7 @@ plugin_directory = "/opt/openbao/plugins"
 plugin_download_behavior = "fail"
 
 plugin "secret" "aws" {
-  image       = "ghcr.io/openbao/openbao-plugin-secrets-aws"
-  version     = "v1.0.0"
-  sha256sum   = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
+  image = "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.1.0@sha256:ffff79125690e9a1f4cfd3e6d851657386a97c2e96e8d66a82adddb53e0b7359"
 }
 ```
 

@@ -307,21 +307,17 @@ func (b *ServiceRegistration) GoString() string {
 // PluginConfig represents the configuration for a single OCI-based plugin
 type PluginConfig struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
-	RawConfig  map[string]any
 
 	Type       string
 	Name       string
-	Image      string   `hcl:"image"`
-	Version    string   `hcl:"version"`
-	BinaryName string   `hcl:"binary_name"`
-	SHA256Sum  string   `hcl:"sha256sum"`
-	Command    string   `hcl:"command"`
-	Args       []string `hcl:"args"`
-	Env        []string `hcl:"env"`
-}
-
-func (p *PluginConfig) URL() string {
-	return fmt.Sprintf("%s:%s", p.Image, p.Version)
+	Image      name.Reference `hcl:"-"`
+	RawImage   string         `hcl:"image"`
+	Version    string         `hcl:"version"`
+	BinaryName string         `hcl:"binary_name"`
+	SHA256Sum  string         `hcl:"sha256sum"`
+	Command    string         `hcl:"command"`
+	Args       []string       `hcl:"args"`
+	Env        []string       `hcl:"env"`
 }
 
 func (p *PluginConfig) Slug() string {
@@ -333,7 +329,7 @@ func (p *PluginConfig) FullName() string {
 }
 
 func (p *PluginConfig) CommandPath() string {
-	if p.Image != "" {
+	if p.Image != nil {
 		return p.FullName()
 	}
 
@@ -370,28 +366,17 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 	}
 
 	// Validate Image is not empty
-	if p.Image == "" && p.Command == "" {
+	if p.Image == nil && p.Command == "" {
 		results = append(results, configutil.ConfigError{
 			Problem: fmt.Sprintf("plugin %q: image and command cannot both be empty", p.Slug()),
 		})
-	} else if p.Image != "" && p.Command != "" {
+	} else if p.Image != nil && p.Command != "" {
 		results = append(results, configutil.ConfigError{
 			Problem: fmt.Sprintf("plugin %q: command must be empty if image is specified", p.Slug()),
 		})
 	}
 
-	isOCI := p.Image != ""
-
-	if isOCI {
-		// Ensure Image:Version is a valid image reference
-		if _, err := name.ParseReference(p.URL()); err != nil {
-			results = append(results, configutil.ConfigError{
-				Problem: fmt.Sprintf("plugin %q: image and version do not form a valid image reference. %v", p.Slug(), err),
-			})
-		}
-	}
-
-	if isOCI || typ != consts.PluginTypeKMS {
+	if p.Image != nil || typ != consts.PluginTypeKMS {
 		// Validate version is not empty. KMS plugins do not require or enforce
 		// that a version is set. OCI-based plugins however require a version be
 		// set at all times.
@@ -403,9 +388,16 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 	}
 
 	switch {
-	case len(p.SHA256Sum) == 0 && !isOCI:
-		// sha256sum may be omitted unless OCI images are used, where they are
-		// required as cache sentinels.
+	case len(p.SHA256Sum) == 0 && p.Image != nil:
+		// SHA256Sum may be omitted in OCI image mode if the image reference is
+		// a digest reference.
+		if _, ok := p.Image.(name.Digest); !ok {
+			results = append(results, configutil.ConfigError{
+				Problem: fmt.Sprintf("plugin %q: sha256sum must be set if image is not pinned by digest, prefer pinning the image directly", p.Slug()),
+			})
+		}
+	case len(p.SHA256Sum) == 0:
+		// SHA256Sum may generally be omitted outside of OCI image mode.
 	case len(p.SHA256Sum) != 64:
 		// Unless omitted, validate sha256sum is exactly 64 hex characters.
 		results = append(results, configutil.ConfigError{
@@ -432,37 +424,64 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 	return results
 }
 
-func parsePlugins(name string, list *ast.ObjectList) ([]*PluginConfig, error) {
+func parsePlugins(block string, list *ast.ObjectList) ([]*PluginConfig, error) {
 	result := make([]*PluginConfig, 0, len(list.Items))
 	for index, item := range list.Items {
-		var i PluginConfig
-		if err := hcl.DecodeObject(&i, item.Val); err != nil {
-			return result, fmt.Errorf("%v.%d: %w", name, index, err)
-		}
-
-		var m map[string]any
-		if err := hcl.DecodeObject(&m, item.Val); err != nil {
-			return result, fmt.Errorf("%v.%d: %w", name, index, err)
-		}
-		i.RawConfig = m
-
-		switch {
-		case i.Type != "":
-		case len(item.Keys) == 2:
-			i.Type = item.Keys[0].Token.Value().(string)
-		default:
-			return result, fmt.Errorf("%v.%d: %v type must be specified: %#v", name, index, name, item)
+		var p PluginConfig
+		if err := hcl.DecodeObject(&p, item.Val); err != nil {
+			return result, fmt.Errorf("%v.%d: %w", block, index, err)
 		}
 
 		switch {
-		case i.Name != "":
+		case p.Type != "":
 		case len(item.Keys) == 2:
-			i.Name = item.Keys[1].Token.Value().(string)
+			p.Type = item.Keys[0].Token.Value().(string)
 		default:
-			return result, fmt.Errorf("%v.%d: %v name must be specified: %#v", name, index, name, item)
+			return result, fmt.Errorf("%v.%d: %v type must be specified: %#v", block, index, block, item)
 		}
 
-		result = append(result, &i)
+		switch {
+		case p.Name != "":
+		case len(item.Keys) == 2:
+			p.Name = item.Keys[1].Token.Value().(string)
+		default:
+			return result, fmt.Errorf("%v.%d: %v name must be specified: %#v", block, index, block, item)
+		}
+
+		if p.RawImage != "" {
+			// Figure out if this is a digest-based or tag-based reference. We
+			// need to know this ahead of passing over to go-containerregistry's
+			// parsing as it discards the tag component on digest references,
+			// but we'd like to substitute any empty version fields with that.
+			parts := strings.SplitN(p.RawImage, "@", 2)
+
+			// Begin by parsing a tag reference.
+			tag, err := name.NewTag(parts[0], name.WithDefaultTag(p.Version))
+			if err != nil {
+				return result, fmt.Errorf("%v.%d: invalid image reference: %w", block, index, err)
+			}
+
+			if len(parts) > 1 {
+				// If the image reference has an '@', also parse and a digest
+				// reference and use that instead.
+				p.Image, err = name.NewDigest(p.RawImage)
+			} else {
+				// Otherwise, just use the tag reference.
+				p.Image = tag
+			}
+
+			if err != nil {
+				return result, fmt.Errorf("%v.%d: invalid image reference: %w", block, index, err)
+			}
+
+			if p.Version == "" {
+				// Regardless of the reference we ultimately used above, try to
+				// replace an unset Version field with the tag reference's tag.
+				p.Version = tag.Identifier()
+			}
+		}
+
+		result = append(result, &p)
 	}
 
 	return result, nil

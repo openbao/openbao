@@ -237,13 +237,12 @@ func (c *Catalog) checkFilePath(plugin *server.PluginConfig) error {
 		return fmt.Errorf("error while validating the command path: %w", err)
 	}
 
-	var ok bool
-	if plugin.Image == "" {
-		// Declarative, manual plugin.
-		ok = filepath.Dir(path) == c.pluginDirectory
-	} else {
-		// Declarative, OCI-based plugin.
-		ok = filepath.Dir(path) == filepath.Join(
+	dir := filepath.Dir(path)
+	ok := dir == c.pluginDirectory
+	if !ok && plugin.Image != nil {
+		ok = dir == filepath.Join(
+			c.pluginDirectory, oci.PluginCacheDir,
+		) || dir == filepath.Join(
 			c.pluginDirectory, oci.PluginCacheDir, plugin.Slug(), plugin.SHA256Sum[:8],
 		)
 	}

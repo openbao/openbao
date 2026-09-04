@@ -342,8 +342,8 @@ func (c *PluginCatalog) registerDeclarativePlugins(ctx context.Context, plugins 
 				update = !slices.Equal(plugin.Args, pluginInfo.Args) ||
 					!slices.Equal(plugin.Env, pluginInfo.Env) ||
 					!bytes.Equal(sha256, pluginInfo.Sha256) ||
-					(plugin.Image != "") != pluginInfo.Oci ||
-					(plugin.Image == "" && plugin.Command != pluginInfo.Command)
+					(plugin.Image != nil) != pluginInfo.Oci ||
+					(plugin.Image == nil && plugin.Command != pluginInfo.Command)
 				if update {
 					c.logger.Info("updating existing plugin", "name", plugin.Name, "type", plugin.Type, "version", plugin.Version, "sha256", plugin.SHA256Sum)
 				}
@@ -358,7 +358,7 @@ func (c *PluginCatalog) registerDeclarativePlugins(ctx context.Context, plugins 
 					return nil
 				}
 
-				_, err = c.setInternal(ctx, plugin.Name, pluginType, plugin.Version, plugin.CommandPath(), plugin.Args, plugin.Env, sha256, plugin.Image != "" /* OCI */, true /* declarative */)
+				_, err = c.setInternal(ctx, plugin.Name, pluginType, plugin.Version, plugin.CommandPath(), plugin.Args, plugin.Env, sha256, plugin.Image != nil /* OCI */, true /* declarative */)
 				if err != nil {
 					return fmt.Errorf("failed to register new plugin: %w", err)
 				}
@@ -1205,22 +1205,18 @@ func (c *PluginCatalog) setInternal(ctx context.Context, name string, pluginType
 		return nil, fmt.Errorf("error while validating the command path: %w", err)
 	}
 
-	switch isOci {
-	case true:
-		if len(sha256) < 8 {
-			return nil, errors.New("valid sha256 must be provided when registering OCI plugins")
+	ok := symAbs == c.directory
+	if !ok && isOci {
+		ok = symAbs == filepath.Join(c.directory, oci.PluginCacheDir)
+		if !ok && len(sha256) > 0 {
+			ok = symAbs == filepath.Join(
+				c.directory, oci.PluginCacheDir, fmt.Sprintf("%s-%s", pluginType.String(), name), hex.EncodeToString(sha256)[:8],
+			)
 		}
+	}
 
-		// Format: <plugin_directory>/.oci-cache/<plugin_slug>/<sha256_prefix>
-		shaPrefix := hex.EncodeToString(sha256)[:8]
-		ociCachePath := filepath.Join(c.directory, oci.PluginCacheDir, fmt.Sprintf("%s-%s", pluginType.String(), name), shaPrefix)
-		if symAbs != ociCachePath {
-			return nil, errors.New("cannot execute files outside of configured plugin directory")
-		}
-	case false:
-		if symAbs != c.directory {
-			return nil, errors.New("cannot execute files outside of configured plugin directory")
-		}
+	if !ok {
+		return nil, errors.New("cannot execute files outside of configured plugin directory")
 	}
 
 	// entryTmp should only be used for the below type and version checks, it uses the

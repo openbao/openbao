@@ -1,0 +1,3 @@
+```release-note:bug
+core: The response of `sys/leader` did not contain `is_self` when it was supposed to be `false`.
+```

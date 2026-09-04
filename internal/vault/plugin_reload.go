@@ -207,6 +207,12 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 	// Set the backend back
 	re.Backend = backend
 
+	// We may have loaded a nil backend on unseal due to a missing plugin,
+	// leaving the mount's storage view marked read-only. At this point we're
+	// sure we've replaced the backend with a working one, so ensure the storage
+	// view is writable again.
+	re.StorageView.SetReadOnlyErr(nil)
+
 	// Initialize the backend after reload. This is a no-op for backends < v5 which
 	// rely on lazy loading for initialization. v5 backends do not rely on lazy loading
 	// for initialization unless the plugin process is killed. Reload of a v5 backend

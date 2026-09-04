@@ -141,13 +141,9 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *rout
 		return err
 	}
 
-	origViewReadOnlyErr := view.GetReadOnlyErr()
-
-	// Mark the view as read-only until the mounting is complete and
-	// ensure that it is reset after. This ensures that there will be no
-	// writes during the construction of the backend.
+	// Mark the view as read-only until the mounting is complete. This ensures
+	// that there will be no writes during the construction of the backend.
 	view.SetReadOnlyErr(logical.ErrSetupReadOnly)
-	defer view.SetReadOnlyErr(origViewReadOnlyErr)
 
 	var backend logical.Backend
 	// Create the new backend
@@ -187,9 +183,9 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *rout
 		return err
 	}
 
-	// restore the original readOnlyErr, so we can write to the view in
-	// Initialize() if necessary
-	view.SetReadOnlyErr(origViewReadOnlyErr)
+	// Mark as writable again and ensure Initialize can write to the view if
+	// necessary.
+	view.SetReadOnlyErr(nil)
 
 	// Initialize, using the core's active context.
 	activeCtx := namespace.ContextWithNamespace(c.activeContext.Load(), ns)
@@ -1108,14 +1104,12 @@ func (c *Core) setupCredential(ctx context.Context, entry *routing.MountEntry) (
 		return nil, err
 	}
 
-	origViewReadOnlyErr := view.GetReadOnlyErr()
-
-	// Mark the view as read-only until the mounting is complete and
-	// ensure that it is reset after. This ensures that there will be no
-	// writes during the construction of the backend.
+	// Mark the view as read-only until the mounting is complete and ensure that
+	// it is reset after. This ensures that there will be no writes during the
+	// construction of the backend.
 	view.SetReadOnlyErr(logical.ErrSetupReadOnly)
 	if slices.Contains(singletonMounts, entry.Type) {
-		defer view.SetReadOnlyErr(origViewReadOnlyErr)
+		defer view.SetReadOnlyErr(nil)
 	}
 
 	// Initialize the backend
@@ -1182,7 +1176,7 @@ func (c *Core) setupCredential(ctx context.Context, entry *routing.MountEntry) (
 			return
 		}
 		if !slices.Contains(singletonMounts, localEntry.Type) {
-			view.SetReadOnlyErr(origViewReadOnlyErr)
+			view.SetReadOnlyErr(nil)
 		}
 
 		if err := backend.Initialize(namespace.ContextWithNamespace(ctx, localEntry.Namespace), &logical.InitializationRequest{Storage: view}); err != nil {

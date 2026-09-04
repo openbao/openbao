@@ -274,15 +274,9 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *routing.MountEn
 		return err
 	}
 
-	origReadOnlyErr := view.GetReadOnlyErr()
-
-	// Mark the view as read-only until the mounting is complete and
-	// ensure that it is reset after. This ensures that there will be no
-	// writes during the construction of the backend.
+	// Mark the view as read-only until the mounting is complete. This ensures
+	// that there will be no writes during the construction of the backend.
 	view.SetReadOnlyErr(logical.ErrSetupReadOnly)
-	// We defer this because we're already up and running so we don't need to
-	// time it for after postUnseal
-	defer view.SetReadOnlyErr(origReadOnlyErr)
 
 	var backend logical.Backend
 	// Create the new backend
@@ -328,9 +322,9 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *routing.MountEn
 		return err
 	}
 
-	// restore the original readOnlyErr, so we can write to the view in
-	// Initialize() if necessary
-	view.SetReadOnlyErr(origReadOnlyErr)
+	// Mark as writable again and ensure Initialize can write to the view if
+	// necessary.
+	view.SetReadOnlyErr(nil)
 
 	// Initialize, using the core's active context.
 	activeCtx := namespace.ContextWithNamespace(c.activeContext.Load(), ns)
@@ -1490,14 +1484,12 @@ func (c *Core) setupMount(ctx context.Context, entry *routing.MountEntry) (func(
 		return nil, err
 	}
 
-	origReadOnlyErr := view.GetReadOnlyErr()
-
-	// Mark the view as read-only until the mounting is complete and
-	// ensure that it is reset after. This ensures that there will be no
-	// writes during the construction of the backend.
+	// Mark the view as read-only until the mounting is complete and ensure that
+	// it is reset after. This ensures that there will be no writes during the
+	// construction of the backend.
 	view.SetReadOnlyErr(logical.ErrSetupReadOnly)
 	if slices.Contains(singletonMounts, entry.Type) {
-		defer view.SetReadOnlyErr(origReadOnlyErr)
+		defer view.SetReadOnlyErr(nil)
 	}
 
 	// Create the new backend
@@ -1553,7 +1545,7 @@ func (c *Core) setupMount(ctx context.Context, entry *routing.MountEntry) (func(
 			return
 		}
 		if !slices.Contains(singletonMounts, localEntry.Type) {
-			view.SetReadOnlyErr(origReadOnlyErr)
+			view.SetReadOnlyErr(nil)
 		}
 
 		if err := backend.Initialize(namespace.ContextWithNamespace(ctx, localEntry.Namespace), &logical.InitializationRequest{Storage: view}); err != nil {

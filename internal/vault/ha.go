@@ -662,7 +662,7 @@ func (c *Core) runReadStandby(stopCh <-chan struct{}, sharedStandbyCtx *atomic.P
 		return false, true
 	}
 
-	c.logger.Trace("entering read-enabled standby mode")
+	c.logger.Trace("starting read-enabled standby loop iteration")
 	defer c.logger.Trace("done with read-enabled standby loop iteration")
 
 	// Create the standby context (this becomes activeCtx on core, oh well).
@@ -1253,7 +1253,7 @@ func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.Canc
 	}
 
 	// Notify that we're most likely to be successful
-	c.logger.Info("attempting enabling horizontal scalability (reads)")
+	c.logger.Info("entering read-enabled standby mode")
 
 	// Unseal, holding the state lock.
 	c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceStandby))

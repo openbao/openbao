@@ -45,7 +45,7 @@ func (c *Sys) ListWorkflows(ctx context.Context) ([]string, error) {
 	return results, err
 }
 
-type GetWorkflowResponse struct {
+type WorkflowResponse struct {
 	AllowUnauthenticated bool   `json:"allow_unauthenticated" mapstructure:"allow_unauthenticated"`
 	CasRequired          bool   `json:"cas_required" mapstructure:"cas_required"`
 	Description          string `json:"description"`
@@ -54,7 +54,7 @@ type GetWorkflowResponse struct {
 	Version              int    `json:"version"`
 }
 
-func (c *Sys) GetWorkflow(ctx context.Context, path string) (*GetWorkflowResponse, error) {
+func (c *Sys) GetWorkflow(ctx context.Context, path string) (*WorkflowResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -74,14 +74,14 @@ func (c *Sys) GetWorkflow(ctx context.Context, path string) (*GetWorkflowRespons
 		return nil, nil
 	}
 
-	var result GetWorkflowResponse
+	var result WorkflowResponse
 	if err := mapstructure.Decode(secret.Data, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-type PutWorkflowInput struct {
+type WorkflowInput struct {
 	Workflow             string `json:"workflow"`
 	Description          string `json:"description,omitempty"`
 	AllowUnauthenticated bool   `json:"allow_unauthenticated,omitempty"`
@@ -89,7 +89,7 @@ type PutWorkflowInput struct {
 	CAS                  *int   `json:"cas,omitempty"`
 }
 
-func (c *Sys) PutWorkflow(ctx context.Context, path string, input PutWorkflowInput) (*GetWorkflowResponse, error) {
+func (c *Sys) PutWorkflow(ctx context.Context, path string, input WorkflowInput) (*WorkflowResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -112,7 +112,7 @@ func (c *Sys) PutWorkflow(ctx context.Context, path string, input PutWorkflowInp
 		return nil, nil
 	}
 
-	var result GetWorkflowResponse
+	var result WorkflowResponse
 	if err := mapstructure.Decode(secret.Data, &result); err != nil {
 		return nil, err
 	}

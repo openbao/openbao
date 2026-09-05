@@ -1,0 +1,3 @@
+```release-note:bug
+ui: query capabilities-self in the token's own namespace so cross-namespace browsing does not 403
+```

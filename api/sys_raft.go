@@ -254,7 +254,7 @@ func (c *Sys) RaftSnapshotRestoreWithContext(ctx context.Context, snapReader io.
 	}
 
 	r := c.c.NewRequest(http.MethodPost, path)
-	r.Body = snapReader
+	r.Body = io.NopCloser(snapReader)
 
 	resp, err := c.c.httpRequestWithContext(ctx, r)
 	if err != nil {

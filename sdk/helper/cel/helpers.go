@@ -63,7 +63,7 @@ func IdentityDeclarations() []cel.EnvOption {
 		cel.Variable("client_token", types.DynType),
 		cel.Variable("entity_id", types.StringType),
 		cel.Variable("entity_groups", types.NewListType(types.DynType)),
-		cel.Variable("entity_info", types.NewMapType(types.StringType, types.DynType)),
+		MapVariable("entity_info"),
 	}
 }
 
@@ -147,4 +147,9 @@ func DecodeJSONFunction() cel.EnvOption {
 			cel.UnaryBinding(decodeJSON),
 		),
 	)
+}
+
+// MapVariable is a map string->any variable with the specified name.
+func MapVariable(name string) cel.EnvOption {
+	return cel.Variable(name, types.NewMapType(types.StringType, types.DynType))
 }

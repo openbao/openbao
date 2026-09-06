@@ -38,6 +38,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/hostutil"
 	"github.com/openbao/openbao/v2/internal/helper/identity"
 	"github.com/openbao/openbao/v2/internal/helper/logging"
@@ -4293,8 +4294,16 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 		return nil, err
 	}
 
+	v := version.Version
+	if req.ClientToken == "" {
+		listener := configutil.GetListenerConfigToContext(ctx)
+		if listener != nil && listener.DisableUnauthedMetadata {
+			v = "(version redacted)"
+		}
+	}
+
 	// Set up target document
-	doc := framework.NewOASDocument(version.Version)
+	doc := framework.NewOASDocument(v)
 
 	// Generic mount paths will primarily be used for code generation purposes.
 	// This will result in parameterized mount paths being returned instead of
@@ -4575,6 +4584,15 @@ func (b *SystemBackend) handleSealStatus(ctx context.Context, req *logical.Reque
 	if err != nil {
 		return nil, err
 	}
+
+	if req.ClientToken == "" {
+		listener := configutil.GetListenerConfigToContext(ctx)
+		if listener != nil && listener.DisableUnauthedMetadata {
+			status.Version = "(version redacted)"
+			status.CommitDate = "(date redacted)"
+		}
+	}
+
 	buf, err := json.Marshal(status)
 	if err != nil {
 		return nil, err

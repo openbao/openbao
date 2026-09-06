@@ -168,6 +168,12 @@ func handleSysSealStatus(core *vault.Core) http.Handler {
 }
 
 func handleSysSealStatusRaw(core *vault.Core, w http.ResponseWriter, r *http.Request) {
+	if !core.Sealed() {
+		r.Method = "GET"
+		r.URL.Path = "/v1/sys/seal-status"
+		handleLogicalNoForward(core).ServeHTTP(w, r)
+		return
+	}
 	ctx := context.Background()
 	status, err := core.GetSealStatus(ctx, true)
 	if err != nil {

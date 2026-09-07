@@ -1,0 +1,3 @@
+```release-note:bug
+core/listeners: Fix broken TCP listener on OpenBSD.
+```

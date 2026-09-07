@@ -139,9 +139,10 @@ to Shamir migration, the new key shares are returned in the response.
 
 Migration is asynchronous. Root key re-encryption may take significant time,
 particularly under high load or with large keyrings. The endpoint returns
-immediately; completion is tracked via a crash-recovery journal in storage
-(see Technical Description). The journal is cleared on successful completion;
-its presence indicates a migration is in progress or was interrupted.
+immediately. The namespace is tainted at the start of migration and untainted
+on completion; the taint is observable via existing API endpoints and serves
+as the migration status indicator. Completion is also tracked internally via
+a crash-recovery journal in storage (see Technical Description).
 
 ### Failure Conditions
 
@@ -351,8 +352,9 @@ Operators rotating KMS credentials will use the new `PUT /config/seal` endpoint.
 The test-before-swap guard rejects the update if the new credentials cannot
 decrypt the existing root key. No silent partial update is possible.
 
-The migration endpoint (`POST /reseal`) is a new asynchronous
-operation. Operators must confirm completion before decommissioning the old seal.
+The migration endpoint (`POST /reseal`) is a new asynchronous operation.
+The namespace is tainted during migration; the taint clears on completion.
+Operators can confirm completion by checking that the taint is no longer present.
 
 ## Unresolved Questions
 

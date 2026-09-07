@@ -5,7 +5,6 @@ package server
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -100,6 +99,11 @@ func (ln TCPKeepAliveListener) Accept() (c net.Conn, err error) {
 	if err != nil {
 		return c, err
 	}
-	err = errors.Join(err, tc.SetKeepAlive(true), tc.SetKeepAlivePeriod(3*time.Minute))
-	return tc, err
+
+	// This may fail on some operating systems (e.g., OpenBSD), and that's okay.
+	// Avoid returning any errors since that'll kill the entire connection.
+	_ = tc.SetKeepAlive(true)
+	_ = tc.SetKeepAlivePeriod(3 * time.Minute)
+
+	return tc, nil
 }

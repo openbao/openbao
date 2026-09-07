@@ -1080,6 +1080,7 @@ func (c *Core) maybeBypassGRPCRequirement(ctx context.Context) bool {
 			}
 		}()
 
+		t := time.NewTimer(lockRetryInterval)
 		for {
 			select {
 			case <-ctx.Done():
@@ -1088,7 +1089,7 @@ func (c *Core) maybeBypassGRPCRequirement(ctx context.Context) bool {
 				// state change.
 				restart = false
 				return
-			case <-time.After(lockRetryInterval):
+			case <-t.C:
 			}
 
 			held, _, err := lock.Value()
@@ -1100,6 +1101,8 @@ func (c *Core) maybeBypassGRPCRequirement(ctx context.Context) bool {
 			if held {
 				return
 			}
+
+			t.Reset(lockRetryInterval)
 		}
 	}()
 

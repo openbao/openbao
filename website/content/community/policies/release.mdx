@@ -63,18 +63,16 @@ a better release process going forward.
        will stage a draft release on GitHub and upload release artifacts to it.
  - [ ] Spot-check stage-one release artifacts:
       - [ ] Binaries work.
-      - [ ] CoSign and GPG signatures on artifacts are valid.
 -  [ ] On failure, delete the draft release, merge necessary adjustments, and
        retry the above two steps.
  - [ ] Attach release notes to the release draft.
  - [ ] Publish the release draft. This pushes the release tag and triggers
        workflows to build & publish container images and to update repos hosted
-       on pkgs.openbao.org.
+       on `pkgs.openbao.org`. Check the box to create the discussion.
  - [ ] Spot-check stage-two release artifacts:
       - [ ] Container images work and have valid CoSign signatures.
  - [ ] Share release notification announcement:
       - [ ] OpenBao Core mailing list (cc TSC mailing list)
-      - [ ] GitHub Discussions
       - [ ] Link from Zulip
       - [ ] Mention in next community meeting & TSC meetings.
  - [ ] Publish any security advisory drafts fixed in this release.

@@ -32,7 +32,7 @@ func TestAuthTokenCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 	if secret.Auth.LeaseDuration != 3600 {
-		t.Errorf("expected 1h, got %q", secret.Auth.LeaseDuration)
+		t.Errorf("expected 1h, got %d", secret.Auth.LeaseDuration)
 	}
 
 	renewCreateRequest := &api.TokenCreateRequest{
@@ -45,7 +45,7 @@ func TestAuthTokenCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 	if secret.Auth.LeaseDuration != 3600 {
-		t.Errorf("expected 1h, got %q", secret.Auth.LeaseDuration)
+		t.Errorf("expected 1h, got %d", secret.Auth.LeaseDuration)
 	}
 	if secret.Auth.Renewable {
 		t.Error("expected non-renewable token")
@@ -57,7 +57,7 @@ func TestAuthTokenCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 	if secret.Auth.LeaseDuration != 3600 {
-		t.Errorf("expected 1h, got %q", secret.Auth.LeaseDuration)
+		t.Errorf("expected 1h, got %d", secret.Auth.LeaseDuration)
 	}
 	if !secret.Auth.Renewable {
 		t.Error("expected renewable token")
@@ -82,7 +82,7 @@ func TestAuthTokenCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 	if secret.Auth.LeaseDuration != 3600 {
-		t.Errorf("expected 3600 seconds, got %q", secret.Auth.LeaseDuration)
+		t.Errorf("expected 3600 seconds, got %d", secret.Auth.LeaseDuration)
 	}
 }
 

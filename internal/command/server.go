@@ -24,7 +24,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	systemd "github.com/coreos/go-systemd/v22/daemon"
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
@@ -52,6 +51,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/osutil"
 	"github.com/openbao/openbao/v2/internal/helper/pluginutil/oci"
 	"github.com/openbao/openbao/v2/internal/helper/profiles"
+	"github.com/openbao/openbao/v2/internal/helper/systemd"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/teststorage"
 	"github.com/openbao/openbao/v2/internal/helper/useragent"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
@@ -1408,7 +1408,7 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	// Notify systemd that the server is ready (if applicable)
-	c.notifySystemd(systemd.SdNotifyReady)
+	c.notifySystemd(systemd.Ready)
 
 	// Output the header that the server has started
 	if !c.logFlags.flagCombineLogs {
@@ -1475,7 +1475,7 @@ func (c *ServerCommand) Run(args []string) int {
 			c.UI.Output("==> OpenBao reload triggered")
 
 			// Notify systemd that the server is reloading config
-			c.notifySystemd(systemd.SdNotifyReloading)
+			c.notifySystemd(systemd.Reloading)
 
 			// Check for new log level
 			var config *server.Config
@@ -1552,7 +1552,7 @@ func (c *ServerCommand) Run(args []string) int {
 			}
 
 			// Notify systemd that the server has completed reloading config
-			c.notifySystemd(systemd.SdNotifyReady)
+			c.notifySystemd(systemd.Ready)
 
 		case <-c.SigUSR2Ch:
 			logWriter := c.logger.StandardWriter(&hclog.StandardLoggerOptions{})
@@ -1640,7 +1640,7 @@ func (c *ServerCommand) Run(args []string) int {
 		}
 	}
 	// Notify systemd that the server is shutting down
-	c.notifySystemd(systemd.SdNotifyStopping)
+	c.notifySystemd(systemd.Stopping)
 
 	// Stop the listeners so that we don't process further client requests.
 	c.cleanupGuard.Do(listenerCloseFunc)
@@ -1691,7 +1691,7 @@ func (c *ServerCommand) configureLogging(config *server.Config) (hclog.Intercept
 }
 
 func (c *ServerCommand) notifySystemd(status string) {
-	sent, err := systemd.SdNotify(false, status)
+	sent, err := systemd.Notify(status)
 	if err != nil {
 		c.logger.Error("error notifying systemd", "error", err)
 	} else {

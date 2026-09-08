@@ -1958,7 +1958,7 @@ func (i *IdentityStore) expireOIDCPublicKeys(ctx context.Context, s logical.Stor
 //
 // It will return the time of the soonest rotation and the minimum
 // verificationTTL or minimum rotationPeriod out of all the current keys.
-func (i *IdentityStore) oidcKeyRotation(ctx context.Context, s logical.Storage) (time.Time, time.Duration, error) {
+func (i *IdentityStore) oidcKeyRotation(ctx context.Context, s logical.Storage, active bool) (time.Time, time.Duration, error) {
 	// soonestRotation will be the soonest rotation time of all keys. Initialize
 	// here to a relatively distant time.
 	now := time.Now()
@@ -2003,8 +2003,9 @@ func (i *IdentityStore) oidcKeyRotation(ctx context.Context, s logical.Storage) 
 			soonestRotation = key.NextRotation
 		}
 
-		// Key that is due to be rotated.
-		if now.After(key.NextRotation) {
+		// Key that is due to be rotated. Rotation can only occur on the active
+		// node, so skip if that's not us.
+		if now.After(key.NextRotation) && active {
 			i.Logger().Debug("rotating OIDC key", "key", key.Name)
 			if err := key.rotate(ctx, i.Logger(), s, -1); err != nil {
 				return now, jwksClientCacheDuration, err
@@ -2063,27 +2064,31 @@ func (i *IdentityStore) OidcPeriodicFunc(ctx context.Context) {
 		return
 	}
 
-	nextRotation, jwksClientCacheDuration, err := i.oidcKeyRotation(ctx, s)
+	active := i.localNode.HAState() == consts.Active
+
+	// Key rotation can only occur on the active node, but we'll still grab
+	// jwksClientCacheDuration so it is not stale on the standby.
+	nextRotation, jwksClientCacheDuration, err := i.oidcKeyRotation(ctx, s, active)
 	if err != nil {
 		i.Logger().Warn("error rotating OIDC keys", "namespace", ns.Path, "err", err)
 	}
-
-	nextExpiration, err := i.expireOIDCPublicKeys(ctx, s)
-	if err != nil {
-		i.Logger().Warn("error expiring OIDC public keys", "namespace", ns.Path, "err", err)
-	}
-
-	if err := i.OidcCache.Flush(ns); err != nil {
-		i.Logger().Error("error flushing oidc cache", "namespace", ns.Path, "err", err)
-	}
-
-	// re-run at the soonest expiration or rotation time
 	if nextRotation.Before(nextRun) {
 		nextRun = nextRotation
 	}
 
-	if nextExpiration.Before(nextRun) {
-		nextRun = nextExpiration
+	// Public key expiration can only occur on the active node.
+	if active {
+		nextExpiration, err := i.expireOIDCPublicKeys(ctx, s)
+		if err != nil {
+			i.Logger().Warn("error expiring OIDC public keys", "namespace", ns.Path, "err", err)
+		}
+		if nextExpiration.Before(nextRun) {
+			nextRun = nextExpiration
+		}
+	}
+
+	if err := i.OidcCache.Flush(ns); err != nil {
+		i.Logger().Error("error flushing oidc cache", "namespace", ns.Path, "err", err)
 	}
 
 	if jwksClientCacheDuration < minJwksClientCacheDuration {

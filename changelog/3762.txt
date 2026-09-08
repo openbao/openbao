@@ -1,0 +1,3 @@
+```release-note:improvement
+Documentation: added Yubico YubiHSM Auto-Unseal via PKCS#11 guide.
+```

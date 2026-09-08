@@ -1,0 +1,10 @@
+```release-note:feature
+**External Keys**: The PKI and Transit secret engines can now use KMS plugins to perform cryptographic operations without storing key material in OpenBao.
+  - Configure mappings to HSM or KMS-backed keys via the `/sys/external-keys` APIs and grant access to select mounts.
+  - Use the PKI engine to sign certificates &co with external private keys.
+  - Use the Transit engine to sign, verify, encrypt & decrypt payloads with external key material.
+  - Several KMS plugins provide support:
+    - Support for PKCS#11-backed keys is included via the `kms-pkcs11` plugin available in openbao-plugins.
+    - Support for Transit-backed keys is built-in. This is similar in concept to the built-in Transit seal.
+    - Like Auto Seal support via KMS plugins, the interface is provider-agnostic: Develop plugins and enable support for additional providers at any time.
+```

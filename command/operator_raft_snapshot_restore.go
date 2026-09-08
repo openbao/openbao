@@ -88,12 +88,12 @@ func (c *OperatorRaftSnapshotRestoreCommand) Run(args []string) int {
 
 	snapReader, err := os.Open(snapFile)
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error opening policy file: %s", err))
+		c.UI.Error(fmt.Sprintf("Error opening snapshot file: %s", err))
 		return 2
 	}
 	defer func() {
 		if err := snapReader.Close(); err != nil {
-			c.UI.Error(fmt.Sprintf("Error properly closing policy file: %s", err))
+			c.UI.Error(fmt.Sprintf("Error properly closing snapshot file: %s", err))
 		}
 	}()
 

@@ -19,7 +19,7 @@ autoseal mechanism.
 The Transit seal is activated by one of the following:
 
 - The presence of a `seal "transit"` block in OpenBao's configuration file
-- The presence of the environment variable `VAULT_SEAL_TYPE` set to `transit`.
+- The presence of the environment variable `BAO_SEAL_TYPE` set to `transit`.
 
 ## `transit` example
 
@@ -51,10 +51,10 @@ seal "transit" {
 These parameters apply to the `seal` stanza in the OpenBao configuration file:
 
 - `address` `(string: <required>)`: The full address to the OpenBao cluster.
-  This may also be specified by the `VAULT_ADDR` environment variable.
+  This may also be specified by the `BAO_ADDR` environment variable.
 
 - `token` `(string: <required>)`: The OpenBao token to use. This may also be
-  specified by the `VAULT_TOKEN` environment variable.
+  specified by the `BAO_TOKEN` environment variable.
 
 - `key_name` `(string: <required>)`: The transit key to use for encryption and
   decryption. This may also be supplied using the `VAULT_TRANSIT_SEAL_KEY_NAME`
@@ -65,7 +65,7 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
   variable.
 
 - `namespace` `(string: "")`: The namespace path to the transit secret engine.
-  This may also be supplied using the `VAULT_NAMESPACE` environment variable.
+  This may also be supplied using the `BAO_NAMESPACE` environment variable.
 
 - `disable_renewal` `(string: "false")`: Disables the automatic renewal of the token
   in case the lifecycle of the token is managed with some other mechanism outside of
@@ -74,24 +74,24 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
 
 - `tls_ca_cert` `(string: "")`: Specifies the path to the CA certificate file used
   for communication with the OpenBao server. This may also be specified using the
-  `VAULT_CACERT` environment variable.
+  `BAO_CACERT` environment variable.
 
 - `tls_client_cert` `(string: "")`: Specifies the path to the client certificate
   for communication with the OpenBao server. This may also be specified using the
-  `VAULT_CLIENT_CERT` environment variable.
+  `BAO_CLIENT_CERT` environment variable.
 
 - `tls_client_key` `(string: "")`: Specifies the path to the private key for
   communication with the OpenBao server. This may also be specified using the
-  `VAULT_CLIENT_KEY` environment variable.
+  `BAO_CLIENT_KEY` environment variable.
 
 - `tls_server_name` `(string: "")`: Name to use as the SNI host when connecting
   to the OpenBao server via TLS. This may also be specified via the
-  `VAULT_TLS_SERVER_NAME` environment variable.
+  `BAO_TLS_SERVER_NAME` environment variable.
 
 - `tls_skip_verify` `(bool: "false")`: Disable verification of TLS certificates.
   Using this option is highly discouraged and decreases the security of data
   transmissions to and from the OpenBao server. This may also be specified using the
-  `VAULT_SKIP_VERIFY` environment variable.
+  `BAO_SKIP_VERIFY` environment variable.
 
 - `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
@@ -105,7 +105,7 @@ variables or as configuration parameters.
 :::warning
 
 **Note:** Although the configuration file allows you to pass in
-`VAULT_TOKEN` as part of the seal's parameters, it is _strongly_ recommended
+`BAO_TOKEN` as part of the seal's parameters, it is _strongly_ recommended
 to set these values via environment variables.
 
 :::
@@ -132,5 +132,5 @@ and not setting an explicit max TTL, otherwise at some point it will cease to be
 ## Key rotation
 
 This seal supports key rotation using the Transit Secret Engine's key rotation endpoints. See
-[doc](/api-docs/secret/transit#rotate-key). Old keys must not be disabled or deleted and are
+[doc](../../api/secret/transit.mdx#rotate-key). Old keys must not be disabled or deleted and are
 used to decrypt older data.

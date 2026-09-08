@@ -73,6 +73,11 @@ difficult. Automated tools can easily install, configure, and start OpenBao,
 but unsealing it using Shamir is a very manual process. For most users
 Auto Unseal will provide a better experience.
 
+Want an automated alternative to Shamir's stored in Kubernetes secrets,
+OpenStack Barbican, or similar static secret stores? Check out [static key
+auto-unseal](../configuration/seal/static.mdx) to avoid the discouraged pattern of automating
+Shamir's manual unseal.
+
 :::
 
 ## Sealing
@@ -141,10 +146,21 @@ Details about initialization and rotation follow. When performing an operation
 that uses recovery keys, such as `generate-root`, selection of the recovery
 keys for this purpose, rather than the barrier unseal keys, is automatic.
 
+:::info
+
+Recovery key generation using auto-unseal [can be delayed](../api/system/init.mdx)
+until after initialization by setting `recovery_shares=0` on the call to
+`sys/init`. Generating them later requires a root or policy with `sudo` access
+to the [`sys/rotate/recovery` endpoints](../api/system/rotate/init.mdx).
+
+**Just don't forget to generate them well before you need them!**
+
+:::
+
 ### Initialization
 
 When initializing, the split is performed according to the following CLI flags
-and their API equivalents in the [/sys/init](/api-docs/system/init) endpoint:
+and their API equivalents in the [/sys/init](../api/system/init.mdx) endpoint:
 
 - `recovery-shares`: The number of shares into which to split the recovery
   key. This value is equivalent to the `recovery_shares` value in the API
@@ -177,7 +193,7 @@ target different key holders via different PGP keys. When using the OpenBao CLI,
 this is performed by using the `-target=recovery` flag to `bao operator rotate-keys`.
 
 Via the API, the rotation is performed using
-[`/sys/rotate/recovery` endpoint](/api-docs/system/rotate).
+[`/sys/rotate/recovery` endpoint](../api/system/rotate/index.mdx).
 
 ## Seal migration
 

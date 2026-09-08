@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"runtime"
 	"sync"
 
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -20,6 +21,8 @@ type PostgreSQLBackendTransaction struct {
 	readOnly       bool
 	haveWritten    bool
 	haveFinishedTx bool
+
+	cleanup runtime.Cleanup
 }
 
 func (b *PostgreSQLBackend) newTransaction(ctx context.Context, readOnly bool) (physical.Transaction, error) {
@@ -36,11 +39,34 @@ func (b *PostgreSQLBackend) newTransaction(ctx context.Context, readOnly bool) (
 		return nil, fmt.Errorf("failed to start underlying postgresql transaction: %w", err)
 	}
 
-	return &PostgreSQLBackendTransaction{
+	txn := &PostgreSQLBackendTransaction{
 		b:        b,
 		tx:       tx,
 		readOnly: readOnly,
-	}, nil
+	}
+
+	trace := make([]byte, 2*1024)
+	bytes := runtime.Stack(trace, false)
+	trace = trace[0:bytes]
+
+	txn.cleanup = runtime.AddCleanup(txn, func(_ any) {
+		log := b.logger.Debug
+		if b.txnLeakCount.Add(1) == 1 {
+			log = b.logger.Error
+		}
+		log(
+			"transaction was leaked",
+			// Stack is the only information we retain in this existing implementation.
+			"stack", string(trace),
+			"read_only", readOnly,
+			"leaked_transactions", b.txnLeakCount.Load(),
+		)
+
+		b.txnPermitPool.Release()
+		_ = tx.Rollback() // ignore the error, not much we can do about this
+	}, true)
+
+	return txn, nil
 }
 
 func (b *PostgreSQLBackend) BeginTx(ctx context.Context) (physical.Transaction, error) {
@@ -200,6 +226,7 @@ func (t *PostgreSQLBackendTransaction) Commit(ctx context.Context) error {
 	defer func() {
 		t.b.txnPermitPool.Release()
 		t.haveFinishedTx = true
+		t.cleanup.Stop()
 	}()
 
 	if err := t.b.validateFence(ctx); err != nil {
@@ -224,6 +251,7 @@ func (t *PostgreSQLBackendTransaction) Rollback(ctx context.Context) error {
 	defer func() {
 		t.b.txnPermitPool.Release()
 		t.haveFinishedTx = true
+		t.cleanup.Stop()
 	}()
 
 	if err := t.tx.Rollback(); err != nil {

@@ -1,4 +1,3 @@
 ```release-note:improvement
-command: `server`, `operator diagnose` and 'operator validate-config` now support
-the environment variable BAO_CONFIG_FILE for the -config command option.
+command: `server`, `operator diagnose` and 'operator validate-config` now support the environment variable BAO_CONFIG_FILE for the -config command option.
 ```

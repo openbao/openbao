@@ -49,6 +49,10 @@ path "cubbyhole/response" {
 path "sys/wrapping/unwrap" {
     capabilities = ["update"]
 }
+
+path "auth/token/revoke-self" {
+    capabilities = ["update"]
+}
 `
 	// DefaultPolicy is the "default" policy
 	DefaultPolicy = `
@@ -193,11 +197,8 @@ func (ps *Store) lockWithUnlock(ctx context.Context) func() {
 		ns = namespace.RootNamespace
 	}
 
-	lock := locksutil.LockForKey(ps.modifyLocks, ns.UUID)
-
 	ps.logger.Trace("acquiring lock for", "namespace", ns.UUID)
-	lock.Lock()
-	return lock.Unlock
+	return locksutil.LockWithUnlock(ps.modifyLocks, ns.UUID)
 }
 
 func (ps *Store) rLockWithUnlock(ctx context.Context) func() {
@@ -206,11 +207,8 @@ func (ps *Store) rLockWithUnlock(ctx context.Context) func() {
 		ns = namespace.RootNamespace
 	}
 
-	lock := locksutil.LockForKey(ps.modifyLocks, ns.UUID)
-
 	ps.logger.Trace("acquiring lock for", "namespace", ns.UUID)
-	lock.RLock()
-	return lock.RUnlock
+	return locksutil.RLockWithUnlock(ps.modifyLocks, ns.UUID)
 }
 
 func (ps *Store) InvalidateNamespace(ctx context.Context, uuid string) {
@@ -303,7 +301,7 @@ func (ps *Store) setPolicyInternal(ctx context.Context, p *Policy, casVersion *i
 		}
 
 		if *casVersion != -1 && *casVersion != existing.DataVersion {
-			return fmt.Errorf("check-and-set parameter did not match the current version")
+			return fmt.Errorf("check-and-set parameter %v did not match the current version %v", *casVersion, existing.DataVersion)
 		}
 	}
 
@@ -669,6 +667,9 @@ func (ps *Store) LoadACLPolicy(ctx context.Context, policyName, policyText strin
 		return err
 	}
 
+	// Assume we're creating the policy.
+	cas := -1
+
 	// Check if the pol already exists
 	pol, err := ps.GetPolicy(ctx, policyName, TypeACL)
 	if err != nil {
@@ -678,6 +679,9 @@ func (ps *Store) LoadACLPolicy(ctx context.Context, policyName, policyText strin
 		if !slices.Contains(immutablePolicies, policyName) || policyText == pol.Raw {
 			return nil
 		}
+
+		// Policy exists; record its CAS value.
+		cas = pol.DataVersion
 	}
 
 	pol, err = ParseACLPolicy(ns, policyText)
@@ -689,10 +693,9 @@ func (ps *Store) LoadACLPolicy(ctx context.Context, policyName, policyText strin
 		return fmt.Errorf("parsing %q policy resulted in nil policy", policyName)
 	}
 
-	cas := &pol.DataVersion
 	pol.Name = policyName
 	pol.Type = TypeACL
-	return ps.setPolicyInternal(ctx, pol, cas)
+	return ps.setPolicyInternal(ctx, pol, &cas)
 }
 
 func (ps *Store) sanitizeName(name string) string {

@@ -24,7 +24,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	systemd "github.com/coreos/go-systemd/v22/daemon"
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
@@ -52,6 +51,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/osutil"
 	"github.com/openbao/openbao/v2/internal/helper/pluginutil/oci"
 	"github.com/openbao/openbao/v2/internal/helper/profiles"
+	"github.com/openbao/openbao/v2/internal/helper/systemd"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/teststorage"
 	"github.com/openbao/openbao/v2/internal/helper/useragent"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
@@ -483,7 +483,13 @@ func (c *ServerCommand) runRecoveryMode() int {
 			return 1
 		}
 
-		seal, err = vault.NewAutoSeal(vaultseal.NewAccess(wrapper))
+		seal, err = vault.NewAutoSealWithHealthCheck(
+			vaultseal.NewAccess(wrapper),
+			configSeal.HealthCheckEnabled,
+			configSeal.HealthCheckTimeout,
+			configSeal.HealthCheckInterval,
+			configSeal.HealthCheckIntervalUnhealthy,
+		)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error creating auto seal: %s", err))
 			return 1
@@ -1402,7 +1408,7 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	// Notify systemd that the server is ready (if applicable)
-	c.notifySystemd(systemd.SdNotifyReady)
+	c.notifySystemd(systemd.Ready)
 
 	// Output the header that the server has started
 	if !c.logFlags.flagCombineLogs {
@@ -1469,7 +1475,7 @@ func (c *ServerCommand) Run(args []string) int {
 			c.UI.Output("==> OpenBao reload triggered")
 
 			// Notify systemd that the server is reloading config
-			c.notifySystemd(systemd.SdNotifyReloading)
+			c.notifySystemd(systemd.Reloading)
 
 			// Check for new log level
 			var config *server.Config
@@ -1525,6 +1531,9 @@ func (c *ServerCommand) Run(args []string) int {
 			} else {
 				// Update plugins as necessary.
 				core.ReloadPlugins()
+				if err := kms.ReloadConfig(config); err != nil {
+					c.logger.Error("failed to reload KMS plugins", "error", err.Error())
+				}
 			}
 
 			// Reload log level for loggers
@@ -1543,7 +1552,7 @@ func (c *ServerCommand) Run(args []string) int {
 			}
 
 			// Notify systemd that the server has completed reloading config
-			c.notifySystemd(systemd.SdNotifyReady)
+			c.notifySystemd(systemd.Ready)
 
 		case <-c.SigUSR2Ch:
 			logWriter := c.logger.StandardWriter(&hclog.StandardLoggerOptions{})
@@ -1631,7 +1640,7 @@ func (c *ServerCommand) Run(args []string) int {
 		}
 	}
 	// Notify systemd that the server is shutting down
-	c.notifySystemd(systemd.SdNotifyStopping)
+	c.notifySystemd(systemd.Stopping)
 
 	// Stop the listeners so that we don't process further client requests.
 	c.cleanupGuard.Do(listenerCloseFunc)
@@ -1682,7 +1691,7 @@ func (c *ServerCommand) configureLogging(config *server.Config) (hclog.Intercept
 }
 
 func (c *ServerCommand) notifySystemd(status string) {
-	sent, err := systemd.SdNotify(false, status)
+	sent, err := systemd.Notify(status)
 	if err != nil {
 		c.logger.Error("error notifying systemd", "error", err)
 	} else {
@@ -2540,7 +2549,13 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 				return nil, nil, nil, nil, nil, fmt.Errorf("Error configuring seal %q: %w", configSeal.Type, err)
 			}
 
-			seal, err = vault.NewAutoSeal(vaultseal.NewAccess(wrapper))
+			seal, err = vault.NewAutoSealWithHealthCheck(
+				vaultseal.NewAccess(wrapper),
+				configSeal.HealthCheckEnabled,
+				configSeal.HealthCheckTimeout,
+				configSeal.HealthCheckInterval,
+				configSeal.HealthCheckIntervalUnhealthy,
+			)
 			if err != nil {
 				//nolint:staticcheck // User-facing error.
 				return nil, nil, nil, nil, nil, fmt.Errorf("Error creating auto seal: %w", err)

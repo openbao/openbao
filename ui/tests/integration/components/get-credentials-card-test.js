@@ -35,7 +35,7 @@ module('Integration | Component | get-credentials-card', function (hooks) {
 
   hooks.beforeEach(function () {
     this.router = this.owner.lookup('service:router');
-    this.router.transitionTo = sinon.stub();
+    this.router.transitionTo = sinon.stub().resolves();
 
     this.owner.unregister('service:store');
     this.owner.register('service:store', storeService);

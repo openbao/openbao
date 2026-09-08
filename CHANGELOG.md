@@ -1,3 +1,50 @@
+## 2.6.2
+## August 18, 2026
+
+SECURITY:
+
+* core: Ensure internal operation types cannot be dispatched from inline authentication and workflows, preventing token creation. GHSA-rh46-vc3j-w2w3. [[GH-3831](https://github.com/openbao/openbao/pull/3831)]
+* secrets/pki: Also enforce `allowed_ip_sans_cidr` on IP SANs from CSRs. GHSA-g892-p242-8g86. [[GH-3833](https://github.com/openbao/openbao/pull/3833)]
+
+BUG FIXES:
+
+* command/agent: Fix file sink chown failing unconditionally on Windows. [[GH-3733](https://github.com/openbao/openbao/pull/3733)]
+* core: Prevent recovered panic in request handler due to uncanceled active context between initialization and standby/active enablement. [[GH-3623](https://github.com/openbao/openbao/pull/3623)]
+* core: Propagate requests with wrap info to the active node. [[GH-3790](https://github.com/openbao/openbao/pull/3790)]
+* core/identity: Write OIDC default keys into per-namespace storage. [[GH-3662](https://github.com/openbao/openbao/pull/3662)]
+* core/namespaces: Fix fatal failures writing default OIDC keys on standby nodes during namespace creation. [[GH-3662](https://github.com/openbao/openbao/pull/3662)]
+* sys/raw: Propagate delete and write requests to the active node. [[GH-3766](https://github.com/openbao/openbao/pull/3766)]
+* sys/leases: Propagate renew, revoke and revoke-prefix requests to the active node by default. [[GH-3766](https://github.com/openbao/openbao/pull/3766)]
+* sys/quotas: Fix broken `enable_rate_limit_audit_logging` option. [[GH-3673](https://github.com/openbao/openbao/pull/3673)]
+* sys/workflows: Allow unauthenticated workflow execution without authentication. [[GH-3785](https://github.com/openbao/openbao/pull/3785)]
+* audit/http: Fix error wrapping in header parsing so the underlying cause is not lost. [[GH-3746](https://github.com/openbao/openbao/pull/3746)]
+* ui: Fix client-side validation for auth/userpass user creation. [[GH-3625](https://github.com/openbao/openbao/pull/3625)]
+
+## 2.6.1
+## July 22, 2026
+
+CHANGES:
+
+* packaging/container: Revert removal of legacy, non-opencontainers image labels for maximum compatibility. [[GH-3504](https://github.com/openbao/openbao/pull/3504)]
+
+IMPROVEMENTS:
+
+* core: Warn on `sys/` key with no explicit invalidation handler; please report if you see a log line with `no mechanism to invalidate cache`. [[GH-3555](https://github.com/openbao/openbao/pull/3555)]
+* core/policies: Introduce PATCH operation support for modifying the values of specific parameters. [[GH-3506](https://github.com/openbao/openbao/pull/3506)]
+
+BUG FIXES:
+
+* core/expiration: Ensure leases are not inadvertently cached on standby nodes. [[GH-3555](https://github.com/openbao/openbao/pull/3555)]
+* core/policies: Allow removal of `expiration` from policies on POST/PUT to `sys/policies/acl/<name>` by eliding the parameter; use PATCH to update policies without modifying unnecessary parameters. [[GH-3506](https://github.com/openbao/openbao/pull/3506)]
+* core/policies: Fix `limit=0` and negative limits bypassing the `pagination_limit` ACL option. [[GH-3518](https://github.com/openbao/openbao/pull/3518)]
+* core/policies: Fix persistence of new `allow_wildcards_in_identity_templates`, `allow_slashes_in_identity_templates` parameters in storage. [[GH-3506](https://github.com/openbao/openbao/pull/3506)]
+* auth/approle: Ensure initial salt is created without transaction to avoid deadlocks. [[GH-3556](https://github.com/openbao/openbao/pull/3556)]
+* auth/jwt: Fix patch operation of CEL roles losing existing data (`bound_audiences` `not_before_leeway`, `clock_skew_leeway` and `expiration_leeway`). [[GH-3551](https://github.com/openbao/openbao/pull/3551)]
+* auth/token: Ensure salt cache is invalidated properly on standby nodes. [[GH-3555](https://github.com/openbao/openbao/pull/3555)]
+* sdk/plugin: Ensure all log messages are visible under `plugin.ServeMultiplex(...)` by default to align with `plugin.Serve(...)`. [[GH-3536](https://github.com/openbao/openbao/pull/3536)]
+* sdk: Better support non-usr-merged distributions in containerized testing. [[GH-3554](https://github.com/openbao/openbao/pull/3554)]
+* packaging/container: Ensure that labels on UBI-based images comply with Red Hat's certification requirements. [[GH-3504](https://github.com/openbao/openbao/pull/3504)]
+
 ## 2.6.0
 ## July 14, 2026
 

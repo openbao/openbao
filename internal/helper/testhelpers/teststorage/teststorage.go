@@ -14,7 +14,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	physFile "github.com/openbao/openbao/sdk/v2/physical/file"
-	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/audit"
 	auditFile "github.com/openbao/openbao/v2/internal/builtin/audit/file"
 	auditSocket "github.com/openbao/openbao/v2/internal/builtin/audit/socket"
@@ -25,6 +24,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
+	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/physical/raft"
 	"github.com/openbao/openbao/v2/internal/vault"
 )

@@ -16,7 +16,6 @@ import (
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/auth/approle"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/auth/cert"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/auth/jwt"
-	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/auth/kerberos"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/auth/kubernetes"
 	token_file "github.com/openbao/openbao/v2/internal/command/agentproxyshared/auth/token-file"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/cache"
@@ -34,8 +33,6 @@ func GetAutoAuthMethodFromConfig(autoAuthMethodType string, authConfig *auth.Aut
 		return cert.NewCertAuthMethod(authConfig)
 	case "jwt":
 		return jwt.NewJWTAuthMethod(authConfig)
-	case "kerberos":
-		return kerberos.NewKerberosAuthMethod(authConfig)
 	case "kubernetes":
 		return kubernetes.NewKubernetesAuthMethod(authConfig)
 	case "approle":

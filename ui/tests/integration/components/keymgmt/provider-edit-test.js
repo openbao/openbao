@@ -69,7 +69,7 @@ module('Integration | Component | keymgmt/provider-edit', function (hooks) {
       return {};
     });
     this.owner.lookup('service:router').reopen({
-      transitionTo(path, model, { queryParams: { tab } }) {
+      async transitionTo(path, model, { queryParams: { tab } }) {
         assert.strictEqual(path, root.path, 'Root path sent in transitionTo on delete');
         assert.strictEqual(model, root.model, 'Root model sent in transitionTo on delete');
         assert.deepEqual(tab, 'provider', 'Correct query params sent in transitionTo on delete');
@@ -134,7 +134,7 @@ module('Integration | Component | keymgmt/provider-edit', function (hooks) {
       return {};
     });
     this.owner.lookup('service:router').reopen({
-      transitionTo(path, model, { queryParams: { itemType } }) {
+      async transitionTo(path, model, { queryParams: { itemType } }) {
         assert.strictEqual(
           path,
           'vault.cluster.secrets.backend.show',

@@ -27,6 +27,22 @@ rules:
               ...
           }
           ...
+      - pattern-not: |
+          $VAR, $ERR = ($S : logical.Storage).Get(...)
+          ...
+          switch {
+              case <... $VAR == nil ...>:
+                ...
+          }
+          ...
+      - pattern-not: |
+          $VAR, $ERR = ($S : logical.Storage).Get(...)
+          ...
+          switch {
+              case <... $VAR != nil ...>:
+                ...
+          }
+          ...
     message: missed nil check 
     languages:
       - go
@@ -109,7 +125,7 @@ rules:
       exclude:
           # This file has a valid case that I couldn't work around easily in the
           # semgrep rule. Ignore it for now
-        - "vault/ui.go"
+        - "/internal/vault/ui.go"
     patterns:
       - pattern-either:
           - pattern: |

@@ -15,9 +15,9 @@ APIs [supports `pageSize`, yielding a `nextPageToken`](https://docs.cloud.google
 for iterating over multiple pages of results.
 
 Many resources in Vault and OpenBao return lists:
-[KVv2 secrets](/api-docs/secret/kv/kv-v2/#list-secrets),
-[PKI's certificate lists](/api-docs/secret/pki/#list-certificates),
-[SSH's roles](/api-docs/secret/ssh/#list-roles), and more.
+[KVv2 secrets](/docs/api/secret/kv/kv-v2/#list-secrets),
+[PKI's certificate lists](/docs/api/secret/pki/#list-certificates),
+[SSH's roles](/docs/api/secret/ssh/#list-roles), and more.
 
 Paginated lists were shipped [in OpenBao v2.0.0](/community/release-notes/2-0-0/#200)
 as our very first feature in our very first release!

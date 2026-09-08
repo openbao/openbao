@@ -45,7 +45,7 @@ A scope will have the following configuration parameters:
 * **Template**: maps individual claims to OpenBao identity information
 
 
-The template parameter takes advantage of the [JSON-based templating](/api-docs/secret/identity/tokens#template) used by identity tokens for claims mapping. This means the parameter will take a JSON string of arbitrary structure where the values may be replaced with specific identity information. Template parameters that are not present for an OpenBao identity are omitted from the resulting claims without an error.
+The template parameter takes advantage of the [JSON-based templating](../api/secret/identity/tokens.mdx#template) used by identity tokens for claims mapping. This means the parameter will take a JSON string of arbitrary structure where the values may be replaced with specific identity information. Template parameters that are not present for an OpenBao identity are omitted from the resulting claims without an error.
 
 
 Example of a JSON template for a scope:
@@ -165,7 +165,7 @@ Each OpenBao namespace will contain a built-in assignment resource named `allow_
 
 Key resources are referenced by clients via the `key` parameter. This parameter specifies
 the key that will be used to sign ID tokens for the client. See existing
-[documentation](/api-docs/secret/identity/tokens#create-a-named-key) for details on keyring
+[documentation](../api/secret/identity/tokens.mdx#create-a-named-key) for details on keyring
 management, supported signing algorithms, rotation periods, and verification TTLs. Currently,
 a key referenced by a client cannot be changed.
 
@@ -218,7 +218,7 @@ An authorization code is generated with a successful validation of the request. 
 
 ### Token endpoint
 
-Each provider will offer a [token endpoint](/api-docs/secret/identity/oidc-provider#token-endpoint). The endpoint may be unauthenticated in OpenBao but is authenticated by requiring a `client_secret` as described in [client authentication](https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication). The endpoint ingests all required [token request](/api-docs/secret/identity/oidc-provider#parameters-15) parameters as input.
+Each provider will offer a [token endpoint](../api/secret/identity/oidc-provider.mdx#token-endpoint). The endpoint may be unauthenticated in OpenBao but is authenticated by requiring a `client_secret` as described in [client authentication](https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication). The endpoint ingests all required [token request](../api/secret/identity/oidc-provider.mdx#parameters-15) parameters as input.
 
 The endpoint supports both:
 - **Authorization code flow**: exchanges an authorization code for the ID token and access token. The cache of authorization codes will be verified against the code presented in the exchange.
@@ -228,8 +228,8 @@ The appropriate [error codes](https://openid.net/specs/openid-connect-core-1_0.h
 
 The ID token is generated and returned upon successful client authentication and request validation. The ID token will contain a combination of required and configurable claims. The required claims are enumerated in the scopes section above for the `openid` scope. The configurable claims are populated by templates associated with the scopes provided in the authentication request.
 
-An access token is also generated and returned upon successful client authentication and request validation. The access token is an OpenBao [batch token](tokens.mdx#batch-tokens) with a policy that only provides read access to the issuing provider's [userinfo endpoint](/api-docs/secret/identity/oidc-provider#userinfo-endpoint). The access token is also a TTL as defined by the `access_token_ttl` of the requesting client.
+An access token is also generated and returned upon successful client authentication and request validation. The access token is an OpenBao [batch token](tokens.mdx#batch-tokens) with a policy that only provides read access to the issuing provider's [userinfo endpoint](../api/secret/identity/oidc-provider.mdx#userinfo-endpoint). The access token is also a TTL as defined by the `access_token_ttl` of the requesting client.
 
 ### UserInfo endpoint
 
-Each provider provides an authenticated [userinfo endpoint](/api-docs/secret/identity/oidc-provider#userinfo-endpoint). The endpoint accepts the access token obtained from the token endpoint as a [bearer token](/api-docs#authentication). The userinfo response is a JSON object with the `application/json` content type. The JSON object contains claims for the OpenBao entity associated with the access token. The claims returned are determined by the scopes requested in the authentication request that produced the access token. The `sub` claim is always returned as the entity ID in the userinfo response.
+Each provider provides an authenticated [userinfo endpoint](../api/secret/identity/oidc-provider.mdx#userinfo-endpoint). The endpoint accepts the access token obtained from the token endpoint as a [bearer token](../api/index.mdx#authentication). The userinfo response is a JSON object with the `application/json` content type. The JSON object contains claims for the OpenBao entity associated with the access token. The claims returned are determined by the scopes requested in the authentication request that produced the access token. The `sub` claim is always returned as the entity ID in the userinfo response.

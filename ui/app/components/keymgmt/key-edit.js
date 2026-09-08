@@ -9,6 +9,7 @@ import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { task } from 'ember-concurrency';
 import { waitFor } from '@ember/test-waiters';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 /**
  * @module KeymgmtKeyEdit
@@ -59,7 +60,7 @@ export default class KeymgmtKeyEdit extends Component {
     const { model } = this.args;
     try {
       yield model.save();
-      this.router.transitionTo(SHOW_ROUTE, model.name);
+      transitionToSafe(this.router, SHOW_ROUTE, model.name);
     } catch (error) {
       let errorMessage = error;
       if (error.errors) {
@@ -70,7 +71,7 @@ export default class KeymgmtKeyEdit extends Component {
       if (!error.errors) {
         // If error was custom from save, only partial fail
         // so it's safe to show the key
-        this.router.transitionTo(SHOW_ROUTE, model.name);
+        transitionToSafe(this.router, SHOW_ROUTE, model.name);
       }
     }
   }
@@ -94,7 +95,7 @@ export default class KeymgmtKeyEdit extends Component {
     secret
       .destroyRecord()
       .then(() => {
-        this.router.transitionTo(LIST_ROOT_ROUTE, backend);
+        transitionToSafe(this.router, LIST_ROOT_ROUTE, backend);
       })
       .catch((e) => {
         this.flashMessages.danger(e.errors?.join('. '));

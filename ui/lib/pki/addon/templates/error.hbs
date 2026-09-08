@@ -13,7 +13,7 @@
   <nav class="tabs" aria-label="secret tabs">
     <ul>
       {{#each this.tabs as |oTab|}}
-        <LinkTo @route={{oTab.route}} data-test-tab={{oTab.route}}>
+        <LinkTo @route={{oTab.route}} @model={{(current-mount-path)}} data-test-tab={{oTab.route}}>
           {{oTab.label}}
         </LinkTo>
       {{/each}}

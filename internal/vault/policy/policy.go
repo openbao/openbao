@@ -377,289 +377,318 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, bl
 			key = item.Keys[0].Token.Value().(string)
 		}
 
-		// Check the path
-		if performTemplating {
-			_, templated, err := identitytpl.PopulateString(identitytpl.PopulateStringInput{
-				Mode:                 identitytpl.ACLTemplating,
-				String:               key,
-				Entity:               identity.ToSDKEntity(entity),
-				Groups:               identity.ToSDKGroups(groups),
-				NamespaceID:          result.Namespace.ID,
-				BlockedSubstitutions: blockedSubstitutions,
-			})
-			if err != nil {
-				continue
-			}
-			key = templated
-		} else {
-			hasTemplating, _, err := identitytpl.PopulateString(identitytpl.PopulateStringInput{
-				Mode:              identitytpl.ACLTemplating,
-				ValidityCheckOnly: true,
-				String:            key,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to validate policy templating: %w", err)
-			}
-			if hasTemplating {
-				result.Templated = true
-			}
+		path, err := parsePath(result, key, item, performTemplating, blockedSubstitutions, entity, groups)
+		if err != nil {
+			return fmt.Errorf("path %q: %w", key, err)
 		}
 
-		valid := []string{
-			"comment",
-			"policy",
-			"capabilities",
-			"allowed_parameters",
-			"denied_parameters",
-			"required_parameters",
-			"min_wrapping_ttl",
-			"max_wrapping_ttl",
-			"mfa_methods",
-			"pagination_limit",
-			"expiration",
-			"list_scan_response_keys_filter_path",
-			"control_group",
+		if path != nil {
+			paths = append(paths, path)
 		}
-		if err := hclutil.CheckHCLKeys(item.Val, valid); err != nil {
-			return multierror.Prefix(err, fmt.Sprintf("path %q:", key))
-		}
-
-		var pc PathRules
-
-		// allocate memory so that DecodeObject can initialize the ACLPermissions struct
-		pc.Permissions = new(ACLPermissions)
-
-		// decode ControlGroup if needed
-		if err := hclutil.WhenHCLKeyPresent(item.Val, "control_group", func(item *ast.ObjectItem) error {
-			if err := hclutil.CheckHCLKeys(item.Val, []string{"ttl", "self_auth_allowed", "factor"}); err != nil {
-				return multierror.Prefix(err, "path control_group:")
-			}
-			cg := new(ControlGroup)
-			if err := hcl.DecodeObject(&cg, item.Val); err != nil {
-				return multierror.Prefix(err, "path control_group:")
-			}
-			// decode factors in control_group
-			if err := hclutil.WhenHCLKeyPresent(item.Val, "factor", func(factorItem *ast.ObjectItem) error {
-				if err := hclutil.CheckHCLKeys(factorItem.Val, []string{"controlled_capabilities", "identity"}); err != nil {
-					return multierror.Prefix(err, "path control_group factor:")
-				}
-
-				var factor ControlGroupFactor
-				if err := hcl.DecodeObject(&factor, factorItem.Val); err != nil {
-					return multierror.Prefix(err, "path control_group factor:")
-				}
-				// get factor name from the item key
-				if len(factorItem.Keys) < 1 {
-					return fmt.Errorf("path control_group factor: require name key")
-				}
-				label, ok := factorItem.Keys[0].Token.Value().(string)
-				if ok {
-					factor.Name = label
-				} else {
-					return fmt.Errorf("path control_group factor: invalid name key")
-				}
-
-				cg.Factors = append(cg.Factors, factor)
-				return nil
-			}); err != nil {
-				return fmt.Errorf("error handling control_group factor: %w", err)
-			}
-
-			ttl, err := parseutil.ParseDurationSecond(cg.TTLHCL)
-			if err != nil {
-				return fmt.Errorf("path control_group: invalid ttl: %w", err)
-			}
-			cg.TTL = ttl
-			cg.TTLHCL = nil
-
-			for i := range cg.Factors {
-				factor := &cg.Factors[i]
-				if len(factor.ControlledCapabilitiesHCL) > 0 {
-					capabilities := make([]logical.Operation, len(factor.ControlledCapabilitiesHCL))
-					for i, capabilityStr := range factor.ControlledCapabilitiesHCL {
-						op := logical.Operation(capabilityStr)
-						if err := logical.ValidateOperation(op); err != nil {
-							return multierror.Prefix(err, "path control_group")
-						}
-						capabilities[i] = op
-					}
-					factor.ControlledCapabilities = capabilities
-					factor.ControlledCapabilitiesHCL = nil
-				}
-				if len(factor.Identity.GroupNamesHCL) > 0 {
-					factor.Identity.GroupNames = factor.Identity.GroupNamesHCL[:]
-					factor.Identity.GroupNamesHCL = nil
-				}
-			}
-
-			pc.ControlGroup = cg
-			return nil
-		}); err != nil {
-			return fmt.Errorf("error handling control_group: %w", err)
-		}
-
-		pc.Path = key
-
-		if err := hcl.DecodeObject(&pc, item.Val); err != nil {
-			return multierror.Prefix(err, fmt.Sprintf("path %q:", key))
-		}
-
-		if len(pc.ExpirationRaw) > 0 {
-			expiration, err := parseutil.ParseAbsoluteTime(pc.ExpirationRaw)
-			if err != nil {
-				return fmt.Errorf("path %q: invalid expiration time: %w", pc.Path, err)
-			}
-
-			pc.Expiration = expiration
-
-			// If this path is expired, ignore it. We assume that the policy
-			// author has set an overall expiration time of the last-valid
-			// path for automatic cleanup.
-			if time.Now().After(expiration) {
-				// Skip the path because it has expired.
-				continue
-			}
-		}
-
-		// Strip a leading '/' as paths in Vault start after the / in the API path
-		if len(pc.Path) > 0 && pc.Path[0] == '/' {
-			pc.Path = pc.Path[1:]
-		}
-
-		// Ensure we are using the full request path internally
-		pc.Path = result.Namespace.Path + pc.Path
-
-		if strings.Contains(pc.Path, "+*") {
-			return fmt.Errorf("path %q: invalid use of wildcards ('+*' is forbidden)", pc.Path)
-		}
-
-		if pc.Path == "+" || strings.Count(pc.Path, "/+") > 0 || strings.HasPrefix(pc.Path, "+/") {
-			pc.HasSegmentWildcards = true
-		}
-
-		if before, ok := strings.CutSuffix(pc.Path, "*"); ok {
-			// If there are segment wildcards, don't actually strip the
-			// trailing asterisk, but don't want to hit the default case
-			if !pc.HasSegmentWildcards {
-				// Strip the glob character if found
-				pc.Path = before
-				pc.IsPrefix = true
-			}
-		}
-
-		// Map old-style policies into capabilities
-		if len(pc.Policy) > 0 {
-			switch pc.Policy {
-			case OldDenyPathPolicy:
-				pc.Capabilities = []string{DenyCapability}
-			case OldReadPathPolicy:
-				pc.Capabilities = append(pc.Capabilities, []string{ReadCapability, ListCapability}...)
-			case OldWritePathPolicy:
-				pc.Capabilities = append(pc.Capabilities, []string{CreateCapability, ReadCapability, UpdateCapability, DeleteCapability, ListCapability}...)
-			case OldSudoPathPolicy:
-				pc.Capabilities = append(pc.Capabilities, []string{CreateCapability, ReadCapability, UpdateCapability, DeleteCapability, ListCapability, SudoCapability}...)
-			default:
-				return fmt.Errorf("path %q: invalid policy %q", key, pc.Policy)
-			}
-		}
-
-		// Initialize the map
-		pc.Permissions.CapabilitiesBitmap = 0
-		for _, cap := range pc.Capabilities {
-			switch cap {
-			// If it's deny, don't include any other capability
-			case DenyCapability:
-				pc.Capabilities = []string{DenyCapability}
-				pc.Permissions.CapabilitiesBitmap = DenyCapabilityInt
-				goto PathFinished
-			case CreateCapability, ReadCapability, UpdateCapability, DeleteCapability, ListCapability, SudoCapability, PatchCapability, ScanCapability:
-				pc.Permissions.CapabilitiesBitmap |= cap2Int[cap]
-			default:
-				return fmt.Errorf("path %q: invalid capability %q", key, cap)
-			}
-		}
-
-		if pc.AllowedParametersHCL != nil {
-			pc.Permissions.AllowedParameters = make(map[string][]any, len(pc.AllowedParametersHCL))
-			for k, v := range pc.AllowedParametersHCL {
-				pc.Permissions.AllowedParameters[strings.ToLower(k)] = v
-			}
-		}
-		if pc.DeniedParametersHCL != nil {
-			pc.Permissions.DeniedParameters = make(map[string][]any, len(pc.DeniedParametersHCL))
-
-			for k, v := range pc.DeniedParametersHCL {
-				pc.Permissions.DeniedParameters[strings.ToLower(k)] = v
-			}
-		}
-		if pc.MinWrappingTTLHCL != nil {
-			dur, err := parseutil.ParseDurationSecond(pc.MinWrappingTTLHCL)
-			if err != nil {
-				return fmt.Errorf("error parsing min_wrapping_ttl: %w", err)
-			}
-			pc.Permissions.MinWrappingTTL = dur
-		}
-		if pc.MaxWrappingTTLHCL != nil {
-			dur, err := parseutil.ParseDurationSecond(pc.MaxWrappingTTLHCL)
-			if err != nil {
-				return fmt.Errorf("error parsing max_wrapping_ttl: %w", err)
-			}
-			pc.Permissions.MaxWrappingTTL = dur
-		}
-		if pc.MFAMethodsHCL != nil {
-			pc.Permissions.MFAMethods = make([]string, len(pc.MFAMethodsHCL))
-			copy(pc.Permissions.MFAMethods, pc.MFAMethodsHCL)
-		}
-		if pc.Permissions.MinWrappingTTL != 0 &&
-			pc.Permissions.MaxWrappingTTL != 0 &&
-			pc.Permissions.MaxWrappingTTL < pc.Permissions.MinWrappingTTL {
-			return errors.New("max_wrapping_ttl cannot be less than min_wrapping_ttl")
-		}
-		if len(pc.RequiredParametersHCL) > 0 {
-			pc.Permissions.RequiredParameters = pc.RequiredParametersHCL[:]
-		}
-		if len(pc.ResponseKeysFilterPathHCL) > 0 {
-			pc.Permissions.ResponseKeysFilterPath = pc.ResponseKeysFilterPathHCL
-			if (pc.Permissions.CapabilitiesBitmap & ListCapabilityInt) == 0 {
-				return errors.New("list_scan_response_keys_filter_path needs to be used on a path with the list capability")
-			}
-
-			tmpl, err := template.CompileTemplatePathForFiltering(pc.Permissions.ResponseKeysFilterPath)
-			if err != nil {
-				return fmt.Errorf("unable to compile template for list_scan_response_keys_filter_path: %w", err)
-			}
-
-			// Use a random string to validate that key was used.
-			keyOne, err := base62.Random(32)
-			if err != nil {
-				return fmt.Errorf("failed to generate random string to validate policy: %w", err)
-			}
-
-			keyTwo, err := base62.Random(32)
-			if err != nil {
-				return fmt.Errorf("failed to generate random string to validate policy: %w", err)
-			}
-
-			checkPathOne, err := template.UseTemplateForFiltering(tmpl, pc.Path, keyOne)
-			if err != nil {
-				return fmt.Errorf("failed to validate list_scan_response_keys_filter_path: %w", err)
-			}
-
-			checkPathTwo, err := template.UseTemplateForFiltering(tmpl, pc.Path, keyTwo)
-			if err != nil {
-				return fmt.Errorf("failed to validate list_scan_response_keys_filter_path: %w", err)
-			}
-
-			if checkPathOne == checkPathTwo && keyOne != keyTwo {
-				return fmt.Errorf("list_scan_response_keys_filter_path resulted in same path for two different keys")
-			}
-		}
-
-		pc.Permissions.PaginationLimit = pc.PaginationLimitHCL
-	PathFinished:
-		paths = append(paths, &pc)
 	}
 
 	result.Paths = paths
 	return nil
+}
+
+func parsePath(result *Policy, key string, item *ast.ObjectItem, performTemplating bool, blockedSubstitutions []string, entity *identity.Entity, groups []*identity.Group) (*PathRules, error) {
+	// Check the path
+	if performTemplating {
+		_, templated, err := identitytpl.PopulateString(identitytpl.PopulateStringInput{
+			Mode:                 identitytpl.ACLTemplating,
+			String:               key,
+			Entity:               identity.ToSDKEntity(entity),
+			Groups:               identity.ToSDKGroups(groups),
+			NamespaceID:          result.Namespace.ID,
+			BlockedSubstitutions: blockedSubstitutions,
+		})
+		if err != nil {
+			return nil, nil
+		}
+		key = templated
+	} else {
+		hasTemplating, _, err := identitytpl.PopulateString(identitytpl.PopulateStringInput{
+			Mode:              identitytpl.ACLTemplating,
+			ValidityCheckOnly: true,
+			String:            key,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate policy templating: %w", err)
+		}
+		if hasTemplating {
+			result.Templated = true
+		}
+	}
+
+	valid := []string{
+		"comment",
+		"policy",
+		"capabilities",
+		"allowed_parameters",
+		"denied_parameters",
+		"required_parameters",
+		"min_wrapping_ttl",
+		"max_wrapping_ttl",
+		"mfa_methods",
+		"pagination_limit",
+		"expiration",
+		"list_scan_response_keys_filter_path",
+		"control_group",
+	}
+	if err := hclutil.CheckHCLKeys(item.Val, valid); err != nil {
+		return nil, err
+	}
+
+	var pc PathRules
+
+	// allocate memory so that DecodeObject can initialize the ACLPermissions struct
+	pc.Permissions = new(ACLPermissions)
+
+	// decode ControlGroup if needed
+	if err := hclutil.WhenHCLKeyPresent(item.Val, "control_group", func(item *ast.ObjectItem) error {
+		if err := hclutil.CheckHCLKeys(item.Val, []string{"ttl", "self_auth_allowed", "factor"}); err != nil {
+			return err
+		}
+		cg := new(ControlGroup)
+		if err := hcl.DecodeObject(&cg, item.Val); err != nil {
+			return multierror.Prefix(err, "path control_group:")
+		}
+		// decode factors in control_group
+		if err := hclutil.WhenHCLKeyPresent(item.Val, "factor", func(factorItem *ast.ObjectItem) error {
+			if err := hclutil.CheckHCLKeys(factorItem.Val, []string{"controlled_capabilities", "identity"}); err != nil {
+				return multierror.Prefix(err, "path control_group factor:")
+			}
+
+			var factor ControlGroupFactor
+			if err := hcl.DecodeObject(&factor, factorItem.Val); err != nil {
+				return multierror.Prefix(err, "path control_group factor:")
+			}
+			// get factor name from the item key
+			if len(factorItem.Keys) < 1 {
+				return fmt.Errorf("path control_group factor: require name key")
+			}
+			label, ok := factorItem.Keys[0].Token.Value().(string)
+			if ok {
+				factor.Name = label
+			} else {
+				return fmt.Errorf("path control_group factor: invalid name key")
+			}
+
+			cg.Factors = append(cg.Factors, factor)
+			return nil
+		}); err != nil {
+			return fmt.Errorf("error handling control_group factor: %w", err)
+		}
+
+		ttl, err := parseutil.ParseDurationSecond(cg.TTLHCL)
+		if err != nil {
+			return fmt.Errorf("path control_group: invalid ttl: %w", err)
+		}
+		cg.TTL = ttl
+		cg.TTLHCL = nil
+
+		if len(cg.Factors) == 0 {
+			return errors.New("requires at least one factor but had none")
+		}
+
+		for i := range cg.Factors {
+			factor := &cg.Factors[i]
+			if len(factor.ControlledCapabilitiesHCL) > 0 {
+				capabilities := make([]logical.Operation, len(factor.ControlledCapabilitiesHCL))
+				for i, capabilityStr := range factor.ControlledCapabilitiesHCL {
+					op := logical.Operation(capabilityStr)
+					if err := logical.ValidateOperation(op); err != nil {
+						return multierror.Prefix(err, "path control_group")
+					}
+					capabilities[i] = op
+				}
+				factor.ControlledCapabilities = capabilities
+				factor.ControlledCapabilitiesHCL = nil
+			}
+			if len(factor.Identity.GroupNamesHCL) > 0 {
+				factor.Identity.GroupNames = factor.Identity.GroupNamesHCL[:]
+				factor.Identity.GroupNamesHCL = nil
+			}
+
+			if len(factor.ControlledCapabilities) == 0 {
+				return fmt.Errorf("factor %d: missing controlled capabilities", i)
+			}
+
+			if factor.Identity.Approvals <= 0 {
+				return fmt.Errorf("factor %d: missing required approvals", i)
+			}
+
+			if len(factor.Identity.GroupNames) == 0 {
+				return fmt.Errorf("factor %d: missing approving groups", i)
+			}
+		}
+
+		pc.ControlGroup = cg
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("error handling control_group: %w", err)
+	}
+
+	pc.Path = key
+
+	if err := hcl.DecodeObject(&pc, item.Val); err != nil {
+		return nil, multierror.Prefix(err, fmt.Sprintf("path %q:", key))
+	}
+
+	if len(pc.ExpirationRaw) > 0 {
+		expiration, err := parseutil.ParseAbsoluteTime(pc.ExpirationRaw)
+		if err != nil {
+			return nil, fmt.Errorf("path %q: invalid expiration time: %w", pc.Path, err)
+		}
+
+		pc.Expiration = expiration
+
+		// If this path is expired, ignore it. We assume that the policy
+		// author has set an overall expiration time of the last-valid
+		// path for automatic cleanup.
+		if time.Now().After(expiration) {
+			// Skip the path because it has expired.
+			return nil, nil
+		}
+	}
+
+	// Strip a leading '/' as paths in Vault start after the / in the API path
+	if len(pc.Path) > 0 && pc.Path[0] == '/' {
+		pc.Path = pc.Path[1:]
+	}
+
+	// Ensure we are using the full request path internally
+	pc.Path = result.Namespace.Path + pc.Path
+
+	if strings.Contains(pc.Path, "+*") {
+		return nil, fmt.Errorf("path %q: invalid use of wildcards ('+*' is forbidden)", pc.Path)
+	}
+
+	if pc.Path == "+" || strings.Count(pc.Path, "/+") > 0 || strings.HasPrefix(pc.Path, "+/") {
+		pc.HasSegmentWildcards = true
+	}
+
+	if before, ok := strings.CutSuffix(pc.Path, "*"); ok {
+		// If there are segment wildcards, don't actually strip the
+		// trailing asterisk, but don't want to hit the default case
+		if !pc.HasSegmentWildcards {
+			// Strip the glob character if found
+			pc.Path = before
+			pc.IsPrefix = true
+		}
+	}
+
+	// Map old-style policies into capabilities
+	if len(pc.Policy) > 0 {
+		switch pc.Policy {
+		case OldDenyPathPolicy:
+			pc.Capabilities = []string{DenyCapability}
+		case OldReadPathPolicy:
+			pc.Capabilities = append(pc.Capabilities, []string{ReadCapability, ListCapability}...)
+		case OldWritePathPolicy:
+			pc.Capabilities = append(pc.Capabilities, []string{CreateCapability, ReadCapability, UpdateCapability, DeleteCapability, ListCapability}...)
+		case OldSudoPathPolicy:
+			pc.Capabilities = append(pc.Capabilities, []string{CreateCapability, ReadCapability, UpdateCapability, DeleteCapability, ListCapability, SudoCapability}...)
+		default:
+			return nil, fmt.Errorf("path %q: invalid policy %q", key, pc.Policy)
+		}
+	}
+
+	// Initialize the map
+	pc.Permissions.CapabilitiesBitmap = 0
+	for _, cap := range pc.Capabilities {
+		switch cap {
+		// If it's deny, don't include any other capability
+		case DenyCapability:
+			pc.Capabilities = []string{DenyCapability}
+			pc.Permissions.CapabilitiesBitmap = DenyCapabilityInt
+			goto PathFinished
+		case CreateCapability, ReadCapability, UpdateCapability, DeleteCapability, ListCapability, SudoCapability, PatchCapability, ScanCapability:
+			pc.Permissions.CapabilitiesBitmap |= cap2Int[cap]
+		default:
+			return nil, fmt.Errorf("path %q: invalid capability %q", key, cap)
+		}
+	}
+
+	if pc.AllowedParametersHCL != nil {
+		pc.Permissions.AllowedParameters = make(map[string][]any, len(pc.AllowedParametersHCL))
+		for k, v := range pc.AllowedParametersHCL {
+			pc.Permissions.AllowedParameters[strings.ToLower(k)] = v
+		}
+	}
+	if pc.DeniedParametersHCL != nil {
+		pc.Permissions.DeniedParameters = make(map[string][]any, len(pc.DeniedParametersHCL))
+
+		for k, v := range pc.DeniedParametersHCL {
+			pc.Permissions.DeniedParameters[strings.ToLower(k)] = v
+		}
+	}
+	if pc.MinWrappingTTLHCL != nil {
+		dur, err := parseutil.ParseDurationSecond(pc.MinWrappingTTLHCL)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing min_wrapping_ttl: %w", err)
+		}
+		pc.Permissions.MinWrappingTTL = dur
+	}
+	if pc.MaxWrappingTTLHCL != nil {
+		dur, err := parseutil.ParseDurationSecond(pc.MaxWrappingTTLHCL)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing max_wrapping_ttl: %w", err)
+		}
+		pc.Permissions.MaxWrappingTTL = dur
+	}
+	if pc.MFAMethodsHCL != nil {
+		pc.Permissions.MFAMethods = make([]string, len(pc.MFAMethodsHCL))
+		copy(pc.Permissions.MFAMethods, pc.MFAMethodsHCL)
+	}
+	if pc.Permissions.MinWrappingTTL != 0 &&
+		pc.Permissions.MaxWrappingTTL != 0 &&
+		pc.Permissions.MaxWrappingTTL < pc.Permissions.MinWrappingTTL {
+		return nil, errors.New("max_wrapping_ttl cannot be less than min_wrapping_ttl")
+	}
+	if len(pc.RequiredParametersHCL) > 0 {
+		pc.Permissions.RequiredParameters = pc.RequiredParametersHCL[:]
+	}
+	if len(pc.ResponseKeysFilterPathHCL) > 0 {
+		pc.Permissions.ResponseKeysFilterPath = pc.ResponseKeysFilterPathHCL
+		if (pc.Permissions.CapabilitiesBitmap & ListCapabilityInt) == 0 {
+			return nil, errors.New("list_scan_response_keys_filter_path needs to be used on a path with the list capability")
+		}
+
+		tmpl, err := template.CompileTemplatePathForFiltering(pc.Permissions.ResponseKeysFilterPath)
+		if err != nil {
+			return nil, fmt.Errorf("unable to compile template for list_scan_response_keys_filter_path: %w", err)
+		}
+
+		// Use a random string to validate that key was used.
+		keyOne, err := base62.Random(32)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate random string to validate policy: %w", err)
+		}
+
+		keyTwo, err := base62.Random(32)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate random string to validate policy: %w", err)
+		}
+
+		checkPathOne, err := template.UseTemplateForFiltering(tmpl, pc.Path, keyOne)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate list_scan_response_keys_filter_path: %w", err)
+		}
+
+		checkPathTwo, err := template.UseTemplateForFiltering(tmpl, pc.Path, keyTwo)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate list_scan_response_keys_filter_path: %w", err)
+		}
+
+		if checkPathOne == checkPathTwo && keyOne != keyTwo {
+			return nil, errors.New("list_scan_response_keys_filter_path resulted in same path for two different keys")
+		}
+	}
+
+	pc.Permissions.PaginationLimit = pc.PaginationLimitHCL
+
+PathFinished:
+
+	return &pc, nil
 }

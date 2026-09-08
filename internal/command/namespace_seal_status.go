@@ -47,7 +47,7 @@ Usage: bao namespace seal-status [options] PATH
 }
 
 func (c *NamespaceSealStatusCommand) Flags() *FlagSets {
-	return c.flagSet(FlagSetHTTP)
+	return c.flagSet(FlagSetHTTP | FlagSetOutputField | FlagSetOutputFormat)
 }
 
 func (c *NamespaceSealStatusCommand) AutocompleteArgs() complete.Predictor {
@@ -89,7 +89,7 @@ func (c *NamespaceSealStatusCommand) Run(args []string) int {
 		return 2
 	}
 
-	return OutputData(c.UI, api.SealStatusResponse{
+	sealStatusResponse := api.SealStatusResponse{
 		Type:        status.Type,
 		Initialized: status.Initialized,
 		Sealed:      status.Sealed,
@@ -97,5 +97,12 @@ func (c *NamespaceSealStatusCommand) Run(args []string) int {
 		N:           status.N,
 		Progress:    status.Progress,
 		Nonce:       status.Nonce,
-	})
+	}
+
+	if c.flagField != "" {
+		sealStatusOutput := SealStatusOutput{SealStatusResponse: sealStatusResponse}
+		return PrintRawField(c.UI, &sealStatusOutput, c.flagField)
+	}
+
+	return OutputData(c.UI, sealStatusResponse)
 }

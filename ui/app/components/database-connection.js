@@ -7,6 +7,7 @@ import Component from '@glimmer/component';
 import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 const LIST_ROOT_ROUTE = 'vault.cluster.secrets.backend.list-root';
 const SHOW_ROUTE = 'vault.cluster.secrets.backend.show';
@@ -38,7 +39,7 @@ export default class DatabaseConnectionEdit extends Component {
   }
 
   transitionToRoute() {
-    return this.router.transitionTo(...arguments);
+    return transitionToSafe(this.router, ...arguments);
   }
 
   @action

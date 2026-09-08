@@ -1,0 +1,49 @@
+---
+description: The `/sys/rotate/keyring` endpoint is used to rotate the encryption key.
+---
+
+# `/sys/rotate/keyring`
+
+:::info
+
+The `/sys/rotate/keyring` endpoint is available from version `v2.4.0`.
+
+:::
+
+The `/sys/rotate/keyring` endpoint is used to rotate the encryption key.
+
+Old endpoint format of `/sys/rotate` is still supported, although `/sys/rotate/keyring` is preferred.
+
+## Rotate encryption key
+
+This endpoint triggers a rotation of the backend encryption key. This is the key
+that is used to encrypt data written to the storage backend, which is not provided
+to the operators. This operation is done online. Future values are encrypted with
+the new key, while old values are decrypted with previous encryption key.
+
+This path requires `sudo` capability in addition to `update`.
+
+| Method | Path                  |
+| :----- | :-------------------- |
+| `POST` | `/sys/rotate/keyring` |
+| `POST` | `/sys/rotate`         |
+
+### Sample request
+
+#### New format
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request POST \
+    http://127.0.0.1:8200/v1/sys/rotate/keyring
+```
+
+#### Old format
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request POST \
+    http://127.0.0.1:8200/v1/sys/rotate
+```

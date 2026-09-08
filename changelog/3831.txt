@@ -1,0 +1,3 @@
+```release-note:security
+core: Ensure internal operation types cannot be dispatched from inline authentication and workflows, preventing token creation. GHSA-rh46-vc3j-w2w3.
+```

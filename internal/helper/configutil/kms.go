@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -26,7 +27,18 @@ type KMS struct {
 
 	Disabled bool
 	Config   map[string]string
+
+	HealthCheckEnabled           bool          `hcl:"-"`
+	HealthCheckTimeout           time.Duration `hcl:"-"`
+	HealthCheckInterval          time.Duration `hcl:"-"`
+	HealthCheckIntervalUnhealthy time.Duration `hcl:"-"`
 }
+
+const (
+	DefaultSealHealthCheckTimeout           = 1 * time.Minute
+	DefaultSealHealthCheckInterval          = 10 * time.Minute
+	DefaultSealHealthCheckIntervalUnhealthy = 1 * time.Minute
+)
 
 func (k *KMS) GoString() string {
 	return fmt.Sprintf("*%#v", *k)
@@ -73,6 +85,60 @@ func parseKMS(result *[]*KMS, list *ast.ObjectList, blockName string, maxKMS int
 			delete(m, "disabled")
 		}
 
+		healthCheckEnabled := true
+		if v, ok := m["health_check_enabled"]; ok {
+			healthCheckEnabled, err = parseutil.ParseBool(v)
+			if err != nil {
+				return multierror.Prefix(err, fmt.Sprintf("%s.%s", blockName, key))
+			}
+			delete(m, "health_check_enabled")
+		}
+
+		healthCheckTimeout := DefaultSealHealthCheckTimeout
+		if v, ok := m["health_check_timeout"]; ok {
+			healthCheckTimeout, err = parseutil.ParseDurationSecond(v)
+			switch {
+			case err != nil:
+				return multierror.Prefix(err, fmt.Sprintf("%s.%s", blockName, key))
+			case healthCheckTimeout <= 0:
+				return multierror.Prefix(
+					fmt.Errorf("health_check_timeout cannot be less or equal to zero"),
+					fmt.Sprintf("%s.%s", blockName, key),
+				)
+			}
+			delete(m, "health_check_timeout")
+		}
+
+		healthCheckInterval := DefaultSealHealthCheckInterval
+		if v, ok := m["health_check_interval"]; ok {
+			healthCheckInterval, err = parseutil.ParseDurationSecond(v)
+			switch {
+			case err != nil:
+				return multierror.Prefix(err, fmt.Sprintf("%s.%s", blockName, key))
+			case healthCheckInterval <= 0:
+				return multierror.Prefix(
+					fmt.Errorf("health_check_interval cannot be less or equal to zero"),
+					fmt.Sprintf("%s.%s", blockName, key),
+				)
+			}
+			delete(m, "health_check_interval")
+		}
+
+		healthCheckIntervalUnhealthy := DefaultSealHealthCheckIntervalUnhealthy
+		if v, ok := m["health_check_interval_unhealthy"]; ok {
+			healthCheckIntervalUnhealthy, err = parseutil.ParseDurationSecond(v)
+			switch {
+			case err != nil:
+				return multierror.Prefix(err, fmt.Sprintf("%s.%s", blockName, key))
+			case healthCheckIntervalUnhealthy <= 0:
+				return multierror.Prefix(
+					fmt.Errorf("health_check_interval_unhealthy cannot be less or equal to zero"),
+					fmt.Sprintf("%s.%s", blockName, key),
+				)
+			}
+			delete(m, "health_check_interval_unhealthy")
+		}
+
 		strMap := make(map[string]string, len(m))
 		for k, v := range m {
 			s, err := parseutil.ParseString(v)
@@ -83,9 +149,13 @@ func parseKMS(result *[]*KMS, list *ast.ObjectList, blockName string, maxKMS int
 		}
 
 		seal := &KMS{
-			Type:     strings.ToLower(key),
-			Purpose:  purpose,
-			Disabled: disabled,
+			Type:                         strings.ToLower(key),
+			Purpose:                      purpose,
+			Disabled:                     disabled,
+			HealthCheckEnabled:           healthCheckEnabled,
+			HealthCheckTimeout:           healthCheckTimeout,
+			HealthCheckInterval:          healthCheckInterval,
+			HealthCheckIntervalUnhealthy: healthCheckIntervalUnhealthy,
 		}
 		if len(strMap) > 0 {
 			seal.Config = strMap

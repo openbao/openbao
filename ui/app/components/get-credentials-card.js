@@ -24,6 +24,7 @@
 
 import Component from '@glimmer/component';
 import { inject as service } from '@ember/service';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 export default class GetCredentialsCard extends Component {
@@ -57,14 +58,14 @@ export default class GetCredentialsCard extends Component {
     const role = this.role;
     const secret = this.secret;
     if (role) {
-      this.router.transitionTo('vault.cluster.secrets.backend.credentials', role);
+      transitionToSafe(this.router, 'vault.cluster.secrets.backend.credentials', role);
     }
     if (secret) {
       if (secret.endsWith('/')) {
-        this.router.transitionTo('vault.cluster.secrets.backend.list', secret);
+        transitionToSafe(this.router, 'vault.cluster.secrets.backend.list', secret);
         return;
       }
-      this.router.transitionTo('vault.cluster.secrets.backend.show', secret);
+      transitionToSafe(this.router, 'vault.cluster.secrets.backend.show', secret);
     }
   }
 

@@ -11,7 +11,12 @@
 
 <Toolbar>
   <ToolbarActions>
-    <LinkTo @route="tidy.auto.configure" class="toolbar-link" data-test-pki-edit-tidy-auto-link>
+    <LinkTo
+      @route="tidy.auto.configure"
+      class="toolbar-link"
+      data-test-pki-edit-tidy-auto-link
+      @model={{(current-mount-path)}}
+    >
       Edit auto-tidy
       <Icon @name="chevron-right" />
     </LinkTo>

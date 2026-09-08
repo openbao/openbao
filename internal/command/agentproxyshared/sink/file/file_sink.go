@@ -147,9 +147,11 @@ func (f *fileSink) WriteToken(token string) error {
 		return nil
 	}
 
-	// adjust file ownership if the sink has a none-default uid or gid configuration
-	if err := os.Chown(tmpFile.Name(), f.uid, f.gid); err != nil {
-		return fmt.Errorf("error changing file ownership of %s to uid %d and gid %d: %w", tmpFile.Name(), f.uid, f.gid, err)
+	// Only attempt to change ownership if uid/gid were explicitly configured
+	if f.uid != -1 || f.gid != -1 {
+		if err := os.Chown(tmpFile.Name(), f.uid, f.gid); err != nil {
+			return fmt.Errorf("error changing file ownership of %s to uid %d and gid %d: %w", tmpFile.Name(), f.uid, f.gid, err)
+		}
 	}
 
 	err = os.Rename(tmpFile.Name(), f.path)

@@ -24,7 +24,11 @@
         <ul>
           {{#each tabs as |tab|}}
             <li>
-              <LinkTo @route={{get tab.routeParams 0}} @model={{get tab.routeParams 1}} data-test-auth-section-tab={{true}}>
+              <LinkTo
+                @route={{get tab.routeParams 0}}
+                @models={{array @methodModel.id (get tab.routeParams 1)}}
+                data-test-auth-section-tab={{true}}
+              >
                 {{tab.label}}
               </LinkTo>
             </li>
@@ -38,7 +42,7 @@
   <ToolbarActions>
     <ToolbarLink
       @route="vault.cluster.access.method.item.create"
-      @model={{this.itemType}}
+      @models={{array @methodModel.id this.itemType}}
       @type="add"
       data-test-entity-create-link={{this.itemType}}
     >
@@ -51,6 +55,7 @@
   @items={{this.model}}
   @itemNoun={{this.itemType}}
   @paginationRouteName="vault.cluster.access.method.item.list"
+  @paginationModels={{array @methodModel.id this.itemType}}
   as |list|
 >
   {{#if list.empty}}
@@ -60,25 +65,36 @@
         this.itemType
       }} will be listed here. Create your first {{this.itemType}} to get started."
     >
-      <LinkTo @route="vault.cluster.access.method.item.create" @model={{this.itemType}} class="link">
+      <LinkTo @route="vault.cluster.access.method.item.create" @models={{array @methodModel.id this.itemType}} class="link">
         Create
         {{singularize this.itemType}}
       </LinkTo>
     </list.empty>
   {{else if list.item}}
-    <ListItem @linkParams={{array "vault.cluster.access.method.item.show" this.itemType list.item.id}} as |Item|>
+    <ListItem
+      @linkParams={{array "vault.cluster.access.method.item.show" @methodModel.id this.itemType list.item.id}}
+      as |Item|
+    >
       <Item.content>
         <Icon @name="folder" class="has-text-grey-light" />{{list.item.id}}
       </Item.content>
       <Item.menu as |Menu|>
         <li class="action">
-          <LinkTo @route="vault.cluster.access.method.item.show" @model={{list.item.id}} class="is-block">
+          <LinkTo
+            @route="vault.cluster.access.method.item.show"
+            @models={{array @methodModel.id this.itemType list.item.id}}
+            class="is-block"
+          >
             View
             {{singularize this.itemType}}
           </LinkTo>
         </li>
         <li class="action">
-          <LinkTo @route="vault.cluster.access.method.item.edit" @model={{list.item.id}} class="is-block">
+          <LinkTo
+            @route="vault.cluster.access.method.item.edit"
+            @models={{array @methodModel.id this.itemType list.item.id}}
+            class="is-block"
+          >
             Edit
             {{singularize this.itemType}}
           </LinkTo>

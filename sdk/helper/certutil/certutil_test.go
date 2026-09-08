@@ -9,6 +9,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -522,7 +523,13 @@ func TestGetPublicKeySize(t *testing.T) {
 	if GetPublicKeySize(ed25519) != 256 {
 		t.Fatal("unexpected ed25519 key size")
 	}
-	// Skipping DSA as too slow
+	mldsakey, err := mldsa.GenerateKey(mldsa.MLDSA65())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if GetPublicKeySize(mldsakey.PublicKey()) != 65 {
+		t.Fatal("unexpected mldsa key size")
+	}
 }
 
 func refreshRSA8CertBundle() *CertBundle {

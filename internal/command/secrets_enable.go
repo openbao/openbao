@@ -179,7 +179,8 @@ func (c *SecretsEnableCommand) Flags() *FlagSets {
 		Name:    flagNamePluginVersion,
 		Target:  &c.flagPluginVersion,
 		Default: "",
-		Usage:   "Select the semantic version of the plugin to enable.",
+		Usage: "Select the semantic version of the plugin to enable. " +
+			`Set to "latest" to automatically pick the latest available plugin version whenever the mount is (re-)loaded.`,
 	})
 
 	f.StringMapVar(&StringMapVar{

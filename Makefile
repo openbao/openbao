@@ -130,13 +130,14 @@ lint:
 # dependency.
 prep:
 	@if [ -d .git/hooks ]; then cp .hooks/* .git/hooks/; fi
+	@if [ -f .git-blame-ignore-revs ]; then git config blame.ignoreRevsFile .git-blame-ignore-revs; fi
 
 # bootstrap the build by downloading additional tools that may be used by devs
 #
 # Grep for tools that include a "." to select only those defined in tools/go.mod
 # and exclude standard ones.
 bootstrap:
-	@for tool in $$(go tool -modfile=tools/go.mod | grep \\.); do \
+	@for tool in $$(go mod edit -modfile=./tools/go.mod  -json | jq -r '.Tool[] | .Path'); do \
 		go install -modfile=tools/go.mod "$$tool"; \
 	done
 
@@ -205,11 +206,13 @@ semgrep:
 semgrep-ci:
 	semgrep --error --include '*.go' -f tools/semgrep/ci .
 
+SEMGREP_IMAGE=$(shell grep -o '[^ ]*/semgrep:[^ ]*@sha256:[^ ]*' .github/workflows/code-checker.yml | head -n1)
+
 docker-semgrep:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --include '*.go' -a -f tools/semgrep .
+	$(DOCKER_CMD) run --rm --volume "$(PWD):/src" $(SEMGREP_IMAGE) semgrep --include '*.go' -a -f tools/semgrep .
 
 docker-semgrep-ci:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --error --include '*.go' -a -f tools/semgrep/ci .
+	$(DOCKER_CMD) run --rm --volume "$(PWD):/src" $(SEMGREP_IMAGE) semgrep --error --include '*.go' -a -f tools/semgrep/ci .
 
 assetcheck:
 	@echo "==> Checking compiled UI assets..."
@@ -248,12 +251,6 @@ release-changelog: $(wildcard changelog/*.txt)
 	@:$(if $(LAST_RELEASE),,$(error please set the LAST_RELEASE environment variable for changelog generation))
 	@:$(if $(THIS_RELEASE),,$(error please set the THIS_RELEASE environment variable for changelog generation))
 	go tool -modfile=tools/go.mod changelog-build -changelog-template changelog/changelog.tmpl -entries-dir changelog -git-dir . -note-template changelog/note.tmpl -last-release $(LAST_RELEASE) -this-release $(THIS_RELEASE)
-
-.PHONY: goreleaser-check
-goreleaser-check:
-	goreleaser check -f goreleaser.hsm.yaml
-	goreleaser check -f goreleaser.linux.yaml
-	goreleaser check -f goreleaser.other.yaml
 
 .PHONY: sync-deps
 sync-deps:

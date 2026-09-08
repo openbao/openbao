@@ -15,7 +15,7 @@ to access data or modify policies. All interactions must be auditable and traced
 uniquely back to the origin entity, and the system must be robust against intentional
 attempts to bypass any of its access controls.
 
-# Threat model
+## Threat model
 
 The following are the various parts of the OpenBao threat model:
 
@@ -39,6 +39,8 @@ The following are the various parts of the OpenBao threat model:
 
 - **Availability of secret material in the face of failure.** OpenBao supports
   running in a highly available configuration to avoid loss of availability.
+
+### Out of Scope
 
 The following are not considered part of the OpenBao threat model:
 
@@ -82,7 +84,19 @@ The following are not considered part of the OpenBao threat model:
   configuration files should be validated. If an attacker can write to OpenBao's
   configuration, then the confidentiality or integrity of data can be compromised.
 
-# External threat overview
+- **Protecting against fingerprinting**. Traffic patterns between clients,
+  agents, and server are highly recognizable even when encrypted. Likewise, the
+  server may return certain non-sensitive information including server version
+  number or otherwise be fingerprintable by e.g., behavior of the Go standard
+  library's TCP, HTTP, or TLS stacks. Likewise, fingerprinting of operations
+  back to the underlying storage database (whether entry names, access
+  patterns, number of requests, &c.) are also out of scope.
+
+  - **Namespace existence**. The existence of namespaces can often be inferred
+    through unauthenticated requests, e.g., to `sys/`. This also allows for
+    fingerprinting the service as being an OpenBao instance.
+
+## External threat overview
 
 OpenBao architecture compromises of three distinct systems:
 
@@ -120,7 +134,7 @@ this is not applicable. Because storage backends are untrusted, an eavesdropper
 would only gain access to encrypted data even if communication with the backend
 was intercepted.
 
-# Internal threat overview
+## Internal threat overview
 
 Within the OpenBao system, a critical security concern is an attacker attempting
 to gain access to secret material they are not authorized to. This is an internal

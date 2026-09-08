@@ -43,7 +43,7 @@ Usage: bao plugin init [options]
   downloads the specified OCI images, and extracts the contained plugin
   binaries. This command does not automatically register the plugin to the
   server, which is handled automatically via the server on startup and SIGHUP
-  if 'plugin_auto_register=true' is set in the configuration file. When the
+  if 'plugin_auto_register' is not disabled in the configuration file. When the
   server's configuration includes 'plugin_auto_download=true', plugins will be
   automatically downloaded on server startup and on SIGHUP.
 

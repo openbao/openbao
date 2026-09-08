@@ -6,6 +6,7 @@
 import { inject as service } from '@ember/service';
 import { computed, set } from '@ember/object';
 import Component from '@ember/component';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 const MODEL_TYPES = {
   'ssh-sign': {
@@ -49,7 +50,7 @@ export default Component.extend({
       return type.model;
     }
     // if we don't have a mode for that type then redirect them back to the backend list
-    this.router.transitionTo('vault.cluster.secrets.backend.list-root', this.backendPath);
+    transitionToSafe(this.router, 'vault.cluster.secrets.backend.list-root', this.backendPath);
   },
 
   options: computed('action', 'backendType', function () {

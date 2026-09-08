@@ -18,12 +18,16 @@
       <div class="toolbar-separator"></div>
     {{/if}}
     {{#if @model.canGenerateCreds}}
-      <ToolbarLink @route="roles.role.credentials" data-test-generate-credentials>
+      <ToolbarLink
+        @route="roles.role.credentials"
+        @models={{array (current-mount-path) @model.name}}
+        data-test-generate-credentials
+      >
         Generate credentials
       </ToolbarLink>
     {{/if}}
     {{#if @model.canEdit}}
-      <ToolbarLink @route="roles.role.edit" data-test-edit>
+      <ToolbarLink @route="roles.role.edit" @models={{array (current-mount-path) @model.name}} data-test-edit>
         Edit role
       </ToolbarLink>
     {{/if}}

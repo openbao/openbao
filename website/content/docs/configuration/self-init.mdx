@@ -56,8 +56,7 @@ initial root token and handling recovery keys.
               "data": {
                 "type": "file",
                 "options": {
-                  "file_path": "/dev/stdout",
-                  "log_raw": true
+                  "file_path": "stdout"
                 }
               }
             }
@@ -80,8 +79,7 @@ initialize "audit" {
     data = {
       type = "file"
       options = {
-        file_path = "/dev/stdout"
-        log_raw = true
+        file_path = "stdout"
       }
     }
   }
@@ -95,7 +93,7 @@ initialize "audit" {
 
 Use of this feature requires using an [auto-unseal](seal/index.mdx)
 mechanism. No recovery keys are generated; instead, use the [authenticated
-recovery key rotation](/api-docs/system/rotate) endpoints.
+recovery key rotation](../api/system/rotate/index.mdx) endpoints.
 
 The root token is not returned to the caller and is revoked after use.
 

@@ -1,0 +1,5 @@
+```release-note:feature
+**ML-DSA Support in PKI**: Introduces support for the ML-DSA (NIST's FIPS 204) signature algorithm for all CA, CSR, and leaf actions.
+  - ML-DSA is a widely standardized post-quantum cryptography (PQC) algorithm resistant against attacks from quantum computers.
+  - Note that Go's OCSP protocol code does not support ML-DSA so will be unusable with ML-DSA typed issuers.
+```

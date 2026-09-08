@@ -45,7 +45,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
-	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
 	"github.com/openbao/openbao/v2/internal/audit"
 	auditFile "github.com/openbao/openbao/v2/internal/builtin/audit/file"
@@ -56,6 +55,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/pluginhelpers"
+	physInmem "github.com/openbao/openbao/v2/internal/physical/inmem"
 	be "github.com/openbao/openbao/v2/internal/vault/backend"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	"github.com/openbao/openbao/v2/internal/vault/cluster"
@@ -1551,12 +1551,17 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		coreConfig.MetricSink = base.MetricSink
 		coreConfig.DisableSentinelTrace = base.DisableSentinelTrace
 		coreConfig.ClusterName = base.ClusterName
+		coreConfig.AllowUnauthenticatedWorkflows = base.AllowUnauthenticatedWorkflows
 		coreConfig.DisableAutopilot = base.DisableAutopilot
 		coreConfig.ServiceRegistration = base.ServiceRegistration
 		coreConfig.ImpreciseLeaseRoleTracking = base.ImpreciseLeaseRoleTracking
 
 		if base.BuiltinRegistry != nil {
 			coreConfig.BuiltinRegistry = base.BuiltinRegistry
+		}
+
+		if base.KMSPluginCatalog != nil {
+			coreConfig.KMSPluginCatalog = base.KMSPluginCatalog
 		}
 
 		if base.Physical != nil {

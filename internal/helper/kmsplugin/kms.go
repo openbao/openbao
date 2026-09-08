@@ -32,7 +32,7 @@ func (c *Catalog) OpenKMS(ctx context.Context, name string, opts *kms.OpenOption
 		if builtin, ok := builtinKMSes[name]; ok {
 			s = builtin()
 		} else {
-			return nil, fmt.Errorf("unknown KMS: %s", name)
+			return nil, fmt.Errorf("unknown plugin: %s", name)
 		}
 
 	default:
@@ -227,10 +227,7 @@ func (k *remoteKey) retry(ctx context.Context, f func() error) error {
 		k.kms.mu.RLock()
 		defer k.kms.mu.RUnlock()
 
-		switch {
-		case k.key == nil:
-			return errors.New("key was closed")
-		case k.kms.kms == nil:
+		if k.kms.kms == nil {
 			return errors.New("KMS was closed")
 		}
 
@@ -337,21 +334,4 @@ func (k *remoteKey) ExportPublic(ctx context.Context) (public crypto.PublicKey, 
 		return err
 	})
 	return public, err
-}
-
-func (k *remoteKey) Close(ctx context.Context) error {
-	k.mu.Lock()
-	defer k.mu.Unlock()
-
-	defer func() {
-		k.key = nil // Mark as closed.
-	}()
-
-	// No need to retry, but ignore any plugin shutdown errors.
-	switch err := k.key.Close(ctx); err {
-	case gkwplugin.ErrPluginShutdown:
-		return nil
-	default:
-		return err
-	}
 }

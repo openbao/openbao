@@ -56,7 +56,7 @@ Usage: bao token lookup [options] [TOKEN | ACCESSOR]
 }
 
 func (c *TokenLookupCommand) Flags() *FlagSets {
-	set := c.flagSet(FlagSetHTTP | FlagSetOutputFormat)
+	set := c.flagSet(FlagSetHTTP | FlagSetOutputField | FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
 
@@ -127,6 +127,10 @@ func (c *TokenLookupCommand) Run(args []string) int {
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error looking up token: %s", err))
 		return 2
+	}
+
+	if c.flagField != "" {
+		return PrintRawField(c.UI, secret, c.flagField)
 	}
 
 	return OutputSecret(c.UI, secret)

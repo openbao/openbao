@@ -29,17 +29,15 @@ import (
 
 	credCert "github.com/openbao/openbao/v2/internal/builtin/credential/cert"
 	credOIDC "github.com/openbao/openbao/v2/internal/builtin/credential/jwt"
-	credKerb "github.com/openbao/openbao/v2/internal/builtin/credential/kerberos"
 	credKube "github.com/openbao/openbao/v2/internal/builtin/credential/kubernetes"
-	credLdap "github.com/openbao/openbao/v2/internal/builtin/credential/ldap"
 	credToken "github.com/openbao/openbao/v2/internal/builtin/credential/token"
 	credUserpass "github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 
 	logicalDb "github.com/openbao/openbao/v2/internal/builtin/logical/database"
 	logicalKv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
 
-	physFile "github.com/openbao/openbao/sdk/v2/physical/file"
-	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
+	physInmem "github.com/openbao/openbao/v2/internal/physical/inmem"
+	physPebble "github.com/openbao/openbao/v2/internal/physical/pebbledb"
 	physPostgresql "github.com/openbao/openbao/v2/internal/physical/postgresql"
 	physRaft "github.com/openbao/openbao/v2/internal/physical/raft"
 
@@ -145,11 +143,11 @@ var (
 	}
 
 	physicalBackends = map[string]physical.Factory{
-		"file":       physFile.NewFileBackend,
 		"inmem_ha":   physInmem.NewInmemHA,
 		"inmem":      physInmem.NewInmem,
 		"raft":       physRaft.NewRaftBackend,
 		"postgresql": physPostgresql.NewPostgreSQLBackend,
+		"pebbledb":   physPebble.NewBackend,
 	}
 
 	serviceRegistrations = map[string]sr.Factory{
@@ -162,14 +160,9 @@ var (
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.CommandFactory {
 	loginHandlers := map[string]LoginHandler{
 		"cert":       &credCert.CLIHandler{},
-		"kerberos":   &credKerb.CLIHandler{},
-		"kubernetes": &credKube.CLIHandler{},
-		"ldap":       &credLdap.CLIHandler{},
 		"oidc":       &credOIDC.CLIHandler{},
-		"radius": &credUserpass.CLIHandler{
-			DefaultMount: "radius",
-		},
-		"token": &credToken.CLIHandler{},
+		"token":      &credToken.CLIHandler{},
+		"kubernetes": &credKube.CLIHandler{},
 		"userpass": &credUserpass.CLIHandler{
 			DefaultMount: "userpass",
 		},

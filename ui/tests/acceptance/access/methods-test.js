@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { currentRouteName } from '@ember/test-helpers';
+import { currentRouteName, settled } from '@ember/test-helpers';
 import { clickTrigger } from 'ember-power-select/test-support/helpers';
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
@@ -48,6 +48,7 @@ module('Acceptance | auth-methods list view', function (hooks) {
 
     await clickTrigger('#filter-by-auth-type');
     await searchSelect.options[1].click();
+    await settled();
 
     const rows = document.querySelectorAll('[data-test-auth-backend-link]');
     const rowsUserpass = Array.from(rows).filter((row) => row.innerText.includes('userpass'));
@@ -58,6 +59,7 @@ module('Acceptance | auth-methods list view', function (hooks) {
     await clickTrigger('#filter-by-auth-name');
     const firstItemToSelect = searchSelect.options[0].text;
     await searchSelect.options[0].click();
+    await settled();
     const singleRow = document.querySelectorAll('[data-test-auth-backend-link]');
 
     assert.strictEqual(singleRow.length, 1, 'returns only one row');

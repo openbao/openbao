@@ -9,7 +9,7 @@ import (
 
 	"github.com/kr/pretty"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	credLdap "github.com/openbao/openbao/v2/internal/builtin/credential/ldap"
+	credApprole "github.com/openbao/openbao/v2/internal/builtin/credential/approle"
 	credUserpass "github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	"github.com/openbao/openbao/v2/internal/helper/identity"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
@@ -98,7 +98,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = be.AddTestCredentialBackend("ldap", credLdap.Factory)
+	err = be.AddTestCredentialBackend("approle", credApprole.Factory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,13 +120,13 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ldapMe := &routing.MountEntry{
+	approleMe := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
-		Path:        "ldap/",
-		Type:        "ldap",
-		Description: "ldap",
+		Path:        "approle/",
+		Type:        "approle",
+		Description: "approle",
 	}
-	err = c.enableCredential(ctx, ldapMe)
+	err = c.enableCredential(ctx, approleMe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,25 +177,25 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Data: map[string]any{
 			"name":           "testgroupalias",
-			"mount_accessor": ldapMe.Accessor,
+			"mount_accessor": approleMe.Accessor,
 			"canonical_id":   groupID,
 		},
 	})
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr: %v\n", resp, err)
 	}
-	ldapGroupAliasID := resp.Data["id"].(string)
+	approleGroupAliasID := resp.Data["id"].(string)
 
 	// Ensure that the new alias is readable
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
-		Path:      "group-alias/id/" + ldapGroupAliasID,
+		Path:      "group-alias/id/" + approleGroupAliasID,
 		Operation: logical.ReadOperation,
 	})
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr: %v\n", resp, err)
 	}
-	if resp == nil || resp.Data["id"].(string) != ldapGroupAliasID {
-		t.Fatal("failed to read ldap group alias")
+	if resp == nil || resp.Data["id"].(string) != approleGroupAliasID {
+		t.Fatal("failed to read approle group alias")
 	}
 
 	// Ensure previous alias is gone

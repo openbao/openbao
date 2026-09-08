@@ -399,9 +399,8 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		if err != nil {
 			if !skipJwksValidation {
 				b.Logger().Error("error checking oidc discovery URL", "error", err)
-				return logical.ErrorResponse("error checking oidc discovery URL"), nil
+				return logical.ErrorResponse("error checking oidc discovery URL: %s", err.Error()), nil
 			}
-
 			resp.AddWarning("error checking oidc discovery URL")
 		}
 	case config.OIDCClientID != "" && config.OIDCDiscoveryURL == "":

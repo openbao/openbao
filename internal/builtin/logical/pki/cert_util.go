@@ -7,6 +7,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/mldsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -137,7 +138,7 @@ func (sc *storageContext) fetchCAInfoByIssuerId(issuerId issuerID, usage issuerU
 		return nil, errutil.InternalError{Err: fmt.Sprintf("error while attempting to use issuer %v: %v", issuerId, err)}
 	}
 
-	parsedBundle, err := bundle.ToParsedCertBundle()
+	parsedBundle, err := bundle.ToParsedCertBundleWithExtractor(certutil.OptionalExternalKeyExtractor(sc.externalKeyExtractor))
 	if err != nil {
 		return nil, errutil.InternalError{Err: err.Error()}
 	}
@@ -982,6 +983,25 @@ func signCert(b *backend,
 
 		actualKeyType = "ed25519"
 		actualKeyBits = 0
+	case "mldsa":
+		if csr.PublicKeyAlgorithm != x509.MLDSA {
+			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
+				"role requires keys of type %s",
+				data.role.KeyType,
+			)}
+		}
+
+		pubkey, ok := csr.PublicKey.(*mldsa.PublicKey)
+		if !ok {
+			return nil, nil, errutil.UserError{Err: "could not parse CSR's public key"}
+		}
+
+		actualKeyType = "mldsa"
+		label := certutil.GetMLDSAParameterSetLabel(pubkey)
+		if label == -1 {
+			return nil, nil, errutil.UserError{Err: fmt.Sprintf("Unknown key size for ML-DSA: %v", pubkey.Parameters().String())}
+		}
+		actualKeyBits = label
 	case "any":
 		// We need to compute the actual key type and key bits, to correctly
 		// validate minimums and SignatureBits below.
@@ -1013,6 +1033,18 @@ func signCert(b *backend,
 
 			actualKeyType = "ed25519"
 			actualKeyBits = 0
+		case x509.MLDSA:
+			pubkey, ok := csr.PublicKey.(*mldsa.PublicKey)
+			if !ok {
+				return nil, nil, errutil.UserError{Err: "could not parse CSR's public key"}
+			}
+
+			actualKeyType = "mldsa"
+			label := certutil.GetMLDSAParameterSetLabel(pubkey)
+			if label == -1 {
+				return nil, nil, errutil.UserError{Err: fmt.Sprintf("Unknown key size for ML-DSA: %v", pubkey.Parameters().String())}
+			}
+			actualKeyBits = label
 		default:
 			return nil, nil, errutil.UserError{Err: "Unknown key type in CSR: " + csr.PublicKeyAlgorithm.String()}
 		}
@@ -1020,13 +1052,12 @@ func signCert(b *backend,
 		return nil, nil, errutil.InternalError{Err: fmt.Sprintf("unsupported key type value: %s", data.role.KeyType)}
 	}
 
-	// Before validating key lengths, update our KeyBits/SignatureBits based
-	// on the actual CSR key type.
+	// Before validating key lengths, update our KeyBits based on the actual CSR
+	// key type.
 	if data.role.KeyType == "any" {
-		// We update the value of KeyBits and SignatureBits here (from the
-		// role), using the specified key type. This allows us to convert
-		// the default value (0) for SignatureBits and KeyBits to a
-		// meaningful value.
+		// We update the value of KeyBits (from the role), using the specified
+		// key type. This allows us to convert the default value (0) for KeyBits
+		// to a meaningful value.
 		//
 		// We ignore the role's original KeyBits value if the KeyType is any
 		// as legacy (pre-1.10) roles had default values that made sense only
@@ -1034,26 +1065,27 @@ func signCert(b *backend,
 		// set for KeyBits when KeyType was set to any. This also enforces the
 		// docs saying when key_type=any, we only enforce our specified minimums
 		// for signing operations
-		if data.role.KeyBits, data.role.SignatureBits, err = certutil.ValidateDefaultOrValueKeyTypeSignatureLength(
-			actualKeyType, 0, data.role.SignatureBits,
-		); err != nil {
+		if data.role.KeyBits, err = certutil.ValidateDefaultOrValueKeyTypeLength(actualKeyType, 0); err != nil {
 			return nil, nil, errutil.InternalError{Err: fmt.Sprintf("unknown internal error updating default values: %v", err)}
 		}
 
+		switch actualKeyType {
 		// We're using the KeyBits field as a minimum value below, and P-224 is safe
 		// and a previously allowed value. However, the above call defaults
 		// to P-256 as that's a saner default than P-224 (w.r.t. generation), so
 		// override it here to allow 224 as the smallest size we permit.
-		if actualKeyType == "ec" {
+		case "ec":
 			data.role.KeyBits = 224
+		// same reasoning as above for "ec": we allow 44 instead of 65 parameter set
+		case "mldsa":
+			data.role.KeyBits = 44
 		}
 	}
 
-	// At this point, data.role.KeyBits and data.role.SignatureBits should both
-	// be non-zero, for RSA and ECDSA keys. Validate the actualKeyBits based on
-	// the role's values. If the KeyType was any, and KeyBits was set to 0,
-	// KeyBits should be updated to 2048 unless some other value was chosen
-	// explicitly.
+	// At this point, data.role.KeyBits should be non-zero, for RSA and ECDSA
+	// keys. Validate the actualKeyBits based on the role's values. If the
+	// KeyType was any, and KeyBits was set to 0, KeyBits should be updated to
+	// 2048 unless some other value was chosen explicitly.
 	//
 	// This validation needs to occur regardless of the role's key type, so
 	// that we always validate both RSA and ECDSA key sizes.
@@ -1072,7 +1104,7 @@ func signCert(b *backend,
 				actualKeyBits,
 			)}
 		}
-	case "ec":
+	case "ec", "mldsa":
 		if actualKeyBits < data.role.KeyBits {
 			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
 				"role requires a minimum of a %d-bit key, but CSR's key is %d bits",
@@ -1410,46 +1442,34 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	// Get and verify any IP SANs
 	ipAddresses := []net.IP{}
 	{
+		ipSource := "the API"
 		if csr != nil && data.role.UseCSRSANs {
-			if len(csr.IPAddresses) > 0 {
-				if !data.role.AllowIPSANs {
-					return nil, nil, errutil.UserError{Err: "IP Subject Alternative Names are not allowed in this role, but was provided some via CSR"}
-				}
-				ipAddresses = csr.IPAddresses
-			}
+			ipAddresses = csr.IPAddresses
+			ipSource = "CSR"
 		} else {
 			ipAlt := data.apiData.Get("ip_sans").([]string)
-			if len(ipAlt) > 0 {
-				if !data.role.AllowIPSANs {
-					return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-						"IP Subject Alternative Names are not allowed in this role, but was provided %s", ipAlt,
-					)}
+
+			for _, v := range ipAlt {
+				parsedIP := net.ParseIP(v)
+				if parsedIP == nil {
+					return nil, nil, errutil.UserError{Err: fmt.Sprintf("the value %q is not a valid IP address", v)}
 				}
-				for _, v := range ipAlt {
-					parsedIP := net.ParseIP(v)
-					if parsedIP == nil {
-						return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-							"the value %q is not a valid IP address", v,
-						)}
-					}
-					if len(data.role.AllowedIPSANsCIDR) > 0 {
-						valid := false
-						for _, allowedNetwork := range data.role.AllowedIPSANsCIDR {
-							if allowedNetwork.Contains(parsedIP) {
-								valid = true
-								break
-							}
-						}
 
-						if !valid {
-							return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-								"the IP address %q is not allowed in this role", v,
-							)}
-						}
+				ipAddresses = append(ipAddresses, parsedIP)
+			}
+		}
 
-						ipAddresses = append(ipAddresses, parsedIP)
-					} else {
-						ipAddresses = append(ipAddresses, parsedIP)
+		if len(ipAddresses) > 0 {
+			if !data.role.AllowIPSANs {
+				return nil, nil, errutil.UserError{Err: fmt.Sprintf("IP Subject Alternative Names are not allowed in this role, but was provided via %v", ipSource)}
+			}
+
+			if len(data.role.AllowedIPSANsCIDR) > 0 {
+				for _, parsedIP := range ipAddresses {
+					if !slices.ContainsFunc(data.role.AllowedIPSANsCIDR, func(allowedNetwork net.IPNet) bool {
+						return allowedNetwork.Contains(parsedIP)
+					}) {
+						return nil, nil, errutil.UserError{Err: fmt.Sprintf("the IP address %q is not allowed in this role", parsedIP.String())}
 					}
 				}
 			}
@@ -1892,7 +1912,7 @@ func convertRespToPKCS8(resp *logical.Response) error {
 		signer, err = x509.ParsePKCS1PrivateKey(keyData)
 	case certutil.ECPrivateKey:
 		signer, err = x509.ParseECPrivateKey(keyData)
-	case certutil.Ed25519PrivateKey:
+	case certutil.Ed25519PrivateKey, certutil.MLDSAPrivateKey:
 		k, err := x509.ParsePKCS8PrivateKey(keyData)
 		if err != nil {
 			return fmt.Errorf("error converting response to pkcs8: error parsing previous key: %w", err)

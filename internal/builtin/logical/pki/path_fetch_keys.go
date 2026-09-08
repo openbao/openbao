@@ -256,7 +256,7 @@ func (b *backend) pathGetKeyHandler(ctx context.Context, req *logical.Request, d
 		keyTypeParam: string(key.PrivateKeyType),
 	}
 
-	pkForSkid, err := getPublicKeyFromBytes([]byte(key.PrivateKey))
+	pkForSkid, err := getPublicKey(key)
 	if err != nil {
 		return nil, err
 	}

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/openbao/go-kms-wrapping/v2/kms"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
@@ -202,6 +203,10 @@ func (s gRPCSystemViewClient) ClusterID(ctx context.Context) (string, error) {
 	}
 
 	return reply.ClusterID, nil
+}
+
+func (s gRPCSystemViewClient) GetExternalKey(ctx context.Context, ref string) (kms.Key, error) {
+	return nil, errors.New("cannot call GetExternalKey from a plugin backend")
 }
 
 type gRPCSystemViewServer struct {

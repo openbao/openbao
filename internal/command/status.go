@@ -43,7 +43,7 @@ Usage: bao status [options]
 }
 
 func (c *StatusCommand) Flags() *FlagSets {
-	return c.flagSet(FlagSetHTTP | FlagSetOutputFormat)
+	return c.flagSet(FlagSetHTTP | FlagSetOutputField | FlagSetOutputFormat)
 }
 
 func (c *StatusCommand) AutocompleteArgs() complete.Predictor {
@@ -84,6 +84,19 @@ func (c *StatusCommand) Run(args []string) int {
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error checking seal status: %s", err))
 		return 1
+	}
+
+	if c.flagField != "" {
+		sealStatusOutput, err := buildSealStatusOutput(client, status)
+		if err != nil {
+			c.UI.Error(err.Error())
+			return 1
+		}
+		PrintRawField(c.UI, sealStatusOutput, c.flagField)
+		if sealStatusOutput.Sealed {
+			return 2
+		}
+		return 0
 	}
 
 	// Do not return the int here yet, since we may want to return a custom error

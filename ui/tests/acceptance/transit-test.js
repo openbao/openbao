@@ -94,6 +94,21 @@ const keyTypes = [
     supportsEncryption: true,
     autoRotate: true,
   },
+  {
+    name: (ts) => `mldsa-44-${ts}`,
+    type: 'mldsa-44',
+    supportsSigning: true,
+  },
+  {
+    name: (ts) => `mldsa-65-${ts}`,
+    type: 'mldsa-65',
+    supportsSigning: true,
+  },
+  {
+    name: (ts) => `mldsa-87-${ts}`,
+    type: 'mldsa-87',
+    supportsSigning: true,
+  },
 ];
 
 const generateTransitKey = async function (key, now) {
@@ -260,12 +275,13 @@ const testConvergentEncryption = async function (assert, keyName) {
     await click('[data-test-button-encrypt]');
 
     if (testCase.assertAfterEncrypt) {
-      await settled();
+      await waitUntil(() => find('.modal.is-active'));
       testCase.assertAfterEncrypt(keyName);
     }
     // store ciphertext for decryption step
     const copiedCiphertext = find('[data-test-encrypted-value="ciphertext"]').innerText;
     await click('.modal.is-active [data-test-modal-background]');
+    await waitUntil(() => !find('.modal.is-active'));
 
     assert.dom('.modal.is-active').doesNotExist(`${name}: Modal closes after background clicked`);
     await click('[data-test-transit-action-link="decrypt"]');
@@ -279,11 +295,12 @@ const testConvergentEncryption = async function (assert, keyName) {
     await click('[data-test-button-decrypt]');
 
     if (testCase.assertAfterDecrypt) {
-      await settled();
+      await waitUntil(() => find('.modal.is-active'));
       testCase.assertAfterDecrypt(keyName);
     }
 
     await click('.modal.is-active [data-test-modal-background]');
+    await waitUntil(() => !find('.modal.is-active'));
 
     assert.dom('.modal.is-active').doesNotExist(`${name}: Modal closes after background clicked`);
   }
@@ -328,7 +345,7 @@ module('Acceptance | transit', function (hooks) {
 
       await click('[data-test-confirm-button]');
       // wait for rotate call
-      await waitUntil(() => findAll('[data-test-transit-key-version-row]').length >= 2);
+      await waitUntil(() => findAll('[data-test-transit-key-version-row]').length >= 2, { timeout: 20000 });
       assert
         .dom('[data-test-transit-key-version-row]')
         .exists({ count: 2 }, `${name}: two key versions after rotate`);

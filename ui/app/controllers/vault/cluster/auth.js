@@ -7,6 +7,7 @@ import { inject as service } from '@ember/service';
 import { alias } from '@ember/object/computed';
 import Controller, { inject as controller } from '@ember/controller';
 import { task, timeout } from 'ember-concurrency';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default Controller.extend({
   flashMessages: service(),
@@ -33,13 +34,15 @@ export default Controller.extend({
     let transition;
     if (this.redirectTo) {
       // here we don't need the namespace because it will be encoded in redirectTo
-      transition = this.router.transitionTo(this.redirectTo);
+      transition = transitionToSafe(this.router, this.redirectTo);
       // reset the value on the controller because it's bound here
       this.set('redirectTo', '');
     } else {
-      transition = this.router.transitionTo('vault.cluster', { queryParams: { namespace } });
+      transition = transitionToSafe(this.router, 'vault.cluster', { queryParams: { namespace } });
     }
-    transition.followRedirects().then(() => {
+    // transitionToSafe resolves on the redirect abort, before the target
+    // route's model loads; the root-token warning needs no model data
+    transition.then(() => {
       if (isRoot) {
         this.flashMessages.warning(
           'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.'

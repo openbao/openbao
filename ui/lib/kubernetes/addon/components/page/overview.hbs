@@ -1,5 +1,5 @@
 <TabPageHeader @model={{@backend}} @breadcrumbs={{@breadcrumbs}}>
-  <ToolbarLink @route="configure">Configure Kubernetes</ToolbarLink>
+  <ToolbarLink @route="configure" @model={{(current-mount-path)}}>Configure Kubernetes</ToolbarLink>
 </TabPageHeader>
 
 {{#if @promptConfig}}

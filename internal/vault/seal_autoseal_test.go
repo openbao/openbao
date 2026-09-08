@@ -194,9 +194,13 @@ func TestAutoSeal_HealthCheck(t *testing.T) {
 	core, _, _ := TestCoreUnsealedWithConfig(t, &CoreConfig{
 		MetricSink: metricsutil.NewClusterMetricSink("", inmemSink),
 	})
-	sealHealthTestIntervalNominal = 10 * time.Millisecond
-	sealHealthTestIntervalUnhealthy = 10 * time.Millisecond
-	autoSeal, err := NewAutoSeal(testSealAccess)
+	autoSeal, err := NewAutoSealWithHealthCheck(
+		testSealAccess,
+		true,
+		time.Minute,
+		10*time.Millisecond,
+		10*time.Millisecond,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}

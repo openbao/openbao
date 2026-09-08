@@ -5,7 +5,16 @@
 
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
-import { click, currentRouteName, fillIn, visit, waitUntil, find } from '@ember/test-helpers';
+import {
+  click,
+  currentRouteName,
+  fillIn,
+  visit,
+  waitUntil,
+  find,
+  settled,
+  findAll,
+} from '@ember/test-helpers';
 import { setupMirage } from 'ember-cli-mirage/test-support';
 import ENV from 'vault/config/environment';
 import { validationHandler } from '../../mirage/handlers/mfa-login';
@@ -34,6 +43,7 @@ module('Acceptance | mfa-login', function (hooks) {
     await fillIn('[data-test-username]', user);
     await fillIn('[data-test-password]', 'test');
     await click('[data-test-auth-submit]');
+    await settled(); // eslint-disable-line ember/no-settled-after-test-helper
   };
   const didLogin = (assert) => {
     assert.strictEqual(currentRouteName(), 'vault.cluster.secrets.backends', 'Route transitions after login');
@@ -44,6 +54,7 @@ module('Acceptance | mfa-login', function (hooks) {
       await fillIn('[data-test-mfa-passcode="1"]', 'test');
     }
     await click('[data-test-mfa-validate]');
+    await settled(); // eslint-disable-line ember/no-settled-after-test-helper
   };
 
   test('it should handle single mfa constraint with passcode method', async function (assert) {
@@ -58,6 +69,10 @@ module('Acceptance | mfa-login', function (hooks) {
     assert.dom('[data-test-mfa-select]').doesNotExist('Select is hidden for single method');
     assert.dom('[data-test-mfa-passcode]').exists({ count: 1 }, 'Single passcode input renders');
     await validate();
+    await waitUntil(() => {
+      const h1 = find('h1');
+      return h1 && h1.textContent.trim() === 'Secrets Engines';
+    });
     didLogin(assert);
   });
 
@@ -84,6 +99,10 @@ module('Acceptance | mfa-login', function (hooks) {
     });
 
     await login('mfa-b');
+    await waitUntil(() => {
+      const h1 = find('h1');
+      return h1 && h1.textContent.trim() === 'Secrets Engines';
+    });
     didLogin(assert);
   });
 
@@ -99,6 +118,10 @@ module('Acceptance | mfa-login', function (hooks) {
     assert.dom('[data-test-mfa-passcode]').doesNotExist('Passcode input hidden until selection is made');
     await this.select();
     await validate();
+    await waitUntil(() => {
+      const h1 = find('h1');
+      return h1 && h1.textContent.trim() === 'Secrets Engines';
+    });
     didLogin(assert);
   });
 
@@ -107,6 +130,10 @@ module('Acceptance | mfa-login', function (hooks) {
     await login('mfa-d');
     await this.select();
     await click('[data-test-mfa-validate]');
+    await waitUntil(() => {
+      const h1 = find('h1');
+      return h1 && h1.textContent.trim() === 'Secrets Engines';
+    });
     didLogin(assert);
   });
 
@@ -118,6 +145,10 @@ module('Acceptance | mfa-login', function (hooks) {
     await this.select();
     assert.dom('[data-test-mfa-passcode]').doesNotExist('Passcode input is hidden for push method');
     await click('[data-test-mfa-validate]');
+    await waitUntil(() => {
+      const h1 = find('h1');
+      return h1 && h1.textContent.trim() === 'Secrets Engines';
+    });
     didLogin(assert);
   });
 
@@ -132,12 +163,20 @@ module('Acceptance | mfa-login', function (hooks) {
       );
     assert.dom('[data-test-mfa-select]').doesNotExist('Selects do not render for single methods');
     await validate(true);
+    await waitUntil(() => {
+      const h1 = find('h1');
+      return h1 && h1.textContent.trim() === 'Secrets Engines';
+    });
     didLogin(assert);
   });
 
   test('it should handle multi mfa constraint with 1 push method each', async function (assert) {
     assert.expect(1);
     await login('mfa-g');
+    await waitUntil(() => {
+      const h1 = find('h1');
+      return h1 && h1.textContent.trim() === 'Secrets Engines';
+    });
     didLogin(assert);
   });
 
@@ -153,6 +192,10 @@ module('Acceptance | mfa-login', function (hooks) {
     assert.dom('[data-test-mfa-select]').doesNotExist('Select is hidden for single method');
     assert.dom('[data-test-mfa-passcode]').exists({ count: 1 }, 'Passcode input renders');
     await validate();
+    await waitUntil(() => {
+      const h1 = find('h1');
+      return h1 && h1.textContent.trim() === 'Secrets Engines';
+    });
     didLogin(assert);
   });
 
@@ -168,11 +211,16 @@ module('Acceptance | mfa-login', function (hooks) {
     await this.select();
     await fillIn('[data-test-mfa-passcode="1"]', 'test');
     await click('[data-test-mfa-validate]');
+    await waitUntil(() => {
+      const h1 = find('h1');
+      return h1 && h1.textContent.trim() === 'Secrets Engines';
+    });
     didLogin(assert);
   });
 
   test('it should render unauthorized message for push failure', async function (assert) {
     await login('mfa-j');
+    await waitUntil(() => findAll('[data-test-empty-state-title]'));
     assert.dom('[data-test-auth-form]').doesNotExist('Auth form hidden when mfa fails');
     assert.dom('[data-test-empty-state-title]').hasText('Unauthorized', 'Error title renders');
     assert

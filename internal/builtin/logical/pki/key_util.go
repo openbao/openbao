@@ -23,6 +23,10 @@ func comparePublicKey(key *keyEntry, publicKey crypto.PublicKey) (bool, error) {
 }
 
 func getPublicKey(key *keyEntry) (crypto.PublicKey, error) {
+	if key.PrivateKeyType == certutil.ExternalPrivateKey {
+		return certutil.ParsePublicKeyPEM([]byte(key.PublicKey))
+	}
+
 	signer, _, _, err := getSignerFromKeyEntryBytes(key)
 	if err != nil {
 		return nil, err

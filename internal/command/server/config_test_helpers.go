@@ -55,7 +55,8 @@ func testConfigRaftRetryJoin(t *testing.T) {
 			},
 		},
 
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -102,19 +103,35 @@ func testLoadConfigFile_topLevel(t *testing.T) {
 
 			Seals: []*configutil.KMS{
 				{
-					Type: "nopurpose",
+					Type:                         "nopurpose",
+					HealthCheckEnabled:           true,
+					HealthCheckTimeout:           configutil.DefaultSealHealthCheckTimeout,
+					HealthCheckInterval:          configutil.DefaultSealHealthCheckInterval,
+					HealthCheckIntervalUnhealthy: configutil.DefaultSealHealthCheckIntervalUnhealthy,
 				},
 				{
-					Type:    "stringpurpose",
-					Purpose: []string{"foo"},
+					Type:                         "stringpurpose",
+					Purpose:                      []string{"foo"},
+					HealthCheckEnabled:           true,
+					HealthCheckTimeout:           configutil.DefaultSealHealthCheckTimeout,
+					HealthCheckInterval:          configutil.DefaultSealHealthCheckInterval,
+					HealthCheckIntervalUnhealthy: configutil.DefaultSealHealthCheckIntervalUnhealthy,
 				},
 				{
-					Type:    "commastringpurpose",
-					Purpose: []string{"foo", "bar"},
+					Type:                         "commastringpurpose",
+					Purpose:                      []string{"foo", "bar"},
+					HealthCheckEnabled:           true,
+					HealthCheckTimeout:           configutil.DefaultSealHealthCheckTimeout,
+					HealthCheckInterval:          configutil.DefaultSealHealthCheckInterval,
+					HealthCheckIntervalUnhealthy: configutil.DefaultSealHealthCheckIntervalUnhealthy,
 				},
 				{
-					Type:    "slicepurpose",
-					Purpose: []string{"zip", "zap"},
+					Type:                         "slicepurpose",
+					Purpose:                      []string{"zip", "zap"},
+					HealthCheckEnabled:           true,
+					HealthCheckTimeout:           configutil.DefaultSealHealthCheckTimeout,
+					HealthCheckInterval:          configutil.DefaultSealHealthCheckInterval,
+					HealthCheckIntervalUnhealthy: configutil.DefaultSealHealthCheckIntervalUnhealthy,
 				},
 			},
 		},
@@ -164,7 +181,8 @@ func testLoadConfigFile_topLevel(t *testing.T) {
 		APIAddr:     "top_level_api_addr",
 		ClusterAddr: "top_level_cluster_addr",
 
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 	addExpectedEntConfig(expected, []string{})
 
@@ -260,7 +278,8 @@ func testLoadConfigFile_json2(t *testing.T) {
 		DisableSealWrap:    true,
 		DisableSealWrapRaw: true,
 
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 	addExpectedEntConfig(expected, []string{"http"})
 
@@ -318,7 +337,8 @@ func testLoadConfigFileIntegerAndBooleanValuesCommon(t *testing.T, path string) 
 		EnableUI:        true,
 		EnableUIRaw:     true,
 
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 
 	config.Prune()
@@ -417,7 +437,8 @@ func testLoadConfigFile(t *testing.T) {
 		EnableResponseHeaderRaftNodeID:    true,
 		EnableResponseHeaderRaftNodeIDRaw: true,
 
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 
 	addExpectedEntConfig(expected, []string{})
@@ -596,6 +617,7 @@ func testLoadConfigFile_json(t *testing.T) {
 		DisableSealWrap:      true,
 		DisableSealWrapRaw:   true,
 		DisableSSCTokens:     &disableSSCTs,
+		PluginAutoRegister:   true,
 	}
 
 	addExpectedEntConfig(expected, []string{})
@@ -962,7 +984,8 @@ EOF
 				},
 			},
 		},
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -1007,8 +1030,9 @@ ha_storage "consul" {
 				"max_parallel":    "128",
 			},
 		},
-		SharedConfig:     &configutil.SharedConfig{},
-		DisableSSCTokens: &disableSSCTs,
+		SharedConfig:       &configutil.SharedConfig{},
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -1055,6 +1079,10 @@ func testParseSeals(t *testing.T) {
 						"default_hmac_key_label": "vault-hsm-hmac-key",
 						"generate_key":           "true",
 					},
+					HealthCheckEnabled:           true,
+					HealthCheckTimeout:           configutil.DefaultSealHealthCheckTimeout,
+					HealthCheckInterval:          configutil.DefaultSealHealthCheckInterval,
+					HealthCheckIntervalUnhealthy: configutil.DefaultSealHealthCheckIntervalUnhealthy,
 				},
 				{
 					Type:     "pkcs11",
@@ -1071,10 +1099,15 @@ func testParseSeals(t *testing.T) {
 						"default_hmac_key_label": "vault-hsm-hmac-key",
 						"generate_key":           "true",
 					},
+					HealthCheckEnabled:           false,
+					HealthCheckTimeout:           2 * time.Minute,
+					HealthCheckInterval:          30 * time.Second,
+					HealthCheckIntervalUnhealthy: 15 * time.Second,
 				},
 			},
 		},
-		DisableSSCTokens: &disableSSCTs,
+		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 	addExpectedDefaultEntConfig(expected)
 	config.Prune()
@@ -1164,6 +1197,7 @@ func testLoadConfigFileLeaseMetrics(t *testing.T) {
 		DefaultLeaseTTL:    10 * time.Hour,
 		DefaultLeaseTTLRaw: "10h",
 		DisableSSCTokens:   &disableSSCTs,
+		PluginAutoRegister: true,
 	}
 
 	addExpectedEntConfig(expected, []string{})

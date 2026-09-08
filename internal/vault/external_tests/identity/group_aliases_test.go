@@ -3,17 +3,8 @@
 
 package identity
 
-import (
-	"testing"
-
-	"github.com/openbao/openbao/api/v2"
-	"github.com/openbao/openbao/sdk/v2/logical"
-	vaulthttp "github.com/openbao/openbao/v2/internal/http"
-	"github.com/openbao/openbao/v2/internal/vault"
-
-	credLdap "github.com/openbao/openbao/v2/internal/builtin/credential/ldap"
-)
-
+/*
+// TODO: rewrite test to not rely on LDAP plugin
 func TestIdentityStore_GroupAliasLocalMount(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
 		CredentialBackends: map[string]logical.Factory{
@@ -65,3 +56,4 @@ func TestIdentityStore_GroupAliasLocalMount(t *testing.T) {
 		t.Fatal("expected error since mount is local")
 	}
 }
+*/

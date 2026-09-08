@@ -1,0 +1,3 @@
+```release-note:improvement
+command/token: Add support for `-field` argument to `bao token lookup`.
+```

@@ -240,7 +240,7 @@ server:
         tls_client_ca_file = "/openbao/userconfig/openbao-server-tls/openbao.ca"
       }
 
-      storage "file" {
+      storage "pebbledb" {
         path = "/openbao/data"
       }
 ```

@@ -1,0 +1,3 @@
+```release-note:change
+secrets/pki: Due to a breaking change in Go 1.27, OpenBao will no longer accept FQDNs ending with a `.`, e.g., `example.com.`.
+```

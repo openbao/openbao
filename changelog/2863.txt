@@ -1,0 +1,3 @@
+```release-note:improvement
+auth/cert: Added an Envoy decoder to x_forwarded_for_client_cert_decoders, enabling the processing of leaf certificates in the Envoy XFCC header.
+```

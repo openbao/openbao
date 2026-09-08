@@ -189,24 +189,15 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "in-progress", status)
 
-	maxRetries := 50
-	for range maxRetries {
-		status, err := s.DeleteNamespace(ctx, "test")
-		require.NoError(t, err)
-		if status == "in-progress" {
-			time.Sleep(1 * time.Millisecond)
-			continue
-		}
-		break
-	}
-
 	// verify namespace deletion
-	nsList, err := s.ListNamespaces(ctx, ListNamespaceOpts{
-		Recursive:     true,
-		IncludeSealed: true,
-	})
-	require.NoError(t, err)
-	require.Empty(t, nsList)
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		nsList, err := s.ListNamespaces(ctx, ListNamespaceOpts{
+			Recursive:     true,
+			IncludeSealed: true,
+		})
+		require.NoError(collect, err)
+		require.Empty(collect, nsList)
+	}, time.Second*10, time.Millisecond*10)
 
 	keys, err := s.storage.List(ctx, namespaceStoreSubPath)
 	require.NoError(t, err)
@@ -240,19 +231,11 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "in-progress", status)
 
-	for range maxRetries {
-		status, err := s.DeleteNamespace(parentCtx, "child")
-		require.NoError(t, err)
-		if status == "in-progress" {
-			time.Sleep(1 * time.Millisecond)
-			continue
-		}
-		break
-	}
-
-	keys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, parentNamespace.UUID, namespaceStoreSubPath)+"/")
-	require.NoError(t, err)
-	require.Empty(t, keys, "Expected empty namespace store on storage level")
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		keys, err = s.storage.List(ctx, path.Join(barrier.NamespacePrefix, parentNamespace.UUID, namespaceStoreSubPath)+"/")
+		require.NoError(collect, err)
+		require.Empty(collect, keys, "Expected empty namespace store on storage level")
+	}, time.Second*10, time.Millisecond*10)
 }
 
 func TestNamespaceStore_DeleteSealedNamespace(t *testing.T) {
@@ -1027,20 +1010,19 @@ func TestNamespaceStorage(t *testing.T) {
 }
 
 func TestNamespaceDeletionSealingInteraction(t *testing.T) {
-	t.Parallel()
-
-	c, keys, _ := TestCoreUnsealed(t)
-	s := c.namespaceStore
-	ctx := namespace.RootContext(t.Context())
-
-	namespaces := []*namespace.Namespace{
-		{Path: "ns1/"},
-		{Path: "ns2/"},
-		{Path: "ns3/"},
-	}
-	nsKeys := TestCoreCreateUnsealedNamespaces(t, c, namespaces...)
-
 	t.Run("cannot seal tainted namespace", func(t *testing.T) {
+		t.Parallel()
+
+		c, _, _ := TestCoreUnsealed(t)
+		s := c.namespaceStore
+		ctx := namespace.RootContext(t.Context())
+		namespaces := []*namespace.Namespace{
+			{Path: "ns1/"},
+			{Path: "ns2/"},
+			{Path: "ns3/"},
+		}
+		TestCoreCreateUnsealedNamespaces(t, c, namespaces...)
+
 		_, err := s.DeleteNamespace(ctx, "ns1")
 		require.NoError(t, err)
 
@@ -1059,6 +1041,18 @@ func TestNamespaceDeletionSealingInteraction(t *testing.T) {
 	})
 
 	t.Run("seal core while deleting namespace", func(t *testing.T) {
+		t.Parallel()
+
+		c, keys, _ := TestCoreUnsealed(t)
+		s := c.namespaceStore
+		ctx := namespace.RootContext(t.Context())
+		namespaces := []*namespace.Namespace{
+			{Path: "ns1/"},
+			{Path: "ns2/"},
+			{Path: "ns3/"},
+		}
+		nsKeys := TestCoreCreateUnsealedNamespaces(t, c, namespaces...)
+
 		_, err := s.DeleteNamespace(ctx, "ns2")
 		require.NoError(t, err)
 
@@ -1097,6 +1091,18 @@ func TestNamespaceDeletionSealingInteraction(t *testing.T) {
 	})
 
 	t.Run("cannot delete currently sealed namespace", func(t *testing.T) {
+		t.Parallel()
+
+		c, _, _ := TestCoreUnsealed(t)
+		s := c.namespaceStore
+		ctx := namespace.RootContext(t.Context())
+		namespaces := []*namespace.Namespace{
+			{Path: "ns1/"},
+			{Path: "ns2/"},
+			{Path: "ns3/"},
+		}
+		TestCoreCreateUnsealedNamespaces(t, c, namespaces...)
+
 		require.NoError(t, s.SealNamespace(ctx, "ns3"))
 
 		_, err := s.DeleteNamespace(ctx, "ns3")
@@ -1250,8 +1256,12 @@ func TestNamespaceSealResourcesLifecycle(t *testing.T) {
 
 		// leases
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			c.stateLock.RLock()
+			expiration := c.expiration
+			c.stateLock.RUnlock()
+
 			found := false
-			c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+			expiration.pending.Range(func(keyRaw any, _ any) bool {
 				key := keyRaw.(string)
 				if ns.MatchesID(key) {
 					found = true
@@ -1499,8 +1509,12 @@ func TestNamespaceSealManyLeases(t *testing.T) {
 
 			// leases
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				c.stateLock.RLock()
+				expiration := c.expiration
+				c.stateLock.RUnlock()
+
 				count := 0
-				c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+				expiration.pending.Range(func(keyRaw any, _ any) bool {
 					key := keyRaw.(string)
 					if ns.MatchesID(key) {
 						count += 1
@@ -1517,7 +1531,7 @@ func TestNamespaceSealManyLeases(t *testing.T) {
 					}
 
 					found := false
-					c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+					expiration.pending.Range(func(keyRaw any, _ any) bool {
 						key := keyRaw.(string)
 						found = found || key == leaseId
 						return true
@@ -1839,8 +1853,12 @@ func TestNamespaceManyLeases(t *testing.T) {
 
 			// leases
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				c.stateLock.RLock()
+				expiration := c.expiration
+				c.stateLock.RUnlock()
+
 				count := 0
-				c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+				expiration.pending.Range(func(keyRaw any, _ any) bool {
 					key := keyRaw.(string)
 					if ns.MatchesID(key) {
 						count += 1
@@ -1857,7 +1875,7 @@ func TestNamespaceManyLeases(t *testing.T) {
 					}
 
 					found := false
-					c.expiration.pending.Range(func(keyRaw any, _ any) bool {
+					expiration.pending.Range(func(keyRaw any, _ any) bool {
 						key := keyRaw.(string)
 						found = found || key == leaseId
 						return true
@@ -1865,7 +1883,7 @@ func TestNamespaceManyLeases(t *testing.T) {
 					require.True(collect, found, "did not find expected lease: %v", leaseId)
 					return true
 				})
-			}, time.Second, 100*time.Millisecond)
+			}, 3*time.Second, 100*time.Millisecond)
 
 		}
 	}

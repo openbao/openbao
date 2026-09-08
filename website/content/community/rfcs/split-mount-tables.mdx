@@ -34,8 +34,8 @@ More precisely, we have the following places where the mount table is potentiall
 
  - When starting up and loading the mount table. This will handle the migration from legacy to standard if necessary.
  - When an invalidation occurs and we trigger a reload of the core (e.g., leadership changed).
- - When [mounting](/api-docs/system/mounts/#enable-secrets-engine) a new secrets engine.
- - When [tuning](/api-docs/system/mounts/#tune-mount-configuration) a secrets engine.
+ - When [mounting](/docs/api/system/mounts/#enable-secrets-engine) a new secrets engine.
+ - When [tuning](/docs/api/system/mounts/#tune-mount-configuration) a secrets engine.
 
 Of these, the first two use the common `loadMounts`; only the latter require special care. However, all four of these paths call the common `c.persistMounts` helper, so modifying that will be sufficient for our needs. Further, an extra pair of parameters (`barrier`, to optionally work within an existing transaction) and `uuid` (to persist only a specific mount) will increase performance in these cases.
 

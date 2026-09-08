@@ -167,6 +167,9 @@ func TestBackend_CRL_AllKeyTypeSigAlgos(t *testing.T) {
 		{"ec", 384, 384, false, "ECDSAWithSHA384"},
 		{"ec", 521, 521, false, "ECDSAWithSHA512"},
 		{"ed25519", 0, 0, false, "Ed25519"},
+		{"mldsa", 44, 0, false, "MLDSA44"},
+		{"mldsa", 65, 0, false, "MLDSA65"},
+		{"mldsa", 87, 0, false, "MLDSA87"},
 	}
 
 	for index, tc := range testCases {

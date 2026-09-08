@@ -43,8 +43,8 @@ export default class PkiKeyModel extends Model {
   type;
   @attr('string', {
     noDefault: true,
-    possibleValues: ['rsa', 'ec', 'ed25519'],
-    subText: 'The type of key that will be generated. Must be rsa, ed25519, or ec. ',
+    possibleValues: ['rsa', 'ec', 'ed25519', 'mldsa'],
+    subText: 'The type of key that will be generated. Must be rsa, ed25519, ec, or mldsa. ',
   })
   keyType;
   @attr('string', {

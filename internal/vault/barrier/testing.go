@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/physical"
-	"github.com/openbao/openbao/sdk/v2/physical/inmem"
+	"github.com/openbao/openbao/v2/internal/physical/inmem"
 )
 
 // MockBarrier returns a physical backend, security barrier, and root key

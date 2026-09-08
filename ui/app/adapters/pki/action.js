@@ -5,6 +5,7 @@
 
 import { assert } from '@ember/debug';
 import { encodePath } from 'vault/utils/path-encoding-helpers';
+import { v4 as uuidv4 } from 'uuid';
 import ApplicationAdapter from '../application';
 
 export default class PkiActionAdapter extends ApplicationAdapter {
@@ -45,7 +46,7 @@ export default class PkiActionAdapter extends ApplicationAdapter {
     return this.ajax(url, 'POST', { data }).then((result) => ({
       // pki/action endpoints don't correspond with a single specific entity,
       // so in ember-data we'll map it to the request ID
-      id: result.request_id,
+      id: result.request_id || uuidv4(),
       ...result,
     }));
   }

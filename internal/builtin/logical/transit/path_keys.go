@@ -72,9 +72,11 @@ func (b *backend) pathKeys() *framework.Path {
 				Type:    framework.TypeString,
 				Default: "aes256-gcm96",
 				Description: `
-The type of key to create. Currently, "aes128-gcm96" (symmetric), "aes256-gcm96" (symmetric), "ecdsa-p256"
-(asymmetric), "ecdsa-p384" (asymmetric), "ecdsa-p521" (asymmetric), "ed25519" (asymmetric), "rsa-2048" (asymmetric), "rsa-3072"
-(asymmetric), "rsa-4096" (asymmetric) are supported.  Defaults to "aes256-gcm96".
+The type of key to create. Currently, "aes128-gcm96", "aes256-gcm96",
+"chacha20-poly1305", "xchacha20-poly1305" (symmetric); "ecdsa-p256",
+"ecdsa-p384", "ecdsa-p521", "ed25519", "rsa-2048", "rsa-3072", "rsa-4096",
+"mldsa-44", "mldsa-65", "mldsa-87" (asymmetric); "external-key" (symmetric or
+asymmetric) are supported. Defaults to "aes256-gcm96".
 `,
 			},
 
@@ -135,6 +137,12 @@ key.`,
 				Type:        framework.TypeInt,
 				Default:     0,
 				Description: fmt.Sprintf("The key size in bytes for the algorithm.  Only applies to HMAC and must be no fewer than %d bytes and no more than %d", keysutil.HmacMinKeySize, keysutil.HmacMaxKeySize),
+			},
+			"external_key_ref": {
+				Type: framework.TypeString,
+				Description: `Reference to the external key to use. This follows
+the format <config name>:<key name>, uniquely identifying the key configured
+under sys/external-keys/configs/<config name>/keys/<key name>.`,
 			},
 		},
 
@@ -246,6 +254,7 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 	keyType := d.Get("type").(string)
 	keySize := d.Get("key_size").(int)
 	exportable := d.Get("exportable").(bool)
+	externalKeyRef := d.Get("external_key_ref").(string)
 	allowPlaintextBackup := d.Get("allow_plaintext_backup").(bool)
 	autoRotatePeriod := time.Second * time.Duration(d.Get("auto_rotate_period").(int))
 
@@ -266,6 +275,7 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 		Exportable:           exportable,
 		AllowPlaintextBackup: allowPlaintextBackup,
 		AutoRotatePeriod:     autoRotatePeriod,
+		ExternalKeyRef:       externalKeyRef,
 	}
 
 	switch keyType {
@@ -291,19 +301,42 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 		polReq.KeyType = keysutil.KeyType_RSA3072
 	case "rsa-4096":
 		polReq.KeyType = keysutil.KeyType_RSA4096
+	case "mldsa-44":
+		polReq.KeyType = keysutil.KeyType_MLDSA44
+	case "mldsa-65":
+		polReq.KeyType = keysutil.KeyType_MLDSA65
+	case "mldsa-87":
+		polReq.KeyType = keysutil.KeyType_MLDSA87
 	case "hmac":
 		polReq.KeyType = keysutil.KeyType_HMAC
+	case "external-key":
+		polReq.KeyType = keysutil.KeyType_ExternalKey
 	default:
 		return logical.ErrorResponse("unknown key type %v", keyType), logical.ErrInvalidRequest
 	}
 	if keySize != 0 {
-		if polReq.KeyType != keysutil.KeyType_HMAC {
+		if polReq.KeyType != keysutil.KeyType_HMAC && polReq.KeyType != keysutil.KeyType_ExternalKey {
 			return logical.ErrorResponse("key_size is not valid for algorithm %v", polReq.KeyType), logical.ErrInvalidRequest
 		}
 		if keySize < keysutil.HmacMinKeySize || keySize > keysutil.HmacMaxKeySize {
 			return logical.ErrorResponse("invalid key_size %d", keySize), logical.ErrInvalidRequest
 		}
 		polReq.KeySize = keySize
+	}
+	if polReq.KeyType == keysutil.KeyType_ExternalKey {
+		if polReq.ExternalKeyRef == "" {
+			return logical.ErrorResponse("must provide external_key_ref to create policy of type external-key"), logical.ErrInvalidRequest
+		}
+
+		if autoRotatePeriod != 0 {
+			return logical.ErrorResponse("cannot enable auto-rotation with external keys"), nil
+		}
+
+		if _, err := b.System().GetExternalKey(ctx, polReq.ExternalKeyRef); err != nil {
+			return logical.ErrorResponse("failed to fetch external key: %s", err), logical.ErrInvalidRequest
+		}
+	} else if polReq.ExternalKeyRef != "" {
+		return logical.ErrorResponse("must provide type=external-key to use external_key_ref"), logical.ErrInvalidRequest
 	}
 
 	p, upserted, err := b.GetPolicy(ctx, polReq, b.GetRandomReader())
@@ -426,7 +459,9 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 		}
 		resp.Data["keys"] = retKeys
 
-	case keysutil.KeyType_ECDSA_P256, keysutil.KeyType_ECDSA_P384, keysutil.KeyType_ECDSA_P521, keysutil.KeyType_ED25519, keysutil.KeyType_RSA2048, keysutil.KeyType_RSA3072, keysutil.KeyType_RSA4096:
+	case keysutil.KeyType_ECDSA_P256, keysutil.KeyType_ECDSA_P384, keysutil.KeyType_ECDSA_P521, keysutil.KeyType_ED25519,
+		keysutil.KeyType_RSA2048, keysutil.KeyType_RSA3072, keysutil.KeyType_RSA4096,
+		keysutil.KeyType_MLDSA44, keysutil.KeyType_MLDSA65, keysutil.KeyType_MLDSA87:
 		retKeys := map[string]map[string]any{}
 		for k, v := range p.Keys {
 			key := asymKey{
@@ -491,9 +526,17 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 					return nil, err
 				}
 				key.PublicKey = pubKey
+			default:
+				key.Name = p.Type.String()
 			}
 
 			retKeys[k] = structtomap.Map(key)
+		}
+		resp.Data["keys"] = retKeys
+	case keysutil.KeyType_ExternalKey:
+		retKeys := map[string]string{}
+		for k, v := range p.Keys {
+			retKeys[k] = v.ExternalKeyRef
 		}
 		resp.Data["keys"] = retKeys
 	}
@@ -601,7 +644,7 @@ func (b *backend) pathPolicySoftDeleteRestore(ctx context.Context, req *logical.
 	return resp, nil
 }
 
-const pathPolicyHelpSyn = `Managed named encryption keys`
+const pathPolicyHelpSyn = `Manage named keys`
 
 const pathPolicyHelpDesc = `
 This path is used to manage the named keys that are available.

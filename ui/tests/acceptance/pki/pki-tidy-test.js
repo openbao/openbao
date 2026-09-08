@@ -5,7 +5,7 @@
 
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
-import { click, currentRouteName, fillIn, visit, settled } from '@ember/test-helpers';
+import { click, currentRouteName, fillIn, visit, settled, waitUntil, find } from '@ember/test-helpers';
 
 import { setupMirage } from 'ember-cli-mirage/test-support';
 import { v4 as uuidv4 } from 'uuid';
@@ -57,6 +57,7 @@ module('Acceptance | pki tidy', function (hooks) {
     await click(SELECTORS.tidyForm.inputByAttr('tidyCertStore'));
     await fillIn(SELECTORS.tidyForm.tidyPauseDuration, '10');
     await click(SELECTORS.tidyForm.tidySave);
+    await waitUntil(() => find(SELECTORS.cancelTidyAction));
     await click(SELECTORS.cancelTidyAction);
     assert.dom(SELECTORS.cancelTidyModalBackground).exists('Confirm cancel tidy modal exits');
     await click(SELECTORS.tidyConfigureModal.tidyModalCancelButton);

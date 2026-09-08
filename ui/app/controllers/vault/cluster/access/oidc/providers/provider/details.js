@@ -6,6 +6,7 @@
 import Controller from '@ember/controller';
 import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default class OidcProviderDetailsController extends Controller {
   @service router;
@@ -16,7 +17,7 @@ export default class OidcProviderDetailsController extends Controller {
     try {
       await this.model.destroyRecord();
       this.flashMessages.success('Provider deleted successfully');
-      this.router.transitionTo('vault.cluster.access.oidc.providers');
+      transitionToSafe(this.router, 'vault.cluster.access.oidc.providers');
     } catch (error) {
       this.model.rollbackAttributes();
       const message = error.errors ? error.errors.join('. ') : error.message;

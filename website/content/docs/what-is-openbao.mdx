@@ -21,14 +21,14 @@ OpenBao validates and authorizes clients (users, machines, apps) before providin
 
 ### How does OpenBao work?
 
-OpenBao works primarily with tokens and a token is associated to the client's policy. Each policy is path-based and policy rules constrains the actions and accessibility to the paths for each client. With OpenBao, you can create tokens manually and assign them to your clients, or the clients can log in and obtain a token.
+OpenBao works primarily with tokens and a token is associated with the client's policy. Each policy is path-based and policy rules constrain the actions and accessibility to the paths for each client. With OpenBao, you can create tokens manually and assign them to your clients, or the clients can log in and obtain a token.
 
 The core OpenBao workflow consists of four stages:
 
-* **Authenticate:** Authentication in OpenBao is the process by which a client supplies information that OpenBao uses to determine if they are who they say they are. Once the client is authenticated against an auth method, a token is generated and associated to a policy.
-* **Validation:** OpenBao validates the client against third-party trusted sources, such as GitHub, LDAP, AppRole, and more.
-* **Authorize**: A client is matched against the OpenBao security policy.  This policy is a set of rules defining which API endpoints a client has access to with its OpenBao token. Policies provide a declarative way to grant or forbid access to certain paths and operations in OpenBao.
-* **Access**: OpenBao grants access to secrets, keys, and encryption capabilities by issuing a token based on policies associated with the client’s identity. The client can then use their OpenBao token for future operations.
+* **Authenticate**: Authentication in OpenBao is the process by which a client supplies information that OpenBao uses to determine if they are who they say they are.
+* **Validate**: OpenBao validates the client against a third-party trusted source, such as GitHub, LDAP, AppRole, and more. Once validated, OpenBao generates a token and associates it with a policy.
+* **Authorize**: A client is matched against the OpenBao security policy. This policy is a set of rules defining which API endpoints a client has access to with its OpenBao token. Policies provide a declarative way to grant or forbid access to certain paths and operations in OpenBao.
+* **Access**: OpenBao grants access to secrets, keys, and encryption capabilities based on policies associated with the client’s token. The client can then use their OpenBao token for future operations.
 
 ### Why OpenBao?
 
@@ -46,7 +46,7 @@ The key features of OpenBao are:
 - **Dynamic Secrets**: OpenBao can generate secrets on-demand for some systems,
   such as Kubernetes or SQL databases. For example, when an application needs to
   access a Kubernetes cluster, it asks OpenBao for credentials, and OpenBao will
-  generate an Kubernetes service account token with valid permissions on demand.
+  generate a Kubernetes service account token with valid permissions on demand.
   After creating these dynamic secrets, OpenBao will also automatically revoke
   them after the lease is up.
 

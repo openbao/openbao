@@ -61,6 +61,12 @@ type RunOptions struct {
 	LogStderr              io.Writer
 	LogStdout              io.Writer
 	VolumeNameToMountPoint map[string]string
+
+	// WriteInto is provided instead of Runner.CopyTo(...) so that it executes
+	// before the container starts, providing an opportunity to provision
+	// initial data. Map of destination -> contents.
+	WriteInto    map[string]BuildContext
+	PublishPorts map[uint16]uint16
 }
 
 func NewDockerAPI() (*client.Client, error) {
@@ -221,7 +227,7 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 			}
 		}
 	}
-	result, err := d.Start(context.Background(), addSuffix, forceLocalAddr)
+	result, err := d.Start(ctx, addSuffix, forceLocalAddr)
 	if err != nil {
 		return nil, "", err
 	}
@@ -318,7 +324,7 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 	op := func() (ServiceConfig, error) {
 		container, err := d.DockerAPI.ContainerInspect(ctx, result.Container.ID, client.ContainerInspectOptions{})
 		if err != nil || !container.Container.State.Running {
-			return nil, backoff.Permanent(fmt.Errorf("failed inspect or container %q not running: %w", result.Container.ID, err))
+			return nil, backoff.Permanent(fmt.Errorf("failed inspect or container %q not running (%v): %w", result.Container.ID, container.Container.State.Status, err))
 		}
 
 		c, err := connect(ctx, pieces[0], portInt)
@@ -473,6 +479,13 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 	if len(d.RunOptions.Capabilities) > 0 {
 		hostConfig.CapAdd = d.RunOptions.Capabilities
 	}
+	if len(d.RunOptions.PublishPorts) > 0 {
+		hostConfig.PortBindings = make(network.PortMap)
+		for hostPort, containerPort := range d.RunOptions.PublishPorts {
+			port, _ := network.PortFrom(containerPort, network.TCP)
+			hostConfig.PortBindings[port] = []network.PortBinding{{HostPort: strconv.Itoa(int(hostPort))}}
+		}
+	}
 
 	netConfig := &network.NetworkingConfig{}
 	if d.RunOptions.NetworkID != "" {
@@ -519,6 +532,22 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		if err := copyToContainer(ctx, d.DockerAPI, c.ID, from, to); err != nil {
 			_, _ = d.DockerAPI.ContainerRemove(ctx, c.ID, client.ContainerRemoveOptions{})
 			return nil, err
+		}
+	}
+
+	for destination, contents := range d.RunOptions.WriteInto {
+		// Convert our provided contents to a tarball to ship up.
+		tar, err := contents.ToTarball()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build contents for directory %q into tarball: %w", destination, err)
+		}
+
+		_, err = d.DockerAPI.CopyToContainer(ctx, c.ID, client.CopyToContainerOptions{
+			DestinationPath: destination,
+			Content:         tar,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to copy contents for directory %q into container: %w", destination, err)
 		}
 	}
 
@@ -957,12 +986,44 @@ func BuildImage(ctx context.Context, api *client.Client, containerfile string, c
 		return nil, fmt.Errorf("failed to build image: %v", err)
 	}
 
-	output, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read image build output: %w", err)
+	var output bytes.Buffer
+	tee := io.TeeReader(resp.Body, &output)
+
+	var buildError error
+	var messages []string
+
+	dec := json.NewDecoder(tee)
+	for {
+		var message map[string]any
+		if err := dec.Decode(&message); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			return nil, fmt.Errorf("error decoding output from image build: %w", err)
+		}
+
+		if stream, ok := message["stream"]; ok {
+			messages = append(messages, strings.TrimSpace(stream.(string)))
+		}
+
+		if detail, ok := message["errorDetail"]; ok {
+			contents := fmt.Sprintf("[ERROR]: %v", detail)
+			message, ok := detail.(map[string]any)["message"]
+			if ok {
+				contents = fmt.Sprintf("[ERROR]: %v", message.(string))
+			}
+
+			messages = append(messages, contents)
+			buildError = errors.New(contents)
+		}
 	}
 
-	return output, nil
+	if buildError != nil {
+		return nil, fmt.Errorf("error during container image build: %w\n\nbuild messages:\n\t%v\n\n", buildError, strings.Join(messages, "\n\t"))
+	}
+
+	return output.Bytes(), nil
 }
 
 func (d *Runner) CopyTo(c string, destination string, contents BuildContext) error {

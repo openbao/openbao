@@ -81,7 +81,7 @@ Logging in via the OpenBao UI requires a redirect URI of the form:
 The "host:port" must be correct for the OpenBao server, and "path" must match the path the JWT
 backend is mounted at (e.g. "oidc" or "jwt").
 
-If the [oidc_response_mode](/api-docs/auth/jwt#oidc_response_mode) is set to `form_post`, then
+If the [oidc_response_mode](../../api/auth/jwt.mdx#oidc_response_mode) is set to `form_post`, then
 logging in via the OpenBao UI requires a redirect URI of the same form as the direct callback mode:
 
 `https://{host:port}/v1/auth/{path}/oidc/callback`
@@ -181,7 +181,7 @@ EOF
 
   `cat jwt.json | jq -r .access_token | cut -d. -f2 | base64 -D`
 
-- The [`verbose_oidc_logging`](/api-docs/auth/jwt#verbose_oidc_logging) role
+- The [`verbose_oidc_logging`](../../api/auth/jwt.mdx#verbose_oidc_logging) role
   option is available which will log the received OIDC token to the _server_ logs if debug-level logging is enabled. This can
   be helpful when debugging provider setup and verifying that the received claims are what you expect.
   Since claims data is logged verbatim and may contain sensitive information, this option should not be
@@ -268,7 +268,7 @@ management tool.
 
 1. Use the `/config` endpoint to configure OpenBao. To support JWT roles, either local keys, a JWKS URL, or an OIDC
    Discovery URL must be present. For OIDC roles, OIDC Discovery URL, OIDC Client ID and OIDC Client Secret are required. For the
-   list of available configuration options, please see the [API documentation](/api-docs/auth/jwt).
+   list of available configuration options, please see the [API documentation](../../api/auth/jwt.mdx).
 
    ```text
    $ bao write auth/jwt/config \
@@ -335,7 +335,7 @@ To limit authorization to a set of email addresses:
 }
 ```
 
-Bound claims can optionally be configured with globs. See the [API documentation](/api-docs/auth/jwt#bound_claims_type) for more details.
+Bound claims can optionally be configured with globs. See the [API documentation](../../api/auth/jwt.mdx#bound_claims_type) for more details.
 
 ### Claims as metadata
 
@@ -399,4 +399,4 @@ JSON Pointer can be used as a selector. Refer to the
 ## API
 
 The JWT Auth Plugin has a full HTTP API. Please see the
-[API docs](/api-docs/auth/jwt) for more details.
+[API docs](../../api/auth/jwt.mdx) for more details.

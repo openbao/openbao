@@ -1,0 +1,3 @@
+```release-note:improvement
+core/plugins: Reload KMS plugin configuration stanzas on `SIGHUP` and respawn plugin clients as needed, enabling plugin upgrades at runtime.
+```

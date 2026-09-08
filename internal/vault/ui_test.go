@@ -10,7 +10,7 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
-	"github.com/openbao/openbao/sdk/v2/physical/inmem"
+	"github.com/openbao/openbao/v2/internal/physical/inmem"
 )
 
 func TestConfig_Enabled(t *testing.T) {

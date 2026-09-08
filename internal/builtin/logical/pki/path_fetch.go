@@ -6,6 +6,7 @@ package pki
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/mldsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/crypto/ed25519"
@@ -379,6 +381,13 @@ func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Re
 		case ed25519.PublicKey:
 			keyBits = 256 // Fixed size for Ed25519
 			keyType = "ed25519"
+		case *mldsa.PublicKey:
+			keyType = "mldsa"
+			label := certutil.GetMLDSAParameterSetLabel(pubKey)
+			if label == -1 {
+				return nil, fmt.Errorf("unknown ML-DSA parameter set: %s", pubKey.Parameters().String())
+			}
+			keyBits = label
 		default:
 			keyBits = 0 // Unknown key type
 			keyType = "unknown"

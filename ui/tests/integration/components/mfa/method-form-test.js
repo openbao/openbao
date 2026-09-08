@@ -44,7 +44,11 @@ module('Integration | Component | mfa-method-form', function (hooks) {
 
     this.server.post('/identity/mfa/method/totp', () => {
       assert.ok(true, 'create request sent to server');
-      return {};
+      return {
+        data: {
+          method_id: '123',
+        },
+      };
     });
 
     await render(hbs`

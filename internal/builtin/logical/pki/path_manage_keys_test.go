@@ -33,6 +33,7 @@ func TestPKI_PathManageKeys_GenerateInternalKeys(t *testing.T) {
 		{"rsa", "rsa", []int{0, 2048, 3072, 4096}, false},
 		{"ec", "ec", []int{0, 224, 256, 384, 521}, false},
 		{"ed25519", "ed25519", []int{0}, false},
+		{"mldsa", "mldsa", []int{0, 44, 65, 87}, false},
 		{"error-rsa", "rsa", []int{-1, 343444}, true},
 		{"error-ec", "ec", []int{-1, 3434324}, true},
 		{"error-bad-type", "dskjfkdsfjdkf", []int{0}, true},

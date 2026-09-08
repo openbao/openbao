@@ -120,13 +120,11 @@ func (c *Core) enableAudit(ctx context.Context, entry *routing.MountEntry, updat
 		return err
 	}
 
-	origViewReadOnlyErr := view.GetReadOnlyErr()
-
-	// Mark the view as read-only until the mounting is complete and
-	// ensure that it is reset after. This ensures that there will be no
-	// writes during the construction of the backend.
+	// Mark the view as read-only until the mounting is complete and ensure that
+	// it is reset after. This ensures that there will be no writes during the
+	// construction of the backend.
 	view.SetReadOnlyErr(logical.ErrSetupReadOnly)
-	defer view.SetReadOnlyErr(origViewReadOnlyErr)
+	defer view.SetReadOnlyErr(nil)
 
 	// Lookup the new backend
 	backend, err := c.newAuditBackend(ctx, entry, view, entry.Options)
@@ -462,18 +460,16 @@ func (c *Core) reconcileAudits(req reconcileAuditsRequests) error {
 			return err
 		}
 
-		origViewReadOnlyErr := view.GetReadOnlyErr()
-
 		// Mark the view as read-only until the mounting is complete and
 		// ensure that it is reset after. This ensures that there will be no
 		// writes during the construction of the backend.
 		view.SetReadOnlyErr(logical.ErrSetupReadOnly)
 		if req.isInitial {
 			c.postUnsealFuncs = append(c.postUnsealFuncs, func() {
-				view.SetReadOnlyErr(origViewReadOnlyErr)
+				view.SetReadOnlyErr(nil)
 			})
 		} else {
-			defer view.SetReadOnlyErr(origViewReadOnlyErr)
+			defer view.SetReadOnlyErr(nil)
 		}
 
 		// Initialize the backend

@@ -20,8 +20,17 @@ export default class PkiTidyAdapter extends ApplicationAdapter {
       throw new Error('Auto tidy type models are never new, please use findRecord');
     }
 
+    const data = this.serialize(snapshot, tidyType);
     const url = `${this._baseUrl(backend)}/tidy`;
-    return this.ajax(url, 'POST', { data: this.serialize(snapshot, tidyType) });
+    return this.ajax(url, 'POST', { data }).then(() => {
+      return {
+        data: {
+          id: backend,
+          type: 'pki/tidy',
+          attributes: data,
+        },
+      };
+    });
   }
 
   // saving auto-tidy config POST requests will always update

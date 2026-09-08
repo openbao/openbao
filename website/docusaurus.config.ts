@@ -78,15 +78,15 @@ const config: Config = {
         indexDocs: true,
         indexBlog: true,
         indexPages: true,
-        docsRouteBasePath: ["docs", "api-docs"],
-        docsDir: ["content/docs", "content/api-docs"],
+        docsRouteBasePath: ["docs"],
+        docsDir: ["content/docs"],
         blogDir: "content/blog",
         removeDefaultStemmer: true,
         removeDefaultStopWordFilter: true,
         explicitSearchResultPath: true,
         searchContextByPaths: [
           { label: "Docs", path: "docs" },
-          { label: "API Reference", path: "api-docs" },
+          { label: "Community", path: "community" },
           { label: "Blog", path: "blog" },
         ],
         useAllContextsWithNoSearchContext: true,
@@ -142,26 +142,6 @@ const config: Config = {
     [
       "@docusaurus/plugin-content-docs",
       {
-        id: "api-docs",
-        path: "content/api-docs",
-        routeBasePath: "api-docs",
-        sidebarPath: "./sidebarsApi.ts",
-        editUrl: getEditUrlFn("api-docs"),
-        beforeDefaultRemarkPlugins: [
-          [
-            includeMarkdown,
-            {
-              resolveMdx: true,
-              resolveFrom: path.join(process.cwd(), "content", "partials"),
-            },
-          ],
-        ],
-        versions: getDocVersions(),
-      },
-    ],
-    [
-      "@docusaurus/plugin-content-docs",
-      {
         id: "ecosystem",
         path: "content/ecosystem",
         routeBasePath: "ecosystem",
@@ -202,7 +182,20 @@ const config: Config = {
         redirects: [
           {
             from: "/api-docs/system/rotate-config",
-            to: "/api-docs/system/rotate/keyring-config",
+            to: "/docs/api/system/rotate/keyring-config",
+          },
+          // Add unversioned variants of these redirects once 2.7.0 is cut.
+          {
+            from: "/docs/next/upgrading/",
+            to: "/docs/next/guides/upgrade/",
+          },
+          {
+            from: "/docs/next/upgrading/ha-upgrade",
+            to: "/docs/next/guides/upgrade/ha",
+          },
+          {
+            from: "/docs/next/upgrading/plugins-upgrade",
+            to: "/docs/next/guides/upgrade/plugins",
           },
         ],
         createRedirects(existingPath) {
@@ -213,6 +206,29 @@ const config: Config = {
               existingPath.replace('/community/', '/docs/2.5.x/'),
               existingPath.replace('/community/', '/docs/2.4.x/'),
               existingPath.replace('/community/', '/docs/2.3.x/'),
+            ];
+          }
+
+          if (existingPath.includes('/docs/api/')) {
+            return [
+              existingPath.replace('/docs/api/', '/api-docs/'),
+              existingPath.replace('/docs/next/api/', '/api-docs/next/'),
+              existingPath.replace('/docs/2.6.x/api/', '/api-docs/2.6.x/'),
+              existingPath.replace('/docs/2.5.x/api/', '/api-docs/2.5.x/'),
+              existingPath.replace('/docs/2.4.x/api/', '/api-docs/2.4.x/'),
+            ];
+          }
+
+          if (existingPath.includes('/docs/api/secret/')) {
+            return [
+              existingPath.replace('/docs/api/secret/', '/docs/api/secrets/'),
+              existingPath.replace('/docs/api/secret/', '/api-docs/secrets/'),
+            ];
+          }
+
+          if (existingPath.includes('/docs/secrets/')) {
+            return [
+              existingPath.replace('/docs/secrets/', '/docs/secret/'),
             ];
           }
 
@@ -248,7 +264,7 @@ const config: Config = {
           label: "Docs",
           position: "left",
         },
-        { to: "/api-docs/", label: "API", position: "left" },
+        { to: "/docs/api/", label: "API", position: "left" },
         {
           to: "/downloads",
           label: "Downloads",
@@ -265,12 +281,6 @@ const config: Config = {
           position: "right",
         },
         {
-          type: "docsVersionDropdown",
-          versions: getDocVersions(),
-          docsPluginId: "api-docs",
-          position: "right",
-        },
-        {
           href: "https://github.com/openbao/openbao",
           label: "GitHub",
           position: "right",
@@ -283,6 +293,8 @@ const config: Config = {
         `For web site terms of use, trademark policy and other project policies please see <a href="https://lfprojects.org">lfprojects.org</a>. <br>`,
         ` OpenBao is a <a href="https://openssf.org/projects/openbao/">Sandbox project</a> at`,
         `<a href="https://openssf.org/"><img src="/img/openssf-logo.svg" alt="OpenSSF Logo" width="90px"></a>.`,
+        `<br><br>Follow us on social media:<br>`,
+        `<a href="https://linkedin.com/company/openbao" target="_blank">LinkedIn</a> | <a href="https://bsky.app/profile/openbao-official.bsky.social" target="_blank">Bluesky</a> | <a href="https://www.youtube.com/@OpenBao" target="_blank">YouTube</a> | <a href="https://www.instagram.com/openbao.official/" target="_blank">Instagram</a> | <a href="https://www.threads.com/@openbao.official" target="_blank">Threads</a> | <a href="https://github.com/openbao/openbao" target="_blank">GitHub</a>`,
         `<br><br><a href="/sitemap.xml">Sitemap</a>`,
       ].join(" "),
     },

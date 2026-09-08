@@ -10,20 +10,20 @@ on:
       - "website/**"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   check-links:
     name: Check Absolute Links
     runs-on: ubuntu-slim
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Find absolute links
         run: |
           echo "Checking for absolute links in website/content/docs/..."
           grep -rn -P "(\(|: |openbao.org)/docs/[^)]+" website/content/docs > grep_output.txt || true
-
-          echo "Checking for absolute links in website/content/api-docs/..."
-          grep -rn -P "(\(|: |openbao.org)/api-docs/[^)]+" website/content/api-docs >> grep_output.txt || true
 
           # Check if any absolute links were found
           if [ -s grep_output.txt ]; then
@@ -34,9 +34,12 @@ jobs:
   test-docs:
     name: Test Docs
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           package_json_file: website/package.json
           cache: true
@@ -55,8 +58,8 @@ jobs:
     name: Lint Docs
     runs-on: ubuntu-slim
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           package_json_file: website/package.json
           cache: true

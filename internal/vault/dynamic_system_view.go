@@ -11,6 +11,7 @@ import (
 	"maps"
 	"time"
 
+	"github.com/openbao/go-kms-wrapping/v2/kms"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
@@ -18,6 +19,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/identity"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/random"
+	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	"github.com/openbao/openbao/v2/internal/vault/policy"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
 	"github.com/openbao/openbao/v2/internal/version"
@@ -447,4 +449,10 @@ func (d dynamicSystemView) ClusterID(ctx context.Context) (string, error) {
 	}
 
 	return clusterInfo.ID, nil
+}
+
+func (d dynamicSystemView) GetExternalKey(ctx context.Context, ref string) (kms.Key, error) {
+	storage := d.core.NamespaceView(d.mountEntry.Namespace).
+		SubView(barrier.SystemBarrierPrefix)
+	return d.core.externalKeys.GetExternalKey(ctx, storage, d.mountEntry.Namespace, d.mountEntry.Path, ref)
 }

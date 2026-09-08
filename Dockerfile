@@ -41,14 +41,6 @@ RUN mkdir -p /openbao/logs && \
     mkdir -p /openbao/config && \
     chown -R openbao:openbao /openbao
 
-# Expose the logs directory as a volume since there's potentially long-running
-# state in there
-VOLUME /openbao/logs
-
-# Expose the file directory as a volume since there's potentially long-running
-# state in there
-VOLUME /openbao/file
-
 # 8200/tcp is the primary interface that applications use to interact with
 # OpenBao.
 EXPOSE 8200
@@ -67,7 +59,7 @@ CMD ["server", "-dev", "-dev-no-store-token"]
 
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao-ubi.
-FROM registry.access.redhat.com/ubi10-minimal:10.2@sha256:b217fa65d8c21058887b18f005f587e47a17dd1281a5196ac88d01724a273dbd AS ubi
+FROM registry.access.redhat.com/ubi10-minimal:10.2@sha256:d801168f5e8b108586c27a4fd5c92e3c1e8d061084383713926e2ca61b8b6c64 AS ubi
 
 COPY LICENSE /licenses/mozilla.txt
 
@@ -102,14 +94,6 @@ RUN mkdir -p /openbao/logs && \
     chgrp -R 0 $HOME && chmod -R g+rwX $HOME && \
     chgrp -R 0 /openbao && chmod -R g+rwX /openbao
 
-# Expose the logs directory as a volume since there's potentially long-running
-# state in there
-VOLUME /openbao/logs
-
-# Expose the file directory as a volume since there's potentially long-running
-# state in there
-VOLUME /openbao/file
-
 # 8200/tcp is the primary interface that applications use to interact with
 # OpenBao.
 EXPOSE 8200
@@ -128,7 +112,7 @@ CMD ["server", "-dev", "-dev-no-store-token"]
 
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao-distroless.
-FROM gcr.io/distroless/static:nonroot@sha256:f7f8f729987ad0fdf6b05eeeae94b26e6a0f613bdf46feea7fc40f7bd72953e6 AS distroless
+FROM gcr.io/distroless/static:nonroot@sha256:1c2c046bc09ed40fad370b599a0b1ae7987f55b01e247cf27a7c27cd97e5bbc7 AS distroless
 
 COPY LICENSE /licenses/mozilla.txt
 

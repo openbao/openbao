@@ -14,6 +14,7 @@ const SPLASH_DELAY = Ember.testing ? 0 : 300;
 export default Route.extend({
   store: service(),
   version: service(),
+  router: service(),
 
   beforeModel() {
     return this.version.fetchVersion();
@@ -40,7 +41,7 @@ export default Route.extend({
 
   redirect(model, transition) {
     if (model.length === 1 && transition.targetName === 'vault.index') {
-      return this.transitionTo('vault.cluster', model[0].name);
+      return this.router.transitionTo('vault.cluster', model[0].name);
     }
   },
 });

@@ -31,6 +31,7 @@ export default ClusterBaseRoute.extend({
   store: service(),
   auth: service(),
   currentCluster: service(),
+  router: service(),
   modelTypes: computed(function () {
     return ['node', 'secret', 'secret-engine'];
   }),
@@ -58,7 +59,7 @@ export default ClusterBaseRoute.extend({
       namespace = storage?.userRootNamespace;
       // only redirect if something other than nothing
       if (namespace) {
-        this.transitionTo({ queryParams: { namespace } });
+        this.router.transitionTo({ queryParams: { namespace } });
       }
     }
     this.namespaceService.setNamespace(namespace);

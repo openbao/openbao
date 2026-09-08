@@ -11,10 +11,7 @@ import (
 	credAppRole "github.com/openbao/openbao/v2/internal/builtin/credential/approle"
 	credCert "github.com/openbao/openbao/v2/internal/builtin/credential/cert"
 	credJWT "github.com/openbao/openbao/v2/internal/builtin/credential/jwt"
-	credKerb "github.com/openbao/openbao/v2/internal/builtin/credential/kerberos"
 	credKube "github.com/openbao/openbao/v2/internal/builtin/credential/kubernetes"
-	credLdap "github.com/openbao/openbao/v2/internal/builtin/credential/ldap"
-	credRadius "github.com/openbao/openbao/v2/internal/builtin/credential/radius"
 	credUserpass "github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	dbCass "github.com/openbao/openbao/v2/internal/builtin/database/cassandra"
 	dbInflux "github.com/openbao/openbao/v2/internal/builtin/database/influxdb"
@@ -23,7 +20,6 @@ import (
 	dbValkey "github.com/openbao/openbao/v2/internal/builtin/database/valkey"
 	logicalKube "github.com/openbao/openbao/v2/internal/builtin/logical/kubernetes"
 	logicalKv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
-	logicalLDAP "github.com/openbao/openbao/v2/internal/builtin/logical/openldap"
 	logicalPki "github.com/openbao/openbao/v2/internal/builtin/logical/pki"
 	logicalRabbit "github.com/openbao/openbao/v2/internal/builtin/logical/rabbitmq"
 	logicalSsh "github.com/openbao/openbao/v2/internal/builtin/logical/ssh"
@@ -63,11 +59,8 @@ func newRegistry() *registry {
 			"approle":    {Factory: credAppRole.Factory},
 			"cert":       {Factory: credCert.Factory},
 			"jwt":        {Factory: credJWT.Factory},
-			"kerberos":   {Factory: credKerb.Factory},
 			"kubernetes": {Factory: credKube.Factory},
-			"ldap":       {Factory: credLdap.Factory},
 			"oidc":       {Factory: credJWT.Factory},
-			"radius":     {Factory: credRadius.Factory},
 			"userpass":   {Factory: credUserpass.Factory},
 		},
 		databasePlugins: map[string]databasePlugin{
@@ -87,8 +80,6 @@ func newRegistry() *registry {
 		logicalBackends: map[string]logicalBackend{
 			"kubernetes": {Factory: logicalKube.Factory},
 			"kv":         {Factory: logicalKv.Factory},
-			"openldap":   {Factory: logicalLDAP.Factory},
-			"ldap":       {Factory: logicalLDAP.Factory},
 			"pki":        {Factory: logicalPki.Factory},
 			"rabbitmq":   {Factory: logicalRabbit.Factory},
 			"ssh":        {Factory: logicalSsh.Factory},

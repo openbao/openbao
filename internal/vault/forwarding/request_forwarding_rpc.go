@@ -5,6 +5,7 @@ package forwarding
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -19,6 +20,9 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/helper/forwarding"
 	"github.com/openbao/openbao/v2/internal/physical/raft"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type forwardedRequestRPCServer struct {
@@ -123,6 +127,40 @@ func (s *forwardedRequestRPCServer) AdvertiseNamespaceKeys(ctx context.Context, 
 	return ret, nil
 }
 
+func (s *forwardedRequestRPCServer) StartInvalidations(ctx context.Context, req *StartInvalidationRequest) (*StartInvalidationResponse, error) {
+	index, err := s.core.MarkPeerStarted(ctx, req.Uuid)
+
+	var errMsg string
+	if err != nil {
+		s.core.Logger().Error("invalidation: failed to mark peer as started", "err", err)
+		errMsg = "failed to start invalidations; check active logs for more info"
+	}
+
+	return &StartInvalidationResponse{
+		Err:   errMsg,
+		Index: index,
+	}, nil
+}
+
+func (s *forwardedRequestRPCServer) CheckInvalidations(req *CheckInvalidationRequest, stream grpc.ServerStreamingServer[CheckInvalidationResponse]) error {
+	uuid, stopCh, err := s.core.AddInvalidationPeer(stream)
+	if err != nil {
+		s.core.Logger().Error("invalidation: failed registering invalidation peer", "err", err)
+		return fmt.Errorf("not registered; check active server's logs for information")
+	}
+
+	s.core.Logger().Trace("invalidation: starting invalidation handling for peer", "uuid", uuid)
+
+	// Wait for the peer's connection to be closed. When we call
+	// AddInvalidationPeer(...) above, we effectively consume the stream
+	// and sending of events on it. But this function returning closes the
+	// stream so we need to block until we're done with the stream.
+	<-stopCh
+	s.core.Logger().Trace("invalidation: finished invalidation handling for peer", "uuid", uuid)
+
+	return nil
+}
+
 func (s *forwardedRequestRPCServer) SendNamespaceKeys(ctx context.Context, in *SendNamespaceKeysRequest) (*SendNamespaceKeysReply, error) {
 	keys := make(map[string][]byte, len(in.Keys))
 
@@ -162,15 +200,22 @@ func (s *forwardedRequestRPCServer) GetNamespaceKeys(ctx context.Context, in *Ge
 
 type Client struct {
 	RequestForwardingClient
+
 	core         core
+	conn         *grpc.ClientConn
 	taskContext  context.Context
 	echoTicker   *time.Ticker
 	nsSyncTicker *time.Ticker
+
+	invalidationsContext       context.Context
+	invalidationsContextCancel context.CancelFunc
+	peerUUID                   atomic.Pointer[string]
 }
 
-func NewClient(core core, requestForwardingClient RequestForwardingClient, taskContext context.Context, echoTicker *time.Ticker, nsSyncTicker *time.Ticker) *Client {
+func NewClient(core core, rpcConn *grpc.ClientConn, taskContext context.Context, echoTicker *time.Ticker, nsSyncTicker *time.Ticker) *Client {
 	return &Client{
-		RequestForwardingClient: requestForwardingClient,
+		conn:                    rpcConn,
+		RequestForwardingClient: NewRequestForwardingClient(rpcConn),
 		core:                    core,
 		taskContext:             taskContext,
 		echoTicker:              echoTicker,
@@ -208,6 +253,7 @@ func (c *Client) Start() {
 				req.RaftUpgradeVersion = raftBackend.EffectiveVersion()
 				labels = append(labels, metrics.Label{Name: "peer_id", Value: raftBackend.NodeID()})
 			}
+
 			defer metrics.MeasureSinceWithLabels([]string{"ha", "rpc", "client", "echo"}, now, labels)
 
 			ctx, cancel := context.WithTimeout(c.taskContext, 2*time.Second)
@@ -359,4 +405,159 @@ func (c *Client) getKeys(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// CheckReplicationIndex returns the current index on the active node.
+func (c *Client) CheckReplicationIndex(ctx context.Context) (string, error) {
+	var uuid string
+
+	if value := c.peerUUID.Load(); value != nil && *value != "" {
+		uuid = *value
+	} else {
+		return "", errors.New("active node has not returned a uuid")
+	}
+
+	resp, err := c.StartInvalidations(ctx, &StartInvalidationRequest{
+		Uuid: uuid,
+	})
+	if err != nil {
+		return "", fmt.Errorf("error checking active node's replication index: %w", err)
+	}
+
+	if resp == nil {
+		return "", errors.New("no replication index returned by active node")
+	}
+
+	if resp.Err != "" {
+		return "", fmt.Errorf("error checking replication index: %v", resp.Err)
+	}
+
+	return resp.Index, nil
+}
+
+func (c *Client) StreamInvalidations(ctx context.Context) error {
+	c.peerUUID.Store(nil)
+	c.invalidationsContext, c.invalidationsContextCancel = context.WithCancel(c.taskContext)
+
+	commonCleanup := func() {
+		c.peerUUID.Store(nil)
+		c.invalidationsContextCancel()
+	}
+
+	doCleanup := true
+	defer func() {
+		if doCleanup {
+			commonCleanup()
+		}
+	}()
+
+	// Start streaming invalidations from the active.
+	stream, err := c.CheckInvalidations(c.invalidationsContext, &CheckInvalidationRequest{})
+	if err != nil {
+		return fmt.Errorf("failed starting invalidation stream: %w", err)
+	}
+
+	// Receive our first invalidation.
+	invalidation, err := stream.Recv()
+	if err != nil {
+		return fmt.Errorf("error during initial invalidation receive: %w", err)
+	}
+
+	// Every response should have UUID.
+	uuid := invalidation.Uuid
+	c.peerUUID.Store(&uuid)
+
+	// No longer perform cleanup when we exit this function: we're kicking
+	// off a background goroutine to handle invalidations including this one.
+	doCleanup = false
+
+	go func() {
+		cleanup := func() {
+			commonCleanup()
+
+			// In our goroutine, the read-enabled standby has already started.
+			// If our stream goes away, we need to ensure that we cancel the
+			// current read-enabled standby state as we won't be getting any
+			// more invalidations and thus be stale. If we were to just
+			// re-establish the stream, we'd have lost any invalidations the
+			// server has generated in the meantime. We'd also have no way of
+			// catching back up to the current state as we don't track read
+			// data versus indices.
+			//
+			// Thus a restart is the cleanest solution here, so that we know
+			// we catch up to initial state again on stream re-establishment.
+			c.core.Restart()
+		}
+		defer cleanup()
+
+		// While the server immediately send back an empty invalidation with
+		// the uuid in it, we don't hold any exclusive locks so (pending
+		// timing) a regular invalidation could be handed to us ahead of it.
+		// That's why this loop is inverted: we want to process the above
+		// invalidation first before we get a new one.
+
+		var err error
+		for {
+			select {
+			case <-c.invalidationsContext.Done():
+				return
+			default:
+			}
+
+			if invalidation.Restart {
+				c.core.Logger().Info("forwarding: active node indicated restart on invalidation")
+				return
+			}
+
+			c.core.AwaitInvalidation(c.invalidationsContext, cleanup, invalidation.Index, invalidation.Keys...)
+
+			invalidation, err = stream.Recv()
+			if err != nil {
+				c.core.Logger().Warn("forwarding: error receiving invalidation from active node", "err", err)
+				return
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (c *Client) Stop() error {
+	if c == nil {
+		return nil
+	}
+
+	c.StopInvalidations()
+	return c.conn.Close()
+}
+
+func (c *Client) StopInvalidations() {
+	if c.invalidationsContextCancel == nil {
+		return
+	}
+
+	c.invalidationsContextCancel()
+}
+
+// LegacyPackageFallback is a [grpc.UnaryClientInterceptor] that ensures
+// backwards-compatibility between OpenBao <= v2.5 and >= 2.6, which changed
+// the Protobuf package name from "vault" to "forwarding". This is achieved by
+// retrying calls with the original method name if the server does not implement
+// the newer one.
+func LegacyPackageFallback(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	err := invoker(ctx, method, req, reply, cc, opts...)
+	if status.Code(err) != codes.Unimplemented {
+		return err
+	}
+
+	switch method {
+	case "/forwarding.RequestForwarding/Echo":
+		method = "/vault.RequestForwarding/Echo"
+	case "/forwarding.RequestForwarding/ForwardRequest":
+		method = "/vault.RequestForwarding/ForwardRequest"
+	default:
+		return err
+	}
+
+	return invoker(ctx, method, req, reply, cc, opts...)
 }

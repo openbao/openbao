@@ -1,0 +1,6 @@
+```release-note:feature
+**PostgreSQL Horizontal Scalability**: Enable read scalability on the PostgreSQL storage backend similar to existing Raft support.
+  - Requires `ha_enabled = true` to be set and `cluster_addr` to be reachable (establishing a forwarding RPC connection) from standbys to the primary.
+  - In the event of extended leadership loss, standby nodes will come up as read-enabled.
+  - Only works with PostgreSQL physical replication; will not work with logical replication.
+```

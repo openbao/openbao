@@ -39,6 +39,8 @@ import (
 
 const pluginCatalogPath = "core/plugin-catalog/"
 
+const versionLatest = "latest"
+
 var (
 	ErrDirectoryNotConfigured       = errors.New("could not set plugin, plugin directory is not configured")
 	ErrPluginNotFound               = errors.New("plugin not found in the catalog")
@@ -232,8 +234,8 @@ func (c *Core) registerDeclarativePlugins(ctx context.Context, standby bool) err
 
 	logger := c.logger.Named("plugins")
 
-	logger.Info("starting declarative plugin registration")
-	defer logger.Info("declarative plugin registration completed")
+	logger.Debug("starting declarative plugin registration")
+	defer logger.Debug("declarative plugin registration completed")
 
 	c.pluginCatalog.lock.Lock()
 	defer c.pluginCatalog.lock.Unlock()
@@ -340,8 +342,8 @@ func (c *PluginCatalog) registerDeclarativePlugins(ctx context.Context, plugins 
 				update = !slices.Equal(plugin.Args, pluginInfo.Args) ||
 					!slices.Equal(plugin.Env, pluginInfo.Env) ||
 					!bytes.Equal(sha256, pluginInfo.Sha256) ||
-					(plugin.Image != "") != pluginInfo.Oci ||
-					(plugin.Image == "" && plugin.Command != pluginInfo.Command)
+					(plugin.Image != nil) != pluginInfo.Oci ||
+					(plugin.Image == nil && plugin.Command != pluginInfo.Command)
 				if update {
 					c.logger.Info("updating existing plugin", "name", plugin.Name, "type", plugin.Type, "version", plugin.Version, "sha256", plugin.SHA256Sum)
 				}
@@ -356,7 +358,7 @@ func (c *PluginCatalog) registerDeclarativePlugins(ctx context.Context, plugins 
 					return nil
 				}
 
-				_, err = c.setInternal(ctx, plugin.Name, pluginType, plugin.Version, plugin.CommandPath(), plugin.Args, plugin.Env, sha256, plugin.Image != "" /* OCI */, true /* declarative */)
+				_, err = c.setInternal(ctx, plugin.Name, pluginType, plugin.Version, plugin.CommandPath(), plugin.Args, plugin.Env, sha256, plugin.Image != nil /* OCI */, true /* declarative */)
 				if err != nil {
 					return fmt.Errorf("failed to register new plugin: %w", err)
 				}
@@ -980,62 +982,105 @@ func (c *PluginCatalog) Get(ctx context.Context, name string, pluginType consts.
 func (c *PluginCatalog) get(ctx context.Context, name string, pluginType consts.PluginType, version string) (*pluginutil.PluginRunner, error) {
 	// If the directory isn't set only look for builtin plugins.
 	if c.directory != "" {
-		// Look for external plugins in the barrier
-		storageKey := path.Join(pluginType.String(), name)
-		if version != "" {
-			storageKey = path.Join(storageKey, version)
+		// Look for external plugins in the barrier.
+		runner, err := c.getExternal(ctx, name, pluginType, version)
+		switch {
+		case err != nil:
+			return nil, err
+		case runner != nil:
+			return runner, err
 		}
-		out, err := c.catalogView.Get(ctx, storageKey)
+	}
+
+	return c.getBuiltin(ctx, name, pluginType, version), nil
+}
+
+func (c *PluginCatalog) getExternal(ctx context.Context, name string, pluginType consts.PluginType, version string) (*pluginutil.PluginRunner, error) {
+	storageKey := path.Join(pluginType.String(), name)
+
+	if version == versionLatest {
+		versions, err := c.catalogView.List(ctx, storageKey+"/")
+		if err != nil {
+			return nil, fmt.Errorf("failed to list available plugin versions: %w", err)
+		}
+
+		// Find the latest available version.
+		version = ""
+		var latest *semver.Version
+
+		for _, v := range versions {
+			sv, err := semver.NewSemver(v)
+			switch {
+			case err != nil:
+				return nil, fmt.Errorf("bad plugin version in storage: %w", err)
+			case latest == nil, sv.GreaterThan(latest):
+				latest, version = sv, v
+			}
+		}
+	}
+
+	if version != "" {
+		storageKey = path.Join(storageKey, version)
+	}
+
+	out, err := c.catalogView.Get(ctx, storageKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve plugin %q: %w", name, err)
+	}
+	if out == nil && version == "" {
+		// Also look for external plugins under what their name would have been if they
+		// were registered before plugin types existed.
+		out, err = c.catalogView.Get(ctx, name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve plugin %q: %w", name, err)
 		}
-		if out == nil && version == "" {
-			// Also look for external plugins under what their name would have been if they
-			// were registered before plugin types existed.
-			out, err = c.catalogView.Get(ctx, name)
-			if err != nil {
-				return nil, fmt.Errorf("failed to retrieve plugin %q: %w", name, err)
-			}
-		}
-		if out != nil {
-			entry := new(pluginutil.PluginRunner)
-			if err := jsonutil.DecodeJSON(out.Value, entry); err != nil {
-				return nil, fmt.Errorf("failed to decode plugin entry: %w", err)
-			}
-			if entry.Type != pluginType && entry.Type != consts.PluginTypeUnknown {
-				return nil, nil
-			}
-
-			// prepend the plugin directory to the command
-			entry.Command = filepath.Join(c.directory, entry.Command)
-
-			return entry, nil
-		}
+	}
+	if out == nil {
+		return nil, nil
 	}
 
+	entry := new(pluginutil.PluginRunner)
+	if err := jsonutil.DecodeJSON(out.Value, entry); err != nil {
+		return nil, fmt.Errorf("failed to decode plugin entry: %w", err)
+	}
+	if entry.Type != pluginType && entry.Type != consts.PluginTypeUnknown {
+		return nil, nil
+	}
+
+	// Prepend the plugin directory to the command.
+	entry.Command = filepath.Join(c.directory, entry.Command)
+
+	return entry, nil
+}
+
+func (c *PluginCatalog) getBuiltin(ctx context.Context, name string, pluginType consts.PluginType, version string) *pluginutil.PluginRunner {
 	builtinVersion := versions.GetBuiltinVersion(pluginType, name)
-	if version == "" || version == builtinVersion {
-		if version == builtinVersion {
-			// Don't return the builtin if it's shadowed by an unversioned plugin.
-			unversioned, err := c.get(ctx, name, pluginType, "")
-			if err == nil && unversioned != nil && !unversioned.Builtin {
-				return nil, nil
-			}
-		}
 
-		// Look for builtin plugins
-		if factory, ok := c.builtinRegistry.Get(name, pluginType); ok {
-			return &pluginutil.PluginRunner{
-				Name:           name,
-				Type:           pluginType,
-				Builtin:        true,
-				BuiltinFactory: factory,
-				Version:        builtinVersion,
-			}, nil
+	switch version {
+	case "":
+	case builtinVersion:
+		// Don't return the builtin if it's shadowed by an unversioned plugin.
+		unversioned, err := c.getExternal(ctx, name, pluginType, "")
+		if err == nil && unversioned != nil {
+			return nil
 		}
+	default:
+		return nil
 	}
 
-	return nil, nil
+	// Look for builtin plugins.
+	factory, ok := c.builtinRegistry.Get(name, pluginType)
+	if !ok {
+		return nil
+	}
+
+	return &pluginutil.PluginRunner{
+		Name:           name,
+		Type:           pluginType,
+		Builtin:        true,
+		BuiltinFactory: factory,
+		Version:        builtinVersion,
+	}
 }
 
 // Get the plugin types associated with a plugin name
@@ -1160,22 +1205,18 @@ func (c *PluginCatalog) setInternal(ctx context.Context, name string, pluginType
 		return nil, fmt.Errorf("error while validating the command path: %w", err)
 	}
 
-	switch isOci {
-	case true:
-		if len(sha256) < 8 {
-			return nil, errors.New("valid sha256 must be provided when registering OCI plugins")
+	ok := symAbs == c.directory
+	if !ok && isOci {
+		ok = symAbs == filepath.Join(c.directory, oci.PluginCacheDir)
+		if !ok && len(sha256) > 0 {
+			ok = symAbs == filepath.Join(
+				c.directory, oci.PluginCacheDir, fmt.Sprintf("%s-%s", pluginType.String(), name), hex.EncodeToString(sha256)[:8],
+			)
 		}
+	}
 
-		// Format: <plugin_directory>/.oci-cache/<plugin_slug>/<sha256_prefix>
-		shaPrefix := hex.EncodeToString(sha256)[:8]
-		ociCachePath := filepath.Join(c.directory, oci.PluginCacheDir, fmt.Sprintf("%s-%s", pluginType.String(), name), shaPrefix)
-		if symAbs != ociCachePath {
-			return nil, errors.New("cannot execute files outside of configured plugin directory")
-		}
-	case false:
-		if symAbs != c.directory {
-			return nil, errors.New("cannot execute files outside of configured plugin directory")
-		}
+	if !ok {
+		return nil, errors.New("cannot execute files outside of configured plugin directory")
 	}
 
 	// entryTmp should only be used for the below type and version checks, it uses the

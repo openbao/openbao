@@ -1,0 +1,3 @@
+```release-note:bug
+command/operator: Fix double file close in snapshot restoration.
+```

@@ -1,0 +1,304 @@
+---
+sidebar_label: Plugin Management Improvements
+description: |-
+  An OpenBao RFC on several improvements to plugin binary installation and
+  management.
+---
+
+# Plugin Management Improvements
+
+## Summary
+
+This RFC proposes several changes to OpenBao's plugin system that make external
+binary plugins easier to operationalize. This includes relaxing the requirements
+around presently mandatory plugin binary checksums, enabling OCI-based plugins
+to be pinned by manifest digest, a new command to prune unused OCI plugin
+caches, and a way to automatically upgrade mounts to newer plugin versions.
+
+## Problem Statement
+
+In v2.5, we introduced [declarative plugin management and OCI-based
+plugin distribution](./config-plugins.mdx). In v2.6, we introduced [KMS
+plugins](./auto-unseal-plugins.mdx), building on top of declarative plugin
+management. In v2.7, we will remove several builtin auth, secrets and KMS
+plugins from OpenBao and distribute them as external plugins instead.
+
+A result of these changes is that many operators will be forced to start
+integrating external plugins into their deployments. While major improvements
+to plugin management were already made in v2.5, we'd like to make additional
+improvements to plugin management as part of v2.7 in an effort to ease the
+challenges of migration.
+
+We identify several pain points within the plugin system that are worth
+addressing:
+
+1. OpenBao requires that the `sha256sum` parameter be provided in `plugin`
+   stanzas such that a plugin binary may be executed. This is more of a chore
+   for operators than a security feature:
+   - While OpenBao requires that its plugin binaries be checked before
+     execution, there is no conventional mechanism or advice to check the digest
+     of the OpenBao binary itself before execution. As a result, any proposed
+     security benefits of plugin digest verification pre-execution vanish if the
+     main application's binary is not held to the same standards.
+   - Conventionally, cryptographic verification in software installation is
+     performed as part of the initial installation process only, i.e., when
+     software artifacts pulled from the network are stored on the local system
+     for later use. It is not typical to re-validate that an artifact _still_
+     matches the trusted digest that was previously verified each time it is put
+     to use.
+   - The check that runs shortly before plugin execution occurs independently
+     of subsequent plugin execution, reading the plugin binary once to determine
+     its digest and twice for execution. This approach is fundamentally subject
+     to a Time-of-Check-Time-of-Use problem.
+   - [_"Protecting against malicious plugins or code execution on the underlying
+     host"_](/docs/internals/security) is explicitly not included in OpenBao's
+     security model. The mandatory use of a "security feature" that does not
+     contribute to the stated security model of the application is contradictory
+     and hindering.
+   - Finally, it is worth noting that the `sha256sum` parameter was originally
+     introduced as an API parameter (under `sys/plugins/catalog`), and appeared
+     in server configuration only much later when declarative plugins were
+     introduced. Plugin configuration via the API opposed to configuration via
+     the config file follow different threat models, the former must make an
+     effort to defend against arbitrary remote code execution on the server's
+     underlying host, the latter assumes that such privileges were already
+     granted to the author of the config. Not accounting for this difference
+     is what makes the parameter a chore when used with declarative plugin
+     registration.
+
+2. Similarly, OpenBao's OCI plugin downloader requires that the `sha256sum`
+   parameter be provided in `plugin` stanzas to verify artifact integrity when
+   downloading, and uses the SHA-256 digest as a cache sentinel to skip later
+   re-downloads. It does not however support directly pinning the plugin's OCI
+   manifest by digest instead, which is the OCI-native checksumming mechanism
+   that operators familiar with conventional OCI tooling are already used to.
+   Pinning by OCI manifest digest also has the advantage of multi-arch binary
+   support within a single pinned digest, a capability that the `sha256sum`
+   parameter does not replicate.
+
+3. OpenBao does not offer a native way to prune unused OCI cache entries from
+   disk, growing plugin directory size indefinitely across upgrades unless
+   operators manually prune cache entries from an undocumented cache structure.
+
+4. The `plugin_auto_register` configuration option defaults to `false` and
+   tends to be forgotten about, leading to `plugin` configuration stanzas having
+   no effect. The default is surprising as the only use of `plugin` stanzas
+   in combination with `plugin_auto_register = false` is to _automatically
+   download_ OCI plugins but to then _manually register_ them.
+
+5. When upgrading secrets, auth or database plugins, associated mounts and
+   database connections remain pinned to the previous plugin version and do
+   not automatically upgrade to a newer plugin version even if the older one is
+   unregistered. Instead, operators must tune each mount and database connection
+   individually to ensure it is configured to use the new plugin version.
+
+## User-facing Description
+
+We address each problem described above individually:
+
+1. The `sha256sum` parameter in `plugin` configuration stanzas becomes optional
+   on non-OCI plugins, i.e., those that use `command` but not `image`. It
+   remains required when registering plugins via the plugin catalog API. Further
+   changes to the handling of `sha256sum` with OCI-based plugins are outlined in
+   the below point.
+
+2. The `image` parameter in `plugin` configuration stanzas gains support for
+   both _tags_:
+
+   ```hcl
+   plugin "secret" "aws" {
+     image = "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.3.1"
+     # ...
+   }
+   ```
+
+   ... and _digests_:
+
+   ```hcl
+   plugin "secret" "aws" {
+     image = "ghcr.io/openbao/openbao-plugin-secrets-aws@sha256:bfa896f87c55f511f1400d62ccb0dc0503c87cb7ee7955ebdb4f75e987b9a436"
+     # ...
+   }
+   ```
+
+   ... references that include both tag and digest are also accepted:
+
+   ```hcl
+   plugin "secret" "aws" {
+     image = "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.3.1@sha256:bfa896f87c55f511f1400d62ccb0dc0503c87cb7ee7955ebdb4f75e987b9a436"
+     # ...
+   }
+   ```
+
+   If a tag is provided, the `version` parameter may be omitted and, if unset,
+   will default to the tag. If a digest is provided, the `sha256sum` parameter
+   may be omitted.
+
+   As a result, the below is all that is needed to register an OCI-based plugin,
+   assuming the image tag matches the plugin's version:
+
+   ```hcl
+   plugin "secret" "aws" {
+     image = "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.3.1@sha256:bfa896f87c55f511f1400d62ccb0dc0503c87cb7ee7955ebdb4f75e987b9a436"
+   }
+   ```
+
+3. We add a new CLI subcommand, `bao plugin prune`. This command removes all
+   cached OCI plugins from the plugin directory (including symlinks) that are
+   not referenced by the passed config(s) anymore. Conceptually, this is the
+   counterpart to the existing `bao plugin init` command.
+
+4. The default value of `plugin_auto_register` changes to `true`. Notably,
+   the sibling option `plugin_auto_download` remains unchanged and `false` by
+   default.
+
+5. When the `plugin_version` API parameter under `sys/mounts` or `sys/auth`
+   is set to `latest`, mounts will use the latest installed version of a
+   plugin (as indicated by semver) on startup and when they are reloaded. When
+   set up this way, upgrading a set of N mounts to a newly installed plugin
+   version is a single call to `sys/plugin/reload`, avoiding the original N+1
+   problem that required tuning each mount individually before reloading. When
+   queried, a mount will indicate the version currently in use via the existing
+   `running_version` field, while `version` will reflect `latest`. This
+   feature may be expanded to database plugins in the future, however, OpenBao
+   does not yet support reloading database plugins via the API which needs to be
+   implemented first for this to be useful and avoid N+1 calls like mounts can.
+
+## Technical Description
+
+Referring to the points listed in the previous section:
+
+1. This primarily requires updates to config validation and preparing the
+   rest of the system (plugin runner, mount table) to expect empty `sha256sum`
+   values.
+
+2. Beyond updates to config parsing and validation that `go-containerregistry`'s
+   helpers can help with, this requires introducing a new OCI plugin cache
+   layout that allows lookups by the manifest digest a binary was sourced from
+   as opposed to the binary's digest itself.
+
+   The current cache layout is as follows:
+
+   ```
+   plugin_directory/ 
+   ├── secret-aws-v0.3.1 (symlink)
+   └── .oci-cache/
+       └── secrets-aws-v0.3.1/
+           └── <truncated binary digest>/
+               └── openbao-plugin-secret-aws (binary)
+   ```
+
+   where the top-level symlink links to the binary nested under `.oci-cache/`.
+
+   While retaining support for plugins downloaded into the original layout, all
+   new plugin downloads will instead be written as:
+
+   ```
+   plugin_directory/
+   ├── secret-aws-v0.3.1 (symlink)
+   └── .oci-cache/
+       └── sha256:bfa896f87c55f511f1400d62ccb0dc0503c87cb7ee7955ebdb4f75e987b9a436 (binary)
+   ```
+
+   where the name of the cached file is the digest of the OCI manifest that
+   the binary was resolved from. If a digest was provided as part of `image`,
+   the resulting cache file name will be equal to it even if the several index
+   manifests were traversed before arriving at the final image manifest.
+
+   Notably, we do not seek to defend against manipulation of OCI cache entries
+   with this layout. If this is a valid concern, it is advised to keep using (or
+   additionally use) the existing `sha256sum` option.
+
+   If a `plugin` stanza specifies `sha256sum` but no manifest digest within
+   `image`, the extracted binary is still cached under the manifest digest that
+   was resolved ad-hoc and matched the desired binary digest upon extraction.
+   This keeps the cache layout simple and content-addressed going forward.
+
+3. `bao plugin prune` should be easy enough to implement. We should ensure it
+   supports both the old and new OCI plugin cache layout for completeness.
+
+4. Defaulting `plugin_auto_register` to `true` is a trivial change, not much to
+   discuss.
+
+5. `MountEntry.RunningVersion` will keep reflecting the absolute version of the
+   running plugin, `MountEntry.Version` will assign special meaning to `latest`.
+   `PluginCatalog` will handle the translation from virtual version to actual
+   version as part of `Get(...)`.
+
+## Rationale and Alternatives
+
+The proposed changes are intended to address operational pain points without
+removing or breaking existing functionality.
+
+For plugin binary digests, making `sha256sum` optional for declarative
+registration removes a requirement that provides limited security value within
+OpenBao's existing security model while retaining the option for operators that
+want to enforce it.
+
+For OCI plugins, using the OCI manifest digest as the cache and pinning
+mechanism aligns OpenBao's behavior with OCI conventions and avoids requiring
+operators to separately determine the digest of the extracted binary. It
+also allows a single OCI reference to select the appropriate binary for a
+multi-architecture deployment.
+
+For OCI cache pruning, a native CLI command provides an officially supported way
+to prune caches without requiring operators to understand internal cache layout
+details and to roll their own solution.
+
+For `plugin_auto_register`, changing the default to true makes declarative
+plugin configuration behave as operators likely expect and aligns with
+other declarative configuration mechanisms such as audit devices and
+self-initialization. This is technically a breaking change, but the breakage
+is trivial to adjust for if necessary and is limited to a theoretical plugin
+management strategy that we do not consider practical and hence likely has
+little to no footprint in the real world.
+
+For `latest` plugin versions, retaining the existing explicit-version behavior
+while adding a virtual version allows operators to opt into automatic upgrades
+without changing the semantics of existing mounts.
+
+An alternative to these changes is to leave the existing behavior unchanged.
+However, doing so would leave several operational burdens in place as more
+plugins move from built-in to external distribution.
+
+## Downsides
+
+The primary downside is a low amount of additional complexity across the
+implementation of the plugin system, though it would largely be contained within
+OpenBao's internals. For operators, these changes should render the plugin
+system less complex to use.
+
+## Security Implications
+
+No longer requiring the `sha256sum` on declarative plugin registration implies a
+relaxation of security measures on paper, though several arguments were made on
+the security value of the parameter being low to begin with. It is worth noting
+that the parameter is not removed and remains available for use as operators see
+fit.
+
+## User/Developer Experience
+
+The primary goal of this RFC is to improve the operator and developer
+experience.
+
+In particular, these changes reduce the amount of manual configuration required
+for plugin installation in both production and development environments, make
+OCI version pinning more familiar, provide a native mechanism for reclaiming
+plugin cache space, and simplify upgrades across multiple mounts.
+
+## Unresolved Questions
+
+None.
+
+## Related Issues
+
+- https://github.com/openbao/openbao/issues/2835
+- https://github.com/openbao/openbao-plugins/issues/52
+- https://github.com/openbao/openbao-plugins/issues/122
+- https://github.com/openbao/openbao-plugins/pull/121#discussion_r3730429461
+- https://github.com/NixOS/nixpkgs/pull/513848#pullrequestreview-4189839093 and discussion below.
+
+## Proof of Concept
+
+- Optional `sha256sum` parameter: https://github.com/openbao/openbao/pull/3759
+- OCI plugins by manifest digest: https://github.com/openbao/openbao/compare/main...Ki-Reply-GmbH:openbao:plugin-by-manifest-digest?expand=1

@@ -162,12 +162,17 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Paths = append(b.Paths, b.loginMFAPaths()...)
 	b.Paths = append(b.Paths, b.introspectionPaths()...)
 	b.Paths = append(b.Paths, b.workflowPaths()...)
+	b.Paths = append(b.Paths, b.externalKeysPaths()...)
 
 	if core.rawEnabled {
 		b.Paths = append(b.Paths, b.rawPaths()...)
 	}
 	if backend := core.GetRaftBackend(); backend != nil {
 		b.Paths = append(b.Paths, b.raftStoragePaths()...)
+	}
+
+	if core.allowUnauthedWorkflows {
+		b.PathsSpecial.Unauthenticated = append(b.PathsSpecial.Unauthenticated, "workflows/unauthed-execute/*")
 	}
 
 	return b
@@ -495,6 +500,10 @@ func (b *SystemBackend) handlePluginCatalogUpdate(ctx context.Context, _ *logica
 	sha256Bytes, err := hex.DecodeString(sha256)
 	if err != nil {
 		return logical.ErrorResponse("Could not decode SHA-256 value from Hex"), err
+	}
+
+	if len(sha256Bytes) != 32 {
+		return logical.ErrorResponse("Decoded SHA-256 value is not 32 bytes"), nil
 	}
 
 	err = b.Core.pluginCatalog.Set(ctx, pluginName, pluginType, pluginVersion, parts[0], args, env, sha256Bytes, oci)
@@ -1194,22 +1203,6 @@ func handleError(
 	}
 }
 
-// Performs a similar function to handleError, but upon seeing a ReadOnlyError
-// will actually strip it out to prevent forwarding
-func handleErrorNoReadOnlyForward(
-	err error,
-) (*logical.Response, error) {
-	if logical.ShouldForward(err) {
-		return nil, errors.New("operation could not be completed as storage is read-only")
-	}
-	switch err.(type) {
-	case logical.HTTPCodedError:
-		return logical.ErrorResponse(err.Error()), err
-	default:
-		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-	}
-}
-
 // handleUnmount is used to unmount a path
 func (b *SystemBackend) handleUnmount(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	path := data.Get("path").(string)
@@ -1740,11 +1733,13 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 	if rawVal, ok := data.GetOk("plugin_version"); ok {
 		version := rawVal.(string)
-		semanticVersion, err := semver.NewVersion(version)
-		if err != nil {
-			return logical.ErrorResponse("version %q is not a valid semantic version: %s", version, err), nil
+		if version != versionLatest {
+			semanticVersion, err := semver.NewVersion(version)
+			if err != nil {
+				return logical.ErrorResponse("version %q is not a valid semantic version: %s", version, err), nil
+			}
+			version = "v" + semanticVersion.String()
 		}
-		version = "v" + semanticVersion.String()
 
 		pluginType := consts.PluginTypeSecrets
 		if isAuth {
@@ -1752,7 +1747,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 
 		// Lookup the version to ensure it exists in the catalog before committing.
-		if _, err = b.System().LookupPluginVersion(ctx, mountEntry.Type, pluginType, version); err != nil {
+		if _, err := b.System().LookupPluginVersion(ctx, mountEntry.Type, pluginType, version); err != nil {
 			return handleError(err)
 		}
 
@@ -2007,10 +2002,11 @@ func (b *SystemBackend) handleLeaseLookupList(ctx context.Context, req *logical.
 	if err != nil {
 		return nil, err
 	}
+
 	keys, err := b.Core.expiration.leaseView(ns).List(ctx, prefix)
 	if err != nil {
 		b.Backend.Logger().Error("error listing leases", "prefix", prefix, "error", err)
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 	return logical.ListResponse(keys), nil
 }
@@ -2035,7 +2031,7 @@ func (b *SystemBackend) handleRenew(ctx context.Context, req *logical.Request, d
 	resp, err := b.Core.expiration.Renew(ctx, leaseID, increment)
 	if err != nil {
 		b.Backend.Logger().Error("lease renewal failed", "lease_id", leaseID, "error", err)
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 	return resp, err
 }
@@ -2061,7 +2057,7 @@ func (b *SystemBackend) handleRevoke(ctx context.Context, req *logical.Request, 
 		// Invoke the expiration manager directly
 		if err := b.Core.expiration.Revoke(revokeCtx, leaseID); err != nil {
 			b.Backend.Logger().Error("lease revocation failed", "lease_id", leaseID, "error", err)
-			return handleErrorNoReadOnlyForward(err)
+			return handleError(err)
 		}
 
 		return nil, nil
@@ -2069,7 +2065,7 @@ func (b *SystemBackend) handleRevoke(ctx context.Context, req *logical.Request, 
 
 	if err := b.Core.expiration.LazyRevoke(revokeCtx, leaseID); err != nil {
 		b.Backend.Logger().Error("lease revocation failed", "lease_id", leaseID, "error", err)
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 
 	return logical.RespondWithStatusCode(nil, nil, http.StatusAccepted)
@@ -2106,7 +2102,7 @@ func (b *SystemBackend) handleRevokePrefixCommon(ctx context.Context,
 	}
 	if err != nil {
 		b.Backend.Logger().Error("revoke prefix failed", "prefix", prefix, "error", err)
-		return handleErrorNoReadOnlyForward(err)
+		return handleError(err)
 	}
 
 	if sync {
@@ -2372,6 +2368,11 @@ func (b *SystemBackend) validateVersion(ctx context.Context, version string, plu
 		if version != "" {
 			b.logger.Debug("pinning plugin version", "plugin type", pluginType.String(), "plugin name", pluginName, "plugin version", version)
 		}
+	case versionLatest:
+		// If set to "latest", we derive the latest plugin version dynamically
+		// when setting up the backend. This is distinct from the above case
+		// (empty string) where we derive the latest version on the spot and
+		// then pin it.
 	default:
 		semanticVersion, err := semver.NewVersion(version)
 		if err != nil {
@@ -4529,7 +4530,7 @@ func (c *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatusRes
 
 type LeaderResponse struct {
 	HAEnabled            bool      `json:"ha_enabled"`
-	IsSelf               bool      `json:"is_self,omitempty"`
+	IsSelf               *bool     `json:"is_self,omitempty"`
 	ActiveTime           time.Time `json:"active_time,omitzero"`
 	LeaderAddress        string    `json:"leader_address,omitempty"`
 	LeaderClusterAddress string    `json:"leader_cluster_address,omitempty"`
@@ -4559,7 +4560,7 @@ func (core *Core) GetLeaderStatusLocked() (*LeaderResponse, error) {
 
 	resp := &LeaderResponse{
 		HAEnabled:            true,
-		IsSelf:               isLeader,
+		IsSelf:               &isLeader,
 		LeaderAddress:        address,
 		LeaderClusterAddress: clusterAddr,
 		ActiveTime:           core.activeTime,
@@ -5483,7 +5484,7 @@ Each entry is of the form "key=value".`,
 		"",
 	},
 	"plugin-catalog_version": {
-		"The semantic version of the plugin to use.",
+		`The semantic version of the plugin to use, or "latest".`,
 		"",
 	},
 	"leases": {

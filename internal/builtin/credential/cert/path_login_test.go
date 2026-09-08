@@ -80,13 +80,13 @@ func TestCert_RoleResolve(t *testing.T) {
 
 func testAccStepResolveRoleWithName(t *testing.T, connState tls.ConnectionState, certName string) logicaltest.TestStep {
 	return logicaltest.TestStep{
-		Operation:       logical.ResolveRoleOperation,
+		Operation:       logical.UpdateOperation,
 		Path:            "login",
 		Unauthenticated: true,
 		ConnState:       &connState,
 		Check: func(resp *logical.Response) error {
-			if resp.Data["role"] != certName {
-				t.Fatalf("Role was not as expected. Expected %s, received %s", certName, resp.Data["role"])
+			if resp.Auth.Metadata["cert_name"] != certName {
+				t.Fatalf("Role was not as expected. Expected %s, received %s", certName, resp.Data["cert_name"])
 			}
 			return nil
 		},
@@ -124,13 +124,13 @@ func TestCert_RoleResolveWithoutProvidingCertName(t *testing.T) {
 
 func testAccStepResolveRoleWithEmptyDataMap(t *testing.T, connState tls.ConnectionState, certName string) logicaltest.TestStep {
 	return logicaltest.TestStep{
-		Operation:       logical.ResolveRoleOperation,
+		Operation:       logical.UpdateOperation,
 		Path:            "login",
 		Unauthenticated: true,
 		ConnState:       &connState,
 		Check: func(resp *logical.Response) error {
-			if resp.Data["role"] != certName {
-				t.Fatalf("Role was not as expected. Expected %s, received %s", certName, resp.Data["role"])
+			if resp.Auth.Metadata["cert_name"] != certName {
+				t.Fatalf("Role was not as expected. Expected %s, received %s", certName, resp.Data["cert_name"])
 			}
 			return nil
 		},
@@ -140,7 +140,7 @@ func testAccStepResolveRoleWithEmptyDataMap(t *testing.T, connState tls.Connecti
 
 func testAccStepResolveRoleExpectRoleResolutionToFail(t *testing.T, connState tls.ConnectionState, certName string) logicaltest.TestStep {
 	return logicaltest.TestStep{
-		Operation:       logical.ResolveRoleOperation,
+		Operation:       logical.UpdateOperation,
 		Path:            "login",
 		Unauthenticated: true,
 		ConnState:       &connState,
@@ -168,7 +168,7 @@ func testAccStepResolveRoleExpectRoleResolutionToFail(t *testing.T, connState tl
 
 func testAccStepResolveRoleOCSPFail(t *testing.T, connState tls.ConnectionState, certName string) logicaltest.TestStep {
 	return logicaltest.TestStep{
-		Operation:       logical.ResolveRoleOperation,
+		Operation:       logical.UpdateOperation,
 		Path:            "login",
 		Unauthenticated: true,
 		ConnState:       &connState,

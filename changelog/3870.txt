@@ -1,0 +1,3 @@
+```release-note:bug
+sys/workflows: Fix Check-And-Set in workflow API.  
+```

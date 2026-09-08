@@ -415,3 +415,9 @@ func (c *Core) stopRollback() error {
 	}
 	return nil
 }
+
+func (c *Core) DoRollback(ctx context.Context, path string) error {
+	c.stateLock.RLock()
+	defer c.stateLock.RUnlock()
+	return c.rollback.Rollback(ctx, path)
+}

@@ -380,27 +380,96 @@ const (
 	RollbackOperation Operation = "rollback"
 )
 
+var AllOperations = []Operation{
+	CreateOperation,
+	ReadOperation,
+	UpdateOperation,
+	PatchOperation,
+	DeleteOperation,
+	ListOperation,
+	ScanOperation,
+	HelpOperation,
+	AliasLookaheadOperation,
+	ResolveRoleOperation,
+	HeaderOperation,
+	RevokeOperation,
+	RenewOperation,
+	RollbackOperation,
+}
+
+// ExternalOperations defines user-facing operations.
+var ExternalOperations = []Operation{
+	CreateOperation,
+	ReadOperation,
+	UpdateOperation,
+	PatchOperation,
+	DeleteOperation,
+	ListOperation,
+	ScanOperation,
+	HelpOperation,
+	HeaderOperation,
+}
+
+// InternalOperations defines openbao-facing operations.
+var InternalOperations = []Operation{
+	AliasLookaheadOperation,
+	ResolveRoleOperation,
+	RevokeOperation,
+	RenewOperation,
+	RollbackOperation,
+}
+
+// LoginOperations defines operations we'll process login requests from.
+var LoginOperations = []Operation{
+	// Create and update operations; both are POST/PUT.
+	CreateOperation,
+	UpdateOperation,
+	// Certain third-party plugins return auth responses on GET. This seems to
+	// potentially be a pattern in the OIDC ecosystem.
+	ReadOperation,
+}
+
 // ValidateOperation will verify the given Operation(s) are supported
 func ValidateOperation(vals ...Operation) error {
-	ops := []Operation{
-		CreateOperation,
-		ReadOperation,
-		UpdateOperation,
-		PatchOperation,
-		DeleteOperation,
-		ListOperation,
-		ScanOperation,
-		HelpOperation,
-		AliasLookaheadOperation,
-		ResolveRoleOperation,
-		HeaderOperation,
-		RevokeOperation,
-		RenewOperation,
-		RollbackOperation,
-	}
 	for _, val := range vals {
-		if !slices.Contains(ops, val) {
+		if !slices.Contains(AllOperations, val) {
 			return fmt.Errorf("Operation(s) not valid: %v", val)
+		}
+	}
+
+	return nil
+}
+
+// ValidateExternalOperations returns a nil error if the request is a valid
+// external (user-initiated) operation.
+func ValidateExternalOperation(vals ...Operation) error {
+	for _, val := range vals {
+		if !slices.Contains(ExternalOperations, val) {
+			return fmt.Errorf("Operation(s) not valid for external use: %v", val)
+		}
+	}
+
+	return nil
+}
+
+// ValidateInternalOperation returns a nil error if the request is a valid
+// internal (system-initiated) operation.
+func ValidateInternalOperation(vals ...Operation) error {
+	for _, val := range vals {
+		if !slices.Contains(InternalOperations, val) {
+			return fmt.Errorf("Operation(s) not valid for internal use: %v", val)
+		}
+	}
+
+	return nil
+}
+
+// ValidateLoginOperation returns a nil error if the request is a valid login
+// operation.
+func ValidateLoginOperation(vals ...Operation) error {
+	for _, val := range vals {
+		if !slices.Contains(LoginOperations, val) {
+			return fmt.Errorf("Operation(s) not valid for login: %v", val)
 		}
 	}
 

@@ -1,0 +1,9 @@
+```release-note:bug
+core/expiration: Ensure leases are not inadvertently cached on standby nodes.
+```
+```release-note:bug
+auth/token: Ensure salt cache is invalidated properly on standby nodes.
+```
+```release-note:change
+core: Restart standby on unknown `sys/` key to invalidate; please report if you see a log line with `no mechanism to invalidate cache`.
+```

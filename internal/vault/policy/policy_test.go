@@ -11,6 +11,7 @@ import (
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
+	"github.com/stretchr/testify/require"
 )
 
 var rawPolicy = strings.TrimSpace(`
@@ -548,4 +549,23 @@ path "foo/+*" {
 	if !strings.Contains(err.Error(), `path "foo/+*": invalid use of wildcards ('+*' is forbidden)`) {
 		t.Errorf("bad error: %s", err)
 	}
+}
+
+func TestPolicy_EmptyControlGroupApprovals(t *testing.T) {
+	_, err := ParseACLPolicy(namespace.RootNamespace, strings.TrimSpace(`
+path "secret/data/foo" {
+  capabilities = ["create", "update", "read"]
+  control_group = {
+    ttl = "5m"
+    factor "security-approval" {
+      controlled_capabilities = ["update"]
+      identity = {
+        group_names = ["security-approvers"]
+        # approvals omitted, or explicitly: approvals = 0
+      }
+    }
+  }
+}
+`))
+	require.ErrorContains(t, err, "missing required approvals")
 }

@@ -43,9 +43,12 @@ func (b *backend) pathImport() *framework.Path {
 			"type": {
 				Type:    framework.TypeString,
 				Default: "aes256-gcm96",
-				Description: `The type of key being imported. Currently, "aes128-gcm96" (symmetric), "aes256-gcm96" (symmetric), "ecdsa-p256"
-(asymmetric), "ecdsa-p384" (asymmetric), "ecdsa-p521" (asymmetric), "ed25519" (asymmetric), "rsa-2048" (asymmetric), "rsa-3072"
-(asymmetric), "rsa-4096" (asymmetric) are supported.  Defaults to "aes256-gcm96".
+				Description: `
+The type of key being imported. Currently, "aes128-gcm96" , "aes256-gcm96",
+"chacha20-poly1305", "xchacha20-poly1305" (symmetric); "ecdsa-p256",
+"ecdsa-p384", "ecdsa-p521", "ed25519", "rsa-2048", "rsa-3072", "rsa-4096",
+"mldsa-44", "mldsa-65", "mldsa-87" (asymmetric) are supported. Defaults to
+"aes256-gcm96".
 `,
 			},
 			"hash_function": {
@@ -218,6 +221,12 @@ func (b *backend) pathImportWrite(ctx context.Context, req *logical.Request, d *
 		polReq.KeyType = keysutil.KeyType_RSA3072
 	case "rsa-4096":
 		polReq.KeyType = keysutil.KeyType_RSA4096
+	case "mldsa-44":
+		polReq.KeyType = keysutil.KeyType_MLDSA44
+	case "mldsa-65":
+		polReq.KeyType = keysutil.KeyType_MLDSA65
+	case "mldsa-87":
+		polReq.KeyType = keysutil.KeyType_MLDSA87
 	case "hmac":
 		polReq.KeyType = keysutil.KeyType_HMAC
 	default:

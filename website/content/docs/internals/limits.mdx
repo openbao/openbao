@@ -196,7 +196,7 @@ The maximum duration of an OpenBao operation is
 90 seconds. If a particular secret engine takes longer than this to perform an
 operation on a remote service, the OpenBao client will see a failure.
 
-The environment variable [`VAULT_CLIENT_TIMEOUT`](../commands/index.mdx#vault_client_timeout) sets a client-side maximum duration as well,
+The environment variable [`BAO_CLIENT_TIMEOUT`](../commands/index.mdx#bao_client_timeout) sets a client-side maximum duration as well,
 which is 60 seconds by default.
 
 ### Request JSON Complexity
@@ -225,7 +225,7 @@ The definitions for "JSON complexity" might change in the future.
 ### Lease limits
 
 A systemwide [maximum TTL](../configuration/index.mdx#max_lease_ttl), and a
-[maximum TTL per mount point](/api-docs/system/mounts#max_lease_ttl-1) can be
+[maximum TTL per mount point](../api/system/mounts.mdx#max_lease_ttl-1) can be
 configured.
 
 Although no technical maximum exists, high lease counts can cause

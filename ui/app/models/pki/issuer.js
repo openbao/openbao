@@ -103,6 +103,9 @@ export default class PkiIssuerModel extends Model {
       'sha512withrsa',
       'ecdsawithsha256',
       'ecdsawithsha512',
+      'mldsa44',
+      'mldsa65',
+      'mldsa87',
     ],
   })
   revocationSignatureAlgorithm;

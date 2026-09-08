@@ -33,6 +33,7 @@
 import Component from '@glimmer/component';
 import Ember from 'ember';
 import keys from 'vault/lib/keycodes';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 import { action, set } from '@ember/object';
 import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
@@ -129,6 +130,12 @@ export default class SecretCreateOrUpdate extends Component {
     const changed = secret.changedAttributes();
     const changedKeys = Object.keys(changed);
 
+    // ember-data 4.12 requires created records to have a client id; KV1
+    // secrets are only identified by their (path) id, so set it up front
+    if (!isV2 && secretData && secretData.isNew && !secretData.id && key) {
+      secretData.set('id', key);
+    }
+
     return secretData
       .save()
       .then(() => {
@@ -168,7 +175,7 @@ export default class SecretCreateOrUpdate extends Component {
     callback(key);
   }
   transitionToRoute() {
-    return this.router.transitionTo(...arguments);
+    return transitionToSafe(this.router, ...arguments);
   }
 
   get isCreateNewVersionFromOldVersion() {

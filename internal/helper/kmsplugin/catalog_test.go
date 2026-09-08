@@ -9,10 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/openbao/go-kms-wrapping/kms/transit/v2"
 	gkwplugin "github.com/openbao/go-kms-wrapping/plugin/v2"
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	"github.com/openbao/go-kms-wrapping/wrappers/static/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/command/server"
 	"github.com/openbao/openbao/v2/internal/helper/osutil"
@@ -28,9 +25,7 @@ func TestStaticPluginServer(t *testing.T) {
 	}
 
 	gkwplugin.Serve(&gkwplugin.ServeOpts{
-		WrapperFactoryFunc: func() wrapping.Wrapper {
-			return static.NewWrapper()
-		},
+		WrapperFactoryFunc: builtinWrappers["static"],
 	})
 }
 
@@ -41,7 +36,8 @@ func TestTransitPluginServer(t *testing.T) {
 	}
 
 	gkwplugin.Serve(&gkwplugin.ServeOpts{
-		KMSFactoryFunc: transit.New,
+		KMSFactoryFunc: builtinKMSes["transit"],
+		Metadata:       builtinMetadata["transit"],
 	})
 }
 
@@ -160,16 +156,6 @@ func TestBadClientConfig(t *testing.T) {
 		"BadPluginDirectory": {
 			PluginDirectory: t.TempDir(),
 			Plugins:         []*server.PluginConfig{StaticPluginConfig},
-		},
-		"NoChecksum": {
-			PluginDirectory: filepath.Dir(os.Args[0]),
-			Plugins: []*server.PluginConfig{{
-				Type:    StaticPluginConfig.Type,
-				Name:    StaticPluginConfig.Name,
-				Command: StaticPluginConfig.Command,
-				Args:    StaticPluginConfig.Args,
-				Env:     StaticPluginConfig.Env,
-			}},
 		},
 		"BadChecksum": {
 			PluginDirectory: filepath.Dir(os.Args[0]),

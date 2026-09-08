@@ -10,7 +10,7 @@
 />
 <Toolbar>
   <ToolbarActions>
-    <ToolbarLink @route="issuers.import" data-test-generate-issuer="import">
+    <ToolbarLink @route="issuers.import" data-test-generate-issuer="import" @model={{(current-mount-path)}}>
       Import
     </ToolbarLink>
     <BasicDropdown @class="popup-menu" @horizontalPosition="auto-right" @verticalPosition="below" as |D|>
@@ -26,7 +26,12 @@
         <nav class="box menu" aria-label="generate options">
           <ul class="menu-list">
             <li class="action">
-              <LinkTo @route="issuers.generate-root" {{on "click" (fn this.onLinkClick D)}} data-test-generate-issuer="root">
+              <LinkTo
+                @route="issuers.generate-root"
+                {{on "click" (fn this.onLinkClick D)}}
+                data-test-generate-issuer="root"
+                @model={{(current-mount-path)}}
+              >
                 Root
               </LinkTo>
             </li>
@@ -35,6 +40,7 @@
                 @route="issuers.generate-intermediate"
                 {{on "click" (fn this.onLinkClick D)}}
                 data-test-generate-issuer="intermediate"
+                @model={{(current-mount-path)}}
               >
                 Intermediate CSR
               </LinkTo>
@@ -50,7 +56,7 @@
   <Page::PkiIssuerList @issuers={{this.model.issuersModel}} @mountPoint={{this.mountPoint}} />
 {{else}}
   <EmptyState @title="PKI not configured" @message={{this.notConfiguredMessage}}>
-    <LinkTo @route="configuration.create">
+    <LinkTo @route="configuration.create" @model={{(current-mount-path)}}>
       Configure PKI
     </LinkTo>
   </EmptyState>

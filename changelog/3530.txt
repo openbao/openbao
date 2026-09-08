@@ -1,0 +1,3 @@
+```release-note:improvement
+command/server: Add `tls_auto_reload` configuration option to automatically reload TLS certificate and key files when their contents change, without requiring `SIGHUP`.
+```

@@ -10,6 +10,9 @@ on:
       - release/**
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.head_ref || github.run_id }}-lint
   cancel-in-progress: true
@@ -19,9 +22,9 @@ jobs:
     name: Code checks
     runs-on: ubuntu-latest
     env:
-      GOLANGCI_LINT_VERSION: v2.12.2
+      GOLANGCI_LINT_VERSION: v2.13.1
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/set-up-go
@@ -52,11 +55,11 @@ jobs:
     name: Semgrep
     runs-on: ubuntu-latest
     container:
-      image: returntocorp/semgrep@sha256:ffc6f3567654f9431456d49fd059dfe548f007c494a7eb6cd5a1a3e50d813fb3
+      image: docker.io/semgrep/semgrep:1.171.0@sha256:bdf7013b2c3634a487671158da77c554f531742326b543a9464d2adf6c433ac8
     # Skip any PR created by dependabot and any check triggered by merge group
     if: (github.actor != 'dependabot[bot]') && (github.event != 'merge_group')
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Run Semgrep Rules
@@ -67,7 +70,7 @@ jobs:
     name: Go mod checks
     runs-on: ubuntu-slim
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/set-up-go
       - name: Run go mod tidy to check for differences
         run: make ci-tidy-all
@@ -75,16 +78,21 @@ jobs:
         run: make ci-sync-deps
 
   el8gobuild:
+    # TODO(ascheel): We are disabling EL8 checker while we merge Go 1.27 until
+    # it supports it. We'll maintain v2.6.x patches for anyone building on a
+    # non-Go 1.27 platform (though, without releases).
+    if: false
+
     # make sure that bao can still be built with the golang version on el8
     # unless there is a `no-el8gobuild` label
-    if: "!contains(github.event.pull_request.labels.*.name, 'no-el8gobuild')"
+    # if: "!contains(github.event.pull_request.labels.*.name, 'no-el8gobuild')"
     name: EL8 Go build checks
     runs-on: ubuntu-latest
     container: ghcr.io/almalinux/8-base
     steps:
       - name: Install required packages
         run: dnf -y install golang git
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set safe.directory
         # This is supposed to be done by default in the checkout action
         # but it doesn't work within a container.
@@ -106,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/set-up-go
       - name: Install protobuf
         run: |

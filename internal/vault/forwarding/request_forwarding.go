@@ -45,6 +45,12 @@ type core interface {
 	NamespacesMissingKeys() []string
 	SetNamespaceKeys(context.Context, map[string][]byte) error
 	NamespaceKeys(context.Context, []string) (map[string][]byte, error)
+
+	Restart()
+
+	MarkPeerStarted(ctx context.Context, uuid string) (string, error)
+	AddInvalidationPeer(stream grpc.ServerStreamingServer[CheckInvalidationResponse]) (string, chan struct{}, error)
+	AwaitInvalidation(ctx context.Context, cleanup func(), index string, keys ...string)
 }
 
 type clusterPeerClusterAddrsCache interface {

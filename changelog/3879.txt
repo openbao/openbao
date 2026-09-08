@@ -1,0 +1,12 @@
+```release-note:feature
+**Add PebbleDB Storage Backend**: This storage backend is a non-HA, durable backend using PebbleDB for transactions and improved performance.
+```
+```release-note:change
+command/server: Remove `file` storage backend support.
+```
+```release-note:deprecation
+command: The `file` storage backend is deprecated for `bao operator migrate` and will be removed in v2.8.0.
+```
+```release-note:improvement
+sdk/physical: Replace `inmem` backend with ephemeral PebbleDB instance.
+```

@@ -5,11 +5,14 @@
 
 import Route from '@ember/routing/route';
 import { tabsForAuthSection } from 'vault/helpers/tabs-for-auth-section';
+import { inject as service } from '@ember/service';
+
 export default Route.extend({
+  router: service(),
   beforeModel() {
     let { methodType, paths } = this.modelFor('vault.cluster.access.method');
     paths = paths ? paths.paths.filter((path) => path.navigation === true) : null;
     const activeTab = tabsForAuthSection([methodType, 'authConfig', paths])[0].routeParams;
-    return this.transitionTo(...activeTab);
+    return this.router.transitionTo(...activeTab);
   },
 });

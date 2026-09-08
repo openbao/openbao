@@ -44,6 +44,18 @@ func TestNamespaceSealStatusCommand_Run(t *testing.T) {
 			out:  "Too many arguments",
 			code: 1,
 		},
+		{
+			name: "field",
+			args: []string{"-field", "sealed", nsName},
+			out:  "true",
+			code: 0,
+		},
+		{
+			name: "field_not_found",
+			args: []string{"-field", "not-a-real-field", nsName},
+			out:  "not present",
+			code: 1,
+		},
 	}
 	t.Run("validations", func(t *testing.T) {
 		t.Parallel()

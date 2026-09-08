@@ -5,7 +5,6 @@ package server
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -74,6 +73,14 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 		ln = tls.NewListener(ln, tlsConfig)
 	}
 
+	if l.TLSAutoReload && l.TLSCertFile != "" && cg != nil {
+		paths := []string{l.TLSCertFile}
+		if l.TLSKeyFile != "" {
+			paths = append(paths, l.TLSKeyFile)
+		}
+		ln = listenerutil.NewTLSReloadListener(ln, paths, l.TLSAutoReloadInterval, cg.Reload, logger)
+	}
+
 	return ln, props, cg, nil
 }
 
@@ -92,6 +99,11 @@ func (ln TCPKeepAliveListener) Accept() (c net.Conn, err error) {
 	if err != nil {
 		return c, err
 	}
-	err = errors.Join(err, tc.SetKeepAlive(true), tc.SetKeepAlivePeriod(3*time.Minute))
-	return tc, err
+
+	// This may fail on some operating systems (e.g., OpenBSD), and that's okay.
+	// Avoid returning any errors since that'll kill the entire connection.
+	_ = tc.SetKeepAlive(true)
+	_ = tc.SetKeepAlivePeriod(3 * time.Minute)
+
+	return tc, nil
 }

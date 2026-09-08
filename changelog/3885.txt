@@ -1,0 +1,3 @@
+```release-note:bug
+ui: Fix invalid CSS class causing uncentered text on MFA method create page.
+```

@@ -7,24 +7,34 @@ import (
 	"strings"
 )
 
+// The following variables should be set via ldflags.
 var (
-	// The git commit that was compiled. This will be filled in by Goreleaser.
+	// The git commit being compiled.
 	GitCommit   string
 	GitDescribe string
 
-	// The date of the commit. This will be filled in by the compiler.
+	// The date of the commit.
 	CommitDate string
 
-	// Deprecated, backwards-compatibility only: Replaced by CommitDate
+	// The full version being compiled, e.g., "v2.7.0" or "v2.7.0-beta1".
+	fullVersion = "2.0.0-HEAD"
+
+	// Additional version metadata that will be shown as a version suffix behind
+	// a "+" separator in various places. This is a good place for downstream to
+	// insert a vendor-specific tag, such as "debian".
+	VersionMetadata = ""
+)
+
+// The following variables should not be set via ldflags.
+var (
+	// Deprecated: Backwards-compatibility only, replaced by [CommitDate].
 	BuildDate string
 
-	// Whether cgo is enabled or not; set at build time
+	// Whether cgo is enabled or not; set via cgo.go at build time.
 	CgoEnabled bool
 
-	// Filled by Goreleaser
-	fullVersion                   = "2.0.0-HEAD"
+	// Base version and pre-release version, split out from [fullVersion].
 	Version, VersionPrerelease, _ = strings.Cut(strings.TrimSpace(fullVersion), "-")
-	VersionMetadata               = ""
 )
 
 func init() {

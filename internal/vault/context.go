@@ -38,6 +38,10 @@ func (a *atomicContext) Canceler() context.CancelFunc {
 	return a.canceler
 }
 
+func (a *atomicContext) Cancel() {
+	a.Canceler()()
+}
+
 func (a *atomicContext) Deadline() (time.Time, bool) {
 	if a.IsNil() {
 		return time.Time{}, false

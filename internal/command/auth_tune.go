@@ -192,7 +192,8 @@ func (c *AuthTuneCommand) Flags() *FlagSets {
 		Target:  &c.flagPluginVersion,
 		Default: "",
 		Usage: "Select the semantic version of the plugin to run. The new version must be registered in " +
-			"the plugin catalog and will not start running until the plugin is reloaded.",
+			"the plugin catalog and will not start running until the plugin is reloaded. " +
+			`Can also be set to "latest" to automatically pick the latest available plugin version on reload.`,
 	})
 
 	return set

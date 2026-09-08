@@ -16,9 +16,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWorkflow(t *testing.T) {
+func TestWorkflow_Acceptance(t *testing.T) {
+	t.Parallel()
+
 	coreConfig := &vault.CoreConfig{
-		DisableCache: true,
+		DisableCache:                  true,
+		AllowUnauthenticatedWorkflows: true,
 		CredentialBackends: map[string]logical.Factory{
 			"userpass": userpass.Factory,
 		},
@@ -65,6 +68,76 @@ func TestWorkflow(t *testing.T) {
 		client := client.WithNamespace("mfa")
 		testWorkflowLoginMFA(t, client)
 	})
+
+	t.Run("unauthenticated", func(t *testing.T) {
+		_, err := client.Logical().Write("sys/namespaces/unauthenticated", map[string]any{})
+		require.NoError(t, err)
+
+		client := client.WithNamespace("unauthenticated")
+		testWorkflowUnauthenticatedExecute(t, client)
+	})
+
+	t.Run("alias-lookahead", func(t *testing.T) {
+		_, err := client.Logical().Write("sys/namespaces/alias-lookahead", map[string]any{})
+		require.NoError(t, err)
+
+		client := client.WithNamespace("alias-lookahead")
+		testWorkflowAliasLookaheadExecute(t, client)
+	})
+}
+
+func TestWorkflow_DenyUnauthed(t *testing.T) {
+	t.Parallel()
+
+	coreConfig := &vault.CoreConfig{
+		DisableCache:                  true,
+		AllowUnauthenticatedWorkflows: false,
+		CredentialBackends: map[string]logical.Factory{
+			"userpass": userpass.Factory,
+		},
+		LogicalBackends: map[string]logical.Factory{
+			"kv-v2": logicalKv.VersionedKVFactory,
+			"totp":  logicalTotp.Factory,
+		},
+	}
+
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		NumCores:    1,
+	})
+
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	cores := cluster.Cores
+
+	vault.TestWaitActive(t, cores[0].Core)
+
+	client := cores[0].Client
+
+	// Create a unauthed workflow
+	_, err := client.Logical().Write("sys/workflows/manage/unauthed-check", map[string]any{
+		"workflow":              sealStatusWorkflow,
+		"allow_unauthenticated": true,
+	})
+	require.NoError(t, err)
+
+	// Create a normal, authed workflow
+	_, err = client.Logical().Write("sys/workflows/manage/authed-check", map[string]any{
+		"workflow":              sealStatusWorkflow,
+		"allow_unauthenticated": false,
+	})
+	require.NoError(t, err)
+
+	unauthClient, err := client.CloneWithHeaders()
+	require.NoError(t, err)
+	unauthClient.ClearToken()
+
+	_, err = unauthClient.Logical().Write("sys/workflows/unauthed-execute/authed-check", nil)
+	require.ErrorContains(t, err, "permission denied")
+
+	_, err = unauthClient.Logical().Write("sys/workflows/unauthed-execute/unauthed-check", nil)
+	require.ErrorContains(t, err, "permission denied")
 }
 
 func testWorkflowAcceptance(t *testing.T, client *api.Client) {
@@ -169,6 +242,62 @@ func testWorkflowLoginMFA(t *testing.T, client *api.Client) {
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 }
+
+func testWorkflowUnauthenticatedExecute(t *testing.T, client *api.Client) {
+	// Create a unauthed workflow
+	_, err := client.Logical().Write("sys/workflows/manage/unauthed-check", map[string]any{
+		"workflow":              sealStatusWorkflow,
+		"allow_unauthenticated": true,
+	})
+	require.NoError(t, err)
+
+	// Create a normal, authed workflow
+	_, err = client.Logical().Write("sys/workflows/manage/authed-check", map[string]any{
+		"workflow":              sealStatusWorkflow,
+		"allow_unauthenticated": false,
+	})
+	require.NoError(t, err)
+
+	unauthClient, err := client.CloneWithHeaders()
+	require.NoError(t, err)
+	unauthClient.ClearToken()
+
+	_, err = unauthClient.Logical().Write("sys/workflows/unauthed-execute/authed-check", nil)
+	require.ErrorContains(t, err, "permission denied")
+
+	_, err = unauthClient.Logical().Write("sys/workflows/unauthed-execute/unauthed-check", nil)
+	require.NoError(t, err)
+}
+
+func testWorkflowAliasLookaheadExecute(t *testing.T, client *api.Client) {
+	// Create workflow.
+	_, err := client.Logical().Write("sys/workflows/manage/test-login", map[string]any{
+		"workflow": aliasLookaheadWorkflow,
+	})
+	require.NoError(t, err)
+
+	// Should exist.
+	resp, err := client.Logical().List("sys/workflows/manage")
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data["keys"], "test-login")
+
+	// Should not be able to execute it.
+	workflowResp, err := client.Logical().Write("sys/workflows/execute/test-login", map[string]any{
+		"username": "admin",
+	})
+	require.ErrorContains(t, err, "cannot handle internal-only request operation")
+	require.Nil(t, workflowResp)
+}
+
+const sealStatusWorkflow = `
+flow "check" {
+  request "status" {
+    operation = "read"
+    path = "sys/seal-status"
+  }
+}
+`
 
 const createNamespaceWorkflow = `
 input {
@@ -499,6 +628,45 @@ flow "authentication" {
         field_name = "password"
       }
     }
+  }
+}
+
+output {
+  data = {
+    token = {
+      eval_type = "string"
+      eval_source = "response"
+      flow_name = "authentication"
+      response_name = "login"
+      field_selector = ["auth", "client_token"]
+    }
+  }
+}
+`
+
+const aliasLookaheadWorkflow = `
+flow "administration" {
+  request "auth" {
+    operation = "create"
+    path = "sys/auth/userpass"
+    data = {
+      type = "userpass"
+    }
+  }
+
+  request "admin" {
+    operation = "create"
+    path = "auth/userpass/users/admin"
+    data = {
+      password = "admin"
+    }
+  }
+}
+
+flow "authentication" {
+  request "login" {
+    operation = "alias-lookahead"
+    path = "auth/userpass/login/admin"
   }
 }
 

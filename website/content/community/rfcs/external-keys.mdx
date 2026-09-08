@@ -181,7 +181,7 @@ Transit will not support modes which require HMAC.
 ### Plugin Key Usage
 
 Upstream HashiCorp Vault Enterprise uses the `managed_key_name` and
-`managed_key_uuid` fields. We will support an `external_key_name` field as
+`managed_key_uuid` fields. We will support an `external_key_ref` field as
 well as an equivalent alternative `managed_key_name` field to offer some
 compatibility with existing workflows that target upstream. UUID fields are
 unsupported, external keys are addressed by config name + key name only.
@@ -189,12 +189,12 @@ unsupported, external keys are addressed by config name + key name only.
 The intention here is that plugin authors will enable external keys via an
 explicit key type (`key_type=external_key` or `key_type=managed_key`). The
 actual key type will be inferred from the underlying external key instance.
-When providing these parameters, the above `external_key_name` or
+When providing these parameters, the above `external_key_ref` or
 `managed_key_name` fields will need to be provided, which will be used for
 the lookup via the SystemView API.
 
 In Transit in particular, each key version could reference a different external
-key via the `external_key_name` value. Any automatic rotation will be disabled.
+key via the `external_key_ref` value. Any automatic rotation will be disabled.
 
 ## Rationale and Alternatives
 

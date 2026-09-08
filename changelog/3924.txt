@@ -1,0 +1,3 @@
+```release-note:bug
+core/recovery: Fix generation of recovery token via `bao operator generate-root` by allowing status checks.
+```

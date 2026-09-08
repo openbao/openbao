@@ -15,7 +15,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	ldapcred "github.com/openbao/openbao/v2/internal/builtin/credential/ldap"
+	cred "github.com/openbao/openbao/v2/internal/builtin/credential/approle"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/stretchr/testify/require"
 )
@@ -50,7 +50,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{
-			"ldap": ldapcred.Factory,
+			"approle": cred.Factory,
 		},
 	}
 
@@ -63,9 +63,9 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 
 	TestWaitActive(t, core)
 
-	req := logical.TestRequest(t, logical.UpdateOperation, "sys/auth/ldap")
+	req := logical.TestRequest(t, logical.UpdateOperation, "sys/auth/approle")
 	req.ClientToken = cluster.RootToken
-	req.Data["type"] = "ldap"
+	req.Data["type"] = "approle"
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -81,7 +81,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	accessor := resp.Data["ldap/"].(map[string]any)["accessor"].(string)
+	accessor := resp.Data["approle/"].(map[string]any)["accessor"].(string)
 
 	// Create an entity
 	req = logical.TestRequest(t, logical.UpdateOperation, "identity/entity")
@@ -126,8 +126,8 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 
 	groupID := resp.Data["id"].(string)
 
-	// Get the ldap mount
-	sysView := core.router.MatchingSystemView(namespace.RootContext(t.Context()), "auth/ldap/")
+	// Get the approle mount
+	sysView := core.router.MatchingSystemView(namespace.RootContext(t.Context()), "auth/approle/")
 
 	tCases := []struct {
 		tpl      string

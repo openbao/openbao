@@ -3,18 +3,6 @@
 
 package identity
 
-import (
-	"testing"
-
-	"github.com/openbao/openbao/api/v2"
-	"github.com/openbao/openbao/sdk/v2/logical"
-	ldaphelper "github.com/openbao/openbao/v2/internal/helper/testhelpers/ldap"
-	vaulthttp "github.com/openbao/openbao/v2/internal/http"
-	"github.com/openbao/openbao/v2/internal/vault"
-
-	credLdap "github.com/openbao/openbao/v2/internal/builtin/credential/ldap"
-)
-
 /*
 // TODO: rewrite test to not rely on GitHub plugin
 func TestIdentityStore_ListGroupAlias(t *testing.T) {
@@ -152,6 +140,8 @@ func TestIdentityStore_ListGroupAlias(t *testing.T) {
 }
 */
 
+/*
+// TODO: rewrite test to not rely on LDAP plugin
 // Testing the fix for GH-4351
 func TestIdentityStore_ExternalGroupMembershipsAcrossMounts(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
@@ -386,3 +376,4 @@ func TestIdentityStore_ExternalGroupMembershipsAcrossMounts(t *testing.T) {
 		t.Fatalf("missing entity ID %q first external group with ID %q", entityID, ldapExtGroupID2)
 	}
 }
+*/

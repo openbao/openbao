@@ -1453,6 +1453,9 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, entry *
 		return fmt.Errorf("failed to cleanup mfa login configs: %w", err)
 	}
 
+	// clear external key clients
+	ns.core.externalKeys.CleanupNamespace(nsCtx, entry)
+
 	if updateStorage {
 		// clear quotas
 		if err := ns.core.quotaManager.HandleNamespaceDeletion(nsCtx, entry.Path); err != nil {
@@ -1744,6 +1747,13 @@ func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (strin
 // NamespaceByStoragePath parses an absolute storage path and returns the
 // matching namespace that the path belongs to.
 func (c *Core) NamespaceByStoragePath(ctx context.Context, path string) (*namespace.Namespace, string, error) {
+	if c.recoveryMode {
+		// In recovery mode, we do not have a namespace store so treat
+		// everything as relative to the root namespace. This means that
+		// sealed namespaces will not function.
+		return namespace.RootNamespace, path, nil
+	}
+
 	rest, ok := strings.CutPrefix(path, barrier.NamespacePrefix)
 	if !ok || rest == "" {
 		return namespace.RootNamespace, path, nil

@@ -56,11 +56,14 @@ on:
 
 env: ${{ fromJSON(inputs.env-vars) }}
 
+permissions:
+  contents: read
+
 jobs:
   test-matrix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.checkout-ref }}
           persist-credentials: false
@@ -121,6 +124,9 @@ jobs:
   test-go:
     needs: test-matrix
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     strategy:
       fail-fast: false
       matrix:
@@ -128,7 +134,7 @@ jobs:
     env:
       TIMEOUT_IN_MINUTES: ${{ inputs.timeout-minutes }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.checkout-ref }}
           persist-credentials: false
@@ -273,6 +279,9 @@ jobs:
     if: ${{ ! cancelled() }}
     needs: [test-go, test-matrix]
     runs-on: ubuntu-slim
+    permissions:
+      contents: read
+      actions: write
     steps:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

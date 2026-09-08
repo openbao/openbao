@@ -26,6 +26,12 @@ func (b *backend) pathRotate() *framework.Path {
 				Type:        framework.TypeString,
 				Description: "Name of the key",
 			},
+			"external_key_ref": {
+				Type: framework.TypeString,
+				Description: `Reference to the external key to use. This follows
+the format <config name>:<key name>, uniquely identifying the key configured
+under sys/external-keys/configs/<config name>/keys/<key name>.`,
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -60,6 +66,21 @@ func (b *backend) pathRotateWrite(ctx context.Context, req *logical.Request, d *
 		return logical.ErrorResponse("key not found"), logical.ErrInvalidRequest
 	}
 	defer p.Unlock()
+
+	externalKeyRef := d.Get("external_key_ref").(string)
+	if p.Type == keysutil.KeyType_ExternalKey {
+		if externalKeyRef == "" {
+			return logical.ErrorResponse("must provide external_key_ref to rotate policy of type external-key"), logical.ErrInvalidRequest
+		}
+
+		if _, err := b.System().GetExternalKey(ctx, externalKeyRef); err != nil {
+			return logical.ErrorResponse("failed to fetch external key: %s", err), logical.ErrInvalidRequest
+		}
+
+		p.ExternalKeyRef = externalKeyRef
+	} else if externalKeyRef != "" {
+		return logical.ErrorResponse("cannot use external_key_ref on key of type %v", p.Type.String()), logical.ErrInvalidRequest
+	}
 
 	// Rotate the policy
 	err = p.Rotate(ctx, req.Storage, b.GetRandomReader())

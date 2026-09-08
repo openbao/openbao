@@ -1,6 +1,5 @@
 ```release-note:feature
-**Auto Unseal plugins**: Add a new `kms` plugin type that enables Auto Unseal
-mechanisms to be distributed as external binary plugins.
+**Auto Unseal plugins**: Add a new `kms` plugin type that enables Auto Unseal mechanisms to be distributed as external binary plugins.
   - Declaratively register KMS provider plugins via `plugin "kms" "name" { }`
     stanzas in the server configuration, making `"name"` available as an Auto
     Unseal mechanism via `seal "name" { }`.
@@ -18,15 +17,9 @@ mechanisms to be distributed as external binary plugins.
 ```
 
 ```release-note:deprecation
-seal: Following the introduction of pluggable Auto Unseal support in this
-release, the built-in versions of the `alicloudkms`, `awskms`, `azurekeyvault`,
-`gcpckms`, `ocikms` and `pkcs11` Auto Unseal mechanisms will be removed in
-v2.7.0 and remain available as external plugins only.
+seal: Following the introduction of pluggable Auto Unseal support in this release, the built-in versions of the `alicloudkms`, `awskms`, `azurekeyvault`, `gcpckms`, `ocikms` and `pkcs11` Auto Unseal mechanisms will be removed in v2.7.0 and remain available as external plugins only.
 ```
 
 ```release-note:deprecation
-packaging, seal/pkcs11: Following the introduction of pluginized HSM/PKCS#11
-Auto Unseal support in this release, the HSM distribution of OpenBao will be
-discontinued by v2.7.0. PKCS#11 support remains available via the PKCS#11 plugin
-which can be used together with the standard distribution of OpenBao.
+packaging, seal/pkcs11: Following the introduction of pluginized HSM/PKCS#11 Auto Unseal support in this release, the HSM distribution of OpenBao will be discontinued by v2.7.0. PKCS#11 support remains available via the PKCS#11 plugin which can be used together with the standard distribution of OpenBao.
 ```

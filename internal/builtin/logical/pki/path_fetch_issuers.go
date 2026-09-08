@@ -192,7 +192,7 @@ signing CRLs. This parameter allows differentiation between PKCS#1v1.5
 and PSS keys and choice of signature hash algorithm. The default (empty
 string) value is for Go to select the signature algorithm. This can fail
 if the underlying key does not support the requested signature algorithm,
-which may not be known at modification time (such as with PKCS#11 managed
+which may not be known at modification time (such as with PKCS#11-managed
 RSA keys).`,
 		Default: "",
 	}

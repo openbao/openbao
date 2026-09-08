@@ -40,12 +40,12 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
-	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/audit"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/identity/mfa"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/version"
 )
 
@@ -1309,7 +1309,8 @@ func TestCore_HandleRequest_NoClientToken(t *testing.T) {
 
 	// Attempt to request with connection data
 	req = &logical.Request{
-		Path: "foo/login",
+		Path:      "foo/login",
+		Operation: logical.UpdateOperation,
 	}
 	req.ClientToken = root
 	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
@@ -1345,6 +1346,7 @@ func TestCore_HandleRequest_ConnOnLogin(t *testing.T) {
 	// Attempt to request with connection data
 	req = &logical.Request{
 		Path:       "auth/foo/login",
+		Operation:  logical.UpdateOperation,
 		Connection: &logical.Connection{},
 	}
 	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
@@ -1386,7 +1388,8 @@ func TestCore_HandleLogin_Token(t *testing.T) {
 
 	// Attempt to login
 	lreq := &logical.Request{
-		Path: "auth/foo/login",
+		Path:      "auth/foo/login",
+		Operation: logical.UpdateOperation,
 	}
 	lresp, err := c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err != nil {
@@ -1665,7 +1668,8 @@ func TestCore_HandleLogin_AuditTrail(t *testing.T) {
 
 	// Attempt to login
 	lreq := &logical.Request{
-		Path: "auth/foo/login",
+		Path:      "auth/foo/login",
+		Operation: logical.UpdateOperation,
 	}
 	lresp, err := c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err != nil {
@@ -2582,7 +2586,8 @@ func TestCore_HandleRequest_Login_InternalData(t *testing.T) {
 
 	// Attempt to login
 	lreq := &logical.Request{
-		Path: "auth/foo/login",
+		Path:      "auth/foo/login",
+		Operation: logical.UpdateOperation,
 	}
 	lresp, err := c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err != nil {
@@ -2671,7 +2676,8 @@ func TestCore_HandleLogin_ReturnSecret(t *testing.T) {
 
 	// Attempt to login
 	lreq := &logical.Request{
-		Path: "auth/foo/login",
+		Path:      "auth/foo/login",
+		Operation: logical.UpdateOperation,
 	}
 	_, err = c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err != ErrInternalError {
@@ -2828,7 +2834,8 @@ path "secret/*" {
 
 	// Attempt to login -- should fail because we don't allow root to be returned
 	lreq := &logical.Request{
-		Path: "auth/foo/login",
+		Path:      "auth/foo/login",
+		Operation: logical.UpdateOperation,
 	}
 	lresp, err := c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err == nil || lresp == nil || !lresp.IsError() {
@@ -2838,7 +2845,8 @@ path "secret/*" {
 	// Fix and try again
 	noopBack.Response.Auth.Policies = []string{"admins"}
 	lreq = &logical.Request{
-		Path: "auth/foo/login",
+		Path:      "auth/foo/login",
+		Operation: logical.UpdateOperation,
 	}
 	lresp, err = c.HandleRequest(namespace.RootContext(t.Context()), lreq)
 	if err != nil {

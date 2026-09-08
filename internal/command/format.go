@@ -134,7 +134,7 @@ type RawFormatter struct{}
 func (r RawFormatter) Format(data any) ([]byte, error) {
 	byte_data, ok := data.([]byte)
 	if !ok {
-		return nil, errors.New("This command does not support the -format=raw option; only `vault read` does.") //nolint:staticcheck // user-facing error
+		return nil, errors.New("This command does not support the -format=raw option; only `bao read` does.") //nolint:staticcheck // user-facing error
 	}
 
 	return byte_data, nil
@@ -379,7 +379,7 @@ func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, data any) error {
 }
 
 func (t TableFormatter) OutputList(ui cli.Ui, secret *api.Secret, data any) error {
-	t.printWarnings(ui, secret)
+	printWarnings(ui, secret)
 
 	// Determine if we have additional information from a ListResponseWithInfo endpoint.
 	var additionalInfo map[string]any
@@ -485,9 +485,9 @@ func (t TableFormatter) OutputList(ui cli.Ui, secret *api.Secret, data any) erro
 }
 
 // printWarnings prints any warnings in the secret.
-func (t TableFormatter) printWarnings(ui cli.Ui, secret *api.Secret) {
+func printWarnings(ui cli.Ui, secret *api.Secret) {
 	if secret != nil && len(secret.Warnings) > 0 {
-		ui.Warn("WARNING! The following warnings were returned from Vault:\n")
+		ui.Warn("WARNING! The following warnings were returned from OpenBao:\n")
 		for _, warning := range secret.Warnings {
 			ui.Warn(wrapAtLengthWithPadding(fmt.Sprintf("* %s", warning), 2))
 			ui.Warn("")
@@ -500,7 +500,7 @@ func (t TableFormatter) OutputSecret(ui cli.Ui, secret *api.Secret) error {
 		return nil
 	}
 
-	t.printWarnings(ui, secret)
+	printWarnings(ui, secret)
 
 	out := make([]string, 0, 8)
 	if secret.LeaseDuration > 0 {
@@ -629,8 +629,7 @@ func (t TableFormatter) OutputMap(ui cli.Ui, data map[string]any) error {
 	return nil
 }
 
-// OutputSealStatus will print *api.SealStatusResponse in the CLI according to the format provided
-func OutputSealStatus(ui cli.Ui, client *api.Client, status *api.SealStatusResponse) int {
+func buildSealStatusOutput(client *api.Client, status *api.SealStatusResponse) (*SealStatusOutput, error) {
 	sealStatusOutput := SealStatusOutput{SealStatusResponse: *status}
 
 	// Mask the 'Vault is sealed' error, since this means HA is enabled, but that
@@ -641,8 +640,7 @@ func OutputSealStatus(ui cli.Ui, client *api.Client, status *api.SealStatusRespo
 		err = nil
 	}
 	if err != nil {
-		ui.Error(fmt.Sprintf("Error checking leader status: %s", err))
-		return 1
+		return nil, fmt.Errorf("Error checking leader status: %s", err)
 	}
 
 	// copy leaderStatus fields into sealStatusOutput for display later
@@ -653,7 +651,19 @@ func OutputSealStatus(ui cli.Ui, client *api.Client, status *api.SealStatusRespo
 	sealStatusOutput.LeaderClusterAddress = leaderStatus.LeaderClusterAddress
 	sealStatusOutput.RaftCommittedIndex = leaderStatus.RaftCommittedIndex
 	sealStatusOutput.RaftAppliedIndex = leaderStatus.RaftAppliedIndex
-	OutputData(ui, sealStatusOutput)
+
+	return &sealStatusOutput, nil
+}
+
+// OutputSealStatus will print *api.SealStatusResponse in the CLI according to the format provided
+func OutputSealStatus(ui cli.Ui, client *api.Client, status *api.SealStatusResponse) int {
+	sealStatusOutput, err := buildSealStatusOutput(client, status)
+	if err != nil {
+		ui.Error(err.Error())
+		return 1
+	}
+
+	OutputData(ui, *sealStatusOutput)
 	return 0
 }
 
@@ -668,7 +678,7 @@ func looksLikeDuration(k string) bool {
 }
 
 // This struct is responsible for capturing all the fields to be output by a
-// vault status command, including fields that do not come from the status API.
+// bao status command, including fields that do not come from the status API.
 // Currently we are adding the fields from api.LeaderResponse
 type SealStatusOutput struct {
 	api.SealStatusResponse

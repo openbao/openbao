@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cenkalti/backoff/v5"
@@ -80,6 +81,7 @@ type PostgreSQLBackend struct {
 	haEnabled     bool
 	logger        log.Logger
 	txnPermitPool *physical.PermitPool
+	txnLeakCount  atomic.Uint64
 
 	fenceLock sync.RWMutex
 	fence     *PostgreSQLLock
@@ -139,6 +141,11 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		logger.Debug("transaction_max_parallel set", "transaction_max_parallel", txnMaxParInt)
 	} else {
 		txnMaxParInt = physical.DefaultParallelTransactions
+	}
+
+	if txnMaxParInt >= maxParInt && maxParInt >= 3 {
+		// Leave one for lock renewal.
+		txnMaxParInt = maxParInt - 1
 	}
 
 	maxIdleConnsStr, maxIdleConnsIsSet := conf["max_idle_connections"]

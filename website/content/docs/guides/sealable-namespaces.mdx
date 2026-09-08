@@ -65,7 +65,7 @@ A newly created sealable namespace is sealed. To unseal a Shamir-sealed namespac
 
 ```shell-session
 $ bao namespace unseal -ns=tenants my-tenant
-Unseal Key (will be hidden): 
+Unseal Key (will be hidden):
 Key                Value
 ---                -----
 Seal Type          shamir
@@ -160,7 +160,7 @@ irrecoverable due to lost seal keys.
 ## Rotate Unseal Keys
 
 To start generating a new set of unseal keys for a sealable namespace, use the
-`bao operator rotate-keys` command with the `-ns` flag. 
+`bao operator rotate-keys` command with the `-ns` flag.
 
 ```shell-session
 $ bao operator rotate-keys -ns=tenants/my-tenant -init
@@ -196,7 +196,7 @@ rotation procedure using the same command without the `-init` flag:
 ```shell-session
 $ bao operator rotate-keys -ns=tenants/my-tenant
 rotation nonce: 393bcb43-93b0-bd74-393e-19fa7a929cee
-Unseal Key (will be hidden): 
+Unseal Key (will be hidden):
 
 Key 1: PBkUn7edaxLU1RoWhQ2V1WB/d+fDqD7vbTGdZn3RvlJL
 Key 2: Kevv2P/y8quC2Z+fC0U+NFDv2QgHk8wz+xQWcR3kbHSn
@@ -262,7 +262,7 @@ You will then have to provide the appropriate number of seal shares to finish th
 ```shell-session
 $ bao operator generate-root -ns=tenants/my-tenant
 Operation nonce: ad287b9e-cb19-613b-3720-84b5ac4ac1ef
-Unseal Key (will be hidden): 
+Unseal Key (will be hidden):
 Nonce            ad287b9e-cb19-613b-3720-84b5ac4ac1ef
 Started          true
 Progress         3/3

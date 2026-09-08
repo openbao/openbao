@@ -8,6 +8,7 @@ import { inject as service } from '@ember/service';
 
 export default Route.extend({
   store: service(),
+  router: service(),
   templateName: 'vault/cluster/secrets/backend/sign',
 
   backendModel() {
@@ -30,11 +31,11 @@ export default Route.extend({
     const backend = backendModel.id;
 
     if (backendModel.type !== 'ssh') {
-      return this.transitionTo('vault.cluster.secrets.backend.list-root', backend);
+      return this.router.transitionTo('vault.cluster.secrets.backend.list-root', backend);
     }
     return this.store.queryRecord('capabilities', this.pathQuery(role, backend)).then((capabilities) => {
       if (!capabilities.canUpdate) {
-        return this.transitionTo('vault.cluster.secrets.backend.list-root', backend);
+        return this.router.transitionTo('vault.cluster.secrets.backend.list-root', backend);
       }
       return this.store.createRecord('ssh-sign', {
         role: {

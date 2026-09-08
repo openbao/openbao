@@ -227,6 +227,10 @@ func (b *backend) pathKeysConfigWrite(ctx context.Context, req *logical.Request,
 			p.AutoRotatePeriod = autoRotatePeriod
 			persistNeeded = true
 		}
+
+		if p.Type == keysutil.KeyType_ExternalKey && p.AutoRotatePeriod != 0 {
+			return logical.ErrorResponse("auto rotate period must be disabled on external keys"), nil
+		}
 	}
 
 	if !persistNeeded {

@@ -295,7 +295,8 @@ type SealConfig struct {
 	Nonce string `json:"nonce" mapstructure:"nonce"`
 
 	// Backup indicates whether or not a backup of PGP-encrypted unseal keys
-	// should be stored at coreUnsealKeysBackupPath after successful rotation.
+	// should be stored at coreUnsealKeysBackupPath or coreRecoveryUnsealKeysBackupPath
+	// after successful rotation.
 	Backup bool `json:"backup" mapstructure:"backup"`
 
 	// Stores the progress of the rotation (key shares).

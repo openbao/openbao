@@ -4,11 +4,40 @@
 package listenerutil
 
 import (
+	"crypto/tls"
+	"math"
 	"os"
 	osuser "os/user"
 	"strconv"
+	"strings"
 	"testing"
 )
+
+func TestCurveIDsMatchGoStdLib(t *testing.T) {
+	for i := range math.MaxUint16 + 1 {
+		id := tls.CurveID(i)
+		name := id.String()
+
+		supportedCurveID := !strings.HasPrefix(name, "CurveID(")
+
+		got, ok := curveIDByName[name]
+		switch {
+		// Tripwire in case new Go versions add more CurveIDs we need to support
+		case supportedCurveID && !ok:
+			t.Errorf("missing mapping in CurveToCurveID, please add new %s (0x%04x)", name, i)
+		case supportedCurveID && got != id:
+			t.Errorf("CurveToCurveID(%q) = 0x%04x, want 0x%04x", name, got, id)
+		case !supportedCurveID && ok:
+			t.Errorf("CurveToCurveID(%q) accepts an ID crypto/tls does not define", name)
+		}
+	}
+
+	for name, id := range curveIDByName {
+		if strings.HasPrefix(id.String(), "CurveID(") {
+			t.Errorf("%q maps to an ID (0x%04x) that crypto/tls does not define", name, uint16(id))
+		}
+	}
+}
 
 func TestUnixSocketListener(t *testing.T) {
 	t.Run("ids", func(t *testing.T) {

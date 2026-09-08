@@ -17,10 +17,10 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/v2/internal/http"
+	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/vault"
 )
 
@@ -391,13 +391,7 @@ func Test(tt TestT, c TestCase) {
 	if c.CredentialFactory != nil || c.CredentialBackend != nil {
 		rollbackPath = "auth/" + rollbackPath
 	}
-	req := logical.RollbackRequest(rollbackPath)
-	req.Data["immediate"] = true
-	req.ClientToken = client.Token()
-	resp, err := core.HandleRequest(ctx, req)
-	if err == nil && resp.IsError() {
-		err = fmt.Errorf("erroneous response:\n\n%#v", resp)
-	}
+	err = core.DoRollback(ctx, rollbackPath)
 	if err != nil {
 		if !errwrap.Contains(err, logical.ErrUnsupportedOperation.Error()) {
 			tt.Error(fmt.Sprintf("[ERR] Rollback error: %s", err))

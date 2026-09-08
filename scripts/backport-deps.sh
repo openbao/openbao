@@ -59,6 +59,11 @@ for go_mod in go.mod sdk/go.mod api/go.mod; do
 
   while read -r bump; do
     module=$(jq -r '.module' <<< "$bump")
+
+    if [[ "$module" == "stdlib" ]]; then
+      continue
+    fi
+
     fixed_versions=$(jq -r '.versions[]' <<< "$bump")
     version_on_main=$(jq -r --argjson bump "$bump" 'select(.Path == $bump.module) | .Version' <<< "$main")
 

@@ -6,6 +6,7 @@
 import Controller from '@ember/controller';
 import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default class PolicyEditController extends Controller {
   @service router;
@@ -17,7 +18,7 @@ export default class PolicyEditController extends Controller {
     try {
       await this.model.destroyRecord();
       this.flashMessages.success(`${policyType.toUpperCase()} policy "${name}" was successfully deleted.`);
-      this.router.transitionTo('vault.cluster.policies', policyType);
+      transitionToSafe(this.router, 'vault.cluster.policies', policyType);
     } catch (error) {
       this.model.rollbackAttributes();
       const errors = error.errors ? error.errors.join('. ') : error.message;

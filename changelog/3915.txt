@@ -1,0 +1,3 @@
+```release-note:improvement
+core/plugins: Allow pinning OCI-based plugins by manifest digest (e.g., `ghcr.io/openbao/openbao-plugin-secrets-aws@sha256:<digest>`) instead of providing the `sha256sum` of the inner plugin binary.
+```

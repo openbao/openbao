@@ -89,32 +89,36 @@ func TestWriteCommand_Run(t *testing.T) {
 				"-field", "not-a-real-field",
 				"auth/token/create", "display_name=foo",
 			},
-			"not present in secret",
+			"not present",
 			1,
 		},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+	t.Run("validations", func(t *testing.T) {
+		t.Parallel()
 
-			client, closer := testVaultServer(t)
-			defer closer()
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 
-			ui, cmd := testWriteCommand(t)
-			cmd.client = client
+				client, closer := testVaultServer(t)
+				defer closer()
 
-			code := cmd.Run(tc.args)
-			if code != tc.code {
-				t.Errorf("expected %d to be %d", code, tc.code)
-			}
+				ui, cmd := testWriteCommand(t)
+				cmd.client = client
 
-			combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
-			if !strings.Contains(combined, tc.out) {
-				t.Errorf("expected %q to contain %q", combined, tc.out)
-			}
-		})
-	}
+				code := cmd.Run(tc.args)
+				if code != tc.code {
+					t.Errorf("expected %d to be %d", code, tc.code)
+				}
+
+				combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
+				if !strings.Contains(combined, tc.out) {
+					t.Errorf("expected %q to contain %q", combined, tc.out)
+				}
+			})
+		}
+	})
 
 	t.Run("force", func(t *testing.T) {
 		t.Parallel()

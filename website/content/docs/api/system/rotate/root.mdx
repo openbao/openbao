@@ -1,0 +1,33 @@
+---
+description: The `/sys/rotate/root` endpoint is used to perform a root key rotation without requiring existing key shares to be provided.
+---
+
+# `/sys/rotate/root`
+
+:::info
+
+The `/sys/rotate/root` endpoint is available from version `v2.4.0`.
+
+:::
+
+The `/sys/rotate/root` endpoint is used to perform a root key rotation without
+requiring existing key shares to be provided.
+
+:::info
+
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
+  any path-specific capabilities.
+
+:::
+
+| Method  | Path               |
+| :------ | :----------------- |
+| `POST`  | `/sys/rotate/root` |
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/rotate/root
+```

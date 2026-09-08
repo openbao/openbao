@@ -17,7 +17,7 @@
             {{else if (eq attr.name "serialNumber")}}
               <LinkTo
                 @route="certificates.certificate.details"
-                @model={{@model.serialNumber}}
+                @models={{array (current-mount-path) @model.serialNumber}}
               >{{@model.serialNumber}}</LinkTo>
             {{else}}
               <Icon @name="minus" />

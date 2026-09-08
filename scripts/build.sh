@@ -6,8 +6,7 @@
 # This script builds the application from source for multiple platforms.
 #
 # This script should not be used for external release processes; instead,
-# invoke `go build` directly; see /.goreleaser-template.yaml for more
-# information.
+# invoke `go build` directly.
 set -e
 
 GO_CMD=${GO_CMD:-go}
@@ -54,7 +53,7 @@ ${GO_CMD} build \
 
 if [ "$1" == "plugin" ]; then
     for etype in logical credential; do
-        for plugin in builtin/$etype/*; do
+        for plugin in internal/builtin/$etype/*; do
             plugin_name="$(basename "$plugin")"
             if [ ! -e "$plugin/cmd" ]; then
                 continue
@@ -69,7 +68,7 @@ if [ "$1" == "plugin" ]; then
                     -ldflags "${LD_FLAGS} -X github.com/openbao/openbao/v2/internal/version.GitCommit='${GIT_COMMIT}${GIT_DIRTY}' -X github.com/openbao/openbao/v2/internal/version.CommitDate=${COMMIT_DATE}" \
                     -o "bin/$etype-$plugin_name-$dirname" \
                     -tags "${BUILD_TAGS}" \
-                    github.com/openbao/openbao/$dir
+                    github.com/openbao/openbao/v2/$dir
             done
         done
     done

@@ -113,13 +113,6 @@ func (b *backend) pathGenerateIntermediate(ctx context.Context, req *logical.Req
 		data.Raw["exported"] = "existing"
 	}
 
-	// Remove this once https://github.com/golang/go/issues/45990 is fixed
-	data.Schema["use_pss"] = &framework.FieldSchema{
-		Type:    framework.TypeBool,
-		Default: false,
-	}
-	data.Raw["use_pss"] = false
-
 	sc := b.makeStorageContext(ctx, req.Storage)
 	exported, format, role, errorResp := getGenerationParams(sc, data)
 	if errorResp != nil {

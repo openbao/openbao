@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/openbao/go-kms-wrapping/v2/kms"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
@@ -289,4 +290,23 @@ func (b *backend) rotateIfRequired(ctx context.Context, req *logical.Request, ke
 
 	}
 	return nil
+}
+
+type ExternalKeyFactory struct {
+	ctx  context.Context
+	view logical.SystemView
+}
+
+var _ keysutil.ExternalKeyFactory = &ExternalKeyFactory{}
+
+func (e *ExternalKeyFactory) GetExternalKey(ref string) (context.Context, kms.Key, error) {
+	key, err := e.view.GetExternalKey(e.ctx, ref)
+	return e.ctx, key, err
+}
+
+func (b *backend) ExternalKeyFactory(ctx context.Context) *ExternalKeyFactory {
+	return &ExternalKeyFactory{
+		ctx:  ctx,
+		view: b.System(),
+	}
 }

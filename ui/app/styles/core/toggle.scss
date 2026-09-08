@@ -100,7 +100,7 @@
 .toggle[type='checkbox'].is-small + label::after {
   will-change: left;
 }
-.toggle[type='checkbox']:focus + label {
+.toggle[type='checkbox']:focus + label::before {
   box-shadow: 0 0 1px $blue;
 }
 .toggle[type='checkbox'].is-success:checked + label::before {

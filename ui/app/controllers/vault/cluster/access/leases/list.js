@@ -9,10 +9,12 @@ import Controller, { inject as controller } from '@ember/controller';
 import utils from 'vault/lib/key-utils';
 import escapeStringRegexp from 'escape-string-regexp';
 import commonPrefix from 'core/utils/common-prefix';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default Controller.extend({
   flashMessages: service(),
   store: service(),
+  router: service(),
   clusterController: controller('vault.cluster'),
 
   backendCrumb: computed('clusterController.model.name', function () {
@@ -100,7 +102,7 @@ export default Controller.extend({
       const fn = adapter[method];
       fn.call(adapter, prefix)
         .then(() => {
-          return this.transitionToRoute('vault.cluster.access.leases.list-root').then(() => {
+          return transitionToSafe(this.router, 'vault.cluster.access.leases.list-root').then(() => {
             this.flashMessages.success(`All of the leases under ${prefix} will be revoked.`);
           });
         })

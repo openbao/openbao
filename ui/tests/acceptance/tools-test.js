@@ -169,6 +169,7 @@ module('Acceptance | tools', function (hooks) {
     await fillIn('[data-test-tools-input="wrapping-token"]', 'sometoken');
     await click('[data-test-tools-submit]');
 
+    await waitUntil(() => findAll('.CodeMirror')[0]?.CodeMirror);
     assert.deepEqual(
       JSON.parse(findAll('.CodeMirror')[0].CodeMirror.getValue()),
       AUTH_RESPONSE.auth,

@@ -9,11 +9,12 @@ import Route from '@ember/routing/route';
 export default Route.extend({
   store: service(),
   version: service(),
+  router: service(),
 
   model() {
     const policyType = this.policyType();
     if (policyType !== 'acl') {
-      return this.transitionTo('vault.cluster.policies', policyType);
+      return this.router.transitionTo('vault.cluster.policies', policyType);
     }
     return this.store.createRecord(`policy/${policyType}`, {});
   },

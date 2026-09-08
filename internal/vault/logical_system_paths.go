@@ -2709,10 +2709,12 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 					Callback: b.handleRenew,
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
-					Summary: "Renews a lease, requesting to extend the lease.",
+					Summary:                     "Renews a lease, requesting to extend the lease.",
+					ForwardPerformanceSecondary: true,
+					ForwardPerformanceStandby:   true,
 				},
 			},
 
@@ -2753,7 +2755,9 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 							Description: "OK",
 						}},
 					},
-					Summary: "Revokes a lease immediately.",
+					Summary:                     "Revokes a lease immediately.",
+					ForwardPerformanceSecondary: true,
+					ForwardPerformanceStandby:   true,
 				},
 			},
 
@@ -2785,8 +2789,10 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 							Description: "OK",
 						}},
 					},
-					Summary:     "Revokes all secrets or tokens generated under a given prefix immediately",
-					Description: "Unlike `/sys/leases/revoke-prefix`, this path ignores backend errors encountered during revocation. This is potentially very dangerous and should only be used in specific emergency situations where errors in the backend or the connected backend service prevent normal revocation.\n\nBy ignoring these errors, OpenBao abdicates responsibility for ensuring that the issued credentials or secrets are properly revoked and/or cleaned up. Access to this endpoint should be tightly controlled.",
+					Summary:                     "Revokes all secrets or tokens generated under a given prefix immediately",
+					Description:                 "Unlike `/sys/leases/revoke-prefix`, this path ignores backend errors encountered during revocation. This is potentially very dangerous and should only be used in specific emergency situations where errors in the backend or the connected backend service prevent normal revocation.\n\nBy ignoring these errors, OpenBao abdicates responsibility for ensuring that the issued credentials or secrets are properly revoked and/or cleaned up. Access to this endpoint should be tightly controlled.",
+					ForwardPerformanceSecondary: true,
+					ForwardPerformanceStandby:   true,
 				},
 			},
 
@@ -2823,7 +2829,9 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 							Description: "OK",
 						}},
 					},
-					Summary: "Revokes all secrets (via a lease ID prefix) or tokens (via the tokens' path property) generated under a given prefix immediately.",
+					Summary:                     "Revokes all secrets (via a lease ID prefix) or tokens (via the tokens' path property) generated under a given prefix immediately.",
+					ForwardPerformanceSecondary: true,
+					ForwardPerformanceStandby:   true,
 				},
 			},
 
@@ -2844,10 +2852,12 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 					Callback: b.handleTidyLeases,
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 							Fields:      map[string]*framework.FieldSchema{},
 						}},
 					},
+					ForwardPerformanceSecondary: true,
+					ForwardPerformanceStandby:   true,
 				},
 			},
 
@@ -4276,7 +4286,7 @@ func (b *SystemBackend) wrappingPaths() []*framework.Path {
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ReadOperation: &framework.PathOperation{
+				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.Core.handleControlGroupRequest,
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{

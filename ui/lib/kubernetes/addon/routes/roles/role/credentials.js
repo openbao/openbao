@@ -19,9 +19,13 @@ export default class KubernetesRoleCredentialsRoute extends Route {
     super.setupController(controller, resolvedModel);
 
     controller.breadcrumbs = [
-      { label: resolvedModel.backend, route: 'overview' },
-      { label: 'roles', route: 'roles' },
-      { label: resolvedModel.roleName, route: 'roles.role.details' },
+      { label: resolvedModel.backend, route: 'overview', models: [resolvedModel.backend] },
+      { label: 'roles', route: 'roles', models: [resolvedModel.backend] },
+      {
+        label: resolvedModel.roleName,
+        route: 'roles.role.details',
+        models: [resolvedModel.backend, resolvedModel.roleName],
+      },
       { label: 'credentials' },
     ];
   }

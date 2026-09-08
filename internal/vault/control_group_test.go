@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/identity"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/policy"
 	"github.com/stretchr/testify/require"
@@ -136,6 +137,7 @@ func TestControlGroup_setControlGroup(t *testing.T) {
 
 func TestControlGroup_addAuthorization(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
+	i := c.identityStore
 
 	creationTime := time.Now()
 	wrappingTokenEntry := &logical.TokenEntry{
@@ -156,6 +158,19 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	require.NotEmpty(t, wrappingTokenEntry.ID)                          // id has been created
 	require.Empty(t, wrappingTokenEntry.InternalMeta["control_group"])  // no control group
 	require.Empty(t, wrappingTokenEntry.InternalMeta["request_entity"]) // no request data
+
+	// Create group for approver membership
+	secOpsGroup := identity.Group{
+		ID:          "secops-id",
+		Name:        "secops",
+		NamespaceID: namespace.RootNamespaceID,
+		BucketKey:   i.EntityPacker(ctx).BucketKey("secops-id"),
+	}
+
+	txn := i.Txn(ctx, true)
+	err := i.MemDBUpsertGroupInTxn(txn, &secOpsGroup)
+	require.NoError(t, err)
+	txn.Commit()
 
 	cg := logical.ControlGroup{
 		TTL: time.Duration(14440),
@@ -190,7 +205,7 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	}
 
 	// Set control group in token
-	err := c.setControlGroupInTokenEntry(ctx, wrappingTokenEntry, &cg)
+	err = c.setControlGroupInTokenEntry(ctx, wrappingTokenEntry, &cg)
 	require.Nil(t, err)
 
 	// Set request entity in token
@@ -200,13 +215,14 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	// addAuthorzation
 	var groups []*logical.Alias
 	groups = append(groups, &logical.Alias{
-		Name: "secops",
+		ID: "secops-id",
 	})
 	auth := logical.Auth{
 		EntityID:     "approving-user-id",
 		DisplayName:  "user@example.com",
 		GroupAliases: groups,
 	}
+	// addAuthorization converts the control group factor identity group names to IDs.
 	err = c.addAuthorization(ctx, wrappingTokenEntry.ID, &auth)
 	require.Nil(t, err)
 
@@ -245,6 +261,7 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 
 func TestControlGroup_validateControlGroup(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
+	i := c.identityStore
 
 	creationTime := time.Now()
 	te := &logical.TokenEntry{
@@ -308,11 +325,25 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	err = c.setEntityInTokenEntry(ctx, te, &requestEntity)
 	require.Nil(t, err)
 
+	// Create group for approver membership
+	secOpsGroup := identity.Group{
+		ID:          "secops-id",
+		Name:        "secops",
+		NamespaceID: namespace.RootNamespaceID,
+		BucketKey:   i.EntityPacker(ctx).BucketKey("secops-id"),
+	}
+
+	txn := i.Txn(ctx, true)
+	err = i.MemDBUpsertGroupInTxn(txn, &secOpsGroup)
+	require.NoError(t, err)
+	txn.Commit()
+
 	// addAuthorzation
 	var groups []*logical.Alias
 	groups = append(groups, &logical.Alias{
-		Name: "secops",
+		ID: "secops-id",
 	})
+
 	entityID, err := uuid.GenerateUUID()
 	require.Nil(t, err)
 	auth := logical.Auth{

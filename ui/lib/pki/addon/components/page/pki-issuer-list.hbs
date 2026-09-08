@@ -46,12 +46,12 @@
             <nav class="menu" aria-label="issuer config options">
               <ul class="menu-list">
                 <li data-test-popup-menu-details>
-                  <LinkTo @route="issuers.issuer.details" @model={{pkiIssuer.id}}>
+                  <LinkTo @route="issuers.issuer.details" @models={{array (current-mount-path) pkiIssuer.id}}>
                     Details
                   </LinkTo>
                 </li>
                 <li>
-                  <LinkTo @route="issuers.issuer.edit" @model={{pkiIssuer.id}}>
+                  <LinkTo @route="issuers.issuer.edit" @models={{array (current-mount-path) pkiIssuer.id}}>
                     Edit
                   </LinkTo>
                 </li>

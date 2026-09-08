@@ -9,6 +9,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"crypto/mldsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
@@ -248,6 +249,12 @@ func getExportKey(policy *keysutil.Policy, key *keysutil.KeyEntry, exportType st
 				return "", err
 			}
 			return rsaKey, nil
+		case keysutil.KeyType_MLDSA44, keysutil.KeyType_MLDSA65, keysutil.KeyType_MLDSA87:
+			mldsaKey, err := encodeMLDSAPrivateKey(key, format)
+			if err != nil {
+				return "", err
+			}
+			return mldsaKey, nil
 		}
 	case exportTypePublicKey:
 		switch policy.Type {
@@ -275,6 +282,12 @@ func getExportKey(policy *keysutil.Policy, key *keysutil.KeyEntry, exportType st
 				return "", err
 			}
 			return rsaKey, nil
+		case keysutil.KeyType_MLDSA44, keysutil.KeyType_MLDSA65, keysutil.KeyType_MLDSA87:
+			mldsaKey, err := encodeMLDSAPublicKey(key, format, policy.Type.MLDSAParams())
+			if err != nil {
+				return "", err
+			}
+			return mldsaKey, nil
 		}
 	case exportTypeCertificateChain:
 		if key.CertificateChain == nil {
@@ -518,6 +531,64 @@ func encodeED25519PublicKey(k *keysutil.KeyEntry, format string) (string, error)
 	}
 
 	return strings.TrimSpace(string(pem.EncodeToMemory(&pemBlock))), nil
+}
+
+func encodeMLDSAPrivateKey(k *keysutil.KeyEntry, format string) (string, error) {
+	if k.IsPrivateKeyMissing() {
+		return "", nil
+	}
+
+	privKey, err := k.MLDSAKey()
+	if err != nil {
+		return "", err
+	}
+
+	if format == "" || format == "raw" {
+		return base64.StdEncoding.EncodeToString(privKey.Bytes()), nil
+	}
+
+	derBytes, err := x509.MarshalPKCS8PrivateKey(privKey)
+	if err != nil {
+		return "", err
+	}
+
+	if format == "der" {
+		return base64.StdEncoding.EncodeToString(derBytes), nil
+	}
+
+	return strings.TrimSpace(string(pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: derBytes,
+	}))), nil
+}
+
+func encodeMLDSAPublicKey(k *keysutil.KeyEntry, format string, params mldsa.Parameters) (string, error) {
+	if format == "" || format == "raw" {
+		return k.FormattedPublicKey, nil
+	}
+
+	raw, err := base64.StdEncoding.DecodeString(k.FormattedPublicKey)
+	if err != nil {
+		return "", err
+	}
+	pubKey, err := mldsa.NewPublicKey(params, raw)
+	if err != nil {
+		return "", err
+	}
+
+	derBytes, err := x509.MarshalPKIXPublicKey(pubKey)
+	if err != nil {
+		return "", err
+	}
+
+	if format == "der" {
+		return base64.StdEncoding.EncodeToString(derBytes), nil
+	}
+
+	return strings.TrimSpace(string(pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: derBytes,
+	}))), nil
 }
 
 const pathExportHelpSyn = `Export named encryption or signing key`

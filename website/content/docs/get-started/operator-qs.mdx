@@ -1,0 +1,211 @@
+# Operator quick start
+
+This quick start explains how operators (administrators) can deploy and initialize OpenBao.
+At the end of this guide, you will have a simple OpenBao environment that you can use as a playground for learning.
+You will also have connected your first application that can use OpenBao as a central secret storage.
+
+## Step 1: Install OpenBao
+
+Follow the [installation guide](../install.mdx) to install OpenBao on a machine of your choice.
+
+## Step 2: Locate config file
+
+Make sure you know where your OpenBao [config file](../configuration/index.mdx) is
+located, so that you can edit it later when necessary.
+For example: the official container images expect to find the configuration at `/openbao/config/openbao.hcl`,
+and the native Linux packages (DEB/RPM) place it at `/etc/openbao/openbao.hcl`.
+
+If you are running OpenBao using a container, you typically provide a full configuration at `/openbao/config/openbao.hcl`
+(for example, using a Docker volume mount or a Kubernetes ConfigMap).
+
+:::info
+
+If you edit the config file while OpenBao is already running, you need to restart
+OpenBao or send a SIGHUP signal to cause OpenBao to reload the config file.
+
+:::
+
+## Step 3: Configure listener
+
+Configure where OpenBao should listen (Unix socket, TCP HTTP/HTTPS) using the
+[`listener` stanza](../configuration/listener/index.mdx).
+Edit your `openbao.hcl` accordingly.
+
+When using HTTPS, use your preferred CA/PKI to obtain a private key and certificate to use with OpenBao.
+OpenBao [supports ACME](../configuration/listener/tcp.mdx#acme-parameters)
+to automatically request certificates from services such as Let's Encrypt.
+
+## Step 4: Enable audit device
+
+[Audit devices](../audit/index.mdx) keep a log of all requests to OpenBao.
+The OpenBao project strongly recommends that you enable at least one audit device.
+For example, in container environments, it is common to log to stdout:
+
+```hcl
+audit "file" "to-stdout" {
+  description = "Write audit information to standard output."
+  options {
+    file_path = "stdout"
+    log_raw = "true"
+  }
+}
+```
+
+:::warning
+
+Make sure that you have an appropriate log collection solution to durably store
+the audit logs and to protect them from tampering.
+
+:::
+
+## Step 5: Check status
+
+Start OpenBao (or restart it if it was already running).
+Then check OpenBao's status, to verify that the instance is up and that you can connect to the API.
+
+From the command line, you can use the [`bao` tool](../commands/index.mdx) to
+interact with the API and query the status:
+
+```shell-session
+$ bao status
+Key                      Value
+---                      -----
+Seal Type                shamir
+Initialized              false
+Sealed                   true
+
+# ...
+```
+
+Alternatively, you can visit the UI at https://localhost:8200.
+This may trigger a TLS warning if you are using a private CA.
+
+## Step 6: Initialize OpenBao
+
+The [`operator` command](../commands/operator/index.mdx) of the [OpenBao CLI](../commands/index.mdx)
+is the main interaction point for operators with their OpenBao instance.
+
+Most importantly, you need to initialize the OpenBao instance before it can be used:
+
+```shell-session
+$ bao operator init
+Unseal Key 1: sP/4C/fwIDjJmHEC2bi/1Pa43uKhsUQMmiB31GRzFc0R
+Unseal Key 2: kHkw2xTBelbDFIMEgEC8NVX7NDSAZ+rdgBJ/HuJwxOX+
+Unseal Key 3: +1+1ZnkQDfJFHDZPRq0wjFxEuEEHxDDOQxa8JJ/AYWcb
+Unseal Key 4: cewseNJTLovmFrgpyY+9Hi5OgJlJgGGCg7PZyiVdPwN0
+Unseal Key 5: wyd7rMGWX5fi0k36X4e+C4myt5CoTmJsHJ0rdYT7BQcF
+
+Initial Root Token: s.4sKYlIzhy31U4o5ISZdeap60
+
+# ...
+```
+
+OpenBao's storage is encrypted at rest; therefore, OpenBao requires cryptographic
+material each time that it starts: the [_unseal keys_](../concepts/seal.mdx).
+When you initialize the instance, OpenBao generates a set of unseal keys.
+Securely note down the unseal keys, as without them, you won't be able to decrypt the storage.
+
+From now on, you will need to unseal OpenBao after every restart.
+To do so, run [`operator unseal`](../commands/operator/unseal.mdx) multiple times.
+The amount depends on the threshold of your Shamir seal (default 3).
+You can later set up automatic unsealing; if you do, you will instead need to securely store a set
+of _recovery keys_.
+
+Also note down the [_root token_](../concepts/tokens.mdx#root-tokens).
+It is needed to authenticate to the OpenBao API, through which you will perform further configuration.
+
+:::warning
+
+These values are highly sensitive and grant access to your OpenBao instance!
+It is highly recommended to only use the root token for the initial configuration
+(to set up additional auth methods and scoped policies, see below) and discard it afterwards.
+
+:::
+
+## Step 7: Test secrets reading/writing
+
+For test purposes, log in with the root token:
+
+```shell-session
+$ bao login
+```
+
+You can then read/write secrets that are scoped to this token using the
+[`cubbyhole` secrets engine](../secrets/cubbyhole.mdx):
+
+```shell-session
+$ bao write cubbyhole/my-secret my-value=s3cr3t
+$ bao read cubbyhole/my-secret
+```
+
+:::info
+
+`cubbyhole` is ephemeral, and scoped to the lifetime of the token.
+Real applications should use a secrets engine suitable to their use case (see below).
+
+:::
+
+## Step 8: Connect client applications
+
+Now that your OpenBao instance is running, connect your applications to it.
+This involves the following steps:
+
+1. [**Enable the secrets engine**](../secrets/index.mdx) that your application plans to use.
+   Different types of engines are available, depending on the use case that you are deploying OpenBao for.
+
+1. [**Define a policy**](../concepts/policies.mdx) stating
+   which paths your application is allowed to access.
+
+1. [**Choose an auth method**](../auth/index.mdx) to let client applications authenticate against OpenBao.
+   The default built-in method is tokens, but many other methods are available (such as LDAP and OIDC).
+
+1. **Configure the auth method** and create an entity for each of your applications.
+   See the "Configuration" section of your chosen auth method for details.
+   At creation time, you can link a policy to the entity to restrict what it can access.
+
+Your client applications should now be able to access OpenBao.
+
+:::warning
+
+Apply the principle of least privilege!
+For example: only enable the secret engines and auth methods that you use,
+write policies that are restrictive, and use separate identities for separate applications.
+
+:::
+
+## Conclusion
+
+You now have a basic OpenBao instance running and applications connected.
+
+If this is your first time following this guide, you likely took a few shortcuts
+(such as copying the unseal keys to an insecure notes app, skipping setting up
+an audit device, using the root token for everything, or defining a policy
+without any restrictions).
+
+To set up a production instance, you can ultimately follow the same steps as above.
+However, don't take shortcuts, and follow all advice and warnings.
+Before deploying a production instance, the OpenBao projects recommends that you
+familiarize yourself with the rest of this documentation.
+A list of further reading topics is provided below.
+
+## Further topics
+
+- [**Concepts:**](../concepts/index.mdx)
+  Learn how OpenBao works and how its concepts impact your day-to-day usage and operation.
+
+- [**High availability:**](../commands/operator/raft.mdx)
+  OpenBao supports high availability via the integrated storage backend.
+  You can add additional OpenBao instances to the cluster using `operator raft join`.
+  Note: Only the first instance must be initialized with a seal.
+
+- [**Plugins:**](../plugins/index.mdx)
+  Plugins extend the core OpenBao functionality. The main plugin categories are
+  auth methods, secret engines, database providers, and KMS providers.
+
+- [**Sealing:**](../configuration/seal/index.mdx)
+  OpenBao can be unsealed with different methods, for example, with keys stored in a KMS or HSM.
+  This is useful for auto-unsealing, to avoid needing manual operator intervention after restarts.
+
+- [**Self-initialization:**](../configuration/self-init.mdx)
+  Define all necessary configuration declaratively, instead of making API requests after the first server start.
+  This is particularly useful in combination with auto-unseal.

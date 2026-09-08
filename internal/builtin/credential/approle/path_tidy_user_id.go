@@ -79,7 +79,7 @@ func (b *backend) tidySecretIDinternal(s logical.Storage) {
 	// Don't cancel when the original client request goes away
 	ctx := context.Background()
 
-	salt, err := b.Salt(ctx)
+	salt, err := b.Salt(ctx, s)
 	if err != nil {
 		logger.Error("error tidying secret IDs", "error", err)
 		return

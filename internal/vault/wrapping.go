@@ -457,7 +457,21 @@ func (c *Core) validateWrappingToken(ctx context.Context, req *logical.Request) 
 		req.SetTokenEntry(te)
 	}
 
-	return c.validateControlGroup(ctx, te, logical.ReadOperation)
+	// check token for control group deferral
+	_, cgErr := c.getControlGroupFromTokenEntry(ctx, te)
+	// if there's no control group, token is valid
+	if errors.Is(cgErr, ErrControlGroupNotFound) {
+		return true, nil
+	}
+	if cgErr != nil {
+		return false, cgErr
+	}
+	originalRequest, err := c.getRequestFromTokenEntry(ctx, te)
+	if err != nil {
+		return false, err
+	}
+	// validate authorization of the control group
+	return c.validateControlGroup(ctx, te, originalRequest.Operation)
 }
 
 func IsWrappingToken(te *logical.TokenEntry) bool {

@@ -1,0 +1,3 @@
+```release-note:bug
+core/plugins: Ensure that a mount's storage view is no longer marked read-only following a successful plugin reload.
+```

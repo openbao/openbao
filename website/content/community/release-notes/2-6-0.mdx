@@ -131,11 +131,13 @@ description: Release notes for OpenBao 2.6.x
 
 * command: Remove buffering and delayed release of logs during startup phase of `server`, `agent`, `proxy` & `debug` subcommands. This includes the removal of the undocumented and hidden `-disable-gated-logs` flag. [[GH-2620](https://github.com/openbao/openbao/pull/2620)]
 * command: `operator generate-root` now uses the authenticated `/sys/generate-root-token` endpoints instead of the deprecated `/sys/generate-root` endpoints. [[GH-3190](https://github.com/openbao/openbao/pull/3190)]
+* command/seal-status: Remove "Performance Standby Node", "Performance Standby Last Remote WAL", "Last WAL" and "Warnings" from the output. [[GH-2383](https://github.com/openbao/openbao/pull/2383)]
 * core: `net/http.ServeMux` in Go 1.26 now uses a 307 redirect instead of a 301 redirect when given a bare path which doesn't exist in the multiplexer but which a path with a trailing slash exists for. This causes some `POST`/`PUT` operations to fail with a 400 instead of 404, as OpenBao does not allow writes to paths ending in a slash. See also: https://go.dev/doc/go1.26. [[GH-3072](https://github.com/openbao/openbao/pull/3072)]
 * core/identity: Remove corrupt namespace identity groups created prior to v2.5.0 during unseal; affected groups must be recreated by an administrator. Check for `deleting corrupt group` in server startup logs. [[GH-2454](https://github.com/openbao/openbao/pull/2454)]
 * sys/init, sys/rekey/init: The `stored_shares` parameter was removed and will now be ignored. [[GH-2662](https://github.com/openbao/openbao/pull/2662)]
 * sys/seal-status: Renamed misleading `build_date` response field to `commit_date`. [[GH-2678](https://github.com/openbao/openbao/pull/2678)]
 * sys/version-history: Renamed misleading `build_date` response field to `commit_date`. [[GH-2678](https://github.com/openbao/openbao/pull/2678)]
+* sys/health: Remove `performance_standby` and `last_wal` fields from the response. [[GH-2383](https://github.com/openbao/openbao/pull/2383)]
 * api: Removed the `StoredShares` field from `InitRequest` and `RotateInitRequest` structs. [[GH-2662](https://github.com/openbao/openbao/pull/2662)]
 * api: `(*Sys).GenerateRoot*` methods now use the authenticated `/sys/generate-root-token` endpoints instead of the deprecated `/sys/generate-root` endpoints. [[GH-3190](https://github.com/openbao/openbao/pull/3190)]
 * packaging: Renamed misleading ldflags definition `BuildDate` to `CommitDate`. Build systems need to adjust their pipelines to reflect this change. [[GH-2678](https://github.com/openbao/openbao/pull/2678)]

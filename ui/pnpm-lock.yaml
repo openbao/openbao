@@ -135,9 +135,6 @@ importers:
       '@types/ember__object':
         specifier: ^4.0.5
         version: 4.0.12(@babel/core@7.29.7)
-      '@types/ember__polyfills':
-        specifier: ^4.0.1
-        version: 4.0.6
       '@types/ember__routing':
         specifier: ^4.0.12
         version: 4.0.23(@babel/core@7.29.7)
@@ -634,9 +631,6 @@ importers:
       '@types/ember__object':
         specifier: latest
         version: 4.0.12(@babel/core@7.29.7)
-      '@types/ember__polyfills':
-        specifier: latest
-        version: 4.0.6
       '@types/ember__routing':
         specifier: latest
         version: 4.0.23(@babel/core@7.29.7)

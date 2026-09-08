@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { assign } from '@ember/polyfills';
 import { resolve, allSettled } from 'rsvp';
 import ApplicationAdapter from './application';
 import { encodePath } from 'vault/utils/path-encoding-helpers';
@@ -81,9 +80,9 @@ export default ApplicationAdapter.extend({
       results.forEach((result) => {
         if (result.value) {
           if (result.value.data.roles) {
-            resp.data = assign({}, resp.data, { zero_address_roles: result.value.data.roles });
+            resp.data = Object.assign({}, resp.data, { zero_address_roles: result.value.data.roles });
           } else {
-            resp.data = assign({}, resp.data, result.value.data);
+            resp.data = Object.assign({}, resp.data, result.value.data);
           }
         }
       });

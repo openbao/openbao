@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 package command
@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/cli"
 )
 
-var _ cli.Command = (*TokenCommand)(nil)
+var _ cli.Command = (*WorkflowCommand)(nil)
 
 type WorkflowCommand struct {
 	*BaseCommand

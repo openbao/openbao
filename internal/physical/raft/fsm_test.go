@@ -44,7 +44,7 @@ func TestFSM_Batching(t *testing.T) {
 	var term uint64 = 1
 
 	var hookCallCount atomic.Uint64
-	fsm.hookInvalidate(func(key ...string) {
+	fsm.hookInvalidate(func(_ string, key ...string) {
 		hookCallCount.Add(uint64(len(key)))
 	})
 

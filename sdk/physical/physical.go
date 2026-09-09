@@ -69,7 +69,7 @@ type CacheInvalidationBackend interface {
 	HookInvalidate(hook InvalidateFunc)
 }
 
-type InvalidateFunc func(key ...string)
+type InvalidateFunc func(index string, key ...string)
 
 // ReplicationIndexBackend is an extension to the standard physical backend
 // to support checking the current applied replication index. In the case of

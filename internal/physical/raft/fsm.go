@@ -887,8 +887,8 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []any {
 	}
 
 	if f.invalidateHook != nil {
-		var keys []string
-		for _, commandRaw := range commands {
+		for index, commandRaw := range commands {
+			var keys []string
 			switch command := commandRaw.(type) {
 			case *LogData:
 				for _, op := range command.Operations {
@@ -898,9 +898,9 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []any {
 					}
 				}
 			}
-		}
 
-		f.invalidateHook(keys...)
+			f.invalidateHook(strconv.FormatUint(logs[index].Index, 10), keys...)
+		}
 	}
 
 	// If we advanced the latest value, update the in-memory representation too.

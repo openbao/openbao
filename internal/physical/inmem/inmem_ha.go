@@ -159,7 +159,8 @@ func (i *InmemHABackend) invalidateAll(key string) {
 	defer i.l.Unlock()
 
 	for _, handler := range i.invalidators {
-		go handler(key)
+		// inmem backend doesn't have indices.
+		go handler("", key)
 	}
 }
 

@@ -1245,6 +1245,13 @@ func (c *Core) runReadEnabledStandby(ctx context.Context, ctxCancel context.Canc
 
 	c.drainPendingRestarts()
 
+	// Check if we're missing a cluster identifier; if so, attempt to load one.
+	if c.ClusterID() == "" {
+		if _, err := c.Cluster(ctx); err != nil {
+			c.logger.Error("failed to load cluster information; unable to respond with index identifiers", "error", err)
+		}
+	}
+
 	// Bail if we're told we should cancel.
 	if ctx.Err() != nil || !runStandby.Load() {
 		c.logger.Debug("context cancelled before calling read-only post-unseal setup")

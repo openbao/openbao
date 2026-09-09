@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/cli"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -122,9 +123,15 @@ func (c *WorkflowCallCommand) Run(args []string) int {
 		return 2
 	}
 
-	secret, err := client.Sys().CallWorkflow(context.Background(), path, data)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error calling workflow at path %s: %s", path, err))
+	var secret *api.Secret
+	var callErr error
+	if c.flagUnauthed {
+		secret, callErr = client.Sys().CallUnauthedWorkflow(context.Background(), path, data)
+	} else {
+		secret, callErr = client.Sys().CallWorkflow(context.Background(), path, data)
+	}
+	if callErr != nil {
+		c.UI.Error(fmt.Sprintf("Error calling workflow at path %s: %s", path, callErr))
 		if secret != nil {
 			OutputSecret(c.UI, secret)
 		}

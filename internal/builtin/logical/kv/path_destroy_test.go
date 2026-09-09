@@ -2,6 +2,7 @@ package kv
 
 import (
 	"testing"
+	"time"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -88,6 +89,15 @@ func TestVersionedKV_Destroy_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 	if resp.Data["versions"].(map[string]any)["2"].(map[string]any)["destroyed"].(bool) != true {
+		t.Fatalf("Bad response: %#v", resp)
+	}
+
+	updatedTime, err := time.Parse(time.RFC3339Nano, resp.Data["updated_time"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !updatedTime.After(time.Now().Add(-1*time.Minute)) || !updatedTime.Before(time.Now()) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 }

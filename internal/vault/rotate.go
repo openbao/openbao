@@ -251,12 +251,8 @@ func (sm *SealManager) progressRotation(rotationConfig, existingConfig *SealConf
 	}
 
 	// Check if we already have this piece
-	found := false
-	for _, existing := range rotationConfig.RotationProgress {
-		found = found || subtle.ConstantTimeCompare(existing, key) == 1
-		if found {
-			return nil, errors.New("given key has already been provided during this rotation")
-		}
+	if containsKeyShare(rotationConfig.RotationProgress, key) {
+		return nil, errors.New("given key has already been provided during this rotation")
 	}
 
 	// Store this key
@@ -716,12 +712,8 @@ func (sm *SealManager) VerifyRotation(ctx context.Context, ns *namespace.Namespa
 	}
 
 	// Check if we already have this piece
-	found := false
-	for _, existing := range rotationConfig.RotationProgress {
-		found = found || subtle.ConstantTimeCompare(existing, key) == 1
-		if found {
-			return nil, errors.New("given key has already been provided during this verify operation")
-		}
+	if containsKeyShare(rotationConfig.RotationProgress, key) {
+		return nil, errors.New("given key has already been provided during this verify operation")
 	}
 
 	// Store this key

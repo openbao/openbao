@@ -220,6 +220,15 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 		if i < 2 {
 			rConfig := c.sealManager.RotationConfig(ns.UUID, recovery)
 			require.Equal(t, len(rConfig.RotationProgress), i+1)
+			nonce := rConfig.Nonce
+			for _, duplicate := range oldResult.SecretShares[:i+1] {
+				duplicateResult, err := c.sealManager.UpdateRotation(ctx, ns, TestKeyCopy(duplicate), rotConfig.Nonce, recovery)
+				require.EqualError(t, err, "given key has already been provided during this rotation")
+				require.Nil(t, duplicateResult)
+				rConfig = c.sealManager.RotationConfig(ns.UUID, recovery)
+				require.Equal(t, oldResult.SecretShares[:i+1], rConfig.RotationProgress)
+				require.Equal(t, nonce, rConfig.Nonce)
+			}
 		}
 	}
 

@@ -77,7 +77,6 @@ $ curl \
     "cas_required": false,
     "description": "create namespace",
     "path": "ns1",
-    "workflow": " ... workflow data elided ...",
     "version": 0
 }
 ```
@@ -151,6 +150,44 @@ $ curl \
     --header "X-Vault-Token: ..." \
     --request DELETE \
     http://127.0.0.1:8200/v1/sys/workflows/manage/create-namespace
+```
+
+### Describe workflow execution
+
+This endpoint retrieves the information needed to call a workflow: its
+declared inputs and, its output headers and data keys.
+Unlike [reading a workflow](#read-workflow), this does not require
+read access to the workflow's full definition, so it can be granted to
+callers who are only meant to execute a workflow.
+
+| Method | Path                                     | Requires Authentication |
+| :----- | :--------------------------------------- | :---------------------- |
+| `GET`  | `/sys/workflows/execute/:path`           | yes                     |
+| `GET`  | `/sys/workflows/unauthed-execute/:path`  | no                      |
+
+#### Parameters
+
+- `path` `(string: <required>)` - Specifies the path of the workflow to
+  describe. This is specified as part of the request URL.
+
+#### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/workflows/execute/create-namespace
+```
+
+#### Sample response
+
+```json
+{
+  "path": "create-namespace",
+  "description": "create namespace",
+  "inputs": ["name <string>"],
+  "output_headers": ["X-Namespace-Id"],
+  "output_data_keys": ["namespace_id"]
+}
 ```
 
 ## Execute workflows

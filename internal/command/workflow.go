@@ -24,7 +24,7 @@ func (c *WorkflowCommand) Help() string {
 Usage: bao workflow <subcommand> [options] [args]
 
   This command groups subcommands are for interacting with workflows.
-  Users can list, read, write, edit, delete and call workflows.
+  Users can list, read, write, edit, delete, call and inspect workflows.
 
   List all workflows:
 
@@ -33,6 +33,11 @@ Usage: bao workflow <subcommand> [options] [args]
   Read the workflow named "my-workflow":
 
       $ bao workflow read my-workflow
+
+  Show execution relevant information of "my-workflow" without requiring read
+  access to its full definition:
+
+      $ bao workflow info my-workflow
 
   Create or update a workflow named "my-workflow" from local file:
 

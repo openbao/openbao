@@ -132,11 +132,16 @@ func (c *Sys) DeleteWorkflow(ctx context.Context, path string) error {
 	return err
 }
 
-func (c *Sys) CallWorkflow(ctx context.Context, path string, data map[string]any) (*Secret, error) {
+func (c *Sys) CallWorkflow(ctx context.Context, path string, unauthed bool, data map[string]any) (*Secret, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	r := c.c.NewRequest(http.MethodPost, fmt.Sprintf("/v1/sys/workflows/execute/%s", path))
+	prefix := "execute"
+	if unauthed {
+		prefix = "unauthed-execute"
+	}
+
+	r := c.c.NewRequest(http.MethodGet, fmt.Sprintf("/v1/sys/workflows/%s/%s", prefix, path))
 	if err := r.SetJSONBody(data); err != nil {
 		return nil, err
 	}
@@ -155,14 +160,24 @@ func (c *Sys) CallWorkflow(ctx context.Context, path string, data map[string]any
 	return secret, nil
 }
 
-func (c *Sys) CallUnauthedWorkflow(ctx context.Context, path string, data map[string]any) (*Secret, error) {
+type WorkflowInfo struct {
+	Path           string   `json:"path" mapstructure:"path"`
+	Description    string   `json:"description" mapstructure:"description"`
+	Inputs         []string `json:"inputs" mapstructure:"inputs"`
+	OutputHeaders  []string `json:"output_headers" mapstructure:"output_headers"`
+	OutputDataKeys []string `json:"output_data_keys" mapstructure:"output_data_keys"`
+}
+
+func (c *Sys) DescribeWorkflow(ctx context.Context, path string, unauthed bool) (*WorkflowInfo, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	r := c.c.NewRequest(http.MethodPost, fmt.Sprintf("/v1/sys/workflows/unauthed-execute/%s", path))
-	if err := r.SetJSONBody(data); err != nil {
-		return nil, err
+	prefix := "execute"
+	if unauthed {
+		prefix = "unauthed-execute"
 	}
+
+	r := c.c.NewRequest(http.MethodGet, fmt.Sprintf("/v1/sys/workflows/%s/%s", prefix, path))
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err != nil {
@@ -174,6 +189,13 @@ func (c *Sys) CallUnauthedWorkflow(ctx context.Context, path string, data map[st
 	if err != nil {
 		return nil, err
 	}
+	if secret == nil || secret.Data == nil {
+		return nil, nil
+	}
 
-	return secret, nil
+	var result WorkflowInfo
+	if err := mapstructure.Decode(secret.Data, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

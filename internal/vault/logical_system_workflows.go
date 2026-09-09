@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -49,6 +50,31 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 			Type:        framework.TypeBool,
 			Required:    true,
 			Description: "Whether this workflow can be accessed unauthenticated.",
+		},
+	}
+
+	workflowExecutionReadSchema := map[string]*framework.FieldSchema{
+		"path": {
+			Type:        framework.TypeString,
+			Required:    true,
+			Description: "Path of the workflow.",
+		},
+		"description": {
+			Type:        framework.TypeString,
+			Required:    true,
+			Description: "Workflow description.",
+		},
+		"inputs": {
+			Type:        framework.TypeStringSlice,
+			Description: "Declared input fields, as \"name <type>\".",
+		},
+		"output_headers": {
+			Type:        framework.TypeStringSlice,
+			Description: "Names of headers declared in the workflow's output headers block.",
+		},
+		"output_data_keys": {
+			Type:        framework.TypeStringSlice,
+			Description: "Names of keys declared in the workflow's output data block.",
 		},
 	}
 
@@ -202,6 +228,13 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 					},
 					Summary: "Execute the given workflow.",
 				},
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsExecutionRead(false /* we are authenticated */),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: workflowExecutionReadSchema}},
+					},
+					Summary: "Retrieve information relevant to the execution of the given workflow.",
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["exec-workflows"][0]),
@@ -264,6 +297,13 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 					},
 					Summary: "Execute the given workflow without authentication.",
 				},
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsExecutionRead(true /* we are unauthenticated */),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: workflowExecutionReadSchema}},
+					},
+					Summary: "Retrieve information relevant to the execution of the given workflow.",
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["exec-workflows"][0]),
@@ -272,6 +312,45 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 	}
 
 	return paths
+}
+
+func createWorkflowExecutionReadResponse(we *WorkflowEntry, ctx context.Context) (map[string]any, error) {
+	inputs, _, outputs, err := we.Parse(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	workflowData := map[string]any{
+		"path":        we.Path,
+		"description": we.Description,
+	}
+
+	if inputs != nil {
+		inputInfos := make([]string, len(inputs.Fields))
+		for i, input := range inputs.Fields {
+			inputInfo := fmt.Sprintf("%s <%s>", input.Name, input.Type.String())
+			inputInfos[i] = inputInfo
+		}
+		workflowData["inputs"] = inputInfos
+	}
+
+	if outputs != nil {
+		headerNames := make([]string, 0, len(outputs.Headers))
+		for name := range outputs.Headers {
+			headerNames = append(headerNames, name)
+		}
+		workflowData["output_headers"] = headerNames
+
+		if m, ok := outputs.Data.(map[string]any); ok {
+			dataKeys := make([]string, 0, len(m))
+			for k := range m {
+				dataKeys = append(dataKeys, k)
+			}
+			workflowData["output_data_keys"] = dataKeys
+		}
+	}
+
+	return workflowData, nil
 }
 
 func createWorkflowListResponse(we *WorkflowEntry) map[string]any {
@@ -311,7 +390,7 @@ func (b *SystemBackend) handleWorkflowsList(scan bool) framework.OperationFunc {
 		keyInfo := make(map[string]any, len(workflows))
 		for _, entry := range workflows {
 			keys = append(keys, entry.Path)
-			keyInfo[entry.Path] = createWorkflowDataResponse(entry)
+			keyInfo[entry.Path] = createWorkflowListResponse(entry)
 		}
 
 		return logical.ListResponseWithInfo(keys, keyInfo), nil
@@ -385,11 +464,37 @@ func (b *SystemBackend) handleWorkflowsDelete() framework.OperationFunc {
 	}
 }
 
-// handleWorkflowsExecute handles the "/sys/workflow/execute/<path>" and
-// "/sys/workflow/unauthed-execute/<path>" endpoints to execute workflows.
+// handleWorkflowsExecute handles the "/sys/workflow/execute/<path>", "/sys/workflows/trace/<path>"
+// and "/sys/workflow/unauthed-execute/<path>" endpoints to execute workflows.
 func (b *SystemBackend) handleWorkflowsExecute(unauthed bool, trace bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
 		return b.Core.workflowStore.Execute(ctx, req.ID, path, unauthed, trace, req, data)
+	}
+}
+
+// handleWorkflowsExecutionRead handles the "/sys/workflow/execute/<path>", "/sys/workflows/trace/<path>"
+// and "/sys/workflow/unauthed-execute/<path>" endpoints to read execution relevant information.
+func (b *SystemBackend) handleWorkflowsExecutionRead(unauthed bool) framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := data.Get("path").(string)
+
+		pe, err := b.Core.workflowStore.Get(ctx, path)
+		if err != nil {
+			return handleError(err)
+		}
+		if unauthed && (pe == nil || !pe.AllowUnauthenticated) {
+			return nil, logical.ErrPermissionDenied
+		}
+		if pe == nil {
+			return nil, nil
+		}
+
+		workflowData, err := createWorkflowExecutionReadResponse(pe, ctx)
+		if err != nil {
+			return handleError(err)
+		}
+
+		return &logical.Response{Data: workflowData}, nil
 	}
 }

@@ -73,12 +73,31 @@ With the following policies we may configure the examples from above.
 
 The plugin API consists of four methods only:
 
-Method                                                           | Description
----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------
-`HasAuthorization(ctx context.Context, path string, entity string, operations []string) (operations []string, err error)` | When processing "ask" capabilities, call plugin to check authorizations for one or multiple operations. Return list of allowed operations.
-`FilterPaths(ctx context.Context, paths []string, entity string, operation string) (paths []string, err error)`           | Pass list of paths to check for one operation, return list of allowed paths. Needed for example for list views on UIs.
-`UpdatePath(ctx context.Context, path string, operation string) error`                            | (Optional) After write operations to OpenBao, call plugin to update the DB of the external authorization service when a path changes, i.e. an entry gets created or deleted
-`SyncSubtree(ctx context.Context, parentPath string, subtree []string) []error`                   | (Optional) At initialization time, call plugin to sync the paths of an OpenBao subtree to the DB of the external authorization service.
+```
+type external-authz interface {
+
+    // When processing "ask" capabilities, call plugin to check authorizations for one or multiple operations. 
+    // Return list of allowed operations.
+    // To be called from ACL.AllowOperation
+    HasAuthorization(ctx context.Context, path string, entity string, operations []string, *options) (operations []string, err error)
+
+    // Pass list of paths to check for one operation.
+    // Return list of allowed paths, for example when creating list views on UIs.
+    // To be called from list filtering of OpenBao
+    FilterPaths(ctx context.Context, paths []string, entity string, operation string, *options) (paths []string, err error)
+
+    // Call plugin to update the DB of the external authorization service (optional).
+    // Return nil in case of success or error (default implementation: return nil).
+    // To be called after successful changes (create, update, delete) to the OpenBao database.
+    UpdatePath(ctx context.Context, path string, operation string, *options) error
+
+    // Call plugin to sync the paths of an OpenBao subtree to the DB of the external authorization service (ptional).
+    // For each path in the subtree, return nil in case of success or error (default implementation: return slice of nil).
+    // To be called at initialization time of the plugin.
+    SyncSubtree(ctx context.Context, parentPath string, subtree []string, *options) []error
+
+}
+```
 
 The updatePath and syncSubtree methods are optional, i.e. don't need to be implemented for all external authorization services.
 But some authorization services like [OpenFGA](https://openfga.dev/docs/getting-started/update-tuples) have their own database containing object relations, 

@@ -2164,12 +2164,39 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 			}
 		}
 
+		if actualMountEntry.Description != desiredMountEntry.Description {
+			actualMountEntry.Description = desiredMountEntry.Description
+		}
+
+		// Now check for fields that impact our need to reload.
+		needReload := false
+		if !maps.Equal(desiredMountEntry.Options, actualMountEntry.Options) {
+			actualMountEntry.Options = desiredMountEntry.Options
+			needReload = true
+		}
+
 		if !reflect.DeepEqual(desiredMountEntry.Config, actualMountEntry.Config) {
 			actualMountEntry.Config = desiredMountEntry.Config
 			actualMountEntry.SyncCache()
+			needReload = true
 		}
 
-		if desiredMountEntry.Options["version"] != actualMountEntry.Options["version"] {
+		if actualMountEntry.Version != desiredMountEntry.Version {
+			actualMountEntry.Version = desiredMountEntry.Version
+			needReload = true
+		}
+
+		if actualMountEntry.RunningVersion != desiredMountEntry.RunningVersion {
+			actualMountEntry.RunningVersion = desiredMountEntry.RunningVersion
+			needReload = true
+		}
+
+		if actualMountEntry.RunningSha256 != desiredMountEntry.RunningSha256 {
+			actualMountEntry.RunningSha256 = desiredMountEntry.RunningSha256
+			needReload = true
+		}
+
+		if needReload {
 			err := c.reloadBackendCommon(ctx, desiredMountEntry, table == routing.CredentialTableType)
 			if err != nil {
 				return err

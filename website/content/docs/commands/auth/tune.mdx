@@ -97,16 +97,17 @@ Success! Tuned the auth method at: userpass/
 
 View the current configuration of the auth method enabled at `userpass/`.
 
-```shell-session {1,11-13}
+```shell-session {1,11-14}
 $ bao read sys/auth/userpass/tune
 
-Key                  Value
----                  -----
-default_lease_ttl    768h
-description          n/a
-force_no_cache       false
-max_lease_ttl        768h
-token_type           default-service
+Key                                    Value
+---                                    -----
+case_sensitive_alias                   true
+default_lease_ttl                      768h
+description                            n/a
+force_no_cache                         false
+max_lease_ttl                          768h
+token_type                             default-service
 user_lockout_counter_reset_duration    0s
 user_lockout_disable                   false
 user_lockout_duration                  10m
@@ -168,3 +169,6 @@ flags](../index.mdx) included on all commands.
   counter is reset with no failed login attempts.
 
 - `-user-lockout-disable` `(bool: false)` - Disables the user lockout feature if set to true.
+
+- `-case-sensitive-alias` `(bool: false)` - Whether or not the aliases returned
+  by this auth method should be treated case sensitively.

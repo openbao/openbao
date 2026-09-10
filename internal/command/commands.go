@@ -103,6 +103,8 @@ const (
 	flagNameUserLockoutCounterResetDuration = "user-lockout-counter-reset-duration"
 	// flagNameUserLockoutDisable is the flag name used for tuning the auth mount disable lockout parameter
 	flagNameUserLockoutDisable = "user-lockout-disable"
+	// flagNameCaseSensitiveAlias is the flag name used for tuning the auth mount case sensitive alias parameter
+	flagNameCaseSensitiveAlias = "case-sensitive-alias"
 	// flagNameDisableRedirects is used to prevent the client from honoring a single redirect as a response to a request
 	flagNameDisableRedirects = "disable-redirects"
 	// flagNameCombineLogs is used to specify whether log output should be combined and sent to stdout

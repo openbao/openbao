@@ -13,8 +13,10 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/cli"
+	"github.com/hexops/gotextdiff"
+	"github.com/hexops/gotextdiff/myers"
+	"github.com/hexops/gotextdiff/span"
 	"github.com/openbao/openbao/api/v2"
-	"github.com/pmezard/go-difflib/difflib"
 	"github.com/posener/complete"
 )
 
@@ -194,9 +196,7 @@ Edit:
 						workflowResp = latest
 						continue Retry
 					case "diff":
-						if err := c.diffAgainst(tmpFileContent, []byte(latest.Workflow)); err != nil {
-							c.UI.Error(fmt.Sprintf("Error running diff: %s", err))
-						}
+						c.diffAgainst(tmpFileContent, []byte(latest.Workflow))
 						continue
 					default:
 						c.UI.Info("Discarded changes.")
@@ -212,23 +212,15 @@ Edit:
 	}
 }
 
-func (c *WorkflowEditCommand) diffAgainst(localContent, remoteContent []byte) error {
-	text, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-		A:        difflib.SplitLines(string(localContent)),
-		B:        difflib.SplitLines(string(remoteContent)),
-		FromFile: "your edit",
-		ToFile:   "online version",
-		Context:  3,
-	})
-	if err != nil {
-		return err
-	}
-	if text == "" {
+func (c *WorkflowEditCommand) diffAgainst(localContent, remoteContent []byte) {
+	local, remote := string(localContent), string(remoteContent)
+	if local == remote {
 		c.UI.Info("No differences.")
-		return nil
+		return
 	}
-	c.UI.Output(text)
-	return nil
+
+	edits := myers.ComputeEdits(span.URIFromPath("your edit"), local, remote)
+	c.UI.Output(fmt.Sprint(gotextdiff.ToUnified("your edit", "online version", local, edits)))
 }
 
 func (c *WorkflowEditCommand) openInEditor(path string) (content []byte, ok bool, retcode int) {

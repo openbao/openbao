@@ -35,7 +35,7 @@ func (e *ErrInvalidKey) Error() string {
 // These variables hold the unseal key parts to reconstruct the key and
 // operation nonce.
 type unlockInformation struct {
-	Parts [][]byte
+	Parts shamir.Shares
 	Nonce string
 }
 
@@ -365,7 +365,7 @@ func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespa
 func (sm *SealManager) recordUnsealPart(ns *namespace.Namespace, key []byte) (bool, error) {
 	info := sm.unlockInformationByNamespace[ns.UUID]
 	if info != nil {
-		if containsKeyShare(info.Parts, key) {
+		if info.Parts.Has(key) {
 			return false, nil
 		}
 	} else {

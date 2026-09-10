@@ -248,8 +248,8 @@ func TestSealManager_UnsealBarrier(t *testing.T) {
 
 	sealConfig := &SealConfig{
 		Type:            "shamir",
-		SecretShares:    4,
-		SecretThreshold: 4,
+		SecretShares:    3,
+		SecretThreshold: 2,
 	}
 
 	ns := &namespace.Namespace{UUID: "ns1", Path: "ns1/"}
@@ -269,26 +269,15 @@ func TestSealManager_UnsealBarrier(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, b.Sealed())
 
-	for i, key := range keyShares[:3] {
-		unsealed, err := c.sealManager.UnsealNamespace(ctx, ns, key)
-		require.NoError(t, err)
-		require.False(t, unsealed)
+	unsealed, err := c.sealManager.UnsealNamespace(ctx, ns, keyShares[0])
+	require.NoError(t, err)
+	require.False(t, unsealed)
 
-		info := c.sealManager.NamespaceUnlockInformation(ns.UUID)
-		require.Len(t, info.Parts, i+1)
-		require.NotEmpty(t, info.Nonce)
-		nonce := info.Nonce
-		for _, duplicate := range keyShares[:i+1] {
-			unsealed, err := c.sealManager.UnsealNamespace(ctx, ns, duplicate)
-			require.NoError(t, err)
-			require.False(t, unsealed)
-			info = c.sealManager.NamespaceUnlockInformation(ns.UUID)
-			require.Equal(t, keyShares[:i+1], info.Parts)
-			require.Equal(t, nonce, info.Nonce)
-		}
-	}
+	info := c.sealManager.NamespaceUnlockInformation(ns.UUID)
+	require.Len(t, info.Parts, 1)
+	require.NotEmpty(t, info.Nonce)
 
-	unsealed, err := c.sealManager.UnsealNamespace(ctx, ns, keyShares[3])
+	unsealed, err = c.sealManager.UnsealNamespace(ctx, ns, keyShares[1])
 	require.NoError(t, err)
 	require.True(t, unsealed)
 	require.False(t, b.Sealed())

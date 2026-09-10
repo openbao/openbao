@@ -251,7 +251,7 @@ func (sm *SealManager) progressRotation(rotationConfig, existingConfig *SealConf
 	}
 
 	// Check if we already have this piece
-	if containsKeyShare(rotationConfig.RotationProgress, key) {
+	if rotationConfig.RotationProgress.Has(key) {
 		return nil, errors.New("given key has already been provided during this rotation")
 	}
 
@@ -712,7 +712,7 @@ func (sm *SealManager) VerifyRotation(ctx context.Context, ns *namespace.Namespa
 	}
 
 	// Check if we already have this piece
-	if containsKeyShare(rotationConfig.RotationProgress, key) {
+	if rotationConfig.RotationProgress.Has(key) {
 		return nil, errors.New("given key has already been provided during this verify operation")
 	}
 

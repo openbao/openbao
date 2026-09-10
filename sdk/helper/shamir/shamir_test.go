@@ -8,6 +8,38 @@ import (
 	"testing"
 )
 
+func TestShares_Has(t *testing.T) {
+	shares := Shares{[]byte("first share"), []byte("other share"), []byte("final share")}
+	tests := []struct {
+		name   string
+		shares Shares
+		share  []byte
+		want   bool
+	}{
+		{"nil shares", nil, shares[0], false},
+		{"empty shares", Shares{}, shares[0], false},
+		{"absent", shares, []byte("extra share"), false},
+		{"first", shares, shares[0], true},
+		{"middle", shares, shares[1], true},
+		{"last", shares, shares[2], true},
+		{"matching prefix", shares, []byte("first sharf"), false},
+		{"shorter share", shares, []byte("first"), false},
+		{"longer share", shares, []byte("first share!"), false},
+		{"different share lengths", Shares{[]byte("first"), shares[0]}, shares[0], true},
+		{"multiple matches", Shares{shares[0], shares[0]}, shares[0], true},
+		{"nil share", shares, nil, false},
+		{"empty share", Shares{nil, {}}, []byte{}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.shares.Has(tt.share); got != tt.want {
+				t.Fatalf("Has() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSplit_invalid(t *testing.T) {
 	secret := []byte("test")
 

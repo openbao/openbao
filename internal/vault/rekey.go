@@ -334,7 +334,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 	}
 
 	// Check if we already have this piece
-	if containsKeyShare(c.rootRotationConfig.RotationProgress, key) {
+	if c.rootRotationConfig.RotationProgress.Has(key) {
 		return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this generation operation")
 	}
 
@@ -569,7 +569,7 @@ func (c *Core) RecoveryRekeyUpdate(ctx context.Context, key []byte, nonce string
 	}
 
 	// Check if we already have this piece
-	if containsKeyShare(c.recoveryRotationConfig.RotationProgress, key) {
+	if c.recoveryRotationConfig.RotationProgress.Has(key) {
 		return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this rekey operation")
 	}
 
@@ -753,7 +753,7 @@ func (c *Core) RekeyVerify(ctx context.Context, key []byte, nonce string, recove
 	}
 
 	// Check if we already have this piece
-	if containsKeyShare(config.VerificationProgress, key) {
+	if config.VerificationProgress.Has(key) {
 		return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this verify operation")
 	}
 

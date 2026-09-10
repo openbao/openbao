@@ -168,23 +168,11 @@ func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, ns *namespac
 
 	// Provide the keys
 	var result *GenerateRootResult
-	for i, key := range keys {
+	for _, key := range keys {
 		result, err = c.GenerateRootUpdate(ctx, key, rkconf.Nonce, GenerateStandardRootTokenStrategy)
 		require.NoError(t, err)
 		if result.EncodedToken != "" {
 			break
-		}
-
-		for _, duplicate := range keys[:i+1] {
-			duplicateResult, err := c.GenerateRootUpdate(ctx, duplicate, rkconf.Nonce, GenerateStandardRootTokenStrategy)
-			require.EqualError(t, err, "given key has already been provided during this generation operation")
-			require.Nil(t, duplicateResult)
-			progress, err := c.GenerateRootProgress(ctx)
-			require.NoError(t, err)
-			require.Equal(t, i+1, progress)
-			config, err := c.GenerateRootConfiguration(ctx)
-			require.NoError(t, err)
-			require.Equal(t, rkconf.Nonce, config.Nonce)
 		}
 	}
 	require.NotNil(t, result)

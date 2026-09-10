@@ -1,0 +1,59 @@
+---
+sidebar_label: info
+description: |-
+  The "workflow info" command prints the information needed to call a OpenBao workflow under the given
+  path: its declared inputs and, its output headers and data keys.
+  Unlike "workflow read", this does not require read access to the workflow's full definition.
+---
+
+# workflow info
+
+The `workflow info` command prints the information needed to call a OpenBao
+workflow under the given path: its declared inputs and, its output headers and
+data keys.
+
+Unlike [`workflow read`](read.mdx), this does not require read access to the
+workflow's full definition, so it can be granted to callers who are only meant
+to execute a workflow.
+
+## Examples
+
+Show info for the workflow "test-workflow":
+
+```shell-session
+$ bao workflow info test-workflow
+Key                 Value
+---                 -----
+path                test-workflow
+description         create namespace
+inputs              [name <string>]
+output_headers      [X-Namespace-Id]
+output_data_keys    [namespace_id]
+```
+
+Show info for a workflow that allows unauthenticated calls:
+
+```shell-session
+$ bao workflow info -unauthed test-workflow
+```
+
+## Usage
+
+The following flags are available in addition to the [standard set of
+flags](../index.mdx) included on all commands.
+
+### Output options
+
+- `-field` `(string: "")` - Print only the field with the given name. Specifying
+  this option will take precedence over other formatting directives. The result
+  will not have a trailing newline making it ideal for piping to other processes.
+
+- `-format` `(string: "table")` - Print the output in the given format. Valid
+  formats are "table", "json", or "yaml". This can also be specified via the
+  `BAO_FORMAT` environment variable.
+
+### Command options
+
+- `-unauthed` `(bool: false)` - Look up an unauthed workflow. This uses the
+  `sys/workflows/unauthed-execute` endpoint, which does not require
+  authentication.

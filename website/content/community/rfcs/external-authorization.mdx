@@ -76,24 +76,30 @@ The plugin API consists of four methods only:
 ```
 type external-authz interface {
 
-    // When processing "ask" capabilities, call plugin to check authorizations for one or multiple operations. 
-    // Return list of allowed operations.
-    // To be called from ACL.AllowOperation
-    HasAuthorization(ctx context.Context, path string, entity string, operations []string, *options) (operations []string, err error)
+    // When processing "ask" capabilities, call plugin to check authorizations for one or multiple operations.
+    // To be called from ACL.AllowOperation (https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L344)
+    // Parameter list:
+    // - ctx: as passed to ACL.AllowOperation
+    // - path: ns.Path + req.Path (https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L379)
+    // - entity: unique username, for example email address
+    // - operation: req.Operation (https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L371)
+    // - options: optional config map for plugin specific parameters
+    // Returns: true (allowed) or false (denied)
+    HasAuthorization(ctx context.Context, path string, entity string, operation string, *options) (allowed bool, err error)
 
     // Pass list of paths to check for one operation.
-    // Return list of allowed paths, for example when creating list views on UIs.
     // To be called from list filtering of OpenBao
+    // Returns: list of allowed paths, for example when creating list views on UIs.
     FilterPaths(ctx context.Context, paths []string, entity string, operation string, *options) (paths []string, err error)
 
     // Call plugin to update the DB of the external authorization service (optional).
-    // Return nil in case of success or error (default implementation: return nil).
     // To be called after successful changes (create, update, delete) to the OpenBao database.
+    // Returns: nil in case of success or error (default implementation: return nil).
     UpdatePath(ctx context.Context, path string, operation string, *options) error
 
-    // Call plugin to sync the paths of an OpenBao subtree to the DB of the external authorization service (ptional).
-    // For each path in the subtree, return nil in case of success or error (default implementation: return slice of nil).
+    // Call plugin to sync the paths of an OpenBao subtree to the DB of the external authorization service (optional).
     // To be called at initialization time of the plugin.
+    // For each path in the subtree, return nil in case of success or error (default implementation: return slice of nil).
     SyncSubtree(ctx context.Context, parentPath string, subtree []string, *options) []error
 
 }

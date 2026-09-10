@@ -120,7 +120,7 @@ require (
 	github.com/shirou/gopsutil/v4 v4.26.7
 	github.com/stretchr/testify v1.12.1
 	github.com/tink-crypto/tink-go/v2 v2.8.0
-	github.com/tsaarni/certyaml v0.11.0
+	github.com/tsaarni/certyaml v0.12.0
 	github.com/yeqown/go-qrcode/v2 v2.3.0
 	go.etcd.io/bbolt v1.5.0
 	go.opentelemetry.io/otel v1.45.0

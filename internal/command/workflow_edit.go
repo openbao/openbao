@@ -175,6 +175,7 @@ Edit:
 				if latest == nil {
 					c.UI.Error(fmt.Sprintf("No workflow found in path %s", path))
 					c.UI.Error(fmt.Sprintf("Your edits are still available in %s", tmpFile.Name()))
+					c.UI.Error(fmt.Sprintf("You can create a workflow under that path via:\n'\tbao workflow write %s %s", path, tmpFile.Name()))
 					return 2
 				}
 				c.UI.Error(fmt.Sprintf("Error putting workflow under path %s: %s", path, putErr))

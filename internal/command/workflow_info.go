@@ -32,7 +32,7 @@ func (c *WorkflowInfoCommand) Help() string {
 Usage: bao workflow info [options] PATH
 
   Prints the information needed to call a OpenBao workflow under the given
-  path: its declared inputs and, its output headers and data keys.
+  path: its declared inputs, output headers and output data keys.
   Unlike "workflow read", this does not require read access to the workflow's full definition.
 
   Show info for the workflow "test-workflow":

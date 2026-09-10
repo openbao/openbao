@@ -31,7 +31,7 @@ func (c *WorkflowReadCommand) Help() string {
 Usage: bao workflow read [options] PATH
 
   Prints the content and metadata of a OpenBao workflow under the given path.
-  If the policy does not exist, an error is returned.
+  If the workflow does not exist, an error is returned.
 
   Read the workflow "test-workflow":
 

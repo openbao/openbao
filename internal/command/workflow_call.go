@@ -37,7 +37,7 @@ func (c *WorkflowCallCommand) Help() string {
 Usage: bao workflow call [options] PATH [DATA K=V...]
 
   Calls a OpenBao workflow, allowing for input data if needed.
-  If a workflow doesn't require authentification, it can be called with the unauthed flag.
+  If a workflow doesn't require authentication, it can be called with the unauthed flag.
 
   Data is specified as "key=value" pairs. If the value begins with an "@", then
   it is loaded from a file. If the value is "-", OpenBao will read the value from
@@ -47,7 +47,7 @@ Usage: bao workflow call [options] PATH [DATA K=V...]
 
       $ bao workflow call my-workflow
 
-  Call a workflow without authentificaiton:
+  Call a workflow without authentication:
 
       $ bao workflow call -unauthed my-workflow
 

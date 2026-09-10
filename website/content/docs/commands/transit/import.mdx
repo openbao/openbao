@@ -43,10 +43,55 @@ Submitting wrapped key to OpenBao transit.
 Success!
 ```
 
+Imports a binary AES-256 key file without base64 conversion:
+
+```shell
+$ bao transit import -key-format=raw transit/keys/aes-key @aes-key.bin type=aes256-gcm96
+```
+
+Imports an unencrypted RSA private-key PEM file:
+
+```shell
+$ bao transit import -key-format=pem transit/keys/rsa-key @rsa-key.pem type=rsa-2048
+```
+
+Imports a PKCS#8 DER private-key file as a new version:
+
+```shell
+$ bao transit import-version -key-format=raw transit/keys/rsa-key @rsa-key-updated.der
+```
+
 ## Usage
 
-This command does not have any unique flags and respects core OpenBao CLI
-commands. See `bao transit import -help` for more information.
+Both commands respect the core OpenBao CLI flags. Place flags before the
+positional arguments. See `bao transit import -help` for more information.
+
+### Key format
+
+`-key-format` selects the source key representation:
+
+- `base64` (default): Standard Base64 input, either inline or through `@file`.
+  Existing input behavior is preserved; formats are not detected automatically.
+- `raw`: Binary key material read through `@file`, without trimming or decoding.
+  Use raw key bytes for symmetric keys or PKCS#8 DER for asymmetric keys.
+- `pem`: A single unencrypted private-key PEM block read through `@file`.
+  Supported labels are `PRIVATE KEY` (PKCS#8), `RSA PRIVATE KEY` (PKCS#1), and
+  `EC PRIVATE KEY` (SEC1), using the private-key formats supported by Go's
+  `crypto/x509` package. The key is converted to PKCS#8 DER before wrapping.
+  Encrypted keys, PEM headers, additional blocks, and non-whitespace text outside
+  the block are rejected. Malformed keys and extra DER data inside the block are
+  also rejected.
+
+Raw and PEM inputs require `@file`; key contents cannot be passed inline in
+these modes. Prefer files with restrictive permissions rather than putting
+base64 key contents in shell history or process arguments. Do not commit key
+files to source control.
+
+The input format does not select the Transit key type. For a new key, supply
+`type=<key-type>` matching the source material. Server-side restrictions on
+supported key types, key sizes, and version imports remain unchanged.
+
+### Arguments
 
 This command requires two positional arguments:
 
@@ -54,8 +99,7 @@ This command requires two positional arguments:
     `<mount>/keys/<key-name>`, where `<mount>` is the path to the mount
     (using `-namespace=<ns>` to specify any namespaces), and `<key-name>`
     is the desired name of the key.
- 2. `KEY`, the key material to import in Standard Base64 encoding (either
-    of a raw key in the case of symmetric keys such as AES, or of the DER
-    encoded format for asymmetric keys such as RSA). If the value for `KEY`
-    begins with an `@`, the CLI argument is assumed to be a path to a file
-    on disk to be read.
+ 2. `KEY`, the key material in the selected `-key-format` (Standard Base64 by
+    default). For symmetric keys such as AES, the decoded material is the raw
+    key; for asymmetric keys such as RSA, it is PKCS#8 DER. If `KEY` begins
+    with an `@`, the rest of the argument is a path to a file on disk to read.

@@ -1,0 +1,6 @@
+```release-note:bug
+core/mounts: Ensure invalidation updates description and reloads on changes to config, options, and plugin versions.
+```
+```release-note:bug
+core/auth: Ensure invalidation updates description and reloads on changes to config, options, and plugin versions.
+```

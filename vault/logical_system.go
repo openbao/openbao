@@ -919,6 +919,9 @@ func (b *SystemBackend) mountInfo(ctx context.Context, entry *routing.MountEntry
 	}
 	if entry.Table == routing.CredentialTableType {
 		entryConfig["token_type"] = entry.Config.TokenType.String()
+		if rawVal, ok := entry.SynthesizedConfigCache.Load("case_sensitive_alias"); ok {
+			entryConfig["case_sensitive_alias"] = rawVal.(bool)
+		}
 	}
 	if entry.Config.UserLockoutConfig != nil {
 		userLockoutConfig := map[string]interface{}{
@@ -1491,6 +1494,9 @@ func (b *SystemBackend) handleTuneReadCommon(ctx context.Context, path string) (
 
 	if mountEntry.Table == routing.CredentialTableType {
 		resp.Data["token_type"] = mountEntry.Config.TokenType.String()
+		if rawVal, ok := mountEntry.SynthesizedConfigCache.Load("case_sensitive_alias"); ok {
+			resp.Data["case_sensitive_alias"] = rawVal.(bool)
+		}
 	}
 
 	if rawVal, ok := mountEntry.SynthesizedConfigCache.Load("audit_non_hmac_request_keys"); ok {
@@ -1801,6 +1807,14 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 
 		defer rollback(&mountEntry.Config.TokenType, tokenType, &success)()
+	}
+
+	if rawVal, ok := data.GetOk("case_sensitive_alias"); ok {
+		if !isAuth {
+			return logical.ErrorResponse("'case_sensitive_alias' can only be modified on auth mounts"), logical.ErrInvalidRequest
+		}
+
+		defer rollback(&mountEntry.Config.CaseSensitiveAlias, new(rawVal.(bool)), &success)()
 	}
 
 	if rawVal, ok := data.GetOk("passthrough_request_headers"); ok {
@@ -2330,6 +2344,8 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	if len(apiConfig.AllowedResponseHeaders) > 0 {
 		config.AllowedResponseHeaders = apiConfig.AllowedResponseHeaders
 	}
+
+	config.CaseSensitiveAlias = apiConfig.CaseSensitiveAlias
 
 	// Create the mount entry
 	me := &routing.MountEntry{
@@ -5072,6 +5088,10 @@ in the plugin catalog.`,
 
 	"tune_user_lockout_config": {
 		`The user lockout configuration to pass into the backend. Should be a json object with string keys and values.`,
+	},
+
+	"tune_case_sensitive_alias": {
+		`Whether or not the aliases returned by this auth mount should be treated case sensitively.`,
 	},
 
 	"remount": {

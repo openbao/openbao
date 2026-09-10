@@ -1,0 +1,39 @@
+---
+description: >-
+  This page contains guidance on what to consider when changing `case_sensitive_alias` of an auth method
+---
+
+# Changing `case_sensitive_alias`
+
+If you want to change the `case_sensitive_alias` value of an auth method that is
+actively used (i.e., has existing aliases), this might lead to problems with
+existing data. Before you proceed, you should be familiar with the [Identity
+feature of OpenBao](../concepts/identity.mdx).
+
+## From case-sensitive to case-insensitive
+
+This means if your auth method might return the alias name `example`, `Example`,
+`EXAMPLE` or `eXaMple` after the change they will all map to the same alias and
+therefor to the same entity. Previously this would have created four different
+aliases.
+
+After tuning to case-insensitive, it is not deterministic which of the aliases
+will be picked in case of a clash. Therefore you should check your aliases for
+any such clashes and delete all but one. You might also want to delete any
+entities that are now "orphaned" (i.e., have no more aliases). This applies to
+both entity and group aliases.
+
+## From case-insensitive to case-sensitive
+
+This means if your auth method might return the principal `example`, `Example`,
+`EXAMPLE` or `eXaMple` after the change they will all map to a different alias,
+which might map to the same entity or different entities. Previously this would
+have created a single aliases.
+
+After tuning to case-sensitive, the alias that was seen first will be the one
+the maps to the existing alias. For entity aliases all others will get a new
+alias and entity created automatically when they first log-in or you create them
+manually in advance. This means you might have to assign polices to these new
+entities or map the aliases to existing entities. Groups and group aliases are
+not automatically created, so you will have to create and map them manually and
+assign policies.

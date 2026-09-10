@@ -125,6 +125,10 @@ func (e *MountEntry) SyncCache() {
 	} else {
 		e.SynthesizedConfigCache.Store("allowed_response_headers", e.Config.AllowedResponseHeaders)
 	}
+
+	if e.Config.CaseSensitiveAlias != nil {
+		e.SynthesizedConfigCache.Store("case_sensitive_alias", *e.Config.CaseSensitiveAlias)
+	}
 }
 
 func (entry *MountEntry) Deserialize() map[string]interface{} {

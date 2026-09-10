@@ -39,6 +39,7 @@ type AuthTuneCommand struct {
 	flagUserLockoutDuration             time.Duration
 	flagUserLockoutCounterResetDuration time.Duration
 	flagUserLockoutDisable              bool
+	flagCaseSensitiveAlias              bool
 }
 
 func (c *AuthTuneCommand) Synopsis() string {
@@ -187,6 +188,15 @@ func (c *AuthTuneCommand) Flags() *FlagSets {
 			"or a previously configured value for the auth method.",
 	})
 
+	f.BoolVar(&BoolVar{
+		Name:    flagNameCaseSensitiveAlias,
+		Target:  &c.flagCaseSensitiveAlias,
+		Default: false,
+		Usage: "Whether or not the aliases returned by this auth method should be " +
+			"treated case sensitively. Currently defaults to false, but will default " +
+			"to true for newly created auth methods starting with OpenBao 2.8.0.",
+	})
+
 	f.StringVar(&StringVar{
 		Name:    flagNamePluginVersion,
 		Target:  &c.flagPluginVersion,
@@ -289,6 +299,9 @@ func (c *AuthTuneCommand) Run(args []string) int {
 		}
 		if fl.Name == flagNameUserLockoutDisable {
 			mountConfigInput.UserLockoutConfig.DisableLockout = &c.flagUserLockoutDisable
+		}
+		if fl.Name == flagNameCaseSensitiveAlias {
+			mountConfigInput.CaseSensitiveAlias = &c.flagCaseSensitiveAlias
 		}
 
 		if fl.Name == flagNamePluginVersion {

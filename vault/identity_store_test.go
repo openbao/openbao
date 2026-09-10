@@ -35,8 +35,8 @@ import (
 )
 
 func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
-	c, _, _ := TestCoreUnsealed(t)
 	ctx := namespace.RootContext(t.Context())
+	_, accessor1, accessor2, c := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
 	txn := c.identityStore.Txn(ctx, true)
 	defer txn.Abort()
 
@@ -44,7 +44,7 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 		ID:             "testAliasID1",
 		CanonicalID:    "testEntityID",
 		MountType:      "testMountType",
-		MountAccessor:  "testMountAccessor",
+		MountAccessor:  accessor1,
 		Name:           "testAliasName",
 		LocalBucketKey: c.identityStore.LocalAliasPacker(ctx).BucketKey("testEntityID"),
 	}
@@ -52,7 +52,7 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 		ID:             "testAliasID2",
 		CanonicalID:    "testEntityID",
 		MountType:      "testMountType",
-		MountAccessor:  "testMountAccessor2",
+		MountAccessor:  accessor2,
 		Name:           "testAliasName2",
 		LocalBucketKey: c.identityStore.LocalAliasPacker(ctx).BucketKey("testEntityID"),
 	}
@@ -386,7 +386,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(t.Context())
-	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
+	is, approleAccessor, c := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	registerData := map[string]interface{}{
 		"name":     "testentityname",
@@ -445,6 +445,58 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 	}
 	if entity.NamespaceID != namespace.RootNamespaceID {
 		t.Fatalf("bad: entity namespace ID; expected: %q actual: %q", namespace.RootNamespaceID, entity.NamespaceID)
+	}
+
+	// Get the mount entry, so we can tweak the config
+	mountEntry := c.router.MatchingMountEntry(ctx, "auth/approle/")
+	require.NotNil(t, mountEntry)
+
+	cases := []struct {
+		name                       string
+		value                      *bool
+		expectCaseInsensitiveMatch bool
+	}{{
+		name:                       "undefined",
+		value:                      nil,
+		expectCaseInsensitiveMatch: true, // older version were case-insensitive
+	}, {
+		name:                       "false",
+		value:                      new(false),
+		expectCaseInsensitiveMatch: true,
+	}, {
+		name:                       "true",
+		value:                      new(true),
+		expectCaseInsensitiveMatch: false,
+	}}
+
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("CaseSensitiveAlias=%s", tc.name), func(t *testing.T) {
+			mountEntry.Config.CaseSensitiveAlias = tc.value
+			mountEntry.SyncCache()
+
+			// case sensitive match => should always work
+			entity, err := is.EntityByAliasFactors(ctx, approleAccessor, "alias_name", false)
+			require.NoError(t, err)
+			if entity == nil {
+				t.Fatal("expected a non-nil entity")
+			}
+			if entity.ID != entityID {
+				t.Fatalf("bad: entity ID; expected: %q actual: %q", entityID, entity.ID)
+			}
+			if entity.NamespaceID != namespace.RootNamespaceID {
+				t.Fatalf("bad: entity namespace ID; expected: %q actual: %q", namespace.RootNamespaceID, entity.NamespaceID)
+			}
+
+			// case insensitive match
+			upperCaseEntity, err := is.EntityByAliasFactors(ctx, approleAccessor, "ALIAS_NAME", false)
+			require.NoError(t, err)
+
+			if tc.expectCaseInsensitiveMatch {
+				require.Equal(t, entity, upperCaseEntity)
+			} else {
+				require.Nil(t, upperCaseEntity)
+			}
+		})
 	}
 }
 

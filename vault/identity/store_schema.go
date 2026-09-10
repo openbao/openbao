@@ -41,7 +41,7 @@ func identityStoreSchema(lowerCaseName bool) *memdb.DBSchema {
 	return iStoreSchema
 }
 
-func aliasesTableSchema(lowerCaseName bool) *memdb.TableSchema {
+func aliasesTableSchema(_ bool) *memdb.TableSchema {
 	return &memdb.TableSchema{
 		Name: entityAliasesTable,
 		Indexes: map[string]*memdb.IndexSchema{
@@ -54,7 +54,7 @@ func aliasesTableSchema(lowerCaseName bool) *memdb.TableSchema {
 			},
 			"factors": {
 				Name:   "factors",
-				Unique: true,
+				Unique: false,
 				Indexer: &memdb.CompoundIndex{
 					Indexes: []memdb.Indexer{
 						&memdb.StringFieldIndex{
@@ -62,7 +62,7 @@ func aliasesTableSchema(lowerCaseName bool) *memdb.TableSchema {
 						},
 						&memdb.StringFieldIndex{
 							Field:     "Name",
-							Lowercase: lowerCaseName,
+							Lowercase: true,
 						},
 					},
 				},
@@ -190,7 +190,7 @@ func groupsTableSchema(lowerCaseName bool) *memdb.TableSchema {
 	}
 }
 
-func groupAliasesTableSchema(lowerCaseName bool) *memdb.TableSchema {
+func groupAliasesTableSchema(_ bool) *memdb.TableSchema {
 	return &memdb.TableSchema{
 		Name: groupAliasesTable,
 		Indexes: map[string]*memdb.IndexSchema{
@@ -203,7 +203,7 @@ func groupAliasesTableSchema(lowerCaseName bool) *memdb.TableSchema {
 			},
 			"factors": {
 				Name:   "factors",
-				Unique: true,
+				Unique: false,
 				Indexer: &memdb.CompoundIndex{
 					Indexes: []memdb.Indexer{
 						&memdb.StringFieldIndex{
@@ -211,7 +211,7 @@ func groupAliasesTableSchema(lowerCaseName bool) *memdb.TableSchema {
 						},
 						&memdb.StringFieldIndex{
 							Field:     "Name",
-							Lowercase: lowerCaseName,
+							Lowercase: true,
 						},
 					},
 				},

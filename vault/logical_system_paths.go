@@ -3281,6 +3281,10 @@ func (b *SystemBackend) authPaths() []*framework.Path {
 					Type:        framework.TypeString,
 					Description: strings.TrimSpace(sysHelp["plugin-catalog_version"][0]),
 				},
+				"case_sensitive_alias": {
+					Type:        framework.TypeBool,
+					Description: strings.TrimSpace(sysHelp["tune_case_sensitive_alias"][0]),
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
@@ -3362,6 +3366,11 @@ func (b *SystemBackend) authPaths() []*framework.Path {
 								"plugin_version": {
 									Type:     framework.TypeString,
 									Required: false,
+								},
+								"case_sensitive_alias": {
+									Type:        framework.TypeBool,
+									Required:    false,
+									Description: strings.TrimSpace(sysHelp["tune_case_sensitive_alias"][0]),
 								},
 							},
 						}},
@@ -4310,6 +4319,10 @@ func (b *SystemBackend) mountPaths() []*framework.Path {
 					Type:        framework.TypeMap,
 					Description: strings.TrimSpace(sysHelp["tune_user_lockout_config"][0]),
 				},
+				"case_sensitive_alias": {
+					Type:        framework.TypeBool,
+					Description: strings.TrimSpace(sysHelp["tune_case_sensitive_alias"][0]),
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -4397,6 +4410,11 @@ func (b *SystemBackend) mountPaths() []*framework.Path {
 								"user_lockout_disable": {
 									Type:     framework.TypeBool,
 									Required: false,
+								},
+								"case_sensitive_alias": {
+									Type:        framework.TypeBool,
+									Required:    false,
+									Description: strings.TrimSpace(sysHelp["tune_case_sensitive_alias"][0]),
 								},
 							},
 						}},

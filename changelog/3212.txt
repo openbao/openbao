@@ -1,0 +1,6 @@
+```release-note:bug
+command: Fix `bao auth move` not prepending `auth/` resulting in possible secret mount remount.
+```
+```release-note:bug
+core: Fix mount remount operations not reloading mount entries on standby nodes on invalidation.
+```

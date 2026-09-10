@@ -65,13 +65,27 @@ func (old *MountTable) Delta(new *MountTable) (additions []*MountEntry, deletion
 	return additions, deletions
 }
 
-// SetTaint is used to set the taint on given mount entry
+// Taint is used to set the taint on given mount entry
 // using provided path and nsID. Returns back tainted
 // entry or nil if not found.
-func (t *MountTable) SetTaint(nsID, path string) *MountEntry {
+func (t *MountTable) Taint(nsID, path string) *MountEntry {
 	for _, entry := range t.Entries {
 		if entry.Path == path && entry.Namespace.ID == nsID {
 			entry.Tainted = true
+			return entry
+		}
+	}
+
+	return nil
+}
+
+// Untaint is used to untaint given mount entry
+// using provided path and nsID. Returns back
+// entry or nil if not found.
+func (t *MountTable) Untaint(nsID, path string) *MountEntry {
+	for _, entry := range t.Entries {
+		if entry.Path == path && entry.Namespace.ID == nsID {
+			entry.Tainted = false
 			return entry
 		}
 	}

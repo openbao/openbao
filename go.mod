@@ -31,7 +31,7 @@ require (
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/cockroachdb/pebble v1.1.5
 	github.com/containerd/platforms v0.2.1
-	github.com/duosecurity/duo_api_golang v0.2.0
+	github.com/duosecurity/duo_api_golang v0.3.0
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/fatih/color v1.19.0
 	github.com/go-jose/go-jose/v4 v4.1.4

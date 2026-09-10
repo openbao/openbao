@@ -29,7 +29,7 @@ func (c *WorkflowListCommand) Help() string {
 	helpText := `
 Usage: bao workflow list [options]
 
-  This command outputs a list of all workflows created.
+  This command outputs a list of all workflows.
 
   Fetch list of all workflows:
 

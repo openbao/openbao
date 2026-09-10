@@ -402,6 +402,10 @@ func respondLogical(core *vault.Core, w http.ResponseWriter, r *http.Request, re
 		return
 	}
 
+	if r != nil {
+		addLatestStorageIndex(core, r.Context(), w)
+	}
+
 	if resp != nil {
 		if resp.Redirect != "" {
 			// If we have a redirect, redirect! We use a 307 code

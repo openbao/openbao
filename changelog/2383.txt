@@ -1,0 +1,6 @@
+```release-note:change
+command/seal-status: Remove "Performance Standby Node", "Performance Standby Last Remote WAL", "Last WAL" and "Warnings" from the output.
+```
+```release-note:change
+sys/health: Remove `performance_standby` and `last_wal` fields from the response.
+```

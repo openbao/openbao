@@ -71,6 +71,7 @@ const sidebars: SidebarsConfig = {
                 "concepts/password-policies",
                 "concepts/username-templating",
                 "concepts/ha",
+                "concepts/consistency",
                 "concepts/storage",
                 {
                     "Integrated Storage": [
@@ -120,6 +121,7 @@ const sidebars: SidebarsConfig = {
                 {
                     listener: [
                         "configuration/listener/index",
+                        "configuration/listener/shared",
                         "configuration/listener/unix",
                         "configuration/listener/tcp",
                     ],

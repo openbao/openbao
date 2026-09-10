@@ -3438,8 +3438,20 @@ func TestTokenStore_HandleRequest_CreateToken_ExistingEntityAliasMixedCase(t *te
 	entityAliasNameLower := "testentityalias"
 	testRoleName := "test"
 
+	// Make token mount case-insensitive
+	resp, err := core.systemBackend.HandleRequest(ctx, &logical.Request{
+		Path:      "auth/token/tune",
+		Operation: logical.UpdateOperation,
+		Data: map[string]any{
+			"case_sensitive_alias": false,
+		},
+	})
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err: %v\nresp: %#v", err, resp)
+	}
+
 	// Create manually an entity
-	resp, err := i.HandleRequest(ctx, &logical.Request{
+	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
 		Data: map[string]any{

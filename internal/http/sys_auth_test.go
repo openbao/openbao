@@ -469,6 +469,83 @@ func TestSysTuneAuth_showUIMount(t *testing.T) {
 	}
 }
 
+func TestSysTuneAuth_caseSensitiveAlias(t *testing.T) {
+	core, _, token := vault.TestCoreUnsealed(t)
+	ln, addr := TestServer(t, core)
+	defer ln.Close() //nolint:errcheck
+	TestServerAuth(t, addr, token)
+
+	// Get original tune values, ensure that listing_visibility is not set
+	resp := testHttpGet(t, token, addr+"/v1/sys/auth/token/tune")
+	testResponseStatus(t, resp, 200)
+
+	actual := map[string]any{}
+	expected := map[string]any{
+		"lease_id":       "",
+		"renewable":      false,
+		"lease_duration": json.Number("0"),
+		"wrap_info":      nil,
+		"warnings":       nil,
+		"auth":           nil,
+		"data": map[string]any{
+			"description":       "token based credentials",
+			"default_lease_ttl": json.Number("2764800"),
+			"max_lease_ttl":     json.Number("2764800"),
+			"force_no_cache":    false,
+			"token_type":        "default-service",
+		},
+		"description":       "token based credentials",
+		"default_lease_ttl": json.Number("2764800"),
+		"max_lease_ttl":     json.Number("2764800"),
+		"force_no_cache":    false,
+		"token_type":        "default-service",
+	}
+	testResponseBody(t, resp, &actual)
+	expected["request_id"] = actual["request_id"]
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, actual)
+	}
+
+	// Mount-tune the listing_visibility
+	resp = testHttpPost(t, token, addr+"/v1/sys/auth/token/tune", map[string]any{
+		"case_sensitive_alias": false,
+	})
+	testResponseStatus(t, resp, 204)
+
+	// Check results
+	resp = testHttpGet(t, token, addr+"/v1/sys/auth/token/tune")
+	testResponseStatus(t, resp, 200)
+
+	actual = map[string]any{}
+	expected = map[string]any{
+		"description":    "token based credentials",
+		"lease_id":       "",
+		"renewable":      false,
+		"lease_duration": json.Number("0"),
+		"wrap_info":      nil,
+		"warnings":       nil,
+		"auth":           nil,
+		"data": map[string]any{
+			"description":          "token based credentials",
+			"default_lease_ttl":    json.Number("2764800"),
+			"max_lease_ttl":        json.Number("2764800"),
+			"force_no_cache":       false,
+			"token_type":           "default-service",
+			"case_sensitive_alias": false,
+		},
+		"default_lease_ttl":    json.Number("2764800"),
+		"max_lease_ttl":        json.Number("2764800"),
+		"force_no_cache":       false,
+		"token_type":           "default-service",
+		"case_sensitive_alias": false,
+	}
+	testResponseBody(t, resp, &actual)
+	expected["request_id"] = actual["request_id"]
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, actual)
+	}
+}
+
 func TestSysRemountAuth(t *testing.T) {
 	core, _, token := vault.TestCoreUnsealed(t)
 	ln, addr := TestServer(t, core)

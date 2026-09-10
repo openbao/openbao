@@ -118,9 +118,12 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	entity2 := userseed[6:9]
 	testuser2 := userseed[9:12]
 
+	testuser1alias := strings.ToLower(testuser1) // userpass is case-insensitive by mapping usernames to alias names via lowercasing
+	testuser2alias := strings.ToLower(testuser2)
+
 	// Creating two users in the userpass auth mount
-	userClient1, entityID1, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, entity1, testuser1)
-	userClient2, entityID2, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, entity2, testuser2)
+	userClient1, entityID1, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, entity1, testuser1alias)
+	userClient2, entityID2, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, entity2, testuser2alias)
 	waitPeriod := 5
 	maxValidationAttempts := 3
 	totpConfig := map[string]any{

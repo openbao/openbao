@@ -117,6 +117,7 @@ func TestAuthTuneCommand_Run(t *testing.T) {
 				"-allowed-response-headers", "authorization,www-authentication",
 				"-listing-visibility", "unauth",
 				"-plugin-version", version,
+				"-case-sensitive-alias=false",
 				"my-auth/",
 			})
 			if exp := 0; code != exp {
@@ -163,6 +164,8 @@ func TestAuthTuneCommand_Run(t *testing.T) {
 			if diff := deep.Equal([]string{"foo,bar"}, mountInfo.Config.AuditNonHMACResponseKeys); len(diff) > 0 {
 				t.Errorf("Failed to find expected values in AuditNonHMACResponseKeys. Difference is: %v", diff)
 			}
+			require.NotNil(t, mountInfo.Config.CaseSensitiveAlias)
+			require.False(t, *mountInfo.Config.CaseSensitiveAlias)
 		})
 
 		t.Run("flags_description", func(t *testing.T) {

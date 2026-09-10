@@ -301,6 +301,7 @@ type MountConfigInput struct {
 	AllowedManagedKeys        []string                `json:"allowed_managed_keys,omitempty" mapstructure:"allowed_managed_keys"`
 	PluginVersion             string                  `json:"plugin_version,omitempty"`
 	UserLockoutConfig         *UserLockoutConfigInput `json:"user_lockout_config,omitempty"`
+	CaseSensitiveAlias        *bool                   `json:"case_sensitive_alias,omitzero"`
 }
 
 type MountOutput struct {
@@ -330,6 +331,7 @@ type MountConfigOutput struct {
 	AllowedResponseHeaders    []string                 `json:"allowed_response_headers,omitempty" mapstructure:"allowed_response_headers"`
 	TokenType                 string                   `json:"token_type,omitempty" mapstructure:"token_type"`
 	AllowedManagedKeys        []string                 `json:"allowed_managed_keys,omitempty" mapstructure:"allowed_managed_keys"`
+	CaseSensitiveAlias        *bool                    `json:"case_sensitive_alias,omitzero" mapstructure:"case_sensitive_alias"`
 	UserLockoutConfig         *UserLockoutConfigOutput `json:"user_lockout_config,omitempty"`
 }
 

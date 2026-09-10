@@ -13,6 +13,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 	metrics "github.com/hashicorp/go-metrics/compat"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -39,63 +40,70 @@ var (
 )
 
 func (i *IdentityStore) ResetDB(ctx context.Context) error {
-	var err error
+	var merr *multierror.Error
 
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
 
+		// If we've enabled unsafeCrossNamespaceIdentity and it's not root namespace, skip.
+		if i.unsafeCrossNamespaceIdentity && uuidRaw != namespace.RootNamespaceUUID {
+			return false
+		}
+
+		var err error
 		views.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
 		if err != nil {
-			err = fmt.Errorf("error resetting database for namespace %v: %w", uuid, err)
+			merr = multierror.Append(merr, fmt.Errorf("error resetting database for namespace %v: %w", uuid, err))
 			return false
 		}
 
 		return true
 	})
 
-	return err
-}
-
-type LoggerAdder interface {
-	AddLogger(log.Logger)
-	UnsafeCrossNamespaceIdentity() bool
+	return merr.ErrorOrNil()
 }
 
 type IdentityStoreConfig struct {
-	Logger        log.Logger
-	Router        *routing.Router
-	RedirectAddr  string
-	LocalNode     LocalNode
-	Namespacer    Namespacer
-	MetricsSink   metricsutil.Metrics
-	TOTPPersister TOTPPersister
-	TokenStorer   TokenStorer
-	MFABackend    MFABackend
-	LoggerAdder   LoggerAdder
+	Router                       *routing.Router
+	RedirectAddr                 string
+	LocalNode                    LocalNode
+	Namespacer                   Namespacer
+	MetricsSink                  metricsutil.Metrics
+	TOTPPersister                TOTPPersister
+	TokenStorer                  TokenStorer
+	MFABackend                   MFABackend
+	LoggerAdder                  LoggerAdder
+	UnsafeCrossNamespaceIdentity bool
 }
 
 func NewIdentityStore(ctx context.Context, identityStoreConfig *IdentityStoreConfig, config *logical.BackendConfig, logger log.Logger) (*IdentityStore, error) {
 	iStore := &IdentityStore{
-		logger:        identityStoreConfig.Logger,
-		router:        identityStoreConfig.Router,
-		redirectAddr:  identityStoreConfig.RedirectAddr,
-		localNode:     identityStoreConfig.LocalNode,
-		namespacer:    identityStoreConfig.Namespacer,
-		metrics:       identityStoreConfig.MetricsSink,
-		totpPersister: identityStoreConfig.TOTPPersister,
-		tokenStorer:   identityStoreConfig.TokenStorer,
-		mfaBackend:    identityStoreConfig.MFABackend,
+		logger:                       logger,
+		router:                       identityStoreConfig.Router,
+		redirectAddr:                 identityStoreConfig.RedirectAddr,
+		localNode:                    identityStoreConfig.LocalNode,
+		namespacer:                   identityStoreConfig.Namespacer,
+		metrics:                      identityStoreConfig.MetricsSink,
+		totpPersister:                identityStoreConfig.TOTPPersister,
+		tokenStorer:                  identityStoreConfig.TokenStorer,
+		mfaBackend:                   identityStoreConfig.MFABackend,
+		unsafeCrossNamespaceIdentity: identityStoreConfig.UnsafeCrossNamespaceIdentity,
 	}
 
-	if err := iStore.AddNamespaceView(identityStoreConfig.LoggerAdder, namespace.RootNamespace, config.StorageView); err != nil {
+	if err := iStore.AddNamespaceView(
+		identityStoreConfig.LoggerAdder,
+		namespace.RootNamespace,
+		config.StorageView,
+		iStore.unsafeCrossNamespaceIdentity,
+	); err != nil {
 		return nil, err
 	}
 
 	iStore.Backend = &framework.Backend{
 		BackendType:    logical.TypeLogical,
 		Paths:          iStore.paths(),
-		Invalidate:     iStore.Invalidate,
+		Invalidate:     iStore.invalidate,
 		InitializeFunc: iStore.initialize,
 		PathsSpecial: &logical.Paths{
 			Unauthenticated: []string{
@@ -125,7 +133,7 @@ func NewIdentityStore(ctx context.Context, identityStoreConfig *IdentityStoreCon
 	return iStore, nil
 }
 
-func (i *IdentityStore) AddNamespaceView(la LoggerAdder, ns *namespace.Namespace, view logical.Storage) error {
+func (i *IdentityStore) AddNamespaceView(la LoggerAdder, ns *namespace.Namespace, view logical.Storage, unsafeCrossNSIdentity bool) error {
 	nsView := &identityStoreNamespaceView{
 		view: view,
 	}
@@ -157,7 +165,7 @@ func (i *IdentityStore) AddNamespaceView(la LoggerAdder, ns *namespace.Namespace
 		return fmt.Errorf("failed to create group packer: %w", err)
 	}
 
-	if ns.ID == namespace.RootNamespaceID || !la.UnsafeCrossNamespaceIdentity() {
+	if ns.ID == namespace.RootNamespaceID || !unsafeCrossNSIdentity {
 		nsView.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
 		if err != nil {
 			return err
@@ -834,11 +842,11 @@ func (i *IdentityStore) initialize(ctx context.Context, req *logical.Initializat
 	return nil
 }
 
-// Invalidate is a callback wherein the backend is informed that the value at
+// invalidate is a callback wherein the backend is informed that the value at
 // the given key is updated. In identity store's case, it would be the entity
 // storage entries that get updated. The value needs to be read and MemDB needs
 // to be updated accordingly.
-func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
+func (i *IdentityStore) invalidate(ctx context.Context, key string) {
 	i.logger.Debug("invalidate notification received", "key", key)
 
 	i.Lock()

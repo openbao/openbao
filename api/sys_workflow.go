@@ -141,7 +141,7 @@ func (c *Sys) CallWorkflow(ctx context.Context, path string, unauthed bool, data
 		prefix = "unauthed-execute"
 	}
 
-	r := c.c.NewRequest(http.MethodGet, fmt.Sprintf("/v1/sys/workflows/%s/%s", prefix, path))
+	r := c.c.NewRequest(http.MethodPost, fmt.Sprintf("/v1/sys/workflows/%s/%s", prefix, path))
 	if err := r.SetJSONBody(data); err != nil {
 		return nil, err
 	}

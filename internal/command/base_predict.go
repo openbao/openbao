@@ -241,7 +241,7 @@ func (p *Predict) VaultPolicies() complete.Predictor {
 }
 
 // VaultWorkflows returns a predictor for workflows. This is a public
-// API for consumers, but you probably want BaseCommand.PredictVaultPolicies
+// API for consumers, but you probably want BaseCommand.PredictVaultWorkflows
 // instead.
 func (p *Predict) VaultWorkflows() complete.Predictor {
 	return p.filterFunc(p.workflows)

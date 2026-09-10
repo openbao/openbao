@@ -4,22 +4,277 @@
 package identity
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/go-jose/go-jose/v4"
+	sqjwt "github.com/go-jose/go-jose/v4/jwt"
 	auth "github.com/openbao/openbao/api/auth/userpass/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/builtin/credential/approle"
+	"github.com/openbao/openbao/v2/internal/builtin/credential/cert"
+	jwtauth "github.com/openbao/openbao/v2/internal/builtin/credential/jwt"
 	"github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tsaarni/certyaml"
 )
+
+func TestIdentityStore_CaseSensitiveEntityAliases(t *testing.T) {
+	// Define certs
+	ca := certyaml.Certificate{
+		Subject: "cn=ca",
+	}
+	adminCert := certyaml.Certificate{
+		Subject:     "cn=admin",
+		Issuer:      &ca,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+	imposterCert := certyaml.Certificate{
+		Subject: "cn=Admin",
+		Issuer:  &ca,
+	}
+
+	// Start a cluster with custom CA
+	coreConfig := &vault.CoreConfig{
+		CredentialBackends: map[string]logical.Factory{
+			"cert": cert.Factory,
+		},
+	}
+	cert, err := ca.TLSCertificate()
+	require.NoError(t, err)
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		CACert:      cert.Certificate[0],
+		CAKey:       cert.PrivateKey.(*ecdsa.PrivateKey),
+		NumCores:    1,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	core := cluster.Cores[0].Core
+	vault.TestWaitActive(t, core)
+	client := cluster.Cores[0].Client
+
+	// Enable and configure cert auth
+	err = client.Sys().EnableAuthWithOptionsWithContext(t.Context(), "cert", &api.EnableAuthOptions{
+		Type: "cert",
+		Config: api.MountConfigInput{
+			CaseSensitiveAlias: new(true),
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = client.Logical().WriteWithContext(t.Context(), "auth/cert/certs/my-ca", map[string]any{
+		"certificate":    string(ca.CertPEM()),
+		"token_policies": "",
+		"token_ttl":      "30m",
+		"display_name":   "My CA",
+	})
+	require.NoError(t, err)
+
+	// Login once to create entity
+	conf := api.NewConfig()
+	conf.Address = client.Address()
+	require.NoError(t, conf.ConfigureTLS(&api.TLSConfig{
+		ClientCertBytes: adminCert.CertPEM(),
+		ClientKeyBytes:  adminCert.KeyPEM(),
+		CACertBytes:     ca.CertPEM(),
+	}))
+
+	admin, err := api.NewClient(conf)
+	require.NoError(t, err)
+
+	resp, err := admin.Logical().WriteWithContext(t.Context(), "auth/cert/login", map[string]any{
+		"name": "my-ca",
+	})
+	require.NoError(t, err)
+
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Auth)
+	require.Equal(t, []string{"default"}, resp.Auth.Policies)
+
+	// Grant policy to entity
+	_, err = client.Logical().WriteWithContext(t.Context(), "identity/entity/id/"+resp.Auth.EntityID,
+		map[string]any{"policies": []string{"admin"}})
+	require.NoError(t, err)
+
+	// Login again: admin should now have the new policy
+	resp, err = admin.Logical().WriteWithContext(t.Context(), "auth/cert/login", map[string]any{
+		"name": "my-ca",
+	})
+	require.NoError(t, err)
+
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Auth)
+	require.Equal(t, []string{"admin", "default"}, resp.Auth.Policies)
+
+	// Login as imposter: should not have the policy, entity id should be different
+	conf = api.NewConfig()
+	conf.Address = client.Address()
+	require.NoError(t, conf.ConfigureTLS(&api.TLSConfig{
+		ClientCertBytes: imposterCert.CertPEM(),
+		ClientKeyBytes:  imposterCert.KeyPEM(),
+		CACertBytes:     ca.CertPEM(),
+	}))
+
+	imposter, err := api.NewClient(conf)
+	require.NoError(t, err)
+
+	imposterResp, err := imposter.Logical().WriteWithContext(t.Context(), "auth/cert/login", map[string]any{
+		"name": "my-ca",
+	})
+	require.NoError(t, err)
+
+	require.NotNil(t, imposterResp)
+	require.NotNil(t, imposterResp.Auth)
+	assert.Equal(t, []string{"default"}, imposterResp.Auth.Policies)
+	assert.NotEqual(t, resp.Auth.EntityID, imposterResp.Auth.EntityID)
+
+	// delete the mount and restart the cluster => unseal should succeed
+	err = client.Sys().DisableAuthWithContext(t.Context(), "cert")
+	require.NoError(t, err)
+
+	cluster.EnsureCoresSealed(t)
+	cluster.UnsealCores(t)
+}
+
+func TestIdentityStore_CaseSensitiveGroupAliases(t *testing.T) {
+	// Generate key-pair for jwt
+	key, err := ecdsa.GenerateKey(elliptic.P256(), nil)
+	require.NoError(t, err)
+
+	pubDer, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	require.NoError(t, err)
+	pubPem := string(pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: pubDer,
+	}))
+
+	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: key}, (&jose.SignerOptions{}).WithType("JWT"))
+	require.NoError(t, err)
+
+	getJWT := func(alias string, groups string) string {
+		jwt, err := sqjwt.Signed(sig).Claims(sqjwt.Claims{
+			Audience: sqjwt.Audience{"test"},
+			IssuedAt: sqjwt.NewNumericDate(time.Now()),
+			Expiry:   sqjwt.NewNumericDate(time.Now().Add(time.Hour)),
+		}).Claims(map[string]any{
+			"alias":  alias,
+			"groups": groups,
+		}).Serialize()
+		require.NoError(t, err)
+		return jwt
+	}
+
+	// Start cluster
+	coreConfig := &vault.CoreConfig{
+		CredentialBackends: map[string]logical.Factory{
+			"jwt": jwtauth.Factory,
+		},
+	}
+
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		NumCores:    1,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	core := cluster.Cores[0].Core
+	vault.TestWaitActive(t, core)
+	client := cluster.Cores[0].Client
+
+	// Enable and configure jwt auth
+	err = client.Sys().EnableAuthWithOptionsWithContext(t.Context(), "jwt", &api.EnableAuthOptions{
+		Type: "jwt",
+		Config: api.MountConfigInput{
+			CaseSensitiveAlias: new(true),
+		},
+	})
+	require.NoError(t, err)
+
+	resp, err := client.Logical().ReadWithContext(t.Context(), "sys/auth/jwt")
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	jwtAccessor := resp.Data["accessor"]
+
+	_, err = client.Logical().WriteWithContext(t.Context(), "auth/jwt/config", map[string]any{
+		"jwt_validation_pubkeys": pubPem,
+	})
+	require.NoError(t, err)
+
+	_, err = client.Logical().WriteWithContext(t.Context(), "auth/jwt/role/my-role", map[string]any{
+		"role_type":       "jwt",
+		"user_claim":      "alias",
+		"groups_claim":    "groups",
+		"bound_audiences": "test",
+	})
+	require.NoError(t, err)
+
+	// Create group
+	resp, err = client.Logical().WriteWithContext(t.Context(), "identity/group",
+		map[string]any{
+			"name":     "admins",
+			"policies": []string{"admin"},
+			"type":     "external",
+		},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	groupId := resp.Data["id"].(string)
+
+	// Create group alias
+	_, err = client.Logical().WriteWithContext(t.Context(), "identity/group-alias",
+		map[string]any{
+			"name":           "jwt-admins",
+			"mount_accessor": jwtAccessor,
+			"canonical_id":   groupId,
+		},
+	)
+	require.NoError(t, err)
+
+	// Login as Admin
+	resp, err = client.Logical().WriteWithContext(t.Context(), "auth/jwt/login", map[string]any{
+		"role": "my-role",
+		"jwt":  getJWT("alice", "jwt-admins"),
+	})
+	require.NoError(t, err)
+
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Auth)
+	adminEntityId := resp.Auth.EntityID
+	require.ElementsMatch(t, []string{"admin", "default"}, resp.Auth.Policies) // expect admin policy
+
+	// Login as Impostor
+	resp, err = client.Logical().WriteWithContext(t.Context(), "auth/jwt/login", map[string]any{
+		"role": "my-role",
+		"jwt":  getJWT("impostor", "JWT-ADMINS"),
+	})
+	require.NoError(t, err)
+
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Auth)
+	assert.ElementsMatch(t, []string{"default"}, resp.Auth.Policies) // expect no admin policy
+
+	// Check group members
+	resp, err = client.Logical().ReadWithContext(t.Context(), "identity/group/id/"+groupId)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.ElementsMatch(t, []string{adminEntityId}, resp.Data["member_entity_ids"])
+}
 
 // TODO: rewrite test to not rely on AppRole plugin.
 func TestIdentityStore_ListAlias(t *testing.T) {

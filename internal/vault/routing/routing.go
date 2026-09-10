@@ -61,6 +61,7 @@ type MountConfig struct {
 	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" structs:"allowed_response_headers" mapstructure:"allowed_response_headers"`
 	TokenType                 logical.TokenType     `json:"token_type,omitempty" structs:"token_type" mapstructure:"token_type"`
 	UserLockoutConfig         *UserLockoutConfig    `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
+	CaseSensitiveAlias        *bool                 `json:"case_sensitive_alias,omitzero" mapstructure:"case_sensitive_alias"`
 }
 
 // APIMountConfig is an embedded struct of api.MountConfigInput
@@ -76,6 +77,7 @@ type APIMountConfig struct {
 	TokenType                 string                `json:"token_type" structs:"token_type" mapstructure:"token_type"`
 	UserLockoutConfig         *UserLockoutConfig    `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
 	PluginVersion             string                `json:"plugin_version,omitempty" mapstructure:"plugin_version"`
+	CaseSensitiveAlias        *bool                 `json:"case_sensitive_alias,omitzero" mapstructure:"case_sensitive_alias"`
 }
 
 type UserLockoutConfig struct {

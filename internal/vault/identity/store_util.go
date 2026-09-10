@@ -750,23 +750,39 @@ func (i *IdentityStore) MemDBAliasByFactorsInTxn(txn *memdb.Txn, mountAccessor, 
 		return nil, errors.New("missing mount accessor")
 	}
 
+	caseSensitiveAlias := true
+	mount := i.router.MatchingMountByAccessor(mountAccessor)
+	if mount != nil {
+		caseSensitiveAliasRaw, ok := mount.SynthesizedConfigCache.Load("case_sensitive_alias")
+		caseSensitiveAlias = ok && caseSensitiveAliasRaw.(bool)
+	}
+
 	tableName := entityAliasesTable
 	if groupAlias {
 		tableName = groupAliasesTable
 	}
 
-	aliasRaw, err := txn.First(tableName, "factors", mountAccessor, aliasName)
+	iter, err := txn.Get(tableName, "factors", mountAccessor, aliasName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch alias from memdb using factors: %w", err)
 	}
 
-	if aliasRaw == nil {
-		return nil, nil
-	}
+	var alias *identity.Alias
+	for {
+		aliasRaw := iter.Next()
+		if aliasRaw == nil {
+			return nil, nil
+		}
 
-	alias, ok := aliasRaw.(*identity.Alias)
-	if !ok {
-		return nil, errors.New("failed to declare the type of fetched alias")
+		var ok bool
+		alias, ok = aliasRaw.(*identity.Alias)
+		if !ok {
+			return nil, errors.New("failed to declare the type of fetched alias")
+		}
+
+		if !caseSensitiveAlias || alias.Name == aliasName {
+			break
+		}
 	}
 
 	if clone {

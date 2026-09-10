@@ -37,6 +37,7 @@ $ curl \
       "accessor": "auth_github_badd7fd0",
       "config": {
         "default_lease_ttl": 0,
+        "case_sensitive_alias": true,
         "force_no_cache": false,
         "max_lease_ttl": 0,
         "token_type": "default-service"
@@ -57,6 +58,7 @@ $ curl \
       "accessor": "auth_token_bd90f507",
       "config": {
         "default_lease_ttl": 0,
+        "case_sensitive_alias": true,
         "force_no_cache": false,
         "max_lease_ttl": 0,
         "token_type": "default-service"
@@ -141,6 +143,16 @@ For example, enable the "foo" auth method will make it accessible at
     unversioned plugin that may have been registered, the latest versioned plugin
     registered, or a built-in plugin in that order of precedence.
 
+  - `case_sensitive_alias` `(bool: false)` - Whether or not the aliases returned
+    by this auth mount should be treated case sensitively.
+
+    :::warning
+
+    The default value for `case_sensitive_alias` will change to `true` in
+    OpenBao 2.8.0. See [Tune auth method](#tune-auth-method) for details.
+
+    :::
+
 ### Sample payload
 
 ```json
@@ -189,6 +201,7 @@ $ curl \
     "accessor": "auth_github_badd7fd0",
     "config": {
       "default_lease_ttl": 0,
+      "case_sensitive_alias": true,
       "force_no_cache": false,
       "max_lease_ttl": 0,
       "token_type": "default-service"
@@ -266,6 +279,7 @@ $ curl \
 
 ```json
 {
+  "case_sensitive_alias": true,
   "default_lease_ttl": 2764800,
   "description": "",
   "force_no_cache": false,
@@ -344,6 +358,25 @@ can be achieved without `sudo` via `sys/mounts/auth/[auth-path]/tune`._
 
   - `lockout_disable` `(bool: false)` - Disables the user lockout feature for this mount
      if set to true.
+
+- `case_sensitive_alias` `(bool: false)` - Whether or not the aliases returned
+  by this auth mount should be treated case sensitively. Before changing this
+  value, please read [this guide](../../guides/case-sensitive-alias.mdx).
+
+  :::warning
+
+  Case-insensitive matching may lead to unprivileged users being able to
+  impersonate privileged users. Therefore the default will change to `true` in
+  OpenBao 2.8.0, only disable case-sensitivity, if you know it is safe for the
+  given auth method.
+
+  Currently, OpenBao implicitly defaults to `false` and for backwards
+  compatibility existing auth methods are not automatically converted to being
+  case-sensitive with 2.8.0. Starting with 2.7.3 and 2.6.6 you can convert your
+  existing auth methods to being case-sensitive, but it is recommended to read [this
+  guide](../../guides/case-sensitive-alias.mdx) first.
+
+  :::
 
 ### Sample payload
 

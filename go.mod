@@ -75,6 +75,7 @@ require (
 	github.com/hashicorp/raft v1.7.3
 	github.com/hashicorp/raft-autopilot v0.3.0
 	github.com/hashicorp/raft-boltdb/v2 v2.3.1
+	github.com/hexops/gotextdiff v1.0.3
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/jefferai/isbadcipher v0.0.0-20190226160619-51d2077c035f

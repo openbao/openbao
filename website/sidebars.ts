@@ -286,6 +286,18 @@ const sidebars: SidebarsConfig = {
                 "commands/version",
                 "commands/version-history",
                 "commands/write",
+                {
+                    workflow: [
+                        "commands/workflow/index",
+                        "commands/workflow/call",
+                        "commands/workflow/delete",
+                        "commands/workflow/edit",
+                        "commands/workflow/info",
+                        "commands/workflow/list",
+                        "commands/workflow/read",
+                        "commands/workflow/write",
+                    ],
+                },
                 "commands/token-helper",
             ],
             "OpenBao Agent and Proxy": [

@@ -1,0 +1,66 @@
+---
+sidebar_label: call
+description: |-
+  The "workflow call" command executes a given workflow with
+  the supplied data.
+---
+
+# workflow call
+
+The `workflow call` command calls a OpenBao workflow, allowing for input data if
+needed. If a workflow doesn't require authentication, it can be called with the
+`-unauthed` flag.
+
+Data is specified as `key=value` pairs. If the value begins with an `@`, then it
+is loaded from a file. If the value is `-`, OpenBao will read the value from
+stdin.
+
+Use [`workflow info`](info.mdx) to see the inputs a workflow declares.
+
+## Examples
+
+Call a workflow:
+
+```shell-session
+$ bao workflow call my-workflow
+Success! Called workflow: my-workflow
+```
+
+Call a workflow without authentication:
+
+```shell-session
+$ bao workflow call -unauthed my-workflow
+```
+
+Call a workflow with input variables:
+
+```shell-session
+$ bao workflow call my-workflow username=tester
+```
+
+Call a workflow with an input read from a file:
+
+```shell-session
+$ bao workflow call my-workflow policy=@my-policy.hcl
+```
+
+## Usage
+
+The following flags are available in addition to the [standard set of
+flags](../index.mdx) included on all commands.
+
+### Output options
+
+- `-field` `(string: "")` - Print only the field with the given name. Specifying
+  this option will take precedence over other formatting directives. The result
+  will not have a trailing newline making it ideal for piping to other processes.
+
+- `-format` `(string: "table")` - Print the output in the given format. Valid
+  formats are "table", "json", or "yaml". This can also be specified via the
+  `BAO_FORMAT` environment variable.
+
+### Command options
+
+- `-unauthed` `(bool: false)` - Call a unauthed workflow. This uses the
+  `sys/workflows/unauthed-execute` endpoint, which does not require
+  authentication.

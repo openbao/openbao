@@ -92,6 +92,7 @@ const sidebars: SidebarsConfig = {
             Guides: [
                 "guides/migration",
                 "guides/sealable-namespaces",
+                "guides/case-sensitive-alias",
                 {
                     Unsealing: [
                         {

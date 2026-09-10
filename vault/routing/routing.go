@@ -63,6 +63,8 @@ type MountConfig struct {
 	//
 	// Deprecated: MountEntry.Type should be used instead for Vault 1.0.0 and beyond.
 	PluginName string `json:"plugin_name,omitempty" structs:"plugin_name,omitempty" mapstructure:"plugin_name"`
+
+	CaseSensitiveAlias *bool `json:"case_sensitive_alias,omitzero" mapstructure:"case_sensitive_alias"`
 }
 
 // APIMountConfig is an embedded struct of api.MountConfigInput
@@ -83,6 +85,8 @@ type APIMountConfig struct {
 	//
 	// Deprecated: MountEntry.Type should be used instead for Vault 1.0.0 and beyond.
 	PluginName string `json:"plugin_name,omitempty" structs:"plugin_name,omitempty" mapstructure:"plugin_name"`
+
+	CaseSensitiveAlias *bool `json:"case_sensitive_alias,omitzero" mapstructure:"case_sensitive_alias"`
 }
 
 type UserLockoutConfig struct {

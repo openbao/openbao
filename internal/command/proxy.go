@@ -80,8 +80,6 @@ type ProxyCommand struct {
 	// Telemetry object
 	metricsHelper *metricsutil.MetricsHelper
 
-	cleanupGuard sync.Once
-
 	startedCh  chan struct{} // for tests
 	reloadedCh chan struct{} // for tests
 

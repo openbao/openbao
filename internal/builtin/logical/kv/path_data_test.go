@@ -383,6 +383,27 @@ func TestVersionedKV_Data_Delete(t *testing.T) {
 	if !parsed.After(time.Now().Add(-1*time.Minute)) || !parsed.Before(time.Now()) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
+
+	// Read the key metadata directly to verify it was refreshed by the delete.
+	req = &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+	}
+
+	resp, err = b.HandleRequest(t.Context(), req)
+	if err != nil || resp == nil || resp.IsError() {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	updatedTime, err := time.Parse(time.RFC3339Nano, resp.Data["updated_time"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !updatedTime.After(time.Now().Add(-1*time.Minute)) || !updatedTime.Before(time.Now()) {
+		t.Fatalf("Bad response: %#v", resp)
+	}
 }
 
 func TestVersionedKV_Data_Put_CleanupOldVersions(t *testing.T) {

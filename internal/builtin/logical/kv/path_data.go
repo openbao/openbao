@@ -654,10 +654,10 @@ func (b *versionedKVBackend) pathDataDelete() framework.OperationFunc {
 			}
 		}
 
-		lv.DeletionTime = timestamppb.Now()
-
-		err = b.writeKeyMetadata(ctx, req.Storage, meta)
-		if err != nil {
+		now := timestamppb.Now()
+		lv.DeletionTime = now
+		meta.UpdatedTime = now
+		if err := b.writeKeyMetadata(ctx, req.Storage, meta); err != nil {
 			return nil, err
 		}
 

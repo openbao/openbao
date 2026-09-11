@@ -1,0 +1,3 @@
+```release-note:improvement
+core: Compare every stored key share when checking for duplicates during unseal, root generation, rekey, and rotation.
+```

@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/physical"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
@@ -300,7 +301,7 @@ type SealConfig struct {
 	Backup bool `json:"backup" mapstructure:"backup"`
 
 	// Stores the progress of the rotation (key shares).
-	RotationProgress [][]byte `json:"-"`
+	RotationProgress shamir.Shares `json:"-"`
 
 	// VerificationRequired indicates that after a rotation validation must be
 	// performed (via providing shares from the new key) before the new key is
@@ -316,7 +317,7 @@ type SealConfig struct {
 	VerificationNonce string `json:"-"`
 
 	// Stores the progress of the verification operation (key shares)
-	VerificationProgress [][]byte `json:"-"`
+	VerificationProgress shamir.Shares `json:"-"`
 }
 
 // baseValidate is used as a shared base between `Validate` and `ValidateRecovery`

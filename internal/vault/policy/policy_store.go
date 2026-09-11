@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path"
 	"slices"
 	"strings"
 	"time"
@@ -157,7 +156,7 @@ var (
 type Store struct {
 	core core
 
-	tokenPoliciesLRU *lru.TwoQueueCache[string, *Policy]
+	tokenPoliciesLRU *lru.TwoQueueCache[cacheKey, *Policy]
 
 	// This is used to ensure that writes to the store (acl) or to the egp
 	// path tree don't happen concurrently. We are okay reading stale data so
@@ -184,7 +183,7 @@ func NewStore(ctx context.Context, core core, baseView barrier.View, system logi
 	}
 
 	if !system.CachingDisabled() {
-		cache, _ := lru.New2Q[string, *Policy](policyCacheSize)
+		cache, _ := lru.New2Q[cacheKey, *Policy](policyCacheSize)
 		ps.tokenPoliciesLRU = cache
 	}
 
@@ -220,7 +219,7 @@ func (ps *Store) InvalidateNamespace(ctx context.Context, uuid string) {
 	defer ps.lockWithUnlock(ctx)()
 
 	for _, key := range ps.tokenPoliciesLRU.Keys() {
-		if strings.HasPrefix(key, uuid) {
+		if key.namespace == uuid {
 			ps.tokenPoliciesLRU.Remove(key)
 		}
 	}
@@ -376,7 +375,7 @@ func (ps *Store) switchedGetPolicy(ctx context.Context, name string, policyType 
 	name = ps.sanitizeName(name)
 	index := ps.cacheKey(ns, name)
 
-	var cache *lru.TwoQueueCache[string, *Policy]
+	var cache *lru.TwoQueueCache[cacheKey, *Policy]
 	var view barrier.View
 
 	switch policyType {
@@ -702,8 +701,15 @@ func (ps *Store) sanitizeName(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
 }
 
-func (ps *Store) cacheKey(ns *namespace.Namespace, name string) string {
-	return path.Join(ns.UUID, name)
+type cacheKey struct {
+	name, namespace string
+}
+
+func (ps *Store) cacheKey(ns *namespace.Namespace, name string) cacheKey {
+	return cacheKey{
+		name:      name,
+		namespace: ns.UUID,
+	}
 }
 
 // LoadDefaultPolicies loads default policies for the namespace in the provided context

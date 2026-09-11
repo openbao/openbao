@@ -4,13 +4,15 @@
  */
 
 import { Base } from '../create';
-import { isPresent, clickable, visitable, create, fillable } from 'ember-cli-page-object';
+import { isPresent, clickable, visitable, create, fillable, collection } from 'ember-cli-page-object';
 
 export default create({
   ...Base,
   path: fillable('[data-test-secret-path="true"]'),
-  secretKey: fillable('[data-test-secret-key]'),
-  secretValue: fillable('[data-test-secret-value] textarea'),
+  secretRows: collection('[data-test-secret-row]', {
+    key: fillable('[data-test-secret-key]'),
+    value: fillable('[data-test-secret-value] textarea'),
+  }),
   save: clickable('[data-test-secret-save]'),
   deleteBtn: clickable('[data-test-secret-delete] button'),
   confirmBtn: clickable('[data-test-confirm-button]'),
@@ -26,15 +28,26 @@ export default create({
     return this.deleteBtn().confirmBtn();
   },
   createSecret: async function (path, key, value) {
-    return this.path(path).secretKey(key).secretValue(value).save();
+    this.path(path);
+    this.secretRows.objectAt(0).key(key);
+    this.secretRows.objectAt(0).value(value);
+    return this.save();
   },
   createSecretDontSave: async function (path, key, value) {
-    return this.path(path).secretKey(key).secretValue(value);
+    this.path(path);
+    this.secretRows.objectAt(0).key(key);
+    this.secretRows.objectAt(0).value(value);
+    return;
   },
   createSecretWithMetadata: async function (path, key, value, maxVersion) {
-    return this.path(path).secretKey(key).secretValue(value).toggleMetadata().maxVersion(maxVersion).save();
+    this.path(path);
+    this.secretRows.objectAt(0).key(key);
+    this.secretRows.objectAt(0).value(value);
+    return this.toggleMetadata().maxVersion(maxVersion).save();
   },
   editSecret: async function (key, value) {
-    return this.secretKey(key).secretValue(value).save();
+    this.secretRows.objectAt(0).key(key);
+    this.secretRows.objectAt(0).value(value);
+    return this.save();
   },
 });

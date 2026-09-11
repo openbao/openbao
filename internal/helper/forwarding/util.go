@@ -14,15 +14,6 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/buffer"
 )
 
-type bufCloser struct {
-	*bytes.Buffer
-}
-
-func (b bufCloser) Close() error {
-	b.Reset()
-	return nil
-}
-
 func GenerateForwardedRequest(req *http.Request) (*Request, error) {
 	var reader io.Reader = req.Body
 	body, err := io.ReadAll(reader)

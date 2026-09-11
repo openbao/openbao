@@ -15,10 +15,6 @@ import (
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/sink"
 )
 
-const (
-	fileServerTestDir = "vault-agent-file-test"
-)
-
 func testFileSink(t *testing.T, log hclog.Logger) (*sink.SinkConfig, string) {
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "token")

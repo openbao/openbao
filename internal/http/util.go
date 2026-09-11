@@ -15,7 +15,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/buffer"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
@@ -236,28 +235,6 @@ func parseRemoteIPAddress(r *http.Request) string {
 	}
 
 	return ip
-}
-
-type multiReaderCloser struct {
-	readers []io.Reader
-	io.Reader
-}
-
-func newMultiReaderCloser(readers ...io.Reader) *multiReaderCloser {
-	return &multiReaderCloser{
-		readers: readers,
-		Reader:  io.MultiReader(readers...),
-	}
-}
-
-func (m *multiReaderCloser) Close() error {
-	var err error
-	for _, r := range m.readers {
-		if c, ok := r.(io.Closer); ok {
-			err = multierror.Append(err, c.Close())
-		}
-	}
-	return err
 }
 
 // https://www.rfc-editor.org/rfc/rfc9440.html#name-encoding

@@ -443,28 +443,6 @@ func (t *RaftTransaction) List(ctx context.Context, prefix string) ([]string, er
 	return t.ListPage(ctx, prefix, "", -1)
 }
 
-// returns (entryName, isFolder, shouldVisit)
-func listShouldIncludeEntry(prefix string, after string, key string) (string, bool, bool) {
-	subKey := strings.TrimPrefix(key, prefix)
-	i := strings.Index(subKey, "/")
-	if i == -1 {
-		// Not a folder; check if we can skip this entry by suffix.
-		if after != "" && subKey <= after {
-			return subKey, false, false
-		}
-
-		return subKey, false, true
-	}
-
-	// Check if we need to visit the truncated folder path.
-	folder := string(subKey[:i+1])
-	if after != "" && folder <= after {
-		return folder, true, false
-	}
-
-	return folder, true, true
-}
-
 func (t *RaftTransaction) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	t.l.Lock()
 	defer t.l.Unlock()

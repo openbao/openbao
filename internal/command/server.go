@@ -464,10 +464,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	configSeal := config.Seals[0]
-	sealType := configSeal.Type
 	if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
-		sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
-		configSeal.Type = sealType
+		configSeal.Type = api.ReadBaoVariable("BAO_SEAL_TYPE")
 	}
 
 	var seal vault.Seal
@@ -2530,10 +2528,8 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 	}
 	createdSeals := make([]vault.Seal, len(config.Seals))
 	for _, configSeal := range config.Seals {
-		sealType := configSeal.Type
 		if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
-			sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
-			configSeal.Type = sealType
+			configSeal.Type = api.ReadBaoVariable("BAO_SEAL_TYPE")
 		}
 
 		var seal vault.Seal

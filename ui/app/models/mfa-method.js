@@ -13,7 +13,17 @@ const METHOD_PROPS = {
   common: [],
   duo: ['username_format', 'secret_key', 'integration_key', 'api_hostname', 'push_info', 'use_passcode'],
   okta: ['username_format', 'mount_accessor', 'org_name', 'api_token', 'base_url', 'primary_email'],
-  totp: ['issuer', 'period', 'key_size', 'qr_size', 'algorithm', 'digits', 'skew', 'max_validation_attempts'],
+  totp: [
+    'issuer',
+    'period',
+    'key_size',
+    'qr_size',
+    'algorithm',
+    'digits',
+    'skew',
+    'enable_self_enrollment',
+    'max_validation_attempts',
+  ],
   pingid: [
     'username_format',
     'settings_file_base64',
@@ -162,6 +172,13 @@ export default class MfaMethod extends Model {
     subText: 'The number of delay periods allowed when validating a TOTP token.',
   })
   skew;
+  @attr('boolean', {
+    label: 'Enable Self Enrollment',
+    editType: 'boolean',
+    subText: 'Is self enrollment allowed?',
+    defaultValue: false,
+  })
+  enable_self_enrollment;
   @attr('number') max_validation_attempts;
 
   get name() {

@@ -40,6 +40,7 @@ message TOTPConfig {
 	uint32 key_size = 6;
 	int32 qr_size = 7;
 	uint32 max_validation_attempts = 8;
+	bool enable_self_enrollment = 9;
 }
 
 // DuoConfig represents the configuration information required to perform

@@ -469,6 +469,66 @@ func (x *MFARequirement) GetMFAConstraints() map[string]*MFAConstraintAny {
 	return nil
 }
 
+type TOTPSelfEnroll struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MFARequestID  string                 `protobuf:"bytes,1,opt,name=mfa_request_id,json=mfaRequestId,proto3" json:"mfa_request_id,omitempty"`
+	TOTPSecret    string                 `protobuf:"bytes,2,opt,name=totp_secret,json=totpSecret,proto3" json:"totp_secret,omitempty"`
+	TOTPURL       string                 `protobuf:"bytes,3,opt,name=totp_url,json=totpUrl,proto3" json:"totp_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TOTPSelfEnroll) Reset() {
+	*x = TOTPSelfEnroll{}
+	mi := &file_sdk_logical_identity_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TOTPSelfEnroll) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TOTPSelfEnroll) ProtoMessage() {}
+
+func (x *TOTPSelfEnroll) ProtoReflect() protoreflect.Message {
+	mi := &file_sdk_logical_identity_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TOTPSelfEnroll.ProtoReflect.Descriptor instead.
+func (*TOTPSelfEnroll) Descriptor() ([]byte, []int) {
+	return file_sdk_logical_identity_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *TOTPSelfEnroll) GetMFARequestID() string {
+	if x != nil {
+		return x.MFARequestID
+	}
+	return ""
+}
+
+func (x *TOTPSelfEnroll) GetTOTPSecret() string {
+	if x != nil {
+		return x.TOTPSecret
+	}
+	return ""
+}
+
+func (x *TOTPSelfEnroll) GetTOTPURL() string {
+	if x != nil {
+		return x.TOTPURL
+	}
+	return ""
+}
+
 var File_sdk_logical_identity_proto protoreflect.FileDescriptor
 
 const file_sdk_logical_identity_proto_rawDesc = "" +
@@ -520,7 +580,12 @@ const file_sdk_logical_identity_proto_rawDesc = "" +
 	"\x0fmfa_constraints\x18\x02 \x03(\v2+.logical.MFARequirement.MFAConstraintsEntryR\x0emfaConstraints\x1a\\\n" +
 	"\x13MFAConstraintsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
-	"\x05value\x18\x02 \x01(\v2\x19.logical.MFAConstraintAnyR\x05value:\x028\x01B+Z)github.com/openbao/openbao/sdk/v2/logicalb\x06proto3"
+	"\x05value\x18\x02 \x01(\v2\x19.logical.MFAConstraintAnyR\x05value:\x028\x01\"r\n" +
+	"\x0eTOTPSelfEnroll\x12$\n" +
+	"\x0emfa_request_id\x18\x01 \x01(\tR\fmfaRequestID\x12\x1f\n" +
+	"\vtotp_secret\x18\x02 \x01(\tR\n" +
+	"totpSecret\x12\x19\n" +
+	"\btotp_url\x18\x03 \x01(\tR\atotpURLB+Z)github.com/openbao/openbao/sdk/v2/logicalb\x06proto3"
 
 var (
 	file_sdk_logical_identity_proto_rawDescOnce sync.Once
@@ -534,7 +599,7 @@ func file_sdk_logical_identity_proto_rawDescGZIP() []byte {
 	return file_sdk_logical_identity_proto_rawDescData
 }
 
-var file_sdk_logical_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_sdk_logical_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_sdk_logical_identity_proto_goTypes = []any{
 	(*Entity)(nil),           // 0: logical.Entity
 	(*Alias)(nil),            // 1: logical.Alias
@@ -542,20 +607,21 @@ var file_sdk_logical_identity_proto_goTypes = []any{
 	(*MFAMethodID)(nil),      // 3: logical.MFAMethodID
 	(*MFAConstraintAny)(nil), // 4: logical.MFAConstraintAny
 	(*MFARequirement)(nil),   // 5: logical.MFARequirement
-	nil,                      // 6: logical.Entity.MetadataEntry
-	nil,                      // 7: logical.Alias.MetadataEntry
-	nil,                      // 8: logical.Alias.CustomMetadataEntry
-	nil,                      // 9: logical.Group.MetadataEntry
-	nil,                      // 10: logical.MFARequirement.MFAConstraintsEntry
+	(*TOTPSelfEnroll)(nil),   // 6: logical.TOTPSelfEnroll
+	nil,                      // 7: logical.Entity.MetadataEntry
+	nil,                      // 8: logical.Alias.MetadataEntry
+	nil,                      // 9: logical.Alias.CustomMetadataEntry
+	nil,                      // 10: logical.Group.MetadataEntry
+	nil,                      // 11: logical.MFARequirement.MFAConstraintsEntry
 }
 var file_sdk_logical_identity_proto_depIDxs = []int32{
 	1,  // 0: logical.Entity.aliases:type_name -> logical.Alias
-	6,  // 1: logical.Entity.metadata:type_name -> logical.Entity.MetadataEntry
-	7,  // 2: logical.Alias.metadata:type_name -> logical.Alias.MetadataEntry
-	8,  // 3: logical.Alias.custom_metadata:type_name -> logical.Alias.CustomMetadataEntry
-	9,  // 4: logical.Group.metadata:type_name -> logical.Group.MetadataEntry
+	7,  // 1: logical.Entity.metadata:type_name -> logical.Entity.MetadataEntry
+	8,  // 2: logical.Alias.metadata:type_name -> logical.Alias.MetadataEntry
+	9,  // 3: logical.Alias.custom_metadata:type_name -> logical.Alias.CustomMetadataEntry
+	10, // 4: logical.Group.metadata:type_name -> logical.Group.MetadataEntry
 	3,  // 5: logical.MFAConstraintAny.any:type_name -> logical.MFAMethodID
-	10, // 6: logical.MFARequirement.mfa_constraints:type_name -> logical.MFARequirement.MFAConstraintsEntry
+	11, // 6: logical.MFARequirement.mfa_constraints:type_name -> logical.MFARequirement.MFAConstraintsEntry
 	4,  // 7: logical.MFARequirement.MFAConstraintsEntry.value:type_name -> logical.MFAConstraintAny
 	8,  // [8:8] is the sub-list for method output_type
 	8,  // [8:8] is the sub-list for method input_type
@@ -575,7 +641,7 @@ func file_sdk_logical_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sdk_logical_identity_proto_rawDesc), len(file_sdk_logical_identity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

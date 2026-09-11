@@ -115,7 +115,17 @@ module('Acceptance | mfa-method', function (hooks) {
       .isDisabled('Delete toolbar action disabled when method is attached to an enforcement');
 
     const fields = [
-      ['Issuer', 'Period', 'Key size', 'QR size', 'Algorithm', 'Digits', 'Skew', 'Max validation attempts'],
+      [
+        'Issuer',
+        'Period',
+        'Key size',
+        'QR size',
+        'Algorithm',
+        'Digits',
+        'Skew',
+        'Enable Self Enrollment',
+        'Max validation attempts',
+      ],
       ['Duo API hostname', 'Passcode reminder'],
       ['Organization name', 'Base URL'],
       ['Use signature', 'Idp url', 'Admin url', 'Authenticator url', 'Org alias'],
@@ -262,7 +272,16 @@ module('Acceptance | mfa-method', function (hooks) {
     await click('[data-test-mfa-method-list-item] .ember-basic-dropdown-trigger');
     await click('[data-test-mfa-method-menu-link="edit"]');
 
-    const keys = ['issuer', 'period', 'key_size', 'qr_size', 'algorithm', 'digits', 'skew'];
+    const keys = [
+      'issuer',
+      'period',
+      'key_size',
+      'qr_size',
+      'algorithm',
+      'digits',
+      'skew',
+      'enable_self_enrollment',
+    ];
     keys.forEach((key) => {
       if (key === 'period') {
         assert

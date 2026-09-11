@@ -148,6 +148,25 @@ func TestHashAuth(t *testing.T) {
 			},
 			false,
 		},
+		{
+			&logical.Auth{
+				ClientToken: "foo",
+				TOTPSelfEnroll: &logical.TOTPSelfEnroll{
+					MFARequestID: "not-sensitive-id",
+					TOTPSecret:   "foo",
+					TOTPURL:      "foo",
+				},
+			},
+			&logical.Auth{
+				ClientToken: "hmac-sha256:08ba357e274f528065766c770a639abf6809b39ccfd37c2a3157c7f51954da0a",
+				TOTPSelfEnroll: &logical.TOTPSelfEnroll{
+					MFARequestID: "not-sensitive-id",
+					TOTPSecret:   "hmac-sha256:08ba357e274f528065766c770a639abf6809b39ccfd37c2a3157c7f51954da0a",
+					TOTPURL:      "hmac-sha256:08ba357e274f528065766c770a639abf6809b39ccfd37c2a3157c7f51954da0a",
+				},
+			},
+			false,
+		},
 	}
 
 	inmemStorage := &logical.InmemStorage{}

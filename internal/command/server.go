@@ -1703,6 +1703,64 @@ func (c *ServerCommand) notifySystemd(status string) {
 	}
 }
 
+// selfInitRetryJoinSeconds is how long we wait for an outstanding raft
+// retry_join before deciding we're the first node of a new cluster. A first
+// node has no peer to reach, so it always waits the whole time; that only
+// happens once, on the very first boot.
+const selfInitRetryJoinSeconds = 35
+
+// waitForRaftRetryJoin waits for a backgrounded raft retry_join to initialize
+// this node, and reports whether it did. False means there was nothing to wait
+// for, or that nothing completed in time; either way the caller should go on
+// and self-initialize.
+func (c *ServerCommand) waitForRaftRetryJoin(ctx context.Context, core *vault.Core, config *server.Config) (bool, error) {
+	// Raft as HA storage only is left out on purpose: there we're unsealed
+	// before we join, so there can't be a join in flight this early. Storage
+	// is nil-checked because Initialize is also called directly, outside the
+	// startup path that guarantees a storage stanza.
+	if config.Storage == nil || config.Storage.Type != storageTypeRaft {
+		return false, nil
+	}
+
+	raftBackend := core.GetRaftBackend()
+	if raftBackend == nil {
+		return false, nil
+	}
+
+	// A bad retry_join stanza has already failed the server in
+	// InitiateRetryJoin, which runs before we get here, so treat an error as
+	// nothing to wait for rather than failing startup twice over.
+	joinInfos, err := raftBackend.JoinConfig()
+	if err != nil || len(joinInfos) == 0 {
+		return false, nil
+	}
+
+	c.logger.Info("waiting for raft retry join")
+
+	joinCount := selfInitRetryJoinSeconds
+	for {
+		// Initialized, unlike InitializedLocally, goes true as soon as a
+		// successful join has bootstrapped the raft backend, which is the
+		// transition we're waiting on.
+		inited, err := core.Initialized(ctx)
+		if err != nil {
+			return false, fmt.Errorf("unable to check core initialization status: %w", err)
+		}
+		if inited {
+			c.logger.Info("raft retry join completed, skipping self-initialization")
+			return true, nil
+		}
+
+		if joinCount == 0 {
+			c.logger.Info("raft retry join did not complete, self-initializing")
+			return false, nil
+		}
+
+		time.Sleep(1 * time.Second)
+		joinCount--
+	}
+}
+
 func (c *ServerCommand) waitForLeader(core *vault.Core) (bool, error) {
 	// By definition of self-initialization, we can't have added any follower
 	// nodes yet because key material was just created prior to this. We can
@@ -1768,6 +1826,21 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) (ret
 		// other authentication information but on subsequent startups
 		// presumably the admin has created an alternative mechanism we should
 		// defer to.
+		return nil
+	}
+
+	// The check above is one sample of a value a concurrent retry_join is
+	// racing to flip: InitiateRetryJoin backgrounds its retry loop, so on a
+	// follower we get here while the join is still in flight and would
+	// bootstrap a competing single-node cluster moments before it lands. We
+	// can't undo that either, since JoinRaftCluster gives up once the node is
+	// initialized locally. Wait for any outstanding join to finish before we
+	// decide we're the first node.
+	joined, err := c.waitForRaftRetryJoin(ctx, core, config)
+	if err != nil {
+		return err
+	}
+	if joined {
 		return nil
 	}
 

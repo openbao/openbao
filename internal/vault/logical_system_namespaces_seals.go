@@ -12,8 +12,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
 )
@@ -178,6 +180,42 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 			HelpSynopsis:    "Delete a sealed namespace.",
 			HelpDescription: "Physically deletes a sealed namespace by wiping its storage. Requires sudo privilege. Pass force=true to also delete child namespaces.",
 		},
+
+		{
+			Pattern: "namespaces/(?P<path>.+)/migrate-barrier",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+				OperationVerb:   "migrate-barrier",
+			},
+			Fields: map[string]*framework.FieldSchema{
+				"path": namespacePathSchema,
+				"seal": {
+					Type:        framework.TypeString,
+					Description: "User provided seal config.",
+				},
+				"pgp_keys": {
+					Type:        framework.TypeStringSlice,
+					Description: "Specifies an array of PGP public keys used to encrypt the output unseal keys.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Summary:  "Migrate a namespace barrier.",
+					Callback: b.handleNamespacesMigrateBarrier(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: http.StatusText(http.StatusOK),
+							Fields:      sealStatusSchema,
+						}},
+					},
+					ForwardPerformanceStandby: true,
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][1]),
+		},
 	}
 }
 
@@ -335,23 +373,126 @@ func (b *SystemBackend) handleNamespacesDeleteSealed() framework.OperationFunc {
 	}
 }
 
+type BarrierMigrationState struct {
+	SealConfig                *SealConfig
+	UnsealShares              [][]byte
+	LastMigratedNamespacePath string
+	LastMigratedKey           string
+}
+
+func (b *SystemBackend) handleNamespacesMigrateBarrier() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
+		}
+
+		if !b.System().(extendedSystemView).SudoPrivilege(ctx, req.MountPoint+req.Path, req.ClientToken) {
+			return nil, logical.ErrPermissionDenied
+		}
+
+		var state BarrierMigrationState
+
+		sealRaw, ok := data.GetOk("seal")
+		if ok {
+			var err error
+			sealString, ok := sealRaw.(string)
+			if !ok {
+				return nil, errors.New("seal config must be a HCL or JSON string")
+			}
+			kmses, err := configutil.ParseKMSes(sealString)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse seal config: %w", err)
+			}
+			if len(kmses) != 1 {
+				return nil, errors.New("seal config must contain exactly one seal stanza")
+			}
+			kms := kmses[0]
+			if kms.Type != "shamir" {
+				return nil, errors.New("namespaces currently only support shamir seals")
+			}
+
+			state.SealConfig = &SealConfig{
+				Type: kms.Type,
+			}
+
+			if val, ok := kms.Config["shares"]; ok {
+				shares, err := parseutil.ParseInt(val)
+				if err != nil {
+					return nil, errors.New("value of shares parameter must be integer")
+				}
+				state.SealConfig.SecretShares = int(shares)
+			}
+			if val, ok := kms.Config["threshold"]; ok {
+				threshold, err := parseutil.ParseInt(val)
+				if err != nil {
+					return nil, errors.New("value of shares parameter must be integer")
+				}
+				state.SealConfig.SecretThreshold = int(threshold)
+			}
+			if pgpkeys, ok := data.GetOk("pgp_keys"); ok {
+				state.SealConfig.PGPKeys = pgpkeys.([]string)
+			}
+
+			if err := state.SealConfig.Validate(); err != nil {
+				return logical.ErrorResponse("invalid seal config: %v", err), err
+			}
+		}
+
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if ns == nil {
+			return handleError(fmt.Errorf("namespace %q doesn't exist", path))
+		}
+
+		if b.Core.NamespaceType(ns) == namespace.TypeNormal && state.SealConfig == nil {
+			// normal -> normal: NOOP
+			return &logical.Response{
+				Data: map[string]any{"status": "skipped"},
+			}, nil
+		}
+
+		if err := b.Core.namespaceStore.startNamespaceBarrierMigration(ctx, ns, &state); err != nil {
+			return handleError(err)
+		}
+
+		resp := &logical.Response{
+			Data: map[string]any{"status": "in-progress"},
+		}
+
+		if len(state.UnsealShares) != 0 {
+			encoded := make([]string, 0, len(state.UnsealShares))
+			for _, share := range state.UnsealShares {
+				encoded = append(encoded, hex.EncodeToString(share))
+			}
+			resp.Data["key_shares"] = encoded
+			resp.Data["key_threshold"] = state.SealConfig.SecretThreshold
+		}
+
+		return resp, nil
+	}
+}
+
 var sysNamespacesSealsHelp = map[string][2]string{
 	"namespaces-seal": {
 		"Seal, unseal and delete sealable namespaces and check their seal status.",
 		`
-This path responds to the following HTTP methods.
-
-	POST /<path>/seal
-		Seal a namespace.
-
-	POST /<path>/unseal
-		Unseal a namespace.
-
-	GET /<path>/seal-status
-		Returns the seal status of the namespace.
-
-	DELETE /<path>/delete-sealed
-		Delete a sealed namespace by wiping its storage.
-		`,
+ This path responds to the following HTTP methods.
+ 
+ 	POST /<path>/seal
+ 		Seal a namespace.
+ 
+ 	POST /<path>/unseal
+ 		Unseal a namespace.
+ 
+ 	GET /<path>/seal-status
+ 		Returns the seal status of the namespace.
+ 
+ 	DELETE /<path>/delete-sealed
+ 		Delete a sealed namespace by wiping its storage.
+ 		`,
 	},
 }

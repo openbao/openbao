@@ -151,7 +151,7 @@ func (nt *namespaceTree) WalkPath(path string, predicate func(namespace *namespa
 func (nt *namespaceTree) Walk(
 	path string,
 	recursive bool,
-	callback func(*namespace.Namespace),
+	callback func(*namespace.Namespace) bool,
 ) error {
 	node := nt.nodeAt(path)
 	if node == nil {
@@ -165,8 +165,8 @@ func (nt *namespaceTree) Walk(
 
 	for len(queue) > 0 {
 		node, queue = queue[0], queue[1:]
-		callback(node.entry)
-		if recursive {
+		continueRecurse := callback(node.entry)
+		if recursive && continueRecurse {
 			for _, child := range node.children {
 				queue = append(queue, child)
 			}

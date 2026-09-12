@@ -1,0 +1,3 @@
+```release-note:improvement
+pki/acme: Support `challenge_permitted_ip_ranges` and `challenge_excluded_ip_ranges` for the ACME challenge validation
+```

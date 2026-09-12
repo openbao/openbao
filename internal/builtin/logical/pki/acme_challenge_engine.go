@@ -455,9 +455,6 @@ func (ace *ACMEChallengeEngine) _verifyChallenge(sc *storageContext, id string, 
 
 		valid, err = ValidateDNS01Challenge(authz.Identifier.Value, cv.Token, cv.Thumbprint, config)
 		if err != nil {
-			if errors.Is(err, ErrRejectedIdentifier) {
-				return ace._verifyChallengeCleanup(sc, err, id)
-			}
 			err = fmt.Errorf("%w: error validating dns-01 challenge %v: %w; %v", ErrIncorrectResponse, id, err, ChallengeAttemptFailedMsg)
 			return ace._verifyChallengeRetry(sc, cv, authzPath, authz, challenge, err, id)
 		}

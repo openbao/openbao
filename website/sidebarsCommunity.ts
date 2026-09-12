@@ -103,6 +103,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/control-groups",
                 "rfcs/pqc",
                 "rfcs/index-headers",
+                "rfcs/totp-self-enroll",
             ],
         },
         {

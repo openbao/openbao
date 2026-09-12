@@ -25,13 +25,15 @@ const (
 )
 
 type acmeConfigEntry struct {
-	Enabled                bool          `json:"enabled"`
-	AllowedIssuers         []string      `json:"allowed_issuers="`
-	AllowedRoles           []string      `json:"allowed_roles"`
-	AllowRoleExtKeyUsage   bool          `json:"allow_role_ext_key_usage"`
-	DefaultDirectoryPolicy string        `json:"default_directory_policy"`
-	DNSResolver            string        `json:"dns_resolver"`
-	EabPolicyName          EabPolicyName `json:"eab_policy_name"`
+	Enabled                    bool          `json:"enabled"`
+	AllowedIssuers             []string      `json:"allowed_issuers="`
+	AllowedRoles               []string      `json:"allowed_roles"`
+	AllowRoleExtKeyUsage       bool          `json:"allow_role_ext_key_usage"`
+	DefaultDirectoryPolicy     string        `json:"default_directory_policy"`
+	DNSResolver                string        `json:"dns_resolver"`
+	EabPolicyName              EabPolicyName `json:"eab_policy_name"`
+	ChallengeExcludedIPRanges  []string      `json:"challenge_excluded_ip_ranges"`
+	ChallengePermittedIPRanges []string      `json:"challenge_permitted_ip_ranges"`
 }
 
 var defaultAcmeConfig = acmeConfigEntry{
@@ -121,6 +123,16 @@ func pathAcmeConfig(b *backend) *framework.Path {
 				Description: `Specify the policy to use for external account binding behaviour, 'not-required', 'new-account-required' or 'always-required'`,
 				Default:     "always-required",
 			},
+			"challenge_permitted_ip_ranges": {
+				Type:        framework.TypeCommaStringSlice,
+				Description: `Specify the list of allowed IP ranges.`,
+				Default:     []string{},
+			},
+			"challenge_excluded_ip_ranges": {
+				Type:        framework.TypeCommaStringSlice,
+				Description: `Specify the list of excluded IP ranges. This takes precedence over the permitted list!`,
+				Default:     []string{},
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -168,13 +180,15 @@ func (b *backend) pathAcmeRead(ctx context.Context, req *logical.Request, _ *fra
 func genResponseFromAcmeConfig(config *acmeConfigEntry, warnings []string) *logical.Response {
 	response := &logical.Response{
 		Data: map[string]any{
-			"allowed_roles":            config.AllowedRoles,
-			"allow_role_ext_key_usage": config.AllowRoleExtKeyUsage,
-			"allowed_issuers":          config.AllowedIssuers,
-			"default_directory_policy": config.DefaultDirectoryPolicy,
-			"enabled":                  config.Enabled,
-			"dns_resolver":             config.DNSResolver,
-			"eab_policy":               config.EabPolicyName,
+			"allowed_roles":                 config.AllowedRoles,
+			"allow_role_ext_key_usage":      config.AllowRoleExtKeyUsage,
+			"allowed_issuers":               config.AllowedIssuers,
+			"default_directory_policy":      config.DefaultDirectoryPolicy,
+			"enabled":                       config.Enabled,
+			"dns_resolver":                  config.DNSResolver,
+			"eab_policy":                    config.EabPolicyName,
+			"challenge_permitted_ip_ranges": config.ChallengePermittedIPRanges,
+			"challenge_excluded_ip_ranges":  config.ChallengeExcludedIPRanges,
 		},
 		Warnings: warnings,
 	}
@@ -241,6 +255,20 @@ func (b *backend) pathAcmeWrite(ctx context.Context, req *logical.Request, d *fr
 				eabPolicyNotRequired, eabPolicyNewAccountRequired, eabPolicyAlwaysRequired)
 		}
 		config.EabPolicyName = eabPolicy.Name
+	}
+
+	if permittedRanges, ok := d.GetOk("challenge_permitted_ip_ranges"); ok {
+		if err := validateIPList(permittedRanges.([]string)); err != nil {
+			return nil, fmt.Errorf("invalid challenge_permitted_ip_ranges: %w", err)
+		}
+		config.ChallengePermittedIPRanges = permittedRanges.([]string)
+	}
+
+	if excludedRanges, ok := d.GetOk("challenge_excluded_ip_ranges"); ok {
+		if err := validateIPList(excludedRanges.([]string)); err != nil {
+			return nil, fmt.Errorf("invalid challenge_excluded_ip_ranges: %w", err)
+		}
+		config.ChallengeExcludedIPRanges = excludedRanges.([]string)
 	}
 
 	// Validate Default Directory Behavior:

@@ -6,6 +6,7 @@ package pki
 import (
 	"container/list"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -440,7 +441,10 @@ func (ace *ACMEChallengeEngine) _verifyChallenge(sc *storageContext, id string, 
 
 		valid, err = ValidateHTTP01Challenge(addr, cv.Token, cv.Thumbprint, config)
 		if err != nil {
-			err = fmt.Errorf("%w: error validating http-01 challenge %v: %v; %v", ErrIncorrectResponse, id, err, ChallengeAttemptFailedMsg)
+			if errors.Is(err, ErrRejectedIdentifier) {
+				return ace._verifyChallengeCleanup(sc, err, id)
+			}
+			err = fmt.Errorf("%w: error validating http-01 challenge %v: %w; %v", ErrIncorrectResponse, id, err, ChallengeAttemptFailedMsg)
 			return ace._verifyChallengeRetry(sc, cv, authzPath, authz, challenge, err, id)
 		}
 	case ACMEDNSChallenge:
@@ -451,7 +455,10 @@ func (ace *ACMEChallengeEngine) _verifyChallenge(sc *storageContext, id string, 
 
 		valid, err = ValidateDNS01Challenge(authz.Identifier.Value, cv.Token, cv.Thumbprint, config)
 		if err != nil {
-			err = fmt.Errorf("%w: error validating dns-01 challenge %v: %v; %v", ErrIncorrectResponse, id, err, ChallengeAttemptFailedMsg)
+			if errors.Is(err, ErrRejectedIdentifier) {
+				return ace._verifyChallengeCleanup(sc, err, id)
+			}
+			err = fmt.Errorf("%w: error validating dns-01 challenge %v: %w; %v", ErrIncorrectResponse, id, err, ChallengeAttemptFailedMsg)
 			return ace._verifyChallengeRetry(sc, cv, authzPath, authz, challenge, err, id)
 		}
 	case ACMEALPNChallenge:
@@ -467,7 +474,10 @@ func (ace *ACMEChallengeEngine) _verifyChallenge(sc *storageContext, id string, 
 
 		valid, err = ValidateTLSALPN01Challenge(authz.Identifier.Value, cv.Token, cv.Thumbprint, config)
 		if err != nil {
-			err = fmt.Errorf("%w: error validating tls-alpn-01 challenge %v: %s", ErrIncorrectResponse, id, err.Error())
+			if errors.Is(err, ErrRejectedIdentifier) {
+				return ace._verifyChallengeCleanup(sc, err, id)
+			}
+			err = fmt.Errorf("%w: error validating tls-alpn-01 challenge %v: %w", ErrIncorrectResponse, id, err)
 			return ace._verifyChallengeRetry(sc, cv, authzPath, authz, challenge, err, id)
 		}
 	default:

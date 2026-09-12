@@ -1613,6 +1613,12 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			o.t.Fatal(err)
 		}
+	case "/certs_wrong":
+		a := getTestJWKS(o.t, privateKeyToPublicKeyPEM(o.t, badPrivKey))
+		_, err := w.Write(a)
+		if err != nil {
+			o.t.Fatal(err)
+		}
 	case "/certs_missing":
 		w.WriteHeader(404)
 	case "/certs_invalid":
@@ -1740,6 +1746,28 @@ func getQueryParam(t *testing.T, inputURL, param string) string {
 		t.Fatalf("query param %q not found", param)
 	}
 	return v[0]
+}
+
+// privateKeyToPublicKeyPEM derives the PEM-encoded public key from a
+// PEM-encoded EC private key.
+func privateKeyToPublicKeyPEM(t *testing.T, privKey string) string {
+	t.Helper()
+
+	block, _ := pem.Decode([]byte(privKey))
+	if block == nil {
+		t.Fatal("unable to decode private key")
+	}
+	key, err := x509.ParseECPrivateKey(block.Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pubBytes, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubBytes}))
 }
 
 // getTestJWKS converts a pem-encoded public key into JWKS data suitable

@@ -2,6 +2,12 @@ name: Build and Push Docker Image
 
 on:
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Tag for the Docker image (default: commit SHA)'
+        required: false
+        default: 'latest'
+        type: string
 
 permissions:
   contents: read
@@ -51,6 +57,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

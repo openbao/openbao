@@ -71,8 +71,8 @@ func parseTransitImportPEM(material []byte) ([]byte, error) {
 		return nil, errors.New("encrypted PEM and PEM headers are not supported")
 	}
 
-	// Some x509 parsers accept trailing DER data. Check the complete object
-	// before parsing so that normalization cannot discard extra material.
+	// Some x509 parsers accept trailing DER data. Reject bytes after the outer
+	// ASN.1 object before parsing the key.
 	var object asn1.RawValue
 	rest, err := asn1.Unmarshal(block.Bytes, &object)
 	if err != nil || len(rest) != 0 {

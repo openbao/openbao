@@ -79,8 +79,8 @@ positional arguments. See `bao transit import -help` for more information.
   `EC PRIVATE KEY` (SEC1), using the private-key formats supported by Go's
   `crypto/x509` package. The key is converted to PKCS#8 DER before wrapping.
   Encrypted keys, PEM headers, additional blocks, and non-whitespace text outside
-  the block are rejected. Malformed keys and extra DER data inside the block are
-  also rejected.
+  the block are rejected. Keys must parse successfully using Go's crypto/x509
+  package. Trailing bytes after the outer DER object are also rejected.
 
 Raw and PEM inputs require `@file`; key contents cannot be passed inline in
 these modes. Prefer files with restrictive permissions rather than putting

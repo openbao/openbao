@@ -1,0 +1,3 @@
+```release-note:bug
+auth/userpass: Change 'missing password' error status code to 400.
+```

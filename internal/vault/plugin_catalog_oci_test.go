@@ -5,8 +5,6 @@
 package vault
 
 import (
-	"archive/tar"
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
@@ -16,132 +14,10 @@ import (
 	"testing"
 
 	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	"github.com/google/go-containerregistry/pkg/v1/static"
-	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/command/server"
 	"github.com/openbao/openbao/v2/internal/helper/pluginutil/oci"
 )
-
-// createTestOCIImage creates a test OCI image with a plugin binary
-func createTestOCIImage(t *testing.T, binaryName, binaryContent string) v1.Image {
-	// Create a tar layer with our test binary
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-
-	// Add the plugin binary to the tar
-	header := &tar.Header{
-		Name:     binaryName,
-		Mode:     0o755,
-		Size:     int64(len(binaryContent)),
-		Typeflag: tar.TypeReg,
-	}
-
-	if err := tw.WriteHeader(header); err != nil {
-		t.Fatalf("failed to write tar header: %v", err)
-	}
-
-	if _, err := tw.Write([]byte(binaryContent)); err != nil {
-		t.Fatalf("failed to write binary content: %v", err)
-	}
-
-	if err := tw.Close(); err != nil {
-		t.Fatalf("failed to close tar writer: %v", err)
-	}
-
-	// Create the layer directly from the tar data (uncompressed)
-	layer := static.NewLayer(buf.Bytes(), "application/vnd.docker.image.rootfs.diff.tar")
-
-	// Start with an empty image and add our layer
-	img, err := mutate.AppendLayers(empty.Image, layer)
-	if err != nil {
-		t.Fatalf("failed to create image: %v", err)
-	}
-
-	return img
-}
-
-// TestExtractPluginFromImage tests the OCI image extraction functionality
-func TestExtractPluginFromImage(t *testing.T) {
-	tests := []struct {
-		name          string
-		binaryName    string
-		binaryContent string
-		targetBinary  string
-		expectError   bool
-	}{
-		{
-			name:          "exact match",
-			binaryName:    "test-plugin",
-			binaryContent: "test binary content",
-			targetBinary:  "test-plugin",
-			expectError:   false,
-		},
-		{
-			name:          "with leading slash",
-			binaryName:    "/test-plugin",
-			binaryContent: "test binary content",
-			targetBinary:  "test-plugin",
-			expectError:   false,
-		},
-		{
-			name:          "not found",
-			binaryName:    "different-plugin",
-			binaryContent: "test binary content",
-			targetBinary:  "missing-plugin",
-			expectError:   true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create a temporary directory for the test
-			tempDir := t.TempDir()
-
-			// Create the test OCI image
-			img := createTestOCIImage(t, tt.binaryName, tt.binaryContent)
-
-			// Create a minimal config and downloader for testing
-			logger := hclog.NewNullLogger()
-			config := &server.Config{}
-			downloader := oci.NewPluginDownloader(tempDir, config, logger)
-
-			// Test the extraction
-			targetPath := filepath.Join(tempDir, "extracted-plugin")
-			err := downloader.ExtractPluginFromImage(img, targetPath, tt.targetBinary, logger)
-
-			if tt.expectError {
-				if err == nil {
-					t.Error("expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			// Verify the file was created
-			if _, err := os.Stat(targetPath); os.IsNotExist(err) {
-				t.Error("expected file was not created")
-				return
-			}
-
-			// Verify the content
-			content, err := os.ReadFile(targetPath)
-			if err != nil {
-				t.Fatalf("failed to read extracted file: %v", err)
-			}
-
-			if string(content) != tt.binaryContent {
-				t.Errorf("content mismatch: expected %q, got %q", tt.binaryContent, string(content))
-			}
-		})
-	}
-}
 
 // TestReconcileOCIPlugins tests the full OCI plugin reconciliation process
 // This test downloads the real openbao-plugin-secrets-nomad from GHCR
@@ -197,7 +73,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	ctx := t.Context()
 
 	// Download plugins.
-	if err := oci.NewPluginDownloader(tempDir, config, core.logger).ReconcilePlugins(ctx); err != nil {
+	if err := oci.NewPluginDownloader(tempDir, config, core.logger).Reconcile(ctx); err != nil {
 		t.Fatalf("OCI plugin download failed: %v", err)
 	}
 
@@ -301,7 +177,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	core.rawConfig.Store(config)
 
 	// Re-download.
-	if err := oci.NewPluginDownloader(tempDir, config, core.logger).ReconcilePlugins(ctx); err != nil {
+	if err := oci.NewPluginDownloader(tempDir, config, core.logger).Reconcile(ctx); err != nil {
 		t.Fatalf("OCI plugin reconciliation failed: %v", err)
 	}
 
@@ -359,55 +235,5 @@ func TestReconcileOCIPlugins(t *testing.T) {
 		if found {
 			t.Fatalf("unexpectedly found %v plugin in catalog after removal from config:\nlist: %#v", name, list)
 		}
-	}
-}
-
-// TestPluginCacheStructure tests the new hidden cache structure and symlink functionality
-func TestPluginCacheStructure(t *testing.T) {
-	// Create a temporary directory for plugins
-	tempDir := t.TempDir()
-
-	// Test plugin configuration
-	pluginConfig := &server.PluginConfig{
-		Image:      name.MustParseReference("docker.io/test/plugin:latest"),
-		Version:    "latest",
-		Type:       "test",
-		Name:       "plugin",
-		BinaryName: "test-plugin",
-		SHA256Sum:  "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", // SHA256 of "test"
-	}
-
-	// Manually create the expected cache structure to test validation
-	sha256Prefix := pluginConfig.SHA256Sum[:8] // "9f86d081"
-	cacheDir := filepath.Join(tempDir, ".oci-cache", pluginConfig.Slug(), sha256Prefix)
-	cachedPluginPath := filepath.Join(cacheDir, pluginConfig.BinaryName)
-
-	// Create the cache directory
-	err := os.MkdirAll(cacheDir, 0o755)
-	if err != nil {
-		t.Fatalf("failed to create cache directory: %v", err)
-	}
-
-	// Create a test plugin file in cache with the expected content
-	testContent := []byte("test")
-	err = os.WriteFile(cachedPluginPath, testContent, 0o755)
-	if err != nil {
-		t.Fatalf("failed to create cached plugin file: %v", err)
-	}
-
-	// Create symlink in plugin directory
-	symlinkPath := filepath.Join(tempDir, pluginConfig.FullName())
-	relativeTarget := filepath.Join(".oci-cache", "test-plugin", sha256Prefix, "test-plugin")
-	err = os.Symlink(relativeTarget, symlinkPath)
-	if err != nil {
-		t.Fatalf("failed to create symlink: %v", err)
-	}
-
-	// Test that cache validation works with symlinks using the OCI downloader
-	config := &server.Config{}
-	downloader := oci.NewPluginDownloader(tempDir, config, hclog.NewNullLogger())
-	isValid := downloader.IsPluginCacheValid(pluginConfig)
-	if !isValid {
-		t.Error("Expected plugin cache to be valid with symlink")
 	}
 }

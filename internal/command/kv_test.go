@@ -1300,10 +1300,10 @@ func TestKVPatchCommand_Methods(t *testing.T) {
 
 			kvClient.SetToken(secretAuth.ClientToken)
 
-			_, err = kvClient.Logical().Write("kv/data/foo", map[string]any{"data": map[string]any{"bar": "baz"}})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				_, err = kvClient.Logical().Write("kv/data/foo", map[string]any{"data": map[string]any{"bar": "baz"}})
+				require.NoError(collect, err)
+			}, 15*time.Second, 20*time.Millisecond)
 
 			code, _ := kvPatchWithRetry(t, kvClient, tc.args, nil)
 

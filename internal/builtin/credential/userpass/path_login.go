@@ -78,7 +78,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 
 	password := d.Get("password").(string)
 	if password == "" {
-		return nil, errors.New("missing password")
+		return logical.ErrorResponse("missing password"), logical.ErrInvalidRequest
 	}
 
 	// bypass cache as we want to hit the storage

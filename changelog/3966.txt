@@ -1,0 +1,3 @@
+```release-note:improvement
+core: Prevent timing side-channel leakage that reveals the ordering of already-provided key shares when checking for duplicates during unseal, root generation, rekey, and rotation.
+```

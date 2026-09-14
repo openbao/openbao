@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -20,7 +19,7 @@ import (
 
 type rootTokenGeneration struct {
 	Config   *GenerateRootConfig
-	Progress [][]byte
+	Progress shamir.Shares
 }
 
 // GenerateStandardRootTokenStrategy is the strategy used to
@@ -333,10 +332,8 @@ func (c *Core) lockedGenerateRootUpdate(ctx context.Context, key []byte, nonce s
 	}
 
 	// Check if we already have this piece
-	for _, existing := range gen.Progress {
-		if bytes.Equal(existing, key) {
-			return nil, errors.New("given key has already been provided during this generation operation")
-		}
+	if gen.Progress.Has(key) {
+		return nil, errors.New("given key has already been provided during this generation operation")
 	}
 
 	// Store this key

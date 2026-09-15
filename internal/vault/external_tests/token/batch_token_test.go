@@ -85,6 +85,9 @@ path "kv/*" {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if resp == nil {
+		t.Fatal("expected a response for writing the role test")
+	}
 
 	// Get role_id
 	resp, err = client.Logical().Read("auth/approle/role/test/role-id")

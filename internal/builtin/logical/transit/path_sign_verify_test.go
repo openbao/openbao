@@ -944,7 +944,6 @@ func testTransit_SignVerify_RSA_PSS(t *testing.T, bits int) {
 		req.Data = newReqData(hashAlgorithm, marshalingName)
 		t.Log("\t\t\t", "sign req data:", req.Data)
 		sig := signRequest(false, "")
-
 		t.Log("\t\t", "Verify it with an implicit, automatic salt length")
 		t.Log("\t\t\t", "verify req data:", req.Data)
 		verifyRequest(false, "", sig)
@@ -980,10 +979,10 @@ func testTransit_SignVerify_RSA_PSS(t *testing.T, bits int) {
 	}
 
 	for hashAlgorithm := range keysutil.HashTypeMap {
-		t.Log("Hash algorithm:", hashAlgorithm)
-		if hashAlgorithm == "none" {
+		if hashAlgorithm == "none" || hashAlgorithm == "mldsa-mu" {
 			continue
 		}
+		t.Log("Hash algorithm:", hashAlgorithm)
 
 		for marshalingName := range keysutil.MarshalingTypeMap {
 			t.Log("\t", "Marshaling type:", marshalingName)

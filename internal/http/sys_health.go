@@ -4,7 +4,6 @@
 package http
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault"
 	"github.com/openbao/openbao/v2/internal/version"
@@ -124,7 +124,7 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		replicationState = core.ReplicationState()
 	}
 
-	ctx := namespace.RootContext(context.Background())
+	ctx := namespace.RootContext(r.Context())
 	init, err := core.Initialized(ctx)
 	if err != nil {
 		return http.StatusInternalServerError, nil, err
@@ -151,6 +151,11 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		ReplicationDRMode:          replicationState.GetDRString(),
 		ServerTimeUTC:              time.Now().UTC().Unix(),
 		Version:                    version.GetVersion().VersionNumber(),
+	}
+
+	listener := configutil.GetListenerConfigToContext(ctx)
+	if listener != nil && listener.DisableUnauthedMetadata {
+		hr.Version = "(version redacted)"
 	}
 
 	// Fetch the local cluster name and identifier

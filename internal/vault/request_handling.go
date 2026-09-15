@@ -599,6 +599,8 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	stop := context.AfterFunc(httpCtx, cancel)
 	defer stop()
 
+	ctx = configutil.AddListenerConfigToContext(ctx, configutil.GetListenerConfigToContext(httpCtx))
+
 	nsHeader := namespace.HeaderFromContext(httpCtx)
 	contextNS, err := namespace.FromContext(httpCtx)
 	haveContextNS := err == nil

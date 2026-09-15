@@ -16,6 +16,7 @@ import (
 	"github.com/go-test/deep"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers"
 	"github.com/openbao/openbao/v2/internal/vault"
@@ -92,6 +93,48 @@ func TestSysSeal(t *testing.T) {
 
 	if !core.Sealed() {
 		t.Fatal("should be sealed")
+	}
+}
+
+func TestSysSealStatus_redacted(t *testing.T) {
+	core, _, token := vault.TestCoreUnsealed(t)
+	ln, addr := TestListener(t)
+	defer ln.Close()
+	TestServerWithListenerAndProperties(t, ln, addr, core, &vault.HandlerProperties{
+		Core: core,
+		ListenerConfig: &configutil.Listener{
+			DisableUnauthedMetadata: true,
+		},
+	})
+	TestServerAuth(t, addr, token)
+
+	resp, err := http.Get(addr + "/v1/sys/seal-status")
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	testResponseStatus(t, resp, 200)
+
+	var actual map[string]any
+	testResponseStatus(t, resp, 200)
+	testResponseBody(t, resp, &actual)
+
+	delete(actual, "cluster_name")
+	delete(actual, "cluster_id")
+
+	if diff := deep.Equal(actual, map[string]any{
+		"sealed":        false,
+		"t":             json.Number("3"),
+		"n":             json.Number("3"),
+		"progress":      json.Number("0"),
+		"nonce":         "",
+		"type":          "shamir",
+		"recovery_seal": false,
+		"initialized":   true,
+		"migration":     false,
+		"commit_date":   "(date redacted)",
+		"version":       "(version redacted)",
+	}); diff != nil {
+		t.Fatal(diff)
 	}
 }
 

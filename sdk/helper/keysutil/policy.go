@@ -118,6 +118,7 @@ type SigningOptions struct {
 	Marshaling         MarshalingType
 	SaltLength         int
 	SigAlgorithm       string
+	MLDSAExternalMu    bool
 	ExternalKeyFactory ExternalKeyFactory
 }
 
@@ -163,6 +164,16 @@ func (kt KeyType) SigningSupported() bool {
 		return true
 	}
 	return false
+}
+
+func (kt KeyType) MLDSAExternalMuSupported() bool {
+	switch kt {
+	case KeyType_MLDSA44, KeyType_MLDSA65, KeyType_MLDSA87,
+		KeyType_ExternalKey:
+		return true
+	default:
+		return false
+	}
 }
 
 func (kt KeyType) HashSignatureInput() bool {
@@ -1447,7 +1458,16 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 		if err != nil {
 			return nil, err
 		}
-		sig, err = key.Sign(rand.Reader, input, crypto.Hash(0))
+
+		opts := crypto.Hash(0)
+		if options.MLDSAExternalMu {
+			if muSize := crypto.MLDSAMu.Size(); len(input) != muSize {
+				return nil, errutil.UserError{Err: fmt.Sprintf("external ML-DSA mu must be %d bytes, got %d", muSize, len(input))}
+			}
+			opts = crypto.MLDSAMu
+		}
+
+		sig, err = key.Sign(rand.Reader, input, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -1465,33 +1485,41 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 			return nil, errors.New("factory returned nil key with no error; key not found")
 		}
 
-		algo, ok := CryptoHashMap[hashAlgorithm]
-		if !ok {
-			return nil, errutil.InternalError{Err: "unsupported hash algorithm"}
-		}
-
 		opts := &kms.SignOptions{
 			Data:      input,
 			Prehashed: options.Prehashed,
 		}
 
-		if sigAlgorithm == "" {
-			sigAlgorithm = "pss"
-		}
-
-		if sigAlgorithm == "pss" {
-			opts.SignerOpts = &rsa.PSSOptions{
-				Hash:       algo,
-				SaltLength: saltLength,
+		if options.MLDSAExternalMu {
+			if muSize := crypto.MLDSAMu.Size(); len(input) != muSize {
+				return nil, errutil.UserError{Err: fmt.Sprintf("external ML-DSA mu must be %d bytes, got %d", muSize, len(input))}
 			}
+
+			opts.Prehashed = true
+			opts.SignerOpts = crypto.MLDSAMu
 		} else {
-			opts.SignerOpts = algo
+			algo, ok := CryptoHashMap[hashAlgorithm]
+			if !ok {
+				return nil, errutil.InternalError{
+					Err: "unsupported hash algorithm",
+				}
+			}
+
+			if sigAlgorithm == "" {
+				sigAlgorithm = "pss"
+			}
+
+			if sigAlgorithm == "pss" {
+				opts.SignerOpts = &rsa.PSSOptions{
+					Hash:       algo,
+					SaltLength: saltLength,
+				}
+			} else {
+				opts.SignerOpts = algo
+			}
 		}
 
 		sig, err = key.Sign(ctx, opts)
-		if err != nil {
-			return nil, fmt.Errorf("failed to sign with external key: %w", err)
-		}
 
 	default:
 		return nil, fmt.Errorf("unsupported key type %v", p.Type)
@@ -1529,6 +1557,10 @@ func (p *Policy) VerifySignatureWithOptions(derivationContext, input []byte, sig
 
 	if !p.Type.SigningSupported() {
 		return false, errutil.UserError{Err: fmt.Sprintf("message verification not supported for key type %v", p.Type)}
+	}
+
+	if options.MLDSAExternalMu {
+		return false, errutil.UserError{Err: "external ML-DSA mu verification is not supported"}
 	}
 
 	tplParts, err := p.getTemplateParts()

@@ -5,6 +5,8 @@ package transit
 
 import (
 	"context"
+	"crypto"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"strconv"
@@ -1069,6 +1071,52 @@ func testTransit_SignVerify_MLDSA(t *testing.T, params int) {
 
 	valid = resp.Data["valid"].(bool)
 	require.False(t, valid)
+}
+
+func TestTransit_Sign_MLDSAExternalMu(t *testing.T) {
+	t.Run("44", func(t *testing.T) {
+		testTransit_Sign_MLDSAExternalMu(t, 44)
+	})
+	t.Run("65", func(t *testing.T) {
+		testTransit_Sign_MLDSAExternalMu(t, 65)
+	})
+	t.Run("87", func(t *testing.T) {
+		testTransit_Sign_MLDSAExternalMu(t, 87)
+	})
+}
+
+func testTransit_Sign_MLDSAExternalMu(t *testing.T, params int) {
+	ctx := t.Context()
+	b, storage := createBackendWithSysView(t)
+
+	_, err := b.HandleRequest(ctx, &logical.Request{
+		Storage:   storage,
+		Operation: logical.UpdateOperation,
+		Path:      "keys/test",
+		Data: map[string]any{
+			"type": fmt.Sprintf("mldsa-%d", params),
+		},
+	})
+	require.NoError(t, err)
+
+	mu := make([]byte, crypto.MLDSAMu.Size())
+	_, err = rand.Read(mu)
+	require.NoError(t, err)
+
+	resp, err := b.HandleRequest(ctx, &logical.Request{
+		Storage:   storage,
+		Operation: logical.UpdateOperation,
+		Path:      "sign/test",
+		Data: map[string]any{
+			"input":             base64.StdEncoding.EncodeToString(mu),
+			"mldsa_external_mu": true,
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, resp.Error())
+
+	signature := resp.Data["signature"].(string)
+	require.NotEmpty(t, signature)
 }
 
 func TestTransit_NoDeadlock_SignVerify(t *testing.T) {

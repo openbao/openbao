@@ -165,6 +165,11 @@ to the min_encryption_version configured on the key.`,
 				Description: `Set to 'true' when the input is already hashed. If the key type is 'rsa-2048', 'rsa-3072' or 'rsa-4096', then the algorithm used to hash the input should be indicated by the 'algorithm' parameter.`,
 			},
 
+			"mldsa_external_mu": {
+				Type:        framework.TypeBool,
+				Description: `Set to true when the input is a 64-byte externally computed ML-DSA mu message representative. Only valid with ML-DSA keys.`,
+			},
+
 			"signature_algorithm": {
 				Type: framework.TypeString,
 				Description: `The signature algorithm to use for signing. Currently only applies to RSA key types.
@@ -352,6 +357,7 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 	}
 
 	prehashed := d.Get("prehashed").(bool)
+	mldsaExternalMu := d.Get("mldsa_external_mu").(bool)
 	sigAlgorithm := d.Get("signature_algorithm").(string)
 	saltLength, err := b.getSaltLength(d)
 	if err != nil {
@@ -373,6 +379,10 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 
 	if !p.Type.SigningSupported() {
 		return logical.ErrorResponse("key type %v does not support signing", p.Type), logical.ErrInvalidRequest
+	}
+
+	if mldsaExternalMu && !p.Type.MLDSAExternalMuSupported() {
+		return logical.ErrorResponse("mldsa_external_mu is only valid for ML-DSA or external keys"), logical.ErrInvalidRequest
 	}
 
 	hashAlgorithm, err := getHashAlgorithm(d, p.Type)
@@ -449,6 +459,7 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 			Marshaling:         marshaling,
 			SaltLength:         saltLength,
 			SigAlgorithm:       sigAlgorithm,
+			MLDSAExternalMu:    mldsaExternalMu,
 			ExternalKeyFactory: b.ExternalKeyFactory(ctx),
 		})
 		if err != nil {

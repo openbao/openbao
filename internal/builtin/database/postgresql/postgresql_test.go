@@ -425,6 +425,20 @@ func TestUpdateUser_Password(t *testing.T) {
 			expectErr:      true,
 			credsAssertion: assertCredsDoNotExist,
 		},
+		"multiline": {
+			statements: []string{`DO $$ BEGIN
+				ALTER ROLE "{{username}}" WITH PASSWORD '{{password}}';
+			END $$;`},
+			expectErr:      false,
+			credsAssertion: assertCredsExist,
+		},
+		"multiline with name": {
+			statements: []string{`DO $$ BEGIN
+				ALTER ROLE "{{name}}" WITH PASSWORD '{{password}}';
+			END $$;`},
+			expectErr:      false,
+			credsAssertion: assertCredsExist,
+		},
 	}
 
 	// Shared test container for speed - there should not be any overlap between the tests
@@ -463,11 +477,10 @@ func TestUpdateUser_Password(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 			_, err := db.UpdateUser(ctx, updateReq)
-			if test.expectErr && err == nil {
-				t.Fatal("err expected, got nil")
-			}
-			if !test.expectErr && err != nil {
-				t.Fatalf("no error expected, got: %s", err)
+			if test.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 
 			test.credsAssertion(t, db.ConnectionURL, createResp.Username, newPass)
@@ -534,6 +547,24 @@ func TestUpdateUser_Expiration(t *testing.T) {
 			statements:         []string{"ladshfouay09sgj"},
 			expectErr:          true,
 		},
+		"multiline": {
+			initialExpiration:  now.Add(1 * time.Minute),
+			newExpiration:      now.Add(5 * time.Minute),
+			expectedExpiration: now.Add(5 * time.Minute),
+			statements: []string{`DO $$ BEGIN
+				ALTER ROLE "{{username}}" VALID UNTIL '{{expiration}}';
+			END $$;`},
+			expectErr: false,
+		},
+		"multiline with name": {
+			initialExpiration:  now.Add(1 * time.Minute),
+			newExpiration:      now.Add(5 * time.Minute),
+			expectedExpiration: now.Add(5 * time.Minute),
+			statements: []string{`DO $$ BEGIN
+				ALTER ROLE "{{name}}" VALID UNTIL '{{expiration}}';
+			END $$;`},
+			expectErr: false,
+		},
 	}
 
 	// Shared test container for speed - there should not be any overlap between the tests
@@ -560,12 +591,8 @@ func TestUpdateUser_Expiration(t *testing.T) {
 			assertCredsExist(t, db.ConnectionURL, createResp.Username, password)
 
 			actualExpiration := getExpiration(t, db, createResp.Username)
-			if actualExpiration.IsZero() {
-				t.Fatal("Initial expiration is zero but should be set")
-			}
-			if !actualExpiration.Equal(initialExpiration) {
-				t.Fatalf("Actual expiration: %s Expected expiration: %s", actualExpiration, initialExpiration)
-			}
+			require.False(t, actualExpiration.IsZero())
+			require.True(t, actualExpiration.Equal(initialExpiration))
 
 			newExpiration := test.newExpiration.Truncate(time.Second)
 			updateReq := dbplugin.UpdateUserRequest{
@@ -581,18 +608,15 @@ func TestUpdateUser_Expiration(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 			_, err := db.UpdateUser(ctx, updateReq)
-			if test.expectErr && err == nil {
-				t.Fatal("err expected, got nil")
-			}
-			if !test.expectErr && err != nil {
-				t.Fatalf("no error expected, got: %s", err)
+			if test.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 
 			expectedExpiration := test.expectedExpiration.Truncate(time.Second)
 			actualExpiration = getExpiration(t, db, createResp.Username)
-			if !actualExpiration.Equal(expectedExpiration) {
-				t.Fatalf("Actual expiration: %s Expected expiration: %s", actualExpiration, expectedExpiration)
-			}
+			require.True(t, actualExpiration.Equal(expectedExpiration))
 		})
 	}
 }
@@ -855,13 +879,31 @@ func TestContainsMultilineStatement(t *testing.T) {
         GRANT SELECT ON ALL TABLES IN SCHEMA public TO "{{name}}";`,
 			Expected: false,
 		},
+		"escapes all literals": {
+			Input: `ALTER ROLE "{{username}}" WITH PASSWORD 'password-with-END';
+             		ALTER ROLE "{{username}}" VALID UNTIL '2030-01-01';`,
+			Expected: false,
+		},
+		"does not match END inside another word": {
+			Input: `ALTER ROLE "{{username}}" WITH PASSWORD 'x';
+					-- see APPENDix and ENDPOINT documentation for details`,
+			Expected: false,
+		},
+		"does not match END without word boundaries": {
+			Input:    `ALTER ROLE "{{username}}" WITH PASSWORD 'x'; -- xEND`,
+			Expected: false,
+		},
+		// known limitation
+		"matches END in comment block": {
+			Input: `ALTER ROLE "{{username}}" WITH PASSWORD '{{password}} VALID UNTIL '{{expiration}}'; \
+					-- expiration should END within an hour`,
+			Expected: true,
+		},
 	}
 
 	for tName, tCase := range testCases {
 		t.Run(tName, func(t *testing.T) {
-			if containsMultilineStatement(tCase.Input) != tCase.Expected {
-				t.Fatalf("%q should be %t for multiline input", tCase.Input, tCase.Expected)
-			}
+			require.Equal(t, containsMultilineStatement(tCase.Input), tCase.Expected)
 		})
 	}
 }
@@ -897,16 +939,9 @@ func TestExtractQuotedStrings(t *testing.T) {
 
 	for tName, tCase := range testCases {
 		t.Run(tName, func(t *testing.T) {
-			results, err := extractQuotedStrings(tCase.Input)
-			require.NoError(t, err)
-			if len(results) != len(tCase.Expected) {
-				t.Fatalf("%s isn't equal to %s", results, tCase.Expected)
-			}
-			for i := range results {
-				if results[i] != tCase.Expected[i] {
-					t.Fatalf(`expected %q but received %q`, tCase.Expected, results[i])
-				}
-			}
+			results := extractQuotedStrings(tCase.Input)
+			require.Equal(t, len(tCase.Expected), len(results))
+			require.ElementsMatch(t, tCase.Expected, results)
 		})
 	}
 }

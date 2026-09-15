@@ -978,10 +978,11 @@ func testTransit_SignVerify_RSA_PSS(t *testing.T, bits int) {
 		}
 	}
 
-	for hashAlgorithm := range keysutil.HashTypeMap {
-		if hashAlgorithm == "none" || hashAlgorithm == "mldsa-mu" {
+	for hashAlgorithm, hashType := range keysutil.HashTypeMap {
+		if hashType == keysutil.HashTypeNone || hashType == keysutil.HashTypeMLDSAMu {
 			continue
 		}
+
 		t.Log("Hash algorithm:", hashAlgorithm)
 
 		for marshalingName := range keysutil.MarshalingTypeMap {

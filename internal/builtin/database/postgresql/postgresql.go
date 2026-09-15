@@ -54,7 +54,7 @@ var (
 	// and pulls them out with the quotes included.
 	singleQuotedPhrases = regexp.MustCompile(`('.*?')`)
 
-	// ReportedVersion is used to report a specific version to Vault.
+	// ReportedVersion is used to report a specific version to OpenBao.
 	ReportedVersion = ""
 )
 
@@ -66,15 +66,10 @@ func New() (any, error) {
 }
 
 func new() *PostgreSQL {
-	connProducer := &connutil.SQLConnectionProducer{}
-	connProducer.Type = postgreSQLTypeName
-
-	db := &PostgreSQL{
-		SQLConnectionProducer:  connProducer,
+	return &PostgreSQL{
+		SQLConnectionProducer:  &connutil.SQLConnectionProducer{Type: postgreSQLTypeName},
 		passwordAuthentication: passwordAuthenticationPassword,
 	}
-
-	return db
 }
 
 type PostgreSQL struct {
@@ -183,9 +178,8 @@ func (p *PostgreSQL) changeUserPassword(ctx context.Context, username string, ch
 
 	// Check if the role exists
 	var exists bool
-	err = db.QueryRowContext(ctx, "SELECT exists (SELECT rolname FROM pg_roles WHERE rolname=$1);", username).Scan(&exists)
-	if err != nil && err != sql.ErrNoRows {
-		return fmt.Errorf("user does not appear to exist: %w", err)
+	if err = db.QueryRowContext(ctx, "SELECT exists (SELECT rolname FROM pg_roles WHERE rolname=$1);", username).Scan(&exists); err != nil && err != sql.ErrNoRows {
+		return fmt.Errorf("user does not exist: %w", err)
 	}
 
 	tx, err := db.BeginTx(ctx, nil)
@@ -194,38 +188,21 @@ func (p *PostgreSQL) changeUserPassword(ctx context.Context, username string, ch
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	for _, stmt := range stmts {
-		for _, query := range strutil.ParseArbitraryStringSlice(stmt, ";") {
-			query = strings.TrimSpace(query)
-			if len(query) == 0 {
-				continue
-			}
+	m := map[string]string{
+		"name":     username,
+		"username": username,
+		"password": password,
+	}
 
-			m := map[string]string{
-				"name":     username,
-				"username": username,
-				"password": password,
-			}
-
-			if p.passwordAuthentication == passwordAuthenticationSCRAMSHA256 {
-				hashedPassword, err := scram.Hash(password)
-				if err != nil {
-					return fmt.Errorf("unable to scram-sha256 password: %w", err)
-				}
-				m["password"] = hashedPassword
-			}
-
-			if err := dbtxn.ExecuteTxQueryDirect(ctx, tx, m, query); err != nil {
-				return fmt.Errorf("failed to execute query: %w", err)
-			}
+	if p.passwordAuthentication == passwordAuthenticationSCRAMSHA256 {
+		hashedPassword, err := scram.Hash(password)
+		if err != nil {
+			return fmt.Errorf("unable to scram-sha256 password: %w", err)
 		}
+		m["password"] = hashedPassword
 	}
 
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
+	return executeStatements(ctx, stmts, tx, m)
 }
 
 func (p *PostgreSQL) changeUserExpiration(ctx context.Context, username string, changeExp *dbplugin.ChangeExpiration) error {
@@ -248,27 +225,13 @@ func (p *PostgreSQL) changeUserExpiration(ctx context.Context, username string, 
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	expirationStr := changeExp.NewExpiration.Format(expirationFormat)
-
-	for _, stmt := range renewStmts {
-		for _, query := range strutil.ParseArbitraryStringSlice(stmt, ";") {
-			query = strings.TrimSpace(query)
-			if len(query) == 0 {
-				continue
-			}
-
-			m := map[string]string{
-				"name":       username,
-				"username":   username,
-				"expiration": expirationStr,
-			}
-			if err := dbtxn.ExecuteTxQueryDirect(ctx, tx, m, query); err != nil {
-				return err
-			}
-		}
+	m := map[string]string{
+		"name":       username,
+		"username":   username,
+		"expiration": changeExp.NewExpiration.Format(expirationFormat),
 	}
 
-	return tx.Commit()
+	return executeStatements(ctx, renewStmts, tx, m)
 }
 
 func (p *PostgreSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (dbplugin.NewUserResponse, error) {
@@ -276,15 +239,13 @@ func (p *PostgreSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (
 		return dbplugin.NewUserResponse{}, dbutil.ErrEmptyCreationStatement
 	}
 
-	p.Lock()
-	defer p.Unlock()
-
 	username, err := p.usernameProducer.Generate(req.UsernameConfig)
 	if err != nil {
 		return dbplugin.NewUserResponse{}, err
 	}
 
-	expirationStr := req.Expiration.Format(expirationFormat)
+	p.Lock()
+	defer p.Unlock()
 
 	db, err := p.getConnection(ctx)
 	if err != nil {
@@ -301,7 +262,7 @@ func (p *PostgreSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (
 		"name":       username,
 		"username":   username,
 		"password":   req.Password,
-		"expiration": expirationStr,
+		"expiration": req.Expiration.Format(expirationFormat),
 	}
 
 	if p.passwordAuthentication == passwordAuthenticationSCRAMSHA256 {
@@ -312,28 +273,7 @@ func (p *PostgreSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (
 		m["password"] = hashedPassword
 	}
 
-	for _, stmt := range req.Statements.Commands {
-		if containsMultilineStatement(stmt) {
-			// Execute it as-is.
-			if err := dbtxn.ExecuteTxQueryDirect(ctx, tx, m, stmt); err != nil {
-				return dbplugin.NewUserResponse{}, fmt.Errorf("failed to execute query: %w", err)
-			}
-			continue
-		}
-		// Otherwise, it's fine to split the statements on the semicolon.
-		for _, query := range strutil.ParseArbitraryStringSlice(stmt, ";") {
-			query = strings.TrimSpace(query)
-			if len(query) == 0 {
-				continue
-			}
-
-			if err := dbtxn.ExecuteTxQueryDirect(ctx, tx, m, query); err != nil {
-				return dbplugin.NewUserResponse{}, fmt.Errorf("failed to execute query: %w", err)
-			}
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
+	if err = executeStatements(ctx, req.Statements.Commands, tx, m); err != nil {
 		return dbplugin.NewUserResponse{}, err
 	}
 
@@ -366,35 +306,12 @@ func (p *PostgreSQL) customDeleteUser(ctx context.Context, username string, revo
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	for _, stmt := range revocationStmts {
-		if containsMultilineStatement(stmt) {
-			// Execute it as-is.
-			m := map[string]string{
-				"name":     username,
-				"username": username,
-			}
-			if err := dbtxn.ExecuteTxQueryDirect(ctx, tx, m, stmt); err != nil {
-				return err
-			}
-			continue
-		}
-		for _, query := range strutil.ParseArbitraryStringSlice(stmt, ";") {
-			query = strings.TrimSpace(query)
-			if len(query) == 0 {
-				continue
-			}
-
-			m := map[string]string{
-				"name":     username,
-				"username": username,
-			}
-			if err := dbtxn.ExecuteTxQueryDirect(ctx, tx, m, query); err != nil {
-				return err
-			}
-		}
+	m := map[string]string{
+		"name":     username,
+		"username": username,
 	}
 
-	return tx.Commit()
+	return executeStatements(ctx, revocationStmts, tx, m)
 }
 
 func (p *PostgreSQL) defaultDeleteUser(ctx context.Context, username string) error {
@@ -523,6 +440,28 @@ func (p *PostgreSQL) secretValues() map[string]string {
 
 func (p *PostgreSQL) PluginVersion() logical.PluginVersion {
 	return logical.PluginVersion{Version: ReportedVersion}
+}
+
+func executeStatements(ctx context.Context, stmts []string, tx *sql.Tx, m map[string]string) error {
+	for _, stmt := range stmts {
+		if containsMultilineStatement(stmt) {
+			// Execute it as-is.
+			if err := dbtxn.ExecuteTxQueryDirect(ctx, tx, m, stmt); err != nil {
+				return fmt.Errorf("failed to execute multiline statement query: %w", err)
+			}
+			continue
+		}
+		for _, query := range strutil.ParseArbitraryStringSlice(stmt, ";") {
+			query = strings.TrimSpace(query)
+			if len(query) == 0 {
+				continue
+			}
+			if err := dbtxn.ExecuteTxQueryDirect(ctx, tx, m, query); err != nil {
+				return fmt.Errorf("failed to execute query: %w", err)
+			}
+		}
+	}
+	return tx.Commit()
 }
 
 // containsMultilineStatement is a best effort to determine whether

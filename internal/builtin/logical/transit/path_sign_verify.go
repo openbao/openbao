@@ -165,11 +165,6 @@ to the min_encryption_version configured on the key.`,
 				Description: `Set to 'true' when the input is already hashed. If the key type is 'rsa-2048', 'rsa-3072' or 'rsa-4096', then the algorithm used to hash the input should be indicated by the 'algorithm' parameter.`,
 			},
 
-			"mldsa_external_mu": {
-				Type:        framework.TypeBool,
-				Description: `Set to true when the input is a 64-byte externally computed ML-DSA mu message representative. Only valid with ML-DSA keys.`,
-			},
-
 			"signature_algorithm": {
 				Type: framework.TypeString,
 				Description: `The signature algorithm to use for signing. Currently only applies to RSA key types.
@@ -264,10 +259,12 @@ derivation is enabled; currently only available with ed25519 keys.`,
 * sha3-256
 * sha3-384
 * sha3-512
+* mldsa-mu
 * none
 
 Defaults to "sha2-256" for RSA-, ECDSA-, and HMAC-type keys, and "none"
-otherwise. Not valid for all key types. See note about "none" on signing path.`,
+otherwise. Not valid for all key types. See note about "none" on signing path.
+mldsa-mu is only valid for prehashed input for MLDSA-type keys`,
 			},
 
 			"algorithm": {
@@ -357,7 +354,6 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 	}
 
 	prehashed := d.Get("prehashed").(bool)
-	mldsaExternalMu := d.Get("mldsa_external_mu").(bool)
 	sigAlgorithm := d.Get("signature_algorithm").(string)
 	saltLength, err := b.getSaltLength(d)
 	if err != nil {
@@ -381,10 +377,6 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 		return logical.ErrorResponse("key type %v does not support signing", p.Type), logical.ErrInvalidRequest
 	}
 
-	if mldsaExternalMu && !p.Type.MLDSAExternalMuSupported() {
-		return logical.ErrorResponse("mldsa_external_mu is only valid for ML-DSA or external keys"), logical.ErrInvalidRequest
-	}
-
 	hashAlgorithm, err := getHashAlgorithm(d, p.Type)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
@@ -392,6 +384,10 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 
 	if hashAlgorithm == keysutil.HashTypeNone && (!prehashed || sigAlgorithm != "pkcs1v15") && p.Type.HashSignatureInput() {
 		return logical.ErrorResponse("hash_algorithm=none requires both prehashed=true and signature_algorithm=pkcs1v15"), logical.ErrInvalidRequest
+	}
+
+	if hashAlgorithm == keysutil.HashTypeMLDSAMu && (!prehashed || !p.Type.MLDSAExternalMuSupported()) {
+		return logical.ErrorResponse("hash_algorithm=mldsa-mu requires prehashed=true and a ML-DSA compatible key"), logical.ErrInvalidRequest
 	}
 
 	batchInputRaw := d.Raw["batch_input"]
@@ -459,7 +455,6 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 			Marshaling:         marshaling,
 			SaltLength:         saltLength,
 			SigAlgorithm:       sigAlgorithm,
-			MLDSAExternalMu:    mldsaExternalMu,
 			ExternalKeyFactory: b.ExternalKeyFactory(ctx),
 		})
 		if err != nil {

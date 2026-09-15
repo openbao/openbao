@@ -118,7 +118,6 @@ type SigningOptions struct {
 	Marshaling         MarshalingType
 	SaltLength         int
 	SigAlgorithm       string
-	MLDSAExternalMu    bool
 	ExternalKeyFactory ExternalKeyFactory
 }
 
@@ -1460,7 +1459,7 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 		}
 
 		opts := crypto.Hash(0)
-		if options.MLDSAExternalMu {
+		if options.Prehashed && options.HashAlgorithm == HashTypeMLDSAMu {
 			if muSize := crypto.MLDSAMu.Size(); len(input) != muSize {
 				return nil, errutil.UserError{Err: fmt.Sprintf("external ML-DSA mu must be %d bytes, got %d", muSize, len(input))}
 			}
@@ -1490,7 +1489,7 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 			Prehashed: options.Prehashed,
 		}
 
-		if options.MLDSAExternalMu {
+		if options.HashAlgorithm == HashTypeMLDSAMu {
 			if muSize := crypto.MLDSAMu.Size(); len(input) != muSize {
 				return nil, errutil.UserError{Err: fmt.Sprintf("external ML-DSA mu must be %d bytes, got %d", muSize, len(input))}
 			}
@@ -1562,7 +1561,7 @@ func (p *Policy) VerifySignatureWithOptions(derivationContext, input []byte, sig
 		return false, errutil.UserError{Err: fmt.Sprintf("message verification not supported for key type %v", p.Type)}
 	}
 
-	if options.MLDSAExternalMu {
+	if options.HashAlgorithm == HashTypeMLDSAMu {
 		return false, errutil.UserError{Err: "external ML-DSA mu verification is not supported"}
 	}
 

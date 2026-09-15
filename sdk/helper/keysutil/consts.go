@@ -26,6 +26,7 @@ const (
 	HashTypeSHA3256
 	HashTypeSHA3384
 	HashTypeSHA3512
+	HashTypeMLDSAMu
 )
 
 type MarshalingType uint32
@@ -48,6 +49,7 @@ var (
 		"sha3-256": HashTypeSHA3256,
 		"sha3-384": HashTypeSHA3384,
 		"sha3-512": HashTypeSHA3512,
+		"mldsa-mu": HashTypeMLDSAMu,
 	}
 
 	HashFuncMap = map[HashType]func() hash.Hash{
@@ -74,6 +76,7 @@ var (
 		HashTypeSHA3256: crypto.SHA3_256,
 		HashTypeSHA3384: crypto.SHA3_384,
 		HashTypeSHA3512: crypto.SHA3_512,
+		HashTypeMLDSAMu: crypto.MLDSAMu,
 	}
 
 	MarshalingTypeMap = map[string]MarshalingType{

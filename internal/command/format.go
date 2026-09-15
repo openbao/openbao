@@ -4,7 +4,6 @@
 package command
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -180,7 +179,7 @@ func (p PrettyFormatter) Output(ui cli.Ui, secret *api.Secret, data any) error {
 	return nil
 }
 
-func outputStringSlice(buffer *bytes.Buffer, indent string, values []string) {
+func outputStringSlice(buffer *strings.Builder, indent string, values []string) {
 	for _, val := range values {
 		fmt.Fprintf(buffer, "%s%s\n", indent, val)
 	}
@@ -192,7 +191,7 @@ type mapOutput struct {
 }
 
 func formatServer(srv *api.AutopilotServer) string {
-	var buffer bytes.Buffer
+	var buffer strings.Builder
 
 	fmt.Fprintf(&buffer, "   %s\n", srv.ID)
 	fmt.Fprintf(&buffer, "      Name:              %s\n", srv.Name)
@@ -218,7 +217,7 @@ func formatServer(srv *api.AutopilotServer) string {
 func (p PrettyFormatter) OutputAutopilotState(ui cli.Ui, data any) {
 	state := data.(*api.AutopilotState)
 
-	var buffer bytes.Buffer
+	var buffer strings.Builder
 	fmt.Fprintf(&buffer, "Healthy:                         %t\n", state.Healthy)
 	fmt.Fprintf(&buffer, "Failure Tolerance:               %d\n", state.FailureTolerance)
 	fmt.Fprintf(&buffer, "Leader:                          %s\n", state.Leader)

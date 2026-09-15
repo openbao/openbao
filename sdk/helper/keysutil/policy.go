@@ -1484,38 +1484,27 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 			return nil, errors.New("factory returned nil key with no error; key not found")
 		}
 
+		algo, ok := CryptoHashMap[hashAlgorithm]
+		if !ok {
+			return nil, errutil.InternalError{Err: "unsupported hash algorithm"}
+		}
+
 		opts := &kms.SignOptions{
 			Data:      input,
 			Prehashed: options.Prehashed,
 		}
 
-		if options.HashAlgorithm == HashTypeMLDSAMu {
-			if muSize := crypto.MLDSAMu.Size(); len(input) != muSize {
-				return nil, errutil.UserError{Err: fmt.Sprintf("external ML-DSA mu must be %d bytes, got %d", muSize, len(input))}
-			}
+		if sigAlgorithm == "" {
+			sigAlgorithm = "pss"
+		}
 
-			opts.Prehashed = true
-			opts.SignerOpts = crypto.MLDSAMu
+		if sigAlgorithm == "pss" {
+			opts.SignerOpts = &rsa.PSSOptions{
+				Hash:       algo,
+				SaltLength: saltLength,
+			}
 		} else {
-			algo, ok := CryptoHashMap[hashAlgorithm]
-			if !ok {
-				return nil, errutil.InternalError{
-					Err: "unsupported hash algorithm",
-				}
-			}
-
-			if sigAlgorithm == "" {
-				sigAlgorithm = "pss"
-			}
-
-			if sigAlgorithm == "pss" {
-				opts.SignerOpts = &rsa.PSSOptions{
-					Hash:       algo,
-					SaltLength: saltLength,
-				}
-			} else {
-				opts.SignerOpts = algo
-			}
+			opts.SignerOpts = algo
 		}
 
 		sig, err = key.Sign(ctx, opts)

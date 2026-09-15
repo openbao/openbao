@@ -134,13 +134,15 @@ derivation is enabled; currently only available with ed25519 keys.`,
 * sha3-256
 * sha3-384
 * sha3-512
+* mldsa-mu
 * none
 
 Defaults to "sha2-256" for RSA- and ECDSA-type keys, and "none" otherwise. Not
 valid for all key types, including Ed25519 and ML-DSA. Using "none" with a key
 type that otherwise requires a hash function requires setting prehashed=true
 and signature_algorithm=pkcs1v15, yielding a PKCSv1_5_NoOID instead of the usual
-PKCSv1_5_DERnull signature.`,
+PKCSv1_5_DERnull signature. "mldsa-mu" is only valid for prehashed input for
+MLDSA-type keys.`,
 			},
 
 			"algorithm": {
@@ -259,12 +261,10 @@ derivation is enabled; currently only available with ed25519 keys.`,
 * sha3-256
 * sha3-384
 * sha3-512
-* mldsa-mu
 * none
 
 Defaults to "sha2-256" for RSA-, ECDSA-, and HMAC-type keys, and "none"
-otherwise. Not valid for all key types. See note about "none" on signing path.
-mldsa-mu is only valid for prehashed input for MLDSA-type keys`,
+otherwise. Not valid for all key types. See note about "none" on signing path.`,
 			},
 
 			"algorithm": {

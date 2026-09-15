@@ -8,10 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"testing"
 
 	"github.com/armon/go-radix"
 	log "github.com/hashicorp/go-hclog"
@@ -54,7 +57,8 @@ var _ physical.Backend = &InmemBackend{}
 type TransactionalInmemBackend struct {
 	InmemBackend
 
-	txnPermitPool *physical.PermitPool
+	txnPermitPool         *physical.PermitPool
+	leakedTransactionHook func(args []any)
 }
 
 var _ physical.TransactionalBackend = &TransactionalInmemBackend{}
@@ -121,6 +125,7 @@ type InmemBackendTransaction struct {
 	finishedTx bool
 	operations []*InmemOp
 	parent     *TransactionalInmemBackend
+	cleanup    runtime.Cleanup
 }
 
 var _ physical.Transaction = &InmemBackendTransaction{}
@@ -156,9 +161,24 @@ func NewInmem(conf map[string]string, logger log.Logger) (physical.Backend, erro
 		return b, nil
 	}
 
+	leakedTransactionHook := func(args []any) {
+		logger.Error("transaction was leaked", args...)
+	}
+	if testing.Testing() {
+		leakedTransactionHook = func(args []any) {
+			var buf strings.Builder
+			fmt.Fprint(&buf, "transaction was leaked:")
+			for _, arg := range args {
+				fmt.Fprintf(&buf, " %v", arg)
+			}
+			panic(buf.String())
+		}
+	}
+
 	return &TransactionalInmemBackend{
 		*b.(*InmemBackend),
 		physical.NewPermitPool(physical.DefaultParallelOperations),
+		leakedTransactionHook,
 	}, nil
 }
 
@@ -397,6 +417,15 @@ func (i *TransactionalInmemBackend) BeginTx(ctx context.Context) (physical.Trans
 		parent:   i,
 	}
 
+	params := []any{
+		"stack", string(debug.Stack()),
+	}
+
+	tx.cleanup = runtime.AddCleanup(tx, func(parent *TransactionalInmemBackend) {
+		parent.txnPermitPool.Release()
+		i.leakedTransactionHook(params)
+	}, i)
+
 	tx.failGet.Store(i.failGet.Load())
 	tx.failPut.Store(i.failPut.Load())
 	tx.failDelete.Store(i.failDelete.Load())
@@ -566,6 +595,7 @@ func (i *InmemBackendTransaction) Commit(ctx context.Context) error {
 	// At this point, we mark the transaction as finished either way.
 	i.finishedTx = true
 	i.parent.txnPermitPool.Release()
+	i.cleanup.Stop()
 
 	if !i.writable || !i.written {
 		// Nothing to do.
@@ -651,6 +681,7 @@ func (i *InmemBackendTransaction) Rollback(ctx context.Context) error {
 
 	i.finishedTx = true
 	i.parent.txnPermitPool.Release()
+	i.cleanup.Stop()
 
 	return nil
 }

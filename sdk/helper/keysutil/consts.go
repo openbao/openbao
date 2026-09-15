@@ -76,7 +76,6 @@ var (
 		HashTypeSHA3256: crypto.SHA3_256,
 		HashTypeSHA3384: crypto.SHA3_384,
 		HashTypeSHA3512: crypto.SHA3_512,
-		HashTypeMLDSAMu: crypto.MLDSAMu,
 	}
 
 	MarshalingTypeMap = map[string]MarshalingType{

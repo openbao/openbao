@@ -757,11 +757,6 @@ func Test_RSA_PSS(t *testing.T) {
 			SigAlgorithm:  sigAlgorithm,
 		}
 		cryptoHash := CryptoHashMap[hashType]
-		if !cryptoHash.Available() {
-			// Skip over hash types that are not available.
-			return
-		}
-
 		minSaltLength := p.minRSAPSSSaltLength()
 		maxSaltLength := p.maxRSAPSSSaltLength(rsaKey.N.BitLen(), cryptoHash)
 		hash := cryptoHash.New()
@@ -910,10 +905,6 @@ func Test_RSA_PKCS1(t *testing.T) {
 			SigAlgorithm:  sigAlgorithm,
 		}
 		cryptoHash := CryptoHashMap[hashType]
-		if !cryptoHash.Available() {
-			// Skip over hash types that are not available.
-			return
-		}
 
 		// PKCS#1v1.5 NoOID uses a direct input and assumes it is pre-hashed.
 		if hashType != 0 {

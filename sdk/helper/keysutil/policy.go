@@ -1484,9 +1484,14 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 			return nil, errors.New("factory returned nil key with no error; key not found")
 		}
 
-		algo, ok := CryptoHashMap[hashAlgorithm]
-		if !ok {
-			return nil, errutil.InternalError{Err: "unsupported hash algorithm"}
+		var algo crypto.Hash
+		if hashAlgorithm == HashTypeMLDSAMu {
+			algo = crypto.MLDSAMu
+		} else {
+			var ok bool
+			if algo, ok = CryptoHashMap[hashAlgorithm]; !ok {
+				return nil, errutil.InternalError{Err: "unsupported hash algorithm"}
+			}
 		}
 
 		opts := &kms.SignOptions{

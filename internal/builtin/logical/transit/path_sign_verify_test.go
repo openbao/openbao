@@ -1108,8 +1108,9 @@ func testTransit_Sign_MLDSAExternalMu(t *testing.T, params int) {
 		Operation: logical.UpdateOperation,
 		Path:      "sign/test",
 		Data: map[string]any{
-			"input":             base64.StdEncoding.EncodeToString(mu),
-			"mldsa_external_mu": true,
+			"input":          base64.StdEncoding.EncodeToString(mu),
+			"prehashed":      true,
+			"hash_algorithm": "mldsa-mu",
 		},
 	})
 	require.NoError(t, err)

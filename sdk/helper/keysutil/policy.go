@@ -1520,6 +1520,9 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 		}
 
 		sig, err = key.Sign(ctx, opts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign with external key: %w", err)
+		}
 
 	default:
 		return nil, fmt.Errorf("unsupported key type %v", p.Type)

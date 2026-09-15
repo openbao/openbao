@@ -617,6 +617,10 @@ func (b *backend) pathVerifyWrite(ctx context.Context, req *logical.Request, d *
 		return logical.ErrorResponse("hash_algorithm=none requires both prehashed=true and signature_algorithm=pkcs1v15"), logical.ErrInvalidRequest
 	}
 
+	if hashAlgorithm == keysutil.HashTypeMLDSAMu {
+		return logical.ErrorResponse("hash_algorithm=mldsa-mu does not support verification"), logical.ErrInvalidRequest
+	}
+
 	response := make([]batchResponseVerifyItem, len(batchInputItems))
 
 	for i, item := range batchInputItems {

@@ -332,7 +332,10 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 	}
 
 	b.crlBuilder.markConfigDirty()
-	b.crlBuilder.reloadConfigIfRequired(sc)
+	err = b.crlBuilder.reloadConfigIfRequired(sc)
+	if err != nil {
+		return nil, fmt.Errorf("error reloading CRL configuration: %w", err)
+	}
 
 	resp := genResponseFromCrlConfig(config)
 

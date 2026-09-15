@@ -1849,7 +1849,9 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 
 		// Force a cache bust here, which will also run migration code
 		if c.seal.RecoveryKeySupported() {
-			c.seal.SetRecoveryConfig(ctx, nil)
+			if err := c.seal.SetRecoveryConfig(ctx, nil); err != nil {
+				c.logger.Error("error clearing recovery configuration cache", "error", err)
+			}
 		}
 
 		c.standby.Store(false)

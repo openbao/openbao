@@ -193,7 +193,13 @@ func AttemptUnsealCore(c *vault.TestCluster, core *vault.TestClusterCore) error 
 	defer client.SetNamespace(oldNS)
 	client.ClearNamespace()
 
-	client.Sys().ResetUnsealProcess()
+	if _, err := client.Sys().ResetUnsealProcess(); err != nil {
+		if core.Sealed() {
+			return fmt.Errorf("error resetting unseal process: %w", err)
+		}
+		return nil
+	}
+
 	for j := 0; j < len(c.BarrierKeys); j++ {
 		statusResp, err := client.Sys().Unseal(base64.StdEncoding.EncodeToString(c.BarrierKeys[j]))
 		if err != nil {

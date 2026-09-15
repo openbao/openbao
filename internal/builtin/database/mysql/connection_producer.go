@@ -120,7 +120,9 @@ func (c *mySQLConnectionProducer) Init(ctx context.Context, conf map[string]any,
 			}
 		}
 
-		mysql.RegisterTLSConfig(c.tlsConfigName, tlsConfig)
+		if err := mysql.RegisterTLSConfig(c.tlsConfigName, tlsConfig); err != nil {
+			return nil, fmt.Errorf("error registering TLS configuration: %w", err)
+		}
 	}
 
 	// Set initialized to true at this point since all fields are set,
@@ -152,7 +154,7 @@ func (c *mySQLConnectionProducer) Connection(ctx context.Context) (any, error) {
 		}
 		// If the ping was unsuccessful, close it and ignore errors as we'll be
 		// reestablishing anyways
-		c.db.Close()
+		c.db.Close() //nolint:errcheck
 	}
 
 	// Parse the DSN into a Config struct
@@ -200,13 +202,14 @@ func (c *mySQLConnectionProducer) Close() error {
 	c.Lock()
 	defer c.Unlock()
 
+	var err error
 	if c.db != nil {
-		c.db.Close()
+		err = c.db.Close()
 	}
 
 	c.db = nil
 
-	return nil
+	return err
 }
 
 func (c *mySQLConnectionProducer) getTLSAuth() (tlsConfig *tls.Config, err error) {

@@ -422,13 +422,13 @@ func (p *PostgreSQL) defaultDeleteUser(ctx context.Context, username string) err
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer stmt.Close() //nolint:errcheck
 
 	rows, err := stmt.QueryContext(ctx, username)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	const initialNumRevocations = 16
 	revocationStmts := make([]string, 0, initialNumRevocations)
@@ -507,7 +507,7 @@ func (p *PostgreSQL) defaultDeleteUser(ctx context.Context, username string) err
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer stmt.Close() //nolint:errcheck
 	if _, err := stmt.ExecContext(ctx); err != nil {
 		return err
 	}

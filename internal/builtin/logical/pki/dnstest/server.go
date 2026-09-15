@@ -87,7 +87,7 @@ func (ts *TestServer) startContainer(network string) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to dial peer: %v / %v / %v: %w", host, port, peer, err)
 		}
-		defer conn.Close()
+		defer conn.Close() //nolint:errcheck
 
 		_, err = conn.Write([]byte("garbage-in"))
 		if err != nil {

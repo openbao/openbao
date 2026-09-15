@@ -459,7 +459,7 @@ func respondRaw(w http.ResponseWriter, resp *logical.Response) {
 	retErr := func(w http.ResponseWriter, err string) {
 		w.Header().Set(consts.RawErrorHeaderName, err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(nil)
+		w.Write(nil) //nolint:errcheck
 	}
 
 	// Ensure this is never a secret or auth response
@@ -556,7 +556,7 @@ WRITE_RESPONSE:
 	}
 
 	w.WriteHeader(status)
-	w.Write(body)
+	w.Write(body) //nolint:errcheck
 }
 
 // getConnection is used to format the connection information for

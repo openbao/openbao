@@ -775,7 +775,9 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 		if err != nil {
 			// Can't register lock, bail out
 			c.heldHALock = nil
-			lock.Unlock()
+			if unlockErr := lock.Unlock(); unlockErr != nil {
+				c.logger.Error("error releasing lock", "error", unlockErr)
+			}
 			c.logger.Error("failed registering lock with fencing backend, giving up active state")
 			return false, true
 		}
@@ -812,14 +814,18 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 	l := newLockGrabber(c.stateLock.Lock, c.stateLock.Unlock, stopCh)
 	go l.grab()
 	if stopped := l.lockOrStop(); stopped {
-		lock.Unlock()
+		if err := lock.Unlock(); err != nil {
+			c.logger.Error("error releasing lock", "error", err)
+		}
 		metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 		return true, false
 	}
 
 	if c.Sealed() {
 		c.logger.Warn("grabbed HA lock but already sealed, exiting")
-		lock.Unlock()
+		if err := lock.Unlock(); err != nil {
+			c.logger.Error("error releasing lock", "error", err)
+		}
 		c.stateLock.Unlock()
 		metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 		return true, false
@@ -851,7 +857,9 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 		_ = c.sealManager.sealAll()
 		c.logger.Warn("OpenBao is sealed")
 		c.heldHALock = nil
-		lock.Unlock()
+		if unlockErr := lock.Unlock(); unlockErr != nil {
+			c.logger.Error("error releasing lock", "error", unlockErr)
+		}
 		c.stateLock.Unlock()
 		return true, false
 	}
@@ -879,7 +887,9 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 			}
 
 			c.heldHALock = nil
-			lock.Unlock()
+			if err := lock.Unlock(); err != nil {
+				c.logger.Error("error releasing lock", "error", err)
+			}
 			c.stateLock.Unlock()
 			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 
@@ -913,7 +923,9 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 	// Advertise as leader
 	if err := c.advertiseLeader(activeCtx, uuid, leaderLostCh); err != nil {
 		c.heldHALock = nil
-		lock.Unlock()
+		if unlockErr := lock.Unlock(); unlockErr != nil {
+			c.logger.Error("error releasing lock", "error", unlockErr)
+		}
 		c.stateLock.Unlock()
 		c.logger.Error("leader advertisement setup failed", "error", err)
 		metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
@@ -1652,7 +1664,9 @@ func (c *Core) cleanLeaderPrefix(ctx context.Context, uuid string, leaderLostCh 
 		select {
 		case <-timer.C:
 			if keys[0] != uuid {
-				c.barrier.Delete(ctx, coreLeaderPrefix+keys[0])
+				if err := c.barrier.Delete(ctx, coreLeaderPrefix+keys[0]); err != nil {
+					c.logger.Error("error deleting leader entry", "error", err)
+				}
 			}
 			keys = keys[1:]
 		case <-leaderLostCh:

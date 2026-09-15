@@ -174,7 +174,9 @@ func (cl *Listener) StopHandler(alpn string) {
 	delete(cl.handlers, alpn)
 	cl.l.Unlock()
 	if ok {
-		handler.Stop()
+		if err := handler.Stop(); err != nil {
+			cl.logger.Error("error stopping cluster handler", "error", err)
+		}
 	}
 }
 
@@ -299,7 +301,7 @@ func (cl *Listener) Run(ctx context.Context) error {
 		go func(closeCh chan struct{}, tlsLn net.Listener) {
 			defer func() {
 				cl.shutdownWg.Done()
-				tlsLn.Close()
+				tlsLn.Close() //nolint:errcheck
 				close(closeCh)
 			}()
 
@@ -320,7 +322,9 @@ func (cl *Listener) Run(ctx context.Context) error {
 				// Set the deadline for the accept call. If it passes we'll get
 				// an error, causing us to check the condition at the top
 				// again.
-				localLn.SetDeadline(time.Now().Add(ListenerAcceptDeadline))
+				if err := localLn.SetDeadline(time.Now().Add(ListenerAcceptDeadline)); err != nil {
+					cl.logger.Error("error setting cluster listener deadline", "error", err)
+				}
 
 				// Accept the connection
 				conn, err := tlsLn.Accept()
@@ -330,7 +334,7 @@ func (cl *Listener) Run(ctx context.Context) error {
 						cl.logger.Debug("non-timeout error accepting on cluster port", "error", err)
 					}
 					if conn != nil {
-						conn.Close()
+						conn.Close() //nolint:errcheck
 					}
 					if ok && err.Timeout() {
 						loopDelay = 0
@@ -368,14 +372,14 @@ func (cl *Listener) Run(ctx context.Context) error {
 				err = tlsConn.SetDeadline(time.Now().Add(30 * time.Second))
 				if err != nil {
 					cl.logger.Debug("error setting deadline for cluster connection", "error", err)
-					tlsConn.Close()
+					tlsConn.Close() //nolint:errcheck
 					continue
 				}
 
 				err = tlsConn.Handshake()
 				if err != nil {
 					cl.logger.Debug("error handshaking cluster connection", "error", err)
-					tlsConn.Close()
+					tlsConn.Close() //nolint:errcheck
 					continue
 				}
 
@@ -385,7 +389,7 @@ func (cl *Listener) Run(ctx context.Context) error {
 				err = tlsConn.SetDeadline(time.Time{})
 				if err != nil {
 					cl.logger.Debug("error setting deadline for cluster connection", "error", err)
-					tlsConn.Close()
+					tlsConn.Close() //nolint:errcheck
 					continue
 				}
 
@@ -394,7 +398,7 @@ func (cl *Listener) Run(ctx context.Context) error {
 				cl.l.RUnlock()
 				if !ok {
 					cl.logger.Debug("unknown negotiated protocol on cluster port")
-					tlsConn.Close()
+					tlsConn.Close() //nolint:errcheck
 					continue
 				}
 

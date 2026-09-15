@@ -86,7 +86,9 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 		t.Fatal(err)
 	}
 	closers = append(closers, func() {
-		os.Remove(tmpToken.Name())
+		if err := os.Remove(tmpToken.Name()); err != nil {
+			t.Errorf("error removing temp token file: %v", err)
+		}
 	})
 	if _, err = tmpToken.WriteString(token); err != nil {
 		closeFunc()
@@ -104,7 +106,9 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 		t.Fatal(err)
 	}
 	closers = append(closers, func() {
-		os.Remove(tmpCACrt.Name())
+		if err := os.Remove(tmpCACrt.Name()); err != nil {
+			t.Errorf("error removing temp CA certificate file: %v", err)
+		}
 	})
 	if _, err = tmpCACrt.WriteString(caCrt); err != nil {
 		closeFunc()
@@ -131,11 +135,15 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 		switch {
 		case namespace != ExpectedNamespace, podName != ExpectedPodName:
 			w.WriteHeader(404)
-			w.Write([]byte(notFoundResponse))
+			if _, err := w.Write([]byte(notFoundResponse)); err != nil {
+				t.Errorf("error writing not found response: %v", err)
+			}
 			return
 		case r.Method == http.MethodGet:
 			w.WriteHeader(200)
-			w.Write([]byte(getPodResponse))
+			if _, err := w.Write([]byte(getPodResponse)); err != nil {
+				t.Errorf("error writing pod response: %v", err)
+			}
 			return
 		case r.Method == http.MethodPatch:
 			var patches []any
@@ -150,7 +158,9 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 				testState.store(p, patchMap)
 			}
 			w.WriteHeader(200)
-			w.Write([]byte(updatePodTagsResponse))
+			if _, err := w.Write([]byte(updatePodTagsResponse)); err != nil {
+				t.Errorf("error writing pod tags update response: %v", err)
+			}
 			return
 		default:
 			w.WriteHeader(400)

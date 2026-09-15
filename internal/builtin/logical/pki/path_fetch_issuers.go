@@ -614,7 +614,9 @@ func (b *backend) pathUpdateIssuer(ctx context.Context, req *logical.Request, da
 		issuer.LastModified = time.Now().UTC()
 		// See note in updateDefaultIssuerId about why this is necessary.
 		b.crlBuilder.invalidateCRLBuildTime()
-		b.crlBuilder.flushCRLBuildTimeInvalidation(sc)
+		if err := b.crlBuilder.flushCRLBuildTimeInvalidation(sc); err != nil {
+			return nil, err
+		}
 		modified = true
 	}
 
@@ -814,7 +816,9 @@ func (b *backend) pathPatchIssuer(ctx context.Context, req *logical.Request, dat
 			issuer.LastModified = time.Now().UTC()
 			// See note in updateDefaultIssuerId about why this is necessary.
 			b.crlBuilder.invalidateCRLBuildTime()
-			b.crlBuilder.flushCRLBuildTimeInvalidation(sc)
+			if err := b.crlBuilder.flushCRLBuildTimeInvalidation(sc); err != nil {
+				return nil, err
+			}
 			modified = true
 		}
 	}

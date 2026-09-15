@@ -41,7 +41,6 @@ func init() {
 	if err := os.Setenv("VAULT_TOKEN", ""); err != nil {
 		panic(fmt.Errorf("error resetting VAULT_TOKEN: %v", err))
 	}
-
 }
 
 func TestLogin(t *testing.T) {

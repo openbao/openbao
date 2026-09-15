@@ -26,7 +26,7 @@ func testHTTPServer(
 	}
 
 	server := &http.Server{Handler: handler}
-	go server.Serve(ln)
+	go server.Serve(ln) //nolint:errcheck
 
 	config := api.DefaultConfig()
 	config.Address = fmt.Sprintf("http://%s", ln.Addr())
@@ -35,8 +35,12 @@ func testHTTPServer(
 }
 
 func init() {
-	os.Setenv("BAO_TOKEN", "")
-	os.Setenv("VAULT_TOKEN", "")
+	if err := os.Setenv("BAO_TOKEN", ""); err != nil {
+		panic(fmt.Errorf("error resetting BAO_TOKEN: %v", err))
+	}
+	if err := os.Setenv("VAULT_TOKEN", ""); err != nil {
+		panic(fmt.Errorf("error resetting VAULT_TOKEN: %v", err))
+	}
 }
 
 func TestLogin(t *testing.T) {
@@ -49,7 +53,11 @@ func TestLogin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error creating temp file: %v", err)
 	}
-	defer os.Remove(tmpfile.Name()) // clean up
+	defer func() {
+		if err := os.Remove(tmpfile.Name()); err != nil { // clean up
+			t.Errorf("error removing temp file: %v", err)
+		}
+	}()
 	err = os.Setenv(secretIDEnvVar, allowedSecretID)
 	if err != nil {
 		t.Fatalf("error writing secret ID to env var: %v", err)
@@ -81,12 +89,14 @@ func TestLogin(t *testing.T) {
 			t.Fatalf("error decoding json: %v", err)
 		}
 		if payload["role_id"] == allowedRoleID && payload["secret_id"] == allowedSecretID {
-			w.Write(authBytes)
+			if _, err := w.Write(authBytes); err != nil {
+				t.Errorf("error writing auth response: %v", err)
+			}
 		}
 	}
 
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	config.Address = strings.ReplaceAll(config.Address, "127.0.0.1", "localhost")
 	client, err := api.NewClient(config)

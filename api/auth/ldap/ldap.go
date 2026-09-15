@@ -131,7 +131,7 @@ func (a *LDAPAuth) readPasswordFromFile() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("unable to open file containing password: %w", err)
 	}
-	defer passwordFile.Close()
+	defer passwordFile.Close() //nolint:errcheck
 
 	limitedReader := io.LimitReader(passwordFile, 1000)
 	passwordBytes, err := io.ReadAll(limitedReader)

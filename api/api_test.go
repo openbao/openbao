@@ -19,7 +19,7 @@ func testHTTPServer(t *testing.T, handler http.Handler) (*Config, net.Listener) 
 	}
 
 	server := &http.Server{Handler: handler}
-	go server.Serve(ln)
+	go server.Serve(ln) //nolint:errcheck
 
 	config := DefaultConfig()
 	config.Address = fmt.Sprintf("http://%s", ln.Addr())

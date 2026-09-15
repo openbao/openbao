@@ -1519,7 +1519,9 @@ func (c *Client) rawRequestWithContext(ctx context.Context, r *Request) (*Respon
 	}
 
 	if limiter != nil {
-		limiter.Wait(ctx)
+		if err := limiter.Wait(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	// check the token before potentially erroring from the API
@@ -1702,7 +1704,9 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 	}
 
 	if limiter != nil {
-		limiter.Wait(ctx)
+		if err := limiter.Wait(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	// check the token before potentially erroring from the API

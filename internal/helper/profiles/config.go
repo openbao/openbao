@@ -20,6 +20,15 @@ type OuterConfig struct {
 	Requests []*RequestConfig `hcl:"-"`
 
 	When any `hcl:"when"`
+	For  any `hcl:"for"`
+}
+
+func (o *OuterConfig) CloneWithIter(suffix string) *OuterConfig {
+	return &OuterConfig{
+		Type:     o.Type + "@" + suffix,
+		Requests: o.Requests,
+		When:     o.When,
+	}
 }
 
 // RequestConfig maps a single API request invocation.
@@ -36,7 +45,21 @@ type RequestConfig struct {
 	Headers   any `hcl:"headers"`
 
 	When         any `hcl:"when"`
+	For          any `hcl:"for"`
 	AllowFailure any `hcl:"allow_failure"`
+}
+
+func (r *RequestConfig) CloneWithIter(suffix string) *RequestConfig {
+	return &RequestConfig{
+		Type:         r.Type + "@" + suffix,
+		Operation:    r.Operation,
+		Path:         r.Path,
+		Token:        r.Token,
+		Data:         r.Data,
+		Headers:      r.Headers,
+		When:         r.When,
+		AllowFailure: r.AllowFailure,
+	}
 }
 
 // InputConfig is an untyped configuration object that contains one or more

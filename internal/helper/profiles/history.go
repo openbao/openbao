@@ -201,3 +201,21 @@ func presentKeys(obj map[string]any) []string {
 	}
 	return keys
 }
+
+// RequestsIntoMap places request information into the specified map.
+func (eh *EvaluationHistory) RequestsIntoMap(data map[string]any) {
+	data["requests"] = eh.Requests
+
+	if root, present := eh.Requests[""]; len(eh.Requests) == 1 && present {
+		data["requests"] = root
+	}
+}
+
+// ResponsesIntoMap places request information into the specified map.
+func (eh *EvaluationHistory) ResponsesIntoMap(data map[string]any) {
+	data["responses"] = eh.Responses
+
+	if root, present := eh.Responses[""]; len(eh.Responses) == 1 && present {
+		data["responses"] = root
+	}
+}

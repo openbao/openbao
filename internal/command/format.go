@@ -194,22 +194,22 @@ type mapOutput struct {
 func formatServer(srv *api.AutopilotServer) string {
 	var buffer bytes.Buffer
 
-	buffer.WriteString(fmt.Sprintf("   %s\n", srv.ID))
-	buffer.WriteString(fmt.Sprintf("      Name:              %s\n", srv.Name))
-	buffer.WriteString(fmt.Sprintf("      Address:           %s\n", srv.Address))
-	buffer.WriteString(fmt.Sprintf("      Status:            %s\n", srv.Status))
-	buffer.WriteString(fmt.Sprintf("      Node Status:       %s\n", srv.NodeStatus))
-	buffer.WriteString(fmt.Sprintf("      Healthy:           %t\n", srv.Healthy))
-	buffer.WriteString(fmt.Sprintf("      Last Contact:      %s\n", srv.LastContact))
-	buffer.WriteString(fmt.Sprintf("      Last Term:         %d\n", srv.LastTerm))
-	buffer.WriteString(fmt.Sprintf("      Last Index:        %d\n", srv.LastIndex))
-	buffer.WriteString(fmt.Sprintf("      Version:           %s\n", srv.Version))
+	fmt.Fprintf(&buffer, "   %s\n", srv.ID)
+	fmt.Fprintf(&buffer, "      Name:              %s\n", srv.Name)
+	fmt.Fprintf(&buffer, "      Address:           %s\n", srv.Address)
+	fmt.Fprintf(&buffer, "      Status:            %s\n", srv.Status)
+	fmt.Fprintf(&buffer, "      Node Status:       %s\n", srv.NodeStatus)
+	fmt.Fprintf(&buffer, "      Healthy:           %t\n", srv.Healthy)
+	fmt.Fprintf(&buffer, "      Last Contact:      %s\n", srv.LastContact)
+	fmt.Fprintf(&buffer, "      Last Term:         %d\n", srv.LastTerm)
+	fmt.Fprintf(&buffer, "      Last Index:        %d\n", srv.LastIndex)
+	fmt.Fprintf(&buffer, "      Version:           %s\n", srv.Version)
 
 	if srv.UpgradeVersion != "" {
-		buffer.WriteString(fmt.Sprintf("      Upgrade Version:   %s\n", srv.UpgradeVersion))
+		fmt.Fprintf(&buffer, "      Upgrade Version:   %s\n", srv.UpgradeVersion)
 	}
 	if srv.NodeType != "" {
-		buffer.WriteString(fmt.Sprintf("      Node Type:         %s\n", srv.NodeType))
+		fmt.Fprintf(&buffer, "      Node Type:         %s\n", srv.NodeType)
 	}
 
 	return buffer.String()
@@ -219,23 +219,23 @@ func (p PrettyFormatter) OutputAutopilotState(ui cli.Ui, data any) {
 	state := data.(*api.AutopilotState)
 
 	var buffer bytes.Buffer
-	buffer.WriteString(fmt.Sprintf("Healthy:                         %t\n", state.Healthy))
-	buffer.WriteString(fmt.Sprintf("Failure Tolerance:               %d\n", state.FailureTolerance))
-	buffer.WriteString(fmt.Sprintf("Leader:                          %s\n", state.Leader))
-	buffer.WriteString("Voters:\n")
+	fmt.Fprintf(&buffer, "Healthy:                         %t\n", state.Healthy)
+	fmt.Fprintf(&buffer, "Failure Tolerance:               %d\n", state.FailureTolerance)
+	fmt.Fprintf(&buffer, "Leader:                          %s\n", state.Leader)
+	fmt.Fprint(&buffer, "Voters:\n")
 	outputStringSlice(&buffer, "   ", state.Voters)
 
 	if len(state.NonVoters) > 0 {
-		buffer.WriteString("Non Voters:\n")
+		fmt.Fprint(&buffer, "Non Voters:\n")
 		outputStringSlice(&buffer, "   ", state.NonVoters)
 	}
 
 	if state.OptimisticFailureTolerance > 0 {
-		buffer.WriteString(fmt.Sprintf("Optimistic Failure Tolerance:    %d\n", state.OptimisticFailureTolerance))
+		fmt.Fprintf(&buffer, "Optimistic Failure Tolerance:    %d\n", state.OptimisticFailureTolerance)
 	}
 
 	// Servers
-	buffer.WriteString("Servers:\n")
+	fmt.Fprint(&buffer, "Servers:\n")
 	var outputs []mapOutput
 	for id, srv := range state.Servers {
 		outputs = append(outputs, mapOutput{key: id, value: formatServer(srv)})
@@ -244,18 +244,18 @@ func (p PrettyFormatter) OutputAutopilotState(ui cli.Ui, data any) {
 		return outputs[i].key < outputs[j].key
 	})
 	for _, output := range outputs {
-		buffer.WriteString(output.value)
+		fmt.Fprint(&buffer, output.value)
 	}
 
 	// Upgrade Info
 	if state.Upgrade != nil {
-		buffer.WriteString("Upgrade Info:\n")
-		buffer.WriteString(fmt.Sprintf("   Status: %s\n", state.Upgrade.Status))
-		buffer.WriteString(fmt.Sprintf("   Target Version: %s\n", state.Upgrade.TargetVersion))
-		buffer.WriteString(fmt.Sprintf("   Target Version Voters: %s\n", strings.Join(state.Upgrade.TargetVersionVoters, ", ")))
-		buffer.WriteString(fmt.Sprintf("   Target Version Non-Voters: %s\n", strings.Join(state.Upgrade.TargetVersionNonVoters, ", ")))
-		buffer.WriteString(fmt.Sprintf("   Other Version Voters: %s\n", strings.Join(state.Upgrade.OtherVersionVoters, ", ")))
-		buffer.WriteString(fmt.Sprintf("   Other Version Non-Voters: %s\n", strings.Join(state.Upgrade.OtherVersionNonVoters, ", ")))
+		fmt.Fprint(&buffer, "Upgrade Info:\n")
+		fmt.Fprintf(&buffer, "   Status: %s\n", state.Upgrade.Status)
+		fmt.Fprintf(&buffer, "   Target Version: %s\n", state.Upgrade.TargetVersion)
+		fmt.Fprintf(&buffer, "   Target Version Voters: %s\n", strings.Join(state.Upgrade.TargetVersionVoters, ", "))
+		fmt.Fprintf(&buffer, "   Target Version Non-Voters: %s\n", strings.Join(state.Upgrade.TargetVersionNonVoters, ", "))
+		fmt.Fprintf(&buffer, "   Other Version Voters: %s\n", strings.Join(state.Upgrade.OtherVersionVoters, ", "))
+		fmt.Fprintf(&buffer, "   Other Version Non-Voters: %s\n", strings.Join(state.Upgrade.OtherVersionNonVoters, ", "))
 	}
 
 	ui.Output(buffer.String())

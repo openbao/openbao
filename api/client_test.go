@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -34,117 +33,77 @@ func TestNewConfig_envvar(t *testing.T) {
 	t.Setenv("BAO_ADDR", "https://vault.mycompany.com")
 
 	config := NewConfig()
-	if config.Address != "" {
-		t.Fatalf("bad: %s", config.Address)
-	}
+	require.Empty(t, config.Address)
 
 	t.Setenv("BAO_TOKEN", "testing")
 
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
-	if token := client.Token(); token != "" {
-		t.Fatalf("bad: %s", token)
-	}
+	token := client.Token()
+	require.Empty(t, token)
 }
 
 func TestDefaultConfig_envvar(t *testing.T) {
 	t.Setenv("BAO_ADDR", "https://vault.mycompany.com")
 
 	config := DefaultConfig()
-	if config.Address != "https://vault.mycompany.com" {
-		t.Fatalf("bad: %s", config.Address)
-	}
+	require.Equal(t, "https://vault.mycompany.com", config.Address)
 
 	t.Setenv("BAO_TOKEN", "testing")
 
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
-	if token := client.Token(); token != "testing" {
-		t.Fatalf("bad: %s", token)
-	}
+	token := client.Token()
+	require.Equal(t, "testing", token)
 }
 
 func TestClientDefaultHttpClient(t *testing.T) {
 	_, err := NewClient(&Config{
 		HttpClient: http.DefaultClient,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestClientNilConfig(t *testing.T) {
 	client, err := NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if client == nil {
-		t.Fatal("expected a non-nil client")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, client)
 }
 
 func TestClientDefaultHttpClient_unixSocket(t *testing.T) {
 	t.Setenv("BAO_AGENT_ADDR", "unix:///var/run/vault.sock")
 
 	client, err := NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if client == nil {
-		t.Fatal("expected a non-nil client")
-	}
-	if client.addr.Scheme != "http" {
-		t.Fatalf("bad: %s", client.addr.Scheme)
-	}
-	if client.addr.Host != "localhost" {
-		t.Fatalf("bad: %s", client.addr.Host)
-	}
+	require.NoError(t, err)
+	require.NotNil(t, client)
+	require.Equal(t, "http", client.addr.Scheme)
+	require.Equal(t, "localhost", client.addr.Host)
 }
 
 func TestClientSetAddress(t *testing.T) {
 	client, err := NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	// Start with TCP address using HTTP
-	if err := client.SetAddress("http://172.168.2.1:8300"); err != nil {
-		t.Fatal(err)
-	}
-	if client.addr.Host != "172.168.2.1:8300" {
-		t.Fatalf("bad: expected: '172.168.2.1:8300' actual: %q", client.addr.Host)
-	}
+	err = client.SetAddress("http://172.168.2.1:8300")
+	require.NoError(t, err)
+	require.Equalf(t, "172.168.2.1:8300", client.addr.Host, "bad: expected: '172.168.2.1:8300' actual: %q", client.addr.Host)
+
 	// Test switching to Unix Socket address from TCP address
-	if err := client.SetAddress("unix:///var/run/vault.sock"); err != nil {
-		t.Fatal(err)
-	}
-	if client.addr.Scheme != "http" {
-		t.Fatalf("bad: expected: 'http' actual: %q", client.addr.Scheme)
-	}
-	if client.addr.Host != "localhost" {
-		t.Fatalf("bad: expected: 'localhost' actual: %q", client.addr.Host)
-	}
-	if client.addr.Path != "" {
-		t.Fatalf("bad: expected '' actual: %q", client.addr.Path)
-	}
-	if client.config.HttpClient.Transport.(*http.Transport).DialContext == nil {
-		t.Fatal("bad: expected DialContext to not be nil")
-	}
+	err = client.SetAddress("unix:///var/run/vault.sock")
+	require.NoError(t, err)
+	require.Equalf(t, "http", client.addr.Scheme, "bad: expected: 'http' actual: %q", client.addr.Scheme)
+	require.Equalf(t, "localhost", client.addr.Host, "bad: expected: 'localhost' actual: %q", client.addr.Host)
+	require.Emptyf(t, client.addr.Path, "bad: expected '' actual: %q", client.addr.Path)
+	require.NotNil(t, client.config.HttpClient.Transport.(*http.Transport).DialContext, "bad: expected DialContext to not be nil")
+
 	// Test switching to TCP address from Unix Socket address
-	if err := client.SetAddress("http://172.168.2.1:8300"); err != nil {
-		t.Fatal(err)
-	}
-	if client.addr.Host != "172.168.2.1:8300" {
-		t.Fatalf("bad: expected: '172.168.2.1:8300' actual: %q", client.addr.Host)
-	}
-	if client.addr.Scheme != "http" {
-		t.Fatalf("bad: expected: 'http' actual: %q", client.addr.Scheme)
-	}
+	err = client.SetAddress("http://172.168.2.1:8300")
+	require.NoError(t, err)
+	require.Equalf(t, "172.168.2.1:8300", client.addr.Host, "bad: expected: '172.168.2.1:8300' actual: %q", client.addr.Host)
+	require.Equalf(t, "http", client.addr.Scheme, "bad: expected: 'http' actual: %q", client.addr.Scheme)
 }
 
 func TestClientToken(t *testing.T) {
@@ -155,22 +114,19 @@ func TestClientToken(t *testing.T) {
 	defer ln.Close()
 
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	client.SetToken(tokenValue)
 
 	// Verify the token is set
-	if v := client.Token(); v != tokenValue {
-		t.Fatalf("bad: %s", v)
-	}
+	v := client.Token()
+	require.Equalf(t, tokenValue, v, "bad: %s", v)
 
 	client.ClearToken()
 
-	if v := client.Token(); v != "" {
-		t.Fatalf("bad: %s", v)
-	}
+	// Verify the client token cleared
+	v = client.Token()
+	require.Empty(t, v)
 }
 
 func TestClientHostHeader(t *testing.T) {
@@ -182,26 +138,21 @@ func TestClientHostHeader(t *testing.T) {
 
 	config.Address = strings.ReplaceAll(config.Address, "127.0.0.1", "localhost")
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Set the token manually
 	client.SetToken("foo")
 
 	resp, err := client.RawRequest(client.NewRequest(http.MethodPut, "/"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Copy the response
 	var buf bytes.Buffer
 	io.Copy(&buf, resp.Body)
 
 	// Verify we got the response from the primary
-	if buf.String() != strings.ReplaceAll(config.Address, "http://", "") {
-		t.Fatalf("Bad address: %s", buf.String())
-	}
+	modifiedAddress := strings.ReplaceAll(config.Address, "http://", "")
+	require.Equalf(t, modifiedAddress, buf.String(), "Bad address: %s", buf.String())
 }
 
 func TestClientBadToken(t *testing.T) {
@@ -211,21 +162,17 @@ func TestClientBadToken(t *testing.T) {
 	defer ln.Close()
 
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	client.SetToken("foo")
+
 	_, err = client.RawRequest(client.NewRequest(http.MethodPut, "/"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client.SetToken("foo\u007f")
 	_, err = client.RawRequest(client.NewRequest(http.MethodPut, "/"))
-	if err == nil || !strings.Contains(err.Error(), "printable") {
-		t.Fatal("expected error due to bad token")
-	}
+
+	require.ErrorContains(t, err, "printable", "expected error due to bad token")
 }
 
 func TestClientDisableRedirects(t *testing.T) {
@@ -261,31 +208,20 @@ func TestClientDisableRedirects(t *testing.T) {
 			defer ln.Close()
 
 			client, err := NewClient(config)
-			if err != nil {
-				t.Fatalf("%s: error %v", name, err)
-			}
+			require.NoErrorf(t, err, "%s: error %v", name, err)
 
 			req := client.NewRequest("GET", "/")
 			resp, err := client.rawRequestWithContext(t.Context(), req)
-			if err != nil {
-				t.Fatalf("%s: error %v", name, err)
-			}
+			require.NoErrorf(t, err, "%s: error %v", name, err)
 
-			if numReqs != test.expectedNumReqs {
-				t.Fatalf("%s: expected %v request(s) but got %v", name, test.expectedNumReqs, numReqs)
-			}
+			require.Equalf(t, test.expectedNumReqs, numReqs, "%s: expected %v request(s) but got %v", name, test.expectedNumReqs, numReqs)
 
-			if resp.StatusCode != test.statusCode {
-				t.Fatalf("%s: expected status code %v got %v", name, test.statusCode, resp.StatusCode)
-			}
+			require.Equalf(t, test.statusCode, resp.StatusCode, "%s: expected status code %v got %v", name, test.statusCode, resp.StatusCode)
 
 			location, err := resp.Location()
-			if err != nil {
-				t.Fatalf("%s error %v", name, err)
-			}
-			if req.URL.String() == location.String() {
-				t.Fatalf("%s: expected request URL %v to be different from redirect URL %v", name, req.URL, resp.Request.URL)
-			}
+			require.NoErrorf(t, err, "%s error %v", name, err)
+
+			require.NotEqualf(t, req.URL.String(), location.String(), "%s: expected request URL %v to be different from redirect URL %v", name, req.URL, resp.Request.URL)
 		})
 	}
 }
@@ -305,27 +241,21 @@ func TestClientRedirect(t *testing.T) {
 	defer ln2.Close()
 
 	client, err := NewClient(config2)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Set the token manually
 	client.SetToken("foo")
 
 	// Do a raw "/" request
 	resp, err := client.RawRequest(client.NewRequest(http.MethodPut, "/"))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Copy the response
 	var buf bytes.Buffer
 	io.Copy(&buf, resp.Body)
 
 	// Verify we got the response from the primary
-	if buf.String() != "test" {
-		t.Fatalf("Bad: %s", buf.String())
-	}
+	require.Equalf(t, "test", buf.String(), "Bad: %s", buf.String())
 }
 
 func TestDefaulRetryPolicy(t *testing.T) {
@@ -371,12 +301,8 @@ func TestDefaulRetryPolicy(t *testing.T) {
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
 			retry, err := DefaultRetryPolicy(t.Context(), test.resp, test.err)
-			if retry != test.expect {
-				t.Fatalf("expected to retry request: '%t', but actual result was: '%t'", test.expect, retry)
-			}
-			if err != test.expectErr {
-				t.Fatalf("expected error from retry policy: %q, but actual result was: %q", err, test.expectErr)
-			}
+			require.Equalf(t, test.expect, retry, "expected to retry request: '%t', but actual result was: '%t'", test.expect, retry)
+			require.Equalf(t, test.expectErr, err, "expected error from retry policy: %q, but actual result was: %q", err, test.expectErr)
 		})
 	}
 }
@@ -397,37 +323,26 @@ func TestClientEnvSettings(t *testing.T) {
 	t.Setenv(EnvVaultDisableRedirects, "true")
 
 	config := DefaultConfig()
-	if err := config.ReadEnvironment(); err != nil {
-		t.Fatalf("error reading environment: %v", err)
-	}
+
+	err = config.ReadEnvironment()
+	require.NoErrorf(t, err, "error reading environment: %v", err)
 
 	tlsConfig := config.HttpClient.Transport.(*http.Transport).TLSClientConfig
-	if x509.NewCertPool().Equal(tlsConfig.RootCAs) {
-		t.Fatal("bad: expected a cert pool with at least one subject")
-	}
-	if tlsConfig.GetClientCertificate == nil {
-		t.Fatal("bad: expected client tls config to have a certificate getter")
-	}
-	if tlsConfig.InsecureSkipVerify != true {
-		t.Fatalf("bad: %v", tlsConfig.InsecureSkipVerify)
-	}
-	if config.DisableRedirects != true {
-		t.Fatalf("bad: expected disable redirects to be true: %v", config.DisableRedirects)
-	}
+	require.False(t, x509.NewCertPool().Equal(tlsConfig.RootCAs), "expected a cert pool with at least one subject")
+	require.NotNil(t, tlsConfig.GetClientCertificate, "bad: expected client tls config to have a certificate getter")
+	require.Truef(t, tlsConfig.InsecureSkipVerify, "bad: %v", tlsConfig.InsecureSkipVerify)
+	require.Truef(t, config.DisableRedirects, "bad: expected disable redirects to be true: %v", config.DisableRedirects)
 }
 
 func TestClientDeprecatedEnvSettings(t *testing.T) {
 	t.Setenv(EnvVaultInsecure, "true")
 
 	config := DefaultConfig()
-	if err := config.ReadEnvironment(); err != nil {
-		t.Fatalf("error reading environment: %v", err)
-	}
+	err := config.ReadEnvironment()
+	require.NoErrorf(t, err, "error reading environment: %v", err)
 
 	tlsConfig := config.HttpClient.Transport.(*http.Transport).TLSClientConfig
-	if tlsConfig.InsecureSkipVerify != true {
-		t.Fatalf("bad: %v", tlsConfig.InsecureSkipVerify)
-	}
+	require.Truef(t, tlsConfig.InsecureSkipVerify, "bad: %v", tlsConfig.InsecureSkipVerify)
 }
 
 func TestConfigureTLS(t *testing.T) {
@@ -716,18 +631,12 @@ func TestClientEnvNamespace(t *testing.T) {
 	t.Setenv(EnvVaultNamespace, "test")
 
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.RawRequest(client.NewRequest(http.MethodGet, "/"))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
-	if seenNamespace != "test" {
-		t.Fatalf("Bad: %s", seenNamespace)
-	}
+	require.Equal(t, "test", seenNamespace)
 }
 
 func TestParsingRateAndBurst(t *testing.T) {
@@ -736,15 +645,9 @@ func TestParsingRateAndBurst(t *testing.T) {
 		observedRate, observedBurst, err = parseRateLimit(correctFormat)
 		expectedRate, expectedBurst      = float64(400), 400
 	)
-	if err != nil {
-		t.Error(err)
-	}
-	if expectedRate != observedRate {
-		t.Errorf("Expected rate %v but found %v", expectedRate, observedRate)
-	}
-	if expectedBurst != observedBurst {
-		t.Errorf("Expected burst %v but found %v", expectedBurst, observedBurst)
-	}
+	assert.NoError(t, err)
+	assert.Equalf(t, expectedRate, observedRate, "Expected rate %v but found %v", expectedRate, observedRate)
+	assert.Equalf(t, expectedBurst, observedBurst, "Expected burst %v but found %v", expectedBurst, observedBurst)
 }
 
 func TestParsingRateOnly(t *testing.T) {
@@ -753,23 +656,15 @@ func TestParsingRateOnly(t *testing.T) {
 		observedRate, observedBurst, err = parseRateLimit(correctFormat)
 		expectedRate, expectedBurst      = float64(400), 400
 	)
-	if err != nil {
-		t.Error(err)
-	}
-	if expectedRate != observedRate {
-		t.Errorf("Expected rate %v but found %v", expectedRate, observedRate)
-	}
-	if expectedBurst != observedBurst {
-		t.Errorf("Expected burst %v but found %v", expectedBurst, observedBurst)
-	}
+	assert.NoError(t, err)
+	assert.Equalf(t, expectedRate, observedRate, "Expected rate %v but found %v", expectedRate, observedRate)
+	assert.Equalf(t, expectedBurst, observedBurst, "Expected burst %v but found %v", expectedBurst, observedBurst)
 }
 
 func TestParsingErrorCase(t *testing.T) {
 	incorrectFormat := "foobar"
 	_, _, err := parseRateLimit(incorrectFormat)
-	if err == nil {
-		t.Error("Expected error, found no error")
-	}
+	require.Errorf(t, err, "Expected error, found no error")
 }
 
 func TestClientTimeoutSetting(t *testing.T) {
@@ -777,9 +672,7 @@ func TestClientTimeoutSetting(t *testing.T) {
 	config := DefaultConfig()
 	config.ReadEnvironment()
 	_, err := NewClient(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 type roundTripperFunc func(*http.Request) (*http.Response, error)
@@ -796,9 +689,7 @@ func TestClientNonTransportRoundTripper(t *testing.T) {
 	_, err := NewClient(&Config{
 		HttpClient: client,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestClientNonTransportRoundTripperUnixAddress(t *testing.T) {
@@ -810,9 +701,7 @@ func TestClientNonTransportRoundTripperUnixAddress(t *testing.T) {
 		HttpClient: client,
 		Address:    "unix:///var/run/vault.sock",
 	})
-	if err == nil {
-		t.Fatal("bad: expected error got nil")
-	}
+	require.Error(t, err, "bad: expected error got nil")
 }
 
 func TestClone(t *testing.T) {
@@ -848,15 +737,11 @@ func TestClone(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			parent, err := NewClient(tt.config)
-			if err != nil {
-				t.Fatalf("NewClient failed: %v", err)
-			}
+			require.NoErrorf(t, err, "NewClient failed: %v", err)
 
 			// Set all of the things that we provide setter methods for, which modify config values
 			err = parent.SetAddress("http://example.com:8080")
-			if err != nil {
-				t.Fatalf("SetAddress failed: %v", err)
-			}
+			require.NoErrorf(t, err, "SetAddress failed: %v", err)
 
 			clientTimeout := time.Until(time.Now().AddDate(0, 0, 1))
 			parent.SetClientTimeout(clientTimeout)
@@ -883,66 +768,40 @@ func TestClone(t *testing.T) {
 			}
 
 			clone, err := parent.Clone()
-			if err != nil {
-				t.Fatalf("Clone failed: %v", err)
-			}
+			require.NoErrorf(t, err, "Clone failed: %v", err)
 
-			if parent.Address() != clone.Address() {
-				t.Fatalf("addresses don't match: %v vs %v", parent.Address(), clone.Address())
-			}
-			if parent.ClientTimeout() != clone.ClientTimeout() {
-				t.Fatalf("timeouts don't match: %v vs %v", parent.ClientTimeout(), clone.ClientTimeout())
-			}
-			if parent.CheckRetry() != nil && clone.CheckRetry() == nil {
-				t.Fatal("checkRetry functions don't match. clone is nil.")
-			}
-			if (parent.Limiter() != nil && clone.Limiter() == nil) || (parent.Limiter() == nil && clone.Limiter() != nil) {
-				t.Fatalf("limiters don't match: %v vs %v", parent.Limiter(), clone.Limiter())
-			}
-			if parent.Limiter().Limit() != clone.Limiter().Limit() {
-				t.Fatalf("limiter limits don't match: %v vs %v", parent.Limiter().Limit(), clone.Limiter().Limit())
-			}
-			if parent.Limiter().Burst() != clone.Limiter().Burst() {
-				t.Fatalf("limiter bursts don't match: %v vs %v", parent.Limiter().Burst(), clone.Limiter().Burst())
-			}
-			if parent.MaxRetries() != clone.MaxRetries() {
-				t.Fatalf("maxRetries don't match: %v vs %v", parent.MaxRetries(), clone.MaxRetries())
-			}
-			if parent.OutputCurlString() == clone.OutputCurlString() {
-				t.Fatalf("outputCurlString was copied over when it shouldn't have been: %v and %v", parent.OutputCurlString(), clone.OutputCurlString())
-			}
-			if parent.SRVLookup() != clone.SRVLookup() {
-				t.Fatalf("SRVLookup doesn't match: %v vs %v", parent.SRVLookup(), clone.SRVLookup())
-			}
+			require.Equalf(t, parent.Address(), clone.Address(), "addresses don't match: %v vs %v", parent.Address(), clone.Address())
+			require.Equalf(t, parent.ClientTimeout(), clone.ClientTimeout(), "timeouts don't match: %v vs %v", parent.ClientTimeout(), clone.ClientTimeout())
+
+			// Checking CheckRetry parent and clone not equal
+			checkRetryEquality := (parent.CheckRetry() != nil && clone.CheckRetry() == nil) || (parent.CheckRetry() == nil && clone.CheckRetry() != nil)
+			require.Falsef(t, checkRetryEquality, "checkRetry functions don't match.")
+
+			// Checking Limiter parent and clone not equal
+			limiterEquality := (parent.Limiter() != nil && clone.Limiter() == nil) || (parent.Limiter() == nil && clone.Limiter() != nil)
+			require.Falsef(t, limiterEquality, "limiters don't match: %v vs %v", parent.Limiter(), clone.Limiter())
+
+			require.Equalf(t, parent.Limiter().Limit(), clone.Limiter().Limit(), "limiter limits don't match: %v vs %v", parent.Limiter().Limit(), clone.Limiter().Limit())
+			require.Equalf(t, parent.Limiter().Burst(), clone.Limiter().Burst(), "limiter bursts don't match: %v vs %v", parent.Limiter().Burst(), clone.Limiter().Burst())
+
+			require.Equalf(t, parent.MaxRetries(), clone.MaxRetries(), "maxRetries don't match: %v vs %v", parent.MaxRetries(), clone.MaxRetries())
+			require.NotEqualf(t, parent.OutputCurlString(), clone.OutputCurlString(), "outputCurlString was copied over when it shouldn't have been: %v and %v", parent.OutputCurlString(), clone.OutputCurlString())
+			require.Equalf(t, parent.SRVLookup(), clone.SRVLookup(), "SRVLookup doesn't match: %v vs %v", parent.SRVLookup(), clone.SRVLookup())
+
 			if tt.config.CloneHeaders {
-				if !reflect.DeepEqual(parent.Headers(), clone.Headers()) {
-					t.Fatalf("Headers() don't match: %v vs %v", parent.Headers(), clone.Headers())
-				}
-				if parent.config.CloneHeaders != clone.config.CloneHeaders {
-					t.Fatalf("config.CloneHeaders doesn't match: %v vs %v", parent.config.CloneHeaders, clone.config.CloneHeaders)
-				}
+				require.Equalf(t, parent.Headers(), clone.Headers(), "Headers() don't match: %v vs %v", parent.Headers(), clone.Headers())
+				require.Equalf(t, parent.config.CloneHeaders, clone.config.CloneHeaders, "config.CloneHeaders doesn't match: %v vs %v", parent.config.CloneHeaders, clone.config.CloneHeaders)
 				if tt.headers != nil {
-					if !reflect.DeepEqual(*tt.headers, clone.Headers()) {
-						t.Fatalf("expected headers %v, actual %v", *tt.headers, clone.Headers())
-					}
+					require.Equalf(t, *tt.headers, clone.Headers(), "expected headers %v, actual %v", *tt.headers, clone.Headers())
 				}
 			}
 			if tt.config.CloneToken {
-				if tt.token == "" {
-					t.Fatal("test requires a non-empty token")
-				}
-				if parent.config.CloneToken != clone.config.CloneToken {
-					t.Fatalf("config.CloneToken doesn't match: %v vs %v", parent.config.CloneToken, clone.config.CloneToken)
-				}
-				if parent.token != clone.token {
-					t.Fatalf("tokens do not match: %v vs %v", parent.token, clone.token)
-				}
+				require.NotEmpty(t, tt.token, "test requires a non-empty token")
+				require.Equalf(t, parent.config.CloneToken, clone.config.CloneToken, "config.CloneToken doesn't match: %v vs %v", parent.config.CloneToken, clone.config.CloneToken)
+				require.Equalf(t, parent.token, clone.token, "tokens do not match: %v vs %v", parent.token, clone.token)
 			} else {
 				// assumes `BAO_TOKEN` is unset or has an empty value.
-				expected := ""
-				if clone.token != expected {
-					t.Fatalf("expected clone's token %q, actual %q", expected, clone.token)
-				}
+				require.Empty(t, clone.token)
 			}
 		})
 	}
@@ -991,9 +850,7 @@ func TestSetHeadersRaceSafe(t *testing.T) {
 	// headers.
 	resultingHeaders := client.Headers()
 	for key, value := range testPairs {
-		if resultingHeaders.Get(key) != value {
-			t.Fatal("expected " + value + " for " + key)
-		}
+		require.Equal(t, value, resultingHeaders.Get(key), "expected "+value+" for "+key)
 	}
 }
 
@@ -1024,16 +881,12 @@ func TestClient_SetCloneToken(t *testing.T) {
 			var expected bool
 			for _, v := range tt.calls {
 				actual := c.CloneToken()
-				if expected != actual {
-					t.Fatalf("expected %v, actual %v", expected, actual)
-				}
+				require.Equalf(t, expected, actual, "expected %v, actual %v", expected, actual)
 
 				expected = v
 				c.SetCloneToken(expected)
 				actual = c.CloneToken()
-				if actual != expected {
-					t.Fatalf("SetCloneToken(): expected %v, actual %v", expected, actual)
-				}
+				require.Equalf(t, expected, actual, "SetCloneToken(): expected %v, actual %v", expected, actual)
 			}
 		})
 	}
@@ -1049,21 +902,16 @@ func TestClientWithNamespace(t *testing.T) {
 
 	// set up a client with a namespace
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoErrorf(t, err, "err: %s", err)
+
 	ogNS := "test"
 	client.SetNamespace(ogNS)
 	_, err = client.rawRequestWithContext(
 		t.Context(),
 		client.NewRequest(http.MethodGet, "/"),
 	)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
-	if ns != ogNS {
-		t.Fatalf("Expected namespace: %q, got %q", ogNS, ns)
-	}
+	require.NoErrorf(t, err, "err: %s", err)
+	require.Equalf(t, ogNS, ns, "Expected namespace: %q, got %q", ogNS, ns)
 
 	// make a call with a temporary namespace
 	newNS := "new-namespace"
@@ -1071,40 +919,27 @@ func TestClientWithNamespace(t *testing.T) {
 		t.Context(),
 		client.NewRequest(http.MethodGet, "/"),
 	)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
-	if ns != newNS {
-		t.Fatalf("Expected new namespace: %q, got %q", newNS, ns)
-	}
+	require.NoErrorf(t, err, "err: %s", err)
+	require.Equalf(t, newNS, ns, "Expected new namespace: %q, got %q", newNS, ns)
+
 	// ensure client has not been modified
 	_, err = client.rawRequestWithContext(
 		t.Context(),
 		client.NewRequest(http.MethodGet, "/"),
 	)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
-	if ns != ogNS {
-		t.Fatalf("Expected original namespace: %q, got %q", ogNS, ns)
-	}
+	require.NoErrorf(t, err, "err: %s", err)
+	require.Equalf(t, ogNS, ns, "Expected namespace: %q, got %q", ogNS, ns)
 
 	// make call with empty ns
 	_, err = client.WithNamespace("").rawRequestWithContext(
 		t.Context(),
 		client.NewRequest(http.MethodGet, "/"),
 	)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
-	if ns != "" {
-		t.Fatalf("Expected no namespace, got %q", ns)
-	}
+	require.NoErrorf(t, err, "err: %s", err)
+	require.Emptyf(t, ns, "Expected no namespace, got %q", ns)
 
 	// ensure client has not been modified
-	if client.Namespace() != ogNS {
-		t.Fatalf("Expected original namespace: %q, got %q", ogNS, client.Namespace())
-	}
+	require.Equalf(t, ogNS, client.Namespace(), "Expected original namespace: %q, got %q", ogNS, client.Namespace())
 }
 
 func TestVaultProxy(t *testing.T) {
@@ -1166,21 +1001,14 @@ func TestVaultProxy(t *testing.T) {
 			}
 
 			c := DefaultConfig()
-			if c.Error != nil {
-				t.Fatalf("Expected no error reading config, found error %v", c.Error)
-			}
+			require.NoErrorf(t, c.Error, "Expected no error reading config, found error %v", c.Error)
 
 			r, _ := http.NewRequest("GET", tc.requestUrl, nil)
 			proxyUrl, err := c.HttpClient.Transport.(*http.Transport).Proxy(r)
-			if err != nil {
-				t.Fatalf("Expected no error resolving proxy, found error %v", err)
-			}
-			if proxyUrl == nil || proxyUrl.String() == "" {
-				t.Fatal("Expected proxy to be resolved but no proxy returned")
-			}
-			if tc.expectedResolvedProxyUrl != "" && proxyUrl.String() != tc.expectedResolvedProxyUrl {
-				t.Fatalf("Expected resolved proxy URL to be %v but was %v", tc.expectedResolvedProxyUrl, proxyUrl.String())
-			}
+			require.NoErrorf(t, err, "Expected no error resolving proxy, found error %v", err)
+			require.NotNil(t, proxyUrl)
+			require.NotEmpty(t, proxyUrl.String())
+			require.False(t, tc.expectedResolvedProxyUrl != "" && tc.expectedResolvedProxyUrl != proxyUrl.String())
 		})
 	}
 }
@@ -1190,19 +1018,9 @@ func TestParseAddressWithUnixSocket(t *testing.T) {
 	config := DefaultConfig()
 
 	u, err := config.ParseAddress(address)
-	if err != nil {
-		t.Fatal("Error not expected")
-	}
-	if u.Scheme != "http" {
-		t.Fatal("Scheme not changed to http")
-	}
-	if u.Host != "localhost" {
-		t.Fatal("Host not changed to socket name")
-	}
-	if u.Path != "" {
-		t.Fatal("Path expected to be blank")
-	}
-	if config.HttpClient.Transport.(*http.Transport).DialContext == nil {
-		t.Fatal("DialContext function not set in config.HttpClient.Transport")
-	}
+	require.NoError(t, err, "Error not expected")
+	require.Equal(t, "http", u.Scheme, "Scheme not changed to http")
+	require.Equal(t, "localhost", u.Host, "Host not changed to socket name")
+	require.Empty(t, u.Path, "Path expected to be blank")
+	require.NotNil(t, config.HttpClient.Transport.(*http.Transport).DialContext, "DialContext function not set in config.HttpClient.Transport")
 }

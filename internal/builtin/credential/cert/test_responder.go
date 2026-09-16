@@ -269,7 +269,9 @@ func (rs *Responder) ServeHTTP(response http.ResponseWriter, request *http.Reque
 		}
 	}
 	response.WriteHeader(http.StatusOK)
-	response.Write(ocspResponse)
+	if _, err := response.Write(ocspResponse); err != nil {
+		rs.log.Log("error writing OCSP response", err)
+	}
 	if rs.stats != nil {
 		rs.stats.ResponseStatus(ocsp.Success)
 	}

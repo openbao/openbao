@@ -808,7 +808,7 @@ func handleUIStub() http.Handler {
 	</html>
 	`
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte(stubHTML))
+		w.Write([]byte(stubHTML)) //nolint:errcheck
 	})
 }
 

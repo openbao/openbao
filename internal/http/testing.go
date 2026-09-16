@@ -4,6 +4,7 @@
 package http
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -41,7 +42,11 @@ func TestServerWithListenerAndProperties(tb testing.TB, ln net.Listener, addr st
 		Handler:  mux,
 		ErrorLog: core.Logger().StandardLogger(nil),
 	}
-	go server.Serve(ln)
+	go func() {
+		if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			core.Logger().Error("HTTP test server exited with error", "error", err)
+		}
+	}()
 }
 
 func TestServerWithListener(tb testing.TB, ln net.Listener, addr string, core *vault.Core) {

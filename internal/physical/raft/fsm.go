@@ -627,7 +627,7 @@ func (f *FSM) applyBatchNonTxOps(b *bolt.Bucket, txnState *fsmTxnCommitIndexAppl
 		case restoreCallbackOp:
 			if f.restoreCb != nil {
 				// Kick off the restore callback function in a go routine
-				go f.restoreCb(context.Background())
+				go f.restoreCb(context.Background()) //nolint:errcheck
 			}
 		default:
 			if _, ok := f.unknownOpTypes.Load(op.OpType); !ok {
@@ -964,11 +964,16 @@ func (f *FSM) writeTo(ctx context.Context, metaSink writeErrorCloser, sink write
 				Value: v,
 			})
 			if err != nil {
-				metaSink.CloseWithError(err)
+				if closeErr := metaSink.CloseWithError(err); closeErr != nil {
+					f.logger.Error("error closing snapshot metadata sink", "error", closeErr)
+				}
 				return err
 			}
 		}
-		metaSink.Close()
+
+		if err := metaSink.Close(); err != nil {
+			return fmt.Errorf("error closing snapshot metadata sink: %w", err)
+		}
 
 		// Do the second scan for copy purposes.
 		for k, v := c.First(); k != nil; k, v = c.Next() {

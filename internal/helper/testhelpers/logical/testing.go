@@ -224,7 +224,7 @@ func Test(tt TestT, c TestCase) {
 
 	// Create an HTTP API server and client
 	ln, addr := http.TestServer(nil, core)
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 	clientConfig := api.DefaultConfig()
 	clientConfig.Address = addr
 	client, err := api.NewClient(clientConfig)

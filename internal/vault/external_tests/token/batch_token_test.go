@@ -87,7 +87,7 @@ path "kv/*" {
 	}
 
 	// Get role_id
-	resp, err = client.Logical().Read("auth/approle/role/test/role-id")
+	resp, err := client.Logical().Read("auth/approle/role/test/role-id")
 	if err != nil {
 		t.Fatal(err)
 	}

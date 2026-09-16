@@ -29,7 +29,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/vault/routing"
 )
 
-type contextKey string
+type coreNumberContextKey string
 
 const (
 	// coreMountConfigPath is used to store the mount configuration.
@@ -1654,7 +1654,7 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *routing.MountEntry,
 
 	ctx = namespace.ContextWithNamespace(ctx, entry.Namespace)
 	// key should not be of type string or any other build-in type
-	const core_number contextKey = "core_number"
+	const core_number coreNumberContextKey = "core_number"
 	ctx = context.WithValue(ctx, core_number, c.coreNumber)
 	b, err := f(ctx, config)
 	if err != nil {

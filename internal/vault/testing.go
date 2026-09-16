@@ -1868,11 +1868,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 	cleanupFunc := func() {}
 	var handler http.Handler
 
-	var firstCoreNumber int
-	if opts != nil {
-		firstCoreNumber = opts.FirstCoreNumber
-	}
-
 	localConfig.RedirectAddr = fmt.Sprintf("https://127.0.0.1:%d", listeners[0].Address.Port)
 
 	// if opts.SealFunc is provided, use that to generate a seal for the config instead
@@ -1953,7 +1948,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	c.coreNumber = firstCoreNumber + idx
 	if opts != nil && opts.HandlerFunc != nil {
 		props := opts.DefaultHandlerProperties
 		props.Core = c

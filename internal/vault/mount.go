@@ -1651,7 +1651,6 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *routing.MountEntry,
 	}
 
 	ctx = namespace.ContextWithNamespace(ctx, entry.Namespace)
-	ctx = context.WithValue(ctx, "core_number", c.coreNumber)
 	b, err := f(ctx, config)
 	if err != nil {
 		return nil, err

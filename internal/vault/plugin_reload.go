@@ -124,7 +124,7 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 			continue
 		}
 
-		if entry.Type == pluginName || (entry.Type == "plugin" && entry.Config.PluginName == pluginName) {
+		if entry.Type == pluginName || (entry.Type == routing.MountTypePlugin && entry.Config.PluginName == pluginName) {
 			err := c.reloadBackendCommon(ctx, entry, true)
 			if err != nil {
 				return err

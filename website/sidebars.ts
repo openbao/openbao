@@ -591,7 +591,18 @@ const sidebars: SidebarsConfig = {
                 "api/system/config-ui",
                 "api/system/control-group",
                 "api/system/decode-token",
-                "api/system/external-keys",
+                {
+                    "/sys/external-keys": [
+                        "api/system/external-keys/index",
+                        {
+                            "Plugins": [
+                                "api/system/external-keys/plugins/index",
+                                "api/system/external-keys/plugins/pkcs11",
+                                "api/system/external-keys/plugins/transit",
+                            ],
+                        },
+                    ],
+                },
                 "api/system/generate-recovery-token",
                 "api/system/generate-root-token",
                 "api/system/generate-root",

@@ -1,0 +1,50 @@
+---
+sidebar_label: edit
+description: |-
+  The "workflow edit" command allows edits to a given workflow
+  via the provided editor of choice. If saving fails,
+  you will be prompted to retry editing, overwrite  the latest version on the server,
+  view a diff against the latest version, or discard your changes.
+---
+
+# workflow edit
+
+The `workflow edit` command edits an existing workflow under the given PATH.
+The used editor can be defined via a flag or the `EDITOR` environment variable.
+
+The workflow is written back with the version it was read at, so a concurrent
+update on the server is detected instead of silently overwritten. If saving
+fails, you will be prompted to retry editing, overwrite the latest version on
+the server, view a diff against the latest version, or discard your changes.
+
+If the editor exits without changes, or leaves the workflow empty, the edit is
+aborted. When saving fails and the edits are not discarded, they remain
+available in the temporary file whose path is printed.
+
+This command requires an interactive terminal; with `-non-interactive` it
+refuses to run. Use [`workflow write`](write.mdx) instead.
+
+## Examples
+
+Edit a workflow:
+
+```shell-session
+$ bao workflow edit my-workflow
+Success! Edited workflow: my-workflow
+```
+
+Edit a workflow with vim:
+
+```shell-session
+$ bao workflow edit -editor=vim my-workflow
+```
+
+## Usage
+
+The following flags are available in addition to the [standard set of
+flags](../index.mdx) included on all commands.
+
+### Command options
+
+- `-editor` `(string: "vi")` - The editor you want to use. Defaults to `$EDITOR`
+  and then falls back to `vi`.

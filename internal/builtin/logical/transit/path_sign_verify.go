@@ -134,13 +134,15 @@ derivation is enabled; currently only available with ed25519 keys.`,
 * sha3-256
 * sha3-384
 * sha3-512
+* mldsa-mu
 * none
 
 Defaults to "sha2-256" for RSA- and ECDSA-type keys, and "none" otherwise. Not
 valid for all key types, including Ed25519 and ML-DSA. Using "none" with a key
 type that otherwise requires a hash function requires setting prehashed=true
 and signature_algorithm=pkcs1v15, yielding a PKCSv1_5_NoOID instead of the usual
-PKCSv1_5_DERnull signature.`,
+PKCSv1_5_DERnull signature. "mldsa-mu" is only valid for prehashed input for
+MLDSA-type keys.`,
 			},
 
 			"algorithm": {
@@ -384,6 +386,10 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 		return logical.ErrorResponse("hash_algorithm=none requires both prehashed=true and signature_algorithm=pkcs1v15"), logical.ErrInvalidRequest
 	}
 
+	if hashAlgorithm == keysutil.HashTypeMLDSAMu && (!prehashed || !p.Type.MLDSAExternalMuSupported()) {
+		return logical.ErrorResponse("hash_algorithm=mldsa-mu requires prehashed=true and a ML-DSA compatible key"), logical.ErrInvalidRequest
+	}
+
 	batchInputRaw := d.Raw["batch_input"]
 	var batchInputItems []batchRequestSignItem
 	if batchInputRaw != nil {
@@ -609,6 +615,10 @@ func (b *backend) pathVerifyWrite(ctx context.Context, req *logical.Request, d *
 
 	if hashAlgorithm == keysutil.HashTypeNone && (!prehashed || sigAlgorithm != "pkcs1v15") && p.Type.HashSignatureInput() {
 		return logical.ErrorResponse("hash_algorithm=none requires both prehashed=true and signature_algorithm=pkcs1v15"), logical.ErrInvalidRequest
+	}
+
+	if hashAlgorithm == keysutil.HashTypeMLDSAMu {
+		return logical.ErrorResponse("hash_algorithm=mldsa-mu does not support verification"), logical.ErrInvalidRequest
 	}
 
 	response := make([]batchResponseVerifyItem, len(batchInputItems))

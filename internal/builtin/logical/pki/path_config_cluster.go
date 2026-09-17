@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -154,7 +155,7 @@ func (b *backend) pathWriteCluster(ctx context.Context, req *logical.Request, da
 	}
 
 	if value, ok := data.GetOk("path"); ok {
-		cfg.Path = value.(string)
+		cfg.Path = strings.TrimSpace(value.(string))
 
 		// This field is required by ACME, if ever we allow un-setting in the
 		// future, this code will need to verify that ACME is not enabled.
@@ -165,7 +166,8 @@ func (b *backend) pathWriteCluster(ctx context.Context, req *logical.Request, da
 	}
 
 	if value, ok := data.GetOk("aia_path"); ok {
-		cfg.AIAPath = value.(string)
+		cfg.AIAPath = strings.TrimSpace(value.(string))
+
 		u, err := url.Parse(cfg.AIAPath)
 		if err != nil || u.Scheme == "" || u.Host == "" {
 			return nil, fmt.Errorf("invalid, non-URL aia_path given to cluster: %v", cfg.AIAPath)

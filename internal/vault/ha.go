@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"sort"
 	"strings"
@@ -1602,11 +1603,20 @@ func (c *Core) advertiseLeader(ctx context.Context, uuid string, leaderLostCh <-
 	}
 
 	keyParams := &certutil.ClusterKeyParams{
-		Type: corePrivateKeyTypeP521,
-		X:    key.X,
-		Y:    key.Y,
-		D:    key.D,
+		Type: certutil.PrivateKeyTypeP521,
+		D:    &big.Int{},
+
+		// These fields are deprecated (both in the standard library and in
+		// sdk) and can safely be removed in a future release since they are
+		// no longer read and keys are constructed purely via D. However,
+		// since earlier releases required X and Y in addition to D, we'll
+		// keep writing them for a few releases to avoid breaking downgrades
+		// immediately and provide a transitional phase instead.
+		X: key.X, Y: key.Y,
 	}
+
+	d, _ := key.Bytes()
+	keyParams.D.SetBytes(d)
 
 	locCert := c.localClusterCert.Load()
 	if locCert == nil {

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -43,10 +44,12 @@ func (c *Core) ensureWrappingKey(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to generate wrapping key: %w", err)
 		}
-		keyParams.D = key.D
-		keyParams.X = key.X
-		keyParams.Y = key.Y
-		keyParams.Type = corePrivateKeyTypeP521
+
+		d, _ := key.Bytes()
+		keyParams.D = &big.Int{}
+		keyParams.D.SetBytes(d)
+		keyParams.Type = certutil.PrivateKeyTypeP521
+
 		val, err := jsonutil.EncodeJSON(keyParams)
 		if err != nil {
 			return fmt.Errorf("failed to encode wrapping key: %w", err)
@@ -61,17 +64,13 @@ func (c *Core) ensureWrappingKey(ctx context.Context) error {
 	}
 
 	// Redundant if we just created it, but in this case serves as a check anyways
-	if err = jsonutil.DecodeJSON(entry.Value, &keyParams); err != nil {
+	if err := jsonutil.DecodeJSON(entry.Value, &keyParams); err != nil {
 		return fmt.Errorf("failed to decode wrapping key parameters: %w", err)
 	}
 
-	c.wrappingJWTKey = &ecdsa.PrivateKey{
-		PublicKey: ecdsa.PublicKey{
-			Curve: elliptic.P521(),
-			X:     keyParams.X,
-			Y:     keyParams.Y,
-		},
-		D: keyParams.D,
+	c.wrappingJWTKey, err = keyParams.ECDSAPrivateKey()
+	if err != nil {
+		return err
 	}
 
 	c.logger.Info("loaded wrapping token key")

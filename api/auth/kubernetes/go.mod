@@ -1,6 +1,6 @@
 module github.com/openbao/openbao/api/auth/kubernetes/v2
 
-go 1.25.0
+go 1.26.0
 
 replace github.com/openbao/openbao/api/v2 => ../../
 

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -14,19 +15,17 @@ import (
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	logicalKv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
+	"github.com/openbao/openbao/v2/internal/builtin/logical/transit"
+	"github.com/openbao/openbao/v2/internal/helper/metricsutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
-	be "github.com/openbao/openbao/v2/internal/vault/backend"
 	ident "github.com/openbao/openbao/v2/internal/vault/identity"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 	// Use the real KV implementation instead of Passthrough
-	AddTestLogicalBackend("kv", logicalKv.Factory)
-	// Clean up for the next test-- is there a better way?
-	defer func() {
-		delete(be.TestLogicalBackends, "kv")
-	}()
+	AddTestLogicalBackend(t, "kv", logicalKv.Factory)
 	core, _, root := TestCoreUnsealed(t)
 
 	testMounts := []struct {
@@ -156,11 +155,7 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 
 func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 	// Use the real KV implementation instead of Passthrough
-	AddTestLogicalBackend("kv", logicalKv.Factory)
-	// Clean up for the next test.
-	defer func() {
-		delete(be.TestLogicalBackends, "kv")
-	}()
+	AddTestLogicalBackend(t, "kv", logicalKv.Factory)
 	core, _, _ := TestCoreUnsealed(t)
 
 	me := &routing.MountEntry{
@@ -365,4 +360,111 @@ func testCoreMetricsEntityGauges(t *testing.T, ctx context.Context, is *ident.Id
 			"auth_method": "userpass",
 			"mount_point": "auth/userpass/",
 		})
+}
+
+func TestCoreMetrics_TransitKeysGauge(t *testing.T) {
+	AddTestLogicalBackend(t, "transit", transit.Factory)
+	core, _, root := TestCoreUnsealed(t)
+
+	ctx := namespace.RootContext(t.Context())
+
+	// create a namespace
+	ns := &namespace.Namespace{
+		Path: "test",
+	}
+	require.NoError(t, core.namespaceStore.SetNamespace(ctx, ns))
+	require.NotEmpty(t, ns.UUID)
+
+	// create a few mounts with some keys
+	testMounts := []struct {
+		Path      string
+		Namespace *namespace.Namespace
+		Count     int
+	}{{
+		Path:  "three/",
+		Count: 3,
+	}, {
+		Path:  "empty/",
+		Count: 0,
+	}, {
+		Path:  "four/",
+		Count: 4,
+	}, {
+		Path:  "prefixed/and/empty/",
+		Count: 0,
+	}, {
+		Path:  "prefixed/five/",
+		Count: 5,
+	}, {
+		Path:      "namespaced/",
+		Namespace: ns,
+		Count:     3,
+	}}
+	for _, tm := range testMounts {
+		// create the mount
+		ctx := ctx
+		if tm.Namespace != nil {
+			ctx = namespace.ContextWithNamespace(ctx, ns)
+		}
+		me := &routing.MountEntry{
+			Table: routing.MountTableType,
+			Path:  sanitizePath(tm.Path),
+			Type:  "transit",
+		}
+		require.NoError(t, core.mount(ctx, me))
+
+		// create the keys
+		for i := range tm.Count {
+			path := me.Path + "keys/" + strconv.Itoa(i)
+			req := logical.TestRequest(t, logical.CreateOperation, path)
+			req.Data["data"] = map[string]any{}
+			req.ClientToken = root
+			resp, err := core.HandleRequest(ctx, req)
+			require.NoError(t, err, "error while creating %q", path)
+			require.Nil(t, resp.Error(), "error while creating %q", path)
+		}
+	}
+
+	// collect the metrics
+	values, err := core.transitKeyGaugeCollector(ctx)
+	require.NoError(t, err)
+
+	expectedValues := []metricsutil.GaugeLabelValues{{
+		Labels: []metricsutil.Label{
+			{Name: "namespace", Value: "root"},
+			{Name: "mount_point", Value: "three/"},
+		},
+		Value: 3,
+	}, {
+		Labels: []metricsutil.Label{
+			{Name: "namespace", Value: "root"},
+			{Name: "mount_point", Value: "empty/"},
+		},
+		Value: 0,
+	}, {
+		Labels: []metricsutil.Label{
+			{Name: "namespace", Value: "root"},
+			{Name: "mount_point", Value: "four/"},
+		},
+		Value: 4,
+	}, {
+		Labels: []metricsutil.Label{
+			{Name: "namespace", Value: "root"},
+			{Name: "mount_point", Value: "prefixed/and/empty/"},
+		},
+		Value: 0,
+	}, {
+		Labels: []metricsutil.Label{
+			{Name: "namespace", Value: "root"},
+			{Name: "mount_point", Value: "prefixed/five/"},
+		},
+		Value: 5,
+	}, {
+		Labels: []metricsutil.Label{
+			{Name: "namespace", Value: "test"},
+			{Name: "mount_point", Value: "namespaced/"},
+		},
+		Value: 3,
+	}}
+	require.Equal(t, expectedValues, values)
 }

@@ -1629,13 +1629,6 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *routing.MountEntry,
 	conf := make(map[string]string)
 	maps.Copy(conf, entry.Options)
 
-	switch entry.Type {
-	case routing.MountTypePlugin:
-		conf["plugin_name"] = entry.Config.PluginName
-	default:
-		conf["plugin_name"] = t
-	}
-
 	conf["plugin_type"] = consts.PluginTypeSecrets.String()
 	conf["plugin_version"] = entry.Version
 

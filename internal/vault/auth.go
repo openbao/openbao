@@ -1265,13 +1265,6 @@ func (c *Core) newCredentialBackend(ctx context.Context, entry *routing.MountEnt
 	conf := make(map[string]string)
 	maps.Copy(conf, entry.Options)
 
-	switch entry.Type {
-	case "plugin":
-		conf["plugin_name"] = entry.Config.PluginName
-	default:
-		conf["plugin_name"] = t
-	}
-
 	conf["plugin_type"] = consts.PluginTypeCredential.String()
 	conf["plugin_version"] = entry.Version
 

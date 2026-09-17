@@ -108,7 +108,7 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 		if ns.ID != entry.Namespace.ID {
 			continue
 		}
-		if entry.Type == pluginName || (entry.Type == "plugin" && entry.Config.PluginName == pluginName) {
+		if entry.Type == pluginName {
 			err := c.reloadBackendCommon(ctx, entry, false)
 			if err != nil {
 				return err
@@ -124,7 +124,7 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 			continue
 		}
 
-		if entry.Type == pluginName || (entry.Type == routing.MountTypePlugin && entry.Config.PluginName == pluginName) {
+		if entry.Type == pluginName {
 			err := c.reloadBackendCommon(ctx, entry, true)
 			if err != nil {
 				return err

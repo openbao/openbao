@@ -123,16 +123,18 @@ func GenerateTLSKey() (*TLSKey, error) {
 		return nil, fmt.Errorf("unable to generate local cluster certificate: %w", err)
 	}
 
+	keyParams := &certutil.ClusterKeyParams{
+		Type: certutil.PrivateKeyTypeP521,
+		D:    &big.Int{},
+	}
+	d, _ := key.Bytes()
+	keyParams.D.SetBytes(d)
+
 	return &TLSKey{
-		ID:        host,
-		KeyType:   certutil.PrivateKeyTypeP521,
-		CertBytes: certBytes,
-		KeyParams: &certutil.ClusterKeyParams{
-			Type: certutil.PrivateKeyTypeP521,
-			X:    key.X,
-			Y:    key.Y,
-			D:    key.D,
-		},
+		ID:          host,
+		KeyType:     certutil.PrivateKeyTypeP521,
+		CertBytes:   certBytes,
+		KeyParams:   keyParams,
 		CreatedTime: time.Now(),
 	}, nil
 }
@@ -213,12 +215,6 @@ func (l *raftLayer) setTLSKeyring(keyring *TLSKeyring) error {
 		case key.KeyParams == nil:
 			return errors.New("no raft cluster key params found")
 
-		case key.KeyParams.X == nil, key.KeyParams.Y == nil, key.KeyParams.D == nil:
-			return errors.New("failed to parse raft cluster key")
-
-		case key.KeyParams.Type != certutil.PrivateKeyTypeP521:
-			return errors.New("failed to find valid raft cluster key type")
-
 		case len(key.CertBytes) == 0:
 			return errors.New("no cluster cert found")
 		}
@@ -229,13 +225,9 @@ func (l *raftLayer) setTLSKeyring(keyring *TLSKeyring) error {
 		}
 
 		key.parsedCert = parsedCert
-		key.parsedKey = &ecdsa.PrivateKey{
-			PublicKey: ecdsa.PublicKey{
-				Curve: elliptic.P521(),
-				X:     key.KeyParams.X,
-				Y:     key.KeyParams.Y,
-			},
-			D: key.KeyParams.D,
+		key.parsedKey, err = key.KeyParams.ECDSAPrivateKey()
+		if err != nil {
+			return fmt.Errorf("failed to parse raft cluster key: %w", err)
 		}
 	}
 

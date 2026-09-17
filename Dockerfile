@@ -112,7 +112,7 @@ CMD ["server", "-dev", "-dev-no-store-token"]
 
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao-distroless.
-FROM gcr.io/distroless/static:nonroot@sha256:1c2c046bc09ed40fad370b599a0b1ae7987f55b01e247cf27a7c27cd97e5bbc7 AS distroless
+FROM gcr.io/distroless/static:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 AS distroless
 
 COPY LICENSE /licenses/mozilla.txt
 

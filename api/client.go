@@ -53,6 +53,7 @@ const (
 	EnvHTTPProxy             = "BAO_HTTP_PROXY"
 	EnvVaultProxyAddr        = "BAO_PROXY_ADDR"
 	EnvVaultDisableRedirects = "BAO_DISABLE_REDIRECTS"
+	EnvVaultHeaders          = "BAO_HEADERS"
 
 	// EnvTokenPath is the path to a file that holds a token. This is presently
 	// only respected by the `bao` CLI, not the API client.
@@ -755,10 +756,11 @@ type Client struct {
 // If the configuration is nil, OpenBao will use configuration from
 // [DefaultConfig], which is the recommended starting configuration.
 //
-// If the environment variables `BAO_TOKEN` and/or `BAO_NAMESPACE` are present
-// and DisableEnvironment is not set, token and namespace will be automatically
-// added to the client. Otherwise, you must manually call [Client.SetToken] and
-// [Client.SetNamespace].
+// If the environment variables `BAO_TOKEN`, `BAO_NAMESPACE`, and/or
+// `BAO_HEADERS` are present and DisableEnvironment is not set, their values
+// will be automatically added to the client. Otherwise, you must configure
+// them with methods such as [Client.SetToken], [Client.SetNamespace], and
+// [Client.AddHeader].
 func NewClient(c *Config) (*Client, error) {
 	var def *Config
 	if c != nil && c.DisableEnvironment {
@@ -824,6 +826,14 @@ func NewClient(c *Config) (*Client, error) {
 		if namespace := ReadBaoVariable(EnvVaultNamespace); namespace != "" {
 			client.setNamespace(namespace)
 		}
+
+		headers, err := readEnvironmentHeaders()
+		if err != nil {
+			return nil, err
+		}
+		for key, value := range headers {
+			client.headers.Add(key, value)
+		}
 	}
 
 	if c.DefaultStrongConsistency {
@@ -832,6 +842,32 @@ func NewClient(c *Config) (*Client, error) {
 	}
 
 	return client, nil
+}
+
+func readEnvironmentHeaders() (map[string]string, error) {
+	raw := ReadBaoVariable(EnvVaultHeaders)
+	if raw == "" {
+		return nil, nil
+	}
+
+	var values map[string]any
+	if err := json.Unmarshal([]byte(raw), &values); err != nil {
+		return nil, fmt.Errorf("could not parse %s as a JSON object", EnvVaultHeaders)
+	}
+
+	headers := make(map[string]string, len(values))
+	for key, value := range values {
+		stringValue, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("%s contains a non-string header value", EnvVaultHeaders)
+		}
+		if strings.HasPrefix(key, "X-Vault-") {
+			return nil, fmt.Errorf("%s contains a header name with reserved prefix %q", EnvVaultHeaders, "X-Vault-")
+		}
+		headers[key] = stringValue
+	}
+
+	return headers, nil
 }
 
 func (c *Client) CloneConfig() *Config {

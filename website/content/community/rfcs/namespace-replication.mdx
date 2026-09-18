@@ -497,6 +497,16 @@ namespaces.
   resulting in the `current-index` on the source namespace being behind those of
   the destination namespaces?
 * Should promotion/ownership transfer be allowed?
+* How can replication work with namespaces that have [External
+  Keys](https://openbao.org/community/rfcs/external-keys/)? While External Key
+  configurations are in the namespace storage, the KMS plugin declaration used
+  by External Key lies in the server configuration and therefore is not
+  replicated. Some options include: 
+  * forbidding replication on namespaces that use External Keys, which can be
+    too limiting.
+  * require all servers to have compatible KMS plugin declarations (fail at
+    link time if not), and assume that the external key configurations resolve
+    to the same key materials.
 
 ## Related Issues
 - https://github.com/openbao/openbao/issues/1462

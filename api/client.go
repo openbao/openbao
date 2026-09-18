@@ -850,21 +850,15 @@ func readEnvironmentHeaders() (map[string]string, error) {
 		return nil, nil
 	}
 
-	var values map[string]any
-	if err := json.Unmarshal([]byte(raw), &values); err != nil {
-		return nil, fmt.Errorf("could not parse %s as a JSON object", EnvVaultHeaders)
+	var headers map[string]string
+	if err := json.Unmarshal([]byte(raw), &headers); err != nil {
+		return nil, fmt.Errorf("could not parse %s as a JSON headers map", EnvVaultHeaders)
 	}
 
-	headers := make(map[string]string, len(values))
-	for key, value := range values {
-		stringValue, ok := value.(string)
-		if !ok {
-			return nil, fmt.Errorf("%s contains a non-string header value", EnvVaultHeaders)
-		}
+	for key := range headers {
 		if strings.HasPrefix(key, "X-Vault-") {
 			return nil, fmt.Errorf("%s contains a header name with reserved prefix %q", EnvVaultHeaders, "X-Vault-")
 		}
-		headers[key] = stringValue
 	}
 
 	return headers, nil

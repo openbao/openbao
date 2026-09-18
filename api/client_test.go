@@ -73,7 +73,6 @@ func TestDefaultConfig_envvar(t *testing.T) {
 
 func TestNewClient_EnvHeaders(t *testing.T) {
 	t.Setenv(EnvVaultHeaders, `{"X-Test":"one","X-Empty":""}`)
-	t.Setenv(UpstreamVariableName(EnvVaultHeaders), "")
 
 	client, err := NewClient(nil)
 	require.NoError(t, err)
@@ -84,7 +83,6 @@ func TestNewClient_EnvHeaders(t *testing.T) {
 func TestNewClient_EnvHeadersReservedHeader(t *testing.T) {
 	const secret = "must-not-appear-in-errors"
 	t.Setenv(EnvVaultHeaders, `{"Allowed":"value","X-Vault-Test":"`+secret+`"}`)
-	t.Setenv(UpstreamVariableName(EnvVaultHeaders), "")
 
 	client, err := NewClient(nil)
 	require.Nil(t, client)
@@ -92,13 +90,19 @@ func TestNewClient_EnvHeadersReservedHeader(t *testing.T) {
 	require.NotContains(t, err.Error(), secret)
 }
 
-func TestNewClient_EnvHeadersDisableEnvironment(t *testing.T) {
-	t.Setenv(EnvVaultHeaders, `{`)
-	t.Setenv(UpstreamVariableName(EnvVaultHeaders), `{"X-Legacy":"value"}`)
+func TestNewClient_DisableEnvironmentIgnoresEnvHeaders(t *testing.T) {
+	t.Setenv(EnvVaultHeaders, `{"X-Test":"one"}`)
 
-	client, err := NewClient(NewConfig())
+	client, err := NewClient(&Config{DisableEnvironment: true})
 	require.NoError(t, err)
-	require.Equal(t, http.Header{RequestHeaderName: []string{"true"}}, client.Headers())
+	require.NotContains(t, client.Headers(), "X-Test")
+}
+
+func TestNewClient_EnvHeadersNotFlatMap(t *testing.T) {
+	t.Setenv(EnvVaultHeaders, `{"X-Nested":{"foo":"bar"}}`)
+
+	_, err := NewClient(nil)
+	require.Error(t, err)
 }
 
 func TestClientDefaultHttpClient(t *testing.T) {

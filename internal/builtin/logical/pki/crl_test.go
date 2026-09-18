@@ -400,7 +400,7 @@ func TestBackend_Secondary_CRL_Rebuilding(t *testing.T) {
 	// Perform the read operation again, we should have a valid CRL now...
 	resp = requestCrlFromBackend(t, s, b)
 	crl := parseCrlPemBytes(t, resp.Data["http_raw_body"].([]byte))
-	require.Equal(t, 0, len(crl.RevokedCertificates))
+	require.Equal(t, 0, len(crl.RevokedCertificateEntries))
 }
 
 func TestCrlRebuilder(t *testing.T) {

@@ -104,6 +104,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/pqc",
                 "rfcs/index-headers",
                 "rfcs/dedicated-tf-provider",
+                "rfcs/namespace-replication",
             ],
         },
         {

@@ -705,6 +705,39 @@ func TestCore_LoadLoginMFAConfigs(t *testing.T) {
 	require.Equal(t, "eConfigID", mfaEnforcementConfigKeys[0])
 }
 
+// TestCore_DeleteLoginMFAEnforcementConfig verifies that deleting a login MFA
+// enforcement config also removes it from barrier storage so it does not
+// load again after unseal.
+func TestCore_DeleteLoginMFAEnforcementConfig(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(t.Context())
+	ns1 := &namespace.Namespace{Path: "ns1/"}
+	TestCoreCreateNamespaces(t, c, ns1)
+
+	eConfig := &mfa.MFAEnforcementConfig{Name: "eConfig", NamespaceID: ns1.ID, ID: "eConfigID"}
+	err := c.loginMFABackend.PutMFALoginEnforcementConfig(ctx, eConfig, ns1)
+	require.NoError(t, err)
+	require.NoError(t, c.loadLoginMFAConfigs(ctx))
+
+	require.NoError(t, c.loginMFABackend.DeleteMFALoginEnforcementConfigByNameAndNamespace(ctx, eConfig.Name, ns1))
+
+	loaded, err := c.loginMFABackend.MemDBMFALoginEnforcementConfigByNameAndNamespace(eConfig.Name, ns1.ID)
+	require.NoError(t, err)
+	require.Nil(t, loaded)
+
+	// The config must be gone from barrier storage as well.
+	nsView := c.NamespaceView(ns1)
+	mfaEnforcementConfigs, err := nsView.SubView(barrier.SystemBarrierPrefix).SubView(mfaLoginEnforcementPrefix).List(ctx, "")
+	require.NoError(t, err)
+	require.Empty(t, mfaEnforcementConfigs)
+
+	// Try to load back the configs from storage.
+	require.NoError(t, c.loadLoginMFAConfigs(ctx))
+	loaded, err = c.loginMFABackend.MemDBMFALoginEnforcementConfigByNameAndNamespace(eConfig.Name, ns1.ID)
+	require.NoError(t, err)
+	require.Nil(t, loaded)
+}
+
 // TestCore_RunLockedUserUpdatesForStaleEntry tests that
 // stale locked user entries get deleted upon unseal.
 func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {

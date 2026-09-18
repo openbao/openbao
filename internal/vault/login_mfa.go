@@ -1889,6 +1889,11 @@ func (b *LoginMFABackend) DeleteMFALoginEnforcementConfigByNameAndNamespace(ctx 
 		return nil
 	}
 
+	view := b.Core.NamespaceView(ns).SubView(barrier.SystemBarrierPrefix + mfaLoginEnforcementPrefix)
+	if err = view.Delete(ctx, eConfig.ID); err != nil {
+		return err
+	}
+
 	// create a memdb transaction to delete config
 	txn := b.db.Txn(true)
 	defer txn.Abort()

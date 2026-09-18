@@ -1,3 +1,3 @@
 ```release-note:deprecation
-api/sys_mounts.go: Remove deprecated field `PluginName` from `MountConfig`.
+api: Remove deprecated field `PluginName` from `MountConfig` and `MountInputConfig`.
 ```

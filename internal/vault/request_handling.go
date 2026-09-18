@@ -1489,7 +1489,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 		}
 
 		switch matchingMountEntry.Type {
-		case routing.MountTypeKV: // type "generic" is not used anymore
+		case routing.MountTypeKV, "generic":
 			// If we are kv type, first see if we are an older passthrough
 			// backend, and otherwise check the mount entry options.
 			matchingBackend := c.router.MatchingBackend(ctx, req.Path)

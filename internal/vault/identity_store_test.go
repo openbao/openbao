@@ -263,14 +263,18 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 
 func TestIdentityStore_CreateOrFetchEntity(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
-	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
-	testIdentityStoreCreateOrFetchEntity(t, ctx, is, approleAccessor, upAccessor)
+	c := testIdentityStoreCore(t, false)
+
+	approleAccessor, upAccessor := testEnableAppRoleUserpassAuthMounts(t, ctx, c)
+	testIdentityStoreCreateOrFetchEntity(t, ctx, c.identityStore, approleAccessor, upAccessor)
 }
 
 func TestIdentityStore_CreateOrFetchEntity_UnsafeShared(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
-	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
-	testIdentityStoreCreateOrFetchEntity(t, ctx, is, approleAccessor, upAccessor)
+	c := testIdentityStoreCore(t, true)
+
+	approleAccessor, upAccessor := testEnableAppRoleUserpassAuthMounts(t, ctx, c)
+	testIdentityStoreCreateOrFetchEntity(t, ctx, c.identityStore, approleAccessor, upAccessor)
 }
 
 func testIdentityStoreCreateOrFetchEntity(t *testing.T, ctx context.Context, is *ident.IdentityStore, approleAccessor string, upAccessor string) {
@@ -701,17 +705,10 @@ func testIdentityStoreWithAppRoleAuthRoot(ctx context.Context, t *testing.T) (*i
 	return c.identityStore, meGH.Accessor, c, root
 }
 
-func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T, unsafeShared bool) (*ident.IdentityStore, string, string, *Core) {
+func testIdentityStoreCore(t *testing.T, unsafeShared bool) *Core {
 	// Setup 2 auth backends, github and userpass
-	err := be.AddTestCredentialBackend("approle", credAppRole.Factory)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
-
-	err = be.AddTestCredentialBackend("userpass", credUserpass.Factory)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, be.AddTestCredentialBackend("approle", credAppRole.Factory))
+	require.NoError(t, be.AddTestCredentialBackend("userpass", credUserpass.Factory))
 
 	defer be.ClearTestCredentialBackends()
 
@@ -723,18 +720,17 @@ func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T,
 		},
 	}
 	c, _, _ := TestCoreUnsealedWithConfig(t, conf)
+	return c
+}
 
+func testEnableAppRoleUserpassAuthMounts(t *testing.T, ctx context.Context, c *Core) (string, string) {
 	githubMe := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
 		Path:        "approle/",
 		Type:        "approle",
 		Description: "approle auth",
 	}
-
-	err = c.enableCredential(ctx, githubMe)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.enableCredential(ctx, githubMe))
 
 	userpassMe := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
@@ -742,13 +738,9 @@ func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T,
 		Type:        "userpass",
 		Description: "userpass",
 	}
+	require.NoError(t, c.enableCredential(ctx, userpassMe))
 
-	err = c.enableCredential(ctx, userpassMe)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return c.identityStore, githubMe.Accessor, userpassMe.Accessor, c
+	return githubMe.Accessor, userpassMe.Accessor
 }
 
 func TestIdentityStore_MetadataKeyRegex(t *testing.T) {

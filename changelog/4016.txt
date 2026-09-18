@@ -1,3 +1,3 @@
-```release-note:deprecation
-api: Remove deprecated field `PluginName` from `MountConfig` and `MountInputConfig`.
+```release-note:change
+core/mounts: Remove support for mounts enabled via `type=plugin plugin_name=...` before Vault v1.0.
 ```

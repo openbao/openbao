@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"reflect"
 	"testing"
+
+	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func getDefaultCliHeaders(t *testing.T) http.Header {
@@ -18,7 +21,14 @@ func getDefaultCliHeaders(t *testing.T) http.Header {
 	return cli.Headers()
 }
 
+func isolateHeaderEnvironment(t *testing.T) {
+	t.Helper()
+	t.Setenv(api.EnvVaultHeaders, "")
+	t.Setenv(api.UpstreamVariableName(api.EnvVaultHeaders), "")
+}
+
 func TestClient_FlagHeader(t *testing.T) {
+	isolateHeaderEnvironment(t)
 	defaultHeaders := getDefaultCliHeaders(t)
 
 	cases := []struct {
@@ -69,4 +79,33 @@ func TestClient_FlagHeader(t *testing.T) {
 			t.Errorf("expected [%#v] but got [%#v]", expectedHeaders, actualHeaders)
 		}
 	}
+}
+
+func TestClient_EnvironmentHeader(t *testing.T) {
+	isolateHeaderEnvironment(t)
+	t.Setenv(api.EnvVaultHeaders, `{"X-IAP-Token":"token"}`)
+
+	client, err := (&BaseCommand{}).Client()
+	require.NoError(t, err)
+	require.Equal(t, []string{"token"}, client.Headers().Values("X-IAP-Token"))
+}
+
+func TestClient_EnvironmentAndFlagHeader(t *testing.T) {
+	isolateHeaderEnvironment(t)
+	t.Setenv(api.EnvVaultHeaders, `{"X-IAP-Token":"environment"}`)
+
+	client, err := (&BaseCommand{
+		flagHeader: map[string]string{"X-IAP-Token": "flag"},
+	}).Client()
+	require.NoError(t, err)
+	require.Equal(t, []string{"environment", "flag"}, client.Headers().Values("X-IAP-Token"))
+}
+
+func TestClient_EnvironmentReservedHeader(t *testing.T) {
+	isolateHeaderEnvironment(t)
+	t.Setenv(api.EnvVaultHeaders, `{"X-Vault-Test":"value"}`)
+
+	client, err := (&BaseCommand{}).Client()
+	require.Nil(t, client)
+	require.ErrorContains(t, err, "BAO_HEADERS contains a header name with reserved prefix")
 }

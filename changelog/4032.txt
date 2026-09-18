@@ -1,0 +1,3 @@
+```release-note:improvement
+api: Added `BAO_HEADERS` env allowing to supply custom headers to each cli API request.
+```

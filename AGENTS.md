@@ -1,4 +1,4 @@
-# Policy for AI Agents and Claude
+# Policy for AI Agents
 
 <!--
 

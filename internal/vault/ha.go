@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"sort"
 	"strings"
@@ -1602,11 +1603,12 @@ func (c *Core) advertiseLeader(ctx context.Context, uuid string, leaderLostCh <-
 	}
 
 	keyParams := &certutil.ClusterKeyParams{
-		Type: corePrivateKeyTypeP521,
-		X:    key.X,
-		Y:    key.Y,
-		D:    key.D,
+		Type: certutil.PrivateKeyTypeP521,
+		D:    &big.Int{},
 	}
+
+	d, _ := key.Bytes()
+	keyParams.D.SetBytes(d)
 
 	locCert := c.localClusterCert.Load()
 	if locCert == nil {

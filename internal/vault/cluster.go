@@ -30,9 +30,6 @@ const (
 	// Storage path where the local cluster name and identifier are stored
 	coreLocalClusterInfoPath = "core/cluster/local/info"
 
-	corePrivateKeyTypeP521    = "p521"
-	corePrivateKeyTypeED25519 = "ed25519"
-
 	// Internal so as not to log a trace message
 	IntNoForwardingHeaderName = "X-Vault-Internal-No-Request-Forwarding"
 )
@@ -111,28 +108,18 @@ func (c *Core) loadLocalClusterTLS(adv activeAdvertisement) (retErr error) {
 		c.logger.Error("no key params found loading local cluster TLS information")
 		return errors.New("no local cluster key params found")
 
-	case adv.ClusterKeyParams.X == nil, adv.ClusterKeyParams.Y == nil, adv.ClusterKeyParams.D == nil:
-		c.logger.Error("failed to parse local cluster key due to missing params")
-		return errors.New("failed to parse local cluster key")
-
-	case adv.ClusterKeyParams.Type != corePrivateKeyTypeP521:
-		c.logger.Error("unknown local cluster key type", "key_type", adv.ClusterKeyParams.Type)
-		return errors.New("failed to find valid local cluster key type")
-
 	case len(adv.ClusterCert) == 0:
 		c.logger.Error("no local cluster cert found")
 		return errors.New("no local cluster cert found")
-
 	}
 
-	c.localClusterPrivateKey.Store(&ecdsa.PrivateKey{
-		PublicKey: ecdsa.PublicKey{
-			Curve: elliptic.P521(),
-			X:     adv.ClusterKeyParams.X,
-			Y:     adv.ClusterKeyParams.Y,
-		},
-		D: adv.ClusterKeyParams.D,
-	})
+	localClusterPrivateKey, err := adv.ClusterKeyParams.ECDSAPrivateKey()
+	if err != nil {
+		c.logger.Error("failed to parse local cluster key")
+		return fmt.Errorf("failed to parse local cluster key: %w", err)
+	}
+
+	c.localClusterPrivateKey.Store(localClusterPrivateKey)
 
 	locCert := make([]byte, len(adv.ClusterCert))
 	copy(locCert, adv.ClusterCert)

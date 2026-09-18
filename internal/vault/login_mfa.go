@@ -183,7 +183,25 @@ func (b *LoginMFABackend) invalidate(ctx context.Context, ns *namespace.Namespac
 		key, _ := strings.CutPrefix(path, barrier.SystemBarrierPrefix+loginMFAConfigPrefix)
 		barrierView := b.Core.NamespaceView(ns).SubView(barrier.SystemBarrierPrefix + loginMFAConfigPrefix)
 
-		return b.loadMFAMethodConfig(ctx, ns, barrierView, key)
+		mConfig, err := b.getMFAConfig(ctx, key, barrierView)
+		if err != nil {
+			return err
+		}
+
+		if mConfig == nil {
+			// Config doesn't exist so remove it from memdb also.
+			txn := b.db.Txn(true)
+			defer txn.Abort()
+
+			if _, err = txn.DeleteAll(ident.MemDBLoginMFAConfigsTable, "id", key); err != nil {
+				return fmt.Errorf("failed to delete MFA config from memdb: %w", err)
+			}
+
+			txn.Commit()
+			return nil
+		}
+
+		return b.MemDBUpsertMFAConfig(ctx, mConfig)
 	case strings.HasPrefix(path, barrier.SystemBarrierPrefix+mfaLoginEnforcementPrefix):
 		key, _ := strings.CutPrefix(path, barrier.SystemBarrierPrefix+mfaLoginEnforcementPrefix)
 		barrierView := b.Core.NamespaceView(ns).SubView(barrier.SystemBarrierPrefix + mfaLoginEnforcementPrefix)
@@ -194,6 +212,15 @@ func (b *LoginMFABackend) invalidate(ctx context.Context, ns *namespace.Namespac
 		}
 
 		if mConfig == nil {
+			// Config doesn't exist so remove it from memdb also.
+			txn := b.db.Txn(true)
+			defer txn.Abort()
+
+			if _, err = txn.DeleteAll(memDBMFALoginEnforcementsTable, "id", key); err != nil {
+				return fmt.Errorf("failed to delete MFA login enforcement config from memdb: %w", err)
+			}
+
+			txn.Commit()
 			return nil
 		}
 

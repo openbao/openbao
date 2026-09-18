@@ -738,6 +738,34 @@ func TestCore_DeleteLoginMFAEnforcementConfig(t *testing.T) {
 	require.Nil(t, loaded)
 }
 
+// TestCore_DeleteMFAConfigInvalidate verifies that when a login MFA method
+// config is deleted from barrier storage elsewhere (e.g. on the active node
+// in an HA cluster), the memdb entry is dropped as well so it does not stay
+// in memdb on standby nodes.
+func TestCore_DeleteMFAConfigInvalidate(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(t.Context())
+	ns1 := &namespace.Namespace{Path: "ns1/"}
+	TestCoreCreateNamespaces(t, c, ns1)
+	nsCtx := namespace.ContextWithNamespace(ctx, ns1)
+
+	mConfig := &mfa.Config{Name: "mConfig", NamespaceID: ns1.ID, ID: "mConfigID", Type: ident.MfaMethodTypeTOTP}
+	require.NoError(t, c.loginMFABackend.PutMFAConfigByID(nsCtx, mConfig))
+	require.NoError(t, c.loadLoginMFAConfigs(ctx))
+
+	nsView := c.NamespaceView(ns1)
+	mfaConfigBarrierView := nsView.SubView(barrier.SystemBarrierPrefix).SubView(loginMFAConfigPrefix)
+
+	// Simulate storage entry removal.
+	require.NoError(t, mfaConfigBarrierView.Delete(ctx, mConfig.ID))
+
+	// Verify deletion of the memdb entry through invalidate invocation.
+	require.NoError(t, c.loginMFABackend.invalidate(ctx, ns1, barrier.SystemBarrierPrefix+loginMFAConfigPrefix+mConfig.ID))
+	loaded, err := c.loginMFABackend.MemDBMFAConfigByID(mConfig.ID)
+	require.NoError(t, err)
+	require.Nil(t, loaded)
+}
+
 // TestCore_RunLockedUserUpdatesForStaleEntry tests that
 // stale locked user entries get deleted upon unseal.
 func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {

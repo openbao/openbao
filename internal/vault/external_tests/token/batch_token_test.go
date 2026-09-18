@@ -78,8 +78,8 @@ path "kv/*" {
 		t.Fatal(err)
 	}
 
-	// Create role
-	resp, err := client.Logical().Write("auth/approle/role/test", map[string]any{
+	// Create role, should return HTTP 204 No Content
+	_, err = client.Logical().Write("auth/approle/role/test", map[string]any{
 		"policies": "test",
 	})
 	if err != nil {
@@ -87,7 +87,7 @@ path "kv/*" {
 	}
 
 	// Get role_id
-	resp, err = client.Logical().Read("auth/approle/role/test/role-id")
+	resp, err := client.Logical().Read("auth/approle/role/test/role-id")
 	if err != nil {
 		t.Fatal(err)
 	}

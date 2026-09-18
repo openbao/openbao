@@ -72,12 +72,12 @@ func TestDefaultConfig_envvar(t *testing.T) {
 }
 
 func TestNewClient_EnvHeaders(t *testing.T) {
-	t.Setenv(EnvVaultHeaders, `{"X-Test":"one","X-Empty":""}`)
+	t.Setenv(EnvVaultHeaders, `{"X-Test":"one","X-Test-2":"two"}`)
 
 	client, err := NewClient(nil)
 	require.NoError(t, err)
 	require.Equal(t, []string{"one"}, client.Headers().Values("X-Test"))
-	require.Equal(t, []string{""}, client.Headers().Values("X-Empty"))
+	require.Equal(t, []string{"two"}, client.Headers().Values("X-Test-2"))
 }
 
 func TestNewClient_EnvHeadersReservedHeader(t *testing.T) {

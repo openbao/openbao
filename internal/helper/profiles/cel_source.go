@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/types"
+	"cel.dev/cel-go/cel"
+	"cel.dev/cel-go/common/types"
 	celHelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 )
 

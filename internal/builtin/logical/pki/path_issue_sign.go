@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	celgo "github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/types"
+	celgo "cel.dev/cel-go/cel"
+	"cel.dev/cel-go/common/types"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"

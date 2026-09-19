@@ -19,7 +19,7 @@
 
 {{#if this.model.hasConfig}}
   {{#if this.model.certificates.length}}
-    {{#each this.model.certificates as |pkiCertificate|}}
+    {{#each this.model.certificates as |pkiCertificate idx|}}
       <LinkedBlock
         class="list-item-row"
         @params={{array "certificates.certificate.details" pkiCertificate.id}}
@@ -33,6 +33,22 @@
                 {{pkiCertificate.id}}
               </span>
               <div class="is-flex-row has-left-margin-l has-top-margin-xs">
+                {{#if pkiCertificate.commonName}}
+                  <span class="tag is-transparent has-left-margin-none" data-test-common-name={{idx}}>
+                    <InfoTooltip>
+                      Common name
+                    </InfoTooltip>
+                    {{pkiCertificate.commonName}}
+                  </span>
+                {{/if}}
+                {{#if pkiCertificate.notAfter}}
+                  <span class="tag is-transparent has-left-margin-none" data-test-not-after={{idx}}>
+                    <InfoTooltip>
+                      Not After
+                    </InfoTooltip>
+                    {{date-format pkiCertificate.notAfter "MMM d yyyy HH:mm:ss a zzzz"}}
+                  </span>
+                {{/if}}
               </div>
             </div>
           </div>

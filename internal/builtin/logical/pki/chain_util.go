@@ -428,7 +428,7 @@ func (sc *storageContext) rebuildIssuersChains(referenceCert *issuerEntry /* opt
 	for _, issuer := range issuers {
 		if visited, ok := processedIssuers[issuer]; !ok || !visited {
 			pretty := prettyIssuer(issuerIdEntryMap, issuer)
-			msg.WriteString(fmt.Sprintf("[failed to build chain correctly: unprocessed issuer %v: ok: %v; visited: %v]\n", pretty, ok, visited))
+			fmt.Fprintf(&msg, "[failed to build chain correctly: unprocessed issuer %v: ok: %v; visited: %v]\n", pretty, ok, visited)
 		}
 	}
 	if len(msg.String()) > 0 {

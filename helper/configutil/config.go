@@ -147,6 +147,7 @@ func ParseConfig(d string) (*SharedConfig, error) {
 // Specifically, the fields that this method strips are:
 // - KMS.Config
 // - Telemetry.CirconusAPIToken
+// - Listeners' tls_acme_eab_mac_key
 func (c *SharedConfig) Sanitized() map[string]interface{} {
 	if c == nil {
 		return nil
@@ -178,10 +179,11 @@ func (c *SharedConfig) Sanitized() map[string]interface{} {
 	if len(c.Listeners) != 0 {
 		var sanitizedListeners []interface{}
 		for _, ln := range c.Listeners {
-			cleanLn := map[string]interface{}{
-				"type":   ln.Type,
-				"config": ln.RawConfig,
+			cleanLn := ln.Sanitized()
+			if cleanLn == nil {
+				continue
 			}
+
 			sanitizedListeners = append(sanitizedListeners, cleanLn)
 		}
 		result["listeners"] = sanitizedListeners

@@ -72,37 +72,39 @@ func TestDefaultConfig_envvar(t *testing.T) {
 }
 
 func TestNewClient_EnvHeaders(t *testing.T) {
-	t.Setenv(EnvHeaders, `{"X-Test":"one","X-Test-2":"two"}`)
+	t.Run("sets headers from environment", func(t *testing.T) {
+		t.Setenv(EnvHeaders, `{"X-Test":"one","X-Test-2":"two"}`)
 
-	client, err := NewClient(nil)
-	require.NoError(t, err)
-	require.Equal(t, []string{"one"}, client.Headers().Values("X-Test"))
-	require.Equal(t, []string{"two"}, client.Headers().Values("X-Test-2"))
-}
+		client, err := NewClient(nil)
+		require.NoError(t, err)
+		require.Equal(t, []string{"one"}, client.Headers().Values("X-Test"))
+		require.Equal(t, []string{"two"}, client.Headers().Values("X-Test-2"))
+	})
 
-func TestNewClient_EnvHeadersReservedHeader(t *testing.T) {
-	const secret = "must-not-appear-in-errors"
-	t.Setenv(EnvHeaders, `{"Allowed":"value","X-Vault-Test":"`+secret+`"}`)
+	t.Run("rejects reserved headers", func(t *testing.T) {
+		const secret = "must-not-appear-in-errors"
+		t.Setenv(EnvHeaders, `{"Allowed":"value","X-Vault-Test":"`+secret+`"}`)
 
-	client, err := NewClient(nil)
-	require.Nil(t, client)
-	require.EqualError(t, err, `BAO_HEADERS contains a header name with reserved prefix "X-Vault-"`)
-	require.NotContains(t, err.Error(), secret)
-}
+		client, err := NewClient(nil)
+		require.Nil(t, client)
+		require.EqualError(t, err, `BAO_HEADERS contains a header name with reserved prefix "X-Vault-"`)
+		require.NotContains(t, err.Error(), secret)
+	})
 
-func TestNewClient_DisableEnvironmentIgnoresEnvHeaders(t *testing.T) {
-	t.Setenv(EnvHeaders, `{"X-Test":"one"}`)
+	t.Run("ignores environment when disabled", func(t *testing.T) {
+		t.Setenv(EnvHeaders, `{"X-Test":"one"}`)
 
-	client, err := NewClient(&Config{DisableEnvironment: true})
-	require.NoError(t, err)
-	require.NotContains(t, client.Headers(), "X-Test")
-}
+		client, err := NewClient(&Config{DisableEnvironment: true})
+		require.NoError(t, err)
+		require.NotContains(t, client.Headers(), "X-Test")
+	})
 
-func TestNewClient_EnvHeadersNotFlatMap(t *testing.T) {
-	t.Setenv(EnvHeaders, `{"X-Nested":{"foo":"bar"}}`)
+	t.Run("rejects non-flat map", func(t *testing.T) {
+		t.Setenv(EnvHeaders, `{"X-Nested":{"foo":"bar"}}`)
 
-	_, err := NewClient(nil)
-	require.Error(t, err)
+		_, err := NewClient(nil)
+		require.Error(t, err)
+	})
 }
 
 func TestClientDefaultHttpClient(t *testing.T) {

@@ -3,24 +3,22 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: unless-stopped
 
-    command: >
-      server
-      -config=/bao/config/config.hcl
+    command:
+      - server
+      - -config=/bao/config/config.hcl
+
+    restart: unless-stopped
 
     volumes:
       - openbao-data:/bao/data
-      - openbao-config:/bao/config
-
-    ports:
-      - "8200"
-
-    environment:
-      BAO_ADDR: "http://0.0.0.0:8200"
+      - ./deploy/config.hcl:/bao/config/config.hcl:ro
 
     networks:
       - dokploy-network
+
+    ports:
+      - "8200"
 
 networks:
   dokploy-network:

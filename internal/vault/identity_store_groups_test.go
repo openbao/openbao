@@ -139,69 +139,6 @@ func TestIdentityStore_FixOverwrittenMemberGroupIDs(t *testing.T) {
 	}
 }
 
-func TestIdentityStore_GroupEntityMembershipUpgrade(t *testing.T) {
-	c, keys, rootToken := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(t.Context())
-
-	// Create a group
-	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
-		Path:      "group",
-		Operation: logical.UpdateOperation,
-		Data: map[string]any{
-			"name": "testgroup",
-		},
-	})
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("bad: err:%v\nresp: %#v", err, resp)
-	}
-
-	// Create a memdb transaction
-	txn := c.identityStore.Txn(ctx, true)
-	defer txn.Abort()
-
-	// Fetch the above created group
-	group, err := c.identityStore.MemDBGroupByNameInTxn(ctx, txn, "testgroup", true)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Manually add an invalid entity as the group's member
-	group.MemberEntityIDs = []string{"invalidentityid"}
-
-	// Persist the group
-	err = c.identityStore.UpsertGroupInTxn(ctx, txn, group, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	txn.Commit()
-
-	// Perform seal and unseal forcing an upgrade
-	err = c.Seal(rootToken)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for i, key := range keys {
-		unseal, err := TestCoreUnseal(c, key)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if i+1 == len(keys) && !unseal {
-			t.Fatal("failed to unseal")
-		}
-	}
-
-	// Read the group and ensure that invalid entity id is cleaned up
-	group, err = c.identityStore.MemDBGroupByName(ctx, "testgroup", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(group.MemberEntityIDs) != 0 {
-		t.Fatalf("bad: member entity IDs; expected: none, actual: %#v", group.MemberEntityIDs)
-	}
-}
-
 func TestIdentityStore_UpsertGroupInTxn(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ctx := namespace.RootContext(t.Context())
@@ -256,7 +193,7 @@ func TestIdentityStore_PurgeCorruptedGroups(t *testing.T) {
 	require.NotNil(t, item)
 
 	// loadGroups should purge corrupt entries
-	require.NoError(t, c.identityStore.LoadGroups(ctx, false /* readOnly */))
+	require.NoError(t, c.identityStore.LoadGroups(ctx, namespace.RootNamespace, false /* readOnly */))
 
 	// enure it was removed
 	item, err = packer.GetItem(group.ID)

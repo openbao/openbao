@@ -1,0 +1,3 @@
+```release-note:improvement
+ui: Upgrade EmberJS to version 5.0.
+```

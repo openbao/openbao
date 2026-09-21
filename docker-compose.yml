@@ -1,24 +1,24 @@
 services:
   openbao:
-    build:
-      context: .
-      dockerfile: Dockerfile
-
+    image: openbao/openbao:latest
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK
     command:
       - server
-      - -config=/bao/config/config.hcl
-
-    restart: unless-stopped
-
+      - -config=/openbao/config/config.hcl
     volumes:
-      - openbao-data:/bao/data
-      - ./deploy/config.hcl:/bao/config/config.hcl:ro
-
+      - openbao-data:/openbao/file
+      - ./deploy/config.hcl:/openbao/config/config.hcl:ro
+    environment:
+      - BAO_REDIRECT_ADDR=https://${DOMAIN:-vault.yourdomain.com}
+    expose:
+      - "8200"
+    # Agar direct server port access chahiye to niche un-comment karein:
+    # ports:
+    #   - "8200:8200"
     networks:
       - dokploy-network
-
-    ports:
-      - "8200"
 
 networks:
   dokploy-network:
@@ -26,3 +26,4 @@ networks:
 
 volumes:
   openbao-data:
+

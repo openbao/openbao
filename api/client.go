@@ -852,7 +852,7 @@ func readEnvironmentHeaders() (map[string]string, error) {
 
 	var headers map[string]string
 	if err := json.Unmarshal([]byte(raw), &headers); err != nil {
-		return nil, fmt.Errorf("could not parse %s as a JSON headers map", EnvHeaders)
+		return nil, fmt.Errorf("parse %s: %w", EnvHeaders, err)
 	}
 
 	for key := range headers {

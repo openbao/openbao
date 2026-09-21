@@ -403,20 +403,6 @@ HTTP or HTTPS proxy location which should be used by all requests to access Open
  When present, this overrides the default proxy resolution behavior.
 Format should be `http://server:port` or `https://server:port`.
 
-### `BAO_HEADERS`
-
-Additional HTTP request headers to send with every CLI request. The value must
-be a JSON object with string keys and string values. For example:
-
-```shell-session
-$ export BAO_HEADERS='{"X-IAP-Token":"example-token"}'
-```
-
-Header names beginning with `X-Vault-` are reserved for OpenBao and are not
-allowed. Protect this environment variable when header values contain secrets.
-Unlike other CLI flags, a `-header` value with the same name is appended to the
-environment-provided value instead of replacing it.
-
 :::warning
 
 Note: When using `BAO_HTTP_PROXY` or `BAO_PROXY_ADDR` any of the standard
@@ -454,3 +440,17 @@ list of available flags, run:
 ```shell-session
 $ bao <subcommand> -h
 ```
+
+### `BAO_HEADERS`
+
+Additional HTTP request headers to send with every CLI request. The value must
+be a JSON object with string keys and string values. For example:
+
+```shell-session
+$ export BAO_HEADERS='{"X-IAP-Token":"example-token"}'
+```
+
+Header names beginning with `X-Vault-` are reserved for OpenBao and are not
+allowed. Protect this environment variable when header values contain secrets.
+Unlike other CLI flags, a `-header` value with the same name is appended to the
+environment-provided value instead of replacing it.

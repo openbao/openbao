@@ -28,7 +28,7 @@ func init() {
 	// Ensure our special envvars are not present
 	_ = os.Unsetenv(EnvVaultAddress)
 	_ = os.Unsetenv(EnvVaultToken)
-	_ = os.Unsetenv(EnvVaultHeaders)
+	_ = os.Unsetenv(EnvHeaders)
 }
 
 func TestNewConfig_envvar(t *testing.T) {
@@ -72,7 +72,7 @@ func TestDefaultConfig_envvar(t *testing.T) {
 }
 
 func TestNewClient_EnvHeaders(t *testing.T) {
-	t.Setenv(EnvVaultHeaders, `{"X-Test":"one","X-Test-2":"two"}`)
+	t.Setenv(EnvHeaders, `{"X-Test":"one","X-Test-2":"two"}`)
 
 	client, err := NewClient(nil)
 	require.NoError(t, err)
@@ -82,7 +82,7 @@ func TestNewClient_EnvHeaders(t *testing.T) {
 
 func TestNewClient_EnvHeadersReservedHeader(t *testing.T) {
 	const secret = "must-not-appear-in-errors"
-	t.Setenv(EnvVaultHeaders, `{"Allowed":"value","X-Vault-Test":"`+secret+`"}`)
+	t.Setenv(EnvHeaders, `{"Allowed":"value","X-Vault-Test":"`+secret+`"}`)
 
 	client, err := NewClient(nil)
 	require.Nil(t, client)
@@ -91,7 +91,7 @@ func TestNewClient_EnvHeadersReservedHeader(t *testing.T) {
 }
 
 func TestNewClient_DisableEnvironmentIgnoresEnvHeaders(t *testing.T) {
-	t.Setenv(EnvVaultHeaders, `{"X-Test":"one"}`)
+	t.Setenv(EnvHeaders, `{"X-Test":"one"}`)
 
 	client, err := NewClient(&Config{DisableEnvironment: true})
 	require.NoError(t, err)
@@ -99,7 +99,7 @@ func TestNewClient_DisableEnvironmentIgnoresEnvHeaders(t *testing.T) {
 }
 
 func TestNewClient_EnvHeadersNotFlatMap(t *testing.T) {
-	t.Setenv(EnvVaultHeaders, `{"X-Nested":{"foo":"bar"}}`)
+	t.Setenv(EnvHeaders, `{"X-Nested":{"foo":"bar"}}`)
 
 	_, err := NewClient(nil)
 	require.Error(t, err)

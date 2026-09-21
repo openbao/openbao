@@ -53,7 +53,7 @@ const (
 	EnvHTTPProxy             = "BAO_HTTP_PROXY"
 	EnvVaultProxyAddr        = "BAO_PROXY_ADDR"
 	EnvVaultDisableRedirects = "BAO_DISABLE_REDIRECTS"
-	EnvVaultHeaders          = "BAO_HEADERS"
+	EnvHeaders               = "BAO_HEADERS"
 
 	// EnvTokenPath is the path to a file that holds a token. This is presently
 	// only respected by the `bao` CLI, not the API client.
@@ -845,19 +845,19 @@ func NewClient(c *Config) (*Client, error) {
 }
 
 func readEnvironmentHeaders() (map[string]string, error) {
-	raw := ReadBaoVariable(EnvVaultHeaders)
+	raw := ReadBaoVariable(EnvHeaders)
 	if raw == "" {
 		return nil, nil
 	}
 
 	var headers map[string]string
 	if err := json.Unmarshal([]byte(raw), &headers); err != nil {
-		return nil, fmt.Errorf("could not parse %s as a JSON headers map", EnvVaultHeaders)
+		return nil, fmt.Errorf("could not parse %s as a JSON headers map", EnvHeaders)
 	}
 
 	for key := range headers {
 		if strings.HasPrefix(key, "X-Vault-") {
-			return nil, fmt.Errorf("%s contains a header name with reserved prefix %q", EnvVaultHeaders, "X-Vault-")
+			return nil, fmt.Errorf("%s contains a header name with reserved prefix %q", EnvHeaders, "X-Vault-")
 		}
 	}
 

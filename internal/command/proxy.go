@@ -516,12 +516,6 @@ func (c *ProxyCommand) Run(args []string) int {
 			muxHandler = cache.ProxyHandler(ctx, apiProxyLogger, apiProxy, inmemSink, proxyVaultToken)
 		}
 
-		// Parse 'require_request_header' listener config option, and wrap
-		// the request handler if necessary
-		if lnConfig.RequireRequestHeader && (lnConfig.Role != "metrics_only") {
-			muxHandler = verifyRequestHeader(muxHandler)
-		}
-
 		// Create a muxer and add paths relevant for the lease cache layer
 		mux := http.NewServeMux()
 		quitEnabled := lnConfig.ProxyAPI != nil && lnConfig.ProxyAPI.EnableQuit
@@ -531,6 +525,13 @@ func (c *ProxyCommand) Run(args []string) int {
 			mux.Handle(consts.ProxyPathCacheClear, leaseCache.HandleCacheClear(ctx))
 			mux.Handle(consts.ProxyPathQuit, c.handleQuit(quitEnabled))
 			mux.Handle("/", muxHandler)
+		}
+
+		// Parse 'require_request_header' listener config option, and wrap the
+		// whole muxer if necessary so that every registered path is covered
+		var mainHandler http.Handler = mux
+		if lnConfig.RequireRequestHeader && (lnConfig.Role != "metrics_only") {
+			mainHandler = verifyRequestHeader(mainHandler)
 		}
 
 		scheme := "https://"
@@ -548,7 +549,7 @@ func (c *ProxyCommand) Run(args []string) int {
 		server := &http.Server{
 			Addr:              ln.Addr().String(),
 			TLSConfig:         tlsCfg,
-			Handler:           mux,
+			Handler:           mainHandler,
 			ReadHeaderTimeout: 10 * time.Second,
 			ReadTimeout:       30 * time.Second,
 			IdleTimeout:       5 * time.Minute,

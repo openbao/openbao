@@ -23,8 +23,8 @@ func getDefaultCliHeaders(t *testing.T) http.Header {
 
 func isolateHeaderEnvironment(t *testing.T) {
 	t.Helper()
-	t.Setenv(api.EnvVaultHeaders, "")
-	t.Setenv(api.UpstreamVariableName(api.EnvVaultHeaders), "")
+	t.Setenv(api.EnvHeaders, "")
+	t.Setenv(api.UpstreamVariableName(api.EnvHeaders), "")
 }
 
 func TestClient_FlagHeader(t *testing.T) {
@@ -83,7 +83,7 @@ func TestClient_FlagHeader(t *testing.T) {
 
 func TestClient_EnvironmentHeader(t *testing.T) {
 	isolateHeaderEnvironment(t)
-	t.Setenv(api.EnvVaultHeaders, `{"X-IAP-Token":"token"}`)
+	t.Setenv(api.EnvHeaders, `{"X-IAP-Token":"token"}`)
 
 	client, err := (&BaseCommand{}).Client()
 	require.NoError(t, err)
@@ -92,7 +92,7 @@ func TestClient_EnvironmentHeader(t *testing.T) {
 
 func TestClient_EnvironmentAndFlagHeader(t *testing.T) {
 	isolateHeaderEnvironment(t)
-	t.Setenv(api.EnvVaultHeaders, `{"X-IAP-Token":"environment"}`)
+	t.Setenv(api.EnvHeaders, `{"X-IAP-Token":"environment"}`)
 
 	client, err := (&BaseCommand{
 		flagHeader: map[string]string{"X-IAP-Token": "flag"},
@@ -103,7 +103,7 @@ func TestClient_EnvironmentAndFlagHeader(t *testing.T) {
 
 func TestClient_EnvironmentReservedHeader(t *testing.T) {
 	isolateHeaderEnvironment(t)
-	t.Setenv(api.EnvVaultHeaders, `{"X-Vault-Test":"value"}`)
+	t.Setenv(api.EnvHeaders, `{"X-Vault-Test":"value"}`)
 
 	client, err := (&BaseCommand{}).Client()
 	require.Nil(t, client)

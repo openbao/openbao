@@ -26,9 +26,9 @@ import (
 
 func init() {
 	// Ensure our special envvars are not present
-	_ = os.Setenv("BAO_ADDR", "")
-	_ = os.Setenv("BAO_TOKEN", "")
-	_ = os.Setenv(EnvVaultHeaders, "")
+	_ = os.Unsetenv(EnvVaultAddress)
+	_ = os.Unsetenv(EnvVaultToken)
+	_ = os.Unsetenv(EnvVaultHeaders)
 }
 
 func TestNewConfig_envvar(t *testing.T) {

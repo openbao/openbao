@@ -6,6 +6,7 @@ package configutil
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"net/textproto"
 	"regexp"
 	"slices"
@@ -193,6 +194,25 @@ func (l *Listener) GoString() string {
 func (l *Listener) Validate(path string) []ConfigError {
 	results := append(ValidateUnusedFields(l.UnusedKeys, path), ValidateUnusedFields(l.Telemetry.UnusedKeys, path)...)
 	return append(results, ValidateUnusedFields(l.Profiling.UnusedKeys, path)...)
+}
+
+func (l *Listener) Sanitized() map[string]any {
+	if l == nil {
+		return nil
+	}
+
+	var cleanCfg map[string]any
+	if l.RawConfig != nil {
+		cleanCfg = make(map[string]any, len(l.RawConfig))
+		maps.Copy(cleanCfg, l.RawConfig)
+		delete(cleanCfg, "tls_acme_eab_mac_key")
+	}
+
+	sanitizedListener := map[string]any{
+		"type":   l.Type,
+		"config": cleanCfg,
+	}
+	return sanitizedListener
 }
 
 func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {

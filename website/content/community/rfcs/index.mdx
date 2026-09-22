@@ -12,9 +12,6 @@ Steering Committee.
 
 ## Accepted
 
- - [External Key Configuration for KMS and HSM Access](external-keys.mdx),
-   to add support for secure key material storage and interaction from
-   secrets engines like PKI, Transit, and SSH.
  - [Components for efficient search over encrypted data](efficient-search-components.mdx), adds the
    necessary constructs to build indexes on data efficiently allowing for faster search operations.
  - [Emergency Seal](emergency-seal.mdx), for adding a secondary Shamir's
@@ -22,9 +19,6 @@ Steering Committee.
  - [Parallel Unseal](parallel-unseal.mdx), for adding additional unseal
    mechanisms for improved availability when one or more auto-unseal devices
    are offline.
- - [Plugin Management Improvements](plugin-improvements.mdx), addressing
-   several pain points around plugin binary management to improve the operator
-   experience that comes with an increasingly plugin-focused OpenBao.
 
 ## Landed
 
@@ -84,9 +78,15 @@ Steering Committee.
  - [Define plugins in the configuration file](config-plugins.mdx), solving
    automatic distribution of plugins and eventually leading to a path to
    minimization of the `bao` server binary.
+ - [Plugin Management Improvements](plugin-improvements.mdx), addressing
+   several pain points around plugin binary management to improve the operator
+   experience that comes with an increasingly plugin-focused OpenBao.
  - [Auto Unseal Plugins](auto-unseal-plugins.mdx), enabling distribution of Auto
    Unseal providers as external plugin binaries to reduce dependency creep and
    ease integration of new KMS providers.
+ - [External Key Configuration for KMS and HSM Access](external-keys.mdx),
+   to add support for secure key material storage and interaction from
+   secrets engines like PKI, Transit, and SSH.
  - [Standby nodes handle read requests](standby-nodes-handle-read-requests.mdx),
    to allow standby nodes in a high-availability setup to handle read
    requests directly, improving horizontal scalability.

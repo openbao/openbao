@@ -2442,7 +2442,7 @@ func (c *ServerCommand) downloadOCIPlugins(ctx context.Context, config *server.C
 	logger.Info("starting OCI plugin downloading")
 	defer logger.Info("OCI plugin downloading completed")
 
-	return oci.NewPluginDownloader(config.PluginDirectory, config, logger).ReconcilePlugins(ctx)
+	return oci.NewPluginDownloader(config.PluginDirectory, config, logger).Reconcile(ctx)
 }
 
 // storageMigrationActive checks and warns against in-progress storage migrations.

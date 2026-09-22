@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,7 +32,7 @@ const (
 	PluginMaxSizeBytes = 512 * 1024 * 1024 // 512 MB
 )
 
-// PluginDownloader handles downloading and managing OCI-based plugins
+// PluginDownloader handles downloading and managing OCI-based plugins.
 type PluginDownloader struct {
 	pluginDirectory string
 	config          *server.Config
@@ -47,8 +48,8 @@ func NewPluginDownloader(pluginDirectory string, config *server.Config, logger h
 	}
 }
 
-// ReconcilePlugins downloads and validates all configured OCI plugins
-func (d *PluginDownloader) ReconcilePlugins(ctx context.Context) error {
+// Reconcile downloads and validates all configured OCI plugins
+func (d *PluginDownloader) Reconcile(ctx context.Context) error {
 	plugins := d.config.Plugins
 	if len(plugins) == 0 {
 		d.logger.Debug("no plugin configuration found")
@@ -74,7 +75,7 @@ func (d *PluginDownloader) ReconcilePlugins(ctx context.Context) error {
 		}
 
 		if len(configErr) > 0 {
-			if d.shouldFailOnPluginError() {
+			if d.shouldFailOnError() {
 				return fmt.Errorf("plugin %s %s: config not valid", pluginConfig.Type, pluginConfig.Name)
 			} else {
 				pluginLogger.Warn("plugin config not valid")
@@ -83,14 +84,14 @@ func (d *PluginDownloader) ReconcilePlugins(ctx context.Context) error {
 		}
 
 		// Fast path: check if plugin already exists and matches expected SHA256
-		if d.IsPluginCacheValid(pluginConfig) {
+		if d.IsCached(pluginConfig) {
 			pluginLogger.Info("plugin is cached on disk, skipping download")
 			continue
 		}
 
 		// Slow path: download from OCI registry
-		if err := d.DownloadPlugin(ctx, pluginConfig, pluginLogger); err != nil {
-			if d.shouldFailOnPluginError() {
+		if err := d.Download(ctx, pluginConfig, pluginLogger); err != nil {
+			if d.shouldFailOnError() {
 				return fmt.Errorf("failed to download plugin %q: %w", pluginConfig.Slug(), err)
 			} else {
 				pluginLogger.Warn("failed to download plugin", "error", err)
@@ -102,8 +103,8 @@ func (d *PluginDownloader) ReconcilePlugins(ctx context.Context) error {
 	return nil
 }
 
-// shouldFailOnPluginError determines whether plugin download errors should fail startup
-func (d *PluginDownloader) shouldFailOnPluginError() bool {
+// shouldFailOnError determines whether download errors should fail startup.
+func (d *PluginDownloader) shouldFailOnError() bool {
 	behavior := d.config.PluginDownloadBehavior
 	if behavior == "" {
 		behavior = server.PluginDownloadFail
@@ -112,7 +113,7 @@ func (d *PluginDownloader) shouldFailOnPluginError() bool {
 	return behavior == server.PluginDownloadFail
 }
 
-// maxPluginSize returns the maximum allowed plugin binary size
+// maxPluginSize returns the maximum allowed plugin binary size.
 func (d *PluginDownloader) maxPluginSize() int64 {
 	if d.config.PluginDownloadMaxSize > 0 {
 		return d.config.PluginDownloadMaxSize
@@ -121,9 +122,9 @@ func (d *PluginDownloader) maxPluginSize() int64 {
 	return PluginMaxSizeBytes
 }
 
-// IsPluginCacheValid checks if the plugin already exists in the plugin
-// directory.
-func (d *PluginDownloader) IsPluginCacheValid(config *server.PluginConfig) bool {
+// IsCached checks if the plugin already exists in the plugin directory and
+// matches any expected digests.
+func (d *PluginDownloader) IsCached(config *server.PluginConfig) bool {
 	if d.pluginDirectory == "" {
 		return false
 	}
@@ -182,8 +183,8 @@ func (d *PluginDownloader) IsPluginCacheValid(config *server.PluginConfig) bool 
 	return valid
 }
 
-// DownloadPlugin downloads a plugin from an OCI registry
-func (d *PluginDownloader) DownloadPlugin(ctx context.Context, config *server.PluginConfig, logger hclog.Logger) error {
+// Download downloads a plugin from an OCI registry.
+func (d *PluginDownloader) Download(ctx context.Context, config *server.PluginConfig, logger hclog.Logger) error {
 	logger.Info("downloading plugin from OCI registry", "reference", config.Image.String())
 
 	// Detect local platform to download correct image variant
@@ -238,7 +239,7 @@ func (d *PluginDownloader) DownloadPlugin(ctx context.Context, config *server.Pl
 	// Format: <plugin_directory>/.oci-cache/<digest>
 	cachedPluginPath := filepath.Join(d.pluginDirectory, PluginCacheDir, desc.Digest.String())
 
-	if err := d.ExtractPluginFromImage(img, cachedPluginPath, binaryName, logger); err != nil {
+	if err := d.extract(img, cachedPluginPath, binaryName, logger); err != nil {
 		return fmt.Errorf("failed to extract plugin from OCI image: %w", err)
 	}
 
@@ -292,8 +293,8 @@ func (d *PluginDownloader) DownloadPlugin(ctx context.Context, config *server.Pl
 	return nil
 }
 
-// ExtractPluginFromImage extracts the plugin binary from the OCI image (public for testing)
-func (d *PluginDownloader) ExtractPluginFromImage(img v1.Image, targetPath string, binaryName string, logger hclog.Logger) (err error) {
+// extract extracts the plugin binary from the OCI image.
+func (d *PluginDownloader) extract(img v1.Image, targetPath string, binaryName string, logger hclog.Logger) (err error) {
 	logger.Debug("extracting plugin from OCI image", "target", targetPath, "binary", binaryName)
 
 	// Create the plugin directory if it doesn't exist
@@ -390,4 +391,107 @@ func (d *PluginDownloader) ExtractPluginFromImage(img v1.Image, targetPath strin
 	}
 
 	return fmt.Errorf("binary %q not found in root of OCI image", binaryName)
+}
+
+// Prune removes any plugins found in the plugin directory that are not
+// referenced by the configuration from disk.
+func (d *PluginDownloader) Prune() error {
+	if d.pluginDirectory == "" {
+		return errors.New("plugin directory is not configured")
+	}
+
+	dir, err := filepath.Abs(d.pluginDirectory)
+	if err != nil {
+		return err
+	}
+
+	// Map configured plugins by expected name on disk.
+	plugins := make(map[string]*server.PluginConfig)
+	for _, config := range d.config.Plugins {
+		plugins[config.FullName()] = config
+	}
+
+	// Start by taking inventory of the files in the top-level plugin directory.
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("read plugin directory: %w", err)
+	}
+
+	// Files within the cache directory we'd like to keep on the final sweep.
+	keep := make(map[string]struct{})
+
+	for _, entry := range entries {
+		// Filter for symlinks pointing into the OCI cache.
+		if entry.IsDir() || entry.Type()&os.ModeSymlink == 0 {
+			continue
+		}
+
+		name := entry.Name()
+
+		// Read the symlink.
+		target, err := os.Readlink(filepath.Join(dir, name))
+		switch {
+		case err != nil:
+			return err
+		case !filepath.IsAbs(target):
+			// Ensure an absolute path.
+			target = filepath.Join(dir, target)
+		}
+
+		// Check if the symlink is pointing into the plugin cache directory.
+		rel, err := filepath.Rel(filepath.Join(dir, PluginCacheDir), target)
+		switch {
+		case err != nil:
+			return err
+		case !filepath.IsLocal(rel):
+			// Likely some other symlink not created by OCI plugin machinery?
+			continue
+		}
+
+		// Check if this plugin was configured.
+		if _, ok := plugins[name]; ok {
+			// If yes, keep it.
+			keep[target] = struct{}{}
+			d.logger.Info("keeping plugin", "name", name)
+			continue
+		}
+
+		// If not, remove the symlink and its target.
+		if err := os.Remove(filepath.Join(dir, name)); err != nil {
+			return fmt.Errorf("remove plugin symlink at %q: %w", filepath.Join(dir, name), err)
+		}
+		// The target may not actually exist.
+		if err := os.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("remove plugin binary at %q: %w", target, err)
+		}
+
+		d.logger.Info("removed plugin", "name", name)
+	}
+
+	// Next, run a final sweep walking the cache directory directly and remove
+	// anything we haven't marked safe to keep above.
+	var remove []string
+	if err := filepath.WalkDir(filepath.Join(dir, PluginCacheDir), func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		if _, ok := keep[path]; ok {
+			return nil
+		}
+
+		remove = append(remove, path)
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	for _, target := range remove {
+		if err := os.Remove(target); err != nil {
+			return fmt.Errorf("remove stray cache entry at %q: %w", target, err)
+		}
+
+		d.logger.Info("removed stray cache entry", "path", filepath.Base(target))
+	}
+
+	return nil
 }

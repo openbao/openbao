@@ -242,11 +242,11 @@ func (b *backend) pathUpdateResignCrlsHandler(ctx context.Context, request *logi
 
 	now := time.Now()
 	template := &x509.RevocationList{
-		SignatureAlgorithm:  caBundle.RevocationSigAlg,
-		RevokedCertificates: revokedCerts,
-		Number:              big.NewInt(int64(crlNumber)),
-		ThisUpdate:          now,
-		NextUpdate:          now.Add(nextUpdateOffset),
+		SignatureAlgorithm:        caBundle.RevocationSigAlg,
+		RevokedCertificateEntries: revokedCerts,
+		Number:                    big.NewInt(int64(crlNumber)),
+		ThisUpdate:                now,
+		NextUpdate:                now.Add(nextUpdateOffset),
 	}
 
 	if deltaCrlBaseNumber > -1 {
@@ -332,12 +332,12 @@ func (b *backend) pathUpdateSignRevocationListHandler(ctx context.Context, reque
 
 	now := time.Now()
 	template := &x509.RevocationList{
-		SignatureAlgorithm:  caBundle.RevocationSigAlg,
-		RevokedCertificates: revokedCerts,
-		Number:              big.NewInt(int64(crlNumber)),
-		ThisUpdate:          now,
-		NextUpdate:          now.Add(nextUpdateOffset),
-		ExtraExtensions:     crlExtensions,
+		SignatureAlgorithm:        caBundle.RevocationSigAlg,
+		RevokedCertificateEntries: revokedCerts,
+		Number:                    big.NewInt(int64(crlNumber)),
+		ThisUpdate:                now,
+		NextUpdate:                now.Add(nextUpdateOffset),
+		ExtraExtensions:           crlExtensions,
 	}
 
 	crlBytes, err := x509.CreateRevocationList(rand.Reader, template, caBundle.Certificate, caBundle.PrivateKey)
@@ -354,8 +354,8 @@ func (b *backend) pathUpdateSignRevocationListHandler(ctx context.Context, reque
 	}, nil
 }
 
-func parseRevokedCertsParam(revokedCerts []any) ([]pkix.RevokedCertificate, error) {
-	var parsedCerts []pkix.RevokedCertificate
+func parseRevokedCertsParam(revokedCerts []any) ([]x509.RevocationListEntry, error) {
+	var entries []x509.RevocationListEntry
 	seenSerials := make(map[*big.Int]int)
 	for i, entry := range revokedCerts {
 		if revokedCert, ok := entry.(map[string]any); ok {
@@ -381,15 +381,15 @@ func parseRevokedCertsParam(revokedCerts []any) ([]pkix.RevokedCertificate, erro
 				return nil, fmt.Errorf("failed parsing extensions from entry %d: %w", i, err)
 			}
 
-			parsedCerts = append(parsedCerts, pkix.RevokedCertificate{
-				SerialNumber:   serialNum,
-				RevocationTime: revocationTime,
-				Extensions:     extensions,
+			entries = append(entries, x509.RevocationListEntry{
+				SerialNumber:    serialNum,
+				RevocationTime:  revocationTime,
+				ExtraExtensions: extensions,
 			})
 		}
 	}
 
-	return parsedCerts, nil
+	return entries, nil
 }
 
 func parseCertExtensions(cert map[string]any) ([]pkix.Extension, error) {
@@ -604,23 +604,21 @@ func encodeResponse(crlBytes []byte, derFormatRequested bool) string {
 	return string(pem.EncodeToMemory(&block))
 }
 
-func getAllRevokedCertsFromPem(crls []*x509.RevocationList) ([]pkix.RevokedCertificate, []string, error) {
-	uniqueCert := map[string]pkix.RevokedCertificate{}
+func getAllRevokedCertsFromPem(crls []*x509.RevocationList) ([]x509.RevocationListEntry, []string, error) {
+	uniqueCert := map[string]x509.RevocationListEntry{}
 	var warnings []string
 	for _, crl := range crls {
-		for _, curCert := range crl.RevokedCertificates {
-			serial := serialFromBigInt(curCert.SerialNumber)
-			// Get rid of any extensions the existing certificate might have had.
-			curCert.Extensions = []pkix.Extension{}
+		for _, entry := range crl.RevokedCertificateEntries {
+			serial := serialFromBigInt(entry.SerialNumber)
 
 			existingCert, exists := uniqueCert[serial]
 			if !exists {
 				// First time we see the revoked cert
-				uniqueCert[serial] = curCert
+				uniqueCert[serial] = entry
 				continue
 			}
 
-			if existingCert.RevocationTime.Equal(curCert.RevocationTime) {
+			if existingCert.RevocationTime.Equal(entry.RevocationTime) {
 				// Same revocation times, just skip it
 				continue
 			}
@@ -629,13 +627,13 @@ func getAllRevokedCertsFromPem(crls []*x509.RevocationList) ([]pkix.RevokedCerti
 				"times detected, using oldest revocation time", serial)
 			warnings = append(warnings, warn)
 
-			if existingCert.RevocationTime.After(curCert.RevocationTime) {
-				uniqueCert[serial] = curCert
+			if existingCert.RevocationTime.After(entry.RevocationTime) {
+				uniqueCert[serial] = entry
 			}
 		}
 	}
 
-	var revokedCerts []pkix.RevokedCertificate
+	var revokedCerts []x509.RevocationListEntry
 	for _, cert := range uniqueCert {
 		revokedCerts = append(revokedCerts, cert)
 	}

@@ -83,6 +83,7 @@ const sidebars: SidebarsConfig = {
                         "concepts/namespaces/sealable-namespaces",
                     ]
                 },
+                "concepts/external-keys",
                 "concepts/dev-server",
                 "concepts/recovery-mode",
                 "concepts/mount-migration",

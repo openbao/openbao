@@ -1,0 +1,51 @@
+---
+description: >-
+  Managed Keys is an OpenBao feature that defers private key operations of auth
+  and secret engines to a third party KMS or HSM.
+---
+
+# External Keys
+
+Within certain environments, users want to leverage key management systems
+external to OpenBao, when handling, storing, and interacting with private key
+material, or are required to do so by standards requirements. To satisfy these
+requirements, OpenBao has a centralized abstraction called *External Keys*
+that different secrets engines can plug into, allowing them to delegate these
+operations to a trusted external KMS or HSM.
+
+## Backend support
+
+External Keys support arbitrary backends by making use of OpenBao's
+[plugin system](../plugins/index.mdx). KMS plugins can implement the
+APIs required to support External Keys alongside or independently
+of [Auto Unseal](../configuration/seal/index.mdx) support.
+
+See the [plugin overview](../api/system/external-keys/plugins/index.mdx)
+for supported KMS plugins, and see the
+[go-kms-wrapping](https://github.com/openbao/go-kms-wrapping) repository for
+documentation and instructions on KMS plugin development.
+
+## Secrets and auth engine support
+
+The [PKI Secrets Engine](../api/secret/pki.mdx) integrates with External Keys to
+offer certificate signing via both root and intermediary PKI paths, leveraging
+private keys from an external trusted KMS/HSM.
+
+The [Transit Secrets Engine](../api/secret/transit.mdx) integrates with External
+Keys to create and verify cryptographic signatures, and to encrypt and decrypt
+data, offloading operations to the KMS or HSM that hosts the External Key
+material.
+
+In the future, OpenBao may allow other engines installed as plugins to interact
+with External Keys.
+
+## API
+
+External Keys are managed over the HTTP API. Please see
+[`/sys/external-keys`](../api/system/external-keys/index.mdx) for more details.
+
+## Namespace support
+
+The `/sys/external-keys` APIs are separated per-namespace. A secrets or auth
+engine in a given namespace can only access External Keys that were configured
+within the same namespace.

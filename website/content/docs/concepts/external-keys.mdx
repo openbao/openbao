@@ -1,15 +1,15 @@
 ---
 description: >-
-  Managed Keys is an OpenBao feature that defers private key operations of auth
-  and secret engines to a third party KMS or HSM.
+  External Keys is an OpenBao feature that defers sensitive key operations of
+  auth and secret engines to a third party KMS or HSM.
 ---
 
 # External Keys
 
 Within certain environments, users want to leverage key management systems
-external to OpenBao, when handling, storing, and interacting with private key
-material, or are required to do so by standards requirements. To satisfy these
-requirements, OpenBao has a centralized abstraction called *External Keys*
+external to OpenBao, when handling, storing, and interacting with sensitive
+key material, or are required to do so by standards requirements. To satisfy
+these requirements, OpenBao has a centralized abstraction called *External Keys*
 that different secrets engines can plug into, allowing them to delegate these
 operations to a trusted external KMS or HSM.
 

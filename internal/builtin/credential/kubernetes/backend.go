@@ -434,14 +434,12 @@ func (b *kubeAuthBackend) updateTLSConfig(config *kubeConfig) error {
 			b.Logger().Warn("Configured CA PEM data contains no valid certificates, TLS verification will fail")
 		}
 	} else {
-		// provide an empty certPool
-		b.Logger().Warn("No CA certificates configured, TLS verification will fail")
-		// TODO: think about supporting host root CA certificates via a configuration toggle,
-		// in which case RootCAs should be set to nil
+		b.Logger().Trace("No CA certificates provided, TLS verification will use the system's root CA certificates")
+		certPool = nil
 	}
 
 	// only refresh the Root CAs if they have changed since the last full update.
-	if !b.tlsConfig.RootCAs.Equal(certPool) {
+	if certPool == nil || !b.tlsConfig.RootCAs.Equal(certPool) {
 		b.Logger().Trace("Root CA certificate pool has changed, updating the client's transport")
 		transport, ok := b.httpClient.Transport.(*http.Transport)
 		if !ok {

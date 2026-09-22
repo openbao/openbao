@@ -5,6 +5,8 @@ package transit
 
 import (
 	"context"
+	"crypto"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"strconv"
@@ -942,7 +944,6 @@ func testTransit_SignVerify_RSA_PSS(t *testing.T, bits int) {
 		req.Data = newReqData(hashAlgorithm, marshalingName)
 		t.Log("\t\t\t", "sign req data:", req.Data)
 		sig := signRequest(false, "")
-
 		t.Log("\t\t", "Verify it with an implicit, automatic salt length")
 		t.Log("\t\t\t", "verify req data:", req.Data)
 		verifyRequest(false, "", sig)
@@ -977,11 +978,12 @@ func testTransit_SignVerify_RSA_PSS(t *testing.T, bits int) {
 		}
 	}
 
-	for hashAlgorithm := range keysutil.HashTypeMap {
-		t.Log("Hash algorithm:", hashAlgorithm)
-		if hashAlgorithm == "none" {
+	for hashAlgorithm, hashType := range keysutil.HashTypeMap {
+		if hashType == keysutil.HashTypeNone || hashType == keysutil.HashTypeMLDSAMu {
 			continue
 		}
+
+		t.Log("Hash algorithm:", hashAlgorithm)
 
 		for marshalingName := range keysutil.MarshalingTypeMap {
 			t.Log("\t", "Marshaling type:", marshalingName)
@@ -1069,6 +1071,53 @@ func testTransit_SignVerify_MLDSA(t *testing.T, params int) {
 
 	valid = resp.Data["valid"].(bool)
 	require.False(t, valid)
+}
+
+func TestTransit_Sign_MLDSAExternalMu(t *testing.T) {
+	t.Run("44", func(t *testing.T) {
+		testTransit_Sign_MLDSAExternalMu(t, 44)
+	})
+	t.Run("65", func(t *testing.T) {
+		testTransit_Sign_MLDSAExternalMu(t, 65)
+	})
+	t.Run("87", func(t *testing.T) {
+		testTransit_Sign_MLDSAExternalMu(t, 87)
+	})
+}
+
+func testTransit_Sign_MLDSAExternalMu(t *testing.T, params int) {
+	ctx := t.Context()
+	b, storage := createBackendWithSysView(t)
+
+	_, err := b.HandleRequest(ctx, &logical.Request{
+		Storage:   storage,
+		Operation: logical.UpdateOperation,
+		Path:      "keys/test",
+		Data: map[string]any{
+			"type": fmt.Sprintf("mldsa-%d", params),
+		},
+	})
+	require.NoError(t, err)
+
+	mu := make([]byte, crypto.MLDSAMu.Size())
+	_, err = rand.Read(mu)
+	require.NoError(t, err)
+
+	resp, err := b.HandleRequest(ctx, &logical.Request{
+		Storage:   storage,
+		Operation: logical.UpdateOperation,
+		Path:      "sign/test",
+		Data: map[string]any{
+			"input":          base64.StdEncoding.EncodeToString(mu),
+			"prehashed":      true,
+			"hash_algorithm": "mldsa-mu",
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, resp.Error())
+
+	signature := resp.Data["signature"].(string)
+	require.NotEmpty(t, signature)
 }
 
 func TestTransit_NoDeadlock_SignVerify(t *testing.T) {

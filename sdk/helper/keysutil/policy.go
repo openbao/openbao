@@ -165,6 +165,16 @@ func (kt KeyType) SigningSupported() bool {
 	return false
 }
 
+func (kt KeyType) MLDSAExternalMuSupported() bool {
+	switch kt {
+	case KeyType_MLDSA44, KeyType_MLDSA65, KeyType_MLDSA87,
+		KeyType_ExternalKey:
+		return true
+	default:
+		return false
+	}
+}
+
 func (kt KeyType) HashSignatureInput() bool {
 	switch kt {
 	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521,
@@ -1447,7 +1457,16 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 		if err != nil {
 			return nil, err
 		}
-		sig, err = key.Sign(rand.Reader, input, crypto.Hash(0))
+
+		opts := crypto.Hash(0)
+		if options.Prehashed && options.HashAlgorithm == HashTypeMLDSAMu {
+			if muSize := crypto.MLDSAMu.Size(); len(input) != muSize {
+				return nil, errutil.UserError{Err: fmt.Sprintf("external ML-DSA mu must be %d bytes, got %d", muSize, len(input))}
+			}
+			opts = crypto.MLDSAMu
+		}
+
+		sig, err = key.Sign(rand.Reader, input, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -1465,9 +1484,14 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 			return nil, errors.New("factory returned nil key with no error; key not found")
 		}
 
-		algo, ok := CryptoHashMap[hashAlgorithm]
-		if !ok {
-			return nil, errutil.InternalError{Err: "unsupported hash algorithm"}
+		var algo crypto.Hash
+		if hashAlgorithm == HashTypeMLDSAMu {
+			algo = crypto.MLDSAMu
+		} else {
+			var ok bool
+			if algo, ok = CryptoHashMap[hashAlgorithm]; !ok {
+				return nil, errutil.InternalError{Err: "unsupported hash algorithm"}
+			}
 		}
 
 		opts := &kms.SignOptions{
@@ -1529,6 +1553,10 @@ func (p *Policy) VerifySignatureWithOptions(derivationContext, input []byte, sig
 
 	if !p.Type.SigningSupported() {
 		return false, errutil.UserError{Err: fmt.Sprintf("message verification not supported for key type %v", p.Type)}
+	}
+
+	if options.HashAlgorithm == HashTypeMLDSAMu {
+		return false, errutil.UserError{Err: "external ML-DSA mu verification is not supported"}
 	}
 
 	tplParts, err := p.getTemplateParts()

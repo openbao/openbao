@@ -76,14 +76,15 @@ func (c *Core) loadIdentityStoreArtifactsForNamespace(ctx context.Context, ns *n
 			"namespace_id", ns.ID)
 	}
 
-	if err := c.identityStore.LoadEntities(ctx, readOnly); err != nil {
+	if err := c.identityStore.LoadEntities(ctx, ns, readOnly); err != nil {
 		if errors.Is(err, ident.ErrNamespaceNotInIdentityStore) {
 			warnAndSkip()
 			return nil
 		}
 		return err
 	}
-	if err := c.identityStore.LoadGroups(ctx, readOnly); err != nil {
+
+	if err := c.identityStore.LoadGroups(ctx, ns, readOnly); err != nil {
 		if errors.Is(err, ident.ErrNamespaceNotInIdentityStore) {
 			warnAndSkip()
 			return nil

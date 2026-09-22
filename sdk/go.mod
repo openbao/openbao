@@ -10,6 +10,7 @@ go 1.27.0
 replace github.com/openbao/openbao/api/v2 => ../api
 
 require (
+	cel.dev/cel-go v0.32.0
 	github.com/armon/go-radix v1.0.0
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/containerd/errdefs v1.0.0
@@ -19,7 +20,6 @@ require (
 	github.com/go-test/deep v1.1.1
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/golang/snappy v0.0.4
-	github.com/google/cel-go v0.31.0
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.6.3

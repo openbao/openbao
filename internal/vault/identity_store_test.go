@@ -2044,6 +2044,87 @@ func TestIdentityStore_UnsafeCrossNamespace(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestIdentityStore_UnsafeCrossNamespace_GroupMembershipDroppingEntries
+// tests regression where unseal might cause group membership to be lost
+// when unsafe_cross_namespace_identity flag was being used.
+//
+// Loading groups used to validate each group's member entity IDs against
+// memdb at load time and prune + persist any member whose entity was not yet
+// present. Because namespaces are loaded in random order, a child
+// namespace could be loaded before the root namespace's entity was loaded,
+// causing valid cross-namespace memberships to be permanently removed.
+func TestIdentityStore_UnsafeCrossNamespace_GroupMembershipDroppingEntries(t *testing.T) {
+	c := TestCoreWithConfig(t, &CoreConfig{
+		Seal:                         nil,
+		EnableUI:                     false,
+		EnableRaw:                    false,
+		UnsafeCrossNamespaceIdentity: true,
+	})
+
+	c, _, _ = testCoreUnsealed(t, c)
+	is := c.identityStore
+
+	rootCtx := namespace.RootContext(t.Context())
+
+	ns1, _ := setupNamespaces(t, c, rootCtx)
+	ns1Ctx := namespace.ContextWithNamespace(t.Context(), ns1)
+
+	// Create an entity in the root namespace.
+	entityResp, err := is.HandleRequest(rootCtx, &logical.Request{
+		Path:      "entity",
+		Operation: logical.UpdateOperation,
+		Data: map[string]any{
+			"name": "root-entity",
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, entityResp)
+	require.False(t, entityResp.IsError())
+	entityID := entityResp.Data["id"].(string)
+
+	// Create a group in the child namespace that references the root entity.
+	groupResp, err := is.HandleRequest(ns1Ctx, &logical.Request{
+		Path:      "group",
+		Operation: logical.UpdateOperation,
+		Data: map[string]any{
+			"name":              "child-group",
+			"member_entity_ids": []string{entityID},
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, groupResp)
+	require.False(t, groupResp.IsError())
+	groupID := groupResp.Data["id"].(string)
+
+	group, err := is.MemDBGroupByID(ns1Ctx, groupID, false)
+	require.NoError(t, err)
+	require.NotNil(t, group)
+	require.Equal(t, []string{entityID}, group.MemberEntityIDs)
+
+	// Simulate seal operation: the in-memory index is wiped on seal, then
+	// reload the identity store artifacts for the child namespace FIRST,
+	// before the root namespace's entity has been loaded into memdb.
+	require.NoError(t, c.identityStore.ResetDB(t.Context()))
+	require.NoError(t, c.loadIdentityStoreArtifactsForNamespace(t.Context(), ns1, false))
+
+	group, err = is.MemDBGroupByID(ns1Ctx, groupID, false)
+	require.NoError(t, err)
+	require.NotNil(t, group)
+	require.Equal(t, []string{entityID}, group.MemberEntityIDs,
+		"cross-namespace group membership must survive a child-first reload")
+
+	// Simulate another seal/unseal operation with the full identity store
+	// artifact load (which iterates namespaces in random order). The
+	// membership must remain intact regardless of load order.
+	require.NoError(t, c.identityStore.ResetDB(t.Context()))
+	require.NoError(t, c.loadIdentityStoreArtifacts(rootCtx, false))
+
+	group, err = is.MemDBGroupByID(ns1Ctx, groupID, false)
+	require.NoError(t, err)
+	require.NotNil(t, group)
+	require.Equal(t, []string{entityID}, group.MemberEntityIDs)
+}
+
 // TestLoadIdentityStoreArtifactsForNamespace verifies both the happy path and
 // the crash-recovery path for loadIdentityStoreArtifactsForNamespace.
 // A namespace whose setup completed normally must load without error; a

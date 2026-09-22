@@ -1,0 +1,48 @@
+---
+sidebar_label: Overview
+description: An overview of KMS plugins that work with OpenBao's `/sys/external-keys` APIs.
+---
+
+# Overview
+
+External Keys in OpenBao are provider-agnostic and work with KMS plugins to
+provide support for arbitrary KMS or HSM backends. To read more about OpenBao's
+plugin system, see the [plugin system overview](../../../../plugins/index.mdx)
+and the [plugin configuration section](../../../../configuration/plugins.mdx).
+
+:::info
+
+Not all KMS plugins provide External Key functionality. A particular KMS plugin
+may provide support for [Auto Unseal](../../../../configuration/seal/index.mdx)
+but not External Keys. Other plugins may provide support for both, or External
+Keys only. The below step will fail if the chosen plugin does not support
+External Keys.
+
+:::
+
+Once installed, a KMS plugin can be used with External Keys by providing
+its name (as declared within OpenBao's server configuration) to the `plugin`
+parameter under `/sys/external-keys/configs/:name`.
+
+For example, using the command line:
+
+```shell-session
+$ bao write sys/external-keys/configs/my-hsm \
+  plugin=pkcs11 lib=softhsm \
+  token_label=openbao pin=1234
+```
+
+## Available plugins
+
+The following plugins are built into OpenBao and support External Keys, not
+requiring external plugin installation:
+
+- [Transit](transit.mdx)
+
+The following plugins are available via
+[openbao-plugins](https://github.com/openbao/openbao-plugins) and support
+External Keys, but require external plugin installation:
+
+- [PKCS#11](pkcs11.mdx)
+
+Additional plugins may be available via third parties.

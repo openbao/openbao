@@ -45,21 +45,18 @@ func (i *IdentityStore) DisableLowerCasedNames(b bool) {
 	i.disableLowerCasedNames = b
 }
 
-func (i *IdentityStore) LoadGroups(ctx context.Context, readOnly bool) error {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-
+func (i *IdentityStore) LoadGroups(ctx context.Context, ns *namespace.Namespace, readOnly bool) error {
 	i.logger.Debug("identity loading groups", "namespace", ns.Path)
 	gp := i.GroupPacker(ctx)
 	if gp == nil {
 		return fmt.Errorf("%w: %s", ErrNamespaceNotInIdentityStore, ns.UUID)
 	}
+
 	existing, err := gp.View().List(ctx, groupBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for groups: %w", err)
 	}
+
 	i.logger.Debug("groups collected", "num_existing", len(existing))
 
 	for _, key := range existing {
@@ -115,26 +112,7 @@ func (i *IdentityStore) LoadGroups(ctx context.Context, readOnly bool) error {
 			i.logger.Debug("loading group", "name", group.Name, "id", group.ID)
 
 			txn := i.db(ctx).Txn(true)
-
-			// Before pull#5786, entity memberships in groups were not getting
-			// updated when respective entities were deleted. This is here to
-			// check that the entity IDs in the group are indeed valid, and if
-			// not remove them.
-			persist := false
-			for _, memberEntityID := range group.MemberEntityIDs {
-				entity, err := i.MemDBEntityByID(ctx, memberEntityID, false)
-				if err != nil {
-					txn.Abort()
-					return err
-				}
-				if entity == nil {
-					persist = true
-					group.MemberEntityIDs = strutil.StrListDelete(group.MemberEntityIDs, memberEntityID)
-				}
-			}
-
-			err = i.UpsertGroupInTxn(ctx, txn, group, persist)
-			if err != nil {
+			if err = i.UpsertGroupInTxn(ctx, txn, group, false); err != nil {
 				txn.Abort()
 				return fmt.Errorf("failed to update group in memdb: %w", err)
 			}
@@ -148,22 +126,18 @@ func (i *IdentityStore) LoadGroups(ctx context.Context, readOnly bool) error {
 	return nil
 }
 
-func (i *IdentityStore) LoadEntities(ctx context.Context, readOnly bool) error {
-	// Accumulate existing entities
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-
+func (i *IdentityStore) LoadEntities(ctx context.Context, ns *namespace.Namespace, readOnly bool) error {
 	i.logger.Debug("loading entities", "namespace", ns.Path)
 	ep := i.EntityPacker(ctx)
 	if ep == nil {
 		return fmt.Errorf("%w: %s", ErrNamespaceNotInIdentityStore, ns.UUID)
 	}
+
 	existing, err := ep.View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for entities: %w", err)
 	}
+
 	i.logger.Debug("entities collected", "num_existing", len(existing))
 
 	duplicatedAccessors := make(map[string]struct{})

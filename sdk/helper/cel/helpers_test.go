@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	celgo "github.com/google/cel-go/cel"
-	"github.com/google/cel-go/interpreter"
+	celgo "cel.dev/cel-go/cel"
+	"cel.dev/cel-go/interpreter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

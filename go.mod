@@ -24,6 +24,7 @@ replace github.com/openbao/openbao/sdk/v2 => ./sdk
 replace github.com/boltdb/bolt => ./internal/helper/stubbolt
 
 require (
+	cel.dev/cel-go v0.32.0
 	cloud.google.com/go/monitoring v1.30.0
 	github.com/ProtonMail/go-crypto v1.4.1
 	github.com/armon/go-radix v1.0.0
@@ -40,7 +41,6 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/gocql/gocql v1.7.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
-	github.com/google/cel-go v0.31.0
 	github.com/google/go-containerregistry v0.21.9
 	github.com/google/go-metrics-stackdriver v0.2.0
 	github.com/hashicorp/cap v0.13.0

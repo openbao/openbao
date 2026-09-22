@@ -13,6 +13,16 @@ these requirements, OpenBao has a centralized abstraction called *External Keys*
 that different secrets engines can plug into, allowing them to delegate these
 operations to a trusted external KMS or HSM.
 
+:::info
+
+External Keys are OpenBao's equivalent of Vault Enterprise's *Managed Keys*
+feature. External Keys are a redesign of Managed Keys with the intent of
+providing greater flexibility. As such, the two are not API-compatible but
+achieve the same high-level goal of delegating sensitive key operations to
+external systems.
+
+:::
+
 ## Backend support
 
 External Keys support arbitrary backends by making use of OpenBao's

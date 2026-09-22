@@ -1,0 +1,116 @@
+---
+description: >-
+  The Transit plugin for OpenBao's External Keys proxies cryptographic
+  operations to an OpenBao Transit engine on the network.
+---
+
+# Transit
+
+The Transit plugin proxies cryptographic operations to an OpenBao Transit engine
+on the network. This allows offloading cryptographic operations in an OpenBao
+instance to a Transit engine present within another OpenBao instance.
+
+:::warning
+
+Since the Transit engine itself supports offloading operations to External
+Keys, this plugin supports building elaborate API call loops between one or more
+Transit engines. Avoid doing so.
+
+:::
+
+## Parameters
+
+The following parameters are set per-config:
+
+- `address` `(string: "https://127.0.0.1:8200")` - The address of the OpenBao
+  server to proxy operations to.
+
+- `token` `(string: <required>)` - The OpenBao token to use to authenticate.
+
+  :::info
+
+  This plugin does not yet support dynamically retrieving a token via an
+  auth method and is primarily intended to dogfood External Keys via an
+  OpenBao-native KMS backend. As such, it may be of limited use for the time
+  being.
+
+  :::
+
+- `namespace` `(string: <optional>)` - The namespace of the Transit engine to
+  proxy operations to.
+
+- `mount_path` `(string: "transit")` - The mount path of the Transit engine to
+  proxy operations to.
+
+- `tls_server_name` `(string: <optional>)` - Name to use as the SNI host when
+  connecting to the OpenBao server via TLS.
+
+- `tls_skip_verify` `(bool: false)` - Disable verification of TLS certificates.
+  Using this option is highly discouraged and decreases the security of data
+  transmissions to and from the OpenBao server.
+
+- `tls_ca_cert_bytes` `(string: <optional>)` - PEM-encoded CA cert chain to use
+  when communicating with the OpenBao server over TLS.
+
+- `tls_client_cert_bytes` `(string: <optional>)` - PEM-encoded client
+  certificate to use when communicating with the OpenBao server over TLS.
+
+- `tls_client_key_bytes` `(string: <optional>)` - PEM-encoded client key to use
+  when communicating with the OpenBao server over TLS.
+
+The following parameters are set per-key:
+
+- `name` `(string: <required>)` - Name of the key in the remote Transit engine.
+
+- `version` `(uint: <required>)` - Version of the key in the remote Transit
+  engine. When a new version is rolled, avoid updating this field and create a
+  new key mapping instead.
+
+- `disable_prehashing` `(bool: false)` - When set to `true`, do not attempt
+  to pre-hash signature inputs before transferring them over the network.
+  When set to `false`, make a best effort to pre-hash signature inputs before
+  transferring them over the network, constrained by the available hash
+  functions and key type used. A setting of `true` may be desirable to ensure
+  plaintext signature inputs are auditable on the remote OpenBao server.
+
+## Supported algorithms
+
+This plugin supports all [key
+types](../../../../secrets/transit/index.mdx#key-types) and algorithms supported
+by Transit except for HMACs and keys with convergent encryption and/or key
+derivation enabled.
+
+## Example
+
+Within OpenBao instance A, create a Transit mount:
+
+```shell-session
+$ bao secrets enable transit
+```
+
+... and create a key of some type:
+
+```shell-session
+$ bao write transit/keys/example type=mldsa-44
+```
+
+Within OpenBao instance B, create a config:
+
+```shell-session
+$ bao write sys/external-keys/configs/transit-on-openbao-a \
+  plugin=transit \
+  address=https://openbao-a.example.com \
+  token=<...>
+```
+
+then create a mapping to the key in instance A:
+
+```shell-session
+$ bao write sys/external-keys/configs/transit-on-openbao-a/keys/example \
+  name=example \
+  version=1
+```
+
+The configured key can then be used from OpenBao instance B by adding a
+[grant](../index.mdx#manage-grants) on the desired mount path and following any
+engine-specific steps such as setting up an issuer in PKI.

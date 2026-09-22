@@ -79,10 +79,10 @@ func TestPriorityQueue_Push(t *testing.T) {
 		t.Fatalf("error popping item: %s", err)
 	}
 	if tc[0].Priority != item.Priority {
-		t.Fatalf("expected tc[0] and popped item to match, got (%q) and (%q)", tc[0], item.Priority)
+		t.Fatalf("expected tc[0] and popped item to match, got (%v) and (%v)", tc[0], item.Priority)
 	}
 	if tc[0].Key != item.Key {
-		t.Fatalf("expected tc[0] and popped item to match, got (%q) and (%q)", tc[0], item.Priority)
+		t.Fatalf("expected tc[0] and popped item to match, got (%v) and (%v)", tc[0], item.Priority)
 	}
 
 	testValidateInternalData(t, pq, len(tc)-1, false)
@@ -123,10 +123,10 @@ func TestPriorityQueue_Pop(t *testing.T) {
 		t.Fatalf("error calling pop: %s", err)
 	}
 	if tc[0].Priority != topItem.Priority {
-		t.Fatalf("expected tc[0] and popped item to match, got (%q) and (%q)", tc[0], topItem.Priority)
+		t.Fatalf("expected tc[0] and popped item to match, got (%v) and (%v)", tc[0], topItem.Priority)
 	}
 	if tc[0].Key != topItem.Key {
-		t.Fatalf("expected tc[0] and popped item to match, got (%q) and (%q)", tc[0], topItem.Priority)
+		t.Fatalf("expected tc[0] and popped item to match, got (%v) and (%v)", tc[0], topItem.Priority)
 	}
 
 	var items []*Item

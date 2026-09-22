@@ -357,3 +357,38 @@ func TestAppRole_RoleDoesNotExist(t *testing.T) {
 		t.Fatalf("Error was not due to invalid role ID. Error: %s", errString)
 	}
 }
+
+func TestAppRole_ExpiredSecretID(t *testing.T) {
+	b, storage := createBackendWithStorage(t)
+
+	b.requestNoErr(t, &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/role1",
+		Storage:   storage,
+		Data:      map[string]any{"policies": "a", "secret_id_ttl": "1s"},
+	})
+	roleID := b.requestNoErr(t, &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      "role/role1/role-id",
+		Storage:   storage,
+	}).Data["role_id"]
+	resp := b.requestNoErr(t, &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "role/role1/secret-id",
+		Storage:   storage,
+	})
+	secretID := resp.Data["secret_id"]
+
+	time.Sleep(1500 * time.Millisecond)
+
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
+		Operation:  logical.UpdateOperation,
+		Path:       "login",
+		Storage:    storage,
+		Data:       map[string]any{"role_id": roleID, "secret_id": secretID},
+		Connection: &logical.Connection{RemoteAddr: "127.0.0.1"},
+	})
+	if err != logical.ErrInvalidCredentials || resp == nil || !resp.IsError() {
+		t.Fatalf("expected login with expired secret ID to fail, err:%v resp:%#v", err, resp)
+	}
+}

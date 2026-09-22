@@ -240,6 +240,7 @@ const sidebars: SidebarsConfig = {
                         "commands/plugin/info",
                         "commands/plugin/init",
                         "commands/plugin/list",
+                        "commands/plugin/prune",
                         "commands/plugin/register",
                         "commands/plugin/reload",
                     ],

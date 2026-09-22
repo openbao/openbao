@@ -1,15 +1,13 @@
-// Copyright (c) HashiCorp, Inc.
-// Copyright (c) 2025 OpenBao a Series of LF Projects, LLC
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 package command
 
 import (
-	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-hclog"
@@ -18,52 +16,51 @@ import (
 )
 
 var (
-	_ cli.Command             = (*PluginInitCommand)(nil)
-	_ cli.CommandAutocomplete = (*PluginInitCommand)(nil)
+	_ cli.Command             = (*PluginPruneCommand)(nil)
+	_ cli.CommandAutocomplete = (*PluginPruneCommand)(nil)
 )
 
-type PluginInitCommand struct {
+type PluginPruneCommand struct {
 	*BaseCommand
 
 	flagConfigs   []string
 	flagDirectory string
-	flagTimeout   time.Duration
 }
 
-func (c *PluginInitCommand) Synopsis() string {
-	return "Download OCI-based plugins into the plugin directory"
+func (c *PluginPruneCommand) Synopsis() string {
+	return "Remove unused OCI-based plugins from the plugin directory"
 }
 
-func (c *PluginInitCommand) Help() string {
+func (c *PluginPruneCommand) Help() string {
 	helpText := `
-Usage: bao plugin init [options]
+Usage: bao plugin prune [options]
 
   This command reads plugin configuration from the given server configuration
-  files, downloads the specified OCI images, and extracts the contained plugin
-  binaries. This command does not automatically register the plugin to the
-  server, which is handled automatically via the server on startup and SIGHUP
-  if 'plugin_auto_register' is not disabled in the configuration file. When the
-  server's configuration includes 'plugin_auto_download=true', plugins will be
-  automatically downloaded on server startup and on SIGHUP.
+  files and removes unused OCI-based plugins found in the given plugin directory
+  but not referenced by the configuration from disk.
 
-  Download plugins using a configuration file:
+  This can be used to free disk space following plugin upgrades by removing the
+  binaries of any prior versions. Plugins that were manually installed into the
+  plugin directory are ignored and left in place.
 
-      $ bao plugin init -config=/path/to/openbao.hcl
+  Prune plugins using a configuration file:
 
-  Download to a specific directory:
+      $ bao plugin prune -config=/path/to/openbao.hcl
 
-      $ bao plugin init -config=/path/to/config.hcl -directory=/opt/openbao/plugins
+  Prune within a specific directory:
+
+      $ bao plugin prune -config=/path/to/config.hcl -directory=/opt/openbao/plugins
 
   Load multiple configuration files:
 
-      $ bao plugin init -config=/etc/openbao -config=/opt/openbao/extra.hcl
+      $ bao plugin prune -config=/etc/openbao -config=/opt/openbao/extra.hcl
 
 ` + c.Flags().Help()
 
 	return strings.TrimSpace(helpText)
 }
 
-func (c *PluginInitCommand) Flags() *FlagSets {
+func (c *PluginPruneCommand) Flags() *FlagSets {
 	set := c.flagSet(FlagSetNone)
 
 	f := set.NewFlagSet("Command Options")
@@ -87,29 +84,22 @@ func (c *PluginInitCommand) Flags() *FlagSets {
 		Name:    "directory",
 		Target:  &c.flagDirectory,
 		Default: "",
-		Usage: "Directory where plugins should be downloaded. If not specified, " +
+		Usage: "Directory where plugins should be removed. If not specified, " +
 			"uses the plugin_directory from the configuration file.",
-	})
-
-	f.DurationVar(&DurationVar{
-		Name:    "timeout",
-		Target:  &c.flagTimeout,
-		Default: 300 * time.Second,
-		Usage:   "Global timeout for downloading all plugins.",
 	})
 
 	return set
 }
 
-func (c *PluginInitCommand) AutocompleteArgs() complete.Predictor {
+func (c *PluginPruneCommand) AutocompleteArgs() complete.Predictor {
 	return complete.PredictNothing
 }
 
-func (c *PluginInitCommand) AutocompleteFlags() complete.Flags {
+func (c *PluginPruneCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *PluginInitCommand) Run(args []string) int {
+func (c *PluginPruneCommand) Run(args []string) int {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
@@ -122,20 +112,17 @@ func (c *PluginInitCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Require config flags to be specified:
 	if len(c.flagConfigs) == 0 {
 		c.UI.Error("No configuration specified. Use the -config flag to specify configuration files or directories.")
 		return 1
 	}
 
-	// Parse configuration using the same logic as the server command
 	config, configErrors, err := c.ParseServerConfig(c.flagConfigs)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error parsing configuration: %v", err))
 		return 1
 	}
 
-	// Display configuration errors if any and exit
 	for _, configError := range configErrors {
 		c.UI.Error(configError.String())
 	}
@@ -144,7 +131,6 @@ func (c *PluginInitCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Determine plugin directory
 	pluginDir := c.flagDirectory
 	if pluginDir == "" {
 		pluginDir = config.PluginDirectory
@@ -159,18 +145,16 @@ func (c *PluginInitCommand) Run(args []string) int {
 	logger.Info(fmt.Sprintf("plugin directory: %s", pluginDir))
 	logger.Info(fmt.Sprintf("found %d OCI plugin(s) in configuration", len(config.Plugins)))
 
-	// Ensure plugin directory exists
-	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
-		logger.Error(fmt.Sprintf("failed to create plugin directory: %v", err))
+	if _, err := os.Stat(pluginDir); errors.Is(err, os.ErrNotExist) {
+		logger.Warn(fmt.Sprintf("plugin directory %q does not exist, exiting", pluginDir))
+		return 0
+	} else if err != nil {
+		logger.Error(fmt.Sprintf("failed to stat plugin directory: %v", err))
 		return 1
 	}
 
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), c.flagTimeout)
-	defer cancel()
-
-	if err := oci.NewPluginDownloader(pluginDir, config, logger).Reconcile(ctx); err != nil {
-		logger.Error(fmt.Sprintf("error reconciling plugins: %s", err))
+	if err := oci.NewPluginDownloader(pluginDir, config, logger).Prune(); err != nil {
+		logger.Error(fmt.Sprintf("error pruning plugins: %s", err))
 		return 1
 	}
 

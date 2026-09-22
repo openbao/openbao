@@ -1,4 +1,5 @@
 ---
+sidebar_label: Endpoints
 description: The `/sys/external-keys` endpoint is used to configure external keys in OpenBao.
 ---
 
@@ -51,7 +52,11 @@ This endpoint creates, updates or patches a config.
   specified as part of the request URL.
 
 - `plugin` `(string: <required>)` - Specifies the name of the KMS plugin to use,
-  e.g., `"transit"` or `"pkcs11"`.
+  e.g., `"transit"` or `"pkcs11"`. This corresponds to the name the plugin is
+  declared under within the server configuration, or some constant identifier
+  if the plugin is built-in. See the [plugin overview](./plugins/index.mdx) for
+  more information on this parameter's intersection with OpenBao's plugin system
+  and available plugins.
 
 - `verify` `(bool: true)` - Verify that the configured plugin is available and
   validate the given parameters against it before writing the update. The exact
@@ -61,11 +66,8 @@ This endpoint creates, updates or patches a config.
 #### Plugin-specific parameters
 
 In addition to generic parameters, this endpoint takes plugin-specific
-parameters.
-
-{
-  // TODO(satoqz): Link to per-provider documentation here once that exists.
-}
+parameters. See the [plugin overview](./plugins/index.mdx) for a list of
+available plugins and their parameters.
 
 #### Notes on PATCH
 
@@ -210,11 +212,8 @@ This endpoint creates, updates or patches a key.
 #### Plugin-specific parameters
 
 In addition to generic parameters, this endpoint takes plugin-specific
-parameters.
-
-{
-  // TODO(satoqz): Link to per-provider documentation here once that exists.
-}
+parameters. See the [plugin overview](./plugins/index.mdx) for a list of
+available plugins and their parameters.
 
 #### Notes on PATCH
 
@@ -303,6 +302,14 @@ $ curl \
 A grant is a path to a secrets or auth engine mount that is allowed to use the
 key it is placed on. Paths are relative to the key's namespace, i.e., a key can
 only be used by engines present in the same namespace.
+
+:::warning
+
+Note that like ACL policies, grants are tied to paths, not to mount identities.
+A grant can be given to a mount path that does not exist; neither is a grant
+automatically removed when a matching mount is disabled.
+
+:::
 
 ### List grants
 

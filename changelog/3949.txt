@@ -1,0 +1,3 @@
+```release-note:bug
+core/identity: Fix periodic key rotation and expiration attempts on standbys resulting in read-only errors.
+```

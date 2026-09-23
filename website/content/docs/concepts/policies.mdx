@@ -165,6 +165,16 @@ path "secret/zip-*" {
 }
 ```
 
+:::warning
+
+Ensure that any `path` segments refer to an engine's canonicalized variants
+(usually lower-case if the backend is case-insensitive). While inbound requests
+will have their paths canonicalized before being checked against ACLs, any paths
+specified in ACLs themselves will not be and will mismatch if not in canonical
+form.
+
+:::
+
 In addition, a `+` can be used to denote any number of characters bounded
 within a single path segment:
 

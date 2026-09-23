@@ -90,6 +90,9 @@ only valid values outside of the empty string.`,
 		TakesArbitraryInput: true,
 
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathCelIssue,
 				Responses: map[int][]framework.Response{
@@ -165,6 +168,9 @@ func buildPathIssue(b *backend, pattern string, displayAttrs *framework.DisplayA
 		DisplayAttrs: displayAttrs,
 
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.metricsWrap("issue", roleRequired, b.pathIssue),
 				Responses: map[int][]framework.Response{
@@ -295,6 +301,9 @@ basic constraints.`,
 		TakesArbitraryInput: true,
 
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathCelSign,
 				Responses: map[int][]framework.Response{
@@ -370,6 +379,9 @@ func buildPathSign(b *backend, pattern string, displayAttrs *framework.DisplayAt
 		DisplayAttrs: displayAttrs,
 
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.metricsWrap("sign", roleRequired, b.pathSign),
 				Responses: map[int][]framework.Response{
@@ -468,6 +480,9 @@ func buildPathIssuerSignVerbatim(b *backend, pattern string, displayAttrs *frame
 		Fields:       getCsrSignVerbatimSchemaFields(),
 
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.metricsWrap("sign-verbatim", roleOptional, b.pathSignVerbatim),
 				Responses: map[int][]framework.Response{

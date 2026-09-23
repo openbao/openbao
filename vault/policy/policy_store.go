@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"slices"
 	"strings"
 	"time"
@@ -264,7 +265,7 @@ func (ps *Store) SetPolicy(ctx context.Context, p *Policy, casVersion *int) erro
 		return errors.New("policy name missing")
 	}
 	// Policies are normalized to lower-case
-	p.Name = ps.sanitizeName(p.Name)
+	p.Name = ps.SanitizeName(p.Name)
 	if slices.Contains(immutablePolicies, p.Name) {
 		return fmt.Errorf("cannot update %q policy", p.Name)
 	}
@@ -374,7 +375,7 @@ func (ps *Store) switchedGetPolicy(ctx context.Context, name string, policyType 
 	}
 
 	// Policies are normalized to lower-case
-	name = ps.sanitizeName(name)
+	name = ps.SanitizeName(name)
 	index := ps.cacheKey(ns, name)
 
 	var cache *lru.TwoQueueCache[cacheKey, *Policy]
@@ -558,7 +559,7 @@ func (ps *Store) switchedDeletePolicy(ctx context.Context, name string, policyTy
 	}
 
 	// Policies are normalized to lower-case
-	name = ps.sanitizeName(name)
+	name = ps.SanitizeName(name)
 	index := ps.cacheKey(ns, name)
 
 	view := ps.getBarrierView(ns, policyType)
@@ -694,8 +695,13 @@ func (ps *Store) LoadACLPolicy(ctx context.Context, policyName, policyText strin
 	return ps.setPolicyInternal(ctx, pol, cas)
 }
 
-func (ps *Store) sanitizeName(name string) string {
-	return strings.ToLower(strings.TrimSpace(name))
+func (ps *Store) SanitizeName(name string) string {
+	sanitized := path.Clean(strings.ToLower(strings.TrimSpace(name)))
+	if sanitized == "." {
+		return ""
+	}
+
+	return sanitized
 }
 
 type cacheKey struct {

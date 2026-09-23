@@ -1,3 +1,43 @@
+## 2.6.3
+## September 23, 2026
+
+SECURITY:
+
+* agent, proxy: Ensure the quit endpoint correctly requires the `X-Vault-Request` header when specified by listener configuration. GHSA-8gmq-wv9h-fcwp. [[GH-4065](https://github.com/openbao/openbao/pull/4065)]
+* auth/cert, auth/kubernetes, auth/userpass, secrets/pki, core/policies, core/workflows: Use `ResolvePathOperation` to define canonical URLs for canonicalized resources. GHSA-fg5x-7whg-6c28. [[GH-4065](https://github.com/openbao/openbao/pull/4065)]
+* core/plugins: Ensure plugin command name is relative to `plugin_directory` prior to executing. GHSA-j6wc-jpvg-xfxq. [[GH-4065](https://github.com/openbao/openbao/pull/4065)]
+* core/plugins: Ensure writes to `sys/plugins/catalog/*` endpoints are restricted to the root namespace. GHSA-cg72-x35g-xfp8. [[GH-4065](https://github.com/openbao/openbao/pull/4065)]
+* core/policies: Ensure denied ACL policy template evaluation returns an error and is not silently dropped. GHSA-hr5j-3j78-4vh2. [[GH-4065](https://github.com/openbao/openbao/pull/4065)]
+* core/policies: Prevent cross-namespace policy resolution traversal in the LRU policy cache, allowing unintentional cross-namespace access. GHSA-mjch-vcw3-hhmf. [[GH-4065](https://github.com/openbao/openbao/pull/4065)]
+* sdk: Prevent `TypeKVPair`, `TypeHeader` from leaking malformed request data into audit logs in plaintext. GHSA-8xxq-mq9m-xmhw. [[GH-4065](https://github.com/openbao/openbao/pull/4065)]
+* secrets/pki: Forbid issuance of non-validated SANs through ACME. GHSA-x8fg-h69x-p28f. [[GH-4065](https://github.com/openbao/openbao/pull/4065)]
+* ui: Remove support for `prompt=none` redirection in the OIDC provider. GHSA-2cjw-94fw-wqjx. [[GH-4065](https://github.com/openbao/openbao/pull/4065)]
+
+CHANGES:
+
+* agent, proxy: The `.../quit` and `.../cache-clear` endpoints now require the `X-Vault-Request` request header when `require_request_header = true` is specified. [[GH-4065](https://github.com/openbao/openbao/pull/4065)]
+
+IMPROVEMENTS:
+
+* command/server: Include `disable_standby_reads`, `allow_unauthenticated_workflows`, and `unsafe_relative_paths` in sanitized config output. [[GH-3433](https://github.com/openbao/openbao/pull/3433)]
+* core/mfa: Handle cache entry invalidation on standby nodes after mfa config deletion on leader node. [[GH-4033](https://github.com/openbao/openbao/pull/4033)]
+* sdk/logical: Introduce `ResolvePathOperation` to report canonical URLs prior to ACL evaluation. [[GH-4065](https://github.com/openbao/openbao/pull/4065)]
+
+BUG FIXES:
+
+* command/operator: Fix double file close in snapshot restoration. [[GH-3939](https://github.com/openbao/openbao/pull/3939)]
+* command/server: Fix boolean config fields being dropped when multiple `-config` paths are used. [[GH-3433](https://github.com/openbao/openbao/pull/3433)]
+* core/auth: Ensure invalidation updates description and reloads on changes to config, options, and plugin versions. [[GH-3967](https://github.com/openbao/openbao/pull/3967)]
+* core/ha: Fix broken cross-version request forwarding during rolling upgrades to v2.6.x from an earlier minor version. [[GH-3900](https://github.com/openbao/openbao/pull/3900)]
+* core/identity: Fix periodic key rotation and expiration attempts on standbys resulting in read-only errors. [[GH-3949](https://github.com/openbao/openbao/pull/3949)]
+* core/listeners: Fix broken TCP listener on OpenBSD. [[GH-3951](https://github.com/openbao/openbao/pull/3951)]
+* core/mfa: Properly handle MFA enforcement configs deletion from storage. [[GH-4033](https://github.com/openbao/openbao/pull/4033)]
+* core/mounts: Ensure invalidation updates description and reloads on changes to config, options, and plugin versions. [[GH-3967](https://github.com/openbao/openbao/pull/3967)]
+* core/recovery: Avoid panic during listing of namespace contents due to uninitialized namespace store. [[GH-3925](https://github.com/openbao/openbao/pull/3925)]
+* core/recovery: Fix generation of recovery token via `bao operator generate-root` by allowing status checks. [[GH-3924](https://github.com/openbao/openbao/pull/3924)]
+* core: The response of `sys/leader` did not contain `is_self` when it was supposed to be `false`. [[GH-3932](https://github.com/openbao/openbao/pull/3932)]
+* sys/raw: Allow creating new entries via sys/raw; when doing so without compression, `compression_type="none"` must be specified. [[GH-3933](https://github.com/openbao/openbao/pull/3933)]
+
 ## 2.6.2
 ## August 18, 2026
 

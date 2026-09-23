@@ -1,0 +1,33 @@
+```release-note:security
+core/policies: Ensure denied ACL policy template evaluation returns an error and is not silently dropped. GHSA-hr5j-3j78-4vh2.
+```
+```release-note:security
+ui: Remove support for `prompt=none` redirection in the OIDC provider. GHSA-2cjw-94fw-wqjx.
+```
+```release-note:security
+core/plugins: Ensure writes to `sys/plugins/catalog/*` endpoints are restricted to the root namespace. GHSA-cg72-x35g-xfp8.
+```
+```release-note:security
+core/plugins: Ensure plugin command name is relative to `plugin_directory` prior to executing. GHSA-j6wc-jpvg-xfxq.
+```
+```release-note:security
+core/policies: Prevent cross-namespace policy resolution traversal in the LRU policy cache, allowing unintentional cross-namespace access. GHSA-mjch-vcw3-hhmf.
+```
+```release-note:improvement
+sdk/logical: Introduce `ResolvePathOperation` to report canonical URLs prior to ACL evaluation.
+```
+```release-note:security
+auth/cert, auth/kubernetes, auth/userpass, secrets/pki, core/policies, core/workflows: Use `ResolvePathOperation` to define canonical URLs for canonicalized resources. GHSA-fg5x-7whg-6c28.
+```
+```release-note:security
+secrets/pki: Forbid issuance of non-validated SANs through ACME. GHSA-x8fg-h69x-p28f.
+```
+```release-note:security
+agent, proxy: Ensure the quit endpoint correctly requires the `X-Vault-Request` header when specified by listener configuration. GHSA-8gmq-wv9h-fcwp.
+```
+```release-note:change
+agent, proxy: The `.../quit` and `.../cache-clear` endpoints now require the `X-Vault-Request` request header when `require_request_header = true` is specified.
+```
+```release-note:security
+sdk: Prevent `TypeKVPair`, `TypeHeader` from leaking malformed request data into audit logs in plaintext. GHSA-8xxq-mq9m-xmhw.
+```

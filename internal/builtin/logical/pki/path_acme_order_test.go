@@ -4,6 +4,10 @@
 package pki
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"net"
 	"testing"
 
@@ -139,4 +143,87 @@ func buildTestRole(t *testing.T, config map[string]any) *roleEntry {
 	require.NoError(t, err, "failed loading stored role")
 
 	return role
+}
+
+func TestACME_ValidateCsrMatchesOrder(t *testing.T) {
+	// A regular CSR with contents who
+	type testCase struct {
+		Csr     *x509.CertificateRequest
+		Order   *acmeOrder
+		Failure string
+	}
+
+	tests := []*testCase{
+		{
+			Csr: &x509.CertificateRequest{
+				Subject: pkix.Name{
+					CommonName: "foo.bar.com",
+				},
+				// This SAN comes from runTestSignVerbatim and is of type otherName.
+				Extensions: []pkix.Extension{
+					{
+						Id:       oidExtensionSubjectAltName,
+						Critical: false,
+						Value:    []byte{0x30, 0x26, 0xA0, 0x24, 0x06, 0x0A, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x14, 0x02, 0x03, 0xA0, 0x16, 0x0C, 0x14, 0x75, 0x73, 0x65, 0x72, 0x6E, 0x61, 0x6D, 0x65, 0x40, 0x65, 0x78, 0x61, 0x6D, 0x70, 0x6C, 0x65, 0x2E, 0x63, 0x6F, 0x6D},
+					},
+				},
+			},
+			Order: &acmeOrder{
+				Identifiers: []*ACMEIdentifier{
+					{
+						Type:          ACMEDNSIdentifier,
+						OriginalValue: "foo.bar.com",
+					},
+				},
+			},
+			Failure: "CSR included unsupported SAN types",
+		},
+		{
+			Csr: &x509.CertificateRequest{
+				Subject: pkix.Name{
+					CommonName: "foo.bar.com",
+				},
+				// This SAN is of type DNS name.
+				DNSNames: []string{"foo.bar.com"},
+			},
+			Order: &acmeOrder{
+				Identifiers: []*ACMEIdentifier{
+					{
+						Type:          ACMEDNSIdentifier,
+						OriginalValue: "foo.bar.com",
+					},
+				},
+			},
+		},
+	}
+
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	for index, test := range tests {
+		err := validateCsrMatchesOrder(test.Csr, test.Order)
+		if len(test.Failure) > 0 {
+			require.ErrorContains(t, err, test.Failure, "test case: %v", index)
+		} else {
+			require.NoError(t, err, "test case: %v", index)
+		}
+
+		// Marshal and unmarshal CSR to ensure nothing changes.
+		csrReq := *test.Csr
+		csrReq.ExtraExtensions = csrReq.Extensions
+		csrReq.Extensions = nil
+
+		encoded, err := x509.CreateCertificateRequest(rand.Reader, &csrReq, key)
+		require.NoError(t, err, "failed to marshal CSR: %v", index)
+
+		csr, err := x509.ParseCertificateRequest(encoded)
+		require.NoError(t, err, "failed to parse encoded CSR: %v", index)
+
+		err = validateCsrMatchesOrder(csr, test.Order)
+		if len(test.Failure) > 0 {
+			require.ErrorContains(t, err, test.Failure, "test case: %v", index)
+		} else {
+			require.NoError(t, err, "test case: %v", index)
+		}
+	}
 }

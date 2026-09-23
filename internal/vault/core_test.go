@@ -5,6 +5,8 @@ package vault
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"reflect"
 	"strings"
@@ -1495,6 +1497,55 @@ func TestCore_HandleLogin_Token(t *testing.T) {
 	// Check that we have a lease with default duration
 	if lresp.Auth.TTL != noop.System().DefaultLeaseTTL() {
 		t.Fatalf("bad: %#v, defaultLeaseTTL: %#v", lresp.Auth, c.defaultLeaseTTL)
+	}
+}
+
+func TestCore_DetermineRoleFromLoginRequest(t *testing.T) {
+	const testRole = "test-role"
+	mock := &be.Noop{
+		BackendType: logical.TypeCredential,
+		RequestHandler: func(_ context.Context, req *logical.Request) (*logical.Response, error) {
+			if req.Operation == logical.ResolveRoleOperation {
+				certs, _ := req.Connection.GetPreferredCerts()
+				role := ""
+				if len(certs) > 0 {
+					role = testRole
+				}
+				return &logical.Response{Data: map[string]any{"role": role}}, nil
+			}
+			return nil, nil
+		},
+	}
+
+	c, _, root := TestCoreUnsealed(t)
+	c.credentialBackends["noop"] = func(_ context.Context, _ *logical.BackendConfig) (logical.Backend, error) {
+		return mock, nil
+	}
+
+	// Enable the credential backend.
+	req := logical.TestRequest(t, logical.UpdateOperation, "sys/auth/foo")
+	req.Data["type"] = "noop"
+	req.ClientToken = root
+	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+
+	tt := map[string]struct {
+		conn     *logical.Connection
+		wantRole string
+	}{
+		"nil connection":                  {nil, ""},
+		"empty connection":                {&logical.Connection{}, ""},
+		"peer cert connection":            {&logical.Connection{PeerCertificates: []*x509.Certificate{{}}}, testRole},
+		"peer cert connection from state": {&logical.Connection{ConnState: &tls.ConnectionState{PeerCertificates: []*x509.Certificate{{}}}}, testRole},
+		"proxied cert connection":         {&logical.Connection{ProxiedCertificates: []*x509.Certificate{{}}}, testRole},
+	}
+
+	for name, tc := range tt {
+		t.Run(name, func(t *testing.T) {
+			role := c.DetermineRoleFromLoginRequest(namespace.RootContext(t.Context()), "auth/foo/", map[string]any{}, tc.conn)
+			require.Equal(t, tc.wantRole, role)
+			require.Same(t, tc.conn, mock.Requests[len(mock.Requests)-1].Connection)
+		})
 	}
 }
 

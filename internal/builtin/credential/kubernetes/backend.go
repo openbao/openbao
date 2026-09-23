@@ -434,7 +434,6 @@ func (b *kubeAuthBackend) updateTLSConfig(config *kubeConfig) error {
 			b.Logger().Warn("Configured CA PEM data contains no valid certificates, TLS verification will fail")
 		}
 	} else {
-		b.Logger().Trace("No CA certificates provided, TLS verification will use the system's root CA certificates")
 		certPool = nil
 	}
 

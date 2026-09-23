@@ -608,8 +608,8 @@ github.com/onsi/ginkgo/v2 v2.27.2 h1:LzwLj0b89qtIy6SSASkzlNvX6WktqurSHwkk2ipF/Ns
 github.com/onsi/ginkgo/v2 v2.27.2/go.mod h1:ArE1D/XhNXBXCBkKOLkbsb2c81dQHCRcF5zwn/ykDRo=
 github.com/onsi/gomega v1.38.2 h1:eZCjf2xjZAqe+LeWvKb5weQ+NcPwX84kqJ0cZNxok2A=
 github.com/onsi/gomega v1.38.2/go.mod h1:W2MJcYxRGV63b418Ai34Ud0hEdTVXq9NW9+Sx6uXf3k=
-github.com/openbao/go-kms-wrapping/kms/transit/v2 v2.0.0 h1:/M/AeZUvxuJBqu/xgwiwdC6hpYqGzIVNuBDauZ/rAWM=
-github.com/openbao/go-kms-wrapping/kms/transit/v2 v2.0.0/go.mod h1:StOc8tZ6AxMUd4MEpRIf/D6+5byH9pzQ/6+f92xSbQI=
+github.com/openbao/go-kms-wrapping/kms/transit/v2 v2.1.0 h1:eBXFyjss9S33vb9zs/YniVuyWblRuTWMudvFyyfj3Rg=
+github.com/openbao/go-kms-wrapping/kms/transit/v2 v2.1.0/go.mod h1:y7XHoFgfrd45MMbIKxq0173lZy4nvng09oFgFJcgT6k=
 github.com/openbao/go-kms-wrapping/plugin/v2 v2.4.0 h1:ET70ooZHXwSCoEuNryKJfa2PvUZXAb3/l9o8dwWDYho=
 github.com/openbao/go-kms-wrapping/plugin/v2 v2.4.0/go.mod h1:EkWWwSq44YgaFY7OHPQtoiKEuSnKlk2K1muib3lIVro=
 github.com/openbao/go-kms-wrapping/v2 v2.9.0 h1:LI7DwOi1v4zv7FqBTbiChUzGo5kav9ONmwMYwnxNhFc=

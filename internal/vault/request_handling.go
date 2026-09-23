@@ -873,6 +873,13 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 	// as it is depended on by some functionality (e.g. quotas)
 	req.MountPoint = c.router.MatchingMount(ctx, req.Path)
 
+	// Resolve the path suffix after the mount point. This ensures we use the
+	// canonical URL for any ACL resolution.
+	req.Path, err = c.router.ResolvePath(ctx, req.MountPoint, req.Path, req.Data)
+	if err != nil {
+		return nil, err
+	}
+
 	err = c.PopulateTokenEntry(ctx, req)
 	if err != nil {
 		return nil, err

@@ -120,6 +120,9 @@ default: %q
 			},
 			ExistenceCheck: b.pathRoleExistenceCheck,
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath,
+				},
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.pathRoleCreateUpdate,
 				},
@@ -146,6 +149,11 @@ default: %q
 
 	tokenutil.AddTokenFields(p[1].Fields)
 	return p
+}
+
+func (b *kubeAuthBackend) pathRoleResolvePath(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	name := strings.ToLower(d.Get("name").(string))
+	return logical.ResolvePathResponse("role/" + name)
 }
 
 // pathRoleExistenceCheck returns whether the role with the given name exists or not.

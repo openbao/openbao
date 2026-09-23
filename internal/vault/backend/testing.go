@@ -10,13 +10,18 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
+
+const IncludeResolvePathOperationsConfig = "include_resolve_path_operations"
 
 type RouterTestHandlerFunc func(context.Context, *logical.Request) (*logical.Response, error)
 
 type Noop struct {
 	sync.Mutex
+
+	IncludeResolvePathOperation bool
 
 	Root            []string
 	Login           []string
@@ -32,12 +37,40 @@ type Noop struct {
 	RollbackErrs bool
 }
 
-func NoopBackendFactory(_ context.Context, _ *logical.BackendConfig) (logical.Backend, error) {
-	return &Noop{}, nil
+func parseCfg(cfg *logical.BackendConfig) (bool, error) {
+	var err error
+	include := false
+	if cfg != nil && len(cfg.Config) > 0 {
+		include, err = parseutil.ParseBool(cfg.Config[IncludeResolvePathOperationsConfig])
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return include, err
 }
 
-func NoopBackendRollbackErrFactory(_ context.Context, _ *logical.BackendConfig) (logical.Backend, error) {
-	return &Noop{RollbackErrs: true}, nil
+func NoopBackendFactory(_ context.Context, cfg *logical.BackendConfig) (logical.Backend, error) {
+	include, err := parseCfg(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Noop{
+		IncludeResolvePathOperation: include,
+	}, nil
+}
+
+func NoopBackendRollbackErrFactory(_ context.Context, cfg *logical.BackendConfig) (logical.Backend, error) {
+	include, err := parseCfg(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Noop{
+		IncludeResolvePathOperation: include,
+		RollbackErrs:                true,
+	}, nil
 }
 
 func (n *Noop) HandleRequest(ctx context.Context, req *logical.Request) (*logical.Response, error) {
@@ -60,7 +93,9 @@ func (n *Noop) HandleRequest(ctx context.Context, req *logical.Request) (*logica
 
 	requestCopy := *req
 	n.Paths = append(n.Paths, req.Path)
-	n.Requests = append(n.Requests, &requestCopy)
+	if requestCopy.Operation != logical.ResolvePathOperation || n.IncludeResolvePathOperation {
+		n.Requests = append(n.Requests, &requestCopy)
+	}
 	if req.Storage == nil {
 		return nil, errors.New("missing view")
 	}

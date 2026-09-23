@@ -372,6 +372,7 @@ const (
 	HelpOperation           Operation = "help"
 	AliasLookaheadOperation Operation = "alias-lookahead"
 	ResolveRoleOperation    Operation = "resolve-role"
+	ResolvePathOperation    Operation = "resolve-path"
 	HeaderOperation         Operation = "header"
 
 	// The operations below are called globally, the path is less relevant.
@@ -391,6 +392,7 @@ var AllOperations = []Operation{
 	HelpOperation,
 	AliasLookaheadOperation,
 	ResolveRoleOperation,
+	ResolvePathOperation,
 	HeaderOperation,
 	RevokeOperation,
 	RenewOperation,
@@ -414,6 +416,7 @@ var ExternalOperations = []Operation{
 var InternalOperations = []Operation{
 	AliasLookaheadOperation,
 	ResolveRoleOperation,
+	ResolvePathOperation,
 	RevokeOperation,
 	RenewOperation,
 	RollbackOperation,

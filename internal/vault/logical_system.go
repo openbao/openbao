@@ -2506,6 +2506,26 @@ func (b *SystemBackend) handlePoliciesList(policyType policy.Type) framework.Ope
 	}
 }
 
+func (b *SystemBackend) handlePoliciesResolvePath(policyType policy.Type) framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		name := data.Get("name").(string)
+		name = b.Core.policyStore.SanitizeName(name)
+
+		result := fmt.Sprintf("policies/%s/%s", policyType.String(), name)
+		if policyType == policy.TypeACL && strings.HasPrefix(req.Path, "policy") {
+			result = "policy/" + name
+		}
+
+		if strings.HasSuffix(req.Path, "/") {
+			// GenericNameRegex does not include the trailing '/' present when
+			// listing a subset of policies.
+			result += "/"
+		}
+
+		return logical.ResolvePathResponse(result)
+	}
+}
+
 // handlePoliciesRead handles the "/sys/policy/<name>" and "/sys/policies/<type>/<name>" endpoints to read a policy
 func (b *SystemBackend) handlePoliciesRead(policyType policy.Type) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {

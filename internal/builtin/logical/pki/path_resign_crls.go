@@ -86,6 +86,9 @@ base64 encoded. Defaults to "pem".`,
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathUpdateResignCrlsHandler,
 				Responses: map[int][]framework.Response{
@@ -161,6 +164,9 @@ value (string)`,
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathUpdateSignRevocationListHandler,
 				Responses: map[int][]framework.Response{

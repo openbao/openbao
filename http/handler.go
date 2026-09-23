@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"maps"
 	"mime"
@@ -243,10 +244,10 @@ func handler(props *vault.HandlerProperties) http.Handler {
 
 	// Wrap the handler in another handler to trigger all help paths.
 	helpWrappedHandler := wrapHelpHandler(mux, core)
-	clientCertHandler := wrapClientCertificateHandler(helpWrappedHandler, props)
-	corsWrappedHandler := wrapCORSHandler(clientCertHandler, core)
+	corsWrappedHandler := wrapCORSHandler(helpWrappedHandler, core)
 	quotaWrappedHandler := rateLimitQuotaWrapping(corsWrappedHandler, core)
-	genericWrappedHandler := genericWrapping(core, quotaWrappedHandler, props)
+	clientCertHandler := wrapClientCertificateHandler(quotaWrappedHandler, props)
+	genericWrappedHandler := genericWrapping(core, clientCertHandler, props)
 	metricsWrappedHandler := wrapMetricsListenerHandler(genericWrappedHandler, props)
 	wrappedHandler := wrapMaxRequestSizeHandler(metricsWrappedHandler, props)
 	// Wrap the handler with PrintablePathCheckHandler to check for non-printable
@@ -853,6 +854,41 @@ func parseQuery(values url.Values) map[string]interface{} {
 		return data
 	}
 	return nil
+}
+
+func parseBodyData(r *http.Request) (map[string]any, int, error) {
+	// Sample the first bytes to determine whether this should be parsed as
+	// a form or as JSON. The amount to look ahead (512 bytes) is arbitrary
+	// but extremely tolerant (i.e. allowing 511 bytes of leading whitespace
+	// and an incorrect content-type).
+	var err error
+	status := http.StatusBadRequest
+	head, err := io.ReadAll(io.LimitReader(r.Body, 512))
+	if err != nil && err != io.EOF {
+		logical.AdjustErrorStatusCode(&status, err)
+		return nil, status, errors.New("error reading data")
+	}
+
+	// Seek back to the start.
+	if err := resetBody(r); err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to reset body: %w", err)
+	}
+
+	var data map[string]any
+	contentType := r.Header.Get("Content-Type")
+	if isForm(head, contentType) {
+		data, err = parseFormRequest(r)
+		if err != nil {
+			logical.AdjustErrorStatusCode(&status, err)
+			return nil, status, errors.New("error parsing form data")
+		}
+	} else {
+		if err = parseJSONRequest(r, &data); err != nil && !errors.Is(err, io.EOF) {
+			return nil, status, err
+		}
+	}
+
+	return data, 0, nil
 }
 
 // parseFormRequest parses values from a form POST.

@@ -3641,6 +3641,9 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.handlePoliciesResolvePath(policy.TypeACL),
+				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handlePoliciesRead(policy.TypeACL),
 					Responses: map[int][]framework.Response{
@@ -3807,6 +3810,9 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.handlePoliciesResolvePath(policy.TypeACL),
+				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handlePoliciesRead(policy.TypeACL),
 					Responses: map[int][]framework.Response{

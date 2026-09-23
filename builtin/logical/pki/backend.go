@@ -840,3 +840,40 @@ func (b *backend) decrementTotalRevokedCertificatesCountNoReport() uint32 {
 	newRevokedCertCount := b.revokedCertCount.Add(^uint32(0))
 	return newRevokedCertCount
 }
+
+func resolvePathIssuer(path string, data *framework.FieldData) string {
+	if !strings.Contains(path, "/issuer/") && !strings.HasPrefix(path, "issuer/") {
+		return path
+	}
+
+	if _, ok := data.Schema[issuerRefParam]; !ok {
+		return path
+	}
+
+	original := data.Get(issuerRefParam).(string)
+	resolved := getIssuerRef(data)
+
+	return strings.Replace(path, "issuer/"+original, "issuer/"+resolved, 1)
+}
+
+func resolvePathKey(path string, data *framework.FieldData) string {
+	if !strings.Contains(path, "/key/") && !strings.HasPrefix(path, "key/") {
+		return path
+	}
+
+	if _, ok := data.Schema[keyRefParam]; !ok {
+		return path
+	}
+
+	original := data.Get(keyRefParam).(string)
+	resolved := getKeyRef(data)
+
+	return strings.Replace(path, "key/"+original, "key/"+resolved, 1)
+}
+
+func (b *backend) resolvePathIssuerKey(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	path := req.Path
+	path = resolvePathIssuer(path, data)
+	path = resolvePathKey(path, data)
+	return logical.ResolvePathResponse(path)
+}

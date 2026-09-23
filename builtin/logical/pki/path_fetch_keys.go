@@ -137,6 +137,9 @@ func buildPathKey(b *backend, pattern string, displayAttrs *framework.DisplayAtt
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.ReadOperation: &framework.PathOperation{
 				Callback: b.pathGetKeyHandler,
 				Responses: map[int][]framework.Response{

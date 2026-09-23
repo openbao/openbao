@@ -560,6 +560,9 @@ func pathRevokeIssuer(b *backend) *framework.Path {
 		Fields: fields,
 
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathRevokeIssuer,
 				Responses: map[int][]framework.Response{

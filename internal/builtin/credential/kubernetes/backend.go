@@ -438,15 +438,15 @@ func (b *kubeAuthBackend) updateTLSConfig(config *kubeConfig) error {
 		certPool = nil
 	}
 
-	// only refresh the Root CAs if they have changed since the last full update.
-	if certPool == nil || !b.tlsConfig.RootCAs.Equal(certPool) {
-		b.Logger().Trace("Root CA certificate pool has changed, updating the client's transport")
-		transport, ok := b.httpClient.Transport.(*http.Transport)
-		if !ok {
-			// should never happen
-			return fmt.Errorf("type assertion failed for %T", b.httpClient.Transport)
-		}
+	transport, ok := b.httpClient.Transport.(*http.Transport)
+	if !ok {
+		// should never happen
+		return fmt.Errorf("type assertion failed for %T", b.httpClient.Transport)
+	}
 
+	// only refresh the Root CAs if they have changed since the last full update.
+	if transport.TLSClientConfig != b.tlsConfig || !b.tlsConfig.RootCAs.Equal(certPool) {
+		b.Logger().Trace("Root CA certificate pool has changed, updating the client's transport")
 		b.tlsConfig.RootCAs = certPool
 		transport.TLSClientConfig = b.tlsConfig
 	} else {

@@ -662,9 +662,9 @@ func HandleOtherSANs(in *x509.Certificate, sans map[string][]string) error {
 // modified function below (which also uses these consts upstream)
 const (
 	nameTypeEmail = 1
-	nameTypeDNS   = 2
+	NameTypeDNS   = 2
 	nameTypeURI   = 6
-	nameTypeIP    = 7
+	NameTypeIP    = 7
 )
 
 // Note: Taken from the Go source code since it's not public, plus changed to not marshal
@@ -673,7 +673,7 @@ const (
 func marshalSANs(dnsNames, emailAddresses []string, ipAddresses []net.IP, uris []*url.URL) []asn1.RawValue {
 	var rawValues []asn1.RawValue
 	for _, name := range dnsNames {
-		rawValues = append(rawValues, asn1.RawValue{Tag: nameTypeDNS, Class: 2, Bytes: []byte(name)})
+		rawValues = append(rawValues, asn1.RawValue{Tag: NameTypeDNS, Class: 2, Bytes: []byte(name)})
 	}
 	for _, email := range emailAddresses {
 		rawValues = append(rawValues, asn1.RawValue{Tag: nameTypeEmail, Class: 2, Bytes: []byte(email)})
@@ -684,7 +684,7 @@ func marshalSANs(dnsNames, emailAddresses []string, ipAddresses []net.IP, uris [
 		if ip == nil {
 			ip = rawIP
 		}
-		rawValues = append(rawValues, asn1.RawValue{Tag: nameTypeIP, Class: 2, Bytes: ip})
+		rawValues = append(rawValues, asn1.RawValue{Tag: NameTypeIP, Class: 2, Bytes: ip})
 	}
 	for _, uri := range uris {
 		rawValues = append(rawValues, asn1.RawValue{Tag: nameTypeURI, Class: 2, Bytes: []byte(uri.String())})

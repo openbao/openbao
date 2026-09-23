@@ -5,6 +5,7 @@ package pki
 
 import (
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
@@ -363,7 +364,15 @@ func validateCsrNotUsingAccountKey(csr *x509.CertificateRequest, uc *jwsCtx) err
 }
 
 func validateCsrMatchesOrder(csr *x509.CertificateRequest, order *acmeOrder) error {
-	csrDNSIdentifiers, csrIPIdentifiers := getIdentifiersFromCSR(csr)
+	csrDNSIdentifiers, csrIPIdentifiers, otherSans, err := getIdentifiersFromCSR(csr)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrBadCSR, err)
+	}
+
+	if otherSans {
+		return fmt.Errorf("%w: CSR included unsupported SAN types", ErrBadCSR)
+	}
+
 	orderDNSIdentifiers := strutil.RemoveDuplicates(order.getIdentifierDNSValues(), true)
 	orderIPIdentifiers := removeDuplicatesAndSortIps(order.getIdentifierIPValues())
 
@@ -423,7 +432,7 @@ func (b *backend) validateIdentifiersAgainstRole(role *roleEntry, identifiers []
 	return nil
 }
 
-func getIdentifiersFromCSR(csr *x509.CertificateRequest) ([]string, []net.IP) {
+func getIdentifiersFromCSR(csr *x509.CertificateRequest) ([]string, []net.IP, bool, error) {
 	dnsIdentifiers := append([]string(nil), csr.DNSNames...)
 	ipIdentifiers := append([]net.IP(nil), csr.IPAddresses...)
 
@@ -436,7 +445,28 @@ func getIdentifiersFromCSR(csr *x509.CertificateRequest) ([]string, []net.IP) {
 		}
 	}
 
-	return strutil.RemoveDuplicates(dnsIdentifiers, true), removeDuplicatesAndSortIps(ipIdentifiers)
+	extraSANs := len(csr.URIs) > 0 || len(csr.EmailAddresses) > 0
+	for index, ext := range csr.Extensions {
+		if extraSANs {
+			break
+		}
+
+		if ext.Id.Equal(oidExtensionSubjectAltName) {
+			var values []asn1.RawValue
+			if rest, err := asn1.Unmarshal(ext.Value, &values); err != nil || len(rest) > 0 {
+				return nil, nil, true, fmt.Errorf("failed to decode SAN extension %v on CSR: %w", index, err)
+			}
+
+			for _, value := range values {
+				if value.Tag != certutil.NameTypeDNS && value.Tag != certutil.NameTypeIP {
+					extraSANs = true
+					break
+				}
+			}
+		}
+	}
+
+	return strutil.RemoveDuplicates(dnsIdentifiers, true), removeDuplicatesAndSortIps(ipIdentifiers), extraSANs, nil
 }
 
 func removeDuplicatesAndSortIps(ipIdentifiers []net.IP) []net.IP {

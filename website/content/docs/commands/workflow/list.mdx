@@ -1,0 +1,32 @@
+---
+sidebar_label: list
+description: |-
+  The "workflow list" command outputs a list of all workflows.
+---
+
+# workflow list
+
+The `workflow list` command outputs a list of all workflows.
+
+## Examples
+
+Fetch list of all workflows:
+
+```shell-session
+$ bao workflow list
+Path
+----
+create-namespace
+reset-admin
+```
+
+## Usage
+
+The following flags are available in addition to the [standard set of
+flags](../index.mdx) included on all commands.
+
+### Output options
+
+- `-format` `(string: "table")` - Print the output in the given format. Valid
+  formats are "table", "json", or "yaml". This can also be specified via the
+  `BAO_FORMAT` environment variable.

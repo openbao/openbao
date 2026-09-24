@@ -1661,6 +1661,149 @@ func TestResolveRole_RoleDoesNotExist(t *testing.T) {
 	}
 }
 
+func TestLogin_MultiJWKSURL(t *testing.T) {
+	newBackend := func(t *testing.T) (logical.Backend, logical.Storage, *oidcProvider, string) {
+		b, storage := getBackend(t)
+		p := newOIDCProvider(t)
+		t.Cleanup(p.server.Close)
+
+		cert, err := p.getTLSCert()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return b, storage, p, cert
+	}
+
+	createRole := func(t *testing.T, b logical.Backend, storage logical.Storage) {
+		data := map[string]any{
+			"role_type":       "jwt",
+			"bound_subject":   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+			"bound_audiences": []string{"https://vault.plugin.auth.jwt.test"},
+			"user_claim":      "https://vault/user",
+			"groups_claim":    "https://vault/groups",
+			"policies":        "test",
+		}
+
+		req := &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      "role/plugin-test",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(t.Context(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+	}
+
+	loginRequest := func(t *testing.T, b logical.Backend, storage logical.Storage, jwtData string) *logical.Response {
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "login",
+			Storage:   storage,
+			Data: map[string]any{
+				"role": "plugin-test",
+				"jwt":  jwtData,
+			},
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.1",
+			},
+		}
+
+		resp, err := b.HandleRequest(t.Context(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp == nil {
+			t.Fatal("got nil response")
+		}
+		return resp
+	}
+
+	signJWT := func(t *testing.T) string {
+		cl := sqjwt.Claims{
+			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+			Issuer:    "https://team-vault.auth0.com/",
+			NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
+		}
+
+		privateCl := struct {
+			User   string   `json:"https://vault/user"`
+			Groups []string `json:"https://vault/groups"`
+		}{
+			"jeff",
+			[]string{"foo", "bar"},
+		}
+
+		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+		return jwtData
+	}
+
+	t.Run("first URL fails signature, second succeeds", func(t *testing.T) {
+		b, storage, p, cert := newBackend(t)
+
+		// The first JWKS endpoint serves a valid but wrong key; the second
+		// serves the key that matches the signing key.
+		data := map[string]any{
+			"jwks_url":    []string{p.server.URL + "/certs_wrong", p.server.URL + "/certs"},
+			"jwks_ca_pem": cert,
+		}
+
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(t.Context(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		createRole(t, b, storage)
+
+		resp = loginRequest(t, b, storage, signJWT(t))
+		if resp.IsError() {
+			t.Fatalf("expected successful login via second JWKS URL, got: %v", resp.Error())
+		}
+		if resp.Auth == nil {
+			t.Fatal("expected auth response")
+		}
+	})
+
+	t.Run("single URL with wrong key fails", func(t *testing.T) {
+		b, storage, p, cert := newBackend(t)
+
+		data := map[string]any{
+			"jwks_url":    []string{p.server.URL + "/certs_wrong"},
+			"jwks_ca_pem": cert,
+		}
+
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(t.Context(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		createRole(t, b, storage)
+
+		resp = loginRequest(t, b, storage, signJWT(t))
+		if !resp.IsError() {
+			t.Fatal("expected login to fail when no JWKS URL holds the matching key")
+		}
+	})
+}
+
 const (
 	ecdsaPrivKey string = `-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIKfldwWLPYsHjRL9EVTsjSbzTtcGRu6icohNfIqcb6A+oAoGCCqGSM49

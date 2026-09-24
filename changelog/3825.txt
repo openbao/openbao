@@ -1,0 +1,3 @@
+```release-note:improvement
+auth/jwt: Allow `jwks_url` to configure multiple JWKS URLs while retaining support for single-string values.
+```

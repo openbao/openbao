@@ -447,12 +447,29 @@ func (d *autoSeal) getRecoveryKeyInternal(ctx context.Context) ([]byte, error) {
 	return pt, nil
 }
 
+// upgradeRecoveryKey retrieves recovery key, compares it to the
+// current seal encryption key and upgrades if they mismatch.
+// Do note that this method only works for the root namespace seal.
 func (d *autoSeal) upgradeRecoveryKey(ctx context.Context) error {
 	pe, err := d.core.physical.Get(ctx, d.metaPrefix+recoveryKeyPath)
 	if err != nil {
 		return fmt.Errorf("failed to fetch recovery key: %w", err)
 	}
 	if pe == nil {
+		recoveryConfig, err := d.core.seal.RecoveryConfig(ctx)
+		if err != nil {
+			return err
+		}
+		if recoveryConfig == nil {
+			return errors.New("no recovery config found")
+		}
+
+		// Check if we haven't yet generated recovery key shares as is the case
+		// when running declarative self-initialization.
+		if recoveryConfig.SecretShares == 0 {
+			// Assume upgrade has passed as there's nothing to upgrade for now.
+			return nil
+		}
 		return errors.New("no recovery key found")
 	}
 

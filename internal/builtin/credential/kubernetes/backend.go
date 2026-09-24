@@ -428,24 +428,23 @@ func (b *kubeAuthBackend) updateTLSConfig(config *kubeConfig) error {
 		caCertBytes = []byte(data)
 	}
 
-	certPool := x509.NewCertPool()
+	var certPool *x509.CertPool
 	if len(caCertBytes) > 0 {
+		certPool = x509.NewCertPool()
 		if ok := certPool.AppendCertsFromPEM(caCertBytes); !ok {
 			b.Logger().Warn("Configured CA PEM data contains no valid certificates, TLS verification will fail")
 		}
-	} else {
-		certPool = nil
-	}
-
-	transport, ok := b.httpClient.Transport.(*http.Transport)
-	if !ok {
-		// should never happen
-		return fmt.Errorf("type assertion failed for %T", b.httpClient.Transport)
 	}
 
 	// only refresh the Root CAs if they have changed since the last full update.
-	if transport.TLSClientConfig != b.tlsConfig || !b.tlsConfig.RootCAs.Equal(certPool) {
+	if !b.tlsConfig.RootCAs.Equal(certPool) {
 		b.Logger().Trace("Root CA certificate pool has changed, updating the client's transport")
+		transport, ok := b.httpClient.Transport.(*http.Transport)
+		if !ok {
+			// should never happen
+			return fmt.Errorf("type assertion failed for %T", b.httpClient.Transport)
+		}
+
 		b.tlsConfig.RootCAs = certPool
 		transport.TLSClientConfig = b.tlsConfig
 	} else {

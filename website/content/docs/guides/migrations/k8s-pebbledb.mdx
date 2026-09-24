@@ -1,0 +1,220 @@
+---
+sidebar_label: File to PebbleDB on Kubernetes
+description: >-
+  This page contains a guide on how to migrate the storage backend of
+  OpenBao running on Kubernetes from "file" to "pebbledb" when upgrading
+  to 2.7.0.
+---
+
+# Migrate from File to PebbleDB storage on Kubernetes
+
+Because OpenBao 2.7.0 removes the
+[File storage backend](/community/deprecation#file-storage-backend), you
+must migrate to a different backend. The easiest migration is to the
+[PebbleDB](configuration/storage/pebbledb.mdx) storage backend, which has
+similar requirements to the File storage backend.
+
+You can also migrate to
+[Integrated Storage (Raft)](configuration/storage/raft.mdx) or
+[PostgreSQL](configuration/storage/postgresql.mdx) at this stage.
+
+This guide focuses solely on migrating from File to PebbleDB.
+
+## Preparation
+
+### Backup
+
+:::danger
+Make a backup of your data.
+:::
+
+A [Volume Snapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/)
+or file-level backup is sufficient. The migration process deletes the old files.
+Ensure you can roll back if the migration fails.
+
+### Communicate downtime
+
+OpenBao is offline during the storage backend migration. Communicate the
+maintenance window to your users.
+
+### Check disk space
+
+During migration, data is temporarily stored in both `file` and `pebbledb`
+formats. Verify that you have enough disk space available:
+
+```bash
+$ kubectl -n openbao exec -it openbao-0 -- df -h /openbao/data
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sdb        9.8G  280K  9.8G   1% /openbao/data
+```
+
+We recommend having at least 60% free space available.
+
+## Migrate
+
+### Shutdown OpenBao
+
+:::warning
+Disable automatic syncing tools such as Flux or Argo CD.
+:::
+
+OpenBao must not be running during the migration.
+
+```bash
+$ kubectl -n openbao scale --replicas=0 sts/openbao
+statefulset.apps/openbao scaled
+$ kubectl -n openbao wait --for=deleted pod/openbao-0
+```
+
+### Create and run the migration job
+
+Create a file named `openbao-migrate-job.yml` with the following contents and
+adjust the values for your environment:
+
+```yml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openbao-migrate-config
+data:
+  migrate.hcl: |
+    storage_source "file" {
+      path = "/openbao/data"
+    }
+    storage_destination "pebbledb" {
+      path = "/openbao/data"
+    }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: openbao-file-to-pebble
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: migrate
+          image: quay.io/openbao/openbao:2.7.0
+          command: ["/bin/sh", "-eu", "-c"]
+          args:
+            - |
+              # Migrate storage from "file" to "pebbledb"
+              bao operator migrate -config=/openbao/config/migrate.hcl
+
+              # Remove old "file" backend files
+              rm -rf /openbao/data/core /openbao/data/logical /openbao/data/sys
+              echo "File storage backend files have been deleted successfully."
+          volumeMounts:
+            - { name: data,   mountPath: /openbao/data   }
+            - { name: config, mountPath: /openbao/config }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: data-openbao-0
+        - name: config
+          configMap:
+            name: openbao-migrate-config
+```
+
+This job creates a pod with the OpenBao 2.7.0 container image.
+
+It runs the [`openbao operator migrate`](commands/operator/migrate.mdx) command
+with the configuration deployed as a ConfigMap.
+
+Run the migration job:
+
+```bash
+$ kubectl -n openbao apply -f openbao-migrate-job.yml
+configmap/openbao-migrate-config created
+job.batch/openbao-file-to-pebble created
+```
+
+Wait for the migration job to finish and check its logs:
+
+```bash
+$ kubectl -n openbao logs -f jobs/openbao-file-to-pebble
+2026-09-24T17:29:12.526Z [WARN]  the file physical backend is deprecated; use bao operator migrate to move to a supported storage backend by v2.7.0
+2026-09-24T17:29:12.538Z [INFO]  copied key: path=core/local-mounts
+2026-09-24T17:29:12.538Z [INFO]  copied key: path=core/audit
+2026-09-24T17:29:12.538Z [INFO]  copied key: path=core/index-header-hmac-key
+2026-09-24T17:29:12.539Z [INFO]  copied key: path=core/auth
+2026-09-24T17:29:12.539Z [INFO]  copied key: path=core/local-audit
+2026-09-24T17:29:12.539Z [INFO]  copied key: path=core/keyring
+2026-09-24T17:29:12.539Z [INFO]  copied key: path=core/cluster/local/info
+2026-09-24T17:29:12.539Z [INFO]  copied key: path=core/mounts
+2026-09-24T17:29:12.539Z [INFO]  copied key: path=core/local-auth
+2026-09-24T17:29:12.539Z [INFO]  copied key: path=core/hsm/barrier-unseal-keys
+2026-09-24T17:29:12.540Z [INFO]  copied key: path=core/root-key
+2026-09-24T17:29:12.540Z [INFO]  copied key: path=core/shamir-kek
+2026-09-24T17:29:12.540Z [INFO]  copied key: path=core/seal-config
+2026-09-24T17:29:12.541Z [INFO]  copied key: path=logical/0c1ffb93-d256-be9d-a2ba-154ed08ae1c6/oidc_provider/assignment/allow_all
+2026-09-24T17:29:12.541Z [INFO]  copied key: path=core/versions/2.6.3
+2026-09-24T17:29:12.541Z [INFO]  copied key: path=core/wrapping/jwtkey
+2026-09-24T17:29:12.541Z [INFO]  copied key: path=logical/0c1ffb93-d256-be9d-a2ba-154ed08ae1c6/oidc_provider/provider/default
+2026-09-24T17:29:12.541Z [INFO]  copied key: path=sys/policy/response-wrapping
+2026-09-24T17:29:12.541Z [INFO]  copied key: path=logical/0c1ffb93-d256-be9d-a2ba-154ed08ae1c6/oidc_tokens/named_keys/default
+2026-09-24T17:29:12.541Z [INFO]  copied key: path=sys/policy/default
+2026-09-24T17:29:12.542Z [INFO]  copied key: path=sys/token/salt
+2026-09-24T17:29:12.542Z [INFO]  copied key: path=sys/token/id/h4a9634b938e8645e7f3f34220cdf620160887fac0535b16fe54c5b924f28c041
+2026-09-24T17:29:12.542Z [INFO]  copied key: path=sys/token/accessor/2bf4deb8cf1864d0a90cfc3a9bdf69e26796858d
+Success! All of the keys have been migrated.
+File storage backend files have been deleted successfully.
+```
+
+### Upgrade OpenBao
+
+After the migration, upgrade your OpenBao Helm deployment to version 0.30.0
+and OpenBao 2.7.0 or later.
+
+If your helm value overrides include the storage configuration,
+update it to pebbledb:
+
+```yml
+storage "pebbledb" {
+  path = "/openbao/data"
+}
+```
+
+The upgrade should scale OpenBao back up to one Pod. If it doesn't, do it manually:
+
+```bash
+$ kubectl -n openbao scale --replicas=1 sts/openbao
+statefulset.apps/openbao scaled
+```
+
+Verify that OpenBao is running with `pebbledb` as its storage type:
+
+```bash
+$ kubectl -n openbao exec openbao-0 -- bao status
+Key             Value
+---             -----
+Seal Type       shamir
+Initialized     true
+Sealed          false
+Total Shares    1
+Threshold       1
+Version         2.7.0
+Commit Date     2026-09-23T19:00:07Z
+Storage Type    pebbledb
+Cluster Name    vault-cluster-900c7ae3
+Cluster ID      210c60e0-d2cd-0ae0-f816-f412748610dc
+HA Enabled      false
+```
+
+### Clean up
+
+After you successfully migrate OpenBao, clean up the migration resources:
+
+```bash
+$ kubectl delete -f openbao-migrate-job.yml
+configmap "openbao-migrate-config" deleted from openbao namespace
+job.batch "openbao-file-to-pebble" deleted from openbao namespace
+```

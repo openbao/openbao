@@ -26,7 +26,7 @@ func RunZLint(t *testing.T, certificate string) []byte {
 	_, thisFile, _, _ := runtime.Caller(0)
 	cmd.Dir = filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..")
 	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, "zlint failed: %v", err)
+	require.NoError(t, err)
 
 	return out
 }

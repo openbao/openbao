@@ -179,18 +179,14 @@ func TestTransit_batchHMAC(t *testing.T) {
 		Path:      "keys/foo",
 	}
 	_, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Now, change the key value to something we control
 	p, _, err := b.GetPolicy(t.Context(), keysutil.PolicyRequest{
 		Storage: storage,
 		Name:    "foo",
 	}, b.GetRandomReader())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// We don't care as we're the only one using this
 	latestVersion := strconv.Itoa(p.LatestVersion)
 	keyEntry := p.Keys[latestVersion]
@@ -259,9 +255,7 @@ func TestTransit_batchHMAC(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("%v: %v", err, resp)
-	}
+	require.NoErrorf(t, err, "%v: %v", err, resp)
 	if resp == nil {
 		t.Fatal("expected non-nil response")
 	}
@@ -275,9 +269,7 @@ func TestTransit_batchHMAC(t *testing.T) {
 	// Try a bad value
 	verifyBatch[0]["hmac"] = bad_hmac
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("%v: %v", err, resp)
-	}
+	require.NoErrorf(t, err, "%v: %v", err, resp)
 	if resp == nil {
 		t.Fatal("expected non-nil response")
 	}
@@ -290,9 +282,7 @@ func TestTransit_batchHMAC(t *testing.T) {
 
 	// Rotate
 	err = p.Rotate(t.Context(), storage, b.GetRandomReader())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	keyEntry = p.Keys["2"]
 	// Set to another value we control
 	keyEntry.HMACKey = []byte("12345678901234567890123456789012")
@@ -311,9 +301,7 @@ func TestTransit_batchHMAC(t *testing.T) {
 	verifyBatch[0]["hmac"] = good_hmac
 
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("%v: %v", err, resp)
-	}
+	require.NoErrorf(t, err, "%v: %v", err, resp)
 	if resp == nil {
 		t.Fatal("expected non-nil response")
 	}

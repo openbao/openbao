@@ -25,6 +25,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/queue"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -41,9 +42,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 	config.System = sys
 
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to db backend")
@@ -189,9 +188,7 @@ func TestBackend_StaticRole_Rotate_NonStaticError(t *testing.T) {
 	config.System = sys
 
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to db backend")
@@ -293,9 +290,7 @@ func TestBackend_StaticRole_Revoke_user(t *testing.T) {
 	config.System = sys
 
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to db backend")
@@ -419,17 +414,13 @@ func createTestPGUser(t *testing.T, connURL string, username, password, query st
 	log.Printf("[TRACE] Creating test user")
 
 	db, err := sql.Open("pgx", connURL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	// Start a transaction
 	ctx := t.Context()
 	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() {
 		_ = tx.Rollback()
 	}()
@@ -451,9 +442,7 @@ func verifyPgConn(t *testing.T, username, password, connURL string) {
 	t.Helper()
 	cURL := strings.Replace(connURL, "postgres:secret", username+":"+password, 1)
 	db, err := sql.Open("pgx", cURL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err := db.Ping(); err != nil {
 		t.Fatal(err)
 	}
@@ -475,16 +464,12 @@ func TestBackend_Static_QueueWAL_discard_role_not_found(t *testing.T) {
 	_, err := framework.PutWAL(ctx, config.StorageView, staticWALKey, &setCredentialsWAL{
 		RoleName: "doesnotexist",
 	})
-	if err != nil {
-		t.Fatalf("error with PutWAL: %s", err)
-	}
+	require.NoError(t, err)
 
 	assertWALCount(t, config.StorageView, 1, staticWALKey)
 
 	b, err := Factory(ctx, config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer b.Cleanup(ctx)
 
 	time.Sleep(5 * time.Second)
@@ -514,9 +499,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 	ctx := namespace.RootContext(t.Context())
 	roleName := "test-discard-by-date"
 	lb, err := Factory(ctx, config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to db backend")
@@ -594,17 +577,13 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 		LastVaultRotation: oldRotationTime,
 		Username:          dbUser,
 	})
-	if err != nil {
-		t.Fatalf("error with PutWAL: %s", err)
-	}
+	require.NoError(t, err)
 
 	assertWALCount(t, config.StorageView, 1, staticWALKey)
 
 	// Reload backend
 	lb, err = Factory(ctx, config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok = lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to db backend")
@@ -663,9 +642,7 @@ func assertWALCount(t *testing.T, s logical.Storage, expected int, key string) {
 	var count int
 	ctx := t.Context()
 	keys, err := framework.ListWAL(ctx, s)
-	if err != nil {
-		t.Fatal("error listing WALs")
-	}
+	require.NoError(t, err)
 
 	// Loop through WAL keys and process any rotation ones
 	for _, k := range keys {
@@ -726,9 +703,7 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 
 	// Rotation ticker starts running in Factory call
 	b, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer b.Cleanup(t.Context())
 
 	// allow initQueue to finish
@@ -860,9 +835,7 @@ func TestBackend_StaticRole_LockRegression(t *testing.T) {
 	config.System = sys
 
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to db backend")
@@ -939,9 +912,7 @@ func TestBackend_StaticRole_Rotate_Invalid_Role(t *testing.T) {
 	config.System = sys
 
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to db backend")
@@ -1031,22 +1002,16 @@ func TestRollsPasswordForwardsUsingWAL(t *testing.T) {
 	createRole(t, b, storage, mockDB, "hashicorp")
 
 	role, err := b.StaticRole(ctx, storage, "hashicorp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	oldPassword := role.StaticAccount.Password
 
 	generateWALFromFailedRotation(t, b, storage, mockDB, "hashicorp")
 
 	walIDs := requireWALs(t, storage, 1)
 	wal, err := b.findStaticWAL(ctx, storage, walIDs[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	role, err = b.StaticRole(ctx, storage, "hashicorp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// Role's password should still be the WAL's old password
 	if role.StaticAccount.Password != oldPassword {
 		t.Fatal(role.StaticAccount.Password, oldPassword)
@@ -1055,9 +1020,7 @@ func TestRollsPasswordForwardsUsingWAL(t *testing.T) {
 	rotateRole(t, b, storage, mockDB, "hashicorp")
 
 	role, err = b.StaticRole(ctx, storage, "hashicorp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if role.StaticAccount.Password != wal.NewPassword {
 		t.Fatal("role password", role.StaticAccount.Password, "WAL new password", wal.NewPassword)
 	}
@@ -1118,9 +1081,7 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 			configureDBMount(t, config.StorageView)
 			createRole(t, b, config.StorageView, mockDB, "hashicorp")
 			role, err := b.StaticRole(ctx, config.StorageView, "hashicorp")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			initialPassword := role.StaticAccount.Password
 
 			// Set up a WAL for our test case
@@ -1146,13 +1107,9 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 			requireWALs(t, storage, 0)
 
 			role, err = b.StaticRole(ctx, storage, "hashicorp")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			item, err := b.popFromRotationQueueByKey("hashicorp")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			if tc.shouldRotate {
 				if tc.wal.NewPassword != "" {
@@ -1198,22 +1155,16 @@ func TestDeletesOlderWALsOnLoad(t *testing.T) {
 	}
 	for range 3 {
 		_, err := framework.PutWAL(ctx, storage, staticWALKey, wal)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 	time.Sleep(2 * time.Second)
 	// We expect this WAL to have the latest createdAt timestamp
 	walID, err := framework.PutWAL(ctx, storage, staticWALKey, wal)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	requireWALs(t, storage, 4)
 
 	walMap, err := b.loadStaticWALs(ctx, storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(walMap) != 1 || walMap["hashicorp"] == nil || walMap["hashicorp"].walID != walID {
 		t.Fatal()
 	}
@@ -1254,9 +1205,7 @@ func rotateRole(t *testing.T, b *databaseBackend, storage logical.Storage, mockD
 func requireWALs(t *testing.T, storage logical.Storage, expectedCount int) []string {
 	t.Helper()
 	wals, err := storage.List(t.Context(), "wal/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(wals) != expectedCount {
 		t.Fatal("expected WALs", expectedCount, "got", len(wals))
 	}
@@ -1308,14 +1257,10 @@ func configureDBMount(t *testing.T, storage logical.Storage) {
 	entry, err := logical.StorageEntryJSON("config/mockv5", &DatabaseConfig{
 		AllowedRoles: []string{"*"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = storage.Put(t.Context(), entry)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 // capturePasswords captures the current passwords at the time of calling, and

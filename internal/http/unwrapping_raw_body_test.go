@@ -10,6 +10,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	kv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUnwrapping_Raw_Body(t *testing.T) {
@@ -33,9 +34,7 @@ func TestUnwrapping_Raw_Body(t *testing.T) {
 		Type:    "kv",
 		Options: map[string]string{"version": "2"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client.SetWrappingLookupFunc(func(operation, path string) string {
 		return "5m"
@@ -43,9 +42,7 @@ func TestUnwrapping_Raw_Body(t *testing.T) {
 	secret, err := client.Logical().Write("kv/foo/bar", map[string]any{
 		"a": "b",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil {
 		t.Fatal("nil secret")
 	}
@@ -56,9 +53,7 @@ func TestUnwrapping_Raw_Body(t *testing.T) {
 
 	client.SetWrappingLookupFunc(nil)
 	secret, err = client.Logical().Unwrap(wrapToken)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(secret.Warnings) != 1 {
 		t.Fatal("expected 1 warning")
 	}

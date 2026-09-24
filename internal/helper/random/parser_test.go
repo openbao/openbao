@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestParsePolicy(t *testing.T) {
@@ -574,17 +576,13 @@ func BenchmarkParser_Parse(b *testing.B) {
 			},
 		}
 		_, err := parser.ParsePolicy(config)
-		if err != nil {
-			b.Fatalf("Failed to parse: %s", err)
-		}
+		require.NoErrorf(b, err, "Failed to parse: %s", err)
 	}
 }
 
 func toJSON(t *testing.T, val any) string {
 	t.Helper()
 	b, err := json.Marshal(val)
-	if err != nil {
-		t.Fatalf("unable to marshal to JSON: %s", err)
-	}
+	require.NoError(t, err)
 	return string(b)
 }

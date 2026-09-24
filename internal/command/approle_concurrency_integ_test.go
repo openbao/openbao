@@ -14,6 +14,7 @@ import (
 	credAppRole "github.com/openbao/openbao/v2/internal/builtin/credential/approle"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAppRole_Integ_ConcurrentLogins(t *testing.T) {
@@ -42,28 +43,20 @@ func TestAppRole_Integ_ConcurrentLogins(t *testing.T) {
 	err = client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/approle/role/role1", map[string]any{
 		"bind_secret_id": "true",
 		"period":         "300",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	secret, err := client.Logical().Write("auth/approle/role/role1/secret-id", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secretID := secret.Data["secret_id"].(string)
 
 	secret, err = client.Logical().Read("auth/approle/role/role1/role-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	roleID := secret.Data["role_id"].(string)
 
 	wg := &sync.WaitGroup{}

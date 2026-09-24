@@ -17,6 +17,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransit_ConfigSettings(t *testing.T) {
@@ -353,24 +354,18 @@ func TestTransit_UpdateKeyConfigWithAutorotation(t *testing.T) {
 	err := client.Sys().Mount("transit", &api.MountInput{
 		Type: "transit",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			keyNameBytes, err := uuid.GenerateRandomBytes(16)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			keyName := hex.EncodeToString(keyNameBytes)
 
 			_, err = client.Logical().Write(fmt.Sprintf("transit/keys/%s", keyName), map[string]any{
 				"auto_rotate_period": test.initialAutoRotatePeriod,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			_, err = client.Logical().Write(fmt.Sprintf("transit/keys/%s/config", keyName), map[string]any{
 				"auto_rotate_period": test.newAutoRotatePeriod,
 			})
@@ -383,9 +378,7 @@ func TestTransit_UpdateKeyConfigWithAutorotation(t *testing.T) {
 
 			if !test.shouldError {
 				resp, err := client.Logical().Read(fmt.Sprintf("transit/keys/%s", keyName))
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if resp == nil {
 					t.Fatal("expected non-nil response")
 				}
@@ -394,9 +387,7 @@ func TestTransit_UpdateKeyConfigWithAutorotation(t *testing.T) {
 					t.Fatal("returned value is of unexpected type")
 				}
 				got, err := gotRaw.Int64()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				want := int64(test.expectedValue.Seconds())
 				if got != want {
 					t.Fatalf("incorrect auto_rotate_period returned, got: %d, want: %d", got, want)

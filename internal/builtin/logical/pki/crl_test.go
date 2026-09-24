@@ -29,9 +29,7 @@ func TestBackend_CRL_EnableDisableRoot(t *testing.T) {
 		"ttl":         "40h",
 		"common_name": "example.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	caSerial := resp.Data["serial_number"].(string)
 
 	crlEnableDisableTestForBackend(t, b, s, []string{caSerial})
@@ -184,9 +182,7 @@ func TestBackend_CRL_AllKeyTypeSigAlgos(t *testing.T) {
 			"signature_bits": tc.SigBits,
 			"use_pss":        tc.UsePSS,
 		})
-		if err != nil {
-			t.Fatalf("tc %v: %v", index, err)
-		}
+		require.NoErrorf(t, err, "tc %v: %v", index, err)
 		caSerial := resp.Data["serial_number"].(string)
 
 		resp, err = CBRead(b, s, "issuer/default")
@@ -223,9 +219,7 @@ func crlEnableDisableIntermediateTestForBackend(t *testing.T, withRoot bool) {
 		"ttl":         "40h",
 		"common_name": "example.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	rootSerial := resp.Data["serial_number"].(string)
 
 	b_int, s_int := CreateBackendWithStorage(t)
@@ -233,9 +227,7 @@ func crlEnableDisableIntermediateTestForBackend(t *testing.T, withRoot bool) {
 	resp, err = CBWrite(b_int, s_int, "intermediate/generate/internal", map[string]any{
 		"common_name": "intermediate example.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected intermediate CSR info")
 	}
@@ -245,9 +237,7 @@ func crlEnableDisableIntermediateTestForBackend(t *testing.T, withRoot bool) {
 		"ttl": "30h",
 		"csr": intermediateData["csr"],
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected signed intermediate info")
 	}
@@ -264,9 +254,7 @@ func crlEnableDisableIntermediateTestForBackend(t *testing.T, withRoot bool) {
 	_, err = CBWrite(b_int, s_int, "intermediate/set-signed", map[string]any{
 		"certificate": certs,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	crlEnableDisableTestForBackend(t, b_int, s_int, caSerials)
 }
 
@@ -279,18 +267,14 @@ func crlEnableDisableTestForBackend(t *testing.T, b *backend, s logical.Storage,
 		"allowed_domains":    "foobar.com",
 		"generate_lease":     true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	serials := make(map[int]string)
 	for i := range 6 {
 		resp, err := CBWrite(b, s, "issue/test", map[string]any{
 			"common_name": "test.foobar.com",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		serials[i] = resp.Data["serial_number"].(string)
 	}
 
@@ -326,9 +310,7 @@ func crlEnableDisableTestForBackend(t *testing.T, b *backend, s logical.Storage,
 		_, err = CBWrite(b, s, "revoke", map[string]any{
 			"serial_number": serials[serialIndex],
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		for _, caSerial := range caSerials {
 			_, err = CBWrite(b, s, "revoke", map[string]any{
@@ -344,9 +326,7 @@ func crlEnableDisableTestForBackend(t *testing.T, b *backend, s logical.Storage,
 		_, err = CBWrite(b, s, "config/crl", map[string]any{
 			"disable": disabled,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	test(0)

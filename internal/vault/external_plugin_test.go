@@ -26,6 +26,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/pluginhelpers"
 	"github.com/openbao/openbao/v2/internal/version"
+	"github.com/stretchr/testify/require"
 )
 
 const vaultTestingMockPluginEnv = "BAO_TESTING_MOCK_PLUGIN"
@@ -214,9 +215,7 @@ func TestCore_EnableExternalPlugin_Deregister_SealUnseal(t *testing.T) {
 	pluginName := "therug"
 	plugin := pluginhelpers.CompilePlugin(t, consts.PluginTypeCredential, "", pluginDir)
 	err := os.Link(path.Join(pluginDir, plugin.FileName), path.Join(pluginDir, pluginName))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	conf := &CoreConfig{
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 		PluginDirectory: pluginDir,
@@ -241,9 +240,7 @@ func TestCore_EnableExternalPlugin_Deregister_SealUnseal(t *testing.T) {
 	}
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("err: should be unsealed")
 		}
@@ -256,9 +253,7 @@ func TestCore_EnableExternalPlugin_Deregister_SealUnseal(t *testing.T) {
 
 	found := false
 	mounts, err := c.ListAuths()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	for _, mount := range mounts {
 		if mount.Type == pluginName {
 			found = true
@@ -286,9 +281,7 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 	pluginName := "pending-removal-test-plugin"
 	plugin := pluginhelpers.CompilePlugin(t, consts.PluginTypeCredential, "", pluginDir)
 	err := os.Link(path.Join(pluginDir, plugin.FileName), path.Join(pluginDir, pluginName))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	conf := &CoreConfig{
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 		PluginDirectory: pluginDir,
@@ -313,9 +306,7 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 	}
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("err: should be unsealed")
 		}
@@ -365,9 +356,7 @@ func TestCore_EnableExternalPlugin_PendingRemoval(t *testing.T) {
 	pluginName := "pending-removal-test-plugin"
 	plugin := pluginhelpers.CompilePlugin(t, consts.PluginTypeCredential, "v1.2.3", pluginDir)
 	err := os.Link(path.Join(pluginDir, plugin.FileName), path.Join(pluginDir, pluginName))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	conf := &CoreConfig{
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 		PluginDirectory: pluginDir,
@@ -399,9 +388,7 @@ func TestCore_EnableExternalPlugin_ShadowBuiltin(t *testing.T) {
 	// create an external plugin to shadow the builtin "approle"
 	plugin := pluginhelpers.CompilePlugin(t, consts.PluginTypeCredential, "v1.2.3", pluginDir)
 	err := os.Link(path.Join(pluginDir, plugin.FileName), path.Join(pluginDir, "approle"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	pluginName := "approle"
 	conf := &CoreConfig{
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
@@ -478,9 +465,7 @@ func TestCore_EnableExternalKv_MultipleVersions(t *testing.T) {
 	// new kv plugin can be registered but not mounted
 	plugin := pluginhelpers.CompilePlugin(t, consts.PluginTypeSecrets, "v1.2.3", pluginDir)
 	err := os.Link(path.Join(pluginDir, plugin.FileName), path.Join(pluginDir, "kv"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	pluginName := "kv"
 	conf := &CoreConfig{
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
@@ -492,9 +477,7 @@ func TestCore_EnableExternalKv_MultipleVersions(t *testing.T) {
 	registerPlugin(t, c.systemBackend, pluginName, consts.PluginTypeSecrets.String(), "v1.2.3", plugin.Sha256, plugin.FileName)
 	req := logical.TestRequest(t, logical.ReadOperation, "plugins/catalog")
 	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Error() != nil {
 		t.Fatalf("%#v", resp)
 	}
@@ -516,9 +499,7 @@ func TestCore_EnableExternalKv_MultipleVersions(t *testing.T) {
 		"plugin_version": "v1.2.3",
 	}
 	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Error() == nil {
 		t.Fatal("Expected resp error but got successful response")
 	}
@@ -531,9 +512,7 @@ func TestCore_EnableExternalNoop_MultipleVersions(t *testing.T) {
 	// new noop plugin can be registered but not mounted
 	plugin := pluginhelpers.CompilePlugin(t, consts.PluginTypeCredential, "v1.2.3", pluginDir)
 	err := os.Link(path.Join(pluginDir, plugin.FileName), path.Join(pluginDir, "noop"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	pluginName := "noop"
 	conf := &CoreConfig{
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
@@ -545,9 +524,7 @@ func TestCore_EnableExternalNoop_MultipleVersions(t *testing.T) {
 	registerPlugin(t, c.systemBackend, pluginName, consts.PluginTypeCredential.String(), "v1.2.3", plugin.Sha256, plugin.FileName)
 	req := logical.TestRequest(t, logical.ReadOperation, "plugins/catalog")
 	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Error() != nil {
 		t.Fatalf("%#v", resp)
 	}
@@ -569,9 +546,7 @@ func TestCore_EnableExternalNoop_MultipleVersions(t *testing.T) {
 		"plugin_version": "v1.2.3",
 	}
 	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Error() == nil {
 		t.Fatal("Expected resp error but got successful response")
 	}
@@ -723,9 +698,7 @@ func TestExternalPlugin_getBackendTypeVersion(t *testing.T) {
 			} else {
 				version, err = c.pluginCatalog.getBackendRunningVersion(t.Context(), entry)
 			}
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if version.Version != tc.setRunningVersion {
 				t.Errorf("Expected to get version %v but got %v", tc.setRunningVersion, version.Version)
 			}
@@ -779,9 +752,7 @@ func TestExternalPlugin_CheckFilePermissions(t *testing.T) {
 				"version": tc.pluginVersion,
 			}
 			resp, err := c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp.Error() != nil {
 				t.Fatal(resp.Error())
 			}
@@ -797,9 +768,7 @@ func TestExternalPlugin_CheckFilePermissions(t *testing.T) {
 				}
 			}
 			resp, err = c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp.Error() != nil {
 				t.Fatal(resp.Error())
 			}
@@ -879,9 +848,7 @@ func TestBackend_PluginMain_Multiplexed_Logical_v123(t *testing.T) {
 	err := plugin.ServeMultiplex(&plugin.ServeOpts{
 		BackendFactoryFunc: mock.FactoryType(logical.TypeLogical),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 // Used to run a mock multiplexed secrets plugin
@@ -895,9 +862,7 @@ func TestBackend_PluginMain_Multiplexed_Logical_v124(t *testing.T) {
 	err := plugin.ServeMultiplex(&plugin.ServeOpts{
 		BackendFactoryFunc: mock.FactoryType(logical.TypeLogical),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 // Used to run a mock multiplexed auth plugin
@@ -911,9 +876,7 @@ func TestBackend_PluginMain_Multiplexed_Credential_v123(t *testing.T) {
 	err := plugin.ServeMultiplex(&plugin.ServeOpts{
 		BackendFactoryFunc: mock.FactoryType(logical.TypeCredential),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func registerPlugin(t *testing.T, sys *SystemBackend, pluginName, pluginType, version, sha, command string) {

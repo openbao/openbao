@@ -61,9 +61,7 @@ func TestGetTLSConfigs(t *testing.T) {
 		t.Fatal(err)
 	}
 	tlsConfig, err := getTLSConfig(config, "138.91.247.105")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if tlsConfig == nil {
 		t.Fatal("expected 1 TLS config because there's 1 url")
 	}

@@ -42,9 +42,7 @@ func TestMigration(t *testing.T) {
 		}
 
 		from, err := fromFactory(confFrom, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if err := storeData(t.Context(), from, data); err != nil {
 			t.Fatal(err)
 		}
@@ -52,9 +50,7 @@ func TestMigration(t *testing.T) {
 		toFactory := physicalBackends["inmem"]
 		confTo := map[string]string{}
 		to, err := toFactory(confTo, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		cmd := OperatorMigrateCommand{
 			logger: log.NewNullLogger(),
 		}
@@ -79,9 +75,7 @@ func TestMigration(t *testing.T) {
 		}
 
 		from, err := fromFactory(confFrom, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if err := storeData(t.Context(), from, data); err != nil {
 			t.Fatal(err)
 		}
@@ -89,9 +83,7 @@ func TestMigration(t *testing.T) {
 		toFactory := physicalBackends["inmem"]
 		confTo := map[string]string{}
 		to, err := toFactory(confTo, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		cmd := OperatorMigrateCommand{
 			logger: log.NewNullLogger(),
@@ -111,9 +103,7 @@ func TestMigration(t *testing.T) {
 		fromFactory := physicalBackends["inmem"]
 		confFrom := map[string]string{}
 		from, err := fromFactory(confFrom, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if err := storeData(t.Context(), from, data); err != nil {
 			t.Fatal(err)
 		}
@@ -125,9 +115,7 @@ func TestMigration(t *testing.T) {
 		}
 
 		to, err := toFactory(confTo, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		const start = "m"
 
@@ -150,9 +138,7 @@ func TestMigration(t *testing.T) {
 		fromFactory := physicalBackends["inmem"]
 		confFrom := map[string]string{}
 		from, err := fromFactory(confFrom, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if err := storeData(t.Context(), from, data); err != nil {
 			t.Fatal(err)
 		}
@@ -164,9 +150,7 @@ func TestMigration(t *testing.T) {
 		}
 
 		to, err := toFactory(confTo, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		const start = "m"
 
@@ -210,9 +194,7 @@ storage_destination "dest_type" {
 			},
 		}
 		cfg, err := cmd.loadMigratorConfig(cfgName)
-		if err != nil {
-			t.Fatal(cfg)
-		}
+		require.NoError(t, err)
 		if diff := deep.Equal(cfg, expCfg); diff != nil {
 			t.Fatal(diff)
 		}

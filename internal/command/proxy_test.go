@@ -82,18 +82,14 @@ func testProxyExitAfterAuth(t *testing.T, viaFlag bool) {
 	err := client.Sys().EnableAuthWithOptions("jwt", &api.EnableAuthOptions{
 		Type: "jwt",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/jwt/config", map[string]any{
 		"bound_issuer":           "https://team-vault.auth0.com/",
 		"jwt_validation_pubkeys": agent.TestECDSAPubKey,
 		"jwt_supported_algs":     "ES256",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/jwt/role/test", map[string]any{
 		"role_type":       "jwt",
@@ -104,15 +100,11 @@ func testProxyExitAfterAuth(t *testing.T, viaFlag bool) {
 		"policies":        "test",
 		"period":          "3s",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	dir := t.TempDir()
 	inf, err := os.CreateTemp(dir, "auth.jwt.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	in := inf.Name()
 	inf.Close()
 	// We remove these files in this test since we don't need the files, we just need
@@ -121,27 +113,21 @@ func testProxyExitAfterAuth(t *testing.T, viaFlag bool) {
 	t.Logf("input: %s", in)
 
 	sink1f, err := os.CreateTemp(dir, "sink1.jwt.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	sink1 := sink1f.Name()
 	sink1f.Close()
 	os.Remove(sink1)
 	t.Logf("sink1: %s", sink1)
 
 	sink2f, err := os.CreateTemp(dir, "sink2.jwt.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	sink2 := sink2f.Name()
 	sink2f.Close()
 	os.Remove(sink2)
 	t.Logf("sink2: %s", sink2)
 
 	conff, err := os.CreateTemp(dir, "conf.jwt.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	conf := conff.Name()
 	conff.Close()
 	os.Remove(conf)
@@ -220,17 +206,13 @@ auto_auth {
 	}
 
 	sink1Bytes, err := os.ReadFile(sink1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(sink1Bytes) == 0 {
 		t.Fatal("got no output from sink 1")
 	}
 
 	sink2Bytes, err := os.ReadFile(sink2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(sink2Bytes) == 0 {
 		t.Fatal("got no output from sink 2")
 	}
@@ -308,9 +290,7 @@ func TestProxy_AutoAuth_UserAgent(t *testing.T) {
 	defer os.Remove(secretIDPath)
 
 	sinkf, err := os.CreateTemp("", "sink.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	sink := sinkf.Name()
 	sinkf.Close()
 	os.Remove(sink)
@@ -379,15 +359,11 @@ api_proxy {
 	conf := api.DefaultConfig()
 	conf.Address = "http://" + listenAddr
 	proxyClient, err := api.NewClient(conf)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	proxyClient.SetToken("")
 	err = proxyClient.SetAddress("http://" + listenAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Wait for the token to be sent to syncs and be available to be used
 	time.Sleep(5 * time.Second)
@@ -468,21 +444,15 @@ vault {
 	}
 
 	proxyClient, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	proxyClient.AddHeader("User-Agent", userAgentForProxiedClient)
 	proxyClient.SetToken(serverClient.Token())
 	proxyClient.SetMaxRetries(0)
 	err = proxyClient.SetAddress("http://" + listenAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = proxyClient.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	close(cmd.ShutdownCh)
 	wg.Wait()
@@ -559,21 +529,15 @@ vault {
 	}
 
 	proxyClient, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	proxyClient.AddHeader("User-Agent", userAgentForProxiedClient)
 	proxyClient.SetToken(serverClient.Token())
 	proxyClient.SetMaxRetries(0)
 	err = proxyClient.SetAddress("http://" + listenAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = proxyClient.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	close(cmd.ShutdownCh)
 	wg.Wait()
@@ -635,15 +599,11 @@ vault {
 	}
 
 	proxyClient, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	proxyClient.SetToken(serverClient.Token())
 	proxyClient.SetMaxRetries(0)
 	err = proxyClient.SetAddress("http://" + listenAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	renewable := true
 	tokenCreateRequest := &api.TokenCreateRequest{
@@ -657,9 +617,7 @@ vault {
 	// creating an orphan token returns Auth, is renewable, and isn't a token
 	// that's managed elsewhere (since it's an orphan)
 	secret, err := proxyClient.Auth().Token().CreateOrphan(tokenCreateRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil || secret.Auth == nil {
 		t.Fatalf("secret not as expected: %v", secret)
 	}
@@ -667,9 +625,7 @@ vault {
 	token := secret.Auth.ClientToken
 
 	secret, err = proxyClient.Auth().Token().CreateOrphan(tokenCreateRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil || secret.Auth == nil {
 		t.Fatalf("secret not as expected: %v", secret)
 	}
@@ -723,9 +679,7 @@ func TestProxy_ApiProxy_Retry(t *testing.T) {
 	_, err := serverClient.Logical().Write("secret/foo", map[string]any{
 		"bar": "baz",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	intRef := func(i int) *int {
 		return &i
@@ -805,15 +759,11 @@ vault {
 			}
 
 			client, err := api.NewClient(api.DefaultConfig())
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			client.SetToken(serverClient.Token())
 			client.SetMaxRetries(0)
 			err = client.SetAddress("http://" + listenAddr)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			secret, err := client.Logical().Read("secret/foo")
 			switch {
 			case (err != nil || secret == nil) && tc.expectError:
@@ -893,9 +843,7 @@ listener "tcp" {
 	conf := api.DefaultConfig()
 	conf.Address = "http://" + listenAddr
 	proxyClient, err := api.NewClient(conf)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	req := proxyClient.NewRequest("GET", "/proxy/v1/metrics")
 	body := request(t, proxyClient, req, 200)
@@ -938,9 +886,7 @@ func TestProxy_QuitAPI(t *testing.T) {
 	// cluster address
 	defer os.Setenv(api.EnvVaultAddress, os.Getenv(api.EnvVaultAddress))
 	err := os.Unsetenv(api.EnvVaultAddress)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	listenAddr := generateListenerAddress(t)
 	listenAddr2 := generateListenerAddress(t)
@@ -983,15 +929,11 @@ cache {}
 		t.Error("timeout")
 	}
 	client, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(serverClient.Token())
 	client.SetMaxRetries(0)
 	err = client.SetAddress("http://" + listenAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// First try on listener 1 where the API should be disabled.
 	resp, err := client.RawRequest(client.NewRequest(http.MethodPost, "/proxy/v1/quit"))
@@ -1004,14 +946,10 @@ cache {}
 
 	// Now try on listener 2 where the quit API should be enabled.
 	err = client.SetAddress("http://" + listenAddr2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.RawRequest(client.NewRequest(http.MethodPost, "/proxy/v1/quit"))
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	select {
 	case <-cmd.ShutdownCh:
@@ -1028,9 +966,7 @@ func TestProxy_LogFile_CliOverridesConfig(t *testing.T) {
 	// Create basic config
 	configFile := populateTempFile(t, "proxy-config.hcl", BasicHclConfig)
 	cfg, err := proxyConfig.LoadConfigFile(configFile.Name())
-	if err != nil {
-		t.Fatal("Cannot load config to test update/merge", err)
-	}
+	require.NoError(t, err)
 
 	// Sanity check that the config value is the current value
 	assert.Equal(t, "TMPDIR/juan.log", cfg.LogFile)
@@ -1040,9 +976,7 @@ func TestProxy_LogFile_CliOverridesConfig(t *testing.T) {
 	f := cmd.Flags()
 	// Simulate the flag being specified
 	err = f.Parse([]string{"-log-file=/foo/bar/test.log"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Update the config based on the inputs.
 	cmd.applyConfigOverrides(f, cfg)
@@ -1057,9 +991,7 @@ func TestProxy_LogFile_Config(t *testing.T) {
 	configFile := populateTempFile(t, "proxy-config.hcl", BasicHclConfig)
 
 	cfg, err := proxyConfig.LoadConfigFile(configFile.Name())
-	if err != nil {
-		t.Fatal("Cannot load config to test update/merge", err)
-	}
+	require.NoError(t, err)
 
 	// Sanity check that the config value is the current value
 	assert.Equal(t, "TMPDIR/juan.log", cfg.LogFile, "sanity check on log config failed")
@@ -1070,9 +1002,7 @@ func TestProxy_LogFile_Config(t *testing.T) {
 	cmd := &ProxyCommand{BaseCommand: &BaseCommand{}}
 	f := cmd.Flags()
 	err = f.Parse([]string{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Should change nothing...
 	cmd.applyConfigOverrides(f, cfg)
@@ -1105,17 +1035,13 @@ func TestProxy_Config_ReloadLogLevel(t *testing.T) {
 	hcl := strings.ReplaceAll(BasicHclConfig, "TMPDIR", tempDir)
 	configFile := populateTempFile(t, "proxy-config.hcl", hcl)
 	cmd.config, err = proxyConfig.LoadConfigFile(configFile.Name())
-	if err != nil {
-		t.Fatal("Cannot load config to test update/merge", err)
-	}
+	require.NoError(t, err)
 
 	// Tweak the loaded config to make sure we can put log files into a temp dir
 	// and systemd log attempts work fine, this would usually happen during Run.
 	cmd.logWriter = os.Stdout
 	cmd.logger, err = cmd.newLogger()
-	if err != nil {
-		t.Fatal("logger required for systemd log messages", err)
-	}
+	require.NoError(t, err)
 
 	// Sanity check
 	assert.Equal(t, "warn", cmd.config.LogLevel)
@@ -1133,9 +1059,7 @@ func TestProxy_Config_ReloadLogLevel(t *testing.T) {
 func TestProxy_Config_ReloadTls(t *testing.T) {
 	var wg sync.WaitGroup
 	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal("unable to get current working directory")
-	}
+	require.NoError(t, err)
 	workingDir := filepath.Join(wd, "/proxy/test-fixtures/reload")
 	fooCert := "reload_foo.pem"
 	fooKey := "reload_foo.key"
@@ -1151,27 +1075,17 @@ func TestProxy_Config_ReloadTls(t *testing.T) {
 
 	// Set up initial 'foo' certs
 	inBytes, err := os.ReadFile(filepath.Join(workingDir, fooCert))
-	if err != nil {
-		t.Fatal("unable to read cert required for test", fooCert, err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(tempDir, reloadCert), inBytes, 0o777)
-	if err != nil {
-		t.Fatal("unable to write temp cert required for test", reloadCert, err)
-	}
+	require.NoError(t, err)
 
 	inBytes, err = os.ReadFile(filepath.Join(workingDir, fooKey))
-	if err != nil {
-		t.Fatal("unable to read cert key required for test", fooKey, err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(tempDir, reloadKey), inBytes, 0o777)
-	if err != nil {
-		t.Fatal("unable to write temp cert key required for test", reloadKey, err)
-	}
+	require.NoError(t, err)
 
 	inBytes, err = os.ReadFile(filepath.Join(workingDir, caPem))
-	if err != nil {
-		t.Fatal("unable to read CA pem required for test", caPem, err)
-	}
+	require.NoError(t, err)
 	certPool := x509.NewCertPool()
 	ok := certPool.AppendCertsFromPEM(inBytes)
 	if !ok {
@@ -1227,22 +1141,14 @@ func TestProxy_Config_ReloadTls(t *testing.T) {
 
 	// Swap out certs
 	inBytes, err = os.ReadFile(filepath.Join(workingDir, barCert))
-	if err != nil {
-		t.Fatal("unable to read cert required for test", barCert, err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(tempDir, reloadCert), inBytes, 0o777)
-	if err != nil {
-		t.Fatal("unable to write temp cert required for test", reloadCert, err)
-	}
+	require.NoError(t, err)
 
 	inBytes, err = os.ReadFile(filepath.Join(workingDir, barKey))
-	if err != nil {
-		t.Fatal("unable to read cert key required for test", barKey, err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(tempDir, reloadKey), inBytes, 0o777)
-	if err != nil {
-		t.Fatal("unable to write temp cert key required for test", reloadKey, err)
-	}
+	require.NoError(t, err)
 
 	// Reload
 	cmd.SighupCh <- struct{}{}

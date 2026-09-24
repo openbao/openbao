@@ -27,6 +27,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/useragent"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 const policyAutoAuthAppRole = `
@@ -75,18 +76,14 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 	err = client.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a secret in the backend
 	_, err = client.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Add an kv-admin policy
 	if err := client.Sys().PutPolicy("test-autoauth", policyAutoAuthAppRole); err != nil {
@@ -97,9 +94,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 	err = client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/approle/role/test1", map[string]any{
 		"bind_secret_id": "true",
@@ -107,35 +102,25 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 		"token_max_ttl":  "10s",
 		"policies":       []string{"test-autoauth"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := client.Logical().Write("auth/approle/role/test1/secret-id", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secretID1 := resp.Data["secret_id"].(string)
 
 	resp, err = client.Logical().Read("auth/approle/role/test1/role-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	roleID1 := resp.Data["role_id"].(string)
 
 	rolef, err := os.CreateTemp("", "auth.role-id.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	role := rolef.Name()
 	rolef.Close() // WriteFile doesn't need it open
 	defer os.Remove(role)
 	t.Logf("input role_id_file_path: %s", role)
 
 	secretf, err := os.CreateTemp("", "auth.secret-id.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secret := secretf.Name()
 	secretf.Close()
 	defer os.Remove(secret)
@@ -144,9 +129,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 	// We close these right away because we're just basically testing
 	// permissions and finding a usable file name
 	ouf, err := os.CreateTemp("", "auth.tokensink.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	out := ouf.Name()
 	ouf.Close()
 	os.Remove(out)
@@ -169,9 +152,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 		UserAgentStringFunction: useragent.ProxyStringWithProxiedUserAgent,
 		UserAgentString:         useragent.ProxyAPIProxyString(),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create the lease cache proxier and set its underlying proxier to
 	// the API proxier.
@@ -181,18 +162,14 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 		Proxier:     apiProxy,
 		Logger:      cacheLogger.Named("leasecache"),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	am, err := agentapprole.NewApproleAuthMethod(&auth.AuthConfig{
 		Logger:    logger.Named("auth.approle"),
 		MountPath: "auth/approle",
 		Config:    conf,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	ahConfig := &auth.AuthHandlerConfig{
 		Logger: logger.Named("auth.handler"),
 		Client: client,
@@ -206,9 +183,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -219,9 +194,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 		},
 	}
 	fs, err := file.NewFileSink(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config.Sink = fs
 
 	ss := sink.NewSinkServer(&sink.SinkServerConfig{
@@ -234,9 +207,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 	}
 
 	inmemSink, err := inmem.New(inmemSinkConfig, leaseCache)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	inmemSinkConfig.Sink = inmemSink
 
 	go func() {
@@ -246,9 +217,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -307,9 +276,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 	t.Logf("auto-auth token: %q", getToken())
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	defer listener.Close()
 
@@ -329,9 +296,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 	go server.Serve(listener)
 
 	testClient, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if err := testClient.SetAddress("http://" + listener.Addr().String()); err != nil {
 		t.Fatal(err)
@@ -347,9 +312,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 		testClient.SetToken("")
 
 		resp, err = testClient.Logical().Read("auth/token/lookup-self")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("failed to use the auto-auth token to perform lookup-self")
 		}
@@ -358,16 +321,12 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 	// This block tests lease creation caching using the auto-auth token.
 	{
 		resp, err = testClient.Logical().Read("kv/foo")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		origReqID := resp.RequestID
 
 		resp, err = testClient.Logical().Read("kv/foo")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// Sleep for a bit to allow renewer logic to kick in
 		time.Sleep(20 * time.Millisecond)
@@ -383,18 +342,14 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 	// using the auto-auth token.
 	{
 		resp, err = testClient.Logical().Write("auth/token/create", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		origReqID := resp.RequestID
 
 		// Sleep for a bit to allow renewer logic to kick in
 		time.Sleep(20 * time.Millisecond)
 
 		resp, err = testClient.Logical().Write("auth/token/create", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		cacheReqID := resp.RequestID
 
 		if origReqID != cacheReqID {
@@ -409,9 +364,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 		testClient.SetToken(client.Token())
 
 		resp, err = testClient.Logical().Read("auth/token/lookup-self")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil || resp.Data["id"] != client.Token() {
 			t.Fatal("failed to use the cluster client token to perform lookup-self")
 		}

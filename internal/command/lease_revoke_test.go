@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testLeaseRevokeCommand(tb testing.TB) (*cli.MockUi, *LeaseRevokeCommand) {
@@ -94,9 +95,7 @@ func TestLeaseRevokeCommand_Run(t *testing.T) {
 					t.Fatal(err)
 				}
 				secret, err := client.Logical().Read(path)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				ui, cmd := testLeaseRevokeCommand(t)
 				cmd.client = client

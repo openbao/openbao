@@ -45,18 +45,14 @@ func (a *azureServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"jwks_uri": "%s/certs",
 				"userinfo_endpoint": "%s/userinfo"
 			}`, "%s", a.server.URL)))
-		if err != nil {
-			a.t.Fatal(err)
-		}
+		require.NoError(a.t, err)
 	case "/getMemberObjects":
 		groups := azureGroups{
 			Value: []any{"group1", "group2"},
 		}
 		gBytes, _ := json.Marshal(groups)
 		_, err := w.Write(gBytes)
-		if err != nil {
-			a.t.Fatal(err)
-		}
+		require.NoError(a.t, err)
 	default:
 		a.t.Fatalf("unexpected path: %q", r.URL.Path)
 	}
@@ -146,15 +142,11 @@ func TestLogin_fetchGroups(t *testing.T) {
 
 	// Ensure b.cachedConfig is populated
 	config, err := b.(*jwtAuthBackend).config(ctx, storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Initialize the azure provider
 	provider, err := NewProviderConfig(ctx, config, ProviderMap())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Ensure groups are as expected
 	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test.access.token"})

@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestListMounts(t *testing.T) {
@@ -16,14 +18,10 @@ func TestListMounts(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.Address = mockVaultServer.URL
 	client, err := NewClient(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := client.Sys().ListMounts()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expectedMounts := map[string]struct {
 		Type    string

@@ -39,9 +39,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	_, err := client.Logical().Write("secret/foo", map[string]any{
 		"zip": "zap",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set a wrapping lookup function for reads on that path
 	client.SetWrappingLookupFunc(func(operation, path string) string {
@@ -105,9 +103,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 
 	// Create a wrapping token
 	secret, err := client.Logical().Read("secret/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil || secret.WrapInfo == nil {
 		t.Fatal("secret or wrap info is nil")
 	}
@@ -118,9 +114,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 		secret, err = client.Logical().Write("sys/wrapping/lookup", map[string]any{
 			"token": wrapInfo.Token,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret == nil || secret.Data == nil {
 			t.Fatal("secret or secret data is nil")
 		}
@@ -139,9 +133,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 
 	// Create a wrapping token
 	secret, err = client.Logical().Read("secret/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil || secret.WrapInfo == nil {
 		t.Fatal("secret or wrap info is nil")
 	}
@@ -150,9 +142,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	// Test unwrap via the client token
 	client.SetToken(wrapInfo.Token)
 	secret, err = client.Logical().Write("sys/wrapping/unwrap", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Warnings != nil {
 		t.Fatalf("Warnings found: %v", secret.Warnings)
 	}
@@ -169,9 +159,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	// Create a wrapping token
 	client.SetToken(cluster.RootToken)
 	secret, err = client.Logical().Read("secret/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil || secret.WrapInfo == nil {
 		t.Fatal("secret or wrap info is nil")
 	}
@@ -181,9 +169,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	secret, err = client.Logical().Write("sys/wrapping/unwrap", map[string]any{
 		"token": wrapInfo.Token,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	ret2 := secret
 	// Should be expired and fail
 	_, err = client.Logical().Write("sys/wrapping/unwrap", map[string]any{
@@ -195,9 +181,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 
 	// Create a wrapping token
 	secret, err = client.Logical().Read("secret/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil || secret.WrapInfo == nil {
 		t.Fatal("secret or wrap info is nil")
 	}
@@ -206,9 +190,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	// Read response directly
 	client.SetToken(wrapInfo.Token)
 	secret, err = client.Logical().Read("cubbyhole/response")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	ret3 := secret
 	// Should be expired and fail
 	_, err = client.Logical().Write("cubbyhole/response", nil)
@@ -219,9 +201,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	// Create a wrapping token
 	client.SetToken(cluster.RootToken)
 	secret, err = client.Logical().Read("secret/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil || secret.WrapInfo == nil {
 		t.Fatal("secret or wrap info is nil")
 	}
@@ -229,9 +209,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 
 	// Read via Unwrap method
 	secret, err = client.Logical().Unwrap(wrapInfo.Token)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Warnings != nil {
 		t.Fatalf("Warnings found: %v", secret.Warnings)
 	}
@@ -254,9 +232,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	}
 	var ret3Secret api.Secret
 	err = jsonutil.DecodeJSON([]byte(ret3.Data["response"].(string)), &ret3Secret)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !reflect.DeepEqual(ret3Secret.Data, map[string]any{
 		"zip": "zap",
 	}) {
@@ -296,16 +272,12 @@ func TestHTTP_Wrapping(t *testing.T) {
 		return api.DefaultWrappingLookupFunc(operation, path)
 	})
 	secret, err = client.Logical().Write("sys/wrapping/wrap", data)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Warnings != nil {
 		t.Fatalf("Warnings found: %v", secret.Warnings)
 	}
 	secret, err = client.Logical().Unwrap(secret.WrapInfo.Token)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Warnings != nil {
 		t.Fatalf("Warnings found: %v", secret.Warnings)
 	}
@@ -319,9 +291,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 
 	// Create a wrapping token
 	secret, err = client.Logical().Read("secret/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil || secret.WrapInfo == nil {
 		t.Fatal("secret or wrap info is nil")
 	}
@@ -336,9 +306,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	secret, err = client.Logical().Write("sys/wrapping/rewrap", map[string]any{
 		"token": wrapInfo.Token,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Warnings != nil {
 		t.Fatalf("Warnings found: %v", secret.Warnings)
 	}
@@ -359,9 +327,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	// Attempt unwrapping the rewrapped token
 	wrapToken := secret.WrapInfo.Token
 	secret, err = client.Logical().Unwrap(wrapToken)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// Should be expired and fail
 	_, err = client.Logical().Unwrap(wrapToken)
 	if err == nil {

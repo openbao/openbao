@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 type mockPlugin struct {
@@ -142,23 +143,17 @@ func TestPlugin_Init(t *testing.T) {
 	defer cluster.Cleanup()
 
 	dbRaw, err := dbplugin.PluginFactoryVersion(namespace.RootContext(t.Context()), "test-plugin", "", sys, log.NewNullLogger())
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	connectionDetails := map[string]any{
 		"test": 1,
 	}
 
 	_, err = dbRaw.Init(t.Context(), connectionDetails, true)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	err = dbRaw.Close()
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestPlugin_CreateUser(t *testing.T) {
@@ -166,9 +161,7 @@ func TestPlugin_CreateUser(t *testing.T) {
 	defer cluster.Cleanup()
 
 	db, err := dbplugin.PluginFactoryVersion(namespace.RootContext(t.Context()), "test-plugin", "", sys, log.NewNullLogger())
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	connectionDetails := map[string]any{
@@ -176,17 +169,13 @@ func TestPlugin_CreateUser(t *testing.T) {
 	}
 
 	_, err = db.Init(t.Context(), connectionDetails, true)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	us, pw, err := db.CreateUser(t.Context(), dbplugin.Statements{}, dbplugin.UsernameConfig{
 		DisplayName: "test",
 		RoleName:    "test",
 	}, time.Now().Add(time.Minute))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if us != "test" || pw != "test" {
 		t.Fatal("expected username and password to be 'test'")
 	}
@@ -207,31 +196,23 @@ func TestPlugin_RenewUser(t *testing.T) {
 	defer cluster.Cleanup()
 
 	db, err := dbplugin.PluginFactoryVersion(namespace.RootContext(t.Context()), "test-plugin", "", sys, log.NewNullLogger())
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	connectionDetails := map[string]any{
 		"test": 1,
 	}
 	_, err = db.Init(t.Context(), connectionDetails, true)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	us, _, err := db.CreateUser(t.Context(), dbplugin.Statements{}, dbplugin.UsernameConfig{
 		DisplayName: "test",
 		RoleName:    "test",
 	}, time.Now().Add(time.Minute))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	err = db.RenewUser(t.Context(), dbplugin.Statements{}, us, time.Now().Add(time.Minute))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestPlugin_RevokeUser(t *testing.T) {
@@ -239,39 +220,29 @@ func TestPlugin_RevokeUser(t *testing.T) {
 	defer cluster.Cleanup()
 
 	db, err := dbplugin.PluginFactoryVersion(namespace.RootContext(t.Context()), "test-plugin", "", sys, log.NewNullLogger())
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	connectionDetails := map[string]any{
 		"test": 1,
 	}
 	_, err = db.Init(t.Context(), connectionDetails, true)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	us, _, err := db.CreateUser(t.Context(), dbplugin.Statements{}, dbplugin.UsernameConfig{
 		DisplayName: "test",
 		RoleName:    "test",
 	}, time.Now().Add(time.Minute))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Test default revoke statements
 	err = db.RevokeUser(t.Context(), dbplugin.Statements{}, us)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Try adding the same username back so we can verify it was removed
 	_, _, err = db.CreateUser(t.Context(), dbplugin.Statements{}, dbplugin.UsernameConfig{
 		DisplayName: "test",
 		RoleName:    "test",
 	}, time.Now().Add(time.Minute))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 }

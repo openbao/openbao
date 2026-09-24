@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/api/v2"
 	credToken "github.com/openbao/openbao/v2/internal/builtin/credential/token"
@@ -62,9 +63,7 @@ func TestCustomPath(t *testing.T) {
 	cmd.client = client
 
 	tokenHelper, err := cmd.TokenHelper(client.Address())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Emulate an unknown token format present in ~/.vault-token, for example
 	client.SetToken("a.a")
@@ -86,9 +85,7 @@ func TestCustomPath(t *testing.T) {
 	}
 
 	storedToken, err := tokenHelper.Get()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if l, exp := len(storedToken), minTokenLengthExternal+vault.TokenPrefixLength; l < exp {
 		t.Errorf("expected token to be %d characters, was %d: %q", exp, l, storedToken)
@@ -106,18 +103,14 @@ func TestNoStore(t *testing.T) {
 		Policies: []string{"default"},
 		TTL:      "30m",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token := secret.Auth.ClientToken
 
 	_, cmd := testLoginCommand(t)
 	cmd.client = client
 
 	tokenHelper, err := cmd.TokenHelper(client.Address())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Ensure we have no token to start
 	if storedToken, err := tokenHelper.Get(); err != nil || storedToken != "" {
@@ -133,9 +126,7 @@ func TestNoStore(t *testing.T) {
 	}
 
 	storedToken, err := tokenHelper.Get()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if exp := ""; storedToken != exp {
 		t.Errorf("expected %q to be %q", storedToken, exp)
@@ -152,18 +143,14 @@ func TestStores(t *testing.T) {
 		Policies: []string{"default"},
 		TTL:      "30m",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token := secret.Auth.ClientToken
 
 	_, cmd := testLoginCommand(t)
 	cmd.client = client
 
 	tokenHelper, err := cmd.TokenHelper(client.Address())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	code := cmd.Run([]string{
 		token,
@@ -173,9 +160,7 @@ func TestStores(t *testing.T) {
 	}
 
 	storedToken, err := tokenHelper.Get()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if storedToken != token {
 		t.Errorf("expected %q to be %q", storedToken, token)
@@ -202,9 +187,7 @@ func TestTokenOnly(t *testing.T) {
 	cmd.client = client
 
 	tokenHelper, err := cmd.TokenHelper(client.Address())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	code := cmd.Run([]string{
 		"-token-only",
@@ -238,9 +221,7 @@ func TestFailureNoStore(t *testing.T) {
 	cmd.client = client
 
 	tokenHelper, err := cmd.TokenHelper(client.Address())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	code := cmd.Run([]string{
 		"not-a-real-token",
@@ -296,9 +277,7 @@ func TestWrapAutoUnwrap(t *testing.T) {
 	client.SetWrappingLookupFunc(func(string, string) string { return "" })
 
 	tokenHelper, err := cmd.TokenHelper(client.Address())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token, err := tokenHelper.Get()
 	if err != nil || token == "" {
 		t.Fatalf("expected token from helper: %s: %q", err, token)
@@ -356,9 +335,7 @@ func TestWrapTokenOnly(t *testing.T) {
 	client.SetWrappingLookupFunc(func(string, string) string { return "" })
 
 	tokenHelper, err := cmd.TokenHelper(client.Address())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	storedToken, err := tokenHelper.Get()
 	if err != nil || storedToken != "" {
 		t.Fatalf("expected token to not be stored: %s: %q", err, storedToken)
@@ -417,9 +394,7 @@ func TestWrapNoStore(t *testing.T) {
 	client.SetWrappingLookupFunc(func(string, string) string { return "" })
 
 	tokenHelper, err := cmd.TokenHelper(client.Address())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	storedToken, err := tokenHelper.Get()
 	if err != nil || storedToken != "" {
 		t.Fatalf("expected token to not be stored: %s: %q", err, storedToken)
@@ -491,13 +466,9 @@ func TestLoginMFASinglePhase(t *testing.T) {
 		}
 
 		tokenHelper, err := cmd.TokenHelper(client.Address())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		storedToken, err := tokenHelper.Get()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if storedToken == "" {
 			t.Fatal("expected non-empty stored token")
 		}
@@ -542,16 +513,12 @@ func TestLoginMFATwoPhase(t *testing.T) {
 	}
 
 	tokenHelper, err := cmd.TokenHelper(client.Address())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	storedToken, err := tokenHelper.Get()
 	if storedToken != "" {
 		t.Fatal("expected empty stored token")
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestLoginMFATwoPhaseNonInteractiveMethodName(t *testing.T) {
@@ -602,9 +569,7 @@ func TestLoginMFATwoPhaseNonInteractiveMethodName(t *testing.T) {
 				methodIdentifier: {totpPasscode1},
 			},
 		})
-		if err != nil {
-			t.Fatalf("mfa validation failed: %v", err)
-		}
+		require.NoError(t, err)
 
 		if secret.Auth == nil || secret.Auth.ClientToken == "" {
 			t.Fatal("mfa validation did not return a client token")

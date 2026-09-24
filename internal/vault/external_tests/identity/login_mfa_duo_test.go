@@ -15,6 +15,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 var identityMFACoreConfigDUO = &vault.CoreConfig{
@@ -43,14 +44,10 @@ func TestInteg_PolicyMFADUO(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatalf("failed to enable userpass auth: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = mfaGeneratePolicyDUOTest(client)
-	if err != nil {
-		t.Fatal("DUO verification failed")
-	}
+	require.NoError(t, err)
 }
 
 func mfaGeneratePolicyDUOTest(client *api.Client) error {
@@ -163,14 +160,10 @@ func TestInteg_LoginMFADUO(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatalf("failed to enable userpass auth: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = mfaGenerateLoginDUOTest(t.Context(), client)
-	if err != nil {
-		t.Fatalf("DUO verification failed. error: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 func mfaGenerateLoginDUOTest(ctx context.Context, client *api.Client) error {

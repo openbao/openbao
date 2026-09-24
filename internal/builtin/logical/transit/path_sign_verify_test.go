@@ -66,18 +66,14 @@ func testTransit_SignVerify_ECDSA(t *testing.T, bits int) {
 		},
 	}
 	_, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Now, change the key value to something we control
 	p, _, err := b.GetPolicy(t.Context(), keysutil.PolicyRequest{
 		Storage: storage,
 		Name:    "foo",
 	}, b.GetRandomReader())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Useful code to output a key for openssl verification
 	/*
@@ -315,13 +311,9 @@ func testTransit_SignVerify_ECDSA(t *testing.T, bits int) {
 
 	// Rotate and set min decryption version
 	err = p.Rotate(t.Context(), storage, b.GetRandomReader())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = p.Rotate(t.Context(), storage, b.GetRandomReader())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	p.MinDecryptionVersion = 2
 	if err = p.Persist(t.Context(), storage); err != nil {
@@ -355,9 +347,7 @@ func validatePublicKey(t *testing.T, in string, sig string, pubKeyRaw []byte, ex
 		Path:      "keys/" + postpath,
 	}
 	keyReadResp, err := b.HandleRequest(t.Context(), keyReadReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	val := keyReadResp.Data["keys"].(map[string]map[string]any)[strings.TrimPrefix(splitSig[1], "v")]
 	var ak asymKey
 	if err := mapstructure.Decode(val, &ak); err != nil {
@@ -370,9 +360,7 @@ func validatePublicKey(t *testing.T, in string, sig string, pubKeyRaw []byte, ex
 		"context": "abcd",
 	}
 	keyReadResp, err = b.HandleRequest(t.Context(), keyReadReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	val = keyReadResp.Data["keys"].(map[string]map[string]any)[strings.TrimPrefix(splitSig[1], "v")]
 	if err := mapstructure.Decode(val, &ak); err != nil {
 		t.Fatal(err)
@@ -396,9 +384,7 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 		},
 	}
 	_, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Now create a derived key"
 	req = &logical.Request{
@@ -411,26 +397,20 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 		},
 	}
 	_, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Get the keys for later
 	fooP, _, err := b.GetPolicy(t.Context(), keysutil.PolicyRequest{
 		Storage: storage,
 		Name:    "foo",
 	}, b.GetRandomReader())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	barP, _, err := b.GetPolicy(t.Context(), keysutil.PolicyRequest{
 		Storage: storage,
 		Name:    "bar",
 	}, b.GetRandomReader())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	signRequest := func(req *logical.Request, errExpected bool, postpath string) []string {
 		t.Helper()
@@ -612,13 +592,9 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 
 	// Rotate and set min decryption version
 	err = fooP.Rotate(t.Context(), storage, b.GetRandomReader())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = fooP.Rotate(t.Context(), storage, b.GetRandomReader())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	fooP.MinDecryptionVersion = 2
 	if err = fooP.Persist(t.Context(), storage); err != nil {
 		t.Fatal(err)
@@ -626,13 +602,9 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 	fooP.Unlock()
 
 	err = barP.Rotate(t.Context(), storage, b.GetRandomReader())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = barP.Rotate(t.Context(), storage, b.GetRandomReader())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	barP.MinDecryptionVersion = 2
 	if err = barP.Persist(t.Context(), storage); err != nil {
 		t.Fatal(err)
@@ -759,9 +731,7 @@ func testTransit_SignVerify_RSA_PSS(t *testing.T, bits int) {
 		},
 	}
 	_, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	signRequest := func(errExpected bool, postpath string) string {
 		t.Helper()

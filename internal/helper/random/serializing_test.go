@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestJSONMarshalling(t *testing.T) {
@@ -30,15 +32,11 @@ func TestJSONMarshalling(t *testing.T) {
 	}
 
 	marshalled, err := json.Marshal(expected)
-	if err != nil {
-		t.Fatalf("no error expected, got: %s", err)
-	}
+	require.NoError(t, err)
 
 	actual := serializableRules{}
 	err = json.Unmarshal(marshalled, &actual)
-	if err != nil {
-		t.Fatalf("no error expected, got: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("Actual: %#v\nExpected: %#v", actual, expected)
@@ -51,9 +49,7 @@ func TestRunes_UnmarshalJSON(t *testing.T) {
 	expected := runes([]rune("noaw8hgfsdjlkfsj3"))
 	actual := runes{}
 	err := (&actual).UnmarshalJSON(data)
-	if err != nil {
-		t.Fatalf("no error expected, got: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("Actual: %#v\nExpected: %#v", actual, expected)

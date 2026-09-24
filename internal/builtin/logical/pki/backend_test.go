@@ -117,9 +117,7 @@ func TestPKI_RequireCN(t *testing.T) {
 	resp, err := CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name": "example.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected ca info")
 	}
@@ -131,9 +129,7 @@ func TestPKI_RequireCN(t *testing.T) {
 		"allow_subdomains":   true,
 		"max_ttl":            "2h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue a cert with require_cn set to true and with common name supplied.
 	// It should succeed.
@@ -141,9 +137,7 @@ func TestPKI_RequireCN(t *testing.T) {
 		"common_name": "foobar.com",
 	})
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("issue/example"), logical.UpdateOperation), resp, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue a cert with require_cn set to true and with out supplying the
 	// common name. It should error out.
@@ -160,16 +154,12 @@ func TestPKI_RequireCN(t *testing.T) {
 		"max_ttl":            "2h",
 		"require_cn":         false,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue a cert with require_cn set to false and without supplying the
 	// common name. It should succeed.
 	resp, err = CBWrite(b, s, "issue/example", map[string]any{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if resp.Data["certificate"] == "" {
 		t.Fatal("expected a cert to be generated")
@@ -178,9 +168,7 @@ func TestPKI_RequireCN(t *testing.T) {
 	// Issue a cert with require_cn set to false and with a common name. It
 	// should succeed.
 	resp, err = CBWrite(b, s, "issue/example", map[string]any{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if resp.Data["certificate"] == "" {
 		t.Fatal("expected a cert to be generated")
@@ -196,22 +184,16 @@ func TestPKI_DeviceCert(t *testing.T) {
 		"not_after":           "9999-12-31T23:59:59Z",
 		"not_before_duration": "2h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected ca info")
 	}
 	var certBundle certutil.CertBundle
 	err = mapstructure.Decode(resp.Data, &certBundle)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	parsedCertBundle, err := certBundle.ToParsedCertBundle()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cert := parsedCertBundle.Certificate
 	notAfter := cert.NotAfter.Format(time.RFC3339)
 	if notAfter != "9999-12-31T23:59:59Z" {
@@ -231,27 +213,19 @@ func TestPKI_DeviceCert(t *testing.T) {
 		"not_after_bound":    "permit",
 		"not_before_bound":   "permit",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue a cert with require_cn set to true and with common name supplied.
 	// It should succeed.
 	resp, err = CBWrite(b, s, "issue/example", map[string]any{
 		"common_name": "foobar.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = mapstructure.Decode(resp.Data, &certBundle)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	parsedCertBundle, err = certBundle.ToParsedCertBundle()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cert = parsedCertBundle.Certificate
 	notAfter = cert.NotAfter.Format(time.RFC3339)
 	if notAfter != "9999-12-31T23:59:59Z" {
@@ -738,14 +712,10 @@ func generateCSR(t *testing.T, csrTemplate *x509.CertificateRequest, keyType str
 		}
 	}
 
-	if err != nil {
-		t.Fatalf("Got error generating private key for CSR: %v", err)
-	}
+	require.NoError(t, err)
 
 	csr, err := x509.CreateCertificateRequest(rand.Reader, csrTemplate, priv)
-	if err != nil {
-		t.Fatalf("Got error generating CSR: %v", err)
-	}
+	require.NoError(t, err)
 
 	csrPem := strings.TrimSpace(string(pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE REQUEST",
@@ -956,9 +926,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 	} else {
 		var err error
 		seed, err = strconv.ParseInt(fixedSeed, 10, 64)
-		if err != nil {
-			t.Fatalf("error parsing fixed seed of %s: %v", fixedSeed, err)
-		}
+		require.NoErrorf(t, err, "error parsing fixed seed of %s: %v", fixedSeed, err)
 	}
 	mathRand := mathrand.New(mathrand.NewSource(seed))
 	// t.Logf("seed under test: %v", seed)
@@ -1204,9 +1172,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 					idna.VerifyDNSLength(true),
 				)
 				converted, err := p.ToUnicode(retName)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if converted != name {
 					return fmt.Errorf("error: returned certificate has a DNS SAN of %s (from idna: %s) but %s was requested", retName, converted, name)
 				}
@@ -1265,9 +1231,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		}
 
 		csr, err := x509.CreateCertificateRequest(rand.Reader, csrTemplate, privKey)
-		if err != nil {
-			t.Fatalf("Error creating certificate request: %s", err)
-		}
+		require.NoError(t, err)
 		block := pem.Block{
 			Type:  "CERTIFICATE REQUEST",
 			Bytes: csr,
@@ -1966,7 +1930,7 @@ func TestBackend_PathFetchValidRaw(t *testing.T) {
 		},
 		MountPoint: "pki/",
 	})
-	require.NoError(t, err, "error setting up pki role: %v", err)
+	require.NoError(t, err)
 
 	// Now issue a short-lived certificate from our pki-external.
 	resp, err = b.HandleRequest(t.Context(), &logical.Request{
@@ -1979,7 +1943,7 @@ func TestBackend_PathFetchValidRaw(t *testing.T) {
 		},
 		MountPoint: "pki/",
 	})
-	require.NoError(t, err, "error issuing certificate: %v", err)
+	require.NoError(t, err)
 	require.NotNil(t, resp, "got nil response from issuing request")
 
 	issueCrtAsPem := resp.Data["certificate"].(string)
@@ -1996,9 +1960,7 @@ func TestBackend_PathFetchValidRaw(t *testing.T) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to get raw cert, %#v", resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// check the raw cert matches the response body
 	rawBody := resp.Data[logical.HTTPRawBody].([]byte)
@@ -2019,9 +1981,7 @@ func TestBackend_PathFetchValidRaw(t *testing.T) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to get raw, %#v", resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// check the pem cert matches the response body
 	if !bytes.Equal(resp.Data[logical.HTTPRawBody].([]byte), expectedCert) {
@@ -2054,9 +2014,7 @@ func TestBackend_PathFetchCertList(t *testing.T) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to generate root, %#v", resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// config urls
 	urlsData := map[string]any{
@@ -2072,9 +2030,7 @@ func TestBackend_PathFetchCertList(t *testing.T) {
 		Data:       urlsData,
 		MountPoint: "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("config/urls"), logical.UpdateOperation), resp, true)
 
@@ -2089,9 +2045,7 @@ func TestBackend_PathFetchCertList(t *testing.T) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to config urls, %#v", resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// create a role entry
 	roleData := map[string]any{
@@ -2110,9 +2064,7 @@ func TestBackend_PathFetchCertList(t *testing.T) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to create a role, %#v", resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// issue some certs
 	i := 1
@@ -2130,9 +2082,7 @@ func TestBackend_PathFetchCertList(t *testing.T) {
 		if resp != nil && resp.IsError() {
 			t.Fatalf("failed to issue a cert, %#v", resp)
 		}
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		i = i + 1
 	}
@@ -2147,9 +2097,7 @@ func TestBackend_PathFetchCertList(t *testing.T) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to list certs, %#v", resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// check that the root and 9 additional certs are all listed
 	if len(resp.Data["keys"].([]string)) != 10 {
 		t.Fatal("failed to list all 10 certs")
@@ -2165,9 +2113,7 @@ func TestBackend_PathFetchCertList(t *testing.T) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to list certs, %#v", resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// check that the root and 9 additional certs are all listed
 	if len(resp.Data["keys"].([]string)) != 10 {
 		t.Fatal("failed to list all 10 certs")
@@ -2212,15 +2158,11 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to generate root, %#v", *resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// create a CSR and key
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	csrReq := &x509.CertificateRequest{
 		Subject: pkix.Name{
 			CommonName: "foo.bar.com",
@@ -2237,9 +2179,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 		},
 	}
 	csr, err := x509.CreateCertificateRequest(rand.Reader, csrReq, key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(csr) == 0 {
 		t.Fatal("generated csr is empty")
 	}
@@ -2269,9 +2209,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to sign-verbatim basic CSR: %#v", *resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Secret != nil {
 		t.Fatal("secret is not nil")
 	}
@@ -2293,9 +2231,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to create a role, %#v", *resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "sign-verbatim/test",
@@ -2309,9 +2245,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to sign-verbatim ttl'd CSR: %#v", *resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Secret != nil {
 		t.Fatal("got a lease when we should not have")
 	}
@@ -2325,9 +2259,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 		},
 		MountPoint: "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp != nil && resp.IsError() {
 		t.Fatal(resp.Error().Error())
 	}
@@ -2340,9 +2272,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 		t.Fatal("nil pem block")
 	}
 	certs, err := x509.ParseCertificates(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(certs) != 1 {
 		t.Fatalf("expected a single cert, got %d", len(certs))
 	}
@@ -2373,9 +2303,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to sign-verbatim CSR using option \"basic_constraints_valid_for_non_ca\": %#v", *resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if resp.Data == nil || resp.Data["certificate"] == nil {
 		t.Fatal("did not get expected data")
@@ -2386,9 +2314,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 		t.Fatal("nil pem block")
 	}
 	certs, err = x509.ParseCertificates(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(certs) != 1 {
 		t.Fatalf("expected a single cert, got %d", len(certs))
 	}
@@ -2420,9 +2346,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to create a role, %#v", *resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -2434,9 +2358,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 		},
 		MountPoint: "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to sign-verbatim CSR with role using \"basic_constraints_valid_for_non_ca\": %#v", *resp)
 	}
@@ -2449,9 +2371,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 		t.Fatal("nil pem block")
 	}
 	certs, err = x509.ParseCertificates(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(certs) != 1 {
 		t.Fatalf("expected a single cert, got %d", len(certs))
 	}
@@ -2477,9 +2397,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 		},
 		MountPoint: "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to sign-verbatim CSR with role using \"basic_constraints_valid_for_non_ca\": %#v", *resp)
 	}
@@ -2492,9 +2410,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 		t.Fatal("nil pem block")
 	}
 	certs, err = x509.ParseCertificates(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(certs) != 1 {
 		t.Fatalf("expected a single cert, got %d", len(certs))
 	}
@@ -2515,9 +2431,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 		},
 		MountPoint: "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp != nil && resp.IsError() {
 		t.Fatal(resp.Error().Error())
 	}
@@ -2530,9 +2444,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 		t.Fatal("nil pem block")
 	}
 	certs, err = x509.ParseCertificates(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(certs) != 1 {
 		t.Fatalf("expected a single cert, got %d", len(certs))
 	}
@@ -2572,9 +2484,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to create a role, %#v", *resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	resp, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "sign-verbatim/test",
@@ -2588,9 +2498,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to sign-verbatim role-leased CSR: %#v", *resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Secret == nil {
 		t.Fatalf("secret is nil, response is %#v", *resp)
 	}
@@ -2621,7 +2529,7 @@ func TestBackend_Root_Idempotency(t *testing.T) {
 	require.Equal(t, resp.Data["subject_key_id"], certSkid)
 
 	resp, err = CBRead(b, s, "cert/ca_chain")
-	require.NoError(t, err, "error reading ca_chain: %v", err)
+	require.NoError(t, err)
 
 	r1Data := resp.Data
 
@@ -2648,7 +2556,7 @@ func TestBackend_Root_Idempotency(t *testing.T) {
 
 	// Now because the issued CA's have no links, the call to ca_chain should return the same data (ca chain from default)
 	resp, err = CBRead(b, s, "cert/ca_chain")
-	require.NoError(t, err, "error reading ca_chain: %v", err)
+	require.NoError(t, err)
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("cert/ca_chain"), logical.ReadOperation), resp, true)
 
 	r2Data := resp.Data
@@ -2754,25 +2662,19 @@ func TestBackend_SignIntermediate_AllowedPastCAValidity(t *testing.T) {
 		"ttl":         "40h",
 		"common_name": "example.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = CBWrite(b_root, s_root, "roles/test", map[string]any{
 		"allow_bare_domains": true,
 		"allow_subdomains":   true,
 		"allow_any_name":     true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := CBWrite(b_int, s_int, "intermediate/generate/internal", map[string]any{
 		"common_name": "myint.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b_root.Route("intermediate/generate/internal"), logical.UpdateOperation), resp, true)
 	require.Contains(t, resp.Data, "key_id")
@@ -2784,9 +2686,7 @@ func TestBackend_SignIntermediate_AllowedPastCAValidity(t *testing.T) {
 	require.NotNil(t, resp, "expected a response")
 	intSkid := resp.Data["subject_key_id"].(string)
 
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = CBWrite(b_root, s_root, "sign/test", map[string]any{
 		"common_name": "myint.com",
@@ -2811,9 +2711,7 @@ func TestBackend_SignIntermediate_AllowedPastCAValidity(t *testing.T) {
 		"key_usage":     "DigitalSignature",
 		"ext_key_usage": "ClientAuth",
 	})
-	if err != nil {
-		t.Fatalf("got error: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("got nil response")
 	}
@@ -2894,14 +2792,10 @@ func TestBackend_SignSelfIssued(t *testing.T) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to generate root, %#v", *resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	template := &x509.Certificate{
 		Subject: pkix.Name{
@@ -2922,9 +2816,7 @@ func TestBackend_SignSelfIssued(t *testing.T) {
 		},
 		MountPoint: "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("got nil response")
 	}
@@ -2953,9 +2845,7 @@ func TestBackend_SignSelfIssued(t *testing.T) {
 		},
 		MountPoint: "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("got nil response")
 	}
@@ -2974,9 +2864,7 @@ func TestBackend_SignSelfIssued(t *testing.T) {
 		MountPoint: "pki/",
 	})
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("root/sign-self-issued"), logical.UpdateOperation), resp, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("got nil response")
 	}
@@ -2987,15 +2875,11 @@ func TestBackend_SignSelfIssued(t *testing.T) {
 	newCertString := resp.Data["certificate"].(string)
 	block, _ := pem.Decode([]byte(newCertString))
 	newCert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	sc := b.makeStorageContext(t.Context(), storage)
 	signingBundle, err := sc.fetchCAInfo(defaultRef, ReadOnlyUsage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if reflect.DeepEqual(newCert.Subject, newCert.Issuer) {
 		t.Fatal("expected different subject/issuer")
 	}
@@ -3038,14 +2922,10 @@ func TestBackend_SignSelfIssued_DifferentTypes(t *testing.T) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("failed to generate root, %#v", *resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	template := &x509.Certificate{
 		Subject: pkix.Name{
@@ -3067,9 +2947,7 @@ func TestBackend_SignSelfIssued_DifferentTypes(t *testing.T) {
 		},
 		MountPoint: "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("got nil response")
 	}
@@ -3089,9 +2967,7 @@ func TestBackend_SignSelfIssued_DifferentTypes(t *testing.T) {
 		},
 		MountPoint: "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("got nil response")
 	}
@@ -3155,9 +3031,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 		"ttl":         "40h",
 		"common_name": "example.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = CBWrite(b, s, "roles/test", map[string]any{
 		"allowed_domains":    []string{"foobar.com", "zipzap.com"},
@@ -3166,9 +3040,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 		"allow_ip_sans":      true,
 		"allowed_other_sans": "1.3.6.1.4.1.311.20.2.3;UTF8:devops@*,1.3.6.1.4.1.311.20.2.4;utf8:d*e@foobar.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Get a baseline before adding OID SANs. In the next sections we'll verify
 	// that the SANs are all added even as the OID SAN inclusion forces other
@@ -3179,15 +3051,11 @@ func TestBackend_OID_SANs(t *testing.T) {
 		"alt_names":   "foobar.com,foo.foobar.com,bar.foobar.com",
 		"ttl":         "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	certStr = resp.Data["certificate"].(string)
 	block, _ = pem.Decode([]byte(certStr))
 	cert, err = x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if cert.IPAddresses[0].String() != "1.2.3.4" {
 		t.Fatalf("unexpected IP SAN %q", cert.IPAddresses[0].String())
 	}
@@ -3267,15 +3135,11 @@ func TestBackend_OID_SANs(t *testing.T) {
 		"ttl":         "1h",
 		"other_sans":  "1.3.6.1.4.1.311.20.2.3;utf8:devops@nope.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	certStr = resp.Data["certificate"].(string)
 	block, _ = pem.Decode([]byte(certStr))
 	cert, err = x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if cert.IPAddresses[0].String() != "1.2.3.4" {
 		t.Fatalf("unexpected IP SAN %q", cert.IPAddresses[0].String())
 	}
@@ -3297,15 +3161,11 @@ func TestBackend_OID_SANs(t *testing.T) {
 		"ttl":         "1h",
 		"other_sans":  "1.3.6.1.4.1.311.20.2.4;UTF8:d234e@foobar.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	certStr = resp.Data["certificate"].(string)
 	block, _ = pem.Decode([]byte(certStr))
 	cert, err = x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if cert.IPAddresses[0].String() != "1.2.3.4" {
 		t.Fatalf("unexpected IP SAN %q", cert.IPAddresses[0].String())
 	}
@@ -3333,15 +3193,11 @@ func TestBackend_OID_SANs(t *testing.T) {
 		"ttl":         "1h",
 		"other_sans":  strings.Join(otherNames, ","),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	certStr = resp.Data["certificate"].(string)
 	block, _ = pem.Decode([]byte(certStr))
 	cert, err = x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if cert.IPAddresses[0].String() != "1.2.3.4" {
 		t.Fatalf("unexpected IP SAN %q", cert.IPAddresses[0].String())
 	}
@@ -3353,9 +3209,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 	}
 	expectedOtherNames := []otherNameUtf8{{oid1, val1}, {oid2, val2}}
 	foundOtherNames, err := getOtherSANsFromX509Extensions(cert.Extensions)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(expectedOtherNames, foundOtherNames); len(diff) != 0 {
 		t.Errorf("unexpected otherNames: %v", diff)
 	}
@@ -3378,26 +3232,20 @@ func TestBackend_AllowedSerialNumbers(t *testing.T) {
 		"ttl":         "40h",
 		"common_name": "example.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// First test that Serial Numbers are not allowed
 	_, err = CBWrite(b, s, "roles/test", map[string]any{
 		"allow_any_name":    true,
 		"enforce_hostnames": false,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = CBWrite(b, s, "issue/test", map[string]any{
 		"common_name": "foobar",
 		"ttl":         "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = CBWrite(b, s, "issue/test", map[string]any{
 		"common_name":   "foobar",
@@ -3414,9 +3262,7 @@ func TestBackend_AllowedSerialNumbers(t *testing.T) {
 		"enforce_hostnames":      false,
 		"allowed_serial_numbers": "f00*,b4r*",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = CBWrite(b, s, "issue/test", map[string]any{
 		"common_name": "foobar",
@@ -3433,15 +3279,11 @@ func TestBackend_AllowedSerialNumbers(t *testing.T) {
 		"common_name":   "foobar",
 		"serial_number": "f00bar",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	certStr = resp.Data["certificate"].(string)
 	block, _ = pem.Decode([]byte(certStr))
 	cert, err = x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if cert.Subject.SerialNumber != "f00bar" {
 		t.Fatalf("unexpected Subject SerialNumber %s", cert.Subject.SerialNumber)
 	}
@@ -3454,15 +3296,11 @@ func TestBackend_AllowedSerialNumbers(t *testing.T) {
 		"common_name":   "foobar",
 		"serial_number": "b4rf00",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	certStr = resp.Data["certificate"].(string)
 	block, _ = pem.Decode([]byte(certStr))
 	cert, err = x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if cert.Subject.SerialNumber != "b4rf00" {
 		t.Fatalf("unexpected Subject SerialNumber %s", cert.Subject.SerialNumber)
 	}
@@ -3481,9 +3319,7 @@ func TestBackend_URI_SANs(t *testing.T) {
 		"ttl":         "40h",
 		"common_name": "example.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = CBWrite(b, s, "roles/test", map[string]any{
 		"allowed_domains":    []string{"foobar.com", "zipzap.com"},
@@ -3492,9 +3328,7 @@ func TestBackend_URI_SANs(t *testing.T) {
 		"allow_ip_sans":      true,
 		"allowed_uri_sans":   []string{"http://someuri/abc", "spiffe://host.com/*"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// First test some bad stuff that shouldn't work
 	_, err = CBWrite(b, s, "issue/test", map[string]any{
@@ -3516,9 +3350,7 @@ func TestBackend_URI_SANs(t *testing.T) {
 		"ttl":         "1h",
 		"uri_sans":    "http://someuri/abc",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Test globed entry
 	_, err = CBWrite(b, s, "issue/test", map[string]any{
@@ -3528,9 +3360,7 @@ func TestBackend_URI_SANs(t *testing.T) {
 		"ttl":         "1h",
 		"uri_sans":    "spiffe://host.com/something",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Test multiple entries
 	resp, err := CBWrite(b, s, "issue/test", map[string]any{
@@ -3540,16 +3370,12 @@ func TestBackend_URI_SANs(t *testing.T) {
 		"ttl":         "1h",
 		"uri_sans":    "spiffe://host.com/something,http://someuri/abc",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	certStr := resp.Data["certificate"].(string)
 	block, _ := pem.Decode([]byte(certStr))
 	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	URI0, _ := url.Parse("spiffe://host.com/something")
 	URI1, _ := url.Parse("http://someuri/abc")
@@ -3576,9 +3402,7 @@ func TestBackend_IP_SANs(t *testing.T) {
 		"ttl":         "40h",
 		"common_name": "example.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = CBWrite(b, s, "roles/test", map[string]any{
 		"allowed_domains":      []string{"foobar.com", "zipzap.com"},
@@ -3587,9 +3411,7 @@ func TestBackend_IP_SANs(t *testing.T) {
 		"allow_ip_sans":        true,
 		"allowed_ip_sans_cidr": []string{"4.3.2.1/32", "1.2.3.4/31"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// First test some bad stuff that shouldn't work
 	_, err = CBWrite(b, s, "issue/test", map[string]any{
@@ -3609,9 +3431,7 @@ func TestBackend_IP_SANs(t *testing.T) {
 		"alt_names":   "foo.foobar.com,bar.foobar.com",
 		"ttl":         "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Test multiple entries
 	resp, err := CBWrite(b, s, "issue/test", map[string]any{
@@ -3620,16 +3440,12 @@ func TestBackend_IP_SANs(t *testing.T) {
 		"alt_names":   "foo.foobar.com,bar.foobar.com",
 		"ttl":         "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	certStr := resp.Data["certificate"].(string)
 	block, _ := pem.Decode([]byte(certStr))
 	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	IP0 := net.ParseIP("1.2.3.4")
 	IP1 := net.ParseIP("1.2.3.5")
@@ -3671,9 +3487,7 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 	path "identity/entity" {
 		capabilities = ["update"]
 	}`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Enable userpass auth method.
 	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
@@ -3700,9 +3514,7 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 
 	// Get auth accessor for identity template.
 	auths, err := client.Sys().ListAuth()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	userpassAccessor := auths["userpass/"].Accessor
 
 	// Mount PKI.
@@ -3713,18 +3525,14 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 			MaxLeaseTTL:     "60h",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Generate internal CA.
 	_, err = client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"ttl":         "40h",
 		"common_name": "example.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write role PKI.
 	_, err = client.Logical().Write("pki/roles/test", map[string]any{
@@ -3735,23 +3543,17 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 		"allowed_uri_sans_template": true,
 		"require_cn":                false,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue certificate with identity templating
 	client.SetToken(userpassToken)
 	_, err = client.Logical().Write("pki/issue/test", map[string]any{"uri_sans": "spiffe://domain/userpassname, spiffe://domain/foo"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue certificate with identity templating and glob
 	client.SetToken(userpassToken)
 	_, err = client.Logical().Write("pki/issue/test", map[string]any{"uri_sans": "spiffe://domain/userpassname/bar"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue certificate with non-matching identity template parameter
 	client.SetToken(userpassToken)
@@ -3762,9 +3564,7 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 	_, err = client.Logical().JSONMergePatch(t.Context(), "pki/roles/test", map[string]any{
 		"allowed_uri_sans_template": false,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue certificate with userpassToken.
 	_, err = client.Logical().Write("pki/issue/test", map[string]any{"uri_sans": "spiffe://domain/users/userpassname"})
@@ -3826,9 +3626,7 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 	path "identity/entity" {
 		capabilities = ["update"]
 	}`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Enable userpass auth method.
 	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
@@ -3845,15 +3643,11 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 
 	// Login userpass for test role and set client token
 	userpassAuth, err := auth.NewUserpassAuth("userpassname", &auth.Password{FromString: "test"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Get auth accessor for identity template.
 	auths, err := client.Sys().ListAuth()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	userpassAccessor := auths["userpass/"].Accessor
 
 	// Mount PKI.
@@ -3864,18 +3658,14 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 			MaxLeaseTTL:     "60h",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Generate internal CA.
 	_, err = client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"ttl":         "40h",
 		"common_name": "example.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write role PKI.
 	_, err = client.Logical().Write("pki/roles/test", map[string]any{
@@ -3887,30 +3677,22 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 		"allow_bare_domains":       true,
 		"allow_glob_domains":       true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue certificate with userpassToken.
 	secret, err := client.Auth().Login(t.Context(), userpassAuth)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err != nil || secret == nil {
 		t.Fatal(err)
 	}
 	entityId := secret.Auth.EntityID
 
 	_, err = client.Logical().Write("pki/issue/test", map[string]any{"common_name": "userpassname"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue certificate for foobar.com to verify allowed_domain_template doesn't break plain domains.
 	_, err = client.Logical().Write("pki/issue/test", map[string]any{"common_name": "foobar.com"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue certificate for unknown userpassname.
 	_, err = client.Logical().Write("pki/issue/test", map[string]any{"common_name": "unknownuserpassname"})
@@ -3918,17 +3700,13 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 
 	// Issue certificate for foo.userpassname.domain.
 	_, err = client.Logical().Write("pki/issue/test", map[string]any{"common_name": "foo.userpassname.example.com"})
-	if err != nil {
-		t.Fatal("expected error")
-	}
+	require.NoError(t, err)
 
 	// Set allowed_domains_template to false.
 	_, err = client.Logical().JSONMergePatch(t.Context(), "pki/roles/test", map[string]any{
 		"allowed_domains_template": false,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue certificate with userpassToken.
 	_, err = client.Logical().Write("pki/issue/test", map[string]any{"common_name": "userpassname"})
@@ -3991,14 +3769,10 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 			MaxLeaseTTL:     "60h",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := client.Logical().ReadWithContext(ctx, "pki/roles/test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if resp != nil {
 		t.Fatalf("response should have been empty but was:\n%#v", resp)
@@ -4006,15 +3780,11 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 
 	// Write role PKI.
 	_, err = client.Logical().WriteWithContext(ctx, "pki/roles/test", map[string]any{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read the role.
 	resp, err = client.Logical().ReadWithContext(ctx, "pki/roles/test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if resp.Data == nil {
 		t.Fatal("default data within response was nil when it should have contained data")
@@ -4081,14 +3851,10 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 	}
 
 	_, err = client.Logical().DeleteWithContext(ctx, "pki/roles/test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err = client.Logical().ReadWithContext(ctx, "pki/roles/test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if resp != nil {
 		t.Fatalf("response should have been empty but was:\n%#v", resp)
@@ -4206,9 +3972,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 	metricsConf.EnableTypePrefix = false
 
 	_, err := metrics.NewGlobal(metricsConf, inmemSink)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Enable PKI secret engine
 	coreConfig := &vault.CoreConfig{
@@ -4233,25 +3997,19 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 			MaxLeaseTTL:     "32h",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set up Metric Configuration, then restart to enable it
 	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]any{
 		"maintain_stored_certificate_counts":       true,
 		"publish_stored_certificate_count_metrics": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("/sys/plugins/reload/backend", map[string]any{
 		"mounts": "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Check the metrics initialized in order to calculate backendUUID for /pki
 	// BackendUUID not consistent during tests with UUID from /sys/mounts/pki
@@ -4274,9 +4032,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 	_, err = client.Logical().Write("pki/config/ca", map[string]any{
 		"pem_bundle": pemBundleRootCA,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Mount /pki2 to operate as an intermediate CA
 	err = client.Sys().Mount("pki2", &api.MountInput{
@@ -4286,31 +4042,23 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 			MaxLeaseTTL:     "32h",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set up Metric Configuration, then restart to enable it
 	_, err = client.Logical().Write("pki2/config/auto-tidy", map[string]any{
 		"maintain_stored_certificate_counts":       true,
 		"publish_stored_certificate_count_metrics": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("/sys/plugins/reload/backend", map[string]any{
 		"mounts": "pki2/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a CSR for the intermediate CA
 	secret, err := client.Logical().Write("pki2/intermediate/generate/internal", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	intermediateCSR := secret.Data["csr"].(string)
 
 	// Sign the intermediate CSR using /pki
@@ -4319,17 +4067,13 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 		"csr":                   intermediateCSR,
 		"ttl":                   "10s",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	intermediateCertSerial := secret.Data["serial_number"].(string)
 	intermediateCASerialColon := strings.ReplaceAll(strings.ToLower(intermediateCertSerial), ":", "-")
 
 	// Get the intermediate cert after signing
 	secret, err = client.Logical().Read("pki/cert/" + intermediateCASerialColon)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if secret == nil || len(secret.Data) == 0 || len(secret.Data["certificate"].(string)) == 0 {
 		t.Fatal("expected certificate information from read operation")
@@ -4339,9 +4083,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 	_, err = client.Logical().Write("pki/revoke", map[string]any{
 		"serial_number": intermediateCertSerial,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Check the cert-count metrics
 	expectedCertCountGaugeMetrics := map[string]float32{
@@ -4408,9 +4150,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 	// Issue a tidy-status on /pki
 	{
 		tidyStatus, err := client.Logical().Read("pki/tidy-status")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		expectedData := map[string]any{
 			"safety_buffer":                         json.Number("1"),
 			"revoked_safety_buffer":                 json.Number("1"),
@@ -4536,9 +4276,7 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 	metricsConf.EnableTypePrefix = false
 
 	_, err := metrics.NewGlobal(metricsConf, inmemSink)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Enable PKI secret engine
 	coreConfig := &vault.CoreConfig{
@@ -4566,33 +4304,25 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 			MaxLeaseTTL:     "32h",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set up Metric Configuration, then restart to enable it
 	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]any{
 		"maintain_stored_certificate_counts":       true,
 		"publish_stored_certificate_count_metrics": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	_, err = client.Logical().Write("/sys/plugins/reload/backend", map[string]any{
 		"mounts": "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set the cluster's certificate as the root CA in /pki
 	pemBundleRootCA := string(cluster.CACertPEM) + string(cluster.CAKeyPEM)
 	_, err = client.Logical().Write("pki/config/ca", map[string]any{
 		"pem_bundle": pemBundleRootCA,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create the "test" role
 	_, err = client.Logical().Write("pki/roles/test", map[string]any{
@@ -4600,9 +4330,7 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 		"allow_subdomains": true,
 		"max_ttl":          "72h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue 3 short-lived certificates
 	lastTTL := time.Now()
@@ -4611,9 +4339,7 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 			"common_name": "short-lived.example.com",
 			"ttl":         "1s",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		leafCert := parseCert(t, resp.Data["certificate"].(string))
 		lastTTL = leafCert.NotAfter
@@ -4625,9 +4351,7 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 			"common_name": "long-lived.example.com",
 			"ttl":         "600s",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	// Wait for the short-lived certificates to expire
@@ -4673,9 +4397,7 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 		"common_name": "short-lived.example.com",
 		"ttl":         "5s", // Short-lived certificate
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	certSerial1 := cert1Resp.Data["serial_number"].(string)
 	cert1 := parseCert(t, cert1Resp.Data["certificate"].(string))
 
@@ -4683,23 +4405,17 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 		"common_name": "long-lived.example.com",
 		"ttl":         "600s", // Long-lived certificate
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	certSerial2 := cert2.Data["serial_number"].(string)
 
 	_, err = client.Logical().Write("pki/revoke", map[string]any{
 		"serial_number": certSerial1,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	_, err = client.Logical().Write("pki/revoke", map[string]any{
 		"serial_number": certSerial2,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Wait for the short-lived certificate to expire
 	time.Sleep(time.Until(cert1.NotAfter) + 50*time.Millisecond)
@@ -4788,9 +4504,7 @@ func runFullCAChainTest(t *testing.T, keyType string) {
 		"common_name": "root example.com",
 		"key_type":    keyType,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected ca info")
 	}
@@ -4799,9 +4513,7 @@ func runFullCAChainTest(t *testing.T, keyType string) {
 
 	// Validate that root's /cert/ca-chain now contains the certificate.
 	resp, err = CBRead(b_root, s_root, "cert/ca_chain")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected intermediate chain information")
 	}
@@ -4815,13 +4527,13 @@ func runFullCAChainTest(t *testing.T, keyType string) {
 		"allow_subdomains": "true",
 		"max_ttl":          "1h",
 	})
-	require.NoError(t, err, "error setting up pki root role: %v", err)
+	require.NoError(t, err)
 
 	resp, err = CBWrite(b_root, s_root, "issue/example", map[string]any{
 		"common_name": "test.example.com",
 		"ttl":         "5m",
 	})
-	require.NoError(t, err, "error issuing certificate from pki root: %v", err)
+	require.NoError(t, err)
 	fullChainArray := resp.Data["ca_chain"].([]string)
 	requireCertInCaChainArray(t, fullChainArray, rootCert, "expected root cert within root issuance pki-root/issue/example")
 
@@ -4832,9 +4544,7 @@ func runFullCAChainTest(t *testing.T, keyType string) {
 		"common_name": "intermediate example.com",
 		"key_type":    keyType,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected intermediate CSR info")
 	}
@@ -4845,9 +4555,7 @@ func runFullCAChainTest(t *testing.T, keyType string) {
 		"csr":    intermediateData["csr"],
 		"format": "pem",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected signed intermediate info")
 	}
@@ -4865,16 +4573,12 @@ func runFullCAChainTest(t *testing.T, keyType string) {
 	_, err = CBWrite(b_int, s_int, "intermediate/set-signed", map[string]any{
 		"certificate": intermediateCert + "\n" + rootCert + "\n",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Validate that intermediate's ca_chain field now includes the full
 	// chain.
 	resp, err = CBRead(b_int, s_int, "cert/ca_chain")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected intermediate chain information")
 	}
@@ -4893,13 +4597,13 @@ func runFullCAChainTest(t *testing.T, keyType string) {
 		"allow_subdomains": "true",
 		"max_ttl":          "1h",
 	})
-	require.NoError(t, err, "error setting up pki intermediate role: %v", err)
+	require.NoError(t, err)
 
 	resp, err = CBWrite(b_int, s_int, "issue/example", map[string]any{
 		"common_name": "test.example.com",
 		"ttl":         "5m",
 	})
-	require.NoError(t, err, "error issuing certificate from pki intermediate: %v", err)
+	require.NoError(t, err)
 	fullChainArray = resp.Data["ca_chain"].([]string)
 	requireCertInCaChainArray(t, fullChainArray, intermediateCert, "expected full chain to contain intermediate certificate from pki-intermediate/issue/example")
 	requireCertInCaChainArray(t, fullChainArray, rootCert, "expected full chain to contain root certificate from pki-intermediate/issue/example")
@@ -4911,15 +4615,11 @@ func runFullCAChainTest(t *testing.T, keyType string) {
 	_, err = CBWrite(b_ext, s_ext, "config/ca", map[string]any{
 		"pem_bundle": intermediateKey + "\n" + intermediateCert + "\n" + rootCert + "\n",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Validate the external chain information was loaded correctly.
 	resp, err = CBRead(b_ext, s_ext, "cert/ca_chain")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected intermediate chain information")
 	}
@@ -4938,13 +4638,13 @@ func runFullCAChainTest(t *testing.T, keyType string) {
 		"allow_subdomains": "true",
 		"max_ttl":          "1h",
 	})
-	require.NoError(t, err, "error setting up pki role: %v", err)
+	require.NoError(t, err)
 
 	resp, err = CBWrite(b_ext, s_ext, "issue/example", map[string]any{
 		"common_name": "test.example.com",
 		"ttl":         "5m",
 	})
-	require.NoError(t, err, "error issuing certificate: %v", err)
+	require.NoError(t, err)
 	require.NotNil(t, resp, "got nil response from issuing request")
 	issueCrtAsPem := resp.Data["certificate"].(string)
 	issuedCrt := parseCert(t, issueCrtAsPem)
@@ -5046,9 +4746,7 @@ func RoleIssuanceRegressionHelper(t *testing.T, b *backend, s logical.Storage, i
 							// With the CN Validations field, ensure we prevent CN from appearing
 							// in SANs.
 						})
-						if err != nil {
-							t.Fatal(err)
-						}
+						require.NoError(t, err)
 
 						resp, err := CBWrite(b, s, "issue/"+role, map[string]any{
 							"common_name":          test.CommonName,
@@ -5254,9 +4952,7 @@ func TestBackend_Roles_IssuanceRegression(t *testing.T) {
 		"key_type":    "rsa",
 		"key_bits":    2048,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected ca info")
 	}
@@ -5306,9 +5002,7 @@ func RoleKeySizeRegressionHelper(t *testing.T, b *backend, s logical.Storage, in
 				"key_type":    caKeyType,
 				"key_bits":    caKeyBits,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("expected ca info")
 			}
@@ -5322,9 +5016,7 @@ func RoleKeySizeRegressionHelper(t *testing.T, b *backend, s logical.Storage, in
 						"signature_bits": roleSignatureBits,
 						"use_pss":        test.RoleUsePSS,
 					})
-					if err != nil {
-						t.Fatal(err)
-					}
+					require.NoError(t, err)
 
 					for index, keyType := range test.TestKeyTypes {
 						keyBits := test.TestKeyBits[index]
@@ -5361,9 +5053,7 @@ func RoleKeySizeRegressionHelper(t *testing.T, b *backend, s logical.Storage, in
 			}
 
 			_, err = CBDelete(b, s, "root")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}
 
@@ -6336,9 +6026,7 @@ func TestBackend_InitializeCertificateCounts(t *testing.T) {
 	resp, err := CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name": "example.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected ca info")
 	}
@@ -6350,9 +6038,7 @@ func TestBackend_InitializeCertificateCounts(t *testing.T) {
 		"allow_subdomains":   true,
 		"max_ttl":            "2h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Put certificates A, B, C, D, E in backend
 	certificates := []string{"a", "b", "c", "d", "e"}
@@ -6361,9 +6047,7 @@ func TestBackend_InitializeCertificateCounts(t *testing.T) {
 		resp, err = CBWrite(b, s, "issue/example", map[string]any{
 			"common_name": cn + ".example.com",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		serials[i] = resp.Data["serial_number"].(string)
 	}
 
@@ -6381,9 +6065,7 @@ func TestBackend_InitializeCertificateCounts(t *testing.T) {
 		_, err = CBWrite(b, s, "revoke", map[string]any{
 			"serial_number": key,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	if b.certCount.Load() != 6 {
@@ -6404,9 +6086,7 @@ func TestBackend_InitializeCertificateCounts(t *testing.T) {
 		_, err = CBWrite(b, s, "revoke", map[string]any{
 			"serial_number": key,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	// Put certificates F, G in the backend
@@ -6415,9 +6095,7 @@ func TestBackend_InitializeCertificateCounts(t *testing.T) {
 		_, err = CBWrite(b, s, "issue/example", map[string]any{
 			"common_name": cn + ".example.com",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	// Run initialize
@@ -7177,7 +6855,7 @@ func TestStandby_Operations(t *testing.T) {
 		"common_name": "root-ca.com",
 		"ttl":         "600h",
 	})
-	require.NoError(t, err, "error setting up pki role: %v", err)
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("pki/roles/example", map[string]any{
 		"allowed_domains":  "example.com",
@@ -7186,19 +6864,19 @@ func TestStandby_Operations(t *testing.T) {
 		"ttl":              "5h",
 		"key_type":         "ec",
 	})
-	require.NoError(t, err, "error setting up pki role: %v", err)
+	require.NoError(t, err)
 
 	resp, err := client.Logical().Write("pki/issue/example", map[string]any{
 		"common_name": "test.example.com",
 	})
-	require.NoError(t, err, "error issuing certificate: %v", err)
+	require.NoError(t, err)
 	require.NotNil(t, resp, "got nil response from issuing request")
 	serialOfCert := resp.Data["serial_number"].(string)
 
 	resp, err = client.Logical().Write("pki/revoke", map[string]any{
 		"serial_number": serialOfCert,
 	})
-	require.NoError(t, err, "error revoking certificate: %v", err)
+	require.NoError(t, err)
 	require.NotNil(t, resp, "got nil response from revoke request")
 }
 
@@ -7403,25 +7081,19 @@ func TestProperAuthing(t *testing.T) {
 			MaxLeaseTTL:     "60h",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Setup basic configuration.
 	_, err = client.Logical().WriteWithContext(ctx, "pki/root/generate/internal", map[string]any{
 		"ttl":         "40h",
 		"common_name": "example.com",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().WriteWithContext(ctx, "pki/roles/test", map[string]any{
 		"allow_localhost": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := client.Logical().WriteWithContext(ctx, "pki/issue/test", map[string]any{
 		"common_name": "localhost",
@@ -7563,9 +7235,7 @@ func TestProperAuthing(t *testing.T) {
 
 	client.SetToken(token)
 	openAPIResp, err := client.Logical().ReadWithContext(ctx, "sys/internal/specs/openapi")
-	if err != nil {
-		t.Fatalf("failed to get openapi data: %v", err)
-	}
+	require.NoError(t, err)
 
 	validatedPath := false
 	for openapi_path, raw_data := range openAPIResp.Data["paths"].(map[string]any) {
@@ -7968,9 +7638,7 @@ func TestForbidNotBeforeBound(t *testing.T) {
 		"common_name": "example.com",
 		"not_after":   "9999-12-31T23:59:59Z",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create role with not_before_bound=forbid
 	_, err = CBWrite(b, s, "roles/example", map[string]any{
@@ -7978,9 +7646,7 @@ func TestForbidNotBeforeBound(t *testing.T) {
 		"allowed_domains":  "example.com",
 		"not_before_bound": "forbid",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issuing a certificate by providing not_before should result in an error
 	resp, err := CBWrite(b, s, "issue/example", map[string]any{
@@ -8001,9 +7667,7 @@ func TestDurationNotBeforeBound(t *testing.T) {
 		"common_name": "example.com",
 		"not_after":   "9999-12-31T23:59:59Z",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	not_before_duration := time.Hour * 2
 
@@ -8014,9 +7678,7 @@ func TestDurationNotBeforeBound(t *testing.T) {
 		"not_before_bound":    "duration",
 		"not_before_duration": not_before_duration,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	not_before := time.Now().Add(-time.Hour * 3).UTC().Format(time.RFC3339Nano)
 
@@ -8039,9 +7701,7 @@ func TestForbidNotAfterBound(t *testing.T) {
 		"common_name": "example.com",
 		"not_after":   "9999-12-31T23:59:59Z",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create role with not_after_bound=forbid
 	_, err = CBWrite(b, s, "roles/example", map[string]any{
@@ -8049,9 +7709,7 @@ func TestForbidNotAfterBound(t *testing.T) {
 		"allowed_domains":  "example.com",
 		"not_after_bound":  "forbid",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issuing a certificate by providing not_after should result in an error
 	resp, err := CBWrite(b, s, "issue/example", map[string]any{
@@ -8072,9 +7730,7 @@ func TestTimestampNotAfterBound(t *testing.T) {
 		"common_name": "example.com",
 		"not_after":   "9999-12-31T23:59:59Z",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	maxTimestamp := time.Now().Add(time.Hour * 2).UTC().Format(time.RFC3339Nano)
 
@@ -8084,9 +7740,7 @@ func TestTimestampNotAfterBound(t *testing.T) {
 		"allowed_domains":  "example.com",
 		"not_after_bound":  maxTimestamp,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	not_after := time.Now().Add(time.Hour * 3).UTC().Format(time.RFC3339Nano)
 

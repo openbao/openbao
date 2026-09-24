@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTokenEncodingDecodingWithOTP(t *testing.T) {
@@ -49,9 +50,7 @@ func TestTokenEncodingDecodingWithOTP(t *testing.T) {
 	for _, otpTestCase := range otpTestCases {
 		t.Run(otpTestCase.name, func(t *testing.T) {
 			otp, err := GenerateOTP(otpTestCase.otpLength)
-			if err != nil {
-				t.Fatal(err.Error())
-			}
+			require.NoError(t, err)
 			encodedToken, err := EncodeToken(otpTestCase.token, otp)
 			if err != nil || otpTestCase.expectedDecodingErr != "" {
 				assert.EqualError(t, err, otpTestCase.expectedEncodingErr)

@@ -329,9 +329,7 @@ func TestNewCore_badRedirectAddr(t *testing.T) {
 	logger = logging.NewVaultLogger(log.Trace)
 
 	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	conf := &CoreConfig{
 		RedirectAddr: "127.0.0.1:8200",
@@ -390,9 +388,7 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 		BarrierConfig:  sealConf,
 		RecoveryConfig: nil,
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if !c.Sealed() {
 		t.Fatal("should be sealed")
@@ -404,15 +400,11 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 
 	for i := range 5 {
 		unseal, err := TestCoreUnseal(c, res.SecretShares[i])
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		// Ignore redundant
 		_, err = TestCoreUnseal(c, res.SecretShares[i])
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i >= 2 {
 			if !unseal {
 				t.Fatal("should be unsealed")
@@ -435,15 +427,11 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 	}
 
 	err = c.Seal(res.RootToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Ignore redundant
 	err = c.Seal(res.RootToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if !c.Sealed() {
 		t.Fatal("should be sealed")
@@ -466,9 +454,7 @@ func TestCore_UseSSCTokenToggleOn(t *testing.T) {
 	}
 	ctx := namespace.RootContext(t.Context())
 	resp, err := c.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -477,13 +463,9 @@ func TestCore_UseSSCTokenToggleOn(t *testing.T) {
 	req.Operation = logical.ReadOperation
 	req.Data = nil
 	err = c.PopulateTokenEntry(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = c.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Data == nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -521,9 +503,7 @@ func TestCore_UseNonSSCTokenToggleOff(t *testing.T) {
 	}
 	ctx := namespace.RootContext(t.Context())
 	resp, err := c.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -532,13 +512,9 @@ func TestCore_UseNonSSCTokenToggleOff(t *testing.T) {
 	req.Operation = logical.ReadOperation
 	req.Data = nil
 	err = c.PopulateTokenEntry(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = c.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Data == nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -569,9 +545,7 @@ func TestCore_Unseal_Single(t *testing.T) {
 		BarrierConfig:  sealConf,
 		RecoveryConfig: nil,
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if !c.Sealed() {
 		t.Fatal("should be sealed")
@@ -582,9 +556,7 @@ func TestCore_Unseal_Single(t *testing.T) {
 	}
 
 	unseal, err := TestCoreUnseal(c, res.SecretShares[0])
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if !unseal {
 		t.Fatal("should be unsealed")
@@ -621,14 +593,10 @@ func TestCore_Route_Sealed(t *testing.T) {
 		BarrierConfig:  sealConf,
 		RecoveryConfig: nil,
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	unseal, err := TestCoreUnseal(c, res.SecretShares[0])
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !unseal {
 		t.Fatal("should be unsealed")
 	}
@@ -636,9 +604,7 @@ func TestCore_Route_Sealed(t *testing.T) {
 	// Should not error after unseal
 	req.ClientToken = res.RootToken
 	_, err = c.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 // Attempt to unseal after doing a first seal
@@ -649,9 +615,7 @@ func TestCore_SealUnseal(t *testing.T) {
 	}
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("err: should be unsealed")
 		}
@@ -784,9 +748,7 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 	// since user lockout configurations are not configured, lockout duration will
 	// be set to default (15m) internally
 	compressedBytes, err := jsonutil.EncodeJSONAndCompress(int(time.Unix(0, 0).Unix()), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create an entry
 	entry := &logical.StorageEntry{
@@ -796,9 +758,7 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 
 	// Write to the physical backend
 	err = barrier.Put(ctx, entry)
-	if err != nil {
-		t.Fatalf("failed to write invalid locked user entry, err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// seal and unseal vault
 	if err := core.Seal(root); err != nil {
@@ -806,9 +766,7 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 	}
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(core, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("err: should be unsealed")
 		}
@@ -816,9 +774,7 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 
 	// locked user entry must be deleted upon unseal as it is stale
 	lastFailedLoginRaw, err := barrier.Get(ctx, "aliasName1")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if lastFailedLoginRaw != nil {
 		t.Fatal("err: stale locked user entry exists")
 	}
@@ -842,9 +798,7 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 	lastFailedLoginTime := int(time.Now().Unix())
 
 	compressedBytes, err := jsonutil.EncodeJSONAndCompress(lastFailedLoginTime, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create an entry
 	entry := &logical.StorageEntry{
@@ -854,9 +808,7 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 
 	// Write to the physical backend
 	err = barrier.Put(ctx, entry)
-	if err != nil {
-		t.Fatalf("failed to write invalid locked user entry, err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// seal and unseal vault
 	if err := core.Seal(root); err != nil {
@@ -864,9 +816,7 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 	}
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(core, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("err: should be unsealed")
 		}
@@ -874,9 +824,7 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 
 	// locked user entry must exist as it is still valid
 	existingEntry, err := barrier.Get(ctx, "aliasName1")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if existingEntry == nil {
 		t.Fatal("err: entry must exist for locked user in storage")
 	}
@@ -924,9 +872,7 @@ func TestCore_ShutdownDone(t *testing.T) {
 
 	// wait for it
 	err := <-errs
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	select {
 	case <-doneCh:
@@ -962,21 +908,15 @@ func TestCore_OneTenPlus_BatchTokens(t *testing.T) {
 
 	for _, entry := range versionEntries {
 		_, err := c.storeVersionEntry(t.Context(), &entry, false)
-		if err != nil {
-			t.Fatalf("failed to write version entry %#v, err: %s", entry, err.Error())
-		}
+		require.NoErrorf(t, err, "failed to write version entry %#v, err: %s", entry, err)
 	}
 
 	err := c.loadVersionHistory(t.Context())
-	if err != nil {
-		t.Fatalf("failed to populate version history cache, err: %s", err.Error())
-	}
+	require.NoErrorf(t, err, "failed to populate version history cache, err: %s", err)
 
 	// double check that we're working with 1.10
 	v, _, err := c.FindNewestVersionTimestamp()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if v != "1.10.1" {
 		t.Fatalf("expected 1.10.1, found: %s", v)
 	}
@@ -989,9 +929,7 @@ func TestCore_OneTenPlus_BatchTokens(t *testing.T) {
 		Type:        logical.TokenTypeBatch,
 	}
 	err = c.tokenStore.create(namespace.RootContext(t.Context()), te, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// verify it uses the legacy prefix
 	if !strings.HasPrefix(te.ID, consts.BatchTokenPrefix) {
@@ -1018,9 +956,7 @@ func TestCore_Seal_SingleUse(t *testing.T) {
 	}
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("err: should be unsealed")
 		}
@@ -1029,9 +965,7 @@ func TestCore_Seal_SingleUse(t *testing.T) {
 		t.Fatal("expected error from revoked token")
 	}
 	te, err := c.tokenStore.Lookup(namespace.RootContext(t.Context()), "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if te != nil {
 		t.Fatalf("expected nil token entry, got %#v", *te)
 	}
@@ -1052,9 +986,7 @@ func TestCore_HandleRequest_Lease(t *testing.T) {
 	}
 	ctx := namespace.RootContext(t.Context())
 	resp, err := c.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1063,13 +995,9 @@ func TestCore_HandleRequest_Lease(t *testing.T) {
 	req.Operation = logical.ReadOperation
 	req.Data = nil
 	err = c.PopulateTokenEntry(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = c.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Data == nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1098,9 +1026,7 @@ func TestCore_HandleRequest_Lease_MaxLength(t *testing.T) {
 	}
 	ctx := namespace.RootContext(t.Context())
 	resp, err := c.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1109,13 +1035,9 @@ func TestCore_HandleRequest_Lease_MaxLength(t *testing.T) {
 	req.Operation = logical.ReadOperation
 	req.Data = nil
 	err = c.PopulateTokenEntry(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = c.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Data == nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1144,9 +1066,7 @@ func TestCore_HandleRequest_Lease_DefaultLength(t *testing.T) {
 	}
 	ctx := namespace.RootContext(t.Context())
 	resp, err := c.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1155,13 +1075,9 @@ func TestCore_HandleRequest_Lease_DefaultLength(t *testing.T) {
 	req.Operation = logical.ReadOperation
 	req.Data = nil
 	err = c.PopulateTokenEntry(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = c.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Data == nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1227,9 +1143,7 @@ func TestCore_HandleRequest_NoSlash(t *testing.T) {
 		ClientToken: root,
 	}
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v, resp: %v", err, resp)
-	}
+	require.NoErrorf(t, err, "err: %v, resp: %v", err, resp)
 	if _, ok := resp.Data["help"]; !ok {
 		t.Fatalf("resp: %v", resp)
 	}
@@ -1265,9 +1179,7 @@ func TestCore_HandleRequest_RootPath_WithSudo(t *testing.T) {
 		ClientToken: root,
 	}
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil && (resp.IsError() || len(resp.Data) > 0) {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1280,9 +1192,7 @@ func TestCore_HandleRequest_RootPath_WithSudo(t *testing.T) {
 		ClientToken: "child",
 	}
 	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1323,9 +1233,7 @@ func TestCore_HandleRequest_PermissionAllowed(t *testing.T) {
 		ClientToken: root,
 	}
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil && (resp.IsError() || len(resp.Data) > 0) {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1341,9 +1249,7 @@ func TestCore_HandleRequest_PermissionAllowed(t *testing.T) {
 		ClientToken: "child",
 	}
 	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1364,9 +1270,7 @@ func TestCore_HandleRequest_NoClientToken(t *testing.T) {
 	req.Data["description"] = "foo"
 	req.ClientToken = root
 	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Attempt to request with connection data
 	req = &logical.Request{
@@ -1400,9 +1304,7 @@ func TestCore_HandleRequest_ConnOnLogin(t *testing.T) {
 	req.Data["type"] = "noop"
 	req.ClientToken = root
 	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Attempt to request with connection data
 	req = &logical.Request{
@@ -1443,9 +1345,7 @@ func TestCore_HandleLogin_Token(t *testing.T) {
 	req.Data["type"] = "noop"
 	req.ClientToken = root
 	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Attempt to login
 	lreq := &logical.Request{
@@ -1453,9 +1353,7 @@ func TestCore_HandleLogin_Token(t *testing.T) {
 		Operation: logical.UpdateOperation,
 	}
 	lresp, err := c.HandleRequest(namespace.RootContext(t.Context()), lreq)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Ensure we got a client token back
 	clientToken := lresp.Auth.ClientToken
@@ -1516,9 +1414,7 @@ func TestCore_HandleRequest_AuditTrail(t *testing.T) {
 	req.Data["type"] = "noop"
 	req.ClientToken = root
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Make a request
 	req = &logical.Request{
@@ -1582,9 +1478,7 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	req.Data["audit_non_hmac_request_keys"] = "foo"
 	req.ClientToken = root
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("resp != nil: %v", resp)
 	}
@@ -1593,9 +1487,7 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	req.Data["audit_non_hmac_response_keys"] = "baz"
 	req.ClientToken = root
 	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("resp != nil: %v", resp)
 	}
@@ -1605,9 +1497,7 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	req.Data["type"] = "noop"
 	req.ClientToken = root
 	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Make a request
 	req = &logical.Request{
@@ -1662,9 +1552,7 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	}
 	req.ClientToken = root
 	err = c.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1714,18 +1602,14 @@ func TestCore_HandleLogin_AuditTrail(t *testing.T) {
 	req.Data["type"] = "noop"
 	req.ClientToken = root
 	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Enable the audit backend
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/audit/noop")
 	req.Data["type"] = "noop"
 	req.ClientToken = root
 	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Attempt to login
 	lreq := &logical.Request{
@@ -1733,9 +1617,7 @@ func TestCore_HandleLogin_AuditTrail(t *testing.T) {
 		Operation: logical.UpdateOperation,
 	}
 	lresp, err := c.HandleRequest(namespace.RootContext(t.Context()), lreq)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Ensure we got a client token back
 	clientToken := lresp.Auth.ClientToken
@@ -1778,9 +1660,7 @@ func TestCore_HandleRequest_CreateToken_Lease(t *testing.T) {
 	req.ClientToken = root
 	req.Data["policies"] = []string{"foo"}
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Ensure we got a new client token back
 	if resp.IsError() {
@@ -1793,9 +1673,7 @@ func TestCore_HandleRequest_CreateToken_Lease(t *testing.T) {
 
 	// Check the policy and metadata
 	te, err := c.tokenStore.Lookup(namespace.RootContext(t.Context()), clientToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	expectedID, _ := c.DecodeSSCToken(clientToken)
 	expectedRootID, _ := c.DecodeSSCToken(root)
@@ -1833,9 +1711,7 @@ func TestCore_HandleRequest_CreateToken_NoDefaultPolicy(t *testing.T) {
 	req.Data["policies"] = []string{"foo"}
 	req.Data["no_default_policy"] = true
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Ensure we got a new client token back
 	clientToken := resp.Auth.ClientToken
@@ -1845,9 +1721,7 @@ func TestCore_HandleRequest_CreateToken_NoDefaultPolicy(t *testing.T) {
 
 	// Check the policy and metadata
 	te, err := c.tokenStore.Lookup(namespace.RootContext(t.Context()), clientToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	expectedID, _ := c.DecodeSSCToken(clientToken)
 	expectedRootID, _ := c.DecodeSSCToken(root)
@@ -1878,9 +1752,7 @@ func TestCore_LimitedUseToken(t *testing.T) {
 	req.ClientToken = root
 	req.Data["num_uses"] = "1"
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Put a secret
 	req = &logical.Request{
@@ -1892,9 +1764,7 @@ func TestCore_LimitedUseToken(t *testing.T) {
 		ClientToken: resp.Auth.ClientToken,
 	}
 	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Second operation should fail
 	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -1908,13 +1778,9 @@ func TestCore_Standby_Seal(t *testing.T) {
 	logger = logging.NewVaultLogger(log.Trace)
 
 	inm, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	redirectOriginal := "http://127.0.0.1:8200"
 	core, err := NewCore(&CoreConfig{
@@ -1923,9 +1789,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 		RedirectAddr: redirectOriginal,
 		Logger:       logging.NewVaultLogger(log.Trace).Named("core0"),
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core.Shutdown()
 	keys, root := TestCoreInit(t, core)
 	for _, key := range keys {
@@ -1944,9 +1808,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 
 	// Check the leader is local
 	isLeader, advertise, _, err := core.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !isLeader {
 		t.Fatal("should be leader")
 	}
@@ -1965,9 +1827,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 		},
 		Logger: logging.NewVaultLogger(log.Trace).Named("core2"),
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core2.Shutdown()
 	for _, key := range keys {
 		if _, err := TestCoreUnseal(core2, TestKeyCopy(key)); err != nil {
@@ -1988,9 +1848,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 
 	// Check the leader is not local
 	isLeader, advertise, _, err = core2.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if isLeader {
 		t.Fatal("should not be leader")
 	}
@@ -2005,9 +1863,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 	}
 
 	keyUUID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// Seal the standby core with an invalid token. Shouldn't go down
 	err = core2.Seal(keyUUID)
 	if err == nil {
@@ -2022,9 +1878,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 		RedirectAddr: redirectOriginal3,
 		Logger:       logging.NewVaultLogger(log.Trace).Named("core3"),
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core3.Shutdown() //nolint:errcheck
 	for _, key := range keys {
 		if _, err := TestCoreUnseal(core3, TestKeyCopy(key)); err != nil {
@@ -2045,9 +1899,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 
 	// Check the leader is not local
 	isLeader, advertise, _, err = core3.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if isLeader {
 		t.Fatal("should not be leader")
 	}
@@ -2081,13 +1933,9 @@ func TestCore_StepDown(t *testing.T) {
 	logger = logging.NewVaultLogger(log.Trace).Named(t.Name())
 
 	inm, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	redirectOriginal := "http://127.0.0.1:8200"
 	core, err := NewCore(&CoreConfig{
@@ -2096,9 +1944,7 @@ func TestCore_StepDown(t *testing.T) {
 		RedirectAddr: redirectOriginal,
 		Logger:       logger.Named("core1"),
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core.Shutdown()
 	keys, root := TestCoreInit(t, core)
 	for _, key := range keys {
@@ -2117,9 +1963,7 @@ func TestCore_StepDown(t *testing.T) {
 
 	// Check the leader is local
 	isLeader, advertise, _, err := core.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !isLeader {
 		t.Fatal("should be leader")
 	}
@@ -2136,9 +1980,7 @@ func TestCore_StepDown(t *testing.T) {
 		Logger:       logger.Named("core2"),
 	})
 	defer core2.Shutdown()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	for _, key := range keys {
 		if _, err := TestCoreUnseal(core2, TestKeyCopy(key)); err != nil {
 			t.Fatalf("unseal err: %s", err)
@@ -2158,9 +2000,7 @@ func TestCore_StepDown(t *testing.T) {
 
 	// Check the leader is not local
 	isLeader, advertise, _, err = core2.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if isLeader {
 		t.Fatal("should not be leader")
 	}
@@ -2175,15 +2015,11 @@ func TestCore_StepDown(t *testing.T) {
 
 	// Create an identifier for the request
 	req.ID, err = uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("failed to generate identifier for the request: path: %s err: %v", req.Path, err)
-	}
+	require.NoErrorf(t, err, "failed to generate identifier for the request: path: %s err: %v", req.Path, err)
 
 	// Step down core
 	err = core.StepDown(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal("error stepping down core 1")
-	}
+	require.NoError(t, err)
 
 	// Give time to switch leaders
 	time.Sleep(5 * time.Second)
@@ -2196,9 +2032,7 @@ func TestCore_StepDown(t *testing.T) {
 
 	// Check the leader is core2
 	isLeader, advertise, _, err = core2.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !isLeader {
 		t.Fatal("should be leader")
 	}
@@ -2208,9 +2042,7 @@ func TestCore_StepDown(t *testing.T) {
 
 	// Check the leader is not local
 	isLeader, advertise, _, err = core.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if isLeader {
 		t.Fatal("should not be leader")
 	}
@@ -2220,9 +2052,7 @@ func TestCore_StepDown(t *testing.T) {
 
 	// Step down core2
 	err = core2.StepDown(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal("error stepping down core 1")
-	}
+	require.NoError(t, err)
 
 	// Give time to switch leaders -- core 1 will still be waiting on its
 	// cooling off period so give it a full 10 seconds to recover
@@ -2236,9 +2066,7 @@ func TestCore_StepDown(t *testing.T) {
 
 	// Check the leader is core1
 	isLeader, advertise, _, err = core.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !isLeader {
 		t.Fatal("should be leader")
 	}
@@ -2248,9 +2076,7 @@ func TestCore_StepDown(t *testing.T) {
 
 	// Check the leader is not local
 	isLeader, advertise, _, err = core2.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if isLeader {
 		t.Fatal("should not be leader")
 	}
@@ -2264,13 +2090,9 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 	logger = logging.NewVaultLogger(log.Trace)
 
 	inm, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	redirectOriginal := "http://127.0.0.1:8200"
 	core, err := NewCore(&CoreConfig{
@@ -2278,9 +2100,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core.Shutdown()
 	keys, root := TestCoreInit(t, core)
 	for _, key := range keys {
@@ -2303,13 +2123,9 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 	// Put several random entries
 	for range 5 {
 		keyUUID, err := uuid.GenerateUUID()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		valueUUID, err := uuid.GenerateUUID()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		err = core.barrier.Put(namespace.RootContext(t.Context()), &logical.StorageEntry{
 			Key:   coreLeaderPrefix + keyUUID,
 			Value: []byte(valueUUID),
@@ -2318,18 +2134,14 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 	}
 
 	entries, err := core.barrier.List(namespace.RootContext(t.Context()), coreLeaderPrefix)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(entries) != 6 {
 		t.Fatalf("wrong number of core leader prefix entries, got %d", len(entries))
 	}
 
 	// Check the leader is local
 	isLeader, advertise, _, err := core.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !isLeader {
 		t.Fatal("should be leader")
 	}
@@ -2344,9 +2156,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core2.Shutdown()
 	for _, key := range keys {
 		if _, err := TestCoreUnseal(core2, TestKeyCopy(key)); err != nil {
@@ -2367,9 +2177,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 
 	// Check the leader is not local
 	isLeader, advertise, _, err = core2.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if isLeader {
 		t.Fatal("should not be leader")
 	}
@@ -2379,9 +2187,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 
 	// Seal the first core, should step down
 	err = core.Seal(root)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Core should be in standby
 	standby = core.Standby()
@@ -2394,9 +2200,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 
 	// Check the leader is local
 	isLeader, advertise, _, err = core2.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !isLeader {
 		t.Fatal("should be leader")
 	}
@@ -2408,9 +2212,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 	time.Sleep(10 * leaderPrefixCleanDelay)
 
 	entries, err = core2.barrier.List(namespace.RootContext(t.Context()), coreLeaderPrefix)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(entries) != 1 {
 		t.Fatalf("wrong number of core leader prefix entries, got %d", len(entries))
 	}
@@ -2420,9 +2222,7 @@ func TestCore_Standby(t *testing.T) {
 	logger = logging.NewVaultLogger(log.Trace)
 
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	testCore_Standby_Common(t, inmha, inmha.(physical.HABackend))
 }
@@ -2431,13 +2231,9 @@ func TestCore_Standby_SeparateHA(t *testing.T) {
 	logger = logging.NewVaultLogger(log.Trace)
 
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	inmha2, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	testCore_Standby_Common(t, inmha, inmha2.(physical.HABackend))
 }
@@ -2451,9 +2247,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		RedirectAddr:    redirectOriginal,
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core.Shutdown()
 	keys, root := TestCoreInit(t, core)
 	for _, key := range keys {
@@ -2482,15 +2276,11 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		ClientToken: root,
 	}
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Check the leader is local
 	isLeader, advertise, _, err := core.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !isLeader {
 		t.Fatal("should be leader")
 	}
@@ -2505,9 +2295,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		HAPhysical:   inmha,
 		RedirectAddr: redirectOriginal2,
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core2.Shutdown()
 	for _, key := range keys {
 		if _, err := TestCoreUnseal(core2, TestKeyCopy(key)); err != nil {
@@ -2545,9 +2333,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 
 	// Check the leader is not local
 	isLeader, advertise, _, err = core2.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if isLeader {
 		t.Fatal("should not be leader")
 	}
@@ -2557,9 +2343,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 
 	// Seal the first core, should step down
 	err = core.Seal(root)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Core should be in standby
 	standby = core.Standby()
@@ -2577,9 +2361,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		ClientToken: root,
 	}
 	resp, err := core2.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify the response
 	if resp.Data["foo"] != "bar" {
@@ -2588,9 +2370,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 
 	// Check the leader is local
 	isLeader, advertise, _, err = core2.Leader()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !isLeader {
 		t.Fatal("should be leader")
 	}
@@ -2641,9 +2421,7 @@ func TestCore_HandleRequest_Login_InternalData(t *testing.T) {
 	req.Data["type"] = "noop"
 	req.ClientToken = root
 	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Attempt to login
 	lreq := &logical.Request{
@@ -2651,9 +2429,7 @@ func TestCore_HandleRequest_Login_InternalData(t *testing.T) {
 		Operation: logical.UpdateOperation,
 	}
 	lresp, err := c.HandleRequest(namespace.RootContext(t.Context()), lreq)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Ensure we do not get the internal data
 	if lresp.Auth.InternalData != nil {
@@ -2686,9 +2462,7 @@ func TestCore_HandleRequest_InternalData(t *testing.T) {
 	req.Data["type"] = "noop"
 	req.ClientToken = root
 	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Attempt to read
 	lreq := &logical.Request{
@@ -2698,9 +2472,7 @@ func TestCore_HandleRequest_InternalData(t *testing.T) {
 	}
 	lreq.SetTokenEntry(&logical.TokenEntry{ID: root, NamespaceID: "root", Policies: []string{"root"}})
 	lresp, err := c.HandleRequest(namespace.RootContext(t.Context()), lreq)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Ensure we do not get the internal data
 	if lresp.Secret.InternalData != nil {
@@ -2731,9 +2503,7 @@ func TestCore_HandleLogin_ReturnSecret(t *testing.T) {
 	req.Data["type"] = "noop"
 	req.ClientToken = root
 	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Attempt to login
 	lreq := &logical.Request{
@@ -2761,9 +2531,7 @@ func TestCore_RenewSameLease(t *testing.T) {
 		ClientToken: root,
 	}
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -2772,13 +2540,9 @@ func TestCore_RenewSameLease(t *testing.T) {
 	req.Operation = logical.ReadOperation
 	req.Data = nil
 	err = c.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp.Secret)
 	}
@@ -2788,9 +2552,7 @@ func TestCore_RenewSameLease(t *testing.T) {
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/leases/renew/"+resp.Secret.LeaseID)
 	req.ClientToken = root
 	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify the lease did not change
 	if resp.Secret.LeaseID != original {
@@ -2812,9 +2574,7 @@ func TestCore_RenewToken_SingleRegister(t *testing.T) {
 		ClientToken: root,
 	}
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	newClient := resp.Auth.ClientToken
 
 	// Renew the token
@@ -2824,17 +2584,13 @@ func TestCore_RenewToken_SingleRegister(t *testing.T) {
 		"token": newClient,
 	}
 	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Revoke using the renew prefix
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/leases/revoke-prefix/auth/token/renew/")
 	req.ClientToken = root
 	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify our token is still valid (e.g. we did not get invalidated by the revoke)
 	req = logical.TestRequest(t, logical.UpdateOperation, "auth/token/lookup")
@@ -2843,9 +2599,7 @@ func TestCore_RenewToken_SingleRegister(t *testing.T) {
 	}
 	req.ClientToken = newClient
 	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify the token exists
 	if newClient != resp.Data["id"].(string) {
@@ -2889,9 +2643,7 @@ path "secret/*" {
 	req.Data["type"] = "noop"
 	req.ClientToken = root
 	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Attempt to login -- should fail because we don't allow root to be returned
 	lreq := &logical.Request{
@@ -2910,9 +2662,7 @@ path "secret/*" {
 		Operation: logical.UpdateOperation,
 	}
 	lresp, err = c.HandleRequest(namespace.RootContext(t.Context()), lreq)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create a leasable secret
 	req = &logical.Request{
@@ -2925,9 +2675,7 @@ path "secret/*" {
 		ClientToken: lresp.Auth.ClientToken,
 	}
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -2936,13 +2684,9 @@ path "secret/*" {
 	req.Operation = logical.ReadOperation
 	req.Data = nil
 	err = c.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp.Secret)
 	}
@@ -2954,17 +2698,13 @@ path "secret/*" {
 	}
 	req.ClientToken = lresp.Auth.ClientToken
 	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Disable the credential backend
 	req = logical.TestRequest(t, logical.DeleteOperation, "sys/auth/foo")
 	req.ClientToken = root
 	resp, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v %#v", err, resp)
-	}
+	require.NoErrorf(t, err, "err: %v %#v", err, resp)
 }
 
 func TestCore_HandleRequest_MountPointType(t *testing.T) {
@@ -2982,9 +2722,7 @@ func TestCore_HandleRequest_MountPointType(t *testing.T) {
 	req.Data["description"] = "foo"
 	req.ClientToken = root
 	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Attempt to request
 	req = &logical.Request{
@@ -3014,13 +2752,9 @@ func TestCore_Standby_Rotate(t *testing.T) {
 	logger = logging.NewVaultLogger(log.Trace)
 
 	inm, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	redirectOriginal := "http://127.0.0.1:8200"
 	core, err := NewCore(&CoreConfig{
@@ -3028,9 +2762,7 @@ func TestCore_Standby_Rotate(t *testing.T) {
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core.Shutdown()
 	keys, root := TestCoreInit(t, core)
 	for _, key := range keys {
@@ -3049,9 +2781,7 @@ func TestCore_Standby_Rotate(t *testing.T) {
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core2.Shutdown()
 	for _, key := range keys {
 		if _, err := TestCoreUnseal(core2, TestKeyCopy(key)); err != nil {
@@ -3066,15 +2796,11 @@ func TestCore_Standby_Rotate(t *testing.T) {
 		ClientToken: root,
 	}
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Seal the first core, should step down
 	err = core.Seal(root)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Wait for core2 to become active
 	TestWaitActive(t, core2)
@@ -3086,9 +2812,7 @@ func TestCore_Standby_Rotate(t *testing.T) {
 		ClientToken: root,
 	}
 	resp, err := core2.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify the response
 	if resp.Data["term"] != 2 {
@@ -3113,18 +2837,14 @@ func TestCore_HandleRequest_Headers(t *testing.T) {
 	req.Data["type"] = "noop"
 	req.ClientToken = root
 	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Mount tune
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/mounts/foo/tune")
 	req.Data["passthrough_request_headers"] = []string{"Should-Passthrough", "should-passthrough-case-insensitive"}
 	req.ClientToken = root
 	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Attempt to read
 	lreq := &logical.Request{
@@ -3139,9 +2859,7 @@ func TestCore_HandleRequest_Headers(t *testing.T) {
 		},
 	}
 	_, err = c.HandleRequest(namespace.RootContext(t.Context()), lreq)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Check the headers
 	headers := noop.Requests[0].Headers
@@ -3191,18 +2909,14 @@ func TestCore_HandleRequest_Headers_denyList(t *testing.T) {
 	req.Data["type"] = "noop"
 	req.ClientToken = root
 	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Mount tune
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/mounts/foo/tune")
 	req.Data["passthrough_request_headers"] = []string{"Authorization", consts.AuthHeaderName}
 	req.ClientToken = root
 	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Attempt to read
 	lreq := &logical.Request{
@@ -3214,9 +2928,7 @@ func TestCore_HandleRequest_Headers_denyList(t *testing.T) {
 		},
 	}
 	_, err = c.HandleRequest(namespace.RootContext(t.Context()), lreq)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Check the headers
 	headers := noop.Requests[0].Headers
@@ -3237,9 +2949,7 @@ func TestCore_HandleRequest_TokenCreate_RegisterAuthFailure(t *testing.T) {
 	}
 	req.ClientToken = root
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Auth == nil || resp.Auth.ClientToken == "" {
 		t.Fatalf("expected a response from token creation, got: %#v", resp)
 	}
@@ -3249,9 +2959,7 @@ func TestCore_HandleRequest_TokenCreate_RegisterAuthFailure(t *testing.T) {
 	req = logical.TestRequest(t, logical.CreateOperation, "auth/token/create")
 	req.ClientToken = tokenWithRootPolicy
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Try again but force failure on RegisterAuth to simulate a network failure
 	// when registering the lease (e.g. a storage failure). This should trigger
@@ -3273,18 +2981,14 @@ func TestCore_HandleRequest_TokenCreate_RegisterAuthFailure(t *testing.T) {
 	}
 	req.ClientToken = root
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Do a token creation request with the token to ensure that it's still
 	// valid, should succeed.
 	req = logical.TestRequest(t, logical.CreateOperation, "auth/token/create")
 	req.ClientToken = tokenWithRootPolicy
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 // mockServiceRegistration helps test whether standalone ServiceRegistration works
@@ -3329,13 +3033,9 @@ func TestCore_ServiceRegistration(t *testing.T) {
 	// Create the core
 	logger = logging.NewVaultLogger(log.Trace)
 	inm, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	const redirectAddr = "http://127.0.0.1:8200"
 	core, err := NewCore(&CoreConfig{
 		ServiceRegistration: sr,
@@ -3343,9 +3043,7 @@ func TestCore_ServiceRegistration(t *testing.T) {
 		HAPhysical:          inmha.(physical.HABackend),
 		RedirectAddr:        redirectAddr,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer core.Shutdown()
 
 	// Vault should not yet be registered

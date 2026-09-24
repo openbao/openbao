@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBarrierView_spec(t *testing.T) {
@@ -58,18 +59,14 @@ func TestBarrierView(t *testing.T) {
 
 	// List should have no visibility
 	keys, err := view.List(t.Context(), "")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 0 {
 		t.Fatalf("bad: %v", err)
 	}
 
 	// Get should have no visibility
 	out, err := view.Get(t.Context(), "test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if out != nil {
 		t.Fatalf("bad: %v", out)
 	}
@@ -81,9 +78,7 @@ func TestBarrierView(t *testing.T) {
 
 	// Check it is nested
 	entry, err = barrier.Get(t.Context(), "foo/test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if entry == nil {
 		t.Fatal("missing nested foo/test")
 	}
@@ -95,18 +90,14 @@ func TestBarrierView(t *testing.T) {
 
 	// Check the nested key
 	entry, err = barrier.Get(t.Context(), "foo/test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if entry != nil {
 		t.Fatal("nested foo/test should be gone")
 	}
 
 	// Check the non-nested key
 	entry, err = barrier.Get(t.Context(), "test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if entry == nil {
 		t.Fatal("root test missing")
 	}
@@ -119,18 +110,14 @@ func TestBarrierView_SubView(t *testing.T) {
 
 	// List should have no visibility
 	keys, err := view.List(t.Context(), "")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 0 {
 		t.Fatalf("bad: %v", err)
 	}
 
 	// Get should have no visibility
 	out, err := view.Get(t.Context(), "test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if out != nil {
 		t.Fatalf("bad: %v", out)
 	}
@@ -143,18 +130,14 @@ func TestBarrierView_SubView(t *testing.T) {
 
 	// Check it is nested
 	bout, err := barrier.Get(t.Context(), "foo/bar/test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if bout == nil {
 		t.Fatal("missing nested foo/bar/test")
 	}
 
 	// Check for visibility in root
 	out, err = root.Get(t.Context(), "bar/test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if out == nil {
 		t.Fatal("missing nested bar/test")
 	}
@@ -166,9 +149,7 @@ func TestBarrierView_SubView(t *testing.T) {
 
 	// Check the nested key
 	bout, err = barrier.Get(t.Context(), "foo/bar/test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if bout != nil {
 		t.Fatal("nested foo/bar/test should be gone")
 	}
@@ -235,9 +216,7 @@ func TestBarrierView_CollectKeys(t *testing.T) {
 
 	// Collect the keys
 	out, err := logical.CollectKeys(t.Context(), view)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	sort.Strings(out)
 	sort.Strings(expect)
@@ -272,9 +251,7 @@ func TestBarrierView_ClearView(t *testing.T) {
 
 	// Collect the keys
 	out, err := logical.CollectKeys(t.Context(), view)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(out) != 0 {
 		t.Fatalf("have keys: %#v", out)
 	}
@@ -305,9 +282,7 @@ func TestBarrierView_Readonly(t *testing.T) {
 
 	// Check the non-nested key
 	e, err := view.Get(t.Context(), "test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if e == nil {
 		t.Fatal("key test missing")
 	}

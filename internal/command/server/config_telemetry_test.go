@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMetricFilterConfigs(t *testing.T) {
@@ -32,9 +33,7 @@ func TestMetricFilterConfigs(t *testing.T) {
 
 		for _, tc := range cases {
 			config, err := LoadConfigFile(tc.configFile, nil)
-			if err != nil {
-				t.Fatalf("Error encountered when loading config %+v", err)
-			}
+			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectedFilterDefault, config.Telemetry.FilterDefault)
 			assert.Equal(t, tc.expectedPrefixFilter, config.Telemetry.PrefixFilter)

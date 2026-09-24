@@ -11,6 +11,7 @@ import (
 	"github.com/go-test/deep"
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testKVMetadataPutCommand(tb testing.TB) (*cli.MockUi, *KVMetadataPutCommand) {
@@ -52,9 +53,7 @@ func TestKvMetadataPutCommand_DeleteVersionAfter(t *testing.T) {
 	}
 
 	secret, err := client.Logical().Read(metaFullPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Data["delete_version_after"] != "1s" {
 		t.Fatalf("expected 1s but received %q", secret.Data["delete_version_after"])
 	}
@@ -75,9 +74,7 @@ func TestKvMetadataPutCommand_DeleteVersionAfter(t *testing.T) {
 	}
 
 	secret, err = client.Logical().Read(metaFullPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Data["delete_version_after"] != "0s" {
 		t.Fatalf("expected 0s but received %q", secret.Data["delete_version_after"])
 	}
@@ -114,9 +111,7 @@ func TestKvMetadataPutCommand_CustomMetadata(t *testing.T) {
 	}
 
 	metadata, err := client.Logical().Read(metaFullPath)
-	if err != nil {
-		t.Fatalf("Metadata read error: %#v", err)
-	}
+	require.NoError(t, err)
 
 	// JSON output from read decoded into map[string]any.
 	expectedCustomMetadata := map[string]any{
@@ -145,9 +140,7 @@ func TestKvMetadataPutCommand_CustomMetadata(t *testing.T) {
 	}
 
 	metadata, err = client.Logical().Read(metaFullPath)
-	if err != nil {
-		t.Fatalf("Metadata read error: %#v", err)
-	}
+	require.NoError(t, err)
 
 	expectedCustomMetadata = map[string]any{
 		"baz": "abc123",
@@ -189,9 +182,7 @@ func TestKvMetadataPutCommand_UnprovidedFlags(t *testing.T) {
 	}
 
 	secret, err := client.Logical().Read(basePath + "metadata/" + "my-secret")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if secret.Data["cas_required"] != true {
 		t.Fatalf("expected cas_required to be true but received %#v", secret.Data["cas_required"])

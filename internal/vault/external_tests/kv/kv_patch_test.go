@@ -18,6 +18,7 @@ import (
 	logicalKv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestKV_Patch_BadContentTypeHeader(t *testing.T) {
@@ -44,9 +45,7 @@ func TestKV_Patch_BadContentTypeHeader(t *testing.T) {
 	err := c.Sys().Mount("kv", &api.MountInput{
 		Type: "kv-v2",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	kvData := map[string]any{
 		"data": map[string]any{
@@ -57,16 +56,12 @@ func TestKV_Patch_BadContentTypeHeader(t *testing.T) {
 	secretRaw, err := kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().Write("kv/data/foo", kvData)
 	})
-	if err != nil {
-		t.Fatalf("write failed - err :%#v, resp: %#v\n", err, secretRaw)
-	}
+	require.NoErrorf(t, err, "write failed - err :%#v, resp: %#v\n", err, secretRaw)
 
 	secretRaw, err = kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().Read("kv/data/foo")
 	})
-	if err != nil {
-		t.Fatalf("read failed - err :%#v, resp: %#v\n", err, secretRaw)
-	}
+	require.NoErrorf(t, err, "read failed - err :%#v, resp: %#v\n", err, secretRaw)
 
 	apiRespRaw, err := kvRequestWithRetry(t, func() (any, error) {
 		req := c.NewRequest("PATCH", "/v1/kv/data/foo")
@@ -150,9 +145,7 @@ func TestKV_Patch_Audit(t *testing.T) {
 	}
 
 	auditLogFile, err := os.CreateTemp("", "httppatch")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = c.Sys().EnableAuditWithOptions("file", &api.EnableAuditOptions{
 		Type: "file",
@@ -160,9 +153,7 @@ func TestKV_Patch_Audit(t *testing.T) {
 			"file_path": auditLogFile.Name(),
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	writeData := map[string]any{
 		"data": map[string]any{
@@ -173,9 +164,7 @@ func TestKV_Patch_Audit(t *testing.T) {
 	resp, err := kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().Write("kv/data/foo", writeData)
 	})
-	if err != nil {
-		t.Fatalf("write request failed, err: %#v, resp: %#v\n", err, resp)
-	}
+	require.NoErrorf(t, err, "write request failed, err: %#v, resp: %#v\n", err, resp)
 
 	patchData := map[string]any{
 		"data": map[string]any{
@@ -186,9 +175,7 @@ func TestKV_Patch_Audit(t *testing.T) {
 	resp, err = kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().JSONMergePatch(t.Context(), "kv/data/foo", patchData)
 	})
-	if err != nil {
-		t.Fatalf("patch request failed, err: %#v, resp: %#v\n", err, resp)
-	}
+	require.NoErrorf(t, err, "patch request failed, err: %#v, resp: %#v\n", err, resp)
 
 	patchRequestLogCount := 0
 	patchResponseLogCount := 0
@@ -241,9 +228,7 @@ func TestKV_Patch_RootToken(t *testing.T) {
 	err := client.Sys().Mount("kv", &api.MountInput{
 		Type: "kv-v2",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write a kv value and patch it
 	_, err = kvRequestWithRetry(t, func() (any, error) {
@@ -256,9 +241,7 @@ func TestKV_Patch_RootToken(t *testing.T) {
 
 		return client.Logical().Write("kv/data/foo", data)
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = kvRequestWithRetry(t, func() (any, error) {
 		data := map[string]any{
@@ -269,16 +252,12 @@ func TestKV_Patch_RootToken(t *testing.T) {
 		}
 		return client.Logical().JSONMergePatch(t.Context(), "kv/data/foo", data)
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	secretRaw, err := kvRequestWithRetry(t, func() (any, error) {
 		return client.Logical().Read("kv/data/foo")
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	secret, ok := secretRaw.(*api.Secret)
 	if !ok {

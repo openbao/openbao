@@ -73,9 +73,7 @@ func prepareInfluxdbTestContainer(t *testing.T) (func(), *Config) {
 		},
 		Ports: []string{"8086/tcp"},
 	})
-	if err != nil {
-		t.Fatalf("Could not start docker InfluxDB: %s", err)
-	}
+	require.NoError(t, err)
 	svc, err := runner.StartService(t.Context(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
 		c.ServiceURL = *docker.NewServiceURL(url.URL{
 			Scheme: "http",
@@ -93,9 +91,7 @@ func prepareInfluxdbTestContainer(t *testing.T) (func(), *Config) {
 
 		return c, nil
 	})
-	if err != nil {
-		t.Fatalf("Could not start docker InfluxDB: %s", err)
-	}
+	require.NoError(t, err)
 
 	return svc.Cleanup, svc.Config.(*Config)
 }
@@ -401,9 +397,7 @@ func TestInfluxdb_RevokeDeletedUser(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	_, err := db.DeleteUser(ctx, delReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestInfluxdb_RevokeUser(t *testing.T) {
@@ -443,9 +437,7 @@ func TestInfluxdb_RevokeUser(t *testing.T) {
 func assertCredsExist(t testing.TB, address, username, password string) {
 	t.Helper()
 	err := testCredsExist(address, username, password)
-	if err != nil {
-		t.Fatalf("Could not log in as %q", username)
-	}
+	require.NoErrorf(t, err, "Could not log in as %q", username)
 }
 
 func assertCredsDoNotExist(t testing.TB, address, username, password string) {

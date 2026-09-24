@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPlugin_lifecycle(t *testing.T) {
@@ -32,9 +33,7 @@ func TestPlugin_lifecycle(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to database backend")
@@ -232,9 +231,7 @@ func TestPlugin_VersionSelection(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to database backend")
@@ -272,9 +269,7 @@ func TestPlugin_VersionSelection(t *testing.T) {
 					Path:      "config/db",
 					Storage:   config.StorageView,
 				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			}()
 
 			req = &logical.Request{
@@ -341,9 +336,7 @@ func TestPlugin_VersionMustBeExplicitlyUpgraded(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to database backend")
@@ -438,9 +431,7 @@ func cleanup(t *testing.T, b *databaseBackend, reqs []*logical.Request) {
 	for i := len(reqs) - 1; i >= 0; i-- {
 		req := reqs[i]
 		resp, err := b.HandleRequest(ctx, req)
-		if err != nil {
-			t.Fatalf("Error cleaning up: %s", err)
-		}
+		require.NoError(t, err)
 		if resp != nil && resp.IsError() {
 			t.Fatalf("Error cleaning up: %s", resp.Error())
 		}
@@ -525,7 +516,5 @@ func assertRespHasNoErr(t *testing.T, resp *logical.Response) {
 
 func assertErrIsNil(t *testing.T, err error) {
 	t.Helper()
-	if err != nil {
-		t.Fatalf("No error expected, got: %s", err)
-	}
+	require.NoError(t, err)
 }

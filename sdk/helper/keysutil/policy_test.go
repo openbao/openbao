@@ -49,20 +49,14 @@ func TestPolicy_KeyEntryMapUpgrade(t *testing.T) {
 	}
 
 	oldEncoded, err := jsonutil.EncodeJSON(old)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var new keyEntryMap
 	err = jsonutil.DecodeJSON(oldEncoded, &new)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	newEncoded, err := jsonutil.EncodeJSON(&new)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if string(oldEncoded) != string(newEncoded) {
 		t.Fatalf("failed to upgrade key entry map;\nold: %q\nnew: %q", string(oldEncoded), string(newEncoded))
@@ -86,9 +80,7 @@ func testKeyUpgradeCommon(t *testing.T, lm *LockManager) {
 		KeyType: KeyType_AES256_GCM96,
 		Name:    "test",
 	}, rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if p == nil {
 		t.Fatal("nil policy")
 	}
@@ -136,9 +128,7 @@ func testArchivingUpgradeCommon(t *testing.T, lm *LockManager) {
 		KeyType: KeyType_AES256_GCM96,
 		Name:    "test",
 	}, rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if p == nil {
 		t.Fatal("nil policy")
 	}
@@ -150,35 +140,27 @@ func testArchivingUpgradeCommon(t *testing.T, lm *LockManager) {
 
 	for i := 2; i <= 10; i++ {
 		err = p.Rotate(ctx, storage, rand.Reader)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		keysArchive = append(keysArchive, p.Keys[strconv.Itoa(i)])
 		checkKeys(t, ctx, p, storage, keysArchive, "rotate", i, i, i)
 	}
 
 	// Now, wipe the archive and set the archive version to zero
 	err = storage.Delete(ctx, "archive/test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	p.ArchiveVersion = 0
 
 	// Store it, but without calling persist, so we don't trigger
 	// handleArchiving()
 	buf, err := p.Serialize()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write the policy into storage
 	err = storage.Put(ctx, &logical.StorageEntry{
 		Key:   "policy/" + p.Name,
 		Value: buf,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// If we're caching, expire from the cache since we modified it
 	// under-the-hood
@@ -191,9 +173,7 @@ func testArchivingUpgradeCommon(t *testing.T, lm *LockManager) {
 		Storage: storage,
 		Name:    "test",
 	}, rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if p == nil {
 		t.Fatal("nil policy")
 	}
@@ -229,9 +209,7 @@ func testArchivingUpgradeCommon(t *testing.T, lm *LockManager) {
 		Storage: storage,
 		Name:    "test",
 	}, rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if p == nil {
 		t.Fatal("policy nil after bad delete")
 	}
@@ -240,13 +218,9 @@ func testArchivingUpgradeCommon(t *testing.T, lm *LockManager) {
 	// Now do it properly
 	p.DeletionAllowed = true
 	err = p.Persist(ctx, storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = lm.DeletePolicy(ctx, storage, "test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// The policy should *not* be in there
 	if lm.useCache {
@@ -260,9 +234,7 @@ func testArchivingUpgradeCommon(t *testing.T, lm *LockManager) {
 		Storage: storage,
 		Name:    "test",
 	}, rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if p != nil {
 		t.Fatal("policy not nil after delete")
 	}
@@ -290,9 +262,7 @@ func checkKeys(t *testing.T,
 	}
 
 	archive, err := p.LoadArchive(ctx, storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	badArchiveVer := false
 	if archiveVer == 0 {
@@ -367,9 +337,7 @@ func Test_StorageErrorSafety(t *testing.T) {
 		KeyType: KeyType_AES256_GCM96,
 		Name:    "test",
 	}, rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if p == nil {
 		t.Fatal("nil policy")
 	}
@@ -382,9 +350,7 @@ func Test_StorageErrorSafety(t *testing.T) {
 	// errors below so we do more targeted testing later
 	for i := 2; i <= 5; i++ {
 		err = p.Rotate(ctx, storage, rand.Reader)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		keysArchive = append(keysArchive, p.Keys[strconv.Itoa(i)])
 		checkKeys(t, ctx, p, storage, keysArchive, "rotate", i, i, i)
 	}
@@ -412,17 +378,13 @@ func Test_BadUpgrade(t *testing.T) {
 		KeyType: KeyType_AES256_GCM96,
 		Name:    "test",
 	}, rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if p == nil {
 		t.Fatal("nil policy")
 	}
 
 	orig, err := copystructure.Copy(p)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	orig.(*Policy).l = p.l
 
 	p.Key = p.Keys["1"].Key
@@ -476,18 +438,14 @@ func Test_BadArchive(t *testing.T) {
 		KeyType: KeyType_AES256_GCM96,
 		Name:    "test",
 	}, rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if p == nil {
 		t.Fatal("nil policy")
 	}
 
 	for i := 2; i <= 10; i++ {
 		err = p.Rotate(ctx, storage, rand.Reader)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	p.MinDecryptionVersion = 5
@@ -546,9 +504,7 @@ func Test_Import(t *testing.T) {
 	ctx := t.Context()
 	storage := &logical.InmemStorage{}
 	testKeys, err := generateTestKeys()
-	if err != nil {
-		t.Fatalf("error generating test keys: %s", err)
-	}
+	require.NoError(t, err)
 
 	tests := map[string]struct {
 		policy      Policy
@@ -711,9 +667,7 @@ func manualVerify(depth int, t *testing.T, p *Policy, input []byte, sig *Signing
 
 	tabs = strings.Repeat("\t", depth+1)
 	verified, err := p.VerifySignatureWithOptions(nil, input, sig.Signature, &options)
-	if err != nil {
-		t.Fatal(tabs, "❌ Failed to manually verify signature:", err)
-	}
+	require.NoError(t, err)
 	if !verified {
 		t.Fatal(tabs, "❌ Failed to manually verify signature")
 	}
@@ -725,9 +679,7 @@ func autoVerify(depth int, t *testing.T, p *Policy, input []byte, sig *SigningRe
 
 	tabs = strings.Repeat("\t", depth+1)
 	verified, err := p.VerifySignature(nil, input, options.HashAlgorithm, options.SigAlgorithm, options.Marshaling, sig.Signature)
-	if err != nil {
-		t.Fatal(tabs, "❌ Failed to automatically verify signature:", err)
-	}
+	require.NoError(t, err)
 	if !verified {
 		t.Fatal(tabs, "❌ Failed to automatically verify signature")
 	}
@@ -833,9 +785,7 @@ func Test_RSA_PSS(t *testing.T) {
 			// 3.1. Make a "manual" signature with the given key size, hash algorithm, and salt length.
 			t.Log(tabs[5], "Make a manual signature")
 			sig, err := p.SignWithOptions(0, nil, input, &saltedOptions)
-			if err != nil {
-				t.Fatal(tabs[6], "❌ Failed to manually sign:", err)
-			}
+			require.NoError(t, err)
 
 			// 3.2. Verify this manual signature using the *correct, given* salt length.
 			manualVerify(6, t, p, input, sig, saltedOptions)
@@ -847,9 +797,7 @@ func Test_RSA_PSS(t *testing.T) {
 
 	rsaKeyTypes := []KeyType{KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096}
 	testKeys, err := generateTestKeys()
-	if err != nil {
-		t.Fatalf("error generating test keys: %s", err)
-	}
+	require.NoError(t, err)
 
 	// 1. For each standard RSA key size 2048, 3072, and 4096...
 	for _, rsaKeyType := range rsaKeyTypes {
@@ -861,13 +809,9 @@ func Test_RSA_PSS(t *testing.T) {
 
 		rsaKeyBytes := testKeys[rsaKeyType]
 		err := p.Import(ctx, storage, rsaKeyBytes, rand.Reader)
-		if err != nil {
-			t.Fatal(tabs[1], "❌ Failed to import key:", err)
-		}
+		require.NoError(t, err)
 		rsaKeyAny, err := x509.ParsePKCS8PrivateKey(rsaKeyBytes)
-		if err != nil {
-			t.Fatalf("error parsing test keys: %s", err)
-		}
+		require.NoError(t, err)
 		rsaKey := rsaKeyAny.(*rsa.PrivateKey)
 
 		// 2. For each hash algorithm...
@@ -940,9 +884,7 @@ func Test_RSA_PKCS1(t *testing.T) {
 
 	rsaKeyTypes := []KeyType{KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096}
 	testKeys, err := generateTestKeys()
-	if err != nil {
-		t.Fatalf("error generating test keys: %s", err)
-	}
+	require.NoError(t, err)
 
 	// 1. For each standard RSA key size 2048, 3072, and 4096...
 	for _, rsaKeyType := range rsaKeyTypes {
@@ -954,13 +896,9 @@ func Test_RSA_PKCS1(t *testing.T) {
 
 		rsaKeyBytes := testKeys[rsaKeyType]
 		err := p.Import(ctx, storage, rsaKeyBytes, rand.Reader)
-		if err != nil {
-			t.Fatal(tabs[1], "❌ Failed to import key:", err)
-		}
+		require.NoError(t, err)
 		rsaKeyAny, err := x509.ParsePKCS8PrivateKey(rsaKeyBytes)
-		if err != nil {
-			t.Fatalf("error parsing test keys: %s", err)
-		}
+		require.NoError(t, err)
 		rsaKey := rsaKeyAny.(*rsa.PrivateKey)
 
 		// 2. For each hash algorithm...

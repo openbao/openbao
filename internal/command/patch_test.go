@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testPatchCommand(tb testing.TB) (*cli.MockUi, *PatchCommand) {
@@ -157,9 +158,7 @@ func TestPatchCommand_Run(t *testing.T) {
 		}
 
 		secret, err := client.Logical().Read("pki/roles/example")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret == nil || secret.Data == nil {
 			t.Fatal("expected secret to have data")
 		}

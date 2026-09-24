@@ -17,6 +17,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/command/server"
 	"github.com/openbao/openbao/v2/internal/helper/pluginutil/oci"
+	"github.com/stretchr/testify/require"
 )
 
 // TestReconcileOCIPlugins tests the full OCI plugin reconciliation process
@@ -35,9 +36,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 
 	// Create a temporary directory for plugins
 	tempDir, err := filepath.EvalSymlinks(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// The actual SHA256 of the Nomad plugin binary in ghcr.io/openbao/openbao-plugin-secrets-nomad:v0.1.4
 	nomadPluginSHA256 := "04f9a349982449415037dbb8a7854250dea4e2328ff890cf767a5d38739699d4"
@@ -82,9 +81,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 
 	// Check if the symlink exists
 	linkInfo, err := os.Lstat(pluginPath)
-	if err != nil {
-		t.Fatalf("Plugin symlink not found: %v", err)
-	}
+	require.NoError(t, err)
 
 	if linkInfo.Mode()&os.ModeSymlink == 0 {
 		t.Error("Expected plugin to be a symlink")
@@ -92,9 +89,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 
 	// Verify the symlink points to the cache
 	target, err := os.Readlink(pluginPath)
-	if err != nil {
-		t.Fatalf("Failed to read symlink: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should point to .oci-cache/
 	expectedPrefix := ".oci-cache/"
@@ -105,9 +100,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	// Verify the cached file exists and is executable
 	cachedPath := filepath.Join(tempDir, target)
 	cachedInfo, err := os.Stat(cachedPath)
-	if err != nil {
-		t.Fatalf("Cached plugin file not found: %v", err)
-	}
+	require.NoError(t, err)
 
 	if cachedInfo.Mode()&0o111 == 0 {
 		t.Error("Cached plugin should be executable")
@@ -115,9 +108,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 
 	// Verify SHA256 of the downloaded plugin
 	content, err := os.ReadFile(cachedPath)
-	if err != nil {
-		t.Fatalf("Failed to read cached plugin: %v", err)
-	}
+	require.NoError(t, err)
 
 	hash := sha256.Sum256(content)
 	actualSHA256 := hex.EncodeToString(hash[:])
@@ -186,9 +177,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 
 	// We should have both nomad and aws in our list.
 	list, err := core.pluginCatalog.ListVersionedPlugins(ctx, pluginType)
-	if err != nil {
-		t.Fatalf("failed to list plugins after additions")
-	}
+	require.NoErrorf(t, err, "failed to list plugins after additions")
 
 	for _, name := range []string{"nomad", "aws"} {
 		found := false
@@ -219,9 +208,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 
 	// We should have both nomad and aws in our list.
 	list, err = core.pluginCatalog.ListVersionedPlugins(ctx, pluginType)
-	if err != nil {
-		t.Fatalf("failed to list plugins after removal")
-	}
+	require.NoErrorf(t, err, "failed to list plugins after removal")
 
 	for _, name := range []string{"nomad", "aws"} {
 		found := false

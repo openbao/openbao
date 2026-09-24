@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // Ensure we satisfy the heap.Interface
@@ -75,9 +77,7 @@ func TestPriorityQueue_Push(t *testing.T) {
 	testValidateInternalData(t, pq, len(tc), false)
 
 	item, err := pq.Pop()
-	if err != nil {
-		t.Fatalf("error popping item: %s", err)
-	}
+	require.NoError(t, err)
 	if tc[0].Priority != item.Priority {
 		t.Fatalf("expected tc[0] and popped item to match, got (%v) and (%v)", tc[0], item.Priority)
 	}
@@ -119,9 +119,7 @@ func TestPriorityQueue_Pop(t *testing.T) {
 	}
 
 	topItem, err := pq.Pop()
-	if err != nil {
-		t.Fatalf("error calling pop: %s", err)
-	}
+	require.NoError(t, err)
 	if tc[0].Priority != topItem.Priority {
 		t.Fatalf("expected tc[0] and popped item to match, got (%v) and (%v)", tc[0], topItem.Priority)
 	}
@@ -159,16 +157,12 @@ func TestPriorityQueue_PopByKey(t *testing.T) {
 	// push the item back on, so it gets removed with PopByKey and we verify
 	// the top item has changed later
 	err := pq.Push(item)
-	if err != nil {
-		t.Fatalf("error re-pushing top item: %s", err)
-	}
+	require.NoError(t, err)
 
 	popKeys := []int{2, 4, 7, 1, 0}
 	for _, i := range popKeys {
 		item, err := pq.PopByKey(fmt.Sprintf("item-%d", i))
-		if err != nil {
-			t.Fatalf("failed to pop item-%d, \n\terr: %s\n\titem: %#v", i, err, item)
-		}
+		require.NoErrorf(t, err, "failed to pop item-%d, \n\terr: %s\n\titem: %#v", i, err, item)
 	}
 
 	testValidateInternalData(t, pq, len(tc)-len(popKeys), false)

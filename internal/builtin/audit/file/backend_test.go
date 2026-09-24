@@ -21,9 +21,7 @@ import (
 func TestAuditFile_fileModeNew(t *testing.T) {
 	modeStr := "0644"
 	mode, err := strconv.ParseUint(modeStr, 8, 32)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	path := t.TempDir()
 
@@ -39,14 +37,10 @@ func TestAuditFile_fileModeNew(t *testing.T) {
 		SaltView:   &logical.InmemStorage{},
 		Config:     config,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	info, err := os.Stat(file)
-	if err != nil {
-		t.Fatal("Cannot retrieve file mode from `Stat`")
-	}
+	require.NoError(t, err)
 	if info.Mode() != os.FileMode(mode) {
 		t.Fatal("File mode does not match.")
 	}
@@ -54,20 +48,14 @@ func TestAuditFile_fileModeNew(t *testing.T) {
 
 func TestAuditFile_fileModeExisting(t *testing.T) {
 	f, err := os.CreateTemp("", "test")
-	if err != nil {
-		t.Fatal("Failure to create test file.")
-	}
+	require.NoError(t, err)
 	defer os.Remove(f.Name())
 
 	err = os.Chmod(f.Name(), 0o644)
-	if err != nil {
-		t.Fatal("Failure to chmod temp file for testing.")
-	}
+	require.NoError(t, err)
 
 	err = f.Close()
-	if err != nil {
-		t.Fatal("Failure to close temp file for test.")
-	}
+	require.NoError(t, err)
 
 	config := map[string]string{
 		"path": f.Name(),
@@ -78,14 +66,10 @@ func TestAuditFile_fileModeExisting(t *testing.T) {
 		SaltConfig: &salt.Config{},
 		SaltView:   &logical.InmemStorage{},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	info, err := os.Stat(f.Name())
-	if err != nil {
-		t.Fatal("cannot retrieve file mode from `Stat`")
-	}
+	require.NoError(t, err)
 	if info.Mode() != os.FileMode(0o600) {
 		t.Fatal("File mode does not match.")
 	}
@@ -93,20 +77,14 @@ func TestAuditFile_fileModeExisting(t *testing.T) {
 
 func TestAuditFile_fileMode0000(t *testing.T) {
 	f, err := os.CreateTemp("", "test")
-	if err != nil {
-		t.Fatalf("Failure to create test file. The error is %v", err)
-	}
+	require.NoError(t, err)
 	defer os.Remove(f.Name())
 
 	err = os.Chmod(f.Name(), 0o777)
-	if err != nil {
-		t.Fatalf("Failure to chmod temp file for testing. The error is %v", err)
-	}
+	require.NoError(t, err)
 
 	err = f.Close()
-	if err != nil {
-		t.Fatalf("Failure to close temp file for test. The error is %v", err)
-	}
+	require.NoError(t, err)
 
 	config := map[string]string{
 		"path": f.Name(),
@@ -118,14 +96,10 @@ func TestAuditFile_fileMode0000(t *testing.T) {
 		SaltConfig: &salt.Config{},
 		SaltView:   &logical.InmemStorage{},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	info, err := os.Stat(f.Name())
-	if err != nil {
-		t.Fatalf("cannot retrieve file mode from `Stat`. The error is %v", err)
-	}
+	require.NoError(t, err)
 	if info.Mode() != os.FileMode(0o777) {
 		t.Fatal("File mode does not match.")
 	}
@@ -209,9 +183,7 @@ func BenchmarkAuditFile_request(b *testing.B) {
 		SaltConfig: &salt.Config{},
 		SaltView:   &logical.InmemStorage{},
 	})
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	in := &logical.LogInput{
 		Auth: &logical.Auth{

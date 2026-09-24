@@ -19,6 +19,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/benchhelpers"
 	"github.com/openbao/openbao/v2/internal/helper/forwarding"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
 )
 
@@ -59,22 +60,16 @@ func BenchmarkHTTP_Forwarding_Stress(b *testing.B) {
 
 	req, err := http.NewRequest("POST", fmt.Sprintf("https://127.0.0.1:%d/v1/sys/mounts/transit", cores[0].Listeners[0].Address.Port),
 		bytes.NewBuffer([]byte("{\"type\": \"transit\"}")))
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 	req.Header.Set(consts.AuthHeaderName, cluster.RootToken)
 	_, err = client.Do(req)
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	var numOps uint32
 
 	doReq := func(b *testing.B, method, url string, body io.Reader) {
 		req, err := http.NewRequest(method, url, body)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 		req.Header.Set(consts.AuthHeaderName, cluster.RootToken)
 		w := forwarding.NewRPCResponseWriter()
 		handler.ServeHTTP(w, req)

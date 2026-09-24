@@ -13,6 +13,7 @@ import (
 	sr "github.com/openbao/openbao/v2/internal/serviceregistration"
 	"github.com/openbao/openbao/v2/internal/serviceregistration/kubernetes/client"
 	kubetest "github.com/openbao/openbao/v2/internal/serviceregistration/kubernetes/testing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRetryHandlerSimple(t *testing.T) {
@@ -38,9 +39,7 @@ func TestRetryHandlerSimple(t *testing.T) {
 	wait := &sync.WaitGroup{}
 
 	c, err := client.New(logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	r := &retryHandler{
 		logger:         logger,
@@ -90,9 +89,7 @@ func TestRetryHandlerAdd(t *testing.T) {
 
 	logger := hclog.NewNullLogger()
 	c, err := client.New(logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	r := &retryHandler{
 		logger:         hclog.NewNullLogger(),
@@ -213,9 +210,7 @@ func TestRetryHandlerRacesAndDeadlocks(t *testing.T) {
 	}
 
 	c, err := client.New(logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	r := &retryHandler{
 		logger:         logger,
@@ -290,9 +285,7 @@ func TestRetryHandlerAPIConnectivityProblemsInitialState(t *testing.T) {
 		IsActive:             true,
 		IsPerformanceStandby: true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err := reg.Run(shutdownCh, wait, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -381,9 +374,7 @@ func TestRetryHandlerAPIConnectivityProblemsNotifications(t *testing.T) {
 		IsActive:             false,
 		IsPerformanceStandby: false,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if err := reg.NotifyActiveStateChange(true); err != nil {
 		t.Fatal(err)

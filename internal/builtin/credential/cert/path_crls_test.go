@@ -94,18 +94,14 @@ func TestCRLFetch(t *testing.T) {
 	}
 
 	_, err = b.pathCertWrite(t.Context(), req, fd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	empty_login_fd := &framework.FieldData{
 		Raw:    map[string]any{},
 		Schema: pathLogin(b).Fields,
 	}
 	resp, err := b.pathLogin(t.Context(), req, empty_login_fd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.IsError() {
 		t.Fatalf("got error: %#v", *resp)
 	}
@@ -135,9 +131,7 @@ func TestCRLFetch(t *testing.T) {
 		Schema: pathCRLs(b).Fields,
 	}
 	resp, err = b.pathCRLWrite(t.Context(), req, fd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.IsError() {
 		t.Fatalf("got error: %#v", *resp)
 	}

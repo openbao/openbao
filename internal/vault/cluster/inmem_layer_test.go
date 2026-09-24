@@ -10,6 +10,7 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInmemCluster_Connect(t *testing.T) {
@@ -18,9 +19,7 @@ func TestInmemCluster_Connect(t *testing.T) {
 		Level: log.Trace,
 		Name:  "inmem-cluster",
 	}))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	server := cluster.layers[0]
 
@@ -50,18 +49,14 @@ func TestInmemCluster_Connect(t *testing.T) {
 
 	// Make sure two nodes can connect in
 	conn, err := cluster.layers[1].DialContext(t.Context(), server.addr, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if conn == nil {
 		t.Fatal("nil conn")
 	}
 
 	conn, err = cluster.layers[2].DialContext(t.Context(), server.addr, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if conn == nil {
 		t.Fatal("nil conn")
@@ -81,9 +76,7 @@ func TestInmemCluster_Disconnect(t *testing.T) {
 		Level: log.Trace,
 		Name:  "inmem-cluster",
 	}))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	server := cluster.layers[0]
 	server.Disconnect(cluster.layers[1].addr)
@@ -124,9 +117,7 @@ func TestInmemCluster_Disconnect(t *testing.T) {
 
 	// Node2 should be able to connect
 	conn, err = cluster.layers[2].DialContext(t.Context(), server.addr, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if conn == nil {
 		t.Fatal("nil conn")
@@ -146,9 +137,7 @@ func TestInmemCluster_DisconnectAll(t *testing.T) {
 		Level: log.Trace,
 		Name:  "inmem-cluster",
 	}))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	server := cluster.layers[0]
 	server.DisconnectAll()
@@ -179,17 +168,13 @@ func TestInmemCluster_ConnectCluster(t *testing.T) {
 		Level: log.Trace,
 		Name:  "inmem-cluster",
 	}))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cluster2, err := NewInmemLayerCluster("c2", 3, log.New(&log.LoggerOptions{
 		Mutex: &sync.Mutex{},
 		Level: log.Trace,
 		Name:  "inmem-cluster",
 	}))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cluster.ConnectCluster(cluster2)
 
@@ -230,18 +215,14 @@ func TestInmemCluster_ConnectCluster(t *testing.T) {
 	for _, node1 := range cluster.layers {
 		for _, node2 := range cluster2.layers {
 			conn, err := node1.DialContext(t.Context(), node2.addr, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			if conn == nil {
 				t.Fatal("nil conn")
 			}
 
 			conn, err = node2.DialContext(t.Context(), node1.addr, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			if conn == nil {
 				t.Fatal("nil conn")

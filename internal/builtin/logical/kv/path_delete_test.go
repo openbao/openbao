@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVersionedKV_Delete_Put(t *testing.T) {
@@ -86,18 +87,14 @@ func TestVersionedKV_Delete_Put(t *testing.T) {
 	}
 
 	parsed, err := time.Parse(time.RFC3339Nano, resp.Data["versions"].(map[string]any)["1"].(map[string]any)["deletion_time"].(string))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !parsed.After(time.Now().Add(-1*time.Minute)) || !parsed.Before(time.Now()) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
 	parsed, err = time.Parse(time.RFC3339Nano, resp.Data["versions"].(map[string]any)["2"].(map[string]any)["deletion_time"].(string))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !parsed.After(time.Now().Add(-1*time.Minute)) || !parsed.Before(time.Now()) {
 		t.Fatalf("Bad response: %#v", resp)

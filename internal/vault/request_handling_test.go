@@ -47,9 +47,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 		},
 	}
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -63,9 +61,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 		},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -322,9 +318,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 		Connection: &logical.Connection{},
 	}
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -335,9 +329,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 		"policies": "default",
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -351,9 +343,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 		Connection: &logical.Connection{},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -373,9 +363,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 		Connection: &logical.Connection{},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -404,9 +392,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 		Connection: &logical.Connection{},
 	}
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -417,18 +403,14 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 		"period": "5s",
 	}
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Get role ID
 	req.Path = "auth/approle/role/role-period/role-id"
 	req.Operation = logical.ReadOperation
 	req.Data = nil
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Data == nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -439,9 +421,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 	req.Operation = logical.UpdateOperation
 	req.Data = nil
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Data == nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -458,9 +438,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 		Connection: &logical.Connection{},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Auth == nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -479,9 +457,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 		Connection: &logical.Connection{},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -601,9 +577,7 @@ func TestRequestHandling_LoginMetric(t *testing.T) {
 		Connection: &logical.Connection{},
 	}
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -615,9 +589,7 @@ func TestRequestHandling_LoginMetric(t *testing.T) {
 		"policies": "default",
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -635,9 +607,7 @@ func TestRequestHandling_LoginMetric(t *testing.T) {
 		Connection: &logical.Connection{},
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -675,9 +645,7 @@ func TestRequestHandling_SecretLeaseMetric(t *testing.T) {
 	req.Data["foo"] = "bar"
 	req.ClientToken = root
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -686,13 +654,9 @@ func TestRequestHandling_SecretLeaseMetric(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
 	req.ClientToken = root
 	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}

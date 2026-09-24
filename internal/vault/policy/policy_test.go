@@ -147,9 +147,7 @@ path "test/control_group" {
 func TestPolicy_Parse(t *testing.T) {
 	t.Run("HCL", func(t *testing.T) {
 		pHcl, err := ParseACLPolicy(namespace.RootNamespace, rawPolicy)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		validatePolicy(t, pHcl)
 	})

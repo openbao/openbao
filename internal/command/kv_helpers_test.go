@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 // TestAddPrefixToKVPath tests the addPrefixToKVPath helper function
@@ -258,9 +259,7 @@ func TestWalkSecretsTree(t *testing.T) {
 					t.Fatal("an error was expected but the test succeeded")
 				}
 			} else {
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				if !reflect.DeepEqual(tc.expected, descendants) {
 					t.Fatalf("unexpected list output; want: %v, got: %v", tc.expected, descendants)

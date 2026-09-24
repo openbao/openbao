@@ -72,9 +72,7 @@ func TestMonitor_JSONFormat(t *testing.T) {
 	select {
 	case l := <-logCh:
 		err := json.Unmarshal(l, jsonLog)
-		if err != nil {
-			t.Fatal("Expected JSON log from channel")
-		}
+		require.NoError(t, err)
 		require.Contains(t, jsonLog.Message, "test json log")
 		return
 	case <-time.After(5 * time.Second):

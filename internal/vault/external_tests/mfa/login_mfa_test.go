@@ -15,6 +15,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 // TestLoginMFA_Method_CRUD tests creating/reading/updating/deleting a method config for all the MFA providers
@@ -37,14 +38,10 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatalf("failed to enable userpass auth: %v", err)
-	}
+	require.NoError(t, err)
 
 	auths, err := client.Sys().ListAuth()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	mountAccessor := auths["userpass/"].Accessor
 
 	testCases := []struct {
@@ -121,9 +118,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 			// create a new method config
 			myPath := fmt.Sprintf("identity/mfa/method/%s", tc.methodName)
 			resp, err := client.Logical().Write(myPath, tc.configData)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			methodId := resp.Data["method_id"]
 			if methodId == "" {
@@ -134,9 +129,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 
 			// read it back
 			resp, err = client.Logical().Read(myNewPath)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			if resp.Data["id"] != methodId {
 				t.Fatal("expected response id to match existing method id but it didn't")
@@ -152,9 +145,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 
 			// listing should show it
 			resp, err = client.Logical().List(myPath)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp.Data["keys"].([]any)[0] != methodId {
 				t.Fatalf("expected %q in the list of method ids but it wasn't there", methodId)
 			}
@@ -162,14 +153,10 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 			// update it
 			tc.configData[tc.keyToUpdate] = tc.valueToUpdate
 			_, err = client.Logical().Write(myNewPath, tc.configData)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			resp, err = client.Logical().Read(myNewPath)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// these shenanigans are to work around the arcane way that pingid does updates
 			if tc.keyToCheck != "" && tc.updatedValue != "" {
@@ -192,9 +179,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 			// read the id globally should succeed
 			globalPath := fmt.Sprintf("identity/mfa/method/%s", methodId)
 			resp, err = client.Logical().Read(globalPath)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp.Data["id"] != methodId {
 				t.Fatal("expected response id to match existing method id but it didn't")
 			}
@@ -207,9 +192,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 
 			// delete it
 			_, err = client.Logical().Delete(myNewPath)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// try to read it again - should 404
 			resp, err = client.Logical().Read(myNewPath)
@@ -239,14 +222,10 @@ func TestLoginMFAMethodName(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatalf("failed to enable userpass auth: %v", err)
-	}
+	require.NoError(t, err)
 
 	auths, err := client.Sys().ListAuth()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	mountAccessor := auths["userpass/"].Accessor
 
 	testCases := []struct {
@@ -295,9 +274,7 @@ func TestLoginMFAMethodName(t *testing.T) {
 			// create a new method config
 			myPath := fmt.Sprintf("identity/mfa/method/%s", tc.methodType)
 			resp, err := client.Logical().Write(myPath, tc.configData)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			methodId := resp.Data["method_id"]
 			if methodId == "" {
@@ -306,9 +283,7 @@ func TestLoginMFAMethodName(t *testing.T) {
 
 			// creating an MFA config with the same name should not return a new method ID
 			resp, err = client.Logical().Write(myPath, tc.configData)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if methodId != resp.Data["method_id"] {
 				t.Fatal("trying to create a new MFA config with the same name should not result in a new MFA config")
 			}
@@ -318,9 +293,7 @@ func TestLoginMFAMethodName(t *testing.T) {
 			// create a new MFA config name
 			tc.configData["method_name"] = "newName"
 			_, err = client.Logical().Write(myPath, tc.configData)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			myNewPath := fmt.Sprintf("%s/%s", myPath, methodId)
 
@@ -333,9 +306,7 @@ func TestLoginMFAMethodName(t *testing.T) {
 			// Create a method with a / in the name
 			tc.configData["method_name"] = fmt.Sprintf("ns1/%s", originalName)
 			_, err = client.Logical().Write(myNewPath, tc.configData)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		})
 	}
 }
@@ -360,14 +331,10 @@ func TestLoginMFA_ListAllMFAConfigsGlobally(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatalf("failed to enable userpass auth: %v", err)
-	}
+	require.NoError(t, err)
 
 	auths, err := client.Sys().ListAuth()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	mountAccessor := auths["userpass/"].Accessor
 
 	mfaConfigs := []struct {
@@ -419,9 +386,7 @@ func TestLoginMFA_ListAllMFAConfigsGlobally(t *testing.T) {
 		// create a new method config
 		myPath := fmt.Sprintf("identity/mfa/method/%s", method.methodType)
 		resp, err := client.Logical().Write(myPath, method.configData)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		methodId := resp.Data["method_id"]
 		if methodId == "" {
@@ -472,9 +437,7 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 			"key_size":  uint(10),
 			"qr_size":   100 + i,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		configIDs = append(configIDs, resp.Data["method_id"].(string))
 	}
@@ -483,14 +446,10 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	auths, err := client.Sys().ListAuth()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var mountAccessor string
 	if auths != nil && auths["userpass/"] != nil {
@@ -499,14 +458,10 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 
 	// create a few entities
 	resp, err := client.Logical().Write("identity/entity", map[string]any{"name": "bob"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	bobId := resp.Data["id"].(string)
 	resp, err = client.Logical().Write("identity/entity", map[string]any{"name": "alice"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	aliceId := resp.Data["id"].(string)
 
 	// create a few groups
@@ -514,18 +469,14 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 		"metadata":          map[string]any{"rad": true},
 		"member_entity_ids": []string{aliceId},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	radGroupId := resp.Data["id"].(string)
 
 	resp, err = client.Logical().Write("identity/group", map[string]any{
 		"metadata":          map[string]any{"sad": true},
 		"member_entity_ids": []string{bobId},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	sadGroupId := resp.Data["id"].(string)
 
 	myPath := "identity/mfa/login-enforcement/foo"
@@ -536,15 +487,11 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 
 	// create a login enforcement config
 	_, err = client.Logical().Write(myPath, data)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// read it back
 	resp, err = client.Logical().Read(myPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	equal := strutil.EquivalentSlices(data["mfa_method_ids"].([]string), stringSliceFromInterfaceSlice(resp.Data["mfa_method_ids"].([]any)))
 	if !equal {
@@ -557,9 +504,7 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 
 	// listing should show it
 	resp, err = client.Logical().List("identity/mfa/login-enforcement")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Data["keys"].([]any)[0] != "foo" {
 		t.Fatal("expected foo in the list of enforcement names but it wasn't there")
 	}
@@ -568,15 +513,11 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 	data["identity_group_ids"] = []string{radGroupId, sadGroupId}
 	data["identity_entity_ids"] = []string{bobId, aliceId}
 	_, err = client.Logical().Write(myPath, data)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// read it back
 	resp, err = client.Logical().Read(myPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	equal = strutil.EquivalentSlices(data["identity_group_ids"].([]string), stringSliceFromInterfaceSlice(resp.Data["identity_group_ids"].([]any)))
 	if !equal {
@@ -589,9 +530,7 @@ func TestLoginMFA_LoginEnforcement_CRUD(t *testing.T) {
 
 	// delete it
 	_, err = client.Logical().Delete(myPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// try to read it back again - should 404
 	resp, err = client.Logical().Read(myPath)
@@ -662,9 +601,7 @@ func TestLoginMFA_LoginEnforcement_RequiredParameters(t *testing.T) {
 			"key_size":  uint(10),
 			"qr_size":   100 + i,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		configIDs = append(configIDs, resp.Data["method_id"].(string))
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIdentityStore_EntityDisabled(t *testing.T) {
@@ -79,16 +80,12 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("headtest", &api.EnableAuthOptions{
 		Type: "headtest",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Here, should succeed but we should not see the header since it's
 	// not in the allowed list
 	resp, err := client.Logical().ReadRaw("auth/headtest/loginnoerror")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.StatusCode != 200 {
 		t.Fatalf("expected code 200, got %d", resp.StatusCode)
 	}
@@ -113,14 +110,10 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 	err = client.Sys().TuneMount("auth/headtest", api.MountConfigInput{
 		AllowedResponseHeaders: []string{"WwW-AuthenTicate"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err = client.Logical().ReadRaw("auth/headtest/loginnoerror")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.StatusCode != 200 {
 		t.Fatalf("expected code 200, got %d", resp.StatusCode)
 	}

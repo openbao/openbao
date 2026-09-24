@@ -17,9 +17,7 @@ func TestCache(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Debug)
 
 	inm, err := NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cache := physical.NewCache(inm, 0, logger, &metrics.BlackholeSink{})
 	cache.SetEnabled(true)
@@ -32,9 +30,7 @@ func TestCache_ModifyEntry(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Debug)
 
 	inm, err := NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cache := physical.NewCache(inm, 0, logger, &metrics.BlackholeSink{})
 	cache.SetEnabled(true)
@@ -59,9 +55,7 @@ func TestCache_Purge(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Debug)
 
 	inm, err := NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cache := physical.NewCache(inm, 0, logger, &metrics.BlackholeSink{})
 	cache.SetEnabled(true)
 
@@ -70,21 +64,15 @@ func TestCache_Purge(t *testing.T) {
 		Value: []byte("bar"),
 	}
 	err = cache.Put(t.Context(), ent)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Delete from under
 	inm.Delete(t.Context(), "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read should work
 	out, err := cache.Get(t.Context(), "foo")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if out == nil {
 		t.Fatal("should have key")
 	}
@@ -94,9 +82,7 @@ func TestCache_Purge(t *testing.T) {
 
 	// Read should fail
 	out, err = cache.Get(t.Context(), "foo")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if out != nil {
 		t.Fatal("should not have key")
 	}
@@ -107,9 +93,7 @@ func TestCache_Invalidate(t *testing.T) {
 	require := require.New(t)
 
 	inm, err := NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(err)
 	cache := physical.NewCache(inm, 0, logger, &metrics.BlackholeSink{})
 	cache.SetEnabled(true)
 
@@ -163,9 +147,7 @@ func TestCache_Disable(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Debug)
 
 	inm, err := NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cache := physical.NewCache(inm, 0, logger, &metrics.BlackholeSink{})
 
 	disabledTests := func() {
@@ -174,65 +156,47 @@ func TestCache_Disable(t *testing.T) {
 			Value: []byte("bar"),
 		}
 		err = inm.Put(t.Context(), ent)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		// Read should work
 		out, err := cache.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out == nil {
 			t.Fatal("should have key")
 		}
 
 		err = inm.Delete(t.Context(), ent.Key)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// Should not work
 		out, err = cache.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out != nil {
 			t.Fatal("should not have key")
 		}
 
 		// Put through the cache and try again
 		err = cache.Put(t.Context(), ent)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		// Read should work in both
 		out, err = inm.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out == nil {
 			t.Fatal("should have key")
 		}
 		out, err = cache.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out == nil {
 			t.Fatal("should have key")
 		}
 
 		err = inm.Delete(t.Context(), ent.Key)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// Should not work
 		out, err = cache.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out != nil {
 			t.Fatal("should not have key")
 		}
@@ -244,109 +208,79 @@ func TestCache_Disable(t *testing.T) {
 			Value: []byte("bar"),
 		}
 		err = inm.Put(t.Context(), ent)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		// Read should work
 		out, err := cache.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out == nil {
 			t.Fatal("should have key")
 		}
 
 		err = inm.Delete(t.Context(), ent.Key)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// Should work
 		out, err = cache.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out == nil {
 			t.Fatal("should have key")
 		}
 
 		// Put through the cache and try again
 		err = cache.Put(t.Context(), ent)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		// Read should work for both
 		out, err = inm.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out == nil {
 			t.Fatal("should have key")
 		}
 		out, err = cache.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out == nil {
 			t.Fatal("should have key")
 		}
 
 		err = inm.Delete(t.Context(), ent.Key)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// Should work
 		out, err = cache.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out == nil {
 			t.Fatal("should have key")
 		}
 
 		// Put through the cache
 		err = cache.Put(t.Context(), ent)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		// Read should work for both
 		out, err = inm.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out == nil {
 			t.Fatal("should have key")
 		}
 		out, err = cache.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out == nil {
 			t.Fatal("should have key")
 		}
 
 		// Delete via cache
 		err = cache.Delete(t.Context(), ent.Key)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// Read should not work for either
 		out, err = inm.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out != nil {
 			t.Fatal("should not have key")
 		}
 		out, err = cache.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out != nil {
 			t.Fatal("should not have key")
 		}
@@ -363,9 +297,7 @@ func TestCache_Refresh(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Debug)
 
 	inm, err := NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cache := physical.NewCache(inm, 0, logger, &metrics.BlackholeSink{})
 	cache.SetEnabled(true)
 
@@ -374,9 +306,7 @@ func TestCache_Refresh(t *testing.T) {
 		Value: []byte("bar"),
 	}
 	err = cache.Put(t.Context(), ent)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	ent2 := &physical.Entry{
 		Key:   "foo",
@@ -384,14 +314,10 @@ func TestCache_Refresh(t *testing.T) {
 	}
 	// Update below cache
 	err = inm.Put(t.Context(), ent2)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	r, err := cache.Get(t.Context(), "foo")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if string(r.Value) != "bar" {
 		t.Fatalf("expected value bar, got %s", string(r.Value))
@@ -399,9 +325,7 @@ func TestCache_Refresh(t *testing.T) {
 
 	// Refresh the cache
 	r, err = cache.Get(physical.CacheRefreshContext(t.Context(), true), "foo")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if string(r.Value) != "baz" {
 		t.Fatalf("expected value baz, got %s", string(r.Value))
@@ -409,9 +333,7 @@ func TestCache_Refresh(t *testing.T) {
 
 	// Make sure new value is in cache
 	r, err = cache.Get(t.Context(), "foo")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if string(r.Value) != "baz" {
 		t.Fatalf("expected value baz, got %s", string(r.Value))
 	}

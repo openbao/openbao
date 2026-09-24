@@ -13,6 +13,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransit_BatchDecryption(t *testing.T) {
@@ -254,9 +255,7 @@ func TestTransit_BatchDecryption_DerivedKey(t *testing.T) {
 				if rawRespBody, ok := resp.Data[logical.HTTPRawBody]; ok {
 					httpResp := &logical.HTTPResponse{}
 					err = jsonutil.DecodeJSON([]byte(rawRespBody.(string)), httpResp)
-					if err != nil {
-						t.Fatalf("failed to unmarshal nested response: err:%v, resp:%#v", err, resp)
-					}
+					require.NoErrorf(t, err, "failed to unmarshal nested response: err:%v, resp:%#v", err, resp)
 
 					if respStatus, ok := resp.Data[logical.HTTPStatusCode]; !ok || respStatus != tt.wantHTTPStatus {
 						t.Fatalf("HTTP response status code mismatch, want:%d, got:%d", tt.wantHTTPStatus, respStatus)
@@ -267,9 +266,7 @@ func TestTransit_BatchDecryption_DerivedKey(t *testing.T) {
 
 				var respItems []DecryptBatchResponseItem
 				err = mapstructure.Decode(resp.Data["batch_results"], &respItems)
-				if err != nil {
-					t.Fatalf("problem decoding response items: err:%v, resp:%#v", err, resp)
-				}
+				require.NoErrorf(t, err, "problem decoding response items: err:%v, resp:%#v", err, resp)
 				if !reflect.DeepEqual(tt.want, respItems) {
 					t.Fatalf("response items mismatch, want:%#v, got:%#v", tt.want, respItems)
 				}

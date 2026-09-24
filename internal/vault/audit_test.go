@@ -47,9 +47,7 @@ func TestAudit_ReadOnlyViewDuringMount(t *testing.T) {
 		Type:  "noop",
 	}
 	err := c.enableAudit(namespace.RootContext(t.Context()), me, true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestCore_EnableAudit(t *testing.T) {
@@ -62,9 +60,7 @@ func TestCore_EnableAudit(t *testing.T) {
 		Type:  "noop",
 	}
 	err := c.enableAudit(namespace.RootContext(t.Context()), me, true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if !c.auditBroker.IsRegistered("foo/") {
 		t.Fatal("missing audit backend")
@@ -76,15 +72,11 @@ func TestCore_EnableAudit(t *testing.T) {
 	}
 	conf.AuditBackends["noop"] = corehelpers.NoopAuditFactory(nil)
 	c2, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer c2.Shutdown()
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c2, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -130,9 +122,7 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 
 	// Both should set up successfully
 	err := c.setupAudits(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// We expect this to work because the other entry is still valid
 	c.audit.Entries[0].Type = "fail"
@@ -143,9 +133,7 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 	c.audit = nil
 
 	err = c.setupAudits(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// No audit backend set up successfully, so expect error
 	c.audit.Entries[1].Type = "fail"
@@ -199,14 +187,10 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 
 	// Both should set up successfully
 	err := c.setupAudits(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	rawLocal, err := c.barrier.Get(t.Context(), coreLocalAuditConfigPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if rawLocal == nil {
 		t.Fatal("expected non-nil local audit")
 	}
@@ -224,9 +208,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 	}
 
 	rawLocal, err = c.barrier.Get(t.Context(), coreLocalAuditConfigPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if rawLocal == nil {
 		t.Fatal("expected non-nil local audit")
 	}
@@ -267,9 +249,7 @@ func TestCore_DisableAudit(t *testing.T) {
 		Type:  "noop",
 	}
 	err = c.enableAudit(namespace.RootContext(t.Context()), me, true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	existed, err = c.disableAudit(namespace.RootContext(t.Context()), "foo", true)
 	if !existed || err != nil {
@@ -285,15 +265,11 @@ func TestCore_DisableAudit(t *testing.T) {
 		Physical: c.physical,
 	}
 	c2, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer c2.Shutdown()
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c2, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -319,15 +295,11 @@ func TestCore_DefaultAuditTable(t *testing.T) {
 		Physical: c.physical,
 	}
 	c2, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer c2.Shutdown()
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c2, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -376,22 +348,16 @@ func TestAuditBroker_LogRequest(t *testing.T) {
 
 	// Copy so we can verify nothing changed
 	authCopyRaw, err := copystructure.Copy(auth)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	authCopy := authCopyRaw.(*logical.Auth)
 
 	reqCopyRaw, err := copystructure.Copy(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	reqCopy := reqCopyRaw.(*logical.Request)
 
 	// Create an identifier for the request to verify against
 	req.ID, err = uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("failed to generate identifier for the request: path%s err: %v", req.Path, err)
-	}
+	require.NoErrorf(t, err, "failed to generate identifier for the request: path%s err: %v", req.Path, err)
 	reqCopy.ID = req.ID
 
 	reqErrs := errors.New("errs")
@@ -407,9 +373,7 @@ func TestAuditBroker_LogRequest(t *testing.T) {
 	}
 	ctx := namespace.RootContext(t.Context())
 	err = b.LogRequest(ctx, logInput, headersConf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	for _, a := range []*corehelpers.NoopAudit{a1, a2} {
 		if !reflect.DeepEqual(a.ReqAuth[0], auth) {
@@ -476,21 +440,15 @@ func TestAuditBroker_LogResponse(t *testing.T) {
 
 	// Copy so we can verify nothing changed
 	authCopyRaw, err := copystructure.Copy(auth)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	authCopy := authCopyRaw.(*logical.Auth)
 
 	reqCopyRaw, err := copystructure.Copy(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	reqCopy := reqCopyRaw.(*logical.Request)
 
 	respCopyRaw, err := copystructure.Copy(resp)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	respCopy := respCopyRaw.(*logical.Response)
 
 	headersConf := &AuditedHeadersConfig{
@@ -505,9 +463,7 @@ func TestAuditBroker_LogResponse(t *testing.T) {
 	}
 	ctx := namespace.RootContext(t.Context())
 	err = b.LogResponse(ctx, logInput, headersConf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	for _, a := range []*corehelpers.NoopAudit{a1, a2} {
 		if !reflect.DeepEqual(a.RespAuth[0], auth) {
@@ -533,9 +489,7 @@ func TestAuditBroker_LogResponse(t *testing.T) {
 		OuterErr: respErr,
 	}
 	err = b.LogResponse(ctx, logInput, headersConf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should FAIL work with both failing backends
 	a2.RespErr = errors.New("failed")
@@ -576,9 +530,7 @@ func TestAuditBroker_AuditHeaders(t *testing.T) {
 
 	// Copy so we can verify nothing changed
 	reqCopyRaw, err := copystructure.Copy(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	reqCopy := reqCopyRaw.(*logical.Request)
 
 	headersConf := &AuditedHeadersConfig{
@@ -594,9 +546,7 @@ func TestAuditBroker_AuditHeaders(t *testing.T) {
 	}
 	ctx := namespace.RootContext(t.Context())
 	err = b.LogRequest(ctx, logInput, headersConf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	expected := map[string][]string{
 		"x-test-header":  {"foo"},
@@ -617,9 +567,7 @@ func TestAuditBroker_AuditHeaders(t *testing.T) {
 		OuterErr: respErr,
 	}
 	err = b.LogRequest(ctx, logInput, headersConf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should FAIL work with both failing backends
 	a2.ReqErr = errors.New("failed")

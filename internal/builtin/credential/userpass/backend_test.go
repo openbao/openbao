@@ -38,17 +38,13 @@ func TestBackend_CRUD(t *testing.T) {
 	ctx := t.Context()
 
 	b, err := Factory(ctx, config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if b == nil {
 		t.Fatal("failed to create backend")
 	}
 
 	localhostSockAddr, err := sockaddr.NewSockAddr("127.0.0.1")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Use new token_ forms
 	resp, err = b.HandleRequest(ctx, &logical.Request{
@@ -86,9 +82,7 @@ func TestBackend_CRUD(t *testing.T) {
 	}
 
 	localhostSockAddr, err = sockaddr.NewSockAddr("127.0.1.1")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Use the old forms and verify that they zero out the new ones and then
 	// the new ones read with the expected value
@@ -143,9 +137,7 @@ func TestBackend_basic(t *testing.T) {
 			MaxLeaseTTLVal:     testSysMaxTTL,
 		},
 	})
-	if err != nil {
-		t.Fatalf("Unable to create backend: %s", err)
-	}
+	require.NoError(t, err)
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: b,
 		Steps: []logicaltest.TestStep{
@@ -166,9 +158,7 @@ func TestBackend_userCrud(t *testing.T) {
 			MaxLeaseTTLVal:     testSysMaxTTL,
 		},
 	})
-	if err != nil {
-		t.Fatalf("Unable to create backend: %s", err)
-	}
+	require.NoError(t, err)
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: b,
@@ -189,9 +179,7 @@ func TestBackend_userCreateOperation(t *testing.T) {
 			MaxLeaseTTLVal:     testSysMaxTTL,
 		},
 	})
-	if err != nil {
-		t.Fatalf("Unable to create backend: %s", err)
-	}
+	require.NoError(t, err)
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: b,
@@ -212,9 +200,7 @@ func TestBackend_passwordUpdate(t *testing.T) {
 			MaxLeaseTTLVal:     testSysMaxTTL,
 		},
 	})
-	if err != nil {
-		t.Fatalf("Unable to create backend: %s", err)
-	}
+	require.NoError(t, err)
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: b,
@@ -238,9 +224,7 @@ func TestBackend_policiesUpdate(t *testing.T) {
 			MaxLeaseTTLVal:     testSysMaxTTL,
 		},
 	})
-	if err != nil {
-		t.Fatalf("Unable to create backend: %s", err)
-	}
+	require.NoError(t, err)
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: b,
@@ -410,18 +394,12 @@ func TestBackend_UserUpgrade(t *testing.T) {
 	}
 
 	entry, err := logical.StorageEntryJSON("user/foo", foo)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = s.Put(ctx, entry)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	userEntry, err := b.user(ctx, s, "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	exp := &UserEntry{
 		Policies:   []string{"foo"},

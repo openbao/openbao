@@ -12,15 +12,14 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRenewer_NewRenewer(t *testing.T) {
 	t.Parallel()
 
 	client, err := NewClient(DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cases := []struct {
 		name string
@@ -83,9 +82,7 @@ func TestLifetimeWatcher(t *testing.T) {
 	t.Parallel()
 
 	client, err := NewClient(DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Note that doRenewWithOptions starts its loop with an initial renewal.
 	// This has a big impact on the particulars of the following cases.
@@ -186,9 +183,7 @@ func TestLifetimeWatcher(t *testing.T) {
 				},
 				Increment: tc.incrementSeconds,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			doneCh := make(chan error, 1)
 			go func() {

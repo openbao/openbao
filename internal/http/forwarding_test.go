@@ -64,15 +64,11 @@ func TestHTTP_Fallback_Bad_Address(t *testing.T) {
 		config.HttpClient.Transport.(*http.Transport).TLSClientConfig = cores[0].TLSConfig()
 
 		client, err := api.NewClient(config)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		client.SetToken(cluster.RootToken)
 
 		secret, err := client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret == nil {
 			t.Fatal("secret is nil")
 		}
@@ -112,15 +108,11 @@ func TestHTTP_Fallback_Disabled(t *testing.T) {
 		config.HttpClient.Transport.(*http.Transport).TLSClientConfig = cores[0].TLSConfig()
 
 		client, err := api.NewClient(config)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		client.SetToken(cluster.RootToken)
 
 		secret, err := client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret == nil {
 			t.Fatal("secret is nil")
 		}
@@ -186,14 +178,10 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 	// core.Logger().Printf("[TRACE] mounting transit")
 	req, err := http.NewRequest("POST", fmt.Sprintf("https://127.0.0.1:%d/v1/sys/mounts/transit", cores[0].Listeners[0].Address.Port),
 		bytes.NewBuffer([]byte("{\"type\": \"transit\"}")))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.Header.Set(consts.AuthHeaderName, cluster.RootToken)
 	_, err = client.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	totalOps := atomic.Uint32{}
 	successfulOps := atomic.Uint32{}
@@ -481,14 +469,10 @@ func TestHTTP_Forwarding_ClientTLS(t *testing.T) {
 
 	req, err := http.NewRequest("POST", fmt.Sprintf("https://127.0.0.1:%d/v1/sys/auth/cert", cores[0].Listeners[0].Address.Port),
 		bytes.NewBuffer([]byte("{\"type\": \"cert\"}")))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.Header.Set(consts.AuthHeaderName, cluster.RootToken)
 	_, err = client.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	type certConfig struct {
 		Certificate string `json:"certificate"`
@@ -498,19 +482,13 @@ func TestHTTP_Forwarding_ClientTLS(t *testing.T) {
 		Certificate: string(cluster.CACertPEM),
 		Policies:    "default",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req, err = http.NewRequest("POST", fmt.Sprintf("https://127.0.0.1:%d/v1/auth/cert/certs/test", cores[0].Listeners[0].Address.Port),
 		bytes.NewBuffer(encodedCertConfig))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.Header.Set(consts.AuthHeaderName, cluster.RootToken)
 	_, err = client.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	addrs := []string{
 		fmt.Sprintf("https://127.0.0.1:%d", cores[1].Listeners[0].Address.Port),
@@ -536,14 +514,10 @@ func TestHTTP_Forwarding_ClientTLS(t *testing.T) {
 			Address:    addr,
 			HttpClient: httpClient,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		secret, err := client.Logical().Write("auth/cert/login", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret == nil {
 			t.Fatal("secret is nil")
 		}
@@ -558,9 +532,7 @@ func TestHTTP_Forwarding_ClientTLS(t *testing.T) {
 		}
 		client.SetToken(secret.Auth.ClientToken)
 		secret, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret == nil {
 			t.Fatal("secret is nil")
 		}
@@ -582,9 +554,7 @@ func TestHTTP_Forwarding_HelpOperation(t *testing.T) {
 
 	testHelp := func(node string, client *api.Client) {
 		help, err := client.Help("auth/token")
-		if err != nil {
-			t.Fatalf("[on %v]: %v", node, err)
-		}
+		require.NoErrorf(t, err, "[on %v]: %v", node, err)
 		if help == nil {
 			t.Fatalf("[on %v]: help was nil", node)
 		}
@@ -608,9 +578,7 @@ func TestHTTP_Forwarding_LocalOnly(t *testing.T) {
 
 	testLocalOnly := func(client *api.Client) {
 		sec, err := client.Logical().Read("sys/config/state/sanitized")
-		if err != nil {
-			t.Fatalf("standby should handle local read without forwarding: %v", err)
-		}
+		require.NoError(t, err)
 		if sec == nil || sec.Data == nil {
 			t.Fatalf("expected non-nil secret/data from local read")
 		}

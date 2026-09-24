@@ -386,32 +386,24 @@ COPY root.pem /root.pem
 			}
 		},
 	})
-	if err != nil {
-		t.Fatalf("Could not provision docker service runner: %s", err)
-	}
+	require.NoError(t, err)
 
 	output, err := cRunner.BuildImage(ctx, containerfile, bCtx,
 		hDocker.BuildRemove(true), hDocker.BuildForceRemove(true),
 		hDocker.BuildPullParent(true),
 		hDocker.BuildTags([]string{imageName + ":" + imageTag}))
-	if err != nil {
-		t.Fatalf("Could not build new image: %v", err)
-	}
+	require.NoError(t, err)
 
 	t.Logf("Image build output: %v", string(output))
 
 	result, err := cRunner.Start(ctx, true, false)
-	if err != nil {
-		t.Fatalf("Could not start golang container for wget/curl checks: %s", err)
-	}
+	require.NoError(t, err)
 
 	dns := strings.ReplaceAll(dnsAddr, ":53", "")
 	if len(dnsAddr) > 0 {
 		cmd := []string{"sh", "-c", "echo 'search dadgarcorp.com' > /etc/resolv.conf && echo 'nameserver " + dns + "' >> /etc/resolv.conf"}
 		stdout, stderr, retcode, err := cRunner.RunCmdWithOutput(ctx, result.Container.ID, cmd)
-		if err != nil {
-			t.Fatalf("Could not run command (%v) in container: %v", cmd, err)
-		}
+		require.NoErrorf(t, err, "Could not run command (%v) in container: %v", cmd, err)
 
 		if len(stderr) != 0 {
 			t.Logf("Got stderr from command (%v):\n%v\n", cmd, string(stderr))
@@ -425,9 +417,7 @@ COPY root.pem /root.pem
 
 	cmd := []string{"curl", "--verbose", "--cacert", "/root.pem", "https://" + address + "/v1/sys/health"}
 	stdout, stderr, retcode, err := cRunner.RunCmdWithOutput(ctx, result.Container.ID, cmd)
-	if err != nil {
-		t.Fatalf("Could not run command (%v) in container: %v", cmd, err)
-	}
+	require.NoErrorf(t, err, "Could not run command (%v) in container: %v", cmd, err)
 
 	if len(stderr) != 0 {
 		t.Logf("Got stderr from command (%v):\n%v\n", cmd, string(stderr))

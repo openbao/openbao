@@ -22,6 +22,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/pgpkeys"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 var tokenLength string = fmt.Sprintf("%d", vault.TokenLength+vault.TokenPrefixLength)
@@ -33,9 +34,7 @@ func TestSysGenerateRootAttempt_Status(t *testing.T) {
 	TestServerAuth(t, addr, token)
 
 	resp, err := http.Get(addr + "/v1/sys/generate-root/attempt")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	var actual map[string]any
 	expected := map[string]any{
@@ -183,9 +182,7 @@ func TestSysGenerateRootAttempt_Cancel(t *testing.T) {
 	testResponseStatus(t, resp, 204)
 
 	resp, err := http.Get(addr + "/v1/sys/generate-root/attempt")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	actual = map[string]any{}
 	expected = map[string]any{
@@ -218,9 +215,7 @@ func enableNoopAudit(t *testing.T, token string, core *vault.Core) {
 		},
 	}
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), auditReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if resp.IsError() {
 		t.Fatal(err)
@@ -329,14 +324,10 @@ func TestSysGenerateRoot_Update_OTP(t *testing.T) {
 	}
 
 	tokenBytes, err := base64.RawStdEncoding.DecodeString(expected["encoded_token"].(string))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	tokenBytes, err = xor.XORBytes(tokenBytes, []byte(otp))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	newRootToken := string(tokenBytes)
 
 	actual = map[string]any{}
@@ -385,9 +376,7 @@ func TestSysGenerateRoot_Update_PGP(t *testing.T) {
 
 	// We need to get the nonce first before we update
 	resp, err := http.Get(addr + "/v1/sys/generate-root/attempt")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	var rootGenerationStatus map[string]any
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &rootGenerationStatus)
@@ -433,9 +422,7 @@ func TestSysGenerateRoot_Update_PGP(t *testing.T) {
 	}
 
 	decodedTokenBuf, err := pgpkeys.DecryptBytes(actual["encoded_token"].(string), pgpkeys.TestPrivKey1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if decodedTokenBuf == nil {
 		t.Fatal("decoded root token buffer is nil")
 	}

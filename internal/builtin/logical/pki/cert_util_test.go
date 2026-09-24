@@ -50,14 +50,10 @@ func TestPki_FetchCertBySerial(t *testing.T) {
 			Key:   storageKey,
 			Value: []byte("some data"),
 		})
-		if err != nil {
-			t.Fatalf("error writing to storage on %s colon-based storage path: %s", name, err)
-		}
+		require.NoErrorf(t, err, "error writing to storage on %s colon-based storage path: %s", name, err)
 
 		certEntry, err := fetchCertBySerial(sc, tc.Prefix, tc.Serial)
-		if err != nil {
-			t.Fatalf("error on %s for colon-based storage path: %s", name, err)
-		}
+		require.NoErrorf(t, err, "error on %s for colon-based storage path: %s", name, err)
 
 		// Check for non-nil on valid/revoked certs
 		if certEntry == nil {
@@ -67,9 +63,7 @@ func TestPki_FetchCertBySerial(t *testing.T) {
 		// Ensure that cert serials are converted/updated after fetch
 		expectedKey := tc.Prefix + normalizeSerial(tc.Serial)
 		se, err := storage.Get(t.Context(), expectedKey)
-		if err != nil {
-			t.Fatalf("error on %s for colon-based storage path:%s", name, err)
-		}
+		require.NoErrorf(t, err, "error on %s for colon-based storage path:%s", name, err)
 		if strings.Compare(expectedKey, se.Key) != 0 {
 			t.Fatalf("expected: %s, got: %s", expectedKey, certEntry.Key)
 		}
@@ -85,9 +79,7 @@ func TestPki_FetchCertBySerial(t *testing.T) {
 			Key:   storageKey,
 			Value: []byte("some data"),
 		})
-		if err != nil {
-			t.Fatalf("error writing to storage on %s hyphen-based storage path: %s", name, err)
-		}
+		require.NoErrorf(t, err, "error writing to storage on %s hyphen-based storage path: %s", name, err)
 
 		certEntry, err := fetchCertBySerial(sc, tc.Prefix, tc.Serial)
 		if err != nil || certEntry == nil {
@@ -118,9 +110,7 @@ func TestPki_MultipleOUs(t *testing.T) {
 		},
 	}
 	cb, _, err := generateCreationBundle(&b, input, nil, nil)
-	if err != nil {
-		t.Fatalf("Error: %v", err)
-	}
+	require.NoError(t, err)
 
 	expected := []string{"Z", "E", "V"}
 	actual := cb.Params.Subject.OrganizationalUnit
@@ -218,9 +208,7 @@ func TestPki_PermitFQDNs(t *testing.T) {
 	for name, testCase := range cases {
 		t.Run(name, func(t *testing.T) {
 			cb, _, err := generateCreationBundle(&b, testCase.input, nil, nil)
-			if err != nil {
-				t.Fatalf("Error: %v", err)
-			}
+			require.NoError(t, err)
 
 			actualDnsNames := cb.Params.DNSNames
 
@@ -248,9 +236,7 @@ func TestPki_getCertificateNotBefore(t *testing.T) {
 	expectedNotBefore := "2024-12-31 23:59:59 +0000 UTC"
 
 	notBefore, err := getCertificateNotBefore(&data)
-	if err != nil {
-		t.Fatalf("Error: %v", err)
-	}
+	require.NoError(t, err)
 
 	if expectedNotBefore != notBefore.String() {
 		t.Fatalf("Expected Not Before %v, got %v", expectedNotBefore, notBefore)

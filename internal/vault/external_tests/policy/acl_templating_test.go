@@ -12,6 +12,7 @@ import (
 	credUserpass "github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPolicyTemplating(t *testing.T) {
@@ -73,9 +74,7 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 			"key": "metadata",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	entityID := resp.Data["id"].(string)
 
 	resp, err = client.Logical().Write("identity/group", map[string]any{
@@ -87,33 +86,25 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 		},
 		"name": "group_name",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	groupID := resp.Data["id"]
 
 	resp, err = client.Logical().Write("identity/group", map[string]any{
 		"name": "foobar",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	foobarGroupID := resp.Data["id"]
 
 	// Enable userpass auth
 	err = client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create an external group and renew the token. This should add external
 	// group policies to the token.
 	auths, err := client.Sys().ListAuth()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	userpassAccessor := auths["userpass/"].Accessor
 
 	// Create an alias
@@ -122,37 +113,27 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 		"mount_accessor": userpassAccessor,
 		"canonical_id":   entityID,
 	})
-	if err != nil {
-		t.Fatalf("err:%v resp:%#v", err, resp)
-	}
+	require.NoErrorf(t, err, "err:%v resp:%#v", err, resp)
 
 	// Add a user to userpass backend
 	_, err = client.Logical().Write("auth/userpass/users/testuser", map[string]any{
 		"password": "testpassword",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write in policies
 	goodPolicy1 = fmt.Sprintf(goodPolicy1, userpassAccessor)
 	goodPolicy2 = fmt.Sprintf(goodPolicy2, groupID)
 	err = client.Sys().PutPolicy("goodPolicy1", goodPolicy1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = client.Sys().PutPolicy("goodPolicy2", goodPolicy2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Authenticate
 	secret, err := client.Logical().Write("auth/userpass/login/testuser", map[string]any{
 		"password": "testpassword",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	clientToken := secret.Auth.ClientToken
 
 	tests := []struct {
@@ -220,9 +201,7 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 	client.SetToken(rootToken)
 	// Test that a policy with bad group membership doesn't kill the other paths
 	err = client.Sys().PutPolicy("badPolicy1", badPolicy1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(clientToken)
 	runTests(true, false)
 
@@ -234,9 +213,7 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 			entityID,
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(clientToken)
 	runTests(false, false)
 
@@ -248,9 +225,7 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 			"key": "metadata/+",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client.SetToken(clientToken)
 	runTests(false, true)
@@ -262,9 +237,7 @@ path "secret/{{ identity.groups.names.foobar.name}}/*" {
 		"allow_wildcards_in_identity_templates": true,
 		"allow_slashes_in_identity_templates":   true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client.SetToken(clientToken)
 	runTests(false, false)

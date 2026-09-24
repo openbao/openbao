@@ -24,17 +24,14 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/benchhelpers"
 	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func getPluginClusterAndCore(t testing.TB, logger log.Logger) (*vault.TestCluster, *vault.TestClusterCore) {
 	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	coreConfig := &vault.CoreConfig{
 		Physical:   inm,
@@ -62,9 +59,7 @@ func getPluginClusterAndCore(t testing.TB, logger log.Logger) (*vault.TestCluste
 	err = core.Client.Sys().Mount("mock", &api.MountInput{
 		Type: "mock-plugin",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return cluster, core
 }
@@ -90,9 +85,7 @@ func TestPlugin_PluginMain(t *testing.T) {
 	err := plugin.Serve(&plugin.ServeOpts{
 		BackendFactoryFunc: factoryFunc,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	t.Fatal("Why are we here")
 }
 
@@ -106,14 +99,10 @@ func TestPlugin_MockList(t *testing.T) {
 	_, err := core.Client.Logical().Write("mock/kv/foo", map[string]any{
 		"value": "baz",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	keys, err := core.Client.Logical().List("mock/kv/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if keys.Data["keys"].([]any)[0].(string) != "foo" {
 		t.Fatal(keys)
 	}
@@ -121,14 +110,10 @@ func TestPlugin_MockList(t *testing.T) {
 	_, err = core.Client.Logical().Write("mock/kv/zoo", map[string]any{
 		"value": "baz",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	keys, err = core.Client.Logical().List("mock/kv/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if keys.Data["keys"].([]any)[0].(string) != "foo" || keys.Data["keys"].([]any)[1].(string) != "zoo" {
 		t.Fatal(keys)
 	}
@@ -142,14 +127,10 @@ func TestPlugin_MockRawResponse(t *testing.T) {
 	defer cluster.Cleanup()
 
 	resp, err := core.Client.Logical().ReadRaw("mock/raw")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer resp.Body.Close() //nolint:errcheck
 	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if string(body[:]) != "Response" {
 		t.Fatal("bad body")
 	}
@@ -169,21 +150,15 @@ func TestPlugin_GetParams(t *testing.T) {
 	_, err := core.Client.Logical().Write("mock/kv/foo", map[string]any{
 		"value": "baz",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	params := url.Values{"version": []string{"12"}}
 	resp, err := core.Client.Logical().ReadRawWithData("mock/kv/foo", params)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer resp.Body.Close() //nolint:errcheck
 
 	secret, err := api.ParseSecret(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := map[string]any{
 		"value":   "baz",

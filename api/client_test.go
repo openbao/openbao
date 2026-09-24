@@ -41,9 +41,7 @@ func TestNewConfig_envvar(t *testing.T) {
 	t.Setenv("BAO_TOKEN", "testing")
 
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if token := client.Token(); token != "" {
 		t.Fatalf("bad: %s", token)
@@ -61,9 +59,7 @@ func TestDefaultConfig_envvar(t *testing.T) {
 	t.Setenv("BAO_TOKEN", "testing")
 
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if token := client.Token(); token != "testing" {
 		t.Fatalf("bad: %s", token)
@@ -74,16 +70,12 @@ func TestClientDefaultHttpClient(t *testing.T) {
 	_, err := NewClient(&Config{
 		HttpClient: http.DefaultClient,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestClientNilConfig(t *testing.T) {
 	client, err := NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if client == nil {
 		t.Fatal("expected a non-nil client")
 	}
@@ -93,9 +85,7 @@ func TestClientDefaultHttpClient_unixSocket(t *testing.T) {
 	t.Setenv("BAO_AGENT_ADDR", "unix:///var/run/vault.sock")
 
 	client, err := NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if client == nil {
 		t.Fatal("expected a non-nil client")
 	}
@@ -109,9 +99,7 @@ func TestClientDefaultHttpClient_unixSocket(t *testing.T) {
 
 func TestClientSetAddress(t *testing.T) {
 	client, err := NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// Start with TCP address using HTTP
 	if err := client.SetAddress("http://172.168.2.1:8300"); err != nil {
 		t.Fatal(err)
@@ -155,9 +143,7 @@ func TestClientToken(t *testing.T) {
 	defer ln.Close()
 
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	client.SetToken(tokenValue)
 
@@ -182,17 +168,13 @@ func TestClientHostHeader(t *testing.T) {
 
 	config.Address = strings.ReplaceAll(config.Address, "127.0.0.1", "localhost")
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Set the token manually
 	client.SetToken("foo")
 
 	resp, err := client.RawRequest(client.NewRequest(http.MethodPut, "/"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Copy the response
 	var buf bytes.Buffer
@@ -211,15 +193,11 @@ func TestClientBadToken(t *testing.T) {
 	defer ln.Close()
 
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	client.SetToken("foo")
 	_, err = client.RawRequest(client.NewRequest(http.MethodPut, "/"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client.SetToken("foo\u007f")
 	_, err = client.RawRequest(client.NewRequest(http.MethodPut, "/"))
@@ -261,15 +239,11 @@ func TestClientDisableRedirects(t *testing.T) {
 			defer ln.Close()
 
 			client, err := NewClient(config)
-			if err != nil {
-				t.Fatalf("%s: error %v", name, err)
-			}
+			require.NoErrorf(t, err, "%s: error %v", name, err)
 
 			req := client.NewRequest("GET", "/")
 			resp, err := client.rawRequestWithContext(t.Context(), req)
-			if err != nil {
-				t.Fatalf("%s: error %v", name, err)
-			}
+			require.NoErrorf(t, err, "%s: error %v", name, err)
 
 			if numReqs != test.expectedNumReqs {
 				t.Fatalf("%s: expected %v request(s) but got %v", name, test.expectedNumReqs, numReqs)
@@ -280,9 +254,7 @@ func TestClientDisableRedirects(t *testing.T) {
 			}
 
 			location, err := resp.Location()
-			if err != nil {
-				t.Fatalf("%s error %v", name, err)
-			}
+			require.NoErrorf(t, err, "%s error %v", name, err)
 			if req.URL.String() == location.String() {
 				t.Fatalf("%s: expected request URL %v to be different from redirect URL %v", name, req.URL, resp.Request.URL)
 			}
@@ -305,18 +277,14 @@ func TestClientRedirect(t *testing.T) {
 	defer ln2.Close()
 
 	client, err := NewClient(config2)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Set the token manually
 	client.SetToken("foo")
 
 	// Do a raw "/" request
 	resp, err := client.RawRequest(client.NewRequest(http.MethodPut, "/"))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Copy the response
 	var buf bytes.Buffer
@@ -716,14 +684,10 @@ func TestClientEnvNamespace(t *testing.T) {
 	t.Setenv(EnvVaultNamespace, "test")
 
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.RawRequest(client.NewRequest(http.MethodGet, "/"))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if seenNamespace != "test" {
 		t.Fatalf("Bad: %s", seenNamespace)
@@ -777,9 +741,7 @@ func TestClientTimeoutSetting(t *testing.T) {
 	config := DefaultConfig()
 	config.ReadEnvironment()
 	_, err := NewClient(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 type roundTripperFunc func(*http.Request) (*http.Response, error)
@@ -796,9 +758,7 @@ func TestClientNonTransportRoundTripper(t *testing.T) {
 	_, err := NewClient(&Config{
 		HttpClient: client,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestClientNonTransportRoundTripperUnixAddress(t *testing.T) {
@@ -848,15 +808,11 @@ func TestClone(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			parent, err := NewClient(tt.config)
-			if err != nil {
-				t.Fatalf("NewClient failed: %v", err)
-			}
+			require.NoError(t, err)
 
 			// Set all of the things that we provide setter methods for, which modify config values
 			err = parent.SetAddress("http://example.com:8080")
-			if err != nil {
-				t.Fatalf("SetAddress failed: %v", err)
-			}
+			require.NoError(t, err)
 
 			clientTimeout := time.Until(time.Now().AddDate(0, 0, 1))
 			parent.SetClientTimeout(clientTimeout)
@@ -883,9 +839,7 @@ func TestClone(t *testing.T) {
 			}
 
 			clone, err := parent.Clone()
-			if err != nil {
-				t.Fatalf("Clone failed: %v", err)
-			}
+			require.NoError(t, err)
 
 			if parent.Address() != clone.Address() {
 				t.Fatalf("addresses don't match: %v vs %v", parent.Address(), clone.Address())
@@ -1049,18 +1003,14 @@ func TestClientWithNamespace(t *testing.T) {
 
 	// set up a client with a namespace
 	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	ogNS := "test"
 	client.SetNamespace(ogNS)
 	_, err = client.rawRequestWithContext(
 		t.Context(),
 		client.NewRequest(http.MethodGet, "/"),
 	)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if ns != ogNS {
 		t.Fatalf("Expected namespace: %q, got %q", ogNS, ns)
 	}
@@ -1071,9 +1021,7 @@ func TestClientWithNamespace(t *testing.T) {
 		t.Context(),
 		client.NewRequest(http.MethodGet, "/"),
 	)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if ns != newNS {
 		t.Fatalf("Expected new namespace: %q, got %q", newNS, ns)
 	}
@@ -1082,9 +1030,7 @@ func TestClientWithNamespace(t *testing.T) {
 		t.Context(),
 		client.NewRequest(http.MethodGet, "/"),
 	)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if ns != ogNS {
 		t.Fatalf("Expected original namespace: %q, got %q", ogNS, ns)
 	}
@@ -1094,9 +1040,7 @@ func TestClientWithNamespace(t *testing.T) {
 		t.Context(),
 		client.NewRequest(http.MethodGet, "/"),
 	)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if ns != "" {
 		t.Fatalf("Expected no namespace, got %q", ns)
 	}
@@ -1172,9 +1116,7 @@ func TestVaultProxy(t *testing.T) {
 
 			r, _ := http.NewRequest("GET", tc.requestUrl, nil)
 			proxyUrl, err := c.HttpClient.Transport.(*http.Transport).Proxy(r)
-			if err != nil {
-				t.Fatalf("Expected no error resolving proxy, found error %v", err)
-			}
+			require.NoError(t, err)
 			if proxyUrl == nil || proxyUrl.String() == "" {
 				t.Fatal("Expected proxy to be resolved but no proxy returned")
 			}
@@ -1190,9 +1132,7 @@ func TestParseAddressWithUnixSocket(t *testing.T) {
 	config := DefaultConfig()
 
 	u, err := config.ParseAddress(address)
-	if err != nil {
-		t.Fatal("Error not expected")
-	}
+	require.NoError(t, err)
 	if u.Scheme != "http" {
 		t.Fatal("Scheme not changed to http")
 	}

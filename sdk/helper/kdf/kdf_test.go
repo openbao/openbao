@@ -6,6 +6,8 @@ package kdf
 import (
 	"bytes"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestCounterMode(t *testing.T) {
@@ -30,9 +32,7 @@ func TestCounterMode(t *testing.T) {
 
 	for _, l := range []uint32{128, 256, 384, 1024} {
 		out, err := CounterMode(prf, prfLen, key, context, l)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		if uint32(len(out)*8) != l {
 			t.Fatalf("bad length: %#v", out)
@@ -52,9 +52,7 @@ func TestHMACSHA256PRF(t *testing.T) {
 	key := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 	data := []byte("foobarbaz")
 	out, err := HMACSHA256PRF(key, data)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if uint32(len(out)*8) != HMACSHA256PRFLen {
 		t.Fatal("Bad len")

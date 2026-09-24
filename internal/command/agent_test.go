@@ -124,18 +124,14 @@ func testAgentExitAfterAuth(t *testing.T, viaFlag bool) {
 	err := client.Sys().EnableAuthWithOptions("jwt", &api.EnableAuthOptions{
 		Type: "jwt",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/jwt/config", map[string]any{
 		"bound_issuer":           "https://team-vault.auth0.com/",
 		"jwt_validation_pubkeys": agent.TestECDSAPubKey,
 		"jwt_supported_algs":     "ES256",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/jwt/role/test", map[string]any{
 		"role_type":       "jwt",
@@ -146,41 +142,31 @@ func testAgentExitAfterAuth(t *testing.T, viaFlag bool) {
 		"policies":        "test",
 		"period":          "3s",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	inf, err := os.CreateTemp("", "auth.jwt.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	in := inf.Name()
 	inf.Close()
 	os.Remove(in)
 	t.Logf("input: %s", in)
 
 	sink1f, err := os.CreateTemp("", "sink1.jwt.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	sink1 := sink1f.Name()
 	sink1f.Close()
 	os.Remove(sink1)
 	t.Logf("sink1: %s", sink1)
 
 	sink2f, err := os.CreateTemp("", "sink2.jwt.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	sink2 := sink2f.Name()
 	sink2f.Close()
 	os.Remove(sink2)
 	t.Logf("sink2: %s", sink2)
 
 	conff, err := os.CreateTemp("", "conf.jwt.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	conf := conff.Name()
 	conff.Close()
 	os.Remove(conf)
@@ -259,17 +245,13 @@ auto_auth {
 	}
 
 	sink1Bytes, err := os.ReadFile(sink1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(sink1Bytes) == 0 {
 		t.Fatal("got no output from sink 1")
 	}
 
 	sink2Bytes, err := os.ReadFile(sink2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(sink2Bytes) == 0 {
 		t.Fatal("got no output from sink 2")
 	}
@@ -285,9 +267,7 @@ func TestAgent_RequireRequestHeader(t *testing.T) {
 		conf := api.DefaultConfig()
 		conf.Address = addr
 		cli, err := api.NewClient(conf)
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 
 		h := cli.Headers()
 		val, ok := h[consts.RequestHeaderName]
@@ -1096,9 +1076,7 @@ func testListFiles(t *testing.T, dir, extension string) int {
 	t.Helper()
 
 	files, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	var count int
 	for _, f := range files {
 		if filepath.Ext(f.Name()) == extension {
@@ -1224,9 +1202,7 @@ exit_after_auth = true
 	//----------------------------------------------------
 
 	files, err := os.ReadDir(tmpDir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if len(files) != 3 {
 		t.Fatalf("expected (%d) templates, got (%d)", 3, len(files))
@@ -1279,26 +1255,20 @@ template {
 func request(t *testing.T, client *api.Client, req *api.Request, expectedStatusCode int) map[string]any {
 	t.Helper()
 	resp, err := client.RawRequest(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if resp.StatusCode != expectedStatusCode {
 		t.Fatalf("expected status code %d, not %d", expectedStatusCode, resp.StatusCode)
 	}
 
 	bytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if len(bytes) == 0 {
 		return nil
 	}
 
 	var body map[string]any
 	err = json.Unmarshal(bytes, &body)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	return body
 }
 
@@ -1306,9 +1276,7 @@ func request(t *testing.T, client *api.Client, req *api.Request, expectedStatusC
 func makeTempFile(t *testing.T, name, contents string) string {
 	t.Helper()
 	f, err := os.CreateTemp("", name)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	path := f.Name()
 	f.WriteString(contents)
 	f.Close()
@@ -1319,19 +1287,13 @@ func populateTempFile(t *testing.T, name, contents string) *os.File {
 	t.Helper()
 
 	file, err := os.CreateTemp(t.TempDir(), name)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = file.WriteString(contents)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = file.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return file
 }
@@ -1424,9 +1386,7 @@ func TestAgent_Template_Retry(t *testing.T) {
 			"version": "2",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = serverClient.Logical().Write("secret/data/otherapp", map[string]any{
 		"data": map[string]any{
@@ -1435,9 +1395,7 @@ func TestAgent_Template_Retry(t *testing.T) {
 			"cert":     "something",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	intRef := func(i int) *int {
 		return &i
@@ -1608,9 +1566,7 @@ path "/secret/*" {
 	err := client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/approle/role/test1", map[string]any{
 		"bind_secret_id": "true",
@@ -1618,21 +1574,15 @@ path "/secret/*" {
 		"token_max_ttl":  "2h",
 		"policies":       []string{"test-autoauth"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := client.Logical().Write("auth/approle/role/test1/secret-id", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secretID := resp.Data["secret_id"].(string)
 	secretIDFile := makeTempFile(t, "secret_id.txt", secretID+"\n")
 
 	resp, err = client.Logical().Read("auth/approle/role/test1/role-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	roleID := resp.Data["role_id"].(string)
 	roleIDFile := makeTempFile(t, "role_id.txt", roleID+"\n")
 
@@ -1690,9 +1640,7 @@ func TestAgent_AutoAuth_UserAgent(t *testing.T) {
 	roleIDPath, secretIDPath := setupAppRole(t, serverClient)
 
 	sinkf, err := os.CreateTemp("", "sink.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	sink := sinkf.Name()
 	sinkf.Close()
 	os.Remove(sink)
@@ -1761,15 +1709,11 @@ api_proxy {
 	conf := api.DefaultConfig()
 	conf.Address = "http://" + listenAddr
 	agentClient, err := api.NewClient(conf)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	agentClient.SetToken("")
 	err = agentClient.SetAddress("http://" + listenAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Wait for the token to be sent to syncs and be available to be used
 	time.Sleep(5 * time.Second)
@@ -1847,21 +1791,15 @@ vault {
 	}
 
 	agentClient, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	agentClient.AddHeader("User-Agent", userAgentForProxiedClient)
 	agentClient.SetToken(serverClient.Token())
 	agentClient.SetMaxRetries(0)
 	err = agentClient.SetAddress("http://" + listenAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = agentClient.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	close(cmd.ShutdownCh)
 	wg.Wait()
@@ -1938,21 +1876,15 @@ vault {
 	}
 
 	agentClient, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	agentClient.AddHeader("User-Agent", userAgentForProxiedClient)
 	agentClient.SetToken(serverClient.Token())
 	agentClient.SetMaxRetries(0)
 	err = agentClient.SetAddress("http://" + listenAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = agentClient.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	close(cmd.ShutdownCh)
 	wg.Wait()
@@ -2012,15 +1944,11 @@ vault {
 	}
 
 	agentClient, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	agentClient.SetToken(serverClient.Token())
 	agentClient.SetMaxRetries(0)
 	err = agentClient.SetAddress("http://" + listenAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	renewable := true
 	tokenCreateRequest := &api.TokenCreateRequest{
@@ -2034,9 +1962,7 @@ vault {
 	// creating an orphan token returns Auth, is renewable, and isn't a token
 	// that's managed elsewhere (since it's an orphan)
 	secret, err := agentClient.Auth().Token().CreateOrphan(tokenCreateRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil || secret.Auth == nil {
 		t.Fatalf("secret not as expected: %v", secret)
 	}
@@ -2044,9 +1970,7 @@ vault {
 	token := secret.Auth.ClientToken
 
 	secret, err = agentClient.Auth().Token().CreateOrphan(tokenCreateRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil || secret.Auth == nil {
 		t.Fatalf("secret not as expected: %v", secret)
 	}
@@ -2099,9 +2023,7 @@ func TestAgent_ApiProxy_Retry(t *testing.T) {
 	_, err := serverClient.Logical().Write("secret/foo", map[string]any{
 		"bar": "baz",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	intRef := func(i int) *int {
 		return &i
@@ -2182,15 +2104,11 @@ vault {
 			}
 
 			client, err := api.NewClient(api.DefaultConfig())
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			client.SetToken(serverClient.Token())
 			client.SetMaxRetries(0)
 			err = client.SetAddress("http://" + listenAddr)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			secret, err := client.Logical().Read("secret/foo")
 			switch {
 			case (err != nil || secret == nil) && tc.expectError:
@@ -2250,9 +2168,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 			"version": "2",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = serverClient.Logical().Write("secret/data/otherapp", map[string]any{
 		"data": map[string]any{
@@ -2261,9 +2177,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 			"cert":     "something",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Note that missing key is different from a non-existent secret. A missing
 	// key (2xx response with missing keys in the response map) can still yield
@@ -2569,9 +2483,7 @@ listener "tcp" {
 	conf := api.DefaultConfig()
 	conf.Address = "http://" + listenAddr
 	agentClient, err := api.NewClient(conf)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	req := agentClient.NewRequest("GET", "/agent/v1/metrics")
 	body := request(t, agentClient, req, 200)
@@ -2616,9 +2528,7 @@ func TestAgent_Quit(t *testing.T) {
 	// cluster address
 	defer os.Setenv(api.EnvVaultAddress, os.Getenv(api.EnvVaultAddress))
 	err := os.Unsetenv(api.EnvVaultAddress)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	listenAddr := generateListenerAddress(t)
 	listenAddr2 := generateListenerAddress(t)
@@ -2662,15 +2572,11 @@ cache {}
 		t.Error("timeout")
 	}
 	client, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(serverClient.Token())
 	client.SetMaxRetries(0)
 	err = client.SetAddress("http://" + listenAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// First try on listener 1 where the API should be disabled.
 	resp, err := client.RawRequest(client.NewRequest(http.MethodPost, "/agent/v1/quit"))
@@ -2683,14 +2589,10 @@ cache {}
 
 	// Now try on listener 2 where the quit API should be enabled.
 	err = client.SetAddress("http://" + listenAddr2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.RawRequest(client.NewRequest(http.MethodPost, "/agent/v1/quit"))
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	select {
 	case <-cmd.ShutdownCh:
@@ -2705,9 +2607,7 @@ func TestAgent_LogFile_CliOverridesConfig(t *testing.T) {
 	// Create basic config
 	configFile := populateTempFile(t, "agent-config.hcl", BasicHclConfig)
 	cfg, err := agentConfig.LoadConfigFile(configFile.Name())
-	if err != nil {
-		t.Fatal("Cannot load config to test update/merge", err)
-	}
+	require.NoError(t, err)
 
 	// Sanity check that the config value is the current value
 	assert.Equal(t, "TMPDIR/juan.log", cfg.LogFile)
@@ -2717,9 +2617,7 @@ func TestAgent_LogFile_CliOverridesConfig(t *testing.T) {
 	f := cmd.Flags()
 	// Simulate the flag being specified
 	err = f.Parse([]string{"-log-file=/foo/bar/test.log"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Update the config based on the inputs.
 	cmd.applyConfigOverrides(f, cfg)
@@ -2733,9 +2631,7 @@ func TestAgent_LogFile_Config(t *testing.T) {
 	configFile := populateTempFile(t, "agent-config.hcl", BasicHclConfig)
 
 	cfg, err := agentConfig.LoadConfigFile(configFile.Name())
-	if err != nil {
-		t.Fatal("Cannot load config to test update/merge", err)
-	}
+	require.NoError(t, err)
 
 	// Sanity check that the config value is the current value
 	assert.Equal(t, "TMPDIR/juan.log", cfg.LogFile, "sanity check on log config failed")
@@ -2746,9 +2642,7 @@ func TestAgent_LogFile_Config(t *testing.T) {
 	cmd := &AgentCommand{BaseCommand: &BaseCommand{}}
 	f := cmd.Flags()
 	err = f.Parse([]string{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Should change nothing...
 	cmd.applyConfigOverrides(f, cfg)
@@ -2777,17 +2671,13 @@ func TestAgent_Config_ReloadLogLevel(t *testing.T) {
 	hcl := strings.ReplaceAll(BasicHclConfig, "TMPDIR", tempDir)
 	configFile := populateTempFile(t, "agent-config.hcl", hcl)
 	cmd.config, err = agentConfig.LoadConfigFile(configFile.Name())
-	if err != nil {
-		t.Fatal("Cannot load config to test update/merge", err)
-	}
+	require.NoError(t, err)
 
 	// Tweak the loaded config to make sure we can put log files into a temp dir
 	// and systemd log attempts work fine, this would usually happen during Run.
 	cmd.logWriter = os.Stdout
 	cmd.logger, err = cmd.newLogger()
-	if err != nil {
-		t.Fatal("logger required for systemd log messages", err)
-	}
+	require.NoError(t, err)
 
 	// Sanity check
 	assert.Equal(t, "warn", cmd.config.LogLevel)
@@ -2803,9 +2693,7 @@ func TestAgent_Config_ReloadLogLevel(t *testing.T) {
 func TestAgent_Config_ReloadTls(t *testing.T) {
 	var wg sync.WaitGroup
 	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal("unable to get current working directory")
-	}
+	require.NoError(t, err)
 	workingDir := filepath.Join(wd, "/agent/test-fixtures/reload")
 	fooCert := "reload_foo.pem"
 	fooKey := "reload_foo.key"
@@ -2821,27 +2709,17 @@ func TestAgent_Config_ReloadTls(t *testing.T) {
 
 	// Set up initial 'foo' certs
 	inBytes, err := os.ReadFile(filepath.Join(workingDir, fooCert))
-	if err != nil {
-		t.Fatal("unable to read cert required for test", fooCert, err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(tempDir, reloadCert), inBytes, 0o777)
-	if err != nil {
-		t.Fatal("unable to write temp cert required for test", reloadCert, err)
-	}
+	require.NoError(t, err)
 
 	inBytes, err = os.ReadFile(filepath.Join(workingDir, fooKey))
-	if err != nil {
-		t.Fatal("unable to read cert key required for test", fooKey, err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(tempDir, reloadKey), inBytes, 0o777)
-	if err != nil {
-		t.Fatal("unable to write temp cert key required for test", reloadKey, err)
-	}
+	require.NoError(t, err)
 
 	inBytes, err = os.ReadFile(filepath.Join(workingDir, caPem))
-	if err != nil {
-		t.Fatal("unable to read CA pem required for test", caPem, err)
-	}
+	require.NoError(t, err)
 	certPool := x509.NewCertPool()
 	ok := certPool.AppendCertsFromPEM(inBytes)
 	if !ok {
@@ -2897,22 +2775,14 @@ func TestAgent_Config_ReloadTls(t *testing.T) {
 
 	// Swap out certs
 	inBytes, err = os.ReadFile(filepath.Join(workingDir, barCert))
-	if err != nil {
-		t.Fatal("unable to read cert required for test", barCert, err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(tempDir, reloadCert), inBytes, 0o777)
-	if err != nil {
-		t.Fatal("unable to write temp cert required for test", reloadCert, err)
-	}
+	require.NoError(t, err)
 
 	inBytes, err = os.ReadFile(filepath.Join(workingDir, barKey))
-	if err != nil {
-		t.Fatal("unable to read cert key required for test", barKey, err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(tempDir, reloadKey), inBytes, 0o777)
-	if err != nil {
-		t.Fatal("unable to write temp cert key required for test", reloadKey, err)
-	}
+	require.NoError(t, err)
 
 	// Reload
 	cmd.SighupCh <- struct{}{}
@@ -3125,9 +2995,7 @@ func generateListenerAddress(t *testing.T) string {
 	t.Helper()
 
 	ln1, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	listenAddr := ln1.Addr().String()
 	ln1.Close()
 	return listenAddr

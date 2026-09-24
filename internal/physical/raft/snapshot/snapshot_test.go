@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-msgpack/codec"
 	"github.com/hashicorp/raft"
+	"github.com/stretchr/testify/require"
 )
 
 // MockFSM is a simple FSM for testing that simply stores its logs in a slice of
@@ -88,9 +89,7 @@ func (m *MockSnapshot) Release() {
 // makeRaft returns a Raft and its FSM, with snapshots based in the given dir.
 func makeRaft(t *testing.T, dir string) (*raft.Raft, *MockFSM) {
 	snaps, err := raft.NewFileSnapshotStore(dir, 5, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	fsm := &MockFSM{}
 	store := raft.NewInmemStore()
@@ -107,14 +106,10 @@ func makeRaft(t *testing.T, dir string) (*raft.Raft, *MockFSM) {
 	})
 
 	err = raft.BootstrapCluster(config, store, store, snaps, trans, members)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	raft, err := raft.NewRaft(config, fsm, store, store, snaps, trans)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	timeout := time.After(10 * time.Second)
 	for raft.Leader() == "" {
@@ -136,18 +131,12 @@ func fileSha256(t *testing.T, f *os.File) string {
 
 	hash := sha256.New()
 	origPos, err := f.Seek(0, 0)
-	if err != nil {
-		t.Fatalf("failed to seek file: %v", err)
-	}
+	require.NoError(t, err)
 	_, err = io.Copy(hash, f)
-	if err != nil {
-		t.Fatalf("failed to read file: %v", err)
-	}
+	require.NoError(t, err)
 
 	_, err = f.Seek(origPos, 0)
-	if err != nil {
-		t.Fatalf("failed to restore seek file pos: %v", err)
-	}
+	require.NoError(t, err)
 
 	return "sha-256=" + base64.StdEncoding.EncodeToString(hash.Sum(nil))
 }
@@ -178,9 +167,7 @@ func TestSnapshot(t *testing.T) {
 	// Take a snapshot.
 	logger := hclog.Default()
 	snap, err := New(logger, before)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() {
 		if err := snap.Close(); err != nil {
 			t.Fatalf("failed to close snap: %v", err)
@@ -196,9 +183,7 @@ func TestSnapshot(t *testing.T) {
 
 	// Verify the snapshot. We have to rewind it after for the restore.
 	metadata, err := Verify(snap)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if _, err := snap.file.Seek(0, 0); err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -272,14 +257,10 @@ func TestSnapshotWrite(t *testing.T) {
 	// Take a snapshot.
 	logger := hclog.Default()
 	snap, err := os.Create(filepath.Join(dir, "snapfile"))
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = Write(logger, before, nil, snap)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() {
 		if err := snap.Close(); err != nil {
 			t.Fatalf("failed to close snap: %v", err)
@@ -291,9 +272,7 @@ func TestSnapshotWrite(t *testing.T) {
 	}
 
 	metadata, err := Verify(snap)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if int(metadata.Index) != entries+2 {
 		t.Fatalf("bad: %d", metadata.Index)
 	}
@@ -381,9 +360,7 @@ func TestSnapshot_TruncatedVerify(t *testing.T) {
 		both := io.MultiWriter(&log, &copy)
 
 		_, err := io.CopyN(both, rand.Reader, 256)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		future := before.Apply(log.Bytes(), time.Second)
 		if future.Error() != nil {
@@ -394,9 +371,7 @@ func TestSnapshot_TruncatedVerify(t *testing.T) {
 	// Take a snapshot.
 	logger := hclog.Default()
 	snap, err := New(logger, before)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() {
 		if err := snap.Close(); err != nil {
 			t.Fatalf("failed to close snap: %v", err)
@@ -407,9 +382,7 @@ func TestSnapshot_TruncatedVerify(t *testing.T) {
 	{
 		var buf bytes.Buffer
 		_, err = io.Copy(&buf, snap)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		data = buf.Bytes()
 	}
 
@@ -446,9 +419,7 @@ func TestSnapshot_BadRestore(t *testing.T) {
 	// Take a snapshot.
 	logger := hclog.Default()
 	snap, err := New(logger, before)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Make a new, independent Raft.
 	after, fsm := makeRaft(t, filepath.Join(dir, "after"))

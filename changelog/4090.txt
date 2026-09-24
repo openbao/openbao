@@ -1,0 +1,3 @@
+```release-note:bug
+core/seal: Allow for key rotation without generating recovery key shares beforehand.
+```

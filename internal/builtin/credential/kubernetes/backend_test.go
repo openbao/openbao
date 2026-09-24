@@ -173,6 +173,34 @@ func Test_kubeAuthBackend_updateTLSConfig(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name:       "ca-certs-omitted",
+			httpClient: getDefaultHTTPClient(),
+			tlsConfig:  getDefaultTLSConfig(),
+			configs: []testConfig{
+				{
+					config: &kubeConfig{
+						CACert:            testCACert,
+						DisableLocalCAJwt: false,
+					},
+					expectTLSConfig: &tls.Config{
+						MinVersion: minTLSVersion,
+						RootCAs:    defaultCertPool,
+					},
+				},
+				{
+					config: &kubeConfig{
+						CACert:            "",
+						DisableLocalCAJwt: true,
+					},
+					expectTLSConfig: &tls.Config{
+						MinVersion: minTLSVersion,
+						RootCAs:    nil, // system default CA certs
+					},
+				},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

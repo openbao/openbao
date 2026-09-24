@@ -33,7 +33,7 @@ func pathConfig(b *kubeAuthBackend) *framework.Path {
 
 			"kubernetes_ca_cert": {
 				Type:        framework.TypeString,
-				Description: "PEM encoded CA cert for use by the TLS client used to talk with the API.",
+				Description: "PEM encoded CA cert for the TLS client used to talk with the API. If unset and disable_local_ca_jwt is false, OpenBao uses the local Kubernetes CA certificate. If unset and disable_local_ca_jwt is true, OpenBao uses the host system trust store.",
 				DisplayAttrs: &framework.DisplayAttributes{
 					Name: "Kubernetes CA Certificate",
 				},
@@ -149,10 +149,6 @@ func (b *kubeAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Requ
 	disableIssValidation := data.Get("disable_iss_validation").(bool)
 	tokenReviewer := data.Get("token_reviewer_jwt").(string)
 
-	if disableLocalJWT && caCert == "" {
-		return logical.ErrorResponse("kubernetes_ca_cert must be given when disable_local_ca_jwt is true"), nil
-	}
-
 	config := &kubeConfig{
 		PublicKeys:           make([]crypto.PublicKey, len(pemList)),
 		PEMKeys:              pemList,
@@ -198,7 +194,9 @@ type kubeConfig struct {
 	PEMKeys []string `json:"pem_keys"`
 	// Host is the url string for the kubernetes API
 	Host string `json:"host"`
-	// CACert is the CA Cert to use to call into the kubernetes API
+	// CACert is the optional CA certificate used to connect to the Kubernetes API.
+	// When unset, the local Kubernetes CA certificate is used unless
+	// DisableLocalCAJwt is true; in that case, the host system trust store is used.
 	CACert string `json:"ca_cert"`
 	// TokenReviewJWT is the bearer to use during the TokenReview API call
 	TokenReviewerJWT string `json:"token_reviewer_jwt"`

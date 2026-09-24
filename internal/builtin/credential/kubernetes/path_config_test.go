@@ -482,6 +482,21 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 				DisableLocalCAJwt:    true,
 			},
 		},
+		"Kubernetes CA omitted and disable local default": {
+			config: map[string]any{
+				"kubernetes_host":      "host",
+				"disable_local_ca_jwt": true,
+			},
+			expected: &kubeConfig{
+				PublicKeys:           []crypto.PublicKey{},
+				PEMKeys:              []string{},
+				Host:                 "host",
+				CACert:               "",
+				TokenReviewerJWT:     "",
+				DisableISSValidation: true,
+				DisableLocalCAJwt:    true,
+			},
+		},
 	}
 
 	for name, tc := range testCases {

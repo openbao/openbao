@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
@@ -27,7 +28,7 @@ func (m *minimalSource) Evaluate(ctx context.Context, hist *EvaluationHistory) (
 func (m *minimalSource) Close(ctx context.Context) error { return nil }
 
 func testBuilder(evalResult any, evalErr error) SourceBuilder {
-	return func(_ *ProfileEngine, field map[string]any) Source {
+	return func(_ *ProfileEngine, field map[string]any, _ *IterContext) Source {
 		if evalResult == nil && evalErr == nil {
 			return nil
 		}
@@ -43,7 +44,7 @@ func testBuilder(evalResult any, evalErr error) SourceBuilder {
 }
 
 func testBuilderNotEmpty(evalResult any, evalErr error) SourceBuilder {
-	return func(_ *ProfileEngine, field map[string]any) Source {
+	return func(_ *ProfileEngine, field map[string]any, _ *IterContext) Source {
 		if evalResult == nil && evalErr == nil {
 			return nil
 		}
@@ -65,6 +66,13 @@ var testHandler = RequestHandlerFunc(func(ctx context.Context, req *logical.Requ
 var errHandler = RequestHandlerFunc(func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
 	return nil, errors.New("this should not be called")
 })
+
+var countHandler = func(ref *atomic.Int32) RequestHandlerFunc {
+	return func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
+		ref.Add(1)
+		return &logical.Response{}, nil
+	}
+}
 
 func WithProfileAndHandler(profile []*OuterConfig, handler RequestHandlerFunc, outerName string) func(*ProfileEngine) {
 	return func(e *ProfileEngine) {
@@ -159,7 +167,7 @@ func TestWithRequestHandler(t *testing.T) {
 }
 
 func TestValidate_EmptySourceName(t *testing.T) {
-	validBuilder := func(engine *ProfileEngine, cfg map[string]any) Source {
+	validBuilder := func(engine *ProfileEngine, cfg map[string]any, _ *IterContext) Source {
 		return nil
 	}
 
@@ -427,6 +435,39 @@ func Test_Evaluate_OuterWhen(t *testing.T) {
 	}
 }
 
+func Test_Evaluate_For(t *testing.T) {
+	ctx := t.Context()
+
+	var counter atomic.Int32
+	engine, err := NewEngine(
+		WithProfile([]*OuterConfig{
+			{
+				Type: "test",
+				Requests: []*RequestConfig{
+					{
+						Type:      "test-request-skipped",
+						Operation: "read",
+						Path:      "sys/health",
+						For:       []any{1, 2, 3, 4},
+					},
+				},
+			},
+		}),
+		WithRequestHandler(countHandler(&counter)),
+		WithOuterBlockName("test"),
+	)
+	if err != nil {
+		t.Fatalf("NewEngine error: %v", err)
+	}
+
+	err = engine.Evaluate(ctx)
+	if err != nil {
+		t.Fatalf("Evaluate error: %v", err)
+	}
+
+	require.Equal(t, int32(4), counter.Load())
+}
+
 func TestBuildRequest_BasicRequestCreation(t *testing.T) {
 	engine := &ProfileEngine{
 		sourceBuilders: map[string]SourceBuilder{},
@@ -448,7 +489,7 @@ func TestBuildRequest_BasicRequestCreation(t *testing.T) {
 		},
 	}
 
-	req, execute, allowFailure, err := engine.buildRequest(t.Context(), hist, 0, outerConfig, 0, requestConfig)
+	req, execute, allowFailure, err := engine.buildRequest(t.Context(), hist, nil, 0, outerConfig, 0, requestConfig)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -482,7 +523,7 @@ func TestEvaluateField_NilDestination(t *testing.T) {
 		requestHandler: testHandler,
 	}
 	hist := &EvaluationHistory{Requests: map[string]map[string]map[string]any{}, Responses: map[string]map[string]map[string]any{}}
-	err := engine.evaluateField(t.Context(), hist, "foo", nil)
+	err := engine.evaluateField(t.Context(), hist, nil, "foo", nil)
 	if err == nil {
 		t.Fatal("expected error for nil destination, got nil")
 	}
@@ -497,7 +538,7 @@ func TestEvaluateField_EvalSourceSuccess(t *testing.T) {
 
 	field := map[string]any{"eval_source": "b", "eval_type": "string"}
 	var dest string
-	err := engine.evaluateField(t.Context(), hist, field, &dest)
+	err := engine.evaluateField(t.Context(), hist, nil, field, &dest)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -533,7 +574,7 @@ func TestEvaluateField_EvalSourceNested(t *testing.T) {
 		},
 	}
 	var dest string
-	err := engine.evaluateField(t.Context(), hist, field, &dest)
+	err := engine.evaluateField(t.Context(), hist, nil, field, &dest)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -551,7 +592,7 @@ func TestEvaluateField_EvalSourceError(t *testing.T) {
 
 	field := map[string]any{"eval_source": "b", "eval_type": "string"}
 	var dest string
-	err := engine.evaluateField(t.Context(), hist, field, &dest)
+	err := engine.evaluateField(t.Context(), hist, nil, field, &dest)
 	if err == nil || !strings.Contains(err.Error(), "fail") {
 		t.Fatalf("expected evaluation error, got %v", err)
 	}
@@ -560,14 +601,14 @@ func TestEvaluateField_EvalSourceError(t *testing.T) {
 func TestEvaluateTypedField_UnknownSource(t *testing.T) {
 	eng := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{}}
 	hist := &EvaluationHistory{Requests: map[string]map[string]map[string]any{}, Responses: map[string]map[string]map[string]any{}}
-	_, err := eng.evaluateTypedField(t.Context(), hist, nil, "nope", "")
+	_, err := eng.evaluateTypedField(t.Context(), hist, nil, nil, "nope", "")
 	if err == nil || !strings.Contains(err.Error(), "unknown value for 'eval_source': nope") {
 		t.Fatalf("expected unknown-source error, got: %v", err)
 	}
 }
 
 func TestEvaluateTypedField_InitError(t *testing.T) {
-	builder := func(_ *ProfileEngine, obj map[string]any) Source {
+	builder := func(_ *ProfileEngine, obj map[string]any, _ *IterContext) Source {
 		return &minimalSource{
 			validateFunc: func() ([]string, []string, error) {
 				return nil, nil, errors.New("init fail")
@@ -588,14 +629,14 @@ func TestEvaluateTypedField_InitError(t *testing.T) {
 		Responses: map[string]map[string]map[string]any{},
 	}
 
-	_, err := eng.evaluateTypedField(t.Context(), hist, nil, "src", "")
+	_, err := eng.evaluateTypedField(t.Context(), hist, nil, nil, "src", "")
 	if err == nil || !strings.Contains(err.Error(), "failed to validate source 'src'") {
 		t.Fatalf("expected validate-error, got: %v", err)
 	}
 }
 
 func TestEvaluateTypedField_ValidateError(t *testing.T) {
-	builder := func(_ *ProfileEngine, obj map[string]any) Source {
+	builder := func(_ *ProfileEngine, obj map[string]any, _ *IterContext) Source {
 		return &minimalSource{
 			validateFunc: func() ([]string, []string, error) {
 				return nil, nil, errors.New("bad validate")
@@ -614,7 +655,7 @@ func TestEvaluateTypedField_ValidateError(t *testing.T) {
 		Requests:  map[string]map[string]map[string]any{},
 		Responses: map[string]map[string]map[string]any{},
 	}
-	_, err := eng.evaluateTypedField(t.Context(), hist, nil, "src", "")
+	_, err := eng.evaluateTypedField(t.Context(), hist, nil, nil, "src", "")
 	if err == nil || !strings.Contains(err.Error(), "failed to validate source 'src'") {
 		t.Fatalf("expected validate-error, got: %v", err)
 	}
@@ -625,7 +666,7 @@ func TestEvaluateTypedField_EvaluateError(t *testing.T) {
 	eng := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{"src": builder}}
 
 	obj := map[string]any{}
-	_, err := eng.evaluateTypedField(t.Context(), &EvaluationHistory{}, obj, "src", "string")
+	_, err := eng.evaluateTypedField(t.Context(), &EvaluationHistory{}, nil, obj, "src", "string")
 
 	if err == nil {
 		t.Fatalf("expected evaluate-error, got: %v", err)
@@ -642,7 +683,7 @@ func TestEvaluateTypedField_HistoryInconsistency(t *testing.T) {
 		Requests:  map[string]map[string]map[string]any{"outer": {"req": {}}},
 		Responses: map[string]map[string]map[string]any{"outer": {}},
 	}
-	result, err := eng.evaluateTypedField(t.Context(), hist, nil, "src", "")
+	result, err := eng.evaluateTypedField(t.Context(), hist, nil, nil, "src", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -653,7 +694,7 @@ func TestEvaluateTypedField_HistoryInconsistency(t *testing.T) {
 
 func TestEvaluateTypedField_ConversionError(t *testing.T) {
 	createMockSource := func(validateReqs, validateResps []string, evalResult any, evalErr error) SourceBuilder {
-		return func(_ *ProfileEngine, obj map[string]any) Source {
+		return func(_ *ProfileEngine, obj map[string]any, _ *IterContext) Source {
 			return &minimalSource{
 				validateFunc: func() ([]string, []string, error) {
 					return validateReqs, validateResps, nil
@@ -676,7 +717,7 @@ func TestEvaluateTypedField_ConversionError(t *testing.T) {
 	}
 
 	obj := map[string]any{}
-	_, err := eng.evaluateTypedField(t.Context(), &EvaluationHistory{}, obj, "src", "int")
+	_, err := eng.evaluateTypedField(t.Context(), &EvaluationHistory{}, nil, obj, "src", "int")
 
 	if err == nil || !strings.Contains(err.Error(), "conversion") {
 		t.Fatalf("expected conversion-error, got: %v", err)
@@ -688,7 +729,7 @@ func TestEvaluateTypedField_SuccessConversion(t *testing.T) {
 	eng := &ProfileEngine{sourceBuilders: map[string]SourceBuilder{"src": builder}}
 
 	obj := map[string]any{}
-	result, err := eng.evaluateTypedField(t.Context(), &EvaluationHistory{}, obj, "src", "int")
+	result, err := eng.evaluateTypedField(t.Context(), &EvaluationHistory{}, nil, obj, "src", "int")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -725,6 +766,7 @@ func TestConvertToType_Cases(t *testing.T) {
 		{"To map[string]any fail", "notamap", "map[string]any", nil, true},
 
 		{"Any to interface{} pass", 123, "interface{}", 123, false},
+		{"Any to any pass", 123, "any", 123, false},
 
 		{"unsupportedxs fail", "foo", "customType", nil, true},
 	}

@@ -1,0 +1,6 @@
+```release-note:improvement
+command/server: Add `for` keyword to support iterated evaluation of `initialize` and `request` blocks over a list or map.
+```
+```release-note:improvement
+sys/workflows: Add `for` keyword to support iterated evaluation of `flow` and `request` blocks over a list or map.
+```

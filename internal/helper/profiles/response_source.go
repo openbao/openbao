@@ -8,7 +8,7 @@ import (
 const responseSourceName = "response"
 
 // ResponseSourceBuilder allows reading inputs from past responses.
-func ResponseSourceBuilder(engine *ProfileEngine, field map[string]any) Source {
+func ResponseSourceBuilder(engine *ProfileEngine, field map[string]any, this *IterContext) Source {
 	return &ResponseSource{
 		outer: engine.outerBlockName,
 		field: field,

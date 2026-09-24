@@ -94,6 +94,13 @@ The core of a profile is the request, which contains the following fields:
  - `allow_failure` `(bool: false)` - whether to allow profile execution to
    continue despite failure of this request.
  - `when` `(bool: true)` - when false, skips execution of the request.
+ - `for` `([]any: optional)` - when present, yields either a list or map of
+   objects to iterate through. `this` is set to the value and `this_index`
+   is set to the index in the list or key of the map in the request. `for` is
+   computed head of any other field being evaluated (including `when`),
+   letting other fields depend on it. If this request's outer block also has a
+   `for` block, the outer block's `this` and `this_index` will be moved to
+   `outer_this` and `outer_this_index` respectively.
 
 Other than `name` which must be static, all of the remaining fields can use
 dynamic data sources as described below.
@@ -125,6 +132,13 @@ and `response` dynamic data source and must be specified.
 Inside an outer block, the following fields are supported:
 
  - `when` `(bool: true)` - when false, skips execution of the entire block.
+ - `for` `([]any: optional)` - when present, yields either a list or map of
+   objects to iterate through. `this` is set to the value and `this_index`
+   is set to the index in the list or key of the map in the request. `for` is
+   computed head of any other field being evaluated (including `when`),
+   letting other fields depend on it. If a contained request also has a `for`
+   block, the outer block's `this` and `this_index` will be moved to
+   `outer_this` and `outer_this_index` respectively.
 
 ## Input
 

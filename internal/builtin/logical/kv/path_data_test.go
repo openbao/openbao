@@ -43,7 +43,7 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 			}
 
 			resp, err := b.HandleRequest(t.Context(), req)
-			require.NoErrorf(t, err, "unable to read config: %s", err.Error())
+			require.NoErrorf(t, err, "unable to read config: %s", err)
 
 			if resp != nil && !resp.IsError() {
 				return b, config.StorageView

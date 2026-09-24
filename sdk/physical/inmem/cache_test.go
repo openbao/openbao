@@ -93,7 +93,7 @@ func TestCache_Invalidate(t *testing.T) {
 	require := require.New(t)
 
 	inm, err := NewInmem(nil, logger)
-	require.NoError(t, err)
+	require.NoError(err)
 	cache := physical.NewCache(inm, 0, logger, &metrics.BlackholeSink{})
 	cache.SetEnabled(true)
 

@@ -47,11 +47,11 @@ func TestVersionStore_GetOldestVersion(t *testing.T) {
 
 	for _, entry := range versionEntries {
 		_, err := c.storeVersionEntry(t.Context(), &entry, false)
-		require.NoErrorf(t, err, "failed to write version entry %#v, err: %s", entry, err.Error())
+		require.NoErrorf(t, err, "failed to write version entry %#v, err: %s", entry, err)
 	}
 
 	err := c.loadVersionHistory(t.Context())
-	require.NoErrorf(t, err, "failed to populate version history cache, err: %s", err.Error())
+	require.NoErrorf(t, err, "failed to populate version history cache, err: %s", err)
 
 	if len(c.versionHistory) != 3 {
 		t.Fatalf("expected 3 entries in timestamps map after refresh, found: %d", len(c.versionHistory))
@@ -80,11 +80,11 @@ func TestVersionStore_GetNewestVersion(t *testing.T) {
 
 	for _, entry := range versionEntries {
 		_, err := c.storeVersionEntry(t.Context(), &entry, false)
-		require.NoErrorf(t, err, "failed to write version entry %#v, err: %s", entry, err.Error())
+		require.NoErrorf(t, err, "failed to write version entry %#v, err: %s", entry, err)
 	}
 
 	err := c.loadVersionHistory(t.Context())
-	require.NoErrorf(t, err, "failed to populate version history cache, err: %s", err.Error())
+	require.NoErrorf(t, err, "failed to populate version history cache, err: %s", err)
 
 	if len(c.versionHistory) != 3 {
 		t.Fatalf("expected 3 entries in timestamps map after refresh, found: %d", len(c.versionHistory))
@@ -102,7 +102,7 @@ func TestVersionStore_GetNewestVersion(t *testing.T) {
 func TestVersionStore_SelfHealUTC(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	estLoc, err := time.LoadLocation("EST")
-	require.NoErrorf(t, err, "failed to load location, err: %s", err.Error())
+	require.NoErrorf(t, err, "failed to load location, err: %s", err)
 
 	nowEST := time.Now().In(estLoc)
 
@@ -113,11 +113,11 @@ func TestVersionStore_SelfHealUTC(t *testing.T) {
 
 	for _, entry := range versionEntries {
 		_, err := c.storeVersionEntry(t.Context(), &entry, false)
-		require.NoErrorf(t, err, "failed to write version entry %#v, err: %s", entry, err.Error())
+		require.NoErrorf(t, err, "failed to write version entry %#v, err: %s", entry, err)
 	}
 
 	err = c.loadVersionHistory(t.Context())
-	require.NoErrorf(t, err, "failed to load version timestamps, err: %s", err.Error())
+	require.NoErrorf(t, err, "failed to load version timestamps, err: %s", err)
 
 	for _, entry := range c.versionHistory {
 		if entry.TimestampInstalled.Location() != time.UTC {

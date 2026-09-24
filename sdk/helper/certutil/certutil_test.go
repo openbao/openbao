@@ -67,7 +67,7 @@ func TestCertBundleConversion(t *testing.T) {
 		require.NoError(t, err)
 
 		err = compareCertBundleToParsedCertBundle(cbut, pcbut)
-		require.NoErrorf(t, err, "%s", err.Error())
+		require.NoErrorf(t, err, "%s", err)
 	}
 }
 
@@ -274,13 +274,13 @@ func TestCSRBundleConversion(t *testing.T) {
 		require.NoError(t, err)
 
 		err = compareCSRBundleToParsedCSRBundle(csrbut, pcsrbut)
-		require.NoErrorf(t, err, "%s", err.Error())
+		require.NoErrorf(t, err, "%s", err)
 
 		csrbut, err = pcsrbut.ToCSRBundle()
 		require.NoError(t, err)
 
 		err = compareCSRBundleToParsedCSRBundle(csrbut, pcsrbut)
-		require.NoErrorf(t, err, "%s", err.Error())
+		require.NoErrorf(t, err, "%s", err)
 	}
 }
 

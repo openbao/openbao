@@ -137,7 +137,7 @@ func TestFSM_Chunking_TermChange(t *testing.T) {
 			NumChunks:   uint32(len(chunks)),
 		}
 		chunkBytes, err := proto.Marshal(chunkInfo)
-		require.NoError(t, err)
+		require.NoError(err)
 		logs = append(logs, &raft.Log{
 			Term:       uint64(i),
 			Data:       b,

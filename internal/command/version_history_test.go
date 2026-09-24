@@ -84,7 +84,7 @@ func TestVersionHistoryCommand_JsonOutput(t *testing.T) {
 
 	var versionHistoryResp map[string]any
 	err := json.Unmarshal(stdoutBytes, &versionHistoryResp)
-	require.NoErrorf(t, err, "failed to unmarshal json from STDOUT, err: %s", err.Error())
+	require.NoErrorf(t, err, "failed to unmarshal json from STDOUT, err: %s", err)
 
 	var respData map[string]any
 	var ok bool

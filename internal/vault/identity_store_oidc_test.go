@@ -920,7 +920,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 	expectSuccess(t, resp, err)
 	// Convert all supported algorithms to jose.SignatureAlgorithm types
 	parsedToken, err := jwt.ParseSigned(resp.Data["token"].(string), consts.AllowedJWTSignatureAlgorithmsOIDC)
-	require.NoErrorf(t, err, "error parsing token: %s", err.Error())
+	require.NoErrorf(t, err, "error parsing token: %s", err)
 
 	// Acquire the public parts of the key that signed parsedToken
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{

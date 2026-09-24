@@ -908,11 +908,11 @@ func TestCore_OneTenPlus_BatchTokens(t *testing.T) {
 
 	for _, entry := range versionEntries {
 		_, err := c.storeVersionEntry(t.Context(), &entry, false)
-		require.NoErrorf(t, err, "failed to write version entry %#v, err: %s", entry, err.Error())
+		require.NoErrorf(t, err, "failed to write version entry %#v, err: %s", entry, err)
 	}
 
 	err := c.loadVersionHistory(t.Context())
-	require.NoErrorf(t, err, "failed to populate version history cache, err: %s", err.Error())
+	require.NoErrorf(t, err, "failed to populate version history cache, err: %s", err)
 
 	// double check that we're working with 1.10
 	v, _, err := c.FindNewestVersionTimestamp()

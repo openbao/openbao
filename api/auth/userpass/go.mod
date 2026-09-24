@@ -5,7 +5,7 @@ go 1.26.0
 replace github.com/openbao/openbao/api/v2 => ../../
 
 require (
-	github.com/openbao/openbao/api/v2 v2.1.0
+	github.com/openbao/openbao/api/v2 v2.7.0
 	github.com/stretchr/testify v1.12.1
 )
 

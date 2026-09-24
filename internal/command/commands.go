@@ -776,6 +776,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"kv subkeys": func() (cli.Command, error) {
+			return &KVSubkeysCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"kv delete": func() (cli.Command, error) {
 			return &KVDeleteCommand{
 				BaseCommand: getBaseCommand(),

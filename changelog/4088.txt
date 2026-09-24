@@ -1,0 +1,3 @@
+```release-note:change
+packaging: Update the default server config included in Linux packages to use the `inmem` backend instead of the removed `file` backend. Users will need to enable persistence themselves by configuring a storage backend of their choice.
+```

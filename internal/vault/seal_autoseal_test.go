@@ -14,6 +14,7 @@ import (
 
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/v2/internal/helper/metricsutil"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
@@ -174,6 +175,55 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 		t.Fatalf("UpgradeKeys: want no error, got %v", err)
 	}
 	check()
+}
+
+// TestAutoSeal_UpgradeKeys_NoRecoveryKey verifies that UpgradeKeys does not
+// fail and still re-encrypts the stored keys when no recovery key exists yet.
+func TestAutoSeal_UpgradeKeys_NoRecoveryKey(t *testing.T) {
+	core, _, _ := TestCoreUnsealed(t)
+	testSeal, toggleableWrapper := seal.NewTestSeal(nil)
+
+	changeKey := func(key string) {
+		toggleableWrapper.Wrapper.(*wrapping.TestWrapper).SetKeyId(key)
+	}
+
+	// Set initial encryption key.
+	changeKey("kaz")
+
+	autoSeal, err := NewAutoSeal(testSeal)
+	require.NoError(t, err)
+
+	autoSeal.SetCore(core)
+	// The upgrade path consults core.seal for the recovery config, so point it
+	// at the autoSeal under test to simulate root namespace seal.
+	core.seal = autoSeal
+	pBackend := newTestBackend(t)
+	core.physical = pBackend
+
+	ctx := t.Context()
+
+	inkeys := [][]byte{[]byte("grist"), []byte("house")}
+	require.NoError(t, autoSeal.SetStoredKeys(ctx, inkeys))
+
+	// Emulate a recovery config with zero key shares and no recovery key stored.
+	require.NoError(t, autoSeal.SetRecoveryConfig(ctx, &SealConfig{Type: "static"}))
+
+	// Nothing to upgrade while the encryption key hasn't changed.
+	require.NoError(t, autoSeal.UpgradeKeys(ctx))
+
+	// Change the encryption key; the stored keys must still be re-encrypted
+	// even though there is no recovery key to upgrade.
+	changeKey("primanti")
+	require.NoError(t, autoSeal.UpgradeKeys(ctx))
+
+	keysBlob := pBackend.entries[StoredBarrierKeysPath]
+	require.Equal(t, 2, len(keysBlob))
+
+	blobInfo := &wrapping.BlobInfo{}
+	require.NoError(t, proto.Unmarshal(keysBlob[len(keysBlob)-1].Value, blobInfo))
+
+	require.NotNil(t, blobInfo.KeyInfo)
+	require.Equal(t, "primanti", blobInfo.KeyInfo.KeyId)
 }
 
 func TestAutoSeal_HealthCheck(t *testing.T) {

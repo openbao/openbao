@@ -178,9 +178,7 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 }
 
 // TestAutoSeal_UpgradeKeys_NoRecoveryKey verifies that UpgradeKeys does not
-// fail and still re-encrypts the stored keys when no recovery key exists, as
-// is the case when running declarative self-initialization (which configures
-// a recovery config with zero key shares and never stores a recovery key).
+// fail and still re-encrypts the stored keys when no recovery key exists yet.
 func TestAutoSeal_UpgradeKeys_NoRecoveryKey(t *testing.T) {
 	core, _, _ := TestCoreUnsealed(t)
 	testSeal, toggleableWrapper := seal.NewTestSeal(nil)
@@ -207,8 +205,7 @@ func TestAutoSeal_UpgradeKeys_NoRecoveryKey(t *testing.T) {
 	inkeys := [][]byte{[]byte("grist"), []byte("house")}
 	require.NoError(t, autoSeal.SetStoredKeys(ctx, inkeys))
 
-	// Emulate declarative self-initialization: a recovery config with zero
-	// key shares and no recovery key stored.
+	// Emulate a recovery config with zero key shares and no recovery key stored.
 	require.NoError(t, autoSeal.SetRecoveryConfig(ctx, &SealConfig{Type: "static"}))
 
 	// Nothing to upgrade while the encryption key hasn't changed.
@@ -226,7 +223,7 @@ func TestAutoSeal_UpgradeKeys_NoRecoveryKey(t *testing.T) {
 	require.NoError(t, proto.Unmarshal(keysBlob[len(keysBlob)-1].Value, blobInfo))
 
 	require.NotNil(t, blobInfo.KeyInfo)
-	require.Equal(t, "primati", blobInfo.KeyInfo.KeyId)
+	require.Equal(t, "primanti", blobInfo.KeyInfo.KeyId)
 }
 
 func TestAutoSeal_HealthCheck(t *testing.T) {

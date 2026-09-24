@@ -464,8 +464,7 @@ func (d *autoSeal) upgradeRecoveryKey(ctx context.Context) error {
 			return errors.New("no recovery config found")
 		}
 
-		// Check if we haven't yet generated recovery key shares as is the case
-		// when running declarative self-initialization.
+		// Check if we haven't yet generated recovery key shares.
 		if recoveryConfig.SecretShares == 0 {
 			// Assume upgrade has passed as there's nothing to upgrade for now.
 			return nil
